@@ -18,7 +18,9 @@ final class EmerFireAlarmMoniView: UIView {
 
     private enum Layout {
         static let buttonSize = SCRXFrom(40)
-        static let buttonSpacing = SCRXFrom(24)
+        static let mockButtonSpacing = SCRXFrom(24)
+        static let rowSpacing = SCRYFrom(28)
+        static let actionCount = 4
     }
 
     private final class ActionButton: UIButton {
@@ -31,12 +33,10 @@ final class EmerFireAlarmMoniView: UIView {
 
     private var actionItems: [ActionItem] = []
     private var progressIndexes: Set<Int> = []
-    private lazy var buttons: [ActionButton] = (0..<3).map { index in
+    private lazy var buttons: [ActionButton] = (0..<Layout.actionCount).map { index in
         let button = ActionButton(type: .custom)
-        button.backgroundColor = .white
-        button.layer.cornerRadius = Layout.buttonSize / 2
-        button.layer.borderWidth = 1
-        button.layer.borderColor = RGB(216, 227, 255).cgColor
+        button.backgroundColor = .clear
+        button.layer.borderWidth = 0
         button.imageView?.contentMode = .scaleAspectFit
         button.tag = index
         button.addTarget(self, action: #selector(handleButtonTap(_:)), for: .touchUpInside)
@@ -46,11 +46,27 @@ final class EmerFireAlarmMoniView: UIView {
         return button
     }
 
-    private lazy var stackView: UIStackView = {
-        let stackView = UIStackView(arrangedSubviews: buttons)
+    private lazy var primaryStackView: UIStackView = {
+        let stackView = UIStackView(arrangedSubviews: [buttons[0]])
         stackView.axis = .horizontal
         stackView.alignment = .center
-        stackView.spacing = Layout.buttonSpacing
+        stackView.distribution = .equalCentering
+        return stackView
+    }()
+
+    private lazy var mockStackView: UIStackView = {
+        let stackView = UIStackView(arrangedSubviews: Array(buttons[1...3]))
+        stackView.axis = .horizontal
+        stackView.alignment = .center
+        stackView.spacing = Layout.mockButtonSpacing
+        return stackView
+    }()
+
+    private lazy var stackView: UIStackView = {
+        let stackView = UIStackView(arrangedSubviews: [primaryStackView, mockStackView])
+        stackView.axis = .vertical
+        stackView.alignment = .center
+        stackView.spacing = Layout.rowSpacing
         return stackView
     }()
 
@@ -78,7 +94,7 @@ final class EmerFireAlarmMoniView: UIView {
             let item = actionItems[index]
             button.isHidden = false
             button.setImage(item.image?.withRenderingMode(.alwaysOriginal), for: .normal)
-            button.layer.borderColor = (item.borderColor ?? RGB(216, 227, 255)).cgColor
+            button.layer.borderWidth = 0
             updateButton(button, at: index)
         }
     }
@@ -126,7 +142,7 @@ final class EmerFireAlarmMoniView: UIView {
             button.setImage(UIImage(named: isIPad ? "group_auto_progress_big" : "group_auto_progress")?.withTintColor(Bar_Color, renderingMode: .alwaysOriginal), for: .normal)
             button.layer.addRotationAnimation(duration: 1, repeatCount: 10, animationKey: "loading")
         } else {
-            button.layer.borderWidth = 1
+            button.layer.borderWidth = 0
             button.layer.removeAnimation(forKey: "loading")
             if index < actionItems.count {
                 button.setImage(actionItems[index].image?.withRenderingMode(.alwaysOriginal), for: .normal)

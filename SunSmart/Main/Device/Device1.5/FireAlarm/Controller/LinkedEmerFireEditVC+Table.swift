@@ -223,7 +223,7 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
     private var restoreActionOptions: [LinkedEmerFireRestoreActionOption] {
         [
             .init(title: "Restore AUTO", type: .restoreAuto),
-            .init(title: "Set Brightness to", type: .setBrightness),
+            .init(title: "Set Brightness To", type: .setBrightness),
             .init(title: "None", type: .none)
         ]
     }

@@ -198,13 +198,13 @@ class SyncDevicesViewController: UIViewController {
                     }
                 }
                 appendEmergencyFireControllerGroupMutationItems(to: configurationSection, group: group, addNodes: inNodes ?? [], exitNodes: outNodes ?? [])
-            case .emergencyFire(let data, let suppliedItems, let persistsSyncResult, let changedFromConfiguration):
-                let targetSection = persistsSyncResult ? configurationSection : removeSection
+            case .emergencyFire(let data, let suppliedItems, let context):
+                let targetSection = context.persistsSyncResult ? configurationSection : removeSection
                 targetSection.prefersDevicesBeforeGroups = true
                 appendEmergencyFireControllerItems(
                     to: targetSection,
                     data: data,
-                    items: suppliedItems ?? makeEmergencyFireControllerItems(data: data, changedFromConfiguration: changedFromConfiguration)
+                    items: suppliedItems ?? makeEmergencyFireControllerItems(data: data, context: context)
                 )
             case .profile(let datas):
                 datas.forEach { (node: Node, profiles: [ProfileType]) in
@@ -848,15 +848,18 @@ class SyncDevicesViewController: UIViewController {
 
     private func makeEmergencyFireControllerItems(
         data: DeviceEmerFireData,
-        changedFromConfiguration: EmergencyFireControllerConfiguration?
+        context: EmergencyFireSyncContext
     ) -> [EmergencyFireControllerSyncItem] {
+        let planner = EmergencyFireControllerSyncPlanner(
+            data: data,
+            meshUUID: data.meshUUID,
+            subnetworkId: data.meshNetworkId,
+            changedFromConfiguration: context.changedFromConfiguration
+        )
+        if context.isDeleteCleanup {
+            return planner.makeDeleteCleanupItems()
+        }
         do {
-            let planner = EmergencyFireControllerSyncPlanner(
-                data: data,
-                meshUUID: data.meshUUID,
-                subnetworkId: data.meshNetworkId,
-                changedFromConfiguration: changedFromConfiguration
-            )
             return try planner.makeItems()
         } catch {
             syncState = .syncFailure
@@ -1021,29 +1024,97 @@ class SyncDevicesViewController: UIViewController {
         }
         model.state = .successful
         clearEmergencyFireControllerPendingIfNeeded(for: model)
+        persistEmergencyFireDeleteCleanupProgressIfNeeded(for: model)
         updateCell(model: model)
         return true
     }
 
+    private var emergencyFireSyncContext: EmergencyFireSyncContext? {
+        guard case .emergencyFire(_, _, let context) = type else {
+            return nil
+        }
+        return context
+    }
+
     private func isEmergencyFireControllerDeleteCleanup(_ model: SyncCellModel) -> Bool {
-        guard case .emergencyFire(_, _, let persistsSyncResult, _) = type,
-              !persistsSyncResult,
+        guard case .emergencyFire(_, _, let context) = type,
+              context.isDeleteCleanup,
               let taskContext = emergencyFireControllerTask(for: model) else {
             return false
         }
         return taskContext.task.kind == .deleteCleanup
     }
 
+    private func persistEmergencyFireDeleteCleanupProgressIfNeeded(for model: SyncCellModel) {
+        guard emergencyFireSyncContext?.isDeleteCleanup == true,
+              let taskContext = emergencyFireControllerTask(for: model),
+              taskContext.task.kind == .deleteCleanup,
+              let groupAddress = taskContext.task.pendingGroupAddress,
+              let groupModel = emergencyFireGroupModel(for: model),
+              groupModel.deviceModels.allSatisfy(emergencyFireDeviceModelSucceeded(_:)) else {
+            return
+        }
+        taskContext.data.markDeleteCleanupSucceeded(
+            groupAddress: groupAddress,
+            meshUUID: taskContext.data.meshUUID,
+            subnetworkId: taskContext.data.meshNetworkId
+        )
+    }
+
+    private func emergencyFireGroupModel(for model: SyncCellModel) -> SyncDevicesGroupModel? {
+        if let deviceModel = model as? SyncDevicesModel {
+            return deviceModel.parentGroupModel
+        }
+        if let taskModel = model as? SyncDeviceStepTaskModel {
+            return taskModel.parentStepModel?.parentDeviceModel?.parentGroupModel
+        }
+        return nil
+    }
+
+    private func emergencyFireDeviceModelSucceeded(_ deviceModel: SyncDevicesModel) -> Bool {
+        if let operationType = deviceModel.operationType,
+           case .configuration(_, let type) = operationType,
+           case .emergencyFireController = type {
+            return deviceModel.state == .successful
+        }
+        let tasks = deviceModel.steps.flatMap { $0.tasks }
+        return !tasks.isEmpty && tasks.allSatisfy { $0.state == .successful }
+    }
+
+    private func persistEmergencyFireDeleteCleanupFailureIfNeeded() {
+        guard emergencyFireSyncContext?.isDeleteCleanup == true,
+              case .emergencyFire(let data, _, _) = type else {
+            return
+        }
+        data.markDeleteCleanupInterrupted(meshUUID: data.meshUUID, subnetworkId: data.meshNetworkId)
+    }
+
     private func ackTimeout(for model: SyncCellModel) -> TimeInterval {
         isEmergencyFireControllerDeleteCleanup(model) ? 5 : 15
     }
 
+    private struct EmergencyFireDeleteCleanupRetryPolicy {
+        let maxRetries: Int
+        let retryDelay: TimeInterval
+
+        var maxAttempts: Int {
+            maxRetries + 1
+        }
+    }
+
+    private func emergencyFireDeleteCleanupRetryPolicy(for model: SyncCellModel) -> EmergencyFireDeleteCleanupRetryPolicy? {
+        guard isEmergencyFireControllerDeleteCleanup(model) else {
+            return nil
+        }
+        return EmergencyFireDeleteCleanupRetryPolicy(maxRetries: 2, retryDelay: 0.2)
+    }
+
     private func finishEmergencyFireControllerSyncIfNeeded(success: Bool) {
-        guard case .emergencyFire(let data, _, let persistsSyncResult, _) = type else {
+        guard case .emergencyFire(let data, _, let context) = type else {
             return
         }
 
-        if persistsSyncResult {
+        if context.persistsSyncResult {
             data.isSynced = success
             DeviceEmerFireStore.shared.save(data)
         }
@@ -1603,6 +1674,7 @@ class SyncDevicesViewController: UIViewController {
             }
             tableView.reloadData()
             syncState = .syncFailure
+            persistEmergencyFireDeleteCleanupFailureIfNeeded()
             finishEmergencyFireControllerSyncIfNeeded(success: false)
         }else if syncState == .syncFailure {
             
@@ -1962,122 +2034,152 @@ class SyncDevicesViewController: UIViewController {
                 }
                 
                 let isBatteryPowerSwitchKeyConfigModel = self.isBatteryPowerSwitchKeyConfigConfiguration(model)
-                MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, ackMessageTimeout: self.ackTimeout(for: model), progressBack: nil, successfulBack: { handle, statusMessage in
-                    guard self.isActiveSyncRun(syncRunIdentifier) else {
-                        return
-                    }
-                    // 判断如果是设备初始化消息，则需要再初始化完成后完成基本配置
-                    if statusMessage is ConfigCompositionDataStatus || statusMessage is ConfigAppKeyStatus {
-                        if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address), node.isInitialize {
-                            MeshProxyMessageCommand.shared.addMessage(messageHandles: node.getConfigMessageHandles(), finishedBack: nil)
+                let retryPolicy = self.emergencyFireDeleteCleanupRetryPolicy(for: model)
+                let maxAttempts = retryPolicy?.maxAttempts ?? 1
+                var attempt = 1
+                func sendMessageAttempt() {
+                    MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, ackMessageTimeout: self.ackTimeout(for: model), progressBack: nil, successfulBack: { handle, statusMessage in
+                        guard self.isActiveSyncRun(syncRunIdentifier) else {
+                            return
                         }
-                    }else if (statusMessage is GenericOnOffStatus || statusMessage is LightLightnessStatus || statusMessage is LightCTLTemperatureStatus || statusMessage is LightCTLStatus || statusMessage is LightHSLStatus), messageHandles.contains(where: { $0.message is SceneStore }) { // 设置场景时需要及时更新状态属性
-                        if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-                            node.updateNodeStatus(message: statusMessage, source: address)
-                            if let onOffStatus = statusMessage as? GenericOnOffStatus,
-                               !(onOffStatus.targetState ?? onOffStatus.isOn) {
-                                node.lightness = 0
+                        // 判断如果是设备初始化消息，则需要再初始化完成后完成基本配置
+                        if statusMessage is ConfigCompositionDataStatus || statusMessage is ConfigAppKeyStatus {
+                            if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address), node.isInitialize {
+                                MeshProxyMessageCommand.shared.addMessage(messageHandles: node.getConfigMessageHandles(), finishedBack: nil)
                             }
-                        }
-                    }else if let vendorStatusMessage = statusMessage as? SunricherVendorStatus {
-                        if vendorStatusMessage.status.code == .dimmerPowerCalibrate {
-                            if vendorStatusMessage.status.errorCode == 2 { // 功率校准异常
+                        }else if (statusMessage is GenericOnOffStatus || statusMessage is LightLightnessStatus || statusMessage is LightCTLTemperatureStatus || statusMessage is LightCTLStatus || statusMessage is LightHSLStatus), messageHandles.contains(where: { $0.message is SceneStore }) { // 设置场景时需要及时更新状态属性
+                            if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
+                                node.updateNodeStatus(message: statusMessage, source: address)
+                                if let onOffStatus = statusMessage as? GenericOnOffStatus,
+                                   !(onOffStatus.targetState ?? onOffStatus.isOn) {
+                                    node.lightness = 0
+                                }
+                            }
+                        }else if let vendorStatusMessage = statusMessage as? SunricherVendorStatus {
+                            if vendorStatusMessage.status.code == .dimmerPowerCalibrate {
+                                if vendorStatusMessage.status.errorCode == 2 { // 功率校准异常
+                                    if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
+                                        if case .dimmerPowerCalibrateError(let maxPower) = vendorStatusMessage.status.parameters {
+                                            node.powerCalibrateError = .powerExceed(maxPower: Int(maxPower / 10))
+                                        }else {
+                                            node.powerCalibrateError = .powerExceed(maxPower: 300)
+                                        }
+                                    }
+                                }
+                            }else if vendorStatusMessage.status.code == .daylightLuxTriggerLock { // lux触发场景锁定/解锁
                                 if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-                                    if case .dimmerPowerCalibrateError(let maxPower) = vendorStatusMessage.status.parameters {
-                                        node.powerCalibrateError = .powerExceed(maxPower: Int(maxPower / 10))
-                                    }else {
-                                        node.powerCalibrateError = .powerExceed(maxPower: 300)
-                                    }
-                                }
-                            }
-                        }else if vendorStatusMessage.status.code == .daylightLuxTriggerLock { // lux触发场景锁定/解锁
-                            if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-                                if let vendorSet = handle.message as? SunricherVendorSet, case .daylightLuxTriggerLock(let delay) = vendorSet.function {
-                                    if delay > 0 {
-                                        if !self.luxTriggerLockDevices.contains(node) {
-                                            self.luxTriggerLockDevices.append(node)
-                                        }
-                                    }else {
-                                        if let index = self.luxTriggerLockDevices.firstIndex(of: node) {
-                                            self.luxTriggerLockDevices.remove(at: index)
+                                    if let vendorSet = handle.message as? SunricherVendorSet, case .daylightLuxTriggerLock(let delay) = vendorSet.function {
+                                        if delay > 0 {
+                                            if !self.luxTriggerLockDevices.contains(node) {
+                                                self.luxTriggerLockDevices.append(node)
+                                            }
+                                        }else {
+                                            if let index = self.luxTriggerLockDevices.firstIndex(of: node) {
+                                                self.luxTriggerLockDevices.remove(at: index)
+                                            }
                                         }
                                     }
                                 }
+                            }else if handle.message is SunricherVendorGet, case .daylightConditionRecall(let index) = vendorStatusMessage.status.parameters, index >= 0 { // 记录当前运行的白天/黑夜条件配置
+                                if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
+                                    node.daylightRecallConditionId = UInt8(index)
+                                }
+                            }else if self.attemptDaylightConditionRecallRecovery(handle: handle, status: vendorStatusMessage, syncModel: model) {
+                                handle.respondAddresss = handle.allAddresss
+                                handle.notRespondAddresss = []
                             }
-                        }else if handle.message is SunricherVendorGet, case .daylightConditionRecall(let index) = vendorStatusMessage.status.parameters, index >= 0 { // 记录当前运行的白天/黑夜条件配置
+                        }
+                    }, failedBack: { handle in
+                        guard self.isActiveSyncRun(syncRunIdentifier) else {
+                            return
+                        }
+                        if let vendorSetMessage = handle.message as? SunricherVendorSet, case .dimmerPowerCalibrate = vendorSetMessage.function { // 功率校准超时
                             if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-                                node.daylightRecallConditionId = UInt8(index)
+                                node.powerCalibrateError = .timeout
                             }
-                        }else if self.attemptDaylightConditionRecallRecovery(handle: handle, status: vendorStatusMessage, syncModel: model) {
-                            handle.respondAddresss = handle.allAddresss
-                            handle.notRespondAddresss = []
                         }
-                    }
-                }, failedBack: { handle in
-                    guard self.isActiveSyncRun(syncRunIdentifier) else {
-                        return
-                    }
-                    if let vendorSetMessage = handle.message as? SunricherVendorSet, case .dimmerPowerCalibrate = vendorSetMessage.function { // 功率校准超时
-                        if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-                            node.powerCalibrateError = .timeout
+                    }) {[weak self] resultMessageHandles in
+                        guard let self = self else { return }
+                        guard self.isActiveSyncRun(syncRunIdentifier) else {
+                            semaphore.signal()
+                            return
                         }
-                    }
-                }) {[weak self] resultMessageHandles in
-                    guard let self = self else { return }
-                    guard self.isActiveSyncRun(syncRunIdentifier) else {
-                        semaphore.signal()
-                        return
-                    }
-                    resultMessageHandles.forEach { handle in
-                        if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-                            node.updateData(message: handle.message, isSuccess: handle.isSuccessful)
-                            // 清空同步缓存状态
-                            node.clearSyncStateCache()
+                        resultMessageHandles.forEach { handle in
+                            if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
+                                node.updateData(message: handle.message, isSuccess: handle.isSuccessful)
+                                // 清空同步缓存状态
+                                node.clearSyncStateCache()
 //                            if !self.syncNodes.contains(node) {
 //                                self.syncNodes.append(node)
 //                            }
-                        }
-                    }
-                    
-                    let resultSuccessful = !resultMessageHandles.contains(where: { !$0.isSuccessful })
-                    let operationSuccessful = ((model as? SyncDevicesModel)?.operationType?.isSuccessful ?? (model as? SyncDeviceStepTaskModel)?.operationType.isSuccessful) ?? false
-                    if self.isBatteryPowerSwitchOperationSuccessful(
-                        model: model,
-                        resultSuccessful: resultSuccessful,
-                        operationSuccessful: operationSuccessful,
-                        messageHandles: messageHandles
-                    ) || self.isEmergencyFireControllerDeleteCleanup(model) {
-                        model.state = .successful
-                        self.clearEmergencyFireControllerPendingIfNeeded(for: model)
-                        if isBatteryPowerSwitchKeyConfigModel {
-                            self.batteryPowerSwitchKeyConfigurationCompleted = true
-                        }
-                        
-                        if self.deviceBlinkMode != .none {
-                            let deviceModel: SyncDevicesModel? =
-                            (model as? SyncDevicesModel)
-                            ?? (model as? SyncDeviceStepTaskModel)?.parentStepModel?.parentDeviceModel
-                            // 设备全部成功判断
-                            if let deviceModel = deviceModel,
-                               let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: deviceModel.address),
-                                deviceModel.state == .successful {
-                                // 发送设备闪烁命令
-                                node.sendHandleCompleteIdentify(deviceBlinkMode: self.deviceBlinkMode)
                             }
                         }
-                        
-                    }else {
-                        model.state = .failed
-                        (model as? SyncDevicesModel)?.failedCount += 1
-                        (model as? SyncDeviceStepTaskModel)?.failedCount += 1
-                        if self.isBatteryPowerSwitchOwnConfiguration(model) {
-                            self.batteryPowerSwitchOwnConfigurationFailed = true
-                            self.markBatteryPowerSwitchOwnConfigurationTasksFailed()
+
+                        let resultSuccessful = !resultMessageHandles.contains(where: { !$0.isSuccessful })
+                        let operationSuccessful = ((model as? SyncDevicesModel)?.operationType?.isSuccessful ?? (model as? SyncDeviceStepTaskModel)?.operationType.isSuccessful) ?? false
+                        let isSuccessful = self.isSyncOperationSuccessful(
+                            model: model,
+                            resultSuccessful: resultSuccessful,
+                            operationSuccessful: operationSuccessful,
+                            messageHandles: messageHandles
+                        )
+                        let shouldRetry = !isSuccessful && attempt < maxAttempts && retryPolicy != nil
+                        self.logEmergencyFireDeleteCleanupResultIfNeeded(
+                            for: model,
+                            resultMessageHandles: resultMessageHandles,
+                            resultSuccessful: resultSuccessful,
+                            attempt: attempt,
+                            maxAttempts: maxAttempts,
+                            willRetry: shouldRetry
+                        )
+                        if shouldRetry, let retryPolicy {
+                            attempt += 1
+                            self.resetMessageHandlesForResync(messageHandles)
+                            DispatchQueue.global().asyncAfter(deadline: .now() + retryPolicy.retryDelay) {
+                                guard self.isActiveSyncRun(syncRunIdentifier) else {
+                                    semaphore.signal()
+                                    return
+                                }
+                                sendMessageAttempt()
+                            }
+                            return
                         }
+
+                        if isSuccessful {
+                            model.state = .successful
+                            self.clearEmergencyFireControllerPendingIfNeeded(for: model)
+                            self.persistEmergencyFireDeleteCleanupProgressIfNeeded(for: model)
+                            if isBatteryPowerSwitchKeyConfigModel {
+                                self.batteryPowerSwitchKeyConfigurationCompleted = true
+                            }
+
+                            if self.deviceBlinkMode != .none {
+                                let deviceModel: SyncDevicesModel? =
+                                (model as? SyncDevicesModel)
+                                ?? (model as? SyncDeviceStepTaskModel)?.parentStepModel?.parentDeviceModel
+                                // 设备全部成功判断
+                                if let deviceModel = deviceModel,
+                                   let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: deviceModel.address),
+                                    deviceModel.state == .successful {
+                                    // 发送设备闪烁命令
+                                    node.sendHandleCompleteIdentify(deviceBlinkMode: self.deviceBlinkMode)
+                                }
+                            }
+
+                        }else {
+                            model.state = .failed
+                            (model as? SyncDevicesModel)?.failedCount += 1
+                            (model as? SyncDeviceStepTaskModel)?.failedCount += 1
+                            if self.isBatteryPowerSwitchOwnConfiguration(model) {
+                                self.batteryPowerSwitchOwnConfigurationFailed = true
+                                self.markBatteryPowerSwitchOwnConfigurationTasksFailed()
+                            }
+                        }
+                        self.updateCell(model: model)
+                        semaphore.signal()
                     }
-                    self.updateCell(model: model)
-                    semaphore.signal()
                 }
+                sendMessageAttempt()
                 semaphore.wait()
                 if isBatteryPowerSwitchKeyConfigModel, model.state == .successful {
                     self.waitAfterBatteryPowerSwitchKeyConfigSuccessIfNeeded(for: model)
@@ -2105,6 +2207,9 @@ class SyncDevicesViewController: UIViewController {
                 })
             }
             self.syncState = self.sections.contains(where: { $0.allModels.contains(where: { $0.state == .failed }) }) ? .syncFailure : .syncSuccess
+            if self.syncState == .syncFailure {
+                self.persistEmergencyFireDeleteCleanupFailureIfNeeded()
+            }
             self.finishEmergencyFireControllerSyncIfNeeded(success: self.syncState == .syncSuccess)
             
             DispatchQueue.main.async {
@@ -2355,6 +2460,78 @@ class SyncDevicesViewController: UIViewController {
         return !messageHandles.isEmpty && resultSuccessful
     }
 
+    private func isSyncOperationSuccessful(
+        model: SyncCellModel,
+        resultSuccessful: Bool,
+        operationSuccessful: Bool,
+        messageHandles: [MeshMessageHandle]
+    ) -> Bool {
+        if isEmergencyFireControllerDeleteCleanup(model) {
+            return isEmergencyFireControllerDeleteCleanupSuccessful(
+                model: model,
+                resultSuccessful: resultSuccessful,
+                messageHandles: messageHandles
+            )
+        }
+        return isBatteryPowerSwitchOperationSuccessful(
+            model: model,
+            resultSuccessful: resultSuccessful,
+            operationSuccessful: operationSuccessful,
+            messageHandles: messageHandles
+        )
+    }
+
+    private func isEmergencyFireControllerDeleteCleanupSuccessful(
+        model: SyncCellModel,
+        resultSuccessful: Bool,
+        messageHandles: [MeshMessageHandle]
+    ) -> Bool {
+        guard isEmergencyFireControllerDeleteCleanup(model),
+              !messageHandles.isEmpty else {
+            return false
+        }
+        return resultSuccessful
+    }
+
+    private func logEmergencyFireDeleteCleanupResultIfNeeded(
+        for model: SyncCellModel,
+        resultMessageHandles: [MeshMessageHandle],
+        resultSuccessful: Bool,
+        attempt: Int,
+        maxAttempts: Int,
+        willRetry: Bool
+    ) {
+        guard let taskContext = emergencyFireControllerTask(for: model),
+              taskContext.task.kind == .deleteCleanup else {
+            return
+        }
+        let groupModel = emergencyFireGroupModel(for: model)
+        let failedTaskCount = groupModel?.deviceModels
+            .flatMap { $0.steps }
+            .flatMap { $0.tasks }
+            .filter { $0.state == .failed }
+            .count ?? 0
+        let handleLogs = resultMessageHandles.map { handle in
+            let messageName = String(describing: Swift.type(of: handle.message))
+            let all = formatEmergencyFireAddresses(handle.allAddresss)
+            let responded = formatEmergencyFireAddresses(handle.respondAddresss)
+            let missing = formatEmergencyFireAddresses(handle.notRespondAddresss)
+            return "\(messageName){success=\(handle.isSuccessful),all=[\(all)],respond=[\(responded)],missing=[\(missing)]}"
+        }.joined(separator: ";")
+        print("[EFC Delete Cleanup] task=\(taskContext.task.kind.rawValue), group=\(formatEmergencyFireAddress(taskContext.task.pendingGroupAddress)), node=\(formatEmergencyFireAddress(taskContext.task.address)), attempt=\(attempt)/\(maxAttempts), willRetry=\(willRetry), resultSuccessful=\(resultSuccessful), state=\(model.state), failedTasksInGroup=\(failedTaskCount), handles=\(handleLogs)")
+    }
+
+    private func formatEmergencyFireAddress(_ address: Address?) -> String {
+        guard let address else {
+            return "nil"
+        }
+        return String(format: "0x%04X", address)
+    }
+
+    private func formatEmergencyFireAddresses(_ addresses: [Address]) -> String {
+        addresses.map { formatEmergencyFireAddress($0) }.joined(separator: ",")
+    }
+
     private func resetBatteryPowerSwitchConfigurationForResync() {
         batteryPowerSwitchOwnConfigurationFailed = false
         sections.forEach { section in
@@ -2489,6 +2666,9 @@ class SyncDevicesViewController: UIViewController {
         if device.steps.isEmpty {
             if device.state != .successful {
                 device.state = .none
+                if let operationType = device.operationType {
+                    resetMessageHandlesForResync(operationType.messageHandles)
+                }
             }
             return
         }
@@ -2497,9 +2677,8 @@ class SyncDevicesViewController: UIViewController {
         device.steps.forEach { step in
             step.isFineshed = false
             step.tasks.forEach { task in
-                task.isFineshed = false
                 if task.state != .successful {
-                    task.state = .none
+                    prepareTaskForResync(task)
                 }
             }
         }
@@ -2510,15 +2689,31 @@ class SyncDevicesViewController: UIViewController {
         step.parentDeviceModel?.isFineshed = false
         step.parentDeviceModel?.isSelected = false
         step.tasks.forEach { task in
-            task.isFineshed = false
             if task.state != .successful {
-                task.state = .none
-                if task.relevanceTaskModels.count > 0 {
-                    task.resyncRelevanceCheck().forEach({
-                        $0.state = .wait
-                    })
-                }
+                prepareTaskForResync(task)
             }
+        }
+    }
+
+    private func prepareTaskForResync(_ task: SyncDeviceStepTaskModel) {
+        task.isFineshed = false
+        task.failedCount = 0
+        task.state = .none
+        resetMessageHandlesForResync(task.operationType.messageHandles)
+        task.parentStepModel?.isFineshed = false
+        task.parentStepModel?.parentDeviceModel?.isFineshed = false
+        task.parentStepModel?.parentDeviceModel?.isSelected = false
+        if task.relevanceTaskModels.count > 0 {
+            task.resyncRelevanceCheck().forEach({
+                $0.state = .wait
+            })
+        }
+    }
+
+    private func resetMessageHandlesForResync(_ messageHandles: [MeshMessageHandle]) {
+        messageHandles.forEach { handle in
+            handle.respondAddresss = []
+            handle.notRespondAddresss = []
         }
     }
     
@@ -2768,17 +2963,12 @@ extension SyncDevicesViewController: UITableViewDataSource, UITableViewDelegate 
                 return
             }
             SyncDevicesProgressView.show(stepModel: stepModel) { [weak self] task in
-                task.state = .none
-                // 检查是否有profile数据需要加锁、切换场景前置要求，需要则重试必须连带前置条件一起设置
-                if task.relevanceTaskModels.count > 0 {
-                    task.resyncRelevanceCheck().forEach({
-                        $0.state = .wait
-                    })
-                }
-                self?.showProressStepModel = stepModel
-                self?.syncState = .inSync
-                self?.updateSyncStateUI()
-                self?.startSync()
+                guard let self else { return }
+                self.prepareTaskForResync(task)
+                self.showProressStepModel = stepModel
+                self.syncState = .inSync
+                self.updateSyncStateUI()
+                self.startSync()
             } hide: {[weak self] in
                 self?.showProressStepModel = nil
             }
@@ -2977,6 +3167,36 @@ private extension SyncDevicesViewController {
 }
 
 extension SyncDevicesViewController {
+
+    enum EmergencyFireSyncContext {
+        case saveConfiguration(persistsSyncResult: Bool, changedFromConfiguration: EmergencyFireControllerConfiguration?)
+        case deleteCleanup
+
+        var persistsSyncResult: Bool {
+            switch self {
+            case .saveConfiguration(let persistsSyncResult, _):
+                return persistsSyncResult
+            case .deleteCleanup:
+                return false
+            }
+        }
+
+        var changedFromConfiguration: EmergencyFireControllerConfiguration? {
+            switch self {
+            case .saveConfiguration(_, let changedFromConfiguration):
+                return changedFromConfiguration
+            case .deleteCleanup:
+                return nil
+            }
+        }
+
+        var isDeleteCleanup: Bool {
+            if case .deleteCleanup = self {
+                return true
+            }
+            return false
+        }
+    }
     
     /// 同步数据类型
     enum SyncType {
@@ -3001,7 +3221,7 @@ extension SyncDevicesViewController {
         /// Dongle设备
         case dongle(_ dongleData: DeviceDongleData)
         /// 应急火警控制器
-        case emergencyFire(data: DeviceEmerFireData, items: [EmergencyFireControllerSyncItem]?, persistsSyncResult: Bool, changedFromConfiguration: EmergencyFireControllerConfiguration?)
+        case emergencyFire(data: DeviceEmerFireData, items: [EmergencyFireControllerSyncItem]?, context: EmergencyFireSyncContext)
         /// 邻近照明路径
         case proximityLightingPath(group: Group, path: GroupProximityLightingPathData)
         /// space级触发区域

@@ -14,7 +14,10 @@ enum EmergencyFireControllerIconName {
 
     enum Monitor {
         enum Action {
-            static let identify = "Identify"
+            static let identify = "efc_identify"
+            static let mockFireAlarm = "mock_fire_alarm"
+            static let mockPowerLoss = "mock_power_loss"
+            static let mockRestore = "mock_restore"
             static let powerLossTrigger = "yingjimoni"
             static let powerLossStop = "yingjimonitc"
             static let fireTrigger = "yjhjmn"

@@ -2420,7 +2420,6 @@
 		C8F11B20959EC4093FFC9390 /* GroupPowerSwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */; };
 		C8F1A0012F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */; };
 		C8F1A0022F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */; };
-		C8F1A0032F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */; };
 		C8F1A0042F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */; };
 		C8F1A0062F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */; };
 		C8F837402E3B52560003B292 /* GatewaySectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */; };
@@ -7049,7 +7048,6 @@
 				C8D6636D2BFED12B00BFF81A /* Keychain.swift in Sources */,
 				C8CD5C302DDC6E9700F09467 /* GroupPathSequenceSelectData.swift in Sources */,
 				C88CCD932DD480B9003D5754 /* GroupPathSequenceViewController.swift in Sources */,
-				C8F1A0032F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */,
 				C8BC573D2E9FC79E009E79A3 /* DeviceResetDeviceSafeModeController.swift in Sources */,
 				C8AFDBFB2D6FF6D600839A38 /* DaliMasterMultipleControlsView.swift in Sources */,
 				8C1DA7AF2FAB4E820073F100 /* PJNGatewayWiFiDFUViewController.swift in Sources */,

@@ -382,14 +382,14 @@ class DeviceRestoreViewController: UIViewController {
     private func shouldIncludeRestoreNode(_ node: Node) -> Bool {
         switch restoreFilter {
         case .all:
-            return true
+            return node.deviceType != .emergencyController
         case .gatewaysOnly:
             return node.deviceType == .gateway
         case .currentSpaceNonGateways:
             guard let space else {
                 return false
             }
-            return node.deviceType != .gateway && node.subNetworkId == space.meshNetworkId
+            return node.deviceType != .gateway && node.deviceType != .emergencyController && node.subNetworkId == space.meshNetworkId
         }
     }
 

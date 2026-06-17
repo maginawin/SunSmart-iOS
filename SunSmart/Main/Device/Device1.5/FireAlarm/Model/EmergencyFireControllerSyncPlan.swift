@@ -16,6 +16,7 @@ enum EmergencyFireControllerSyncTaskKind: String {
     case actionConfig = "Action Config"
     case lightnessSubscription = "Lightness Group"
     case lightLCSubscription = "LC Group"
+    case associationSubscription = "Group Subscription"
     case associationCleanup = "Group Cleanup"
     case deleteCleanup = "Delete Cleanup"
     case deleteConfiguration = "Delete Configuration"

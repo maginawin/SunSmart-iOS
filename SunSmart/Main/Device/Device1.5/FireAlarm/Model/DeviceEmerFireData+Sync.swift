@@ -23,7 +23,11 @@ extension DeviceEmerFireData {
     ]
 
     var hasSyncableConfiguration: Bool {
-        configuration.hasSyncIntent || requiresControllerPublicationSync
+        hasControllerConfigurationSyncIntent || configuration.hasSyncIntent || requiresControllerPublicationSync
+    }
+
+    private var hasControllerConfigurationSyncIntent: Bool {
+        bindNodeAddress != nil
     }
 
     private var requiresControllerPublicationSync: Bool {
@@ -102,6 +106,20 @@ extension DeviceEmerFireData {
         save(meshUUID: meshUUID, networkId: subnetworkId)
     }
 
+    func markDeleteCleanupSucceeded(groupAddress: Address, meshUUID: String, subnetworkId: String) {
+        configuration.powerLossSettings.associateGroupAddresses.removeAll { $0 == groupAddress }
+        configuration.fireAlarmSettings.associateGroupAddresses.removeAll { $0 == groupAddress }
+        configuration.powerLossSettings.pendingUnassociateGroupAddresses.removeAll { $0 == groupAddress }
+        configuration.fireAlarmSettings.pendingUnassociateGroupAddresses.removeAll { $0 == groupAddress }
+        isSynced = true
+        save(meshUUID: meshUUID, networkId: subnetworkId)
+    }
+
+    func markDeleteCleanupInterrupted(meshUUID: String, subnetworkId: String) {
+        isSynced = false
+        save(meshUUID: meshUUID, networkId: subnetworkId)
+    }
+
     @discardableResult
     func ensurePublishGroup(meshUUID: String, subnetworkId: String) throws -> Address {
         if let publishGroupAddress {
@@ -173,6 +191,11 @@ extension DeviceEmerFireData {
             meshUUID: meshUUID,
             subnetworkId: subnetworkId
         )
+    }
+
+    func getControllerDefaultConfigurationMessageHandles(meshUUID: String, subnetworkId: String) throws -> [MeshMessageHandle] {
+        try makeControllerSyncTasks(meshUUID: meshUUID, subnetworkId: subnetworkId, changedFrom: nil)
+            .flatMap { $0.messageHandles }
     }
 
     func makeControllerSyncTasks(

@@ -256,7 +256,6 @@ extension EmergencyFireControllerConfiguration {
     ) -> EmergencyFireActionConfig {
         guard enabled,
               let targetAddress,
-              !activeLightLCGroupAddresses.isEmpty,
               let action = action(for: state) else {
             return .init(stateIndex: state.sdkStateIndex, action: .invalid)
         }

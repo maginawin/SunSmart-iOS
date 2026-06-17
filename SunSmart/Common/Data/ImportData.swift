@@ -21,6 +21,7 @@ private struct SpaceImportSummary: Equatable {
     let sceneCount: Int
     let scheduleCount: Int
     let switchesCount: Int
+    let emergencyFireControllerCount: Int
 
     init(space: SpaceData) {
         self.deviceCount = space.deviceCount
@@ -28,6 +29,9 @@ private struct SpaceImportSummary: Equatable {
         self.sceneCount = space.sceneCount
         self.scheduleCount = space.scheheduleCount
         self.switchesCount = space.switchesCount
+        self.emergencyFireControllerCount = DeviceEmerFireData
+            .load(meshUUID: space.meshUUID, meshNetworkId: space.meshNetworkId, spaceId: space.id)
+            .count
     }
 
     init(
@@ -35,13 +39,15 @@ private struct SpaceImportSummary: Equatable {
         groupDicts: [[String: Any]],
         sceneDicts: [[String: Any]],
         scheduleDicts: [[String: Any]],
-        switchesDicts: [[String: Any]]
+        switchesDicts: [[String: Any]],
+        emergencyFireControllerCount: Int
     ) {
         self.deviceCount = nodeDicts.count
         self.groupCount = groupDicts.filter { !JSON($0)["isVirtual"].boolValue }.count
         self.sceneCount = sceneDicts.count
         self.scheduleCount = scheduleDicts.count
         self.switchesCount = switchesDicts.count
+        self.emergencyFireControllerCount = emergencyFireControllerCount
     }
 }
 
@@ -896,12 +902,17 @@ extension SpaceData {
                 return
             }
             let switchesDicts = json["switches"].arrayObject as? [[String: Any]] ?? []
+            let emergencyFireControllerDicts = json["emergencyFireControllers"].arrayObject as? [[String: Any]]
+            let localEmergencyFireControllerCount = DeviceEmerFireData
+                .load(meshUUID: self.meshUUID, meshNetworkId: self.meshNetworkId, spaceId: self.id)
+                .count
             let remoteSummary = SpaceImportSummary(
                 nodeDicts: nodeDicts,
                 groupDicts: groupDicts,
                 sceneDicts: sceneDicts,
                 scheduleDicts: scheduleDicts,
-                switchesDicts: switchesDicts
+                switchesDicts: switchesDicts,
+                emergencyFireControllerCount: emergencyFireControllerDicts?.count ?? localEmergencyFireControllerCount
             )
             let localSummary = SpaceImportSummary(space: self)
             let summaryDiffers = remoteSummary != localSummary
@@ -1665,9 +1676,10 @@ extension SpaceData {
                 }
             }
 
-            DeviceEmerFireData.deleteAll(meshUUID: meshUUID, networkId: self.meshNetworkId)
-            var emergencyFireControllers: [DeviceEmerFireData] = []
-            if let controllerDicts = json["emergencyFireControllers"].arrayObject as? [[String: Any]] {
+            if json["emergencyFireControllers"].exists() {
+                DeviceEmerFireData.deleteAll(meshUUID: meshUUID, networkId: self.meshNetworkId)
+                var emergencyFireControllers: [DeviceEmerFireData] = []
+                let controllerDicts = json["emergencyFireControllers"].arrayObject as? [[String: Any]] ?? []
                 controllerDicts.forEach { dict in
                     let controllerJson = JSON(dict)
                     guard let id = controllerJson["id"].string,
@@ -1701,11 +1713,11 @@ extension SpaceData {
                     )
                     emergencyFireControllers.append(controller)
                 }
+                emergencyFireControllers.forEach { controller in
+                    controller.save(meshUUID: meshUUID, networkId: self.meshNetworkId)
+                }
             }
-            emergencyFireControllers.forEach { controller in
-                controller.save(meshUUID: meshUUID, networkId: self.meshNetworkId)
-            }
-            DeviceEmerFireStore.shared.loadDevices(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId)
+            DeviceEmerFireStore.shared.devices(in: self)
             EmergencyFireControllerSceneEventManager.refreshProxyFilterAddresses()
             
             self.deviceCount = (meshNetwork?.nodes.filter({ !$0.isLocalProvisioner && !$0.isProvisioner && !$0.isConfigComplete }) ?? nodes).count

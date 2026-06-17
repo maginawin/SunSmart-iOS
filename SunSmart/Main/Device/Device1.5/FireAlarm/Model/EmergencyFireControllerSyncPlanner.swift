@@ -20,6 +20,15 @@ struct EmergencyFireControllerSyncPlanner {
     let subnetworkId: String
     let changedFromConfiguration: EmergencyFireControllerConfiguration?
 
+    private static let associatedGroupSubscriptionModelIDs: [UInt16] = [
+        .genericOnOffServerModelId,
+        .lightLightnessServerModelId,
+        .lightCTLServerModelId,
+        .lightCTLTemperatureServerModelId,
+        .lightHSLServerModelId,
+        .lightLCServerModelId
+    ]
+
     init(
         data: DeviceEmerFireData,
         meshUUID: String,
@@ -99,11 +108,9 @@ struct EmergencyFireControllerSyncPlanner {
 
     func makeDeleteCleanupItems() -> [EmergencyFireControllerSyncItem] {
         guard let publishGroup = data.publishGroup else {
-            let items = makeDisableControllerItems()
-            return items.isEmpty ? [makeLocalDeleteConfigurationItem()] : items
+            return []
         }
 
-        var items = makeDisableControllerItems()
         let addresses = Set(
             data.configuration.powerLossSettings.associateGroupAddresses +
             data.configuration.powerLossSettings.pendingUnassociateGroupAddresses +
@@ -111,34 +118,9 @@ struct EmergencyFireControllerSyncPlanner {
             data.configuration.fireAlarmSettings.pendingUnassociateGroupAddresses
         )
 
-        items.append(contentsOf: addresses.sorted().compactMap { address in
-            guard let group = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(address)) else {
-                return nil
-            }
-
-            let tasks = group.nodes.compactMap { node -> EmergencyFireControllerSyncTask? in
-                guard node.state, node.isKeybindComplete else {
-                    return nil
-                }
-                // 删除时只对真实仍在线、且确实订阅了内部 publish group 的灯下发清理。
-                // 离线灯无法立即清理，所以删除流程最后仍要清本地 EFC 配置。
-                let handles = makeDeleteCleanupMessageHandles(node: node, publishGroup: publishGroup)
-                guard !handles.isEmpty else { return nil }
-                return EmergencyFireControllerSyncTask(
-                    title: node.name ?? group.name,
-                    kind: .deleteCleanup,
-                    address: node.primaryUnicastAddress,
-                    messageHandles: handles
-                )
-            }
-
-            guard !tasks.isEmpty else { return nil }
-            return EmergencyFireControllerSyncItem(name: group.name, iconName: "device_light", address: group.address.address, tasks: tasks, controller: data)
-        })
-        if items.isEmpty {
-            items.append(makeLocalDeleteConfigurationItem())
+        return addresses.sorted().map { address in
+            makeDeleteCleanupItem(groupAddress: address, publishGroup: publishGroup)
         }
-        return items
     }
 
     func makeAssociatedGroupItems() throws -> [EmergencyFireControllerSyncItem] {
@@ -188,33 +170,11 @@ struct EmergencyFireControllerSyncPlanner {
         group: Group,
         publishGroup: Group
     ) -> [EmergencyFireControllerSyncTask] {
-        var tasks: [EmergencyFireControllerSyncTask] = []
-        if let lightnessTask = makeLightnessSubscriptionTask(node: node, group: group, publishGroup: publishGroup) {
-            tasks.append(lightnessTask)
-        }
-
-        let usesRestoreAuto = data.configuration.restoreSettings.actionType == .restoreAuto
-        if usesRestoreAuto {
-            if let lightLCTask = makeLightLCSubscriptionTask(node: node, group: group, publishGroup: publishGroup) {
-                tasks.append(lightLCTask)
-            }
-            if let cleanupTask = makeHistoricalSubscriptionCleanupTask(node: node, group: group, publishGroup: publishGroup) {
-                tasks.append(cleanupTask)
-            }
-        } else if let cleanupTask = makeNonAutoRestoreCleanupTask(node: node, group: group, publishGroup: publishGroup) {
-            tasks.append(cleanupTask)
-        }
-        return tasks
+        makeAssociationSubscriptionTasks(node: node, group: group, publishGroup: publishGroup)
     }
 
     func makeAssociationCleanupTasks(node: Node, group: Group, publishGroup: Group, pendingFunctions: [EmergencyFireControllerFunction]) -> [EmergencyFireControllerSyncTask] {
-        let handles = makeCleanupMessageHandles(
-            node: node,
-            publishGroup: publishGroup,
-            includeLightness: true,
-            includeLightLC: true,
-            includeScene: true
-        )
+        let handles = makeAssociationCleanupMessageHandles(node: node, publishGroup: publishGroup)
         guard !handles.isEmpty else {
             return []
         }
@@ -237,46 +197,31 @@ struct EmergencyFireControllerSyncPlanner {
         return groups.map { (address: $0.key, functions: $0.value) }.sorted { $0.address < $1.address }
     }
 
-    private func makeLightnessSubscriptionTask(node: Node, group: Group, publishGroup: Group) -> EmergencyFireControllerSyncTask? {
-        guard let model = node.lightnessModel,
-              !model.isSubscribed(to: publishGroup),
-              let message = ConfigModelSubscriptionAdd(group: publishGroup, to: model) else {
-            return nil
+    private func associatedGroupSubscriptionModels(for node: Node) -> [Model] {
+        Self.associatedGroupSubscriptionModelIDs.flatMap { modelID in
+            node.getFunctionModels(modelId: modelID)
         }
-        return EmergencyFireControllerSyncTask(title: node.name ?? group.name, kind: .lightnessSubscription, address: node.primaryUnicastAddress, messageHandles: [MeshMessageHandle(message: message, address: node.primaryUnicastAddress)])
     }
 
-    private func makeLightLCSubscriptionTask(node: Node, group: Group, publishGroup: Group) -> EmergencyFireControllerSyncTask? {
-        guard let model = node.lightLCModel,
-              !model.isSubscribed(to: publishGroup),
-              let message = ConfigModelSubscriptionAdd(group: publishGroup, to: model) else {
-            return nil
+    private func makeAssociationSubscriptionTasks(
+        node: Node,
+        group: Group,
+        publishGroup: Group
+    ) -> [EmergencyFireControllerSyncTask] {
+        associatedGroupSubscriptionModels(for: node).compactMap { model in
+            guard !model.isSubscribed(to: publishGroup),
+                  let message = ConfigModelSubscriptionAdd(group: publishGroup, to: model) else {
+                return nil
+            }
+            let handle = MeshMessageHandle(message: message, address: node.primaryUnicastAddress)
+            handle.continuous = false
+            return EmergencyFireControllerSyncTask(
+                title: node.name ?? group.name,
+                kind: .associationSubscription,
+                address: node.primaryUnicastAddress,
+                messageHandles: [handle]
+            )
         }
-        return EmergencyFireControllerSyncTask(title: node.name ?? group.name, kind: .lightLCSubscription, address: node.primaryUnicastAddress, messageHandles: [MeshMessageHandle(message: message, address: node.primaryUnicastAddress)])
-    }
-
-    private func makeHistoricalSubscriptionCleanupTask(node: Node, group: Group, publishGroup: Group) -> EmergencyFireControllerSyncTask? {
-        let handles = makeCleanupMessageHandles(
-            node: node,
-            publishGroup: publishGroup,
-            includeLightness: false,
-            includeLightLC: false,
-            includeScene: true
-        )
-        guard !handles.isEmpty else { return nil }
-        return EmergencyFireControllerSyncTask(title: node.name ?? group.name, kind: .associationCleanup, address: node.primaryUnicastAddress, messageHandles: handles)
-    }
-
-    private func makeNonAutoRestoreCleanupTask(node: Node, group: Group, publishGroup: Group) -> EmergencyFireControllerSyncTask? {
-        let handles = makeCleanupMessageHandles(
-            node: node,
-            publishGroup: publishGroup,
-            includeLightness: false,
-            includeLightLC: true,
-            includeScene: true
-        )
-        guard !handles.isEmpty else { return nil }
-        return EmergencyFireControllerSyncTask(title: node.name ?? group.name, kind: .associationCleanup, address: node.primaryUnicastAddress, messageHandles: handles)
     }
 
     private func makeLocalCleanupPendingTask(groupAddress: Address, pendingFunctions: [EmergencyFireControllerFunction]) -> EmergencyFireControllerSyncTask {
@@ -285,51 +230,74 @@ struct EmergencyFireControllerSyncPlanner {
         EmergencyFireControllerSyncTask(title: "Group Cleanup", kind: .associationCleanup, address: groupAddress, messageHandles: [], pendingFunctions: pendingFunctions, pendingGroupAddress: groupAddress, clearsUnassociatePending: true)
     }
 
-    private func makeDeleteCleanupMessageHandles(node: Node, publishGroup: Group) -> [MeshMessageHandle] {
-        makeCleanupMessageHandles(
-            node: node,
-            publishGroup: publishGroup,
-            includeLightness: true,
-            includeLightLC: true,
-            includeScene: true
+    private func makeDeleteCleanupItem(groupAddress: Address, publishGroup: Group) -> EmergencyFireControllerSyncItem {
+        guard let group = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(groupAddress)) else {
+            let task = makeLocalDeleteCleanupTask(title: "Group Cleanup", address: groupAddress, groupAddress: groupAddress)
+            return EmergencyFireControllerSyncItem(name: String(format: "%04X", groupAddress), iconName: "device_light", address: groupAddress, tasks: [task], controller: data)
+        }
+
+        let tasks: [EmergencyFireControllerSyncTask]
+        if group.nodes.isEmpty {
+            tasks = [makeLocalDeleteCleanupTask(title: group.name, address: group.address.address, groupAddress: group.address.address)]
+        } else {
+            tasks = group.nodes.flatMap { node in
+                makeDeleteCleanupTasks(node: node, group: group, publishGroup: publishGroup)
+            }
+        }
+
+        return EmergencyFireControllerSyncItem(name: group.name, iconName: "device_light", address: group.address.address, tasks: tasks, controller: data)
+    }
+
+    private func makeDeleteCleanupTasks(node: Node, group: Group, publishGroup: Group) -> [EmergencyFireControllerSyncTask] {
+        guard node.state, node.isKeybindComplete else {
+            return [
+                EmergencyFireControllerSyncTask(
+                    title: node.name ?? group.name,
+                    kind: .deleteCleanup,
+                    address: node.primaryUnicastAddress,
+                    messageHandles: [],
+                    isUnsupported: true,
+                    pendingGroupAddress: group.address.address
+                )
+            ]
+        }
+
+        let handles = makeAssociationCleanupMessageHandles(node: node, publishGroup: publishGroup)
+        guard !handles.isEmpty else {
+            return [makeLocalDeleteCleanupTask(title: node.name ?? group.name, address: node.primaryUnicastAddress, groupAddress: group.address.address)]
+        }
+
+        return handles.map { handle in
+            EmergencyFireControllerSyncTask(
+                title: node.name ?? group.name,
+                kind: .deleteCleanup,
+                address: node.primaryUnicastAddress,
+                messageHandles: [handle],
+                pendingGroupAddress: group.address.address
+            )
+        }
+    }
+
+    private func makeLocalDeleteCleanupTask(title: String, address: Address, groupAddress: Address) -> EmergencyFireControllerSyncTask {
+        EmergencyFireControllerSyncTask(
+            title: title,
+            kind: .deleteCleanup,
+            address: address,
+            messageHandles: [],
+            pendingGroupAddress: groupAddress
         )
     }
 
-    private func makeCleanupMessageHandles(
-        node: Node,
-        publishGroup: Group,
-        includeLightness: Bool,
-        includeLightLC: Bool,
-        includeScene: Bool
-    ) -> [MeshMessageHandle] {
-        var handles: [MeshMessageHandle] = []
-        if includeLightness,
-           let model = node.lightnessModel,
-           model.isSubscribed(to: publishGroup),
-           let message = ConfigModelSubscriptionDelete(group: publishGroup, from: model) {
+    private func makeAssociationCleanupMessageHandles(node: Node, publishGroup: Group) -> [MeshMessageHandle] {
+        associatedGroupSubscriptionModels(for: node).compactMap { model in
+            guard model.isSubscribed(to: publishGroup),
+                  let message = ConfigModelSubscriptionDelete(group: publishGroup, from: model) else {
+                return nil
+            }
             let handle = MeshMessageHandle(message: message, address: node.primaryUnicastAddress)
             handle.continuous = false
-            handles.append(handle)
+            return handle
         }
-        if includeScene,
-           let model = node.sceneModel,
-           model.isSubscribed(to: publishGroup),
-           let elementAddress = model.parentElement?.unicastAddress,
-           model.companyIdentifier == nil,
-           let message = ConfigModelSubscriptionDelete(parameters: Data() + elementAddress + publishGroup.address.address + UInt16(model.modelIdentifier)) {
-            let handle = MeshMessageHandle(message: message, address: node.primaryUnicastAddress)
-            handle.continuous = false
-            handles.append(handle)
-        }
-        if includeLightLC,
-           let model = node.lightLCModel,
-           model.isSubscribed(to: publishGroup),
-           let message = ConfigModelSubscriptionDelete(group: publishGroup, from: model) {
-            let handle = MeshMessageHandle(message: message, address: node.primaryUnicastAddress)
-            handle.continuous = false
-            handles.append(handle)
-        }
-        return handles
     }
 
     private func makeDisableControllerItems() -> [EmergencyFireControllerSyncItem] {

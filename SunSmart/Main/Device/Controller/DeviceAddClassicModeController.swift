@@ -53,6 +53,8 @@ class DeviceAddClassicModeController: UIViewController {
     private var pendingBatteryPowerSwitchInitialBatteryReads: [BatteryPowerSwitchAddConfiguration.InitialBatteryReadRequest] = []
     private var fastAddGroupSyncPlans: [Address: DeviceGroupFastAddSyncPlan] = [:]
     private var failedFastAddGroupSyncNodeAddresses: Set<Address> = []
+    private var emergencyFireDefaultConfigurationMessageHandles: [Address: [MeshMessageHandle]] = [:]
+    private var failedEmergencyFireDefaultConfigurationNodeAddresses: Set<Address> = []
     private var emergencyFireGroupMutationMessageHandles: [Address: [MeshMessageHandle]] = [:]
     private var failedEmergencyFireGroupMutationNodeAddresses: Set<Address> = []
     private var fastAddGroupEffectiveMemberCount: Int?
@@ -485,6 +487,8 @@ class DeviceAddClassicModeController: UIViewController {
     private func resetFastAddGroupSyncBatch() {
         fastAddGroupSyncPlans.removeAll()
         failedFastAddGroupSyncNodeAddresses.removeAll()
+        emergencyFireDefaultConfigurationMessageHandles.removeAll()
+        failedEmergencyFireDefaultConfigurationNodeAddresses.removeAll()
         emergencyFireGroupMutationMessageHandles.removeAll()
         failedEmergencyFireGroupMutationNodeAddresses.removeAll()
         fastAddGroupEffectiveMemberCount = nil
@@ -540,6 +544,48 @@ class DeviceAddClassicModeController: UIViewController {
         appendMessages.append(contentsOf: handles)
         emergencyFireGroupMutationMessageHandles[node.primaryUnicastAddress, default: []].append(contentsOf: handles)
         failedEmergencyFireGroupMutationNodeAddresses.remove(node.primaryUnicastAddress)
+    }
+
+    private func appendEmergencyFireControllerDefaultConfigurationMessages(
+        controller: DeviceEmerFireData,
+        appendMessages: inout [MeshMessageHandle]
+    ) {
+        guard let nodeAddress = controller.bindNodeAddress else {
+            return
+        }
+        do {
+            let handles = try controller.getControllerDefaultConfigurationMessageHandles(
+                meshUUID: space.meshUUID,
+                subnetworkId: space.meshNetworkId
+            )
+            guard !handles.isEmpty else {
+                return
+            }
+            appendMessages.append(contentsOf: handles)
+            emergencyFireDefaultConfigurationMessageHandles[nodeAddress, default: []].append(contentsOf: handles)
+            failedEmergencyFireDefaultConfigurationNodeAddresses.remove(nodeAddress)
+        } catch {
+            print(error.localizedDescription)
+        }
+    }
+
+    private func emergencyFireDefaultConfigurationNodeAddress(containing messageHandle: MeshMessageHandle) -> Address? {
+        emergencyFireDefaultConfigurationMessageHandles.first { _, handles in
+            handles.contains { $0 === messageHandle }
+        }?.key
+    }
+
+    private func finishEmergencyFireDefaultConfiguration(for node: Node) {
+        guard emergencyFireDefaultConfigurationMessageHandles.removeValue(forKey: node.primaryUnicastAddress) != nil,
+              let controller = DeviceEmerFireStore.shared.devices(in: space).first(where: { $0.bindNodeAddress == node.primaryUnicastAddress }) else {
+            return
+        }
+        let failed = failedEmergencyFireDefaultConfigurationNodeAddresses.contains(node.primaryUnicastAddress)
+        failedEmergencyFireDefaultConfigurationNodeAddresses.remove(node.primaryUnicastAddress)
+        if !controller.configuration.hasSyncIntent {
+            controller.isSynced = !failed
+            DeviceEmerFireStore.shared.save(controller)
+        }
     }
 
     private func emergencyFireGroupMutationNodeAddress(containing messageHandle: MeshMessageHandle) -> Address? {
@@ -1276,11 +1322,7 @@ class DeviceAddClassicModeController: UIViewController {
                 } else {
                     controller = DeviceEmerFireStore.shared.ensureDevice(for: node, in: self.space)
                 }
-                do {
-                    appendMessages.append(contentsOf: try controller.getSceneClientPublicationMessageHandles(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId))
-                } catch {
-                    print(error.localizedDescription)
-                }
+                appendEmergencyFireControllerDefaultConfigurationMessages(controller: controller, appendMessages: &appendMessages)
             }
             // 入网后默认调为最大亮度
             let shouldApplyLightingDefaults = addDevice.deviceType == .light
@@ -1409,6 +1451,9 @@ class DeviceAddClassicModeController: UIViewController {
             if let nodeAddress = self.emergencyFireGroupMutationNodeAddress(containing: messageHandle) {
                 self.failedEmergencyFireGroupMutationNodeAddresses.insert(nodeAddress)
             }
+            if let nodeAddress = self.emergencyFireDefaultConfigurationNodeAddress(containing: messageHandle) {
+                self.failedEmergencyFireDefaultConfigurationNodeAddresses.insert(nodeAddress)
+            }
             guard let address = messageHandle.model?.parentElement?.unicastAddress ?? messageHandle.address else {
                 return
             }
@@ -1432,6 +1477,9 @@ class DeviceAddClassicModeController: UIViewController {
                 }
                 if self.addToGroup != nil {
                     groupSyncFailed = self.resolveFastAddGroupSyncFailed(for: node)
+                }
+                if node.deviceType == .emergencyController {
+                    self.finishEmergencyFireDefaultConfiguration(for: node)
                 }
                 if node.isPowerSwitch,
                    let request = finalizeBatteryPowerSwitchAddConfiguration(for: node) {

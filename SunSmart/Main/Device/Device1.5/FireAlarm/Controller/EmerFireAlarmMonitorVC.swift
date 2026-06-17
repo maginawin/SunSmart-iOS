@@ -187,12 +187,33 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
     }
     
     func configureActions() {
-        var actions: [EmerFireAlarmMoniView.ActionItem] = [
+        let actions: [EmerFireAlarmMoniView.ActionItem] = [
             .init(
                 image: UIImage(named: EmergencyFireControllerIconName.Monitor.Action.identify),
                 borderColor: nil,
                 action: { [weak self] in
                     self?.identifyAction() ?? false
+                }
+            ),
+            .init(
+                image: UIImage(named: EmergencyFireControllerIconName.Monitor.Action.mockFireAlarm),
+                borderColor: nil,
+                action: { [weak self] in
+                    self?.mockFireAlarmAction() ?? false
+                }
+            ),
+            .init(
+                image: UIImage(named: EmergencyFireControllerIconName.Monitor.Action.mockPowerLoss),
+                borderColor: nil,
+                action: { [weak self] in
+                    self?.mockPowerLossAction() ?? false
+                }
+            ),
+            .init(
+                image: UIImage(named: EmergencyFireControllerIconName.Monitor.Action.mockRestore),
+                borderColor: nil,
+                action: { [weak self] in
+                    self?.mockRestoreAction() ?? false
                 }
             )
         ]
@@ -219,6 +240,14 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
 
     var canConfigureDevice: Bool {
         viewModel.canConfigureDevice
+    }
+
+    func guardLinkedDeviceForAction() -> Bool {
+        guard currentDevice?.bindNode != nil else {
+            XWHUDManager.showTipHUD("Not executed. Please link a device first.".localizedString, isLineFeed: true)
+            return false
+        }
+        return true
     }
 
     var isAllEmergencyFunctionsDisabled: Bool {
@@ -294,7 +323,7 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
 
         view.addSubview(moniView)
         moniView.snp.makeConstraints { make in
-            make.top.equalTo(collectionView.snp.bottom).offset(SCRYFrom(100))
+            make.top.equalTo(collectionView.snp.bottom).offset(SCRYFrom(28))
             make.left.equalToSuperview().offset(SCRYFrom(56))
             make.right.equalToSuperview().offset(-SCRYFrom(56))
             make.bottom.lessThanOrEqualTo(statusSetView.snp.top).offset(-SCRYFit(20)).priority(.low)
@@ -305,6 +334,9 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
 
     @discardableResult
     func identifyAction() -> Bool {
+        guard guardLinkedDeviceForAction() else {
+            return false
+        }
         guard let healthModel = currentDevice?.bindNode?.healthModel else {
             XWHUDManager.showTipHUD("failed".localizedString + " !", isLineFeed: true)
             return false
@@ -369,7 +401,68 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
     }
 
     @discardableResult
-    func lightLCOnAction() -> Bool {
+    func mockFireAlarmAction() -> Bool {
+        guard guardLinkedDeviceForAction() else {
+            return false
+        }
+        guard guardMockActionHasAssociatedGroup() else {
+            return false
+        }
+        guard let configuration = currentEmergencyConfiguration() else {
+            XWHUDManager.showTipHUD("failed".localizedString + " !", isLineFeed: true)
+            return false
+        }
+        return sendBrightness(configuration.fireAlarmSettings.triggerBrightness, logName: "mock fire alarm")
+    }
+
+    @discardableResult
+    func mockPowerLossAction() -> Bool {
+        guard guardLinkedDeviceForAction() else {
+            return false
+        }
+        guard guardMockActionHasAssociatedGroup() else {
+            return false
+        }
+        guard let configuration = currentEmergencyConfiguration() else {
+            XWHUDManager.showTipHUD("failed".localizedString + " !", isLineFeed: true)
+            return false
+        }
+        return sendBrightness(configuration.powerLossSettings.triggerBrightness, logName: "mock power loss")
+    }
+
+    @discardableResult
+    func mockRestoreAction() -> Bool {
+        guard guardLinkedDeviceForAction() else {
+            return false
+        }
+        guard guardMockActionHasAssociatedGroup() else {
+            return false
+        }
+        guard let configuration = currentEmergencyConfiguration() else {
+            XWHUDManager.showTipHUD("failed".localizedString + " !", isLineFeed: true)
+            return false
+        }
+        switch configuration.restoreSettings.actionType {
+        case .restoreAuto:
+            return lightLCOnAction(logName: "mock restore auto")
+        case .setBrightness:
+            return sendBrightness(configuration.restoreSettings.brightness, logName: "mock restore brightness")
+        case .none:
+            print("[EFC] mock restore none")
+            return true
+        }
+    }
+
+    private func guardMockActionHasAssociatedGroup() -> Bool {
+        guard !groups.isEmpty else {
+            XWHUDManager.showTipHUD("Not executed. Please link a group first.".localizedString, isLineFeed: true)
+            return false
+        }
+        return true
+    }
+
+    @discardableResult
+    func lightLCOnAction(logName: String = "light LC ON") -> Bool {
         guard canOperateEmergencyActions else {
             XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
             return false
@@ -377,9 +470,29 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
         guard let publishGroupAddress = publishGroupAddressForAction() else {
             return false
         }
-        print("[EFC] light LC ON publishGroup=\(String(format: "0x%04X", publishGroupAddress))")
+        print("[EFC] \(logName) publishGroup=\(String(format: "0x%04X", publishGroupAddress))")
         MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(true), address: publishGroupAddress)
         return true
+    }
+
+    @discardableResult
+    private func sendBrightness(_ brightness: Int, logName: String) -> Bool {
+        guard canOperateEmergencyActions else {
+            XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
+            return false
+        }
+        guard let publishGroupAddress = publishGroupAddressForAction() else {
+            return false
+        }
+        let clampedBrightness = min(max(brightness, 0), 100)
+        let lightness = Node.getLightness(lightness100: clampedBrightness)
+        print("[EFC] \(logName) brightness=\(clampedBrightness), lightness=\(lightness), publishGroup=\(String(format: "0x%04X", publishGroupAddress))")
+        MeshAPI.sendMessage(message: LightLightnessSetUnacknowledged(lightness: lightness), address: publishGroupAddress)
+        return true
+    }
+
+    private func currentEmergencyConfiguration() -> EmergencyFireControllerConfiguration? {
+        currentConfig?.configuration ?? currentDevice?.configuration
     }
 
     private func publishGroupAddressForAction() -> Address? {

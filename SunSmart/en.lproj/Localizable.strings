@@ -1754,7 +1754,7 @@
 "fire_alarm_stops" = "Fire alarm stops";
 "emergency_event_ends" = "Emergency event ends";
 "set_brightness_to" = "Set Brightness To:";
-"set_brightness_to_value" = "Set Brightness to %@";
+"set_brightness_to_value" = "Set Brightness To %@";
 "resuming_in" = "Resuming in:";
 "restore_auto" = "Auto";
 "restore_none" = "None";
@@ -1886,7 +1886,9 @@
 "neightkeyswitches_identifying" = "Identifying...";
 "The device has been disabled; please configure it in the settings." = "The device has been disabled; please configure it in the settings.";
 "Not executed. Please link a device first." = "Not executed. Please link a device first.";
+"Not executed. Please link a group first." = "Not executed. Please link a group first.";
 "Not executed. No devices in associated groups." = "Not executed. No devices in associated groups.";
+"Are you sure to delete the EFC device?" = "Are you sure to delete the EFC device?";
 "change_control_page" = "Change Control Page";
 "change_control_page_message" = "Note: These devices integrate single-white and tunable-white functionality. By default, the firmware supports tunable white.";
 "change_control_page_single_white_default_message" = "Note: These devices integrate single-white and tunable-white functionality. By default, the firmware supports tunable white; however, in most cases they are used with fixed-white luminaires. Therefore, the app interface defaults to single-white control. When the device is applied to a tunable-white luminaire, the app interface needs to be manually adjusted.";

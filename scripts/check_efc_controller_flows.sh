@@ -27,6 +27,24 @@ assert_not_contains() {
   fi
 }
 
+assert_count() {
+  local file="$1"
+  local pattern="$2"
+  local expected_count="$3"
+  local message="$4"
+
+  local actual_count
+  actual_count=$(grep -c "$pattern" "$file" || true)
+  if [[ "$actual_count" != "$expected_count" ]]; then
+    echo "FAIL: $message" >&2
+    echo "  expected count: $expected_count" >&2
+    echo "  actual count: $actual_count" >&2
+    echo "  pattern: $pattern" >&2
+    echo "  in file: $file" >&2
+    exit 1
+  fi
+}
+
 assert_efc_status_legend_fits_iphone16() {
   local file="SunSmart/Main/Device/Device1.5/FireAlarm/views/EmerFireAlarmStatusLegendHeaderView.swift"
   local iphone16_width=393
@@ -68,17 +86,25 @@ assert_efc_status_legend_fits_iphone16() {
 
 assert_efc_status_legend_fits_iphone16
 
-assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/DeviceEmerFireData.swift" \
-  "restoreDevice(replacing oldNode: Node, with newNode: Node, in space: SpaceData)" \
-  "Restore must migrate an existing EFC local configuration to the restored node address."
+assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC+Table.swift" \
+  "Set Brightness t[o]" \
+  "EFC restore action option must use Set Brightness To."
+
+assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/LinkedEmerFireEditState.swift" \
+  "Set Brightness t[o]" \
+  "EFC restore brightness row must use Set Brightness To."
 
 assert_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
-  "restoreEmergencyFireControllerIfNeeded(oldNode: oldNode, newNode: node)" \
-  "Restore provisioning must call the EFC restore helper."
+  "case .all:" \
+  "Restore filter must handle the default mode explicitly."
 
 assert_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
-  "prepareEmergencyFireControllerRestoreMessages(oldNode: oldNode, newNode: newNode, appendMessages: &appendMessages)" \
-  "Restore append messages must include EFC planner output."
+  "return node.deviceType != .emergencyController" \
+  "Restore Device Data must not list EFC devices in default mode."
+
+assert_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "node.deviceType != .gateway && node.deviceType != .emergencyController" \
+  "Restore Device Data must not list EFC devices in current-space non-gateway mode."
 
 assert_contains "SunSmart/Main/Device/Controller/DeviceAddClassicModeController.swift" \
   "appendEmergencyFireControllerGroupMutationMessages(node: node, group: group, appendMessages: &appendMessages)" \
@@ -92,6 +118,26 @@ assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerF
   "openSyncAfterLinkedDeviceIfNeeded()" \
   "Bind to a new EFC must enter the EFC sync flow when there is syncable configuration."
 
+assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC.swift" \
+  "notifySpaceDataChanged(type: \.common)" \
+  "EFC create/save/delete/link must not use slow common sync."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC.swift" \
+  "notifySpaceDataChanged(type: .device)" \
+  "EFC create/save/delete/link must use promptly device sync."
+
+assert_contains "SunSmart/Common/Data/ImportData.swift" \
+  "emergencyFireControllerCount" \
+  "Space import summary must include EFC controller count."
+
+assert_contains "SunSmart/Common/Data/ImportData.swift" \
+  "json\\[\"emergencyFireControllers\"\\]\\.exists()" \
+  "Space import must distinguish missing EFC payload from an explicit empty EFC list."
+
+assert_contains "SunSmart/Common/Data/ImportData.swift" \
+  "DeviceEmerFireStore.shared.devices(in: self)" \
+  "Space import must merge real EFC nodes with the current Space context after importing controllers."
+
 assert_contains "SunSmart/Main/Device/Others/Controller/DeviceOthersViewController.swift" \
   "MeshLibManager.manager.messageDelegate = self" \
   "Others page must receive Mesh data updates while visible so EFC online/offline changes refresh in place."
@@ -104,9 +150,227 @@ assert_contains "SunSmart/Main/Device/Others/Controller/DeviceOthersViewControll
   "reloadEmergencyFireItem(for: node)" \
   "Mesh data updates for an EFC node must refresh the matching Others item."
 
+assert_contains "SunSmart/Main/Device/Others/Controller/DeviceOthersViewController.swift" \
+  "openEmergencyFireEdit(for device: DeviceEmerFireData)" \
+  "Others page must share one EFC Edit route between tap fallback and long press."
+
+assert_contains "SunSmart/Main/Device/Others/Controller/DeviceOthersViewController.swift" \
+  "XWHUDManager.showTipHUD(\"no_permission\".localizedString" \
+  "Others page EFC long press Edit route must respect edit permission."
+
+assert_contains "SunSmart/Main/Device/Others/Controller/DeviceOthersViewController.swift" \
+  "case .emergencyFireController(let device):" \
+  "Others page long press must handle EFC items."
+
+assert_not_contains "SunSmart/Main/Device/Others/Controller/DeviceOthersViewController.swift" \
+  "device.displayStatus == .unboundDevice || device.displayStatus == .syncIssueDevice" \
+  "Others page short tap must not send unlinked virtual EFC directly to Edit."
+
+assert_contains "SunSmart/Main/Device/Others/Controller/DeviceOthersViewController.swift" \
+  "if device.displayStatus == .syncIssueDevice" \
+  "Others page short tap should still route sync-issue EFC to Edit."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorVC.swift" \
+  "guardLinkedDeviceForAction()" \
+  "EFC device page actions must share an unlinked-device guard."
+
+assert_count "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorVC.swift" \
+  "guard guardLinkedDeviceForAction()" \
+  "4" \
+  "Identify and three Mock actions must all guard unlinked virtual EFC before executing."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorRouting.swift" \
+  "isUnlinkedVirtualEmergencyFireController" \
+  "EFC device page menu must explicitly identify unlinked virtual EFC."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorRouting.swift" \
+  "showUnlinkedVirtualEmergencyFireControllerMenu" \
+  "Unlinked virtual EFC menu must be separated from real EFC menu items."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorRouting.swift" \
+  "deleteUnlinkedVirtualEmergencyFireController" \
+  "Unlinked virtual EFC Delete must use a local-only deletion flow."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorRouting.swift" \
+  "confirmDeleteEmergencyFireControllerDeviceOrVirtual(" \
+  "EFC delete must expose one shared entry that handles real and virtual controller deletion."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorRouting.swift" \
+  "guard space?.deviceOperates.contains(.delete) ?? false else" \
+  "Shared EFC delete entry must guard Delete permission before showing confirmation."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorRouting.swift" \
+  "device.bindNode == nil" \
+  "Shared EFC delete entry must detect unlinked virtual EFC before real-device cleanup."
+
+assert_contains "SunSmart/Main/Device/Others/Controller/DeviceOthersViewController.swift" \
+  "confirmDeleteEmergencyFireControllerDeviceOrVirtual(" \
+  "Others EFC delete must use the same shared delete entry as the EFC device page."
+
+assert_not_contains "SunSmart/Main/Device/Others/Controller/DeviceOthersViewController.swift" \
+  "confirmDeleteEmergencyFireControllerDevice(" \
+  "Others EFC delete must not bypass the shared real/virtual delete entry."
+
+assert_contains "SunSmart/en.lproj/Localizable.strings" \
+  "Are you sure to delete the EFC device?" \
+  "English localization must include virtual EFC delete confirmation."
+
+assert_contains "SunSmart/zh-Hans.lproj/Localizable.strings" \
+  "Are you sure to delete the EFC device?" \
+  "Chinese localization must include virtual EFC delete confirmation key."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorRouting.swift" \
+  "confirmDeleteEmergencyFireControllerDevice(" \
+  "EFC device page Delete must use the shared device deletion flow."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorRouting.swift" \
+  "deleteNodes(nodes: \\[node\\])" \
+  "EFC device deletion must send Reset through DeviceProtocol.deleteNodes."
+
+assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorRouting.swift" \
+  "clearMonitoringConfiguration(for: device)" \
+  "EFC device page Delete must not only clear monitoring configuration."
+
+assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "enum EmergencyFireSyncContext" \
+  "EFC sync must distinguish SAVE and Delete contexts."
+
+assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "case deleteCleanup" \
+  "EFC Delete sync must have an explicit delete cleanup context."
+
+assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "context.isDeleteCleanup" \
+  "EFC Delete sync retry must remain delete-only."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorRouting.swift" \
+  "context: .deleteCleanup" \
+  "EFC Delete flow must enter Sync Devices with Delete cleanup context."
+
+assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
+  "var items = makeDisableControllerItems()" \
+  "EFC Delete cleanup must not send controller disable tasks."
+
+assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
+  "items.append(contentsOf: makeDisableControllerItems())" \
+  "EFC Delete cleanup must not include controller body tasks."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
+  "ConfigModelSubscriptionDelete" \
+  "EFC Delete cleanup must clear group subscriptions."
+
+assert_not_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "|| self.isEmergencyFireControllerDeleteCleanup(model)" \
+  "EFC Delete cleanup must not bypass Mesh result failure detection."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
+  "makeDeleteCleanupTasks" \
+  "EFC Delete cleanup must split each unsubscribe handle into its own task."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
+  "handles.map { handle in" \
+  "EFC Delete cleanup must map every unsubscribe handle to an independent task."
+
+assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "isSyncOperationSuccessful(" \
+  "Sync success handling must use a general helper instead of Battery Power Switch-specific naming."
+
+assert_not_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "if self.isBatteryPowerSwitchOperationSuccessful(" \
+  "EFC Delete cleanup must not be evaluated through the Battery Power Switch success helper."
+
+assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "isEmergencyFireControllerDeleteCleanupSuccessful(" \
+  "EFC Delete cleanup must have an explicit result-based success predicate."
+
+assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "prepareTaskForResync(task)" \
+  "Progress retry for a single task must reset task retry state through a shared helper."
+
+assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "resetMessageHandlesForResync" \
+  "Retry must clear stale MeshMessageHandle response state before resending."
+
+assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "handle.respondAddresss = \\[\\]" \
+  "Retry must clear stale responded addresses before resending."
+
+assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "handle.notRespondAddresss = \\[\\]" \
+  "Retry must clear stale missing addresses before resending."
+
+assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "[EFC Delete Cleanup]" \
+  "EFC Delete cleanup retries must log task-level result details."
+
+assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "emergencyFireDeleteCleanupRetryPolicy" \
+  "EFC Delete cleanup tasks must have an explicit retry policy."
+
+assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "maxRetries: 2" \
+  "EFC Delete cleanup must retry twice before marking a task failed."
+
+assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "retryDelay: 0.2" \
+  "EFC Delete cleanup retry delay must be long enough for the mesh command queue to reset."
+
+assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "willRetry=" \
+  "EFC Delete cleanup retry decisions must be visible in logs."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/DeviceEmerFireData+Sync.swift" \
+  "markDeleteCleanupInterrupted" \
+  "EFC Delete cleanup failures must be persisted immediately."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/DeviceEmerFireData+Sync.swift" \
+  "markDeleteCleanupSucceeded" \
+  "EFC Delete cleanup successful groups must be removed from associate groups."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
+  "associatedGroupSubscriptionModelIDs" \
+  "EFC associated group subscription must use a fixed candidate model set."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
+  "node.getFunctionModels(modelId: modelID)" \
+  "EFC associated group subscription must only create tasks for models the node actually owns."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlan.swift" \
+  "case associationSubscription = \"Group Subscription\"" \
+  "EFC associated group subscription tasks must use the generic subscription task kind."
+
+assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
+  "restoreSettings.actionType == .restoreAuto" \
+  "EFC group subscriptions must not depend on Restore AUTO."
+
+assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
+  "makeNonAutoRestoreCleanupTask" \
+  "EFC must not clean Light LC subscriptions just because Event Ends is not Restore AUTO."
+
+assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
+  "includeLightLC" \
+  "EFC cleanup must not use action-type-specific Light LC cleanup flags."
+
+assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
+  "makeHistoricalSceneCleanupMessageHandles" \
+  "EFC subscription sync must not keep historical Scene Server cleanup while groups are still associated."
+
+assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
+  "sceneModel" \
+  "EFC subscription sync must not delete Scene Server subscriptions in the current test-stage data model."
+
 assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/LinkedEmerFireConfig.swift" \
   "var enabled: Bool {" \
   "EFC enabled state must remain fixed on."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorVC.swift" \
+  "Not executed. Please link a group first." \
+  "EFC Mock actions must show a group-first toast when no group is associated."
+
+assert_count "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorVC.swift" \
+  "guard guardMockActionHasAssociatedGroup()" \
+  "3" \
+  "Each EFC Mock action must use the group-first guard before sending commands."
 
 assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/LinkedEmerFireEditRow.swift" \
   "case enabled" \

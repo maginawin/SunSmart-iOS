@@ -176,6 +176,19 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
         )
     }
 
+    private func openEmergencyFireEdit(for device: DeviceEmerFireData) {
+        guard space.deviceOperates.contains(.edit) else {
+            XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
+            return
+        }
+        let config = makeLinkedEmerFireConfig(from: device)
+        let vc = LinkedEmerFireEditVC(config: config, space: space)
+        if isIPad {
+            vc.preferredContentSize = iPadPreferredContentSize
+        }
+        present(NavigationViewController(rootViewController: vc), animated: true)
+    }
+
     private func confirmDeleteDongle(_ dongle: DeviceDongleData) {
         SRAlertView(title: "notification".localizedString, message: "device_delete_message".localizedString, actions: [
             .cancelAction,
@@ -201,55 +214,12 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
     }
 
     private func confirmDeleteEmergencyFireController(_ device: DeviceEmerFireData) {
-        SRAlertView(title: "notification".localizedString, message: "device_delete_message".localizedString, actions: [
-            .cancelAction,
-            SRAlertAction(title: "alert_item_delete".localizedString, style: .destructive, actionHandler: { [weak self] _ in
-                self?.deleteEmergencyFireController(device)
-            })
-        ]).show()
-    }
-
-    private func deleteEmergencyFireController(_ device: DeviceEmerFireData) {
-        let planner = EmergencyFireControllerSyncPlanner(data: device, meshUUID: device.meshUUID, subnetworkId: device.meshNetworkId)
-        let cleanupItems = planner.makeDeleteCleanupItems()
-        let needsMeshSync = cleanupItems.flatMap { $0.tasks }.contains { !$0.messageHandles.isEmpty }
-        if needsMeshSync {
-            guard MeshLibManager.manager.isMeshNetworkConnected else {
-                XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-                return
-            }
-            let controller = SyncDevicesViewController(type: .emergencyFire(data: device, items: cleanupItems, persistsSyncResult: false, changedFromConfiguration: nil))
-            controller.syncSuccessCallback = { [weak self, weak device] _ in
-                guard let self, let device else { return }
-                let finishDeletion = {
-                    self.deleteEmergencyFireControllerNodeAndCache(device)
-                }
-                if let presentedViewController = self.presentedViewController {
-                    presentedViewController.dismiss(animated: true, completion: finishDeletion)
-                } else {
-                    finishDeletion()
-                }
-            }
-            if isIPad {
-                controller.preferredContentSize = iPadPreferredContentSize
-            }
-            present(NavigationViewController(rootViewController: controller), animated: true)
-            return
-        }
-        deleteEmergencyFireControllerNodeAndCache(device)
-    }
-
-    private func deleteEmergencyFireControllerNodeAndCache(_ device: DeviceEmerFireData) {
-        guard let node = device.bindNode else {
-            DeviceEmerFireStore.shared.deleteCachedDevice(device)
-            finishDeleteOthersItem()
-            return
-        }
-        deleteNodes(nodes: [node]) { [weak self] successNodes, _ in
-            guard successNodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) else {
-                return
-            }
-            DeviceEmerFireStore.shared.deleteCachedDevice(device)
+        confirmDeleteEmergencyFireControllerDeviceOrVirtual(
+            device,
+            space: space,
+            presentsSyncModally: true,
+            preferredContentSize: isIPad ? iPadPreferredContentSize : nil
+        ) { [weak self] in
             self?.finishDeleteOthersItem()
         }
     }
@@ -326,7 +296,7 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
         updateUI()
     }
     
-    /// 长按事件，跳转到开关详情
+    /// 长按事件，跳转到 Others 设备详情或 EFC 编辑页
     @objc private func collectionLongPressAction(sender: UIGestureRecognizer) {
         
         guard sender.state == .began, !isEdit else {
@@ -336,14 +306,16 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
         guard let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < showItems.count else {
             return
         }
-        guard case .dongle(let dongle) = showItems[indexPath.item] else {
-            return
+        switch showItems[indexPath.item] {
+        case .dongle(let dongle):
+            let vc = DeviceDongleViewController(space: self.space, dongleData: dongle)
+            if isIPad {
+                vc.preferredContentSize = iPadPreferredContentSize
+            }
+            present(NavigationViewController(rootViewController: vc), animated: true)
+        case .emergencyFireController(let device):
+            openEmergencyFireEdit(for: device)
         }
-        let vc = DeviceDongleViewController(space: self.space, dongleData: dongle)
-        if isIPad {
-            vc.preferredContentSize = iPadPreferredContentSize
-        }
-        present(NavigationViewController(rootViewController: vc), animated: true)
     }
     
 
@@ -393,13 +365,8 @@ extension DeviceOthersViewController: UICollectionViewDataSource, UICollectionVi
             }
             present(NavigationViewController(rootViewController: vc), animated: true)
         case .emergencyFireController(let device):
-            if device.displayStatus == .unboundDevice || device.displayStatus == .syncIssueDevice {
-                let config = makeLinkedEmerFireConfig(from: device)
-                let vc = LinkedEmerFireEditVC(config: config, space: space)
-                if isIPad {
-                    vc.preferredContentSize = iPadPreferredContentSize
-                }
-                present(NavigationViewController(rootViewController: vc), animated: true)
+            if device.displayStatus == .syncIssueDevice {
+                openEmergencyFireEdit(for: device)
                 return
             }
             let config = makeLinkedEmerFireConfig(from: device)

@@ -176,7 +176,7 @@ final class LinkedEmerFireEditState {
         case .triggerInterval:
             return .init(title: "Repeatedly Send Emergency Control Every", value: triggerIntervalSeconds, range: 1...10, suffix: "s")
         case .restoreBrightness:
-            return .init(title: "Set Brightness to", value: restoreBrightness, range: 1...100, suffix: "%")
+            return .init(title: "Set Brightness To", value: restoreBrightness, range: 1...100, suffix: "%")
         case .restoreResuming:
             return .init(title: "Resuming in:", value: restoreResumingSeconds, range: 0...120, suffix: "s")
         case .restoreSendCount:

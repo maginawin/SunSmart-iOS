@@ -67,7 +67,7 @@ assert_contains "$STRINGS_FILE" '"restore_auto" = "Auto";' \
   "English strings must include Auto restore action."
 assert_contains "$STRINGS_FILE" '"restore_none" = "None";' \
   "English strings must include None restore action."
-assert_contains "$STRINGS_FILE" '"set_brightness_to_value" = "Set Brightness to %@";' \
+assert_contains "$STRINGS_FILE" '"set_brightness_to_value" = "Set Brightness To %@";' \
   "English strings must include Set Brightness action format."
 
 echo "EFC status content list contracts passed."
