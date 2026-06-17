@@ -1294,16 +1294,16 @@ class DeviceAddProfessionalModeController: UIViewController {
             }
             var appendMessages: [MeshMessageHandle] = []
             if addDevice.deviceType == .emergencyController {
+                let controller: DeviceEmerFireData
                 if let bindToEmerFire = self.bindToEmerFire {
-                    DeviceEmerFireStore.shared.bind(bindToEmerFire, to: node, in: self.space)
+                    controller = DeviceEmerFireStore.shared.bind(bindToEmerFire, to: node, in: self.space)
                 } else {
-                    let controller = DeviceEmerFireStore.shared.ensureDevice(for: node, in: self.space)
-                    do {
-                        appendMessages.append(contentsOf: try controller.getSceneClientPublicationMessageHandles(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId))
-                        appendMessages.append(contentsOf: try controller.getLightLCClientPublicationMessageHandles(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId))
-                    } catch {
-                        print(error.localizedDescription)
-                    }
+                    controller = DeviceEmerFireStore.shared.ensureDevice(for: node, in: self.space)
+                }
+                do {
+                    appendMessages.append(contentsOf: try controller.getSceneClientPublicationMessageHandles(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId))
+                } catch {
+                    print(error.localizedDescription)
                 }
             }
             // 入网后默认调为最大亮度

@@ -209,6 +209,8 @@ final class LinkedEmerFireEditState {
         configuration.fireAlarmSettings.triggerBrightness = fireAlarmBrightness
         configuration.powerLossSettings.triggerIntervalSeconds = UInt16(triggerIntervalSeconds)
         configuration.fireAlarmSettings.triggerIntervalSeconds = UInt16(triggerIntervalSeconds)
+        configuration.powerLossSettings.triggerCount = 0xFFFF
+        configuration.fireAlarmSettings.triggerCount = 0xFFFF
         configuration.restoreSettings.actionType = restoreActionType
         configuration.restoreSettings.brightness = restoreBrightness
         configuration.restoreSettings.resumingSeconds = UInt8(restoreResumingSeconds)

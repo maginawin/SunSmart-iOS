@@ -10,11 +10,12 @@ import NordicSigMeshSDK
 
 extension DeviceEmerFireData {
 
-    /// EFC 联动灯时使用的保留场景号。
-    /// 这些场景号只给应急火警内部使用，后续如果接手人调整场景逻辑，要避开普通用户场景。
+    /// EFC 状态事件使用的保留场景号。
+    /// 这些 SceneRecall 只用于 App/网关识别 EFC 状态，不再写入灯端 Scene Store。
     static let powerLossTriggerSceneNumber: SceneNumber = 0xFF20
     static let fireAlarmTriggerSceneNumber: SceneNumber = 0xFF21
     static let restoreSceneNumber: SceneNumber = 0xFF22
+    static let emergencyActionTTL: UInt8 = 0xFF
     static let reservedSceneNumbers: Set<SceneNumber> = [
         powerLossTriggerSceneNumber,
         fireAlarmTriggerSceneNumber,
@@ -22,7 +23,23 @@ extension DeviceEmerFireData {
     ]
 
     var hasSyncableConfiguration: Bool {
-        configuration.hasSyncIntent
+        configuration.hasSyncIntent || requiresControllerPublicationSync
+    }
+
+    private var requiresControllerPublicationSync: Bool {
+        guard bindNodeAddress != nil else {
+            return false
+        }
+        guard let publishGroupAddress else {
+            return true
+        }
+        guard let node = bindNode,
+              node.isKeybindComplete,
+              node.state,
+              let model = node.sceneClientModel else {
+            return false
+        }
+        return model.publish?.publicationAddress.address != publishGroupAddress
     }
 
     func settings(for function: EmergencyFireControllerFunction) -> EmergencyFireControllerModeSettings {
@@ -93,7 +110,8 @@ extension DeviceEmerFireData {
         }
 
         // 每个 EFC 只创建一个内部 virtual group，并持久化地址。
-        // Scene Client / Light LC Client publication 都发布到这个组，灯节点也订阅这个组。
+        // Scene Client publication 发布到这个组，App/网关通过 proxy filter 监听状态 SceneRecall。
+        // 灯节点只订阅业务控制模型，不再使用灯端 Scene Store。
         // 不要在每次同步时重复创建，否则旧订阅无法可靠清理。
         let availableGroupAddresses = MeshAPI.getAvailableGroupAddresses(meshUUID: meshUUID, subnetworkId: subnetworkId)
         guard !availableGroupAddresses.isEmpty else {
@@ -126,8 +144,8 @@ extension DeviceEmerFireData {
             print("[EFC] publication already set device=\(name), node=\(node.primaryUnicastAddress), address=\(String(format: "0x%04X", publishGroupAddress))")
             return []
         }
-        // EFC 控制器侧 publication 是整条链路的源头：
-        // 控制器发布到内部 virtual group，关联灯再通过订阅该组接收应急场景/LC 命令。
+        // EFC 控制器侧 Scene publication 是状态事件链路的源头：
+        // 控制器发布到内部 virtual group，App/网关再通过 proxy filter 接收 SceneRecall。
         guard let message = ConfigModelPublicationSet(
             Publish(
                 to: MeshAddress(publishGroupAddress),
@@ -157,18 +175,6 @@ extension DeviceEmerFireData {
         )
     }
 
-    func getLightLCClientPublicationMessageHandles(meshUUID: String, subnetworkId: String) throws -> [MeshMessageHandle] {
-        guard let node = bindNode else {
-            throw EmergencyFireControllerPublishGroupError.missingBoundNode
-        }
-        return try getPublicationMessageHandles(
-            model: node.lightLCClientModel,
-            missingModelError: .missingLightLCClientModel,
-            meshUUID: meshUUID,
-            subnetworkId: subnetworkId
-        )
-    }
-
     func makeControllerSyncTasks(
         meshUUID: String,
         subnetworkId: String,
@@ -185,11 +191,6 @@ extension DeviceEmerFireData {
         let scenePublicationHandles = try getSceneClientPublicationMessageHandles(meshUUID: meshUUID, subnetworkId: subnetworkId)
         if !scenePublicationHandles.isEmpty {
             tasks.append(EmergencyFireControllerSyncTask(title: "Scene Publication", kind: .publication, address: node.primaryUnicastAddress, messageHandles: scenePublicationHandles))
-        }
-
-        let lightLCPublicationHandles = try getLightLCClientPublicationMessageHandles(meshUUID: meshUUID, subnetworkId: subnetworkId)
-        if !lightLCPublicationHandles.isEmpty {
-            tasks.append(EmergencyFireControllerSyncTask(title: "LC Publication", kind: .lightLCClientPublication, address: node.primaryUnicastAddress, messageHandles: lightLCPublicationHandles))
         }
 
         if oldConfiguration == nil || oldConfiguration?.enabled != configuration.enabled {
@@ -230,13 +231,13 @@ extension DeviceEmerFireData {
                 for: state,
                 targetAddress: publishGroupAddress,
                 appKeyIndex: MeshNetworkManager.instance.currentApplicationKey.index,
-                ttl: MeshNetworkManager.instance.networkParameters.defaultTtl
+                ttl: Self.emergencyActionTTL
             )
             let oldActionConfig = oldConfiguration?.actionConfig(
                 for: state,
                 targetAddress: publishGroupAddress,
                 appKeyIndex: MeshNetworkManager.instance.currentApplicationKey.index,
-                ttl: MeshNetworkManager.instance.networkParameters.defaultTtl
+                ttl: Self.emergencyActionTTL
             )
             if oldConfiguration == nil || oldActionConfig != actionConfig {
                 tasks.append(EmergencyFireControllerSyncTask(

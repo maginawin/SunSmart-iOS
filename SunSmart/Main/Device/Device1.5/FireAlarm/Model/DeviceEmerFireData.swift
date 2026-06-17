@@ -88,6 +88,7 @@ final class DeviceEmerFireStore {
     @discardableResult
     func ensureDevice(for node: Node, in space: SpaceData) -> DeviceEmerFireData {
         if let device = devices(in: space).first(where: { $0.bindNodeAddress == node.primaryUnicastAddress }) {
+            ensurePublishGroupIfNeeded(for: device, in: space)
             return device
         }
 
@@ -96,6 +97,7 @@ final class DeviceEmerFireStore {
         node.name = device.name
         node.save()
         save(device)
+        ensurePublishGroupIfNeeded(for: device, in: space)
         return device
     }
 
@@ -108,6 +110,7 @@ final class DeviceEmerFireStore {
         // 绑定节点变更后，真实控制器的 publication/mode/resend 等都需要重新同步。
         target.isSynced = false
         save(target)
+        ensurePublishGroupIfNeeded(for: target, in: space)
         if target !== device {
             device.update(deviceData: target)
         }
@@ -130,6 +133,7 @@ final class DeviceEmerFireStore {
         target.bindNodeAddress = newNode.primaryUnicastAddress
         target.isSynced = false
         save(target)
+        ensurePublishGroupIfNeeded(for: target, in: space)
 
         storedDevices
             .filter { $0.id != target.id && $0.bindNodeAddress == newNode.primaryUnicastAddress }
@@ -184,6 +188,9 @@ final class DeviceEmerFireStore {
                 node.name = name
                 node.save()
                 _ = repository.save(device)
+                if let space {
+                    ensurePublishGroupIfNeeded(for: device, in: space)
+                }
                 devices.append(device)
             }
         }
@@ -206,6 +213,20 @@ final class DeviceEmerFireStore {
             } else {
                 devices.append(device)
             }
+        }
+    }
+
+    private func ensurePublishGroupIfNeeded(for device: DeviceEmerFireData, in space: SpaceData) {
+        guard device.publishGroupAddress == nil else {
+            EmergencyFireControllerSceneEventManager.refreshProxyFilterAddresses()
+            return
+        }
+        do {
+            _ = try device.ensurePublishGroup(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId)
+            mergeCache(with: [device])
+            EmergencyFireControllerSceneEventManager.refreshProxyFilterAddresses()
+        } catch {
+            print("[EFC] failed to ensure publish group device=\(device.name), error=\(error.localizedDescription)")
         }
     }
 

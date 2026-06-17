@@ -10,16 +10,13 @@ import NordicSigMeshSDK
 
 enum EmergencyFireControllerSyncTaskKind: String {
     case publication = "Publication"
-    case lightLCClientPublication = "LC Publication"
     case enabled = "Enable"
     case resend = "Resend"
     case restoreDelay = "Restore Delay"
     case actionConfig = "Action Config"
-    case sceneSubscription = "Scene Group"
+    case lightnessSubscription = "Lightness Group"
     case lightLCSubscription = "LC Group"
-    case lightLCCleanup = "LC Cleanup"
-    case triggerScene = "Trigger Scene"
-    case autoRestore = "Auto Restore"
+    case associationCleanup = "Group Cleanup"
     case deleteCleanup = "Delete Cleanup"
     case deleteConfiguration = "Delete Configuration"
 }
@@ -86,7 +83,6 @@ enum EmergencyFireControllerPublishGroupError: LocalizedError {
     case missingBoundNode
     case nodeNotReady
     case missingSceneClientModel
-    case missingLightLCClientModel
 
     var errorDescription: String? {
         switch self {
@@ -94,7 +90,7 @@ enum EmergencyFireControllerPublishGroupError: LocalizedError {
             return "group_address_insufficient_message".localizedString
         case .createGroupFailed:
             return "failed".localizedString + " !"
-        case .missingBoundNode, .nodeNotReady, .missingSceneClientModel, .missingLightLCClientModel:
+        case .missingBoundNode, .nodeNotReady, .missingSceneClientModel:
             return "The device needs to be repaired."
         }
     }

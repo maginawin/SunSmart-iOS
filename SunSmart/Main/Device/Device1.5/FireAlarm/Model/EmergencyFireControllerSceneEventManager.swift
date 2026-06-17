@@ -269,9 +269,10 @@ final class EmergencyFireControllerSceneEventManager {
     }
 
     private static func isSubscribedToEmergencyPublishGroup(_ node: Node, publishGroups: [Group]) -> Bool {
-        // 目前拦截依据是灯节点是否仍订阅 active EFC 的 Scene 或 Light LC 内部组。
-        // 如果后续补更多模型订阅，这里也要同步扩展。
+        // 当前拦截依据是灯节点是否仍订阅 active EFC 的业务控制组。
+        // Scene Server 只作为历史订阅兼容，新的联动以 Lightness / Light LC 为准。
         publishGroups.contains { publishGroup in
+            node.lightnessModel?.isSubscribed(to: publishGroup) == true ||
             node.lightLCModel?.isSubscribed(to: publishGroup) == true ||
             node.sceneModel?.isSubscribed(to: publishGroup) == true
         }

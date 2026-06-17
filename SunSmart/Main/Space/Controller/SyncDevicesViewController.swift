@@ -920,19 +920,6 @@ class SyncDevicesViewController: UIViewController {
         tasks: [EmergencyFireControllerSyncTask],
         data: DeviceEmerFireData
     ) -> SyncDevicesModel? {
-        if let autoRestoreTask = tasks.first, tasks.count == 1, autoRestoreTask.kind == .autoRestore {
-            let model = SyncDevicesModel(name: "AUTO", address: autoRestoreTask.address)
-            model.imageName = "device_light"
-            model.steps = [autoRestoreTask].compactMap { task in
-                makeEmergencyFireControllerLeafStep(task: task, data: data)
-            }
-            model.steps.forEach { step in
-                step.parentDeviceModel = model
-            }
-            guard !model.steps.isEmpty else { return nil }
-            return model
-        }
-
         guard let firstTask = tasks.first,
               let node = nodeForEmergencyFireControllerTask(firstTask, data: data) else {
             return nil
@@ -998,10 +985,6 @@ class SyncDevicesViewController: UIViewController {
             return task.title
         case .restoreDelay:
             return "Resuming in \(data.configuration.restoreSettings.resumingSeconds)s"
-        case .triggerScene:
-            return task.title
-        case .autoRestore:
-            return "AUTO"
         default:
             return task.kind.rawValue
         }
@@ -1039,40 +1022,6 @@ class SyncDevicesViewController: UIViewController {
         model.state = .successful
         clearEmergencyFireControllerPendingIfNeeded(for: model)
         updateCell(model: model)
-        return true
-    }
-
-    private func completeEmergencyFireControllerAutoRestoreTaskIfNeeded(
-        for model: SyncCellModel,
-        messageHandles: [MeshMessageHandle],
-        completion: @escaping () -> Void
-    ) -> Bool {
-        guard let taskContext = emergencyFireControllerTask(for: model),
-              taskContext.task.kind == .autoRestore else {
-            return false
-        }
-        guard messageHandles.count == 1,
-              let messageHandle = messageHandles.first,
-              let address = messageHandle.address ?? messageHandle.model?.parentElement?.unicastAddress else {
-            model.state = .failed
-            (model as? SyncDevicesModel)?.failedCount += 1
-            (model as? SyncDeviceStepTaskModel)?.failedCount += 1
-            updateCell(model: model)
-            completion()
-            return true
-        }
-
-        MeshAPI.sendMessage(message: messageHandle.message, address: address, defaultTTL: messageHandle.defaultTTL)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self, weak model] in
-            guard let self, let model, self.syncState == .inSync else {
-                completion()
-                return
-            }
-            model.state = .successful
-            self.clearEmergencyFireControllerPendingIfNeeded(for: model)
-            self.updateCell(model: model)
-            completion()
-        }
         return true
     }
 
@@ -1983,22 +1932,6 @@ class SyncDevicesViewController: UIViewController {
                     continue
                 }
 
-                if self.completeEmergencyFireControllerAutoRestoreTaskIfNeeded(for: model, messageHandles: messageHandles, completion: {
-                    semaphore.signal()
-                }) {
-                    semaphore.wait()
-                    DispatchQueue.main.async {
-                        if let model = self.showProressStepModel {
-                            if let progressView = SyncDevicesProgressView.current() {
-                                progressView.stepModel = model
-                            }
-                        }
-                        let allDevices = self.sections.flatMap({ $0.groups.flatMap({ $0.deviceModels }) + $0.devices })
-                        self.progressLabel.text = "\(allDevices.filter({ $0.state == .successful }).count)/\(allDevices.count)"
-                    }
-                    continue
-                }
-                
                 if self.batteryPowerSwitchOwnConfigurationFailed,
                    self.isBatteryPowerSwitchOwnConfiguration(model) {
                     model.state = .failed

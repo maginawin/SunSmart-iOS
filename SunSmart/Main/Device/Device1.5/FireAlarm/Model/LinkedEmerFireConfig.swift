@@ -227,7 +227,7 @@ extension EmergencyFireControllerConfiguration {
         .init(
             stateIndex: .emergencyAndFireSync,
             intervalSeconds: powerLossSettings.triggerIntervalSeconds,
-            count: powerLossSettings.triggerCount
+            count: 0xFFFF
         )
     }
 
