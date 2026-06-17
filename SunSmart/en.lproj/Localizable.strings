@@ -1752,8 +1752,12 @@
 "power_is_restored" = "Power is restored";
 "fire_alarm_occurs" = "Fire alarm occurs";
 "fire_alarm_stops" = "Fire alarm stops";
+"emergency_event_ends" = "Emergency event ends";
 "set_brightness_to" = "Set Brightness To:";
+"set_brightness_to_value" = "Set Brightness to %@";
 "resuming_in" = "Resuming in:";
+"restore_auto" = "Auto";
+"restore_none" = "None";
 "linked_power_loss_instruction_1" = "1. This mode will override the original group's profile, with the exception of the Fire Alarm Emergency Profile.";
 "linked_power_loss_instruction_2" = "2. In this mode, Automated controls will be disabled.";
 "linked_power_restore_instruction_1" = "1. If the groups remains in fire alarm state when power is restored, it will remain under the fire alarm profile.Otherwise, it will revert to its original profile.";

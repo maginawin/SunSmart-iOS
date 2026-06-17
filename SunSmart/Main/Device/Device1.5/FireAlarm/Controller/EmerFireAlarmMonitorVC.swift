@@ -8,6 +8,7 @@
 //应急火警设备监控页
 import UIKit
 import NordicSigMeshSDK
+import SnapKit
 
 class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
 
@@ -37,6 +38,7 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
     var flowLayout: AlignCenterFlowLayout!
     var deviceCountLabel: UILabel!
     var pageControl: UIPageControl!
+    private var statusSetViewHeightConstraint: Constraint?
     /// 列数
     var columnNum: Int = isIPad ? 4 : 3
     var rowNum: Int = isIPad ? 6 : 3
@@ -58,6 +60,16 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
     lazy var statusSetView: EmerFireAlarmStatusSetView = {
         let view = EmerFireAlarmStatusSetView()
         view.title = "Status Set".localizedString
+        view.expandedOverlayHeightProvider = { [weak self, weak view] in
+            guard let self else { return view?.collapsedHeight ?? 0 }
+            return self.view.bounds.height - self.view.safeAreaInsets.top
+        }
+        view.heightChangeHandler = { [weak self] height in
+            self?.statusSetViewHeightConstraint?.update(offset: height)
+        }
+        view.expansionChangedHandler = { [weak self] expanded in
+            self?.isModalInPresentation = expanded
+        }
         return view
     }()
     lazy var statusWarningView : EmerFireAlarmMoniHead = {
@@ -105,6 +117,7 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
         observeSceneEvents()
         refreshRealState()
         NotificationCenter.default.addObserver(self, selector: #selector(handleConfigDidChange(_:)), name: .linkedEmerFireConfigDidChange, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(handleDeviceStateDidUpdate(_:)), name: .init(deviceStateUpdateNotificationName), object: nil)
         
         statusWarningView.warningAction = { [weak self] in
             guard self?.shouldShowGatewayWarning == true else {
@@ -164,6 +177,13 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
 
         self.dismissLikeSystem()
         
+    }
+
+    @objc private func handleDeviceStateDidUpdate(_ notification: Notification) {
+        guard let node = notification.object as? Node else {
+            return
+        }
+        renderNodeAvailabilityChange(node)
     }
     
     func configureActions() {
@@ -265,16 +285,21 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
             make.bottom.equalTo(collectionView)
             make.centerX.equalToSuperview()
         }
+
+        view.addSubview(statusSetView)
+        statusSetView.snp.makeConstraints { make in
+            make.left.right.bottom.equalToSuperview()
+            statusSetViewHeightConstraint = make.height.equalTo(statusSetView.collapsedHeight).constraint
+        }
+
         view.addSubview(moniView)
         moniView.snp.makeConstraints { make in
             make.top.equalTo(collectionView.snp.bottom).offset(SCRYFrom(100))
             make.left.equalToSuperview().offset(SCRYFrom(56))
             make.right.equalToSuperview().offset(-SCRYFrom(56))
+            make.bottom.lessThanOrEqualTo(statusSetView.snp.top).offset(-SCRYFit(20)).priority(.low)
         }
-        view.addSubview(statusSetView)
-        statusSetView.snp.makeConstraints { make in
-            make.left.right.bottom.equalToSuperview()
-        }
+        view.bringSubviewToFront(statusSetView)
         
     }
 

@@ -12,13 +12,12 @@ import SnapKit
 final class EmerFireAlarmStatusLegendHeaderView: UIView {
 
     private enum Layout {
-        static let height = SCRYFrom(56)
-        static let horizontalInset = SCRXFrom(16)
-        static let containerHorizontalInset = SCRXFrom(12)
-        static let itemSpacing = SCRXFrom(14)
-        static let indicatorSize = SCRXFrom(14)
+        static let height = SCRYFrom(32)
+        static let horizontalInset = SCRXFrom(24)
+        static let itemSpacing = SCRXFrom(16)
+        static let indicatorSize = SCRXFrom(20)
         static let cornerRadius = SCRYFrom(2)
-        static let containerCornerRadius = SCRYFrom(16)
+        static let containerCornerRadius = SCRYFrom(10)
     }
 
     private final class LegendItemView: UIView {
@@ -37,7 +36,7 @@ final class EmerFireAlarmStatusLegendHeaderView: UIView {
         }()
 
         private lazy var titleLabel: UILabel = {
-            let label = UILabel(text: nil, textColor: Title_Color, fontSize: 10, fontWeight: .light)
+            let label = UILabel(text: nil, textColor: RGB(64, 79, 102), fontSize: 12, fontWeight: .light)
             return label
         }()
 
@@ -72,7 +71,7 @@ final class EmerFireAlarmStatusLegendHeaderView: UIView {
 
             addSubview(titleLabel)
             titleLabel.snp.makeConstraints { make in
-                make.left.equalTo(indicatorView.snp.right).offset(SCRXFrom(6))
+                make.left.equalTo(indicatorView.snp.right).offset(SCRXFrom(4))
                 make.centerY.equalToSuperview()
                 make.right.equalToSuperview()
             }
@@ -86,20 +85,19 @@ final class EmerFireAlarmStatusLegendHeaderView: UIView {
     private lazy var triggeredItem = LegendItemView(title: "Triggered", image: UIImage(named: EmergencyFireControllerIconName.Monitor.StatusSet.powerLossActive))
     private lazy var resumeItem = LegendItemView(title: "Resume", image: UIImage(named: EmergencyFireControllerIconName.Monitor.StatusSet.fireActive))
     private lazy var inactiveItem = LegendItemView(title: "Inactive", image: UIImage(named: EmergencyFireControllerIconName.Monitor.StatusSet.inactive))
-    private lazy var disabledItem = LegendItemView(title: "Disabled", image: UIImage(named: EmergencyFireControllerIconName.Monitor.StatusSet.disabled))
 
     private lazy var stackView: UIStackView = {
-        let stackView = UIStackView(arrangedSubviews: [triggeredItem, resumeItem, inactiveItem, disabledItem])
+        let stackView = UIStackView(arrangedSubviews: [triggeredItem, resumeItem, inactiveItem])
         stackView.axis = .horizontal
         stackView.alignment = .center
-        stackView.distribution = .fillEqually
+        stackView.distribution = .equalSpacing
         stackView.spacing = Layout.itemSpacing
         return stackView
     }()
 
     private lazy var containerView: UIView = {
         let view = UIView()
-        view.backgroundColor = RGB(247, 247, 249)
+        view.backgroundColor = RGB(250, 250, 250)
         view.layer.cornerRadius = Layout.containerCornerRadius
         view.layer.masksToBounds = true
         return view
@@ -119,8 +117,7 @@ final class EmerFireAlarmStatusLegendHeaderView: UIView {
 
         addSubview(containerView)
         containerView.snp.makeConstraints { make in
-            make.left.right.equalToSuperview().inset(Layout.containerHorizontalInset)
-            make.top.bottom.equalToSuperview().inset(SCRYFrom(6))
+            make.edges.equalToSuperview()
         }
 
         containerView.addSubview(stackView)

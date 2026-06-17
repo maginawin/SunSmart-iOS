@@ -363,7 +363,6 @@ extension EmerFireAlarmMonitorVC {
     }
 
     func updateStatusSetRows(for state: EmerFireAlarmMonitorDisplayState) {
-        let disabled: EmerFireAlarmStatusSetView.RowStatus = .disabled
         let inactive: EmerFireAlarmStatusSetView.RowStatus = .inactive
         var powerLossTrigger = inactive
         var powerLossStop = inactive
@@ -380,10 +379,7 @@ extension EmerFireAlarmMonitorVC {
         case .fireResuming:
             fireStop = .resume
         case .loading, .repair, .offline, .disabled:
-            powerLossTrigger = disabled
-            powerLossStop = disabled
-            fireTrigger = disabled
-            fireStop = disabled
+            break
         case .emergencyNormal, .fireNormal:
             break
         }

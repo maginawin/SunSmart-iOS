@@ -20,6 +20,10 @@ final class EmerFireAlarmStatusSetView: UIView {
     private struct StatusItem {
         let kind: RowKind
         let title: String
+        let details: [DetailViewModel]
+    }
+
+    struct DetailViewModel {
         let subtitle: String
         let value: String
     }
@@ -27,8 +31,7 @@ final class EmerFireAlarmStatusSetView: UIView {
     struct ItemViewModel {
         let kind: RowKind
         let title: String
-        let subtitle: String
-        let value: String
+        let details: [DetailViewModel]
     }
 
     enum RowKind {
@@ -60,16 +63,13 @@ final class EmerFireAlarmStatusSetView: UIView {
 
     private enum Layout {
         static let collapsedHeight = SCRYFrom(40) + kSafeAreaBottomHeight
-        static let expandedHeight = SCRYFrom(320) + kSafeAreaBottomHeight
+        static let panelHeight = SCRYFrom(352) + kSafeAreaBottomHeight
         static let cornerRadius = SCRYFrom(20)
         static let headerHeight = SCRYFrom(40)
+        static let expandedHeaderTopInset = SCRYFrom(8)
     }
 
-    var isExpanded = false {
-        didSet {
-            updateExpandedState(animated: true)
-        }
-    }
+    private(set) var isExpanded = false
 
     var title: String? {
         get { titleLabel.text }
@@ -77,9 +77,22 @@ final class EmerFireAlarmStatusSetView: UIView {
     }
 
     var headerActionHandler: ((HeaderAction) -> Void)?
+    var collapsedHeight: CGFloat { Layout.collapsedHeight }
+    var expandedOverlayHeightProvider: (() -> CGFloat)?
+    var heightChangeHandler: ((CGFloat) -> Void)?
+    var expansionChangedHandler: ((Bool) -> Void)?
 
-    private var heightConstraint: Constraint?
+    private var contentTopConstraint: Constraint?
+    private var topViewTopConstraint: Constraint?
     private var items: [StatusItem] = []
+
+    private lazy var shadeView: UIView = {
+        let view = UIView()
+        view.backgroundColor = .clear
+        view.isHidden = true
+        view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(shadeViewAction)))
+        return view
+    }()
 
     private lazy var contentView: UIView = {
         let view = UIView()
@@ -87,6 +100,11 @@ final class EmerFireAlarmStatusSetView: UIView {
         view.layer.cornerRadius = Layout.cornerRadius
         view.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
         view.layer.masksToBounds = true
+        return view
+    }()
+
+    private lazy var topView: UIView = {
+        let view = UIView()
         return view
     }()
 
@@ -149,7 +167,9 @@ final class EmerFireAlarmStatusSetView: UIView {
     }
 
     func updateItems(_ items: [ItemViewModel]) {
-        self.items = items.map { StatusItem(kind: $0.kind, title: $0.title, subtitle: $0.subtitle, value: $0.value) }
+        self.items = items.map {
+            StatusItem(kind: $0.kind, title: $0.title, details: $0.details)
+        }
         tableView.reloadData()
     }
 
@@ -174,12 +194,20 @@ final class EmerFireAlarmStatusSetView: UIView {
     }
 
     func setExpanded(_ expanded: Bool, animated: Bool) {
+        guard isExpanded != expanded else {
+            updateExpandedState(animated: animated)
+            return
+        }
         isExpanded = expanded
         updateExpandedState(animated: animated)
     }
 
     @objc private func toggleExpanded() {
         setExpanded(!isExpanded, animated: true)
+    }
+
+    @objc private func shadeViewAction() {
+        setExpanded(false, animated: true)
     }
 
     @objc private func powerLossTriggerAction() {
@@ -200,33 +228,45 @@ final class EmerFireAlarmStatusSetView: UIView {
 
     private func setupUI() {
         backgroundColor = .clear
+        clipsToBounds = true
+
+        addSubview(shadeView)
+        shadeView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
         
         addSubview(contentView)
         contentView.snp.makeConstraints { make in
-            make.edges.equalToSuperview()
-            heightConstraint = make.height.equalTo(Layout.collapsedHeight).constraint
+            make.left.right.equalToSuperview()
+            contentTopConstraint = make.top.equalToSuperview().constraint
+            make.height.equalTo(Layout.panelHeight)
         }
 
-        contentView.addSubview(headerButton)
-        headerButton.snp.makeConstraints { make in
-            make.left.right.top.equalToSuperview()
+        contentView.addSubview(topView)
+        topView.snp.makeConstraints { make in
+            make.left.right.equalToSuperview()
+            topViewTopConstraint = make.top.equalToSuperview().constraint
             make.height.equalTo(Layout.headerHeight)
         }
 
-        contentView.addSubview(arrowImageView)
+        topView.addSubview(headerButton)
+        headerButton.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+
+        topView.addSubview(arrowImageView)
         arrowImageView.snp.makeConstraints { make in
             make.centerY.equalTo(headerButton)
             make.left.equalToSuperview().offset(SCRXFrom(24))
-            make.width.height.equalTo(SCRXFrom(16))
         }
 
-        contentView.addSubview(headerActionsStackView)
+        topView.addSubview(headerActionsStackView)
         headerActionsStackView.snp.makeConstraints { make in
             make.centerY.equalTo(headerButton)
             make.right.equalToSuperview().offset(-SCRXFrom(20))
         }
 
-        contentView.addSubview(titleLabel)
+        topView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.centerY.equalTo(headerButton)
             make.left.equalTo(arrowImageView.snp.right).offset(SCRXFrom(12))
@@ -235,8 +275,8 @@ final class EmerFireAlarmStatusSetView: UIView {
 
         contentView.addSubview(legendHeaderView)
         legendHeaderView.snp.makeConstraints { make in
-            make.top.equalTo(headerButton.snp.bottom)
-            make.left.right.equalToSuperview()
+            make.top.equalTo(topView.snp.bottom)
+            make.left.right.equalToSuperview().inset(SCRXFrom(20))
             make.height.equalTo(legendHeaderView.intrinsicContentSize.height)
         }
 
@@ -249,23 +289,35 @@ final class EmerFireAlarmStatusSetView: UIView {
     }
 
     private func updateExpandedState(animated: Bool) {
-        let targetHeight = isExpanded ? Layout.expandedHeight : Layout.collapsedHeight
-        heightConstraint?.update(offset: targetHeight)
+        let targetHeight = isExpanded ? expandedHeight() : Layout.collapsedHeight
+        let contentTop = isExpanded ? max(0, targetHeight - Layout.panelHeight) : 0
+        heightChangeHandler?(targetHeight)
+        expansionChangedHandler?(isExpanded)
+        contentTopConstraint?.update(offset: contentTop)
+        topViewTopConstraint?.update(offset: isExpanded ? Layout.expandedHeaderTopInset : 0)
+        shadeView.isHidden = !isExpanded
         legendHeaderView.isHidden = !isExpanded
         tableView.isHidden = !isExpanded
         arrowImageView.image = UIImage(named: isExpanded ? "arrow_down" : "arrow_up")
 
         let animations = { [weak self] in
-            if let superview = self?.superview {
-                superview.layoutIfNeeded()
-            }
+            guard let self else { return }
+            self.superview?.layoutIfNeeded()
+            self.layoutIfNeeded()
         }
 
         if animated {
-            UIView.animate(withDuration: 0.25, animations: animations)
+            UIView.animate(withDuration: 0.3, animations: animations)
         } else {
             animations()
         }
+    }
+
+    private func expandedHeight() -> CGFloat {
+        if let height = expandedOverlayHeightProvider?(), height > Layout.collapsedHeight {
+            return height
+        }
+        return Layout.panelHeight
     }
 
     private func makeHeaderButton(
@@ -276,7 +328,7 @@ final class EmerFireAlarmStatusSetView: UIView {
     ) -> UIButton {
         let button = UIButton(type: .custom)
         button.snp.makeConstraints { make in
-            make.width.height.equalTo(SCRXFrom(16))
+            make.width.height.equalTo(SCRXFrom(20))
         }
         if let image {
             button.setImage(image, for: .normal)
@@ -303,7 +355,7 @@ extension EmerFireAlarmStatusSetView: UITableViewDataSource, UITableViewDelegate
         let cell: EmerFireAlarmStatusItemCell = tableView.dequeueReusableCell(for: indexPath)
         
         let item = items[indexPath.row]
-        cell.configure(with: .init(title: item.title, subtitle: item.subtitle, value: item.value))
+        cell.configure(with: .init(title: item.title, details: item.details))
         return cell
     }
 }

@@ -64,6 +64,8 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+
+        MeshLibManager.manager.messageDelegate = self
         
         if collectionView.firstShowFlashScrollIndicators {
             collectionView.flashScrollIndicatorsIfNeeded()
@@ -89,6 +91,14 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
                 self.updateUI()
             }
         }
+        NotificationCenter.default.addObserver(forName: .init(deviceStateUpdateNotificationName), object: nil, queue: .main) { [weak self] notification in
+            guard let self,
+                  self.view.window != nil,
+                  let node = notification.object as? Node else {
+                return
+            }
+            self.reloadEmergencyFireItem(for: node)
+        }
     }
 
     private func reloadShowItems() {
@@ -96,6 +106,25 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
         let emerFireDevices = DeviceEmerFireStore.shared.devices(in: space)
         let emergencyItems = emerFireDevices.map { DeviceOthersListItem.emergencyFireController($0) }
         showItems = dongleItems + emergencyItems
+    }
+
+    private func reloadEmergencyFireItem(for node: Node) {
+        guard let index = showItems.firstIndex(where: { item in
+            guard case .emergencyFireController(let device) = item else {
+                return false
+            }
+            return device.bindNodeAddress == node.primaryUnicastAddress
+        }) else {
+            return
+        }
+
+        let indexPath = IndexPath(item: index, section: 0)
+        if let cell = collectionView.cellForItem(at: indexPath) as? EmerFireAlarmDeviceCell,
+           case .emergencyFireController(let device) = showItems[index] {
+            cell.configCell(device: device, editing: isEdit)
+        } else {
+            collectionView.reloadItems(at: [indexPath])
+        }
     }
 
     private func updateUI() {
@@ -400,5 +429,15 @@ extension DeviceOthersViewController: SpaceFunctionFooterViewDelegate {
         view.isEditing = false
         isEdit = true
         updateUI()
+    }
+}
+
+extension DeviceOthersViewController: MeshLibManagerMessageDelegate {
+
+    func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
+        guard view.window != nil else {
+            return
+        }
+        reloadEmergencyFireItem(for: node)
     }
 }

@@ -99,32 +99,56 @@ enum EmerFireAlarmMonitorStateMapper {
     static func statusItems(for config: LinkedEmerFireConfig) -> [EmerFireAlarmStatusSetView.ItemViewModel] {
         let powerLossSettings = config.configuration.powerLossSettings
         let fireAlarmSettings = config.configuration.fireAlarmSettings
-        let restoreDelay = config.configuration.restoreSettings.resumingSeconds
+        let restoreSettings = config.configuration.restoreSettings
         return [
-            .init(
-                kind: .powerLossTrigger,
-                title: "power_supply_fails".localizedString,
-                subtitle: "set_brightness_to".localizedString,
-                value: "\(powerLossSettings.triggerBrightness)%"
-            ),
-            .init(
-                kind: .powerLossStop,
-                title: "power_is_restored".localizedString,
-                subtitle: "resuming_in".localizedString,
-                value: "\(restoreDelay)s"
-            ),
             .init(
                 kind: .fireTrigger,
                 title: "fire_alarm_occurs".localizedString,
-                subtitle: "set_brightness_to".localizedString,
-                value: "\(fireAlarmSettings.triggerBrightness)%"
+                details: [
+                    .init(
+                        subtitle: "set_brightness_to".localizedString,
+                        value: "\(fireAlarmSettings.triggerBrightness)%"
+                    )
+                ]
+            ),
+            .init(
+                kind: .powerLossTrigger,
+                title: "power_supply_fails".localizedString,
+                details: [
+                    .init(
+                        subtitle: "set_brightness_to".localizedString,
+                        value: "\(powerLossSettings.triggerBrightness)%"
+                    )
+                ]
             ),
             .init(
                 kind: .fireStop,
-                title: "fire_alarm_stops".localizedString,
-                subtitle: "resuming_in".localizedString,
-                value: "\(restoreDelay)s"
+                title: "emergency_event_ends".localizedString,
+                details: [
+                    .init(
+                        subtitle: "action".localizedString,
+                        value: restoreActionTitle(for: restoreSettings)
+                    ),
+                    .init(
+                        subtitle: "resuming_in".localizedString,
+                        value: "\(restoreSettings.resumingSeconds)s"
+                    )
+                ]
             )
         ]
+    }
+
+    private static func restoreActionTitle(for settings: EmergencyFireControllerRestoreSettings) -> String {
+        switch settings.actionType {
+        case .restoreAuto:
+            return "restore_auto".localizedString
+        case .setBrightness:
+            return String(
+                format: "set_brightness_to_value".localizedString,
+                "\(settings.brightness)%"
+            )
+        case .none:
+            return "restore_none".localizedString
+        }
     }
 }
