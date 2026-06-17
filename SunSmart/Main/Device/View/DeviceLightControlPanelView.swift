@@ -10,6 +10,7 @@ import UIKit
 final class DeviceLightControlPanelView: UIView {
 
     private static let cctInputStep = 10
+    private static let brightnessTrackRange = 0...100
 
     struct Configuration: Equatable {
         var controlType: SpaceControlType
@@ -72,6 +73,11 @@ final class DeviceLightControlPanelView: UIView {
         return max(range.lowerBound, min(range.upperBound, rounded))
     }
 
+    private static func normalizedBrightnessDisplayValue(_ value: Int, range: ClosedRange<Int>) -> Int {
+        guard value != 0 else { return 0 }
+        return max(range.lowerBound, min(range.upperBound, value))
+    }
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
@@ -98,8 +104,8 @@ final class DeviceLightControlPanelView: UIView {
 
     func setBrightnessValue(_ value: Int) {
         guard var configuration else { return }
-        let clamped = max(configuration.brightnessRange.lowerBound, min(configuration.brightnessRange.upperBound, value))
-        configuration.brightnessValue = clamped
+        let normalizedValue = Self.normalizedBrightnessDisplayValue(value, range: configuration.brightnessRange)
+        configuration.brightnessValue = normalizedValue
         configure(configuration)
     }
 
@@ -181,6 +187,7 @@ final class DeviceLightControlPanelView: UIView {
             title: "brightness".localizedString,
             valueText: "\(configuration.brightnessValue)%",
             range: configuration.brightnessRange,
+            trackRange: Self.brightnessTrackRange,
             value: configuration.brightnessValue
         )
         detailedCCTView.configure(
@@ -201,8 +208,8 @@ final class DeviceLightControlPanelView: UIView {
     }
 
     private func configureBrightnessSlider(_ sliderView: BuoySliderView, configuration: Configuration) {
-        sliderView.slider.minimumValue = Float(configuration.brightnessRange.lowerBound)
-        sliderView.slider.maximumValue = Float(configuration.brightnessRange.upperBound)
+        sliderView.slider.minimumValue = Float(Self.brightnessTrackRange.lowerBound)
+        sliderView.slider.maximumValue = Float(Self.brightnessTrackRange.upperBound)
         sliderView.slider.limitRange = configuration.brightnessRange
         sliderView.value = configuration.brightnessValue
     }
@@ -270,7 +277,7 @@ final class DeviceLightControlPanelView: UIView {
 
     private func updateStoredBrightness(_ value: Int) {
         guard var configuration else { return }
-        configuration.brightnessValue = max(configuration.brightnessRange.lowerBound, min(configuration.brightnessRange.upperBound, value))
+        configuration.brightnessValue = Self.normalizedBrightnessDisplayValue(value, range: configuration.brightnessRange)
         self.configuration = configuration
         detailedBrightnessView.updateValueText("\(configuration.brightnessValue)%")
     }
@@ -309,11 +316,12 @@ private final class DetailedControlSliderView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
-    func configure(title: String, valueText: String, range: ClosedRange<Int>, value: Int) {
+    func configure(title: String, valueText: String, range: ClosedRange<Int>, trackRange: ClosedRange<Int>? = nil, value: Int) {
         titleLabel.text = title
         updateValueText(valueText)
-        sliderView.slider.minimumValue = Float(range.lowerBound)
-        sliderView.slider.maximumValue = Float(range.upperBound)
+        let sliderTrackRange = trackRange ?? range
+        sliderView.slider.minimumValue = Float(sliderTrackRange.lowerBound)
+        sliderView.slider.maximumValue = Float(sliderTrackRange.upperBound)
         sliderView.slider.limitRange = range
         sliderView.value = value
     }
