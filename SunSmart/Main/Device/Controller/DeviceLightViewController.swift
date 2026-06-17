@@ -229,12 +229,13 @@ class DeviceLightViewController: UIViewController {
     private func updateControlPanel() {
         let cctRange = node.effectiveCctRange
         let brightnessRange = Node.getLightness100(lightness: node.lightnessRange.lowerBound)...Node.getLightness100(lightness: node.lightnessRange.upperBound)
+        let brightnessValue = node.isOn ? Node.getLightness100(lightness: node.lightness) : 0
         controlPanelView.configure(.init(
             controlType: space.controlType,
             showCCTQuickButtons: space.showCCTQuickButtons,
             showsBrightness: node.supportDimming,
             showsCCT: node.singleDeviceDisplaySupportCct,
-            brightnessValue: Node.getLightness100(lightness: node.lightness),
+            brightnessValue: brightnessValue,
             brightnessRange: brightnessRange,
             cctValue: Int(node.clampEffectiveCct(node.temperature)),
             cctRange: Int(cctRange.lowerBound)...Int(cctRange.upperBound)
