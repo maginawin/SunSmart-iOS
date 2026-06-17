@@ -55,7 +55,7 @@ final class DeviceEmerFireStore {
     }
 
     func nextDefaultName(space: SpaceData) -> String {
-        let baseName = "EFC "
+        let baseName = "EFC"
         var index = 1
         let devices = self.devices(in: space)
         while devices.contains(where: { $0.name == "\(baseName)\(index)" }) {
@@ -93,6 +93,8 @@ final class DeviceEmerFireStore {
 
         let device = DeviceEmerFireData.default(space: space)
         device.bindNodeAddress = node.primaryUnicastAddress
+        node.name = device.name
+        node.save()
         save(device)
         return device
     }
@@ -101,6 +103,8 @@ final class DeviceEmerFireStore {
     func bind(_ device: DeviceEmerFireData, to node: Node, in space: SpaceData) -> DeviceEmerFireData {
         let target = self.device(id: device.id, meshUUID: space.meshUUID, meshNetworkId: space.meshNetworkId) ?? device
         target.bindNodeAddress = node.primaryUnicastAddress
+        node.name = target.name
+        node.save()
         // 绑定节点变更后，真实控制器的 publication/mode/resend 等都需要重新同步。
         target.isSynced = false
         save(target)
@@ -121,9 +125,8 @@ final class DeviceEmerFireStore {
             ?? storedDevices.first { $0.bindNodeAddress == newNode.primaryUnicastAddress }
             ?? DeviceEmerFireData.default(space: space)
 
-        if target.bindNodeAddress == nil {
-            target.name = oldNode.name ?? newNode.name ?? target.name
-        }
+        newNode.name = target.name
+        newNode.save()
         target.bindNodeAddress = newNode.primaryUnicastAddress
         target.isSynced = false
         save(target)
@@ -167,16 +170,19 @@ final class DeviceEmerFireStore {
             if !devices.contains(where: { $0.bindNodeAddress == node.primaryUnicastAddress }) {
                 // 真实 Mesh 节点已经存在但本地还没有配置时，补一条未同步记录。
                 // 这样列表能显示出来，并引导用户进入编辑/同步，而不是静默丢失这个控制器。
+                let name = nextDefaultName(in: devices)
                 let device = DeviceEmerFireData(
                     id: UUID().uuidString,
                     spaceId: space?.id ?? "",
                     meshUUID: meshUUID,
                     meshNetworkId: meshNetworkId,
-                    name: node.name ?? nextDefaultName(in: devices),
+                    name: name,
                     bindNodeAddress: node.primaryUnicastAddress,
                     isSynced: false,
                     reportToGateway: true
                 )
+                node.name = name
+                node.save()
                 _ = repository.save(device)
                 devices.append(device)
             }
@@ -185,7 +191,7 @@ final class DeviceEmerFireStore {
     }
 
     private func nextDefaultName(in devices: [DeviceEmerFireData]) -> String {
-        let baseName = "EFC "
+        let baseName = "EFC"
         var index = 1
         while devices.contains(where: { $0.name == "\(baseName)\(index)" }) {
             index += 1
