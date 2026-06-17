@@ -223,6 +223,25 @@ extension EmergencyFireControllerConfiguration {
         }
     }
 
+    func triggerResendParameters() -> EmergencyFireResendParameters {
+        .init(
+            stateIndex: .emergencyAndFireSync,
+            intervalSeconds: powerLossSettings.triggerIntervalSeconds,
+            count: powerLossSettings.triggerCount
+        )
+    }
+
+    func triggerResendParametersEqual(to other: EmergencyFireControllerConfiguration?) -> Bool {
+        guard let other else {
+            return false
+        }
+        let lhs = triggerResendParameters()
+        let rhs = other.triggerResendParameters()
+        return lhs.stateIndex == rhs.stateIndex &&
+            lhs.intervalSeconds == rhs.intervalSeconds &&
+            lhs.count == rhs.count
+    }
+
     func restoreDelaySeconds() -> UInt8 {
         restoreSettings.resumingSeconds
     }

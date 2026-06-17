@@ -202,19 +202,30 @@ extension DeviceEmerFireData {
             ))
         }
 
-        EmergencyFireControllerState.allCases.forEach { state in
-            let resend = configuration.resendParameters(for: state)
-            let oldResend = oldConfiguration?.resendParameters(for: state)
-            if oldConfiguration == nil || !resendParametersEqual(oldResend, resend) {
-                tasks.append(EmergencyFireControllerSyncTask(
-                    title: "\(state.taskTitle) Resend",
-                    kind: .resend,
-                    address: node.primaryUnicastAddress,
-                    messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyResendParameters(resend)), model: vendorModel)],
-                    changedOnly: onlyChangedKeyParameters
-                ))
-            }
+        let triggerResend = configuration.triggerResendParameters()
+        if oldConfiguration == nil || !configuration.triggerResendParametersEqual(to: oldConfiguration) {
+            tasks.append(EmergencyFireControllerSyncTask(
+                title: "Trigger Resend",
+                kind: .resend,
+                address: node.primaryUnicastAddress,
+                messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyResendParameters(triggerResend)), model: vendorModel)],
+                changedOnly: onlyChangedKeyParameters
+            ))
+        }
 
+        let restoreResend = configuration.resendParameters(for: .restore)
+        let oldRestoreResend = oldConfiguration?.resendParameters(for: .restore)
+        if oldConfiguration == nil || !resendParametersEqual(oldRestoreResend, restoreResend) {
+            tasks.append(EmergencyFireControllerSyncTask(
+                title: "Restore Resend",
+                kind: .resend,
+                address: node.primaryUnicastAddress,
+                messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyResendParameters(restoreResend)), model: vendorModel)],
+                changedOnly: onlyChangedKeyParameters
+            ))
+        }
+
+        EmergencyFireControllerState.allCases.forEach { state in
             let actionConfig = configuration.actionConfig(
                 for: state,
                 targetAddress: publishGroupAddress,
