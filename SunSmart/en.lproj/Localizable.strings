@@ -1746,7 +1746,7 @@
 
 //v1.5-- FireAlarm
 "Setting" = "Setting";
-"Not associate with Group(s) !" ="Not associate with Group(s) !";
+"Not associate with Group(s) !" ="Not associate with Group(s)!";
 "Status & Settings" = "Status & Settings";
 "power_supply_fails" = "Power supply fails";
 "power_is_restored" = "Power is restored";
