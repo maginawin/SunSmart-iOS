@@ -146,15 +146,36 @@ class EnergyStaticDataViewController: UIViewController {
     @objc private func back() {
         dismiss(animated: true)
     }
+
+    private var energyDataNodes: [Node] {
+        MeshNetworkManager.instance.realNodes.filter { $0.deviceType == .light }
+    }
+
+    private func lightOnlyStaticData(_ staticData: EnergyStatisticsStaticData?) -> EnergyStatisticsStaticData? {
+        guard let staticData = staticData else { return nil }
+        let deviceEnergyDatas = staticData.deviceEnergyDatas.filter { isLightEnergyData($0) }
+        return EnergyStatisticsStaticData(
+            timestamp: staticData.timestamp,
+            incomplete: staticData.incomplete,
+            deviceEnergyDatas: deviceEnergyDatas,
+            groups: staticData.groups
+        )
+    }
+
+    private func isLightEnergyData(_ data: DeviceTotalEnergyData) -> Bool {
+        guard let productId = data.productId,
+              let deviceInfo = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.productId == productId }) else {
+            return false
+        }
+        return Node.DeviceType(deviceCategory: deviceInfo.deviceCategory) == .light
+    }
     
     private func setupData() {
         
         let staticDatas = EnergyStatisticsStaticData.load(spaceId: space.id)
         
-        latestHarvestData = staticDatas.first
-        if staticDatas.count > 1 {
-            previousHarvestData = staticDatas[1]
-        }
+        latestHarvestData = lightOnlyStaticData(staticDatas.first)
+        previousHarvestData = staticDatas.count > 1 ? lightOnlyStaticData(staticDatas[1]) : nil
         
         // Group数据
         if let harvestData = latestHarvestData {
@@ -210,10 +231,12 @@ class EnergyStaticDataViewController: UIViewController {
     
     private func convertDeviceTotalEnergyDatas(nodes: [Node], failedNodes: [Node]) {
         
+        let energyNodes = nodes.filter { $0.deviceType == .light }
+        let failedEnergyNodes = failedNodes.filter { $0.deviceType == .light }
         let timestamp = Int64(Date().timeIntervalSince1970)
-        let enrtgyDatas = nodes.map({ node in
+        let enrtgyDatas = energyNodes.map({ node in
             // 状态
-            var state: DeviceTotalEnergyData.State = failedNodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) ? .failed : .success
+            var state: DeviceTotalEnergyData.State = failedEnergyNodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) ? .failed : .success
             // 最大功率
             var maxRatedPower: UInt16?
             /// 最大功率下已使用总能耗 W/h
@@ -234,7 +257,7 @@ class EnergyStaticDataViewController: UIViewController {
             return DeviceTotalEnergyData(name: node.name ?? "", address: node.primaryUnicastAddress, productId: node.productIdentifier, groupAddress: node.group?.address.address, timestamp: timestamp, maxRatedPower: maxRatedPower, maxTotalEnergyUse: totalDeviceEnergyUse, preciseTotalEnergyUse: preciseTotalEnergyUse, state: state)
         })
         
-        let staticData = EnergyStatisticsStaticData(timestamp: timestamp, incomplete: failedNodes.count > 0, deviceEnergyDatas: enrtgyDatas, groups: MeshNetworkManager.instance.groups)
+        let staticData = EnergyStatisticsStaticData(timestamp: timestamp, incomplete: failedEnergyNodes.count > 0, deviceEnergyDatas: enrtgyDatas, groups: MeshNetworkManager.instance.groups)
         staticData.save(spaceId: space.id)
         
         setupData()
@@ -245,7 +268,7 @@ class EnergyStaticDataViewController: UIViewController {
     /// 读取mesh设备能耗
     private func readMeshDevicesEnergy() {
         
-        let nodes = MeshNetworkManager.instance.realNodes
+        let nodes = energyDataNodes
         let vc = ReadDevicesDataViewController(type: .harvestData(nodes: nodes))
         vc.readSuccessCallback = {[weak self] _ in
             guard let self = self else { return }
