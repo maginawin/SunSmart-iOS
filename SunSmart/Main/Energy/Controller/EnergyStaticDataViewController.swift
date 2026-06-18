@@ -163,6 +163,10 @@ class EnergyStaticDataViewController: UIViewController {
     }
 
     private func isLightEnergyData(_ data: DeviceTotalEnergyData) -> Bool {
+        if let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: data.address) {
+            return node.deviceType == .light
+        }
+
         guard let productId = data.productId,
               let deviceInfo = MeshLibManager.manager.supportDeviceInfos.first(where: { $0.productId == productId }) else {
             return false
@@ -253,11 +257,15 @@ class EnergyStaticDataViewController: UIViewController {
                 state = .notSetPower
             }else {
                 maxRatedPower = (node.phaseEnergyConsumptions.first(where: { $0.percent == 100 }) ?? node.phaseEnergyConsumptions.last)?.power
+                let missingEnergyData = state == .success && preciseTotalEnergyUse == nil
+                if missingEnergyData {
+                    state = .failed
+                }
             }
             return DeviceTotalEnergyData(name: node.name ?? "", address: node.primaryUnicastAddress, productId: node.productIdentifier, groupAddress: node.group?.address.address, timestamp: timestamp, maxRatedPower: maxRatedPower, maxTotalEnergyUse: totalDeviceEnergyUse, preciseTotalEnergyUse: preciseTotalEnergyUse, state: state)
         })
         
-        let staticData = EnergyStatisticsStaticData(timestamp: timestamp, incomplete: failedEnergyNodes.count > 0, deviceEnergyDatas: enrtgyDatas, groups: MeshNetworkManager.instance.groups)
+        let staticData = EnergyStatisticsStaticData(timestamp: timestamp, incomplete: enrtgyDatas.contains(where: { $0.state == .failed }), deviceEnergyDatas: enrtgyDatas, groups: MeshNetworkManager.instance.groups)
         staticData.save(spaceId: space.id)
         
         setupData()
@@ -269,6 +277,10 @@ class EnergyStaticDataViewController: UIViewController {
     private func readMeshDevicesEnergy() {
         
         let nodes = energyDataNodes
+        nodes.forEach {
+            $0.totalDeviceEnergyUse = nil
+            $0.preciseTotalDeviceEnergyUse = nil
+        }
         let vc = ReadDevicesDataViewController(type: .harvestData(nodes: nodes))
         vc.readSuccessCallback = {[weak self] _ in
             guard let self = self else { return }
