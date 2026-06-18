@@ -559,6 +559,15 @@ class ReadDevicesDataViewController: UIViewController {
                     }
                 }
                 
+                if messageHandles.isEmpty {
+                    self.markReadModelFailed(model)
+                    self.updateCell(model: model)
+                    DispatchQueue.main.async {
+                        self.updateSyncStateUI()
+                    }
+                    continue
+                }
+
                 DispatchQueue.main.async {
                     self.tableView.reloadData()
                 }
@@ -710,6 +719,12 @@ class ReadDevicesDataViewController: UIViewController {
         return nil
     }
     
+    private func markReadModelFailed(_ model: SyncCellModel) {
+        model.state = .failed
+        (model as? SyncDevicesModel)?.failedCount += 1
+        (model as? SyncDeviceStepTaskModel)?.failedCount += 1
+    }
+
     private func updateCell(model: SyncCellModel) {
         DispatchQueue.main.async {
 //            self.tableView.reloadSections(IndexSet(integer: sectionIndex), with: .none)
