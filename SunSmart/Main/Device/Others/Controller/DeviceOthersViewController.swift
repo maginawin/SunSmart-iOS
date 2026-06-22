@@ -251,12 +251,13 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
         }
         
         flowLayout = AlignCenterFlowLayout()
-        flowLayout.minimumLineSpacing = SCRXFrom(16)
-        flowLayout.minimumInteritemSpacing = SCRXFrom(16)
-        flowLayout.sectionInset = UIEdgeInsets(top: SCRYFrom(16) + SCRYFrom(42), left: SCRXFrom(12), bottom: SCRYFrom(16), right: SCRXFrom(12))
+        flowLayout.minimumLineSpacing = itemMargin
+        flowLayout.minimumInteritemSpacing = itemMargin
+        flowLayout.itemRowCount = columnNum
+        flowLayout.sectionInset = UIEdgeInsets(top: 0, left: 0, bottom: collectionViewMargin, right: 0)
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-        //        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(16), left: 0, bottom: SCRYFrom(16), right: 0)
+        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(50 + (isIPad ? 22 : 10)), left: collectionViewMargin, bottom: 0, right: collectionViewMargin)
         collectionView.backgroundColor = Background_Color
         collectionView.register(DeviceOthersCollectionViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         collectionView.register(EmerFireAlarmDeviceCell.self, forCellWithReuseIdentifier: "emerFireCell")

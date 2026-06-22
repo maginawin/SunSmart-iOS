@@ -307,12 +307,20 @@ final class EmerFireAlarmControllerSyncVC: UIViewController {
         }
         if persistsSyncResult {
             DeviceEmerFireStore.shared.save(data)
+            notifySpaceDataChangedForPersistedResult()
         }
         NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
         NotificationCenter.default.postLinkedEmerFireConfigDidChange(data.toConfig())
         if success {
             performSyncSuccessCallback()
         }
+    }
+
+    private func notifySpaceDataChangedForPersistedResult() {
+        NotificationCenter.default.post(
+            name: .init(spaceDataChangedNotificaitonName),
+            object: SpaceChangeDataType.device
+        )
     }
 
     private func performSyncSuccessCallback() {

@@ -214,6 +214,38 @@ assert_contains "SunSmart/Common/Data/ImportData.swift" \
   "DeviceEmerFireStore.shared.devices(in: self)" \
   "Space import must merge real EFC nodes with the current Space context after importing controllers."
 
+assert_contains "SunSmart/Common/Data/ExportData.swift" \
+  "spaceJsonData.updateValue(emergencyFireControllerDicts, forKey: \"emergencyFireControllers\")" \
+  "Space export must include EFC controllers in cloud payload."
+
+assert_contains "SunSmart/Common/Data/ExportData.swift" \
+  "dict.updateValue(configuration, forKey: \"configuration\")" \
+  "Space export must include EFC controller configuration."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmControllerSyncVC.swift" \
+  "spaceDataChangedNotificaitonName" \
+  "Persisted EFC sync result must trigger Space cloud sync."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmControllerSyncVC.swift" \
+  "SpaceChangeDataType.device" \
+  "Persisted EFC sync result must use promptly device cloud sync."
+
+assert_contains "SunSmart/Main/Device/Others/Controller/DeviceOthersViewController.swift" \
+  "flowLayout.minimumLineSpacing = itemMargin" \
+  "Others page must use the shared itemMargin for line spacing so iPad EFC items match Lights."
+
+assert_contains "SunSmart/Main/Device/Others/Controller/DeviceOthersViewController.swift" \
+  "flowLayout.minimumInteritemSpacing = itemMargin" \
+  "Others page must use the shared itemMargin for interitem spacing so iPad EFC items match Lights."
+
+assert_contains "SunSmart/Main/Device/Others/Controller/DeviceOthersViewController.swift" \
+  "flowLayout.itemRowCount = columnNum" \
+  "Others page must tell AlignCenterFlowLayout the configured column count."
+
+assert_contains "SunSmart/Main/Device/Others/Controller/DeviceOthersViewController.swift" \
+  "collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(50 + (isIPad ? 22 : 10)), left: collectionViewMargin, bottom: 0, right: collectionViewMargin)" \
+  "Others page iPad content inset must match Lights so EFC cards have the same width budget."
+
 assert_contains "SunSmart/Main/Device/Others/Controller/DeviceOthersViewController.swift" \
   "MeshLibManager.manager.messageDelegate = self" \
   "Others page must receive Mesh data updates while visible so EFC online/offline changes refresh in place."
@@ -249,6 +281,47 @@ assert_contains "SunSmart/Main/Device/Others/Controller/DeviceOthersViewControll
 assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorVC.swift" \
   "guardLinkedDeviceForAction()" \
   "EFC device page actions must share an unlinked-device guard."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/ViewModels/EmerFireAlarmMonitorViewModel.swift" \
+  "var isEffectiveVisitor: Bool" \
+  "EFC monitor must expose a page-local Visitor predicate."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/ViewModels/EmerFireAlarmMonitorViewModel.swift" \
+  "!canConfigureDevice" \
+  "EFC monitor effective Visitor predicate must include active-user permission downgrade."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorRouting.swift" \
+  "showRealEmergencyFireControllerVisitorMenu()" \
+  "Real EFC Visitor menu must use a dedicated Information-only branch."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorRouting.swift" \
+  "makeInformationMenuItem()" \
+  "EFC Information menu item must be shared by normal and Visitor real-device menus."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorRouting.swift" \
+  "guard !viewModel.isEffectiveVisitor else { return }" \
+  "Virtual EFC Visitor menu must expose no options."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorVC.swift" \
+  "guardVisitorCanUseMockAction()" \
+  "EFC Mock actions must share a Visitor permission guard."
+
+assert_count "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorVC.swift" \
+  "guard guardVisitorCanUseMockAction()" \
+  "3" \
+  "Fire Alarm, Power Loss, and Restore Mock actions must all check Visitor permission first."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorVC.swift" \
+  "\"Insufficient permissions\".localizedString" \
+  "Visitor Mock action denial must show the requested localized Toast."
+
+assert_contains "SunSmart/en.lproj/Localizable.strings" \
+  "\"Insufficient permissions\" = \"Insufficient permissions\";" \
+  "English localization must include Insufficient permissions."
+
+assert_contains "SunSmart/zh-Hans.lproj/Localizable.strings" \
+  "\"Insufficient permissions\" = \"权限不足\";" \
+  "Simplified Chinese localization must include Insufficient permissions."
 
 assert_count "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorVC.swift" \
   "guard guardLinkedDeviceForAction()" \
