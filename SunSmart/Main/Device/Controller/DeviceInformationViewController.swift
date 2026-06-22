@@ -31,6 +31,7 @@ class DeviceInformationViewController: UIViewController {
     init(
         node: Node,
         emptyGroupText: String? = nil,
+        showsGroupSection: Bool = true,
         showsSceneSection: Bool = true,
         groupTextOverride: String? = nil,
         sceneTextOverride: String? = nil,
@@ -43,7 +44,13 @@ class DeviceInformationViewController: UIViewController {
         self.sceneTextOverride = sceneTextOverride
         self.nameOverride = nameOverride
         self.deviceInfoDisplayMode = showsFullDeviceInfo ? .full : .standard
-        self.sections = showsSceneSection ? [.deviceInfo, .group, .scene] : [.deviceInfo, .group]
+        self.sections = [.deviceInfo]
+        if showsGroupSection {
+            self.sections.append(.group)
+        }
+        if showsSceneSection {
+            self.sections.append(.scene)
+        }
         super.init(nibName: nil, bundle: nil)
     }
     

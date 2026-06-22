@@ -867,22 +867,6 @@
 "firmware_update_error" = "Update failure";
 "firmware_update_stop" = "Stop update";
 "firmware_update_underway" = "Updateing";
-"ngateway_wifi_dfu_current_version" = "Current Version";
-"ngateway_wifi_dfu_loading" = "Updating...";
-"ngateway_wifi_dfu_upgrade_complete" = "Upgrade complete!";
-"ngateway_wifi_dfu_download_failed" = "Download failed";
-"ngateway_wifi_dfu_upgrade_failed" = "Upgrade failed";
-"ngateway_wifi_dfu_history_placeholder" = "Firmware history";
-"ngateway_wifi_dfu_delete_placeholder" = "Delete cached package";
-"ngateway_wifi_dfu_note_1" = "Optimized dimming performance";
-"ngateway_wifi_dfu_note_2" = "Added quick dimming button";
-"ngateway_wifi_dfu_note_3" = "Fixed the bug of device flickering at low brightness";
-"ngateway_wifi_dfu_note_4" = "Improved Wi-Fi stability when the gateway reconnects after an interrupted network session.";
-"ngateway_wifi_dfu_more" = "More";
-"ngateway_wifi_dfu_less" = "Less";
-"ngateway_wifi_dfu_close" = "Close";
-"ngateway_wifi_dfu_upgrade" = "Upgrade";
-"ngateway_wifi_dfu_upgrade_again" = "Upgrade Again";
 "firmware_update_connect_timeout_message" = "Firmware Update Error: Connection timeout.Make sure the device is normal and stay as close to it as possible.";
 "firmware_update_notSupport_message" = "Firmware Update Error: Device not supported.Older devices, please check the device specifications.";
 "firmware_update_noBindKey_message" = "Firmware Update Error: No application key.Repair the device first, then update.";
@@ -1798,40 +1782,6 @@
 "emer_fire_same_function_group_occupied" = "The group(s) %@ are already associated with another emergency fire controller for the same emergency function.";
 "Emergency & Fire Alarm are all disabled" = "Emergency & Fire Alarm are all disabled";
 
-//v1.5-- NGateWay
-"ngateway_sig_mesh" = "SIG Mesh";
-"ngateway_wifi" = "WiFi";
-"ngateway_only_supports_2_4ghz_networks" = "Only supports 2.4GHz networks.";
-"ngateway_connect_to_wifi" = "Connect to Wi-Fi";
-"ngateway_disconnect" = "Disconnect";
-"ngateway_nodes_count_format" = "Nodes: %d";
-"ngateway_server_authentication_message" = "The server authentication is not completed. Click to complete the authentication after connecting to the Internet.";
-"ngateway_na" = "N/A";
-"ngateway_online" = "Online";
-"ngateway_offline" = "Offline";
-"ngateway_excellent" = "Excellent";
-"ngateway_good" = "Good";
-"ngateway_poor" = "Poor";
-"ngateway_bad" = "Bad";
-"ngateway_no_signal" = "No Signal";
-"ngateway_no_internet" = "No Internet";
-"ngateway_authorize" = "Authorize";
-"ngateway_switch_2_4g_title" = "Connect to 2.4 GHz Wi-Fi Network";
-"ngateway_go_to_system_settings" = "Go to System Settings";
-"ngateway_advance_network_settings" = "Advance Network Settings";
-"ngateway_dhcp" = "DHCP";
-"ngateway_static_ip" = "Static IP";
-"ngateway_network_connectivity" = "Network Connectivity";
-"ngateway_ssid" = "SSID";
-"ngateway_refresh" = "Refresh";
-"ngateway_password" = "Password";
-"ngateway_ip_address" = "IP Address";
-"ngateway_subnet_mask" = "Subnet Mask";
-"ngateway_gateway_address" = "Gateway Address";
-"ngateway_primary_dns" = "Primary DNS";
-"ngateway_secondary_dns" = "Secondary DNS";
-"ngateway_add_action" = "Add +";
-"ngateway_no_associated_spaces" = "No associated spaces";
 
 //v1.5-- NEightKeySwitches
 "neightkeyswitches_battery_power_switch" = "Battery Power\nSwitch";

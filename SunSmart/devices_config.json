@@ -1247,5 +1247,14 @@
         "iconCategory": "EMSign",
         "deviceCategory": "Lighting",
         "modelName": "SR-BL9036T-PCBA"
+    },
+    {
+        "companyId" : "0A78",
+        "productId" : "2721",
+        "categoryName" : "Gateway",
+        "elementCount" : 2,
+        "iconCategory" : "Gateway",
+        "deviceCategory" : "Gateway",
+        "modelName" : "SR-BL-AB-XX"
     }
 ]

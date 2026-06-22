@@ -2227,15 +2227,23 @@ extension SiteViewController: SiteGatewayStatusViewDelegate {
             return
         }
         
-        guard let gatewayVc = GatewayViewController(site: site, gateway: gateway) else {
-            XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
-            return
+        let gatewayVc: UIViewController
+        if gateway.node.isWiFiGateway {
+            guard let controller = WiFiGatewayViewController(site: site, gateway: gateway) else {
+                XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
+                return
+            }
+            gatewayVc = controller
+        } else {
+            guard let controller = GatewayViewController(site: site, gateway: gateway) else {
+                XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
+                return
+            }
+            gatewayVc = controller
         }
         if isIPad {
             gatewayVc.preferredContentSize = iPadStandardSize
         }
-        //测试v1.5网桥
-       // let gatewayVc = PJNGatewayViewController(site: site, gateway: gateway)
         present(NavigationViewController(rootViewController: gatewayVc), animated: true)
         
     }

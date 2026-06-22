@@ -9,13 +9,12 @@
 - `Common`：1.5 设备添加、恢复入口的公共分发层。
 - `FireAlarm`：应急火警控制器，业务链路相对完整，包含本地配置、绑定节点、虚拟组、同步、监控、删除、导入导出等。
 - `NEightKeySwitches`：8 键开关，目前主要是 UI/页面骨架、基础模型和本地元数据保存，业务层还没有完整闭环。
-- `NGateWay`：Wifi + SIG Mesh 网桥，目前主要是 UI/页面骨架和部分云端/网关配置尝试，业务层还没有完整闭环。
 
 接手优先级建议：
 
 1. 先熟悉 `Common` 入口分发和老添加页面复用方式。
 2. 重点接 `FireAlarm`，这是当前最需要维护和继续补边界的完整业务。
-3. `NEightKeySwitches`、`NGateWay` 不要按已完成业务接手，需要重新按需求核对协议、数据存储、同步、删除、导入导出和异常态。
+3. `NEightKeySwitches` 不要按已完成业务接手，需要重新按需求核对协议、数据存储、同步、删除、导入导出和异常态。
 
 ## 公共入口
 
@@ -268,59 +267,12 @@
 2. 再确定本地表是否够用，目前只保存了面板类型和更多设置，可能不足以恢复完整业务。
 3. 最后补同步页/异常修复页，不要只靠 UI 状态展示。
 
-## NGateWay 网桥
-
-目录：`NGateWay`
-
-当前状态：UI、页面交互和部分网络/云端注册逻辑已有，完整设备业务层未完成。
-
-已有内容：
-
-- 添加/恢复容器：
-  - `Add/Controller/PJDevicesGatewayAddContainerController.swift`
-  - `Restore/Controller/PJDevicesGatewayRestoreContainerController.swift`
-- 主页面：
-  - `Controller/PJNGatewayViewController.swift`
-  - `View/PJNGatewayDetailView.swift`
-  - `ViewModel/PJNGatewayPageViewModel.swift`
-  - `Model/PJNGatewayModel.swift`
-- WiFi DFU：
-  - `Controller/PJNGatewayWiFiDFUViewController.swift`
-  - `Controller/PJNGatewayWiFiDFUHistoryViewController.swift`
-  - `ViewModel/PJNGatewayWiFiDFUViewModel.swift`
-  - `ViewModel/PJNGatewayWiFiDFUHistoryViewModel.swift`
-  - `Model/PJNGatewayWiFiDFUModel.swift`
-  - `Model/PJNGatewayWiFiDFUHistoryModel.swift`
-
-已有逻辑：
-
-- 页面可编辑名称、激活状态、网络信息展示。
-- 通过 `NEHotspotNetwork.fetchCurrent` 获取当前 SSID。
-- 有 2.4GHz 提示逻辑。
-- 有云端 gateway register/delete、关联空间查询/解绑的部分调用。
-- 注册成功后尝试通过 vendor message 下发 MQTT connect info。
-
-未完成/待接手确认：
-
-- 真实配网流程未完整闭环。
-- IP/DNS 等网络信息目前存在默认值/模拟填充，不能视为真实设备回读。
-- WiFi DFU 删除仍有 placeholder 文案。
-- 网关和空间关联的权限、云端状态、Mesh 设备状态三者需要完整设计状态机。
-- 删除网关时云端删除、本地 Gateway、Mesh Node、关联空间关系的顺序需要继续确认。
-- 添加入口目前没有传 `addBehavior`，要确认是否符合产品预期。
-
-建议接手方式：
-
-1. 先确认网关协议：配网、MQTT 下发、网络状态回读、DFU。
-2. 再确认云端 API：register、delete、association space list、unbind space 的错误码和权限策略。
-3. 最后统一 UI 状态，不要让模拟网络状态和真实设备状态混在一起。
-
 ## 国际化与 UI 规范
 
 历史要求：
 
 - 国际化写到 `SunSmart/en.lproj/Localizable.strings`。
-- 每个 1.5 模块建议用自己的注释区块，例如 `v1.5-- FireAlarm`、`v1.5-- NEightKeySwitches`、`v1.5-- NGateWay`。
+- 每个 1.5 模块建议用自己的注释区块，例如 `v1.5-- FireAlarm`、`v1.5-- NEightKeySwitches`。
 - UI 按 Figma，白色圆角、背景、约束和交互细节要严格检查。
 - 文件超过 500 行时尽量拆 Controller/ViewModel/View/Model，不要继续堆大文件。
 
@@ -335,7 +287,6 @@
 
 - `SunSmart.xcodeproj/project.pbxproj` 已修改。
 - `FireAlarm/firealarm.md` 当前处于删除状态。
-- `NGateWay/ngateWay.md` 当前处于删除状态。
 
 如果接手人需要恢复模块原始需求说明，可以从 git 历史里查看上述 md。
 
@@ -359,4 +310,3 @@
 - pending cleanup 不能丢，丢了会导致灯节点保留旧订阅。
 - local-only cleanup 不应要求 Mesh 在线。
 - 8 键开关和 NGateway 当前不是完整业务，后续排期要按“继续开发”估，不要按“修 bug”估。
-

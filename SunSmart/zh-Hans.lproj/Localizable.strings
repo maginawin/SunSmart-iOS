@@ -887,22 +887,6 @@
 "firmware_update_error" = "升级失败";
 "firmware_update_stop" = "停止升级";
 "firmware_update_underway" = "升级中";
-"ngateway_wifi_dfu_current_version" = "当前版本";
-"ngateway_wifi_dfu_loading" = "升级中...";
-"ngateway_wifi_dfu_upgrade_complete" = "升级完成！";
-"ngateway_wifi_dfu_download_failed" = "下载失败";
-"ngateway_wifi_dfu_upgrade_failed" = "升级失败";
-"ngateway_wifi_dfu_history_placeholder" = "固件历史";
-"ngateway_wifi_dfu_delete_placeholder" = "删除缓存包";
-"ngateway_wifi_dfu_note_1" = "优化调光性能";
-"ngateway_wifi_dfu_note_2" = "新增快捷调光按钮";
-"ngateway_wifi_dfu_note_3" = "修复低亮度下设备闪烁的问题";
-"ngateway_wifi_dfu_note_4" = "优化网关在网络中断后重新连接时的 Wi-Fi 稳定性表现。";
-"ngateway_wifi_dfu_more" = "更多";
-"ngateway_wifi_dfu_less" = "收起";
-"ngateway_wifi_dfu_close" = "关闭";
-"ngateway_wifi_dfu_upgrade" = "升级";
-"ngateway_wifi_dfu_upgrade_again" = "再次升级";
 "firmware_update_connect_timeout_message" = "固件升级错误：连接超时。请确保设备正常并靠近设备。";
 "firmware_update_notSupport_message" = "固件升级错误：设备不支持。老设备请检查设备规格书。";
 "firmware_update_noBindKey_message" = "固件升级错误：无应用密钥。请先维修设备后再升级。";
@@ -1809,40 +1793,6 @@
 "emer_fire_same_function_group_occupied" = "组 %@ 已被其它应急火警设备关联到相同应急功能。";
 "Emergency & Fire Alarm are all disabled" = "应急与火警均已禁用";
 
-//v1.5-- NGateWay
-"ngateway_sig_mesh" = "SIG Mesh";
-"ngateway_wifi" = "WiFi";
-"ngateway_only_supports_2_4ghz_networks" = "仅支持 2.4GHz 网络。";
-"ngateway_connect_to_wifi" = "连接到 Wi-Fi";
-"ngateway_disconnect" = "断开连接";
-"ngateway_nodes_count_format" = "节点数: %d";
-"ngateway_server_authentication_message" = "服务器认证尚未完成。连接网络后点击完成认证。";
-"ngateway_na" = "N/A";
-"ngateway_online" = "在线";
-"ngateway_offline" = "离线";
-"ngateway_excellent" = "优秀";
-"ngateway_good" = "良好";
-"ngateway_poor" = "较差";
-"ngateway_bad" = "差";
-"ngateway_no_signal" = "无信号";
-"ngateway_no_internet" = "无网络";
-"ngateway_authorize" = "授权";
-"ngateway_switch_2_4g_title" = "连接到 2.4 GHz Wi-Fi 网络";
-"ngateway_go_to_system_settings" = "前往系统设置";
-"ngateway_advance_network_settings" = "高级网络设置";
-"ngateway_dhcp" = "DHCP";
-"ngateway_static_ip" = "静态 IP";
-"ngateway_network_connectivity" = "网络连接";
-"ngateway_ssid" = "SSID";
-"ngateway_refresh" = "刷新";
-"ngateway_password" = "密码";
-"ngateway_ip_address" = "IP 地址";
-"ngateway_subnet_mask" = "子网掩码";
-"ngateway_gateway_address" = "网关地址";
-"ngateway_primary_dns" = "首选 DNS";
-"ngateway_secondary_dns" = "备用 DNS";
-"ngateway_add_action" = "添加 +";
-"ngateway_no_associated_spaces" = "暂无关联空间";
 
 //v1.5-- NEightKeySwitches
 "neightkeyswitches_battery_power_switch" = "电池供电\n开关";

@@ -1827,6 +1827,8 @@ extension Node {
         0x2493,
         0x2494
     ]
+    private static let wifiGatewayCompanyIdentifier: UInt16 = 0x0A78
+    private static let wifiGatewayProductIdentifiers: Set<UInt16> = [0x2721]
     private static let unsupportedMotionSensitivityCompanyIdentifier: UInt16 = 0x0A78
     private static let unsupportedMotionSensitivityProductIdentifiers: Set<UInt16> = [
         0x2121,
@@ -1854,6 +1856,14 @@ extension Node {
             return false
         }
         return externalLightSensorCapableLuminaireProductIdentifiers.contains(productIdentifier)
+    }
+
+    static func isWiFiGateway(companyIdentifier: UInt16?, productIdentifier: UInt16?) -> Bool {
+        guard companyIdentifier == wifiGatewayCompanyIdentifier,
+              let productIdentifier else {
+            return false
+        }
+        return wifiGatewayProductIdentifiers.contains(productIdentifier)
     }
     
     /// 设备类型
@@ -1967,6 +1977,13 @@ extension Node {
 
     var isExternalLightSensorCapableLuminaire: Bool {
         return Node.isExternalLightSensorCapableLuminaire(
+            companyIdentifier: companyIdentifier,
+            productIdentifier: productIdentifier
+        )
+    }
+
+    var isWiFiGateway: Bool {
+        return Node.isWiFiGateway(
             companyIdentifier: companyIdentifier,
             productIdentifier: productIdentifier
         )
