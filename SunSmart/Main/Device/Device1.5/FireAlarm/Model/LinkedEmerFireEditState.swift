@@ -170,17 +170,17 @@ final class LinkedEmerFireEditState {
     func stepperConfiguration(for row: LinkedEmerFireEditRow) -> LinkedEmerFireStepperConfiguration {
         switch row {
         case .fireAlarmBrightness:
-            return .init(title: "Fire Alarm Emergency", fieldTitle: "Set Brightness To:", value: fireAlarmBrightness, range: 10...100, suffix: "%")
+            return .init(title: "Fire Alarm Emergency".localizedString, fieldTitle: "set_brightness_to".localizedString, value: fireAlarmBrightness, range: 10...100, suffix: "%")
         case .powerLossBrightness:
-            return .init(title: "Power Loss Emergency", fieldTitle: "Set Brightness To:", value: powerLossBrightness, range: 1...100, suffix: "%")
+            return .init(title: "efc_power_loss_emergency".localizedString, fieldTitle: "set_brightness_to".localizedString, value: powerLossBrightness, range: 1...100, suffix: "%")
         case .triggerInterval:
-            return .init(title: "Repeatedly Send Emergency Control Every", value: triggerIntervalSeconds, range: 1...10, suffix: "s")
+            return .init(title: "efc_repeatedly_send_emergency_control_every".localizedString, value: triggerIntervalSeconds, range: 1...10, suffix: "s")
         case .restoreBrightness:
-            return .init(title: "Set Brightness To", value: restoreBrightness, range: 1...100, suffix: "%")
+            return .init(title: "linked_set_brightness_to".localizedString, value: restoreBrightness, range: 1...100, suffix: "%")
         case .restoreResuming:
-            return .init(title: "Resuming in:", value: restoreResumingSeconds, range: 0...120, suffix: "s")
+            return .init(title: "linked_resuming".localizedString, value: restoreResumingSeconds, range: 0...120, suffix: "s")
         case .restoreSendCount:
-            return .init(title: "Send Count (5-second interval):", value: restoreSendCount, range: 1...5, suffix: "")
+            return .init(title: "efc_send_count_5_second_interval".localizedString, value: restoreSendCount, range: 1...5, suffix: "")
         default:
             return .init(title: "", value: 0, range: 0...0, suffix: "")
         }

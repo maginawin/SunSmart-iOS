@@ -57,7 +57,7 @@ final class OthersViewController: UIViewController {
     private lazy var fireAlarmView: PJTopbtBoLabView = {
         return PJTopbtBoLabView(
             imageName:"space_device",
-            title: "Emer&Fire Alarm\nController",
+            title: "efc_entry_title".localizedString,
             target: self,
             action: #selector(fireAlarmAction)
         )

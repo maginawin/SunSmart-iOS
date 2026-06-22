@@ -560,8 +560,6 @@ extension GroupPathSequenceTriggerZoneController: MeshLibManagerMessageDelegate 
     func meshNetworkManager(_ manager: MeshNetworkManager,
                             didReceiveMessage message: MeshMessage,
                             sentFrom source: Address, to destination: Address) {
-        EmergencyFireControllerSceneEventManager.dispatch(message: message, source: source, destination: destination)
-
         // 确保是占用传感器model发出的数据
         guard let zone = selectZone else {
             return

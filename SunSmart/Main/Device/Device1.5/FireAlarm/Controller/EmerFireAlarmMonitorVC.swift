@@ -516,7 +516,7 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
             return
         }
         guard group.nodes.contains(where: { $0.state }) else {
-            XWHUDManager.showTipHUD("failed".localizedString + " !", isLineFeed: true)
+            XWHUDManager.showTipHUD("efc_no_devices_in_this_group".localizedString, isLineFeed: true)
             return
         }
         group.isOn.toggle()

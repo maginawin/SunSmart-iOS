@@ -44,7 +44,7 @@ extension EmerFireAlarmMonitorVC {
             }
             let controller = DeviceInformationViewController(
                 node: node,
-                emptyGroupText: "Not yet linked to a group".localizedString,
+                emptyGroupText: "efc_not_yet_linked_group".localizedString,
                 showsSceneSection: false,
                 groupTextOverride: self.informationGroupText()
             )
@@ -136,8 +136,11 @@ extension EmerFireAlarmMonitorVC {
     }
 
     func closeOrBack() {
-        if presentingViewController != nil && navigationController?.viewControllers.count ?? 0 == 1 {
+        let isNavigationRoot = navigationController?.viewControllers.first === self
+        if presentingViewController != nil && isNavigationRoot {
             dismiss(animated: true)
+        } else if navigationController?.presentingViewController != nil && isNavigationRoot {
+            navigationController?.dismiss(animated: true)
         } else {
             navigationController?.popViewController(animated: true)
         }

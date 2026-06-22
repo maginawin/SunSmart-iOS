@@ -39,7 +39,6 @@ extension EmerFireAlarmMonitorVC: UICollectionViewDataSource, UICollectionViewDe
 extension EmerFireAlarmMonitorVC: MeshLibManagerMessageDelegate {
 
     func meshNetworkManager(_ manager: MeshNetworkManager, didReceiveMessage message: MeshMessage, sentFrom source: Address, to destination: Address) {
-        EmergencyFireControllerSceneEventManager.dispatch(message: message, source: source, destination: destination)
     }
 
     func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {

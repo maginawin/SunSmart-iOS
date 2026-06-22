@@ -127,6 +127,7 @@ class SpaceViewController: WMPageController {
     private var autoTestTimer: Timer?
     private var isAllOn: Bool = true
     private var emergencyFireControllerSceneEventManager: EmergencyFireControllerSceneEventManager?
+    private var emergencyFireSceneMessageObserverId: UUID?
     
     private var networkableObservation: NSKeyValueObservation?
     private var meshNetworkConnectedObservation: NSKeyValueObservation?
@@ -299,8 +300,6 @@ class SpaceViewController: WMPageController {
         meshNetworkConnectedObservation = nil
         print("dealloc")
         stopAutoTestTimer()
-        emergencyFireControllerSceneEventManager?.deactivate()
-        emergencyFireControllerSceneEventManager = nil
     }
     
     /// 删除当前窗口的自定义view（防止权限清空强制退出页面时未关闭自定义view）
@@ -527,6 +526,26 @@ class SpaceViewController: WMPageController {
             CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: site.spaces), level: level)
         }
     }
+
+    private func registerEmergencyFireSceneMessageObserverIfNeeded() {
+        guard !hasStoppedPresenceTracking else { return }
+        guard emergencyFireSceneMessageObserverId == nil else { return }
+        emergencyFireSceneMessageObserverId = MeshLibManager.manager.addGlobalMessageObserver { [weak self] _, message, source, destination in
+            guard self?.emergencyFireControllerSceneEventManager != nil else { return }
+            EmergencyFireControllerSceneEventManager.dispatch(message: message, source: source, destination: destination)
+        }
+    }
+
+    private func removeEmergencyFireSceneMessageObserver() {
+        MeshLibManager.manager.removeGlobalMessageObserver(emergencyFireSceneMessageObserverId)
+        emergencyFireSceneMessageObserverId = nil
+    }
+
+    private func stopEmergencyFireSceneMonitoring() {
+        removeEmergencyFireSceneMessageObserver()
+        emergencyFireControllerSceneEventManager?.deactivate()
+        emergencyFireControllerSceneEventManager = nil
+    }
     
     /// 配置引导
     private func configurationFlowGuidance() {
@@ -583,6 +602,10 @@ class SpaceViewController: WMPageController {
                         XWHUDManager.showErrorTipHUD("unknown_error".localizedString)
                         return
                     }
+                    guard !self.hasStoppedPresenceTracking else {
+                        XWHUDManager.hide()
+                        return
+                    }
 //                    XWHUDManager.hideInView(with: self.view)
                     XWHUDManager.hide()
                     self.loadNetworkData = true
@@ -590,6 +613,7 @@ class SpaceViewController: WMPageController {
                         DeviceEmerFireStore.shared.devices(in: self.space)
                     }
                     self.emergencyFireControllerSceneEventManager?.activate()
+                    self.registerEmergencyFireSceneMessageObserverIfNeeded()
                     self.reloadData()
                     SpaceDebugUARTManager.shared.evaluateCurrentProxy(space: self.space)
                     DispatchQueue.global().async {
@@ -834,6 +858,7 @@ class SpaceViewController: WMPageController {
             return
         }
         hasStoppedPresenceTracking = true
+        stopEmergencyFireSceneMonitoring()
         stopHeartbeatTimer()
         stopUserAskTimer()
         if isHandlingExternalVendorMessages, MeshLibManager.manager.externalVendorMessageDelegate === self {

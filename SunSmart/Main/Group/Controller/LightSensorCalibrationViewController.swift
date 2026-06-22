@@ -995,8 +995,6 @@ extension LightSensorCalibrationViewController: LightSensorCalibrationPointLuxVi
 extension LightSensorCalibrationViewController: MeshLibManagerMessageDelegate {
     
     func meshNetworkManager(_ manager: MeshNetworkManager, didReceiveMessage message: any MeshMessage, sentFrom source: Address, to destination: Address) {
-        EmergencyFireControllerSceneEventManager.dispatch(message: message, source: source, destination: destination)
-
         guard selectSensor?.contains(elementWithAddress: source) ?? false, let sensorMessage = message as? SensorStatus else {
             return
         }

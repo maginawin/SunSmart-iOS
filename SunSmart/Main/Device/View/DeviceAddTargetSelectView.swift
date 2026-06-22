@@ -42,9 +42,9 @@ final class DeviceAddTargetSelectView: UIView {
             case .group:
                 return "\("group".localizedString):"
             case .batteryPowerSwitch:
-                return "Battery Power Switch:"
+                return "\("battery_power_switch_title".localizedString):"
             case .acPowerSwitch:
-                return "AC Power Switch:"
+                return "\("ac_power_switch_title".localizedString):"
             case .emergencyFire:
                 return "\("Emergency Controller".localizedString):"
             case .dongle:
@@ -236,7 +236,7 @@ final class DeviceAddTargetSelectView: UIView {
     private func title(for row: Row) -> String {
         switch row {
         case .space:
-            return "Space"
+            return "space".localizedString
         case .header(let section):
             return section.title
         case .group(let group):

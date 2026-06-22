@@ -47,7 +47,7 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
             return cell
         case .reportToGateway:
             let cell: EmerFireStatusTextCell = tableView.dequeueReusableCell(for: indexPath)
-            let statusText = "Waiting for setup"
+            let statusText = "efc_waiting_for_setup".localizedString
             let statusColor = RGB(247, 99, 95)
             let paragraphStyle = NSMutableParagraphStyle()
             let attributedStatusText = NSMutableAttributedString(
@@ -76,16 +76,16 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
         case .eventOccursHeader:
             let cell: EmerFireInfoCell = tableView.dequeueReusableCell(for: indexPath)
             cell.configure(
-                title: "When The Emergency Event Occurs:",
-                lines: ["Fire emergency take higher priority."],
+                title: "efc_event_occurs_title".localizedString,
+                lines: ["efc_event_occurs_tip".localizedString],
                 cardPosition: cardPosition(for: row)
             )
             return cell
         case .eventEndsHeader:
             let cell: EmerFireInfoCell = tableView.dequeueReusableCell(for: indexPath)
             cell.configure(
-                title: "When The Emergency Event Ends:",
-                lines: ["Execution will only begin after all emergency events have ceased."],
+                title: "efc_event_ends_title".localizedString,
+                lines: ["efc_event_ends_tip".localizedString],
                 cardPosition: cardPosition(for: row)
             )
             return cell
@@ -222,9 +222,9 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
 
     private var restoreActionOptions: [LinkedEmerFireRestoreActionOption] {
         [
-            .init(title: "Restore AUTO", type: .restoreAuto),
-            .init(title: "Set Brightness To", type: .setBrightness),
-            .init(title: "None", type: .none)
+            .init(title: "efc_restore_auto".localizedString, type: .restoreAuto),
+            .init(title: "linked_set_brightness_to".localizedString, type: .setBrightness),
+            .init(title: "restore_none".localizedString, type: .none)
         ]
     }
 }

@@ -396,7 +396,7 @@ extension EmerFireAlarmControllerSyncVC: UITableViewDataSource, UITableViewDeleg
             }
         } else if let task = row as? EmergencyFireControllerSyncTask {
             cell.imageView?.image = nil
-            cell.textLabel?.text = task.kind.rawValue
+            cell.textLabel?.text = task.kind.localizedTitle
             cell.detailTextLabel?.text = stateText(task.state)
             cell.detailTextLabel?.textColor = stateColor(task.state)
             cell.indentationLevel = 2

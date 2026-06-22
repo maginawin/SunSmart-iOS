@@ -1702,8 +1702,6 @@ extension GroupViewController: MeshLibManagerMessageDelegate {
     }
     
     func meshNetworkManager(_ manager: MeshNetworkManager, didReceiveMessage message: MeshMessage, sentFrom source: Address, to destination: Address) {
-        EmergencyFireControllerSceneEventManager.dispatch(message: message, source: source, destination: destination)
-
         // 传感器消息
         if let sensorNode = group.sensorNodes.first(where: { $0.contains(elementWithAddress: source) }) {
             if let sensorMessage = message as? SensorStatus {

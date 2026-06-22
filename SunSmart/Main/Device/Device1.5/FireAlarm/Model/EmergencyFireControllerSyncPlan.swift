@@ -9,17 +9,21 @@ import Foundation
 import NordicSigMeshSDK
 
 enum EmergencyFireControllerSyncTaskKind: String {
-    case publication = "Publication"
-    case enabled = "Enable"
-    case resend = "Resend"
-    case restoreDelay = "Restore Delay"
-    case actionConfig = "Action Config"
-    case lightnessSubscription = "Lightness Group"
-    case lightLCSubscription = "LC Group"
-    case associationSubscription = "Group Subscription"
-    case associationCleanup = "Group Cleanup"
-    case deleteCleanup = "Delete Cleanup"
-    case deleteConfiguration = "Delete Configuration"
+    case publication = "efc_sync_publication"
+    case enabled = "efc_sync_enable"
+    case resend = "efc_sync_resend"
+    case restoreDelay = "efc_sync_restore_delay"
+    case actionConfig = "efc_sync_action_config"
+    case lightnessSubscription = "efc_sync_lightness_group"
+    case lightLCSubscription = "efc_sync_lc_group"
+    case associationSubscription = "efc_sync_group_subscription"
+    case associationCleanup = "efc_sync_group_cleanup"
+    case deleteCleanup = "efc_sync_delete_cleanup"
+    case deleteConfiguration = "efc_sync_delete_configuration"
+
+    var localizedTitle: String {
+        rawValue.localizedString
+    }
 }
 
 final class EmergencyFireControllerSyncTask {
@@ -92,7 +96,7 @@ enum EmergencyFireControllerPublishGroupError: LocalizedError {
         case .createGroupFailed:
             return "failed".localizedString + " !"
         case .missingBoundNode, .nodeNotReady, .missingSceneClientModel:
-            return "The device needs to be repaired."
+            return "device_repair_message".localizedString
         }
     }
 }

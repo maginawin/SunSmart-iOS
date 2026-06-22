@@ -18,7 +18,7 @@ final class EmerFireNameCell: UITableViewCell {
     var syncAction: (() -> Void)?
 
     private lazy var titleLabel: UILabel = {
-        let label = UILabel(text: "Name", textColor: Title_Color, fontSize: 14, fontWeight: .light)
+        let label = UILabel(text: "name".localizedString, textColor: Title_Color, fontSize: 14, fontWeight: .light)
         label.setContentCompressionResistancePriority(.required, for: .horizontal)
         return label
     }()

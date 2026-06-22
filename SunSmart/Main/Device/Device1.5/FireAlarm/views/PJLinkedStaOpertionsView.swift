@@ -12,7 +12,7 @@ class PJLinkedStaOpertionsView: UIView {
 
     private lazy var linkedButton: UIButton = {
         UIButton(
-            title: "LINKED",
+            title: "efc_linked".localizedString,
             titleSize: 16,
             titleWeight: .light,
             titleColor: Green_Color,
@@ -27,7 +27,7 @@ class PJLinkedStaOpertionsView: UIView {
     }
 
     func configure(isLinked: Bool) {
-        let title = isLinked ? "LINKED" : "LINK"
+        let title = isLinked ? "efc_linked".localizedString : "efc_link".localizedString
         let titleColor = isLinked ? Green_Color : Red_Color
         linkedButton.setTitle(title, for: .normal)
         linkedButton.setTitle(title, for: .disabled)

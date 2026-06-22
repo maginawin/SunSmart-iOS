@@ -45,6 +45,37 @@ assert_count() {
   fi
 }
 
+assert_space_presence_stops_efc_scene_monitoring() {
+  local file="SunSmart/Main/Space/Controller/SpaceViewController.swift"
+
+  if ! awk '
+    /private func stopSpacePresenceTracking\(reason: SpacePresenceStopReason\)/ {
+      in_function = 1
+      found_function = 1
+    }
+    in_function {
+      line = $0
+      if (line ~ /stopEmergencyFireSceneMonitoring\(\)/) {
+        found_call = 1
+      }
+      opens = gsub(/\{/, "{", line)
+      closes = gsub(/\}/, "}", line)
+      depth += opens - closes
+      if (found_function && depth == 0) {
+        in_function = 0
+      }
+    }
+    END {
+      exit(found_function && found_call ? 0 : 1)
+    }
+  ' "$file"; then
+    echo "FAIL: Space presence cleanup must stop EFC scene monitoring so global observers do not accumulate across Space re-entry." >&2
+    echo "  expected stopSpacePresenceTracking(reason:) to call stopEmergencyFireSceneMonitoring()" >&2
+    echo "  in file: $file" >&2
+    exit 1
+  fi
+}
+
 assert_efc_status_legend_fits_iphone16() {
   local file="SunSmart/Main/Device/Device1.5/FireAlarm/views/EmerFireAlarmStatusLegendHeaderView.swift"
   local iphone16_width=393
@@ -115,8 +146,53 @@ assert_contains "SunSmart/Main/Device/Controller/DeviceAddProfessionalModeContro
   "Professional Add Device group-add must append EFC group mutation messages."
 
 assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC.swift" \
-  "openSyncAfterLinkedDeviceIfNeeded()" \
-  "Bind to a new EFC must enter the EFC sync flow when there is syncable configuration."
+  "self.openSyncAfterLinkedDeviceIfNeeded()" \
+  "Bind to a new EFC must enter the EFC sync flow after Add Device is dismissed when there is syncable group configuration."
+
+assert_not_contains "SunSmart/Main/Device/Controller/DeviceAddClassicModeController.swift" \
+  "appendLinkedEmergencyFireControllerGroupSubscriptionMessages(controller: controller, appendMessages: &appendMessages)" \
+  "Classic EFC LINK must not append associated group subscription messages during Add Device."
+
+assert_not_contains "SunSmart/Main/Device/Controller/DeviceAddProfessionalModeController.swift" \
+  "appendLinkedEmergencyFireControllerGroupSubscriptionMessages(controller: controller, appendMessages: &appendMessages)" \
+  "Professional EFC LINK must not append associated group subscription messages during Add Device."
+
+assert_not_contains "SunSmart/Main/Device/Controller/DeviceAddClassicModeController.swift" \
+  "linkedEmergencyFireGroupSubscriptionMessageHandles" \
+  "Classic Add Device must not track linked EFC group subscription handles in fast-add append state."
+
+assert_not_contains "SunSmart/Main/Device/Controller/DeviceAddProfessionalModeController.swift" \
+  "linkedEmergencyFireGroupSubscriptionMessageHandles" \
+  "Professional Add Device must not track linked EFC group subscription handles in fast-add append state."
+
+assert_contains "SunSmart/Main/Device/Controller/DeviceAddClassicModeController.swift" \
+  "finishLinkedEmergencyFireControllerConfiguration(for: node)" \
+  "Classic EFC LINK must finish controller and associated group sync state together."
+
+assert_contains "SunSmart/Main/Device/Controller/DeviceAddProfessionalModeController.swift" \
+  "finishLinkedEmergencyFireControllerConfiguration(for: node)" \
+  "Professional EFC LINK must finish controller and associated group sync state together."
+
+assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC.swift" \
+  "self.dismiss(animated: true) { \[weak self\] in" \
+  "EFC LINK callback must not dismiss again because DeviceAddViewController already closes the Add Device flow before invoking the callback."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC.swift" \
+  "items = try planner.makeAssociatedGroupItems()" \
+  "EFC LINK sync must build associated group subscription items explicitly."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC.swift" \
+  'filter { !\$0\.tasks\.isEmpty }' \
+  "EFC LINK sync must ignore associated groups that do not produce subscription tasks."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC.swift" \
+  "items: items" \
+  "EFC LINK sync must pass limited associated group items to SyncDevicesViewController."
+
+assert_count "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC.swift" \
+  "SyncDevicesViewController(type: \.emergencyFire(data: device, items: nil, context: \.saveConfiguration(persistsSyncResult: true, changedFromConfiguration: nil)))" \
+  "1" \
+  "Only the manual/current-device sync entry may use nil EFC items; LINK sync must pass associated group items."
 
 assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC.swift" \
   "notifySpaceDataChanged(type: \.common)" \
@@ -227,6 +303,14 @@ assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAla
   "deleteNodes(nodes: \\[node\\])" \
   "EFC device deletion must send Reset through DeviceProtocol.deleteNodes."
 
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorRouting.swift" \
+  "navigationController?.presentingViewController != nil" \
+  "EFC device page close/back must dismiss a presented navigation controller root after Delete."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorRouting.swift" \
+  "navigationController?.dismiss(animated: true)" \
+  "EFC device page close/back must dismiss the modal navigation controller when it is the presented container."
+
 assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorRouting.swift" \
   "clearMonitoringConfiguration(for: device)" \
   "EFC device page Delete must not only clear monitoring configuration."
@@ -336,7 +420,7 @@ assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireCon
   "EFC associated group subscription must only create tasks for models the node actually owns."
 
 assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlan.swift" \
-  "case associationSubscription = \"Group Subscription\"" \
+  "case associationSubscription = \"efc_sync_group_subscription\"" \
   "EFC associated group subscription tasks must use the generic subscription task kind."
 
 assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
@@ -397,11 +481,44 @@ assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedE
   "Edit device must not show a Power Loss Action row."
 
 assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC+Table.swift" \
-  "Waiting for setup" \
+  "efc_waiting_for_setup" \
   "Report To Gateway must keep the current waiting-for-setup placeholder."
 
 assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Add/Controller/PJDevicesFireAlarmAddContainerController.swift" \
   "vc.bindTarget = context.bindTarget" \
   "Legacy FireAlarm add container must forward bindTarget."
+
+assert_contains "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshLibManager.swift" \
+  "addGlobalMessageObserver" \
+  "SDK must expose a global message observer for Space-level EFC scene dispatch."
+
+assert_contains "SunSmart/Main/Space/Controller/SpaceViewController.swift" \
+  "registerEmergencyFireSceneMessageObserverIfNeeded()" \
+  "Space must register the global EFC scene message observer after activating the scene manager."
+
+assert_contains "SunSmart/Main/Space/Controller/SpaceViewController.swift" \
+  "removeEmergencyFireSceneMessageObserver()" \
+  "Space must remove the global EFC scene message observer when leaving the Space lifecycle."
+
+assert_contains "SunSmart/Main/Space/Controller/SpaceViewController.swift" \
+  "stopEmergencyFireSceneMonitoring()" \
+  "Space must centralize EFC scene monitoring cleanup."
+
+assert_contains "SunSmart/Main/Space/Controller/SpaceViewController.swift" \
+  "guard !hasStoppedPresenceTracking else { return }" \
+  "Space must not register EFC scene monitoring from an async load callback after the Space has already stopped."
+
+assert_space_presence_stops_efc_scene_monitoring
+
+assert_count "SunSmart/Main/Space/Controller/SpaceViewController.swift" \
+  "EmergencyFireControllerSceneEventManager.dispatch(message: message, source: source, destination: destination)" \
+  "1" \
+  "Only SpaceViewController should dispatch EFC scene messages from the global observer."
+
+if grep -R "EmergencyFireControllerSceneEventManager.dispatch(message: message, source: source, destination: destination)" \
+  SunSmart/Main/Device SunSmart/Main/Group SunSmart/Main/Space/TriggerZone; then
+  echo "FAIL: Page-level EFC scene dispatch must be removed; Space global observer owns dispatch." >&2
+  exit 1
+fi
 
 echo "EFC controller flow contracts passed."

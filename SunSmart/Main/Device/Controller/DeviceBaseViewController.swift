@@ -237,8 +237,6 @@ extension DeviceBaseViewController: MeshLibManagerMessageDelegate {
     ///   - source: 来源设备地址
     ///   - destination: 接收设备地址
     func meshNetworkManager(_ manager: MeshNetworkManager, didReceiveMessage message: MeshMessage, sentFrom source: Address, to destination: Address) {
-        EmergencyFireControllerSceneEventManager.dispatch(message: message, source: source, destination: destination)
-
         if let node = manager.meshNetwork?.node(withAddress: source), !node.isProvisioner {
             node.updateData(message: message)
             if node.primaryUnicastAddress == self.node.primaryUnicastAddress {
