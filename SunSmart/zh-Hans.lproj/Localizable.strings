@@ -1883,8 +1883,8 @@
 "neightkeyswitches_long_press_dimming" = "长按\n调光";
 "neightkeyswitches_long_press_auto" = "长按\nAUTO";
 "neightkeyswitches_save_after_activation" = "激活后保存";
-"neightkeyswitches_activation_instruction_scene" = "请按下“按钮 2”和“按钮 ON”以激活设备。";
-"neightkeyswitches_activation_instruction_brightness" = "请按下“按钮 75%”和“按钮 ON”以激活设备。";
+"neightkeyswitches_activation_instruction_scene" = "请长按“按钮 2”和“按钮 ON”以激活设备。";
+"neightkeyswitches_activation_instruction_brightness" = "请长按“按钮 75%”和“按钮 ON”以激活设备。";
 "neightkeyswitches_activation_waiting_format" = "等待开关激活（%d秒）...";
 "neightkeyswitches_activation_detected" = "已检测到设备激活";
 "neightkeyswitches_activation_timeout" = "未检测到响应";
