@@ -123,6 +123,17 @@ final class PJEightKeySwitchMonitorViewModel {
         !canEditPowerSwitch
     }
 
+    var isSpaceMeshConnected: Bool {
+        MeshLibManager.manager.isMeshNetworkConnected
+    }
+
+    var canSendPanelGroupControl: Bool {
+        guard switchData.powerSwitchKind == .ac else {
+            return true
+        }
+        return isSpaceMeshConnected
+    }
+
     var canRefreshBattery: Bool {
         switchData.powerSwitchKind == .battery &&
             switchData.proxyNode?.isBatteryPowerSwitch == true &&
@@ -254,15 +265,25 @@ private extension PJEightKeySwitchMonitorViewModel {
             )
         }
 
-        let online = informationNode?.state == true
+        let isDeviceOnline = informationNode?.state == true
+        let isOnline = isSpaceMeshConnected && isDeviceOnline
+        let statusText: String
+        if !isSpaceMeshConnected {
+            statusText = "space_offline".localizedString
+        } else if isDeviceOnline {
+            statusText = "online".localizedString
+        } else {
+            statusText = "device_offline".localizedString
+        }
+
         return HeaderState(
             batteryText: "",
             batteryIconSystemName: "",
             statusPrefixText: "",
-            statusText: online ? "online".localizedString : "Offline".localizedString,
-            statusColor: online ? RGB(69, 197, 122) : RGB(148, 163, 184),
+            statusText: statusText,
+            statusColor: isOnline ? RGB(69, 197, 122) : RGB(148, 163, 184),
             updatedText: "",
-            style: online ? .normal : .unknown,
+            style: isOnline ? .normal : .unknown,
             showsRefreshButton: false,
             layout: .centeredStatus
         )

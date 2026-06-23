@@ -1722,6 +1722,7 @@
 "configuration_failed" = "配置失败";
 "configuration_not_support" = "设备不支持";
 "device_offline" = "设备离线";
+"space_offline" = "空间离线";
 "triggered" = "触发";
 "inactive" = "未触发";
 "disabled(tap to toggle)" = "禁用（点击切换）";

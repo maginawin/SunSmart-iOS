@@ -158,6 +158,7 @@ class DeviceSwitchViewController: UIViewController {
     }
     
     @objc private func saveBtnAction() {
+        setSwitchData.name = DeviceSwitchData.normalizedName(setSwitchData.name)
         // 是否创建开关
         var isCreate = false
         if self.switchData != nil {
@@ -622,9 +623,6 @@ extension DeviceSwitchViewController: UITableViewDataSource, UITableViewDelegate
             headerView.nameEditChanged = {[weak self] name in
                 self?.setSwitchData.name = name
                 self?.updateSaveEnabledState()
-                if name.count > 32 {
-                    return "text_length_exceeded".localizedString
-                }
                 // 重名
                 if name.count > 0 && MeshNetworkManager.instance.isSwitchTautonym(name: name) && name != self?.switchData?.name {
                     return "name_already_exists".localizedString

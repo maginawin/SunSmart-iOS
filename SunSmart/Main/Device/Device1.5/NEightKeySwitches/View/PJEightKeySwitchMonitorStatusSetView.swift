@@ -54,6 +54,7 @@ final class PJEightKeySwitchMonitorStatusSetView: UIView {
     private let groupLinkButton = UIButton(type: .custom)
     private let enableTitleLabel = UILabel(text: "enable".localizedString, textColor: Title_Color, fontSize: 13, fontWeight: .light, fit: false)
     let enableSwitch = UISwitch()
+    private let enableSwitchTouchShield = UIControl()
 
     private let expandedContainerView = UIView()
     private let statusCardView = UIView()
@@ -82,7 +83,8 @@ final class PJEightKeySwitchMonitorStatusSetView: UIView {
 
     func configure(state: State) {
         enableSwitch.setOn(state.isEnabled, animated: false)
-        enableSwitch.isEnabled = !state.isPending
+        enableSwitch.isEnabled = true
+        enableSwitchTouchShield.isHidden = false
 
         groupLinkButton.setImage(UIImage(named: state.isGroupLinked ? "group_linked" : "group_unlinked"), for: .normal)
 
@@ -176,6 +178,12 @@ final class PJEightKeySwitchMonitorStatusSetView: UIView {
         enableSwitch.snp.makeConstraints { make in
             make.centerY.equalTo(headerButton)
             make.right.equalToSuperview().offset(-SCRXFrom(24))
+        }
+
+        enableSwitchTouchShield.backgroundColor = .clear
+        contentView.addSubview(enableSwitchTouchShield)
+        enableSwitchTouchShield.snp.makeConstraints { make in
+            make.edges.equalTo(enableSwitch)
         }
 
         contentView.addSubview(enableTitleLabel)

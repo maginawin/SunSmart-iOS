@@ -102,10 +102,11 @@ struct PJPreAddEightKeySwitchesViewModel {
     }
 
     func buildSwitchData() -> PJEightKeySwitchData {
+        let normalizedDeviceName = DeviceSwitchData.normalizedName(deviceName)
         let switchData = sourceSwitchData?.copy() ?? PJEightKeySwitchData(
             id: UUID().uuidString,
             enabled: isEnabled,
-            name: deviceName,
+            name: normalizedDeviceName,
             linkGroupAddress: nil,
             subLinkGroupAddress: nil,
             bindGroupAddresses: selectedGroups.map(\.address.address),
@@ -116,7 +117,7 @@ struct PJPreAddEightKeySwitchesViewModel {
             proxyNodeAddress: nil
         )
         switchData.enabled = isEnabled
-        switchData.name = deviceName
+        switchData.name = normalizedDeviceName
         switchData.bindGroupAddresses = selectedGroups.map(\.address.address)
         switchData.sceneANumber = sceneDatas.first(where: { $0.type == .sceneA })?.scene?.number
         switchData.sceneBNumber = sceneDatas.first(where: { $0.type == .sceneB })?.scene?.number

@@ -1708,6 +1708,7 @@
 "configuration_failed" = "Configuration Failed";
 "configuration_not_support" = "Device not supported";
 "device_offline" = "Device Offline";
+"space_offline" = "Space Offline";
 "triggered" = "Triggered";
 "inactive" = "Inactive";
 "disabled(tap to toggle)" = "Disabled (tap to toggle)";
