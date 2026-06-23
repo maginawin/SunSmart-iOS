@@ -28,6 +28,7 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     private let virtualGroupControlSender = PJEightKeySwitchVirtualGroupControlSender()
     private var lastKeyTapTimes: [Int: Date] = [:]
     private let keyTapThrottleInterval: TimeInterval = 0.2
+    private var meshNetworkConnectedObservation: NSKeyValueObservation?
 
     init(space: SpaceData, switchData: PJEightKeySwitchData) {
         viewModel = PJEightKeySwitchMonitorViewModel(space: space, switchData: switchData)
@@ -45,6 +46,7 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         setupNavigation()
         setupUI()
         bindActions()
+        addObservation()
         updateUI()
     }
 
@@ -59,9 +61,11 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
             guard viewModel.isRealBatteryPowerSwitch else {
                 return
             }
-            items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: { [weak self] _ in
-                self?.pushInformation()
-            }))
+            items.append(makeInformationMenuItem())
+            if viewModel.switchData.powerSwitchKind == .ac {
+                items.append(makeIdentifyMenuItem())
+                items.append(makeRefreshMenuItem())
+            }
         } else {
             if viewModel.space.deviceOperates.contains(.edit) {
                 items.append(.init(icon: UIImage(named: "menu_edit"), title: "edit".localizedString, tapItemBack: { [weak self] _ in
@@ -75,13 +79,12 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
             }
             if !viewModel.isUnlinkedVirtualBatteryPowerSwitch {
                 if viewModel.isRealBatteryPowerSwitch {
-                    items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: { [weak self] _ in
-                        self?.pushInformation()
-                    }))
+                    items.append(makeInformationMenuItem())
                 }
-                items.append(.init(icon: UIImage(named: "menu_identify"), title: "Identify", tapItemBack: { [weak self] _ in
-                    self?.identifyAction()
-                }))
+                items.append(makeIdentifyMenuItem())
+                if viewModel.switchData.powerSwitchKind == .ac {
+                    items.append(makeRefreshMenuItem())
+                }
             }
         }
 
@@ -95,15 +98,29 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         MenuPopView.show(items: items, anchorPoint: windowPoint, menuWidth: SCRXFrom(114))
     }
 
+    private func makeInformationMenuItem() -> MenuPopView.MenuItem {
+        .init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: { [weak self] _ in
+            self?.pushInformation()
+        })
+    }
+
+    private func makeIdentifyMenuItem() -> MenuPopView.MenuItem {
+        .init(icon: UIImage(named: "menu_identify"), title: "Identify", tapItemBack: { [weak self] _ in
+            self?.identifyAction()
+        })
+    }
+
+    private func makeRefreshMenuItem() -> MenuPopView.MenuItem {
+        .init(icon: UIImage(named: "menu_refresh"), title: "refresh".localizedString, tapItemBack: { [weak self] _ in
+            self?.refreshCurrentACPowerSwitch()
+        })
+    }
+
     private func showNoPermissionTip() {
         XWHUDManager.showTipHUD("No permission!", isLineFeed: true)
     }
 
     private func identifyAction() {
-        guard viewModel.canEditPowerSwitch else {
-            showNoPermissionTip()
-            return
-        }
         guard let node = viewModel.informationNode else {
             XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
             return
@@ -111,6 +128,11 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
 
         if viewModel.switchData.powerSwitchKind == .ac {
             identifySender.sendIdentify(to: node)
+            return
+        }
+
+        guard viewModel.canEditPowerSwitch else {
+            showNoPermissionTip()
             return
         }
 
@@ -231,6 +253,17 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         }
     }
 
+    private func addObservation() {
+        guard viewModel.switchData.powerSwitchKind == .ac else {
+            return
+        }
+        meshNetworkConnectedObservation = MeshLibManager.manager.observe(\.isMeshNetworkConnected, options: [.new]) { [weak self] _, _ in
+            DispatchQueue.main.async {
+                self?.updateUI()
+            }
+        }
+    }
+
     private func updateUI() {
         let header = viewModel.headerState
         headerView.configure(state: .init(
@@ -290,6 +323,30 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         flow.start()
     }
 
+    private func refreshCurrentACPowerSwitch() {
+        guard viewModel.switchData.powerSwitchKind == .ac else {
+            return
+        }
+        guard let node = viewModel.informationNode else {
+            XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
+            return
+        }
+
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 2)
+        MeshAPI.getNodeState(address: node.primaryUnicastAddress)
+        updateUI()
+
+        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5) { [weak self] nodes in
+            guard let self else { return }
+            if !nodes.contains(where: { $0.node.primaryUnicastAddress == node.primaryUnicastAddress }) {
+                node.rssi = nil
+            }
+            DispatchQueue.main.async {
+                self.updateUI()
+            }
+        }
+    }
+
     private func finishBatteryRefresh() {
         isRefreshing = false
         headerView.setRefreshing(false)
@@ -300,10 +357,21 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         guard !viewModel.isUnlinkedVirtualBatteryPowerSwitch else {
             return
         }
+        guard shouldSendPanelGroupControl() else {
+            return
+        }
         guard shouldAcceptKeyTap(index: index) else {
             return
         }
         virtualGroupControlSender.sendKeyTap(index: index, switchData: viewModel.switchData)
+    }
+
+    private func shouldSendPanelGroupControl() -> Bool {
+        guard viewModel.canSendPanelGroupControl else {
+            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+            return false
+        }
+        return true
     }
 
     private func shouldAcceptKeyTap(index: Int, now: Date = Date()) -> Bool {
@@ -316,6 +384,7 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     }
 
     deinit {
+        meshNetworkConnectedObservation = nil
         batteryRefreshFlow?.cancel()
         txEnableFlow?.cancel()
         identifyFlow?.cancel()
@@ -408,9 +477,13 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         guard !viewModel.isUnlinkedVirtualBatteryPowerSwitch else {
             return
         }
+        guard shouldSendPanelGroupControl() else {
+            return
+        }
         let vc = PJEightKeySwitchDimmingPopupController()
         vc.brightnessEndedAction = { [weak self] value in
             guard let self else { return }
+            guard self.shouldSendPanelGroupControl() else { return }
             self.virtualGroupControlSender.sendBrightness(value, switchData: self.viewModel.switchData)
         }
         present(vc, animated: true)
@@ -420,9 +493,13 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         guard !viewModel.isUnlinkedVirtualBatteryPowerSwitch else {
             return
         }
+        guard shouldSendPanelGroupControl() else {
+            return
+        }
         let vc = PJEightKeySwitchForcedAutoPopupController()
         vc.autoAction = { [weak self] in
             guard let self else { return }
+            guard self.shouldSendPanelGroupControl() else { return }
             self.virtualGroupControlSender.sendAuto(switchData: self.viewModel.switchData)
         }
         present(vc, animated: true)

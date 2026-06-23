@@ -43,31 +43,17 @@ class DeviceSwitchHeaderView: UITableViewHeaderFooterView {
         guard let text = sender.text else {
             return
         }
+
+        let normalizedText = DeviceSwitchData.normalizedName(text)
+        if normalizedText != text {
+            sender.text = normalizedText
+        }
         
-        if let message = nameEditChanged?(text) {
-            if text.count > 32 { // 是否超限
-                sender.text = text.subString(rang: NSMakeRange(0, 32))
-                DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5) {
-                    self.tipTextLabel.text = nil
-                }
-            }
+        if let message = nameEditChanged?(normalizedText) {
             tipTextLabel.text = message
         }else {
             tipTextLabel.text = nil
         }
-        
-//        if let message = delegate?.view(self, nameEditChanged: text) {
-////            if text.count > 32 { // 是否超限
-////                sender.text = text.subString(rang: NSMakeRange(0, 32))
-////                DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5) {
-////                    self.tipTextLabel.isHidden = true
-////                }
-////            }
-//            tipTextLabel.text = message
-//        }else {
-//            tipTextLabel.text = nil
-//        }
-    
     }
     
     @objc private func syncFailedBtnAction() {

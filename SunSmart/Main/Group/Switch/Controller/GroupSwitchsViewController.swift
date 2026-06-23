@@ -831,17 +831,15 @@ extension GroupSwitchsViewController: GroupSwitchsHeaderViewDelegate {
         guard let groupSwitch = view.groupSwitch, self.editable else {
             return
         }
-        SRAlertView(title: "edit_name".localizedString, messageColor: Red_Color, messageFont: UIFont.systemFont(ofSize: 13, weight: .light), inputText: groupSwitch.name, inputFieldStyle: .init(placeholder: ""), actions: [.cancelAction, .init(title: "done".localizedString, style: .default)]) { text, validRange in
-//            guard let self = self else { return }
-             if !validRange && !text.isEmpty { // 长度超限
-                 return "text_length_exceeded".localizedString
-             }else if MeshNetworkManager.instance.isSwitchTautonym(name: text) && text != groupSwitch.name { // 重名
+        SRAlertView(title: "edit_name".localizedString, messageColor: Red_Color, messageFont: UIFont.systemFont(ofSize: 13, weight: .light), inputText: groupSwitch.name, inputFieldStyle: .init(placeholder: ""), actions: [.cancelAction, .init(title: "done".localizedString, style: .default)]) { text, _ in
+             let normalizedName = DeviceSwitchData.normalizedName(text)
+             if MeshNetworkManager.instance.isSwitchTautonym(name: normalizedName) && normalizedName != groupSwitch.name { // 重名
                  return "name_already_exists".localizedString
              }
              return nil
          } inputDoneBack: {[weak self] text in
              guard let self = self else { return }
-             groupSwitch.name = text
+             groupSwitch.name = DeviceSwitchData.normalizedName(text)
              self.syncRealSwitchData(copySwitch: groupSwitch)
              self.reloadSwitchItem(switchData: groupSwitch)
              NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)

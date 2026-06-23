@@ -174,6 +174,13 @@ final class PJEightKeySwitchData: DeviceSwitchData {
         return needsBatteryPowerSwitchConfigurationSync || needsBatteryPowerSwitchTxEnableSync || needsBatteryPowerSwitchLEDIndicatorSync || needSyncData
     }
 
+    var needsPowerSwitchSyncNotice: Bool {
+        guard proxyNode?.isPowerSwitch == true else {
+            return false
+        }
+        return syncState != .synced || needsBatteryPowerSwitchSync
+    }
+
     var needsBatteryPowerSwitchTxEnableSync: Bool {
         guard proxyNode?.isPowerSwitch == true else {
             return false
@@ -279,7 +286,7 @@ final class PJEightKeySwitchData: DeviceSwitchData {
         let isBound = proxyNode?.isPowerSwitch == true || !(enOceanMacAddress?.isEmpty ?? true)
         let needsSync: Bool
         if proxyNode?.isPowerSwitch == true {
-            needsSync = syncState != .synced || needsBatteryPowerSwitchSync
+            needsSync = needsPowerSwitchSyncNotice
         } else {
             needsSync = needSyncData
         }
