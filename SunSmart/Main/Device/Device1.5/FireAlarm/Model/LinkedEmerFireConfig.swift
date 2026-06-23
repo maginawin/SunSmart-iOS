@@ -190,8 +190,8 @@ extension EmergencyFireControllerConfiguration {
         !fireAlarmSettings.pendingUnassociateGroupAddresses.isEmpty
     }
 
-    /// 导入后重新判断同步态使用的业务意图。
-    /// 不要盲信外部 JSON 的 isSynced；只要还有绑定、publish group 或配置意图，就应该让同步流程重新对齐。
+    /// 是否存在需要同步流程处理的业务意图。
+    /// 旧云端 payload 缺少 isSynced 时，导入流程会用它作为同步态 fallback。
     var hasSyncIntent: Bool {
         !activeLightLCGroupAddresses.isEmpty || hasPendingCleanup
     }

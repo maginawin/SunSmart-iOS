@@ -1694,9 +1694,10 @@ extension SpaceData {
                     let bindNodeAddress = controllerJson["bindNodeAddress"].string.flatMap { Address(hex: $0) }
                     let publishGroupAddress = controllerJson["publishGroupAddress"].string.flatMap { Address(hex: $0) }
                     let resolvedConfiguration = configuration ?? .defaultValue
-                    let importedIsSynced = !resolvedConfiguration.hasSyncIntent &&
+                    let fallbackImportedIsSynced = !resolvedConfiguration.hasSyncIntent &&
                         bindNodeAddress == nil &&
                         publishGroupAddress == nil
+                    let importedIsSynced = controllerJson["isSynced"].bool ?? fallbackImportedIsSynced
                     let controller = DeviceEmerFireData(
                         id: id,
                         spaceId: self.id,

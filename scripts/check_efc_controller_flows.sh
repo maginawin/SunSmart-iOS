@@ -214,6 +214,10 @@ assert_contains "SunSmart/Common/Data/ImportData.swift" \
   "DeviceEmerFireStore.shared.devices(in: self)" \
   "Space import must merge real EFC nodes with the current Space context after importing controllers."
 
+assert_contains "SunSmart/Common/Data/ImportData.swift" \
+  "controllerJson\\[\"isSynced\"\\]\\.bool" \
+  "Space import must preserve explicit EFC isSynced value from cloud payload."
+
 assert_contains "SunSmart/Common/Data/ExportData.swift" \
   "spaceJsonData.updateValue(emergencyFireControllerDicts, forKey: \"emergencyFireControllers\")" \
   "Space export must include EFC controllers in cloud payload."
