@@ -32,6 +32,10 @@ final class EmerFireAlarmMonitorViewModel {
         canConfigureDevice
     }
 
+    var isEffectiveVisitor: Bool {
+        !canConfigureDevice
+    }
+
     var isAllEmergencyFunctionsDisabled: Bool {
         false
     }

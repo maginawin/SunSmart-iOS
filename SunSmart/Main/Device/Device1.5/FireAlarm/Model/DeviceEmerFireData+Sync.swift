@@ -213,12 +213,12 @@ extension DeviceEmerFireData {
         let onlyChangedKeyParameters = oldConfiguration != nil
         let scenePublicationHandles = try getSceneClientPublicationMessageHandles(meshUUID: meshUUID, subnetworkId: subnetworkId)
         if !scenePublicationHandles.isEmpty {
-            tasks.append(EmergencyFireControllerSyncTask(title: "Scene Publication", kind: .publication, address: node.primaryUnicastAddress, messageHandles: scenePublicationHandles))
+            tasks.append(EmergencyFireControllerSyncTask(title: "efc_sync_scene_publication".localizedString, kind: .publication, address: node.primaryUnicastAddress, messageHandles: scenePublicationHandles))
         }
 
         if oldConfiguration == nil || oldConfiguration?.enabled != configuration.enabled {
             tasks.append(EmergencyFireControllerSyncTask(
-                title: "Enable",
+                title: "efc_sync_enable".localizedString,
                 kind: .enabled,
                 address: node.primaryUnicastAddress,
                 messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyEnabled(configuration.enabled)), model: vendorModel)],
@@ -229,7 +229,7 @@ extension DeviceEmerFireData {
         let triggerResend = configuration.triggerResendParameters()
         if oldConfiguration == nil || !configuration.triggerResendParametersEqual(to: oldConfiguration) {
             tasks.append(EmergencyFireControllerSyncTask(
-                title: "Trigger Resend",
+                title: "efc_sync_trigger_resend".localizedString,
                 kind: .resend,
                 address: node.primaryUnicastAddress,
                 messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyResendParameters(triggerResend)), model: vendorModel)],
@@ -241,7 +241,7 @@ extension DeviceEmerFireData {
         let oldRestoreResend = oldConfiguration?.resendParameters(for: .restore)
         if oldConfiguration == nil || !resendParametersEqual(oldRestoreResend, restoreResend) {
             tasks.append(EmergencyFireControllerSyncTask(
-                title: "Restore Resend",
+                title: "efc_sync_restore_resend".localizedString,
                 kind: .resend,
                 address: node.primaryUnicastAddress,
                 messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyResendParameters(restoreResend)), model: vendorModel)],
@@ -264,7 +264,7 @@ extension DeviceEmerFireData {
             )
             if oldConfiguration == nil || oldActionConfig != actionConfig {
                 tasks.append(EmergencyFireControllerSyncTask(
-                    title: "\(state.taskTitle) Action",
+                    title: state.syncActionTitle,
                     kind: .actionConfig,
                     address: node.primaryUnicastAddress,
                     messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyActionConfig(actionConfig)), model: vendorModel)],
@@ -275,7 +275,7 @@ extension DeviceEmerFireData {
 
         if oldConfiguration == nil || oldConfiguration?.restoreDelaySeconds() != configuration.restoreDelaySeconds() {
             tasks.append(EmergencyFireControllerSyncTask(
-                title: "Restore Delay",
+                title: "efc_sync_restore_delay".localizedString,
                 kind: .restoreDelay,
                 address: node.primaryUnicastAddress,
                 messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyRestoreDelay(seconds: configuration.restoreDelaySeconds())), model: vendorModel)],

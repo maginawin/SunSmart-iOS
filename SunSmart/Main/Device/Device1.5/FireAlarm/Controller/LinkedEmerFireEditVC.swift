@@ -190,7 +190,7 @@ final class LinkedEmerFireEditVC: UIViewController {
             return
         }
         guard device.bindNode == nil else {
-            XWHUDManager.showTipHUD("LINKED", isLineFeed: false)
+            XWHUDManager.showTipHUD("efc_linked".localizedString, isLineFeed: false)
             return
         }
 
@@ -203,8 +203,8 @@ final class LinkedEmerFireEditVC: UIViewController {
             allowedTypes: [.others],
             blockedDeviceTypes: [.dongle, .gateway, .unknown],
             selectionMode: .single,
-            forbiddenSelectionTip: "You can't choose other devices.",
-            forbiddenDeviceTypeTip: "Cannot add, type mismatch"
+            forbiddenSelectionTip: "efc_forbidden_other_devices".localizedString,
+            forbiddenDeviceTypeTip: "efc_type_mismatch".localizedString
         )
         controller.deviceAddCallback = { [weak self] _ in
             DispatchQueue.main.async {
@@ -214,9 +214,7 @@ final class LinkedEmerFireEditVC: UIViewController {
                 self.tableView.reloadData()
                 NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
                 NotificationCenter.default.post(name: .deviceEmerFireDataDidChange, object: nil)
-                self.dismiss(animated: true) { [weak self] in
-                    self?.openSyncAfterLinkedDeviceIfNeeded()
-                }
+                self.openSyncAfterLinkedDeviceIfNeeded()
             }
         }
 
@@ -230,7 +228,29 @@ final class LinkedEmerFireEditVC: UIViewController {
               device.configuration.hasSyncIntent else {
             return false
         }
-        let controller = SyncDevicesViewController(type: .emergencyFire(data: device, items: nil, context: .saveConfiguration(persistsSyncResult: true, changedFromConfiguration: nil)))
+        let planner = EmergencyFireControllerSyncPlanner(
+            data: device,
+            meshUUID: device.meshUUID,
+            subnetworkId: device.meshNetworkId
+        )
+        let items: [EmergencyFireControllerSyncItem]
+        do {
+            items = try planner.makeAssociatedGroupItems().filter { !$0.tasks.isEmpty }
+        } catch {
+            XWHUDManager.showErrorTipHUD(error.localizedDescription)
+            return false
+        }
+        guard !items.isEmpty else {
+            return false
+        }
+        let controller = SyncDevicesViewController(type: .emergencyFire(data: device, items: items, context: .saveConfiguration(persistsSyncResult: true, changedFromConfiguration: nil)))
+        controller.syncSuccessCallback = { [weak self] _ in
+            guard let self else { return }
+            _ = self.viewModel.refreshLinkedDeviceFromStore()
+            self.tableView.reloadData()
+            NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
+            NotificationCenter.default.post(name: .deviceEmerFireDataDidChange, object: nil)
+        }
         navigationController?.pushViewController(controller, animated: true)
         return true
     }
@@ -325,7 +345,7 @@ final class LinkedEmerFireEditVC: UIViewController {
     }
 
     private func setupNavigation() {
-        title = isCreateMode ? "Emer&Fire Controller" : "Edit"
+        title = isCreateMode ? "efc_controller_title".localizedString : "edit".localizedString
         let closeBarButtonItem = UIBarButtonItem(
             image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal),
             style: .done,

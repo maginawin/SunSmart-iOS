@@ -982,14 +982,15 @@ class SyncDevicesViewController: UIViewController {
     ) -> String {
         switch task.kind {
         case .resend:
-            if task.title.hasPrefix(EmergencyFireControllerState.restore.taskTitle) {
-                return "Send Count \(data.configuration.restoreSettings.sendCount)"
+            if task.title == EmergencyFireControllerState.restore.syncActionTitle ||
+                task.title == "efc_sync_restore_resend".localizedString {
+                return String(format: "efc_sync_send_count_format".localizedString, data.configuration.restoreSettings.sendCount)
             }
             return task.title
         case .restoreDelay:
-            return "Resuming in \(data.configuration.restoreSettings.resumingSeconds)s"
+            return String(format: "efc_sync_resuming_in_seconds_format".localizedString, data.configuration.restoreSettings.resumingSeconds)
         default:
-            return task.kind.rawValue
+            return task.kind.localizedTitle
         }
     }
 

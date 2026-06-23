@@ -35,14 +35,14 @@ enum EmergencyFireControllerState: String, Codable, CaseIterable, Equatable {
         }
     }
 
-    var taskTitle: String {
+    var syncActionTitle: String {
         switch self {
         case .emergencyTrigger:
-            return "Emergency"
+            return "efc_sync_emergency_action".localizedString
         case .fireTrigger:
-            return "Fire"
+            return "efc_sync_fire_action".localizedString
         case .restore:
-            return "Restore"
+            return "efc_sync_restore_action".localizedString
         }
     }
 }

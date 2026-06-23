@@ -47,6 +47,11 @@ final class EmergencyFireControllerSceneEventManager {
     /// 这个集合用于判断是否需要拦截关联灯组的普通手动控制。
     private static var activeEmergencyControllerIds: Set<String> = []
 
+    private enum ControllerMatchResult {
+        case matched(DeviceEmerFireData)
+        case failed(reason: String)
+    }
+
     /// 外部注入控制器列表，避免 Manager 直接依赖某个页面或 Store 的生命周期。
     private let controllersProvider: () -> [DeviceEmerFireData]
     /// App 希望 proxy filter 当前包含的 EFC 内部 publish group 地址。
@@ -137,10 +142,17 @@ final class EmergencyFireControllerSceneEventManager {
 
         // EFC 的 Scene Client publication 会发到它自己的内部 publish group。
         // 只有 source 能匹配绑定节点，且 destination 能匹配 publishGroupAddress，才认为是本业务事件。
-        guard let controller = matchingController(source: source, destination: destination),
+        let matchResult = controllerMatchResult(source: source, destination: destination)
+        guard case .matched(let controller) = matchResult,
               let nodeAddress = controller.bindNodeAddress,
               let publishGroupAddress = controller.publishGroupAddress else {
-            log("ignored scene recall scene: \(sceneNumber), source: \(source.hex), destination: \(destination.hex)")
+            let reason: String
+            if case .failed(let matchReason) = matchResult {
+                reason = matchReason
+            } else {
+                reason = "invalidControllerData"
+            }
+            log("ignored reason=\(reason) source=\(Self.addressDescription(source)) target=\(Self.addressDescription(destination)) scene=\(Self.sceneDescription(sceneNumber))")
             return nil
         }
 
@@ -156,7 +168,7 @@ final class EmergencyFireControllerSceneEventManager {
         Self.updateActiveEmergencyControllers(with: event)
         // 监控页通过这个通知进入 triggered/resuming/normal 等显示态。
         NotificationCenter.default.post(name: .init(emergencyFireControllerSceneEventNotificationName), object: event)
-        log("matched scene recall controller: \(controller.name), scene: \(sceneNumber), state: \(event.state), source: \(source.hex), destination: \(destination.hex)")
+        log("matched controller=\(controller.name) source=\(Self.addressDescription(source)) target=\(Self.addressDescription(destination)) scene=\(Self.sceneDescription(sceneNumber)) state=\(event.state)")
         return event
     }
 
@@ -210,15 +222,43 @@ final class EmergencyFireControllerSceneEventManager {
         }
     }
 
-    private func matchingController(source: Address, destination: Address) -> DeviceEmerFireData? {
-        controllersProvider().first { controller in
-            guard controller.publishGroupAddress == destination,
-                  let node = controller.bindNode else {
-                return false
-            }
-            // source 可能是节点主地址，也可能是 EFC 某个元素地址。
-            return node.primaryUnicastAddress == source || node.contains(elementWithAddress: source)
+    private func controllerMatchResult(source: Address, destination: Address) -> ControllerMatchResult {
+        let controllers = controllersProvider()
+        guard !controllers.isEmpty else {
+            return .failed(reason: "noController")
         }
+
+        var hasLinkedController = false
+        var hasTargetMatch = false
+        var hasSourceMatch = false
+
+        for controller in controllers {
+            guard let node = controller.bindNode else {
+                continue
+            }
+
+            hasLinkedController = true
+            let sourceMatches = node.primaryUnicastAddress == source || node.contains(elementWithAddress: source)
+            let targetMatches = controller.publishGroupAddress == destination
+
+            hasSourceMatch = hasSourceMatch || sourceMatches
+            hasTargetMatch = hasTargetMatch || targetMatches
+
+            if sourceMatches && targetMatches {
+                return .matched(controller)
+            }
+        }
+
+        if !hasLinkedController {
+            return .failed(reason: "noLinkedController")
+        }
+        if !hasTargetMatch {
+            return .failed(reason: "targetMismatch")
+        }
+        if !hasSourceMatch {
+            return .failed(reason: "sourceMismatch")
+        }
+        return .failed(reason: "noMatchingController")
     }
 
     private func removeProxyFilterAddresses() {
@@ -292,5 +332,13 @@ final class EmergencyFireControllerSceneEventManager {
     private static func addressesDescription(_ addresses: Set<Address>) -> String {
         guard !addresses.isEmpty else { return "[]" }
         return "[" + addresses.sorted().map { $0.hex }.joined(separator: ", ") + "]"
+    }
+
+    private static func sceneDescription(_ sceneNumber: SceneNumber) -> String {
+        "0x\(sceneNumber.hex)"
+    }
+
+    private static func addressDescription(_ address: Address) -> String {
+        "0x\(address.hex)"
     }
 }

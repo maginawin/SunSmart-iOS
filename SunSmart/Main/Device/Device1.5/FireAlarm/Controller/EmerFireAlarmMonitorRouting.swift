@@ -23,6 +23,11 @@ extension EmerFireAlarmMonitorVC {
             return
         }
 
+        if viewModel.isEffectiveVisitor {
+            showRealEmergencyFireControllerVisitorMenu()
+            return
+        }
+
         let config = currentConfig ?? currentDevice.map(viewModel.makeConfig(from:))
         var items: [MenuPopView.MenuItem] = []
         if canConfigureDevice {
@@ -36,20 +41,7 @@ extension EmerFireAlarmMonitorVC {
             }))
         }
 
-        items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: {[weak self] _ in
-            guard let self else { return }
-            guard let node = self.currentDevice?.bindNode else {
-                XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
-                return
-            }
-            let controller = DeviceInformationViewController(
-                node: node,
-                emptyGroupText: "Not yet linked to a group".localizedString,
-                showsSceneSection: false,
-                groupTextOverride: self.informationGroupText()
-            )
-            self.navigationController?.pushViewController(controller, animated: true)
-        }))
+        items.append(makeInformationMenuItem())
 
         if !isAllEmergencyFunctionsDisabled, canConfigureDevice {
             items.append(.init(icon: UIImage(named: "menu_refresh"), title: "refresh".localizedString, tapItemBack: {[weak self] _ in
@@ -57,15 +49,13 @@ extension EmerFireAlarmMonitorVC {
             }))
         }
         
-        let touchCenterX = view.width - navigationRightItemMargin - 15
-        let touchCenterY = view.safeAreaInsets.top - 10
-
-        let windowPoint = view.convert(CGPoint(x: touchCenterX, y: touchCenterY), to: UIApplication.shared.keyWindow())
-        MenuPopView.show(items: items, anchorPoint: windowPoint, menuWidth: SCRXFrom(114))
+        showEmergencyFireControllerMenu(items: items)
        
     }
 
     private func showUnlinkedVirtualEmergencyFireControllerMenu() {
+        guard !viewModel.isEffectiveVisitor else { return }
+
         let config = currentConfig ?? currentDevice.map(viewModel.makeConfig(from:))
         var items: [MenuPopView.MenuItem] = []
         if canConfigureDevice {
@@ -86,10 +76,36 @@ extension EmerFireAlarmMonitorVC {
             }))
         }
 
+        showEmergencyFireControllerMenu(items: items)
+    }
+
+    private func makeInformationMenuItem() -> MenuPopView.MenuItem {
+        .init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: { [weak self] _ in
+            guard let self else { return }
+            guard let node = self.currentDevice?.bindNode else {
+                XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
+                return
+            }
+            let controller = DeviceInformationViewController(
+                node: node,
+                emptyGroupText: "efc_not_yet_linked_group".localizedString,
+                showsSceneSection: false,
+                groupTextOverride: self.informationGroupText()
+            )
+            self.navigationController?.pushViewController(controller, animated: true)
+        })
+    }
+
+    private func showEmergencyFireControllerMenu(items: [MenuPopView.MenuItem]) {
+        guard !items.isEmpty else { return }
         let touchCenterX = view.width - navigationRightItemMargin - 15
         let touchCenterY = view.safeAreaInsets.top - 10
         let windowPoint = view.convert(CGPoint(x: touchCenterX, y: touchCenterY), to: UIApplication.shared.keyWindow())
         MenuPopView.show(items: items, anchorPoint: windowPoint, menuWidth: SCRXFrom(114))
+    }
+
+    private func showRealEmergencyFireControllerVisitorMenu() {
+        showEmergencyFireControllerMenu(items: [makeInformationMenuItem()])
     }
 
     private func informationGroupText() -> String? {
@@ -136,8 +152,11 @@ extension EmerFireAlarmMonitorVC {
     }
 
     func closeOrBack() {
-        if presentingViewController != nil && navigationController?.viewControllers.count ?? 0 == 1 {
+        let isNavigationRoot = navigationController?.viewControllers.first === self
+        if presentingViewController != nil && isNavigationRoot {
             dismiss(animated: true)
+        } else if navigationController?.presentingViewController != nil && isNavigationRoot {
+            navigationController?.dismiss(animated: true)
         } else {
             navigationController?.popViewController(animated: true)
         }

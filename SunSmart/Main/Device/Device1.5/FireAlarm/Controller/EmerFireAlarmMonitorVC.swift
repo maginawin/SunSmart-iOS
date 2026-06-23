@@ -400,8 +400,19 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
         return true
     }
 
+    private func guardVisitorCanUseMockAction() -> Bool {
+        guard !viewModel.isEffectiveVisitor else {
+            XWHUDManager.showTipHUD("Insufficient permissions".localizedString, isLineFeed: true)
+            return false
+        }
+        return true
+    }
+
     @discardableResult
     func mockFireAlarmAction() -> Bool {
+        guard guardVisitorCanUseMockAction() else {
+            return false
+        }
         guard guardLinkedDeviceForAction() else {
             return false
         }
@@ -417,6 +428,9 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
 
     @discardableResult
     func mockPowerLossAction() -> Bool {
+        guard guardVisitorCanUseMockAction() else {
+            return false
+        }
         guard guardLinkedDeviceForAction() else {
             return false
         }
@@ -432,6 +446,9 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
 
     @discardableResult
     func mockRestoreAction() -> Bool {
+        guard guardVisitorCanUseMockAction() else {
+            return false
+        }
         guard guardLinkedDeviceForAction() else {
             return false
         }
@@ -516,7 +533,7 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
             return
         }
         guard group.nodes.contains(where: { $0.state }) else {
-            XWHUDManager.showTipHUD("failed".localizedString + " !", isLineFeed: true)
+            XWHUDManager.showTipHUD("efc_no_devices_in_this_group".localizedString, isLineFeed: true)
             return
         }
         group.isOn.toggle()

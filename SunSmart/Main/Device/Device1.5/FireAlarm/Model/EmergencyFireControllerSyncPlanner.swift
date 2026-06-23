@@ -227,12 +227,12 @@ struct EmergencyFireControllerSyncPlanner {
     private func makeLocalCleanupPendingTask(groupAddress: Address, pendingFunctions: [EmergencyFireControllerFunction]) -> EmergencyFireControllerSyncTask {
         // 找不到组或组内没有可下发节点时，也需要一个 local-only task 来清 pending 标记。
         // 这种任务没有 messageHandles，删除/清理流程不能要求 Mesh 在线。
-        EmergencyFireControllerSyncTask(title: "Group Cleanup", kind: .associationCleanup, address: groupAddress, messageHandles: [], pendingFunctions: pendingFunctions, pendingGroupAddress: groupAddress, clearsUnassociatePending: true)
+        EmergencyFireControllerSyncTask(title: "efc_sync_group_cleanup".localizedString, kind: .associationCleanup, address: groupAddress, messageHandles: [], pendingFunctions: pendingFunctions, pendingGroupAddress: groupAddress, clearsUnassociatePending: true)
     }
 
     private func makeDeleteCleanupItem(groupAddress: Address, publishGroup: Group) -> EmergencyFireControllerSyncItem {
         guard let group = MeshNetworkManager.instance.meshNetwork?.group(withAddress: MeshAddress(groupAddress)) else {
-            let task = makeLocalDeleteCleanupTask(title: "Group Cleanup", address: groupAddress, groupAddress: groupAddress)
+            let task = makeLocalDeleteCleanupTask(title: "efc_sync_group_cleanup".localizedString, address: groupAddress, groupAddress: groupAddress)
             return EmergencyFireControllerSyncItem(name: String(format: "%04X", groupAddress), iconName: "device_light", address: groupAddress, tasks: [task], controller: data)
         }
 
@@ -308,7 +308,7 @@ struct EmergencyFireControllerSyncPlanner {
             return []
         }
         let task = EmergencyFireControllerSyncTask(
-            title: "Enable",
+            title: "efc_sync_enable".localizedString,
             kind: .enabled,
             address: node.primaryUnicastAddress,
             messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyEnabled(false)), model: vendorModel)]

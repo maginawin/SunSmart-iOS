@@ -575,17 +575,17 @@ class DeviceAddClassicModeController: UIViewController {
         }?.key
     }
 
-    private func finishEmergencyFireDefaultConfiguration(for node: Node) {
-        guard emergencyFireDefaultConfigurationMessageHandles.removeValue(forKey: node.primaryUnicastAddress) != nil,
+    private func finishLinkedEmergencyFireControllerConfiguration(for node: Node) {
+        let hadDefaultConfiguration = emergencyFireDefaultConfigurationMessageHandles.removeValue(forKey: node.primaryUnicastAddress) != nil
+        guard hadDefaultConfiguration,
               let controller = DeviceEmerFireStore.shared.devices(in: space).first(where: { $0.bindNodeAddress == node.primaryUnicastAddress }) else {
             return
         }
-        let failed = failedEmergencyFireDefaultConfigurationNodeAddresses.contains(node.primaryUnicastAddress)
+        let defaultConfigurationFailed = failedEmergencyFireDefaultConfigurationNodeAddresses.contains(node.primaryUnicastAddress)
         failedEmergencyFireDefaultConfigurationNodeAddresses.remove(node.primaryUnicastAddress)
-        if !controller.configuration.hasSyncIntent {
-            controller.isSynced = !failed
-            DeviceEmerFireStore.shared.save(controller)
-        }
+
+        controller.isSynced = !defaultConfigurationFailed
+        DeviceEmerFireStore.shared.save(controller)
     }
 
     private func emergencyFireGroupMutationNodeAddress(containing messageHandle: MeshMessageHandle) -> Address? {
@@ -1479,7 +1479,7 @@ class DeviceAddClassicModeController: UIViewController {
                     groupSyncFailed = self.resolveFastAddGroupSyncFailed(for: node)
                 }
                 if node.deviceType == .emergencyController {
-                    self.finishEmergencyFireDefaultConfiguration(for: node)
+                    self.finishLinkedEmergencyFireControllerConfiguration(for: node)
                 }
                 if node.isPowerSwitch,
                    let request = finalizeBatteryPowerSwitchAddConfiguration(for: node) {

@@ -12,3 +12,13 @@
 - 当前工程中 `NordicSigMeshSDK` 作为 Swift Package 被多个 target 引用，默认远程地址为 `https://gitee.com/sunricher-i-os/nordic-sig-mesh-sdk.git`。
 - 需要修改 SDK 开发功能时，应先将工程中的 SDK 依赖切换为上述本地路径引用，再在本地 SDK 仓库中修改和验证。
 - 修改 SDK 相关功能后，需要检查所有引用 `NordicSigMeshSDK` 的 target 是否仍能正常编译与运行。
+
+## 国际化要求
+
+* 所有新增或修改的用户可见文案均需支持国际化。
+* 当前支持语言：
+    * English（默认）
+    * 简体中文（zh-CN）
+* 优先复用现有国际化 Key。
+* 如不存在合适的 Key，则新增，并同步补充所有已支持语言的翻译。
+* 禁止硬编码用户可见文案。

@@ -194,7 +194,7 @@ final class EmerFireRestoreActionCell: UITableViewCell {
     }()
 
     private lazy var titleLabel: UILabel = {
-        let label = UILabel(text: "Action", textColor: Title_Color, fontSize: 16, fontWeight: .light)
+        let label = UILabel(text: "action".localizedString, textColor: Title_Color, fontSize: 16, fontWeight: .light)
         label.numberOfLines = 0
         label.setContentCompressionResistancePriority(.required, for: .vertical)
         return label
@@ -223,7 +223,7 @@ final class EmerFireRestoreActionCell: UITableViewCell {
     }()
 
     private lazy var brightnessFieldTitleLabel: UILabel = {
-        let label = UILabel(text: "Set Brightness To:", textColor: AssistText_Color, fontSize: 14, fontWeight: .light)
+        let label = UILabel(text: "set_brightness_to".localizedString, textColor: AssistText_Color, fontSize: 14, fontWeight: .light)
         label.numberOfLines = 1
         return label
     }()

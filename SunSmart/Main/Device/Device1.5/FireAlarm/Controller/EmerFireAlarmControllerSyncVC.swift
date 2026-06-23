@@ -307,12 +307,20 @@ final class EmerFireAlarmControllerSyncVC: UIViewController {
         }
         if persistsSyncResult {
             DeviceEmerFireStore.shared.save(data)
+            notifySpaceDataChangedForPersistedResult()
         }
         NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
         NotificationCenter.default.postLinkedEmerFireConfigDidChange(data.toConfig())
         if success {
             performSyncSuccessCallback()
         }
+    }
+
+    private func notifySpaceDataChangedForPersistedResult() {
+        NotificationCenter.default.post(
+            name: .init(spaceDataChangedNotificaitonName),
+            object: SpaceChangeDataType.device
+        )
     }
 
     private func performSyncSuccessCallback() {
@@ -396,7 +404,7 @@ extension EmerFireAlarmControllerSyncVC: UITableViewDataSource, UITableViewDeleg
             }
         } else if let task = row as? EmergencyFireControllerSyncTask {
             cell.imageView?.image = nil
-            cell.textLabel?.text = task.kind.rawValue
+            cell.textLabel?.text = task.kind.localizedTitle
             cell.detailTextLabel?.text = stateText(task.state)
             cell.detailTextLabel?.textColor = stateColor(task.state)
             cell.indentationLevel = 2

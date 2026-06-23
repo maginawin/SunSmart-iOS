@@ -22,7 +22,7 @@ class EmerFireAlarmMoniHead: UIView {
         view.font = UIFont.systemFont(ofSize: FontFit(14))
         view.textAlignment = .center
         view.textColor = UIColor(red: 1, green: 0.281, blue: 0.194, alpha: 1)
-        view.text = "Fire Alarm Emergency"
+        view.text = "Fire Alarm Emergency".localizedString
         return view
     }()
 
