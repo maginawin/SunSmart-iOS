@@ -342,7 +342,7 @@ class DeviceLightViewController: UIViewController {
 //                self?.readRoute()
 //            }))
 //        }
-        items.append(.init(icon: UIImage(named: "menu_information"), title: "Set Proxy", tapItemBack: {[weak self] _ in
+        items.append(.init(icon: UIImage(named: "menu_set_proxy"), title: "Set Proxy", tapItemBack: {[weak self] _ in
             guard let self = self else { return }
             XWHUDManager.showCustomHUD(withMessage: nil, view: self.view)
             MeshLibManager.manager.connectProxy(node: self.node) {[weak self] result in
@@ -356,7 +356,7 @@ class DeviceLightViewController: UIViewController {
                 
             }
         }))
-        items.append(.init(icon: UIImage(named: "menu_information"), title: "identify".localizedString, tapItemBack: {[weak self] _ in
+        items.append(.init(icon: UIImage(named: "menu_identify"), title: "identify".localizedString, tapItemBack: {[weak self] _ in
             guard let self = self else { return }
             self.sendIdentifyCommand()
 //            let appkey = MeshNetworkManager.instance.meshNetwork?.applicationKeys.first
@@ -367,7 +367,7 @@ class DeviceLightViewController: UIViewController {
 //            }
 //            87
         }))
-        items.append(.init(icon: UIImage(named: "menu_information"), title: "Reboot", tapItemBack: {[weak self] _ in
+        items.append(.init(icon: UIImage(named: "menu_firmware_update"), title: "Reboot", tapItemBack: {[weak self] _ in
             guard let self = self, let vendorModel = self.node.sunricherVendorModel else { return }
             MeshAPI.sendMessage(message: SunricherVendorSet(function: .deviceRestart), model: vendorModel)
         }))

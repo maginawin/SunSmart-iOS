@@ -78,7 +78,7 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
                         self?.pushInformation()
                     }))
                 }
-                items.append(.init(icon: UIImage(named: "device_identify"), title: "Identify", tapItemBack: { [weak self] _ in
+                items.append(.init(icon: UIImage(named: "menu_identify"), title: "Identify", tapItemBack: { [weak self] _ in
                     self?.identifyAction()
                 }))
             }
