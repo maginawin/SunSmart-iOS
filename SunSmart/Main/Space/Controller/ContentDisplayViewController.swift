@@ -41,7 +41,7 @@ class ContentDisplayViewController: UIViewController {
     private let options: [Options] = [.deviceNameDisplay, .cctQuickButtons, .controlStyle]
 
     private var isEditable: Bool {
-        space.permission == .owner || space.permission == .editor
+        space.deviceOperates.contains(.edit)
     }
         
     let space: SpaceData
@@ -67,8 +67,19 @@ class ContentDisplayViewController: UIViewController {
         navigationController?.setNavigationBarBackgroundColor(color: Background_Color)
         
         setupUI()
+        observeSpacePermissionChanges()
     }
-    
+
+    private func observeSpacePermissionChanges() {
+        NotificationCenter.default.addObserver(
+            forName: .init(spacePermissionChangedNotificaitonName),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.tableView?.reloadData()
+        }
+    }
+
     @objc private func back() {
         if navigationController?.viewControllers.count ?? 0 > 1 {
             navigationController?.popViewController(animated: true)

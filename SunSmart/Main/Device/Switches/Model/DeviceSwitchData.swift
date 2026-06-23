@@ -9,6 +9,15 @@ import Foundation
 import NordicSigMeshSDK
 
 class DeviceSwitchData: Copyable {
+
+    static let maxNameLength = 32
+
+    static func normalizedName(_ name: String) -> String {
+        guard name.count > maxNameLength else {
+            return name
+        }
+        return String(name.prefix(maxNameLength))
+    }
     
     /// 按键面板类型
     enum PanelType: UInt8 {

@@ -11,18 +11,36 @@ import NordicSigMeshSDK
 struct SwitchSceneData {
     enum SceneType {
         var title: String {
-            switch self {
-            case .sceneA:
-                return "switch_key_sceneA".localizedString
-            case .sceneB:
-                return "switch_key_sceneB".localizedString
-            case .sceneC:
-                return "switch_key_sceneC".localizedString
-            case .sceneD:
-                return "switch_key_sceneD".localizedString
+            title(style: .lettered)
+        }
+
+        func title(style: SwitchSelectScenePageController.TitleStyle) -> String {
+            switch style {
+            case .lettered:
+                switch self {
+                case .sceneA:
+                    return "switch_key_sceneA".localizedString
+                case .sceneB:
+                    return "switch_key_sceneB".localizedString
+                case .sceneC:
+                    return "switch_key_sceneC".localizedString
+                case .sceneD:
+                    return "switch_key_sceneD".localizedString
+                }
+            case .numbered:
+                switch self {
+                case .sceneA:
+                    return "neightkeyswitches_scene_1".localizedString
+                case .sceneB:
+                    return "neightkeyswitches_scene_2".localizedString
+                case .sceneC:
+                    return "neightkeyswitches_scene_3".localizedString
+                case .sceneD:
+                    return "neightkeyswitches_scene_4".localizedString
+                }
             }
         }
-        
+
         case sceneA
         case sceneB
         case sceneC
@@ -35,15 +53,22 @@ struct SwitchSceneData {
 
 class SwitchSelectScenePageController: WMPageController {
 
+    enum TitleStyle {
+        case lettered
+        case numbered
+    }
+
     /// 场景list
     let scenes: [Scene]
     /// 场景选择回调
     var scenesSelectCallback: (([SwitchSceneData])->Void)?
     
     var sceneDatas: [SwitchSceneData]!
+    let titleStyle: TitleStyle
     
-    init(scenes: [Scene], sceneDatas: [SwitchSceneData] = [.init(type: .sceneA), .init(type: .sceneB)]) {
+    init(scenes: [Scene], sceneDatas: [SwitchSceneData] = [.init(type: .sceneA), .init(type: .sceneB)], titleStyle: TitleStyle = .lettered) {
         self.scenes = scenes
+        self.titleStyle = titleStyle
 //        self.sceneA = sceneA
 //        self.sceneB = sceneB
         super.init(nibName: nil, bundle: nil)
@@ -136,7 +161,7 @@ extension SwitchSelectScenePageController {
     }
     
     override func menuView(_ menu: WMMenuView!, titleAt index: Int) -> String! {
-        return self.sceneDatas[index].type.title
+        return self.sceneDatas[index].type.title(style: titleStyle)
     }
     
 //    override func pageController(_ pageController: WMPageController, didEnter viewController: UIViewController, withInfo info: [AnyHashable : Any]) {

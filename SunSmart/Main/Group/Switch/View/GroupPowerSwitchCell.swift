@@ -21,7 +21,12 @@ final class GroupPowerSwitchHeaderView: UITableViewHeaderFooterView {
     var expandAction: (() -> Void)?
     var enableAction: ((Bool) -> Void)?
 
-    private let titleLabel = UILabel(text: nil, textColor: TextBlack_Color, fontSize: 14)
+    private let titleLabel: UILabel = {
+        let label = UILabel(text: nil, textColor: TextBlack_Color, fontSize: 14)
+        label.numberOfLines = 1
+        label.lineBreakMode = .byTruncatingTail
+        return label
+    }()
 
     private let detailLabel: UILabel = {
         let label = UILabel(text: nil, textColor: SubText_Color, fontSize: 14, fontWeight: .light)
@@ -81,10 +86,16 @@ final class GroupPowerSwitchHeaderView: UITableViewHeaderFooterView {
 
         enableSwitch.onTintColor = Bar_Color
         enableSwitch.tintColor = RGB(207, 207, 207)
+        enableSwitch.setContentHuggingPriority(.required, for: .horizontal)
+        enableSwitch.setContentCompressionResistancePriority(.required, for: .horizontal)
         contentView.addSubview(enableSwitch)
         enableSwitch.snp.makeConstraints { make in
             make.right.equalTo(arrowImageView.snp.left).offset(SCRXFrom(-12))
             make.centerY.equalToSuperview()
+        }
+
+        titleLabel.snp.makeConstraints { make in
+            make.right.lessThanOrEqualTo(enableSwitch.snp.left).offset(SCRXFrom(-8))
         }
 
         enableSwitch.addSubview(enableButton)

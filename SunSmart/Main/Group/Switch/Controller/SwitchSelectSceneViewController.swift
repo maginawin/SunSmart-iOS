@@ -160,6 +160,15 @@ extension SwitchSelectSceneViewController: UITableViewDataSource, UITableViewDel
             cell.iconImageView.image = selectImage?.withTintColor(RGB(216, 216, 216))
         }
         cell.iconX = tableView.width - 30 - SCRXFrom(8)
+        cell.titleLabel.numberOfLines = 1
+        cell.titleLabel.lineBreakMode = .byTruncatingTail
+        cell.titleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        cell.iconImageView.setContentCompressionResistancePriority(.required, for: .horizontal)
+        cell.titleLabel.snp.remakeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.centerY.equalToSuperview()
+            make.right.lessThanOrEqualTo(cell.iconImageView.snp.left).offset(-SCRXFrom(8))
+        }
         cell.arrowImageView.isHidden = true
         cell.lineView.backgroundColor = RGB(243, 243, 243, 0.7)
         cell.selectionStyle = .none

@@ -118,7 +118,11 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     }
     
     @objc private func nameDidChange(_ textField: UITextField) {
-        viewModel.deviceName = textField.text ?? ""
+        let normalizedName = DeviceSwitchData.normalizedName(textField.text ?? "")
+        if textField.text != normalizedName {
+            textField.text = normalizedName
+        }
+        viewModel.deviceName = normalizedName
         updateNameClearButtonState()
         updateSaveBarButtonState()
     }
@@ -143,7 +147,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     @objc private func syncFailedButtonAction() {
         view.endEditing(true)
         guard let switchData = currentEightKeySwitchData,
-              switchData.needsBatteryPowerSwitchSync else {
+              switchData.needsPowerSwitchSyncNotice else {
             updateSyncFailedButtonVisibility()
             return
         }
@@ -267,7 +271,8 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         
         let vc = SwitchSelectScenePageController(
             scenes: MeshNetworkManager.instance.scenes,
-            sceneDatas: viewModel.sceneDatas
+            sceneDatas: viewModel.sceneDatas,
+            titleStyle: .numbered
         )
         vc.scenesSelectCallback = { [weak self] sceneDatas in
             guard let self else { return }
@@ -441,7 +446,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
             editorView.syncFailedButton.isHidden = true
             return
         }
-        editorView.syncFailedButton.isHidden = !switchData.needsBatteryPowerSwitchSync
+        editorView.syncFailedButton.isHidden = !switchData.needsPowerSwitchSyncNotice
     }
     
     private func updatePanelPreviewHeight() {
