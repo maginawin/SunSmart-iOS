@@ -23,6 +23,7 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     private var batteryRefreshFlow: PJEightKeySwitchBatteryRefreshFlow?
     private var txEnableFlow: PJEightKeySwitchTxEnableFlow?
     private var identifyFlow: PJEightKeySwitchIdentifyFlow?
+    private let identifySender = MeshBatteryPowerSwitchIdentifySender()
     private var pendingEnabledValue: Bool?
     private let virtualGroupControlSender = PJEightKeySwitchVirtualGroupControlSender()
     private var lastKeyTapTimes: [Int: Date] = [:]
@@ -103,8 +104,13 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
             showNoPermissionTip()
             return
         }
-        guard viewModel.informationNode != nil else {
+        guard let node = viewModel.informationNode else {
             XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
+            return
+        }
+
+        if viewModel.switchData.powerSwitchKind == .ac {
+            identifySender.sendIdentify(to: node)
             return
         }
 

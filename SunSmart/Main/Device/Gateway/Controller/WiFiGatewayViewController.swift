@@ -40,7 +40,7 @@ final class WiFiGatewayViewController: GatewayViewController {
                 self?.deleteBtnAction()
             }))
         }
-        items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: { [weak self] _ in
+        items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, hideAnimation: false, tapItemBack: { [weak self] _ in
             guard let self else { return }
             let controller = DeviceInformationViewController(node: self.node, showsGroupSection: false, showsSceneSection: false)
             self.navigationController?.pushViewController(controller, animated: true)
