@@ -1172,7 +1172,7 @@
         "productId": "2132",
         "categoryName": "ZLLC Controller",
         "elementCount": 2,
-        "iconCategory": "Lighting",
+        "iconCategory": "ZLLControllerSensor",
         "deviceCategory": "Lighting",
         "modelName": "SR-BL2421-SSVT—AUXRJ45"
     },

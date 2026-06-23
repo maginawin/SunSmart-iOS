@@ -294,7 +294,7 @@ final class PJEightKeySwitchData: DeviceSwitchData {
 
     var displayIconAssetName: String {
         if powerSwitchKind == .ac, proxyNode?.state == false {
-            return "device_ACPowerSwitch_offline"
+            return "device_offline_ACPowerSwitch"
         }
         return powerSwitchKind.deviceIconAssetName
     }
