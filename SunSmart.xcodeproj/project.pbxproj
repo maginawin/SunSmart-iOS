@@ -2246,10 +2246,6 @@
 		C8D1C0242F10000000000001 /* UpDownLightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0202F10000000000001 /* UpDownLightView.swift */; };
 		C8D22E002E010A47001A2BDA /* GatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22DFF2E010A47001A2BDA /* GatewayViewController.swift */; };
 		C8D22E012E010A47001A2BDA /* GatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22DFF2E010A47001A2BDA /* GatewayViewController.swift */; };
-		C8F6A1002FA3000000000001 /* WiFiGatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1042FA3000000000001 /* WiFiGatewayViewController.swift */; };
-		C8F6A1012FA3000000000001 /* WiFiGatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1042FA3000000000001 /* WiFiGatewayViewController.swift */; };
-		C8F6A1022FA3000000000001 /* WiFiGatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1042FA3000000000001 /* WiFiGatewayViewController.swift */; };
-		C8F6A1032FA3000000000001 /* WiFiGatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1042FA3000000000001 /* WiFiGatewayViewController.swift */; };
 		C8D22E1D2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */; };
 		C8D22E1E2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */; };
 		C8D22E202E041020001A2BDA /* DeviceAddClassicModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */; };
@@ -2322,6 +2318,10 @@
 		C8F1A0022F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */; };
 		C8F1A0042F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */; };
 		C8F1A0062F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */; };
+		C8F6A1002FA3000000000001 /* WiFiGatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1042FA3000000000001 /* WiFiGatewayViewController.swift */; };
+		C8F6A1012FA3000000000001 /* WiFiGatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1042FA3000000000001 /* WiFiGatewayViewController.swift */; };
+		C8F6A1022FA3000000000001 /* WiFiGatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1042FA3000000000001 /* WiFiGatewayViewController.swift */; };
+		C8F6A1032FA3000000000001 /* WiFiGatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1042FA3000000000001 /* WiFiGatewayViewController.swift */; };
 		C8F837402E3B52560003B292 /* GatewaySectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */; };
 		C8F837412E3B52560003B292 /* GatewaySectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */; };
 		C8F837422E3B52560003B292 /* GatewaySectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */; };
@@ -2903,7 +2903,6 @@
 		C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceUpDownRatioControlView.swift; sourceTree = "<group>"; };
 		C8D1C0202F10000000000001 /* UpDownLightView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpDownLightView.swift; sourceTree = "<group>"; };
 		C8D22DFF2E010A47001A2BDA /* GatewayViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayViewController.swift; sourceTree = "<group>"; };
-		C8F6A1042FA3000000000001 /* WiFiGatewayViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiGatewayViewController.swift; sourceTree = "<group>"; };
 		C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddProfessionalModeController.swift; sourceTree = "<group>"; };
 		C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddClassicModeController.swift; sourceTree = "<group>"; };
 		C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileDayNightLuxDevicesViewController.swift; sourceTree = "<group>"; };
@@ -2966,6 +2965,7 @@
 		C8EF54732C1AFA53008389CE /* NetworkLoggerPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkLoggerPlugin.swift; sourceTree = "<group>"; };
 		C8EFC1012FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceGroupDeferredSyncPlanner.swift; sourceTree = "<group>"; };
 		C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequenceAddDescriptionController.swift; sourceTree = "<group>"; };
+		C8F6A1042FA3000000000001 /* WiFiGatewayViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiGatewayViewController.swift; sourceTree = "<group>"; };
 		C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewaySectionHeaderView.swift; sourceTree = "<group>"; };
 		C8F89D372E3B6F8500FA1544 /* GatewayAPNMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayAPNMenuView.swift; sourceTree = "<group>"; };
 		C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayModel.swift; sourceTree = "<group>"; };
@@ -7796,7 +7796,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F10000000000000000000003 /* Debug.xcconfig */;
 			buildSettings = {
-				MARKETING_VERSION = 1.0.20;
+				MARKETING_VERSION = 1.0.21;
 			};
 			name = Debug;
 		};
@@ -7804,7 +7804,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F10000000000000000000004 /* Release.xcconfig */;
 			buildSettings = {
-				MARKETING_VERSION = 1.0.20;
+				MARKETING_VERSION = 1.0.21;
 			};
 			name = Release;
 		};
@@ -7815,7 +7815,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.5;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Debug;
@@ -7827,7 +7827,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.0.3;
+				MARKETING_VERSION = 1.0.5;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Release;
