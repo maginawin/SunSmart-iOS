@@ -329,10 +329,14 @@ class SpacesViewCell: UICollectionViewCell {
         }
         
         timeLabel = UILabel(text: "8/7/2023 12:00 AM", textColor: RGB(100, 136, 139), fontSize: 13, fontWeight: .light)
+        timeLabel.numberOfLines = 1
+        timeLabel.lineBreakMode = .byTruncatingTail
         contentView.addSubview(timeLabel)
         timeLabel.snp.makeConstraints { make in
+            make.top.equalTo(schedulesLabel.snp.bottom).offset(SCRYFrom(4))
             make.left.right.equalTo(scenesLabel)
-            make.bottom.equalTo(iconImageView)
+            make.bottom.equalTo(iconImageView).priority(.high)
+            make.bottom.lessThanOrEqualTo(contentView).offset(SCRYFrom(-12))
         }
         
         lockImageView = UIImageView(image: UIImage(named: "locked"))
@@ -349,4 +353,3 @@ class SpacesViewCell: UICollectionViewCell {
 
 
 }
-

@@ -2401,7 +2401,8 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
         let padding = (collectionViewLayout as? UICollectionViewFlowLayout)?.minimumLineSpacing ?? 0
         var itemW = ((collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right) - CGFloat(self.itemRowCount - 1) * padding) / CGFloat(self.itemRowCount)
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
-        return CGSizeMake(itemW, SCRYFrom(192))
+        let itemH = isIPad ? max(SCRYFrom(192), 192) : SCRYFrom(192)
+        return CGSizeMake(itemW, itemH)
     }
     
 //#if DEBUG
