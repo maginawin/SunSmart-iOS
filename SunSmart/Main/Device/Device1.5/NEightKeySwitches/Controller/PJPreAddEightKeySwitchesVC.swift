@@ -271,7 +271,8 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         
         let vc = SwitchSelectScenePageController(
             scenes: MeshNetworkManager.instance.scenes,
-            sceneDatas: viewModel.sceneDatas
+            sceneDatas: viewModel.sceneDatas,
+            titleStyle: .numbered
         )
         vc.scenesSelectCallback = { [weak self] sceneDatas in
             guard let self else { return }

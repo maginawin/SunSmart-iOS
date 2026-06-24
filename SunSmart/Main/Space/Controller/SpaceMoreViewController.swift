@@ -47,11 +47,14 @@ class SpaceMoreViewController: UIViewController {
     
     private var collectionView: UICollectionView!
     private var flowLayout: UICollectionViewFlowLayout!
-    
-    private var options: [Options] = [.ble, .deviceParameters, .energyData,
-        //.triggerZone,
-        .contentDisplay]
-    
+
+    private var options: [Options] = []
+    private var isMeshTestOptionEnabled = false
+
+    private var canShowContentDisplay: Bool {
+        space.deviceOperates.contains(.edit)
+    }
+
     init(site: SiteData, space: SpaceData) {
         self.site = site
         self.space = space
@@ -67,7 +70,38 @@ class SpaceMoreViewController: UIViewController {
 
         view.backgroundColor = Background_Color
         
+        reloadOptions()
         setupCollectionView()
+        observeSpacePermissionChanges()
+    }
+
+    private func makeOptions() -> [Options] {
+        var currentOptions: [Options] = [.ble, .deviceParameters, .energyData]
+
+        if isMeshTestOptionEnabled {
+            currentOptions.insert(.mesh, at: 1)
+        }
+
+        if canShowContentDisplay {
+            currentOptions.append(.contentDisplay)
+        }
+
+        return currentOptions
+    }
+
+    private func reloadOptions() {
+        options = makeOptions()
+        collectionView?.reloadData()
+    }
+
+    private func observeSpacePermissionChanges() {
+        NotificationCenter.default.addObserver(
+            forName: .init(spacePermissionChangedNotificaitonName),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.reloadOptions()
+        }
     }
     
     private func setupCollectionView() {
@@ -105,10 +139,11 @@ class SpaceMoreViewController: UIViewController {
         guard let indexPath = collectionView.indexPathForItem(at: point), options[indexPath.item] == .ble else {
             return
         }
-        guard !options.contains(.mesh) else {
+        guard !isMeshTestOptionEnabled else {
             return
         }
-        options.insert(.mesh, at: 1)
+        isMeshTestOptionEnabled = true
+        options = makeOptions()
         collectionView.insertItems(at: [IndexPath(item: 1, section: 0)])
     }
 
@@ -182,6 +217,11 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
             }
             present(NavigationViewController(rootViewController: vc), animated: true)
         case .contentDisplay:
+            guard self.space.deviceOperates.contains(.edit) else {
+                XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+                reloadOptions()
+                return
+            }
             let vc = ContentDisplayViewController(space: space)
             if isIPad {
                 vc.preferredContentSize = iPadPreferredContentSize
