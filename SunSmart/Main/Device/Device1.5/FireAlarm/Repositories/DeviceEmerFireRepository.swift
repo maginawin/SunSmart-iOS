@@ -74,6 +74,7 @@ extension DeviceEmerFireData {
         static let bindNodeAddress = Expression<Int?>("bindNodeAddress")
         static let publishGroupAddress = Expression<Int?>("publishGroupAddress")
         static let isSynced = Expression<Bool>("isSynced")
+        static let controllerSelfSyncPending = Expression<Bool>("controllerSelfSyncPending")
         static let reportToGateway = Expression<Bool>("reportToGateway")
         static let configurationData = Expression<Data?>("configurationData")
         static let createTime = Expression<Int64>("createTime")
@@ -92,6 +93,7 @@ extension DeviceEmerFireData {
                 builder.column(ExpressionKey.bindNodeAddress)
                 builder.column(ExpressionKey.publishGroupAddress)
                 builder.column(ExpressionKey.isSynced)
+                builder.column(ExpressionKey.controllerSelfSyncPending)
                 builder.column(ExpressionKey.reportToGateway)
                 builder.column(ExpressionKey.configurationData)
                 builder.column(ExpressionKey.createTime)
@@ -150,6 +152,7 @@ extension DeviceEmerFireData {
                     bindNodeAddress: bindNodeAddress,
                     publishGroupAddress: publishGroupAddress,
                     isSynced: row[ExpressionKey.isSynced],
+                    controllerSelfSyncPending: row[ExpressionKey.controllerSelfSyncPending],
                     reportToGateway: row[ExpressionKey.reportToGateway],
                     configuration: configuration,
                     createTime: row[ExpressionKey.createTime],
@@ -174,6 +177,7 @@ extension DeviceEmerFireData {
             ExpressionKey.bindNodeAddress <- bindNodeAddress.map { Int($0) },
             ExpressionKey.publishGroupAddress <- publishGroupAddress.map { Int($0) },
             ExpressionKey.isSynced <- isSynced,
+            ExpressionKey.controllerSelfSyncPending <- controllerSelfSyncPending,
             ExpressionKey.reportToGateway <- reportToGateway,
             ExpressionKey.configurationData <- try? emerFireJSONEncoder.encode(configuration),
             ExpressionKey.createTime <- createTime,
@@ -222,6 +226,14 @@ extension DeviceEmerFireData {
         let db = SunSmartDataManager.shared.db
         if !columnNames.contains("isSynced") {
             _ = try? db?.run(table.addColumn(ExpressionKey.isSynced, defaultValue: false))
+        }
+        if !columnNames.contains("controllerSelfSyncPending") {
+            _ = try? db?.run(table.addColumn(ExpressionKey.controllerSelfSyncPending, defaultValue: false))
+            let legacyPendingRows = table.filter(
+                ExpressionKey.isSynced == false &&
+                ExpressionKey.bindNodeAddress != nil
+            )
+            _ = try? db?.run(legacyPendingRows.update(ExpressionKey.controllerSelfSyncPending <- true))
         }
         if !columnNames.contains("reportToGateway") {
             _ = try? db?.run(table.addColumn(ExpressionKey.reportToGateway, defaultValue: true))

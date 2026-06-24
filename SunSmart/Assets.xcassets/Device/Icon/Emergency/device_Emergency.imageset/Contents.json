@@ -1,6 +1,7 @@
 {
   "images" : [
     {
+      "filename" : "device_Emergency.png",
       "idiom" : "universal",
       "scale" : "1x"
     },

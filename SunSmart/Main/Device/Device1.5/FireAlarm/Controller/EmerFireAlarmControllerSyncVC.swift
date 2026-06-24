@@ -300,7 +300,11 @@ final class EmerFireAlarmControllerSyncVC: UIViewController {
     private func finishSync(success: Bool) {
         syncState = success ? .syncSuccess : .syncFailure
         if persistsSyncResult {
-            data.isSynced = success
+            refreshControllerSelfSyncPending()
+            data.refreshEmergencyFireControllerSyncState(
+                meshUUID: space.meshUUID,
+                subnetworkId: space.meshNetworkId
+            )
         }
         if !success {
             retryableFailedTasks.forEach { $0.isSelected = true }
@@ -313,6 +317,23 @@ final class EmerFireAlarmControllerSyncVC: UIViewController {
         NotificationCenter.default.postLinkedEmerFireConfigDidChange(data.toConfig())
         if success {
             performSyncSuccessCallback()
+        }
+    }
+
+    private func refreshControllerSelfSyncPending() {
+        let selfTasks = allTasks.filter { isControllerSelfTaskKind($0.kind) }
+        guard !selfTasks.isEmpty else {
+            return
+        }
+        data.controllerSelfSyncPending = !selfTasks.allSatisfy { $0.state == .successful }
+    }
+
+    private func isControllerSelfTaskKind(_ kind: EmergencyFireControllerSyncTaskKind) -> Bool {
+        switch kind {
+        case .publication, .enabled, .resend, .restoreDelay, .actionConfig:
+            return true
+        case .lightnessSubscription, .lightLCSubscription, .associationSubscription, .associationCleanup, .deleteCleanup, .deleteConfiguration:
+            return false
         }
     }
 

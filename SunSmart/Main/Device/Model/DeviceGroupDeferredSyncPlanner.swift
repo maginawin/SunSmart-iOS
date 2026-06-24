@@ -524,6 +524,8 @@ private extension DeviceGroupFastAddSyncPlanner {
                 }
             case .pirEnabled(let enabled):
                 operationTypes.append(.configuration(node: node, type: .pirEnabled(enabled)))
+            case .emergencyFireControllerAssociations:
+                break
             case .addNetworkKey,
                  .removeNetworkKey,
                  .addApplicationkey,

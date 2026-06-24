@@ -23,14 +23,14 @@ extension DeviceEmerFireData {
     ]
 
     var hasSyncableConfiguration: Bool {
-        hasControllerConfigurationSyncIntent || configuration.hasSyncIntent || requiresControllerPublicationSync
+        hasControllerSelfSyncPending || configuration.hasSyncIntent
     }
 
-    private var hasControllerConfigurationSyncIntent: Bool {
-        bindNodeAddress != nil
+    var hasControllerSelfSyncPending: Bool {
+        controllerSelfSyncPending || requiresControllerPublicationSync
     }
 
-    private var requiresControllerPublicationSync: Bool {
+    var requiresControllerPublicationSync: Bool {
         guard bindNodeAddress != nil else {
             return false
         }
@@ -44,6 +44,34 @@ extension DeviceEmerFireData {
             return false
         }
         return model.publish?.publicationAddress.address != publishGroupAddress
+    }
+
+    private func latestStoredDevice(meshUUID: String, subnetworkId: String) -> DeviceEmerFireData {
+        DeviceEmerFireStore.shared.device(id: id, meshUUID: meshUUID, meshNetworkId: subnetworkId) ?? self
+    }
+
+    private func updateFromLatestStoredDevice(_ latest: DeviceEmerFireData) {
+        guard latest !== self else {
+            return
+        }
+        update(deviceData: latest)
+    }
+
+    @discardableResult
+    func refreshEmergencyFireControllerSyncState(meshUUID: String, subnetworkId: String) -> Bool {
+        let oldValue = isSynced
+        let planner = EmergencyFireControllerSyncPlanner(
+            data: self,
+            meshUUID: meshUUID,
+            subnetworkId: subnetworkId
+        )
+        let associationItems = ((try? planner.makeAssociatedGroupItems()) ?? []) +
+            ((try? planner.makeCleanupItems()) ?? [])
+        let hasRemainingAssociationTasks = associationItems.contains { item in
+            !item.tasks.isEmpty
+        }
+        isSynced = !hasControllerSelfSyncPending && !hasRemainingAssociationTasks
+        return oldValue != isSynced
     }
 
     func settings(for function: EmergencyFireControllerFunction) -> EmergencyFireControllerModeSettings {
@@ -92,32 +120,39 @@ extension DeviceEmerFireData {
             return
         }
 
+        let target = latestStoredDevice(meshUUID: meshUUID, subnetworkId: subnetworkId)
         task.pendingFunctions.forEach { function in
             guard let groupAddress = task.pendingGroupAddress else {
                 return
             }
 
-            var settings = settings(for: function)
+            var settings = target.settings(for: function)
             if task.clearsUnassociatePending {
                 settings.pendingUnassociateGroupAddresses.removeAll { $0 == groupAddress }
             }
-            updateSettings(settings, for: function)
+            target.updateSettings(settings, for: function)
         }
-        save(meshUUID: meshUUID, networkId: subnetworkId)
+        target.refreshEmergencyFireControllerSyncState(meshUUID: meshUUID, subnetworkId: subnetworkId)
+        DeviceEmerFireStore.shared.save(target)
+        updateFromLatestStoredDevice(target)
     }
 
     func markDeleteCleanupSucceeded(groupAddress: Address, meshUUID: String, subnetworkId: String) {
-        configuration.powerLossSettings.associateGroupAddresses.removeAll { $0 == groupAddress }
-        configuration.fireAlarmSettings.associateGroupAddresses.removeAll { $0 == groupAddress }
-        configuration.powerLossSettings.pendingUnassociateGroupAddresses.removeAll { $0 == groupAddress }
-        configuration.fireAlarmSettings.pendingUnassociateGroupAddresses.removeAll { $0 == groupAddress }
-        isSynced = true
-        save(meshUUID: meshUUID, networkId: subnetworkId)
+        let target = latestStoredDevice(meshUUID: meshUUID, subnetworkId: subnetworkId)
+        target.configuration.powerLossSettings.associateGroupAddresses.removeAll { $0 == groupAddress }
+        target.configuration.fireAlarmSettings.associateGroupAddresses.removeAll { $0 == groupAddress }
+        target.configuration.powerLossSettings.pendingUnassociateGroupAddresses.removeAll { $0 == groupAddress }
+        target.configuration.fireAlarmSettings.pendingUnassociateGroupAddresses.removeAll { $0 == groupAddress }
+        target.refreshEmergencyFireControllerSyncState(meshUUID: meshUUID, subnetworkId: subnetworkId)
+        DeviceEmerFireStore.shared.save(target)
+        updateFromLatestStoredDevice(target)
     }
 
     func markDeleteCleanupInterrupted(meshUUID: String, subnetworkId: String) {
-        isSynced = false
-        save(meshUUID: meshUUID, networkId: subnetworkId)
+        let target = latestStoredDevice(meshUUID: meshUUID, subnetworkId: subnetworkId)
+        target.isSynced = false
+        DeviceEmerFireStore.shared.save(target)
+        updateFromLatestStoredDevice(target)
     }
 
     @discardableResult

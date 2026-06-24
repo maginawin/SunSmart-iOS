@@ -605,6 +605,7 @@ extension SpaceData {
                         "spaceId": controller.spaceId,
                         "name": controller.name,
                         "isSynced": controller.isSynced,
+                        "controllerSelfSyncPending": controller.controllerSelfSyncPending,
                         "reportToGateway": controller.reportToGateway,
                         "createTime": controller.createTime,
                         "lastUpdate": controller.lastUpdate

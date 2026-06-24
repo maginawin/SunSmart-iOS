@@ -1698,6 +1698,8 @@ extension SpaceData {
                         bindNodeAddress == nil &&
                         publishGroupAddress == nil
                     let importedIsSynced = controllerJson["isSynced"].bool ?? fallbackImportedIsSynced
+                    let importedControllerSelfSyncPending = controllerJson["controllerSelfSyncPending"].bool ??
+                        (!importedIsSynced && bindNodeAddress != nil)
                     let controller = DeviceEmerFireData(
                         id: id,
                         spaceId: self.id,
@@ -1707,6 +1709,7 @@ extension SpaceData {
                         bindNodeAddress: bindNodeAddress,
                         publishGroupAddress: publishGroupAddress,
                         isSynced: importedIsSynced,
+                        controllerSelfSyncPending: importedControllerSelfSyncPending,
                         reportToGateway: controllerJson["reportToGateway"].bool ?? true,
                         configuration: resolvedConfiguration,
                         createTime: controllerJson["createTime"].int64Value,
