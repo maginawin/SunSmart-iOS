@@ -125,6 +125,46 @@ assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/LinkedEmerFi
   "Set Brightness t[o]" \
   "EFC restore brightness row must use Set Brightness To."
 
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC+Table.swift" \
+  "brightnessRange: 0...100" \
+  "EFC restore Set Brightness To control must allow 0%."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/LinkedEmerFireEditState.swift" \
+  "restoreBrightness = min(max(restoreBrightness, 0), 100)" \
+  "EFC restore brightness normalization must preserve 0%."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/LinkedEmerFireEditState.swift" \
+  "restoreBrightness = min(max(value, 0), 100)" \
+  "EFC restore brightness update must preserve 0%."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/LinkedEmerFireEditState.swift" \
+  "value: restoreBrightness, range: 0...100" \
+  "EFC restore brightness configuration range must allow 0%."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/LinkedEmerFireEditState.swift" \
+  "fireAlarmBrightness, range: 10...100" \
+  "EFC Fire Alarm trigger brightness range must remain 10% to 100%."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/LinkedEmerFireEditState.swift" \
+  "powerLossBrightness, range: 1...100" \
+  "EFC Power Loss trigger brightness range must remain 1% to 100%."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC+Table.swift" \
+  "switchControlPolicy: .nonEmptyGroup" \
+  "EFC Select Group(s) must allow controlling any non-empty group, independent of online state."
+
+assert_contains "SunSmart/Main/Device/Device1.5/Common/GroupSelection/Model/PJDeviceGroupSelectionContext.swift" \
+  "switchControlPolicy: PJDeviceGroupSelectionSwitchControlPolicy = .onlineNodesOnly" \
+  "Shared group selection must keep existing default switch control behavior for non-EFC callers."
+
+assert_contains "SunSmart/Main/Device/Device1.5/Common/GroupSelection/Model/PJDeviceGroupSelectionContext.swift" \
+  "return !group.nodes.isEmpty" \
+  "EFC non-empty group policy must not depend on node online state."
+
+assert_contains "SunSmart/Main/Device/Switches/View/SwitchSelectGroupsViewCell.swift" \
+  "func configureOnOffButton(isEnabled: Bool, isOn: Bool, action: ((Bool) -> Void)?)" \
+  "Group selection cells must reset right-side switch state through a single configuration method."
+
 assert_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
   "case .all:" \
   "Restore filter must handle the default mode explicitly."
@@ -188,6 +228,14 @@ assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerF
 assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC.swift" \
   "items: items" \
   "EFC LINK sync must pass limited associated group items to SyncDevicesViewController."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorRouting.swift" \
+  "nameOverride: self.informationNameOverride(node: node)" \
+  "EFC Information page must display the EFC business name instead of the bound Node name."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorRouting.swift" \
+  'menu_information"), title: "information".localizedString, hideAnimation: false' \
+  "EFC Information menu item must skip menu fade-out so the navigation push animation is not visually interrupted."
 
 assert_count "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC.swift" \
   "SyncDevicesViewController(type: \.emergencyFire(data: device, items: nil, context: \.saveConfiguration(persistsSyncResult: true, changedFromConfiguration: nil)))" \
@@ -493,8 +541,76 @@ assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireCon
   "EFC associated group subscription must use a fixed candidate model set."
 
 assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
+  "makeNodeAssociationSyncs" \
+  "EFC associated group subscription and pending cleanup must expose node-level sync tasks for Lights need-sync."
+
+assert_contains "SunSmart/Common/Data/Node+SyncData.swift" \
+  "emergencyFireControllerAssociations" \
+  "Node sync data must include EFC association subscription and pending cleanup tasks."
+
+assert_contains "SunSmart/Common/Data/Node+SyncData.swift" \
+  "EmergencyFireControllerSyncPlanner.makeNodeAssociationSyncs" \
+  "Node.needSync must discover EFC association subscription and pending cleanup through the EFC planner."
+
+assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "case .emergencyFireControllerAssociations" \
+  "Lights Sync Devices flow must render EFC association subscription and pending cleanup tasks from node sync data."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/DeviceEmerFireData.swift" \
+  "controllerSelfSyncPending" \
+  "EFC sync state must distinguish controller self configuration pending from associated group pending."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/LinkedEmerFireConfig.swift" \
+  "controllerSelfSyncPending" \
+  "EFC edit config must carry controller self sync pending state separately from aggregate isSynced."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
+  "shouldSyncControllerSelfConfiguration" \
+  "EFC planner must gate controller Others tasks independently from group association tasks."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
+  "data.controllerSelfSyncPending" \
+  "EFC planner must include controller Others tasks when persisted self configuration is pending."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
+  "changedFromConfiguration != nil" \
+  "EFC planner must include incremental controller Others tasks immediately after a self-config edit."
+
+assert_not_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "data.isSynced = success" \
+  "EFC sync completion must not overwrite aggregate sync state with the page-level success flag."
+
+assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "finishEmergencyFireControllerAssociationSyncIfNeeded" \
+  "Lights Sync Devices flow must refresh EFC aggregate sync state after association tasks complete."
+
+assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "refreshEmergencyFireControllerSyncState" \
+  "EFC sync completion must recompute aggregate state from self pending and remaining association tasks."
+
+assert_contains "SunSmart/Main/Device/Lights/Controller/DeviceLightsViewController.swift" \
+  "refreshSyncStateAfterLinkedEmergencyFireConfigChange" \
+  "Lights page must clear light sync caches and recompute the footer sync button after EFC group changes."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
   "node.getFunctionModels(modelId: modelID)" \
   "EFC associated group subscription must only create tasks for models the node actually owns."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
+  "associationTargetNodes(in group: Group)" \
+  "EFC associated group planner must filter group nodes through a dedicated target helper."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
+  "node.deviceType == .light" \
+  "EFC associated group planner must only target light devices."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlanner.swift" \
+  "associationTargetNodes(in: group).flatMap" \
+  "EFC associated group cleanup must not directly expand every group node."
+
+assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "isEmergencyFireControllerLocalGroupCleanupTask" \
+  "EFC local-only group cleanup must have an explicit UI path instead of falling back to the EFC bind node."
 
 assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlan.swift" \
   "case associationSubscription = \"efc_sync_group_subscription\"" \

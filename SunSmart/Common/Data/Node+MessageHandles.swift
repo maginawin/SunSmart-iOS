@@ -260,6 +260,10 @@ extension NodeSyncData {
             if node.capabilities.contains(.pirEnabled), let vendorModel = node.sunricherVendorModel {
                 messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .pirEnabled(enabled: enabled)), model: vendorModel))
             }
+        case .emergencyFireControllerAssociations(_, let tasks):
+            tasks.forEach { task in
+                messageHandles.append(contentsOf: task.messageHandles)
+            }
         }
         return messageHandles
     }

@@ -109,6 +109,7 @@ final class DeviceEmerFireStore {
         node.save()
         // 绑定节点变更后，真实控制器的 publication/mode/resend 等都需要重新同步。
         target.isSynced = false
+        target.controllerSelfSyncPending = true
         save(target)
         ensurePublishGroupIfNeeded(for: target, in: space)
         if target !== device {
@@ -132,6 +133,7 @@ final class DeviceEmerFireStore {
         newNode.save()
         target.bindNodeAddress = newNode.primaryUnicastAddress
         target.isSynced = false
+        target.controllerSelfSyncPending = true
         save(target)
         ensurePublishGroupIfNeeded(for: target, in: space)
 
@@ -183,6 +185,7 @@ final class DeviceEmerFireStore {
                     name: name,
                     bindNodeAddress: node.primaryUnicastAddress,
                     isSynced: false,
+                    controllerSelfSyncPending: true,
                     reportToGateway: true
                 )
                 node.name = name
@@ -289,6 +292,8 @@ class DeviceEmerFireData: Copyable {
     }
     /// 是否已同步
     var isSynced: Bool
+    /// 控制器自身 publication / vendor 参数是否仍待同步。
+    var controllerSelfSyncPending: Bool
     /// 是否设置了网关
     var reportToGateway: Bool
     /// 已关联的网关
@@ -330,6 +335,7 @@ class DeviceEmerFireData: Copyable {
         bindNodeAddress: Address? = nil,
         publishGroupAddress: Address? = nil,
         isSynced: Bool = false,
+        controllerSelfSyncPending: Bool = false,
         reportToGateway: Bool,
         gatWayData: GatewayModel? = nil,
         configuration: EmergencyFireControllerConfiguration? = nil,
@@ -344,6 +350,7 @@ class DeviceEmerFireData: Copyable {
         self.bindNodeAddress = bindNodeAddress
         self.publishGroupAddress = publishGroupAddress
         self.isSynced = isSynced
+        self.controllerSelfSyncPending = controllerSelfSyncPending
         self.reportToGateway = reportToGateway
         self.gateWayData = gatWayData
         self.configuration = configuration ?? .defaultValue
@@ -367,6 +374,7 @@ class DeviceEmerFireData: Copyable {
         bindNodeAddress = deviceData.bindNodeAddress
         publishGroupAddress = deviceData.publishGroupAddress
         isSynced = deviceData.isSynced
+        controllerSelfSyncPending = deviceData.controllerSelfSyncPending
         reportToGateway = deviceData.reportToGateway
         gateWayData = deviceData.gateWayData
         configuration = deviceData.configuration
@@ -383,6 +391,7 @@ class DeviceEmerFireData: Copyable {
             bindNodeAddress: bindNodeAddress,
             publishGroupAddress: publishGroupAddress,
             isSynced: isSynced,
+            controllerSelfSyncPending: controllerSelfSyncPending,
             reportToGateway: reportToGateway,
             gatWayData: gateWayData,
             configuration: configuration,
@@ -399,6 +408,7 @@ class DeviceEmerFireData: Copyable {
             meshNetworkId: meshNetworkId,
             deviceName: name,
             isSynced: isSynced,
+            controllerSelfSyncPending: controllerSelfSyncPending,
             reportToGateway: reportToGateway,
             publishGroupAddress: publishGroupAddress,
             configuration: configuration
@@ -407,6 +417,7 @@ class DeviceEmerFireData: Copyable {
 
     func clearMonitoringConfiguration() {
         isSynced = true
+        controllerSelfSyncPending = false
         reportToGateway = true
         configuration = .defaultValue
         lastUpdate = Int64(Date().timeIntervalSince1970)

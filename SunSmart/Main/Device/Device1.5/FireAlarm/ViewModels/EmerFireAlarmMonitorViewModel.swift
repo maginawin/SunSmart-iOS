@@ -129,6 +129,7 @@ final class EmerFireAlarmMonitorViewModel {
             meshNetworkId: device.meshNetworkId,
             deviceName: device.name,
             isSynced: device.isSynced,
+            controllerSelfSyncPending: device.controllerSelfSyncPending,
             reportToGateway: device.reportToGateway,
             publishGroupAddress: device.publishGroupAddress,
             configuration: device.configuration

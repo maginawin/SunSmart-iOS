@@ -180,22 +180,15 @@ extension PJDeviceGroupSelectionViewController: UITableViewDataSource, UITableVi
             cell.nameLabel.textColor = TextBlack_Color
         }
 
-        if group.nodes.isEmpty || !group.nodes.contains(where: { $0.state }) {
-            cell.onoffBtn.setImage(UIImage(named: "scene_group_disable"), for: .normal)
-        } else {
-            cell.onoffBtn.setImage(UIImage(named: "scene_group_off"), for: .normal)
-            cell.onoffBtn.isSelected = group.isOn
-        }
-
         let isLast = indexPath.row == groups.count - 1
         cell.lineView.isHidden = isLast
         cell.configureCell(isFirst: indexPath.row == 0, isLast: isLast)
-        cell.onOffCallback = { isOn in
-            if group.nodes.count > 0 && group.nodes.contains(where: { $0.state }) {
-                cell.onoffBtn.isSelected = isOn
-                group.isOn = isOn
-                MeshAPI.setGroupOnOffState(address: group.address.address, isOn: isOn)
-            }
+        let canControlGroup = context.switchControlPolicy.canControl(group)
+        cell.configureOnOffButton(isEnabled: canControlGroup, isOn: group.isOn) { [weak cell] isOn in
+            guard canControlGroup else { return }
+            cell?.onoffBtn.isSelected = isOn
+            group.isOn = isOn
+            MeshAPI.setGroupOnOffState(address: group.address.address, isOn: isOn)
         }
         return cell
     }

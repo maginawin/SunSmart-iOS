@@ -8,6 +8,11 @@
 import Foundation
 import NordicSigMeshSDK
 
+struct EmergencyFireControllerNodeAssociationSync {
+    let controller: DeviceEmerFireData
+    let tasks: [EmergencyFireControllerSyncTask]
+}
+
 /// 应急火警同步任务规划器。
 /// 只负责把 desired configuration 转成同步页面可执行的任务，不直接发送 Mesh message。
 /// 任务分为三类：
@@ -70,23 +75,58 @@ struct EmergencyFireControllerSyncPlanner {
             let groupAddress = group.address.address
             let groupIsActiveDesired = activeDesiredGroups.contains(groupAddress)
             let pendingFunctions = planner.pendingCleanupFunctions(for: groupAddress)
+            let targetAddNodes = addNodes.filter { node in node.deviceType == .light }
+            let targetExitNodes = exitNodes.filter { node in node.deviceType == .light }
 
             var tasks: [EmergencyFireControllerSyncTask] = []
             if groupIsActiveDesired {
                 // 新进组的灯需要补齐 EFC Group 的业务控制模型订阅。
-                tasks.append(contentsOf: addNodes.flatMap {
+                tasks.append(contentsOf: targetAddNodes.flatMap {
                     planner.makeAssociateTasks(node: $0, group: group, publishGroup: publishGroup)
                 })
             }
 
             if groupIsActiveDesired || !pendingFunctions.isEmpty {
                 // 退出组或等待清理的灯，需要取消对 EFC 内部 publish group 的订阅。
-                tasks.append(contentsOf: exitNodes.flatMap {
+                tasks.append(contentsOf: targetExitNodes.flatMap {
                     planner.makeAssociationCleanupTasks(node: $0, group: group, publishGroup: publishGroup, pendingFunctions: pendingFunctions)
                 })
             }
             guard !tasks.isEmpty else { return [] }
             return [EmergencyFireControllerSyncItem(name: controller.name, iconName: EmergencyFireControllerIconName.main, address: groupAddress, tasks: tasks, controller: controller)]
+        }
+    }
+
+    static func makeNodeAssociationSyncs(node: Node, group: Group? = nil) -> [EmergencyFireControllerNodeAssociationSync] {
+        guard node.deviceType == .light,
+              let group = group ?? node.group,
+              let space = SpaceData.load(subNetworkId: group.subNetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex) else {
+            return []
+        }
+
+        return controllersAffecting(group: group, in: space).compactMap { controller in
+            guard controller.configuration.hasSyncIntent,
+                  let publishGroup = controller.publishGroup else {
+                return nil
+            }
+
+            let planner = EmergencyFireControllerSyncPlanner(data: controller, meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId)
+            let groupAddress = group.address.address
+            var tasks: [EmergencyFireControllerSyncTask] = []
+
+            if controller.configuration.activeLightLCGroupAddresses.contains(groupAddress) {
+                tasks.append(contentsOf: planner.makeAssociateTasks(node: node, group: group, publishGroup: publishGroup))
+            }
+
+            let pendingFunctions = planner.pendingCleanupFunctions(for: groupAddress)
+            if !pendingFunctions.isEmpty {
+                tasks.append(contentsOf: planner.makeAssociationCleanupTasks(node: node, group: group, publishGroup: publishGroup, pendingFunctions: pendingFunctions))
+            }
+
+            guard !tasks.isEmpty else {
+                return nil
+            }
+            return EmergencyFireControllerNodeAssociationSync(controller: controller, tasks: tasks)
         }
     }
 
@@ -96,14 +136,22 @@ struct EmergencyFireControllerSyncPlanner {
         _ = try data.ensurePublishGroup(meshUUID: meshUUID, subnetworkId: subnetworkId)
         var items: [EmergencyFireControllerSyncItem] = []
 
-        let controllerTasks = try data.makeControllerSyncTasks(meshUUID: meshUUID, subnetworkId: subnetworkId, changedFrom: changedFromConfiguration)
-        if let node = data.bindNode {
-            items.append(EmergencyFireControllerSyncItem(name: data.name, iconName: EmergencyFireControllerIconName.main, address: node.primaryUnicastAddress, tasks: controllerTasks, controller: data))
+        if shouldSyncControllerSelfConfiguration {
+            let controllerTasks = try data.makeControllerSyncTasks(meshUUID: meshUUID, subnetworkId: subnetworkId, changedFrom: changedFromConfiguration)
+            if let node = data.bindNode, !controllerTasks.isEmpty {
+                items.append(EmergencyFireControllerSyncItem(name: data.name, iconName: EmergencyFireControllerIconName.main, address: node.primaryUnicastAddress, tasks: controllerTasks, controller: data))
+            }
         }
 
         items.append(contentsOf: try makeAssociatedGroupItems())
         items.append(contentsOf: try makeCleanupItems())
         return items
+    }
+
+    private var shouldSyncControllerSelfConfiguration: Bool {
+        changedFromConfiguration != nil ||
+            data.controllerSelfSyncPending ||
+            data.requiresControllerPublicationSync
     }
 
     func makeDeleteCleanupItems() -> [EmergencyFireControllerSyncItem] {
@@ -133,7 +181,7 @@ struct EmergencyFireControllerSyncPlanner {
                 return nil
             }
             // 每个关联灯组都展开为组内每个灯的同步任务。
-            let tasks = group.nodes.flatMap {
+            let tasks = associationTargetNodes(in: group).flatMap {
                 makeAssociateTasks(node: $0, group: group, publishGroup: publishGroup)
             }
             return EmergencyFireControllerSyncItem(name: group.name, iconName: "device_light", address: group.address.address, tasks: tasks)
@@ -155,7 +203,7 @@ struct EmergencyFireControllerSyncPlanner {
                 return EmergencyFireControllerSyncItem(name: String(format: "%04X", pending.address), iconName: "device_light", address: pending.address, tasks: [task])
             }
 
-            var tasks = group.nodes.flatMap {
+            var tasks = associationTargetNodes(in: group).flatMap {
                 makeAssociationCleanupTasks(node: $0, group: group, publishGroup: publishGroup, pendingFunctions: pending.functions)
             }
             if tasks.isEmpty {
@@ -195,6 +243,12 @@ struct EmergencyFireControllerSyncPlanner {
             }
         }
         return groups.map { (address: $0.key, functions: $0.value) }.sorted { $0.address < $1.address }
+    }
+
+    private func associationTargetNodes(in group: Group) -> [Node] {
+        group.nodes.filter { node in
+            node.deviceType == .light
+        }
     }
 
     private func associatedGroupSubscriptionModels(for node: Node) -> [Model] {
@@ -237,10 +291,11 @@ struct EmergencyFireControllerSyncPlanner {
         }
 
         let tasks: [EmergencyFireControllerSyncTask]
-        if group.nodes.isEmpty {
+        let targetNodes = associationTargetNodes(in: group)
+        if targetNodes.isEmpty {
             tasks = [makeLocalDeleteCleanupTask(title: group.name, address: group.address.address, groupAddress: group.address.address)]
         } else {
-            tasks = group.nodes.flatMap { node in
+            tasks = targetNodes.flatMap { node in
                 makeDeleteCleanupTasks(node: node, group: group, publishGroup: publishGroup)
             }
         }

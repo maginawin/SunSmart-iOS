@@ -146,9 +146,15 @@ class DeviceLightsViewController: UIViewController {
 
         NotificationCenter.default.addObserver(forName: .linkedEmerFireConfigDidChange, object: nil, queue: .main) {[weak self] _ in
             guard let self else { return }
-            self.collectionView.reloadData()
-            self.updateAllOnOffItemUI()
+            self.refreshSyncStateAfterLinkedEmergencyFireConfigChange()
         }
+    }
+
+    private func refreshSyncStateAfterLinkedEmergencyFireConfigChange() {
+        devices.forEach { $0.clearSyncStateCache() }
+        collectionView.reloadData()
+        updateAllOnOffItemUI()
+        updateUI(reloadTableView: false)
     }
     
     private func loadDevices() {

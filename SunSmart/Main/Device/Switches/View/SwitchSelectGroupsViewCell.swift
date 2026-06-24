@@ -29,6 +29,15 @@ class SwitchSelectGroupsViewCell: UITableViewCell {
     @objc private func onoffBtnAction(sender: UIButton) {
         onOffCallback?(!sender.isSelected)
     }
+
+    func configureOnOffButton(isEnabled: Bool, isOn: Bool, action: ((Bool) -> Void)?) {
+        onoffBtn.isEnabled = isEnabled
+        onoffBtn.isSelected = isEnabled && isOn
+        onoffBtn.setImage(UIImage(named: "scene_group_off"), for: .normal)
+        onoffBtn.setImage(UIImage(named: "scene_group_on"), for: .selected)
+        onoffBtn.setImage(UIImage(named: "scene_group_disable"), for: .disabled)
+        onOffCallback = action
+    }
     
     private func setupUI() {
         

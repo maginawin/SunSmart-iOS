@@ -109,6 +109,8 @@ enum NodeSyncData {
     case gatewayUnbindAssociatedSpaces(datas: [(networkKey: NetworkKey, applicationKey: ApplicationKey)], activate: Bool)
     /// pir传感器启用/禁用
     case pirEnabled(_ enabled: Bool)
+    /// EFC 关联灯组订阅/退订
+    case emergencyFireControllerAssociations(data: DeviceEmerFireData, tasks: [EmergencyFireControllerSyncTask])
 }
 
 extension Group {
@@ -585,6 +587,7 @@ extension Node {
             }
             if let group = self.group ?? self.restoreData?.addGroup {
                 syncDatas.append(contentsOf: getSyncData(type: .group(group)))
+                syncDatas.append(contentsOf: getNodeEmergencyFireControllerAssociationSyncDatas(group: group))
             }else { // 未加入组的profile
                 // profile
                 let syncProfiles = getNodeSyncProfiles(group: nil)
@@ -686,6 +689,10 @@ extension Node {
         if getNodeSyncProximityLighting(group: group) != nil {
             return true
         }
+
+        if !getNodeEmergencyFireControllerAssociationSyncDatas(group: group).isEmpty {
+            return true
+        }
         
         return false
     }
@@ -749,6 +756,12 @@ extension Node {
         }
         
         return false
+    }
+
+    func getNodeEmergencyFireControllerAssociationSyncDatas(group: Group? = nil) -> [NodeSyncData] {
+        EmergencyFireControllerSyncPlanner.makeNodeAssociationSyncs(node: self, group: group).map {
+            .emergencyFireControllerAssociations(data: $0.controller, tasks: $0.tasks)
+        }
     }
     
     /// 获取需要同步的白天晚上lux条件profile

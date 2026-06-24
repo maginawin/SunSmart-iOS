@@ -196,6 +196,16 @@ extension EmergencyFireControllerConfiguration {
         !activeLightLCGroupAddresses.isEmpty || hasPendingCleanup
     }
 
+    var associationSyncGroupAddresses: Set<Address> {
+        activeLightLCGroupAddresses
+            .union(powerLossSettings.pendingUnassociateGroupAddresses)
+            .union(fireAlarmSettings.pendingUnassociateGroupAddresses)
+    }
+
+    func controllerSelfConfigurationEqual(to other: EmergencyFireControllerConfiguration) -> Bool {
+        controllerSelfComparableConfiguration() == other.controllerSelfComparableConfiguration()
+    }
+
     func settings(for function: EmergencyFireControllerFunction) -> EmergencyFireControllerModeSettings {
         switch function {
         case .powerLossEmergency:
@@ -292,6 +302,15 @@ extension EmergencyFireControllerConfiguration {
     private static func lightness(from percent: Int) -> UInt16 {
         Node.getLightness(lightness100: min(max(percent, 0), 100))
     }
+
+    private func controllerSelfComparableConfiguration() -> EmergencyFireControllerConfiguration {
+        var configuration = self
+        configuration.powerLossSettings.associateGroupAddresses = []
+        configuration.powerLossSettings.pendingUnassociateGroupAddresses = []
+        configuration.fireAlarmSettings.associateGroupAddresses = []
+        configuration.fireAlarmSettings.pendingUnassociateGroupAddresses = []
+        return configuration
+    }
 }
 
 /// 编辑页和监控页之间传递的轻量配置快照。
@@ -303,6 +322,7 @@ struct LinkedEmerFireConfig: Equatable {
     var meshNetworkId: String?
     var deviceName: String
     var isSynced: Bool
+    var controllerSelfSyncPending: Bool
     var reportToGateway: Bool
     var publishGroupAddress: Address?
     var configuration: EmergencyFireControllerConfiguration

@@ -80,7 +80,7 @@ extension EmerFireAlarmMonitorVC {
     }
 
     private func makeInformationMenuItem() -> MenuPopView.MenuItem {
-        .init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: { [weak self] _ in
+        .init(icon: UIImage(named: "menu_information"), title: "information".localizedString, hideAnimation: false, tapItemBack: { [weak self] _ in
             guard let self else { return }
             guard let node = self.currentDevice?.bindNode else {
                 XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
@@ -90,7 +90,8 @@ extension EmerFireAlarmMonitorVC {
                 node: node,
                 emptyGroupText: "efc_not_yet_linked_group".localizedString,
                 showsSceneSection: false,
-                groupTextOverride: self.informationGroupText()
+                groupTextOverride: self.informationGroupText(),
+                nameOverride: self.informationNameOverride(node: node)
             )
             self.navigationController?.pushViewController(controller, animated: true)
         })
@@ -112,6 +113,10 @@ extension EmerFireAlarmMonitorVC {
         let groupNames = viewModel.displayGroups().map { $0.group.name }
         guard !groupNames.isEmpty else { return nil }
         return groupNames.joined(separator: ", ")
+    }
+
+    private func informationNameOverride(node: Node) -> String {
+        currentConfig?.deviceName ?? currentDevice?.name ?? node.name ?? ""
     }
 
     func openEditSettings(config: LinkedEmerFireConfig? = nil) {

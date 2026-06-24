@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import NordicSigMeshSDK
 
 final class LinkedEmerFireEditViewModel {
 
@@ -44,9 +45,22 @@ final class LinkedEmerFireEditViewModel {
            let device = DeviceEmerFireStore.shared.device(id: deviceId, meshUUID: meshUUID, meshNetworkId: meshNetworkId)?.copy() {
             let oldConfiguration = device.configuration
             let oldPublishGroupAddress = device.publishGroupAddress
-            apply(config, to: device)
-            lastSavedRequiresSync = oldConfiguration != config.configuration || oldPublishGroupAddress != config.publishGroupAddress
-            if oldConfiguration != config.configuration {
+            let controllerSelfNeedsSync = !oldConfiguration.controllerSelfConfigurationEqual(to: config.configuration) ||
+                oldPublishGroupAddress != config.publishGroupAddress
+            let associationNeedsSync = oldConfiguration.activeLightLCGroupAddresses != config.configuration.activeLightLCGroupAddresses ||
+                oldConfiguration.hasPendingCleanup ||
+                config.configuration.hasPendingCleanup
+            apply(
+                config,
+                to: device,
+                controllerSelfNeedsSync: controllerSelfNeedsSync,
+                hasSyncChange: controllerSelfNeedsSync || associationNeedsSync
+            )
+            if associationNeedsSync {
+                clearLightSyncCacheForAffectedGroups(oldConfiguration: oldConfiguration, newConfiguration: device.configuration)
+            }
+            lastSavedRequiresSync = controllerSelfNeedsSync || associationNeedsSync
+            if controllerSelfNeedsSync {
                 lastSavedConfigurationChange = (old: oldConfiguration, new: config.configuration)
             } else {
                 lastSavedConfigurationChange = nil
@@ -95,6 +109,7 @@ final class LinkedEmerFireEditViewModel {
         guard let device = currentDevice() else { return false }
         let oldValue = state.isSynced
         state.isSynced = device.isSynced
+        state.controllerSelfSyncPending = device.controllerSelfSyncPending
         return oldValue != state.isSynced
     }
 
@@ -106,12 +121,34 @@ final class LinkedEmerFireEditViewModel {
         return oldConfig != state.makeConfig()
     }
 
-    private func apply(_ config: LinkedEmerFireConfig, to device: DeviceEmerFireData) {
-        let needsSync = device.configuration != config.configuration || device.publishGroupAddress != config.publishGroupAddress
+    private func apply(
+        _ config: LinkedEmerFireConfig,
+        to device: DeviceEmerFireData,
+        controllerSelfNeedsSync: Bool = false,
+        hasSyncChange: Bool? = nil
+    ) {
+        let needsSync = hasSyncChange ?? (device.configuration != config.configuration || device.publishGroupAddress != config.publishGroupAddress)
         device.name = config.deviceName
         device.isSynced = needsSync ? false : config.isSynced
+        device.controllerSelfSyncPending = controllerSelfNeedsSync ? true : config.controllerSelfSyncPending
         device.reportToGateway = config.reportToGateway
         device.publishGroupAddress = config.publishGroupAddress
         device.mergePendingChanges(from: device.configuration, to: config.configuration)
+    }
+
+    private func clearLightSyncCacheForAffectedGroups(
+        oldConfiguration: EmergencyFireControllerConfiguration,
+        newConfiguration: EmergencyFireControllerConfiguration
+    ) {
+        let affectedGroupAddresses = oldConfiguration.associationSyncGroupAddresses
+            .union(newConfiguration.associationSyncGroupAddresses)
+        guard !affectedGroupAddresses.isEmpty else {
+            return
+        }
+        MeshNetworkManager.instance.groups
+            .filter { affectedGroupAddresses.contains($0.address.address) }
+            .flatMap { $0.nodes }
+            .filter { $0.deviceType == .light }
+            .forEach { $0.clearSyncStateCache() }
     }
 }

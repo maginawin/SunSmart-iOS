@@ -17,6 +17,7 @@ final class LinkedEmerFireEditState {
     var meshNetworkId: String?
     var deviceName = "linked_emer_fire_controller_name".localizedString
     var isSynced = false
+    var controllerSelfSyncPending = false
 
     var reportToGateway = true
     var publishGroupAddress: Address?
@@ -43,6 +44,7 @@ final class LinkedEmerFireEditState {
         meshNetworkId = config.meshNetworkId
         deviceName = config.deviceName
         isSynced = config.isSynced
+        controllerSelfSyncPending = config.controllerSelfSyncPending
         reportToGateway = config.reportToGateway
         publishGroupAddress = config.publishGroupAddress
         configuration = config.configuration
@@ -61,7 +63,7 @@ final class LinkedEmerFireEditState {
         fireAlarmBrightness = min(max(fireAlarmBrightness, 10), 100)
         powerLossBrightness = min(max(powerLossBrightness, 1), 100)
         triggerIntervalSeconds = min(max(triggerIntervalSeconds, 1), 10)
-        restoreBrightness = min(max(restoreBrightness, 1), 100)
+        restoreBrightness = min(max(restoreBrightness, 0), 100)
         restoreResumingSeconds = min(max(restoreResumingSeconds, 0), 120)
         restoreSendCount = min(max(restoreSendCount, 1), 5)
     }
@@ -149,7 +151,7 @@ final class LinkedEmerFireEditState {
             configuration.powerLossSettings.triggerIntervalSeconds = UInt16(triggerIntervalSeconds)
             configuration.fireAlarmSettings.triggerIntervalSeconds = UInt16(triggerIntervalSeconds)
         case .restoreBrightness:
-            restoreBrightness = min(max(value, 1), 100)
+            restoreBrightness = min(max(value, 0), 100)
             configuration.restoreSettings.brightness = restoreBrightness
         case .restoreResuming:
             restoreResumingSeconds = min(max(value, 0), 120)
@@ -176,7 +178,7 @@ final class LinkedEmerFireEditState {
         case .triggerInterval:
             return .init(title: "efc_repeatedly_send_emergency_control_every".localizedString, value: triggerIntervalSeconds, range: 1...10, suffix: "s")
         case .restoreBrightness:
-            return .init(title: "linked_set_brightness_to".localizedString, value: restoreBrightness, range: 1...100, suffix: "%")
+            return .init(title: "linked_set_brightness_to".localizedString, value: restoreBrightness, range: 0...100, suffix: "%")
         case .restoreResuming:
             return .init(title: "linked_resuming".localizedString, value: restoreResumingSeconds, range: 0...120, suffix: "s")
         case .restoreSendCount:
@@ -195,6 +197,7 @@ final class LinkedEmerFireEditState {
             meshNetworkId: meshNetworkId,
             deviceName: deviceName,
             isSynced: isSynced,
+            controllerSelfSyncPending: controllerSelfSyncPending,
             reportToGateway: reportToGateway,
             publishGroupAddress: publishGroupAddress,
             configuration: configuration

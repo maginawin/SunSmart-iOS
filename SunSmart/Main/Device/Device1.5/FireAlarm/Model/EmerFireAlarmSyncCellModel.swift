@@ -452,6 +452,8 @@ extension NodeSyncData {
             return 5
         case .deleteSwitchs:
             return 5
+        case .emergencyFireControllerAssociations:
+            return 5
         case .deviceInitialize:
             return 0
         case .deviceParameterTypes:

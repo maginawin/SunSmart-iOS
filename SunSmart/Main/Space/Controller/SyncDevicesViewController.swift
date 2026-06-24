@@ -923,14 +923,40 @@ class SyncDevicesViewController: UIViewController {
         tasks: [EmergencyFireControllerSyncTask],
         data: DeviceEmerFireData
     ) -> SyncDevicesModel? {
-        guard let firstTask = tasks.first,
-              let node = nodeForEmergencyFireControllerTask(firstTask, data: data) else {
+        guard let firstTask = tasks.first else {
+            return nil
+        }
+        if isEmergencyFireControllerLocalGroupCleanupTask(firstTask) {
+            return makeEmergencyFireControllerLocalGroupCleanupDeviceModel(item: item, tasks: tasks, data: data)
+        }
+
+        guard let node = nodeForEmergencyFireControllerTask(firstTask, data: data) else {
             return nil
         }
         let model = SyncDevicesModel(name: node.name ?? item.name, address: node.primaryUnicastAddress)
         model.imageName = item.iconName
         model.steps = tasks.compactMap { task in
             makeEmergencyFireControllerLeafStep(task: task, data: data)
+        }
+        model.steps.forEach { step in
+            step.parentDeviceModel = model
+        }
+        guard !model.steps.isEmpty else { return nil }
+        return model
+    }
+
+    private func makeEmergencyFireControllerLocalGroupCleanupDeviceModel(
+        item: EmergencyFireControllerSyncItem,
+        tasks: [EmergencyFireControllerSyncTask],
+        data: DeviceEmerFireData
+    ) -> SyncDevicesModel? {
+        guard let operationNode = data.bindNode else {
+            return nil
+        }
+        let model = SyncDevicesModel(name: item.name, address: item.address)
+        model.imageName = item.iconName
+        model.steps = tasks.compactMap { task in
+            makeEmergencyFireControllerLeafStep(task: task, data: data, operationNode: operationNode)
         }
         model.steps.forEach { step in
             step.parentDeviceModel = model
@@ -953,9 +979,10 @@ class SyncDevicesViewController: UIViewController {
 
     private func makeEmergencyFireControllerLeafStep(
         task: EmergencyFireControllerSyncTask,
-        data: DeviceEmerFireData
+        data: DeviceEmerFireData,
+        operationNode: Node? = nil
     ) -> SyncDeviceStepModel? {
-        guard let taskModel = makeEmergencyFireControllerTaskModel(task: task, data: data) else {
+        guard let taskModel = makeEmergencyFireControllerTaskModel(task: task, data: data, operationNode: operationNode) else {
             return nil
         }
         let step = SyncDeviceStepModel(type: emergencyFireControllerTaskDisplayName(task, data: data), state: .none, tasks: [taskModel])
@@ -965,9 +992,10 @@ class SyncDevicesViewController: UIViewController {
 
     private func makeEmergencyFireControllerTaskModel(
         task: EmergencyFireControllerSyncTask,
-        data: DeviceEmerFireData
+        data: DeviceEmerFireData,
+        operationNode: Node? = nil
     ) -> SyncDeviceStepTaskModel? {
-        guard let node = nodeForEmergencyFireControllerTask(task, data: data) else {
+        guard let node = operationNode ?? nodeForEmergencyFireControllerTask(task, data: data) else {
             return nil
         }
         return SyncDeviceStepTaskModel(
@@ -995,7 +1023,19 @@ class SyncDevicesViewController: UIViewController {
     }
 
     private func nodeForEmergencyFireControllerTask(_ task: EmergencyFireControllerSyncTask, data: DeviceEmerFireData) -> Node? {
-        MeshNetworkManager.instance.meshNetwork?.node(withAddress: task.address) ?? data.bindNode
+        MeshNetworkManager.instance.meshNetwork?.node(withAddress: task.address)
+    }
+
+    private func isEmergencyFireControllerLocalGroupCleanupTask(_ task: EmergencyFireControllerSyncTask) -> Bool {
+        let isAssociationCleanup = task.kind == .associationCleanup &&
+            task.messageHandles.isEmpty &&
+            task.clearsUnassociatePending &&
+            task.pendingGroupAddress != nil
+        let isDeleteCleanup = task.kind == .deleteCleanup &&
+            task.messageHandles.isEmpty &&
+            task.pendingGroupAddress != nil
+        return (isAssociationCleanup || isDeleteCleanup) &&
+            task.pendingGroupAddress == task.address
     }
 
     private func emergencyFireControllerTask(for model: SyncCellModel) -> (task: EmergencyFireControllerSyncTask, data: DeviceEmerFireData)? {
@@ -1005,6 +1045,17 @@ class SyncDevicesViewController: UIViewController {
             return nil
         }
         return (task, data)
+    }
+
+    private func emergencyFireControllerTaskContexts() -> [(model: SyncCellModel, task: EmergencyFireControllerSyncTask, data: DeviceEmerFireData)] {
+        sections
+            .flatMap { $0.allModels }
+            .compactMap { model in
+                guard let taskContext = emergencyFireControllerTask(for: model) else {
+                    return nil
+                }
+                return (model: model, task: taskContext.task, data: taskContext.data)
+            }
     }
 
     private func clearEmergencyFireControllerPendingIfNeeded(for model: SyncCellModel) {
@@ -1116,8 +1167,8 @@ class SyncDevicesViewController: UIViewController {
         }
 
         if context.persistsSyncResult {
-            data.isSynced = success
-            DeviceEmerFireStore.shared.save(data)
+            refreshEmergencyFireControllerSelfSyncPending(data)
+            refreshEmergencyFireControllerSyncState(data)
         }
         let postSyncNotifications = {
             NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
@@ -1129,6 +1180,54 @@ class SyncDevicesViewController: UIViewController {
             DispatchQueue.main.async {
                 postSyncNotifications()
             }
+        }
+    }
+
+    private func finishEmergencyFireControllerAssociationSyncIfNeeded() {
+        guard emergencyFireSyncContext == nil else {
+            return
+        }
+        let controllers = emergencyFireControllerTaskContexts().reduce(into: [String: DeviceEmerFireData]()) { result, context in
+            result[context.data.id] = context.data
+        }
+        guard !controllers.isEmpty else {
+            return
+        }
+        controllers.values.forEach { data in
+            refreshEmergencyFireControllerSyncState(data)
+        }
+        DispatchQueue.main.async {
+            NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
+            controllers.values.forEach {
+                NotificationCenter.default.postLinkedEmerFireConfigDidChange($0.toConfig())
+            }
+        }
+    }
+
+    private func refreshEmergencyFireControllerSelfSyncPending(_ data: DeviceEmerFireData) {
+        let selfTaskContexts = emergencyFireControllerTaskContexts().filter {
+            $0.data.id == data.id && isEmergencyFireControllerSelfTaskKind($0.task.kind)
+        }
+        guard !selfTaskContexts.isEmpty else {
+            return
+        }
+        data.controllerSelfSyncPending = !selfTaskContexts.allSatisfy { $0.model.state == .successful }
+    }
+
+    private func refreshEmergencyFireControllerSyncState(_ data: DeviceEmerFireData) {
+        data.refreshEmergencyFireControllerSyncState(
+            meshUUID: data.meshUUID,
+            subnetworkId: data.meshNetworkId
+        )
+        DeviceEmerFireStore.shared.save(data)
+    }
+
+    private func isEmergencyFireControllerSelfTaskKind(_ kind: EmergencyFireControllerSyncTaskKind) -> Bool {
+        switch kind {
+        case .publication, .enabled, .resend, .restoreDelay, .actionConfig:
+            return true
+        case .lightnessSubscription, .lightLCSubscription, .associationSubscription, .associationCleanup, .deleteCleanup, .deleteConfiguration:
+            return false
         }
     }
     
@@ -1433,6 +1532,26 @@ class SyncDevicesViewController: UIViewController {
                 }else {
                     configturationSteps.append(step)
                 }
+            case .emergencyFireControllerAssociations(let data, let tasks):
+                let tasksByKind = Dictionary(grouping: tasks, by: { $0.kind })
+                [
+                    EmergencyFireControllerSyncTaskKind.associationSubscription,
+                    EmergencyFireControllerSyncTaskKind.associationCleanup
+                ].forEach { kind in
+                    guard let kindTasks = tasksByKind[kind], !kindTasks.isEmpty else {
+                        return
+                    }
+                    let taskModels = kindTasks.map {
+                        SyncDeviceStepTaskModel(name: $0.title, operationType: .configuration(node: node, type: .emergencyFireController(task: $0, data: data)))
+                    }
+                    let step = SyncDeviceStepModel(type: kind.localizedTitle, state: .none, tasks: taskModels)
+                    taskModels.forEach { $0.parentStepModel = step }
+                    if kind == .associationCleanup {
+                        deleteSteps.append(step)
+                    } else {
+                        configturationSteps.append(step)
+                    }
+                }
             case .syncGatewayProjectId(let projectId):
                 let taskModel = SyncDeviceStepTaskModel(name: "association_project".localizedString, operationType: .configuration(node: node, type: .gatewayAssociationProjectId(projectId: projectId)))
                 
@@ -1677,6 +1796,7 @@ class SyncDevicesViewController: UIViewController {
             syncState = .syncFailure
             persistEmergencyFireDeleteCleanupFailureIfNeeded()
             finishEmergencyFireControllerSyncIfNeeded(success: false)
+            finishEmergencyFireControllerAssociationSyncIfNeeded()
         }else if syncState == .syncFailure {
             
 //            let failedModels = sections.filter({ $0.allModels.contains(where: { $0 is SyncDevicesModel && ($0.state == .failed || $0.state == .repeatedFailure) }) })
@@ -2212,6 +2332,7 @@ class SyncDevicesViewController: UIViewController {
                 self.persistEmergencyFireDeleteCleanupFailureIfNeeded()
             }
             self.finishEmergencyFireControllerSyncIfNeeded(success: self.syncState == .syncSuccess)
+            self.finishEmergencyFireControllerAssociationSyncIfNeeded()
             
             DispatchQueue.main.async {
                 self.tableView.reloadData()

@@ -95,7 +95,7 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
                 options: restoreActionOptions,
                 selectedType: state.restoreActionType,
                 brightness: state.restoreBrightness,
-                brightnessRange: 1...100,
+                brightnessRange: 0...100,
                 cardPosition: cardPosition(for: row)
             )
             cell.actionDidChange = { [weak self] actionType in
@@ -149,7 +149,8 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
                     groups: DeviceEmerFireStore.shared.selectableGroups(),
                     selectedGroupAddresses: state.selectedGroupAddresses(),
                     disabledGroupAddresses: state.disabledAssociatedGroupAddresses(),
-                    disabledSelectionTip: "Not selectable. This group is already associated with a device of the same type.".localizedString
+                    disabledSelectionTip: "Not selectable. This group is already associated with a device of the same type.".localizedString,
+                    switchControlPolicy: .nonEmptyGroup
                 )
             ) { [weak self] addresses in
                 self?.state.updateSelectedGroupAddresses(addresses)
