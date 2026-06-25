@@ -99,7 +99,7 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     }
 
     private func makeInformationMenuItem() -> MenuPopView.MenuItem {
-        .init(icon: UIImage(named: "menu_information"), title: "information".localizedString, tapItemBack: { [weak self] _ in
+        .init(icon: UIImage(named: "menu_information"), title: "information".localizedString, hideAnimation: false, performsActionAfterDismiss: true, tapItemBack: { [weak self] _ in
             self?.pushInformation()
         })
     }
@@ -522,7 +522,7 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
             nameOverride: viewModel.title,
             showsFullDeviceInfo: true
         )
-        navigationController?.pushViewController(vc, animated: true)
+        pushDeviceInformationController(vc)
     }
 
     private func pushBatteryPowerSwitchSync() {

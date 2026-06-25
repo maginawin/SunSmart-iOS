@@ -131,6 +131,15 @@ extension UIViewController {
         navigationController?.stateImageView = nil
         NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(navigationBarStateFinished), object: nil)
     }
+
+    func pushDeviceInformationController(_ viewController: UIViewController) {
+        guard let navigationController else {
+            return
+        }
+
+        navigationController.view.layer.addMoveInAnimation(duration: 0.3, type: .push, animationOrientation: .fromRight)
+        navigationController.pushViewController(viewController, animated: false)
+    }
     
     enum NavigationBarState {
         case loading

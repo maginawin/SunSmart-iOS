@@ -80,7 +80,7 @@ extension EmerFireAlarmMonitorVC {
     }
 
     private func makeInformationMenuItem() -> MenuPopView.MenuItem {
-        .init(icon: UIImage(named: "menu_information"), title: "information".localizedString, hideAnimation: false, tapItemBack: { [weak self] _ in
+        .init(icon: UIImage(named: "menu_information"), title: "information".localizedString, hideAnimation: false, performsActionAfterDismiss: true, tapItemBack: { [weak self] _ in
             guard let self else { return }
             guard let node = self.currentDevice?.bindNode else {
                 XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: false)
@@ -93,7 +93,7 @@ extension EmerFireAlarmMonitorVC {
                 groupTextOverride: self.informationGroupText(),
                 nameOverride: self.informationNameOverride(node: node)
             )
-            self.navigationController?.pushViewController(controller, animated: true)
+            self.pushDeviceInformationController(controller)
         })
     }
 

@@ -37,6 +37,7 @@ class MenuPopView: UIView {
     
     static func show(items: [MenuItem], anchorPoint: CGPoint, direction: Direction = .down, menuWidth: CGFloat = MenuPopView.defalutMenuWidth, itemHeight: CGFloat = MenuPopView.defalutItemHeight) {
 //        let itemHeight: CGFloat =
+        hide(animation: false)
         let view = MenuPopView(frame: UIScreen.main.bounds)
         view.menuWidth = menuWidth
         view.itemHeight = itemHeight
@@ -50,10 +51,9 @@ class MenuPopView: UIView {
         view.showAnimation()
     }
     
-    static func hide() {
-        if let popView = UIApplication.shared.keyWindow().subviews.first(where: { $0.isKind(of: self.classForCoder()) }) as? MenuPopView {
-            popView.dismiss()
-        }
+    static func hide(animation: Bool = true) {
+        let popViews = UIApplication.shared.keyWindow().subviews.compactMap { $0 as? MenuPopView }
+        popViews.forEach { $0.dismiss(animation: animation) }
     }
 
     override func layoutSubviews() {
@@ -101,18 +101,22 @@ class MenuPopView: UIView {
         }
     }
     
-    func dismiss(animation: Bool = true) {
+    func dismiss(animation: Bool = true, completion: (() -> Void)? = nil) {
         isShow = false
 //        contentView.layer.anchorPoint = contentView.layer.anchorPoint
+        let finishDismiss = { [weak self] in
+            self?.removeFromSuperview()
+            completion?()
+        }
         if animation {
             UIView.animate(withDuration: 0.3) {
                 self.contentView.alpha = 0
 //                self.contentView.transform = CGAffineTransformMakeScale(0.01, 0.01)
             } completion: { _ in
-                self.removeFromSuperview()
+                finishDismiss()
             }
         }else {
-            self.removeFromSuperview()
+            finishDismiss()
         }
     }
     
@@ -196,8 +200,16 @@ extension MenuPopView: UITableViewDataSource, UITableViewDelegate {
     
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let item = items[indexPath.row]
-        item.tapItemBack?(item)
-        dismiss(animation: item.hideAnimation)
+        if item.performsActionAfterDismiss {
+            dismiss(animation: item.hideAnimation) {
+                DispatchQueue.main.async {
+                    item.tapItemBack?(item)
+                }
+            }
+        } else {
+            item.tapItemBack?(item)
+            dismiss(animation: item.hideAnimation)
+        }
     }
     
 }
@@ -220,6 +232,7 @@ extension MenuPopView {
         let title: String
         /// 点击后是否展示隐藏动画
         var hideAnimation: Bool = true
+        var performsActionAfterDismiss: Bool = false
         let tapItemBack: ((MenuItem)->Void)?
     }
     

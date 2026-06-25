@@ -37,7 +37,7 @@ class DaliMasterViewController: DeviceBaseViewController {
             }))
         }
         
-        items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
+        items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, hideAnimation: false, performsActionAfterDismiss: true, tapItemBack: {[weak self] _ in
             self?.information()
         }))
         
