@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "device_unsync_EMSign.png",
+      "filename" : "function_test_icon.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "device_unsync_EMSign@2x.png",
+      "filename" : "function_test_icon@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "device_unsync_EMSign@3x.png",
+      "filename" : "function_test_icon@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

@@ -37,11 +37,18 @@ class DeviceLightViewController: UIViewController {
     
     private var luxLabel: UILabel?
     private var emergencySignIdentifyButton: UIButton?
+    private var elFunctionTestView: ELControllerFunctionTestView?
+    private var elRxTxCableView: ELControllerFunctionTestView?
+    private var elControllerFunctionTestHelper: ELControllerFunctionTestHelper?
     
     private weak var lastMessageDelegate: MeshLibManagerMessageDelegate?
     
     let space: SpaceData
     let node: Node
+
+    private var supportsELControllerLocalFunctionViews: Bool {
+        node.companyIdentifier == 0x0A78 && node.productIdentifier == 0x24C1
+    }
 
     init(space: SpaceData, node: Node) {
         self.space = space
@@ -91,8 +98,7 @@ class DeviceLightViewController: UIViewController {
         getNodeState()
         
 //#if DEBUG
-        relaySwitch.isHidden = node.isEmergencySignController
-        relayLabel.isHidden = node.isEmergencySignController
+        updateRelayControlState()
         // 获取节点转发功能是否启用
         MeshAPI.getReplyState(address: node.primaryUnicastAddress, result: nil)
 //        #if DEBUG
@@ -124,18 +130,20 @@ class DeviceLightViewController: UIViewController {
         // 更新数据
         updateData()
 
+        if supportsELControllerLocalFunctionViews {
+            elControllerFunctionTestHelper?.startPageSession()
+        }
+
         if !node.isEmergencySignController, node.ambientLightSensorModel != nil {
             getNodeAmbientSensorLux()
         }
     }
     
-//    override func viewDidDisappear(_ animated: Bool) {
-//        super.viewDidDisappear(animated)
-        
-//        MeshLibManager.manager.messageDelegate = self.lastMessageDelegate
-        
-//        NotificationCenter.default.post(name: .init(deviceStateUpdateNotificationName), object: self.node)
-//    }
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+
+        elControllerFunctionTestHelper?.stopPageSession()
+    }
     
     deinit {
         MeshLibManager.manager.messageDelegate = self.lastMessageDelegate
@@ -174,12 +182,12 @@ class DeviceLightViewController: UIViewController {
     
     /// 更新UI数据
     private func updateData(refreshControlPanel: Bool = true) {
+        updateRelayControlState()
+
         if node.isEmergencySignController {
             updateEmergencySignData()
             return
         }
-        
-        self.relaySwitch.isOn = node.features?.relay == .enabled
         
         if node.isKeybindComplete {
             
@@ -224,6 +232,17 @@ class DeviceLightViewController: UIViewController {
                 }
             }
         }
+    }
+
+    private func updateRelayControlState() {
+        relaySwitch.isOn = node.features?.relay == .enabled
+        updateRelayControlVisibility()
+    }
+
+    private func updateRelayControlVisibility() {
+        let shouldHideRelayControl = !node.supportsLightDetailRelayControl
+        relaySwitch.isHidden = shouldHideRelayControl
+        relayLabel.isHidden = shouldHideRelayControl
     }
     
     private func updateControlPanel() {
@@ -712,8 +731,7 @@ class DeviceLightViewController: UIViewController {
         controlPanelView.isHidden = true
         upDownRatioView.isHidden = true
         onoffBtn.isHidden = true
-        relaySwitch.isHidden = true
-        relayLabel.isHidden = true
+        updateRelayControlState()
 
         let identifyButton = UIButton(normalImageName: "EMSign_identify", target: self, action: #selector(emergencySignIdentifyAction))
         identifyButton.imageView?.contentMode = .scaleAspectFit
@@ -726,11 +744,64 @@ class DeviceLightViewController: UIViewController {
         contentView.addSubview(identifyButton)
         identifyButton.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.top.equalTo(lightBgView.snp.bottom).offset(SCRYFit(160))
+            make.top.equalTo(lightBgView.snp.bottom).offset(SCRYFit(30))
             make.width.height.equalTo(isIPad ? 56 : 40)
-            make.bottom.lessThanOrEqualToSuperview().offset(SCRYFit(-8))
+            if !supportsELControllerLocalFunctionViews {
+                make.bottom.lessThanOrEqualToSuperview().offset(SCRYFit(-8))
+            }
         }
         emergencySignIdentifyButton = identifyButton
+
+        if supportsELControllerLocalFunctionViews {
+            let functionTestView = ELControllerFunctionTestView(kind: .functionTest)
+            contentView.addSubview(functionTestView)
+            functionTestView.snp.makeConstraints { make in
+                make.top.equalTo(identifyButton.snp.bottom).offset(SCRYFit(30))
+                make.left.equalTo(SCRXFrom(16))
+                make.right.equalTo(SCRXFrom(-16))
+            }
+            elFunctionTestView = functionTestView
+
+            let rxTxCableView = ELControllerFunctionTestView(kind: .rxTxCable)
+            contentView.addSubview(rxTxCableView)
+            rxTxCableView.snp.makeConstraints { make in
+                make.top.equalTo(functionTestView.snp.bottom).offset(SCRYFit(16))
+                make.left.right.equalTo(functionTestView)
+                make.bottom.lessThanOrEqualToSuperview().offset(SCRYFit(-8))
+            }
+            elRxTxCableView = rxTxCableView
+
+            let helper = ELControllerFunctionTestHelper(node: node)
+            helper.updateFunctionTestState = { [weak functionTestView] state in
+                functionTestView?.applyFunctionTestState(state)
+            }
+            helper.updateRxTxState = { [weak rxTxCableView] state in
+                rxTxCableView?.applyRxTxState(state)
+            }
+            helper.showOfflineMessage = {
+                XWHUDManager.showTipHUD("device_offline_message".localizedString, isLineFeed: true)
+            }
+            elControllerFunctionTestHelper = helper
+
+            functionTestView.onAction = { [weak self] in
+                self?.elControllerFunctionTestHelper?.startFunctionTest()
+            }
+            rxTxCableView.onAction = { [weak self] in
+                self?.elControllerFunctionTestHelper?.checkRxTxCable()
+            }
+
+            setELControllerFunctionViewsHidden(!node.isKeybindComplete || !node.state)
+        }
+    }
+
+    private func setELControllerFunctionViewsHidden(_ hidden: Bool) {
+        elFunctionTestView?.isHidden = hidden
+        elRxTxCableView?.isHidden = hidden
+    }
+
+    private func handleELControllerVendorStatus(_ status: SunricherVendorStatus, sentFrom source: Address) {
+        guard supportsELControllerLocalFunctionViews else { return }
+        elControllerFunctionTestHelper?.handleStatus(status, sentFrom: source)
     }
 
     private func updateEmergencySignData() {
@@ -739,20 +810,22 @@ class DeviceLightViewController: UIViewController {
         controlPanelView.isHidden = true
         upDownRatioView.isHidden = true
         onoffBtn.isHidden = true
-        relaySwitch.isHidden = true
-        relayLabel.isHidden = true
+        updateRelayControlState()
 
         if node.isKeybindComplete {
             view.hideEmptyDataView()
 
             guard node.state else {
+                elControllerFunctionTestHelper?.stopPageSession()
                 emergencySignIdentifyButton?.isHidden = true
+                setELControllerFunctionViewsHidden(true)
                 view.showEmptyDataView(imageName: "device_state_offline", title: "device_offline_message".localizedString, backgroundColor: Background_Color)
                 return
             }
 
             view.hideEmptyDataView()
             emergencySignIdentifyButton?.isHidden = false
+            setELControllerFunctionViewsHidden(false)
             emergencySignIdentifyButton?.isEnabled = true
             emergencySignIdentifyButton?.alpha = 1
             lightImageBtn.isSelected = true
@@ -760,7 +833,9 @@ class DeviceLightViewController: UIViewController {
             lightBgView.alpha = 1
             lightGrayBgView.alpha = 0
         } else {
+            elControllerFunctionTestHelper?.stopPageSession()
             emergencySignIdentifyButton?.isHidden = true
+            setELControllerFunctionViewsHidden(true)
             if view.emptyView == nil {
                 view.showEmptyDataView(imageName: "device_state_offline", title: "device_repair_message".localizedString, backgroundColor: Background_Color, buttonText: "repair".localizedString, buttomWidth: SCRXFrom(216), bottomMargin: SCRYFit(-78)) { [weak self] in
                     self?.repairBtnClick()
@@ -1099,7 +1174,6 @@ class DeviceLightViewController: UIViewController {
         }
 
         relayLabel = UILabel(text: "Relay", textColor: TextBlack_Color, fontSize: 13)
-        relayLabel.isHidden = true
         contentView.addSubview(relayLabel)
         relayLabel.snp.makeConstraints { make in
             make.centerY.equalTo(relaySwitch)
@@ -1307,6 +1381,10 @@ extension DeviceLightViewController: MeshLibManagerMessageDelegate {
     ///   - source: 来源设备地址
     ///   - destination: 接收设备地址
     func meshNetworkManager(_ manager: MeshNetworkManager, didReceiveMessage message: MeshMessage, sentFrom source: Address, to destination: Address) {
+        if let status = message as? SunricherVendorStatus {
+            handleELControllerVendorStatus(status, sentFrom: source)
+        }
+
         if let node = manager.meshNetwork?.node(withAddress: source), !node.isProvisioner {
             node.updateData(message: message)
             if node.primaryUnicastAddress == self.node.primaryUnicastAddress {

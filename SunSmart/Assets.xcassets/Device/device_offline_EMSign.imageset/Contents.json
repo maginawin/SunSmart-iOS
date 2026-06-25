@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "em-sign-offline.png",
+      "filename" : "device_offline_EMSign.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "em-sign-offline@2x.png",
+      "filename" : "device_offline_EMSign@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "em-sign-offline@3x.png",
+      "filename" : "device_offline_EMSign@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

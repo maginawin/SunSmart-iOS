@@ -46,5 +46,12 @@ extension Node {
     var supportsUpDownRatioControl: Bool {
         companyIdentifier == 0x0A78 && productIdentifier == 0x2491
     }
+
+    var supportsLightDetailRelayControl: Bool {
+        if !isEmergencySignController {
+            return true
+        }
+        return companyIdentifier == 0x0A78 && productIdentifier == 0x24C1
+    }
     
 }

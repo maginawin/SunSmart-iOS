@@ -129,6 +129,7 @@ class DevicesViewController: WMPageController {
         //        view.layoutIfNeeded()
         
         addObservation()
+        resetELControllerRxTxConnectionStates()
         
         // 未连接上mesh网络
         if !MeshNetworkManager.instance.realNodes.isEmpty && !MeshLibManager.manager.isMeshNetworkConnected && (MeshLibManager.manager.bluetoothState == .poweredOn || MeshLibManager.manager.bluetoothState == .unknown) {
@@ -244,6 +245,12 @@ class DevicesViewController: WMPageController {
             }
         })
         
+    }
+
+    private func resetELControllerRxTxConnectionStates() {
+        MeshNetworkManager.instance.realNodes
+            .filter { $0.supportsELControllerRxTxConnectionState }
+            .forEach { $0.updateELControllerRxTxConnectionState(.unknown) }
     }
     
     // MARK: - Guidance

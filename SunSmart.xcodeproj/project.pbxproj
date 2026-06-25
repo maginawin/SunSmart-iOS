@@ -2210,6 +2210,10 @@
 		C8CAD8A72F0E32AA00BE3F20 /* Node+Capability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD8A52F0E32AA00BE3F20 /* Node+Capability.swift */; };
 		C8CAD8A82F0E32AA00BE3F20 /* Node+Capability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD8A52F0E32AA00BE3F20 /* Node+Capability.swift */; };
 		C8CAD8A92F0E32AA00BE3F20 /* Node+Capability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD8A52F0E32AA00BE3F20 /* Node+Capability.swift */; };
+		C8F7A0012FBF000000000001 /* Node+ELControllerRxTx.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F7A0002FBF000000000001 /* Node+ELControllerRxTx.swift */; };
+		C8F7A0022FBF000000000001 /* Node+ELControllerRxTx.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F7A0002FBF000000000001 /* Node+ELControllerRxTx.swift */; };
+		C8F7A0032FBF000000000001 /* Node+ELControllerRxTx.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F7A0002FBF000000000001 /* Node+ELControllerRxTx.swift */; };
+		C8F7A0042FBF000000000001 /* Node+ELControllerRxTx.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F7A0002FBF000000000001 /* Node+ELControllerRxTx.swift */; };
 		C8CAE8E32D75D76A00FCCA5A /* DevicesReplySetViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAE8E22D75D76A00FCCA5A /* DevicesReplySetViewController.swift */; };
 		C8CAE8E52D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAE8E42D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift */; };
 		C8CAE8E72D76FE1500FCCA5A /* SwitchSelectScenePageController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAE8E62D76FE1500FCCA5A /* SwitchSelectScenePageController.swift */; };
@@ -2240,6 +2244,14 @@
 		C8D1C0122F10000000000001 /* DeviceUpDownRatioControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */; };
 		C8D1C0132F10000000000001 /* DeviceUpDownRatioControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */; };
 		C8D1C0142F10000000000001 /* DeviceUpDownRatioControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */; };
+		C8F700002FAF000000000002 /* ELControllerFunctionTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */; };
+		C8F700002FAF000000000003 /* ELControllerFunctionTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */; };
+		C8F700002FAF000000000004 /* ELControllerFunctionTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */; };
+		C8F700002FAF000000000005 /* ELControllerFunctionTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */; };
+		C8F700102FAF000000000002 /* ELControllerFunctionTestHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700102FAF000000000001 /* ELControllerFunctionTestHelper.swift */; };
+		C8F700102FAF000000000003 /* ELControllerFunctionTestHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700102FAF000000000001 /* ELControllerFunctionTestHelper.swift */; };
+		C8F700102FAF000000000004 /* ELControllerFunctionTestHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700102FAF000000000001 /* ELControllerFunctionTestHelper.swift */; };
+		C8F700102FAF000000000005 /* ELControllerFunctionTestHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700102FAF000000000001 /* ELControllerFunctionTestHelper.swift */; };
 		C8D1C0212F10000000000001 /* UpDownLightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0202F10000000000001 /* UpDownLightView.swift */; };
 		C8D1C0222F10000000000001 /* UpDownLightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0202F10000000000001 /* UpDownLightView.swift */; };
 		C8D1C0232F10000000000001 /* UpDownLightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0202F10000000000001 /* UpDownLightView.swift */; };
@@ -2884,6 +2896,7 @@
 		C8CAD3142F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileNightDayIlluminanceThresholdView.swift; sourceTree = "<group>"; };
 		C8CAD89A2F0B9D5100BE3F20 /* ProfileTextInstructionsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileTextInstructionsViewController.swift; sourceTree = "<group>"; };
 		C8CAD8A52F0E32AA00BE3F20 /* Node+Capability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Node+Capability.swift"; sourceTree = "<group>"; };
+		C8F7A0002FBF000000000001 /* Node+ELControllerRxTx.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Node+ELControllerRxTx.swift"; sourceTree = "<group>"; };
 		C8CAE8E22D75D76A00FCCA5A /* DevicesReplySetViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesReplySetViewController.swift; sourceTree = "<group>"; };
 		C8CAE8E42D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchSelectPanelTypeController.swift; sourceTree = "<group>"; };
 		C8CAE8E62D76FE1500FCCA5A /* SwitchSelectScenePageController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchSelectScenePageController.swift; sourceTree = "<group>"; };
@@ -2901,6 +2914,8 @@
 		C8D001012FCE000100ABCDEF /* ContentDisplayControlStyleViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentDisplayControlStyleViewCell.swift; sourceTree = "<group>"; };
 		C8D1C0002F10000000000001 /* DeviceLightControlPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceLightControlPanelView.swift; sourceTree = "<group>"; };
 		C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceUpDownRatioControlView.swift; sourceTree = "<group>"; };
+		C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ELControllerFunctionTestView.swift; sourceTree = "<group>"; };
+		C8F700102FAF000000000001 /* ELControllerFunctionTestHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ELControllerFunctionTestHelper.swift; sourceTree = "<group>"; };
 		C8D1C0202F10000000000001 /* UpDownLightView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpDownLightView.swift; sourceTree = "<group>"; };
 		C8D22DFF2E010A47001A2BDA /* GatewayViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayViewController.swift; sourceTree = "<group>"; };
 		C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddProfessionalModeController.swift; sourceTree = "<group>"; };
@@ -4066,6 +4081,8 @@
 				C898EA752AC409230023B480 /* DeviceSliderFunctionView.swift */,
 				C8D1C0002F10000000000001 /* DeviceLightControlPanelView.swift */,
 				C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */,
+				C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */,
+				C8F700102FAF000000000001 /* ELControllerFunctionTestHelper.swift */,
 				C8D1C0202F10000000000001 /* UpDownLightView.swift */,
 				C89941942AD4F192008DCD76 /* DeviceAddViewCell.swift */,
 				C8A85CDD2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift */,
@@ -4543,6 +4560,7 @@
 				C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */,
 				C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */,
 				C8CAD8A52F0E32AA00BE3F20 /* Node+Capability.swift */,
+				C8F7A0002FBF000000000001 /* Node+ELControllerRxTx.swift */,
 				C8D6636C2BFED12B00BFF81A /* Keychain.swift */,
 				C8D6636E2BFEDDC900BFF81A /* ImportData.swift */,
 				C8D663702BFEDDE000BFF81A /* ExportData.swift */,
@@ -5419,6 +5437,8 @@
 				C88553D82DE6B44C00C8B688 /* DeviceLightControlViewCell.swift in Sources */,
 				C8D1C0012F10000000000001 /* DeviceLightControlPanelView.swift in Sources */,
 				C8D1C0112F10000000000001 /* DeviceUpDownRatioControlView.swift in Sources */,
+				C8F700002FAF000000000002 /* ELControllerFunctionTestView.swift in Sources */,
+				C8F700102FAF000000000002 /* ELControllerFunctionTestHelper.swift in Sources */,
 				C8D1C0212F10000000000001 /* UpDownLightView.swift in Sources */,
 				C88553D92DE6B44C00C8B688 /* UIImage+Extension.swift in Sources */,
 				C88553DA2DE6B44C00C8B688 /* LBXScanViewController.swift in Sources */,
@@ -5761,6 +5781,7 @@
 				8C7789042F975954000887FE /* EmerFireStatus.swift in Sources */,
 				C88554AE2DE6B44C00C8B688 /* SceneAddCustomView.swift in Sources */,
 				C8CAD8A82F0E32AA00BE3F20 /* Node+Capability.swift in Sources */,
+				C8F7A0012FBF000000000001 /* Node+ELControllerRxTx.swift in Sources */,
 				C88554AF2DE6B44C00C8B688 /* MeshFirmwareSelectDeviceViewCell.swift in Sources */,
 				C8BC95E82E055C540058D41E /* DeviceSignalStrengthView.swift in Sources */,
 				C88554B02DE6B44C00C8B688 /* MeshFirmwareUpgradeSectionView.swift in Sources */,
@@ -5984,6 +6005,8 @@
 				C886E0282E30DE4900D0C3A6 /* DeviceLightControlViewCell.swift in Sources */,
 				C8D1C0022F10000000000001 /* DeviceLightControlPanelView.swift in Sources */,
 				C8D1C0122F10000000000001 /* DeviceUpDownRatioControlView.swift in Sources */,
+				C8F700002FAF000000000003 /* ELControllerFunctionTestView.swift in Sources */,
+				C8F700102FAF000000000003 /* ELControllerFunctionTestHelper.swift in Sources */,
 				C8D1C0222F10000000000001 /* UpDownLightView.swift in Sources */,
 				C886E0292E30DE4900D0C3A6 /* UIImage+Extension.swift in Sources */,
 				C886E02A2E30DE4900D0C3A6 /* LBXScanViewController.swift in Sources */,
@@ -6327,6 +6350,7 @@
 				8C7789032F975954000887FE /* EmerFireStatus.swift in Sources */,
 				C886E1062E30DE4900D0C3A6 /* SceneAddCustomView.swift in Sources */,
 				C8CAD8A62F0E32AA00BE3F20 /* Node+Capability.swift in Sources */,
+				C8F7A0022FBF000000000001 /* Node+ELControllerRxTx.swift in Sources */,
 				C886E1072E30DE4900D0C3A6 /* MeshFirmwareSelectDeviceViewCell.swift in Sources */,
 				C886E1082E30DE4900D0C3A6 /* DeviceSignalStrengthView.swift in Sources */,
 				C886E1092E30DE4900D0C3A6 /* MeshFirmwareUpgradeSectionView.swift in Sources */,
@@ -6550,6 +6574,8 @@
 				C88B257E2ADE594600CF1AE4 /* DeviceLightControlViewCell.swift in Sources */,
 				C8D1C0032F10000000000001 /* DeviceLightControlPanelView.swift in Sources */,
 				C8D1C0132F10000000000001 /* DeviceUpDownRatioControlView.swift in Sources */,
+				C8F700002FAF000000000004 /* ELControllerFunctionTestView.swift in Sources */,
+				C8F700102FAF000000000004 /* ELControllerFunctionTestHelper.swift in Sources */,
 				C8D1C0232F10000000000001 /* UpDownLightView.swift in Sources */,
 				C8ACF1382AA1B2BA00E24B4A /* UIImage+Extension.swift in Sources */,
 				C87EB4652BA17D3F00F9285B /* LBXScanViewController.swift in Sources */,
@@ -6896,6 +6922,7 @@
 				C8FC6BA02E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */,
 				C8A130C02B327FF40008C353 /* SceneAddCustomView.swift in Sources */,
 				C8CAD8A72F0E32AA00BE3F20 /* Node+Capability.swift in Sources */,
+				C8F7A0032FBF000000000001 /* Node+ELControllerRxTx.swift in Sources */,
 				C8A0301A2CD85FC40063FEC4 /* MeshFirmwareSelectDeviceViewCell.swift in Sources */,
 				C8BC95E92E055C540058D41E /* DeviceSignalStrengthView.swift in Sources */,
 				C8A030202CD89EC00063FEC4 /* MeshFirmwareUpgradeSectionView.swift in Sources */,
@@ -7115,6 +7142,8 @@
 				C8BB65D82ED3F056000C63EE /* DeviceLightControlViewCell.swift in Sources */,
 				C8D1C0042F10000000000001 /* DeviceLightControlPanelView.swift in Sources */,
 				C8D1C0142F10000000000001 /* DeviceUpDownRatioControlView.swift in Sources */,
+				C8F700002FAF000000000005 /* ELControllerFunctionTestView.swift in Sources */,
+				C8F700102FAF000000000005 /* ELControllerFunctionTestHelper.swift in Sources */,
 				C8D1C0242F10000000000001 /* UpDownLightView.swift in Sources */,
 				C8BB65D92ED3F056000C63EE /* UIImage+Extension.swift in Sources */,
 				C8BB65DA2ED3F056000C63EE /* LBXScanViewController.swift in Sources */,
@@ -7458,6 +7487,7 @@
 				8C7789052F975954000887FE /* EmerFireStatus.swift in Sources */,
 				C8BB66DD2ED3F056000C63EE /* SceneAddCustomView.swift in Sources */,
 				C8CAD8A92F0E32AA00BE3F20 /* Node+Capability.swift in Sources */,
+				C8F7A0042FBF000000000001 /* Node+ELControllerRxTx.swift in Sources */,
 				C8BB66DE2ED3F056000C63EE /* MeshFirmwareSelectDeviceViewCell.swift in Sources */,
 				C8BB66DF2ED3F056000C63EE /* DeviceSignalStrengthView.swift in Sources */,
 				C8BB66E02ED3F056000C63EE /* MeshFirmwareUpgradeSectionView.swift in Sources */,

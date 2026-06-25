@@ -44,7 +44,7 @@ class DevicesViewCell: UICollectionViewCell {
             if device.isKeybindComplete {
                 progressView.isHidden = false
 //                lightnessProgressView.isHidden = false
-                iconImageView.image = UIImage(named: device.iconName)
+                iconImageView.image = UIImage(named: device.elControllerLightsIconName)
                 
                 if device.state {
                     
