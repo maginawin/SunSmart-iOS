@@ -274,6 +274,7 @@ class SpaceViewController: WMPageController {
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        clearTransientWindowMenus()
         ConfigurationFlowGuidanceView.current()?.hide()
     }
 
@@ -309,6 +310,10 @@ class SpaceViewController: WMPageController {
         let subviews = UIApplication.shared.keyWindow().subviews.filter({ $0.tag == 100 })
         subviews.forEach({ $0.removeFromSuperview() })
         
+    }
+
+    private func clearTransientWindowMenus() {
+        MenuPopView.hide(animation: false)
     }
     
 //    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
@@ -1062,6 +1067,7 @@ class SpaceViewController: WMPageController {
         
 //        isIphoneX ? 18 : 15
         let touchCenterX = view.width - navigationRightItemMargin - 15
+        clearTransientWindowMenus()
         
         var items: [MenuPopView.MenuItem] = []
         

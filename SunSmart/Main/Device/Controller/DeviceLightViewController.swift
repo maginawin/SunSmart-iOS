@@ -333,7 +333,7 @@ class DeviceLightViewController: UIViewController {
             }))
         }
         
-        items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
+        items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, hideAnimation: false, performsActionAfterDismiss: true, tapItemBack: {[weak self] _ in
             self?.information()
         }))
         #if DEBUG
@@ -629,7 +629,7 @@ class DeviceLightViewController: UIViewController {
     private func information() {
         
 //        MeshAPI.setLightnessRange(address: node.primaryUnicastAddress, range: 255...65535)
-        navigationController?.pushViewController(DeviceInformationViewController(node: self.node), animated: true)
+        pushDeviceInformationController(DeviceInformationViewController(node: self.node))
     }
     
     /// 设置
@@ -661,6 +661,7 @@ class DeviceLightViewController: UIViewController {
         
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 2)
         getNodeState()
+        refreshUpDownRatioValue(allowOverwriteEditedValue: true)
         
         MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5) {[weak self] nodeDatas in
             guard let self = self else { return }
@@ -866,6 +867,10 @@ class DeviceLightViewController: UIViewController {
     }
 
     private func getInitialUpRatioValue() {
+        refreshUpDownRatioValue(allowOverwriteEditedValue: false)
+    }
+
+    private func refreshUpDownRatioValue(allowOverwriteEditedValue: Bool) {
         guard node.supportsUpDownRatioControl, let vendorModel = node.sunricherVendorModel else {
             return
         }
@@ -876,7 +881,8 @@ class DeviceLightViewController: UIViewController {
             timeout: 7
         ) { [weak self] response in
             DispatchQueue.main.async {
-                guard let self = self, !self.hasEditedUpRatioValue else { return }
+                guard let self = self,
+                      allowOverwriteEditedValue || !self.hasEditedUpRatioValue else { return }
                 guard let status = response as? SunricherVendorStatus,
                       status.status.isSuccessful,
                       case .upDownLightUpRatio(let value) = status.status.parameters else {

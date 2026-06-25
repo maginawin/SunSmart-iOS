@@ -140,7 +140,7 @@ class DeviceBaseViewController: UIViewController, DeviceProtocol {
             }))
         }
         
-        items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
+        items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, hideAnimation: false, performsActionAfterDismiss: true, tapItemBack: {[weak self] _ in
             self?.information()
         }))
            
@@ -207,7 +207,7 @@ class DeviceBaseViewController: UIViewController, DeviceProtocol {
     func information() {
         
 //        MeshAPI.setLightnessRange(address: node.primaryUnicastAddress, range: 255...65535)
-        navigationController?.pushViewController(DeviceInformationViewController(node: self.node), animated: true)
+        pushDeviceInformationController(DeviceInformationViewController(node: self.node))
     }
     
     /// 刷新
