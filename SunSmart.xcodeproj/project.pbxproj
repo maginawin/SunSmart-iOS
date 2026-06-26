@@ -2210,10 +2210,6 @@
 		C8CAD8A72F0E32AA00BE3F20 /* Node+Capability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD8A52F0E32AA00BE3F20 /* Node+Capability.swift */; };
 		C8CAD8A82F0E32AA00BE3F20 /* Node+Capability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD8A52F0E32AA00BE3F20 /* Node+Capability.swift */; };
 		C8CAD8A92F0E32AA00BE3F20 /* Node+Capability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD8A52F0E32AA00BE3F20 /* Node+Capability.swift */; };
-		C8F7A0012FBF000000000001 /* Node+ELControllerRxTx.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F7A0002FBF000000000001 /* Node+ELControllerRxTx.swift */; };
-		C8F7A0022FBF000000000001 /* Node+ELControllerRxTx.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F7A0002FBF000000000001 /* Node+ELControllerRxTx.swift */; };
-		C8F7A0032FBF000000000001 /* Node+ELControllerRxTx.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F7A0002FBF000000000001 /* Node+ELControllerRxTx.swift */; };
-		C8F7A0042FBF000000000001 /* Node+ELControllerRxTx.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F7A0002FBF000000000001 /* Node+ELControllerRxTx.swift */; };
 		C8CAE8E32D75D76A00FCCA5A /* DevicesReplySetViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAE8E22D75D76A00FCCA5A /* DevicesReplySetViewController.swift */; };
 		C8CAE8E52D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAE8E42D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift */; };
 		C8CAE8E72D76FE1500FCCA5A /* SwitchSelectScenePageController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAE8E62D76FE1500FCCA5A /* SwitchSelectScenePageController.swift */; };
@@ -2244,14 +2240,6 @@
 		C8D1C0122F10000000000001 /* DeviceUpDownRatioControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */; };
 		C8D1C0132F10000000000001 /* DeviceUpDownRatioControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */; };
 		C8D1C0142F10000000000001 /* DeviceUpDownRatioControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */; };
-		C8F700002FAF000000000002 /* ELControllerFunctionTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */; };
-		C8F700002FAF000000000003 /* ELControllerFunctionTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */; };
-		C8F700002FAF000000000004 /* ELControllerFunctionTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */; };
-		C8F700002FAF000000000005 /* ELControllerFunctionTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */; };
-		C8F700102FAF000000000002 /* ELControllerFunctionTestHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700102FAF000000000001 /* ELControllerFunctionTestHelper.swift */; };
-		C8F700102FAF000000000003 /* ELControllerFunctionTestHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700102FAF000000000001 /* ELControllerFunctionTestHelper.swift */; };
-		C8F700102FAF000000000004 /* ELControllerFunctionTestHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700102FAF000000000001 /* ELControllerFunctionTestHelper.swift */; };
-		C8F700102FAF000000000005 /* ELControllerFunctionTestHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700102FAF000000000001 /* ELControllerFunctionTestHelper.swift */; };
 		C8D1C0212F10000000000001 /* UpDownLightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0202F10000000000001 /* UpDownLightView.swift */; };
 		C8D1C0222F10000000000001 /* UpDownLightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0202F10000000000001 /* UpDownLightView.swift */; };
 		C8D1C0232F10000000000001 /* UpDownLightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0202F10000000000001 /* UpDownLightView.swift */; };
@@ -2334,6 +2322,18 @@
 		C8F6A1012FA3000000000001 /* WiFiGatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1042FA3000000000001 /* WiFiGatewayViewController.swift */; };
 		C8F6A1022FA3000000000001 /* WiFiGatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1042FA3000000000001 /* WiFiGatewayViewController.swift */; };
 		C8F6A1032FA3000000000001 /* WiFiGatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1042FA3000000000001 /* WiFiGatewayViewController.swift */; };
+		C8F700002FAF000000000002 /* ELControllerFunctionTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */; };
+		C8F700002FAF000000000003 /* ELControllerFunctionTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */; };
+		C8F700002FAF000000000004 /* ELControllerFunctionTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */; };
+		C8F700002FAF000000000005 /* ELControllerFunctionTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */; };
+		C8F700102FAF000000000002 /* ELControllerFunctionTestHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700102FAF000000000001 /* ELControllerFunctionTestHelper.swift */; };
+		C8F700102FAF000000000003 /* ELControllerFunctionTestHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700102FAF000000000001 /* ELControllerFunctionTestHelper.swift */; };
+		C8F700102FAF000000000004 /* ELControllerFunctionTestHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700102FAF000000000001 /* ELControllerFunctionTestHelper.swift */; };
+		C8F700102FAF000000000005 /* ELControllerFunctionTestHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700102FAF000000000001 /* ELControllerFunctionTestHelper.swift */; };
+		C8F7A0012FBF000000000001 /* Node+ELControllerRxTx.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F7A0002FBF000000000001 /* Node+ELControllerRxTx.swift */; };
+		C8F7A0022FBF000000000001 /* Node+ELControllerRxTx.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F7A0002FBF000000000001 /* Node+ELControllerRxTx.swift */; };
+		C8F7A0032FBF000000000001 /* Node+ELControllerRxTx.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F7A0002FBF000000000001 /* Node+ELControllerRxTx.swift */; };
+		C8F7A0042FBF000000000001 /* Node+ELControllerRxTx.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F7A0002FBF000000000001 /* Node+ELControllerRxTx.swift */; };
 		C8F837402E3B52560003B292 /* GatewaySectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */; };
 		C8F837412E3B52560003B292 /* GatewaySectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */; };
 		C8F837422E3B52560003B292 /* GatewaySectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */; };
@@ -2896,7 +2896,6 @@
 		C8CAD3142F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileNightDayIlluminanceThresholdView.swift; sourceTree = "<group>"; };
 		C8CAD89A2F0B9D5100BE3F20 /* ProfileTextInstructionsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileTextInstructionsViewController.swift; sourceTree = "<group>"; };
 		C8CAD8A52F0E32AA00BE3F20 /* Node+Capability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Node+Capability.swift"; sourceTree = "<group>"; };
-		C8F7A0002FBF000000000001 /* Node+ELControllerRxTx.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Node+ELControllerRxTx.swift"; sourceTree = "<group>"; };
 		C8CAE8E22D75D76A00FCCA5A /* DevicesReplySetViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesReplySetViewController.swift; sourceTree = "<group>"; };
 		C8CAE8E42D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchSelectPanelTypeController.swift; sourceTree = "<group>"; };
 		C8CAE8E62D76FE1500FCCA5A /* SwitchSelectScenePageController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchSelectScenePageController.swift; sourceTree = "<group>"; };
@@ -2914,8 +2913,6 @@
 		C8D001012FCE000100ABCDEF /* ContentDisplayControlStyleViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentDisplayControlStyleViewCell.swift; sourceTree = "<group>"; };
 		C8D1C0002F10000000000001 /* DeviceLightControlPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceLightControlPanelView.swift; sourceTree = "<group>"; };
 		C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceUpDownRatioControlView.swift; sourceTree = "<group>"; };
-		C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ELControllerFunctionTestView.swift; sourceTree = "<group>"; };
-		C8F700102FAF000000000001 /* ELControllerFunctionTestHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ELControllerFunctionTestHelper.swift; sourceTree = "<group>"; };
 		C8D1C0202F10000000000001 /* UpDownLightView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpDownLightView.swift; sourceTree = "<group>"; };
 		C8D22DFF2E010A47001A2BDA /* GatewayViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayViewController.swift; sourceTree = "<group>"; };
 		C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddProfessionalModeController.swift; sourceTree = "<group>"; };
@@ -2981,6 +2978,9 @@
 		C8EFC1012FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceGroupDeferredSyncPlanner.swift; sourceTree = "<group>"; };
 		C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequenceAddDescriptionController.swift; sourceTree = "<group>"; };
 		C8F6A1042FA3000000000001 /* WiFiGatewayViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiGatewayViewController.swift; sourceTree = "<group>"; };
+		C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ELControllerFunctionTestView.swift; sourceTree = "<group>"; };
+		C8F700102FAF000000000001 /* ELControllerFunctionTestHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ELControllerFunctionTestHelper.swift; sourceTree = "<group>"; };
+		C8F7A0002FBF000000000001 /* Node+ELControllerRxTx.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Node+ELControllerRxTx.swift"; sourceTree = "<group>"; };
 		C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewaySectionHeaderView.swift; sourceTree = "<group>"; };
 		C8F89D372E3B6F8500FA1544 /* GatewayAPNMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayAPNMenuView.swift; sourceTree = "<group>"; };
 		C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayModel.swift; sourceTree = "<group>"; };
@@ -7826,7 +7826,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F10000000000000000000003 /* Debug.xcconfig */;
 			buildSettings = {
-				MARKETING_VERSION = 1.0.21;
+				MARKETING_VERSION = 1.0.22;
 			};
 			name = Debug;
 		};
@@ -7834,7 +7834,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F10000000000000000000004 /* Release.xcconfig */;
 			buildSettings = {
-				MARKETING_VERSION = 1.0.21;
+				MARKETING_VERSION = 1.0.22;
 			};
 			name = Release;
 		};
@@ -7845,7 +7845,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.0.5;
+				MARKETING_VERSION = 1.0.6;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Debug;
@@ -7857,7 +7857,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.0.5;
+				MARKETING_VERSION = 1.0.6;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Release;

@@ -121,7 +121,7 @@ class EmerFireAlarmDeviceCell: UICollectionViewCell {
             self.deleteDashedBorder()
         case .offlineBoundDevice:
             warningIcon.isHidden = true
-            iconImageView.image = UIImage(named: "Frame14")
+            iconImageView.image = UIImage(named: "device_offline_Emergency")
             self.deleteDashedBorder()
         case .unboundDevice:
             warningIcon.isHidden = true
