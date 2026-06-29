@@ -11,6 +11,7 @@ enum LinkedEmerFireEditRow: Int, CaseIterable {
     case name
     case reportToGateway
     case associatedGroups
+    case emergencyMode
     case eventOccursHeader
     case fireAlarmBrightness
     case powerLossBrightness
@@ -28,6 +29,7 @@ extension LinkedEmerFireEditRow {
         case name
         case report
         case associatedGroups
+        case emergencyMode
         case eventOccurs
         case eventEnds
     }
@@ -40,6 +42,8 @@ extension LinkedEmerFireEditRow {
             return .report
         case .associatedGroups:
             return .associatedGroups
+        case .emergencyMode:
+            return .emergencyMode
         case .eventOccursHeader,
              .fireAlarmBrightness,
              .powerLossBrightness,

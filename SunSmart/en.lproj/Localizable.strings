@@ -1774,6 +1774,10 @@
 "efc_event_occurs_tip" = "Fire emergency take higher priority.";
 "efc_event_ends_title" = "When The Emergency Event Ends:";
 "efc_event_ends_tip" = "Execution will only begin after all emergency events have ceased.";
+"efc_emergency_mode" = "Emergency Mode";
+"efc_working_mode_power_loss_only" = "Power Loss Only";
+"efc_working_mode_fire_alarm_only" = "Fire Alarm Only";
+"efc_working_mode_power_loss_and_fire_alarm" = "Power Loss & Fire Alarm";
 "efc_power_loss_emergency" = "Power Loss Emergency";
 "efc_repeatedly_send_emergency_control_every" = "Repeatedly Send Emergency Control Every";
 "efc_send_count_5_second_interval" = "Send Count (5-second interval):";
@@ -1789,6 +1793,7 @@
 "efc_status_inactive" = "Inactive";
 "efc_sync_publication" = "Publication";
 "efc_sync_enable" = "Enable";
+"efc_sync_working_mode" = "Emergency Mode";
 "efc_sync_resend" = "Resend";
 "efc_sync_restore_delay" = "Restore Delay";
 "efc_sync_action_config" = "Action Config";

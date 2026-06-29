@@ -27,9 +27,6 @@ enum EmerFireAlarmMonitorDisplayState: Equatable {
 
 enum EmerFireAlarmMonitorStateMapper {
     static func displayState(status: EmergencyFireComprehensiveStatus) -> EmerFireAlarmMonitorDisplayState {
-        guard status.enabled else {
-            return .disabled
-        }
         if status.fireActive {
             return .fireTriggered
         }
@@ -136,6 +133,14 @@ enum EmerFireAlarmMonitorStateMapper {
                 ]
             )
         ]
+    }
+
+    static func showsPowerLossControls(for mode: EmergencyFireWorkingMode) -> Bool {
+        mode.showsPowerLossEmergencyControls
+    }
+
+    static func showsFireAlarmControls(for mode: EmergencyFireWorkingMode) -> Bool {
+        mode.showsFireAlarmEmergencyControls
     }
 
     private static func restoreActionTitle(for settings: EmergencyFireControllerRestoreSettings) -> String {

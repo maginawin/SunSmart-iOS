@@ -10,18 +10,25 @@ import UIKit
 extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
 
     private var visibleRows: [LinkedEmerFireEditRow] {
-        let rows: [LinkedEmerFireEditRow] = [
+        var rows: [LinkedEmerFireEditRow] = [
             .name,
             .reportToGateway,
             .associatedGroups,
-            .eventOccursHeader,
-            .fireAlarmBrightness,
-            .powerLossBrightness,
+            .emergencyMode,
+            .eventOccursHeader
+        ]
+        if state.workingMode.showsFireAlarmEmergencyControls {
+            rows.append(.fireAlarmBrightness)
+        }
+        if state.workingMode.showsPowerLossEmergencyControls {
+            rows.append(.powerLossBrightness)
+        }
+        rows.append(contentsOf: [
             .triggerInterval,
             .eventEndsHeader,
             .restoreAction,
             .restoreTiming
-        ]
+        ])
 
         return rows
     }
@@ -72,6 +79,10 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
         case .associatedGroups:
             let cell: EmerFireSelectionCell = tableView.dequeueReusableCell(for: indexPath)
             cell.configure(title: "Associate With Group(s)".localizedString, value: state.groupText(), cardPosition: cardPosition(for: row))
+            return cell
+        case .emergencyMode:
+            let cell: EmerFireSelectionCell = tableView.dequeueReusableCell(for: indexPath)
+            cell.configure(title: "efc_emergency_mode".localizedString, value: state.workingModeText(), cardPosition: cardPosition(for: row))
             return cell
         case .eventOccursHeader:
             let cell: EmerFireInfoCell = tableView.dequeueReusableCell(for: indexPath)
@@ -157,6 +168,8 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
                 self?.tableView.reloadRows(at: [indexPath], with: .none)
             }
             navigationController?.pushViewController(controller, animated: true)
+        case .emergencyMode:
+            showWorkingModeSelection()
         default:
             break
         }
@@ -169,6 +182,7 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
         case .name,
              .reportToGateway,
              .associatedGroups,
+             .emergencyMode,
              .eventOccursHeader,
              .eventEndsHeader,
              .restoreAction,
@@ -192,6 +206,8 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
         case .reportToGateway:
             return SCRYFrom(48)
         case .associatedGroups:
+            return SCRYFrom(72)
+        case .emergencyMode:
             return SCRYFrom(72)
         case .eventOccursHeader, .eventEndsHeader:
             return SCRYFrom(64)
@@ -227,5 +243,19 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
             .init(title: "linked_set_brightness_to".localizedString, type: .setBrightness),
             .init(title: "restore_none".localizedString, type: .none)
         ]
+    }
+
+    private func showWorkingModeSelection() {
+        let actions = state.selectableWorkingModes.map { mode in
+            SRAlertAction(title: mode.localizedTitle, actionHandler: { [weak self] _ in
+                guard let self else { return }
+                self.state.updateWorkingMode(mode)
+                self.tableView.reloadData()
+            })
+        }
+        SRAlertView(
+            title: "efc_emergency_mode".localizedString,
+            actions: actions + [.cancelAction]
+        ).show()
     }
 }

@@ -187,36 +187,40 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
     }
     
     func configureActions() {
-        let actions: [EmerFireAlarmMoniView.ActionItem] = [
+        var actions: [EmerFireAlarmMoniView.ActionItem] = [
             .init(
                 image: UIImage(named: EmergencyFireControllerIconName.Monitor.Action.identify),
                 borderColor: nil,
                 action: { [weak self] in
                     self?.identifyAction() ?? false
                 }
-            ),
-            .init(
+            )
+        ]
+        if viewModel.showsFireAlarmControls {
+            actions.append(.init(
                 image: UIImage(named: EmergencyFireControllerIconName.Monitor.Action.mockFireAlarm),
                 borderColor: nil,
                 action: { [weak self] in
                     self?.mockFireAlarmAction() ?? false
                 }
-            ),
-            .init(
+            ))
+        }
+        if viewModel.showsPowerLossControls {
+            actions.append(.init(
                 image: UIImage(named: EmergencyFireControllerIconName.Monitor.Action.mockPowerLoss),
                 borderColor: nil,
                 action: { [weak self] in
                     self?.mockPowerLossAction() ?? false
                 }
-            ),
-            .init(
-                image: UIImage(named: EmergencyFireControllerIconName.Monitor.Action.mockRestore),
-                borderColor: nil,
-                action: { [weak self] in
-                    self?.mockRestoreAction() ?? false
-                }
-            )
-        ]
+            ))
+        }
+        actions.append(.init(
+            image: UIImage(named: EmergencyFireControllerIconName.Monitor.Action.mockRestore),
+            borderColor: nil,
+            action: { [weak self] in
+                self?.mockRestoreAction() ?? false
+            }
+        ))
         moniView.configure(actions: actions)
         statusSetView.headerActionHandler = { [weak self] action in
             guard let self else { return }

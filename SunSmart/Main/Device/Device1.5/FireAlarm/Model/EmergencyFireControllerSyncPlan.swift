@@ -10,7 +10,7 @@ import NordicSigMeshSDK
 
 enum EmergencyFireControllerSyncTaskKind: String {
     case publication = "efc_sync_publication"
-    case enabled = "efc_sync_enable"
+    case workingMode = "efc_sync_working_mode"
     case resend = "efc_sync_resend"
     case restoreDelay = "efc_sync_restore_delay"
     case actionConfig = "efc_sync_action_config"

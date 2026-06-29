@@ -162,22 +162,47 @@ struct EmergencyFireControllerRestoreSettings: Codable, Equatable {
 /// EFC 的 desired configuration。
 /// 数据库存的是这份配置，真实 Mesh 设备是否已经对齐要看 isSynced 和同步流程结果。
 struct EmergencyFireControllerConfiguration: Codable, Equatable {
+    var workingMode: EmergencyFireWorkingMode
     var powerLossSettings: EmergencyFireControllerModeSettings
     var fireAlarmSettings: EmergencyFireControllerModeSettings
     var restoreSettings: EmergencyFireControllerRestoreSettings
 
     static let defaultValue = EmergencyFireControllerConfiguration(
+        workingMode: .powerLossOnly,
         powerLossSettings: .powerLossDefaultValue,
         fireAlarmSettings: .fireAlarmDefaultValue,
         restoreSettings: .defaultValue
     )
+
+    init(
+        workingMode: EmergencyFireWorkingMode,
+        powerLossSettings: EmergencyFireControllerModeSettings,
+        fireAlarmSettings: EmergencyFireControllerModeSettings,
+        restoreSettings: EmergencyFireControllerRestoreSettings
+    ) {
+        self.workingMode = workingMode
+        self.powerLossSettings = powerLossSettings
+        self.fireAlarmSettings = fireAlarmSettings
+        self.restoreSettings = restoreSettings
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case workingMode
+        case powerLossSettings
+        case fireAlarmSettings
+        case restoreSettings
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        workingMode = try container.decodeIfPresent(EmergencyFireWorkingMode.self, forKey: .workingMode) ?? .powerLossOnly
+        powerLossSettings = try container.decode(EmergencyFireControllerModeSettings.self, forKey: .powerLossSettings)
+        fireAlarmSettings = try container.decode(EmergencyFireControllerModeSettings.self, forKey: .fireAlarmSettings)
+        restoreSettings = try container.decode(EmergencyFireControllerRestoreSettings.self, forKey: .restoreSettings)
+    }
 }
 
 extension EmergencyFireControllerConfiguration {
-
-    var enabled: Bool {
-        true
-    }
 
     /// 两种应急功能下真正应该被 EFC 控制的灯组。
     var activeLightLCGroupAddresses: Set<Address> {
@@ -264,8 +289,7 @@ extension EmergencyFireControllerConfiguration {
         transitionTime: UInt8 = 0,
         delay: UInt8 = 0
     ) -> EmergencyFireActionConfig {
-        guard enabled,
-              let targetAddress,
+        guard let targetAddress,
               let action = action(for: state) else {
             return .init(stateIndex: state.sdkStateIndex, action: .invalid)
         }

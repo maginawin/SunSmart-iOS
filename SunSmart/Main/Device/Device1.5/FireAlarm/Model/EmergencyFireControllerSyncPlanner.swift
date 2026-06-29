@@ -363,10 +363,10 @@ struct EmergencyFireControllerSyncPlanner {
             return []
         }
         let task = EmergencyFireControllerSyncTask(
-            title: "efc_sync_enable".localizedString,
-            kind: .enabled,
+            title: "efc_sync_working_mode".localizedString,
+            kind: .workingMode,
             address: node.primaryUnicastAddress,
-            messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyEnabled(false)), model: vendorModel)]
+            messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyWorkingMode(.disabled)), model: vendorModel)]
         )
         return [EmergencyFireControllerSyncItem(name: data.name, iconName: EmergencyFireControllerIconName.main, address: node.primaryUnicastAddress, tasks: [task], controller: data)]
     }

@@ -1224,7 +1224,7 @@ class SyncDevicesViewController: UIViewController {
 
     private func isEmergencyFireControllerSelfTaskKind(_ kind: EmergencyFireControllerSyncTaskKind) -> Bool {
         switch kind {
-        case .publication, .enabled, .resend, .restoreDelay, .actionConfig:
+        case .publication, .workingMode, .resend, .restoreDelay, .actionConfig:
             return true
         case .lightnessSubscription, .lightLCSubscription, .associationSubscription, .associationCleanup, .deleteCleanup, .deleteConfiguration:
             return false

@@ -390,6 +390,10 @@ extension EmerFireAlarmMonitorVC {
             fireTrigger: fireTrigger,
             fireStop: fireStop
         )
+        statusSetView.configureVisibleHeaderActions(
+            showPowerLoss: viewModel.showsPowerLossControls,
+            showFireAlarm: viewModel.showsFireAlarmControls
+        )
     }
 
     func renderNodeAvailabilityChange(_ node: Node) {

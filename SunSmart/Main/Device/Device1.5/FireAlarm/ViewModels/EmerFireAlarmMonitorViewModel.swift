@@ -40,6 +40,18 @@ final class EmerFireAlarmMonitorViewModel {
         false
     }
 
+    var workingMode: EmergencyFireWorkingMode {
+        currentConfig?.configuration.workingMode ?? currentDevice?.configuration.workingMode ?? .powerLossAndFireAlarm
+    }
+
+    var showsPowerLossControls: Bool {
+        EmerFireAlarmMonitorStateMapper.showsPowerLossControls(for: workingMode)
+    }
+
+    var showsFireAlarmControls: Bool {
+        EmerFireAlarmMonitorStateMapper.showsFireAlarmControls(for: workingMode)
+    }
+
     var isEmergencySituation: Bool {
         switch currentState {
         case .emergencyTriggered, .fireTriggered:

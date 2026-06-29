@@ -1789,6 +1789,10 @@
 "efc_event_occurs_tip" = "火警应急优先级更高。";
 "efc_event_ends_title" = "当紧急事件结束时：";
 "efc_event_ends_tip" = "所有紧急事件结束后才会开始执行。";
+"efc_emergency_mode" = "应急模式";
+"efc_working_mode_power_loss_only" = "仅断电";
+"efc_working_mode_fire_alarm_only" = "仅火警";
+"efc_working_mode_power_loss_and_fire_alarm" = "断电和火警";
 "efc_power_loss_emergency" = "断电应急";
 "efc_repeatedly_send_emergency_control_every" = "每隔以下时间重复发送应急控制";
 "efc_send_count_5_second_interval" = "发送次数（每 5 秒间隔）：";
@@ -1804,6 +1808,7 @@
 "efc_status_inactive" = "未激活";
 "efc_sync_publication" = "发布配置";
 "efc_sync_enable" = "启用状态";
+"efc_sync_working_mode" = "应急模式";
 "efc_sync_resend" = "重发参数";
 "efc_sync_restore_delay" = "恢复延迟";
 "efc_sync_action_config" = "动作配置";

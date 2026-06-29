@@ -182,6 +182,13 @@ final class EmerFireAlarmStatusSetView: UIView {
         )
     }
 
+    func configureVisibleHeaderActions(showPowerLoss: Bool, showFireAlarm: Bool) {
+        powerLossTriggerButton.isHidden = !showPowerLoss
+        powerLossStatusButton.isHidden = !showPowerLoss
+        fireTriggerButton.isHidden = !showFireAlarm
+        fireStatusButton.isHidden = !showFireAlarm
+    }
+
     private func updateHeaderButtonImages(powerLossTrigger: RowStatus, powerLossStop: RowStatus, fireTrigger: RowStatus, fireStop: RowStatus) {
         powerLossTriggerButton.setImage(UIImage(named: triggerHeaderImageName(enabledImageName: EmergencyFireControllerIconName.Monitor.StatusSet.powerLossEnabled, disabledImageName: EmergencyFireControllerIconName.Monitor.StatusSet.powerLossDisabled, status: powerLossTrigger)), for: .normal)
         powerLossStatusButton.setImage(UIImage(named: powerLossStop.imageName), for: .normal)

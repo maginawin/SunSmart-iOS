@@ -251,12 +251,12 @@ extension DeviceEmerFireData {
             tasks.append(EmergencyFireControllerSyncTask(title: "efc_sync_scene_publication".localizedString, kind: .publication, address: node.primaryUnicastAddress, messageHandles: scenePublicationHandles))
         }
 
-        if oldConfiguration == nil || oldConfiguration?.enabled != configuration.enabled {
+        if oldConfiguration == nil || oldConfiguration?.workingMode != configuration.workingMode {
             tasks.append(EmergencyFireControllerSyncTask(
-                title: "efc_sync_enable".localizedString,
-                kind: .enabled,
+                title: "efc_sync_working_mode".localizedString,
+                kind: .workingMode,
                 address: node.primaryUnicastAddress,
-                messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyEnabled(configuration.enabled)), model: vendorModel)],
+                messageHandles: [MeshMessageHandle(message: SunricherVendorSet(function: .emergencyWorkingMode(configuration.workingMode)), model: vendorModel)],
                 changedOnly: onlyChangedKeyParameters
             ))
         }

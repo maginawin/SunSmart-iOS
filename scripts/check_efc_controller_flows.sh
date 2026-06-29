@@ -637,8 +637,92 @@ assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFir
   "EFC subscription sync must not delete Scene Server subscriptions in the current test-stage data model."
 
 assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/LinkedEmerFireConfig.swift" \
-  "var enabled: Bool {" \
-  "EFC enabled state must remain fixed on."
+  "var workingMode: EmergencyFireWorkingMode" \
+  "EFC configuration must persist Working Mode."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/LinkedEmerFireConfig.swift" \
+  "workingMode: .powerLossOnly" \
+  "EFC default Working Mode must be Power Loss Only."
+
+assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/LinkedEmerFireConfig.swift" \
+  "var enabled: Bool" \
+  "EFC configuration must not expose the old enabled property."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/DeviceEmerFireData+Sync.swift" \
+  "SunricherVendorSet(function: .emergencyWorkingMode(configuration.workingMode))" \
+  "EFC controller sync must send Working Mode."
+
+assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/DeviceEmerFireData+Sync.swift" \
+  ".emergencyEnabled" \
+  "EFC controller sync must not send the old Emergency Enabled command."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireControllerSyncPlan.swift" \
+  'case workingMode = "efc_sync_working_mode"' \
+  "EFC sync task kind must include Working Mode."
+
+assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  ".workingMode" \
+  "EFC Space sync must classify Working Mode as a controller self task."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmControllerSyncVC.swift" \
+  ".workingMode" \
+  "EFC device sync page must classify Working Mode as a controller self task."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/LinkedEmerFireEditRow.swift" \
+  "case emergencyMode" \
+  "EFC edit rows must include Emergency Mode."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/LinkedEmerFireEditState.swift" \
+  "selectableWorkingModes" \
+  "EFC edit state must expose only App-supported Working Mode options."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC+Table.swift" \
+  ".emergencyMode" \
+  "EFC edit page must render the Emergency Mode row."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/ViewModels/EmerFireAlarmMonitorState.swift" \
+  "showsPowerLossControls" \
+  "EFC monitor state must expose Power Loss control visibility."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/ViewModels/EmerFireAlarmMonitorState.swift" \
+  "showsFireAlarmControls" \
+  "EFC monitor state must expose Fire Alarm control visibility."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/views/EmerFireAlarmStatusSetView.swift" \
+  "configureVisibleHeaderActions" \
+  "EFC Status & Settings header controls must be filterable by Working Mode."
+
+assert_contains "SunSmart/en.lproj/Localizable.strings" \
+  "efc_emergency_mode" \
+  "English localization must include Emergency Mode."
+
+assert_contains "SunSmart/en.lproj/Localizable.strings" \
+  "efc_working_mode_power_loss_only" \
+  "English localization must include Power Loss Only."
+
+assert_contains "SunSmart/en.lproj/Localizable.strings" \
+  "efc_working_mode_fire_alarm_only" \
+  "English localization must include Fire Alarm Only."
+
+assert_contains "SunSmart/en.lproj/Localizable.strings" \
+  "efc_working_mode_power_loss_and_fire_alarm" \
+  "English localization must include Power Loss & Fire Alarm."
+
+assert_contains "SunSmart/zh-Hans.lproj/Localizable.strings" \
+  "efc_emergency_mode" \
+  "Simplified Chinese localization must include Emergency Mode."
+
+assert_contains "SunSmart/zh-Hans.lproj/Localizable.strings" \
+  "efc_working_mode_power_loss_only" \
+  "Simplified Chinese localization must include Power Loss Only."
+
+assert_contains "SunSmart/zh-Hans.lproj/Localizable.strings" \
+  "efc_working_mode_fire_alarm_only" \
+  "Simplified Chinese localization must include Fire Alarm Only."
+
+assert_contains "SunSmart/zh-Hans.lproj/Localizable.strings" \
+  "efc_working_mode_power_loss_and_fire_alarm" \
+  "Simplified Chinese localization must include Power Loss & Fire Alarm."
 
 assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorVC.swift" \
   "Not executed. Please link a group first." \

@@ -72,6 +72,23 @@ final class LinkedEmerFireEditState {
         groupNames(for: associatedGroupAddresses)
     }
 
+    var workingMode: EmergencyFireWorkingMode {
+        get { configuration.workingMode }
+        set { configuration.workingMode = newValue }
+    }
+
+    var selectableWorkingModes: [EmergencyFireWorkingMode] {
+        [.powerLossOnly, .fireAlarmOnly, .powerLossAndFireAlarm]
+    }
+
+    func workingModeText() -> String {
+        workingMode.localizedTitle
+    }
+
+    func updateWorkingMode(_ mode: EmergencyFireWorkingMode) {
+        workingMode = mode
+    }
+
     func selectedGroupAddresses() -> [UInt16] {
         associatedGroupAddresses
     }
@@ -206,6 +223,7 @@ final class LinkedEmerFireEditState {
 
     private func syncConfiguration() {
         normalizeStepperValues()
+        configuration.workingMode = workingMode
         configuration.powerLossSettings.associateGroupAddresses = associatedGroupAddresses
         configuration.fireAlarmSettings.associateGroupAddresses = associatedGroupAddresses
         configuration.powerLossSettings.triggerBrightness = powerLossBrightness
@@ -218,5 +236,26 @@ final class LinkedEmerFireEditState {
         configuration.restoreSettings.brightness = restoreBrightness
         configuration.restoreSettings.resumingSeconds = UInt8(restoreResumingSeconds)
         configuration.restoreSettings.sendCount = UInt16(restoreSendCount)
+    }
+}
+
+extension EmergencyFireWorkingMode {
+    var localizedTitle: String {
+        switch self {
+        case .powerLossOnly:
+            return "efc_working_mode_power_loss_only".localizedString
+        case .fireAlarmOnly:
+            return "efc_working_mode_fire_alarm_only".localizedString
+        case .powerLossAndFireAlarm, .disabled:
+            return "efc_working_mode_power_loss_and_fire_alarm".localizedString
+        }
+    }
+
+    var showsPowerLossEmergencyControls: Bool {
+        self != .fireAlarmOnly
+    }
+
+    var showsFireAlarmEmergencyControls: Bool {
+        self != .powerLossOnly
     }
 }
