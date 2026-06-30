@@ -47,6 +47,13 @@ extension Node {
         companyIdentifier == 0x0A78 && productIdentifier == 0x2491
     }
 
+    var supportsUpDownLightDefaultCctSteps: Bool {
+        guard companyIdentifier == 0x0A78, let productIdentifier else {
+            return false
+        }
+        return productIdentifier == 0x2491 || productIdentifier == 0x2492
+    }
+
     var supportsLightDetailRelayControl: Bool {
         if !isEmergencySignController {
             return true

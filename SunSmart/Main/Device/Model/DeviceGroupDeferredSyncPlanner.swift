@@ -554,7 +554,7 @@ enum UpDownLightDefaultCctStepsReader {
         nodes: [Node],
         completion: @escaping () -> Void
     ) {
-        let supportedNodes = nodes.filter { $0.supportsUpDownRatioControl }
+        let supportedNodes = nodes.filter { $0.supportsUpDownLightDefaultCctSteps }
         guard !supportedNodes.isEmpty else {
             DispatchQueue.main.async {
                 completion()
