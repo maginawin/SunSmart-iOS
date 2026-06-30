@@ -1911,6 +1911,6 @@
 "el_controller_rxtx_check_button" = "Check";
 "el_controller_rxtx_checking_button" = "Checking...";
 "el_controller_rxtx_start_prompt" = "Tap \"Check\" to test sign panel connection";
-"el_controller_rxtx_checking_connection" = "Checking sign panel connection...";
+"el_controller_rxtx_checking_connection" = "Checking connection...";
 "el_controller_rxtx_connection_normal" = "Connection Normal";
 "el_controller_rxtx_connection_fault" = "Connection Fault";

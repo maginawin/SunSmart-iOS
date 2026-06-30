@@ -148,12 +148,16 @@ class EnergyStaticDataViewController: UIViewController {
     }
 
     private var energyDataNodes: [Node] {
-        MeshNetworkManager.instance.realNodes.filter { $0.deviceType == .light }
+        MeshNetworkManager.instance.realNodes.filter { isEnergyDataNode($0) }
     }
 
-    private func lightOnlyStaticData(_ staticData: EnergyStatisticsStaticData?) -> EnergyStatisticsStaticData? {
+    private func isEnergyDataNode(_ node: Node) -> Bool {
+        node.deviceType == .light && !node.isEmergencySignController
+    }
+
+    private func energyDataStaticData(_ staticData: EnergyStatisticsStaticData?) -> EnergyStatisticsStaticData? {
         guard let staticData = staticData else { return nil }
-        let deviceEnergyDatas = staticData.deviceEnergyDatas.filter { isLightEnergyData($0) }
+        let deviceEnergyDatas = staticData.deviceEnergyDatas.filter { isEnergyData($0) }
         return EnergyStatisticsStaticData(
             timestamp: staticData.timestamp,
             incomplete: staticData.incomplete,
@@ -162,9 +166,9 @@ class EnergyStaticDataViewController: UIViewController {
         )
     }
 
-    private func isLightEnergyData(_ data: DeviceTotalEnergyData) -> Bool {
+    private func isEnergyData(_ data: DeviceTotalEnergyData) -> Bool {
         if let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: data.address) {
-            return node.deviceType == .light
+            return isEnergyDataNode(node)
         }
 
         guard let productId = data.productId,
@@ -172,14 +176,15 @@ class EnergyStaticDataViewController: UIViewController {
             return false
         }
         return Node.DeviceType(deviceCategory: deviceInfo.deviceCategory) == .light
+            && !Node.isEmergencySignController(companyIdentifier: deviceInfo.companyId, productIdentifier: deviceInfo.productId)
     }
     
     private func setupData() {
         
         let staticDatas = EnergyStatisticsStaticData.load(spaceId: space.id)
         
-        latestHarvestData = lightOnlyStaticData(staticDatas.first)
-        previousHarvestData = staticDatas.count > 1 ? lightOnlyStaticData(staticDatas[1]) : nil
+        latestHarvestData = energyDataStaticData(staticDatas.first)
+        previousHarvestData = staticDatas.count > 1 ? energyDataStaticData(staticDatas[1]) : nil
         
         // Group数据
         if let harvestData = latestHarvestData {

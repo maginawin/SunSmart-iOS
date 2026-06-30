@@ -648,7 +648,8 @@ class DeviceLightViewController: UIViewController {
     private func information() {
         
 //        MeshAPI.setLightnessRange(address: node.primaryUnicastAddress, range: 255...65535)
-        pushDeviceInformationController(DeviceInformationViewController(node: self.node))
+        let showsSceneSection = !node.isEmergencySignController
+        pushDeviceInformationController(DeviceInformationViewController(node: self.node, showsSceneSection: showsSceneSection))
     }
     
     /// 设置

@@ -53,7 +53,9 @@ class EnergyTimeSeriesDataViewController: UIViewController {
     }
 
     private var energyDataNodes: [Node] {
-        MeshNetworkManager.instance.realNodes.filter { $0.deviceType == .light }
+        MeshNetworkManager.instance.realNodes.filter {
+            $0.deviceType == .light && !$0.isEmergencySignController
+        }
     }
     
     override func viewDidLoad() {

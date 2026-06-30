@@ -277,11 +277,18 @@ class DeviceAddProfessionalModeController: UIViewController {
     }
 
     private func isVisibleDeviceInCurrentAddMode(_ device: ProvisioningDevice) -> Bool {
+        let isEmergencySignController = Node.isEmergencySignController(
+            companyIdentifier: device.cid,
+            productIdentifier: device.pid
+        )
+
         switch addMode {
-        case .motionSensing, .lightSening:
-            return device.deviceType == .light || device.deviceType == .sensor
-        case .manual, .rssiRange:
+        case .rssiRange:
             return true
+        case .manual:
+            return !isEmergencySignController
+        case .motionSensing, .lightSening:
+            return !isEmergencySignController && (device.deviceType == .light || device.deviceType == .sensor)
         }
     }
 
