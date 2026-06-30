@@ -226,9 +226,7 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
     }
 
     private func finishDeleteOthersItem() {
-        space.deviceCount = MeshNetworkManager.instance.realNodes.count
-        space.luminairesCount = MeshNetworkManager.instance.realNodes.filter { $0.deviceType == .light }.count
-        space.save()
+        space.commitLocalChangeForCloudSync(changeType: .network(type: .address))
         reloadShowItems()
         if showItems.isEmpty {
             isEdit = false
@@ -236,7 +234,6 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
         updateUI()
         NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
         NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
-        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
     }
     
     private func setupUI() {

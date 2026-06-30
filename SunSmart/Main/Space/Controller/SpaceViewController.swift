@@ -57,6 +57,95 @@ enum SpaceChangeDataType {
     case network(type: NetworkDataType)
 }
 
+fileprivate extension SpaceChangeDataType {
+    var cloudSyncLevel: SyncLevel {
+        switch self {
+        case .common:
+            return .slow
+        case .device, .network:
+            return .promptly
+        }
+    }
+}
+
+extension SpaceData {
+    func commitLocalChangeForCloudSync(site currentSite: SiteData? = nil, changeType: SpaceChangeDataType) {
+        refreshSummaryCountsFromCurrentMesh()
+
+        guard permission == .owner || permission == .editor else {
+            save()
+            return
+        }
+
+        markSpaceUploadNeeded()
+        guard let site = currentSite ?? SiteData.load(siteId: siteId) else {
+            save()
+            return
+        }
+
+        if site.spaces.isEmpty {
+            site.spaces = SpaceData.load(siteId: site.id)
+        }
+
+        switch changeType {
+        case .device, .common:
+            enqueueSpaceSync(site: site, level: changeType.cloudSyncLevel)
+        case .network(let type):
+            switch type {
+            case .ivIndex:
+                CloudSynchronizationManager.shared.addSynchronizationHandle(
+                    operation: .syncSite(site: site),
+                    level: changeType.cloudSyncLevel
+                )
+            case .address:
+                site.markSiteUploadNeededForSpaceAddressChange()
+                CloudSynchronizationManager.shared.addSynchronizationHandle(
+                    operation: .syncSite(site: site, syncSpaces: [self]),
+                    level: changeType.cloudSyncLevel
+                )
+            }
+        }
+    }
+
+    private func refreshSummaryCountsFromCurrentMesh() {
+        let nodes = MeshNetworkManager.instance.realNodes
+        deviceCount = nodes.count
+        luminairesCount = nodes.filter { $0.deviceType == .light }.count
+        groupCount = MeshNetworkManager.instance.groups.count
+        sceneCount = MeshNetworkManager.instance.scenes.count
+        scheheduleCount = MeshNetworkManager.instance.schedules.count
+        switchesCount = MeshNetworkManager.instance.switchs.count
+    }
+
+    private func markSpaceUploadNeeded() {
+        let now = Int64(Date().timeIntervalSince1970)
+        lastUpdate = max(now, lastUpdate + 1, (lastUploadCloudTimestamp ?? 0) + 1)
+        save()
+    }
+
+    private func enqueueSpaceSync(site: SiteData, level: SyncLevel) {
+        if site.uploadCloud {
+            CloudSynchronizationManager.shared.addSynchronizationHandle(
+                operation: .syncSpace(space: self),
+                level: level
+            )
+        } else {
+            CloudSynchronizationManager.shared.addSynchronizationHandle(
+                operation: .syncSite(site: site, syncSpaces: site.spaces),
+                level: level
+            )
+        }
+    }
+}
+
+fileprivate extension SiteData {
+    func markSiteUploadNeededForSpaceAddressChange() {
+        let now = Int64(Date().timeIntervalSince1970)
+        lastUpdate = max(now, lastUpdate + 1, (lastUploadCloudTimestamp ?? 0) + 1)
+        save()
+    }
+}
+
 private enum SpacePresenceStopReason: String {
     case leavingSpaceFlow
     case permissionLoss
@@ -483,26 +572,12 @@ class SpaceViewController: WMPageController {
         
         
         // 空间内数据更新通知
-        NotificationCenter.default.addObserver(forName: .init(spaceDataChangedNotificaitonName), object: nil, queue: .main) {[weak self] notification in
-            guard let self = self, let type = notification.object as? SpaceChangeDataType, self.space.permission == .owner || self.space.permission == .editor else { return }
-            self.space.lastUpdate = Int64(Date().timeIntervalSince1970)
-            self.space.save()
-            switch type {
-            case .device:
-                self.syncSpace(level: .promptly)
-            case .common:
-                self.syncSpace(level: .slow)
-            case .network(let type):
-                if type == .ivIndex {
-                    CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: self.site), level: .promptly)
-                }else if type == .address {
-                    self.site.lastUpdate = Int64(Date().timeIntervalSince1970)
-                    self.site.save()
-//                    DispatchQueue.global().async {
-                        CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: self.site, syncSpaces: [self.space]), level: .promptly)
-//                    }
-                }
+        NotificationCenter.default.addObserver(forName: .init(spaceDataChangedNotificaitonName), object: nil, queue: .main) { [weak self] notification in
+            guard let self,
+                  let type = notification.object as? SpaceChangeDataType else {
+                return
             }
+            self.space.commitLocalChangeForCloudSync(site: self.site, changeType: type)
         }
         
         // 页面page禁止滑动通知

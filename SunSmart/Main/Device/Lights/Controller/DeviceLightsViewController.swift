@@ -694,8 +694,6 @@ class DeviceLightsViewController: UIViewController {
 //                })
 //                self.isEdit = false
 //                self.loadDevices()
-//                // 通知space数据修改
-//                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
 //            }
 //            
 //        })])
@@ -742,9 +740,9 @@ class DeviceLightsViewController: UIViewController {
                 
 //                self.devices.removeAll(where: { successAddressList.contains($0.primaryUnicastAddress) })
                 self.selectedAddresss.removeAll(where: { successAddressList.contains($0) })
-                self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
-                self.space.luminairesCount = self.devices.count
-                self.space.save()
+                if !successAddressList.isEmpty {
+                    self.space.commitLocalChangeForCloudSync(site: self.site, changeType: .network(type: .address))
+                }
                 
                 if failAddressList.isEmpty { // 删除成功
                     XWHUDManager.showSuccessTipHUD("done!".localizedString)
@@ -756,10 +754,6 @@ class DeviceLightsViewController: UIViewController {
                         MeshLibManager.manager.close()
                     }
                     
-                    // 通知space数据修改
-//                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
-                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
-                    
                 }else { // 删除失败（提示是否强制删除这部分设备）
                     
                     let alertView = SRAlertView(title: "notification".localizedString, actions: [SRAlertAction(title: "alert_item_cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
@@ -768,12 +762,6 @@ class DeviceLightsViewController: UIViewController {
                         self?.updateEditUI()
                         self?.isDeletingDevice = false
                         self?.collectionView.reloadData()
-                        if successAddressList.count > 0 {
-                            // 通知space数据修改
-//                            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
-                            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
-                        }
-                        
                     }), SRAlertAction(title: "force_delete".localizedString, actionHandler: {[weak self] _ in
                         guard let self = self else { return }
                         let forceDeleteNodes = self.devices.filter({ failAddressList.contains($0.primaryUnicastAddress) })
@@ -789,13 +777,9 @@ class DeviceLightsViewController: UIViewController {
                         self.updateUI()
                         self.collectionView.reloadData()
                         
-                        self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
-                        self.space.luminairesCount = self.devices.count
-                        self.space.save()
+                        self.space.commitLocalChangeForCloudSync(site: self.site, changeType: .network(type: .address))
                         
                         XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                        // 通知space数据修改
-                        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
                         
                     })])
                     let messageAttStr = NSMutableAttributedString(string: "devices_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])

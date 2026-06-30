@@ -381,7 +381,7 @@ class DeviceSwitchesViewController: UIViewController {
     
     private func deleteCache(switchData: DeviceSwitchData) {
         MeshNetworkManager.instance.deleteSwitch(switchData: switchData)
-        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+        space.commitLocalChangeForCloudSync(changeType: .device)
         NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
         
         if MeshNetworkManager.instance.switchs.isEmpty {
