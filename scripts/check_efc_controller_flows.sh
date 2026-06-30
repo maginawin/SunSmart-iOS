@@ -680,6 +680,30 @@ assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerF
   ".emergencyMode" \
   "EFC edit page must render the Emergency Mode row."
 
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC+Table.swift" \
+  "EmergencyFireWorkingModeSelectView.show" \
+  "EFC Working Mode must use the Add Device picker-style popup."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC+Table.swift" \
+  "selectedMode: state.workingMode" \
+  "EFC Working Mode popup must receive the current selected mode."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC+Table.swift" \
+  "modes: state.selectableWorkingModes" \
+  "EFC Working Mode popup must only show App-supported modes."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC+Table.swift" \
+  "@objc private func dismiss" \
+  "EFC Working Mode popup must support tapping the blank area to close."
+
+assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC+Table.swift" \
+  "selectedBackground.isHidden = !selected" \
+  "EFC Working Mode popup must show a selected row state."
+
+assert_not_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/LinkedEmerFireEditVC+Table.swift" \
+  "SRAlertView(" \
+  "EFC Working Mode selection must not use the old alert style."
+
 assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/ViewModels/EmerFireAlarmMonitorState.swift" \
   "showsPowerLossControls" \
   "EFC monitor state must expose Power Loss control visibility."
@@ -705,8 +729,16 @@ assert_contains "SunSmart/en.lproj/Localizable.strings" \
   "English localization must include Fire Alarm Only."
 
 assert_contains "SunSmart/en.lproj/Localizable.strings" \
+  '"efc_working_mode_fire_alarm_only" = "Fire Alarm Only";' \
+  "English Working Mode label must be Fire Alarm Only."
+
+assert_contains "SunSmart/en.lproj/Localizable.strings" \
   "efc_working_mode_power_loss_and_fire_alarm" \
   "English localization must include Power Loss & Fire Alarm."
+
+assert_contains "SunSmart/en.lproj/Localizable.strings" \
+  '"efc_working_mode_power_loss_and_fire_alarm" = "Power Loss & Fire Alarm";' \
+  "English Working Mode label must be Power Loss & Fire Alarm."
 
 assert_contains "SunSmart/zh-Hans.lproj/Localizable.strings" \
   "efc_emergency_mode" \

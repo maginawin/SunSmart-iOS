@@ -6,6 +6,8 @@
 //
 
 import UIKit
+import SnapKit
+import NordicSigMeshSDK
 
 extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
 
@@ -169,7 +171,7 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
             }
             navigationController?.pushViewController(controller, animated: true)
         case .emergencyMode:
-            showWorkingModeSelection()
+            showWorkingModeSelection(at: indexPath)
         default:
             break
         }
@@ -245,17 +247,209 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
         ]
     }
 
-    private func showWorkingModeSelection() {
-        let actions = state.selectableWorkingModes.map { mode in
-            SRAlertAction(title: mode.localizedTitle, actionHandler: { [weak self] _ in
-                guard let self else { return }
-                self.state.updateWorkingMode(mode)
-                self.tableView.reloadData()
-            })
+    private func showWorkingModeSelection(at indexPath: IndexPath) {
+        let window = UIApplication.shared.keyWindow()
+        let anchorPoint: CGPoint
+        if let cell = tableView.cellForRow(at: indexPath) {
+            let frame = cell.convert(cell.bounds, to: window)
+            anchorPoint = CGPoint(
+                x: frame.maxX - SCRXFrom(220),
+                y: frame.maxY + SCRYFrom(2)
+            )
+        } else {
+            anchorPoint = CGPoint(
+                x: SCREEN_WIDTH - SCRXFrom(236),
+                y: kNavigationHeight
+            )
         }
-        SRAlertView(
-            title: "efc_emergency_mode".localizedString,
-            actions: actions + [.cancelAction]
-        ).show()
+
+        EmergencyFireWorkingModeSelectView.show(
+            anchorPoint: anchorPoint,
+            modes: state.selectableWorkingModes,
+            selectedMode: state.workingMode
+        ) { [weak self] mode in
+            guard let self else { return }
+            self.state.updateWorkingMode(mode)
+            self.tableView.reloadData()
+        }
+    }
+}
+
+private final class EmergencyFireWorkingModeSelectView: UIView {
+
+    private enum Layout {
+        static let menuWidth = SCRXFrom(220)
+        static let rowHeight = SCRYFrom(45)
+        static let horizontalInset = SCRXFrom(16)
+        static let cornerRadius = SCRYFrom(12)
+    }
+
+    private let modes: [EmergencyFireWorkingMode]
+    private let selectedMode: EmergencyFireWorkingMode
+    private let selectionHandler: (EmergencyFireWorkingMode) -> Void
+
+    private lazy var shadeView: UIView = {
+        let view = UIView()
+        view.backgroundColor = .clear
+        view.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(dismiss)))
+        return view
+    }()
+
+    private lazy var contentView: UIView = {
+        let view = UIView()
+        view.backgroundColor = RGB(102, 102, 102)
+        view.layer.cornerRadius = Layout.cornerRadius
+        view.layer.masksToBounds = true
+        return view
+    }()
+
+    private lazy var tableView: UITableView = {
+        let tableView = UITableView(frame: .zero, style: .plain)
+        tableView.backgroundColor = .clear
+        tableView.separatorStyle = .none
+        tableView.rowHeight = Layout.rowHeight
+        tableView.showsVerticalScrollIndicator = false
+        tableView.isScrollEnabled = false
+        tableView.dataSource = self
+        tableView.delegate = self
+        tableView.register(EmergencyFireWorkingModeSelectCell.self, forCellReuseIdentifier: "cell")
+        return tableView
+    }()
+
+    private init(
+        anchorPoint: CGPoint,
+        modes: [EmergencyFireWorkingMode],
+        selectedMode: EmergencyFireWorkingMode,
+        selectionHandler: @escaping (EmergencyFireWorkingMode) -> Void
+    ) {
+        self.modes = modes
+        self.selectedMode = selectedMode
+        self.selectionHandler = selectionHandler
+        super.init(frame: UIScreen.main.bounds)
+        setupUI(anchorPoint: anchorPoint)
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    static func show(
+        anchorPoint: CGPoint,
+        modes: [EmergencyFireWorkingMode],
+        selectedMode: EmergencyFireWorkingMode,
+        selectionHandler: @escaping (EmergencyFireWorkingMode) -> Void
+    ) {
+        let view = EmergencyFireWorkingModeSelectView(
+            anchorPoint: anchorPoint,
+            modes: modes,
+            selectedMode: selectedMode,
+            selectionHandler: selectionHandler
+        )
+        UIApplication.shared.keyWindow().addSubview(view)
+        view.showAnimation()
+    }
+
+    private func setupUI(anchorPoint: CGPoint) {
+        addSubview(shadeView)
+        shadeView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+
+        let contentHeight = min(CGFloat(modes.count) * Layout.rowHeight, SCREEN_HEIGHT / 2)
+        let left = min(
+            max(Layout.horizontalInset, anchorPoint.x),
+            SCREEN_WIDTH - Layout.menuWidth - Layout.horizontalInset
+        )
+        let maxTop = max(Layout.horizontalInset, SCREEN_HEIGHT - contentHeight - Layout.horizontalInset)
+        let top = min(max(Layout.horizontalInset, anchorPoint.y), maxTop)
+
+        addSubview(contentView)
+        contentView.snp.makeConstraints { make in
+            make.left.equalTo(left)
+            make.top.equalTo(top)
+            make.width.equalTo(Layout.menuWidth)
+            make.height.equalTo(contentHeight)
+        }
+
+        contentView.addSubview(tableView)
+        tableView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+    }
+
+    private func showAnimation() {
+        contentView.alpha = 0
+        UIView.animate(withDuration: 0.2) {
+            self.contentView.alpha = 1
+        }
+    }
+
+    @objc private func dismiss() {
+        UIView.animate(withDuration: 0.2) {
+            self.contentView.alpha = 0
+        } completion: { _ in
+            self.removeFromSuperview()
+        }
+    }
+}
+
+extension EmergencyFireWorkingModeSelectView: UITableViewDataSource, UITableViewDelegate {
+
+    func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
+        modes.count
+    }
+
+    func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
+        let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! EmergencyFireWorkingModeSelectCell
+        let mode = modes[indexPath.row]
+        cell.configure(title: mode.localizedTitle, selected: mode == selectedMode)
+        return cell
+    }
+
+    func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+        selectionHandler(modes[indexPath.row])
+        dismiss()
+    }
+}
+
+private final class EmergencyFireWorkingModeSelectCell: UITableViewCell {
+
+    private let titleLabel = UILabel(text: nil, textColor: .white, fontSize: 14, fontWeight: .light)
+    private let selectedBackground = UIView()
+
+    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
+        super.init(style: style, reuseIdentifier: reuseIdentifier)
+        setupUI()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func configure(title: String, selected: Bool) {
+        titleLabel.text = title
+        titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
+        selectedBackground.isHidden = !selected
+    }
+
+    private func setupUI() {
+        selectionStyle = .none
+        backgroundColor = .clear
+        contentView.backgroundColor = .clear
+
+        selectedBackground.backgroundColor = RGB(216, 216, 216, 0.1)
+        selectedBackground.layer.cornerRadius = SCRYFrom(5)
+        contentView.addSubview(selectedBackground)
+        selectedBackground.snp.makeConstraints { make in
+            make.left.right.equalToSuperview().inset(SCRXFrom(8))
+            make.top.bottom.equalToSuperview().inset(SCRYFrom(4))
+        }
+
+        contentView.addSubview(titleLabel)
+        titleLabel.snp.makeConstraints { make in
+            make.left.equalToSuperview().offset(SCRXFrom(16))
+            make.centerY.equalToSuperview()
+            make.right.lessThanOrEqualToSuperview().offset(-SCRXFrom(16))
+        }
     }
 }
