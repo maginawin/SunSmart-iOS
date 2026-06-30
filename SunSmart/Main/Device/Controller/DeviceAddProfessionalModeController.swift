@@ -283,10 +283,8 @@ class DeviceAddProfessionalModeController: UIViewController {
         )
 
         switch addMode {
-        case .rssiRange:
+        case .manual, .rssiRange:
             return true
-        case .manual:
-            return !isEmergencySignController
         case .motionSensing, .lightSening:
             return !isEmergencySignController && (device.deviceType == .light || device.deviceType == .sensor)
         }
