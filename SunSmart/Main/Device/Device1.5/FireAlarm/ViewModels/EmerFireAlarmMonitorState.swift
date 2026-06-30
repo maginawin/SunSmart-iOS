@@ -27,13 +27,22 @@ enum EmerFireAlarmMonitorDisplayState: Equatable {
 
 enum EmerFireAlarmMonitorStateMapper {
     static func displayState(status: EmergencyFireComprehensiveStatus) -> EmerFireAlarmMonitorDisplayState {
-        if status.fireActive {
-            return .fireTriggered
+        switch status.workingMode {
+        case .some(.disabled), .none:
+            return normalState()
+        case .some(.powerLossOnly):
+            return status.emergencyActive ? .emergencyTriggered : normalState()
+        case .some(.fireAlarmOnly):
+            return status.fireActive ? .fireTriggered : normalState()
+        case .some(.powerLossAndFireAlarm):
+            if status.fireActive {
+                return .fireTriggered
+            }
+            if status.emergencyActive {
+                return .emergencyTriggered
+            }
+            return normalState()
         }
-        if status.emergencyActive {
-            return .emergencyTriggered
-        }
-        return normalState()
     }
 
     static func normalState() -> EmerFireAlarmMonitorDisplayState {
