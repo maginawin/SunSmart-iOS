@@ -999,7 +999,7 @@ extension DeviceLightsViewController: UICollectionViewDataSource, UICollectionVi
 //                }
                 
                 reloadCollectionItem(node: node)
-                MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn, ack: true)
+                sendLightItemOnOffCommand(node: node)
 //                if let model = node.sunricherVendorModel {
 //                    MeshAPI.sendMessage(message: SunricherVendorSet(code: .lightSensorCalibrate, parameters: .lightSensorCalibrate(214)), model: model)
 //                }
@@ -1012,6 +1012,28 @@ extension DeviceLightsViewController: UICollectionViewDataSource, UICollectionVi
         updateAllOnOffItemUI()
     }
     
+}
+
+private extension DeviceLightsViewController {
+
+    func sendLightItemOnOffCommand(node: Node) {
+        guard LabSettings.displayLightAckDetails else {
+            MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn, ack: true)
+            return
+        }
+        guard let model = node.onoffModel else {
+            return
+        }
+
+        let deviceName = LightAckProgressTracker.deviceName(node)
+        let commandDescription = node.isOn ? "on".localizedString : "off".localizedString
+        let context = LightAckProgressTracker.context(
+            deviceName: deviceName,
+            commandDescription: commandDescription,
+            opcode: GenericOnOffSet.opCode
+        )
+        LightAckProgressTracker.shared.send(message: GenericOnOffSet(node.isOn), model: model, context: context)
+    }
 }
 
 extension DeviceLightsViewController: SpaceFunctionFooterViewDelegate {

@@ -707,7 +707,7 @@ class DeviceLightViewController: UIViewController {
             }
             node.lightness = 0
         }
-        MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn, ack: true)
+        sendLightDetailOnOffCommand()
         updateData(refreshControlPanel: false)
         updateControlPanel()
     }
@@ -857,11 +857,83 @@ class DeviceLightViewController: UIViewController {
     private func sendIdentifyCommand() {
         if node.isSupportVendorIdentify {
             guard let vendorModel = node.sunricherVendorModel else { return }
-            MeshAPI.sendMessage(message: SunricherVendorSet(function: .identify(mode: .breathe(count: 1, period: 1500))), model: vendorModel)
+            sendTrackedVendorIdentifyCommand(model: vendorModel)
             return
         }
 
         MeshAPI.identify(address: node.primaryUnicastAddress)
+    }
+
+    private var lightAckDeviceName: String {
+        LightAckProgressTracker.deviceName(node)
+    }
+
+    private func sendLightDetailOnOffCommand() {
+        guard LabSettings.displayLightAckDetails else {
+            MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn, ack: true)
+            return
+        }
+        guard let model = node.onoffModel else {
+            return
+        }
+
+        let commandDescription = node.isOn ? "on".localizedString : "off".localizedString
+        let context = LightAckProgressTracker.context(
+            deviceName: lightAckDeviceName,
+            commandDescription: commandDescription,
+            opcode: GenericOnOffSet.opCode
+        )
+        LightAckProgressTracker.shared.send(message: GenericOnOffSet(node.isOn), model: model, context: context)
+    }
+
+    private func sendLightDetailBrightnessCommand(percent: Int, lightness: UInt16) {
+        guard LabSettings.displayLightAckDetails else {
+            MeshAPI.setNodeLightnessState(address: node.primaryUnicastAddress, lightness: lightness, ack: true)
+            return
+        }
+        guard let model = node.lightnessModel else {
+            return
+        }
+
+        let context = LightAckProgressTracker.context(
+            deviceName: lightAckDeviceName,
+            commandDescription: "\("brightness".localizedString) \(percent)%",
+            opcode: LightLightnessSet.opCode
+        )
+        LightAckProgressTracker.shared.send(message: LightLightnessSet(lightness: lightness), model: model, context: context)
+    }
+
+    private func sendLightDetailCCTCommand(temperature: UInt16) {
+        guard LabSettings.displayLightAckDetails else {
+            MeshAPI.setNodeColorTemperatureState(address: node.primaryUnicastAddress, temperature: temperature, ack: true)
+            return
+        }
+        guard let model = node.temperatureModel else {
+            return
+        }
+
+        let context = LightAckProgressTracker.context(
+            deviceName: lightAckDeviceName,
+            commandDescription: "\(temperature)K",
+            opcode: LightCTLTemperatureSet.opCode
+        )
+        LightAckProgressTracker.shared.send(message: LightCTLTemperatureSet(temperature: temperature, deltaUV: 0), model: model, context: context)
+    }
+
+    private func sendTrackedVendorIdentifyCommand(model: Model) {
+        let message = SunricherVendorSet(function: .identify(mode: .breathe(count: 1, period: 1500)))
+
+        guard LabSettings.displayLightAckDetails else {
+            MeshAPI.sendMessage(message: message, model: model)
+            return
+        }
+
+        let context = LightAckProgressTracker.context(
+            deviceName: lightAckDeviceName,
+            commandDescription: "identify".localizedString,
+            opcode: SunricherVendorSet.opCode
+        )
+        LightAckProgressTracker.shared.send(message: message, model: model, context: context)
     }
 
     @objc private func emergencySignIdentifyAction() {
@@ -910,7 +982,11 @@ class DeviceLightViewController: UIViewController {
         controlPanelView.brightnessThrottleValueChanged = {[weak self] value, ended in
             guard let self = self else { return }
             let lightness = Node.getLightness(lightness100: value)
-            MeshAPI.setNodeLightnessState(address: self.node.primaryUnicastAddress, lightness: lightness, ack: ended)
+            if ended {
+                self.sendLightDetailBrightnessCommand(percent: value, lightness: lightness)
+            } else {
+                MeshAPI.setNodeLightnessState(address: self.node.primaryUnicastAddress, lightness: lightness)
+            }
            
         }
         
@@ -921,7 +997,11 @@ class DeviceLightViewController: UIViewController {
         controlPanelView.cctThrottleValueChanged = {[weak self] value, ended in
             guard let self = self else { return }
             let temperature = self.node.clampEffectiveCct(UInt16(value))
-            MeshAPI.setNodeColorTemperatureState(address: self.node.primaryUnicastAddress, temperature: temperature, ack: ended)
+            if ended {
+                self.sendLightDetailCCTCommand(temperature: temperature)
+            } else {
+                MeshAPI.setNodeColorTemperatureState(address: self.node.primaryUnicastAddress, temperature: temperature)
+            }
         }
         controlPanelView.cctQuickButtonValueSelected = { [weak self] value in
             self?.applyCCTQuickButtonValue(value)
@@ -1050,7 +1130,7 @@ class DeviceLightViewController: UIViewController {
         }
         controlPanelView.setCCTValue(clampedValue)
         applyCCTValue(clampedValue)
-        MeshAPI.setNodeColorTemperatureState(address: node.primaryUnicastAddress, temperature: UInt16(clampedValue), ack: true)
+        sendLightDetailCCTCommand(temperature: UInt16(clampedValue))
     }
 
     private func showBrightnessInputAlert() {
@@ -1062,11 +1142,7 @@ class DeviceLightViewController: UIViewController {
             guard let self = self else { return }
             self.controlPanelView.setBrightnessValue(value)
             self.applyBrightnessValue(value)
-            MeshAPI.setNodeLightnessState(
-                address: self.node.primaryUnicastAddress,
-                lightness: Node.getLightness(lightness100: value),
-                ack: true
-            )
+            self.sendLightDetailBrightnessCommand(percent: value, lightness: Node.getLightness(lightness100: value))
         }
     }
 
@@ -1081,7 +1157,7 @@ class DeviceLightViewController: UIViewController {
             let temperature = self.node.clampEffectiveCct(UInt16(normalizedValue))
             self.controlPanelView.setCCTValue(Int(temperature))
             self.applyCCTValue(Int(temperature))
-            MeshAPI.setNodeColorTemperatureState(address: self.node.primaryUnicastAddress, temperature: temperature, ack: true)
+            self.sendLightDetailCCTCommand(temperature: temperature)
         }
     }
 
