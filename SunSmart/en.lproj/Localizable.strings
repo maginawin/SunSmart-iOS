@@ -1914,3 +1914,11 @@
 "el_controller_rxtx_checking_connection" = "Checking connection...";
 "el_controller_rxtx_connection_normal" = "Connection Normal";
 "el_controller_rxtx_connection_fault" = "Connection Fault";
+"lab" = "Lab";
+"display_light_ack_details" = "Display light ACK details";
+"light_ack_sent_format" = "Sent %@";
+"light_ack_command_format" = "Command 0x%06X";
+"light_ack_result_ok_format" = "Result %@ OK ✅";
+"light_ack_result_failed_format" = "Result %@ Failed ❌";
+"light_ack_result_timeout_format" = "Result %@ Timeout ❌";
+"light_ack_response_format" = "Response %@";
