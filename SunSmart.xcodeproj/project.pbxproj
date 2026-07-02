@@ -1342,6 +1342,22 @@
 		C896FE75CC379E7D64E3CC86 /* GroupPowerSwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */; };
 		C898D1D02B59134A00B2033B /* ScheduleServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898D1CF2B59134A00B2033B /* ScheduleServer.swift */; };
 		C898E2D52AB7E46300C71315 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = C898E2D72AB7E46300C71315 /* Localizable.strings */; };
+		C8A900092F80000100000009 /* WiFiSSIDProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900012F80000100000001 /* WiFiSSIDProvider.swift */; };
+		C8A9000A2F8000010000000A /* WiFiSSIDProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900012F80000100000001 /* WiFiSSIDProvider.swift */; };
+		C8A9000B2F8000010000000B /* WiFiSSIDProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900012F80000100000001 /* WiFiSSIDProvider.swift */; };
+		C8A9000C2F8000010000000C /* WiFiSSIDProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900012F80000100000001 /* WiFiSSIDProvider.swift */; };
+		C8A9000D2F8000010000000D /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C8A900062F80000100000006 /* InfoPlist.strings */; };
+		C8A9000E2F8000010000000E /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C8A900062F80000100000006 /* InfoPlist.strings */; };
+		C8A9000F2F8000010000000F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C8A900062F80000100000006 /* InfoPlist.strings */; };
+		C8A900102F80000100000010 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C8A900062F80000100000006 /* InfoPlist.strings */; };
+		C8A900122F80000100000012 /* GatewayNetworkConnectivityCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900112F80000100000011 /* GatewayNetworkConnectivityCell.swift */; };
+		C8A900132F80000100000013 /* GatewayNetworkConnectivityCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900112F80000100000011 /* GatewayNetworkConnectivityCell.swift */; };
+		C8A900142F80000100000014 /* GatewayNetworkConnectivityCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900112F80000100000011 /* GatewayNetworkConnectivityCell.swift */; };
+		C8A900152F80000100000015 /* GatewayNetworkConnectivityCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900112F80000100000011 /* GatewayNetworkConnectivityCell.swift */; };
+		C8A900172F80000100000017 /* GatewayChangeWiFiAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */; };
+		C8A900182F80000100000018 /* GatewayChangeWiFiAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */; };
+		C8A900192F80000100000019 /* GatewayChangeWiFiAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */; };
+		C8A9001A2F8000010000001A /* GatewayChangeWiFiAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */; };
 		C898E2DC2AB7E62100C71315 /* String+Localized.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2DB2AB7E62100C71315 /* String+Localized.swift */; };
 		C898E2E12AB840FE00C71315 /* MeshNetwork+SunSmart.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2E02AB840FE00C71315 /* MeshNetwork+SunSmart.swift */; };
 		C898E2ED2ABA8BAD00C71315 /* MainMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2EC2ABA8BAD00C71315 /* MainMenuView.swift */; };
@@ -2622,6 +2638,15 @@
 		C898D1CF2B59134A00B2033B /* ScheduleServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleServer.swift; sourceTree = "<group>"; };
 		C898E2D82AB7E46600C71315 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		C898E2D92AB7E48300C71315 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		C8A900012F80000100000001 /* WiFiSSIDProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiSSIDProvider.swift; sourceTree = "<group>"; };
+		C8A900022F80000100000002 /* SunSmart.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SunSmart.entitlements; sourceTree = "<group>"; };
+		C8A900032F80000100000003 /* Archipelago.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Archipelago.entitlements; sourceTree = "<group>"; };
+		C8A900042F80000100000004 /* SLGSync.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SLGSync.entitlements; sourceTree = "<group>"; };
+		C8A900052F80000100000005 /* SylSmart.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SylSmart.entitlements; sourceTree = "<group>"; };
+		C8A900072F80000100000007 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		C8A900082F80000100000008 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		C8A900112F80000100000011 /* GatewayNetworkConnectivityCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayNetworkConnectivityCell.swift; sourceTree = "<group>"; };
+		C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayChangeWiFiAlertView.swift; sourceTree = "<group>"; };
 		C898E2DB2AB7E62100C71315 /* String+Localized.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Localized.swift"; sourceTree = "<group>"; };
 		C898E2E02AB840FE00C71315 /* MeshNetwork+SunSmart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MeshNetwork+SunSmart.swift"; sourceTree = "<group>"; };
 		C898E2EC2ABA8BAD00C71315 /* MainMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenuView.swift; sourceTree = "<group>"; };
@@ -3749,6 +3774,7 @@
 			isa = PBXGroup;
 			children = (
 				C88555312DE6B5C900C8B688 /* Archipelago-Info.plist */,
+				C8A900032F80000100000003 /* Archipelago.entitlements */,
 				C88555332DE6B5F400C8B688 /* Archipelago-Assets.xcassets */,
 				C88555382DE6BD3000C8B688 /* Archipelago-LaunchScreen.storyboard */,
 			);
@@ -3762,6 +3788,7 @@
 				C8CD4F4E2E337D8500E4DE1F /* User Agreement.html */,
 				C886E19F2E30E63200D0C3A6 /* Assets-SylSmart.xcassets */,
 				C886E18F2E30DF9000D0C3A6 /* SylSmart-Info.plist */,
+				C8A900052F80000100000005 /* SylSmart.entitlements */,
 				C886E1992E30E55C00D0C3A6 /* SylSmart-LaunchScreen.storyboard */,
 			);
 			path = SylSmart;
@@ -4623,8 +4650,10 @@
 				C896B9B02A930BAA00217512 /* Assets.xcassets */,
 				C896B9B22A930BAA00217512 /* LaunchScreen.storyboard */,
 				C896B9B52A930BAA00217512 /* Info.plist */,
+				C8A900022F80000100000002 /* SunSmart.entitlements */,
 				C8AAE2822A987B8C00238C1C /* SunSmart-Bridging-Header.h */,
 				C898E2D72AB7E46300C71315 /* Localizable.strings */,
+				C8A900062F80000100000006 /* InfoPlist.strings */,
 			);
 			name = Support;
 			sourceTree = "<group>";
@@ -4685,6 +4714,7 @@
 			isa = PBXGroup;
 			children = (
 				C8BB67702ED3F056000C63EE /* SLGSync-Info.plist */,
+				C8A900042F80000100000004 /* SLGSync.entitlements */,
 				C8BB67722ED3F13A000C63EE /* Assets-SLGSync.xcassets */,
 				C8BB67742ED3F164000C63EE /* SLGSync-LaunchScreen.storyboard */,
 				C8D7F1FA2F5676E3007D86E0 /* Privacy Policy.html */,
@@ -4757,6 +4787,8 @@
 				C8C3A1572E37509800876028 /* GatewayAssociatedSpacesViewCell.swift */,
 				C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */,
 				C8F89D372E3B6F8500FA1544 /* GatewayAPNMenuView.swift */,
+				C8A900112F80000100000011 /* GatewayNetworkConnectivityCell.swift */,
+				C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -4895,6 +4927,7 @@
 			isa = PBXGroup;
 			children = (
 				C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */,
+				C8A900012F80000100000001 /* WiFiSSIDProvider.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -5120,6 +5153,7 @@
 				C8B483D82E4B361F006D85BC /* device_reset.mp3 in Resources */,
 				C85D55112E6182DC00BFEEDA /* broadcast_loading.gif in Resources */,
 				C88555192DE6B44C00C8B688 /* Localizable.strings in Resources */,
+				C8A9000E2F8000010000000E /* InfoPlist.strings in Resources */,
 				C885551A2DE6B44C00C8B688 /* XWHUDManager_successful@2x.png in Resources */,
 				C885551B2DE6B44C00C8B688 /* XWHUDManager_tip@3x.png in Resources */,
 				C885551D2DE6B44C00C8B688 /* XWHUDManager_loading.gif in Resources */,
@@ -5150,6 +5184,7 @@
 				C8B483D32E4B361F006D85BC /* device_add.mp3 in Resources */,
 				C8B483D42E4B361F006D85BC /* device_reset.mp3 in Resources */,
 				C85D550F2E6182DC00BFEEDA /* broadcast_loading.gif in Resources */,
+				C8A9000F2F8000010000000F /* InfoPlist.strings in Resources */,
 				C886E17A2E30DE4900D0C3A6 /* XWHUDManager_error@2x.png in Resources */,
 				C886E17B2E30DE4900D0C3A6 /* CodeScan.bundle in Resources */,
 				C886E17C2E30DE4900D0C3A6 /* devices_config.json in Resources */,
@@ -5176,6 +5211,7 @@
 				C896BD3E2A930C3A00217512 /* XWHUDManager_right@3x.png in Resources */,
 				C89B34212C93E2B600A77DB6 /* User Agreement.html in Resources */,
 				C898E2D52AB7E46300C71315 /* Localizable.strings in Resources */,
+				C8A9000D2F8000010000000D /* InfoPlist.strings in Resources */,
 				C8B483D52E4B361F006D85BC /* device_add.mp3 in Resources */,
 				C8B483D62E4B361F006D85BC /* device_reset.mp3 in Resources */,
 				C8C1E5A72B6A1FA500F60E62 /* XWHUDManager_successful@2x.png in Resources */,
@@ -5203,6 +5239,7 @@
 			files = (
 				C8BB67572ED3F056000C63EE /* XWHUDManager_right@3x.png in Resources */,
 				C8BB67592ED3F056000C63EE /* Localizable.strings in Resources */,
+				C8A900102F80000100000010 /* InfoPlist.strings in Resources */,
 				C8D7F1FB2F5676E3007D86E0 /* Privacy Policy.html in Resources */,
 				C8BB675A2ED3F056000C63EE /* device_add.mp3 in Resources */,
 				8CC3F7AD2FBAB35700CD3373 /* devices1.5.md in Resources */,
@@ -5592,6 +5629,9 @@
 				C88554332DE6B44C00C8B688 /* String+Extension.swift in Sources */,
 				C8D22E002E010A47001A2BDA /* GatewayViewController.swift in Sources */,
 				C8F6A1002FA3000000000001 /* WiFiGatewayViewController.swift in Sources */,
+				C8A900092F80000100000009 /* WiFiSSIDProvider.swift in Sources */,
+				C8A900122F80000100000012 /* GatewayNetworkConnectivityCell.swift in Sources */,
+				C8A900172F80000100000017 /* GatewayChangeWiFiAlertView.swift in Sources */,
 				C88554342DE6B44C00C8B688 /* UIView+Extension.swift in Sources */,
 				C88554352DE6B44C00C8B688 /* ScenesViewCell.swift in Sources */,
 				C88554362DE6B44C00C8B688 /* DeviceLightInfoSectionView.swift in Sources */,
@@ -6165,6 +6205,9 @@
 				C886E0852E30DE4900D0C3A6 /* String+Extension.swift in Sources */,
 				C886E0862E30DE4900D0C3A6 /* GatewayViewController.swift in Sources */,
 				C8F6A1012FA3000000000001 /* WiFiGatewayViewController.swift in Sources */,
+				C8A9000A2F8000010000000A /* WiFiSSIDProvider.swift in Sources */,
+				C8A900132F80000100000013 /* GatewayNetworkConnectivityCell.swift in Sources */,
+				C8A900182F80000100000018 /* GatewayChangeWiFiAlertView.swift in Sources */,
 				C886E0872E30DE4900D0C3A6 /* UIView+Extension.swift in Sources */,
 				C886E0882E30DE4900D0C3A6 /* ScenesViewCell.swift in Sources */,
 				C886E0892E30DE4900D0C3A6 /* DeviceLightInfoSectionView.swift in Sources */,
@@ -6747,6 +6790,9 @@
 				8C7789062F975954000887FE /* EmerFireStatus.swift in Sources */,
 				C8D22E012E010A47001A2BDA /* GatewayViewController.swift in Sources */,
 				C8F6A1022FA3000000000001 /* WiFiGatewayViewController.swift in Sources */,
+				C8A9000B2F8000010000000B /* WiFiSSIDProvider.swift in Sources */,
+				C8A900142F80000100000014 /* GatewayNetworkConnectivityCell.swift in Sources */,
+				C8A900192F80000100000019 /* GatewayChangeWiFiAlertView.swift in Sources */,
 				C8ACF1372AA1B2BA00E24B4A /* UIView+Extension.swift in Sources */,
 				C89F98432B5E5AC8007EABF5 /* ScenesViewCell.swift in Sources */,
 				C89AC9312B62372300744868 /* DeviceLightInfoSectionView.swift in Sources */,
@@ -7310,6 +7356,9 @@
 				C8BB66442ED3F056000C63EE /* String+Extension.swift in Sources */,
 				C8BB66452ED3F056000C63EE /* GatewayViewController.swift in Sources */,
 				C8F6A1032FA3000000000001 /* WiFiGatewayViewController.swift in Sources */,
+				C8A9000C2F8000010000000C /* WiFiSSIDProvider.swift in Sources */,
+				C8A900152F80000100000015 /* GatewayNetworkConnectivityCell.swift in Sources */,
+				C8A9001A2F8000010000001A /* GatewayChangeWiFiAlertView.swift in Sources */,
 				C8BB66462ED3F056000C63EE /* UIView+Extension.swift in Sources */,
 				C8BB66472ED3F056000C63EE /* ScenesViewCell.swift in Sources */,
 				C8BB66482ED3F056000C63EE /* DeviceLightInfoSectionView.swift in Sources */,
@@ -7707,6 +7756,15 @@
 			name = Localizable.strings;
 			sourceTree = "<group>";
 		};
+		C8A900062F80000100000006 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				C8A900072F80000100000007 /* en */,
+				C8A900082F80000100000008 /* zh-Hans */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
@@ -7714,6 +7772,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F10000000000000000000006 /* Debug.xcconfig */;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Archipelago/Archipelago.entitlements;
 			};
 			name = Debug;
 		};
@@ -7721,6 +7780,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F10000000000000000000007 /* Release.xcconfig */;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Archipelago/Archipelago.entitlements;
 			};
 			name = Release;
 		};
@@ -7728,6 +7788,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F10000000000000000000009 /* Debug.xcconfig */;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = SylSmart/SylSmart.entitlements;
 			};
 			name = Debug;
 		};
@@ -7735,6 +7796,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F1000000000000000000000A /* Release.xcconfig */;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = SylSmart/SylSmart.entitlements;
 			};
 			name = Release;
 		};
@@ -7858,6 +7920,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F10000000000000000000003 /* Debug.xcconfig */;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = SunSmart/SunSmart.entitlements;
 				MARKETING_VERSION = 1.0.24;
 			};
 			name = Debug;
@@ -7866,6 +7929,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F10000000000000000000004 /* Release.xcconfig */;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = SunSmart/SunSmart.entitlements;
 				MARKETING_VERSION = 1.0.24;
 			};
 			name = Release;
@@ -7875,6 +7939,7 @@
 			baseConfigurationReference = F1000000000000000000000C /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_ENTITLEMENTS = SLGSync/SLGSync.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
 				MARKETING_VERSION = 1.0.8;
@@ -7887,6 +7952,7 @@
 			baseConfigurationReference = F1000000000000000000000D /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_ENTITLEMENTS = SLGSync/SLGSync.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
 				MARKETING_VERSION = 1.0.8;

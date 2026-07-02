@@ -24,8 +24,11 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     /// 其它网关数据
 //    private var otherGateways: [GatewayModel] = []
 
-    private var sections: [SectionType] = [.name, .info, .associatedSpaces, .apn, .serverInformation]
-    private let infoTypes: [InfoCellType] = [.mac, .address, .model, .deviceType, .firmwareVersion, .activate]
+    var sections: [SectionType] {
+        let baseSections: [SectionType] = [.name, .activate, .info, .associatedSpaces, .apn, .serverInformation]
+        return supportsAPNConfiguration ? baseSections : baseSections.filter { $0 != .apn }
+    }
+    private let infoTypes: [InfoCellType] = [.mac, .address, .model, .deviceType, .firmwareVersion]
     /// 是否连接中
     private var isConnecting: Bool = false
     /// 网关在线状态缓存
@@ -40,6 +43,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     let gatewayModel: GatewayModel
     let node: Node
     private weak var lastMessageDelegate: MeshLibManagerMessageDelegate?
+
+    var supportsAPNConfiguration: Bool {
+        return true
+    }
 
     init?(site: SiteData, gateway: Gateway) {
         self.site = site
@@ -196,6 +203,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             self.isConnecting = false
             self.headerView.hideConnectingUI()
             self.onlineState = self.node.state
+            self.gatewayOnlineStateDidUpdate(self.node.state)
             self.syncSignalRefreshState(forceRefresh: self.node.state)
             self.updateData()
             self.updateSaveBtnState()
@@ -348,10 +356,12 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             copyContent.append("\n\("associated_spaces".localizedString): \("no_associated_spaces".localizedString)")
         }
 
-        if let apn = gatewayModel.apn {
-            copyContent.append("\n\("apn".localizedString): \(apn)")
-        }else {
-            copyContent.append("\n\("apn".localizedString): \("not_set".localizedString)")
+        if supportsAPNConfiguration {
+            if let apn = gatewayModel.apn {
+                copyContent.append("\n\("apn".localizedString): \(apn)")
+            }else {
+                copyContent.append("\n\("apn".localizedString): \("not_set".localizedString)")
+            }
         }
         if let mqttServerInfo = gatewayModel.mqttServerInfo {
             let serverStr = mqttServerInfo.serverAddress.replacingOccurrences(of: "tcp://", with: "")
@@ -765,10 +775,14 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
 
     /// 刷新section
-    private func reloadSection(_ section: SectionType) {
+    func reloadSection(_ section: SectionType) {
         if let section = self.sections.firstIndex(of: section) {
             tableView.reloadSections(IndexSet(integer: section), with: .none)
         }
+    }
+
+    func reloadGatewayTable() {
+        tableView.reloadData()
     }
 
     private func setupUI() {
@@ -804,6 +818,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         tableView.register(GatewayNameViewCell.classForCoder(), forCellReuseIdentifier: "name")
         tableView.register(GatewayServerInformationViewCell.classForCoder(), forCellReuseIdentifier: "serverInformation")
         tableView.register(GatewaySectionHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
+        registerAdditionalGatewayCells(in: tableView)
         tableView.estimatedSectionHeaderHeight = UITableView.automaticDimension
         tableView.estimatedSectionHeaderHeight = SCRYFrom(41)
         tableView.showsVerticalScrollIndicator = false
@@ -843,6 +858,44 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         }
     }
 
+    private func configureActivateCell(_ cell: CustomTableViewCell) {
+        cell.titleLabel.font = UIFont.systemFont(ofSize: 14)
+        cell.titleLabel.text = "activate".localizedString
+        cell.contentLabel.text = nil
+        cell.cellStyle = .switch
+        cell.enabledSwitch.isOn = setGatewayModel.activate
+        cell.switchActionCallback = { [weak self, weak cell] enable in
+            guard let self = self else { return }
+            guard !self.isConnecting else {
+                return
+            }
+            guard self.site.deviceOperates.contains(.edit) else {
+                XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+                return
+            }
+            guard self.gatewayModel.mqttServerInfo != nil else {
+                XWHUDManager.showErrorTipHUD("gateway_not_authorize_message".localizedString)
+                return
+            }
+//            guard !self.otherGateways.contains(where: { $0.activate }) else {
+//                SRAlertView(title: "notification".localizedString, message: "gateway_disable_activate_message".localizedString, actions: [SRAlertAction(title: "GOT IT".localizedString)]).show()
+//                return
+//            }
+            cell?.enabledSwitch.isOn = enable
+            self.setGatewayModel.activate = enable
+            self.updateSaveBtnState()
+        }
+    }
+
+    func registerAdditionalGatewayCells(in tableView: UITableView) {}
+
+    func configureNetworkConnectivityCell(_ cell: GatewayNetworkConnectivityCell) {}
+
+    func networkConnectivityCellHeight() -> CGFloat {
+        return UITableView.automaticDimension
+    }
+
+    func gatewayOnlineStateDidUpdate(_ isOnline: Bool) {}
 
 }
 
@@ -859,6 +912,8 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
             return max(gatewayModel.associatedSpaces.count, 1)
         case .info:
             return infoTypes.count
+        case .networkConnectivity:
+            return 1
         default:
             return 1
         }
@@ -886,12 +941,21 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                 return nil
             }
             tableviewCell = nameCell
+        case .activate:
+            let cell = tableView.dequeueReusableCell(withIdentifier: "infoCell", for: indexPath) as! CustomTableViewCell
+            configureActivateCell(cell)
+            tableviewCell = cell
+        case .networkConnectivity:
+            let cell = tableView.dequeueReusableCell(withIdentifier: GatewayNetworkConnectivityCell.reuseIdentifier, for: indexPath) as! GatewayNetworkConnectivityCell
+            configureNetworkConnectivityCell(cell)
+            tableviewCell = cell
         case .info:
             let cell = tableView.dequeueReusableCell(withIdentifier: "infoCell", for: indexPath) as! CustomTableViewCell
             cell.titleLabel.font = UIFont.systemFont(ofSize: 14)
             cell.contentLabel.font = UIFont.systemFont(ofSize: 14, weight: .light)
             cell.contentLabel.textColor = SubText_Color
             cell.contentLabel.text = nil
+            cell.switchActionCallback = nil
             cell.cellStyle = .none
             let cellType = infoTypes[indexPath.row]
             cell.titleLabel.text = cellType.title
@@ -906,30 +970,6 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                 cell.contentLabel.text = node.categoryName ?? "--"
             case .firmwareVersion:
                 cell.contentLabel.text = node.firmwareVersion ?? "--"
-            case .activate:
-                cell.cellStyle = .switch
-                cell.enabledSwitch.isOn = setGatewayModel.activate
-                cell.switchActionCallback = {[weak self] enable in
-                    guard let self = self else { return }
-                    guard !self.isConnecting else {
-                        return
-                    }
-                    guard self.site.deviceOperates.contains(.edit) else {
-                        XWHUDManager.showTipHUD("no_permission".localizedString + "！")
-                        return
-                    }
-                    guard self.gatewayModel.mqttServerInfo != nil else {
-                        XWHUDManager.showErrorTipHUD("gateway_not_authorize_message".localizedString)
-                        return
-                    }
-//                    guard !self.otherGateways.contains(where: { $0.activate }) else {
-//                        SRAlertView(title: "notification".localizedString, message: "gateway_disable_activate_message".localizedString, actions: [SRAlertAction(title: "GOT IT".localizedString)]).show()
-//                        return
-//                    }
-                    cell.enabledSwitch.isOn = enable
-                    self.setGatewayModel.activate = enable
-                    self.updateSaveBtnState()
-                }
             }
 
             tableviewCell = cell
@@ -1006,10 +1046,17 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
         if sectionType == .serverInformation {
             return SCRYFrom(144)
         }
+        if sectionType == .networkConnectivity {
+            return networkConnectivityCellHeight()
+        }
         return SCRYFrom(44)
     }
 
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
+        if sections[section] == .activate {
+            return UIView()
+        }
+
         let headerView = tableView.dequeueReusableHeaderFooterView(withIdentifier: "header") as! GatewaySectionHeaderView
         let sectionType = sections[section]
         headerView.operationBtn.isHidden = true
@@ -1050,6 +1097,10 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                 make.top.equalToSuperview().offset(SCRYFrom(16))
                 make.bottom.equalToSuperview()
             }
+        case .activate:
+            break
+        case .networkConnectivity:
+            headerView.titleLabel.text = "network_connectivity".localizedString
         case .associatedSpaces:
             headerView.titleLabel.text = "associated_spaces".localizedString
             headerView.operationBtn.isHidden = false
@@ -1121,6 +1172,10 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
     }
 
     func tableView(_ tableView: UITableView, heightForHeaderInSection section: Int) -> CGFloat {
+        if sections[section] == .activate {
+            return SCRYFrom(16)
+        }
+
         return UITableView.automaticDimension
     }
 
@@ -1132,6 +1187,8 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                 return SCRYFrom(80)
             }
             return SCRYFrom(44)
+        case .activate:
+            return SCRYFrom(16)
         default:
             return SCRYFrom(44)
         }
@@ -1176,8 +1233,10 @@ extension GatewayViewController: MeshLibManagerMessageDelegate {
         if node.primaryUnicastAddress == self.node.primaryUnicastAddress {
             if node.state != onlineState {
                 onlineState = node.state
+                gatewayOnlineStateDidUpdate(node.state)
                 syncSignalRefreshState(forceRefresh: node.state)
             } else if !node.state {
+                gatewayOnlineStateDidUpdate(false)
                 syncSignalRefreshState()
             }
             updateData()
@@ -1198,6 +1257,10 @@ extension GatewayViewController {
     enum SectionType {
         /// 名称
         case name
+        /// 激活
+        case activate
+        /// WiFi network connectivity
+        case networkConnectivity
         /// 基本信息
         case info
         /// 关联spaces
@@ -1223,8 +1286,6 @@ extension GatewayViewController {
                 return "device_type".localizedString
             case .firmwareVersion:
                 return "firmware".localizedString
-            case .activate:
-                return "activate".localizedString
             }
         }
 
@@ -1233,6 +1294,5 @@ extension GatewayViewController {
         case model
         case deviceType
         case firmwareVersion
-        case activate
     }
 }

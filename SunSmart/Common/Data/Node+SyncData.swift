@@ -1725,7 +1725,7 @@ extension Node {
 //        }
         
         // 判断SIM卡apn是否需要同步
-        if let apn = gateway.apn, gatewayInfo?.simInfo?.apn != apn {
+        if !isWiFiGateway, let apn = gateway.apn, gatewayInfo?.simInfo?.apn != apn {
             syncDatas.append(.syncGatewaySIMAPN(apn: apn))
         }
         

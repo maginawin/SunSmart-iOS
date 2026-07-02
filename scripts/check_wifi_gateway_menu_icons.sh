@@ -34,6 +34,12 @@ if ! grep -Fq 'DeviceInformationViewController(node: self.node, showsGroupSectio
   failures=$((failures + 1))
 fi
 
+under_development_count=$(grep -Fc 'XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)' "$file")
+if [ "$under_development_count" -ne 2 ]; then
+  printf 'FAIL: expected WiFi DFU and Diagnosis menu actions to show under development toast, found %s\n' "$under_development_count"
+  failures=$((failures + 1))
+fi
+
 if [ "$failures" -gt 0 ]; then
   exit 1
 fi

@@ -1937,3 +1937,15 @@
 "light_ack_result_failed_format" = "结果 %@ 失败 ❌";
 "light_ack_result_timeout_format" = "结果 %@ 超时 ❌";
 "light_ack_response_format" = "回复 %@";
+"network_connectivity" = "网络连接";
+"ssid" = "SSID";
+"select_wifi" = "选择 Wi-Fi";
+"only_supports_24ghz_networks" = "仅支持 2.4GHz 网络。";
+"connect_to_wifi" = "连接 Wi-Fi";
+"disconnect" = "断开连接";
+"connect_to_24ghz_wifi_network" = "连接到 2.4 GHz Wi-Fi 网络";
+"go_to_system_settings" = "前往系统设置";
+"wifi_password_ascii_only" = "密码仅支持 ASCII 字符。";
+"wifi_gateway_ssid_empty" = "请先选择 Wi-Fi 网络。";
+"wifi_gateway_password_length_error" = "无密码 Wi-Fi 可留空；如填写密码，请输入 8-63 个字符。";
+"wifi_gateway_password_character_error" = "密码只能包含英文字母、数字、符号和空格，不支持双引号或反斜杠。";

@@ -1922,3 +1922,15 @@
 "light_ack_result_failed_format" = "Result %@ Failed ❌";
 "light_ack_result_timeout_format" = "Result %@ Timeout ❌";
 "light_ack_response_format" = "Response %@";
+"network_connectivity" = "Network Connectivity";
+"ssid" = "SSID";
+"select_wifi" = "Select Wi-Fi";
+"only_supports_24ghz_networks" = "Only supports 2.4GHz networks.";
+"connect_to_wifi" = "Connect to Wi-Fi";
+"disconnect" = "Disconnect";
+"connect_to_24ghz_wifi_network" = "Connect to 2.4 GHz Wi-Fi Network";
+"go_to_system_settings" = "Go to System Settings";
+"wifi_password_ascii_only" = "Password only supports ASCII characters.";
+"wifi_gateway_ssid_empty" = "Select a Wi-Fi network first.";
+"wifi_gateway_password_length_error" = "Leave the password empty for an open Wi-Fi network, or enter 8-63 characters.";
+"wifi_gateway_password_character_error" = "Password can only contain letters, numbers, symbols, and spaces. Double quotes and backslashes are not supported.";
