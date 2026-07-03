@@ -1440,18 +1440,22 @@
 		C8A100112FF0000000000011 /* LabViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100022FF0000000000002 /* LabViewController.swift */; };
 		C8A100122FF0000000000012 /* LightAckProgressAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100032FF0000000000003 /* LightAckProgressAlertView.swift */; };
 		C8A100132FF0000000000013 /* LightAckProgressTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100042FF0000000000004 /* LightAckProgressTracker.swift */; };
+		C8A100142FF0000000000014 /* LightGroupControlCommandSender.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A101522FF0000000000152 /* LightGroupControlCommandSender.swift */; };
 		C8A100202FF0000000000020 /* LabSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100012FF0000000000001 /* LabSettings.swift */; };
 		C8A100212FF0000000000021 /* LabViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100022FF0000000000002 /* LabViewController.swift */; };
 		C8A100222FF0000000000022 /* LightAckProgressAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100032FF0000000000003 /* LightAckProgressAlertView.swift */; };
 		C8A100232FF0000000000023 /* LightAckProgressTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100042FF0000000000004 /* LightAckProgressTracker.swift */; };
+		C8A100242FF0000000000024 /* LightGroupControlCommandSender.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A101522FF0000000000152 /* LightGroupControlCommandSender.swift */; };
 		C8A100302FF0000000000030 /* LabSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100012FF0000000000001 /* LabSettings.swift */; };
 		C8A100312FF0000000000031 /* LabViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100022FF0000000000002 /* LabViewController.swift */; };
 		C8A100322FF0000000000032 /* LightAckProgressAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100032FF0000000000003 /* LightAckProgressAlertView.swift */; };
 		C8A100332FF0000000000033 /* LightAckProgressTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100042FF0000000000004 /* LightAckProgressTracker.swift */; };
+		C8A100342FF0000000000034 /* LightGroupControlCommandSender.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A101522FF0000000000152 /* LightGroupControlCommandSender.swift */; };
 		C8A100402FF0000000000040 /* LabSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100012FF0000000000001 /* LabSettings.swift */; };
 		C8A100412FF0000000000041 /* LabViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100022FF0000000000002 /* LabViewController.swift */; };
 		C8A100422FF0000000000042 /* LightAckProgressAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100032FF0000000000003 /* LightAckProgressAlertView.swift */; };
 		C8A100432FF0000000000043 /* LightAckProgressTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100042FF0000000000004 /* LightAckProgressTracker.swift */; };
+		C8A100442FF0000000000044 /* LightGroupControlCommandSender.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A101522FF0000000000152 /* LightGroupControlCommandSender.swift */; };
 		C8A130B92B3129960008C353 /* ScenesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130B82B3129960008C353 /* ScenesViewController.swift */; };
 		C8A130BE2B32785E0008C353 /* SceneAddViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130BD2B32785E0008C353 /* SceneAddViewController.swift */; };
 		C8A130C02B327FF40008C353 /* SceneAddCustomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130BF2B327FF40008C353 /* SceneAddCustomView.swift */; };
@@ -2726,6 +2730,7 @@
 		C8A100022FF0000000000002 /* LabViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabViewController.swift; sourceTree = "<group>"; };
 		C8A100032FF0000000000003 /* LightAckProgressAlertView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightAckProgressAlertView.swift; sourceTree = "<group>"; };
 		C8A100042FF0000000000004 /* LightAckProgressTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightAckProgressTracker.swift; sourceTree = "<group>"; };
+		C8A101522FF0000000000152 /* LightGroupControlCommandSender.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightGroupControlCommandSender.swift; sourceTree = "<group>"; };
 		C8A130B82B3129960008C353 /* ScenesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenesViewController.swift; sourceTree = "<group>"; };
 		C8A130BD2B32785E0008C353 /* SceneAddViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneAddViewController.swift; sourceTree = "<group>"; };
 		C8A130BF2B327FF40008C353 /* SceneAddCustomView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneAddCustomView.swift; sourceTree = "<group>"; };
@@ -4594,6 +4599,7 @@
 				C8F7A0002FBF000000000001 /* Node+ELControllerRxTx.swift */,
 				C8D6636C2BFED12B00BFF81A /* Keychain.swift */,
 				C8A100012FF0000000000001 /* LabSettings.swift */,
+				C8A101522FF0000000000152 /* LightGroupControlCommandSender.swift */,
 				C8D6636E2BFEDDC900BFF81A /* ImportData.swift */,
 				C8D663702BFEDDE000BFF81A /* ExportData.swift */,
 				C89B40CD2CEB37C90082A89A /* MeshDistributionData.swift */,
@@ -5836,6 +5842,7 @@
 				C8C0E4462E2633B80024E77E /* DeviceSettingsViewController.swift in Sources */,
 				C88554C52DE6B44C00C8B688 /* UserData.swift in Sources */,
 				C8A100102FF0000000000010 /* LabSettings.swift in Sources */,
+				C8A100142FF0000000000014 /* LightGroupControlCommandSender.swift in Sources */,
 				C88554C62DE6B44C00C8B688 /* WMProgressView.m in Sources */,
 				C88554C72DE6B44C00C8B688 /* DeviceBottomBtnView.swift in Sources */,
 				C88554C82DE6B44C00C8B688 /* DaliSettingViewController.swift in Sources */,
@@ -6409,6 +6416,7 @@
 				C886E11F2E30DE4900D0C3A6 /* DeviceSettingsViewController.swift in Sources */,
 				C886E1202E30DE4900D0C3A6 /* UserData.swift in Sources */,
 				C8A100202FF0000000000020 /* LabSettings.swift in Sources */,
+				C8A100242FF0000000000024 /* LightGroupControlCommandSender.swift in Sources */,
 				C886E1212E30DE4900D0C3A6 /* WMProgressView.m in Sources */,
 				C886E1222E30DE4900D0C3A6 /* DeviceBottomBtnView.swift in Sources */,
 				C886E1232E30DE4900D0C3A6 /* DaliSettingViewController.swift in Sources */,
@@ -6990,6 +6998,7 @@
 				C8C0E4452E2633B80024E77E /* DeviceSettingsViewController.swift in Sources */,
 				C8699DB92C0978F300424A60 /* UserData.swift in Sources */,
 				C8A100302FF0000000000030 /* LabSettings.swift in Sources */,
+				C8A100342FF0000000000034 /* LightGroupControlCommandSender.swift in Sources */,
 				C898EA632AC2BD8B0023B480 /* WMProgressView.m in Sources */,
 				C8DA69DB2DB87C9B00E32092 /* DeviceBottomBtnView.swift in Sources */,
 				8C778C242FA34688000887FE /* PJEightKeySwitchMonitorStatusSetView.swift in Sources */,
@@ -7554,6 +7563,7 @@
 				C8BB66F82ED3F056000C63EE /* DeviceSettingsViewController.swift in Sources */,
 				C8BB66F92ED3F056000C63EE /* UserData.swift in Sources */,
 				C8A100402FF0000000000040 /* LabSettings.swift in Sources */,
+				C8A100442FF0000000000044 /* LightGroupControlCommandSender.swift in Sources */,
 				C8BB66FA2ED3F056000C63EE /* WMProgressView.m in Sources */,
 				C8BB66FB2ED3F056000C63EE /* DeviceBottomBtnView.swift in Sources */,
 				C8BB66FC2ED3F056000C63EE /* DaliSettingViewController.swift in Sources */,

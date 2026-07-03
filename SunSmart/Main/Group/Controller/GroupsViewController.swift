@@ -216,7 +216,7 @@ class GroupsViewController: UIViewController {
                 $0.trunOffLightness = $0.lightness
             }
         })
-        MeshAPI.setGroupOnOffState(address: group.address.address, isOn: group.isOn)
+        LightGroupControlCommandSender.setGroupOnOff(address: group.address.address, isOn: group.isOn)
         reloadCollectionItem(group: group)
     }
     

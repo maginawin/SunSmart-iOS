@@ -32,7 +32,7 @@ final class LightAckProgressTracker {
         LightAckCommandContext(title: "\(deviceName) \(commandDescription)", opcode: opcode)
     }
 
-    func send(message: StaticAcknowledgedMeshMessage, model: Model, context: LightAckCommandContext) {
+    func send(message: StaticAcknowledgedMeshMessage, model: Model, context: LightAckCommandContext, defaultTTL: UInt8? = nil) {
         let commandId = UUID()
         activeCommandId = commandId
         activeLines = [
@@ -41,7 +41,7 @@ final class LightAckProgressTracker {
         ]
         alertView = LightAckProgressAlertView.show(title: context.title, message: activeLines.joined(separator: "\n"))
 
-        MeshAPI.sendMessage(message: message, model: model) { [weak self] response in
+        MeshAPI.sendMessage(message: message, model: model, defaultTTL: defaultTTL) { [weak self] response in
             DispatchQueue.main.async {
                 self?.finish(commandId: commandId, context: context, response: response)
             }
