@@ -1393,6 +1393,7 @@
 "associated_spaces_instructions" = "空间关联说明";
 "associated_spaces_instructions_message" = "注意当网关与空间关联时，关联空间列表中每个空间必须至少有一个节点位于网关的蓝牙通信范围内。";
 "gateway_connecting_message" = "正在通过蓝牙连接网关";
+"sig_mesh" = "SIG Mesh";
 "online" = "在线";
 "node" = "节点";
 "singapore" = "新加坡";
@@ -1954,3 +1955,10 @@
 "wifi_gateway_ssid_empty" = "请先选择 Wi-Fi 网络。";
 "wifi_gateway_password_length_error" = "无密码 Wi-Fi 可留空；如填写密码，请输入 8-63 个字符。";
 "wifi_gateway_password_character_error" = "密码只能包含英文字母、数字、符号和空格，不支持双引号或反斜杠。";
+"wifi_status_title" = "Wi-Fi";
+"wifi_status_excellent" = "优秀";
+"wifi_status_good" = "良好";
+"wifi_status_poor" = "较弱";
+"wifi_status_bad" = "差";
+"wifi_status_no_signal" = "无信号";
+"wifi_status_not_connected" = "未连接";

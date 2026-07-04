@@ -1392,6 +1392,7 @@
 "associated_spaces_instructions" = "Associated Spaces instructions";
 "associated_spaces_instructions_message" = "Note that when the gateway is associated with  spaces, the associated space list must have at least one node in each space within the Bluetooth communication range of the gateway.";
 "gateway_connecting_message" = "Connecting to the gateway via Bluetooth";
+"sig_mesh" = "SIG Mesh";
 "online" = "Online";
 "node" = "Node";
 "singapore" = "Singapore";
@@ -1939,3 +1940,10 @@
 "wifi_gateway_ssid_empty" = "Select a Wi-Fi network first.";
 "wifi_gateway_password_length_error" = "Leave the password empty for an open Wi-Fi network, or enter 8-63 characters.";
 "wifi_gateway_password_character_error" = "Password can only contain letters, numbers, symbols, and spaces. Double quotes and backslashes are not supported.";
+"wifi_status_title" = "Wi-Fi";
+"wifi_status_excellent" = "Excellent";
+"wifi_status_good" = "Good";
+"wifi_status_poor" = "Poor";
+"wifi_status_bad" = "Bad";
+"wifi_status_no_signal" = "No Signal";
+"wifi_status_not_connected" = "Not Connected";

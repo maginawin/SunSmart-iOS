@@ -25,10 +25,12 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 //    private var otherGateways: [GatewayModel] = []
 
     var sections: [SectionType] {
-        let baseSections: [SectionType] = [.name, .activate, .info, .associatedSpaces, .apn, .serverInformation]
+        let baseSections: [SectionType] = [.name, .info, .associatedSpaces, .apn, .serverInformation]
         return supportsAPNConfiguration ? baseSections : baseSections.filter { $0 != .apn }
     }
-    private let infoTypes: [InfoCellType] = [.mac, .address, .model, .deviceType, .firmwareVersion]
+    var infoTypes: [InfoCellType] {
+        return [.mac, .address, .model, .deviceType, .firmwareVersion]
+    }
     /// 是否连接中
     private var isConnecting: Bool = false
     /// 网关在线状态缓存
@@ -45,6 +47,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     private weak var lastMessageDelegate: MeshLibManagerMessageDelegate?
 
     var supportsAPNConfiguration: Bool {
+        return true
+    }
+
+    var supportsGatewaySignalRefresh: Bool {
         return true
     }
 
@@ -213,6 +219,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 
     /// 获取网关信号
     private func getGatewaySignal() {
+        guard supportsGatewaySignalRefresh else {
+            clearGatewaySignal()
+            return
+        }
         guard node.state else {
             clearGatewaySignal()
             return
@@ -235,6 +245,11 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
 
     @objc private func refreshGatewaySignal() {
+        guard supportsGatewaySignalRefresh else {
+            stopSignalRefreshTimer()
+            clearGatewaySignal()
+            return
+        }
         guard node.state else {
             stopSignalRefreshTimer()
             clearGatewaySignal()
@@ -244,6 +259,11 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
 
     private func syncSignalRefreshState(forceRefresh: Bool = false) {
+        guard supportsGatewaySignalRefresh else {
+            stopSignalRefreshTimer()
+            clearGatewaySignal()
+            return
+        }
         guard isViewLoaded, isViewVisible else {
             stopSignalRefreshTimer()
             return
@@ -785,6 +805,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         tableView.reloadData()
     }
 
+    func makeGatewayInformationHeaderView(frame: CGRect) -> GatewayInformationHeaderView {
+        return GatewayInformationHeaderView(frame: frame)
+    }
+
     private func setupUI() {
 
         bottomView = DeviceBottomBtnView()
@@ -799,7 +823,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             make.height.equalTo(kSafeAreaBottomHeight + SCRYFrom(56))
         }
 
-        headerView = GatewayInformationHeaderView(frame: CGRect(x: 0, y: 0, width: view.width - SCRXFrom(32), height: SCRYFrom(72)))
+        headerView = makeGatewayInformationHeaderView(frame: CGRect(x: 0, y: 0, width: view.width - SCRXFrom(32), height: SCRYFrom(72)))
 
 
         footerView = UIView(frame: CGRect(x: 0, y: 0, width: view.width - SCRXFrom(32), height: SCRYFrom(62)))

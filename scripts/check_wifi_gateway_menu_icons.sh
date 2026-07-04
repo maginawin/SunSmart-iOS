@@ -21,7 +21,23 @@ check_menu_icon "\"WiFi DFU\"" "menu_wifi_dfu"
 check_menu_icon "\"delete\".localizedString" "menu_delete"
 check_menu_icon "\"information\".localizedString" "menu_information"
 check_menu_icon "\"Identify\"" "menu_identify"
-check_menu_icon "\"Diagnosis\"" "menu_diagnosis"
+
+if ! grep -Fq 'private let showsDiagnosisMenuItem = false' "$file"; then
+  printf 'FAIL: expected Diagnosis menu item to be retained behind a disabled feature flag\n'
+  failures=$((failures + 1))
+fi
+
+diagnosis_line=$(grep -Fn 'title: "Diagnosis"' "$file" | cut -d: -f1)
+if [ -z "$diagnosis_line" ]; then
+  printf 'FAIL: expected Diagnosis menu item implementation to be retained for future enablement\n'
+  failures=$((failures + 1))
+else
+  diagnosis_guard_line=$((diagnosis_line - 1))
+  if ! sed -n "${diagnosis_guard_line}p" "$file" | grep -Fq 'if showsDiagnosisMenuItem {'; then
+    printf 'FAIL: expected Diagnosis menu item to be hidden behind showsDiagnosisMenuItem\n'
+    failures=$((failures + 1))
+  fi
+fi
 
 identify_count=$(grep -Fc 'MeshAPI.identify(address: self.node.primaryUnicastAddress)' "$file")
 if [ "$identify_count" -ne 1 ]; then
@@ -44,4 +60,4 @@ if [ "$failures" -gt 0 ]; then
   exit 1
 fi
 
-printf 'PASS: WiFi Gateway menu icons, identify action, and information action match expected behavior.\n'
+printf 'PASS: WiFi Gateway menu icons, Diagnosis visibility, identify action, and information action match expected behavior.\n'

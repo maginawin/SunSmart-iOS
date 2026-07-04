@@ -7,14 +7,132 @@
 
 import UIKit
 
+final class GatewayHeaderStatusItemView: UIView {
+
+    private let iconImageView = UIImageView()
+    private let titleLabel = UILabel(text: nil, textColor: SubText_Color, fontSize: 12, fontWeight: .light, fit: false)
+    private let statusLabel = UILabel(text: nil, textColor: TextBlack_Color, fontSize: 12, fontWeight: .light, fit: false)
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+
+        setupUI()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    func update(iconName: String, title: String?, status: String, iconSize: CGFloat) {
+        iconImageView.image = UIImage(named: iconName)
+        titleLabel.text = title
+        let showsTitle = !(title?.isEmpty ?? true)
+        titleLabel.isHidden = !showsTitle
+        statusLabel.text = status
+
+        iconImageView.snp.remakeConstraints { make in
+            if showsTitle {
+                make.bottom.equalTo(statusLabel.snp.top).offset(SCRYFrom(-6))
+                make.left.equalTo(statusLabel.snp.left).offset(SCRXFrom(-8))
+            } else {
+                make.centerX.equalTo(statusLabel)
+                make.bottom.equalTo(statusLabel.snp.top).offset(SCRYFrom(-2))
+            }
+            make.width.height.equalTo(iconSize)
+        }
+
+        titleLabel.snp.remakeConstraints { make in
+            make.left.equalTo(iconImageView.snp.right).offset(SCRXFrom(2))
+            make.bottom.equalTo(iconImageView.snp.bottom).offset(SCRYFrom(-2))
+        }
+    }
+
+    private func setupUI() {
+        statusLabel.textAlignment = .center
+        addSubview(statusLabel)
+        statusLabel.snp.makeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.bottom.equalToSuperview()
+        }
+
+        addSubview(iconImageView)
+        iconImageView.snp.makeConstraints { make in
+            make.centerX.equalTo(statusLabel)
+            make.bottom.equalTo(statusLabel.snp.top).offset(SCRYFrom(-2))
+            make.width.height.equalTo(SCRYFrom(40))
+        }
+
+        addSubview(titleLabel)
+        titleLabel.snp.makeConstraints { make in
+            make.left.equalTo(iconImageView.snp.right).offset(SCRXFrom(2))
+            make.centerY.equalTo(iconImageView)
+        }
+    }
+}
+
 class GatewayInformationHeaderView: UIView {
+
+    enum GatewayHeaderStateStyle {
+        case gateway
+        case sigMesh
+
+        var title: String? {
+            switch self {
+            case .gateway:
+                return nil
+            case .sigMesh:
+                return "sig_mesh".localizedString
+            }
+        }
+
+        var onlineImageName: String {
+            switch self {
+            case .gateway:
+                return "gateway_online"
+            case .sigMesh:
+                return "bluetooth_online"
+            }
+        }
+
+        var offlineImageName: String {
+            switch self {
+            case .gateway:
+                return "gateway_offline"
+            case .sigMesh:
+                return "bluetooth_offline"
+            }
+        }
+
+        func imageName(isOnline: Bool) -> String {
+            return isOnline ? onlineImageName : offlineImageName
+        }
+
+        var iconSize: CGFloat {
+            switch self {
+            case .gateway:
+                return SCRYFrom(40)
+            case .sigMesh:
+                return 30
+            }
+        }
+
+        var stateViewHorizontalOffset: CGFloat {
+            switch self {
+            case .gateway:
+                return 0
+            case .sigMesh:
+                return SCRXFrom(-12)
+            }
+        }
+    }
 
     var connectImageView: UIImageView!
     var contentLabel: UILabel!
 
     private var informationView: UIView!
-    var gatewayStateImageView: UIImageView!
-    var gatewayStateLabel: UILabel!
+    private var gatewayStateView: GatewayHeaderStatusItemView!
+    private var gatewayStateStyle: GatewayHeaderStateStyle = .gateway
+    private var wifiStatusView: GatewayHeaderStatusItemView!
     
     var nodeCountLabel: UILabel!
     var nodeLabel: UILabel!
@@ -61,19 +179,37 @@ class GatewayInformationHeaderView: UIView {
         informationView.isHidden = false
     }
     
+    func setGatewayStateStyle(_ style: GatewayHeaderStateStyle) {
+        gatewayStateStyle = style
+        updateGatewayStateViewLayout()
+    }
+
+    func setWiFiStatusVisible(_ visible: Bool) {
+        wifiStatusView.isHidden = !visible
+        signalContentView.isHidden = visible
+    }
+
+    func updateWiFiStatus(iconName: String, status: String) {
+        wifiStatusView.update(
+            iconName: iconName,
+            title: "wifi_status_title".localizedString,
+            status: status,
+            iconSize: 30
+        )
+    }
+
     func updateData(gateway: Gateway) {
         let gatewayModel = gateway.model
         let node = gateway.node
         let totalDeviceCount = gatewayModel.associatedSpaces.reduce(0, { (result, space) -> Int in result + space.deviceCount })
         nodeCountLabel.text = "(\(totalDeviceCount))"
-        
-        if node.state {
-            gatewayStateImageView.image = UIImage(named: "gateway_online")
-            gatewayStateLabel.text = "Online".localizedString
-        }else {
-            gatewayStateImageView.image = UIImage(named: "gateway_offline")
-            gatewayStateLabel.text = "Offline".localizedString
-        }
+
+        gatewayStateView.update(
+            iconName: gatewayStateStyle.imageName(isOnline: node.state),
+            title: gatewayStateStyle.title,
+            status: node.state ? "online".localizedString : "Offline".localizedString,
+            iconSize: gatewayStateStyle.iconSize
+        )
         
         // 是否插入sim卡
         if gatewayModel.isSimInserted {
@@ -129,25 +265,15 @@ class GatewayInformationHeaderView: UIView {
         }
         
         
-        gatewayStateLabel = UILabel(text: "online".localizedString, textColor: TextBlack_Color, fontSize: 12, fontWeight: .light, fit: false)
-        informationView.addSubview(gatewayStateLabel)
-        gatewayStateLabel.snp.makeConstraints { make in
-            make.centerX.equalToSuperview().multipliedBy(0.5)
-            make.bottom.equalTo(SCRYFrom(-12))
-        }
-        
-        gatewayStateImageView = UIImageView(image: UIImage(named: "gateway_online"))
-        informationView.addSubview(gatewayStateImageView)
-        gatewayStateImageView.snp.makeConstraints { make in
-            make.centerX.equalTo(gatewayStateLabel)
-            make.bottom.equalTo(gatewayStateLabel.snp.top).offset(SCRYFrom(-2))
-        }
+        gatewayStateView = GatewayHeaderStatusItemView()
+        informationView.addSubview(gatewayStateView)
+        updateGatewayStateViewLayout()
         
         nodeLabel = UILabel(text: "node".localizedString, textColor: TextBlack_Color, fontSize: 12, fontWeight: .light, fit: false)
         informationView.addSubview(nodeLabel)
         nodeLabel.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.centerY.equalTo(gatewayStateLabel)
+            make.bottom.equalTo(gatewayStateView)
         }
         
         nodeCountLabel = UILabel(text: "(0)", textColor: SubText_Color, fontSize: 14, fontWeight: .light, fit: false)
@@ -193,7 +319,27 @@ class GatewayInformationHeaderView: UIView {
             make.bottom.equalToSuperview()
             make.top.equalTo(signalImageView.snp.bottom).offset(6)
         }
+
+        wifiStatusView = GatewayHeaderStatusItemView()
+        wifiStatusView.isHidden = true
+        informationView.addSubview(wifiStatusView)
+        wifiStatusView.snp.makeConstraints { make in
+            make.right.equalToSuperview().offset(SCRXFrom(-8))
+            make.bottom.equalTo(SCRYFrom(-12))
+            make.width.equalTo(SCRXFrom(130))
+            make.height.equalTo(SCRYFrom(56))
+        }
         
+    }
+
+    private func updateGatewayStateViewLayout() {
+        guard gatewayStateView != nil else { return }
+        gatewayStateView.snp.remakeConstraints { make in
+            make.centerX.equalToSuperview().multipliedBy(0.5).offset(gatewayStateStyle.stateViewHorizontalOffset)
+            make.bottom.equalTo(SCRYFrom(-12))
+            make.width.equalTo(SCRXFrom(130))
+            make.height.equalTo(SCRYFrom(56))
+        }
     }
     
     

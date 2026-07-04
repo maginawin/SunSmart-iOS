@@ -1,39 +1,27 @@
 #!/usr/bin/env bash
-set -u
+set -euo pipefail
 
-file="SunSmart/Main/Device/Gateway/Controller/GatewayViewController.swift"
-failures=0
+gateway_controller="SunSmart/Main/Device/Gateway/Controller/GatewayViewController.swift"
+wifi_controller="SunSmart/Main/Device/Gateway/Controller/WiFiGatewayViewController.swift"
 
-assert_contains() {
-  local pattern="$1"
-  local message="$2"
-
-  if ! grep -Fq "$pattern" "$file"; then
-    printf 'FAIL: %s\n' "$message" >&2
-    printf '  expected: %s\n' "$pattern" >&2
-    printf '  in file: %s\n' "$file" >&2
-    failures=$((failures + 1))
-  fi
+fail() {
+  echo "FAIL: $1" >&2
+  exit 1
 }
 
-assert_contains \
-  'if sections[section] == .activate {' \
-  "Activate section header must avoid the shared GatewaySectionHeaderView constraints."
+rg -n -F 'let baseSections: [SectionType] = [.name, .info, .associatedSpaces, .apn, .serverInformation]' "$gateway_controller" >/dev/null \
+  || fail "GatewayViewController base sections must not include the Activate section."
 
-assert_contains \
-  'return UIView()' \
-  "Activate section header must return an empty spacing view."
+rg -n -F 'let baseSections: [SectionType] = [.name, .activate, .info, .associatedSpaces, .apn, .serverInformation]' "$gateway_controller" >/dev/null \
+  && fail "GatewayViewController must not keep Activate in base sections."
 
-assert_contains \
-  'case .activate:' \
-  "Activate section must keep a dedicated header height."
+rg -n -F 'guard isNetworkConnectivityVisible, let nameIndex = sections.firstIndex(of: .name) else {' "$wifi_controller" >/dev/null \
+  || fail "WiFiGatewayViewController must anchor Network Connectivity below Name."
 
-assert_contains \
-  'return SCRYFrom(16)' \
-  "Activate section header height must match the Figma spacing without title constraints."
+rg -n -F 'let activateIndex = sections.firstIndex(of: .activate)' "$wifi_controller" >/dev/null \
+  && fail "WiFiGatewayViewController must not anchor Network Connectivity to Activate."
 
-if [ "$failures" -gt 0 ]; then
-  exit 1
-fi
+rg -n -F 'sections.insert(.networkConnectivity, at: sections.index(after: nameIndex))' "$wifi_controller" >/dev/null \
+  || fail "WiFiGatewayViewController must insert Network Connectivity after Name."
 
-printf 'PASS: Gateway Activate header uses an empty spacing view without shared header constraints.\n'
+echo "PASS: Gateway Activate UI is removed and WiFi Network Connectivity is anchored below Name."

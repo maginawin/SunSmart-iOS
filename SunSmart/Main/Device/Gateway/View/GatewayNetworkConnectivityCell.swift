@@ -67,7 +67,8 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
             showsSSIDClearButton: false,
             canSelectWiFi: connectState != .connected,
             canRefresh: connectState != .connected,
-            canEditPassword: true
+            canEditPassword: true,
+            canTogglePasswordVisibility: true
         )
     }
 
@@ -79,7 +80,8 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
         showsSSIDClearButton: Bool,
         canSelectWiFi: Bool,
         canRefresh: Bool,
-        canEditPassword: Bool
+        canEditPassword: Bool,
+        canTogglePasswordVisibility: Bool
     ) {
         ssidValueLabel.text = ssid
         currentPassword = password
@@ -91,7 +93,8 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
             connectState: connectState,
             canSelectWiFi: canSelectWiFi,
             canRefresh: canRefresh,
-            canEditPassword: canEditPassword
+            canEditPassword: canEditPassword,
+            canTogglePasswordVisibility: canTogglePasswordVisibility
         )
     }
 
@@ -251,15 +254,16 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
         connectState: ConnectState,
         canSelectWiFi: Bool,
         canRefresh: Bool,
-        canEditPassword: Bool
+        canEditPassword: Bool,
+        canTogglePasswordVisibility: Bool
     ) {
         let isConnecting = connectState == .connecting
         let isConnected = connectState == .connected
 
         selectWiFiButton.isEnabled = canSelectWiFi && !isConnecting
         refreshButton.isEnabled = canRefresh && !isConnecting
-        passwordTextField.isEnabled = canEditPassword && !isConnecting && !isConnected
-        passwordVisibilityButton.isEnabled = canEditPassword && !isConnecting && !isConnected
+        passwordTextField.isEnabled = canEditPassword && !isConnecting
+        passwordVisibilityButton.isEnabled = canTogglePasswordVisibility && !isConnecting
         ssidClearButton.isEnabled = !isConnecting
 
         loadingImageView.isHidden = !isConnecting
@@ -303,7 +307,8 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
             connectState: nextState,
             canSelectWiFi: selectWiFiButton.isEnabled,
             canRefresh: refreshButton.isEnabled,
-            canEditPassword: passwordTextField.isEnabled
+            canEditPassword: passwordTextField.isEnabled,
+            canTogglePasswordVisibility: passwordVisibilityButton.isEnabled
         )
     }
 
