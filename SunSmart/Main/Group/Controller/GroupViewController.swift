@@ -27,6 +27,18 @@ class GroupViewController: UIViewController {
     private var upDownRatioControlView: DeviceUpDownRatioControlView!
     private var isUpDownRatioModeSelected = false
     private var groupUpRatioValue = 50
+    private var lastShowsUpDownRatioControl: Bool?
+    private let refreshUIInterval: TimeInterval = 1
+    private var uiRefreshTimer: Timer?
+    private var nextScheduledUIFlushDate: Date?
+    private var pendingDeviceRefreshAddresses: Set<Address> = []
+    private var pendingSensorRefreshEvents: [Address: [GroupSensorView.SensorType: GroupSensorView.SensorRefreshEvent]] = [:]
+    private var isGroupSummaryRefreshPending = false
+    private var isFullCollectionReloadPending = false
+    private var isFullSensorReloadPending = false
+    private var isSensorControlStateRefreshPending = false
+    private var isDeviceCollectionScrolling = false
+    private var isSensorTableScrolling = false
     private var controlPanelView: DeviceLightControlPanelView!
     private var pageControl: UIPageControl!
     
@@ -74,6 +86,10 @@ class GroupViewController: UIViewController {
     
     let space: SpaceData
     var group: Group
+    private var nodeIndexByAddress: [Address: Int] = [:]
+    private var cachedGroupControlCCTNodes: [Node] = []
+    private var cachedUpDownRatioNodes: [Node] = []
+    private var cachedShowsGroupControlLightness = false
 
     private var collapsedSensorViewHeight: CGFloat {
         SCRYFrom(40) + kSafeAreaBottomHeight
@@ -85,7 +101,7 @@ class GroupViewController: UIViewController {
     }
 
     private var groupControlCCTNodes: [Node] {
-        group.nodes.filter { $0.rawSupportCct && $0.effectiveChangeControlPage == .tunableWhite }
+        cachedGroupControlCCTNodes
     }
 
     private var showsGroupControlCCT: Bool {
@@ -104,11 +120,11 @@ class GroupViewController: UIViewController {
     }
 
     private var showsGroupControlPanel: Bool {
-        group.supportLightness || showsGroupControlCCT
+        cachedShowsGroupControlLightness || showsGroupControlCCT
     }
 
     private var upDownRatioNodes: [Node] {
-        group.nodes.filter { $0.supportsUpDownRatioControl }
+        cachedUpDownRatioNodes
     }
 
     private var showsUpDownRatioModeButton: Bool {
@@ -367,6 +383,9 @@ class GroupViewController: UIViewController {
 //        collectionView.reloadData()
 //        updateEmptyUI()
         updateUI()
+        isDeviceCollectionScrolling = false
+        isSensorTableScrolling = false
+        startUIRefreshTimer()
         
         MeshLibManager.manager.messageDelegate = self
         
@@ -407,6 +426,7 @@ class GroupViewController: UIViewController {
     deinit {
         automationTimer?.invalidate()
         automationTimer = nil
+        stopUIRefreshTimer()
         
         proxyFilterRemoveGroup()
         meshNetworkConnectedObservation = nil
@@ -415,6 +435,7 @@ class GroupViewController: UIViewController {
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        stopUIRefreshTimer()
 //        if isGroupUpdateData {
             NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: group)
 //        }
@@ -566,6 +587,143 @@ class GroupViewController: UIViewController {
     private func resetGroupUpDownRatioState() {
         isUpDownRatioModeSelected = false
         groupUpRatioValue = 50
+        lastShowsUpDownRatioControl = nil
+    }
+
+    private func rebuildGroupDerivedCache() {
+        let nodes = group.nodes
+        nodeIndexByAddress.removeAll(keepingCapacity: true)
+        nodes.enumerated().forEach { index, node in
+            nodeIndexByAddress[node.primaryUnicastAddress] = index
+        }
+        cachedGroupControlCCTNodes = nodes.filter { $0.rawSupportCct && $0.effectiveChangeControlPage == .tunableWhite }
+        cachedUpDownRatioNodes = nodes.filter { $0.supportsUpDownRatioControl }
+        cachedShowsGroupControlLightness = nodes.contains { $0.lightnessModel != nil }
+    }
+
+    private var hasPendingUIUpdates: Bool {
+        isFullCollectionReloadPending ||
+        isFullSensorReloadPending ||
+        isGroupSummaryRefreshPending ||
+        isSensorControlStateRefreshPending ||
+        !pendingDeviceRefreshAddresses.isEmpty ||
+        !pendingSensorRefreshEvents.isEmpty
+    }
+
+    private func startUIRefreshTimer() {
+        guard uiRefreshTimer == nil else { return }
+        uiRefreshTimer = LCWeakTimer.scheduledTimer(timeInterval: refreshUIInterval, aTarget: self, selector: #selector(uiRefreshTimerAction), userInfo: nil, repeats: true)
+        RunLoop.current.add(uiRefreshTimer!, forMode: .common)
+    }
+
+    private func stopUIRefreshTimer() {
+        uiRefreshTimer?.invalidate()
+        uiRefreshTimer = nil
+    }
+
+    @objc private func uiRefreshTimerAction() {
+        flushPendingUIUpdates()
+    }
+
+    private func markDeviceDirty(_ node: Node, includeGroupSummary: Bool = true) {
+        pendingDeviceRefreshAddresses.insert(node.primaryUnicastAddress)
+        if includeGroupSummary {
+            markGroupSummaryDirty()
+        }
+    }
+
+    private func markSensorDirty(sensor: Node, sensorType: GroupSensorView.SensorType, isTransientPresenceTrigger: Bool = false) {
+        let address = sensor.primaryUnicastAddress
+        let existingEvent = pendingSensorRefreshEvents[address]?[sensorType]
+        let shouldKeepTransientTrigger = isTransientPresenceTrigger || existingEvent?.isTransientPresenceTrigger == true
+        var events = pendingSensorRefreshEvents[address] ?? [:]
+        events[sensorType] = .init(sensor: sensor, sensorType: sensorType, isTransientPresenceTrigger: shouldKeepTransientTrigger)
+        pendingSensorRefreshEvents[address] = events
+    }
+
+    private func markGroupSummaryDirty() {
+        isGroupSummaryRefreshPending = true
+    }
+
+    private func markFullCollectionReloadDirty(includeGroupSummary: Bool = true) {
+        isFullCollectionReloadPending = true
+        if includeGroupSummary {
+            markGroupSummaryDirty()
+        }
+    }
+
+    private func markSensorControlStateDirty() {
+        isSensorControlStateRefreshPending = true
+    }
+
+    private func deferNextScheduledUIFlush() {
+        nextScheduledUIFlushDate = Date().addingTimeInterval(refreshUIInterval)
+    }
+
+    private func flushPendingUIUpdates() {
+        flushPendingUIUpdates(ignoringSchedule: false)
+    }
+
+    private func flushPendingUIUpdatesImmediately() {
+        deferNextScheduledUIFlush()
+        flushPendingUIUpdates(ignoringSchedule: true)
+    }
+
+    private func flushPendingUIUpdates(ignoringSchedule: Bool) {
+        guard view.window != nil else { return }
+        if !ignoringSchedule, let nextScheduledUIFlushDate = nextScheduledUIFlushDate, Date() < nextScheduledUIFlushDate {
+            return
+        }
+        guard !isDeviceCollectionScrolling, !isSensorTableScrolling else {
+            return
+        }
+        guard hasPendingUIUpdates else { return }
+
+        let shouldReloadCollection = isFullCollectionReloadPending
+        let deviceAddresses = pendingDeviceRefreshAddresses
+        let sensorEvents = pendingSensorRefreshEvents.values.flatMap { Array($0.values) }
+        let shouldReloadSensors = isFullSensorReloadPending
+        let shouldRefreshSummary = isGroupSummaryRefreshPending
+        let shouldRefreshSensorControlState = isSensorControlStateRefreshPending
+
+        pendingDeviceRefreshAddresses.removeAll(keepingCapacity: true)
+        pendingSensorRefreshEvents.removeAll(keepingCapacity: true)
+        isFullCollectionReloadPending = false
+        isFullSensorReloadPending = false
+        isGroupSummaryRefreshPending = false
+        isSensorControlStateRefreshPending = false
+
+        if shouldReloadCollection {
+            collectionView.reloadData()
+        }else {
+            deviceAddresses.forEach { address in
+                guard let index = nodeIndexByAddress[address], group.nodes.indices.contains(index) else { return }
+                refreshDeviceCell(node: group.nodes[index])
+            }
+        }
+
+        if shouldRefreshSummary {
+            updateGroupControlSummaryIfNeeded()
+        }
+
+        if shouldReloadSensors {
+            sensorView?.sensors = group.sensorNodes
+        }
+        if !sensorEvents.isEmpty {
+            sensorView?.reloadSensorData(events: sensorEvents)
+        }
+        if shouldRefreshSensorControlState {
+            updataSensorAutoStateUI()
+        }
+    }
+
+    private func clearPendingUIUpdates() {
+        pendingDeviceRefreshAddresses.removeAll(keepingCapacity: true)
+        pendingSensorRefreshEvents.removeAll(keepingCapacity: true)
+        isGroupSummaryRefreshPending = false
+        isFullCollectionReloadPending = false
+        isFullSensorReloadPending = false
+        isSensorControlStateRefreshPending = false
     }
 
     private func applyGroupUpRatioValue(_ value: Int) {
@@ -574,7 +732,10 @@ class GroupViewController: UIViewController {
         upDownRatioNodes.forEach { node in
             node.upRatio = clampedValue
         }
-        upDownRatioControlView.upValue = clampedValue
+        if !upDownRatioControlView.isHidden {
+            upDownRatioControlView.upValue = clampedValue
+        }
+        deferNextScheduledUIFlush()
     }
 
     private func saveGroupUpRatioValue(_ value: Int) {
@@ -594,6 +755,8 @@ class GroupViewController: UIViewController {
     
     private func updateUI() {
         
+        rebuildGroupDerivedCache()
+
         title = group.name
         
         pageControl.numberOfPages = Int(ceil(Double(group.nodes.count) / Double(columnNum * rowNum)))
@@ -655,6 +818,7 @@ class GroupViewController: UIViewController {
         deviceCountLabel.text = "(\(group.nodes.count))"
         
         collectionView.reloadData()
+        clearPendingUIUpdates()
     }
 
     private func updateControlPanel() {
@@ -668,7 +832,7 @@ class GroupViewController: UIViewController {
         controlPanelView.configure(.init(
             controlType: space.controlType,
             showCCTQuickButtons: space.showCCTQuickButtons,
-            showsBrightness: group.supportLightness,
+            showsBrightness: cachedShowsGroupControlLightness,
             showsCCT: showsGroupControlCCT,
             brightnessValue: brightnessValue,
             brightnessRange: currentGroupBrightnessRange,
@@ -852,6 +1016,7 @@ class GroupViewController: UIViewController {
         controlPanelView.setBrightnessValue(group.isOn ? Node.getLightness100(lightness: group.lightness) : 0)
         updateUpDownRatioUI()
         collectionView.reloadData()
+        deferNextScheduledUIFlush()
         
         refreshAutoState()
 //        isGroupUpdateData = true
@@ -907,16 +1072,19 @@ class GroupViewController: UIViewController {
             }
             onoffBtn.isSelected = group.isOn
             updateUpDownRatioUI()
+            deferNextScheduledUIFlush()
             
         }
         
         refreshAutoState()
+        deferNextScheduledUIFlush()
        
     }
 
     @objc private func upDownRatioModeBtnClick(sender: UIButton) {
         isUpDownRatioModeSelected.toggle()
         updateUpDownRatioUI()
+        deferNextScheduledUIFlush()
     }
 
     private func controlButtonImage(named imageName: String, matching size: CGSize) -> UIImage? {
@@ -948,7 +1116,14 @@ class GroupViewController: UIViewController {
 
         let showsRatioControl = showsModeButton && isUpDownRatioModeSelected
         upDownRatioControlView.isHidden = !showsRatioControl
-        upDownRatioControlView.upValue = groupUpRatioValue
+        if showsRatioControl {
+            upDownRatioControlView.upValue = groupUpRatioValue
+        }
+
+        guard lastShowsUpDownRatioControl != showsRatioControl else {
+            return
+        }
+        lastShowsUpDownRatioControl = showsRatioControl
 
         controlPanelView.snp.remakeConstraints { make in
             if isIPad {
@@ -1090,6 +1265,7 @@ class GroupViewController: UIViewController {
             $0.temperature = $0.clampEffectiveCct(temperature)
         }
         updateUpDownRatioUI()
+        deferNextScheduledUIFlush()
         return temperature
     }
 
@@ -1128,6 +1304,7 @@ class GroupViewController: UIViewController {
         CATransaction.setDisableActions(true)
         collectionView.reloadItems(at: collectionView.indexPathsForVisibleItems)
         CATransaction.commit()
+        deferNextScheduledUIFlush()
     }
 
     private func showGroupBrightnessInputAlert() {
@@ -1367,12 +1544,18 @@ class GroupViewController: UIViewController {
     /// 分页页码编辑回调
     @objc private func pageControlValueChanged() {
         collectionView.setContentOffset(CGPoint(x: CGFloat(pageControl.currentPage) * collectionView.width, y: self.collectionView.contentOffset.y), animated: true)
+        deferNextScheduledUIFlush()
     }
     
     /// 刷新设备
     private func reloadCollectionItem(node: Node) {
-        
-        if let index = group.nodes.firstIndex(where: {$0.primaryUnicastAddress == node.primaryUnicastAddress}) {
+        refreshDeviceCell(node: node)
+        updateGroupControlSummaryIfNeeded()
+        deferNextScheduledUIFlush()
+    }
+
+    private func refreshDeviceCell(node: Node) {
+        if let index = nodeIndexByAddress[node.primaryUnicastAddress] {
             if let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? DevicesViewCell {
                 item.device = node
                 item.displayDeviceNamePrefix = space.displayDeviceNamePrefix
@@ -1381,7 +1564,9 @@ class GroupViewController: UIViewController {
                 }
             }
         }
-        
+    }
+
+    private func updateGroupControlSummaryIfNeeded() {
         onoffBtn.isEnabled = MeshLibManager.manager.isMeshNetworkConnected && group.nodes.contains(where: { $0.state })
         if group.isOn != onoffBtn.isSelected {
             controlPanelView.setBrightnessValue(Node.getLightness100(lightness: group.lightness))
@@ -1389,6 +1574,16 @@ class GroupViewController: UIViewController {
         onoffBtn.isSelected = group.isOn
         updateControlPanel()
         updateUpDownRatioUI()
+    }
+
+    private func isSensorOnlyMessage(_ message: MeshMessage) -> Bool {
+        if message is SensorStatus {
+            return true
+        }
+        if let vendorSet = message as? SunricherVendorSet, case .proximityLightingTrigger = vendorSet.function {
+            return true
+        }
+        return false
     }
     
     /// 长按事件，跳转到设备详情
@@ -1673,8 +1868,27 @@ extension GroupViewController: UICollectionViewDataSource, UICollectionViewDeleg
         }
     }
     
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        guard scrollView === collectionView else { return }
+        isDeviceCollectionScrolling = true
+    }
+
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        guard scrollView === collectionView, !decelerate else { return }
+        isDeviceCollectionScrolling = false
+        updateCurrentCollectionPage()
+        flushPendingUIUpdatesImmediately()
+    }
+
     func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
-        let page = Int(scrollView.contentOffset.x / scrollView.frame.size.width + 0.5)
+        guard scrollView === collectionView else { return }
+        isDeviceCollectionScrolling = false
+        updateCurrentCollectionPage()
+        flushPendingUIUpdatesImmediately()
+    }
+
+    private func updateCurrentCollectionPage() {
+        let page = Int(collectionView.contentOffset.x / collectionView.frame.size.width + 0.5)
         
         pageControl.currentPage = page
         //            pageControl.setCurrentPage(page, animated: true)
@@ -1689,8 +1903,8 @@ extension GroupViewController: UICollectionViewDataSource, UICollectionViewDeleg
 extension GroupViewController: MeshLibManagerMessageDelegate {
     
     func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
-        if view.window != nil, group.nodes.contains(node) {
-            reloadCollectionItem(node: node)
+        if view.window != nil, nodeIndexByAddress[node.primaryUnicastAddress] != nil {
+            markDeviceDirty(node)
         }
     }
     
@@ -1708,7 +1922,7 @@ extension GroupViewController: MeshLibManagerMessageDelegate {
                 sensorMessage.values.forEach { (property: DeviceProperty, _) in
                     // 人体存在传感器model
                     if case .presenceDetected = property {
-                        sensorView?.reloadSensorData(sensor: sensorNode, sensorType: .presenceDetected)
+                        markSensorDirty(sensor: sensorNode, sensorType: .presenceDetected)
                     }
                     
                     if case .presentAmbientLightLevel = property, automationTimer != nil {
@@ -1717,43 +1931,36 @@ extension GroupViewController: MeshLibManagerMessageDelegate {
                     
                     // 环境光传感器model
                     if case .presentAmbientLightLevel = property, sensorNode.primaryUnicastAddress == group.info.ambientLightSensorNode?.primaryUnicastAddress {
-                        sensorView?.reloadSensorData(sensor: sensorNode, sensorType: .ambientLight)
+                        markSensorDirty(sensor: sensorNode, sensorType: .ambientLight)
                     }
                 }
             }else if let lightOnOffStatus = message as? LightLCLightOnOffStatus {
                 sensorNode.lightControlOn = lightOnOffStatus.isOn
-                updataSensorAutoStateUI()
+                markSensorControlStateDirty()
             }
         }
         
         /// 邻近照明pir触发信号
         if let vendorSet = message as? SunricherVendorSet, case .proximityLightingTrigger(_, let source) = vendorSet.function {
             if let sensorNode = group.sensorNodes.first(where: { $0.contains(elementWithAddress: source) }), sensorNode.presenceDetectedSensorModel != nil {
-                sensorNode.occupancyState = true
-                sensorView?.reloadSensorData(sensor: sensorNode, sensorType: .presenceDetected)
-                sensorNode.occupancyState = false
+                markSensorDirty(sensor: sensorNode, sensorType: .presenceDetected, isTransientPresenceTrigger: true)
             }
         }
         
         
         if let node = manager.meshNetwork?.node(withAddress: source), !node.isProvisioner {
             node.updateData(message: message)
+            if isSensorOnlyMessage(message) { return }
             
             // 动能开关事件
             let isSwitchAction = message is LightLCLightOnOffSetUnacknowledged || message is GenericOnOffSetUnacknowledged || message is SceneRecallUnacknowledged
             
-            if group.nodes.contains(node) || destination == .allNodes || (isSwitchAction && group.info.switchs.contains(where: { $0.linkGroupAddress == destination })) {
+            if nodeIndexByAddress[node.primaryUnicastAddress] != nil || destination == .allNodes || (isSwitchAction && group.info.switchs.contains(where: { $0.linkGroupAddress == destination })) {
                 if view.window != nil {
                     if isSwitchAction {
-                        collectionView.reloadData()
-                        if group.isOn != onoffBtn.isSelected {
-                            controlPanelView.setBrightnessValue(Node.getLightness100(lightness: group.lightness))
-                        }
-                        onoffBtn.isSelected = group.isOn
-                        updateControlPanel()
-                        updateUpDownRatioUI()
+                        markFullCollectionReloadDirty()
                     }else {
-                        reloadCollectionItem(node: node)
+                        markDeviceDirty(node)
                     }
                 }
             }
@@ -1778,11 +1985,23 @@ extension GroupViewController: GroupSensorViewDelegate {
     func sensorViewDidShow(view: GroupSensorView) {
         
         self.isModalInPresentation = true
+        flushPendingUIUpdatesImmediately()
     }
     
     func sensorViewDidHide(view: GroupSensorView) {
   
         self.isModalInPresentation = false
+        isSensorTableScrolling = false
+        flushPendingUIUpdatesImmediately()
+    }
+
+    func sensorViewDidBeginScrolling(view: GroupSensorView) {
+        isSensorTableScrolling = true
+    }
+
+    func sensorViewDidEndScrolling(view: GroupSensorView) {
+        isSensorTableScrolling = false
+        flushPendingUIUpdatesImmediately()
     }
     
     func sensorViewShouldHide(_ view: GroupSensorView) -> Bool {

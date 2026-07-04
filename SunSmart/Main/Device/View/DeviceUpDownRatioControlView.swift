@@ -30,7 +30,7 @@ final class DeviceUpDownRatioControlView: UIView {
     private let sliderView = BuoySliderView(frame: .zero, functionType: .level())
     private let quickButtonsView = UpDownRatioQuickButtonsView()
 
-    private var currentUpValue = 50
+    private var currentUpValue = -1
     private var suppressCallbacks = false
 
     override init(frame: CGRect) {
@@ -101,13 +101,13 @@ final class DeviceUpDownRatioControlView: UIView {
 
     private func setUpValue(_ value: Int, notifyChanging: Bool, notifyChanged: Bool) {
         let clampedValue = max(0, min(100, value))
+        guard clampedValue != currentUpValue else { return }
         currentUpValue = clampedValue
 
         UIView.performWithoutAnimation {
             sliderView.value = sliderValue(fromUpValue: clampedValue)
             valueLabel.text = ratioText(upValue: clampedValue)
             quickButtonsView.configure(selectedValue: clampedValue)
-            layoutIfNeeded()
         }
 
         guard !suppressCallbacks else { return }
@@ -152,7 +152,9 @@ private final class UpDownRatioQuickButtonsView: UIView {
     }
 
     func configure(selectedValue: Int) {
-        self.selectedValue = values.contains(selectedValue) ? selectedValue : nil
+        let normalizedValue = values.contains(selectedValue) ? selectedValue : nil
+        guard normalizedValue != self.selectedValue else { return }
+        self.selectedValue = normalizedValue
 
         UIView.performWithoutAnimation {
             buttons.enumerated().forEach { index, button in
@@ -161,16 +163,15 @@ private final class UpDownRatioQuickButtonsView: UIView {
                 button.backgroundColor = isSelected ? RGB(102, 103, 171) : .white
                 button.layer.borderColor = isSelected ? RGB(102, 103, 171).cgColor : RGB(236, 236, 236).cgColor
                 button.setTitleColor(isSelected ? .white : RGB(102, 103, 171), for: .normal)
-                button.layoutIfNeeded()
             }
         }
     }
 
     private func setupUI() {
         stackView.axis = .horizontal
-        stackView.alignment = .center
-        stackView.distribution = .equalSpacing
-        stackView.spacing = SCRXFrom(10)
+        stackView.alignment = .fill
+        stackView.distribution = .fillEqually
+        stackView.spacing = SCRXFrom(6)
         addSubview(stackView)
         stackView.snp.makeConstraints { make in
             make.edges.equalToSuperview()
@@ -180,13 +181,14 @@ private final class UpDownRatioQuickButtonsView: UIView {
             let button = UIButton(type: .system)
             button.tag = index
             button.titleLabel?.font = FONTS(SCRYFrom(12))
+            button.titleLabel?.adjustsFontSizeToFitWidth = true
+            button.titleLabel?.minimumScaleFactor = 0.7
             button.layer.cornerRadius = SCRYFrom(16)
             button.layer.borderWidth = 1
             button.setTitle("\(value)/\(100 - value)", for: .normal)
             button.addTarget(self, action: #selector(buttonClick(sender:)), for: .touchUpInside)
             stackView.addArrangedSubview(button)
             button.snp.makeConstraints { make in
-                make.width.equalTo(SCRXFrom(56))
                 make.height.equalTo(SCRYFrom(32))
             }
             buttons.append(button)

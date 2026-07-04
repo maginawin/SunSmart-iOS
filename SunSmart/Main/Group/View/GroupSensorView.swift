@@ -15,6 +15,10 @@ protocol GroupSensorViewDelegate: AnyObject {
     func sensorViewShouldHide(_ view: GroupSensorView) -> Bool
     
     func sensorViewDidHide(view: GroupSensorView)
+
+    func sensorViewDidBeginScrolling(view: GroupSensorView)
+
+    func sensorViewDidEndScrolling(view: GroupSensorView)
  
     /// 传感器设备占用功能点击
     func sensorView(_ view: GroupSensorView, occupancySensorTapAction sensor: Node)
@@ -36,11 +40,23 @@ class GroupSensorView: UIView {
     }
     
     /// 传感器类型
-    enum SensorType {
+    enum SensorType: Hashable {
         /// 占用
         case presenceDetected
         /// 光照
         case ambientLight
+    }
+
+    struct SensorRefreshEvent {
+        let sensor: Node
+        let sensorType: SensorType
+        let isTransientPresenceTrigger: Bool
+
+        init(sensor: Node, sensorType: SensorType, isTransientPresenceTrigger: Bool = false) {
+            self.sensor = sensor
+            self.sensorType = sensorType
+            self.isTransientPresenceTrigger = isTransientPresenceTrigger
+        }
     }
     
     private var shadeView: UIView!
@@ -248,15 +264,38 @@ class GroupSensorView: UIView {
     ///   - sensor: 传感器节点
     ///   - sensorType: 传感器类型
     func reloadSensorData(sensor: Node, sensorType: SensorType) {
+        reloadSensorData(events: [.init(sensor: sensor, sensorType: sensorType)])
+    }
 
-        if sensorType == .presenceDetected {
-            if sensors.contains(where: { $0.pirEnabled && $0.state && $0.occupancyState }) {
+    func reloadSensorData(events: [SensorRefreshEvent]) {
+        guard !events.isEmpty else { return }
+
+        reloadHeaderSensorData(events: events)
+
+        events.forEach { event in
+            if let index = sensors.firstIndex(where: { $0.primaryUnicastAddress == event.sensor.primaryUnicastAddress }) {
+                if let cell = tableView.cellForRow(at: IndexPath(row: index, section: 0)) as? GroupSensorViewCell {
+                    cell.reloadSensorData(event: event)
+                }
+            }else {
+                tableView.reloadData()
+            }
+        }
+    }
+
+    private func reloadHeaderSensorData(events: [SensorRefreshEvent]) {
+        if events.contains(where: { $0.sensorType == .presenceDetected }) {
+            let hasTransientTrigger = events.contains(where: { $0.sensorType == .presenceDetected && $0.isTransientPresenceTrigger })
+            if hasTransientTrigger || sensors.contains(where: { $0.pirEnabled && $0.state && $0.occupancyState }) {
                 occupyStateImageView.image = UIImage(named: "sensor_occupy")
                 startUpdateOccupyTimer()
             }else {
                 occupyStateImageView.image = UIImage(named: "sensor_unoccupy")
             }
-        }else {
+        }
+
+        events.filter({ $0.sensorType == .ambientLight }).forEach { event in
+            let sensor = event.sensor
             if sensor.state, sensor.sensorCalibrated, let lux = sensor.steadyDaylightLux {
                 lightLuxLabel.text = "\(lux)lx"
                 lightLuxLabel.backgroundColor = RGB(179, 237, 103)
@@ -266,16 +305,6 @@ class GroupSensorView: UIView {
                 lightLuxLabel.backgroundColor = RGB(245, 245, 245)
             }
         }
-        
-        if let index = sensors.firstIndex(where: { $0.primaryUnicastAddress == sensor.primaryUnicastAddress }) {
-//            tableView.reloadRows(at: [IndexPath(row: index, section: 0)], with: .none)
-            if let cell = tableView.cellForRow(at: IndexPath(row: index, section: 0)) as? GroupSensorViewCell {
-                cell.reloadSensorData(sensor: sensor, sensorType: sensorType)
-            }
-        }else {
-            tableView.reloadData()
-        }
-        
     }
     
     /// 刷新传感器UI
@@ -590,6 +619,19 @@ extension GroupSensorView: UITableViewDataSource, UITableViewDelegate {
         }
         return cell
     }
+
+    func scrollViewWillBeginDragging(_ scrollView: UIScrollView) {
+        delegate?.sensorViewDidBeginScrolling(view: self)
+    }
+
+    func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
+        guard !decelerate else { return }
+        delegate?.sensorViewDidEndScrolling(view: self)
+    }
+
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        delegate?.sensorViewDidEndScrolling(view: self)
+    }
     
     
 //    func scrollViewDidScroll(_ scrollView: UIScrollView) {
@@ -817,15 +859,20 @@ class GroupSensorViewCell: UITableViewCell {
     ///   - sensor: 传感器节点
     ///   - sensorType: 传感器类型
     func reloadSensorData(sensor: Node, sensorType: GroupSensorView.SensorType) {
+        reloadSensorData(event: .init(sensor: sensor, sensorType: sensorType))
+    }
 
-        if sensorType == .presenceDetected {
+    func reloadSensorData(event: GroupSensorView.SensorRefreshEvent) {
+        let sensor = event.sensor
+
+        if event.sensorType == .presenceDetected {
             guard sensor.pirEnabled else {
                 stopUpdateOccupyTimer()
                 occupyStateImageView.image = UIImage(named: "sensor_occupy_disable")
                 return
             }
             if !sensor.occupancySettings {
-                if sensor.occupancyState {
+                if event.isTransientPresenceTrigger || sensor.occupancyState {
                     occupyStateImageView.image = UIImage(named: "sensor_occupy")
                     startUpdateOccupyTimer()
                 }else {
