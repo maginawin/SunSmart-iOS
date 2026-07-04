@@ -493,7 +493,7 @@ class DeviceLightsViewController: UIViewController {
              })
              collectionView.reloadData()
          }
-        MeshAPI.setAllOnOffState(isOn: false)
+        LightGroupControlCommandSender.setAllOnOff(isOn: false)
     }
     
     /// 全开
@@ -505,7 +505,7 @@ class DeviceLightsViewController: UIViewController {
             devices.forEach({ $0.isOn = true })
             collectionView.reloadData()
         }
-        MeshAPI.setAllOnOffState(isOn: true)
+        LightGroupControlCommandSender.setAllOnOff(isOn: true)
     }
     
     /// 设备调节
@@ -1018,7 +1018,7 @@ private extension DeviceLightsViewController {
 
     func sendLightItemOnOffCommand(node: Node) {
         guard LabSettings.displayLightAckDetails else {
-            MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn, ack: true)
+            LightGroupControlCommandSender.setNodeOnOff(address: node.primaryUnicastAddress, isOn: node.isOn, ack: true)
             return
         }
         guard let model = node.onoffModel else {
@@ -1032,7 +1032,12 @@ private extension DeviceLightsViewController {
             commandDescription: commandDescription,
             opcode: GenericOnOffSet.opCode
         )
-        LightAckProgressTracker.shared.send(message: GenericOnOffSet(node.isOn), model: model, context: context)
+        LightAckProgressTracker.shared.send(
+            message: GenericOnOffSet(node.isOn),
+            model: model,
+            context: context,
+            defaultTTL: LightGroupControlCommandSender.defaultTTL
+        )
     }
 }
 
@@ -1122,7 +1127,7 @@ extension DeviceLightsViewController: DeviceLightControlViewDelegate {
         
 //        let lightness = UInt16(round(Double(level) / 100.0) * Double(UInt16.max))
         let ligheness = Node.getLightness(lightness100: level)
-        MeshAPI.setAllLightnessState(lightness: ligheness)
+        LightGroupControlCommandSender.setAllLightness(lightness: ligheness)
         
         self.devices.forEach({
             // 记录关灯前亮度

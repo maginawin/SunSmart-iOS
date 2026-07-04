@@ -844,7 +844,7 @@ class GroupViewController: UIViewController {
         }
         sender.isSelected = !sender.isSelected
         
-        MeshAPI.setGroupOnOffState(address: group.address.address, isOn: sender.isSelected)
+        LightGroupControlCommandSender.setGroupOnOff(address: group.address.address, isOn: sender.isSelected)
         group.isOn = sender.isSelected
         group.nodes.forEach({
             $0.isOn = group.isOn
@@ -1015,7 +1015,7 @@ class GroupViewController: UIViewController {
                 return
             }
             let temperature = self.applyGroupCCTValue(value)
-            MeshAPI.setGroupColorTemperatureState(address: self.group.address.address, temperature: temperature)
+            LightGroupControlCommandSender.setGroupColorTemperature(address: self.group.address.address, temperature: temperature)
             if ended {
                 self.reloadVisibleGroupDeviceItems()
                 self.showGroupCCTLimitMessageIfNeeded(target: value)
@@ -1063,7 +1063,7 @@ class GroupViewController: UIViewController {
         applyGroupBrightnessValue(value)
         let clampedValue = max(currentGroupBrightnessRange.lowerBound, min(currentGroupBrightnessRange.upperBound, value))
         let lightness = Node.getLightness(lightness100: clampedValue)
-        MeshAPI.setGroupLightnessState(address: group.address.address, lightness: lightness)
+        LightGroupControlCommandSender.setGroupLightness(address: group.address.address, lightness: lightness)
         if ended {
             reloadVisibleGroupDeviceItems()
         }
@@ -1074,9 +1074,9 @@ class GroupViewController: UIViewController {
         let clampedValue = max(currentGroupBrightnessRange.lowerBound, min(currentGroupBrightnessRange.upperBound, value))
         let lightness = Node.getLightness(lightness100: clampedValue)
         let address = group.address.address
-        MeshAPI.setGroupLightnessState(address: address, lightness: lightness, ack: false)
+        LightGroupControlCommandSender.setGroupLightness(address: address, lightness: lightness, ack: false)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            MeshAPI.setGroupLightnessState(address: address, lightness: lightness, ack: false)
+            LightGroupControlCommandSender.setGroupLightness(address: address, lightness: lightness, ack: false)
         }
     }
 
@@ -1100,7 +1100,7 @@ class GroupViewController: UIViewController {
         }
         let temperature = applyGroupCCTValue(value)
         controlPanelView.setCCTValue(Int(temperature))
-        MeshAPI.setGroupColorTemperatureState(address: group.address.address, temperature: temperature)
+        LightGroupControlCommandSender.setGroupColorTemperature(address: group.address.address, temperature: temperature)
         reloadVisibleGroupDeviceItems()
         showGroupCCTLimitMessageIfNeeded(target: value)
         refreshAutoState()
@@ -1108,9 +1108,9 @@ class GroupViewController: UIViewController {
 
     private func sendGroupManualCCTValue(_ temperature: UInt16) {
         let address = group.address.address
-        MeshAPI.setGroupColorTemperatureState(address: address, temperature: temperature, ack: false)
+        LightGroupControlCommandSender.setGroupColorTemperature(address: address, temperature: temperature, ack: false)
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            MeshAPI.setGroupColorTemperatureState(address: address, temperature: temperature, ack: false)
+            LightGroupControlCommandSender.setGroupColorTemperature(address: address, temperature: temperature, ack: false)
         }
     }
 
@@ -1667,7 +1667,7 @@ extension GroupViewController: UICollectionViewDataSource, UICollectionViewDeleg
             node.lightness = 0
         }
         reloadCollectionItem(node: node)
-        MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn, ack: true)
+        LightGroupControlCommandSender.setNodeOnOff(address: node.primaryUnicastAddress, isOn: node.isOn, ack: true)
         if node == group.info.ambientLightSensorNode {
             refreshAutoState()
         }

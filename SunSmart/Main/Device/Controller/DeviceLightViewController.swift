@@ -861,7 +861,7 @@ class DeviceLightViewController: UIViewController {
             return
         }
 
-        MeshAPI.identify(address: node.primaryUnicastAddress)
+        LightGroupControlCommandSender.identify(address: node.primaryUnicastAddress)
     }
 
     private var lightAckDeviceName: String {
@@ -870,7 +870,7 @@ class DeviceLightViewController: UIViewController {
 
     private func sendLightDetailOnOffCommand() {
         guard LabSettings.displayLightAckDetails else {
-            MeshAPI.setNodeOnOffState(address: node.primaryUnicastAddress, isOn: node.isOn, ack: true)
+            LightGroupControlCommandSender.setNodeOnOff(address: node.primaryUnicastAddress, isOn: node.isOn, ack: true)
             return
         }
         guard let model = node.onoffModel else {
@@ -883,12 +883,17 @@ class DeviceLightViewController: UIViewController {
             commandDescription: commandDescription,
             opcode: GenericOnOffSet.opCode
         )
-        LightAckProgressTracker.shared.send(message: GenericOnOffSet(node.isOn), model: model, context: context)
+        LightAckProgressTracker.shared.send(
+            message: GenericOnOffSet(node.isOn),
+            model: model,
+            context: context,
+            defaultTTL: LightGroupControlCommandSender.defaultTTL
+        )
     }
 
     private func sendLightDetailBrightnessCommand(percent: Int, lightness: UInt16) {
         guard LabSettings.displayLightAckDetails else {
-            MeshAPI.setNodeLightnessState(address: node.primaryUnicastAddress, lightness: lightness, ack: true)
+            LightGroupControlCommandSender.setNodeLightness(address: node.primaryUnicastAddress, lightness: lightness, ack: true)
             return
         }
         guard let model = node.lightnessModel else {
@@ -900,12 +905,17 @@ class DeviceLightViewController: UIViewController {
             commandDescription: "\("brightness".localizedString) \(percent)%",
             opcode: LightLightnessSet.opCode
         )
-        LightAckProgressTracker.shared.send(message: LightLightnessSet(lightness: lightness), model: model, context: context)
+        LightAckProgressTracker.shared.send(
+            message: LightLightnessSet(lightness: lightness),
+            model: model,
+            context: context,
+            defaultTTL: LightGroupControlCommandSender.defaultTTL
+        )
     }
 
     private func sendLightDetailCCTCommand(temperature: UInt16) {
         guard LabSettings.displayLightAckDetails else {
-            MeshAPI.setNodeColorTemperatureState(address: node.primaryUnicastAddress, temperature: temperature, ack: true)
+            LightGroupControlCommandSender.setNodeColorTemperature(address: node.primaryUnicastAddress, temperature: temperature, ack: true)
             return
         }
         guard let model = node.temperatureModel else {
@@ -917,14 +927,19 @@ class DeviceLightViewController: UIViewController {
             commandDescription: "\(temperature)K",
             opcode: LightCTLTemperatureSet.opCode
         )
-        LightAckProgressTracker.shared.send(message: LightCTLTemperatureSet(temperature: temperature, deltaUV: 0), model: model, context: context)
+        LightAckProgressTracker.shared.send(
+            message: LightCTLTemperatureSet(temperature: temperature, deltaUV: 0),
+            model: model,
+            context: context,
+            defaultTTL: LightGroupControlCommandSender.defaultTTL
+        )
     }
 
     private func sendTrackedVendorIdentifyCommand(model: Model) {
         let message = SunricherVendorSet(function: .identify(mode: .breathe(count: 1, period: 1500)))
 
         guard LabSettings.displayLightAckDetails else {
-            MeshAPI.sendMessage(message: message, model: model)
+            LightGroupControlCommandSender.sendVendorIdentify(message, model: model)
             return
         }
 
@@ -933,7 +948,12 @@ class DeviceLightViewController: UIViewController {
             commandDescription: "identify".localizedString,
             opcode: SunricherVendorSet.opCode
         )
-        LightAckProgressTracker.shared.send(message: message, model: model, context: context)
+        LightAckProgressTracker.shared.send(
+            message: message,
+            model: model,
+            context: context,
+            defaultTTL: LightGroupControlCommandSender.defaultTTL
+        )
     }
 
     @objc private func emergencySignIdentifyAction() {
@@ -985,7 +1005,7 @@ class DeviceLightViewController: UIViewController {
             if ended {
                 self.sendLightDetailBrightnessCommand(percent: value, lightness: lightness)
             } else {
-                MeshAPI.setNodeLightnessState(address: self.node.primaryUnicastAddress, lightness: lightness)
+                LightGroupControlCommandSender.setNodeLightness(address: self.node.primaryUnicastAddress, lightness: lightness)
             }
            
         }
@@ -1000,7 +1020,7 @@ class DeviceLightViewController: UIViewController {
             if ended {
                 self.sendLightDetailCCTCommand(temperature: temperature)
             } else {
-                MeshAPI.setNodeColorTemperatureState(address: self.node.primaryUnicastAddress, temperature: temperature)
+                LightGroupControlCommandSender.setNodeColorTemperature(address: self.node.primaryUnicastAddress, temperature: temperature)
             }
         }
         controlPanelView.cctQuickButtonValueSelected = { [weak self] value in

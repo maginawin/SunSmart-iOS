@@ -16,6 +16,11 @@ let groupDataUpdateNotificationName = "groupDataUpdateNotification"
 
 class GroupsViewController: UIViewController {
 
+    private struct PendingGroupTap {
+        let indexPath: IndexPath
+        let address: Address
+    }
+
     private var collectionView: UICollectionView!
     private var flowLayout: AlignCenterFlowLayout!
     
@@ -37,8 +42,8 @@ class GroupsViewController: UIViewController {
     
     /// 组点击定时器
     private var tapTimer: Timer?
-    /// 最后点击的组indexpath
-    private var lastTappedIndexPath: IndexPath?
+    /// 等待确认单击/双击的组
+    private var pendingGroupTap: PendingGroupTap?
     /// 组菜单view
     private weak var groupMenuView: GroupMenuView?
     
@@ -96,6 +101,7 @@ class GroupsViewController: UIViewController {
     }
 
     deinit {
+        clearPendingGroupTap()
         NetworkRequest.shared.removeObserver(self, forKeyPath: "networkable")
     }
     
@@ -201,9 +207,7 @@ class GroupsViewController: UIViewController {
     }
     
     /// 组点击事件
-    private func groupHandleSingleTap(_ indexPath: IndexPath) {
-        
-        let group = MeshNetworkManager.instance.groups[indexPath.item]
+    private func groupHandleSingleTap(_ group: Group) {
         guard !showEmergencyControlBlockedIfNeeded(group) else {
             return
         }
@@ -216,37 +220,31 @@ class GroupsViewController: UIViewController {
                 $0.trunOffLightness = $0.lightness
             }
         })
-        MeshAPI.setGroupOnOffState(address: group.address.address, isOn: group.isOn)
+        LightGroupControlCommandSender.setGroupOnOff(address: group.address.address, isOn: group.isOn)
         reloadCollectionItem(group: group)
     }
     
     /// 组双击事件
-    private func groupHandleDoubleTap(_ indexPath: IndexPath) {
+    private func groupHandleDoubleTap(_ indexPath: IndexPath, group: Group) {
     
-        guard let item = collectionView.cellForItem(at: indexPath), indexPath.row < MeshNetworkManager.instance.groups.count else { return }
+        guard let item = collectionView.cellForItem(at: indexPath) else { return }
+        let groupAddress = group.address.address
         
         var menuItems: [MenuPopView.MenuItem] = [
             .init(icon: UIImage(named: "group_auto"), title: "AUTO", tapItemBack: { [weak self] _ in
-                guard indexPath.row < MeshNetworkManager.instance.groups.count else {
-                    return
-                }
-                let group = MeshNetworkManager.instance.groups[indexPath.item]
-                guard self?.showEmergencyControlBlockedIfNeeded(group) != true else {
+                guard let self = self, let group = self.group(for: groupAddress) else { return }
+                guard !self.showEmergencyControlBlockedIfNeeded(group) else {
                     return
                 }
                 MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(true), address: group.address.address)
             })
         ]
         
-        let group = MeshNetworkManager.instance.groups[indexPath.item]
         if space.groupOperates.contains(.edit), group.info.profile.type != .daylight && group.info.profile.type != .manualControl {
             menuItems.append(
                 .init(icon: UIImage(named: "menu_profile_test"), title: "TEST".localizedString, tapItemBack: { [weak self] _ in
-                    guard indexPath.row < MeshNetworkManager.instance.groups.count else {
-                        return
-                    }
-                    let group = MeshNetworkManager.instance.groups[indexPath.item]
-                    guard self?.showEmergencyControlBlockedIfNeeded(group) != true else {
+                    guard let self = self, let group = self.group(for: groupAddress) else { return }
+                    guard !self.showEmergencyControlBlockedIfNeeded(group) else {
                         return
                     }
                     MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(false), address: group.address.address)
@@ -270,6 +268,31 @@ class GroupsViewController: UIViewController {
         }
         XWHUDManager.showTipHUD("Uncontrollable in emergency situations".localizedString, isLineFeed: true)
         return true
+    }
+
+    private func group(at indexPath: IndexPath) -> Group? {
+        return MeshNetworkManager.instance.groups[safe: indexPath.item]
+    }
+
+    private func group(for address: Address) -> Group? {
+        return MeshNetworkManager.instance.groups.first(where: { $0.address.address == address })
+    }
+
+    private func clearPendingGroupTap() {
+        tapTimer?.invalidate()
+        tapTimer = nil
+        pendingGroupTap = nil
+    }
+
+    private func performPendingSingleTap() {
+        guard let pendingGroupTap = pendingGroupTap else {
+            clearPendingGroupTap()
+            return
+        }
+        let group = group(for: pendingGroupTap.address)
+        clearPendingGroupTap()
+        guard let group = group else { return }
+        groupHandleSingleTap(group)
     }
     
     private func deleteGroup(group: Group) {
@@ -550,28 +573,30 @@ extension GroupsViewController: UICollectionViewDataSource, UICollectionViewDele
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
-        if let last = lastTappedIndexPath, last == indexPath {
+        guard let group = group(at: indexPath) else {
+            performPendingSingleTap()
+            return
+        }
+
+        if let pendingGroupTap = pendingGroupTap, pendingGroupTap.indexPath == indexPath, pendingGroupTap.address == group.address.address {
             // ✅ 检测到双击
-            tapTimer?.invalidate()
-            tapTimer = nil
-            lastTappedIndexPath = nil
+            clearPendingGroupTap()
 //            print("✅ 双击触发: \(indexPath)")
-            groupHandleDoubleTap(indexPath)
+            groupHandleDoubleTap(indexPath, group: group)
             
         } else {
             // ✅ 第一次点击 → 延迟判断是否双击
-            if let lastTappedIndexPath = self.lastTappedIndexPath, tapTimer != nil { // 当0.22s内快速点击多个了item时，将上一个点击的设备响应事件触发，否则快速点击时之前的点击事件则无效
-                self.groupHandleSingleTap(lastTappedIndexPath)
+            if pendingGroupTap != nil, tapTimer != nil { // 当0.22s内快速点击多个了item时，将上一个点击的设备响应事件触发，否则快速点击时之前的点击事件则无效
+                performPendingSingleTap()
             }
 
-            lastTappedIndexPath = indexPath
+            pendingGroupTap = PendingGroupTap(indexPath: indexPath, address: group.address.address)
             
             tapTimer?.invalidate()
             tapTimer = Timer.scheduledTimer(withTimeInterval: 0.22, repeats: false, block: { [weak self] _ in
                 guard let self = self else { return }
 //                print("✅ 单击触发: \(indexPath)")
-                self.groupHandleSingleTap(indexPath)
-                self.lastTappedIndexPath = nil
+                self.performPendingSingleTap()
             })
         }
         
