@@ -17,9 +17,29 @@ final class LightAckProgressTracker {
 
     private var alertView: LightAckProgressAlertView?
     private var activeCommandId = UUID()
+    private var activeContext: LightAckCommandContext?
+    private var activeBaseLines: [String] = []
     private var activeLines: [String] = []
+    private var activeExpectedSource: Address?
+    private var activeExpectedResponseOpCode: UInt32?
+    private var activeReplayDiagnostic: MeshReplayProtectionDiscardEvent?
+    private var replayDiscardObserver: NSObjectProtocol?
 
-    private init() {}
+    private init() {
+        replayDiscardObserver = NotificationCenter.default.addObserver(
+            forName: .meshReplayProtectionDiscarded,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            self?.handleReplayProtectionDiscard(notification)
+        }
+    }
+
+    deinit {
+        if let replayDiscardObserver {
+            NotificationCenter.default.removeObserver(replayDiscardObserver)
+        }
+    }
 
     static func deviceName(_ node: Node) -> String {
         if let name = node.name, !name.isEmpty {
@@ -35,10 +55,15 @@ final class LightAckProgressTracker {
     func send(message: StaticAcknowledgedMeshMessage, model: Model, context: LightAckCommandContext, defaultTTL: UInt8? = nil) {
         let commandId = UUID()
         activeCommandId = commandId
-        activeLines = [
+        activeContext = context
+        activeExpectedSource = model.parentElement?.unicastAddress
+        activeExpectedResponseOpCode = message.responseOpCode
+        activeReplayDiagnostic = nil
+        activeBaseLines = [
             String(format: "light_ack_sent_format".localizedString, context.title),
             String(format: "light_ack_command_format".localizedString, context.opcode)
         ]
+        activeLines = activeBaseLines
         alertView = LightAckProgressAlertView.show(title: context.title, message: activeLines.joined(separator: "\n"))
 
         MeshAPI.sendMessage(message: message, model: model, defaultTTL: defaultTTL) { [weak self] response in
@@ -51,6 +76,7 @@ final class LightAckProgressTracker {
     private func finish(commandId: UUID, context: LightAckCommandContext, response: StaticMeshResponse?) {
         guard commandId == activeCommandId else { return }
 
+        activeLines = activeBaseLines
         if let response = response {
             if let vendorStatus = response as? SunricherVendorStatus, !vendorStatus.status.isSuccessful {
                 activeLines.append(String(format: "light_ack_result_failed_format".localizedString, context.title))
@@ -58,10 +84,44 @@ final class LightAckProgressTracker {
                 activeLines.append(String(format: "light_ack_result_ok_format".localizedString, context.title))
             }
             activeLines.append(String(format: "light_ack_response_format".localizedString, String(describing: type(of: response))))
+        } else if let activeReplayDiagnostic {
+            activeLines.append(contentsOf: replayDiagnosticLines(activeReplayDiagnostic, context: context))
         } else {
             activeLines.append(String(format: "light_ack_result_timeout_format".localizedString, context.title))
         }
 
         alertView?.update(title: context.title, message: activeLines.joined(separator: "\n"))
+        activeContext = nil
+        activeExpectedSource = nil
+        activeExpectedResponseOpCode = nil
+    }
+
+    private func handleReplayProtectionDiscard(_ notification: Notification) {
+        guard let diagnostic = notification.userInfo?[MeshReplayProtectionDiscardEvent.userInfoKey] as? MeshReplayProtectionDiscardEvent,
+              let activeExpectedSource,
+              diagnostic.source == activeExpectedSource else {
+            return
+        }
+        let pendingOpCode = diagnostic.pendingResponseOpCode ?? diagnostic.pendingMessageOpCode
+        if let pendingOpCode, let activeExpectedResponseOpCode, pendingOpCode != activeExpectedResponseOpCode {
+            return
+        }
+
+        activeReplayDiagnostic = diagnostic
+        guard let activeContext else { return }
+        activeLines = activeBaseLines + replayDiagnosticLines(diagnostic, context: activeContext)
+        alertView?.update(title: activeContext.title, message: activeLines.joined(separator: "\n"))
+    }
+
+    private func replayDiagnosticLines(_ diagnostic: MeshReplayProtectionDiscardEvent, context: LightAckCommandContext) -> [String] {
+        [
+            String(format: "light_ack_result_replay_rejected_format".localizedString, context.title),
+            String(
+                format: "light_ack_replay_detail_format".localizedString,
+                Int(diagnostic.source),
+                "\(diagnostic.receivedSeqAuth)",
+                "\(diagnostic.expectedGreaterThanSeqAuth)"
+            )
+        ]
     }
 }

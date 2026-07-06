@@ -1926,4 +1926,6 @@
 "light_ack_result_ok_format" = "Result %@ OK ✅";
 "light_ack_result_failed_format" = "Result %@ Failed ❌";
 "light_ack_result_timeout_format" = "Result %@ Timeout ❌";
+"light_ack_result_replay_rejected_format" = "Result %@ rejected by replay protection ⚠️";
+"light_ack_replay_detail_format" = "Source 0x%04X seqAuth %@ expected > %@";
 "light_ack_response_format" = "Response %@";

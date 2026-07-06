@@ -1941,4 +1941,6 @@
 "light_ack_result_ok_format" = "结果 %@ 成功 ✅";
 "light_ack_result_failed_format" = "结果 %@ 失败 ❌";
 "light_ack_result_timeout_format" = "结果 %@ 超时 ❌";
+"light_ack_result_replay_rejected_format" = "结果 %@ 被 Replay Protection 拒收 ⚠️";
+"light_ack_replay_detail_format" = "来源 0x%04X seqAuth %@，要求 > %@";
 "light_ack_response_format" = "回复 %@";
