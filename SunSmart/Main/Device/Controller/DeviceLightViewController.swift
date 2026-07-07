@@ -355,7 +355,7 @@ class DeviceLightViewController: UIViewController {
         items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, hideAnimation: false, performsActionAfterDismiss: true, tapItemBack: {[weak self] _ in
             self?.information()
         }))
-        #if DEBUG
+        // #if DEBUG
 //        if routeTest {
 //            items.append(.init(icon: UIImage(named: "menu_information"), title: "Route", hideAnimation: false, tapItemBack: {[weak self] _ in
 //                self?.readRoute()
@@ -390,7 +390,7 @@ class DeviceLightViewController: UIViewController {
             guard let self = self, let vendorModel = self.node.sunricherVendorModel else { return }
             MeshAPI.sendMessage(message: SunricherVendorSet(function: .deviceRestart), model: vendorModel)
         }))
-        #endif
+        // #endif
 //        #if DEBUG
 //        items.append(.init(icon: UIImage(named: "menu_edit"), title: "pwm_period".localizedString, hideAnimation: false, tapItemBack: {[weak self] _ in
 //            self?.setPwmPeriod()

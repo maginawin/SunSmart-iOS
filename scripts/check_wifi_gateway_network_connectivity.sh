@@ -34,9 +34,9 @@ rg -n "refreshGatewayCredentials" "$wifi_controller" >/dev/null || fail "Unconfi
 rg -n "canToggleNetworkPasswordVisibility" "$wifi_controller" >/dev/null || fail "Password visibility must be enabled independently from password editing"
 
 rg -n "ssidClearButton" "$wifi_cell" >/dev/null || fail "SSID clear button missing from cell"
-rg -n "selectWiFiButton\.isEnabled = canSelectWiFi && !isConnecting" "$wifi_cell" >/dev/null || fail "Change Wi-Fi should only be disabled while connecting"
+rg -n "selectWiFiButton\.isEnabled = canSelectWiFi && !isOperating" "$wifi_cell" >/dev/null || fail "Change Wi-Fi should be disabled while a network operation is in progress"
 rg -n "canTogglePasswordVisibility" "$wifi_cell" >/dev/null || fail "Password visibility button must have independent enable control"
-rg -n "passwordVisibilityButton\.isEnabled = canTogglePasswordVisibility && !isConnecting" "$wifi_cell" >/dev/null || fail "Show password should be disabled only while connecting"
+rg -n "passwordVisibilityButton\.isEnabled = canTogglePasswordVisibility && !isOperating" "$wifi_cell" >/dev/null || fail "Show password should be disabled while a network operation is in progress"
 rg -n "passwordChangedCallback: \(\(String\) -> ConnectState\)\?" "$wifi_cell" >/dev/null || fail "Controller should compute connect state while typing"
 rg -n "nameField_clear|close" "$wifi_cell" >/dev/null || fail "SSID clear button should reuse an existing clear icon"
 

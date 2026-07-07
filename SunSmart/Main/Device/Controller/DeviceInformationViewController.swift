@@ -159,11 +159,7 @@ class DeviceInformationViewController: UIViewController {
         case .full:
             deviceInfoModels = [nameModel, macModel, pidModel, addressModel, vidModel, devModel, deviceTypeModel, firmwareModel, singleStrengthModel]
         case .standard:
-        #if DEBUG
             deviceInfoModels = [nameModel, macModel, pidModel, addressModel, vidModel, devModel, deviceTypeModel, firmwareModel, singleStrengthModel]
-        #else
-            deviceInfoModels = [nameModel, macModel, devModel, deviceTypeModel, firmwareModel, singleStrengthModel]
-        #endif
         }
         
     }

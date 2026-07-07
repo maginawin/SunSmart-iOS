@@ -19,7 +19,7 @@
 		39FE1B9D3CB748E99E153094 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
 		4D4A0F032EE24DA7965F1B78 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
 		59406AF3301C4F9EA72AE09D /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
-		6116D0D0F05DFA292964E9B9 /* BuildFile in Frameworks */ = {isa = PBXBuildFile; };
+		6116D0D0F05DFA292964E9B9 /* (null) in Frameworks */ = {isa = PBXBuildFile; };
 		641FEC57DE5645609932974D /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
 		7119A2FC8208465ABF6EF1D3 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
 		7A97BDEC9C6E47B78123C040 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
@@ -1342,22 +1342,6 @@
 		C896FE75CC379E7D64E3CC86 /* GroupPowerSwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */; };
 		C898D1D02B59134A00B2033B /* ScheduleServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898D1CF2B59134A00B2033B /* ScheduleServer.swift */; };
 		C898E2D52AB7E46300C71315 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = C898E2D72AB7E46300C71315 /* Localizable.strings */; };
-		C8A900092F80000100000009 /* WiFiSSIDProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900012F80000100000001 /* WiFiSSIDProvider.swift */; };
-		C8A9000A2F8000010000000A /* WiFiSSIDProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900012F80000100000001 /* WiFiSSIDProvider.swift */; };
-		C8A9000B2F8000010000000B /* WiFiSSIDProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900012F80000100000001 /* WiFiSSIDProvider.swift */; };
-		C8A9000C2F8000010000000C /* WiFiSSIDProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900012F80000100000001 /* WiFiSSIDProvider.swift */; };
-		C8A9000D2F8000010000000D /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C8A900062F80000100000006 /* InfoPlist.strings */; };
-		C8A9000E2F8000010000000E /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C8A900062F80000100000006 /* InfoPlist.strings */; };
-		C8A9000F2F8000010000000F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C8A900062F80000100000006 /* InfoPlist.strings */; };
-		C8A900102F80000100000010 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C8A900062F80000100000006 /* InfoPlist.strings */; };
-		C8A900122F80000100000012 /* GatewayNetworkConnectivityCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900112F80000100000011 /* GatewayNetworkConnectivityCell.swift */; };
-		C8A900132F80000100000013 /* GatewayNetworkConnectivityCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900112F80000100000011 /* GatewayNetworkConnectivityCell.swift */; };
-		C8A900142F80000100000014 /* GatewayNetworkConnectivityCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900112F80000100000011 /* GatewayNetworkConnectivityCell.swift */; };
-		C8A900152F80000100000015 /* GatewayNetworkConnectivityCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900112F80000100000011 /* GatewayNetworkConnectivityCell.swift */; };
-		C8A900172F80000100000017 /* GatewayChangeWiFiAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */; };
-		C8A900182F80000100000018 /* GatewayChangeWiFiAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */; };
-		C8A900192F80000100000019 /* GatewayChangeWiFiAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */; };
-		C8A9001A2F8000010000001A /* GatewayChangeWiFiAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */; };
 		C898E2DC2AB7E62100C71315 /* String+Localized.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2DB2AB7E62100C71315 /* String+Localized.swift */; };
 		C898E2E12AB840FE00C71315 /* MeshNetwork+SunSmart.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2E02AB840FE00C71315 /* MeshNetwork+SunSmart.swift */; };
 		C898E2ED2ABA8BAD00C71315 /* MainMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2EC2ABA8BAD00C71315 /* MainMenuView.swift */; };
@@ -1531,6 +1515,22 @@
 		C8A8D7452EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7432EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift */; };
 		C8A8D7462EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7432EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift */; };
 		C8A8D7472EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7432EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift */; };
+		C8A900092F80000100000009 /* WiFiSSIDProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900012F80000100000001 /* WiFiSSIDProvider.swift */; };
+		C8A9000A2F8000010000000A /* WiFiSSIDProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900012F80000100000001 /* WiFiSSIDProvider.swift */; };
+		C8A9000B2F8000010000000B /* WiFiSSIDProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900012F80000100000001 /* WiFiSSIDProvider.swift */; };
+		C8A9000C2F8000010000000C /* WiFiSSIDProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900012F80000100000001 /* WiFiSSIDProvider.swift */; };
+		C8A9000D2F8000010000000D /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C8A900062F80000100000006 /* InfoPlist.strings */; };
+		C8A9000E2F8000010000000E /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C8A900062F80000100000006 /* InfoPlist.strings */; };
+		C8A9000F2F8000010000000F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C8A900062F80000100000006 /* InfoPlist.strings */; };
+		C8A900102F80000100000010 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C8A900062F80000100000006 /* InfoPlist.strings */; };
+		C8A900122F80000100000012 /* GatewayNetworkConnectivityCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900112F80000100000011 /* GatewayNetworkConnectivityCell.swift */; };
+		C8A900132F80000100000013 /* GatewayNetworkConnectivityCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900112F80000100000011 /* GatewayNetworkConnectivityCell.swift */; };
+		C8A900142F80000100000014 /* GatewayNetworkConnectivityCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900112F80000100000011 /* GatewayNetworkConnectivityCell.swift */; };
+		C8A900152F80000100000015 /* GatewayNetworkConnectivityCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900112F80000100000011 /* GatewayNetworkConnectivityCell.swift */; };
+		C8A900172F80000100000017 /* GatewayChangeWiFiAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */; };
+		C8A900182F80000100000018 /* GatewayChangeWiFiAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */; };
+		C8A900192F80000100000019 /* GatewayChangeWiFiAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */; };
+		C8A9001A2F8000010000001A /* GatewayChangeWiFiAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */; };
 		C8AADEFF2A97350400238C1C /* SiteData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADEFE2A97350400238C1C /* SiteData.swift */; };
 		C8AADF012A973DA600238C1C /* SpaceData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADF002A973DA600238C1C /* SpaceData.swift */; };
 		C8AAE2772A97435A00238C1C /* Database.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AAE2762A97435A00238C1C /* Database.swift */; };
@@ -2642,15 +2642,6 @@
 		C898D1CF2B59134A00B2033B /* ScheduleServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleServer.swift; sourceTree = "<group>"; };
 		C898E2D82AB7E46600C71315 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		C898E2D92AB7E48300C71315 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
-		C8A900012F80000100000001 /* WiFiSSIDProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiSSIDProvider.swift; sourceTree = "<group>"; };
-		C8A900022F80000100000002 /* SunSmart.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SunSmart.entitlements; sourceTree = "<group>"; };
-		C8A900032F80000100000003 /* Archipelago.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Archipelago.entitlements; sourceTree = "<group>"; };
-		C8A900042F80000100000004 /* SLGSync.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SLGSync.entitlements; sourceTree = "<group>"; };
-		C8A900052F80000100000005 /* SylSmart.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SylSmart.entitlements; sourceTree = "<group>"; };
-		C8A900072F80000100000007 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
-		C8A900082F80000100000008 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
-		C8A900112F80000100000011 /* GatewayNetworkConnectivityCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayNetworkConnectivityCell.swift; sourceTree = "<group>"; };
-		C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayChangeWiFiAlertView.swift; sourceTree = "<group>"; };
 		C898E2DB2AB7E62100C71315 /* String+Localized.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "String+Localized.swift"; sourceTree = "<group>"; };
 		C898E2E02AB840FE00C71315 /* MeshNetwork+SunSmart.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "MeshNetwork+SunSmart.swift"; sourceTree = "<group>"; };
 		C898E2EC2ABA8BAD00C71315 /* MainMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainMenuView.swift; sourceTree = "<group>"; };
@@ -2804,6 +2795,15 @@
 		C8A85CE42E0A4886007F9B81 /* DeviceAddTargetSelectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddTargetSelectView.swift; sourceTree = "<group>"; };
 		C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scheduler.swift; sourceTree = "<group>"; };
 		C8A8D7432EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileDayNightLuxViewController.swift; sourceTree = "<group>"; };
+		C8A900012F80000100000001 /* WiFiSSIDProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiSSIDProvider.swift; sourceTree = "<group>"; };
+		C8A900022F80000100000002 /* SunSmart.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SunSmart.entitlements; sourceTree = "<group>"; };
+		C8A900032F80000100000003 /* Archipelago.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Archipelago.entitlements; sourceTree = "<group>"; };
+		C8A900042F80000100000004 /* SLGSync.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SLGSync.entitlements; sourceTree = "<group>"; };
+		C8A900052F80000100000005 /* SylSmart.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SylSmart.entitlements; sourceTree = "<group>"; };
+		C8A900072F80000100000007 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		C8A900082F80000100000008 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		C8A900112F80000100000011 /* GatewayNetworkConnectivityCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayNetworkConnectivityCell.swift; sourceTree = "<group>"; };
+		C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayChangeWiFiAlertView.swift; sourceTree = "<group>"; };
 		C8AADEFE2A97350400238C1C /* SiteData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteData.swift; sourceTree = "<group>"; };
 		C8AADF002A973DA600238C1C /* SpaceData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceData.swift; sourceTree = "<group>"; };
 		C8AAE2762A97435A00238C1C /* Database.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Database.swift; sourceTree = "<group>"; };
@@ -3067,7 +3067,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C88555142DE6B44C00C8B688 /* NordicSigMeshSDK in Frameworks */,
-				6116D0D0F05DFA292964E9B9 /* BuildFile in Frameworks */,
+				6116D0D0F05DFA292964E9B9 /* (null) in Frameworks */,
 				C8D3BC5211D39346ECD5E3AF /* Pods_Common_Archipelago.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -5130,7 +5130,7 @@
 			);
 			mainGroup = C896B99B2A930BA800217512;
 			packageReferences = (
-				C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */,
+				C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */,
 			);
 			productRefGroup = C896B9A52A930BA800217512 /* Products */;
 			projectDirPath = "";
@@ -5325,9 +5325,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5386,9 +5390,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5403,9 +5411,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5420,9 +5432,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -7931,7 +7947,7 @@
 			baseConfigurationReference = F10000000000000000000003 /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SunSmart/SunSmart.entitlements;
-				MARKETING_VERSION = 1.0.24;
+				MARKETING_VERSION = 1.0.25;
 			};
 			name = Debug;
 		};
@@ -7940,7 +7956,7 @@
 			baseConfigurationReference = F10000000000000000000004 /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SunSmart/SunSmart.entitlements;
-				MARKETING_VERSION = 1.0.24;
+				MARKETING_VERSION = 1.0.25;
 			};
 			name = Release;
 		};
@@ -7948,11 +7964,11 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F1000000000000000000000C /* Debug.xcconfig */;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_ENTITLEMENTS = SLGSync/SLGSync.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.0.8;
+				MARKETING_VERSION = 1.0.9;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Debug;
@@ -7961,11 +7977,11 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F1000000000000000000000D /* Release.xcconfig */;
 			buildSettings = {
-				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_ENTITLEMENTS = SLGSync/SLGSync.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.0.8;
+				MARKETING_VERSION = 1.0.9;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Release;
@@ -8021,7 +8037,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
+		C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk";
 		};
@@ -8030,22 +8046,22 @@
 /* Begin XCSwiftPackageProductDependency section */
 		C88553AE2DE6B44C00C8B688 /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 		C886DFFE2E30DE4900D0C3A6 /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 		C8BB65AC2ED3F056000C63EE /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 		C8D5314B2F76294A0069C71B /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 /* End XCSwiftPackageProductDependency section */

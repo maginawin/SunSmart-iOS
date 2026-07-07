@@ -13,6 +13,7 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
         case available
         case connecting
         case connected
+        case disconnecting
     }
 
     var selectWiFiCallback: (() -> Void)?
@@ -257,24 +258,24 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
         canEditPassword: Bool,
         canTogglePasswordVisibility: Bool
     ) {
-        let isConnecting = connectState == .connecting
+        let isOperating = connectState == .connecting || connectState == .disconnecting
         let isConnected = connectState == .connected
 
-        selectWiFiButton.isEnabled = canSelectWiFi && !isConnecting
-        refreshButton.isEnabled = canRefresh && !isConnecting
-        passwordTextField.isEnabled = canEditPassword && !isConnecting
-        passwordVisibilityButton.isEnabled = canTogglePasswordVisibility && !isConnecting
-        ssidClearButton.isEnabled = !isConnecting
+        selectWiFiButton.isEnabled = canSelectWiFi && !isOperating
+        refreshButton.isEnabled = canRefresh && !isOperating
+        passwordTextField.isEnabled = canEditPassword && !isOperating
+        passwordVisibilityButton.isEnabled = canTogglePasswordVisibility && !isOperating
+        ssidClearButton.isEnabled = !isOperating
 
-        loadingImageView.isHidden = !isConnecting
-        if isConnecting {
+        loadingImageView.isHidden = !isOperating
+        if isOperating {
             loadingImageView.layer.addRotationAnimation(duration: 1.2, repeatCount: .max, animationKey: "loading")
         } else {
             loadingImageView.layer.removeAnimation(forKey: "loading")
         }
 
         let title: String?
-        if isConnecting {
+        if isOperating {
             title = nil
         } else if isConnected {
             title = "disconnect".localizedString
@@ -283,7 +284,7 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
         }
         connectButton.setTitle(title, for: .normal)
         connectButton.setTitleColor(connectState == .disabled ? RGB(147, 148, 196) : Bar_Color, for: .normal)
-        connectButton.isEnabled = connectState != .disabled && !isConnecting
+        connectButton.isEnabled = connectState != .disabled && !isOperating
     }
 
     @objc private func selectWiFiAction() {

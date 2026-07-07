@@ -139,15 +139,15 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     override func configureNetworkConnectivityCell(_ cell: GatewayNetworkConnectivityCell) {
-        let isConnecting = networkConnectState == .connecting
+        let isOperating = isNetworkOperationInProgress
         cell.update(
             ssid: networkSSID,
             password: networkPassword,
             passwordVisible: isNetworkPasswordVisible,
             connectState: networkConnectState,
             showsSSIDClearButton: shouldShowSSIDClearButton(),
-            canSelectWiFi: !isConnecting,
-            canRefresh: !isConnecting,
+            canSelectWiFi: !isOperating,
+            canRefresh: !isOperating,
             canEditPassword: canEditNetworkPassword(),
             canTogglePasswordVisibility: canToggleNetworkPasswordVisibility()
         )
@@ -176,7 +176,7 @@ final class WiFiGatewayViewController: GatewayViewController {
             hideNetworkConnectivityForOfflineGateway()
             return
         }
-        guard networkConnectState != .connecting else { return }
+        guard !isNetworkOperationInProgress else { return }
         loadNetworkConnectivityFromGateway()
     }
 
@@ -245,6 +245,10 @@ final class WiFiGatewayViewController: GatewayViewController {
         operationID == networkOperationID
     }
 
+    private var isNetworkOperationInProgress: Bool {
+        return networkConnectState == .connecting || networkConnectState == .disconnecting
+    }
+
     private func sendWiFiGatewayGet(
         _ function: VendorFunctionGet,
         timeout: TimeInterval = 10,
@@ -274,6 +278,26 @@ final class WiFiGatewayViewController: GatewayViewController {
             DispatchQueue.main.async {
                 guard let status = response as? SunricherVendorStatus,
                       case .wifiGatewayCredentialsSet(let result) = status.status.parameters else {
+                    completion(nil)
+                    return
+                }
+                completion(result)
+            }
+        }
+    }
+
+    private func sendWiFiGatewayCredentialsClear(
+        timeout: TimeInterval = 10,
+        completion: @escaping (WiFiGatewayCredentialsClearResult?) -> Void
+    ) {
+        guard let vendorModel = node.sunricherVendorModel else {
+            completion(nil)
+            return
+        }
+        MeshAPI.sendMessage(message: SunricherVendorSet(function: .wifiGatewayCredentialsClear), model: vendorModel, timeout: timeout) { response in
+            DispatchQueue.main.async {
+                guard let status = response as? SunricherVendorStatus,
+                      case .wifiGatewayCredentialsClear(let result) = status.status.parameters else {
                     completion(nil)
                     return
                 }
@@ -363,7 +387,7 @@ final class WiFiGatewayViewController: GatewayViewController {
             if showsHUD {
                 handleNetworkConnectionFinished(.success)
             }
-        case .notStartedOrConnecting:
+        case .notStartedOrConnecting, .notConfigured:
             stopWiFiRSSIStatusRefresh()
             updateWiFiHeaderStatus(.notConnected)
             networkConnectState = networkSSID.isEmpty ? .disabled : .available
@@ -378,7 +402,7 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     private func refreshNetworkConnectivity() {
-        guard networkConnectState != .connecting else { return }
+        guard !isNetworkOperationInProgress else { return }
         if networkCredentialSource == .gateway {
             refreshConfiguredGatewayConnectionStatus()
         } else {
@@ -425,18 +449,18 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     private func canRefreshPhoneSSID() -> Bool {
-        guard networkConnectState != .connecting else { return false }
+        guard !isNetworkOperationInProgress else { return false }
         return networkCredentialSource != .gateway
     }
 
     private func canEditNetworkPassword() -> Bool {
-        guard networkConnectState != .connecting else { return false }
+        guard !isNetworkOperationInProgress else { return false }
         guard networkCredentialSource != .gateway else { return false }
         return networkConnectState != .connected
     }
 
     private func canToggleNetworkPasswordVisibility() -> Bool {
-        return networkConnectState != .connecting
+        return !isNetworkOperationInProgress
     }
 
     private func showRefreshSSIDResultHUD(success: Bool) {
@@ -466,6 +490,13 @@ final class WiFiGatewayViewController: GatewayViewController {
         guard !ssid.isEmpty else { return }
         var values = UserDefaults.standard.dictionary(forKey: wifiPasswordCacheKey) as? [String: String] ?? [:]
         values[ssid] = password
+        UserDefaults.standard.set(values, forKey: wifiPasswordCacheKey)
+    }
+
+    private func removeCachedPassword(for ssid: String) {
+        guard !ssid.isEmpty else { return }
+        var values = UserDefaults.standard.dictionary(forKey: wifiPasswordCacheKey) as? [String: String] ?? [:]
+        values.removeValue(forKey: ssid)
         UserDefaults.standard.set(values, forKey: wifiPasswordCacheKey)
     }
 
@@ -506,7 +537,7 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     private func toggleNetworkPasswordVisibility() {
-        guard networkConnectState != .connecting else { return }
+        guard !isNetworkOperationInProgress else { return }
         isNetworkPasswordVisible.toggle()
         reloadSection(.networkConnectivity)
     }
@@ -517,7 +548,7 @@ final class WiFiGatewayViewController: GatewayViewController {
             connectNetworkWithGateway()
         case .connected:
             clearNetworkByDisconnect()
-        case .disabled, .connecting:
+        case .disabled, .connecting, .disconnecting:
             break
         }
     }
@@ -586,7 +617,7 @@ final class WiFiGatewayViewController: GatewayViewController {
                 self.startWiFiRSSIStatusRefresh()
                 self.reloadSection(.networkConnectivity)
                 self.handleNetworkConnectionFinished(.success)
-            case .passwordError, .failed, .reserved(rawValue: _):
+            case .passwordError, .failed, .notConfigured, .reserved(rawValue: _):
                 self.stopNetworkConnectionPolling()
                 self.stopWiFiRSSIStatusRefresh()
                 self.updateWiFiHeaderStatus(.notConnected)
@@ -600,14 +631,36 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     private func clearNetworkByDisconnect() {
+        guard networkConnectState == .connected else { return }
+        stopNetworkConnectionPolling()
+        stopWiFiRSSIStatusRefresh()
+        let clearedSSID = networkSSID
+        networkConnectState = .disconnecting
+        reloadSection(.networkConnectivity)
+
+        let operationID = beginNetworkOperation()
+        sendWiFiGatewayCredentialsClear { [weak self] result in
+            guard let self, self.isCurrentNetworkOperation(operationID) else { return }
+            self.completeNetworkDisconnectClear(result, clearedSSID: clearedSSID)
+        }
+    }
+
+    private func completeNetworkDisconnectClear(_ result: WiFiGatewayCredentialsClearResult?, clearedSSID: String) {
         stopNetworkConnectionPolling()
         stopWiFiRSSIStatusRefresh()
         clearLocalNetworkFields()
+        removeCachedPassword(for: clearedSSID)
         reloadSection(.networkConnectivity)
+
+        if result == .cleared {
+            handleNetworkConnectionFinished(.success)
+        } else {
+            handleNetworkConnectionFinished(.failure)
+        }
     }
 
     private func clearNetworkSSIDLocally() {
-        guard networkConnectState != .connecting else { return }
+        guard !isNetworkOperationInProgress else { return }
         clearLocalNetworkFields()
         reloadSection(.networkConnectivity)
     }
@@ -688,7 +741,7 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     private func shouldShowSSIDClearButton() -> Bool {
-        guard !networkSSID.isEmpty, networkConnectState != .connecting else { return false }
+        guard !networkSSID.isEmpty, !isNetworkOperationInProgress else { return false }
         if networkCredentialSource == .gateway && networkConnectState == .connected {
             return false
         }
