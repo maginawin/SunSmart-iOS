@@ -179,6 +179,10 @@
 "device_force_delete_note" = "Note: The hardware device needs to be reset manually after force delete.";
 "model" = "Model";
 "PID" = "PID";
+"version_identifier" = "Version Identifier";
+"set_proxy" = "Set Proxy";
+"reboot" = "Reboot";
+"relay" = "Relay";
 "device_type" = "Device Type";
 "firmware" = "Firmware";
 "signal_strength" = "Signal strength";

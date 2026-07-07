@@ -361,7 +361,7 @@ class DeviceLightViewController: UIViewController {
 //                self?.readRoute()
 //            }))
 //        }
-        items.append(.init(icon: UIImage(named: "menu_set_proxy"), title: "Set Proxy", tapItemBack: {[weak self] _ in
+        items.append(.init(icon: UIImage(named: "menu_set_proxy"), title: "set_proxy".localizedString, tapItemBack: {[weak self] _ in
             guard let self = self else { return }
             XWHUDManager.showCustomHUD(withMessage: nil, view: self.view)
             MeshLibManager.manager.connectProxy(node: self.node) {[weak self] result in
@@ -386,7 +386,7 @@ class DeviceLightViewController: UIViewController {
 //            }
 //            87
         }))
-        items.append(.init(icon: UIImage(named: "menu_firmware_update"), title: "Reboot", tapItemBack: {[weak self] _ in
+        items.append(.init(icon: UIImage(named: "menu_firmware_update"), title: "reboot".localizedString, tapItemBack: {[weak self] _ in
             guard let self = self, let vendorModel = self.node.sunricherVendorModel else { return }
             MeshAPI.sendMessage(message: SunricherVendorSet(function: .deviceRestart), model: vendorModel)
         }))
@@ -1270,7 +1270,7 @@ class DeviceLightViewController: UIViewController {
             make.top.equalTo(SCRYFit(16))
         }
 
-        relayLabel = UILabel(text: "Relay", textColor: TextBlack_Color, fontSize: 13)
+        relayLabel = UILabel(text: "relay".localizedString, textColor: TextBlack_Color, fontSize: 13)
         contentView.addSubview(relayLabel)
         relayLabel.snp.makeConstraints { make in
             make.centerY.equalTo(relaySwitch)

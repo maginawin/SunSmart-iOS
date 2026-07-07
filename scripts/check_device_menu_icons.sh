@@ -20,9 +20,9 @@ check_menu_icon() {
   fi
 }
 
-check_menu_icon "$light_file" "\"Set Proxy\"" "switch_proxy"
+check_menu_icon "$light_file" "\"set_proxy\".localizedString" "switch_proxy"
 check_menu_icon "$light_file" "\"identify\".localizedString" "menu_identify"
-check_menu_icon "$light_file" "\"Reboot\"" "menu_firmware_update"
+check_menu_icon "$light_file" "\"reboot\".localizedString" "menu_firmware_update"
 
 check_menu_icon "$power_switch_file" "\"Identify\"" "menu_identify"
 check_menu_icon "$wifi_gateway_file" "\"Identify\"" "menu_identify"

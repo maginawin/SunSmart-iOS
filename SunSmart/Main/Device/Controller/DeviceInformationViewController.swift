@@ -144,7 +144,7 @@ class DeviceInformationViewController: UIViewController {
         
         let addressModel = CustomCellModel(title: "address".localizedString, content: "\(node.primaryUnicastAddress)", style: .none)
         
-        let vidModel = CustomCellModel(title: "Version Identifier", content: node.versionIdentifier != nil ? "\(node.versionIdentifier!)" : "--", style: .none)
+        let vidModel = CustomCellModel(title: "version_identifier".localizedString, content: node.versionIdentifier != nil ? "\(node.versionIdentifier!)" : "--", style: .none)
         
         let devModel = CustomCellModel(title: "model".localizedString, content: node.modelName ?? "--", style: .none)
         

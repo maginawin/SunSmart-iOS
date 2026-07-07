@@ -175,7 +175,12 @@
 "device_force_delete_message" = "无响应，设备可能离线或故障，是否强制删除？\n\n";
 "device_force_delete_note" = "注意：强制删除后，硬件设备需要手动重置。";
 "model" = "型号";
-"PID" = "产品id";
+"PID" = "产品ID";
+"address" = "地址";
+"version_identifier" = "版本标识符";
+"set_proxy" = "设置代理";
+"reboot" = "重启";
+"relay" = "中继";
 "device_type" = "设备类型";
 "firmware" = "固件";
 "signal_strength" = "信号强度";
