@@ -90,8 +90,11 @@ class GatewayAssociatedSpacesController: UIViewController {
                 
                 if self.spaces.count > 0 {
                     self.spaces.sort(by: { $0.appKeyIndex < $1.appKeyIndex })
-                    self.selectSpaces = bindSpaces
-                    self.initAssociateSpaces = bindSpaces
+                    let selectedSpaces = self.gateway.associatedSpaces.compactMap { selectedSpace in
+                        self.spaces.first(where: { $0.spaceId == selectedSpace.spaceId }) ?? selectedSpace
+                    }.sorted(by: { $0.appKeyIndex < $1.appKeyIndex })
+                    self.selectSpaces = selectedSpaces
+                    self.initAssociateSpaces = selectedSpaces
                     
                     self.setupUI()
                     self.updateUI()
@@ -112,39 +115,6 @@ class GatewayAssociatedSpacesController: UIViewController {
    
         }
     }
-    
-    /// 关联spaces请求
-    private func associatedSpacesRequest(_ spaces: [GatewaySpaceData]) async -> (successSpaces: [GatewaySpaceData], failedSpaces: [GatewaySpaceData]) {
-        var successSpaces: [GatewaySpaceData] = []
-        var failedSpaces: [GatewaySpaceData] = []
-        for space in spaces {
-            let result = await NetworkRequest.shared.request(.gatewayBindSpace(spaceId: space.spaceId, gatewayId: gateway.mac))
-            switch result {
-            case .success:
-                successSpaces.append(space)
-            case .failure:
-                failedSpaces.append(space)
-            }
-        }
-        return (successSpaces, failedSpaces)
-    }
-    
-    /// 解除关联spaces请求
-    private func unbindAssociatedSpacesRequest(_ spaces: [GatewaySpaceData]) async -> (successSpaces: [GatewaySpaceData], failedSpaces: [GatewaySpaceData]) {
-        var successSpaces: [GatewaySpaceData] = []
-        var failedSpaces: [GatewaySpaceData] = []
-        for space in spaces {
-            let result = await NetworkRequest.shared.request(.gatewayUnbindSpace(spaceId: space.spaceId, gatewayId: gateway.mac))
-            switch result {
-            case .success(_):
-                successSpaces.append(space)
-            case .failure(_):
-                failedSpaces.append(space)
-            }
-        }
-        return (successSpaces, failedSpaces)
-    }
-    
     
     @objc private func help() {
         
@@ -187,135 +157,11 @@ class GatewayAssociatedSpacesController: UIViewController {
         let unbindSpaces = oldSpaces.filter({ space in !newSpaces.contains(where: { $0.spaceId == space.spaceId }) && space.permission == .editor })
         
         if addSpaces.count > 0 || unbindSpaces.count > 0 {
-            spacesAssociatedHandle(associatedSpaces: addSpaces, disassociatedSpaces: unbindSpaces)
+            associatedSpacesSelectCallback?(self.selectSpaces)
+            navigationController?.popViewController(animated: true)
         }else {
-//            associatedSpacesSelectCallback?(selectSpaces)
             navigationController?.popViewController(animated: true)
         }
-    }
-    
-    
-    /// 关联/解除space关联操作
-    /// - Parameters:
-    ///   - associatedSpaces: 关联的spaces
-    ///   - disassociatedSpaces: 解除关联的spaces
-    private func spacesAssociatedHandle(associatedSpaces: [GatewaySpaceData], disassociatedSpaces: [GatewaySpaceData]) {
-        guard associatedSpaces.count > 0 || disassociatedSpaces.count > 0 else {
-            return
-        }
-        guard NetworkRequest.shared.networkable else {
-            SRAlertView(title: "notification".localizedString, message: "gateway_associated_no_network_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString)]).show()
-            return
-        }
-        
-        Task {
-            var associatedResult: (successSpaces: [GatewaySpaceData], failedSpaces: [GatewaySpaceData])?
-            var disassociatedResult: (successSpaces: [GatewaySpaceData], failedSpaces: [GatewaySpaceData])?
-            
-            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
-            if associatedSpaces.count > 0 {
-                associatedResult = await self.associatedSpacesRequest(associatedSpaces)
-            }
-            if disassociatedSpaces.count > 0 {
-                disassociatedResult = await self.unbindAssociatedSpacesRequest(disassociatedSpaces)
-            }
-            XWHUDManager.hide()
-            // 绑定成功的spaces
-            if let addAssociatedSpaces = associatedResult?.successSpaces {
-                addAssociatedSpaces.forEach { space in
-                    if !self.gateway.associatedSpaces.contains(where: { $0.spaceId == space.spaceId }) {
-                        self.gateway.associatedSpaces.append(space)
-                    }
-                }
-            }
-            
-            // 解除绑定成功的spaces
-            if let disassociatedSpaces = disassociatedResult?.successSpaces {
-                self.gateway.associatedSpaces.removeAll(where: { space in disassociatedSpaces.contains(where: { space.spaceId == $0.spaceId }) })
-            }
-            self.gateway.save()
-            self.initAssociateSpaces = self.gateway.associatedSpaces
-            
-            // 绑定失败的spaces
-            let associatedFailSpaces = associatedResult?.failedSpaces ?? []
-            // 解除绑定失败的spaces
-            let disassociatedFailSpaces = disassociatedResult?.failedSpaces ?? []
-            
-            guard associatedFailSpaces.isEmpty, disassociatedFailSpaces.isEmpty else {
-                // 存在失败的space
-                self.showAssociateFailedAlert(associatedFailSpaces: associatedFailSpaces, disassociatedFailSpaces: disassociatedFailSpaces)
-                return
-            }
-            
-            self.associatedSpacesSelectCallback?(self.selectSpaces)
-            self.navigationController?.popViewController(animated: true)
-        }
-        
-    }
-    
-    
-    /// 提示关联/解除关联失败结果
-    /// - Parameters:
-    ///   - associatedFailSpaces: 关联失败的spaces
-    ///   - disassociatedFailSpaces: 解除关联失败的spaces
-    private func showAssociateFailedAlert(associatedFailSpaces: [GatewaySpaceData], disassociatedFailSpaces: [GatewaySpaceData]) {
-        
-        guard associatedFailSpaces.count > 0 || disassociatedFailSpaces.count > 0 else {
-            return
-        }
-        
-        let messageAttStr = NSMutableAttributedString()
-        
-        let style = NSMutableParagraphStyle()
-        style.alignment = .left
-        style.lineSpacing = 4
-        style.lineBreakMode = .byCharWrapping
-        
-        if associatedFailSpaces.count > 0 {
-            let failSpacesStr = "[\(associatedFailSpaces.map({ $0.spaceName }).joined(separator: ", "))]"
-            let associateFailStr = String(format: "associate_spaces_failed_message".localizedString, failSpacesStr)
-            let attStr = NSMutableAttributedString(string: associateFailStr, attributes: [.foregroundColor: Title_Color, .font: UIFont.systemFont(ofSize: 15, weight: .light), .paragraphStyle: style])
-            attStr.addAttribute(.foregroundColor, value: TextBlack_Color, range: (associateFailStr as NSString).range(of: failSpacesStr))
-            messageAttStr.append(attStr)
-        }
-        if disassociatedFailSpaces.count > 0 {
-            
-            let failSpacesStr = "[\(disassociatedFailSpaces.map({ $0.spaceName }).joined(separator: ", "))]"
-            let disassociateFailStr = "\n" + String(format: "disassociate_spaces_failed_message".localizedString, failSpacesStr)
-            let attStr = NSMutableAttributedString(string: disassociateFailStr, attributes: [.foregroundColor: Title_Color, .font: UIFont.systemFont(ofSize: 15, weight: .light), .paragraphStyle: style])
-            attStr.addAttribute(.foregroundColor, value: TextBlack_Color, range: (disassociateFailStr as NSString).range(of: failSpacesStr))
-            messageAttStr.append(attStr)
-        }
-        
-        let noteStr = "\n\n" + "network_problem_note".localizedString
-        
-        let noteAttStr = NSMutableAttributedString(string: noteStr, attributes: [.foregroundColor: Message_Color, .font: UIFont.systemFont(ofSize: 15, weight: .light), .paragraphStyle: style])
-        messageAttStr.append(noteAttStr)
-        
-        SRAlertView(title: "notification".localizedString, messageAttStr: messageAttStr, actions: [SRAlertAction(title: "alert_item_cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
-            guard let self = self else {
-                return
-            }
-            // 失败的space恢复之前未选择状态
-            associatedFailSpaces.forEach { space in
-                self.selectSpaces.removeAll(where: { $0.spaceId == space.spaceId })
-            }
-            // 失败的space恢复之前选中状态
-            disassociatedFailSpaces.forEach { space in
-                if !self.selectSpaces.contains(where: { $0.spaceId == space.spaceId }) {
-                    self.selectSpaces.append(space)
-                    self.selectSpaces.sort(by: { $0.appKeyIndex < $1.appKeyIndex })
-                }
-            }
-            self.collectionView.reloadData()
-            self.updateUI()
-            
-        }), SRAlertAction(title: "RETRY".localizedString, actionHandler: {[weak self] _ in
-            guard let self = self else {
-                return
-            }
-            self.spacesAssociatedHandle(associatedSpaces: associatedFailSpaces, disassociatedSpaces: disassociatedFailSpaces)
-        })]).show()
     }
     
     private func updateUI() {

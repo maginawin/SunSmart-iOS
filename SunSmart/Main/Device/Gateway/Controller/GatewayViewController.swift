@@ -369,8 +369,9 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 //            copyContent.append("\n\("activate".localizedString): N/A")
 //        }
 
-        if gatewayModel.associatedSpaces.count > 0 {
-            let spacesName = gatewayModel.associatedSpaces.map({ $0.spaceName }).joined(separator: ",")
+        let associatedSpaces = gatewayAssociatedSpacesToDisplay()
+        if associatedSpaces.count > 0 {
+            let spacesName = associatedSpaces.map({ $0.spaceName }).joined(separator: ",")
             copyContent.append("\n\("associated_spaces".localizedString): \(spacesName)")
         }else {
             copyContent.append("\n\("associated_spaces".localizedString): \("no_associated_spaces".localizedString)")
@@ -427,7 +428,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                 bottomView.deleteBtn.isEnabled = false
             }else {
                 // 无权限
-                if gatewayModel.associatedSpaces.contains(where: { $0.permission == .none || $0.permission == .permissionLoss || $0.permission == .permissionException }) {
+                if gatewayAssociatedSpacesToDisplay().contains(where: { $0.permission == .none || $0.permission == .permissionLoss || $0.permission == .permissionException }) {
                     bottomView.deleteBtn.isEnabled = false
                 }else {
                     bottomView.deleteBtn.isEnabled = true
@@ -483,7 +484,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         guard let name = self.name, !name.isAllInputTextEmpty() else {
             return
         }
-        guard gateway.associatedSpaces.isEmpty || gateway.associatedSpaces.contains(where: { $0.permission == .editor }) else {
+        guard setGatewayModel.associatedSpaces.isEmpty || setGatewayModel.associatedSpaces.contains(where: { $0.permission == .editor }) else {
             XWHUDManager.showTipHUD("no_permission".localizedString + "！")
             return
         }
@@ -492,6 +493,18 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 //            return
 //        }
 
+        bottomView.saveBtn.isEnabled = false
+        Task { [weak self] in
+            guard let self = self else { return }
+            guard await self.saveAssociatedSpacesIfNeeded() else {
+                self.updateSaveBtnState()
+                return
+            }
+            self.persistGatewayConfiguration(name: name)
+        }
+    }
+
+    private func persistGatewayConfiguration(name: String) {
         if gateway.name != name {
             self.setGatewayModel.name = name
             self.gateway.name = name
@@ -500,7 +513,6 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             self.node.save()
         }
 
-        setGatewayModel.associatedSpaces = gateway.associatedSpaces
         gatewayModel.update(gatewayModel: setGatewayModel)
         gateway.model.save()
         //        node.gatewayModel?.update(gatewayModel: setGatewayModel)
@@ -534,6 +546,51 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
         }
         navigationController?.pushViewController(vc, animated: true)
+    }
+
+    private func saveAssociatedSpacesIfNeeded() async -> Bool {
+        let oldSpaces = gatewayModel.associatedSpaces
+        let newSpaces = setGatewayModel.associatedSpaces
+        let addSpaces = newSpaces.filter { newSpace in
+            !oldSpaces.contains(where: { $0.spaceId == newSpace.spaceId })
+        }
+        let unbindSpaces = oldSpaces.filter { oldSpace in
+            !newSpaces.contains(where: { $0.spaceId == oldSpace.spaceId })
+        }
+
+        guard addSpaces.count > 0 || unbindSpaces.count > 0 else {
+            return true
+        }
+        guard NetworkRequest.shared.networkable else {
+            XWHUDManager.showTipHUD("gateway_associated_no_network_message".localizedString, isLineFeed: true, afterDelay: 1.5)
+            return false
+        }
+
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+        for space in addSpaces {
+            let result = await NetworkRequest.shared.request(.gatewayBindSpace(spaceId: space.spaceId, gatewayId: gateway.mac))
+            switch result {
+            case .success:
+                break
+            case .failure(let error):
+                XWHUDManager.hide()
+                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                return false
+            }
+        }
+        for space in unbindSpaces {
+            let result = await NetworkRequest.shared.request(.gatewayUnbindSpace(spaceId: space.spaceId, gatewayId: gateway.mac))
+            switch result {
+            case .success:
+                break
+            case .failure(let error):
+                XWHUDManager.hide()
+                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                return false
+            }
+        }
+        XWHUDManager.hide()
+        return true
     }
 
     /// 删除
@@ -728,17 +785,14 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             return nil
         })
 
-        let vc = GatewayAssociatedSpacesController(gateway: gatewayModel, spaces: gatewaySpaceData)
+        let vc = GatewayAssociatedSpacesController(gateway: setGatewayModel, spaces: gatewaySpaceData)
 //        GatewayAssociatedSpacesController(spaces: gatewaySpaceData, selectSpaces: selectSpaces)
         vc.associatedSpacesSelectCallback = {[weak self] spaces in
             guard let self = self else { return }
+            self.setGatewayModel.associatedSpaces = spaces
             self.reloadSection(.associatedSpaces)
             self.reloadSection(.name)
             self.updateSaveBtnState()
-            // 通知网关数据修改
-            NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
-            // 通知site数据更新
-            NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
         }
         navigationController?.pushViewController(vc, animated: true)
 
@@ -747,31 +801,12 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     /// 解除空间关联
     private func unbindAssociatedSpace(_ space: GatewaySpaceData) {
 
-        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
-
-        NetworkRequest.shared.request(.gatewayUnbindSpace(spaceId: space.spaceId, gatewayId: gateway.mac)) {[weak self] result in
-            XWHUDManager.hide()
-            guard let self = self else {
-                return
-            }
-            switch result {
-            case .success(_):
-                if let index = self.gateway.associatedSpaces.firstIndex(where: { $0.spaceId == space.spaceId }) {
-                    self.gateway.associatedSpaces.remove(at: index)
-//                    self.setGatewayModel.associatedSpaces = self.gateway.associatedSpaces
-                    self.reloadSection(.associatedSpaces)
-                    self.updateSaveBtnState()
-                }
-                // 通知网关数据修改
-                NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
-                // 通知site数据更新
-                NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
-
-            case .failure(let error):
-                XWHUDManager.showErrorTipHUD(error.localizedDescription)
-            }
+        if let index = setGatewayModel.associatedSpaces.firstIndex(where: { $0.spaceId == space.spaceId }) {
+            setGatewayModel.associatedSpaces.remove(at: index)
+            reloadSection(.associatedSpaces)
+            reloadSection(.name)
+            updateSaveBtnState()
         }
-
     }
 
     /// 选择sim卡 APN
@@ -803,6 +838,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 
     func reloadGatewayTable() {
         tableView.reloadData()
+    }
+
+    private func gatewayAssociatedSpacesToDisplay() -> [GatewaySpaceData] {
+        return setGatewayModel.associatedSpaces
     }
 
     func makeGatewayInformationHeaderView(frame: CGRect) -> GatewayInformationHeaderView {
@@ -933,7 +972,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
         let sectionType = sections[section]
         switch sectionType {
         case .associatedSpaces:
-            return max(gatewayModel.associatedSpaces.count, 1)
+            return max(gatewayAssociatedSpacesToDisplay().count, 1)
         case .info:
             return infoTypes.count
         case .networkConnectivity:
@@ -1000,8 +1039,9 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
         case .associatedSpaces:
             let cell = tableView.dequeueReusableCell(withIdentifier: "associatedSpacesCell", for: indexPath) as! CustomTableViewCell
             cell.titleLabel.font = UIFont.systemFont(ofSize: 14, weight: .light)
-            if gateway.associatedSpaces.count > 0 {
-                let space = gateway.associatedSpaces[indexPath.row]
+            let associatedSpaces = gatewayAssociatedSpacesToDisplay()
+            if associatedSpaces.count > 0 {
+                let space = associatedSpaces[indexPath.row]
                 cell.titleLabel.textColor = TextBlack_Color
                 cell.titleLabel.text = space.spaceName
                 cell.contentLabel.font = UIFont.systemFont(ofSize: 14, weight: .light)
