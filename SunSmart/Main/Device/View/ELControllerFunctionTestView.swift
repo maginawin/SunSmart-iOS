@@ -21,6 +21,7 @@ final class ELControllerFunctionTestView: UIView {
         case faults(lamp: Bool, battery: Bool, circuit: Bool)
         case invalid
         case failed
+        case normalModeRequired
     }
 
     enum RxTxState {
@@ -131,6 +132,13 @@ final class ELControllerFunctionTestView: UIView {
                 buttonTitleKey: "el_controller_function_test_start_button",
                 buttonAlpha: 1,
                 rows: [.init(titleKey: "el_controller_function_test_failed", style: .fault)],
+                showsSpinner: false
+            )
+        case .normalModeRequired:
+            return .init(
+                buttonTitleKey: "el_controller_function_test_start_button",
+                buttonAlpha: 1,
+                rows: [.init(titleKey: "el_controller_function_test_normal_mode_required", style: .fault)],
                 showsSpinner: false
             )
         }

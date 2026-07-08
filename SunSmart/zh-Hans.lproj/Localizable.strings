@@ -1925,6 +1925,7 @@
 "el_controller_function_test_passed" = "测试通过";
 "el_controller_function_test_invalid" = "结果无效 - 设备处于 DT 或电池电量耗尽";
 "el_controller_function_test_failed" = "测试失败";
+"el_controller_function_test_normal_mode_required" = "仅可在正常模式下执行功能测试。";
 "el_controller_function_test_lamp_fault" = "灯具故障";
 "el_controller_function_test_battery_fault" = "电池故障";
 "el_controller_function_test_circuit_fault" = "回路故障";

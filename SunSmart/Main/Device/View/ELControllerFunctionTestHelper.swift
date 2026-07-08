@@ -18,6 +18,7 @@ final class ELControllerFunctionTestHelper {
     private var isActive = false
     private var resultPollingTimer: Timer?
     private var isResultRequestInFlight = false
+    private var shouldIgnoreNormalDeviceStatusForFunctionTest = false
 
     init(node: Node) {
         self.node = node
@@ -57,6 +58,7 @@ final class ELControllerFunctionTestHelper {
 
     func stopPageSession() {
         isActive = false
+        shouldIgnoreNormalDeviceStatusForFunctionTest = false
         stopFunctionTestResultPolling()
         resetFunctionTestUI()
     }
@@ -74,7 +76,41 @@ final class ELControllerFunctionTestHelper {
         isActive = true
         stopFunctionTestResultPolling()
         updateFunctionTestState?(.awaiting)
+        shouldIgnoreNormalDeviceStatusForFunctionTest = true
 
+        requestDeviceStatusBeforeStart(using: vendorModel)
+    }
+
+    private func requestDeviceStatusBeforeStart(using vendorModel: Model) {
+        MeshAPI.sendMessage(
+            message: SunricherVendorGet(function: .elControllerDeviceStatus),
+            model: vendorModel,
+            timeout: 3
+        ) { [weak self] response in
+            DispatchQueue.main.async {
+                guard let self = self, self.isActive else { return }
+                guard let status = response as? SunricherVendorStatus,
+                      status.status.code == .elControllerDeviceStatus,
+                      status.status.isSuccessful,
+                      case .elControllerDeviceStatus(let deviceStatus) = status.status.parameters else {
+                    self.shouldIgnoreNormalDeviceStatusForFunctionTest = false
+                    self.updateFunctionTestState?(.normalModeRequired)
+                    return
+                }
+
+                if deviceStatus.rawValue == 0x03 {
+                    self.sendStartFunctionTest(using: vendorModel)
+                } else if deviceStatus.isFunctionTesting {
+                    self.applyDeviceStatus(deviceStatus)
+                } else {
+                    self.shouldIgnoreNormalDeviceStatusForFunctionTest = false
+                    self.updateFunctionTestState?(.normalModeRequired)
+                }
+            }
+        }
+    }
+
+    private func sendStartFunctionTest(using vendorModel: Model) {
         MeshAPI.sendMessage(
             message: SunricherVendorSet(function: .elControllerStartFunctionTest),
             model: vendorModel,
@@ -85,6 +121,7 @@ final class ELControllerFunctionTestHelper {
                 guard let status = response as? SunricherVendorStatus,
                       status.status.code == .elControllerStartFunctionTest,
                       status.status.isSuccessful else {
+                    self.shouldIgnoreNormalDeviceStatusForFunctionTest = false
                     self.updateFunctionTestState?(.failed)
                     return
                 }
@@ -136,6 +173,9 @@ final class ELControllerFunctionTestHelper {
         case .elControllerDeviceStatus:
             guard status.status.isSuccessful,
                   case .elControllerDeviceStatus(let deviceStatus) = status.status.parameters else {
+                return true
+            }
+            if shouldIgnoreNormalDeviceStatusForFunctionTest, !deviceStatus.isFunctionTesting {
                 return true
             }
             applyDeviceStatus(deviceStatus)

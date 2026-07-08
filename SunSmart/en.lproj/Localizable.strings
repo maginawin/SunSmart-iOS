@@ -1909,6 +1909,7 @@
 "el_controller_function_test_passed" = "Test Passed";
 "el_controller_function_test_invalid" = "Result Invalid - Device in DT or battery depleted";
 "el_controller_function_test_failed" = "Test Failed";
+"el_controller_function_test_normal_mode_required" = "FT testing can only be performed in normal mode.";
 "el_controller_function_test_lamp_fault" = "Lamp Fault";
 "el_controller_function_test_battery_fault" = "Battery Fault";
 "el_controller_function_test_circuit_fault" = "Circuit Fault";
