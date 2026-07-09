@@ -29,6 +29,7 @@ final class WiFiGatewayViewController: GatewayViewController {
         static let bad = WiFiHeaderStatus(iconName: "wifi_bad", localizedStatusKey: "wifi_status_bad")
         static let noSignal = WiFiHeaderStatus(iconName: "wifi_no_signal", localizedStatusKey: "wifi_status_no_signal")
         static let notConnected = WiFiHeaderStatus(iconName: "wifi_not_connected", localizedStatusKey: "wifi_status_not_connected")
+        static let notConfigured = WiFiHeaderStatus(iconName: "wifi_not_connected", localizedStatusKey: "not_configured")
     }
 
     private weak var wifiHeaderView: GatewayInformationHeaderView?
@@ -38,6 +39,7 @@ final class WiFiGatewayViewController: GatewayViewController {
     private var isNetworkConnectivityVisible: Bool = false
     private var isNetworkPasswordVisible: Bool = false
     private var networkConnectState: GatewayNetworkConnectivityCell.ConnectState = .disabled
+    private var isNetworkRefreshInProgress: Bool = false
     private var networkConnectTimer: Timer?
     private var wifiRSSIStatusTimer: Timer?
     private var networkConnectionStartedAt: Date?
@@ -146,8 +148,10 @@ final class WiFiGatewayViewController: GatewayViewController {
             passwordVisible: isNetworkPasswordVisible,
             connectState: networkConnectState,
             showsSSIDClearButton: shouldShowSSIDClearButton(),
-            canSelectWiFi: !isOperating,
-            canRefresh: !isOperating,
+            canSelectWiFi: true,
+            canRefresh: !isOperating && !isNetworkRefreshInProgress,
+            isRefreshing: isNetworkRefreshInProgress,
+            canEditSSID: canEditNetworkSSID(),
             canEditPassword: canEditNetworkPassword(),
             canTogglePasswordVisibility: canToggleNetworkPasswordVisibility()
         )
@@ -160,8 +164,14 @@ final class WiFiGatewayViewController: GatewayViewController {
         cell.ssidClearCallback = { [weak self] in
             self?.clearNetworkSSIDLocally()
         }
+        cell.ssidChangedCallback = { [weak self] ssid in
+            self?.updateNetworkSSID(ssid) ?? .disabled
+        }
         cell.passwordChangedCallback = { [weak self] password in
             self?.updateNetworkPassword(password) ?? .disabled
+        }
+        cell.lockedEditCallback = { [weak self] in
+            self?.showDisconnectFirstTip()
         }
         cell.togglePasswordVisibilityCallback = { [weak self] in
             self?.toggleNetworkPasswordVisibility()
@@ -331,6 +341,8 @@ final class WiFiGatewayViewController: GatewayViewController {
             applyGatewayCredentials(credentials)
             loadConfiguredGatewayConnectionStatus(operationID: operationID)
         case .notConfigured:
+            stopWiFiRSSIStatusRefresh()
+            updateWiFiHeaderStatus(.notConfigured)
             networkCredentialSource = .phone
             networkConnectState = .disabled
             setNetworkConnectivityVisible(true)
@@ -364,10 +376,15 @@ final class WiFiGatewayViewController: GatewayViewController {
     private func refreshConfiguredGatewayConnectionStatus(credentials: WiFiGatewayCredentials? = nil) {
         let operationID = beginNetworkOperation()
         sendWiFiGatewayGet(.wifiGatewayConnectionStatus) { [weak self] status in
-            guard let self, self.isCurrentNetworkOperation(operationID), self.node.state else { return }
+            guard let self, self.isCurrentNetworkOperation(operationID) else { return }
+            guard self.node.state else {
+                self.finishNetworkRefresh()
+                return
+            }
             guard let status,
                   case .wifiGatewayConnectionStatus(let connectionStatus) = status.status.parameters else {
                 self.showRefreshNetworkConnectivityFailed()
+                self.finishNetworkRefresh()
                 return
             }
             if let credentials {
@@ -376,6 +393,7 @@ final class WiFiGatewayViewController: GatewayViewController {
             self.applyConnectionStatus(connectionStatus, showsHUD: false)
             self.setNetworkConnectivityVisible(true)
             self.reloadSection(.networkConnectivity)
+            self.finishNetworkRefresh()
         }
     }
 
@@ -402,60 +420,98 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     private func refreshNetworkConnectivity() {
-        guard !isNetworkOperationInProgress else { return }
-        if networkCredentialSource == .gateway {
-            refreshConfiguredGatewayConnectionStatus()
+        guard !isNetworkOperationInProgress, beginNetworkRefresh() else { return }
+        if networkConnectState == .connected {
+            refreshGatewayCredentials(usesPhoneSSIDWhenNotConnected: false)
         } else {
-            refreshGatewayCredentials()
+            refreshCurrentSSID(showsResultHUD: true)
         }
     }
 
-    private func refreshGatewayCredentials() {
+    private func refreshGatewayCredentials(usesPhoneSSIDWhenNotConnected: Bool = true) {
         let operationID = beginNetworkOperation()
         sendWiFiGatewayGet(.wifiGatewayCredentials) { [weak self] status in
-            guard let self, self.isCurrentNetworkOperation(operationID), self.node.state else { return }
+            guard let self, self.isCurrentNetworkOperation(operationID) else { return }
+            guard self.node.state else {
+                self.finishNetworkRefresh()
+                return
+            }
             guard let status,
                   case .wifiGatewayCredentialsRead(let result) = status.status.parameters else {
                 self.showRefreshNetworkConnectivityFailed()
+                self.finishNetworkRefresh()
                 return
             }
             switch result {
             case .success(let credentials):
                 self.refreshConfiguredGatewayConnectionStatus(credentials: credentials)
             case .notConfigured:
-                self.networkCredentialSource = .phone
-                self.networkConnectState = .disabled
+                self.stopWiFiRSSIStatusRefresh()
+                self.updateWiFiHeaderStatus(.notConfigured)
                 self.setNetworkConnectivityVisible(true)
-                self.refreshCurrentSSID(showsResultHUD: false)
+                if usesPhoneSSIDWhenNotConnected {
+                    self.networkCredentialSource = .phone
+                    self.networkConnectState = .disabled
+                    self.refreshCurrentSSID(showsResultHUD: false)
+                } else {
+                    self.clearNetworkFieldsWithoutChangingHeader()
+                    self.reloadSection(.networkConnectivity)
+                    self.finishNetworkRefresh()
+                }
             case .internalError, .reserved(rawValue: _):
                 self.showRefreshNetworkConnectivityFailed()
+                self.finishNetworkRefresh()
             }
         }
     }
 
     private func refreshCurrentSSID(showsResultHUD: Bool = false) {
         guard canRefreshPhoneSSID() else { return }
+        let oldSSID = networkSSID
         WiFiSSIDProvider.shared.fetchCurrentSSID { [weak self] ssid in
             guard let self else { return }
+            if showsResultHUD, ssid.isEmpty {
+                self.finishNetworkRefresh()
+                self.showPhoneNotConnectedToWiFiTip()
+                return
+            }
             self.networkSSID = ssid
             self.networkCredentialSource = ssid.isEmpty ? .localClear : .phone
             self.networkPassword = self.cachedPassword(for: ssid)
             self.networkConnectState = self.computeEditableConnectState(password: self.networkPassword)
             self.reloadSection(.networkConnectivity)
             if showsResultHUD {
-                self.showRefreshSSIDResultHUD(success: !ssid.isEmpty)
+                self.showRefreshSSIDChangedHUD(oldSSID: oldSSID, newSSID: ssid)
             }
+            self.finishNetworkRefresh()
         }
+    }
+
+    private func beginNetworkRefresh() -> Bool {
+        guard !isNetworkRefreshInProgress else { return false }
+        isNetworkRefreshInProgress = true
+        reloadSection(.networkConnectivity)
+        return true
+    }
+
+    private func finishNetworkRefresh() {
+        guard isNetworkRefreshInProgress else { return }
+        isNetworkRefreshInProgress = false
+        reloadSection(.networkConnectivity)
     }
 
     private func canRefreshPhoneSSID() -> Bool {
         guard !isNetworkOperationInProgress else { return false }
-        return networkCredentialSource != .gateway
+        return networkConnectState != .connected
+    }
+
+    private func canEditNetworkSSID() -> Bool {
+        guard !isNetworkOperationInProgress else { return false }
+        return networkConnectState != .connected
     }
 
     private func canEditNetworkPassword() -> Bool {
         guard !isNetworkOperationInProgress else { return false }
-        guard networkCredentialSource != .gateway else { return false }
         return networkConnectState != .connected
     }
 
@@ -463,12 +519,13 @@ final class WiFiGatewayViewController: GatewayViewController {
         return !isNetworkOperationInProgress
     }
 
-    private func showRefreshSSIDResultHUD(success: Bool) {
-        if success {
-            XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
-        } else {
-            XWHUDManager.showErrorTipHUD("failed".localizedString)
-        }
+    private func showRefreshSSIDChangedHUD(oldSSID: String, newSSID: String) {
+        let localizedKey = oldSSID == newSSID ? "network_unchanged" : "updated_to_the_new_network"
+        XWHUDManager.showTipHUD(localizedKey.localizedString, isLineFeed: true)
+    }
+
+    private func showPhoneNotConnectedToWiFiTip() {
+        XWHUDManager.showTipHUD("phone_not_connected_to_wifi".localizedString, isLineFeed: true)
     }
 
     @objc private func appDidBecomeActive() {
@@ -493,11 +550,12 @@ final class WiFiGatewayViewController: GatewayViewController {
         UserDefaults.standard.set(values, forKey: wifiPasswordCacheKey)
     }
 
-    private func removeCachedPassword(for ssid: String) {
-        guard !ssid.isEmpty else { return }
-        var values = UserDefaults.standard.dictionary(forKey: wifiPasswordCacheKey) as? [String: String] ?? [:]
-        values.removeValue(forKey: ssid)
-        UserDefaults.standard.set(values, forKey: wifiPasswordCacheKey)
+    private func updateNetworkSSID(_ ssid: String) -> GatewayNetworkConnectivityCell.ConnectState {
+        guard canEditNetworkSSID() else { return networkConnectState }
+        networkSSID = ssid
+        networkCredentialSource = ssid.isEmpty ? .localClear : .phone
+        networkConnectState = computeEditableConnectState(password: networkPassword)
+        return networkConnectState
     }
 
     private func updateNetworkPassword(_ password: String) -> GatewayNetworkConnectivityCell.ConnectState {
@@ -634,25 +692,24 @@ final class WiFiGatewayViewController: GatewayViewController {
         guard networkConnectState == .connected else { return }
         stopNetworkConnectionPolling()
         stopWiFiRSSIStatusRefresh()
-        let clearedSSID = networkSSID
         networkConnectState = .disconnecting
         reloadSection(.networkConnectivity)
 
         let operationID = beginNetworkOperation()
         sendWiFiGatewayCredentialsClear { [weak self] result in
             guard let self, self.isCurrentNetworkOperation(operationID) else { return }
-            self.completeNetworkDisconnectClear(result, clearedSSID: clearedSSID)
+            self.completeNetworkDisconnectClear(result)
         }
     }
 
-    private func completeNetworkDisconnectClear(_ result: WiFiGatewayCredentialsClearResult?, clearedSSID: String) {
+    private func completeNetworkDisconnectClear(_ result: WiFiGatewayCredentialsClearResult?) {
         stopNetworkConnectionPolling()
         stopWiFiRSSIStatusRefresh()
         clearLocalNetworkFields()
-        removeCachedPassword(for: clearedSSID)
         reloadSection(.networkConnectivity)
 
         if result == .cleared {
+            updateWiFiHeaderStatus(.notConfigured)
             handleNetworkConnectionFinished(.success)
         } else {
             handleNetworkConnectionFinished(.failure)
@@ -666,12 +723,16 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     private func clearLocalNetworkFields() {
+        clearNetworkFieldsWithoutChangingHeader()
+        updateWiFiHeaderStatus(.notConnected)
+    }
+
+    private func clearNetworkFieldsWithoutChangingHeader() {
         networkSSID = ""
         networkPassword = ""
         networkCredentialSource = .localClear
         isNetworkPasswordVisible = false
         networkConnectState = .disabled
-        updateWiFiHeaderStatus(.notConnected)
     }
 
     private func startWiFiRSSIStatusRefresh() {
@@ -784,7 +845,15 @@ final class WiFiGatewayViewController: GatewayViewController {
         }
     }
 
+    private func showDisconnectFirstTip() {
+        XWHUDManager.showTipHUD("please_disconnect_first".localizedString, isLineFeed: true)
+    }
+
     private func showChangeWiFiAlert() {
+        guard networkConnectState != .connected else {
+            showDisconnectFirstTip()
+            return
+        }
         GatewayChangeWiFiAlertView.show { [weak self] in
             self?.openSystemSettingsForWiFiChange()
         }

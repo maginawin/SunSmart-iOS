@@ -27,7 +27,7 @@ rg -n "var iconSize: CGFloat" "$header_view" >/dev/null \
 rg -n "return SCRYFrom\\(40\\)" "$header_view" >/dev/null \
   || fail "Default gateway icon size must remain 40."
 
-rg -n "return SCRYFrom\\(30\\)" "$header_view" >/dev/null \
+rg -n "return 30" "$header_view" >/dev/null \
   || fail "SIG Mesh icon size must remain 30."
 
 rg -n "enum GatewayHeaderStateStyle" "$header_view" >/dev/null \

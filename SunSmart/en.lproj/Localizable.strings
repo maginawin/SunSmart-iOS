@@ -1947,6 +1947,10 @@
 "wifi_gateway_ssid_empty" = "Select a Wi-Fi network first.";
 "wifi_gateway_password_length_error" = "Leave the password empty for an open Wi-Fi network, or enter 8-63 characters.";
 "wifi_gateway_password_character_error" = "Password can only contain letters, numbers, symbols, and spaces. Double quotes and backslashes are not supported.";
+"please_disconnect_first" = "Please disconnect first";
+"network_unchanged" = "Network unchanged.";
+"updated_to_the_new_network" = "Updated to the new network.";
+"phone_not_connected_to_wifi" = "Phone is not connected to Wi-Fi.";
 "wifi_status_title" = "Wi-Fi";
 "wifi_status_excellent" = "Excellent";
 "wifi_status_good" = "Good";

@@ -1963,6 +1963,10 @@
 "wifi_gateway_ssid_empty" = "请先选择 Wi-Fi 网络。";
 "wifi_gateway_password_length_error" = "无密码 Wi-Fi 可留空；如填写密码，请输入 8-63 个字符。";
 "wifi_gateway_password_character_error" = "密码只能包含英文字母、数字、符号和空格，不支持双引号或反斜杠。";
+"please_disconnect_first" = "请先断开连接";
+"network_unchanged" = "网络未变化。";
+"updated_to_the_new_network" = "已更新为新网络。";
+"phone_not_connected_to_wifi" = "手机未连接 Wi-Fi。";
 "wifi_status_title" = "Wi-Fi";
 "wifi_status_excellent" = "优秀";
 "wifi_status_good" = "良好";

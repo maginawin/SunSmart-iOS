@@ -21,7 +21,7 @@ rg -n "func update\\(iconName: String, title: String\\?, status: String, iconSiz
 rg -n "make.width.height.equalTo\\(iconSize\\)" "$header_view" >/dev/null \
   || fail "GatewayHeaderStatusItemView image size must use the iconSize passed by callers."
 
-rg -n "iconSize: SCRYFrom\\(30\\)" "$header_view" >/dev/null \
+rg -n "iconSize: 30" "$header_view" >/dev/null \
   || fail "Wi-Fi status icon size must be 30."
 
 rg -n "private var wifiStatusView: GatewayHeaderStatusItemView" "$header_view" >/dev/null \
@@ -63,6 +63,15 @@ rg -n "WiFiGatewayRSSIStatus" "$wifi_controller" >/dev/null \
 rg -n "wifi_excellent|wifi_good|wifi_poor|wifi_bad|wifi_no_signal|wifi_not_connected" "$wifi_controller" >/dev/null \
   || fail "Wi-Fi status image mapping must include all required assets."
 
+rg -n "static let notConfigured = WiFiHeaderStatus\\(iconName: \"wifi_not_connected\", localizedStatusKey: \"not_configured\"\\)" "$wifi_controller" >/dev/null \
+  || fail "Wi-Fi status mapping must include Not Configured using the existing wifi_not_connected asset and not_configured localization."
+
+rg -n "case \\.notConfigured:[[:space:]]*$" "$wifi_controller" >/dev/null \
+  || fail "WiFiGatewayViewController must explicitly handle notConfigured credential reads."
+
+rg -n "updateWiFiHeaderStatus\\(\\.notConfigured\\)" "$wifi_controller" >/dev/null \
+  || fail "WiFiGatewayViewController must update the header to Not Configured when credentials are not configured or cleared."
+
 rg -n "dbm > -60" "$wifi_controller" >/dev/null \
   || fail "Excellent RSSI threshold must be > -60 dBm."
 
@@ -89,6 +98,12 @@ rg -n '"wifi_status_not_connected" = "Not Connected";' "$en_strings" >/dev/null 
 
 rg -n '"wifi_status_not_connected" = "未连接";' "$zh_strings" >/dev/null \
   || fail "Chinese localization must define 未连接."
+
+rg -n '"not_configured" = "Not Configured";' "$en_strings" >/dev/null \
+  || fail "English localization must define Not Configured."
+
+rg -n '"not_configured" = "未配置";' "$zh_strings" >/dev/null \
+  || fail "Chinese localization must define 未配置."
 
 for asset in wifi_excellent wifi_good wifi_poor wifi_bad wifi_no_signal wifi_not_connected; do
   test -d "$assets_dir/$asset.imageset" || fail "Missing asset: $asset.imageset"

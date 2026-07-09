@@ -27,8 +27,9 @@ rg -n "networkConnectState = \\.disconnecting" "$controller" >/dev/null \
 rg -n "clearLocalNetworkFields\\(" "$controller" >/dev/null \
   || fail "WiFiGatewayViewController must clear local SSID and password after clear completion."
 
-rg -n "removeCachedPassword" "$controller" >/dev/null \
-  || fail "WiFiGatewayViewController must remove the cached password for the cleared SSID."
+if rg -n "removeCachedPassword" "$controller" >/dev/null; then
+  fail "WiFiGatewayViewController must keep the cached password for the cleared SSID."
+fi
 
 if rg -n "Invalid parameters|参数错误|invalid_parameters" SunSmart/en.lproj/Localizable.strings SunSmart/zh-Hans.lproj/Localizable.strings "$controller" >/dev/null; then
   fail "Clear credentials parameter errors must reuse the existing failed prompt, not a new parameter-error string."

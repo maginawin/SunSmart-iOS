@@ -19,18 +19,21 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
     var selectWiFiCallback: (() -> Void)?
     var refreshCallback: (() -> Void)?
     var ssidClearCallback: (() -> Void)?
+    var ssidChangedCallback: ((String) -> ConnectState)?
     var passwordChangedCallback: ((String) -> ConnectState)?
+    var lockedEditCallback: (() -> Void)?
     var togglePasswordVisibilityCallback: (() -> Void)?
     var connectActionCallback: (() -> Void)?
 
     private let containerView = UIView()
     private let ssidTitleLabel = UILabel()
-    private let ssidValueLabel = UILabel()
     private let ssidInputView = UIView()
+    private let ssidTextField = UITextField()
     private let selectWiFiButton = UIButton(type: .custom)
     private let ssidClearButton = UIButton(type: .custom)
     private let noteLabel = UILabel()
     private let refreshButton = UIButton(type: .custom)
+    private let refreshLoadingImageView = UIImageView()
     private let passwordTitleLabel = UILabel()
     private let passwordInputView = UIView()
     private let passwordTextField = UITextField()
@@ -38,6 +41,8 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
     private let connectButton = UIButton(type: .custom)
     private let loadingImageView = UIImageView()
     private var currentPassword: String = ""
+    private var canEditSSID: Bool = true
+    private var canEditPassword: Bool = true
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
@@ -53,10 +58,13 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
         selectWiFiCallback = nil
         refreshCallback = nil
         ssidClearCallback = nil
+        ssidChangedCallback = nil
         passwordChangedCallback = nil
+        lockedEditCallback = nil
         togglePasswordVisibilityCallback = nil
         connectActionCallback = nil
         loadingImageView.layer.removeAnimation(forKey: "loading")
+        refreshLoadingImageView.layer.removeAnimation(forKey: "refreshLoading")
     }
 
     func update(ssid: String, password: String, passwordVisible: Bool, connectState: ConnectState) {
@@ -68,6 +76,8 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
             showsSSIDClearButton: false,
             canSelectWiFi: connectState != .connected,
             canRefresh: connectState != .connected,
+            isRefreshing: false,
+            canEditSSID: true,
             canEditPassword: true,
             canTogglePasswordVisibility: true
         )
@@ -81,10 +91,12 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
         showsSSIDClearButton: Bool,
         canSelectWiFi: Bool,
         canRefresh: Bool,
+        isRefreshing: Bool,
+        canEditSSID: Bool,
         canEditPassword: Bool,
         canTogglePasswordVisibility: Bool
     ) {
-        ssidValueLabel.text = ssid
+        ssidTextField.text = ssid
         currentPassword = password
         passwordTextField.text = password
         passwordTextField.isSecureTextEntry = !passwordVisible
@@ -94,6 +106,8 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
             connectState: connectState,
             canSelectWiFi: canSelectWiFi,
             canRefresh: canRefresh,
+            isRefreshing: isRefreshing,
+            canEditSSID: canEditSSID,
             canEditPassword: canEditPassword,
             canTogglePasswordVisibility: canTogglePasswordVisibility
         )
@@ -126,9 +140,13 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
             $0.layer.borderColor = RGB(236, 236, 236).cgColor
         }
 
-        ssidValueLabel.font = UIFont.systemFont(ofSize: 14, weight: .light)
-        ssidValueLabel.textColor = TextBlack_Color
-        ssidValueLabel.lineBreakMode = .byTruncatingTail
+        ssidTextField.font = UIFont.systemFont(ofSize: 14, weight: .light)
+        ssidTextField.textColor = TextBlack_Color
+        ssidTextField.autocorrectionType = .no
+        ssidTextField.autocapitalizationType = .none
+        ssidTextField.returnKeyType = .done
+        ssidTextField.delegate = self
+        ssidTextField.addTarget(self, action: #selector(ssidChanged), for: .editingChanged)
 
         selectWiFiButton.setImage(UIImage(named: "select_wifi"), for: .normal)
         selectWiFiButton.addTarget(self, action: #selector(selectWiFiAction), for: .touchUpInside)
@@ -145,6 +163,8 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
         refreshButton.setTitle("refresh".localizedString, for: .normal)
         refreshButton.setTitleColor(Bar_Color, for: .normal)
         refreshButton.addTarget(self, action: #selector(refreshAction), for: .touchUpInside)
+        refreshLoadingImageView.image = UIImage(named: "loading_16")
+        refreshLoadingImageView.isHidden = true
 
         passwordTextField.font = UIFont.systemFont(ofSize: 14, weight: .light)
         passwordTextField.textColor = TextBlack_Color
@@ -174,11 +194,12 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
     private func layoutViews() {
         containerView.addSubview(ssidTitleLabel)
         containerView.addSubview(ssidInputView)
-        ssidInputView.addSubview(ssidValueLabel)
+        ssidInputView.addSubview(ssidTextField)
         ssidInputView.addSubview(ssidClearButton)
         ssidInputView.addSubview(selectWiFiButton)
         containerView.addSubview(noteLabel)
         containerView.addSubview(refreshButton)
+        refreshButton.addSubview(refreshLoadingImageView)
         containerView.addSubview(passwordTitleLabel)
         containerView.addSubview(passwordInputView)
         passwordInputView.addSubview(passwordTextField)
@@ -207,10 +228,10 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
             make.centerY.equalToSuperview()
             make.width.height.equalTo(SCRYFrom(30))
         }
-        ssidValueLabel.snp.makeConstraints { make in
+        ssidTextField.snp.makeConstraints { make in
             make.left.equalToSuperview().offset(SCRXFrom(8))
             make.right.equalTo(ssidClearButton.snp.left).offset(SCRXFrom(-4))
-            make.centerY.equalToSuperview()
+            make.top.bottom.equalToSuperview()
         }
         noteLabel.snp.makeConstraints { make in
             make.left.equalTo(ssidInputView)
@@ -220,6 +241,12 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
         refreshButton.snp.makeConstraints { make in
             make.right.equalTo(ssidInputView)
             make.centerY.equalTo(noteLabel)
+            make.width.equalTo(60)
+            make.height.equalTo(24)
+        }
+        refreshLoadingImageView.snp.makeConstraints { make in
+            make.center.equalToSuperview()
+            make.width.height.equalTo(16)
         }
         passwordTitleLabel.snp.makeConstraints { make in
             make.left.width.height.equalTo(ssidTitleLabel)
@@ -255,15 +282,20 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
         connectState: ConnectState,
         canSelectWiFi: Bool,
         canRefresh: Bool,
+        isRefreshing: Bool,
+        canEditSSID: Bool,
         canEditPassword: Bool,
         canTogglePasswordVisibility: Bool
     ) {
         let isOperating = connectState == .connecting || connectState == .disconnecting
         let isConnected = connectState == .connected
+        self.canEditSSID = canEditSSID && !isOperating
+        self.canEditPassword = canEditPassword && !isOperating
 
         selectWiFiButton.isEnabled = canSelectWiFi && !isOperating
-        refreshButton.isEnabled = canRefresh && !isOperating
-        passwordTextField.isEnabled = canEditPassword && !isOperating
+        refreshButton.isEnabled = canRefresh && !isOperating && !isRefreshing
+        ssidTextField.isEnabled = !isOperating
+        passwordTextField.isEnabled = !isOperating
         passwordVisibilityButton.isEnabled = canTogglePasswordVisibility && !isOperating
         ssidClearButton.isEnabled = !isOperating
 
@@ -272,6 +304,13 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
             loadingImageView.layer.addRotationAnimation(duration: 1.2, repeatCount: .max, animationKey: "loading")
         } else {
             loadingImageView.layer.removeAnimation(forKey: "loading")
+        }
+        refreshButton.setTitle(isRefreshing ? nil : "refresh".localizedString, for: .normal)
+        refreshLoadingImageView.isHidden = !isRefreshing
+        if isRefreshing {
+            refreshLoadingImageView.layer.addRotationAnimation(duration: 1.2, repeatCount: .max, animationKey: "refreshLoading")
+        } else {
+            refreshLoadingImageView.layer.removeAnimation(forKey: "refreshLoading")
         }
 
         let title: String?
@@ -285,6 +324,20 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
         connectButton.setTitle(title, for: .normal)
         connectButton.setTitleColor(connectState == .disabled ? RGB(147, 148, 196) : Bar_Color, for: .normal)
         connectButton.isEnabled = connectState != .disabled && !isOperating
+    }
+
+    @objc private func ssidChanged() {
+        let ssid = ssidTextField.text ?? ""
+        let nextState = ssidChangedCallback?(ssid) ?? .disabled
+        apply(
+            connectState: nextState,
+            canSelectWiFi: selectWiFiButton.isEnabled,
+            canRefresh: refreshButton.isEnabled,
+            isRefreshing: !refreshLoadingImageView.isHidden,
+            canEditSSID: canEditSSID,
+            canEditPassword: canEditPassword,
+            canTogglePasswordVisibility: passwordVisibilityButton.isEnabled
+        )
     }
 
     @objc private func selectWiFiAction() {
@@ -308,7 +361,9 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
             connectState: nextState,
             canSelectWiFi: selectWiFiButton.isEnabled,
             canRefresh: refreshButton.isEnabled,
-            canEditPassword: passwordTextField.isEnabled,
+            isRefreshing: !refreshLoadingImageView.isHidden,
+            canEditSSID: canEditSSID,
+            canEditPassword: canEditPassword,
             canTogglePasswordVisibility: passwordVisibilityButton.isEnabled
         )
     }
@@ -327,6 +382,18 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
 
     func textFieldShouldReturn(_ textField: UITextField) -> Bool {
         endEditing(true)
+        return true
+    }
+
+    func textFieldShouldBeginEditing(_ textField: UITextField) -> Bool {
+        if textField == ssidTextField, !canEditSSID {
+            lockedEditCallback?()
+            return false
+        }
+        if textField == passwordTextField, !canEditPassword {
+            lockedEditCallback?()
+            return false
+        }
         return true
     }
 }
