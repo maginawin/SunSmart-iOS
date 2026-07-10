@@ -1387,6 +1387,7 @@
 "apn_full" = "APN (Access Point Name)";
 "apn" = "APN";
 "server_information" = "Server Information";
+"server_authorization" = "Server Authorization";
 "server_address" = "Server address";
 "port" = "Port";
 "client_id" = "Client ID";
@@ -1585,6 +1586,7 @@
 "disassociate_spaces_failed_message" = "Failed to disassociate spaces: %@";
 "associate_space_unauthorized_message" = "Authorization is required before you can associate the space.";
 "gateway_sync_spaces" = "Sync Spaces";
+"gateway_recovery_verification" = "Verify Configuration";
 "gateway_no_authority" = "You no longer have the authority";
 "restore_device" = "Restore Device";
 "Firmware_update" = "Firmware update";
@@ -1958,3 +1960,6 @@
 "wifi_status_bad" = "Bad";
 "wifi_status_no_signal" = "No Signal";
 "wifi_status_not_connected" = "Not Connected";
+"preparing_device_sync" = "Preparing device sync…";
+"wifi_gateway_wait_current_operation" = "Please wait for the current operation to finish.";
+"skipped" = "Skipped";

@@ -254,12 +254,8 @@ self.updateAddressData()
         
         self.gatewayModels = self.loadGatewaysData()
         
-        if site.permission == .owner {
-            self.showGatewayModels = self.gatewayModels
-        }else if allSpaces.contains(where: { $0.permission == .editor }) { // site内是否有可编辑的space
-            self.showGatewayModels = self.gatewayModels.filter({ gateway in gateway.associatedSpaces.isEmpty || gateway.associatedSpaces.contains(where: { $0.permission != .none }) })
-        }else {
-            self.showGatewayModels.removeAll()
+        self.showGatewayModels = self.gatewayModels.filter {
+            self.site.canConfigureGateway($0.model)
         }
         
         if let gatewayId = allSpaceSelectGatewayId, let gateway = showGatewayModels.first(where: { $0.mac == gatewayId }) {
@@ -1642,7 +1638,7 @@ self.updateAddressData()
             gatewayStatus = .reset(resetTime: gateway.resetTime ?? "")
         }
         
-        let permissionState: GatewayPermissionState = (site.permission == .owner || gateway.associatedSpaces.compactMap({ data in allSpaces.first(where: { $0.id == data.spaceId }) }).contains(where: { $0.state == .normal })) ? .normal : .noPermission
+        let permissionState: GatewayPermissionState = site.canConfigureGateway(gateway.model) ? .normal : .noPermission
         
         if gateway.mac == allSpaceSelectGatewayId {
             allSpaceGatewayHeaderView?.gatewayStatusView.updateGatewayStatus(gatewayStatus, syncState: state, permissionState: permissionState)
@@ -1867,14 +1863,18 @@ self.updateAddressData()
     
     /// 添加网关
     private func addGateway() {
-        
-        guard self.site.permission == .owner || self.site.spaces.contains(where: { $0.canEditing }) else {
+
+        let editableSpaces = self.site.spaces.filter {
+            $0.canEditing && $0.deviceOperates.contains(.edit)
+        }
+        guard self.site.permission == .owner || !editableSpaces.isEmpty else {
             // 无权限
             XWHUDManager.showTipHUD(inView: "no_permission".localizedString, isLineFeed: true)
             return
         }
         // 查询editor是否还有space没有被网关绑定
-        if self.site.permission != .owner, !self.site.spaces.contains(where: { $0.permission == .editor && $0.gatewayStatus == .notBound }) {
+        if self.site.permission != .owner,
+           !editableSpaces.contains(where: { $0.gatewayStatus == .notBound }) {
             XWHUDManager.showTipHUD("gateway_add_no_editor_spaces_message".localizedString, isLineFeed: true)
             return
         }
@@ -2221,8 +2221,7 @@ extension SiteViewController: SiteGatewayStatusViewDelegate {
             return
         }
         
-        // 网关内绑定的space无权限
-        if site.permission != .owner, gateway.associatedSpaces.count > 0, !gateway.associatedSpaces.contains(where: { $0.permission == .editor }) {
+        guard site.canConfigureGateway(gateway.model) else {
             XWHUDManager.showTipHUD(inView: "gateway_no_authority".localizedString, isLineFeed: true)
             return
         }
@@ -2323,7 +2322,9 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
             headerView.gatewayListView.selectedIndex = selectIndex
             headerView.gatewayStatusView.isHidden = site.spaces.isEmpty || showGatewayModels.isEmpty
         }else {
-            if self.site.permission == .owner || self.allSpaces.contains(where: { $0.canEditing && $0.gatewayStatus == .notBound }) { // 显示添加网关UI
+            if self.site.permission == .owner || self.allSpaces.contains(where: {
+                $0.canEditing && $0.deviceOperates.contains(.edit) && $0.gatewayStatus == .notBound
+            }) { // 显示添加网关UI
                 headerView.showGatewayListView = true
                 headerView.gatewayListView.updateItems([])
             }else {
@@ -2348,7 +2349,7 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
                 if gateway.model.syncCloudError != nil && syncState == nil {
                     syncState = .failure(error: gateway.model.syncCloudError!)
                 }
-                let permissionState: GatewayPermissionState = (site.permission == .owner || gateway.associatedSpaces.isEmpty || gateway.associatedSpaces.compactMap({ data in allSpaces.first(where: { $0.id == data.spaceId }) }).contains(where: { $0.canEditing })) ? .normal : .noPermission
+                let permissionState: GatewayPermissionState = site.canConfigureGateway(gateway.model) ? .normal : .noPermission
                 switch gateway.connectStatus {
                 case .online:
                     headerView.gatewayStatusView.updateGatewayStatus(.online, syncState: syncState, permissionState: permissionState)

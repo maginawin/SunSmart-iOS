@@ -173,7 +173,10 @@ class SyncDevicesProgressViewCell: UITableViewCell {
             case .failed:
                 stateImageView.image = UIImage(named: "sync_failed_small")
                 failureLabel.isHidden = false
-                resyncBtn.isHidden = !taskModel.isFineshed
+                failureLabel.text = taskModel.isSkipped
+                    ? "skipped".localizedString
+                    : taskModel.failureMessage ?? "failure".localizedString
+                resyncBtn.isHidden = taskModel.isSkipped || !taskModel.isFineshed
             case .inSettings:
                 stateImageView.image = UIImage(named: "sync_loading_small")
                 stateImageView.layer.addRotationAnimation(duration: 1.5, repeatCount: 9999, animationKey: "loading")

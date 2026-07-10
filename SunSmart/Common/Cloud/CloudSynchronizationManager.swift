@@ -551,6 +551,8 @@ class CloudSynchronizationHandle: NSObject {
 //    private var waitTimer: Timer?
     /// 网络请求操作
     private var requestHandle: Cancellable?
+    /// Gateway Register 使用共享 Authorization 服务执行。
+    private var gatewayAuthorizationTask: _Concurrency.Task<Void, Never>?
     /// 同步数据操作回调
     private var handleCallback: SyncHandleCallback?
     
@@ -615,6 +617,8 @@ class CloudSynchronizationHandle: NSObject {
     func cancel() {
         stopTimewait()
         requestHandle?.cancel()
+        gatewayAuthorizationTask?.cancel()
+        gatewayAuthorizationTask = nil
         state = .cancel
         DispatchQueue.main.async {
             self.handleCallback?(self, self.state)
@@ -659,6 +663,34 @@ class CloudSynchronizationHandle: NSObject {
 //            self.handleCallback?(self, self.state)
 //        }
         requestHandle?.cancel()
+        if case .syncGateway(let gateway, let node) = operation {
+            gatewayAuthorizationTask?.cancel()
+            gatewayAuthorizationTask = AsyncTask { [weak self] in
+                guard let self else { return }
+                let result = await GatewayServerAuthorizationService.shared.authorize(
+                    gateway: gateway,
+                    node: node,
+                    policy: .always
+                )
+                guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
+
+                switch result {
+                case .success:
+                    self.state = .successful
+                    gateway.lastUploadCloudTimestamp = gateway.lastUpdate
+                    gateway.syncCloudError = nil
+                case .failure(let authorizationError):
+                    self.state = .failure(error: authorizationError.networkApiError)
+                    gateway.syncCloudError = authorizationError.networkApiError
+                }
+                gateway.save()
+                self.gatewayAuthorizationTask = nil
+                DispatchQueue.main.async {
+                    self.handleCallback?(self, self.state)
+                }
+            }
+            return
+        }
         AsyncTask {
             let api = await self.operation.getNetworkApi()
             #if DEBUG

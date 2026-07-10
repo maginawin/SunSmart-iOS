@@ -54,7 +54,7 @@ rg -n "startWiFiRSSIStatusRefresh\\(\\)" "$wifi_controller" >/dev/null \
 rg -n "stopWiFiRSSIStatusRefresh\\(\\)" "$wifi_controller" >/dev/null \
   || fail "WiFiGatewayViewController must stop Wi-Fi RSSI status refresh when disconnected."
 
-rg -n "sendWiFiGatewayGet\\(\\.wifiGatewayRSSIStatus" "$wifi_controller" >/dev/null \
+rg -n "\\.wifiGatewayRSSIStatus," "$wifi_controller" >/dev/null \
   || fail "WiFiGatewayViewController must query Wi-Fi RSSI status via vendor protocol."
 
 rg -n "WiFiGatewayRSSIStatus" "$wifi_controller" >/dev/null \

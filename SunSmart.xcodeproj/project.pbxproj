@@ -1519,6 +1519,10 @@
 		C8A9000A2F8000010000000A /* WiFiSSIDProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900012F80000100000001 /* WiFiSSIDProvider.swift */; };
 		C8A9000B2F8000010000000B /* WiFiSSIDProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900012F80000100000001 /* WiFiSSIDProvider.swift */; };
 		C8A9000C2F8000010000000C /* WiFiSSIDProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900012F80000100000001 /* WiFiSSIDProvider.swift */; };
+		C8A901092F81000100000009 /* GatewayServerAuthorizationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A901012F81000100000001 /* GatewayServerAuthorizationService.swift */; };
+		C8A9010A2F8100010000000A /* GatewayServerAuthorizationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A901012F81000100000001 /* GatewayServerAuthorizationService.swift */; };
+		C8A9010B2F8100010000000B /* GatewayServerAuthorizationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A901012F81000100000001 /* GatewayServerAuthorizationService.swift */; };
+		C8A9010C2F8100010000000C /* GatewayServerAuthorizationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A901012F81000100000001 /* GatewayServerAuthorizationService.swift */; };
 		C8A9000D2F8000010000000D /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C8A900062F80000100000006 /* InfoPlist.strings */; };
 		C8A9000E2F8000010000000E /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C8A900062F80000100000006 /* InfoPlist.strings */; };
 		C8A9000F2F8000010000000F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C8A900062F80000100000006 /* InfoPlist.strings */; };
@@ -2796,6 +2800,7 @@
 		C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scheduler.swift; sourceTree = "<group>"; };
 		C8A8D7432EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileDayNightLuxViewController.swift; sourceTree = "<group>"; };
 		C8A900012F80000100000001 /* WiFiSSIDProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiSSIDProvider.swift; sourceTree = "<group>"; };
+		C8A901012F81000100000001 /* GatewayServerAuthorizationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayServerAuthorizationService.swift; sourceTree = "<group>"; };
 		C8A900022F80000100000002 /* SunSmart.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SunSmart.entitlements; sourceTree = "<group>"; };
 		C8A900032F80000100000003 /* Archipelago.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Archipelago.entitlements; sourceTree = "<group>"; };
 		C8A900042F80000100000004 /* SLGSync.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SLGSync.entitlements; sourceTree = "<group>"; };
@@ -4934,6 +4939,7 @@
 			children = (
 				C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */,
 				C8A900012F80000100000001 /* WiFiSSIDProvider.swift */,
+				C8A901012F81000100000001 /* GatewayServerAuthorizationService.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -5652,6 +5658,7 @@
 				C8D22E002E010A47001A2BDA /* GatewayViewController.swift in Sources */,
 				C8F6A1002FA3000000000001 /* WiFiGatewayViewController.swift in Sources */,
 				C8A900092F80000100000009 /* WiFiSSIDProvider.swift in Sources */,
+				C8A901092F81000100000009 /* GatewayServerAuthorizationService.swift in Sources */,
 				C8A900122F80000100000012 /* GatewayNetworkConnectivityCell.swift in Sources */,
 				C8A900172F80000100000017 /* GatewayChangeWiFiAlertView.swift in Sources */,
 				C88554342DE6B44C00C8B688 /* UIView+Extension.swift in Sources */,
@@ -6229,6 +6236,7 @@
 				C886E0862E30DE4900D0C3A6 /* GatewayViewController.swift in Sources */,
 				C8F6A1012FA3000000000001 /* WiFiGatewayViewController.swift in Sources */,
 				C8A9000A2F8000010000000A /* WiFiSSIDProvider.swift in Sources */,
+				C8A9010A2F8100010000000A /* GatewayServerAuthorizationService.swift in Sources */,
 				C8A900132F80000100000013 /* GatewayNetworkConnectivityCell.swift in Sources */,
 				C8A900182F80000100000018 /* GatewayChangeWiFiAlertView.swift in Sources */,
 				C886E0872E30DE4900D0C3A6 /* UIView+Extension.swift in Sources */,
@@ -6815,6 +6823,7 @@
 				C8D22E012E010A47001A2BDA /* GatewayViewController.swift in Sources */,
 				C8F6A1022FA3000000000001 /* WiFiGatewayViewController.swift in Sources */,
 				C8A9000B2F8000010000000B /* WiFiSSIDProvider.swift in Sources */,
+				C8A9010B2F8100010000000B /* GatewayServerAuthorizationService.swift in Sources */,
 				C8A900142F80000100000014 /* GatewayNetworkConnectivityCell.swift in Sources */,
 				C8A900192F80000100000019 /* GatewayChangeWiFiAlertView.swift in Sources */,
 				C8ACF1372AA1B2BA00E24B4A /* UIView+Extension.swift in Sources */,
@@ -7382,6 +7391,7 @@
 				C8BB66452ED3F056000C63EE /* GatewayViewController.swift in Sources */,
 				C8F6A1032FA3000000000001 /* WiFiGatewayViewController.swift in Sources */,
 				C8A9000C2F8000010000000C /* WiFiSSIDProvider.swift in Sources */,
+				C8A9010C2F8100010000000C /* GatewayServerAuthorizationService.swift in Sources */,
 				C8A900152F80000100000015 /* GatewayNetworkConnectivityCell.swift in Sources */,
 				C8A9001A2F8000010000001A /* GatewayChangeWiFiAlertView.swift in Sources */,
 				C8BB66462ED3F056000C63EE /* UIView+Extension.swift in Sources */,

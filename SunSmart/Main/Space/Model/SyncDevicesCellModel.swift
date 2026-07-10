@@ -253,6 +253,14 @@ enum DeviceOperationType {
                 return switchData.deleteProxyNode == nil || switchData.deleteProxyNode?.enOceanMacAddress == nil
             case .deviceInitialize:
                 return true
+            case .gatewayRecoveryInitialization,
+                 .gatewayRepairInitialization,
+                 .gatewayRecoveryVerification,
+                 .gatewayRecoveryAssociatedSpace,
+                 .gatewayServerAuthorization,
+                 .gatewayServerInformation,
+                 .gatewayServerInformationVerification:
+                return true
             case .deviceParameters(let parameterType):
                 return parameterType.isSuccessful(node: node)
             case .deviceReadParmeters:
@@ -332,6 +340,36 @@ enum DeviceOperationType {
                 return true
             case .deviceInitialize:
                 return node.isKeybindComplete
+            case .gatewayRecoveryInitialization:
+                return true
+            case .gatewayRepairInitialization:
+                return node.isKeybindComplete
+            case .gatewayServerAuthorization(let gateway):
+                return GatewayServerAuthorizationService.isValid(gateway.mqttServerInfo)
+            case .gatewayServerInformation(let gateway),
+                 .gatewayServerInformationVerification(let gateway):
+                guard let target = gateway.mqttServerInfo,
+                      GatewayServerAuthorizationService.isValid(target),
+                      let current = node.gatewayInfo?.mqttConnectInfo else {
+                    return false
+                }
+                return current == target
+            case .gatewayRecoveryVerification(let gateway):
+                let serverInformationComplete = !node.isWiFiGateway
+                    || GatewayServerAuthorizationService.isValid(gateway.mqttServerInfo)
+                return serverInformationComplete
+                    && node.isKeybindComplete
+                    && node.getNodeSyncGatewayData(gateway: gateway).isEmpty
+            case .gatewayRecoveryAssociatedSpace(let networkKey, let applicationKey, let activate):
+                guard node.knows(networkKey: networkKey),
+                      node.knows(applicationKey: applicationKey),
+                      !node.subnetAppkeyBindModels.contains(where: { !$0.isBoundTo(applicationKey) }) else {
+                    return false
+                }
+                if activate {
+                    return node.gatewayInfo?.subnetAppkeyIndexs.contains(applicationKey.index) ?? false
+                }
+                return true
             case .deviceParameters(let parameterType):
                 return parameterType.isSuccessful(node: node)
             case .deviceReadParmeters:
@@ -452,6 +490,14 @@ enum DeviceOperationType {
                 }
             case .deviceInitialize:
                 break
+            case .gatewayRecoveryInitialization,
+                 .gatewayRepairInitialization,
+                 .gatewayRecoveryVerification,
+                 .gatewayRecoveryAssociatedSpace,
+                 .gatewayServerAuthorization,
+                 .gatewayServerInformation,
+                 .gatewayServerInformationVerification:
+                break
             case .deviceParameters(let parameterType):
                 messageHandles.append(contentsOf: parameterType.getMessageHandles(node: node))
             case .deviceReadParmeters:
@@ -523,6 +569,36 @@ enum DeviceOperationType {
                 }else {
                     messageHandles.append(contentsOf: node.getConfigMessageHandles())
                 }
+            case .gatewayRecoveryInitialization:
+                messageHandles.append(contentsOf: node.getForcedGatewayInitializationMessageHandles())
+            case .gatewayRepairInitialization:
+                let compositionHandles = node.getGatewayRepairCompositionMessageHandles()
+                if compositionHandles.isEmpty {
+                    messageHandles.append(contentsOf: node.getGatewayRepairInitializationMessageHandles())
+                } else {
+                    messageHandles.append(contentsOf: compositionHandles)
+                }
+            case .gatewayServerAuthorization,
+                 .gatewayServerInformationVerification:
+                break
+            case .gatewayServerInformation(let gateway):
+                guard let information = gateway.mqttServerInfo,
+                      GatewayServerAuthorizationService.isValid(information) else {
+                    break
+                }
+                messageHandles.append(
+                    contentsOf: NodeSyncData
+                        .syncGatewayMQTTInformation(mqttInformation: information)
+                        .getMessageHandles(node: node)
+                )
+            case .gatewayRecoveryVerification:
+                break
+            case .gatewayRecoveryAssociatedSpace(let networkKey, let applicationKey, let activate):
+                messageHandles.append(contentsOf: node.getForcedGatewayAssociatedSpaceMessageHandles(
+                    networkKey: networkKey,
+                    applicationKey: applicationKey,
+                    activate: activate
+                ))
             case .deviceParameters(let parameterType):
                 messageHandles.append(contentsOf: parameterType.getMessageHandles(node: node))
             case .deviceReadParmeters:
@@ -645,6 +721,20 @@ enum ActionType {
 //    case pwmPeriod(period: UInt16)
     /// 设备初始化
     case deviceInitialize
+    /// WiFi 网关恢复：强制重下发基础密钥和 model 绑定
+    case gatewayRecoveryInitialization
+    /// WiFi 网关 Repair：Composition 完成后强制重下发基础配置
+    case gatewayRepairInitialization
+    /// WiFi 网关恢复：向服务器注册并持久化 MQTT 目标
+    case gatewayServerAuthorization(gateway: GatewayModel)
+    /// WiFi 网关恢复：执行时读取最新 MQTT 目标并下发
+    case gatewayServerInformation(gateway: GatewayModel)
+    /// WiFi 网关 Authorize：只验证服务器信息是否收敛
+    case gatewayServerInformationVerification(gateway: GatewayModel)
+    /// WiFi 网关恢复：验证 Key Bind 和 Gateway 业务差异均已收敛
+    case gatewayRecoveryVerification(gateway: GatewayModel)
+    /// WiFi 网关恢复：强制重下发关联 Space 配置
+    case gatewayRecoveryAssociatedSpace(networkKey: NetworkKey, applicationKey: ApplicationKey, activate: Bool)
     /// 设备参数
     case deviceParameters(parameterType: DeviceParameterType)
     /// 设备参数读取
@@ -1262,10 +1352,26 @@ class SyncDeviceStepTaskModel: SyncCellModel {
     
     /// 失败次数
     var failedCount: Int = 0
+    /// 未执行：前置关键任务失败或网关已离线
+    private(set) var isSkipped = false
+    /// 仅用于任务详情展示，不记录认证字段或完整响应
+    var failureMessage: String?
 
     init(name: String, operationType: DeviceOperationType) {
         self.name = name
         self.operationType = operationType
+    }
+
+    func markSkipped() {
+        failureMessage = nil
+        isSkipped = true
+        state = .failed
+        isFineshed = true
+    }
+
+    func resetSkippedState() {
+        failureMessage = nil
+        isSkipped = false
     }
     
 }

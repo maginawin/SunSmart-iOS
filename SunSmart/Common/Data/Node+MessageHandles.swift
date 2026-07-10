@@ -56,6 +56,148 @@ extension Scene {
     
 }
 
+extension Node {
+
+    func getForcedGatewayInitializationMessageHandles() -> [MeshMessageHandle] {
+        let manager = MeshNetworkManager.instance
+        let currentNetworkKey = manager.currentNetworkKey
+        let currentApplicationKey = manager.currentApplicationKey
+        let mainNetworkKey = manager.mainNetworkKey
+        let mainApplicationKey = manager.mainApplicationKey
+        var messageHandles: [MeshMessageHandle] = []
+
+        let currentAppKeyHandle = MeshMessageHandle(
+            message: ConfigAppKeyAdd(applicationKey: currentApplicationKey),
+            address: primaryUnicastAddress
+        )
+        currentAppKeyHandle.continuous = false
+        messageHandles.append(currentAppKeyHandle)
+
+        var bindingApplicationKeys = [currentApplicationKey]
+        if requiredFunctionTypes.contains(.mainNetwork),
+           mainNetworkKey.index != currentNetworkKey.index {
+            let mainNetworkKeyHandle = MeshMessageHandle(
+                message: ConfigNetKeyAdd(networkKey: mainNetworkKey),
+                address: primaryUnicastAddress
+            )
+            mainNetworkKeyHandle.continuous = false
+            messageHandles.append(mainNetworkKeyHandle)
+
+            let mainAppKeyHandle = MeshMessageHandle(
+                message: ConfigAppKeyAdd(applicationKey: mainApplicationKey),
+                address: primaryUnicastAddress
+            )
+            mainAppKeyHandle.continuous = false
+            messageHandles.append(mainAppKeyHandle)
+
+            if mainApplicationKey.index != currentApplicationKey.index {
+                bindingApplicationKeys.insert(mainApplicationKey, at: 0)
+            }
+        }
+
+        for model in supportModels {
+            for applicationKey in bindingApplicationKeys {
+                guard let message = ConfigModelAppBind(
+                    applicationKey: applicationKey,
+                    to: model
+                ) else {
+                    continue
+                }
+                let handle = MeshMessageHandle(
+                    message: message,
+                    address: primaryUnicastAddress
+                )
+                handle.continuous = false
+                messageHandles.append(handle)
+            }
+        }
+
+        return messageHandles
+    }
+
+    func getForcedGatewayAssociatedSpaceMessageHandles(
+        networkKey: NetworkKey,
+        applicationKey: ApplicationKey,
+        activate: Bool
+    ) -> [MeshMessageHandle] {
+        var messageHandles: [MeshMessageHandle] = []
+
+        let networkKeyHandle = MeshMessageHandle(
+            message: ConfigNetKeyAdd(networkKey: networkKey),
+            address: primaryUnicastAddress
+        )
+        networkKeyHandle.continuous = false
+        messageHandles.append(networkKeyHandle)
+
+        let applicationKeyHandle = MeshMessageHandle(
+            message: ConfigAppKeyAdd(applicationKey: applicationKey),
+            address: primaryUnicastAddress
+        )
+        applicationKeyHandle.continuous = false
+        messageHandles.append(applicationKeyHandle)
+
+        for model in subnetAppkeyBindModels {
+            guard let message = ConfigModelAppBind(
+                applicationKey: applicationKey,
+                to: model
+            ) else {
+                continue
+            }
+            let handle = MeshMessageHandle(
+                message: message,
+                address: primaryUnicastAddress
+            )
+            handle.continuous = false
+            messageHandles.append(handle)
+        }
+
+        if activate, let vendorModel = sunricherVendorModel {
+            let handle = MeshMessageHandle(
+                message: SunricherVendorSet(
+                    function: .gatewaySubnetAppkeyAdd(
+                        subnetAppkeyIndex: applicationKey.index
+                    )
+                ),
+                model: vendorModel
+            )
+            handle.continuous = false
+            messageHandles.append(handle)
+        }
+
+        return messageHandles
+    }
+
+    func getGatewayRepairCompositionMessageHandles() -> [MeshMessageHandle] {
+        let hasCompositionModels = elements.contains { !$0.models.isEmpty }
+        guard elements.isEmpty || !hasCompositionModels || companyIdentifier == nil else {
+            return []
+        }
+
+        let handle = MeshMessageHandle(
+            message: ConfigCompositionDataGet(),
+            address: primaryUnicastAddress
+        )
+        handle.continuous = false
+        return [handle]
+    }
+
+    func getGatewayRepairInitializationMessageHandles() -> [MeshMessageHandle] {
+        var messageHandles = getForcedGatewayInitializationMessageHandles()
+        let completionHandles = getConfigMessageHandles().filter { handle in
+            switch handle.message {
+            case is ConfigNetKeyAdd,
+                 is ConfigAppKeyAdd,
+                 is ConfigModelAppBind:
+                return false
+            default:
+                return true
+            }
+        }
+        messageHandles.append(contentsOf: completionHandles)
+        return messageHandles
+    }
+}
+
 extension NodeSyncData {
     
     /// 根据同步数据获取需要发送的mesh消息list

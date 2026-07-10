@@ -260,6 +260,29 @@ extension GatewayModel {
     }
 }
 
+extension SiteData {
+    func canConfigureGateway(_ gateway: GatewayModel) -> Bool {
+        if permission == .owner {
+            return true
+        }
+
+        let effectiveEditableSpaceIds = Set(
+            spaces
+                .filter { $0.canEditing && $0.deviceOperates.contains(.edit) }
+                .map(\.id)
+        )
+        guard !effectiveEditableSpaceIds.isEmpty else {
+            return false
+        }
+        if gateway.associatedSpaces.isEmpty {
+            return true
+        }
+        return gateway.associatedSpaces.contains {
+            effectiveEditableSpaceIds.contains($0.spaceId)
+        }
+    }
+}
+
 /// 网关space数据
 class GatewaySpaceData: Codable {
     

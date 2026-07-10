@@ -1389,6 +1389,7 @@
 "apn_full" = "APN（接入点名称）";
 "apn" = "APN";
 "server_information" = "服务器信息";
+"server_authorization" = "服务器授权";
 "server_address" = "服务器地址";
 "port" = "端口";
 "client_id" = "客户端 ID";
@@ -1591,6 +1592,7 @@
 "disassociate_spaces_failed_message" = "取消关联空间失败：%@";
 "associate_space_unauthorized_message" = "在关联空间之前需要授权。";
 "gateway_sync_spaces" = "同步空间";
+"gateway_recovery_verification" = "验证配置";
 "gateway_no_authority" = "您已不再具有权限";
 "restore_device" = "恢复设备";
 "Firmware_update" = "固件更新";
@@ -1974,3 +1976,6 @@
 "wifi_status_bad" = "差";
 "wifi_status_no_signal" = "无信号";
 "wifi_status_not_connected" = "未连接";
+"preparing_device_sync" = "正在准备设备同步…";
+"wifi_gateway_wait_current_operation" = "请等待当前操作完成。";
+"skipped" = "已跳过";

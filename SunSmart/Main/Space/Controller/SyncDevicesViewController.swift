@@ -486,6 +486,38 @@ class SyncDevicesViewController: UIViewController {
                         removeSection.devices.append(removeDevice)
                     }
                 }
+            case .gatewayRecovery(let node, let gateway, let trigger):
+                if let deviceModel = makeGatewayRecoveryDeviceModel(
+                    node: node,
+                    gateway: gateway,
+                    trigger: trigger
+                ) {
+                    configurationSection.devices.append(deviceModel)
+                } else {
+                    syncState = .syncFailure
+                    DispatchQueue.main.async {
+                        XWHUDManager.showErrorTipHUD("failed_to_retrieve_data".localizedString)
+                    }
+                }
+            case .gatewayServerRecovery(let node, let gateway):
+                guard node.isWiFiGateway else {
+                    syncState = .syncFailure
+                    break
+                }
+                let steps = makeGatewayServerRecoverySteps(
+                    node: node,
+                    gateway: gateway,
+                    authorizationDependencies: [],
+                    includesVerification: true
+                )
+                let deviceModel = SyncDevicesModel(
+                    name: node.name ?? gateway.name,
+                    address: node.primaryUnicastAddress
+                )
+                deviceModel.imageName = node.iconName
+                deviceModel.steps = steps
+                steps.forEach { $0.parentDeviceModel = deviceModel }
+                configurationSection.devices.append(deviceModel)
             case .devicesParameter(let datas):
                 datas.forEach { (node: Node, parameters: [DeviceParameterType]) in
                     
@@ -1652,6 +1684,215 @@ class SyncDevicesViewController: UIViewController {
         
         return (configturationDevice, removeDevice)
     }
+
+    private func makeGatewayServerRecoverySteps(
+        node: Node,
+        gateway: GatewayModel,
+        authorizationDependencies: [SyncDeviceStepModel],
+        includesVerification: Bool
+    ) -> [SyncDeviceStepModel] {
+        let authorizationTask = SyncDeviceStepTaskModel(
+            name: "server_authorization".localizedString,
+            operationType: .configuration(
+                node: node,
+                type: .gatewayServerAuthorization(gateway: gateway)
+            )
+        )
+        let authorizationStep = SyncDeviceStepModel(
+            type: "server_authorization".localizedString,
+            state: .none,
+            tasks: [authorizationTask]
+        )
+        authorizationTask.parentStepModel = authorizationStep
+        authorizationStep.relevanceStepModels = authorizationDependencies
+
+        let informationTask = SyncDeviceStepTaskModel(
+            name: "server_information".localizedString,
+            operationType: .configuration(
+                node: node,
+                type: .gatewayServerInformation(gateway: gateway)
+            )
+        )
+        let informationStep = SyncDeviceStepModel(
+            type: "server_information".localizedString,
+            state: .none,
+            tasks: [informationTask]
+        )
+        informationTask.parentStepModel = informationStep
+        informationStep.relevanceStepModels = authorizationDependencies + [authorizationStep]
+
+        var steps = [authorizationStep, informationStep]
+        if includesVerification {
+            let verificationTask = SyncDeviceStepTaskModel(
+                name: "gateway_recovery_verification".localizedString,
+                operationType: .configuration(
+                    node: node,
+                    type: .gatewayServerInformationVerification(gateway: gateway)
+                )
+            )
+            let verificationStep = SyncDeviceStepModel(
+                type: "gateway_recovery_verification".localizedString,
+                state: .none,
+                tasks: [verificationTask]
+            )
+            verificationTask.parentStepModel = verificationStep
+            verificationStep.relevanceStepModels = [informationStep]
+            steps.append(verificationStep)
+        }
+        return steps
+    }
+
+    private func makeGatewayRecoveryDeviceModel(
+        node: Node,
+        gateway: GatewayModel,
+        trigger: GatewayRecoveryTrigger
+    ) -> SyncDevicesModel? {
+        guard node.deviceType == .gateway,
+              let meshNetwork = MeshNetworkManager.instance.meshNetwork else {
+            return nil
+        }
+
+        let initializationAction: ActionType
+        switch trigger {
+        case .devicesNotSynced:
+            initializationAction = .gatewayRecoveryInitialization
+        case .repair:
+            initializationAction = .gatewayRepairInitialization
+        }
+
+        let initializeTask = SyncDeviceStepTaskModel(
+            name: "initialize".localizedString,
+            operationType: .configuration(node: node, type: initializationAction)
+        )
+        let initializeStep = SyncDeviceStepModel(
+            type: "initialize".localizedString,
+            state: .none,
+            tasks: [initializeTask]
+        )
+        initializeTask.parentStepModel = initializeStep
+
+        var steps = [initializeStep]
+        let associatedSpaceKeys = gateway.associatedSpaces.compactMap { space -> (GatewaySpaceData, NetworkKey, ApplicationKey)? in
+            guard let networkKey = meshNetwork.networkKeys.first(where: { $0.index == space.appKeyIndex }),
+                  let applicationKey = meshNetwork.applicationKeys.first(where: {
+                      $0.index == space.appKeyIndex && $0.boundNetworkKeyIndex == networkKey.index
+                  }) else {
+                return nil
+            }
+            return (space, networkKey, applicationKey)
+        }
+        guard associatedSpaceKeys.count == gateway.associatedSpaces.count else {
+            return nil
+        }
+
+        if !associatedSpaceKeys.isEmpty {
+            let tasks = associatedSpaceKeys.map { space, networkKey, applicationKey in
+                SyncDeviceStepTaskModel(
+                    name: space.spaceName,
+                    operationType: .configuration(
+                        node: node,
+                        type: .gatewayRecoveryAssociatedSpace(
+                            networkKey: networkKey,
+                            applicationKey: applicationKey,
+                            activate: gateway.activate
+                        )
+                    )
+                )
+            }
+            let step = SyncDeviceStepModel(
+                type: "associated_spaces".localizedString,
+                state: .none,
+                tasks: tasks
+            )
+            tasks.forEach { $0.parentStepModel = step }
+            step.relevanceStepModels = [initializeStep]
+            steps.append(step)
+        }
+
+        let projectTask = SyncDeviceStepTaskModel(
+            name: "association_project".localizedString,
+            operationType: .configuration(
+                node: node,
+                type: .gatewayAssociationProjectId(projectId: gateway.siteId)
+            )
+        )
+        let projectStep = SyncDeviceStepModel(
+            type: "association_project".localizedString,
+            state: .none,
+            tasks: [projectTask]
+        )
+        projectTask.parentStepModel = projectStep
+        projectStep.relevanceStepModels = [initializeStep]
+        steps.append(projectStep)
+
+        let targetAppKeyIndexes: [KeyIndex] = gateway.activate
+            ? Array(Set(gateway.associatedSpaces.map(\.appKeyIndex))).sorted()
+            : []
+        let syncSpacesTask = SyncDeviceStepTaskModel(
+            name: "gateway_sync_spaces".localizedString,
+            operationType: .configuration(
+                node: node,
+                type: .gatewaySubnetAppkeyIndexs(appkeyIndexs: targetAppKeyIndexes)
+            )
+        )
+        let syncSpacesStep = SyncDeviceStepModel(
+            type: "gateway_sync_spaces".localizedString,
+            state: .none,
+            tasks: [syncSpacesTask]
+        )
+        syncSpacesTask.parentStepModel = syncSpacesStep
+        syncSpacesStep.relevanceStepModels = [initializeStep]
+        steps.append(syncSpacesStep)
+
+        if node.isWiFiGateway {
+            steps.append(
+                contentsOf: makeGatewayServerRecoverySteps(
+                    node: node,
+                    gateway: gateway,
+                    authorizationDependencies: [initializeStep],
+                    includesVerification: false
+                )
+            )
+        } else if let mqttServerInfo = gateway.mqttServerInfo {
+            let serverTask = SyncDeviceStepTaskModel(
+                name: "server_information".localizedString,
+                operationType: .configuration(
+                    node: node,
+                    type: .gatewayMQTTInformation(mqttInformation: mqttServerInfo)
+                )
+            )
+            let serverStep = SyncDeviceStepModel(
+                type: "server_information".localizedString,
+                state: .none,
+                tasks: [serverTask]
+            )
+            serverTask.parentStepModel = serverStep
+            serverStep.relevanceStepModels = [initializeStep]
+            steps.append(serverStep)
+        }
+
+        let verificationTask = SyncDeviceStepTaskModel(
+            name: "gateway_recovery_verification".localizedString,
+            operationType: .configuration(
+                node: node,
+                type: .gatewayRecoveryVerification(gateway: gateway)
+            )
+        )
+        let verificationStep = SyncDeviceStepModel(
+            type: "gateway_recovery_verification".localizedString,
+            state: .none,
+            tasks: [verificationTask]
+        )
+        verificationTask.parentStepModel = verificationStep
+        verificationStep.relevanceStepModels = steps
+        steps.append(verificationStep)
+
+        let deviceModel = SyncDevicesModel(name: node.name ?? gateway.name, address: node.primaryUnicastAddress)
+        deviceModel.imageName = node.iconName
+        deviceModel.steps = steps
+        steps.forEach { $0.parentDeviceModel = deviceModel }
+        return deviceModel
+    }
     
     /// 返回
     @objc private func backAction() {
@@ -1950,6 +2191,43 @@ class SyncDevicesViewController: UIViewController {
         }
     }
 
+    private func completeGatewayServerAuthorizationTaskIfNeeded(
+        for model: SyncCellModel,
+        syncRunIdentifier: UUID
+    ) -> Bool {
+        guard let taskModel = model as? SyncDeviceStepTaskModel,
+              case .configuration(let node, let type) = taskModel.operationType,
+              case .gatewayServerAuthorization(let gateway) = type else {
+            return false
+        }
+
+        let semaphore = DispatchSemaphore(value: 0)
+        Task {
+            let result = await GatewayServerAuthorizationService.shared.authorize(
+                gateway: gateway,
+                node: node,
+                policy: .ifMissing
+            )
+            guard self.isActiveSyncRun(syncRunIdentifier) else {
+                semaphore.signal()
+                return
+            }
+            switch result {
+            case .success:
+                taskModel.failureMessage = nil
+                taskModel.state = .successful
+            case .failure(let error):
+                taskModel.failureMessage = error.localizedDescription
+                taskModel.state = .failed
+                taskModel.failedCount += 1
+            }
+            self.updateCell(model: taskModel)
+            semaphore.signal()
+        }
+        semaphore.wait()
+        return true
+    }
+
     private func startSync() {
         
 //        guard let section = sections.first, let model = section.allModels.first else { return }
@@ -1990,13 +2268,25 @@ class SyncDevicesViewController: UIViewController {
                 guard self.isActiveSyncRun(syncRunIdentifier) else {
                     return
                 }
+
+                if let recoveryNode = self.gatewayRecoveryNode, !recoveryNode.state {
+                    self.markPendingGatewayRecoveryTasksSkipped()
+                    break
+                }
                 
                 guard MeshLibManager.manager.isOpenBluetooth else {
-                    self.sections.forEach { section in
-                        section.allModels.forEach({
-                            $0.state = .failed
-                            $0.isFineshed = true
-                        })
+                    if self.gatewayRecoveryNode != nil {
+                        self.markPendingGatewayRecoveryTasksSkipped()
+                        self.sections.forEach { section in
+                            section.allModels.forEach { $0.isFineshed = true }
+                        }
+                    } else {
+                        self.sections.forEach { section in
+                            section.allModels.forEach({
+                                $0.state = .failed
+                                $0.isFineshed = true
+                            })
+                        }
                     }
                     self.syncState = .syncFailure
                     self.applyProfileSensorTargetStateIfNeeded()
@@ -2099,6 +2389,13 @@ class SyncDevicesViewController: UIViewController {
                     self.tableView.reloadData()
                 }
 
+                if self.completeGatewayServerAuthorizationTaskIfNeeded(
+                    for: model,
+                    syncRunIdentifier: syncRunIdentifier
+                ) {
+                    continue
+                }
+
                 if self.completeProfileSensorProtectionTaskIfNeeded(for: model) {
                     DispatchQueue.main.async {
                         if let model = self.showProressStepModel {
@@ -2164,9 +2461,26 @@ class SyncDevicesViewController: UIViewController {
                             return
                         }
                         // 判断如果是设备初始化消息，则需要再初始化完成后完成基本配置
-                        if statusMessage is ConfigCompositionDataStatus || statusMessage is ConfigAppKeyStatus {
-                            if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address), node.isInitialize {
-                                MeshProxyMessageCommand.shared.addMessage(messageHandles: node.getConfigMessageHandles(), finishedBack: nil)
+                        if self.isGatewayRepairInitialization(model),
+                           statusMessage is ConfigCompositionDataStatus,
+                           let address = handle.address ?? handle.model?.parentElement?.unicastAddress,
+                           let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
+                            let appendedHandles = node.getGatewayRepairInitializationMessageHandles()
+                            if !appendedHandles.isEmpty {
+                                MeshProxyMessageCommand.shared.addMessage(
+                                    messageHandles: appendedHandles,
+                                    finishedBack: nil
+                                )
+                            }
+                        } else if self.isNormalDeviceInitialization(model),
+                                  statusMessage is ConfigCompositionDataStatus || statusMessage is ConfigAppKeyStatus {
+                            if let address = handle.address ?? handle.model?.parentElement?.unicastAddress,
+                               let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address),
+                               node.isInitialize {
+                                MeshProxyMessageCommand.shared.addMessage(
+                                    messageHandles: node.getConfigMessageHandles(),
+                                    finishedBack: nil
+                                )
                             }
                         }else if (statusMessage is GenericOnOffStatus || statusMessage is LightLightnessStatus || statusMessage is LightCTLTemperatureStatus || statusMessage is LightCTLStatus || statusMessage is LightHSLStatus), messageHandles.contains(where: { $0.message is SceneStore }) { // 设置场景时需要及时更新状态属性
                             if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
@@ -2318,6 +2632,8 @@ class SyncDevicesViewController: UIViewController {
             }
 //            _ = MeshNetworkManager.instance.save()
             print("完成")
+
+            self.markPendingGatewayRecoveryTasksSkipped()
             
             self.applyProfileSensorTargetStateIfNeeded()
             
@@ -2472,6 +2788,33 @@ class SyncDevicesViewController: UIViewController {
         }
         return nil
     }
+
+    private func isNormalDeviceInitialization(_ model: SyncCellModel) -> Bool {
+        guard let operationType = operationType(for: model),
+              case .configuration(_, let actionType) = operationType,
+              case .deviceInitialize = actionType else {
+            return false
+        }
+        return true
+    }
+
+    private func isGatewayRecoveryInitialization(_ model: SyncCellModel) -> Bool {
+        guard let operationType = operationType(for: model),
+              case .configuration(_, let actionType) = operationType,
+              case .gatewayRecoveryInitialization = actionType else {
+            return false
+        }
+        return true
+    }
+
+    private func isGatewayRepairInitialization(_ model: SyncCellModel) -> Bool {
+        guard let operationType = operationType(for: model),
+              case .configuration(_, let actionType) = operationType,
+              case .gatewayRepairInitialization = actionType else {
+            return false
+        }
+        return true
+    }
     
     private func containsBatteryPowerSwitchConfiguration(_ device: SyncDevicesModel) -> Bool {
         if let operationType = device.operationType {
@@ -2588,6 +2931,12 @@ class SyncDevicesViewController: UIViewController {
         operationSuccessful: Bool,
         messageHandles: [MeshMessageHandle]
     ) -> Bool {
+        if isGatewayRepairInitialization(model) {
+            return !messageHandles.isEmpty && resultSuccessful && operationSuccessful
+        }
+        if isGatewayRecoveryInitialization(model) {
+            return !messageHandles.isEmpty && resultSuccessful
+        }
         if isEmergencyFireControllerDeleteCleanup(model) {
             return isEmergencyFireControllerDeleteCleanupSuccessful(
                 model: model,
@@ -2820,6 +3169,7 @@ class SyncDevicesViewController: UIViewController {
     private func prepareTaskForResync(_ task: SyncDeviceStepTaskModel) {
         task.isFineshed = false
         task.failedCount = 0
+        task.resetSkippedState()
         task.state = .none
         resetMessageHandlesForResync(task.operationType.messageHandles)
         task.parentStepModel?.isFineshed = false
@@ -2836,6 +3186,28 @@ class SyncDevicesViewController: UIViewController {
         messageHandles.forEach { handle in
             handle.respondAddresss = []
             handle.notRespondAddresss = []
+        }
+    }
+
+    private var gatewayRecoveryNode: Node? {
+        switch type {
+        case .gatewayRecovery(let node, _, _),
+             .gatewayServerRecovery(let node, _):
+            return node
+        default:
+            return nil
+        }
+    }
+
+    private func markPendingGatewayRecoveryTasksSkipped() {
+        guard gatewayRecoveryNode != nil else {
+            return
+        }
+        sections.forEach { section in
+            section.allModels
+                .compactMap { $0 as? SyncDeviceStepTaskModel }
+                .filter { $0.state == .none || $0.state == .wait }
+                .forEach { $0.markSkipped() }
         }
     }
     
@@ -3320,6 +3692,20 @@ extension SyncDevicesViewController {
         }
     }
     
+    enum GatewayRecoveryTrigger {
+        case devicesNotSynced
+        case repair
+
+        var startsImmediately: Bool {
+            switch self {
+            case .devicesNotSynced:
+                return false
+            case .repair:
+                return true
+            }
+        }
+    }
+
     /// 同步数据类型
     enum SyncType {
         /// 组（设备同步组数据） inNodes：需要进入组的设备list   outNodes：需要组退出的设备list
@@ -3338,6 +3724,14 @@ extension SyncDevicesViewController {
 //        case pwmPeriod(_ period: UInt16, group: Group)
         /// 同步设备list
         case devices(_ nodes: [Node])
+        /// WiFi 网关添加中断后的完整恢复
+        case gatewayRecovery(
+            node: Node,
+            gateway: GatewayModel,
+            trigger: GatewayRecoveryTrigger
+        )
+        /// WiFi Gateway 手动 Authorize 的服务器恢复子链
+        case gatewayServerRecovery(node: Node, gateway: GatewayModel)
         /// 同步设备参数
         case devicesParameter(_ datas: [(node: Node, parameters: [DeviceParameterType])])
         /// Dongle设备

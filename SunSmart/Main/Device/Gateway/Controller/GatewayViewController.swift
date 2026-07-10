@@ -37,6 +37,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     private var onlineState: Bool = false
     /// 页面当前是否可见
     private var isViewVisible: Bool = false
+    /// 防止重复进入网关恢复页面
+    private var isPresentingGatewayRecovery: Bool = false
     /// 网关 4G 信号刷新定时器
     private var signalRefreshTimer: Timer?
 
@@ -54,7 +56,14 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         return true
     }
 
+    var canConfigureCurrentGateway: Bool {
+        site.canConfigureGateway(setGatewayModel)
+    }
+
     init?(site: SiteData, gateway: Gateway) {
+        guard site.canConfigureGateway(gateway.model) else {
+            return nil
+        }
         self.site = site
         self.gateway = gateway
         self.gatewayModel = gateway.model
@@ -133,8 +142,13 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
 
+        isPresentingGatewayRecovery = false
         isViewVisible = true
         MeshLibManager.manager.messageDelegate = self
+        refreshServerInformationFromPersistence()
+        updateData()
+        updateSaveBtnState()
+        tableView.reloadData()
         syncSignalRefreshState(forceRefresh: node.state)
     }
 
@@ -313,7 +327,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                 }
                 let gatewaySpace = GatewaySpaceData(spaceId: spaceId, spaceName: spaceName, deviceCount: deviceCount, appKeyIndex: appKeyIndex)
                 if let space = SpaceData.load(siteId: self.gatewayModel.siteId, spaceId: spaceId).first {
-                    if space.canEditing {
+                    if space.canEditing && space.deviceOperates.contains(.edit) {
                         gatewaySpace.permission = .editor
                     }else {
                         if space.state == .waitDeleted {
@@ -427,8 +441,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             if isConnecting {
                 bottomView.deleteBtn.isEnabled = false
             }else {
-                // 无权限
-                if gatewayAssociatedSpacesToDisplay().contains(where: { $0.permission == .none || $0.permission == .permissionLoss || $0.permission == .permissionException }) {
+                if !canConfigureCurrentGateway {
                     bottomView.deleteBtn.isEnabled = false
                 }else {
                     bottomView.deleteBtn.isEnabled = true
@@ -440,10 +453,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             if view.emptyView == nil {
                 view.showEmptyDataView(imageName: "device_state_offline", title: "device_repair_message".localizedString, backgroundColor: Background_Color, buttonText: "repair".localizedString, buttomWidth: SCRXFrom(216), bottomMargin: SCRYFit(-78)) {[weak self] in
                     // 修复
-                    self?.repair()
+                    self?.performGatewayRepair()
                 }
                 if let emptyView = view.emptyView {
-                    if site.deviceOperates.contains(.edit) { // 是否有编辑设备权限
+                    if canConfigureCurrentGateway {
                         emptyView.button.snp.updateConstraints { make in
                             make.top.equalTo(emptyView.titleLabel.snp.bottom).offset(SCRYFrom(78))
                         }
@@ -466,7 +479,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
 
     /// 修复
-    private func repair() {
+    func performGatewayRepair() {
 
         repairDevices(nodes: [node], result: {[weak self] _, _ in
             guard let self = self else { return }
@@ -484,14 +497,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         guard let name = self.name, !name.isAllInputTextEmpty() else {
             return
         }
-        guard setGatewayModel.associatedSpaces.isEmpty || setGatewayModel.associatedSpaces.contains(where: { $0.permission == .editor }) else {
+        guard site.canConfigureGateway(setGatewayModel) else {
             XWHUDManager.showTipHUD("no_permission".localizedString + "！")
             return
         }
-//        guard self.site.permissionOperates.contains(.edit) else {
-//            XWHUDManager.showTipHUD("no_permission".localizedString + "！")
-//            return
-//        }
 
         bottomView.saveBtn.isEnabled = false
         Task { [weak self] in
@@ -596,7 +605,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     /// 删除
     @objc func deleteBtnAction() {
 
-        guard self.site.deviceOperates.contains(.edit) else {
+        guard canConfigureCurrentGateway else {
             XWHUDManager.showTipHUD("no_permission".localizedString + "！")
             return
         }
@@ -744,21 +753,88 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         }
     }
 
-    private func resync() {
+    func performServerAuthorization() {
+        authorizeRequest()
+    }
 
-        let vc = SyncDevicesViewController(type: .devices([node]), reSync: true)
+    func refreshServerInformationFromPersistence() {
+        guard let persistedGateway = GatewayModel.load(
+            siteId: gatewayModel.siteId,
+            macAddress: gatewayModel.mac
+        ).first else {
+            return
+        }
+        gatewayModel.mqttServerInfo = persistedGateway.mqttServerInfo
+        setGatewayModel.mqttServerInfo = persistedGateway.mqttServerInfo
+    }
+
+    func recoverServerInformation() {
+        guard canConfigureCurrentGateway,
+              !isPresentingGatewayRecovery,
+              let navigationController else {
+            return
+        }
+        isPresentingGatewayRecovery = true
+
+        let controller = SyncDevicesViewController(
+            type: .gatewayServerRecovery(
+                node: node,
+                gateway: gatewayModel
+            )
+        )
+        controller.syncSuccessCallback = { [weak self] _ in
+            guard let self else { return }
+            self.refreshServerInformationFromPersistence()
+            self.updateData()
+            self.updateSaveBtnState()
+            self.tableView.reloadData()
+            NotificationCenter.default.post(
+                name: .init(siteGatewayDataChangedNotificaitonName),
+                object: self.gateway
+            )
+        }
+        navigationController.pushViewController(controller, animated: true)
+    }
+
+    func resync(trigger: SyncDevicesViewController.GatewayRecoveryTrigger) {
+
+        guard !isPresentingGatewayRecovery,
+              let navigationController else {
+            return
+        }
+        isPresentingGatewayRecovery = true
+
+        let vc = SyncDevicesViewController(
+            type: .gatewayRecovery(
+                node: node,
+                gateway: gatewayModel,
+                trigger: trigger
+            ),
+            reSync: !trigger.startsImmediately
+        )
         vc.syncSuccessCallback = {[weak self] _ in
             guard let self = self else { return }
+            self.refreshServerInformationFromPersistence()
+            self.updateData()
             self.updateSaveBtnState()
             self.tableView.reloadData()
             // 通知网关数据修改
             NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
         }
-        navigationController?.pushViewController(vc, animated: true)
+        navigationController.pushViewController(vc, animated: true)
 
     }
 
+    func prepareForGatewayRecovery(_ completion: @escaping () -> Void) {
+        completion()
+    }
+
     private func associatedSpaces() {
+
+        guard canConfigureCurrentGateway else {
+            XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+            return
+        }
 
         guard gatewayModel.mqttServerInfo != nil else {
             XWHUDManager.showTipHUD("associate_space_unauthorized_message".localizedString, isLineFeed: true, afterDelay: 1.5)
@@ -768,10 +844,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         guard let meshNetwork = MeshNetworkManager.instance.meshNetwork else {
             return
         }
-        let gatewaySpaceData: [GatewaySpaceData] = site.spaces.filter({ ($0.permission == .owner || $0.permission == .editor) && $0.state == .normal && !$0.requiresPasswordVerification && ($0.relevanceGatewayId == nil || $0.relevanceGatewayId == gateway.mac) }).compactMap({ space in
+        let gatewaySpaceData: [GatewaySpaceData] = site.spaces.filter({ $0.canEditing && $0.deviceOperates.contains(.edit) && ($0.relevanceGatewayId == nil || $0.relevanceGatewayId == gateway.mac) }).compactMap({ space in
             if let appkey = meshNetwork.applicationKeys.first(where: { $0.boundNetworkKey.networkId.hex == space.meshNetworkId }) {
                 let permission: GatewaySpaceData.GatewaySpacePermission
-                if space.canEditing {
+                if space.canEditing && space.deviceOperates.contains(.edit) {
                     permission = .editor
                 }else {
                     if space.state == .waitDeleted {
@@ -800,6 +876,11 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 
     /// 解除空间关联
     private func unbindAssociatedSpace(_ space: GatewaySpaceData) {
+
+        guard canConfigureCurrentGateway else {
+            XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+            return
+        }
 
         if let index = setGatewayModel.associatedSpaces.firstIndex(where: { $0.spaceId == space.spaceId }) {
             setGatewayModel.associatedSpaces.remove(at: index)
@@ -900,7 +981,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             make.bottom.equalTo(bottomView.snp.top)
         }
 
-        if !site.deviceOperates.contains(.edit) {
+        if !canConfigureCurrentGateway {
             bottomView.isHidden = true
             tableView.snp.remakeConstraints { make in
                 make.left.equalTo(SCRXFrom(16))
@@ -917,7 +998,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         if self.isConnecting {
             bottomView.saveBtn.isEnabled = false
         }else {
-            bottomView.saveBtn.isEnabled = self.site.deviceOperates.contains(.edit) && (!(setGatewayModel == gatewayModel) || (!(name?.isAllInputTextEmpty() ?? true) && node.name != name))
+            bottomView.saveBtn.isEnabled = canConfigureCurrentGateway && (!(setGatewayModel == gatewayModel) || (!(name?.isAllInputTextEmpty() ?? true) && node.name != name))
         }
     }
 
@@ -932,7 +1013,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             guard !self.isConnecting else {
                 return
             }
-            guard self.site.deviceOperates.contains(.edit) else {
+            guard self.canConfigureCurrentGateway else {
                 XWHUDManager.showTipHUD("no_permission".localizedString + "！")
                 return
             }
@@ -990,7 +1071,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
         case .name:
             let nameCell = tableView.dequeueReusableCell(withIdentifier: "name", for: indexPath) as! GatewayNameViewCell
             nameCell.nameField.text = name
-            nameCell.nameField.isEnabled = self.site.deviceOperates.contains(.edit)
+            nameCell.nameField.isEnabled = canConfigureCurrentGateway
             nameCell.nameEditChangedCallback = {[weak self] name in
                 if name.count > 32 && !name.isEmpty { // 长度超限
                     self?.bottomView.saveBtn.isEnabled = false
@@ -1061,7 +1142,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                     guard !self.isConnecting else {
                         return
                     }
-                    guard space.permission == .editor else {
+                    guard self.canConfigureCurrentGateway, space.permission == .editor else {
                         return
                     }
                     // 删除
@@ -1215,19 +1296,21 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
             }
             switch sectionType {
             case .name: // 同步
-                guard self.site.deviceOperates.contains(.edit), self.gateway.associatedSpaces.contains(where: { $0.permission == .editor }) else {
+                guard self.canConfigureCurrentGateway else {
                     XWHUDManager.showTipHUD("no_permission".localizedString + "！")
                     return
                 }
-                resync()
+                prepareForGatewayRecovery { [weak self] in
+                    self?.resync(trigger: .devicesNotSynced)
+                }
             case .associatedSpaces: // 添加space
                 associatedSpaces()
             case .serverInformation: // 服务器授权
-                guard self.site.deviceOperates.contains(.edit) else {
+                guard self.canConfigureCurrentGateway else {
                     XWHUDManager.showTipHUD("no_permission".localizedString + "！")
                     return
                 }
-                self.authorizeRequest()
+                self.performServerAuthorization()
             default:
                 break
             }
@@ -1271,7 +1354,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
         let sectionType = sections[indexPath.section]
         switch sectionType {
         case .apn:
-            guard self.site.deviceOperates.contains(.edit) else {
+            guard self.canConfigureCurrentGateway else {
                 XWHUDManager.showTipHUD("no_permission".localizedString + "！")
                 return
             }

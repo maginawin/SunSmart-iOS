@@ -514,26 +514,11 @@ class SiteDeviceAddViewController: UIViewController {
                         appendCompletion(appendMessages)
                         return
                     }
-                    if NetworkRequest.shared.networkable {
-                        let nodeDict = await node.export() ?? [:]
-                    
-                        let gatewayRegisterResult = await NetworkRequest.shared.request(.gatewayRegister(siteId: self.site.id, gatewayId: mac, nodeId: node.uuid.uuidString, node: nodeDict, updateTimestamp: gatewayModel.lastUpdate))
-                        switch gatewayRegisterResult {
-                        case .success(let response):
-                            // MQTT参数
-                            if let data = response["data"] as? [String: Any],
-                               let username = data["mqttUsername"] as? String,
-                               let password = data["mqttPassword"] as? String,
-                               let clientId = data["mqttClientId"] as? String,
-                               let host = data["host"] as? String, let port = data["port"] as? Int {
-                                
-                                gatewayModel.mqttServerInfo = GatewayInformation.MQTTConnectInformation(customId: customId, serverAddress: "tcp://\(host):\(port)", userName: username, password: password, clientId: clientId, keepalive: 60, clearSession: true, authMode: .none, sslVersion: .all)
-                                gatewayModel.save()
-                            }
-                        case .failure:
-                            break
-                        }
-                    }
+                    _ = await GatewayServerAuthorizationService.shared.authorize(
+                        gateway: gatewayModel,
+                        node: node,
+                        policy: .ifMissing
+                    )
 
                     let syncDatas = node.getNodeSyncGatewayData(gateway: gatewayModel)
                     syncDatas.forEach({
