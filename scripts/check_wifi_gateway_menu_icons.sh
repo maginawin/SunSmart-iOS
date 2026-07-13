@@ -17,7 +17,7 @@ check_menu_icon() {
   fi
 }
 
-check_menu_icon "\"WiFi DFU\"" "menu_wifi_dfu"
+check_menu_icon '"wifi_dfu".localizedString' "menu_wifi_dfu"
 check_menu_icon "\"delete\".localizedString" "menu_delete"
 check_menu_icon "\"information\".localizedString" "menu_information"
 check_menu_icon "\"Identify\"" "menu_identify"
@@ -51,8 +51,18 @@ if ! grep -Fq 'DeviceInformationViewController(node: self.node, showsGroupSectio
 fi
 
 under_development_count=$(grep -Fc 'XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)' "$file")
-if [ "$under_development_count" -ne 2 ]; then
-  printf 'FAIL: expected WiFi DFU and Diagnosis menu actions to show under development toast, found %s\n' "$under_development_count"
+if [ "$under_development_count" -ne 1 ]; then
+  printf 'FAIL: expected only Diagnosis menu action to show under development toast, found %s\n' "$under_development_count"
+  failures=$((failures + 1))
+fi
+
+if ! grep -Fq 'let controller = WiFiFirmwareUpdateViewController()' "$file"; then
+  printf 'FAIL: expected WiFi DFU menu action to create WiFiFirmwareUpdateViewController\n'
+  failures=$((failures + 1))
+fi
+
+if ! grep -Fq 'self.navigationController?.pushViewController(controller, animated: true)' "$file"; then
+  printf 'FAIL: expected WiFi DFU menu action to push its controller after menu dismissal\n'
   failures=$((failures + 1))
 fi
 

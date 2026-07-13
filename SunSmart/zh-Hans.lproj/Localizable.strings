@@ -877,6 +877,9 @@
 "new_version" = "新版本";
 "network_error" = "网络错误";
 "firmware_version" = "固件版本";
+"wifi_dfu" = "WiFi DFU";
+"wifi_firmware_update" = "WiFi 固件更新";
+"wifi_firmware_upgrade" = "升级";
 "Download" = "下载";
 "release_date" = "发布日期";
 "firmware_version_history" = "固件版本历史";
@@ -1976,6 +1979,8 @@
 "wifi_status_bad" = "差";
 "wifi_status_no_signal" = "无信号";
 "wifi_status_not_connected" = "未连接";
+"wifi_status_no_internet" = "无互联网连接";
+"wifi_status_unknown" = "未知";
 "preparing_device_sync" = "正在准备设备同步…";
 "wifi_gateway_wait_current_operation" = "请等待当前操作完成。";
 "skipped" = "已跳过";

@@ -43,14 +43,16 @@ class FirmwareVersionHistoryController: UIViewController {
     }()
     
     let productId: UInt16
+    let customId: String
     
     private var versionDatas: [FirmwareServerData] = []
     
     /// 是否测试
     var isTesting: Bool = false
     
-    init(productId: UInt16) {
+    init(productId: UInt16, customId: String = "00") {
         self.productId = productId
+        self.customId = customId
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -102,7 +104,13 @@ class FirmwareVersionHistoryController: UIViewController {
     private func loadVersionHistoryRequest() {
         
         XWHUDManager.showCustomHUD(withMessage: nil, view: view)
-        NetworkRequest.shared.request(.firmwareVersionList(deviceType: self.productId.hex, isTesting: self.isTesting)) {[weak self] result in
+        NetworkRequest.shared.request(
+            .firmwareVersionList(
+                deviceType: self.productId.hex,
+                customId: self.customId,
+                isTesting: self.isTesting
+            )
+        ) {[weak self] result in
             guard let self = self else { return }
             XWHUDManager.hideInView(with: self.view)
             

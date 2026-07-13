@@ -45,8 +45,24 @@ rg -n "headerView.setWiFiStatusVisible\\(true\\)" "$wifi_controller" >/dev/null 
 rg -n "wifiRSSIStatusTimer" "$wifi_controller" >/dev/null \
   || fail "WiFiGatewayViewController must own a Wi-Fi RSSI status timer."
 
-rg -n "private let wifiRSSIStatusPollInterval: TimeInterval = 2" "$wifi_controller" >/dev/null \
-  || fail "Wi-Fi RSSI status polling interval must be 2 seconds."
+rg -n "private let wifiRSSIStatusPollDelay: TimeInterval = 5" "$wifi_controller" >/dev/null \
+  || fail "The next Wi-Fi RSSI query must wait 5 seconds after completion."
+
+rg -n "private let wifiRSSIStatusRequestTimeout: TimeInterval = 2" "$wifi_controller" >/dev/null \
+  || fail "Each Wi-Fi RSSI request must keep the 2-second hard timeout."
+
+rg -n "scheduleNextWiFiRSSIStatusRefresh\(\)" "$wifi_controller" >/dev/null \
+  || fail "Wi-Fi RSSI polling must use completion-driven scheduling."
+
+rg -U -n "wifiRSSIStatusTimer = LCWeakTimer\.scheduledTimer\([[:space:][:print:]]*timeInterval: wifiRSSIStatusPollDelay,[[:space:][:print:]]*repeats: false" "$wifi_controller" >/dev/null \
+  || fail "Wi-Fi RSSI polling must use a one-shot 5-second timer."
+
+rg -n "timeout: wifiRSSIStatusRequestTimeout" "$wifi_controller" >/dev/null \
+  || fail "Wi-Fi RSSI GET must use the independent 2-second request timeout."
+
+if rg -n "wifiRSSIStatusPollInterval" "$wifi_controller" >/dev/null; then
+  fail "The old fixed RSSI polling interval must be removed."
+fi
 
 rg -n "startWiFiRSSIStatusRefresh\\(\\)" "$wifi_controller" >/dev/null \
   || fail "WiFiGatewayViewController must start Wi-Fi RSSI status refresh when connected."
@@ -59,6 +75,21 @@ rg -n "\\.wifiGatewayRSSIStatus," "$wifi_controller" >/dev/null \
 
 rg -n "WiFiGatewayRSSIStatus" "$wifi_controller" >/dev/null \
   || fail "WiFiGatewayViewController must parse typed Wi-Fi RSSI status."
+
+rg -n "case \.valid\(let dbm, let networkStatus\)" "$wifi_controller" >/dev/null \
+  || fail "Valid Wi-Fi RSSI must carry the typed network status."
+
+rg -n "wifiHeaderStatus\(forRSSIDBm: dbm, networkStatus: networkStatus\)" "$wifi_controller" >/dev/null \
+  || fail "Valid Wi-Fi RSSI must map RSSI and network status together."
+
+rg -n "case \.normal, \.notReported:" "$wifi_controller" >/dev/null \
+  || fail "NORMAL and legacy not-reported responses must keep the RSSI grade."
+
+rg -n 'localizedStatusKey: "wifi_status_no_internet"' "$wifi_controller" >/dev/null \
+  || fail "UNAVAILABLE must display the localized No Internet status."
+
+rg -n 'localizedStatusKey: "wifi_status_unknown"' "$wifi_controller" >/dev/null \
+  || fail "UNKNOWN and reserved network states must display the localized Unknown status."
 
 rg -n "wifi_excellent|wifi_good|wifi_poor|wifi_bad|wifi_no_signal|wifi_not_connected" "$wifi_controller" >/dev/null \
   || fail "Wi-Fi status image mapping must include all required assets."
@@ -98,6 +129,18 @@ rg -n '"wifi_status_not_connected" = "Not Connected";' "$en_strings" >/dev/null 
 
 rg -n '"wifi_status_not_connected" = "未连接";' "$zh_strings" >/dev/null \
   || fail "Chinese localization must define 未连接."
+
+rg -n '"wifi_status_no_internet" = "No Internet";' "$en_strings" >/dev/null \
+  || fail "English localization must define No Internet."
+
+rg -n '"wifi_status_no_internet" = "无互联网连接";' "$zh_strings" >/dev/null \
+  || fail "Chinese localization must define 无互联网连接."
+
+rg -n '"wifi_status_unknown" = "Unknown";' "$en_strings" >/dev/null \
+  || fail "English localization must define Unknown."
+
+rg -n '"wifi_status_unknown" = "未知";' "$zh_strings" >/dev/null \
+  || fail "Chinese localization must define 未知."
 
 rg -n '"not_configured" = "Not Configured";' "$en_strings" >/dev/null \
   || fail "English localization must define Not Configured."

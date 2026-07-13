@@ -34,8 +34,14 @@ class BetaTestingAlertView: UIView {
     private var closeBtn: UIButton!
     private var textValueChangedBack: InputTextChangedBack?
     private var importCallback: ImportActionCallBack?
+    private let showsImportAction: Bool
     
-    init(inputTextCallback: InputTextChangedBack?, importCallback: ImportActionCallBack?) {
+    init(
+        inputTextCallback: InputTextChangedBack?,
+        importCallback: ImportActionCallBack?,
+        showsImportAction: Bool = true
+    ) {
+        self.showsImportAction = showsImportAction
         super.init(frame: UIScreen.main.bounds)
         self.textValueChangedBack = inputTextCallback
         self.importCallback = importCallback
@@ -255,6 +261,7 @@ class BetaTestingAlertView: UIView {
         importBtn = UIButton(title: nil, titleSize: 14, titleColor: Bar_Color, normalImageName: "import", target: self, action: #selector(importBtnClick))
         let attStr = NSAttributedString(string: "Import from local", attributes: [.underlineStyle: 1, .underlineColor: Bar_Color])
         importBtn.setAttributedTitle(attStr, for: .normal)
+        importBtn.isHidden = !showsImportAction
         importBtn.setImagePosition(position: .left, spacing: SCRXFrom(4))
         contentView.addSubview(importBtn)
         importBtn.snp.makeConstraints { make in

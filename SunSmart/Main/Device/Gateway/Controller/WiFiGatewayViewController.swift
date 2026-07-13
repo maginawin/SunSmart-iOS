@@ -61,7 +61,8 @@ final class WiFiGatewayViewController: GatewayViewController {
     private var activeWiFiRequest: ActiveWiFiRequest?
     private var pendingGatewayRecoveryAction: (() -> Void)?
     private let connectionPollInterval: TimeInterval = 2
-    private let wifiRSSIStatusPollInterval: TimeInterval = 2
+    private let wifiRSSIStatusPollDelay: TimeInterval = 5
+    private let wifiRSSIStatusRequestTimeout: TimeInterval = 2
     private let connectionPollTimeout: TimeInterval = 60
     private let wifiPasswordCacheKey = "wifi_gateway_saved_passwords_by_ssid"
     private let showsDiagnosisMenuItem = false
@@ -271,8 +272,10 @@ final class WiFiGatewayViewController: GatewayViewController {
 
     @objc private func moreClick() {
         var items: [MenuPopView.MenuItem] = []
-        items.append(.init(icon: UIImage(named: "menu_wifi_dfu"), title: "WiFi DFU", tapItemBack: { _ in
-            XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)
+        items.append(.init(icon: UIImage(named: "menu_wifi_dfu"), title: "wifi_dfu".localizedString, hideAnimation: false, performsActionAfterDismiss: true, tapItemBack: { [weak self] _ in
+            guard let self else { return }
+            let controller = WiFiFirmwareUpdateViewController()
+            self.navigationController?.pushViewController(controller, animated: true)
         }))
         if canConfigureCurrentGateway {
             items.append(.init(icon: UIImage(named: "menu_delete"), title: "delete".localizedString, tapItemBack: { [weak self] _ in
@@ -891,7 +894,7 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     private func startWiFiRSSIStatusRefresh() {
-        guard node.isKeybindComplete else {
+        guard isNetworkPageVisible, node.isKeybindComplete else {
             stopWiFiRSSIStatusRefresh()
             return
         }
@@ -901,11 +904,8 @@ final class WiFiGatewayViewController: GatewayViewController {
             return
         }
         wifiRSSIStatusTimer?.invalidate()
+        wifiRSSIStatusTimer = nil
         refreshWiFiRSSIStatus()
-        wifiRSSIStatusTimer = LCWeakTimer.scheduledTimer(timeInterval: wifiRSSIStatusPollInterval, aTarget: self, selector: #selector(refreshWiFiRSSIStatus), userInfo: nil, repeats: true)
-        if let wifiRSSIStatusTimer {
-            RunLoop.main.add(wifiRSSIStatusTimer, forMode: .common)
-        }
     }
 
     private func stopWiFiRSSIStatusRefresh() {
@@ -913,8 +913,29 @@ final class WiFiGatewayViewController: GatewayViewController {
         wifiRSSIStatusTimer = nil
     }
 
+    private func scheduleNextWiFiRSSIStatusRefresh() {
+        guard isNetworkPageVisible,
+              node.isKeybindComplete,
+              node.state,
+              networkConnectState == .connected else {
+            stopWiFiRSSIStatusRefresh()
+            return
+        }
+        wifiRSSIStatusTimer?.invalidate()
+        wifiRSSIStatusTimer = LCWeakTimer.scheduledTimer(
+            timeInterval: wifiRSSIStatusPollDelay,
+            aTarget: self,
+            selector: #selector(refreshWiFiRSSIStatus),
+            userInfo: nil,
+            repeats: false
+        )
+        if let wifiRSSIStatusTimer {
+            RunLoop.main.add(wifiRSSIStatusTimer, forMode: .common)
+        }
+    }
+
     @objc private func refreshWiFiRSSIStatus() {
-        guard node.isKeybindComplete else {
+        guard isNetworkPageVisible, node.isKeybindComplete else {
             stopWiFiRSSIStatusRefresh()
             return
         }
@@ -927,25 +948,36 @@ final class WiFiGatewayViewController: GatewayViewController {
             updateWiFiHeaderStatus(.notConnected)
             return
         }
-        sendWiFiGatewayGet(
+        let didStart = sendWiFiGatewayGet(
             .wifiGatewayRSSIStatus,
             origin: .automatic,
-            timeout: wifiRSSIStatusPollInterval
+            timeout: wifiRSSIStatusRequestTimeout
         ) { [weak self] status in
-            guard let self, self.node.state, self.networkConnectState == .connected else { return }
-            guard let status,
-                  case .wifiGatewayRSSIStatus(let rssiStatus) = status.status.parameters else {
-                self.updateWiFiHeaderStatus(.noSignal)
+            guard let self else { return }
+            guard self.isNetworkPageVisible,
+                  self.node.isKeybindComplete,
+                  self.node.state,
+                  self.networkConnectState == .connected else {
+                self.stopWiFiRSSIStatusRefresh()
                 return
             }
-            self.applyWiFiRSSIStatus(rssiStatus)
+            if let status,
+               case .wifiGatewayRSSIStatus(let rssiStatus) = status.status.parameters {
+                self.applyWiFiRSSIStatus(rssiStatus)
+            } else {
+                self.updateWiFiHeaderStatus(.noSignal)
+            }
+            self.scheduleNextWiFiRSSIStatusRefresh()
+        }
+        if !didStart {
+            scheduleNextWiFiRSSIStatusRefresh()
         }
     }
 
     private func applyWiFiRSSIStatus(_ status: WiFiGatewayRSSIStatus) {
         switch status {
-        case .valid(let dbm):
-            updateWiFiHeaderStatus(wifiHeaderStatus(forRSSIDBm: dbm))
+        case .valid(let dbm, let networkStatus):
+            updateWiFiHeaderStatus(wifiHeaderStatus(forRSSIDBm: dbm, networkStatus: networkStatus))
         case .unavailable, .readFailed, .reserved(rawValue: _):
             updateWiFiHeaderStatus(.noSignal)
         }
@@ -962,6 +994,27 @@ final class WiFiGatewayViewController: GatewayViewController {
             return .bad
         }
         return .noSignal
+    }
+
+    private func wifiHeaderStatus(
+        forRSSIDBm dbm: Int8,
+        networkStatus: WiFiGatewayNetworkStatus
+    ) -> WiFiHeaderStatus {
+        let rssiStatus = wifiHeaderStatus(forRSSIDBm: dbm)
+        switch networkStatus {
+        case .normal, .notReported:
+            return rssiStatus
+        case .unavailable:
+            return WiFiHeaderStatus(
+                iconName: rssiStatus.iconName,
+                localizedStatusKey: "wifi_status_no_internet"
+            )
+        case .unknown, .reserved(rawValue: _):
+            return WiFiHeaderStatus(
+                iconName: rssiStatus.iconName,
+                localizedStatusKey: "wifi_status_unknown"
+            )
+        }
     }
 
     private func updateWiFiHeaderStatus(_ status: WiFiHeaderStatus) {

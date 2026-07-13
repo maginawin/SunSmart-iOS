@@ -46,6 +46,13 @@ class FirmwareVersionViewController: UIViewController {
     var updateLocalFirmwareDataCallback: ((FirmwareData?)->Void)?
     /// 是否测试
     private var isTesting: Bool = false
+
+    var firmwarePageTitle: String { "firmware_version".localizedString }
+    var firmwareRequestCustomId: String { "00" }
+    var displayedCurrentTargetVersion: String? { localFirmwareData?.version }
+    var showsFirmwareDeleteButton: Bool { localFirmwareData != nil }
+    var showsBetaImportAction: Bool { true }
+    var firmwarePrimaryActionTitle: String { "Download".localizedString }
     
     init(type: FirmwareUpdateTypeData) {
         self.type = type
@@ -59,7 +66,7 @@ class FirmwareVersionViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        title = "firmware_version".localizedString
+        title = firmwarePageTitle
         view.backgroundColor = Background_Color
         
 //        #if DEBUG
@@ -80,7 +87,13 @@ class FirmwareVersionViewController: UIViewController {
     private func loadCloudFirmwareRequest() {
         
         XWHUDManager.showCustomHUD(withMessage: nil, view: view)
-        NetworkRequest.shared.request(.firmwareLatestVersion(deviceType: type.productId.hex, isTesting: self.isTesting)) {[weak self] result in
+        NetworkRequest.shared.request(
+            .firmwareLatestVersion(
+                deviceType: type.productId.hex,
+                customId: firmwareRequestCustomId,
+                isTesting: self.isTesting
+            )
+        ) {[weak self] result in
             guard let self = self else { return }
             XWHUDManager.hideInView(with: self.view)
             if self.headerView == nil {
@@ -144,7 +157,7 @@ class FirmwareVersionViewController: UIViewController {
             return nil
         }, importCallback: {[weak self] in
             self?.importFirmwareData()
-        }).show()
+        }, showsImportAction: showsBetaImportAction).show()
         
     }
     
@@ -159,7 +172,10 @@ class FirmwareVersionViewController: UIViewController {
     
     /// 固件版本历史记录
     @objc private func history() {
-        let vc = FirmwareVersionHistoryController(productId: self.type.productId)
+        let vc = FirmwareVersionHistoryController(
+            productId: self.type.productId,
+            customId: firmwareRequestCustomId
+        )
         vc.isTesting = self.isTesting
         navigationController?.pushViewController(vc, animated: true)
     }
@@ -173,8 +189,12 @@ class FirmwareVersionViewController: UIViewController {
         updateUI()
     }
     
+    @objc func firmwarePrimaryAction() {
+        downloadFirmware()
+    }
+
     /// 下载固件
-    @objc private func downloadBtnAction() {
+    private func downloadFirmware() {
         
         guard let serverData = type.serverData, let downloadURL = URL(string: serverData.url)  else { return }
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
@@ -214,11 +234,11 @@ class FirmwareVersionViewController: UIViewController {
     private func updateUI() {
         
         
-        if let version = self.localFirmwareData?.version {
+        if let version = displayedCurrentTargetVersion {
             self.currentVersionLabel.text = version
-            self.versionDeleteBtn.isHidden = false
+            self.versionDeleteBtn.isHidden = !showsFirmwareDeleteButton
             self.currentVersionLabel.snp.updateConstraints { make in
-                make.right.equalTo(SCRXFrom(-64))
+                make.right.equalTo(SCRXFrom(showsFirmwareDeleteButton ? -64 : -20))
             }
         }else {
             self.currentVersionLabel.text = "none".localizedString
@@ -231,8 +251,12 @@ class FirmwareVersionViewController: UIViewController {
         if let newFirmwareData = self.type.serverData {
             
 //            if let currentFirmwareData = self.localFirmwareData {
+                let hasNewerVersion = displayedCurrentTargetVersion.map {
+                    newFirmwareData.version.compare($0, options: .numeric) == .orderedDescending
+                } ?? true
+
                 // 有新版本
-                if self.localFirmwareData == nil || newFirmwareData.version.compare(self.localFirmwareData!.version, options: .numeric) == .orderedDescending {
+                if hasNewerVersion {
                     
                     stateLabel.text = "new_version_found".localizedString
                     
@@ -415,7 +439,7 @@ class FirmwareVersionViewController: UIViewController {
             make.height.equalTo((isIPad ? 0 : kSafeAreaBottomHeight) + SCRYFit(56))
         }
         
-        downloadBtn = UIButton(title: "Download".localizedString, titleSize: 16, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(downloadBtnAction))
+        downloadBtn = UIButton(title: firmwarePrimaryActionTitle, titleSize: 16, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(firmwarePrimaryAction))
         downloadBtn.setTitleColor(RGB(148, 163, 184), for: .disabled)
         bottomView.addSubview(downloadBtn)
         downloadBtn.snp.makeConstraints { make in

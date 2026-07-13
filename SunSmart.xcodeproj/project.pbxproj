@@ -703,6 +703,7 @@
 		C885543D2DE6B44C00C8B688 /* DeviceBaseViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A347CF2D63103B0092D3E4 /* DeviceBaseViewController.swift */; };
 		C885543E2DE6B44C00C8B688 /* BleFirmwareUpdateRestoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DC673E2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift */; };
 		C885543F2DE6B44C00C8B688 /* FirmwareVersionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F712C86A3CF00FB50BD /* FirmwareVersionViewController.swift */; };
+		C8F6A1052FA3000000000001 /* WiFiFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1092FA3000000000001 /* WiFiFirmwareUpdateViewController.swift */; };
 		C88554402DE6B44C00C8B688 /* SitesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FEF4E2ABEB37900DCCFB6 /* SitesViewCell.swift */; };
 		C88554412DE6B44C00C8B688 /* ProfileInstructionsHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F0E2B8E049E00A09FFA /* ProfileInstructionsHeaderView.swift */; };
 		C88554422DE6B44C00C8B688 /* DeviceGroupsSelectData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B058A62B5115B2006FC36F /* DeviceGroupsSelectData.swift */; };
@@ -1076,6 +1077,7 @@
 		C886E0902E30DE4900D0C3A6 /* DeviceBaseViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A347CF2D63103B0092D3E4 /* DeviceBaseViewController.swift */; };
 		C886E0912E30DE4900D0C3A6 /* BleFirmwareUpdateRestoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DC673E2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift */; };
 		C886E0922E30DE4900D0C3A6 /* FirmwareVersionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F712C86A3CF00FB50BD /* FirmwareVersionViewController.swift */; };
+		C8F6A1062FA3000000000001 /* WiFiFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1092FA3000000000001 /* WiFiFirmwareUpdateViewController.swift */; };
 		C886E0932E30DE4900D0C3A6 /* SitesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FEF4E2ABEB37900DCCFB6 /* SitesViewCell.swift */; };
 		C886E0942E30DE4900D0C3A6 /* RangeSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC95E12E04FC830058D41E /* RangeSlider.swift */; };
 		C886E0952E30DE4900D0C3A6 /* ProfileInstructionsHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F0E2B8E049E00A09FFA /* ProfileInstructionsHeaderView.swift */; };
@@ -1466,6 +1468,7 @@
 		C8A16F6D2C854AF300FB50BD /* WelcomeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F6C2C854AF300FB50BD /* WelcomeViewController.swift */; };
 		C8A16F6F2C8568F700FB50BD /* AttributedTextViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F6E2C8568F600FB50BD /* AttributedTextViewController.swift */; };
 		C8A16F722C86A3CF00FB50BD /* FirmwareVersionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F712C86A3CF00FB50BD /* FirmwareVersionViewController.swift */; };
+		C8F6A1072FA3000000000001 /* WiFiFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1092FA3000000000001 /* WiFiFirmwareUpdateViewController.swift */; };
 		C8A16F782C86E8C100FB50BD /* FirmwareVersionHistoryController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F772C86E8C100FB50BD /* FirmwareVersionHistoryController.swift */; };
 		C8A16F7A2C86EABB00FB50BD /* FirmwareVersionHistoryViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F792C86EABB00FB50BD /* FirmwareVersionHistoryViewCell.swift */; };
 		C8A16F7C2C86EEFA00FB50BD /* FirmwareVersionData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F7B2C86EEFA00FB50BD /* FirmwareVersionData.swift */; };
@@ -1854,6 +1857,7 @@
 		C8BB66502ED3F056000C63EE /* DeviceBaseViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A347CF2D63103B0092D3E4 /* DeviceBaseViewController.swift */; };
 		C8BB66512ED3F056000C63EE /* BleFirmwareUpdateRestoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DC673E2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift */; };
 		C8BB66522ED3F056000C63EE /* FirmwareVersionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F712C86A3CF00FB50BD /* FirmwareVersionViewController.swift */; };
+		C8F6A1082FA3000000000001 /* WiFiFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1092FA3000000000001 /* WiFiFirmwareUpdateViewController.swift */; };
 		C8BB66532ED3F056000C63EE /* SitesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FEF4E2ABEB37900DCCFB6 /* SitesViewCell.swift */; };
 		C8BB66542ED3F056000C63EE /* RangeSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC95E12E04FC830058D41E /* RangeSlider.swift */; };
 		C8BB66552ED3F056000C63EE /* ProfileInstructionsHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F0E2B8E049E00A09FFA /* ProfileInstructionsHeaderView.swift */; };
@@ -2761,6 +2765,7 @@
 		C8A16F6C2C854AF300FB50BD /* WelcomeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeViewController.swift; sourceTree = "<group>"; };
 		C8A16F6E2C8568F600FB50BD /* AttributedTextViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttributedTextViewController.swift; sourceTree = "<group>"; };
 		C8A16F712C86A3CF00FB50BD /* FirmwareVersionViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareVersionViewController.swift; sourceTree = "<group>"; };
+		C8F6A1092FA3000000000001 /* WiFiFirmwareUpdateViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiFirmwareUpdateViewController.swift; sourceTree = "<group>"; };
 		C8A16F772C86E8C100FB50BD /* FirmwareVersionHistoryController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareVersionHistoryController.swift; sourceTree = "<group>"; };
 		C8A16F792C86EABB00FB50BD /* FirmwareVersionHistoryViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareVersionHistoryViewCell.swift; sourceTree = "<group>"; };
 		C8A16F7B2C86EEFA00FB50BD /* FirmwareVersionData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareVersionData.swift; sourceTree = "<group>"; };
@@ -4283,6 +4288,7 @@
 				C8A030232CDA17FB0063FEC4 /* MeshSelectUpgradeDevicesViewController.swift */,
 				C8A4E8922CDB0F5D00A22C77 /* MeshFirmwareUpdateViewController.swift */,
 				C8A16F712C86A3CF00FB50BD /* FirmwareVersionViewController.swift */,
+				C8F6A1092FA3000000000001 /* WiFiFirmwareUpdateViewController.swift */,
 				C8A16F772C86E8C100FB50BD /* FirmwareVersionHistoryController.swift */,
 			);
 			path = Controller;
@@ -5677,6 +5683,7 @@
 				C885543D2DE6B44C00C8B688 /* DeviceBaseViewController.swift in Sources */,
 				C885543E2DE6B44C00C8B688 /* BleFirmwareUpdateRestoreView.swift in Sources */,
 				C885543F2DE6B44C00C8B688 /* FirmwareVersionViewController.swift in Sources */,
+				C8F6A1052FA3000000000001 /* WiFiFirmwareUpdateViewController.swift in Sources */,
 				C88554402DE6B44C00C8B688 /* SitesViewCell.swift in Sources */,
 				C8BC95E22E04FC830058D41E /* RangeSlider.swift in Sources */,
 				C88554412DE6B44C00C8B688 /* ProfileInstructionsHeaderView.swift in Sources */,
@@ -6255,6 +6262,7 @@
 				C886E0902E30DE4900D0C3A6 /* DeviceBaseViewController.swift in Sources */,
 				C886E0912E30DE4900D0C3A6 /* BleFirmwareUpdateRestoreView.swift in Sources */,
 				C886E0922E30DE4900D0C3A6 /* FirmwareVersionViewController.swift in Sources */,
+				C8F6A1062FA3000000000001 /* WiFiFirmwareUpdateViewController.swift in Sources */,
 				C886E0932E30DE4900D0C3A6 /* SitesViewCell.swift in Sources */,
 				C886E0942E30DE4900D0C3A6 /* RangeSlider.swift in Sources */,
 				C886E0952E30DE4900D0C3A6 /* ProfileInstructionsHeaderView.swift in Sources */,
@@ -6841,6 +6849,7 @@
 				C8A347D02D63103B0092D3E4 /* DeviceBaseViewController.swift in Sources */,
 				C8DC673F2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift in Sources */,
 				C8A16F722C86A3CF00FB50BD /* FirmwareVersionViewController.swift in Sources */,
+				C8F6A1072FA3000000000001 /* WiFiFirmwareUpdateViewController.swift in Sources */,
 				C89FEF4F2ABEB37900DCCFB6 /* SitesViewCell.swift in Sources */,
 				C8BC95E32E04FC830058D41E /* RangeSlider.swift in Sources */,
 				C8047F0F2B8E049E00A09FFA /* ProfileInstructionsHeaderView.swift in Sources */,
@@ -7410,6 +7419,7 @@
 				C8BB66502ED3F056000C63EE /* DeviceBaseViewController.swift in Sources */,
 				C8BB66512ED3F056000C63EE /* BleFirmwareUpdateRestoreView.swift in Sources */,
 				C8BB66522ED3F056000C63EE /* FirmwareVersionViewController.swift in Sources */,
+				C8F6A1082FA3000000000001 /* WiFiFirmwareUpdateViewController.swift in Sources */,
 				C8BB66532ED3F056000C63EE /* SitesViewCell.swift in Sources */,
 				C8BB66542ED3F056000C63EE /* RangeSlider.swift in Sources */,
 				C8BB66552ED3F056000C63EE /* ProfileInstructionsHeaderView.swift in Sources */,
