@@ -71,6 +71,13 @@ class SiteViewController: UIViewController {
     private var gatewayModels: [Gateway] = []
     /// site内显示的网关list
     private var showGatewayModels: [Gateway] = []
+    /// Site BLE OTA 页面显示的网关list
+    private var firmwareUpdateGatewayModels: [Gateway] {
+        if site.permission == .owner {
+            return gatewayModels
+        }
+        return showGatewayModels.filter { !$0.associatedSpaces.isEmpty }
+    }
     
     private var allSpaceSelectGatewayId: String?
     private var favouriteSpaceSelectGatewayId: String?
@@ -778,17 +785,15 @@ self.updateAddressData()
             }))
         }
         
-        if self.showGatewayModels.count > 0 {
-            if site.permissionOperates.contains(.restoreDevice) {
-                items.append(.init(icon: UIImage(named: "menu_restore_device"), title: "restore_device".localizedString, tapItemBack: {[weak self] _ in
-                    self?.restoreDevice()
-                }))
-            }
-            if site.permissionOperates.contains(.firmwareUpdate) {
-                items.append(.init(icon: UIImage(named: "menu_firmware_update"), title: "Firmware_update".localizedString, tapItemBack: {[weak self] _ in
-                    self?.firmwareUpdate()
-                }))
-            }
+        if self.showGatewayModels.count > 0 && site.permissionOperates.contains(.restoreDevice) {
+            items.append(.init(icon: UIImage(named: "menu_restore_device"), title: "restore_device".localizedString, tapItemBack: {[weak self] _ in
+                self?.restoreDevice()
+            }))
+        }
+        if !firmwareUpdateGatewayModels.isEmpty && site.permissionOperates.contains(.firmwareUpdate) {
+            items.append(.init(icon: UIImage(named: "menu_firmware_update"), title: "Firmware_update".localizedString, tapItemBack: {[weak self] _ in
+                self?.firmwareUpdate()
+            }))
         }
         
 //        items.append(.init(icon: UIImage(named: "energy_export")?.withTintColor(.white), title: "Import Space", tapItemBack: {[weak self] _ in
@@ -1165,7 +1170,7 @@ self.updateAddressData()
     /// 固件升级
     private func firmwareUpdate() {
         
-        let gateways = self.showGatewayModels.filter({ $0.associatedSpaces.contains(where: { $0.permission == .editor }) })
+        let gateways = firmwareUpdateGatewayModels
         let gatewayNodes = gateways.compactMap({ $0.node })
         let vc = BleFirmwareUpdateViewController(site: site, space: nil, nodes: gatewayNodes)
         if isIPad {
