@@ -22,11 +22,20 @@ class FirmwareUpdateTypeData {
     var nodes: [Node] = []
     /// 已升级的设备list
     var upgradedNodes: [Node] {
-        guard let targetVersion = self.targetVersion else {
+        upgradedNodes(using: .numeric)
+    }
+
+    func upgradedNodes(using policy: FirmwareVersionUpdatePolicy) -> [Node] {
+        guard let targetVersion else {
             return []
         }
-        
-        return nodes.filter({ $0.firmwareVersion != nil && $0.firmwareVersion!.compare(targetVersion, options: .numeric) != .orderedAscending })
+
+        return nodes.filter {
+            policy.isCurrentVersionUpToDate(
+                currentVersion: $0.firmwareVersion,
+                targetVersion: targetVersion
+            )
+        }
     }
     /// 可升级的设备list
     var canUpgradNodes: [Node] {

@@ -84,7 +84,10 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
             deviceTypeLabel.text = firmwareTypeData.categoryName
             productIdLabel.text = String(format: "0x%04X", firmwareTypeData.productId)
             if let targetVersion = firmwareTypeData.targetVersion, let serverVersion = firmwareTypeData.serverData?.version {
-                newVersionView.isHidden = !(serverVersion.compare(targetVersion, options: .numeric) == .orderedDescending)
+                newVersionView.isHidden = FirmwareVersionUpdatePolicy.bleBatchAware.eligibility(
+                    currentVersion: targetVersion,
+                    targetVersion: serverVersion
+                ) != .allowed
             }else {
                 newVersionView.isHidden = true
             }
@@ -94,12 +97,8 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
             if firmwareTypeData.targetVersion != nil {
                 
                 // 已升级的设备
-                let upgradedCount = firmwareTypeData.upgradedNodes.count
-//                firmwareTypeData.nodes.filter({ $0.firmwareVersion != nil && targetVersion.compare($0.firmwareVersion!, options: .numeric) == .orderedSame }).count
-                
-//                let  firmwareTypeData.nodes.count - firmwareTypeData.upgradedNodes.count
+                let upgradedCount = firmwareTypeData.upgradedNodes(using: .bleBatchAware).count
                 upgradedNumberLabel.text = "\(upgradedCount)"
-//                "\(firmwareTypeData.upgradedNodes.count)"
             }else {
                 upgradedNumberLabel.text = "--"
             }

@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C8BA71012FA7000000000001 /* FirmwareVersionUpdatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */; };
+		C8BA71012FA7000000000002 /* FirmwareVersionUpdatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */; };
+		C8BA71012FA7000000000003 /* FirmwareVersionUpdatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */; };
+		C8BA71012FA7000000000004 /* FirmwareVersionUpdatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */; };
 		0103BEF5A3F84EEB84317B31 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
 		0C36C97F8A95474C9D655F09 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
 		15F6AEDF416B45D6BC28749E /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
@@ -2401,6 +2405,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareVersionUpdatePolicy.swift; sourceTree = "<group>"; };
 		0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorViewModel.swift; sourceTree = "<group>"; };
 		29E6735F1867DC54FBDDBAA9 /* Pods-Common-SylSmart.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SylSmart.debug.xcconfig"; path = "Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart.debug.xcconfig"; sourceTree = "<group>"; };
 		3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyFireControllerIconName.swift; sourceTree = "<group>"; };
@@ -4273,6 +4278,7 @@
 			isa = PBXGroup;
 			children = (
 				C89C82C92C81B7FE009D43F6 /* FirmwareUpdateTypeData.swift */,
+				C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */,
 				C8A16F7B2C86EEFA00FB50BD /* FirmwareVersionData.swift */,
 			);
 			path = Model;
@@ -5778,6 +5784,7 @@
 				C88554702DE6B44C00C8B688 /* GroupCheckViewController.swift in Sources */,
 				C88554712DE6B44C00C8B688 /* CloudSynchronizationManager.swift in Sources */,
 				C88554722DE6B44C00C8B688 /* FirmwareUpdateTypeData.swift in Sources */,
+				C8BA71012FA7000000000001 /* FirmwareVersionUpdatePolicy.swift in Sources */,
 				C88554732DE6B44C00C8B688 /* NetworkLoggerPlugin.swift in Sources */,
 				C88554742DE6B44C00C8B688 /* NumberOfNeghbourNodeInstructionsController.swift in Sources */,
 				C88554752DE6B44C00C8B688 /* Array+Split.swift in Sources */,
@@ -6357,6 +6364,7 @@
 				C886E0C62E30DE4900D0C3A6 /* GroupCheckViewController.swift in Sources */,
 				C886E0C72E30DE4900D0C3A6 /* CloudSynchronizationManager.swift in Sources */,
 				C886E0C82E30DE4900D0C3A6 /* FirmwareUpdateTypeData.swift in Sources */,
+				C8BA71012FA7000000000002 /* FirmwareVersionUpdatePolicy.swift in Sources */,
 				C886E0C92E30DE4900D0C3A6 /* NetworkLoggerPlugin.swift in Sources */,
 				C886E0CA2E30DE4900D0C3A6 /* NumberOfNeghbourNodeInstructionsController.swift in Sources */,
 				C886E0CB2E30DE4900D0C3A6 /* Array+Split.swift in Sources */,
@@ -6937,6 +6945,7 @@
 				C8D58F662C1D34090066B770 /* CloudSynchronizationManager.swift in Sources */,
 				8C778BE92FA2102D000887FE /* PJEightKeySwitchStatus.swift in Sources */,
 				C89C82CA2C81B7FE009D43F6 /* FirmwareUpdateTypeData.swift in Sources */,
+				C8BA71012FA7000000000003 /* FirmwareVersionUpdatePolicy.swift in Sources */,
 				C8EF54742C1AFA53008389CE /* NetworkLoggerPlugin.swift in Sources */,
 				C8A18D912DE45CE0009AC6A2 /* NumberOfNeghbourNodeInstructionsController.swift in Sources */,
 				C8A0AC4B2C3E21B200DFE803 /* Array+Split.swift in Sources */,
@@ -7514,6 +7523,7 @@
 				C8BB66902ED3F056000C63EE /* GroupCheckViewController.swift in Sources */,
 				C8BB66912ED3F056000C63EE /* CloudSynchronizationManager.swift in Sources */,
 				C8BB66922ED3F056000C63EE /* FirmwareUpdateTypeData.swift in Sources */,
+				C8BA71012FA7000000000004 /* FirmwareVersionUpdatePolicy.swift in Sources */,
 				C8BB66932ED3F056000C63EE /* NetworkLoggerPlugin.swift in Sources */,
 				C8BB66942ED3F056000C63EE /* NumberOfNeghbourNodeInstructionsController.swift in Sources */,
 				C8BB66952ED3F056000C63EE /* Array+Split.swift in Sources */,

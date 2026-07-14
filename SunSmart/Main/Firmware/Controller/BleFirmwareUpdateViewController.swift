@@ -451,10 +451,10 @@ class BleFirmwareUpdateViewController: UIViewController {
             }
             
             node.peripheral = data.peripheral
-            var enableUpgrade = false
-            if let cacheVersion = node.targetFirmwareData?.version, let nodeVersion = node.firmwareVersion {
-                enableUpgrade = cacheVersion.compare(nodeVersion, options: .numeric) == .orderedDescending
-            }
+            let enableUpgrade = FirmwareVersionUpdatePolicy.bleBatchAware.eligibility(
+                currentVersion: node.firmwareVersion,
+                targetVersion: node.targetFirmwareData?.version
+            ) == .allowed
             if enableUpgrade, let rssi = node.rssi {
                 node.enableUpgrade = rssi >= -80
                 if node.selectedState == .disabled {
@@ -575,12 +575,11 @@ class BleFirmwareUpdateViewController: UIViewController {
                     let localFirmwareData = FirmwareData.load(productId: pid).first
                     let cacheVersion = localFirmwareData?.version
                     
-                    var enableUpgrade = false
-                    
-                    if cacheVersion != nil, let nodeVersion = node.firmwareVersion {
-                        enableUpgrade = cacheVersion!.compare(nodeVersion, options: .numeric) == .orderedDescending
-                    }
-                node.enableUpgrade = enableUpgrade
+                    let enableUpgrade = FirmwareVersionUpdatePolicy.bleBatchAware.eligibility(
+                        currentVersion: node.firmwareVersion,
+                        targetVersion: cacheVersion
+                    ) == .allowed
+                    node.enableUpgrade = enableUpgrade
                     if let deviceTypeData = deviceTypes.first(where: { $0.productId == node.productIdentifier }) {
                         deviceTypeData.nodes.append(node)
                     }else {
@@ -1014,7 +1013,7 @@ class BleFirmwareUpdateViewController: UIViewController {
                 return
             }
             if let cell = collectionView.cellForItem(at: IndexPath(row: typeIndex, section: 0)) as? BleFirmwareTypeUpdateViewCell { // 刷新已升级的设备数量
-                cell.upgradedNumberLabel.text = "\(firmwareTypeData.upgradedNodes.count)"
+                cell.upgradedNumberLabel.text = "\(firmwareTypeData.upgradedNodes(using: .bleBatchAware).count)"
                 cell.reload(device: node)
             }
         }else {
@@ -1411,7 +1410,10 @@ extension BleFirmwareUpdateViewController: BleFirmwareTypeUpdateViewCellDelegate
             return
         }
         
-        let vc = FirmwareVersionViewController(type: firmwareTypeData)
+        let vc = FirmwareVersionViewController(
+            type: firmwareTypeData,
+            versionUpdatePolicy: .bleBatchAware
+        )
         vc.localFirmwareData = FirmwareData.load(productId: firmwareTypeData.productId).first
         vc.updateLocalFirmwareDataCallback = {[weak self] updateFirmwareData in
             guard let self = self else { return }
