@@ -814,6 +814,7 @@
 "invalid_invitation_code_message" = "Possible reasons\n\n1. The Invitation Code in the server has been deleted;\n2. The Invitation Code is from another server;";
 "invalid_qr_code_message" = "Possible reasons\n\n1. The QR code in the server has been deleted;\n2. The QR code is from another server;";
 "current_target_version" = "Current target version";
+"current_version" = "Current version";
 "battery_power_switch_ota_hint" = "Battery-powered devices need to be activated before the upgrade can be performed.Press 'Button 2'and 'Button ON' on the device to wake it up for the update. Then click refresh.The device has a 60s activation time.Activation and upgrade must be completed within this timeframe.";
 "total" = "Total";
 "upgraded" = "Upgraded";
@@ -1912,7 +1913,7 @@
 "el_controller_function_test_start_prompt" = "Tap \"Start\" to send command to device";
 "el_controller_function_test_awaiting" = "Awaiting device response…";
 "el_controller_function_test_passed" = "Test Passed";
-"el_controller_function_test_invalid" = "Result Invalid - Device in DT or battery depleted";
+"el_controller_function_test_invalid" = "Result Invalid - Device not in normal mode or battery disconnected.";
 "el_controller_function_test_failed" = "Test Failed";
 "el_controller_function_test_normal_mode_required" = "FT testing can only be performed in normal mode.";
 "el_controller_function_test_lamp_fault" = "Lamp Fault";

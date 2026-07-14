@@ -274,7 +274,7 @@ final class WiFiGatewayViewController: GatewayViewController {
         var items: [MenuPopView.MenuItem] = []
         items.append(.init(icon: UIImage(named: "menu_wifi_dfu"), title: "wifi_dfu".localizedString, hideAnimation: false, performsActionAfterDismiss: true, tapItemBack: { [weak self] _ in
             guard let self else { return }
-            let controller = WiFiFirmwareUpdateViewController()
+            let controller = WiFiFirmwareUpdateViewController(node: self.node)
             self.navigationController?.pushViewController(controller, animated: true)
         }))
         if canConfigureCurrentGateway {

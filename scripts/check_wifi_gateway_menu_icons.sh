@@ -56,8 +56,8 @@ if [ "$under_development_count" -ne 1 ]; then
   failures=$((failures + 1))
 fi
 
-if ! grep -Fq 'let controller = WiFiFirmwareUpdateViewController()' "$file"; then
-  printf 'FAIL: expected WiFi DFU menu action to create WiFiFirmwareUpdateViewController\n'
+if ! grep -Fq 'let controller = WiFiFirmwareUpdateViewController(node: self.node)' "$file"; then
+  printf 'FAIL: expected WiFi DFU menu action to create WiFiFirmwareUpdateViewController with the current gateway node\n'
   failures=$((failures + 1))
 fi
 

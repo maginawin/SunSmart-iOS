@@ -833,6 +833,7 @@
 "invalid_invitation_code_message" = "可能原因\n\n1. 服务器中的邀请码已被删除；\n2. 邀请码来自其他服务器；";
 "invalid_qr_code_message" = "可能原因\n\n1. 服务器中的二维码已被删除；\n2. 二维码来自其他服务器；";
 "current_target_version" = "当前目标版本";
+"current_version" = "当前版本";
 "battery_power_switch_ota_hint" = "电池供电设备在执行升级前需要先进行激活。请按下设备上的“Button 2”和“Button ON”键以唤醒设备，使其进入更新状态；随后点击“刷新”。设备的激活窗口期为 60 秒，激活及升级操作必须在此时间范围内完成。";
 "neightkeyswitches_dimming" = "调光";
 "neightkeyswitches_refresh_device" = "刷新设备";
@@ -1928,7 +1929,7 @@
 "el_controller_function_test_start_prompt" = "点击“开始”向设备发送命令";
 "el_controller_function_test_awaiting" = "等待设备响应…";
 "el_controller_function_test_passed" = "测试通过";
-"el_controller_function_test_invalid" = "结果无效 - 设备处于 DT 或电池电量耗尽";
+"el_controller_function_test_invalid" = "结果无效 - 设备未处于正常模式或电池已断开连接。";
 "el_controller_function_test_failed" = "测试失败";
 "el_controller_function_test_normal_mode_required" = "仅可在正常模式下执行功能测试。";
 "el_controller_function_test_lamp_fault" = "灯具故障";

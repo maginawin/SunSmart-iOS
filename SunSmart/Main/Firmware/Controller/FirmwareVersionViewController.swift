@@ -50,9 +50,36 @@ class FirmwareVersionViewController: UIViewController {
     var firmwarePageTitle: String { "firmware_version".localizedString }
     var firmwareRequestCustomId: String { "00" }
     var displayedCurrentTargetVersion: String? { localFirmwareData?.version }
+    var currentVersionTitleText: String { "current_target_version".localizedString }
+    var currentVersionDisplayText: String { displayedCurrentTargetVersion ?? "none".localizedString }
+    var createsUIBeforeCloudRequest: Bool { false }
+    var requiresAdditionalFirmwareReload: Bool { false }
+    var resetsServerFirmwareBeforeCloudRequest: Bool { false }
     var showsFirmwareDeleteButton: Bool { localFirmwareData != nil }
     var showsBetaImportAction: Bool { true }
     var firmwarePrimaryActionTitle: String { "Download".localizedString }
+
+    func loadAdditionalFirmwareData() {}
+
+    func refreshFirmwareUI() {
+        guard headerView != nil else { return }
+        updateUI()
+    }
+
+    func isNewServerFirmwareAvailable(_ serverData: FirmwareServerData) -> Bool {
+        guard let currentVersion = displayedCurrentTargetVersion else {
+            return true
+        }
+        return serverData.version.compare(currentVersion, options: .numeric) == .orderedDescending
+    }
+
+    func shouldShowServerFirmwareDetails(_ serverData: FirmwareServerData) -> Bool {
+        return isNewServerFirmwareAvailable(serverData)
+    }
+
+    func isFirmwarePrimaryActionEnabled(_ serverData: FirmwareServerData) -> Bool {
+        return isNewServerFirmwareAvailable(serverData)
+    }
     
     init(type: FirmwareUpdateTypeData) {
         self.type = type
@@ -78,13 +105,23 @@ class FirmwareVersionViewController: UIViewController {
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "firmware_history")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(history))
 //        #endif
         
+        if createsUIBeforeCloudRequest {
+            setupUI()
+            updateUI()
+        }
         loadCloudFirmwareRequest()
+        loadAdditionalFirmwareData()
         
 //        updateUI()
     }
     
     /// 获取云端固件
     private func loadCloudFirmwareRequest() {
+
+        if resetsServerFirmwareBeforeCloudRequest {
+            type.serverData = nil
+            noServerFirmware = false
+        }
         
         XWHUDManager.showCustomHUD(withMessage: nil, view: view)
         NetworkRequest.shared.request(
@@ -229,19 +266,18 @@ class FirmwareVersionViewController: UIViewController {
     @objc private func reloadBtnAction() {
         // 重新获取线上版本
         loadCloudFirmwareRequest()
+        loadAdditionalFirmwareData()
     }
     
     private func updateUI() {
+        currentVersionLabel.text = currentVersionDisplayText
         
-        
-        if let version = displayedCurrentTargetVersion {
-            self.currentVersionLabel.text = version
+        if displayedCurrentTargetVersion != nil {
             self.versionDeleteBtn.isHidden = !showsFirmwareDeleteButton
             self.currentVersionLabel.snp.updateConstraints { make in
                 make.right.equalTo(SCRXFrom(showsFirmwareDeleteButton ? -64 : -20))
             }
         }else {
-            self.currentVersionLabel.text = "none".localizedString
             self.versionDeleteBtn.isHidden = true
             self.currentVersionLabel.snp.updateConstraints { make in
                 make.right.equalTo(SCRXFrom(-20))
@@ -251,12 +287,8 @@ class FirmwareVersionViewController: UIViewController {
         if let newFirmwareData = self.type.serverData {
             
 //            if let currentFirmwareData = self.localFirmwareData {
-                let hasNewerVersion = displayedCurrentTargetVersion.map {
-                    newFirmwareData.version.compare($0, options: .numeric) == .orderedDescending
-                } ?? true
-
                 // 有新版本
-                if hasNewerVersion {
+                if shouldShowServerFirmwareDetails(newFirmwareData) {
                     
                     stateLabel.text = "new_version_found".localizedString
                     
@@ -280,7 +312,7 @@ class FirmwareVersionViewController: UIViewController {
                         make.top.equalTo(versionScrollView.snp.bottom).offset(SCRYFit(18))
                         make.height.equalTo(SCRYFit(52))
                     }
-                    downloadBtn.isEnabled = true
+                    downloadBtn.isEnabled = isFirmwarePrimaryActionEnabled(newFirmwareData)
                 }else { // 已是最新版本
                     stateLabel.text = "the_latest_version".localizedString
                     versionScrollView.isHidden = true
@@ -323,6 +355,12 @@ class FirmwareVersionViewController: UIViewController {
             }
             
             
+        }
+
+        if requiresAdditionalFirmwareReload {
+            stateLabel.isHidden = true
+            reloadBtn.isHidden = false
+            downloadBtn.isEnabled = false
         }
         
     }
@@ -410,7 +448,7 @@ class FirmwareVersionViewController: UIViewController {
             make.height.equalTo(SCRYFit(52))
         }
         
-        currentVersionTitleLabel = UILabel(text: "current_target_version".localizedString, textColor: TextBlack_Color, fontSize: 14)
+        currentVersionTitleLabel = UILabel(text: currentVersionTitleText, textColor: TextBlack_Color, fontSize: 14)
         cacheVersionView.addSubview(currentVersionTitleLabel)
         currentVersionTitleLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(20))
