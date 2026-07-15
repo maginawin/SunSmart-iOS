@@ -7,6 +7,7 @@
 
 import UIKit
 import NordicSigMeshSDK
+import SnapKit
 import SwiftyJSON
 
 class FirmwareVersionViewController: UIViewController {
@@ -28,6 +29,13 @@ class FirmwareVersionViewController: UIViewController {
     private var currentVersionTitleLabel: UILabel!
     private var currentVersionLabel: UILabel!
     private var versionDeleteBtn: UIButton!
+
+    /// 页面可滚动内容（仅由需要扩展状态内容的子类启用）
+    private var contentScrollView: UIScrollView?
+    private var pageContentView: UIView?
+    private var additionalFirmwareContentView: UIView?
+    private var additionalFirmwareContentTopConstraint: Constraint?
+    private var additionalFirmwareContentCollapsedHeightConstraint: Constraint?
     
     /// 下载
     private var bottomView: UIView!
@@ -58,6 +66,34 @@ class FirmwareVersionViewController: UIViewController {
     var showsFirmwareDeleteButton: Bool { localFirmwareData != nil }
     var showsBetaImportAction: Bool { true }
     var firmwarePrimaryActionTitle: String { "Download".localizedString }
+    var usesScrollableFirmwareContent: Bool { false }
+    var additionalFirmwareContentTopSpacing: CGFloat { 0 }
+    var additionalFirmwareContentHorizontalInset: CGFloat { 0 }
+
+    func makeAdditionalFirmwareContentView() -> UIView? { nil }
+
+    func setAdditionalFirmwareContentHidden(_ hidden: Bool) {
+        additionalFirmwareContentView?.isHidden = hidden
+        additionalFirmwareContentTopConstraint?.update(
+            offset: hidden ? 0 : additionalFirmwareContentTopSpacing
+        )
+        if hidden {
+            additionalFirmwareContentCollapsedHeightConstraint?.activate()
+        } else {
+            additionalFirmwareContentCollapsedHeightConstraint?.deactivate()
+        }
+    }
+
+    func updateFirmwarePrimaryAction(titleKey: String, isEnabled: Bool) {
+        downloadBtn.setTitle(titleKey.localizedString, for: .normal)
+        downloadBtn.isEnabled = isEnabled
+    }
+
+    func applyAdditionalFirmwareUIState() {}
+
+    func normalizedServerFirmwareVersion(_ rawVersion: String) -> String {
+        return rawVersion.replacingOccurrences(of: "v", with: "")
+    }
 
     func loadAdditionalFirmwareData() {}
 
@@ -155,7 +191,7 @@ class FirmwareVersionViewController: UIViewController {
                 releaseDate = releaseDate.replacingOccurrences(of: "Z", with: "")
                 let timeInterval = String.dateConvert(timeStr: releaseDate, dateFormat: nil)
                 
-                let serverData = FirmwareServerData(productId: pid, version: version.replacingOccurrences(of: "v", with: ""), companyId: UInt16(companyId) ?? 0x0A78, customId: UInt16(customId) ?? 0, url: url, filename: data["filename"].stringValue, size: size, releaseDate: timeInterval, content: data["describe"].stringValue)
+                let serverData = FirmwareServerData(productId: pid, version: self.normalizedServerFirmwareVersion(version), companyId: UInt16(companyId) ?? 0x0A78, customId: UInt16(customId) ?? 0, url: url, filename: data["filename"].stringValue, size: size, releaseDate: timeInterval, content: data["describe"].stringValue)
                 self.type.serverData = serverData
                 self.noServerFirmware = false
                 self.updateUI()
@@ -362,16 +398,61 @@ class FirmwareVersionViewController: UIViewController {
             reloadBtn.isHidden = false
             downloadBtn.isEnabled = false
         }
-        
+
+        applyAdditionalFirmwareUIState()
     }
     
     private func setupUI() {
-        
+
+        bottomView = UIView()
+        bottomView.backgroundColor = .white
+        view.addSubview(bottomView)
+        bottomView.snp.makeConstraints { make in
+            make.left.right.bottom.equalToSuperview()
+            make.height.equalTo((isIPad ? 0 : kSafeAreaBottomHeight) + SCRYFit(56))
+        }
+
+        downloadBtn = UIButton(title: firmwarePrimaryActionTitle, titleSize: 16, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(firmwarePrimaryAction))
+        downloadBtn.setTitleColor(RGB(148, 163, 184), for: .disabled)
+        bottomView.addSubview(downloadBtn)
+        downloadBtn.snp.makeConstraints { make in
+            make.left.right.top.equalToSuperview()
+            make.height.equalTo(SCRYFit(56))
+        }
+
+        let contentParent: UIView
+        if usesScrollableFirmwareContent {
+            let scrollView = UIScrollView()
+            scrollView.alwaysBounceVertical = false
+            view.addSubview(scrollView)
+            scrollView.snp.makeConstraints { make in
+                make.left.right.equalToSuperview()
+                make.top.equalTo(view.safeAreaLayoutGuide)
+                make.bottom.equalTo(bottomView.snp.top)
+            }
+
+            let contentView = UIView()
+            scrollView.addSubview(contentView)
+            contentView.snp.makeConstraints { make in
+                make.edges.equalToSuperview()
+                make.width.equalToSuperview()
+            }
+            contentScrollView = scrollView
+            pageContentView = contentView
+            contentParent = contentView
+        } else {
+            contentParent = view
+        }
+
         headerView = UIView()
-        view.addSubview(headerView)
+        contentParent.addSubview(headerView)
         headerView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
-            make.top.equalTo(view.safeAreaLayoutGuide)
+            if usesScrollableFirmwareContent {
+                make.top.equalToSuperview()
+            } else {
+                make.top.equalTo(view.safeAreaLayoutGuide)
+            }
             make.height.equalTo(SCRYFit(147))
         }
         
@@ -406,7 +487,7 @@ class FirmwareVersionViewController: UIViewController {
         versionScrollView.backgroundColor = .white
         versionScrollView.layer.cornerRadius = SCRYFrom(10)
 //        versionScrollView.showsVerticalScrollIndicator = false
-        view.addSubview(versionScrollView)
+        contentParent.addSubview(versionScrollView)
         versionScrollView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
@@ -440,7 +521,7 @@ class FirmwareVersionViewController: UIViewController {
         cacheVersionView = UIView()
         cacheVersionView.backgroundColor = .white
         cacheVersionView.layer.cornerRadius = SCRYFrom(10)
-        view.addSubview(cacheVersionView)
+        contentParent.addSubview(cacheVersionView)
         cacheVersionView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
@@ -469,20 +550,24 @@ class FirmwareVersionViewController: UIViewController {
             make.right.equalTo(SCRXFrom(-16))
         }
         
-        bottomView = UIView()
-        bottomView.backgroundColor = .white
-        view.addSubview(bottomView)
-        bottomView.snp.makeConstraints { make in
-            make.left.right.bottom.equalToSuperview()
-            make.height.equalTo((isIPad ? 0 : kSafeAreaBottomHeight) + SCRYFit(56))
-        }
-        
-        downloadBtn = UIButton(title: firmwarePrimaryActionTitle, titleSize: 16, titleWeight: .light, titleColor: Bar_Color, target: self, action: #selector(firmwarePrimaryAction))
-        downloadBtn.setTitleColor(RGB(148, 163, 184), for: .disabled)
-        bottomView.addSubview(downloadBtn)
-        downloadBtn.snp.makeConstraints { make in
-            make.left.right.top.equalToSuperview()
-            make.height.equalTo(SCRYFit(56))
+        if let additionalView = makeAdditionalFirmwareContentView() {
+            additionalFirmwareContentView = additionalView
+            contentParent.addSubview(additionalView)
+            additionalView.snp.makeConstraints { make in
+                make.left.equalTo(additionalFirmwareContentHorizontalInset)
+                make.right.equalTo(-additionalFirmwareContentHorizontalInset)
+                additionalFirmwareContentTopConstraint = make.top.equalTo(cacheVersionView.snp.bottom)
+                    .offset(additionalFirmwareContentTopSpacing).constraint
+                additionalFirmwareContentCollapsedHeightConstraint = make.height.equalTo(0).constraint
+                if usesScrollableFirmwareContent {
+                    make.bottom.equalToSuperview().offset(-20)
+                }
+            }
+            additionalFirmwareContentCollapsedHeightConstraint?.deactivate()
+        } else if usesScrollableFirmwareContent {
+            cacheVersionView.snp.makeConstraints { make in
+                make.bottom.equalToSuperview().offset(-20)
+            }
         }
     }
 

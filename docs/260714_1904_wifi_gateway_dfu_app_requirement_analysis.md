@@ -2,15 +2,17 @@
 
 ## 结论
 
-当前 SDK 已具备 `43 10`、`43 11`、`43 14` 的编解码与强类型结果，App 页面也已有当前版本、云端最新版本和升级按钮的基础能力。但需求尚不能直接进入实现，真实升级链存在一个后端数据阻塞项，并且需要补齐 OTA 会话归属、页面恢复、状态映射、轮询退出和无取消协议时的交互边界。
+`43 10` 已更新为只携带 URL 和 firmware ID，App 页面也已有当前版本、云端最新版本和升级按钮的基础能力。新的 App 区域 HTTP host + OTA download endpoint + filename 拼接规则已通过实际请求验证，返回可下载的固件镜像，服务端数据来源阻塞已解除。本地 SDK 仍按旧协议编码 SHA256 和 size，需要先同步新协议。
 
 ## 已核实的现状
 
 - `WiFiFirmwareUpdateViewController` 已通过 `43 14` 查询 Current version，仅当 New version 高于有效 Current version 时启用 UPGRADE。
-- 云端 latest 请求当前只保存 `version`、`url`、`filename`、`size` 等通用固件字段，没有结构化保存 WiFi DFU 所需的 `sha256` 和固件镜像 size。
-- 实际日志中的 `url` 是预签名 `https://...zip`，`size=653363` 是 ZIP 包大小；描述文本中的 `Image Size: 1006672` 和 `SHA256` 不是可靠的结构化业务字段。
-- `43 10` 要求 `http://`、64 字节十六进制 SHA256、实际固件字节数和 `firmware_id`，完整 payload 不超过 256 字节。当前云端响应不能安全组出合法 metadata。
-- SDK 已提供 `WiFiGatewayDFUMetadata` 参数校验、`WiFiGatewayDFUStartResult`、`WiFiGatewayDFUStatusResult`、完整 stage/code 枚举。
+- 云端 latest 请求已有 `version`、`url`、`filename`。`version=v0.4.0` 可按“去掉最多一个前导 v/V”得到 `firmware_id=0.4.0`。
+- 新 `43 10` 只要求 `http://` URL 和 `firmware_id`，payload 长度为 `5 + url_len + firmware_id_len`；若 256 字节上限仍保留，则示例无签名 URL 长 129、firmware ID 长 5，总 payload 长 139，长度合法。
+- 正确 URL 规则为 `{app_region_http_host}/sitespace/ota/download?key={filename}`。示例 URL 长 148、firmware ID 长 5，新 payload 总长为 158，低于 256 字节上限。
+- 示例 URL 已通过实际 GET 验证并返回 `200 OK`、`Content-Type: application/octet-stream`、`Content-Disposition: app_update.bin` 和 `Content-Length: 1006672`，服务端负责根据 ZIP key 返回实际固件镜像。
+- 本地 SDK 当前 `WiFiGatewayDFUMetadata` 仍要求 `url/sha256/size/firmwareID`，`SunricherVendorSet` 仍会编码 SHA256 和 size，尚未同步本次协议更新。
+- SDK 已提供 `WiFiGatewayDFUStartResult`、`WiFiGatewayDFUStatusResult` 和完整 stage/code 枚举。
 - SDK 已提供 `MeshLibManager.addGlobalMessageObserver`，可以在不替换页面上层 `messageDelegate` 的情况下接收网关主动上报的 `43 11`。
 - App 已有 `XWHUDManager.showCustomHUD`，视觉和行为接近 Figma 的 Loading 弹窗，应优先复用。
 - `alert_failed`、`sync_success_small` 两个资源已经存在，无需新增图片资源。
@@ -22,17 +24,16 @@
 - 状态文案包括 `Connection failed`、`Communication timeout`、`Unable to connect to the server`、`Downloading...`、`Updating...`、`Download failed`、`Upgrade failed`、`Upgrade complete!`。
 - 页面实现应复用现有主题色和字体，不照搬 Figma 生成代码；指定区域不使用 `SCRX/SCRY` 缩放宏。
 
-## 必须补齐的服务端数据契约
+## 更新后的 URL 构造规则
 
-建议由 latest API 为 WiFi 固件增加结构化字段，或提供专用 WiFi DFU metadata 接口：
+App 不使用 latest response 中的 S3 预签名 `url` 作为 `43 10` 参数，只使用 response 的 `filename`：
 
-- 可由网关直接下载的短 `http://` 固件镜像 URL，不是 ZIP URL；URL 与 firmware ID 组合后必须满足业务 payload 不超过 256 字节。
-- 固件镜像的 64 字节十六进制 SHA256。
-- 固件镜像的实际字节数，范围为 `1...UInt32.max`。
-- 目标 `firmware_id`，建议不带前导 `v`，长度 `1...32`。
-- URL 有效期必须覆盖网关开始下载的时间窗口。
+1. 读取 `UserData.currentServerRegion.baseURL`，保留当前区域 host 和 `/srv2` 基础路径，仅把 scheme 从 HTTPS 改为 HTTP。
+2. 追加固定下载路径 `/sitespace/ota/download`。
+3. 使用 URL query item 添加 `key=filename`，由 URL API 完成必要的 percent encoding，不做裸字符串拼接。
+4. 生成后校验 scheme 为 `http`、URL 可转换为 ASCII、firmware ID 长度为 `1...32`，并校验完整业务 payload `5 + url_len + firmware_id_len <= 256`。
 
-不建议从 `describe` 文本解析 Image Size/SHA256，也不建议把现有 ZIP 的 URL/size 直接发给网关。
+当前四个区域分别沿用 China Mainland、Asia Pacific、North America、Europe 的现有 baseURL，不在 WiFi DFU 页面硬编码 `www.mericher.com`。下载 endpoint 已验证会返回 `app_update.bin`，因此 App 无需下载或解压 ZIP。
 
 ## 推荐状态查询策略
 
@@ -49,9 +50,9 @@
 | 协议/传输结果 | UI 状态 | 底部按钮 |
 |---|---|---|
 | `43 10` 发送超时、未收到合法 ACK | `connFailedTimeout` | `UPGRADE AGAIN` |
-| `43 10 ret=0x04 internetUnavailable` | `connFailedServerUnable`，但建议把副文案改为 Internet unavailable | `UPGRADE AGAIN` |
+| `43 10 ret=0x04 internetUnavailable` | `connFailedServerUnable`，副文案保持 Figma 的 `Unable to connect to the server` | `UPGRADE AGAIN` |
 | `43 10` 其它明确失败或本地 metadata 校验失败 | `upgradeFailed` | `UPGRADE AGAIN` |
-| `stage=DOWNLOADING` | `downloading(percent)` | 无取消协议时不可提供真正可用的 CANCEL |
+| `stage=DOWNLOADING` | `downloading(percent)` | `CANCEL` disabled |
 | `VERIFYING/VERIFY_OK/REBOOTING/RECOVERING/VERSION_CHECK` | `updating(percent)` | `CANCEL` disabled |
 | `VERIFY_FAIL`，或 FAILED 且 code 为 HTTP/SIZE/NO_NET 等下载类错误 | `downloadFailed(percent)` | `UPGRADE AGAIN` |
 | 其它 `FAILED`、`TIMEOUT`、保留 stage/code、状态格式错误 | `upgradeFailed(percent)` | `UPGRADE AGAIN` |
@@ -62,7 +63,7 @@
 
 ## CANCEL 边界
 
-当前没有取消协议。把 downloading 状态的 CANCEL 做成可点击并立即恢复默认页，只会停止 App 展示，网关仍继续 OTA；这会造成状态欺骗，也可能允许用户重复发送 `43 10`。推荐本期展示 disabled CANCEL，待新增 cancel 协议后再开放。若产品必须允许“隐藏进度”，按钮文案应明确为 HIDE，并且再次进入页面仍需恢复真实 OTA 状态，不能称为 CANCEL。
+当前没有取消协议。已确认本期 downloading 和 updating 都展示 disabled CANCEL，待新增 cancel 协议后再开放；App 不提供仅隐藏进度的伪取消行为。
 
 ## 页面与组件设计建议
 
@@ -81,8 +82,7 @@
 - SDK typed API 编译联动和现有 WiFi Gateway regression scripts。
 - `SunSmart`、`Archipelago`、`SLG Sync Plus`、`SylSmart` 四个 generic iPhoneOS build。
 
-## 当前待确认
+## 已确认的交互边界
 
-1. 后端采用扩展 latest API 还是新增 WiFi DFU metadata API，并提供合法的短 HTTP 镜像 URL、结构化 SHA256、镜像 size、firmware ID。
-2. 本期没有 cancel 协议时，是否接受 downloading 和 updating 都显示 disabled CANCEL。
-3. `ret=0x04` 的 UI 副文案是否从 Figma 的 `Unable to connect to the server` 调整为更准确的 `Internet unavailable`。
+1. 本期没有 cancel 协议，downloading 和 updating 都显示 disabled CANCEL。
+2. `ret=0x04` 使用 `connFailedServerUnable`，副文案继续使用 Figma 的 `Unable to connect to the server`。

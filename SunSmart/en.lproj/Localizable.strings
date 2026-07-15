@@ -860,6 +860,15 @@
 "wifi_dfu" = "WiFi DFU";
 "wifi_firmware_update" = "WiFi Firmware Update";
 "wifi_firmware_upgrade" = "UPGRADE";
+"wifi_firmware_upgrade_again" = "UPGRADE AGAIN";
+"wifi_firmware_connection_failed" = "Connection failed";
+"wifi_firmware_communication_timeout" = "Communication timeout";
+"wifi_firmware_server_unable" = "Unable to connect to the server";
+"wifi_firmware_downloading" = "Downloading...";
+"wifi_firmware_updating" = "Updating...";
+"wifi_firmware_download_failed" = "Download failed";
+"wifi_firmware_upgrade_failed" = "Upgrade failed";
+"wifi_firmware_upgrade_complete" = "Upgrade complete!";
 "Download" = "DOWNLOAD";
 "release_date" = "Release date";
 "firmware_version_history" = "Firmware version history";

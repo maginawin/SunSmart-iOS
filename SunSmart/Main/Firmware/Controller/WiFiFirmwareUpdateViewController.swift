@@ -18,7 +18,11 @@ final class WiFiFirmwareUpdateViewController: FirmwareVersionViewController {
 
     private let node: Node
     private var currentVersionState: CurrentVersionState = .loading
-    private var currentVersionRequestID: Int = 0
+    private lazy var dfuCoordinator = WiFiFirmwareDFUCoordinator(node: node)
+    private lazy var updatingView = WiFiFirmwareUpdatingView()
+    private var updatingState: WiFiFirmwareUpdatingState?
+    private var primaryAction: WiFiFirmwarePrimaryAction = .upgrade
+    private var coordinatorActive = false
 
     init(node: Node) {
         self.node = node
@@ -35,12 +39,33 @@ final class WiFiFirmwareUpdateViewController: FirmwareVersionViewController {
         fatalError("init(coder:) has not been implemented")
     }
 
+    override func viewDidLoad() {
+        bindCoordinator()
+        super.viewDidLoad()
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        activateCoordinatorIfNeeded()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        coordinatorActive = false
+        dfuCoordinator.deactivate()
+        XWHUDManager.hideInView(with: view)
+    }
+
     override var firmwarePageTitle: String {
         return "wifi_firmware_update".localizedString
     }
 
     override var firmwareRequestCustomId: String {
         return "wifi"
+    }
+
+    override func normalizedServerFirmwareVersion(_ rawVersion: String) -> String {
+        return (try? WiFiFirmwareDFUMetadataBuilder.firmwareID(version: rawVersion)) ?? rawVersion
     }
 
     override var currentVersionTitleText: String {
@@ -65,6 +90,16 @@ final class WiFiFirmwareUpdateViewController: FirmwareVersionViewController {
 
     override var createsUIBeforeCloudRequest: Bool {
         return true
+    }
+
+    override var usesScrollableFirmwareContent: Bool { true }
+
+    override var additionalFirmwareContentTopSpacing: CGFloat { 32 }
+
+    override var additionalFirmwareContentHorizontalInset: CGFloat { 36 }
+
+    override func makeAdditionalFirmwareContentView() -> UIView? {
+        return updatingView
     }
 
     override var requiresAdditionalFirmwareReload: Bool {
@@ -93,35 +128,10 @@ final class WiFiFirmwareUpdateViewController: FirmwareVersionViewController {
     }
 
     override func loadAdditionalFirmwareData() {
-        currentVersionRequestID += 1
-        let requestID = currentVersionRequestID
-        currentVersionState = .loading
-        refreshFirmwareUI()
-
-        guard node.state,
-              node.isKeybindComplete,
-              let vendorModel = node.sunricherVendorModel else {
-            currentVersionState = .failed
-            refreshFirmwareUI()
-            return
-        }
-
-        MeshAPI.sendMessage(
-            message: SunricherVendorGet(function: .wifiGatewayFirmwareVersion),
-            model: vendorModel,
-            timeout: 10
-        ) { [weak self] response in
-            DispatchQueue.main.async {
-                guard let self, self.currentVersionRequestID == requestID else { return }
-                guard let status = response as? SunricherVendorStatus,
-                      case .wifiGatewayFirmwareVersion(.success(let version)) = status.status.parameters else {
-                    self.currentVersionState = .failed
-                    self.refreshFirmwareUI()
-                    return
-                }
-                self.currentVersionState = .loaded(version)
-                self.refreshFirmwareUI()
-            }
+        if coordinatorActive {
+            dfuCoordinator.refresh()
+        } else {
+            activateCoordinatorIfNeeded()
         }
     }
 
@@ -147,7 +157,95 @@ final class WiFiFirmwareUpdateViewController: FirmwareVersionViewController {
         return "wifi_firmware_upgrade".localizedString
     }
 
+    override func applyAdditionalFirmwareUIState() {
+        guard let updatingState else {
+            primaryAction = .upgrade
+            setAdditionalFirmwareContentHidden(true)
+            let isEnabled: Bool
+            if case .loaded = currentVersionState, let serverData = type.serverData {
+                isEnabled = isNewServerFirmwareAvailable(serverData)
+            } else {
+                isEnabled = false
+            }
+            updateFirmwarePrimaryAction(
+                titleKey: "wifi_firmware_upgrade",
+                isEnabled: isEnabled
+            )
+            return
+        }
+
+        updatingView.configure(state: updatingState)
+        setAdditionalFirmwareContentHidden(false)
+        let presentation = primaryActionPresentation(for: updatingState)
+        primaryAction = presentation.action
+        updateFirmwarePrimaryAction(
+            titleKey: presentation.titleKey,
+            isEnabled: presentation.isEnabled
+        )
+    }
+
     @objc override func firmwarePrimaryAction() {
-        XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)
+        switch primaryAction {
+        case .upgrade, .retry:
+            guard let serverData = type.serverData else { return }
+            dfuCoordinator.start(filename: serverData.filename, version: serverData.version)
+        case .done:
+            dfuCoordinator.consumeSuccess()
+        case .cancelDisabled:
+            break
+        }
+    }
+
+    private func bindCoordinator() {
+        dfuCoordinator.onEvent = { [weak self] event in
+            DispatchQueue.main.async {
+                self?.handleCoordinatorEvent(event)
+            }
+        }
+    }
+
+    private func activateCoordinatorIfNeeded() {
+        guard !coordinatorActive else { return }
+        coordinatorActive = true
+        dfuCoordinator.activate()
+    }
+
+    private func handleCoordinatorEvent(_ event: WiFiFirmwareDFUCoordinator.Event) {
+        switch event {
+        case .loadingStart(let loading):
+            if loading {
+                XWHUDManager.showCustomHUD(withMessage: "Loading...".localizedString, view: view)
+            } else {
+                XWHUDManager.hideInView(with: view)
+            }
+        case .currentVersionLoading:
+            currentVersionState = .loading
+            refreshFirmwareUI()
+        case .currentVersion(let version), .confirmedVersion(let version):
+            currentVersionState = .loaded(version)
+            refreshFirmwareUI()
+        case .currentVersionFailed:
+            currentVersionState = .failed
+            refreshFirmwareUI()
+        case .updateState(let state):
+            updatingState = state
+            refreshFirmwareUI()
+        case .idle:
+            updatingState = nil
+            refreshFirmwareUI()
+        }
+    }
+
+    private func primaryActionPresentation(
+        for state: WiFiFirmwareUpdatingState
+    ) -> WiFiFirmwarePrimaryActionPresentation {
+        switch state.kind {
+        case .downloading, .updating:
+            return .init(titleKey: "cancel", isEnabled: false, action: .cancelDisabled)
+        case .connFailedTimeout, .connFailedServerUnable, .downloadFailed, .upgradeFailed:
+            return .init(titleKey: "wifi_firmware_upgrade_again", isEnabled: true, action: .retry)
+        case .upgradeComplete:
+            return .init(titleKey: "done", isEnabled: true, action: .done)
+        }
     }
 }
