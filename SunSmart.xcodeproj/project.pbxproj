@@ -7,26 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		C8FA11012F11000100000001 /* SimulateFaultAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10012F11000100000001 /* SimulateFaultAction.swift */; };
-		C8FA11012F11000100000002 /* SimulateFaultAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10012F11000100000001 /* SimulateFaultAction.swift */; };
-		C8FA11012F11000100000003 /* SimulateFaultAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10012F11000100000001 /* SimulateFaultAction.swift */; };
-		C8FA11012F11000100000004 /* SimulateFaultAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10012F11000100000001 /* SimulateFaultAction.swift */; };
-		C8FB11012F11000400000001 /* SimulateFaultRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FB10012F11000400000001 /* SimulateFaultRequest.swift */; };
-		C8FB11012F11000400000002 /* SimulateFaultRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FB10012F11000400000001 /* SimulateFaultRequest.swift */; };
-		C8FB11012F11000400000003 /* SimulateFaultRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FB10012F11000400000001 /* SimulateFaultRequest.swift */; };
-		C8FB11012F11000400000004 /* SimulateFaultRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FB10012F11000400000001 /* SimulateFaultRequest.swift */; };
-		C8FA12012F11000200000001 /* SimulateFaultSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10022F11000200000001 /* SimulateFaultSectionView.swift */; };
-		C8FA12012F11000200000002 /* SimulateFaultSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10022F11000200000001 /* SimulateFaultSectionView.swift */; };
-		C8FA12012F11000200000003 /* SimulateFaultSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10022F11000200000001 /* SimulateFaultSectionView.swift */; };
-		C8FA12012F11000200000004 /* SimulateFaultSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10022F11000200000001 /* SimulateFaultSectionView.swift */; };
-		C8FA13012F11000300000001 /* SimulateFaultViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10032F11000300000001 /* SimulateFaultViewController.swift */; };
-		C8FA13012F11000300000002 /* SimulateFaultViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10032F11000300000001 /* SimulateFaultViewController.swift */; };
-		C8FA13012F11000300000003 /* SimulateFaultViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10032F11000300000001 /* SimulateFaultViewController.swift */; };
-		C8FA13012F11000300000004 /* SimulateFaultViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10032F11000300000001 /* SimulateFaultViewController.swift */; };
-		C8BA71012FA7000000000001 /* FirmwareVersionUpdatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */; };
-		C8BA71012FA7000000000002 /* FirmwareVersionUpdatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */; };
-		C8BA71012FA7000000000003 /* FirmwareVersionUpdatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */; };
-		C8BA71012FA7000000000004 /* FirmwareVersionUpdatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */; };
 		0103BEF5A3F84EEB84317B31 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
 		0C36C97F8A95474C9D655F09 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
 		15F6AEDF416B45D6BC28749E /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
@@ -723,7 +703,6 @@
 		C885543D2DE6B44C00C8B688 /* DeviceBaseViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A347CF2D63103B0092D3E4 /* DeviceBaseViewController.swift */; };
 		C885543E2DE6B44C00C8B688 /* BleFirmwareUpdateRestoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DC673E2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift */; };
 		C885543F2DE6B44C00C8B688 /* FirmwareVersionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F712C86A3CF00FB50BD /* FirmwareVersionViewController.swift */; };
-		C8F6A1052FA3000000000001 /* WiFiFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1092FA3000000000001 /* WiFiFirmwareUpdateViewController.swift */; };
 		C88554402DE6B44C00C8B688 /* SitesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FEF4E2ABEB37900DCCFB6 /* SitesViewCell.swift */; };
 		C88554412DE6B44C00C8B688 /* ProfileInstructionsHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F0E2B8E049E00A09FFA /* ProfileInstructionsHeaderView.swift */; };
 		C88554422DE6B44C00C8B688 /* DeviceGroupsSelectData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B058A62B5115B2006FC36F /* DeviceGroupsSelectData.swift */; };
@@ -1097,7 +1076,6 @@
 		C886E0902E30DE4900D0C3A6 /* DeviceBaseViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A347CF2D63103B0092D3E4 /* DeviceBaseViewController.swift */; };
 		C886E0912E30DE4900D0C3A6 /* BleFirmwareUpdateRestoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DC673E2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift */; };
 		C886E0922E30DE4900D0C3A6 /* FirmwareVersionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F712C86A3CF00FB50BD /* FirmwareVersionViewController.swift */; };
-		C8F6A1062FA3000000000001 /* WiFiFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1092FA3000000000001 /* WiFiFirmwareUpdateViewController.swift */; };
 		C886E0932E30DE4900D0C3A6 /* SitesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FEF4E2ABEB37900DCCFB6 /* SitesViewCell.swift */; };
 		C886E0942E30DE4900D0C3A6 /* RangeSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC95E12E04FC830058D41E /* RangeSlider.swift */; };
 		C886E0952E30DE4900D0C3A6 /* ProfileInstructionsHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F0E2B8E049E00A09FFA /* ProfileInstructionsHeaderView.swift */; };
@@ -1488,7 +1466,6 @@
 		C8A16F6D2C854AF300FB50BD /* WelcomeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F6C2C854AF300FB50BD /* WelcomeViewController.swift */; };
 		C8A16F6F2C8568F700FB50BD /* AttributedTextViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F6E2C8568F600FB50BD /* AttributedTextViewController.swift */; };
 		C8A16F722C86A3CF00FB50BD /* FirmwareVersionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F712C86A3CF00FB50BD /* FirmwareVersionViewController.swift */; };
-		C8F6A1072FA3000000000001 /* WiFiFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1092FA3000000000001 /* WiFiFirmwareUpdateViewController.swift */; };
 		C8A16F782C86E8C100FB50BD /* FirmwareVersionHistoryController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F772C86E8C100FB50BD /* FirmwareVersionHistoryController.swift */; };
 		C8A16F7A2C86EABB00FB50BD /* FirmwareVersionHistoryViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F792C86EABB00FB50BD /* FirmwareVersionHistoryViewCell.swift */; };
 		C8A16F7C2C86EEFA00FB50BD /* FirmwareVersionData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F7B2C86EEFA00FB50BD /* FirmwareVersionData.swift */; };
@@ -1542,10 +1519,6 @@
 		C8A9000A2F8000010000000A /* WiFiSSIDProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900012F80000100000001 /* WiFiSSIDProvider.swift */; };
 		C8A9000B2F8000010000000B /* WiFiSSIDProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900012F80000100000001 /* WiFiSSIDProvider.swift */; };
 		C8A9000C2F8000010000000C /* WiFiSSIDProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900012F80000100000001 /* WiFiSSIDProvider.swift */; };
-		C8A901092F81000100000009 /* GatewayServerAuthorizationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A901012F81000100000001 /* GatewayServerAuthorizationService.swift */; };
-		C8A9010A2F8100010000000A /* GatewayServerAuthorizationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A901012F81000100000001 /* GatewayServerAuthorizationService.swift */; };
-		C8A9010B2F8100010000000B /* GatewayServerAuthorizationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A901012F81000100000001 /* GatewayServerAuthorizationService.swift */; };
-		C8A9010C2F8100010000000C /* GatewayServerAuthorizationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A901012F81000100000001 /* GatewayServerAuthorizationService.swift */; };
 		C8A9000D2F8000010000000D /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C8A900062F80000100000006 /* InfoPlist.strings */; };
 		C8A9000E2F8000010000000E /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C8A900062F80000100000006 /* InfoPlist.strings */; };
 		C8A9000F2F8000010000000F /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C8A900062F80000100000006 /* InfoPlist.strings */; };
@@ -1558,6 +1531,10 @@
 		C8A900182F80000100000018 /* GatewayChangeWiFiAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */; };
 		C8A900192F80000100000019 /* GatewayChangeWiFiAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */; };
 		C8A9001A2F8000010000001A /* GatewayChangeWiFiAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */; };
+		C8A901092F81000100000009 /* GatewayServerAuthorizationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A901012F81000100000001 /* GatewayServerAuthorizationService.swift */; };
+		C8A9010A2F8100010000000A /* GatewayServerAuthorizationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A901012F81000100000001 /* GatewayServerAuthorizationService.swift */; };
+		C8A9010B2F8100010000000B /* GatewayServerAuthorizationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A901012F81000100000001 /* GatewayServerAuthorizationService.swift */; };
+		C8A9010C2F8100010000000C /* GatewayServerAuthorizationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A901012F81000100000001 /* GatewayServerAuthorizationService.swift */; };
 		C8AADEFF2A97350400238C1C /* SiteData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADEFE2A97350400238C1C /* SiteData.swift */; };
 		C8AADF012A973DA600238C1C /* SpaceData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADF002A973DA600238C1C /* SpaceData.swift */; };
 		C8AAE2772A97435A00238C1C /* Database.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AAE2762A97435A00238C1C /* Database.swift */; };
@@ -1702,6 +1679,10 @@
 		C8BA43672DC0A7B300018392 /* EnergyTimeSeriesDataExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43662DC0A7B300018392 /* EnergyTimeSeriesDataExportView.swift */; };
 		C8BA43692DC0AE9900018392 /* TimeSeriesDataGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43682DC0AE9900018392 /* TimeSeriesDataGuideView.swift */; };
 		C8BA436B2DC0D75A00018392 /* EnergySelectExportDevicesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA436A2DC0D75A00018392 /* EnergySelectExportDevicesController.swift */; };
+		C8BA71012FA7000000000001 /* FirmwareVersionUpdatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */; };
+		C8BA71012FA7000000000002 /* FirmwareVersionUpdatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */; };
+		C8BA71012FA7000000000003 /* FirmwareVersionUpdatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */; };
+		C8BA71012FA7000000000004 /* FirmwareVersionUpdatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */; };
 		C8BB3E442EF92CDC00207225 /* ProfileLightSensorTemplateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E432EF92CDC00207225 /* ProfileLightSensorTemplateController.swift */; };
 		C8BB3E452EF92CDC00207225 /* ProfileLightSensorTemplateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E432EF92CDC00207225 /* ProfileLightSensorTemplateController.swift */; };
 		C8BB3E462EF92CDC00207225 /* ProfileLightSensorTemplateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E432EF92CDC00207225 /* ProfileLightSensorTemplateController.swift */; };
@@ -1877,7 +1858,6 @@
 		C8BB66502ED3F056000C63EE /* DeviceBaseViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A347CF2D63103B0092D3E4 /* DeviceBaseViewController.swift */; };
 		C8BB66512ED3F056000C63EE /* BleFirmwareUpdateRestoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DC673E2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift */; };
 		C8BB66522ED3F056000C63EE /* FirmwareVersionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F712C86A3CF00FB50BD /* FirmwareVersionViewController.swift */; };
-		C8F6A1082FA3000000000001 /* WiFiFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1092FA3000000000001 /* WiFiFirmwareUpdateViewController.swift */; };
 		C8BB66532ED3F056000C63EE /* SitesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FEF4E2ABEB37900DCCFB6 /* SitesViewCell.swift */; };
 		C8BB66542ED3F056000C63EE /* RangeSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC95E12E04FC830058D41E /* RangeSlider.swift */; };
 		C8BB66552ED3F056000C63EE /* ProfileInstructionsHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F0E2B8E049E00A09FFA /* ProfileInstructionsHeaderView.swift */; };
@@ -2386,6 +2366,10 @@
 		C8F6A1012FA3000000000001 /* WiFiGatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1042FA3000000000001 /* WiFiGatewayViewController.swift */; };
 		C8F6A1022FA3000000000001 /* WiFiGatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1042FA3000000000001 /* WiFiGatewayViewController.swift */; };
 		C8F6A1032FA3000000000001 /* WiFiGatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1042FA3000000000001 /* WiFiGatewayViewController.swift */; };
+		C8F6A1052FA3000000000001 /* WiFiFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1092FA3000000000001 /* WiFiFirmwareUpdateViewController.swift */; };
+		C8F6A1062FA3000000000001 /* WiFiFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1092FA3000000000001 /* WiFiFirmwareUpdateViewController.swift */; };
+		C8F6A1072FA3000000000001 /* WiFiFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1092FA3000000000001 /* WiFiFirmwareUpdateViewController.swift */; };
+		C8F6A1082FA3000000000001 /* WiFiFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1092FA3000000000001 /* WiFiFirmwareUpdateViewController.swift */; };
 		C8F700002FAF000000000002 /* ELControllerFunctionTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */; };
 		C8F700002FAF000000000003 /* ELControllerFunctionTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */; };
 		C8F700002FAF000000000004 /* ELControllerFunctionTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */; };
@@ -2407,6 +2391,22 @@
 		C8F89D3D2E3CBD1F00FA1544 /* GatewayModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */; };
 		C8F89D3E2E3CBD1F00FA1544 /* GatewayModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */; };
 		C8F89D3F2E3CBD1F00FA1544 /* GatewayModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */; };
+		C8FA11012F11000100000001 /* SimulateFaultAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10012F11000100000001 /* SimulateFaultAction.swift */; };
+		C8FA11012F11000100000002 /* SimulateFaultAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10012F11000100000001 /* SimulateFaultAction.swift */; };
+		C8FA11012F11000100000003 /* SimulateFaultAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10012F11000100000001 /* SimulateFaultAction.swift */; };
+		C8FA11012F11000100000004 /* SimulateFaultAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10012F11000100000001 /* SimulateFaultAction.swift */; };
+		C8FA12012F11000200000001 /* SimulateFaultSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10022F11000200000001 /* SimulateFaultSectionView.swift */; };
+		C8FA12012F11000200000002 /* SimulateFaultSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10022F11000200000001 /* SimulateFaultSectionView.swift */; };
+		C8FA12012F11000200000003 /* SimulateFaultSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10022F11000200000001 /* SimulateFaultSectionView.swift */; };
+		C8FA12012F11000200000004 /* SimulateFaultSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10022F11000200000001 /* SimulateFaultSectionView.swift */; };
+		C8FA13012F11000300000001 /* SimulateFaultViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10032F11000300000001 /* SimulateFaultViewController.swift */; };
+		C8FA13012F11000300000002 /* SimulateFaultViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10032F11000300000001 /* SimulateFaultViewController.swift */; };
+		C8FA13012F11000300000003 /* SimulateFaultViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10032F11000300000001 /* SimulateFaultViewController.swift */; };
+		C8FA13012F11000300000004 /* SimulateFaultViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10032F11000300000001 /* SimulateFaultViewController.swift */; };
+		C8FB11012F11000400000001 /* SimulateFaultRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FB10012F11000400000001 /* SimulateFaultRequest.swift */; };
+		C8FB11012F11000400000002 /* SimulateFaultRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FB10012F11000400000001 /* SimulateFaultRequest.swift */; };
+		C8FB11012F11000400000003 /* SimulateFaultRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FB10012F11000400000001 /* SimulateFaultRequest.swift */; };
+		C8FB11012F11000400000004 /* SimulateFaultRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FB10012F11000400000001 /* SimulateFaultRequest.swift */; };
 		C8FC6B9E2E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FC6B9D2E7502F6004EE2BA /* DaliDeviceInformationController.swift */; };
 		C8FC6B9F2E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FC6B9D2E7502F6004EE2BA /* DaliDeviceInformationController.swift */; };
 		C8FC6BA02E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FC6B9D2E7502F6004EE2BA /* DaliDeviceInformationController.swift */; };
@@ -2421,11 +2421,6 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		C8FA10012F11000100000001 /* SimulateFaultAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulateFaultAction.swift; sourceTree = "<group>"; };
-		C8FB10012F11000400000001 /* SimulateFaultRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulateFaultRequest.swift; sourceTree = "<group>"; };
-		C8FA10022F11000200000001 /* SimulateFaultSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulateFaultSectionView.swift; sourceTree = "<group>"; };
-		C8FA10032F11000300000001 /* SimulateFaultViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulateFaultViewController.swift; sourceTree = "<group>"; };
-		C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareVersionUpdatePolicy.swift; sourceTree = "<group>"; };
 		0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorViewModel.swift; sourceTree = "<group>"; };
 		29E6735F1867DC54FBDDBAA9 /* Pods-Common-SylSmart.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SylSmart.debug.xcconfig"; path = "Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart.debug.xcconfig"; sourceTree = "<group>"; };
 		3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyFireControllerIconName.swift; sourceTree = "<group>"; };
@@ -2790,7 +2785,6 @@
 		C8A16F6C2C854AF300FB50BD /* WelcomeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeViewController.swift; sourceTree = "<group>"; };
 		C8A16F6E2C8568F600FB50BD /* AttributedTextViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AttributedTextViewController.swift; sourceTree = "<group>"; };
 		C8A16F712C86A3CF00FB50BD /* FirmwareVersionViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareVersionViewController.swift; sourceTree = "<group>"; };
-		C8F6A1092FA3000000000001 /* WiFiFirmwareUpdateViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiFirmwareUpdateViewController.swift; sourceTree = "<group>"; };
 		C8A16F772C86E8C100FB50BD /* FirmwareVersionHistoryController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareVersionHistoryController.swift; sourceTree = "<group>"; };
 		C8A16F792C86EABB00FB50BD /* FirmwareVersionHistoryViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareVersionHistoryViewCell.swift; sourceTree = "<group>"; };
 		C8A16F7B2C86EEFA00FB50BD /* FirmwareVersionData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareVersionData.swift; sourceTree = "<group>"; };
@@ -2830,7 +2824,6 @@
 		C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scheduler.swift; sourceTree = "<group>"; };
 		C8A8D7432EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileDayNightLuxViewController.swift; sourceTree = "<group>"; };
 		C8A900012F80000100000001 /* WiFiSSIDProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiSSIDProvider.swift; sourceTree = "<group>"; };
-		C8A901012F81000100000001 /* GatewayServerAuthorizationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayServerAuthorizationService.swift; sourceTree = "<group>"; };
 		C8A900022F80000100000002 /* SunSmart.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SunSmart.entitlements; sourceTree = "<group>"; };
 		C8A900032F80000100000003 /* Archipelago.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Archipelago.entitlements; sourceTree = "<group>"; };
 		C8A900042F80000100000004 /* SLGSync.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SLGSync.entitlements; sourceTree = "<group>"; };
@@ -2839,6 +2832,7 @@
 		C8A900082F80000100000008 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		C8A900112F80000100000011 /* GatewayNetworkConnectivityCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayNetworkConnectivityCell.swift; sourceTree = "<group>"; };
 		C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayChangeWiFiAlertView.swift; sourceTree = "<group>"; };
+		C8A901012F81000100000001 /* GatewayServerAuthorizationService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayServerAuthorizationService.swift; sourceTree = "<group>"; };
 		C8AADEFE2A97350400238C1C /* SiteData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteData.swift; sourceTree = "<group>"; };
 		C8AADF002A973DA600238C1C /* SpaceData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceData.swift; sourceTree = "<group>"; };
 		C8AAE2762A97435A00238C1C /* Database.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Database.swift; sourceTree = "<group>"; };
@@ -2922,6 +2916,7 @@
 		C8BA43662DC0A7B300018392 /* EnergyTimeSeriesDataExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyTimeSeriesDataExportView.swift; sourceTree = "<group>"; };
 		C8BA43682DC0AE9900018392 /* TimeSeriesDataGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimeSeriesDataGuideView.swift; sourceTree = "<group>"; };
 		C8BA436A2DC0D75A00018392 /* EnergySelectExportDevicesController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergySelectExportDevicesController.swift; sourceTree = "<group>"; };
+		C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareVersionUpdatePolicy.swift; sourceTree = "<group>"; };
 		C8BB3E432EF92CDC00207225 /* ProfileLightSensorTemplateController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileLightSensorTemplateController.swift; sourceTree = "<group>"; };
 		C8BB3E482EF945C500207225 /* ProfileLightSensorTemplateViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileLightSensorTemplateViewCell.swift; sourceTree = "<group>"; };
 		C8BB3E4D2EF9482500207225 /* ProfileLightSensorTemplateListController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileLightSensorTemplateListController.swift; sourceTree = "<group>"; };
@@ -3063,12 +3058,17 @@
 		C8EFC1012FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceGroupDeferredSyncPlanner.swift; sourceTree = "<group>"; };
 		C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequenceAddDescriptionController.swift; sourceTree = "<group>"; };
 		C8F6A1042FA3000000000001 /* WiFiGatewayViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiGatewayViewController.swift; sourceTree = "<group>"; };
+		C8F6A1092FA3000000000001 /* WiFiFirmwareUpdateViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiFirmwareUpdateViewController.swift; sourceTree = "<group>"; };
 		C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ELControllerFunctionTestView.swift; sourceTree = "<group>"; };
 		C8F700102FAF000000000001 /* ELControllerFunctionTestHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ELControllerFunctionTestHelper.swift; sourceTree = "<group>"; };
 		C8F7A0002FBF000000000001 /* Node+ELControllerRxTx.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Node+ELControllerRxTx.swift"; sourceTree = "<group>"; };
 		C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewaySectionHeaderView.swift; sourceTree = "<group>"; };
 		C8F89D372E3B6F8500FA1544 /* GatewayAPNMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayAPNMenuView.swift; sourceTree = "<group>"; };
 		C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayModel.swift; sourceTree = "<group>"; };
+		C8FA10012F11000100000001 /* SimulateFaultAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulateFaultAction.swift; sourceTree = "<group>"; };
+		C8FA10022F11000200000001 /* SimulateFaultSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulateFaultSectionView.swift; sourceTree = "<group>"; };
+		C8FA10032F11000300000001 /* SimulateFaultViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulateFaultViewController.swift; sourceTree = "<group>"; };
+		C8FB10012F11000400000001 /* SimulateFaultRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulateFaultRequest.swift; sourceTree = "<group>"; };
 		C8FC6B9D2E7502F6004EE2BA /* DaliDeviceInformationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaliDeviceInformationController.swift; sourceTree = "<group>"; };
 		C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupProximityLightingData.swift; sourceTree = "<group>"; };
 		C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Pods_Common_SunSmart.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -8017,7 +8017,7 @@
 			baseConfigurationReference = F10000000000000000000003 /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SunSmart/SunSmart.entitlements;
-				MARKETING_VERSION = 1.0.25;
+				MARKETING_VERSION = 1.0.26;
 			};
 			name = Debug;
 		};
@@ -8026,7 +8026,7 @@
 			baseConfigurationReference = F10000000000000000000004 /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SunSmart/SunSmart.entitlements;
-				MARKETING_VERSION = 1.0.25;
+				MARKETING_VERSION = 1.0.26;
 			};
 			name = Release;
 		};
