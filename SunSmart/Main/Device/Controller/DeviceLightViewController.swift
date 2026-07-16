@@ -76,7 +76,6 @@ class DeviceLightViewController: UIViewController {
         }
 //        menuView?.backgroundColor = .white
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
-        
 //        let tap = UITapGestureRecognizer(target: self, action: #selector(test))
 //        tap.numberOfTapsRequired = 2
 //        view.addGestureRecognizer(tap)
@@ -146,6 +145,7 @@ class DeviceLightViewController: UIViewController {
     }
     
     deinit {
+        NotificationCenter.default.removeObserver(self)
         MeshLibManager.manager.messageDelegate = self.lastMessageDelegate
         NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
     }
@@ -339,7 +339,7 @@ class DeviceLightViewController: UIViewController {
 //        if self.presentingViewController != nil {
 //            y = StatusBarManager.statusBarFrame.height + (navigationController?.navigationBar.height ?? kNavigationHeight)
 //        }
-        let menuWidth = SCRXFrom(114)
+        let menuWidth = SCRXFrom(140)
         var items: [MenuPopView.MenuItem] = []
         if space.deviceOperates.contains(.edit) {
             items.append(.init(icon: UIImage(named: "edit"), title: "edit".localizedString, tapItemBack: {[weak self] _ in
@@ -409,6 +409,18 @@ class DeviceLightViewController: UIViewController {
         items.append(.init(icon: UIImage(named: "menu_refresh"), title: "refresh".localizedString, tapItemBack: {[weak self] _ in
             self?.refresh()
         }))
+
+        if space.deviceOperates.contains(.edit) {
+            items.append(.init(
+                icon: UIImage(named: "menu_debug"),
+                title: "simulate_fault".localizedString,
+                hideAnimation: false,
+                performsActionAfterDismiss: true,
+                tapItemBack: { [weak self] _ in
+                    self?.showSimulateFault()
+                }
+            ))
+        }
         
         
 //        isIphoneX ? 18 : 15
@@ -419,6 +431,14 @@ class DeviceLightViewController: UIViewController {
         MenuPopView.show(items: items, anchorPoint: windowPoint, menuWidth: menuWidth) // SCRXFrom(114)
         
 //        MenuPopView.show(items: items, anchorPoint: CGPoint(x: view.width - SCRXFrom(17) - 15, y: y), menuWidth: MenuPopView.defalutMenuWidth + SCRXFrom(10))
+    }
+
+    private func showSimulateFault() {
+        guard space.deviceOperates.contains(.edit) else { return }
+        guard presentedViewController == nil else { return }
+
+        let controller = SimulateFaultViewController(space: space, node: node)
+        present(controller, animated: true)
     }
     
     private func test() {

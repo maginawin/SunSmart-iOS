@@ -7,6 +7,22 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		C8FA11012F11000100000001 /* SimulateFaultAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10012F11000100000001 /* SimulateFaultAction.swift */; };
+		C8FA11012F11000100000002 /* SimulateFaultAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10012F11000100000001 /* SimulateFaultAction.swift */; };
+		C8FA11012F11000100000003 /* SimulateFaultAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10012F11000100000001 /* SimulateFaultAction.swift */; };
+		C8FA11012F11000100000004 /* SimulateFaultAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10012F11000100000001 /* SimulateFaultAction.swift */; };
+		C8FB11012F11000400000001 /* SimulateFaultRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FB10012F11000400000001 /* SimulateFaultRequest.swift */; };
+		C8FB11012F11000400000002 /* SimulateFaultRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FB10012F11000400000001 /* SimulateFaultRequest.swift */; };
+		C8FB11012F11000400000003 /* SimulateFaultRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FB10012F11000400000001 /* SimulateFaultRequest.swift */; };
+		C8FB11012F11000400000004 /* SimulateFaultRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FB10012F11000400000001 /* SimulateFaultRequest.swift */; };
+		C8FA12012F11000200000001 /* SimulateFaultSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10022F11000200000001 /* SimulateFaultSectionView.swift */; };
+		C8FA12012F11000200000002 /* SimulateFaultSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10022F11000200000001 /* SimulateFaultSectionView.swift */; };
+		C8FA12012F11000200000003 /* SimulateFaultSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10022F11000200000001 /* SimulateFaultSectionView.swift */; };
+		C8FA12012F11000200000004 /* SimulateFaultSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10022F11000200000001 /* SimulateFaultSectionView.swift */; };
+		C8FA13012F11000300000001 /* SimulateFaultViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10032F11000300000001 /* SimulateFaultViewController.swift */; };
+		C8FA13012F11000300000002 /* SimulateFaultViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10032F11000300000001 /* SimulateFaultViewController.swift */; };
+		C8FA13012F11000300000003 /* SimulateFaultViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10032F11000300000001 /* SimulateFaultViewController.swift */; };
+		C8FA13012F11000300000004 /* SimulateFaultViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10032F11000300000001 /* SimulateFaultViewController.swift */; };
 		C8BA71012FA7000000000001 /* FirmwareVersionUpdatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */; };
 		C8BA71012FA7000000000002 /* FirmwareVersionUpdatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */; };
 		C8BA71012FA7000000000003 /* FirmwareVersionUpdatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */; };
@@ -2405,6 +2421,10 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		C8FA10012F11000100000001 /* SimulateFaultAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulateFaultAction.swift; sourceTree = "<group>"; };
+		C8FB10012F11000400000001 /* SimulateFaultRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulateFaultRequest.swift; sourceTree = "<group>"; };
+		C8FA10022F11000200000001 /* SimulateFaultSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulateFaultSectionView.swift; sourceTree = "<group>"; };
+		C8FA10032F11000300000001 /* SimulateFaultViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulateFaultViewController.swift; sourceTree = "<group>"; };
 		C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirmwareVersionUpdatePolicy.swift; sourceTree = "<group>"; };
 		0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorViewModel.swift; sourceTree = "<group>"; };
 		29E6735F1867DC54FBDDBAA9 /* Pods-Common-SylSmart.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SylSmart.debug.xcconfig"; path = "Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart.debug.xcconfig"; sourceTree = "<group>"; };
@@ -3783,6 +3803,7 @@
 		C884EF732C05B91200B5F869 /* Network */ = {
 			isa = PBXGroup;
 			children = (
+				C8FB10012F11000400000001 /* SimulateFaultRequest.swift */,
 				C884EF742C05B93200B5F869 /* NetworkRequest.swift */,
 				C884EF762C05B96600B5F869 /* NetowrkReqeustApi.swift */,
 				C8EF54732C1AFA53008389CE /* NetworkLoggerPlugin.swift */,
@@ -4142,6 +4163,8 @@
 		C898EA6D2AC2D59C0023B480 /* View */ = {
 			isa = PBXGroup;
 			children = (
+				C8FA10022F11000200000001 /* SimulateFaultSectionView.swift */,
+				C8FA10032F11000300000001 /* SimulateFaultViewController.swift */,
 				C898EA712AC3D17C0023B480 /* DevicesViewCell.swift */,
 				C8B0589B2B500D21006FC36F /* DeviceAllOnOffViewCell.swift */,
 				C8B0589D2B50C9C6006FC36F /* DeviceGroupsView.swift */,
@@ -4195,6 +4218,7 @@
 		C89941962AD4FB05008DCD76 /* Model */ = {
 			isa = PBXGroup;
 			children = (
+				C8FA10012F11000100000001 /* SimulateFaultAction.swift */,
 				C89941972AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift */,
 				C8B058A62B5115B2006FC36F /* DeviceGroupsSelectData.swift */,
 				C8A347CD2D6307CC0092D3E4 /* DeviceProtocol.swift */,
@@ -5470,6 +5494,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C8FA11012F11000100000001 /* SimulateFaultAction.swift in Sources */,
+				C8FB11012F11000400000001 /* SimulateFaultRequest.swift in Sources */,
+				C8FA12012F11000200000001 /* SimulateFaultSectionView.swift in Sources */,
+				C8FA13012F11000300000001 /* SimulateFaultViewController.swift in Sources */,
 				C88553B22DE6B44C00C8B688 /* FirmwareUpdateStateView.swift in Sources */,
 				C88553B32DE6B44C00C8B688 /* GroupAddViewController.swift in Sources */,
 				8C778BC82FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift in Sources */,
@@ -6049,6 +6077,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C8FA11012F11000100000002 /* SimulateFaultAction.swift in Sources */,
+				C8FB11012F11000400000002 /* SimulateFaultRequest.swift in Sources */,
+				C8FA12012F11000200000002 /* SimulateFaultSectionView.swift in Sources */,
+				C8FA13012F11000300000002 /* SimulateFaultViewController.swift in Sources */,
 				C886E0022E30DE4900D0C3A6 /* FirmwareUpdateStateView.swift in Sources */,
 				C886E0032E30DE4900D0C3A6 /* GroupAddViewController.swift in Sources */,
 				8C778BC72FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift in Sources */,
@@ -6629,6 +6661,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C8FA11012F11000100000003 /* SimulateFaultAction.swift in Sources */,
+				C8FB11012F11000400000003 /* SimulateFaultRequest.swift in Sources */,
+				C8FA12012F11000200000003 /* SimulateFaultSectionView.swift in Sources */,
+				C8FA13012F11000300000003 /* SimulateFaultViewController.swift in Sources */,
 				C89B53292C7DB5DC00D2959F /* FirmwareUpdateStateView.swift in Sources */,
 				C8BF08592B2705B400144BAC /* GroupAddViewController.swift in Sources */,
 				C8A29C2E2B4800E400104634 /* ScheduleAddView.swift in Sources */,
@@ -7208,6 +7244,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				C8FA11012F11000100000004 /* SimulateFaultAction.swift in Sources */,
+				C8FB11012F11000400000004 /* SimulateFaultRequest.swift in Sources */,
+				C8FA12012F11000200000004 /* SimulateFaultSectionView.swift in Sources */,
+				C8FA13012F11000300000004 /* SimulateFaultViewController.swift in Sources */,
 				C8BB65B02ED3F056000C63EE /* FirmwareUpdateStateView.swift in Sources */,
 				C8BB65B12ED3F056000C63EE /* GroupAddViewController.swift in Sources */,
 				8C778BC92FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift in Sources */,
