@@ -60,6 +60,7 @@ final class WiFiGatewayViewController: GatewayViewController {
     private var nextWiFiRequestID: Int = 0
     private var activeWiFiRequest: ActiveWiFiRequest?
     private var pendingGatewayRecoveryAction: (() -> Void)?
+    private var modalDismissalStateBeforeProtectedFlow: Bool?
     private let connectionPollInterval: TimeInterval = 2
     private let wifiRSSIStatusPollDelay: TimeInterval = 5
     private let wifiRSSIStatusRequestTimeout: TimeInterval = 2
@@ -111,6 +112,11 @@ final class WiFiGatewayViewController: GatewayViewController {
                   !isNetworkConnectivityVisible {
             loadNetworkConnectivityFromGateway()
         }
+    }
+
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        restoreModalStackDismissalIfNeeded()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -275,6 +281,7 @@ final class WiFiGatewayViewController: GatewayViewController {
         items.append(.init(icon: UIImage(named: "menu_wifi_dfu"), title: "wifi_dfu".localizedString, hideAnimation: false, performsActionAfterDismiss: true, tapItemBack: { [weak self] _ in
             guard let self else { return }
             let controller = WiFiFirmwareUpdateViewController(node: self.node)
+            self.preventModalStackDismissalUntilReturn()
             self.navigationController?.pushViewController(controller, animated: true)
         }))
         if canConfigureCurrentGateway {
@@ -285,6 +292,7 @@ final class WiFiGatewayViewController: GatewayViewController {
         items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, hideAnimation: false, performsActionAfterDismiss: true, tapItemBack: { [weak self] _ in
             guard let self else { return }
             let controller = DeviceInformationViewController(node: self.node, showsGroupSection: false, showsSceneSection: false)
+            self.preventModalStackDismissalUntilReturn()
             self.pushDeviceInformationController(controller)
         }))
         items.append(.init(icon: UIImage(named: "menu_identify"), title: "Identify", tapItemBack: { [weak self] _ in
@@ -301,6 +309,20 @@ final class WiFiGatewayViewController: GatewayViewController {
         let touchCenterY = view.safeAreaInsets.top - 10
         let windowPoint = view.convert(CGPoint(x: touchCenterX, y: touchCenterY), to: UIApplication.shared.keyWindow())
         MenuPopView.show(items: items, anchorPoint: windowPoint, menuWidth: SCRXFrom(120))
+    }
+
+    private func preventModalStackDismissalUntilReturn() {
+        guard let navigationController else { return }
+        if modalDismissalStateBeforeProtectedFlow == nil {
+            modalDismissalStateBeforeProtectedFlow = navigationController.isModalInPresentation
+        }
+        navigationController.isModalInPresentation = true
+    }
+
+    private func restoreModalStackDismissalIfNeeded() {
+        guard let previousState = modalDismissalStateBeforeProtectedFlow else { return }
+        navigationController?.isModalInPresentation = previousState
+        modalDismissalStateBeforeProtectedFlow = nil
     }
 
     private func setNetworkConnectivityVisible(_ visible: Bool) {

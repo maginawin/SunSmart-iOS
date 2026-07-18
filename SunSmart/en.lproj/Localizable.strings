@@ -869,6 +869,7 @@
 "wifi_firmware_download_failed" = "Download failed";
 "wifi_firmware_upgrade_failed" = "Upgrade failed";
 "wifi_firmware_upgrade_complete" = "Upgrade complete!";
+"wifi_firmware_upgrade_cancelled" = "Upgrade cancelled";
 "Download" = "DOWNLOAD";
 "release_date" = "Release date";
 "firmware_version_history" = "Firmware version history";

@@ -144,6 +144,14 @@ final class WiFiFirmwareUpdatingView: UIView {
             titleKey = "wifi_firmware_upgrade_complete"
             detailKey = nil
             imageName = "sync_success_small"
+        case .cancelled:
+            titleKey = "wifi_firmware_upgrade_cancelled"
+            detailKey = nil
+            imageName = "alert_failed"
+        case .communicationUnknown:
+            titleKey = "wifi_firmware_connection_failed"
+            detailKey = "wifi_firmware_communication_timeout"
+            imageName = "alert_failed"
         }
 
         resultLabel.text = titleKey.localizedString

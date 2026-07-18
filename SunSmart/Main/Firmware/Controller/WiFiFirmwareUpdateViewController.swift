@@ -240,9 +240,11 @@ final class WiFiFirmwareUpdateViewController: FirmwareVersionViewController {
         for state: WiFiFirmwareUpdatingState
     ) -> WiFiFirmwarePrimaryActionPresentation {
         switch state.kind {
-        case .downloading, .updating:
+        case .downloading, .updating, .communicationUnknown:
             return .init(titleKey: "cancel", isEnabled: false, action: .cancelDisabled)
         case .connFailedTimeout, .connFailedServerUnable, .downloadFailed, .upgradeFailed:
+            return .init(titleKey: "wifi_firmware_upgrade_again", isEnabled: true, action: .retry)
+        case .cancelled:
             return .init(titleKey: "wifi_firmware_upgrade_again", isEnabled: true, action: .retry)
         case .upgradeComplete:
             return .init(titleKey: "done", isEnabled: true, action: .done)

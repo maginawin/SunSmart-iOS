@@ -45,8 +45,8 @@ rg -n "headerView.setWiFiStatusVisible\\(true\\)" "$wifi_controller" >/dev/null 
 rg -n "wifiRSSIStatusTimer" "$wifi_controller" >/dev/null \
   || fail "WiFiGatewayViewController must own a Wi-Fi RSSI status timer."
 
-rg -n "private let wifiRSSIStatusPollDelay: TimeInterval = 5" "$wifi_controller" >/dev/null \
-  || fail "The next Wi-Fi RSSI query must wait 5 seconds after completion."
+rg -n "private let wifiRSSIStatusPollDelay: TimeInterval = 10" "$wifi_controller" >/dev/null \
+  || fail "The next Wi-Fi RSSI query must wait 10 seconds after completion."
 
 rg -n "private let wifiRSSIStatusRequestTimeout: TimeInterval = 2" "$wifi_controller" >/dev/null \
   || fail "Each Wi-Fi RSSI request must keep the 2-second hard timeout."
@@ -55,7 +55,7 @@ rg -n "scheduleNextWiFiRSSIStatusRefresh\(\)" "$wifi_controller" >/dev/null \
   || fail "Wi-Fi RSSI polling must use completion-driven scheduling."
 
 rg -U -n "wifiRSSIStatusTimer = LCWeakTimer\.scheduledTimer\([[:space:][:print:]]*timeInterval: wifiRSSIStatusPollDelay,[[:space:][:print:]]*repeats: false" "$wifi_controller" >/dev/null \
-  || fail "Wi-Fi RSSI polling must use a one-shot 5-second timer."
+  || fail "Wi-Fi RSSI polling must use a one-shot 10-second timer."
 
 rg -n "timeout: wifiRSSIStatusRequestTimeout" "$wifi_controller" >/dev/null \
   || fail "Wi-Fi RSSI GET must use the independent 2-second request timeout."

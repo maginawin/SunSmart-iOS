@@ -12,12 +12,20 @@ beta="SunSmart/Main/Firmware/View/BetaTestingAlertView.swift"
 wifi="SunSmart/Main/Firmware/Controller/WiFiFirmwareUpdateViewController.swift"
 builder="SunSmart/Main/Firmware/Model/WiFiFirmwareDFUMetadataBuilder.swift"
 state="SunSmart/Main/Firmware/Model/WiFiFirmwareDFUState.swift"
+reducer="SunSmart/Main/Firmware/Model/WiFiFirmwareDFUStatusReducer.swift"
 coordinator="SunSmart/Main/Firmware/Controller/WiFiFirmwareDFUCoordinator.swift"
 updating_view="SunSmart/Main/Firmware/View/WiFiFirmwareUpdatingView.swift"
 gateway="SunSmart/Main/Device/Gateway/Controller/WiFiGatewayViewController.swift"
 project="SunSmart.xcodeproj/project.pbxproj"
 localizable_en="SunSmart/en.lproj/Localizable.strings"
 localizable_zh="SunSmart/zh-Hans.lproj/Localizable.strings"
+focused_test="Tests/Firmware/WiFiFirmwareDFUStatusReducerTests.swift"
+builder_test="Tests/Firmware/WiFiFirmwareDFUMetadataBuilderTests.swift"
+sdk_source="/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK"
+sdk_status="$sdk_source/MeshLib/Message/Vendor/WiFiGatewayDFUStatus.swift"
+sdk_contract="/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk/scripts/check_wifi_gateway_dfu_status_v19.swift"
+sdk_start="$sdk_source/MeshLib/Message/Vendor/WiFiGatewayDFUStart.swift"
+sdk_start_contract="/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk/scripts/check_wifi_gateway_dfu_start_v19.swift"
 
 [ -f "$builder" ] || fail "missing WiFi firmware DFU metadata builder"
 [ -f "$state" ] || fail "missing WiFi firmware DFU state model"
@@ -27,27 +35,48 @@ rg -n '/sitespace/ota/download' "$builder" >/dev/null || fail "URL builder missi
 rg -n 'URLQueryItem\(name: "key", value: filename\)' "$builder" >/dev/null || fail "URL builder must encode filename as key query"
 rg -n 'enum WiFiFirmwareUpdatingKind' "$state" >/dev/null || fail "missing WiFi firmware UI state"
 rg -n 'struct WiFiFirmwareDFUSession' "$state" >/dev/null || fail "missing WiFi firmware persisted session"
+[ -f "$reducer" ] || fail "missing WiFi OTA V1.9 reducer"
+rg -n 'statusTimeout: TimeInterval = 3' "$reducer" >/dev/null || fail "status GET timeout must be 3 seconds"
+rg -n 'quietQueryInterval: TimeInterval = 10' "$reducer" >/dev/null || fail "quiet query interval must be 10 seconds"
+rg -n 'unknownThreshold: TimeInterval = 30' "$reducer" >/dev/null || fail "unknown threshold must be 30 seconds"
+rg -n 'unknownQueryInterval: TimeInterval = 30' "$reducer" >/dev/null || fail "unknown query interval must be 30 seconds"
+rg -n 'case cancelled' "$state" >/dev/null || fail "state missing cancelled terminal"
+rg -n 'case communicationUnknown' "$state" >/dev/null || fail "state missing communication unknown"
 [ -f "$coordinator" ] || fail "missing WiFi firmware DFU coordinator"
-rg -n 'WiFiGatewayDFUMetadata\(url: url, firmwareID: firmwareID\)' "$coordinator" >/dev/null || fail "coordinator must use new SDK metadata"
+rg -n 'UInt64\.random\(in: 1\.\.\.UInt64\.max\)' "$coordinator" >/dev/null || fail "each explicit start must create a nonzero random OTA ID"
+rg -n 'WiFiGatewayDFUStartRequest\(' "$coordinator" >/dev/null || fail "coordinator must use the V1.9 start request"
+rg -n 'startResponse\.otaID == otaID' "$coordinator" >/dev/null || fail "coordinator must match the V1.9 RET OTA ID"
+rg -n 'queryPendingStartStatusOnce' "$coordinator" >/dev/null || fail "coordinator missing one-shot start recovery query"
+rg -n 'nextAfterMissingRET' "$coordinator" "$reducer" >/dev/null || fail "coordinator missing EVENT/query start recovery decision"
+start_send_count=$(grep -Fc 'SunricherVendorSet(function: .wifiGatewayDFUStart(request))' "$coordinator")
+[ "$start_send_count" -eq 1 ] || fail "coordinator must send the V1.9 start request exactly once"
+if rg -n 'WiFiGatewayDFUMetadata|sha256' "$coordinator" "$sdk_start" >/dev/null ||
+   rg -n 'size|sha256' "$sdk_start" >/dev/null; then
+  fail "V1.9 start must not use legacy metadata, size, or sha256"
+fi
 rg -n 'addGlobalMessageObserver' "$coordinator" >/dev/null || fail "coordinator missing unsolicited status observer"
 rg -n 'removeGlobalMessageObserver' "$coordinator" >/dev/null || fail "coordinator must remove unsolicited status observer"
-rg -n 'guard self\.isActive, !self\.requestInFlight' "$coordinator" >/dev/null || fail "observer must not race the active request callback"
-rg -n 'timeout: 5' "$coordinator" >/dev/null || fail "DFU status query timeout must be 5 seconds"
-rg -n 'after: 2' "$coordinator" >/dev/null || fail "DFU active poll interval must be 2 seconds"
-rg -n 'after: 10' "$coordinator" >/dev/null || fail "DFU degraded poll interval must be 10 seconds"
+rg -n 'addGlobalConnectionObserver' "$coordinator" >/dev/null || fail "coordinator missing connection observer"
+rg -n 'removeGlobalConnectionObserver' "$coordinator" >/dev/null || fail "coordinator must remove connection observer"
+rg -n 'case \.wifiGatewayDFUStatus' "$coordinator" >/dev/null || fail "coordinator missing OTA EVENT route"
+rg -n 'requiresAuthoritativeQuery' "$coordinator" >/dev/null || fail "coordinator missing authoritative reconnect gate"
+rg -n 'timeout: WiFiFirmwareDFUQueryTiming\.statusTimeout' "$coordinator" >/dev/null || fail "coordinator must use the 3-second status timeout"
 rg -n 'private var generation = 0' "$coordinator" >/dev/null || fail "coordinator missing stale callback generation"
 rg -n 'WiFiFirmwareDFUSessionStore' "$coordinator" >/dev/null || fail "coordinator missing persisted session store"
-rg -n 'hadAcceptedSession' "$coordinator" >/dev/null || fail "coordinator must retain accepted session during restore"
-rg -n 'status == nil, hadAcceptedSession' "$coordinator" >/dev/null || fail "restore timeout must keep polling accepted session"
-rg -n 'emit\(\.updateState\(initialState\)\)' "$coordinator" >/dev/null || fail "accepted start must expose an initial DFU state"
+if rg -n 'wifiGatewayDFUCancel|wifiDFUCancel|CANCEL AGAIN|cancel_again' SunSmart "$sdk_source" >/dev/null; then
+  fail "0x43/0x15 cancel implementation is out of scope"
+fi
 [ -f "$updating_view" ] || fail "missing WiFi firmware updating view"
 rg -n 'func configure\(state: WiFiFirmwareUpdatingState\)' "$updating_view" >/dev/null || fail "updating view missing state renderer"
 rg -n 'alert_failed' "$updating_view" >/dev/null || fail "updating view missing failure asset"
 rg -n 'sync_success_small' "$updating_view" >/dev/null || fail "updating view missing success asset"
+rg -n 'case \.cancelled:' "$updating_view" >/dev/null || fail "updating view missing cancelled renderer"
+rg -n 'titleKey = "wifi_firmware_upgrade_cancelled"' "$updating_view" >/dev/null || fail "cancelled renderer missing localized title"
+rg -n 'case \.communicationUnknown:' "$updating_view" >/dev/null || fail "updating view missing communication-unknown renderer"
 if rg -n 'SCRX|SCRY' "$updating_view" >/dev/null; then
   fail "updating view must use fixed point layout"
 fi
-for key in wifi_firmware_upgrade_again wifi_firmware_connection_failed wifi_firmware_communication_timeout wifi_firmware_server_unable wifi_firmware_downloading wifi_firmware_updating wifi_firmware_download_failed wifi_firmware_upgrade_failed wifi_firmware_upgrade_complete; do
+for key in wifi_firmware_upgrade_again wifi_firmware_connection_failed wifi_firmware_communication_timeout wifi_firmware_server_unable wifi_firmware_downloading wifi_firmware_updating wifi_firmware_download_failed wifi_firmware_upgrade_failed wifi_firmware_upgrade_complete wifi_firmware_upgrade_cancelled; do
   grep -Fq "\"$key\" =" "$localizable_en" || fail "missing English $key localization"
   grep -Fq "\"$key\" =" "$localizable_zh" || fail "missing Chinese $key localization"
 done
@@ -140,6 +169,8 @@ rg -n 'dfuCoordinator\.start\(filename: serverData\.filename, version: serverDat
 rg -n 'dfuCoordinator\.consumeSuccess\(\)' "$wifi" >/dev/null || fail "DONE must consume successful session"
 rg -n 'case \.cancelDisabled' "$wifi" >/dev/null || fail "WiFi page missing disabled CANCEL action"
 rg -n '"wifi_firmware_upgrade_again"' "$wifi" >/dev/null || fail "WiFi page missing UPGRADE AGAIN action"
+rg -n 'case \.downloading, \.updating, \.communicationUnknown:' "$wifi" >/dev/null || fail "WiFi page must keep CANCEL disabled while communication is unknown"
+rg -n 'case \.cancelled:' "$wifi" >/dev/null || fail "WiFi page missing cancelled primary action"
 rg -n 'override var usesScrollableFirmwareContent: Bool' "$wifi" >/dev/null || fail "WiFi page must enable scrollable content"
 rg -n 'override var additionalFirmwareContentTopSpacing: CGFloat \{ 32 \}' "$wifi" >/dev/null || fail "WiFi status top spacing must be 32 points"
 rg -n 'override var additionalFirmwareContentHorizontalInset: CGFloat \{ 36 \}' "$wifi" >/dev/null || fail "WiFi status horizontal inset must be 36 points"
@@ -156,13 +187,35 @@ grep -Fq '"wifi_firmware_update" = "WiFi 固件更新";' "$localizable_zh" || fa
 grep -Fq '"wifi_firmware_upgrade" = "升级";' "$localizable_zh" || fail "missing Chinese WiFi upgrade localization"
 grep -Fq '"current_version" = "当前版本";' "$localizable_zh" || fail "missing Chinese Current version localization"
 
-wifi_build_file_count=$(grep -Fc 'WiFiFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile;' "$project")
+wifi_build_file_count=$(grep -F 'WiFiFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile;' "$project" | awk '{print $1}' | sort -u | wc -l | tr -d ' ')
 [ "$wifi_build_file_count" -eq 4 ] || fail "WiFi firmware controller must have four PBXBuildFile entries"
 wifi_sources_count=$(grep -Fc 'WiFiFirmwareUpdateViewController.swift in Sources */,' "$project")
 [ "$wifi_sources_count" -eq 4 ] || fail "WiFi firmware controller must belong to all four target source phases"
+reducer_build_file_count=$(grep -F 'WiFiFirmwareDFUStatusReducer.swift in Sources */ = {isa = PBXBuildFile;' "$project" | awk '{print $1}' | sort -u | wc -l | tr -d ' ')
+[ "$reducer_build_file_count" -eq 4 ] || fail "WiFi OTA reducer must have four PBXBuildFile entries"
+reducer_sources_count=$(grep -Fc 'WiFiFirmwareDFUStatusReducer.swift in Sources */,' "$project")
+[ "$reducer_sources_count" -eq 4 ] || fail "WiFi OTA reducer must belong to all four target source phases"
 
 rg -n 'UIImage\(named: "menu_wifi_dfu"\), title: "wifi_dfu"\.localizedString' "$gateway" >/dev/null || fail "WiFi DFU menu title must be localized"
 rg -n 'let controller = WiFiFirmwareUpdateViewController\(node: self\.node\)' "$gateway" >/dev/null || fail "WiFi DFU menu must pass current node"
 rg -n 'navigationController\?\.pushViewController\(controller, animated: true\)' "$gateway" >/dev/null || fail "WiFi DFU menu must push the WiFi firmware controller"
+
+[ -f "$focused_test" ] || fail "missing WiFi OTA reducer focused test"
+swiftc -parse-as-library "$reducer" "$state" "$focused_test" -o /tmp/WiFiFirmwareDFUStatusReducerTests
+/tmp/WiFiFirmwareDFUStatusReducerTests
+
+[ -f "$builder_test" ] || fail "missing WiFi OTA URL builder focused test"
+swiftc -parse-as-library "$builder" "$builder_test" -o /tmp/WiFiFirmwareDFUMetadataBuilderTests
+/tmp/WiFiFirmwareDFUMetadataBuilderTests
+
+[ -f "$sdk_status" ] || fail "missing SDK WiFi OTA V1.9 status parser"
+[ -f "$sdk_contract" ] || fail "missing SDK WiFi OTA V1.9 parser contract"
+swiftc -parse-as-library "$sdk_status" "$sdk_contract" -o /tmp/WiFiGatewayDFUStatusV19Contract
+/tmp/WiFiGatewayDFUStatusV19Contract
+
+[ -f "$sdk_start" ] || fail "missing SDK WiFi OTA V1.9 start model"
+[ -f "$sdk_start_contract" ] || fail "missing SDK WiFi OTA V1.9 start contract"
+swiftc -parse-as-library "$sdk_start" "$sdk_start_contract" -o /tmp/WiFiGatewayDFUStartV19Contract
+/tmp/WiFiGatewayDFUStartV19Contract
 
 echo "PASS: WiFi Gateway firmware update static checks"

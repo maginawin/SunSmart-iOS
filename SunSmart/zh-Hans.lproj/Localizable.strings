@@ -890,6 +890,7 @@
 "wifi_firmware_download_failed" = "下载失败";
 "wifi_firmware_upgrade_failed" = "升级失败";
 "wifi_firmware_upgrade_complete" = "升级完成！";
+"wifi_firmware_upgrade_cancelled" = "升级已取消";
 "Download" = "下载";
 "release_date" = "发布日期";
 "firmware_version_history" = "固件版本历史";
