@@ -172,15 +172,17 @@ class DeviceAddCandidateDeviceListView: UIView {
             promptView?.isHidden = candidateDevices.isEmpty || state != .scanning || (!isRefresh && !lightSeningMode) || !addResultView.isHidden
             tableView.reloadData()
             updateUIState()
-            updateFooterViewState()
         }
     }
     
     var state: DeviceAddState = .none {
         didSet {
             updateUIState()
-            updateFooterViewState()
         }
+    }
+
+    private var isSearchingForDevices: Bool {
+        state == .scanning && (isRefresh || lightSeningMode)
     }
     
     init(frame: CGRect, space: SpaceData) {
@@ -380,13 +382,6 @@ class DeviceAddCandidateDeviceListView: UIView {
     /// 更新UI
     private func updateUIState() {
         pauseBtn.isEnabled = true
-        revokeBtn.isHidden = !(state == .scanning && (isRefresh || lightSeningMode))
-        revokeBtn.isEnabled = showDevices.contains(where: { $0.selectedState == .selected })
-        if hidesSelectionControls {
-            footerView.setBatchControlsHidden(true)
-        } else {
-            footerView.addSelectedBtn.isHidden = !revokeBtn.isHidden
-        }
         promptView?.promptLabel.text = lightSeningMode ? "device_add_stop_scan_message".localizedString : "device_add_pause_message".localizedString
         
         pauseBtn.isHidden = isIPad || state != .scanning
@@ -439,6 +434,7 @@ class DeviceAddCandidateDeviceListView: UIView {
             }
            
         }
+        updateFooterViewState()
     }
     
     /// 更新设备类型数量
@@ -452,6 +448,9 @@ class DeviceAddCandidateDeviceListView: UIView {
     /// 更新底部view数量状态
     private func updateFooterViewState() {
         footerView.setBatchControlsHidden(hidesSelectionControls)
+        footerView.addSelectedBtn.isHidden = hidesSelectionControls || isSearchingForDevices
+        revokeBtn.isHidden = !isSearchingForDevices
+        revokeBtn.isEnabled = showDevices.contains(where: { $0.selectedState == .selected })
         guard !hidesSelectionControls else {
             footerView.selectAllBtn.isSelected = false
             footerView.addSelectedBtn.isEnabled = false
@@ -806,7 +805,6 @@ extension DeviceAddCandidateDeviceListView: WMMenuViewDataSource, WMMenuViewDele
         
         self.showDevices = candidateDevices.filter({ showDeviceTypes.contains($0.deviceType) && $0.addState != .success })
         tableView.reloadData()
-        updateFooterViewState()
         updateUIState()
         
         // 更新设备添加到哪UI

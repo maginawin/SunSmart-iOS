@@ -120,6 +120,9 @@ enum NetowrkReqeustApi {
     case firmwareVersionList(companyId: String = "0A78", deviceType: String, customId: String = "00", isTesting: Bool = false)
     /// 设备配置数据
     case devicesConfig
+
+    /// 模拟设备故障
+    case simulateFault(payload: SimulateFaultRequestPayload)
     
     // #****** Gateway ******#
     /// 网关list
@@ -175,6 +178,7 @@ extension NetowrkReqeustApi {
         case .firmwareLatestVersion: return "firmwareLatestVersion"
         case .firmwareVersionList: return "firmwareVersionList"
         case .devicesConfig: return "devicesConfig"
+        case .simulateFault: return "simulateFault"
         case .gatewayList: return "gatewayList"
         case .gatewayBindSpace: return "gatewayBindSpace"
         case .gatewayUnbindSpace: return "gatewayUnbindSpace"
@@ -309,6 +313,8 @@ extension NetowrkReqeustApi: TargetType {
             return "/sitespace/ota/history"
         case .devicesConfig:
             return "/sitespace/ota/configfile"
+        case .simulateFault:
+            return "/temporary/device/alert/add"
         case .gatewayList:
             return "/sitespace/site/gateways"
         case .gatewayBindSpace:
@@ -513,6 +519,8 @@ extension NetowrkReqeustApi: TargetType {
             return parameters
         case .devicesConfig:
             return nil
+        case .simulateFault(let payload):
+            return payload.parameters
         case .gatewayList(let siteId):
             return ["siteId": siteId]
         case .gatewayBindSpace(let spaceId, let gatewayId):

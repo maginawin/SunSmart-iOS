@@ -20,7 +20,7 @@ check_menu_icon() {
   fi
 }
 
-check_menu_icon "$light_file" "\"set_proxy\".localizedString" "switch_proxy"
+check_menu_icon "$light_file" "\"set_proxy\".localizedString" "menu_set_proxy"
 check_menu_icon "$light_file" "\"identify\".localizedString" "menu_identify"
 check_menu_icon "$light_file" "\"reboot\".localizedString" "menu_firmware_update"
 

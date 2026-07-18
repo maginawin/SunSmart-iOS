@@ -1978,3 +1978,17 @@
 "preparing_device_sync" = "Preparing device sync…";
 "wifi_gateway_wait_current_operation" = "Please wait for the current operation to finish.";
 "skipped" = "Skipped";
+"simulate_fault" = "Simulate Fault";
+"simulate_fault_motion_sensor" = "Motion Sensor";
+"simulate_fault_photocell_sensor" = "Photocell Sensor";
+"simulate_fault_light_status" = "Light Status";
+"simulate_fault_minor_3" = "Minor (3)";
+"simulate_fault_major_2" = "Major (2)";
+"simulate_fault_critical_1" = "Critical (1)";
+"simulate_fault_normal" = "Normal";
+"simulate_fault_fault" = "Fault";
+"simulate_fault_dim" = "Dim";
+"simulate_fault_flicker" = "Flicker";
+"simulate_fault_dim_flicker" = "Dim Flicker";
+"simulate_fault_off" = "Off";
+"simulate_fault_sending" = "Sending...";

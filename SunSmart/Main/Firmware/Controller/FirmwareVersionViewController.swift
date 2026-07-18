@@ -54,6 +54,7 @@ class FirmwareVersionViewController: UIViewController {
     var updateLocalFirmwareDataCallback: ((FirmwareData?)->Void)?
     /// 是否测试
     private var isTesting: Bool = false
+    private let versionUpdatePolicy: FirmwareVersionUpdatePolicy
 
     var firmwarePageTitle: String { "firmware_version".localizedString }
     var firmwareRequestCustomId: String { "00" }
@@ -117,8 +118,12 @@ class FirmwareVersionViewController: UIViewController {
         return isNewServerFirmwareAvailable(serverData)
     }
     
-    init(type: FirmwareUpdateTypeData) {
+    init(
+        type: FirmwareUpdateTypeData,
+        versionUpdatePolicy: FirmwareVersionUpdatePolicy = .numeric
+    ) {
         self.type = type
+        self.versionUpdatePolicy = versionUpdatePolicy
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -323,6 +328,13 @@ class FirmwareVersionViewController: UIViewController {
         if let newFirmwareData = self.type.serverData {
             
 //            if let currentFirmwareData = self.localFirmwareData {
+                let hasNewerVersion = displayedCurrentTargetVersion.map {
+                    versionUpdatePolicy.eligibility(
+                        currentVersion: $0,
+                        targetVersion: newFirmwareData.version
+                    ) == .allowed
+                } ?? true
+
                 // 有新版本
                 if shouldShowServerFirmwareDetails(newFirmwareData) {
                     

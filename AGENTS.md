@@ -5,6 +5,7 @@
 - 主要代码位于 `SunSmart/`，以 Swift 为主，包含少量 Objective-C 第三方或历史组件；品牌资源和启动页分别位于 `Archipelago/`、`SLGSync/`、`SylSmart/` 等目录。
 - 依赖管理同时使用 CocoaPods 和 Swift Package。CocoaPods 依赖见 `Podfile`，Swift Package 中包含 `NordicSigMeshSDK`。
 - 业务重点包含设备添加、Mesh 网络、网关、开关、应急/消防设备等智能设备控制功能。
+- 项目的 Author 是 `One`。
 
 ## SDK Notes
 

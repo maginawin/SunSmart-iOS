@@ -1994,3 +1994,17 @@
 "preparing_device_sync" = "正在准备设备同步…";
 "wifi_gateway_wait_current_operation" = "请等待当前操作完成。";
 "skipped" = "已跳过";
+"simulate_fault" = "模拟故障";
+"simulate_fault_motion_sensor" = "移动传感器";
+"simulate_fault_photocell_sensor" = "光感传感器";
+"simulate_fault_light_status" = "灯具状态";
+"simulate_fault_minor_3" = "轻微 (3)";
+"simulate_fault_major_2" = "严重 (2)";
+"simulate_fault_critical_1" = "紧急 (1)";
+"simulate_fault_normal" = "正常";
+"simulate_fault_fault" = "故障";
+"simulate_fault_dim" = "调光";
+"simulate_fault_flicker" = "闪烁";
+"simulate_fault_dim_flicker" = "调光闪烁";
+"simulate_fault_off" = "关闭";
+"simulate_fault_sending" = "发送中...";
