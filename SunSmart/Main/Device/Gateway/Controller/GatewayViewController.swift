@@ -47,6 +47,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     let gatewayModel: GatewayModel
     let node: Node
     private weak var lastMessageDelegate: MeshLibManagerMessageDelegate?
+    private var proxyReadyObserverID: UUID?
 
     var supportsAPNConfiguration: Bool {
         return true
@@ -96,6 +97,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         setupUI()
         updateData()
         updateSaveBtnState()
+        registerProxyReadyObserver()
 
 //        Task {
 //            guard let vendorModel = node.sunricherVendorModel else { return }
@@ -200,10 +202,27 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     deinit {
         stopSignalRefreshTimer()
         MeshLibManager.manager.messageDelegate = self.lastMessageDelegate
+        if let proxyReadyObserverID {
+            MeshLibManager.manager.removeGlobalProxyReadyObserver(proxyReadyObserverID)
+        }
 
         MeshLibManager.manager.close()
 
         NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
+    }
+
+    private func registerProxyReadyObserver() {
+        proxyReadyObserverID = MeshLibManager.manager.addGlobalProxyReadyObserver { [weak self] context in
+            self?.handleProxyReady(context)
+        }
+        if let context = MeshLibManager.manager.currentProxyReadyContext {
+            handleProxyReady(context)
+        }
+    }
+
+    private func handleProxyReady(_ context: ProxyReadyContext) {
+        guard context.nodeAddress == node.primaryUnicastAddress else { return }
+        gatewayProxyDidBecomeReady(context)
     }
 
     /// 获取网络数据+网络连接
@@ -1040,6 +1059,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
 
     func gatewayOnlineStateDidUpdate(_ isOnline: Bool) {}
+
+    func gatewayProxyDidBecomeReady(_ context: ProxyReadyContext) {}
 
 }
 

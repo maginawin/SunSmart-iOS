@@ -350,11 +350,6 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
 
     @objc private func passwordChanged() {
         let password = passwordTextField.text ?? ""
-        guard password.canBeConverted(to: .ascii) else {
-            passwordTextField.text = currentPassword
-            _ = passwordChangedCallback?(password)
-            return
-        }
         currentPassword = password
         let nextState = passwordChangedCallback?(password) ?? .disabled
         apply(

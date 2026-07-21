@@ -17,6 +17,7 @@ enum WiFiFirmwareUpdatingKind: String, Codable {
     case upgradeComplete
     case cancelled
     case communicationUnknown
+    case cancellationUnknown
 }
 
 struct WiFiFirmwareUpdatingState: Equatable, Codable {
@@ -27,6 +28,7 @@ struct WiFiFirmwareUpdatingState: Equatable, Codable {
 enum WiFiFirmwarePrimaryAction: Equatable {
     case upgrade
     case retry
+    case cancel
     case cancelDisabled
     case done
 }
@@ -35,6 +37,45 @@ struct WiFiFirmwarePrimaryActionPresentation: Equatable {
     let titleKey: String
     let isEnabled: Bool
     let action: WiFiFirmwarePrimaryAction
+}
+
+enum WiFiFirmwareInitialLoadRequirement: Hashable {
+    case currentVersion
+    case cloudFirmware
+}
+
+struct WiFiFirmwareInitialLoadGate {
+    private var nextGeneration = 0
+    private var activeGeneration: Int?
+    private var completedRequirements: Set<WiFiFirmwareInitialLoadRequirement> = []
+    private var otaStatusStarted = false
+
+    mutating func begin() -> Int {
+        nextGeneration += 1
+        activeGeneration = nextGeneration
+        completedRequirements.removeAll()
+        otaStatusStarted = false
+        return nextGeneration
+    }
+
+    mutating func complete(
+        _ requirement: WiFiFirmwareInitialLoadRequirement,
+        generation: Int
+    ) -> Bool {
+        guard activeGeneration == generation, !otaStatusStarted else {
+            return false
+        }
+        completedRequirements.insert(requirement)
+        guard completedRequirements.count == 2 else { return false }
+        otaStatusStarted = true
+        return true
+    }
+
+    mutating func cancel() {
+        activeGeneration = nil
+        completedRequirements.removeAll()
+        otaStatusStarted = false
+    }
 }
 
 enum WiFiFirmwareDFUStateMapper {
@@ -72,6 +113,115 @@ struct WiFiFirmwareDFUSession: Codable, Equatable {
     var lastState: WiFiFirmwareUpdatingState?
     var terminalConsumed: Bool
     var requiresAuthoritativeQuery: Bool
+    var cancelState: WiFiFirmwareDFUCancelState
+    var transactionGate: WiFiFirmwareDFUTransactionGate
+
+    init(
+        targetFirmwareID: String,
+        otaID: UInt64?,
+        lastStatus: WiFiFirmwareDFUStatusSnapshot?,
+        lastState: WiFiFirmwareUpdatingState?,
+        terminalConsumed: Bool,
+        requiresAuthoritativeQuery: Bool,
+        cancelState: WiFiFirmwareDFUCancelState = .init(),
+        transactionGate: WiFiFirmwareDFUTransactionGate = .init()
+    ) {
+        self.targetFirmwareID = targetFirmwareID
+        self.otaID = otaID
+        self.lastStatus = lastStatus
+        self.lastState = lastState
+        self.terminalConsumed = terminalConsumed
+        self.requiresAuthoritativeQuery = requiresAuthoritativeQuery
+        self.cancelState = cancelState
+        self.transactionGate = transactionGate
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case targetFirmwareID
+        case otaID
+        case lastStatus
+        case lastState
+        case terminalConsumed
+        case requiresAuthoritativeQuery
+        case cancelState
+        case transactionGate
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        targetFirmwareID = try container.decode(String.self, forKey: .targetFirmwareID)
+        otaID = try container.decodeIfPresent(UInt64.self, forKey: .otaID)
+        lastStatus = try container.decodeIfPresent(
+            WiFiFirmwareDFUStatusSnapshot.self,
+            forKey: .lastStatus
+        )
+        lastState = try container.decodeIfPresent(
+            WiFiFirmwareUpdatingState.self,
+            forKey: .lastState
+        )
+        terminalConsumed = try container.decode(Bool.self, forKey: .terminalConsumed)
+        requiresAuthoritativeQuery = try container.decode(
+            Bool.self,
+            forKey: .requiresAuthoritativeQuery
+        )
+        cancelState = try container.decodeIfPresent(
+            WiFiFirmwareDFUCancelState.self,
+            forKey: .cancelState
+        ) ?? .init()
+        transactionGate = try container.decodeIfPresent(
+            WiFiFirmwareDFUTransactionGate.self,
+            forKey: .transactionGate
+        ) ?? .init()
+    }
+
+    mutating func prepareForPageRecovery() {
+        guard !terminalConsumed else { return }
+        requiresAuthoritativeQuery = true
+    }
+
+    var isStatusQueryEligible: Bool {
+        !terminalConsumed && (
+            cancelState.blocksNewStart ||
+                requiresAuthoritativeQuery ||
+                lastStatus?.stage.isTerminal != true
+        )
+    }
+}
+
+enum WiFiFirmwareDFUAuthoritativeRecoveryDecision: Equatable {
+    case acceptStatus
+    case clearStaleTerminal
+    case retainSession
+}
+
+enum WiFiFirmwareDFUAuthoritativeRecoveryPolicy {
+    static func decision(
+        session: WiFiFirmwareDFUSession,
+        candidate: WiFiFirmwareDFUStatusSnapshot
+    ) -> WiFiFirmwareDFUAuthoritativeRecoveryDecision {
+        guard !session.terminalConsumed,
+              session.requiresAuthoritativeQuery else {
+            return .retainSession
+        }
+
+        let identityMatches = candidate.stage != .idle &&
+            candidate.otaID != 0 &&
+            candidate.firmwareID == session.targetFirmwareID &&
+            (session.otaID == nil || candidate.otaID == session.otaID)
+        if identityMatches {
+            return .acceptStatus
+        }
+
+        if session.cancelState.blocksNewStart {
+            return session.cancelState.phase == .unknown && candidate.stage == .idle
+                ? .clearStaleTerminal
+                : .retainSession
+        }
+
+        return session.lastStatus?.stage.isTerminal == true
+            ? .clearStaleTerminal
+            : .retainSession
+    }
 }
 
 struct WiFiFirmwareDFUSessionStore {

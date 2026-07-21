@@ -45,20 +45,17 @@ rg -n "headerView.setWiFiStatusVisible\\(true\\)" "$wifi_controller" >/dev/null 
 rg -n "wifiRSSIStatusTimer" "$wifi_controller" >/dev/null \
   || fail "WiFiGatewayViewController must own a Wi-Fi RSSI status timer."
 
-rg -n "private let wifiRSSIStatusPollDelay: TimeInterval = 10" "$wifi_controller" >/dev/null \
-  || fail "The next Wi-Fi RSSI query must wait 10 seconds after completion."
-
-rg -n "private let wifiRSSIStatusRequestTimeout: TimeInterval = 2" "$wifi_controller" >/dev/null \
-  || fail "Each Wi-Fi RSSI request must keep the 2-second hard timeout."
+rg -n "WiFiGatewayV19Timing\.rssiPollDelay" "$wifi_controller" >/dev/null \
+  || fail "The next Wi-Fi RSSI query must use the V1.9 5-second delay."
 
 rg -n "scheduleNextWiFiRSSIStatusRefresh\(\)" "$wifi_controller" >/dev/null \
   || fail "Wi-Fi RSSI polling must use completion-driven scheduling."
 
-rg -U -n "wifiRSSIStatusTimer = LCWeakTimer\.scheduledTimer\([[:space:][:print:]]*timeInterval: wifiRSSIStatusPollDelay,[[:space:][:print:]]*repeats: false" "$wifi_controller" >/dev/null \
-  || fail "Wi-Fi RSSI polling must use a one-shot 10-second timer."
+rg -U -n "wifiRSSIStatusTimer = LCWeakTimer\.scheduledTimer\([[:space:][:print:]]*timeInterval: WiFiGatewayV19Timing\.rssiPollDelay,[[:space:][:print:]]*repeats: false" "$wifi_controller" >/dev/null \
+  || fail "Wi-Fi RSSI polling must use a one-shot V1.9 5-second timer."
 
-rg -n "timeout: wifiRSSIStatusRequestTimeout" "$wifi_controller" >/dev/null \
-  || fail "Wi-Fi RSSI GET must use the independent 2-second request timeout."
+rg -n "subcode: \.rssiStatus" "$wifi_controller" >/dev/null \
+  || fail "Wi-Fi RSSI GET must use the V1.9 4-second Subcode deadline."
 
 if rg -n "wifiRSSIStatusPollInterval" "$wifi_controller" >/dev/null; then
   fail "The old fixed RSSI polling interval must be removed."
@@ -76,14 +73,18 @@ rg -n "\\.wifiGatewayRSSIStatus," "$wifi_controller" >/dev/null \
 rg -n "WiFiGatewayRSSIStatus" "$wifi_controller" >/dev/null \
   || fail "WiFiGatewayViewController must parse typed Wi-Fi RSSI status."
 
-rg -n "case \.valid\(let dbm, let networkStatus\)" "$wifi_controller" >/dev/null \
-  || fail "Valid Wi-Fi RSSI must carry the typed network status."
+rg -n "switch status\.rssiResult" "$wifi_controller" >/dev/null \
+  || fail "Wi-Fi RSSI result must be mapped independently."
 
-rg -n "wifiHeaderStatus\(forRSSIDBm: dbm, networkStatus: networkStatus\)" "$wifi_controller" >/dev/null \
-  || fail "Valid Wi-Fi RSSI must map RSSI and network status together."
+rg -n "switch status\.networkStatus" "$wifi_controller" >/dev/null \
+  || fail "Internet status must be mapped independently from RSSI."
 
-rg -n "case \.normal, \.notReported:" "$wifi_controller" >/dev/null \
-  || fail "NORMAL and legacy not-reported responses must keep the RSSI grade."
+rg -n "case \.normal:" "$wifi_controller" >/dev/null \
+  || fail "NORMAL Internet status must keep the RSSI grade."
+
+if rg -n "notReported|wifiRSSIStatusPollDelay|wifiRSSIStatusRequestTimeout" "$wifi_controller" >/dev/null; then
+  fail "Legacy RSSI compatibility and local timing constants must be removed."
+fi
 
 rg -n 'localizedStatusKey: "wifi_status_no_internet"' "$wifi_controller" >/dev/null \
   || fail "UNAVAILABLE must display the localized No Internet status."

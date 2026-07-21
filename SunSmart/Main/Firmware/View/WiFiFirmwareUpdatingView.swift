@@ -107,6 +107,7 @@ final class WiFiFirmwareUpdatingView: UIView {
             detailLabel.trailingAnchor.constraint(equalTo: trailingAnchor),
             detailLabel.topAnchor.constraint(equalTo: topAnchor, constant: 65),
             detailLabel.bottomAnchor.constraint(lessThanOrEqualTo: bottomAnchor)
+                .withPriority(.defaultHigh)
         ])
     }
 
@@ -151,6 +152,10 @@ final class WiFiFirmwareUpdatingView: UIView {
         case .communicationUnknown:
             titleKey = "wifi_firmware_connection_failed"
             detailKey = "wifi_firmware_communication_timeout"
+            imageName = "alert_failed"
+        case .cancellationUnknown:
+            titleKey = "wifi_firmware_cancel_result_unknown"
+            detailKey = "wifi_firmware_waiting_status_confirmation"
             imageName = "alert_failed"
         }
 

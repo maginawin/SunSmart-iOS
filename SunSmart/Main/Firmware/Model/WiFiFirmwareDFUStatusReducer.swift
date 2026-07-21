@@ -59,6 +59,7 @@ struct WiFiFirmwareDFUStatusSnapshot: Codable, Equatable {
 enum WiFiFirmwareDFUStatusSource: Equatable {
     case event
     case query
+    case cancellation
 }
 
 enum WiFiFirmwareDFUIgnoreReason: Equatable {

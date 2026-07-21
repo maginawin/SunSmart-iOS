@@ -22,6 +22,8 @@ final class WiFiFirmwareUpdateViewController: FirmwareVersionViewController {
     private lazy var updatingView = WiFiFirmwareUpdatingView()
     private var updatingState: WiFiFirmwareUpdatingState?
     private var primaryAction: WiFiFirmwarePrimaryAction = .upgrade
+    private var canStartOTA = false
+    private var canCancel = false
     private var coordinatorActive = false
 
     init(node: Node) {
@@ -46,7 +48,9 @@ final class WiFiFirmwareUpdateViewController: FirmwareVersionViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        activateCoordinatorIfNeeded()
+        if !coordinatorActive {
+            loadFirmwareData()
+        }
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -117,7 +121,9 @@ final class WiFiFirmwareUpdateViewController: FirmwareVersionViewController {
               let newVersion = normalizedVersion(serverData.version) else {
             return false
         }
-        return newVersion.compare(currentVersion, options: .numeric) == .orderedDescending
+        // test, now the same version canbe upgraded.
+        return newVersion.compare(currentVersion, options: .numeric) != .orderedAscending
+        // return newVersion.compare(currentVersion, options: .numeric) == .orderedDescending
     }
 
     override func shouldShowServerFirmwareDetails(_ serverData: FirmwareServerData) -> Bool {
@@ -127,11 +133,19 @@ final class WiFiFirmwareUpdateViewController: FirmwareVersionViewController {
         return isNewServerFirmwareAvailable(serverData)
     }
 
-    override func loadAdditionalFirmwareData() {
-        if coordinatorActive {
-            dfuCoordinator.refresh()
-        } else {
-            activateCoordinatorIfNeeded()
+    override func loadFirmwareData() {
+        coordinatorActive = true
+        currentVersionState = .loading
+        updatingState = nil
+        canStartOTA = false
+        canCancel = false
+        refreshFirmwareUI()
+
+        dfuCoordinator.beginInitialLoad()
+        loadCloudFirmwareRequest { [weak self] in
+            DispatchQueue.main.async {
+                self?.refreshFirmwareUI()
+            }
         }
     }
 
@@ -163,7 +177,7 @@ final class WiFiFirmwareUpdateViewController: FirmwareVersionViewController {
             setAdditionalFirmwareContentHidden(true)
             let isEnabled: Bool
             if case .loaded = currentVersionState, let serverData = type.serverData {
-                isEnabled = isNewServerFirmwareAvailable(serverData)
+                isEnabled = canStartOTA && isNewServerFirmwareAvailable(serverData)
             } else {
                 isEnabled = false
             }
@@ -189,6 +203,10 @@ final class WiFiFirmwareUpdateViewController: FirmwareVersionViewController {
         case .upgrade, .retry:
             guard let serverData = type.serverData else { return }
             dfuCoordinator.start(filename: serverData.filename, version: serverData.version)
+        case .cancel:
+            canCancel = false
+            refreshFirmwareUI()
+            dfuCoordinator.cancel()
         case .done:
             dfuCoordinator.consumeSuccess()
         case .cancelDisabled:
@@ -204,12 +222,6 @@ final class WiFiFirmwareUpdateViewController: FirmwareVersionViewController {
         }
     }
 
-    private func activateCoordinatorIfNeeded() {
-        guard !coordinatorActive else { return }
-        coordinatorActive = true
-        dfuCoordinator.activate()
-    }
-
     private func handleCoordinatorEvent(_ event: WiFiFirmwareDFUCoordinator.Event) {
         switch event {
         case .loadingStart(let loading):
@@ -221,17 +233,32 @@ final class WiFiFirmwareUpdateViewController: FirmwareVersionViewController {
         case .currentVersionLoading:
             currentVersionState = .loading
             refreshFirmwareUI()
-        case .currentVersion(let version), .confirmedVersion(let version):
+        case .currentVersion(let version):
             currentVersionState = .loaded(version)
             refreshFirmwareUI()
         case .currentVersionFailed:
             currentVersionState = .failed
             refreshFirmwareUI()
+        case .confirmedVersion(let version):
+            currentVersionState = .loaded(version)
+            refreshFirmwareUI()
         case .updateState(let state):
             updatingState = state
             refreshFirmwareUI()
+        case .startAvailability(let enabled):
+            canStartOTA = enabled
+            refreshFirmwareUI()
+        case .cancelAvailability(let enabled):
+            canCancel = enabled
+            refreshFirmwareUI()
+        case .cancelNotEffective:
+            XWHUDManager.showTipHUD(
+                "wifi_firmware_cancel_not_effective".localizedString,
+                isLineFeed: true
+            )
         case .idle:
             updatingState = nil
+            canCancel = false
             refreshFirmwareUI()
         }
     }
@@ -240,12 +267,26 @@ final class WiFiFirmwareUpdateViewController: FirmwareVersionViewController {
         for state: WiFiFirmwareUpdatingState
     ) -> WiFiFirmwarePrimaryActionPresentation {
         switch state.kind {
-        case .downloading, .updating, .communicationUnknown:
+        case .downloading:
+            return .init(
+                titleKey: "cancel",
+                isEnabled: canCancel,
+                action: canCancel ? .cancel : .cancelDisabled
+            )
+        case .updating, .communicationUnknown, .cancellationUnknown:
             return .init(titleKey: "cancel", isEnabled: false, action: .cancelDisabled)
         case .connFailedTimeout, .connFailedServerUnable, .downloadFailed, .upgradeFailed:
-            return .init(titleKey: "wifi_firmware_upgrade_again", isEnabled: true, action: .retry)
+            return .init(
+                titleKey: "wifi_firmware_upgrade_again",
+                isEnabled: canStartOTA,
+                action: canStartOTA ? .retry : .cancelDisabled
+            )
         case .cancelled:
-            return .init(titleKey: "wifi_firmware_upgrade_again", isEnabled: true, action: .retry)
+            return .init(
+                titleKey: "wifi_firmware_upgrade_again",
+                isEnabled: canStartOTA,
+                action: canStartOTA ? .retry : .cancelDisabled
+            )
         case .upgradeComplete:
             return .init(titleKey: "done", isEnabled: true, action: .done)
         }

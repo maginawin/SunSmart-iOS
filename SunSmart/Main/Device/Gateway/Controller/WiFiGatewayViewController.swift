@@ -17,6 +17,8 @@ final class WiFiGatewayViewController: GatewayViewController {
     private enum PendingNetworkResultHUD {
         case success
         case failure
+        case configurationUnconfirmed
+        case clearUnconfirmed
     }
 
     private enum WiFiRequestOrigin {
@@ -52,19 +54,18 @@ final class WiFiGatewayViewController: GatewayViewController {
     private var isNetworkRefreshInProgress: Bool = false
     private var networkConnectTimer: Timer?
     private var wifiRSSIStatusTimer: Timer?
-    private var networkConnectionStartedAt: Date?
     private var shouldRefreshSSIDWhenActive: Bool = false
     private var isNetworkPageVisible: Bool = false
     private var pendingNetworkResultHUD: PendingNetworkResultHUD?
     private var networkOperationID: Int = 0
     private var nextWiFiRequestID: Int = 0
     private var activeWiFiRequest: ActiveWiFiRequest?
+    private var automaticLoadGate = WiFiGatewayAutomaticLoadGate()
+    private var credentialMutationReducer = WiFiGatewayCredentialMutationReducer()
+    private var connectionPollingReducer = WiFiGatewayConnectionPollingReducer()
+    private var activeTimeSyncContext: ProxyReadyContext?
     private var pendingGatewayRecoveryAction: (() -> Void)?
     private var modalDismissalStateBeforeProtectedFlow: Bool?
-    private let connectionPollInterval: TimeInterval = 2
-    private let wifiRSSIStatusPollDelay: TimeInterval = 5
-    private let wifiRSSIStatusRequestTimeout: TimeInterval = 2
-    private let connectionPollTimeout: TimeInterval = 60
     private let wifiPasswordCacheKey = "wifi_gateway_saved_passwords_by_ssid"
     private let showsDiagnosisMenuItem = false
 
@@ -105,12 +106,12 @@ final class WiFiGatewayViewController: GatewayViewController {
             return
         }
         if networkConnectState == .connected {
-            startWiFiRSSIStatusRefresh()
+            requestAutomaticLoad(forceReload: false)
         } else if node.state,
                   !isNetworkOperationInProgress,
                   !isWiFiRequestInProgress,
                   !isNetworkConnectivityVisible {
-            loadNetworkConnectivityFromGateway()
+            requestAutomaticLoad(forceReload: true)
         }
     }
 
@@ -226,8 +227,31 @@ final class WiFiGatewayViewController: GatewayViewController {
             hideNetworkConnectivityForOfflineGateway()
             return
         }
-        guard !isNetworkOperationInProgress, !isWiFiRequestInProgress else { return }
-        loadNetworkConnectivityFromGateway()
+        requestAutomaticLoad(forceReload: true)
+    }
+
+    override func gatewayProxyDidBecomeReady(_ context: ProxyReadyContext) {
+        stopWiFiRSSIStatusRefresh()
+        activeTimeSyncContext = context
+        WiFiGatewayTimeSyncCoordinator.shared.synchronize(
+            context: context,
+            node: node
+        ) { [weak self] outcome in
+            guard let self, self.activeTimeSyncContext == context else { return }
+            guard MeshLibManager.manager.currentProxyReadyContext == context else {
+                self.activeTimeSyncContext = nil
+                return
+            }
+            self.activeTimeSyncContext = nil
+            if case .ignored = outcome { return }
+            self.automaticLoadGate.markReady(sessionID: context.sessionID)
+            print(
+                "WiFiGateway automatic load barrier opened address="
+                + String(format: "0x%04X", context.nodeAddress)
+                + " session=\(context.sessionID) result=\(outcome)"
+            )
+            self.drainAutomaticLoadIfPossible()
+        }
     }
 
     override func performGatewayRepair() {
@@ -332,6 +356,10 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     private func hideNetworkConnectivityForOfflineGateway() {
+        if !node.state {
+            activeTimeSyncContext = nil
+            automaticLoadGate.invalidate()
+        }
         stopNetworkConnectionPolling()
         stopWiFiRSSIStatusRefresh()
         networkSSID = ""
@@ -375,6 +403,35 @@ final class WiFiGatewayViewController: GatewayViewController {
         completion()
         resumePendingGatewayRecoveryIfNeeded()
         reloadSection(.networkConnectivity)
+        drainAutomaticLoadIfPossible()
+    }
+
+    private func requestAutomaticLoad(forceReload: Bool) {
+        automaticLoadGate.request(forceReload: forceReload)
+        drainAutomaticLoadIfPossible()
+    }
+
+    private func drainAutomaticLoadIfPossible() {
+        guard node.state,
+              node.isKeybindComplete,
+              !isNetworkOperationInProgress,
+              !isWiFiRequestInProgress,
+              let context = MeshLibManager.manager.currentProxyReadyContext,
+              context.nodeAddress == node.primaryUnicastAddress,
+              let intent = automaticLoadGate.takeIfReady(currentSessionID: context.sessionID) else {
+            return
+        }
+
+        switch intent {
+        case .resume:
+            if networkConnectState == .connected {
+                startWiFiRSSIStatusRefresh()
+            } else {
+                loadNetworkConnectivityFromGateway()
+            }
+        case .reload:
+            loadNetworkConnectivityFromGateway()
+        }
     }
 
     private func resumePendingGatewayRecoveryIfNeeded() {
@@ -399,8 +456,8 @@ final class WiFiGatewayViewController: GatewayViewController {
     @discardableResult
     private func sendWiFiGatewayGet(
         _ function: VendorFunctionGet,
+        subcode: WiFiGatewayV19Subcode,
         origin: WiFiRequestOrigin,
-        timeout: TimeInterval = 10,
         completion: @escaping (SunricherVendorStatus?) -> Void
     ) -> Bool {
         guard let requestID = beginWiFiRequest(origin: origin) else { return false }
@@ -408,7 +465,11 @@ final class WiFiGatewayViewController: GatewayViewController {
             finishWiFiRequest(requestID) { completion(nil) }
             return true
         }
-        MeshAPI.sendMessage(message: SunricherVendorGet(function: function), model: vendorModel, timeout: timeout) { response in
+        MeshAPI.sendMessage(
+            message: SunricherVendorGet(function: function),
+            model: vendorModel,
+            timeout: WiFiGatewayV19Timing.responseTimeout(for: subcode)
+        ) { response in
             DispatchQueue.main.async {
                 self.finishWiFiRequest(requestID) {
                     completion(response as? SunricherVendorStatus)
@@ -422,7 +483,6 @@ final class WiFiGatewayViewController: GatewayViewController {
     private func sendWiFiGatewayCredentialsSet(
         _ credentials: WiFiGatewayCredentials,
         origin: WiFiRequestOrigin,
-        timeout: TimeInterval = 10,
         completion: @escaping (WiFiGatewayCredentialsSetResult?) -> Void
     ) -> Bool {
         guard let requestID = beginWiFiRequest(origin: origin) else { return false }
@@ -430,7 +490,11 @@ final class WiFiGatewayViewController: GatewayViewController {
             finishWiFiRequest(requestID) { completion(nil) }
             return true
         }
-        MeshAPI.sendMessage(message: SunricherVendorSet(function: .wifiGatewayCredentialsSet(credentials)), model: vendorModel, timeout: timeout) { response in
+        MeshAPI.sendMessage(
+            message: SunricherVendorSet(function: .wifiGatewayCredentialsSet(credentials)),
+            model: vendorModel,
+            timeout: WiFiGatewayV19Timing.responseTimeout(for: .credentialsSet)
+        ) { response in
             DispatchQueue.main.async {
                 self.finishWiFiRequest(requestID) {
                     guard let status = response as? SunricherVendorStatus,
@@ -448,7 +512,6 @@ final class WiFiGatewayViewController: GatewayViewController {
     @discardableResult
     private func sendWiFiGatewayCredentialsClear(
         origin: WiFiRequestOrigin,
-        timeout: TimeInterval = 10,
         completion: @escaping (WiFiGatewayCredentialsClearResult?) -> Void
     ) -> Bool {
         guard let requestID = beginWiFiRequest(origin: origin) else { return false }
@@ -456,7 +519,11 @@ final class WiFiGatewayViewController: GatewayViewController {
             finishWiFiRequest(requestID) { completion(nil) }
             return true
         }
-        MeshAPI.sendMessage(message: SunricherVendorSet(function: .wifiGatewayCredentialsClear), model: vendorModel, timeout: timeout) { response in
+        MeshAPI.sendMessage(
+            message: SunricherVendorSet(function: .wifiGatewayCredentialsClear),
+            model: vendorModel,
+            timeout: WiFiGatewayV19Timing.responseTimeout(for: .credentialsClear)
+        ) { response in
             DispatchQueue.main.async {
                 self.finishWiFiRequest(requestID) {
                     guard let status = response as? SunricherVendorStatus,
@@ -483,7 +550,11 @@ final class WiFiGatewayViewController: GatewayViewController {
         stopNetworkConnectionPolling()
         setNetworkConnectivityVisible(false)
         let operationID = beginNetworkOperation()
-        sendWiFiGatewayGet(.wifiGatewayCredentials, origin: .automatic) { [weak self] status in
+        sendWiFiGatewayGet(
+            .wifiGatewayCredentials,
+            subcode: .credentialsRead,
+            origin: .automatic
+        ) { [weak self] status in
             guard let self, self.isCurrentNetworkOperation(operationID), self.node.state else { return }
             guard let status,
                   case .wifiGatewayCredentialsRead(let result) = status.status.parameters else {
@@ -506,7 +577,7 @@ final class WiFiGatewayViewController: GatewayViewController {
             networkConnectState = .disabled
             setNetworkConnectivityVisible(true)
             refreshCurrentSSID(showsResultHUD: false)
-        case .internalError, .reserved(rawValue: _):
+        case .unconfirmed, .reserved(rawValue: _):
             showCredentialsFetchFailedIfVisible()
         }
     }
@@ -518,12 +589,21 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     private func loadConfiguredGatewayConnectionStatus(operationID: Int) {
-        sendWiFiGatewayGet(.wifiGatewayConnectionStatus, origin: .automatic) { [weak self] status in
+        sendWiFiGatewayGet(
+            .wifiGatewayConnectionStatus,
+            subcode: .connectionStatus,
+            origin: .automatic
+        ) { [weak self] status in
             guard let self, self.isCurrentNetworkOperation(operationID), self.node.state else { return }
             guard let status,
                   case .wifiGatewayConnectionStatus(let connectionStatus) = status.status.parameters else {
                 self.setNetworkConnectivityVisible(false)
                 self.showCredentialsFetchFailedIfVisible()
+                return
+            }
+            if case .requestFormatError = connectionStatus {
+                self.setNetworkConnectivityVisible(true)
+                self.reloadSection(.networkConnectivity)
                 return
             }
             self.applyConnectionStatus(connectionStatus, showsHUD: false)
@@ -534,7 +614,11 @@ final class WiFiGatewayViewController: GatewayViewController {
 
     private func refreshConfiguredGatewayConnectionStatus(credentials: WiFiGatewayCredentials? = nil) {
         let operationID = beginNetworkOperation()
-        sendWiFiGatewayGet(.wifiGatewayConnectionStatus, origin: .userInitiated) { [weak self] status in
+        sendWiFiGatewayGet(
+            .wifiGatewayConnectionStatus,
+            subcode: .connectionStatus,
+            origin: .userInitiated
+        ) { [weak self] status in
             guard let self, self.isCurrentNetworkOperation(operationID) else { return }
             guard self.node.state else {
                 self.finishNetworkRefresh()
@@ -548,6 +632,12 @@ final class WiFiGatewayViewController: GatewayViewController {
             }
             if let credentials {
                 self.applyGatewayCredentials(credentials)
+            }
+            if case .requestFormatError = connectionStatus {
+                self.setNetworkConnectivityVisible(true)
+                self.reloadSection(.networkConnectivity)
+                self.finishNetworkRefresh()
+                return
             }
             self.applyConnectionStatus(connectionStatus, showsHUD: false)
             self.setNetworkConnectivityVisible(true)
@@ -575,6 +665,8 @@ final class WiFiGatewayViewController: GatewayViewController {
             if showsHUD {
                 handleNetworkConnectionFinished(.failure)
             }
+        case .requestFormatError:
+            break
         }
     }
 
@@ -598,7 +690,11 @@ final class WiFiGatewayViewController: GatewayViewController {
 
     private func refreshGatewayCredentials(usesPhoneSSIDWhenNotConnected: Bool = true) {
         let operationID = beginNetworkOperation()
-        sendWiFiGatewayGet(.wifiGatewayCredentials, origin: .userInitiated) { [weak self] status in
+        sendWiFiGatewayGet(
+            .wifiGatewayCredentials,
+            subcode: .credentialsRead,
+            origin: .userInitiated
+        ) { [weak self] status in
             guard let self, self.isCurrentNetworkOperation(operationID) else { return }
             guard self.node.state else {
                 self.finishNetworkRefresh()
@@ -626,7 +722,7 @@ final class WiFiGatewayViewController: GatewayViewController {
                     self.reloadSection(.networkConnectivity)
                     self.finishNetworkRefresh()
                 }
-            case .internalError, .reserved(rawValue: _):
+            case .unconfirmed, .reserved(rawValue: _):
                 self.showRefreshNetworkConnectivityFailed()
                 self.finishNetworkRefresh()
             }
@@ -728,18 +824,15 @@ final class WiFiGatewayViewController: GatewayViewController {
 
     private func updateNetworkPassword(_ password: String) -> GatewayNetworkConnectivityCell.ConnectState {
         guard canEditNetworkPassword() else { return networkConnectState }
-        guard password.canBeConverted(to: .ascii) else {
-            XWHUDManager.showTipHUD("wifi_gateway_password_character_error".localizedString, isLineFeed: true)
-            return networkConnectState
-        }
         networkPassword = password
         networkConnectState = computeEditableConnectState(password: password)
         return networkConnectState
     }
 
     private func computeEditableConnectState(password: String) -> GatewayNetworkConnectivityCell.ConnectState {
-        guard !networkSSID.isEmpty else { return .disabled }
-        guard password.isEmpty || (8...63).contains(password.count) else { return .disabled }
+        guard (try? WiFiGatewayCredentials(ssid: networkSSID, password: password)) != nil else {
+            return .disabled
+        }
         return .available
     }
 
@@ -750,14 +843,21 @@ final class WiFiGatewayViewController: GatewayViewController {
         }
         do {
             return try WiFiGatewayCredentials(ssid: networkSSID, password: networkPassword)
+        } catch WiFiGatewayCredentialValidationError.invalidSSIDLength(let length) {
+            let key = length == 0 ? "wifi_gateway_ssid_empty" : "wifi_gateway_ssid_length_error"
+            XWHUDManager.showTipHUD(key.localizedString, isLineFeed: true)
+            return nil
         } catch WiFiGatewayCredentialValidationError.invalidPasswordLength(_) {
             XWHUDManager.showTipHUD("wifi_gateway_password_length_error".localizedString, isLineFeed: true)
             return nil
-        } catch WiFiGatewayCredentialValidationError.invalidCharacter(field: .password, byte: _) {
-            XWHUDManager.showTipHUD("wifi_gateway_password_character_error".localizedString, isLineFeed: true)
+        } catch WiFiGatewayCredentialValidationError.invalidControlCharacter(let field, _) {
+            let key = field == .ssid
+                ? "wifi_gateway_ssid_character_error"
+                : "wifi_gateway_password_character_error"
+            XWHUDManager.showTipHUD(key.localizedString, isLineFeed: true)
             return nil
         } catch {
-            XWHUDManager.showTipHUD("wifi_gateway_ssid_empty".localizedString, isLineFeed: true)
+            XWHUDManager.showTipHUD("failed".localizedString, isLineFeed: true)
             return nil
         }
     }
@@ -796,75 +896,299 @@ final class WiFiGatewayViewController: GatewayViewController {
         setNetworkConnectivityVisible(true)
         reloadSection(.networkConnectivity)
         let operationID = beginNetworkOperation()
-        sendWiFiGatewayCredentialsSet(credentials, origin: .userInitiated) { [weak self] result in
-            guard let self, self.isCurrentNetworkOperation(operationID), self.node.state else { return }
-            guard result == .accepted else {
-                self.networkConnectState = self.computeEditableConnectState(password: self.networkPassword)
-                self.reloadSection(.networkConnectivity)
-                self.handleNetworkConnectionFinished(.failure)
-                return
-            }
-            self.networkCredentialSource = .gateway
-            self.networkConnectionStartedAt = Date()
-            self.startNetworkConnectionPolling()
+        credentialMutationReducer = WiFiGatewayCredentialMutationReducer()
+        let target = credentialSnapshot(from: credentials)
+        applyCredentialMutationAction(
+            credentialMutationReducer.reduce(.start(.set(target: target))),
+            operationID: operationID
+        )
+    }
+
+    private func credentialSnapshot(
+        from credentials: WiFiGatewayCredentials
+    ) -> WiFiGatewayCredentialSnapshot {
+        WiFiGatewayCredentialSnapshot(
+            ssid: credentials.ssidData,
+            password: credentials.passwordData
+        )
+    }
+
+    private func credentialSnapshotFromCurrentFields() -> WiFiGatewayCredentialSnapshot {
+        WiFiGatewayCredentialSnapshot(
+            ssid: Data(networkSSID.utf8),
+            password: Data(networkPassword.utf8)
+        )
+    }
+
+    private func credentials(
+        from snapshot: WiFiGatewayCredentialSnapshot
+    ) -> WiFiGatewayCredentials? {
+        guard let ssid = String(data: snapshot.ssid, encoding: .utf8),
+              let password = String(data: snapshot.password, encoding: .utf8) else {
+            return nil
+        }
+        return try? WiFiGatewayCredentials(
+            ssid: ssid,
+            password: password.isEmpty ? nil : password
+        )
+    }
+
+    private func mutationResponse(
+        from result: WiFiGatewayCredentialsSetResult?
+    ) -> WiFiGatewayCredentialMutationResponse {
+        switch result {
+        case .accepted: return .confirmed
+        case .invalidParameters: return .invalidParameters
+        case .unconfirmed, .reserved, nil: return .unconfirmed
         }
     }
 
-    private func startNetworkConnectionPolling() {
-        networkConnectTimer?.invalidate()
-        pollNetworkConnectionStatus()
-        networkConnectTimer = LCWeakTimer.scheduledTimer(timeInterval: connectionPollInterval, aTarget: self, selector: #selector(pollNetworkConnectionStatus), userInfo: nil, repeats: true)
-        if let networkConnectTimer {
-            RunLoop.main.add(networkConnectTimer, forMode: .common)
+    private func mutationResponse(
+        from result: WiFiGatewayCredentialsClearResult?
+    ) -> WiFiGatewayCredentialMutationResponse {
+        switch result {
+        case .cleared: return .confirmed
+        case .invalidParameters: return .invalidParameters
+        case .unconfirmed, .reserved, nil: return .unconfirmed
         }
+    }
+
+    private func applyCredentialMutationAction(
+        _ action: WiFiGatewayCredentialMutationAction,
+        operationID: Int
+    ) {
+        guard isCurrentNetworkOperation(operationID) else { return }
+        switch action {
+        case .sendSet(let target):
+            guard let credentials = credentials(from: target) else {
+                applyCredentialMutationAction(.setTargetUnknown, operationID: operationID)
+                return
+            }
+            sendWiFiGatewayCredentialsSet(credentials, origin: .userInitiated) { [weak self] result in
+                guard let self,
+                      self.isCurrentNetworkOperation(operationID),
+                      self.node.state else { return }
+                let action = self.credentialMutationReducer.reduce(
+                    .mutationResponse(self.mutationResponse(from: result))
+                )
+                self.applyCredentialMutationAction(action, operationID: operationID)
+            }
+
+        case .sendClear:
+            sendWiFiGatewayCredentialsClear(origin: .userInitiated) { [weak self] result in
+                guard let self,
+                      self.isCurrentNetworkOperation(operationID),
+                      self.node.state else { return }
+                let action = self.credentialMutationReducer.reduce(
+                    .mutationResponse(self.mutationResponse(from: result))
+                )
+                self.applyCredentialMutationAction(action, operationID: operationID)
+            }
+
+        case .requestCredentials:
+            requestCredentialMutationRecovery(operationID: operationID)
+
+        case .setTargetReached:
+            networkCredentialSource = .gateway
+            startNetworkConnectionPolling(operationID: operationID)
+
+        case .setTargetNotReached:
+            stopWiFiRSSIStatusRefresh()
+            updateWiFiHeaderStatus(.notConnected)
+            networkConnectState = computeEditableConnectState(password: networkPassword)
+            reloadSection(.networkConnectivity)
+            handleNetworkConnectionFinished(.failure)
+
+        case .setTargetUnknown:
+            stopWiFiRSSIStatusRefresh()
+            updateWiFiHeaderStatus(.notConnected)
+            networkConnectState = computeEditableConnectState(password: networkPassword)
+            reloadSection(.networkConnectivity)
+            handleNetworkConnectionFinished(.configurationUnconfirmed)
+
+        case .clearTargetReached:
+            stopNetworkConnectionPolling()
+            stopWiFiRSSIStatusRefresh()
+            clearLocalNetworkFields()
+            updateWiFiHeaderStatus(.notConfigured)
+            reloadSection(.networkConnectivity)
+            handleNetworkConnectionFinished(.success)
+
+        case .clearTargetNotReached(let snapshot):
+            applyCredentialSnapshot(snapshot)
+            networkConnectState = .connected
+            reloadSection(.networkConnectivity)
+            handleNetworkConnectionFinished(.failure)
+            loadConfiguredGatewayConnectionStatus(operationID: operationID)
+
+        case .clearTargetUnknown:
+            networkConnectState = .connected
+            startWiFiRSSIStatusRefresh()
+            reloadSection(.networkConnectivity)
+            handleNetworkConnectionFinished(.clearUnconfirmed)
+
+        case .none:
+            break
+        }
+    }
+
+    private func requestCredentialMutationRecovery(operationID: Int) {
+        let didStart = sendWiFiGatewayGet(
+            .wifiGatewayCredentials,
+            subcode: .credentialsRead,
+            origin: .userInitiated
+        ) { [weak self] status in
+            guard let self,
+                  self.isCurrentNetworkOperation(operationID),
+                  self.node.state else { return }
+            let observation: WiFiGatewayCredentialReadObservation
+            if let status,
+               case .wifiGatewayCredentialsRead(let result) = status.status.parameters {
+                switch result {
+                case .success(let credentials):
+                    observation = .credentials(self.credentialSnapshot(from: credentials))
+                case .notConfigured:
+                    observation = .notConfigured
+                case .unconfirmed, .reserved:
+                    observation = .unconfirmed
+                }
+            } else {
+                observation = .unconfirmed
+            }
+            let action = self.credentialMutationReducer.reduce(
+                .recoveryResponse(observation)
+            )
+            self.applyCredentialMutationAction(action, operationID: operationID)
+        }
+        if !didStart {
+            let action = credentialMutationReducer.reduce(
+                .recoveryResponse(.unconfirmed)
+            )
+            applyCredentialMutationAction(action, operationID: operationID)
+        }
+    }
+
+    private func applyCredentialSnapshot(_ snapshot: WiFiGatewayCredentialSnapshot) {
+        guard let ssid = String(data: snapshot.ssid, encoding: .utf8),
+              let password = String(data: snapshot.password, encoding: .utf8) else { return }
+        networkSSID = ssid
+        networkPassword = password
+        networkCredentialSource = .gateway
+    }
+
+    private func startNetworkConnectionPolling(operationID: Int) {
+        networkConnectTimer?.invalidate()
+        networkConnectTimer = nil
+        connectionPollingReducer = WiFiGatewayConnectionPollingReducer()
+        applyConnectionPollingAction(
+            connectionPollingReducer.start(now: ProcessInfo.processInfo.systemUptime),
+            operationID: operationID
+        )
     }
 
     private func stopNetworkConnectionPolling() {
         networkConnectTimer?.invalidate()
         networkConnectTimer = nil
-        networkConnectionStartedAt = nil
+        connectionPollingReducer = WiFiGatewayConnectionPollingReducer()
     }
 
-    @objc private func pollNetworkConnectionStatus() {
+    private func requestConnectionPollingStatus(operationID: Int) {
         guard node.state else {
             hideNetworkConnectivityForOfflineGateway()
             return
         }
-        if let startedAt = networkConnectionStartedAt, Date().timeIntervalSince(startedAt) >= connectionPollTimeout {
+        let didStart = sendWiFiGatewayGet(
+            .wifiGatewayConnectionStatus,
+            subcode: .connectionStatus,
+            origin: .userInitiated
+        ) { [weak self] status in
+            guard let self,
+                  self.isCurrentNetworkOperation(operationID),
+                  self.networkConnectState == .connecting,
+                  self.node.state else { return }
+            let observation = self.connectionPollingObservation(from: status)
+            let action = self.connectionPollingReducer.receive(
+                observation,
+                now: ProcessInfo.processInfo.systemUptime
+            )
+            self.applyConnectionPollingAction(action, operationID: operationID)
+        }
+        if !didStart {
+            let action = connectionPollingReducer.receive(
+                .noValidResult,
+                now: ProcessInfo.processInfo.systemUptime
+            )
+            applyConnectionPollingAction(action, operationID: operationID)
+        }
+    }
+
+    private func connectionPollingObservation(
+        from status: SunricherVendorStatus?
+    ) -> WiFiGatewayConnectionPollingObservation {
+        guard let status,
+              case .wifiGatewayConnectionStatus(let value) = status.status.parameters else {
+            return .noValidResult
+        }
+        switch value {
+        case .notStartedOrConnecting: return .connecting
+        case .connected: return .connected
+        case .passwordError: return .passwordError
+        case .failed: return .failed
+        case .notConfigured: return .notConfigured
+        case .requestFormatError: return .requestFormatError
+        case .reserved: return .reserved
+        }
+    }
+
+    private func applyConnectionPollingAction(
+        _ action: WiFiGatewayConnectionPollingAction,
+        operationID: Int
+    ) {
+        guard isCurrentNetworkOperation(operationID) else { return }
+        switch action {
+        case .sendQuery:
+            requestConnectionPollingStatus(operationID: operationID)
+
+        case .schedule(let delay):
+            networkConnectTimer?.invalidate()
+            let timer = Timer(timeInterval: delay, repeats: false) { [weak self] _ in
+                guard let self,
+                      self.isCurrentNetworkOperation(operationID),
+                      self.networkConnectState == .connecting else { return }
+                let action = self.connectionPollingReducer.timerFired(
+                    now: ProcessInfo.processInfo.systemUptime
+                )
+                self.applyConnectionPollingAction(action, operationID: operationID)
+            }
+            networkConnectTimer = timer
+            RunLoop.main.add(timer, forMode: .common)
+
+        case .connected:
             stopNetworkConnectionPolling()
+            networkConnectState = .connected
+            saveCachedPassword(networkPassword, for: networkSSID)
+            startWiFiRSSIStatusRefresh()
+            reloadSection(.networkConnectivity)
+            handleNetworkConnectionFinished(.success)
+
+        case .failed, .timedOut:
+            stopNetworkConnectionPolling()
+            stopWiFiRSSIStatusRefresh()
+            updateWiFiHeaderStatus(.notConnected)
             networkConnectState = computeEditableConnectState(password: networkPassword)
             reloadSection(.networkConnectivity)
             handleNetworkConnectionFinished(.failure)
-            return
-        }
-        sendWiFiGatewayGet(
-            .wifiGatewayConnectionStatus,
-            origin: .userInitiated,
-            timeout: connectionPollInterval
-        ) { [weak self] status in
-            guard let self, self.networkConnectState == .connecting, self.node.state else { return }
-            guard let status,
-                  case .wifiGatewayConnectionStatus(let connectionStatus) = status.status.parameters else {
-                return
-            }
-            switch connectionStatus {
-            case .connected:
-                self.stopNetworkConnectionPolling()
-                self.networkConnectState = .connected
-                self.saveCachedPassword(self.networkPassword, for: self.networkSSID)
-                self.startWiFiRSSIStatusRefresh()
-                self.reloadSection(.networkConnectivity)
-                self.handleNetworkConnectionFinished(.success)
-            case .passwordError, .failed, .notConfigured, .reserved(rawValue: _):
-                self.stopNetworkConnectionPolling()
-                self.stopWiFiRSSIStatusRefresh()
-                self.updateWiFiHeaderStatus(.notConnected)
-                self.networkConnectState = self.computeEditableConnectState(password: self.networkPassword)
-                self.reloadSection(.networkConnectivity)
-                self.handleNetworkConnectionFinished(.failure)
-            case .notStartedOrConnecting:
-                break
-            }
+
+        case .notConfigured:
+            stopNetworkConnectionPolling()
+            stopWiFiRSSIStatusRefresh()
+            updateWiFiHeaderStatus(.notConfigured)
+            networkConnectState = computeEditableConnectState(password: networkPassword)
+            reloadSection(.networkConnectivity)
+            handleNetworkConnectionFinished(.failure)
+
+        case .none:
+            break
         }
     }
 
@@ -876,24 +1200,12 @@ final class WiFiGatewayViewController: GatewayViewController {
         reloadSection(.networkConnectivity)
 
         let operationID = beginNetworkOperation()
-        sendWiFiGatewayCredentialsClear(origin: .userInitiated) { [weak self] result in
-            guard let self, self.isCurrentNetworkOperation(operationID) else { return }
-            self.completeNetworkDisconnectClear(result)
-        }
-    }
-
-    private func completeNetworkDisconnectClear(_ result: WiFiGatewayCredentialsClearResult?) {
-        stopNetworkConnectionPolling()
-        stopWiFiRSSIStatusRefresh()
-        clearLocalNetworkFields()
-        reloadSection(.networkConnectivity)
-
-        if result == .cleared {
-            updateWiFiHeaderStatus(.notConfigured)
-            handleNetworkConnectionFinished(.success)
-        } else {
-            handleNetworkConnectionFinished(.failure)
-        }
+        credentialMutationReducer = WiFiGatewayCredentialMutationReducer()
+        let previous = credentialSnapshotFromCurrentFields()
+        applyCredentialMutationAction(
+            credentialMutationReducer.reduce(.start(.clear(previous: previous))),
+            operationID: operationID
+        )
     }
 
     private func clearNetworkSSIDLocally() {
@@ -945,7 +1257,7 @@ final class WiFiGatewayViewController: GatewayViewController {
         }
         wifiRSSIStatusTimer?.invalidate()
         wifiRSSIStatusTimer = LCWeakTimer.scheduledTimer(
-            timeInterval: wifiRSSIStatusPollDelay,
+            timeInterval: WiFiGatewayV19Timing.rssiPollDelay,
             aTarget: self,
             selector: #selector(refreshWiFiRSSIStatus),
             userInfo: nil,
@@ -972,8 +1284,8 @@ final class WiFiGatewayViewController: GatewayViewController {
         }
         let didStart = sendWiFiGatewayGet(
             .wifiGatewayRSSIStatus,
-            origin: .automatic,
-            timeout: wifiRSSIStatusRequestTimeout
+            subcode: .rssiStatus,
+            origin: .automatic
         ) { [weak self] status in
             guard let self else { return }
             guard self.isNetworkPageVisible,
@@ -997,11 +1309,27 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     private func applyWiFiRSSIStatus(_ status: WiFiGatewayRSSIStatus) {
-        switch status {
-        case .valid(let dbm, let networkStatus):
-            updateWiFiHeaderStatus(wifiHeaderStatus(forRSSIDBm: dbm, networkStatus: networkStatus))
-        case .unavailable, .readFailed, .reserved(rawValue: _):
-            updateWiFiHeaderStatus(.noSignal)
+        let signalStatus: WiFiHeaderStatus
+        switch status.rssiResult {
+        case .valid(let dbm):
+            signalStatus = wifiHeaderStatus(forRSSIDBm: dbm)
+        case .unavailable, .readFailed, .reserved:
+            signalStatus = .noSignal
+        }
+
+        switch status.networkStatus {
+        case .normal:
+            updateWiFiHeaderStatus(signalStatus)
+        case .unavailable:
+            updateWiFiHeaderStatus(.init(
+                iconName: signalStatus.iconName,
+                localizedStatusKey: "wifi_status_no_internet"
+            ))
+        case .unknown, .reserved:
+            updateWiFiHeaderStatus(.init(
+                iconName: signalStatus.iconName,
+                localizedStatusKey: "wifi_status_unknown"
+            ))
         }
     }
 
@@ -1016,27 +1344,6 @@ final class WiFiGatewayViewController: GatewayViewController {
             return .bad
         }
         return .noSignal
-    }
-
-    private func wifiHeaderStatus(
-        forRSSIDBm dbm: Int8,
-        networkStatus: WiFiGatewayNetworkStatus
-    ) -> WiFiHeaderStatus {
-        let rssiStatus = wifiHeaderStatus(forRSSIDBm: dbm)
-        switch networkStatus {
-        case .normal, .notReported:
-            return rssiStatus
-        case .unavailable:
-            return WiFiHeaderStatus(
-                iconName: rssiStatus.iconName,
-                localizedStatusKey: "wifi_status_no_internet"
-            )
-        case .unknown, .reserved(rawValue: _):
-            return WiFiHeaderStatus(
-                iconName: rssiStatus.iconName,
-                localizedStatusKey: "wifi_status_unknown"
-            )
-        }
     }
 
     private func updateWiFiHeaderStatus(_ status: WiFiHeaderStatus) {
@@ -1084,6 +1391,14 @@ final class WiFiGatewayViewController: GatewayViewController {
             XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
         case .failure:
             XWHUDManager.showErrorTipHUD("failed".localizedString)
+        case .configurationUnconfirmed:
+            XWHUDManager.showErrorTipHUD(
+                "wifi_gateway_configuration_unconfirmed".localizedString
+            )
+        case .clearUnconfirmed:
+            XWHUDManager.showErrorTipHUD(
+                "wifi_gateway_clear_unconfirmed".localizedString
+            )
         }
     }
 
