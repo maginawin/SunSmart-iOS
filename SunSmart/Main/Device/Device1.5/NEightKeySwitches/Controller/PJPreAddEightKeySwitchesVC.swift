@@ -226,7 +226,7 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
     }
     
     private func selectPanelAction() {
-        guard ensureEditable() else { return }
+        guard ensureEditable(), allowsPanelSelection else { return }
         let vc = PJEightKeySwitchSelectPanelController(selectedPanelType: viewModel.selectedPanelType)
         vc.selectPanelTypeCallback = { [weak self] (type: PJEightKeySwitchPanelDefinition.PanelType) in
             guard let self else { return }
@@ -470,6 +470,10 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         editable && viewModel.space.deviceOperates.contains(.edit)
     }
 
+    private var allowsPanelSelection: Bool {
+        canEdit && !isRealDeviceLinked
+    }
+
     private var canDelete: Bool {
         editable && viewModel.space.deviceOperates.contains(.delete)
     }
@@ -494,7 +498,8 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
         editorView.nameTextField.isEnabled = canEdit
         editorView.clearNameButton.isEnabled = canEdit
         editorView.enableRowView.switchControl.isEnabled = canEdit
-        editorView.panelRowView.isUserInteractionEnabled = canEdit
+        editorView.panelRowView.setShowsArrow(!isRealDeviceLinked)
+        editorView.panelRowView.isUserInteractionEnabled = allowsPanelSelection
         editorView.groupRowView.isUserInteractionEnabled = canEdit
         editorView.sceneRowView.isUserInteractionEnabled = canEdit
         editorView.moreSettingsRowView.isUserInteractionEnabled = canEdit

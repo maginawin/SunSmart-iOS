@@ -66,6 +66,20 @@ final class PJEightKeySwitchInfoRowView: UIView {
         valueLabel.text = value
     }
 
+    func setShowsArrow(_ showsArrow: Bool) {
+        switch accessoryStyle {
+        case .arrow:
+            arrowImageView.isHidden = !showsArrow
+        case .valueWithArrow:
+            arrowImageView.isHidden = !showsArrow
+            valueLabel.snp.updateConstraints { make in
+                make.right.equalTo(SCRXFrom(showsArrow ? -36 : -16))
+            }
+        case .none, .toggle:
+            break
+        }
+    }
+
     private func makeKineticArrowConstraints() {
         arrowImageView.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-8))

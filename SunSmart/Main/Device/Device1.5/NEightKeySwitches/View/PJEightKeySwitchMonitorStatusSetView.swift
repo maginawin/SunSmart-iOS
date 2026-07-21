@@ -22,7 +22,6 @@ final class PJEightKeySwitchMonitorStatusSetView: UIView {
         static let expandedHeight = SCRYFrom(330) + kSafeAreaBottomHeight
         static let headerHeight = SCRYFrom(40)
         static let legendHeight = SCRYFrom(32)
-        static let miniSwitchSize = CGSize(width: SCRXFrom(30), height: SCRYFrom(20))
     }
 
     fileprivate enum Palette {
@@ -33,8 +32,6 @@ final class PJEightKeySwitchMonitorStatusSetView: UIView {
         static let auxiliary = RGB(148, 163, 184)
         static let iconDark = RGB(20, 46, 79)
         static let tagBackground = RGB(250, 250, 250)
-        static let switchDisabledTrack = RGB(238, 238, 238)
-        static let switchDisabledKnob = UIColor.white
     }
 
     var isExpanded = false {
@@ -53,8 +50,7 @@ final class PJEightKeySwitchMonitorStatusSetView: UIView {
     private let groupLinkTitleLabel = UILabel(text: "neightkeyswitches_group_link".localizedString, textColor: Title_Color, fontSize: 13, fontWeight: .light, fit: false)
     private let groupLinkButton = UIButton(type: .custom)
     private let enableTitleLabel = UILabel(text: "enable".localizedString, textColor: Title_Color, fontSize: 13, fontWeight: .light, fit: false)
-    let enableSwitch = UISwitch()
-    private let enableSwitchTouchShield = UIControl()
+    private let enableStatusImageView = UIImageView()
 
     private let expandedContainerView = UIView()
     private let statusCardView = UIView()
@@ -62,9 +58,9 @@ final class PJEightKeySwitchMonitorStatusSetView: UIView {
     private let linkedLabel = UILabel(text: "neightkeyswitches_linked".localizedString, textColor: Palette.legendText, fontSize: 12, fontWeight: .light, fit: false)
     private let unlinkedIconView = UIImageView()
     private let unlinkedLabel = UILabel(text: "neightkeyswitches_unlinked".localizedString, textColor: Palette.legendText, fontSize: 12, fontWeight: .light, fit: false)
-    private let enableLegendSwitch = PJEightKeySwitchMiniSwitchLegendView()
+    private let enableLegendIconView = UIImageView(image: UIImage(named: "sensor_occupy"))
     private let enableLegendLabel = UILabel(text: "enable".localizedString, textColor: Palette.legendText, fontSize: 12, fontWeight: .light, fit: false)
-    private let disabledLegendSwitch = PJEightKeySwitchMiniSwitchLegendView()
+    private let disabledLegendIconView = UIImageView(image: UIImage(named: "sensor_unoccupy"))
     private let disabledLegendLabel = UILabel(text: "disable".localizedString, textColor: Palette.legendText, fontSize: 12, fontWeight: .light, fit: false)
     private let groupsTitleLabel = UILabel(text: "neightkeyswitches_groups_it_controls".localizedString, textColor: Palette.primaryText, fontSize: 15, fontWeight: .light, fit: false)
     private let emptyLabel = UILabel(text: "neightkeyswitches_group_empty_tip".localizedString, textColor: Palette.secondaryText, fontSize: 13, fontWeight: .light)
@@ -82,16 +78,12 @@ final class PJEightKeySwitchMonitorStatusSetView: UIView {
     }
 
     func configure(state: State) {
-        enableSwitch.setOn(state.isEnabled, animated: false)
-        enableSwitch.isEnabled = true
-        enableSwitchTouchShield.isHidden = false
+        enableStatusImageView.image = UIImage(named: state.isEnabled ? "sensor_occupy" : "sensor_unoccupy")
 
         groupLinkButton.setImage(UIImage(named: state.isGroupLinked ? "group_linked" : "group_unlinked"), for: .normal)
 
         linkedIconView.image = UIImage(named: "group_linked")
         unlinkedIconView.image = UIImage(named: "group_unlinked")
-        enableLegendSwitch.isOn = true
-        disabledLegendSwitch.isOn = false
 
         renderGroupNames(state.groupNames)
     }
@@ -125,11 +117,6 @@ final class PJEightKeySwitchMonitorStatusSetView: UIView {
 
     @objc private func groupLinkButtonAction() {
         groupLinkAction?()
-    }
-
-    @objc private func enableValueChanged(_ sender: UISwitch) {
-        enableSwitch.setOn(sender.isOn, animated: true)
-        enableChanged?(sender.isOn)
     }
 
     private func setupUI() {
@@ -170,27 +157,20 @@ final class PJEightKeySwitchMonitorStatusSetView: UIView {
             make.left.equalTo(arrowImageView.snp.right).offset(SCRXFrom(2))
         }
 
-        enableSwitch.addTarget(self, action: #selector(enableValueChanged(_:)), for: .valueChanged)
-        enableSwitch.onTintColor = Bar_Color
-        enableSwitch.tintColor = RGB(207, 207, 207)
-        enableSwitch.thumbTintColor = .white
-        contentView.addSubview(enableSwitch)
-        enableSwitch.snp.makeConstraints { make in
+        enableStatusImageView.contentMode = .scaleAspectFit
+        enableStatusImageView.isUserInteractionEnabled = true
+        contentView.addSubview(enableStatusImageView)
+        enableStatusImageView.snp.makeConstraints { make in
             make.centerY.equalTo(headerButton)
             make.right.equalToSuperview().offset(-SCRXFrom(24))
-        }
-
-        enableSwitchTouchShield.backgroundColor = .clear
-        contentView.addSubview(enableSwitchTouchShield)
-        enableSwitchTouchShield.snp.makeConstraints { make in
-            make.edges.equalTo(enableSwitch)
+            make.width.height.equalTo(SCRXFrom(20))
         }
 
         contentView.addSubview(enableTitleLabel)
         enableTitleLabel.textColor = Palette.primaryText
         enableTitleLabel.snp.makeConstraints { make in
             make.centerY.equalTo(headerButton)
-            make.right.equalTo(enableSwitch.snp.left).offset(-SCRXFrom(8))
+            make.right.equalTo(enableStatusImageView.snp.left).offset(-SCRXFrom(8))
         }
 
         groupLinkButton.addTarget(self, action: #selector(groupLinkButtonAction), for: .touchUpInside)
@@ -227,13 +207,11 @@ final class PJEightKeySwitchMonitorStatusSetView: UIView {
             make.height.equalTo(Layout.legendHeight)
         }
 
-        enableLegendSwitch.isOn = true
-        disabledLegendSwitch.isOn = false
         let legendStackView = UIStackView(arrangedSubviews: [
             makeLegendItem(iconView: linkedIconView, label: linkedLabel),
             makeLegendItem(iconView: unlinkedIconView, label: unlinkedLabel),
-            makeSwitchLegendItem(switchView: enableLegendSwitch, label: enableLegendLabel),
-            makeSwitchLegendItem(switchView: disabledLegendSwitch, label: disabledLegendLabel)
+            makeLegendItem(iconView: enableLegendIconView, label: enableLegendLabel),
+            makeLegendItem(iconView: disabledLegendIconView, label: disabledLegendLabel)
         ])
         legendStackView.axis = .horizontal
         legendStackView.alignment = .center
@@ -290,18 +268,6 @@ final class PJEightKeySwitchMonitorStatusSetView: UIView {
         return stackView
     }
 
-    private func makeSwitchLegendItem(switchView: PJEightKeySwitchMiniSwitchLegendView, label: UILabel) -> UIStackView {
-        switchView.snp.makeConstraints { make in
-            make.width.equalTo(Layout.miniSwitchSize.width)
-            make.height.equalTo(Layout.miniSwitchSize.height)
-        }
-        let stackView = UIStackView(arrangedSubviews: [switchView, label])
-        stackView.axis = .horizontal
-        stackView.alignment = .center
-        stackView.spacing = SCRXFrom(0)
-        return stackView
-    }
-
     private func updateExpandedState(animated: Bool) {
         let targetHeight = isExpanded ? Layout.expandedHeight : Layout.collapsedHeight
         heightConstraint?.update(offset: targetHeight)
@@ -320,44 +286,4 @@ final class PJEightKeySwitchMonitorStatusSetView: UIView {
         }
     }
 
-}
-
-private final class PJEightKeySwitchMiniSwitchLegendView: UIView {
-
-    var isOn = true {
-        didSet { setNeedsLayout() }
-    }
-
-    private let trackView = UIView()
-    private let knobView = UIView()
-
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        isUserInteractionEnabled = false
-        addSubview(trackView)
-        addSubview(knobView)
-        trackView.layer.masksToBounds = true
-        knobView.backgroundColor = .white
-        knobView.layer.shadowColor = UIColor.black.cgColor
-        knobView.layer.shadowOpacity = 0.12
-        knobView.layer.shadowRadius = 2
-        knobView.layer.shadowOffset = CGSize(width: 0, height: 1)
-    }
-
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        trackView.frame = bounds.insetBy(dx: SCRXFrom(2.5), dy: SCRYFrom(2.5))
-        trackView.layer.cornerRadius = trackView.bounds.height / 2
-        trackView.backgroundColor = isOn ? Bar_Color : PJEightKeySwitchMonitorStatusSetView.Palette.switchDisabledTrack
-
-        let knobSide = SCRXFrom(16)
-        let knobX = isOn ? bounds.width - SCRXFrom(2.5) - knobSide : SCRXFrom(2.5)
-        knobView.frame = CGRect(x: knobX, y: (bounds.height - knobSide) / 2, width: knobSide, height: knobSide)
-        knobView.layer.cornerRadius = knobSide / 2
-        knobView.backgroundColor = isOn ? .white : PJEightKeySwitchMonitorStatusSetView.Palette.switchDisabledKnob
-    }
 }

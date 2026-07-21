@@ -790,7 +790,12 @@ class BleFirmwareUpdateDeviceCell: UITableViewCell {
                 deviceImageView.image = UIImage(named: device.bleFirmwareIconName)
             }else {
                 nameLabel.textColor = SubText_Color
-                deviceImageView.image = UIImage(named: device.bleFirmwareIconName)?.withTintColor(SubText_Color)
+                let tintedOnlineImage = UIImage(named: device.bleFirmwareIconName)?.withTintColor(SubText_Color)
+                if device.isBatteryPowerSwitch {
+                    deviceImageView.image = UIImage(named: device.offlineIconName) ?? tintedOnlineImage
+                } else {
+                    deviceImageView.image = tintedOnlineImage
+                }
                 rssiLabel.text = "--"
                 rssiLabel.textColor = SubText_Color
                 selectedImageView.isHidden = true

@@ -1895,8 +1895,8 @@
 "neightkeyswitches_long_press_dimming" = "Long press\nDimming";
 "neightkeyswitches_long_press_auto" = "Long press\nAUTO";
 "neightkeyswitches_save_after_activation" = "Save After Activation";
-"neightkeyswitches_activation_instruction_scene" = "Long press 'Button 2' and 'Button ON' to activate the device.";
-"neightkeyswitches_activation_instruction_brightness" = "Long press 'Button 75%' and 'Button ON' to activate the device.";
+"neightkeyswitches_activation_instruction_scene" = "Long press 'Button 2' and 'Button ON' 3s to activate the device.";
+"neightkeyswitches_activation_instruction_brightness" = "Long press 'Button 75%' and 'Button ON' 3s to activate the device.";
 "neightkeyswitches_activation_waiting_format" = "Waiting for switch activation (%ds)...";
 "neightkeyswitches_activation_detected" = "Device Activation Detected";
 "neightkeyswitches_activation_timeout" = "No response detected";
