@@ -49,7 +49,7 @@ final class PJEightKeySwitchMonitorStatusSetView: UIView {
     private let titleLabel = UILabel(text: "settings".localizedString, textColor: Title_Color, fontSize: 14, fontWeight: .light, fit: false)
     private let groupLinkTitleLabel = UILabel(text: "neightkeyswitches_group_link".localizedString, textColor: Title_Color, fontSize: 13, fontWeight: .light, fit: false)
     private let groupLinkButton = UIButton(type: .custom)
-    private let enableTitleLabel = UILabel(text: "enable".localizedString, textColor: Title_Color, fontSize: 13, fontWeight: .light, fit: false)
+    private let enableTitleLabel = UILabel(text: "neightkeyswitches_enable_state".localizedString, textColor: Title_Color, fontSize: 13, fontWeight: .light, fit: false)
     private let enableStatusImageView = UIImageView()
 
     private let expandedContainerView = UIView()

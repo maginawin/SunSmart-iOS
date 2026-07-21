@@ -1891,6 +1891,7 @@
 "neightkeyswitches_reporting_10hr" = "10小时";
 "neightkeyswitches_reporting_disable" = "关闭";
 "neightkeyswitches_settings" = "设置";
+"neightkeyswitches_enable_state" = "启用状态";
 "neightkeyswitches_group_link" = "Group link";
 "neightkeyswitches_linked" = "已关联";
 "neightkeyswitches_unlinked" = "未关联";

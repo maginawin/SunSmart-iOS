@@ -1875,6 +1875,7 @@
 "neightkeyswitches_reporting_10hr" = "10hr";
 "neightkeyswitches_reporting_disable" = "Disable";
 "neightkeyswitches_settings" = "Settings";
+"neightkeyswitches_enable_state" = "Enable State";
 "neightkeyswitches_group_link" = "Group link";
 "neightkeyswitches_linked" = "Linked";
 "neightkeyswitches_unlinked" = "Unlinked";
