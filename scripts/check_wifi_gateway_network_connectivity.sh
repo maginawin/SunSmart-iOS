@@ -11,6 +11,10 @@ wifi_controller="SunSmart/Main/Device/Gateway/Controller/WiFiGatewayViewControll
 wifi_cell="SunSmart/Main/Device/Gateway/View/GatewayNetworkConnectivityCell.swift"
 localizable_en="SunSmart/en.lproj/Localizable.strings"
 localizable_zh="SunSmart/zh-Hans.lproj/Localizable.strings"
+timing="SunSmart/Main/Device/Gateway/Model/WiFiGatewayV19Timing.swift"
+timing_test="Tests/Device/WiFiGatewayV19TimingTests.swift"
+polling_reducer="SunSmart/Main/Device/Gateway/Model/WiFiGatewayConnectionPollingReducer.swift"
+polling_test="Tests/Device/WiFiGatewayConnectionPollingReducerTests.swift"
 
 rg -n "case networkConnectivity|network_connectivity|GatewayNetworkConnectivityCell" "$gateway_controller" >/dev/null || fail "GatewayViewController missing network connectivity hook"
 rg -n "func reloadGatewayTable\(\)" "$gateway_controller" >/dev/null || fail "GatewayViewController missing full table reload hook"
@@ -26,7 +30,14 @@ rg -n "status\.isSuccessful.*connected|connected.*status\.isSuccessful" "$wifi_c
 rg -n "UserDefaults\.standard" "$wifi_controller" >/dev/null || fail "WiFi passwords must be cached in UserDefaults"
 rg -n "ssidClearCallback|clearNetworkSSIDLocally|showsSSIDClearButton" "$wifi_controller" "$wifi_cell" >/dev/null || fail "SSID clear behavior missing"
 rg -n "isNetworkConnectivityVisible|setNetworkConnectivityVisible" "$wifi_controller" >/dev/null || fail "Network Connectivity section visibility must be state-driven"
-rg -n "connectionPollTimeout|networkConnectionStartedAt|pollNetworkConnectionStatus" "$wifi_controller" >/dev/null || fail "Connection polling timeout missing"
+rg -n "WiFiGatewayConnectionPollingReducer" "$wifi_controller" >/dev/null || fail "Connection polling must use the V1.9 reducer"
+rg -n "WiFiGatewayV19Timing\.responseTimeout\(for: subcode\)" "$wifi_controller" >/dev/null || fail "WiFi GET helper must use the exact Subcode deadline"
+rg -n "subcode: WiFiGatewayV19Subcode" "$wifi_controller" >/dev/null || fail "WiFi GET helper must require a Subcode"
+rg -n "case \.requestFormatError:" "$wifi_controller" >/dev/null || fail "0x0E request format errors must be handled explicitly"
+rg -n "repeats: false" "$wifi_controller" >/dev/null || fail "Connection polling must use one-shot scheduling"
+if rg -n "private let connectionPollInterval|private let connectionPollTimeout|networkConnectionStartedAt" "$wifi_controller" >/dev/null; then
+  fail "Legacy fixed connection polling constants must be removed"
+fi
 rg -n "pendingNetworkResultHUD|isNetworkPageVisible" "$wifi_controller" >/dev/null || fail "Subpage HUD suppression behavior missing"
 rg -n "refreshNetworkConnectivity" "$wifi_controller" >/dev/null || fail "Refresh must route through network connectivity refresh logic"
 rg -n "refreshConfiguredGatewayConnectionStatus" "$wifi_controller" >/dev/null || fail "Configured gateway refresh must read WiFi connection status"
@@ -59,6 +70,7 @@ rg -n "passwordChangedCallback: \(\(String\) -> ConnectState\)\?" "$wifi_cell" >
 rg -n "nameField_clear|close" "$wifi_cell" >/dev/null || fail "SSID clear button should reuse an existing clear icon"
 
 rg -n '"wifi_gateway_ssid_empty"|"wifi_gateway_password_length_error"|"wifi_gateway_password_character_error"' "$localizable_en" "$localizable_zh" >/dev/null || fail "WiFi Gateway validation localization missing"
+rg -n '"wifi_gateway_ssid_length_error"|"wifi_gateway_configuration_unconfirmed"|"wifi_gateway_clear_unconfirmed"' "$localizable_en" "$localizable_zh" >/dev/null || fail "WiFi Gateway V1.9 localization missing"
 rg -n '"please_disconnect_first" = "Please disconnect first";' "$localizable_en" >/dev/null || fail "English localization must define Please disconnect first"
 rg -n '"please_disconnect_first" = "请先断开连接";' "$localizable_zh" >/dev/null || fail "Chinese localization must define 请先断开连接"
 rg -n -F '"network_unchanged" = "Network unchanged.";' "$localizable_en" >/dev/null || fail "English localization must define Network unchanged."
@@ -67,5 +79,10 @@ rg -n -F '"updated_to_the_new_network" = "Updated to the new network.";' "$local
 rg -n -F '"updated_to_the_new_network" = "已更新为新网络。";' "$localizable_zh" >/dev/null || fail "Chinese localization must define 已更新为新网络。"
 rg -n -F '"phone_not_connected_to_wifi" = "Phone is not connected to Wi-Fi.";' "$localizable_en" >/dev/null || fail "English localization must define phone Wi-Fi disconnected prompt"
 rg -n -F '"phone_not_connected_to_wifi" = "手机未连接 Wi-Fi。";' "$localizable_zh" >/dev/null || fail "Chinese localization must define phone Wi-Fi disconnected prompt"
+
+swiftc -parse-as-library "$timing" "$timing_test" -o /tmp/WiFiGatewayV19TimingTests
+/tmp/WiFiGatewayV19TimingTests
+swiftc -parse-as-library "$timing" "$polling_reducer" "$polling_test" -o /tmp/WiFiGatewayConnectionPollingReducerTests
+/tmp/WiFiGatewayConnectionPollingReducerTests
 
 echo "PASS: WiFi Gateway network connectivity real protocol static checks"

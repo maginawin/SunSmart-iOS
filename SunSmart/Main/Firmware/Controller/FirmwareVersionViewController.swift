@@ -98,6 +98,11 @@ class FirmwareVersionViewController: UIViewController {
 
     func loadAdditionalFirmwareData() {}
 
+    func loadFirmwareData() {
+        loadCloudFirmwareRequest()
+        loadAdditionalFirmwareData()
+    }
+
     func refreshFirmwareUI() {
         guard headerView != nil else { return }
         updateUI()
@@ -150,14 +155,13 @@ class FirmwareVersionViewController: UIViewController {
             setupUI()
             updateUI()
         }
-        loadCloudFirmwareRequest()
-        loadAdditionalFirmwareData()
+        loadFirmwareData()
         
 //        updateUI()
     }
     
     /// 获取云端固件
-    private func loadCloudFirmwareRequest() {
+    func loadCloudFirmwareRequest(completion: (() -> Void)? = nil) {
 
         if resetsServerFirmwareBeforeCloudRequest {
             type.serverData = nil
@@ -173,6 +177,7 @@ class FirmwareVersionViewController: UIViewController {
             )
         ) {[weak self] result in
             guard let self = self else { return }
+            defer { completion?() }
             XWHUDManager.hideInView(with: self.view)
             if self.headerView == nil {
                 self.setupUI()
@@ -306,8 +311,7 @@ class FirmwareVersionViewController: UIViewController {
     /// 刷新数据
     @objc private func reloadBtnAction() {
         // 重新获取线上版本
-        loadCloudFirmwareRequest()
-        loadAdditionalFirmwareData()
+        loadFirmwareData()
     }
     
     private func updateUI() {

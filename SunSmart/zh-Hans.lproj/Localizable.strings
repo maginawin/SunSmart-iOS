@@ -891,6 +891,9 @@
 "wifi_firmware_upgrade_failed" = "升级失败";
 "wifi_firmware_upgrade_complete" = "升级完成！";
 "wifi_firmware_upgrade_cancelled" = "升级已取消";
+"wifi_firmware_cancel_not_effective" = "无法取消，固件升级将继续。";
+"wifi_firmware_cancel_result_unknown" = "取消结果未知";
+"wifi_firmware_waiting_status_confirmation" = "正在等待状态确认";
 "Download" = "下载";
 "release_date" = "发布日期";
 "firmware_version_history" = "固件版本历史";
@@ -1976,10 +1979,13 @@
 "disconnect" = "断开连接";
 "connect_to_24ghz_wifi_network" = "连接到 2.4 GHz Wi-Fi 网络";
 "go_to_system_settings" = "前往系统设置";
-"wifi_password_ascii_only" = "密码仅支持 ASCII 字符。";
 "wifi_gateway_ssid_empty" = "请先选择 Wi-Fi 网络。";
-"wifi_gateway_password_length_error" = "无密码 Wi-Fi 可留空；如填写密码，请输入 8-63 个字符。";
-"wifi_gateway_password_character_error" = "密码只能包含英文字母、数字、符号和空格，不支持双引号或反斜杠。";
+"wifi_gateway_ssid_length_error" = "Wi-Fi 名称必须为 1–32 个 UTF-8 字节。";
+"wifi_gateway_ssid_character_error" = "Wi-Fi 名称不能包含控制字符。";
+"wifi_gateway_password_length_error" = "无密码 Wi-Fi 可留空；如填写密码，请输入 8–63 个 UTF-8 字节。";
+"wifi_gateway_password_character_error" = "密码不能包含控制字符。";
+"wifi_gateway_configuration_unconfirmed" = "无法确认 Wi-Fi 配置结果。";
+"wifi_gateway_clear_unconfirmed" = "无法确认 Wi-Fi 凭据清除结果。";
 "please_disconnect_first" = "请先断开连接";
 "network_unchanged" = "网络未变化。";
 "updated_to_the_new_network" = "已更新为新网络。";

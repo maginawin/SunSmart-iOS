@@ -8,6 +8,8 @@ fail() {
 
 controller="SunSmart/Main/Device/Gateway/Controller/WiFiGatewayViewController.swift"
 cell="SunSmart/Main/Device/Gateway/View/GatewayNetworkConnectivityCell.swift"
+mutation_reducer="SunSmart/Main/Device/Gateway/Model/WiFiGatewayCredentialMutationReducer.swift"
+mutation_test="Tests/Device/WiFiGatewayCredentialMutationReducerTests.swift"
 
 rg -n "case disconnecting" "$cell" >/dev/null \
   || fail "GatewayNetworkConnectivityCell must expose a dedicated disconnecting state."
@@ -37,5 +39,25 @@ fi
 
 rg -n "handleNetworkConnectionFinished\\(\\.failure\\)" "$controller" >/dev/null \
   || fail "WiFiGatewayViewController must show the existing failed prompt for clear failures."
+
+rg -n "credentialMutationReducer" "$controller" >/dev/null \
+  || fail "WiFi credential SET/CLEAR must use the mutation reducer."
+
+rg -n "case \.requestCredentials:" "$controller" >/dev/null \
+  || fail "Unconfirmed mutations must request one authoritative credentials read."
+
+recovery_call_count=$(grep -Fc 'requestCredentialMutationRecovery(operationID: operationID)' "$controller")
+[ "$recovery_call_count" -eq 1 ] \
+  || fail "Credential mutation recovery must have exactly one 0x12 driver call site."
+
+if rg -n "completeNetworkDisconnectClear" "$controller" >/dev/null; then
+  fail "Clear must not erase local fields before reducer confirmation."
+fi
+
+rg -U -n 'case \.clearTargetReached:[[:space:][:print:]]*clearLocalNetworkFields\(\)' "$controller" >/dev/null \
+  || fail "Local fields may only be cleared after clear target confirmation."
+
+swiftc -parse-as-library "$mutation_reducer" "$mutation_test" -o /tmp/WiFiGatewayCredentialMutationReducerTests
+/tmp/WiFiGatewayCredentialMutationReducerTests
 
 echo "PASS: WiFi Gateway Disconnect sends clear credentials and handles waiting/failure contract."

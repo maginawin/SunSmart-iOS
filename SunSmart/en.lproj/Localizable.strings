@@ -870,6 +870,9 @@
 "wifi_firmware_upgrade_failed" = "Upgrade failed";
 "wifi_firmware_upgrade_complete" = "Upgrade complete!";
 "wifi_firmware_upgrade_cancelled" = "Upgrade cancelled";
+"wifi_firmware_cancel_not_effective" = "Unable to cancel. The update will continue.";
+"wifi_firmware_cancel_result_unknown" = "Cancellation result unknown";
+"wifi_firmware_waiting_status_confirmation" = "Waiting for status confirmation";
 "Download" = "DOWNLOAD";
 "release_date" = "Release date";
 "firmware_version_history" = "Firmware version history";
@@ -1960,10 +1963,13 @@
 "disconnect" = "Disconnect";
 "connect_to_24ghz_wifi_network" = "Connect to 2.4 GHz Wi-Fi Network";
 "go_to_system_settings" = "Go to System Settings";
-"wifi_password_ascii_only" = "Password only supports ASCII characters.";
 "wifi_gateway_ssid_empty" = "Select a Wi-Fi network first.";
-"wifi_gateway_password_length_error" = "Leave the password empty for an open Wi-Fi network, or enter 8-63 characters.";
-"wifi_gateway_password_character_error" = "Password can only contain letters, numbers, symbols, and spaces. Double quotes and backslashes are not supported.";
+"wifi_gateway_ssid_length_error" = "Wi-Fi name must be 1–32 UTF-8 bytes.";
+"wifi_gateway_ssid_character_error" = "Wi-Fi name must not contain control characters.";
+"wifi_gateway_password_length_error" = "Leave the password empty for an open Wi-Fi network, or enter 8–63 UTF-8 bytes.";
+"wifi_gateway_password_character_error" = "Password must not contain control characters.";
+"wifi_gateway_configuration_unconfirmed" = "Unable to confirm Wi-Fi configuration.";
+"wifi_gateway_clear_unconfirmed" = "Unable to confirm Wi-Fi credential removal.";
 "please_disconnect_first" = "Please disconnect first";
 "network_unchanged" = "Network unchanged.";
 "updated_to_the_new_network" = "Updated to the new network.";
