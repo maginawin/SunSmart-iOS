@@ -1,16 +1,17 @@
 {
   "images" : [
     {
+      "filename" : "device_light_offline.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "device_offline_0001@2x.png",
+      "filename" : "device_light_offline@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "device_offline_0001@3x.png",
+      "filename" : "device_light_offline@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }

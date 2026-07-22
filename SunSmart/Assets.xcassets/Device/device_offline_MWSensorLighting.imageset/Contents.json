@@ -1,17 +1,17 @@
 {
   "images" : [
     {
-      "filename" : "device_light_offline.png",
+      "filename" : "device_offline_MWSensorLighting.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
-      "filename" : "device_light_offline@2x.png",
+      "filename" : "device_offline_MWSensorLighting@2x.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
     {
-      "filename" : "device_light_offline@3x.png",
+      "filename" : "device_offline_MWSensorLighting@3x.png",
       "idiom" : "universal",
       "scale" : "3x"
     }
