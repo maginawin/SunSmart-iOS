@@ -566,6 +566,9 @@
 		C88553B32DE6B44C00C8B688 /* GroupAddViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08582B2705B400144BAC /* GroupAddViewController.swift */; };
 		C88553B42DE6B44C00C8B688 /* ScheduleAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A29C2D2B4800E400104634 /* ScheduleAddView.swift */; };
 		C88553B52DE6B44C00C8B688 /* DevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3290A2AC568A300BC7389 /* DevicesViewController.swift */; };
+		F26072200000000000000102 /* DeviceNameFilterSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000101 /* DeviceNameFilterSession.swift */; };
+		F26072200000000000000111 /* DeviceNameFilterMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000109 /* DeviceNameFilterMenuView.swift */; };
+		F26072200000000000000112 /* DeviceNameFilterSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000110 /* DeviceNameFilterSearchView.swift */; };
 		C88553B62DE6B44C00C8B688 /* MeshNetwork+SunSmart.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2E02AB840FE00C71315 /* MeshNetwork+SunSmart.swift */; };
 		C88553B72DE6B44C00C8B688 /* SiteAddressDataHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DCD0FB2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift */; };
 		C88553B82DE6B44C00C8B688 /* ProvisioningDevice+Add.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89941972AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift */; };
@@ -947,6 +950,9 @@
 		C886E0032E30DE4900D0C3A6 /* GroupAddViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08582B2705B400144BAC /* GroupAddViewController.swift */; };
 		C886E0042E30DE4900D0C3A6 /* ScheduleAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A29C2D2B4800E400104634 /* ScheduleAddView.swift */; };
 		C886E0052E30DE4900D0C3A6 /* DevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3290A2AC568A300BC7389 /* DevicesViewController.swift */; };
+		F26072200000000000000103 /* DeviceNameFilterSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000101 /* DeviceNameFilterSession.swift */; };
+		F26072200000000000000113 /* DeviceNameFilterMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000109 /* DeviceNameFilterMenuView.swift */; };
+		F26072200000000000000114 /* DeviceNameFilterSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000110 /* DeviceNameFilterSearchView.swift */; };
 		C886E0062E30DE4900D0C3A6 /* MeshNetwork+SunSmart.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2E02AB840FE00C71315 /* MeshNetwork+SunSmart.swift */; };
 		C886E0072E30DE4900D0C3A6 /* SiteAddressDataHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DCD0FB2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift */; };
 		C886E0082E30DE4900D0C3A6 /* ProvisioningDevice+Add.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89941972AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift */; };
@@ -1504,6 +1510,9 @@
 		C8A29C2C2B47FE2300104634 /* ScheduleAddViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A29C2B2B47FE2300104634 /* ScheduleAddViewController.swift */; };
 		C8A29C2E2B4800E400104634 /* ScheduleAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A29C2D2B4800E400104634 /* ScheduleAddView.swift */; };
 		C8A3290B2AC568A300BC7389 /* DevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3290A2AC568A300BC7389 /* DevicesViewController.swift */; };
+		F26072200000000000000104 /* DeviceNameFilterSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000101 /* DeviceNameFilterSession.swift */; };
+		F26072200000000000000115 /* DeviceNameFilterMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000109 /* DeviceNameFilterMenuView.swift */; };
+		F26072200000000000000116 /* DeviceNameFilterSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000110 /* DeviceNameFilterSearchView.swift */; };
 		C8A3290D2AC5690D00BC7389 /* DeviceAddViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3290C2AC5690D00BC7389 /* DeviceAddViewController.swift */; };
 		C8A347CA2D62D0740092D3E4 /* DaliMasterViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A347C92D62D0740092D3E4 /* DaliMasterViewController.swift */; };
 		C8A347CC2D62E8660092D3E4 /* DaliMasterSingleControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A347CB2D62E8660092D3E4 /* DaliMasterSingleControlView.swift */; };
@@ -1724,6 +1733,9 @@
 		C8BB65B12ED3F056000C63EE /* GroupAddViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08582B2705B400144BAC /* GroupAddViewController.swift */; };
 		C8BB65B22ED3F056000C63EE /* ScheduleAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A29C2D2B4800E400104634 /* ScheduleAddView.swift */; };
 		C8BB65B32ED3F056000C63EE /* DevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3290A2AC568A300BC7389 /* DevicesViewController.swift */; };
+		F26072200000000000000105 /* DeviceNameFilterSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000101 /* DeviceNameFilterSession.swift */; };
+		F26072200000000000000117 /* DeviceNameFilterMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000109 /* DeviceNameFilterMenuView.swift */; };
+		F26072200000000000000118 /* DeviceNameFilterSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000110 /* DeviceNameFilterSearchView.swift */; };
 		C8BB65B42ED3F056000C63EE /* MeshNetwork+SunSmart.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2E02AB840FE00C71315 /* MeshNetwork+SunSmart.swift */; };
 		C8BB65B52ED3F056000C63EE /* SiteAddressDataHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DCD0FB2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift */; };
 		C8BB65B62ED3F056000C63EE /* ProvisioningDevice+Add.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89941972AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift */; };
@@ -2854,6 +2866,9 @@
 		C8A29C2B2B47FE2300104634 /* ScheduleAddViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleAddViewController.swift; sourceTree = "<group>"; };
 		C8A29C2D2B4800E400104634 /* ScheduleAddView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleAddView.swift; sourceTree = "<group>"; };
 		C8A3290A2AC568A300BC7389 /* DevicesViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicesViewController.swift; sourceTree = "<group>"; };
+		F26072200000000000000101 /* DeviceNameFilterSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceNameFilterSession.swift; sourceTree = "<group>"; };
+		F26072200000000000000109 /* DeviceNameFilterMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceNameFilterMenuView.swift; sourceTree = "<group>"; };
+		F26072200000000000000110 /* DeviceNameFilterSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceNameFilterSearchView.swift; sourceTree = "<group>"; };
 		C8A3290C2AC5690D00BC7389 /* DeviceAddViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddViewController.swift; sourceTree = "<group>"; };
 		C8A347C92D62D0740092D3E4 /* DaliMasterViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaliMasterViewController.swift; sourceTree = "<group>"; };
 		C8A347CB2D62E8660092D3E4 /* DaliMasterSingleControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaliMasterSingleControlView.swift; sourceTree = "<group>"; };
@@ -4203,6 +4218,7 @@
 		C898EA6C2AC2D5890023B480 /* Device */ = {
 			isa = PBXGroup;
 			children = (
+				F26072200000000000000106 /* Filter */,
 				8C778B332FA19FB9000887FE /* Device1.5 */,
 				C822A8572EA7677500A7073B /* Reset */,
 				C8DF84532DB639750070CBD9 /* Dongle */,
@@ -4218,6 +4234,32 @@
 				C898EA6D2AC2D59C0023B480 /* View */,
 			);
 			path = Device;
+			sourceTree = "<group>";
+		};
+		F26072200000000000000106 /* Filter */ = {
+			isa = PBXGroup;
+			children = (
+				F26072200000000000000107 /* Model */,
+				F26072200000000000000108 /* View */,
+			);
+			path = Filter;
+			sourceTree = "<group>";
+		};
+		F26072200000000000000107 /* Model */ = {
+			isa = PBXGroup;
+			children = (
+				F26072200000000000000101 /* DeviceNameFilterSession.swift */,
+			);
+			path = Model;
+			sourceTree = "<group>";
+		};
+		F26072200000000000000108 /* View */ = {
+			isa = PBXGroup;
+			children = (
+				F26072200000000000000109 /* DeviceNameFilterMenuView.swift */,
+				F26072200000000000000110 /* DeviceNameFilterSearchView.swift */,
+			);
+			path = View;
 			sourceTree = "<group>";
 		};
 		C898EA6D2AC2D59C0023B480 /* View */ = {
@@ -5574,6 +5616,9 @@
 				8C778BC82FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift in Sources */,
 				C88553B42DE6B44C00C8B688 /* ScheduleAddView.swift in Sources */,
 				C88553B52DE6B44C00C8B688 /* DevicesViewController.swift in Sources */,
+				F26072200000000000000102 /* DeviceNameFilterSession.swift in Sources */,
+				F26072200000000000000111 /* DeviceNameFilterMenuView.swift in Sources */,
+				F26072200000000000000112 /* DeviceNameFilterSearchView.swift in Sources */,
 				C88553B62DE6B44C00C8B688 /* MeshNetwork+SunSmart.swift in Sources */,
 				C88553B72DE6B44C00C8B688 /* SiteAddressDataHeaderView.swift in Sources */,
 				C88553B82DE6B44C00C8B688 /* ProvisioningDevice+Add.swift in Sources */,
@@ -6168,6 +6213,9 @@
 				8C778BC72FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift in Sources */,
 				C886E0042E30DE4900D0C3A6 /* ScheduleAddView.swift in Sources */,
 				C886E0052E30DE4900D0C3A6 /* DevicesViewController.swift in Sources */,
+				F26072200000000000000103 /* DeviceNameFilterSession.swift in Sources */,
+				F26072200000000000000113 /* DeviceNameFilterMenuView.swift in Sources */,
+				F26072200000000000000114 /* DeviceNameFilterSearchView.swift in Sources */,
 				C886E0062E30DE4900D0C3A6 /* MeshNetwork+SunSmart.swift in Sources */,
 				C886E0072E30DE4900D0C3A6 /* SiteAddressDataHeaderView.swift in Sources */,
 				C886E0082E30DE4900D0C3A6 /* ProvisioningDevice+Add.swift in Sources */,
@@ -6764,6 +6812,9 @@
 				8CF15F7A2F9628F90044FCF3 /* EmerFireSelectionCell.swift in Sources */,
 				8C7789172F98B48A000887FE /* EmerFireAlarmDevicesRepairView.swift in Sources */,
 				C8A3290B2AC568A300BC7389 /* DevicesViewController.swift in Sources */,
+				F26072200000000000000104 /* DeviceNameFilterSession.swift in Sources */,
+				F26072200000000000000115 /* DeviceNameFilterMenuView.swift in Sources */,
+				F26072200000000000000116 /* DeviceNameFilterSearchView.swift in Sources */,
 				C898E2E12AB840FE00C71315 /* MeshNetwork+SunSmart.swift in Sources */,
 				C8DCD0FC2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift in Sources */,
 				C89941982AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift in Sources */,
@@ -7357,6 +7408,9 @@
 				8C778BC92FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift in Sources */,
 				C8BB65B22ED3F056000C63EE /* ScheduleAddView.swift in Sources */,
 				C8BB65B32ED3F056000C63EE /* DevicesViewController.swift in Sources */,
+				F26072200000000000000105 /* DeviceNameFilterSession.swift in Sources */,
+				F26072200000000000000117 /* DeviceNameFilterMenuView.swift in Sources */,
+				F26072200000000000000118 /* DeviceNameFilterSearchView.swift in Sources */,
 				C8BB65B42ED3F056000C63EE /* MeshNetwork+SunSmart.swift in Sources */,
 				C8BB65B52ED3F056000C63EE /* SiteAddressDataHeaderView.swift in Sources */,
 				C8BB65B62ED3F056000C63EE /* ProvisioningDevice+Add.swift in Sources */,

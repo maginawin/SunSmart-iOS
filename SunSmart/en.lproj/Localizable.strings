@@ -2000,3 +2000,5 @@
 "simulate_fault_dim_flicker" = "Dim Flicker";
 "simulate_fault_off" = "Off";
 "simulate_fault_sending" = "Sending...";
+"device_filter_search_by_name" = "Search by Name";
+"device_filter_no_matching_devices" = "No matching devices";

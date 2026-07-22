@@ -13,6 +13,15 @@ let deviceOthersRefreshNotificationName = "switchsRefreshNotification"
 private enum DeviceOthersListItem {
     case dongle(DeviceDongleData)
     case emergencyFireController(DeviceEmerFireData)
+
+    var filterName: String {
+        switch self {
+        case .dongle(let dongle):
+            return dongle.name
+        case .emergencyFireController(let device):
+            return device.name
+        }
+    }
 }
 
 class DeviceOthersViewController: UIViewController, DeviceProtocol {
@@ -35,10 +44,14 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
     private var itemMargin: CGFloat = isIPad ? SCRXFrom(30) : SCRXFrom(16)
     
     let space: SpaceData
+    private let deviceNameFilterSession: DeviceNameFilterSession
+    private var deviceNameFilterObservation: UUID?
+    private var allItems: [DeviceOthersListItem] = []
     private var showItems: [DeviceOthersListItem] = []
     
-    init(space: SpaceData) {
+    init(space: SpaceData, deviceNameFilterSession: DeviceNameFilterSession) {
         self.space = space
+        self.deviceNameFilterSession = deviceNameFilterSession
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -52,8 +65,18 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
         view.backgroundColor = Background_Color
         
         setupUI()
+
+        deviceNameFilterObservation = deviceNameFilterSession.observe { [weak self] _ in
+            self?.updateUI()
+        }
         
         addNotificationObserver()
+    }
+
+    deinit {
+        if let deviceNameFilterObservation {
+            deviceNameFilterSession.removeObserver(deviceNameFilterObservation)
+        }
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -105,7 +128,9 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
         let dongleItems = MeshNetworkManager.instance.dongles.map { DeviceOthersListItem.dongle($0) }
         let emerFireDevices = DeviceEmerFireStore.shared.devices(in: space)
         let emergencyItems = emerFireDevices.map { DeviceOthersListItem.emergencyFireController($0) }
-        showItems = dongleItems + emergencyItems
+        allItems = dongleItems + emergencyItems
+        showItems = deviceNameFilterSession.filtered(allItems) { [$0.filterName] }
+        footerView?.deviceNameFilterActive = deviceNameFilterSession.isActive
     }
 
     private func reloadEmergencyFireItem(for node: Node) {
@@ -129,6 +154,9 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
 
     private func updateUI() {
         reloadShowItems()
+        if isEdit, showItems.isEmpty {
+            isEdit = false
+        }
         footerView.countBtn.setTitle("\(MeshNetworkManager.instance.realNodes.count)/\(space.maxDevicesCount)", for: .normal)
 //        if !space.deviceOperates.contains(.add) {
 //            footerView.addBtn.isEnabled = false
@@ -137,7 +165,7 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
 //            footerView.editBtn.isEnabled = false
 //        }
         footerView.addBtn.isEnabled = space.deviceOperates.contains(.add)
-        footerView.editBtn.isEnabled = space.deviceOperates.contains(.edit)
+        footerView.editBtn.isEnabled = space.deviceOperates.contains(.edit) && !showItems.isEmpty
         footerView.sortBtn.isHidden = true
         editView.isHidden = !isEdit
         footerView.isHidden = isEdit
@@ -147,7 +175,17 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
     }
     
     private func updateDevicesEmptyUI() {
-        if showItems.isEmpty {
+        if deviceNameFilterSession.isActive, showItems.isEmpty {
+            if collectionView.frame.isEmpty {
+                view.layoutIfNeeded()
+            }
+            collectionView.showEmptyDataView(
+                title: "device_filter_no_matching_devices".localizedString,
+                position: .center,
+                bottomMargin: SCRYFit(30)
+            )
+            footerView.editBtn.isEnabled = false
+        } else if allItems.isEmpty {
             if collectionView.frame.isEmpty {
                 view.layoutIfNeeded()
             }
@@ -158,7 +196,7 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
         }else {
 //            headerView.isHidden = false
             collectionView.hideEmptyDataView()
-            footerView.editBtn.isEnabled = !isEdit
+            footerView.editBtn.isEnabled = !isEdit && space.deviceOperates.contains(.edit) && !showItems.isEmpty
         }
     }
 
@@ -241,6 +279,8 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
         footerView = SpaceFunctionFooterView()
         footerView.sortBtn.isHidden = true
         footerView.editBtn.isEnabled = false
+        footerView.deviceNameFilterEnabled = true
+        footerView.deviceNameFilterActive = deviceNameFilterSession.isActive
         footerView.delegate = self
         view.addSubview(footerView)
         footerView.snp.makeConstraints { make in
@@ -395,6 +435,10 @@ extension DeviceOthersViewController: SpaceFunctionFooterViewDelegate {
         view.isEditing = false
         isEdit = true
         updateUI()
+    }
+
+    func functionDidClickDeviceFilter(view: SpaceFunctionFooterView) {
+        (parent as? DevicesViewController)?.showDeviceNameFilterMenu(from: view.countBtn)
     }
 }
 

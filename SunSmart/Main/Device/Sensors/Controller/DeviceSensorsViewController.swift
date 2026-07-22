@@ -29,9 +29,12 @@ class DeviceSensorsViewController: UIViewController {
     
     
     let space: SpaceData
+    private let deviceNameFilterSession: DeviceNameFilterSession
+    private var deviceNameFilterObservation: UUID?
     
-    init(space: SpaceData) {
+    init(space: SpaceData, deviceNameFilterSession: DeviceNameFilterSession) {
         self.space = space
+        self.deviceNameFilterSession = deviceNameFilterSession
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -44,6 +47,16 @@ class DeviceSensorsViewController: UIViewController {
         
         view.backgroundColor = Background_Color
         setupUI()
+
+        deviceNameFilterObservation = deviceNameFilterSession.observe { [weak self] _ in
+            self?.updateUI()
+        }
+    }
+
+    deinit {
+        if let deviceNameFilterObservation {
+            deviceNameFilterSession.removeObserver(deviceNameFilterObservation)
+        }
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -63,6 +76,7 @@ class DeviceSensorsViewController: UIViewController {
     private func updateUI() {
         
         footerView.countBtn.setTitle("\(MeshNetworkManager.instance.realNodes.count)/\(space.maxDevicesCount)", for: .normal)
+        footerView.deviceNameFilterActive = deviceNameFilterSession.isActive
 //        if !space.deviceOperates.contains(.add) {
 //            footerView.addBtn.isEnabled = false
 //        }
@@ -79,7 +93,17 @@ class DeviceSensorsViewController: UIViewController {
     
     private func updateDevicesEmptyUI() {
         
-        if true {
+        if deviceNameFilterSession.isActive {
+            if collectionView.frame.isEmpty {
+                view.layoutIfNeeded()
+            }
+            collectionView.showEmptyDataView(
+                title: "device_filter_no_matching_devices".localizedString,
+                position: .center,
+                bottomMargin: SCRYFit(30)
+            )
+            footerView.editBtn.isEnabled = false
+        } else {
             if collectionView.frame.isEmpty {
                 view.layoutIfNeeded()
             }
@@ -88,10 +112,6 @@ class DeviceSensorsViewController: UIViewController {
             collectionView.emptyView?.titleLabel.font = Font_Medium_Size(SCRYFrom(14))
             
             footerView.editBtn.isEnabled = false
-        }else {
-//            headerView.isHidden = false
-            collectionView.hideEmptyDataView()
-            footerView.editBtn.isEnabled = !isEdit
         }
     }
     
@@ -101,6 +121,8 @@ class DeviceSensorsViewController: UIViewController {
         footerView.sortBtn.isHidden = true
         footerView.enableTestDelete = true
         footerView.editBtn.isEnabled = false
+        footerView.deviceNameFilterEnabled = true
+        footerView.deviceNameFilterActive = deviceNameFilterSession.isActive
         footerView.delegate = self
         view.addSubview(footerView)
         footerView.snp.makeConstraints { make in
@@ -167,5 +189,9 @@ extension DeviceSensorsViewController: SpaceFunctionFooterViewDelegate {
         view.isEditing = false
         isEdit = true
         updateUI()
+    }
+
+    func functionDidClickDeviceFilter(view: SpaceFunctionFooterView) {
+        (parent as? DevicesViewController)?.showDeviceNameFilterMenu(from: view.countBtn)
     }
 }

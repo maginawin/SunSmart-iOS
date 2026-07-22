@@ -2016,3 +2016,5 @@
 "simulate_fault_dim_flicker" = "调光闪烁";
 "simulate_fault_off" = "关闭";
 "simulate_fault_sending" = "发送中...";
+"device_filter_search_by_name" = "按名称搜索";
+"device_filter_no_matching_devices" = "没有匹配的设备";

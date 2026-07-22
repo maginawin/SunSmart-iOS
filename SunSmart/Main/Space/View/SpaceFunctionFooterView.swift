@@ -26,6 +26,9 @@ protocol SpaceFunctionFooterViewDelegate: AnyObject {
     
     /// 进入测试删除
     func functionEnterIntoTestDelete(view: SpaceFunctionFooterView)
+
+    /// 点击设备名称过滤
+    func functionDidClickDeviceFilter(view: SpaceFunctionFooterView)
 }
 
 extension SpaceFunctionFooterViewDelegate {
@@ -60,6 +63,11 @@ extension SpaceFunctionFooterViewDelegate {
         
     }
 
+    /// 点击设备名称过滤
+    func functionDidClickDeviceFilter(view: SpaceFunctionFooterView) {
+
+    }
+
 }
 
 
@@ -77,6 +85,24 @@ class SpaceFunctionFooterView: UIView {
     var deleteBtn: UIButton!
     /// 是否启用测试删除
     var enableTestDelete: Bool = false
+
+    /// 是否启用设备名称过滤入口。仅 Site - Space - Main 使用。
+    var deviceNameFilterEnabled: Bool = false {
+        didSet {
+            countBtn.isUserInteractionEnabled = deviceNameFilterEnabled
+            countBtn.accessibilityTraits = deviceNameFilterEnabled ? .button : .staticText
+        }
+    }
+
+    /// 当前是否存在已提交的设备名称过滤条件。
+    var deviceNameFilterActive: Bool = false {
+        didSet {
+            let imageName = deviceNameFilterActive
+                ? "space_device_count_selected"
+                : "space_device_count"
+            countBtn.setImage(UIImage(named: imageName), for: .normal)
+        }
+    }
     
     private weak var promptLabel: UILabel?
     
@@ -105,6 +131,14 @@ class SpaceFunctionFooterView: UIView {
     /// 排序
     @objc private func sortBtnClick() {
         delegate?.functionDidClickSort(view: self)
+    }
+
+    /// 设备名称过滤
+    @objc private func countBtnClick() {
+        guard deviceNameFilterEnabled else {
+            return
+        }
+        delegate?.functionDidClickDeviceFilter(view: self)
     }
     
     /// 编辑
@@ -213,6 +247,8 @@ class SpaceFunctionFooterView: UIView {
         countBtn = UIButton(title: "25/100", titleSize: 12, titleColor: TextBlack_Color, normalImageName: "space_device_count")
         countBtn.setImagePosition(position: .left, spacing: SCRXFrom(2))
         countBtn.isUserInteractionEnabled = false
+        countBtn.accessibilityLabel = "device_filter_search_by_name".localizedString
+        countBtn.addTarget(self, action: #selector(countBtnClick), for: .touchUpInside)
         addSubview(countBtn)
         countBtn.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(20))
