@@ -64,6 +64,8 @@ class DeviceParameterData {
                 return ("change_control_page".localizedString, "change_control_page_message".localizedString, nil, "")
             case .absoluteCctRange:
                 return ("absolute_cct_range".localizedString, "absolute_cct_range_message".localizedString, nil, "K")
+            case .photosensorException:
+                return ("photosensor_exception".localizedString, "photosensor_exception_note".localizedString, 1...100, "%")
             }
         }
 
@@ -83,6 +85,8 @@ class DeviceParameterData {
                 return 7
             case .absoluteCctRange:
                 return 6
+            case .photosensorException:
+                return 8
             }
         }
 
@@ -100,6 +104,8 @@ class DeviceParameterData {
         case changeControlPage
         /// 绝对色温范围
         case absoluteCctRange
+        /// 灯具内置光感异常保护
+        case photosensorException
     }
 
 

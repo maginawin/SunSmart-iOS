@@ -1266,6 +1266,9 @@ extension SpaceData {
                     if let pwmFrequency = nodeJson["pwmFrequency"].uInt16, pwmFrequency > 0 {
                         node.pwmFrequency = pwmFrequency
                     }
+                    if let photosensorException = nodeJson["photosensorException"].uInt8 {
+                        node.photosensorException = .init(rawValue: photosensorException)
+                    }
                     // 设备亮度阶段额定功率
                     if let ratedPowerPhases = nodeJson["ratedPowerPhases"].arrayObject as? [[String: Int]] {
                         let phaseEnergyConsumptions: [NodePhaseEnergyConsumption] = ratedPowerPhases.compactMap { phaseDict in
@@ -1892,6 +1895,9 @@ extension Node {
             // pwm频率
             if let pwmFrequency = nodeJson["pwmFrequency"].uInt16, pwmFrequency > 0 {
                 node.pwmFrequency = pwmFrequency
+            }
+            if let photosensorException = nodeJson["photosensorException"].uInt8 {
+                node.photosensorException = .init(rawValue: photosensorException)
             }
             // 设备亮度阶段额定功率
             if let ratedPowerPhases = nodeJson["ratedPowerPhases"].arrayObject as? [[String: Int]] {

@@ -2000,3 +2000,9 @@
 "simulate_fault_dim_flicker" = "Dim Flicker";
 "simulate_fault_off" = "Off";
 "simulate_fault_sending" = "Sending...";
+"photosensor_exception" = "Photosensor Exception";
+"feature_switch" = "Feature switch";
+"photosensor_exception_enabled" = "Enabled";
+"photosensor_exception_disabled" = "Disabled";
+"photosensor_exception_note" = "Note: This feature is designed for sensors installed inside luminaire covers. Due to the strong illuminance emitted by the fixture, once the light turns on the sensor may detect illuminance exceeding the configured threshold, causing it to switch off automatically — then on again — resulting in repeated on/off cycling. By setting a brightness threshold, the photosensor function is only active below that level, preventing this issue.";
+"photosensor_exception_default" = "⚠ Default: Disabled. Enable when using a Proximity / Predictive Lighting with Photocell profile — this device type requires it to work correctly. When switching to any profile with Daylight Harvesting functionality, manually disable this feature or the device will not function correctly. This feature applies to very few device types — handle with care.";

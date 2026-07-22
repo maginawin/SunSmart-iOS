@@ -2408,6 +2408,9 @@ extension Node {
         guard self.sunricherVendorModel != nil, let pid = self.productIdentifier, self.lightnessModel != nil else {
             return false
         }
+        if supportPhotosensorException {
+            return false
+        }
         if companyIdentifier == 0x0A78 && (pid == 0x2013 || pid == 0x24B1) {
             return false
         }
@@ -2417,6 +2420,13 @@ extension Node {
         default:
             return true
         }
+    }
+
+    /// 是否支持灯具内置光感异常保护。
+    var supportPhotosensorException: Bool {
+        companyIdentifier == 0x0A78 &&
+            productIdentifier == 0x2057 &&
+            sunricherVendorModel != nil
     }
     
     /// 是否支持移动感应灵敏度
@@ -2553,7 +2563,11 @@ extension Node {
         }
         
         // 需要恢复的数据
-        let restoreData = NodeRestoreData(addGroupAddress: addToGroup?.address.address, pwmFrequency: oldNode.pwmFrequency)
+        let restoreData = NodeRestoreData(
+            addGroupAddress: addToGroup?.address.address,
+            pwmFrequency: oldNode.pwmFrequency,
+            photosensorException: oldNode.photosensorException
+        )
         if oldNode.phaseEnergyConsumptions.count > 0 {
             restoreData.phaseEnergyConsumptions = oldNode.phaseEnergyConsumptions
         }
@@ -2680,6 +2694,16 @@ extension Node {
         
         if let pwmFrequency = restoreData.pwmFrequency, let vendorModel = self.sunricherVendorModel {
             let messageHandle = MeshMessageHandle(message: SunricherVendorSet(function: .pwmFrequency(pwmFrequency)), model: vendorModel)
+            messageHandles.append(messageHandle)
+        }
+
+        if let photosensorException = restoreData.photosensorException,
+           self.supportPhotosensorException,
+           let vendorModel = self.sunricherVendorModel {
+            let messageHandle = MeshMessageHandle(
+                message: SunricherVendorSet(function: .photosensorException(photosensorException)),
+                model: vendorModel
+            )
             messageHandles.append(messageHandle)
         }
         
@@ -3133,6 +3157,11 @@ extension Node {
                 case .pwmFrequency:
                     if self.restoreData?.pwmFrequency != nil {
                         self.restoreData?.pwmFrequency = nil
+                        save()
+                    }
+                case .photosensorException:
+                    if self.restoreData?.photosensorException != nil {
+                        self.restoreData?.photosensorException = nil
                         save()
                     }
                 default:

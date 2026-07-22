@@ -344,6 +344,9 @@ extension SpaceData {
                     if let pwmFrequency = node.pwmFrequency {
                         nodeDict.updateValue(pwmFrequency, forKey: "pwmFrequency")
                     }
+                    if let photosensorException = node.photosensorException {
+                        nodeDict.updateValue(photosensorException.rawValue, forKey: "photosensorException")
+                    }
                     // 阶段功率
                     nodeDict.updateValue(node.phaseEnergyConsumptions.map({ ["percent": $0.percent, "power": $0.power] }), forKey: "ratedPowerPhases")
                     // 相对灵敏度
@@ -768,6 +771,9 @@ extension Node {
             // pwm频率
             if let pwmFrequency = self.pwmFrequency {
                 nodeDict.updateValue(pwmFrequency, forKey: "pwmFrequency")
+            }
+            if let photosensorException = self.photosensorException {
+                nodeDict.updateValue(photosensorException.rawValue, forKey: "photosensorException")
             }
             // 阶段功率
             nodeDict.updateValue(self.phaseEnergyConsumptions.map({ ["percent": $0.percent, "power": $0.power] }), forKey: "ratedPowerPhases")

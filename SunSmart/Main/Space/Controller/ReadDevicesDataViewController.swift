@@ -161,6 +161,12 @@ class ReadDevicesDataViewController: UIViewController {
                         let step = SyncDeviceStepModel(type: "transition_time".localizedString, state: .none, tasks: [taskModel])
                         taskModel.parentStepModel = step
                         steps.append(step)
+                    case .photosensorException:
+                        guard node.supportPhotosensorException else { break }
+                        let taskModel = SyncDeviceStepTaskModel(name: "photosensor_exception".localizedString, operationType: .read(node: node, type: .deviceReadParmeters(parameterType: .photosensorException)))
+                        let step = SyncDeviceStepModel(type: "photosensor_exception".localizedString, state: .none, tasks: [taskModel])
+                        taskModel.parentStepModel = step
+                        steps.append(step)
                     case .firmwareVension:
                         let taskModel = SyncDeviceStepTaskModel(name: "firmware_version".localizedString, operationType: .read(node: node, type: .deviceReadParmeters(parameterType: .firmwareVension)))
                         

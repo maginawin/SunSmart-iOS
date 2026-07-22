@@ -87,6 +87,7 @@ class DeviceParameterDeviceCell: UITableViewCell {
     private var transitionTimeRowView: DeviceParameterStatusRowView!
     private var changeControlPageRowView: DeviceParameterStatusRowView!
     private var absoluteCctRangeRowView: DeviceParameterStatusRowView!
+    private var photosensorExceptionRowView: DeviceParameterStatusRowView!
     
     weak var delegate: DeviceParameterDeviceCellDelegate?
     
@@ -188,6 +189,14 @@ class DeviceParameterDeviceCell: UITableViewCell {
 
         let changeControlPageText = "\("change_control_page".localizedString): \(device.tempChangeControlPage == .singleWhite ? "single_white".localizedString : "tunable_white".localizedString)"
         let absoluteCctRangeText = "\("absolute_cct_range".localizedString): \(device.tempAbsoluteCctRange.lowerBound)K~\(device.tempAbsoluteCctRange.upperBound)K"
+        let photosensorExceptionText: String
+        if let state = device.tempPhotosensorException {
+            photosensorExceptionText = state.isEnabled
+                ? "\("photosensor_exception".localizedString): 0%~\(state.rawValue)%"
+                : "\("photosensor_exception".localizedString): \("photosensor_exception_disabled".localizedString)"
+        } else {
+            photosensorExceptionText = "\("photosensor_exception".localizedString): --"
+        }
         
         let items: [ParameterDisplayItem] = [
             ParameterDisplayItem(
@@ -213,6 +222,12 @@ class DeviceParameterDeviceCell: UITableViewCell {
                 isSupported: device.supportDefaultTransitionTime,
                 rowView: transitionTimeRowView,
                 normalText: normalTransitionTimeText
+            ),
+            ParameterDisplayItem(
+                type: .photosensorException,
+                isSupported: device.supportPhotosensorException,
+                rowView: photosensorExceptionRowView,
+                normalText: photosensorExceptionText
             ),
             ParameterDisplayItem(
                 type: .changeControlPage,
@@ -340,10 +355,12 @@ class DeviceParameterDeviceCell: UITableViewCell {
         transitionTimeRowView = DeviceParameterStatusRowView()
         changeControlPageRowView = DeviceParameterStatusRowView()
         absoluteCctRangeRowView = DeviceParameterStatusRowView()
+        photosensorExceptionRowView = DeviceParameterStatusRowView()
         parameterStackView.addArrangedSubview(pwmRowView)
         parameterStackView.addArrangedSubview(ratedPowerRowView)
         parameterStackView.addArrangedSubview(sensitivityRowView)
         parameterStackView.addArrangedSubview(transitionTimeRowView)
+        parameterStackView.addArrangedSubview(photosensorExceptionRowView)
         parameterStackView.addArrangedSubview(changeControlPageRowView)
         parameterStackView.addArrangedSubview(absoluteCctRangeRowView)
         

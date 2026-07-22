@@ -561,6 +561,11 @@ class SyncDevicesViewController: UIViewController {
                                 let step = SyncDeviceStepModel(type: "absolute_cct_range".localizedString, state: .none, tasks: [taskModel])
                                 taskModel.parentStepModel = step
                                 steps.append(step)
+                            case .photosensorException(let state):
+                                let taskModel = SyncDeviceStepTaskModel(name: "photosensor_exception".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .photosensorException(state))))
+                                let step = SyncDeviceStepModel(type: "photosensor_exception".localizedString, state: .none, tasks: [taskModel])
+                                taskModel.parentStepModel = step
+                                steps.append(step)
                             }
                         }
                         
@@ -1521,6 +1526,9 @@ class SyncDevicesViewController: UIViewController {
                         tasks.append(taskModel)
                     case .absoluteCctRange(let range):
                         let taskModel = SyncDeviceStepTaskModel(name: "absolute_cct_range".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .absoluteCctRange(range: range))))
+                        tasks.append(taskModel)
+                    case .photosensorException(let state):
+                        let taskModel = SyncDeviceStepTaskModel(name: "photosensor_exception".localizedString, operationType: .configuration(node: node, type: .deviceParameters(parameterType: .photosensorException(state))))
                         tasks.append(taskModel)
                     }
                 }

@@ -51,6 +51,8 @@ class DeviceParameterDevicesViewController: UIViewController {
     private var changeControlPages: [NodeChangeControlPage] = []
     /// 绝对色温范围list
     private var absoluteCctRanges: [ClosedRange<UInt16>] = []
+    /// 光感异常保护状态list
+    private var photosensorExceptions: [PhotosensorExceptionState] = []
 
     /// 筛选的绝对灵敏度范围
     private var filterAbsoluteSensitivityRange: FilterSelectionState = .unselected
@@ -60,6 +62,8 @@ class DeviceParameterDevicesViewController: UIViewController {
     private var filterChangeControlPage: FilterSelectionState = .unselected
     /// 筛选的绝对色温范围
     private var filterAbsoluteCctRange: FilterSelectionState = .unselected
+    /// 筛选的光感异常保护状态
+    private var filterPhotosensorException: FilterSelectionState = .unselected
 
     private var showDevices: [Node] = []
     /// 设置pwm失败设备list
@@ -106,6 +110,9 @@ class DeviceParameterDevicesViewController: UIViewController {
             }
             if node.supportDefaultTransitionTime {
                 node.tempTransitionTime = node.defaultTransitionTime
+            }
+            if node.supportPhotosensorException {
+                node.tempPhotosensorException = node.photosensorException
             }
             if node.rawSupportCct {
                 node.tempChangeControlPage = node.effectiveChangeControlPage
@@ -167,6 +174,7 @@ class DeviceParameterDevicesViewController: UIViewController {
         transitionTimes.removeAll()
         changeControlPages.removeAll()
         absoluteCctRanges.removeAll()
+        photosensorExceptions.removeAll()
 
         devices.forEach({ node in
 
@@ -200,6 +208,11 @@ class DeviceParameterDevicesViewController: UIViewController {
                     absoluteCctRanges.append(node.tempAbsoluteCctRange)
                 }
             }
+            if nodeSupportsFilter(node, type: .photosensorException),
+               let state = node.tempPhotosensorException,
+               !photosensorExceptions.contains(state) {
+                photosensorExceptions.append(state)
+            }
 
         })
 
@@ -221,6 +234,8 @@ class DeviceParameterDevicesViewController: UIViewController {
             return node.supportDefaultTransitionTime
         case .changeControlPage, .absoluteCctRange:
             return node.rawSupportCct
+        case .photosensorException:
+            return node.supportPhotosensorException
         }
     }
 
@@ -287,6 +302,9 @@ class DeviceParameterDevicesViewController: UIViewController {
             if node.supportDefaultTransitionTime {
                 parameters.append(.defaultTransitionTime)
             }
+            if devices.contains(where: { $0.supportPhotosensorException }) {
+                parameters.append(.photosensorException)
+            }
         }else {
             parameters = [.pwmFrequency, .ratedPower, .motionSensitivityRange, .defaultTransitionTime]
         }
@@ -311,6 +329,9 @@ class DeviceParameterDevicesViewController: UIViewController {
                 }
                 if parameters.contains(.defaultTransitionTime) {
                     node.tempTransitionTime = node.defaultTransitionTime
+                }
+                if parameters.contains(.photosensorException), node.supportPhotosensorException {
+                    node.tempPhotosensorException = node.photosensorException
                 }
 //                node.tempRatedPower = node.ratedPower
             }
@@ -339,6 +360,12 @@ class DeviceParameterDevicesViewController: UIViewController {
                 if parameters.contains(.motionSensitivityRange) {
                     node.tempSensitivityRange = node.motionSensitivityRange
                 }
+                if parameters.contains(.defaultTransitionTime) {
+                    node.tempTransitionTime = node.defaultTransitionTime
+                }
+                if parameters.contains(.photosensorException), node.supportPhotosensorException {
+                    node.tempPhotosensorException = node.photosensorException
+                }
 
 
                 // 失败的数据展示“--”
@@ -353,6 +380,8 @@ class DeviceParameterDevicesViewController: UIViewController {
                             node.tempSensitivityRange = nil
                         case .totalDeviceEnergyUse:
                             break
+                        case .photosensorException:
+                            node.tempPhotosensorException = nil
                         default:
                             break
                         }
@@ -415,6 +444,8 @@ class DeviceParameterDevicesViewController: UIViewController {
                         node.tempChangeControlPage = node.effectiveChangeControlPage
                     case .absoluteCctRange:
                         node.tempAbsoluteCctRange = node.effectiveCctRange
+                    case .photosensorException:
+                        node.tempPhotosensorException = node.photosensorException
                     default:
                         break
                     }
@@ -660,6 +691,7 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
         let transitionTimeDevices = devicesSupportingFilter(.transitionTime)
         let changeControlPageDevices = devicesSupportingFilter(.changeControlPage)
         let absoluteCctRangeDevices = devicesSupportingFilter(.absoluteCctRange)
+        let photosensorExceptionDevices = devicesSupportingFilter(.photosensorException)
 
         var pwmContents: [(name: String, value: UInt16?)] = pwmValues.map({ ("\($0) Hz", $0) })
         if pwmDevices.contains(where: { $0.tempPwm == nil }) {
@@ -726,6 +758,31 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
             break
         }
 
+        var photosensorExceptionContents: [(name: String, value: PhotosensorExceptionState?)] = []
+        if photosensorExceptionDevices.contains(where: { $0.tempPhotosensorException == nil }) {
+            photosensorExceptionContents.append(("--", nil))
+        }
+        if photosensorExceptions.contains(.disabled) {
+            photosensorExceptionContents.append(("photosensor_exception_disabled".localizedString, .disabled))
+        }
+        photosensorExceptions
+            .filter({ $0.isEnabled })
+            .sorted(by: { $0.rawValue < $1.rawValue })
+            .forEach { state in
+                photosensorExceptionContents.append(("0%~\(state.rawValue)%", state))
+            }
+        var photosensorExceptionSelectIndex: Int?
+        switch filterPhotosensorException {
+        case .emptySelection:
+            photosensorExceptionSelectIndex = photosensorExceptionContents.firstIndex(where: { $0.value == nil })
+        case .selected(let value, _):
+            if let state = value as? PhotosensorExceptionState {
+                photosensorExceptionSelectIndex = photosensorExceptionContents.firstIndex(where: { $0.value == state })
+            }
+        default:
+            break
+        }
+
         let changeControlPageContents: [(name: String, value: NodeChangeControlPage)] = changeControlPages.map({
             ($0 == .singleWhite ? "single_white".localizedString : "tunable_white".localizedString, $0)
         })
@@ -758,7 +815,8 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
         normalizeFilterState(&filterTransitionTime, isAvailable: !transitionTimeDevices.isEmpty && transitionTimeDatas.count > 0, selectIndex: transitionTimSelectIndex)
         normalizeFilterState(&filterChangeControlPage, isAvailable: !changeControlPageDevices.isEmpty && changeControlPageContents.count > 0, selectIndex: changeControlPageSelectIndex)
         normalizeFilterState(&filterAbsoluteCctRange, isAvailable: !absoluteCctRangeDevices.isEmpty && absoluteCctRangeContents.count > 0, selectIndex: absoluteCctRangeSelectIndex)
-        headerView.filterBtn.isSelected = filterPwmValue.rawValue != FilterSelectionState.unselected.rawValue || filterRatedPower.rawValue != FilterSelectionState.unselected.rawValue || filterAbsoluteSensitivityRange.rawValue != FilterSelectionState.unselected.rawValue || filterTransitionTime.rawValue != FilterSelectionState.unselected.rawValue || filterChangeControlPage.rawValue != FilterSelectionState.unselected.rawValue || filterAbsoluteCctRange.rawValue != FilterSelectionState.unselected.rawValue
+        normalizeFilterState(&filterPhotosensorException, isAvailable: !photosensorExceptionDevices.isEmpty && photosensorExceptionContents.count > 0, selectIndex: photosensorExceptionSelectIndex)
+        headerView.filterBtn.isSelected = filterPwmValue.rawValue != FilterSelectionState.unselected.rawValue || filterRatedPower.rawValue != FilterSelectionState.unselected.rawValue || filterAbsoluteSensitivityRange.rawValue != FilterSelectionState.unselected.rawValue || filterTransitionTime.rawValue != FilterSelectionState.unselected.rawValue || filterChangeControlPage.rawValue != FilterSelectionState.unselected.rawValue || filterAbsoluteCctRange.rawValue != FilterSelectionState.unselected.rawValue || filterPhotosensorException.rawValue != FilterSelectionState.unselected.rawValue
 
         var filterDatas: [ParameterFilterData] = []
 
@@ -776,6 +834,9 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
         if !transitionTimeDevices.isEmpty && transitionTimeDatas.count > 0 {
             filterDatas.append(.init(type: .transitionTime, isShow: transitionTimSelectIndex != nil, contents: transitionTimeDatas.map({ $0.name }), selectIndex: transitionTimSelectIndex))
         }
+        if !photosensorExceptionDevices.isEmpty && photosensorExceptionContents.count > 0 {
+            filterDatas.append(.init(type: .photosensorException, isShow: photosensorExceptionSelectIndex != nil, contents: photosensorExceptionContents.map({ $0.name }), selectIndex: photosensorExceptionSelectIndex))
+        }
         if !changeControlPageDevices.isEmpty && changeControlPageContents.count > 0 {
             filterDatas.append(.init(type: .changeControlPage, isShow: changeControlPageSelectIndex != nil, contents: changeControlPageContents.map({ $0.name }), selectIndex: changeControlPageSelectIndex))
         }
@@ -792,6 +853,7 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
             self.filterTransitionTime = .unselected
             self.filterChangeControlPage = .unselected
             self.filterAbsoluteCctRange = .unselected
+            self.filterPhotosensorException = .unselected
             var showDevices = self.devices
 
             filterDatas.forEach { (type: ParameterFilterData.ParameterType, content: String, selectIndex: Int) in
@@ -841,10 +903,19 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
                     let data = absoluteCctRangeContents[selectIndex]
                     self.filterAbsoluteCctRange = .selected(value: data.value, name: data.name)
                     showDevices = showDevices.filter({ self.nodeSupportsFilter($0, type: .absoluteCctRange) && $0.tempAbsoluteCctRange == data.value })
+                case .photosensorException:
+                    let data = photosensorExceptionContents[selectIndex]
+                    if let value = data.value {
+                        self.filterPhotosensorException = .selected(value: value, name: data.name)
+                        showDevices = showDevices.filter({ self.nodeSupportsFilter($0, type: .photosensorException) && $0.tempPhotosensorException == value })
+                    } else {
+                        self.filterPhotosensorException = .emptySelection
+                        showDevices = showDevices.filter({ self.nodeSupportsFilter($0, type: .photosensorException) && $0.tempPhotosensorException == nil })
+                    }
                 }
             }
 
-            self.headerView.filterBtn.isSelected = self.filterPwmValue.rawValue != FilterSelectionState.unselected.rawValue || self.filterRatedPower.rawValue != FilterSelectionState.unselected.rawValue || self.filterAbsoluteSensitivityRange.rawValue != FilterSelectionState.unselected.rawValue || self.filterTransitionTime.rawValue != FilterSelectionState.unselected.rawValue || self.filterChangeControlPage.rawValue != FilterSelectionState.unselected.rawValue || self.filterAbsoluteCctRange.rawValue != FilterSelectionState.unselected.rawValue
+            self.headerView.filterBtn.isSelected = self.filterPwmValue.rawValue != FilterSelectionState.unselected.rawValue || self.filterRatedPower.rawValue != FilterSelectionState.unselected.rawValue || self.filterAbsoluteSensitivityRange.rawValue != FilterSelectionState.unselected.rawValue || self.filterTransitionTime.rawValue != FilterSelectionState.unselected.rawValue || self.filterChangeControlPage.rawValue != FilterSelectionState.unselected.rawValue || self.filterAbsoluteCctRange.rawValue != FilterSelectionState.unselected.rawValue || self.filterPhotosensorException.rawValue != FilterSelectionState.unselected.rawValue
             self.showDevices = showDevices
             self.tableView.reloadData()
 
@@ -882,6 +953,8 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
                             node.tempTransitionTime = node.defaultTransitionTime
                         case .absoluteCctRange:
                             node.tempAbsoluteCctRange = node.effectiveCctRange
+                        case .photosensorException:
+                            node.tempPhotosensorException = node.photosensorException
                         default:
                             break
                         }
@@ -914,6 +987,8 @@ extension DeviceParameterDevicesViewController: DeviceParameterPromptViewDelegat
                                 node.tempTransitionTime = node.defaultTransitionTime
                             case .absoluteCctRange:
                                 node.tempAbsoluteCctRange = node.effectiveCctRange
+                            case .photosensorException:
+                                node.tempPhotosensorException = node.photosensorException
                             default:
                                 break
                             }
@@ -949,6 +1024,7 @@ extension Node {
     static var tempTransitionTimeKey: UInt8 = 0
     static var tempChangeControlPageKey: UInt8 = 0
     static var tempAbsoluteCctRangeKey: UInt8 = 0
+    static var tempPhotosensorExceptionKey: UInt8 = 0
 
 
     /// 是否选中On
@@ -975,6 +1051,15 @@ extension Node {
             objc_getAssociatedObject(self, &Node.tempPwmKey) as? UInt16
         }set {
             objc_setAssociatedObject(self, &Node.tempPwmKey, newValue, .OBJC_ASSOCIATION_RETAIN)
+        }
+    }
+
+    /// 临时的光感异常保护状态（仅在当前页面使用）
+    var tempPhotosensorException: PhotosensorExceptionState? {
+        get {
+            objc_getAssociatedObject(self, &Node.tempPhotosensorExceptionKey) as? PhotosensorExceptionState
+        } set {
+            objc_setAssociatedObject(self, &Node.tempPhotosensorExceptionKey, newValue, .OBJC_ASSOCIATION_RETAIN)
         }
     }
 

@@ -261,6 +261,8 @@ enum DeviceParameterType {
             return 5
         case .absoluteCctRange:
             return 6
+        case .photosensorException:
+            return 8
         }
     }
     
@@ -294,6 +296,10 @@ enum DeviceParameterType {
             if let ctlModel = node.ctlModel, node.rawSupportCct {
                 messageHandles.append(MeshMessageHandle(message: LightCTLTemperatureRangeSet(range), model: ctlModel))
             }
+        case .photosensorException(let state):
+            if node.supportPhotosensorException, let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .photosensorException(state)), model: vendorModel))
+            }
         }
         return messageHandles
     }
@@ -310,6 +316,8 @@ enum DeviceParameterType {
     case powerCalibration(calibrationValue: UInt32)
     /// 绝对色温范围
     case absoluteCctRange(range: ClosedRange<UInt16>)
+    /// 灯具内置光感异常保护
+    case photosensorException(PhotosensorExceptionState)
 }
 
 enum DeviceReadParameterType {
@@ -343,6 +351,10 @@ enum DeviceReadParameterType {
             if let defaultTransitionTimeModel = node.defaultTransitionTimeModel {
                 messageHandles.append(MeshMessageHandle(message: GenericDefaultTransitionTimeGet(), model: defaultTransitionTimeModel))
             }
+        case .photosensorException:
+            if node.supportPhotosensorException, let vendorModel = node.sunricherVendorModel {
+                messageHandles.append(MeshMessageHandle(message: SunricherVendorGet(function: .photosensorException), model: vendorModel))
+            }
         }
         return messageHandles
     }
@@ -359,6 +371,8 @@ enum DeviceReadParameterType {
     case firmwareVension
     /// 默认过渡时间
     case defaultTransitionTime
+    /// 灯具内置光感异常保护
+    case photosensorException
 }
 
 
@@ -613,6 +627,11 @@ extension Node {
                    self.motionSensitivityRange != motionSensitivityRange {
                     deviceParameterTypes.append(.motionSensitivityRange(range: motionSensitivityRange))
                 }
+                if let photosensorException = self.restoreData?.photosensorException,
+                   self.photosensorException != photosensorException,
+                   self.supportPhotosensorException {
+                    deviceParameterTypes.append(.photosensorException(photosensorException))
+                }
                 
                 if deviceParameterTypes.count > 0 {
                     syncDatas.append(.deviceParameterTypes(types: deviceParameterTypes))
@@ -738,6 +757,11 @@ extension Node {
         // Absolute Sensitivity
         if let motionSensitivityRange = self.restoreData?.motionSensitivityRange,
            self.motionSensitivityRange != motionSensitivityRange {
+            return true
+        }
+        if let photosensorException = self.restoreData?.photosensorException,
+           self.photosensorException != photosensorException,
+           self.supportPhotosensorException {
             return true
         }
  

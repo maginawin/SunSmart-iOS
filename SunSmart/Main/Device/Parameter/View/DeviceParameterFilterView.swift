@@ -24,6 +24,8 @@ class ParameterFilterData {
                 return ("absolute_sensitivity", "change_control_page".localizedString)
             case .absoluteCctRange:
                 return ("absolute_sensitivity", "absolute_cct_range".localizedString)
+            case .photosensorException:
+                return ("sensor_light", "photosensor_exception".localizedString)
             }
         }
         
@@ -33,6 +35,7 @@ class ParameterFilterData {
         case transitionTime
         case changeControlPage
         case absoluteCctRange
+        case photosensorException
     }
     
     /// 参数类型

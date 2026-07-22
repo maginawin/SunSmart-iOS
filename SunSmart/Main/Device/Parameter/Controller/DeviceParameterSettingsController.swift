@@ -53,6 +53,7 @@ class DeviceParameterSettingsController: UIViewController {
     private var defaultTransitionTime: TransitionTime = .init(1)
     private var changeControlPage: NodeChangeControlPage = .tunableWhite
     private var absoluteCctRangeData: DeviceParameterCctRangeData = .default
+    private var photosensorExceptionMaxPercent = PhotosensorExceptionState.defaultMaxPercent
     
     private var defaultChangeControlPageForSelection: NodeChangeControlPage {
         devices.first?.defaultChangeControlPage ?? .tunableWhite
@@ -129,6 +130,9 @@ class DeviceParameterSettingsController: UIViewController {
             }
             if node.supportDefaultTransitionTime {
                 parameterDatas.append(.init(type: .defalutTransitionTime, data: defaultTransitionTime, enable: false))
+            }
+            if devices.allSatisfy({ $0.supportPhotosensorException }) {
+                parameterDatas.append(.init(type: .photosensorException, data: PhotosensorExceptionState.disabled, enable: false))
             }
             if node.rawSupportCct {
                 changeControlPage = defaultChangeControlPageForSelection
@@ -244,6 +248,10 @@ class DeviceParameterSettingsController: UIViewController {
                     absoluteCctRangeData = data
                     setParameters.append(.absoluteCctRange(range: data.range))
                 }
+            case .photosensorException:
+                if let state = parameterData.data as? PhotosensorExceptionState {
+                    setParameters.append(.photosensorException(state))
+                }
             case .behaviorAfterSetupSuccess:
 //                if let value = parameterData.data as?
                 break
@@ -287,6 +295,15 @@ class DeviceParameterSettingsController: UIViewController {
                 devices.forEach {
                     if $0.restoreData?.defaultTransitionTime != nil {
                         $0.restoreData?.defaultTransitionTime = nil
+                        if !saveDevices.contains($0) {
+                            saveDevices.append($0)
+                        }
+                    }
+                }
+            case .photosensorException:
+                devices.forEach {
+                    if $0.restoreData?.photosensorException != nil {
+                        $0.restoreData?.photosensorException = nil
                         if !saveDevices.contains($0) {
                             saveDevices.append($0)
                         }
@@ -390,6 +407,8 @@ class DeviceParameterSettingsController: UIViewController {
             return nil
         case .absoluteCctRange:
             return .absoluteCctRange
+        case .photosensorException:
+            return .photosensorException
         }
     }
 
@@ -411,6 +430,8 @@ class DeviceParameterSettingsController: UIViewController {
                     return nil
                 case .absoluteCctRange:
                     return .absoluteCctRange
+                case .photosensorException:
+                    return .photosensorException
                 }
             default:
                 return nil
@@ -536,6 +557,7 @@ class DeviceParameterSettingsController: UIViewController {
         tableView.register(DeviceParameterRetedPowerViewCell.classForCoder(), forCellReuseIdentifier: "retedPowerCell")
         tableView.register(DeviceParameterAbsoluteSensitivityViewCell.classForCoder(), forCellReuseIdentifier: "sensitivityCell")
         tableView.register(DeviceParameterSliderViewCell.classForCoder(), forCellReuseIdentifier: "sliderCell")
+        tableView.register(DeviceParameterPhotosensorExceptionViewCell.classForCoder(), forCellReuseIdentifier: "photosensorExceptionCell")
         tableView.register(DeviceParameterBehaviorAfterSetupViewCell.classForCoder(), forCellReuseIdentifier: "behaviorCell")
         tableView.register(DeviceParameterEnergyReportViewCell.classForCoder(), forCellReuseIdentifier: "energyReportCell")
         tableView.register(DeviceParameterChangeControlPageViewCell.classForCoder(), forCellReuseIdentifier: "changeControlPageCell")
@@ -629,6 +651,12 @@ extension DeviceParameterSettingsController: UITableViewDataSource, UITableViewD
                 let cell = tableView.dequeueReusableCell(withIdentifier: "absoluteCctRangeCell", for: indexPath) as! DeviceParameterAbsoluteCctRangeViewCell
                 let range = (parameterData.data as? DeviceParameterCctRangeData)?.range ?? defaultCctRangeDataForSelection.range
                 cell.configure(range: range, enabled: parameterData.enable, resetEnabled: allowsAbsoluteCctRangeReset)
+                cell.delegate = self
+                return cell
+            case .photosensorException:
+                let cell = tableView.dequeueReusableCell(withIdentifier: "photosensorExceptionCell", for: indexPath) as! DeviceParameterPhotosensorExceptionViewCell
+                let state = parameterData.data as? PhotosensorExceptionState ?? .disabled
+                cell.configure(selected: parameterData.enable, state: state)
                 cell.delegate = self
                 return cell
             default:
@@ -818,6 +846,38 @@ extension DeviceParameterSettingsController: DeviceParameterSliderViewCellDelega
         tableView.reloadRows(at: [indexPath], with: .none)
     }
 
+}
+
+extension DeviceParameterSettingsController: DeviceParameterPhotosensorExceptionViewCellDelegate {
+    func photosensorCell(_ cell: DeviceParameterPhotosensorExceptionViewCell, selectionChanged selected: Bool) {
+        guard let indexPath = tableView.indexPath(for: cell) else { return }
+        parameterDatas[indexPath.row].enable = selected
+        updateSetupBtnState()
+        tableView.performBatchUpdates(nil)
+    }
+
+    func photosensorCell(_ cell: DeviceParameterPhotosensorExceptionViewCell, featureEnabledChanged enabled: Bool) {
+        guard let indexPath = tableView.indexPath(for: cell) else { return }
+        parameterDatas[indexPath.row].data = enabled
+            ? PhotosensorExceptionState.enabled(maxPercent: photosensorExceptionMaxPercent)
+            : PhotosensorExceptionState.disabled
+        updateSetupBtnState()
+        tableView.performBatchUpdates(nil)
+    }
+
+    func photosensorCell(_ cell: DeviceParameterPhotosensorExceptionViewCell, maxPercentChanged value: UInt8) {
+        guard let indexPath = tableView.indexPath(for: cell) else { return }
+        photosensorExceptionMaxPercent = value
+        parameterDatas[indexPath.row].data = PhotosensorExceptionState.enabled(maxPercent: value)
+        updateSetupBtnState()
+    }
+
+    func photosensorCellResetAction(_ cell: DeviceParameterPhotosensorExceptionViewCell) {
+        guard let indexPath = tableView.indexPath(for: cell) else { return }
+        photosensorExceptionMaxPercent = PhotosensorExceptionState.defaultMaxPercent
+        parameterDatas[indexPath.row].data = PhotosensorExceptionState.enabled(maxPercent: photosensorExceptionMaxPercent)
+        updateSetupBtnState()
+    }
 }
 
 extension DeviceParameterSettingsController: DeviceParameterChangeControlPageViewCellDelegate {

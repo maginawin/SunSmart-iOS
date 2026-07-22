@@ -1017,6 +1017,8 @@ extension DeviceParameterType {
             return node.calibrationRatedPower == calibrationValue
         case .absoluteCctRange(let range):
             return node.absoluteCctRange == range
+        case .photosensorException(let state):
+            return node.photosensorException == state
         }
     }
     
