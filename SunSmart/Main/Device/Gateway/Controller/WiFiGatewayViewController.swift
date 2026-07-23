@@ -40,6 +40,7 @@ final class WiFiGatewayViewController: GatewayViewController {
         static let poor = WiFiHeaderStatus(iconName: "wifi_poor", localizedStatusKey: "wifi_status_poor")
         static let bad = WiFiHeaderStatus(iconName: "wifi_bad", localizedStatusKey: "wifi_status_bad")
         static let noSignal = WiFiHeaderStatus(iconName: "wifi_no_signal", localizedStatusKey: "wifi_status_no_signal")
+        static let noInternet = WiFiHeaderStatus(iconName: "wifi_no_internet", localizedStatusKey: "wifi_status_no_internet")
         static let notConnected = WiFiHeaderStatus(iconName: "wifi_not_connected", localizedStatusKey: "wifi_status_not_connected")
         static let notConfigured = WiFiHeaderStatus(iconName: "wifi_not_connected", localizedStatusKey: "not_configured")
     }
@@ -1321,10 +1322,7 @@ final class WiFiGatewayViewController: GatewayViewController {
         case .normal:
             updateWiFiHeaderStatus(signalStatus)
         case .unavailable:
-            updateWiFiHeaderStatus(.init(
-                iconName: signalStatus.iconName,
-                localizedStatusKey: "wifi_status_no_internet"
-            ))
+            updateWiFiHeaderStatus(.noInternet)
         case .unknown, .reserved:
             updateWiFiHeaderStatus(.init(
                 iconName: signalStatus.iconName,

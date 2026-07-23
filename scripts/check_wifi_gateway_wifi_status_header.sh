@@ -89,11 +89,22 @@ fi
 rg -n 'localizedStatusKey: "wifi_status_no_internet"' "$wifi_controller" >/dev/null \
   || fail "UNAVAILABLE must display the localized No Internet status."
 
+rg -n 'static let noInternet = WiFiHeaderStatus\(iconName: "wifi_no_internet", localizedStatusKey: "wifi_status_no_internet"\)' "$wifi_controller" >/dev/null \
+  || fail "No Internet must use the wifi_no_internet asset and localized No Internet status."
+
+rg -U -n "case \.unavailable:[[:space:]]+updateWiFiHeaderStatus\(\.noInternet\)" "$wifi_controller" >/dev/null \
+  || fail "UNAVAILABLE Internet status must use the semantic No Internet header state."
+
 rg -n 'localizedStatusKey: "wifi_status_unknown"' "$wifi_controller" >/dev/null \
   || fail "UNKNOWN and reserved network states must display the localized Unknown status."
 
-rg -n "wifi_excellent|wifi_good|wifi_poor|wifi_bad|wifi_no_signal|wifi_not_connected" "$wifi_controller" >/dev/null \
+rg -n "wifi_excellent|wifi_good|wifi_poor|wifi_bad|wifi_no_signal|wifi_not_connected|wifi_no_internet" "$wifi_controller" >/dev/null \
   || fail "Wi-Fi status image mapping must include all required assets."
+
+for asset in wifi_no_internet.png wifi_no_internet@2x.png wifi_no_internet@3x.png; do
+  test -f "$assets_dir/wifi_no_internet.imageset/$asset" \
+    || fail "Missing Wi-Fi No Internet asset: $asset"
+done
 
 rg -n "static let notConfigured = WiFiHeaderStatus\\(iconName: \"wifi_not_connected\", localizedStatusKey: \"not_configured\"\\)" "$wifi_controller" >/dev/null \
   || fail "Wi-Fi status mapping must include Not Configured using the existing wifi_not_connected asset and not_configured localization."
