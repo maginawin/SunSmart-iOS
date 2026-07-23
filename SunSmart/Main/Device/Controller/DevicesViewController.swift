@@ -76,6 +76,7 @@ class DevicesViewController: WMPageController {
     
     let site: SiteData
     let space: SpaceData
+    let deviceNameFilterSession = DeviceNameFilterSession()
     
     
     /// 使用过的引导内容索引
@@ -119,6 +120,26 @@ class DevicesViewController: WMPageController {
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    func showDeviceNameFilterMenu(from sourceView: UIView) {
+        DeviceNameFilterMenuView.show(
+            from: sourceView,
+            onSearch: { [weak self] in
+                guard let self = self else {
+                    return
+                }
+                DeviceNameFilterSearchView.show(
+                    initialText: self.deviceNameFilterSession.query,
+                    onSubmit: { [weak self] text in
+                        self?.deviceNameFilterSession.submit(text)
+                    }
+                )
+            },
+            onReset: { [weak self] in
+                self?.deviceNameFilterSession.reset()
+            }
+        )
     }
     
     override func viewDidLoad() {
@@ -780,16 +801,29 @@ extension DevicesViewController {
         
         switch index {
         case 0:
-            let vc = DeviceLightsViewController(site: site, space: space)
+            let vc = DeviceLightsViewController(
+                site: site,
+                space: space,
+                deviceNameFilterSession: deviceNameFilterSession
+            )
             return vc
         case 1:
-            let vc = DeviceSwitchesViewController(space: space)
+            let vc = DeviceSwitchesViewController(
+                space: space,
+                deviceNameFilterSession: deviceNameFilterSession
+            )
             return vc
         case 2:
-            let vc = DeviceSensorsViewController(space: space)
+            let vc = DeviceSensorsViewController(
+                space: space,
+                deviceNameFilterSession: deviceNameFilterSession
+            )
             return vc
         case 3:
-            let vc = DeviceOthersViewController(space: space)
+            let vc = DeviceOthersViewController(
+                space: space,
+                deviceNameFilterSession: deviceNameFilterSession
+            )
             return vc
         default:
             return UIViewController()

@@ -31,6 +31,10 @@ class DeviceLightsViewController: UIViewController {
     
     let site: SiteData
     let space: SpaceData
+    private let deviceNameFilterSession: DeviceNameFilterSession
+    private var deviceNameFilterObservation: UUID?
+    private var visibleDevices: [Node] = []
+    private var showsAllControl = false
     
     /// 列数
     private var columnNum: Int = isIPad ? 6 : 3
@@ -60,9 +64,10 @@ class DeviceLightsViewController: UIViewController {
         return view
     }()
     
-    init(site: SiteData,space: SpaceData) {
+    init(site: SiteData, space: SpaceData, deviceNameFilterSession: DeviceNameFilterSession) {
         self.site = site
         self.space = space
+        self.deviceNameFilterSession = deviceNameFilterSession
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -74,8 +79,18 @@ class DeviceLightsViewController: UIViewController {
         super.viewDidLoad()
 
         setupUI()
+
+        deviceNameFilterObservation = deviceNameFilterSession.observe { [weak self] _ in
+            self?.applyDeviceNameFilter()
+        }
         
         addNotificationObserver()
+    }
+
+    deinit {
+        if let deviceNameFilterObservation {
+            deviceNameFilterSession.removeObserver(deviceNameFilterObservation)
+        }
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -159,13 +174,8 @@ class DeviceLightsViewController: UIViewController {
     
     private func loadDevices() {
      
-        var reloadDevicesView = false
 //        MeshNetworkManager.instance.realNodes.filter({ $0. })
         let lightNodes = MeshNetworkManager.instance.realNodes.filter { $0.deviceType == .light }
-        if devices.count != lightNodes.count {
-            reloadDevicesView = true
-        }
-        
         devices = lightNodes
         
         // 读取缓存的设备信号值
@@ -195,12 +205,37 @@ class DeviceLightsViewController: UIViewController {
             space.luminairesCount = devices.count
             space.save()
         }
-        if reloadDevicesView {
-            self.collectionView.reloadData()
-        }else { // 只刷新数据
-            devices.forEach({ reloadCollectionItem(node: $0) })
-        }
+        applyDeviceNameFilter()
         updateUI(reloadTableView: false)
+    }
+
+    private func applyDeviceNameFilter() {
+        visibleDevices = deviceNameFilterSession.filtered(devices) { [space] node in
+            var names = [node.name ?? ""]
+            if space.displayDeviceNamePrefix, let group = node.group {
+                names.append(group.name)
+            }
+            return names
+        }
+        showsAllControl = !devices.isEmpty
+            && deviceNameFilterSession.matches("ALL".localizedString)
+
+        let visibleAddresses = Set(visibleDevices.map(\.primaryUnicastAddress))
+        selectedAddresss.removeAll { !visibleAddresses.contains($0) }
+        footerView?.deviceNameFilterActive = deviceNameFilterSession.isActive
+        updateDevicesEmptyUI()
+        collectionView?.reloadData()
+        if isEdit {
+            updateEditUI()
+        }
+    }
+
+    private func device(at indexPath: IndexPath) -> Node? {
+        let deviceIndex = indexPath.item - (showsAllControl ? 1 : 0)
+        guard visibleDevices.indices.contains(deviceIndex) else {
+            return nil
+        }
+        return visibleDevices[deviceIndex]
     }
     
     @objc private func refreshControlAction() {
@@ -245,7 +280,19 @@ class DeviceLightsViewController: UIViewController {
     
     private func updateDevicesEmptyUI() {
         
-        if devices.isEmpty {
+        let hasVisibleContent = showsAllControl || !visibleDevices.isEmpty
+        if !hasVisibleContent, deviceNameFilterSession.isActive {
+            if collectionView.frame.isEmpty {
+                view.layoutIfNeeded()
+            }
+            collectionView.showEmptyDataView(
+                title: "device_filter_no_matching_devices".localizedString,
+                position: .center,
+                bottomMargin: SCRYFit(30)
+            )
+            footerView.sortBtn.isEnabled = !devices.isEmpty
+            footerView.editBtn.isEnabled = false
+        } else if devices.isEmpty {
             if collectionView.frame.isEmpty {
                 view.layoutIfNeeded()
             }
@@ -264,7 +311,7 @@ class DeviceLightsViewController: UIViewController {
             collectionView.hideEmptyDataView()
             footerView.sortBtn.isEnabled = true
 //            footerView.editBtn.isEnabled = !isEdit
-            footerView.editBtn.isEnabled = space.deviceOperates.contains(.edit)
+            footerView.editBtn.isEnabled = space.deviceOperates.contains(.edit) && !visibleDevices.isEmpty
         }
     }
     
@@ -317,7 +364,7 @@ class DeviceLightsViewController: UIViewController {
         }
         
         footerView.addBtn.isEnabled = space.deviceOperates.contains(.add)
-        footerView.editBtn.isEnabled = space.deviceOperates.contains(.edit)
+        footerView.editBtn.isEnabled = space.deviceOperates.contains(.edit) && !visibleDevices.isEmpty
         footerView.syncBtn.isEnabled = space.deviceOperates.contains(.edit)
         
 //        if !space.deviceOperates.contains(.add) {
@@ -343,14 +390,23 @@ class DeviceLightsViewController: UIViewController {
         
         // 可编辑的设备list
         
-        let groups = MeshNetworkManager.instance.groups
-//            .filter({ $0.nodes.count > 0 })
-        showSelectDatas = groups.map({
-            let nodes = $0.nodes
-            let isSelected = nodes.count > 0 && !nodes.contains(where: { !self.selectedAddresss.contains($0.primaryUnicastAddress) })
-            return DeviceGroupsSelectData(name: $0.name, groupAddress: $0.address.address,addresss: nodes.map({ $0.primaryUnicastAddress }), isSelected: isSelected)
-        })
-        let canEditDeviceAddresss = devices.map({ $0.primaryUnicastAddress })
+        let visibleAddressSet = Set(visibleDevices.map(\.primaryUnicastAddress))
+        showSelectDatas = MeshNetworkManager.instance.groups.compactMap { group in
+            let addresses = group.nodes
+                .map(\.primaryUnicastAddress)
+                .filter { visibleAddressSet.contains($0) }
+            guard !addresses.isEmpty else {
+                return nil
+            }
+            let isSelected = addresses.allSatisfy { selectedAddresss.contains($0) }
+            return DeviceGroupsSelectData(
+                name: group.name,
+                groupAddress: group.address.address,
+                addresss: addresses,
+                isSelected: isSelected
+            )
+        }
+        let canEditDeviceAddresss = visibleDevices.map(\.primaryUnicastAddress)
         // 全选
 //        showSelectDatas.insert(DeviceGroupsSelectData(name: "ALL".localizedString, addresss: canEditDeviceAddresss, isSelected: canEditDeviceAddresss.count == selectedAddresss.count && canEditDeviceAddresss.count > 0), at: 0)
         self.groupsView.datas = showSelectDatas
@@ -374,7 +430,8 @@ class DeviceLightsViewController: UIViewController {
         }else {
             allOnOffState = .disable
         }
-        if let item = collectionView.cellForItem(at: IndexPath(item: 0, section: 0)) as? DeviceAllOnOffViewCell {
+        if showsAllControl,
+           let item = collectionView.cellForItem(at: IndexPath(item: 0, section: 0)) as? DeviceAllOnOffViewCell {
             if allOnOffState != .disable, let isOn = controlAllOn {
                 item.state = isOn ? .on : .off
             }else {
@@ -388,6 +445,8 @@ class DeviceLightsViewController: UIViewController {
         footerView = SpaceFunctionFooterView()
         footerView.sortBtn.isHidden = true
         footerView.enableTestDelete = true
+        footerView.deviceNameFilterEnabled = true
+        footerView.deviceNameFilterActive = deviceNameFilterSession.isActive
         footerView.delegate = self
         view.addSubview(footerView)
         footerView.snp.makeConstraints { make in
@@ -541,11 +600,10 @@ class DeviceLightsViewController: UIViewController {
         }
         let point = sender.location(in: collectionView)
         if let indexPath = collectionView.indexPathForItem(at: point) {
-            if indexPath.item == 0 { // 全部设备调节
+            if showsAllControl, indexPath.item == 0 { // 全部设备调节
                 deviceAllSetting()
                 
-            }else if indexPath.item <= devices.count {
-                let node = devices[indexPath.item - 1]
+            } else if let node = device(at: indexPath) {
                 if isEdit { // 不在编辑状态可以进入设备控制页
                     return
                 }
@@ -576,12 +634,13 @@ class DeviceLightsViewController: UIViewController {
     
     /// 更新全部设备UI状态
     private func reloadAllDevices() {
-        devices.forEach({
-            if let index = devices.firstIndex(of: $0), let item = collectionView.cellForItem(at: IndexPath(item: index + 1, section: 0)) as? DevicesViewCell {
+        visibleDevices.forEach {
+            if let index = visibleDevices.firstIndex(of: $0),
+               let item = collectionView.cellForItem(at: IndexPath(item: index + (showsAllControl ? 1 : 0), section: 0)) as? DevicesViewCell {
                 item.device = $0
                 item.displayDeviceNamePrefix = space.displayDeviceNamePrefix
             }
-        })
+        }
     }
     
     /// 更新设备UI状态
@@ -591,7 +650,7 @@ class DeviceLightsViewController: UIViewController {
             return
         }
         
-        if let index = devices.firstIndex(where: {$0.primaryUnicastAddress == node.primaryUnicastAddress}) {
+        if let index = visibleDevices.firstIndex(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) {
 //            CATransaction.setDisableActions(true)
 //            collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
 //            if isEdit {
@@ -604,7 +663,8 @@ class DeviceLightsViewController: UIViewController {
 //                }
 //            }
             
-            if let item = collectionView.cellForItem(at: IndexPath(item: index + 1, section: 0)) as? DevicesViewCell {
+            let itemIndex = index + (showsAllControl ? 1 : 0)
+            if let item = collectionView.cellForItem(at: IndexPath(item: itemIndex, section: 0)) as? DevicesViewCell {
 //                if isEdit {
 //                    if node.state { // 离线->在线
 //                        if item.selectImageView.isHidden {
@@ -639,7 +699,7 @@ class DeviceLightsViewController: UIViewController {
             }
             self.devices.sort(by: { ($0.rssi ?? -99) > ($1.rssi ?? -99) })
             self.devices.sort(by: { $0.state && !$1.state })
-            self.collectionView.reloadData()
+            self.applyDeviceNameFilter()
             // 节点信号map
             var rssiMap: [String: Int] = [:]
             self.devices.forEach { node in
@@ -747,6 +807,7 @@ class DeviceLightsViewController: UIViewController {
                 if failAddressList.isEmpty { // 删除成功
                     XWHUDManager.showSuccessTipHUD("done!".localizedString)
                     self.isEdit = false
+                    self.applyDeviceNameFilter()
                     self.updateUI()
                     self.isDeletingDevice = false
                     self.collectionView.reloadData()
@@ -758,6 +819,7 @@ class DeviceLightsViewController: UIViewController {
                     
                     let alertView = SRAlertView(title: "notification".localizedString, actions: [SRAlertAction(title: "alert_item_cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
                         self?.devices.removeAll(where: { successAddressList.contains($0.primaryUnicastAddress) })
+                        self?.applyDeviceNameFilter()
                         self?.updateUI(reloadTableView: false)
                         self?.updateEditUI()
                         self?.isDeletingDevice = false
@@ -774,6 +836,7 @@ class DeviceLightsViewController: UIViewController {
                         self.isEdit = false
                         self.isDeletingDevice = false
                         self.selectedAddresss.removeAll()
+                        self.applyDeviceNameFilter()
                         self.updateUI()
                         self.collectionView.reloadData()
                         
@@ -897,11 +960,11 @@ class DeviceLightsViewController: UIViewController {
 extension DeviceLightsViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return devices.count + (devices.count > 0 ? 1 : 0)
+        return visibleDevices.count + (showsAllControl ? 1 : 0)
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        if indexPath.item == 0 {// 全开全关
+        if showsAllControl, indexPath.item == 0 {// 全开全关
             let allControlCell = collectionView.dequeueReusableCell(withReuseIdentifier: "allControlCell", for: indexPath) as! DeviceAllOnOffViewCell
             if allOnOffState != .disable, let isOn = controlAllOn {
                 allControlCell.state = isOn ? .on : .off
@@ -911,7 +974,9 @@ extension DeviceLightsViewController: UICollectionViewDataSource, UICollectionVi
             return allControlCell
         }
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! DevicesViewCell
-        let device = devices[indexPath.item - 1]
+        guard let device = device(at: indexPath) else {
+            return cell
+        }
         if isEdit {
             cell.selectImageView.isHidden = false
             cell.selectImageView.image = UIImage(named: selectedAddresss.contains(device.primaryUnicastAddress) ? "select" : "select_un")
@@ -944,7 +1009,7 @@ extension DeviceLightsViewController: UICollectionViewDataSource, UICollectionVi
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
-        if indexPath.item == 0 { // 全开/全关
+        if showsAllControl, indexPath.item == 0 { // 全开/全关
             guard !showEmergencyControlBlockedIfNeeded() else {
                 return
             }
@@ -959,8 +1024,7 @@ extension DeviceLightsViewController: UICollectionViewDataSource, UICollectionVi
             }else {
                 allOffAction()
             }
-        }else { // 设备点击
-            let node = devices[indexPath.row - 1]
+        } else if let node = device(at: indexPath) { // 设备点击
             guard !node.isEmergencySignController else {
                 return
             }
@@ -1104,6 +1168,10 @@ extension DeviceLightsViewController: SpaceFunctionFooterViewDelegate {
         }
         navigationController?.pushViewController(vc, animated: true)
     }
+
+    func functionDidClickDeviceFilter(view: SpaceFunctionFooterView) {
+        (parent as? DevicesViewController)?.showDeviceNameFilterMenu(from: view.countBtn)
+    }
     
     /// 进入调试删除页面
     func functionEnterIntoTestDelete(view: SpaceFunctionFooterView) {
@@ -1224,7 +1292,7 @@ extension DeviceLightsViewController: DeviceGroupsViewDelegate {
     func view(_ view: DeviceGroupsView, didSelectAllAction selectAll: Bool) {
         
         if selectAll {
-            selectedAddresss = devices.map({ $0.primaryUnicastAddress })
+            selectedAddresss = visibleDevices.map(\.primaryUnicastAddress)
         }else {
             selectedAddresss.removeAll()
         }

@@ -38,6 +38,9 @@ class DeviceSwitchesViewController: UIViewController {
     private var isEdit: Bool = false
     
     let space: SpaceData
+    private let deviceNameFilterSession: DeviceNameFilterSession
+    private var deviceNameFilterObservation: UUID?
+    private var visibleSwitches: [DeviceSwitchData] = []
 
     private var canEditSwitches: Bool {
         space.deviceOperates.contains(.edit)
@@ -61,8 +64,9 @@ class DeviceSwitchesViewController: UIViewController {
         }
     }
 
-    init(space: SpaceData) {
+    init(space: SpaceData, deviceNameFilterSession: DeviceNameFilterSession) {
         self.space = space
+        self.deviceNameFilterSession = deviceNameFilterSession
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -75,9 +79,19 @@ class DeviceSwitchesViewController: UIViewController {
 
         view.backgroundColor = Background_Color
         setupCollectionView()
+
+        deviceNameFilterObservation = deviceNameFilterSession.observe { [weak self] _ in
+            self?.updateUI()
+        }
         
         addNotificationObserver()
         
+    }
+
+    deinit {
+        if let deviceNameFilterObservation {
+            deviceNameFilterSession.removeObserver(deviceNameFilterObservation)
+        }
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -128,6 +142,8 @@ class DeviceSwitchesViewController: UIViewController {
         footerView = SpaceFunctionFooterView()
         footerView.sortBtn.isHidden = true
         footerView.enableTestDelete = true
+        footerView.deviceNameFilterEnabled = true
+        footerView.deviceNameFilterActive = deviceNameFilterSession.isActive
         footerView.delegate = self
         view.addSubview(footerView)
         footerView.snp.makeConstraints { make in
@@ -200,7 +216,17 @@ class DeviceSwitchesViewController: UIViewController {
         
         footerView.sortBtn.isHidden = true
         
-        if MeshNetworkManager.instance.switchs.isEmpty {
+        if deviceNameFilterSession.isActive, visibleSwitches.isEmpty {
+            if collectionView.frame.isEmpty {
+                view.layoutIfNeeded()
+            }
+            collectionView.showEmptyDataView(
+                title: "device_filter_no_matching_devices".localizedString,
+                position: .center,
+                bottomMargin: SCRYFit(30)
+            )
+            footerView.editBtn.isEnabled = false
+        } else if MeshNetworkManager.instance.switchs.isEmpty {
             if collectionView.frame.isEmpty {
                 view.layoutIfNeeded()
             }
@@ -212,8 +238,16 @@ class DeviceSwitchesViewController: UIViewController {
         }else {
 //            headerView.isHidden = false
             collectionView.hideEmptyDataView()
-            footerView.editBtn.isEnabled = !isEdit && canEditSwitches
+            footerView.editBtn.isEnabled = !isEdit && canEditSwitches && !visibleSwitches.isEmpty
         }
+    }
+
+    private func applyDeviceNameFilter() {
+        visibleSwitches = deviceNameFilterSession.filtered(
+            MeshNetworkManager.instance.switchs,
+            names: { [$0.name] }
+        )
+        footerView?.deviceNameFilterActive = deviceNameFilterSession.isActive
     }
     
     private func updateUI() {
@@ -222,6 +256,10 @@ class DeviceSwitchesViewController: UIViewController {
             isEdit = false
         }
         MeshNetworkManager.instance.normalizeInvalidBatteryPowerSwitchProxyLinks()
+        applyDeviceNameFilter()
+        if isEdit, visibleSwitches.isEmpty {
+            isEdit = false
+        }
         footerView.countBtn.setTitle("\(MeshNetworkManager.instance.switchs.count)/16", for: .normal)
         updateRefreshControlAvailability()
         
@@ -237,7 +275,7 @@ class DeviceSwitchesViewController: UIViewController {
         }
         
         footerView.addBtn.isEnabled = space.deviceOperates.contains(.add)
-        footerView.editBtn.isEnabled = canEditSwitches
+        footerView.editBtn.isEnabled = canEditSwitches && !visibleSwitches.isEmpty
         
         self.updateDevicesEmptyUI()
         
@@ -286,7 +324,7 @@ class DeviceSwitchesViewController: UIViewController {
             return
         }
 
-        guard let index = MeshNetworkManager.instance.switchs.firstIndex(where: { switchData in
+        guard let index = visibleSwitches.firstIndex(where: { switchData in
             guard let eightKeySwitch = eightKeySwitchData(for: switchData),
                   eightKeySwitch.isACPowerSwitch else {
                 return false
@@ -298,7 +336,7 @@ class DeviceSwitchesViewController: UIViewController {
 
         let indexPath = IndexPath(item: index, section: 0)
         if let cell = collectionView.cellForItem(at: indexPath) as? PJEightKeySwitchesViewCell {
-            let switchData = MeshNetworkManager.instance.switchs[index]
+            let switchData = visibleSwitches[index]
             guard let eightKeySwitch = eightKeySwitchData(for: switchData) else {
                 return
             }
@@ -468,8 +506,8 @@ class DeviceSwitchesViewController: UIViewController {
             return
         }
         let point = sender.location(in: collectionView)
-        if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < MeshNetworkManager.instance.switchs.count {
-            let switche = MeshNetworkManager.instance.switchs[indexPath.item]
+        if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < visibleSwitches.count {
+            let switche = visibleSwitches[indexPath.item]
             if let eightKeySwitch = eightKeySwitchData(for: switche) {
                 guard space.deviceOperates.contains(.edit) else {
                     XWHUDManager.showTipHUD("no_permission".localizedString, isLineFeed: true)
@@ -501,12 +539,12 @@ class DeviceSwitchesViewController: UIViewController {
 extension DeviceSwitchesViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return MeshNetworkManager.instance.switchs.count
+        return visibleSwitches.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
    
-        let switche = MeshNetworkManager.instance.switchs[indexPath.item]
+        let switche = visibleSwitches[indexPath.item]
         let deleteAction: (DeviceSwitchData) -> Void = { [weak self] switche in
             guard let self = self else { return }
             self.requestDeleteSwitch(switche)
@@ -536,7 +574,7 @@ extension DeviceSwitchesViewController: UICollectionViewDataSource, UICollection
         guard !isEdit else {
             return
         }
-        let switche = MeshNetworkManager.instance.switchs[indexPath.item]
+        let switche = visibleSwitches[indexPath.item]
         if let eightKeySwitch = eightKeySwitchData(for: switche) {
             let vc = PJEightKeySwitchMonitorVC(space: space, switchData: eightKeySwitch)
             vc.deleteSwitchAction = { [weak self] switchData, source in
@@ -583,6 +621,10 @@ extension DeviceSwitchesViewController: SpaceFunctionFooterViewDelegate {
         view.isEditing = false
         isEdit = editing
         updateUI()
+    }
+
+    func functionDidClickDeviceFilter(view: SpaceFunctionFooterView) {
+        (parent as? DevicesViewController)?.showDeviceNameFilterMenu(from: view.countBtn)
     }
 }
 
