@@ -36,13 +36,19 @@ struct DeviceGroupFastAddSyncPlan {
     let group: Group
     let appendMessageHandles: [MeshMessageHandle]
     let verificationOperations: [DeviceOperationType]
+    let taskCheckpointTracker: FastAddTaskCheckpointTracker<MeshMessageHandle>
 
     func contains(_ messageHandle: MeshMessageHandle) -> Bool {
         appendMessageHandles.contains { $0 === messageHandle }
     }
 
+    func recordSuccessfulMessageHandle(_ messageHandle: MeshMessageHandle) {
+        taskCheckpointTracker.recordSuccess(for: messageHandle)
+    }
+
     var hasVerificationFailure: Bool {
-        verificationOperations.contains { !$0.isSuccessful }
+        taskCheckpointTracker.hasFailure
+            || verificationOperations.contains { !$0.isSuccessful }
     }
 }
 
@@ -66,16 +72,22 @@ enum DeviceGroupFastAddSyncPlanner {
                 effectiveMemberCount: effectiveMemberCount,
                 profileSyncContext: profileSyncContext
             )
+            let deferredBatch = makeTaskCheckpointBatch(tasks: plan.deferredTasks)
             let appendMessageHandles = plan.immediateMessageHandles
-                + plan.deferredTasks.flatMap { $0.makeMessageHandles() }
+                + deferredBatch.messageHandles
             guard !appendMessageHandles.isEmpty else {
                 return nil
             }
+            let immediateSyncDatas = syncDatas.filter { !usesTaskScopedVerification($0) }
             return DeviceGroupFastAddSyncPlan(
                 nodeAddress: node.primaryUnicastAddress,
                 group: group,
                 appendMessageHandles: appendMessageHandles,
-                verificationOperations: makeVerificationOperations(syncDatas: syncDatas, node: node)
+                verificationOperations: makeVerificationOperations(
+                    syncDatas: immediateSyncDatas,
+                    node: node
+                ),
+                taskCheckpointTracker: deferredBatch.tracker
             )
         case .sensor:
             let syncDatas = node.getSyncData(type: .group(group, effectiveMemberCount: effectiveMemberCount))
@@ -87,7 +99,11 @@ enum DeviceGroupFastAddSyncPlanner {
                 nodeAddress: node.primaryUnicastAddress,
                 group: group,
                 appendMessageHandles: appendMessageHandles,
-                verificationOperations: makeVerificationOperations(syncDatas: syncDatas, node: node)
+                verificationOperations: makeVerificationOperations(
+                    syncDatas: syncDatas,
+                    node: node
+                ),
+                taskCheckpointTracker: FastAddTaskCheckpointTracker(checkpoints: [])
             )
         default:
             return nil
@@ -415,6 +431,45 @@ private extension DeviceGroupDeferredSyncPlanner {
 }
 
 private extension DeviceGroupFastAddSyncPlanner {
+
+    static func makeTaskCheckpointBatch(
+        tasks: [DeviceGroupDeferredSyncTask]
+    ) -> FastAddTaskCheckpointBatch<MeshMessageHandle> {
+        let sources = tasks.compactMap { task -> FastAddTaskCheckpointSource<MeshMessageHandle>? in
+            let messageHandles = task.makeMessageHandles()
+            guard !messageHandles.isEmpty else {
+                return nil
+            }
+            return FastAddTaskCheckpointSource(
+                messageHandles: messageHandles
+            ) {
+                task.operationType.isSuccessful
+            }
+        }
+        return FastAddTaskCheckpointBatch(sources: sources)
+    }
+
+    static func usesTaskScopedVerification(_ syncData: NodeSyncData) -> Bool {
+        switch syncData {
+        case .profile,
+             .syncScenes,
+             .deleteScenes,
+             .syncSchedules,
+             .deleteSchedules,
+             .syncCollectionSchedules,
+             .deleteCollectionSchedules,
+             .syncSwitchProxy,
+             .deleteSwitchProxy,
+             .syncSwitchs,
+             .deleteSwitchs,
+             .proximityLightingEnabled,
+             .proximityLightingRelayNumber,
+             .proximityLightingNeighbor:
+            return true
+        default:
+            return false
+        }
+    }
 
     static func makeVerificationOperations(
         syncDatas: [NodeSyncData],
