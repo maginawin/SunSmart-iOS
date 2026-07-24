@@ -2401,6 +2401,10 @@
 		C8EFC1032FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EFC1012FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift */; };
 		C8EFC1042FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EFC1012FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift */; };
 		C8EFC1052FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EFC1012FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift */; };
+		C8FA20112F12000100000001 /* FastAddTaskCheckpointTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA20012F12000100000001 /* FastAddTaskCheckpointTracker.swift */; };
+		C8FA20212F12000100000001 /* FastAddTaskCheckpointTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA20012F12000100000001 /* FastAddTaskCheckpointTracker.swift */; };
+		C8FA20312F12000100000001 /* FastAddTaskCheckpointTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA20012F12000100000001 /* FastAddTaskCheckpointTracker.swift */; };
+		C8FA20412F12000100000001 /* FastAddTaskCheckpointTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA20012F12000100000001 /* FastAddTaskCheckpointTracker.swift */; };
 		C8F11B20959EC4093FFC9390 /* GroupPowerSwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */; };
 		C8F1A0012F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */; };
 		C8F1A0022F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */; };
@@ -3127,6 +3131,7 @@
 		C8ED59F82DD743960074A5BB /* GroupPathSequencePageController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequencePageController.swift; sourceTree = "<group>"; };
 		C8EF54732C1AFA53008389CE /* NetworkLoggerPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NetworkLoggerPlugin.swift; sourceTree = "<group>"; };
 		C8EFC1012FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceGroupDeferredSyncPlanner.swift; sourceTree = "<group>"; };
+		C8FA20012F12000100000001 /* FastAddTaskCheckpointTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FastAddTaskCheckpointTracker.swift; sourceTree = "<group>"; };
 		C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequenceAddDescriptionController.swift; sourceTree = "<group>"; };
 		C8F6A1042FA3000000000001 /* WiFiGatewayViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiGatewayViewController.swift; sourceTree = "<group>"; };
 		C8F6A2052FA3000000000005 /* WiFiGatewayTimeSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiGatewayTimeSyncCoordinator.swift; sourceTree = "<group>"; };
@@ -4326,6 +4331,7 @@
 				C8A347CD2D6307CC0092D3E4 /* DeviceProtocol.swift */,
 				C8B483D92E4B37CB006D85BC /* DeviceAudioManager.swift */,
 				C8EFC1012FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift */,
+				C8FA20012F12000100000001 /* FastAddTaskCheckpointTracker.swift */,
 				C8B6D7DF2E702BF7004FB923 /* SystemVoiumeManager.swift */,
 			);
 			path = Model;
@@ -6053,6 +6059,7 @@
 				C88554B92DE6B44C00C8B688 /* ShareAuthorityFilterView.swift in Sources */,
 				C8D22E212E041020001A2BDA /* DeviceAddClassicModeController.swift in Sources */,
 				C8EFC1022FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift in Sources */,
+				C8FA20112F12000100000001 /* FastAddTaskCheckpointTracker.swift in Sources */,
 				C88554BA2DE6B44C00C8B688 /* EnergySelectExportDevicesController.swift in Sources */,
 				C88554BB2DE6B44C00C8B688 /* SharingSettingViewController.swift in Sources */,
 				C88554BC2DE6B44C00C8B688 /* DeviceLightsViewController.swift in Sources */,
@@ -6651,6 +6658,7 @@
 				C886E1122E30DE4900D0C3A6 /* ShareAuthorityFilterView.swift in Sources */,
 				C886E1132E30DE4900D0C3A6 /* DeviceAddClassicModeController.swift in Sources */,
 				C8EFC1032FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift in Sources */,
+				C8FA20212F12000100000001 /* FastAddTaskCheckpointTracker.swift in Sources */,
 				C886E1142E30DE4900D0C3A6 /* EnergySelectExportDevicesController.swift in Sources */,
 				C886E1152E30DE4900D0C3A6 /* SharingSettingViewController.swift in Sources */,
 				C886E1162E30DE4900D0C3A6 /* DeviceLightsViewController.swift in Sources */,
@@ -7257,6 +7265,7 @@
 				C8699DB72C09661700424A60 /* ShareAuthorityFilterView.swift in Sources */,
 				C8D22E202E041020001A2BDA /* DeviceAddClassicModeController.swift in Sources */,
 				C8EFC1042FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift in Sources */,
+				C8FA20312F12000100000001 /* FastAddTaskCheckpointTracker.swift in Sources */,
 				C8BA436B2DC0D75A00018392 /* EnergySelectExportDevicesController.swift in Sources */,
 				C884EF7B2C05C9C500B5F869 /* SharingSettingViewController.swift in Sources */,
 				8C7789262F99FE29000887FE /* EmerFireAlarmSyncAliases.swift in Sources */,
@@ -7846,6 +7855,7 @@
 				C8BB66EA2ED3F056000C63EE /* ShareAuthorityFilterView.swift in Sources */,
 				C8BB66EB2ED3F056000C63EE /* DeviceAddClassicModeController.swift in Sources */,
 				C8EFC1052FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift in Sources */,
+				C8FA20412F12000100000001 /* FastAddTaskCheckpointTracker.swift in Sources */,
 				C8BB66EC2ED3F056000C63EE /* EnergySelectExportDevicesController.swift in Sources */,
 				C8BB66ED2ED3F056000C63EE /* SharingSettingViewController.swift in Sources */,
 				C8BB66EE2ED3F056000C63EE /* DeviceLightsViewController.swift in Sources */,
