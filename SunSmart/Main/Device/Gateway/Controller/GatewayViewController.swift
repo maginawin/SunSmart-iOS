@@ -524,15 +524,25 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         bottomView.saveBtn.isEnabled = false
         Task { [weak self] in
             guard let self = self else { return }
-            guard await self.saveAssociatedSpacesIfNeeded() else {
+            let associationResult = await self.saveAssociatedSpacesIfNeeded()
+            guard associationResult.succeeded else {
+                if associationResult.topologyChanged {
+                    self.notifySiteGatewayAssociationTopologyChanged()
+                }
                 self.updateSaveBtnState()
                 return
             }
-            self.persistGatewayConfiguration(name: name)
+            self.persistGatewayConfiguration(
+                name: name,
+                associationTopologyChanged: associationResult.topologyChanged
+            )
         }
     }
 
-    private func persistGatewayConfiguration(name: String) {
+    private func persistGatewayConfiguration(
+        name: String,
+        associationTopologyChanged: Bool
+    ) {
         if gateway.name != name {
             self.setGatewayModel.name = name
             self.gateway.name = name
@@ -543,6 +553,9 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 
         gatewayModel.update(gatewayModel: setGatewayModel)
         gateway.model.save()
+        if associationTopologyChanged {
+            notifySiteGatewayAssociationTopologyChanged()
+        }
         //        node.gatewayModel?.update(gatewayModel: setGatewayModel)
         //        node.gatewayModel?.save()
 
@@ -576,7 +589,19 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         navigationController?.pushViewController(vc, animated: true)
     }
 
-    private func saveAssociatedSpacesIfNeeded() async -> Bool {
+    private func notifySiteGatewayAssociationTopologyChanged() {
+        NotificationCenter.default.post(
+            name: .init(siteGatewayAssociationTopologyChangedNotificationName),
+            object: gateway
+        )
+    }
+
+    private struct AssociatedSpacesSaveResult {
+        let succeeded: Bool
+        let topologyChanged: Bool
+    }
+
+    private func saveAssociatedSpacesIfNeeded() async -> AssociatedSpacesSaveResult {
         let oldSpaces = gatewayModel.associatedSpaces
         let newSpaces = setGatewayModel.associatedSpaces
         let addSpaces = newSpaces.filter { newSpace in
@@ -586,39 +611,46 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             !newSpaces.contains(where: { $0.spaceId == oldSpace.spaceId })
         }
 
-        guard addSpaces.count > 0 || unbindSpaces.count > 0 else {
-            return true
+        guard !addSpaces.isEmpty || !unbindSpaces.isEmpty else {
+            return .init(succeeded: true, topologyChanged: false)
         }
         guard NetworkRequest.shared.networkable else {
             XWHUDManager.showTipHUD("gateway_associated_no_network_message".localizedString, isLineFeed: true, afterDelay: 1.5)
-            return false
+            return .init(succeeded: false, topologyChanged: false)
         }
 
+        var topologyChanged = false
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
         for space in addSpaces {
             let result = await NetworkRequest.shared.request(.gatewayBindSpace(spaceId: space.spaceId, gatewayId: gateway.mac))
             switch result {
             case .success:
-                break
+                topologyChanged = true
             case .failure(let error):
                 XWHUDManager.hide()
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
-                return false
+                return .init(
+                    succeeded: false,
+                    topologyChanged: topologyChanged
+                )
             }
         }
         for space in unbindSpaces {
             let result = await NetworkRequest.shared.request(.gatewayUnbindSpace(spaceId: space.spaceId, gatewayId: gateway.mac))
             switch result {
             case .success:
-                break
+                topologyChanged = true
             case .failure(let error):
                 XWHUDManager.hide()
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
-                return false
+                return .init(
+                    succeeded: false,
+                    topologyChanged: topologyChanged
+                )
             }
         }
         XWHUDManager.hide()
-        return true
+        return .init(succeeded: true, topologyChanged: topologyChanged)
     }
 
     /// 删除

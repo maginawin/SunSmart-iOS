@@ -13,6 +13,8 @@ let SiteStateChangeNotificationName = "siteStateChangeNotification"
 let spacesRefreshChangeNotificationName = "spacesRefreshChangeNotification"
 let siteAddGatewaysDataNotificaitonName = "siteAddGatewaysDataNotificaiton"
 let siteGatewayDataChangedNotificaitonName = "siteGatewayDataChangedNotificaiton"
+let siteGatewayAssociationTopologyChangedNotificationName =
+    "siteGatewayAssociationTopologyChangedNotification"
 
 class SiteViewController: UIViewController {
 
@@ -277,14 +279,6 @@ self.updateAddressData()
             favouriteSpaceSelectGatewayId = nil
         }
         
-        allSpaces.forEach({ space in
-            if let gateway = self.gatewayModels.first(where: { gateway in gateway.associatedSpaces.contains(where: { $0.spaceId == space.id }) }) {
-                space.gatewayStatus = gateway.connectStatus == .online ? .online : .offline
-            }else {
-                space.gatewayStatus = .notBound
-            }
-        })
-        
         self.allSpacesCollectionView.reloadData()
         self.favouritesCollectionView.reloadData()
         self.updateEmptyView()
@@ -346,11 +340,18 @@ self.updateAddressData()
             gateway.model.save()
             CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncGateway(gateway: gateway.model, node: gateway.node), level: .promptly)
             if self.view.window != nil {
-                self.reloadData = false
                 self.setupData()
             }else {
                 self.reloadData = true
             }
+        }
+
+        NotificationCenter.default.addObserver(
+            forName: .init(siteGatewayAssociationTopologyChangedNotificationName),
+            object: nil,
+            queue: nil
+        ) { [weak self] _ in
+            self?.refreshSiteAfterGatewayAssociationChange()
         }
 
         // 手机网络状态观察者
@@ -366,6 +367,17 @@ self.updateAddressData()
             }
         })
         
+    }
+
+    private func refreshSiteAfterGatewayAssociationChange() {
+        guard viewIfLoaded?.window != nil,
+              NetworkRequest.shared.networkable else {
+            reloadData = true
+            return
+        }
+
+        reloadData = false
+        loadSiteRequest()
     }
     
     // MARK: - Request
@@ -705,6 +717,19 @@ self.updateAddressData()
         
     }
     
+    private func sitePrimaryMeshNetwork() -> MeshNetwork? {
+        let manager = MeshNetworkManager.instance
+        if let meshNetwork = manager.meshNetwork,
+           meshNetwork.uuid.uuidString == site.meshUUID,
+           manager.currentNetworkKey.isPrimary {
+            return meshNetwork
+        }
+        return MeshNetwork.load(
+            meshUUID: site.meshUUID,
+            subnetworkId: site.meshNetworkId
+        )
+    }
+
     /// 加载网关list
     private func loadGatewaysData() -> [Gateway] {
         
@@ -713,8 +738,16 @@ self.updateAddressData()
 //            return []
 //        }
         
+        guard let meshNetwork = sitePrimaryMeshNetwork() else {
+            return []
+        }
         
-        let gatewayModels = GatewayModel.load(siteId: site.id).compactMap({ Gateway.resolve(model: $0) })
+        let gatewayModels: [Gateway] = GatewayModel.load(siteId: site.id).compactMap { model in
+            guard let node = model.resolveNode(in: meshNetwork) else {
+                return nil
+            }
+            return Gateway(model: model, node: node)
+        }
 //        var showGatewayModels = gatewayModels
 //        if site.permission == .visitor { // 如果不是site的创建者，则判断网关是否有关联space，如果有则判断是否有操作权限
 //            showGatewayModels = gatewayModels.filter { gateway in
@@ -750,6 +783,16 @@ self.updateAddressData()
         return gatewayModels
     }
     
+    private func shouldShowGatewayStatus(for spaces: [SpaceData]) -> Bool {
+        let hasServerGatewayStatus = spaces.contains {
+            $0.gatewayStatus != .notBound
+        }
+        return !site.spaces.isEmpty &&
+            (!showGatewayModels.isEmpty ||
+             hasServerGatewayStatus ||
+             site.permission != .owner)
+    }
+
     // MARK: - Action
     
     @objc private func moreClick() {
@@ -2316,6 +2359,7 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
             }
             spaces = favouriteSpaces
         }
+        let showGatewayStatus = shouldShowGatewayStatus(for: spaces)
         
         if showGatewayModels.count > 0 {
             headerView.showGatewayListView = true
@@ -2325,7 +2369,6 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
             }
             headerView.gatewayListView.updateItems(items)
             headerView.gatewayListView.selectedIndex = selectIndex
-            headerView.gatewayStatusView.isHidden = site.spaces.isEmpty || showGatewayModels.isEmpty
         }else {
             if self.site.permission == .owner || self.allSpaces.contains(where: {
                 $0.canEditing && $0.deviceOperates.contains(.edit) && $0.gatewayStatus == .notBound
@@ -2335,8 +2378,8 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
             }else {
                 headerView.showGatewayListView = false
             }
-            headerView.gatewayStatusView.isHidden = self.site.permission == .owner
         }
+        headerView.gatewayStatusView.isHidden = !showGatewayStatus
        
         if selectIndex == 0 {
             headerView.gatewayStatusView.setDisplayMode(.overview)
@@ -2386,7 +2429,10 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
         let headerW = collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right
         var headerH = SCRYFrom(48)
 
-        if site.spaces.count > 0 && (showGatewayModels.count > 0 || self.site.permission != .owner && self.allSpaces.contains(where: { $0.canEditing && $0.gatewayStatus == .notBound })) {
+        let spaces = collectionView == allSpacesCollectionView
+            ? allSpaces
+            : favouriteSpaces
+        if shouldShowGatewayStatus(for: spaces) {
             headerH += SCRYFrom(48)
         }
         return CGSize(width: headerW, height: headerH)
