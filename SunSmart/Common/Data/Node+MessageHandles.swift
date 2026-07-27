@@ -201,7 +201,10 @@ extension Node {
 extension NodeSyncData {
     
     /// 根据同步数据获取需要发送的mesh消息list
-    func getMessageHandles(node: Node) -> [MeshMessageHandle] {
+    func getMessageHandles(
+        node: Node,
+        contextGroup: Group? = nil
+    ) -> [MeshMessageHandle] {
         var messageHandles: [MeshMessageHandle] = []
         switch self {
         case .addNetworkKey(let networkKey):
@@ -241,7 +244,12 @@ extension NodeSyncData {
             })
         case .syncSchedules(let schedules):
             schedules.forEach({
-                messageHandles.append(contentsOf: $0.getMessageHandles(node: node))
+                messageHandles.append(
+                    contentsOf: $0.getMessageHandles(
+                        node: node,
+                        contextGroup: contextGroup
+                    )
+                )
             })
         case .deleteSchedules(let schedules):
             schedules.forEach({
@@ -418,10 +426,11 @@ extension Schedule {
     ///   - node: 设备
     ///   - delete: 是否删除
     /// - Returns: 消息list
-    func getMessageHandles(node: Node, delete: Bool = false) -> [MeshMessageHandle] {
-        guard let schedulerSetupModel = node.schedulerSetupModel else {
-            return []
-        }
+    func getMessageHandles(
+        node: Node,
+        contextGroup: Group? = nil,
+        delete: Bool = false
+    ) -> [MeshMessageHandle] {
         var messageHandles: [MeshMessageHandle] = []
         if delete {
             let deleteEntry = SchedulerRegistryEntry()
@@ -431,14 +440,15 @@ extension Schedule {
             #endif
             
             let message = SchedulerActionSet(index: UInt8(self.id), entry: deleteEntry)
-            // Auto
-            if self.action == .turnOn, node.group != nil, let lightLCSchedulerSetupModel = node.lightLCSchedulerSetupModel {
-                messageHandles.append(MeshMessageHandle(message: message, model: lightLCSchedulerSetupModel))
-            }else {
-                // 删除日程，协议不支持删除，将对应id的日程设置为无效数据
-                messageHandles.append(MeshMessageHandle(message: message, model: schedulerSetupModel))
+            // SIG Scheduler 不支持删除，必须清理节点全部 Scheduler Model 的同 index。
+            node.schedulerSetupModels.forEach { model in
+                messageHandles.append(MeshMessageHandle(message: message, model: model))
             }
         }else {
+            let owner = schedulerModelOwner(on: node, contextGroup: contextGroup)
+            guard let schedulerSetupModel = node.schedulerSetupModel(for: owner) else {
+                return []
+            }
             // 设置时区
             if self.enabled, let timeModel = node.timeModel {
                 messageHandles.append(MeshMessageHandle(message: Node.setLocalTimeMessage(), model: timeModel))
@@ -450,13 +460,16 @@ extension Schedule {
             print("ScheduleSend set node:\(node.primaryUnicastAddress.hex) id:\(self.id) enabled:\(self.enabled) hour:\(self.hour) minute:\(self.minute) weekDays:\(self.weekDays.count) action:\(self.action.rawValue) payload:\(payloadHex)")
             #endif
             let message = SchedulerActionSet(index: UInt8(self.id), entry: entry)
-            
-            // Auto
-            if self.action == .turnOn, node.group != nil, let lightLCSchedulerSetupModel = node.lightLCSchedulerSetupModel {
-                messageHandles.append(MeshMessageHandle(message: message, model: lightLCSchedulerSetupModel))
-            }else {
-                messageHandles.append(MeshMessageHandle(message: message, model: schedulerSetupModel))
+
+            // 先清理全部非 Owner Model，避免同一个 id 在两个 Register 中同时有效。
+            node.schedulerCleanupModels(for: owner).forEach { model in
+                let cleanupMessage = SchedulerActionSet(
+                    index: UInt8(self.id),
+                    entry: SchedulerRegistryEntry()
+                )
+                messageHandles.append(MeshMessageHandle(message: cleanupMessage, model: model))
             }
+            messageHandles.append(MeshMessageHandle(message: message, model: schedulerSetupModel))
         }
         
         return messageHandles

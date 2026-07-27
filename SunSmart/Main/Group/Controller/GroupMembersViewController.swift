@@ -10,6 +10,12 @@ import NordicSigMeshSDK
 
 class GroupMembersViewController: UIViewController {
 
+    private struct GroupMemberProxyRemovalPlan {
+        let node: Node
+        let switchData: DeviceSwitchData
+        let decision: KineticSwitchGroupMemberRemovalDecision
+    }
+
     private var collectionView: UICollectionView!
     private var flowLayout: AlignCenterFlowLayout!
     private var functionView: GroupDevicesFunctionView!
@@ -175,9 +181,104 @@ class GroupMembersViewController: UIViewController {
             backAction()
             return
         }
+        let exitNodes = group.nodes.filter({ !selectNodes.contains($0) })
+        let addNodes = selectNodes.filter({ !group.nodes.contains($0) })
+        guard exitNodes.count > 0 || addNodes.count > 0 else {
+            backAction()
+            return
+        }
+        guard let proxyRemovalPlans = groupMemberProxyRemovalPlans(for: exitNodes) else {
+            return
+        }
+        let continueSave = { [weak self] in
+            self?.performSave(
+                exitNodes: exitNodes,
+                addNodes: addNodes,
+                proxyRemovalPlans: proxyRemovalPlans
+            )
+        }
+        guard !proxyRemovalPlans.isEmpty else {
+            continueSave()
+            return
+        }
+
+        SRAlertView(
+            message: "group_remove_switch_proxy_confirmation".localizedString,
+            actions: [
+                .cancelAction,
+                SRAlertAction(
+                    title: "alert_item_continue".localizedString,
+                    actionHandler: { _ in continueSave() }
+                )
+            ]
+        ).show()
+    }
+
+    private func groupMemberProxyRemovalPlans(
+        for exitNodes: [Node]
+    ) -> [GroupMemberProxyRemovalPlan]? {
+        let groupAddress = group.address.address
+        let switches = MeshNetworkManager.instance.switchs.filter {
+            $0.bindGroupAddresses.contains(groupAddress)
+                || $0.unbindGroupAddresses.contains(groupAddress)
+        }
+        var plans: [GroupMemberProxyRemovalPlan] = []
+
+        for node in exitNodes {
+            for switchData in switches {
+                let decision = KineticSwitchBindingPolicy.groupMemberRemovalDecision(
+                    node: node.primaryUnicastAddress,
+                    current: switchData.proxyNodeAddress,
+                    pendingRemoval: switchData.deleteProxyNodeAddress
+                )
+                switch decision {
+                case .unaffected:
+                    continue
+                case .rejectPendingRemovalConflict:
+                    XWHUDManager.showTipHUD(
+                        "switch_proxy_notcleared_message".localizedString,
+                        isLineFeed: true,
+                        afterDelay: 2
+                    )
+                    return nil
+                case .markPendingRemoval, .reusePendingRemoval:
+                    plans.append(
+                        GroupMemberProxyRemovalPlan(
+                            node: node,
+                            switchData: switchData,
+                            decision: decision
+                        )
+                    )
+                }
+            }
+        }
+        return plans
+    }
+
+    private func performSave(
+        exitNodes: [Node],
+        addNodes: [Node],
+        proxyRemovalPlans: [GroupMemberProxyRemovalPlan]
+    ) {
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
         DispatchQueue.global().async {
-            let exitNodes = self.group.nodes.filter({ !self.selectNodes.contains($0) })
+            let pendingRemovalSnapshots = proxyRemovalPlans.map {
+                ($0.switchData, $0.switchData.deleteProxyNodeAddress)
+            }
+            for plan in proxyRemovalPlans where plan.decision == .markPendingRemoval {
+                plan.switchData.deleteProxyNodeAddress = plan.node.primaryUnicastAddress
+                guard plan.switchData.save() else {
+                    pendingRemovalSnapshots.forEach { switchData, pendingRemoval in
+                        switchData.deleteProxyNodeAddress = pendingRemoval
+                        switchData.save()
+                    }
+                    DispatchQueue.main.async {
+                        XWHUDManager.hide()
+                        XWHUDManager.showErrorTipHUD("save_failure".localizedString)
+                    }
+                    return
+                }
+            }
             exitNodes.forEach({ node in
                 node.groupState = .exitFailure
                 node.preConfiguration.dayProfileStartsAboveLux = nil
@@ -202,7 +303,6 @@ class GroupMembersViewController: UIViewController {
                 self.group.updateGroupSyncState()
             }
             
-            let addNodes = self.selectNodes.filter({ !self.group.nodes.contains($0) })
             addNodes.forEach({
                 $0.groupState = .inGroup
                 if self.group.info.profile.type == .proximityLightingWithPhotocell {
@@ -212,13 +312,6 @@ class GroupMembersViewController: UIViewController {
                     }
                 }
             })
-            guard exitNodes.count > 0 || addNodes.count > 0 else {
-                DispatchQueue.main.async {
-                    XWHUDManager.hide()
-                    self.backAction()
-                }
-                return
-            }
             
             DispatchQueue.main.async {
                 XWHUDManager.hide()

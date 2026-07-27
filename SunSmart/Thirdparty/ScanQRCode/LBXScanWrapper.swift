@@ -40,6 +40,10 @@ open class LBXScanWrapper: NSObject,AVCaptureMetadataOutputObjectsDelegate {
     var output: AVCaptureMetadataOutput
 
     let session = AVCaptureSession()
+    private let sessionQueue = DispatchQueue(
+        label: "com.sunricher.sunsmart.LBXScanWrapper.session",
+        qos: .userInitiated
+    )
     var previewLayer: AVCaptureVideoPreviewLayer?
     var stillImageOutput: AVCaptureStillImageOutput
 
@@ -148,16 +152,22 @@ open class LBXScanWrapper: NSObject,AVCaptureMetadataOutputObjectsDelegate {
     }
     
     func start() {
-        if !session.isRunning {
-            isNeedScanResult = true
-            session.startRunning()
+        isNeedScanResult = true
+        sessionQueue.async { [weak self] in
+            guard let self = self, !self.session.isRunning else {
+                return
+            }
+            self.session.startRunning()
         }
     }
     
     func stop() {
-        if session.isRunning {
-            isNeedScanResult = false
-            session.stopRunning()
+        isNeedScanResult = false
+        sessionQueue.async { [weak self] in
+            guard let self = self, self.session.isRunning else {
+                return
+            }
+            self.session.stopRunning()
         }
     }
     

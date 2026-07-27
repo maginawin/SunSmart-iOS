@@ -544,7 +544,10 @@ class SiteDeviceAddViewController: UIViewController {
             // 发送扩展消息成功更新缓存数据
             if let address = messageHandle.model?.parentElement?.unicastAddress ?? messageHandle.address, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
                 DispatchQueue.global().async {
-                    node.updateData(message: messageHandle.message)
+                    node.updateData(
+                        message: messageHandle.message,
+                        model: messageHandle.model
+                    )
                 }
             }
         } addSuccess: {[weak self] addDevice in

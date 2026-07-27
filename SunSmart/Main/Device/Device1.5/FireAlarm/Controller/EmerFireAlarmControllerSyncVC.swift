@@ -181,7 +181,7 @@ final class EmerFireAlarmControllerSyncVC: UIViewController {
         updateProgress()
         MeshProxyMessageCommand.shared.addMessage(messageHandles: task.messageHandles, progressBack: nil) { [weak self] handle, _ in
             guard handle.isSuccessful, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: task.address) else { return }
-            node.updateData(message: handle.message)
+            node.updateData(message: handle.message, model: handle.model)
             self?.tableView.reloadData()
         } failedBack: { _ in
         } finishedBack: { [weak self] handles in

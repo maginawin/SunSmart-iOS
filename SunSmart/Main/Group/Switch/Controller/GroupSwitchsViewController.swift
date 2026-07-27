@@ -196,12 +196,32 @@ class GroupSwitchsViewController: UIViewController {
             return
         }
         
-        // 切换代理/删除代理节点记录该代理地址
-        var deleteProxyNodeAddress = switchData.deleteProxyNodeAddress
-        if let realSwitch = group.info.switchs.first(where: { $0.id == switchData.id }), realSwitch.proxyNodeAddress != nil && realSwitch.proxyNodeAddress != switchData.proxyNodeAddress {
-            deleteProxyNodeAddress = realSwitch.proxyNodeAddress
+        // Proxy 解绑成功前保留当前有效关联，避免失败后本地状态与实际 Mesh 状态不一致。
+        if let realSwitch = MeshNetworkManager.instance.switchs.first(where: { $0.id == switchData.id }) {
+            let proxySaveDecision = KineticSwitchBindingPolicy.proxySaveDecision(
+                savedCurrent: realSwitch.proxyNodeAddress,
+                pendingRemoval: realSwitch.deleteProxyNodeAddress,
+                requestedCurrent: switchData.proxyNodeAddress
+            )
+            switch proxySaveDecision {
+            case .unchanged:
+                break
+            case .preserveCurrentForRemoval(let address):
+                switchData.proxyNodeAddress = address
+                switchData.deleteProxyNodeAddress = address
+                switchData.enOceanMacAddress = realSwitch.enOceanMacAddress
+                switchData.enOceanSecurityKey = realSwitch.enOceanSecurityKey
+            case .replaceCurrent(let pendingRemoval):
+                switchData.deleteProxyNodeAddress = pendingRemoval
+            case .rejectPendingRemovalConflict:
+                XWHUDManager.showTipHUD(
+                    "switch_proxy_notcleared_message".localizedString,
+                    isLineFeed: true,
+                    afterDelay: 2
+                )
+                return
+            }
         }
-        switchData.deleteProxyNodeAddress = deleteProxyNodeAddress
         
         // 未创建动能开关通讯组
         if switchData.proxyNodeAddress != nil && switchData.linkGroupAddress == nil {

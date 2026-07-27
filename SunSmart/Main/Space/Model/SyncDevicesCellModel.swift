@@ -1047,6 +1047,10 @@ class SyncDevicesSectionModel {
         if let model = switchProxy {
             models.append(model)
             models.append(model.deviceModel)
+            models.append(contentsOf: model.deviceModel.steps)
+            model.deviceModel.steps.forEach {
+                models.append(contentsOf: $0.tasks)
+            }
         }
         
         let appendDevices = {

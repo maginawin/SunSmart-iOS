@@ -236,16 +236,32 @@ extension EnOceanProxyViewController: LBXScanViewControllerDelegate {
             }
             
             if let node = bindNode {
-                // 提示是否动能开关已被网络内设备绑定
-                let message = String(format: "switch_proxy_exist".localizedString, node.name ?? "")
-//                if group.nodes.contains(node) {   // 组内设备存在同一个动能开关
-//                    message = "enocean_proxies_overrun".localizedString
-//                }
-                SRAlertView(message: message, actions: [.init(title: "ok".localizedString, actionHandler: {[weak self] _ in
-                    self?.scanCodeVc?.startScan()
-                })]).show()
-                
-            }else if switchData.proxyNode?.enOceanMacAddress?.count ?? 0 > 0 && switchData.proxyNode?.enOceanMacAddress != data.macAddress {
+                let ownedByAnotherSwitch = switchs.contains { item in
+                    guard item.id != switchData.id else {
+                        return false
+                    }
+                    let ownsProxy = item.proxyNodeAddress == node.primaryUnicastAddress
+                        || item.deleteProxyNodeAddress == node.primaryUnicastAddress
+                    let ownsMac = item.enOceanMacAddress == data.macAddress
+                        || node.enOceanMacAddress == data.macAddress
+                    return ownsProxy && ownsMac
+                }
+                let decision = KineticSwitchBindingPolicy.scanDecision(
+                    detectedProxyAddress: node.primaryUnicastAddress,
+                    selectedProxyAddress: selectProxy?.primaryUnicastAddress,
+                    ownedByAnotherSwitch: ownedByAnotherSwitch
+                )
+                if decision == .rejectExistingBinding {
+                    // 提示是否动能开关已被网络内设备绑定
+                    let message = String(format: "switch_proxy_exist".localizedString, node.name ?? "")
+                    SRAlertView(message: message, actions: [.init(title: "ok".localizedString, actionHandler: {[weak self] _ in
+                        self?.scanCodeVc?.startScan()
+                    })]).show()
+                    return
+                }
+            }
+
+            if switchData.proxyNode?.enOceanMacAddress?.count ?? 0 > 0 && switchData.proxyNode?.enOceanMacAddress != data.macAddress {
                 // 如果当前虚拟动能开关已绑定了真实动能开关，并且扫描了一个新的动能开关则新建一个虚拟动能开关关联这个真实动能开关
                 
                 // 本地判断是否组内是否有动能开关绑定，并且该虚拟开关绑定了代理

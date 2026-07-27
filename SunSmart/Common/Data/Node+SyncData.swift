@@ -1522,6 +1522,9 @@ extension Node {
         guard let group = group ?? self.group else {
             return (nil, [])
         }
+        guard groupState != .exitFailure else {
+            return (nil, [])
+        }
         let supportsEnOceanSwitchSync = self.sunricherVendorModel != nil
         
         var switchProxy: DeviceSwitchData?

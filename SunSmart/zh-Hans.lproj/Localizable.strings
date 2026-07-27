@@ -1051,6 +1051,7 @@
 "switch_proxy_notsupport_message" = "该设备不支持动能开关代理，请选择其他设备。";
 "switch_proxy_in_group_message" = "该分组中已有动能开关代理，该组只能在禁用后更改。";
 "switch_proxy_notcleared_message" = "无法设置为代理，存在未清除的代理设置，请先完成前一次同步再试。";
+"group_remove_switch_proxy_confirmation" = "一个或多个所选设备正在作为开关代理。从组中移除这些设备也会解除对应的开关代理绑定。";
 "switch_group_deselected_message" = "当前分组无法取消选择。";
 "no_switches" = "无开关！";
 "no_switches_message" = "您还没有开关，请先添加开关。";

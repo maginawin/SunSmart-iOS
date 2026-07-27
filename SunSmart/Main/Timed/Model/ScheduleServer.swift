@@ -45,12 +45,12 @@ struct ScheduleServer {
             })
         }
         
-        setNodes = setNodes.filter({ $0.schedulerActions.keys.contains(schedule.id) && !($0.schedulerActions[schedule.id]! == schedule.schedulerEntry) })
+        let previousEnabled = schedule.enabled
+        schedule.enabled = enabled
+        setNodes = setNodes.filter { schedule.needsSync(on: $0) }
         
         let meshUUID = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString
-        
-        schedule.enabled = enabled
-        
+
         saveSchedule(schedule: schedule, setNodes: setNodes) { _ in
             
 //            schedule.enabled = enabled
@@ -59,14 +59,14 @@ struct ScheduleServer {
             
         } failed: { _ in
             // 部分设备设置成功。设备失败则算开启/关闭，失败设备需去同步
-            if setNodes.contains(where: { $0.schedulerActions.keys.contains(schedule.id) && ($0.schedulerActions[schedule.id]! == schedule.schedulerEntry) }) {
+            if setNodes.contains(where: { !schedule.needsSync(on: $0) }) {
                 
                 schedule.enabled = enabled
                 if meshUUID != nil {
                     schedule.save()
                 }
             }else {
-                schedule.enabled = !enabled
+                schedule.enabled = previousEnabled
             }
             failed?(schedule)
         }
@@ -87,7 +87,7 @@ struct ScheduleServer {
         schedule.action = .noAction
         
         schedule.needDeleteNodeAddresses.append(contentsOf: schedule.nodes.map({ $0.primaryUnicastAddress }))
-        schedule.needDeleteNodeAddresses.removeAll()
+        schedule.nodeAddresses.removeAll()
         
         schedule.needDeleteGroupAddresses.append(contentsOf: schedule.groups.map({ $0.address.address }))
         schedule.groupAddresses.removeAll()
@@ -165,11 +165,16 @@ struct ScheduleServer {
                 messageHandles.append(contentsOf: DeviceOperationType.configuration(node: $0, type: .schedule(schedule: schedule)).messageHandles)
             })
             
-            data.syncGroups.forEach({
-                $0.value.forEach({ node in
-                    messageHandles.append(contentsOf: DeviceOperationType.configuration(node: node, type: .schedule(schedule: schedule)).messageHandles)
-                })
-            })
+            data.syncGroups.forEach { group, nodes in
+                nodes.forEach { node in
+                    messageHandles.append(
+                        contentsOf: schedule.getMessageHandles(
+                            node: node,
+                            contextGroup: group
+                        )
+                    )
+                }
+            }
         }
         if messageHandles.isEmpty {
             success?(schedule)
@@ -179,7 +184,10 @@ struct ScheduleServer {
         MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, progressBack: nil) { messageHandle, _ in
             if let address = messageHandle.address ?? messageHandle.model?.parentElement?.unicastAddress, 
                 let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-                node.updateData(message: messageHandle.message)
+                node.updateData(
+                    message: messageHandle.message,
+                    model: messageHandle.model
+                )
             }
             
         } failedBack: { messageHandle in

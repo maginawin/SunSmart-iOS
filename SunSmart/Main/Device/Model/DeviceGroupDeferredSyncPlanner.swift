@@ -91,7 +91,9 @@ enum DeviceGroupFastAddSyncPlanner {
             )
         case .sensor:
             let syncDatas = node.getSyncData(type: .group(group, effectiveMemberCount: effectiveMemberCount))
-            let appendMessageHandles = syncDatas.flatMap { $0.getMessageHandles(node: node) }
+            let appendMessageHandles = syncDatas.flatMap {
+                $0.getMessageHandles(node: node, contextGroup: group)
+            }
             guard !appendMessageHandles.isEmpty else {
                 return nil
             }
@@ -144,7 +146,13 @@ enum DeviceGroupDeferredSyncPlanner {
                  .proximityLightingEnabled,
                  .proximityLightingRelayNumber,
                  .proximityLightingNeighbor:
-                deferredTasks.append(contentsOf: makeDeferredTasks(syncData: syncData, node: node))
+                deferredTasks.append(
+                    contentsOf: makeDeferredTasks(
+                        syncData: syncData,
+                        node: node,
+                        group: group
+                    )
+                )
             default:
                 immediateHandles.append(contentsOf: syncData.getMessageHandles(node: node))
             }
@@ -167,11 +175,18 @@ enum DeviceGroupDeferredSyncPlanner {
 
 private extension DeviceGroupDeferredSyncPlanner {
 
-    static func makeDeferredTasks(syncData: NodeSyncData, node: Node) -> [DeviceGroupDeferredSyncTask] {
+    static func makeDeferredTasks(
+        syncData: NodeSyncData,
+        node: Node,
+        group: Group
+    ) -> [DeviceGroupDeferredSyncTask] {
         var tasks: [DeviceGroupDeferredSyncTask] = []
 
-        func appendTask(_ operationType: DeviceOperationType) {
-            let messageHandles = operationType.messageHandles
+        func appendTask(
+            _ operationType: DeviceOperationType,
+            messageHandles explicitMessageHandles: [MeshMessageHandle]? = nil
+        ) {
+            let messageHandles = explicitMessageHandles ?? operationType.messageHandles
             let filteredMessageHandles = messageHandles.filter { !($0.message is SceneRecall) }
             let filteredSceneRecallCount = messageHandles.count - filteredMessageHandles.count
             guard !filteredMessageHandles.isEmpty else {
@@ -201,7 +216,16 @@ private extension DeviceGroupDeferredSyncPlanner {
             }
         case .syncSchedules(let schedules):
             schedules.forEach { schedule in
-                appendTask(.configuration(node: node, type: .schedule(schedule: schedule)))
+                appendTask(
+                    .configuration(
+                        node: node,
+                        type: .schedule(schedule: schedule)
+                    ),
+                    messageHandles: schedule.getMessageHandles(
+                        node: node,
+                        contextGroup: group
+                    )
+                )
             }
         case .deleteSchedules(let schedules):
             schedules.forEach { schedule in
@@ -367,7 +391,11 @@ private extension DeviceGroupDeferredSyncPlanner {
             resultMessageHandles.forEach { handle in
                 let address = handle.address ?? handle.model?.parentElement?.unicastAddress ?? node.primaryUnicastAddress
                 let targetNode = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) ?? node
-                targetNode.updateData(message: handle.message, isSuccess: handle.isSuccessful)
+                targetNode.updateData(
+                    message: handle.message,
+                    isSuccess: handle.isSuccessful,
+                    model: handle.model
+                )
                 targetNode.clearSyncStateCache()
             }
 

@@ -50,7 +50,10 @@ struct GroupServer {
                 }
                 let messageHandles = group.getNodeAddMessageHandles(node: node)
                 MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, progressBack: nil) { sendMessageHandle, responseMessage in
-                    node.updateData(message: sendMessageHandle.message)
+                    node.updateData(
+                        message: sendMessageHandle.message,
+                        model: sendMessageHandle.model
+                    )
                 } failedBack: { messageHandles in
                     print("node send message failed \(messageHandles.message)")
                 } finishedBack: { messageHandles in
@@ -111,7 +114,10 @@ struct GroupServer {
                 }
                 let messageHandles = group.getNodeExitMessageHandles(node: node)
                 MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, progressBack: nil) { sendMessageHandle, responseMessage in
-                    node.updateData(message: sendMessageHandle.message)
+                    node.updateData(
+                        message: sendMessageHandle.message,
+                        model: sendMessageHandle.model
+                    )
                 } failedBack: { messageHandle in
                     print("node send message failed \(messageHandle.message)")
                 } finishedBack: { messageHandles in
@@ -398,21 +404,11 @@ extension Group {
         }
         // 设备需要新增/更新的日程
         let setSchedules = self.info.bindSchedules.filter { schedule in
-            !node.schedulerActions.filter({ $0.value.isValid }).contains(where: { schedule.id == $0.key })
+            schedule.needsSync(on: node, contextGroup: self)
         }
         
         setSchedules.forEach { schedule in
-            // 设置时区
-            if let timeModel = node.timeModel {
-                messages.append(MeshMessageHandle(message: Node.setLocalTimeMessage(), model: timeModel))
-            }
-            // 设置日程
-            if let schedulerSetupModel = node.schedulerSetupModel {
-                
-//                let months: [Month] = Schedule.allMonths // schedule.enabled ? Schedule.allMonths : []
-                // SchedulerRegistryEntry(year: .any(), month: .any(of: months), day: .any(), hour: .specific(hour: schedule.hour), minute: .specific(minute: schedule.minute), second: .specific(second: 0), dayOfWeek: .any(of: schedule.weekDays), action: schedule.enabled ? schedule.action : .noAction, transitionTime: .init(steps: UInt8(schedule.fadeTime), stepResolution: .seconds), sceneNumber: schedule.scene?.number ?? 0)
-                messages.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: schedule.schedulerEntry), model: schedulerSetupModel))
-            }
+            messages.append(contentsOf: schedule.getMessageHandles(node: node, contextGroup: self))
         }
         return messages
         

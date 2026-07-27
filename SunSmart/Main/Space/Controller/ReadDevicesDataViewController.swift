@@ -589,7 +589,11 @@ class ReadDevicesDataViewController: UIViewController {
                     guard let self = self else { return }
                     resultMessageHandles.forEach { handle in
                         if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-                            node.updateData(message: handle.message, isSuccess: handle.isSuccessful)
+                            node.updateData(
+                                message: handle.message,
+                                isSuccess: handle.isSuccessful,
+                                model: handle.model
+                            )
                             
                             if let vendorSet = handle.message as? SunricherVendorSet, case .ratedPower = vendorSet.function {
                                 node.retedPowerState = handle.isSuccessful

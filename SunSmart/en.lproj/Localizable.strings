@@ -1028,6 +1028,7 @@
 "switch_proxy_notsupport_message" = "This device does not support kinetic switch proxy, please select another device";
 "switch_proxy_in_group_message" = "There is a kinetic switch proxy in the group. The controlled group can only be changed after disabling the kinetic switch.";
 "switch_proxy_notcleared_message" = "Cannot set as proxy. There are proxysettings that have not been cleared before. Please complete the previous synchronization and try again.";
+"group_remove_switch_proxy_confirmation" = "One or more selected devices are being used as switch proxies. Removing them from the group will also unbind the corresponding switch proxies.";
 "switch_group_deselected_message" = "This group is the current group and cannotpe deselected.";
 "no_switches" = "No Switches!";
 "no_switches_message" = "You do not have a switch yet, please add a switch first.";

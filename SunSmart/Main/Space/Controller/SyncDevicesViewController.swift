@@ -409,13 +409,18 @@ class SyncDevicesViewController: UIViewController {
                 }
                 let data = switchData.getNeedSyncDatas(deleteSwitch: deleteSwitch)
                 // 删除动能开关
-                if let proxyNode = data.deleteProxy {
+                let deleteProxyModels = data.deleteProxies.map { proxyNode in
                     let deviceModel = SyncDevicesModel(name: proxyNode.name ?? "", address: proxyNode.primaryUnicastAddress)
                     deviceModel.imageName = proxyNode.iconName
                     deviceModel.operationType = .delete(node: proxyNode, type: .enOceanProxy(switchData: switchData))
-                    
-                    let proxyModel = SyncDevicesSwitchProxyModel(name: "enocean_proxy".localizedString, deviceModel: deviceModel)
-                    removeSection.switchProxy = proxyModel
+                    return deviceModel
+                }
+                if let proxyModel = deleteProxyModels.first {
+                    removeSection.switchProxy = SyncDevicesSwitchProxyModel(
+                        name: "enocean_proxy".localizedString,
+                        deviceModel: proxyModel
+                    )
+                    removeSection.devices.append(contentsOf: deleteProxyModels.dropFirst())
                 }
                 // 同步动能开关
                 if let syncNode = data.syncProxy {
@@ -423,6 +428,10 @@ class SyncDevicesViewController: UIViewController {
                     let deviceModel = SyncDevicesModel(name: syncNode.name ?? "", address: syncNode.primaryUnicastAddress)
                     deviceModel.imageName = syncNode.iconName
                     deviceModel.operationType = .configuration(node: syncNode, type: .enOceanProxy(switchData: switchData))
+                    linkProxyReplacementDependency(
+                        deleteModel: deleteProxyModels.first,
+                        configurationModel: deviceModel
+                    )
                     
                     let proxyModel = SyncDevicesSwitchProxyModel(name: "enocean_proxy".localizedString, deviceModel: deviceModel)
                     configurationSection.switchProxy = proxyModel
@@ -735,6 +744,8 @@ class SyncDevicesViewController: UIViewController {
                 section.devices.forEach({
                     $0.parentSectionIndex = index
                 })
+                section.switchProxy?.parentSectionIndex = index
+                section.switchProxy?.deviceModel.parentSectionIndex = index
                 if self.syncState == .syncFailure {
                     section.allModels.forEach({
                         $0.isFineshed = true
@@ -745,6 +756,46 @@ class SyncDevicesViewController: UIViewController {
                     })
                 }
             }
+    }
+
+    private func linkProxyReplacementDependency(
+        deleteModel: SyncDevicesModel?,
+        configurationModel: SyncDevicesModel
+    ) {
+        guard let deleteModel,
+              let deleteOperation = deleteModel.operationType,
+              let configurationOperation = configurationModel.operationType else {
+            return
+        }
+
+        let deleteTask = SyncDeviceStepTaskModel(
+            name: deleteModel.name,
+            operationType: deleteOperation
+        )
+        let proxyDeletionStep = SyncDeviceStepModel(
+            type: "remove".localizedString,
+            state: .none,
+            tasks: [deleteTask]
+        )
+        deleteTask.parentStepModel = proxyDeletionStep
+        proxyDeletionStep.parentDeviceModel = deleteModel
+        deleteModel.operationType = nil
+        deleteModel.steps = [proxyDeletionStep]
+
+        let configurationTask = SyncDeviceStepTaskModel(
+            name: configurationModel.name,
+            operationType: configurationOperation
+        )
+        let proxyConfigurationStep = SyncDeviceStepModel(
+            type: "configuration".localizedString,
+            state: .none,
+            tasks: [configurationTask]
+        )
+        proxyConfigurationStep.relevanceStepModels = [proxyDeletionStep]
+        configurationTask.parentStepModel = proxyConfigurationStep
+        proxyConfigurationStep.parentDeviceModel = configurationModel
+        configurationModel.operationType = nil
+        configurationModel.steps = [proxyConfigurationStep]
     }
 
     private func appendBatteryPowerSwitchItems(
@@ -2162,7 +2213,11 @@ class SyncDevicesViewController: UIViewController {
             resultMessageHandles.forEach { handle in
                 if let address = handle.address ?? handle.model?.parentElement?.unicastAddress,
                    let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-                    node.updateData(message: handle.message, isSuccess: handle.isSuccessful)
+                    node.updateData(
+                        message: handle.message,
+                        isSuccess: handle.isSuccessful,
+                        model: handle.model
+                    )
                     node.clearSyncStateCache()
                 }
             }
@@ -2549,7 +2604,11 @@ class SyncDevicesViewController: UIViewController {
                         }
                         resultMessageHandles.forEach { handle in
                             if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-                                node.updateData(message: handle.message, isSuccess: handle.isSuccessful)
+                                node.updateData(
+                                    message: handle.message,
+                                    isSuccess: handle.isSuccessful,
+                                    model: handle.model
+                                )
                                 // 清空同步缓存状态
                                 node.clearSyncStateCache()
 //                            if !self.syncNodes.contains(node) {

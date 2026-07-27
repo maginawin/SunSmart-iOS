@@ -8,6 +8,46 @@
 import Foundation
 import NordicSigMeshSDK
 
+extension Schedule {
+    static func schedulerModelOwner(
+        for action: SchedulerAction,
+        on node: Node,
+        contextGroup: Group? = nil
+    ) -> SchedulerSetupModelOwner {
+        let effectiveGroup = node.groupState != .exitFailure
+            ? contextGroup ?? node.restoreData?.addGroup ?? node.group
+            : nil
+        let membership: TimedSchedulerMembership
+        if let effectiveGroup {
+            membership = effectiveGroup.info.profile.type == .manualControl
+                ? .manualControlGroup
+                : .automaticGroup
+        } else {
+            membership = .noGroup
+        }
+        let actionKind: TimedSchedulerActionKind = action == .turnOn
+            ? .autoOn
+            : .ordinary
+        switch TimedSchedulerOwnerPolicy.resolve(
+            action: actionKind,
+            membership: membership
+        ) {
+        case .ordinary:
+            return .ordinary
+        case .lightLC:
+            return .lightLC
+        }
+    }
+
+    func schedulerModelOwner(on node: Node, contextGroup: Group? = nil) -> SchedulerSetupModelOwner {
+        Self.schedulerModelOwner(
+            for: action,
+            on: node,
+            contextGroup: contextGroup
+        )
+    }
+}
+
 class Schedule: Codable, Copyable {
     
     /// 重复周期字符串list

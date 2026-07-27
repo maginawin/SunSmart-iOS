@@ -937,9 +937,21 @@ extension MeshNetworkManager {
             : nil
         silentlyResetPowerSwitchIfNeeded(realPowerSwitchNode)
         // 检查代理设备的数据有没有清空
-        if let proxyNode = MeshNetworkManager.instance.realNodes.first(where: { $0.enOceanMacAddress == switchData.enOceanMacAddress }) {
-            proxyNode.enOceanMacAddress = nil
-            proxyNode.savePropertys()
+        if let macAddress = switchData.enOceanMacAddress, !macAddress.isEmpty {
+            let proxyAddresses = KineticSwitchBindingPolicy.cleanupProxyAddresses(
+                current: switchData.proxyNodeAddress,
+                pendingRemoval: switchData.deleteProxyNodeAddress
+            )
+            let proxyNodes = proxyAddresses.compactMap {
+                MeshNetworkManager.instance.meshNetwork?.node(withAddress: $0)
+            }
+            proxyNodes
+                .filter { $0.enOceanMacAddress == macAddress }
+                .forEach {
+                    $0.enOceanMacAddress = nil
+                    $0.enOceanProxySwitchKeys = []
+                    $0.savePropertys()
+                }
         }
         PJEightKeySwitchRepository.shared.delete(for: switchData, meshUUID: meshUUID, networkId: self.currentNetworkKey.networkId.hex)
         switchData.delete(meshUUID: meshUUID, networkId: self.currentNetworkKey.networkId.hex)
@@ -1550,20 +1562,39 @@ extension Schedule {
     }
     
     func needsSync(on node: Node, contextGroup: Group? = nil) -> Bool {
-        guard node.schedulerSetupModel != nil, targets(node: node, contextGroup: contextGroup) else {
+        let owner = schedulerModelOwner(on: node, contextGroup: contextGroup)
+        guard let schedulerSetupModel = node.schedulerSetupModel(for: owner),
+              targets(node: node, contextGroup: contextGroup) else {
             return false
         }
-        guard let nodeEntry = node.schedulerActions[id] else {
+        guard let nodeEntry = node.allSchedulerModelEntrys[schedulerSetupModel]?[id] else {
             return true
+        }
+        for model in node.schedulerCleanupModels(for: owner) {
+            guard let cleanupEntrys = node.allSchedulerModelEntrys[model] else {
+                return true
+            }
+            if cleanupEntrys[id]?.isValid == true {
+                return true
+            }
         }
         return !(nodeEntry == schedulerEntry)
     }
     
     func needsDelete(from node: Node, contextGroup: Group? = nil) -> Bool {
-        guard node.schedulerSetupModel != nil, node.schedulerActions[id] != nil else {
+        guard !targets(node: node, contextGroup: contextGroup) else {
             return false
         }
-        return !targets(node: node, contextGroup: contextGroup)
+        if node.schedulerSetupModels.contains(where: { model in
+            node.allSchedulerModelEntrys[model] == nil
+        }) {
+            return true
+        }
+        let hasModelEntry = node.schedulerSetupModels.contains {
+            node.allSchedulerModelEntrys[$0]?[id]?.isValid == true
+        }
+        let hasLegacyEntry = node.schedulerActions[id]?.isValid == true
+        return hasModelEntry || hasLegacyEntry
     }
     
     /// 获取日程需要同步/删除的数据
@@ -1672,14 +1703,21 @@ extension DeviceSwitchData {
         var syncGroupData: [Group: [Node]] = [:]
         var deleteGroupData: [Group: [Node]] = [:]
         var syncProxy: Node?
-        var deleteProxy: Node?
+        var deleteProxies: [Node] = []
         
         if self.linkGroup != nil {
-            var allNodes: [Node] = []
             if deleteSwitch { // 删除动能开关
-                
-                bindGroups.forEach { group in
-                    allNodes.append(contentsOf: group.nodes)
+
+                let cleanupGroupAddresses = KineticSwitchBindingPolicy.cleanupGroupAddresses(
+                    active: bindGroupAddresses,
+                    pendingRemoval: unbindGroupAddresses
+                )
+                let cleanupGroups = cleanupGroupAddresses.compactMap { address in
+                    MeshNetworkManager.instance.groups.first(where: {
+                        $0.address.address == address
+                    })
+                }
+                cleanupGroups.forEach { group in
                     let nodes = group.nodes.filter({
                         if self.batteryPowerSwitchData != nil {
                             return $0.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: self, unsubscribe: true).count > 0
@@ -1690,14 +1728,23 @@ extension DeviceSwitchData {
                         deleteGroupData.updateValue(nodes, forKey: group)
                     }
                 }
-                // 当前设置动能开关的代理设备
-                let currentProxy = allNodes.first(where: { $0.enOceanMacAddress?.count ?? 0 > 0 && $0.enOceanMacAddress == self.enOceanMacAddress })
-                deleteProxy = currentProxy
+                if self.batteryPowerSwitchData == nil {
+                    let cleanupProxyAddresses = KineticSwitchBindingPolicy.cleanupProxyAddresses(
+                        current: proxyNodeAddress,
+                        pendingRemoval: deleteProxyNodeAddress
+                    )
+                    deleteProxies = cleanupProxyAddresses.compactMap { address in
+                        guard let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address),
+                              node.enOceanMacAddress?.isEmpty == false else {
+                            return nil
+                        }
+                        return node
+                    }
+                }
                 
             }else {
                 // 同步数据
                 bindGroups.forEach { group in
-                    allNodes.append(contentsOf: group.nodes)
                     if !unbindGroups.contains(group) {
                         let nodes = group.nodes.filter({
                             if self.batteryPowerSwitchData != nil {
@@ -1723,8 +1770,12 @@ extension DeviceSwitchData {
                     }
                 })
                 
-                // 判断是否需要同步动能开关代理
-                if let mac = self.enOceanMacAddress, let key = self.enOceanSecurityKey, let proxyNode = self.proxyNode {
+                // 同地址待删除时只解绑，不重新配置同一个 Proxy。
+                if KineticSwitchBindingPolicy.shouldConfigureProxy(
+                    current: proxyNodeAddress,
+                    pendingRemoval: deleteProxyNodeAddress,
+                    isExitingGroup: false
+                ), let mac = self.enOceanMacAddress, let key = self.enOceanSecurityKey, let proxyNode = self.proxyNode {
                     if proxyNode.getEnOceanSwitchBindMessageHandles(enOceanMacAddress: mac, securityKey: key, keyCount: self.maxKeyCount, enabled: self.enabled, switchKeys: self.switchKeys).count > 0 {
                         syncProxy = proxyNode
                     }
@@ -1735,14 +1786,19 @@ extension DeviceSwitchData {
 //                let currentProxy = allNodes.first(where: { $0.enOceanMacAddress != nil && $0.enOceanMacAddress == self.enOceanMacAddress })
                 // 判断当前的代理设备和目标的代理设备是否不一样，不一样需要删除之前的代理
 //                if currentProxy?.primaryUnicastAddress != self.proxyNodeAddress {
-//                    deleteProxy = currentProxy
+//                    deleteProxies = [currentProxy]
 //                }
                 if let node = self.deleteProxyNode, node.enOceanMacAddress?.count ?? 0 > 0 {
-                    deleteProxy = node
+                    deleteProxies = [node]
                 }   
             }
         }
-        let data = SwitchSyncData(syncGroups: syncGroupData, deleteGroups: deleteGroupData, syncProxy: syncProxy, deleteProxy: deleteProxy)
+        let data = SwitchSyncData(
+            syncGroups: syncGroupData,
+            deleteGroups: deleteGroupData,
+            syncProxy: syncProxy,
+            deleteProxies: deleteProxies
+        )
         return data
     }
     
@@ -1755,11 +1811,11 @@ extension DeviceSwitchData {
         /// 同步的代理设备
         var syncProxy: Node?
         /// 删除的代理设备
-        var deleteProxy: Node?
+        var deleteProxies: [Node] = []
   
         /// 是否空数据
         func isEmpty() -> Bool {
-            return syncGroups.isEmpty && deleteGroups.isEmpty && syncProxy == nil && deleteProxy == nil
+            return syncGroups.isEmpty && deleteGroups.isEmpty && syncProxy == nil && deleteProxies.isEmpty
         }
     }
     
@@ -2680,15 +2736,10 @@ extension Node {
         }
         
         // 日程
-        if let schedulerSetupModel = self.schedulerSetupModel {
+        if !self.schedulerSetupModels.isEmpty {
             let setSchedules = MeshNetworkManager.instance.schedules.filter({ $0.nodeAddresses.contains(self.primaryUnicastAddress) })
             setSchedules.forEach { schedule in
-                // 设置时区
-                if let timeModel = self.timeModel {
-                    messageHandles.append(MeshMessageHandle(message: Node.setLocalTimeMessage(), model: timeModel))
-                }
-                // 设置日程
-                messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(schedule.id), entry: schedule.schedulerEntry), model: schedulerSetupModel))
+                messageHandles.append(contentsOf: schedule.getMessageHandles(node: self))
             }
         }
         
@@ -2793,8 +2844,8 @@ extension Node {
         guard let meshNetwork = self.network ?? MeshNetworkManager.instance.meshNetwork else {
             return
         }
-        // 删除动能开关
-        deleteEnOceanSwitch()
+        // 节点从 Space 删除后无法再重试 Proxy 解绑，直接清理全部本地引用。
+        removeEnOceanSwitchReferencesForDeletedNode()
         // 判断删除的设备是不是组绑定的光照传感器
         if let group = meshNetwork.groups.first(where: { $0.info.ambientLightSensorNodeAddress == primaryUnicastAddress }) {
             group.info.ambientLightSensorNodeAddress = nil
@@ -2826,43 +2877,119 @@ extension Node {
         }
     }
     
-    /// 删除绑定的动能开关
-    func deleteEnOceanSwitch(enOceanMacAddress: String? = nil) {
-
+    /// Mesh 确认解绑成功后，提交对应 Switch 的本地 Proxy 清理。
+    func commitSuccessfulEnOceanSwitchUnbind(enOceanMacAddress: String) {
         guard let uuid = self.network?.uuid.uuidString ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else {
             return
         }
         let subNetworkId = self.subNetworkId
-        // 删除group switch代理缓存
-        
-        if let mac = enOceanMacAddress ?? self.enOceanMacAddress, let switchData = MeshNetworkManager.instance.switchs.first(where: { $0.deleteProxyNodeAddress == self.primaryUnicastAddress || $0.enOceanMacAddress == mac }) {
-//           let switchData = DeviceSwitchData.load(meshUUID: uuid, macAddress: mac).first {
-            if switchData.proxyNodeAddress == self.primaryUnicastAddress {
-                switchData.proxyNodeAddress = nil
-                switchData.enOceanMacAddress = nil
-                switchData.enOceanSecurityKey = nil
+        var didChange = false
+
+        MeshNetworkManager.instance.switchs.forEach { switchData in
+            let currentMatches = switchData.proxyNodeAddress == primaryUnicastAddress
+                && switchData.enOceanMacAddress == enOceanMacAddress
+            let pendingMatches = switchData.deleteProxyNodeAddress == primaryUnicastAddress
+            guard currentMatches || pendingMatches else {
+                return
             }
-            if switchData.deleteProxyNodeAddress == self.primaryUnicastAddress {
+            let decision = KineticSwitchBindingPolicy.referenceCleanupDecision(
+                node: primaryUnicastAddress,
+                current: switchData.proxyNodeAddress,
+                pendingRemoval: switchData.deleteProxyNodeAddress
+            )
+            if decision.clearsCurrent && currentMatches {
+                switchData.proxyNodeAddress = nil
+                if decision.clearsCredentials {
+                    switchData.enOceanMacAddress = nil
+                    switchData.enOceanSecurityKey = nil
+                }
+            }
+            if decision.clearsPendingRemoval {
                 switchData.deleteProxyNodeAddress = nil
             }
             switchData.save(meshUUID: uuid, networkId: subNetworkId)
-            
-            clearSyncStateCache()
-            // 更新开关对应组缓存
-//            if let groupCacheSwitch = groupSwitch.group?.info.switchs.first(where: { $0.id == groupSwitch.id }) {
-//                groupCacheSwitch.proxyNodeAddress = nil
-//            }
+            didChange = true
         }
-        
-//        self.enOceanMacAddress = nil
-//        self.enOceanKeySceneNumbers = []
-        
+
+        notifyEnOceanSwitchReferencesChangedIfNeeded(didChange)
+    }
+
+    /// 节点从 Space 删除时，按地址清理全部 Switch 的当前及待删除引用。
+    func removeEnOceanSwitchReferencesForDeletedNode() {
+        guard let uuid = self.network?.uuid.uuidString ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else {
+            return
+        }
+        let subNetworkId = self.subNetworkId
+        var didChange = false
+
+        MeshNetworkManager.instance.switchs.forEach { switchData in
+            let decision = KineticSwitchBindingPolicy.referenceCleanupDecision(
+                node: primaryUnicastAddress,
+                current: switchData.proxyNodeAddress,
+                pendingRemoval: switchData.deleteProxyNodeAddress
+            )
+            guard decision.clearsCurrent || decision.clearsPendingRemoval else {
+                return
+            }
+            if decision.clearsCurrent {
+                switchData.proxyNodeAddress = nil
+            }
+            if decision.clearsCredentials {
+                switchData.enOceanMacAddress = nil
+                switchData.enOceanSecurityKey = nil
+            }
+            if decision.clearsPendingRemoval {
+                switchData.deleteProxyNodeAddress = nil
+            }
+            switchData.save(meshUUID: uuid, networkId: subNetworkId)
+            didChange = true
+        }
+
+        notifyEnOceanSwitchReferencesChangedIfNeeded(didChange)
+    }
+
+    private func notifyEnOceanSwitchReferencesChangedIfNeeded(_ didChange: Bool) {
+        guard didChange else {
+            return
+        }
+        clearSyncStateCache()
+        NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+        NotificationCenter.default.post(
+            name: .init(spaceDataChangedNotificaitonName),
+            object: SpaceChangeDataType.common
+        )
+    }
+
+    /// 按 App 中日程的逻辑 Action，将各 Scheduler Model 缓存投影到兼容缓存。
+    private func rebuildTimedSchedulerActions() {
+        var schedulerActions: [Int: SchedulerRegistryEntry] = [:]
+        schedulerSetupModels.forEach { model in
+            allSchedulerModelEntrys[model]?.forEach { index, entry in
+                let schedule = MeshNetworkManager.instance.schedules
+                    .first(where: { $0.id == index })
+                let scheduleAction = schedule?.action
+                let ownerAction = scheduleAction == .noAction
+                    ? entry.action
+                    : scheduleAction ?? entry.action
+                let owner = Schedule.schedulerModelOwner(
+                    for: ownerAction,
+                    on: self
+                )
+                guard entry.isValid,
+                      schedulerSetupModel(for: owner) == model else {
+                    return
+                }
+                schedulerActions.updateValue(entry, forKey: index)
+            }
+        }
+        self.schedulerActions = schedulerActions
+        scheduleIds = schedulerActions.keys.sorted()
     }
     
     
     /// 更新节点缓存数据
     /// - Parameter isSuccess: 消息发送成功
-    func updateData(message: MeshMessage, isSuccess: Bool = true) {
+    func updateData(message: MeshMessage, isSuccess: Bool = true, model: Model? = nil) {
        
         guard isSuccess || message is ConfigModelSubscriptionDelete else {
             return
@@ -3011,13 +3138,46 @@ extension Node {
            
         case is SchedulerActionSet:
             let actionMessage = (message as! SchedulerActionSet)
+            let index = Int(actionMessage.index)
+
+            if let model = model {
+                var modelEntrys = self.allSchedulerModelEntrys[model] ?? [:]
+                if actionMessage.entry.isValid {
+                    modelEntrys.updateValue(actionMessage.entry, forKey: index)
+                } else {
+                    modelEntrys.removeValue(forKey: index)
+                }
+                self.allSchedulerModelEntrys.updateValue(modelEntrys, forKey: model)
+                self.rebuildTimedSchedulerActions()
+            } else if actionMessage.entry.isValid {
+                self.schedulerActions.updateValue(actionMessage.entry, forKey: index)
+                self.scheduleIds = self.schedulerActions.keys.sorted()
+            }
+
+            if actionMessage.entry.isValid {
+                self.savePropertys()
+            }
             if !actionMessage.entry.isValid {
-                self.schedulerActions.removeValue(forKey: Int(actionMessage.index))
+                if model == nil {
+                    self.schedulerActions.removeValue(forKey: index)
+                    self.scheduleIds = self.schedulerActions.keys.sorted()
+                }
+                let shouldFinalizeScheduleDeletion: Bool
+                if let model = model {
+                    shouldFinalizeScheduleDeletion =
+                        self.schedulerSetupModels.allSatisfy { model in
+                            self.allSchedulerModelEntrys[model] != nil
+                                && self.allSchedulerModelEntrys[model]?[index]?.isValid != true
+                        }
+                } else {
+                    shouldFinalizeScheduleDeletion = true
+                }
 //                if let uuid = self.network?.uuid.uuidString {
                     self.savePropertys()
                     
                     // 对应日程删除设备/组
-                    if let schedule = MeshNetworkManager.instance.schedules.first(where: {$0.id == actionMessage.index}) {
+                    if shouldFinalizeScheduleDeletion,
+                       let schedule = MeshNetworkManager.instance.schedules.first(where: {$0.id == actionMessage.index}) {
 
                         // 设备已加入组，并且组内没有设备缓存对应日程数据，则直接让日程删除该组缓存
                         var isSaveSchedule = false
@@ -3129,7 +3289,7 @@ extension Node {
             if let vendorMessage = message as? SunricherVendorSet {
                 switch vendorMessage.function {
                 case .enOceanDelete(let macAddress): // 删除EnOcean按键绑定
-                    deleteEnOceanSwitch(enOceanMacAddress: macAddress)
+                    commitSuccessfulEnOceanSwitchUnbind(enOceanMacAddress: macAddress)
                 case .daylightCalibrate:
                     if self.restoreData?.daylightCalibrationValue != nil {
                         self.restoreData?.daylightCalibrationValue = nil
