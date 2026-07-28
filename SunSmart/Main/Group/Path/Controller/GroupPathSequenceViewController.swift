@@ -18,6 +18,7 @@ class GroupPathSequenceViewController: UIViewController {
     private var tableView: UITableView!
     private var deviceAddView: GroupPathSequenceDeviceAddView!
     private var deviceAddViewHeightConstraint: NSLayoutConstraint?
+    private var deviceAddContentHeight: CGFloat = 0
     private var allowDeviceAddAnimations = false
     private var didApplyInitialEmptyState = false
     
@@ -77,6 +78,16 @@ class GroupPathSequenceViewController: UIViewController {
         }
     }
 
+    override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        synchronizeDeviceAddViewHeight()
+    }
+
+    override func viewWillLayoutSubviews() {
+        super.viewWillLayoutSubviews()
+        synchronizeDeviceAddViewHeight()
+    }
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         guard !didApplyInitialEmptyState else {
@@ -95,8 +106,11 @@ class GroupPathSequenceViewController: UIViewController {
         if setPaths.isEmpty {
             tableView.layoutIfNeeded()
             UIView.performWithoutAnimation {
-                view.showEmptyDataView(frame: tableView.frame, title: "no_sequences".localizedString, backgroundColor: Background_Color, buttonText: "add_sequence".localizedString, buttomWidth: SCRXFrom(216), position: .center, bottomMargin: SCRYFrom(100)) {[weak self] in
+                view.showEmptyDataView(title: "no_sequences".localizedString, backgroundColor: Background_Color, buttonText: "add_sequence".localizedString, buttomWidth: SCRXFrom(216), position: .center, bottomMargin: SCRYFrom(100)) {[weak self] in
                     self?.addPath()
+                }
+                view.emptyView?.snp.makeConstraints { make in
+                    make.edges.equalTo(tableView)
                 }
             }
             tableView.isScrollEnabled = false
@@ -134,8 +148,14 @@ class GroupPathSequenceViewController: UIViewController {
         deviceAddView.updateHeaderIndex(index)
     }
 
-    private func updateDeviceAddViewHeight(_ height: CGFloat, animated: Bool) {
-        let safeHeight = height <= 0 ? 0 : max(height, SCRYFrom(44))
+    private func updateDeviceAddViewHeight(_ contentHeight: CGFloat, animated: Bool) {
+        deviceAddContentHeight = contentHeight
+        let safeHeight = contentHeight <= 0
+            ? 0
+            : max(contentHeight, 44) + view.safeAreaInsets.bottom
+        guard abs((deviceAddViewHeightConstraint?.constant ?? 0) - safeHeight) > 0.5 else {
+            return
+        }
         deviceAddViewHeightConstraint?.constant = safeHeight
         guard animated else {
             return
@@ -143,6 +163,10 @@ class GroupPathSequenceViewController: UIViewController {
         UIView.animate(withDuration: 0.25) {
             self.view.layoutIfNeeded()
         }
+    }
+
+    private func synchronizeDeviceAddViewHeight() {
+        updateDeviceAddViewHeight(deviceAddContentHeight, animated: false)
     }
     
     func deselectPath() {
@@ -280,11 +304,12 @@ class GroupPathSequenceViewController: UIViewController {
         
         deviceAddView = GroupPathSequenceDeviceAddView()
         deviceAddView.isHidden = true
+        deviceAddView.contentHeightPolicy = .fixedBase
         deviceAddView.delegate = self
-        deviceAddView.heightChanged = { [weak self] height in
+        deviceAddView.contentHeightChanged = { [weak self] contentHeight in
             guard let self = self else { return }
             let shouldAnimate = self.allowDeviceAddAnimations && self.view.window != nil
-            self.updateDeviceAddViewHeight(height, animated: shouldAnimate)
+            self.updateDeviceAddViewHeight(contentHeight, animated: shouldAnimate)
         }
         view.addSubview(deviceAddView)
         deviceAddViewHeightConstraint = deviceAddView.heightAnchor.constraint(equalToConstant: 0)

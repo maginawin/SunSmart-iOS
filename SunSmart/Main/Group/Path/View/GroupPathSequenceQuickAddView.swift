@@ -28,7 +28,7 @@ protocol GroupPathSequenceQuickAddViewDelegate: AnyObject {
 
 
 class GroupPathSequenceQuickAddView: UIView {
-    private let topContentInset = SCRYFrom(8)
+    private let topContentInset: CGFloat = 8
     
     private var helpImageView: UIImageView!
     private var groupFilterView: UIView!
@@ -58,16 +58,16 @@ class GroupPathSequenceQuickAddView: UIView {
     private var usesDualFilterLayout: Bool = false
 
     private var guidePreferredContentHeight: CGFloat {
-        let fallbackWidth = SCREEN_WIDTH - SCRXFrom(48)
-        let fittingWidth = max((bounds.width > 0 ? bounds.width : fallbackWidth) - SCRXFrom(16), SCRXFrom(200))
-        return max(SCRYFrom(68), guideView.preferredHeight(fittingWidth: fittingWidth) + SCRYFrom(24))
+        let fallbackWidth = SCREEN_WIDTH - 48
+        let fittingWidth = max((bounds.width > 0 ? bounds.width : fallbackWidth) - 16, 200)
+        return max(68, guideView.preferredHeight(fittingWidth: fittingWidth) + 24)
     }
 
     var preferredContentHeight: CGFloat {
         if !guideContentView.isHidden {
             return guidePreferredContentHeight
         }
-        return usesDualFilterLayout ? SCRYFrom(136) : SCRYFrom(130)
+        return usesDualFilterLayout ? 136 : 130
     }
     
     override init(frame: CGRect) {
@@ -102,7 +102,7 @@ class GroupPathSequenceQuickAddView: UIView {
             addStateLabel.text = "Adding…".localizedString
             addStateLabel.textColor = Green_Color
             startBtn.snp.updateConstraints { make in
-                make.centerX.equalToSuperview().offset(SCRXFrom(-40))
+                make.centerX.equalToSuperview().offset(-40)
             }
             startBtn.isSelected = true
         case .pause:
@@ -111,7 +111,7 @@ class GroupPathSequenceQuickAddView: UIView {
             addStateLabel.textColor = Red_Color
             startBtn.isSelected = true
             startBtn.snp.updateConstraints { make in
-                make.centerX.equalToSuperview().offset(SCRXFrom(-40))
+                make.centerX.equalToSuperview().offset(-40)
             }
             
         case .stop:
@@ -136,7 +136,7 @@ class GroupPathSequenceQuickAddView: UIView {
             addStateLabel.textColor = Red_Color
         }
         startBtn.snp.updateConstraints { make in
-            make.centerX.equalToSuperview().offset(SCRXFrom(-40))
+            make.centerX.equalToSuperview().offset(-40)
         }
         
         stopBtn.isHidden = false
@@ -161,19 +161,19 @@ class GroupPathSequenceQuickAddView: UIView {
     }
     
     @objc private func addTypeSelectAction() {
-        var menuWidth = isIPad ? SCRXFrom(300) : SCRXFrom(256)
+        var menuWidth: CGFloat = isIPad ? 300 : 256
         var menuTitles = ["quick_add_ignore_added_devices".localizedString, "quick_add_show_added_devices".localizedString]
         var selectedTitles = menuTitles
         if usesDualFilterLayout {
             menuTitles = ["quick_add_ignore_added_devices".localizedString, "trigger_add_show_added_devices".localizedString]
             selectedTitles = ["space_trigger_zone_new_only".localizedString, "space_trigger_zone_used".localizedString]
-            menuWidth = isIPad ? SCRXFrom(320) : SCRXFrom(256)
+            menuWidth = isIPad ? 320 : 256
         } else if !isSequence {
             menuTitles = ["quick_add_ignore_added_devices".localizedString, "zone_quick_add_show_added_devices".localizedString]
             selectedTitles = menuTitles
-            menuWidth += SCRXFrom(14)
+            menuWidth += 14
         }
-        let btnPoint = CGPoint(x: addTypeView.frame.maxX - menuWidth, y: addTypeView.frame.maxY + SCRYFrom(4))
+        let btnPoint = CGPoint(x: addTypeView.frame.maxX - menuWidth, y: addTypeView.frame.maxY + 4)
         let windowPoint = self.convert(btnPoint, to: UIApplication.shared.keyWindow())
 
 //        if usesDualFilterLayout {
@@ -182,7 +182,7 @@ class GroupPathSequenceQuickAddView: UIView {
                                  anchorPoint: windowPoint,
                                  selectIndex: showAdded ? 1 : 0,
                                  menuWidth: menuWidth,
-                                 itemHeight: SCRYFrom(30),
+                                 itemHeight: 30,
                                  titleColor: RGB(100, 116, 139),
                                  titleFont: UIFont.systemFont(ofSize: 12, weight: .regular),
                                  backgroundColor: .white,
@@ -192,9 +192,9 @@ class GroupPathSequenceQuickAddView: UIView {
                                  titleAlignment: .left,
                                  contentBorderColor: RGB(236, 236, 236),
                                  contentBorderWidth: 1,
-                                 contentCornerRadius: SCRYFrom(10),
-                                 rowHighlightInsets: UIEdgeInsets(top: SCRYFrom(4), left: SCRXFrom(4), bottom: SCRYFrom(4), right: SCRXFrom(4)),
-                                 rowHighlightCornerRadius: SCRYFrom(5)) {[weak self] index in
+                                 contentCornerRadius: 10,
+                                 rowHighlightInsets: UIEdgeInsets(top: 4, left: 4, bottom: 4, right: 4),
+                                 rowHighlightCornerRadius: 5) {[weak self] index in
                 guard let self = self else { return }
                 self.titleLabel.text = selectedTitles[index]
                 self.showAdded = index == 1
@@ -203,7 +203,7 @@ class GroupPathSequenceQuickAddView: UIView {
 //            return
 //        }
 //
-//        TitleSelectView.show(titles: menuTitles, style: .default, anchorPoint: windowPoint, menuWidth: menuWidth, itemHeight: SCRYFrom(44), titleFont: UIFont.systemFont(ofSize: 14, weight: .light)) {[weak self] index in
+//        TitleSelectView.show(titles: menuTitles, style: .default, anchorPoint: windowPoint, menuWidth: menuWidth, itemHeight: 44, titleFont: UIFont.systemFont(ofSize: 14, weight: .light)) {[weak self] index in
 //            guard let self = self else { return }
 //            self.titleLabel.text = selectedTitles[index]
 //            
@@ -217,8 +217,8 @@ class GroupPathSequenceQuickAddView: UIView {
         guard usesDualFilterLayout, !groupFilterTitles.isEmpty else {
             return
         }
-        let menuWidth = groupFilterView.bounds.width > 0 ? groupFilterView.bounds.width : SCRXFrom(186)
-        let btnPoint = CGPoint(x: groupFilterView.frame.maxX - menuWidth, y: groupFilterView.frame.maxY + SCRYFrom(4))
+        let menuWidth = groupFilterView.bounds.width > 0 ? groupFilterView.bounds.width : 186
+        let btnPoint = CGPoint(x: groupFilterView.frame.maxX - menuWidth, y: groupFilterView.frame.maxY + 4)
         let windowPoint = self.convert(btnPoint, to: UIApplication.shared.keyWindow())
         
         TitleSelectView.show(titles: groupFilterTitles,
@@ -226,7 +226,7 @@ class GroupPathSequenceQuickAddView: UIView {
                              anchorPoint: windowPoint,
                              selectIndex: groupFilterSelectedIndex,
                              menuWidth: menuWidth,
-                             itemHeight: SCRYFrom(30),
+                             itemHeight: 30,
                              titleColor: RGB(100, 116, 139),
                              titleFont: UIFont.systemFont(ofSize: 12, weight: .regular),
                              backgroundColor: .white,
@@ -238,9 +238,9 @@ class GroupPathSequenceQuickAddView: UIView {
                              titleAlignment: .left,
                              contentBorderColor: RGB(236, 236, 236),
                              contentBorderWidth: 1,
-                             contentCornerRadius: SCRYFrom(10),
-                             rowHighlightInsets: UIEdgeInsets(top: SCRYFrom(4), left: SCRXFrom(4), bottom: SCRYFrom(4), right: SCRXFrom(4)),
-                             rowHighlightCornerRadius: SCRYFrom(5)) { [weak self] index in
+                             contentCornerRadius: 10,
+                             rowHighlightInsets: UIEdgeInsets(top: 4, left: 4, bottom: 4, right: 4),
+                             rowHighlightCornerRadius: 5) { [weak self] index in
             guard let self else { return }
             self.groupFilterSelectedIndex = index
             self.groupTitleLabel.text = self.groupFilterTitles[index]
@@ -260,10 +260,10 @@ class GroupPathSequenceQuickAddView: UIView {
         groupFilterView.isHidden = true
         messageLabel.text = "path_quick_add_message".localizedString
         addTypeView.snp.remakeConstraints { make in
-            make.left.equalTo(helpImageView.snp.right).offset(SCRXFrom(6))
+            make.left.equalTo(helpImageView.snp.right).offset(6)
             make.top.equalTo(topContentInset)
-            make.height.equalTo(SCRYFrom(30))
-            make.right.equalTo(SCRXFrom(-16))
+            make.height.equalTo(30)
+            make.right.equalTo(-16)
         }
     }
 
@@ -280,11 +280,11 @@ class GroupPathSequenceQuickAddView: UIView {
         groupFilterView.isHidden = false
         messageLabel.text = "space_trigger_zone_quick_add_message".localizedString
         addTypeView.snp.remakeConstraints { make in
-            make.left.equalTo(groupFilterView.snp.right).offset(SCRXFrom(8))
+            make.left.equalTo(groupFilterView.snp.right).offset(8)
             make.top.equalTo(topContentInset)
-            make.height.equalTo(SCRYFrom(30))
-            make.width.equalTo(SCRXFrom(90))
-            make.right.lessThanOrEqualTo(SCRXFrom(-16))
+            make.height.equalTo(30)
+            make.width.equalTo(90)
+            make.right.lessThanOrEqualTo(-16)
         }
     }
     
@@ -301,7 +301,7 @@ class GroupPathSequenceQuickAddView: UIView {
         helpImageView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(helpImageAction)))
         addView.addSubview(helpImageView)
         helpImageView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(8))
+            make.left.equalTo(8)
             make.top.equalTo(topContentInset)
             make.width.height.equalTo(30)
         }
@@ -309,22 +309,22 @@ class GroupPathSequenceQuickAddView: UIView {
         groupFilterView = UIView()
         groupFilterView.isHidden = true
         groupFilterView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(groupFilterSelectAction)))
-        groupFilterView.layer.cornerRadius = SCRYFrom(10)
+        groupFilterView.layer.cornerRadius = 10
         groupFilterView.layer.borderWidth = 1
         groupFilterView.layer.borderColor = Border_Color.cgColor
         groupFilterView.backgroundColor = .white
         addView.addSubview(groupFilterView)
         groupFilterView.snp.makeConstraints { make in
-            make.left.equalTo(helpImageView.snp.right).offset(SCRXFrom(6))
+            make.left.equalTo(helpImageView.snp.right).offset(6)
             make.top.equalTo(topContentInset)
-            make.height.equalTo(SCRYFrom(30))
-            make.width.equalTo(SCRXFrom(186))
+            make.height.equalTo(30)
+            make.width.equalTo(186)
         }
 
         groupArrowImageView = UIImageView(image: UIImage(named: "arrow_down_black"))
         groupFilterView.addSubview(groupArrowImageView)
         groupArrowImageView.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-8))
+            make.right.equalTo(-8)
             make.centerY.equalToSuperview()
             make.width.height.equalTo(16)
         }
@@ -332,29 +332,29 @@ class GroupPathSequenceQuickAddView: UIView {
         groupTitleLabel = UILabel(text: nil, textColor: TextBlack_Color, fontSize: 13, fontWeight: .light, fit: false)
         groupFilterView.addSubview(groupTitleLabel)
         groupTitleLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(12))
+            make.left.equalTo(12)
             make.centerY.equalToSuperview()
-            make.right.equalTo(groupArrowImageView.snp.left).offset(SCRXFrom(-8))
+            make.right.equalTo(groupArrowImageView.snp.left).offset(-8)
         }
 
         addTypeView = UIView()
         addTypeView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(addTypeSelectAction)))
-        addTypeView.layer.cornerRadius = SCRYFrom(10)
+        addTypeView.layer.cornerRadius = 10
         addTypeView.layer.borderWidth = 1
         addTypeView.layer.borderColor = Border_Color.cgColor
         addTypeView.backgroundColor = .white
         addView.addSubview(addTypeView)
         addTypeView.snp.makeConstraints { make in
-            make.left.equalTo(helpImageView.snp.right).offset(SCRXFrom(6))
+            make.left.equalTo(helpImageView.snp.right).offset(6)
             make.top.equalTo(topContentInset)
-            make.height.equalTo(SCRYFrom(30))
-            make.right.equalTo(SCRXFrom(-16))
+            make.height.equalTo(30)
+            make.right.equalTo(-16)
         }
         
         arrowImageView = UIImageView(image: UIImage(named: "arrow_down_black"))
         addTypeView.addSubview(arrowImageView)
         arrowImageView.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-12))
+            make.right.equalTo(-12)
             make.centerY.equalToSuperview()
             make.width.height.equalTo(16)
         }
@@ -362,9 +362,9 @@ class GroupPathSequenceQuickAddView: UIView {
         titleLabel = UILabel(text: "quick_add_ignore_added_devices".localizedString, textColor: TextBlack_Color, fontSize: 13, fontWeight: .light, fit: false)
         addTypeView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(12))
+            make.left.equalTo(12)
             make.centerY.equalToSuperview()
-            make.right.equalTo(arrowImageView.snp.left).offset(SCRXFrom(-12))
+            make.right.equalTo(arrowImageView.snp.left).offset(-12)
         }
 
         hintLabel = UILabel(text: nil, textColor: AssistText_Color, fontSize: 12, fontWeight: .light, fit: false)
@@ -373,23 +373,23 @@ class GroupPathSequenceQuickAddView: UIView {
         hintLabel.textAlignment = .center
         addView.addSubview(hintLabel)
         hintLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(14))
-            make.right.equalTo(SCRXFrom(-14))
-            make.top.equalTo(addTypeView.snp.bottom).offset(SCRYFrom(8))
+            make.left.equalTo(14)
+            make.right.equalTo(-14)
+            make.top.equalTo(addTypeView.snp.bottom).offset(8)
         }
         
         startBtn = UIButton(normalImageName: "quick_add_start", selectedImageName: "quick_add_pause", target: self, action: #selector(startBtnAction))
         addView.addSubview(startBtn)
         startBtn.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.top.equalTo(hintLabel.snp.bottom).offset(SCRYFrom(10))
+            make.centerY.equalToSuperview()
         }
         
 //        pauseBtn = UIButton(normalImageName: "quick_add_pause", target: self, action: #selector(startBtnAction))
 //        pauseBtn.isHidden = true
 //        addView.addSubview(pauseBtn)
 //        pauseBtn.snp.makeConstraints { make in
-//            make.right.equalTo(addView.snp.centerX).offset(SCRXFrom(-20))
+//            make.right.equalTo(addView.snp.centerX).offset(-20)
 //            make.top.equalTo(startBtn)
 //        }
         
@@ -397,7 +397,7 @@ class GroupPathSequenceQuickAddView: UIView {
         stopBtn.isHidden = true
         addView.addSubview(stopBtn)
         stopBtn.snp.makeConstraints { make in
-            make.left.equalTo(addView.snp.centerX).offset(SCRXFrom(20))
+            make.left.equalTo(addView.snp.centerX).offset(20)
             make.centerY.equalTo(startBtn)
         }
         
@@ -405,7 +405,7 @@ class GroupPathSequenceQuickAddView: UIView {
         addStateLabel.textColor = ImportantText_Color
         addView.addSubview(addStateLabel)
         addStateLabel.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-16))
+            make.right.equalTo(-16)
             make.centerY.equalTo(startBtn)
         }
         
@@ -414,9 +414,9 @@ class GroupPathSequenceQuickAddView: UIView {
         messageLabel.textAlignment = .center
         addView.addSubview(messageLabel)
         messageLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(15))
-            make.right.equalTo(SCRXFrom(-13))
-            make.bottom.equalTo(SCRYFrom(-6))
+            make.left.equalTo(15)
+            make.right.equalTo(-13)
+            make.bottom.equalTo(-6)
         }
         
         guideContentView = UIView()
@@ -431,13 +431,10 @@ class GroupPathSequenceQuickAddView: UIView {
             .init(imageName: "proximity_lighting_step1", title: "quick_add_step1".localizedString, textColor: SubText_Color),
             .init(imageName: "proximity_lighting_step2", title: "quick_add_step2".localizedString, textColor: SubText_Color),
             .init(imageName: "proximity_lighting_step3", title: "quick_add_step3".localizedString, textColor: SubText_Color)
-        ])
+        ], layoutStyle: .equalColumns)
         guideContentView.addSubview(guideView)
         guideView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(8))
-            make.right.equalTo(SCRXFrom(-8))
-            make.top.equalTo(SCRYFrom(12))
-            make.bottom.equalTo(SCRYFrom(-12))
+            make.edges.equalToSuperview()
         }
 
         configureDefaultQuickAdd()

@@ -21,7 +21,7 @@ protocol GroupPathSequenceManuallyAddViewDelegate: AnyObject {
 }
 
 class GroupPathSequenceManuallyAddView: UIView {
-    private let topContentInset = SCRYFrom(8)
+    private let topContentInset: CGFloat = 8
     
     private var helpImageView: UIImageView!
     private var groupFilterView: UIView!
@@ -72,9 +72,9 @@ class GroupPathSequenceManuallyAddView: UIView {
     private var usesGroupFilterLayout: Bool = false
 
     private var guidePreferredContentHeight: CGFloat {
-        let fallbackWidth = SCREEN_WIDTH - SCRXFrom(48)
-        let fittingWidth = max((bounds.width > 0 ? bounds.width : fallbackWidth) - SCRXFrom(16), SCRXFrom(200))
-        return max(SCRYFrom(68), guideView.preferredHeight(fittingWidth: fittingWidth) + SCRYFrom(24))
+        let fallbackWidth = SCREEN_WIDTH - 48
+        let fittingWidth = max((bounds.width > 0 ? bounds.width : fallbackWidth) - 16, 200)
+        return max(68, guideView.preferredHeight(fittingWidth: fittingWidth) + 24)
     }
     
     /// 选中的设备
@@ -88,11 +88,11 @@ class GroupPathSequenceManuallyAddView: UIView {
             return guidePreferredContentHeight
         }
         let collectionHeight = max(currentCollectionHeight(), preferredMinimumCollectionHeight)
-        return topContentInset + SCRYFrom(30 + 16 + 38) + collectionHeight
+        return topContentInset + 30 + 16 + 38 + collectionHeight
     }
 
     var preferredMinimumContentHeight: CGFloat {
-        topContentInset + SCRYFrom(30 + 16 + 38) + preferredMinimumCollectionHeight
+        topContentInset + 30 + 16 + 38 + preferredMinimumCollectionHeight
     }
     
     override init(frame: CGRect) {
@@ -118,7 +118,7 @@ class GroupPathSequenceManuallyAddView: UIView {
         self.devices = devices
         self.selectDevice = selectDevice
         
-        noDevicesLabel.isHidden = devices.count > 0
+        updateNoDevicesLabelVisibility()
         collectionView.reloadData()
         pageControl.numberOfPages = Int(ceilf(Float(devices.count) / Float(colNum * rowNum)))
     }
@@ -130,13 +130,17 @@ class GroupPathSequenceManuallyAddView: UIView {
         groupFilterView.isHidden = visible || !usesGroupFilterLayout
         collectionView.isHidden = visible
         pageControl.isHidden = visible
-        noDevicesLabel.isHidden = visible || devices.count > 0
+        updateNoDevicesLabelVisibility()
+    }
+
+    private func updateNoDevicesLabelVisibility() {
+        noDevicesLabel.isHidden = !guideContentView.isHidden || !devices.isEmpty
     }
     
     @objc private func addTypeSelectAction() {
-        let menuWidth = usesCompactFilterMenu ? (isIPad ? SCRXFrom(320) : SCRXFrom(256)) : (isIPad ? SCRXFrom(300) : SCRXFrom(256))
+        let menuWidth: CGFloat = usesCompactFilterMenu ? (isIPad ? 320 : 256) : (isIPad ? 300 : 256)
         let titles = menuTitles()
-        let btnPoint = CGPoint(x: addTypeView.frame.maxX - menuWidth, y: addTypeView.frame.maxY + SCRYFrom(4))
+        let btnPoint = CGPoint(x: addTypeView.frame.maxX - menuWidth, y: addTypeView.frame.maxY + 4)
         let windowPoint = self.convert(btnPoint, to: UIApplication.shared.keyWindow())
 
 //        if usesCompactFilterMenu {
@@ -145,7 +149,7 @@ class GroupPathSequenceManuallyAddView: UIView {
                                  anchorPoint: windowPoint,
                                  selectIndex: showAdded ? 1 : 0,
                                  menuWidth: menuWidth,
-                                 itemHeight: SCRYFrom(30),
+                                 itemHeight: 30,
                                  titleColor: RGB(100, 116, 139),
                                  titleFont: UIFont.systemFont(ofSize: 12, weight: .regular),
                                  backgroundColor: .white,
@@ -155,9 +159,9 @@ class GroupPathSequenceManuallyAddView: UIView {
                                  titleAlignment: .left,
                                  contentBorderColor: RGB(236, 236, 236),
                                  contentBorderWidth: 1,
-                                 contentCornerRadius: SCRYFrom(10),
-                                 rowHighlightInsets: UIEdgeInsets(top: SCRYFrom(4), left: SCRXFrom(4), bottom: SCRYFrom(4), right: SCRXFrom(4)),
-                                 rowHighlightCornerRadius: SCRYFrom(5)) {[weak self] index in
+                                 contentCornerRadius: 10,
+                                 rowHighlightInsets: UIEdgeInsets(top: 4, left: 4, bottom: 4, right: 4),
+                                 rowHighlightCornerRadius: 5) {[weak self] index in
                 guard let self = self else { return }
                 self.showAdded = index == 1
                 self.updateFilterTitle()
@@ -166,7 +170,7 @@ class GroupPathSequenceManuallyAddView: UIView {
 //            return
 //        }
 //
-//        TitleSelectView.show(titles: titles, style: .default, anchorPoint: windowPoint, menuWidth: menuWidth, itemHeight: SCRYFrom(44), titleFont: UIFont.systemFont(ofSize: 14, weight: .light)) {[weak self] index in
+//        TitleSelectView.show(titles: titles, style: .default, anchorPoint: windowPoint, menuWidth: menuWidth, itemHeight: 44, titleFont: UIFont.systemFont(ofSize: 14, weight: .light)) {[weak self] index in
 //            guard let self = self else { return }
 //            self.showAdded = index == 1
 //            self.updateFilterTitle()
@@ -179,8 +183,8 @@ class GroupPathSequenceManuallyAddView: UIView {
         guard usesGroupFilterLayout, !groupFilterTitles.isEmpty else {
             return
         }
-        let menuWidth = groupFilterView.bounds.width > 0 ? groupFilterView.bounds.width : SCRXFrom(186)
-        let btnPoint = CGPoint(x: groupFilterView.frame.maxX - menuWidth, y: groupFilterView.frame.maxY + SCRYFrom(4))
+        let menuWidth = groupFilterView.bounds.width > 0 ? groupFilterView.bounds.width : 186
+        let btnPoint = CGPoint(x: groupFilterView.frame.maxX - menuWidth, y: groupFilterView.frame.maxY + 4)
         let windowPoint = self.convert(btnPoint, to: UIApplication.shared.keyWindow())
 
         TitleSelectView.show(titles: groupFilterTitles,
@@ -188,7 +192,7 @@ class GroupPathSequenceManuallyAddView: UIView {
                              anchorPoint: windowPoint,
                              selectIndex: groupFilterSelectedIndex,
                              menuWidth: menuWidth,
-                             itemHeight: SCRYFrom(30),
+                             itemHeight: 30,
                              titleColor: RGB(100, 116, 139),
                              titleFont: UIFont.systemFont(ofSize: 12, weight: .regular),
                              backgroundColor: .white,
@@ -200,9 +204,9 @@ class GroupPathSequenceManuallyAddView: UIView {
                              titleAlignment: .left,
                              contentBorderColor: RGB(236, 236, 236),
                              contentBorderWidth: 1,
-                             contentCornerRadius: SCRYFrom(10),
-                             rowHighlightInsets: UIEdgeInsets(top: SCRYFrom(4), left: SCRXFrom(4), bottom: SCRYFrom(4), right: SCRXFrom(4)),
-                             rowHighlightCornerRadius: SCRYFrom(5)) { [weak self] index in
+                             contentCornerRadius: 10,
+                             rowHighlightInsets: UIEdgeInsets(top: 4, left: 4, bottom: 4, right: 4),
+                             rowHighlightCornerRadius: 5) { [weak self] index in
             guard let self else { return }
             self.groupFilterSelectedIndex = index
             self.groupTitleLabel.text = self.groupFilterTitles[index]
@@ -238,10 +242,10 @@ class GroupPathSequenceManuallyAddView: UIView {
         groupFilterSelectedIndex = 0
         groupFilterView.isHidden = true
         addTypeView.snp.remakeConstraints { make in
-            make.left.equalTo(helpImageView.snp.right).offset(SCRXFrom(6))
-            make.right.equalTo(SCRXFrom(-16))
+            make.left.equalTo(helpImageView.snp.right).offset(6)
+            make.right.equalTo(-16)
             make.top.equalTo(topContentInset)
-            make.height.equalTo(SCRYFrom(30))
+            make.height.equalTo(30)
         }
     }
 
@@ -255,11 +259,11 @@ class GroupPathSequenceManuallyAddView: UIView {
         groupFilterView.isHidden = false
         updateFilterTitle()
         addTypeView.snp.remakeConstraints { make in
-            make.left.equalTo(groupFilterView.snp.right).offset(SCRXFrom(8))
+            make.left.equalTo(groupFilterView.snp.right).offset(8)
             make.top.equalTo(topContentInset)
-            make.height.equalTo(SCRYFrom(30))
-            make.width.equalTo(SCRXFrom(90))
-            make.right.lessThanOrEqualTo(SCRXFrom(-16))
+            make.height.equalTo(30)
+            make.width.equalTo(90)
+            make.right.lessThanOrEqualTo(-16)
         }
     }
     
@@ -273,17 +277,12 @@ class GroupPathSequenceManuallyAddView: UIView {
     }
 
     private func currentCollectionHeight() -> CGFloat {
-        guard collectionView.frame != .zero else {
-            return preferredMinimumCollectionHeight
-        }
-
-        var itemWidth = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.sectionInset.left - flowLayout.sectionInset.right - flowLayout.minimumInteritemSpacing * CGFloat(colNum - 1)) / CGFloat(colNum)
-        itemWidth = CGFloat(floorf(Float(itemWidth) * 100) / 100.0)
-        return itemWidth * CGFloat(rowNum) + CGFloat(rowNum - 1) * flowLayout.minimumLineSpacing
+        return GroupPathSequenceDeviceItemMetrics.controlSize * CGFloat(rowNum)
+            + CGFloat(rowNum - 1) * flowLayout.minimumLineSpacing
     }
 
     private var preferredMinimumCollectionHeight: CGFloat {
-        isIPad ? SCRYFrom(64) : SCRYFrom(44)
+        return GroupPathSequenceDeviceItemMetrics.controlSize
     }
     
     private func setupUI() {
@@ -292,7 +291,7 @@ class GroupPathSequenceManuallyAddView: UIView {
         helpImageView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(helpImageAction)))
         addSubview(helpImageView)
         helpImageView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(8))
+            make.left.equalTo(8)
             make.top.equalTo(topContentInset)
             make.width.height.equalTo(30)
         }
@@ -300,22 +299,22 @@ class GroupPathSequenceManuallyAddView: UIView {
         groupFilterView = UIView()
         groupFilterView.isHidden = true
         groupFilterView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(groupFilterSelectAction)))
-        groupFilterView.layer.cornerRadius = SCRYFrom(10)
+        groupFilterView.layer.cornerRadius = 10
         groupFilterView.layer.borderWidth = 1
         groupFilterView.layer.borderColor = Border_Color.cgColor
         groupFilterView.backgroundColor = .white
         addSubview(groupFilterView)
         groupFilterView.snp.makeConstraints { make in
-            make.left.equalTo(helpImageView.snp.right).offset(SCRXFrom(6))
+            make.left.equalTo(helpImageView.snp.right).offset(6)
             make.top.equalTo(topContentInset)
-            make.height.equalTo(SCRYFrom(30))
-            make.width.equalTo(SCRXFrom(186))
+            make.height.equalTo(30)
+            make.width.equalTo(186)
         }
 
         groupArrowImageView = UIImageView(image: UIImage(named: "arrow_down_black"))
         groupFilterView.addSubview(groupArrowImageView)
         groupArrowImageView.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-8))
+            make.right.equalTo(-8)
             make.centerY.equalToSuperview()
             make.width.height.equalTo(16)
         }
@@ -323,29 +322,29 @@ class GroupPathSequenceManuallyAddView: UIView {
         groupTitleLabel = UILabel(text: nil, textColor: TextBlack_Color, fontSize: 13, fontWeight: .light, fit: false)
         groupFilterView.addSubview(groupTitleLabel)
         groupTitleLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(12))
+            make.left.equalTo(12)
             make.centerY.equalToSuperview()
-            make.right.equalTo(groupArrowImageView.snp.left).offset(SCRXFrom(-8))
+            make.right.equalTo(groupArrowImageView.snp.left).offset(-8)
         }
         
         addTypeView = UIView()
         addTypeView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(addTypeSelectAction)))
-        addTypeView.layer.cornerRadius = SCRYFrom(10)
+        addTypeView.layer.cornerRadius = 10
         addTypeView.layer.borderWidth = 1
         addTypeView.layer.borderColor = Border_Color.cgColor
         addTypeView.backgroundColor = .white
         addSubview(addTypeView)
         addTypeView.snp.makeConstraints { make in
-            make.left.equalTo(helpImageView.snp.right).offset(SCRXFrom(6))
-            make.right.equalTo(SCRXFrom(-16))
+            make.left.equalTo(helpImageView.snp.right).offset(6)
+            make.right.equalTo(-16)
             make.top.equalTo(topContentInset)
-            make.height.equalTo(SCRYFrom(30))
+            make.height.equalTo(30)
         }
         
         arrowImageView = UIImageView(image: UIImage(named: "arrow_down_black"))
         addTypeView.addSubview(arrowImageView)
         arrowImageView.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-12))
+            make.right.equalTo(-12)
             make.centerY.equalToSuperview()
             make.width.height.equalTo(16)
         }
@@ -353,21 +352,22 @@ class GroupPathSequenceManuallyAddView: UIView {
         titleLabel = UILabel(text: nil, textColor: TextBlack_Color, fontSize: 13, fontWeight: .light, fit: false)
         addTypeView.addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(12))
+            make.left.equalTo(12)
             make.centerY.equalToSuperview()
-            make.right.equalTo(arrowImageView.snp.left).offset(SCRXFrom(-12))
+            make.right.equalTo(arrowImageView.snp.left).offset(-12)
         }
         
         flowLayout = HorizontalDirectionFlowLayout()
         flowLayout.itemColCount = rowNum
         flowLayout.itemRowCount = colNum
-        flowLayout.minimumInteritemSpacing = SCRXFrom(18)
+        flowLayout.itemHeight = GroupPathSequenceDeviceItemMetrics.controlSize
+        flowLayout.minimumInteritemSpacing = 18
         flowLayout.scrollDirection = .horizontal
-        flowLayout.sectionInset = UIEdgeInsets(top: 0, left: SCRXFrom(26), bottom: 0, right: SCRXFrom(25))
+        flowLayout.sectionInset = UIEdgeInsets(top: 0, left: 26, bottom: 0, right: 25)
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.backgroundColor = .clear
-//        collectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(26), bottom: 0, right: SCRXFrom(25))
+//        collectionView.contentInset = UIEdgeInsets(top: 0, left: 26, bottom: 0, right: 25)
         collectionView.isPagingEnabled = true
         collectionView.register(GroupPathSequenceAddDeviceCell.classForCoder(), forCellWithReuseIdentifier: "cell")
         collectionView.dataSource = self
@@ -376,16 +376,16 @@ class GroupPathSequenceManuallyAddView: UIView {
         addSubview(collectionView)
         collectionView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
-            make.top.equalTo(addTypeView.snp.bottom).offset(SCRYFrom(16))
+            make.top.equalTo(addTypeView.snp.bottom).offset(16)
             make.height.equalTo(preferredMinimumCollectionHeight)
-            make.bottom.equalTo(SCRYFrom(-38))
+            make.bottom.equalTo(-38)
         }
         
         noDevicesLabel = UILabel(text: "filter_no_devices".localizedString, textColor: Message_Color, fontSize: 14, fontWeight: .light)
 //        noDevicesLabel.isHidden = true
         addSubview(noDevicesLabel)
         noDevicesLabel.snp.makeConstraints { make in
-            make.center.equalTo(collectionView)
+            make.center.equalToSuperview()
         }
         
         pageControl = UIPageControl()
@@ -396,8 +396,8 @@ class GroupPathSequenceManuallyAddView: UIView {
         addSubview(pageControl)
         pageControl.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.bottom.equalTo(SCRYFrom(-8))
-            make.height.equalTo(SCRYFrom(6))
+            make.bottom.equalTo(-8)
+            make.height.equalTo(6)
         }
         
         guideContentView = UIView()
@@ -412,13 +412,10 @@ class GroupPathSequenceManuallyAddView: UIView {
             .init(imageName: "proximity_lighting_step1", title: "quick_add_step1".localizedString, textColor: SubText_Color),
             .init(imageName: "proximity_lighting_step2", title: "path_manual_add_step2".localizedString, textColor: SubText_Color),
             .init(imageName: "proximity_lighting_step3", title: "zone_manual_add_step3".localizedString, textColor: SubText_Color)
-        ])
+        ], layoutStyle: .equalColumns)
         guideContentView.addSubview(guideView)
         guideView.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(8))
-            make.right.equalTo(SCRXFrom(-8))
-            make.top.equalTo(SCRYFrom(12))
-            make.bottom.equalTo(SCRYFrom(-12))
+            make.edges.equalToSuperview()
         }
 
         configureDefaultFilterLayout()
@@ -438,9 +435,9 @@ extension GroupPathSequenceManuallyAddView: UICollectionViewDataSource, UICollec
         let node = devices[indexPath.item]
         cell.nameLabel.text = node.name
         if node == selectDevice {
-            cell.layer.borderColor = Yellow_Color.cgColor
+            cell.boxView.layer.borderColor = Yellow_Color.cgColor
         }else {
-            cell.layer.borderColor = RGB(241, 242, 244).cgColor
+            cell.boxView.layer.borderColor = RGB(241, 242, 244).cgColor
         }
         if cell.interactions.isEmpty {
             cell.addInteraction(UIDragInteraction(delegate: self))
@@ -487,5 +484,21 @@ extension GroupPathSequenceManuallyAddView: UIDragInteractionDelegate {
         let dragItem = UIDragItem(itemProvider: itemProvider)
         dragItem.localObject = address
         return [dragItem]
+    }
+
+    func dragInteraction(
+        _ interaction: UIDragInteraction,
+        previewForLifting item: UIDragItem,
+        session: UIDragSession
+    ) -> UITargetedDragPreview? {
+        guard let cell = interaction.view as? GroupPathSequenceAddDeviceCell else {
+            return nil
+        }
+
+        cell.contentView.layoutIfNeeded()
+        let parameters = UIDragPreviewParameters()
+        parameters.backgroundColor = .clear
+        parameters.visiblePath = UIBezierPath(ovalIn: cell.boxView.bounds)
+        return UITargetedDragPreview(view: cell.boxView, parameters: parameters)
     }
 }

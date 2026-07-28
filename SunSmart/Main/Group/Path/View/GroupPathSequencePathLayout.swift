@@ -7,13 +7,27 @@
 
 import UIKit
 
+enum GroupPathSequenceDeviceItemMetrics {
+    static let controlSize: CGFloat = 44
+    static let controlCornerRadius: CGFloat = 22
+    static let imageSize: CGFloat = 20
+    static let sequenceLabelHeight: CGFloat = 16
+    static let sequenceItemHeight: CGFloat = 60
+    static let lineSpacing: CGFloat = 8
+    static let sequenceVerticalInset: CGFloat = 10
+    static let triggerZoneSectionInset: CGFloat = 16
+    static let triggerZoneMinimumHeight: CGFloat = 60
+    static let imageTopSpacing: CGFloat = 3
+    static let imageNameSpacing: CGFloat = 2
+}
+
 class GroupPathSequencePathLayout: UICollectionViewFlowLayout {
     
     private var lineWidth: CGFloat = 1
     private var cornerLineWidth: CGFloat = 8
     private var lineColor: UIColor = Message_Color
     var colCount: Int = 5
-    var itemHeight: CGFloat = SCRYFrom(64)
+    var itemHeight: CGFloat = GroupPathSequenceDeviceItemMetrics.sequenceItemHeight
     
     // 布局缓存
     private var itemAttributes: [UICollectionViewLayoutAttributes] = []
@@ -36,10 +50,7 @@ class GroupPathSequencePathLayout: UICollectionViewFlowLayout {
         // 计算每个item的尺寸
         var itemWidth = (collectionView.bounds.width - contentInset.left - contentInset.right - minimumInteritemSpacing * CGFloat(colCount - 1)) / CGFloat(colCount)
         itemWidth = CGFloat(floorf(Float(itemWidth) * 100) / 100.0)
-        //        var itemHeight = itemWidth
-        if itemSize == .zero || itemSize == CGSize(width: 50, height: 50) {
-            itemSize = CGSize(width: itemWidth, height: itemHeight)
-        }
+        itemSize = CGSize(width: itemWidth, height: itemHeight)
         
         // 重置缓存
         itemAttributes.removeAll()
@@ -125,9 +136,9 @@ class GroupPathSequencePathLayout: UICollectionViewFlowLayout {
         if fromRow != toRow {
             width = cornerLineWidth
             if attributes.isReversed {
-                x = fromCenter.x + itemSize.width * 0.5
+                x = fromCenter.x + GroupPathSequenceDeviceItemMetrics.controlSize * 0.5
             }else {
-                x = fromCenter.x - itemSize.width * 0.5 - width
+                x = fromCenter.x - GroupPathSequenceDeviceItemMetrics.controlSize * 0.5 - width
             }
         }
         attributes.frame = CGRect(

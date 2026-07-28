@@ -283,8 +283,8 @@ class SpacePathTriggerZoneController: UIViewController {
         deviceAddView.updateHeaderIndex(index)
     }
     
-    private func updateDeviceAddViewHeight(_ height: CGFloat, animated: Bool) {
-        let safeHeight = height <= 0 ? 0 : max(height, SCRYFrom(44))
+    private func updateDeviceAddViewHeight(_ contentHeight: CGFloat, animated: Bool) {
+        let safeHeight = contentHeight <= 0 ? 0 : max(contentHeight, 44)
         deviceAddViewHeightConstraint?.constant = safeHeight
         guard animated else {
             return
@@ -421,11 +421,12 @@ class SpacePathTriggerZoneController: UIViewController {
     private func setupUI() {
         deviceAddView = GroupPathSequenceDeviceAddView()
         deviceAddView.isHidden = true
+        deviceAddView.contentHeightPolicy = .dynamicSelected
         deviceAddView.isSequence = false
-        deviceAddView.heightChanged = { [weak self] height in
+        deviceAddView.contentHeightChanged = { [weak self] contentHeight in
             guard let self else { return }
             let shouldAnimate = self.allowDeviceAddAnimations && self.view.window != nil
-            self.updateDeviceAddViewHeight(height, animated: shouldAnimate)
+            self.updateDeviceAddViewHeight(contentHeight, animated: shouldAnimate)
         }
         deviceAddView.quickAddView.guideView.steps = [
             .init(imageName: "proximity_lighting_step1", title: "zone_add_step1".localizedString, textColor: SubText_Color),
