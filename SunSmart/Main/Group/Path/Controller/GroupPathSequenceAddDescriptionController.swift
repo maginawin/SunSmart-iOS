@@ -131,7 +131,11 @@ final class GroupPathSequenceAddDescriptionController: UIViewController {
     }
 
     @objc private func closeAction() {
-        dismiss(animated: true)
+        if let nav = navigationController, nav.viewControllers.first !== self {
+            nav.popViewController(animated: true)
+        } else {
+            dismiss(animated: true)
+        }
     }
 
     private func setupUI() {

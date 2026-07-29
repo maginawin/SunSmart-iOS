@@ -10,6 +10,7 @@ import NordicSigMeshSDK
 
 class GroupPathSequencePageController: WMPageController {
 
+    let space: SpaceData
     let group: Group
     let groupPath: GroupProximityLightingPathData
     private let vcTitles: [String] = ["sequence".localizedString, "trigger_zone".localizedString]
@@ -20,7 +21,8 @@ class GroupPathSequencePageController: WMPageController {
     private weak var sequenceVc: GroupPathSequenceViewController?
     private weak var triggerZoneVc: GroupPathSequenceTriggerZoneController?
     
-    init(group: Group) {
+    init(space: SpaceData, group: Group) {
+        self.space = space
         self.group = group
         self.groupPath = group.info.proximityLightingPath ?? .init(paths: [], zones: [])
         super.init(nibName: nil, bundle: nil)
@@ -123,6 +125,9 @@ class GroupPathSequencePageController: WMPageController {
         }
         if !(equalPath == groupPath) {
             edit = true
+        }
+        if edit {
+            space.markLocalChangePendingCloudSync()
         }
         group.info.proximityLightingPath = groupPath
         group.info.save()

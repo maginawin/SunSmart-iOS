@@ -10,6 +10,11 @@ import NordicSigMeshSDK
 
 class SpacePathTriggerZoneController: UIViewController {
 
+    private struct SpaceTriggerZoneMemberKey: Hashable {
+        let groupAddress: Address
+        let deviceAddress: Address
+    }
+
     private struct QuickAddGroupFilterOption {
         let title: String
         let group: Group?
@@ -40,11 +45,7 @@ class SpacePathTriggerZoneController: UIViewController {
         self.space = space
         super.init(nibName: nil, bundle: nil)
         self.setZones = space.triggerZones.map { $0.copy() }
-        self.setZones.forEach { zone in
-            zone.items.removeAll { item in
-                item.node == nil || item.group == nil
-            }
-        }
+        self.sanitizeSetZones()
     }
 
     required init?(coder: NSCoder) {
@@ -116,6 +117,35 @@ class SpacePathTriggerZoneController: UIViewController {
     
     private var eligibleNodes: [Node] {
         return deduplicatedNodes(from: eligibleGroups)
+    }
+
+    private func eligibleZoneMemberKeys() -> Set<SpaceTriggerZoneMemberKey> {
+        var keys = Set<SpaceTriggerZoneMemberKey>()
+        eligibleGroups.forEach { group in
+            group.nodes.forEach { node in
+                keys.insert(
+                    .init(
+                        groupAddress: group.address.address,
+                        deviceAddress: normalizedAddress(for: node)
+                    )
+                )
+            }
+        }
+        return keys
+    }
+
+    private func sanitizeSetZones() {
+        let eligibleKeys = eligibleZoneMemberKeys()
+        setZones.forEach { zone in
+            zone.items.removeAll { item in
+                !eligibleKeys.contains(
+                    .init(
+                        groupAddress: item.groupAddress,
+                        deviceAddress: item.deviceAddress
+                    )
+                )
+            }
+        }
     }
 
     private var quickAddGroupFilterOptions: [QuickAddGroupFilterOption] {
@@ -329,14 +359,15 @@ class SpacePathTriggerZoneController: UIViewController {
     
     @objc private func saveAction() {
         stopSetZone()
+        sanitizeSetZones()
         
         let oldZones = space.triggerZones.map { $0.copy() }
         let newZones = setZones.map { $0.copy() }
         let didEdit = !zonesEqual(oldZones, newZones)
         
         if didEdit {
+            space.markLocalChangePendingCloudSync()
             space.triggerZones = newZones
-            space.lastUpdate = Int64(Date().timeIntervalSince1970)
             space.save()
         }
         
@@ -352,9 +383,6 @@ class SpacePathTriggerZoneController: UIViewController {
         let vc = SyncDevicesViewController(type: .spaceTriggerZones(datas: syncDatas))
         vc.syncSuccessCallback = { [weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
-            if didEdit {
-                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
-            }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 self?.navigationController?.popViewController(animated: true)
             }
@@ -370,8 +398,9 @@ class SpacePathTriggerZoneController: UIViewController {
     }
     
     private func buildSyncDatas() -> [(node: Node, syncData: NodeSyncData)] {
+        let eligibleKeys = eligibleZoneMemberKeys()
         return eligibleNodes.compactMap { node in
-            let desiredNeighbors = desiredNeighborAddresses(for: node)
+            let desiredNeighbors = desiredNeighborAddresses(for: node, eligibleKeys: eligibleKeys)
             let relayNumber = node.group?.info.profile.proximityLightingNumber ?? 0
             let neighborsEqual = node.proximityLightingNeighborAddresses.sorted() == desiredNeighbors.sorted()
             
@@ -391,16 +420,30 @@ class SpacePathTriggerZoneController: UIViewController {
         }
     }
     
-    private func desiredNeighborAddresses(for node: Node) -> [Address] {
+    private func desiredNeighborAddresses(for node: Node, eligibleKeys: Set<SpaceTriggerZoneMemberKey>) -> [Address] {
         let currentAddress = normalizedAddress(for: node)
         var neighbors: [Address] = []
         
         setZones.forEach { zone in
-            guard zone.items.contains(where: { $0.deviceAddress == currentAddress }) else {
+            guard zone.items.contains(where: { item in
+                item.deviceAddress == currentAddress &&
+                eligibleKeys.contains(
+                    .init(
+                        groupAddress: item.groupAddress,
+                        deviceAddress: item.deviceAddress
+                    )
+                )
+            }) else {
                 return
             }
             zone.items.forEach { item in
-                guard item.deviceAddress != currentAddress, !neighbors.contains(item.deviceAddress) else {
+                let key = SpaceTriggerZoneMemberKey(
+                    groupAddress: item.groupAddress,
+                    deviceAddress: item.deviceAddress
+                )
+                guard eligibleKeys.contains(key),
+                      item.deviceAddress != currentAddress,
+                      !neighbors.contains(item.deviceAddress) else {
                     return
                 }
                 neighbors.append(item.deviceAddress)

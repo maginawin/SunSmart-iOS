@@ -195,7 +195,6 @@ class GroupPathSequenceViewController: UIViewController {
                 return
             }
             let list = GroupProximityLightingSequencePath.default(count: number)
-            self.groupPath.paths.append(contentsOf: list)
             self.setPaths.append(contentsOf: list.map({ $0.copy() }))
 //            let indexPaths = list.enumerated().map({ self.setPaths.count + $0.offset - 1 })
             self.tableView.reloadData()
