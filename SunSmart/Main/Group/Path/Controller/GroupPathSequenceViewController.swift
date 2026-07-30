@@ -170,7 +170,7 @@ class GroupPathSequenceViewController: UIViewController {
     }
     
     func deselectPath() {
-        if selectPathData.isSelect, let section = setPaths.firstIndex(of: selectPathData.path!) {
+        if let path = selectPathData.path, let section = setPaths.firstIndex(of: path) {
             selectPathData.path = nil
             selectPathData.item = nil
             tableView.reloadSections(IndexSet(integer: section), with: .none)

@@ -46,7 +46,7 @@ class GroupPathSequenceManuallyAddView: UIView {
                 make.height.equalTo(currentCollectionHeight())
             }
             
-            pageControl.numberOfPages = Int(ceilf(Float(devices.count) / Float(colNum * rowNum)))
+            updatePageControlState()
             UIView.animate(withDuration: 0.25) {
                 self.superview?.layoutIfNeeded()
             }
@@ -120,7 +120,7 @@ class GroupPathSequenceManuallyAddView: UIView {
         
         updateNoDevicesLabelVisibility()
         collectionView.reloadData()
-        pageControl.numberOfPages = Int(ceilf(Float(devices.count) / Float(colNum * rowNum)))
+        updatePageControlState()
     }
 
     func setGuideVisible(_ visible: Bool) {
@@ -129,8 +129,17 @@ class GroupPathSequenceManuallyAddView: UIView {
         addTypeView.isHidden = visible
         groupFilterView.isHidden = visible || !usesGroupFilterLayout
         collectionView.isHidden = visible
-        pageControl.isHidden = visible
+        updatePageControlState()
         updateNoDevicesLabelVisibility()
+    }
+
+    private func updatePageControlState() {
+        let pageCapacity = colNum * rowNum
+        let pageCount = Int(ceilf(Float(devices.count) / Float(pageCapacity)))
+
+        pageControl.numberOfPages = pageCount
+        pageControl.currentPage = min(pageControl.currentPage, max(pageCount - 1, 0))
+        pageControl.isHidden = !guideContentView.isHidden || pageCount <= 1
     }
 
     private func updateNoDevicesLabelVisibility() {

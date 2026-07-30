@@ -416,12 +416,45 @@ struct GroupPathSequenceDeviceAddViewContractTests {
             "Space controller must consume the content-height callback semantics"
         )
 
+        let deselectPathSection = section(
+            in: sequenceController,
+            from: "func deselectPath()",
+            to: "func addPath()"
+        )
+        require(
+            deselectPathSection.contains(
+                "if let path = selectPathData.path, let section = setPaths.firstIndex(of: path)"
+            ),
+            "Sequence switching must clear a selected path even when no point is selected"
+        )
+        require(
+            !deselectPathSection.contains("selectPathData.isSelect"),
+            "Sequence switching must not require both path and point selection before clearing"
+        )
+
         let makeOptions = section(
             in: spaceMore,
             from: "private func makeOptions()",
             to: "private func reloadOptions()"
         )
-        require(!makeOptions.contains(".triggerZone"), "Space Trigger Zone must remain hidden")
+        let triggerZoneOptions = section(
+            in: makeOptions,
+            from: "if space.groupOperates.contains(.edit)",
+            to: "return currentOptions"
+        )
+        require(
+            triggerZoneOptions.contains("currentOptions.append(.triggerZone)"),
+            "Space Trigger Zone must be visible for editors"
+        )
+        let optionsAfterContentDisplay = section(
+            in: makeOptions,
+            from: "currentOptions.append(.contentDisplay)",
+            to: "return currentOptions"
+        )
+        require(
+            optionsAfterContentDisplay.contains("currentOptions.append(.triggerZone)"),
+            "Space Trigger Zone must appear below Content Display"
+        )
 
         require(stepView.contains("enum LayoutStyle"), "Missing reusable guide layout style")
         require(stepView.contains("case equalColumns"), "Missing equal-column guide layout")
@@ -605,6 +638,84 @@ struct GroupPathSequenceDeviceAddViewContractTests {
                 "\(name) must show No devices only when the guide is hidden and devices are empty"
             )
         }
+        require(
+            manuallyAddView.contains("private func updatePageControlState()"),
+            "Manually Add must centralize pagination state updates"
+        )
+
+        let manuallyRowNumSection = section(
+            in: manuallyAddView,
+            from: "var rowNum: Int = 1 {",
+            to: "var guideContentView:"
+        )
+        require(
+            manuallyRowNumSection.contains("updatePageControlState()"),
+            "Manually Add row changes must refresh pagination state"
+        )
+        require(
+            !manuallyRowNumSection.contains("pageControl.numberOfPages ="),
+            "Manually Add row changes must not duplicate page-count calculation"
+        )
+
+        let manuallyReloadSection = section(
+            in: manuallyAddView,
+            from: "func reloadData(devices:",
+            to: "func setGuideVisible"
+        )
+        require(
+            manuallyReloadSection.contains("updatePageControlState()"),
+            "Manually Add reload must refresh pagination state"
+        )
+        require(
+            !manuallyReloadSection.contains("pageControl.numberOfPages ="),
+            "Manually Add reload must not duplicate page-count calculation"
+        )
+
+        let manuallyGuideVisibilitySection = section(
+            in: manuallyAddView,
+            from: "func setGuideVisible",
+            to: "private func updatePageControlState()"
+        )
+        require(
+            manuallyGuideVisibilitySection.contains("updatePageControlState()"),
+            "Manually Add guide changes must refresh pagination state"
+        )
+        require(
+            !manuallyGuideVisibilitySection.contains("pageControl.isHidden = visible"),
+            "Manually Add guide changes must not force a single-page indicator visible"
+        )
+
+        let manuallyPaginationSection = section(
+            in: manuallyAddView,
+            from: "private func updatePageControlState()",
+            to: "private func updateNoDevicesLabelVisibility()"
+        )
+        require(
+            manuallyPaginationSection.contains("let pageCapacity = colNum * rowNum"),
+            "Manually Add page capacity must use the current columns and rows"
+        )
+        require(
+            manuallyPaginationSection.contains(
+                "let pageCount = Int(ceilf(Float(devices.count) / Float(pageCapacity)))"
+            ),
+            "Manually Add page count must use the current device count and capacity"
+        )
+        require(
+            manuallyPaginationSection.contains("pageControl.numberOfPages = pageCount"),
+            "Manually Add must publish the derived page count"
+        )
+        require(
+            manuallyPaginationSection.contains(
+                "pageControl.currentPage = min(pageControl.currentPage, max(pageCount - 1, 0))"
+            ),
+            "Manually Add must clamp the current page after the page count shrinks"
+        )
+        require(
+            manuallyPaginationSection.contains(
+                "pageControl.isHidden = !guideContentView.isHidden || pageCount <= 1"
+            ),
+            "Manually Add must show pagination only outside Guide with more than one page"
+        )
         let manuallyNoDevicesConstraints = section(
             in: manuallyAddView,
             from: "noDevicesLabel.snp.makeConstraints",
