@@ -86,6 +86,10 @@ class SpaceMoreViewController: UIViewController {
             currentOptions.append(.contentDisplay)
         }
 
+        if space.groupOperates.contains(.edit) {
+            currentOptions.append(.triggerZone)
+        }
+
         return currentOptions
     }
 
