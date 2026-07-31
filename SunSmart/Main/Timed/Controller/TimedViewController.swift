@@ -21,6 +21,8 @@ class TimedViewController: UIViewController {
     
     private var schedules: [Schedule] = []
     private var refreshData = false
+    private var isRepairingUnknownSchedulerModelCaches = false
+    private var isSchedulerModelCacheRepairRetryScheduled = false
     
     let space: SpaceData
     
@@ -83,6 +85,7 @@ class TimedViewController: UIViewController {
         #if DEBUG
         debugPrintScheduleDiagnostics()
         #endif
+        repairUnknownSchedulerModelCachesIfNeeded()
     }
     
     override func viewDidLayoutSubviews() {
@@ -226,6 +229,81 @@ class TimedViewController: UIViewController {
         CATransaction.commit()
     }
 
+    private func repairUnknownSchedulerModelCachesIfNeeded() {
+        guard view.window != nil,
+              MeshLibManager.manager.isMeshNetworkConnected,
+              !isRepairingUnknownSchedulerModelCaches else {
+            return
+        }
+
+        guard !MeshProxyMessageCommand.shared.isBusy else {
+            guard !isSchedulerModelCacheRepairRetryScheduled else {
+                return
+            }
+            isSchedulerModelCacheRepairRetryScheduled = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                [weak self] in
+                self?.isSchedulerModelCacheRepairRetryScheduled = false
+                self?.repairUnknownSchedulerModelCachesIfNeeded()
+            }
+            return
+        }
+
+        let nodes = MeshNetworkManager.instance.realNodes.filter { node in
+            guard node.deviceType != .dongle else {
+                return false
+            }
+            let modelKnownStates = node.schedulerSetupModels.map {
+                node.allSchedulerModelEntrys[$0] != nil
+            }
+            return TimedSchedulerCacheRepairPolicy.needsAuthoritativeRead(
+                modelKnownStates: modelKnownStates
+            )
+        }
+        guard !nodes.isEmpty else {
+            return
+        }
+
+        isRepairingUnknownSchedulerModelCaches = true
+#if DEBUG
+        let addresses = nodes
+            .map { $0.primaryUnicastAddress.hex }
+            .joined(separator: ",")
+        print("[SchedulerModelCacheRepair] start nodes=[\(addresses)]")
+#endif
+        MeshAPI.getSchedule(
+            index: nil,
+            nodes: nodes,
+            successful: nil,
+            failed: { address, index in
+#if DEBUG
+                print("[SchedulerModelCacheRepair] action failed node=\(address.hex) index=\(index)")
+#endif
+            },
+            finished: { [weak self] successfulAddresses, failedAddresses in
+                DispatchQueue.main.async {
+                    guard let self = self else {
+                        return
+                    }
+                    self.isRepairingUnknownSchedulerModelCaches = false
+#if DEBUG
+                    let successful = successfulAddresses
+                        .map(\.hex)
+                        .joined(separator: ",")
+                    let failed = failedAddresses
+                        .map(\.hex)
+                        .joined(separator: ",")
+                    print("[SchedulerModelCacheRepair] finished success=[\(successful)] failed=[\(failed)]")
+#endif
+                    self.updateUI()
+#if DEBUG
+                    self.debugPrintScheduleDiagnostics()
+#endif
+                }
+            }
+        )
+    }
+
 #if DEBUG
     /// 调试用：打印当前定时页面的 schedule 定义，以及节点侧保存的 schedulerActions 原始值。
     /// 目的：
@@ -244,6 +322,8 @@ class TimedViewController: UIViewController {
             print("[schedule-local] id=\(schedule.id) name=\(schedule.name) enabled=\(schedule.enabled) target=\(schedule.selectTargetType) nodes=[\(nodeAddresses)] year=\(entry.year.value) month=\(entry.month.value) day=\(entry.day.value) dow=\(entry.dayOfWeek.value) hour=\(entry.hour.value) minute=\(entry.minute.value) second=\(entry.second.value) action=\(entry.action.rawValue) scene=\(entry.sceneNumber)")
             
             schedule.existNodes.sorted(by: { $0.primaryUnicastAddress < $1.primaryUnicastAddress }).forEach { node in
+                let difference = schedule.schedulerSyncDifference(on: node)
+                print("[schedule-sync] id=\(schedule.id) node=\(node.name ?? "-")@\(node.primaryUnicastAddress.hex) reason=\(difference.rawValue)")
                 if let nodeEntry = node.schedulerActions[schedule.id] {
                     print("[schedule-node] id=\(schedule.id) node=\(node.name ?? "-")@\(node.primaryUnicastAddress.hex) year=\(nodeEntry.year.value) month=\(nodeEntry.month.value) day=\(nodeEntry.day.value) dow=\(nodeEntry.dayOfWeek.value) hour=\(nodeEntry.hour.value) minute=\(nodeEntry.minute.value) second=\(nodeEntry.second.value) action=\(nodeEntry.action.rawValue) scene=\(nodeEntry.sceneNumber) valid=\(nodeEntry.isValid)")
                 } else {
@@ -258,6 +338,34 @@ class TimedViewController: UIViewController {
         nodesWithSchedules.forEach { node in
             let ids = node.schedulerActions.keys.sorted().map(String.init).joined(separator: ",")
             print("[node-all-schedules] node=\(node.name ?? "-")@\(node.primaryUnicastAddress.hex) ids=[\(ids)]")
+        }
+
+        let nodesWithSchedulerModels = MeshNetworkManager.instance.realNodes
+            .filter { !$0.schedulerSetupModels.isEmpty }
+            .sorted(by: { $0.primaryUnicastAddress < $1.primaryUnicastAddress })
+        nodesWithSchedulerModels.forEach { node in
+            if let decodeError = node.schedulerModelCacheDecodeError {
+                print("[node-scheduler-cache-error] node=\(node.name ?? "-")@\(node.primaryUnicastAddress.hex) error=\(decodeError)")
+            }
+            node.schedulerSetupModels
+                .sorted {
+                    ($0.parentElement?.unicastAddress ?? 0)
+                        < ($1.parentElement?.unicastAddress ?? 0)
+                }
+                .forEach { model in
+                    let elementAddress = model.parentElement?.unicastAddress.hex
+                        ?? "unknown"
+                    guard let entrys = node.allSchedulerModelEntrys[model] else {
+                        print("[node-scheduler-model] node=\(node.name ?? "-")@\(node.primaryUnicastAddress.hex) element=\(elementAddress) state=unknown")
+                        return
+                    }
+                    let details = entrys.sorted(by: { $0.key < $1.key })
+                        .map { index, entry in
+                            "\(index){year=\(entry.year.value),month=\(entry.month.value),day=\(entry.day.value),dow=\(entry.dayOfWeek.value),hour=\(entry.hour.value),minute=\(entry.minute.value),second=\(entry.second.value),action=\(entry.action.rawValue),scene=\(entry.sceneNumber),valid=\(entry.isValid)}"
+                        }
+                        .joined(separator: ";")
+                    print("[node-scheduler-model] node=\(node.name ?? "-")@\(node.primaryUnicastAddress.hex) element=\(elementAddress) state=known entries=[\(details)]")
+                }
         }
         print("========== Timed Debug End ==========")
     }
