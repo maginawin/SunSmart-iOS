@@ -26,6 +26,25 @@ enum TimedSchedulerOwnerPolicy {
     }
 }
 
+enum TimedSchedulerGroupMemberExitStepDestination {
+    case removal
+    case configuration
+}
+
+enum TimedSchedulerGroupMemberExitStepPolicy {
+    static func destination(
+        isExitingGroup: Bool
+    ) -> TimedSchedulerGroupMemberExitStepDestination {
+        return isExitingGroup ? .removal : .configuration
+    }
+
+    static func shouldBlockGroupExit(
+        isExitingGroup: Bool
+    ) -> Bool {
+        return !isExitingGroup
+    }
+}
+
 enum TimedSchedulerCacheRepairPolicy {
     static func needsAuthoritativeRead(
         modelKnownStates: [Bool]

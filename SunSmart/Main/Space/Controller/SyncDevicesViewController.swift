@@ -1334,6 +1334,7 @@ class SyncDevicesViewController: UIViewController {
         
         /// 删除操作
         var deleteSteps: [SyncDeviceStepModel] = []
+        var nonBlockingGroupExitSteps: [SyncDeviceStepModel] = []
         // 同步操作
         var configturationSteps: [SyncDeviceStepModel] = []
         
@@ -1486,7 +1487,21 @@ class SyncDevicesViewController: UIViewController {
                 if syncScheduleTasks.count > 0 {
                     let step = SyncDeviceStepModel(type: "schedule".localizedString, state: .none, tasks: syncScheduleTasks)
                     syncScheduleTasks.forEach({ $0.parentStepModel = step })
-                    configturationSteps.append(step)
+                    let isExitingGroup = node.groupState == .exitFailure
+                        || removeGroupStep != nil
+                    switch TimedSchedulerGroupMemberExitStepPolicy.destination(
+                        isExitingGroup: isExitingGroup
+                    ) {
+                    case .removal:
+                        deleteSteps.append(step)
+                        if !TimedSchedulerGroupMemberExitStepPolicy.shouldBlockGroupExit(
+                            isExitingGroup: isExitingGroup
+                        ) {
+                            nonBlockingGroupExitSteps.append(step)
+                        }
+                    case .configuration:
+                        configturationSteps.append(step)
+                    }
                 }
                 
             case .deleteSchedules(let schedules):
@@ -1709,7 +1724,12 @@ class SyncDevicesViewController: UIViewController {
         
         // 需要依赖之前操作完成才能退出组
         if let step = removeGroupStep {
-            step.relevanceStepModels = deleteSteps.filter({ $0 != step })
+            step.relevanceStepModels = deleteSteps.filter { dependencyStep in
+                dependencyStep != step
+                    && !nonBlockingGroupExitSteps.contains(where: {
+                        $0 === dependencyStep
+                    })
+            }
         }
         
         // 初始化设备操作，必须在完成才可以同步其它参数

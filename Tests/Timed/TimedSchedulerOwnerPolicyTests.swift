@@ -16,6 +16,9 @@ struct TimedSchedulerOwnerPolicyTests {
         testUnknownCleanupModelIsReported()
         testResidualCleanupEntryIsReported()
         testMatchingOwnerAndClearCleanupAreSynchronized()
+        testGroupMemberExitRoutesScheduleMigrationToRemoval()
+        testGroupMemberExitScheduleMigrationDoesNotBlockRemoval()
+        testOrdinaryScheduleSyncRoutesToConfiguration()
 
         print("TimedSchedulerOwnerPolicyTests passed")
     }
@@ -147,6 +150,33 @@ struct TimedSchedulerOwnerPolicyTests {
 
         require(difference == .synchronized, "Matching owner and clear cleanup Models must be synchronized")
         require(!difference.needsSync, "Synchronized state must not request another SAVE")
+    }
+
+    private static func testGroupMemberExitRoutesScheduleMigrationToRemoval() {
+        require(
+            TimedSchedulerGroupMemberExitStepPolicy.destination(
+                isExitingGroup: true
+            ) == .removal,
+            "Exiting Group Schedule migration must route to Remove Section"
+        )
+    }
+
+    private static func testGroupMemberExitScheduleMigrationDoesNotBlockRemoval() {
+        require(
+            !TimedSchedulerGroupMemberExitStepPolicy.shouldBlockGroupExit(
+                isExitingGroup: true
+            ),
+            "Failed Group exit Schedule migration must not block Group removal"
+        )
+    }
+
+    private static func testOrdinaryScheduleSyncRoutesToConfiguration() {
+        require(
+            TimedSchedulerGroupMemberExitStepPolicy.destination(
+                isExitingGroup: false
+            ) == .configuration,
+            "Ordinary Schedule synchronization must remain in Configuration Section"
+        )
     }
 
     private static func require(

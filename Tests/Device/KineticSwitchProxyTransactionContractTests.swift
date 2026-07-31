@@ -27,9 +27,41 @@ struct KineticSwitchProxyTransactionContractTests {
             nodeSyncSource.contains("guard groupState != .exitFailure else"),
             "A node exiting its group must not recreate switch bindings"
         )
+        let proxyDeletionSource = section(
+            in: syncDevicesSource,
+            from: "case .deleteSwitchProxy(let switchData):",
+            to: "case .syncSwitchs(let switchDatas):"
+        )
         require(
-            syncDevicesSource.contains("step.relevanceStepModels = deleteSteps.filter({ $0 != step })"),
-            "Real group unsubscription must depend on prior cleanup steps"
+            proxyDeletionSource.contains("deleteSteps.append(step)"),
+            "Proxy cleanup must remain a group unsubscription dependency"
+        )
+        require(
+            !proxyDeletionSource.contains("nonBlockingGroupExitSteps.append(step)"),
+            "Proxy cleanup must not be excluded from group unsubscription dependencies"
+        )
+
+        let groupExitDependencies = section(
+            in: syncDevicesSource,
+            from: "if let step = removeGroupStep {",
+            to: "if let initStep = initializeStepModel {"
+        )
+        require(
+            groupExitDependencies.contains(
+                "step.relevanceStepModels = deleteSteps.filter { dependencyStep in"
+            ),
+            "Real group unsubscription must derive dependencies from prior cleanup steps"
+        )
+        require(
+            groupExitDependencies.contains("dependencyStep != step"),
+            "Group unsubscription must not depend on itself"
+        )
+        require(
+            groupExitDependencies.contains(
+                "!nonBlockingGroupExitSteps.contains(where:"
+            )
+                && groupExitDependencies.contains("$0 === dependencyStep"),
+            "Only explicitly non-blocking cleanup steps may be excluded from group unsubscription dependencies"
         )
         require(
             syncDevicesSource.contains("proxyConfigurationStep.relevanceStepModels = [proxyDeletionStep]"),
@@ -57,6 +89,23 @@ struct KineticSwitchProxyTransactionContractTests {
 
     private static func source(at path: String) throws -> String {
         try String(contentsOfFile: path, encoding: .utf8)
+    }
+
+    private static func section(
+        in source: String,
+        from startMarker: String,
+        to endMarker: String
+    ) -> String {
+        guard
+            let startRange = source.range(of: startMarker),
+            let endRange = source.range(
+                of: endMarker,
+                range: startRange.upperBound..<source.endIndex
+            )
+        else {
+            return ""
+        }
+        return String(source[startRange.lowerBound..<endRange.lowerBound])
     }
 
     private static func require(
