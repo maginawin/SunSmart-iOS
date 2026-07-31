@@ -433,6 +433,15 @@ extension SiteData {
             self.setProvisioner(meshNetwork: meshNetwork, provisionerData: provisionerData)
         }
 //        print("导入数据：site update proversioner success \(Date().timeIntervalSince1970)")
+        let gatewayDicts =
+            json["gateways"].arrayObject as? [[String: Any]]
+        let gatewaySnapshot = SiteGatewayAssociationSnapshot.make(
+            isComplete: self.permission == .owner,
+            rawGatewayIds: gatewayDicts?.map {
+                $0["macAddress"] as? String
+            }
+        )
+
         if let spaceDicts = json["spaces"].arrayObject as? [[String: Any]] {
             var spaces: [SpaceData] = []
             await withTaskGroup(of: SpaceData?.self) { group in
@@ -447,6 +456,28 @@ extension SiteData {
                     if let space = space {
                         spaces.append(space)
                     }
+                }
+            }
+
+            spaces.forEach { space in
+                switch gatewaySnapshot.decision(for: space.relevanceGatewayId) {
+                case .preserve:
+                    break
+                case .clearOrphan(let gatewayId):
+                    space.relevanceGatewayId = nil
+                    space.gatewayStatus = .notBound
+                    space.gatewayLastOnline = nil
+                    let saved = space.save()
+#if DEBUG
+                    print(
+                        "[SiteGatewayAssociationConsistency]",
+                        "siteId=\(self.id)",
+                        "spaceId=\(space.id)",
+                        "orphanGatewayId=\(gatewayId)",
+                        "scope=ownerComplete",
+                        "saved=\(saved)"
+                    )
+#endif
                 }
             }
             
@@ -478,7 +509,7 @@ extension SiteData {
         }
         
         // 更新Site网关数据
-        if let gatewayDicts = json["gateways"].arrayObject as? [[String: Any]] {
+        if let gatewayDicts {
             if let network = meshNetwork {
                 // 本地缓存网关（以GatewayModel为准）
                 let cacheGateways = GatewayModel.load(siteId: self.id)
