@@ -1344,7 +1344,7 @@
 "professional_mode" = "Professional Mode";
 "path_add_description_eligible_title" = "Eligible Devices";
 "path_add_description_eligible_message_path" = "Devices from the current group with an eligible profile can be added. The group must use a Proximity / Predictive Lighting profile.";
-"path_add_description_eligible_message_zone" = "Devices from any group with an eligible profile can be added. The zone's group membership is determined by the devices you add — whichever groups those devices belong to will constitute this zone.";
+"path_add_description_eligible_message_zone" = "Devices from the current group with an eligible profile can be added. The group must use a Proximity / Predictive Lighting profile.";
 "path_add_description_quick_subtitle" = "Walk & auto-fill";
 "path_add_description_trigger_subtitle" = "Trigger & confirm";
 "path_add_description_manual_subtitle" = "Pick & place";

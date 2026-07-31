@@ -1345,7 +1345,7 @@
 "classic_mode" = "经典模式";
 "path_add_description_eligible_title" = "可添加设备";
 "path_add_description_eligible_message_path" = "当前分组中符合条件的设备均可添加。该分组必须使用“邻近 / 预测照明”配置文件。";
-"path_add_description_eligible_message_zone" = "任何使用符合条件配置文件的分组中的设备均可添加。区域的分组成员关系由您添加的设备决定——这些设备所属的分组将共同构成该区域。";
+"path_add_description_eligible_message_zone" = "当前分组中符合条件的设备均可添加。该分组必须使用“邻近 / 预测照明”配置文件。";
 "path_add_description_quick_subtitle" = "行走自动补全";
 "path_add_description_trigger_subtitle" = "触发后确认";
 "path_add_description_manual_subtitle" = "选择并放置";
