@@ -1487,7 +1487,7 @@ class GroupViewController: UIViewController {
     /// 设置临近照明路径
     @objc private func setPath() {
         
-        let vc = GroupPathSequencePageController(group: group)
+        let vc = GroupPathSequencePageController(space: space, group: group)
         navigationController?.pushViewController(vc, animated: true)
     }
     

@@ -18,6 +18,7 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
     private var tableView: UITableView!
     private var deviceAddView: GroupPathSequenceDeviceAddView!
     private var deviceAddViewHeightConstraint: NSLayoutConstraint?
+    private var deviceAddContentHeight: CGFloat = 0
     private var allowDeviceAddAnimations = false
     private var didApplyInitialEmptyState = false
     
@@ -78,6 +79,16 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
         }
     }
 
+    override func viewSafeAreaInsetsDidChange() {
+        super.viewSafeAreaInsetsDidChange()
+        synchronizeDeviceAddViewHeight()
+    }
+
+    override func viewWillLayoutSubviews() {
+        super.viewWillLayoutSubviews()
+        synchronizeDeviceAddViewHeight()
+    }
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         guard !didApplyInitialEmptyState else {
@@ -91,8 +102,11 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
         if setZones.isEmpty {
             tableView.layoutIfNeeded()
             UIView.performWithoutAnimation {
-                view.showEmptyDataView(frame: tableView.frame, title: "no_trigger_zones".localizedString, backgroundColor: Background_Color, buttonText: "add_trigger_zone".localizedString, buttomWidth: SCRXFrom(216), position: .center, bottomMargin: SCRYFrom(100)) {[weak self] in
+                view.showEmptyDataView(title: "no_trigger_zones".localizedString, backgroundColor: Background_Color, buttonText: "add_trigger_zone".localizedString, buttomWidth: SCRXFrom(216), position: .center, bottomMargin: SCRYFrom(100)) {[weak self] in
                     self?.addZone()
+                }
+                view.emptyView?.snp.makeConstraints { make in
+                    make.edges.equalTo(tableView)
                 }
             }
             tableView.isScrollEnabled = false
@@ -130,8 +144,14 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
         deviceAddView.updateHeaderIndex(index)
     }
 
-    private func updateDeviceAddViewHeight(_ height: CGFloat, animated: Bool) {
-        let safeHeight = height <= 0 ? 0 : max(height, SCRYFrom(44))
+    private func updateDeviceAddViewHeight(_ contentHeight: CGFloat, animated: Bool) {
+        deviceAddContentHeight = contentHeight
+        let safeHeight = contentHeight <= 0
+            ? 0
+            : max(contentHeight, 44) + view.safeAreaInsets.bottom
+        guard abs((deviceAddViewHeightConstraint?.constant ?? 0) - safeHeight) > 0.5 else {
+            return
+        }
         deviceAddViewHeightConstraint?.constant = safeHeight
         guard animated else {
             return
@@ -139,6 +159,10 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
         UIView.animate(withDuration: 0.25) {
             self.view.layoutIfNeeded()
         }
+    }
+
+    private func synchronizeDeviceAddViewHeight() {
+        updateDeviceAddViewHeight(deviceAddContentHeight, animated: false)
     }
     
     func deselectZone() {
@@ -246,11 +270,12 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
         
         deviceAddView = GroupPathSequenceDeviceAddView()
         deviceAddView.isHidden = true
+        deviceAddView.contentHeightPolicy = .fixedBase
         deviceAddView.isSequence = false
-        deviceAddView.heightChanged = { [weak self] height in
+        deviceAddView.contentHeightChanged = { [weak self] contentHeight in
             guard let self = self else { return }
             let shouldAnimate = self.allowDeviceAddAnimations && self.view.window != nil
-            self.updateDeviceAddViewHeight(height, animated: shouldAnimate)
+            self.updateDeviceAddViewHeight(contentHeight, animated: shouldAnimate)
         }
         deviceAddView.quickAddView.guideView.steps = [
             .init(imageName: "proximity_lighting_step1", title: "zone_add_step1".localizedString, textColor: SubText_Color),
@@ -285,7 +310,7 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
         tableView.layer.cornerRadius = SCRYFrom(10)
         tableView.register(GroupPathSequencePathHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
         tableView.register(GroupPathSequenceTriggerZoneViewCell.classForCoder(), forCellReuseIdentifier: "cell")
-        tableView.estimatedRowHeight = isIPad ? SCRYFrom(90) : SCRYFrom(60)
+        tableView.estimatedRowHeight = 76
         tableView.rowHeight = UITableView.automaticDimension
         tableView.dataSource = self
         tableView.delegate = self

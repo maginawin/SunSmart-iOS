@@ -171,8 +171,7 @@ extension SpaceData {
             spaceJsonData.updateValue(self.showCCTQuickButtons, forKey: "showCCTQuickButtons")
             spaceJsonData.updateValue(self.controlType.rawValue, forKey: "controlType")
             spaceJsonData.updateValue(self.deviceBlinkMode.rawValue, forKey: "deviceBlinkMode")
-            if !self.triggerZones.isEmpty,
-               let data = try? jsonEncoder.encode(self.triggerZones),
+            if let data = try? jsonEncoder.encode(self.triggerZones),
                let triggerZonesArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
                 spaceJsonData.updateValue(triggerZonesArray, forKey: "triggerZones")
             }

@@ -69,7 +69,7 @@ fileprivate extension SpaceChangeDataType {
 }
 
 extension SpaceData {
-    func commitLocalChangeForCloudSync(site currentSite: SiteData? = nil, changeType: SpaceChangeDataType) {
+    func markLocalChangePendingCloudSync() {
         refreshSummaryCountsFromCurrentMesh()
 
         guard permission == .owner || permission == .editor else {
@@ -78,6 +78,15 @@ extension SpaceData {
         }
 
         markSpaceUploadNeeded()
+    }
+
+    func commitLocalChangeForCloudSync(site currentSite: SiteData? = nil, changeType: SpaceChangeDataType) {
+        markLocalChangePendingCloudSync()
+
+        guard permission == .owner || permission == .editor else {
+            return
+        }
+
         guard let site = currentSite ?? SiteData.load(siteId: siteId) else {
             save()
             return

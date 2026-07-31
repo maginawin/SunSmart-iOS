@@ -9,6 +9,19 @@ import UIKit
 
 class GroupPathSequenceDeviceAddStepView: UIView {
 
+    enum LayoutStyle {
+        case legacy
+        case equalColumns
+    }
+
+    private enum LayoutMetrics {
+        static let equalColumnSpacing: CGFloat = 16
+        static let equalColumnHorizontalInset: CGFloat = 16
+        static let equalColumnTopInset: CGFloat = 40
+        static let equalColumnTitleSpacing: CGFloat = 8
+        static let cornerRadius: CGFloat = 10
+    }
+
     struct StepItem {
         let imageName: String
         let title: String
@@ -19,8 +32,9 @@ class GroupPathSequenceDeviceAddStepView: UIView {
     
     private var stepViews: [StepFunctionView] = []
     private var lineViews: [UIView] = []
+    private let layoutStyle: LayoutStyle
     
-    var lineWidth: CGFloat = SCRXFrom(40)
+    var lineWidth: CGFloat
     
     var steps: [StepItem] = [] {
         didSet {
@@ -28,7 +42,13 @@ class GroupPathSequenceDeviceAddStepView: UIView {
         }
     }
 
-    init(frame: CGRect = .zero, steps: [StepItem]) {
+    init(
+        frame: CGRect = .zero,
+        steps: [StepItem],
+        layoutStyle: LayoutStyle = .legacy
+    ) {
+        self.layoutStyle = layoutStyle
+        lineWidth = layoutStyle == .equalColumns ? 40 : SCRXFrom(40)
         super.init(frame: frame)
         
         self.steps = steps
@@ -40,28 +60,51 @@ class GroupPathSequenceDeviceAddStepView: UIView {
     }
 
     private func setupUI() {
-        backgroundColor = .white
-        layer.cornerRadius = SCRYFrom(10)
+        switch layoutStyle {
+        case .legacy:
+            backgroundColor = .white
+            layer.cornerRadius = SCRYFrom(LayoutMetrics.cornerRadius)
+        case .equalColumns:
+            backgroundColor = .clear
+            layer.cornerRadius = 0
+        }
 
         stackView.alignment = .top
-        stackView.distribution = .fill
-        if isIPad {
-            stackView.spacing = SCRXFrom(30)
-        }else {
-            stackView.spacing = SCRXFrom(20)
-        }
+        configureStackView()
         addSubview(stackView)
-        stackView.snp.makeConstraints { make in
-            make.centerX.equalToSuperview()
-            make.centerY.equalToSuperview()
-            make.left.greaterThanOrEqualTo(SCRXFrom(10))
-            make.right.lessThanOrEqualTo(SCRXFrom(-10))
-            make.width.lessThanOrEqualTo(isIPad ? SCRXFrom(600) : SCRXFrom(320))
-            make.top.greaterThanOrEqualToSuperview()
-            make.bottom.lessThanOrEqualToSuperview()
-        }
+        constrainStackView()
 
         buildSteps()
+    }
+
+    private func configureStackView() {
+        switch layoutStyle {
+        case .legacy:
+            stackView.distribution = .fill
+            stackView.spacing = isIPad ? SCRXFrom(30) : SCRXFrom(20)
+        case .equalColumns:
+            stackView.distribution = .fillEqually
+            stackView.spacing = LayoutMetrics.equalColumnSpacing
+        }
+    }
+
+    private func constrainStackView() {
+        stackView.snp.makeConstraints { make in
+            switch layoutStyle {
+            case .legacy:
+                make.centerY.equalToSuperview()
+                make.top.greaterThanOrEqualToSuperview()
+                make.bottom.lessThanOrEqualToSuperview()
+                make.centerX.equalToSuperview()
+                make.left.greaterThanOrEqualTo(SCRXFrom(10))
+                make.right.lessThanOrEqualTo(SCRXFrom(-10))
+                make.width.lessThanOrEqualTo(isIPad ? SCRXFrom(600) : SCRXFrom(320))
+            case .equalColumns:
+                make.top.equalToSuperview().offset(LayoutMetrics.equalColumnTopInset)
+                make.bottom.lessThanOrEqualToSuperview()
+                make.left.right.equalToSuperview().inset(LayoutMetrics.equalColumnHorizontalInset)
+            }
+        }
     }
 
     private func buildSteps() {
@@ -71,12 +114,15 @@ class GroupPathSequenceDeviceAddStepView: UIView {
         
         stepViews.removeAll()
         lineViews.removeAll()
+        let titleSpacing = layoutStyle == .equalColumns ? LayoutMetrics.equalColumnTitleSpacing : SCRYFrom(8)
         
         for step in steps {
             let view = StepFunctionView(
                 imageName: step.imageName,
                 title: step.title,
-                titleColor: step.textColor
+                titleColor: step.textColor,
+                constrainsWidth: layoutStyle == .legacy,
+                titleSpacing: titleSpacing
             )
             stackView.addArrangedSubview(view)
             stepViews.append(view)
@@ -98,14 +144,15 @@ class GroupPathSequenceDeviceAddStepView: UIView {
             lineViews.append(line)
 
             let left = stepViews[i]
-//            let right = stepViews[i + 1]
 
             line.snp.makeConstraints { make in
                 make.centerY.equalTo(left.imageView.snp.centerY)
                 make.width.equalTo(lineWidth)
-                make.centerX.equalTo(left.snp.right)
-//                make.left.equalTo(left.snp.right).offset(6)
-//                make.right.equalTo(right.snp.left).offset(-6)
+                if layoutStyle == .equalColumns {
+                    make.centerX.equalTo(left.snp.right).offset(LayoutMetrics.equalColumnSpacing / 2)
+                } else {
+                    make.centerX.equalTo(left.snp.right)
+                }
                 make.height.equalTo(1)
             }
         }
@@ -130,12 +177,20 @@ class StepFunctionView: UIView {
     private let minWidth: CGFloat = SCRXFrom(68)
     private let maxWidth: CGFloat = isIPad ? SCRXFrom(150) : SCRXFrom(107)
 
-    init(imageName: String, title: String, titleColor: UIColor) {
+    init(
+        imageName: String,
+        title: String,
+        titleColor: UIColor,
+        constrainsWidth: Bool = true,
+        titleSpacing: CGFloat
+    ) {
         super.init(frame: .zero)
 
-        snp.makeConstraints { make in
-            make.width.greaterThanOrEqualTo(minWidth)
-            make.width.lessThanOrEqualTo(maxWidth).priority(.required)
+        if constrainsWidth {
+            snp.makeConstraints { make in
+                make.width.greaterThanOrEqualTo(minWidth)
+                make.width.lessThanOrEqualTo(maxWidth).priority(.required)
+            }
         }
         
         imageView.image = UIImage(named: imageName)
@@ -153,7 +208,7 @@ class StepFunctionView: UIView {
 
         addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
-            make.top.equalTo(imageView.snp.bottom).offset(SCRYFrom(8))
+            make.top.equalTo(imageView.snp.bottom).offset(titleSpacing)
             make.leading.trailing.bottom.equalToSuperview()
         }
     }

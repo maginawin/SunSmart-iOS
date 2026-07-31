@@ -94,7 +94,7 @@ class GroupPathSequencePathViewCell: UITableViewCell {
     private var collectionView: UICollectionView!
     
     private let colCount: Int = isIPad ? 8 : 5
-    private let itemHeight = isIPad ? SCRYFrom(90) : SCRYFrom(62)
+    private let itemHeight = GroupPathSequenceDeviceItemMetrics.sequenceItemHeight
     var path: GroupProximityLightingSequencePath!
     private var pathIndex: Int = 0
     
@@ -143,12 +143,17 @@ class GroupPathSequencePathViewCell: UITableViewCell {
         flowLayout.colCount = colCount
         flowLayout.itemHeight = itemHeight
         flowLayout.minimumInteritemSpacing = SCRXFrom(18)
-        flowLayout.minimumLineSpacing = SCRYFrom(8)
+        flowLayout.minimumLineSpacing = GroupPathSequenceDeviceItemMetrics.lineSpacing
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-        collectionView.contentInset = UIEdgeInsets(top: SCRYFrom(10), left: SCRXFrom(17), bottom: SCRYFrom(10), right: SCRXFrom(18))
+        collectionView.contentInset = UIEdgeInsets(
+            top: GroupPathSequenceDeviceItemMetrics.sequenceVerticalInset,
+            left: SCRXFrom(17),
+            bottom: GroupPathSequenceDeviceItemMetrics.sequenceVerticalInset,
+            right: SCRXFrom(18)
+        )
         collectionView.backgroundColor = .white
-        collectionView.layer.cornerRadius = SCRYFrom(10)
+        collectionView.layer.cornerRadius = 10
         collectionView.layer.borderColor = Yellow_Color.cgColor
         collectionView.dataSource = self
         collectionView.delegate = self
@@ -165,7 +170,9 @@ class GroupPathSequencePathViewCell: UITableViewCell {
             make.left.equalTo(SCRXFrom(8))
             make.right.equalTo(SCRXFrom(-8))
             make.top.bottom.equalToSuperview()
-            make.height.equalTo(SCRYFrom(82))
+            make.height.equalTo(
+                itemHeight + GroupPathSequenceDeviceItemMetrics.sequenceVerticalInset * 2
+            )
         }
     }
     
@@ -280,12 +287,6 @@ extension GroupPathSequencePathViewCell: UICollectionViewDataSource, UICollectio
         }
     }
     
-    //    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-    //        var itemW = ((collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right) - CGFloat(colCount - 1) * flowLayout.minimumInteritemSpacing) / CGFloat(colCount)
-    //        itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
-    //        return CGSize(width: itemW, height: SCRYFrom(62))
-    //    }
-    
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
         if indexPath.item == 0 || indexPath.item == collectionView.numberOfItems(inSection: indexPath.section) - 1 { // Add
@@ -315,13 +316,13 @@ extension GroupPathSequencePathViewCell: UICollectionViewDataSource, UICollectio
             }
             
             
-            var point = CGPoint(x: cell.frame.minX, y: cell.frame.maxY + SCRYFrom(8))
+            var point = CGPoint(x: cell.frame.minX, y: cell.frame.maxY + 8)
             if point.x + menuWidth > collectionView.frame.maxX {
                 point.x -= (menuWidth - cell.width) * 0.5
             }
             let anchorPoint = collectionView.convert(point, to: UIApplication.shared.keyWindow())
             
-            TitleSelectView.show(titles: options.map({ $0.name }), style: .default, anchorPoint: anchorPoint, menuWidth: menuWidth, itemHeight: SCRYFrom(30), titleFont: UIFont.systemFont(ofSize: 13, weight: .light)) {[weak self] index in
+            TitleSelectView.show(titles: options.map({ $0.name }), style: .default, anchorPoint: anchorPoint, menuWidth: menuWidth, itemHeight: 30, titleFont: UIFont.systemFont(ofSize: 13, weight: .light)) {[weak self] index in
                 guard let self = self else { return }
                 print(options[index].name)
                 let type = options[index]
@@ -427,27 +428,24 @@ class GroupPathSequencePathItem: UICollectionViewCell {
         fatalError("init(coder:) has not been implemented")
     }
 
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        boxView.layer.cornerRadius = self.width * 0.5
-    }
-    
     private func setupUI() {
         
         sequenceLabel = UILabel(text: "1-1", textColor: Message_Color, fontSize: 12, fontWeight: .light)
         contentView.addSubview(sequenceLabel)
         sequenceLabel.snp.makeConstraints { make in
             make.centerX.top.equalToSuperview()
+            make.height.equalTo(GroupPathSequenceDeviceItemMetrics.sequenceLabelHeight)
         }
         
         boxView = UIView()
         boxView.layer.borderColor = RGB(241, 242, 244).cgColor
         boxView.layer.borderWidth = 1
+        boxView.layer.cornerRadius = GroupPathSequenceDeviceItemMetrics.controlCornerRadius
         //        boxView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(boxViewTapGesture)))
         contentView.addSubview(boxView)
         boxView.snp.makeConstraints { make in
-            make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(boxView.snp.width)
+            make.centerX.bottom.equalToSuperview()
+            make.width.height.equalTo(GroupPathSequenceDeviceItemMetrics.controlSize)
         }
         
         iconImageView = UIImageView(image: UIImage(named: "path_device"))
@@ -455,8 +453,8 @@ class GroupPathSequencePathItem: UICollectionViewCell {
         boxView.addSubview(iconImageView)
         iconImageView.snp.makeConstraints { make in
             make.centerX.equalToSuperview()
-            make.top.equalTo(SCRYFrom(isIPad ? 7 : 3))
-            make.height.equalTo(iconImageView.height)
+            make.top.equalTo(GroupPathSequenceDeviceItemMetrics.imageTopSpacing)
+            make.width.height.equalTo(GroupPathSequenceDeviceItemMetrics.imageSize)
         }
         
         nameLabel = AdaptiveTextView()
@@ -469,14 +467,11 @@ class GroupPathSequencePathItem: UICollectionViewCell {
 //        nameLabel.lineBreakMode = .byTruncatingHead
         boxView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(6))
-            make.right.equalTo(SCRXFrom(-6))
-//            make.bottom.equalTo(SCRYFrom(-7))
-            if isIPad {
-                make.top.equalTo(iconImageView.snp.bottom).offset(SCRYFrom(8))
-            }else {
-                make.top.equalTo(iconImageView.snp.bottom).offset(SCRYFrom(2))
-            }
+            make.left.equalTo(6)
+            make.right.equalTo(-6)
+            make.top.equalTo(iconImageView.snp.bottom).offset(
+                GroupPathSequenceDeviceItemMetrics.imageNameSpacing
+            )
             make.bottom.equalToSuperview()
         }
         
@@ -496,6 +491,7 @@ class GroupPathSequencePathAddItem: UICollectionViewCell {
     
     var boxView: UIView!
     var addImageView: UIImageView!
+    private let addItemDashedBorderLayer = CAShapeLayer()
     
     var viewLongPressCallback: (()->Void)?
     
@@ -510,16 +506,21 @@ class GroupPathSequencePathAddItem: UICollectionViewCell {
         longPress.minimumPressDuration = 0.5
         addGestureRecognizer(longPress)
         
-        boxView.layoutIfNeeded()
-        boxView.layer.cornerRadius = boxView.height * 0.5
-        
-        if !(boxView.layer.sublayers?.contains(where: { $0.name == "deshed" }) ?? false) {
-            boxView.addDashedBorder()
-        }
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        contentView.layoutIfNeeded()
+        guard !boxView.bounds.isEmpty else { return }
+
+        boxView.layer.cornerRadius = GroupPathSequenceDeviceItemMetrics.controlCornerRadius
+        let borderBounds = boxView.bounds.insetBy(dx: 0.5, dy: 0.5)
+        addItemDashedBorderLayer.frame = boxView.bounds
+        addItemDashedBorderLayer.path = UIBezierPath(ovalIn: borderBounds).cgPath
     }
     
 
@@ -532,11 +533,18 @@ class GroupPathSequencePathAddItem: UICollectionViewCell {
     
     private func setupUI() {
         boxView = UIView()
+        boxView.layer.cornerRadius = GroupPathSequenceDeviceItemMetrics.controlCornerRadius
+        addItemDashedBorderLayer.name = "deshed"
+        addItemDashedBorderLayer.strokeColor = RGB(174, 186, 226).cgColor
+        addItemDashedBorderLayer.fillColor = nil
+        addItemDashedBorderLayer.lineWidth = 1
+        addItemDashedBorderLayer.lineDashPattern = [3, 3]
+        boxView.layer.addSublayer(addItemDashedBorderLayer)
         //        boxView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(boxViewTapGesture)))
         contentView.addSubview(boxView)
         boxView.snp.makeConstraints { make in
-            make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(boxView.snp.width)
+            make.centerX.bottom.equalToSuperview()
+            make.width.height.equalTo(GroupPathSequenceDeviceItemMetrics.controlSize)
         }
         
         addImageView = UIImageView(image: UIImage(named: "path_item_add"))

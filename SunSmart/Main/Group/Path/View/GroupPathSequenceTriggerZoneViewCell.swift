@@ -58,15 +58,18 @@ class GroupPathSequenceTriggerZoneViewCell: UITableViewCell {
     }
     
     override func systemLayoutSizeFitting(_ targetSize: CGSize, withHorizontalFittingPriority horizontalFittingPriority: UILayoutPriority, verticalFittingPriority: UILayoutPriority) -> CGSize {
-
-        var itemW = ((targetSize.width - collectionView.contentInset.left - collectionView.contentInset.right) - CGFloat(colCount - 1) * flowLayout.minimumInteritemSpacing) / CGFloat(colCount)
-        itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
-                
-        let row = ceil(Double(zone.nodes.count) / Double(colCount))
-        
-        let height = max(row * itemW + (row - 1) * flowLayout.minimumLineSpacing + collectionView.contentInset.top + collectionView.contentInset.bottom + flowLayout.sectionInset.top + flowLayout.sectionInset.bottom, SCRYFrom(60))
+        let rowCount = Int(ceil(Double(zone.nodes.count) / Double(colCount)))
+        let contentHeight =
+            CGFloat(rowCount) * GroupPathSequenceDeviceItemMetrics.controlSize
+            + CGFloat(max(rowCount - 1, 0)) * flowLayout.minimumLineSpacing
+            + flowLayout.sectionInset.top
+            + flowLayout.sectionInset.bottom
+        let height = max(
+            contentHeight,
+            GroupPathSequenceDeviceItemMetrics.triggerZoneMinimumHeight
+        )
         return CGSizeMake(targetSize.width, height)
-        }
+    }
     
     @objc private func collectionViewDidTapAction(sender: UIGestureRecognizer) {
         if !isSelect {
@@ -88,13 +91,18 @@ class GroupPathSequenceTriggerZoneViewCell: UITableViewCell {
         
         flowLayout = UICollectionViewFlowLayout()
         flowLayout.minimumInteritemSpacing = SCRXFrom(18)
-        flowLayout.minimumLineSpacing = SCRYFrom(8)
-        flowLayout.sectionInset = UIEdgeInsets(top: SCRYFrom(16), left: 0, bottom: SCRYFrom(16), right: 0)
+        flowLayout.minimumLineSpacing = GroupPathSequenceDeviceItemMetrics.lineSpacing
+        flowLayout.sectionInset = UIEdgeInsets(
+            top: GroupPathSequenceDeviceItemMetrics.triggerZoneSectionInset,
+            left: 0,
+            bottom: GroupPathSequenceDeviceItemMetrics.triggerZoneSectionInset,
+            right: 0
+        )
         
         collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
         collectionView.contentInset = UIEdgeInsets(top: 0, left: SCRXFrom(17), bottom: 0, right: SCRXFrom(18))
         collectionView.backgroundColor = .white
-        collectionView.layer.cornerRadius = SCRYFrom(10)
+        collectionView.layer.cornerRadius = 10
         collectionView.layer.borderColor = Yellow_Color.cgColor
         collectionView.dataSource = self
         collectionView.delegate = self
@@ -110,7 +118,6 @@ class GroupPathSequenceTriggerZoneViewCell: UITableViewCell {
             make.right.equalTo(SCRXFrom(-8))
             make.top.equalToSuperview()
             make.bottom.equalToSuperview().priority(.medium)
-//            make.height.equalTo(SCRYFrom(60))
         }
         
         noDataLabel = UILabel(text: "No_Data".localizedString, textColor: Message_Color, fontSize: 14, fontWeight: .light)
@@ -147,7 +154,10 @@ extension GroupPathSequenceTriggerZoneViewCell: UICollectionViewDataSource, UICo
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         var itemW = ((collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right) - CGFloat(colCount - 1) * flowLayout.minimumInteritemSpacing) / CGFloat(colCount)
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
-        return CGSize(width: itemW, height: itemW)
+        return CGSize(
+            width: itemW,
+            height: GroupPathSequenceDeviceItemMetrics.controlSize
+        )
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
@@ -161,13 +171,13 @@ extension GroupPathSequenceTriggerZoneViewCell: UICollectionViewDataSource, UICo
         let menuWidth = SCRXFrom(71)
         let options: [PathItemOptions] = [.identify, .remove]
         
-        var point = CGPoint(x: cell.frame.minX, y: cell.frame.maxY + SCRYFrom(8))
+        var point = CGPoint(x: cell.frame.minX, y: cell.frame.maxY + 8)
         if point.x + menuWidth > collectionView.frame.maxX {
             point.x -= (menuWidth - cell.width) * 0.5
         }
         let anchorPoint = collectionView.convert(point, to: UIApplication.shared.keyWindow())
         
-        TitleSelectView.show(titles: options.map({ $0.name }), style: .default, anchorPoint: anchorPoint, menuWidth: menuWidth, itemHeight: SCRYFrom(30), titleFont: UIFont.systemFont(ofSize: 13, weight: .light)) {[weak self] index in
+        TitleSelectView.show(titles: options.map({ $0.name }), style: .default, anchorPoint: anchorPoint, menuWidth: menuWidth, itemHeight: 30, titleFont: UIFont.systemFont(ofSize: 13, weight: .light)) {[weak self] index in
             guard let self = self else { return }
             print(options[index].name)
             let type = options[index]
