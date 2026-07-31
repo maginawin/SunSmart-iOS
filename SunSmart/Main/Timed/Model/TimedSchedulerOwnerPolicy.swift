@@ -25,3 +25,65 @@ enum TimedSchedulerOwnerPolicy {
         return .lightLC
     }
 }
+
+enum TimedSchedulerCacheRepairPolicy {
+    static func needsAuthoritativeRead(
+        modelKnownStates: [Bool]
+    ) -> Bool {
+        return !modelKnownStates.isEmpty
+            && modelKnownStates.contains(false)
+    }
+}
+
+enum TimedSchedulerOwnerEntryState {
+    case unknownModel
+    case missingEntry
+    case matchingEntry
+    case mismatchingEntry
+}
+
+enum TimedSchedulerCleanupEntryState {
+    case unknownModel
+    case clearEntry
+    case residualEntry
+}
+
+enum TimedSchedulerSyncDifference: String {
+    case notApplicable = "not-applicable"
+    case synchronized
+    case ownerModelUnknown = "owner-model-unknown"
+    case ownerEntryMissing = "owner-entry-missing"
+    case ownerEntryMismatch = "owner-entry-mismatch"
+    case cleanupModelUnknown = "cleanup-model-unknown"
+    case cleanupEntryResidual = "cleanup-entry-residual"
+
+    var needsSync: Bool {
+        return self != .notApplicable && self != .synchronized
+    }
+}
+
+enum TimedSchedulerSyncPolicy {
+    static func evaluate(
+        ownerState: TimedSchedulerOwnerEntryState,
+        cleanupStates: [TimedSchedulerCleanupEntryState]
+    ) -> TimedSchedulerSyncDifference {
+        switch ownerState {
+        case .unknownModel:
+            return .ownerModelUnknown
+        case .missingEntry:
+            return .ownerEntryMissing
+        case .mismatchingEntry:
+            return .ownerEntryMismatch
+        case .matchingEntry:
+            break
+        }
+
+        if cleanupStates.contains(where: { $0 == .unknownModel }) {
+            return .cleanupModelUnknown
+        }
+        if cleanupStates.contains(where: { $0 == .residualEntry }) {
+            return .cleanupEntryResidual
+        }
+        return .synchronized
+    }
+}

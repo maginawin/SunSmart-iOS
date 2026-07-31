@@ -3,11 +3,12 @@ import Foundation
 @main
 struct TimedSchedulerSingleOwnerContractTests {
     static func main() throws {
-        guard CommandLine.arguments.count == 10 else {
+        guard CommandLine.arguments.count == 12 else {
             fatalError(
                 "Expected Node+SupportModels, Node+Messages, MeshScheduleServer, "
                 + "Node+MessageHandles, MeshNetwork+SunSmart, ScheduleServer, "
-                + "GroupServer, Scheduler and DeviceGroupDeferredSyncPlanner paths"
+                + "GroupServer, Scheduler, DeviceGroupDeferredSyncPlanner, "
+                + "MeshDatabase and TimedViewController paths"
             )
         }
 
@@ -20,6 +21,8 @@ struct TimedSchedulerSingleOwnerContractTests {
         let groupServer = try source(at: 7)
         let scheduler = try source(at: 8)
         let groupSyncPlanner = try source(at: 9)
+        let meshDatabase = try source(at: 10)
+        let timedViewController = try source(at: 11)
 
         testOwnerPolicy(in: supportModels)
         testSetAndDeleteRouting(
@@ -39,6 +42,8 @@ struct TimedSchedulerSingleOwnerContractTests {
             meshScheduleServer: meshScheduleServer,
             nodeMessages: nodeMessages
         )
+        testSchedulerModelPersistence(in: meshDatabase)
+        testUnknownSchedulerModelRepair(in: timedViewController)
 
         print("TimedSchedulerSingleOwnerContractTests passed")
     }
@@ -190,6 +195,14 @@ struct TimedSchedulerSingleOwnerContractTests {
         require(
             needsSync.contains("guard let cleanupEntrys"),
             "A failed cleanup with unknown cache state must remain pending"
+        )
+        require(
+            needsSync.contains("TimedSchedulerSyncPolicy.evaluate"),
+            "needsSync must use the tested per-Model difference policy"
+        )
+        require(
+            needsSync.contains("schedulerSyncDifference"),
+            "Timed diagnostics and needsSync must share one difference calculation"
         )
 
         let needsDelete = section(
@@ -385,6 +398,30 @@ struct TimedSchedulerSingleOwnerContractTests {
             !getSchedule.contains("node.schedulerSetupModel!"),
             "Scheduler Action Get must not jump back to the first Scheduler"
         )
+        require(
+            getSchedule.contains("SchedulerModelReadCompletionEvaluator.evaluate"),
+            "Schedule read completion must classify every requested Node from all Register and Action handles"
+        )
+        require(
+            getSchedule.contains(".parentNode?")
+                && getSchedule.contains(".primaryUnicastAddress"),
+            "Schedule read completion must aggregate Element handles by primary Node"
+        )
+        require(
+            getSchedule.contains("if index == nil"),
+            "Only authoritative full reads may invalidate partial Scheduler Model cache"
+        )
+        require(
+            getSchedule.contains("modelEntrys.removeValue(forKey: model)"),
+            "A failed authoritative read must keep the affected Node state unknown for retry"
+        )
+        require(
+            getSchedule.contains("schedulerActionSnapshots")
+                && getSchedule.contains("node.schedulerActions = snapshot")
+                && getSchedule.contains("node.scheduleIds = snapshot.keys.sorted()")
+                && getSchedule.contains("node.savePropertys()"),
+            "A failed authoritative read must restore the legacy projection while persisting unknown per-Model state"
+        )
 
         let schedulerStatus = section(
             in: nodeMessages,
@@ -412,6 +449,95 @@ struct TimedSchedulerSingleOwnerContractTests {
         require(
             !rebuildSchedulerActions.contains("schedulerSetupModel(for:"),
             "The SDK cache must not guess an App Group/Profile owner from Action"
+        )
+    }
+
+    private static func testSchedulerModelPersistence(in source: String) {
+        let loadProperties = section(
+            in: source,
+            from: "// 解析设备所有日程数据 [model: 16个日程]",
+            to: "if let data = row[PropertyExpressionKey.lightLCPropertys]"
+        )
+        require(
+            loadProperties.contains("SchedulerModelCachePersistence.decode"),
+            "Scheduler Model persistence must use the backward-compatible codec"
+        )
+        require(
+            loadProperties.contains("case .corrupted"),
+            "Corrupted Scheduler Model persistence must be handled explicitly"
+        )
+        require(
+            loadProperties.contains("corruptedSchedulerModelActionsData"),
+            "Corrupted Scheduler Model persistence must retain the original blob"
+        )
+        require(
+            !loadProperties.contains(
+                "try? jsonDecoder.decode([ScheduleModelDataContainer].self"
+            ),
+            "Scheduler Model persistence decode failures must not be swallowed"
+        )
+
+        let saveProperties = section(
+            in: source,
+            from: "// 所有model日程数据 [model: 16个日程]",
+            to: "let lightLCPropertysData"
+        )
+        require(
+            saveProperties.contains("SchedulerModelCachePersistence.dataForSaving"),
+            "Scheduler Model saves must preserve corrupted data until authoritative state exists"
+        )
+        require(
+            saveProperties.contains("corruptedSchedulerModelActionsData"),
+            "Scheduler Model saves must pass the retained corrupted blob to the codec"
+        )
+    }
+
+    private static func testUnknownSchedulerModelRepair(in source: String) {
+        let repair = section(
+            in: source,
+            from: "private func repairUnknownSchedulerModelCachesIfNeeded()",
+            to: "private func debugPrintScheduleDiagnostics()"
+        )
+        require(
+            repair.contains(
+                "TimedSchedulerCacheRepairPolicy.needsAuthoritativeRead"
+            ),
+            "Timed must repair nodes whose per-Model Scheduler state is unknown"
+        )
+        require(
+            repair.contains("MeshAPI.getSchedule(")
+                && repair.contains("index: nil"),
+            "Timed repair must read authoritative Scheduler Registers before comparing"
+        )
+        require(
+            repair.contains("MeshProxyMessageCommand.shared.isBusy"),
+            "Timed repair must not replace callbacks of an existing Mesh command"
+        )
+        require(
+            repair.contains("node.deviceType != .dongle"),
+            "Ordinary Timed migration must not consume Dongle collection Scheduler state"
+        )
+        require(
+            repair.contains("self.updateUI()"),
+            "Timed must recalculate sync markers after authoritative reads finish"
+        )
+
+        let diagnostics = section(
+            in: source,
+            from: "private func debugPrintScheduleDiagnostics()",
+            to: "#endif"
+        )
+        require(
+            diagnostics.contains("schedulerSyncDifference"),
+            "Timed diagnostics must print the same difference used by needsSync"
+        )
+        require(
+            diagnostics.contains("allSchedulerModelEntrys[model]"),
+            "Timed diagnostics must print per-Model Scheduler state"
+        )
+        require(
+            diagnostics.contains("schedulerModelCacheDecodeError"),
+            "Timed diagnostics must expose persistence decode failures"
         )
     }
 

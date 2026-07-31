@@ -1562,23 +1562,52 @@ extension Schedule {
     }
     
     func needsSync(on node: Node, contextGroup: Group? = nil) -> Bool {
+        return schedulerSyncDifference(
+            on: node,
+            contextGroup: contextGroup
+        ).needsSync
+    }
+
+    func schedulerSyncDifference(
+        on node: Node,
+        contextGroup: Group? = nil
+    ) -> TimedSchedulerSyncDifference {
         let owner = schedulerModelOwner(on: node, contextGroup: contextGroup)
         guard let schedulerSetupModel = node.schedulerSetupModel(for: owner),
               targets(node: node, contextGroup: contextGroup) else {
-            return false
+            return .notApplicable
         }
-        guard let nodeEntry = node.allSchedulerModelEntrys[schedulerSetupModel]?[id] else {
-            return true
+
+        let ownerState: TimedSchedulerOwnerEntryState
+        if let ownerEntrys = node.allSchedulerModelEntrys[schedulerSetupModel] {
+            if let nodeEntry = ownerEntrys[id] {
+                ownerState = nodeEntry == schedulerEntry
+                    ? .matchingEntry
+                    : .mismatchingEntry
+            } else {
+                ownerState = .missingEntry
+            }
+        } else {
+            ownerState = .unknownModel
         }
+
+        var cleanupStates: [TimedSchedulerCleanupEntryState] = []
         for model in node.schedulerCleanupModels(for: owner) {
             guard let cleanupEntrys = node.allSchedulerModelEntrys[model] else {
-                return true
+                cleanupStates.append(.unknownModel)
+                continue
             }
             if cleanupEntrys[id]?.isValid == true {
-                return true
+                cleanupStates.append(.residualEntry)
+            } else {
+                cleanupStates.append(.clearEntry)
             }
         }
-        return !(nodeEntry == schedulerEntry)
+
+        return TimedSchedulerSyncPolicy.evaluate(
+            ownerState: ownerState,
+            cleanupStates: cleanupStates
+        )
     }
     
     func needsDelete(from node: Node, contextGroup: Group? = nil) -> Bool {
