@@ -2430,6 +2430,14 @@
 		C8F6A3022FA3000000000002 /* WiFiGatewayV19Timing.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A3052FA3000000000005 /* WiFiGatewayV19Timing.swift */; };
 		C8F6A3032FA3000000000003 /* WiFiGatewayV19Timing.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A3052FA3000000000005 /* WiFiGatewayV19Timing.swift */; };
 		C8F6A3042FA3000000000004 /* WiFiGatewayV19Timing.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A3052FA3000000000005 /* WiFiGatewayV19Timing.swift */; };
+		C8FA30112FD0000100000001 /* GatewayAssociatedSpaceCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA30152FD0000100000005 /* GatewayAssociatedSpaceCandidatePolicy.swift */; };
+		C8FA30122FD0000100000002 /* GatewayAssociatedSpaceCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA30152FD0000100000005 /* GatewayAssociatedSpaceCandidatePolicy.swift */; };
+		C8FA30132FD0000100000003 /* GatewayAssociatedSpaceCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA30152FD0000100000005 /* GatewayAssociatedSpaceCandidatePolicy.swift */; };
+		C8FA30142FD0000100000004 /* GatewayAssociatedSpaceCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA30152FD0000100000005 /* GatewayAssociatedSpaceCandidatePolicy.swift */; };
+		C8FA30212FD0000200000001 /* SiteGatewayAssociationConsistencyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA30252FD0000200000005 /* SiteGatewayAssociationConsistencyPolicy.swift */; };
+		C8FA30222FD0000200000002 /* SiteGatewayAssociationConsistencyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA30252FD0000200000005 /* SiteGatewayAssociationConsistencyPolicy.swift */; };
+		C8FA30232FD0000200000003 /* SiteGatewayAssociationConsistencyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA30252FD0000200000005 /* SiteGatewayAssociationConsistencyPolicy.swift */; };
+		C8FA30242FD0000200000004 /* SiteGatewayAssociationConsistencyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA30252FD0000200000005 /* SiteGatewayAssociationConsistencyPolicy.swift */; };
 		C8F6A3112FA3000000000001 /* WiFiGatewayCredentialMutationReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A3152FA3000000000005 /* WiFiGatewayCredentialMutationReducer.swift */; };
 		C8F6A3122FA3000000000002 /* WiFiGatewayCredentialMutationReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A3152FA3000000000005 /* WiFiGatewayCredentialMutationReducer.swift */; };
 		C8F6A3132FA3000000000003 /* WiFiGatewayCredentialMutationReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A3152FA3000000000005 /* WiFiGatewayCredentialMutationReducer.swift */; };
@@ -3155,6 +3163,8 @@
 		C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewaySectionHeaderView.swift; sourceTree = "<group>"; };
 		C8F89D372E3B6F8500FA1544 /* GatewayAPNMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayAPNMenuView.swift; sourceTree = "<group>"; };
 		C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayModel.swift; sourceTree = "<group>"; };
+		C8FA30152FD0000100000005 /* GatewayAssociatedSpaceCandidatePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayAssociatedSpaceCandidatePolicy.swift; sourceTree = "<group>"; };
+		C8FA30252FD0000200000005 /* SiteGatewayAssociationConsistencyPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewayAssociationConsistencyPolicy.swift; sourceTree = "<group>"; };
 		C8FA10012F11000100000001 /* SimulateFaultAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulateFaultAction.swift; sourceTree = "<group>"; };
 		C8FA10022F11000200000001 /* SimulateFaultSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulateFaultSectionView.swift; sourceTree = "<group>"; };
 		C8FA10032F11000300000001 /* SimulateFaultViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulateFaultViewController.swift; sourceTree = "<group>"; };
@@ -4796,6 +4806,7 @@
 				C8A100012FF0000000000001 /* LabSettings.swift */,
 				C8A101522FF0000000000152 /* LightGroupControlCommandSender.swift */,
 				C8D6636E2BFEDDC900BFF81A /* ImportData.swift */,
+				C8FA30252FD0000200000005 /* SiteGatewayAssociationConsistencyPolicy.swift */,
 				C8D663702BFEDDE000BFF81A /* ExportData.swift */,
 				C89B40CD2CEB37C90082A89A /* MeshDistributionData.swift */,
 				C8B4DE202E540A1E00AF6CE0 /* GlobalData.swift */,
@@ -5101,6 +5112,7 @@
 			isa = PBXGroup;
 			children = (
 				C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */,
+				C8FA30152FD0000100000005 /* GatewayAssociatedSpaceCandidatePolicy.swift */,
 				C8A900012F80000100000001 /* WiFiSSIDProvider.swift */,
 				C8A901012F81000100000001 /* GatewayServerAuthorizationService.swift */,
 				C8F6A2052FA3000000000005 /* WiFiGatewayTimeSyncCoordinator.swift */,
@@ -5787,6 +5799,7 @@
 				C88554192DE6B44C00C8B688 /* ScheduleScenesView.swift in Sources */,
 				C885541A2DE6B44C00C8B688 /* ShareAuthoritySpaceViewCell.swift in Sources */,
 				C8F89D3E2E3CBD1F00FA1544 /* GatewayModel.swift in Sources */,
+				C8FA30112FD0000100000001 /* GatewayAssociatedSpaceCandidatePolicy.swift in Sources */,
 				C885541B2DE6B44C00C8B688 /* DaylightSensorInstructionsViewCell.swift in Sources */,
 				C885541C2DE6B44C00C8B688 /* FSCalendarStickyHeader.m in Sources */,
 				C885541D2DE6B44C00C8B688 /* EnergyHarvestHistoryViewCell.swift in Sources */,
@@ -6156,6 +6169,7 @@
 				C88554EA2DE6B44C00C8B688 /* Profile.swift in Sources */,
 				C8C3A15A2E37509800876028 /* GatewayAssociatedSpacesViewCell.swift in Sources */,
 				C88554EB2DE6B44C00C8B688 /* ImportData.swift in Sources */,
+				C8FA30212FD0000200000001 /* SiteGatewayAssociationConsistencyPolicy.swift in Sources */,
 				C88554EC2DE6B44C00C8B688 /* DeviceLightViewController.swift in Sources */,
 				C8B6CE732EE7EFE600C8AE32 /* DevicePowerCalibrationInstructionsController.swift in Sources */,
 				C88554ED2DE6B44C00C8B688 /* FirmwareData.swift in Sources */,
@@ -6387,6 +6401,7 @@
 				C886E06A2E30DE4900D0C3A6 /* ScheduleScenesView.swift in Sources */,
 				C886E06B2E30DE4900D0C3A6 /* ShareAuthoritySpaceViewCell.swift in Sources */,
 				C8F89D3D2E3CBD1F00FA1544 /* GatewayModel.swift in Sources */,
+				C8FA30122FD0000100000002 /* GatewayAssociatedSpaceCandidatePolicy.swift in Sources */,
 				C886E06C2E30DE4900D0C3A6 /* DaylightSensorInstructionsViewCell.swift in Sources */,
 				C886E06D2E30DE4900D0C3A6 /* FSCalendarStickyHeader.m in Sources */,
 				C886E06E2E30DE4900D0C3A6 /* EnergyHarvestHistoryViewCell.swift in Sources */,
@@ -6757,6 +6772,7 @@
 				C886E1462E30DE4900D0C3A6 /* Profile.swift in Sources */,
 				C8C3A1582E37509800876028 /* GatewayAssociatedSpacesViewCell.swift in Sources */,
 				C886E1472E30DE4900D0C3A6 /* ImportData.swift in Sources */,
+				C8FA30222FD0000200000002 /* SiteGatewayAssociationConsistencyPolicy.swift in Sources */,
 				C886E1482E30DE4900D0C3A6 /* DeviceLightViewController.swift in Sources */,
 				C8B6CE742EE7EFE600C8AE32 /* DevicePowerCalibrationInstructionsController.swift in Sources */,
 				C886E1492E30DE4900D0C3A6 /* FirmwareData.swift in Sources */,
@@ -6997,6 +7013,7 @@
 				8CFE26012FB0000000000003 /* EmergencyFireControllerSceneEventManager.swift in Sources */,
 				C89B3CB52C08807200820277 /* ShareAuthoritySpaceViewCell.swift in Sources */,
 				C8F89D3F2E3CBD1F00FA1544 /* GatewayModel.swift in Sources */,
+				C8FA30132FD0000100000003 /* GatewayAssociatedSpaceCandidatePolicy.swift in Sources */,
 				C8047F292B8F4C0E00A09FFA /* DaylightSensorInstructionsViewCell.swift in Sources */,
 				8C778B312F9F584F000887FE /* LinkedEmerFireEditViewModel.swift in Sources */,
 				C8DA6A0F2DB8800B00E32092 /* FSCalendarStickyHeader.m in Sources */,
@@ -7368,6 +7385,7 @@
 				C8C3A1592E37509800876028 /* GatewayAssociatedSpacesViewCell.swift in Sources */,
 				8C778B272F9F584E000887FE /* DeviceEmerFireRepository.swift in Sources */,
 				C8D6636F2BFEDDC900BFF81A /* ImportData.swift in Sources */,
+				C8FA30232FD0000200000003 /* SiteGatewayAssociationConsistencyPolicy.swift in Sources */,
 				C88B25742ADD180900CF1AE4 /* DeviceLightViewController.swift in Sources */,
 				8CF15F9F2F964E240044FCF3 /* EmerFireStatusTextCell.swift in Sources */,
 				C8B6CE712EE7EFE600C8AE32 /* DevicePowerCalibrationInstructionsController.swift in Sources */,
@@ -7588,6 +7606,7 @@
 				C8BB66232ED3F056000C63EE /* ScheduleScenesView.swift in Sources */,
 				C8BB66242ED3F056000C63EE /* ShareAuthoritySpaceViewCell.swift in Sources */,
 				C8BB66252ED3F056000C63EE /* GatewayModel.swift in Sources */,
+				C8FA30142FD0000100000004 /* GatewayAssociatedSpaceCandidatePolicy.swift in Sources */,
 				C8BB66262ED3F056000C63EE /* DaylightSensorInstructionsViewCell.swift in Sources */,
 				C8BB66272ED3F056000C63EE /* FSCalendarStickyHeader.m in Sources */,
 				C8BB66282ED3F056000C63EE /* EnergyHarvestHistoryViewCell.swift in Sources */,
@@ -7958,6 +7977,7 @@
 				C8BB67242ED3F056000C63EE /* Profile.swift in Sources */,
 				C8BB67252ED3F056000C63EE /* GatewayAssociatedSpacesViewCell.swift in Sources */,
 				C8BB67262ED3F056000C63EE /* ImportData.swift in Sources */,
+				C8FA30242FD0000200000004 /* SiteGatewayAssociationConsistencyPolicy.swift in Sources */,
 				C8BB67272ED3F056000C63EE /* DeviceLightViewController.swift in Sources */,
 				C8B6CE722EE7EFE600C8AE32 /* DevicePowerCalibrationInstructionsController.swift in Sources */,
 				C8BB67282ED3F056000C63EE /* FirmwareData.swift in Sources */,

@@ -892,28 +892,11 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             return
         }
 
-        guard let meshNetwork = MeshNetworkManager.instance.meshNetwork else {
-            return
+        let vc = GatewayAssociatedSpacesController(
+            gateway: setGatewayModel
+        ) { [weak self] in
+            self?.loadAssociatedSpaceCandidates() ?? .unavailable
         }
-        let gatewaySpaceData: [GatewaySpaceData] = site.spaces.filter({ $0.canEditing && $0.deviceOperates.contains(.edit) && ($0.relevanceGatewayId == nil || $0.relevanceGatewayId == gateway.mac) }).compactMap({ space in
-            if let appkey = meshNetwork.applicationKeys.first(where: { $0.boundNetworkKey.networkId.hex == space.meshNetworkId }) {
-                let permission: GatewaySpaceData.GatewaySpacePermission
-                if space.canEditing && space.deviceOperates.contains(.edit) {
-                    permission = .editor
-                }else {
-                    if space.state == .waitDeleted {
-                        permission = .permissionLoss
-                    }else {
-                        permission = space.requiresPasswordVerification ? .permissionException : .none
-                    }
-                }
-                return GatewaySpaceData(spaceId: space.id, spaceName: space.name, deviceCount: space.deviceCount, appKeyIndex: appkey.index, permission: permission)
-            }
-            return nil
-        })
-
-        let vc = GatewayAssociatedSpacesController(gateway: setGatewayModel, spaces: gatewaySpaceData)
-//        GatewayAssociatedSpacesController(spaces: gatewaySpaceData, selectSpaces: selectSpaces)
         vc.associatedSpacesSelectCallback = {[weak self] spaces in
             guard let self = self else { return }
             self.setGatewayModel.associatedSpaces = spaces
@@ -923,6 +906,65 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         }
         navigationController?.pushViewController(vc, animated: true)
 
+    }
+
+    private func loadAssociatedSpaceCandidates() -> GatewayAssociatedSpacesCandidateLoadResult {
+        guard let meshNetwork = MeshNetwork.load(
+            meshUUID: site.meshUUID,
+            subnetworkId: site.meshNetworkId,
+            allData: false
+        ) else {
+            return .unavailable
+        }
+
+        var appKeyIndicesByNetworkId: [String: UInt16] = [:]
+        meshNetwork.applicationKeys.forEach { appKey in
+            let networkId = appKey.boundNetworkKey.networkId.hex.lowercased()
+            if appKeyIndicesByNetworkId[networkId] == nil {
+                appKeyIndicesByNetworkId[networkId] = appKey.index
+            }
+        }
+
+        let candidateInputs = site.spaces.map { space in
+            GatewayAssociatedSpaceCandidateInput(
+                spaceId: space.id,
+                canEdit: space.canEditing && space.deviceOperates.contains(.edit),
+                associatedGatewayId: space.relevanceGatewayId,
+                meshNetworkId: space.meshNetworkId
+            )
+        }
+        let resolution = GatewayAssociatedSpaceCandidatePolicy.resolve(
+            spaces: candidateInputs,
+            currentGatewayId: gateway.mac,
+            appKeyIndicesByNetworkId: appKeyIndicesByNetworkId
+        )
+
+        switch resolution {
+        case .available(let candidates):
+            let spaces = candidates.compactMap { candidate -> GatewaySpaceData? in
+                guard let space = site.spaces.first(where: {
+                    $0.id == candidate.spaceId
+                }) else {
+                    return nil
+                }
+                return GatewaySpaceData(
+                    spaceId: space.id,
+                    spaceName: space.name,
+                    deviceCount: space.deviceCount,
+                    appKeyIndex: candidate.appKeyIndex,
+                    permission: .editor
+                )
+            }
+            return .available(spaces)
+        case .unavailable(let missingAppKeySpaceIds):
+#if DEBUG
+            print(
+                "Gateway Associated Spaces missing AppKey:",
+                missingAppKeySpaceIds
+            )
+#endif
+            return .unavailable
+        }
     }
 
     /// 解除空间关联

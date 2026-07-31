@@ -8,6 +8,11 @@
 import UIKit
 import SwiftyJSON
 
+enum GatewayAssociatedSpacesCandidateLoadResult {
+    case available([GatewaySpaceData])
+    case unavailable
+}
+
 class GatewayAssociatedSpacesController: UIViewController {
 
     private var flowLayout: UICollectionViewFlowLayout!
@@ -26,11 +31,15 @@ class GatewayAssociatedSpacesController: UIViewController {
     var associatedSpacesSelectCallback: (([GatewaySpaceData])->())?
     
     let gateway: GatewayModel
-    var spaces: [GatewaySpaceData]
+    private let candidateProvider: () -> GatewayAssociatedSpacesCandidateLoadResult
+    private var spaces: [GatewaySpaceData] = []
     
-    init(gateway: GatewayModel, spaces: [GatewaySpaceData]) {
+    init(
+        gateway: GatewayModel,
+        candidateProvider: @escaping () -> GatewayAssociatedSpacesCandidateLoadResult
+    ) {
         self.gateway = gateway
-        self.spaces = spaces
+        self.candidateProvider = candidateProvider
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -51,7 +60,16 @@ class GatewayAssociatedSpacesController: UIViewController {
     }
     
     private func loadAssociatedSpaces() {
-        
+        let candidateDataUnavailable: Bool
+        switch candidateProvider() {
+        case .available(let spaces):
+            self.spaces = spaces
+            candidateDataUnavailable = false
+        case .unavailable:
+            self.spaces = []
+            candidateDataUnavailable = true
+        }
+
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
         NetworkRequest.shared.request(.gatewayAssociationSpaceList(siteId: gateway.siteId, gatewayId: gateway.mac)) {[weak self] result in
             XWHUDManager.hide()
@@ -98,6 +116,8 @@ class GatewayAssociatedSpacesController: UIViewController {
                     
                     self.setupUI()
                     self.updateUI()
+                }else if candidateDataUnavailable {
+                    self.showDataLoadFailure()
                 }else {
                     self.view.showEmptyDataView(title: "no_data".localizedString)
                 }
@@ -106,13 +126,24 @@ class GatewayAssociatedSpacesController: UIViewController {
                 if error == .noNetwork {
                     view.showEmptyDataView(imageName: "internet_error", title: "gateway_associated_no_network_message".localizedString)
                 }else {
-                    view.showEmptyDataView(imageName: "internet_error", title: "failed_to_retrieve_data".localizedString, tipText: "network_problem_note".localizedString, buttonText: "RETRY".localizedString, position: .center, bottomMargin: SCRXFrom(60)) {[weak self] in
-                        self?.loadAssociatedSpaces()
-                    }
+                    showDataLoadFailure()
                 }
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
             }
    
+        }
+    }
+
+    private func showDataLoadFailure() {
+        view.showEmptyDataView(
+            imageName: "internet_error",
+            title: "failed_to_retrieve_data".localizedString,
+            tipText: "network_problem_note".localizedString,
+            buttonText: "RETRY".localizedString,
+            position: .center,
+            bottomMargin: SCRXFrom(60)
+        ) { [weak self] in
+            self?.loadAssociatedSpaces()
         }
     }
     

@@ -3,8 +3,11 @@ import Foundation
 @main
 struct SiteGatewayOnlineStateContractTests {
     static func main() throws {
-        guard CommandLine.arguments.count == 3 else {
-            fatalError("Expected SiteViewController.swift and GatewayViewController.swift paths")
+        guard CommandLine.arguments.count == 4 else {
+            fatalError(
+                "Expected SiteViewController.swift, GatewayViewController.swift " +
+                "and ImportData.swift paths"
+            )
         }
 
         let source = try String(
@@ -13,6 +16,10 @@ struct SiteGatewayOnlineStateContractTests {
         )
         let gatewaySource = try String(
             contentsOfFile: CommandLine.arguments[2],
+            encoding: .utf8
+        )
+        let importSource = try String(
+            contentsOfFile: CommandLine.arguments[3],
             encoding: .utf8
         )
 
@@ -123,6 +130,35 @@ struct SiteGatewayOnlineStateContractTests {
         require(
             gatewaySource.contains("notifySiteGatewayAssociationTopologyChanged()"),
             "Gateway save flow must notify Site after confirmed topology changes"
+        )
+        require(
+            importSource.contains(
+                "SiteGatewayAssociationSnapshot.make("
+            ),
+            "SiteData.update must create a server Gateway identity snapshot"
+        )
+        require(
+            importSource.contains("isComplete: self.permission == .owner"),
+            "Only owner Site snapshots may enable strong orphan validation"
+        )
+        require(
+            importSource.contains(
+                "rawGatewayIds: gatewayDicts?.map"
+            ),
+            "The consistency snapshot must use the same siteInfo gateways payload"
+        )
+        require(
+            importSource.contains(
+                "gatewaySnapshot.decision(for: space.relevanceGatewayId)"
+            ),
+            "Every server-returned Space must be checked against the snapshot"
+        )
+        require(
+            importSource.contains("space.relevanceGatewayId = nil") &&
+                importSource.contains("space.gatewayStatus = .notBound") &&
+                importSource.contains("space.gatewayLastOnline = nil") &&
+                importSource.contains("space.save()"),
+            "Orphan normalization must clear all Gateway state and persist it"
         )
 
         print("SiteGatewayOnlineStateContractTests passed")
