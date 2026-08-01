@@ -6,6 +6,7 @@ struct FastAddTaskCheckpointTrackerTests {
         testBatchPreservesMessageOrderAndTailIdentity()
         testActualTailHandleCompletesCheckpoint()
         testEquivalentHandleInstancesRemainIndependent()
+        testSeparateBatchesKeepIndependentHandleIdentity()
         testNonTailHandleDoesNotCompleteCheckpoint()
         testUnknownHandleDoesNotCompletePendingCheckpoint()
         testEmptySourceIsIgnored()
@@ -85,6 +86,33 @@ struct FastAddTaskCheckpointTrackerTests {
         precondition(batch.tracker.hasFailure)
         batch.tracker.recordSuccess(for: secondTail)
         precondition(!batch.tracker.hasFailure)
+    }
+
+    private static func testSeparateBatchesKeepIndependentHandleIdentity() {
+        let firstTail = TestMessageHandle()
+        let retryTail = TestMessageHandle()
+        let firstBatch = FastAddTaskCheckpointBatch(
+            sources: [
+                FastAddTaskCheckpointSource(
+                    messageHandles: [firstTail],
+                    verify: { true }
+                )
+            ]
+        )
+        let retryBatch = FastAddTaskCheckpointBatch(
+            sources: [
+                FastAddTaskCheckpointSource(
+                    messageHandles: [retryTail],
+                    verify: { true }
+                )
+            ]
+        )
+
+        precondition(firstBatch.messageHandles[0] !== retryBatch.messageHandles[0])
+        firstBatch.tracker.recordSuccess(for: retryTail)
+        precondition(firstBatch.tracker.hasFailure)
+        firstBatch.tracker.recordSuccess(for: firstTail)
+        precondition(!firstBatch.tracker.hasFailure)
     }
 
     private static func testNonTailHandleDoesNotCompleteCheckpoint() {

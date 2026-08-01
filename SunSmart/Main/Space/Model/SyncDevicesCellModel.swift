@@ -442,6 +442,12 @@ enum DeviceOperationType {
     
     /// 对应操作需要发送的消息处理
     var messageHandles: [MeshMessageHandle] {
+        makeMessageHandles()
+    }
+
+    func makeMessageHandles(
+        contextGroup: Group? = nil
+    ) -> [MeshMessageHandle] {
         var messageHandles: [MeshMessageHandle] = []
         switch self {
         case .delete(let node, let type): // 删除操作
@@ -540,7 +546,12 @@ enum DeviceOperationType {
                     messageHandles.append(contentsOf: scene.getSyncMessageHandles(node: node, data: data))
                 }
             case .schedule(let schedule):
-                messageHandles.append(contentsOf: schedule.getMessageHandles(node: node))
+                messageHandles.append(
+                    contentsOf: schedule.getMessageHandles(
+                        node: node,
+                        contextGroup: contextGroup
+                    )
+                )
             case .profile(let type):
                 messageHandles.append(contentsOf: type.getMessageHandles(node: node))
             case .pirEnabled(let enabled):

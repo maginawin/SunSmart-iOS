@@ -8,11 +8,33 @@ import NordicSigMeshSDK
 
 struct DeviceGroupDeferredSyncTask {
     let operationType: DeviceOperationType
-    let messageHandles: [MeshMessageHandle]
-    let filteredSceneRecallCount: Int
 
-    func makeMessageHandles() -> [MeshMessageHandle] {
-        operationType.messageHandles.filter { !($0.message is SceneRecall) }
+    func makeMessageHandles(contextGroup: Group) -> [MeshMessageHandle] {
+        operationType
+            .makeMessageHandles(contextGroup: contextGroup)
+            .filter { !($0.message is SceneRecall) }
+    }
+
+    func isSuccessful(contextGroup: Group) -> Bool {
+        switch operationType {
+        case .configuration(let node, let type):
+            if case .schedule(let schedule) = type {
+                return !schedule.needsSync(
+                    on: node,
+                    contextGroup: contextGroup
+                )
+            }
+        case .delete(let node, let type):
+            if case .schedule(let schedule) = type {
+                return !schedule.needsDelete(
+                    from: node,
+                    contextGroup: contextGroup
+                )
+            }
+        default:
+            break
+        }
+        return operationType.isSuccessful
     }
 }
 
@@ -72,7 +94,10 @@ enum DeviceGroupFastAddSyncPlanner {
                 effectiveMemberCount: effectiveMemberCount,
                 profileSyncContext: profileSyncContext
             )
-            let deferredBatch = makeTaskCheckpointBatch(tasks: plan.deferredTasks)
+            let deferredBatch = makeTaskCheckpointBatch(
+                tasks: plan.deferredTasks,
+                group: group
+            )
             let appendMessageHandles = plan.immediateMessageHandles
                 + deferredBatch.messageHandles
             guard !appendMessageHandles.isEmpty else {
@@ -182,21 +207,10 @@ private extension DeviceGroupDeferredSyncPlanner {
     ) -> [DeviceGroupDeferredSyncTask] {
         var tasks: [DeviceGroupDeferredSyncTask] = []
 
-        func appendTask(
-            _ operationType: DeviceOperationType,
-            messageHandles explicitMessageHandles: [MeshMessageHandle]? = nil
-        ) {
-            let messageHandles = explicitMessageHandles ?? operationType.messageHandles
-            let filteredMessageHandles = messageHandles.filter { !($0.message is SceneRecall) }
-            let filteredSceneRecallCount = messageHandles.count - filteredMessageHandles.count
-            guard !filteredMessageHandles.isEmpty else {
-                return
-            }
+        func appendTask(_ operationType: DeviceOperationType) {
             tasks.append(
                 DeviceGroupDeferredSyncTask(
-                    operationType: operationType,
-                    messageHandles: filteredMessageHandles,
-                    filteredSceneRecallCount: filteredSceneRecallCount
+                    operationType: operationType
                 )
             )
         }
@@ -220,10 +234,6 @@ private extension DeviceGroupDeferredSyncPlanner {
                     .configuration(
                         node: node,
                         type: .schedule(schedule: schedule)
-                    ),
-                    messageHandles: schedule.getMessageHandles(
-                        node: node,
-                        contextGroup: group
                     )
                 )
             }
@@ -330,19 +340,6 @@ private extension DeviceGroupDeferredSyncPlanner {
         }
 
         let task = tasks[index]
-        let messageHandles = task.makeMessageHandles()
-        guard !messageHandles.isEmpty else {
-            runTasks(
-                tasks,
-                index: index + 1,
-                node: node,
-                group: group,
-                maxRetryCount: maxRetryCount,
-                hadFailure: hadFailure,
-                completion: completion
-            )
-            return
-        }
 
         runTaskAttempt(
             task,
@@ -371,7 +368,7 @@ private extension DeviceGroupDeferredSyncPlanner {
         group: Group,
         completion: @escaping (Bool) -> Void
     ) {
-        let messageHandles = task.makeMessageHandles()
+        let messageHandles = task.makeMessageHandles(contextGroup: group)
         guard !messageHandles.isEmpty else {
             completion(true)
             return
@@ -400,7 +397,7 @@ private extension DeviceGroupDeferredSyncPlanner {
             }
 
             let resultSuccessful = !resultMessageHandles.contains { !$0.isSuccessful }
-            let operationSuccessful = task.operationType.isSuccessful
+            let operationSuccessful = task.isSuccessful(contextGroup: group)
             let taskSucceeded = resultSuccessful && operationSuccessful
             logTaskAttempt(
                 task,
@@ -461,17 +458,18 @@ private extension DeviceGroupDeferredSyncPlanner {
 private extension DeviceGroupFastAddSyncPlanner {
 
     static func makeTaskCheckpointBatch(
-        tasks: [DeviceGroupDeferredSyncTask]
+        tasks: [DeviceGroupDeferredSyncTask],
+        group: Group
     ) -> FastAddTaskCheckpointBatch<MeshMessageHandle> {
         let sources = tasks.compactMap { task -> FastAddTaskCheckpointSource<MeshMessageHandle>? in
-            let messageHandles = task.makeMessageHandles()
+            let messageHandles = task.makeMessageHandles(contextGroup: group)
             guard !messageHandles.isEmpty else {
                 return nil
             }
             return FastAddTaskCheckpointSource(
                 messageHandles: messageHandles
             ) {
-                task.operationType.isSuccessful
+                task.isSuccessful(contextGroup: group)
             }
         }
         return FastAddTaskCheckpointBatch(sources: sources)

@@ -11,6 +11,7 @@ node_sync="SunSmart/Common/Data/Node+SyncData.swift"
 operation_model="SunSmart/Main/Space/Model/SyncDevicesCellModel.swift"
 
 bash scripts/check_fast_add_task_checkpoint_tracker.sh
+zsh scripts/check_timed_scheduler_single_owner.sh
 
 rg -n -F 'FastAddTaskCheckpointTracker<MeshMessageHandle>' "$planner" >/dev/null \
   || fail "Fast Add plan must own a task checkpoint tracker"
@@ -18,14 +19,21 @@ rg -n -F 'func recordSuccessfulMessageHandle(_ messageHandle: MeshMessageHandle)
   || fail "Fast Add plan must expose task checkpoint recording"
 rg -n -F 'taskCheckpointTracker.recordSuccess(for: messageHandle)' "$planner" >/dev/null \
   || fail "Fast Add plan must forward successful handles to the tracker"
-rg -n -F 'let deferredBatch = makeTaskCheckpointBatch(tasks: plan.deferredTasks)' "$planner" >/dev/null \
+rg -n -F 'tasks: plan.deferredTasks' "$planner" >/dev/null \
   || fail "Light Fast Add must prepare deferred handles and checkpoints in one batch"
+rg -n -F 'group: group' "$planner" >/dev/null \
+  || fail "Light Fast Add batch must retain the target Group"
 rg -n -F '+ deferredBatch.messageHandles' "$planner" >/dev/null \
   || fail "Light Fast Add must append the prepared deferred handles"
 rg -n -F 'taskCheckpointTracker: deferredBatch.tracker' "$planner" >/dev/null \
   || fail "Light Fast Add must reuse the tracker from the same prepared batch"
-rg -n -F 'let messageHandles = task.makeMessageHandles()' "$planner" >/dev/null \
-  || fail "Fast Add batch must generate each deferred task handle list once"
+context_generation_count="$(rg -c -F 'task.makeMessageHandles(contextGroup: group)' "$planner")"
+[ "$context_generation_count" -ge 2 ] \
+  || fail "Fast Add and retries must regenerate deferred handles with the target Group"
+
+context_verification_count="$(rg -c -F 'task.isSuccessful(contextGroup: group)' "$planner")"
+[ "$context_verification_count" -ge 2 ] \
+  || fail "Fast Add and retries must verify Schedule state with the target Group"
 
 if rg -n -F 'plan.deferredTasks.flatMap { $0.makeMessageHandles() }' "$planner" >/dev/null; then
   fail "Light Fast Add must not regenerate deferred handles for the append list"
@@ -34,8 +42,6 @@ if rg -n -F 'makeTaskCheckpoints(tasks: plan.deferredTasks)' "$planner" >/dev/nu
   fail "Light Fast Add must not regenerate deferred handles for checkpoints"
 fi
 
-rg -n -F 'task.operationType.isSuccessful' "$planner" >/dev/null \
-  || fail "Task checkpoint must use the existing strict operation success predicate"
 rg -n -F 'syncDatas.filter { !usesTaskScopedVerification($0) }' "$planner" >/dev/null \
   || fail "Light batch verification must exclude task-scoped operations"
 rg -n -F 'taskCheckpointTracker.hasFailure' "$planner" >/dev/null \
@@ -69,7 +75,7 @@ for controller in "$classic" "$professional"; do
     || fail "$controller must resolve the shared Fast Add plan in the success callback"
   rg -n -F 'plan.recordSuccessfulMessageHandle(messageHandle)' "$controller" >/dev/null \
     || fail "$controller must record the checkpoint after updating Node"
-  rg -n -U 'node\.updateData\(message: messageHandle\.message\)\n[[:space:]]+plan\.recordSuccessfulMessageHandle\(messageHandle\)' "$controller" >/dev/null \
+  rg -n -U '(?s:node\.updateData\(.{0,500}?message:[[:space:]]*messageHandle\.message.{0,500}?\)[[:space:]]+plan\.recordSuccessfulMessageHandle\(messageHandle\))' "$controller" >/dev/null \
     || fail "$controller must update Node before evaluating the task checkpoint"
   rg -n -F 'self.recordFastAddGroupSyncFailure(plan)' "$controller" >/dev/null \
     || fail "$controller must preserve real message failure handling"

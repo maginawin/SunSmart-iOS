@@ -3,12 +3,12 @@ import Foundation
 @main
 struct TimedSchedulerSingleOwnerContractTests {
     static func main() throws {
-        guard CommandLine.arguments.count == 12 else {
+        guard CommandLine.arguments.count == 13 else {
             fatalError(
                 "Expected Node+SupportModels, Node+Messages, MeshScheduleServer, "
                 + "Node+MessageHandles, MeshNetwork+SunSmart, ScheduleServer, "
                 + "GroupServer, Scheduler, DeviceGroupDeferredSyncPlanner, "
-                + "MeshDatabase and TimedViewController paths"
+                + "MeshDatabase, TimedViewController and SyncDevicesCellModel paths"
             )
         }
 
@@ -23,6 +23,7 @@ struct TimedSchedulerSingleOwnerContractTests {
         let groupSyncPlanner = try source(at: 9)
         let meshDatabase = try source(at: 10)
         let timedViewController = try source(at: 11)
+        let operationModel = try source(at: 12)
 
         testOwnerPolicy(in: supportModels)
         testSetAndDeleteRouting(
@@ -35,7 +36,10 @@ struct TimedSchedulerSingleOwnerContractTests {
         testHistoricalEntryPoints(
             scheduleServer: scheduleServer,
             meshNetwork: meshNetwork,
-            groupServer: groupServer,
+            groupServer: groupServer
+        )
+        testDeferredTaskGroupContext(
+            operationModel: operationModel,
             groupSyncPlanner: groupSyncPlanner
         )
         testMultiModelRead(
@@ -297,8 +301,7 @@ struct TimedSchedulerSingleOwnerContractTests {
     private static func testHistoricalEntryPoints(
         scheduleServer: String,
         meshNetwork: String,
-        groupServer: String,
-        groupSyncPlanner: String
+        groupServer: String
     ) {
         let restore = section(
             in: meshNetwork,
@@ -348,14 +351,74 @@ struct TimedSchedulerSingleOwnerContractTests {
             "Group-targeted Timed saves must pass the target Group to owner resolution"
         )
 
-        let deferredSchedules = section(
+    }
+
+    private static func testDeferredTaskGroupContext(
+        operationModel: String,
+        groupSyncPlanner: String
+    ) {
+        let operationMessages = normalized(section(
+            in: operationModel,
+            from: "/// 对应操作需要发送的消息处理",
+            to: "/// 设备删除操作"
+        ))
+        let task = normalized(section(
             in: groupSyncPlanner,
-            from: "static func makeDeferredTasks(",
-            to: "static func makeTaskCheckpointBatch("
+            from: "struct DeviceGroupDeferredSyncTask",
+            to: "struct DeviceGroupDeferredSyncPlan"
+        ))
+        let attempts = normalized(section(
+            in: groupSyncPlanner,
+            from: "static func runTasks(",
+            to: "static func logTaskAttempt("
+        ))
+        let batch = normalized(section(
+            in: groupSyncPlanner,
+            from: "static func makeTaskCheckpointBatch(",
+            to: "static func usesTaskScopedVerification("
+        ))
+
+        require(
+            operationMessages.contains("func makeMessageHandles(")
+                && operationMessages.contains("contextGroup: Group? = nil"),
+            "DeviceOperationType must expose context-aware message generation"
         )
         require(
-            deferredSchedules.contains("contextGroup: group"),
-            "Deferred add-to-Group Schedule messages must use the target Group Profile"
+            operationMessages.contains("schedule.getMessageHandles(")
+                && operationMessages.contains("contextGroup: contextGroup"),
+            "Schedule configuration must forward contextGroup"
+        )
+        require(
+            task.contains("operationType .makeMessageHandles(contextGroup: contextGroup)"),
+            "Deferred task regeneration must retain Group context"
+        )
+        require(
+            !task.contains("let messageHandles: [MeshMessageHandle]"),
+            "Deferred task must not retain executed handles for retry"
+        )
+        require(
+            attempts.contains("task.makeMessageHandles(contextGroup: group)"),
+            "Every deferred attempt must regenerate with the target Group"
+        )
+        require(
+            batch.contains("task.makeMessageHandles(contextGroup: group)"),
+            "Fast Add batch must generate handles with the target Group"
+        )
+        require(
+            task.contains("!schedule.needsSync( on: node, contextGroup: contextGroup )"),
+            "Schedule configuration must verify the owner and cleanup Models"
+        )
+        require(
+            task.contains("!schedule.needsDelete( from: node, contextGroup: contextGroup )"),
+            "Schedule deletion must verify every Scheduler Model is clear"
+        )
+        require(
+            attempts.contains("task.isSuccessful(contextGroup: group)"),
+            "Deferred retry must use Group-aware task verification"
+        )
+        require(
+            batch.contains("task.isSuccessful(contextGroup: group)"),
+            "Fast Add checkpoints must use Group-aware task verification"
         )
     }
 
@@ -561,6 +624,14 @@ struct TimedSchedulerSingleOwnerContractTests {
             fatalError("Missing source marker: \(endMarker)")
         }
         return String(remainder[..<endRange.lowerBound])
+    }
+
+    private static func normalized(_ source: String) -> String {
+        source.replacingOccurrences(
+            of: #"\s+"#,
+            with: " ",
+            options: .regularExpression
+        )
     }
 
     private static func require(
