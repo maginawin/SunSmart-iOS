@@ -50,6 +50,8 @@ class SyncDevicesViewController: UIViewController {
     var luxTriggerLockDevices: [Node] = []
     /// 自动化恢复
     var automationRestore: Bool = false
+    /// 自动恢复重试耗尽后的调用方处理；未设置时保持现有 BLE OTA 返回行为。
+    var automationRestoreFailureCallback: (() -> Void)?
     /// 重试次数
     private var retryCount: Int = 0
     /// 同步的设备list
@@ -2757,8 +2759,12 @@ class SyncDevicesViewController: UIViewController {
                     if self.automationRestore { // 自动化恢复流程
                         if self.retryCount <= 0 { // 重试机会已用完
                             self.navigationController?.hideAutomaticHud()
-                            // 退出到ble页面
-                            self.navigationController?.popToViewController(vcClass: BleFirmwareUpdateViewController.classForCoder())
+                            if let automationRestoreFailureCallback = self.automationRestoreFailureCallback {
+                                automationRestoreFailureCallback()
+                            } else {
+                                // 退出到ble页面
+                                self.navigationController?.popToViewController(vcClass: BleFirmwareUpdateViewController.classForCoder())
+                            }
                         }else {
                             // 模拟点击重试
                             self.retryCount -= 1

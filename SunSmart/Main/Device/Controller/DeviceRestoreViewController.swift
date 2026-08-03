@@ -58,9 +58,8 @@ class DeviceRestoreViewController: UIViewController {
     private var successfulBatteryPowerSwitchRestoreLinkGroupAddresses: Set<Address> = []
     private var successfulBatteryPowerSwitchTargetSubscriptions: Set<BatteryPowerSwitchTargetSubscriptionKey> = []
     private var deferredRestoreSyncDatasByAddress: [Address: [NodeSyncData]] = [:]
-    private var emergencyFireRestoreControllersByAddress: [Address: DeviceEmerFireData] = [:]
-    private var emergencyFireRestoreMessageHandlesByAddress: [Address: [MeshMessageHandle]] = [:]
-    private var failedEmergencyFireRestoreControllerAddresses: Set<Address> = []
+    private var emergencyFireRestoreContextsByAddress: [Address: EmergencyFireRestoreContext] = [:]
+    private var didReportDeviceRestoreResult = false
     private let deferredRestoreTaskMaxRetryCount = 1
     private let deferredRestoreTaskRetryDelay: TimeInterval = 1.5
     
@@ -124,6 +123,45 @@ class DeviceRestoreViewController: UIViewController {
         let operationType: DeviceOperationType
         let messageHandles: [MeshMessageHandle]
         let filteredSceneRecallCount: Int
+    }
+
+    private struct EmergencyFireRestoreSyncEntry {
+        let context: EmergencyFireRestoreContext
+        let controller: DeviceEmerFireData
+
+        var device: ProvisioningDevice { context.device }
+    }
+
+    private final class EmergencyFireRestoreContext {
+        enum State {
+            case readyForMigration
+            case migrationFailed
+            case readyForSync
+            case syncFailed
+            case succeeded
+            case identityFailed
+        }
+
+        let device: ProvisioningDevice
+        let historicalNode: Node
+        let scannedIdentity: DeviceRestoreProductIdentity?
+        let provisionedNode: Node
+        var controller: DeviceEmerFireData?
+        var state: State
+
+        init(
+            device: ProvisioningDevice,
+            historicalNode: Node,
+            scannedIdentity: DeviceRestoreProductIdentity?,
+            provisionedNode: Node,
+            state: State
+        ) {
+            self.device = device
+            self.historicalNode = historicalNode
+            self.scannedIdentity = scannedIdentity
+            self.provisionedNode = provisionedNode
+            self.state = state
+        }
     }
 
     private struct DeferredRestoreResponseKey: Hashable, CustomStringConvertible {
@@ -331,6 +369,41 @@ class DeviceRestoreViewController: UIViewController {
         super.viewDidAppear(animated)
     }
 
+    private var authoritativeSuccessfulRestoreNodes: [Node] {
+        restoreNodes.filter { node in
+            guard let device = allDevices.first(where: { $0.address == node.primaryUnicastAddress }) else {
+                return false
+            }
+            let context = emergencyFireRestoreContextsByAddress[node.primaryUnicastAddress]
+            return DeviceRestoreEFCRecoveryPolicy.shouldReportSuccessfulNode(
+                deviceSucceeded: device.addState == .success,
+                isEmergencyController: context != nil,
+                controllerIsSynced: context?.state == .succeeded && context?.controller?.isSynced == true,
+                nodeNeedsSync: node.needSync
+            )
+        }
+    }
+
+    private var hasUnresolvedAutomaticRestoreResult: Bool {
+        if emergencyFireRestoreContextsByAddress.values.contains(where: { $0.state != .succeeded }) {
+            return true
+        }
+        if allDevices.contains(where: { $0.addState != .success }) {
+            return true
+        }
+        return restoreNodes.contains { node in
+            emergencyFireRestoreContextsByAddress[node.primaryUnicastAddress] == nil && node.needSync
+        }
+    }
+
+    private func reportDeviceRestoreResultIfNeeded() {
+        guard !didReportDeviceRestoreResult else {
+            return
+        }
+        didReportDeviceRestoreResult = true
+        deviceRestoreCallback?(authoritativeSuccessfulRestoreNodes, automationRestore)
+    }
+
     
     deinit {
 //        if state == .scanning {
@@ -340,7 +413,9 @@ class DeviceRestoreViewController: UIViewController {
                 MeshAPI.stopFastAddDevice(finishBack: nil)
             }
 //            if self.restoreNodes.count > 0 {
-        self.deviceRestoreCallback?(self.restoreNodes, self.automationRestore)
+        if !(automationRestore && hasUnresolvedAutomaticRestoreResult) {
+            reportDeviceRestoreResultIfNeeded()
+        }
 //            }
         self.restoreNodes.forEach {
             $0.batteryPowerSwitchRestoreTargetSubscriptionSnapshots = nil
@@ -380,16 +455,101 @@ class DeviceRestoreViewController: UIViewController {
 //    }
 
     private func shouldIncludeRestoreNode(_ node: Node) -> Bool {
-        switch restoreFilter {
-        case .all:
-            return node.deviceType != .emergencyController
-        case .gatewaysOnly:
-            return node.deviceType == .gateway
-        case .currentSpaceNonGateways:
-            guard let space else {
-                return false
-            }
-            return node.deviceType != .gateway && node.deviceType != .emergencyController && node.subNetworkId == space.meshNetworkId
+        DeviceRestoreCandidatePolicy.includesHistoricalNode(
+            filter: restoreFilter.candidateFilter,
+            isGateway: registeredDeviceType(for: node) == .gateway,
+            belongsToCurrentSpace: space.map { node.subNetworkId == $0.meshNetworkId } ?? false
+        )
+    }
+
+    private var restoreProductRegistrations: [DeviceRestoreProductRegistration] {
+        MeshLibManager.manager.supportDeviceInfos.map { info in
+            DeviceRestoreProductRegistration(
+                identity: DeviceRestoreProductIdentity(
+                    companyIdentifier: info.companyId,
+                    productIdentifier: info.productId
+                ),
+                deviceCategory: info.deviceCategory
+            )
+        }
+    }
+
+    private func restoreProductIdentity(for node: Node) -> DeviceRestoreProductIdentity? {
+        DeviceRestoreCandidatePolicy.identity(
+            companyIdentifier: node.companyIdentifier,
+            productIdentifier: node.productIdentifier
+        )
+    }
+
+    private func restoreProductIdentity(for device: ProvisioningDevice) -> DeviceRestoreProductIdentity? {
+        DeviceRestoreCandidatePolicy.identity(
+            companyIdentifier: device.cid,
+            productIdentifier: device.pid
+        )
+    }
+
+    private func registeredDeviceInfo(
+        for identity: DeviceRestoreProductIdentity?
+    ) -> MeshDeviceConfigInfo? {
+        guard let identity else {
+            return nil
+        }
+        return MeshLibManager.manager.supportDeviceInfos.first {
+            $0.companyId == identity.companyIdentifier &&
+                $0.productId == identity.productIdentifier
+        }
+    }
+
+    private func isRegisteredEmergencyController(_ node: Node) -> Bool {
+        DeviceRestoreCandidatePolicy.isRegisteredEmergencyController(
+            restoreProductIdentity(for: node),
+            registrations: restoreProductRegistrations
+        )
+    }
+
+    private func registeredDeviceType(for node: Node) -> Node.DeviceType {
+        guard let info = registeredDeviceInfo(for: restoreProductIdentity(for: node)) else {
+            return node.deviceType
+        }
+        return Node.DeviceType(deviceCategory: info.deviceCategory)
+    }
+
+    private func isMatchingRegisteredEmergencyController(
+        oldNode: Node,
+        newNode: Node
+    ) -> Bool {
+        let oldIdentity = restoreProductIdentity(for: oldNode)
+        let newIdentity = restoreProductIdentity(for: newNode)
+        return DeviceRestoreCandidatePolicy.isRegisteredEmergencyController(
+            oldIdentity,
+            registrations: restoreProductRegistrations
+        ) && DeviceRestoreCandidatePolicy.isRegisteredEmergencyController(
+            newIdentity,
+            registrations: restoreProductRegistrations
+        ) && oldIdentity == newIdentity
+    }
+
+    private func shouldIncludeRestoreCandidate(
+        node: Node,
+        device: ProvisioningDevice
+    ) -> Bool {
+        DeviceRestoreCandidatePolicy.allowsScannedIdentity(
+            historicalIdentity: restoreProductIdentity(for: node),
+            advertisedIdentity: restoreProductIdentity(for: device),
+            registrations: restoreProductRegistrations
+        )
+    }
+
+    private func applyRestoreDeviceType(node: Node, device: ProvisioningDevice) {
+        let identity = restoreProductIdentity(for: device)
+        if DeviceRestoreCandidatePolicy.isRegisteredEmergencyController(
+            identity,
+            registrations: restoreProductRegistrations
+        ), let info = registeredDeviceInfo(for: identity) {
+            node.deviceConfigInfo = info
+            device.deviceType = .emergencyController
+        } else {
+            device.deviceType = node.deviceType
         }
     }
 
@@ -463,6 +623,10 @@ class DeviceRestoreViewController: UIViewController {
             guard self.shouldIncludeRestoreNode(node) else {
                 return
             }
+
+            guard self.shouldIncludeRestoreCandidate(node: node, device: unprovisionedDevice) else {
+                return
+            }
             
             if self.automationRestore {
                 DispatchQueue.main.async {
@@ -488,7 +652,7 @@ class DeviceRestoreViewController: UIViewController {
             unprovisionedDevice.deviceName = node.name
             unprovisionedDevice.elementCount = Int(node.elementsCount)
             unprovisionedDevice.icon = node.iconName
-            unprovisionedDevice.deviceType = node.deviceType
+            self.applyRestoreDeviceType(node: node, device: unprovisionedDevice)
             
             var setSection: DeviceRestoreSection!
             // 是否刷新设备数据（找到同一个设备beacon包）
@@ -1625,71 +1789,206 @@ class DeviceRestoreViewController: UIViewController {
 
     @discardableResult
     private func restoreEmergencyFireControllerIfNeeded(oldNode: Node, newNode: Node) -> DeviceEmerFireData? {
-        guard oldNode.deviceType == .emergencyController || newNode.deviceType == .emergencyController,
+        guard isMatchingRegisteredEmergencyController(oldNode: oldNode, newNode: newNode),
               let restoreSpace = emergencyFireRestoreSpace(oldNode: oldNode, newNode: newNode) else {
             return nil
         }
-        let controller = DeviceEmerFireStore.shared.restoreDevice(replacing: oldNode, with: newNode, in: restoreSpace)
-        if let controller {
-            emergencyFireRestoreControllersByAddress[newNode.primaryUnicastAddress] = controller
+        if let deviceInfo = registeredDeviceInfo(for: restoreProductIdentity(for: newNode)) {
+            oldNode.deviceConfigInfo = deviceInfo
+            newNode.deviceConfigInfo = deviceInfo
         }
-        return controller
+        return DeviceEmerFireStore.shared.restoreDevice(replacing: oldNode, with: newNode, in: restoreSpace)
     }
 
-    private func prepareEmergencyFireControllerRestoreMessages(
-        oldNode: Node,
-        newNode: Node,
-        appendMessages: inout [MeshMessageHandle]
+    private func prepareEmergencyFireRestoreContext(
+        device: ProvisioningDevice,
+        historicalNode: Node,
+        provisionedNode: Node
+    ) -> EmergencyFireRestoreContext? {
+        guard device.deviceType == .emergencyController else {
+            return nil
+        }
+        if let context = emergencyFireRestoreContextsByAddress[provisionedNode.primaryUnicastAddress] {
+            return context
+        }
+
+        let scannedIdentity = restoreProductIdentity(for: device)
+        let decision = DeviceRestoreEFCRecoveryPolicy.provisionedIdentityDecision(
+            wasScannedAsEmergencyController: true,
+            scannedIdentity: scannedIdentity,
+            provisionedIdentity: restoreProductIdentity(for: provisionedNode),
+            registrations: restoreProductRegistrations
+        )
+        let context = EmergencyFireRestoreContext(
+            device: device,
+            historicalNode: historicalNode,
+            scannedIdentity: scannedIdentity,
+            provisionedNode: provisionedNode,
+            state: decision == .emergencyController ? .readyForMigration : .identityFailed
+        )
+        emergencyFireRestoreContextsByAddress[provisionedNode.primaryUnicastAddress] = context
+
+        guard decision == .emergencyController else {
+            device.addState = .failed
+            device.selectedState = .disabled
+            print("[DeviceRestore] Rejected provisioned EFC identity node=\(provisionedNode.primaryUnicastAddress.hex)")
+            return context
+        }
+        _ = retryEmergencyFireRestoreMigrationIfNeeded(context)
+        return context
+    }
+
+    @discardableResult
+    private func retryEmergencyFireRestoreMigrationIfNeeded(
+        _ context: EmergencyFireRestoreContext
+    ) -> Bool {
+        switch context.state {
+        case .readyForSync, .syncFailed, .succeeded:
+            return context.controller != nil
+        case .identityFailed:
+            return false
+        case .readyForMigration, .migrationFailed:
+            break
+        }
+
+        let identityDecision = DeviceRestoreEFCRecoveryPolicy.provisionedIdentityDecision(
+            wasScannedAsEmergencyController: true,
+            scannedIdentity: context.scannedIdentity,
+            provisionedIdentity: restoreProductIdentity(for: context.provisionedNode),
+            registrations: restoreProductRegistrations
+        )
+        guard identityDecision == .emergencyController else {
+            context.state = .identityFailed
+            context.device.addState = .failed
+            context.device.selectedState = .disabled
+            return false
+        }
+        guard let controller = restoreEmergencyFireControllerIfNeeded(
+            oldNode: context.historicalNode,
+            newNode: context.provisionedNode
+        ) else {
+            context.controller = nil
+            context.state = .migrationFailed
+            context.device.addState = .syncFailed
+            print("[DeviceRestore] Failed to migrate EFC restore data node=\(context.provisionedNode.primaryUnicastAddress.hex)")
+            return false
+        }
+
+        context.controller = controller
+        context.state = .readyForSync
+        context.device.addState = .adding
+        return true
+    }
+
+    private func emergencyFireRestoreController(for node: Node) -> DeviceEmerFireData? {
+        if let controller = emergencyFireRestoreContextsByAddress[node.primaryUnicastAddress]?.controller {
+            return controller
+        }
+        guard isRegisteredEmergencyController(node),
+              let restoreSpace = emergencyFireRestoreSpace(oldNode: node, newNode: node) else {
+            return nil
+        }
+        return DeviceEmerFireStore.shared.devices(in: restoreSpace).first {
+            $0.bindNodeAddress == node.primaryUnicastAddress
+        }
+    }
+
+    private func emergencyFireRestoreSyncEntries(
+        devices: [ProvisioningDevice]
+    ) -> [EmergencyFireRestoreSyncEntry] {
+        devices.compactMap { device in
+            guard let context = emergencyFireRestoreContextsByAddress[device.address] else {
+                return nil
+            }
+            if context.state == .readyForMigration || context.state == .migrationFailed {
+                _ = retryEmergencyFireRestoreMigrationIfNeeded(context)
+            }
+            guard context.state == .readyForSync || context.state == .syncFailed,
+                  let controller = context.controller else {
+                return nil
+            }
+            return EmergencyFireRestoreSyncEntry(context: context, controller: controller)
+        }.sorted { $0.device.address < $1.device.address }
+    }
+
+    private func finishEmergencyFireRestoreSyncEntry(
+        _ entry: EmergencyFireRestoreSyncEntry,
+        succeeded: Bool
     ) {
-        guard let controller = restoreEmergencyFireControllerIfNeeded(oldNode: oldNode, newNode: newNode) else {
+        entry.device.addState = succeeded ? .success : .syncFailed
+        entry.context.state = succeeded ? .succeeded : .syncFailed
+        reloadDeviceState(entry.device)
+        updateUIState()
+    }
+
+    private func runEmergencyFireRestoreSyncQueue(
+        entries: [EmergencyFireRestoreSyncEntry],
+        completion: @escaping (DeviceRestoreSyncRunResult) -> Void
+    ) {
+        guard let entry = entries.first else {
+            completion(.succeeded)
+            return
+        }
+        guard navigationController != nil else {
+            entries.forEach { finishEmergencyFireRestoreSyncEntry($0, succeeded: false) }
+            completion(.needsAttention)
             return
         }
 
-        do {
-            let planner = EmergencyFireControllerSyncPlanner(
-                data: controller,
-                meshUUID: controller.meshUUID,
-                subnetworkId: controller.meshNetworkId,
-                changedFromConfiguration: nil
+        let remainingEntries = Array(entries.dropFirst())
+        let vc = SyncDevicesViewController(
+            type: .emergencyFire(
+                data: entry.controller,
+                items: nil,
+                context: .saveConfiguration(
+                    persistsSyncResult: true,
+                    changedFromConfiguration: nil
+                )
             )
-            let items = try planner.makeItems()
-            let tasks = items.flatMap { $0.tasks }
-            failedEmergencyFireRestoreControllerAddresses.remove(newNode.primaryUnicastAddress)
-            if tasks.contains(where: { $0.isUnsupported }) {
-                failedEmergencyFireRestoreControllerAddresses.insert(newNode.primaryUnicastAddress)
-            }
-            tasks
-                .filter { $0.messageHandles.isEmpty && !$0.isUnsupported }
-                .forEach { controller.clearPending(for: $0, meshUUID: controller.meshUUID, subnetworkId: controller.meshNetworkId) }
-
-            let handles = tasks.flatMap { $0.messageHandles }
-            guard !handles.isEmpty else {
+        )
+        vc.automationRestore = automationRestore
+        vc.automationRestoreFailureCallback = { [weak self] in
+            self?.navigationController?.hideAutomaticHud()
+        }
+        vc.syncSuccessCallback = { [weak self, weak vc] _ in
+            guard let self else { return }
+            guard entry.controller.isSynced else {
+                self.finishEmergencyFireRestoreSyncEntry(entry, succeeded: false)
+                remainingEntries.forEach {
+                    self.finishEmergencyFireRestoreSyncEntry($0, succeeded: false)
+                }
+                if self.navigationController?.topViewController === vc {
+                    self.navigationController?.popViewController(animated: false)
+                }
+                completion(.needsAttention)
                 return
             }
-            emergencyFireRestoreMessageHandlesByAddress[newNode.primaryUnicastAddress, default: []].append(contentsOf: handles)
-            appendMessages.append(contentsOf: handles)
-        } catch {
-            failedEmergencyFireRestoreControllerAddresses.insert(newNode.primaryUnicastAddress)
-            print("[DeviceRestore] Failed to prepare EFC restore sync node=\(newNode.primaryUnicastAddress.hex), error=\(error.localizedDescription)")
+            self.finishEmergencyFireRestoreSyncEntry(
+                entry,
+                succeeded: true
+            )
+            if self.navigationController?.topViewController === vc {
+                self.navigationController?.popViewController(animated: false)
+            }
+            DispatchQueue.main.async {
+                self.runEmergencyFireRestoreSyncQueue(
+                    entries: remainingEntries,
+                    completion: completion
+                )
+            }
         }
-    }
-
-    private func emergencyFireRestoreControllerAddress(containing messageHandle: MeshMessageHandle) -> Address? {
-        emergencyFireRestoreMessageHandlesByAddress.first { _, handles in
-            handles.contains { $0 === messageHandle }
-        }?.key
-    }
-
-    private func resolveEmergencyFireRestoreSyncFailed(for node: Node) -> Bool {
-        guard let controller = emergencyFireRestoreControllersByAddress.removeValue(forKey: node.primaryUnicastAddress) else {
-            return false
+        vc.backActionCallback = { [weak self, weak vc] _ in
+            guard let self else { return }
+            self.finishEmergencyFireRestoreSyncEntry(entry, succeeded: false)
+            remainingEntries.forEach {
+                self.finishEmergencyFireRestoreSyncEntry($0, succeeded: false)
+            }
+            if self.navigationController?.topViewController === vc {
+                self.navigationController?.popViewController(animated: false)
+            }
+            completion(.cancelled)
         }
-        let failed = failedEmergencyFireRestoreControllerAddresses.contains(node.primaryUnicastAddress)
-        emergencyFireRestoreMessageHandlesByAddress.removeValue(forKey: node.primaryUnicastAddress)
-        failedEmergencyFireRestoreControllerAddresses.remove(node.primaryUnicastAddress)
-        controller.isSynced = !failed
-        DeviceEmerFireStore.shared.save(controller)
-        return failed
+        navigationController?.pushViewController(vc, animated: true)
     }
 
     // MARK: - Device Restore
@@ -1760,12 +2059,13 @@ class DeviceRestoreViewController: UIViewController {
                 node.requiredFunctionTypes = [.lightLCScene, .lightLCScheduler]
             }
             
-            // 恢复数据
-            node.updateResoreData(oldNode: oldNode, resoreGroup: addToGroup)
-            node.batteryPowerSwitchRestoreTargetSubscriptionSnapshots = oldNode.makeBatteryPowerSwitchRestoreTargetSubscriptionSnapshots(
-                group: addToGroup
-            )
-            restoreEmergencyFireControllerIfNeeded(oldNode: oldNode, newNode: node)
+            if addDevice.deviceType != .emergencyController {
+                // EFC 必须等待 Composition 身份确认，不能降级执行普通恢复数据迁移。
+                node.updateResoreData(oldNode: oldNode, resoreGroup: addToGroup)
+                node.batteryPowerSwitchRestoreTargetSubscriptionSnapshots = oldNode.makeBatteryPowerSwitchRestoreTargetSubscriptionSnapshots(
+                    group: addToGroup
+                )
+            }
             
         } appendMessagesBack: {[weak self] addDevice, appendCompletion in
             guard let self = self, let newNode = MeshNetworkManager.instance.meshNetwork?.node(withAddress: addDevice.address) else {
@@ -1798,20 +2098,25 @@ class DeviceRestoreViewController: UIViewController {
             
             var appendMessages: [MeshMessageHandle] = []
 
+            if addDevice.deviceType == .emergencyController {
+                let context = prepareEmergencyFireRestoreContext(
+                    device: addDevice,
+                    historicalNode: oldNode,
+                    provisionedNode: newNode
+                )
+                if context?.state != .identityFailed, let healthModel = newNode.healthModel {
+                    appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
+                }
+                appendCompletion(appendMessages)
+                return
+            }
+
             if restoringBatteryPowerSwitch {
                 prepareBatteryPowerSwitchRestoreConfiguration(
                     oldNode: oldNode,
                     newNode: newNode,
                     appendMessages: &appendMessages
                 )
-                if let healthModel = newNode.healthModel {
-                    appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
-                }
-                appendCompletion(appendMessages)
-                return
-            }
-            if addDevice.deviceType == .emergencyController || newNode.deviceType == .emergencyController {
-                prepareEmergencyFireControllerRestoreMessages(oldNode: oldNode, newNode: newNode, appendMessages: &appendMessages)
                 if let healthModel = newNode.healthModel {
                     appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
                 }
@@ -1871,14 +2176,19 @@ class DeviceRestoreViewController: UIViewController {
                 }
             }
         } appendMessageFailedBack: { [weak self] messageHandle in
-            if let controllerAddress = self?.emergencyFireRestoreControllerAddress(containing: messageHandle) {
-                self?.failedEmergencyFireRestoreControllerAddresses.insert(controllerAddress)
-            }
             self?.markBatteryPowerSwitchRestoreConfigurationFailedIfNeeded(messageHandle)
         } addSuccess: {[weak self] addDevice in
             guard let self = self else { return }
             addDevice.addState = .success
             if let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: addDevice.address) {
+                if addDevice.deviceType == .emergencyController,
+                   self.emergencyFireRestoreContextsByAddress[node.primaryUnicastAddress] == nil {
+                    _ = self.prepareEmergencyFireRestoreContext(
+                        device: addDevice,
+                        historicalNode: deviceData.node,
+                        provisionedNode: node
+                    )
+                }
 //                if let repalceNode = addDevice.repalceNode { // 删除被替换节点的缓存数据
 //                    repalceNode.deleteExtension()
 //                }
@@ -1892,15 +2202,32 @@ class DeviceRestoreViewController: UIViewController {
                 if let request = finalizeBatteryPowerSwitchRestoreConfiguration(for: node) {
                     pendingBatteryPowerSwitchInitialBatteryReads.append(request)
                 }
-                let emergencyFireRestoreSyncFailed = resolveEmergencyFireRestoreSyncFailed(for: node)
-                if self.hasDeferredRestoreSyncData(for: node) {
+                if let context = self.emergencyFireRestoreContextsByAddress[node.primaryUnicastAddress] {
+                    switch context.state {
+                    case .identityFailed:
+                        addDevice.addState = .failed
+                        addDevice.selectedState = .disabled
+                    case .migrationFailed:
+                        addDevice.addState = .syncFailed
+                    case .readyForMigration, .readyForSync:
+                        addDevice.addState = .adding
+                    case .syncFailed:
+                        addDevice.addState = .syncFailed
+                    case .succeeded:
+                        addDevice.addState = .success
+                    }
+                } else if self.hasDeferredRestoreSyncData(for: node) {
                     addDevice.addState = .adding
-                } else if emergencyFireRestoreSyncFailed {
-                    addDevice.addState = .syncFailed
                 } else if shouldMarkRestoredNodeSyncFailed(node, phase: .deviceSuccess) {
                     addDevice.addState = .syncFailed
                 }
-                self.restoreNodes.append(node)
+                if self.emergencyFireRestoreContextsByAddress[node.primaryUnicastAddress]?.state != .identityFailed,
+                   !self.restoreNodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) {
+                    self.restoreNodes.append(node)
+                }
+            } else if addDevice.deviceType == .emergencyController {
+                addDevice.addState = .failed
+                addDevice.selectedState = .disabled
             }
             self.reloadDeviceState(addDevice)
             self.updateUIState()
@@ -1935,7 +2262,15 @@ class DeviceRestoreViewController: UIViewController {
             self.runDeferredRestoreIfNeeded(successList: successList) { [weak self] in
                 guard let self = self else { return }
                 UpDownLightDefaultCctStepsReader.readAfterProvisioning(nodes: self.restoreNodes) { [weak self] in
-                    self?.finishDeviceRestoreAdd(successList: successList, failList: failList)
+                    guard let self else { return }
+                    let entries = self.emergencyFireRestoreSyncEntries(devices: successList)
+                    self.runEmergencyFireRestoreSyncQueue(entries: entries) { [weak self] result in
+                        self?.finishDeviceRestoreAdd(
+                            successList: successList,
+                            failList: failList,
+                            syncResult: result
+                        )
+                    }
                 }
             }
         }
@@ -1943,16 +2278,28 @@ class DeviceRestoreViewController: UIViewController {
 
     private func finishDeviceRestoreAdd(
         successList: [ProvisioningDevice],
-        failList: [ProvisioningDevice]
+        failList: [ProvisioningDevice],
+        syncResult: DeviceRestoreSyncRunResult
     ) {
         // 添加完成后检查是否有设备需要同步
-        let needSyncNodes = restoreNodes.filter({
-            shouldMarkRestoredNodeSyncFailed($0, phase: .batchFinish)
-        })
+        let needSyncNodes = restoreNodes.filter { node in
+            if let context = emergencyFireRestoreContextsByAddress[node.primaryUnicastAddress] {
+                return context.state != .succeeded || context.controller?.isSynced != true
+            }
+            if isRegisteredEmergencyController(node) {
+                return emergencyFireRestoreController(for: node)?.isSynced != true
+            }
+            return shouldMarkRestoredNodeSyncFailed(node, phase: .batchFinish)
+        }
         if needSyncNodes.count > 0 {
             needSyncNodes.forEach({ node in
                 if let device = successList.first(where: { $0.address == node.primaryUnicastAddress }) {
-                    device.addState = .syncFailed
+                    if emergencyFireRestoreContextsByAddress[node.primaryUnicastAddress]?.state == .identityFailed {
+                        device.addState = .failed
+                        device.selectedState = .disabled
+                    } else {
+                        device.addState = .syncFailed
+                    }
                 }
             })
             tableView.reloadData()
@@ -1978,12 +2325,12 @@ class DeviceRestoreViewController: UIViewController {
 //                    })
                 }
             } else {
-                // TODO: 等几秒钟进入同步页面，添加设备完成后代理可能还在连接中
-                // 恢复设备后是否有同步失败的设备
-                if allDevices.contains(where: { $0.addState == .syncFailed }) {
+                if syncResult != .succeeded {
+                    finishRestoreSyncRetryFlow(result: syncResult)
+                } else if allDevices.contains(where: { $0.addState == .syncFailed }) {
                     syncBtnAction()
                 } else {
-                    dismiss()
+                    finishRestoreSyncRetryFlow(result: .succeeded)
                 }
             }
         }
@@ -2196,44 +2543,109 @@ class DeviceRestoreViewController: UIViewController {
     
     /// 点击同步设备
     @objc private func syncBtnAction() {
-        
         let syncFailedDevices = allDevices.filter({ $0.addState == .syncFailed })
-        let syncFailedNodes = syncFailedDevices.compactMap({ MeshNetworkManager.instance.meshNetwork?.node(withAddress: $0.address) })
-//        restoreNodes.filter({ $0.needSync })
-        guard syncFailedNodes.count > 0 else {
+        let emergencyFireEntries = emergencyFireRestoreSyncEntries(devices: syncFailedDevices)
+        let normalRestoreSyncFailedDevices = syncFailedDevices.filter { device in
+            emergencyFireRestoreContextsByAddress[device.address] == nil &&
+                device.deviceType != .emergencyController
+        }
+        guard !emergencyFireEntries.isEmpty || !normalRestoreSyncFailedDevices.isEmpty else {
+            finishRestoreSyncRetryFlow(result: .needsAttention)
             return
         }
-        let vc = SyncDevicesViewController(type: .devices(syncFailedNodes))
-        vc.automationRestore = automationRestore
-        vc.syncSuccessCallback = {[weak self] _ in
-            guard let self = self else { return }
-            self.navigationController?.hideAutomaticHud()
-            if self.automationRestore, case .specified = restoreMode {
-                self.deviceRestoreCallback?(self.restoreNodes, self.automationRestore)
-                self.navigationController?.popToViewController(vcClass: BleFirmwareUpdateViewController.classForCoder())
-            }else {
-                self.navigationController?.popViewController(animated: true)
-                syncFailedDevices.forEach { device in
-                    if let node = syncFailedNodes.first(where: { $0.primaryUnicastAddress == device.address }), !node.needSync {
-                        device.addState = .success
-                    }
-                }
-                self.tableView.reloadData()
-                self.updateUIState()
+
+        runEmergencyFireRestoreSyncQueue(entries: emergencyFireEntries) { [weak self] emergencyResult in
+            guard let self else { return }
+            guard emergencyResult == .succeeded else {
+                self.finishRestoreSyncRetryFlow(result: emergencyResult)
+                return
+            }
+            self.runNormalRestoreSyncIfNeeded(devices: normalRestoreSyncFailedDevices) { [weak self] normalResult in
+                self?.finishRestoreSyncRetryFlow(result: normalResult)
             }
         }
-        vc.backActionCallback = {[weak self] _ in
-            guard let self = self else { return }
-            self.navigationController?.popViewController(animated: true)
-            syncFailedDevices.forEach { device in
-                if let node = syncFailedNodes.first(where: { $0.primaryUnicastAddress == device.address }), !node.needSync {
+    }
+
+    private func runNormalRestoreSyncIfNeeded(
+        devices: [ProvisioningDevice],
+        completion: @escaping (DeviceRestoreSyncRunResult) -> Void
+    ) {
+        let nodes = devices.compactMap {
+            MeshNetworkManager.instance.meshNetwork?.node(withAddress: $0.address)
+        }
+        guard !nodes.isEmpty else {
+            completion(devices.isEmpty ? .succeeded : .needsAttention)
+            return
+        }
+
+        let vc = SyncDevicesViewController(type: .devices(nodes))
+        vc.automationRestore = automationRestore
+        vc.automationRestoreFailureCallback = { [weak self] in
+            self?.navigationController?.hideAutomaticHud()
+        }
+        vc.syncSuccessCallback = { [weak self, weak vc] _ in
+            guard let self else { return }
+            if self.navigationController?.topViewController === vc {
+                self.navigationController?.popViewController(animated: true)
+            }
+            devices.forEach { device in
+                if let node = nodes.first(where: { $0.primaryUnicastAddress == device.address }), !node.needSync {
                     device.addState = .success
                 }
             }
             self.tableView.reloadData()
             self.updateUIState()
+            let hasRemainingFailure = devices.contains { device in
+                guard let node = nodes.first(where: { $0.primaryUnicastAddress == device.address }) else {
+                    return true
+                }
+                return node.needSync
+            }
+            completion(hasRemainingFailure ? .needsAttention : .succeeded)
+        }
+        vc.backActionCallback = { [weak self, weak vc] _ in
+            guard let self else { return }
+            if self.navigationController?.topViewController === vc {
+                self.navigationController?.popViewController(animated: true)
+            }
+            devices.forEach { device in
+                if let node = nodes.first(where: { $0.primaryUnicastAddress == device.address }), !node.needSync {
+                    device.addState = .success
+                }
+            }
+            self.tableView.reloadData()
+            self.updateUIState()
+            completion(.cancelled)
         }
         navigationController?.pushViewController(vc, animated: true)
+    }
+
+    private func finishRestoreSyncRetryFlow(result: DeviceRestoreSyncRunResult) {
+        navigationController?.hideAutomaticHud()
+        if automationRestore, case .specified = restoreMode {
+            let decision = DeviceRestoreEFCRecoveryPolicy.automatedCompletionDecision(
+                syncResult: result,
+                hasIdentityFailure: emergencyFireRestoreContextsByAddress.values.contains { $0.state == .identityFailed },
+                hasMigrationFailure: emergencyFireRestoreContextsByAddress.values.contains { $0.state == .migrationFailed },
+                hasSyncFailure: allDevices.contains { $0.addState == .failed || $0.addState == .syncFailed },
+                hasUnsyncedEmergencyController: emergencyFireRestoreContextsByAddress.values.contains {
+                    $0.state != .succeeded || $0.controller?.isSynced != true
+                },
+                hasNormalNodeNeedingSync: restoreNodes.contains { node in
+                    emergencyFireRestoreContextsByAddress[node.primaryUnicastAddress] == nil && node.needSync
+                }
+            )
+            if decision == .reportAndExit {
+                reportDeviceRestoreResultIfNeeded()
+                navigationController?.popToViewController(vcClass: BleFirmwareUpdateViewController.classForCoder())
+            } else {
+                tableView.reloadData()
+                updateUIState()
+            }
+        } else {
+            tableView.reloadData()
+            updateUIState()
+        }
     }
 
     // MARK: - Scan Timer
@@ -2794,6 +3206,17 @@ extension DeviceRestoreViewController {
         case gatewaysOnly
         /// 仅恢复当前 space 内的非 gateway 设备
         case currentSpaceNonGateways
+
+        var candidateFilter: DeviceRestoreCandidateFilter {
+            switch self {
+            case .all:
+                return .all
+            case .gatewaysOnly:
+                return .gatewaysOnly
+            case .currentSpaceNonGateways:
+                return .currentSpaceNonGateways
+            }
+        }
     }
     
     /// 设备恢复数据组
