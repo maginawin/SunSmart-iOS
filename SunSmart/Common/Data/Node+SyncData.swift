@@ -1460,7 +1460,8 @@ extension Node {
     ///   - scene: 场景（传入则只获取该场景是否有同步，不传入则获取所有场景是否有同步）
     func getNodeNeedDeleteSceneDatas(scene: Scene? = nil) -> [Scene] {
         
-        guard let group = self.group, self.schedulerSetupModel != nil else {
+        guard let group = self.group,
+              SceneDeleteCapability.isSupported(sceneSetupModel: self.sceneSetupModel) else {
             return []
         }
         var scenes = self.scenes

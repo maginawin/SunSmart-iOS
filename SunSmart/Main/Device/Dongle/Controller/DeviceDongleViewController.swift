@@ -225,10 +225,12 @@ class DeviceDongleViewController: UIViewController, DeviceProtocol {
     private func deleteNode(node: Node) {
         
         XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
+        let deletionContext = DevicePermanentDeletionContext(node: node)
         MeshAPI.resetNode(address: node.primaryUnicastAddress) {[weak self] _ in
             
             XWHUDManager.hide()
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            deletionContext.commit()
             DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {
                 NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
                 // 通知space数据修改
@@ -240,6 +242,7 @@ class DeviceDongleViewController: UIViewController, DeviceProtocol {
             
             let alertView = SRAlertView(title: "notification".localizedString, actions: [.cancelAction, SRAlertAction(title: "force_delete".localizedString, actionHandler: {[weak self] _ in
                 guard let self = self else { return }
+                deletionContext.commit()
                 MeshNetworkManager.instance.meshNetwork?.remove(node: node)
                 
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)

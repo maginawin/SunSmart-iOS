@@ -770,6 +770,9 @@ class DeviceLightsViewController: UIViewController {
         SRAlertView(title: "notification".localizedString, message: "devices_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             guard let self = self else { return }
             XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
+            let deletionContexts = Dictionary(uniqueKeysWithValues: selectDevices.map {
+                ($0.primaryUnicastAddress, DevicePermanentDeletionContext(node: $0))
+            })
             
             // 提供重置的设备地址+超时时长list数据
             var addressDataList: [(address: Address, timeout: TimeInterval)] = selectDevices.map({ ($0.primaryUnicastAddress, $0.state ? 10 : 2) })
@@ -793,7 +796,7 @@ class DeviceLightsViewController: UIViewController {
                 successAddressList.forEach({ address in
                     if let index = self.devices.firstIndex(where: { $0.primaryUnicastAddress == address }) {
                         let node = self.devices[index]
-                        node.deleteExtension()
+                        deletionContexts[address]?.commit()
                         self.devices.remove(at: index)
                     }
                 })
@@ -828,7 +831,7 @@ class DeviceLightsViewController: UIViewController {
                         guard let self = self else { return }
                         let forceDeleteNodes = self.devices.filter({ failAddressList.contains($0.primaryUnicastAddress) })
                         forceDeleteNodes.forEach({
-                            $0.deleteExtension()
+                            deletionContexts[$0.primaryUnicastAddress]?.commit()
                             MeshNetworkManager.instance.meshNetwork?.remove(node: $0)
                         })
 //                        _ = self.space.meshManager?.save()

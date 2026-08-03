@@ -569,6 +569,7 @@ class DeviceLightViewController: UIViewController {
         SRAlertView(title: "notification".localizedString, message: "device_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             guard let self = self else { return }
             XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
+            let deletionContext = DevicePermanentDeletionContext(node: self.node)
   
             MeshAPI.resetNode(address: self.node.primaryUnicastAddress) {[weak self] _ in
                 XWHUDManager.hide()
@@ -576,7 +577,7 @@ class DeviceLightViewController: UIViewController {
                 self?.space.deviceCount = MeshNetworkManager.instance.realNodes.count
                 self?.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count
                 self?.space.save()
-                self?.node.deleteExtension()
+                deletionContext.commit()
                 DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {
                     NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
                     // 通知space数据修改
@@ -588,7 +589,7 @@ class DeviceLightViewController: UIViewController {
                 
                 let alertView = SRAlertView(title: "notification".localizedString, actions: [.cancelAction, SRAlertAction(title: "force_delete".localizedString, style: .destructive, actionHandler: {[weak self] _ in
                     guard let self = self else { return }
-                    self.node.deleteExtension()
+                    deletionContext.commit()
                     MeshNetworkManager.instance.meshNetwork?.remove(node: self.node)
 //                    _ = self.space.meshManager?.save()
                     self.space.deviceCount = MeshNetworkManager.instance.realNodes.count

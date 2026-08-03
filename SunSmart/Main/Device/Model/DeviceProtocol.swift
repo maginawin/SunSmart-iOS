@@ -117,12 +117,15 @@ extension DeviceProtocol {
     func deleteNodes(nodes: [Node], forceDeleteMessage: String? = nil, forceDeleteNote: String? = nil, result: DevicesResultCallback?) {
         
         XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
+        let deletionContexts = Dictionary(uniqueKeysWithValues: nodes.map {
+            ($0.primaryUnicastAddress, DevicePermanentDeletionContext(node: $0))
+        })
         
         MeshAPI.resetNodes(addressList: nodes.map({ $0.primaryUnicastAddress }), resetSuccess: nil, resetFail: nil, resetFinish: { successAddressList, failAddressList in
             XWHUDManager.hide()
             let successNodes = nodes.filter({ successAddressList.contains($0.primaryUnicastAddress) })
             successNodes.forEach({
-                $0.deleteExtension()
+                deletionContexts[$0.primaryUnicastAddress]?.commit()
             })
             if failAddressList.isEmpty { // 删除成功
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
@@ -143,7 +146,7 @@ extension DeviceProtocol {
                 }), SRAlertAction(title: "force_delete".localizedString, actionHandler: { _ in
                     
                     failedNodes.forEach({
-                        $0.deleteExtension()
+                        deletionContexts[$0.primaryUnicastAddress]?.commit()
                         MeshNetworkManager.instance.meshNetwork?.remove(node: $0)
                     })
                     
