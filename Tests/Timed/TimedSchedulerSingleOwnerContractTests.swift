@@ -3,12 +3,13 @@ import Foundation
 @main
 struct TimedSchedulerSingleOwnerContractTests {
     static func main() throws {
-        guard CommandLine.arguments.count == 13 else {
+        guard CommandLine.arguments.count == 15 else {
             fatalError(
                 "Expected Node+SupportModels, Node+Messages, MeshScheduleServer, "
                 + "Node+MessageHandles, MeshNetwork+SunSmart, ScheduleServer, "
                 + "GroupServer, Scheduler, DeviceGroupDeferredSyncPlanner, "
-                + "MeshDatabase, TimedViewController and SyncDevicesCellModel paths"
+                + "MeshDatabase, TimedViewController, SyncDevicesCellModel and "
+                + "SyncDevicesViewController and DeviceRestoreViewController paths"
             )
         }
 
@@ -24,12 +25,20 @@ struct TimedSchedulerSingleOwnerContractTests {
         let meshDatabase = try source(at: 10)
         let timedViewController = try source(at: 11)
         let operationModel = try source(at: 12)
+        let syncDevicesController = try source(at: 13)
+        let deviceRestoreController = try source(at: 14)
 
         testOwnerPolicy(in: supportModels)
         testSetAndDeleteRouting(
             messageHandles: messageHandles,
             scheduler: scheduler
         )
+        testTimeSynchronizationSeparation(
+            messageHandles: messageHandles,
+            operationModel: operationModel
+        )
+        testSyncDevicesTimeDependency(in: syncDevicesController)
+        testDeviceRestoreTimeDependency(in: deviceRestoreController)
         testModelAwareSync(in: meshNetwork)
         testDeleteTargets(in: scheduleServer)
         testEnabledStateUsesTargetEntry(in: scheduleServer)
@@ -37,6 +46,13 @@ struct TimedSchedulerSingleOwnerContractTests {
             scheduleServer: scheduleServer,
             meshNetwork: meshNetwork,
             groupServer: groupServer
+        )
+        testExplicitBatchTimeEntryPoints(
+            messageHandles: messageHandles,
+            groupServer: groupServer,
+            meshNetwork: meshNetwork,
+            scheduleServer: scheduleServer,
+            meshScheduleServer: meshScheduleServer
         )
         testDeferredTaskGroupContext(
             operationModel: operationModel,
@@ -165,6 +181,151 @@ struct TimedSchedulerSingleOwnerContractTests {
         require(
             appOwnerPolicy.contains("TimedSchedulerOwnerPolicy.resolve"),
             "The App adapter must reuse the tested Timed owner policy"
+        )
+    }
+
+    private static func testTimeSynchronizationSeparation(
+        messageHandles: String,
+        operationModel: String
+    ) {
+        let scheduleMessages = section(
+            in: messageHandles,
+            from: "extension Schedule {",
+            to: "extension ProfileType {"
+        )
+        require(
+            !scheduleMessages.contains("Node.setLocalTimeMessage()"),
+            "A Schedule message batch must not embed its own Time Set"
+        )
+
+        let actionTypes = section(
+            in: operationModel,
+            from: "enum ActionType {",
+            to: "extension NodeSyncData {"
+        )
+        require(
+            actionTypes.contains("case timeSynchronization"),
+            "ActionType must expose a dedicated time synchronization operation"
+        )
+
+        let operationMessages = section(
+            in: operationModel,
+            from: "func makeMessageHandles(",
+            to: "/// 设备删除操作"
+        )
+        require(
+            operationMessages.contains("Node.makeLocalTimeSetMessageHandle(model: timeModel)"),
+            "Time synchronization must use the SDK dynamic Time Set handle factory"
+        )
+        require(
+            operationMessages.contains("handle.continuous = false"),
+            "A failed Time Set must stop its current command queue"
+        )
+        require(
+            operationModel.contains("var isTimedScheduleTimeSyncOperation: Bool"),
+            "DeviceOperationType must identify Timed time synchronization tasks"
+        )
+    }
+
+    private static func testSyncDevicesTimeDependency(in source: String) {
+        let scheduleTasks = section(
+            in: source,
+            from: "case .syncSchedules(let schedules):",
+            to: "case .deleteSchedules(let schedules):"
+        )
+        require(
+            scheduleTasks.contains("TimedScheduleTimeSyncPolicy.makePlan("),
+            "Sync Devices must calculate one time dependency plan per Schedule batch"
+        )
+        require(
+            scheduleTasks.contains("type: .timeSynchronization"),
+            "Sync Devices must create a dedicated Time Set task"
+        )
+        require(
+            scheduleTasks.contains("\"sync_time\".localizedString"),
+            "The Time Set task must use localized UI text"
+        )
+        require(
+            scheduleTasks.contains("relevanceTaskModels.append(timeSynchronizationTask)"),
+            "Every enabled Schedule task must depend on the shared Time Set task"
+        )
+        require(
+            scheduleTasks.contains("let independentScheduleTasks = syncScheduleTasks.filter")
+                && scheduleTasks.contains("let dependentScheduleTasks = syncScheduleTasks.filter")
+                && scheduleTasks.contains("+ independentScheduleTasks + dependentScheduleTasks"),
+            "Disabled Schedules must remain runnable when the shared Time Set fails"
+        )
+        require(
+            scheduleTasks.contains("TimedSchedulerGroupMemberExitStepPolicy.destination"),
+            "The existing non-blocking Group exit policy must remain in effect"
+        )
+
+        let retryDependencies = section(
+            in: source,
+            from: "func resyncRelevanceCheck()",
+            to: "return relevanceTaskModels"
+        )
+        require(
+            retryDependencies.contains("task.operationType.isTimedScheduleTimeSyncOperation"),
+            "Schedule retry must re-run its Time Set dependency"
+        )
+    }
+
+    private static func testDeviceRestoreTimeDependency(in source: String) {
+        let task = normalized(section(
+            in: source,
+            from: "private struct DeferredRestoreTask",
+            to: "private struct EmergencyFireRestoreSyncEntry"
+        ))
+        require(
+            !task.contains("let messageHandles: [MeshMessageHandle]")
+                && task.contains("let operationType: DeviceOperationType"),
+            "Restore must retain semantic operations instead of generated handles"
+        )
+        require(
+            task.contains("let requiresSuccessfulTimeSync: Bool")
+                && task.contains("var isTimeSynchronization: Bool"),
+            "Restore tasks must carry and identify the shared Time Set dependency"
+        )
+
+        let planner = normalized(section(
+            in: source,
+            from: "private func deferredRestoreTasks(",
+            to: "private func makeDeferredRestoreMessageHandles("
+        ))
+        require(
+            planner.contains("TimedScheduleTimeSyncPolicy.makePlan(")
+                && planner.contains("type: .timeSynchronization")
+                && planner.contains("requiresSuccessfulTimeSync:"),
+            "Restore must create one Time Set and mark only enabled Schedules dependent"
+        )
+        require(
+            !planner.contains("operationType.messageHandles"),
+            "Restore planning must not freeze message handles before execution"
+        )
+
+        let runner = normalized(section(
+            in: source,
+            from: "private func runDeferredRestoreTasks(",
+            to: "private func retryableDeferredRestoreHandles("
+        ))
+        require(
+            runner.contains("timeSyncSucceeded: Bool?")
+                && runner.contains("task.requiresSuccessfulTimeSync && timeSyncSucceeded == false"),
+            "Restore must skip enabled Schedules after a failed Time Set"
+        )
+        require(
+            runner.contains("makeDeferredRestoreMessageHandles(task: task, node: node)"),
+            "Restore execution must generate handles from the semantic task"
+        )
+        require(
+            runner.components(separatedBy: "makeDeferredRestoreMessageHandles(task: task, node: node)").count >= 3,
+            "Restore retry must regenerate handles instead of reusing a stale Time Set"
+        )
+        require(
+            runner.contains("deferredRestoreMessageKey(for:")
+                && !runner.contains("messageHandleIndexes"),
+            "Restore retry must match regenerated handles semantically instead of by unstable index"
         )
     }
 
@@ -353,6 +514,72 @@ struct TimedSchedulerSingleOwnerContractTests {
 
     }
 
+    private static func testExplicitBatchTimeEntryPoints(
+        messageHandles: String,
+        groupServer: String,
+        meshNetwork: String,
+        scheduleServer: String,
+        meshScheduleServer: String
+    ) {
+        let nodeSyncSchedules = section(
+            in: messageHandles,
+            from: "case .syncSchedules(let schedules):",
+            to: "case .deleteSchedules(let schedules):"
+        )
+        require(
+            nodeSyncSchedules.contains("TimedScheduleTimeSyncPolicy.makePlan(")
+                && nodeSyncSchedules.contains("Node.makeLocalTimeSetMessageHandle(model: timeModel)"),
+            "NodeSyncData Schedule batches must prepend one dynamic Time Set"
+        )
+
+        let groupSchedules = section(
+            in: groupServer,
+            from: "// 设备需要新增/更新的日程",
+            to: "return messages"
+        )
+        require(
+            groupSchedules.contains("TimedScheduleTimeSyncPolicy.makePlan(")
+                && groupSchedules.contains("Node.makeLocalTimeSetMessageHandle(model: timeModel)"),
+            "Group Schedule batches must prepend one dynamic Time Set"
+        )
+
+        let restore = section(
+            in: meshNetwork,
+            from: "// 日程\n",
+            to: "if let pwmFrequency"
+        )
+        require(
+            restore.contains("TimedScheduleTimeSyncPolicy.makePlan(")
+                && restore.contains("Node.makeLocalTimeSetMessageHandle(model: timeModel)"),
+            "Historical device restore must add at most one explicit dynamic Time Set"
+        )
+
+        let saveSchedule = section(
+            in: scheduleServer,
+            from: "static func saveSchedule(",
+            to: "static func runScheduleDeviceBatches("
+        )
+        require(
+            saveSchedule.contains("var deviceBatches: [ScheduleDeviceBatch] = []")
+                && saveSchedule.contains("runScheduleDeviceBatches("),
+            "Timed save must execute an independent command batch per device"
+        )
+
+        let sdkSetSchedule = section(
+            in: meshScheduleServer,
+            from: "static func setSchedule(",
+            to: "static func getSchedule("
+        )
+        require(
+            sdkSetSchedule.contains("Node.makeLocalTimeSetMessageHandle(model: model)"),
+            "SDK Schedule Set must use the dynamic Time Set factory"
+        )
+        require(
+            !sdkSetSchedule.contains("MeshMessageHandle(message: Node.setLocalTimeMessage()"),
+            "SDK Schedule Set must not freeze time while constructing the queue"
+        )
+    }
+
     private static func testDeferredTaskGroupContext(
         operationModel: String,
         groupSyncPlanner: String
@@ -413,12 +640,48 @@ struct TimedSchedulerSingleOwnerContractTests {
             "Schedule deletion must verify every Scheduler Model is clear"
         )
         require(
+            task.contains("let requiresSuccessfulTimeSync: Bool"),
+            "Deferred Schedule tasks must carry their Time Set dependency"
+        )
+        require(
+            task.contains("var isTimeSynchronization: Bool"),
+            "Deferred runner must identify the shared Time Set task"
+        )
+        require(
             attempts.contains("task.isSuccessful(contextGroup: group)"),
             "Deferred retry must use Group-aware task verification"
         )
         require(
+            attempts.contains("timeSyncSucceeded: Bool?")
+                && attempts.contains("task.requiresSuccessfulTimeSync && timeSyncSucceeded == false"),
+            "Deferred runner must skip enabled Schedules after a failed Time Set"
+        )
+        require(
             batch.contains("task.isSuccessful(contextGroup: group)"),
             "Fast Add checkpoints must use Group-aware task verification"
+        )
+
+        let planner = normalized(section(
+            in: groupSyncPlanner,
+            from: "static func makePlan(",
+            to: "static func run("
+        ))
+        require(
+            planner.contains("var timedScheduleTasks: [DeviceGroupDeferredSyncTask] = []")
+                && planner.contains("deferredTasks + timedScheduleTasks"),
+            "Timed Schedule tasks must run after unrelated deferred tasks"
+        )
+
+        let deferredTaskFactory = normalized(section(
+            in: groupSyncPlanner,
+            from: "static func makeDeferredTasks(",
+            to: "static func runPlans("
+        ))
+        require(
+            deferredTaskFactory.contains("TimedScheduleTimeSyncPolicy.makePlan(")
+                && deferredTaskFactory.contains("type: .timeSynchronization")
+                && deferredTaskFactory.contains("requiresSuccessfulTimeSync:"),
+            "A deferred Schedule batch must contain one Time Set and dependent enabled Schedules"
         )
     }
 

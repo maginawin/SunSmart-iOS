@@ -30,4 +30,6 @@ swiftc -parse-as-library \
   "${repo_root}/SunSmart/Main/Device/Model/DeviceGroupDeferredSyncPlanner.swift" \
   "${sdk_root}/Sources/NordicSigMeshSDK/MeshLib/MeshDatabase.swift" \
   "${repo_root}/SunSmart/Main/Timed/Controller/TimedViewController.swift" \
-  "${repo_root}/SunSmart/Main/Space/Model/SyncDevicesCellModel.swift"
+  "${repo_root}/SunSmart/Main/Space/Model/SyncDevicesCellModel.swift" \
+  "${repo_root}/SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "${repo_root}/SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift"

@@ -8,6 +8,19 @@ import NordicSigMeshSDK
 
 struct DeviceGroupDeferredSyncTask {
     let operationType: DeviceOperationType
+    let requiresSuccessfulTimeSync: Bool
+
+    init(
+        operationType: DeviceOperationType,
+        requiresSuccessfulTimeSync: Bool = false
+    ) {
+        self.operationType = operationType
+        self.requiresSuccessfulTimeSync = requiresSuccessfulTimeSync
+    }
+
+    var isTimeSynchronization: Bool {
+        operationType.isTimedScheduleTimeSyncOperation
+    }
 
     func makeMessageHandles(contextGroup: Group) -> [MeshMessageHandle] {
         operationType
@@ -152,15 +165,23 @@ enum DeviceGroupDeferredSyncPlanner {
         )
         var immediateHandles: [MeshMessageHandle] = []
         var deferredTasks: [DeviceGroupDeferredSyncTask] = []
+        var timedScheduleTasks: [DeviceGroupDeferredSyncTask] = []
 
         syncDatas.forEach { syncData in
             switch syncData {
             case .deviceInitialize, .subscribeGroup:
                 immediateHandles.append(contentsOf: syncData.getMessageHandles(node: node))
+            case .syncSchedules:
+                timedScheduleTasks.append(
+                    contentsOf: makeDeferredTasks(
+                        syncData: syncData,
+                        node: node,
+                        group: group
+                    )
+                )
             case .profile,
                  .syncScenes,
                  .deleteScenes,
-                 .syncSchedules,
                  .deleteSchedules,
                  .syncCollectionSchedules,
                  .deleteCollectionSchedules,
@@ -185,7 +206,7 @@ enum DeviceGroupDeferredSyncPlanner {
 
         return DeviceGroupDeferredSyncPlan(
             immediateMessageHandles: immediateHandles,
-            deferredTasks: deferredTasks
+            deferredTasks: deferredTasks + timedScheduleTasks
         )
     }
 
@@ -207,10 +228,14 @@ private extension DeviceGroupDeferredSyncPlanner {
     ) -> [DeviceGroupDeferredSyncTask] {
         var tasks: [DeviceGroupDeferredSyncTask] = []
 
-        func appendTask(_ operationType: DeviceOperationType) {
+        func appendTask(
+            _ operationType: DeviceOperationType,
+            requiresSuccessfulTimeSync: Bool = false
+        ) {
             tasks.append(
                 DeviceGroupDeferredSyncTask(
-                    operationType: operationType
+                    operationType: operationType,
+                    requiresSuccessfulTimeSync: requiresSuccessfulTimeSync
                 )
             )
         }
@@ -229,12 +254,22 @@ private extension DeviceGroupDeferredSyncPlanner {
                 appendTask(.delete(node: node, type: .scene(sceneId: scene.number, executeData: nil)))
             }
         case .syncSchedules(let schedules):
-            schedules.forEach { schedule in
+            let timeSyncPlan = TimedScheduleTimeSyncPolicy.makePlan(
+                hasTimeModel: node.timeModel != nil,
+                scheduleEnabledStates: schedules.map(\.enabled)
+            )
+            if timeSyncPlan.requiresTimeSync {
+                appendTask(
+                    .configuration(node: node, type: .timeSynchronization)
+                )
+            }
+            schedules.enumerated().forEach { index, schedule in
                 appendTask(
                     .configuration(
                         node: node,
                         type: .schedule(schedule: schedule)
-                    )
+                    ),
+                    requiresSuccessfulTimeSync: timeSyncPlan.scheduleRequiresTimeSync[index]
                 )
             }
         case .deleteSchedules(let schedules):
@@ -301,7 +336,8 @@ private extension DeviceGroupDeferredSyncPlanner {
             node: item.node,
             group: item.group,
             maxRetryCount: maxRetryCount,
-            hadFailure: false
+            hadFailure: false,
+            timeSyncSucceeded: nil
         ) { planSucceeded in
             var nextResults = results
             nextResults.append(
@@ -328,6 +364,7 @@ private extension DeviceGroupDeferredSyncPlanner {
         group: Group,
         maxRetryCount: Int,
         hadFailure: Bool,
+        timeSyncSucceeded: Bool?,
         completion: @escaping (Bool) -> Void
     ) {
         guard index < tasks.count else {
@@ -341,6 +378,20 @@ private extension DeviceGroupDeferredSyncPlanner {
 
         let task = tasks[index]
 
+        if task.requiresSuccessfulTimeSync && timeSyncSucceeded == false {
+            runTasks(
+                tasks,
+                index: index + 1,
+                node: node,
+                group: group,
+                maxRetryCount: maxRetryCount,
+                hadFailure: true,
+                timeSyncSucceeded: timeSyncSucceeded,
+                completion: completion
+            )
+            return
+        }
+
         runTaskAttempt(
             task,
             attempt: 0,
@@ -348,6 +399,9 @@ private extension DeviceGroupDeferredSyncPlanner {
             node: node,
             group: group
         ) { taskSucceeded in
+            let nextTimeSyncSucceeded = task.isTimeSynchronization
+                ? taskSucceeded
+                : timeSyncSucceeded
             runTasks(
                 tasks,
                 index: index + 1,
@@ -355,6 +409,7 @@ private extension DeviceGroupDeferredSyncPlanner {
                 group: group,
                 maxRetryCount: maxRetryCount,
                 hadFailure: hadFailure || !taskSucceeded,
+                timeSyncSucceeded: nextTimeSyncSucceeded,
                 completion: completion
             )
         }

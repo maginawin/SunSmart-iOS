@@ -179,6 +179,13 @@ private extension Node {
 
 /// 操作类型
 enum DeviceOperationType {
+
+    var isTimedScheduleTimeSyncOperation: Bool {
+        guard case .configuration(_, .timeSynchronization) = self else {
+            return false
+        }
+        return true
+    }
     
     var isPowerSwitchOwnConfigurationOperation: Bool {
         switch self {
@@ -298,6 +305,8 @@ enum DeviceOperationType {
             }
         case .configuration(let node, let type):
             switch type {
+            case .timeSynchronization:
+                return true
             case .scene(let sceneId, let sceneData):
                 guard let sceneData = sceneData, let nodeScene = node.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId }) else {
                     return false
@@ -533,10 +542,18 @@ enum DeviceOperationType {
                 messageHandles.append(contentsOf: node.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: unsubscribe))
             case .batteryPowerSwitchReset, .batteryPowerSwitchKeyConfig, .batteryPowerSwitchTxEnable, .batteryPowerSwitchLEDIndicator:
                 break
+            case .timeSynchronization:
+                break
             }
         case .configuration(let node, let type): // 添加/配置操作
             
             switch type {
+            case .timeSynchronization:
+                if let timeModel = node.timeModel {
+                    let handle = Node.makeLocalTimeSetMessageHandle(model: timeModel)
+                    handle.continuous = false
+                    messageHandles.append(handle)
+                }
             case .group(let group):
                 // 设备加入组
                 messageHandles.append(contentsOf: node.getSunSmartSubscribeToGroupMessageHandles(group, continuous: false))
@@ -710,6 +727,8 @@ enum DeviceOperationType {
 
 /// 事件类型
 enum ActionType {
+    /// Timed 日程同步的单一前置校时
+    case timeSynchronization
     /// 场景
     case scene(sceneId: SceneNumber, executeData: SceneExecuteData?)
     /// 日程

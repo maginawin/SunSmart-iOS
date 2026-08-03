@@ -2009,3 +2009,4 @@
 "photosensor_exception_default" = "⚠ Default: Disabled. Enable when using a Proximity / Predictive Lighting with Photocell profile — this device type requires it to work correctly. When switching to any profile with Daylight Harvesting functionality, manually disable this feature or the device will not function correctly. This feature applies to very few device types — handle with care.";
 "device_filter_search_by_name" = "Search by Name";
 "device_filter_no_matching_devices" = "No matching devices";
+"sync_time" = "Sync Time";

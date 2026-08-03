@@ -2750,7 +2750,15 @@ extension Node {
         guard let restoreData = self.restoreData else {
             return []
         }
+        var groupScheduleTimeSyncRequired = false
         if let group = restoreData.addGroup {
+            let groupSchedules = group.info.bindSchedules.filter {
+                $0.needsSync(on: self, contextGroup: group)
+            }
+            groupScheduleTimeSyncRequired = TimedScheduleTimeSyncPolicy.makePlan(
+                hasTimeModel: self.timeModel != nil,
+                scheduleEnabledStates: groupSchedules.map(\.enabled)
+            ).requiresTimeSync
             
             messageHandles.append(contentsOf: group.getNodeAddMessageHandles(node: self))
             
@@ -2767,6 +2775,17 @@ extension Node {
         // 日程
         if !self.schedulerSetupModels.isEmpty {
             let setSchedules = MeshNetworkManager.instance.schedules.filter({ $0.nodeAddresses.contains(self.primaryUnicastAddress) })
+            let timeSyncPlan = TimedScheduleTimeSyncPolicy.makePlan(
+                hasTimeModel: self.timeModel != nil,
+                scheduleEnabledStates: setSchedules.map(\.enabled)
+            )
+            if timeSyncPlan.requiresTimeSync,
+               !groupScheduleTimeSyncRequired,
+               let timeModel = self.timeModel {
+                let timeHandle = Node.makeLocalTimeSetMessageHandle(model: timeModel)
+                timeHandle.continuous = false
+                messageHandles.append(timeHandle)
+            }
             setSchedules.forEach { schedule in
                 messageHandles.append(contentsOf: schedule.getMessageHandles(node: self))
             }

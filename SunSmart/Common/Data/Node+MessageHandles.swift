@@ -243,6 +243,16 @@ extension NodeSyncData {
                 messageHandles.append(contentsOf: $0.getDeleteMessageHandles(node: node))
             })
         case .syncSchedules(let schedules):
+            let timeSyncPlan = TimedScheduleTimeSyncPolicy.makePlan(
+                hasTimeModel: node.timeModel != nil,
+                scheduleEnabledStates: schedules.map(\.enabled)
+            )
+            if timeSyncPlan.requiresTimeSync,
+               let timeModel = node.timeModel {
+                let timeHandle = Node.makeLocalTimeSetMessageHandle(model: timeModel)
+                timeHandle.continuous = false
+                messageHandles.append(timeHandle)
+            }
             schedules.forEach({
                 messageHandles.append(
                     contentsOf: $0.getMessageHandles(
@@ -448,10 +458,6 @@ extension Schedule {
             let owner = schedulerModelOwner(on: node, contextGroup: contextGroup)
             guard let schedulerSetupModel = node.schedulerSetupModel(for: owner) else {
                 return []
-            }
-            // 设置时区
-            if self.enabled, let timeModel = node.timeModel {
-                messageHandles.append(MeshMessageHandle(message: Node.setLocalTimeMessage(), model: timeModel))
             }
             // 设置日程
             let entry = self.schedulerEntry

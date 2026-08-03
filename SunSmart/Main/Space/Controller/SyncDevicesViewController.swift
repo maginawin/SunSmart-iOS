@@ -1482,13 +1482,40 @@ class SyncDevicesViewController: UIViewController {
                     deleteSteps.append(step)
                 }
             case .syncSchedules(let schedules):
-                
-                let syncScheduleTasks = schedules.map({
-                    return SyncDeviceStepTaskModel(name: $0.name, operationType: .configuration(node: node, type: .schedule(schedule: $0)))
-                })
+                let timeSyncPlan = TimedScheduleTimeSyncPolicy.makePlan(
+                    hasTimeModel: node.timeModel != nil,
+                    scheduleEnabledStates: schedules.map(\.enabled)
+                )
+                let timeSynchronizationTask: SyncDeviceStepTaskModel?
+                if timeSyncPlan.requiresTimeSync {
+                    timeSynchronizationTask = SyncDeviceStepTaskModel(
+                        name: "sync_time".localizedString,
+                        operationType: .configuration(node: node, type: .timeSynchronization)
+                    )
+                } else {
+                    timeSynchronizationTask = nil
+                }
+                let syncScheduleTasks = schedules.enumerated().map { index, schedule in
+                    let task = SyncDeviceStepTaskModel(
+                        name: schedule.name,
+                        operationType: .configuration(node: node, type: .schedule(schedule: schedule))
+                    )
+                    if timeSyncPlan.scheduleRequiresTimeSync[index],
+                       let timeSynchronizationTask {
+                        task.relevanceTaskModels.append(timeSynchronizationTask)
+                    }
+                    return task
+                }
                 if syncScheduleTasks.count > 0 {
-                    let step = SyncDeviceStepModel(type: "schedule".localizedString, state: .none, tasks: syncScheduleTasks)
-                    syncScheduleTasks.forEach({ $0.parentStepModel = step })
+                    let independentScheduleTasks = syncScheduleTasks.filter {
+                        $0.relevanceTaskModels.isEmpty
+                    }
+                    let dependentScheduleTasks = syncScheduleTasks.filter {
+                        !$0.relevanceTaskModels.isEmpty
+                    }
+                    let tasks = [timeSynchronizationTask].compactMap { $0 } + independentScheduleTasks + dependentScheduleTasks
+                    let step = SyncDeviceStepModel(type: "schedule".localizedString, state: .none, tasks: tasks)
+                    tasks.forEach({ $0.parentStepModel = step })
                     let isExitingGroup = node.groupState == .exitFailure
                         || removeGroupStep != nil
                     switch TimedSchedulerGroupMemberExitStepPolicy.destination(
@@ -3891,6 +3918,9 @@ extension SyncDeviceStepTaskModel {
         // 检查是否有profile数据需要加锁、切换场景前置要求，需要则重试必须连带前置条件一起设置
         if self.relevanceTaskModels.count > 0 {
             relevanceTaskModels = self.relevanceTaskModels.filter { task in
+                if task.operationType.isTimedScheduleTimeSyncOperation {
+                    return true
+                }
                 if case .configuration(_, let actionType) = task.operationType, case .profile(let profileType) = actionType {
                     switch profileType {
                     case .profileToggleTriggerConditionLuxLock,

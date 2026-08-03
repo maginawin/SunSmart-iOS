@@ -4,6 +4,7 @@ final class TestMessageHandle {}
 struct FastAddTaskCheckpointTrackerTests {
     static func main() {
         testBatchPreservesMessageOrderAndTailIdentity()
+        testTimeAndSchedulesPreserveSharedHandleIdentity()
         testActualTailHandleCompletesCheckpoint()
         testEquivalentHandleInstancesRemainIndependent()
         testSeparateBatchesKeepIndependentHandleIdentity()
@@ -44,6 +45,37 @@ struct FastAddTaskCheckpointTrackerTests {
         batch.tracker.recordSuccess(for: firstTail)
         precondition(batch.tracker.hasFailure)
         batch.tracker.recordSuccess(for: secondTail)
+        precondition(!batch.tracker.hasFailure)
+    }
+
+    private static func testTimeAndSchedulesPreserveSharedHandleIdentity() {
+        let timeHandle = TestMessageHandle()
+        let firstScheduleHandle = TestMessageHandle()
+        let secondScheduleHandle = TestMessageHandle()
+        let batch = FastAddTaskCheckpointBatch(
+            sources: [
+                FastAddTaskCheckpointSource(
+                    messageHandles: [timeHandle],
+                    verify: { true }
+                ),
+                FastAddTaskCheckpointSource(
+                    messageHandles: [firstScheduleHandle],
+                    verify: { true }
+                ),
+                FastAddTaskCheckpointSource(
+                    messageHandles: [secondScheduleHandle],
+                    verify: { true }
+                )
+            ]
+        )
+
+        precondition(batch.messageHandles[0] === timeHandle)
+        precondition(batch.messageHandles[1] === firstScheduleHandle)
+        precondition(batch.messageHandles[2] === secondScheduleHandle)
+
+        batch.tracker.recordSuccess(for: batch.messageHandles[0])
+        batch.tracker.recordSuccess(for: batch.messageHandles[1])
+        batch.tracker.recordSuccess(for: batch.messageHandles[2])
         precondition(!batch.tracker.hasFailure)
     }
 

@@ -166,16 +166,108 @@ assert_contains "SunSmart/Main/Device/Switches/View/SwitchSelectGroupsViewCell.s
   "Group selection cells must reset right-side switch state through a single configuration method."
 
 assert_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
-  "case .all:" \
-  "Restore filter must handle the default mode explicitly."
+  "DeviceRestoreCandidatePolicy.includesHistoricalNode" \
+  "Restore filter must delegate entry and Space scope to the candidate policy."
 
 assert_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "shouldIncludeRestoreCandidate(node: node, device: unprovisionedDevice)" \
+  "Restore scanning must validate the historical and advertised device identities."
+
+assert_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "MeshLibManager.manager.supportDeviceInfos" \
+  "Restore EFC support must come from the current device configuration registry."
+
+assert_not_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
   "return node.deviceType != .emergencyController" \
-  "Restore Device Data must not list EFC devices in default mode."
+  "Restore default mode must no longer exclude all EFC devices."
+
+assert_not_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "node.deviceType != .gateway && node.deviceType != .emergencyController" \
+  "Restore current-space mode must no longer exclude all EFC devices."
 
 assert_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
-  "node.deviceType != .gateway && node.deviceType != .emergencyController" \
-  "Restore Device Data must not list EFC devices in current-space non-gateway mode."
+  "DeviceEmerFireStore.shared.restoreDevice" \
+  "Restore must preserve the existing EFC local configuration migration."
+
+assert_not_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "prepareEmergencyFireControllerRestoreMessages" \
+  "Restore must not flatten current EFC planner tasks into Fast Add handles."
+
+assert_not_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "emergencyFireRestoreMessageHandlesByAddress" \
+  "Restore must not track EFC sync by flattened Fast Add handles."
+
+assert_not_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "emergencyFireRestoreControllerAddress(containing:" \
+  "Restore must not map individual Fast Add handle failures back to EFC controllers."
+
+assert_not_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "resolveEmergencyFireRestoreSyncFailed" \
+  "Restore must use the authoritative EFC sync result instead of the legacy handle reducer."
+
+assert_not_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "failedEmergencyFireRestoreControllerAddresses" \
+  "Restore must not keep the legacy EFC handle failure set."
+
+assert_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "runEmergencyFireRestoreSyncQueue" \
+  "Restore must run provisioned EFC controllers through a dedicated sync queue."
+
+assert_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "EmergencyFireRestoreContext" \
+  "Restore must retain the historical and provisioned EFC inputs for retry."
+
+assert_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "emergencyFireRestoreContextsByAddress" \
+  "Restore must keep one authoritative EFC recovery context per provisioned address."
+
+assert_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "DeviceRestoreEFCRecoveryPolicy.provisionedIdentityDecision" \
+  "Restore must validate the Composition identity without falling back to normal restore."
+
+assert_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "retryEmergencyFireRestoreMigrationIfNeeded" \
+  "Restore Retry must re-run failed EFC local data migration before dedicated sync."
+
+assert_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "finishRestoreSyncRetryFlow(result:" \
+  "Restore sync completion must distinguish success from cancellation and failure."
+
+assert_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "reportDeviceRestoreResultIfNeeded" \
+  "Restore must report authoritative successful nodes at most once."
+
+assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+  "automationRestoreFailureCallback" \
+  "Restore-owned automatic sync must be able to retain the failed sync page after retries."
+
+assert_not_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "failedEmergencyFireRestoreMigrationAddresses" \
+  "Restore migration retry must not keep only an address without old/new Node inputs."
+
+assert_not_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "private func finishRestoreSyncRetryFlow()" \
+  "Restore must not treat every sync callback as successful completion."
+
+assert_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "type: .emergencyFire(" \
+  "Restore must use the authoritative EFC sync type."
+
+assert_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "data: entry.controller" \
+  "Restore must sync the migrated EFC controller data."
+
+assert_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "persistsSyncResult: true" \
+  "Restore EFC sync must persist controller task results and aggregate sync truth."
+
+assert_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "normalRestoreSyncFailedDevices" \
+  "Restore Retry must separate normal devices from EFC controllers."
+
+assert_not_contains "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "SyncDevicesViewController(type: .devices(syncFailedNodes))" \
+  "Restore Retry must not send EFC controllers through normal device sync."
 
 assert_contains "SunSmart/Main/Device/Controller/DeviceAddClassicModeController.swift" \
   "appendEmergencyFireControllerGroupMutationMessages(node: node, group: group, appendMessages: &appendMessages)" \

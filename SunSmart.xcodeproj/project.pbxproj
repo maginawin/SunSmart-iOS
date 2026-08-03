@@ -637,6 +637,7 @@
 		C88553F42DE6B44C00C8B688 /* SiteData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADEFE2A97350400238C1C /* SiteData.swift */; };
 		C88553F52DE6B44C00C8B688 /* BatchImportResultHelpController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88DE4482C085A5D005A38C1 /* BatchImportResultHelpController.swift */; };
 		C88553F62DE6B44C00C8B688 /* Node+SyncData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */; };
+		C8F0A0023000000000000001 /* TimedScheduleTimeSyncPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F0A0013000000000000001 /* TimedScheduleTimeSyncPolicy.swift */; };
 		C88553F72DE6B44C00C8B688 /* MeshFirmwareUpgradeResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89D560E2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift */; };
 		C88553F82DE6B44C00C8B688 /* ScheduleAddViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A29C2B2B47FE2300104634 /* ScheduleAddViewController.swift */; };
 		C88553F92DE6B44C00C8B688 /* ProfileInstructionsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F0A2B8DFBF700A09FFA /* ProfileInstructionsViewCell.swift */; };
@@ -1022,6 +1023,7 @@
 		C886E0452E30DE4900D0C3A6 /* SiteData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADEFE2A97350400238C1C /* SiteData.swift */; };
 		C886E0462E30DE4900D0C3A6 /* BatchImportResultHelpController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88DE4482C085A5D005A38C1 /* BatchImportResultHelpController.swift */; };
 		C886E0472E30DE4900D0C3A6 /* Node+SyncData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */; };
+		C8F0A0033000000000000001 /* TimedScheduleTimeSyncPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F0A0013000000000000001 /* TimedScheduleTimeSyncPolicy.swift */; };
 		C886E0482E30DE4900D0C3A6 /* MeshFirmwareUpgradeResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89D560E2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift */; };
 		C886E0492E30DE4900D0C3A6 /* ScheduleAddViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A29C2B2B47FE2300104634 /* ScheduleAddViewController.swift */; };
 		C886E04A2E30DE4900D0C3A6 /* ProfileInstructionsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F0A2B8DFBF700A09FFA /* ProfileInstructionsViewCell.swift */; };
@@ -1524,6 +1526,7 @@
 		C8A347D02D63103B0092D3E4 /* DeviceBaseViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A347CF2D63103B0092D3E4 /* DeviceBaseViewController.swift */; };
 		C8A3516E2D8D73B800325FC6 /* DeviceRestoreEmptyViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3516D2D8D73B800325FC6 /* DeviceRestoreEmptyViewCell.swift */; };
 		C8A351702D8EB1FF00325FC6 /* Node+SyncData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */; };
+		C8F0A0043000000000000001 /* TimedScheduleTimeSyncPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F0A0013000000000000001 /* TimedScheduleTimeSyncPolicy.swift */; };
 		C8A3EE7E2B33D62F0082A772 /* SceneAddTemplateInfoSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE7D2B33D62F0082A772 /* SceneAddTemplateInfoSectionView.swift */; };
 		C8A3EE802B33E43C0082A772 /* SceneAddDataListViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE7F2B33E43C0082A772 /* SceneAddDataListViewCell.swift */; };
 		C8A3EE822B34087A0082A772 /* SceneAddGroupViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE812B34087A0082A772 /* SceneAddGroupViewCell.swift */; };
@@ -1816,6 +1819,7 @@
 		C8BB65F92ED3F056000C63EE /* BatchImportResultHelpController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88DE4482C085A5D005A38C1 /* BatchImportResultHelpController.swift */; };
 		C8BB65FA2ED3F056000C63EE /* DeviceAddSectionBackgroundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B444A22E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift */; };
 		C8BB65FB2ED3F056000C63EE /* Node+SyncData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */; };
+		C8F0A0053000000000000001 /* TimedScheduleTimeSyncPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F0A0013000000000000001 /* TimedScheduleTimeSyncPolicy.swift */; };
 		C8BB65FC2ED3F056000C63EE /* MeshFirmwareUpgradeResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89D560E2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift */; };
 		C8BB65FD2ED3F056000C63EE /* GroupMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C958B82EBC876900F0E6E2 /* GroupMenuView.swift */; };
 		C8BB65FE2ED3F056000C63EE /* LightSensorCalibrationAdjustSpeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE62222EC467510075ED42 /* LightSensorCalibrationAdjustSpeedView.swift */; };
@@ -2976,6 +2980,7 @@
 		C8B0589F2B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HorizontalDirectionFlowLayout.swift; sourceTree = "<group>"; };
 		C8B058A62B5115B2006FC36F /* DeviceGroupsSelectData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceGroupsSelectData.swift; sourceTree = "<group>"; };
 		C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; lineEnding = 0; path = "Node+MessageHandles.swift"; sourceTree = "<group>"; };
+		C8F0A0013000000000000001 /* TimedScheduleTimeSyncPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimedScheduleTimeSyncPolicy.swift; sourceTree = "<group>"; };
 		C8B0B48A2B468BC700747CF4 /* SyncDevicesProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesProgressView.swift; sourceTree = "<group>"; };
 		C8B337212E44983E006931C2 /* UITableView+Keyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UITableView+Keyboard.swift"; sourceTree = "<group>"; };
 		C8B444A22E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddSectionBackgroundView.swift; sourceTree = "<group>"; };
@@ -4812,6 +4817,7 @@
 				C898E2E02AB840FE00C71315 /* MeshNetwork+SunSmart.swift */,
 				C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */,
 				C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */,
+				C8F0A0013000000000000001 /* TimedScheduleTimeSyncPolicy.swift */,
 				C8CAD8A52F0E32AA00BE3F20 /* Node+Capability.swift */,
 				C8F7A0002FBF000000000001 /* Node+ELControllerRxTx.swift */,
 				C8D6636C2BFED12B00BFF81A /* Keychain.swift */,
@@ -5760,6 +5766,7 @@
 				C88553F52DE6B44C00C8B688 /* BatchImportResultHelpController.swift in Sources */,
 				C8B444A32E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift in Sources */,
 				C88553F62DE6B44C00C8B688 /* Node+SyncData.swift in Sources */,
+				C8F0A0023000000000000001 /* TimedScheduleTimeSyncPolicy.swift in Sources */,
 				C88553F72DE6B44C00C8B688 /* MeshFirmwareUpgradeResultsView.swift in Sources */,
 				C8B836312EE987DD00D85077 /* ProfileTriggerConditionPhasesView.swift in Sources */,
 				C8C958B92EBC876900F0E6E2 /* GroupMenuView.swift in Sources */,
@@ -6364,6 +6371,7 @@
 				C886E0462E30DE4900D0C3A6 /* BatchImportResultHelpController.swift in Sources */,
 				C8B444A52E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift in Sources */,
 				C886E0472E30DE4900D0C3A6 /* Node+SyncData.swift in Sources */,
+				C8F0A0033000000000000001 /* TimedScheduleTimeSyncPolicy.swift in Sources */,
 				C886E0482E30DE4900D0C3A6 /* MeshFirmwareUpgradeResultsView.swift in Sources */,
 				C8B8362E2EE987DD00D85077 /* ProfileTriggerConditionPhasesView.swift in Sources */,
 				C8C958BA2EBC876900F0E6E2 /* GroupMenuView.swift in Sources */,
@@ -6967,6 +6975,7 @@
 				C88DE4492C085A5D005A38C1 /* BatchImportResultHelpController.swift in Sources */,
 				C8B444A42E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift in Sources */,
 				C8A351702D8EB1FF00325FC6 /* Node+SyncData.swift in Sources */,
+				C8F0A0043000000000000001 /* TimedScheduleTimeSyncPolicy.swift in Sources */,
 				C89D560F2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift in Sources */,
 				8C1DA7662FAAF2A60073F100 /* PJDevicesLegacyContainerController.swift in Sources */,
 				C8B8362F2EE987DD00D85077 /* ProfileTriggerConditionPhasesView.swift in Sources */,
@@ -7573,6 +7582,7 @@
 				C8BB65F92ED3F056000C63EE /* BatchImportResultHelpController.swift in Sources */,
 				C8BB65FA2ED3F056000C63EE /* DeviceAddSectionBackgroundView.swift in Sources */,
 				C8BB65FB2ED3F056000C63EE /* Node+SyncData.swift in Sources */,
+				C8F0A0053000000000000001 /* TimedScheduleTimeSyncPolicy.swift in Sources */,
 				C8BB65FC2ED3F056000C63EE /* MeshFirmwareUpgradeResultsView.swift in Sources */,
 				C8B836302EE987DD00D85077 /* ProfileTriggerConditionPhasesView.swift in Sources */,
 				C8BB65FD2ED3F056000C63EE /* GroupMenuView.swift in Sources */,

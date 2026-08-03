@@ -121,8 +121,17 @@ class DeviceRestoreViewController: UIViewController {
 
     private struct DeferredRestoreTask {
         let operationType: DeviceOperationType
-        let messageHandles: [MeshMessageHandle]
-        let filteredSceneRecallCount: Int
+        let requiresSuccessfulTimeSync: Bool
+
+        var isTimeSynchronization: Bool {
+            operationType.isTimedScheduleTimeSyncOperation
+        }
+    }
+
+    private struct DeferredRestoreMessageKey: Hashable {
+        let targetAddress: Address
+        let opCode: UInt32
+        let stableParameters: Data?
     }
 
     private struct EmergencyFireRestoreSyncEntry {
@@ -1272,9 +1281,8 @@ class DeviceRestoreViewController: UIViewController {
         deferredRestoreSyncDatasByAddress[node.primaryUnicastAddress] = syncDatas
 
         #if DEBUG
-        let filteredSceneRecallCount = tasks.reduce(0) { $0 + $1.filteredSceneRecallCount }
         let descriptions = syncDatas.map { restoreSyncDescription($0) }.joined(separator: ",")
-        print("[DeviceRestore] Defer restore sync node=\(node.primaryUnicastAddress.hex), tasks=\(tasks.count), filteredSceneRecalls=\(filteredSceneRecallCount), sync=\(descriptions)")
+        print("[DeviceRestore] Defer restore sync node=\(node.primaryUnicastAddress.hex), tasks=\(tasks.count), sync=\(descriptions)")
         #endif
     }
 
@@ -1287,28 +1295,26 @@ class DeviceRestoreViewController: UIViewController {
         node: Node
     ) -> [DeferredRestoreTask] {
         var tasks: [DeferredRestoreTask] = []
+        let scheduleEnabledStates = syncDatas.flatMap { syncData -> [Bool] in
+            guard case .syncSchedules(let schedules) = syncData else {
+                return []
+            }
+            return schedules.map(\.enabled)
+        }
+        let timeSyncPlan = TimedScheduleTimeSyncPolicy.makePlan(
+            hasTimeModel: node.timeModel != nil,
+            scheduleEnabledStates: scheduleEnabledStates
+        )
+        var timeSynchronizationTaskInserted = false
+        var schedulePlanIndex = 0
 
-        func appendTask(_ operationType: DeviceOperationType) {
-            let messageHandles = operationType.messageHandles
-            let filteredMessageHandles = messageHandles.filter { !($0.message is SceneRecall) }
-            let filteredSceneRecallCount = messageHandles.count - filteredMessageHandles.count
-            guard !filteredMessageHandles.isEmpty else {
-                #if DEBUG
-                if filteredSceneRecallCount > 0 {
-                    print("[DeviceRestore] Skip restore SceneRecall-only task node=\(node.primaryUnicastAddress.hex), count=\(filteredSceneRecallCount)")
-                }
-                #endif
-                return
-            }
-            #if DEBUG
-            if filteredSceneRecallCount > 0 {
-                print("[DeviceRestore] Filter restore SceneRecall node=\(node.primaryUnicastAddress.hex), count=\(filteredSceneRecallCount)")
-            }
-            #endif
+        func appendTask(
+            _ operationType: DeviceOperationType,
+            requiresSuccessfulTimeSync: Bool = false
+        ) {
             let task = DeferredRestoreTask(
                 operationType: operationType,
-                messageHandles: filteredMessageHandles,
-                filteredSceneRecallCount: filteredSceneRecallCount
+                requiresSuccessfulTimeSync: requiresSuccessfulTimeSync
             )
             tasks.append(task)
         }
@@ -1328,8 +1334,21 @@ class DeviceRestoreViewController: UIViewController {
                     appendTask(.delete(node: node, type: .scene(sceneId: scene.number, executeData: nil)))
                 }
             case .syncSchedules(let schedules):
+                if timeSyncPlan.requiresTimeSync,
+                   !timeSynchronizationTaskInserted {
+                    appendTask(
+                        .configuration(node: node, type: .timeSynchronization)
+                    )
+                    timeSynchronizationTaskInserted = true
+                }
                 schedules.forEach { schedule in
-                    appendTask(.configuration(node: node, type: .schedule(schedule: schedule)))
+                    let requiresSuccessfulTimeSync = timeSyncPlan
+                        .scheduleRequiresTimeSync[schedulePlanIndex]
+                    schedulePlanIndex += 1
+                    appendTask(
+                        .configuration(node: node, type: .schedule(schedule: schedule)),
+                        requiresSuccessfulTimeSync: requiresSuccessfulTimeSync
+                    )
                 }
             case .deleteSchedules(let schedules):
                 schedules.forEach { schedule in
@@ -1367,6 +1386,33 @@ class DeviceRestoreViewController: UIViewController {
         }
 
         return tasks
+    }
+
+    private func makeDeferredRestoreMessageHandles(
+        task: DeferredRestoreTask,
+        node: Node
+    ) -> [MeshMessageHandle] {
+        let messageHandles = task.operationType.messageHandles
+        let filteredMessageHandles = messageHandles.filter { !($0.message is SceneRecall) }
+        let filteredSceneRecallCount = messageHandles.count - filteredMessageHandles.count
+        #if DEBUG
+        if filteredSceneRecallCount > 0 {
+            print("[DeviceRestore] Filter restore SceneRecall node=\(node.primaryUnicastAddress.hex), count=\(filteredSceneRecallCount)")
+        }
+        #endif
+        return filteredMessageHandles
+    }
+
+    private func deferredRestoreMessageKey(
+        for messageHandle: MeshMessageHandle
+    ) -> DeferredRestoreMessageKey {
+        DeferredRestoreMessageKey(
+            targetAddress: messageHandle.targetAddress,
+            opCode: messageHandle.message.opCode,
+            stableParameters: messageHandle.message is TimeSet
+                ? nil
+                : messageHandle.message.parameters
+        )
     }
 
     private func runDeferredRestoreIfNeeded(
@@ -1419,7 +1465,13 @@ class DeviceRestoreViewController: UIViewController {
         reloadDeviceState(device)
         updateUIState()
 
-        runDeferredRestoreTasks(tasks, index: 0, node: node, hadFailedTask: false) { [weak self] hadFailedTask in
+        runDeferredRestoreTasks(
+            tasks,
+            index: 0,
+            node: node,
+            hadFailedTask: false,
+            timeSyncSucceeded: nil
+        ) { [weak self] hadFailedTask in
             guard let self = self else { return }
             self.deferredRestoreSyncDatasByAddress.removeValue(forKey: node.primaryUnicastAddress)
             self.finishDeferredRestore(for: node, device: device, hadFailedTask: hadFailedTask)
@@ -1432,6 +1484,7 @@ class DeviceRestoreViewController: UIViewController {
         index: Int,
         node: Node,
         hadFailedTask: Bool,
+        timeSyncSucceeded: Bool?,
         retryCount: Int = 0,
         completion: @escaping (Bool) -> Void
     ) {
@@ -1441,14 +1494,29 @@ class DeviceRestoreViewController: UIViewController {
         }
 
         let task = tasks[index]
-        let messageHandles = task.messageHandles
-        let responseTracker = DeferredRestoreResponseTracker()
-        guard !messageHandles.isEmpty else {
+        if task.requiresSuccessfulTimeSync && timeSyncSucceeded == false {
             runDeferredRestoreTasks(
                 tasks,
                 index: index + 1,
                 node: node,
-                hadFailedTask: hadFailedTask,
+                hadFailedTask: true,
+                timeSyncSucceeded: timeSyncSucceeded,
+                retryCount: 0,
+                completion: completion
+            )
+            return
+        }
+
+        let messageHandles = makeDeferredRestoreMessageHandles(task: task, node: node)
+        let responseTracker = DeferredRestoreResponseTracker()
+        guard !messageHandles.isEmpty else {
+            let timeSyncFailed = task.isTimeSynchronization
+            runDeferredRestoreTasks(
+                tasks,
+                index: index + 1,
+                node: node,
+                hadFailedTask: hadFailedTask || timeSyncFailed,
+                timeSyncSucceeded: timeSyncFailed ? false : timeSyncSucceeded,
                 retryCount: 0,
                 completion: completion
             )
@@ -1465,8 +1533,10 @@ class DeviceRestoreViewController: UIViewController {
                 tasks: tasks,
                 index: index,
                 task: task,
+                messageHandles: messageHandles,
                 node: node,
                 hadFailedTask: hadFailedTask,
+                timeSyncSucceeded: timeSyncSucceeded,
                 retryCount: retryCount,
                 responseTracker: responseTracker,
                 completion: completion
@@ -1493,7 +1563,7 @@ class DeviceRestoreViewController: UIViewController {
                     handle: handle,
                     statusMessage: statusMessage,
                     node: node,
-                    messageHandles: task.messageHandles
+                    messageHandles: messageHandles
                 )
             },
             failedBack: nil
@@ -1506,13 +1576,14 @@ class DeviceRestoreViewController: UIViewController {
         tasks: [DeferredRestoreTask],
         index: Int,
         task: DeferredRestoreTask,
+        messageHandles: [MeshMessageHandle],
         node: Node,
         hadFailedTask: Bool,
+        timeSyncSucceeded: Bool?,
         retryCount: Int,
         responseTracker: DeferredRestoreResponseTracker,
         completion: @escaping (Bool) -> Void
     ) {
-        let messageHandles = task.messageHandles
         let resultSuccessful = !messageHandles.contains(where: { !$0.isSuccessful })
         let operationSuccessful = task.operationType.isSuccessful
         let failedHandles = messageHandles.filter { !$0.isSuccessful }
@@ -1536,16 +1607,38 @@ class DeviceRestoreViewController: UIViewController {
         )
 
         if taskFailed, !retryHandles.isEmpty {
+            let refreshedMessageHandles = makeDeferredRestoreMessageHandles(task: task, node: node)
+            var unmatchedRefreshedHandles = refreshedMessageHandles
+            let refreshedRetryHandles = retryHandles.compactMap { retryHandle -> MeshMessageHandle? in
+                let retryKey = deferredRestoreMessageKey(for: retryHandle)
+                guard let matchIndex = unmatchedRefreshedHandles.firstIndex(where: {
+                    deferredRestoreMessageKey(for: $0) == retryKey
+                }) else {
+                    return nil
+                }
+                return unmatchedRefreshedHandles.remove(at: matchIndex)
+            }
+            guard refreshedRetryHandles.count == retryHandles.count else {
+                runDeferredRestoreTasks(
+                    tasks,
+                    index: index + 1,
+                    node: node,
+                    hadFailedTask: true,
+                    timeSyncSucceeded: task.isTimeSynchronization ? false : timeSyncSucceeded,
+                    retryCount: 0,
+                    completion: completion
+                )
+                return
+            }
             #if DEBUG
             let failedDescription = deferredRestoreFailedHandleDescription(retryHandles)
             let operationDescription = deferredRestoreOperationDescription(task.operationType)
             print("[DeviceRestore] Retry deferred restore task node=\(node.primaryUnicastAddress.hex), retry=\(retryCount + 1), operation=\(operationDescription), failed=\(failedDescription)")
             #endif
-            resetDeferredRestoreMessageHandles(retryHandles)
             DispatchQueue.main.asyncAfter(deadline: .now() + deferredRestoreTaskRetryDelay) { [weak self] in
                 guard let self = self else { return }
                 self.runDeferredRestoreMessageHandles(
-                    retryHandles,
+                    refreshedRetryHandles,
                     task: task,
                     node: node,
                     responseTracker: responseTracker
@@ -1554,8 +1647,10 @@ class DeviceRestoreViewController: UIViewController {
                         tasks: tasks,
                         index: index,
                         task: task,
+                        messageHandles: refreshedRetryHandles,
                         node: node,
                         hadFailedTask: hadFailedTask,
+                        timeSyncSucceeded: timeSyncSucceeded,
                         retryCount: retryCount + 1,
                         responseTracker: responseTracker,
                         completion: completion
@@ -1589,6 +1684,9 @@ class DeviceRestoreViewController: UIViewController {
             index: index + 1,
             node: node,
             hadFailedTask: hadFailedTask || taskFailed,
+            timeSyncSucceeded: task.isTimeSynchronization
+                ? taskSuccessful
+                : timeSyncSucceeded,
             retryCount: 0,
             completion: completion
         )

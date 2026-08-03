@@ -9,6 +9,12 @@ import Foundation
 import NordicSigMeshSDK
 
 struct ScheduleServer {
+
+    private struct ScheduleDeviceBatch {
+        let node: Node
+        let contextGroup: Group?
+        let delete: Bool
+    }
     
     /// 日程操作成功回调
     typealias ScheduleOperateSuccessCallback = ((Schedule)->Void)
@@ -139,48 +145,97 @@ struct ScheduleServer {
     ///   - success: 成功回调
     ///   - failed: 失败回调
     static func saveSchedule(schedule: Schedule, setNodes: [Node]? = nil, success: ScheduleOperateSuccessCallback?, failed: ScheduleOperateFailedCallback?) {
-        
-        // 发送的消息操作
-        var messageHandles: [MeshMessageHandle] = []
+        var deviceBatches: [ScheduleDeviceBatch] = []
         // 传入需要设置的设备
         if let setNodes = setNodes, setNodes.count > 0 {
-            setNodes.forEach({
-                messageHandles.append(contentsOf: DeviceOperationType.configuration(node: $0, type: .schedule(schedule: schedule)).messageHandles)
-            })
-            
+            setNodes.forEach { node in
+                deviceBatches.append(
+                    ScheduleDeviceBatch(node: node, contextGroup: nil, delete: false)
+                )
+            }
         }else { // 未传入需要设置的设备，默认根据配置保存设备
             let data = schedule.getNeedSyncDatas()
-            
-            data.deleteNodes.forEach({
-                messageHandles.append(contentsOf: DeviceOperationType.delete(node: $0, type: .schedule(schedule: schedule)).messageHandles)
-            })
-            
-            data.deleteGroups.forEach({
-                $0.value.forEach({ node in
-                    messageHandles.append(contentsOf: DeviceOperationType.delete(node: node, type: .schedule(schedule: schedule)).messageHandles)
-                })
-            })
-            
-            data.syncNodes.forEach({
-                messageHandles.append(contentsOf: DeviceOperationType.configuration(node: $0, type: .schedule(schedule: schedule)).messageHandles)
-            })
-            
+
+            data.deleteNodes.forEach { node in
+                deviceBatches.append(
+                    ScheduleDeviceBatch(node: node, contextGroup: nil, delete: true)
+                )
+            }
+
+            data.deleteGroups.forEach { _, nodes in
+                nodes.forEach { node in
+                    deviceBatches.append(
+                        ScheduleDeviceBatch(node: node, contextGroup: nil, delete: true)
+                    )
+                }
+            }
+
+            data.syncNodes.forEach { node in
+                deviceBatches.append(
+                    ScheduleDeviceBatch(node: node, contextGroup: nil, delete: false)
+                )
+            }
+
             data.syncGroups.forEach { group, nodes in
                 nodes.forEach { node in
-                    messageHandles.append(
-                        contentsOf: schedule.getMessageHandles(
+                    deviceBatches.append(
+                        ScheduleDeviceBatch(
                             node: node,
-                            contextGroup: group
+                            contextGroup: group,
+                            delete: false
                         )
                     )
                 }
             }
         }
-        if messageHandles.isEmpty {
+
+        guard !deviceBatches.isEmpty else {
             success?(schedule)
             return
         }
-        
+
+        runScheduleDeviceBatches(
+            deviceBatches,
+            schedule: schedule,
+            index: 0,
+            hadFailure: false
+        ) { hadFailure in
+            if hadFailure {
+                failed?(schedule)
+            } else {
+                success?(schedule)
+            }
+        }
+    }
+
+    private static func runScheduleDeviceBatches(
+        _ batches: [ScheduleDeviceBatch],
+        schedule: Schedule,
+        index: Int,
+        hadFailure: Bool,
+        completion: @escaping (Bool) -> Void
+    ) {
+        guard index < batches.count else {
+            completion(hadFailure)
+            return
+        }
+
+        let batch = batches[index]
+        let messageHandles = makeScheduleMessageHandles(
+            schedule: schedule,
+            batch: batch
+        )
+        guard !messageHandles.isEmpty else {
+            runScheduleDeviceBatches(
+                batches,
+                schedule: schedule,
+                index: index + 1,
+                hadFailure: hadFailure,
+                completion: completion
+            )
+            return
+        }
+
         MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, progressBack: nil) { messageHandle, _ in
             if let address = messageHandle.address ?? messageHandle.model?.parentElement?.unicastAddress, 
                 let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
@@ -193,15 +248,41 @@ struct ScheduleServer {
         } failedBack: { messageHandle in
             print("node send message failed \(messageHandle.message)")
         } finishedBack: { resultMessageHandles in
-            
-            if resultMessageHandles.contains(where: { !$0.isSuccessful }) { // 设置失败
-                failed?(schedule)
-            }else { // 成功
-                success?(schedule)
-            }
-            
+            runScheduleDeviceBatches(
+                batches,
+                schedule: schedule,
+                index: index + 1,
+                hadFailure: hadFailure || resultMessageHandles.contains(where: { !$0.isSuccessful }),
+                completion: completion
+            )
         }
-        
     }
-    
+
+    private static func makeScheduleMessageHandles(
+        schedule: Schedule,
+        batch: ScheduleDeviceBatch
+    ) -> [MeshMessageHandle] {
+        if batch.delete {
+            return schedule.getMessageHandles(node: batch.node, delete: true)
+        }
+
+        var messageHandles: [MeshMessageHandle] = []
+        let timeSyncPlan = TimedScheduleTimeSyncPolicy.makePlan(
+            hasTimeModel: batch.node.timeModel != nil,
+            scheduleEnabledStates: [schedule.enabled]
+        )
+        if timeSyncPlan.requiresTimeSync,
+           let timeModel = batch.node.timeModel {
+            let timeHandle = Node.makeLocalTimeSetMessageHandle(model: timeModel)
+            timeHandle.continuous = false
+            messageHandles.append(timeHandle)
+        }
+        messageHandles.append(
+            contentsOf: schedule.getMessageHandles(
+                node: batch.node,
+                contextGroup: batch.contextGroup
+            )
+        )
+        return messageHandles
+    }
 }

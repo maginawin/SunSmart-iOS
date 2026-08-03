@@ -406,7 +406,17 @@ extension Group {
         let setSchedules = self.info.bindSchedules.filter { schedule in
             schedule.needsSync(on: node, contextGroup: self)
         }
-        
+
+        let timeSyncPlan = TimedScheduleTimeSyncPolicy.makePlan(
+            hasTimeModel: node.timeModel != nil,
+            scheduleEnabledStates: setSchedules.map(\.enabled)
+        )
+        if timeSyncPlan.requiresTimeSync,
+           let timeModel = node.timeModel {
+            let timeHandle = Node.makeLocalTimeSetMessageHandle(model: timeModel)
+            timeHandle.continuous = false
+            messages.append(timeHandle)
+        }
         setSchedules.forEach { schedule in
             messages.append(contentsOf: schedule.getMessageHandles(node: node, contextGroup: self))
         }
