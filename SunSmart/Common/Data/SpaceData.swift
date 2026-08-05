@@ -204,8 +204,10 @@ class SpaceData: Copyable {
     var disableEditorPermission: Bool = false
     /// Mesh OTA分发中
     var meshOTADistribution: Bool = false
-    /// space最多设备数量
-    var maxDevicesCount: Int = 300
+    /// Space 最多真实 Mesh Node 数量。
+    var maxDevicesCount: Int {
+        SpaceNodeCapacityPolicy.maxNodeCount
+    }
     
     /// 是否显示设备前缀（默认true）  true：【group name - device name】 false：device name
     var displayDeviceNamePrefix: Bool = true

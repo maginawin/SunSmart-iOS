@@ -56,8 +56,10 @@ class DeviceAddCandidateDeviceListView: UIView {
     /// 提示view
     private var promptView: DevicePromptHudView?
     
-    /// 最大设备数量
-    private var maxDeviceCount = 200
+    /// Space 最大真实 Mesh Node 数量。
+    private var maxDeviceCount: Int {
+        space.maxDevicesCount
+    }
     
     /// 展示的设备类型
     private var showDeviceTypes: [Node.DeviceType] = [.light]
@@ -189,8 +191,6 @@ class DeviceAddCandidateDeviceListView: UIView {
         self.space = space
         super.init(frame: frame)
         
-        maxDeviceCount = space.maxDevicesCount
-        
         setupUI()
     }
     
@@ -259,6 +259,21 @@ class DeviceAddCandidateDeviceListView: UIView {
     }
     
     // MARK: - Action
+
+    private var inFlightNodeCount: Int {
+        candidateDevices.filter { $0.addState.reservesNodeCapacity }.count
+    }
+
+    private func showNodeCapacityLimitTip() {
+        SRAlertView(
+            title: "notification".localizedString,
+            message: String(
+                format: "devices_number_exceeds_message".localizedString,
+                maxDeviceCount
+            ),
+            actions: [SRAlertAction(title: "ok".localizedString)]
+        ).show()
+    }
     
     @objc private func candidateBtnAction() {
         hide()
@@ -281,25 +296,24 @@ class DeviceAddCandidateDeviceListView: UIView {
             return
         }
         
-        // space只能添加200个设备
-        let existNodeCount = MeshNetworkManager.instance.realNodes.count + candidateDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count
-
         sender.isSelected = !sender.isSelected
         
-        let canAddDevices = candidateDevices.filter({ $0.selectedState != .disabled && !($0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting) })
+        let canAddDevices = showDevices.filter {
+            $0.selectedState != .disabled && !$0.addState.reservesNodeCapacity
+        }
         if sender.isSelected {
-            if existNodeCount + canAddDevices.count > maxDeviceCount {
-                SRAlertView(title: "notification".localizedString, message: String(format: "devices_number_exceeds_message".localizedString, maxDeviceCount), actions: [SRAlertAction(title: "ok".localizedString)]).show()
-                canAddDevices.prefix(maxDeviceCount - existNodeCount).forEach({ $0.selectedState = .selected })
-            }else {
-                canAddDevices.forEach({ $0.selectedState = .selected })
+            let acceptedDevices = SpaceNodeCapacityPolicy.acceptedPrefix(
+                canAddDevices,
+                existingNodeCount: MeshNetworkManager.instance.realNodes.count,
+                inFlightNodeCount: inFlightNodeCount
+            )
+            canAddDevices.forEach { $0.selectedState = .unselected }
+            acceptedDevices.forEach { $0.selectedState = .selected }
+            if acceptedDevices.count < canAddDevices.count {
+                showNodeCapacityLimitTip()
             }
-            
-//            selectCountLabel.text = "\(devices.count)/\(devices.count)"
         }else {
-            canAddDevices.forEach({ $0.selectedState = .unselected })
-            
-//            selectCountLabel.text = "0/\(devices.count)"
+            canAddDevices.forEach { $0.selectedState = .unselected }
         }
         updateFooterViewState()
         tableView.reloadData()
@@ -867,13 +881,20 @@ extension DeviceAddCandidateDeviceListView: UITableViewDataSource, UITableViewDe
         guard device.selectedState == .unselected || device.selectedState == .selected else {
             return
         }
-        // space只能添加200个设备
-        guard MeshNetworkManager.instance.realNodes.count + showDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count < maxDeviceCount else {
-            SRAlertView(title: "notification".localizedString, message: String(format: "devices_number_exceeds_message".localizedString, maxDeviceCount), actions: [SRAlertAction(title: "ok".localizedString)]).show()
-            return
-        }
-        
         if device.selectedState == .unselected {
+            let selectedNodeCount = showDevices.filter {
+                $0.selectedState == .selected
+                    && $0.peripheral.identifier != device.peripheral.identifier
+            }.count
+            let acceptedNodeCount = SpaceNodeCapacityPolicy.acceptedNodeCount(
+                existingNodeCount: MeshNetworkManager.instance.realNodes.count,
+                inFlightNodeCount: inFlightNodeCount + selectedNodeCount,
+                requestedNodeCount: 1
+            )
+            guard acceptedNodeCount == 1 else {
+                showNodeCapacityLimitTip()
+                return
+            }
             device.selectedState = .selected
         }else {
             device.selectedState = .unselected
@@ -982,9 +1003,13 @@ extension DeviceAddCandidateDeviceListView: DeviceAddViewCellDelegate {
         guard !virtualTargetAddLocked else {
             return
         }
-        // space只能添加200个设备
-        guard MeshNetworkManager.instance.realNodes.count + showDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count < maxDeviceCount else {
-            SRAlertView(title: "notification".localizedString, message: String(format: "devices_number_exceeds_message".localizedString, maxDeviceCount), actions: [SRAlertAction(title: "ok".localizedString)]).show()
+        let acceptedNodeCount = SpaceNodeCapacityPolicy.acceptedNodeCount(
+            existingNodeCount: MeshNetworkManager.instance.realNodes.count,
+            inFlightNodeCount: inFlightNodeCount,
+            requestedNodeCount: 1
+        )
+        guard acceptedNodeCount == 1 else {
+            showNodeCapacityLimitTip()
             return
         }
         delegate?.candidateView(self, startAdd: [device])

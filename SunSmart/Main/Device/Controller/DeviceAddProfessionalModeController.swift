@@ -542,6 +542,44 @@ class DeviceAddProfessionalModeController: UIViewController {
         return true
     }
 
+    private var inFlightNodeCount: Int {
+        candidateDevices.filter { $0.addState.reservesNodeCapacity }.count
+    }
+
+    private func showNodeCapacityLimitTip() {
+        SRAlertView(
+            title: "notification".localizedString,
+            message: String(
+                format: "devices_number_exceeds_message".localizedString,
+                space.maxDevicesCount
+            ),
+            actions: [SRAlertAction(title: "ok".localizedString)]
+        ).show()
+    }
+
+    private func nodeCapacityAcceptedDevices(
+        from devices: [ProvisioningDevice]
+    ) -> [ProvisioningDevice] {
+        let acceptedDevices = SpaceNodeCapacityPolicy.acceptedPrefix(
+            devices,
+            existingNodeCount: MeshNetworkManager.instance.realNodes.count,
+            inFlightNodeCount: inFlightNodeCount
+        )
+        guard acceptedDevices.count < devices.count else {
+            return acceptedDevices
+        }
+
+        let acceptedIdentifiers = Set(
+            acceptedDevices.map { $0.peripheral.identifier }
+        )
+        devices
+            .filter { !acceptedIdentifiers.contains($0.peripheral.identifier) }
+            .forEach { $0.selectedState = .unselected }
+        showNodeCapacityLimitTip()
+        syncCandidateDevicesForCurrentAddMode()
+        return acceptedDevices
+    }
+
     private func restoreDevicesForAddRetry(_ devices: [ProvisioningDevice]) {
         resetFastAddGroupSyncBatch()
         devices.forEach {
@@ -1612,14 +1650,20 @@ class DeviceAddProfessionalModeController: UIViewController {
     /// 检查设备地址是否足够
     private func checkDeviceAddressesAreSufficient(devices: [ProvisioningDevice]) {
 
-        guard validateBatteryPowerSwitchLimit(for: devices) else {
+        let acceptedDevices = nodeCapacityAcceptedDevices(from: devices)
+        guard !acceptedDevices.isEmpty else {
+            updateUIState()
             return
         }
 
-        prepareFastAddGroupSyncBatch(devices: devices)
+        guard validateBatteryPowerSwitchLimit(for: acceptedDevices) else {
+            return
+        }
+
+        prepareFastAddGroupSyncBatch(devices: acceptedDevices)
         
         let bleConnectCount = max(candidateDevices.filter({ $0.addState == .adding || $0.addState == .addConnecting }).count, MeshLibManager.manager.getConnectedPeripherals().count)
-        for (index, device) in devices.enumerated() {
+        for (index, device) in acceptedDevices.enumerated() {
             if index < (5 - bleConnectCount) {
                 device.addState = .addConnecting
             }else {
@@ -1631,7 +1675,7 @@ class DeviceAddProfessionalModeController: UIViewController {
         
         DispatchQueue.global().async {
             // 添加设备需要地址-剩余地址 +（site中所有space已经添加的设备地址+正在添加的设备地址）*20%
-            let estimatedAddressCount = devices.reduce(0, { (result, device) in result + device.elementCount })
+            let estimatedAddressCount = acceptedDevices.reduce(0, { (result, device) in result + device.elementCount })
             // 可用地址数量
             let availableUnicastCount = MeshAPI.getNumberOfAvailableUnicastAddresses(meshUUID: self.space.meshUUID)
             
@@ -1652,7 +1696,7 @@ class DeviceAddProfessionalModeController: UIViewController {
                     
                     DispatchQueue.main.async {
 //                        XWHUDManager.hide()
-                        devices.forEach({
+                        acceptedDevices.forEach({
                             $0.addState = .none
                             $0.selectedState = .selected
                             self.reloadDeviceState($0)
@@ -1670,13 +1714,13 @@ class DeviceAddProfessionalModeController: UIViewController {
                 // 向服务器申请地址
                 DispatchQueue.main.async {
 //                    XWHUDManager.hide()
-                    self.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount, devices: devices)
+                    self.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount, devices: acceptedDevices)
                 }
                 return
             }
             DispatchQueue.main.async {
                 XWHUDManager.hide()
-                devices.forEach({
+                acceptedDevices.forEach({
                     self.addDevice($0)
                 })
             }

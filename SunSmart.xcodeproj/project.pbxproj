@@ -572,6 +572,7 @@
 		C88553B62DE6B44C00C8B688 /* MeshNetwork+SunSmart.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2E02AB840FE00C71315 /* MeshNetwork+SunSmart.swift */; };
 		C88553B72DE6B44C00C8B688 /* SiteAddressDataHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DCD0FB2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift */; };
 		C88553B82DE6B44C00C8B688 /* ProvisioningDevice+Add.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89941972AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift */; };
+		C8F500022F3B000100000001 /* SpaceNodeCapacityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F500012F3B000100000001 /* SpaceNodeCapacityPolicy.swift */; };
 		C88553B92DE6B44C00C8B688 /* LightSensorCalibrationSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */; };
 		C88553BB2DE6B44C00C8B688 /* ProfileManualOverrideTimeoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F1D2B8F1FDC00A09FFA /* ProfileManualOverrideTimeoutView.swift */; };
 		C88553BC2DE6B44C00C8B688 /* EnergyStaticDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82F99F52DBE1AF20019C3FB /* EnergyStaticDataViewController.swift */; };
@@ -973,6 +974,7 @@
 		C886E0062E30DE4900D0C3A6 /* MeshNetwork+SunSmart.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2E02AB840FE00C71315 /* MeshNetwork+SunSmart.swift */; };
 		C886E0072E30DE4900D0C3A6 /* SiteAddressDataHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DCD0FB2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift */; };
 		C886E0082E30DE4900D0C3A6 /* ProvisioningDevice+Add.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89941972AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift */; };
+		C8F500032F3B000100000001 /* SpaceNodeCapacityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F500012F3B000100000001 /* SpaceNodeCapacityPolicy.swift */; };
 		C886E0092E30DE4900D0C3A6 /* LightSensorCalibrationSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */; };
 		C886E00B2E30DE4900D0C3A6 /* ProfileManualOverrideTimeoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F1D2B8F1FDC00A09FFA /* ProfileManualOverrideTimeoutView.swift */; };
 		C886E00C2E30DE4900D0C3A6 /* EnergyStaticDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82F99F52DBE1AF20019C3FB /* EnergyStaticDataViewController.swift */; };
@@ -1409,6 +1411,7 @@
 		C89941932AD4E382008DCD76 /* LCWeakTimer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89941922AD4E382008DCD76 /* LCWeakTimer.swift */; };
 		C89941952AD4F192008DCD76 /* DeviceAddViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89941942AD4F192008DCD76 /* DeviceAddViewCell.swift */; };
 		C89941982AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89941972AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift */; };
+		C8F500042F3B000100000001 /* SpaceNodeCapacityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F500012F3B000100000001 /* SpaceNodeCapacityPolicy.swift */; };
 		C89A1C362B54C64B004912B9 /* MultiseriatePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A1C352B54C64B004912B9 /* MultiseriatePickerView.swift */; };
 		C89A1C392B5535A8004912B9 /* ScheduleDevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A1C382B5535A8004912B9 /* ScheduleDevicesView.swift */; };
 		C89A1C3B2B554F56004912B9 /* UIView+Shade.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A1C3A2B554F56004912B9 /* UIView+Shade.swift */; };
@@ -1762,6 +1765,7 @@
 		C8BB65B42ED3F056000C63EE /* MeshNetwork+SunSmart.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2E02AB840FE00C71315 /* MeshNetwork+SunSmart.swift */; };
 		C8BB65B52ED3F056000C63EE /* SiteAddressDataHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DCD0FB2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift */; };
 		C8BB65B62ED3F056000C63EE /* ProvisioningDevice+Add.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89941972AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift */; };
+		C8F500052F3B000100000001 /* SpaceNodeCapacityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F500012F3B000100000001 /* SpaceNodeCapacityPolicy.swift */; };
 		C8BB65B72ED3F056000C63EE /* LightSensorCalibrationSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */; };
 		C8BB65B82ED3F056000C63EE /* ProfileManualOverrideTimeoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F1D2B8F1FDC00A09FFA /* ProfileManualOverrideTimeoutView.swift */; };
 		C8BB65B92ED3F056000C63EE /* EnergyStaticDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82F99F52DBE1AF20019C3FB /* EnergyStaticDataViewController.swift */; };
@@ -2805,6 +2809,7 @@
 		C89941922AD4E382008DCD76 /* LCWeakTimer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LCWeakTimer.swift; sourceTree = "<group>"; };
 		C89941942AD4F192008DCD76 /* DeviceAddViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddViewCell.swift; sourceTree = "<group>"; };
 		C89941972AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "ProvisioningDevice+Add.swift"; sourceTree = "<group>"; };
+		C8F500012F3B000100000001 /* SpaceNodeCapacityPolicy.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SpaceNodeCapacityPolicy.swift; sourceTree = "<group>"; };
 		C89A1C352B54C64B004912B9 /* MultiseriatePickerView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = MultiseriatePickerView.swift; sourceTree = "<group>"; };
 		C89A1C382B5535A8004912B9 /* ScheduleDevicesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScheduleDevicesView.swift; sourceTree = "<group>"; };
 		C89A1C3A2B554F56004912B9 /* UIView+Shade.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UIView+Shade.swift"; sourceTree = "<group>"; };
@@ -4379,6 +4384,7 @@
 				C8FA40152FD0000300000005 /* DeviceRestoreCandidatePolicy.swift */,
 				C8FA40252FD0000300000005 /* DeviceRestoreEFCRecoveryPolicy.swift */,
 				C89941972AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift */,
+				C8F500012F3B000100000001 /* SpaceNodeCapacityPolicy.swift */,
 				C8B058A62B5115B2006FC36F /* DeviceGroupsSelectData.swift */,
 				C8A347CD2D6307CC0092D3E4 /* DeviceProtocol.swift */,
 				C8B483D92E4B37CB006D85BC /* DeviceAudioManager.swift */,
@@ -5688,6 +5694,7 @@
 				C88553B62DE6B44C00C8B688 /* MeshNetwork+SunSmart.swift in Sources */,
 				C88553B72DE6B44C00C8B688 /* SiteAddressDataHeaderView.swift in Sources */,
 				C88553B82DE6B44C00C8B688 /* ProvisioningDevice+Add.swift in Sources */,
+				C8F500022F3B000100000001 /* SpaceNodeCapacityPolicy.swift in Sources */,
 				C88553B92DE6B44C00C8B688 /* LightSensorCalibrationSelectView.swift in Sources */,
 				8C1DA7692FAAF2A60073F100 /* PJDevicesLegacyContainerController.swift in Sources */,
 				C88553BB2DE6B44C00C8B688 /* ProfileManualOverrideTimeoutView.swift in Sources */,
@@ -6296,6 +6303,7 @@
 				C886E0062E30DE4900D0C3A6 /* MeshNetwork+SunSmart.swift in Sources */,
 				C886E0072E30DE4900D0C3A6 /* SiteAddressDataHeaderView.swift in Sources */,
 				C886E0082E30DE4900D0C3A6 /* ProvisioningDevice+Add.swift in Sources */,
+				C8F500032F3B000100000001 /* SpaceNodeCapacityPolicy.swift in Sources */,
 				C886E0092E30DE4900D0C3A6 /* LightSensorCalibrationSelectView.swift in Sources */,
 				8C1DA7682FAAF2A60073F100 /* PJDevicesLegacyContainerController.swift in Sources */,
 				C886E00B2E30DE4900D0C3A6 /* ProfileManualOverrideTimeoutView.swift in Sources */,
@@ -6906,6 +6914,7 @@
 				C898E2E12AB840FE00C71315 /* MeshNetwork+SunSmart.swift in Sources */,
 				C8DCD0FC2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift in Sources */,
 				C89941982AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift in Sources */,
+				C8F500042F3B000100000001 /* SpaceNodeCapacityPolicy.swift in Sources */,
 				8C778C282FA34688000887FE /* PJEightKeySwitchMonitorVC.swift in Sources */,
 				C8607BE42B9026F700A94F0B /* LightSensorCalibrationSelectView.swift in Sources */,
 				C8047F1E2B8F1FDC00A09FFA /* ProfileManualOverrideTimeoutView.swift in Sources */,
@@ -7513,6 +7522,7 @@
 				C8BB65B42ED3F056000C63EE /* MeshNetwork+SunSmart.swift in Sources */,
 				C8BB65B52ED3F056000C63EE /* SiteAddressDataHeaderView.swift in Sources */,
 				C8BB65B62ED3F056000C63EE /* ProvisioningDevice+Add.swift in Sources */,
+				C8F500052F3B000100000001 /* SpaceNodeCapacityPolicy.swift in Sources */,
 				C8BB65B72ED3F056000C63EE /* LightSensorCalibrationSelectView.swift in Sources */,
 				8C1DA7672FAAF2A60073F100 /* PJDevicesLegacyContainerController.swift in Sources */,
 				C8BB65B82ED3F056000C63EE /* ProfileManualOverrideTimeoutView.swift in Sources */,

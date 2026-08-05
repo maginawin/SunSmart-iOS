@@ -81,8 +81,10 @@ class DeviceAddClassicModeController: UIViewController {
     private var dongles: [DeviceDongleData] = []
     
     private var notAddedDevices: [ProvisioningDevice] = []
-    /// 最大设备数量
-    private var maxDeviceCount = 200
+    /// Space 最大真实 Mesh Node 数量。
+    private var maxDeviceCount: Int {
+        space.maxDevicesCount
+    }
     /// 展示的设备类型
     private var showDeviceTypes: [Node.DeviceType] = [.light]
     
@@ -255,8 +257,6 @@ class DeviceAddClassicModeController: UIViewController {
         addToGroup = appointGroup
         bindToDongle = forceBindToDongle
         dongles = MeshNetworkManager.instance.dongles
-        maxDeviceCount = space.maxDevicesCount
-        
 //        NetworkRequest.shared.addObserver(self, forKeyPath: "networkable", context: nil)
         
         setupUI()
@@ -455,6 +455,45 @@ class DeviceAddClassicModeController: UIViewController {
             return false
         }
         return true
+    }
+
+    private var inFlightNodeCount: Int {
+        scanDevices.filter { $0.addState.reservesNodeCapacity }.count
+    }
+
+    private func showNodeCapacityLimitTip() {
+        SRAlertView(
+            title: "notification".localizedString,
+            message: String(
+                format: "devices_number_exceeds_message".localizedString,
+                maxDeviceCount
+            ),
+            actions: [SRAlertAction(title: "ok".localizedString)]
+        ).show()
+    }
+
+    private func nodeCapacityAcceptedDevices(
+        from devices: [ProvisioningDevice]
+    ) -> [ProvisioningDevice] {
+        let acceptedDevices = SpaceNodeCapacityPolicy.acceptedPrefix(
+            devices,
+            existingNodeCount: MeshNetworkManager.instance.realNodes.count,
+            inFlightNodeCount: inFlightNodeCount
+        )
+        guard acceptedDevices.count < devices.count else {
+            return acceptedDevices
+        }
+
+        let acceptedIdentifiers = Set(
+            acceptedDevices.map { $0.peripheral.identifier }
+        )
+        devices
+            .filter { !acceptedIdentifiers.contains($0.peripheral.identifier) }
+            .forEach { $0.selectedState = .unselected }
+        showNodeCapacityLimitTip()
+        updateFooterViewState()
+        tableView.reloadData()
+        return acceptedDevices
     }
 
     private func restoreDevicesForAddRetry(_ devices: [ProvisioningDevice]) {
@@ -1043,42 +1082,42 @@ class DeviceAddClassicModeController: UIViewController {
         }
         // 单选模式下不进入全选逻辑，保持关联页一次只选一个设备。
         guard !isSingleSelectionMode else {
-            let canAddDevice = showDevices.first(where: { $0.selectedState != .disabled && !($0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting) })
+            let canAddDevices = showDevices.filter {
+                $0.selectedState != .disabled && !$0.addState.reservesNodeCapacity
+            }
+            let canAddDevice = SpaceNodeCapacityPolicy.acceptedPrefix(
+                canAddDevices,
+                existingNodeCount: MeshNetworkManager.instance.realNodes.count,
+                inFlightNodeCount: inFlightNodeCount
+            ).first
             showDevices.forEach { $0.selectedState = .unselected }
             canAddDevice?.selectedState = .selected
+            if canAddDevice == nil, !canAddDevices.isEmpty {
+                showNodeCapacityLimitTip()
+            }
             updateFooterViewState()
             tableView.reloadData()
             return
         }
         
-        // space只能添加200个设备
-        let existNodeCount = MeshNetworkManager.instance.realNodes.count + showDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count
-//        guard !sender.isSelected, existNodeCount < 200 else {
-//            let canSelectCount = 200 - existNodeCount
-//
-//
-//            devices.forEach({ $0.selectedState = .selected })
-//
-//            SRAlertView(title: "notification".localizedString, message: "devices_number_exceeds_message".localizedString, actions: [SRAlertAction(title: "ok".localizedString)]).show()
-//            return
-//        }
-        
         sender.isSelected = !sender.isSelected
         
-        let canAddDevices = showDevices.filter({ $0.selectedState != .disabled && !($0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting) })
+        let canAddDevices = showDevices.filter {
+            $0.selectedState != .disabled && !$0.addState.reservesNodeCapacity
+        }
         if sender.isSelected {
-            if existNodeCount + canAddDevices.count > maxDeviceCount {
-                SRAlertView(title: "notification".localizedString, message: String(format: "devices_number_exceeds_message".localizedString, maxDeviceCount), actions: [SRAlertAction(title: "ok".localizedString)]).show()
-                canAddDevices.prefix(maxDeviceCount - existNodeCount).forEach({ $0.selectedState = .selected })
-            }else {
-                canAddDevices.forEach({ $0.selectedState = .selected })
+            let acceptedDevices = SpaceNodeCapacityPolicy.acceptedPrefix(
+                canAddDevices,
+                existingNodeCount: MeshNetworkManager.instance.realNodes.count,
+                inFlightNodeCount: inFlightNodeCount
+            )
+            canAddDevices.forEach { $0.selectedState = .unselected }
+            acceptedDevices.forEach { $0.selectedState = .selected }
+            if acceptedDevices.count < canAddDevices.count {
+                showNodeCapacityLimitTip()
             }
-            
-//            selectCountLabel.text = "\(devices.count)/\(devices.count)"
         }else {
-            canAddDevices.forEach({ $0.selectedState = .unselected })
-            
-//            selectCountLabel.text = "0/\(devices.count)"
+            canAddDevices.forEach { $0.selectedState = .unselected }
         }
         updateFooterViewState()
         tableView.reloadData()
@@ -1572,14 +1611,20 @@ class DeviceAddClassicModeController: UIViewController {
     /// 检查设备地址是否足够
     private func checkDeviceAddressesAreSufficient(devices: [ProvisioningDevice]) {
 
-        guard validateBatteryPowerSwitchLimit(for: devices) else {
+        let acceptedDevices = nodeCapacityAcceptedDevices(from: devices)
+        guard !acceptedDevices.isEmpty else {
+            updateUIState()
             return
         }
 
-        prepareFastAddGroupSyncBatch(devices: devices)
+        guard validateBatteryPowerSwitchLimit(for: acceptedDevices) else {
+            return
+        }
+
+        prepareFastAddGroupSyncBatch(devices: acceptedDevices)
 
         let bleConnectCount = max(showDevices.filter({ $0.addState == .adding || $0.addState == .addConnecting }).count, MeshLibManager.manager.getConnectedPeripherals().count)
-        for (index, device) in devices.enumerated() {
+        for (index, device) in acceptedDevices.enumerated() {
             if index < (5 - bleConnectCount) {
                 device.addState = .addConnecting
             }else {
@@ -1592,7 +1637,7 @@ class DeviceAddClassicModeController: UIViewController {
         
         DispatchQueue.global().async {
             // 添加设备需要地址-剩余地址 +（site中所有space已经添加的设备地址+正在添加的设备地址）*20%
-            let estimatedAddressCount = devices.reduce(0, { (result, device) in result + device.elementCount })
+            let estimatedAddressCount = acceptedDevices.reduce(0, { (result, device) in result + device.elementCount })
             // 可用地址数量
             let availableUnicastCount = MeshAPI.getNumberOfAvailableUnicastAddresses(meshUUID: self.space.meshUUID)
             
@@ -1613,7 +1658,7 @@ class DeviceAddClassicModeController: UIViewController {
                     
                     DispatchQueue.main.async {
 //                        XWHUDManager.hide()
-                        devices.forEach({
+                        acceptedDevices.forEach({
                             $0.addState = .none
                             $0.selectedState = .selected
                             self.reloadDeviceState($0)
@@ -1632,13 +1677,13 @@ class DeviceAddClassicModeController: UIViewController {
                 // 向服务器申请地址
                 DispatchQueue.main.async {
 //                    XWHUDManager.hide()
-                    self.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount, devices: devices)
+                    self.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount, devices: acceptedDevices)
                 }
                 return
             }
             DispatchQueue.main.async {
                 XWHUDManager.hide()
-                devices.forEach({
+                acceptedDevices.forEach({
                     self.addDevice($0)
                 })
             }
@@ -2157,13 +2202,20 @@ extension DeviceAddClassicModeController: UITableViewDataSource, UITableViewDele
         guard device.selectedState == .unselected || device.selectedState == .selected else {
             return
         }
-        // space只能添加200个设备
-        guard MeshNetworkManager.instance.realNodes.count + showDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count < maxDeviceCount else {
-            SRAlertView(title: "notification".localizedString, message: String(format: "devices_number_exceeds_message".localizedString, maxDeviceCount), actions: [SRAlertAction(title: "ok".localizedString)]).show()
-            return
-        }
-        
         if device.selectedState == .unselected {
+            let selectedNodeCount = isSingleSelectionMode ? 0 : showDevices.filter {
+                $0.selectedState == .selected
+                    && $0.peripheral.identifier != device.peripheral.identifier
+            }.count
+            let acceptedNodeCount = SpaceNodeCapacityPolicy.acceptedNodeCount(
+                existingNodeCount: MeshNetworkManager.instance.realNodes.count,
+                inFlightNodeCount: inFlightNodeCount + selectedNodeCount,
+                requestedNodeCount: 1
+            )
+            guard acceptedNodeCount == 1 else {
+                showNodeCapacityLimitTip()
+                return
+            }
             device.selectedState = .selected
         }else {
             device.selectedState = .unselected
@@ -2229,9 +2281,13 @@ extension DeviceAddClassicModeController: DeviceAddViewCellDelegate {
         guard canStartVirtualTargetAdd() else {
             return
         }
-        // space只能添加200个设备
-        guard MeshNetworkManager.instance.realNodes.count + showDevices.filter({ $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }).count < maxDeviceCount else {
-            SRAlertView(title: "notification".localizedString, message: String(format: "devices_number_exceeds_message".localizedString, maxDeviceCount), actions: [SRAlertAction(title: "ok".localizedString)]).show()
+        let acceptedNodeCount = SpaceNodeCapacityPolicy.acceptedNodeCount(
+            existingNodeCount: MeshNetworkManager.instance.realNodes.count,
+            inFlightNodeCount: inFlightNodeCount,
+            requestedNodeCount: 1
+        )
+        guard acceptedNodeCount == 1 else {
+            showNodeCapacityLimitTip()
             return
         }
         checkDeviceAddressesAreSufficient(devices: [device])

@@ -59,6 +59,16 @@ extension ProvisioningDevice {
         /// 同步失败
         case syncFailed
 
+        /// 是否正在占用一个尚未进入 Mesh Network 的 Node 容量名额。
+        var reservesNodeCapacity: Bool {
+            switch self {
+            case .wait, .addConnecting, .adding:
+                return true
+            default:
+                return false
+            }
+        }
+
         var blocksVirtualTargetSingleAdd: Bool {
             switch self {
             case .wait, .addConnecting, .adding, .success:

@@ -321,7 +321,8 @@ class DeviceLightsViewController: UIViewController {
         
        
         
-        footerView.countBtn.setTitle("\(self.devices.count)/\(space.maxDevicesCount)", for: .normal)
+        let nodeCount = MeshNetworkManager.instance.realNodes.count
+        footerView.countBtn.setTitle("\(nodeCount)/\(space.maxDevicesCount)", for: .normal)
         
         var inset = self.collectionView.contentInset
         inset.bottom = SCRYFrom(16)

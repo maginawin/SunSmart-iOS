@@ -996,6 +996,79 @@ class DeviceRestoreViewController: UIViewController {
         }
     }
 
+    private func additionalNodeCost(
+        for restoreData: DeviceRestoreData,
+        existingNodeUUIDs: Set<UUID>
+    ) -> Int {
+        guard let uuid = restoreData.unprovisionedDevice?.uuid else {
+            return 1
+        }
+        guard existingNodeUUIDs.contains(uuid) else {
+            return 1
+        }
+        return 0
+    }
+
+    private var inFlightNodeCount: Int {
+        let existingNodeUUIDs = Set(MeshNetworkManager.instance.realNodes.map(\.uuid))
+        return sections.flatMap { $0.restoreDatas }.filter { restoreData in
+            guard restoreData.unprovisionedDevice?.addState.reservesNodeCapacity == true else {
+                return false
+            }
+            return additionalNodeCost(
+                for: restoreData,
+                existingNodeUUIDs: existingNodeUUIDs
+            ) > 0
+        }.count
+    }
+
+    private func showNodeCapacityLimitTip() {
+        guard let space else {
+            return
+        }
+        SRAlertView(
+            title: "notification".localizedString,
+            message: String(
+                format: "devices_number_exceeds_message".localizedString,
+                space.maxDevicesCount
+            ),
+            actions: [SRAlertAction(title: "ok".localizedString)]
+        ).show()
+    }
+
+    private func nodeCapacityAcceptedRestoreData(
+        from restoreDatas: [DeviceRestoreData]
+    ) -> [DeviceRestoreData] {
+        guard space != nil else {
+            return restoreDatas
+        }
+        let realNodes = MeshNetworkManager.instance.realNodes
+        let existingNodeUUIDs = Set(realNodes.map(\.uuid))
+        let acceptedRestoreDatas = SpaceNodeCapacityPolicy.acceptedElements(
+            restoreDatas,
+            existingNodeCount: realNodes.count,
+            inFlightNodeCount: inFlightNodeCount,
+            nodeCost: { additionalNodeCost(for: $0, existingNodeUUIDs: existingNodeUUIDs) }
+        )
+        guard acceptedRestoreDatas.count < restoreDatas.count else {
+            return acceptedRestoreDatas
+        }
+
+        let acceptedIdentifiers = Set(
+            acceptedRestoreDatas.compactMap {
+                $0.unprovisionedDevice?.peripheral.identifier
+            }
+        )
+        restoreDatas
+            .compactMap(\.unprovisionedDevice)
+            .filter { !acceptedIdentifiers.contains($0.peripheral.identifier) }
+            .forEach { $0.selectedState = .unselected }
+        showNodeCapacityLimitTip()
+        updateFooterViewState()
+        tableView.reloadData()
+        return acceptedRestoreDatas
+    }
+
     private func recordBatteryPowerSwitchTargetSubscriptionSuccessIfNeeded(
         _ messageHandle: MeshMessageHandle,
         node: Node
@@ -2436,9 +2509,15 @@ class DeviceRestoreViewController: UIViewController {
     
     /// 检查设备地址是否足够
     private func checkDeviceAddressesAreSufficient(devices: [DeviceRestoreData]) {
+
+        let acceptedRestoreDatas = nodeCapacityAcceptedRestoreData(from: devices)
+        guard !acceptedRestoreDatas.isEmpty else {
+            updateUIState()
+            return
+        }
         
         let bleConnectCount = max(showDevices.filter({ $0.addState == .adding || $0.addState == .addConnecting }).count, MeshLibManager.manager.getConnectedPeripherals().count)
-        for (index, device) in devices.enumerated() {
+        for (index, device) in acceptedRestoreDatas.enumerated() {
             if index < (5 - bleConnectCount) {
                 device.unprovisionedDevice?.addState = .addConnecting
             }else {
@@ -2453,7 +2532,7 @@ class DeviceRestoreViewController: UIViewController {
         
         DispatchQueue.global().async {
             // 添加设备需要地址-剩余地址 +（site中所有space已经添加的设备地址+正在添加的设备地址）*20%
-            let estimatedAddressCount = devices.reduce(0, { (result, device) in result + (device.unprovisionedDevice?.elementCount ?? 0) })
+            let estimatedAddressCount = acceptedRestoreDatas.reduce(0, { (result, device) in result + (device.unprovisionedDevice?.elementCount ?? 0) })
             // 可用地址数量
             let availableUnicastCount = MeshAPI.getNumberOfAvailableUnicastAddresses(meshUUID: self.site.meshUUID)
             
@@ -2474,7 +2553,7 @@ class DeviceRestoreViewController: UIViewController {
                     
                     DispatchQueue.main.async {
 //                        XWHUDManager.hide()
-                        devices.forEach({
+                        acceptedRestoreDatas.forEach({
                             if let unprovisionedDevice = $0.unprovisionedDevice {
                                 unprovisionedDevice.addState = .none
                                 unprovisionedDevice.selectedState = .selected
@@ -2495,13 +2574,13 @@ class DeviceRestoreViewController: UIViewController {
                 // 向服务器申请地址
                 DispatchQueue.main.async {
 //                    XWHUDManager.hide()
-                    self.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount, devices: devices)
+                    self.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount, devices: acceptedRestoreDatas)
                 }
                 return
             }
             DispatchQueue.main.async {
                 XWHUDManager.hide()
-                devices.forEach({
+                acceptedRestoreDatas.forEach({
                     self.addDevice($0)
                 })
             }
@@ -2588,15 +2667,27 @@ class DeviceRestoreViewController: UIViewController {
 
         sender.isSelected = !sender.isSelected
         
-        let canAddDevices = showDevices.filter({ $0.selectedState != .disabled && !($0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting) })
+        let canAddRestoreDatas = showRestoreData.filter { restoreData in
+            guard let device = restoreData.unprovisionedDevice else {
+                return false
+            }
+            return device.selectedState != .disabled && !device.addState.reservesNodeCapacity
+        }
 
         if sender.isSelected {
-            canAddDevices.forEach({ $0.selectedState = .selected })
-//            selectCountLabel.text = "\(devices.count)/\(devices.count)"
+            let acceptedRestoreDatas = nodeCapacityAcceptedRestoreData(
+                from: canAddRestoreDatas
+            )
+            canAddRestoreDatas.compactMap(\.unprovisionedDevice).forEach {
+                $0.selectedState = .unselected
+            }
+            acceptedRestoreDatas.compactMap(\.unprovisionedDevice).forEach {
+                $0.selectedState = .selected
+            }
         }else {
-            canAddDevices.forEach({ $0.selectedState = .unselected })
-            
-//            selectCountLabel.text = "0/\(devices.count)"
+            canAddRestoreDatas.compactMap(\.unprovisionedDevice).forEach {
+                $0.selectedState = .unselected
+            }
         }
         updateFooterViewState()
         tableView.reloadData()
@@ -2609,8 +2700,13 @@ class DeviceRestoreViewController: UIViewController {
         showSections.forEach { section in
             selectDeviceDatas.append(contentsOf: section.restoreDatas.filter({ $0.unprovisionedDevice != nil && $0.unprovisionedDevice?.selectedState == .selected }))
         }
-        recordPendingBatteryPowerSwitchRestoreLinkGroups(for: selectDeviceDatas)
-        checkDeviceAddressesAreSufficient(devices: selectDeviceDatas)
+        let acceptedRestoreDatas = nodeCapacityAcceptedRestoreData(from: selectDeviceDatas)
+        guard !acceptedRestoreDatas.isEmpty else {
+            updateUIState()
+            return
+        }
+        recordPendingBatteryPowerSwitchRestoreLinkGroups(for: acceptedRestoreDatas)
+        checkDeviceAddressesAreSufficient(devices: acceptedRestoreDatas)
 //        selectDeviceDatas.forEach { device in
 //            addDevice(device)
 //        }
@@ -3185,6 +3281,22 @@ extension DeviceRestoreViewController: UITableViewDataSource, UITableViewDelegat
         }
     
         if device.selectedState == .unselected {
+            if space != nil {
+                var requestedRestoreDatas = showRestoreData.filter { restoreData in
+                    guard let selectedDevice = restoreData.unprovisionedDevice else {
+                        return false
+                    }
+                    return selectedDevice.selectedState == .selected
+                        && selectedDevice.peripheral.identifier != device.peripheral.identifier
+                }
+                requestedRestoreDatas.append(deviceData)
+                let acceptedRestoreDatas = nodeCapacityAcceptedRestoreData(
+                    from: requestedRestoreDatas
+                )
+                guard acceptedRestoreDatas.contains(where: { $0 === deviceData }) else {
+                    return
+                }
+            }
             device.selectedState = .selected
         }else {
             device.selectedState = .unselected
