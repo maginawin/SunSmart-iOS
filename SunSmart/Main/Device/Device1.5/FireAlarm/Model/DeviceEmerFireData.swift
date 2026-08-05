@@ -20,7 +20,11 @@ final class DeviceEmerFireStore {
     static let shared = DeviceEmerFireStore()
 
     private let repository = DeviceEmerFireRepository.shared
-    private(set) var devices: [DeviceEmerFireData] = []
+    private let cache = DeviceEmerFireCache<DeviceEmerFireData>()
+
+    var devices: [DeviceEmerFireData] {
+        cache.snapshot()
+    }
 
     private init() {}
 
@@ -31,7 +35,7 @@ final class DeviceEmerFireStore {
             meshUUID: meshUUID,
             meshNetworkId: meshNetworkId
         )
-        self.devices = devices
+        cache.replace(with: devices)
         return devices
     }
 
@@ -154,7 +158,7 @@ final class DeviceEmerFireStore {
 
     func delete(_ device: DeviceEmerFireData) {
         _ = repository.delete(device)
-        devices.removeAll(where: { $0.id == device.id })
+        cache.removeAll { $0.id == device.id }
         EmergencyFireControllerSceneEventManager.refreshProxyFilterAddresses()
         notifyDidChange()
     }
@@ -210,12 +214,8 @@ final class DeviceEmerFireStore {
     }
 
     private func mergeCache(with newDevices: [DeviceEmerFireData]) {
-        newDevices.forEach { device in
-            if let index = devices.firstIndex(where: { $0.id == device.id }) {
-                devices[index] = device
-            } else {
-                devices.append(device)
-            }
+        cache.merge(newDevices) { existing, incoming in
+            existing.id == incoming.id
         }
     }
 

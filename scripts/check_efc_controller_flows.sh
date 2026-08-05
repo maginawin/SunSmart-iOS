@@ -922,4 +922,11 @@ if grep -R "EmergencyFireControllerSceneEventManager.dispatch(message: message, 
   exit 1
 fi
 
+cache_source="SunSmart/Main/Device/Device1.5/FireAlarm/Model/DeviceEmerFireCache.swift"
+cache_tests="Tests/Device/DeviceEmerFireCacheTests.swift"
+cache_test_binary="/tmp/DeviceEmerFireCacheTests"
+
+swiftc -parse-as-library "$cache_source" "$cache_tests" -o "$cache_test_binary"
+"$cache_test_binary"
+
 echo "EFC controller flow contracts passed."

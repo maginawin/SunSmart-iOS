@@ -169,6 +169,10 @@
 		8C778B1D2F9EF6FD000887FE /* DeviceEmerFireData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B1B2F9EF6FD000887FE /* DeviceEmerFireData.swift */; };
 		8C778B1E2F9EF6FD000887FE /* DeviceEmerFireData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B1B2F9EF6FD000887FE /* DeviceEmerFireData.swift */; };
 		8C778B1F2F9EF6FD000887FE /* DeviceEmerFireData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B1B2F9EF6FD000887FE /* DeviceEmerFireData.swift */; };
+		8C7002012FC0000000007002 /* DeviceEmerFireCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7002002FC0000000007002 /* DeviceEmerFireCache.swift */; };
+		8C7002022FC0000000007002 /* DeviceEmerFireCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7002002FC0000000007002 /* DeviceEmerFireCache.swift */; };
+		8C7002032FC0000000007002 /* DeviceEmerFireCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7002002FC0000000007002 /* DeviceEmerFireCache.swift */; };
+		8C7002042FC0000000007002 /* DeviceEmerFireCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7002002FC0000000007002 /* DeviceEmerFireCache.swift */; };
 		8C778B242F9F584E000887FE /* DeviceEmerFireRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B232F9F584E000887FE /* DeviceEmerFireRepository.swift */; };
 		8C778B252F9F584E000887FE /* DeviceEmerFireRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B232F9F584E000887FE /* DeviceEmerFireRepository.swift */; };
 		8C778B262F9F584E000887FE /* DeviceEmerFireRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B232F9F584E000887FE /* DeviceEmerFireRepository.swift */; };
@@ -2571,6 +2575,7 @@
 		8C7789252F99FE29000887FE /* EmerFireAlarmSyncAliases.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmSyncAliases.swift; sourceTree = "<group>"; };
 		8C778B162F9CBD47000887FE /* PJUIDebugConsoleTracer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJUIDebugConsoleTracer.swift; sourceTree = "<group>"; };
 		8C778B1B2F9EF6FD000887FE /* DeviceEmerFireData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceEmerFireData.swift; sourceTree = "<group>"; };
+		8C7002002FC0000000007002 /* DeviceEmerFireCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceEmerFireCache.swift; sourceTree = "<group>"; };
 		8C778B232F9F584E000887FE /* DeviceEmerFireRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceEmerFireRepository.swift; sourceTree = "<group>"; };
 		8C778B2D2F9F584F000887FE /* LinkedEmerFireEditViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LinkedEmerFireEditViewModel.swift; sourceTree = "<group>"; };
 		8C778BA72FA1FA2D000887FE /* PJSwitchesTypesVC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJSwitchesTypesVC.swift; sourceTree = "<group>"; };
@@ -3580,6 +3585,7 @@
 			children = (
 				8CF15F8A2F962C7C0044FCF3 /* LinkedEmerFireEditRow.swift */,
 				8C778B1B2F9EF6FD000887FE /* DeviceEmerFireData.swift */,
+				8C7002002FC0000000007002 /* DeviceEmerFireCache.swift */,
 				8CFE26002FB0000000000004 /* DeviceEmerFireData+Sync.swift */,
 				8CFE26002FB0000000000001 /* EmergencyFireControllerSyncPlan.swift */,
 				3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */,
@@ -6092,6 +6098,7 @@
 				C822A8502EA75A9400A7073B /* DeviceMeshNetworkResetHeaderView.swift in Sources */,
 				C8EC4BAF2EAA1FF00082892D /* DeviceMeshNetworkResetHandle.swift in Sources */,
 				8C778B1D2F9EF6FD000887FE /* DeviceEmerFireData.swift in Sources */,
+				8C7002022FC0000000007002 /* DeviceEmerFireCache.swift in Sources */,
 				8CFE26022FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift in Sources */,
 				8CFE26022FB0000000000004 /* DeviceEmerFireData+Sync.swift in Sources */,
 				8CFE26022FB0000000000001 /* EmergencyFireControllerSyncPlan.swift in Sources */,
@@ -6702,6 +6709,7 @@
 				C822A8512EA75A9400A7073B /* DeviceMeshNetworkResetHeaderView.swift in Sources */,
 				C8EC4BAE2EAA1FF00082892D /* DeviceMeshNetworkResetHandle.swift in Sources */,
 				8C778B1F2F9EF6FD000887FE /* DeviceEmerFireData.swift in Sources */,
+				8C7002042FC0000000007002 /* DeviceEmerFireCache.swift in Sources */,
 				8CFE26042FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift in Sources */,
 				8CFE26042FB0000000000004 /* DeviceEmerFireData+Sync.swift in Sources */,
 				8CFE26042FB0000000000001 /* EmergencyFireControllerSyncPlan.swift in Sources */,
@@ -7067,6 +7075,7 @@
 				C89A1C3F2B566B96004912B9 /* ScheduleScenesView.swift in Sources */,
 				8C7789102F987931000887FE /* EmerFireAlarmDeviceCell.swift in Sources */,
 				8C778B1C2F9EF6FD000887FE /* DeviceEmerFireData.swift in Sources */,
+				8C7002012FC0000000007002 /* DeviceEmerFireCache.swift in Sources */,
 				8CFE26012FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift in Sources */,
 				8CFE26012FB0000000000004 /* DeviceEmerFireData+Sync.swift in Sources */,
 				8CFE26012FB0000000000001 /* EmergencyFireControllerSyncPlan.swift in Sources */,
@@ -7921,6 +7930,7 @@
 				C8BB66CE2ED3F056000C63EE /* DeviceMeshNetworkResetHeaderView.swift in Sources */,
 				C8BB66CF2ED3F056000C63EE /* DeviceMeshNetworkResetHandle.swift in Sources */,
 				8C778B1E2F9EF6FD000887FE /* DeviceEmerFireData.swift in Sources */,
+				8C7002032FC0000000007002 /* DeviceEmerFireCache.swift in Sources */,
 				8CFE26032FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift in Sources */,
 				8CFE26032FB0000000000004 /* DeviceEmerFireData+Sync.swift in Sources */,
 				8CFE26032FB0000000000001 /* EmergencyFireControllerSyncPlan.swift in Sources */,
