@@ -32,6 +32,7 @@ class GroupsViewController: UIViewController {
     private var doneBtn: UIButton!
     /// 是否需要更新数据源
     private var refreshData: Bool = false
+    private var networkableObservation: NSKeyValueObservation?
     
     /// 列数
     private var columnNum: Int = isIPad ? 6 : 3
@@ -102,7 +103,7 @@ class GroupsViewController: UIViewController {
 
     deinit {
         clearPendingGroupTap()
-        NetworkRequest.shared.removeObserver(self, forKeyPath: "networkable")
+        networkableObservation = nil
     }
     
     private func addNotificationObserver() {
@@ -132,12 +133,13 @@ class GroupsViewController: UIViewController {
             self?.updateUI()
         }
         
-        NetworkRequest.shared.addObserver(self, forKeyPath: "networkable", context: nil)
-    }
-    
-    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey : Any]?, context: UnsafeMutableRawPointer?) {
-        if NetworkRequest.shared.networkable, space.applyGroupAddressCount != nil {
-            applyGroupAddressAlert()
+        networkableObservation = NetworkRequest.shared.observe(\.networkable, options: [.new]) { [weak self] _, _ in
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                if NetworkRequest.shared.networkable, self.space.applyGroupAddressCount != nil {
+                    self.applyGroupAddressAlert()
+                }
+            }
         }
     }
     
