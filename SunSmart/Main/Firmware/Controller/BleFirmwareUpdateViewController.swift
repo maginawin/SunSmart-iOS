@@ -290,13 +290,26 @@ class BleFirmwareUpdateViewController: UIViewController {
     /// 升级的设备list
     let nodes: [Node]
     private let displayResolver: BLEFirmwareSpaceDeviceResolver
+    private var scanDebugLogger: GatewayFirmwareScanDebugLogger?
+    private let allowedNetworkKeyIndexesByNodeAddress:
+        [UInt16: Set<UInt16>]?
     
     let site: SiteData
     let space: SpaceData?
     
-    init(site: SiteData, space: SpaceData?, nodes: [Node]? = nil) {
+    init(
+        site: SiteData,
+        space: SpaceData?,
+        nodes: [Node]? = nil,
+        scanDebugLogger: GatewayFirmwareScanDebugLogger? = nil,
+        allowedNetworkKeyIndexesByNodeAddress:
+            [UInt16: Set<UInt16>]? = nil
+    ) {
         self.site = site
         self.space = space
+        self.scanDebugLogger = scanDebugLogger
+        self.allowedNetworkKeyIndexesByNodeAddress =
+            allowedNetworkKeyIndexesByNodeAddress
         let displayResolver = BLEFirmwareSpaceDeviceResolver(space: space)
         self.displayResolver = displayResolver
         self.nodes = (nodes ?? MeshNetworkManager.instance.realNodes).filter {
@@ -412,6 +425,7 @@ class BleFirmwareUpdateViewController: UIViewController {
     /// 刷新信号值
     @objc private func refreshRSSI() {
         guard nodes.count > 0 else {
+            finishScanDiagnostics()
             showEmptyUI()
             return
         }
@@ -419,6 +433,14 @@ class BleFirmwareUpdateViewController: UIViewController {
         if self.refreshing || self.updateState == .updating {
             return
         }
+
+        #if DEBUG
+        if scanDebugLogger == nil {
+            scanDebugLogger = GatewayFirmwareScanDebugLogger(
+                sessionID: GatewayFirmwareScanDebugLogger.makeSessionID()
+            )
+        }
+        #endif
         
         nodes.forEach({
             $0.rssi = nil
@@ -439,9 +461,32 @@ class BleFirmwareUpdateViewController: UIViewController {
 //        self.scanAnimationView.isHidden = false
 //        self.scanAnimationView.layer.addRotationAnimation(duration: 1.2, repeatCount: 999, animationKey: "loading")
         
-        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 99999, nodeScan: {[weak self] data in
+        MeshLibManager.manager.refreshNodesRSSI(
+            withWaitFor: 99999,
+            debugLogSessionID: scanDebugLogger?.sessionID,
+            allowedNetworkKeyIndexesByNodeAddress:
+                allowedNetworkKeyIndexesByNodeAddress,
+            nodeScan: {[weak self] data in
             
-            guard let self = self, let node = nodes.first(where: { $0.primaryUnicastAddress == data.node.primaryUnicastAddress }) else { return }
+            guard let self = self else { return }
+            let node = nodes.first(where: {
+                $0.primaryUnicastAddress == data.node.primaryUnicastAddress
+            })
+            let matchReason = GatewayFirmwareScanDiagnosticPolicy.pageMatchReason(
+                isExpectedAddress: node != nil
+            )
+            scanDebugLogger?.record(
+                stage: "page_match",
+                result: node == nil ? "rejected" : "accepted",
+                reason: matchReason,
+                deviceKey: debugDeviceKey(data.node),
+                cid: data.node.companyIdentifier,
+                pid: data.node.productIdentifier,
+                address: data.node.primaryUnicastAddress,
+                rssi: data.node.rssi,
+                peripheralIdentifier: data.peripheral.identifier
+            )
+            guard let node else { return }
             
             if node.peripheral == nil {
                 DispatchQueue.main.async {
@@ -464,6 +509,7 @@ class BleFirmwareUpdateViewController: UIViewController {
                 node.enableUpgrade = false
                 node.selectedState = .disabled
             }
+            recordEligibility(node: node, scanFinished: false)
                 
             // 查找完所有设备后停止搜索
             if !nodes.contains(where: { $0.rssi == nil || $0.peripheral == nil }) {
@@ -506,6 +552,7 @@ class BleFirmwareUpdateViewController: UIViewController {
         rssiSortTimer?.invalidate()
         rssiSortTimer = nil
         devicesRssiSort()
+        finishScanDiagnostics()
      
     }
     
@@ -514,8 +561,54 @@ class BleFirmwareUpdateViewController: UIViewController {
         MeshLibManager.manager.stopRefreshNodesRSSI()
         refreshing = false
         updateUI()
+        finishScanDiagnostics()
 //        scanAnimationView.layer.removeAnimation(forKey: "loading")
 //        scanAnimationView.isHidden = true
+    }
+
+    private func recordEligibility(node: Node, scanFinished: Bool) {
+        let targetVersion = node.targetFirmwareData?.version
+        let eligibility = FirmwareVersionUpdatePolicy.bleBatchAware.eligibility(
+            currentVersion: node.firmwareVersion,
+            targetVersion: targetVersion
+        )
+        guard let reason = GatewayFirmwareScanDiagnosticPolicy.eligibilityReason(
+            currentVersion: node.firmwareVersion,
+            targetVersion: targetVersion,
+            versionEligibility: eligibility,
+            rssi: node.rssi,
+            scanFinished: scanFinished
+        ) else {
+            return
+        }
+        scanDebugLogger?.record(
+            stage: "upgrade_eligibility",
+            result: reason == "upgrade_eligible" ? "accepted" : "rejected",
+            reason: reason,
+            deviceKey: debugDeviceKey(node),
+            cid: node.companyIdentifier,
+            pid: node.productIdentifier,
+            address: node.primaryUnicastAddress,
+            rssi: node.rssi,
+            peripheralIdentifier: node.peripheral?.identifier
+        )
+    }
+
+    private func finishScanDiagnostics() {
+        #if DEBUG
+        guard scanDebugLogger != nil else {
+            return
+        }
+        nodes.forEach {
+            recordEligibility(node: $0, scanFinished: true)
+        }
+        scanDebugLogger?.finish()
+        scanDebugLogger = nil
+        #endif
+    }
+
+    private func debugDeviceKey(_ node: Node) -> String {
+        "node-\(node.primaryUnicastAddress.hex)"
     }
     
     private func showEmptyUI() {
@@ -567,6 +660,18 @@ class BleFirmwareUpdateViewController: UIViewController {
         var deviceTypes: [FirmwareUpdateTypeData] = []
         
         nodes.forEach { node in
+            let candidateReason = GatewayFirmwareScanDiagnosticPolicy.pageCandidateReason(
+                productID: node.productIdentifier
+            )
+            scanDebugLogger?.record(
+                stage: "page_candidate",
+                result: node.productIdentifier == nil ? "rejected" : "accepted",
+                reason: candidateReason,
+                deviceKey: debugDeviceKey(node),
+                cid: node.companyIdentifier,
+                pid: node.productIdentifier,
+                address: node.primaryUnicastAddress
+            )
             if let pid = node.productIdentifier {
 //                let deviceType = DeviceType(pid: pid)
 //                if deviceType != .unknown {
@@ -602,6 +707,7 @@ class BleFirmwareUpdateViewController: UIViewController {
                     node.enableUpgrade = false
                     node.selectedState = .disabled
                 }
+                recordEligibility(node: node, scanFinished: false)
             }
                 
         }

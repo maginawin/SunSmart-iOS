@@ -1215,7 +1215,27 @@ self.updateAddressData()
         
         let gateways = firmwareUpdateGatewayModels
         let gatewayNodes = gateways.compactMap({ $0.node })
-        let vc = BleFirmwareUpdateViewController(site: site, space: nil, nodes: gatewayNodes)
+        #if DEBUG
+        let scanDebugLogger = GatewayFirmwareScanDebugLogger(
+            sessionID: GatewayFirmwareScanDebugLogger.makeSessionID()
+        )
+        logFirmwareUpdateGatewayCandidates(using: scanDebugLogger)
+        #else
+        let scanDebugLogger: GatewayFirmwareScanDebugLogger? = nil
+        #endif
+        let allowedNetworkKeyIndexesByNodeAddress =
+            firmwareUpdateNetworkKeyScope(
+                for: gateways,
+                logger: scanDebugLogger
+            )
+        let vc = BleFirmwareUpdateViewController(
+            site: site,
+            space: nil,
+            nodes: gatewayNodes,
+            scanDebugLogger: scanDebugLogger,
+            allowedNetworkKeyIndexesByNodeAddress:
+                allowedNetworkKeyIndexesByNodeAddress
+        )
         if isIPad {
             vc.preferredContentSize = iPadPreferredContentSize
         }
@@ -1227,6 +1247,128 @@ self.updateAddressData()
         present(NavigationViewController(rootViewController: vc), animated: true)
 //        navigationController?.pushViewController(vc, animated: true)
     }
+
+    private func firmwareUpdateNetworkKeyScope(
+        for gateways: [Gateway],
+        logger: GatewayFirmwareScanDebugLogger?
+    ) -> [UInt16: Set<UInt16>] {
+        guard let meshNetwork = sitePrimaryMeshNetwork() else {
+            gateways.forEach { gateway in
+                logger?.record(
+                    stage: "key_scope",
+                    result: "rejected",
+                    reason: "mesh_network_unavailable",
+                    deviceKey: "gateway-\(gateway.address.hex)",
+                    cid: gateway.node.companyIdentifier,
+                    pid: gateway.node.productIdentifier,
+                    address: gateway.node.primaryUnicastAddress,
+                    macAddress: gateway.mac,
+                    allowedNetworkKeyCount: 0
+                )
+            }
+            return [:]
+        }
+
+        let availableNetworkKeyIndexes = Set(
+            meshNetwork.networkKeys.map(\.index)
+        )
+        let primaryNetworkKeyIndex = meshNetwork.networkKeys.first(
+            where: \.isPrimary
+        )?.index
+        let boundNetworkKeyIndexByApplicationKeyIndex =
+            meshNetwork.applicationKeys.reduce(
+                into: [UInt16: UInt16]()
+            ) { result, applicationKey in
+                result[applicationKey.index] =
+                    applicationKey.boundNetworkKeyIndex
+            }
+        let resolution = GatewayFirmwareScanNetworkKeyScopePolicy.resolve(
+            primaryNetworkKeyIndex: primaryNetworkKeyIndex,
+            availableNetworkKeyIndexes: availableNetworkKeyIndexes,
+            boundNetworkKeyIndexByApplicationKeyIndex:
+                boundNetworkKeyIndexByApplicationKeyIndex,
+            gateways: gateways.map {
+                GatewayFirmwareScanNetworkKeyScopeInput(
+                    address: $0.node.primaryUnicastAddress,
+                    associatedApplicationKeyIndexes:
+                        $0.associatedSpaces.map(\.appKeyIndex)
+                )
+            }
+        )
+
+        gateways.forEach { gateway in
+            let address = gateway.node.primaryUnicastAddress
+            let allowedNetworkKeyIndexes = resolution
+                .allowedNetworkKeyIndexesByAddress[address] ?? []
+            if primaryNetworkKeyIndex == nil {
+                logger?.record(
+                    stage: "key_scope",
+                    result: "rejected",
+                    reason: "primary_network_key_unavailable",
+                    deviceKey: "gateway-\(gateway.address.hex)",
+                    cid: gateway.node.companyIdentifier,
+                    pid: gateway.node.productIdentifier,
+                    address: address,
+                    macAddress: gateway.mac
+                )
+            }
+            logger?.record(
+                stage: "key_scope",
+                result: "accepted",
+                reason: "gateway_key_scope_ready",
+                deviceKey: "gateway-\(gateway.address.hex)",
+                cid: gateway.node.companyIdentifier,
+                pid: gateway.node.productIdentifier,
+                address: address,
+                macAddress: gateway.mac,
+                allowedNetworkKeyCount: allowedNetworkKeyIndexes.count
+            )
+            resolution.unresolvedApplicationKeyIndexesByAddress[address]?
+                .sorted()
+                .forEach { index in
+                    logger?.record(
+                        stage: "key_scope",
+                        result: "rejected",
+                        reason: "associated_space_key_unresolved",
+                        deviceKey: "gateway-\(gateway.address.hex)",
+                        cid: gateway.node.companyIdentifier,
+                        pid: gateway.node.productIdentifier,
+                        address: address,
+                        macAddress: gateway.mac,
+                        networkKeyIndex: index,
+                        networkKeySource: "associated_space"
+                    )
+                }
+        }
+        return resolution.allowedNetworkKeyIndexesByAddress
+    }
+
+    #if DEBUG
+    private func logFirmwareUpdateGatewayCandidates(
+        using logger: GatewayFirmwareScanDebugLogger
+    ) {
+        let meshNetwork = sitePrimaryMeshNetwork()
+        GatewayModel.load(siteId: site.id).forEach { model in
+            let node = model.resolveNode(in: meshNetwork)
+            let reason = GatewayFirmwareScanDiagnosticPolicy.siteCandidateReason(
+                nodeResolved: node != nil,
+                canConfigure: site.canConfigureGateway(model),
+                isOwner: site.permission == .owner,
+                hasAssociatedSpace: !model.associatedSpaces.isEmpty
+            )
+            logger.record(
+                stage: "site_candidate",
+                result: reason == "candidate_accepted" ? "accepted" : "rejected",
+                reason: reason,
+                deviceKey: "gateway-\(model.address.hex)",
+                cid: node?.companyIdentifier,
+                pid: node?.productIdentifier,
+                address: node?.primaryUnicastAddress ?? model.address,
+                macAddress: model.mac
+            )
+        }
+    }
+    #endif
     
     /// 分享space
     private func shareSpace(_ space: SpaceData) {
