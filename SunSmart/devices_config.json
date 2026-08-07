@@ -855,6 +855,15 @@
     },
     {
         "companyId": "0A78",
+        "productId": "2321",
+        "categoryName": "CCT Up&Down Lighting",
+        "elementCount": 3,
+        "iconCategory": "BidirectionalController",
+        "deviceCategory": "Lighting",
+        "modelName": "SRPL-BL9105N-XXCCXXE"
+    },
+    {
+        "companyId": "0A78",
         "productId": "2401",
         "categoryName": "Controller Lighting",
         "elementCount": 2,

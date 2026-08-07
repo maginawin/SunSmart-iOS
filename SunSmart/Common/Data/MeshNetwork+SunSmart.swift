@@ -1901,31 +1901,8 @@ extension Node {
 
     private static let emergencySignControllerCompanyIdentifier: UInt16 = 0x0A78
     private static let emergencySignControllerProductIdentifiers: Set<UInt16> = [0x24C1]
-    private static let externalLightSensorCapableLuminaireCompanyIdentifier: UInt16 = 0x0A78
-    private static let externalLightSensorCapableLuminaireProductIdentifiers: Set<UInt16> = [
-        0x2121,
-        0x2122,
-        0x2132,
-        0x2133,
-        0x2491,
-        0x2492,
-        0x2493,
-        0x2494
-    ]
     private static let wifiGatewayCompanyIdentifier: UInt16 = 0x0A78
     private static let wifiGatewayProductIdentifiers: Set<UInt16> = [0x2721]
-    private static let unsupportedMotionSensitivityCompanyIdentifier: UInt16 = 0x0A78
-    private static let unsupportedMotionSensitivityProductIdentifiers: Set<UInt16> = [
-        0x2121,
-        0x2122,
-        0x2131,
-        0x2132,
-        0x2133,
-        0x2491,
-        0x2492,
-        0x2493,
-        0x2494
-    ]
 
     static func isEmergencySignController(companyIdentifier: UInt16?, productIdentifier: UInt16?) -> Bool {
         guard companyIdentifier == emergencySignControllerCompanyIdentifier,
@@ -1936,11 +1913,10 @@ extension Node {
     }
 
     static func isExternalLightSensorCapableLuminaire(companyIdentifier: UInt16?, productIdentifier: UInt16?) -> Bool {
-        guard companyIdentifier == externalLightSensorCapableLuminaireCompanyIdentifier,
-              let productIdentifier else {
-            return false
-        }
-        return externalLightSensorCapableLuminaireProductIdentifiers.contains(productIdentifier)
+        SunricherProductCapabilityPolicy.isExternalLightSensorCapableLuminaire(
+            companyIdentifier: companyIdentifier,
+            productIdentifier: productIdentifier
+        )
     }
 
     static func isWiFiGateway(companyIdentifier: UInt16?, productIdentifier: UInt16?) -> Bool {
@@ -2519,9 +2495,10 @@ extension Node {
         guard self.sunricherVendorModel != nil else {
             return false
         }
-        if self.companyIdentifier == Self.unsupportedMotionSensitivityCompanyIdentifier,
-           let productIdentifier = self.productIdentifier,
-           Self.unsupportedMotionSensitivityProductIdentifiers.contains(productIdentifier) {
+        if SunricherProductCapabilityPolicy.isMotionSensitivityUnsupported(
+            companyIdentifier: companyIdentifier,
+            productIdentifier: productIdentifier
+        ) {
             return false
         }
         return self.presenceDetectedSensorModel != nil

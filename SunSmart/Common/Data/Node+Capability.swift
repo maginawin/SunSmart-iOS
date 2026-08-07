@@ -8,6 +8,99 @@
 import Foundation
 import NordicSigMeshSDK
 
+enum SunricherProductCapabilityPolicy {
+
+    private static let companyIdentifier: UInt16 = 0x0A78
+    private static let upDownRatioProductIdentifiers: Set<UInt16> = [
+        0x2321,
+        0x2491
+    ]
+    private static let upDownLightDefaultCctStepsProductIdentifiers: Set<UInt16> = [
+        0x2321,
+        0x2491,
+        0x2492
+    ]
+    private static let externalLightSensorCapableLuminaireProductIdentifiers: Set<UInt16> = [
+        0x2121,
+        0x2122,
+        0x2132,
+        0x2133,
+        0x2321,
+        0x2491,
+        0x2492,
+        0x2493,
+        0x2494
+    ]
+    private static let unsupportedMotionSensitivityProductIdentifiers: Set<UInt16> = [
+        0x2121,
+        0x2122,
+        0x2131,
+        0x2132,
+        0x2133,
+        0x2321,
+        0x2491,
+        0x2492,
+        0x2493,
+        0x2494
+    ]
+
+    static func supportsUpDownRatioControl(
+        companyIdentifier: UInt16?,
+        productIdentifier: UInt16?
+    ) -> Bool {
+        supports(
+            companyIdentifier: companyIdentifier,
+            productIdentifier: productIdentifier,
+            productIdentifiers: upDownRatioProductIdentifiers
+        )
+    }
+
+    static func supportsUpDownLightDefaultCctSteps(
+        companyIdentifier: UInt16?,
+        productIdentifier: UInt16?
+    ) -> Bool {
+        supports(
+            companyIdentifier: companyIdentifier,
+            productIdentifier: productIdentifier,
+            productIdentifiers: upDownLightDefaultCctStepsProductIdentifiers
+        )
+    }
+
+    static func isExternalLightSensorCapableLuminaire(
+        companyIdentifier: UInt16?,
+        productIdentifier: UInt16?
+    ) -> Bool {
+        supports(
+            companyIdentifier: companyIdentifier,
+            productIdentifier: productIdentifier,
+            productIdentifiers: externalLightSensorCapableLuminaireProductIdentifiers
+        )
+    }
+
+    static func isMotionSensitivityUnsupported(
+        companyIdentifier: UInt16?,
+        productIdentifier: UInt16?
+    ) -> Bool {
+        supports(
+            companyIdentifier: companyIdentifier,
+            productIdentifier: productIdentifier,
+            productIdentifiers: unsupportedMotionSensitivityProductIdentifiers
+        )
+    }
+
+    private static func supports(
+        companyIdentifier: UInt16?,
+        productIdentifier: UInt16?,
+        productIdentifiers: Set<UInt16>
+    ) -> Bool {
+        guard companyIdentifier == self.companyIdentifier,
+              let productIdentifier else {
+            return false
+        }
+        return productIdentifiers.contains(productIdentifier)
+    }
+}
+
 extension Node {
     
     /// 节点支持的功能类型
@@ -44,14 +137,17 @@ extension Node {
     }
 
     var supportsUpDownRatioControl: Bool {
-        companyIdentifier == 0x0A78 && productIdentifier == 0x2491
+        SunricherProductCapabilityPolicy.supportsUpDownRatioControl(
+            companyIdentifier: companyIdentifier,
+            productIdentifier: productIdentifier
+        )
     }
 
     var supportsUpDownLightDefaultCctSteps: Bool {
-        guard companyIdentifier == 0x0A78, let productIdentifier else {
-            return false
-        }
-        return productIdentifier == 0x2491 || productIdentifier == 0x2492
+        SunricherProductCapabilityPolicy.supportsUpDownLightDefaultCctSteps(
+            companyIdentifier: companyIdentifier,
+            productIdentifier: productIdentifier
+        )
     }
 
     var supportsLightDetailRelayControl: Bool {
