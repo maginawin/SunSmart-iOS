@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F260810A0000000000000101 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */; };
+		F260810A0000000000000102 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */; };
+		F260810A0000000000000103 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */; };
+		F260810A0000000000000104 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */; };
 		0103BEF5A3F84EEB84317B31 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
 		0C36C97F8A95474C9D655F09 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
 		15F6AEDF416B45D6BC28749E /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
@@ -2541,6 +2545,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRestoreDefaultTransitionTimePolicy.swift; sourceTree = "<group>"; };
 		0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorViewModel.swift; sourceTree = "<group>"; };
 		29E6735F1867DC54FBDDBAA9 /* Pods-Common-SylSmart.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SylSmart.debug.xcconfig"; path = "Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart.debug.xcconfig"; sourceTree = "<group>"; };
 		3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyFireControllerIconName.swift; sourceTree = "<group>"; };
@@ -4823,6 +4828,7 @@
 		C8AADEF92A97329300238C1C /* Data */ = {
 			isa = PBXGroup;
 			children = (
+				F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */,
 				C8AADEFE2A97350400238C1C /* SiteData.swift */,
 				C8AADF002A973DA600238C1C /* SpaceData.swift */,
 				C8A16F7D2C8725EF00FB50BD /* FirmwareData.swift */,
@@ -5682,6 +5688,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F260810A0000000000000101 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				C8FA11012F11000100000001 /* SimulateFaultAction.swift in Sources */,
 				C8FB11012F11000400000001 /* SimulateFaultRequest.swift in Sources */,
 				C8FA12012F11000200000001 /* SimulateFaultSectionView.swift in Sources */,
@@ -6295,6 +6302,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F260810A0000000000000102 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				C8FA11012F11000100000002 /* SimulateFaultAction.swift in Sources */,
 				C8FB11012F11000400000002 /* SimulateFaultRequest.swift in Sources */,
 				C8FA12012F11000200000002 /* SimulateFaultSectionView.swift in Sources */,
@@ -6909,6 +6917,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F260810A0000000000000103 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				C8FA11012F11000100000003 /* SimulateFaultAction.swift in Sources */,
 				C8FB11012F11000400000003 /* SimulateFaultRequest.swift in Sources */,
 				C8FA12012F11000200000003 /* SimulateFaultSectionView.swift in Sources */,
@@ -7522,6 +7531,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F260810A0000000000000104 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				C8FA11012F11000100000004 /* SimulateFaultAction.swift in Sources */,
 				C8FB11012F11000400000004 /* SimulateFaultRequest.swift in Sources */,
 				C8FA12012F11000200000004 /* SimulateFaultSectionView.swift in Sources */,

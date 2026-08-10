@@ -2628,6 +2628,7 @@ extension Node {
         let restoreData = NodeRestoreData(
             addGroupAddress: addToGroup?.address.address,
             pwmFrequency: oldNode.pwmFrequency,
+            defaultTransitionTime: oldNode.defaultTransitionTime,
             photosensorException: oldNode.photosensorException
         )
         if oldNode.phaseEnergyConsumptions.count > 0 {
@@ -3300,6 +3301,15 @@ extension Node {
                         })
                     }
                 })
+            }
+        case is GenericDefaultTransitionTimeSet:
+            let transitionTimeMessage = message as! GenericDefaultTransitionTimeSet
+            if DeviceRestoreDefaultTransitionTimePolicy.shouldClearRestoreTarget(
+                restoreTargetRawValue: self.restoreData?.defaultTransitionTime?.rawValue,
+                successfulSetRawValue: transitionTimeMessage.transitionTime.rawValue
+            ) {
+                self.restoreData?.defaultTransitionTime = nil
+                save()
             }
         case is LightCTLTemperatureRangeSet:
             guard isSuccess else {

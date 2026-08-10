@@ -611,9 +611,9 @@ extension Node {
                 syncDatas.append(contentsOf: getSyncData(type: .schedules()))
             }
             
+            // 设备参数
+            var deviceParameterTypes: [DeviceParameterType] = []
             if self.sunricherVendorModel != nil {
-                // 设备参数
-                var deviceParameterTypes: [DeviceParameterType] = []
                 // PWM
                 if let pwmFrequency = self.restoreData?.pwmFrequency, self.pwmFrequency != pwmFrequency {
                     deviceParameterTypes.append(.pwmFrequency(frequency: pwmFrequency))
@@ -632,10 +632,16 @@ extension Node {
                    self.supportPhotosensorException {
                     deviceParameterTypes.append(.photosensorException(photosensorException))
                 }
-                
-                if deviceParameterTypes.count > 0 {
-                    syncDatas.append(.deviceParameterTypes(types: deviceParameterTypes))
-                }
+            }
+            if let targetRawValue = DeviceRestoreDefaultTransitionTimePolicy.pendingTargetRawValue(
+                restoreTargetRawValue: self.restoreData?.defaultTransitionTime?.rawValue,
+                currentRawValue: self.defaultTransitionTime?.rawValue,
+                isSupported: self.supportDefaultTransitionTime
+            ) {
+                deviceParameterTypes.append(.defaultTransitionTime(transitionTime: .init(rawValue: targetRawValue)))
+            }
+            if deviceParameterTypes.count > 0 {
+                syncDatas.append(.deviceParameterTypes(types: deviceParameterTypes))
             }
             
             // Dongle
@@ -762,6 +768,13 @@ extension Node {
         if let photosensorException = self.restoreData?.photosensorException,
            self.photosensorException != photosensorException,
            self.supportPhotosensorException {
+            return true
+        }
+        if DeviceRestoreDefaultTransitionTimePolicy.pendingTargetRawValue(
+            restoreTargetRawValue: self.restoreData?.defaultTransitionTime?.rawValue,
+            currentRawValue: self.defaultTransitionTime?.rawValue,
+            isSupported: self.supportDefaultTransitionTime
+        ) != nil {
             return true
         }
  
