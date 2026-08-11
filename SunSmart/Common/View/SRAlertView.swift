@@ -591,17 +591,24 @@ class SRAlertView: UIView {
     }
     
     
-    public func dismiss(animation: Bool = true) {
+    public func dismiss(
+        animation: Bool = true,
+        completion: (() -> Void)? = nil
+    ) {
         self.isDismiss = true
+        let finishDismiss = { [weak self] in
+            self?.removeFromSuperview()
+            completion?()
+        }
         if animation {
             UIView.animate(withDuration: 0.15) {
                 self.shadeView.alpha = 0
                 self.contentView.layer.addScaleAnimation(fromScale: 1, toScale: 0.7, duration: 0.2)
             } completion: { _ in
-                self.removeFromSuperview()
+                finishDismiss()
             }
         }else {
-            self.removeFromSuperview()
+            finishDismiss()
         }
         
         NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(textExceededHide), object: nil)
@@ -622,19 +629,27 @@ class SRAlertView: UIView {
     }
     
     // MARK: - Action
-  
+
+    private func handleAction(_ action: SRAlertAction) {
+        if action.closeAlert && action.performsActionAfterDismiss {
+            dismiss(animation: action.hideAnimation) {
+                action.actionHandler?(action)
+            }
+        } else {
+            action.actionHandler?(action)
+            if action.closeAlert {
+                dismiss(animation: action.hideAnimation)
+            }
+        }
+    }
+
     /// 左侧按钮点击
     @objc private func firstBtnClick() {
         if isDismiss {
             return
         }
         if let action = actions.first {
-            if action.actionHandler != nil {
-                action.actionHandler!(action)
-            }
-            if action.closeAlert {
-                dismiss(animation: action.hideAnimation)
-            }
+            handleAction(action)
         }
 //        dismiss()
     }
@@ -645,12 +660,7 @@ class SRAlertView: UIView {
             return
         }
         if let action = actions.last {
-            if action.actionHandler != nil {
-                action.actionHandler!(action)
-            }
-            if action.closeAlert {
-                dismiss(animation: action.hideAnimation)
-            }
+            handleAction(action)
         }
         if self.inputDoneBack != nil {
 //            self.textField.resignFirstResponder()
@@ -1305,10 +1315,12 @@ struct SRAlertAction {
     var closeAlert: Bool = true
     /// 点击后关闭弹窗是否展示动画
     var hideAnimation: Bool = true
+    /// 是否在弹窗关闭完成后执行点击事件
+    var performsActionAfterDismiss: Bool = false
     /// 点击事件
     var actionHandler: ((SRAlertAction)->())? = nil
     
-    init(title: String, titleColor: UIColor? = nil, titleFont: UIFont? = nil, style: SRAlertActionStyle = .default, closeAlert: Bool = true, hideAnimation: Bool = true, actionHandler: ((SRAlertAction) -> Void)? = nil) {
+    init(title: String, titleColor: UIColor? = nil, titleFont: UIFont? = nil, style: SRAlertActionStyle = .default, closeAlert: Bool = true, hideAnimation: Bool = true, performsActionAfterDismiss: Bool = false, actionHandler: ((SRAlertAction) -> Void)? = nil) {
         self.title = title
         
         switch style {
@@ -1336,6 +1348,7 @@ struct SRAlertAction {
         self.style = style
         self.closeAlert = closeAlert
         self.hideAnimation = hideAnimation
+        self.performsActionAfterDismiss = performsActionAfterDismiss
         self.actionHandler = actionHandler
     }
 }

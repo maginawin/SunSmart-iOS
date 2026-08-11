@@ -38,6 +38,10 @@ enum NetowrkReqeustApi {
     case sites
     /// 获取site信息
     case siteInfo(siteId: String)
+    /// 获取 Edit Site 属性
+    case sitePropsRetrieve(siteId: String)
+    /// 分量更新 Edit Site 属性
+    case sitePropsUpdate(siteId: String, props: [String: Any])
     /// 添加site  useDeivceAddressNum: 已使用的设备地址数量
     case siteAdd(siteData: [String: Any], useDeivceAddressNum: Int)
     /// 更新/提交site数据
@@ -146,6 +150,8 @@ extension NetowrkReqeustApi {
         switch self {
         case .sites: return "sites"
         case .siteInfo: return "siteInfo"
+        case .sitePropsRetrieve: return "sitePropsRetrieve"
+        case .sitePropsUpdate: return "sitePropsUpdate"
         case .siteAdd: return "siteAdd"
         case .siteUpload: return "siteUpload"
         case .siteDelete: return "siteDelete"
@@ -253,6 +259,10 @@ extension NetowrkReqeustApi: TargetType {
             return "/sitespace/get/sitelist"
         case .siteInfo:
             return "/sitespace/get/siteprops"
+        case .sitePropsRetrieve:
+            return "/sitespace/retrieve/siteprops"
+        case .sitePropsUpdate:
+            return "/sitespace/update/siteprops"
         case .siteUpload, .siteAdd:
             return "/sitespace/sync/siteprops"
         case .siteDelete:
@@ -351,6 +361,16 @@ extension NetowrkReqeustApi: TargetType {
             return ["userId": UserData.currentUserId]
         case .siteInfo(let siteId):
             return ["siteId": siteId, "userId": UserData.currentUserId]
+        case .sitePropsRetrieve(let siteId):
+            let props: [String: Any] = [
+                "timezone": NSNull(),
+                "imageId": NSNull(),
+                "siteName": NSNull(),
+                "updateTimestamp": NSNull()
+            ]
+            return ["userId": UserData.currentUserId, "siteId": siteId, "props": props]
+        case .sitePropsUpdate(let siteId, let props):
+            return ["userId": UserData.currentUserId, "siteId": siteId, "props": props]
         case .siteAdd(let siteData, let useDeivceAddressNum):
             
             let user: [String: Any] = [

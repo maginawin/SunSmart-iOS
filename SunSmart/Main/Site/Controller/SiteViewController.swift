@@ -18,6 +18,11 @@ let siteGatewayAssociationTopologyChangedNotificationName =
 
 class SiteViewController: UIViewController {
 
+    private enum SiteLoadPresentation: Equatable {
+        case interactive
+        case silentGatewayReconcile
+    }
+
     private var segmentedControl: CustomSegmentedControl!
     private var scrollView: PopGestureScrollView!
     private var allSpacesCollectionView: UICollectionView!
@@ -68,6 +73,33 @@ class SiteViewController: UIViewController {
     private var reloadData: Bool = false
     
     private var networkableObservation: NSKeyValueObservation?
+    private let sitePropsCoordinator: SitePropsEditCoordinator
+    private let entrySyncCoordinator: SiteEntryTimeZoneSyncCoordinator
+    private lazy var entrySyncOverlay: SiteEntryTimeZoneSyncOverlay = {
+        let overlay = SiteEntryTimeZoneSyncOverlay()
+        overlay.onGotIt = { [weak self] in
+            self?.finishEntrySyncOverlay()
+        }
+        overlay.onLater = { [weak self] in
+            self?.finishEntrySyncOverlay()
+        }
+        overlay.onReviewSync = { [weak self] in
+            self?.handleEntrySyncReview()
+        }
+        return overlay
+    }()
+    private var entrySyncTask: Task<Void, Never>?
+    private var entrySyncNavigationLocked = false
+    private var interactivePopGestureWasEnabled: Bool?
+    private var timeZoneReviewState: SiteTimeZoneReviewState = .hidden
+    private var latestTimeZoneRemoteSnapshot: SiteEntryTimeZoneRemoteSnapshot?
+    private lazy var syncGatewaysCloudBridge = SyncGatewaysCloudBridge(
+        refreshSiteSnapshot: { [weak self] in
+            await MainActor.run {
+                self?.performSiteLoad(presentation: .silentGatewayReconcile)
+            }
+        }
+    )
 
     /// site内网关list
     private var gatewayModels: [Gateway] = []
@@ -90,6 +122,11 @@ class SiteViewController: UIViewController {
     init(site: SiteData, addSite: Bool = false) {
         self.site = site
         self.addSite = addSite
+        let sitePropsCoordinator = SitePropsEditCoordinator(site: site)
+        self.sitePropsCoordinator = sitePropsCoordinator
+        self.entrySyncCoordinator = SiteEntryTimeZoneSyncCoordinator(
+            store: sitePropsCoordinator
+        )
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -142,6 +179,7 @@ class SiteViewController: UIViewController {
         (navigationController as? NavigationViewController)?.navigationDelegate = nil
 
         setupData()
+        retryDirtyGatewayCloudUploads()
         SpaceDebugUARTManager.shared.activateSite(site.id)
 
         if reloadData {
@@ -158,6 +196,7 @@ class SiteViewController: UIViewController {
     }
 
     @objc private func backAction() {
+        guard !entrySyncNavigationLocked else { return }
         SpaceDebugUARTManager.shared.endSite(site.id)
         if let navigationController, navigationController.viewControllers.first != self {
             navigationController.popViewController(animated: true)
@@ -204,10 +243,19 @@ self.updateAddressData()
 //            }
 //        })
     }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        if entrySyncNavigationLocked,
+           (isMovingFromParent || isBeingDismissed || navigationController?.isBeingDismissed == true) {
+            cancelEntrySyncOverlay()
+        }
+    }
     
     deinit {
 //        NetworkRequest.shared.removeObserver(self, forKeyPath: "networkable")
         networkableObservation = nil
+        entrySyncTask?.cancel()
         SpaceDebugUARTManager.shared.endSite(site.id)
 
         if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == site.meshUUID && MeshNetworkManager.instance.currentNetworkKey.networkId.hex == site.meshNetworkId {
@@ -355,11 +403,14 @@ self.updateAddressData()
         }
 
         // 手机网络状态观察者
-        networkableObservation = NetworkRequest.shared.observe(\.networkable, options: [.new], changeHandler: {[weak self] _, _ in
+        networkableObservation = NetworkRequest.shared.observe(\.networkable, options: [.new], changeHandler: {[weak self] _, change in
             guard let self = self else { return }
             DispatchQueue.main.async {[weak self] in
                 guard let self = self else { return }
                 self.updateNoInternetUI()
+                if change.newValue == true {
+                    self.retryDirtyGatewayCloudUploads()
+                }
                 if !NetworkRequest.shared.networkable && SRAlertView.getCurrentAlertView() == nil {
                     // 有网络=>无网络
                         SRAlertView(title: "notification".localizedString, message: "phone_network_disconnect".localizedString, actions: [.init(title: "confirm".localizedString)]).show()
@@ -383,6 +434,12 @@ self.updateAddressData()
     // MARK: - Request
     /// 获取site数据请求
     @objc private func loadSiteRequest() {
+        performSiteLoad(presentation: .interactive)
+    }
+
+    private func performSiteLoad(
+        presentation: SiteLoadPresentation
+    ) {
         
         guard self.site.uploadCloud else { // 已上传服务器
             self.allSpacesCollectionView.refreshControl?.endRefreshing()
@@ -390,7 +447,9 @@ self.updateAddressData()
             return
         }
         
-        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
+        if presentation == .interactive {
+            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
+        }
         
         NetworkRequest.shared.request(.siteInfo(siteId: self.site.id)) {[weak self] result in
             guard let self = self else { return }
@@ -402,6 +461,46 @@ self.updateAddressData()
             switch result {
             case .success(let response):
                 if let siteData = JSON(response)["data"].dictionaryObject {
+                    let localState = sitePropsCoordinator.currentState()
+                    let localSnapshot = SiteEntryTimeZoneLocalSnapshot(
+                        siteId: site.id,
+                        values: localState.values,
+                        lastUpdate: localState.lastUpdate,
+                        lastUploadCloudTimestamp: localState.lastUploadCloudTimestamp,
+                        pending: localState.pending
+                    )
+                    let remoteSnapshot = SiteEntryTimeZoneSyncResponseParser.parse(
+                        siteData: siteData
+                    )
+                    self.latestTimeZoneRemoteSnapshot = remoteSnapshot
+                    let entrySyncDecision: SiteEntryTimeZoneDecision
+                    var dirtyTimeOverrides: [String: SyncGatewayDirtyTimeOverride] = [:]
+                    if let remoteSnapshot {
+                        let previewDecision = SiteEntryTimeZoneSyncPolicy.decide(
+                            local: localSnapshot,
+                            remote: remoteSnapshot,
+                            now: Int64(Date().timeIntervalSince1970)
+                        )
+                        if let targetTimeZone = self.targetTimeZone(
+                            for: previewDecision,
+                            remote: remoteSnapshot
+                        ) {
+                            dirtyTimeOverrides = self.captureDirtyGatewayTimeOverrides(
+                                remote: remoteSnapshot,
+                                targetTimeZone: targetTimeZone
+                            )
+                        }
+                        entrySyncDecision = entrySyncCoordinator.prepare(
+                            local: localSnapshot,
+                            remote: remoteSnapshot,
+                            now: Int64(Date().timeIntervalSince1970),
+                            localDirtyOffsetMinutesByGatewayID:
+                                dirtyTimeOverrides.mapValues(\.offsetMinutes)
+                        )
+                    } else {
+                        entrySyncCoordinator.consumeWithoutAction()
+                        entrySyncDecision = .noAction
+                    }
 //                    let site = SiteData.import(siteJsonData: siteData)
                     Task {[weak self] in
 
@@ -410,6 +509,16 @@ self.updateAddressData()
                         await self.site.update(siteJsonData: siteData)
                         print("导入数据完成: \(Date().timeIntervalSince1970)")
                         guard !Task.isCancelled else { return }
+                        if let targetTimeZone = self.targetTimeZone(
+                            for: entrySyncDecision,
+                            remote: remoteSnapshot
+                        ) {
+                            self.restoreDirtyGatewayTimeOverrides(
+                                dirtyTimeOverrides,
+                                targetTimeZone: targetTimeZone,
+                                remote: remoteSnapshot
+                            )
+                        }
                         // space已提交到服务器，但是本地有但是服务器没有
 //                        let deleteSpaces = self.allSpaces.filter({ localSpace in !self.site.spaces.contains(where: { $0.id == localSpace.id }) && localSpace.uploadCloud })
 //                        deleteSpaces.forEach({ space in
@@ -454,19 +563,28 @@ self.updateAddressData()
                             MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.site.meshUUID, subNetworkId: self.site.meshNetworkId, connected: false)
                         }
                         self.setupData()
+                        if let remoteSnapshot {
+                            self.applyTimeZoneReviewState(
+                                from: remoteSnapshot,
+                                localDirtyOffsetMinutesByGatewayID:
+                                    dirtyTimeOverrides.mapValues(\.offsetMinutes)
+                            )
+                        }
                     #if DEBUG
                         self.updateAddressData()
                     #endif
                         
-                        XWHUDManager.hideInView(with: self.view)
+                        if presentation == .interactive {
+                            XWHUDManager.hideInView(with: self.view)
+                        }
                         
-                        if self.view.window != nil && self.site.localAddress == nil { // 申请地址
-                            self.requestMobileAddress()
-                        }else {
-                            // 自动进入space页面
-                            if let spaceId = self.enterSpaceId, let space = self.allSpaces.first(where: { $0.id == spaceId }) {
-                                self.enterSpaceId = nil
-                                self.selectSpaceAction(space: space)
+                        if presentation == .interactive {
+                            let showsEntrySync = self.handleEntrySyncDecision(
+                                entrySyncDecision,
+                                remoteSnapshot: remoteSnapshot
+                            )
+                            if !showsEntrySync {
+                                self.continuePostImportNavigationIfNeeded()
                             }
                         }
                         // 是否需要同步数据
@@ -476,10 +594,18 @@ self.updateAddressData()
                         }
                     }
                 }else {
-                    XWHUDManager.hideInView(with: self.view)
+                    entrySyncCoordinator.consumeWithoutAction()
+                    if presentation == .interactive {
+                        XWHUDManager.hideInView(with: self.view)
+                    }
                 }
             case .failure(let error):
-                XWHUDManager.hideInView(with: self.view)
+                if presentation == .interactive {
+                    XWHUDManager.hideInView(with: self.view)
+                }
+                if presentation == .silentGatewayReconcile {
+                    return
+                }
                 if error == .noSitePermission || error == .userUnauthorized { // 无权限
                     XWHUDManager.showErrorTipHUD(error.localizedDescription)
                     if self.site.state == .normal {
@@ -550,6 +676,213 @@ self.updateAddressData()
                 }
             }
                
+        }
+    }
+
+    private func handleEntrySyncDecision(
+        _ decision: SiteEntryTimeZoneDecision,
+        remoteSnapshot: SiteEntryTimeZoneRemoteSnapshot?
+    ) -> Bool {
+        switch decision {
+        case .noAction:
+            return false
+        case .useVisitorRemote:
+            _ = entrySyncCoordinator.applySilent(decision)
+            return false
+        case .showGatewayStatus, .useRemote, .useLocal:
+            guard let remoteSnapshot else { return false }
+            return showEntrySyncOverlay(
+                for: decision,
+                remoteSnapshot: remoteSnapshot
+            )
+        }
+    }
+
+    private func showEntrySyncOverlay(
+        for decision: SiteEntryTimeZoneDecision,
+        remoteSnapshot: SiteEntryTimeZoneRemoteSnapshot
+    ) -> Bool {
+        switch decision {
+        case .showGatewayStatus, .useRemote, .useLocal:
+            break
+        case .noAction, .useVisitorRemote:
+            return false
+        }
+        guard view.window != nil else { return false }
+
+        setEntrySyncNavigationLocked(true)
+        guard let container = navigationController?.view ?? viewIfLoaded else {
+            setEntrySyncNavigationLocked(false)
+            return false
+        }
+        entrySyncOverlay.showChecking(in: container)
+        entrySyncTask?.cancel()
+        entrySyncTask = Task { [weak self, entrySyncCoordinator] in
+            let result = await entrySyncCoordinator.run(decision)
+            guard
+                let self,
+                !Task.isCancelled,
+                entrySyncNavigationLocked,
+                view.window != nil
+            else {
+                return
+            }
+            if result.site == .updatedToServer {
+                applyTimeZoneReviewState(
+                    from: remoteSnapshot,
+                    serverTimezone: result.timezone
+                )
+            }
+            entrySyncOverlay.showResult(result)
+        }
+        return true
+    }
+
+    private func applyTimeZoneReviewState(
+        from remote: SiteEntryTimeZoneRemoteSnapshot,
+        localDirtyOffsetMinutesByGatewayID: [String: Int] = [:]
+    ) {
+        guard let state = SiteEntryTimeZoneSyncPolicy.reviewState(
+            remote: remote,
+            localDirtyOffsetMinutesByGatewayID:
+                localDirtyOffsetMinutesByGatewayID
+        ) else {
+            return
+        }
+        setTimeZoneReviewState(state)
+    }
+
+    private func applyTimeZoneReviewState(
+        from remote: SiteEntryTimeZoneRemoteSnapshot,
+        serverTimezone: SiteTimeZoneValue,
+        localDirtyOffsetMinutesByGatewayID: [String: Int] = [:]
+    ) {
+        setTimeZoneReviewState(
+            SiteEntryTimeZoneSyncPolicy.reviewState(
+                remote: remote,
+                serverTimezone: serverTimezone,
+                localDirtyOffsetMinutesByGatewayID:
+                    localDirtyOffsetMinutesByGatewayID
+            )
+        )
+    }
+
+    private func setTimeZoneReviewState(_ state: SiteTimeZoneReviewState) {
+        guard state != timeZoneReviewState else { return }
+        timeZoneReviewState = state
+        guard isViewLoaded else { return }
+        allSpacesCollectionView.collectionViewLayout.invalidateLayout()
+        favouritesCollectionView.collectionViewLayout.invalidateLayout()
+        allSpacesCollectionView.reloadData()
+        favouritesCollectionView.reloadData()
+    }
+
+    private func setEntrySyncNavigationLocked(_ locked: Bool) {
+        guard entrySyncNavigationLocked != locked else { return }
+        entrySyncNavigationLocked = locked
+
+        let gesture = navigationController?.interactivePopGestureRecognizer
+        if locked {
+            interactivePopGestureWasEnabled = gesture?.isEnabled
+            gesture?.isEnabled = false
+        } else {
+            if let interactivePopGestureWasEnabled {
+                gesture?.isEnabled = interactivePopGestureWasEnabled
+            }
+            interactivePopGestureWasEnabled = nil
+        }
+    }
+
+    private func finishEntrySyncOverlay() {
+        entrySyncTask?.cancel()
+        entrySyncTask = nil
+        entrySyncCoordinator.cancel()
+        entrySyncOverlay.dismiss()
+        setEntrySyncNavigationLocked(false)
+        continuePostImportNavigationIfNeeded()
+    }
+
+    private func handleEntrySyncReview() {
+        finishEntrySyncOverlay()
+        showSyncGatewaysPage()
+    }
+
+    private func showSyncGatewaysPage() {
+        guard let remote = latestTimeZoneRemoteSnapshot,
+              let storageValue = site.timezone,
+              let targetTimeZone = SiteTimeZoneValue(storageValue: storageValue),
+              targetTimeZone == remote.timezone,
+              let meshNetwork = sitePrimaryMeshNetwork() else {
+            return
+        }
+        let context = SyncGatewaysContextBuilder.make(
+            siteID: site.id,
+            siteName: site.name,
+            targetTimeZone: targetTimeZone,
+            remote: remote,
+            meshNetwork: meshNetwork,
+            gatewayModels: gatewayModels.map(\.model)
+        )
+        guard !context.targets.isEmpty else {
+            setTimeZoneReviewState(.hidden)
+            return
+        }
+        syncGatewaysCloudBridge.beginBatch()
+        let controller = SyncGatewaysViewController(
+            context: context,
+            cloudBridge: syncGatewaysCloudBridge,
+            canStartSync: { [weak self] target in
+                self?.canStartGatewayTimeSync(
+                    target,
+                    expectedTimeZone: context.targetTimeZone
+                ) == true
+            }
+        )
+        navigationController?.pushViewController(controller, animated: true)
+    }
+
+    private func canStartGatewayTimeSync(
+        _ target: SyncGatewayRuntimeTarget,
+        expectedTimeZone: SiteTimeZoneValue
+    ) -> Bool {
+        guard site.timezone.flatMap(SiteTimeZoneValue.init(storageValue:)) ==
+                expectedTimeZone,
+              let remote = latestTimeZoneRemoteSnapshot,
+              remote.timezone == expectedTimeZone,
+              SiteGatewayAccessScope.resolve(remote: remote).contains(
+                normalizedGatewayID: target.descriptor.id
+              ),
+              let meshNetwork = sitePrimaryMeshNetwork(),
+              let gateway = gatewayModels.first(where: {
+                  SiteGatewayAccessScope.normalize($0.mac) ==
+                      target.descriptor.id
+              }),
+              site.canConfigureGateway(gateway.model),
+              gateway.model.resolveNode(in: meshNetwork) != nil else {
+            return false
+        }
+        return true
+    }
+
+    private func cancelEntrySyncOverlay() {
+        entrySyncTask?.cancel()
+        entrySyncTask = nil
+        entrySyncCoordinator.cancel()
+        if entrySyncOverlay.superview != nil {
+            entrySyncOverlay.dismiss()
+        }
+        setEntrySyncNavigationLocked(false)
+    }
+
+    private func continuePostImportNavigationIfNeeded() {
+        if view.window != nil && site.localAddress == nil {
+            requestMobileAddress()
+            return
+        }
+        if let spaceId = enterSpaceId,
+           let space = allSpaces.first(where: { $0.id == spaceId }) {
+            enterSpaceId = nil
+            selectSpaceAction(space: space)
         }
     }
     
@@ -730,6 +1063,119 @@ self.updateAddressData()
         )
     }
 
+    private func targetTimeZone(
+        for decision: SiteEntryTimeZoneDecision,
+        remote: SiteEntryTimeZoneRemoteSnapshot?
+    ) -> SiteTimeZoneValue? {
+        switch decision {
+        case .noAction:
+            if let timezone = site.timezone,
+               let value = SiteTimeZoneValue(storageValue: timezone) {
+                return value
+            }
+            return remote?.timezone
+        case .showGatewayStatus(let timezone, _),
+             .useRemote(let timezone, _, _):
+            return timezone
+        case .useLocal(let snapshot, _):
+            return snapshot.values.timezone
+        case .useVisitorRemote(let state):
+            return state.values.timezone
+        }
+    }
+
+    private func captureDirtyGatewayTimeOverrides(
+        remote: SiteEntryTimeZoneRemoteSnapshot,
+        targetTimeZone: SiteTimeZoneValue
+    ) -> [String: SyncGatewayDirtyTimeOverride] {
+        let scope = SiteGatewayAccessScope.resolve(remote: remote)
+        let remoteGateways = remote.gateways.reduce(
+            into: [String: SiteEntryGatewayTimeZoneSnapshot]()
+        ) {
+            result, gateway in
+            guard let id = SiteGatewayAccessScope.normalize(gateway.id),
+                  result[id] == nil else {
+                return
+            }
+            result[id] = gateway
+        }
+        let candidates = gatewayModels.compactMap { gateway -> SyncGatewayDirtyTimeCandidate? in
+            guard let id = SiteGatewayAccessScope.normalize(gateway.mac),
+                  scope.contains(normalizedGatewayID: id) else {
+                return nil
+            }
+            return SyncGatewayDirtyTimeCandidate(
+                id: id,
+                isCloudDirty: gateway.model.needUploadCloud,
+                localTimestamp: gateway.node.timestamp,
+                localOffsetMinutes:
+                    (gateway.node.timezone?.secondsFromGMT()).map { $0 / 60 },
+                remoteOffsetMinutes: remoteGateways[id]?.offsetMinutes
+            )
+        }
+        return SyncGatewaysDirtyTimeOverridePolicy.capture(
+            targetOffsetMinutes: targetTimeZone.offsetMinutes,
+            candidates: candidates
+        )
+    }
+
+    private func restoreDirtyGatewayTimeOverrides(
+        _ overrides: [String: SyncGatewayDirtyTimeOverride],
+        targetTimeZone: SiteTimeZoneValue,
+        remote: SiteEntryTimeZoneRemoteSnapshot?
+    ) {
+        guard !overrides.isEmpty,
+              site.timezone.flatMap({ SiteTimeZoneValue(storageValue: $0) }) == targetTimeZone,
+              let meshNetwork = sitePrimaryMeshNetwork(),
+              let remote else {
+            return
+        }
+        let scope = SiteGatewayAccessScope.resolve(remote: remote)
+
+        overrides.forEach { id, override in
+            guard scope.contains(normalizedGatewayID: id),
+                  let gateway = GatewayModel.load(
+                    siteId: site.id,
+                    macAddress: id
+                  ).first,
+                  gateway.needUploadCloud,
+                  let node = gateway.resolveNode(in: meshNetwork),
+                  let timeZone = TimeZone(
+                    secondsFromGMT: override.offsetMinutes * 60
+                  ) else {
+                return
+            }
+            node.timestamp = override.timestamp
+            node.timezone = timeZone
+            _ = node.savePropertys()
+        }
+    }
+
+    private func retryDirtyGatewayCloudUploads() {
+        gatewayModels.forEach { gateway in
+            guard gateway.model.needUploadCloud,
+                  let id = SiteGatewayAccessScope.normalize(gateway.mac) else {
+                return
+            }
+            let remoteOrder = latestTimeZoneRemoteSnapshot?.gateways.firstIndex {
+                SiteGatewayAccessScope.normalize($0.id) == id
+            } ?? Int.max
+            let target = SyncGatewayRuntimeTarget(
+                descriptor: SyncGatewayTargetDescriptor(
+                    id: id,
+                    displayName: gateway.name,
+                    remoteOrder: remoteOrder,
+                    initialOffsetMinutes:
+                        (gateway.node.timezone?.secondsFromGMT()).map { $0 / 60 },
+                    isSyncable: true
+                ),
+                gateway: gateway.model,
+                node: gateway.node
+            )
+            syncGatewaysCloudBridge.retryDirty(target)
+        }
+    }
+
     /// 加载网关list
     private func loadGatewaysData() -> [Gateway] {
         
@@ -848,29 +1294,62 @@ self.updateAddressData()
     
     /// 编辑场所
     private func editSite() {
-        
-        var imageNames: [String] = []
-        for id in 1...28 {
-            imageNames.append("site_\(id)")
+        let coordinator = SitePropsEditCoordinator(site: site)
+        let online = NetworkRequest.shared.networkable
+        if online {
+            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
         }
-        let vc = InfoEditViewController(name: site.name, imageNames: imageNames, selectImageIndex: max(site.imageId - 1, 0), columnNum: 4)
-        vc.nameEditChangedCallback = {[weak self] name in
-            return SiteData.isTautonym(siteName: name) && name != self?.site.name
+        Task { @MainActor [weak self] in
+            let draft = await coordinator.prepareDraft(online: online)
+            if online {
+                XWHUDManager.hide()
+            }
+            guard let self = self else { return }
+
+            let sitesViewController = self.navigationController?.viewControllers
+                .last(where: { $0 is SitesViewController }) as? SitesViewController
+
+            let vc = SiteEditViewController(
+                site: self.site,
+                draft: draft,
+                coordinator: coordinator,
+                returnToSitesHandler: { [weak self, weak sitesViewController] completion in
+                    guard let self = self else { return }
+                    self.dismiss(animated: true) {
+                        self.title = self.site.name
+                        guard let navigationController = self.navigationController else { return }
+
+                        let destinationView: UIView
+                        if let sitesView = sitesViewController?.view {
+                            destinationView = sitesView
+                        } else {
+                            assertionFailure("SitesViewController is missing from the navigation stack")
+                            destinationView = navigationController.view
+                        }
+
+                        navigationController.popViewController(animated: true)
+                        guard let transitionCoordinator = navigationController.transitionCoordinator else {
+                            completion(destinationView)
+                            return
+                        }
+                        transitionCoordinator.animate(alongsideTransition: nil) { context in
+                            completion(
+                                context.isCancelled
+                                    ? navigationController.view
+                                    : destinationView
+                            )
+                        }
+                    }
+                }
+            )
+            vc.siteDidChange = { [weak self] in
+                self?.title = self?.site.name
+            }
+            if isIPad {
+                vc.preferredContentSize = iPadPreferredContentSize
+            }
+            self.present(NavigationViewController(rootViewController: vc), animated: true)
         }
-        vc.doneCallback = {[weak self] (name, imageId) in
-            guard let self = self else { return true }
-            self.site.name = name
-            self.site.imageId = imageId + 1
-            self.site.lastUpdate = Int64(Date().timeIntervalSince1970)
-            self.site.save()
-            self.title = name
-            CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site), level: .normal)
-            return true
-        }
-        if isIPad {
-            vc.preferredContentSize = iPadPreferredContentSize
-        }
-        present(NavigationViewController(rootViewController: vc), animated: true)
     }
     
     /// 删除场所
@@ -2521,7 +3000,11 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
                 headerView.showGatewayListView = false
             }
         }
-        headerView.gatewayStatusView.isHidden = !showGatewayStatus
+        headerView.showGatewayStatusView = showGatewayStatus
+        headerView.timeZoneReviewState = timeZoneReviewState
+        headerView.onReviewSync = { [weak self] in
+            self?.showSyncGatewaysPage()
+        }
        
         if selectIndex == 0 {
             headerView.gatewayStatusView.setDisplayMode(.overview)
@@ -2576,6 +3059,9 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
             : favouriteSpaces
         if shouldShowGatewayStatus(for: spaces) {
             headerH += SCRYFrom(48)
+        }
+        if case .review = timeZoneReviewState {
+            headerH += SCRYFrom(64)
         }
         return CGSize(width: headerW, height: headerH)
     }

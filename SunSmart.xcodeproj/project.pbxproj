@@ -7,11 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		F260810A0000000000000101 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */; };
-		F260810A0000000000000102 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */; };
-		F260810A0000000000000103 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */; };
-		F260810A0000000000000104 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */; };
 		0103BEF5A3F84EEB84317B31 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
+		084EF311302AB496008CB48A /* all_utc_timezones.json in Resources */ = {isa = PBXBuildFile; fileRef = 084EF310302AB496008CB48A /* all_utc_timezones.json */; };
+		084EF312302AB496008CB48A /* all_utc_timezones.json in Resources */ = {isa = PBXBuildFile; fileRef = 084EF310302AB496008CB48A /* all_utc_timezones.json */; };
+		084EF313302AB496008CB48A /* all_utc_timezones.json in Resources */ = {isa = PBXBuildFile; fileRef = 084EF310302AB496008CB48A /* all_utc_timezones.json */; };
+		084EF314302AB496008CB48A /* all_utc_timezones.json in Resources */ = {isa = PBXBuildFile; fileRef = 084EF310302AB496008CB48A /* all_utc_timezones.json */; };
 		0C36C97F8A95474C9D655F09 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
 		15F6AEDF416B45D6BC28749E /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
 		1FAE4DDDBDF446118B26374D /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
@@ -23,7 +23,7 @@
 		39FE1B9D3CB748E99E153094 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
 		4D4A0F032EE24DA7965F1B78 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
 		59406AF3301C4F9EA72AE09D /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
-		6116D0D0F05DFA292964E9B9 /* BuildFile in Frameworks */ = {isa = PBXBuildFile; };
+		6116D0D0F05DFA292964E9B9 /* (null) in Frameworks */ = {isa = PBXBuildFile; };
 		641FEC57DE5645609932974D /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
 		7119A2FC8208465ABF6EF1D3 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
 		7A97BDEC9C6E47B78123C040 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
@@ -2541,11 +2541,115 @@
 		F26072200000000000000116 /* DeviceNameFilterSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000110 /* DeviceNameFilterSearchView.swift */; };
 		F26072200000000000000117 /* DeviceNameFilterMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000109 /* DeviceNameFilterMenuView.swift */; };
 		F26072200000000000000118 /* DeviceNameFilterSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000110 /* DeviceNameFilterSearchView.swift */; };
+		F260810A0000000000000101 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */; };
+		F260810A0000000000000102 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */; };
+		F260810A0000000000000103 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */; };
+		F260810A0000000000000104 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */; };
+		F2608110000000000000101 /* SiteTimeZoneValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000100 /* SiteTimeZoneValue.swift */; };
+		F2608110000000000000102 /* SiteTimeZoneValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000100 /* SiteTimeZoneValue.swift */; };
+		F2608110000000000000103 /* SiteTimeZoneValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000100 /* SiteTimeZoneValue.swift */; };
+		F2608110000000000000104 /* SiteTimeZoneValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000100 /* SiteTimeZoneValue.swift */; };
+		F2608110000000000000201 /* SiteTimeZoneCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000200 /* SiteTimeZoneCatalog.swift */; };
+		F2608110000000000000202 /* SiteTimeZoneCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000200 /* SiteTimeZoneCatalog.swift */; };
+		F2608110000000000000203 /* SiteTimeZoneCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000200 /* SiteTimeZoneCatalog.swift */; };
+		F2608110000000000000204 /* SiteTimeZoneCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000200 /* SiteTimeZoneCatalog.swift */; };
+		F2608110000000000000301 /* SitePropsEditPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000300 /* SitePropsEditPolicy.swift */; };
+		F2608110000000000000302 /* SitePropsEditPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000300 /* SitePropsEditPolicy.swift */; };
+		F2608110000000000000303 /* SitePropsEditPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000300 /* SitePropsEditPolicy.swift */; };
+		F2608110000000000000304 /* SitePropsEditPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000300 /* SitePropsEditPolicy.swift */; };
+		F2608110000000000000401 /* SitePropsAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000400 /* SitePropsAPIClient.swift */; };
+		F2608110000000000000402 /* SitePropsAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000400 /* SitePropsAPIClient.swift */; };
+		F2608110000000000000403 /* SitePropsAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000400 /* SitePropsAPIClient.swift */; };
+		F2608110000000000000404 /* SitePropsAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000400 /* SitePropsAPIClient.swift */; };
+		F2608110000000000000501 /* SitePropsEditCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000500 /* SitePropsEditCoordinator.swift */; };
+		F2608110000000000000502 /* SitePropsEditCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000500 /* SitePropsEditCoordinator.swift */; };
+		F2608110000000000000503 /* SitePropsEditCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000500 /* SitePropsEditCoordinator.swift */; };
+		F2608110000000000000504 /* SitePropsEditCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000500 /* SitePropsEditCoordinator.swift */; };
+		F2608110000000000000601 /* SiteTimeZoneSelectionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000600 /* SiteTimeZoneSelectionViewController.swift */; };
+		F2608110000000000000602 /* SiteTimeZoneSelectionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000600 /* SiteTimeZoneSelectionViewController.swift */; };
+		F2608110000000000000603 /* SiteTimeZoneSelectionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000600 /* SiteTimeZoneSelectionViewController.swift */; };
+		F2608110000000000000604 /* SiteTimeZoneSelectionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000600 /* SiteTimeZoneSelectionViewController.swift */; };
+		F2608110000000000000701 /* SiteTimeZoneSelectionCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000700 /* SiteTimeZoneSelectionCell.swift */; };
+		F2608110000000000000702 /* SiteTimeZoneSelectionCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000700 /* SiteTimeZoneSelectionCell.swift */; };
+		F2608110000000000000703 /* SiteTimeZoneSelectionCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000700 /* SiteTimeZoneSelectionCell.swift */; };
+		F2608110000000000000704 /* SiteTimeZoneSelectionCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000700 /* SiteTimeZoneSelectionCell.swift */; };
+		F2608110000000000000801 /* SiteTimeZoneSyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000800 /* SiteTimeZoneSyncStatusView.swift */; };
+		F2608110000000000000802 /* SiteTimeZoneSyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000800 /* SiteTimeZoneSyncStatusView.swift */; };
+		F2608110000000000000803 /* SiteTimeZoneSyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000800 /* SiteTimeZoneSyncStatusView.swift */; };
+		F2608110000000000000804 /* SiteTimeZoneSyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000800 /* SiteTimeZoneSyncStatusView.swift */; };
+		F2608120000000000001001 /* SiteEntryTimeZoneSyncPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001000 /* SiteEntryTimeZoneSyncPolicy.swift */; };
+		F2608120000000000001002 /* SiteEntryTimeZoneSyncPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001000 /* SiteEntryTimeZoneSyncPolicy.swift */; };
+		F2608120000000000001003 /* SiteEntryTimeZoneSyncPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001000 /* SiteEntryTimeZoneSyncPolicy.swift */; };
+		F2608120000000000001004 /* SiteEntryTimeZoneSyncPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001000 /* SiteEntryTimeZoneSyncPolicy.swift */; };
+		F2608120000000000001101 /* SiteEntryTimeZoneSyncResponseParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001100 /* SiteEntryTimeZoneSyncResponseParser.swift */; };
+		F2608120000000000001102 /* SiteEntryTimeZoneSyncResponseParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001100 /* SiteEntryTimeZoneSyncResponseParser.swift */; };
+		F2608120000000000001103 /* SiteEntryTimeZoneSyncResponseParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001100 /* SiteEntryTimeZoneSyncResponseParser.swift */; };
+		F2608120000000000001104 /* SiteEntryTimeZoneSyncResponseParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001100 /* SiteEntryTimeZoneSyncResponseParser.swift */; };
+		F2608120000000000001201 /* SiteEntryTimeZoneSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001200 /* SiteEntryTimeZoneSyncCoordinator.swift */; };
+		F2608120000000000001202 /* SiteEntryTimeZoneSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001200 /* SiteEntryTimeZoneSyncCoordinator.swift */; };
+		F2608120000000000001203 /* SiteEntryTimeZoneSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001200 /* SiteEntryTimeZoneSyncCoordinator.swift */; };
+		F2608120000000000001204 /* SiteEntryTimeZoneSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001200 /* SiteEntryTimeZoneSyncCoordinator.swift */; };
+		F2608120000000000001301 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001300 /* SiteEntryTimeZoneSyncOverlay.swift */; };
+		F2608120000000000001302 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001300 /* SiteEntryTimeZoneSyncOverlay.swift */; };
+		F2608120000000000001303 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001300 /* SiteEntryTimeZoneSyncOverlay.swift */; };
+		F2608120000000000001304 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001300 /* SiteEntryTimeZoneSyncOverlay.swift */; };
+		F2608130000000000001401 /* SiteTimeZoneReviewSyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001400 /* SiteTimeZoneReviewSyncView.swift */; };
+		F2608130000000000001402 /* SiteTimeZoneReviewSyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001400 /* SiteTimeZoneReviewSyncView.swift */; };
+		F2608130000000000001403 /* SiteTimeZoneReviewSyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001400 /* SiteTimeZoneReviewSyncView.swift */; };
+		F2608130000000000001404 /* SiteTimeZoneReviewSyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001400 /* SiteTimeZoneReviewSyncView.swift */; };
+		F2608130000000000001501 /* SyncGatewaysViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001500 /* SyncGatewaysViewController.swift */; };
+		F2608130000000000001502 /* SyncGatewaysViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001500 /* SyncGatewaysViewController.swift */; };
+		F2608130000000000001503 /* SyncGatewaysViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001500 /* SyncGatewaysViewController.swift */; };
+		F2608130000000000001504 /* SyncGatewaysViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001500 /* SyncGatewaysViewController.swift */; };
+		F2608130000000000001601 /* SiteGatewayAccessScope.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001600 /* SiteGatewayAccessScope.swift */; };
+		F2608130000000000001602 /* SiteGatewayAccessScope.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001600 /* SiteGatewayAccessScope.swift */; };
+		F2608130000000000001603 /* SiteGatewayAccessScope.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001600 /* SiteGatewayAccessScope.swift */; };
+		F2608130000000000001604 /* SiteGatewayAccessScope.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001600 /* SiteGatewayAccessScope.swift */; };
+		F2608130000000000001701 /* SyncGatewaysContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001700 /* SyncGatewaysContext.swift */; };
+		F2608130000000000001702 /* SyncGatewaysContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001700 /* SyncGatewaysContext.swift */; };
+		F2608130000000000001703 /* SyncGatewaysContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001700 /* SyncGatewaysContext.swift */; };
+		F2608130000000000001704 /* SyncGatewaysContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001700 /* SyncGatewaysContext.swift */; };
+		F2608130000000000001801 /* SyncGatewaysState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001800 /* SyncGatewaysState.swift */; };
+		F2608130000000000001802 /* SyncGatewaysState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001800 /* SyncGatewaysState.swift */; };
+		F2608130000000000001803 /* SyncGatewaysState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001800 /* SyncGatewaysState.swift */; };
+		F2608130000000000001804 /* SyncGatewaysState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001800 /* SyncGatewaysState.swift */; };
+		F2608130000000000001901 /* SyncGatewaysScanSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001900 /* SyncGatewaysScanSession.swift */; };
+		F2608130000000000001902 /* SyncGatewaysScanSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001900 /* SyncGatewaysScanSession.swift */; };
+		F2608130000000000001903 /* SyncGatewaysScanSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001900 /* SyncGatewaysScanSession.swift */; };
+		F2608130000000000001904 /* SyncGatewaysScanSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001900 /* SyncGatewaysScanSession.swift */; };
+		F2608130000000000002001 /* GatewayTimeSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002000 /* GatewayTimeSyncCoordinator.swift */; };
+		F2608130000000000002002 /* GatewayTimeSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002000 /* GatewayTimeSyncCoordinator.swift */; };
+		F2608130000000000002003 /* GatewayTimeSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002000 /* GatewayTimeSyncCoordinator.swift */; };
+		F2608130000000000002004 /* GatewayTimeSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002000 /* GatewayTimeSyncCoordinator.swift */; };
+		F2608130000000000002101 /* SyncGatewaysCloudBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002100 /* SyncGatewaysCloudBridge.swift */; };
+		F2608130000000000002102 /* SyncGatewaysCloudBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002100 /* SyncGatewaysCloudBridge.swift */; };
+		F2608130000000000002103 /* SyncGatewaysCloudBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002100 /* SyncGatewaysCloudBridge.swift */; };
+		F2608130000000000002104 /* SyncGatewaysCloudBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002100 /* SyncGatewaysCloudBridge.swift */; };
+		F2608130000000000002201 /* SyncGatewaysDirtyTimeOverride.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002200 /* SyncGatewaysDirtyTimeOverride.swift */; };
+		F2608130000000000002202 /* SyncGatewaysDirtyTimeOverride.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002200 /* SyncGatewaysDirtyTimeOverride.swift */; };
+		F2608130000000000002203 /* SyncGatewaysDirtyTimeOverride.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002200 /* SyncGatewaysDirtyTimeOverride.swift */; };
+		F2608130000000000002204 /* SyncGatewaysDirtyTimeOverride.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002200 /* SyncGatewaysDirtyTimeOverride.swift */; };
+		F2608130000000000002301 /* SyncGatewaysTimeZoneCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002300 /* SyncGatewaysTimeZoneCardView.swift */; };
+		F2608130000000000002302 /* SyncGatewaysTimeZoneCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002300 /* SyncGatewaysTimeZoneCardView.swift */; };
+		F2608130000000000002303 /* SyncGatewaysTimeZoneCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002300 /* SyncGatewaysTimeZoneCardView.swift */; };
+		F2608130000000000002304 /* SyncGatewaysTimeZoneCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002300 /* SyncGatewaysTimeZoneCardView.swift */; };
+		F2608130000000000002401 /* SyncGatewayCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002400 /* SyncGatewayCell.swift */; };
+		F2608130000000000002402 /* SyncGatewayCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002400 /* SyncGatewayCell.swift */; };
+		F2608130000000000002403 /* SyncGatewayCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002400 /* SyncGatewayCell.swift */; };
+		F2608130000000000002404 /* SyncGatewayCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002400 /* SyncGatewayCell.swift */; };
+		F2608130000000000002501 /* SyncGatewaysSupportingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002500 /* SyncGatewaysSupportingViews.swift */; };
+		F2608130000000000002502 /* SyncGatewaysSupportingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002500 /* SyncGatewaysSupportingViews.swift */; };
+		F2608130000000000002503 /* SyncGatewaysSupportingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002500 /* SyncGatewaysSupportingViews.swift */; };
+		F2608130000000000002504 /* SyncGatewaysSupportingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002500 /* SyncGatewaysSupportingViews.swift */; };
+		F2608130000000000002601 /* GatewayCloudSyncGenerationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002600 /* GatewayCloudSyncGenerationPolicy.swift */; };
+		F2608130000000000002602 /* GatewayCloudSyncGenerationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002600 /* GatewayCloudSyncGenerationPolicy.swift */; };
+		F2608130000000000002603 /* GatewayCloudSyncGenerationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002600 /* GatewayCloudSyncGenerationPolicy.swift */; };
+		F2608130000000000002604 /* GatewayCloudSyncGenerationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002600 /* GatewayCloudSyncGenerationPolicy.swift */; };
 		F3C661B473314BCA9FC4EADC /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRestoreDefaultTransitionTimePolicy.swift; sourceTree = "<group>"; };
+		084EF310302AB496008CB48A /* all_utc_timezones.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = all_utc_timezones.json; sourceTree = "<group>"; };
 		0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorViewModel.swift; sourceTree = "<group>"; };
 		29E6735F1867DC54FBDDBAA9 /* Pods-Common-SylSmart.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SylSmart.debug.xcconfig"; path = "Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart.debug.xcconfig"; sourceTree = "<group>"; };
 		3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyFireControllerIconName.swift; sourceTree = "<group>"; };
@@ -3248,6 +3352,32 @@
 		F26072200000000000000101 /* DeviceNameFilterSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceNameFilterSession.swift; sourceTree = "<group>"; };
 		F26072200000000000000109 /* DeviceNameFilterMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceNameFilterMenuView.swift; sourceTree = "<group>"; };
 		F26072200000000000000110 /* DeviceNameFilterSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceNameFilterSearchView.swift; sourceTree = "<group>"; };
+		F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRestoreDefaultTransitionTimePolicy.swift; sourceTree = "<group>"; };
+		F2608110000000000000100 /* SiteTimeZoneValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteTimeZoneValue.swift; sourceTree = "<group>"; };
+		F2608110000000000000200 /* SiteTimeZoneCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteTimeZoneCatalog.swift; sourceTree = "<group>"; };
+		F2608110000000000000300 /* SitePropsEditPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SitePropsEditPolicy.swift; sourceTree = "<group>"; };
+		F2608110000000000000400 /* SitePropsAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SitePropsAPIClient.swift; sourceTree = "<group>"; };
+		F2608110000000000000500 /* SitePropsEditCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SitePropsEditCoordinator.swift; sourceTree = "<group>"; };
+		F2608110000000000000600 /* SiteTimeZoneSelectionViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteTimeZoneSelectionViewController.swift; sourceTree = "<group>"; };
+		F2608110000000000000700 /* SiteTimeZoneSelectionCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteTimeZoneSelectionCell.swift; sourceTree = "<group>"; };
+		F2608110000000000000800 /* SiteTimeZoneSyncStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteTimeZoneSyncStatusView.swift; sourceTree = "<group>"; };
+		F2608120000000000001000 /* SiteEntryTimeZoneSyncPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteEntryTimeZoneSyncPolicy.swift; sourceTree = "<group>"; };
+		F2608120000000000001100 /* SiteEntryTimeZoneSyncResponseParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteEntryTimeZoneSyncResponseParser.swift; sourceTree = "<group>"; };
+		F2608120000000000001200 /* SiteEntryTimeZoneSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteEntryTimeZoneSyncCoordinator.swift; sourceTree = "<group>"; };
+		F2608120000000000001300 /* SiteEntryTimeZoneSyncOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteEntryTimeZoneSyncOverlay.swift; sourceTree = "<group>"; };
+		F2608130000000000001400 /* SiteTimeZoneReviewSyncView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteTimeZoneReviewSyncView.swift; sourceTree = "<group>"; };
+		F2608130000000000001500 /* SyncGatewaysViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncGatewaysViewController.swift; sourceTree = "<group>"; };
+		F2608130000000000001600 /* SiteGatewayAccessScope.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewayAccessScope.swift; sourceTree = "<group>"; };
+		F2608130000000000001700 /* SyncGatewaysContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncGatewaysContext.swift; sourceTree = "<group>"; };
+		F2608130000000000001800 /* SyncGatewaysState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncGatewaysState.swift; sourceTree = "<group>"; };
+		F2608130000000000001900 /* SyncGatewaysScanSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncGatewaysScanSession.swift; sourceTree = "<group>"; };
+		F2608130000000000002000 /* GatewayTimeSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayTimeSyncCoordinator.swift; sourceTree = "<group>"; };
+		F2608130000000000002100 /* SyncGatewaysCloudBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncGatewaysCloudBridge.swift; sourceTree = "<group>"; };
+		F2608130000000000002200 /* SyncGatewaysDirtyTimeOverride.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncGatewaysDirtyTimeOverride.swift; sourceTree = "<group>"; };
+		F2608130000000000002300 /* SyncGatewaysTimeZoneCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncGatewaysTimeZoneCardView.swift; sourceTree = "<group>"; };
+		F2608130000000000002400 /* SyncGatewayCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncGatewayCell.swift; sourceTree = "<group>"; };
+		F2608130000000000002500 /* SyncGatewaysSupportingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncGatewaysSupportingViews.swift; sourceTree = "<group>"; };
+		F2608130000000000002600 /* GatewayCloudSyncGenerationPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayCloudSyncGenerationPolicy.swift; sourceTree = "<group>"; };
 		FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorState.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -3257,7 +3387,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C88555142DE6B44C00C8B688 /* NordicSigMeshSDK in Frameworks */,
-				6116D0D0F05DFA292964E9B9 /* BuildFile in Frameworks */,
+				6116D0D0F05DFA292964E9B9 /* (null) in Frameworks */,
 				C8D3BC5211D39346ECD5E3AF /* Pods_Common_Archipelago.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4187,6 +4317,13 @@
 		C898E3052ABBF3F100C71315 /* View */ = {
 			isa = PBXGroup;
 			children = (
+				F2608130000000000002300 /* SyncGatewaysTimeZoneCardView.swift */,
+				F2608130000000000002400 /* SyncGatewayCell.swift */,
+				F2608130000000000002500 /* SyncGatewaysSupportingViews.swift */,
+				F2608110000000000000700 /* SiteTimeZoneSelectionCell.swift */,
+				F2608110000000000000800 /* SiteTimeZoneSyncStatusView.swift */,
+				F2608120000000000001300 /* SiteEntryTimeZoneSyncOverlay.swift */,
+				F2608130000000000001400 /* SiteTimeZoneReviewSyncView.swift */,
 				C898E2EC2ABA8BAD00C71315 /* MainMenuView.swift */,
 				C89FEF4E2ABEB37900DCCFB6 /* SitesViewCell.swift */,
 				C8A09A042AC178910068C814 /* ImageCollectionViewCell.swift */,
@@ -4207,6 +4344,20 @@
 		C898E3062ABBF3F500C71315 /* Model */ = {
 			isa = PBXGroup;
 			children = (
+				F2608130000000000001600 /* SiteGatewayAccessScope.swift */,
+				F2608130000000000001700 /* SyncGatewaysContext.swift */,
+				F2608130000000000001800 /* SyncGatewaysState.swift */,
+				F2608130000000000001900 /* SyncGatewaysScanSession.swift */,
+				F2608130000000000002000 /* GatewayTimeSyncCoordinator.swift */,
+				F2608130000000000002100 /* SyncGatewaysCloudBridge.swift */,
+				F2608130000000000002200 /* SyncGatewaysDirtyTimeOverride.swift */,
+				F2608110000000000000200 /* SiteTimeZoneCatalog.swift */,
+				F2608110000000000000300 /* SitePropsEditPolicy.swift */,
+				F2608110000000000000400 /* SitePropsAPIClient.swift */,
+				F2608110000000000000500 /* SitePropsEditCoordinator.swift */,
+				F2608120000000000001000 /* SiteEntryTimeZoneSyncPolicy.swift */,
+				F2608120000000000001100 /* SiteEntryTimeZoneSyncResponseParser.swift */,
+				F2608120000000000001200 /* SiteEntryTimeZoneSyncCoordinator.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -4214,6 +4365,8 @@
 		C898E3072ABBF3F900C71315 /* Controller */ = {
 			isa = PBXGroup;
 			children = (
+				F2608110000000000000600 /* SiteTimeZoneSelectionViewController.swift */,
+				F2608130000000000001500 /* SyncGatewaysViewController.swift */,
 				C898E2F02ABA9BB900C71315 /* SitesViewController.swift */,
 				C8A099FE2AC138E30068C814 /* SiteViewController.swift */,
 				C8A099FC2AC134C30068C814 /* SiteEditViewController.swift */,
@@ -4828,6 +4981,7 @@
 		C8AADEF92A97329300238C1C /* Data */ = {
 			isa = PBXGroup;
 			children = (
+				F2608110000000000000100 /* SiteTimeZoneValue.swift */,
 				F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */,
 				C8AADEFE2A97350400238C1C /* SiteData.swift */,
 				C8AADF002A973DA600238C1C /* SpaceData.swift */,
@@ -4867,6 +5021,7 @@
 		C8AAE2792A9743A300238C1C /* Support */ = {
 			isa = PBXGroup;
 			children = (
+				084EF310302AB496008CB48A /* all_utc_timezones.json */,
 				C85D550D2E6182A000BFEEDA /* Rescource */,
 				C89B34202C93E2B600A77DB6 /* User Agreement.html */,
 				C89B34222C93E3B700A77DB6 /* Privacy Policy.html */,
@@ -5152,6 +5307,7 @@
 		C8F89D3B2E3CBCF800FA1544 /* Model */ = {
 			isa = PBXGroup;
 			children = (
+				F2608130000000000002600 /* GatewayCloudSyncGenerationPolicy.swift */,
 				C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */,
 				C8FA30152FD0000100000005 /* GatewayAssociatedSpaceCandidatePolicy.swift */,
 				C8A900012F80000100000001 /* WiFiSSIDProvider.swift */,
@@ -5382,7 +5538,7 @@
 			);
 			mainGroup = C896B99B2A930BA800217512;
 			packageReferences = (
-				C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */,
+				C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */,
 			);
 			productRefGroup = C896B9A52A930BA800217512 /* Products */;
 			projectDirPath = "";
@@ -5410,6 +5566,7 @@
 				C8B483D72E4B361F006D85BC /* device_add.mp3 in Resources */,
 				C8B483D82E4B361F006D85BC /* device_reset.mp3 in Resources */,
 				C85D55112E6182DC00BFEEDA /* broadcast_loading.gif in Resources */,
+				084EF311302AB496008CB48A /* all_utc_timezones.json in Resources */,
 				C88555192DE6B44C00C8B688 /* Localizable.strings in Resources */,
 				C8A9000E2F8000010000000E /* InfoPlist.strings in Resources */,
 				C885551A2DE6B44C00C8B688 /* XWHUDManager_successful@2x.png in Resources */,
@@ -5442,6 +5599,7 @@
 				C8B483D32E4B361F006D85BC /* device_add.mp3 in Resources */,
 				C8B483D42E4B361F006D85BC /* device_reset.mp3 in Resources */,
 				C85D550F2E6182DC00BFEEDA /* broadcast_loading.gif in Resources */,
+				084EF314302AB496008CB48A /* all_utc_timezones.json in Resources */,
 				C8A9000F2F8000010000000F /* InfoPlist.strings in Resources */,
 				C886E17A2E30DE4900D0C3A6 /* XWHUDManager_error@2x.png in Resources */,
 				C886E17B2E30DE4900D0C3A6 /* CodeScan.bundle in Resources */,
@@ -5472,6 +5630,7 @@
 				C8A9000D2F8000010000000D /* InfoPlist.strings in Resources */,
 				C8B483D52E4B361F006D85BC /* device_add.mp3 in Resources */,
 				C8B483D62E4B361F006D85BC /* device_reset.mp3 in Resources */,
+				084EF313302AB496008CB48A /* all_utc_timezones.json in Resources */,
 				C8C1E5A72B6A1FA500F60E62 /* XWHUDManager_successful@2x.png in Resources */,
 				C896BD402A930C3A00217512 /* XWHUDManager_tip@3x.png in Resources */,
 				C8BC494C2C1C1CD5006BAF89 /* XWHUDManager_loading.gif in Resources */,
@@ -5495,6 +5654,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				084EF312302AB496008CB48A /* all_utc_timezones.json in Resources */,
 				C8BB67572ED3F056000C63EE /* XWHUDManager_right@3x.png in Resources */,
 				C8BB67592ED3F056000C63EE /* Localizable.strings in Resources */,
 				C8A900102F80000100000010 /* InfoPlist.strings in Resources */,
@@ -5577,9 +5737,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5638,9 +5802,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5655,9 +5823,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5672,9 +5844,13 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
+			inputPaths = (
+			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -5688,6 +5864,31 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F2608110000000000000101 /* SiteTimeZoneValue.swift in Sources */,
+				F2608110000000000000201 /* SiteTimeZoneCatalog.swift in Sources */,
+				F2608110000000000000301 /* SitePropsEditPolicy.swift in Sources */,
+				F2608110000000000000401 /* SitePropsAPIClient.swift in Sources */,
+				F2608110000000000000501 /* SitePropsEditCoordinator.swift in Sources */,
+				F2608110000000000000601 /* SiteTimeZoneSelectionViewController.swift in Sources */,
+				F2608110000000000000701 /* SiteTimeZoneSelectionCell.swift in Sources */,
+				F2608110000000000000801 /* SiteTimeZoneSyncStatusView.swift in Sources */,
+				F2608120000000000001001 /* SiteEntryTimeZoneSyncPolicy.swift in Sources */,
+				F2608120000000000001101 /* SiteEntryTimeZoneSyncResponseParser.swift in Sources */,
+				F2608120000000000001201 /* SiteEntryTimeZoneSyncCoordinator.swift in Sources */,
+				F2608120000000000001301 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */,
+				F2608130000000000001401 /* SiteTimeZoneReviewSyncView.swift in Sources */,
+				F2608130000000000001501 /* SyncGatewaysViewController.swift in Sources */,
+				F2608130000000000001601 /* SiteGatewayAccessScope.swift in Sources */,
+				F2608130000000000001701 /* SyncGatewaysContext.swift in Sources */,
+				F2608130000000000001801 /* SyncGatewaysState.swift in Sources */,
+				F2608130000000000001901 /* SyncGatewaysScanSession.swift in Sources */,
+				F2608130000000000002001 /* GatewayTimeSyncCoordinator.swift in Sources */,
+				F2608130000000000002101 /* SyncGatewaysCloudBridge.swift in Sources */,
+				F2608130000000000002201 /* SyncGatewaysDirtyTimeOverride.swift in Sources */,
+				F2608130000000000002301 /* SyncGatewaysTimeZoneCardView.swift in Sources */,
+				F2608130000000000002401 /* SyncGatewayCell.swift in Sources */,
+				F2608130000000000002501 /* SyncGatewaysSupportingViews.swift in Sources */,
+				F2608130000000000002601 /* GatewayCloudSyncGenerationPolicy.swift in Sources */,
 				F260810A0000000000000101 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				C8FA11012F11000100000001 /* SimulateFaultAction.swift in Sources */,
 				C8FB11012F11000400000001 /* SimulateFaultRequest.swift in Sources */,
@@ -6302,6 +6503,31 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F2608110000000000000102 /* SiteTimeZoneValue.swift in Sources */,
+				F2608110000000000000202 /* SiteTimeZoneCatalog.swift in Sources */,
+				F2608110000000000000302 /* SitePropsEditPolicy.swift in Sources */,
+				F2608110000000000000402 /* SitePropsAPIClient.swift in Sources */,
+				F2608110000000000000502 /* SitePropsEditCoordinator.swift in Sources */,
+				F2608110000000000000602 /* SiteTimeZoneSelectionViewController.swift in Sources */,
+				F2608110000000000000702 /* SiteTimeZoneSelectionCell.swift in Sources */,
+				F2608110000000000000802 /* SiteTimeZoneSyncStatusView.swift in Sources */,
+				F2608120000000000001002 /* SiteEntryTimeZoneSyncPolicy.swift in Sources */,
+				F2608120000000000001102 /* SiteEntryTimeZoneSyncResponseParser.swift in Sources */,
+				F2608120000000000001202 /* SiteEntryTimeZoneSyncCoordinator.swift in Sources */,
+				F2608120000000000001302 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */,
+				F2608130000000000001402 /* SiteTimeZoneReviewSyncView.swift in Sources */,
+				F2608130000000000001502 /* SyncGatewaysViewController.swift in Sources */,
+				F2608130000000000001602 /* SiteGatewayAccessScope.swift in Sources */,
+				F2608130000000000001702 /* SyncGatewaysContext.swift in Sources */,
+				F2608130000000000001802 /* SyncGatewaysState.swift in Sources */,
+				F2608130000000000001902 /* SyncGatewaysScanSession.swift in Sources */,
+				F2608130000000000002002 /* GatewayTimeSyncCoordinator.swift in Sources */,
+				F2608130000000000002102 /* SyncGatewaysCloudBridge.swift in Sources */,
+				F2608130000000000002202 /* SyncGatewaysDirtyTimeOverride.swift in Sources */,
+				F2608130000000000002302 /* SyncGatewaysTimeZoneCardView.swift in Sources */,
+				F2608130000000000002402 /* SyncGatewayCell.swift in Sources */,
+				F2608130000000000002502 /* SyncGatewaysSupportingViews.swift in Sources */,
+				F2608130000000000002602 /* GatewayCloudSyncGenerationPolicy.swift in Sources */,
 				F260810A0000000000000102 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				C8FA11012F11000100000002 /* SimulateFaultAction.swift in Sources */,
 				C8FB11012F11000400000002 /* SimulateFaultRequest.swift in Sources */,
@@ -6917,6 +7143,31 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F2608110000000000000103 /* SiteTimeZoneValue.swift in Sources */,
+				F2608110000000000000203 /* SiteTimeZoneCatalog.swift in Sources */,
+				F2608110000000000000303 /* SitePropsEditPolicy.swift in Sources */,
+				F2608110000000000000403 /* SitePropsAPIClient.swift in Sources */,
+				F2608110000000000000503 /* SitePropsEditCoordinator.swift in Sources */,
+				F2608110000000000000603 /* SiteTimeZoneSelectionViewController.swift in Sources */,
+				F2608110000000000000703 /* SiteTimeZoneSelectionCell.swift in Sources */,
+				F2608110000000000000803 /* SiteTimeZoneSyncStatusView.swift in Sources */,
+				F2608120000000000001003 /* SiteEntryTimeZoneSyncPolicy.swift in Sources */,
+				F2608120000000000001103 /* SiteEntryTimeZoneSyncResponseParser.swift in Sources */,
+				F2608120000000000001203 /* SiteEntryTimeZoneSyncCoordinator.swift in Sources */,
+				F2608120000000000001303 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */,
+				F2608130000000000001403 /* SiteTimeZoneReviewSyncView.swift in Sources */,
+				F2608130000000000001503 /* SyncGatewaysViewController.swift in Sources */,
+				F2608130000000000001603 /* SiteGatewayAccessScope.swift in Sources */,
+				F2608130000000000001703 /* SyncGatewaysContext.swift in Sources */,
+				F2608130000000000001803 /* SyncGatewaysState.swift in Sources */,
+				F2608130000000000001903 /* SyncGatewaysScanSession.swift in Sources */,
+				F2608130000000000002003 /* GatewayTimeSyncCoordinator.swift in Sources */,
+				F2608130000000000002103 /* SyncGatewaysCloudBridge.swift in Sources */,
+				F2608130000000000002203 /* SyncGatewaysDirtyTimeOverride.swift in Sources */,
+				F2608130000000000002303 /* SyncGatewaysTimeZoneCardView.swift in Sources */,
+				F2608130000000000002403 /* SyncGatewayCell.swift in Sources */,
+				F2608130000000000002503 /* SyncGatewaysSupportingViews.swift in Sources */,
+				F2608130000000000002603 /* GatewayCloudSyncGenerationPolicy.swift in Sources */,
 				F260810A0000000000000103 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				C8FA11012F11000100000003 /* SimulateFaultAction.swift in Sources */,
 				C8FB11012F11000400000003 /* SimulateFaultRequest.swift in Sources */,
@@ -7531,6 +7782,31 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F2608110000000000000104 /* SiteTimeZoneValue.swift in Sources */,
+				F2608110000000000000204 /* SiteTimeZoneCatalog.swift in Sources */,
+				F2608110000000000000304 /* SitePropsEditPolicy.swift in Sources */,
+				F2608110000000000000404 /* SitePropsAPIClient.swift in Sources */,
+				F2608110000000000000504 /* SitePropsEditCoordinator.swift in Sources */,
+				F2608110000000000000604 /* SiteTimeZoneSelectionViewController.swift in Sources */,
+				F2608110000000000000704 /* SiteTimeZoneSelectionCell.swift in Sources */,
+				F2608110000000000000804 /* SiteTimeZoneSyncStatusView.swift in Sources */,
+				F2608120000000000001004 /* SiteEntryTimeZoneSyncPolicy.swift in Sources */,
+				F2608120000000000001104 /* SiteEntryTimeZoneSyncResponseParser.swift in Sources */,
+				F2608120000000000001204 /* SiteEntryTimeZoneSyncCoordinator.swift in Sources */,
+				F2608120000000000001304 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */,
+				F2608130000000000001404 /* SiteTimeZoneReviewSyncView.swift in Sources */,
+				F2608130000000000001504 /* SyncGatewaysViewController.swift in Sources */,
+				F2608130000000000001604 /* SiteGatewayAccessScope.swift in Sources */,
+				F2608130000000000001704 /* SyncGatewaysContext.swift in Sources */,
+				F2608130000000000001804 /* SyncGatewaysState.swift in Sources */,
+				F2608130000000000001904 /* SyncGatewaysScanSession.swift in Sources */,
+				F2608130000000000002004 /* GatewayTimeSyncCoordinator.swift in Sources */,
+				F2608130000000000002104 /* SyncGatewaysCloudBridge.swift in Sources */,
+				F2608130000000000002204 /* SyncGatewaysDirtyTimeOverride.swift in Sources */,
+				F2608130000000000002304 /* SyncGatewaysTimeZoneCardView.swift in Sources */,
+				F2608130000000000002404 /* SyncGatewayCell.swift in Sources */,
+				F2608130000000000002504 /* SyncGatewaysSupportingViews.swift in Sources */,
+				F2608130000000000002604 /* GatewayCloudSyncGenerationPolicy.swift in Sources */,
 				F260810A0000000000000104 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				C8FA11012F11000100000004 /* SimulateFaultAction.swift in Sources */,
 				C8FB11012F11000400000004 /* SimulateFaultRequest.swift in Sources */,
@@ -8425,7 +8701,7 @@
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
-		C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
+		C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */ = {
 			isa = XCLocalSwiftPackageReference;
 			relativePath = "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk";
 		};
@@ -8434,22 +8710,22 @@
 /* Begin XCSwiftPackageProductDependency section */
 		C88553AE2DE6B44C00C8B688 /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 		C886DFFE2E30DE4900D0C3A6 /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 		C8BB65AC2ED3F056000C63EE /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 		C8D5314B2F76294A0069C71B /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			package = C8D5314A2F76294A0069C71B /* XCLocalSwiftPackageReference "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 /* End XCSwiftPackageProductDependency section */

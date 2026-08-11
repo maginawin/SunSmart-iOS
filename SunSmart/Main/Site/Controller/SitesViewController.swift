@@ -637,32 +637,38 @@ class SitesViewController: UIViewController {
     
     /// 编辑场所
     private func editSite(site: SiteData) {
-        
-        var imageNames: [String] = []
-        for id in 1...28 {
-            imageNames.append("site_\(id)")
+        let coordinator = SitePropsEditCoordinator(site: site)
+        let online = NetworkRequest.shared.networkable
+        if online {
+            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
         }
-        let vc = InfoEditViewController(name: site.name, imageNames: imageNames, selectImageIndex: max(site.imageId - 1, 0), columnNum: 4)
-        vc.nameEditChangedCallback = { name in
-            return SiteData.isTautonym(siteName: name) && name != site.name
-        }
-        vc.doneCallback = {[weak self] (name, imageId) in
-            guard let self = self else { return true }
-            site.name = name
-            site.imageId = imageId + 1
-            site.lastUpdate = Int64(Date().timeIntervalSince1970)
-            guard site.save() else {
-                return true
+        Task { @MainActor [weak self] in
+            let draft = await coordinator.prepareDraft(online: online)
+            if online {
+                XWHUDManager.hide()
             }
-            CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site), level: .normal)
-            self.reloadSiteData(site)
-            
-            return true
+            guard let self = self else { return }
+
+            let vc = SiteEditViewController(
+                site: site,
+                draft: draft,
+                coordinator: coordinator,
+                returnToSitesHandler: { [weak self] completion in
+                    guard let self = self else { return }
+                    self.dismiss(animated: true) {
+                        self.reloadSiteData(site)
+                        completion(self.view)
+                    }
+                }
+            )
+            vc.siteDidChange = { [weak self] in
+                self?.reloadSiteData(site)
+            }
+            if isIPad {
+                vc.preferredContentSize = iPadPreferredContentSize
+            }
+            self.present(NavigationViewController(rootViewController: vc), animated: true)
         }
-        if isIPad {
-            vc.preferredContentSize = iPadPreferredContentSize
-        }
-        present(NavigationViewController(rootViewController: vc), animated: true)
     }
     
     /// 删除场所

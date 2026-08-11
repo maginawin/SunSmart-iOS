@@ -240,7 +240,12 @@ class CloudSynchronizationManager {
     /// - Parameters:
     ///   - operation: 操作数据类型
     ///   - level: 同步等级
-    func addSynchronizationHandle(operation: SyncOperation, level: SyncLevel) {
+    @discardableResult
+    func addSynchronizationHandle(
+        operation: SyncOperation,
+        level: SyncLevel,
+        result stateCallback: ((CloudSynchronizationState) -> Void)? = nil
+    ) -> CloudSynchronizationHandle {
         
         var addOperation = operation
         // 发现同一个同步操作
@@ -268,6 +273,7 @@ class CloudSynchronizationManager {
         
         let handle = CloudSynchronizationHandle(operation: addOperation, level: level, result: {[weak self] (resultHandle, state) in
             guard let self = self else { return }
+            stateCallback?(state)
             switch state {
             case .wait:
                 break
@@ -295,6 +301,7 @@ class CloudSynchronizationManager {
         
         
         handle.start()
+        return handle
     }
     
     /// 取消同步操作
@@ -667,23 +674,39 @@ class CloudSynchronizationHandle: NSObject {
             gatewayAuthorizationTask?.cancel()
             gatewayAuthorizationTask = AsyncTask { [weak self] in
                 guard let self else { return }
-                let result = await GatewayServerAuthorizationService.shared.authorize(
-                    gateway: gateway,
-                    node: node,
-                    policy: .always
-                )
-                guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
+                while !_Concurrency.Task<Never, Never>.isCancelled {
+                    let requestedGeneration = gateway.lastUpdate
+                    let result = await GatewayServerAuthorizationService.shared.authorizeWithReceipt(
+                        gateway: gateway,
+                        node: node,
+                        policy: .always,
+                        requestedGeneration: requestedGeneration
+                    )
+                    guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
 
-                switch result {
-                case .success:
-                    self.state = .successful
-                    gateway.lastUploadCloudTimestamp = gateway.lastUpdate
-                    gateway.syncCloudError = nil
-                case .failure(let authorizationError):
-                    self.state = .failure(error: authorizationError.networkApiError)
-                    gateway.syncCloudError = authorizationError.networkApiError
+                    switch result {
+                    case .success(let receipt):
+                        gateway.lastUploadCloudTimestamp =
+                            GatewayCloudSyncGenerationPolicy.confirmed(
+                                previous: gateway.lastUploadCloudTimestamp,
+                                submitted: receipt.submittedGeneration
+                            )
+                        gateway.syncCloudError = nil
+                        gateway.save()
+                        if GatewayCloudSyncGenerationPolicy.needsAnotherUpload(
+                            current: gateway.lastUpdate,
+                            confirmed: gateway.lastUploadCloudTimestamp
+                        ) {
+                            continue
+                        }
+                        self.state = .successful
+                    case .failure(let authorizationError):
+                        self.state = .failure(error: authorizationError.networkApiError)
+                        gateway.syncCloudError = authorizationError.networkApiError
+                        gateway.save()
+                    }
+                    break
                 }
-                gateway.save()
                 self.gatewayAuthorizationTask = nil
                 DispatchQueue.main.async {
                     self.handleCallback?(self, self.state)

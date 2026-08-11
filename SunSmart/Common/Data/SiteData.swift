@@ -97,6 +97,21 @@ class SiteData: Copyable {
     var name: String = ""
     /// 图标id
     var imageId: Int = 0
+    private var normalizedTimezone: String?
+    /// 场所时区，使用 `IANA (UTC±HH:mm)` 完整格式保存
+    var timezone: String? {
+        get {
+            return normalizedTimezone
+        }
+        set {
+            let value = newValue?.trimmingCharacters(in: .whitespacesAndNewlines)
+            normalizedTimezone = value?.isEmpty == false ? value : nil
+        }
+    }
+    /// Edit Site 尚未同步到服务器的属性
+    var pendingSitePropsMask: SitePropsFieldMask = []
+    /// 尚未同步属性对应的更新时间
+    var pendingSitePropsTimestamp: Int64?
     /// 类型
     let type: SiteType
     /// 权限
@@ -204,6 +219,9 @@ class SiteData: Copyable {
     func copy() -> Self {
         
         let site = SiteData(region: self.region, id: self.id, meshUUID: self.meshUUID, meshNetworkId: self.meshNetworkId, name: self.name, imageId: self.imageId, type: self.type, permission: self.permission, create: self.create, lastUpdate: self.lastUpdate, isFavourite: self.isFavourite, sourceType: self.sourceType)
+        site.timezone = self.timezone
+        site.pendingSitePropsMask = self.pendingSitePropsMask
+        site.pendingSitePropsTimestamp = self.pendingSitePropsTimestamp
         let spaces = self.spaces.map({ $0.copy() })
         site.spaces = spaces
         return site as! Self
@@ -248,4 +266,3 @@ extension SiteData {
         case waitDeleted = 2
     }
 }
-

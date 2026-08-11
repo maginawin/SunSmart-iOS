@@ -178,6 +178,10 @@ extension SiteData {
             
             self.name = name
             self.imageId = json["imageId"].intValue
+            if let timezone = json["timezone"].string,
+               let timezoneValue = SiteTimeZoneValue(storageValue: timezone) {
+                self.timezone = timezoneValue.storageValue
+            }
             //        self.isFavourite = json["favourite"].boolValue
             self.sourceType = DataSourceType(rawValue: json["type"].intValue) ?? DataSourceType.create
             self.create = json["createTimestamp"].int64Value

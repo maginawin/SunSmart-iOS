@@ -34,6 +34,10 @@ extension SiteData {
                 siteJsonData.updateValue(self.name, forKey: "siteName")
                 siteJsonData.updateValue(self.id, forKey: "uuid")
                 siteJsonData.updateValue(self.imageId, forKey: "imageId")
+                if let timezone = self.timezone,
+                   let timezoneValue = SiteTimeZoneValue(storageValue: timezone) {
+                    siteJsonData.updateValue(timezoneValue.storageValue, forKey: "timezone")
+                }
                 siteJsonData.updateValue(self.type.rawValue, forKey: "type")
                 siteJsonData.updateValue(self.sourceType.rawValue, forKey: "source")
 //                siteJsonData.updateValue(self.isFavourite, forKey: "favourite")

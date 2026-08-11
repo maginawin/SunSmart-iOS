@@ -16,9 +16,19 @@ class ToastStatusView: UIView {
         case failure
 
         var icon: UIImage? {
-            switch self {
-            case .success: return UIImage(named: "toast_success")
-            case .failure: return UIImage(named: "toast_failed")
+            return icon(for: .standard)
+        }
+
+        func icon(for appearance: Appearance) -> UIImage? {
+            switch (self, appearance) {
+            case (.success, .standard):
+                return UIImage(named: "toast_success")
+            case (.failure, .standard):
+                return UIImage(named: "toast_failed")
+            case (.success, .siteUpdate):
+                return UIImage(named: "site_update_toast_success")
+            case (.failure, .siteUpdate):
+                return UIImage(named: "site_update_toast_failure")
             }
         }
 
@@ -30,6 +40,11 @@ class ToastStatusView: UIView {
         }
     }
 
+    enum Appearance {
+        case standard
+        case siteUpdate
+    }
+
     enum Position {
         case top
         case center
@@ -39,16 +54,24 @@ class ToastStatusView: UIView {
     // MARK: - UI
 
     private let blurView: UIVisualEffectView
+    private let siteContentView = UIView()
+    private let overlayView = UIView()
+    private let iconContainerView = UIView()
     private let iconView = UIImageView()
     private let messageLabel = UILabel()
     private let stackView = UIStackView()
 
     // MARK: - Init
 
-    private init(message: String, type: ToastType) {
+    private init(message: String, type: ToastType, appearance: Appearance) {
         self.blurView = UIVisualEffectView(effect: UIBlurEffect(style: .systemThinMaterialDark))
         super.init(frame: .zero)
-        setupUI(message: message, type: type)
+        switch appearance {
+        case .standard:
+            setupStandardUI(message: message, type: type)
+        case .siteUpdate:
+            setupSiteUpdateUI(message: message, type: type)
+        }
     }
 
     required init?(coder: NSCoder) {
@@ -57,7 +80,7 @@ class ToastStatusView: UIView {
 
     // MARK: - Setup UI
 
-    private func setupUI(message: String, type: ToastType) {
+    private func setupStandardUI(message: String, type: ToastType) {
 //        backgroundColor = .black
         layer.cornerRadius = 13
         layer.masksToBounds = true
@@ -107,25 +130,101 @@ class ToastStatusView: UIView {
         }
     }
 
+    private func setupSiteUpdateUI(message: String, type: ToastType) {
+        layer.cornerRadius = 13
+        layer.masksToBounds = false
+        layer.shadowColor = UIColor.black.cgColor
+        layer.shadowOpacity = 0.15
+        layer.shadowOffset = CGSize(width: 0, height: 2)
+        layer.shadowRadius = 2.5
+
+        isUserInteractionEnabled = false
+
+        siteContentView.layer.cornerRadius = 13
+        siteContentView.layer.masksToBounds = true
+        addSubview(siteContentView)
+        siteContentView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+
+        siteContentView.addSubview(blurView)
+        blurView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+
+        overlayView.backgroundColor = UIColor.black.withAlphaComponent(0.6)
+        siteContentView.addSubview(overlayView)
+        overlayView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+
+        iconView.image = type.icon(for: .siteUpdate)
+        iconView.contentMode = .scaleAspectFit
+        iconContainerView.addSubview(iconView)
+        iconView.snp.makeConstraints { make in
+            make.center.equalToSuperview()
+            make.size.equalTo(16)
+        }
+
+        let font = UIFont.systemFont(ofSize: 15, weight: .light)
+        messageLabel.text = message
+        messageLabel.font = font
+        messageLabel.textColor = .white
+        messageLabel.textAlignment = .center
+        messageLabel.numberOfLines = 1
+
+        stackView.axis = .horizontal
+        stackView.spacing = 10
+        stackView.alignment = .center
+        stackView.addArrangedSubview(iconContainerView)
+        stackView.addArrangedSubview(messageLabel)
+        siteContentView.addSubview(stackView)
+
+        iconContainerView.snp.makeConstraints { make in
+            make.size.equalTo(30)
+        }
+        messageLabel.snp.makeConstraints { make in
+            make.height.equalTo(22)
+        }
+        stackView.snp.makeConstraints { make in
+            make.center.equalToSuperview()
+            make.leading.greaterThanOrEqualToSuperview().offset(22)
+            make.trailing.lessThanOrEqualToSuperview().offset(-22)
+        }
+    }
+
     // MARK: - Show
 
     static func show(
         in superview: UIView,
         message: String,
         type: ToastType,
+        appearance: Appearance = .standard,
         position: Position = .bottom,
         duration: TimeInterval = 1.5
     ) {
-        let toast = ToastStatusView(message: message, type: type)
+        let toast = ToastStatusView(
+            message: message,
+            type: type,
+            appearance: appearance
+        )
         superview.addSubview(toast)
 
         // SnapKit layout
         toast.snp.makeConstraints { make in
 //            make.centerX.equalToSuperview()
 //            make.width.lessThanOrEqualToSuperview().multipliedBy(0.85)
-            make.left.equalTo(SCRXFrom(20))
-            make.right.equalTo(SCRXFrom(-20))
-            make.height.greaterThanOrEqualTo(44)
+            switch appearance {
+            case .standard:
+                make.left.equalTo(SCRXFrom(20))
+                make.right.equalTo(SCRXFrom(-20))
+                make.height.greaterThanOrEqualTo(44)
+            case .siteUpdate:
+                make.centerX.equalToSuperview()
+                make.width.equalToSuperview().offset(-32).priority(.high)
+                make.width.lessThanOrEqualTo(343)
+                make.height.equalTo(44)
+            }
 
             switch position {
             case .top:

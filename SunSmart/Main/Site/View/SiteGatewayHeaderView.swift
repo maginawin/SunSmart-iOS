@@ -11,23 +11,36 @@ class SiteGatewayHeaderView: UICollectionReusableView {
         
     var gatewayListView: GatewayListView!
     var gatewayStatusView: SiteGatewayStatusView!
-    
+    let timeZoneReviewSyncView = SiteTimeZoneReviewSyncView()
+    var onReviewSync: (() -> Void)?
+
     var showGatewayListView: Bool = true {
         didSet {
-            if showGatewayListView {
-                gatewayListView.isHidden = false
-                gatewayStatusView.snp.remakeConstraints { make in
-                    make.left.right.equalTo(gatewayListView)
-                    make.top.equalTo(gatewayListView.snp.bottom).offset(SCRYFrom(8))
-                    make.height.equalTo(SCRYFrom(40))
-                }
-            }else {
-                gatewayListView.isHidden = true
-                gatewayStatusView.snp.remakeConstraints { make in
-                    make.top.left.right.equalToSuperview()
-                    make.height.equalTo(SCRYFrom(40))
-                }
+            gatewayListView.isHidden = !showGatewayListView
+            updateLayout()
+        }
+    }
+
+    var showGatewayStatusView: Bool = true {
+        didSet {
+            gatewayStatusView.isHidden = !showGatewayStatusView
+            updateLayout()
+        }
+    }
+
+    var timeZoneReviewState: SiteTimeZoneReviewState = .hidden {
+        didSet {
+            switch timeZoneReviewState {
+            case .hidden:
+                timeZoneReviewSyncView.isHidden = true
+            case let .review(serverTimezone, gatewayCount):
+                timeZoneReviewSyncView.isHidden = false
+                timeZoneReviewSyncView.update(
+                    serverTimezone: serverTimezone,
+                    gatewayCount: gatewayCount
+                )
             }
+            updateLayout()
         }
     }
     
@@ -84,22 +97,55 @@ class SiteGatewayHeaderView: UICollectionReusableView {
         
         gatewayListView = GatewayListView()
         addSubview(gatewayListView)
-        gatewayListView.snp.makeConstraints { make in
-            make.top.left.right.equalToSuperview()
-            make.height.equalTo(SCRYFrom(40))
-        }
         
         gatewayStatusView = SiteGatewayStatusView()
 //        gatewayStatusView.updateOverviewStats(.init(internetOnlineCount: 3, internetOfflineCount: 2, noGatewayCount: 3))
 //        gatewayStatusView.setDisplayMode(.gateway)
 //        gatewayStatusView.updateGatewayStatus(.init(isInternetOnline: false, lastOnlineTime: "2025-11-18 15:30"))
         addSubview(gatewayStatusView)
-        gatewayStatusView.snp.makeConstraints { make in
-            make.left.right.equalTo(gatewayListView)
-            make.top.equalTo(gatewayListView.snp.bottom).offset(SCRYFrom(8))
-            make.height.equalTo(SCRYFrom(40))
+
+        timeZoneReviewSyncView.onReviewSync = { [weak self] in
+            self?.onReviewSync?()
         }
-        
+        timeZoneReviewSyncView.isHidden = true
+        addSubview(timeZoneReviewSyncView)
+
+        updateLayout()
+    }
+
+    private func updateLayout() {
+        gatewayListView.snp.remakeConstraints { make in
+            make.top.left.right.equalToSuperview()
+            make.height.equalTo(showGatewayListView ? SCRYFrom(40) : 0)
+        }
+
+        gatewayStatusView.snp.remakeConstraints { make in
+            make.left.right.equalToSuperview()
+            if showGatewayListView {
+                make.top.equalTo(gatewayListView.snp.bottom).offset(SCRYFrom(8))
+            } else {
+                make.top.equalToSuperview()
+            }
+            make.height.equalTo(showGatewayStatusView ? SCRYFrom(40) : 0)
+        }
+
+        timeZoneReviewSyncView.snp.remakeConstraints { make in
+            make.left.right.equalToSuperview()
+            if showGatewayStatusView {
+                make.top.equalTo(gatewayStatusView.snp.bottom).offset(SCRYFrom(8))
+            } else if showGatewayListView {
+                make.top.equalTo(gatewayListView.snp.bottom).offset(SCRYFrom(8))
+            } else {
+                make.top.equalToSuperview()
+            }
+            let isVisible: Bool
+            if case .review = timeZoneReviewState {
+                isVisible = true
+            } else {
+                isVisible = false
+            }
+            make.height.equalTo(isVisible ? SCRYFrom(56) : 0)
+        }
     }
     
 }

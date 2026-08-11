@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$repo_root"
+
+swiftc -parse-as-library \
+  SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
+  SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
+  SunSmart/Main/Site/Model/SiteGatewayAccessScope.swift \
+  SunSmart/Main/Site/Model/SyncGatewaysContext.swift \
+  Tests/Site/SyncGatewaysContextTests.swift \
+  -o /tmp/SyncGatewaysContextTests
+/tmp/SyncGatewaysContextTests
+
+swiftc -parse-as-library \
+  SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
+  SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
+  SunSmart/Main/Site/Model/SiteGatewayAccessScope.swift \
+  SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncPolicy.swift \
+  Tests/Site/SiteEntryTimeZoneSyncPolicyTests.swift \
+  -o /tmp/SyncGatewaysEntryPolicyTests
+/tmp/SyncGatewaysEntryPolicyTests
+
+swiftc -parse-as-library \
+  SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
+  SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
+  SunSmart/Main/Site/Model/SiteGatewayAccessScope.swift \
+  SunSmart/Main/Site/Model/SyncGatewaysContext.swift \
+  SunSmart/Main/Site/Model/SyncGatewaysState.swift \
+  Tests/Site/SyncGatewaysStateTests.swift \
+  -o /tmp/SyncGatewaysStateTests
+/tmp/SyncGatewaysStateTests
+
+swiftc -parse-as-library \
+  SunSmart/Main/Site/Model/SyncGatewaysScanSession.swift \
+  Tests/Site/SyncGatewaysScanSessionTests.swift \
+  -o /tmp/SyncGatewaysScanSessionTests
+/tmp/SyncGatewaysScanSessionTests
+
+swiftc -parse-as-library \
+  SunSmart/Main/Site/Model/GatewayTimeSyncCoordinator.swift \
+  Tests/Site/GatewayTimeSyncCoordinatorTests.swift \
+  -o /tmp/SyncGatewaysTimeCoordinatorTests
+/tmp/SyncGatewaysTimeCoordinatorTests
+
+swiftc -parse-as-library \
+  SunSmart/Main/Device/Gateway/Model/GatewayCloudSyncGenerationPolicy.swift \
+  Tests/Device/GatewayCloudSyncGenerationPolicyTests.swift \
+  -o /tmp/SyncGatewaysCloudGenerationTests
+/tmp/SyncGatewaysCloudGenerationTests
+
+swiftc -parse-as-library \
+  SunSmart/Main/Device/Gateway/Model/GatewayCloudSyncGenerationPolicy.swift \
+  SunSmart/Main/Site/Model/SyncGatewaysDirtyTimeOverride.swift \
+  SunSmart/Main/Site/Model/SyncGatewaysCloudBridge.swift \
+  Tests/Site/SyncGatewaysCloudBridgeTests.swift \
+  -o /tmp/SyncGatewaysCloudBridgeTests
+/tmp/SyncGatewaysCloudBridgeTests
+
+swiftc -parse-as-library \
+  Tests/Site/SiteEntryTimeZoneSyncContractTests.swift \
+  -o /tmp/SyncGatewaysEntryContractTests
+/tmp/SyncGatewaysEntryContractTests \
+  SunSmart/Main/Site/View/SiteEntryTimeZoneSyncOverlay.swift \
+  SunSmart/en.lproj/Localizable.strings \
+  SunSmart/zh-Hans.lproj/Localizable.strings \
+  SunSmart/Main/Site/Controller/SiteViewController.swift \
+  SunSmart.xcodeproj/project.pbxproj \
+  SunSmart/Assets.xcassets/Common/site_entry_sync_warning.imageset/Contents.json
+
+swiftc -parse-as-library \
+  Tests/Site/SiteTimeZoneReviewSyncContractTests.swift \
+  -o /tmp/SyncGatewaysReviewContractTests
+/tmp/SyncGatewaysReviewContractTests \
+  SunSmart/Main/Site/View/SiteTimeZoneReviewSyncView.swift \
+  SunSmart/Main/Site/View/SiteGatewayHeaderView.swift \
+  SunSmart/Main/Site/Controller/SiteViewController.swift \
+  SunSmart/Main/Site/Controller/SyncGatewaysViewController.swift \
+  SunSmart/en.lproj/Localizable.strings \
+  SunSmart/zh-Hans.lproj/Localizable.strings \
+  SunSmart.xcodeproj/project.pbxproj \
+  SunSmart/Assets.xcassets/Common/site_entry_sync_warning.imageset/Contents.json
+
+swiftc -parse-as-library \
+  Tests/Site/SyncGatewaysUIContractTests.swift \
+  -o /tmp/SyncGatewaysUIContractTests
+/tmp/SyncGatewaysUIContractTests \
+  SunSmart/Main/Site/View/SyncGatewaysTimeZoneCardView.swift \
+  SunSmart/Main/Site/View/SyncGatewayCell.swift \
+  SunSmart/Main/Site/View/SyncGatewaysSupportingViews.swift \
+  SunSmart/Main/Site/Controller/SyncGatewaysViewController.swift \
+  SunSmart/Main/Site/Controller/SiteViewController.swift \
+  SunSmart/en.lproj/Localizable.strings \
+  SunSmart/zh-Hans.lproj/Localizable.strings \
+  SunSmart.xcodeproj/project.pbxproj
+
+swiftc -parse-as-library \
+  Tests/Site/SiteTimeZoneUIContractTests.swift \
+  -o /tmp/SyncGatewaysExistingTimeZoneUIContractTests
+/tmp/SyncGatewaysExistingTimeZoneUIContractTests \
+  SunSmart/Main/Site/Controller/SiteEditViewController.swift \
+  SunSmart/Main/Site/Controller/SiteTimeZoneSelectionViewController.swift \
+  SunSmart/Main/Site/View/SiteTimeZoneSelectionCell.swift \
+  SunSmart/Main/Site/View/SiteTimeZoneSyncStatusView.swift \
+  SunSmart/Main/Site/Controller/SitesViewController.swift \
+  SunSmart/Main/Site/Controller/SiteViewController.swift
+/tmp/SyncGatewaysExistingTimeZoneUIContractTests \
+  SunSmart/en.lproj/Localizable.strings \
+  SunSmart/zh-Hans.lproj/Localizable.strings \
+  SunSmart.xcodeproj/project.pbxproj \
+  SunSmart/all_utc_timezones.json
+
+echo "SiteSyncGateways checks passed"

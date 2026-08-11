@@ -10,6 +10,11 @@ enum GatewayServerAuthorizationRequestPolicy: Equatable {
     case always
 }
 
+struct GatewayServerAuthorizationReceipt {
+    let information: GatewayInformation.MQTTConnectInformation
+    let submittedGeneration: Int64
+}
+
 enum GatewayServerAuthorizationError: Error, Equatable {
     case noNetwork
     case nodeExportFailed
@@ -69,6 +74,7 @@ actor GatewayServerAuthorizationService {
 
     private struct InFlightAuthorization {
         let id: UUID
+        let submittedGeneration: Int64
         let task: Task<Result<MQTTInformation, GatewayServerAuthorizationError>, Never>
     }
 
@@ -144,10 +150,30 @@ actor GatewayServerAuthorizationService {
         node: Node,
         policy: GatewayServerAuthorizationRequestPolicy = .ifMissing
     ) async -> Result<MQTTInformation, GatewayServerAuthorizationError> {
+        let result = await authorizeWithReceipt(
+            gateway: gateway,
+            node: node,
+            policy: policy,
+            requestedGeneration: gateway.lastUpdate
+        )
+        return result.map(\.information)
+    }
+
+    func authorizeWithReceipt(
+        gateway: GatewayModel,
+        node: Node,
+        policy: GatewayServerAuthorizationRequestPolicy = .ifMissing,
+        requestedGeneration: Int64
+    ) async -> Result<GatewayServerAuthorizationReceipt, GatewayServerAuthorizationError> {
         if policy == .ifMissing,
            let information = gateway.mqttServerInfo,
            Self.isValid(information) {
-            return .success(information)
+            return .success(
+                GatewayServerAuthorizationReceipt(
+                    information: information,
+                    submittedGeneration: requestedGeneration
+                )
+            )
         }
         guard NetworkRequest.shared.networkable else {
             return .failure(.noNetwork)
@@ -170,7 +196,7 @@ actor GatewayServerAuthorizationService {
                         gatewayId: gateway.mac,
                         nodeId: node.uuid.uuidString,
                         node: nodeData,
-                        updateTimestamp: gateway.lastUpdate
+                        updateTimestamp: requestedGeneration
                     )
                 )
                 switch result {
@@ -180,7 +206,11 @@ actor GatewayServerAuthorizationService {
                     return .failure(.requestFailed(error))
                 }
             }
-            authorization = InFlightAuthorization(id: id, task: task)
+            authorization = InFlightAuthorization(
+                id: id,
+                submittedGeneration: requestedGeneration,
+                task: task
+            )
             inFlightAuthorizations[key] = authorization
         }
 
@@ -191,13 +221,23 @@ actor GatewayServerAuthorizationService {
 
         switch result {
         case .success(let information):
-            return Self.persist(information, to: gateway)
+            return Self.persist(information, to: gateway).map {
+                GatewayServerAuthorizationReceipt(
+                    information: $0,
+                    submittedGeneration: authorization.submittedGeneration
+                )
+            }
         case .failure(let error):
             if policy == .always,
                let information = gateway.mqttServerInfo,
                Self.isValid(information),
                case .invalidResponse = error {
-                return .success(information)
+                return .success(
+                    GatewayServerAuthorizationReceipt(
+                        information: information,
+                        submittedGeneration: authorization.submittedGeneration
+                    )
+                )
             }
             return .failure(error)
         }

@@ -52,6 +52,7 @@ extension SiteData {
         let meshNetworkManager = MeshNetworkManager.createMeshNetwork(meshUUID: id, meshNetworkName: name, localAddress: Address.minUnicastAddress)
 //        MeshLibManager.manager.createMeshNetwork(meshUUID: id, meshNetworkName: name, connected: false)
         let site = SiteData(region: UserData.currentServerRegion, id: id, meshUUID: id, meshNetworkId: meshNetworkManager.mainNetworkKey.networkId.hex, name: name, imageId: 1, type: .office, permission: .owner, create: time,isFavourite: false, sourceType: .create)
+        site.timezone = SiteTimeZoneCatalog.phoneDefaultValue().storageValue
         site.localAddress = Address.minUnicastAddress
 //        site.meshManager = meshManager
         site.save()

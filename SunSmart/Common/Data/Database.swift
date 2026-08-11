@@ -71,6 +71,9 @@ extension SiteData {
         static let meshNetworkId = Expression<String>("meshNetworkId")
         static let name = Expression<String>("name")
         static let imageId = Expression<Int>("imageId")
+        static let timezone = Expression<String?>("timezone")
+        static let pendingSitePropsMask = Expression<Int>("pendingSitePropsMask")
+        static let pendingSitePropsTimestamp = Expression<Int64?>("pendingSitePropsTimestamp")
         static let type = Expression<Int>("type")
         static let permission = Expression<Int>("permission")
         static let source = Expression<Int>("source")
@@ -96,6 +99,9 @@ extension SiteData {
             builder.column(ExpressionKey.uuid, unique: true)
             builder.column(ExpressionKey.name)
             builder.column(ExpressionKey.imageId)
+            builder.column(ExpressionKey.timezone)
+            builder.column(ExpressionKey.pendingSitePropsMask, defaultValue: 0)
+            builder.column(ExpressionKey.pendingSitePropsTimestamp)
             builder.column(ExpressionKey.type)
             builder.column(ExpressionKey.permission)
             builder.column(ExpressionKey.source)
@@ -121,6 +127,15 @@ extension SiteData {
             if !columns.contains(where: { $0.name == "meshNetworkId" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(SiteData.sitesTable.addColumn(ExpressionKey.meshNetworkId, defaultValue: ""))
             }
+            if !columns.contains(where: { $0.name == "timezone" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(SiteData.sitesTable.addColumn(ExpressionKey.timezone))
+            }
+            if !columns.contains(where: { $0.name == "pendingSitePropsMask" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(SiteData.sitesTable.addColumn(ExpressionKey.pendingSitePropsMask, defaultValue: 0))
+            }
+            if !columns.contains(where: { $0.name == "pendingSitePropsTimestamp" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(SiteData.sitesTable.addColumn(ExpressionKey.pendingSitePropsTimestamp))
+            }
         }
 //        _ = try? SunSmartDataManager.shared.db?.run(SiteData.sitesTable.addColumn(ExpressionKey.localAddress))
         
@@ -138,6 +153,9 @@ extension SiteData {
         if let rows = try? SunSmartDataManager.shared.db?.prepare(filter.order(ExpressionKey.createTimestamp.asc)) {
             for row in rows {
                 let site = SiteData(region: ServerRegion(rawValue: row[ExpressionKey.regionType]) ?? UserData.currentServerRegion,id: row[ExpressionKey.uuid], meshUUID: row[ExpressionKey.uuid], meshNetworkId: row[ExpressionKey.meshNetworkId], name: row[ExpressionKey.name], imageId: row[ExpressionKey.imageId], type: .init(rawValue: row[ExpressionKey.type]) ?? .office, permission: .init(rawValue: row[ExpressionKey.permission]) ?? .owner, create: row[ExpressionKey.createTimestamp], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], isFavourite: row[ExpressionKey.favourite], sourceType: .init(rawValue: row[ExpressionKey.source]) ?? .create)
+                site.timezone = row[ExpressionKey.timezone]
+                site.pendingSitePropsMask = .init(rawValue: row[ExpressionKey.pendingSitePropsMask])
+                site.pendingSitePropsTimestamp = row[ExpressionKey.pendingSitePropsTimestamp]
                 site.lastUploadCloudTimestamp = row[ExpressionKey.lastUploadCloudTimestamp]
                 if let errorCode = row[ExpressionKey.syncCloudError] {
                     site.syncCloudError = .init(code: errorCode)
@@ -177,6 +195,9 @@ extension SiteData {
         if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
             for row in rows {
                 site = SiteData(region: ServerRegion(rawValue: row[ExpressionKey.regionType]) ?? UserData.currentServerRegion, id: row[ExpressionKey.uuid], meshUUID: row[ExpressionKey.uuid], meshNetworkId: row[ExpressionKey.meshNetworkId], name: row[ExpressionKey.name], imageId: row[ExpressionKey.imageId], type: .init(rawValue: row[ExpressionKey.type]) ?? .office, permission: .init(rawValue: row[ExpressionKey.permission]) ?? .owner, create: row[ExpressionKey.createTimestamp], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], isFavourite: row[ExpressionKey.favourite], sourceType: .init(rawValue: row[ExpressionKey.source]) ?? .create)
+                site?.timezone = row[ExpressionKey.timezone]
+                site?.pendingSitePropsMask = .init(rawValue: row[ExpressionKey.pendingSitePropsMask])
+                site?.pendingSitePropsTimestamp = row[ExpressionKey.pendingSitePropsTimestamp]
                 site?.lastUploadCloudTimestamp = row[ExpressionKey.lastUploadCloudTimestamp]
                 if let errorCode = row[ExpressionKey.syncCloudError] {
                     site?.syncCloudError = .init(code: errorCode)
@@ -264,6 +285,11 @@ extension SiteData {
         let time = Int64(Date().timeIntervalSince1970)
         site.create = time
         site.lastUpdate = time
+        if site.timezone == nil {
+            site.timezone = SiteTimeZoneCatalog.phoneDefaultValue().storageValue
+        }
+        site.pendingSitePropsMask = []
+        site.pendingSitePropsTimestamp = nil
         // 克隆场所内空间
         var spaces: [SpaceData] = []
         site.spaces.forEach { space in
@@ -340,6 +366,9 @@ extension SiteData {
             ExpressionKey.meshNetworkId <- self.meshNetworkId,
             ExpressionKey.name <- self.name,
             ExpressionKey.imageId <- self.imageId,
+            ExpressionKey.timezone <- self.timezone,
+            ExpressionKey.pendingSitePropsMask <- self.pendingSitePropsMask.rawValue,
+            ExpressionKey.pendingSitePropsTimestamp <- self.pendingSitePropsTimestamp,
             ExpressionKey.type <- self.type.rawValue,
             ExpressionKey.permission <- self.permission.rawValue,
             ExpressionKey.source <- self.sourceType.rawValue,
