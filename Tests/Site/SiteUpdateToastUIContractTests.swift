@@ -120,21 +120,31 @@ struct SiteUpdateToastUIContractTests {
             from: "private func finishOrdinaryCommit",
             through: "private func finishTimeZoneCommit"
         )
-        require(
-            edit.contains("typealias SiteReturnCompletion = (UIView) -> Void") &&
-                edit.contains("typealias ReturnToSitesHandler = (@escaping SiteReturnCompletion) -> Void") &&
-                edit.contains("private let returnToSitesHandler: ReturnToSitesHandler"),
-            "Edit Site must require an escaping route completion that returns the final host view"
+        let sitesEdit = substring(
+            in: sites,
+            from: "private func editSite(site: SiteData)",
+            through: "/// 删除场所"
+        )
+        let siteEdit = substring(
+            in: site,
+            from: "private func editSite()",
+            through: "/// 删除场所"
         )
         require(
-            ordinary.contains("returnToSites {") &&
-                ordinary.contains("toastHost in") &&
+            edit.contains("typealias SiteResultHostCompletion = (UIView) -> Void") &&
+                edit.contains("typealias FinishEditingHandler = (@escaping SiteResultHostCompletion) -> Void") &&
+                edit.contains("private let finishEditingHandler: FinishEditingHandler"),
+            "Edit Site must require an escaping completion that returns the source result host"
+        )
+        require(
+            ordinary.contains("finishEditing {") &&
+                ordinary.contains("resultHost in") &&
                 ordinary.contains("ToastStatusView.show") &&
                 ordinary.contains("appearance: .siteUpdate") &&
                 ordinary.contains("\"site_updated_toast\".localizedString") &&
                 ordinary.contains("\"site_update_failed_toast\".localizedString") &&
                 !ordinary.contains("XWHUDManager"),
-            "Ordinary update results must use the Site Update Toast on the returned Sites host"
+            "Ordinary update results must use the Site Update Toast on the source result host"
         )
         require(
             occurrences(of: "XWHUDManager.showErrorTipHUD", in: edit) == 1 &&
@@ -142,17 +152,17 @@ struct SiteUpdateToastUIContractTests {
             "Only local persistence failure keeps the old HUD and timezone keeps its status card"
         )
         require(
-            sites.contains("returnToSitesHandler:") &&
-                sites.contains("completion(self.view)"),
-            "Sites entry must pass its visible view after modal dismissal"
+            sitesEdit.contains("finishEditingHandler:") &&
+                sitesEdit.contains("completion(self.view)"),
+            "Sites entry must pass its own visible view after modal dismissal"
         )
         require(
-            site.contains("returnToSitesHandler:") &&
-                site.contains("transitionCoordinator") &&
-                site.contains("context.isCancelled") &&
-                site.contains("completion(destinationView)") &&
-                site.contains("assertionFailure"),
-            "Site entry must wait for pop completion and provide a safe visible host"
+            siteEdit.contains("finishEditingHandler:") &&
+                siteEdit.contains("completion(self.view)") &&
+                !siteEdit.contains("popViewController") &&
+                !siteEdit.contains("transitionCoordinator") &&
+                !siteEdit.contains("SitesViewController"),
+            "Site entry must keep the Site page and pass its own visible view"
         )
         require(
             english.contains("\"site_updated_toast\" = \"Site updated.\";") &&

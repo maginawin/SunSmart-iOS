@@ -117,7 +117,7 @@ struct SiteTimeZoneUIContractTests {
                     edit.contains("site: SiteData") &&
                     edit.contains("draft: SitePropsEditDraft") &&
                     edit.contains("coordinator: SitePropsEditCoordinator") &&
-                    edit.contains("returnToSitesHandler: @escaping ReturnToSitesHandler") &&
+                    edit.contains("finishEditingHandler: @escaping FinishEditingHandler") &&
                     edit.contains("title = site.name"),
                 "Dedicated Edit Site must receive prepared draft/coordinator and keep the Site name title"
             )
@@ -224,9 +224,13 @@ struct SiteTimeZoneUIContractTests {
             )
             require(
                 edit.contains("SiteTimeZoneSyncStatusView") &&
+                    edit.contains("statusView.show()") &&
+                    !edit.contains("statusView.show(in: resultHost)") &&
+                    status.contains("func show(in parentView: UIView? = nil)") &&
+                    status.contains("parentView ?? Self.activeWindow") &&
                     edit.contains("\"site_updated_toast\".localizedString") &&
                     edit.contains("\"site_update_failed_toast\".localizedString"),
-                "Timezone uses status card while ordinary updates use exact Toasts"
+                "Timezone status must cover the active window while ordinary updates use source-hosted Toasts"
             )
             require(
                 status.contains("enum State") &&
@@ -265,10 +269,13 @@ struct SiteTimeZoneUIContractTests {
                 siteEdit.contains("SitePropsEditCoordinator") &&
                     siteEdit.contains("await coordinator.prepareDraft") &&
                     siteEdit.contains("SiteEditViewController") &&
-                    siteEdit.contains("popViewController") &&
+                    siteEdit.contains("finishEditingHandler:") &&
+                    siteEdit.contains("completion(self.view)") &&
+                    !siteEdit.contains("popViewController") &&
+                    !siteEdit.contains("SitesViewController") &&
                     !siteEdit.contains("InfoEditViewController") &&
                     !siteEdit.contains("CloudSynchronizationManager"),
-                "Site entry must use the same editor and return committed changes to Sites"
+                "Site entry must use the same editor and keep committed changes on Site"
             )
         }
 

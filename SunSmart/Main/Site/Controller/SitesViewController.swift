@@ -653,7 +653,7 @@ class SitesViewController: UIViewController {
                 site: site,
                 draft: draft,
                 coordinator: coordinator,
-                returnToSitesHandler: { [weak self] completion in
+                finishEditingHandler: { [weak self] completion in
                     guard let self = self else { return }
                     self.dismiss(animated: true) {
                         self.reloadSiteData(site)

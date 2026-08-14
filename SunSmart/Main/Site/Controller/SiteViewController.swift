@@ -1345,39 +1345,15 @@ self.updateAddressData()
             }
             guard let self = self else { return }
 
-            let sitesViewController = self.navigationController?.viewControllers
-                .last(where: { $0 is SitesViewController }) as? SitesViewController
-
             let vc = SiteEditViewController(
                 site: self.site,
                 draft: draft,
                 coordinator: coordinator,
-                returnToSitesHandler: { [weak self, weak sitesViewController] completion in
+                finishEditingHandler: { [weak self] completion in
                     guard let self = self else { return }
                     self.dismiss(animated: true) {
                         self.title = self.site.name
-                        guard let navigationController = self.navigationController else { return }
-
-                        let destinationView: UIView
-                        if let sitesView = sitesViewController?.view {
-                            destinationView = sitesView
-                        } else {
-                            assertionFailure("SitesViewController is missing from the navigation stack")
-                            destinationView = navigationController.view
-                        }
-
-                        navigationController.popViewController(animated: true)
-                        guard let transitionCoordinator = navigationController.transitionCoordinator else {
-                            completion(destinationView)
-                            return
-                        }
-                        transitionCoordinator.animate(alongsideTransition: nil) { context in
-                            completion(
-                                context.isCancelled
-                                    ? navigationController.view
-                                    : destinationView
-                            )
-                        }
+                        completion(self.view)
                     }
                 }
             )

@@ -9,13 +9,13 @@ import UIKit
 
 final class SiteEditViewController: UIViewController {
 
-    typealias SiteReturnCompletion = (UIView) -> Void
-    typealias ReturnToSitesHandler = (@escaping SiteReturnCompletion) -> Void
+    typealias SiteResultHostCompletion = (UIView) -> Void
+    typealias FinishEditingHandler = (@escaping SiteResultHostCompletion) -> Void
 
     private let site: SiteData
     private var draft: SitePropsEditDraft
     private let coordinator: SitePropsEditCoordinator
-    private let returnToSitesHandler: ReturnToSitesHandler
+    private let finishEditingHandler: FinishEditingHandler
 
     private let scrollView = UIScrollView()
     private let contentView = UIView()
@@ -47,12 +47,12 @@ final class SiteEditViewController: UIViewController {
         site: SiteData,
         draft: SitePropsEditDraft,
         coordinator: SitePropsEditCoordinator,
-        returnToSitesHandler: @escaping ReturnToSitesHandler
+        finishEditingHandler: @escaping FinishEditingHandler
     ) {
         self.site = site
         self.draft = draft
         self.coordinator = coordinator
-        self.returnToSitesHandler = returnToSitesHandler
+        self.finishEditingHandler = finishEditingHandler
         self.selectedImageIndex = min(max(draft.values.imageId - 1, 0), 27)
         self.collectionView = UICollectionView(
             frame: .zero,
@@ -410,15 +410,15 @@ final class SiteEditViewController: UIViewController {
         snapshot: SitePropsUpdateSnapshot?,
         online: Bool
     ) {
-        returnToSites { [coordinator, siteDidChange] toastHost in
+        finishEditing { [coordinator, siteDidChange] resultHost in
             guard online, let snapshot = snapshot else {
-                Self.showOrdinaryUpdateToast(in: toastHost, success: false)
+                Self.showOrdinaryUpdateToast(in: resultHost, success: false)
                 return
             }
             Task { @MainActor in
                 let success = await coordinator.submit(snapshot)
                 siteDidChange?()
-                Self.showOrdinaryUpdateToast(in: toastHost, success: success)
+                Self.showOrdinaryUpdateToast(in: resultHost, success: success)
             }
         }
     }
@@ -438,7 +438,7 @@ final class SiteEditViewController: UIViewController {
         snapshot: SitePropsUpdateSnapshot?,
         online: Bool
     ) {
-        returnToSites { [coordinator, siteDidChange] _ in
+        finishEditing { [coordinator, siteDidChange] _ in
             guard online, let snapshot = snapshot else { return }
             let statusView = SiteTimeZoneSyncStatusView()
             statusView.show()
@@ -450,8 +450,8 @@ final class SiteEditViewController: UIViewController {
         }
     }
 
-    private func returnToSites(completion: @escaping SiteReturnCompletion) {
-        returnToSitesHandler(completion)
+    private func finishEditing(completion: @escaping SiteResultHostCompletion) {
+        finishEditingHandler(completion)
     }
 
     @objc private func nameFieldDidChange() {
