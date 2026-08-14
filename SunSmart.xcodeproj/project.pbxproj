@@ -2430,10 +2430,10 @@
 		C8F6A1422FA3000000000001 /* WiFiFirmwareDFUCancelReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1402FA3000000000001 /* WiFiFirmwareDFUCancelReducer.swift */; };
 		C8F6A1432FA3000000000001 /* WiFiFirmwareDFUCancelReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1402FA3000000000001 /* WiFiFirmwareDFUCancelReducer.swift */; };
 		C8F6A1442FA3000000000001 /* WiFiFirmwareDFUCancelReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1402FA3000000000001 /* WiFiFirmwareDFUCancelReducer.swift */; };
-		C8F6A2012FA3000000000001 /* WiFiGatewayTimeSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A2052FA3000000000005 /* WiFiGatewayTimeSyncCoordinator.swift */; };
-		C8F6A2022FA3000000000002 /* WiFiGatewayTimeSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A2052FA3000000000005 /* WiFiGatewayTimeSyncCoordinator.swift */; };
-		C8F6A2032FA3000000000003 /* WiFiGatewayTimeSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A2052FA3000000000005 /* WiFiGatewayTimeSyncCoordinator.swift */; };
-		C8F6A2042FA3000000000004 /* WiFiGatewayTimeSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A2052FA3000000000005 /* WiFiGatewayTimeSyncCoordinator.swift */; };
+		C8F6A2012FA3000000000001 /* WiFiGatewayAutomaticLoadGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A2052FA3000000000005 /* WiFiGatewayAutomaticLoadGate.swift */; };
+		C8F6A2022FA3000000000002 /* WiFiGatewayAutomaticLoadGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A2052FA3000000000005 /* WiFiGatewayAutomaticLoadGate.swift */; };
+		C8F6A2032FA3000000000003 /* WiFiGatewayAutomaticLoadGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A2052FA3000000000005 /* WiFiGatewayAutomaticLoadGate.swift */; };
+		C8F6A2042FA3000000000004 /* WiFiGatewayAutomaticLoadGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A2052FA3000000000005 /* WiFiGatewayAutomaticLoadGate.swift */; };
 		C8F6A3012FA3000000000001 /* WiFiGatewayV19Timing.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A3052FA3000000000005 /* WiFiGatewayV19Timing.swift */; };
 		C8F6A3022FA3000000000002 /* WiFiGatewayV19Timing.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A3052FA3000000000005 /* WiFiGatewayV19Timing.swift */; };
 		C8F6A3032FA3000000000003 /* WiFiGatewayV19Timing.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A3052FA3000000000005 /* WiFiGatewayV19Timing.swift */; };
@@ -2645,6 +2645,22 @@
 		F2608130000000000002602 /* GatewayCloudSyncGenerationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002600 /* GatewayCloudSyncGenerationPolicy.swift */; };
 		F2608130000000000002603 /* GatewayCloudSyncGenerationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002600 /* GatewayCloudSyncGenerationPolicy.swift */; };
 		F2608130000000000002604 /* GatewayCloudSyncGenerationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002600 /* GatewayCloudSyncGenerationPolicy.swift */; };
+		F2608140000000000002701 /* GatewayTimeInformationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002700 /* GatewayTimeInformationCoordinator.swift */; };
+		F2608140000000000002702 /* GatewayTimeInformationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002700 /* GatewayTimeInformationCoordinator.swift */; };
+		F2608140000000000002703 /* GatewayTimeInformationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002700 /* GatewayTimeInformationCoordinator.swift */; };
+		F2608140000000000002704 /* GatewayTimeInformationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002700 /* GatewayTimeInformationCoordinator.swift */; };
+		F2608140000000000002801 /* GatewayFastAddTimeInitialization.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002800 /* GatewayFastAddTimeInitialization.swift */; };
+		F2608140000000000002802 /* GatewayFastAddTimeInitialization.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002800 /* GatewayFastAddTimeInitialization.swift */; };
+		F2608140000000000002803 /* GatewayFastAddTimeInitialization.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002800 /* GatewayFastAddTimeInitialization.swift */; };
+		F2608140000000000002804 /* GatewayFastAddTimeInitialization.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002800 /* GatewayFastAddTimeInitialization.swift */; };
+		F2608140000000000002901 /* SiteGatewayHeaderLayoutPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002900 /* SiteGatewayHeaderLayoutPolicy.swift */; };
+		F2608140000000000002902 /* SiteGatewayHeaderLayoutPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002900 /* SiteGatewayHeaderLayoutPolicy.swift */; };
+		F2608140000000000002903 /* SiteGatewayHeaderLayoutPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002900 /* SiteGatewayHeaderLayoutPolicy.swift */; };
+		F2608140000000000002904 /* SiteGatewayHeaderLayoutPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002900 /* SiteGatewayHeaderLayoutPolicy.swift */; };
+		F2608140000000000000101 /* GatewayMenuPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000000100 /* GatewayMenuPolicy.swift */; };
+		F2608140000000000000102 /* GatewayMenuPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000000100 /* GatewayMenuPolicy.swift */; };
+		F2608140000000000000103 /* GatewayMenuPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000000100 /* GatewayMenuPolicy.swift */; };
+		F2608140000000000000104 /* GatewayMenuPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000000100 /* GatewayMenuPolicy.swift */; };
 		F3C661B473314BCA9FC4EADC /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
 /* End PBXBuildFile section */
 
@@ -3302,7 +3318,7 @@
 		C8F6A1252FA3000000000001 /* WiFiFirmwareUpdatingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiFirmwareUpdatingView.swift; sourceTree = "<group>"; };
 		C8F6A1302FA3000000000001 /* WiFiFirmwareDFUStatusReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiFirmwareDFUStatusReducer.swift; sourceTree = "<group>"; };
 		C8F6A1402FA3000000000001 /* WiFiFirmwareDFUCancelReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiFirmwareDFUCancelReducer.swift; sourceTree = "<group>"; };
-		C8F6A2052FA3000000000005 /* WiFiGatewayTimeSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiGatewayTimeSyncCoordinator.swift; sourceTree = "<group>"; };
+		C8F6A2052FA3000000000005 /* WiFiGatewayAutomaticLoadGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiGatewayAutomaticLoadGate.swift; sourceTree = "<group>"; };
 		C8F6A3052FA3000000000005 /* WiFiGatewayV19Timing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiGatewayV19Timing.swift; sourceTree = "<group>"; };
 		C8F6A3152FA3000000000005 /* WiFiGatewayCredentialMutationReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiGatewayCredentialMutationReducer.swift; sourceTree = "<group>"; };
 		C8F6A3252FA3000000000005 /* WiFiGatewayConnectionPollingReducer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiGatewayConnectionPollingReducer.swift; sourceTree = "<group>"; };
@@ -3378,6 +3394,10 @@
 		F2608130000000000002400 /* SyncGatewayCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncGatewayCell.swift; sourceTree = "<group>"; };
 		F2608130000000000002500 /* SyncGatewaysSupportingViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncGatewaysSupportingViews.swift; sourceTree = "<group>"; };
 		F2608130000000000002600 /* GatewayCloudSyncGenerationPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayCloudSyncGenerationPolicy.swift; sourceTree = "<group>"; };
+		F2608140000000000002700 /* GatewayTimeInformationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayTimeInformationCoordinator.swift; sourceTree = "<group>"; };
+		F2608140000000000002800 /* GatewayFastAddTimeInitialization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayFastAddTimeInitialization.swift; sourceTree = "<group>"; };
+		F2608140000000000002900 /* SiteGatewayHeaderLayoutPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewayHeaderLayoutPolicy.swift; sourceTree = "<group>"; };
+		F2608140000000000000100 /* GatewayMenuPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayMenuPolicy.swift; sourceTree = "<group>"; };
 		FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorState.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -4349,6 +4369,8 @@
 				F2608130000000000001800 /* SyncGatewaysState.swift */,
 				F2608130000000000001900 /* SyncGatewaysScanSession.swift */,
 				F2608130000000000002000 /* GatewayTimeSyncCoordinator.swift */,
+				F2608140000000000002800 /* GatewayFastAddTimeInitialization.swift */,
+				F2608140000000000002900 /* SiteGatewayHeaderLayoutPolicy.swift */,
 				F2608130000000000002100 /* SyncGatewaysCloudBridge.swift */,
 				F2608130000000000002200 /* SyncGatewaysDirtyTimeOverride.swift */,
 				F2608110000000000000200 /* SiteTimeZoneCatalog.swift */,
@@ -5307,12 +5329,14 @@
 		C8F89D3B2E3CBCF800FA1544 /* Model */ = {
 			isa = PBXGroup;
 			children = (
+				F2608140000000000000100 /* GatewayMenuPolicy.swift */,
+				F2608140000000000002700 /* GatewayTimeInformationCoordinator.swift */,
 				F2608130000000000002600 /* GatewayCloudSyncGenerationPolicy.swift */,
 				C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */,
 				C8FA30152FD0000100000005 /* GatewayAssociatedSpaceCandidatePolicy.swift */,
 				C8A900012F80000100000001 /* WiFiSSIDProvider.swift */,
 				C8A901012F81000100000001 /* GatewayServerAuthorizationService.swift */,
-				C8F6A2052FA3000000000005 /* WiFiGatewayTimeSyncCoordinator.swift */,
+				C8F6A2052FA3000000000005 /* WiFiGatewayAutomaticLoadGate.swift */,
 				C8F6A3052FA3000000000005 /* WiFiGatewayV19Timing.swift */,
 				C8F6A3152FA3000000000005 /* WiFiGatewayCredentialMutationReducer.swift */,
 				C8F6A3252FA3000000000005 /* WiFiGatewayConnectionPollingReducer.swift */,
@@ -5883,12 +5907,16 @@
 				F2608130000000000001801 /* SyncGatewaysState.swift in Sources */,
 				F2608130000000000001901 /* SyncGatewaysScanSession.swift in Sources */,
 				F2608130000000000002001 /* GatewayTimeSyncCoordinator.swift in Sources */,
+				F2608140000000000002801 /* GatewayFastAddTimeInitialization.swift in Sources */,
+				F2608140000000000002901 /* SiteGatewayHeaderLayoutPolicy.swift in Sources */,
 				F2608130000000000002101 /* SyncGatewaysCloudBridge.swift in Sources */,
 				F2608130000000000002201 /* SyncGatewaysDirtyTimeOverride.swift in Sources */,
 				F2608130000000000002301 /* SyncGatewaysTimeZoneCardView.swift in Sources */,
 				F2608130000000000002401 /* SyncGatewayCell.swift in Sources */,
 				F2608130000000000002501 /* SyncGatewaysSupportingViews.swift in Sources */,
 				F2608130000000000002601 /* GatewayCloudSyncGenerationPolicy.swift in Sources */,
+				F2608140000000000002701 /* GatewayTimeInformationCoordinator.swift in Sources */,
+				F2608140000000000000101 /* GatewayMenuPolicy.swift in Sources */,
 				F260810A0000000000000101 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				C8FA11012F11000100000001 /* SimulateFaultAction.swift in Sources */,
 				C8FB11012F11000400000001 /* SimulateFaultRequest.swift in Sources */,
@@ -6105,7 +6133,7 @@
 				C88554332DE6B44C00C8B688 /* String+Extension.swift in Sources */,
 				C8D22E002E010A47001A2BDA /* GatewayViewController.swift in Sources */,
 				C8F6A1002FA3000000000001 /* WiFiGatewayViewController.swift in Sources */,
-				C8F6A2012FA3000000000001 /* WiFiGatewayTimeSyncCoordinator.swift in Sources */,
+				C8F6A2012FA3000000000001 /* WiFiGatewayAutomaticLoadGate.swift in Sources */,
 				C8F6A3012FA3000000000001 /* WiFiGatewayV19Timing.swift in Sources */,
 				C8F6A3112FA3000000000001 /* WiFiGatewayCredentialMutationReducer.swift in Sources */,
 				C8F6A3212FA3000000000001 /* WiFiGatewayConnectionPollingReducer.swift in Sources */,
@@ -6522,12 +6550,16 @@
 				F2608130000000000001802 /* SyncGatewaysState.swift in Sources */,
 				F2608130000000000001902 /* SyncGatewaysScanSession.swift in Sources */,
 				F2608130000000000002002 /* GatewayTimeSyncCoordinator.swift in Sources */,
+				F2608140000000000002802 /* GatewayFastAddTimeInitialization.swift in Sources */,
+				F2608140000000000002902 /* SiteGatewayHeaderLayoutPolicy.swift in Sources */,
 				F2608130000000000002102 /* SyncGatewaysCloudBridge.swift in Sources */,
 				F2608130000000000002202 /* SyncGatewaysDirtyTimeOverride.swift in Sources */,
 				F2608130000000000002302 /* SyncGatewaysTimeZoneCardView.swift in Sources */,
 				F2608130000000000002402 /* SyncGatewayCell.swift in Sources */,
 				F2608130000000000002502 /* SyncGatewaysSupportingViews.swift in Sources */,
 				F2608130000000000002602 /* GatewayCloudSyncGenerationPolicy.swift in Sources */,
+				F2608140000000000002702 /* GatewayTimeInformationCoordinator.swift in Sources */,
+				F2608140000000000000102 /* GatewayMenuPolicy.swift in Sources */,
 				F260810A0000000000000102 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				C8FA11012F11000100000002 /* SimulateFaultAction.swift in Sources */,
 				C8FB11012F11000400000002 /* SimulateFaultRequest.swift in Sources */,
@@ -6745,7 +6777,7 @@
 				C886E0852E30DE4900D0C3A6 /* String+Extension.swift in Sources */,
 				C886E0862E30DE4900D0C3A6 /* GatewayViewController.swift in Sources */,
 				C8F6A1012FA3000000000001 /* WiFiGatewayViewController.swift in Sources */,
-				C8F6A2022FA3000000000002 /* WiFiGatewayTimeSyncCoordinator.swift in Sources */,
+				C8F6A2022FA3000000000002 /* WiFiGatewayAutomaticLoadGate.swift in Sources */,
 				C8F6A3022FA3000000000002 /* WiFiGatewayV19Timing.swift in Sources */,
 				C8F6A3122FA3000000000002 /* WiFiGatewayCredentialMutationReducer.swift in Sources */,
 				C8F6A3222FA3000000000002 /* WiFiGatewayConnectionPollingReducer.swift in Sources */,
@@ -7162,12 +7194,16 @@
 				F2608130000000000001803 /* SyncGatewaysState.swift in Sources */,
 				F2608130000000000001903 /* SyncGatewaysScanSession.swift in Sources */,
 				F2608130000000000002003 /* GatewayTimeSyncCoordinator.swift in Sources */,
+				F2608140000000000002803 /* GatewayFastAddTimeInitialization.swift in Sources */,
+				F2608140000000000002903 /* SiteGatewayHeaderLayoutPolicy.swift in Sources */,
 				F2608130000000000002103 /* SyncGatewaysCloudBridge.swift in Sources */,
 				F2608130000000000002203 /* SyncGatewaysDirtyTimeOverride.swift in Sources */,
 				F2608130000000000002303 /* SyncGatewaysTimeZoneCardView.swift in Sources */,
 				F2608130000000000002403 /* SyncGatewayCell.swift in Sources */,
 				F2608130000000000002503 /* SyncGatewaysSupportingViews.swift in Sources */,
 				F2608130000000000002603 /* GatewayCloudSyncGenerationPolicy.swift in Sources */,
+				F2608140000000000002703 /* GatewayTimeInformationCoordinator.swift in Sources */,
+				F2608140000000000000103 /* GatewayMenuPolicy.swift in Sources */,
 				F260810A0000000000000103 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				C8FA11012F11000100000003 /* SimulateFaultAction.swift in Sources */,
 				C8FB11012F11000400000003 /* SimulateFaultRequest.swift in Sources */,
@@ -7395,7 +7431,7 @@
 				8C7789062F975954000887FE /* EmerFireStatus.swift in Sources */,
 				C8D22E012E010A47001A2BDA /* GatewayViewController.swift in Sources */,
 				C8F6A1022FA3000000000001 /* WiFiGatewayViewController.swift in Sources */,
-				C8F6A2032FA3000000000003 /* WiFiGatewayTimeSyncCoordinator.swift in Sources */,
+				C8F6A2032FA3000000000003 /* WiFiGatewayAutomaticLoadGate.swift in Sources */,
 				C8F6A3032FA3000000000003 /* WiFiGatewayV19Timing.swift in Sources */,
 				C8F6A3132FA3000000000003 /* WiFiGatewayCredentialMutationReducer.swift in Sources */,
 				C8F6A3232FA3000000000003 /* WiFiGatewayConnectionPollingReducer.swift in Sources */,
@@ -7801,12 +7837,16 @@
 				F2608130000000000001804 /* SyncGatewaysState.swift in Sources */,
 				F2608130000000000001904 /* SyncGatewaysScanSession.swift in Sources */,
 				F2608130000000000002004 /* GatewayTimeSyncCoordinator.swift in Sources */,
+				F2608140000000000002804 /* GatewayFastAddTimeInitialization.swift in Sources */,
+				F2608140000000000002904 /* SiteGatewayHeaderLayoutPolicy.swift in Sources */,
 				F2608130000000000002104 /* SyncGatewaysCloudBridge.swift in Sources */,
 				F2608130000000000002204 /* SyncGatewaysDirtyTimeOverride.swift in Sources */,
 				F2608130000000000002304 /* SyncGatewaysTimeZoneCardView.swift in Sources */,
 				F2608130000000000002404 /* SyncGatewayCell.swift in Sources */,
 				F2608130000000000002504 /* SyncGatewaysSupportingViews.swift in Sources */,
 				F2608130000000000002604 /* GatewayCloudSyncGenerationPolicy.swift in Sources */,
+				F2608140000000000002704 /* GatewayTimeInformationCoordinator.swift in Sources */,
+				F2608140000000000000104 /* GatewayMenuPolicy.swift in Sources */,
 				F260810A0000000000000104 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				C8FA11012F11000100000004 /* SimulateFaultAction.swift in Sources */,
 				C8FB11012F11000400000004 /* SimulateFaultRequest.swift in Sources */,
@@ -8024,7 +8064,7 @@
 				C8BB66442ED3F056000C63EE /* String+Extension.swift in Sources */,
 				C8BB66452ED3F056000C63EE /* GatewayViewController.swift in Sources */,
 				C8F6A1032FA3000000000001 /* WiFiGatewayViewController.swift in Sources */,
-				C8F6A2042FA3000000000004 /* WiFiGatewayTimeSyncCoordinator.swift in Sources */,
+				C8F6A2042FA3000000000004 /* WiFiGatewayAutomaticLoadGate.swift in Sources */,
 				C8F6A3042FA3000000000004 /* WiFiGatewayV19Timing.swift in Sources */,
 				C8F6A3142FA3000000000004 /* WiFiGatewayCredentialMutationReducer.swift in Sources */,
 				C8F6A3242FA3000000000004 /* WiFiGatewayConnectionPollingReducer.swift in Sources */,
@@ -8611,7 +8651,19 @@
 			baseConfigurationReference = F10000000000000000000003 /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SunSmart/SunSmart.entitlements;
+				DEVELOPMENT_TEAM = JTD3WYUC58;
+				INFOPLIST_KEY_CFBundleDisplayName = SunSmart;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SunSmart uses location permission to display the currently connected Wi-Fi network name.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = "";
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				MARKETING_VERSION = 1.0.26;
+				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Debug;
 		};
@@ -8620,7 +8672,19 @@
 			baseConfigurationReference = F10000000000000000000004 /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SunSmart/SunSmart.entitlements;
+				DEVELOPMENT_TEAM = JTD3WYUC58;
+				INFOPLIST_KEY_CFBundleDisplayName = SunSmart;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SunSmart uses location permission to display the currently connected Wi-Fi network name.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = "";
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				MARKETING_VERSION = 1.0.26;
+				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Release;
 		};

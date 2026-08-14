@@ -775,6 +775,7 @@ self.updateAddressData()
         favouritesCollectionView.collectionViewLayout.invalidateLayout()
         allSpacesCollectionView.reloadData()
         favouritesCollectionView.reloadData()
+        updateEmptyView()
     }
 
     private func setEntrySyncNavigationLocked(_ locked: Bool) {
@@ -839,6 +840,44 @@ self.updateAddressData()
             }
         )
         navigationController?.pushViewController(controller, animated: true)
+    }
+
+    private func pendingTimeZoneSyncGatewayIDs() -> Set<String> {
+        guard let remote = latestTimeZoneRemoteSnapshot,
+              let storageValue = site.timezone,
+              let targetTimeZone = SiteTimeZoneValue(storageValue: storageValue),
+              targetTimeZone == remote.timezone,
+              let meshNetwork = sitePrimaryMeshNetwork() else {
+            return []
+        }
+        let targets = SyncGatewaysContextBuilder.makeTargets(
+            targetTimeZone: targetTimeZone,
+            remote: remote,
+            meshNetwork: meshNetwork,
+            gatewayModels: gatewayModels.map(\.model)
+        )
+        return Set(targets.map(\.descriptor.id))
+    }
+
+    private func makeGatewayListItems(_ gateways: [Gateway]) -> [GatewayListItem] {
+        let pendingIDs = pendingTimeZoneSyncGatewayIDs()
+        var items = gateways.map { gateway in
+            let id = SiteGatewayAccessScope.normalize(gateway.mac)
+            return GatewayListItem(
+                id: gateway.mac,
+                title: gateway.name,
+                status: gateway.connectStatus,
+                gatewayModel: gateway.model,
+                needsTimeZoneSync: id.map(pendingIDs.contains) ?? false
+            )
+        }
+        if !items.isEmpty {
+            items.insert(
+                GatewayListItem(id: "", title: "overview".localizedString),
+                at: 0
+            )
+        }
+        return items
     }
 
     private func canStartGatewayTimeSync(
@@ -2314,10 +2353,7 @@ self.updateAddressData()
             if case .successful = state { // 同步成功后清除状态
 //                if gateway.syncCloudError != nil {
 //                    gateway.syncCloudError = nil
-                var items = showGatewayModels.map({ GatewayListItem(id: $0.mac, title: $0.name, status: $0.connectStatus, gatewayModel: $0.model)})
-                if items.count > 0 {
-                    items.insert(.init(id: "", title: "overview".localizedString), at: 0)
-                }
+                let items = makeGatewayListItems(showGatewayModels)
                 allSpaceGatewayHeaderView?.gatewayListView.updateItems(items)
 //                }
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
@@ -2332,10 +2368,7 @@ self.updateAddressData()
             
             if gateway.syncCloudError != nil {
                 gateway.syncCloudError = nil
-                var items = gatewayModels.map({ GatewayListItem(id: $0.mac, title: $0.name, status: $0.connectStatus, gatewayModel: $0.model)})
-                if items.count > 0 {
-                    items.insert(.init(id: "", title: "overview".localizedString), at: 0)
-                }
+                let items = makeGatewayListItems(gatewayModels)
                 favouriteSpaceGatewayHeaderView?.gatewayListView.updateItems(items)
             }
             
@@ -2630,6 +2663,33 @@ self.updateAddressData()
 //        }
     }
     
+    private func siteGatewayHeaderHeight(
+        for spaces: [SpaceData]
+    ) -> CGFloat {
+        let showsReviewSync: Bool
+        if case .review = timeZoneReviewState {
+            showsReviewSync = true
+        } else {
+            showsReviewSync = false
+        }
+        return SiteGatewayHeaderLayoutPolicy.height(
+            gatewayListHeight: SCRYFrom(48),
+            gatewayStatusHeight: SCRYFrom(48),
+            reviewSyncHeight: SCRYFrom(64),
+            showsGatewayStatus: shouldShowGatewayStatus(for: spaces),
+            showsReviewSync: showsReviewSync
+        )
+    }
+
+    private func emptyFrame(
+        for collectionView: UICollectionView,
+        spaces: [SpaceData]
+    ) -> CGRect {
+        var frame = collectionView.bounds
+        frame.origin.y += siteGatewayHeaderHeight(for: spaces)
+        return frame
+    }
+
     /// 判断是否显示空数据页
     private func updateEmptyView() {
         
@@ -2639,12 +2699,15 @@ self.updateAddressData()
         
         if allSpaces.isEmpty {
             if site.spaces.isEmpty {
-                var frame = allSpacesCollectionView.bounds
-                frame.origin.y = 0
-                if showGatewayModels.count > 0 {
-                    frame.origin.y += SCRYFrom(48)
-                }
-                allSpacesCollectionView.showEmptyDataView(frame: frame,imageName: "space_empty", title: "no_spaces_title".localizedString, tipText: nil)
+                allSpacesCollectionView.showEmptyDataView(
+                    frame: emptyFrame(
+                        for: allSpacesCollectionView,
+                        spaces: allSpaces
+                    ),
+                    imageName: "space_empty",
+                    title: "no_spaces_title".localizedString,
+                    tipText: nil
+                )
                 if let emptyView = allSpacesCollectionView.emptyView {
     //                let margin = NetworkRequest.shared.networkable ? 0 : (allSpacesNoInternetView?.height ?? 0)
                     
@@ -2691,14 +2754,28 @@ self.updateAddressData()
                     emptyView.tipLabel.attributedText = attStr
                 }
             }else {
-                allSpacesCollectionView.showEmptyDataView(frame: favouritesCollectionView.bounds.offsetBy(dx: 0, dy: SCRYFrom(96)), title: "no_spaces_title".localizedString, bottomMargin: SCRYFrom(32))
+                allSpacesCollectionView.showEmptyDataView(
+                    frame: emptyFrame(
+                        for: allSpacesCollectionView,
+                        spaces: allSpaces
+                    ),
+                    title: "no_spaces_title".localizedString,
+                    bottomMargin: SCRYFrom(32)
+                )
             }
         }else {
             allSpacesCollectionView.hideEmptyDataView()
         }
         
         if favouriteSpaces.isEmpty {
-            favouritesCollectionView.showEmptyDataView(frame: favouritesCollectionView.bounds.offsetBy(dx: 0, dy: site.spaces.count > 0 ? SCRYFrom(96) : 0), title: "no_favourites_spaces".localizedString, bottomMargin: SCRYFrom(32))
+            favouritesCollectionView.showEmptyDataView(
+                frame: emptyFrame(
+                    for: favouritesCollectionView,
+                    spaces: favouriteSpaces
+                ),
+                title: "no_favourites_spaces".localizedString,
+                bottomMargin: SCRYFrom(32)
+            )
         }else {
             favouritesCollectionView.hideEmptyDataView()
         }
@@ -2833,7 +2910,15 @@ extension SiteViewController: GatewayListViewDelegate {
     
     /// 点击菜单按钮回调
     func gatewayListViewDidClickMenu(_ view: GatewayListView) {
-        let datas = showGatewayModels.map({ SiteGatewaysMenuView.GatewayMenuData(name: $0.name, status: $0.connectStatus) })
+        let pendingIDs = pendingTimeZoneSyncGatewayIDs()
+        let datas = showGatewayModels.map { gateway in
+            let id = SiteGatewayAccessScope.normalize(gateway.mac)
+            return SiteGatewaysMenuView.GatewayMenuData(
+                name: gateway.name,
+                status: gateway.connectStatus,
+                needsTimeZoneSync: id.map(pendingIDs.contains) ?? false
+            )
+        }
         
         let menuPoint = CGPoint(x: view.width - SiteGatewaysMenuView.defalutWidth, y: view.frame.maxY + SCRYFrom(4))
         let windowPoint = view.convert(menuPoint, to: UIApplication.shared.keyWindow())
@@ -2984,10 +3069,7 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
         
         if showGatewayModels.count > 0 {
             headerView.showGatewayListView = true
-            var items = showGatewayModels.map({ GatewayListItem(id: $0.mac, title: $0.name, status: $0.connectStatus, gatewayModel: $0.model)})
-            if items.count > 0 {
-                items.insert(.init(id: "", title: "overview".localizedString), at: 0)
-            }
+            let items = makeGatewayListItems(showGatewayModels)
             headerView.gatewayListView.updateItems(items)
             headerView.gatewayListView.selectedIndex = selectIndex
         }else {
@@ -3052,18 +3134,13 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
 //        }
         
         let headerW = collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right
-        var headerH = SCRYFrom(48)
-
         let spaces = collectionView == allSpacesCollectionView
             ? allSpaces
             : favouriteSpaces
-        if shouldShowGatewayStatus(for: spaces) {
-            headerH += SCRYFrom(48)
-        }
-        if case .review = timeZoneReviewState {
-            headerH += SCRYFrom(64)
-        }
-        return CGSize(width: headerW, height: headerH)
+        return CGSize(
+            width: headerW,
+            height: siteGatewayHeaderHeight(for: spaces)
+        )
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {

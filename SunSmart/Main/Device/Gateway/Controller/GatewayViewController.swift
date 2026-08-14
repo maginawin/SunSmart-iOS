@@ -16,6 +16,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     private var footerView: UIView!
     private var copyInformationBtn: UIButton!
     private(set) var bottomView: DeviceBottomBtnView!
+    private var modalDismissalStateBeforeProtectedFlow: Bool?
 
 
     private var name: String?
@@ -25,7 +26,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 //    private var otherGateways: [GatewayModel] = []
 
     var sections: [SectionType] {
-        let baseSections: [SectionType] = [.name, .info, .associatedSpaces, .apn, .serverInformation]
+        let baseSections: [SectionType] = [.name, .associatedSpaces, .apn, .serverInformation]
         return supportsAPNConfiguration ? baseSections : baseSections.filter { $0 != .apn }
     }
     var infoTypes: [InfoCellType] {
@@ -55,6 +56,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 
     var supportsGatewaySignalRefresh: Bool {
         return true
+    }
+
+    var gatewayFirmwareKind: GatewayFirmwareKind {
+        return .fourG
     }
 
     var canConfigureCurrentGateway: Bool {
@@ -161,13 +166,24 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         stopSignalRefreshTimer()
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        restoreModalStackDismissalIfNeeded()
+    }
+
 
     func configureNavigationItems() {
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
-            image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal),
-            style: .done,
+        navigationItem.leftBarButtonItem = UIBarButtonItem(
+            image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal),
+            style: .plain,
             target: self,
             action: #selector(closeAction)
+        )
+        navigationItem.rightBarButtonItem = UIBarButtonItem(
+            image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal),
+            style: .done,
+            target: self,
+            action: #selector(moreClick)
         )
     }
 
@@ -182,6 +198,101 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                 }
             })]).show()
         }
+    }
+
+    @objc func moreClick() {
+        let actions = GatewayMenuPolicy.menuActions(
+            firmwareKind: gatewayFirmwareKind,
+            canDelete: canConfigureCurrentGateway
+        )
+        let items = actions.map(makeGatewayMenuItem)
+        let touchCenterX = view.width - navigationRightItemMargin - 15
+        let touchCenterY = view.safeAreaInsets.top - 10
+        let windowPoint = view.convert(
+            CGPoint(x: touchCenterX, y: touchCenterY),
+            to: UIApplication.shared.keyWindow()
+        )
+        MenuPopView.show(
+            items: items,
+            anchorPoint: windowPoint,
+            menuWidth: SCRXFrom(120)
+        )
+    }
+
+    private func makeGatewayMenuItem(
+        _ action: GatewayMenuAction
+    ) -> MenuPopView.MenuItem {
+        switch action {
+        case .fourGDFU:
+            return .init(
+                icon: UIImage(named: "menu_wifi_dfu"), title: "4g_dfu".localizedString,
+                hideAnimation: false,
+                performsActionAfterDismiss: true,
+                tapItemBack: { [weak self] _ in
+                    self?.performGatewayDFUAction()
+                }
+            )
+        case .wifiDFU:
+            return .init(
+                icon: UIImage(named: "menu_wifi_dfu"), title: "wifi_dfu".localizedString,
+                hideAnimation: false,
+                performsActionAfterDismiss: true,
+                tapItemBack: { [weak self] _ in
+                    self?.performGatewayDFUAction()
+                }
+            )
+        case .delete:
+            return .init(
+                icon: UIImage(named: "menu_delete"), title: "delete".localizedString,
+                tapItemBack: { [weak self] _ in
+                    self?.deleteBtnAction()
+                }
+            )
+        case .information:
+            return .init(
+                icon: UIImage(named: "menu_information"), title: "information".localizedString, hideAnimation: false, performsActionAfterDismiss: true,
+                tapItemBack: { [weak self] _ in
+                    guard let self else { return }
+                    let controller = DeviceInformationViewController(
+                        node: self.node,
+                        showsGroupSection: false,
+                        showsSceneSection: false,
+                        gatewayContext: GatewayInformationContext(site: self.site, gateway: self.gateway)
+                    )
+                    self.preventModalStackDismissalUntilReturn()
+                    self.pushDeviceInformationController(controller)
+                }
+            )
+        case .identify:
+            return .init(
+                icon: UIImage(named: "menu_identify"), title: "identify".localizedString,
+                tapItemBack: { [weak self] _ in
+                    guard let self else { return }
+                    MeshAPI.identify(address: self.node.primaryUnicastAddress)
+                }
+            )
+        }
+    }
+
+    func performGatewayDFUAction() {
+        XWHUDManager.showTipHUD(
+            "under_development".localizedString,
+            isLineFeed: true
+        )
+    }
+
+    func preventModalStackDismissalUntilReturn() {
+        guard let navigationController else { return }
+        if modalDismissalStateBeforeProtectedFlow == nil {
+            modalDismissalStateBeforeProtectedFlow = navigationController.isModalInPresentation
+        }
+        navigationController.isModalInPresentation = true
+    }
+
+    private func restoreModalStackDismissalIfNeeded() {
+        guard let previousState = modalDismissalStateBeforeProtectedFlow else { return }
+        navigationController?.isModalInPresentation = previousState
+        modalDismissalStateBeforeProtectedFlow = nil
     }
 
     override func viewDidLayoutSubviews() {
@@ -490,11 +601,25 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
 
     func showConfiguredBottomActions() {
-        bottomView.showEditUI()
+        applyBottomActionMode(
+            GatewayMenuPolicy.bottomActionMode(isConfigured: true)
+        )
     }
 
     func showRepairBottomActions() {
-        bottomView.showCreateUI()
+        applyBottomActionMode(
+            GatewayMenuPolicy.bottomActionMode(isConfigured: false)
+        )
+    }
+
+    private func applyBottomActionMode(_ mode: GatewayBottomActionMode) {
+        switch mode {
+        case .saveOnly:
+            bottomView.isHidden = false
+            bottomView.showSaveOnlyUI()
+        case .hidden:
+            bottomView.isHidden = true
+        }
     }
 
     /// 修复

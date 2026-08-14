@@ -202,7 +202,7 @@ final class SyncGatewaysBottomActionBar: UIView {
         backgroundColor = .white
 
         let divider = UIView()
-        divider.backgroundColor = RGB(193, 207, 226)
+        divider.backgroundColor = RGB(243, 243, 243)
         addSubview(divider)
         divider.snp.makeConstraints { make in
             make.top.left.right.equalToSuperview()

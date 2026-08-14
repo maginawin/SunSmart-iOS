@@ -10,6 +10,17 @@ import NordicSigMeshSDK
 
 class DeviceInformationViewController: UIViewController {
 
+    private struct DeviceInfoRow {
+        enum ID {
+            case name, mac, pid, address, versionIdentifier
+            case model, deviceType, firmware, signalStrength
+            case dateTime, timeZone
+        }
+
+        let id: ID
+        let model: CustomCellModel
+    }
+
     private enum DeviceInfoDisplayMode {
         case standard
         case full
@@ -19,7 +30,7 @@ class DeviceInformationViewController: UIViewController {
     
     private var sections: [SectionType] = [.deviceInfo, .group, .scene]
     private var sectionShowMap: [SectionType: Bool] = [:]
-    private var deviceInfoModels: [CustomCellModel] = []
+    private var deviceInfoModels: [DeviceInfoRow] = []
     
     let node: Node
     private let emptyGroupText: String
@@ -27,6 +38,10 @@ class DeviceInformationViewController: UIViewController {
     private let sceneTextOverride: String?
     private let nameOverride: String?
     private let deviceInfoDisplayMode: DeviceInfoDisplayMode
+    private let gatewayContext: GatewayInformationContext?
+    private var gatewayTimeCoordinator: GatewayTimeInformationCoordinator?
+    private var gatewayTimeSnapshot: GatewayTimeInformationSnapshot?
+    private var gatewayIsDisconnected = false
     
     init(
         node: Node,
@@ -36,7 +51,8 @@ class DeviceInformationViewController: UIViewController {
         groupTextOverride: String? = nil,
         sceneTextOverride: String? = nil,
         nameOverride: String? = nil,
-        showsFullDeviceInfo: Bool = false
+        showsFullDeviceInfo: Bool = false,
+        gatewayContext: GatewayInformationContext? = nil
     ) {
         self.node = node
         self.emptyGroupText = emptyGroupText ?? "device_not_added_group".localizedString
@@ -44,6 +60,7 @@ class DeviceInformationViewController: UIViewController {
         self.sceneTextOverride = sceneTextOverride
         self.nameOverride = nameOverride
         self.deviceInfoDisplayMode = showsFullDeviceInfo ? .full : .standard
+        self.gatewayContext = gatewayContext
         self.sections = [.deviceInfo]
         if showsGroupSection {
             self.sections.append(.group)
@@ -69,6 +86,8 @@ class DeviceInformationViewController: UIViewController {
         sectionShowMap = [.deviceInfo: true, .group: true, .scene: true]
         
         setupTableView()
+        setupGatewayTimeCoordinator()
+        requestGatewayTime()
         getData()
         refreshRSSI()
     }
@@ -78,6 +97,46 @@ class DeviceInformationViewController: UIViewController {
         if self.tableView.firstShowFlashScrollIndicators {
             self.tableView.flashScrollIndicatorsIfNeeded()
         }
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        let isNoLongerInNavigationStack = navigationController?.viewControllers.contains(where: { $0 === self }) == false
+        if isMovingFromParent || isBeingDismissed || isNoLongerInNavigationStack {
+            gatewayTimeCoordinator?.finishPage()
+        }
+    }
+
+    private func setupGatewayTimeCoordinator() {
+        guard let gatewayContext else { return }
+        let coordinator = GatewayTimeInformationCoordinator(context: gatewayContext)
+        coordinator.onReadState = { [weak self] state in
+            guard let self else { return }
+            switch state {
+            case .disconnected:
+                gatewayIsDisconnected = true
+                reloadDeviceInfoSection()
+            case .reading:
+                gatewayIsDisconnected = false
+                reloadDeviceInfoSection()
+            case .succeeded(let snapshot):
+                gatewayIsDisconnected = false
+                gatewayTimeSnapshot = snapshot
+                reloadDeviceInfoSection()
+            case .failed:
+                gatewayIsDisconnected = false
+                reloadDeviceInfoSection()
+                XWHUDManager.showErrorTipHUD("failed_to_retrieve_data".localizedString)
+            }
+        }
+        coordinator.onCloudFailure = {
+            XWHUDManager.showErrorTipHUD("site_entry_sync_failed_to_update_server".localizedString)
+        }
+        gatewayTimeCoordinator = coordinator
+    }
+
+    private func requestGatewayTime() {
+        _ = gatewayTimeCoordinator?.read()
     }
     
     private func getData() {
@@ -155,13 +214,63 @@ class DeviceInformationViewController: UIViewController {
         
         let singleStrengthModel = CustomCellModel(title: "signal_strength".localizedString, content: node.rssi != nil ? "\(node.rssi!)dB" : "--", style: .none)
         
+        var rows: [DeviceInfoRow]
         switch deviceInfoDisplayMode {
         case .full:
-            deviceInfoModels = [nameModel, macModel, pidModel, addressModel, vidModel, devModel, deviceTypeModel, firmwareModel, singleStrengthModel]
+            rows = [
+                DeviceInfoRow(id: .name, model: nameModel),
+                DeviceInfoRow(id: .mac, model: macModel),
+                DeviceInfoRow(id: .pid, model: pidModel),
+                DeviceInfoRow(id: .address, model: addressModel),
+                DeviceInfoRow(id: .versionIdentifier, model: vidModel),
+                DeviceInfoRow(id: .model, model: devModel),
+                DeviceInfoRow(id: .deviceType, model: deviceTypeModel),
+                DeviceInfoRow(id: .firmware, model: firmwareModel),
+                DeviceInfoRow(id: .signalStrength, model: singleStrengthModel)
+            ]
         case .standard:
-            deviceInfoModels = [nameModel, macModel, pidModel, addressModel, vidModel, devModel, deviceTypeModel, firmwareModel, singleStrengthModel]
+            rows = [
+                DeviceInfoRow(id: .name, model: nameModel),
+                DeviceInfoRow(id: .mac, model: macModel),
+                DeviceInfoRow(id: .pid, model: pidModel),
+                DeviceInfoRow(id: .address, model: addressModel),
+                DeviceInfoRow(id: .versionIdentifier, model: vidModel),
+                DeviceInfoRow(id: .model, model: devModel),
+                DeviceInfoRow(id: .deviceType, model: deviceTypeModel),
+                DeviceInfoRow(id: .firmware, model: firmwareModel),
+                DeviceInfoRow(id: .signalStrength, model: singleStrengthModel)
+            ]
         }
-        
+
+        if gatewayContext != nil {
+            let dateTimeContent = gatewayIsDisconnected
+                ? "gateway_not_connected".localizedString
+                : gatewayTimeSnapshot?.dateTimeText ?? "--"
+            let timeZoneContent = gatewayIsDisconnected
+                ? "--"
+                : gatewayTimeSnapshot?.timeZoneText ?? "--"
+            rows.append(
+                DeviceInfoRow(
+                    id: .dateTime,
+                    model: CustomCellModel(
+                        title: "gateway_date_time".localizedString,
+                        content: dateTimeContent,
+                        style: .none
+                    )
+                )
+            )
+            rows.append(
+                DeviceInfoRow(
+                    id: .timeZone,
+                    model: CustomCellModel(
+                        title: "site_time_zone_row_title".localizedString,
+                        content: timeZoneContent,
+                        style: .none
+                    )
+                )
+            )
+        }
+        deviceInfoModels = rows
     }
     
     private func setupTableView() {
@@ -275,7 +384,7 @@ extension DeviceInformationViewController: UITableViewDataSource, UITableViewDel
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! CustomTableViewCell
         cell.selectionStyle = .none
         if sectionType == .deviceInfo {
-            let model = deviceInfoModels[indexPath.row]
+            let model = deviceInfoModels[indexPath.row].model
             cell.cellStyle = model.style
             cell.titleLabel.text = model.title
             cell.titleLabel.textColor = model.titleColor
@@ -328,13 +437,22 @@ extension DeviceInformationViewController: UITableViewDataSource, UITableViewDel
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
         let sectionType = sections[indexPath.section]
-        if sectionType == .deviceInfo && indexPath.row == 1 { // 复制
-            let model = deviceInfoModels[indexPath.row]
-            if let content = model.content {
+        guard sectionType == .deviceInfo,
+              deviceInfoModels.indices.contains(indexPath.row) else {
+            return
+        }
+        let row = deviceInfoModels[indexPath.row]
+        switch row.id {
+        case .mac:
+            if let content = row.model.content {
                 let pasteboard = UIPasteboard.general
                 pasteboard.string = content
                 XWHUDManager.showTipHUD(inView: "copy_success".localizedString, isLineFeed: false)
             }
+        case .dateTime, .timeZone:
+            requestGatewayTime()
+        default:
+            break
         }
     }
     

@@ -14,6 +14,8 @@ class SiteGatewaysMenuView: UIView {
         let name: String
         /// 状态
         let status: GatewayConnectStatus
+        /// 是否需要同步时区
+        let needsTimeZoneSync: Bool
     }
     
     /// 默认内容宽度
@@ -161,6 +163,7 @@ extension SiteGatewaysMenuView: UITableViewDataSource, UITableViewDelegate {
             cell.cellStyle = .none
             cell.titleX = SCRXFrom(8)
             cell.titleLabel.text = "＋" + "add_gateway".localizedString
+            cell.titleLabel.textColor = titleColor
         }else {
             
             let data = datas[indexPath.row]
@@ -176,8 +179,10 @@ extension SiteGatewaysMenuView: UITableViewDataSource, UITableViewDelegate {
             cell.iconX = SCRXFrom(8)
             cell.titleX = SCRXFrom(22)
             cell.titleLabel.text = data.name
+            cell.titleLabel.textColor = data.needsTimeZoneSync
+                ? SiteGatewayTimeZoneSyncAppearance.menuPendingNameColor
+                : titleColor
         }
-        cell.titleLabel.textColor = titleColor
         cell.titleLabel.font = titleFont
         cell.backgroundColor = selectIndex == indexPath.row ? self.selectBackgroundColor : .clear
         cell.titleMaxWidth = tableView.width - SCRXFrom(26)

@@ -9,6 +9,10 @@ import UIKit
 import SnapKit
 import NordicSigMeshSDK
 
+enum SiteGatewayTimeZoneSyncAppearance {
+    static let pendingNameColor = RGB(187, 77, 0)
+    static let menuPendingNameColor = RGB(255, 210, 48)
+}
 
 /// 网关列表项数据模型
 struct GatewayListItem {
@@ -17,13 +21,22 @@ struct GatewayListItem {
     var status: GatewayConnectStatus?  // 状态（Overview 为 nil）
     var isSelected: Bool        // 是否选中
     var gatewayModel: GatewayModel? // 网关模型（Overview 为 nil）
+    var needsTimeZoneSync: Bool
     
-    init(id: String, title: String, status: GatewayConnectStatus? = nil, isSelected: Bool = false, gatewayModel: GatewayModel? = nil) {
+    init(
+        id: String,
+        title: String,
+        status: GatewayConnectStatus? = nil,
+        isSelected: Bool = false,
+        gatewayModel: GatewayModel? = nil,
+        needsTimeZoneSync: Bool = false
+    ) {
         self.id = id
         self.title = title
         self.status = status
         self.isSelected = isSelected
         self.gatewayModel = gatewayModel
+        self.needsTimeZoneSync = needsTimeZoneSync
     }
 }
 
@@ -322,7 +335,9 @@ class GatewayItemView: UIView {
     
     func update(with item: GatewayListItem) {
         titleLabel.text = item.title
-        titleLabel.textColor = item.isSelected ? Bar_Color : ImportantText_Color
+        titleLabel.textColor = item.needsTimeZoneSync
+            ? SiteGatewayTimeZoneSyncAppearance.pendingNameColor
+            : (item.isSelected ? Bar_Color : ImportantText_Color)
         contentView.arrangedSubviews.forEach({ arrangedSubview in
             contentView.removeArrangedSubview(arrangedSubview)
             arrangedSubview.removeFromSuperview()

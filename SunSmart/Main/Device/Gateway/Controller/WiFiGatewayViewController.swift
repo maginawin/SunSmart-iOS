@@ -64,11 +64,8 @@ final class WiFiGatewayViewController: GatewayViewController {
     private var automaticLoadGate = WiFiGatewayAutomaticLoadGate()
     private var credentialMutationReducer = WiFiGatewayCredentialMutationReducer()
     private var connectionPollingReducer = WiFiGatewayConnectionPollingReducer()
-    private var activeTimeSyncContext: ProxyReadyContext?
     private var pendingGatewayRecoveryAction: (() -> Void)?
-    private var modalDismissalStateBeforeProtectedFlow: Bool?
     private let wifiPasswordCacheKey = "wifi_gateway_saved_passwords_by_ssid"
-    private let showsDiagnosisMenuItem = false
 
     override var supportsAPNConfiguration: Bool {
         return false
@@ -78,17 +75,17 @@ final class WiFiGatewayViewController: GatewayViewController {
         return false
     }
 
+    override var gatewayFirmwareKind: GatewayFirmwareKind {
+        return .wifi
+    }
+
     override var sections: [SectionType] {
-        var sections = super.sections.filter { $0 != .info }
+        var sections = super.sections
         guard isNetworkConnectivityVisible, let nameIndex = sections.firstIndex(of: .name) else {
             return sections
         }
         sections.insert(.networkConnectivity, at: sections.index(after: nameIndex))
         return sections
-    }
-
-    override var infoTypes: [InfoCellType] {
-        return []
     }
 
     override func viewDidLoad() {
@@ -116,11 +113,6 @@ final class WiFiGatewayViewController: GatewayViewController {
         }
     }
 
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        restoreModalStackDismissalIfNeeded()
-    }
-
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
 
@@ -135,30 +127,6 @@ final class WiFiGatewayViewController: GatewayViewController {
     override func closeGatewayPage() {
         cancelPendingGatewayRecovery()
         super.closeGatewayPage()
-    }
-
-    override func configureNavigationItems() {
-        navigationItem.leftBarButtonItem = UIBarButtonItem(
-            image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal),
-            style: .plain,
-            target: self,
-            action: #selector(closeAction)
-        )
-        navigationItem.rightBarButtonItem = UIBarButtonItem(
-            image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal),
-            style: .done,
-            target: self,
-            action: #selector(moreClick)
-        )
-    }
-
-    override func showConfiguredBottomActions() {
-        bottomView.isHidden = false
-        bottomView.showSaveOnlyUI()
-    }
-
-    override func showRepairBottomActions() {
-        bottomView.isHidden = true
     }
 
     override func registerAdditionalGatewayCells(in tableView: UITableView) {
@@ -233,26 +201,9 @@ final class WiFiGatewayViewController: GatewayViewController {
 
     override func gatewayProxyDidBecomeReady(_ context: ProxyReadyContext) {
         stopWiFiRSSIStatusRefresh()
-        activeTimeSyncContext = context
-        WiFiGatewayTimeSyncCoordinator.shared.synchronize(
-            context: context,
-            node: node
-        ) { [weak self] outcome in
-            guard let self, self.activeTimeSyncContext == context else { return }
-            guard MeshLibManager.manager.currentProxyReadyContext == context else {
-                self.activeTimeSyncContext = nil
-                return
-            }
-            self.activeTimeSyncContext = nil
-            if case .ignored = outcome { return }
-            self.automaticLoadGate.markReady(sessionID: context.sessionID)
-            print(
-                "WiFiGateway automatic load barrier opened address="
-                + String(format: "0x%04X", context.nodeAddress)
-                + " session=\(context.sessionID) result=\(outcome)"
-            )
-            self.drainAutomaticLoadIfPossible()
-        }
+        guard MeshLibManager.manager.currentProxyReadyContext == context else { return }
+        automaticLoadGate.markReady(sessionID: context.sessionID)
+        drainAutomaticLoadIfPossible()
     }
 
     override func performGatewayRepair() {
@@ -301,53 +252,10 @@ final class WiFiGatewayViewController: GatewayViewController {
         NotificationCenter.default.removeObserver(self, name: UIApplication.didBecomeActiveNotification, object: nil)
     }
 
-    @objc private func moreClick() {
-        var items: [MenuPopView.MenuItem] = []
-        items.append(.init(icon: UIImage(named: "menu_wifi_dfu"), title: "wifi_dfu".localizedString, hideAnimation: false, performsActionAfterDismiss: true, tapItemBack: { [weak self] _ in
-            guard let self else { return }
-            let controller = WiFiFirmwareUpdateViewController(node: self.node)
-            self.preventModalStackDismissalUntilReturn()
-            self.navigationController?.pushViewController(controller, animated: true)
-        }))
-        if canConfigureCurrentGateway {
-            items.append(.init(icon: UIImage(named: "menu_delete"), title: "delete".localizedString, tapItemBack: { [weak self] _ in
-                self?.deleteBtnAction()
-            }))
-        }
-        items.append(.init(icon: UIImage(named: "menu_information"), title: "information".localizedString, hideAnimation: false, performsActionAfterDismiss: true, tapItemBack: { [weak self] _ in
-            guard let self else { return }
-            let controller = DeviceInformationViewController(node: self.node, showsGroupSection: false, showsSceneSection: false)
-            self.preventModalStackDismissalUntilReturn()
-            self.pushDeviceInformationController(controller)
-        }))
-        items.append(.init(icon: UIImage(named: "menu_identify"), title: "Identify", tapItemBack: { [weak self] _ in
-            guard let self else { return }
-            MeshAPI.identify(address: self.node.primaryUnicastAddress)
-        }))
-        if showsDiagnosisMenuItem {
-            items.append(.init(icon: UIImage(named: "menu_diagnosis"), title: "Diagnosis", tapItemBack: { _ in
-                XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)
-            }))
-        }
-
-        let touchCenterX = view.width - navigationRightItemMargin - 15
-        let touchCenterY = view.safeAreaInsets.top - 10
-        let windowPoint = view.convert(CGPoint(x: touchCenterX, y: touchCenterY), to: UIApplication.shared.keyWindow())
-        MenuPopView.show(items: items, anchorPoint: windowPoint, menuWidth: SCRXFrom(120))
-    }
-
-    private func preventModalStackDismissalUntilReturn() {
-        guard let navigationController else { return }
-        if modalDismissalStateBeforeProtectedFlow == nil {
-            modalDismissalStateBeforeProtectedFlow = navigationController.isModalInPresentation
-        }
-        navigationController.isModalInPresentation = true
-    }
-
-    private func restoreModalStackDismissalIfNeeded() {
-        guard let previousState = modalDismissalStateBeforeProtectedFlow else { return }
-        navigationController?.isModalInPresentation = previousState
-        modalDismissalStateBeforeProtectedFlow = nil
+    override func performGatewayDFUAction() {
+        let controller = WiFiFirmwareUpdateViewController(node: self.node)
+        preventModalStackDismissalUntilReturn()
+        navigationController?.pushViewController(controller, animated: true)
     }
 
     private func setNetworkConnectivityVisible(_ visible: Bool) {
@@ -358,7 +266,6 @@ final class WiFiGatewayViewController: GatewayViewController {
 
     private func hideNetworkConnectivityForOfflineGateway() {
         if !node.state {
-            activeTimeSyncContext = nil
             automaticLoadGate.invalidate()
         }
         stopNetworkConnectionPolling()

@@ -35,7 +35,7 @@ final class SyncGatewayCell: UIView {
         nameLabel.text = SyncGatewaysCopy.gatewayName(item)
         iconView.image = UIImage(
             named: item.device == .failed
-                ? "gateway_sync_fail"
+                ? "gateway_sync_tz_fail"
                 : "time-zone-sync-status-gateway"
         )
 
@@ -43,9 +43,11 @@ final class SyncGatewayCell: UIView {
             signalView.isHidden = false
             signalView.setSignalStrength(rssi: rssi)
             signalLabel.text = "\(rssi)dB"
+            updateSignalLabelConstraints(showsSignal: true)
         } else {
             signalView.isHidden = true
             signalLabel.text = "site_sync_gateways_no_signal".localizedString
+            updateSignalLabelConstraints(showsSignal: false)
         }
 
         syncedLabel.isHidden = action != .synced
@@ -106,14 +108,10 @@ final class SyncGatewayCell: UIView {
         signalLabel.font = UIFont.systemFont(ofSize: SCRYFrom(12), weight: .light)
         signalLabel.textColor = RGB(154, 171, 194)
         addSubview(signalLabel)
-        signalLabel.snp.makeConstraints { make in
-            make.left.equalTo(signalView.snp.right).offset(SCRXFrom(6))
-            make.centerY.equalTo(signalView)
-            make.right.lessThanOrEqualTo(actionButton.snp.left).offset(SCRXFrom(-8))
-        }
+        updateSignalLabelConstraints(showsSignal: true)
 
         actionButton.layer.cornerRadius = SCRYFrom(15)
-        actionButton.layer.borderWidth = 0.5
+        actionButton.layer.borderWidth = 1
         actionButton.layer.borderColor = RGB(102, 103, 171).cgColor
         actionButton.setTitleColor(RGB(102, 103, 171), for: .normal)
         actionButton.titleLabel?.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
@@ -136,6 +134,18 @@ final class SyncGatewayCell: UIView {
             make.right.equalTo(actionButton)
             make.centerY.equalToSuperview()
             make.size.equalTo(CGSize(width: SCRXFrom(64), height: SCRYFrom(24)))
+        }
+    }
+
+    private func updateSignalLabelConstraints(showsSignal: Bool) {
+        signalLabel.snp.remakeConstraints { make in
+            if showsSignal {
+                make.left.equalTo(signalView.snp.right).offset(SCRXFrom(6))
+            } else {
+                make.left.equalTo(nameLabel)
+            }
+            make.centerY.equalTo(signalView)
+            make.right.lessThanOrEqualTo(actionButton.snp.left).offset(SCRXFrom(-8))
         }
     }
 

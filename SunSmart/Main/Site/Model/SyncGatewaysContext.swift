@@ -98,17 +98,16 @@ struct SyncGatewaysContext {
 }
 
 enum SyncGatewaysContextBuilder {
-    static func make(
-        siteID: String,
-        siteName: String,
+    static func makeTargets(
         targetTimeZone: SiteTimeZoneValue,
         remote: SiteEntryTimeZoneRemoteSnapshot,
         meshNetwork: MeshNetwork,
         gatewayModels: [GatewayModel]
-    ) -> SyncGatewaysContext {
+    ) -> [SyncGatewayRuntimeTarget] {
         var modelsByID: [String: GatewayModel] = [:]
         gatewayModels.forEach { model in
-            guard let id = SiteGatewayAccessScope.normalize(model.mac), modelsByID[id] == nil else {
+            guard let id = SiteGatewayAccessScope.normalize(model.mac),
+                  modelsByID[id] == nil else {
                 return
             }
             modelsByID[id] = model
@@ -137,7 +136,7 @@ enum SyncGatewaysContextBuilder {
             },
             local: local
         )
-        let targets = descriptors.map { descriptor in
+        return descriptors.map { descriptor in
             let gateway = modelsByID[descriptor.id]
             return SyncGatewayRuntimeTarget(
                 descriptor: descriptor,
@@ -145,6 +144,22 @@ enum SyncGatewaysContextBuilder {
                 node: gateway?.resolveNode(in: meshNetwork)
             )
         }
+    }
+
+    static func make(
+        siteID: String,
+        siteName: String,
+        targetTimeZone: SiteTimeZoneValue,
+        remote: SiteEntryTimeZoneRemoteSnapshot,
+        meshNetwork: MeshNetwork,
+        gatewayModels: [GatewayModel]
+    ) -> SyncGatewaysContext {
+        let targets = makeTargets(
+            targetTimeZone: targetTimeZone,
+            remote: remote,
+            meshNetwork: meshNetwork,
+            gatewayModels: gatewayModels
+        )
 
         let keyResolution = GatewayFirmwareScanNetworkKeyScopePolicy.resolve(
             primaryNetworkKeyIndex: meshNetwork.networkKeys.first(where: \.isPrimary)?.index,

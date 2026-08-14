@@ -73,13 +73,13 @@ assert_contains "SunSmart/Main/Device/Dali/Controller/DaliMasterViewController.s
   "$information_pattern" \
   "DALI device Information must dismiss menu before push."
 
-assert_contains "SunSmart/Main/Device/Gateway/Controller/WiFiGatewayViewController.swift" \
+assert_contains "SunSmart/Main/Device/Gateway/Controller/GatewayViewController.swift" \
   "$information_pattern" \
-  "WiFi Gateway Information must dismiss menu before push."
+  "Shared Gateway Information must dismiss menu before push."
 
-assert_contains "SunSmart/Main/Device/Gateway/Controller/WiFiGatewayViewController.swift" \
+assert_contains "SunSmart/Main/Device/Gateway/Controller/GatewayViewController.swift" \
   "$push_helper_pattern" \
-  "WiFi Gateway Information must use the explicit device Information push helper."
+  "Shared Gateway Information must use the explicit device Information push helper."
 
 assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Controller/EmerFireAlarmMonitorRouting.swift" \
   "$information_pattern" \

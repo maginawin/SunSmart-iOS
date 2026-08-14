@@ -858,6 +858,7 @@
 "network_error" = "Network error";
 "firmware_version" = "Firmware Version";
 "wifi_dfu" = "WiFi DFU";
+"4g_dfu" = "4G DFU";
 "wifi_firmware_update" = "WiFi Firmware Update";
 "wifi_firmware_upgrade" = "UPGRADE";
 "wifi_firmware_upgrade_again" = "UPGRADE AGAIN";
@@ -2042,6 +2043,8 @@
 "site_entry_sync_updated_from_server" = "Updated from server";
 "site_entry_sync_updated_to_server" = "Updated to server";
 "site_entry_sync_failed_to_update_server" = "Failed to update server";
+"gateway_date_time" = "Date time";
+"gateway_not_connected" = "Gateway not connected";
 "site_entry_sync_gateway_time_zone" = "Gateway time zone";
 "site_entry_sync_no_gateways" = "No gateways to sync";
 "site_entry_sync_gateways_need_sync" = "%d gateways need time zone sync";

@@ -30,6 +30,8 @@ class SiteDeviceAddViewController: UIViewController {
     private var addSuccessNodes: [Node] = []
     /// 添加网关设备初始化的网关model list
     private var addGatewayModels: [GatewayModel] = []
+    /// Gateway Fast Add 最后一条 TimeSet 的校验上下文
+    private var gatewayTimeInitializations: [Address: GatewayFastAddTimeInitialization] = [:]
     /// 搜索设备定时器
     private var scanTimer: Timer?
     /// 找到的设备list
@@ -529,6 +531,16 @@ class SiteDeviceAddViewController: UIViewController {
                     if let healthModel = node.healthModel {
                         appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
                     }
+                    if let siteTimeZone = self.site.timezone.flatMap(SiteTimeZoneValue.init(storageValue:)),
+                       let initialization = GatewayFastAddTimeInitialization.make(
+                        node: node,
+                        siteTimeZone: siteTimeZone
+                       ) {
+                        self.gatewayTimeInitializations[node.primaryUnicastAddress] = initialization
+                        appendMessages.append(initialization.handle)
+                    } else {
+                        GatewayFastAddTimeInitialization.clearUninitializedTime(on: node)
+                    }
                     appendCompletion(appendMessages)
                 }
             }else {
@@ -540,7 +552,11 @@ class SiteDeviceAddViewController: UIViewController {
                 appendCompletion(appendMessages)
             }
 //            return appendMessages
-        } appendMessageSuccessBack: { messageHandle in
+        } appendMessageSuccessBack: { [weak self] messageHandle in
+            self?.settleGatewayTimeInitialization(
+                messageHandle: messageHandle,
+                succeeded: true
+            )
             // 发送扩展消息成功更新缓存数据
             if let address = messageHandle.model?.parentElement?.unicastAddress ?? messageHandle.address, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
                 DispatchQueue.global().async {
@@ -550,6 +566,11 @@ class SiteDeviceAddViewController: UIViewController {
                     )
                 }
             }
+        } appendMessageFailedBack: { [weak self] messageHandle in
+            self?.settleGatewayTimeInitialization(
+                messageHandle: messageHandle,
+                succeeded: false
+            )
         } addSuccess: {[weak self] addDevice in
             guard let self = self else { return }
             addDevice.addState = .success
@@ -597,6 +618,22 @@ class SiteDeviceAddViewController: UIViewController {
 //            self.addSuccessNodes.append(contentsOf: successNodes)
         }
         
+    }
+
+    private func settleGatewayTimeInitialization(
+        messageHandle: MeshMessageHandle,
+        succeeded: Bool
+    ) {
+        guard messageHandle.message is TimeSet,
+              let address = messageHandle.model?.parentElement?.unicastAddress ?? messageHandle.address,
+              let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address),
+              let initialization = gatewayTimeInitializations.removeValue(forKey: address) else {
+            return
+        }
+        guard succeeded, initialization.acceptsCurrentNodeState(node) else {
+            GatewayFastAddTimeInitialization.clearUninitializedTime(on: node)
+            return
+        }
     }
     
     /// 检查设备地址是否足够

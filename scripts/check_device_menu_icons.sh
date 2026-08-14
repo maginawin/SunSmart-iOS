@@ -3,7 +3,7 @@ set -u
 
 light_file="SunSmart/Main/Device/Controller/DeviceLightViewController.swift"
 power_switch_file="SunSmart/Main/Device/Device1.5/NEightKeySwitches/Controller/PJEightKeySwitchMonitorVC.swift"
-wifi_gateway_file="SunSmart/Main/Device/Gateway/Controller/WiFiGatewayViewController.swift"
+gateway_file="SunSmart/Main/Device/Gateway/Controller/GatewayViewController.swift"
 
 failures=0
 
@@ -25,7 +25,7 @@ check_menu_icon "$light_file" "\"identify\".localizedString" "menu_identify"
 check_menu_icon "$light_file" "\"reboot\".localizedString" "menu_firmware_update"
 
 check_menu_icon "$power_switch_file" "\"Identify\"" "menu_identify"
-check_menu_icon "$wifi_gateway_file" "\"Identify\"" "menu_identify"
+check_menu_icon "$gateway_file" '"identify".localizedString' "menu_identify"
 
 if [ "$failures" -gt 0 ]; then
   exit 1

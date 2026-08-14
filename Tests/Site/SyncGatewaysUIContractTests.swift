@@ -64,15 +64,40 @@ struct SyncGatewaysUIContractTests {
 
         require(gatewayCell.contains("final class SyncGatewayCell: UIView"))
         require(gatewayCell.contains("time-zone-sync-status-gateway"))
-        require(gatewayCell.contains("gateway_sync_fail"))
+        require(gatewayCell.contains("gateway_sync_tz_fail"))
         require(gatewayCell.contains("make.height.equalTo(SCRYFrom(60))"))
         require(gatewayCell.contains("make.size.equalTo(SCRYFrom(30))"))
         require(gatewayCell.contains("width: SCRXFrom(64), height: SCRYFrom(30)"))
         require(gatewayCell.contains("width: SCRXFrom(64), height: SCRYFrom(24)"))
+        require(
+            gatewayCell.contains("updateSignalLabelConstraints(showsSignal: true)"),
+            "Signal label must use the signal view alignment when RSSI is available"
+        )
+        require(
+            gatewayCell.contains("updateSignalLabelConstraints(showsSignal: false)"),
+            "No signal must select the name label alignment"
+        )
+        require(
+            gatewayCell.contains("make.left.equalTo(signalView.snp.right).offset(SCRXFrom(6))"),
+            "Signal label must remain to the right of the visible signal view"
+        )
+        require(
+            gatewayCell.contains("make.left.equalTo(nameLabel)"),
+            "No signal label must align with the name label"
+        )
 
         require(supportingViews.contains("site_entry_sync_loading"))
         require(supportingViews.contains("site_entry_sync_warning"))
         require(supportingViews.contains("final class SyncGatewaysBottomActionBar: UIView"))
+        let bottomActionBarSource = supportingViews.components(
+            separatedBy: "final class SyncGatewaysBottomActionBar: UIView"
+        ).last ?? ""
+        require(
+            bottomActionBarSource.contains("let divider = UIView()") &&
+                bottomActionBarSource.contains("divider.backgroundColor = RGB(243, 243, 243)") &&
+                bottomActionBarSource.contains("make.height.equalTo(0.5)"),
+            "Bottom action bar must retain the approved 0.5pt divider"
+        )
         require(supportingViews.contains("make.height.equalTo(SCRYFrom(90))"))
         require(supportingViews.contains("startSearchingAnimation()"))
         require(supportingViews.contains("stopSearchingAnimation()"))

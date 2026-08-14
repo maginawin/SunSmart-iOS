@@ -9,8 +9,8 @@ fail() {
   exit 1
 }
 
-rg -n -F 'let baseSections: [SectionType] = [.name, .info, .associatedSpaces, .apn, .serverInformation]' "$gateway_controller" >/dev/null \
-  || fail "GatewayViewController base sections must not include the Activate section."
+rg -n -F 'let baseSections: [SectionType] = [.name, .associatedSpaces, .apn, .serverInformation]' "$gateway_controller" >/dev/null \
+  || fail "GatewayViewController base sections must not include Activate or inline device information."
 
 rg -n -F 'let baseSections: [SectionType] = [.name, .activate, .info, .associatedSpaces, .apn, .serverInformation]' "$gateway_controller" >/dev/null \
   && fail "GatewayViewController must not keep Activate in base sections."
@@ -24,4 +24,4 @@ rg -n -F 'let activateIndex = sections.firstIndex(of: .activate)' "$wifi_control
 rg -n -F 'sections.insert(.networkConnectivity, at: sections.index(after: nameIndex))' "$wifi_controller" >/dev/null \
   || fail "WiFiGatewayViewController must insert Network Connectivity after Name."
 
-echo "PASS: Gateway Activate UI is removed and WiFi Network Connectivity is anchored below Name."
+echo "PASS: Gateway Activate and inline information UI are removed, and WiFi Network Connectivity is anchored below Name."

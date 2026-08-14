@@ -6,6 +6,12 @@ repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
 
 swiftc -parse-as-library \
+  SunSmart/Main/Site/Model/SiteGatewayHeaderLayoutPolicy.swift \
+  Tests/Site/SiteGatewayHeaderLayoutPolicyTests.swift \
+  -o /tmp/SiteGatewayHeaderLayoutPolicyTests
+/tmp/SiteGatewayHeaderLayoutPolicyTests
+
+swiftc -parse-as-library \
   SunSmart/Common/Data/SiteTimeZoneValue.swift \
   SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
   SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
@@ -14,6 +20,15 @@ swiftc -parse-as-library \
   Tests/Site/SyncGatewaysContextTests.swift \
   -o /tmp/SyncGatewaysContextTests
 /tmp/SyncGatewaysContextTests
+
+swiftc -parse-as-library \
+  Tests/Site/SiteGatewayTimeZoneNameColorContractTests.swift \
+  -o /tmp/SiteGatewayTimeZoneNameColorContractTests
+/tmp/SiteGatewayTimeZoneNameColorContractTests \
+  SunSmart/Main/Site/Model/SyncGatewaysContext.swift \
+  SunSmart/Main/Site/View/GatewayListView.swift \
+  SunSmart/Main/Site/View/SiteGatewaysMenuView.swift \
+  SunSmart/Main/Site/Controller/SiteViewController.swift
 
 swiftc -parse-as-library \
   SunSmart/Common/Data/SiteTimeZoneValue.swift \

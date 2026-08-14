@@ -82,10 +82,10 @@ rg -n "override func performGatewayRepair\(\)" "$wifi_controller" >/dev/null \
   || fail "WiFi Gateway must override Repair"
 rg -n "resync\(trigger: \.repair\)" "$wifi_controller" >/dev/null \
   || fail "WiFi Gateway Repair must enter full recovery"
-rg -n "bottomView\.isHidden = true" "$wifi_controller" >/dev/null \
-  || fail "WiFi Gateway Repair state must hide SAVE"
-rg -n "bottomView\.isHidden = false" "$wifi_controller" >/dev/null \
-  || fail "Configured WiFi Gateway state must restore SAVE visibility"
+rg -n "GatewayMenuPolicy\.bottomActionMode\(isConfigured: false\)" "$gateway_controller" >/dev/null \
+  || fail "Shared Gateway Repair state must use the hidden bottom policy"
+rg -n "GatewayMenuPolicy\.bottomActionMode\(isConfigured: true\)" "$gateway_controller" >/dev/null \
+  || fail "Shared configured Gateway state must use the Save Only bottom policy"
 rg -n "guard node\.isKeybindComplete else" "$wifi_controller" >/dev/null \
   || fail "WiFi automatic status requests must wait for completed Key Bind"
 

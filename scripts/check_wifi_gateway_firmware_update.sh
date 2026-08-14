@@ -19,6 +19,7 @@ timing="SunSmart/Main/Device/Gateway/Model/WiFiGatewayV19Timing.swift"
 coordinator="SunSmart/Main/Firmware/Controller/WiFiFirmwareDFUCoordinator.swift"
 updating_view="SunSmart/Main/Firmware/View/WiFiFirmwareUpdatingView.swift"
 gateway="SunSmart/Main/Device/Gateway/Controller/WiFiGatewayViewController.swift"
+gateway_base="SunSmart/Main/Device/Gateway/Controller/GatewayViewController.swift"
 project="SunSmart.xcodeproj/project.pbxproj"
 localizable_en="SunSmart/en.lproj/Localizable.strings"
 localizable_zh="SunSmart/zh-Hans.lproj/Localizable.strings"
@@ -304,7 +305,7 @@ cancel_reducer_build_file_count=$(grep -F 'WiFiFirmwareDFUCancelReducer.swift in
 cancel_reducer_sources_count=$(grep -Fc 'WiFiFirmwareDFUCancelReducer.swift in Sources */,' "$project")
 [ "$cancel_reducer_sources_count" -eq 4 ] || fail "WiFi OTA cancel reducer must belong to all four target source phases"
 
-rg -n 'UIImage\(named: "menu_wifi_dfu"\), title: "wifi_dfu"\.localizedString' "$gateway" >/dev/null || fail "WiFi DFU menu title must be localized"
+rg -n 'UIImage\(named: "menu_wifi_dfu"\), title: "wifi_dfu"\.localizedString' "$gateway_base" >/dev/null || fail "WiFi DFU menu title must be localized by the shared Gateway menu"
 rg -n 'let controller = WiFiFirmwareUpdateViewController\(node: self\.node\)' "$gateway" >/dev/null || fail "WiFi DFU menu must pass current node"
 rg -n 'navigationController\?\.pushViewController\(controller, animated: true\)' "$gateway" >/dev/null || fail "WiFi DFU menu must push the WiFi firmware controller"
 

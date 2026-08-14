@@ -879,6 +879,7 @@
 "network_error" = "网络错误";
 "firmware_version" = "固件版本";
 "wifi_dfu" = "WiFi DFU";
+"4g_dfu" = "4G DFU";
 "wifi_firmware_update" = "WiFi 固件更新";
 "wifi_firmware_upgrade" = "升级";
 "wifi_firmware_upgrade_again" = "再次升级";
@@ -2058,6 +2059,8 @@
 "site_entry_sync_updated_from_server" = "已从服务器更新";
 "site_entry_sync_updated_to_server" = "已更新至服务器";
 "site_entry_sync_failed_to_update_server" = "服务器更新失败";
+"gateway_date_time" = "日期时间";
+"gateway_not_connected" = "网关未连接";
 "site_entry_sync_gateway_time_zone" = "网关时区";
 "site_entry_sync_no_gateways" = "没有需要同步的网关";
 "site_entry_sync_gateways_need_sync" = "%d 个网关需要同步时区";

@@ -56,7 +56,39 @@ struct SiteTimeZoneReviewSyncContractTests {
         require(header.contains("var onReviewSync: (() -> Void)?"))
         require(header.contains("timeZoneReviewSyncView.isHidden = true"))
         require(siteController.contains("headerView.timeZoneReviewState = timeZoneReviewState"))
-        require(siteController.contains("headerH += SCRYFrom(64)"))
+        require(siteController.contains("SiteGatewayHeaderLayoutPolicy.height("))
+        require(
+            siteController.contains("private func siteGatewayHeaderHeight(") &&
+                occurrences(
+                    of: "siteGatewayHeaderHeight(for:",
+                    in: siteController
+                ) == 2,
+            "Header size and empty frame must share one height calculation"
+        )
+        require(
+            occurrences(of: "emptyFrame(", in: siteController) == 4,
+            "Three empty states must use the shared empty frame helper"
+        )
+        require(
+            !siteController.contains("SCRYFrom(96)"),
+            "Empty states must not retain the pre-review fixed header offset"
+        )
+        let reviewStateSetter = sourceSection(
+            in: siteController,
+            from: "private func setTimeZoneReviewState(",
+            to: "private func setEntrySyncNavigationLocked("
+        )
+        require(
+            appearsInOrder(
+                [
+                    "timeZoneReviewState = state",
+                    "favouritesCollectionView.reloadData()",
+                    "updateEmptyView()"
+                ],
+                in: reviewStateSetter
+            ),
+            "Review state changes must refresh existing empty frames"
+        )
         require(siteController.contains("headerView.onReviewSync = { [weak self] in"))
         require(siteController.contains("self?.showSyncGatewaysPage()"))
         require(siteController.contains("private func showSyncGatewaysPage()"))
@@ -115,6 +147,22 @@ struct SiteTimeZoneReviewSyncContractTests {
             )
         }
         require(
+            occurrences(
+                of: "SiteGatewayHeaderLayoutPolicy.swift in Sources",
+                in: project
+            ) == 8,
+            "Header layout policy must belong to all four app targets"
+        )
+        for targetSuffix in 1...4 {
+            require(
+                occurrences(
+                    of: "F260814000000000000290\(targetSuffix) /* SiteGatewayHeaderLayoutPolicy.swift in Sources */",
+                    in: project
+                ) == 2,
+                "Header layout policy must be declared and referenced by target \(targetSuffix)"
+            )
+        }
+        require(
             warningAsset.contains("site_entry_sync_warning.svg") &&
                 warningAsset.contains("preserves-vector-representation"),
             "Review view must reuse the existing vector warning asset"
@@ -132,6 +180,38 @@ struct SiteTimeZoneReviewSyncContractTests {
             searchRange = range.upperBound..<text.endIndex
         }
         return count
+    }
+
+    private static func appearsInOrder(
+        _ needles: [String],
+        in text: String
+    ) -> Bool {
+        var searchStart = text.startIndex
+        for needle in needles {
+            guard let range = text.range(
+                of: needle,
+                range: searchStart..<text.endIndex
+            ) else {
+                return false
+            }
+            searchStart = range.upperBound
+        }
+        return true
+    }
+
+    private static func sourceSection(
+        in source: String,
+        from start: String,
+        to end: String
+    ) -> String {
+        guard let startRange = source.range(of: start),
+              let endRange = source.range(
+                  of: end,
+                  range: startRange.upperBound..<source.endIndex
+              ) else {
+            return ""
+        }
+        return String(source[startRange.lowerBound..<endRange.lowerBound])
     }
 
     private static func require(
