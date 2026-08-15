@@ -2661,9 +2661,10 @@ self.updateAddressData()
         for collectionView: UICollectionView,
         spaces: [SpaceData]
     ) -> CGRect {
-        var frame = collectionView.bounds
-        frame.origin.y += siteGatewayHeaderHeight(for: spaces)
-        return frame
+        SiteGatewayHeaderLayoutPolicy.emptyStateFrame(
+            collectionBounds: collectionView.bounds,
+            headerHeight: siteGatewayHeaderHeight(for: spaces)
+        )
     }
 
     /// 判断是否显示空数据页
