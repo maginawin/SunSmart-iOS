@@ -32,10 +32,6 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     var infoTypes: [InfoCellType] {
         return [.mac, .address, .model, .deviceType, .firmwareVersion]
     }
-    /// 是否连接中
-    private var isConnecting: Bool = false
-    /// 网关在线状态缓存
-    private var onlineState: Bool = false
     /// 页面当前是否可见
     private var isViewVisible: Bool = false
     /// 防止重复进入网关恢复页面
@@ -49,6 +45,21 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     let node: Node
     private weak var lastMessageDelegate: MeshLibManagerMessageDelegate?
     private var proxyReadyObserverID: UUID?
+    private var meshConnectionObserverID: UUID?
+    private var proxyReadyTimeoutTimer: Timer?
+    private var proxyConnectionStateMachine: GatewayDetailProxyConnectionStateMachine
+
+    var isGatewayProxyReady: Bool {
+        proxyConnectionStateMachine.state.isReady
+    }
+
+    var gatewayProxyReadySessionID: UUID? {
+        proxyConnectionStateMachine.state.readySessionID
+    }
+
+    private var isGatewayProxyConnecting: Bool {
+        proxyConnectionStateMachine.state.activeAttemptID != nil
+    }
 
     var supportsAPNConfiguration: Bool {
         return true
@@ -75,6 +86,9 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         self.gatewayModel = gateway.model
         self.node = gateway.node
         self.setGatewayModel = self.gatewayModel.copy()
+        self.proxyConnectionStateMachine = GatewayDetailProxyConnectionStateMachine(
+            targetAddress: gateway.node.primaryUnicastAddress
+        )
         super.init(nibName: nil, bundle: nil)
 
 //        let gateways = GatewayModel.load(siteId: gateway.siteId).filter({ $0.mac != gateway.mac })
@@ -92,8 +106,6 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         title = gatewayModel.name
         view.backgroundColor = Background_Color
         navigationController?.setNavigationBarBackgroundColor(color: Background_Color)
-        onlineState = node.state
-
         configureNavigationItems()
 
         name = gatewayModel.name
@@ -102,7 +114,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         setupUI()
         updateData()
         updateSaveBtnState()
-        registerProxyReadyObserver()
+        registerProxyConnectionObservers()
 
 //        Task {
 //            guard let vendorModel = node.sunricherVendorModel else { return }
@@ -113,15 +125,6 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 //            _ = await MeshAPI.sendMessage(message: SunricherVendorGet(function: .gatewaySimCpsi), model: vendorModel)
 //
 //        }
-//        if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString != self.site.meshUUID {
-//            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.site.meshUUID, subNetworkId: self.site.meshNetworkId, connected: false)
-//            self.node = self.gateway.node
-//            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
-//                self?.setNetworkConnected()
-//            }
-//        }
-        setNetworkConnected()
-
         // 获取网关关联space数据
         Task { [weak self] in
             guard let self else { return }
@@ -156,7 +159,9 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         updateData()
         updateSaveBtnState()
         tableView.reloadData()
-        syncSignalRefreshState(forceRefresh: node.state)
+        reconcileCurrentProxyReadyContext()
+        ensureTargetGatewayProxyConnection()
+        syncSignalRefreshState(forceRefresh: isGatewayProxyReady)
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -312,9 +317,13 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 
     deinit {
         stopSignalRefreshTimer()
+        cancelProxyReadyTimeout()
         MeshLibManager.manager.messageDelegate = self.lastMessageDelegate
         if let proxyReadyObserverID {
             MeshLibManager.manager.removeGlobalProxyReadyObserver(proxyReadyObserverID)
+        }
+        if let meshConnectionObserverID {
+            MeshLibManager.manager.removeGlobalConnectionObserver(meshConnectionObserverID)
         }
 
         MeshLibManager.manager.close()
@@ -322,43 +331,130 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
     }
 
-    private func registerProxyReadyObserver() {
+    private func registerProxyConnectionObservers() {
         proxyReadyObserverID = MeshLibManager.manager.addGlobalProxyReadyObserver { [weak self] context in
             self?.handleProxyReady(context)
         }
-        if let context = MeshLibManager.manager.currentProxyReadyContext {
-            handleProxyReady(context)
+        meshConnectionObserverID = MeshLibManager.manager.addGlobalConnectionObserver { [weak self] _, isConnected in
+            guard !isConnected else { return }
+            self?.handleProxyConnectionEvent(.meshDisconnected)
         }
+        reconcileCurrentProxyReadyContext()
+    }
+
+    private func reconcileCurrentProxyReadyContext() {
+        guard let context = MeshLibManager.manager.currentProxyReadyContext else {
+            if isGatewayProxyReady {
+                handleProxyConnectionEvent(.meshDisconnected)
+            }
+            return
+        }
+        handleProxyReady(context)
     }
 
     private func handleProxyReady(_ context: ProxyReadyContext) {
-        guard context.nodeAddress == node.primaryUnicastAddress else { return }
-        gatewayProxyDidBecomeReady(context)
+        let isTargetContext = context.nodeAddress == node.primaryUnicastAddress
+        handleProxyConnectionEvent(
+            .proxyReady(nodeAddress: context.nodeAddress, sessionID: context.sessionID),
+            readyContext: isTargetContext ? context : nil
+        )
     }
 
-    /// 获取网络数据+网络连接
-    private func setNetworkConnected() {
-        // 读取网络数据
-//        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 10)
-//        DispatchQueue.global().async {[weak self] in
-//            guard let self = self else { return }
-//
-//            DispatchQueue.main.async {
-//                XWHUDManager.hide()
-        self.headerView.showConnectingUI()
-        isConnecting = true
-        self.updateData()
-        MeshLibManager.manager.connectProxy(node: self.node) {[weak self] result in
-            guard let self = self else { return }
-            self.isConnecting = false
-            self.headerView.hideConnectingUI()
-            self.onlineState = self.node.state
-            self.gatewayOnlineStateDidUpdate(self.node.state)
-            self.syncSignalRefreshState(forceRefresh: self.node.state)
-            self.updateData()
-            self.updateSaveBtnState()
+    private func ensureTargetGatewayProxyConnection() {
+        if let context = MeshLibManager.manager.currentProxyReadyContext,
+           context.nodeAddress == node.primaryUnicastAddress {
+            handleProxyReady(context)
+            return
+        }
+        guard !isGatewayProxyReady, !isGatewayProxyConnecting else { return }
+
+        let attemptID = UUID()
+        handleProxyConnectionEvent(.startConnecting(attemptID: attemptID))
+        MeshLibManager.manager.connectProxy(node: node) { [weak self] succeeded in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                self.handleProxyConnectionEvent(
+                    .connectCompleted(attemptID: attemptID, succeeded: succeeded)
+                )
+                guard succeeded,
+                      self.proxyConnectionStateMachine.state.activeAttemptID == attemptID else {
+                    return
+                }
+                self.scheduleProxyReadyTimeout(for: attemptID)
+            }
+        }
+    }
+
+    private func handleProxyConnectionEvent(
+        _ event: GatewayDetailProxyConnectionEvent,
+        readyContext: ProxyReadyContext? = nil
+    ) {
+        let changed = proxyConnectionStateMachine.reduce(event)
+        let isCurrentReadyContext = readyContext.map {
+            gatewayProxyReadySessionID == $0.sessionID
+        } ?? false
+        guard changed || isCurrentReadyContext else { return }
+
+        if changed {
+            if !isGatewayProxyConnecting {
+                cancelProxyReadyTimeout()
+            }
+            renderProxyConnectionState()
+            gatewayProxyReadyStateDidUpdate(isGatewayProxyReady)
         }
 
+        if let readyContext, isCurrentReadyContext {
+            gatewayProxyDidBecomeReady(readyContext)
+        }
+
+        guard changed else { return }
+
+        guard isViewVisible,
+              !isGatewayProxyReady,
+              !isGatewayProxyConnecting else {
+            return
+        }
+        switch event {
+        case .meshDisconnected,
+             .proxyReady(nodeAddress: _, sessionID: _):
+            DispatchQueue.main.async { [weak self] in
+                self?.ensureTargetGatewayProxyConnection()
+            }
+        default:
+            break
+        }
+    }
+
+    private func renderProxyConnectionState() {
+        switch proxyConnectionStateMachine.state {
+        case .connecting:
+            headerView.showConnectingUI()
+            stopSignalRefreshTimer()
+        case .ready:
+            headerView.hideConnectingUI()
+            syncSignalRefreshState(forceRefresh: true)
+        case .disconnected:
+            headerView.hideConnectingUI()
+            stopSignalRefreshTimer()
+            clearGatewaySignal()
+        }
+        updateData()
+        updateSaveBtnState()
+    }
+
+    private func scheduleProxyReadyTimeout(for attemptID: UUID) {
+        cancelProxyReadyTimeout()
+        proxyReadyTimeoutTimer = Timer.scheduledTimer(withTimeInterval: 20, repeats: false) { [weak self] _ in
+            self?.handleProxyConnectionEvent(.readyTimedOut(attemptID: attemptID))
+        }
+        if let proxyReadyTimeoutTimer {
+            RunLoop.main.add(proxyReadyTimeoutTimer, forMode: .common)
+        }
+    }
+
+    private func cancelProxyReadyTimeout() {
+        proxyReadyTimeoutTimer?.invalidate()
+        proxyReadyTimeoutTimer = nil
     }
 
     /// 获取网关信号
@@ -367,14 +463,14 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             clearGatewaySignal()
             return
         }
-        guard node.state else {
+        guard isGatewayProxyReady else {
             clearGatewaySignal()
             return
         }
         guard let vendorModel = self.node.sunricherVendorModel else { return }
         MeshAPI.sendMessage(message: SunricherVendorGet(function: .gatewaySimCpin), model: vendorModel) {[weak self] response in
             guard let self = self else { return }
-            guard self.node.state else {
+            guard self.isGatewayProxyReady else {
                 self.clearGatewaySignal()
                 return
             }
@@ -394,7 +490,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             clearGatewaySignal()
             return
         }
-        guard node.state else {
+        guard isGatewayProxyReady else {
             stopSignalRefreshTimer()
             clearGatewaySignal()
             return
@@ -413,7 +509,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             return
         }
 
-        if node.state {
+        if isGatewayProxyReady {
             startSignalRefreshTimer()
             if forceRefresh {
                 getGatewaySignal()
@@ -558,17 +654,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         if node.isKeybindComplete {
 
             view.hideEmptyDataView()
-
-//            guard node.state else { // 离线
-//
-//                view.showEmptyDataView(imageName: "device_state_offline", title: "device_offline_message".localizedString, backgroundColor: Background_Color)
-//                bottomView.showCreateUI()
-//                view.bringSubviewToFront(bottomView)
-//                return
-//            }
-//            view.hideEmptyDataView()
-            headerView.updateData(gateway: gateway)
-            if isConnecting {
+            headerView.updateData(gateway: gateway, isProxyReady: isGatewayProxyReady)
+            if isGatewayProxyConnecting {
                 bottomView.deleteBtn.isEnabled = false
             }else {
                 if !canConfigureCurrentGateway {
@@ -1213,7 +1300,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 
     /// 更新保存按钮状态
     private func updateSaveBtnState() {
-        if self.isConnecting {
+        if self.isGatewayProxyConnecting {
             bottomView.saveBtn.isEnabled = false
         }else {
             bottomView.saveBtn.isEnabled = canConfigureCurrentGateway && (!(setGatewayModel == gatewayModel) || (!(name?.isAllInputTextEmpty() ?? true) && node.name != name))
@@ -1228,7 +1315,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         cell.enabledSwitch.isOn = setGatewayModel.activate
         cell.switchActionCallback = { [weak self, weak cell] enable in
             guard let self = self else { return }
-            guard !self.isConnecting else {
+            guard !self.isGatewayProxyConnecting else {
                 return
             }
             guard self.canConfigureCurrentGateway else {
@@ -1257,7 +1344,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         return UITableView.automaticDimension
     }
 
-    func gatewayOnlineStateDidUpdate(_ isOnline: Bool) {}
+    func gatewayProxyReadyStateDidUpdate(_ isReady: Bool) {}
 
     func gatewayProxyDidBecomeReady(_ context: ProxyReadyContext) {}
 
@@ -1359,7 +1446,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
 
                 cell.iconImageClickCallback = {[weak self] in
                     guard let self = self else { return }
-                    guard !self.isConnecting else {
+                    guard !self.isGatewayProxyConnecting else {
                         return
                     }
                     guard self.canConfigureCurrentGateway, space.permission == .editor else {
@@ -1511,7 +1598,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
         }
         headerView.operationActionCallback = {[weak self] in
             guard let self = self else { return }
-            guard !self.isConnecting else {
+            guard !self.isGatewayProxyConnecting else {
                 return
             }
             switch sectionType {
@@ -1598,14 +1685,6 @@ extension GatewayViewController: MeshLibManagerMessageDelegate {
 
     func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdate node: Node) {
         if node.primaryUnicastAddress == self.node.primaryUnicastAddress {
-            if node.state != onlineState {
-                onlineState = node.state
-                gatewayOnlineStateDidUpdate(node.state)
-                syncSignalRefreshState(forceRefresh: node.state)
-            } else if !node.state {
-                gatewayOnlineStateDidUpdate(false)
-                syncSignalRefreshState()
-            }
             updateData()
         }
     }

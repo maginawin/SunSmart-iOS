@@ -1,5 +1,20 @@
 import Foundation
 
+struct WiFiGatewayProxySessionTracker {
+    private(set) var currentSessionID: UUID?
+
+    @discardableResult
+    mutating func begin(sessionID: UUID) -> Bool {
+        guard currentSessionID != sessionID else { return false }
+        currentSessionID = sessionID
+        return true
+    }
+
+    mutating func invalidate() {
+        currentSessionID = nil
+    }
+}
+
 struct WiFiGatewayAutomaticLoadGate {
     enum Intent: Equatable {
         case resume

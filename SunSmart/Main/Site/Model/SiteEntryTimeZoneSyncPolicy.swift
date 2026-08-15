@@ -81,8 +81,7 @@ enum SiteEntryTimeZoneSyncPolicy {
         localDirtyOffsetMinutesByGatewayID: [String: Int] = [:]
     ) -> SiteTimeZoneReviewState {
         let gateway = gatewaySummary(
-            scope: SiteGatewayAccessScope.resolve(remote: remote),
-            gateways: remote.gateways,
+            remote: remote,
             targetOffsetMinutes: serverTimezone.offsetMinutes,
             localDirtyOffsetMinutesByGatewayID: localDirtyOffsetMinutesByGatewayID
         )
@@ -106,8 +105,7 @@ enum SiteEntryTimeZoneSyncPolicy {
         let remoteTimezone = validated(remote.timezone)
         func summary(targetOffsetMinutes: Int) -> SiteEntryGatewaySummary {
             gatewaySummary(
-                scope: scope,
-                gateways: remote.gateways,
+                remote: remote,
                 targetOffsetMinutes: targetOffsetMinutes,
                 localDirtyOffsetMinutesByGatewayID: localDirtyOffsetMinutesByGatewayID
             )
@@ -193,57 +191,25 @@ enum SiteEntryTimeZoneSyncPolicy {
     }
 
     private static func gatewaySummary(
-        scope: SiteGatewayAccessScope,
-        gateways: [SiteEntryGatewayTimeZoneSnapshot],
+        remote: SiteEntryTimeZoneRemoteSnapshot,
         targetOffsetMinutes: Int,
         localDirtyOffsetMinutesByGatewayID: [String: Int]
     ) -> SiteEntryGatewaySummary {
-        let dirtyOffsets = localDirtyOffsetMinutesByGatewayID.reduce(into: [String: Int]()) {
-            result, pair in
-            guard let id = SiteGatewayAccessScope.normalize(pair.key) else { return }
-            result[id] = pair.value
+        let localTargets = localDirtyOffsetMinutesByGatewayID.reduce(
+            into: [String: SiteGatewayCloudTimeZoneLocalSnapshot]()
+        ) { result, pair in
+            result[pair.key] = SiteGatewayCloudTimeZoneLocalSnapshot(
+                displayName: "",
+                dirtyOffsetMinutes: pair.value
+            )
         }
-        let totalCount: Int
-        let pendingCount: Int
-
-        switch scope {
-        case .visitor:
-            return .noGateways
-
-        case .editor(let gatewayIds):
-            totalCount = gatewayIds.count
-            pendingCount = gatewayIds.reduce(into: 0) { count, id in
-                if let dirtyOffset = dirtyOffsets[id] {
-                    if dirtyOffset != targetOffsetMinutes { count += 1 }
-                    return
-                }
-                let matches = gateways.filter { normalized($0.id) == id }
-                if matches.isEmpty || matches.contains(where: { $0.offsetMinutes != targetOffsetMinutes }) {
-                    count += 1
-                }
-            }
-
-        case .owner:
-            var identified: [String: [SiteEntryGatewayTimeZoneSnapshot]] = [:]
-            var anonymous: [SiteEntryGatewayTimeZoneSnapshot] = []
-            gateways.forEach { gateway in
-                if let id = normalized(gateway.id) {
-                    identified[id, default: []].append(gateway)
-                } else {
-                    anonymous.append(gateway)
-                }
-            }
-            totalCount = identified.count + anonymous.count
-            pendingCount = identified.reduce(into: 0) { count, entry in
-                if let dirtyOffset = dirtyOffsets[entry.key] {
-                    if dirtyOffset != targetOffsetMinutes { count += 1 }
-                } else if entry.value.contains(where: { $0.offsetMinutes != targetOffsetMinutes }) {
-                    count += 1
-                }
-            } + anonymous.filter { $0.offsetMinutes != targetOffsetMinutes }.count
-        }
-
-        guard totalCount > 0 else { return .noGateways }
+        let targets = SiteGatewayCloudTimeZoneTargetBuilder.build(
+            targetOffsetMinutes: targetOffsetMinutes,
+            remote: remote,
+            localByGatewayID: localTargets
+        )
+        guard !targets.isEmpty else { return .noGateways }
+        let pendingCount = targets.filter(\.requiresSync).count
         return pendingCount > 0 ? .pending(pendingCount) : .inSync
     }
 
@@ -280,11 +246,5 @@ enum SiteEntryTimeZoneSyncPolicy {
             return nil
         }
         return value
-    }
-
-    private static func normalized(_ rawValue: String?) -> String? {
-        guard let rawValue else { return nil }
-        let value = rawValue.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        return value.isEmpty ? nil : value
     }
 }

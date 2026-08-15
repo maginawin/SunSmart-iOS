@@ -142,6 +142,10 @@ enum NetowrkReqeustApi {
     case gatewayDelete(gatewayId: String)
     /// 获取网关关联的所有space数据
     case gatewayAssociationSpaceList(siteId: String, gatewayId: String)
+    /// 提交网关时区同步
+    case gatewayDateTimeUpdate(siteId: String, gateways: [String])
+    /// 获取网关时区同步状态
+    case gatewayDateTimeRequestStatus(requestId: Int64)
 }
 
 extension NetowrkReqeustApi {
@@ -191,6 +195,8 @@ extension NetowrkReqeustApi {
         case .gatewayRegister: return "gatewayRegister"
         case .gatewayDelete: return "gatewayDelete"
         case .gatewayAssociationSpaceList: return "gatewayAssociationSpaceList"
+        case .gatewayDateTimeUpdate: return "gatewayDateTimeUpdate"
+        case .gatewayDateTimeRequestStatus: return "gatewayDateTimeRequestStatus"
         }
     }
 
@@ -337,6 +343,10 @@ extension NetowrkReqeustApi: TargetType {
             return "/sitespace/sapce/gateway/delete"
         case .gatewayAssociationSpaceList:
             return "/sitespace/sapce/gateway/reference"
+        case .gatewayDateTimeUpdate:
+            return "/sitespace/gateway/datetime/update"
+        case .gatewayDateTimeRequestStatus:
+            return "/sitespace/request/status"
         }
     }
     
@@ -555,6 +565,10 @@ extension NetowrkReqeustApi: TargetType {
             return ["gatewayId": gatewayId, "userId": UserData.currentUserId]
         case .gatewayAssociationSpaceList(let siteId, let gatewayId):
             return ["siteId": siteId, "gatewayId": gatewayId]
+        case .gatewayDateTimeUpdate(let siteId, let gateways):
+            return ["siteId": siteId, "gateways": gateways]
+        case .gatewayDateTimeRequestStatus(let requestId):
+            return ["requestId": requestId]
         }
     }
     

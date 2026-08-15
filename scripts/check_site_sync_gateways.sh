@@ -35,6 +35,7 @@ swiftc -parse-as-library \
   SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
   SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
   SunSmart/Main/Site/Model/SiteGatewayAccessScope.swift \
+  SunSmart/Main/Site/Model/SiteGatewayCloudTimeZoneTarget.swift \
   SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncPolicy.swift \
   Tests/Site/SiteEntryTimeZoneSyncPolicyTests.swift \
   -o /tmp/SyncGatewaysEntryPolicyTests
@@ -76,6 +77,68 @@ swiftc -parse-as-library \
   Tests/Site/SyncGatewaysCloudBridgeTests.swift \
   -o /tmp/SyncGatewaysCloudBridgeTests
 /tmp/SyncGatewaysCloudBridgeTests
+
+swiftc -parse-as-library \
+  SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
+  SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
+  SunSmart/Main/Site/Model/SiteGatewayAccessScope.swift \
+  SunSmart/Main/Site/Model/SiteGatewayCloudTimeZoneTarget.swift \
+  Tests/Site/SiteGatewayCloudTimeZoneTargetTests.swift \
+  -o /tmp/SiteGatewayCloudTimeZoneTargetTests
+/tmp/SiteGatewayCloudTimeZoneTargetTests
+
+swiftc -parse-as-library \
+  SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
+  SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
+  SunSmart/Main/Site/Model/SiteGatewayAccessScope.swift \
+  SunSmart/Main/Site/Model/SiteGatewayCloudTimeZoneTarget.swift \
+  SunSmart/Main/Site/Model/SiteGatewayCloudTimeZoneSyncState.swift \
+  Tests/Site/SiteGatewayCloudTimeZoneSyncStateTests.swift \
+  -o /tmp/SiteGatewayCloudTimeZoneSyncStateTests
+/tmp/SiteGatewayCloudTimeZoneSyncStateTests
+
+swiftc -parse-as-library \
+  SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
+  SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
+  SunSmart/Main/Site/Model/SiteGatewayAccessScope.swift \
+  SunSmart/Main/Site/Model/SiteGatewayCloudTimeZoneTarget.swift \
+  SunSmart/Main/Site/Model/SiteGatewayCloudTimeZoneSyncState.swift \
+  SunSmart/Main/Site/Model/SiteGatewayCloudTimeZoneResponseParser.swift \
+  Tests/Site/SiteGatewayCloudTimeZoneResponseParserTests.swift \
+  -o /tmp/SiteGatewayCloudTimeZoneResponseParserTests
+/tmp/SiteGatewayCloudTimeZoneResponseParserTests
+
+swiftc -parse-as-library \
+  SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
+  SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
+  SunSmart/Main/Site/Model/SiteGatewayAccessScope.swift \
+  SunSmart/Main/Site/Model/SiteGatewayCloudTimeZoneTarget.swift \
+  SunSmart/Main/Site/Model/SiteGatewayCloudTimeZoneSyncState.swift \
+  SunSmart/Main/Site/Model/SiteGatewayCloudTimeZoneSyncCoordinator.swift \
+  Tests/Site/SiteGatewayCloudTimeZoneSyncCoordinatorTests.swift \
+  -o /tmp/SiteGatewayCloudTimeZoneSyncCoordinatorTests
+/tmp/SiteGatewayCloudTimeZoneSyncCoordinatorTests
+
+swiftc -parse-as-library \
+  Tests/Site/SiteGatewayCloudTimeZoneAPIContractTests.swift \
+  -o /tmp/SiteGatewayCloudTimeZoneAPIContractTests
+/tmp/SiteGatewayCloudTimeZoneAPIContractTests \
+  SunSmart/Common/Network/NetowrkReqeustApi.swift \
+  SunSmart/Main/Site/Model/SiteGatewayCloudTimeZoneResponseParser.swift \
+  SunSmart/Main/Site/Model/SiteGatewayCloudTimeZoneAPIClient.swift \
+  SunSmart/Main/Site/Model/SiteGatewayCloudTimeZoneSyncCoordinator.swift
+
+swiftc -parse-as-library \
+  Tests/Site/SiteGatewayCloudTimeZoneUIContractTests.swift \
+  -o /tmp/SiteGatewayCloudTimeZoneUIContractTests
+/tmp/SiteGatewayCloudTimeZoneUIContractTests \
+  SunSmart/Main/Site/View/SiteEntryGatewayTimeZoneStatusView.swift \
+  SunSmart/en.lproj/Localizable.strings \
+  SunSmart/zh-Hans.lproj/Localizable.strings
 
 swiftc -parse-as-library \
   Tests/Site/SiteEntryTimeZoneSyncContractTests.swift \

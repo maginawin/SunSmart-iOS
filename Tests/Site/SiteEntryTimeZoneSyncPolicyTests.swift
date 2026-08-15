@@ -5,6 +5,7 @@ struct SiteEntryTimeZoneSyncPolicyTests {
 
     static func main() {
         testResponseParser()
+        testResponseParserDistinguishesJSONNumbersFromBooleans()
         testOwnerDecisionMatrix()
         testEditorGatewayScope()
         testVisitorCloudAuthority()
@@ -59,8 +60,10 @@ struct SiteEntryTimeZoneSyncPolicyTests {
         require(snapshot?.values.timezone == singapore, "Expected normalized remote timezone")
         require(snapshot?.timestamp == 101, "Expected numeric-string timestamp")
         require(snapshot?.spaces.map(\.gatewayId) == ["aa:bb", "cc:dd", nil], "Gateway IDs must be normalized")
+        require(snapshot?.spaces.map(\.requestGatewayId) == ["AA:BB", "CC:DD", nil], "Gateway requests must retain their trimmed server identifier")
         require(snapshot?.spaces.map(\.role) == [.editor, .visitor, .visitor], "Unknown Space role must not gain Editor access")
         require(snapshot?.gateways.map(\.id) == ["aa:bb", "cc:dd", "ee:ff", "11:22", "33:44", "55:66", "77:88", "99:aa"], "Gateway identities must be normalized")
+        require(snapshot?.gateways.map(\.requestMAC) == ["AA:BB", "CC:DD", "EE:FF", "11:22", "33:44", "55:66", "77:88", "99:AA"], "Gateway requests must retain their trimmed wire MAC")
         require(snapshot?.gateways.map(\.offsetMinutes) == [480, 0, -60, nil, nil, nil, nil, nil], "Gateway offsets must decode only valid UInt8 integers")
 
         let invalidTimezone = SiteEntryTimeZoneSyncResponseParser.parse(siteData: remoteSiteData(
@@ -77,6 +80,54 @@ struct SiteEntryTimeZoneSyncPolicyTests {
         var missingSiteName = remoteSiteData(role: "owner", timezone: "Etc/UTC (UTC+00:00)", timestamp: 104)
         missingSiteName.removeValue(forKey: "siteName")
         require(SiteEntryTimeZoneSyncResponseParser.parse(siteData: missingSiteName) == nil, "Visitor authority requires complete Site props")
+    }
+
+    private static func testResponseParserDistinguishesJSONNumbersFromBooleans() {
+        let numericOne = SiteEntryTimeZoneSyncResponseParser.parse(siteData: jsonSiteData(
+            imageId: "1",
+            updateTimestamp: "1786776397",
+            timezoneOffset: "1"
+        ))
+        require(numericOne?.values.imageId == 1, "JSON number imageId 1 must parse")
+        require(numericOne?.timestamp == 1_786_776_397, "JSON number timestamp must parse")
+        require(
+            numericOne?.gateways.first?.offsetMinutes == -945,
+            "JSON number timezoneOffset 1 must not be treated as Bool"
+        )
+
+        let numericZero = SiteEntryTimeZoneSyncResponseParser.parse(siteData: jsonSiteData(
+            imageId: "0",
+            timezoneOffset: "72"
+        ))
+        require(numericZero?.values.imageId == 0, "JSON number imageId 0 must parse")
+        require(
+            numericZero?.gateways.first?.offsetMinutes == 120,
+            "JSON number timezoneOffset 72 must decode to UTC+02:00"
+        )
+
+        for boolLiteral in ["true", "false"] {
+            require(
+                SiteEntryTimeZoneSyncResponseParser.parse(siteData: jsonSiteData(
+                    imageId: boolLiteral
+                )) == nil,
+                "JSON Bool imageId must be rejected"
+            )
+            require(
+                SiteEntryTimeZoneSyncResponseParser.parse(siteData: jsonSiteData(
+                    updateTimestamp: boolLiteral
+                )) == nil,
+                "JSON Bool updateTimestamp must be rejected"
+            )
+
+            let boolOffset = SiteEntryTimeZoneSyncResponseParser.parse(siteData: jsonSiteData(
+                timezoneOffset: boolLiteral
+            ))
+            require(boolOffset != nil, "Gateway Bool must not invalidate complete Site props")
+            require(
+                boolOffset?.gateways.first?.offsetMinutes == nil,
+                "JSON Bool timezoneOffset must remain invalid"
+            )
+        }
     }
 
     private static func testOwnerDecisionMatrix() {
@@ -155,7 +206,7 @@ struct SiteEntryTimeZoneSyncPolicyTests {
             "Unknown local IANA identifier must be invalid"
         )
 
-        requireGatewayOnly(
+        require(
             decide(
                 role: .owner,
                 local: singapore,
@@ -167,10 +218,8 @@ struct SiteEntryTimeZoneSyncPolicyTests {
                     gateway("DUPLICATE", nil),
                     gateway(nil, nil)
                 ]
-            ),
-            timezone: singapore,
-            pending: 2,
-            message: "Duplicate IDs count once and malformed anonymous Gateway remains pending"
+            ) == .noAction,
+            "A matching duplicate ID and anonymous Gateway without a usable request ID must not open sync UI"
         )
     }
 
@@ -386,8 +435,8 @@ struct SiteEntryTimeZoneSyncPolicyTests {
         )
         require(
             SiteEntryTimeZoneSyncPolicy.reviewState(remote: ownerRemote) ==
-                .review(serverTimezone: singapore, gatewayCount: 2),
-            "Owner must deduplicate identified gateways and count anonymous invalid gateways"
+                .review(serverTimezone: singapore, gatewayCount: 1),
+            "Owner must deduplicate conflicting identified gateways and ignore anonymous invalid gateways"
         )
 
         let missingEditorGateway = remoteSnapshot(
@@ -443,6 +492,20 @@ struct SiteEntryTimeZoneSyncPolicyTests {
                 localDirtyOffsetMinutesByGatewayID: dirtyOverride
             ) == .review(serverTimezone: singapore, gatewayCount: 1),
             "Review count must exclude a locally confirmed dirty Gateway"
+        )
+
+        let staleSingleGatewayRemote = remoteSnapshot(
+            role: .owner,
+            timezone: singapore,
+            timestamp: 100,
+            gateways: [gateway("AA:BB", 0)]
+        )
+        require(
+            SiteEntryTimeZoneSyncPolicy.reviewState(
+                remote: staleSingleGatewayRemote,
+                localDirtyOffsetMinutesByGatewayID: dirtyOverride
+            ) == .hidden,
+            "A dirty Gateway already at the target must suppress stale remote Review after lifecycle refresh"
         )
 
         let decision = SiteEntryTimeZoneSyncPolicy.decide(
@@ -538,6 +601,37 @@ struct SiteEntryTimeZoneSyncPolicyTests {
         _ offsetMinutes: Int?
     ) -> SiteEntryGatewayTimeZoneSnapshot {
         SiteEntryGatewayTimeZoneSnapshot(id: id?.lowercased(), offsetMinutes: offsetMinutes)
+    }
+
+    private static func jsonSiteData(
+        imageId: String = "1",
+        updateTimestamp: String = "1786776397",
+        timezoneOffset: String = "72"
+    ) -> [String: Any] {
+        let json = """
+        {
+          "role": "owner",
+          "siteName": "Remote Site",
+          "imageId": \(imageId),
+          "timezone": "Africa/Addis_Ababa (UTC+03:00)",
+          "updateTimestamp": \(updateTimestamp),
+          "spaces": [],
+          "gateways": [
+            {
+              "macAddress": "FB0EF7AF0E6E",
+              "timezoneOffset": \(timezoneOffset)
+            }
+          ]
+        }
+        """
+
+        guard
+            let object = try? JSONSerialization.jsonObject(with: Data(json.utf8)),
+            let siteData = object as? [String: Any]
+        else {
+            fatalError("Expected valid JSON Site fixture")
+        }
+        return siteData
     }
 
     private static func remoteSiteData(

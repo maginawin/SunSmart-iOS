@@ -11,18 +11,17 @@ import Foundation
 import NordicSigMeshSDK
 #endif
 
-struct SyncGatewayRemoteCandidate: Equatable {
-    let id: String?
-    let offsetMinutes: Int?
-    let order: Int
-}
-
-struct SyncGatewayLocalCandidate: Equatable {
-    let displayName: String
-    let offsetMinutes: Int?
-    let isCloudDirty: Bool
+struct SyncGatewayRuntimeAvailability: Equatable {
     let hasGatewayModel: Bool
     let hasNode: Bool
+}
+
+struct SyncGatewayAuthorizedCandidate: Equatable {
+    let id: String
+    let displayName: String
+    let remoteOrder: Int
+    let effectiveOffsetMinutes: Int?
+    let requiresSync: Bool
 }
 
 struct SyncGatewayTargetDescriptor: Equatable {
@@ -33,49 +32,47 @@ struct SyncGatewayTargetDescriptor: Equatable {
     let isSyncable: Bool
 }
 
-enum SyncGatewaysContextSelectionPolicy {
-    static func select(
-        scope: SiteGatewayAccessScope,
-        targetOffsetMinutes: Int,
-        remote: [SyncGatewayRemoteCandidate],
-        local: [String: SyncGatewayLocalCandidate]
+enum SyncGatewayRuntimeDescriptorPolicy {
+    static func make(
+        candidates: [SyncGatewayAuthorizedCandidate],
+        localAvailabilityByGatewayID: [String: SyncGatewayRuntimeAvailability],
+        requiredGatewayIDs: Set<String>? = nil
     ) -> [SyncGatewayTargetDescriptor] {
-        guard scope != .visitor else { return [] }
-
-        let normalizedLocal = local.reduce(into: [String: SyncGatewayLocalCandidate]()) {
+        let normalizedAvailability = localAvailabilityByGatewayID.reduce(
+            into: [String: SyncGatewayRuntimeAvailability]()
+        ) {
             result, pair in
             guard let id = SiteGatewayAccessScope.normalize(pair.key), result[id] == nil else {
                 return
             }
             result[id] = pair.value
         }
+        let requiredIDs = requiredGatewayIDs.map {
+            Set($0.compactMap(SiteGatewayAccessScope.normalize))
+        }
         var seen: Set<String> = []
 
-        return remote.compactMap { candidate in
+        return candidates.compactMap { candidate in
             guard let id = SiteGatewayAccessScope.normalize(candidate.id),
-                  scope.contains(normalizedGatewayID: id),
                   seen.insert(id).inserted else {
                 return nil
             }
-
-            let localCandidate = normalizedLocal[id]
-            let effectiveOffset = localCandidate?.isCloudDirty == true
-                ? localCandidate?.offsetMinutes
-                : candidate.offsetMinutes
-            guard effectiveOffset != targetOffsetMinutes else {
+            if let requiredIDs {
+                guard requiredIDs.contains(id) else { return nil }
+            } else if !candidate.requiresSync {
                 return nil
             }
-
-            let displayName = localCandidate?.displayName.trimmingCharacters(
+            let displayName = candidate.displayName.trimmingCharacters(
                 in: .whitespacesAndNewlines
             )
+            let availability = normalizedAvailability[id]
             return SyncGatewayTargetDescriptor(
                 id: id,
-                displayName: displayName?.isEmpty == false ? displayName : nil,
-                remoteOrder: candidate.order,
-                initialOffsetMinutes: effectiveOffset,
-                isSyncable: localCandidate?.hasGatewayModel == true &&
-                    localCandidate?.hasNode == true
+                displayName: displayName.isEmpty ? nil : displayName,
+                remoteOrder: candidate.remoteOrder,
+                initialOffsetMinutes: candidate.effectiveOffsetMinutes,
+                isSyncable: availability?.hasGatewayModel == true &&
+                    availability?.hasNode == true
             )
         }
     }
@@ -102,7 +99,9 @@ enum SyncGatewaysContextBuilder {
         targetTimeZone: SiteTimeZoneValue,
         remote: SiteEntryTimeZoneRemoteSnapshot,
         meshNetwork: MeshNetwork,
-        gatewayModels: [GatewayModel]
+        gatewayModels: [GatewayModel],
+        confirmedOffsetMinutesByGatewayID: [String: Int] = [:],
+        requiredGatewayIDs: Set<String>? = nil
     ) -> [SyncGatewayRuntimeTarget] {
         var modelsByID: [String: GatewayModel] = [:]
         gatewayModels.forEach { model in
@@ -113,28 +112,45 @@ enum SyncGatewaysContextBuilder {
             modelsByID[id] = model
         }
 
-        let local = modelsByID.reduce(into: [String: SyncGatewayLocalCandidate]()) {
+        let localSnapshots = modelsByID.reduce(
+            into: [String: SiteGatewayCloudTimeZoneLocalSnapshot]()
+        ) {
             result, pair in
             let node = pair.value.resolveNode(in: meshNetwork)
-            result[pair.key] = SyncGatewayLocalCandidate(
+            result[pair.key] = SiteGatewayCloudTimeZoneLocalSnapshot(
                 displayName: pair.value.name,
-                offsetMinutes: (node?.timezone?.secondsFromGMT()).map { $0 / 60 },
-                isCloudDirty: pair.value.needUploadCloud,
-                hasGatewayModel: true,
-                hasNode: node != nil
+                dirtyOffsetMinutes: pair.value.needUploadCloud
+                    ? (node?.timezone?.secondsFromGMT()).map { $0 / 60 }
+                    : nil
             )
         }
-        let descriptors = SyncGatewaysContextSelectionPolicy.select(
-            scope: SiteGatewayAccessScope.resolve(remote: remote),
+        let entryTargets = SiteGatewayCloudTimeZoneTargetBuilder.build(
             targetOffsetMinutes: targetTimeZone.offsetMinutes,
-            remote: remote.gateways.enumerated().map { index, gateway in
-                SyncGatewayRemoteCandidate(
-                    id: gateway.id,
-                    offsetMinutes: gateway.offsetMinutes,
-                    order: index
+            remote: remote,
+            localByGatewayID: localSnapshots,
+            confirmedOffsetMinutesByGatewayID:
+                confirmedOffsetMinutesByGatewayID
+        )
+        let availability = modelsByID.reduce(
+            into: [String: SyncGatewayRuntimeAvailability]()
+        ) { result, pair in
+            result[pair.key] = SyncGatewayRuntimeAvailability(
+                hasGatewayModel: true,
+                hasNode: pair.value.resolveNode(in: meshNetwork) != nil
+            )
+        }
+        let descriptors = SyncGatewayRuntimeDescriptorPolicy.make(
+            candidates: entryTargets.map { target in
+                SyncGatewayAuthorizedCandidate(
+                    id: target.id,
+                    displayName: target.displayName,
+                    remoteOrder: target.remoteOrder,
+                    effectiveOffsetMinutes: target.effectiveOffsetMinutes,
+                    requiresSync: target.requiresSync
                 )
             },
-            local: local
+            localAvailabilityByGatewayID: availability,
+            requiredGatewayIDs: requiredGatewayIDs
         )
         return descriptors.map { descriptor in
             let gateway = modelsByID[descriptor.id]
@@ -152,13 +168,18 @@ enum SyncGatewaysContextBuilder {
         targetTimeZone: SiteTimeZoneValue,
         remote: SiteEntryTimeZoneRemoteSnapshot,
         meshNetwork: MeshNetwork,
-        gatewayModels: [GatewayModel]
+        gatewayModels: [GatewayModel],
+        confirmedOffsetMinutesByGatewayID: [String: Int] = [:],
+        requiredGatewayIDs: Set<String>? = nil
     ) -> SyncGatewaysContext {
         let targets = makeTargets(
             targetTimeZone: targetTimeZone,
             remote: remote,
             meshNetwork: meshNetwork,
-            gatewayModels: gatewayModels
+            gatewayModels: gatewayModels,
+            confirmedOffsetMinutesByGatewayID:
+                confirmedOffsetMinutesByGatewayID,
+            requiredGatewayIDs: requiredGatewayIDs
         )
 
         let keyResolution = GatewayFirmwareScanNetworkKeyScopePolicy.resolve(

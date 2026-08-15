@@ -23,8 +23,15 @@ struct SiteGatewayTimeZoneNameColorContractTests {
             "Full SyncGatewaysContext construction must reuse makeTargets"
         )
         require(
-            occurrences(of: "SyncGatewaysContextSelectionPolicy.select(", in: context) == 1,
-            "Gateway selection policy must not be duplicated"
+            occurrences(
+                of: "SiteGatewayCloudTimeZoneTargetBuilder.build(",
+                in: context
+            ) == 1 &&
+                occurrences(
+                    of: "SyncGatewayRuntimeDescriptorPolicy.make(",
+                    in: context
+                ) == 1,
+            "Onsite candidates must reuse the entry target builder before adding runtime availability"
         )
 
         require(gatewayList.contains("enum SiteGatewayTimeZoneSyncAppearance"))

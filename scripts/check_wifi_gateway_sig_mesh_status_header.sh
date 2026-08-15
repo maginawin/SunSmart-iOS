@@ -33,6 +33,13 @@ rg -n "return 30" "$header_view" >/dev/null \
 rg -n "enum GatewayHeaderStateStyle" "$header_view" >/dev/null \
   || fail "GatewayInformationHeaderView must expose a configurable status style."
 
+rg -n "func updateData\(gateway: Gateway, isProxyReady: Bool\)" "$header_view" >/dev/null \
+  || fail "GatewayInformationHeaderView must receive explicit target Proxy Ready state."
+
+if rg -n "node\.state" "$header_view" >/dev/null; then
+  fail "GatewayInformationHeaderView must not infer SIG Mesh status from Node.state."
+fi
+
 rg -n "case sigMesh" "$header_view" >/dev/null \
   || fail "GatewayInformationHeaderView must support SIG Mesh status style."
 

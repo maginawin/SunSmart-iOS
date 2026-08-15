@@ -7,6 +7,8 @@ struct WiFiGatewayAutomaticLoadGateTests {
         testOnlyCurrentReadySessionCanDrain()
         testReloadOverridesResume()
         testInvalidationClosesBarrier()
+        testProxySessionTrackerDetectsSessionReplacement()
+        testProxySessionTrackerTreatsSessionAsNewAfterInvalidation()
         print("WiFiGatewayAutomaticLoadGateTests passed")
     }
 
@@ -42,6 +44,28 @@ struct WiFiGatewayAutomaticLoadGateTests {
         gate.request(forceReload: true)
 
         require(gate.takeIfReady(currentSessionID: sessionID) == nil, "Disconnect must invalidate Ready state")
+    }
+
+    private static func testProxySessionTrackerDetectsSessionReplacement() {
+        var tracker = WiFiGatewayProxySessionTracker()
+        let firstSessionID = UUID()
+        let secondSessionID = UUID()
+
+        require(tracker.begin(sessionID: firstSessionID), "The first Ready session must be new")
+        require(!tracker.begin(sessionID: firstSessionID), "The same Ready session must not be new twice")
+        require(tracker.begin(sessionID: secondSessionID), "A replacement Ready session must be detected")
+        require(tracker.currentSessionID == secondSessionID, "The tracker must retain the replacement session")
+    }
+
+    private static func testProxySessionTrackerTreatsSessionAsNewAfterInvalidation() {
+        var tracker = WiFiGatewayProxySessionTracker()
+        let sessionID = UUID()
+
+        tracker.begin(sessionID: sessionID)
+        tracker.invalidate()
+
+        require(tracker.currentSessionID == nil, "Invalidation must clear the active Proxy session")
+        require(tracker.begin(sessionID: sessionID), "A Ready session after disconnect must start a new lifecycle")
     }
 
     private static func require(

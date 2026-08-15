@@ -198,16 +198,15 @@ class GatewayInformationHeaderView: UIView {
         )
     }
 
-    func updateData(gateway: Gateway) {
+    func updateData(gateway: Gateway, isProxyReady: Bool) {
         let gatewayModel = gateway.model
-        let node = gateway.node
         let totalDeviceCount = gatewayModel.associatedSpaces.reduce(0, { (result, space) -> Int in result + space.deviceCount })
         nodeCountLabel.text = "(\(totalDeviceCount))"
 
         gatewayStateView.update(
-            iconName: gatewayStateStyle.imageName(isOnline: node.state),
+            iconName: gatewayStateStyle.imageName(isOnline: isProxyReady),
             title: gatewayStateStyle.title,
-            status: node.state ? "online".localizedString : "Offline".localizedString,
+            status: isProxyReady ? "online".localizedString : "Offline".localizedString,
             iconSize: gatewayStateStyle.iconSize
         )
         

@@ -12,13 +12,13 @@ final class SiteEntryTimeZoneSyncOverlay: UIView {
 
     enum State: Equatable {
         case checking
-        case gatewaysNeedSync(SiteEntryTimeZoneResult)
-        case result(SiteEntryTimeZoneResult)
+        case result(
+            site: SiteEntryTimeZoneResult,
+            gateways: SiteGatewayCloudTimeZoneBatchState
+        )
     }
 
-    var onGotIt: (() -> Void)?
-    var onLater: (() -> Void)?
-    var onReviewSync: (() -> Void)?
+    var onDone: (() -> Void)?
 
     private let checkingCardView = UIView()
     private let resultLargeShadowView = UIView()
@@ -33,16 +33,15 @@ final class SiteEntryTimeZoneSyncOverlay: UIView {
     private let siteIconImageView = UIImageView()
     private let siteValueLabel = UILabel()
     private let siteStatusLabel = UILabel()
-    private let gatewayStatusCardView = UIView()
-    private let gatewayIconBackgroundView = UIView()
-    private let gatewayIconImageView = UIImageView()
-    private let gatewayTitleLabel = UILabel()
-    private let gatewayStatusLabel = UILabel()
-    private let gotItButton = UIButton(type: .system)
-    private let laterButton = UIButton(type: .system)
-    private let reviewSyncButton = UIButton(type: .system)
+    private let gatewayStatusView = SiteEntryGatewayTimeZoneStatusView()
+    private let footerContainerView = UIView()
     private let footerDividerView = UIView()
-    private let footerVerticalDividerView = UIView()
+    private let doneButton = UIButton(type: .system)
+
+    private var resultCardHeightConstraint: Constraint!
+    private var gatewayStatusHeightConstraint: Constraint!
+    private var footerHeightConstraint: Constraint!
+    private var isResultCardHeightConstraintActive = false
 
     private(set) var state: State = .checking
 
@@ -73,6 +72,10 @@ final class SiteEntryTimeZoneSyncOverlay: UIView {
             roundedRect: resultBounds.insetBy(dx: SCRXFrom(6), dy: SCRYFrom(6)),
             cornerRadius: SCRYFrom(18)
         ).cgPath
+
+        if case let .result(_, gateways) = state {
+            updateResultSheetLayout(for: gateways)
+        }
     }
 
     func showChecking(in container: UIView) {
@@ -86,18 +89,11 @@ final class SiteEntryTimeZoneSyncOverlay: UIView {
         }
     }
 
-    func showResult(_ result: SiteEntryTimeZoneResult) {
-        switch result.gateway {
-        case .pending:
-            update(state: .gatewaysNeedSync(result))
-        case .noGateways, .inSync:
-            update(state: .result(result))
-        }
-    }
-
-    func dismiss() {
-        loadingImageView.layer.removeAnimation(forKey: "siteEntrySyncLoading")
-        removeFromSuperview()
+    func showResult(
+        _ site: SiteEntryTimeZoneResult,
+        gateways: SiteGatewayCloudTimeZoneBatchState
+    ) {
+        update(state: .result(site: site, gateways: gateways))
     }
 
     private func setupUI() {
@@ -105,7 +101,7 @@ final class SiteEntryTimeZoneSyncOverlay: UIView {
         accessibilityViewIsModal = true
 
         setupCheckingCard()
-        setupResultCard()
+        setupResultSheet()
     }
 
     private func setupCheckingCard() {
@@ -166,55 +162,31 @@ final class SiteEntryTimeZoneSyncOverlay: UIView {
         }
     }
 
-    private func setupResultCard() {
-        configureResultShadows()
-
+    private func setupResultSheet() {
         resultCardView.backgroundColor = .white
         resultCardView.layer.cornerRadius = SCRYFrom(24)
+        resultCardView.layer.maskedCorners = [.layerMinXMinYCorner, .layerMaxXMinYCorner]
         resultCardView.layer.masksToBounds = true
         addSubview(resultCardView)
         resultCardView.snp.makeConstraints { make in
-            make.center.equalToSuperview()
             make.width.equalTo(SCRXFrom(343)).priority(.high)
-            make.height.equalTo(SCRYFrom(296))
             make.left.greaterThanOrEqualTo(safeAreaLayoutGuide.snp.left).offset(SCRXFrom(8))
             make.right.lessThanOrEqualTo(safeAreaLayoutGuide.snp.right).offset(SCRXFrom(-8))
+            make.centerX.equalToSuperview()
+            make.bottom.equalTo(safeAreaLayoutGuide.snp.bottom)
+            make.top.greaterThanOrEqualTo(safeAreaLayoutGuide.snp.top).offset(SCRYFrom(16))
+            make.height.lessThanOrEqualTo(safeAreaLayoutGuide.snp.height).offset(-SCRYFrom(16))
         }
+        resultCardHeightConstraint = resultCardView.snp.prepareConstraints { make in
+            make.height.equalTo(0).priority(.high)
+        }.first
+        configureResultShadows()
+        bringSubviewToFront(resultCardView)
 
         configureResultTitle()
-        configureStatusCard(
-            siteStatusCardView,
-            iconBackgroundView: siteIconBackgroundView,
-            iconImageView: siteIconImageView,
-            primaryLabel: siteValueLabel,
-            secondaryLabel: siteStatusLabel
-        )
-        configureStatusCard(
-            gatewayStatusCardView,
-            iconBackgroundView: gatewayIconBackgroundView,
-            iconImageView: gatewayIconImageView,
-            primaryLabel: gatewayTitleLabel,
-            secondaryLabel: gatewayStatusLabel
-        )
-
-        resultCardView.addSubview(siteStatusCardView)
-        resultCardView.addSubview(gatewayStatusCardView)
-        siteStatusCardView.snp.makeConstraints { make in
-            make.top.equalTo(resultTitleLabel.snp.bottom).offset(SCRYFrom(16))
-            make.left.equalToSuperview().offset(SCRXFrom(15))
-            make.width.equalTo(SCRXFrom(313)).priority(.high)
-            make.right.lessThanOrEqualToSuperview().offset(SCRXFrom(-15))
-            make.height.equalTo(SCRYFrom(64))
-        }
-        gatewayStatusCardView.snp.makeConstraints { make in
-            make.top.equalTo(siteStatusCardView.snp.bottom).offset(SCRYFrom(8))
-            make.left.equalToSuperview().offset(SCRXFrom(15))
-            make.width.equalTo(SCRXFrom(313)).priority(.high)
-            make.right.lessThanOrEqualToSuperview().offset(SCRXFrom(-15))
-            make.height.equalTo(SCRYFrom(64))
-        }
-
-        configureFooterButtons()
+        configureSiteStatusCard()
+        configureGatewayStatusView()
+        configureDoneFooter()
     }
 
     private func configureResultShadows() {
@@ -231,9 +203,7 @@ final class SiteEntryTimeZoneSyncOverlay: UIView {
         for shadowView in [resultLargeShadowView, resultSmallShadowView] {
             addSubview(shadowView)
             shadowView.snp.makeConstraints { make in
-                make.center.equalToSuperview()
-                make.width.equalTo(SCRXFrom(343))
-                make.height.equalTo(SCRYFrom(296))
+                make.edges.equalTo(resultCardView)
             }
         }
     }
@@ -247,150 +217,134 @@ final class SiteEntryTimeZoneSyncOverlay: UIView {
         resultCardView.addSubview(resultTitleLabel)
         resultTitleLabel.snp.makeConstraints { make in
             make.top.equalToSuperview().offset(SCRYFrom(24))
-            make.left.equalToSuperview().offset(SCRXFrom(24))
-            make.width.equalTo(SCRXFrom(313)).priority(.high)
-            make.right.lessThanOrEqualToSuperview().offset(SCRXFrom(-6))
+            make.left.right.equalToSuperview().inset(SCRXFrom(24))
             make.height.equalTo(SCRYFrom(25))
         }
     }
 
-    private func configureStatusCard(
-        _ card: UIView,
-        iconBackgroundView: UIView,
-        iconImageView: UIImageView,
-        primaryLabel: UILabel,
-        secondaryLabel: UILabel
-    ) {
-        card.backgroundColor = RGB(246, 248, 255)
-        card.layer.cornerRadius = SCRYFrom(16)
+    private func configureSiteStatusCard() {
+        siteStatusCardView.backgroundColor = RGB(246, 248, 255)
+        siteStatusCardView.layer.cornerRadius = SCRYFrom(16)
+        resultCardView.addSubview(siteStatusCardView)
+        siteStatusCardView.snp.makeConstraints { make in
+            make.top.equalTo(resultTitleLabel.snp.bottom).offset(SCRYFrom(16))
+            make.left.right.equalToSuperview().inset(SCRXFrom(15))
+            make.height.equalTo(SCRYFrom(64))
+        }
 
-        iconBackgroundView.backgroundColor = RGB(0, 209, 124).withAlphaComponent(0.1)
-        iconBackgroundView.layer.cornerRadius = SCRYFrom(16)
-        card.addSubview(iconBackgroundView)
-        iconBackgroundView.snp.makeConstraints { make in
+        siteIconBackgroundView.backgroundColor = RGB(0, 209, 124).withAlphaComponent(0.1)
+        siteIconBackgroundView.layer.cornerRadius = SCRYFrom(16)
+        siteStatusCardView.addSubview(siteIconBackgroundView)
+        siteIconBackgroundView.snp.makeConstraints { make in
             make.left.equalToSuperview().offset(SCRXFrom(16))
             make.centerY.equalToSuperview()
             make.size.equalTo(SCRYFrom(32))
         }
 
-        iconImageView.image = UIImage(named: "site_entry_sync_success")
-        iconImageView.contentMode = .scaleAspectFit
-        iconBackgroundView.addSubview(iconImageView)
-        iconImageView.snp.makeConstraints { make in
+        siteIconImageView.contentMode = .scaleAspectFit
+        siteIconBackgroundView.addSubview(siteIconImageView)
+        siteIconImageView.snp.makeConstraints { make in
             make.center.equalToSuperview()
             make.size.equalTo(SCRYFrom(16))
         }
 
-        primaryLabel.font = scaledFont(size: 14, weight: .light)
-        primaryLabel.textColor = RGB(30, 35, 41)
-        primaryLabel.adjustsFontForContentSizeCategory = true
-        primaryLabel.numberOfLines = 1
+        siteValueLabel.font = scaledFont(size: 14, weight: .light)
+        siteValueLabel.textColor = RGB(30, 35, 41)
+        siteValueLabel.adjustsFontForContentSizeCategory = true
+        siteValueLabel.numberOfLines = 1
 
-        secondaryLabel.font = scaledFont(size: 12, weight: .light)
-        secondaryLabel.textColor = RGB(0, 122, 85)
-        secondaryLabel.adjustsFontForContentSizeCategory = true
-        secondaryLabel.numberOfLines = 1
+        siteStatusLabel.font = scaledFont(size: 12, weight: .light)
+        siteStatusLabel.adjustsFontForContentSizeCategory = true
+        siteStatusLabel.numberOfLines = 1
 
-        let textStack = UIStackView(arrangedSubviews: [primaryLabel, secondaryLabel])
+        let textStack = UIStackView(arrangedSubviews: [siteValueLabel, siteStatusLabel])
         textStack.axis = .vertical
         textStack.alignment = .fill
         textStack.spacing = 0
-        card.addSubview(textStack)
+        siteStatusCardView.addSubview(textStack)
         textStack.snp.makeConstraints { make in
-            make.left.equalTo(iconBackgroundView.snp.right).offset(SCRXFrom(12))
+            make.left.equalTo(siteIconBackgroundView.snp.right).offset(SCRXFrom(12))
             make.right.equalToSuperview().offset(SCRXFrom(-16))
             make.centerY.equalToSuperview()
             make.height.equalTo(SCRYFrom(36))
         }
-        primaryLabel.snp.makeConstraints { make in
+        siteValueLabel.snp.makeConstraints { make in
             make.height.equalTo(SCRYFrom(20))
         }
-        secondaryLabel.snp.makeConstraints { make in
+        siteStatusLabel.snp.makeConstraints { make in
             make.height.equalTo(SCRYFrom(16))
         }
     }
 
-    private func configureFooterButtons() {
-        gotItButton.setTitle("site_entry_sync_got_it".localizedString, for: .normal)
-        gotItButton.setTitleColor(RGB(102, 103, 171), for: .normal)
-        gotItButton.backgroundColor = .clear
-        gotItButton.titleLabel?.font = scaledFont(size: 15, weight: .light)
-        gotItButton.titleLabel?.adjustsFontForContentSizeCategory = true
-        gotItButton.addTarget(self, action: #selector(gotItButtonDidTap), for: .touchUpInside)
-        resultCardView.addSubview(gotItButton)
-        gotItButton.snp.makeConstraints { make in
-            make.left.right.bottom.equalToSuperview()
-            make.height.equalTo(SCRYFrom(60))
+    private func configureGatewayStatusView() {
+        resultCardView.addSubview(gatewayStatusView)
+        gatewayStatusView.snp.makeConstraints { make in
+            make.top.equalTo(siteStatusCardView.snp.bottom).offset(SCRYFrom(12))
+            make.left.right.equalTo(siteStatusCardView)
         }
+        gatewayStatusHeightConstraint = gatewayStatusView.snp.prepareConstraints { make in
+            make.height.equalTo(gatewayStatusView.preferredHeight)
+        }.first
+        gatewayStatusHeightConstraint.activate()
+    }
 
-        laterButton.setTitle("site_entry_sync_later".localizedString, for: .normal)
-        laterButton.setTitleColor(RGB(64, 79, 102), for: .normal)
-        laterButton.backgroundColor = .clear
-        laterButton.titleLabel?.font = scaledFont(size: 15, weight: .light)
-        laterButton.titleLabel?.adjustsFontForContentSizeCategory = true
-        laterButton.addTarget(self, action: #selector(laterButtonDidTap), for: .touchUpInside)
-        resultCardView.addSubview(laterButton)
-        laterButton.snp.makeConstraints { make in
-            make.left.bottom.equalToSuperview()
-            make.width.equalToSuperview().multipliedBy(0.5)
-            make.height.equalTo(SCRYFrom(60))
+    private func configureDoneFooter() {
+        footerContainerView.clipsToBounds = true
+        resultCardView.addSubview(footerContainerView)
+        footerContainerView.snp.makeConstraints { make in
+            make.top.equalTo(gatewayStatusView.snp.bottom).offset(SCRYFrom(16))
+            make.left.right.equalToSuperview()
         }
-
-        reviewSyncButton.setTitle("site_entry_sync_review_sync".localizedString, for: .normal)
-        reviewSyncButton.setTitleColor(RGB(102, 103, 171), for: .normal)
-        reviewSyncButton.backgroundColor = .clear
-        reviewSyncButton.titleLabel?.font = scaledFont(size: 15, weight: .light)
-        reviewSyncButton.titleLabel?.adjustsFontForContentSizeCategory = true
-        reviewSyncButton.addTarget(
-            self,
-            action: #selector(reviewSyncButtonDidTap),
-            for: .touchUpInside
-        )
-        resultCardView.addSubview(reviewSyncButton)
-        reviewSyncButton.snp.makeConstraints { make in
-            make.right.bottom.equalToSuperview()
-            make.width.equalToSuperview().multipliedBy(0.5)
-            make.height.equalTo(SCRYFrom(60))
-        }
+        footerHeightConstraint = footerContainerView.snp.prepareConstraints { make in
+            make.height.equalTo(0)
+        }.first
+        footerHeightConstraint.activate()
 
         footerDividerView.backgroundColor = UIColor.black.withAlphaComponent(0.03)
-        resultCardView.addSubview(footerDividerView)
+        footerContainerView.addSubview(footerDividerView)
         footerDividerView.snp.makeConstraints { make in
-            make.left.right.equalToSuperview()
-            make.top.equalTo(gotItButton.snp.top)
+            make.top.left.right.equalToSuperview()
             make.height.equalTo(SCRYFrom(1))
         }
 
-        footerVerticalDividerView.backgroundColor = UIColor.black.withAlphaComponent(0.03)
-        resultCardView.addSubview(footerVerticalDividerView)
-        footerVerticalDividerView.snp.makeConstraints { make in
-            make.centerX.equalToSuperview()
-            make.top.bottom.equalTo(laterButton)
-            make.width.equalTo(SCRXFrom(1))
+        doneButton.setTitle("site_entry_sync_done".localizedString, for: .normal)
+        doneButton.setTitleColor(RGB(102, 103, 171), for: .normal)
+        doneButton.backgroundColor = .clear
+        doneButton.titleLabel?.font = scaledFont(size: 15, weight: .light)
+        doneButton.titleLabel?.adjustsFontForContentSizeCategory = true
+        doneButton.addTarget(self, action: #selector(doneButtonDidTap), for: .touchUpInside)
+        footerContainerView.addSubview(doneButton)
+        doneButton.snp.makeConstraints { make in
+            make.top.equalTo(footerDividerView.snp.bottom)
+            make.left.right.equalToSuperview()
+            make.height.equalTo(SCRYFrom(60))
         }
     }
 
     private func update(state: State) {
+        let wasDismissible: Bool
+        if case let .result(_, gateways) = self.state {
+            wasDismissible = gateways.canDismiss
+        } else {
+            wasDismissible = false
+        }
+
         self.state = state
         checkingCardView.isHidden = state != .checking
         resultLargeShadowView.isHidden = state == .checking
         resultSmallShadowView.isHidden = state == .checking
         resultCardView.isHidden = state == .checking
 
-        let gatewaysNeedSync: Bool
-        switch state {
-        case .gatewaysNeedSync:
-            gatewaysNeedSync = true
-        case .checking, .result:
-            gatewaysNeedSync = false
-        }
-        gotItButton.isHidden = state == .checking || gatewaysNeedSync
-        laterButton.isHidden = !gatewaysNeedSync
-        reviewSyncButton.isHidden = !gatewaysNeedSync
-        footerVerticalDividerView.isHidden = !gatewaysNeedSync
-
         switch state {
         case .checking:
+            if isResultCardHeightConstraintActive {
+                resultCardHeightConstraint.deactivate()
+                isResultCardHeightConstraintActive = false
+            }
+            doneButton.isHidden = true
+            footerDividerView.isHidden = true
+            footerContainerView.isHidden = true
+            footerHeightConstraint.update(offset: 0)
             loadingImageView.layer.addRotationAnimation(
                 duration: 1.2,
                 repeatCount: .max,
@@ -398,74 +352,94 @@ final class SiteEntryTimeZoneSyncOverlay: UIView {
             )
             accessibilityLabel = "site_entry_sync_checking_title".localizedString
 
-        case .gatewaysNeedSync(let result), .result(let result):
+        case let .result(site, gateways):
             loadingImageView.layer.removeAnimation(forKey: "siteEntrySyncLoading")
-            siteValueLabel.text = "\("site_entry_sync_site_time_zone".localizedString) · \(result.timezone.displayOffset)"
-
-            let siteUpdateFailed: Bool
-            switch result.site {
-            case .alreadyInSync:
-                siteUpdateFailed = false
-                siteStatusLabel.text = "site_entry_sync_already_in_sync_with_server".localizedString
-            case .updatedFromServer:
-                siteUpdateFailed = false
-                siteStatusLabel.text = "site_entry_sync_updated_from_server".localizedString
-            case .updatedToServer:
-                siteUpdateFailed = false
-                siteStatusLabel.text = "site_entry_sync_updated_to_server".localizedString
-            case .failedToUpdateServer:
-                siteUpdateFailed = true
-                siteStatusLabel.text = "site_entry_sync_failed_to_update_server".localizedString
+            updateSiteStatus(site)
+            gatewayStatusView.update(gateways)
+            if !isResultCardHeightConstraintActive {
+                resultCardHeightConstraint.activate()
+                isResultCardHeightConstraintActive = true
             }
-            updateStatusIndicator(
-                iconImageView: siteIconImageView,
-                backgroundView: siteIconBackgroundView,
-                failed: siteUpdateFailed
-            )
-            siteStatusLabel.textColor = siteUpdateFailed ? RGB(255, 72, 49) : RGB(0, 122, 85)
-
-            gatewayTitleLabel.text = "site_entry_sync_gateway_time_zone".localizedString
-            switch result.gateway {
-            case .noGateways:
-                gatewayStatusLabel.text = "site_entry_sync_no_gateways".localizedString
-            case .pending(let count):
-                gatewayStatusLabel.text = String(
-                    format: "site_entry_sync_gateways_need_sync".localizedString,
-                    count
-                )
-            case .inSync:
-                gatewayStatusLabel.text = "site_entry_sync_gateways_in_sync".localizedString
-            }
-            if gatewaysNeedSync {
-                gatewayStatusLabel.textColor = RGB(225, 113, 0)
-                gatewayIconImageView.image = UIImage(named: "site_entry_sync_warning")
-                gatewayIconImageView.tintColor = nil
-                gatewayIconBackgroundView.backgroundColor = RGB(225, 113, 0).withAlphaComponent(0.1)
-            } else {
-                gatewayStatusLabel.textColor = RGB(0, 122, 85)
-                updateStatusIndicator(
-                    iconImageView: gatewayIconImageView,
-                    backgroundView: gatewayIconBackgroundView,
-                    failed: false
-                )
-            }
+            doneButton.isHidden = !gateways.canDismiss
+            footerDividerView.isHidden = !gateways.canDismiss
+            footerContainerView.isHidden = !gateways.canDismiss
+            footerHeightConstraint.update(offset: gateways.canDismiss ? SCRYFrom(61) : 0)
+            updateResultSheetLayout(for: gateways)
             accessibilityLabel = "site_entry_sync_status_title".localizedString
+
+            if !wasDismissible && gateways.canDismiss, superview != nil {
+                UIView.animate(withDuration: 0.25) {
+                    self.layoutIfNeeded()
+                }
+            }
         }
     }
 
-    private func updateStatusIndicator(
-        iconImageView: UIImageView,
-        backgroundView: UIView,
-        failed: Bool
-    ) {
+    private func updateResultSheetLayout(for gateways: SiteGatewayCloudTimeZoneBatchState) {
+        let gatewayHeight = availableGatewayViewportHeight(for: gateways)
+        gatewayStatusHeightConstraint.update(offset: gatewayHeight)
+        resultCardHeightConstraint.update(offset: resultCardHeight(
+            gatewayHeight: gatewayHeight,
+            showsFooter: gateways.canDismiss
+        ))
+    }
+
+    private func availableGatewayViewportHeight(
+        for gateways: SiteGatewayCloudTimeZoneBatchState
+    ) -> CGFloat {
+        let preferredHeight = gatewayStatusView.preferredHeight
+        let availableResultHeight = safeAreaLayoutGuide.layoutFrame.height - SCRYFrom(16)
+        guard availableResultHeight > 0 else { return preferredHeight }
+
+        let availableGatewayHeight = availableResultHeight - fixedResultContentHeight(
+            showsFooter: gateways.canDismiss
+        )
+        return min(
+            preferredHeight,
+            max(gatewayStatusView.minimumViewportHeight, availableGatewayHeight)
+        )
+    }
+
+    private func resultCardHeight(gatewayHeight: CGFloat, showsFooter: Bool) -> CGFloat {
+        fixedResultContentHeight(showsFooter: showsFooter) + gatewayHeight
+    }
+
+    private func fixedResultContentHeight(showsFooter: Bool) -> CGFloat {
+        let footerHeight = showsFooter ? SCRYFrom(61) : 0
+        return SCRYFrom(24 + 25 + 16 + 64 + 12 + 16) + footerHeight
+    }
+
+    private func updateSiteStatus(_ result: SiteEntryTimeZoneResult) {
+        siteValueLabel.text = "\("site_entry_sync_site_time_zone".localizedString) · \(result.timezone.displayOffset)"
+
+        let siteUpdateFailed: Bool
+        switch result.site {
+        case .alreadyInSync:
+            siteUpdateFailed = false
+            siteStatusLabel.text = "site_entry_sync_already_in_sync_with_server".localizedString
+        case .updatedFromServer:
+            siteUpdateFailed = false
+            siteStatusLabel.text = "site_entry_sync_updated_from_server".localizedString
+        case .updatedToServer:
+            siteUpdateFailed = false
+            siteStatusLabel.text = "site_entry_sync_updated_to_server".localizedString
+        case .failedToUpdateServer:
+            siteUpdateFailed = true
+            siteStatusLabel.text = "site_entry_sync_failed_to_update_server".localizedString
+        }
+        updateStatusIndicator(failed: siteUpdateFailed)
+        siteStatusLabel.textColor = siteUpdateFailed ? RGB(255, 72, 49) : RGB(0, 122, 85)
+    }
+
+    private func updateStatusIndicator(failed: Bool) {
         if failed {
-            iconImageView.image = UIImage(systemName: "exclamationmark.circle")
-            iconImageView.tintColor = RGB(255, 72, 49)
-            backgroundView.backgroundColor = RGB(255, 72, 49).withAlphaComponent(0.1)
+            siteIconImageView.image = UIImage(systemName: "exclamationmark.circle")
+            siteIconImageView.tintColor = RGB(255, 72, 49)
+            siteIconBackgroundView.backgroundColor = RGB(255, 72, 49).withAlphaComponent(0.1)
         } else {
-            iconImageView.image = UIImage(named: "site_entry_sync_success")
-            iconImageView.tintColor = nil
-            backgroundView.backgroundColor = RGB(0, 209, 124).withAlphaComponent(0.1)
+            siteIconImageView.image = UIImage(named: "site_entry_sync_success")
+            siteIconImageView.tintColor = nil
+            siteIconBackgroundView.backgroundColor = RGB(0, 209, 124).withAlphaComponent(0.1)
         }
     }
 
@@ -492,18 +466,8 @@ final class SiteEntryTimeZoneSyncOverlay: UIView {
         )
     }
 
-    @objc private func gotItButtonDidTap() {
-        guard case .result = state else { return }
-        onGotIt?()
-    }
-
-    @objc private func laterButtonDidTap() {
-        guard case .gatewaysNeedSync = state else { return }
-        onLater?()
-    }
-
-    @objc private func reviewSyncButtonDidTap() {
-        guard case .gatewaysNeedSync = state else { return }
-        onReviewSync?()
+    @objc private func doneButtonDidTap() {
+        guard case let .result(_, gateways) = state, gateways.canDismiss else { return }
+        onDone?()
     }
 }

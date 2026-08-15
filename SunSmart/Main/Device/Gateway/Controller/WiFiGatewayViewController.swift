@@ -62,6 +62,7 @@ final class WiFiGatewayViewController: GatewayViewController {
     private var nextWiFiRequestID: Int = 0
     private var activeWiFiRequest: ActiveWiFiRequest?
     private var automaticLoadGate = WiFiGatewayAutomaticLoadGate()
+    private var proxySessionTracker = WiFiGatewayProxySessionTracker()
     private var credentialMutationReducer = WiFiGatewayCredentialMutationReducer()
     private var connectionPollingReducer = WiFiGatewayConnectionPollingReducer()
     private var pendingGatewayRecoveryAction: (() -> Void)?
@@ -100,12 +101,12 @@ final class WiFiGatewayViewController: GatewayViewController {
         isNetworkPageVisible = true
         showPendingNetworkResultHUDIfNeeded()
         guard node.isKeybindComplete else {
-            hideNetworkConnectivityForOfflineGateway()
+            resetWiFiSessionForUnavailableProxy()
             return
         }
         if networkConnectState == .connected {
             requestAutomaticLoad(forceReload: false)
-        } else if node.state,
+        } else if isGatewayProxyReady,
                   !isNetworkOperationInProgress,
                   !isWiFiRequestInProgress,
                   !isNetworkConnectivityVisible {
@@ -187,23 +188,32 @@ final class WiFiGatewayViewController: GatewayViewController {
         }
     }
 
-    override func gatewayOnlineStateDidUpdate(_ isOnline: Bool) {
-        if !isOnline {
-            hideNetworkConnectivityForOfflineGateway()
+    override func gatewayProxyReadyStateDidUpdate(_ isReady: Bool) {
+        if !isReady {
+            resetWiFiSessionForUnavailableProxy()
             return
         }
         guard node.isKeybindComplete else {
-            hideNetworkConnectivityForOfflineGateway()
+            resetWiFiSessionForUnavailableProxy()
             return
         }
-        requestAutomaticLoad(forceReload: true)
     }
 
     override func gatewayProxyDidBecomeReady(_ context: ProxyReadyContext) {
         stopWiFiRSSIStatusRefresh()
-        guard MeshLibManager.manager.currentProxyReadyContext == context else { return }
+        guard MeshLibManager.manager.currentProxyReadyContext == context,
+              gatewayProxyReadySessionID == context.sessionID else { return }
+        let isNewSession = proxySessionTracker.currentSessionID != context.sessionID
+        if isNewSession {
+            resetWiFiSessionForUnavailableProxy()
+            proxySessionTracker.begin(sessionID: context.sessionID)
+        }
         automaticLoadGate.markReady(sessionID: context.sessionID)
-        drainAutomaticLoadIfPossible()
+        if isNewSession {
+            requestAutomaticLoad(forceReload: true)
+        } else {
+            drainAutomaticLoadIfPossible()
+        }
     }
 
     override func performGatewayRepair() {
@@ -223,7 +233,7 @@ final class WiFiGatewayViewController: GatewayViewController {
             XWHUDManager.showTipHUD("no_permission".localizedString + "！")
             return
         }
-        guard node.state else {
+        guard isGatewayProxyReady else {
             XWHUDManager.showErrorTipHUD("device_offline_message".localizedString)
             return
         }
@@ -264,12 +274,19 @@ final class WiFiGatewayViewController: GatewayViewController {
         reloadGatewayTable()
     }
 
-    private func hideNetworkConnectivityForOfflineGateway() {
-        if !node.state {
-            automaticLoadGate.invalidate()
-        }
+    private func resetWiFiSessionForUnavailableProxy() {
+        automaticLoadGate.invalidate()
         stopNetworkConnectionPolling()
         stopWiFiRSSIStatusRefresh()
+        networkOperationID += 1
+        activeWiFiRequest = nil
+        proxySessionTracker.invalidate()
+        isNetworkRefreshInProgress = false
+        credentialMutationReducer = WiFiGatewayCredentialMutationReducer()
+        connectionPollingReducer = WiFiGatewayConnectionPollingReducer()
+        pendingNetworkResultHUD = nil
+        shouldRefreshSSIDWhenActive = false
+        cancelPendingGatewayRecovery()
         networkSSID = ""
         networkPassword = ""
         networkCredentialSource = .localClear
@@ -320,12 +337,14 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     private func drainAutomaticLoadIfPossible() {
-        guard node.state,
+        guard isGatewayProxyReady,
+              isNetworkPageVisible,
               node.isKeybindComplete,
               !isNetworkOperationInProgress,
               !isWiFiRequestInProgress,
               let context = MeshLibManager.manager.currentProxyReadyContext,
               context.nodeAddress == node.primaryUnicastAddress,
+              gatewayProxyReadySessionID == context.sessionID,
               let intent = automaticLoadGate.takeIfReady(currentSessionID: context.sessionID) else {
             return
         }
@@ -346,7 +365,7 @@ final class WiFiGatewayViewController: GatewayViewController {
         guard activeWiFiRequest == nil, let action = pendingGatewayRecoveryAction else { return }
         pendingGatewayRecoveryAction = nil
         XWHUDManager.hideInView(with: view)
-        guard node.state else {
+        guard isGatewayProxyReady else {
             if isNetworkPageVisible {
                 XWHUDManager.showErrorTipHUD("device_offline_message".localizedString)
             }
@@ -368,6 +387,7 @@ final class WiFiGatewayViewController: GatewayViewController {
         origin: WiFiRequestOrigin,
         completion: @escaping (SunricherVendorStatus?) -> Void
     ) -> Bool {
+        guard isGatewayProxyReady else { return false }
         guard let requestID = beginWiFiRequest(origin: origin) else { return false }
         guard let vendorModel = node.sunricherVendorModel else {
             finishWiFiRequest(requestID) { completion(nil) }
@@ -393,6 +413,7 @@ final class WiFiGatewayViewController: GatewayViewController {
         origin: WiFiRequestOrigin,
         completion: @escaping (WiFiGatewayCredentialsSetResult?) -> Void
     ) -> Bool {
+        guard isGatewayProxyReady else { return false }
         guard let requestID = beginWiFiRequest(origin: origin) else { return false }
         guard let vendorModel = node.sunricherVendorModel else {
             finishWiFiRequest(requestID) { completion(nil) }
@@ -422,6 +443,7 @@ final class WiFiGatewayViewController: GatewayViewController {
         origin: WiFiRequestOrigin,
         completion: @escaping (WiFiGatewayCredentialsClearResult?) -> Void
     ) -> Bool {
+        guard isGatewayProxyReady else { return false }
         guard let requestID = beginWiFiRequest(origin: origin) else { return false }
         guard let vendorModel = node.sunricherVendorModel else {
             finishWiFiRequest(requestID) { completion(nil) }
@@ -448,11 +470,11 @@ final class WiFiGatewayViewController: GatewayViewController {
 
     private func loadNetworkConnectivityFromGateway() {
         guard node.isKeybindComplete else {
-            hideNetworkConnectivityForOfflineGateway()
+            resetWiFiSessionForUnavailableProxy()
             return
         }
-        guard node.state else {
-            hideNetworkConnectivityForOfflineGateway()
+        guard isGatewayProxyReady else {
+            resetWiFiSessionForUnavailableProxy()
             return
         }
         stopNetworkConnectionPolling()
@@ -463,7 +485,7 @@ final class WiFiGatewayViewController: GatewayViewController {
             subcode: .credentialsRead,
             origin: .automatic
         ) { [weak self] status in
-            guard let self, self.isCurrentNetworkOperation(operationID), self.node.state else { return }
+            guard let self, self.isCurrentNetworkOperation(operationID), self.isGatewayProxyReady else { return }
             guard let status,
                   case .wifiGatewayCredentialsRead(let result) = status.status.parameters else {
                 self.showCredentialsFetchFailedIfVisible()
@@ -502,7 +524,7 @@ final class WiFiGatewayViewController: GatewayViewController {
             subcode: .connectionStatus,
             origin: .automatic
         ) { [weak self] status in
-            guard let self, self.isCurrentNetworkOperation(operationID), self.node.state else { return }
+            guard let self, self.isCurrentNetworkOperation(operationID), self.isGatewayProxyReady else { return }
             guard let status,
                   case .wifiGatewayConnectionStatus(let connectionStatus) = status.status.parameters else {
                 self.setNetworkConnectivityVisible(false)
@@ -528,7 +550,7 @@ final class WiFiGatewayViewController: GatewayViewController {
             origin: .userInitiated
         ) { [weak self] status in
             guard let self, self.isCurrentNetworkOperation(operationID) else { return }
-            guard self.node.state else {
+            guard self.isGatewayProxyReady else {
                 self.finishNetworkRefresh()
                 return
             }
@@ -583,6 +605,10 @@ final class WiFiGatewayViewController: GatewayViewController {
             XWHUDManager.showTipHUD("no_permission".localizedString + "！")
             return
         }
+        guard isGatewayProxyReady else {
+            XWHUDManager.showErrorTipHUD("device_offline_message".localizedString)
+            return
+        }
         guard !isNetworkOperationInProgress, !isWiFiRequestInProgress, beginNetworkRefresh() else {
             if isNetworkOperationInProgress || isWiFiRequestInProgress {
                 XWHUDManager.showTipHUD("wifi_gateway_wait_current_operation".localizedString, isLineFeed: true)
@@ -604,7 +630,7 @@ final class WiFiGatewayViewController: GatewayViewController {
             origin: .userInitiated
         ) { [weak self] status in
             guard let self, self.isCurrentNetworkOperation(operationID) else { return }
-            guard self.node.state else {
+            guard self.isGatewayProxyReady else {
                 self.finishNetworkRefresh()
                 return
             }
@@ -640,8 +666,11 @@ final class WiFiGatewayViewController: GatewayViewController {
     private func refreshCurrentSSID(showsResultHUD: Bool = false) {
         guard canRefreshPhoneSSID() else { return }
         let oldSSID = networkSSID
+        let readySessionID = gatewayProxyReadySessionID
         WiFiSSIDProvider.shared.fetchCurrentSSID { [weak self] ssid in
             guard let self else { return }
+            guard self.isGatewayProxyReady,
+                  self.gatewayProxyReadySessionID == readySessionID else { return }
             if showsResultHUD, ssid.isEmpty {
                 self.finishNetworkRefresh()
                 self.showPhoneNotConnectedToWiFiTip()
@@ -673,7 +702,10 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     private func canRefreshPhoneSSID() -> Bool {
-        guard canConfigureCurrentGateway, !isNetworkOperationInProgress, !isWiFiRequestInProgress else { return false }
+        guard isGatewayProxyReady,
+              canConfigureCurrentGateway,
+              !isNetworkOperationInProgress,
+              !isWiFiRequestInProgress else { return false }
         return networkConnectState != .connected
     }
 
@@ -781,6 +813,10 @@ final class WiFiGatewayViewController: GatewayViewController {
             XWHUDManager.showTipHUD("no_permission".localizedString + "！")
             return
         }
+        guard isGatewayProxyReady else {
+            XWHUDManager.showErrorTipHUD("device_offline_message".localizedString)
+            return
+        }
         guard !isWiFiRequestInProgress else {
             XWHUDManager.showTipHUD("wifi_gateway_wait_current_operation".localizedString, isLineFeed: true)
             return
@@ -875,7 +911,7 @@ final class WiFiGatewayViewController: GatewayViewController {
             sendWiFiGatewayCredentialsSet(credentials, origin: .userInitiated) { [weak self] result in
                 guard let self,
                       self.isCurrentNetworkOperation(operationID),
-                      self.node.state else { return }
+                      self.isGatewayProxyReady else { return }
                 let action = self.credentialMutationReducer.reduce(
                     .mutationResponse(self.mutationResponse(from: result))
                 )
@@ -886,7 +922,7 @@ final class WiFiGatewayViewController: GatewayViewController {
             sendWiFiGatewayCredentialsClear(origin: .userInitiated) { [weak self] result in
                 guard let self,
                       self.isCurrentNetworkOperation(operationID),
-                      self.node.state else { return }
+                      self.isGatewayProxyReady else { return }
                 let action = self.credentialMutationReducer.reduce(
                     .mutationResponse(self.mutationResponse(from: result))
                 )
@@ -948,7 +984,7 @@ final class WiFiGatewayViewController: GatewayViewController {
         ) { [weak self] status in
             guard let self,
                   self.isCurrentNetworkOperation(operationID),
-                  self.node.state else { return }
+                  self.isGatewayProxyReady else { return }
             let observation: WiFiGatewayCredentialReadObservation
             if let status,
                case .wifiGatewayCredentialsRead(let result) = status.status.parameters {
@@ -1001,8 +1037,8 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     private func requestConnectionPollingStatus(operationID: Int) {
-        guard node.state else {
-            hideNetworkConnectivityForOfflineGateway()
+        guard isGatewayProxyReady else {
+            resetWiFiSessionForUnavailableProxy()
             return
         }
         let didStart = sendWiFiGatewayGet(
@@ -1013,7 +1049,7 @@ final class WiFiGatewayViewController: GatewayViewController {
             guard let self,
                   self.isCurrentNetworkOperation(operationID),
                   self.networkConnectState == .connecting,
-                  self.node.state else { return }
+                  self.isGatewayProxyReady else { return }
             let observation = self.connectionPollingObservation(from: status)
             let action = self.connectionPollingReducer.receive(
                 observation,
@@ -1140,7 +1176,7 @@ final class WiFiGatewayViewController: GatewayViewController {
             stopWiFiRSSIStatusRefresh()
             return
         }
-        guard node.state, networkConnectState == .connected else {
+        guard isGatewayProxyReady, networkConnectState == .connected else {
             stopWiFiRSSIStatusRefresh()
             updateWiFiHeaderStatus(.notConnected)
             return
@@ -1158,7 +1194,7 @@ final class WiFiGatewayViewController: GatewayViewController {
     private func scheduleNextWiFiRSSIStatusRefresh() {
         guard isNetworkPageVisible,
               node.isKeybindComplete,
-              node.state,
+              isGatewayProxyReady,
               networkConnectState == .connected else {
             stopWiFiRSSIStatusRefresh()
             return
@@ -1181,8 +1217,8 @@ final class WiFiGatewayViewController: GatewayViewController {
             stopWiFiRSSIStatusRefresh()
             return
         }
-        guard node.state else {
-            hideNetworkConnectivityForOfflineGateway()
+        guard isGatewayProxyReady else {
+            resetWiFiSessionForUnavailableProxy()
             return
         }
         guard networkConnectState == .connected else {
@@ -1198,7 +1234,7 @@ final class WiFiGatewayViewController: GatewayViewController {
             guard let self else { return }
             guard self.isNetworkPageVisible,
                   self.node.isKeybindComplete,
-                  self.node.state,
+                  self.isGatewayProxyReady,
                   self.networkConnectState == .connected else {
                 self.stopWiFiRSSIStatusRefresh()
                 return

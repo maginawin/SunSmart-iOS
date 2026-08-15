@@ -85,7 +85,7 @@ final class SitePropsAPIClient: SitePropsAPIClientProtocol {
         }
     }
 
-    private func parseUpdateResponse(_ data: [String: Any]) -> SitePropsRemoteSnapshot? {
+    func parseUpdateResponse(_ data: [String: Any]) -> SitePropsRemoteSnapshot? {
         guard let timestamp = int64Value(data["updateTimestamp"]),
               let timezoneResult = timezoneValue(in: data) else {
             return nil
@@ -140,8 +140,13 @@ final class SitePropsAPIClient: SitePropsAPIClientProtocol {
         return (timezone, true)
     }
 
+    private func isBoolean(_ value: Any) -> Bool {
+        guard let number = value as? NSNumber else { return false }
+        return CFGetTypeID(number) == CFBooleanGetTypeID()
+    }
+
     private func intValue(_ value: Any?) -> Int? {
-        guard let value = value, !(value is Bool) else { return nil }
+        guard let value, !isBoolean(value) else { return nil }
         if let integer = value as? Int {
             return integer
         }
@@ -157,7 +162,7 @@ final class SitePropsAPIClient: SitePropsAPIClientProtocol {
     }
 
     private func int64Value(_ value: Any?) -> Int64? {
-        guard let value = value, !(value is Bool) else { return nil }
+        guard let value, !isBoolean(value) else { return nil }
         if let integer = value as? Int64 {
             return integer
         }

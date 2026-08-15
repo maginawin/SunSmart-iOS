@@ -18,12 +18,19 @@ polling_test="Tests/Device/WiFiGatewayConnectionPollingReducerTests.swift"
 
 rg -n "case networkConnectivity|network_connectivity|GatewayNetworkConnectivityCell" "$gateway_controller" >/dev/null || fail "GatewayViewController missing network connectivity hook"
 rg -n "func reloadGatewayTable\(\)" "$gateway_controller" >/dev/null || fail "GatewayViewController missing full table reload hook"
-rg -n "func gatewayOnlineStateDidUpdate\(_ isOnline: Bool\)" "$gateway_controller" >/dev/null || fail "GatewayViewController missing online-state hook"
+rg -n "func gatewayProxyReadyStateDidUpdate\(_ isReady: Bool\)" "$gateway_controller" >/dev/null || fail "GatewayViewController missing target Proxy Ready hook"
 rg -n "var supportsGatewaySignalRefresh: Bool" "$gateway_controller" >/dev/null || fail "GatewayViewController missing signal refresh capability hook"
 rg -n "guard supportsGatewaySignalRefresh else" "$gateway_controller" >/dev/null || fail "Gateway signal refresh must be capability-gated"
 
 rg -n "wifiGatewayCredentials|wifiGatewayConnectionStatus|wifiGatewayCredentialsSet" "$wifi_controller" >/dev/null || fail "WiFiGatewayViewController must use real WiFi Gateway vendor protocol"
 rg -n "override var supportsGatewaySignalRefresh: Bool" "$wifi_controller" >/dev/null || fail "WiFi Gateway must disable legacy 4G signal refresh"
+rg -n "override func gatewayProxyReadyStateDidUpdate\(_ isReady: Bool\)" "$wifi_controller" >/dev/null || fail "WiFi Gateway must consume target Proxy Ready state"
+rg -n "resetWiFiSessionForUnavailableProxy" "$wifi_controller" >/dev/null || fail "WiFi Gateway must centralize unavailable Proxy cleanup"
+rg -n "gatewayProxyReadySessionID == context.sessionID" "$wifi_controller" >/dev/null || fail "WiFi Gateway automatic load must match the current Ready session"
+rg -n "WiFiGatewayProxySessionTracker|proxySessionTracker\.invalidate" "$wifi_controller" >/dev/null || fail "WiFi Gateway must invalidate work from a replaced Ready session"
+if rg -n "node\.state" "$wifi_controller" >/dev/null; then
+  fail "WiFi Gateway Vendor operations must use target Proxy Ready instead of Node.state"
+fi
 rg -n "startNetworkConnectionSimulation|finishNetworkConnectionSimulation|disconnectNetworkSimulation" "$wifi_controller" && fail "WiFiGatewayViewController must not keep simulation methods"
 rg -n "WiFiGatewayCredentialsReadResult|WiFiGatewayConnectionStatus|WiFiGatewayCredentialsSetResult" "$wifi_controller" >/dev/null || fail "WiFiGatewayViewController must parse typed WiFi Gateway results"
 rg -n "status\.isSuccessful.*connected|connected.*status\.isSuccessful" "$wifi_controller" && fail "WiFi connection success must not use status.isSuccessful"

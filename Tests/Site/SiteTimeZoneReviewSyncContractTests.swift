@@ -81,6 +81,7 @@ struct SiteTimeZoneReviewSyncContractTests {
         require(
             appearsInOrder(
                 [
+                    "guard state != timeZoneReviewState else { return }",
                     "timeZoneReviewState = state",
                     "favouritesCollectionView.reloadData()",
                     "updateEmptyView()"
@@ -99,6 +100,243 @@ struct SiteTimeZoneReviewSyncContractTests {
         require(siteController.contains("cloudBridge: syncGatewaysCloudBridge"))
         require(siteController.contains("canStartSync:"))
         require(siteController.contains("navigationController?.pushViewController(controller, animated: true)"))
+
+        let viewWillAppearFlow = sourceSection(
+            in: siteController,
+            from: "override func viewWillAppear(",
+            to: "@objc private func backAction("
+        )
+        require(
+            appearsInOrder(
+                [
+                    "setupData()",
+                    "refreshCurrentGatewayTimeZoneReviewProjection()"
+                ],
+                in: viewWillAppearFlow
+            ),
+            "Returning to the Site page must re-project cached Review state after local setup"
+        )
+
+        let siteEditFlow = sourceSection(
+            in: siteController,
+            from: "private func editSite()",
+            to: "private func deleteSite()"
+        )
+        require(
+            siteEditFlow.contains("vc.siteDidChange = { [weak self] in") &&
+                appearsInOrder(
+                    [
+                        "self?.title = self?.site.name",
+                        "self?.refreshCurrentGatewayTimeZoneReviewProjection()"
+                    ],
+                    in: siteEditFlow
+                ),
+            "A local Site edit must immediately re-project cached Review state"
+        )
+
+        let showReviewFlow = sourceSection(
+            in: siteController,
+            from: "private func showSyncGatewaysPage()",
+            to: "private func pendingTimeZoneSyncGatewayIDs("
+        )
+        let pendingReviewFlow = sourceSection(
+            in: siteController,
+            from: "private func pendingTimeZoneSyncGatewayIDs()",
+            to: "private func makeGatewayListItems("
+        )
+        let onsiteReviewFlow = showReviewFlow + pendingReviewFlow
+        let missingRemoteShowGuard = sourceSection(
+            in: showReviewFlow,
+            from: "private func showSyncGatewaysPage()",
+            to: "let projection = gatewayTimeZoneReviewProjection(from: remote)"
+        )
+        let hiddenProjectionShowGuard = sourceSection(
+            in: showReviewFlow,
+            from: "let projection = gatewayTimeZoneReviewProjection(from: remote)",
+            to: "guard let meshNetwork = sitePrimaryMeshNetwork()"
+        )
+        require(
+            missingRemoteShowGuard.contains("invalidateGatewayTimeZoneReview()") &&
+                hiddenProjectionShowGuard.contains("invalidateGatewayTimeZoneReview()") &&
+                !hiddenProjectionShowGuard.contains("if gatewayTimeZoneReviewContext != nil"),
+            "A Review action without remote data or an actionable target must unconditionally hide stale UI"
+        )
+        require(
+            occurrences(
+                of: "confirmedOffsetMinutesByGatewayID: confirmedGatewayOffsetMinutesByID",
+                in: onsiteReviewFlow
+            ) == 2,
+            "Both onsite Review target builders must receive the in-memory confirmed offsets"
+        )
+        require(
+            occurrences(
+                of: "requiredGatewayIDs: reviewContext?.failedGatewayIDs",
+                in: onsiteReviewFlow
+            ) == 2 &&
+                occurrences(
+                    of: "gatewayTimeZoneReviewProjection(from: remote)",
+                    in: onsiteReviewFlow
+                ) == 2 &&
+                onsiteReviewFlow.contains("reviewContext: reviewContext"),
+            "Onsite Review must consume the explicit failed-ID context and its target timezone"
+        )
+        require(
+            showReviewFlow.contains("invalidateGatewayTimeZoneReview()") &&
+                !onsiteReviewFlow.contains("resolveGatewayReviewTargetTimeZone("),
+            "A hidden or empty explicit Review action must use the atomic invalidation path"
+        )
+        require(
+            !pendingReviewFlow.contains("gatewayTimeZoneReviewContext =") &&
+                !pendingReviewFlow.contains("setTimeZoneReviewState(") &&
+                !pendingReviewFlow.contains("invalidateGatewayTimeZoneReview()") &&
+                !pendingReviewFlow.contains("reloadData()"),
+            "Gateway-list pending projection must remain a read-only datasource query"
+        )
+
+        let confirmedSnapshotReconcile = sourceSection(
+            in: siteController,
+            from: "private func reconcileConfirmedGatewayOffsets(",
+            to: "private func effectiveGatewayOffsetOverrides("
+        )
+        require(
+            confirmedSnapshotReconcile.contains("SiteGatewayCloudTimeZoneConfirmationPolicy") &&
+                confirmedSnapshotReconcile.contains(".acknowledgedGatewayIDs(") &&
+                confirmedSnapshotReconcile.contains("remote: remote.gateways") &&
+                confirmedSnapshotReconcile.contains("confirmedGatewayOffsetMinutesByID.removeValue(forKey: id)"),
+            "The controller must delegate confirmation clearing to the behavior-tested evidence policy"
+        )
+
+        let effectiveOverrides = sourceSection(
+            in: siteController,
+            from: "private func effectiveGatewayOffsetOverrides(",
+            to: "private func setTimeZoneReviewState("
+        )
+
+        let reviewProjectionFlow = sourceSection(
+            in: siteController,
+            from: "private func gatewayTimeZoneReviewProjection(",
+            to: "private func invalidateGatewayTimeZoneReview("
+        )
+        require(
+            reviewProjectionFlow.contains("SiteGatewayTimeZoneReviewProjectionPolicy.project(") &&
+                reviewProjectionFlow.contains("return projection") &&
+                !reviewProjectionFlow.contains("gatewayTimeZoneReviewContext =") &&
+                !reviewProjectionFlow.contains("setTimeZoneReviewState(") &&
+                !reviewProjectionFlow.contains("reloadData()"),
+            "Review projection helper must be a strictly read-only policy query"
+        )
+        let reviewInvalidationFlow = sourceSection(
+            in: siteController,
+            from: "private func invalidateGatewayTimeZoneReview(",
+            to: "private func refreshCurrentGatewayTimeZoneReviewProjection("
+        )
+        require(
+            occurrences(
+                of: "gatewayTimeZoneReviewContext = nil",
+                in: reviewInvalidationFlow
+            ) == 1 &&
+                occurrences(
+                    of: "setTimeZoneReviewState(.hidden)",
+                    in: reviewInvalidationFlow
+                ) == 1,
+            "Explicit invalidation must atomically clear context and hide through the guarded setter"
+        )
+        let refreshReviewProjectionFlow = sourceSection(
+            in: siteController,
+            from: "private func refreshCurrentGatewayTimeZoneReviewProjection(",
+            to: "private func effectiveGatewayOffsetOverrides("
+        )
+        require(
+            refreshReviewProjectionFlow.contains("guard let remote = latestTimeZoneRemoteSnapshot else") &&
+                appearsInOrder(
+                    [
+                        "let projection = gatewayTimeZoneReviewProjection(from: remote)",
+                        "guard let targetTimeZone = projection.targetTimeZone else",
+                        "invalidateGatewayTimeZoneReview()",
+                        "let dirtyTimeOverrides = captureDirtyGatewayTimeOverrides(",
+                        "remote: remote",
+                        "targetTimeZone: targetTimeZone",
+                        "applyTimeZoneReviewState(",
+                        "from: remote",
+                        "localDirtyOffsetMinutesByGatewayID:",
+                        "dirtyTimeOverrides.mapValues(\\.offsetMinutes)"
+                    ],
+                    in: refreshReviewProjectionFlow
+                ) &&
+                occurrences(
+                    of: "applyTimeZoneReviewState(",
+                    in: refreshReviewProjectionFlow
+                ) == 1 &&
+                !refreshReviewProjectionFlow.contains(
+                    "applyTimeZoneReviewState(from: remote)"
+                ),
+            "Lifecycle refresh must capture dirty offsets for the actionable projection target before applying Review state"
+        )
+        let applyReviewFlows = sourceSection(
+            in: siteController,
+            from: "private func applyTimeZoneReviewState(",
+            to: "private func setTimeZoneReviewState("
+        )
+        require(
+            occurrences(
+                of: "switch gatewayTimeZoneReviewProjection(from: remote)",
+                in: applyReviewFlows
+            ) == 1 &&
+                occurrences(of: "case .hidden:", in: applyReviewFlows) == 1 &&
+                occurrences(of: "case .explicit(let context):", in: applyReviewFlows) == 1 &&
+                applyReviewFlows.contains("invalidateGatewayTimeZoneReview()") &&
+                occurrences(
+                    of: "private func applyTimeZoneReviewState(",
+                    in: siteController
+                ) == 1,
+            "The single Review-state application path must consume the pure projection and explicitly invalidate hidden state"
+        )
+        require(
+            appearsInOrder(
+                [
+                    "var offsets = localDirtyOffsetMinutesByGatewayID",
+                    "confirmedGatewayOffsetMinutesByID.forEach",
+                    "offsets[id] = offset"
+                ],
+                in: effectiveOverrides
+            ) && effectiveOverrides.contains("localDirtyOffsetMinutesByGatewayID: effectiveGatewayOffsetOverrides("),
+            "Review state must resolve Gateway offsets as confirmed, then dirty, then remote"
+        )
+
+        let gatewayReconcile = sourceSection(
+            in: siteController,
+            from: "private func reconcileGatewayEntrySyncResult(",
+            to: "private func reconcileConfirmedGatewayOffsets("
+        )
+        require(
+            gatewayReconcile.contains("gatewayTimeZoneReviewContext =") &&
+                gatewayReconcile.contains("SiteGatewayTimeZoneReviewContext.make(") &&
+                occurrences(
+                    of: "refreshCurrentGatewayTimeZoneReviewProjection()",
+                    in: gatewayReconcile
+                ) == 1 &&
+                !gatewayReconcile.contains("applyTimeZoneReviewState(") &&
+                gatewayReconcile.contains("if performsSilentReconcile") &&
+                occurrences(
+                    of: "performSiteLoad(presentation: .silentGatewayReconcile)",
+                    in: gatewayReconcile
+                ) == 1,
+            "Terminal results must preserve confirmed and dirty Gateway precedence through the shared Review refresh while only Site-success terminals schedule reconcile"
+        )
+
+        let canStartReviewFlow = sourceSection(
+            in: siteController,
+            from: "private func canStartGatewayTimeSync(",
+            to: "private func cancelEntrySyncOverlay("
+        )
+        require(
+            canStartReviewFlow.contains("gatewayTimeZoneReviewProjection(from: remote)") &&
+                !canStartReviewFlow.contains("gatewayTimeZoneReviewContext =") &&
+                !canStartReviewFlow.contains("setTimeZoneReviewState(") &&
+                !canStartReviewFlow.contains("invalidateGatewayTimeZoneReview()") &&
+                !canStartReviewFlow.contains("reloadData()"),
+            "Gateway sync authorization revalidation must query projection without mutating UI state"
+        )
 
         require(syncController.contains("final class SyncGatewaysViewController: UIViewController"))
         require(syncController.contains("init("))

@@ -2037,7 +2037,7 @@
 "site_no_gateways_sync_needed" = "No gateways configured — no sync needed.";
 "site_entry_sync_checking_title" = "Checking sync status…";
 "site_entry_sync_checking_message" = "Comparing server time zone and gateway configuration.";
-"site_entry_sync_status_title" = "Sync status";
+"site_entry_sync_status_title" = "Time zone sync status";
 "site_entry_sync_site_time_zone" = "Site time zone";
 "site_entry_sync_already_in_sync_with_server" = "Already in sync with server";
 "site_entry_sync_updated_from_server" = "Updated from server";
@@ -2052,6 +2052,16 @@
 "site_entry_sync_later" = "LATER";
 "site_entry_sync_review_sync" = "REVIEW SYNC";
 "site_entry_sync_got_it" = "GOT IT";
+"site_entry_sync_gateways_header" = "GATEWAYS";
+"site_entry_sync_gateway_pushing" = "Pushing…";
+"site_entry_sync_gateway_synced" = "Synced";
+"site_entry_sync_gateway_failed" = "Failed";
+"site_entry_sync_no_gateways_title" = "No gateways";
+"site_entry_sync_no_gateways_message" = "No gateways configured - no sync needed.";
+"site_entry_sync_one_gateway_failed" = "1 gateway failed";
+"site_entry_sync_gateways_failed_format" = "%d gateways failed";
+"site_entry_sync_failed_guidance" = "Sync on-site via Bluetooth to complete.";
+"site_entry_sync_done" = "DONE";
 "site_time_zone_review_sync_single" = "Server time zone %@ · 1 gateway needs time zone sync";
 "site_time_zone_review_sync_multiple" = "Server time zone %@ · %d gateways need time zone sync";
 "site_time_zone_review_sync_action" = "Review sync";
