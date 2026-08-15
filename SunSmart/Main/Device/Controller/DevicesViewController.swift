@@ -435,13 +435,15 @@ class DevicesViewController: WMPageController {
         guard MeshLibManager.manager.isMeshNetworkConnected else {
             return
         }
-//        MeshNetworkManager.instance.realNodes.forEach { node in
-//            if let model = node.timeModel {
-//                MeshAPI.sendMessage(message: Node.setLocalTimeMessage(), model: model)
-//            }
-//        }
-//        MeshNetworkManager.instance.realNodes.first?.lightLCSchedulerSetupModel
-        MeshAPI.sendMessage(message: Node.setLocalTimeMessage(), address: .allNodes)
+        guard let message = SiteTimeSetMessageFactory.makeMessage(
+            siteID: space.siteId
+        ) else {
+            #if DEBUG
+            print("[TimeSet] skip all-nodes sync: timezone is not Mesh encodable")
+            #endif
+            return
+        }
+        MeshAPI.sendMessage(message: message, address: .allNodes)
         space.lastSyncDateTimestamp = CLongLong(Date().timeIntervalSince1970)
         space.save()
         
@@ -458,9 +460,16 @@ class DevicesViewController: WMPageController {
             print("[TimeSetDebug] no enabled schedule target node")
             return
         }
+        guard let resolution = SiteTimeSetMessageFactory.resolve(node: node) else {
+            print("[TimeSetDebug] timezone is not Mesh encodable")
+            return
+        }
 
         print("[TimeSetDebug] send TimeSet to node=\(node.name ?? "") address=\(String(format: "0x%04X", node.primaryUnicastAddress)) timeSetupModel=\(node.timeSetupModel != nil)")
-        MeshAPI.syncNodeTime(address: node.primaryUnicastAddress) { success in
+        MeshAPI.syncNodeTime(
+            address: node.primaryUnicastAddress,
+            timeZone: resolution.timeZone
+        ) { success in
             DispatchQueue.main.async {
                 let address = String(format: "0x%04X", node.primaryUnicastAddress)
                 print("[TimeSetDebug] TimeSet result node=\(node.name ?? "") address=\(address) success=\(success)")

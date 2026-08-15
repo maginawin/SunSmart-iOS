@@ -2053,7 +2053,7 @@
 "site_no_gateways_sync_needed" = "未配置网关，无需同步。";
 "site_entry_sync_checking_title" = "正在检查同步状态…";
 "site_entry_sync_checking_message" = "正在对比服务器时区和网关配置。";
-"site_entry_sync_status_title" = "时区同步状态";
+"site_entry_sync_status_title" = "同步状态";
 "site_entry_sync_site_time_zone" = "场所时区";
 "site_entry_sync_already_in_sync_with_server" = "已与服务器同步";
 "site_entry_sync_updated_from_server" = "已从服务器更新";
@@ -2078,6 +2078,8 @@
 "site_entry_sync_gateways_failed_format" = "%d 个网关同步失败";
 "site_entry_sync_failed_guidance" = "请通过蓝牙在现场完成同步。";
 "site_entry_sync_done" = "完成";
+"site_time_zone_gateway_check_unavailable_title" = "无法检查网关";
+"site_time_zone_gateway_check_unavailable_message" = "无法验证网关时区，请稍后在场所页面重试。";
 "site_time_zone_review_sync_single" = "服务器时区 %@ · 1 个网关需要同步时区";
 "site_time_zone_review_sync_multiple" = "服务器时区 %@ · %d 个网关需要同步时区";
 "site_time_zone_review_sync_action" = "检查同步";

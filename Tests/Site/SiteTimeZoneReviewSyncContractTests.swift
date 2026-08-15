@@ -253,13 +253,14 @@ struct SiteTimeZoneReviewSyncContractTests {
                         "let projection = gatewayTimeZoneReviewProjection(from: remote)",
                         "guard let targetTimeZone = projection.targetTimeZone else",
                         "invalidateGatewayTimeZoneReview()",
-                        "let dirtyTimeOverrides = captureDirtyGatewayTimeOverrides(",
-                        "remote: remote",
+                        "let localGatewayContext = SiteGatewayCloudTimeZoneLocalContextBuilder.make(",
+                        "site: site",
+                        "remoteSnapshot: remote",
                         "targetTimeZone: targetTimeZone",
                         "applyTimeZoneReviewState(",
                         "from: remote",
                         "localDirtyOffsetMinutesByGatewayID:",
-                        "dirtyTimeOverrides.mapValues(\\.offsetMinutes)"
+                        "localGatewayContext.dirtyOverridesByID.mapValues(\\.offsetMinutes)"
                     ],
                     in: refreshReviewProjectionFlow
                 ) &&
@@ -305,23 +306,24 @@ struct SiteTimeZoneReviewSyncContractTests {
 
         let gatewayReconcile = sourceSection(
             in: siteController,
-            from: "private func reconcileGatewayEntrySyncResult(",
-            to: "private func reconcileConfirmedGatewayOffsets("
+            from: "private func reconcileEditTimeZoneSyncOutcome(",
+            to: "/// 删除场所"
         )
         require(
-            gatewayReconcile.contains("gatewayTimeZoneReviewContext =") &&
-                gatewayReconcile.contains("SiteGatewayTimeZoneReviewContext.make(") &&
+            gatewayReconcile.contains(
+                "confirmedGatewayOffsetMinutesByID = result.confirmedOffsetMinutesByGatewayID"
+            ) &&
+                gatewayReconcile.contains("gatewayTimeZoneReviewContext = result.reviewContext") &&
                 occurrences(
                     of: "refreshCurrentGatewayTimeZoneReviewProjection()",
                     in: gatewayReconcile
                 ) == 1 &&
                 !gatewayReconcile.contains("applyTimeZoneReviewState(") &&
-                gatewayReconcile.contains("if performsSilentReconcile") &&
                 occurrences(
                     of: "performSiteLoad(presentation: .silentGatewayReconcile)",
                     in: gatewayReconcile
                 ) == 1,
-            "Terminal results must preserve confirmed and dirty Gateway precedence through the shared Review refresh while only Site-success terminals schedule reconcile"
+            "Edit terminal results must preserve confirmed and dirty Gateway precedence through the shared Review refresh before reconcile"
         )
 
         let canStartReviewFlow = sourceSection(

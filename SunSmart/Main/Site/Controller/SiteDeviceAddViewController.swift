@@ -531,11 +531,10 @@ class SiteDeviceAddViewController: UIViewController {
                     if let healthModel = node.healthModel {
                         appendMessages.append(MeshMessageHandle(message: AttentionSet(attentionTimer: 6), model: healthModel))
                     }
-                    if let siteTimeZone = self.site.timezone.flatMap(SiteTimeZoneValue.init(storageValue:)),
-                       let initialization = GatewayFastAddTimeInitialization.make(
+                    if let initialization = GatewayFastAddTimeInitialization.make(
                         node: node,
-                        siteTimeZone: siteTimeZone
-                       ) {
+                        siteTimeZoneStorageValue: self.site.timezone
+                    ) {
                         self.gatewayTimeInitializations[node.primaryUnicastAddress] = initialization
                         appendMessages.append(initialization.handle)
                     } else {

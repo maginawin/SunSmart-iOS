@@ -23,10 +23,12 @@ rg -n -F 'tasks: plan.deferredTasks' "$planner" >/dev/null \
   || fail "Light Fast Add must prepare deferred handles and checkpoints in one batch"
 rg -n -F 'group: group' "$planner" >/dev/null \
   || fail "Light Fast Add batch must retain the target Group"
-rg -n -F '+ deferredBatch.messageHandles' "$planner" >/dev/null \
+rg -n -F '+ deferredBatch.batch.messageHandles' "$planner" >/dev/null \
   || fail "Light Fast Add must append the prepared deferred handles"
-rg -n -F 'taskCheckpointTracker: deferredBatch.tracker' "$planner" >/dev/null \
+rg -n -F 'taskCheckpointTracker: deferredBatch.batch.tracker' "$planner" >/dev/null \
   || fail "Light Fast Add must reuse the tracker from the same prepared batch"
+rg -n -F 'guard !appendMessageHandles.isEmpty || deferredBatch.hadFailure else {' "$planner" >/dev/null \
+  || fail "Light Fast Add must retain a failure-only plan when no message can be created"
 context_generation_count="$(rg -c -F 'task.makeMessageHandles(contextGroup: group)' "$planner")"
 [ "$context_generation_count" -ge 2 ] \
   || fail "Fast Add and retries must regenerate deferred handles with the target Group"
@@ -46,6 +48,8 @@ rg -n -F 'syncDatas.filter { !usesTaskScopedVerification($0) }' "$planner" >/dev
   || fail "Light batch verification must exclude task-scoped operations"
 rg -n -F 'taskCheckpointTracker.hasFailure' "$planner" >/dev/null \
   || fail "Final Fast Add result must include pending or failed checkpoints"
+rg -n -F 'hasPlanningFailure' "$planner" >/dev/null \
+  || fail "Final Fast Add result must include planning failure"
 rg -n -F 'taskCheckpointTracker: FastAddTaskCheckpointTracker(checkpoints: [])' "$planner" >/dev/null \
   || fail "Sensor Fast Add must continue to use an empty task checkpoint tracker"
 

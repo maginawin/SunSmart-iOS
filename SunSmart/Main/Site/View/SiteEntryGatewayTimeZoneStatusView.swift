@@ -10,6 +10,11 @@ import SnapKit
 
 final class SiteEntryGatewayTimeZoneStatusView: UIView {
 
+    private static let maximumVisibleGatewayCount = 3
+    private static let failureTextVerticalInset: CGFloat = 15
+
+    var onPreferredHeightChanged: (() -> Void)?
+
     private let gatewayCardView = UIView()
     private let gatewayHeaderView = UIView()
     private let gatewayHeaderLabel = UILabel()
@@ -25,6 +30,10 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
     private let failureIconImageView = UIImageView()
     private let failureTitleLabel = UILabel()
     private let failureMessageLabel = UILabel()
+    private let sizingCell = GatewayTimeZoneStatusCell(
+        style: .default,
+        reuseIdentifier: nil
+    )
 
     private var items = [SiteGatewayCloudTimeZoneItem]()
     private var gatewayCardTopConstraint: Constraint!
@@ -33,19 +42,19 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
     private var emptyStateBottomConstraint: Constraint!
     private var failureSummaryTopConstraint: Constraint!
     private var failureSummaryBottomConstraint: Constraint!
+    private var gatewayHeaderHeightConstraint: Constraint!
+    private var measuredPreferredHeight = SCRYFrom(152)
+    private var measuredMinimumViewportHeight = SCRYFrom(152)
+    private var lastMeasuredWidth: CGFloat = 0
+    private var needsHeightMeasurement = true
+    private var isMeasuringHeight = false
 
     var preferredHeight: CGFloat {
-        if items.isEmpty {
-            return SCRYFrom(152)
-        }
-        return SCRYFrom(failedCount == 0 ? 176 : 284)
+        measuredPreferredHeight
     }
 
     var minimumViewportHeight: CGFloat {
-        if items.isEmpty {
-            return preferredHeight
-        }
-        return failedCount == 0 ? SCRYFrom(44) : SCRYFrom(44 + 12 + 96)
+        measuredMinimumViewportHeight
     }
 
     override var intrinsicContentSize: CGSize {
@@ -69,8 +78,59 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
         fatalError("init(coder:) has not been implemented")
     }
 
+    override func layoutSubviews() {
+        super.layoutSubviews()
+
+        let width = bounds.width
+        guard width > 0 else { return }
+        if abs(width - lastMeasuredWidth) > 0.5 {
+            needsHeightMeasurement = true
+        }
+        updateMeasuredHeightsIfNeeded(width: width)
+    }
+
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+        guard previousTraitCollection?.preferredContentSizeCategory !=
+                traitCollection.preferredContentSizeCategory else {
+            return
+        }
+        tableView.reloadData()
+        tableView.setNeedsLayout()
+        needsHeightMeasurement = true
+        setNeedsLayout()
+    }
+
+    func update(_ presentation: SiteTimeZoneGatewayPresentation) {
+        switch presentation {
+        case .notStarted:
+            resetForNotStarted()
+
+        case .unavailable:
+            items = []
+            updateTableScrolling()
+            emptyIconImageView.image = UIImage(named: "gateway_sync_tz_fail")
+            emptyTitleLabel.text = "site_time_zone_gateway_check_unavailable_title".localizedString
+            emptyMessageLabel.text = "site_time_zone_gateway_check_unavailable_message".localizedString
+            emptyStateView.accessibilityLabel = "\(emptyTitleLabel.text ?? ""). \(emptyMessageLabel.text ?? "")"
+            configurePresentation(hasGateways: false, hasFailureSummary: false)
+            tableView.reloadData()
+            needsHeightMeasurement = true
+            setNeedsLayout()
+
+        case .batch(let state):
+            update(state)
+        }
+    }
+
     func update(_ state: SiteGatewayCloudTimeZoneBatchState) {
+        emptyIconImageView.image = UIImage(named: "time-zone-sync-status-gateway")?
+            .withTintColor(Yellow_Color, renderingMode: .alwaysOriginal)
+        emptyTitleLabel.text = "site_entry_sync_no_gateways_title".localizedString
+        emptyMessageLabel.text = "site_entry_sync_no_gateways_message".localizedString
+        emptyStateView.accessibilityLabel = "\(emptyTitleLabel.text ?? ""). \(emptyMessageLabel.text ?? "")"
         items = state.items
+        updateTableScrolling()
         gatewayCountLabel.text = String(state.authorizedCount)
         gatewayHeaderView.accessibilityLabel = "\("site_entry_sync_gateways_header".localizedString), \(state.authorizedCount)"
 
@@ -90,14 +150,24 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
             hasFailureSummary: state.failedCount > 0
         )
         tableView.reloadData()
-        invalidateIntrinsicContentSize()
+        needsHeightMeasurement = true
+        setNeedsLayout()
+    }
+
+    private func updateTableScrolling() {
+        let shouldScroll = items.count > Self.maximumVisibleGatewayCount
+        tableView.isScrollEnabled = shouldScroll
+        tableView.showsVerticalScrollIndicator = shouldScroll
+        if !shouldScroll {
+            tableView.setContentOffset(.zero, animated: false)
+        }
     }
 
     private func setupUI() {
         setupGatewayCard()
         setupEmptyState()
         setupFailureSummary()
-        configurePresentation(hasGateways: false, hasFailureSummary: false)
+        resetForNotStarted()
     }
 
     private func setupGatewayCard() {
@@ -106,7 +176,6 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
         gatewayCardView.layer.masksToBounds = true
         addSubview(gatewayCardView)
         gatewayCardView.snp.makeConstraints { make in
-            make.height.equalTo(SCRYFrom(176)).priority(.high)
             make.left.right.equalToSuperview()
         }
         gatewayCardTopConstraint = gatewayCardView.snp.prepareConstraints { make in
@@ -125,11 +194,7 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
         )
         gatewayHeaderLabel.textColor = RGB(100, 116, 139)
         gatewayHeaderLabel.isAccessibilityElement = false
-        gatewayHeaderView.addSubview(gatewayHeaderLabel)
-        gatewayHeaderLabel.snp.makeConstraints { make in
-            make.left.equalToSuperview().offset(SCRXFrom(16))
-            make.centerY.equalToSuperview()
-        }
+        gatewayHeaderLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         configureDynamicFont(
             gatewayCountLabel,
@@ -140,10 +205,22 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
         gatewayCountLabel.textColor = AssistText_Color
         gatewayCountLabel.textAlignment = .right
         gatewayCountLabel.isAccessibilityElement = false
+        gatewayCountLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        gatewayHeaderView.addSubview(gatewayHeaderLabel)
         gatewayHeaderView.addSubview(gatewayCountLabel)
+        gatewayHeaderLabel.snp.makeConstraints { make in
+            make.left.equalToSuperview().offset(SCRXFrom(16))
+            make.right.lessThanOrEqualTo(gatewayCountLabel.snp.left).offset(SCRXFrom(-8))
+            make.centerY.equalToSuperview()
+            make.top.greaterThanOrEqualToSuperview().offset(SCRYFrom(12))
+            make.bottom.lessThanOrEqualToSuperview().offset(SCRYFrom(-12))
+        }
         gatewayCountLabel.snp.makeConstraints { make in
             make.right.equalToSuperview().offset(SCRXFrom(-16))
             make.centerY.equalToSuperview()
+            make.top.greaterThanOrEqualToSuperview().offset(SCRYFrom(12))
+            make.bottom.lessThanOrEqualToSuperview().offset(SCRYFrom(-12))
         }
 
         headerDividerView.backgroundColor = RGB(229, 232, 240)
@@ -156,8 +233,12 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
         gatewayCardView.addSubview(gatewayHeaderView)
         gatewayHeaderView.snp.makeConstraints { make in
             make.top.left.right.equalToSuperview()
-            make.height.equalTo(SCRYFrom(44))
+            make.height.greaterThanOrEqualTo(SCRYFrom(44))
         }
+        gatewayHeaderHeightConstraint = gatewayHeaderView.snp.prepareConstraints { make in
+            make.height.equalTo(SCRYFrom(44))
+        }.first
+        gatewayHeaderHeightConstraint.activate()
         gatewayHeaderView.isAccessibilityElement = true
         gatewayHeaderView.accessibilityTraits = .header
 
@@ -165,7 +246,8 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
         tableView.dataSource = self
         tableView.delegate = self
         tableView.register(GatewayTimeZoneStatusCell.self, forCellReuseIdentifier: GatewayTimeZoneStatusCell.reuseIdentifier)
-        tableView.rowHeight = SCRYFrom(44)
+        tableView.rowHeight = UITableView.automaticDimension
+        tableView.estimatedRowHeight = SCRYFrom(44)
         tableView.separatorStyle = .singleLine
         tableView.separatorColor = RGB(229, 232, 240)
         tableView.separatorInset = UIEdgeInsets(
@@ -174,8 +256,8 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
             bottom: 0,
             right: SCRXFrom(16)
         )
-        tableView.isScrollEnabled = true
-        tableView.showsVerticalScrollIndicator = true
+        tableView.isScrollEnabled = false
+        tableView.showsVerticalScrollIndicator = false
         gatewayCardView.addSubview(tableView)
         tableView.snp.makeConstraints { make in
             make.top.equalTo(gatewayHeaderView.snp.bottom)
@@ -188,7 +270,7 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
         emptyStateView.layer.cornerRadius = SCRYFrom(14)
         addSubview(emptyStateView)
         emptyStateView.snp.makeConstraints { make in
-            make.height.equalTo(SCRYFrom(152))
+            make.height.greaterThanOrEqualTo(SCRYFrom(152))
             make.left.right.equalToSuperview()
         }
         emptyStateTopConstraint = emptyStateView.snp.prepareConstraints { make in
@@ -252,7 +334,6 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
         failureSummaryCardView.layer.cornerRadius = SCRYFrom(14)
         addSubview(failureSummaryCardView)
         failureSummaryCardView.snp.makeConstraints { make in
-            make.height.equalTo(SCRYFrom(96))
             make.left.right.equalToSuperview()
         }
         failureSummaryTopConstraint = failureSummaryCardView.snp.prepareConstraints { make in
@@ -268,10 +349,11 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
         failureIconBackgroundView.snp.makeConstraints { make in
             make.left.equalToSuperview().offset(SCRXFrom(16))
             make.top.equalToSuperview().offset(SCRYFrom(16))
+            make.bottom.lessThanOrEqualToSuperview().offset(SCRYFrom(-16))
             make.size.equalTo(SCRYFrom(32))
         }
 
-        failureIconImageView.image = UIImage(named: "gateway_sync_tz_fail")
+        failureIconImageView.image = UIImage(named: "gateway_sync_tz_fail_circle")
         failureIconImageView.contentMode = .scaleAspectFit
         failureIconImageView.isAccessibilityElement = false
         failureIconBackgroundView.addSubview(failureIconImageView)
@@ -292,7 +374,7 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
         failureTitleLabel.snp.makeConstraints { make in
             make.left.equalTo(failureIconBackgroundView.snp.right).offset(SCRXFrom(12))
             make.right.equalToSuperview().offset(SCRXFrom(-16))
-            make.top.equalToSuperview().offset(SCRYFrom(15))
+            make.top.equalToSuperview().offset(SCRYFrom(Self.failureTextVerticalInset))
         }
 
         failureMessageLabel.text = "site_entry_sync_failed_guidance".localizedString
@@ -309,13 +391,13 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
         failureMessageLabel.snp.makeConstraints { make in
             make.left.right.equalTo(failureTitleLabel)
             make.top.equalTo(failureTitleLabel.snp.bottom).offset(SCRYFrom(4))
-            make.bottom.lessThanOrEqualToSuperview().offset(SCRYFrom(-16))
+            make.bottom.equalToSuperview().inset(SCRYFrom(Self.failureTextVerticalInset))
         }
         failureSummaryCardView.isAccessibilityElement = true
         failureSummaryCardView.accessibilityTraits = .staticText
     }
 
-    private func configurePresentation(hasGateways: Bool, hasFailureSummary: Bool) {
+    private func deactivatePresentationConstraints() {
         [
             gatewayCardTopConstraint,
             gatewayCardBottomConstraint,
@@ -324,6 +406,27 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
             failureSummaryTopConstraint,
             failureSummaryBottomConstraint
         ].forEach { $0?.deactivate() }
+    }
+
+    private func resetForNotStarted() {
+        deactivatePresentationConstraints()
+        gatewayCardView.isHidden = true
+        emptyStateView.isHidden = true
+        failureSummaryCardView.isHidden = true
+
+        for case let cell as GatewayTimeZoneStatusCell in tableView.visibleCells {
+            cell.stopLoadingAnimation()
+        }
+        sizingCell.stopLoadingAnimation()
+        items.removeAll()
+        updateTableScrolling()
+        tableView.reloadData()
+        needsHeightMeasurement = true
+        setNeedsLayout()
+    }
+
+    private func configurePresentation(hasGateways: Bool, hasFailureSummary: Bool) {
+        deactivatePresentationConstraints()
 
         gatewayCardView.isHidden = !hasGateways
         emptyStateView.isHidden = hasGateways
@@ -343,19 +446,101 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
             emptyStateBottomConstraint.activate()
         }
     }
+
+    private func updateMeasuredHeightsIfNeeded(width: CGFloat) {
+        guard needsHeightMeasurement, !isMeasuringHeight else { return }
+        isMeasuringHeight = true
+        defer { isMeasuringHeight = false }
+
+        lastMeasuredWidth = width
+
+        let newPreferredHeight: CGFloat
+        let newMinimumViewportHeight: CGFloat
+        if items.isEmpty {
+            let emptyHeight = max(
+                SCRYFrom(152),
+                fittingHeight(of: emptyStateView, width: width)
+            )
+            newPreferredHeight = emptyHeight
+            newMinimumViewportHeight = emptyHeight
+        } else {
+            let headerHeight = ceil(max(
+                SCRYFrom(44),
+                fittingHeight(
+                    of: gatewayHeaderView,
+                    width: width,
+                    temporarilyDeactivating: gatewayHeaderHeightConstraint
+                )
+            ))
+            gatewayHeaderHeightConstraint.update(offset: headerHeight)
+            let preferredRowsHeight = items.prefix(Self.maximumVisibleGatewayCount).reduce(
+                CGFloat.zero
+            ) { height, item in
+                height + sizingCell.preferredHeight(
+                    for: item,
+                    width: width,
+                    compatibleWith: traitCollection
+                )
+            }
+            let gatewayCardHeight = headerHeight + preferredRowsHeight
+
+            if failedCount > 0 {
+                let failureHeight = ceil(
+                    fittingHeight(of: failureSummaryCardView, width: width)
+                )
+                let summarySpacing = SCRYFrom(12)
+                newPreferredHeight = gatewayCardHeight + summarySpacing + failureHeight
+                newMinimumViewportHeight = headerHeight + summarySpacing + failureHeight
+            } else {
+                newPreferredHeight = gatewayCardHeight
+                newMinimumViewportHeight = headerHeight
+            }
+        }
+
+        let normalizedPreferredHeight = ceil(newPreferredHeight)
+        let normalizedMinimumViewportHeight = ceil(newMinimumViewportHeight)
+        needsHeightMeasurement = false
+        guard abs(normalizedPreferredHeight - measuredPreferredHeight) > 0.5 ||
+                abs(normalizedMinimumViewportHeight - measuredMinimumViewportHeight) > 0.5 else {
+            return
+        }
+        measuredPreferredHeight = normalizedPreferredHeight
+        measuredMinimumViewportHeight = normalizedMinimumViewportHeight
+        invalidateIntrinsicContentSize()
+        onPreferredHeightChanged?()
+    }
+
+    private func fittingHeight(of view: UIView, width: CGFloat) -> CGFloat {
+        view.systemLayoutSizeFitting(
+            CGSize(width: width, height: UIView.layoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel
+        ).height
+    }
+
+    private func fittingHeight(
+        of view: UIView,
+        width: CGFloat,
+        temporarilyDeactivating heightConstraint: Constraint
+    ) -> CGFloat {
+        heightConstraint.deactivate()
+        defer { heightConstraint.activate() }
+        return fittingHeight(of: view, width: width)
+    }
 }
 
 private func configureDynamicFont(
     _ label: UILabel,
     baseSize: CGFloat,
     weight: UIFont.Weight,
-    textStyle: UIFont.TextStyle
+    textStyle: UIFont.TextStyle,
+    compatibleWith traitCollection: UITraitCollection? = nil
 ) {
     label.font = UIFontMetrics(forTextStyle: textStyle).scaledFont(
-        for: UIFont.systemFont(ofSize: SCRYFrom(baseSize), weight: weight)
+        for: UIFont.systemFont(ofSize: SCRYFrom(baseSize), weight: weight),
+        compatibleWith: traitCollection
     )
     label.adjustsFontForContentSizeCategory = true
-    label.maximumContentSizeCategory = .large
 }
 
 extension SiteEntryGatewayTimeZoneStatusView: UITableViewDataSource, UITableViewDelegate {
@@ -385,7 +570,6 @@ private final class GatewayTimeZoneStatusCell: UITableViewCell {
 
     private let gatewayImageView = UIImageView()
     private let nameLabel = UILabel()
-    private let statusImageView = UIImageView()
     private let statusLabel = UILabel()
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
@@ -400,7 +584,6 @@ private final class GatewayTimeZoneStatusCell: UITableViewCell {
     override func prepareForReuse() {
         super.prepareForReuse()
         stopLoadingAnimation()
-        statusImageView.isHidden = false
         accessibilityLabel = nil
         accessibilityValue = nil
     }
@@ -411,27 +594,42 @@ private final class GatewayTimeZoneStatusCell: UITableViewCell {
 
         switch item.status {
         case .pushing:
-            gatewayImageView.image = UIImage(named: "time-zone-sync-status-gateway")
-            statusImageView.image = UIImage(named: "site_entry_sync_loading")
-            statusImageView.isHidden = false
+            gatewayImageView.image = UIImage(named: "site_entry_sync_loading")
             statusLabel.text = "site_entry_sync_gateway_pushing".localizedString
             statusLabel.textColor = Purple_Color
             startLoadingAnimation()
         case .synced:
-            gatewayImageView.image = UIImage(named: "time-zone-sync-status-gateway")
-            statusImageView.image = UIImage(named: "site_entry_sync_success")
-            statusImageView.isHidden = false
+            gatewayImageView.image = UIImage(named: "site_entry_sync_success")
             statusLabel.text = "site_entry_sync_gateway_synced".localizedString
             statusLabel.textColor = Green_Color
         case .failed:
-            gatewayImageView.image = UIImage(named: "gateway_sync_tz_fail")
-            statusImageView.image = nil
-            statusImageView.isHidden = true
+            gatewayImageView.image = UIImage(named: "gateway_sync_tz_fail_circle")
             statusLabel.text = "site_entry_sync_gateway_failed".localizedString
             statusLabel.textColor = Error_Red_Color
         }
         accessibilityLabel = item.displayName.isEmpty ? item.requestMAC : item.displayName
         accessibilityValue = statusLabel.text
+    }
+
+    func preferredHeight(
+        for item: SiteGatewayCloudTimeZoneItem,
+        width: CGFloat,
+        compatibleWith traitCollection: UITraitCollection
+    ) -> CGFloat {
+        configureFonts(compatibleWith: traitCollection)
+        update(item)
+        defer { stopLoadingAnimation() }
+        bounds = CGRect(x: 0, y: 0, width: width, height: SCRYFrom(44))
+        contentView.bounds = bounds
+        setNeedsLayout()
+        layoutIfNeeded()
+
+        let height = contentView.systemLayoutSizeFitting(
+            CGSize(width: width, height: UIView.layoutFittingCompressedSize.height),
+            withHorizontalFittingPriority: .required,
+            verticalFittingPriority: .fittingSizeLevel
+        ).height
+        return max(SCRYFrom(44), ceil(height))
     }
 
     private func setupUI() {
@@ -444,64 +642,72 @@ private final class GatewayTimeZoneStatusCell: UITableViewCell {
         gatewayImageView.snp.makeConstraints { make in
             make.left.equalToSuperview().offset(SCRXFrom(16))
             make.centerY.equalToSuperview()
+            make.top.greaterThanOrEqualToSuperview().offset(SCRYFrom(14))
+            make.bottom.lessThanOrEqualToSuperview().offset(SCRYFrom(-14))
             make.size.equalTo(SCRYFrom(16))
         }
 
-        configureDynamicFont(
-            nameLabel,
-            baseSize: 14,
-            weight: .regular,
-            textStyle: .subheadline
-        )
+        configureFonts()
         nameLabel.textColor = TextBlack_Color
         nameLabel.numberOfLines = 1
         nameLabel.lineBreakMode = .byTruncatingTail
         nameLabel.isAccessibilityElement = false
+        nameLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         contentView.addSubview(nameLabel)
         nameLabel.snp.makeConstraints { make in
             make.left.equalTo(gatewayImageView.snp.right).offset(SCRXFrom(8))
             make.centerY.equalToSuperview()
+            make.top.greaterThanOrEqualToSuperview().offset(SCRYFrom(12))
+            make.bottom.lessThanOrEqualToSuperview().offset(SCRYFrom(-12))
         }
 
-        configureDynamicFont(
-            statusLabel,
-            baseSize: 12,
-            weight: .regular,
-            textStyle: .caption1
-        )
         statusLabel.textAlignment = .right
+        statusLabel.numberOfLines = 0
         statusLabel.isAccessibilityElement = false
+        statusLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
         contentView.addSubview(statusLabel)
         statusLabel.snp.makeConstraints { make in
             make.right.equalToSuperview().offset(SCRXFrom(-16))
             make.centerY.equalToSuperview()
+            make.top.greaterThanOrEqualToSuperview().offset(SCRYFrom(12))
+            make.bottom.lessThanOrEqualToSuperview().offset(SCRYFrom(-12))
         }
-
-        statusImageView.contentMode = .scaleAspectFit
-        statusImageView.isAccessibilityElement = false
-        contentView.addSubview(statusImageView)
-        statusImageView.snp.makeConstraints { make in
-            make.right.equalTo(statusLabel.snp.left).offset(SCRXFrom(-6))
-            make.centerY.equalToSuperview()
-            make.size.equalTo(SCRYFrom(16))
-            make.left.greaterThanOrEqualTo(nameLabel.snp.right).offset(SCRXFrom(8))
+        nameLabel.snp.makeConstraints { make in
+            make.right.lessThanOrEqualTo(statusLabel.snp.left).offset(SCRXFrom(-8))
         }
 
         isAccessibilityElement = true
         accessibilityTraits = .staticText
     }
 
+    private func configureFonts(compatibleWith traitCollection: UITraitCollection? = nil) {
+        configureDynamicFont(
+            nameLabel,
+            baseSize: 14,
+            weight: .regular,
+            textStyle: .subheadline,
+            compatibleWith: traitCollection
+        )
+        configureDynamicFont(
+            statusLabel,
+            baseSize: 12,
+            weight: .regular,
+            textStyle: .caption1,
+            compatibleWith: traitCollection
+        )
+    }
+
     private func startLoadingAnimation() {
-        guard statusImageView.layer.animation(forKey: "siteEntrySyncLoading") == nil else { return }
+        guard gatewayImageView.layer.animation(forKey: "siteEntrySyncLoading") == nil else { return }
         let animation = CABasicAnimation(keyPath: "transform.rotation.z")
         animation.fromValue = 0
         animation.toValue = Double.pi * 2
         animation.duration = 1
         animation.repeatCount = .infinity
-        statusImageView.layer.add(animation, forKey: "siteEntrySyncLoading")
+        gatewayImageView.layer.add(animation, forKey: "siteEntrySyncLoading")
     }
 
-    private func stopLoadingAnimation() {
-        statusImageView.layer.removeAnimation(forKey: "siteEntrySyncLoading")
+    fileprivate func stopLoadingAnimation() {
+        gatewayImageView.layer.removeAnimation(forKey: "siteEntrySyncLoading")
     }
 }

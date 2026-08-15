@@ -21,6 +21,44 @@ struct SiteGatewayCloudTimeZoneTarget: Equatable, Identifiable {
     let requiresSync: Bool
 }
 
+struct SiteGatewayLocalTimeZoneCandidate: Equatable {
+    let requestMAC: String
+    let displayName: String
+    let currentOffsetMinutes: Int?
+    let canConfigure: Bool
+}
+
+enum SiteGatewayLocalTimeZoneTargetBuilder {
+    static func build(
+        targetOffsetMinutes: Int,
+        candidates: [SiteGatewayLocalTimeZoneCandidate]
+    ) -> [SiteGatewayCloudTimeZoneTarget] {
+        var seen = Set<String>()
+        return candidates.enumerated().compactMap { index, candidate in
+            guard candidate.canConfigure,
+                  let id = SiteGatewayAccessScope.normalize(candidate.requestMAC),
+                  seen.insert(id).inserted else {
+                return nil
+            }
+            let requestMAC = candidate.requestMAC.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+            let displayName = candidate.displayName.trimmingCharacters(
+                in: .whitespacesAndNewlines
+            )
+            let effectiveDisplayName = displayName.isEmpty ? requestMAC : displayName
+            return SiteGatewayCloudTimeZoneTarget(
+                id: id,
+                requestMAC: requestMAC,
+                displayName: effectiveDisplayName,
+                remoteOrder: index,
+                effectiveOffsetMinutes: candidate.currentOffsetMinutes,
+                requiresSync: candidate.currentOffsetMinutes != targetOffsetMinutes
+            )
+        }
+    }
+}
+
 enum SiteGatewayCloudTimeZoneConfirmationPolicy {
     static func acknowledgedGatewayIDs(
         confirmedOffsetMinutesByGatewayID: [String: Int],
@@ -151,8 +189,14 @@ enum SiteGatewayCloudTimeZoneTargetBuilder {
         _ entriesByID: [String: [SiteEntryGatewayTimeZoneSnapshot]]
     ) -> [String: Int?] {
         entriesByID.reduce(into: [String: Int?]()) { result, entry in
-            let offsets = Set(entry.value.compactMap(\.offsetMinutes))
-            result[entry.key] = offsets.count == 1 ? offsets.first : nil
+            guard
+                let offset = entry.value.first?.offsetMinutes,
+                entry.value.allSatisfy({ $0.offsetMinutes == offset })
+            else {
+                result[entry.key] = nil
+                return
+            }
+            result[entry.key] = offset
         }
     }
 

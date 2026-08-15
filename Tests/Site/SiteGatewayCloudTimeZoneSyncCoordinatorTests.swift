@@ -13,7 +13,7 @@ struct SiteGatewayCloudTimeZoneSyncCoordinatorTests {
         await testAllTerminalStatusesFinishImmediately()
         await testSubmitFailureFailsEveryPushingRow()
         await testInvalidSubmitResponseFailureFailsEveryPushingRow()
-        await testDeadlineStartsAfterValidRequestID()
+        await testDeadlineStartsWhenPushingBegins()
         await testTimeoutTaskFailsRemainingPushingRows()
         await testBackgroundDeadlineCrossingDoesNotRequestStatus()
         await testResponseArrivingAfterDeadlineCannotSucceed()
@@ -160,7 +160,7 @@ struct SiteGatewayCloudTimeZoneSyncCoordinatorTests {
         await waitForPollSleep(api: api, timing: timing, count: 1)
         timing.advance(by: 3_000_000_000)
         let result = await task.value
-        timing.advance(by: 180_000_000_000)
+        timing.advance(by: 60_000_000_000)
         await settle()
 
         require(statuses(result) == [.synced, .failed], "All terminal statuses must finish immediately")
@@ -202,7 +202,7 @@ struct SiteGatewayCloudTimeZoneSyncCoordinatorTests {
     }
 
     @MainActor
-    private static func testDeadlineStartsAfterValidRequestID() async {
+    private static func testDeadlineStartsWhenPushingBegins() async {
         let api = FakeAPI(
             submitPlans: [.suspended],
             statusPlans: [.result(.success([snapshot("one", .succeed)]))]
@@ -217,14 +217,20 @@ struct SiteGatewayCloudTimeZoneSyncCoordinatorTests {
         let task = runTask(coordinator, initialState: batch([target("one")]))
 
         await waitUntil("submit must suspend") { api.submitCalls.count == 1 }
-        timing.setNow(1_000)
-        api.resumeSubmit(call: 0, with: .success(101))
-        await waitForPollSleep(api: api, timing: timing, count: 1, pollInterval: 3)
-        timing.advance(by: 3)
+        await waitUntil("visible pushing timeout must start with submit") {
+            timing.sleepCount(nanoseconds: 10) == 1
+        }
+        timing.setNow(10)
+        require(
+            timing.resumeOneSleep(nanoseconds: 10),
+            "The visible pushing timeout sleep must be registered"
+        )
         let result = await task.value
+        api.resumeSubmit(call: 0, with: .success(101))
+        await settle()
 
-        require(api.statusCalls == [101], "Submit waiting time must not consume the post-request polling window")
-        require(statuses(result) == [.synced], "The deadline must start after the valid request ID")
+        require(api.statusCalls.isEmpty, "A submit response after the visible deadline must not start polling")
+        require(statuses(result) == [.failed], "The deadline must start when Pushing becomes visible")
     }
 
     @MainActor
@@ -240,9 +246,9 @@ struct SiteGatewayCloudTimeZoneSyncCoordinatorTests {
         }
 
         await waitForPollSleep(api: api, timing: timing, count: 1)
-        timing.setNow(180_000_000_000)
+        timing.setNow(60_000_000_000)
         require(
-            timing.resumeOneSleep(nanoseconds: 180_000_000_000),
+            timing.resumeOneSleep(nanoseconds: 60_000_000_000),
             "The timeout task sleep must be registered"
         )
         let result = await task.value
@@ -260,7 +266,7 @@ struct SiteGatewayCloudTimeZoneSyncCoordinatorTests {
         let task = runTask(coordinator, initialState: batch([target("one")]))
 
         await waitForPollSleep(api: api, timing: timing, count: 1)
-        timing.setNow(181_000_000_000)
+        timing.setNow(61_000_000_000)
         require(
             timing.resumeOneSleep(nanoseconds: 3_000_000_000),
             "The first poll sleep must be registered"
@@ -281,7 +287,7 @@ struct SiteGatewayCloudTimeZoneSyncCoordinatorTests {
         await waitForPollSleep(api: api, timing: timing, count: 1)
         timing.advance(by: 3_000_000_000)
         await waitUntil("status response must suspend") { api.statusCalls.count == 1 }
-        timing.setNow(181_000_000_000)
+        timing.setNow(61_000_000_000)
         api.resumeStatus(call: 0, with: .success([snapshot("one", .succeed)]))
         let result = await task.value
 
@@ -447,7 +453,7 @@ struct SiteGatewayCloudTimeZoneSyncCoordinatorTests {
         api: FakeAPI,
         timing: FakeTiming,
         pollInterval: UInt64 = 3_000_000_000,
-        timeout: UInt64 = 180_000_000_000
+        timeout: UInt64 = 60_000_000_000
     ) -> SiteGatewayCloudTimeZoneSyncCoordinator {
         SiteGatewayCloudTimeZoneSyncCoordinator(
             api: api,

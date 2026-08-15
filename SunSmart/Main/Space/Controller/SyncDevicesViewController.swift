@@ -2534,6 +2534,17 @@ class SyncDevicesViewController: UIViewController {
                     continue
                 }
 
+                if self.isMissingRequiredTimeSynchronizationHandle(
+                    model,
+                    messageHandles: messageHandles
+                ) {
+                    model.state = .failed
+                    (model as? SyncDevicesModel)?.failedCount += 1
+                    (model as? SyncDeviceStepTaskModel)?.failedCount += 1
+                    self.updateCell(model: model)
+                    continue
+                }
+
                 if self.batteryPowerSwitchOwnConfigurationFailed,
                    self.isBatteryPowerSwitchOwnConfiguration(model) {
                     model.state = .failed
@@ -2907,6 +2918,17 @@ class SyncDevicesViewController: UIViewController {
             return taskModel.operationType
         }
         return nil
+    }
+
+    private func isMissingRequiredTimeSynchronizationHandle(
+        _ model: SyncCellModel,
+        messageHandles: [MeshMessageHandle]
+    ) -> Bool {
+        guard let operationType = operationType(for: model),
+              operationType.requiresSiteTimeSetHandle else {
+            return false
+        }
+        return messageHandles.isEmpty
     }
 
     private func isNormalDeviceInitialization(_ model: SyncCellModel) -> Bool {

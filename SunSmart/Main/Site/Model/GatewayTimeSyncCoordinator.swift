@@ -179,8 +179,8 @@ final class GatewayTimeSyncCoordinator {
                     )
                     return
                 }
-                guard let fixedTimeZone = TimeZone(
-                    secondsFromGMT: targetTimeZone.offsetMinutes * 60
+                guard let resolution = SiteTimeSetMessageFactory.resolve(
+                    storageValue: targetTimeZone.storageValue
                 ), core.markSent(attemptID: attemptID) else {
                     settleTransportFailure(
                         attemptID: attemptID,
@@ -191,7 +191,7 @@ final class GatewayTimeSyncCoordinator {
 
                 let message = Node.setLocalTimeMessage(
                     date: Date(),
-                    timeZone: fixedTimeZone
+                    timeZone: resolution.timeZone
                 )
                 MeshAPI.sendMessage(
                     message: message,
@@ -210,7 +210,7 @@ final class GatewayTimeSyncCoordinator {
                         settle(
                             attemptID: attemptID,
                             status: timeStatus,
-                            targetOffsetMinutes: targetTimeZone.offsetMinutes
+                            targetOffsetMinutes: resolution.offsetMinutes
                         )
                     }
                 }

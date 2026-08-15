@@ -65,12 +65,13 @@ struct SiteGatewayCloudTimeZoneContinuousTiming: SiteGatewayCloudTimeZoneTiming 
 final class SiteGatewayCloudTimeZoneSyncCoordinator {
 
     nonisolated static let pollIntervalNanoseconds: UInt64 = 3_000_000_000
-    nonisolated static let timeoutNanoseconds: UInt64 = 180_000_000_000
+    nonisolated static let timeoutNanoseconds: UInt64 = 60_000_000_000
 
     private struct ActiveRun {
         let token: UUID
         let continuation: CheckedContinuation<SiteGatewayCloudTimeZoneBatchState?, Never>
         var state: SiteGatewayCloudTimeZoneBatchState
+        let deadlineNanoseconds: UInt64
         let onUpdate: @MainActor (SiteGatewayCloudTimeZoneBatchState) -> Void
     }
 
@@ -107,12 +108,26 @@ final class SiteGatewayCloudTimeZoneSyncCoordinator {
         let token = UUID()
         return await withTaskCancellationHandler(operation: {
             await withCheckedContinuation { continuation in
+                let deadlineNanoseconds = Self.saturatedAdd(
+                    timing.nowNanoseconds,
+                    timeoutNanoseconds
+                )
                 activeRun = ActiveRun(
                     token: token,
                     continuation: continuation,
                     state: initialState,
+                    deadlineNanoseconds: deadlineNanoseconds,
                     onUpdate: onUpdate
                 )
+                timeoutTask = Task { [weak self] in
+                    guard let self else { return }
+                    do {
+                        try await self.timing.sleep(nanoseconds: self.timeoutNanoseconds)
+                    } catch {
+                        return
+                    }
+                    self.timeout(token: token)
+                }
                 submitTask = Task { [weak self] in
                     guard let self else { return }
                     do {
@@ -149,30 +164,20 @@ final class SiteGatewayCloudTimeZoneSyncCoordinator {
     }
 
     private func handleSubmitResponse(requestID: Int64, token: UUID) {
-        guard activeRun?.token == token else { return }
+        guard let activeRun, activeRun.token == token else { return }
         guard requestID > 0 else {
             handleSubmitFailure(token: token)
             return
         }
-
-        let deadlineNanoseconds = Self.saturatedAdd(
-            timing.nowNanoseconds,
-            timeoutNanoseconds
-        )
-        timeoutTask = Task { [weak self] in
-            guard let self else { return }
-            do {
-                try await self.timing.sleep(nanoseconds: self.timeoutNanoseconds)
-            } catch {
-                return
-            }
-            self.timeout(token: token)
+        guard timing.nowNanoseconds < activeRun.deadlineNanoseconds else {
+            failPushingAndFinish(token: token)
+            return
         }
         pollTask = Task { [weak self] in
             guard let self else { return }
             await self.poll(
                 requestID: requestID,
-                deadlineNanoseconds: deadlineNanoseconds,
+                deadlineNanoseconds: activeRun.deadlineNanoseconds,
                 token: token
             )
         }

@@ -411,13 +411,24 @@ extension Group {
             hasTimeModel: node.timeModel != nil,
             scheduleEnabledStates: setSchedules.map(\.enabled)
         )
-        if timeSyncPlan.requiresTimeSync,
-           let timeModel = node.timeModel {
-            let timeHandle = Node.makeLocalTimeSetMessageHandle(model: timeModel)
-            timeHandle.continuous = false
-            messages.append(timeHandle)
+        var schedulesToSync = setSchedules
+        if timeSyncPlan.requiresTimeSync {
+            if let timeModel = node.timeModel,
+               let timeHandle = SiteTimeSetMessageFactory.makeHandle(
+                   node: node,
+                   model: timeModel
+               ) {
+                timeHandle.continuous = false
+                messages.append(timeHandle)
+            } else {
+                schedulesToSync = setSchedules.enumerated().compactMap { index, schedule in
+                    return timeSyncPlan.scheduleRequiresTimeSync[index]
+                        ? nil
+                        : schedule
+                }
+            }
         }
-        setSchedules.forEach { schedule in
+        schedulesToSync.forEach { schedule in
             messages.append(contentsOf: schedule.getMessageHandles(node: node, contextGroup: self))
         }
         return messages

@@ -75,21 +75,21 @@ class SiteViewController: UIViewController {
     private var networkableObservation: NSKeyValueObservation?
     private let sitePropsCoordinator: SitePropsEditCoordinator
     private let entrySyncCoordinator: SiteEntryTimeZoneSyncCoordinator
-    private lazy var gatewayEntrySyncCoordinator = SiteGatewayCloudTimeZoneSyncCoordinator(
-        api: SiteGatewayCloudTimeZoneAPIClient(),
-        timing: SiteGatewayCloudTimeZoneContinuousTiming()
-    )
     private lazy var entrySyncOverlay: SiteEntryTimeZoneSyncOverlay = {
         let overlay = SiteEntryTimeZoneSyncOverlay()
-        overlay.onDone = { [weak self] in
+        overlay.onGotIt = { [weak self] in
             self?.finishEntrySyncOverlay()
+        }
+        overlay.onLater = { [weak self] in
+            self?.finishEntrySyncOverlay()
+        }
+        overlay.onReviewSync = { [weak self] in
+            self?.handleEntrySyncReview()
         }
         return overlay
     }()
     private var entrySyncTask: Task<Void, Never>?
-    private var gatewayEntrySyncTask: Task<Void, Never>?
     private var entrySyncSessionToken: UUID?
-    private var reconciledEntrySyncSessionToken: UUID?
     private var entrySyncNavigationLocked = false
     private struct PendingEntrySyncPresentation {
         let decision: SiteEntryTimeZoneDecision
@@ -223,7 +223,7 @@ class SiteViewController: UIViewController {
         super.viewDidAppear(animated)
 
         hasCompletedInitialAppearance = true
-        _ = presentPendingEntrySyncOverlayIfPossible()
+        _ = presentPendingEntryTimeZoneSyncStatusIfPossible()
         
         if addSite && !isEntrySyncBlockingPostImportNavigation {
             addSite = false
@@ -271,9 +271,7 @@ self.updateAddressData()
 //        NetworkRequest.shared.removeObserver(self, forKeyPath: "networkable")
         networkableObservation = nil
         entrySyncSessionToken = nil
-        reconciledEntrySyncSessionToken = nil
         entrySyncTask?.cancel()
-        gatewayEntrySyncTask?.cancel()
         SpaceDebugUARTManager.shared.endSite(site.id)
 
         if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == site.meshUUID && MeshNetworkManager.instance.currentNetworkKey.networkId.hex == site.meshNetworkId {
@@ -496,7 +494,10 @@ self.updateAddressData()
                     }
                     self.latestTimeZoneRemoteSnapshot = remoteSnapshot
                     let entrySyncDecision: SiteEntryTimeZoneDecision
-                    var dirtyTimeOverrides: [String: SyncGatewayDirtyTimeOverride] = [:]
+                    var localGatewayContext = SiteGatewayCloudTimeZoneLocalContext(
+                        snapshotsByID: [:],
+                        dirtyOverridesByID: [:]
+                    )
                     if let remoteSnapshot {
                         let previewDecision = SiteEntryTimeZoneSyncPolicy.decide(
                             local: localSnapshot,
@@ -507,8 +508,9 @@ self.updateAddressData()
                             for: previewDecision,
                             remote: remoteSnapshot
                         ) {
-                            dirtyTimeOverrides = self.captureDirtyGatewayTimeOverrides(
-                                remote: remoteSnapshot,
+                            localGatewayContext = SiteGatewayCloudTimeZoneLocalContextBuilder.make(
+                                site: self.site,
+                                remoteSnapshot: remoteSnapshot,
                                 targetTimeZone: targetTimeZone
                             )
                         }
@@ -517,15 +519,12 @@ self.updateAddressData()
                             remote: remoteSnapshot,
                             now: Int64(Date().timeIntervalSince1970),
                             localDirtyOffsetMinutesByGatewayID:
-                                dirtyTimeOverrides.mapValues(\.offsetMinutes)
+                                localGatewayContext.dirtyOverridesByID.mapValues(\.offsetMinutes)
                         )
                     } else {
                         entrySyncCoordinator.consumeWithoutAction()
                         entrySyncDecision = .noAction
                     }
-                    let localGatewaySnapshotsByID = self.makeLocalGatewayTimeZoneSnapshots(
-                        dirtyTimeOverrides: dirtyTimeOverrides
-                    )
 //                    let site = SiteData.import(siteJsonData: siteData)
                     Task {[weak self] in
 
@@ -539,7 +538,7 @@ self.updateAddressData()
                             remote: remoteSnapshot
                         ) {
                             self.restoreDirtyGatewayTimeOverrides(
-                                dirtyTimeOverrides,
+                                localGatewayContext.dirtyOverridesByID,
                                 targetTimeZone: targetTimeZone,
                                 remote: remoteSnapshot
                             )
@@ -592,7 +591,7 @@ self.updateAddressData()
                             self.applyTimeZoneReviewState(
                                 from: remoteSnapshot,
                                 localDirtyOffsetMinutesByGatewayID:
-                                    dirtyTimeOverrides.mapValues(\.offsetMinutes)
+                                    localGatewayContext.dirtyOverridesByID.mapValues(\.offsetMinutes)
                             )
                         }
                     #if DEBUG
@@ -607,7 +606,8 @@ self.updateAddressData()
                             let showsEntrySync = self.handleEntrySyncDecision(
                                 entrySyncDecision,
                                 remoteSnapshot: remoteSnapshot,
-                                localGatewaySnapshotsByID: localGatewaySnapshotsByID
+                                localGatewaySnapshotsByID:
+                                    localGatewayContext.snapshotsByID
                             )
                             if !showsEntrySync {
                                 self.continuePostImportNavigationIfNeeded()
@@ -720,7 +720,7 @@ self.updateAddressData()
             guard let remoteSnapshot else {
                 return isEntrySyncBlockingPostImportNavigation
             }
-            return queueEntrySyncOverlay(
+            return queueEntryTimeZoneSyncStatus(
                 for: decision,
                 remoteSnapshot: remoteSnapshot,
                 localGatewaySnapshotsByID: localGatewaySnapshotsByID
@@ -728,7 +728,7 @@ self.updateAddressData()
         }
     }
 
-    private func queueEntrySyncOverlay(
+    private func queueEntryTimeZoneSyncStatus(
         for decision: SiteEntryTimeZoneDecision,
         remoteSnapshot: SiteEntryTimeZoneRemoteSnapshot,
         localGatewaySnapshotsByID: [String: SiteGatewayCloudTimeZoneLocalSnapshot]
@@ -742,11 +742,11 @@ self.updateAddressData()
             remoteSnapshot: remoteSnapshot,
             localGatewaySnapshotsByID: localGatewaySnapshotsByID
         )
-        return presentPendingEntrySyncOverlayIfPossible()
+        return presentPendingEntryTimeZoneSyncStatusIfPossible()
     }
 
     @discardableResult
-    private func presentPendingEntrySyncOverlayIfPossible() -> Bool {
+    private func presentPendingEntryTimeZoneSyncStatusIfPossible() -> Bool {
         guard let presentation = pendingEntrySyncPresentation else {
             return entrySyncNavigationLocked
         }
@@ -762,154 +762,52 @@ self.updateAddressData()
 
         let sessionToken = UUID()
         entrySyncSessionToken = sessionToken
-        reconciledEntrySyncSessionToken = nil
         entrySyncTask?.cancel()
-        gatewayEntrySyncTask?.cancel()
         entrySyncCoordinator.cancel()
         entrySyncTask = Task { [weak self, entrySyncCoordinator] in
-            let result = await entrySyncCoordinator.run(presentation.decision)
-            guard
-                let self,
-                !Task.isCancelled,
-                isEntrySyncSessionActive(sessionToken)
-            else {
+            let entryResult = await entrySyncCoordinator.run(presentation.decision)
+            guard !Task.isCancelled,
+                  self?.isEntrySyncSessionActive(sessionToken) == true else {
                 return
             }
-            let initialState = makeGatewayEntrySyncState(
-                presentation: presentation,
-                targetTimeZone: result.timezone
-            )
-            startGatewayEntrySyncIfNeeded(
-                siteResult: result,
-                initialState: initialState,
-                sessionToken: sessionToken
-            )
+            switch entryResult.site {
+            case .failedToUpdateServer:
+                self?.invalidateGatewayTimeZoneReview()
+            case .alreadyInSync, .updatedFromServer, .updatedToServer:
+                break
+            }
+            guard let self,
+                  isEntrySyncSessionActive(sessionToken) else { return }
+            if entryResult.site == .updatedToServer {
+                applyUploadedEntryGatewayReviewContext(
+                    result: entryResult,
+                    presentation: presentation
+                )
+            }
+            entrySyncOverlay.showResult(entryResult)
         }
         return true
     }
 
-    private func makeGatewayEntrySyncState(
-        presentation: PendingEntrySyncPresentation,
-        targetTimeZone: SiteTimeZoneValue
-    ) -> SiteGatewayCloudTimeZoneBatchState {
+    private func applyUploadedEntryGatewayReviewContext(
+        result: SiteEntryTimeZoneResult,
+        presentation: PendingEntrySyncPresentation
+    ) {
         let targets = SiteGatewayCloudTimeZoneTargetBuilder.build(
-            targetOffsetMinutes: targetTimeZone.offsetMinutes,
+            targetOffsetMinutes: result.timezone.offsetMinutes,
             remote: presentation.remoteSnapshot,
             localByGatewayID: presentation.localGatewaySnapshotsByID,
-            confirmedOffsetMinutesByGatewayID: confirmedGatewayOffsetMinutesByID
+            confirmedOffsetMinutesByGatewayID:
+                confirmedGatewayOffsetMinutesByID
         )
-        return SiteGatewayCloudTimeZoneBatchState(targets: targets)
-    }
-
-    private func startGatewayEntrySyncIfNeeded(
-        siteResult: SiteEntryTimeZoneResult,
-        initialState: SiteGatewayCloudTimeZoneBatchState,
-        sessionToken: UUID
-    ) {
-        guard isEntrySyncSessionActive(sessionToken) else { return }
-
-        switch siteResult.site {
-        case .failedToUpdateServer:
-            var failedState = initialState
-            failedState.failPushing()
-            entrySyncOverlay.showResult(siteResult, gateways: failedState)
-            reconcileGatewayEntrySyncResult(
-                failedState,
-                initialState: initialState,
-                targetTimeZone: siteResult.timezone,
-                sessionToken: sessionToken,
-                performsSilentReconcile: false
+        let pendingIDs = Set(targets.filter(\.requiresSync).map(\.id))
+        gatewayTimeZoneReviewContext = pendingIDs.isEmpty
+            ? nil
+            : SiteGatewayTimeZoneReviewContext(
+                targetTimeZone: result.timezone,
+                failedGatewayIDs: pendingIDs
             )
-            return
-        case .alreadyInSync, .updatedFromServer, .updatedToServer:
-            break
-        }
-
-        guard !initialState.requestMACs.isEmpty else {
-            entrySyncOverlay.showResult(siteResult, gateways: initialState)
-            reconcileGatewayEntrySyncResult(
-                initialState,
-                initialState: initialState,
-                targetTimeZone: siteResult.timezone,
-                sessionToken: sessionToken,
-                performsSilentReconcile: true
-            )
-            return
-        }
-
-        entrySyncOverlay.showResult(siteResult, gateways: initialState)
-        let coordinator = gatewayEntrySyncCoordinator
-        let siteID = site.id
-        gatewayEntrySyncTask = Task { [weak self, coordinator, siteID, siteResult, initialState, sessionToken] in
-            let finalState = await coordinator.run(
-                siteID: siteID,
-                initialState: initialState,
-                onUpdate: { [weak self] state in
-                    guard let self,
-                          isEntrySyncSessionActive(sessionToken) else {
-                        return
-                    }
-                    entrySyncOverlay.showResult(siteResult, gateways: state)
-                    if state.canDismiss {
-                        reconcileGatewayEntrySyncResult(
-                            state,
-                            initialState: initialState,
-                            targetTimeZone: siteResult.timezone,
-                            sessionToken: sessionToken,
-                            performsSilentReconcile: true
-                        )
-                    }
-                }
-            )
-            guard let finalState,
-                  !Task.isCancelled,
-                  let self,
-                  isEntrySyncSessionActive(sessionToken) else {
-                return
-            }
-            entrySyncOverlay.showResult(siteResult, gateways: finalState)
-            reconcileGatewayEntrySyncResult(
-                finalState,
-                initialState: initialState,
-                targetTimeZone: siteResult.timezone,
-                sessionToken: sessionToken,
-                performsSilentReconcile: true
-            )
-        }
-    }
-
-    private func reconcileGatewayEntrySyncResult(
-        _ state: SiteGatewayCloudTimeZoneBatchState,
-        initialState: SiteGatewayCloudTimeZoneBatchState,
-        targetTimeZone: SiteTimeZoneValue,
-        sessionToken: UUID,
-        performsSilentReconcile: Bool
-    ) {
-        guard isEntrySyncSessionActive(sessionToken) else { return }
-        guard reconciledEntrySyncSessionToken != sessionToken else { return }
-        reconciledEntrySyncSessionToken = sessionToken
-        let initiallyPendingIDs = Set(
-            initialState.items
-                .filter { $0.status == .pushing }
-                .map(\.id)
-        )
-        let targetOffsetMinutes = targetTimeZone.offsetMinutes
-        state.items.forEach { item in
-            guard initiallyPendingIDs.contains(item.id),
-                  item.status == .synced else {
-                return
-            }
-            confirmedGatewayOffsetMinutesByID[item.id] = targetOffsetMinutes
-        }
-
-        gatewayTimeZoneReviewContext = SiteGatewayTimeZoneReviewContext.make(
-            targetTimeZone: targetTimeZone,
-            terminalState: state
-        )
         refreshCurrentGatewayTimeZoneReviewProjection()
-        if performsSilentReconcile {
-            performSiteLoad(presentation: .silentGatewayReconcile)
-        }
     }
 
     private func reconcileConfirmedGatewayOffsets(
@@ -961,14 +859,15 @@ self.updateAddressData()
             invalidateGatewayTimeZoneReview()
             return
         }
-        let dirtyTimeOverrides = captureDirtyGatewayTimeOverrides(
-            remote: remote,
+        let localGatewayContext = SiteGatewayCloudTimeZoneLocalContextBuilder.make(
+            site: site,
+            remoteSnapshot: remote,
             targetTimeZone: targetTimeZone
         )
         applyTimeZoneReviewState(
             from: remote,
             localDirtyOffsetMinutesByGatewayID:
-                dirtyTimeOverrides.mapValues(\.offsetMinutes)
+                localGatewayContext.dirtyOverridesByID.mapValues(\.offsetMinutes)
         )
     }
 
@@ -1048,16 +947,17 @@ self.updateAddressData()
 
     private func finishEntrySyncOverlay() {
         entrySyncSessionToken = nil
-        reconciledEntrySyncSessionToken = nil
         entrySyncTask?.cancel()
         entrySyncTask = nil
-        gatewayEntrySyncTask?.cancel()
-        gatewayEntrySyncTask = nil
         entrySyncCoordinator.cancel()
-        gatewayEntrySyncCoordinator.cancel()
-        entrySyncOverlay.removeFromSuperview()
+        entrySyncOverlay.dismiss()
         setEntrySyncNavigationLocked(false)
         continuePostImportNavigationIfNeeded()
+    }
+
+    private func handleEntrySyncReview() {
+        finishEntrySyncOverlay()
+        showSyncGatewaysPage()
     }
 
     private func showSyncGatewaysPage() {
@@ -1178,15 +1078,11 @@ self.updateAddressData()
 
     private func cancelEntrySyncOverlay() {
         entrySyncSessionToken = nil
-        reconciledEntrySyncSessionToken = nil
         entrySyncTask?.cancel()
         entrySyncTask = nil
-        gatewayEntrySyncTask?.cancel()
-        gatewayEntrySyncTask = nil
         entrySyncCoordinator.cancel()
-        gatewayEntrySyncCoordinator.cancel()
         if entrySyncOverlay.superview != nil {
-            entrySyncOverlay.removeFromSuperview()
+            entrySyncOverlay.dismiss()
         }
         setEntrySyncNavigationLocked(false)
     }
@@ -1409,57 +1305,6 @@ self.updateAddressData()
         }
     }
 
-    private func makeLocalGatewayTimeZoneSnapshots(
-        dirtyTimeOverrides: [String: SyncGatewayDirtyTimeOverride]
-    ) -> [String: SiteGatewayCloudTimeZoneLocalSnapshot] {
-        gatewayModels.reduce(
-            into: [String: SiteGatewayCloudTimeZoneLocalSnapshot]()
-        ) { result, gateway in
-            guard let id = SiteGatewayAccessScope.normalize(gateway.mac) else {
-                return
-            }
-            result[id] = SiteGatewayCloudTimeZoneLocalSnapshot(
-                displayName: gateway.name,
-                dirtyOffsetMinutes: dirtyTimeOverrides[id]?.offsetMinutes
-            )
-        }
-    }
-
-    private func captureDirtyGatewayTimeOverrides(
-        remote: SiteEntryTimeZoneRemoteSnapshot,
-        targetTimeZone: SiteTimeZoneValue
-    ) -> [String: SyncGatewayDirtyTimeOverride] {
-        let scope = SiteGatewayAccessScope.resolve(remote: remote)
-        let remoteGateways = remote.gateways.reduce(
-            into: [String: SiteEntryGatewayTimeZoneSnapshot]()
-        ) {
-            result, gateway in
-            guard let id = SiteGatewayAccessScope.normalize(gateway.id),
-                  result[id] == nil else {
-                return
-            }
-            result[id] = gateway
-        }
-        let candidates = gatewayModels.compactMap { gateway -> SyncGatewayDirtyTimeCandidate? in
-            guard let id = SiteGatewayAccessScope.normalize(gateway.mac),
-                  scope.contains(normalizedGatewayID: id) else {
-                return nil
-            }
-            return SyncGatewayDirtyTimeCandidate(
-                id: id,
-                isCloudDirty: gateway.model.needUploadCloud,
-                localTimestamp: gateway.node.timestamp,
-                localOffsetMinutes:
-                    (gateway.node.timezone?.secondsFromGMT()).map { $0 / 60 },
-                remoteOffsetMinutes: remoteGateways[id]?.offsetMinutes
-            )
-        }
-        return SyncGatewaysDirtyTimeOverridePolicy.capture(
-            targetOffsetMinutes: targetTimeZone.offsetMinutes,
-            candidates: candidates
-        )
-    }
-
     private func restoreDirtyGatewayTimeOverrides(
         _ overrides: [String: SyncGatewayDirtyTimeOverride],
         targetTimeZone: SiteTimeZoneValue,
@@ -1663,11 +1508,25 @@ self.updateAddressData()
                 self?.title = self?.site.name
                 self?.refreshCurrentGatewayTimeZoneReviewProjection()
             }
+            vc.timeZoneSyncDidFinish = { [weak self] outcome in
+                self?.reconcileEditTimeZoneSyncOutcome(outcome)
+            }
             if isIPad {
                 vc.preferredContentSize = iPadPreferredContentSize
             }
             self.present(NavigationViewController(rootViewController: vc), animated: true)
         }
+    }
+
+    private func reconcileEditTimeZoneSyncOutcome(
+        _ outcome: SiteTimeZoneEditSyncOutcome
+    ) {
+        if case .completed(let result) = outcome {
+            confirmedGatewayOffsetMinutesByID = result.confirmedOffsetMinutesByGatewayID
+            gatewayTimeZoneReviewContext = result.reviewContext
+            refreshCurrentGatewayTimeZoneReviewProjection()
+        }
+        performSiteLoad(presentation: .silentGatewayReconcile)
     }
     
     /// 删除场所

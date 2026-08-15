@@ -6,6 +6,7 @@ struct SiteTimeZoneValueTests {
     static func main() {
         testParsesAndFormatsFullStorageValue()
         testSupportsUTCAndFractionalHourOffsets()
+        testMeshTimeZoneOffsetRequiresExactQuarterHour()
         testRejectsMalformedAndOutOfRangeOffsets()
         testIanaIdentifierParticipatesInEquality()
         testFixedOffsetLocalTimeCrossesDateBoundaries()
@@ -39,6 +40,26 @@ struct SiteTimeZoneValueTests {
         require(utc?.storageValue == "Etc/UTC (UTC+00:00)", "Expected canonical UTC")
         require(negativeHalfHour?.offsetMinutes == -210, "Expected -03:30")
         require(positiveQuarterHour?.offsetMinutes == 345, "Expected +05:45")
+    }
+
+    private static func testMeshTimeZoneOffsetRequiresExactQuarterHour() {
+        let exact = SiteTimeZoneValue(
+            ianaId: "Asia/Kathmandu",
+            rawUTCOffset: "+05:45"
+        )
+        let inexact = SiteTimeZoneValue(
+            ianaId: "Asia/Singapore",
+            rawUTCOffset: "+08:01"
+        )
+
+        require(
+            exact?.isMeshTimeZoneOffsetEncodable == true,
+            "A 15-minute offset must be exactly Mesh encodable"
+        )
+        require(
+            inexact?.isMeshTimeZoneOffsetEncodable == false,
+            "A non-15-minute offset must not be silently quantized"
+        )
     }
 
     private static func testRejectsMalformedAndOutOfRangeOffsets() {

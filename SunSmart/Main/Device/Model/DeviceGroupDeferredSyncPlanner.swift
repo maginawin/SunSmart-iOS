@@ -72,6 +72,7 @@ struct DeviceGroupFastAddSyncPlan {
     let appendMessageHandles: [MeshMessageHandle]
     let verificationOperations: [DeviceOperationType]
     let taskCheckpointTracker: FastAddTaskCheckpointTracker<MeshMessageHandle>
+    let hasPlanningFailure: Bool
 
     func contains(_ messageHandle: MeshMessageHandle) -> Bool {
         appendMessageHandles.contains { $0 === messageHandle }
@@ -82,7 +83,8 @@ struct DeviceGroupFastAddSyncPlan {
     }
 
     var hasVerificationFailure: Bool {
-        taskCheckpointTracker.hasFailure
+        hasPlanningFailure
+            || taskCheckpointTracker.hasFailure
             || verificationOperations.contains { !$0.isSuccessful }
     }
 }
@@ -112,8 +114,8 @@ enum DeviceGroupFastAddSyncPlanner {
                 group: group
             )
             let appendMessageHandles = plan.immediateMessageHandles
-                + deferredBatch.messageHandles
-            guard !appendMessageHandles.isEmpty else {
+                + deferredBatch.batch.messageHandles
+            guard !appendMessageHandles.isEmpty || deferredBatch.hadFailure else {
                 return nil
             }
             let immediateSyncDatas = syncDatas.filter { !usesTaskScopedVerification($0) }
@@ -125,7 +127,8 @@ enum DeviceGroupFastAddSyncPlanner {
                     syncDatas: immediateSyncDatas,
                     node: node
                 ),
-                taskCheckpointTracker: deferredBatch.tracker
+                taskCheckpointTracker: deferredBatch.batch.tracker,
+                hasPlanningFailure: deferredBatch.hadFailure
             )
         case .sensor:
             let syncDatas = node.getSyncData(type: .group(group, effectiveMemberCount: effectiveMemberCount))
@@ -143,7 +146,8 @@ enum DeviceGroupFastAddSyncPlanner {
                     syncDatas: syncDatas,
                     node: node
                 ),
-                taskCheckpointTracker: FastAddTaskCheckpointTracker(checkpoints: [])
+                taskCheckpointTracker: FastAddTaskCheckpointTracker(checkpoints: []),
+                hasPlanningFailure: false
             )
         default:
             return nil
@@ -425,7 +429,7 @@ private extension DeviceGroupDeferredSyncPlanner {
     ) {
         let messageHandles = task.makeMessageHandles(contextGroup: group)
         guard !messageHandles.isEmpty else {
-            completion(true)
+            completion(!task.operationType.requiresSiteTimeSetHandle)
             return
         }
 
@@ -515,19 +519,40 @@ private extension DeviceGroupFastAddSyncPlanner {
     static func makeTaskCheckpointBatch(
         tasks: [DeviceGroupDeferredSyncTask],
         group: Group
-    ) -> FastAddTaskCheckpointBatch<MeshMessageHandle> {
-        let sources = tasks.compactMap { task -> FastAddTaskCheckpointSource<MeshMessageHandle>? in
+    ) -> (batch: FastAddTaskCheckpointBatch<MeshMessageHandle>, hadFailure: Bool) {
+        var sources: [FastAddTaskCheckpointSource<MeshMessageHandle>] = []
+        var hadFailure = false
+        var timeSyncHandleAvailable: Bool?
+
+        tasks.forEach { task in
+            if task.requiresSuccessfulTimeSync,
+               timeSyncHandleAvailable == false {
+                hadFailure = true
+                return
+            }
+
             let messageHandles = task.makeMessageHandles(contextGroup: group)
+            if task.isTimeSynchronization {
+                timeSyncHandleAvailable = !messageHandles.isEmpty
+            }
             guard !messageHandles.isEmpty else {
-                return nil
+                if task.operationType.requiresSiteTimeSetHandle {
+                    hadFailure = true
+                }
+                return
             }
-            return FastAddTaskCheckpointSource(
-                messageHandles: messageHandles
-            ) {
-                task.isSuccessful(contextGroup: group)
-            }
+            sources.append(
+                FastAddTaskCheckpointSource(
+                    messageHandles: messageHandles
+                ) {
+                    task.isSuccessful(contextGroup: group)
+                }
+            )
         }
-        return FastAddTaskCheckpointBatch(sources: sources)
+        return (
+            FastAddTaskCheckpointBatch(sources: sources),
+            hadFailure
+        )
     }
 
     static func usesTaskScopedVerification(_ syncData: NodeSyncData) -> Bool {

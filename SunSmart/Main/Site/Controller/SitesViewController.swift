@@ -664,6 +664,9 @@ class SitesViewController: UIViewController {
             vc.siteDidChange = { [weak self] in
                 self?.reloadSiteData(site)
             }
+            vc.timeZoneSyncDidFinish = { [weak self] _ in
+                self?.reloadSiteData(site)
+            }
             if isIPad {
                 vc.preferredContentSize = iPadPreferredContentSize
             }

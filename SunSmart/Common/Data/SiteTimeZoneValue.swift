@@ -65,6 +65,12 @@ struct SiteTimeZoneValue: Hashable {
         return "\(ianaId) (\(displayOffset))"
     }
 
+    var isMeshTimeZoneOffsetEncodable: Bool {
+        let encodedOffset = offsetMinutes / 15 + 64
+        return offsetMinutes.isMultiple(of: 15)
+            && (0...Int(UInt8.max)).contains(encodedOffset)
+    }
+
     func formattedLocalDate(at date: Date) -> String {
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)

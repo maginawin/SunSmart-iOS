@@ -214,8 +214,8 @@ struct TimedSchedulerSingleOwnerContractTests {
             to: "/// 设备删除操作"
         )
         require(
-            operationMessages.contains("Node.makeLocalTimeSetMessageHandle(model: timeModel)"),
-            "Time synchronization must use the SDK dynamic Time Set handle factory"
+            operationMessages.contains("SiteTimeSetMessageFactory.makeHandle("),
+            "Time synchronization must use the Site Time Set handle factory"
         )
         require(
             operationMessages.contains("handle.continuous = false"),
@@ -268,6 +268,12 @@ struct TimedSchedulerSingleOwnerContractTests {
         require(
             retryDependencies.contains("task.operationType.isTimedScheduleTimeSyncOperation"),
             "Schedule retry must re-run its Time Set dependency"
+        )
+        require(
+            source.contains("isMissingRequiredTimeSynchronizationHandle")
+                && source.contains("operationType.requiresSiteTimeSetHandle")
+                && source.contains("messageHandles.isEmpty"),
+            "Sync Devices must fail an empty required Time Set task"
         )
     }
 
@@ -528,8 +534,8 @@ struct TimedSchedulerSingleOwnerContractTests {
         )
         require(
             nodeSyncSchedules.contains("TimedScheduleTimeSyncPolicy.makePlan(")
-                && nodeSyncSchedules.contains("Node.makeLocalTimeSetMessageHandle(model: timeModel)"),
-            "NodeSyncData Schedule batches must prepend one dynamic Time Set"
+                && nodeSyncSchedules.contains("SiteTimeSetMessageFactory.makeHandle("),
+            "NodeSyncData Schedule batches must prepend one Site Time Set"
         )
 
         let groupSchedules = section(
@@ -539,8 +545,8 @@ struct TimedSchedulerSingleOwnerContractTests {
         )
         require(
             groupSchedules.contains("TimedScheduleTimeSyncPolicy.makePlan(")
-                && groupSchedules.contains("Node.makeLocalTimeSetMessageHandle(model: timeModel)"),
-            "Group Schedule batches must prepend one dynamic Time Set"
+                && groupSchedules.contains("SiteTimeSetMessageFactory.makeHandle("),
+            "Group Schedule batches must prepend one Site Time Set"
         )
 
         let restore = section(
@@ -550,8 +556,8 @@ struct TimedSchedulerSingleOwnerContractTests {
         )
         require(
             restore.contains("TimedScheduleTimeSyncPolicy.makePlan(")
-                && restore.contains("Node.makeLocalTimeSetMessageHandle(model: timeModel)"),
-            "Historical device restore must add at most one explicit dynamic Time Set"
+                && restore.contains("SiteTimeSetMessageFactory.makeHandle("),
+            "Historical device restore must add at most one Site Time Set"
         )
 
         let saveSchedule = section(
@@ -563,6 +569,14 @@ struct TimedSchedulerSingleOwnerContractTests {
             saveSchedule.contains("var deviceBatches: [ScheduleDeviceBatch] = []")
                 && saveSchedule.contains("runScheduleDeviceBatches("),
             "Timed save must execute an independent command batch per device"
+        )
+        require(
+            scheduleServer.contains("SiteTimeSetMessageFactory.makeHandle("),
+            "Direct Timed save must construct Time Set from the target Site"
+        )
+        require(
+            scheduleServer.contains("hadFailure: true"),
+            "A missing required Time Set must fail the direct Timed device batch"
         )
 
         let sdkSetSchedule = section(
@@ -655,6 +669,10 @@ struct TimedSchedulerSingleOwnerContractTests {
             attempts.contains("timeSyncSucceeded: Bool?")
                 && attempts.contains("task.requiresSuccessfulTimeSync && timeSyncSucceeded == false"),
             "Deferred runner must skip enabled Schedules after a failed Time Set"
+        )
+        require(
+            attempts.contains("completion(!task.operationType.requiresSiteTimeSetHandle)"),
+            "Deferred runner must fail an operation whose required Time Set is missing"
         )
         require(
             batch.contains("task.isSuccessful(contextGroup: group)"),

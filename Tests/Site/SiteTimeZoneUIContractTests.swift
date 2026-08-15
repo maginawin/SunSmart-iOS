@@ -233,26 +233,305 @@ struct SiteTimeZoneUIContractTests {
                 "Timezone status must cover the active window while ordinary updates use source-hosted Toasts"
             )
             require(
-                status.contains("enum State") &&
-                    status.contains("case saving") &&
-                    status.contains("case success") &&
-                    status.contains("case failure") &&
-                    status.contains("doneButton.isHidden = state == .saving"),
-                "Sync status must keep saving non-dismissible and expose terminal states"
+                status.contains("var onDone: (() -> Void)?") &&
+                    status.contains("func update(state: SiteTimeZoneSyncPresentationState)") &&
+                    status.contains("private(set) var state: SiteTimeZoneSyncPresentationState") &&
+                    !status.contains("enum State"),
+                "Sync status must consume only the shared presentation state and expose the optional DONE callback"
+            )
+            let statusUpdate = substring(
+                in: status,
+                from: "func update(state: SiteTimeZoneSyncPresentationState)",
+                through: "private func setupUI()"
+            )
+            let workingUpdate = substring(
+                in: statusUpdate,
+                from: "case .working(let stage):",
+                through: "case let .result(site, gateways):"
+            )
+            let resultUpdate = substring(
+                in: status,
+                from: "case let .result(site, gateways):",
+                through: "private func setupUI()"
+            )
+            require(
+                appearsInOrder(
+                    [
+                        "let wasWorking = self.state.isWorking",
+                        "self.state = state"
+                    ],
+                    in: statusUpdate
+                ) &&
+                    workingUpdate.contains("if !wasWorking") &&
+                    workingUpdate.contains("resultContentScrollView.setContentOffset(.zero, animated: false)") &&
+                    !resultUpdate.contains("setContentOffset") &&
+                    occurrences(of: "resultContentScrollView.setContentOffset(.zero, animated: false)", in: statusUpdate) == 1,
+                "Only a new working session may reset the reused result scroll position; batch and terminal updates must preserve it"
+            )
+            require(
+                status.contains("private let gatewayStatusView = SiteEntryGatewayTimeZoneStatusView()") &&
+                    status.contains("gatewayStatusView.update(gateways)") &&
+                    status.contains("gatewayStatusView.preferredHeight") &&
+                    !status.contains("gatewayStatusView.minimumViewportHeight") &&
+                    status.contains("case .notStarted:") &&
+                    status.contains("gatewayStatusView.isHidden = true") &&
+                    !status.contains("private let gatewayCard") &&
+                    !status.contains("\"site_no_gateways\".localizedString") &&
+                    !status.contains("\"site_no_gateways_sync_needed\".localizedString"),
+                "Sync status must use the shared Gateway component, hide not-started, and remove its fixed No gateways card"
+            )
+            let scrollConfiguration = substring(
+                in: status,
+                from: "private func configureResultContentScrollView()",
+                through: "private func configureResultTitle()"
+            )
+            require(
+                status.contains("private let resultContentScrollView = UIScrollView()") &&
+                    status.contains("private let resultContentView = UIView()") &&
+                    scrollConfiguration.contains("resultCardView.addSubview(resultContentScrollView)") &&
+                    scrollConfiguration.contains("resultContentScrollView.addSubview(resultContentView)") &&
+                    scrollConfiguration.contains("make.edges.equalTo(resultContentScrollView.contentLayoutGuide)") &&
+                    scrollConfiguration.contains("make.width.equalTo(resultContentScrollView.frameLayoutGuide)") &&
+                    scrollConfiguration.contains("resultContentScrollView.alwaysBounceVertical = false"),
+                "Result title, Site, and Gateway content must live in one vertically scrolling container"
+            )
+            let gatewayStatusConfiguration = substring(
+                in: status,
+                from: "private func configureGatewayStatusView()",
+                through: "private func configureDoneFooter()"
+            )
+            require(
+                gatewayStatusConfiguration.contains("gatewayStatusView.onPreferredHeightChanged = { [weak self] in") &&
+                    gatewayStatusConfiguration.contains("guard let self") &&
+                    gatewayStatusConfiguration.contains("case let .result(_, gateways) = self.state") &&
+                    gatewayStatusConfiguration.contains("self.updateResultSheetLayout(for: gateways)"),
+                "Sync status must weakly consume Gateway height changes only while showing a result"
+            )
+            let siteStatusUpdate = substring(
+                in: status,
+                from: "private func updateSiteStatus(",
+                through: "private func updateStatusIndicator()"
             )
             require(
                 status.contains("\"site_time_zone_sync_status\".localizedString") &&
-                    status.contains("\"site_time_zone_saved_successfully\".localizedString") &&
-                    status.contains("\"site_time_zone_saved_failed\".localizedString") &&
-                    status.contains("\"site_no_gateways\".localizedString") &&
-                    status.contains("\"site_no_gateways_sync_needed\".localizedString"),
-                "Sync status copy must be localized and fixed to No gateways on success"
+                    status.contains("siteStatusCardView") &&
+                    siteStatusUpdate.contains("_: SiteTimeZoneSyncSitePresentation") &&
+                    siteStatusUpdate.contains("\"site_time_zone_row_title\".localizedString") &&
+                    siteStatusUpdate.contains("\"site_time_zone_saved_successfully\".localizedString") &&
+                    !siteStatusUpdate.contains("site_entry_sync_updated") &&
+                    !siteStatusUpdate.contains("failedToUpdateServer"),
+                "Edit sync status must use the Time zone title and local Saved successfully semantics"
+            )
+            let checkingConfiguration = substring(
+                in: status,
+                from: "private func setupCheckingCard()",
+                through: "private func setupResultSheet()"
+            )
+            require(
+                checkingConfiguration.contains("make.height.greaterThanOrEqualTo(SCRYFrom(188))") &&
+                    checkingConfiguration.contains("make.top.greaterThanOrEqualTo(safeAreaLayoutGuide.snp.top)") &&
+                    checkingConfiguration.contains("make.bottom.lessThanOrEqualTo(safeAreaLayoutGuide.snp.bottom)") &&
+                    checkingConfiguration.contains("make.height.greaterThanOrEqualTo(SCRYFrom(26))") &&
+                    checkingConfiguration.contains("make.height.greaterThanOrEqualTo(SCRYFrom(44))") &&
+                    checkingConfiguration.contains("make.bottom.equalToSuperview().inset(SCRYFrom(24))") &&
+                    !checkingConfiguration.contains("make.height.equalTo(SCRYFrom(188))") &&
+                    !checkingConfiguration.contains("make.height.equalTo(SCRYFrom(26))") &&
+                    !checkingConfiguration.contains("make.height.equalTo(SCRYFrom(44))"),
+                "Checking card copy must use multiline intrinsic heights, expand from its Figma minimum, and remain within the safe area"
+            )
+            let resultTitleConfiguration = substring(
+                in: status,
+                from: "private func configureResultTitle()",
+                through: "private func configureSiteStatusCard()"
+            )
+            let siteStatusConfiguration = substring(
+                in: status,
+                from: "private func configureSiteStatusCard()",
+                through: "private func configureGatewayStatusView()"
+            )
+            require(
+                resultTitleConfiguration.contains("resultTitleLabel.numberOfLines = 0") &&
+                    resultTitleConfiguration.contains("resultContentView.addSubview(resultTitleLabel)") &&
+                    resultTitleConfiguration.contains("make.height.greaterThanOrEqualTo(SCRYFrom(25))") &&
+                    !resultTitleConfiguration.contains("make.height.equalTo(SCRYFrom(25))") &&
+                    siteStatusConfiguration.contains("resultContentView.addSubview(siteStatusCardView)") &&
+                    siteStatusConfiguration.contains("make.height.greaterThanOrEqualTo(SCRYFrom(64))") &&
+                    siteStatusConfiguration.contains("siteValueLabel.numberOfLines = 0") &&
+                    siteStatusConfiguration.contains("siteStatusLabel.numberOfLines = 0") &&
+                    siteStatusConfiguration.contains("make.top.bottom.equalToSuperview().inset(SCRYFrom(14))") &&
+                    !siteStatusConfiguration.contains("make.height.equalTo(SCRYFrom(64))") &&
+                    !siteStatusConfiguration.contains("make.height.equalTo(SCRYFrom(20))") &&
+                    !siteStatusConfiguration.contains("make.height.equalTo(SCRYFrom(16))"),
+                "Result title and Site status card must grow from intrinsic multiline content instead of fixed single-line heights"
+            )
+            let resultSheetConfiguration = substring(
+                in: status,
+                from: "private func setupResultSheet()",
+                through: "private func configureResultShadows()"
+            )
+            require(
+                status.contains("UIColor.black.withAlphaComponent(0.4)") &&
+                    status.contains("resultCardView.layer.cornerRadius = SCRYFrom(24)") &&
+                    resultSheetConfiguration.contains("make.left.right.equalToSuperview()") &&
+                    !resultSheetConfiguration.contains("make.width.equalTo(SCRXFrom(343))") &&
+                    !resultSheetConfiguration.contains("make.centerX.equalToSuperview()") &&
+                    resultSheetConfiguration.contains("make.bottom.equalTo(safeAreaLayoutGuide.snp.bottom)") &&
+                    resultSheetConfiguration.contains("make.top.greaterThanOrEqualTo(safeAreaLayoutGuide.snp.top).offset(SCRYFrom(16))"),
+                "Sync status result sheet must stay full-width and grow upward within the safe area"
+            )
+            require(
+                status.contains("private let bottomSafeAreaBackgroundView = UIView()") &&
+                    resultSheetConfiguration.contains("bottomSafeAreaBackgroundView.backgroundColor = .white") &&
+                    appearsInOrder(
+                        [
+                            "addSubview(bottomSafeAreaBackgroundView)",
+                            "addSubview(resultCardView)",
+                            "configureResultShadows()",
+                            "bringSubviewToFront(resultCardView)"
+                        ],
+                        in: resultSheetConfiguration
+                    ) &&
+                    resultSheetConfiguration.contains("make.top.equalTo(safeAreaLayoutGuide.snp.bottom)") &&
+                    resultSheetConfiguration.contains("make.left.right.bottom.equalToSuperview()") &&
+                    status.contains("bottomSafeAreaBackgroundView.isHidden = state.isWorking") &&
+                    status.contains("footerHeightConstraint.update(offset: state.canDismiss ? SCRYFrom(61) : 0)"),
+                "Sync status must keep a result-only white bottom safe area without moving DONE"
+            )
+            require(
+                status.contains("doneButton.isHidden = !state.canDismiss") &&
+                    status.contains("guard state.canDismiss else { return }") &&
+                    status.contains("if let onDone") &&
+                    status.contains("onDone()") &&
+                    status.contains("removeFromSuperview()") &&
+                    status.contains("\"site_entry_sync_done\".localizedString"),
+                "DONE must remain guarded, delegate to a host callback, or self-remove for callback-free terminal flows"
+            )
+            require(
+                !status.contains("UITapGestureRecognizer") &&
+                    !status.contains("addGestureRecognizer") &&
+                    status.contains("accessibilityViewIsModal = true"),
+                "The unified status background must remain modal with no tap-to-dismiss path"
+            )
+            require(
+                status.contains("private var resultCardHeightConstraint: Constraint!") &&
+                    status.contains("resultCardHeightConstraint.update") &&
+                    status.contains("resultCardHeightConstraint.deactivate()") &&
+                    status.contains("safeAreaLayoutGuide.snp.height") &&
+                    status.contains("SiteTimeZoneSyncResultLayoutPolicy.makeLayout(") &&
+                    status.contains("contentHeight: measuredContentHeight") &&
+                    status.contains("availableHeight: availableResultHeight") &&
+                    !status.contains("availableGatewayViewportHeight") &&
+                    status.contains("UIView.animate"),
+                "The unified result sheet must drop its height while working and cap the complete scroll content plus fixed footer to its safe-area budget"
+            )
+            let resultMeasurement = substring(
+                in: status,
+                from: "private func measuredResultContentHeight(",
+                through: "private func updateSiteStatus("
+            )
+            require(
+                resultMeasurement.contains("systemLayoutSizeFitting(") &&
+                    resultMeasurement.contains("withHorizontalFittingPriority: .required") &&
+                    resultMeasurement.contains("verticalFittingPriority: .fittingSizeLevel") &&
+                    resultMeasurement.contains("measuredResultTitleHeight") &&
+                    resultMeasurement.contains("measuredSiteStatusCardHeight") &&
+                    resultMeasurement.contains("gatewayStatusView.preferredHeight") &&
+                    resultMeasurement.contains("resultCardView.bounds.width") &&
+                    resultMeasurement.contains("bounds.width") &&
+                    !resultMeasurement.contains("24 + 25 + 16 + 64 + 16"),
+                "Result sheet fixed content must measure title and Site card Auto Layout heights with a pre-layout width fallback"
+            )
+            let traitRemeasurement = substring(
+                in: status,
+                from: "override func traitCollectionDidChange(",
+                through: "func show(in parentView:"
+            )
+            require(
+                traitRemeasurement.contains("preferredContentSizeCategory") &&
+                    traitRemeasurement.contains("invalidateIntrinsicContentSize()") &&
+                    traitRemeasurement.contains("updateResultSheetLayout(for: gateways)") &&
+                    traitRemeasurement.contains("setNeedsLayout()"),
+                "Content size category changes must invalidate intrinsic sizes and remeasure the result sheet and Gateway viewport"
+            )
+            require(
+                status.contains("private let footerContainerView = UIView()") &&
+                    status.contains("private var footerHeightConstraint: Constraint!") &&
+                    status.contains("footerHeightConstraint.update(offset: state.canDismiss ? SCRYFrom(61) : 0)") &&
+                    status.contains("footerContainerView.isHidden = !state.canDismiss") &&
+                    status.contains("if !wasDismissible && state.canDismiss") &&
+                    status.contains("let requestedFooterHeight = state.canDismiss ? SCRYFrom(61) : 0"),
+                "The unified footer must collapse while working or pushing and expand to 61 only at terminal state"
+            )
+            let footerConfiguration = substring(
+                in: status,
+                from: "private func configureDoneFooter()",
+                through: "private func updateWorkingCopy("
+            )
+            require(
+                footerConfiguration.contains("make.left.right.bottom.equalToSuperview()") &&
+                    footerConfiguration.contains("make.bottom.equalTo(footerContainerView.snp.top)") &&
+                    !footerConfiguration.contains("make.top.equalTo(gatewayStatusView.snp.bottom)") &&
+                    gatewayStatusConfiguration.contains("resultContentView.addSubview(gatewayStatusView)") &&
+                    gatewayStatusConfiguration.contains("make.bottom.equalToSuperview().inset(SCRYFrom(16))"),
+                "DONE footer must stay pinned to the result card while the scroll content has a complete title-to-Gateway bottom chain"
+            )
+            require(
+                status.contains("UIImage(named: \"site_entry_sync_loading\")") &&
+                    status.contains("UIImage(named: \"site_entry_sync_success\")") &&
+                    status.contains("checkingCardView.layer.cornerRadius = SCRYFrom(20)"),
+                "The unified status must preserve the checking animation and Site success visual"
             )
             require(
                 !status.localizedCaseInsensitiveContains("GatewayModel") &&
                     !status.localizedCaseInsensitiveContains("MeshNetwork") &&
                     !edit.contains("CloudSynchronizationManager"),
                 "Edit Site status must not start gateway, Mesh, or whole-site synchronization"
+            )
+
+            let timeZoneCommit = substring(
+                in: edit,
+                from: "private func finishTimeZoneCommit(",
+                through: "private func finishEditing("
+            )
+            require(
+                edit.contains(
+                    "var timeZoneSyncDidFinish: ((SiteTimeZoneEditSyncOutcome) -> Void)?"
+                ) &&
+                    appearsInOrder(
+                        [
+                            "guard online else",
+                            "SiteTimeZoneSyncStatusView()"
+                        ],
+                        in: timeZoneCommit
+                    ) &&
+                    timeZoneCommit.contains("SiteGatewayLocalTimeZoneContextBuilder.make(") &&
+                    timeZoneCommit.contains("SiteGatewayCloudTimeZoneSessionCoordinator(") &&
+                    timeZoneCommit.contains("SiteTimeZoneEditSyncCoordinator(") &&
+                    !timeZoneCommit.contains("SiteTimeZoneRemoteSnapshotProvider") &&
+                    !timeZoneCommit.contains("remoteSnapshot"),
+                "Offline timezone commits must exit before local Gateway targets are created, and online Edit must not fetch another Site snapshot"
+            )
+            require(
+                timeZoneCommit.contains("statusView.update(state: .working(.savingSite))") &&
+                    timeZoneCommit.contains("statusView.show()") &&
+                    timeZoneCommit.contains("await editSyncCoordinator.run(") &&
+                    timeZoneCommit.contains("snapshot: snapshot") &&
+                    timeZoneCommit.contains("statusView.update(state: state)") &&
+                    !timeZoneCommit.contains("await coordinator.submit") &&
+                    !timeZoneCommit.contains("success ? .success : .failure"),
+                "Online timezone commits must stream the shared Edit coordinator into the unified view"
+            )
+            require(
+                timeZoneCommit.contains("guard draft.values.timezone != nil else") &&
+                    timeZoneCommit.contains("guard let snapshot else") &&
+                    timeZoneCommit.contains("site: .savedSuccessfully") &&
+                    timeZoneCommit.contains("gateways: .notStarted") &&
+                    timeZoneCommit.contains("callback?(.siteFailed)") &&
+                    timeZoneCommit.contains(
+                        "[statusView, editSyncCoordinator, callback, siteDidChange]"
+                    ) &&
+                    timeZoneCommit.contains("callback?(outcome)"),
+                "Missing snapshots after persistence must retain local save success, stop cloud work, and keep the post-dismiss flow strongly owned"
             )
 
             let sitesEdit = substring(in: sites, from: "private func editSite(site: SiteData)", through: "/// 删除场所")
@@ -276,6 +555,29 @@ struct SiteTimeZoneUIContractTests {
                     !siteEdit.contains("InfoEditViewController") &&
                     !siteEdit.contains("CloudSynchronizationManager"),
                 "Site entry must use the same editor and keep committed changes on Site"
+            )
+            require(
+                sitesEdit.contains("vc.timeZoneSyncDidFinish = { [weak self] _ in") &&
+                    sitesEdit.contains("self?.reloadSiteData(site)") &&
+                    !sitesEdit.contains("gatewayTimeZoneReviewContext") &&
+                    !sitesEdit.contains("silentGatewayReconcile"),
+                "Sites terminal timezone outcomes must only reload the existing Site cell"
+            )
+            require(
+                siteEdit.contains(
+                    "vc.timeZoneSyncDidFinish = { [weak self] outcome in"
+                ) &&
+                    siteEdit.contains("self?.reconcileEditTimeZoneSyncOutcome(outcome)") &&
+                    site.contains(
+                        "private func reconcileEditTimeZoneSyncOutcome("
+                    ) &&
+                    site.contains(
+                        "confirmedGatewayOffsetMinutesByID = result.confirmedOffsetMinutesByGatewayID"
+                    ) &&
+                    site.contains("gatewayTimeZoneReviewContext = result.reviewContext") &&
+                    site.contains("refreshCurrentGatewayTimeZoneReviewProjection()") &&
+                    site.contains("performSiteLoad(presentation: .silentGatewayReconcile)"),
+                "Site terminal timezone outcomes must reconcile the shared result and silently refresh"
             )
         }
 
@@ -312,7 +614,9 @@ struct SiteTimeZoneUIContractTests {
             "site_time_zone_row_title",
             "site_sync_section_gateways",
             "site_no_gateways",
-            "site_no_gateways_sync_needed"
+            "site_no_gateways_sync_needed",
+            "site_time_zone_gateway_check_unavailable_title",
+            "site_time_zone_gateway_check_unavailable_message"
         ]
         for key in keys {
             let declaration = "\"\(key)\" ="
@@ -351,7 +655,6 @@ struct SiteTimeZoneUIContractTests {
                 "\(filename) must belong to all four Sources phases"
             )
         }
-
         let resourcePhase = substring(
             in: project,
             from: "/* Begin PBXResourcesBuildPhase section */",

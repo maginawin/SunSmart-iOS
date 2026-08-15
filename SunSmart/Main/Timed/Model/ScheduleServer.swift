@@ -221,10 +221,19 @@ struct ScheduleServer {
         }
 
         let batch = batches[index]
-        let messageHandles = makeScheduleMessageHandles(
+        guard let messageHandles = makeScheduleMessageHandles(
             schedule: schedule,
             batch: batch
-        )
+        ) else {
+            runScheduleDeviceBatches(
+                batches,
+                schedule: schedule,
+                index: index + 1,
+                hadFailure: true,
+                completion: completion
+            )
+            return
+        }
         guard !messageHandles.isEmpty else {
             runScheduleDeviceBatches(
                 batches,
@@ -261,7 +270,7 @@ struct ScheduleServer {
     private static func makeScheduleMessageHandles(
         schedule: Schedule,
         batch: ScheduleDeviceBatch
-    ) -> [MeshMessageHandle] {
+    ) -> [MeshMessageHandle]? {
         if batch.delete {
             return schedule.getMessageHandles(node: batch.node, delete: true)
         }
@@ -271,9 +280,14 @@ struct ScheduleServer {
             hasTimeModel: batch.node.timeModel != nil,
             scheduleEnabledStates: [schedule.enabled]
         )
-        if timeSyncPlan.requiresTimeSync,
-           let timeModel = batch.node.timeModel {
-            let timeHandle = Node.makeLocalTimeSetMessageHandle(model: timeModel)
+        if timeSyncPlan.requiresTimeSync {
+            guard let timeModel = batch.node.timeModel,
+                  let timeHandle = SiteTimeSetMessageFactory.makeHandle(
+                      node: batch.node,
+                      model: timeModel
+                  ) else {
+                return nil
+            }
             timeHandle.continuous = false
             messageHandles.append(timeHandle)
         }

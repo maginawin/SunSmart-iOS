@@ -19,25 +19,159 @@ struct SiteGatewayCloudTimeZoneUIContractTests {
         let english = try String(contentsOfFile: arguments[2], encoding: .utf8)
         let simplifiedChinese = try String(contentsOfFile: arguments[3], encoding: .utf8)
 
+        let gatewayCardSetup = sourceSection(
+            in: view,
+            from: "private func setupGatewayCard()",
+            to: "private func setupEmptyState()"
+        )
+        let heightMeasurement = sourceSection(
+            in: view,
+            from: "private func updateMeasuredHeightsIfNeeded(width: CGFloat)",
+            to: "private func fittingHeight(of view: UIView"
+        )
+        let contentSizeCategoryUpdate = sourceSection(
+            in: view,
+            from: "override func traitCollectionDidChange(",
+            to: "func update(_ state:"
+        )
+        requireAll([
+            (
+                appearsInOrder(
+                    [
+                        "gatewayHeaderView.addSubview(gatewayHeaderLabel)",
+                        "gatewayHeaderView.addSubview(gatewayCountLabel)",
+                        "gatewayHeaderLabel.snp.makeConstraints",
+                        "make.right.lessThanOrEqualTo(gatewayCountLabel.snp.left)"
+                    ],
+                    in: gatewayCardSetup
+                ),
+                "Both Gateway header labels must share their parent before activating a cross-label constraint"
+            ),
+            (
+                heightMeasurement.contains("sizingCell.preferredHeight(") &&
+                    heightMeasurement.contains(
+                        "items.prefix(Self.maximumVisibleGatewayCount)"
+                    ) &&
+                    !heightMeasurement.contains("SCRYFrom(176)") &&
+                    !heightMeasurement.contains("tableView.rectForRow") &&
+                    !heightMeasurement.contains("tableView.contentSize"),
+                "Preferred height must independently size up to three real rows without a fixed three-row floor or UITableView cache data"
+            ),
+            (
+                contentSizeCategoryUpdate.contains("tableView.reloadData()") &&
+                    contentSizeCategoryUpdate.contains("tableView.setNeedsLayout()") &&
+                    contentSizeCategoryUpdate.contains("needsHeightMeasurement = true"),
+                "A content-size category change must invalidate both UITableView rows and outer height measurement"
+            ),
+            (
+                view.contains("private var gatewayHeaderHeightConstraint: Constraint!") &&
+                    heightMeasurement.contains(
+                        "temporarilyDeactivating: gatewayHeaderHeightConstraint"
+                    ) &&
+                    heightMeasurement.contains(
+                        "gatewayHeaderHeightConstraint.update(offset: headerHeight)"
+                    ) &&
+                    view.contains("heightConstraint.deactivate()") &&
+                    view.contains("defer { heightConstraint.activate() }"),
+                "Measured header height must bind back to layout without its old exact height contaminating fitting"
+            )
+        ])
+
+        let presentationUpdate = sourceSection(
+            in: view,
+            from: "func update(_ presentation: SiteTimeZoneGatewayPresentation)",
+            to: "func update(_ state: SiteGatewayCloudTimeZoneBatchState)"
+        )
         require(
             view.contains("final class SiteEntryGatewayTimeZoneStatusView: UIView") &&
-                view.contains("func update(_ state: SiteGatewayCloudTimeZoneBatchState)"),
-            "Gateway status view must consume only the batch state through update(_:)"
+                presentationUpdate.contains("case .notStarted:") &&
+                presentationUpdate.contains("case .unavailable:") &&
+                presentationUpdate.contains("case .batch(let state):") &&
+                presentationUpdate.contains("update(state)"),
+            "Gateway status view must consume the shared presentation and delegate batches to the existing renderer"
+        )
+        require(
+            presentationUpdate.contains("\"site_time_zone_gateway_check_unavailable_title\".localizedString") &&
+                presentationUpdate.contains("\"site_time_zone_gateway_check_unavailable_message\".localizedString") &&
+                presentationUpdate.contains("configurePresentation(") &&
+                !presentationUpdate.contains("SiteGatewayCloudTimeZoneItem("),
+            "Unavailable must render its dedicated failure copy without constructing a fake Gateway row"
+        )
+        require(
+            presentationUpdate.contains("case .notStarted:") &&
+                presentationUpdate.contains("resetForNotStarted()") &&
+                !presentationUpdate.contains("case .notStarted:\n            return"),
+            "Not-started Gateway state must clear the child renderer instead of leaving its previous required constraint chain active"
+        )
+        let notStartedReset = sourceSection(
+            in: view,
+            from: "private func resetForNotStarted()",
+            to: "private func configurePresentation("
+        )
+        require(
+            notStartedReset.contains("deactivatePresentationConstraints()") &&
+                notStartedReset.contains("gatewayCardView.isHidden = true") &&
+                notStartedReset.contains("emptyStateView.isHidden = true") &&
+                notStartedReset.contains("failureSummaryCardView.isHidden = true") &&
+                notStartedReset.contains("tableView.visibleCells") &&
+                notStartedReset.contains("cell.stopLoadingAnimation()") &&
+                notStartedReset.contains("sizingCell.stopLoadingAnimation()") &&
+                notStartedReset.contains("items.removeAll()") &&
+                notStartedReset.contains("tableView.reloadData()"),
+            "Not-started must hide every internal presentation and clear all row/loading state"
+        )
+        let presentationConstraints = sourceSection(
+            in: view,
+            from: "private func deactivatePresentationConstraints()",
+            to: "private func resetForNotStarted()"
+        )
+        for constraintName in [
+            "gatewayCardTopConstraint",
+            "gatewayCardBottomConstraint",
+            "emptyStateTopConstraint",
+            "emptyStateBottomConstraint",
+            "failureSummaryTopConstraint",
+            "failureSummaryBottomConstraint"
+        ] {
+            require(
+                presentationConstraints.contains(constraintName),
+                "Hidden presentation must deactivate \(constraintName)"
+            )
+        }
+        require(
+            presentationConstraints.contains(".forEach { $0?.deactivate() }") &&
+                view.contains("private func configurePresentation(") &&
+                sourceSection(
+                    in: view,
+                    from: "private func configurePresentation(",
+                    to: "private func updateMeasuredHeightsIfNeeded("
+                ).contains("deactivatePresentationConstraints()"),
+            "Every hidden/visible transition must first deactivate all six presentation constraints before activating one valid chain"
         )
         require(
             view.contains("UITableView") &&
                 view.contains("UITableViewDataSource") &&
-                view.contains("tableView.isScrollEnabled = true") &&
+                view.contains("private static let maximumVisibleGatewayCount = 3") &&
+                view.contains("items.count > Self.maximumVisibleGatewayCount") &&
+                view.contains("tableView.isScrollEnabled = shouldScroll") &&
+                view.contains("tableView.showsVerticalScrollIndicator = shouldScroll") &&
+                view.contains("if !shouldScroll {") &&
+                view.contains("tableView.setContentOffset(.zero, animated: false)") &&
                 view.contains("items = state.items") &&
                 view.contains("tableView.reloadData()"),
-            "Gateway rows must be a reusable scrolling list rendered in batch-state order"
+            "Gateway rows must keep batch order, scroll only above three rows, and reset stale offsets when scrolling collapses"
         )
         require(
             view.contains("site_entry_sync_gateways_header") &&
                 view.contains("String(state.authorizedCount)") &&
-                view.contains("make.height.equalTo(SCRYFrom(44))") &&
+                view.contains("make.height.greaterThanOrEqualTo(SCRYFrom(44))") &&
                 view.contains("make.height.equalTo(0.5)"),
-            "Gateway card must keep its fixed header, count, 44pt rows, and hairlines"
+            "Gateway card must keep its count, minimum 44pt header baseline, and hairlines"
+        )
+        require(
+            view.contains("tableView.rowHeight = UITableView.automaticDimension") &&
+                view.contains("tableView.estimatedRowHeight = SCRYFrom(44)"),
+            "Gateway rows must use self-sizing heights with the 44pt Figma baseline as their estimate"
         )
         require(
             view.contains("case .pushing:") &&
@@ -90,16 +224,113 @@ struct SiteGatewayCloudTimeZoneUIContractTests {
         require(
             view.contains("var preferredHeight: CGFloat") &&
                 view.contains("var minimumViewportHeight: CGFloat") &&
+                view.contains("var onPreferredHeightChanged: (() -> Void)?") &&
                 view.contains("override var intrinsicContentSize: CGSize") &&
                 view.contains("invalidateIntrinsicContentSize()") &&
-                view.contains("make.height.equalTo(SCRYFrom(176)).priority(.high)"),
-            "Task 6 must be able to obtain a preferred height while only the internal Gateway table viewport compresses"
+                view.contains("systemLayoutSizeFitting") &&
+                view.contains("items.prefix(Self.maximumVisibleGatewayCount)") &&
+                view.contains("abs(") &&
+                view.contains("onPreferredHeightChanged?()"),
+            "Gateway heights must be measured from dynamic content, capped to three preferred rows, and notify only on change"
         )
         require(
             occurrences(of: "configureDynamicFont(", in: view) >= 8 &&
                 view.contains("adjustsFontForContentSizeCategory = true") &&
-                view.contains("maximumContentSizeCategory = .large"),
-            "All user-facing labels must scale to a bounded size that remains legible inside the fixed Figma rows and cards"
+                !view.contains("maximumContentSizeCategory"),
+            "All user-facing labels must scale through Accessibility Dynamic Type without a category cap"
+        )
+
+        let cell = sourceSection(
+            in: view,
+            from: "private final class GatewayTimeZoneStatusCell",
+            to: "private func startLoadingAnimation()"
+        )
+        require(
+            !cell.contains("statusImageView") &&
+                cell.contains("gatewayImageView.image = UIImage(named: \"site_entry_sync_loading\")") &&
+                cell.contains("gatewayImageView.image = UIImage(named: \"site_entry_sync_success\")") &&
+                cell.contains("gatewayImageView.image = UIImage(named: \"gateway_sync_tz_fail_circle\")") &&
+                cell.contains("nameLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)") &&
+                cell.contains("statusLabel.setContentCompressionResistancePriority(.required, for: .horizontal)") &&
+                cell.contains("make.right.lessThanOrEqualTo(statusLabel.snp.left).offset(SCRXFrom(-8))"),
+            "Gateway rows must render one state icon on the left and text only on the right"
+        )
+        require(
+            view.contains("gatewayImageView.layer.add(animation, forKey: \"siteEntrySyncLoading\")") &&
+                view.contains("gatewayImageView.layer.removeAnimation(forKey: \"siteEntrySyncLoading\")") &&
+                !view.contains("statusImageView.layer.add(animation") &&
+                !view.contains("statusImageView.layer.removeAnimation"),
+            "The left pushing icon must retain its rotation lifecycle"
+        )
+        let sizingPath = sourceSection(
+            in: cell,
+            from: "func preferredHeight(",
+            to: "private func setupUI()"
+        )
+        require(
+            sizingPath.contains("defer { stopLoadingAnimation() }") &&
+                sizingPath.contains("update(item)"),
+            "The off-screen sizing cell must stop any pushing animation after measurement"
+        )
+        require(
+            occurrences(of: "make.top.greaterThanOrEqualToSuperview()", in: cell) >= 2 &&
+                occurrences(of: "make.bottom.lessThanOrEqualToSuperview()", in: cell) >= 2,
+            "Gateway name and status text must both participate in the cell's top and bottom self-sizing constraints"
+        )
+        require(
+            cell.contains("make.top.greaterThanOrEqualToSuperview().offset(SCRYFrom(14))") &&
+                cell.contains("make.bottom.lessThanOrEqualToSuperview().offset(SCRYFrom(-14))"),
+            "A fixed-size Gateway icon must preserve the 44pt minimum row baseline while text may grow beyond it"
+        )
+        require(
+            !gatewayCardSetup.contains("SCRYFrom(176)") &&
+                view.contains("make.height.greaterThanOrEqualTo(SCRYFrom(152))") &&
+                !view.contains("make.height.greaterThanOrEqualTo(SCRYFrom(96))") &&
+                !view.contains("private var failureSummaryHeightConstraint") &&
+                heightMeasurement.contains("let gatewayCardHeight = headerHeight + preferredRowsHeight") &&
+                heightMeasurement.contains("let failureHeight = ceil(") &&
+                heightMeasurement.contains(
+                    "fittingHeight(of: failureSummaryCardView, width: width)"
+                ) &&
+                !heightMeasurement.contains("SCRYFrom(96)") &&
+                !view.contains("make.height.equalTo(SCRYFrom(152))") &&
+                view.contains("gatewayHeaderHeightConstraint"),
+            "Gateway and failure cards must converge to measured content while preserving only the empty-state baseline"
+        )
+        let failureSummarySetup = sourceSection(
+            in: view,
+            from: "private func setupFailureSummary()",
+            to: "private func deactivatePresentationConstraints()"
+        )
+        let failureMessageConstraints = sourceSection(
+            in: failureSummarySetup,
+            from: "failureMessageLabel.snp.makeConstraints",
+            to: "failureSummaryCardView.isAccessibilityElement"
+        )
+        require(
+            view.contains("private static let failureTextVerticalInset: CGFloat = 15") &&
+                occurrences(
+                    of: "offset(SCRYFrom(Self.failureTextVerticalInset))",
+                    in: failureSummarySetup
+                ) == 1 &&
+                occurrences(
+                    of: "inset(SCRYFrom(Self.failureTextVerticalInset))",
+                    in: failureSummarySetup
+                ) == 1 &&
+                failureSummarySetup.contains(
+                    "make.bottom.equalToSuperview().inset(SCRYFrom(Self.failureTextVerticalInset))"
+                ) &&
+                !failureMessageConstraints.contains("make.bottom.lessThanOrEqualToSuperview()"),
+            "Failure copy must close its natural-height chain with equal 15pt top and bottom insets"
+        )
+        require(
+            view.contains("override func layoutSubviews()") &&
+                view.contains("override func traitCollectionDidChange(") &&
+                view.contains("preferredContentSizeCategory") &&
+                view.contains("let normalizedPreferredHeight = ceil(") &&
+                view.contains("let normalizedMinimumViewportHeight = ceil(") &&
+                view.contains("abs(normalizedPreferredHeight - measuredPreferredHeight)"),
+            "Content-size category and effective-width changes must trigger guarded height remeasurement"
         )
         require(
             view.contains("isAccessibilityElement = true") &&
@@ -113,7 +344,7 @@ struct SiteGatewayCloudTimeZoneUIContractTests {
         )
 
         let expectedLocalizations: [(String, String)] = [
-            ("site_entry_sync_status_title", "Time zone sync status"),
+            ("site_entry_sync_status_title", "Sync status"),
             ("site_entry_sync_gateways_header", "GATEWAYS"),
             ("site_entry_sync_gateway_pushing", "Pushing…"),
             ("site_entry_sync_gateway_synced", "Synced"),
@@ -142,11 +373,76 @@ struct SiteGatewayCloudTimeZoneUIContractTests {
             )
         }
 
+        let unavailableLocalizations: [(String, String, String)] = [
+            (
+                "site_time_zone_gateway_check_unavailable_title",
+                "Unable to check gateways",
+                "无法检查网关"
+            ),
+            (
+                "site_time_zone_gateway_check_unavailable_message",
+                "Gateway time zones could not be verified. Try again from the Site.",
+                "无法验证网关时区，请稍后在场所页面重试。"
+            )
+        ]
+        for (key, englishValue, simplifiedChineseValue) in unavailableLocalizations {
+            let declaration = "\"\(key)\" ="
+            require(
+                occurrences(of: declaration, in: english) == 1 &&
+                    english.contains("\"\(key)\" = \"\(englishValue)\";"),
+                "English localization must define the approved \(key) copy exactly once"
+            )
+            require(
+                occurrences(of: declaration, in: simplifiedChinese) == 1 &&
+                    simplifiedChinese.contains("\"\(key)\" = \"\(simplifiedChineseValue)\";"),
+                "Simplified Chinese localization must define the approved \(key) copy exactly once"
+            )
+        }
+
         print("SiteGatewayCloudTimeZoneUIContractTests passed")
     }
 
     private static func occurrences(of needle: String, in text: String) -> Int {
         text.components(separatedBy: needle).count - 1
+    }
+
+    private static func sourceSection(
+        in source: String,
+        from start: String,
+        to end: String
+    ) -> String {
+        guard let startRange = source.range(of: start),
+              let endRange = source.range(
+                  of: end,
+                  range: startRange.upperBound..<source.endIndex
+              ) else {
+            return ""
+        }
+        return String(source[startRange.lowerBound..<endRange.lowerBound])
+    }
+
+    private static func appearsInOrder(
+        _ needles: [String],
+        in text: String
+    ) -> Bool {
+        var searchStart = text.startIndex
+        for needle in needles {
+            guard let range = text.range(
+                of: needle,
+                range: searchStart..<text.endIndex
+            ) else {
+                return false
+            }
+            searchStart = range.upperBound
+        }
+        return true
+    }
+
+    private static func requireAll(_ checks: [(Bool, String)]) {
+        let failures = checks.compactMap { condition, message in
+            condition ? nil : message
+        }
+        require(failures.isEmpty, failures.joined(separator: "; "))
     }
 
     private static func require(

@@ -12,13 +12,18 @@ struct GatewayFastAddTimeInitializationContractTests {
         let project = try String(contentsOfFile: arguments[4], encoding: .utf8)
 
         require(
-            helper.contains("Node.setLocalTimeMessage(\n            date: Date(),\n            timeZone: fixedTimeZone"),
-            "Fast Add must use phone absolute time with the Site fixed offset"
+            helper.contains("SiteTimeSetMessageFactory.resolve(")
+                && helper.contains("siteTimeZoneStorageValue: String?")
+                && helper.contains("SiteTimeSetMessageFactory.makePlan("),
+            "Fast Add must use the shared Site-first Time Set factory"
         )
-        require(!helper.contains("TimeZone.current"), "Fast Add must not use the phone timezone")
         require(
-            fastAdd.contains("site.timezone.flatMap(SiteTimeZoneValue.init(storageValue:))"),
-            "Fast Add must derive its target from the Site timezone without mutating it"
+            fastAdd.contains("siteTimeZoneStorageValue: self.site.timezone"),
+            "Fast Add must pass the raw local Site timezone so invalid values can fall back"
+        )
+        require(
+            !fastAdd.contains("site.timezone ="),
+            "Fast Add fallback must not update the local Site timezone"
         )
         require(
             fastAdd.contains("appendMessages.append(initialization.handle)"),

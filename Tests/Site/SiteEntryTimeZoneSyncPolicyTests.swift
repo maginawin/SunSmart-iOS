@@ -206,7 +206,7 @@ struct SiteEntryTimeZoneSyncPolicyTests {
             "Unknown local IANA identifier must be invalid"
         )
 
-        require(
+        requireGatewayOnly(
             decide(
                 role: .owner,
                 local: singapore,
@@ -218,8 +218,10 @@ struct SiteEntryTimeZoneSyncPolicyTests {
                     gateway("DUPLICATE", nil),
                     gateway(nil, nil)
                 ]
-            ) == .noAction,
-            "A matching duplicate ID and anonymous Gateway without a usable request ID must not open sync UI"
+            ),
+            timezone: singapore,
+            pending: 1,
+            message: "A matching duplicate ID with one unknown offset must open Gateway-only sync UI; anonymous Gateway without a usable request ID remains ignored"
         )
     }
 

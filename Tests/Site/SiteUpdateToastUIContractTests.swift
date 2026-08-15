@@ -120,6 +120,11 @@ struct SiteUpdateToastUIContractTests {
             from: "private func finishOrdinaryCommit",
             through: "private func finishTimeZoneCommit"
         )
+        let timeZone = substring(
+            in: edit,
+            from: "private func finishTimeZoneCommit",
+            through: "private func finishEditing"
+        )
         let sitesEdit = substring(
             in: sites,
             from: "private func editSite(site: SiteData)",
@@ -147,18 +152,30 @@ struct SiteUpdateToastUIContractTests {
             "Ordinary update results must use the Site Update Toast on the source result host"
         )
         require(
+            timeZone.contains("SiteTimeZoneEditSyncCoordinator(") &&
+                timeZone.contains("statusView.update(state: state)") &&
+                !timeZone.contains("ToastStatusView.show") &&
+                !timeZone.contains("\"site_updated_toast\".localizedString") &&
+                !timeZone.contains("\"site_update_failed_toast\".localizedString"),
+            "Timezone synchronization must not reuse or alter the ordinary update Toast route"
+        )
+        require(
             occurrences(of: "XWHUDManager.showErrorTipHUD", in: edit) == 1 &&
                 edit.contains("SiteTimeZoneSyncStatusView"),
             "Only local persistence failure keeps the old HUD and timezone keeps its status card"
         )
         require(
             sitesEdit.contains("finishEditingHandler:") &&
-                sitesEdit.contains("completion(self.view)"),
+                sitesEdit.contains("completion(self.view)") &&
+                sitesEdit.contains("vc.timeZoneSyncDidFinish = { [weak self] _ in") &&
+                sitesEdit.contains("self?.reloadSiteData(site)"),
             "Sites entry must pass its own visible view after modal dismissal"
         )
         require(
             siteEdit.contains("finishEditingHandler:") &&
                 siteEdit.contains("completion(self.view)") &&
+                siteEdit.contains("vc.timeZoneSyncDidFinish = { [weak self] outcome in") &&
+                siteEdit.contains("self?.reconcileEditTimeZoneSyncOutcome(outcome)") &&
                 !siteEdit.contains("popViewController") &&
                 !siteEdit.contains("transitionCoordinator") &&
                 !siteEdit.contains("SitesViewController"),

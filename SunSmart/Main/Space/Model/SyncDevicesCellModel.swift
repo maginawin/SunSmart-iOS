@@ -186,6 +186,16 @@ enum DeviceOperationType {
         }
         return true
     }
+
+    var requiresSiteTimeSetHandle: Bool {
+        switch self {
+        case .configuration(_, .timeSynchronization),
+             .configuration(_, .collectionSchedule):
+            return true
+        default:
+            return false
+        }
+    }
     
     var isPowerSwitchOwnConfigurationOperation: Bool {
         switch self {
@@ -549,8 +559,11 @@ enum DeviceOperationType {
             
             switch type {
             case .timeSynchronization:
-                if let timeModel = node.timeModel {
-                    let handle = Node.makeLocalTimeSetMessageHandle(model: timeModel)
+                if let timeModel = node.timeModel,
+                   let handle = SiteTimeSetMessageFactory.makeHandle(
+                       node: node,
+                       model: timeModel
+                   ) {
                     handle.continuous = false
                     messageHandles.append(handle)
                 }
@@ -632,12 +645,17 @@ enum DeviceOperationType {
             case .deviceReadParmeters:
                 break
             case .collectionSchedule(let index, let entry):
-                if let timeModel = node.timeModel {
-                    messageHandles.append(MeshMessageHandle(message: Node.setLocalTimeMessage(), model: timeModel))
+                guard let timeModel = node.timeModel,
+                      let timeHandle = SiteTimeSetMessageFactory.makeHandle(
+                          node: node,
+                          model: timeModel
+                      ),
+                      let schedulerSetupModel = node.collectionSchedulerSetupModel else {
+                    break
                 }
-                if let schedulerSetupModel = node.collectionSchedulerSetupModel {
-                    messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(index), entry: entry), model: schedulerSetupModel))
-                }
+                timeHandle.continuous = false
+                messageHandles.append(timeHandle)
+                messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(index), entry: entry), model: schedulerSetupModel))
             case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
                 if let vendorModel = node.sunricherVendorModel {
                     messageHandles.append(MeshMessageHandle(message: SunricherVendorSet(function: .proximityLightingNeighborSet(enabled: true, relay: relayNumber, ttl: 0, relayAppKeyIndex: MeshNetworkManager.instance.currentApplicationKey.index, neighborAddresses: neighborAddresses)), model: vendorModel))

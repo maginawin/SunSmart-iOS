@@ -19,21 +19,25 @@ struct GatewayFastAddTimeInitialization {
 
     static func make(
         node: Node,
-        siteTimeZone: SiteTimeZoneValue
+        siteTimeZoneStorageValue: String?,
+        phoneTimeZone: TimeZone = .current,
+        at date: Date = Date()
     ) -> GatewayFastAddTimeInitialization? {
         guard let model = node.timeSetupModel,
-              let fixedTimeZone = TimeZone(
-                secondsFromGMT: siteTimeZone.offsetMinutes * 60
+              let resolution = SiteTimeSetMessageFactory.resolve(
+                  storageValue: siteTimeZoneStorageValue,
+                  phoneTimeZone: phoneTimeZone,
+                  at: date
               ) else {
             return nil
         }
-        let message = Node.setLocalTimeMessage(
-            date: Date(),
-            timeZone: fixedTimeZone
+        let plan = SiteTimeSetMessageFactory.makePlan(
+            model: model,
+            resolution: resolution
         )
         return GatewayFastAddTimeInitialization(
-            handle: MeshMessageHandle(message: message, model: model),
-            targetOffsetMinutes: siteTimeZone.offsetMinutes
+            handle: plan.handle,
+            targetOffsetMinutes: plan.targetOffsetMinutes
         )
     }
 

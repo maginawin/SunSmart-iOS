@@ -1584,11 +1584,12 @@ class DeviceRestoreViewController: UIViewController {
         let responseTracker = DeferredRestoreResponseTracker()
         guard !messageHandles.isEmpty else {
             let timeSyncFailed = task.isTimeSynchronization
+            let requiredTimeSetMissing = task.operationType.requiresSiteTimeSetHandle
             runDeferredRestoreTasks(
                 tasks,
                 index: index + 1,
                 node: node,
-                hadFailedTask: hadFailedTask || timeSyncFailed,
+                hadFailedTask: hadFailedTask || requiredTimeSetMissing,
                 timeSyncSucceeded: timeSyncFailed ? false : timeSyncSucceeded,
                 retryCount: 0,
                 completion: completion

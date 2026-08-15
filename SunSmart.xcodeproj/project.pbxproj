@@ -2549,6 +2549,10 @@
 		F2608110000000000000102 /* SiteTimeZoneValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000100 /* SiteTimeZoneValue.swift */; };
 		F2608110000000000000103 /* SiteTimeZoneValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000100 /* SiteTimeZoneValue.swift */; };
 		F2608110000000000000104 /* SiteTimeZoneValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000100 /* SiteTimeZoneValue.swift */; };
+		F2608160000000000000201 /* SiteTimeSetMessageFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608160000000000000200 /* SiteTimeSetMessageFactory.swift */; };
+		F2608160000000000000202 /* SiteTimeSetMessageFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608160000000000000200 /* SiteTimeSetMessageFactory.swift */; };
+		F2608160000000000000203 /* SiteTimeSetMessageFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608160000000000000200 /* SiteTimeSetMessageFactory.swift */; };
+		F2608160000000000000204 /* SiteTimeSetMessageFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608160000000000000200 /* SiteTimeSetMessageFactory.swift */; };
 		F2608110000000000000201 /* SiteTimeZoneCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000200 /* SiteTimeZoneCatalog.swift */; };
 		F2608110000000000000202 /* SiteTimeZoneCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000200 /* SiteTimeZoneCatalog.swift */; };
 		F2608110000000000000203 /* SiteTimeZoneCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000200 /* SiteTimeZoneCatalog.swift */; };
@@ -2577,6 +2581,10 @@
 		F2608110000000000000802 /* SiteTimeZoneSyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000800 /* SiteTimeZoneSyncStatusView.swift */; };
 		F2608110000000000000803 /* SiteTimeZoneSyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000800 /* SiteTimeZoneSyncStatusView.swift */; };
 		F2608110000000000000804 /* SiteTimeZoneSyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000800 /* SiteTimeZoneSyncStatusView.swift */; };
+		F2608120000000000001301 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001300 /* SiteEntryTimeZoneSyncOverlay.swift */; };
+		F2608120000000000001302 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001300 /* SiteEntryTimeZoneSyncOverlay.swift */; };
+		F2608120000000000001303 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001300 /* SiteEntryTimeZoneSyncOverlay.swift */; };
+		F2608120000000000001304 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001300 /* SiteEntryTimeZoneSyncOverlay.swift */; };
 		F2608120000000000001001 /* SiteEntryTimeZoneSyncPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001000 /* SiteEntryTimeZoneSyncPolicy.swift */; };
 		F2608120000000000001002 /* SiteEntryTimeZoneSyncPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001000 /* SiteEntryTimeZoneSyncPolicy.swift */; };
 		F2608120000000000001003 /* SiteEntryTimeZoneSyncPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001000 /* SiteEntryTimeZoneSyncPolicy.swift */; };
@@ -2589,10 +2597,6 @@
 		F2608120000000000001202 /* SiteEntryTimeZoneSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001200 /* SiteEntryTimeZoneSyncCoordinator.swift */; };
 		F2608120000000000001203 /* SiteEntryTimeZoneSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001200 /* SiteEntryTimeZoneSyncCoordinator.swift */; };
 		F2608120000000000001204 /* SiteEntryTimeZoneSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001200 /* SiteEntryTimeZoneSyncCoordinator.swift */; };
-		F2608120000000000001301 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001300 /* SiteEntryTimeZoneSyncOverlay.swift */; };
-		F2608120000000000001302 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001300 /* SiteEntryTimeZoneSyncOverlay.swift */; };
-		F2608120000000000001303 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001300 /* SiteEntryTimeZoneSyncOverlay.swift */; };
-		F2608120000000000001304 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001300 /* SiteEntryTimeZoneSyncOverlay.swift */; };
 		F2608130000000000001401 /* SiteTimeZoneReviewSyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001400 /* SiteTimeZoneReviewSyncView.swift */; };
 		F2608130000000000001402 /* SiteTimeZoneReviewSyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001400 /* SiteTimeZoneReviewSyncView.swift */; };
 		F2608130000000000001403 /* SiteTimeZoneReviewSyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001400 /* SiteTimeZoneReviewSyncView.swift */; };
@@ -2657,6 +2661,22 @@
 		F26081500000000000004002 /* SiteGatewayCloudTimeZoneTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000004000 /* SiteGatewayCloudTimeZoneTarget.swift */; };
 		F26081500000000000004003 /* SiteGatewayCloudTimeZoneTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000004000 /* SiteGatewayCloudTimeZoneTarget.swift */; };
 		F26081500000000000004004 /* SiteGatewayCloudTimeZoneTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000004000 /* SiteGatewayCloudTimeZoneTarget.swift */; };
+		F26081600000000000006001 /* SiteTimeZoneSyncPresentationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081600000000000006000 /* SiteTimeZoneSyncPresentationState.swift */; };
+		F26081600000000000006002 /* SiteTimeZoneSyncPresentationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081600000000000006000 /* SiteTimeZoneSyncPresentationState.swift */; };
+		F26081600000000000006003 /* SiteTimeZoneSyncPresentationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081600000000000006000 /* SiteTimeZoneSyncPresentationState.swift */; };
+		F26081600000000000006004 /* SiteTimeZoneSyncPresentationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081600000000000006000 /* SiteTimeZoneSyncPresentationState.swift */; };
+		F26081600000000000005001 /* SiteGatewayCloudTimeZoneLocalContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081600000000000005000 /* SiteGatewayCloudTimeZoneLocalContext.swift */; };
+		F26081600000000000005002 /* SiteGatewayCloudTimeZoneLocalContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081600000000000005000 /* SiteGatewayCloudTimeZoneLocalContext.swift */; };
+		F26081600000000000005003 /* SiteGatewayCloudTimeZoneLocalContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081600000000000005000 /* SiteGatewayCloudTimeZoneLocalContext.swift */; };
+		F26081600000000000005004 /* SiteGatewayCloudTimeZoneLocalContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081600000000000005000 /* SiteGatewayCloudTimeZoneLocalContext.swift */; };
+		F26081600000000000007001 /* SiteGatewayCloudTimeZoneSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081600000000000007000 /* SiteGatewayCloudTimeZoneSessionCoordinator.swift */; };
+		F26081600000000000007002 /* SiteGatewayCloudTimeZoneSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081600000000000007000 /* SiteGatewayCloudTimeZoneSessionCoordinator.swift */; };
+		F26081600000000000007003 /* SiteGatewayCloudTimeZoneSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081600000000000007000 /* SiteGatewayCloudTimeZoneSessionCoordinator.swift */; };
+		F26081600000000000007004 /* SiteGatewayCloudTimeZoneSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081600000000000007000 /* SiteGatewayCloudTimeZoneSessionCoordinator.swift */; };
+		F26081600000000000008001 /* SiteTimeZoneEditSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081600000000000008000 /* SiteTimeZoneEditSyncCoordinator.swift */; };
+		F26081600000000000008002 /* SiteTimeZoneEditSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081600000000000008000 /* SiteTimeZoneEditSyncCoordinator.swift */; };
+		F26081600000000000008003 /* SiteTimeZoneEditSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081600000000000008000 /* SiteTimeZoneEditSyncCoordinator.swift */; };
+		F26081600000000000008004 /* SiteTimeZoneEditSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081600000000000008000 /* SiteTimeZoneEditSyncCoordinator.swift */; };
 		F26081500000000000005001 /* SiteGatewayCloudTimeZoneSyncState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000005000 /* SiteGatewayCloudTimeZoneSyncState.swift */; };
 		F26081500000000000005002 /* SiteGatewayCloudTimeZoneSyncState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000005000 /* SiteGatewayCloudTimeZoneSyncState.swift */; };
 		F26081500000000000005003 /* SiteGatewayCloudTimeZoneSyncState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000005000 /* SiteGatewayCloudTimeZoneSyncState.swift */; };
@@ -3398,6 +3418,7 @@
 		F26072200000000000000110 /* DeviceNameFilterSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceNameFilterSearchView.swift; sourceTree = "<group>"; };
 		F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRestoreDefaultTransitionTimePolicy.swift; sourceTree = "<group>"; };
 		F2608110000000000000100 /* SiteTimeZoneValue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteTimeZoneValue.swift; sourceTree = "<group>"; };
+		F2608160000000000000200 /* SiteTimeSetMessageFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteTimeSetMessageFactory.swift; sourceTree = "<group>"; };
 		F2608110000000000000200 /* SiteTimeZoneCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteTimeZoneCatalog.swift; sourceTree = "<group>"; };
 		F2608110000000000000300 /* SitePropsEditPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SitePropsEditPolicy.swift; sourceTree = "<group>"; };
 		F2608110000000000000400 /* SitePropsAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SitePropsAPIClient.swift; sourceTree = "<group>"; };
@@ -3405,10 +3426,10 @@
 		F2608110000000000000600 /* SiteTimeZoneSelectionViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteTimeZoneSelectionViewController.swift; sourceTree = "<group>"; };
 		F2608110000000000000700 /* SiteTimeZoneSelectionCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteTimeZoneSelectionCell.swift; sourceTree = "<group>"; };
 		F2608110000000000000800 /* SiteTimeZoneSyncStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteTimeZoneSyncStatusView.swift; sourceTree = "<group>"; };
+		F2608120000000000001300 /* SiteEntryTimeZoneSyncOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteEntryTimeZoneSyncOverlay.swift; sourceTree = "<group>"; };
 		F2608120000000000001000 /* SiteEntryTimeZoneSyncPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteEntryTimeZoneSyncPolicy.swift; sourceTree = "<group>"; };
 		F2608120000000000001100 /* SiteEntryTimeZoneSyncResponseParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteEntryTimeZoneSyncResponseParser.swift; sourceTree = "<group>"; };
 		F2608120000000000001200 /* SiteEntryTimeZoneSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteEntryTimeZoneSyncCoordinator.swift; sourceTree = "<group>"; };
-		F2608120000000000001300 /* SiteEntryTimeZoneSyncOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteEntryTimeZoneSyncOverlay.swift; sourceTree = "<group>"; };
 		F2608130000000000001400 /* SiteTimeZoneReviewSyncView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteTimeZoneReviewSyncView.swift; sourceTree = "<group>"; };
 		F2608130000000000001500 /* SyncGatewaysViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncGatewaysViewController.swift; sourceTree = "<group>"; };
 		F2608130000000000001600 /* SiteGatewayAccessScope.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewayAccessScope.swift; sourceTree = "<group>"; };
@@ -3425,6 +3446,10 @@
 		F2608140000000000000100 /* GatewayMenuPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayMenuPolicy.swift; sourceTree = "<group>"; };
 		F26081500000000000003500 /* GatewayDetailProxyConnectionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayDetailProxyConnectionState.swift; sourceTree = "<group>"; };
 		F26081500000000000004000 /* SiteGatewayCloudTimeZoneTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewayCloudTimeZoneTarget.swift; sourceTree = "<group>"; };
+		F26081600000000000006000 /* SiteTimeZoneSyncPresentationState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteTimeZoneSyncPresentationState.swift; sourceTree = "<group>"; };
+		F26081600000000000005000 /* SiteGatewayCloudTimeZoneLocalContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewayCloudTimeZoneLocalContext.swift; sourceTree = "<group>"; };
+		F26081600000000000007000 /* SiteGatewayCloudTimeZoneSessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewayCloudTimeZoneSessionCoordinator.swift; sourceTree = "<group>"; };
+		F26081600000000000008000 /* SiteTimeZoneEditSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteTimeZoneEditSyncCoordinator.swift; sourceTree = "<group>"; };
 		F26081500000000000005000 /* SiteGatewayCloudTimeZoneSyncState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewayCloudTimeZoneSyncState.swift; sourceTree = "<group>"; };
 		F26081500000000000006000 /* SiteGatewayCloudTimeZoneResponseParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewayCloudTimeZoneResponseParser.swift; sourceTree = "<group>"; };
 		F26081500000000000007000 /* SiteGatewayCloudTimeZoneAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewayCloudTimeZoneAPIClient.swift; sourceTree = "<group>"; };
@@ -4400,6 +4425,10 @@
 		C898E3062ABBF3F500C71315 /* Model */ = {
 			isa = PBXGroup;
 			children = (
+				F26081600000000000006000 /* SiteTimeZoneSyncPresentationState.swift */,
+				F26081600000000000005000 /* SiteGatewayCloudTimeZoneLocalContext.swift */,
+				F26081600000000000007000 /* SiteGatewayCloudTimeZoneSessionCoordinator.swift */,
+				F26081600000000000008000 /* SiteTimeZoneEditSyncCoordinator.swift */,
 				F26081500000000000004000 /* SiteGatewayCloudTimeZoneTarget.swift */,
 				F26081500000000000005000 /* SiteGatewayCloudTimeZoneSyncState.swift */,
 				F26081500000000000006000 /* SiteGatewayCloudTimeZoneResponseParser.swift */,
@@ -5045,6 +5074,7 @@
 			isa = PBXGroup;
 			children = (
 				F2608110000000000000100 /* SiteTimeZoneValue.swift */,
+				F2608160000000000000200 /* SiteTimeSetMessageFactory.swift */,
 				F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */,
 				C8AADEFE2A97350400238C1C /* SiteData.swift */,
 				C8AADF002A973DA600238C1C /* SpaceData.swift */,
@@ -5915,6 +5945,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F2608110000000000000101 /* SiteTimeZoneValue.swift in Sources */,
+				F2608160000000000000201 /* SiteTimeSetMessageFactory.swift in Sources */,
 				F2608110000000000000201 /* SiteTimeZoneCatalog.swift in Sources */,
 				F2608110000000000000301 /* SitePropsEditPolicy.swift in Sources */,
 				F2608110000000000000401 /* SitePropsAPIClient.swift in Sources */,
@@ -5922,11 +5953,15 @@
 				F2608110000000000000601 /* SiteTimeZoneSelectionViewController.swift in Sources */,
 				F2608110000000000000701 /* SiteTimeZoneSelectionCell.swift in Sources */,
 				F2608110000000000000801 /* SiteTimeZoneSyncStatusView.swift in Sources */,
+				F2608120000000000001301 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */,
 				F2608120000000000001001 /* SiteEntryTimeZoneSyncPolicy.swift in Sources */,
 				F2608120000000000001101 /* SiteEntryTimeZoneSyncResponseParser.swift in Sources */,
 				F2608120000000000001201 /* SiteEntryTimeZoneSyncCoordinator.swift in Sources */,
-				F2608120000000000001301 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */,
+				F26081600000000000006001 /* SiteTimeZoneSyncPresentationState.swift in Sources */,
 				F26081500000000000004001 /* SiteGatewayCloudTimeZoneTarget.swift in Sources */,
+				F26081600000000000005001 /* SiteGatewayCloudTimeZoneLocalContext.swift in Sources */,
+				F26081600000000000007001 /* SiteGatewayCloudTimeZoneSessionCoordinator.swift in Sources */,
+				F26081600000000000008001 /* SiteTimeZoneEditSyncCoordinator.swift in Sources */,
 				F26081500000000000005001 /* SiteGatewayCloudTimeZoneSyncState.swift in Sources */,
 				F26081500000000000006001 /* SiteGatewayCloudTimeZoneResponseParser.swift in Sources */,
 				F26081500000000000007001 /* SiteGatewayCloudTimeZoneAPIClient.swift in Sources */,
@@ -6565,6 +6600,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F2608110000000000000102 /* SiteTimeZoneValue.swift in Sources */,
+				F2608160000000000000202 /* SiteTimeSetMessageFactory.swift in Sources */,
 				F2608110000000000000202 /* SiteTimeZoneCatalog.swift in Sources */,
 				F2608110000000000000302 /* SitePropsEditPolicy.swift in Sources */,
 				F2608110000000000000402 /* SitePropsAPIClient.swift in Sources */,
@@ -6572,11 +6608,15 @@
 				F2608110000000000000602 /* SiteTimeZoneSelectionViewController.swift in Sources */,
 				F2608110000000000000702 /* SiteTimeZoneSelectionCell.swift in Sources */,
 				F2608110000000000000802 /* SiteTimeZoneSyncStatusView.swift in Sources */,
+				F2608120000000000001302 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */,
 				F2608120000000000001002 /* SiteEntryTimeZoneSyncPolicy.swift in Sources */,
 				F2608120000000000001102 /* SiteEntryTimeZoneSyncResponseParser.swift in Sources */,
 				F2608120000000000001202 /* SiteEntryTimeZoneSyncCoordinator.swift in Sources */,
-				F2608120000000000001302 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */,
+				F26081600000000000006002 /* SiteTimeZoneSyncPresentationState.swift in Sources */,
 				F26081500000000000004002 /* SiteGatewayCloudTimeZoneTarget.swift in Sources */,
+				F26081600000000000005002 /* SiteGatewayCloudTimeZoneLocalContext.swift in Sources */,
+				F26081600000000000007002 /* SiteGatewayCloudTimeZoneSessionCoordinator.swift in Sources */,
+				F26081600000000000008002 /* SiteTimeZoneEditSyncCoordinator.swift in Sources */,
 				F26081500000000000005002 /* SiteGatewayCloudTimeZoneSyncState.swift in Sources */,
 				F26081500000000000006002 /* SiteGatewayCloudTimeZoneResponseParser.swift in Sources */,
 				F26081500000000000007002 /* SiteGatewayCloudTimeZoneAPIClient.swift in Sources */,
@@ -7216,6 +7256,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F2608110000000000000103 /* SiteTimeZoneValue.swift in Sources */,
+				F2608160000000000000203 /* SiteTimeSetMessageFactory.swift in Sources */,
 				F2608110000000000000203 /* SiteTimeZoneCatalog.swift in Sources */,
 				F2608110000000000000303 /* SitePropsEditPolicy.swift in Sources */,
 				F2608110000000000000403 /* SitePropsAPIClient.swift in Sources */,
@@ -7223,11 +7264,15 @@
 				F2608110000000000000603 /* SiteTimeZoneSelectionViewController.swift in Sources */,
 				F2608110000000000000703 /* SiteTimeZoneSelectionCell.swift in Sources */,
 				F2608110000000000000803 /* SiteTimeZoneSyncStatusView.swift in Sources */,
+				F2608120000000000001303 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */,
 				F2608120000000000001003 /* SiteEntryTimeZoneSyncPolicy.swift in Sources */,
 				F2608120000000000001103 /* SiteEntryTimeZoneSyncResponseParser.swift in Sources */,
 				F2608120000000000001203 /* SiteEntryTimeZoneSyncCoordinator.swift in Sources */,
-				F2608120000000000001303 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */,
+				F26081600000000000006003 /* SiteTimeZoneSyncPresentationState.swift in Sources */,
 				F26081500000000000004003 /* SiteGatewayCloudTimeZoneTarget.swift in Sources */,
+				F26081600000000000005003 /* SiteGatewayCloudTimeZoneLocalContext.swift in Sources */,
+				F26081600000000000007003 /* SiteGatewayCloudTimeZoneSessionCoordinator.swift in Sources */,
+				F26081600000000000008003 /* SiteTimeZoneEditSyncCoordinator.swift in Sources */,
 				F26081500000000000005003 /* SiteGatewayCloudTimeZoneSyncState.swift in Sources */,
 				F26081500000000000006003 /* SiteGatewayCloudTimeZoneResponseParser.swift in Sources */,
 				F26081500000000000007003 /* SiteGatewayCloudTimeZoneAPIClient.swift in Sources */,
@@ -7866,6 +7911,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				F2608110000000000000104 /* SiteTimeZoneValue.swift in Sources */,
+				F2608160000000000000204 /* SiteTimeSetMessageFactory.swift in Sources */,
 				F2608110000000000000204 /* SiteTimeZoneCatalog.swift in Sources */,
 				F2608110000000000000304 /* SitePropsEditPolicy.swift in Sources */,
 				F2608110000000000000404 /* SitePropsAPIClient.swift in Sources */,
@@ -7873,11 +7919,15 @@
 				F2608110000000000000604 /* SiteTimeZoneSelectionViewController.swift in Sources */,
 				F2608110000000000000704 /* SiteTimeZoneSelectionCell.swift in Sources */,
 				F2608110000000000000804 /* SiteTimeZoneSyncStatusView.swift in Sources */,
+				F2608120000000000001304 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */,
 				F2608120000000000001004 /* SiteEntryTimeZoneSyncPolicy.swift in Sources */,
 				F2608120000000000001104 /* SiteEntryTimeZoneSyncResponseParser.swift in Sources */,
 				F2608120000000000001204 /* SiteEntryTimeZoneSyncCoordinator.swift in Sources */,
-				F2608120000000000001304 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */,
+				F26081600000000000006004 /* SiteTimeZoneSyncPresentationState.swift in Sources */,
 				F26081500000000000004004 /* SiteGatewayCloudTimeZoneTarget.swift in Sources */,
+				F26081600000000000005004 /* SiteGatewayCloudTimeZoneLocalContext.swift in Sources */,
+				F26081600000000000007004 /* SiteGatewayCloudTimeZoneSessionCoordinator.swift in Sources */,
+				F26081600000000000008004 /* SiteTimeZoneEditSyncCoordinator.swift in Sources */,
 				F26081500000000000005004 /* SiteGatewayCloudTimeZoneSyncState.swift in Sources */,
 				F26081500000000000006004 /* SiteGatewayCloudTimeZoneResponseParser.swift in Sources */,
 				F26081500000000000007004 /* SiteGatewayCloudTimeZoneAPIClient.swift in Sources */,

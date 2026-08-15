@@ -247,13 +247,24 @@ extension NodeSyncData {
                 hasTimeModel: node.timeModel != nil,
                 scheduleEnabledStates: schedules.map(\.enabled)
             )
-            if timeSyncPlan.requiresTimeSync,
-               let timeModel = node.timeModel {
-                let timeHandle = Node.makeLocalTimeSetMessageHandle(model: timeModel)
-                timeHandle.continuous = false
-                messageHandles.append(timeHandle)
+            var schedulesToSync = schedules
+            if timeSyncPlan.requiresTimeSync {
+                if let timeModel = node.timeModel,
+                   let timeHandle = SiteTimeSetMessageFactory.makeHandle(
+                       node: node,
+                       model: timeModel
+                   ) {
+                    timeHandle.continuous = false
+                    messageHandles.append(timeHandle)
+                } else {
+                    schedulesToSync = schedules.enumerated().compactMap { index, schedule in
+                        return timeSyncPlan.scheduleRequiresTimeSync[index]
+                            ? nil
+                            : schedule
+                    }
+                }
             }
-            schedules.forEach({
+            schedulesToSync.forEach({
                 messageHandles.append(
                     contentsOf: $0.getMessageHandles(
                         node: node,
@@ -310,13 +321,18 @@ extension NodeSyncData {
                 messageHandles.append(contentsOf: $0.getMessageHandles(node: node))
             })
         case .syncCollectionSchedules(let schedules):
-            if let timeModel = node.timeModel {
-                messageHandles.append(MeshMessageHandle(message: Node.setLocalTimeMessage(), model: timeModel))
+            guard let timeModel = node.timeModel,
+                  let timeHandle = SiteTimeSetMessageFactory.makeHandle(
+                      node: node,
+                      model: timeModel
+                  ),
+                  let schedulerSetupModel = node.collectionSchedulerSetupModel else {
+                break
             }
-            if let schedulerSetupModel = node.collectionSchedulerSetupModel {
-                schedules.forEach { (index, entry) in
-                    messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(index), entry: entry), model: schedulerSetupModel))
-                }
+            timeHandle.continuous = false
+            messageHandles.append(timeHandle)
+            schedules.forEach { (index, entry) in
+                messageHandles.append(MeshMessageHandle(message: SchedulerActionSet(index: UInt8(index), entry: entry), model: schedulerSetupModel))
             }
         case .deleteCollectionSchedules(let scheduleIds):
             if let model = node.collectionSchedulerSetupModel {

@@ -9,7 +9,10 @@ struct SiteGatewayCloudTimeZoneTargetTests {
         testVisitorHasNoTargets()
         testRequestMACAndDisplayNameUseWireAndLocalFallbacks()
         testOffsetPrecedenceAndUnknownRemoteOffsets()
+        testDuplicateSnapshotsRequireCompleteConsistentEvidence()
+        testNilFirstDuplicateSnapshotRemainsUnknown()
         testConfirmedRemoteAcknowledgmentRequiresCompleteMatchingEvidence()
+        testLocalSnapshotsCannotExpandRemoteAuthorization()
         print("SiteGatewayCloudTimeZoneTargetTests passed")
     }
 
@@ -148,6 +151,115 @@ struct SiteGatewayCloudTimeZoneTargetTests {
             acknowledgedIDs == ["all-match"],
             "Confirmation may clear only when at least one remote entry exists and every entry has the confirmed offset"
         )
+    }
+
+    private static func testDuplicateSnapshotsRequireCompleteConsistentEvidence() {
+        let targets = SiteGatewayCloudTimeZoneTargetBuilder.build(
+            targetOffsetMinutes: 480,
+            remote: remote(
+                role: .owner,
+                gateways: [
+                    gateway("consistent", requestMAC: "consistent", offsetMinutes: 480),
+                    gateway("consistent", requestMAC: "consistent", offsetMinutes: 480),
+                    gateway("with-nil", requestMAC: "with-nil", offsetMinutes: 480),
+                    gateway("with-nil", requestMAC: "with-nil", offsetMinutes: nil),
+                    gateway("with-zero", requestMAC: "with-zero", offsetMinutes: 480),
+                    gateway("with-zero", requestMAC: "with-zero", offsetMinutes: 0),
+                    gateway("unknown", requestMAC: "unknown", offsetMinutes: nil),
+                    gateway("unknown", requestMAC: "unknown", offsetMinutes: nil),
+                    gateway("confirmed-conflict", requestMAC: "confirmed-conflict", offsetMinutes: 480),
+                    gateway("confirmed-conflict", requestMAC: "confirmed-conflict", offsetMinutes: 0),
+                    gateway("dirty-conflict", requestMAC: "dirty-conflict", offsetMinutes: 480),
+                    gateway("dirty-conflict", requestMAC: "dirty-conflict", offsetMinutes: 0)
+                ]
+            ),
+            localByGatewayID: [
+                "dirty-conflict": SiteGatewayCloudTimeZoneLocalSnapshot(
+                    displayName: "",
+                    dirtyOffsetMinutes: 480
+                )
+            ],
+            confirmedOffsetMinutesByGatewayID: ["confirmed-conflict": 480]
+        )
+
+        require(
+            targets.map(\.effectiveOffsetMinutes) == [480, nil, nil, nil, 480, 480],
+            "Remote offset evidence must be complete and consistent before it becomes effective"
+        )
+        require(
+            targets.map(\.requiresSync) == [false, true, true, true, false, false],
+            "Incomplete or conflicting remote evidence must remain pending unless confirmed or local dirty state overrides it"
+        )
+    }
+
+    private static func testNilFirstDuplicateSnapshotRemainsUnknown() {
+        let targets = SiteGatewayCloudTimeZoneTargetBuilder.build(
+            targetOffsetMinutes: 480,
+            remote: remote(
+                role: .owner,
+                gateways: [
+                    gateway("nil-first", requestMAC: "nil-first", offsetMinutes: nil),
+                    gateway("NIL-FIRST", requestMAC: "NIL-FIRST", offsetMinutes: 480)
+                ]
+            ),
+            localByGatewayID: [:]
+        )
+
+        require(targets.count == 1, "Duplicate snapshots must still produce one normalized target")
+        require(
+            targets.first?.effectiveOffsetMinutes == nil,
+            "A nil first snapshot followed by 480 must remain unknown regardless of later evidence"
+        )
+        require(
+            targets.first?.requiresSync == true,
+            "A nil first snapshot followed by 480 must remain pending"
+        )
+    }
+
+    private static func testLocalSnapshotsCannotExpandRemoteAuthorization() {
+        let localByGatewayID = [
+            "authorized": SiteGatewayCloudTimeZoneLocalSnapshot(
+                displayName: "Authorized local name",
+                dirtyOffsetMinutes: 480
+            ),
+            "local-only": SiteGatewayCloudTimeZoneLocalSnapshot(
+                displayName: "Local-only Gateway",
+                dirtyOffsetMinutes: 480
+            )
+        ]
+        let ownerTargets = SiteGatewayCloudTimeZoneTargetBuilder.build(
+            targetOffsetMinutes: 480,
+            remote: remote(
+                role: .owner,
+                gateways: [gateway("authorized", requestMAC: "authorized", offsetMinutes: 0)]
+            ),
+            localByGatewayID: localByGatewayID
+        )
+        let editorTargets = SiteGatewayCloudTimeZoneTargetBuilder.build(
+            targetOffsetMinutes: 480,
+            remote: remote(
+                role: .visitor,
+                spaces: [space(.editor, gatewayId: "authorized", requestGatewayId: "authorized")],
+                gateways: [
+                    gateway("authorized", requestMAC: "authorized", offsetMinutes: 0),
+                    gateway("local-only", requestMAC: "local-only", offsetMinutes: 0)
+                ]
+            ),
+            localByGatewayID: localByGatewayID
+        )
+        let visitorTargets = SiteGatewayCloudTimeZoneTargetBuilder.build(
+            targetOffsetMinutes: 480,
+            remote: remote(
+                role: .visitor,
+                spaces: [space(.visitor, gatewayId: "authorized", requestGatewayId: "authorized")],
+                gateways: [gateway("authorized", requestMAC: "authorized", offsetMinutes: 0)]
+            ),
+            localByGatewayID: localByGatewayID
+        )
+
+        require(ownerTargets.map(\.id) == ["authorized"], "Owner targets must remain bounded by the remote Gateway snapshot")
+        require(editorTargets.map(\.id) == ["authorized"], "Editor targets must remain bounded by remotely authorized Spaces")
+        require(visitorTargets.isEmpty, "Visitor targets must remain empty despite matching local rows")
     }
 
     private static func remote(

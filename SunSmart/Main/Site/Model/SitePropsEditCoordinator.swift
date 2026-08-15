@@ -188,4 +188,6 @@ final class SitePropsEditCoordinator {
     }
 }
 
+extension SitePropsEditCoordinator: SiteTimeZoneEditSubmitting {}
+
 extension SitePropsEditCoordinator: SiteEntryTimeZoneSyncStore {}

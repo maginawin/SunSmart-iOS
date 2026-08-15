@@ -2758,14 +2758,25 @@ extension Node {
                 hasTimeModel: self.timeModel != nil,
                 scheduleEnabledStates: setSchedules.map(\.enabled)
             )
+            var schedulesToRestore = setSchedules
             if timeSyncPlan.requiresTimeSync,
-               !groupScheduleTimeSyncRequired,
-               let timeModel = self.timeModel {
-                let timeHandle = Node.makeLocalTimeSetMessageHandle(model: timeModel)
-                timeHandle.continuous = false
-                messageHandles.append(timeHandle)
+               !groupScheduleTimeSyncRequired {
+                if let timeModel = self.timeModel,
+                   let timeHandle = SiteTimeSetMessageFactory.makeHandle(
+                       node: self,
+                       model: timeModel
+                   ) {
+                    timeHandle.continuous = false
+                    messageHandles.append(timeHandle)
+                } else {
+                    schedulesToRestore = setSchedules.enumerated().compactMap { index, schedule in
+                        return timeSyncPlan.scheduleRequiresTimeSync[index]
+                            ? nil
+                            : schedule
+                    }
+                }
             }
-            setSchedules.forEach { schedule in
+            schedulesToRestore.forEach { schedule in
                 messageHandles.append(contentsOf: schedule.getMessageHandles(node: self))
             }
         }

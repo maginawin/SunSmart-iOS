@@ -42,6 +42,7 @@ final class SiteEditViewController: UIViewController {
     private var isCommitting = false
 
     var siteDidChange: (() -> Void)?
+    var timeZoneSyncDidFinish: ((SiteTimeZoneEditSyncOutcome) -> Void)?
 
     init(
         site: SiteData,
@@ -438,14 +439,61 @@ final class SiteEditViewController: UIViewController {
         snapshot: SitePropsUpdateSnapshot?,
         online: Bool
     ) {
-        finishEditing { [coordinator, siteDidChange] _ in
-            guard online, let snapshot = snapshot else { return }
+        guard online else {
+            finishEditing { _ in }
+            return
+        }
+
+        let callback = timeZoneSyncDidFinish
+        guard draft.values.timezone != nil else {
+            finishEditing { _ in }
+            return
+        }
+        guard let snapshot else {
             let statusView = SiteTimeZoneSyncStatusView()
+            let failedState = SiteTimeZoneSyncPresentationState.result(
+                site: .savedSuccessfully,
+                gateways: .notStarted
+            )
+            finishEditing { [statusView, callback] _ in
+                statusView.update(state: failedState)
+                statusView.show()
+                callback?(.siteFailed)
+            }
+            return
+        }
+
+        let statusView = SiteTimeZoneSyncStatusView()
+        let gatewaySession = SiteGatewayCloudTimeZoneSessionCoordinator(
+            syncCoordinator: SiteGatewayCloudTimeZoneSyncCoordinator(
+                api: SiteGatewayCloudTimeZoneAPIClient(),
+                timing: SiteGatewayCloudTimeZoneContinuousTiming()
+            )
+        )
+        let editSyncCoordinator = SiteTimeZoneEditSyncCoordinator(
+            siteID: site.id,
+            submitter: coordinator,
+            gatewaySession: gatewaySession,
+            makeTargets: { [site] targetTimeZone in
+                SiteGatewayLocalTimeZoneContextBuilder.make(
+                    site: site,
+                    targetTimeZone: targetTimeZone
+                )
+            }
+        )
+        finishEditing { [statusView, editSyncCoordinator, callback, siteDidChange] _ in
+            statusView.update(state: .working(.savingSite))
             statusView.show()
-            Task { @MainActor in
-                let success = await coordinator.submit(snapshot)
+            Task { @MainActor [statusView, editSyncCoordinator, callback, siteDidChange] in
+                let outcome = await editSyncCoordinator.run(
+                    snapshot: snapshot,
+                    onUpdate: { state in
+                        statusView.update(state: state)
+                    }
+                )
+                guard let outcome else { return }
                 siteDidChange?()
-                statusView.update(state: success ? .success : .failure)
+                callback?(outcome)
             }
         }
     }
