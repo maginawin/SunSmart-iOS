@@ -12,6 +12,8 @@ final class GatewayHeaderStatusItemView: UIView {
     private let iconImageView = UIImageView()
     private let titleLabel = UILabel(text: nil, textColor: SubText_Color, fontSize: 12, fontWeight: .light, fit: false)
     private let statusLabel = UILabel(text: nil, textColor: TextBlack_Color, fontSize: 12, fontWeight: .light, fit: false)
+    private var layoutShowsTitle: Bool?
+    private var layoutIconSize: CGFloat?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -29,6 +31,10 @@ final class GatewayHeaderStatusItemView: UIView {
         let showsTitle = !(title?.isEmpty ?? true)
         titleLabel.isHidden = !showsTitle
         statusLabel.text = status
+
+        guard layoutShowsTitle != showsTitle || layoutIconSize != iconSize else { return }
+        layoutShowsTitle = showsTitle
+        layoutIconSize = iconSize
 
         iconImageView.snp.remakeConstraints { make in
             if showsTitle {

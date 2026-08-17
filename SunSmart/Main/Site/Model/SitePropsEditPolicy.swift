@@ -41,6 +41,11 @@ struct SitePropsUpdateSnapshot: Equatable {
     let timestamp: Int64
 }
 
+struct SiteInitialTimeZoneSubmission: Equatable {
+    let timezone: SiteTimeZoneValue
+    let timestamp: Int64
+}
+
 struct SitePropsRetrieveMergeResult: Equatable {
     let state: SitePropsLocalState
     let shouldPersist: Bool
@@ -196,6 +201,32 @@ enum SitePropsEditPolicy {
             values: current.values,
             lastUpdate: current.lastUpdate,
             lastUploadCloudTimestamp: request.timestamp,
+            pending: SitePropsPendingState(
+                fields: remainingFields,
+                timestamp: remainingFields.isEmpty ? nil : current.pending.timestamp
+            )
+        )
+    }
+
+    static func localStateAfterSuccessfulInitialSiteUpload(
+        current: SitePropsLocalState,
+        submission: SiteInitialTimeZoneSubmission
+    ) -> SitePropsLocalState {
+        var remainingFields = current.pending.fields
+        if remainingFields.contains(.timezone),
+           current.pending.timestamp == submission.timestamp,
+           current.values.timezone == submission.timezone {
+            remainingFields.remove(.timezone)
+        }
+
+        let confirmedTimestamp = max(
+            current.lastUploadCloudTimestamp ?? submission.timestamp,
+            submission.timestamp
+        )
+        return SitePropsLocalState(
+            values: current.values,
+            lastUpdate: current.lastUpdate,
+            lastUploadCloudTimestamp: confirmedTimestamp,
             pending: SitePropsPendingState(
                 fields: remainingFields,
                 timestamp: remainingFields.isEmpty ? nil : current.pending.timestamp

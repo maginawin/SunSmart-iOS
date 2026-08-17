@@ -2701,6 +2701,10 @@
 		F2608140000000000002702 /* GatewayTimeInformationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002700 /* GatewayTimeInformationCoordinator.swift */; };
 		F2608140000000000002703 /* GatewayTimeInformationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002700 /* GatewayTimeInformationCoordinator.swift */; };
 		F2608140000000000002704 /* GatewayTimeInformationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002700 /* GatewayTimeInformationCoordinator.swift */; };
+		F2608170000000000003101 /* GatewayDetailClockCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608170000000000003100 /* GatewayDetailClockCoordinator.swift */; };
+		F2608170000000000003102 /* GatewayDetailClockCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608170000000000003100 /* GatewayDetailClockCoordinator.swift */; };
+		F2608170000000000003103 /* GatewayDetailClockCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608170000000000003100 /* GatewayDetailClockCoordinator.swift */; };
+		F2608170000000000003104 /* GatewayDetailClockCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608170000000000003100 /* GatewayDetailClockCoordinator.swift */; };
 		F2608140000000000002801 /* GatewayFastAddTimeInitialization.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002800 /* GatewayFastAddTimeInitialization.swift */; };
 		F2608140000000000002802 /* GatewayFastAddTimeInitialization.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002800 /* GatewayFastAddTimeInitialization.swift */; };
 		F2608140000000000002803 /* GatewayFastAddTimeInitialization.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002800 /* GatewayFastAddTimeInitialization.swift */; };
@@ -3456,6 +3460,7 @@
 		F26081500000000000008000 /* SiteGatewayCloudTimeZoneSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewayCloudTimeZoneSyncCoordinator.swift; sourceTree = "<group>"; };
 		F26081500000000000009000 /* SiteEntryGatewayTimeZoneStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteEntryGatewayTimeZoneStatusView.swift; sourceTree = "<group>"; };
 		F2608140000000000002700 /* GatewayTimeInformationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayTimeInformationCoordinator.swift; sourceTree = "<group>"; };
+		F2608170000000000003100 /* GatewayDetailClockCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayDetailClockCoordinator.swift; sourceTree = "<group>"; };
 		F2608140000000000002800 /* GatewayFastAddTimeInitialization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayFastAddTimeInitialization.swift; sourceTree = "<group>"; };
 		F2608140000000000002900 /* SiteGatewayHeaderLayoutPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewayHeaderLayoutPolicy.swift; sourceTree = "<group>"; };
 		FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorState.swift; sourceTree = "<group>"; };
@@ -5403,6 +5408,7 @@
 				F2608140000000000000100 /* GatewayMenuPolicy.swift */,
 				F26081500000000000003500 /* GatewayDetailProxyConnectionState.swift */,
 				F2608140000000000002700 /* GatewayTimeInformationCoordinator.swift */,
+				F2608170000000000003100 /* GatewayDetailClockCoordinator.swift */,
 				F2608130000000000002600 /* GatewayCloudSyncGenerationPolicy.swift */,
 				C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */,
 				C8FA30152FD0000100000005 /* GatewayAssociatedSpaceCandidatePolicy.swift */,
@@ -5983,6 +5989,7 @@
 				F2608130000000000002501 /* SyncGatewaysSupportingViews.swift in Sources */,
 				F2608130000000000002601 /* GatewayCloudSyncGenerationPolicy.swift in Sources */,
 				F2608140000000000002701 /* GatewayTimeInformationCoordinator.swift in Sources */,
+				F2608170000000000003101 /* GatewayDetailClockCoordinator.swift in Sources */,
 				F2608140000000000000101 /* GatewayMenuPolicy.swift in Sources */,
 				F26081500000000000003501 /* GatewayDetailProxyConnectionState.swift in Sources */,
 				F260810A0000000000000101 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
@@ -6638,6 +6645,7 @@
 				F2608130000000000002502 /* SyncGatewaysSupportingViews.swift in Sources */,
 				F2608130000000000002602 /* GatewayCloudSyncGenerationPolicy.swift in Sources */,
 				F2608140000000000002702 /* GatewayTimeInformationCoordinator.swift in Sources */,
+				F2608170000000000003102 /* GatewayDetailClockCoordinator.swift in Sources */,
 				F2608140000000000000102 /* GatewayMenuPolicy.swift in Sources */,
 				F26081500000000000003502 /* GatewayDetailProxyConnectionState.swift in Sources */,
 				F260810A0000000000000102 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
@@ -7294,6 +7302,7 @@
 				F2608130000000000002503 /* SyncGatewaysSupportingViews.swift in Sources */,
 				F2608130000000000002603 /* GatewayCloudSyncGenerationPolicy.swift in Sources */,
 				F2608140000000000002703 /* GatewayTimeInformationCoordinator.swift in Sources */,
+				F2608170000000000003103 /* GatewayDetailClockCoordinator.swift in Sources */,
 				F2608140000000000000103 /* GatewayMenuPolicy.swift in Sources */,
 				F26081500000000000003503 /* GatewayDetailProxyConnectionState.swift in Sources */,
 				F260810A0000000000000103 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
@@ -7949,6 +7958,7 @@
 				F2608130000000000002504 /* SyncGatewaysSupportingViews.swift in Sources */,
 				F2608130000000000002604 /* GatewayCloudSyncGenerationPolicy.swift in Sources */,
 				F2608140000000000002704 /* GatewayTimeInformationCoordinator.swift in Sources */,
+				F2608170000000000003104 /* GatewayDetailClockCoordinator.swift in Sources */,
 				F2608140000000000000104 /* GatewayMenuPolicy.swift in Sources */,
 				F26081500000000000003504 /* GatewayDetailProxyConnectionState.swift in Sources */,
 				F260810A0000000000000104 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,

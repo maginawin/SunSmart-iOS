@@ -52,7 +52,7 @@ enum SyncGatewaysCopy {
 }
 
 final class SyncGatewaysOnSiteAlertView: UIView {
-    private let iconView = UIImageView(image: UIImage(named: "site_entry_sync_warning"))
+    private let iconView = UIImageView(image: UIImage(named: "site_entry_sync_warning_target"))
     private let titleLabel = UILabel()
     private let messageLabel = UILabel()
 

@@ -26,12 +26,18 @@ final class WiFiGatewayViewController: GatewayViewController {
         case userInitiated
     }
 
+    private enum WiFiRequestPresentation {
+        case sectionReload
+        case backgroundInteractionLock
+    }
+
     private struct ActiveWiFiRequest {
         let id: Int
         let origin: WiFiRequestOrigin
+        let presentation: WiFiRequestPresentation
     }
 
-    private struct WiFiHeaderStatus {
+    private struct WiFiHeaderStatus: Equatable {
         let iconName: String
         let localizedStatusKey: String
 
@@ -46,6 +52,8 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     private weak var wifiHeaderView: GatewayInformationHeaderView?
+    private weak var networkConnectivityCell: GatewayNetworkConnectivityCell?
+    private var displayedWiFiHeaderStatus: WiFiHeaderStatus?
     private var networkSSID: String = ""
     private var networkPassword: String = ""
     private var networkCredentialSource: NetworkCredentialSource = .localClear
@@ -82,10 +90,14 @@ final class WiFiGatewayViewController: GatewayViewController {
 
     override var sections: [SectionType] {
         var sections = super.sections
-        guard isNetworkConnectivityVisible, let nameIndex = sections.firstIndex(of: .name) else {
+        guard isNetworkConnectivityVisible else {
             return sections
         }
-        sections.insert(.networkConnectivity, at: sections.index(after: nameIndex))
+        if let clockIndex = sections.firstIndex(of: .clock) {
+            sections.insert(.networkConnectivity, at: sections.index(after: clockIndex))
+        } else if let nameIndex = sections.firstIndex(of: .name) {
+            sections.insert(.networkConnectivity, at: sections.index(after: nameIndex))
+        }
         return sections
     }
 
@@ -143,12 +155,14 @@ final class WiFiGatewayViewController: GatewayViewController {
         headerView.setGatewayStateStyle(.sigMesh)
         headerView.setWiFiStatusVisible(true)
         headerView.updateWiFiStatus(iconName: "wifi_not_connected", status: "wifi_status_not_connected".localizedString)
+        displayedWiFiHeaderStatus = .notConnected
         wifiHeaderView = headerView
         return headerView
     }
 
     override func configureNetworkConnectivityCell(_ cell: GatewayNetworkConnectivityCell) {
-        let isOperating = !canConfigureCurrentGateway || isNetworkOperationInProgress || isWiFiRequestInProgress
+        networkConnectivityCell = cell
+        let isOperating = !canConfigureCurrentGateway || isNetworkOperationInProgress || isWiFiRequestBlockingControls
         cell.update(
             ssid: networkSSID,
             password: networkPassword,
@@ -161,6 +175,9 @@ final class WiFiGatewayViewController: GatewayViewController {
             canEditSSID: canEditNetworkSSID(),
             canEditPassword: canEditNetworkPassword(),
             canTogglePasswordVisibility: canToggleNetworkPasswordVisibility()
+        )
+        cell.setBackgroundRequestInProgress(
+            activeWiFiRequest?.presentation == .backgroundInteractionLock
         )
         cell.selectWiFiCallback = { [weak self] in
             self?.showChangeWiFiAlert()
@@ -189,6 +206,7 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     override func gatewayProxyReadyStateDidUpdate(_ isReady: Bool) {
+        super.gatewayProxyReadyStateDidUpdate(isReady)
         if !isReady {
             resetWiFiSessionForUnavailableProxy()
             return
@@ -200,6 +218,7 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     override func gatewayProxyDidBecomeReady(_ context: ProxyReadyContext) {
+        super.gatewayProxyDidBecomeReady(context)
         stopWiFiRSSIStatusRefresh()
         guard MeshLibManager.manager.currentProxyReadyContext == context,
               gatewayProxyReadySessionID == context.sessionID else { return }
@@ -314,20 +333,41 @@ final class WiFiGatewayViewController: GatewayViewController {
         return activeWiFiRequest != nil
     }
 
-    private func beginWiFiRequest(origin: WiFiRequestOrigin) -> Int? {
+    private var isWiFiRequestBlockingControls: Bool {
+        activeWiFiRequest?.presentation == .sectionReload
+    }
+
+    private func beginWiFiRequest(
+        origin: WiFiRequestOrigin,
+        presentation: WiFiRequestPresentation = .sectionReload
+    ) -> Int? {
         guard activeWiFiRequest == nil else { return nil }
         nextWiFiRequestID += 1
-        activeWiFiRequest = ActiveWiFiRequest(id: nextWiFiRequestID, origin: origin)
-        reloadSection(.networkConnectivity)
+        activeWiFiRequest = ActiveWiFiRequest(
+            id: nextWiFiRequestID,
+            origin: origin,
+            presentation: presentation
+        )
+        switch presentation {
+        case .sectionReload:
+            reloadSection(.networkConnectivity)
+        case .backgroundInteractionLock:
+            networkConnectivityCell?.setBackgroundRequestInProgress(true)
+        }
         return nextWiFiRequestID
     }
 
     private func finishWiFiRequest(_ requestID: Int, completion: () -> Void) {
-        guard activeWiFiRequest?.id == requestID else { return }
+        guard let request = activeWiFiRequest, request.id == requestID else { return }
         activeWiFiRequest = nil
+        if request.presentation == .backgroundInteractionLock {
+            networkConnectivityCell?.setBackgroundRequestInProgress(false)
+        }
         completion()
         resumePendingGatewayRecoveryIfNeeded()
-        reloadSection(.networkConnectivity)
+        if request.presentation == .sectionReload {
+            reloadSection(.networkConnectivity)
+        }
         drainAutomaticLoadIfPossible()
     }
 
@@ -388,7 +428,16 @@ final class WiFiGatewayViewController: GatewayViewController {
         completion: @escaping (SunricherVendorStatus?) -> Void
     ) -> Bool {
         guard isGatewayProxyReady else { return false }
-        guard let requestID = beginWiFiRequest(origin: origin) else { return false }
+        let requestID: Int?
+        if origin == .automatic, subcode == .rssiStatus {
+            requestID = beginWiFiRequest(
+                origin: origin,
+                presentation: .backgroundInteractionLock
+            )
+        } else {
+            requestID = beginWiFiRequest(origin: origin)
+        }
+        guard let requestID else { return false }
         guard let vendorModel = node.sunricherVendorModel else {
             finishWiFiRequest(requestID) { completion(nil) }
             return true
@@ -710,17 +759,17 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     private func canEditNetworkSSID() -> Bool {
-        guard canConfigureCurrentGateway, !isNetworkOperationInProgress, !isWiFiRequestInProgress else { return false }
+        guard canConfigureCurrentGateway, !isNetworkOperationInProgress, !isWiFiRequestBlockingControls else { return false }
         return networkConnectState != .connected
     }
 
     private func canEditNetworkPassword() -> Bool {
-        guard canConfigureCurrentGateway, !isNetworkOperationInProgress, !isWiFiRequestInProgress else { return false }
+        guard canConfigureCurrentGateway, !isNetworkOperationInProgress, !isWiFiRequestBlockingControls else { return false }
         return networkConnectState != .connected
     }
 
     private func canToggleNetworkPasswordVisibility() -> Bool {
-        return canConfigureCurrentGateway && !isNetworkOperationInProgress && !isWiFiRequestInProgress
+        return canConfigureCurrentGateway && !isNetworkOperationInProgress && !isWiFiRequestBlockingControls
     }
 
     private func showRefreshSSIDChangedHUD(oldSSID: String, newSSID: String) {
@@ -1288,11 +1337,13 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     private func updateWiFiHeaderStatus(_ status: WiFiHeaderStatus) {
+        guard displayedWiFiHeaderStatus != status else { return }
+        displayedWiFiHeaderStatus = status
         wifiHeaderView?.updateWiFiStatus(iconName: status.iconName, status: status.localizedStatusKey.localizedString)
     }
 
     private func shouldShowSSIDClearButton() -> Bool {
-        guard !networkSSID.isEmpty, !isNetworkOperationInProgress, !isWiFiRequestInProgress else { return false }
+        guard !networkSSID.isEmpty, !isNetworkOperationInProgress, !isWiFiRequestBlockingControls else { return false }
         if networkCredentialSource == .gateway && networkConnectState == .connected {
             return false
         }

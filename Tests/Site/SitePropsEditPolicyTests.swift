@@ -19,6 +19,9 @@ struct SitePropsEditPolicyTests {
         testUpdateResponseRequiresExactTimestampAndSentFields()
         testUpdateResponseIgnoresUnsentFields()
         testSuccessfulSnapshotClearsOnlyUnchangedPendingVersion()
+        testInitialSiteUploadClearsOnlyMatchingTimezonePending()
+        testInitialSiteUploadPreservesNewerTimezonePending()
+        testInitialSiteUploadPreservesDifferentTimezonePending()
         print("SitePropsEditPolicyTests passed")
     }
 
@@ -368,6 +371,71 @@ struct SitePropsEditPolicyTests {
         require(cleared.pending.timestamp == nil, "Cleared snapshot must clear pending timestamp")
         require(cleared.lastUploadCloudTimestamp == 200, "Expected upload timestamp to advance")
         require(preserved == newerVersion, "A newer pending version must remain untouched")
+    }
+
+    private static func testInitialSiteUploadClearsOnlyMatchingTimezonePending() {
+        let current = localState(
+            values: values(name: "Site", imageId: 1, timezone: singapore),
+            lastUpdate: 200,
+            pending: SitePropsPendingState(
+                fields: [.imageId, .timezone],
+                timestamp: 200
+            )
+        )
+        let submission = SiteInitialTimeZoneSubmission(
+            timezone: singapore,
+            timestamp: 200
+        )
+
+        let result = SitePropsEditPolicy.localStateAfterSuccessfulInitialSiteUpload(
+            current: current,
+            submission: submission
+        )
+
+        require(result.pending.fields == [.imageId], "Initial Site Add must clear only timezone pending")
+        require(result.pending.timestamp == 200, "Remaining pending fields must retain their timestamp")
+        require(result.lastUploadCloudTimestamp == 200, "Initial Site Add must confirm its submitted generation")
+    }
+
+    private static func testInitialSiteUploadPreservesNewerTimezonePending() {
+        let current = localState(
+            values: values(name: "Site", imageId: 1, timezone: shanghai),
+            lastUpdate: 201,
+            pending: SitePropsPendingState(fields: [.timezone], timestamp: 201)
+        )
+        let submission = SiteInitialTimeZoneSubmission(
+            timezone: singapore,
+            timestamp: 200
+        )
+
+        let result = SitePropsEditPolicy.localStateAfterSuccessfulInitialSiteUpload(
+            current: current,
+            submission: submission
+        )
+
+        require(result.pending == current.pending, "A newer timezone pending version must survive an older Site Add")
+        require(result.lastUploadCloudTimestamp == 200, "Only the submitted Site Add generation may be confirmed")
+        require(result.lastUpdate == 201, "A newer local generation must remain dirty")
+    }
+
+    private static func testInitialSiteUploadPreservesDifferentTimezonePending() {
+        let current = localState(
+            values: values(name: "Site", imageId: 1, timezone: shanghai),
+            lastUpdate: 200,
+            pending: SitePropsPendingState(fields: [.timezone], timestamp: 200)
+        )
+        let submission = SiteInitialTimeZoneSubmission(
+            timezone: singapore,
+            timestamp: 200
+        )
+
+        let result = SitePropsEditPolicy.localStateAfterSuccessfulInitialSiteUpload(
+            current: current,
+            submission: submission
+        )
+
+        require(result.pending == current.pending, "A different local timezone must keep its pending intent")
+        require(result.lastUploadCloudTimestamp == 200, "The submitted generation must still be recorded")
     }
 
     private static func values(

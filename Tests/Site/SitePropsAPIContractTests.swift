@@ -117,9 +117,11 @@ struct SitePropsAPIContractTests {
             )
             require(
                 !coordinator.contains("CloudSynchronizationManager") &&
-                    !cloudManager.contains("pendingSitePropsMask") &&
-                    !cloudManager.contains("pendingSitePropsTimestamp"),
-                "Edit props pending must not change whole-site synchronization routing"
+                    cloudManager.contains("initialSiteTimeZoneSubmission") &&
+                    cloudManager.contains("SitePropsEditPolicy.localStateAfterSuccessfulInitialSiteUpload") &&
+                    cloudManager.contains("site.pendingSitePropsMask = reconciled.pending.fields") &&
+                    cloudManager.contains("site.pendingSitePropsTimestamp = reconciled.pending.timestamp"),
+                "Only the immutable initial Site Add submission may reconcile timezone pending"
             )
         }
 

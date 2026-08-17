@@ -88,8 +88,10 @@ struct SiteTimeZonePersistenceContractTests {
             let importData = try String(contentsOfFile: arguments[5], encoding: .utf8)
 
             require(
-                meshNetwork.contains("site.timezone = SiteTimeZoneCatalog.phoneDefaultValue().storageValue"),
-                "New Sites must receive the phone timezone before first save"
+                meshNetwork.contains("site.timezone = SiteTimeZoneCatalog.phoneDefaultValue().storageValue") &&
+                    meshNetwork.contains("site.pendingSitePropsMask = [.timezone]") &&
+                    meshNetwork.contains("site.pendingSitePropsTimestamp = site.lastUpdate"),
+                "New Sites must persist the phone timezone and a same-generation timezone pending marker"
             )
             require(
                 database.contains("if site.timezone == nil") &&

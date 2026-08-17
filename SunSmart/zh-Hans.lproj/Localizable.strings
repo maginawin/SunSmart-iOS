@@ -2028,6 +2028,17 @@
 "photosensor_exception_default" = "⚠ 默认：禁用。使用带光感的邻近照明／预测照明 Profile 时请启用，此类设备需要该功能才能正常工作。切换到任何带有日光采集功能的 Profile 时，请手动禁用此功能，否则设备将无法正常工作。此功能仅适用于极少数设备类型，请谨慎操作。";
 "sync_time" = "同步时间";
 "site_time_zone_title" = "时区";
+"gateway_local_time" = "本地";
+"gateway_sync_required" = "需要同步";
+"gateway_sync_clock" = "同步时钟";
+"gateway_clock_syncing" = "正在同步…";
+"gateway_off_by_format" = "相差 %@";
+"gateway_time_zone_sync_title" = "网关时区需要同步";
+"gateway_time_zone_sync_message" = "当前 Site 使用 %@，而此网关仍使用 %@。同步前，日程和自动化可能不会按正确的本地时间运行。";
+"gateway_time_zone_sync_unknown_message" = "当前 Site 使用 %@，而此网关的时区未知。同步前，日程和自动化可能不会按正确的本地时间运行。";
+"gateway_sync_now" = "立即同步";
+"gateway_clock_synced" = "网关时钟已同步。";
+"gateway_clock_sync_failed" = "同步失败，请重试。";
 "site_time_zone_search_placeholder" = "搜索时区";
 "site_time_zone_empty" = "未找到时区。";
 "site_time_zone_not_configured" = "未配置";

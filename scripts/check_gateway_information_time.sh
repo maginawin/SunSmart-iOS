@@ -11,6 +11,25 @@ swiftc -parse-as-library \
 /tmp/GatewayTimeInformationCoordinatorTests
 
 swiftc -parse-as-library \
+  SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  SunSmart/Main/Device/Gateway/Model/GatewayDetailClockCoordinator.swift \
+  Tests/Device/GatewayDetailClockCoreTests.swift \
+  -o /tmp/GatewayDetailClockCoreTests
+/tmp/GatewayDetailClockCoreTests
+
+swiftc -parse-as-library \
+  Tests/Device/GatewayDetailClockRuntimeContractTests.swift \
+  -o /tmp/GatewayDetailClockRuntimeContractTests
+/tmp/GatewayDetailClockRuntimeContractTests \
+  SunSmart/Main/Device/Gateway/Model/GatewayDetailClockCoordinator.swift \
+  SunSmart/Main/Device/Gateway/Controller/GatewayViewController.swift \
+  SunSmart/Main/Device/Gateway/Controller/WiFiGatewayViewController.swift \
+  "$project" \
+  SunSmart/en.lproj/Localizable.strings \
+  SunSmart/zh-Hans.lproj/Localizable.strings \
+  SunSmart/Assets.xcassets/Device/Gateway/gateway_clock_sync_loading.imageset/gateway_clock_sync_loading.svg
+
+swiftc -parse-as-library \
   Tests/Device/GatewayTimeInformationRuntimeContractTests.swift \
   -o /tmp/GatewayTimeInformationRuntimeContractTests
 /tmp/GatewayTimeInformationRuntimeContractTests "$coordinator" "$project"

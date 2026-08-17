@@ -2012,6 +2012,17 @@
 "device_filter_no_matching_devices" = "No matching devices";
 "sync_time" = "Sync Time";
 "site_time_zone_title" = "Time Zone";
+"gateway_local_time" = "Local";
+"gateway_sync_required" = "Sync required";
+"gateway_sync_clock" = "Sync clock";
+"gateway_clock_syncing" = "Syncing...";
+"gateway_off_by_format" = "Off by %@";
+"gateway_time_zone_sync_title" = "Gateway time zone needs sync";
+"gateway_time_zone_sync_message" = "The Site now uses %@, while this gateway still uses %@. Until you sync, schedules and automations may run at the wrong local time.";
+"gateway_time_zone_sync_unknown_message" = "The Site now uses %@, while this gateway's time zone is unknown. Until you sync, schedules and automations may run at the wrong local time.";
+"gateway_sync_now" = "SYNC NOW";
+"gateway_clock_synced" = "Gateway clock synced.";
+"gateway_clock_sync_failed" = "Sync failed. Please retry.";
 "site_time_zone_search_placeholder" = "Search time zones";
 "site_time_zone_empty" = "No time zones found.";
 "site_time_zone_not_configured" = "Not configured";

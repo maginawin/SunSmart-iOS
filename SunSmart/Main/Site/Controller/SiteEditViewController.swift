@@ -581,7 +581,7 @@ final class SiteEditViewController: UIViewController {
     }
 
     private func updatePendingDisplay() {
-        notSyncedButton.isHidden = site.pendingSitePropsMask.isEmpty
+        notSyncedButton.isHidden = !site.pendingSitePropsMask.contains(.timezone)
     }
 
     private func refreshLocalTime() {

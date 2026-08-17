@@ -99,6 +99,31 @@ enum SyncOperation {
     
 }
 
+private extension NetowrkReqeustApi {
+
+    var initialSiteTimeZoneSubmission: SiteInitialTimeZoneSubmission? {
+        guard case .siteAdd(let siteData, _) = self,
+              let timezoneStorageValue = siteData["timezone"] as? String,
+              let timezone = SiteTimeZoneValue(storageValue: timezoneStorageValue)
+        else {
+            return nil
+        }
+
+        let timestamp: Int64
+        if let value = siteData["updateTimestamp"] as? Int64 {
+            timestamp = value
+        } else if let number = siteData["updateTimestamp"] as? NSNumber {
+            timestamp = number.int64Value
+        } else {
+            return nil
+        }
+        return SiteInitialTimeZoneSubmission(
+            timezone: timezone,
+            timestamp: timestamp
+        )
+    }
+}
+
 #if DEBUG
 extension SyncOperation {
 
@@ -716,6 +741,7 @@ class CloudSynchronizationHandle: NSObject {
         }
         AsyncTask {
             let api = await self.operation.getNetworkApi()
+            let initialSiteTimeZoneSubmission = api.initialSiteTimeZoneSubmission
             #if DEBUG
             print("""
             [CloudSync][Request]
@@ -751,7 +777,30 @@ class CloudSynchronizationHandle: NSObject {
 //                                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
                             }
                         }
-                        site.lastUploadCloudTimestamp = site.lastUpdate
+                        if let initialSiteTimeZoneSubmission {
+                            let current = SitePropsLocalState(
+                                values: SitePropsValues(
+                                    siteName: site.name,
+                                    imageId: site.imageId,
+                                    timezone: site.timezone.flatMap(SiteTimeZoneValue.init(storageValue:))
+                                ),
+                                lastUpdate: site.lastUpdate,
+                                lastUploadCloudTimestamp: site.lastUploadCloudTimestamp,
+                                pending: SitePropsPendingState(
+                                    fields: site.pendingSitePropsMask,
+                                    timestamp: site.pendingSitePropsTimestamp
+                                )
+                            )
+                            let reconciled = SitePropsEditPolicy.localStateAfterSuccessfulInitialSiteUpload(
+                                current: current,
+                                submission: initialSiteTimeZoneSubmission
+                            )
+                            site.lastUploadCloudTimestamp = reconciled.lastUploadCloudTimestamp
+                            site.pendingSitePropsMask = reconciled.pending.fields
+                            site.pendingSitePropsTimestamp = reconciled.pending.timestamp
+                        } else {
+                            site.lastUploadCloudTimestamp = site.lastUpdate
+                        }
                         site.syncCloudError = nil
                         site.save()
                         syncSpaces.forEach({

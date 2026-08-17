@@ -17,7 +17,20 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     private var copyInformationBtn: UIButton!
     private(set) var bottomView: DeviceBottomBtnView!
     private var modalDismissalStateBeforeProtectedFlow: Bool?
-
+    private var gatewayClockCoordinator: GatewayDetailClockCoordinator!
+    private var gatewayClockState = GatewayDetailClockState()
+    private var gatewayClockTimer: Timer?
+    private var gatewayClockReadSessionID: UUID?
+    private var gatewayClockSyncPresentationID: UUID?
+    private var pendingGatewayClockSync: (
+        target: GatewayDetailTargetTimeZone,
+        presentationID: UUID,
+        startedAtUptime: TimeInterval
+    )?
+    private var isGatewayClockReading = false
+    private var gatewayClockTickDate = Date()
+    private let gatewayClockFormatter = GatewayDetailClockFormatter()
+    private var gatewayClockNotificationTokens = [NSObjectProtocol]()
 
     private var name: String?
 
@@ -26,8 +39,16 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 //    private var otherGateways: [GatewayModel] = []
 
     var sections: [SectionType] {
-        let baseSections: [SectionType] = [.name, .associatedSpaces, .apn, .serverInformation]
+        var baseSections: [SectionType] = [.name]
+        if showsGatewayClockSections {
+            baseSections.append(contentsOf: [.timeZone, .clock])
+        }
+        baseSections.append(contentsOf: [.associatedSpaces, .apn, .serverInformation])
         return supportsAPNConfiguration ? baseSections : baseSections.filter { $0 != .apn }
+    }
+
+    var showsGatewayClockSections: Bool {
+        isGatewayProxyReady
     }
     var infoTypes: [InfoCellType] {
         return [.mac, .address, .model, .deviceType, .firmwareVersion]
@@ -112,6 +133,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         lastMessageDelegate = MeshLibManager.manager.messageDelegate
 
         setupUI()
+        gatewayClockCoordinator = GatewayDetailClockCoordinator(
+            context: GatewayInformationContext(site: site, gateway: gateway)
+        )
+        registerGatewayClockNotifications()
         updateData()
         updateSaveBtnState()
         registerProxyConnectionObservers()
@@ -162,6 +187,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         reconcileCurrentProxyReadyContext()
         ensureTargetGatewayProxyConnection()
         syncSignalRefreshState(forceRefresh: isGatewayProxyReady)
+        syncGatewayClockTimer()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
@@ -169,6 +195,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 
         isViewVisible = false
         stopSignalRefreshTimer()
+        stopGatewayClockTimer()
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -316,6 +343,9 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
 
     deinit {
+        gatewayClockCoordinator?.finishPage()
+        stopGatewayClockTimer()
+        gatewayClockNotificationTokens.forEach(NotificationCenter.default.removeObserver)
         stopSignalRefreshTimer()
         cancelProxyReadyTimeout()
         MeshLibManager.manager.messageDelegate = self.lastMessageDelegate
@@ -1266,6 +1296,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "apnCell")
         tableView.register(GatewayNameViewCell.classForCoder(), forCellReuseIdentifier: "name")
         tableView.register(GatewayServerInformationViewCell.classForCoder(), forCellReuseIdentifier: "serverInformation")
+        tableView.register(GatewayClockOffsetCell.classForCoder(), forCellReuseIdentifier: GatewayClockOffsetCell.reuseIdentifier)
         tableView.register(GatewaySectionHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
         registerAdditionalGatewayCells(in: tableView)
         tableView.estimatedSectionHeaderHeight = UITableView.automaticDimension
@@ -1344,9 +1375,306 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         return UITableView.automaticDimension
     }
 
-    func gatewayProxyReadyStateDidUpdate(_ isReady: Bool) {}
+    func gatewayProxyReadyStateDidUpdate(_ isReady: Bool) {
+        if isReady {
+            syncGatewayClockTimer()
+        } else {
+            gatewayClockReadSessionID = nil
+            gatewayClockSyncPresentationID = nil
+            pendingGatewayClockSync = nil
+            isGatewayClockReading = false
+            gatewayClockState = GatewayDetailClockState()
+            stopGatewayClockTimer()
+        }
+        reloadGatewayTable()
+    }
 
-    func gatewayProxyDidBecomeReady(_ context: ProxyReadyContext) {}
+    func gatewayProxyDidBecomeReady(_ context: ProxyReadyContext) {
+        guard gatewayProxyReadySessionID == context.sessionID,
+              gatewayClockReadSessionID != context.sessionID else {
+            return
+        }
+        gatewayClockReadSessionID = context.sessionID
+        readGatewayClock()
+    }
+
+    private func currentGatewayClockTarget(at date: Date = Date()) -> GatewayDetailTargetTimeZone {
+        GatewayDetailTimeZoneResolver.resolve(
+            storageValue: site.timezone,
+            phoneTimeZone: .current,
+            at: date
+        )
+    }
+
+    private func registerGatewayClockNotifications() {
+        let center = NotificationCenter.default
+        let names: [Notification.Name] = [
+            UIApplication.significantTimeChangeNotification,
+            .NSSystemTimeZoneDidChange
+        ]
+        gatewayClockNotificationTokens = names.map { name in
+            center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                self?.gatewayClockEnvironmentDidChange()
+            }
+        }
+    }
+
+    private func gatewayClockEnvironmentDidChange() {
+        guard showsGatewayClockSections else { return }
+        gatewayClockState = GatewayDetailClockState()
+        reloadSection(.timeZone)
+        reloadSection(.clock)
+        readGatewayClock()
+    }
+
+    private func readGatewayClock() {
+        guard showsGatewayClockSections, !isGatewayClockReading,
+              !gatewayClockState.isSyncing else { return }
+        let target = currentGatewayClockTarget()
+        isGatewayClockReading = true
+        reloadSection(.clock)
+        let started = gatewayClockCoordinator.read(target: target) { [weak self] result in
+            guard let self else { return }
+            self.isGatewayClockReading = false
+            switch result {
+            case .success(let value):
+                self.gatewayClockState.accept(
+                    sample: value.0,
+                    offBySeconds: value.1,
+                    targetOffsetMinutes: target.offsetMinutes,
+                    targetIsMeshEncodable: target.isMeshEncodable
+                )
+            case .failure:
+                self.gatewayClockState.failRead()
+            }
+            self.reloadSection(.timeZone)
+            self.reloadSection(.clock)
+            if let pendingSync = self.pendingGatewayClockSync {
+                self.pendingGatewayClockSync = nil
+                self.startGatewayClockSynchronization(
+                    target: pendingSync.target,
+                    presentationID: pendingSync.presentationID,
+                    startedAtUptime: pendingSync.startedAtUptime
+                )
+            }
+        }
+        if !started {
+            isGatewayClockReading = false
+        }
+    }
+
+    private func synchronizeGatewayClock() {
+        guard showsGatewayClockSections, !gatewayClockState.isSyncing else { return }
+        let target = currentGatewayClockTarget()
+        let presentationID = UUID()
+        let startedAtUptime = ProcessInfo.processInfo.systemUptime
+        gatewayClockSyncPresentationID = presentationID
+        gatewayClockState.beginSync()
+        reloadSection(.clock)
+        if isGatewayClockReading {
+            pendingGatewayClockSync = (
+                target: target,
+                presentationID: presentationID,
+                startedAtUptime: startedAtUptime
+            )
+            return
+        }
+        startGatewayClockSynchronization(
+            target: target,
+            presentationID: presentationID,
+            startedAtUptime: startedAtUptime
+        )
+    }
+
+    private func startGatewayClockSynchronization(
+        target: GatewayDetailTargetTimeZone,
+        presentationID: UUID,
+        startedAtUptime: TimeInterval
+    ) {
+        var completionWasDelivered = false
+        let started = gatewayClockCoordinator.synchronize(target: target) { [weak self] result in
+            completionWasDelivered = true
+            self?.scheduleGatewayClockSyncCompletion(
+                result,
+                target: target,
+                presentationID: presentationID,
+                startedAtUptime: startedAtUptime
+            )
+        }
+        if !started, !completionWasDelivered {
+            scheduleGatewayClockSyncCompletion(
+                .failure(.disconnected),
+                target: target,
+                presentationID: presentationID,
+                startedAtUptime: startedAtUptime
+            )
+        }
+    }
+
+    private func scheduleGatewayClockSyncCompletion(
+        _ result: Result<(GatewayDetailClockSample, Int), GatewayDetailClockCoordinatorError>,
+        target: GatewayDetailTargetTimeZone,
+        presentationID: UUID,
+        startedAtUptime: TimeInterval
+    ) {
+        let remainingDuration = GatewayDetailClockCore.remainingSyncPresentationDuration(
+            startedAtUptime: startedAtUptime,
+            completedAtUptime: ProcessInfo.processInfo.systemUptime
+        )
+        let completion = { [weak self] in
+            guard let self,
+                  self.gatewayClockSyncPresentationID == presentationID else { return }
+            self.gatewayClockSyncPresentationID = nil
+            switch result {
+            case .success(let value):
+                self.gatewayClockState.completeSync(
+                    sample: value.0,
+                    offBySeconds: value.1,
+                    targetOffsetMinutes: target.offsetMinutes,
+                    targetIsMeshEncodable: target.isMeshEncodable
+                )
+                ToastStatusView.show(
+                    in: self.view,
+                    message: "gateway_clock_synced".localizedString,
+                    type: .success,
+                    appearance: .siteUpdate,
+                    position: .bottom
+                )
+            case .failure:
+                self.gatewayClockState.failSync()
+                ToastStatusView.show(
+                    in: self.view,
+                    message: "gateway_clock_sync_failed".localizedString,
+                    type: .failure,
+                    appearance: .siteUpdate,
+                    position: .bottom
+                )
+            }
+            self.reloadSection(.timeZone)
+            self.reloadSection(.clock)
+        }
+        if remainingDuration > 0 {
+            DispatchQueue.main.asyncAfter(
+                deadline: .now() + remainingDuration,
+                execute: completion
+            )
+        } else {
+            completion()
+        }
+    }
+
+    private func showGatewayClockSyncPrompt() {
+        let target = currentGatewayClockTarget()
+        let message: String
+        if let sample = gatewayClockState.sample {
+            message = String(
+                format: "gateway_time_zone_sync_message".localizedString,
+                target.displayOffset,
+                GatewayDetailTargetTimeZone(
+                    identifier: "",
+                    offsetMinutes: sample.offsetMinutes,
+                    source: .site
+                ).displayOffset
+            )
+        } else {
+            message = String(
+                format: "gateway_time_zone_sync_unknown_message".localizedString,
+                target.displayOffset
+            )
+        }
+        SRAlertView(
+            title: "gateway_time_zone_sync_title".localizedString,
+            message: message,
+            actions: [
+                SRAlertAction(title: "Later".localizedString, style: .cancel),
+                SRAlertAction(
+                    title: "gateway_sync_now".localizedString,
+                    performsActionAfterDismiss: true,
+                    actionHandler: { [weak self] _ in
+                        self?.synchronizeGatewayClock()
+                    }
+                )
+            ]
+        ).show()
+    }
+
+    private func syncGatewayClockTimer() {
+        guard isViewVisible, showsGatewayClockSections else {
+            stopGatewayClockTimer()
+            return
+        }
+        guard gatewayClockTimer == nil else { return }
+        gatewayClockTimer = LCWeakTimer.scheduledTimer(
+            timeInterval: 0.5,
+            aTarget: self,
+            selector: #selector(refreshGatewayClockRows),
+            userInfo: nil,
+            repeats: true
+        )
+        if let gatewayClockTimer {
+            RunLoop.main.add(gatewayClockTimer, forMode: .default)
+        }
+    }
+
+    private func stopGatewayClockTimer() {
+        gatewayClockTimer?.invalidate()
+        gatewayClockTimer = nil
+    }
+
+    @objc private func refreshGatewayClockRows() {
+        guard showsGatewayClockSections else { return }
+        gatewayClockTickDate = Date()
+        guard !(tableView.isTracking || tableView.isDragging || tableView.isDecelerating) else {
+            return
+        }
+        updateVisibleGatewayClockRows()
+    }
+
+    private func updateVisibleGatewayClockRows() {
+        guard showsGatewayClockSections,
+              let section = sections.firstIndex(of: .clock) else { return }
+        let target = currentGatewayClockTarget(at: gatewayClockTickDate)
+        for row in 0..<2 {
+            let indexPath = IndexPath(row: row, section: section)
+            guard let cell = tableView.cellForRow(at: indexPath) as? CustomTableViewCell else {
+                continue
+            }
+            configureGatewayClockTimeCell(cell, row: row, target: target)
+        }
+    }
+
+    private func configureGatewayClockTimeCell(
+        _ cell: CustomTableViewCell,
+        row: Int,
+        target: GatewayDetailTargetTimeZone
+    ) {
+        cell.titleLabel.font = UIFont.systemFont(ofSize: 14)
+        cell.contentLabel.font = UIFont.systemFont(ofSize: 14, weight: .light)
+        cell.contentLabel.textColor = SubText_Color
+        cell.cellStyle = .none
+        cell.lineView.isHidden = false
+        if row == 0 {
+            cell.titleLabel.text = "gateway".localizedString
+            if let offBy = gatewayClockState.offBySeconds {
+                let gatewayDate = GatewayDetailClockCore.gatewayDisplayDate(
+                    localDate: gatewayClockTickDate,
+                    offBySeconds: offBy
+                )
+                cell.contentLabel.text = gatewayClockFormatter.format(
+                    date: gatewayDate,
+                    offsetMinutes: target.offsetMinutes
+                )
+            } else {
+                cell.contentLabel.text = "--"
+            }
+        } else {
+            cell.titleLabel.text = "gateway_local_time".localizedString
+            cell.contentLabel.text = gatewayClockFormatter.format(
+                date: gatewayClockTickDate,
+                offsetMinutes: target.offsetMinutes
+            )
+        }
+    }
 
 }
 
@@ -1363,6 +1691,8 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
             return max(gatewayAssociatedSpacesToDisplay().count, 1)
         case .info:
             return infoTypes.count
+        case .clock:
+            return 3
         case .networkConnectivity:
             return 1
         default:
@@ -1392,6 +1722,41 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                 return nil
             }
             tableviewCell = nameCell
+        case .timeZone:
+            let cell = tableView.dequeueReusableCell(withIdentifier: "infoCell", for: indexPath) as! CustomTableViewCell
+            let target = currentGatewayClockTarget(at: gatewayClockTickDate)
+            cell.titleLabel.font = UIFont.systemFont(ofSize: 14)
+            cell.titleLabel.text = target.identifier
+            cell.contentLabel.font = UIFont.systemFont(ofSize: 14, weight: .light)
+            cell.contentLabel.textColor = SubText_Color
+            cell.contentLabel.text = target.displayOffset
+            cell.cellStyle = .none
+            cell.lineView.isHidden = true
+            tableviewCell = cell
+        case .clock:
+            let target = currentGatewayClockTarget(at: gatewayClockTickDate)
+            if indexPath.row < 2 {
+                let cell = tableView.dequeueReusableCell(withIdentifier: "infoCell", for: indexPath) as! CustomTableViewCell
+                configureGatewayClockTimeCell(
+                    cell,
+                    row: indexPath.row,
+                    target: target
+                )
+                tableviewCell = cell
+            } else {
+                let cell = tableView.dequeueReusableCell(
+                    withIdentifier: GatewayClockOffsetCell.reuseIdentifier,
+                    for: indexPath
+                ) as! GatewayClockOffsetCell
+                cell.update(
+                    offBySeconds: gatewayClockState.offBySeconds,
+                    isSyncing: gatewayClockState.isSyncing,
+                    action: { [weak self] in
+                        self?.synchronizeGatewayClock()
+                    }
+                )
+                tableviewCell = cell
+            }
         case .activate:
             let cell = tableView.dequeueReusableCell(withIdentifier: "infoCell", for: indexPath) as! CustomTableViewCell
             configureActivateCell(cell)
@@ -1504,8 +1869,20 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
         return SCRYFrom(44)
     }
 
+    func scrollViewDidEndDragging(
+        _ scrollView: UIScrollView,
+        willDecelerate decelerate: Bool
+    ) {
+        guard !decelerate else { return }
+        refreshGatewayClockRows()
+    }
+
+    func scrollViewDidEndDecelerating(_ scrollView: UIScrollView) {
+        refreshGatewayClockRows()
+    }
+
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
-        if sections[section] == .activate {
+        if sections[section] == .activate || sections[section] == .clock {
             return UIView()
         }
 
@@ -1542,6 +1919,20 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                     make.bottom.equalToSuperview().offset(SCRYFrom(-6))
                 }
             }
+        case .timeZone:
+            headerView.titleLabel.text = "site_time_zone_title".localizedString
+            if gatewayClockState.requiresSync {
+                headerView.operationBtn.isHidden = false
+                headerView.operationBtn.setTitle("gateway_sync_required".localizedString, for: .normal)
+                headerView.operationBtn.titleLabel?.font = UIFont.systemFont(ofSize: 14, weight: .light)
+                headerView.operationBtn.setTitleColor(Red_Color, for: .normal)
+                headerView.operationBtn.snp.remakeConstraints { make in
+                    make.right.equalTo(SCRXFrom(-12))
+                    make.centerY.equalTo(headerView.titleLabel)
+                }
+            }
+        case .clock:
+            break
         case .info:
             headerView.titleLabel.text = nil
             headerView.titleLabel.snp.remakeConstraints { make in
@@ -1610,6 +2001,8 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                 prepareForGatewayRecovery { [weak self] in
                     self?.resync(trigger: .devicesNotSynced)
                 }
+            case .timeZone:
+                self.showGatewayClockSyncPrompt()
             case .associatedSpaces: // 添加space
                 associatedSpaces()
             case .serverInformation: // 服务器授权
@@ -1629,6 +2022,9 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
         if sections[section] == .activate {
             return SCRYFrom(16)
         }
+        if sections[section] == .clock {
+            return SCRYFrom(12)
+        }
 
         return UITableView.automaticDimension
     }
@@ -1643,6 +2039,8 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
             return SCRYFrom(44)
         case .activate:
             return SCRYFrom(16)
+        case .clock:
+            return SCRYFrom(12)
         default:
             return SCRYFrom(44)
         }
@@ -1697,12 +2095,195 @@ extension GatewayViewController: MeshLibManagerMessageDelegate {
     }
 }
 
+private final class GatewayClockOffsetCell: UITableViewCell {
+    static let reuseIdentifier = "GatewayClockOffsetCell"
+    private static let loadingAnimationKey = "gatewayClockSyncLoading"
+
+    private let statusView = UIView()
+    private let titleLabel = UILabel()
+    private let actionButton = UIButton(type: .system)
+    private let contentStack = UIStackView()
+    private let loadingIconContainer = UIView()
+    private let loadingImageView = UIImageView(
+        image: UIImage(named: "site_entry_sync_loading")?.withRenderingMode(.alwaysTemplate)
+    )
+    private let actionTitleLabel = UILabel()
+    private let lineView = UIView()
+    private var action: (() -> Void)?
+    private var isShowingSyncing = false
+
+    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
+        super.init(style: style, reuseIdentifier: reuseIdentifier)
+        setupUI()
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        action = nil
+        stopLoadingAnimation()
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window == nil {
+            stopLoadingAnimation()
+        } else if isShowingSyncing {
+            startLoadingAnimation()
+        }
+    }
+
+    func update(
+        offBySeconds: Int?,
+        isSyncing: Bool,
+        action: @escaping () -> Void
+    ) {
+        self.action = action
+        if let offBySeconds {
+            titleLabel.text = String(
+                format: "gateway_off_by_format".localizedString,
+                GatewayDetailClockCore.formatOffBy(seconds: offBySeconds)
+            )
+            statusView.backgroundColor = GatewayDetailClockCore.isWithinTolerance(
+                seconds: offBySeconds
+            ) ? Green_Color : RGB(255, 185, 0)
+        } else {
+            titleLabel.text = String(
+                format: "gateway_off_by_format".localizedString,
+                "--"
+            )
+            statusView.backgroundColor = RGB(148, 163, 184)
+        }
+        updateSyncingAppearance(isSyncing: isSyncing)
+    }
+
+    @objc private func actionButtonTapped() {
+        guard actionButton.isEnabled else { return }
+        updateSyncingAppearance(isSyncing: true)
+        action?()
+    }
+
+    private func updateSyncingAppearance(isSyncing: Bool) {
+        isShowingSyncing = isSyncing
+        actionTitleLabel.text = isSyncing
+            ? "gateway_clock_syncing".localizedString
+            : "gateway_sync_clock".localizedString
+        actionButton.accessibilityLabel = actionTitleLabel.text
+        actionButton.isEnabled = !isSyncing
+        loadingIconContainer.isHidden = !isSyncing
+        if isSyncing {
+            startLoadingAnimation()
+        } else {
+            stopLoadingAnimation()
+        }
+    }
+
+    private func startLoadingAnimation() {
+        guard !UIAccessibility.isReduceMotionEnabled else {
+            stopLoadingAnimation()
+            return
+        }
+        guard loadingImageView.layer.animation(forKey: Self.loadingAnimationKey) == nil else {
+            return
+        }
+        let animation = CABasicAnimation(keyPath: "transform.rotation.z")
+        animation.fromValue = 0
+        animation.toValue = Double.pi * 2
+        animation.duration = 1
+        animation.repeatCount = .infinity
+        animation.timingFunction = CAMediaTimingFunction(name: .linear)
+        loadingImageView.layer.add(animation, forKey: Self.loadingAnimationKey)
+    }
+
+    private func stopLoadingAnimation() {
+        loadingImageView.layer.removeAnimation(forKey: Self.loadingAnimationKey)
+    }
+
+    private func setupUI() {
+        statusView.layer.cornerRadius = SCRYFrom(4)
+        contentView.addSubview(statusView)
+        statusView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.centerY.equalToSuperview()
+            make.size.equalTo(SCRYFrom(8))
+        }
+
+        titleLabel.font = UIFont.systemFont(ofSize: 14)
+        titleLabel.textColor = TextBlack_Color
+        contentView.addSubview(titleLabel)
+        titleLabel.snp.makeConstraints { make in
+            make.left.equalTo(statusView.snp.right).offset(SCRXFrom(8))
+            make.centerY.equalToSuperview()
+        }
+
+        actionButton.backgroundColor = Bar_Color.withAlphaComponent(0.1)
+        actionButton.layer.cornerRadius = 10
+        actionButton.addTarget(self, action: #selector(actionButtonTapped), for: .touchUpInside)
+        contentView.addSubview(actionButton)
+        actionButton.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-12))
+            make.centerY.equalToSuperview()
+            make.height.equalTo(28)
+            make.width.greaterThanOrEqualTo(SCRXFrom(84))
+        }
+
+        loadingImageView.tintColor = Bar_Color
+        loadingImageView.contentMode = .scaleAspectFit
+        loadingIconContainer.addSubview(loadingImageView)
+        loadingIconContainer.snp.makeConstraints { make in
+            make.size.equalTo(24)
+        }
+        loadingImageView.snp.makeConstraints { make in
+            make.center.equalToSuperview()
+            make.size.equalTo(16)
+        }
+
+        actionTitleLabel.font = UIFont.systemFont(ofSize: 12, weight: .medium)
+        actionTitleLabel.textColor = Bar_Color
+        actionTitleLabel.textAlignment = .center
+        actionTitleLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+
+        contentStack.axis = .horizontal
+        contentStack.alignment = .center
+        contentStack.spacing = 6
+        contentStack.isUserInteractionEnabled = false
+        contentStack.addArrangedSubview(loadingIconContainer)
+        contentStack.addArrangedSubview(actionTitleLabel)
+        actionButton.addSubview(contentStack)
+        contentStack.snp.makeConstraints { make in
+            make.left.equalToSuperview().offset(8)
+            make.right.equalToSuperview().offset(-12)
+            make.centerY.equalToSuperview()
+        }
+
+        titleLabel.snp.makeConstraints { make in
+            make.right.lessThanOrEqualTo(actionButton.snp.left).offset(SCRXFrom(-8))
+        }
+
+        lineView.backgroundColor = Line_Color
+        contentView.addSubview(lineView)
+        lineView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.bottom.equalToSuperview()
+            make.height.equalTo(1)
+        }
+        lineView.isHidden = true
+    }
+}
+
 extension GatewayViewController {
 
     /// seciton 组类型
     enum SectionType {
         /// 名称
         case name
+        /// Site 时区
+        case timeZone
+        /// 网关与本地时间
+        case clock
         /// 激活
         case activate
         /// WiFi network connectivity

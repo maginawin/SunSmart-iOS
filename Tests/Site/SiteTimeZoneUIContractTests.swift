@@ -172,8 +172,10 @@ struct SiteTimeZoneUIContractTests {
             )
             require(
                 occurrences(of: "action: #selector(doneBtnClick)", in: edit) >= 2 &&
-                    edit.contains("pendingSitePropsMask.isEmpty"),
-                "Not synced and Done must share one action and pending visibility source"
+                    edit.contains("pendingSitePropsMask.contains(.timezone)") &&
+                    !edit.contains("pendingSitePropsMask.isEmpty") &&
+                    !edit.contains("needUploadCloud"),
+                "Not synced must share the Done action but only reflect timezone pending"
             )
             require(
                 edit.contains("\"site_icon\".localizedString") &&

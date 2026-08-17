@@ -44,6 +44,10 @@ final class GatewayNetworkConnectivityCell: UITableViewCell, UITextFieldDelegate
     private var canEditSSID: Bool = true
     private var canEditPassword: Bool = true
 
+    func setBackgroundRequestInProgress(_ inProgress: Bool) {
+        contentView.isUserInteractionEnabled = !inProgress
+    }
+
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         setupUI()
