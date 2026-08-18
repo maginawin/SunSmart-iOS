@@ -103,6 +103,52 @@ struct GatewayDetailClockState: Equatable {
     }
 }
 
+struct GatewayClockAutoPromptState: Equatable {
+    private(set) var pendingSessionID: UUID?
+    private(set) var handledSessionID: UUID?
+
+    mutating func request(sessionID: UUID, requiresSync: Bool) {
+        guard requiresSync else {
+            if pendingSessionID == sessionID {
+                pendingSessionID = nil
+            }
+            return
+        }
+        guard handledSessionID != sessionID else { return }
+        pendingSessionID = sessionID
+    }
+
+    func shouldPresent(
+        sessionID: UUID?,
+        isViewVisible: Bool,
+        requiresSync: Bool,
+        isSyncing: Bool,
+        hasPendingSync: Bool,
+        hasExistingAlert: Bool
+    ) -> Bool {
+        guard let sessionID else { return false }
+        return pendingSessionID == sessionID
+            && handledSessionID != sessionID
+            && isViewVisible
+            && requiresSync
+            && !isSyncing
+            && !hasPendingSync
+            && !hasExistingAlert
+    }
+
+    mutating func markHandled(sessionID: UUID) {
+        if pendingSessionID == sessionID {
+            pendingSessionID = nil
+        }
+        handledSessionID = sessionID
+    }
+
+    mutating func end(sessionID: UUID?) {
+        guard sessionID == nil || pendingSessionID == sessionID else { return }
+        pendingSessionID = nil
+    }
+}
+
 final class GatewayDetailClockFormatter {
     private let formatter: DateFormatter
 

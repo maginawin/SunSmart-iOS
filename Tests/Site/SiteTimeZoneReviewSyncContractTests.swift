@@ -304,6 +304,69 @@ struct SiteTimeZoneReviewSyncContractTests {
             "Review state must resolve Gateway offsets as confirmed, then dirty, then remote"
         )
 
+        let gatewayDetailConfirmationFlow = sourceSection(
+            in: siteController,
+            from: "private func recordGatewayDetailTimeZoneConfirmation(",
+            to: "private func invalidateGatewayTimeZoneReview("
+        )
+        require(
+            gatewayDetailConfirmationFlow.contains(
+                "guard gatewayDetailPresentationSessionID == sessionID"
+            ) &&
+                gatewayDetailConfirmationFlow.contains(
+                    "id == SiteGatewayAccessScope.normalize(expectedGatewayID)"
+                ) &&
+                gatewayDetailConfirmationFlow.contains(
+                    "targetTimeZone.offsetMinutes == offsetMinutes"
+                ) &&
+                gatewayDetailConfirmationFlow.contains(
+                    "confirmedGatewayOffsetMinutesByID[id] = offsetMinutes"
+                ),
+            "Gateway detail confirmations must be scoped to the active session, expected Gateway, and current Site target"
+        )
+        require(
+            appearsInOrder(
+                [
+                    "guard gatewayDetailPresentationSessionID == sessionID else { return }",
+                    "gatewayDetailPresentationSessionID = nil",
+                    "setupData()",
+                    "refreshCurrentGatewayTimeZoneReviewProjection()",
+                    "retryDirtyGatewayCloudUploads()",
+                    "performSiteLoad(presentation: .silentGatewayReconcile)"
+                ],
+                in: gatewayDetailConfirmationFlow
+            ),
+            "Returning from Gateway detail must immediately re-project local evidence and then silently reconcile the Site snapshot"
+        )
+
+        let gatewayDetailPresentationFlow = sourceSection(
+            in: siteController,
+            from: "func gatewayOperationClickAction(",
+            to: "extension SiteViewController: CustomSegmentedControlDelegate"
+        )
+        require(
+            gatewayDetailPresentationFlow.contains(
+                "gatewayVc.timeZoneSyncDidFinish = { [weak self] gatewayID, offsetMinutes in"
+            ) &&
+                gatewayDetailPresentationFlow.contains(
+                    "gatewayVc.gatewayPageDidClose = { [weak self] in"
+                ) &&
+                gatewayDetailPresentationFlow.contains(
+                    "navigationController.presentationController?.delegate = self"
+                ) &&
+                gatewayDetailPresentationFlow.contains(
+                    "extension SiteViewController: UIAdaptivePresentationControllerDelegate"
+                ) &&
+                gatewayDetailPresentationFlow.contains(
+                    "func presentationControllerDidDismiss("
+                ) &&
+                occurrences(
+                    of: "finishGatewayDetailPresentation(sessionID: sessionID)",
+                    in: gatewayDetailPresentationFlow
+                ) == 2,
+            "Gateway detail explicit and interactive dismissal paths must share one idempotent Site reconcile"
+        )
+
         let gatewayReconcile = sourceSection(
             in: siteController,
             from: "private func reconcileEditTimeZoneSyncOutcome(",

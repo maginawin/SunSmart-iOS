@@ -165,6 +165,25 @@ struct SiteGatewayTimeZoneReviewContext: Equatable {
             failedGatewayIDs: remainingIDs
         )
     }
+
+    func reconciled(
+        confirmedOffsetMinutesByGatewayID: [String: Int]
+    ) -> SiteGatewayTimeZoneReviewContext? {
+        let confirmedByID = confirmedOffsetMinutesByGatewayID.reduce(
+            into: [String: Int]()
+        ) { result, pair in
+            guard let id = SiteGatewayAccessScope.normalize(pair.key) else { return }
+            result[id] = pair.value
+        }
+        let remainingIDs = failedGatewayIDs.filter {
+            confirmedByID[$0] != targetTimeZone.offsetMinutes
+        }
+        guard !remainingIDs.isEmpty else { return nil }
+        return SiteGatewayTimeZoneReviewContext(
+            targetTimeZone: targetTimeZone,
+            failedGatewayIDs: Set(remainingIDs)
+        )
+    }
 }
 
 enum SiteGatewayTimeZoneReviewProjection: Equatable {

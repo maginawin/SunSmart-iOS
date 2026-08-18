@@ -16,6 +16,7 @@ struct SiteGatewayCloudTimeZoneSyncStateTests {
         testReviewContextProjectsOnlyFailedGatewayIDs()
         testReviewContextSurvivesStaleRemoteEvidence()
         testReviewContextClearsAcknowledgedOrUnauthorizedGateways()
+        testReviewContextClearsDeviceConfirmedGateways()
         testReviewProjectionStaysHiddenAfterExplicitContextAcknowledgment()
         testReviewProjectionHidesWhenExplicitLocalTargetChanges()
         testReviewProjectionAllowsMatchingOrdinaryRemoteTarget()
@@ -242,6 +243,34 @@ struct SiteGatewayCloudTimeZoneSyncStateTests {
         require(
             reconciled == nil,
             "Fully acknowledged failed Gateways and Gateways outside the latest permission scope must leave no Review context"
+        )
+    }
+
+    private static func testReviewContextClearsDeviceConfirmedGateways() {
+        let context = SiteGatewayTimeZoneReviewContext(
+            targetTimeZone: timeZone(),
+            failedGatewayIDs: ["first", "second"]
+        )
+
+        let partiallyReconciled = context.reconciled(
+            confirmedOffsetMinutesByGatewayID: [
+                " FIRST ": 480,
+                "second": 0,
+                "extra": 480
+            ]
+        )
+        require(
+            partiallyReconciled?.failedGatewayIDs == ["second"],
+            "Only a normalized device confirmation matching the target offset may clear an explicit failed Gateway"
+        )
+        require(
+            context.reconciled(
+                confirmedOffsetMinutesByGatewayID: [
+                    "first": 480,
+                    "SECOND": 480
+                ]
+            ) == nil,
+            "Confirming every explicit failed Gateway at the target offset must remove the explicit Review context"
         )
     }
 

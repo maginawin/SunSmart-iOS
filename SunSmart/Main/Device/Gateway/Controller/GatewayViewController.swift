@@ -11,6 +11,9 @@ import SwiftyJSON
 
 class GatewayViewController: UIViewController, DeviceProtocol {
 
+    var timeZoneSyncDidFinish: ((String, Int) -> Void)?
+    var gatewayPageDidClose: (() -> Void)?
+
     private var tableView: UITableView!
     private var headerView: GatewayInformationHeaderView!
     private var footerView: UIView!
@@ -27,6 +30,9 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         presentationID: UUID,
         startedAtUptime: TimeInterval
     )?
+    private var gatewayClockAutoPromptState = GatewayClockAutoPromptState()
+    private var gatewayClockAutoPromptRetryWorkItem: DispatchWorkItem?
+    private var gatewayClockAutoPromptRetryID: UUID?
     private var isGatewayClockReading = false
     private var gatewayClockTickDate = Date()
     private let gatewayClockFormatter = GatewayDetailClockFormatter()
@@ -188,12 +194,14 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         ensureTargetGatewayProxyConnection()
         syncSignalRefreshState(forceRefresh: isGatewayProxyReady)
         syncGatewayClockTimer()
+        attemptGatewayClockAutoPrompt()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
 
         isViewVisible = false
+        cancelGatewayClockAutoPromptRetry()
         stopSignalRefreshTimer()
         stopGatewayClockTimer()
     }
@@ -336,14 +344,19 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 
     func closeGatewayPage() {
         if self.presentingViewController != nil && navigationController?.viewControllers.count ?? 0 == 1  {
-            dismiss(animated: true)
+            let completion = gatewayPageDidClose
+            dismiss(animated: true) {
+                completion?()
+            }
         }else {
             navigationController?.popViewController(animated: true)
+            gatewayPageDidClose?()
         }
     }
 
     deinit {
         gatewayClockCoordinator?.finishPage()
+        cancelGatewayClockAutoPromptRetry()
         stopGatewayClockTimer()
         gatewayClockNotificationTokens.forEach(NotificationCenter.default.removeObserver)
         stopSignalRefreshTimer()
@@ -1379,6 +1392,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         if isReady {
             syncGatewayClockTimer()
         } else {
+            gatewayClockAutoPromptState.end(sessionID: nil)
+            cancelGatewayClockAutoPromptRetry()
             gatewayClockReadSessionID = nil
             gatewayClockSyncPresentationID = nil
             pendingGatewayClockSync = nil
@@ -1395,7 +1410,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             return
         }
         gatewayClockReadSessionID = context.sessionID
-        readGatewayClock()
+        readGatewayClock(autoPromptSessionID: context.sessionID)
     }
 
     private func currentGatewayClockTarget(at date: Date = Date()) -> GatewayDetailTargetTimeZone {
@@ -1427,7 +1442,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         readGatewayClock()
     }
 
-    private func readGatewayClock() {
+    private func readGatewayClock(autoPromptSessionID: UUID? = nil) {
         guard showsGatewayClockSections, !isGatewayClockReading,
               !gatewayClockState.isSyncing else { return }
         let target = currentGatewayClockTarget()
@@ -1456,6 +1471,15 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                     presentationID: pendingSync.presentationID,
                     startedAtUptime: pendingSync.startedAtUptime
                 )
+                return
+            }
+            if let autoPromptSessionID,
+               self.isCurrentGatewayProxySession(autoPromptSessionID) {
+                self.gatewayClockAutoPromptState.request(
+                    sessionID: autoPromptSessionID,
+                    requiresSync: self.gatewayClockState.requiresSync
+                )
+                self.attemptGatewayClockAutoPrompt()
             }
         }
         if !started {
@@ -1465,6 +1489,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 
     private func synchronizeGatewayClock() {
         guard showsGatewayClockSections, !gatewayClockState.isSyncing else { return }
+        markCurrentGatewayClockSessionHandled()
         let target = currentGatewayClockTarget()
         let presentationID = UUID()
         let startedAtUptime = ProcessInfo.processInfo.systemUptime
@@ -1533,6 +1558,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                     targetOffsetMinutes: target.offsetMinutes,
                     targetIsMeshEncodable: target.isMeshEncodable
                 )
+                self.timeZoneSyncDidFinish?(
+                    self.gateway.mac,
+                    value.0.offsetMinutes
+                )
                 ToastStatusView.show(
                     in: self.view,
                     message: "gateway_clock_synced".localizedString,
@@ -1564,6 +1593,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
 
     private func showGatewayClockSyncPrompt() {
+        markCurrentGatewayClockSessionHandled()
         let target = currentGatewayClockTarget()
         let message: String
         if let sample = gatewayClockState.sample {
@@ -1596,6 +1626,77 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                 )
             ]
         ).show()
+    }
+
+    private func isCurrentGatewayProxySession(_ sessionID: UUID) -> Bool {
+        guard isGatewayProxyReady,
+              gatewayProxyReadySessionID == sessionID,
+              let context = MeshLibManager.manager.currentProxyReadyContext else {
+            return false
+        }
+        return context.sessionID == sessionID
+            && context.nodeAddress == node.primaryUnicastAddress
+    }
+
+    private func markCurrentGatewayClockSessionHandled() {
+        guard let sessionID = gatewayProxyReadySessionID else { return }
+        gatewayClockAutoPromptState.markHandled(sessionID: sessionID)
+        cancelGatewayClockAutoPromptRetry()
+    }
+
+    private func attemptGatewayClockAutoPrompt() {
+        cancelGatewayClockAutoPromptRetry()
+        guard let sessionID = gatewayClockAutoPromptState.pendingSessionID else { return }
+        guard isCurrentGatewayProxySession(sessionID) else {
+            gatewayClockAutoPromptState.end(sessionID: sessionID)
+            return
+        }
+        guard gatewayClockState.requiresSync else {
+            gatewayClockAutoPromptState.end(sessionID: sessionID)
+            return
+        }
+
+        let hasExistingAlert = SRAlertView.getCurrentAlertView() != nil
+        if gatewayClockAutoPromptState.shouldPresent(
+            sessionID: sessionID,
+            isViewVisible: isViewVisible,
+            requiresSync: gatewayClockState.requiresSync,
+            isSyncing: gatewayClockState.isSyncing,
+            hasPendingSync: pendingGatewayClockSync != nil,
+            hasExistingAlert: hasExistingAlert
+        ) {
+            gatewayClockAutoPromptState.markHandled(sessionID: sessionID)
+            showGatewayClockSyncPrompt()
+            return
+        }
+
+        guard isViewVisible,
+              !gatewayClockState.isSyncing,
+              pendingGatewayClockSync == nil,
+              hasExistingAlert else {
+            return
+        }
+        scheduleGatewayClockAutoPromptRetry()
+    }
+
+    private func scheduleGatewayClockAutoPromptRetry() {
+        guard gatewayClockAutoPromptRetryWorkItem == nil else { return }
+        let retryID = UUID()
+        let workItem = DispatchWorkItem { [weak self] in
+            guard self?.gatewayClockAutoPromptRetryID == retryID else { return }
+            self?.gatewayClockAutoPromptRetryWorkItem = nil
+            self?.gatewayClockAutoPromptRetryID = nil
+            self?.attemptGatewayClockAutoPrompt()
+        }
+        gatewayClockAutoPromptRetryID = retryID
+        gatewayClockAutoPromptRetryWorkItem = workItem
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5, execute: workItem)
+    }
+
+    private func cancelGatewayClockAutoPromptRetry() {
+        gatewayClockAutoPromptRetryWorkItem?.cancel()
+        gatewayClockAutoPromptRetryWorkItem = nil
+        gatewayClockAutoPromptRetryID = nil
     }
 
     private func syncGatewayClockTimer() {
