@@ -2097,3 +2097,10 @@
 "site_sync_gateways_done" = "Done";
 "site_sync_gateways_failure_toast" = "%@ sync failed. Try again.";
 "site_sync_gateways_success_toast" = "%@ time zone updated.";
+"gateway_force_clear_spaces" = "Force clear spaces";
+"gateway_force_clear_spaces_title" = "Force clear associated spaces?";
+"gateway_force_clear_spaces_message" = "This will remove all associated spaces from the server. Spaces will be immediately available to bind to another gateway. If this gateway comes back online, it will detect no associations and prompt for reconfiguration.";
+"gateway_force_clear_spaces_action" = "FORCE CLEAR";
+"gateway_force_clear_spaces_success" = "All associated spaces cleared from server";
+"gateway_force_clear_spaces_failed" = "Failed to clear all associated spaces";
+"gateway_delete_server_failed" = "Failed to delete gateway from server";

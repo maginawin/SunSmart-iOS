@@ -21,6 +21,7 @@ enum GatewayServerAuthorizationError: Error, Equatable {
     case requestFailed(NetworkApiError)
     case invalidResponse(missingFields: [String])
     case persistenceFailed
+    case serverDeletionPendingLocalReset
 
     var networkApiError: NetworkApiError {
         switch self {
@@ -28,7 +29,7 @@ enum GatewayServerAuthorizationError: Error, Equatable {
             return .noNetwork
         case .requestFailed(let error):
             return error
-        case .nodeExportFailed, .invalidResponse, .persistenceFailed:
+        case .nodeExportFailed, .invalidResponse, .persistenceFailed, .serverDeletionPendingLocalReset:
             return .init(
                 code: 9998,
                 message: diagnosticDescription,
@@ -50,6 +51,8 @@ enum GatewayServerAuthorizationError: Error, Equatable {
             return "invalid response fields: \(missingFields.sorted().joined(separator: ","))"
         case .persistenceFailed:
             return "gateway persistence failed"
+        case .serverDeletionPendingLocalReset:
+            return "gateway server deletion is pending local reset"
         }
     }
 }
@@ -61,7 +64,7 @@ extension GatewayServerAuthorizationError: LocalizedError {
             return "phone_no_network".localizedString
         case .requestFailed(let error):
             return error.localizedDescription
-        case .nodeExportFailed, .invalidResponse, .persistenceFailed:
+        case .nodeExportFailed, .invalidResponse, .persistenceFailed, .serverDeletionPendingLocalReset:
             return "server_failure".localizedString
         }
     }
@@ -165,6 +168,10 @@ actor GatewayServerAuthorizationService {
         policy: GatewayServerAuthorizationRequestPolicy = .ifMissing,
         requestedGeneration: Int64
     ) async -> Result<GatewayServerAuthorizationReceipt, GatewayServerAuthorizationError> {
+        guard !gateway.isServerDeletionInProgress,
+              !gateway.serverDeletionPendingLocalReset else {
+            return .failure(.serverDeletionPendingLocalReset)
+        }
         if policy == .ifMissing,
            let information = gateway.mqttServerInfo,
            Self.isValid(information) {
@@ -219,6 +226,11 @@ actor GatewayServerAuthorizationService {
             inFlightAuthorizations[key] = nil
         }
 
+        guard !gateway.isServerDeletionInProgress,
+              !gateway.serverDeletionPendingLocalReset else {
+            return .failure(.serverDeletionPendingLocalReset)
+        }
+
         switch result {
         case .success(let information):
             return Self.persist(information, to: gateway).map {
@@ -240,6 +252,19 @@ actor GatewayServerAuthorizationService {
                 )
             }
             return .failure(error)
+        }
+    }
+
+    func waitForInFlightAuthorizationToFinish(
+        gateway: GatewayModel
+    ) async {
+        let key = "\(gateway.siteId)|\(gateway.mac.uppercased())"
+        guard let authorization = inFlightAuthorizations[key] else {
+            return
+        }
+        _ = await authorization.task.value
+        if inFlightAuthorizations[key]?.id == authorization.id {
+            inFlightAuthorizations[key] = nil
         }
     }
 }

@@ -9,6 +9,19 @@ import UIKit
 import NordicSigMeshSDK
 import SwiftyJSON
 
+private enum GatewayDestructiveOperationState: Equatable {
+    case idle
+    case clearingAssociatedSpaces
+    case deletingGatewayFromServer
+    case resettingAfterServerDeletion
+}
+
+private enum GatewayDestructivePermissionResult {
+    case allowed
+    case denied
+    case failed
+}
+
 class GatewayViewController: UIViewController, DeviceProtocol {
 
     private var tableView: UITableView!
@@ -59,6 +72,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     private var isPresentingGatewayRecovery: Bool = false
     /// 网关 4G 信号刷新定时器
     private var signalRefreshTimer: Timer?
+    private var destructiveOperationState: GatewayDestructiveOperationState = .idle
+    private var serverDeletionConfirmed = false
 
     let site: SiteData
     let gateway: Gateway
@@ -80,6 +95,26 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 
     private var isGatewayProxyConnecting: Bool {
         proxyConnectionStateMachine.state.activeAttemptID != nil
+    }
+
+    private var isGatewayBluetoothOffline: Bool {
+        if case .disconnected = proxyConnectionStateMachine.state {
+            return true
+        }
+        return false
+    }
+
+    private var canForceClearAssociatedSpaces: Bool {
+        guard !gatewayModel.serverDeletionPendingLocalReset,
+              !setGatewayModel.associatedSpaces.isEmpty else {
+            return false
+        }
+        if site.permission == .owner {
+            return true
+        }
+        return setGatewayModel.associatedSpaces.allSatisfy {
+            $0.permission == .editor
+        }
     }
 
     var supportsAPNConfiguration: Bool {
@@ -235,7 +270,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     @objc func moreClick() {
         let actions = GatewayMenuPolicy.menuActions(
             firmwareKind: gatewayFirmwareKind,
-            canDelete: canConfigureCurrentGateway
+            canDelete: canConfigureCurrentGateway,
+            isBluetoothOffline: isGatewayBluetoothOffline,
+            hasAssociatedSpaces: !setGatewayModel.associatedSpaces.isEmpty,
+            canForceClearSpaces: canForceClearAssociatedSpaces
         )
         let items = actions.map(makeGatewayMenuItem)
         let touchCenterX = view.width - navigationRightItemMargin - 15
@@ -247,7 +285,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         MenuPopView.show(
             items: items,
             anchorPoint: windowPoint,
-            menuWidth: SCRXFrom(120)
+            menuWidth: SCRXFrom(actions.contains(.forceClearSpaces) ? 164 : 120)
         )
     }
 
@@ -301,6 +339,14 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                 tapItemBack: { [weak self] _ in
                     guard let self else { return }
                     MeshAPI.identify(address: self.node.primaryUnicastAddress)
+                }
+            )
+        case .forceClearSpaces:
+            return .init(
+                icon: UIImage(named: "menu_clear_spaces"),
+                title: "gateway_force_clear_spaces".localizedString,
+                tapItemBack: { [weak self] _ in
+                    self?.showForceClearAssociatedSpacesConfirmation()
                 }
             )
         }
@@ -570,9 +616,23 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
 
     /// 获取已关联的spaces
-    private func loadAssociatedSpaces() async -> Result<[GatewaySpaceData], Error> {
+    private func loadAssociatedSpaces(
+        maximumDuration: TimeInterval? = nil
+    ) async -> Result<[GatewaySpaceData], Error> {
 
-        let result = await NetworkRequest.shared.request(.gatewayAssociationSpaceList(siteId: gatewayModel.siteId, gatewayId: gatewayModel.mac))
+        let target = NetowrkReqeustApi.gatewayAssociationSpaceList(
+            siteId: gatewayModel.siteId,
+            gatewayId: gatewayModel.mac
+        )
+        let result: Result<[String: Any], NetworkApiError>
+        if let maximumDuration {
+            result = await NetworkRequest.shared.request(
+                target,
+                maximumDuration: maximumDuration
+            )
+        } else {
+            result = await NetworkRequest.shared.request(target)
+        }
         switch result {
         case .success(let response):
             let list = JSON(response)["data"]["refSpaces"].arrayValue
@@ -895,85 +955,263 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         return .init(succeeded: true, topologyChanged: topologyChanged)
     }
 
+    private func showForceClearAssociatedSpacesConfirmation() {
+        guard destructiveOperationState == .idle,
+              isGatewayBluetoothOffline,
+              !setGatewayModel.associatedSpaces.isEmpty else {
+            return
+        }
+        let actionFont = UIFont.systemFont(
+            ofSize: SCRYFrom(15),
+            weight: .light
+        )
+        SRAlertView(
+            title: "gateway_force_clear_spaces_title".localizedString,
+            titleColor: Title_Color,
+            titleFont: UIFont.systemFont(ofSize: SCRYFrom(15), weight: .regular),
+            message: "gateway_force_clear_spaces_message".localizedString,
+            messageColor: Title_Color,
+            messageFont: actionFont,
+            tapBackgroundHide: false,
+            contentMinHeight: SCRYFrom(222),
+            actions: [
+                .cancelAction,
+                SRAlertAction(
+                    title: "gateway_force_clear_spaces_action".localizedString,
+                    titleColor: Error_Red_Color,
+                    titleFont: actionFont,
+                    style: .destructive,
+                    performsActionAfterDismiss: true,
+                    actionHandler: { [weak self] _ in
+                        self?.beginForceClearAssociatedSpaces()
+                    }
+                )
+            ]
+        ).show()
+    }
+
+    private func beginForceClearAssociatedSpaces() {
+        guard destructiveOperationState == .idle else { return }
+        destructiveOperationState = .clearingAssociatedSpaces
+        let deadline = ProcessInfo.processInfo.systemUptime + 30
+        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+
+        Task { [weak self] in
+            guard let self else { return }
+            switch await self.verifyDestructiveOperationPermission(deadline: deadline) {
+            case .allowed:
+                break
+            case .denied:
+                XWHUDManager.hide()
+                self.destructiveOperationState = .idle
+                XWHUDManager.showErrorTipHUD("no_permission".localizedString)
+                return
+            case .failed:
+                self.finishForceClearAssociatedSpacesWithFailure()
+                return
+            }
+
+            let remainingDuration = self.remainingDuration(until: deadline)
+            let result = await NetworkRequest.shared.request(
+                .gatewayUnbindAllSpaces(gatewayId: self.gateway.mac),
+                maximumDuration: remainingDuration
+            )
+            guard self.destructiveOperationState == .clearingAssociatedSpaces else {
+                return
+            }
+            switch result {
+            case .success:
+                self.gatewayModel.associatedSpaces.removeAll()
+                self.setGatewayModel.associatedSpaces.removeAll()
+                self.gatewayModel.save()
+                self.reloadSection(.associatedSpaces)
+                self.updateSaveBtnState()
+                self.notifySiteGatewayAssociationTopologyChanged()
+                XWHUDManager.hide()
+                self.destructiveOperationState = .idle
+                ToastStatusView.show(
+                    in: self.view,
+                    message: "gateway_force_clear_spaces_success".localizedString,
+                    type: .success,
+                    appearance: .siteUpdate,
+                    position: .bottom
+                )
+            case .failure:
+                self.finishForceClearAssociatedSpacesWithFailure()
+            }
+        }
+    }
+
+    private func finishForceClearAssociatedSpacesWithFailure() {
+        XWHUDManager.hide()
+        destructiveOperationState = .idle
+        ToastStatusView.show(
+            in: view,
+            message: "gateway_force_clear_spaces_failed".localizedString,
+            type: .failure,
+            appearance: .siteUpdate,
+            position: .bottom
+        )
+    }
+
+    private func verifyDestructiveOperationPermission(
+        deadline: TimeInterval
+    ) async -> GatewayDestructivePermissionResult {
+        if site.permission == .owner {
+            return .allowed
+        }
+        let remainingDuration = remainingDuration(until: deadline)
+        guard remainingDuration > 0 else {
+            return .failed
+        }
+        switch await loadAssociatedSpaces(maximumDuration: remainingDuration) {
+        case .success(let spaces):
+            return spaces.allSatisfy { $0.permission == .editor }
+                ? .allowed
+                : .denied
+        case .failure:
+            return .failed
+        }
+    }
+
+    private func remainingDuration(until deadline: TimeInterval) -> TimeInterval {
+        max(0, deadline - ProcessInfo.processInfo.systemUptime)
+    }
+
     /// 删除
     @objc func deleteBtnAction() {
 
-        guard canConfigureCurrentGateway else {
+        guard destructiveOperationState == .idle,
+              canConfigureCurrentGateway else {
             XWHUDManager.showTipHUD("no_permission".localizedString + "！")
             return
         }
 
         SRAlertView(title: "notification".localizedString, message: "gateway_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive, actionHandler: {[weak self] _ in
-            guard let self = self else { return }
-            // 是否已注册网关
-            if self.gatewayModel.mqttServerInfo != nil || self.gatewayModel.lastUploadCloudTimestamp != nil {
-                Task {
-                    XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-                    if self.site.permission != .owner {
-                        let result = await self.loadAssociatedSpaces()
-                        switch result {
-                        case .success(let bindSpaces):
-                            // 检查是否关联了无权限的space
-                            if bindSpaces.contains(where: { $0.permission == .none || $0.permission == .permissionLoss || $0.permission == .permissionException }) {
-                                XWHUDManager.hide()
-                                XWHUDManager.showErrorTipHUD("no_permission".localizedString)
-                                return
-                            }
-                        case .failure(let error):
-                            XWHUDManager.hide()
-                            XWHUDManager.showErrorTipHUD(error.localizedDescription)
-                            return
-                        }
-                    }
-
-                    let deleteResult = await NetworkRequest.shared.request(.gatewayDelete(gatewayId: self.gateway.mac))
-                    switch deleteResult {
-                    case .success(_):
-                        self.gatewayModel.mqttServerInfo = nil
-                        self.gatewayModel.associatedSpaces.removeAll()
-                        self.setGatewayModel.mqttServerInfo = nil
-                        self.setGatewayModel.associatedSpaces.removeAll()
-                        self.gatewayModel.lastUploadCloudTimestamp = nil
-                        self.gatewayModel.save()
-                        self.resetNode(authorize: true)
-                    case .failure(let error):
-                        XWHUDManager.hide()
-                        XWHUDManager.showErrorTipHUD(error.localizedDescription)
-                    }
-
-                }
-            }else {
-                self.resetNode()
-            }
+            self?.beginGatewayDeletion()
         })]).show()
 
     }
 
-    /// 重置设备
-    /// - authorize: 是否服务器已授权
-    private func resetNode(authorize: Bool = false) {
+    private func beginGatewayDeletion() {
+        guard destructiveOperationState == .idle else { return }
+        if gatewayModel.serverDeletionPendingLocalReset {
+            serverDeletionConfirmed = true
+            destructiveOperationState = .resettingAfterServerDeletion
+            resetNodeAfterServerDeletion()
+            return
+        }
+        destructiveOperationState = .deletingGatewayFromServer
+        serverDeletionConfirmed = false
+        let deadline = ProcessInfo.processInfo.systemUptime + 30
+        XWHUDManager.showCustomHUD(
+            withMessage: "deleting".localizedString,
+            isWindow: true
+        )
 
-        let message = authorize ? "gateway_force_delete_message".localizedString : "gateway_no_authorize_force_delete_message".localizedString
+        Task { [weak self] in
+            guard let self else { return }
+            switch await self.verifyDestructiveOperationPermission(deadline: deadline) {
+            case .allowed:
+                break
+            case .denied:
+                XWHUDManager.hide()
+                self.destructiveOperationState = .idle
+                XWHUDManager.showErrorTipHUD("no_permission".localizedString)
+                return
+            case .failed:
+                self.finishGatewayServerDeletionWithFailure(
+                    restoreCloudSynchronization: false
+                )
+                return
+            }
 
-        self.deleteNodes(nodes: [node], forceDeleteMessage: message, forceDeleteNote: "gateway_force_delete_note".localizedString) {[weak self] successNodes, failedNodes in
+            let syncOperation = SyncOperation.syncGateway(
+                gateway: self.gatewayModel,
+                node: self.node
+            )
+            let shouldRestoreCloudSynchronization =
+                self.gatewayModel.needUploadCloud ||
+                CloudSynchronizationManager.shared.getGatewayCurrentSyncState(
+                    self.gatewayModel
+                ) != nil
+            self.gatewayModel.isServerDeletionInProgress = true
+            CloudSynchronizationManager.shared.cancelSynchronizationHandle(
+                operation: syncOperation
+            )
+            await GatewayServerAuthorizationService.shared
+                .waitForInFlightAuthorizationToFinish(
+                    gateway: self.gatewayModel
+                )
+
+            let remainingDuration = self.remainingDuration(until: deadline)
+            let deleteResult = await NetworkRequest.shared.request(
+                .gatewayDelete(gatewayId: self.gateway.mac),
+                maximumDuration: remainingDuration
+            )
+            guard self.destructiveOperationState == .deletingGatewayFromServer else {
+                return
+            }
+            switch deleteResult {
+            case .success:
+                self.gatewayModel.serverDeletionPendingLocalReset = true
+                self.setGatewayModel.serverDeletionPendingLocalReset = true
+                self.gatewayModel.isServerDeletionInProgress = false
+                self.gatewayModel.save()
+                self.serverDeletionConfirmed = true
+                self.destructiveOperationState = .resettingAfterServerDeletion
+                XWHUDManager.hide()
+                self.resetNodeAfterServerDeletion()
+            case .failure:
+                self.finishGatewayServerDeletionWithFailure(
+                    restoreCloudSynchronization: shouldRestoreCloudSynchronization
+                )
+            }
+        }
+    }
+
+    private func finishGatewayServerDeletionWithFailure(
+        restoreCloudSynchronization: Bool
+    ) {
+        XWHUDManager.hide()
+        gatewayModel.isServerDeletionInProgress = false
+        destructiveOperationState = .idle
+        serverDeletionConfirmed = false
+        if restoreCloudSynchronization,
+           !gatewayModel.serverDeletionPendingLocalReset {
+            CloudSynchronizationManager.shared.addSynchronizationHandle(
+                operation: .syncGateway(gateway: gatewayModel, node: node),
+                level: .promptly
+            )
+        }
+        ToastStatusView.show(
+            in: view,
+            message: "gateway_delete_server_failed".localizedString,
+            type: .failure,
+            appearance: .siteUpdate,
+            position: .bottom
+        )
+    }
+
+    /// 服务器删除成功后重置设备
+    private func resetNodeAfterServerDeletion() {
+        guard serverDeletionConfirmed,
+              destructiveOperationState == .resettingAfterServerDeletion else {
+            return
+        }
+        self.deleteNodes(nodes: [node], forceDeleteMessage: "gateway_force_delete_message".localizedString, forceDeleteNote: "gateway_force_delete_note".localizedString) {[weak self] successNodes, _ in
             guard let self = self else { return }
             if successNodes.contains(where: { $0.primaryUnicastAddress == self.node.primaryUnicastAddress }) {
-//                self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
-//                self.space.luminairesCount = MeshNetworkManager.instance.lightNodes.count
-//                self.space.save()
                 DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {
-//                    NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
-                    // 通知space数据修改
-//                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
                     self.gatewayModel.delete()
+                    self.serverDeletionConfirmed = false
+                    self.destructiveOperationState = .idle
                     self.closeGatewayPage()
                     NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
                 }
             }else {
-                if authorize {
-                    // 通知网关数据修改
-                    NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
-                }
+                self.serverDeletionConfirmed = false
+                self.destructiveOperationState = .idle
                 self.tableView.reloadData()
             }
         }

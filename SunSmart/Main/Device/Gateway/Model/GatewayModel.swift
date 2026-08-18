@@ -71,6 +71,10 @@ class GatewayModel: Copyable {
     var lastUpdate: Int64
     /// 最近上传到云端的时间
     var lastUploadCloudTimestamp: Int64?
+    /// 服务器已删除，等待蓝牙Reset或本地强制删除
+    var serverDeletionPendingLocalReset: Bool
+    /// 服务器删除请求进行中，仅用于阻止运行期注册竞态，不持久化
+    var isServerDeletionInProgress: Bool = false
     /// 同步服务器错误信息
     var syncCloudError: NetworkApiError?
     /// 网关最大关联space数量
@@ -120,7 +124,7 @@ class GatewayModel: Copyable {
 //    }
     
     
-    init(siteId: String, name: String, address: Address, mac: String, lastUpdate: Int64 = Int64(Date().timeIntervalSince1970), activate: Bool = false, associatedSpaces: [GatewaySpaceData] = [], apn: String? = nil, mqttServerInfo: GatewayInformation.MQTTConnectInformation? = nil) {
+    init(siteId: String, name: String, address: Address, mac: String, lastUpdate: Int64 = Int64(Date().timeIntervalSince1970), activate: Bool = false, associatedSpaces: [GatewaySpaceData] = [], apn: String? = nil, mqttServerInfo: GatewayInformation.MQTTConnectInformation? = nil, serverDeletionPendingLocalReset: Bool = false) {
         self.siteId = siteId
         self.name = name
         self.address = address
@@ -130,10 +134,11 @@ class GatewayModel: Copyable {
         self.apn = apn
         self.mqttServerInfo = mqttServerInfo
         self.lastUpdate = lastUpdate
+        self.serverDeletionPendingLocalReset = serverDeletionPendingLocalReset
     }
     
     func copy() -> Self {
-        return GatewayModel(siteId: self.siteId, name: self.name, address: self.address, mac: self.mac, lastUpdate: self.lastUpdate, activate: self.activate, associatedSpaces: self.associatedSpaces, apn: self.apn, mqttServerInfo: self.mqttServerInfo) as! Self
+        return GatewayModel(siteId: self.siteId, name: self.name, address: self.address, mac: self.mac, lastUpdate: self.lastUpdate, activate: self.activate, associatedSpaces: self.associatedSpaces, apn: self.apn, mqttServerInfo: self.mqttServerInfo, serverDeletionPendingLocalReset: self.serverDeletionPendingLocalReset) as! Self
     }
     
     static func == (lhs: GatewayModel, rhs: GatewayModel) -> Bool {

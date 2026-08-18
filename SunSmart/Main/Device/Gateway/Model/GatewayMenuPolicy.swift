@@ -11,6 +11,7 @@ enum GatewayMenuAction: Equatable {
     case delete
     case information
     case identify
+    case forceClearSpaces
 }
 
 enum GatewayBottomActionMode: Equatable {
@@ -22,7 +23,10 @@ struct GatewayMenuPolicy {
 
     static func menuActions(
         firmwareKind: GatewayFirmwareKind,
-        canDelete: Bool
+        canDelete: Bool,
+        isBluetoothOffline: Bool,
+        hasAssociatedSpaces: Bool,
+        canForceClearSpaces: Bool
     ) -> [GatewayMenuAction] {
         var actions: [GatewayMenuAction] = [
             firmwareKind == .wifi ? .wifiDFU : .fourGDFU
@@ -31,6 +35,9 @@ struct GatewayMenuPolicy {
             actions.append(.delete)
         }
         actions.append(contentsOf: [.information, .identify])
+        if isBluetoothOffline && hasAssociatedSpaces && canForceClearSpaces {
+            actions.append(.forceClearSpaces)
+        }
         return actions
     }
 

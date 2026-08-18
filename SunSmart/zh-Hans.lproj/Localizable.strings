@@ -2113,3 +2113,10 @@
 "site_sync_gateways_done" = "完成";
 "site_sync_gateways_failure_toast" = "%@ 同步失败，请重试。";
 "site_sync_gateways_success_toast" = "%@ 时区已更新。";
+"gateway_force_clear_spaces" = "强制清除空间关联";
+"gateway_force_clear_spaces_title" = "强制清除关联空间？";
+"gateway_force_clear_spaces_message" = "这将从服务器移除所有关联空间。空间将立即可绑定到其他网关。如果此网关重新上线，它会检测到没有关联并提示重新配置。";
+"gateway_force_clear_spaces_action" = "强制清除";
+"gateway_force_clear_spaces_success" = "已从服务器清除所有关联空间";
+"gateway_force_clear_spaces_failed" = "无法清除所有关联空间";
+"gateway_delete_server_failed" = "无法从服务器删除网关";

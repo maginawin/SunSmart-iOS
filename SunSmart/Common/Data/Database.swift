@@ -2965,6 +2965,7 @@ extension GatewayModel {
         static let lastUpdateTimestamp = Expression<Int64>("lastUpdateTimestamp")
         static let lastUploadCloudTimestamp = Expression<Int64?>("lastUploadCloudTimestamp")
         static let syncCloudError = Expression<Int?>("syncCloudError")
+        static let serverDeletionPendingLocalReset = Expression<Bool>("serverDeletionPendingLocalReset")
     }
     
     /// 初始化能耗静态统计数据信息表
@@ -2983,6 +2984,7 @@ extension GatewayModel {
             builder.column(ExpressionKey.lastUpdateTimestamp)
             builder.column(ExpressionKey.lastUploadCloudTimestamp)
             builder.column(ExpressionKey.syncCloudError)
+            builder.column(ExpressionKey.serverDeletionPendingLocalReset, defaultValue: false)
             builder.unique(ExpressionKey.siteUUID, ExpressionKey.macAddress)
         }))
         
@@ -3004,6 +3006,9 @@ extension GatewayModel {
             // 是否存在“syncCloudError”属性
             if !columns.contains(where: { $0.name == "syncCloudError" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(GatewayModel.gatewaysTable.addColumn(ExpressionKey.syncCloudError))
+            }
+            if !columns.contains(where: { $0.name == "serverDeletionPendingLocalReset" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(GatewayModel.gatewaysTable.addColumn(ExpressionKey.serverDeletionPendingLocalReset, defaultValue: false))
             }
         }
         
@@ -3081,7 +3086,7 @@ extension GatewayModel {
                     }
                 }
                 
-                let gateway = GatewayModel(siteId: siteId, name: row[ExpressionKey.name], address: address, mac: normalizedMac(row[ExpressionKey.macAddress]), lastUpdate: row[ExpressionKey.lastUpdateTimestamp], activate: row[ExpressionKey.activate], associatedSpaces: spaceDatas, apn: row[ExpressionKey.apn], mqttServerInfo: nil)
+                let gateway = GatewayModel(siteId: siteId, name: row[ExpressionKey.name], address: address, mac: normalizedMac(row[ExpressionKey.macAddress]), lastUpdate: row[ExpressionKey.lastUpdateTimestamp], activate: row[ExpressionKey.activate], associatedSpaces: spaceDatas, apn: row[ExpressionKey.apn], mqttServerInfo: nil, serverDeletionPendingLocalReset: row[ExpressionKey.serverDeletionPendingLocalReset])
                 
                 gateway.lastUploadCloudTimestamp = row[ExpressionKey.lastUploadCloudTimestamp]
                 if let errorCode = row[ExpressionKey.syncCloudError] {
@@ -3121,7 +3126,8 @@ extension GatewayModel {
             ExpressionKey.apn <- self.apn,
             ExpressionKey.associatedSpaces <- spacesData,
             ExpressionKey.mqttServerInfo <- mqttServerInfoData,
-            ExpressionKey.syncCloudError <- self.syncCloudError?.code
+            ExpressionKey.syncCloudError <- self.syncCloudError?.code,
+            ExpressionKey.serverDeletionPendingLocalReset <- self.serverDeletionPendingLocalReset
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)

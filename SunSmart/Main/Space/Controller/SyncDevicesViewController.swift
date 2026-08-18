@@ -1880,6 +1880,7 @@ class SyncDevicesViewController: UIViewController {
         initializeTask.parentStepModel = initializeStep
 
         var steps = [initializeStep]
+        var associationMutationSteps: [SyncDeviceStepModel] = []
         let associatedSpaceKeys = gateway.associatedSpaces.compactMap { space -> (GatewaySpaceData, NetworkKey, ApplicationKey)? in
             guard let networkKey = meshNetwork.networkKeys.first(where: { $0.index == space.appKeyIndex }),
                   let applicationKey = meshNetwork.applicationKeys.first(where: {
@@ -1915,6 +1916,53 @@ class SyncDevicesViewController: UIViewController {
             tasks.forEach { $0.parentStepModel = step }
             step.relevanceStepModels = [initializeStep]
             steps.append(step)
+            associationMutationSteps.append(step)
+        }
+
+        let desiredAppKeyIndexes = Set(
+            gateway.associatedSpaces.map(\.appKeyIndex)
+        )
+        let obsoleteAssociatedSpaceKeys = node.networkKeys
+            .filter { networkKey in
+                networkKey.isSecondary
+                    && !desiredAppKeyIndexes.contains(networkKey.index)
+            }
+            .compactMap { networkKey -> (NetworkKey, ApplicationKey)? in
+                guard let applicationKey = meshNetwork.applicationKeys.first(where: {
+                    $0.index == networkKey.index
+                        && $0.boundNetworkKeyIndex == networkKey.index
+                }) else {
+                    return nil
+                }
+                return (networkKey, applicationKey)
+            }
+
+        if !obsoleteAssociatedSpaceKeys.isEmpty {
+            let tasks = obsoleteAssociatedSpaceKeys.map { networkKey, applicationKey in
+                let spaceName = SpaceData.load(
+                    subNetworkId: networkKey.networkId.hex
+                )?.name ?? "space".localizedString
+                return SyncDeviceStepTaskModel(
+                    name: spaceName,
+                    operationType: .delete(
+                        node: node,
+                        type: .gatewayUnbindAssociatedSpace(
+                            networkKey: networkKey,
+                            applicationKey: applicationKey,
+                            activate: gateway.activate
+                        )
+                    )
+                )
+            }
+            let step = SyncDeviceStepModel(
+                type: "unbind_associated_spaces".localizedString,
+                state: .none,
+                tasks: tasks
+            )
+            tasks.forEach { $0.parentStepModel = step }
+            step.relevanceStepModels = [initializeStep]
+            steps.append(step)
+            associationMutationSteps.append(step)
         }
 
         let projectTask = SyncDeviceStepTaskModel(
@@ -1949,7 +1997,7 @@ class SyncDevicesViewController: UIViewController {
             tasks: [syncSpacesTask]
         )
         syncSpacesTask.parentStepModel = syncSpacesStep
-        syncSpacesStep.relevanceStepModels = [initializeStep]
+        syncSpacesStep.relevanceStepModels = [initializeStep] + associationMutationSteps
         steps.append(syncSpacesStep)
 
         if node.isWiFiGateway {

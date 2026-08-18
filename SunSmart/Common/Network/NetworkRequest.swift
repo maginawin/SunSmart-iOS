@@ -32,7 +32,10 @@ class NetworkRequest: NSObject {
 //        return session
 //    }()
     
-    lazy var provider = MoyaProvider<NetowrkReqeustApi>(requestClosure: requestClosure, plugins: [NetworkLoggerPlugin()])
+    lazy var provider = MoyaProvider<NetowrkReqeustApi>(
+        requestClosure: requestClosure,
+        plugins: [NetworkRequestTimeoutPlugin(), NetworkLoggerPlugin()]
+    )
     /// 手机是否联网
     @objc dynamic var networkable: Bool = false
     
@@ -79,6 +82,32 @@ class NetworkRequest: NSObject {
             self.request(target) { result in
                 continuation.resume(returning: result)
             }
+        }
+    }
+
+    @discardableResult func request(
+        _ target: NetowrkReqeustApi,
+        maximumDuration: TimeInterval
+    ) async -> Result<[String: Any], NetworkApiError> {
+        guard maximumDuration > 0 else {
+            return .failure(.requestTimeout)
+        }
+        return await withCheckedContinuation { continuation in
+            let gate = NetworkTimedRequestGate { result in
+                continuation.resume(returning: result)
+            }
+            let timeoutWorkItem = DispatchWorkItem {
+                gate.finish(with: .failure(.requestTimeout))
+            }
+            gate.install(timeoutWorkItem: timeoutWorkItem)
+            let cancellable = self.request(target) { result in
+                gate.finish(with: result)
+            }
+            gate.install(cancellable: cancellable)
+            DispatchQueue.global(qos: .utility).asyncAfter(
+                deadline: .now() + maximumDuration,
+                execute: timeoutWorkItem
+            )
         }
     }
     
@@ -218,6 +247,73 @@ class NetworkRequest: NSObject {
                 
     }
     
+}
+
+private struct NetworkRequestTimeoutPlugin: PluginType {
+    func prepare(_ request: URLRequest, target: TargetType) -> URLRequest {
+        guard let api = target as? NetowrkReqeustApi else {
+            return request
+        }
+        var request = request
+        request.timeoutInterval = api.requestTimeoutInterval
+        return request
+    }
+}
+
+private final class NetworkTimedRequestGate {
+    typealias ResultType = Result<[String: Any], NetworkApiError>
+
+    private let lock = NSLock()
+    private let completion: (ResultType) -> Void
+    private var cancellable: Cancellable?
+    private var timeoutWorkItem: DispatchWorkItem?
+    private var didFinish = false
+
+    init(completion: @escaping (ResultType) -> Void) {
+        self.completion = completion
+    }
+
+    func install(cancellable: Cancellable) {
+        lock.lock()
+        if didFinish {
+            lock.unlock()
+            cancellable.cancel()
+            return
+        }
+        self.cancellable = cancellable
+        lock.unlock()
+    }
+
+    func install(timeoutWorkItem: DispatchWorkItem) {
+        lock.lock()
+        if didFinish {
+            lock.unlock()
+            timeoutWorkItem.cancel()
+            return
+        }
+        self.timeoutWorkItem = timeoutWorkItem
+        lock.unlock()
+    }
+
+    func finish(with result: ResultType) {
+        lock.lock()
+        guard !didFinish else {
+            lock.unlock()
+            return
+        }
+        didFinish = true
+        let cancellable = self.cancellable
+        let timeoutWorkItem = self.timeoutWorkItem
+        self.cancellable = nil
+        self.timeoutWorkItem = nil
+        lock.unlock()
+
+        timeoutWorkItem?.cancel()
+        if case .failure(.requestTimeout) = result {
+            cancellable?.cancel()
+        }
+        completion(result)
+    }
 }
 
 private extension NetworkRequest {

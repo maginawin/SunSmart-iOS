@@ -316,6 +316,9 @@ class CloudSynchronizationManager {
                 }
             case .cancel:
                 self.delegate?.cloudSyncManager(self, cancelSyncHandle: resultHandle)
+                self.mutex.sync {
+                    self.syncHandles.removeAll(where: { $0 == resultHandle })
+                }
             }
         })
 //        DispatchQueue.global().async {
@@ -330,14 +333,17 @@ class CloudSynchronizationManager {
     }
     
     /// 取消同步操作
-    func cancelSynchronizationHandle(operation: SyncOperation) {
+    @discardableResult
+    func cancelSynchronizationHandle(operation: SyncOperation) -> Bool {
         
         if let lastHandleIndex = syncHandles.firstIndex(where: { $0.operation == operation }) {
             syncHandles[lastHandleIndex].cancel()
             self.mutex.sync {
                _ = syncHandles.remove(at: lastHandleIndex)
             }
+            return true
         }
+        return false
     }
     
     /// 取消site相关的同步操作
@@ -682,6 +688,15 @@ class CloudSynchronizationHandle: NSObject {
     func syncOperation() {
         if waitTimer != nil {
             stopTimewait()
+        }
+        if case .syncGateway(let gateway, _) = operation,
+           (gateway.isServerDeletionInProgress ||
+            gateway.serverDeletionPendingLocalReset) {
+            state = .cancel
+            DispatchQueue.main.async {
+                self.handleCallback?(self, self.state)
+            }
+            return
         }
         state = .inProgress
         DispatchQueue.main.async {

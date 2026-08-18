@@ -135,6 +135,8 @@ enum NetowrkReqeustApi {
     case gatewayBindSpace(spaceId: String, gatewayId: String)
     /// 网关解绑space
     case gatewayUnbindSpace(spaceId: String, gatewayId: String)
+    /// 原子清空网关关联的所有space（请求体必须省略spaceId）
+    case gatewayUnbindAllSpaces(gatewayId: String)
     /// 网关注册
 //    case gatewayRegister(gatewayId: String)
     case gatewayRegister(siteId: String, gatewayId: String, nodeId: String, node: [String: Any], updateTimestamp: Int64)
@@ -192,11 +194,21 @@ extension NetowrkReqeustApi {
         case .gatewayList: return "gatewayList"
         case .gatewayBindSpace: return "gatewayBindSpace"
         case .gatewayUnbindSpace: return "gatewayUnbindSpace"
+        case .gatewayUnbindAllSpaces: return "gatewayUnbindAllSpaces"
         case .gatewayRegister: return "gatewayRegister"
         case .gatewayDelete: return "gatewayDelete"
         case .gatewayAssociationSpaceList: return "gatewayAssociationSpaceList"
         case .gatewayDateTimeUpdate: return "gatewayDateTimeUpdate"
         case .gatewayDateTimeRequestStatus: return "gatewayDateTimeRequestStatus"
+        }
+    }
+
+    var requestTimeoutInterval: TimeInterval {
+        switch self {
+        case .gatewayUnbindAllSpaces, .gatewayDelete:
+            return 30
+        default:
+            return 10
         }
     }
 
@@ -335,7 +347,7 @@ extension NetowrkReqeustApi: TargetType {
             return "/sitespace/site/gateways"
         case .gatewayBindSpace:
             return "/sitespace/sapce/gateway/bind"
-        case .gatewayUnbindSpace:
+        case .gatewayUnbindSpace, .gatewayUnbindAllSpaces:
             return "/sitespace/sapce/gateway/unbind"
         case .gatewayRegister:
             return "/sitespace/sapce/gateway/regist"
@@ -557,6 +569,8 @@ extension NetowrkReqeustApi: TargetType {
             return ["spaceId": spaceId, "gatewayId": gatewayId, "userId": UserData.currentUserId]
         case .gatewayUnbindSpace(let spaceId, let gatewayId):
             return ["spaceId": spaceId, "gatewayId": gatewayId, "userId": UserData.currentUserId]
+        case .gatewayUnbindAllSpaces(let gatewayId):
+            return ["gatewayId": gatewayId, "userId": UserData.currentUserId]
 //        case .gatewayRegister(let gatewayId):
 //            return ["gatewayId": gatewayId, "userId": UserData.currentUserId]
         case .gatewayRegister(let siteId, let gatewayId, let nodeId, let node, let updateTimestamp):

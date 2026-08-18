@@ -400,6 +400,8 @@ self.updateAddressData()
         NotificationCenter.default.addObserver(forName: .init(siteGatewayDataChangedNotificaitonName), object: nil, queue: nil) {[weak self] notification in
             guard let self = self else { return }
             guard let gateway = notification.object as? Gateway else { return }
+            guard !gateway.model.isServerDeletionInProgress,
+                  !gateway.model.serverDeletionPendingLocalReset else { return }
             gateway.model.lastUpdate = Int64(Date().timeIntervalSince1970)
             gateway.model.save()
             CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncGateway(gateway: gateway.model, node: gateway.node), level: .promptly)
@@ -1339,7 +1341,9 @@ self.updateAddressData()
 
     private func retryDirtyGatewayCloudUploads() {
         gatewayModels.forEach { gateway in
-            guard gateway.model.needUploadCloud,
+            guard !gateway.model.isServerDeletionInProgress,
+                  !gateway.model.serverDeletionPendingLocalReset,
+                  gateway.model.needUploadCloud,
                   let id = SiteGatewayAccessScope.normalize(gateway.mac) else {
                 return
             }
