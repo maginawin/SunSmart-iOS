@@ -103,7 +103,9 @@ class ToastStatusView: UIView {
         messageLabel.text = message
         messageLabel.font = .systemFont(ofSize: 13, weight: .medium)
         messageLabel.textColor = .white
-        messageLabel.numberOfLines = 2
+        messageLabel.numberOfLines = 0
+        messageLabel.lineBreakMode = .byWordWrapping
+        messageLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 //        messageLabel.textAlignment = .center
 
         stackView.axis = .horizontal
@@ -124,9 +126,9 @@ class ToastStatusView: UIView {
         stackView.snp.makeConstraints { make in
 //            make.leading.trailing.equalToSuperview().inset(16)
             make.width.lessThanOrEqualToSuperview().offset(-32)
-            make.top.greaterThanOrEqualToSuperview().offset(12)
-            make.bottom.greaterThanOrEqualToSuperview().offset(-12)
-            make.center.equalToSuperview()
+            make.top.equalToSuperview().offset(12)
+            make.bottom.equalToSuperview().offset(-12)
+            make.centerX.equalToSuperview()
         }
     }
 
@@ -171,7 +173,9 @@ class ToastStatusView: UIView {
         messageLabel.font = font
         messageLabel.textColor = .white
         messageLabel.textAlignment = .center
-        messageLabel.numberOfLines = 1
+        messageLabel.numberOfLines = 0
+        messageLabel.lineBreakMode = .byWordWrapping
+        messageLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         stackView.axis = .horizontal
         stackView.spacing = 10
@@ -183,13 +187,12 @@ class ToastStatusView: UIView {
         iconContainerView.snp.makeConstraints { make in
             make.size.equalTo(30)
         }
-        messageLabel.snp.makeConstraints { make in
-            make.height.equalTo(22)
-        }
         stackView.snp.makeConstraints { make in
-            make.center.equalToSuperview()
+            make.centerX.equalToSuperview()
             make.leading.greaterThanOrEqualToSuperview().offset(22)
             make.trailing.lessThanOrEqualToSuperview().offset(-22)
+            make.top.equalToSuperview().offset(7)
+            make.bottom.equalToSuperview().offset(-7)
         }
     }
 
@@ -214,16 +217,15 @@ class ToastStatusView: UIView {
         toast.snp.makeConstraints { make in
 //            make.centerX.equalToSuperview()
 //            make.width.lessThanOrEqualToSuperview().multipliedBy(0.85)
+            make.height.greaterThanOrEqualTo(44)
             switch appearance {
             case .standard:
                 make.left.equalTo(SCRXFrom(20))
                 make.right.equalTo(SCRXFrom(-20))
-                make.height.greaterThanOrEqualTo(44)
             case .siteUpdate:
                 make.centerX.equalToSuperview()
                 make.width.equalToSuperview().offset(-32).priority(.high)
                 make.width.lessThanOrEqualTo(343)
-                make.height.equalTo(44)
             }
 
             switch position {

@@ -7,6 +7,11 @@ struct GatewayAssociatedSpaceCandidatePolicyTests {
         testNonEditableSpaceDoesNotCauseDataFailure()
         testSpaceBoundToAnotherGatewayIsExcluded()
         testCurrentGatewayMatchIsCaseInsensitive()
+        testMutationRejectsChangedServerTopology()
+        testEditorCanOnlyMutateEditableSpaces()
+        testOwnerCanMutateAnySpace()
+        testDestructiveAccessRequiresAllAssociations()
+        testSubnetIndexesUseCompleteAssociatedSpaces()
         print("GatewayAssociatedSpaceCandidatePolicyTests passed")
     }
 
@@ -112,6 +117,101 @@ struct GatewayAssociatedSpaceCandidatePolicyTests {
             result == .available([
                 .init(spaceId: "space-1", appKeyIndex: 7),
             ])
+        )
+    }
+
+    private static func testMutationRejectsChangedServerTopology() {
+        let result = GatewayAssociatedSpaceMutationPolicy.resolve(
+            isOwner: false,
+            baselineSpaceIDs: ["space-1"],
+            latestServerSpaceIDs: ["space-1", "space-2"],
+            requestedSpaceIDs: ["space-1"],
+            editableSpaceIDs: ["space-1"]
+        )
+        precondition(result == .topologyChanged)
+    }
+
+    private static func testEditorCanOnlyMutateEditableSpaces() {
+        let allowed = GatewayAssociatedSpaceMutationPolicy.resolve(
+            isOwner: false,
+            baselineSpaceIDs: ["locked", "editable"],
+            latestServerSpaceIDs: ["locked", "editable"],
+            requestedSpaceIDs: ["locked", "new"],
+            editableSpaceIDs: ["editable", "new"]
+        )
+        precondition(
+            allowed == .allowed(
+                .init(
+                    additionSpaceIDs: ["new"],
+                    removalSpaceIDs: ["editable"]
+                )
+            )
+        )
+
+        let denied = GatewayAssociatedSpaceMutationPolicy.resolve(
+            isOwner: false,
+            baselineSpaceIDs: ["locked", "editable"],
+            latestServerSpaceIDs: ["locked", "editable"],
+            requestedSpaceIDs: ["editable"],
+            editableSpaceIDs: ["editable"]
+        )
+        precondition(denied == .denied)
+    }
+
+    private static func testOwnerCanMutateAnySpace() {
+        let result = GatewayAssociatedSpaceMutationPolicy.resolve(
+            isOwner: true,
+            baselineSpaceIDs: ["space-1"],
+            latestServerSpaceIDs: ["space-1"],
+            requestedSpaceIDs: ["space-2"],
+            editableSpaceIDs: []
+        )
+        precondition(
+            result == .allowed(
+                .init(
+                    additionSpaceIDs: ["space-2"],
+                    removalSpaceIDs: ["space-1"]
+                )
+            )
+        )
+    }
+
+    private static func testDestructiveAccessRequiresAllAssociations() {
+        precondition(
+            GatewayDestructiveAccessPolicy.canPerform(
+                isOwner: true,
+                hasAnyEditableSiteSpace: false,
+                associatedSpaceEditableStates: [false]
+            )
+        )
+        precondition(
+            !GatewayDestructiveAccessPolicy.canPerform(
+                isOwner: false,
+                hasAnyEditableSiteSpace: true,
+                associatedSpaceEditableStates: [true, false]
+            )
+        )
+        precondition(
+            GatewayDestructiveAccessPolicy.canPerform(
+                isOwner: false,
+                hasAnyEditableSiteSpace: true,
+                associatedSpaceEditableStates: []
+            )
+        )
+    }
+
+    private static func testSubnetIndexesUseCompleteAssociatedSpaces() {
+        precondition(
+            GatewaySubnetAppKeyIndexPolicy.desiredIndexes(
+                isActivated: true,
+                associatedSpaceIndexes: [2, 1, 2]
+            ) == [1, 2]
+        )
+        precondition(
+            GatewaySubnetAppKeyIndexPolicy.desiredIndexes(
+                isActivated: false,
+                associatedSpaceIndexes: [1, 2]
+            ).isEmpty
         )
     }
 }

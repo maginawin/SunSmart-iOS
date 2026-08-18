@@ -115,12 +115,15 @@ class GatewayViewController: UIViewController, DeviceProtocol {
               !setGatewayModel.associatedSpaces.isEmpty else {
             return false
         }
-        if site.permission == .owner {
-            return true
-        }
-        return setGatewayModel.associatedSpaces.allSatisfy {
-            $0.permission == .editor
-        }
+        return GatewayDestructiveAccessPolicy.canPerform(
+            isOwner: site.permission == .owner,
+            hasAnyEditableSiteSpace: site.spaces.contains(
+                where: \.canEditGatewayAssociation
+            ),
+            associatedSpaceEditableStates: setGatewayModel.associatedSpaces.map {
+                $0.permission == .editor
+            }
+        )
     }
 
     var supportsAPNConfiguration: Bool {
@@ -655,19 +658,11 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                     return nil
                 }
                 let gatewaySpace = GatewaySpaceData(spaceId: spaceId, spaceName: spaceName, deviceCount: deviceCount, appKeyIndex: appKeyIndex)
-                if let space = SpaceData.load(siteId: self.gatewayModel.siteId, spaceId: spaceId).first {
-                    if space.canEditing && space.deviceOperates.contains(.edit) {
-                        gatewaySpace.permission = .editor
-                    }else {
-                        if space.state == .waitDeleted {
-                            gatewaySpace.permission = .permissionLoss
-                        }else if space.requiresPasswordVerification {
-                            gatewaySpace.permission = .permissionException
-                        }else {
-                            gatewaySpace.permission = .none
-                        }
-                    }
-                }
+                let space = SpaceData.load(
+                    siteId: self.gatewayModel.siteId,
+                    spaceId: spaceId
+                ).first
+                gatewaySpace.updatePermission(from: space)
                 return gatewaySpace
             }
             return .success(bindSpaces)
@@ -917,16 +912,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
 
     private func saveAssociatedSpacesIfNeeded() async -> AssociatedSpacesSaveResult {
-        let oldSpaces = gatewayModel.associatedSpaces
-        let newSpaces = setGatewayModel.associatedSpaces
-        let addSpaces = newSpaces.filter { newSpace in
-            !oldSpaces.contains(where: { $0.spaceId == newSpace.spaceId })
-        }
-        let unbindSpaces = oldSpaces.filter { oldSpace in
-            !newSpaces.contains(where: { $0.spaceId == oldSpace.spaceId })
-        }
-
-        guard !addSpaces.isEmpty || !unbindSpaces.isEmpty else {
+        let baselineSpaces = gatewayModel.associatedSpaces
+        let requestedSpaces = setGatewayModel.associatedSpaces
+        guard Set(baselineSpaces.map(\.spaceId)) !=
+                Set(requestedSpaces.map(\.spaceId)) else {
             return .init(succeeded: true, topologyChanged: false)
         }
         guard NetworkRequest.shared.networkable else {
@@ -934,14 +923,68 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             return .init(succeeded: false, topologyChanged: false)
         }
 
-        var topologyChanged = false
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+        let latestSpaces: [GatewaySpaceData]
+        switch await loadAssociatedSpaces() {
+        case .success(let spaces):
+            latestSpaces = spaces
+        case .failure(let error):
+            XWHUDManager.hide()
+            XWHUDManager.showErrorTipHUD(error.localizedDescription)
+            return .init(succeeded: false, topologyChanged: false)
+        }
+
+        let editableSpaceIDs = Set(
+            site.spaces
+                .filter(\.canEditGatewayAssociation)
+                .map(\.id)
+        )
+        let mutationResolution = GatewayAssociatedSpaceMutationPolicy.resolve(
+            isOwner: site.permission == .owner,
+            baselineSpaceIDs: baselineSpaces.map(\.spaceId),
+            latestServerSpaceIDs: latestSpaces.map(\.spaceId),
+            requestedSpaceIDs: requestedSpaces.map(\.spaceId),
+            editableSpaceIDs: editableSpaceIDs
+        )
+
+        let mutationPlan: GatewayAssociatedSpaceMutationPlan
+        switch mutationResolution {
+        case .allowed(let plan):
+            mutationPlan = plan
+        case .topologyChanged:
+            applyAuthoritativeAssociatedSpaces(latestSpaces)
+            XWHUDManager.hide()
+            XWHUDManager.showTipHUD(
+                "gateway_associated_spaces_changed_message".localizedString,
+                isLineFeed: true,
+                afterDelay: 1.5
+            )
+            return .init(succeeded: false, topologyChanged: true)
+        case .denied:
+            applyAuthoritativeAssociatedSpaces(latestSpaces)
+            XWHUDManager.hide()
+            XWHUDManager.showErrorTipHUD("no_permission".localizedString)
+            return .init(succeeded: false, topologyChanged: false)
+        }
+
+        let addSpaces = mutationPlan.additionSpaceIDs.compactMap { spaceID in
+            requestedSpaces.first(where: {
+                $0.spaceId.caseInsensitiveCompare(spaceID) == .orderedSame
+            })
+        }
+        let unbindSpaces = mutationPlan.removalSpaceIDs.compactMap { spaceID in
+            latestSpaces.first(where: {
+                $0.spaceId.caseInsensitiveCompare(spaceID) == .orderedSame
+            })
+        }
+        var topologyChanged = false
         for space in addSpaces {
             let result = await NetworkRequest.shared.request(.gatewayBindSpace(spaceId: space.spaceId, gatewayId: gateway.mac))
             switch result {
             case .success:
                 topologyChanged = true
             case .failure(let error):
+                await reconcileAssociatedSpacesAfterPartialSave()
                 XWHUDManager.hide()
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
                 return .init(
@@ -956,6 +999,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             case .success:
                 topologyChanged = true
             case .failure(let error):
+                await reconcileAssociatedSpacesAfterPartialSave()
                 XWHUDManager.hide()
                 XWHUDManager.showErrorTipHUD(error.localizedDescription)
                 return .init(
@@ -966,6 +1010,24 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         }
         XWHUDManager.hide()
         return .init(succeeded: true, topologyChanged: topologyChanged)
+    }
+
+    private func reconcileAssociatedSpacesAfterPartialSave() async {
+        guard case .success(let spaces) = await loadAssociatedSpaces() else {
+            return
+        }
+        applyAuthoritativeAssociatedSpaces(spaces)
+    }
+
+    private func applyAuthoritativeAssociatedSpaces(
+        _ spaces: [GatewaySpaceData]
+    ) {
+        gatewayModel.associatedSpaces = spaces
+        setGatewayModel.associatedSpaces = spaces
+        gatewayModel.save()
+        reloadSection(.associatedSpaces)
+        reloadSection(.name)
+        updateSaveBtnState()
     }
 
     private func showForceClearAssociatedSpacesConfirmation() {
@@ -1079,7 +1141,15 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         }
         switch await loadAssociatedSpaces(maximumDuration: remainingDuration) {
         case .success(let spaces):
-            return spaces.allSatisfy { $0.permission == .editor }
+            return GatewayDestructiveAccessPolicy.canPerform(
+                isOwner: site.permission == .owner,
+                hasAnyEditableSiteSpace: site.spaces.contains(
+                    where: \.canEditGatewayAssociation
+                ),
+                associatedSpaceEditableStates: spaces.map {
+                    $0.permission == .editor
+                }
+            )
                 ? .allowed
                 : .denied
         case .failure:
@@ -1244,7 +1314,17 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
 
             // 判断网关是否注册mqtt服务
-            if self.gatewayModel.mqttServerInfo == nil, let nodeDict = await node.export() {
+            if self.gatewayModel.mqttServerInfo == nil,
+               let localNodeDict = await node.export() {
+                let nodeDict = GatewayRegistrationPayloadPolicy
+                    .mergeOpaqueAssociationData(
+                        localNode: localNodeDict,
+                        remoteNode: gatewayModel.registrationProtectionSnapshot?.nodeData,
+                        associatedAppKeyIndexes: gatewayModel.associatedSpaces.map(
+                            \.appKeyIndex
+                        ),
+                        isActivated: gatewayModel.activate
+                    )
                 let gatewayRegisterResult = await NetworkRequest.shared.request(.gatewayRegister(siteId: self.site.id, gatewayId: self.gateway.mac, nodeId: self.node.uuid.uuidString, node: nodeDict, updateTimestamp: self.gateway.lastUpdate))
                 switch gatewayRegisterResult {
                 case .success(let response):
@@ -1421,7 +1501,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         let candidateInputs = site.spaces.map { space in
             GatewayAssociatedSpaceCandidateInput(
                 spaceId: space.id,
-                canEdit: space.canEditing && space.deviceOperates.contains(.edit),
+                canEdit: space.canEditGatewayAssociation,
                 associatedGatewayId: space.relevanceGatewayId,
                 meshNetworkId: space.meshNetworkId
             )

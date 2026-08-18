@@ -90,6 +90,15 @@ enum SyncOperation {
         case .syncGateway(let gateway, let node):
             var nodeDict = await node.export()
             if nodeDict != nil {
+                nodeDict = GatewayRegistrationPayloadPolicy
+                    .mergeOpaqueAssociationData(
+                        localNode: nodeDict ?? [:],
+                        remoteNode: gateway.registrationProtectionSnapshot?.nodeData,
+                        associatedAppKeyIndexes: gateway.associatedSpaces.map(
+                            \.appKeyIndex
+                        ),
+                        isActivated: gateway.activate
+                    )
                 let gatewayPreconfigured: [String: Any] = gateway.export()
                 nodeDict?.updateValue(gatewayPreconfigured, forKey: "gatewayPreconfigured")
             }

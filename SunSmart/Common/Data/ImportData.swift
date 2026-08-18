@@ -527,7 +527,6 @@ extension SiteData {
                 
                 // 服务器网关数据（按mac去重）
                 var serverByMac: [String: [String: Any]] = [:]
-                var serverUpdateByMac: [String: Int64] = [:]
                 gatewayDicts.forEach { data in
                     guard let mac = data["macAddress"] as? String, !mac.isEmpty else {
                         return
@@ -538,36 +537,211 @@ extension SiteData {
                     }
                     let key = mac.lowercased()
                     serverByMac[key] = data
-                    serverUpdateByMac[key] = Int64(data["updateTimestamp"] as? Int ?? 0)
                 }
                 
-                // 服务器不存在的网关，删除本地缓存
-                cacheByMac.forEach { mac, cacheGateway in
-                    if cacheGateway.lastUploadCloudTimestamp != nil && serverByMac[mac] == nil {
-                        if let node = network.nodes.first(where: { $0.primaryUnicastAddress == cacheGateway.address }) {
-                            network.forceRemove(node: node)
-                        }else {
-                            Node.delete(meshUUID: self.meshUUID, address: cacheGateway.address)
+                // 只有Owner响应才是完整Gateway快照，Editor/Visitor缺失项不能用于删除本地Node。
+                if gatewaySnapshot.isComplete {
+                    cacheByMac.forEach { mac, cacheGateway in
+                        if cacheGateway.lastUploadCloudTimestamp != nil &&
+                            serverByMac[mac] == nil {
+                            if let node = network.nodes.first(where: {
+                                $0.primaryUnicastAddress == cacheGateway.address
+                            }) {
+                                network.forceRemove(node: node)
+                            } else {
+                                Node.delete(
+                                    meshUUID: self.meshUUID,
+                                    address: cacheGateway.address
+                                )
+                            }
+                            GatewayModel.delete(
+                                siteId: self.id,
+                                macAddress: cacheGateway.mac
+                            )
                         }
-                        GatewayModel.delete(siteId: self.id, macAddress: cacheGateway.mac)
                     }
                 }
                 
-                // 服务器新数据覆盖本地；新增网关直接导入（判断依据：GatewayModel.lastUpdate）
+                // 新Gateway直接导入；已有Gateway按dirty、生命周期和可选远端版本决策。
+                // 远端不返回Gateway版本时，对clean缓存执行幂等字段级合并。
                 for (mac, gatewayData) in serverByMac {
-                    let serverUpdate = serverUpdateByMac[mac] ?? 0
-                    let cacheUpdate = cacheByMac[mac]?.lastUpdate ?? 0
-                    let shouldReplace = cacheByMac[mac] == nil || serverUpdate > cacheUpdate
-                    guard shouldReplace else {
-                        continue
-                    }
-                    
+                    let cloudPatch = GatewayCloudConfigurationPatch(
+                        nodePayload: gatewayData
+                    )
                     guard let serverNode = await Node.import(siteId: uuid, nodeJsonData: gatewayData),
-                          let gateway = GatewayModel.import(siteId: self.id, node: serverNode, gatewayPreconfigured: gatewayData["gatewayPreconfigured"] as? [String: Any]) else {
+                          let remoteGateway = GatewayModel.import(
+                            siteId: self.id,
+                            node: serverNode,
+                            gatewayPreconfigured: gatewayData["gatewayPreconfigured"] as? [String: Any]
+                          ) else {
                         continue
                     }
+
+                    remoteGateway.associatedSpaces.forEach { gatewaySpace in
+                        gatewaySpace.updatePermission(
+                            from: self.spaces.first(where: {
+                                $0.id.caseInsensitiveCompare(gatewaySpace.spaceId) == .orderedSame
+                            })
+                        )
+                    }
+
+                    let cacheGateway = cacheByMac[mac]
+                    let cacheNode = cacheGateway.flatMap { cachedGateway in
+                        network.nodes.first(where: {
+                            $0.primaryUnicastAddress == cachedGateway.address
+                        })
+                    }
+                    let identityChanged = (cacheGateway != nil && cacheNode == nil) ||
+                        GatewayCloudSnapshotMergePolicy.identityChanged(
+                            localUUID: cacheNode?.uuid.uuidString,
+                            localAddress: cacheNode?.primaryUnicastAddress,
+                            localDeviceKey: cacheNode?.deviceKey?.hex,
+                            remoteUUID: serverNode.uuid.uuidString,
+                            remoteAddress: serverNode.primaryUnicastAddress,
+                            remoteDeviceKey: serverNode.deviceKey?.hex
+                        )
+                    let remoteUpdateTimestamp = JSON(gatewayData)["updateTimestamp"].int64
+                    let decision = GatewayCloudSnapshotMergePolicy.resolve(
+                        hasLocalGateway: cacheGateway != nil,
+                        localNeedsUpload: cacheGateway?.needUploadCloud ?? false,
+                        uploadInProgress: cacheGateway.map {
+                            CloudSynchronizationManager.shared
+                                .getGatewayCurrentSyncState($0) != nil
+                        } ?? false,
+                        deletionInProgress: cacheGateway.map {
+                            $0.isServerDeletionInProgress ||
+                                $0.serverDeletionPendingLocalReset
+                        } ?? false,
+                        identityChanged: identityChanged,
+                        remoteUpdateTimestamp: remoteUpdateTimestamp,
+                        localUpdateTimestamp: cacheGateway?.lastUpdate ?? 0
+                    )
+                    let canUpdateRegistrationSnapshot =
+                        GatewayCloudSnapshotMergePolicy
+                            .canUpdateRegistrationSnapshot(
+                                decision: decision,
+                                identityChanged: identityChanged
+                            )
+                    let registrationProtectionSnapshot =
+                        canUpdateRegistrationSnapshot
+                        ? GatewayRegistrationProtectionSnapshot.updating(
+                            current: cacheGateway?.registrationProtectionSnapshot,
+                            remoteNode: gatewayData,
+                            resetExisting: identityChanged,
+                            responseIsComplete: gatewaySnapshot.isComplete
+                        )
+                        : cacheGateway?.registrationProtectionSnapshot
+                    let registrationSnapshotChanged =
+                        cacheGateway?.registrationProtectionSnapshot !=
+                            registrationProtectionSnapshot
+                    remoteGateway.registrationProtectionSnapshot =
+                        registrationProtectionSnapshot
+                    cacheGateway?.registrationProtectionSnapshot =
+                        registrationProtectionSnapshot
+
+                    switch decision {
+                    case .preserveLocal:
+                        if registrationSnapshotChanged {
+                            cacheGateway?.save()
+                        }
+                        continue
+
+                    case .mergeFields:
+                        guard let cacheGateway, let cacheNode else {
+                            continue
+                        }
+                        let gatewayChanged = cacheGateway.apply(
+                            cloudPatch: cloudPatch,
+                            siteSpaces: self.spaces,
+                            responseIsComplete: gatewaySnapshot.isComplete
+                        )
+                        if gatewayChanged || registrationSnapshotChanged {
+                            cacheGateway.save()
+                        }
+
+                        var nodeChanged = false
+                        if case .value(let remoteName) = cloudPatch.name,
+                           cacheNode.name != remoteName {
+                            cacheNode.name = remoteName
+                            nodeChanged = true
+                        }
+                        if let rawGatewayInfo =
+                            gatewayData["gatewayInfo"] as? [String: Any],
+                           let remoteGatewayInfo = serverNode.gatewayInfo {
+                            if let localGatewayInfo = cacheNode.gatewayInfo {
+                                let remoteProjectId = rawGatewayInfo["projectId"]
+                                if rawGatewayInfo.keys.contains("projectId"),
+                                   remoteProjectId is String ||
+                                    gatewaySnapshot.isComplete &&
+                                    remoteProjectId is NSNull,
+                                   localGatewayInfo.projectId !=
+                                    remoteGatewayInfo.projectId {
+                                    localGatewayInfo.projectId =
+                                        remoteGatewayInfo.projectId
+                                    nodeChanged = true
+                                }
+                                if rawGatewayInfo["subnetAppkeyIndexs"] is [Any],
+                                   localGatewayInfo.subnetAppkeyIndexs.sorted() !=
+                                    (gatewaySnapshot.isComplete
+                                     ? remoteGatewayInfo.subnetAppkeyIndexs
+                                     : Array(
+                                        Set(localGatewayInfo.subnetAppkeyIndexs)
+                                            .union(
+                                                remoteGatewayInfo
+                                                    .subnetAppkeyIndexs
+                                            )
+                                     )).sorted() {
+                                    localGatewayInfo.subnetAppkeyIndexs =
+                                        gatewaySnapshot.isComplete
+                                        ? remoteGatewayInfo.subnetAppkeyIndexs
+                                        : Array(
+                                            Set(localGatewayInfo.subnetAppkeyIndexs)
+                                                .union(
+                                                    remoteGatewayInfo
+                                                        .subnetAppkeyIndexs
+                                                )
+                                        ).sorted()
+                                    nodeChanged = true
+                                }
+                                let remoteMQTT =
+                                    rawGatewayInfo["mqttConnectInfo"]
+                                if rawGatewayInfo.keys.contains("mqttConnectInfo"),
+                                   remoteMQTT is [String: Any] ||
+                                    gatewaySnapshot.isComplete &&
+                                    remoteMQTT is NSNull {
+                                    let mqttConnectInfoChanged: Bool
+                                    switch (
+                                        localGatewayInfo.mqttConnectInfo,
+                                        remoteGatewayInfo.mqttConnectInfo
+                                    ) {
+                                    case (nil, nil):
+                                        mqttConnectInfoChanged = false
+                                    case let (local?, remote?):
+                                        mqttConnectInfoChanged = !(local == remote)
+                                    default:
+                                        mqttConnectInfoChanged = true
+                                    }
+                                    if mqttConnectInfoChanged {
+                                        localGatewayInfo.mqttConnectInfo =
+                                            remoteGatewayInfo.mqttConnectInfo
+                                        nodeChanged = true
+                                    }
+                                }
+                            } else {
+                                cacheNode.gatewayInfo = remoteGatewayInfo
+                                nodeChanged = true
+                            }
+                        }
+                        if nodeChanged {
+                            updateNetwork = true
+                        }
+                        continue
+
+                    case .importNew, .replaceRemote:
+                        break
+                    }
                     
-                    if let cacheGateway = cacheByMac[mac] {
+                    if let cacheGateway {
                         if let node = network.nodes.first(where: { $0.primaryUnicastAddress == cacheGateway.address }) {
                             network.forceRemove(node: node)
                         }else {
@@ -591,9 +765,10 @@ extension SiteData {
                     // Node和Gateway一起更新数据库
                     serverNode.subNetworkId = self.meshNetworkId
                     try? network.add(node: serverNode)
-                    gateway.lastUpdate = serverUpdate
-                    gateway.lastUploadCloudTimestamp = serverUpdate
-                    gateway.save()
+                    let appliedRemoteTimestamp = remoteUpdateTimestamp ?? 0
+                    remoteGateway.lastUpdate = appliedRemoteTimestamp
+                    remoteGateway.lastUploadCloudTimestamp = appliedRemoteTimestamp
+                    remoteGateway.save()
                     
                     updateNetwork = true
                 }
@@ -2023,6 +2198,117 @@ extension GatewayModel {
         gatewayModel.mqttServerInfo = mqttConnectInfo
         
         return gatewayModel
+    }
+
+    @discardableResult
+    func apply(
+        cloudPatch: GatewayCloudConfigurationPatch,
+        siteSpaces: [SpaceData],
+        responseIsComplete: Bool
+    ) -> Bool {
+        var changed = false
+
+        if case .value(let remoteName) = cloudPatch.name,
+           name != remoteName {
+            name = remoteName
+            changed = true
+        }
+        if case .value(let remoteActivate) = cloudPatch.activate,
+           activate != remoteActivate {
+            activate = remoteActivate
+            changed = true
+        }
+        if case .value(let remoteSpaces) = cloudPatch.associatedSpaces {
+            let localSpaces = associatedSpaces.map {
+                GatewayCloudAssociatedSpace(
+                    spaceId: $0.spaceId,
+                    spaceName: $0.spaceName,
+                    deviceCount: $0.deviceCount,
+                    appKeyIndex: $0.appKeyIndex
+                )
+            }
+            let mergedSpaces = GatewayCloudAssociatedSpaceMergePolicy.resolve(
+                local: localSpaces,
+                remote: remoteSpaces,
+                responseIsComplete: responseIsComplete
+            )
+            let spaces = mergedSpaces.map { remoteSpace in
+                let gatewaySpace = GatewaySpaceData(
+                    spaceId: remoteSpace.spaceId,
+                    spaceName: remoteSpace.spaceName,
+                    deviceCount: remoteSpace.deviceCount,
+                    appKeyIndex: remoteSpace.appKeyIndex
+                )
+                gatewaySpace.updatePermission(
+                    from: siteSpaces.first(where: {
+                        $0.id.caseInsensitiveCompare(remoteSpace.spaceId) ==
+                            .orderedSame
+                    })
+                )
+                return gatewaySpace
+            }
+            let currentSummary = associatedSpaces.map {
+                "\($0.spaceId)|\($0.spaceName)|\($0.deviceCount)|\($0.appKeyIndex)"
+            }
+            let remoteSummary = spaces.map {
+                "\($0.spaceId)|\($0.spaceName)|\($0.deviceCount)|\($0.appKeyIndex)"
+            }
+            if currentSummary != remoteSummary {
+                associatedSpaces = spaces
+                changed = true
+            }
+        }
+
+        switch cloudPatch.apn {
+        case .absent:
+            break
+        case .clear:
+            if responseIsComplete, apn != nil {
+                apn = nil
+                changed = true
+            }
+        case .value(let remoteAPN):
+            if apn != remoteAPN {
+                apn = remoteAPN
+                changed = true
+            }
+        }
+
+        switch cloudPatch.mqttConnectInfo {
+        case .absent:
+            break
+        case .clear:
+            if responseIsComplete, mqttServerInfo != nil {
+                mqttServerInfo = nil
+                changed = true
+            }
+        case .value(let remoteMQTT):
+            guard let authMode = GatewayInformation.MQTTAuthMode(
+                rawValue: remoteMQTT.authMode
+            ),
+            let sslVersion = GatewayInformation.MQTTSSLVersion(
+                rawValue: remoteMQTT.sslVersion
+            ) else {
+                break
+            }
+            let mqtt = GatewayInformation.MQTTConnectInformation(
+                customId: customId,
+                serverAddress: remoteMQTT.serverAddress,
+                userName: remoteMQTT.userName,
+                password: remoteMQTT.password,
+                clientId: remoteMQTT.clientId,
+                keepalive: remoteMQTT.keepalive,
+                clearSession: remoteMQTT.clearSession,
+                authMode: authMode,
+                sslVersion: sslVersion
+            )
+            if mqttServerInfo == nil || !(mqttServerInfo! == mqtt) {
+                mqttServerInfo = mqtt
+                changed = true
+            }
+        }
+
+        return changed
     }
     
 }

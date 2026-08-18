@@ -2119,4 +2119,5 @@
 "gateway_force_clear_spaces_action" = "强制清除";
 "gateway_force_clear_spaces_success" = "已从服务器清除所有关联空间";
 "gateway_force_clear_spaces_failed" = "无法清除所有关联空间";
+"gateway_associated_spaces_changed_message" = "关联空间已在其他设备上发生变化，已加载最新数据。";
 "gateway_delete_server_failed" = "无法从服务器删除网关";

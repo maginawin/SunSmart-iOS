@@ -87,17 +87,11 @@ class GatewayAssociatedSpacesController: UIViewController {
                         return nil
                     }
                     let gatewaySpace = GatewaySpaceData(spaceId: spaceId, spaceName: spaceName, deviceCount: deviceCount, appKeyIndex: appKeyIndex)
-                    if let space = SpaceData.load(siteId: self.gateway.siteId, spaceId: spaceId).first {
-                        if space.canEditing {
-                            gatewaySpace.permission = .editor
-                        }else {
-                            if space.state == .waitDeleted {
-                                gatewaySpace.permission = .permissionLoss
-                            }else {
-                                gatewaySpace.permission = space.requiresPasswordVerification ? .permissionException : .none
-                            }
-                        }
-                    }
+                    let space = SpaceData.load(
+                        siteId: self.gateway.siteId,
+                        spaceId: spaceId
+                    ).first
+                    gatewaySpace.updatePermission(from: space)
                     return gatewaySpace
                 }
                 bindSpaces.forEach { space in
@@ -108,9 +102,9 @@ class GatewayAssociatedSpacesController: UIViewController {
                 
                 if self.spaces.count > 0 {
                     self.spaces.sort(by: { $0.appKeyIndex < $1.appKeyIndex })
-                    let selectedSpaces = self.gateway.associatedSpaces.compactMap { selectedSpace in
-                        self.spaces.first(where: { $0.spaceId == selectedSpace.spaceId }) ?? selectedSpace
-                    }.sorted(by: { $0.appKeyIndex < $1.appKeyIndex })
+                    let selectedSpaces = bindSpaces.sorted {
+                        $0.appKeyIndex < $1.appKeyIndex
+                    }
                     self.selectSpaces = selectedSpaces
                     self.initAssociateSpaces = selectedSpaces
                     

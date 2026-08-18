@@ -9,6 +9,10 @@ struct SiteGatewayAssociationSnapshot {
 
     private let authoritativeGatewayIds: Set<String>?
 
+    var isComplete: Bool {
+        authoritativeGatewayIds != nil
+    }
+
     static func make(
         isComplete: Bool,
         rawGatewayIds: [String?]?

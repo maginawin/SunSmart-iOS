@@ -196,6 +196,15 @@ actor GatewayServerAuthorizationService {
                 guard var nodeData = await node.export() else {
                     return .failure(.nodeExportFailed)
                 }
+                nodeData = GatewayRegistrationPayloadPolicy
+                    .mergeOpaqueAssociationData(
+                        localNode: nodeData,
+                        remoteNode: gateway.registrationProtectionSnapshot?.nodeData,
+                        associatedAppKeyIndexes: gateway.associatedSpaces.map(
+                            \.appKeyIndex
+                        ),
+                        isActivated: gateway.activate
+                    )
                 nodeData["gatewayPreconfigured"] = gateway.export()
                 let result = await NetworkRequest.shared.request(
                     .gatewayRegister(

@@ -2103,4 +2103,5 @@
 "gateway_force_clear_spaces_action" = "FORCE CLEAR";
 "gateway_force_clear_spaces_success" = "All associated spaces cleared from server";
 "gateway_force_clear_spaces_failed" = "Failed to clear all associated spaces";
+"gateway_associated_spaces_changed_message" = "Associated spaces changed on another device. The latest data has been loaded.";
 "gateway_delete_server_failed" = "Failed to delete gateway from server";

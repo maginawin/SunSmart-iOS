@@ -2966,6 +2966,7 @@ extension GatewayModel {
         static let lastUploadCloudTimestamp = Expression<Int64?>("lastUploadCloudTimestamp")
         static let syncCloudError = Expression<Int?>("syncCloudError")
         static let serverDeletionPendingLocalReset = Expression<Bool>("serverDeletionPendingLocalReset")
+        static let registrationProtectionSnapshot = Expression<Data?>("registrationProtectionSnapshot")
     }
     
     /// 初始化能耗静态统计数据信息表
@@ -2985,6 +2986,7 @@ extension GatewayModel {
             builder.column(ExpressionKey.lastUploadCloudTimestamp)
             builder.column(ExpressionKey.syncCloudError)
             builder.column(ExpressionKey.serverDeletionPendingLocalReset, defaultValue: false)
+            builder.column(ExpressionKey.registrationProtectionSnapshot)
             builder.unique(ExpressionKey.siteUUID, ExpressionKey.macAddress)
         }))
         
@@ -3009,6 +3011,13 @@ extension GatewayModel {
             }
             if !columns.contains(where: { $0.name == "serverDeletionPendingLocalReset" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(GatewayModel.gatewaysTable.addColumn(ExpressionKey.serverDeletionPendingLocalReset, defaultValue: false))
+            }
+            if !columns.contains(where: { $0.name == "registrationProtectionSnapshot" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(
+                    GatewayModel.gatewaysTable.addColumn(
+                        ExpressionKey.registrationProtectionSnapshot
+                    )
+                )
             }
         }
         
@@ -3069,19 +3078,11 @@ extension GatewayModel {
                 if let gatewaySpaceDatas = try? jsonDecoder.decode([GatewaySpaceData].self, from: row[ExpressionKey.associatedSpaces]) {
                     gatewaySpaceDatas.forEach { gatewaySpace in
 //                        var gatewaySpace = gatewaySpace
-                        if let space = SpaceData.load(siteId: siteId, spaceId: gatewaySpace.spaceId).first {
-                            if space.canEditing {
-                                gatewaySpace.permission = .editor
-                            }else {
-                                if space.state == .waitDeleted {
-                                    gatewaySpace.permission = .permissionLoss
-                                }else if space.requiresPasswordVerification {
-                                    gatewaySpace.permission = .permissionException
-                                }else {
-                                    gatewaySpace.permission = .none
-                                }
-                            }
-                        }
+                        let space = SpaceData.load(
+                            siteId: siteId,
+                            spaceId: gatewaySpace.spaceId
+                        ).first
+                        gatewaySpace.updatePermission(from: space)
                         spaceDatas.append(gatewaySpace)
                     }
                 }
@@ -3096,6 +3097,10 @@ extension GatewayModel {
                 if let data = row[ExpressionKey.mqttServerInfo],
                    let serverInformation = try? jsonDecoder.decode(GatewayInformation.MQTTConnectInformation.self, from: data) {
                     gateway.mqttServerInfo = serverInformation
+                }
+                if let data = row[ExpressionKey.registrationProtectionSnapshot] {
+                    gateway.registrationProtectionSnapshot =
+                        GatewayRegistrationProtectionSnapshot(data: data)
                 }
                 gateways.append(gateway)
             }
@@ -3127,7 +3132,9 @@ extension GatewayModel {
             ExpressionKey.associatedSpaces <- spacesData,
             ExpressionKey.mqttServerInfo <- mqttServerInfoData,
             ExpressionKey.syncCloudError <- self.syncCloudError?.code,
-            ExpressionKey.serverDeletionPendingLocalReset <- self.serverDeletionPendingLocalReset
+            ExpressionKey.serverDeletionPendingLocalReset <- self.serverDeletionPendingLocalReset,
+            ExpressionKey.registrationProtectionSnapshot <-
+                self.registrationProtectionSnapshot?.data
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)

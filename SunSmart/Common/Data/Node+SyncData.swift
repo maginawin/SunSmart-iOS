@@ -1759,9 +1759,17 @@ extension Node {
         // 同步绑定哪些子网appkey index
         // 网格激活状态同步关联子网数据
 //        if associatedSpaceDatas.isEmpty && unbindAssociatedSpaceDatas.isEmpty {
-            let currentAppkeyIndexs = gateway.activate ? self.applicationKeys.filter({ $0.boundNetworkKey.isSecondary }).map({ $0.index }).sorted() : []
-            if currentAppkeyIndexs != gatewayInfo?.subnetAppkeyIndexs.sorted() {
-                syncDatas.append(.syncGatewaySubnetAppkeyIndexs(appkeyIndexs: currentAppkeyIndexs))
+            let desiredAppKeyIndexes = GatewaySubnetAppKeyIndexPolicy
+                .desiredIndexes(
+                    isActivated: gateway.activate,
+                    associatedSpaceIndexes: gateway.associatedSpaces.map(\.appKeyIndex)
+                )
+            if desiredAppKeyIndexes != gatewayInfo?.subnetAppkeyIndexs.sorted() {
+                syncDatas.append(
+                    .syncGatewaySubnetAppkeyIndexs(
+                        appkeyIndexs: desiredAppKeyIndexes
+                    )
+                )
             }
 //        }
         

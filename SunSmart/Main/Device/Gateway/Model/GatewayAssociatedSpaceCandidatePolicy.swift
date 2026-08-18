@@ -1,3 +1,5 @@
+import Foundation
+
 struct GatewayAssociatedSpaceCandidateInput: Equatable {
     let spaceId: String
     let canEdit: Bool
@@ -64,5 +66,91 @@ enum GatewayAssociatedSpaceCandidatePolicy {
             )
         }
         return .available(candidates)
+    }
+}
+
+struct GatewayAssociatedSpaceMutationPlan: Equatable {
+    let additionSpaceIDs: [String]
+    let removalSpaceIDs: [String]
+}
+
+enum GatewayAssociatedSpaceMutationResolution: Equatable {
+    case allowed(GatewayAssociatedSpaceMutationPlan)
+    case topologyChanged
+    case denied
+}
+
+enum GatewayAssociatedSpaceMutationPolicy {
+
+    static func resolve(
+        isOwner: Bool,
+        baselineSpaceIDs: [String],
+        latestServerSpaceIDs: [String],
+        requestedSpaceIDs: [String],
+        editableSpaceIDs: Set<String>
+    ) -> GatewayAssociatedSpaceMutationResolution {
+        let baseline = normalizedSet(baselineSpaceIDs)
+        let latest = normalizedSet(latestServerSpaceIDs)
+        guard baseline == latest else {
+            return .topologyChanged
+        }
+
+        let requested = normalizedSet(requestedSpaceIDs)
+        let additions = requested.subtracting(latest)
+        let removals = latest.subtracting(requested)
+        let editable = normalizedSet(Array(editableSpaceIDs))
+
+        if !isOwner,
+           (!additions.isSubset(of: editable) ||
+            !removals.isSubset(of: editable)) {
+            return .denied
+        }
+
+        return .allowed(
+            GatewayAssociatedSpaceMutationPlan(
+                additionSpaceIDs: requestedSpaceIDs.filter {
+                    additions.contains(normalized($0))
+                },
+                removalSpaceIDs: latestServerSpaceIDs.filter {
+                    removals.contains(normalized($0))
+                }
+            )
+        )
+    }
+
+    private static func normalizedSet(_ values: [String]) -> Set<String> {
+        Set(values.map(normalized))
+    }
+
+    private static func normalized(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+}
+
+enum GatewayDestructiveAccessPolicy {
+
+    static func canPerform(
+        isOwner: Bool,
+        hasAnyEditableSiteSpace: Bool,
+        associatedSpaceEditableStates: [Bool]
+    ) -> Bool {
+        if isOwner {
+            return true
+        }
+        if associatedSpaceEditableStates.isEmpty {
+            return hasAnyEditableSiteSpace
+        }
+        return associatedSpaceEditableStates.allSatisfy { $0 }
+    }
+}
+
+enum GatewaySubnetAppKeyIndexPolicy {
+
+    static func desiredIndexes(
+        isActivated: Bool,
+        associatedSpaceIndexes: [UInt16]
+    ) -> [UInt16] {
+        guard isActivated else { return [] }
+        return Array(Set(associatedSpaceIndexes)).sorted()
     }
 }

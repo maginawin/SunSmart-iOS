@@ -38,7 +38,7 @@ enum GatewayPermissionState: Int {
     case noPermission = 2
 }
 
-class GatewayModel: Copyable {
+class GatewayModel: Copyable, Equatable {
     
     /// site id
     let siteId: String
@@ -77,6 +77,8 @@ class GatewayModel: Copyable {
     var isServerDeletionInProgress: Bool = false
     /// 同步服务器错误信息
     var syncCloudError: NetworkApiError?
+    /// 注册保护快照，仅持久化Editor本地不可重建的Key/Bind关联段。
+    var registrationProtectionSnapshot: GatewayRegistrationProtectionSnapshot?
     /// 网关最大关联space数量
     var maxAssociatedSpaces: Int = 10
     /// 网关绑定的所有space数据
@@ -138,7 +140,9 @@ class GatewayModel: Copyable {
     }
     
     func copy() -> Self {
-        return GatewayModel(siteId: self.siteId, name: self.name, address: self.address, mac: self.mac, lastUpdate: self.lastUpdate, activate: self.activate, associatedSpaces: self.associatedSpaces, apn: self.apn, mqttServerInfo: self.mqttServerInfo, serverDeletionPendingLocalReset: self.serverDeletionPendingLocalReset) as! Self
+        let model = GatewayModel(siteId: self.siteId, name: self.name, address: self.address, mac: self.mac, lastUpdate: self.lastUpdate, activate: self.activate, associatedSpaces: self.associatedSpaces, apn: self.apn, mqttServerInfo: self.mqttServerInfo, serverDeletionPendingLocalReset: self.serverDeletionPendingLocalReset)
+        model.registrationProtectionSnapshot = registrationProtectionSnapshot
+        return model as! Self
     }
     
     static func == (lhs: GatewayModel, rhs: GatewayModel) -> Bool {
@@ -273,7 +277,9 @@ extension SiteData {
 
         let effectiveEditableSpaceIds = Set(
             spaces
-                .filter { $0.canEditing && $0.deviceOperates.contains(.edit) }
+                .filter {
+                    $0.canEditing && $0.deviceOperates.contains(.edit)
+                }
                 .map(\.id)
         )
         guard !effectiveEditableSpaceIds.isEmpty else {
@@ -285,6 +291,12 @@ extension SiteData {
         return gateway.associatedSpaces.contains {
             effectiveEditableSpaceIds.contains($0.spaceId)
         }
+    }
+}
+
+extension SpaceData {
+    var canEditGatewayAssociation: Bool {
+        canEditing && deviceOperates.contains(.edit)
     }
 }
 
@@ -346,6 +358,24 @@ class GatewaySpaceData: Codable {
         try container.encode(self.spaceName, forKey: .spaceName)
         try container.encode(self.deviceCount, forKey: .deviceCount)
         try container.encode(self.appKeyIndex, forKey: .appKeyIndex)
+    }
+}
+
+extension GatewaySpaceData {
+    func updatePermission(from space: SpaceData?) {
+        guard let space else {
+            permission = .none
+            return
+        }
+        if space.canEditGatewayAssociation {
+            permission = .editor
+        } else if space.state == .waitDeleted {
+            permission = .permissionLoss
+        } else if space.requiresPasswordVerification {
+            permission = .permissionException
+        } else {
+            permission = .none
+        }
     }
 }
 

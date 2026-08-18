@@ -386,7 +386,11 @@ self.updateAddressData()
             guard let self = self else { return }
             guard let gatewayDatas = notification.object as? [(node: Node, model: GatewayModel)] else { return }
             gatewayDatas.forEach({ gatewayData in
-                gatewayData.model.lastUpdate = Int64(Date().timeIntervalSince1970)
+                gatewayData.model.lastUpdate = GatewayCloudSyncGenerationPolicy.next(
+                    now: Int64(Date().timeIntervalSince1970),
+                    current: gatewayData.model.lastUpdate,
+                    uploaded: gatewayData.model.lastUploadCloudTimestamp
+                )
                 gatewayData.model.save()
                 CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncGateway(gateway: gatewayData.model, node: gatewayData.node), level: .promptly)
             })
@@ -404,7 +408,11 @@ self.updateAddressData()
             guard let gateway = notification.object as? Gateway else { return }
             guard !gateway.model.isServerDeletionInProgress,
                   !gateway.model.serverDeletionPendingLocalReset else { return }
-            gateway.model.lastUpdate = Int64(Date().timeIntervalSince1970)
+            gateway.model.lastUpdate = GatewayCloudSyncGenerationPolicy.next(
+                now: Int64(Date().timeIntervalSince1970),
+                current: gateway.model.lastUpdate,
+                uploaded: gateway.model.lastUploadCloudTimestamp
+            )
             gateway.model.save()
             CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncGateway(gateway: gateway.model, node: gateway.node), level: .promptly)
             if self.view.window != nil {
@@ -1184,7 +1192,11 @@ self.updateAddressData()
                 // 删除网关内关联的space并同步到服务器
                 if let gateway = self?.gatewayModels.first(where: { $0.mac == space.relevanceGatewayId }) {
                     gateway.associatedSpaces.removeAll(where: { $0.spaceId == space.id })
-                    gateway.lastUpdate = Int64(Date().timeIntervalSince1970)
+                    gateway.lastUpdate = GatewayCloudSyncGenerationPolicy.next(
+                        now: Int64(Date().timeIntervalSince1970),
+                        current: gateway.lastUpdate,
+                        uploaded: gateway.model.lastUploadCloudTimestamp
+                    )
                     gateway.save()
                     CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncGateway(gateway: gateway.model, node: gateway.node), level: .promptly)
                 }
@@ -2742,9 +2754,7 @@ self.updateAddressData()
     /// 添加网关
     private func addGateway() {
 
-        let editableSpaces = self.site.spaces.filter {
-            $0.canEditing && $0.deviceOperates.contains(.edit)
-        }
+        let editableSpaces = self.site.spaces.filter(\.canEditGatewayAssociation)
         guard self.site.permission == .owner || !editableSpaces.isEmpty else {
             // 无权限
             XWHUDManager.showTipHUD(inView: "no_permission".localizedString, isLineFeed: true)
@@ -2766,8 +2776,12 @@ self.updateAddressData()
     /// 网关同步到云
     private func gatewaysSyncToCloud(_ gateways: [Gateway]) {
         gateways.forEach({
-                $0.lastUpdate = Int64(Date().timeIntervalSince1970)
-                $0.save()
+            $0.lastUpdate = GatewayCloudSyncGenerationPolicy.next(
+                now: Int64(Date().timeIntervalSince1970),
+                current: $0.lastUpdate,
+                uploaded: $0.model.lastUploadCloudTimestamp
+            )
+            $0.save()
             CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncGateway(gateway: $0.model, node: $0.node), level: .promptly)
         })
     }
@@ -2780,7 +2794,7 @@ self.updateAddressData()
         }
         
         let gatewaySpace = gateway.associatedSpaces.first(where: { $0.spaceId == space.id })
-        if space.canEditing {
+        if space.canEditGatewayAssociation {
             gatewaySpace?.permission = .editor
         }else {
             if space.state == .normal {

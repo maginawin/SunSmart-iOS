@@ -39,6 +39,11 @@ struct SiteUpdateToastUIContractTests {
             from: "private func setupSiteUpdateUI",
             through: "// MARK: - Show"
         )
+        let show = substring(
+            in: toast,
+            from: "static func show(",
+            through: "// Initial state"
+        )
 
         require(
             toast.contains("enum Appearance") &&
@@ -55,10 +60,9 @@ struct SiteUpdateToastUIContractTests {
         require(
             toast.contains("equalToSuperview().offset(-32)") &&
                 toast.contains("lessThanOrEqualTo(343)") &&
-                toast.contains("equalTo(44)") &&
                 toast.contains("equalTo(30)") &&
                 toast.contains("equalTo(16)"),
-            "Site Update Toast must encode 16pt margins, 343pt max width, 44pt height, and 30/16pt icon sizes"
+            "Site Update Toast must encode 16pt margins, 343pt max width, and 30/16pt icon sizes"
         )
         require(
             toast.contains("systemFont(ofSize: 15, weight: .light)") &&
@@ -69,22 +73,41 @@ struct SiteUpdateToastUIContractTests {
         require(
             standard.contains("stackView.alignment = .center") &&
                 standard.contains("messageLabel.text = message") &&
+                standard.contains("messageLabel.numberOfLines = 0") &&
+                standard.contains("messageLabel.lineBreakMode = .byWordWrapping") &&
+                standard.contains("make.top.equalToSuperview().offset(12)") &&
+                standard.contains("make.bottom.equalToSuperview().offset(-12)") &&
+                standard.contains("make.centerX.equalToSuperview()") &&
+                !standard.contains("messageLabel.numberOfLines = 2") &&
+                !standard.contains("byTruncatingTail") &&
                 !standard.contains("baselineOffset") &&
                 !standard.contains("CGAffineTransform"),
-            "Standard Toast must center natural-height text and icon without visual offsets"
+            "Standard Toast must wrap all text and derive its height from centered content with 12pt vertical insets"
         )
         require(
             siteUpdate.contains("messageLabel.text = message") &&
                 siteUpdate.contains("messageLabel.font = font") &&
-                siteUpdate.contains("messageLabel.snp.makeConstraints") &&
-                siteUpdate.contains("make.height.equalTo(22)") &&
+                siteUpdate.contains("messageLabel.numberOfLines = 0") &&
+                siteUpdate.contains("messageLabel.lineBreakMode = .byWordWrapping") &&
                 siteUpdate.contains("stackView.alignment = .center") &&
+                siteUpdate.contains("make.leading.greaterThanOrEqualToSuperview().offset(22)") &&
+                siteUpdate.contains("make.trailing.lessThanOrEqualToSuperview().offset(-22)") &&
+                siteUpdate.contains("make.top.equalToSuperview().offset(7)") &&
+                siteUpdate.contains("make.bottom.equalToSuperview().offset(-7)") &&
+                !siteUpdate.contains("messageLabel.numberOfLines = 1") &&
+                !siteUpdate.contains("make.height.equalTo(22)") &&
+                !siteUpdate.contains("byTruncatingTail") &&
                 !siteUpdate.contains("minimumLineHeight") &&
                 !siteUpdate.contains("maximumLineHeight") &&
                 !siteUpdate.contains("messageLabel.attributedText") &&
                 !siteUpdate.contains("baselineOffset") &&
                 !siteUpdate.contains("CGAffineTransform"),
-            "Site Update Toast must center natural-height text in its 22pt text area without visual offsets"
+            "Site Update Toast must wrap all text and derive its height from centered content with preserved insets"
+        )
+        require(
+            show.contains("make.height.greaterThanOrEqualTo(44)") &&
+                !show.contains("make.height.equalTo(44)"),
+            "Both Toast appearances must keep 44pt as a minimum height instead of a fixed height"
         )
         require(
             toast.contains("shadowOpacity = 0.15") &&
