@@ -22,6 +22,9 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
     private let headerDividerView = UIView()
     private let tableView = UITableView(frame: .zero, style: .plain)
     private let emptyStateView = UIView()
+    private let emptyHeaderLabel = UILabel()
+    private let emptyContentView = UIView()
+    private let emptyIconBackgroundView = UIView()
     private let emptyIconImageView = UIImageView()
     private let emptyTitleLabel = UILabel()
     private let emptyMessageLabel = UILabel()
@@ -43,8 +46,8 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
     private var failureSummaryTopConstraint: Constraint!
     private var failureSummaryBottomConstraint: Constraint!
     private var gatewayHeaderHeightConstraint: Constraint!
-    private var measuredPreferredHeight = SCRYFrom(152)
-    private var measuredMinimumViewportHeight = SCRYFrom(152)
+    private var measuredPreferredHeight = SCRYFrom(89)
+    private var measuredMinimumViewportHeight = SCRYFrom(89)
     private var lastMeasuredWidth: CGFloat = 0
     private var needsHeightMeasurement = true
     private var isMeasuringHeight = false
@@ -109,10 +112,11 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
         case .unavailable:
             items = []
             updateTableScrolling()
+            emptyIconBackgroundView.backgroundColor = .clear
             emptyIconImageView.image = UIImage(named: "gateway_sync_tz_fail")
             emptyTitleLabel.text = "site_time_zone_gateway_check_unavailable_title".localizedString
             emptyMessageLabel.text = "site_time_zone_gateway_check_unavailable_message".localizedString
-            emptyStateView.accessibilityLabel = "\(emptyTitleLabel.text ?? ""). \(emptyMessageLabel.text ?? "")"
+            emptyContentView.accessibilityLabel = "\(emptyTitleLabel.text ?? ""). \(emptyMessageLabel.text ?? "")"
             configurePresentation(hasGateways: false, hasFailureSummary: false)
             tableView.reloadData()
             needsHeightMeasurement = true
@@ -124,11 +128,11 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
     }
 
     func update(_ state: SiteGatewayCloudTimeZoneBatchState) {
-        emptyIconImageView.image = UIImage(named: "time-zone-sync-status-gateway")?
-            .withTintColor(Yellow_Color, renderingMode: .alwaysOriginal)
-        emptyTitleLabel.text = "site_entry_sync_no_gateways_title".localizedString
-        emptyMessageLabel.text = "site_entry_sync_no_gateways_message".localizedString
-        emptyStateView.accessibilityLabel = "\(emptyTitleLabel.text ?? ""). \(emptyMessageLabel.text ?? "")"
+        emptyIconBackgroundView.backgroundColor = RGB(148, 163, 184, 0.1)
+        emptyIconImageView.image = UIImage(named: "gateway_no_space_svg")
+        emptyTitleLabel.text = "site_no_gateways".localizedString
+        emptyMessageLabel.text = "site_no_gateways_sync_needed".localizedString
+        emptyContentView.accessibilityLabel = "\(emptyTitleLabel.text ?? ""). \(emptyMessageLabel.text ?? "")"
         items = state.items
         updateTableScrolling()
         gatewayCountLabel.text = String(state.authorizedCount)
@@ -270,7 +274,6 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
         emptyStateView.layer.cornerRadius = SCRYFrom(14)
         addSubview(emptyStateView)
         emptyStateView.snp.makeConstraints { make in
-            make.height.greaterThanOrEqualTo(SCRYFrom(152))
             make.left.right.equalToSuperview()
         }
         emptyStateTopConstraint = emptyStateView.snp.prepareConstraints { make in
@@ -280,34 +283,71 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
             make.bottom.equalToSuperview()
         }.first
 
-        emptyIconImageView.image = UIImage(named: "time-zone-sync-status-gateway")?
-            .withTintColor(Yellow_Color, renderingMode: .alwaysOriginal)
-        emptyIconImageView.contentMode = .scaleAspectFit
-        emptyIconImageView.isAccessibilityElement = false
-        emptyStateView.addSubview(emptyIconImageView)
-        emptyIconImageView.snp.makeConstraints { make in
-            make.top.equalToSuperview().offset(SCRYFrom(20))
-            make.centerX.equalToSuperview()
+        emptyHeaderLabel.text = "site_entry_sync_gateways_header".localizedString
+        configureDynamicFont(
+            emptyHeaderLabel,
+            baseSize: 12,
+            weight: .regular,
+            textStyle: .caption1
+        )
+        emptyHeaderLabel.textColor = RGB(100, 116, 139)
+        emptyHeaderLabel.isAccessibilityElement = true
+        emptyHeaderLabel.accessibilityTraits = .header
+        emptyStateView.addSubview(emptyHeaderLabel)
+        emptyHeaderLabel.snp.makeConstraints { make in
+            make.top.equalToSuperview().offset(SCRYFrom(8))
+            make.left.right.equalToSuperview().inset(SCRXFrom(16))
+            make.height.greaterThanOrEqualTo(SCRYFrom(21))
+        }
+
+        emptyStateView.addSubview(emptyContentView)
+        emptyContentView.snp.makeConstraints { make in
+            make.top.equalTo(emptyHeaderLabel.snp.bottom)
+            make.left.right.equalToSuperview().inset(SCRXFrom(16))
+            make.bottom.equalToSuperview().inset(SCRYFrom(8))
+        }
+
+        emptyIconBackgroundView.backgroundColor = RGB(148, 163, 184, 0.1)
+        emptyIconBackgroundView.layer.cornerRadius = SCRYFrom(16)
+        emptyIconBackgroundView.isAccessibilityElement = false
+        emptyContentView.addSubview(emptyIconBackgroundView)
+        emptyIconBackgroundView.snp.makeConstraints { make in
+            make.left.equalToSuperview()
+            make.centerY.equalToSuperview()
+            make.top.greaterThanOrEqualToSuperview().offset(SCRYFrom(8))
+            make.bottom.lessThanOrEqualToSuperview().offset(SCRYFrom(-8))
             make.size.equalTo(SCRYFrom(32))
         }
 
-        emptyTitleLabel.text = "site_entry_sync_no_gateways_title".localizedString
+        emptyIconImageView.image = UIImage(named: "time-zone-sync-status-gateway")
+        emptyIconImageView.contentMode = .scaleAspectFit
+        emptyIconImageView.isAccessibilityElement = false
+        emptyIconBackgroundView.addSubview(emptyIconImageView)
+        emptyIconImageView.snp.makeConstraints { make in
+            make.center.equalToSuperview()
+            make.size.equalTo(SCRYFrom(16))
+        }
+
+        emptyTitleLabel.text = "site_no_gateways".localizedString
         configureDynamicFont(
             emptyTitleLabel,
             baseSize: 14,
-            weight: .regular,
+            weight: .light,
             textStyle: .subheadline
         )
-        emptyTitleLabel.textColor = TextBlack_Color
-        emptyTitleLabel.textAlignment = .center
+        emptyTitleLabel.textColor = RGB(30, 35, 41)
+        emptyTitleLabel.textAlignment = .left
+        emptyTitleLabel.numberOfLines = 0
         emptyTitleLabel.isAccessibilityElement = false
-        emptyStateView.addSubview(emptyTitleLabel)
+        emptyContentView.addSubview(emptyTitleLabel)
         emptyTitleLabel.snp.makeConstraints { make in
-            make.top.equalTo(emptyIconImageView.snp.bottom).offset(SCRYFrom(10))
-            make.left.right.equalToSuperview().inset(SCRXFrom(16))
+            make.top.equalToSuperview().offset(SCRYFrom(8))
+            make.left.equalTo(emptyIconBackgroundView.snp.right).offset(SCRXFrom(12))
+            make.right.equalToSuperview().offset(SCRXFrom(-16))
+            make.height.greaterThanOrEqualTo(SCRYFrom(20))
         }
 
-        emptyMessageLabel.text = "site_entry_sync_no_gateways_message".localizedString
+        emptyMessageLabel.text = "site_no_gateways_sync_needed".localizedString
         configureDynamicFont(
             emptyMessageLabel,
             baseSize: 12,
@@ -315,18 +355,19 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
             textStyle: .caption1
         )
         emptyMessageLabel.textColor = AssistText_Color
-        emptyMessageLabel.textAlignment = .center
+        emptyMessageLabel.textAlignment = .left
         emptyMessageLabel.numberOfLines = 0
         emptyMessageLabel.isAccessibilityElement = false
-        emptyStateView.addSubview(emptyMessageLabel)
+        emptyContentView.addSubview(emptyMessageLabel)
         emptyMessageLabel.snp.makeConstraints { make in
-            make.top.equalTo(emptyTitleLabel.snp.bottom).offset(SCRYFrom(4))
-            make.left.right.equalToSuperview().inset(SCRXFrom(16))
-            make.bottom.lessThanOrEqualToSuperview().offset(SCRYFrom(-16))
+            make.top.equalTo(emptyTitleLabel.snp.bottom)
+            make.left.right.equalTo(emptyTitleLabel)
+            make.height.greaterThanOrEqualTo(SCRYFrom(16))
+            make.bottom.equalToSuperview().inset(SCRYFrom(8))
         }
-        emptyStateView.isAccessibilityElement = true
-        emptyStateView.accessibilityLabel = "\("site_entry_sync_no_gateways_title".localizedString). \("site_entry_sync_no_gateways_message".localizedString)"
-        emptyStateView.accessibilityTraits = .staticText
+        emptyContentView.isAccessibilityElement = true
+        emptyContentView.accessibilityLabel = "\("site_no_gateways".localizedString). \("site_no_gateways_sync_needed".localizedString)"
+        emptyContentView.accessibilityTraits = .staticText
     }
 
     private func setupFailureSummary() {
@@ -457,10 +498,7 @@ final class SiteEntryGatewayTimeZoneStatusView: UIView {
         let newPreferredHeight: CGFloat
         let newMinimumViewportHeight: CGFloat
         if items.isEmpty {
-            let emptyHeight = max(
-                SCRYFrom(152),
-                fittingHeight(of: emptyStateView, width: width)
-            )
+            let emptyHeight = fittingHeight(of: emptyStateView, width: width)
             newPreferredHeight = emptyHeight
             newMinimumViewportHeight = emptyHeight
         } else {

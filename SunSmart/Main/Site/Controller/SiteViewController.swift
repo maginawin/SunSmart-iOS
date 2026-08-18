@@ -106,6 +106,8 @@ class SiteViewController: UIViewController {
     private var interactivePopGestureWasEnabled: Bool?
     private var timeZoneReviewState: SiteTimeZoneReviewState = .hidden
     private var latestTimeZoneRemoteSnapshot: SiteEntryTimeZoneRemoteSnapshot?
+    private var gatewayDetailPresentationSessionID: UUID?
+    private weak var presentedGatewayNavigationController: NavigationViewController?
     private lazy var syncGatewaysCloudBridge = SyncGatewaysCloudBridge(
         refreshSiteSnapshot: { [weak self] in
             await MainActor.run {
@@ -836,14 +838,46 @@ self.updateAddressData()
     private func gatewayTimeZoneReviewProjection(
         from remote: SiteEntryTimeZoneRemoteSnapshot
     ) -> SiteGatewayTimeZoneReviewProjection {
+        let explicitContext = gatewayTimeZoneReviewContext?.reconciled(
+            confirmedOffsetMinutesByGatewayID: confirmedGatewayOffsetMinutesByID
+        )
         let projection = SiteGatewayTimeZoneReviewProjectionPolicy.project(
             localTimeZone: site.timezone.flatMap(
                 SiteTimeZoneValue.init(storageValue:)
             ),
             remote: remote,
-            explicitContext: gatewayTimeZoneReviewContext
+            explicitContext: explicitContext
         )
         return projection
+    }
+
+    private func recordGatewayDetailTimeZoneConfirmation(
+        gatewayID: String,
+        expectedGatewayID: String,
+        offsetMinutes: Int,
+        sessionID: UUID
+    ) {
+        guard gatewayDetailPresentationSessionID == sessionID,
+              let id = SiteGatewayAccessScope.normalize(gatewayID),
+              id == SiteGatewayAccessScope.normalize(expectedGatewayID),
+              let targetTimeZone = site.timezone.flatMap({
+                  SiteTimeZoneValue(storageValue: $0)
+              }),
+              targetTimeZone.offsetMinutes == offsetMinutes else {
+            return
+        }
+        confirmedGatewayOffsetMinutesByID[id] = offsetMinutes
+    }
+
+    private func finishGatewayDetailPresentation(sessionID: UUID) {
+        guard gatewayDetailPresentationSessionID == sessionID else { return }
+        gatewayDetailPresentationSessionID = nil
+        presentedGatewayNavigationController = nil
+        setupData()
+        refreshCurrentGatewayTimeZoneReviewProjection()
+        retryDirtyGatewayCloudUploads()
+        guard NetworkRequest.shared.networkable, site.uploadCloud else { return }
+        performSiteLoad(presentation: .silentGatewayReconcile)
     }
 
     private func invalidateGatewayTimeZoneReview() {
@@ -3123,7 +3157,7 @@ extension SiteViewController: SiteGatewayStatusViewDelegate {
             return
         }
         
-        let gatewayVc: UIViewController
+        let gatewayVc: GatewayViewController
         if gateway.node.isWiFiGateway {
             guard let controller = WiFiGatewayViewController(site: site, gateway: gateway) else {
                 XWHUDManager.showErrorTipHUD("failed".localizedString + " !")
@@ -3140,10 +3174,45 @@ extension SiteViewController: SiteGatewayStatusViewDelegate {
         if isIPad {
             gatewayVc.preferredContentSize = iPadStandardSize
         }
-        present(NavigationViewController(rootViewController: gatewayVc), animated: true)
+        let sessionID = UUID()
+        let expectedGatewayID = gateway.mac
+        gatewayDetailPresentationSessionID = sessionID
+        gatewayVc.timeZoneSyncDidFinish = { [weak self] gatewayID, offsetMinutes in
+            self?.recordGatewayDetailTimeZoneConfirmation(
+                gatewayID: gatewayID,
+                expectedGatewayID: expectedGatewayID,
+                offsetMinutes: offsetMinutes,
+                sessionID: sessionID
+            )
+        }
+        gatewayVc.gatewayPageDidClose = { [weak self] in
+            self?.finishGatewayDetailPresentation(sessionID: sessionID)
+        }
+        let navigationController = NavigationViewController(
+            rootViewController: gatewayVc
+        )
+        presentedGatewayNavigationController = navigationController
+        navigationController.presentationController?.delegate = self
+        present(navigationController, animated: true) { [weak self, weak navigationController] in
+            navigationController?.presentationController?.delegate = self
+        }
         
     }
     
+}
+
+extension SiteViewController: UIAdaptivePresentationControllerDelegate {
+
+    func presentationControllerDidDismiss(
+        _ presentationController: UIPresentationController
+    ) {
+        guard presentationController.presentedViewController ===
+                presentedGatewayNavigationController,
+              let sessionID = gatewayDetailPresentationSessionID else {
+            return
+        }
+        finishGatewayDetailPresentation(sessionID: sessionID)
+    }
 }
 
 extension SiteViewController: CustomSegmentedControlDelegate {

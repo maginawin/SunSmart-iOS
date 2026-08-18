@@ -27,7 +27,7 @@ swiftc -parse-as-library \
   "$project" \
   SunSmart/en.lproj/Localizable.strings \
   SunSmart/zh-Hans.lproj/Localizable.strings \
-  SunSmart/Assets.xcassets/Device/Gateway/gateway_clock_sync_loading.imageset/gateway_clock_sync_loading.svg
+  SunSmart/Assets.xcassets/Common/site_entry_sync_loading.imageset/site_entry_sync_loading.svg
 
 swiftc -parse-as-library \
   Tests/Device/GatewayTimeInformationRuntimeContractTests.swift \

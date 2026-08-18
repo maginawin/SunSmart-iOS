@@ -28,6 +28,42 @@ struct GatewayDetailClockRuntimeContractTests {
         require(controller.contains("timeInterval: 0.5"), "Clock rows must refresh every 0.5 seconds")
         require(controller.contains("GatewayDetailClockCore.gatewayDisplayDate"), "Gateway ticks must derive from Local and the stored offset")
         require(controller.contains("gateway_time_zone_sync_unknown_message"), "Unknown Gateway timezone must use dedicated prompt copy")
+        require(
+            coordinator.contains("struct GatewayClockAutoPromptState"),
+            "Automatic prompt repetition must be controlled by a testable session state"
+        )
+        require(
+            controller.contains("readGatewayClock(autoPromptSessionID: context.sessionID)"),
+            "The first Proxy Ready TimeGet must carry the session into automatic prompt evaluation"
+        )
+        require(
+            controller.contains("gatewayClockAutoPromptState.request"),
+            "The completed TimeGet must request the automatic prompt from requiresSync"
+        )
+        require(
+            controller.contains("gatewayClockAutoPromptState.shouldPresent"),
+            "Automatic presentation must pass the session eligibility gate"
+        )
+        require(
+            controller.contains("SRAlertView.getCurrentAlertView() != nil"),
+            "An automatic timezone prompt must not replace an existing alert"
+        )
+        require(
+            controller.contains("markCurrentGatewayClockSessionHandled()"),
+            "Manual prompt and synchronization actions must suppress duplicate automatic prompts"
+        )
+        require(
+            controller.contains("var timeZoneSyncDidFinish: ((String, Int) -> Void)?") &&
+                controller.contains("self.timeZoneSyncDidFinish?(") &&
+                controller.contains("value.0.offsetMinutes"),
+            "A verified Gateway clock sync must publish its Gateway ID and readback offset to the source page"
+        )
+        require(
+            controller.contains("var gatewayPageDidClose: (() -> Void)?") &&
+                controller.contains("let completion = gatewayPageDidClose") &&
+                controller.contains("completion?()"),
+            "Explicit Gateway dismissal must notify the source page after the modal closes"
+        )
         require(controller.contains("appearance: .siteUpdate"), "Sync result must reuse Edit Site toast appearance")
         require(
             controller.contains("remainingSyncPresentationDuration"),
@@ -50,8 +86,8 @@ struct GatewayDetailClockRuntimeContractTests {
             "The tapped button must enter Syncing appearance immediately"
         )
         require(
-            controller.contains("UIImage(named: \"gateway_clock_sync_loading\")"),
-            "Syncing appearance must use the exported Figma loading asset"
+            controller.contains("UIImage(named: \"site_entry_sync_loading\")"),
+            "Syncing appearance must use the current shared loading asset"
         )
         require(
             controller.contains("UIAccessibility.isReduceMotionEnabled"),
@@ -97,7 +133,7 @@ struct GatewayDetailClockRuntimeContractTests {
             require(chinese.contains("\"\(key)\""), "Chinese localization missing \(key)")
         }
 
-        require(loadingAsset.contains("width=\"16\" height=\"16\""), "Loading asset must preserve the Figma 16-point geometry")
+        require(loadingAsset.contains("width=\"42\" height=\"42\""), "Shared loading asset must preserve its source geometry")
         require(loadingAsset.contains("opacity=\"0.3\""), "Loading asset must preserve the Figma track opacity")
         require(loadingAsset.contains("stroke=\"#6667AB\""), "Loading asset must preserve the Figma theme color")
 

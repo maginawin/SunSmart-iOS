@@ -24,6 +24,11 @@ struct SiteGatewayCloudTimeZoneUIContractTests {
             from: "private func setupGatewayCard()",
             to: "private func setupEmptyState()"
         )
+        let emptyStateSetup = sourceSection(
+            in: view,
+            from: "private func setupEmptyState()",
+            to: "private func setupFailureSummary()"
+        )
         let heightMeasurement = sourceSection(
             in: view,
             from: "private func updateMeasuredHeightsIfNeeded(width: CGFloat)",
@@ -191,15 +196,56 @@ struct SiteGatewayCloudTimeZoneUIContractTests {
                 view.contains("removeAnimation(forKey: \"siteEntrySyncLoading\")"),
             "Reusable cells must stop the pushing animation when state changes or cells are reused"
         )
-        require(
-            view.contains("site_entry_sync_no_gateways_title") &&
-                view.contains("site_entry_sync_no_gateways_message") &&
-                view.contains("make.size.equalTo(SCRYFrom(32))") &&
+        requireAll([
+            (
+                view.contains("private let emptyHeaderLabel = UILabel()") &&
+                    view.contains("private let emptyContentView = UIView()") &&
+                    view.contains("private let emptyIconBackgroundView = UIView()"),
+                "No-gateways state must expose the Figma header, row, and icon-container structure"
+            ),
+            (
+                emptyStateSetup.contains("\"site_entry_sync_gateways_header\".localizedString") &&
+                    emptyStateSetup.contains("\"site_no_gateways\".localizedString") &&
+                    emptyStateSetup.contains("\"site_no_gateways_sync_needed\".localizedString") &&
+                    emptyStateSetup.contains("emptyTitleLabel.textAlignment = .left") &&
+                    emptyStateSetup.contains("emptyMessageLabel.textAlignment = .left") &&
+                    emptyStateSetup.contains("emptyTitleLabel.numberOfLines = 0") &&
+                    emptyStateSetup.contains("emptyMessageLabel.numberOfLines = 0"),
+                "No-gateways copy must use the approved Edit Site localizations and left-aligned Dynamic Type labels"
+            ),
+            (
+                emptyStateSetup.contains("emptyIconBackgroundView.backgroundColor = RGB(148, 163, 184, 0.1)") &&
+                    emptyStateSetup.contains("emptyIconBackgroundView.layer.cornerRadius = SCRYFrom(16)") &&
+                    emptyStateSetup.contains("make.size.equalTo(SCRYFrom(32))") &&
+                    emptyStateSetup.contains("make.size.equalTo(SCRYFrom(16))") &&
+                    emptyStateSetup.contains("make.left.equalTo(emptyIconBackgroundView.snp.right).offset(SCRXFrom(12))") &&
+                    emptyStateSetup.contains("emptyIconImageView.image = UIImage(named: \"time-zone-sync-status-gateway\")") &&
+                    !emptyStateSetup.contains("withTintColor"),
+                "No-gateways row must reuse the exact gradient asset inside the 32pt muted icon circle with a 12pt text gap"
+            ),
+            (
+                emptyStateSetup.contains("make.top.equalToSuperview().offset(SCRYFrom(8))") &&
+                    emptyStateSetup.contains("make.left.right.equalToSuperview().inset(SCRXFrom(16))") &&
+                    emptyStateSetup.contains("make.height.greaterThanOrEqualTo(SCRYFrom(21))") &&
+                    emptyStateSetup.contains("make.height.greaterThanOrEqualTo(SCRYFrom(20))") &&
+                    emptyStateSetup.contains("make.height.greaterThanOrEqualTo(SCRYFrom(16))") &&
+                    !emptyStateSetup.contains("make.height.greaterThanOrEqualTo(SCRYFrom(152))") &&
+                    !emptyStateSetup.contains("make.centerX.equalToSuperview()"),
+                "No-gateways card must follow the compact Figma insets and line boxes without the old centered 152pt layout"
+            ),
+            (
+                emptyStateSetup.contains("emptyHeaderLabel.accessibilityTraits = .header") &&
+                    emptyStateSetup.contains("emptyContentView.isAccessibilityElement = true") &&
+                    emptyStateSetup.contains("emptyIconImageView.isAccessibilityElement = false"),
+                "No-gateways Header and row must remain separately readable while the icon stays decorative"
+            ),
+            (
                 view.contains("numberOfLines = 1") &&
-                view.contains("lineBreakMode = .byTruncatingTail") &&
-                view.contains("item.displayName.isEmpty ? item.requestMAC : item.displayName"),
-            "Empty state, Dynamic Type truncation, and MAC fallback must remain readable"
-        )
+                    view.contains("lineBreakMode = .byTruncatingTail") &&
+                    view.contains("item.displayName.isEmpty ? item.requestMAC : item.displayName"),
+                "Gateway row Dynamic Type truncation and MAC fallback must remain readable"
+            )
+        ])
         require(
             view.contains("state.failedCount == 1") &&
                 view.contains("site_entry_sync_one_gateway_failed") &&
@@ -284,7 +330,6 @@ struct SiteGatewayCloudTimeZoneUIContractTests {
         )
         require(
             !gatewayCardSetup.contains("SCRYFrom(176)") &&
-                view.contains("make.height.greaterThanOrEqualTo(SCRYFrom(152))") &&
                 !view.contains("make.height.greaterThanOrEqualTo(SCRYFrom(96))") &&
                 !view.contains("private var failureSummaryHeightConstraint") &&
                 heightMeasurement.contains("let gatewayCardHeight = headerHeight + preferredRowsHeight") &&
@@ -293,9 +338,12 @@ struct SiteGatewayCloudTimeZoneUIContractTests {
                     "fittingHeight(of: failureSummaryCardView, width: width)"
                 ) &&
                 !heightMeasurement.contains("SCRYFrom(96)") &&
-                !view.contains("make.height.equalTo(SCRYFrom(152))") &&
+                heightMeasurement.contains("let emptyHeight = fittingHeight(of: emptyStateView, width: width)") &&
+                heightMeasurement.contains("newPreferredHeight = emptyHeight") &&
+                !heightMeasurement.contains("SCRYFrom(152)") &&
+                !view.contains("make.height.greaterThanOrEqualTo(SCRYFrom(152))") &&
                 view.contains("gatewayHeaderHeightConstraint"),
-            "Gateway and failure cards must converge to measured content while preserving only the empty-state baseline"
+            "Gateway, no-gateways, and failure cards must all converge to their measured content"
         )
         let failureSummarySetup = sourceSection(
             in: view,
@@ -351,6 +399,8 @@ struct SiteGatewayCloudTimeZoneUIContractTests {
             ("site_entry_sync_gateway_failed", "Failed"),
             ("site_entry_sync_no_gateways_title", "No gateways"),
             ("site_entry_sync_no_gateways_message", "No gateways configured - no sync needed."),
+            ("site_no_gateways", "No gateways"),
+            ("site_no_gateways_sync_needed", "No gateways configured — no sync needed."),
             ("site_entry_sync_one_gateway_failed", "1 gateway failed"),
             ("site_entry_sync_gateways_failed_format", "%d gateways failed"),
             ("site_entry_sync_failed_guidance", "Sync on-site via Bluetooth to complete."),

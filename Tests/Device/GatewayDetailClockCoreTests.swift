@@ -13,6 +13,9 @@ struct GatewayDetailClockCoreTests {
         testRejectsUndisplayableGatewayDate()
         testReadAndSyncFailureRetainPreviousSample()
         testReadCompletionCannotEndActiveSyncPresentation()
+        testAutoPromptRequiresEligiblePendingSession()
+        testAutoPromptIsHandledOncePerSession()
+        testAutoPromptDefersWhilePresentationIsBlocked()
         testSyncingPresentationLastsAtLeastOneSecond()
         testDateFormattingUsesRequiredShape()
         print("GatewayDetailClockCoreTests passed")
@@ -159,6 +162,101 @@ struct GatewayDetailClockCoreTests {
             targetOffsetMinutes: 480
         )
         require(!state.isSyncing, "Only the sync completion may end the Syncing presentation")
+    }
+
+    private static func testAutoPromptRequiresEligiblePendingSession() {
+        let sessionID = UUID()
+        var state = GatewayClockAutoPromptState()
+        state.request(sessionID: sessionID, requiresSync: false)
+        require(
+            !state.shouldPresent(
+                sessionID: sessionID,
+                isViewVisible: true,
+                requiresSync: false,
+                isSyncing: false,
+                hasPendingSync: false,
+                hasExistingAlert: false
+            ),
+            "An in-sync Gateway must not request the automatic prompt"
+        )
+
+        state.request(sessionID: sessionID, requiresSync: true)
+        require(
+            state.shouldPresent(
+                sessionID: sessionID,
+                isViewVisible: true,
+                requiresSync: true,
+                isSyncing: false,
+                hasPendingSync: false,
+                hasExistingAlert: false
+            ),
+            "A visible pending Gateway session must present the automatic prompt"
+        )
+    }
+
+    private static func testAutoPromptIsHandledOncePerSession() {
+        let firstSessionID = UUID()
+        let secondSessionID = UUID()
+        var state = GatewayClockAutoPromptState()
+        state.request(sessionID: firstSessionID, requiresSync: true)
+        state.markHandled(sessionID: firstSessionID)
+        state.request(sessionID: firstSessionID, requiresSync: true)
+        require(
+            !state.shouldPresent(
+                sessionID: firstSessionID,
+                isViewVisible: true,
+                requiresSync: true,
+                isSyncing: false,
+                hasPendingSync: false,
+                hasExistingAlert: false
+            ),
+            "Later or a manual action must suppress repeat prompts in the same session"
+        )
+
+        state.request(sessionID: secondSessionID, requiresSync: true)
+        require(
+            state.shouldPresent(
+                sessionID: secondSessionID,
+                isViewVisible: true,
+                requiresSync: true,
+                isSyncing: false,
+                hasPendingSync: false,
+                hasExistingAlert: false
+            ),
+            "A new Proxy Ready session may prompt again"
+        )
+        state.end(sessionID: secondSessionID)
+        require(state.pendingSessionID == nil, "Ending the active session must clear its pending prompt")
+    }
+
+    private static func testAutoPromptDefersWhilePresentationIsBlocked() {
+        let sessionID = UUID()
+        var state = GatewayClockAutoPromptState()
+        state.request(sessionID: sessionID, requiresSync: true)
+
+        let blockedStates = [
+            (false, false, false, false),
+            (true, true, false, false),
+            (true, false, true, false),
+            (true, false, false, true)
+        ]
+        for blocked in blockedStates {
+            require(
+                !state.shouldPresent(
+                    sessionID: sessionID,
+                    isViewVisible: blocked.0,
+                    requiresSync: true,
+                    isSyncing: blocked.1,
+                    hasPendingSync: blocked.2,
+                    hasExistingAlert: blocked.3
+                ),
+                "Invisible, syncing, pending-sync, and occupied-alert states must defer the prompt"
+            )
+        }
+        require(
+            state.pendingSessionID == sessionID,
+            "A temporary presentation blocker must preserve the pending prompt"
+        )
     }
 
     private static func testRejectsUndisplayableGatewayDate() {
