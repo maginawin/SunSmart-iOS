@@ -42,6 +42,9 @@ class DeviceInformationViewController: UIViewController {
     private var gatewayTimeCoordinator: GatewayTimeInformationCoordinator?
     private var gatewayTimeSnapshot: GatewayTimeInformationSnapshot?
     private var gatewayIsDisconnected = false
+    private let lightTimeContext: LightTimeInformationContext?
+    private var lightTimeCoordinator: LightTimeInformationCoordinator?
+    private var lightTimeSnapshot: GatewayTimeInformationSnapshot?
     
     init(
         node: Node,
@@ -52,7 +55,8 @@ class DeviceInformationViewController: UIViewController {
         sceneTextOverride: String? = nil,
         nameOverride: String? = nil,
         showsFullDeviceInfo: Bool = false,
-        gatewayContext: GatewayInformationContext? = nil
+        gatewayContext: GatewayInformationContext? = nil,
+        lightTimeContext: LightTimeInformationContext? = nil
     ) {
         self.node = node
         self.emptyGroupText = emptyGroupText ?? "device_not_added_group".localizedString
@@ -61,6 +65,7 @@ class DeviceInformationViewController: UIViewController {
         self.nameOverride = nameOverride
         self.deviceInfoDisplayMode = showsFullDeviceInfo ? .full : .standard
         self.gatewayContext = gatewayContext
+        self.lightTimeContext = lightTimeContext
         self.sections = [.deviceInfo]
         if showsGroupSection {
             self.sections.append(.group)
@@ -87,7 +92,9 @@ class DeviceInformationViewController: UIViewController {
         
         setupTableView()
         setupGatewayTimeCoordinator()
+        setupLightTimeCoordinator()
         requestGatewayTime()
+        requestLightTime()
         getData()
         refreshRSSI()
     }
@@ -104,6 +111,7 @@ class DeviceInformationViewController: UIViewController {
         let isNoLongerInNavigationStack = navigationController?.viewControllers.contains(where: { $0 === self }) == false
         if isMovingFromParent || isBeingDismissed || isNoLongerInNavigationStack {
             gatewayTimeCoordinator?.finishPage()
+            lightTimeCoordinator?.finishPage()
         }
     }
 
@@ -137,6 +145,36 @@ class DeviceInformationViewController: UIViewController {
 
     private func requestGatewayTime() {
         _ = gatewayTimeCoordinator?.read()
+    }
+
+    private func setupLightTimeCoordinator() {
+        guard let lightTimeContext, node.timeModel != nil else { return }
+        let coordinator = LightTimeInformationCoordinator(
+            node: node,
+            context: lightTimeContext
+        )
+        coordinator.onReadState = { [weak self] state in
+            guard let self else { return }
+            switch state {
+            case .disconnected:
+                lightTimeSnapshot = nil
+                reloadDeviceInfoSection()
+                XWHUDManager.showErrorTipHUD("device_offline_message".localizedString)
+            case .reading:
+                reloadDeviceInfoSection()
+            case .succeeded(let snapshot):
+                lightTimeSnapshot = snapshot
+                reloadDeviceInfoSection()
+            case .failed:
+                reloadDeviceInfoSection()
+                XWHUDManager.showErrorTipHUD("failed_to_retrieve_data".localizedString)
+            }
+        }
+        lightTimeCoordinator = coordinator
+    }
+
+    private func requestLightTime() {
+        _ = lightTimeCoordinator?.read()
     }
     
     private func getData() {
@@ -249,6 +287,33 @@ class DeviceInformationViewController: UIViewController {
             let timeZoneContent = gatewayIsDisconnected
                 ? "--"
                 : gatewayTimeSnapshot?.timeZoneText ?? "--"
+            rows.append(
+                DeviceInfoRow(
+                    id: .dateTime,
+                    model: CustomCellModel(
+                        title: "gateway_date_time".localizedString,
+                        content: dateTimeContent,
+                        style: .none
+                    )
+                )
+            )
+            rows.append(
+                DeviceInfoRow(
+                    id: .timeZone,
+                    model: CustomCellModel(
+                        title: "site_time_zone_row_title".localizedString,
+                        content: timeZoneContent,
+                        style: .none
+                    )
+                )
+            )
+        } else if lightTimeContext != nil {
+            let dateTimeContent = node.timeModel == nil
+                ? "not_supported".localizedString
+                : lightTimeSnapshot?.dateTimeText ?? "--"
+            let timeZoneContent = node.timeModel == nil
+                ? "not_supported".localizedString
+                : lightTimeSnapshot?.timeZoneText ?? "--"
             rows.append(
                 DeviceInfoRow(
                     id: .dateTime,
@@ -451,6 +516,7 @@ extension DeviceInformationViewController: UITableViewDataSource, UITableViewDel
             }
         case .dateTime, .timeZone:
             requestGatewayTime()
+            requestLightTime()
         default:
             break
         }

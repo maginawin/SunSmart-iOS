@@ -128,6 +128,7 @@
 "debug_proxy" = "Proxy";
 "debug_supported" = "Supported";
 "debug_not_supported" = "Not Supported";
+"not_supported" = "Not supported";
 "debug_connected" = "Connected";
 "debug_disconnected" = "Disconnected";
 "debug_reconnecting" = "Reconnecting";

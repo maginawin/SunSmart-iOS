@@ -126,6 +126,7 @@
 "debug_proxy" = "代理";
 "debug_supported" = "支持";
 "debug_not_supported" = "不支持";
+"not_supported" = "不支持";
 "debug_connected" = "已连接";
 "debug_disconnected" = "已断开";
 "debug_reconnecting" = "重连中";

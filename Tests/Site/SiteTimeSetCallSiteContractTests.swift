@@ -16,6 +16,7 @@ struct SiteTimeSetCallSiteContractTests {
         let sdkMessages = try source(arguments[11])
         let sdkAPI = try source(arguments[12])
         let combinedAppSources = appSources.joined(separator: "\n")
+        let devicesSource = appSources[5]
 
         require(
             !matches(#"Node\.setLocalTimeMessage\s*\(\s*\)"#, in: combinedAppSources),
@@ -40,6 +41,13 @@ struct SiteTimeSetCallSiteContractTests {
                 && combinedAppSources.contains("SiteTimeSetMessageFactory.makeMessage(")
                 && combinedAppSources.contains("SiteTimeSetMessageFactory.resolve("),
             "All TimeSet variants must route through the shared factory"
+        )
+        require(
+            matches(
+                #"getMeshDistribution\(\)\s*// Visitor 没有修改设备时间的权限\s*guard self\.space\.permission != \.visitor else \{\s*return\s*\}\s*// 延迟3s发送广播节点同步时间消息[^\n]*\s*DispatchQueue\.main\.asyncAfter\(deadline: \.now\(\) \+ 3\)"#,
+                in: devicesSource
+            ),
+            "Owner and Editor entry must schedule all-nodes TimeSet without a Schedule gate, while Visitor must be denied"
         )
         require(
             factory.contains("SiteData.load(siteId: siteID)")

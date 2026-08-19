@@ -248,19 +248,23 @@ class DevicesViewController: WMPageController {
                     }
                     // 检查mesh分发情况
                     self.getMeshDistribution()
+
+                    // Visitor 没有修改设备时间的权限
+                    guard self.space.permission != .visitor else {
+                        return
+                    }
                     
-                    // 同步时间
+                    // 延迟3s发送广播节点同步时间消息，避免与获取设备状态冲突
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {[weak self] in
+                        self?.syncTimeNodes()
+                    }
+                    #if DEBUG
                     if MeshNetworkManager.instance.realNodes.contains(where: { $0.scheduleIds.count > 0 }) && MeshNetworkManager.instance.schedules.filter({ $0.enabled }).count > 0 {
-                        // 延迟3s发送广播节点同步时间消息，避免与获取设备状态冲突
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {[weak self] in
-                            self?.syncTimeNodes()
-                        }
-                        #if DEBUG
                         DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
                             self?.debugSyncFirstScheduledNodeTime()
                         }
-                        #endif
                     }
+                    #endif
                     
                 }
             }
