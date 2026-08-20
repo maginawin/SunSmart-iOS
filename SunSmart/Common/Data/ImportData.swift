@@ -163,9 +163,21 @@ extension SiteData {
         }
         self.permission = permission
 //        print("导入数据：site start \(Date().timeIntervalSince1970)")
-        let currentNetwork = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.meshUUID ? MeshNetworkManager.instance.meshNetwork : nil
+        let currentManager = MeshNetworkManager.instance
+        let currentNetwork: MeshNetwork?
+        if currentManager.meshNetwork?.uuid.uuidString == self.meshUUID,
+           currentManager.currentNetworkKey.networkId.hex == self.meshNetworkId,
+           currentManager.currentNetworkKey.isPrimary {
+            currentNetwork = currentManager.meshNetwork
+        } else {
+            currentNetwork = nil
+        }
 //        print("读取网络数据：\(Date().timeIntervalSince1970)")
-        var meshNetwork = currentNetwork ?? MeshNetwork.load(meshUUID: self.meshUUID, allData: false)
+        var meshNetwork = currentNetwork ?? MeshNetwork.load(
+            meshUUID: self.meshUUID,
+            subnetworkId: self.meshNetworkId,
+            allData: false
+        )
         // 增加主网络id
         if let mainNetworkKey = meshNetwork?.networkKeys.first(where: { $0.isPrimary }), self.meshNetworkId != mainNetworkKey.networkId.hex {
             self.meshNetworkId = mainNetworkKey.networkId.hex
@@ -1617,7 +1629,8 @@ extension SpaceData {
             if let data = try? JSONSerialization.data(withJSONObject: scheduleDicts), let list = try? jsonDecoder.decode([Schedule].self, from: data) {
                 schedules = list
             }
-            if meshUUID == MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
+            if meshUUID == MeshNetworkManager.instance.meshNetwork?.uuid.uuidString,
+               MeshNetworkManager.instance.currentNetworkKey.networkId.hex == self.meshNetworkId {
                 MeshNetworkManager.instance.schedules = schedules
             }
             schedules.forEach({

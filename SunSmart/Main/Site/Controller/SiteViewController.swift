@@ -595,9 +595,6 @@ self.updateAddressData()
 //                        self.site.spaces.append(contentsOf: localSpaces)
 //                        self.site.spaces.append(contentsOf: deleteSpaces)
 //                        self.site.spaces.sort(by: { $0.create < $1.create })
-                        if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString != self.site.meshUUID || !MeshNetworkManager.instance.currentNetworkKey.isPrimary {
-                            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.site.meshUUID, subNetworkId: self.site.meshNetworkId, connected: false)
-                        }
                         self.setupData()
                         if let remoteSnapshot {
                             self.applyTimeZoneReviewState(
