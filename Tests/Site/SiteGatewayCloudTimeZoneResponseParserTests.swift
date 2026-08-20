@@ -7,6 +7,7 @@ struct SiteGatewayCloudTimeZoneResponseParserTests {
         testParsesPositiveRequestIDsAcrossSupportedIntegerRepresentations()
         testRejectsInvalidRequestIDs()
         testParsesAndNormalizesKnownGatewayStatuses()
+        testProductionSucceededResponseCompletesPushingGateway()
         testIgnoresUnknownOrMalformedGatewayStatusEntries()
         testDistinguishesMalformedStatusDataFromAnEmptyStatusArray()
         print("SiteGatewayCloudTimeZoneResponseParserTests passed")
@@ -78,6 +79,42 @@ struct SiteGatewayCloudTimeZoneResponseParserTests {
                 .init(id: "aa:bb", statuses: [.failed, .expired])
             ],
             "Trimmed, case-insensitive MAC/status values must coalesce into their known status sets"
+        )
+    }
+
+    private static func testProductionSucceededResponseCompletesPushingGateway() {
+        let response: [String: Any] = [
+            "data": [
+                ["EF725643A2B9": "SUCCEEDED"]
+            ]
+        ]
+        guard let snapshots = SiteGatewayCloudTimeZoneResponseParser.parseStatuses(
+            from: response
+        ) else {
+            fatalError("The production SUCCEEDED response must be structurally valid")
+        }
+        var state = SiteGatewayCloudTimeZoneBatchState(
+            targets: [
+                SiteGatewayCloudTimeZoneTarget(
+                    id: "ef725643a2b9",
+                    requestMAC: "EF725643A2B9",
+                    displayName: "Gateway",
+                    remoteOrder: 0,
+                    effectiveOffsetMinutes: nil,
+                    requiresSync: true
+                )
+            ]
+        )
+
+        state.apply(snapshots)
+
+        require(
+            snapshots == [.init(id: "ef725643a2b9", statuses: [.succeed])],
+            "The production SUCCEEDED value must map to the internal success status"
+        )
+        require(
+            state.items.map(\.status) == [.synced] && state.canDismiss,
+            "A production SUCCEEDED response must finish the matching pushing Gateway"
         )
     }
 

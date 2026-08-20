@@ -92,7 +92,7 @@ enum SiteGatewayCloudTimeZoneResponseParser {
         switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
         case "requested":
             return .requested
-        case "succeed":
+        case "succeed", "succeeded":
             return .succeed
         case "failed":
             return .failed
