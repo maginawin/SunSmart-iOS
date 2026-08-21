@@ -9,6 +9,15 @@ import Foundation
 import NordicSigMeshSDK
 
 class Profile: Copyable {
+
+    enum DaylightCalibrationMode: String, Codable, CaseIterable {
+        case none
+        case nightCal
+        case sensorCal
+        case planeCal
+    }
+
+    static let defaultTargetNightBrightness = 50
     
     /// 灯光阶段调节数据
     class LightData: Copyable {
@@ -759,6 +768,10 @@ class Profile: Copyable {
     var sensitivity: UInt8 = 95
     /// 邻近照明数量
     var proximityLightingNumber: UInt8 = 2
+    /// Daylight 校准模式。nil 仅表示旧数据未保存该字段。
+    var calibrationMode: DaylightCalibrationMode? = DaylightCalibrationMode.none
+    /// Night Cal. 取样时的目标亮度百分比。
+    var targetNightBrightness: Int = Profile.defaultTargetNightBrightness
     /// 晚上时配置数据
     var nightData: TriggerConditionData?
     /// 白天时配置数据
@@ -771,6 +784,20 @@ class Profile: Copyable {
     /// 灯光阶段调节数据（图表）
     var lightData: LightData {
         return LightData(profileType: type, highEndTrim: lightControlData.highEndTrim, lowEndTrim: lightControlData.lowEndTrim, occupancyLevel: lightControlData.occupancyLevel, vacantLevel: lightControlData.vacantLevel, standbyLevel: lightControlData.standbyLevel, taskLevel: lightControlData.taskLevel, autoMinLevel: lightControlData.autoMinLevel, t1: lightControlData.t1, t2: lightControlData.t2, t3: lightControlData.t3, t4: lightControlData.t4, t5: lightControlData.t5)
+    }
+
+    func effectiveCalibrationMode(sensorCalibrated: Bool) -> DaylightCalibrationMode {
+        guard type.daylightType, sensorCalibrated else {
+            return .none
+        }
+        return calibrationMode ?? .planeCal
+    }
+
+    static func normalizedTargetNightBrightness(_ value: Int?) -> Int {
+        guard let value, (1...100).contains(value) else {
+            return defaultTargetNightBrightness
+        }
+        return value
     }
     
     init(name: String = "", id: String = UUID().uuidString, type: ProfileType = .occupancy_daylight, lightControlData: LightControlData, powerUpState: PowerUpState, powerUpCct: UInt16 = 4500, manualOverrideTimeout: UInt32, adjustSpeed: Int = 50, sensitivity: UInt8 = 95, proximityLightingNumber: UInt8 = 2, nightData: TriggerConditionData? = nil, dayData: TriggerConditionData? = nil, scenes: [LightControlScene] = []) {
@@ -852,6 +879,10 @@ class Profile: Copyable {
         self.adjustSpeed = profile.adjustSpeed
         self.sensitivity = profile.sensitivity
         self.proximityLightingNumber = profile.proximityLightingNumber
+        self.calibrationMode = profile.type.daylightType ? profile.calibrationMode : DaylightCalibrationMode.none
+        self.targetNightBrightness = profile.type.daylightType
+            ? Profile.normalizedTargetNightBrightness(profile.targetNightBrightness)
+            : Profile.defaultTargetNightBrightness
         self.dayData = profile.dayData?.copy()
         self.nightData = profile.nightData?.copy()
         self.scenes = profile.scenes.map({ $0.copy() })
@@ -879,12 +910,14 @@ class Profile: Copyable {
         profile.nightData = nightData
         profile.scenes = scenes
         profile.lightSensorTemplates = self.lightSensorTemplates
+        profile.calibrationMode = calibrationMode
+        profile.targetNightBrightness = targetNightBrightness
         return profile as! Self
     }
     
     static func == (lhs: Profile, rhs: Profile) -> Bool {
         
-        guard lhs.id == rhs.id && lhs.type == rhs.type && lhs.scenes == rhs.scenes && lhs.powerUpState.rawValue == rhs.powerUpState.rawValue && lhs.powerUpCct == rhs.powerUpCct && lhs.manualOverrideTimeout == rhs.manualOverrideTimeout && lhs.adjustSpeed == rhs.adjustSpeed && lhs.sensitivity == rhs.sensitivity && lhs.proximityLightingNumber == rhs.proximityLightingNumber else {
+        guard lhs.id == rhs.id && lhs.type == rhs.type && lhs.scenes == rhs.scenes && lhs.powerUpState.rawValue == rhs.powerUpState.rawValue && lhs.powerUpCct == rhs.powerUpCct && lhs.manualOverrideTimeout == rhs.manualOverrideTimeout && lhs.adjustSpeed == rhs.adjustSpeed && lhs.sensitivity == rhs.sensitivity && lhs.proximityLightingNumber == rhs.proximityLightingNumber && lhs.calibrationMode == rhs.calibrationMode && lhs.targetNightBrightness == rhs.targetNightBrightness else {
             return false
         }
         

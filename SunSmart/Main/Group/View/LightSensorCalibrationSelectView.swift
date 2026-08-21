@@ -37,9 +37,12 @@ protocol LightSensorCalibrationSelectViewDelegate: AnyObject {
 
 class LightSensorCalibrationSelectView: UIView {
 
+    private let luxFreshnessInterval: TimeInterval = 3
     private var titleLabel: UILabel!
     private var helpBtn: UIButton!
     private var tableView: UITableView!
+    private var luxFreshnessTimer: Timer?
+    private var freshLuxSensorAddress: Address?
     
     weak var delegate: LightSensorCalibrationSelectViewDelegate?
     
@@ -98,6 +101,10 @@ class LightSensorCalibrationSelectView: UIView {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+
+    deinit {
+        stopLuxFreshnessTimer()
+    }
     
     @objc private func helpBtnAction() {
         
@@ -140,22 +147,57 @@ class LightSensorCalibrationSelectView: UIView {
     
     /// 刷新cell
     func reloadSensorCell(sensor: Node) {
-        
-        if let index = daylightSensors.firstIndex(of: sensor), let cell = tableView.cellForRow(at: IndexPath(row: index, section: 0)) as? LightSensorCalibrationSelectViewCell {
-            
-            cell.calibratedSignView.isHidden = !sensor.sensorCalibrated
-            if sensor.selectState == .loading {
-                cell.enableSwitch.isHidden = true
-                cell.loadingImageView.isHidden = false
-                cell.loadingImageView.layer.addRotationAnimation(duration: 1.2, repeatCount: 999, animationKey: "loading")
-            }else {
-                cell.enableSwitch.setOn(sensor.selectState == .switchOn, animated: true)
-                cell.enableSwitch.isHidden = false
-                cell.loadingImageView.isHidden = true
-                cell.loadingImageView.layer.removeAnimation(forKey: "loading")
-            }
+        if sensor.selectState != .switchOn {
+            clearFreshLuxIfNeeded(for: sensor)
         }
-        
+        if let index = daylightSensors.firstIndex(of: sensor), let cell = tableView.cellForRow(at: IndexPath(row: index, section: 0)) as? LightSensorCalibrationSelectViewCell {
+            configure(cell: cell, sensor: sensor, animatedSwitch: true)
+        }
+    }
+
+    /// 更新传感器lux显示状态。
+    /// - Parameters:
+    ///   - sensor: 当前启用的光照传感器
+    ///   - isFresh: 是否刚收到有效的Sensor Status
+    func updateLux(sensor: Node, isFresh: Bool) {
+        if isFresh {
+            freshLuxSensorAddress = sensor.primaryUnicastAddress
+            startLuxFreshnessTimer()
+        }else {
+            clearFreshLuxIfNeeded(for: sensor)
+        }
+        reloadSensorCell(sensor: sensor)
+    }
+
+    private func configure(cell: LightSensorCalibrationSelectViewCell, sensor: Node, animatedSwitch: Bool) {
+        let isFresh = freshLuxSensorAddress == sensor.primaryUnicastAddress
+        cell.configure(sensor: sensor, isLuxFresh: isFresh, animatedSwitch: animatedSwitch)
+    }
+
+    private func startLuxFreshnessTimer() {
+        stopLuxFreshnessTimer()
+        luxFreshnessTimer = LCWeakTimer.scheduledTimer(timeInterval: luxFreshnessInterval, aTarget: self, selector: #selector(luxFreshnessTimerAction), userInfo: nil, repeats: false)
+        RunLoop.current.add(luxFreshnessTimer!, forMode: .common)
+    }
+
+    private func stopLuxFreshnessTimer() {
+        luxFreshnessTimer?.invalidate()
+        luxFreshnessTimer = nil
+    }
+
+    private func clearFreshLuxIfNeeded(for sensor: Node) {
+        guard freshLuxSensorAddress == sensor.primaryUnicastAddress else { return }
+        stopLuxFreshnessTimer()
+        freshLuxSensorAddress = nil
+    }
+
+    @objc private func luxFreshnessTimerAction() {
+        stopLuxFreshnessTimer()
+        guard let address = freshLuxSensorAddress else { return }
+        freshLuxSensorAddress = nil
+        if let sensor = daylightSensors.first(where: { $0.primaryUnicastAddress == address }) {
+            reloadSensorCell(sensor: sensor)
+        }
     }
 }
 
@@ -168,18 +210,7 @@ extension LightSensorCalibrationSelectView: UITableViewDataSource, UITableViewDe
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! LightSensorCalibrationSelectViewCell
         let sensor = daylightSensors[indexPath.row]
-        cell.nameLabel.text = sensor.name
-        if sensor.selectState == .loading {
-            cell.enableSwitch.isHidden = true
-            cell.loadingImageView.isHidden = false
-            cell.loadingImageView.layer.addRotationAnimation(duration: 1.2, repeatCount: 999, animationKey: "loading")
-        }else {
-            cell.enableSwitch.isOn = sensor.selectState == .switchOn
-            cell.enableSwitch.isHidden = false
-            cell.loadingImageView.isHidden = true
-            cell.loadingImageView.layer.removeAnimation(forKey: "loading")
-        }
-        cell.calibratedSignView.isHidden = !sensor.sensorCalibrated
+        configure(cell: cell, sensor: sensor, animatedSwitch: false)
         
         cell.identifyCallback = {[weak self] in
             guard let self = self else { return }
@@ -212,6 +243,9 @@ class LightSensorCalibrationSelectViewCell: UITableViewCell {
     private var enableSwitchBtn: UIButton!
     var calibratedSignView: UIView!
     var loadingImageView: UIImageView!
+    private var luxValueLabel: UILabel!
+    private var luxDescriptionLabel: UILabel!
+    private var luxReadingStackView: UIStackView!
     
     var enabledCallback: ((Bool)->Void)?
     var identifyCallback: (()->Void)?
@@ -239,6 +273,32 @@ class LightSensorCalibrationSelectViewCell: UITableViewCell {
     
     @objc private func identifying() {
         identifyCallback?()
+    }
+
+    func configure(sensor: Node, isLuxFresh: Bool, animatedSwitch: Bool) {
+        nameLabel.text = sensor.name
+        calibratedSignView.isHidden = !sensor.sensorCalibrated
+
+        if sensor.selectState == .loading {
+            enableSwitch.isHidden = true
+            loadingImageView.isHidden = false
+            loadingImageView.layer.addRotationAnimation(duration: 1.2, repeatCount: 999, animationKey: "loading")
+        }else {
+            enableSwitch.setOn(sensor.selectState == .switchOn, animated: animatedSwitch)
+            enableSwitch.isHidden = false
+            loadingImageView.isHidden = true
+            loadingImageView.layer.removeAnimation(forKey: "loading")
+        }
+
+        guard sensor.selectState == .switchOn, let lux = sensor.steadyDaylightLux else {
+            luxReadingStackView.isHidden = true
+            luxValueLabel.text = nil
+            return
+        }
+
+        luxReadingStackView.isHidden = false
+        luxValueLabel.text = "\(lux) lx"
+        luxValueLabel.textColor = isLuxFresh ? RGB(0, 212, 146) : RGB(148, 163, 184)
     }
     
     private func setupUI() {
@@ -279,6 +339,7 @@ class LightSensorCalibrationSelectViewCell: UITableViewCell {
             make.centerY.equalTo(iconImageView)
             make.width.lessThanOrEqualTo(SCRXFrom(160))
         }
+        nameLabel.lineBreakMode = .byTruncatingTail
         
         enableSwitch = UISwitch()
         enableSwitch.onTintColor = Bar_Color
@@ -295,6 +356,27 @@ class LightSensorCalibrationSelectViewCell: UITableViewCell {
         enableSwitchBtn.snp.makeConstraints { make in
             make.edges.equalTo(enableSwitch)
         }
+
+        luxValueLabel = UILabel(text: nil, textColor: RGB(148, 163, 184), fontSize: 12)
+        luxValueLabel.textAlignment = .right
+
+        luxDescriptionLabel = UILabel(text: "sensor_reading".localizedString, textColor: RGB(148, 163, 184), fontSize: 12, fontWeight: .light)
+        luxDescriptionLabel.textAlignment = .right
+
+        luxReadingStackView = UIStackView(arrangedSubviews: [luxValueLabel, luxDescriptionLabel])
+        luxReadingStackView.axis = .vertical
+        luxReadingStackView.alignment = .trailing
+        luxReadingStackView.spacing = 0
+        luxReadingStackView.isHidden = true
+        infoView.addSubview(luxReadingStackView)
+        luxReadingStackView.snp.makeConstraints { make in
+            make.right.equalTo(enableSwitch.snp.left).offset(SCRXFrom(-6))
+            make.centerY.equalToSuperview()
+        }
+
+        nameLabel.snp.makeConstraints { make in
+            make.right.lessThanOrEqualTo(luxReadingStackView.snp.left).offset(SCRXFrom(-8))
+        }
         
         loadingImageView = UIImageView(image: UIImage(named: "loading"))
         loadingImageView.isHidden = true
@@ -303,6 +385,15 @@ class LightSensorCalibrationSelectViewCell: UITableViewCell {
             make.center.equalTo(enableSwitch)
         }
         
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        identifyCallback = nil
+        enabledCallback = nil
+        luxReadingStackView.isHidden = true
+        luxValueLabel.text = nil
+        loadingImageView.layer.removeAnimation(forKey: "loading")
     }
     
 }
