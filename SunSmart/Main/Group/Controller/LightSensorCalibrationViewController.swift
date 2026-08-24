@@ -16,7 +16,7 @@ class LightSensorCalibrationViewController: UIViewController {
         case sensorSwitching
     }
 
-    private struct NightCalibrationSnapshot {
+    private struct DaylightCalibrationSnapshot {
         let selectedSensorCalibrationData: DaylightSensorCalibrationData?
         let selectedSensorPublish: Publish?
         let groupSensor: Node?
@@ -34,9 +34,18 @@ class LightSensorCalibrationViewController: UIViewController {
     private var onPointLuxView: LightSensorCalibrationPointLuxView!
     private var offPointLuxView: LightSensorCalibrationPointLuxView!
     private var targetNightBrightnessView: LightSensorTargetNightBrightnessView!
-    private var nightCalibrationCompleteView: LightSensorNightCalibrationCompleteView!
+    private var targetSensorValueView: LightSensorTargetSensorValueView!
+    private var calibrationCompleteView: LightSensorCalibrationCompleteView!
     private var manualCorrectionBtn: UIButton!
     private var isNightRecalibrationDraft = false
+    private var isSensorRecalibrationDraft = false
+    private var sensorCalibrationDimLevel = 50
+    private var isSensorGroupAutoSuspended = false
+    private var sensorConfigurationPending = false
+    private var sensorAutoRestoreBlocked = false
+    private var pendingUseSensorReadingAddress: Address?
+    private var latestFreshSensorLux: (address: Address, lux: UInt16, date: Date)?
+    private static let sensorTargetLuxRange = LightSensorTargetSensorValueView.targetValueRange
     
     /// 配置中成功设备
     private var configurCompletedBtn: UIButton?
@@ -139,6 +148,7 @@ class LightSensorCalibrationViewController: UIViewController {
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        restoreGroupAutoAfterSensorDraftIfNeeded()
         isViewVisible = false
         stopLuxPolling()
         if let sensor = selectSensor {
@@ -310,6 +320,10 @@ class LightSensorCalibrationViewController: UIViewController {
         effectiveActiveCalibrationMode == .nightCal && !isNightRecalibrationDraft
     }
 
+    private var isSensorCalibrationComplete: Bool {
+        effectiveActiveCalibrationMode == .sensorCal && !isSensorRecalibrationDraft
+    }
+
     private var targetNightBrightnessRange: ClosedRange<Int> {
         let lightControlData = group.info.profile.lightControlData
         let lowerBound = max(1, lightControlData.lowEndTrim)
@@ -321,13 +335,15 @@ class LightSensorCalibrationViewController: UIViewController {
         if mode == .plane {
             restorePersistedSensorSelectionForPlane()
         }
-        let showsPlaneContent = mode != .night
+        let showsPlaneContent = mode == .plane
         onPointLuxView.isHidden = !showsPlaneContent
         offPointLuxView.isHidden = !showsPlaneContent
 
         let nightComplete = mode == .night && isNightCalibrationComplete
+        let sensorComplete = mode == .sensor && isSensorCalibrationComplete
         targetNightBrightnessView.isHidden = mode != .night || nightComplete
-        nightCalibrationCompleteView.isHidden = !nightComplete
+        targetSensorValueView.isHidden = mode != .sensor || sensorComplete
+        calibrationCompleteView.isHidden = !nightComplete && !sensorComplete
 
         if mode == .night {
             calibrationBtn.setTitle("apply_night_calibration".localizedString, for: .normal)
@@ -336,15 +352,34 @@ class LightSensorCalibrationViewController: UIViewController {
             let targetLux = group.info.profile.type == .daylight
                 ? group.info.profile.lightControlData.taskLevel
                 : group.info.profile.lightControlData.occupancyLevel
-            nightCalibrationCompleteView.update(
+            calibrationCompleteView.update(
                 targetLux: targetLux,
                 targetBrightness: Profile.normalizedTargetNightBrightness(group.info.profile.targetNightBrightness),
+                showsTargetBrightness: true,
                 pendingDeviceCount: group.nodes.filter { !$0.getNodeSyncProfiles().isEmpty }.count,
                 profileType: group.info.profile.type
             )
+        } else if mode == .sensor {
+            calibrationBtn.setTitle("apply_sensor_calibration".localizedString, for: .normal)
+            targetSensorValueView.dimLevel = sensorCalibrationDimLevel
+            let targetLux = group.info.profile.type == .daylight
+                ? group.info.profile.lightControlData.taskLevel
+                : group.info.profile.lightControlData.occupancyLevel
+            if sensorComplete {
+                calibrationCompleteView.update(
+                    targetLux: targetLux,
+                    targetBrightness: 0,
+                    showsTargetBrightness: false,
+                    pendingDeviceCount: group.nodes.filter { !$0.getNodeSyncProfiles().isEmpty }.count,
+                    profileType: group.info.profile.type
+                )
+            } else if isSensorRecalibrationDraft && targetSensorValueView.targetValue == nil {
+                targetSensorValueView.setTargetValue(targetLux)
+            }
         } else {
-            calibrationBtn.setTitle("CALIBRATION".localizedString, for: .normal)
+            calibrationBtn.setTitle("apply_plane_calibration".localizedString, for: .normal)
         }
+        updateSensorManualControlState(for: mode, sensorComplete: sensorComplete)
         updateManualCorrectionBtn()
         updateCalibrationState()
     }
@@ -367,6 +402,11 @@ class LightSensorCalibrationViewController: UIViewController {
         isNightRecalibrationDraft = true
         updateCalibrationModeUI(.night)
     }
+
+    private func recalibrateSensor() {
+        isSensorRecalibrationDraft = true
+        updateCalibrationModeUI(.sensor)
+    }
     
     private var shouldRestoreAutoAfterDaylightCalibration: Bool {
         let type = group.info.profile.type
@@ -375,10 +415,102 @@ class LightSensorCalibrationViewController: UIViewController {
     
     private func restoreGroupAutoAfterDaylightCalibration() {
         guard shouldRestoreAutoAfterDaylightCalibration else { return }
+        isSensorGroupAutoSuspended = false
+        sensorConfigurationPending = false
+        sensorAutoRestoreBlocked = false
         MeshAPI.sendMessage(
             message: LightLCLightOnOffSetUnacknowledged(true, transitionTime: .default, delay: 0),
             address: group.address.address
         )
+    }
+
+    private func updateSensorManualControlState(
+        for mode: LightSensorCalibrationMode,
+        sensorComplete: Bool
+    ) {
+        if mode == .sensor && !sensorComplete {
+            suspendGroupAutoForSensorCalibration()
+        } else {
+            restoreGroupAutoAfterSensorDraftIfNeeded()
+        }
+    }
+
+    private func suspendGroupAutoForSensorCalibration() {
+        guard !isSensorGroupAutoSuspended else { return }
+        isSensorGroupAutoSuspended = true
+        MeshAPI.sendMessage(
+            message: LightLCLightOnOffSetUnacknowledged(false),
+            address: group.address.address
+        )
+    }
+
+    private func restoreGroupAutoAfterSensorDraftIfNeeded() {
+        guard isSensorGroupAutoSuspended,
+              !sensorConfigurationPending,
+              !sensorAutoRestoreBlocked else {
+            return
+        }
+        restoreGroupAutoAfterDaylightCalibration()
+    }
+
+    private func setSensorCalibrationGroupDimLevel(_ value: Int) {
+        guard calibrationModeView.selectedMode == .sensor,
+              !isSensorCalibrationComplete else {
+            return
+        }
+        sensorCalibrationDimLevel = value
+        suspendGroupAutoForSensorCalibration()
+        MeshAPI.setGroupLightnessState(
+            address: group.address.address,
+            lightness: Node.getLightness(lightness100: value)
+        )
+    }
+
+    private func restoreSensorDimLevel() {
+        MeshAPI.setGroupLightnessState(
+            address: group.address.address,
+            lightness: Node.getLightness(lightness100: sensorCalibrationDimLevel)
+        )
+    }
+
+    private func restoreSensorDimLevelAndAutoAfterFailure(allowAutoRestore: Bool) {
+        restoreSensorDimLevel()
+        sensorConfigurationPending = false
+        sensorAutoRestoreBlocked = !allowAutoRestore
+        if allowAutoRestore {
+            restoreGroupAutoAfterSensorDraftIfNeeded()
+        }
+    }
+
+    private func requestSensorTargetReading() {
+        guard let sensor = selectSensor else { return }
+        let address = sensor.primaryUnicastAddress
+
+        if let latestFreshSensorLux,
+           latestFreshSensorLux.address == address,
+           Date().timeIntervalSince(latestFreshSensorLux.date) <= 3,
+           Self.sensorTargetLuxRange.contains(Int(latestFreshSensorLux.lux)) {
+            targetSensorValueView.setTargetValue(Int(latestFreshSensorLux.lux))
+            return
+        }
+
+        pendingUseSensorReadingAddress = address
+        MeshAPI.getAmbientSensorValue(node: sensor) { [weak self, weak sensor] lux in
+            DispatchQueue.main.async {
+                guard let self,
+                      let sensor,
+                      self.selectSensor == sensor,
+                      self.pendingUseSensorReadingAddress == address else {
+                    return
+                }
+                self.pendingUseSensorReadingAddress = nil
+                guard let lux, Self.sensorTargetLuxRange.contains(Int(lux)) else {
+                    return
+                }
+                self.latestFreshSensorLux = (address, lux, Date())
+                self.targetSensorValueView.setTargetValue(Int(lux))
+            }
+        }
     }
     
     /// 更新修改校准按钮
@@ -434,6 +566,10 @@ class LightSensorCalibrationViewController: UIViewController {
     @objc private func calibrationBtnAction() {
         if calibrationModeView.selectedMode == .night {
             showApplyNightCalibrationConfirmation()
+            return
+        }
+        if calibrationModeView.selectedMode == .sensor {
+            showApplySensorCalibrationConfirmation()
             return
         }
 
@@ -644,7 +780,7 @@ class LightSensorCalibrationViewController: UIViewController {
         setLuxPollingSuspended(true, for: .calibration)
         showConnecting()
         let targetBrightness = targetNightBrightnessView.value
-        let rollbackSnapshot = makeNightCalibrationSnapshot(for: sensor)
+        let rollbackSnapshot = makeDaylightCalibrationSnapshot(for: sensor)
 
         MeshSensorCalibrateManager.manager.calibrateNight(
             node: sensor,
@@ -700,12 +836,12 @@ class LightSensorCalibrationViewController: UIViewController {
         sensor: Node,
         result: NightSensorCalibrationResult,
         targetBrightness: Int,
-        rollbackSnapshot: NightCalibrationSnapshot
+        rollbackSnapshot: DaylightCalibrationSnapshot
     ) {
         sensor.selectState = .loading
         sensorSelectView.reloadSensorCell(sensor: sensor)
 
-        commitNightSensorSelection(sensor, rollbackSnapshot: rollbackSnapshot) { [weak self] success, publicationRollbackSucceeded in
+        commitCalibrationSensorSelection(sensor, rollbackSnapshot: rollbackSnapshot) { [weak self] success, publicationRollbackSucceeded in
             guard let self else { return }
             guard success else {
                 MeshSensorCalibrateManager.manager.restoreDaylightCalibration(
@@ -772,7 +908,185 @@ class LightSensorCalibrationViewController: UIViewController {
         }
     }
 
-    private func makeNightCalibrationSnapshot(for sensor: Node) -> NightCalibrationSnapshot {
+    private func showApplySensorCalibrationConfirmation() {
+        guard !isSensorCalibrationComplete,
+              targetSensorValueView.targetValue != nil else {
+            return
+        }
+        SRAlertView(
+            title: "apply_calibration_title".localizedString,
+            message: "apply_sensor_calibration_message".localizedString,
+            actions: [
+                SRAlertAction(title: "cancel".localizedString, style: .cancel),
+                SRAlertAction(title: "APPLY".localizedString, actionHandler: { [weak self] _ in
+                    self?.startSensorCalibration()
+                })
+            ]
+        ).show()
+    }
+
+    private func startSensorCalibration() {
+        guard !group.ambientLightSensorNodes.contains(where: { $0.selectState == .loading }),
+              let sensor = selectSensor,
+              let targetLux = targetSensorValueView.targetValue,
+              Self.sensorTargetLuxRange.contains(targetLux) else {
+            return
+        }
+
+        guard !group.nodes.isEmpty, group.nodes.contains(where: { $0.state }) else {
+            showAllDevicesOffline()
+            return
+        }
+
+        guard sensor.supportSensorCalibration else {
+            SRAlertView(
+                title: "notification".localizedString,
+                message: String(format: "sensor_calibration_minimum_version_message".localizedString, sensor.sensorCalibrationMinimumVersion),
+                actions: [SRAlertAction(title: "ok".localizedString)]
+            ).show()
+            return
+        }
+
+        sensorCalibrationDimLevel = targetSensorValueView.dimLevel
+        sensorConfigurationPending = false
+        sensorAutoRestoreBlocked = false
+        suspendGroupAutoForSensorCalibration()
+        setLuxPollingSuspended(true, for: .calibration)
+        showConnecting()
+        let rollbackSnapshot = makeDaylightCalibrationSnapshot(for: sensor)
+
+        MeshSensorCalibrateManager.manager.calibrateSensor(
+            node: sensor,
+            progress: { step in
+                DispatchQueue.main.async {
+                    switch step {
+                    case .connecting:
+                        SRAlertView.getCurrentAlertView()?.messageLabel.text = "connecting".localizedString
+                    case .ready, .stabilityChecking, .lightsChecking, .lightInflectionPoints, .calibrateRate:
+                        SRAlertView.getCurrentAlertView()?.messageLabel.text = "calibrating".localizedString
+                    case .targetIlluminance, .none:
+                        break
+                    }
+                }
+            },
+            successful: { [weak self] _ in
+                guard let self else { return }
+                SRAlertView.hide()
+                self.finishSensorCalibration(
+                    sensor: sensor,
+                    targetLux: targetLux,
+                    rollbackSnapshot: rollbackSnapshot
+                )
+            },
+            failed: { [weak self] _, error in
+                self?.handleSensorCalibrationFailure(error)
+            }
+        )
+    }
+
+    private func finishSensorCalibration(
+        sensor: Node,
+        targetLux: Int,
+        rollbackSnapshot: DaylightCalibrationSnapshot
+    ) {
+        sensor.selectState = .loading
+        sensorSelectView.reloadSensorCell(sensor: sensor)
+
+        commitCalibrationSensorSelection(sensor, rollbackSnapshot: rollbackSnapshot) { [weak self] success, publicationRollbackSucceeded in
+            guard let self else { return }
+            guard success else {
+                MeshSensorCalibrateManager.manager.restoreDaylightCalibration(
+                    node: sensor,
+                    to: rollbackSnapshot.selectedSensorCalibrationData
+                ) { [weak self] calibrationRollbackSucceeded in
+                    guard let self else { return }
+                    let rollbackSucceeded = publicationRollbackSucceeded && calibrationRollbackSucceeded
+                    if !rollbackSucceeded {
+                        self.invalidateCalibrationAfterRollbackFailure()
+                    }
+                    self.group.ambientLightSensorNodes
+                        .filter { $0 != sensor }
+                        .forEach { $0.selectState = .switchOff }
+                    sensor.selectState = .switchOn
+                    self.selectSensor = sensor
+                    self.sensorSelectView.reloadSensorCell(sensor: sensor)
+                    self.setLuxPollingSuspended(false, for: .calibration)
+                    self.setLuxPollingSuspended(false, for: .configuration)
+                    self.restoreSensorDimLevelAndAutoAfterFailure(allowAutoRestore: rollbackSucceeded)
+                    let message = rollbackSucceeded
+                        ? "connection_failure".localizedString
+                        : "calibration_rollback_failure".localizedString
+                    self.showCalibrationFailed(message: message)
+                }
+                return
+            }
+
+            if sensor.restoreData != nil {
+                sensor.restoreData?.daylightCalibrationData = nil
+                sensor.save()
+            }
+            if sensor.preConfiguration.resetDaylightCalibration ?? false {
+                sensor.preConfiguration.resetDaylightCalibration = nil
+                if let meshUUID = sensor.network?.uuid.uuidString {
+                    sensor.preConfiguration.save(meshUUID: meshUUID, nodeAddress: sensor.primaryUnicastAddress)
+                }
+            }
+
+            let profile = self.group.info.profile
+            if profile.type == .daylight {
+                profile.lightControlData.taskLevel = targetLux
+            } else {
+                profile.lightControlData.occupancyLevel = targetLux
+            }
+            profile.calibrationMode = .sensorCal
+            profile.save()
+            self.group.info.save()
+            self.group.updateGroupSyncState()
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+
+            self.isSensorRecalibrationDraft = false
+            self.sensorConfigurationPending = true
+            sensor.selectState = .switchOn
+            self.selectSensor = sensor
+            self.sensorSelectView.reloadSensorCell(sensor: sensor)
+            self.updateGroupLightSensor()
+            self.updateActiveCalibrationMode()
+            self.updateCalibrationModeUI(.sensor)
+            self.restoreSensorDimLevel()
+            self.setLuxPollingSuspended(false, for: .calibration)
+
+            self.configuring(lightNodes: self.group.nodes) { [weak self] success in
+                guard let self, success else { return }
+                self.restoreGroupAutoAfterDaylightCalibration()
+            }
+        }
+    }
+
+    private func handleSensorCalibrationFailure(_ error: CalibrateError) {
+        switch error {
+        case .calibrationRollbackFailed:
+            invalidateCalibrationAfterRollbackFailure()
+            restoreSensorDimLevelAndAutoAfterFailure(allowAutoRestore: false)
+            showCalibrationFailed(message: "calibration_rollback_failure".localizedString)
+        case .connectTimeout, .disconnect:
+            restoreSensorDimLevelAndAutoAfterFailure(allowAutoRestore: true)
+            showConnectFailed()
+        case .deviceNotsupport, .noResponse:
+            restoreSensorDimLevelAndAutoAfterFailure(allowAutoRestore: true)
+            showCalibrationFailed(message: "connection_failure".localizedString)
+        case .ambientInstability:
+            restoreSensorDimLevelAndAutoAfterFailure(allowAutoRestore: true)
+            showCalibrationFailed(message: "calibrating_failure".localizedString)
+        case .lightNoEffect, .inflectionPointError:
+            restoreSensorDimLevelAndAutoAfterFailure(allowAutoRestore: true)
+            showCalibrationFailed(message: "checking_correct_failure".localizedString)
+        case .targetIlluminanceInvalid, .targetIlluminanceUnstable:
+            restoreSensorDimLevelAndAutoAfterFailure(allowAutoRestore: true)
+            showCalibrationFailed(message: "calibration_target_illuminance_failure".localizedString)
+        }
+    }
+
+    private func makeDaylightCalibrationSnapshot(for sensor: Node) -> DaylightCalibrationSnapshot {
         let calibrationData = sensor.sensorCalibrationData.flatMap { data -> DaylightSensorCalibrationData? in
             guard data.isCalibration else { return nil }
             return DaylightSensorCalibrationData(
@@ -787,7 +1101,7 @@ class LightSensorCalibrationViewController: UIViewController {
             )
         }
         let groupSensor = group.info.ambientLightSensorNode
-        return NightCalibrationSnapshot(
+        return DaylightCalibrationSnapshot(
             selectedSensorCalibrationData: calibrationData,
             selectedSensorPublish: sensor.ambientLightSensorModel?.publish,
             groupSensor: groupSensor,
@@ -796,9 +1110,9 @@ class LightSensorCalibrationViewController: UIViewController {
     }
 
     /// Night/Sensor 页的开关只修改草稿；只有完成校准后才一次性提交 publication 切换。
-    private func commitNightSensorSelection(
+    private func commitCalibrationSensorSelection(
         _ sensor: Node,
-        rollbackSnapshot: NightCalibrationSnapshot,
+        rollbackSnapshot: DaylightCalibrationSnapshot,
         completion: @escaping (Bool, Bool) -> Void
     ) {
         setLuxPollingSuspended(true, for: .configuration)
@@ -922,7 +1236,15 @@ class LightSensorCalibrationViewController: UIViewController {
             actions: [
                 SRAlertAction(title: "cancel".localizedString, style: .cancel),
                 SRAlertAction(title: "RETRY".localizedString, actionHandler: { [weak self] _ in
-                    self?.startNightCalibration()
+                    guard let self else { return }
+                    switch self.calibrationModeView.selectedMode {
+                    case .night:
+                        self.startNightCalibration()
+                    case .sensor:
+                        self.startSensorCalibration()
+                    case .plane:
+                        self.calibrationBtnAction()
+                    }
                 })
             ]
         ).show()
@@ -988,8 +1310,8 @@ class LightSensorCalibrationViewController: UIViewController {
                 // 通知space数据修改
                 NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
                 self.group.updateGroupSyncState()
-                if self.calibrationModeView.selectedMode == .night {
-                    self.updateCalibrationModeUI(.night)
+                if self.calibrationModeView.selectedMode != .plane {
+                    self.updateCalibrationModeUI(self.calibrationModeView.selectedMode)
                 }
                 if failedNodes.count > 0 {
                     self.showCheckingCorrectFailure(total: successNodes.count + failedNodes.count, successCount: successNodes.count, failedNodes: failedNodes, completion: completion)
@@ -1111,7 +1433,11 @@ class LightSensorCalibrationViewController: UIViewController {
         switch calibrationModeView.selectedMode {
         case .night:
             calibrationBtn.isEnabled = selectSensor != nil && !isNightCalibrationComplete
-        case .sensor, .plane:
+        case .sensor:
+            calibrationBtn.isEnabled = selectSensor != nil
+                && targetSensorValueView.targetValue != nil
+                && !isSensorCalibrationComplete
+        case .plane:
             calibrationBtn.isEnabled = onPointLuxView.measuredLightValue != nil
                 && offPointLuxView.measuredLightValue != nil
                 && selectSensor != nil
@@ -1305,9 +1631,31 @@ class LightSensorCalibrationViewController: UIViewController {
         targetNightBrightnessView.allowedRange = targetNightBrightnessRange
         targetNightBrightnessView.value = Profile.normalizedTargetNightBrightness(group.info.profile.targetNightBrightness)
 
-        nightCalibrationCompleteView = LightSensorNightCalibrationCompleteView()
-        nightCalibrationCompleteView.recalibrateHandler = { [weak self] in
-            self?.recalibrateNight()
+        targetSensorValueView = LightSensorTargetSensorValueView()
+        targetSensorValueView.targetValueChangedHandler = { [weak self] _ in
+            self?.updateCalibrationState()
+        }
+        targetSensorValueView.useSensorReadingHandler = { [weak self] in
+            self?.requestSensorTargetReading()
+        }
+        targetSensorValueView.dimLevelChangedHandler = { [weak self] value in
+            self?.sensorCalibrationDimLevel = value
+        }
+        targetSensorValueView.dimLevelThrottleChangedHandler = { [weak self] value, _ in
+            self?.setSensorCalibrationGroupDimLevel(value)
+        }
+
+        calibrationCompleteView = LightSensorCalibrationCompleteView()
+        calibrationCompleteView.recalibrateHandler = { [weak self] in
+            guard let self else { return }
+            switch self.calibrationModeView.selectedMode {
+            case .night:
+                self.recalibrateNight()
+            case .sensor:
+                self.recalibrateSensor()
+            case .plane:
+                break
+            }
         }
 
         manualCorrectionBtn = UIButton(titleSize: 15, titleWeight: .light, titleColor: Title_Color, target: self, action: #selector(manualCorrectionBtnAction))
@@ -1318,7 +1666,8 @@ class LightSensorCalibrationViewController: UIViewController {
             onPointLuxView,
             offPointLuxView,
             targetNightBrightnessView,
-            nightCalibrationCompleteView,
+            targetSensorValueView,
+            calibrationCompleteView,
             manualCorrectionBtn
         ])
         calibrationContentStackView.axis = .vertical
@@ -1508,6 +1857,7 @@ extension LightSensorCalibrationViewController: LightSensorCalibrationSelectView
         }
 
         if calibrationModeView.selectedMode != .plane {
+            pendingUseSensorReadingAddress = nil
             lastSelectSensor?.selectState = .switchOff
             if let lastSelectSensor {
                 view.reloadSensorCell(sensor: lastSelectSensor)
@@ -1537,6 +1887,7 @@ extension LightSensorCalibrationViewController: LightSensorCalibrationSelectView
     ///   - selectSensor: 取消选中的传感器
     func view(_ view: LightSensorCalibrationSelectView, didDeselectDaylightSensor sensor: Node) {
         if calibrationModeView.selectedMode != .plane {
+            pendingUseSensorReadingAddress = nil
             sensor.selectState = .switchOff
             if selectSensor == sensor {
                 selectSensor = nil
@@ -1625,6 +1976,7 @@ extension LightSensorCalibrationViewController: MeshLibManagerMessageDelegate {
 
         DispatchQueue.main.async { [weak self, weak sensor] in
             guard let self = self, let sensor = sensor, self.selectSensor == sensor else { return }
+            self.latestFreshSensorLux = (sensor.primaryUnicastAddress, lux, Date())
             self.manualCorrectionView?.daylightLux = lux
 
             guard self.isViewVisible,

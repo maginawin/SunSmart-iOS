@@ -26,7 +26,7 @@ struct NightCalibrationWorkflowContractTests {
         )
         require(
             manager.contains("case .night:") &&
-                manager.contains("setNightCalibrateRate()") &&
+                manager.contains("setIdentityCalibrateRate()") &&
                 manager.contains("sensorRate: 100, ambientLightRate: 100") &&
                 manager.contains("daylightCalibrateIlluminanceInflectionPoint"),
             "Night calibration must write the real 0x38 curve and identity 0x39 ratios"
@@ -59,7 +59,7 @@ struct NightCalibrationWorkflowContractTests {
         )
         guard let nightCommitStart = controller.range(of: "profile.calibrationMode = .nightCal"),
               let nightCommitEnd = controller.range(
-                  of: "private func makeNightCalibrationSnapshot",
+                  of: "private func makeDaylightCalibrationSnapshot",
                   range: nightCommitStart.upperBound..<controller.endIndex
               ) else {
             fatalError("Night calibration commit section is missing")
@@ -79,7 +79,7 @@ struct NightCalibrationWorkflowContractTests {
         )
         require(
             controller.contains("calibrationModeView.selectedMode != .plane") &&
-                controller.contains("commitNightSensorSelection") &&
+                controller.contains("commitCalibrationSensorSelection") &&
                 controller.contains("selectedSensorPublish: sensor.ambientLightSensorModel?.publish") &&
                 controller.contains("publicationRollbackSucceeded && calibrationRollbackSucceeded") &&
                 controller.contains("invalidateCalibrationAfterRollbackFailure"),
@@ -105,7 +105,8 @@ struct NightCalibrationWorkflowContractTests {
         require(
             modeView.contains("LightSensorTargetNightBrightnessView") &&
                 modeView.contains("var allowedRange: ClosedRange<Int> = 1...100") &&
-            modeView.contains("LightSensorNightCalibrationCompleteView") &&
+            modeView.contains("LightSensorCalibrationCompleteView") &&
+                modeView.contains("showsTargetBrightness") &&
                 modeView.contains("calibration_pending_devices") &&
                 modeView.contains("calibration_target_level_value") &&
                 modeView.contains("site_entry_sync_warning") &&
