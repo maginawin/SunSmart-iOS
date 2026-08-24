@@ -44,6 +44,7 @@ class LightSensorCalibrationViewController: UIViewController {
     private var sensorConfigurationPending = false
     private var sensorAutoRestoreBlocked = false
     private var pendingUseSensorReadingAddress: Address?
+    private var pendingUseSensorReadingToken: UUID?
     private var latestFreshSensorLux: (address: Address, lux: UInt16, date: Date)?
     private static let sensorTargetLuxRange = LightSensorTargetSensorValueView.targetValueRange
     
@@ -54,6 +55,9 @@ class LightSensorCalibrationViewController: UIViewController {
     
     private var selectSensor: Node? {
         didSet {
+            if oldValue?.primaryUnicastAddress != selectSensor?.primaryUnicastAddress {
+                invalidateSensorLuxFreshness()
+            }
             guard isViewLoaded else { return }
             updateLuxPollingState()
         }
@@ -135,6 +139,7 @@ class LightSensorCalibrationViewController: UIViewController {
 
         isViewVisible = true
         MeshLibManager.manager.messageDelegate = self
+        resumeIncompleteSensorDraftIfNeeded()
         updateLuxPollingState()
     }
     
@@ -148,7 +153,7 @@ class LightSensorCalibrationViewController: UIViewController {
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        restoreGroupAutoAfterSensorDraftIfNeeded()
+        restoreSensorDraftAutoAfterConfirmedExit()
         isViewVisible = false
         stopLuxPolling()
         if let sensor = selectSensor {
@@ -214,11 +219,25 @@ class LightSensorCalibrationViewController: UIViewController {
         }
 
         if suspended {
+            invalidateSensorLuxFreshness()
             luxPollingSuspensionReasons.insert(reason)
         }else {
             luxPollingSuspensionReasons.remove(reason)
         }
         updateLuxPollingState()
+    }
+
+    private func invalidateSensorLuxFreshness() {
+        latestFreshSensorLux = nil
+        pendingUseSensorReadingAddress = nil
+        pendingUseSensorReadingToken = nil
+    }
+
+    private func canAcceptFreshSensorLux(from sensor: Node) -> Bool {
+        isViewVisible
+            && luxPollingSuspensionReasons.isEmpty
+            && selectSensor?.primaryUnicastAddress == sensor.primaryUnicastAddress
+            && sensor.selectState == .switchOn
     }
 
     private func updateLuxPollingState() {
@@ -453,6 +472,34 @@ class LightSensorCalibrationViewController: UIViewController {
         restoreGroupAutoAfterDaylightCalibration()
     }
 
+    private func resumeIncompleteSensorDraftIfNeeded() {
+        guard calibrationModeView.selectedMode == .sensor,
+              !isSensorCalibrationComplete else {
+            return
+        }
+        let wasSuspended = isSensorGroupAutoSuspended
+        suspendGroupAutoForSensorCalibration()
+        if !wasSuspended {
+            restoreSensorDimLevel()
+        }
+    }
+
+    private func restoreSensorDraftAutoAfterConfirmedExit() {
+        let isExiting = isMovingFromParent
+            || isBeingDismissed
+            || navigationController?.isBeingDismissed == true
+        guard isExiting else { return }
+
+        guard let transitionCoordinator else {
+            restoreGroupAutoAfterSensorDraftIfNeeded()
+            return
+        }
+        transitionCoordinator.animate(alongsideTransition: nil) { [weak self] context in
+            guard !context.isCancelled else { return }
+            self?.restoreGroupAutoAfterSensorDraftIfNeeded()
+        }
+    }
+
     private func setSensorCalibrationGroupDimLevel(_ value: Int) {
         guard calibrationModeView.selectedMode == .sensor,
               !isSensorCalibrationComplete else {
@@ -483,7 +530,10 @@ class LightSensorCalibrationViewController: UIViewController {
     }
 
     private func requestSensorTargetReading() {
-        guard let sensor = selectSensor else { return }
+        guard let sensor = selectSensor,
+              canAcceptFreshSensorLux(from: sensor) else {
+            return
+        }
         let address = sensor.primaryUnicastAddress
 
         if let latestFreshSensorLux,
@@ -494,16 +544,21 @@ class LightSensorCalibrationViewController: UIViewController {
             return
         }
 
+        let requestToken = UUID()
         pendingUseSensorReadingAddress = address
+        pendingUseSensorReadingToken = requestToken
         MeshAPI.getAmbientSensorValue(node: sensor) { [weak self, weak sensor] lux in
             DispatchQueue.main.async {
                 guard let self,
                       let sensor,
                       self.selectSensor == sensor,
-                      self.pendingUseSensorReadingAddress == address else {
+                      self.pendingUseSensorReadingAddress == address,
+                      self.pendingUseSensorReadingToken == requestToken,
+                      self.canAcceptFreshSensorLux(from: sensor) else {
                     return
                 }
                 self.pendingUseSensorReadingAddress = nil
+                self.pendingUseSensorReadingToken = nil
                 guard let lux, Self.sensorTargetLuxRange.contains(Int(lux)) else {
                     return
                 }
@@ -1975,15 +2030,13 @@ extension LightSensorCalibrationViewController: MeshLibManagerMessageDelegate {
         }
 
         DispatchQueue.main.async { [weak self, weak sensor] in
-            guard let self = self, let sensor = sensor, self.selectSensor == sensor else { return }
-            self.latestFreshSensorLux = (sensor.primaryUnicastAddress, lux, Date())
-            self.manualCorrectionView?.daylightLux = lux
-
-            guard self.isViewVisible,
-                  self.luxPollingSuspensionReasons.isEmpty,
-                  sensor.selectState == .switchOn else {
+            guard let self = self,
+                  let sensor = sensor,
+                  self.canAcceptFreshSensorLux(from: sensor) else {
                 return
             }
+            self.latestFreshSensorLux = (sensor.primaryUnicastAddress, lux, Date())
+            self.manualCorrectionView?.daylightLux = lux
             self.sensorSelectView.updateLux(sensor: sensor, isFresh: true)
         }
     }
