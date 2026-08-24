@@ -13,7 +13,9 @@ swiftc -parse-as-library \
 "$test_binary" \
     "$repo_root/SunSmart/Main/Group/Controller/LightSensorCalibrationViewController.swift" \
     "$repo_root/SunSmart/Main/Group/View/LightSensorCalibrationModeView.swift" \
+    "$repo_root/SunSmart/Main/Group/View/LightSensorCalibrationAboutView.swift" \
     "$repo_root/SunSmart/en.lproj/Localizable.strings" \
     "$repo_root/SunSmart/zh-Hans.lproj/Localizable.strings" \
     "$sdk_root/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshSensorCalibrateManager.swift" \
-    "$sdk_root/Sources/NordicSigMeshSDK/MeshLib/MeshAPI.swift"
+    "$sdk_root/Sources/NordicSigMeshSDK/MeshLib/MeshAPI.swift" \
+    "$repo_root/SunSmart/Assets.xcassets/Common/night_calibration_disclosure.imageset/night_calibration_disclosure.svg"

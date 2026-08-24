@@ -4,16 +4,18 @@ import Foundation
 struct NightCalibrationWorkflowContractTests {
 
     static func main() throws {
-        guard CommandLine.arguments.count == 7 else {
-            fatalError("Expected controller, mode view, English localization, Chinese localization, SDK manager and MeshAPI paths")
+        guard CommandLine.arguments.count == 9 else {
+            fatalError("Expected controller, mode view, about view, localizations, SDK manager, MeshAPI and disclosure asset paths")
         }
 
         let controller = try source(CommandLine.arguments[1])
         let modeView = try source(CommandLine.arguments[2])
-        let english = try source(CommandLine.arguments[3])
-        let chinese = try source(CommandLine.arguments[4])
-        let manager = try source(CommandLine.arguments[5])
-        let meshAPI = try source(CommandLine.arguments[6])
+        let aboutView = try source(CommandLine.arguments[3])
+        let english = try source(CommandLine.arguments[4])
+        let chinese = try source(CommandLine.arguments[5])
+        let manager = try source(CommandLine.arguments[6])
+        let meshAPI = try source(CommandLine.arguments[7])
+        let disclosureAsset = try source(CommandLine.arguments[8])
 
         require(
             manager.contains("public func calibrateNight(") &&
@@ -93,19 +95,50 @@ struct NightCalibrationWorkflowContractTests {
                 controller.contains("effectiveActiveCalibrationMode == .nightCal && !isNightRecalibrationDraft"),
             "Re-calibrate must be a page-only draft that does not erase stored Night Active"
         )
+        let initialAboutExpansion = "calibrationAboutView.setExpanded(effectiveActiveCalibrationMode == .none)"
+        require(
+            aboutView.contains("func setExpanded(_ isExpanded: Bool)") &&
+                controller.components(separatedBy: initialAboutExpansion).count == 2,
+            "About must initialize exactly once from the entry Active state"
+        )
 
         require(
             modeView.contains("LightSensorTargetNightBrightnessView") &&
                 modeView.contains("var allowedRange: ClosedRange<Int> = 1...100") &&
             modeView.contains("LightSensorNightCalibrationCompleteView") &&
-                modeView.contains("calibration_pending_devices"),
-            "Night UI must include a trim-bound target, completed and pending-sync states"
+                modeView.contains("calibration_pending_devices") &&
+                modeView.contains("calibration_target_level_value") &&
+                modeView.contains("site_entry_sync_warning") &&
+                modeView.contains("night_calibration_disclosure") &&
+                modeView.contains("recalibrateLabel.attributedText = attributedText(") &&
+                modeView.contains("recalibrateLabel.isAccessibilityElement = false") &&
+                modeView.contains("disclosureImageView.isAccessibilityElement = false") &&
+                modeView.contains("profileType == .daylight") &&
+                modeView.contains("calibration_complete_task_notice") &&
+                modeView.contains("calibration_complete_occupancy_notice_format"),
+            "Night UI must include the Figma value, notice and action components without losing pending state"
+        )
+        require(
+            modeView.contains("RGB(246, 248, 255)") &&
+                modeView.contains("RGB(255, 249, 239)") &&
+                modeView.contains("Border_Color"),
+            "Night completed UI must retain the Figma card colors and action border"
+        )
+        require(
+            disclosureAsset.contains("width=\"16\" height=\"16\"") &&
+                disclosureAsset.contains("M3.33333 8H12.6667") &&
+                disclosureAsset.contains("stroke=\"#8B96A8\""),
+            "Night completed UI must use the exact Figma disclosure asset"
         )
         let requiredLocalizationKeys = [
             "apply_night_calibration",
             "apply_calibration_title",
             "calculating_target_illuminance",
             "calibration_complete",
+            "calibration_target_level_value",
+            "calibration_complete_occupancy_notice_format",
+            "calibration_complete_occupancy_notice_emphasis",
+            "calibration_complete_task_notice",
             "calibration_pending_devices"
         ]
         requiredLocalizationKeys.forEach { key in

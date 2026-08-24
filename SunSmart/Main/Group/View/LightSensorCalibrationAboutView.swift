@@ -38,6 +38,11 @@ final class LightSensorCalibrationAboutView: UIView {
         updateContent()
     }
 
+    func setExpanded(_ isExpanded: Bool) {
+        self.isExpanded = isExpanded
+        updateExpansionState()
+    }
+
     @objc private func headerAction() {
         isExpanded.toggle()
         updateExpansionState()

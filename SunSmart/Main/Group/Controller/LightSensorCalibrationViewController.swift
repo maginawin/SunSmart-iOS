@@ -114,6 +114,7 @@ class LightSensorCalibrationViewController: UIViewController {
         updateActiveCalibrationMode()
         let initialMode = lightSensorMode(for: effectiveActiveCalibrationMode) ?? .plane
         calibrationModeView.setSelectedMode(initialMode, notify: true)
+        calibrationAboutView.setExpanded(effectiveActiveCalibrationMode == .none)
         updateManualCorrectionBtn()
         // 组关灯
 //        MeshAPI.setGroupOnOffState(address: self.group.address.address, isOn: false)
@@ -338,7 +339,8 @@ class LightSensorCalibrationViewController: UIViewController {
             nightCalibrationCompleteView.update(
                 targetLux: targetLux,
                 targetBrightness: Profile.normalizedTargetNightBrightness(group.info.profile.targetNightBrightness),
-                pendingDeviceCount: group.nodes.filter { !$0.getNodeSyncProfiles().isEmpty }.count
+                pendingDeviceCount: group.nodes.filter { !$0.getNodeSyncProfiles().isEmpty }.count,
+                profileType: group.info.profile.type
             )
         } else {
             calibrationBtn.setTitle("CALIBRATION".localizedString, for: .normal)

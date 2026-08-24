@@ -1610,8 +1610,11 @@
 "calculating_target_illuminance" = "Calculating target illuminance...";
 "calibration_complete" = "Calibration Complete";
 "calibration_target_level" = "Target level";
-"calibration_set_at_brightness" = "Set at %d%% brightness";
-"calibration_complete_profile_notice" = "The target level has been updated in the daylight profile. Please check the Vacant level separately.";
+"calibration_target_level_value" = "Target level: %d lx";
+"calibration_set_at_brightness" = "(Set at %d%% brightness)";
+"calibration_complete_occupancy_notice_format" = "The Occupancy level values in Profile have been updated. Please review the %@ level to ensure it is set correctly.";
+"calibration_complete_occupancy_notice_emphasis" = "Vacant";
+"calibration_complete_task_notice" = "The Task level value in Profile has been updated.";
 "calibration_pending_devices" = "%d device(s) are pending synchronization.";
 "recalibrate" = "Re-calibrate";
 "calibration_target_illuminance_failure" = "Failed to calculate the target illuminance. The measured light contribution is below the sensor noise threshold.";

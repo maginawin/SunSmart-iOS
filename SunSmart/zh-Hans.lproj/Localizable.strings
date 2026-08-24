@@ -1616,8 +1616,11 @@
 "calculating_target_illuminance" = "正在计算目标照度……";
 "calibration_complete" = "校准完成";
 "calibration_target_level" = "目标照度";
-"calibration_set_at_brightness" = "在 %d%% 亮度下设定";
-"calibration_complete_profile_notice" = "目标照度已更新到日光配置文件，请另行检查 Vacant level。";
+"calibration_target_level_value" = "目标照度：%d lx";
+"calibration_set_at_brightness" = "（设置为 %d%% 亮度）";
+"calibration_complete_occupancy_notice_format" = "Profile 中的占用亮度值已更新。请检查%@，确保设置正确。";
+"calibration_complete_occupancy_notice_emphasis" = "空置亮度";
+"calibration_complete_task_notice" = "Profile 中的目标亮度值已更新。";
 "calibration_pending_devices" = "%d 台设备待同步。";
 "recalibrate" = "重新校准";
 "calibration_target_illuminance_failure" = "无法计算目标照度，测得的灯具照度低于传感器噪声阈值。";
