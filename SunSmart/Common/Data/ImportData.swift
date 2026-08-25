@@ -1739,6 +1739,14 @@ extension SpaceData {
                             
                             
                             let profile = Profile(id: id, type: type, lightControlData: lightControlData, powerUpState: Profile.PowerUpState(rawValue: profileJson["powerUpState"].uInt8 ?? 0), manualOverrideTimeout: profileJson["manualOverrideTimeout"].uInt32 ?? 600, nightData: nightData, dayData: dayData, scenes: scenes)
+                            if let rawCalibrationMode = profileJson["calibrationMode"].string {
+                                profile.calibrationMode = Profile.DaylightCalibrationMode(rawValue: rawCalibrationMode) ?? Profile.DaylightCalibrationMode.none
+                            }else {
+                                profile.calibrationMode = nil
+                            }
+                            profile.targetNightBrightness = Profile.normalizedTargetNightBrightness(
+                                profileJson["targetNightBrightness"].int
+                            )
                             if let powerOnCct = profileJson["powerOnCct"].uInt16 {
                                 profile.powerUpCct = powerOnCct
                             }

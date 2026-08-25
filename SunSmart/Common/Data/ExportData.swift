@@ -455,7 +455,11 @@ extension SpaceData {
                         "manualOverrideTimeout": profile.manualOverrideTimeout,
                         "powerUpState": profile.powerUpState.rawValue,
                         "powerOnCct": profile.powerUpCct,
-                        "adjustSpeed": profile.adjustSpeed
+                        "adjustSpeed": profile.adjustSpeed,
+                        "calibrationMode": profile.effectiveCalibrationMode(
+                            sensorCalibrated: group.info.ambientLightSensorNode?.sensorCalibrated == true
+                        ).rawValue,
+                        "targetNightBrightness": Profile.normalizedTargetNightBrightness(profile.targetNightBrightness)
                     ]
                     if profile.type == .proximityLighting || profile.type == .proximityLightingWithPhotocell {
                         profileDict.updateValue(profile.proximityLightingNumber, forKey: "proximityLightingNumber")

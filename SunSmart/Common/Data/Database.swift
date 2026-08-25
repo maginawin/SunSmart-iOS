@@ -1470,6 +1470,8 @@ extension Profile {
         static let adjustSpeed = Expression<Int>("adjustSpeed")
         static let sensitivity = Expression<Int>("sensitivity")
         static let proximityLightingNumber = Expression<Int>("proximityLightingNumber")
+        static let calibrationMode = Expression<String?>("calibrationMode")
+        static let targetNightBrightness = Expression<Int>("targetNightBrightness")
         static let dayProfile = Expression<Data?>("dayProfile")
         static let nightProfile = Expression<Data?>("nightProfile")
         static let scenes = Expression<Data?>("scenes")
@@ -1504,6 +1506,8 @@ extension Profile {
             builder.column(ExpressionKey.powerUpCct)
             builder.column(ExpressionKey.sensitivity)
             builder.column(ExpressionKey.proximityLightingNumber)
+            builder.column(ExpressionKey.calibrationMode)
+            builder.column(ExpressionKey.targetNightBrightness, defaultValue: Profile.defaultTargetNightBrightness)
             builder.column(ExpressionKey.dayProfile)
             builder.column(ExpressionKey.nightProfile)
             builder.column(ExpressionKey.scenes)
@@ -1528,6 +1532,14 @@ extension Profile {
             // 是否存在”proximityLightingNumber“属性
             if !columns.contains(where: { $0.name == "proximityLightingNumber" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(Profile.profilesTable.addColumn(ExpressionKey.proximityLightingNumber, defaultValue: 2))
+            }
+
+            if !columns.contains(where: { $0.name == "calibrationMode" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(Profile.profilesTable.addColumn(ExpressionKey.calibrationMode))
+            }
+
+            if !columns.contains(where: { $0.name == "targetNightBrightness" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(Profile.profilesTable.addColumn(ExpressionKey.targetNightBrightness, defaultValue: Profile.defaultTargetNightBrightness))
             }
             
             // 是否存在”dayProfile“属性
@@ -1599,6 +1611,12 @@ extension Profile {
                 
             
                 let profile = Profile(name: row[ExpressionKey.name], id: row[ExpressionKey.uuid], type: profileType, lightControlData: lightData, powerUpState: powerUpState, powerUpCct: powerUpCct, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: row[ExpressionKey.adjustSpeed], sensitivity: UInt8(row[ExpressionKey.sensitivity]), proximityLightingNumber: UInt8(row[ExpressionKey.proximityLightingNumber]), nightData: nightData, dayData: dayData, scenes: scenes)
+                if let rawCalibrationMode = row[ExpressionKey.calibrationMode] {
+                    profile.calibrationMode = Profile.DaylightCalibrationMode(rawValue: rawCalibrationMode) ?? Profile.DaylightCalibrationMode.none
+                }else {
+                    profile.calibrationMode = nil
+                }
+                profile.targetNightBrightness = Profile.normalizedTargetNightBrightness(row[ExpressionKey.targetNightBrightness])
                 
                 profile.lightSensorTemplates = ProfileLightSensorTemplate.load(profileId: profile.id)
                 profiles.append(profile)
@@ -1657,6 +1675,8 @@ extension Profile {
             ExpressionKey.adjustSpeed <- self.adjustSpeed,
             ExpressionKey.sensitivity <- Int(self.sensitivity),
             ExpressionKey.proximityLightingNumber <- Int(self.proximityLightingNumber),
+            ExpressionKey.calibrationMode <- self.calibrationMode?.rawValue,
+            ExpressionKey.targetNightBrightness <- Profile.normalizedTargetNightBrightness(self.targetNightBrightness),
             ExpressionKey.dayProfile <- dayProfileData,
             ExpressionKey.nightProfile <- nightProfileData,
             ExpressionKey.scenes <- scenesData

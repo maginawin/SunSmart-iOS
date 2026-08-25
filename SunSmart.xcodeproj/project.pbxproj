@@ -537,6 +537,14 @@
 		C8607BE22B90267F00A94F0B /* LightSensorCalibrationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE12B90267F00A94F0B /* LightSensorCalibrationViewController.swift */; };
 		C8607BE42B9026F700A94F0B /* LightSensorCalibrationSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */; };
 		C8607BE62B905F5100A94F0B /* LightSensorCalibrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE52B905F5100A94F0B /* LightSensorCalibrationView.swift */; };
+		C8CA21112F50000100000001 /* LightSensorCalibrationModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21012F50000100000001 /* LightSensorCalibrationModeView.swift */; };
+		C8CA21122F50000100000002 /* LightSensorCalibrationAboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21022F50000100000002 /* LightSensorCalibrationAboutView.swift */; };
+		C8CA21212F50000100000003 /* LightSensorCalibrationModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21012F50000100000001 /* LightSensorCalibrationModeView.swift */; };
+		C8CA21222F50000100000004 /* LightSensorCalibrationAboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21022F50000100000002 /* LightSensorCalibrationAboutView.swift */; };
+		C8CA21312F50000100000005 /* LightSensorCalibrationModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21012F50000100000001 /* LightSensorCalibrationModeView.swift */; };
+		C8CA21322F50000100000006 /* LightSensorCalibrationAboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21022F50000100000002 /* LightSensorCalibrationAboutView.swift */; };
+		C8CA21412F50000100000007 /* LightSensorCalibrationModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21012F50000100000001 /* LightSensorCalibrationModeView.swift */; };
+		C8CA21422F50000100000008 /* LightSensorCalibrationAboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21022F50000100000002 /* LightSensorCalibrationAboutView.swift */; };
 		C8607BE82B9165AC00A94F0B /* ProfileLevelSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE72B9165AC00A94F0B /* ProfileLevelSettingsView.swift */; };
 		C8607BEA2B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE92B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift */; };
 		C86618EF2D8BB3DA00FB3D2F /* DeviceAddMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86618EE2D8BB3DA00FB3D2F /* DeviceAddMenuView.swift */; };
@@ -2902,6 +2910,8 @@
 		C8607BE12B90267F00A94F0B /* LightSensorCalibrationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationViewController.swift; sourceTree = "<group>"; };
 		C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationSelectView.swift; sourceTree = "<group>"; };
 		C8607BE52B905F5100A94F0B /* LightSensorCalibrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationView.swift; sourceTree = "<group>"; };
+		C8CA21012F50000100000001 /* LightSensorCalibrationModeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationModeView.swift; sourceTree = "<group>"; };
+		C8CA21022F50000100000002 /* LightSensorCalibrationAboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationAboutView.swift; sourceTree = "<group>"; };
 		C8607BE72B9165AC00A94F0B /* ProfileLevelSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileLevelSettingsView.swift; sourceTree = "<group>"; };
 		C8607BE92B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePhasesTimePickerView.swift; sourceTree = "<group>"; };
 		C86618EE2D8BB3DA00FB3D2F /* DeviceAddMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddMenuView.swift; sourceTree = "<group>"; };
@@ -5231,6 +5241,8 @@
 				C8B5A1DF2B2C2AFD00728E36 /* GroupDevicesFunctionView.swift */,
 				C82AE2EA2B95756600FA4BDB /* GroupSensorView.swift */,
 				C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */,
+				C8CA21012F50000100000001 /* LightSensorCalibrationModeView.swift */,
+				C8CA21022F50000100000002 /* LightSensorCalibrationAboutView.swift */,
 				C8607BE52B905F5100A94F0B /* LightSensorCalibrationView.swift */,
 				C8BE621D2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift */,
 				C8BE62222EC467510075ED42 /* LightSensorCalibrationAdjustSpeedView.swift */,
@@ -6117,6 +6129,8 @@
 				C88553ED2DE6B44C00C8B688 /* SyncDevicesTitleHeaderView.swift in Sources */,
 				C88553EE2DE6B44C00C8B688 /* SwitchProxyInstructionsViewController.swift in Sources */,
 				C88553EF2DE6B44C00C8B688 /* LightSensorCalibrationViewController.swift in Sources */,
+				C8CA21112F50000100000001 /* LightSensorCalibrationModeView.swift in Sources */,
+				C8CA21122F50000100000002 /* LightSensorCalibrationAboutView.swift in Sources */,
 				8C7788F92F9757B0000887FE /* LinkedEmerFireConfig.swift in Sources */,
 				C8EC4BAA2EAA1BD30082892D /* DeviceMeshNetworkProxyScanner.swift in Sources */,
 				C88553F02DE6B44C00C8B688 /* EnergyStatisticsTimeSeriesData.swift in Sources */,
@@ -6774,6 +6788,8 @@
 				C886E03E2E30DE4900D0C3A6 /* SyncDevicesTitleHeaderView.swift in Sources */,
 				C886E03F2E30DE4900D0C3A6 /* SwitchProxyInstructionsViewController.swift in Sources */,
 				C886E0402E30DE4900D0C3A6 /* LightSensorCalibrationViewController.swift in Sources */,
+				C8CA21212F50000100000003 /* LightSensorCalibrationModeView.swift in Sources */,
+				C8CA21222F50000100000004 /* LightSensorCalibrationAboutView.swift in Sources */,
 				8C7788FA2F9757B0000887FE /* LinkedEmerFireConfig.swift in Sources */,
 				C8EC4BA92EAA1BD30082892D /* DeviceMeshNetworkProxyScanner.swift in Sources */,
 				C886E0412E30DE4900D0C3A6 /* EnergyStatisticsTimeSeriesData.swift in Sources */,
@@ -7430,6 +7446,8 @@
 				C89C9FEE2B3C271200074031 /* SyncDevicesTitleHeaderView.swift in Sources */,
 				C89A9A982C8AB2140032287D /* SwitchProxyInstructionsViewController.swift in Sources */,
 				C8607BE22B90267F00A94F0B /* LightSensorCalibrationViewController.swift in Sources */,
+				C8CA21312F50000100000005 /* LightSensorCalibrationModeView.swift in Sources */,
+				C8CA21322F50000100000006 /* LightSensorCalibrationAboutView.swift in Sources */,
 				C8EC4BAB2EAA1BD30082892D /* DeviceMeshNetworkProxyScanner.swift in Sources */,
 				C8B707062DCF2FF50002133E /* EnergyStatisticsTimeSeriesData.swift in Sources */,
 				C8ACF1362AA1B2BA00E24B4A /* UIButton+Extension.swift in Sources */,
@@ -8089,6 +8107,8 @@
 				C8BB65F02ED3F056000C63EE /* SyncDevicesTitleHeaderView.swift in Sources */,
 				C8BB65F12ED3F056000C63EE /* SwitchProxyInstructionsViewController.swift in Sources */,
 				C8BB65F22ED3F056000C63EE /* LightSensorCalibrationViewController.swift in Sources */,
+				C8CA21412F50000100000007 /* LightSensorCalibrationModeView.swift in Sources */,
+				C8CA21422F50000100000008 /* LightSensorCalibrationAboutView.swift in Sources */,
 				8C7788FC2F9757B0000887FE /* LinkedEmerFireConfig.swift in Sources */,
 				C8BB65F32ED3F056000C63EE /* DeviceMeshNetworkProxyScanner.swift in Sources */,
 				C8BB65F42ED3F056000C63EE /* EnergyStatisticsTimeSeriesData.swift in Sources */,
