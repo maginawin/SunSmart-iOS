@@ -81,7 +81,7 @@ struct SensorCalibrationWorkflowContractTests {
         let identityRate = section(
             in: manager,
             from: "private func setIdentityCalibrateRate()",
-            to: "private func resoreSensorPublishDelta()"
+            to: "private func restoreSensorPublishDelta()"
         )
         require(
             sensorSDKEntry.contains("event: \"sdk_input\"") &&
@@ -91,6 +91,61 @@ struct SensorCalibrationWorkflowContractTests {
                 identityRate.contains("event: \"ack_0x39\"") &&
                 identityRate.contains("sensorRate: 100, ambientLightRate: 100"),
             "Night and Sensor must log SDK input, identity 0x39 payload and acknowledgement; Night must also log its sampling result"
+        )
+        require(
+            sensorSDKEntry.contains("targetLux: UInt16") &&
+                sensorStart.contains("targetLux: UInt16(targetLux)") &&
+                manager.contains("minimumReachableLux(targetLux:") &&
+                manager.contains("static func sensorReachability(onLux: UInt16, targetLux: UInt16)") &&
+                manager.contains(".sensorTargetUnreachable(") &&
+                !manager.contains("darkCapacityInsufficient") &&
+                !manager.contains("sensorDarkCapacityInsufficient") &&
+                !controller.contains("sensorDarkCapacityInsufficient") &&
+                !english.contains("\"calibration_sensor_dark_capacity_insufficient\"") &&
+                !chinese.contains("\"calibration_sensor_dark_capacity_insufficient\""),
+            "Sensor calibration must compare only the stable 100% OnLux with the confirmed 95% target threshold and must not subtract OffLux"
+        )
+        require(
+            manager.contains("public struct LightnessLuxStabilityPolicy") &&
+                manager.contains("requiredNoDirectionalChangeCount") &&
+                manager.contains("static func stableRepresentative(") &&
+                manager.contains("private func collectStableLux(") &&
+                manager.contains("await getStableLightnessLuxData(lightness: lightness, policy: lightnessStabilityPolicy)") &&
+                !manager.contains("publishLuxs.count == 0"),
+            "Plane, Sensor and Night must share active stable sampling and must not accept zero passive samples"
+        )
+        require(
+            manager.contains("private var calibrationLightNodes") &&
+                manager.contains("private var explicitCalibrationLightNodes") &&
+                manager.contains("private var explicitCalibrationGroupAddress") &&
+                manager.contains("private func verifyLightNode(") &&
+                manager.contains("private func prepareLightsForSampling(") &&
+                manager.contains("LightLightnessGet()") &&
+                manager.contains("LightLightnessSet(lightness: requestedLightness)") &&
+                manager.contains(".requiredLightUnavailable(address:") &&
+                controller.contains("private var requiredCalibrationLightNodes") &&
+                controller.contains("$0.lightnessModel?.isSubscribed(to: group) == true") &&
+                planeStart.contains("requiredLightNodes: requiredCalibrationLightNodes") &&
+                planeStart.contains("groupAddress: group.address.address") &&
+                nightStart.contains("requiredLightNodes: requiredCalibrationLightNodes") &&
+                nightStart.contains("groupAddress: group.address.address") &&
+                sensorStart.contains("requiredLightNodes: requiredCalibrationLightNodes") &&
+                sensorStart.contains("groupAddress: group.address.address"),
+            "Every calibration point must use the selected Group's explicit Lightness subscribers, verify them and repair each required light before sampling"
+        )
+        let publishDeltaRestore = section(
+            in: manager,
+            from: "private func restoreSensorPublishDelta()",
+            to: "private func getSensorLux()"
+        )
+        require(
+            publishDeltaRestore.contains("attempts: 3") &&
+                publishDeltaRestore.contains("case .daylightPublishDelta = response.status.code") &&
+                publishDeltaRestore.contains("response?.status.isSuccessful == true") &&
+                publishDeltaRestore.contains("self.calibrateError = .publishDeltaRestoreFailed") &&
+                manager.contains("publishDeltaRestored=") &&
+                manager.contains("rollback_complete"),
+            "Publish delta restoration must validate the exact successful response, retry and participate in rollback gating"
         )
 
         require(
@@ -177,7 +232,11 @@ struct SensorCalibrationWorkflowContractTests {
             "calibration_use_sensor_reading",
             "calibration_target_sensor_value_note",
             "calibration_dim_level",
-            "apply_sensor_calibration_message"
+            "apply_sensor_calibration_message",
+            "calibration_required_light_unavailable",
+            "calibration_light_stabilization_failure",
+            "calibration_sensor_target_unreachable",
+            "calibration_publish_delta_restore_failure"
         ]
         requiredLocalizationKeys.forEach { key in
             require(english.contains("\"\(key)\""), "English localization is missing \(key)")

@@ -1627,6 +1627,10 @@
 "recalibrate" = "Re-calibrate";
 "calibration_target_illuminance_failure" = "Failed to calculate the target illuminance. The measured light contribution is below the sensor noise threshold.";
 "calibration_target_illuminance_unstable" = "The sensor readings were not stable enough to calculate the target illuminance. Please reduce ambient-light changes and retry.";
+"calibration_required_light_unavailable" = "A required light is offline or did not reach the calibration level. Check every light in the group and retry.";
+"calibration_light_stabilization_failure" = "The light level did not stabilize before the calibration timeout. Keep the environment unchanged and retry.";
+"calibration_sensor_target_unreachable" = "The measured value at 100% dim level is below 95% of the target sensor value. Lower the target or check the lights.";
+"calibration_publish_delta_restore_failure" = "Calibration could not restore the sensor reporting threshold. Retry calibration before relying on automatic control.";
 "calibration_rollback_failure" = "Calibration failed and the previous calibration could not be fully restored. Please calibrate again.";
 "calibration_all_devices_offline" = "All devices in this group are offline. Bring at least one device online, then retry.";
 

@@ -79,6 +79,14 @@ class LightSensorCalibrationViewController: UIViewController {
     private var deviceBlinkMode: DeviceBlinkMode = .none
     
     let group: Group
+
+    /// 当前页面 Group 中实际订阅 Lightness Model 的必要灯具。
+    /// 不使用 `group.nodes`，避免节点有多个订阅组时被 `Node.group` 的首项语义漏掉。
+    private var requiredCalibrationLightNodes: [Node] {
+        MeshNetworkManager.instance.realNodes
+            .filter { $0.lightnessModel?.isSubscribed(to: group) == true }
+            .sorted { $0.primaryUnicastAddress < $1.primaryUnicastAddress }
+    }
     
     init(group: Group) {
         self.group = group
@@ -663,7 +671,13 @@ class LightSensorCalibrationViewController: UIViewController {
 
         print("[DaylightCalibrationDebug] event=app_start mode=plane node=\(sensor.name ?? "<unnamed>") address=\(String(format: "0x%04X", sensor.primaryUnicastAddress)) ambientOnLux=\(onLux) ambientOffLux=\(offLux) ambientDeltaLux=\(onLux - offLux)")
         
-        MeshSensorCalibrateManager.manager.calibrate(node: sensor, ambientLightOffLux: UInt16(offLux), ambientLightOnLux: UInt16(onLux)) { step in
+        MeshSensorCalibrateManager.manager.calibrate(
+            node: sensor,
+            ambientLightOffLux: UInt16(offLux),
+            ambientLightOnLux: UInt16(onLux),
+            requiredLightNodes: requiredCalibrationLightNodes,
+            groupAddress: group.address.address
+        ) { step in
             switch step {
             case .ready, .stabilityChecking:
                 SRAlertView.getCurrentAlertView()?.messageLabel.text = "calibrating".localizedString
@@ -726,14 +740,22 @@ class LightSensorCalibrationViewController: UIViewController {
                 self.showConnectFailed()
             case .deviceNotsupport, .noResponse:
                 self.showCalibrationFailed(message: "connection_failure".localizedString)
+            case .requiredLightUnavailable:
+                self.showCalibrationFailed(message: "calibration_required_light_unavailable".localizedString)
             case .ambientInstability:
                 self.showCalibrationFailed(message: "calibrating_failure".localizedString) //  + "min: \(minLux) max:\(maxLux)"
+            case .lightOutputUnstable:
+                self.showCalibrationFailed(message: "calibration_light_stabilization_failure".localizedString)
             case .lightNoEffect:
                 self.showCalibrationFailed(message: "checking_correct_failure".localizedString)
             case .inflectionPointError:
                 self.showCalibrationFailed(message: "checking_correct_failure".localizedString)
             case .targetIlluminanceInvalid, .targetIlluminanceUnstable:
                 self.showCalibrationFailed(message: "calibration_target_illuminance_failure".localizedString)
+            case .sensorTargetUnreachable:
+                self.showCalibrationFailed(message: "calibration_sensor_target_unreachable".localizedString)
+            case .publishDeltaRestoreFailed:
+                self.showCalibrationFailed(message: "calibration_publish_delta_restore_failure".localizedString)
             case .calibrationRollbackFailed:
                 self.invalidateCalibrationAfterRollbackFailure()
                 self.showCalibrationFailed(message: "calibration_rollback_failure".localizedString)
@@ -844,6 +866,8 @@ class LightSensorCalibrationViewController: UIViewController {
         MeshSensorCalibrateManager.manager.calibrateNight(
             node: sensor,
             targetBrightness: targetBrightness,
+            requiredLightNodes: requiredCalibrationLightNodes,
+            groupAddress: group.address.address,
             progress: { step in
                 DispatchQueue.main.async {
                     switch step {
@@ -882,10 +906,18 @@ class LightSensorCalibrationViewController: UIViewController {
                     self.showCalibrationFailed(message: "calibration_rollback_failure".localizedString)
                 case .deviceNotsupport, .noResponse:
                     self.showCalibrationFailed(message: "connection_failure".localizedString)
+                case .requiredLightUnavailable:
+                    self.showCalibrationFailed(message: "calibration_required_light_unavailable".localizedString)
                 case .ambientInstability:
                     self.showCalibrationFailed(message: "calibrating_failure".localizedString)
+                case .lightOutputUnstable:
+                    self.showCalibrationFailed(message: "calibration_light_stabilization_failure".localizedString)
                 case .lightNoEffect, .inflectionPointError:
                     self.showCalibrationFailed(message: "checking_correct_failure".localizedString)
+                case .sensorTargetUnreachable:
+                    self.showCalibrationFailed(message: "calibration_sensor_target_unreachable".localizedString)
+                case .publishDeltaRestoreFailed:
+                    self.showCalibrationFailed(message: "calibration_publish_delta_restore_failure".localizedString)
                 }
             }
         )
@@ -1018,6 +1050,9 @@ class LightSensorCalibrationViewController: UIViewController {
 
         MeshSensorCalibrateManager.manager.calibrateSensor(
             node: sensor,
+            targetLux: UInt16(targetLux),
+            requiredLightNodes: requiredCalibrationLightNodes,
+            groupAddress: group.address.address,
             progress: { step in
                 DispatchQueue.main.async {
                     switch step {
@@ -1135,15 +1170,27 @@ class LightSensorCalibrationViewController: UIViewController {
         case .deviceNotsupport, .noResponse:
             restoreSensorDimLevelAndAutoAfterFailure(allowAutoRestore: true)
             showCalibrationFailed(message: "connection_failure".localizedString)
+        case .requiredLightUnavailable:
+            restoreSensorDimLevelAndAutoAfterFailure(allowAutoRestore: true)
+            showCalibrationFailed(message: "calibration_required_light_unavailable".localizedString)
         case .ambientInstability:
             restoreSensorDimLevelAndAutoAfterFailure(allowAutoRestore: true)
             showCalibrationFailed(message: "calibrating_failure".localizedString)
+        case .lightOutputUnstable:
+            restoreSensorDimLevelAndAutoAfterFailure(allowAutoRestore: true)
+            showCalibrationFailed(message: "calibration_light_stabilization_failure".localizedString)
         case .lightNoEffect, .inflectionPointError:
             restoreSensorDimLevelAndAutoAfterFailure(allowAutoRestore: true)
             showCalibrationFailed(message: "checking_correct_failure".localizedString)
         case .targetIlluminanceInvalid, .targetIlluminanceUnstable:
             restoreSensorDimLevelAndAutoAfterFailure(allowAutoRestore: true)
             showCalibrationFailed(message: "calibration_target_illuminance_failure".localizedString)
+        case .sensorTargetUnreachable:
+            restoreSensorDimLevelAndAutoAfterFailure(allowAutoRestore: true)
+            showCalibrationFailed(message: "calibration_sensor_target_unreachable".localizedString)
+        case .publishDeltaRestoreFailed:
+            restoreSensorDimLevelAndAutoAfterFailure(allowAutoRestore: true)
+            showCalibrationFailed(message: "calibration_publish_delta_restore_failure".localizedString)
         }
     }
 

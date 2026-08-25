@@ -1633,6 +1633,10 @@
 "recalibrate" = "重新校准";
 "calibration_target_illuminance_failure" = "无法计算目标照度，测得的灯具照度低于传感器噪声阈值。";
 "calibration_target_illuminance_unstable" = "传感器读数波动过大，无法计算目标照度。请减少环境光变化后重试。";
+"calibration_required_light_unavailable" = "必要灯具离线或未达到校准亮度。请检查组内每台灯具后重试。";
+"calibration_light_stabilization_failure" = "灯光在校准超时前未达到稳定状态。请保持环境不变后重试。";
+"calibration_sensor_target_unreachable" = "100% 调光等级的测量值低于目标传感器值的 95%。请降低目标值或检查灯具。";
+"calibration_publish_delta_restore_failure" = "校准无法恢复传感器上报阈值。请重新校准后再使用自动控制。";
 "calibration_rollback_failure" = "校准失败，并且无法完整恢复原校准参数。请重新校准。";
 "calibration_all_devices_offline" = "该组内所有设备均离线。请让至少一台设备上线后重试。";
 
