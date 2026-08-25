@@ -273,7 +273,8 @@ final class LightSensorCalibrationDimLevelView: UIView {
             make.bottom.equalToSuperview()
         }
         increaseButton.snp.makeConstraints { make in
-            make.right.centerY.equalTo(decreaseButton)
+            make.right.equalToSuperview()
+            make.centerY.equalTo(decreaseButton)
             make.width.height.equalTo(SCRYFrom(30))
         }
         slider.snp.makeConstraints { make in
@@ -441,19 +442,33 @@ final class LightSensorTargetSensorValueView: UIView {
         targetTextField.leftView = UIView(frame: CGRect(x: 0, y: 0, width: SCRXFrom(8), height: 1))
         targetTextField.leftViewMode = .always
         targetTextField.addTarget(self, action: #selector(targetValueEditingChanged), for: .editingChanged)
+        targetTextField.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        targetTextField.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         let unitLabel = UILabel(text: "LX", textColor: SubText_Color, fontSize: 15, fontWeight: .light)
-        let useReadingButton = UIButton(
-            title: "calibration_use_sensor_reading".localizedString,
-            titleSize: 12,
-            titleWeight: .light,
-            titleColor: Bar_Color,
-            target: self,
-            action: #selector(useSensorReading)
+        unitLabel.setContentHuggingPriority(.required, for: .horizontal)
+        unitLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
+        var useReadingButtonConfiguration = UIButton.Configuration.plain()
+        useReadingButtonConfiguration.title = "calibration_use_sensor_reading".localizedString
+        useReadingButtonConfiguration.baseForegroundColor = Bar_Color
+        useReadingButtonConfiguration.contentInsets = NSDirectionalEdgeInsets(
+            top: 0,
+            leading: SCRXFrom(12),
+            bottom: 0,
+            trailing: SCRXFrom(12)
         )
-        useReadingButton.layer.borderWidth = 0.5
+        useReadingButtonConfiguration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { incoming in
+            var outgoing = incoming
+            outgoing.font = UIFont.systemFont(ofSize: SCRYFrom(12), weight: .light)
+            return outgoing
+        }
+        let useReadingButton = UIButton(configuration: useReadingButtonConfiguration, primaryAction: nil)
+        useReadingButton.addTarget(self, action: #selector(useSensorReading), for: .touchUpInside)
+        useReadingButton.layer.borderWidth = 1
         useReadingButton.layer.borderColor = RGB(147, 148, 196).cgColor
-        useReadingButton.layer.cornerRadius = SCRYFrom(15)
+        useReadingButton.layer.cornerRadius = 15
+        useReadingButton.setContentHuggingPriority(.required, for: .horizontal)
+        useReadingButton.setContentCompressionResistancePriority(.required, for: .horizontal)
 
         let inputRow = UIStackView(arrangedSubviews: [targetTextField, unitLabel, useReadingButton])
         inputRow.axis = .horizontal
@@ -464,15 +479,13 @@ final class LightSensorTargetSensorValueView: UIView {
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
             make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(16))
-            make.height.equalTo(SCRYFrom(32))
+            make.height.equalTo(32)
         }
         targetTextField.snp.makeConstraints { make in
-            make.width.equalTo(SCRXFrom(152))
-            make.height.equalTo(SCRYFrom(32))
+            make.height.equalTo(32)
         }
         useReadingButton.snp.makeConstraints { make in
-            make.width.equalTo(SCRXFrom(114))
-            make.height.equalTo(SCRYFrom(32))
+            make.height.equalTo(32)
         }
 
         let noteLabel = UILabel(

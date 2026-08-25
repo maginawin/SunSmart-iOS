@@ -660,6 +660,8 @@ class LightSensorCalibrationViewController: UIViewController {
         
         setLuxPollingSuspended(true, for: .calibration)
         showConnecting()
+
+        print("[DaylightCalibrationDebug] event=app_start mode=plane node=\(sensor.name ?? "<unnamed>") address=\(String(format: "0x%04X", sensor.primaryUnicastAddress)) ambientOnLux=\(onLux) ambientOffLux=\(offLux) ambientDeltaLux=\(onLux - offLux)")
         
         MeshSensorCalibrateManager.manager.calibrate(node: sensor, ambientLightOffLux: UInt16(offLux), ambientLightOnLux: UInt16(onLux)) { step in
             switch step {
@@ -837,6 +839,8 @@ class LightSensorCalibrationViewController: UIViewController {
         let targetBrightness = targetNightBrightnessView.value
         let rollbackSnapshot = makeDaylightCalibrationSnapshot(for: sensor)
 
+        print("[DaylightCalibrationDebug] event=app_start mode=night node=\(sensor.name ?? "<unnamed>") address=\(String(format: "0x%04X", sensor.primaryUnicastAddress)) targetBrightnessPercent=\(targetBrightness)")
+
         MeshSensorCalibrateManager.manager.calibrateNight(
             node: sensor,
             targetBrightness: targetBrightness,
@@ -1009,6 +1013,8 @@ class LightSensorCalibrationViewController: UIViewController {
         setLuxPollingSuspended(true, for: .calibration)
         showConnecting()
         let rollbackSnapshot = makeDaylightCalibrationSnapshot(for: sensor)
+
+        print("[DaylightCalibrationDebug] event=app_start mode=sensor node=\(sensor.name ?? "<unnamed>") address=\(String(format: "0x%04X", sensor.primaryUnicastAddress)) targetLux=\(targetLux) dimLevelPercent=\(sensorCalibrationDimLevel)")
 
         MeshSensorCalibrateManager.manager.calibrateSensor(
             node: sensor,
