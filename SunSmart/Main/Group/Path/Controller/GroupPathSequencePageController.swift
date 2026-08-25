@@ -13,6 +13,7 @@ class GroupPathSequencePageController: WMPageController {
     let space: SpaceData
     let group: Group
     let groupPath: GroupProximityLightingPathData
+    private let deviceNameFilterSession = DeviceNameFilterSession()
     private let vcTitles: [String] = ["sequence".localizedString, "trigger_zone".localizedString]
     private var addBtn: UIButton!
     private var segmentedControl: CustomSegmentedControl!
@@ -176,11 +177,19 @@ extension GroupPathSequencePageController {
     override func pageController(_ pageController: WMPageController, viewControllerAt index: Int) -> UIViewController {
         switch index {
         case 0:
-            let vc = GroupPathSequenceViewController(group: group, groupPath: groupPath)
+            let vc = GroupPathSequenceViewController(
+                group: group,
+                groupPath: groupPath,
+                deviceNameFilterSession: deviceNameFilterSession
+            )
             self.sequenceVc = vc
             return vc
         case 1:
-            let vc = GroupPathSequenceTriggerZoneController(group: group, zones: groupPath.zones)
+            let vc = GroupPathSequenceTriggerZoneController(
+                group: group,
+                zones: groupPath.zones,
+                deviceNameFilterSession: deviceNameFilterSession
+            )
             self.triggerZoneVc = vc
             return vc
         default:

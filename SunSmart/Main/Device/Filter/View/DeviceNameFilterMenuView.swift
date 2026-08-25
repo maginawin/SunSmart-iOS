@@ -43,7 +43,13 @@ final class DeviceNameFilterMenuView: UIControl {
         let minimumX = safeInsets.left + SCRXFrom(16)
         let maximumX = window.bounds.width - safeInsets.right - SCRXFrom(16) - Self.menuWidth
         let menuX = min(max(sourceRect.minX, minimumX), max(minimumX, maximumX))
-        let menuY = max(safeInsets.top + SCRYFrom(16), sourceRect.minY - SCRYFrom(8) - menuHeight)
+        let minimumY = safeInsets.top + SCRYFrom(16)
+        let maximumY = window.bounds.height - safeInsets.bottom - SCRYFrom(16) - menuHeight
+        let preferredMenuY = sourceRect.minY - SCRYFrom(8) - menuHeight
+        let fallbackMenuY = sourceRect.maxY + SCRYFrom(8)
+        let menuY = preferredMenuY >= minimumY
+            ? min(preferredMenuY, max(minimumY, maximumY))
+            : min(max(fallbackMenuY, minimumY), max(minimumY, maximumY))
 
         contentView.frame = CGRect(x: menuX, y: menuY, width: Self.menuWidth, height: menuHeight)
         contentView.backgroundColor = RGB(74, 74, 74, 0.95)

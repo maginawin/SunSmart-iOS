@@ -11,6 +11,7 @@ import NordicSigMeshSDK
 class GroupPathSequenceViewController: UIViewController {
 
     let group: Group
+    private let deviceNameFilterSession: DeviceNameFilterSession
     
     let groupPath: GroupProximityLightingPathData
     /// 路径list
@@ -35,9 +36,14 @@ class GroupPathSequenceViewController: UIViewController {
     /// 触发的设备list
     private var triggerDevices: [Node] = []
     
-    init(group: Group, groupPath: GroupProximityLightingPathData) {
+    init(
+        group: Group,
+        groupPath: GroupProximityLightingPathData,
+        deviceNameFilterSession: DeviceNameFilterSession
+    ) {
         self.group = group
         self.groupPath = groupPath
+        self.deviceNameFilterSession = deviceNameFilterSession
 //        self.paths = paths
         super.init(nibName: nil, bundle: nil)
         
@@ -304,6 +310,7 @@ class GroupPathSequenceViewController: UIViewController {
         deviceAddView = GroupPathSequenceDeviceAddView()
         deviceAddView.isHidden = true
         deviceAddView.contentHeightPolicy = .fixedBase
+        deviceAddView.configureDeviceNameFilter(session: deviceNameFilterSession)
         deviceAddView.delegate = self
         deviceAddView.contentHeightChanged = { [weak self] contentHeight in
             guard let self = self else { return }

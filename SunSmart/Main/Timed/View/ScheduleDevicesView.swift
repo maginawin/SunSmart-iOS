@@ -24,9 +24,11 @@ class ScheduleDevicesView: UIView {
     private var cancelBtn: UIButton!
     private var lineView: UIView!
     private var confirmBtn: UIButton!
+    private var deviceFilterBtn: UIButton!
     
     /// 设备list
     private let nodes: [Node]
+    private var visibleNodes: [Node] = []
     /// 选中的设备list
     private var selectNodes: [Node]
     /// 禁止取消选择的设备list（编辑日程-已存在离线设备）
@@ -37,6 +39,8 @@ class ScheduleDevicesView: UIView {
     private var needSyncNodes: [Node] = []
     /// 选择设备完成回调
     private var selectCallback: DevicesSelectFinishedCallback?
+    private let deviceNameFilterSession = DeviceNameFilterSession()
+    private var deviceNameFilterObservation: UUID?
     
     /// 每行个数
     private var rowNum: Int = isIPad ? 6 : 3
@@ -66,11 +70,20 @@ class ScheduleDevicesView: UIView {
             needSyncNodes.append(contentsOf: data.syncNodes)
             needSyncNodes.append(contentsOf: data.deleteNodes)
         }
+        deviceNameFilterObservation = deviceNameFilterSession.observe { [weak self] _ in
+            self?.applyDeviceNameFilter()
+        }
         updateSelectAllState()
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    deinit {
+        if let deviceNameFilterObservation {
+            deviceNameFilterSession.removeObserver(deviceNameFilterObservation)
+        }
     }
     
     func show() {
@@ -78,10 +91,9 @@ class ScheduleDevicesView: UIView {
             self.tag = 100
             UIApplication.shared.keyWindow().addSubview(self)
             layoutIfNeeded()
-            if nodes.isEmpty {
-                showEmptyUI()
-            }
+            updateEmptyUI()
             checkOffline()
+            updateSelectAllState()
         }
         self.shadeView.alpha = 0
         self.contentView.y = height
@@ -121,20 +133,69 @@ class ScheduleDevicesView: UIView {
       
     }
     
-    private func showEmptyUI() {
-        
-        collectionView.showEmptyDataView(title: "no_devices".localizedString, tipText: "no_devices_message".localizedString, position: .center, bottomMargin: SCRYFit(45))
+    private func updateEmptyUI() {
+        if deviceNameFilterSession.isActive, visibleNodes.isEmpty {
+            collectionView.showEmptyDataView(
+                title: "device_filter_no_matching_devices".localizedString,
+                position: .center,
+                bottomMargin: SCRYFit(45)
+            )
+        } else if nodes.isEmpty {
+            collectionView.showEmptyDataView(title: "no_devices".localizedString, tipText: "no_devices_message".localizedString, position: .center, bottomMargin: SCRYFit(45))
+        } else {
+            collectionView.hideEmptyDataView()
+        }
+    }
+
+    private func applyDeviceNameFilter() {
+        visibleNodes = deviceNameFilterSession.filtered(nodes) { [displayDeviceNamePrefix] node in
+            var names = [node.name ?? ""]
+            if displayDeviceNamePrefix, let group = node.group {
+                names.append(group.name)
+            }
+            return names
+        }
+        deviceFilterBtn?.isSelected = deviceNameFilterSession.isActive
+        updateEmptyUI()
+        collectionView?.reloadData()
+        updateSelectAllState()
+    }
+
+    private func showDeviceNameFilterMenu() {
+        DeviceNameFilterMenuView.show(
+            from: deviceFilterBtn,
+            onSearch: { [weak self] in
+                guard let self else { return }
+                DeviceNameFilterSearchView.show(
+                    initialText: self.deviceNameFilterSession.query,
+                    onSubmit: { [weak self] text in
+                        self?.deviceNameFilterSession.submit(text)
+                    }
+                )
+            },
+            onReset: { [weak self] in
+                self?.deviceNameFilterSession.reset()
+            }
+        )
     }
     
     /// 全选
     @objc private func selectAllBtnAction(sender: UIButton) {
         sender.isSelected = !sender.isSelected
+        let canSelectNodes = visibleNodes.filter({ $0.state && $0.isKeybindComplete })
         if sender.isSelected {
-            self.selectNodes = self.nodes.filter({ ($0.state && $0.isKeybindComplete) || disableUnselectNodes.contains($0) })
+            selectNodes.append(contentsOf: canSelectNodes.filter({ !selectNodes.contains($0) }))
         }else {
-            self.selectNodes.removeAll(where: { !disableUnselectNodes.contains($0) })
+            selectNodes.removeAll(where: {
+                canSelectNodes.contains($0) && !disableUnselectNodes.contains($0)
+            })
         }
         collectionView.reloadData()
+        updateSelectAllState()
+    }
+
+    @objc private func deviceFilterBtnAction() {
+        showDeviceNameFilterMenu()
     }
     
     /// 取消
@@ -153,12 +214,12 @@ class ScheduleDevicesView: UIView {
     private func updateSelectAllState() {
         
         // 编辑日程-选中的设备未
-        let canSelectNodes = nodes.filter({ $0.isKeybindComplete && $0.state })
+        let canSelectNodes = visibleNodes.filter({ $0.isKeybindComplete && $0.state })
         if canSelectNodes.isEmpty {
             selectAllBtn.isHidden = true
         }else {
             selectAllBtn.isHidden = false
-            selectAllBtn.isSelected = selectNodes.count == canSelectNodes.count
+            selectAllBtn.isSelected = canSelectNodes.allSatisfy({ selectNodes.contains($0) })
         }
         
     }
@@ -249,6 +310,20 @@ class ScheduleDevicesView: UIView {
         titleLabel.snp.makeConstraints { make in
             make.center.equalToSuperview()
         }
+
+        deviceFilterBtn = UIButton(
+            normalImageName: "device_filter",
+            selectedImageName: "device_filter_selected",
+            target: self,
+            action: #selector(deviceFilterBtnAction)
+        )
+        deviceFilterBtn.accessibilityLabel = "device_filter_search_by_name".localizedString
+        topBarView.addSubview(deviceFilterBtn)
+        deviceFilterBtn.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(23))
+            make.centerY.equalTo(titleLabel)
+            make.width.height.equalTo(30)
+        }
         
         selectAllBtn = UIButton(title: "select_all".localizedString, titleSize: 14, titleWeight: .light, titleColor: RGB(39, 37, 54), normalImageName: "device_select_un", selectedImageName: "device_select", target: self, action: #selector(selectAllBtnAction))
         selectAllBtn.setImagePosition(position: .left, spacing: SCRXFrom(4))
@@ -275,7 +350,7 @@ class ScheduleDevicesView: UIView {
 //                node.saveNodeInfo(meshUUID: uuid, networkKey: MeshNetworkManager.instance.currentNetworkKey)
 //            }
             
-            if let index = self.nodes.firstIndex(of: node), let cell = collectionView.cellForItem(at: IndexPath(row: index, section: 0)) as? DevicesViewCell {
+            if let index = self.visibleNodes.firstIndex(of: node), let cell = collectionView.cellForItem(at: IndexPath(row: index, section: 0)) as? DevicesViewCell {
                 cell.device = node
                 cell.displayDeviceNamePrefix = displayDeviceNamePrefix
                 cell.selectImageView.isHidden = false
@@ -316,12 +391,12 @@ class ScheduleDevicesView: UIView {
 extension ScheduleDevicesView: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return nodes.count
+        return visibleNodes.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! DevicesViewCell
-        let node = nodes[indexPath.item]
+        let node = visibleNodes[indexPath.item]
         cell.device = node
         cell.displayDeviceNamePrefix = displayDeviceNamePrefix
         if needSyncNodes.contains(node) {
@@ -354,7 +429,7 @@ extension ScheduleDevicesView: UICollectionViewDataSource, UICollectionViewDeleg
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
-        let node = nodes[indexPath.item]
+        let node = visibleNodes[indexPath.item]
         guard node.isKeybindComplete else {
             repair(node: node)
             return

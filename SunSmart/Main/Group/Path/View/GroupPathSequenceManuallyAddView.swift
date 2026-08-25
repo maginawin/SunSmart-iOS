@@ -59,6 +59,7 @@ class GroupPathSequenceManuallyAddView: UIView {
     
     
     weak var delegate: GroupPathSequenceManuallyAddViewDelegate?
+    var visibleDevicesChanged: (() -> Void)?
     var showAdded: Bool = false
     var usesCompactFilterMenu: Bool = false {
         didSet {
@@ -81,7 +82,13 @@ class GroupPathSequenceManuallyAddView: UIView {
     private(set) var selectDevice: Node?
     var isSequence: Bool = true
     
-    private(set) var devices: [Node] = []
+    private var allDevices: [Node] = []
+    private(set) var visibleDevices: [Node] = []
+    var devices: [Node] {
+        visibleDevices
+    }
+    private var deviceNameFilterSession: DeviceNameFilterSession?
+    private var deviceNameFilterObservation: UUID?
 
     var preferredContentHeight: CGFloat {
         if !guideContentView.isHidden {
@@ -106,6 +113,12 @@ class GroupPathSequenceManuallyAddView: UIView {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+
+    deinit {
+        if let deviceNameFilterObservation {
+            deviceNameFilterSession?.removeObserver(deviceNameFilterObservation)
+        }
+    }
     
     override func layoutSubviews() {
         super.layoutSubviews()
@@ -115,12 +128,33 @@ class GroupPathSequenceManuallyAddView: UIView {
     }
     
     func reloadData(devices: [Node], selectDevice: Node?) {
-        self.devices = devices
+        allDevices = devices
         self.selectDevice = selectDevice
-        
+        applyDeviceNameFilter()
+    }
+
+    func configureDeviceNameFilter(session: DeviceNameFilterSession) {
+        if let deviceNameFilterObservation {
+            deviceNameFilterSession?.removeObserver(deviceNameFilterObservation)
+        }
+        deviceNameFilterSession = session
+        deviceNameFilterObservation = session.observe { [weak self] _ in
+            self?.applyDeviceNameFilter()
+        }
+    }
+
+    private func applyDeviceNameFilter() {
+        if let deviceNameFilterSession {
+            visibleDevices = deviceNameFilterSession.filtered(allDevices) { node in
+                [node.name ?? ""]
+            }
+        } else {
+            visibleDevices = allDevices
+        }
         updateNoDevicesLabelVisibility()
         collectionView.reloadData()
         updatePageControlState()
+        visibleDevicesChanged?()
     }
 
     func setGuideVisible(_ visible: Bool) {
@@ -144,6 +178,9 @@ class GroupPathSequenceManuallyAddView: UIView {
 
     private func updateNoDevicesLabelVisibility() {
         noDevicesLabel.isHidden = !guideContentView.isHidden || !devices.isEmpty
+        noDevicesLabel.text = deviceNameFilterSession?.isActive == true
+            ? "device_filter_no_matching_devices".localizedString
+            : "filter_no_devices".localizedString
     }
     
     @objc private func addTypeSelectAction() {
@@ -436,12 +473,12 @@ class GroupPathSequenceManuallyAddView: UIView {
 extension GroupPathSequenceManuallyAddView: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return devices.count
+        return visibleDevices.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! GroupPathSequenceAddDeviceCell
-        let node = devices[indexPath.item]
+        let node = visibleDevices[indexPath.item]
         cell.nameLabel.text = node.name
         if node == selectDevice {
             cell.boxView.layer.borderColor = Yellow_Color.cgColor
@@ -463,7 +500,7 @@ extension GroupPathSequenceManuallyAddView: UICollectionViewDataSource, UICollec
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
-        let device = devices[indexPath.item]
+        let device = visibleDevices[indexPath.item]
         if device == selectDevice {
             delegate?.manuallyAddView(self, selectDevice: device)
         }else {

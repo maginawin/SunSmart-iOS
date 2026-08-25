@@ -11,6 +11,7 @@ import NordicSigMeshSDK
 class GroupPathSequenceTriggerZoneController: UIViewController {
 
     let group: Group
+    private let deviceNameFilterSession: DeviceNameFilterSession
     
     /// 路径区域list
     let zones: [GroupProximityLightingPathZone]
@@ -34,9 +35,14 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
     /// 触发的设备list
     private var triggerDevices: [Node] = []
     
-    init(group: Group, zones: [GroupProximityLightingPathZone]) {
+    init(
+        group: Group,
+        zones: [GroupProximityLightingPathZone],
+        deviceNameFilterSession: DeviceNameFilterSession
+    ) {
         self.group = group
         self.zones = zones
+        self.deviceNameFilterSession = deviceNameFilterSession
         super.init(nibName: nil, bundle: nil)
         
         setZones = zones.compactMap({  $0.copy() })
@@ -271,6 +277,7 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
         deviceAddView = GroupPathSequenceDeviceAddView()
         deviceAddView.isHidden = true
         deviceAddView.contentHeightPolicy = .fixedBase
+        deviceAddView.configureDeviceNameFilter(session: deviceNameFilterSession)
         deviceAddView.isSequence = false
         deviceAddView.contentHeightChanged = { [weak self] contentHeight in
             guard let self = self else { return }

@@ -20,10 +20,13 @@ class GroupMembersViewController: UIViewController {
     private var flowLayout: AlignCenterFlowLayout!
     private var functionView: GroupDevicesFunctionView!
     private var selectNodes: [Node] = []
+    private let deviceNameFilterSession = DeviceNameFilterSession()
+    private var deviceNameFilterObservation: UUID?
     /// 是否创建后添加设备
     var isAddDevices: Bool = false
     
     private var nodes: [Node] = []
+    private var visibleNodes: [Node] = []
     /// 配置过程是否去创建场景
     private var configurationCreateScene: Bool = false
     
@@ -60,10 +63,14 @@ class GroupMembersViewController: UIViewController {
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "save".localizedString, color: RGB(0, 0, 0, 0.85), font: UIFont.systemFont(ofSize: 16, weight: .light), target: self, sel: #selector(saveAction))
         
         setupUI()
+        functionView.setDeviceFilterEnabled(true)
+        deviceNameFilterObservation = deviceNameFilterSession.observe { [weak self] _ in
+            self?.applyDeviceNameFilter()
+        }
         
         if isAddDevices {
             navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backAction))
-            functionView.syncBtn.isHidden = true
+            functionView.setSyncButtonHidden(true)
             navigationItem.rightBarButtonItem?.title = "done".localizedString
             if space.isConfiguring {
                 title = group.name
@@ -117,16 +124,15 @@ class GroupMembersViewController: UIViewController {
 //        DispatchQueue.global().async {
 //            let isSync = self.group.needSync
 //            DispatchQueue.main.async {
-                self.functionView.syncBtn.isHidden = !self.group.needSync
+                self.functionView.setSyncButtonHidden(self.isAddDevices || !self.group.needSync)
 //            }
 //        }
         MeshLibManager.manager.messageDelegate = self
         
 //        if collectionView.frame != .zero {
-            updateEmptyUI()
+            applyDeviceNameFilter()
 //        }
         
-        collectionView.reloadData()
         updateFunctionView()
     }
 
@@ -164,6 +170,9 @@ class GroupMembersViewController: UIViewController {
         }
         
         meshNetworkConnectedObservation = nil
+        if let deviceNameFilterObservation {
+            deviceNameFilterSession.removeObserver(deviceNameFilterObservation)
+        }
     }
     
     
@@ -346,8 +355,16 @@ class GroupMembersViewController: UIViewController {
     }
     
     private func updateEmptyUI() {
-        
-        if nodes.isEmpty {
+        if deviceNameFilterSession.isActive, visibleNodes.isEmpty {
+            view.hideEmptyDataView()
+            collectionView.showEmptyDataView(
+                title: "device_filter_no_matching_devices".localizedString,
+                position: .center,
+                bottomMargin: SCRYFit(50)
+            )
+            functionView.isHidden = false
+        } else if nodes.isEmpty {
+            collectionView.hideEmptyDataView()
             
             view.showEmptyDataView(title: "no_devices".localizedString, tipText: "group_not_devices_message".localizedString, buttonText: "group_add_device".localizedString, buttomWidth: SCRXFrom(216), position: .center, bottomMargin: SCRYFit(50)) {[weak self] in
                 guard let self = self else { return }
@@ -410,9 +427,42 @@ class GroupMembersViewController: UIViewController {
             
             functionView.isHidden = true
         }else {
+            collectionView.hideEmptyDataView()
             view.hideEmptyDataView()
             functionView.isHidden = false
         }
+    }
+
+    private func applyDeviceNameFilter() {
+        visibleNodes = deviceNameFilterSession.filtered(nodes) { [space] node in
+            var names = [node.name ?? ""]
+            if space.displayDeviceNamePrefix, let group = node.group {
+                names.append(group.name)
+            }
+            return names
+        }
+        functionView?.deviceFilterBtn.isSelected = deviceNameFilterSession.isActive
+        updateEmptyUI()
+        collectionView?.reloadData()
+        updateFunctionView()
+    }
+
+    private func showDeviceNameFilterMenu() {
+        DeviceNameFilterMenuView.show(
+            from: functionView.deviceFilterBtn,
+            onSearch: { [weak self] in
+                guard let self else { return }
+                DeviceNameFilterSearchView.show(
+                    initialText: self.deviceNameFilterSession.query,
+                    onSubmit: { [weak self] text in
+                        self?.deviceNameFilterSession.submit(text)
+                    }
+                )
+            },
+            onReset: { [weak self] in
+                self?.deviceNameFilterSession.reset()
+            }
+        )
     }
     
 
@@ -501,9 +551,10 @@ class GroupMembersViewController: UIViewController {
     
     private func updateFunctionView() {
         
-        let canEditDevices = nodes.filter({ $0.state || $0.group?.address == self.group.address })
+        let canEditDevices = visibleNodes.filter({ $0.state || $0.group?.address == self.group.address })
+        let selectedVisibleCount = canEditDevices.filter({ selectNodes.contains($0) }).count
         
-        functionView.selectAllBtn.isSelected = canEditDevices.count > 0 && selectNodes.count >= canEditDevices.count
+        functionView.selectAllBtn.isSelected = canEditDevices.count > 0 && selectedVisibleCount == canEditDevices.count
         if MeshLibManager.manager.isMeshNetworkConnected {
             functionView.selectAllBtn.isEnabled = true
             functionView.sortBtn.isEnabled = true
@@ -515,7 +566,7 @@ class GroupMembersViewController: UIViewController {
     
     private func reloadCollectionItem(node: Node) {
         
-        if let index = nodes.firstIndex(where: {$0.primaryUnicastAddress == node.primaryUnicastAddress}) {
+        if let index = visibleNodes.firstIndex(where: {$0.primaryUnicastAddress == node.primaryUnicastAddress}) {
             //            CATransaction.setDisableActions(true)
             //            collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
 //            if !node.state { // 离线
@@ -570,7 +621,7 @@ class GroupMembersViewController: UIViewController {
                 if node.group?.address.address == group.address.address, !selectNodes.contains(node) {
                     selectNodes.append(node)
                 }
-                if let index = self.nodes.firstIndex(of: node), let cell = collectionView.cellForItem(at: IndexPath(row: index, section: 0)) as? DevicesViewCell {
+                if let index = self.visibleNodes.firstIndex(of: node), let cell = collectionView.cellForItem(at: IndexPath(row: index, section: 0)) as? DevicesViewCell {
                     cell.device = node
                     cell.displayDeviceNamePrefix = space.displayDeviceNamePrefix
                     cell.selectImageView.isHidden = false
@@ -619,7 +670,7 @@ class GroupMembersViewController: UIViewController {
         }
         let point = sender.location(in: collectionView)
         if let indexPath = collectionView.indexPathForItem(at: point) {
-            let node = nodes[indexPath.item]
+            let node = visibleNodes[indexPath.item]
             let deviceVc = DeviceLightViewController(space: space, node: node)
             navigationController?.pushViewController(deviceVc, animated: true)
         }
@@ -647,12 +698,12 @@ extension GroupMembersViewController: MeshLibManagerMessageDelegate {
 extension GroupMembersViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return nodes.count
+        return visibleNodes.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! DevicesViewCell
-        let node = nodes[indexPath.item]
+        let node = visibleNodes[indexPath.item]
         cell.device = node
         cell.displayDeviceNamePrefix = space.displayDeviceNamePrefix
 //        if node.state && node.isKeybindComplete {
@@ -703,7 +754,7 @@ extension GroupMembersViewController: UICollectionViewDataSource, UICollectionVi
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        let node = nodes[indexPath.item]
+        let node = visibleNodes[indexPath.item]
         guard !node.isEmergencySignController else {
             return
         }
@@ -744,6 +795,10 @@ extension GroupMembersViewController: GroupDevicesFunctionViewDelegate {
         }
         navigationController?.pushViewController(vc, animated: true)
     }
+
+    func functionDidFilterDevicesAction(view: GroupDevicesFunctionView) {
+        showDeviceNameFilterMenu()
+    }
     
     /// 点击检查回调
 //    func functionDidCheckAction(view: GroupDevicesFunctionView) {
@@ -764,7 +819,7 @@ extension GroupMembersViewController: GroupDevicesFunctionViewDelegate {
             }
             self.nodes.sort(by: { ($0.rssi ?? -99) > ($1.rssi ?? -99) })
             self.nodes.sort(by: { $0.state && !$1.state })
-            self.collectionView.reloadData()
+            self.applyDeviceNameFilter()
 //            // 设备信号排序
 //            self.space.deviceSortType = .rssi
 //            self.space.save()
@@ -774,7 +829,7 @@ extension GroupMembersViewController: GroupDevicesFunctionViewDelegate {
     
     /// 全选点击回调  selectAll：是否全选
     func function(view: GroupDevicesFunctionView, selectAllStateChanged selectAll: Bool) {
-        let canEditDevices = nodes.filter({ $0.state && $0.isKeybindComplete })
+        let canEditDevices = visibleNodes.filter({ $0.state && $0.isKeybindComplete })
         if selectAll {
             selectNodes.append(contentsOf: canEditDevices.filter({ !selectNodes.contains($0) }))
 //            selectNodes = canEditDevices

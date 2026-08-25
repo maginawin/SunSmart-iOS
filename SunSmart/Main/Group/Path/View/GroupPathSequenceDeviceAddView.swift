@@ -83,6 +83,7 @@ class GroupPathSequenceDeviceAddView: UIView {
     var manuallyAddView: GroupPathSequenceManuallyAddView!
     var refreshBtn: UIButton!
     var unfoldBtn: UIButton!
+    private var deviceFilterBtn: UIButton!
     private let types: [PathSequenceDeviceAddMode] = [.quickAdd, .triggerAdd, .manuallyAdd]
 
     weak var delegate: GroupPathSequenceDeviceAddViewDelegate?
@@ -98,6 +99,8 @@ class GroupPathSequenceDeviceAddView: UIView {
     private var headerIndex: Int?
     private var lastPreferredContentHeight: CGFloat = 0
     private var lastMenuWidth: CGFloat = 0
+    private var deviceNameFilterSession: DeviceNameFilterSession?
+    private var deviceNameFilterObservation: UUID?
 
     /// 是否可添加设备
     var canAddDevice: Bool = false {
@@ -143,6 +146,12 @@ class GroupPathSequenceDeviceAddView: UIView {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
+
+    deinit {
+        if let deviceNameFilterObservation {
+            deviceNameFilterSession?.removeObserver(deviceNameFilterObservation)
+        }
+    }
     
     override func layoutSubviews() {
         super.layoutSubviews()
@@ -162,7 +171,7 @@ class GroupPathSequenceDeviceAddView: UIView {
     }
     
     @objc private func unfoldBtnAction(sender: UIButton) {
-        let rowNum = max(1, min(Int(ceilf(Float(manuallyAddView.devices.count) / Float(manuallyAddView.colNum))), 3))
+        let rowNum = max(1, min(Int(ceilf(Float(manuallyAddView.visibleDevices.count) / Float(manuallyAddView.colNum))), 3))
         if !sender.isSelected, rowNum == 1 {
             return
         }
@@ -176,6 +185,29 @@ class GroupPathSequenceDeviceAddView: UIView {
     @objc private func collapseBtnAction() {
         collapsed.toggle()
         updateCollapseUI(animated: true)
+    }
+
+    @objc private func deviceFilterBtnAction() {
+        guard let deviceNameFilterSession else {
+            return
+        }
+        DeviceNameFilterMenuView.show(
+            from: deviceFilterBtn,
+            onSearch: { [weak self] in
+                guard let self, let deviceNameFilterSession = self.deviceNameFilterSession else {
+                    return
+                }
+                DeviceNameFilterSearchView.show(
+                    initialText: deviceNameFilterSession.query,
+                    onSubmit: { [weak deviceNameFilterSession] text in
+                        deviceNameFilterSession?.submit(text)
+                    }
+                )
+            },
+            onReset: { [weak deviceNameFilterSession] in
+                deviceNameFilterSession?.reset()
+            }
+        )
     }
     
     private func setupUI() {
@@ -277,6 +309,9 @@ class GroupPathSequenceDeviceAddView: UIView {
         manuallyAddView.delegate = self
         manuallyAddView.backgroundColor = .clear
         manuallyAddView.layer.cornerRadius = 0
+        manuallyAddView.visibleDevicesChanged = { [weak self] in
+            self?.manualVisibleDevicesDidChange()
+        }
         contentCardView.addSubview(manuallyAddView)
         manuallyAddView.snp.makeConstraints { make in
             make.edges.equalToSuperview()
@@ -296,6 +331,21 @@ class GroupPathSequenceDeviceAddView: UIView {
         unfoldBtn.snp.makeConstraints { make in
             make.center.equalTo(refreshBtn)
         }
+
+        deviceFilterBtn = UIButton(
+            normalImageName: "device_filter",
+            selectedImageName: "device_filter_selected",
+            target: self,
+            action: #selector(deviceFilterBtnAction)
+        )
+        deviceFilterBtn.isHidden = true
+        deviceFilterBtn.accessibilityLabel = "device_filter_search_by_name".localizedString
+        addSubview(deviceFilterBtn)
+        deviceFilterBtn.snp.makeConstraints { make in
+            make.centerY.equalTo(collapseBtn)
+            make.right.equalTo(collapseBtn.snp.left).offset(-16)
+            make.width.height.equalTo(30)
+        }
         
         updateHeaderTitle()
         updateCollapseUI(animated: false)
@@ -304,6 +354,31 @@ class GroupPathSequenceDeviceAddView: UIView {
     func updateUnfoldState() {
         updateAccessoryButtons()
         refreshPreferredHeight()
+    }
+
+    func configureDeviceNameFilter(session: DeviceNameFilterSession) {
+        if let deviceNameFilterObservation {
+            deviceNameFilterSession?.removeObserver(deviceNameFilterObservation)
+        }
+        deviceNameFilterSession = session
+        manuallyAddView.configureDeviceNameFilter(session: session)
+        deviceNameFilterObservation = session.observe { [weak self] _ in
+            guard let self else { return }
+            self.deviceFilterBtn.isSelected = session.isActive
+            self.updateAccessoryButtons()
+        }
+    }
+
+    private func manualVisibleDevicesDidChange() {
+        let maxManualRows = max(
+            1,
+            min(Int(ceilf(Float(manuallyAddView.visibleDevices.count) / Float(manuallyAddView.colNum))), 3)
+        )
+        if manuallyAddView.rowNum > maxManualRows {
+            manuallyAddView.rowNum = maxManualRows
+            unfoldBtn.isSelected = maxManualRows > 1
+        }
+        updateUnfoldState()
     }
 
     func updateHeaderIndex(_ index: Int?) {
@@ -358,12 +433,14 @@ class GroupPathSequenceDeviceAddView: UIView {
         guard !collapsed else {
             refreshBtn.isHidden = true
             unfoldBtn.isHidden = true
+            deviceFilterBtn.isHidden = true
             return
         }
 
-        let maxManualRows = max(1, min(Int(ceilf(Float(manuallyAddView.devices.count) / Float(manuallyAddView.colNum))), 3))
+        let maxManualRows = max(1, min(Int(ceilf(Float(manuallyAddView.visibleDevices.count) / Float(manuallyAddView.colNum))), 3))
         refreshBtn.isHidden = currentMode != .triggerAdd || triggerAddView.devices.isEmpty
         unfoldBtn.isHidden = currentMode != .manuallyAdd || maxManualRows <= 1 || !manuallyAddView.guideContentView.isHidden
+        deviceFilterBtn.isHidden = currentMode != .manuallyAdd || deviceNameFilterSession == nil
     }
 
     private func emitPreferredHeightIfNeeded() {

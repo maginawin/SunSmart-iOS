@@ -537,14 +537,6 @@
 		C8607BE22B90267F00A94F0B /* LightSensorCalibrationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE12B90267F00A94F0B /* LightSensorCalibrationViewController.swift */; };
 		C8607BE42B9026F700A94F0B /* LightSensorCalibrationSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */; };
 		C8607BE62B905F5100A94F0B /* LightSensorCalibrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE52B905F5100A94F0B /* LightSensorCalibrationView.swift */; };
-		C8CA21112F50000100000001 /* LightSensorCalibrationModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21012F50000100000001 /* LightSensorCalibrationModeView.swift */; };
-		C8CA21122F50000100000002 /* LightSensorCalibrationAboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21022F50000100000002 /* LightSensorCalibrationAboutView.swift */; };
-		C8CA21212F50000100000003 /* LightSensorCalibrationModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21012F50000100000001 /* LightSensorCalibrationModeView.swift */; };
-		C8CA21222F50000100000004 /* LightSensorCalibrationAboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21022F50000100000002 /* LightSensorCalibrationAboutView.swift */; };
-		C8CA21312F50000100000005 /* LightSensorCalibrationModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21012F50000100000001 /* LightSensorCalibrationModeView.swift */; };
-		C8CA21322F50000100000006 /* LightSensorCalibrationAboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21022F50000100000002 /* LightSensorCalibrationAboutView.swift */; };
-		C8CA21412F50000100000007 /* LightSensorCalibrationModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21012F50000100000001 /* LightSensorCalibrationModeView.swift */; };
-		C8CA21422F50000100000008 /* LightSensorCalibrationAboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21022F50000100000002 /* LightSensorCalibrationAboutView.swift */; };
 		C8607BE82B9165AC00A94F0B /* ProfileLevelSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE72B9165AC00A94F0B /* ProfileLevelSettingsView.swift */; };
 		C8607BEA2B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE92B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift */; };
 		C86618EF2D8BB3DA00FB3D2F /* DeviceAddMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86618EE2D8BB3DA00FB3D2F /* DeviceAddMenuView.swift */; };
@@ -2266,6 +2258,14 @@
 		C8C958B92EBC876900F0E6E2 /* GroupMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C958B82EBC876900F0E6E2 /* GroupMenuView.swift */; };
 		C8C958BA2EBC876900F0E6E2 /* GroupMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C958B82EBC876900F0E6E2 /* GroupMenuView.swift */; };
 		C8C958BB2EBC876900F0E6E2 /* GroupMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C958B82EBC876900F0E6E2 /* GroupMenuView.swift */; };
+		C8CA21112F50000100000001 /* LightSensorCalibrationModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21012F50000100000001 /* LightSensorCalibrationModeView.swift */; };
+		C8CA21122F50000100000002 /* LightSensorCalibrationAboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21022F50000100000002 /* LightSensorCalibrationAboutView.swift */; };
+		C8CA21212F50000100000003 /* LightSensorCalibrationModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21012F50000100000001 /* LightSensorCalibrationModeView.swift */; };
+		C8CA21222F50000100000004 /* LightSensorCalibrationAboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21022F50000100000002 /* LightSensorCalibrationAboutView.swift */; };
+		C8CA21312F50000100000005 /* LightSensorCalibrationModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21012F50000100000001 /* LightSensorCalibrationModeView.swift */; };
+		C8CA21322F50000100000006 /* LightSensorCalibrationAboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21022F50000100000002 /* LightSensorCalibrationAboutView.swift */; };
+		C8CA21412F50000100000007 /* LightSensorCalibrationModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21012F50000100000001 /* LightSensorCalibrationModeView.swift */; };
+		C8CA21422F50000100000008 /* LightSensorCalibrationAboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21022F50000100000002 /* LightSensorCalibrationAboutView.swift */; };
 		C8CAD3152F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD3142F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift */; };
 		C8CAD3162F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD3142F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift */; };
 		C8CAD3172F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD3142F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift */; };
@@ -2910,8 +2910,6 @@
 		C8607BE12B90267F00A94F0B /* LightSensorCalibrationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationViewController.swift; sourceTree = "<group>"; };
 		C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationSelectView.swift; sourceTree = "<group>"; };
 		C8607BE52B905F5100A94F0B /* LightSensorCalibrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationView.swift; sourceTree = "<group>"; };
-		C8CA21012F50000100000001 /* LightSensorCalibrationModeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationModeView.swift; sourceTree = "<group>"; };
-		C8CA21022F50000100000002 /* LightSensorCalibrationAboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationAboutView.swift; sourceTree = "<group>"; };
 		C8607BE72B9165AC00A94F0B /* ProfileLevelSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileLevelSettingsView.swift; sourceTree = "<group>"; };
 		C8607BE92B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfilePhasesTimePickerView.swift; sourceTree = "<group>"; };
 		C86618EE2D8BB3DA00FB3D2F /* DeviceAddMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddMenuView.swift; sourceTree = "<group>"; };
@@ -3287,6 +3285,8 @@
 		C8C8137B2EA60E8C008B3515 /* FlashlightSwingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FlashlightSwingView.swift; sourceTree = "<group>"; };
 		C8C8137F2EA615C5008B3515 /* DeviceMeshNetworkResetController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceMeshNetworkResetController.swift; sourceTree = "<group>"; };
 		C8C958B82EBC876900F0E6E2 /* GroupMenuView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupMenuView.swift; sourceTree = "<group>"; };
+		C8CA21012F50000100000001 /* LightSensorCalibrationModeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationModeView.swift; sourceTree = "<group>"; };
+		C8CA21022F50000100000002 /* LightSensorCalibrationAboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightSensorCalibrationAboutView.swift; sourceTree = "<group>"; };
 		C8CAD3142F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileNightDayIlluminanceThresholdView.swift; sourceTree = "<group>"; };
 		C8CAD89A2F0B9D5100BE3F20 /* ProfileTextInstructionsViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileTextInstructionsViewController.swift; sourceTree = "<group>"; };
 		C8CAD8A52F0E32AA00BE3F20 /* Node+Capability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Node+Capability.swift"; sourceTree = "<group>"; };
@@ -8663,7 +8663,7 @@
 			baseConfigurationReference = F10000000000000000000006 /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Archipelago/Archipelago.entitlements;
-				MARKETING_VERSION = 1.1.5;
+				MARKETING_VERSION = 1.1.6;
 			};
 			name = Debug;
 		};
@@ -8672,7 +8672,7 @@
 			baseConfigurationReference = F10000000000000000000007 /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Archipelago/Archipelago.entitlements;
-				MARKETING_VERSION = 1.1.5;
+				MARKETING_VERSION = 1.1.6;
 			};
 			name = Release;
 		};
@@ -8681,7 +8681,7 @@
 			baseConfigurationReference = F10000000000000000000009 /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SylSmart/SylSmart.entitlements;
-				MARKETING_VERSION = 1.1.5;
+				MARKETING_VERSION = 1.1.6;
 			};
 			name = Debug;
 		};
@@ -8690,7 +8690,7 @@
 			baseConfigurationReference = F1000000000000000000000A /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SylSmart/SylSmart.entitlements;
-				MARKETING_VERSION = 1.1.5;
+				MARKETING_VERSION = 1.1.6;
 			};
 			name = Release;
 		};
@@ -8826,7 +8826,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.1.5;
+				MARKETING_VERSION = 1.1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Debug;
@@ -8847,7 +8847,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.1.5;
+				MARKETING_VERSION = 1.1.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Release;
@@ -8860,7 +8860,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.1.5;
+				MARKETING_VERSION = 1.1.6;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Debug;
@@ -8873,7 +8873,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.1.5;
+				MARKETING_VERSION = 1.1.6;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Release;

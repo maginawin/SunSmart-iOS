@@ -21,6 +21,9 @@ protocol GroupDevicesFunctionViewDelegate: AnyObject {
     /// 全选点击回调  selectAll：是否全选
     func function(view: GroupDevicesFunctionView, selectAllStateChanged selectAll: Bool)
 
+    /// 点击设备名称过滤
+    func functionDidFilterDevicesAction(view: GroupDevicesFunctionView)
+
 }
 
 extension GroupDevicesFunctionViewDelegate {
@@ -45,6 +48,11 @@ extension GroupDevicesFunctionViewDelegate {
         
     }
 
+    /// 点击设备名称过滤
+    func functionDidFilterDevicesAction(view: GroupDevicesFunctionView) {
+
+    }
+
 }
 
 class GroupDevicesFunctionView: UIView {
@@ -57,6 +65,8 @@ class GroupDevicesFunctionView: UIView {
     var sortBtn: UIButton!
     /// 全选按钮
     var selectAllBtn: UIButton!
+    /// 设备名称过滤按钮
+    var deviceFilterBtn: UIButton!
     
     weak var delegate: GroupDevicesFunctionViewDelegate?
     
@@ -91,6 +101,35 @@ class GroupDevicesFunctionView: UIView {
         
         delegate?.functionDidCheckAction(view: self)
     }
+
+    @objc private func deviceFilterBtnClick() {
+        delegate?.functionDidFilterDevicesAction(view: self)
+    }
+
+    func setDeviceFilterEnabled(_ enabled: Bool) {
+        deviceFilterBtn.isHidden = !enabled
+        updateDeviceFilterButtonPosition()
+    }
+
+    func setSyncButtonHidden(_ hidden: Bool) {
+        syncBtn.isHidden = hidden
+        updateDeviceFilterButtonPosition()
+    }
+
+    private func updateDeviceFilterButtonPosition() {
+        guard !deviceFilterBtn.isHidden else {
+            return
+        }
+        deviceFilterBtn.snp.remakeConstraints { make in
+            make.centerY.equalTo(syncBtn)
+            make.width.height.equalTo(30)
+            if syncBtn.isHidden {
+                make.left.equalTo(SCRXFrom(20))
+            } else {
+                make.left.equalTo(syncBtn.snp.right).offset(SCRXFrom(16))
+            }
+        }
+    }
     
     private func setupUI() {
         
@@ -104,6 +143,21 @@ class GroupDevicesFunctionView: UIView {
                 make.top.equalTo(SCRYFrom(17))
             }
             make.left.equalTo(SCRXFrom(20))
+        }
+
+        deviceFilterBtn = UIButton(
+            normalImageName: "device_filter",
+            selectedImageName: "device_filter_selected",
+            target: self,
+            action: #selector(deviceFilterBtnClick)
+        )
+        deviceFilterBtn.isHidden = true
+        deviceFilterBtn.accessibilityLabel = "device_filter_search_by_name".localizedString
+        addSubview(deviceFilterBtn)
+        deviceFilterBtn.snp.makeConstraints { make in
+            make.centerY.equalTo(syncBtn)
+            make.left.equalTo(syncBtn.snp.right).offset(SCRXFrom(16))
+            make.width.height.equalTo(30)
         }
         
         selectAllBtn = UIButton(title: "select_all".localizedString, titleSize: 12, titleColor: TextBlack_Color, normalImageName: "device_select_un", selectedImageName: "device_select", target: self, action: #selector(selectAllBtnClick))
