@@ -4,8 +4,8 @@ import Foundation
 struct SensorCalibrationWorkflowContractTests {
 
     static func main() throws {
-        guard CommandLine.arguments.count == 7 else {
-            fatalError("Expected controller, mode view, localizations, SDK manager and MeshAPI paths")
+        guard CommandLine.arguments.count == 8 else {
+            fatalError("Expected controller, mode view, localizations, SDK manager, MeshAPI and NetworkManager callback paths")
         }
 
         let controller = try source(CommandLine.arguments[1])
@@ -14,6 +14,7 @@ struct SensorCalibrationWorkflowContractTests {
         let chinese = try source(CommandLine.arguments[4])
         let manager = try source(CommandLine.arguments[5])
         let meshAPI = try source(CommandLine.arguments[6])
+        let networkManagerCallbacks = try source(CommandLine.arguments[7])
 
         require(
             manager.contains("case sensor") &&
@@ -120,6 +121,10 @@ struct SensorCalibrationWorkflowContractTests {
                 manager.contains("private var explicitCalibrationGroupAddress") &&
                 manager.contains("private func verifyLightNode(") &&
                 manager.contains("private func prepareLightsForSampling(") &&
+                manager.contains("static func effectiveLightness(") &&
+                manager.contains("range: node.lightnessRange") &&
+                manager.contains("expectedLightness: expectedLightness") &&
+                manager.contains("requested=\\(requestedLightness) expected=\\(expectedLightness) range=") &&
                 manager.contains("LightLightnessGet()") &&
                 manager.contains("LightLightnessSet(lightness: requestedLightness)") &&
                 manager.contains(".requiredLightUnavailable(address:") &&
@@ -139,13 +144,28 @@ struct SensorCalibrationWorkflowContractTests {
             to: "private func getSensorLux()"
         )
         require(
-            publishDeltaRestore.contains("attempts: 3") &&
+            publishDeltaRestore.contains("stopTimeoutTimer()") &&
+                !publishDeltaRestore.contains("startTimeoutTimer(") &&
+                publishDeltaRestore.contains("Self.publishDeltaRestoreAttempts") &&
+                publishDeltaRestore.contains("timeout: Self.publishDeltaResponseTimeout") &&
                 publishDeltaRestore.contains("case .daylightPublishDelta = response.status.code") &&
                 publishDeltaRestore.contains("response?.status.isSuccessful == true") &&
                 publishDeltaRestore.contains("self.calibrateError = .publishDeltaRestoreFailed") &&
                 manager.contains("publishDeltaRestored=") &&
                 manager.contains("rollback_complete"),
             "Publish delta restoration must validate the exact successful response, retry and participate in rollback gating"
+        )
+        let targetedCancellation = section(
+            in: networkManagerCallbacks,
+            from: "func cancelNotifyCallback(",
+            to: "func cancelAllNotifyCallback()"
+        )
+        require(
+            targetedCancellation.contains("messageCallbackToCancel") &&
+                targetedCancellation.contains("responseCallbackToCancel") &&
+                targetedCancellation.contains("messageCallbackToCancel?(.failure(AccessError.cancelled))") &&
+                targetedCancellation.contains("responseCallbackToCancel?(.failure(AccessError.cancelled))"),
+            "Replacing a same-source response waiter must complete every removed callback with cancellation"
         )
 
         require(

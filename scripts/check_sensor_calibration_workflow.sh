@@ -16,4 +16,5 @@ swiftc -parse-as-library \
     "$repo_root/SunSmart/en.lproj/Localizable.strings" \
     "$repo_root/SunSmart/zh-Hans.lproj/Localizable.strings" \
     "$sdk_root/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshSensorCalibrateManager.swift" \
-    "$sdk_root/Sources/NordicSigMeshSDK/MeshLib/MeshAPI.swift"
+    "$sdk_root/Sources/NordicSigMeshSDK/MeshLib/MeshAPI.swift" \
+    "$sdk_root/Sources/NordicSigMeshSDK/MeshLib/MeshNetwork/MeshNetworkManager+Create.swift"
