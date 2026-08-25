@@ -1974,6 +1974,7 @@
 "light_ack_result_replay_rejected_format" = "结果 %@ 被 Replay Protection 拒收 ⚠️";
 "light_ack_replay_detail_format" = "来源 0x%04X seqAuth %@，要求 > %@";
 "light_ack_response_format" = "回复 %@";
+"light_ack_ttl_format" = "ACK 接收 TTL %d（App 发送 TTL %d）";
 "network_connectivity" = "网络连接";
 "ssid" = "SSID";
 "select_wifi" = "选择 Wi-Fi";

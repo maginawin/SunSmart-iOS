@@ -1958,6 +1958,7 @@
 "light_ack_result_replay_rejected_format" = "Result %@ rejected by replay protection ⚠️";
 "light_ack_replay_detail_format" = "Source 0x%04X seqAuth %@ expected > %@";
 "light_ack_response_format" = "Response %@";
+"light_ack_ttl_format" = "ACK Rx TTL %d (App Tx TTL %d)";
 "network_connectivity" = "Network Connectivity";
 "ssid" = "SSID";
 "select_wifi" = "Select Wi-Fi";

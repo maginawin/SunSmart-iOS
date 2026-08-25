@@ -22,6 +22,7 @@ final class LightAckProgressTracker {
     private var activeLines: [String] = []
     private var activeExpectedSource: Address?
     private var activeExpectedResponseOpCode: UInt32?
+    private var activeAppTxTTL: UInt8?
     private var activeReplayDiagnostic: MeshReplayProtectionDiscardEvent?
     private var replayDiscardObserver: NSObjectProtocol?
 
@@ -58,6 +59,7 @@ final class LightAckProgressTracker {
         activeContext = context
         activeExpectedSource = model.parentElement?.unicastAddress
         activeExpectedResponseOpCode = message.responseOpCode
+        activeAppTxTTL = defaultTTL
         activeReplayDiagnostic = nil
         activeBaseLines = [
             String(format: "light_ack_sent_format".localizedString, context.title),
@@ -66,22 +68,35 @@ final class LightAckProgressTracker {
         activeLines = activeBaseLines
         alertView = LightAckProgressAlertView.show(title: context.title, message: activeLines.joined(separator: "\n"))
 
-        MeshAPI.sendMessage(message: message, model: model, defaultTTL: defaultTTL) { [weak self] response in
+        MeshAPI.sendMessageWithReceiveMetadata(
+            message: message,
+            model: model,
+            defaultTTL: defaultTTL
+        ) { [weak self] response in
             DispatchQueue.main.async {
                 self?.finish(commandId: commandId, context: context, response: response)
             }
         }
     }
 
-    private func finish(commandId: UUID, context: LightAckCommandContext, response: StaticMeshResponse?) {
+    private func finish(
+        commandId: UUID,
+        context: LightAckCommandContext,
+        response: StaticMeshResponseReceiveResult?
+    ) {
         guard commandId == activeCommandId else { return }
 
         activeLines = activeBaseLines
-        if let response = response {
+        if let responseResult = response {
+            let response = responseResult.response
             if let vendorStatus = response as? SunricherVendorStatus, !vendorStatus.status.isSuccessful {
                 activeLines.append(String(format: "light_ack_result_failed_format".localizedString, context.title))
             } else {
                 activeLines.append(String(format: "light_ack_result_ok_format".localizedString, context.title))
+            }
+            if let receivedTTL = responseResult.receivedTTL,
+               let activeAppTxTTL {
+                activeLines.append(ttlLine(receivedTTL: receivedTTL, appTxTTL: activeAppTxTTL))
             }
             activeLines.append(String(format: "light_ack_response_format".localizedString, String(describing: type(of: response))))
         } else if let activeReplayDiagnostic {
@@ -94,6 +109,7 @@ final class LightAckProgressTracker {
         activeContext = nil
         activeExpectedSource = nil
         activeExpectedResponseOpCode = nil
+        activeAppTxTTL = nil
     }
 
     private func handleReplayProtectionDiscard(_ notification: Notification) {
@@ -114,14 +130,28 @@ final class LightAckProgressTracker {
     }
 
     private func replayDiagnosticLines(_ diagnostic: MeshReplayProtectionDiscardEvent, context: LightAckCommandContext) -> [String] {
-        [
-            String(format: "light_ack_result_replay_rejected_format".localizedString, context.title),
+        var lines = [
+            String(format: "light_ack_result_replay_rejected_format".localizedString, context.title)
+        ]
+        if let activeAppTxTTL {
+            lines.append(ttlLine(receivedTTL: diagnostic.receivedTTL, appTxTTL: activeAppTxTTL))
+        }
+        lines.append(
             String(
                 format: "light_ack_replay_detail_format".localizedString,
                 Int(diagnostic.source),
                 "\(diagnostic.receivedSeqAuth)",
                 "\(diagnostic.expectedGreaterThanSeqAuth)"
             )
-        ]
+        )
+        return lines
+    }
+
+    private func ttlLine(receivedTTL: UInt8, appTxTTL: UInt8) -> String {
+        String(
+            format: "light_ack_ttl_format".localizedString,
+            Int(receivedTTL),
+            Int(appTxTTL)
+        )
     }
 }
