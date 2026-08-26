@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+repo_root="$(cd "${script_dir}/.." && pwd)"
+sdk_root="${NORDIC_SIG_MESH_SDK_ROOT:-${repo_root}/../../nordic-sig-mesh-sdk}"
+
 assert_contains() {
   local file="$1"
   local pattern="$2"
@@ -25,90 +29,99 @@ assert_not_contains() {
   fi
 }
 
-settings_file="SunSmart/Common/Data/LabSettings.swift"
-lab_file="SunSmart/Main/Site/Controller/LabViewController.swift"
-helper_file="SunSmart/Common/Data/LightGroupControlCommandSender.swift"
-ack_file="SunSmart/Main/Device/Lights/Model/LightAckProgressTracker.swift"
-lights_file="SunSmart/Main/Device/Lights/Controller/DeviceLightsViewController.swift"
-light_detail_file="SunSmart/Main/Device/Controller/DeviceLightViewController.swift"
-groups_file="SunSmart/Main/Group/Controller/GroupsViewController.swift"
-group_file="SunSmart/Main/Group/Controller/GroupViewController.swift"
-en_strings="SunSmart/en.lproj/Localizable.strings"
-zh_strings="SunSmart/zh-Hans.lproj/Localizable.strings"
-
-test -f "$helper_file" || {
-  echo "FAIL: Light/Group TTL helper is missing"
-  echo "  file: $helper_file"
-  exit 1
+assert_match_count() {
+  local file="$1"
+  local pattern="$2"
+  local expected="$3"
+  local message="$4"
+  local actual
+  actual="$(rg -c "$pattern" "$file" || true)"
+  if [[ "$actual" != "$expected" ]]; then
+    echo "FAIL: $message"
+    echo "  file: $file"
+    echo "  expected count: $expected"
+    echo "  actual count: $actual"
+    exit 1
+  fi
 }
 
-assert_contains "$settings_file" "overrideLightGroupControlTTL" "LabSettings must store the TTL override switch"
-assert_contains "$settings_file" "lightGroupControlTTL" "LabSettings must store the TTL value"
-assert_contains "$settings_file" "lightGroupControlTTLOverride" "LabSettings must expose optional TTL override"
-assert_contains "$settings_file" "min\\(max\\(.*0\\).*127\\)" "LabSettings must clamp TTL to 0...127"
+settings_file="${repo_root}/SunSmart/Common/Data/LabSettings.swift"
+app_delegate_file="${repo_root}/SunSmart/AppDelegate/AppDelegate.swift"
+lab_file="${repo_root}/SunSmart/Main/Site/Controller/LabViewController.swift"
+helper_file="${repo_root}/SunSmart/Common/Data/LightGroupControlCommandSender.swift"
+ack_file="${repo_root}/SunSmart/Main/Device/Lights/Model/LightAckProgressTracker.swift"
+lights_file="${repo_root}/SunSmart/Main/Device/Lights/Controller/DeviceLightsViewController.swift"
+light_detail_file="${repo_root}/SunSmart/Main/Device/Controller/DeviceLightViewController.swift"
+en_strings="${repo_root}/SunSmart/en.lproj/Localizable.strings"
+zh_strings="${repo_root}/SunSmart/zh-Hans.lproj/Localizable.strings"
+sdk_manager="${sdk_root}/Sources/NordicSigMeshSDK/nRFMeshProvision/MeshNetworkManager.swift"
+sdk_policy="${sdk_root}/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/OutgoingAccessMessageTtlPolicy.swift"
+sdk_lower_transport="${sdk_root}/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/Lower Transport Layer/LowerTransportLayer.swift"
+sdk_tests="${sdk_root}/Tests/NordicSigMeshSDKTests/OutgoingAccessMessageTtlPolicyTests.swift"
+sdk_standalone_tests="${sdk_root}/Tests/Standalone/OutgoingAccessMessageTtlPolicyTests.swift"
 
-assert_contains "$lab_file" "overrideLightGroupControlTTL" "Lab screen must show the TTL override switch"
-assert_contains "$lab_file" "light_group_control_ttl_scope" "Lab screen must explain the affected scope"
-assert_contains "$lab_file" "lightGroupControlTTL" "Lab screen must expose the TTL value"
-assert_contains "$lab_file" "visibleRows" "Lab screen must use dynamic rows so TTL value is hidden when override is disabled"
-assert_contains "$lab_file" "visibleRows\\.count" "Lab screen row count must follow visible rows"
-assert_contains "$lab_file" "tableView\\.reloadData\\(\\)" "Lab screen must refresh visible rows when the TTL override switch changes"
-assert_not_contains "$lab_file" "Row\\.allCases\\.count" "Lab screen must not always show all Lab rows"
-assert_not_contains "$lab_file" "lightGroupControlTTLScope" "Lab screen must not show a separate TTL scope row"
-assert_contains "$lab_file" "light_group_control_ttl_range\"\\.localizedString[[:space:]]*\\+[[:space:]]*\"\\\\n\\\\n\"[[:space:]]*\\+[[:space:]]*\"light_group_control_ttl_scope\"\\.localizedString" "TTL input dialog must show range and scope text together"
+for file in \
+  "$settings_file" \
+  "$app_delegate_file" \
+  "$lab_file" \
+  "$helper_file" \
+  "$ack_file" \
+  "$lights_file" \
+  "$light_detail_file" \
+  "$en_strings" \
+  "$zh_strings" \
+  "$sdk_manager" \
+  "$sdk_policy" \
+  "$sdk_lower_transport" \
+  "$sdk_tests" \
+  "$sdk_standalone_tests"; do
+  test -f "$file" || {
+    echo "FAIL: required TTL contract file is missing"
+    echo "  file: $file"
+    exit 1
+  }
+done
 
-assert_contains "$helper_file" "enum LightGroupControlCommandSender" "Helper must define LightGroupControlCommandSender"
-assert_contains "$helper_file" "LabSettings\\.lightGroupControlTTLOverride" "Helper must read Lab TTL override centrally"
-assert_contains "$helper_file" "setNodeOnOff" "Helper must support node on/off"
-assert_contains "$helper_file" "setNodeLightness" "Helper must support node lightness"
-assert_contains "$helper_file" "setNodeColorTemperature" "Helper must support node CCT"
-assert_contains "$helper_file" "identify" "Helper must support single-light Identify"
-assert_contains "$helper_file" "setGroupOnOff" "Helper must support group on/off"
-assert_contains "$helper_file" "setGroupLightness" "Helper must support group lightness"
-assert_contains "$helper_file" "setGroupColorTemperature" "Helper must support group CCT"
-assert_contains "$helper_file" "setAllOnOff" "Helper must support all lights on/off"
-assert_contains "$helper_file" "setAllLightness" "Helper must support all lights lightness"
-assert_contains "$helper_file" "defaultTTL: ttlOverride" "Helper must pass the Lab TTL override to MeshAPI"
+assert_contains "$settings_file" 'overrideOutgoingMeshTTL' "LabSettings must store the outgoing Mesh TTL override switch"
+assert_contains "$settings_file" 'outgoingMeshTTLOverride' "LabSettings must expose the optional outgoing Mesh TTL override"
+assert_contains "$settings_file" 'lab_override_light_group_control_ttl' "The existing override UserDefaults key must be preserved"
+assert_contains "$settings_file" 'lab_light_group_control_ttl' "The existing TTL UserDefaults key must be preserved"
+assert_contains "$settings_file" 'min\(max\(.*0\).*127\)' "LabSettings must clamp TTL to 0...127"
+assert_contains "$settings_file" 'MeshNetworkManager\.setOutgoingAccessMessageTtlOverride\(outgoingMeshTTLOverride\)' "LabSettings must synchronize the SDK override"
+assert_contains "$app_delegate_file" 'LabSettings\.applyOutgoingMeshTTLOverride\(\)' "App launch must restore the persisted SDK override"
 
-assert_contains "$ack_file" "defaultTTL: UInt8\\? = nil" "ACK tracker must accept a TTL override"
-assert_contains "$ack_file" "defaultTTL: defaultTTL" "ACK tracker must pass TTL override to MeshAPI"
+assert_contains "$lab_file" 'overrideOutgoingMeshTTL' "Lab must show the outgoing Mesh TTL override switch"
+assert_contains "$lab_file" 'outgoing_mesh_ttl_scope' "Lab must explain the global Network PDU TTL scope"
+assert_contains "$lab_file" 'visibleRows' "Lab must hide the TTL value while override is disabled"
+assert_contains "$lab_file" 'visibleRows\.count' "Lab row count must follow visible rows"
+assert_contains "$lab_file" 'tableView\.reloadData\(\)' "Lab must refresh after switch and value changes"
+assert_not_contains "$lab_file" 'lightGroupControlTTL' "Lab UI symbols must no longer claim Light/Group-only scope"
 
-assert_contains "$lights_file" "LightGroupControlCommandSender\\.setNodeOnOff" "Lights list single-light on/off must use helper"
-assert_contains "$lights_file" "LightGroupControlCommandSender\\.setAllOnOff" "All lights on/off must use helper"
-assert_contains "$lights_file" "LightGroupControlCommandSender\\.setAllLightness" "All lights brightness must use helper"
+assert_contains "$sdk_manager" 'public static var outgoingAccessMessageTtlOverride' "SDK must expose the global outgoing Access TTL override"
+assert_contains "$sdk_manager" 'setOutgoingAccessMessageTtlOverride' "SDK must expose a validated override setter"
+assert_contains "$sdk_manager" 'ttl == nil \|\| ttl! <= 127' "SDK must reject TTL values above 127"
+assert_contains "$sdk_manager" 'outgoingAccessMessageTtlOverrideLock' "SDK global override access must be synchronized"
+assert_contains "$sdk_policy" 'override \?\? initialTtl \?\? provisionerDefaultTtl \?\? networkDefaultTtl' "SDK policy must give Lab override the highest priority"
+assert_match_count "$sdk_lower_transport" 'OutgoingAccessMessageTtlPolicy\.resolve' 2 "Only segmented and unsegmented Access Message exits must apply the override"
+assert_contains "$sdk_tests" 'testOverrideHasHighestPriority' "SDK tests must cover override priority"
+assert_contains "$sdk_tests" 'testGlobalOverrideRejectsValueAbove127WithoutChangingCurrentValue' "SDK tests must cover invalid TTL rejection"
+assert_contains "$sdk_standalone_tests" 'OutgoingAccessMessageTtlPolicy\.resolve' "Standalone SDK policy test must execute the production resolver"
 
-assert_contains "$light_detail_file" "LightGroupControlCommandSender\\.identify" "Single-light Identify must use helper"
-assert_contains "$light_detail_file" "LightGroupControlCommandSender\\.setNodeOnOff" "Light detail on/off must use helper"
-assert_contains "$light_detail_file" "LightGroupControlCommandSender\\.setNodeLightness" "Light detail brightness must use helper"
-assert_contains "$light_detail_file" "LightGroupControlCommandSender\\.setNodeColorTemperature" "Light detail CCT must use helper"
+assert_contains "$helper_file" 'enum LightGroupControlCommandSender' "Existing Light/Group message construction helper must remain available"
+assert_not_contains "$helper_file" 'LabSettings' "Light/Group helper must not own the global TTL policy"
+assert_not_contains "$helper_file" 'defaultTTL:' "Light/Group helper must not inject TTL per command"
+assert_contains "$ack_file" 'defaultTTL: UInt8\? = nil' "ACK tracker must continue accepting the diagnostic App Tx TTL"
+assert_contains "$ack_file" 'defaultTTL: defaultTTL' "ACK tracker must pass its diagnostic TTL to MeshAPI"
+assert_contains "$lights_file" 'defaultTTL: LabSettings\.outgoingMeshTTLOverride' "Lights ACK diagnostics must show the global App Tx TTL"
+assert_contains "$light_detail_file" 'defaultTTL: LabSettings\.outgoingMeshTTLOverride' "Light detail ACK diagnostics must show the global App Tx TTL"
 
-assert_contains "$groups_file" "LightGroupControlCommandSender\\.setGroupOnOff" "Group list on/off must use helper"
-assert_contains "$group_file" "LightGroupControlCommandSender\\.setGroupOnOff" "Group detail on/off must use helper"
-assert_contains "$group_file" "LightGroupControlCommandSender\\.setGroupLightness" "Group brightness must use helper"
-assert_contains "$group_file" "LightGroupControlCommandSender\\.setGroupColorTemperature" "Group CCT must use helper"
-assert_contains "$group_file" "LightGroupControlCommandSender\\.setNodeOnOff" "Group member single-light on/off must use helper"
+assert_contains "$en_strings" '"override_outgoing_mesh_ttl" = "Override Outgoing Mesh TTL";' "English switch text must describe outgoing Mesh scope"
+assert_contains "$en_strings" '"outgoing_mesh_ttl" = "Outgoing Mesh TTL";' "English TTL row text must describe outgoing Mesh scope"
+assert_contains "$en_strings" 'Embedded TTL fields are unchanged' "English scope text must distinguish payload TTL fields"
+assert_contains "$zh_strings" '"override_outgoing_mesh_ttl" = "覆盖下行 Mesh TTL";' "Simplified Chinese switch text must describe outgoing Mesh scope"
+assert_contains "$zh_strings" '"outgoing_mesh_ttl" = "下行 Mesh TTL";' "Simplified Chinese TTL row text must describe outgoing Mesh scope"
+assert_contains "$zh_strings" '消息载荷内的 TTL 字段不变' "Simplified Chinese scope text must distinguish payload TTL fields"
+assert_not_contains "$en_strings" 'override_light_group_control_ttl' "Old Light/Group-only English key must be removed"
+assert_not_contains "$zh_strings" 'override_light_group_control_ttl' "Old Light/Group-only Chinese key must be removed"
 
-assert_contains "$en_strings" "override_light_group_control_ttl" "English strings must include TTL override switch"
-assert_contains "$en_strings" "light_group_control_ttl" "English strings must include TTL value row"
-assert_contains "$en_strings" "light_group_control_ttl_scope" "English strings must include scope description"
-assert_contains "$zh_strings" "override_light_group_control_ttl" "Simplified Chinese strings must include TTL override switch"
-assert_contains "$zh_strings" "light_group_control_ttl" "Simplified Chinese strings must include TTL value row"
-assert_contains "$zh_strings" "light_group_control_ttl_scope" "Simplified Chinese strings must include scope description"
-assert_contains "$zh_strings" "\"lab\" = \"实验室\";" "Simplified Chinese strings must translate the Lab title"
-assert_contains "$zh_strings" "\"display_light_ack_details\" = \"显示灯控 ACK 详情\";" "Simplified Chinese strings must translate light ACK details"
-assert_contains "$zh_strings" "\"override_light_group_control_ttl\" = \"覆盖灯具/分组控制 TTL\";" "Simplified Chinese strings must translate the TTL override switch"
-assert_contains "$zh_strings" "\"light_group_control_ttl\" = \"灯具/分组控制 TTL\";" "Simplified Chinese strings must translate the TTL value row"
-assert_contains "$zh_strings" "\"light_group_control_ttl_scope\" = \"仅影响灯具和分组的灯控命令，其他功能不受影响。\";" "Simplified Chinese strings must translate the TTL scope description"
-assert_not_contains "$zh_strings" "\"display_light_ack_details\" = \"Display light ACK details\";" "Simplified Chinese strings must not leave light ACK details in English"
-
-while IFS= read -r file; do
-  case "$file" in
-    "$helper_file"|"$lights_file"|"$light_detail_file"|"$groups_file"|"$group_file")
-      ;;
-    *)
-      assert_not_contains "$file" "LightGroupControlCommandSender" "TTL helper must not be wired outside approved Light/Group control entry points"
-      ;;
-  esac
-done < <(rg -l "LightGroupControlCommandSender" SunSmart --glob '*.swift' || true)
-
-echo "PASS: Lab Light/Group TTL contract"
+echo "PASS: Lab global outgoing Mesh TTL contract"

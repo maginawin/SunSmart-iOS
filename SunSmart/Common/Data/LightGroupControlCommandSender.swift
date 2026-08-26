@@ -8,14 +8,6 @@ import NordicSigMeshSDK
 
 enum LightGroupControlCommandSender {
 
-    static var defaultTTL: UInt8? {
-        LabSettings.lightGroupControlTTLOverride
-    }
-
-    private static var ttlOverride: UInt8? {
-        LabSettings.lightGroupControlTTLOverride
-    }
-
     static func setNodeOnOff(address: Address, isOn: Bool, ack: Bool = false) {
         guard let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address),
               let model = node.onoffModel else {
@@ -23,9 +15,9 @@ enum LightGroupControlCommandSender {
         }
 
         if ack {
-            MeshAPI.sendMessage(message: GenericOnOffSet(isOn), model: model, defaultTTL: ttlOverride)
+            MeshAPI.sendMessage(message: GenericOnOffSet(isOn), model: model)
         } else {
-            MeshAPI.sendMessage(message: GenericOnOffSetUnacknowledged(isOn), model: model, defaultTTL: ttlOverride)
+            MeshAPI.sendMessage(message: GenericOnOffSetUnacknowledged(isOn), model: model)
         }
     }
 
@@ -35,17 +27,17 @@ enum LightGroupControlCommandSender {
         }
 
         if ack {
-            MeshAPI.sendMessage(message: GenericOnOffSet(isOn), address: address, defaultTTL: ttlOverride)
+            MeshAPI.sendMessage(message: GenericOnOffSet(isOn), address: address)
         } else {
-            MeshAPI.sendMessage(message: GenericOnOffSetUnacknowledged(isOn), address: address, defaultTTL: ttlOverride)
+            MeshAPI.sendMessage(message: GenericOnOffSetUnacknowledged(isOn), address: address)
         }
     }
 
     static func setAllOnOff(isOn: Bool, ack: Bool = false) {
         if ack {
-            MeshAPI.sendMessage(message: GenericOnOffSet(isOn), address: .allNodes, defaultTTL: ttlOverride)
+            MeshAPI.sendMessage(message: GenericOnOffSet(isOn), address: .allNodes)
         } else {
-            MeshAPI.sendMessage(message: GenericOnOffSetUnacknowledged(isOn), address: .allNodes, defaultTTL: ttlOverride)
+            MeshAPI.sendMessage(message: GenericOnOffSetUnacknowledged(isOn), address: .allNodes)
         }
     }
 
@@ -56,9 +48,9 @@ enum LightGroupControlCommandSender {
         }
 
         if ack {
-            MeshAPI.sendMessage(message: LightLightnessSet(lightness: lightness), model: model, defaultTTL: ttlOverride)
+            MeshAPI.sendMessage(message: LightLightnessSet(lightness: lightness), model: model)
         } else {
-            MeshAPI.sendMessage(message: LightLightnessSetUnacknowledged(lightness: lightness), model: model, defaultTTL: ttlOverride)
+            MeshAPI.sendMessage(message: LightLightnessSetUnacknowledged(lightness: lightness), model: model)
         }
     }
 
@@ -68,17 +60,17 @@ enum LightGroupControlCommandSender {
         }
 
         if ack {
-            MeshAPI.sendMessage(message: LightLightnessSet(lightness: lightness), address: address, defaultTTL: ttlOverride)
+            MeshAPI.sendMessage(message: LightLightnessSet(lightness: lightness), address: address)
         } else {
-            MeshAPI.sendMessage(message: LightLightnessSetUnacknowledged(lightness: lightness), address: address, defaultTTL: ttlOverride)
+            MeshAPI.sendMessage(message: LightLightnessSetUnacknowledged(lightness: lightness), address: address)
         }
     }
 
     static func setAllLightness(lightness: UInt16, ack: Bool = false) {
         if ack {
-            MeshAPI.sendMessage(message: LightLightnessSet(lightness: lightness), address: .allNodes, defaultTTL: ttlOverride)
+            MeshAPI.sendMessage(message: LightLightnessSet(lightness: lightness), address: .allNodes)
         } else {
-            MeshAPI.sendMessage(message: LightLightnessSetUnacknowledged(lightness: lightness), address: .allNodes, defaultTTL: ttlOverride)
+            MeshAPI.sendMessage(message: LightLightnessSetUnacknowledged(lightness: lightness), address: .allNodes)
         }
     }
 
@@ -89,9 +81,9 @@ enum LightGroupControlCommandSender {
         }
 
         if ack {
-            MeshAPI.sendMessage(message: LightCTLTemperatureSet(temperature: temperature, deltaUV: 0), model: model, defaultTTL: ttlOverride)
+            MeshAPI.sendMessage(message: LightCTLTemperatureSet(temperature: temperature, deltaUV: 0), model: model)
         } else {
-            MeshAPI.sendMessage(message: LightCTLTemperatureSetUnacknowledged(temperature: temperature, deltaUV: 0), model: model, defaultTTL: ttlOverride)
+            MeshAPI.sendMessage(message: LightCTLTemperatureSetUnacknowledged(temperature: temperature, deltaUV: 0), model: model)
         }
     }
 
@@ -101,9 +93,9 @@ enum LightGroupControlCommandSender {
         }
 
         if ack {
-            MeshAPI.sendMessage(message: LightCTLTemperatureSet(temperature: temperature, deltaUV: 0), address: address, defaultTTL: ttlOverride)
+            MeshAPI.sendMessage(message: LightCTLTemperatureSet(temperature: temperature, deltaUV: 0), address: address)
         } else {
-            MeshAPI.sendMessage(message: LightCTLTemperatureSetUnacknowledged(temperature: temperature, deltaUV: 0), address: address, defaultTTL: ttlOverride)
+            MeshAPI.sendMessage(message: LightCTLTemperatureSetUnacknowledged(temperature: temperature, deltaUV: 0), address: address)
         }
     }
 
@@ -112,13 +104,13 @@ enum LightGroupControlCommandSender {
 
         if address.isUnicast,
            let model = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address)?.healthModel {
-            MeshAPI.sendMessage(message: message, model: model, defaultTTL: ttlOverride)
+            MeshAPI.sendMessage(message: message, model: model)
         } else {
-            MeshAPI.sendMessage(message: message, address: address, defaultTTL: ttlOverride)
+            MeshAPI.sendMessage(message: message, address: address)
         }
     }
 
     static func sendVendorIdentify(_ message: SunricherVendorSet, model: Model) {
-        MeshAPI.sendMessage(message: message, model: model, defaultTTL: ttlOverride)
+        MeshAPI.sendMessage(message: message, model: model)
     }
 }

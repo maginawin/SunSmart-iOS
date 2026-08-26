@@ -2000,11 +2000,10 @@
 "el_controller_rxtx_connection_fault" = "Connection Fault";
 "lab" = "Lab";
 "display_light_ack_details" = "Display light ACK details";
-"override_light_group_control_ttl" = "Override Light/Group Control TTL";
-"light_group_control_ttl" = "Light/Group Control TTL";
-"light_group_control_ttl_default_format" = "Default (%d)";
-"light_group_control_ttl_range" = "Enter a TTL value from 0 to 127.";
-"light_group_control_ttl_scope" = "Affects Light and Group control commands only. Other features are not affected.";
+"override_outgoing_mesh_ttl" = "Override Outgoing Mesh TTL";
+"outgoing_mesh_ttl" = "Outgoing Mesh TTL";
+"outgoing_mesh_ttl_range" = "Enter a TTL value from 0 to 127.";
+"outgoing_mesh_ttl_scope" = "Overrides the Network PDU TTL for all outgoing Mesh access and configuration messages. Embedded TTL fields are unchanged.";
 "light_ack_sent_format" = "Sent %@";
 "light_ack_command_format" = "Command 0x%06X";
 "light_ack_result_ok_format" = "Result %@ OK ✅";

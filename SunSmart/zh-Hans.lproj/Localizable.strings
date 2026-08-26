@@ -2016,11 +2016,10 @@
 "el_controller_rxtx_connection_fault" = "连接故障";
 "lab" = "实验室";
 "display_light_ack_details" = "显示灯控 ACK 详情";
-"override_light_group_control_ttl" = "覆盖灯具/分组控制 TTL";
-"light_group_control_ttl" = "灯具/分组控制 TTL";
-"light_group_control_ttl_default_format" = "默认 (%d)";
-"light_group_control_ttl_range" = "请输入 0 到 127 之间的 TTL 值。";
-"light_group_control_ttl_scope" = "仅影响灯具和分组的灯控命令，其他功能不受影响。";
+"override_outgoing_mesh_ttl" = "覆盖下行 Mesh TTL";
+"outgoing_mesh_ttl" = "下行 Mesh TTL";
+"outgoing_mesh_ttl_range" = "请输入 0 到 127 之间的 TTL 值。";
+"outgoing_mesh_ttl_scope" = "覆盖 App 下发的所有 Mesh Access 与 Configuration 消息的 Network PDU TTL；消息载荷内的 TTL 字段不变。";
 "light_ack_sent_format" = "已发送 %@";
 "light_ack_command_format" = "命令 0x%06X";
 "light_ack_result_ok_format" = "结果 %@ 成功 ✅";

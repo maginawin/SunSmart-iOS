@@ -9,13 +9,13 @@ final class LabViewController: UIViewController {
 
     private enum Row: Int, CaseIterable {
         case displayLightAckDetails
-        case overrideLightGroupControlTTL
-        case lightGroupControlTTL
+        case overrideOutgoingMeshTTL
+        case outgoingMeshTTL
 
         static var visibleRows: [Row] {
-            var rows: [Row] = [.displayLightAckDetails, .overrideLightGroupControlTTL]
-            if LabSettings.overrideLightGroupControlTTL {
-                rows.append(.lightGroupControlTTL)
+            var rows: [Row] = [.displayLightAckDetails, .overrideOutgoingMeshTTL]
+            if LabSettings.overrideOutgoingMeshTTL {
+                rows.append(.outgoingMeshTTL)
             }
             return rows
         }
@@ -79,25 +79,21 @@ extension LabViewController: UITableViewDataSource, UITableViewDelegate {
                 cell?.enabledSwitch.isOn = enabled
             }
 
-        case .overrideLightGroupControlTTL:
+        case .overrideOutgoingMeshTTL:
             cell.cellStyle = .switch
-            cell.titleLabel.text = "override_light_group_control_ttl".localizedString
+            cell.titleLabel.text = "override_outgoing_mesh_ttl".localizedString
             cell.contentLabel.text = nil
-            cell.enabledSwitch.isOn = LabSettings.overrideLightGroupControlTTL
+            cell.enabledSwitch.isOn = LabSettings.overrideOutgoingMeshTTL
             cell.switchActionCallback = { [weak self, weak cell] enabled in
-                LabSettings.overrideLightGroupControlTTL = enabled
+                LabSettings.overrideOutgoingMeshTTL = enabled
                 cell?.enabledSwitch.isOn = enabled
                 self?.tableView.reloadData()
             }
 
-        case .lightGroupControlTTL:
+        case .outgoingMeshTTL:
             cell.cellStyle = .arrow
-            cell.titleLabel.text = "light_group_control_ttl".localizedString
-            if LabSettings.overrideLightGroupControlTTL {
-                cell.contentLabel.text = "\(LabSettings.lightGroupControlTTL)"
-            } else {
-                cell.contentLabel.text = String(format: "light_group_control_ttl_default_format".localizedString, LabSettings.lightGroupControlTTL)
-            }
+            cell.titleLabel.text = "outgoing_mesh_ttl".localizedString
+            cell.contentLabel.text = "\(LabSettings.outgoingMeshTTL)"
             cell.selectionStyle = .default
 
         }
@@ -108,22 +104,22 @@ extension LabViewController: UITableViewDataSource, UITableViewDelegate {
         tableView.deselectRow(at: indexPath, animated: true)
         let rows = Row.visibleRows
         guard rows.indices.contains(indexPath.row),
-              rows[indexPath.row] == .lightGroupControlTTL else {
+              rows[indexPath.row] == .outgoingMeshTTL else {
             return
         }
-        showLightGroupControlTTLInput()
+        showOutgoingMeshTTLInput()
     }
 
-    private func showLightGroupControlTTLInput() {
+    private func showOutgoingMeshTTLInput() {
         let alert = UIAlertController(
-            title: "light_group_control_ttl".localizedString,
-            message: "light_group_control_ttl_range".localizedString + "\n\n" + "light_group_control_ttl_scope".localizedString,
+            title: "outgoing_mesh_ttl".localizedString,
+            message: "outgoing_mesh_ttl_range".localizedString + "\n\n" + "outgoing_mesh_ttl_scope".localizedString,
             preferredStyle: .alert
         )
         alert.addTextField { textField in
             textField.keyboardType = .numberPad
             textField.textAlignment = .center
-            textField.text = "\(LabSettings.lightGroupControlTTL)"
+            textField.text = "\(LabSettings.outgoingMeshTTL)"
         }
         alert.addAction(UIAlertAction(title: "cancel".localizedString, style: .cancel))
         alert.addAction(UIAlertAction(title: "done".localizedString, style: .default) { [weak self, weak alert] _ in
@@ -133,7 +129,7 @@ extension LabViewController: UITableViewDataSource, UITableViewDelegate {
                 return
             }
             let value = UInt8(min(max(rawValue, 0), 127))
-            LabSettings.lightGroupControlTTL = value
+            LabSettings.outgoingMeshTTL = value
             self?.tableView.reloadData()
         })
         present(alert, animated: true)

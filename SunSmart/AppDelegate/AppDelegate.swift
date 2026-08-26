@@ -19,6 +19,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     #if DEBUG
         PJUIDebugConsoleTracer.start()
     #endif
+        LabSettings.applyOutgoingMeshTTLOverride()
         window = UIWindow(frame: UIScreen.main.bounds)
         if UserData.isTermsOfService { // 是否同意使用协议
             let mainNavVc = NavigationViewController(rootViewController: SitesViewController())

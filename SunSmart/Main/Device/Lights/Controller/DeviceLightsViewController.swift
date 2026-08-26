@@ -1104,7 +1104,7 @@ private extension DeviceLightsViewController {
             message: GenericOnOffSet(node.isOn),
             model: model,
             context: context,
-            defaultTTL: LightGroupControlCommandSender.defaultTTL
+            defaultTTL: LabSettings.outgoingMeshTTLOverride
         )
     }
 }

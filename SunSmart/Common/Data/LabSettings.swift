@@ -4,13 +4,14 @@
 //
 
 import Foundation
+import NordicSigMeshSDK
 
 enum LabSettings {
 
     private static let displayLightAckDetailsKey = "lab_display_light_ack_details"
-    private static let overrideLightGroupControlTTLKey = "lab_override_light_group_control_ttl"
-    private static let lightGroupControlTTLKey = "lab_light_group_control_ttl"
-    private static let defaultLightGroupControlTTL = 5
+    private static let overrideOutgoingMeshTTLKey = "lab_override_light_group_control_ttl"
+    private static let outgoingMeshTTLKey = "lab_light_group_control_ttl"
+    private static let defaultOutgoingMeshTTL = 5
 
     static var displayLightAckDetails: Bool {
         get {
@@ -22,35 +23,41 @@ enum LabSettings {
         }
     }
 
-    static var overrideLightGroupControlTTL: Bool {
+    static var overrideOutgoingMeshTTL: Bool {
         get {
-            UserDefaults.standard.bool(forKey: overrideLightGroupControlTTLKey)
+            UserDefaults.standard.bool(forKey: overrideOutgoingMeshTTLKey)
         }
         set {
-            UserDefaults.standard.set(newValue, forKey: overrideLightGroupControlTTLKey)
+            UserDefaults.standard.set(newValue, forKey: overrideOutgoingMeshTTLKey)
             UserDefaults.standard.synchronize()
+            applyOutgoingMeshTTLOverride()
         }
     }
 
-    static var lightGroupControlTTL: UInt8 {
+    static var outgoingMeshTTL: UInt8 {
         get {
-            guard UserDefaults.standard.object(forKey: lightGroupControlTTLKey) != nil else {
-                return UInt8(defaultLightGroupControlTTL)
+            guard UserDefaults.standard.object(forKey: outgoingMeshTTLKey) != nil else {
+                return UInt8(defaultOutgoingMeshTTL)
             }
-            let value = UserDefaults.standard.integer(forKey: lightGroupControlTTLKey)
+            let value = UserDefaults.standard.integer(forKey: outgoingMeshTTLKey)
             return UInt8(min(max(value, 0), 127))
         }
         set {
             let value = min(max(Int(newValue), 0), 127)
-            UserDefaults.standard.set(value, forKey: lightGroupControlTTLKey)
+            UserDefaults.standard.set(value, forKey: outgoingMeshTTLKey)
             UserDefaults.standard.synchronize()
+            applyOutgoingMeshTTLOverride()
         }
     }
 
-    static var lightGroupControlTTLOverride: UInt8? {
-        guard overrideLightGroupControlTTL else {
+    static var outgoingMeshTTLOverride: UInt8? {
+        guard overrideOutgoingMeshTTL else {
             return nil
         }
-        return lightGroupControlTTL
+        return outgoingMeshTTL
+    }
+
+    static func applyOutgoingMeshTTLOverride() {
+        try? MeshNetworkManager.setOutgoingAccessMessageTtlOverride(outgoingMeshTTLOverride)
     }
 }

@@ -917,7 +917,7 @@ class DeviceLightViewController: UIViewController {
             message: GenericOnOffSet(node.isOn),
             model: model,
             context: context,
-            defaultTTL: LightGroupControlCommandSender.defaultTTL
+            defaultTTL: LabSettings.outgoingMeshTTLOverride
         )
     }
 
@@ -939,7 +939,7 @@ class DeviceLightViewController: UIViewController {
             message: LightLightnessSet(lightness: lightness),
             model: model,
             context: context,
-            defaultTTL: LightGroupControlCommandSender.defaultTTL
+            defaultTTL: LabSettings.outgoingMeshTTLOverride
         )
     }
 
@@ -961,7 +961,7 @@ class DeviceLightViewController: UIViewController {
             message: LightCTLTemperatureSet(temperature: temperature, deltaUV: 0),
             model: model,
             context: context,
-            defaultTTL: LightGroupControlCommandSender.defaultTTL
+            defaultTTL: LabSettings.outgoingMeshTTLOverride
         )
     }
 
@@ -982,7 +982,7 @@ class DeviceLightViewController: UIViewController {
             message: message,
             model: model,
             context: context,
-            defaultTTL: LightGroupControlCommandSender.defaultTTL
+            defaultTTL: LabSettings.outgoingMeshTTLOverride
         )
     }
 
