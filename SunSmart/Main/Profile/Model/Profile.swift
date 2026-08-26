@@ -227,7 +227,7 @@ class Profile: Copyable {
 //            let vacantLux = 100
             let taskLevel = 100
 //            let taskLux = 500
-            let autoMinLevel = 255
+            let autoMinLevel = LightControlData.disabledAutoMinLevel
             let t1 = 2
             let t2 = 1200
             let t3 = 2
@@ -237,13 +237,13 @@ class Profile: Copyable {
             switch profileType {
             case .occupancy_daylight, .vacancy_daylight:
                 
-                levels = [.lightnessRange(lowEndTrim...highEndTrim), .occupancyLevel(occupancyLevel), .vacantLevel(vacantLevel), .standbyLevel(standbyLevel), .autoMinValue(autoMinLevel, enabled: autoMinLevel <= 30)]
+                levels = [.lightnessRange(lowEndTrim...highEndTrim), .occupancyLevel(occupancyLevel), .vacantLevel(vacantLevel), .standbyLevel(standbyLevel), .autoMinValue(autoMinLevel, enabled: LightControlData.isAutoMinLevelEnabled(autoMinLevel))]
                 times = [.t1(t1), .t2(t2), .t3(t3), .t4(t4), .t5(t5)]
             case .occupancy, .vacancy, .proximityLighting, .proximityLightingWithPhotocell:
                 levels = [.lightnessRange(lowEndTrim...highEndTrim), .occupancyLevel(occupancyLevel), .vacantLevel(vacantLevel), .standbyLevel(standbyLevel)]
                 times = [.t1(t1), .t2(t2), .t3(t3), .t4(t4), .t5(t5)]
             case .daylight:
-                levels = [.lightnessRange(lowEndTrim...highEndTrim), .taskLevel(taskLevel), .autoMinValue(autoMinLevel, enabled: autoMinLevel <= 30)]
+                levels = [.lightnessRange(lowEndTrim...highEndTrim), .taskLevel(taskLevel), .autoMinValue(autoMinLevel, enabled: LightControlData.isAutoMinLevelEnabled(autoMinLevel))]
                 times = [.t1(t1)]
             case .manualControl:
                 levels = [.lightnessRange(lowEndTrim...highEndTrim), .taskLevel(taskLevel)]
@@ -271,13 +271,13 @@ class Profile: Copyable {
             switch profileType {
             case .occupancy_daylight, .vacancy_daylight:
                 
-                levels = [.lightnessRange(lowEndTrim...highEndTrim), .occupancyLevel(occupancyLevel), .vacantLevel(vacantLevel), .standbyLevel(standbyLevel), .autoMinValue(autoMinLevel, enabled: autoMinLevel <= 30)]
+                levels = [.lightnessRange(lowEndTrim...highEndTrim), .occupancyLevel(occupancyLevel), .vacantLevel(vacantLevel), .standbyLevel(standbyLevel), .autoMinValue(autoMinLevel, enabled: LightControlData.isAutoMinLevelEnabled(autoMinLevel))]
                 times = [.t1(t1), .t2(t2), .t3(t3), .t4(t4), .t5(t5)]
             case .occupancy, .vacancy, .proximityLighting, .proximityLightingWithPhotocell:
                 levels = [.lightnessRange(lowEndTrim...highEndTrim), .occupancyLevel(occupancyLevel), .vacantLevel(vacantLevel), .standbyLevel(standbyLevel)]
                 times = [.t1(t1), .t2(t2), .t3(t3), .t4(t4), .t5(t5)]
             case .daylight:
-                levels = [.lightnessRange(lowEndTrim...highEndTrim), .taskLevel(taskLevel), .autoMinValue(autoMinLevel, enabled: autoMinLevel <= 30)]
+                levels = [.lightnessRange(lowEndTrim...highEndTrim), .taskLevel(taskLevel), .autoMinValue(autoMinLevel, enabled: LightControlData.isAutoMinLevelEnabled(autoMinLevel))]
                 times = [.t1(t1)]
             case .manualControl:
                 levels = [.lightnessRange(lowEndTrim...highEndTrim), .taskLevel(taskLevel)]
@@ -459,6 +459,20 @@ class Profile: Copyable {
     
     /// 灯光控制数据
     class LightControlData: Codable, Copyable {
+
+        static let autoMinLevelRange = 0...30
+        static let disabledAutoMinLevel = 255
+
+        static func isAutoMinLevelEnabled(_ value: Int) -> Bool {
+            return autoMinLevelRange.contains(value)
+        }
+
+        static func normalizedAutoMinLevel(_ value: Int?) -> Int {
+            guard let value, isAutoMinLevelEnabled(value) else {
+                return disabledAutoMinLevel
+            }
+            return value
+        }
         
         /// 亮度上限
         var highEndTrim: Int = 100
@@ -473,7 +487,7 @@ class Profile: Copyable {
         /// 环境光维持照度
         var taskLevel: Int = 100
         /// 环境光补偿最低亮度 0~30%  255: unenabled
-        var autoMinLevel: Int = 255
+        var autoMinLevel: Int = LightControlData.disabledAutoMinLevel
         /// 进入第一阶段过渡时间
         var t1 = 2
         /// 第一阶段维持时间
@@ -486,10 +500,25 @@ class Profile: Copyable {
         var t5 = 2
         /// 是否启用自动调光最小亮度
         var autoMinLevelEnabled: Bool {
-            return autoMinLevel != 255
+            return Self.isAutoMinLevelEnabled(autoMinLevel)
+        }
+
+        func clampAutoMinLevel(to range: ClosedRange<Int>) {
+            autoMinLevel = Self.normalizedAutoMinLevel(autoMinLevel)
+            guard autoMinLevelEnabled else {
+                return
+            }
+
+            let lowerBound = max(range.lowerBound, Self.autoMinLevelRange.lowerBound)
+            let upperBound = min(range.upperBound, Self.autoMinLevelRange.upperBound)
+            guard lowerBound <= upperBound else {
+                autoMinLevel = Self.disabledAutoMinLevel
+                return
+            }
+            autoMinLevel = max(min(autoMinLevel, upperBound), lowerBound)
         }
     
-        init(highEndTrim: Int = 100, lowEndTrim: Int = 0, occupancyLevel: Int = 100, vacantLevel: Int = 50, standbyLevel: Int = 0, taskLevel: Int = 100, autoMinLevel: Int = 255, t1: Int = 2, t2: Int = 1200, t3: Int = 2, t4: Int = 600, t5: Int = 2) {
+        init(highEndTrim: Int = 100, lowEndTrim: Int = 0, occupancyLevel: Int = 100, vacantLevel: Int = 50, standbyLevel: Int = 0, taskLevel: Int = 100, autoMinLevel: Int = LightControlData.disabledAutoMinLevel, t1: Int = 2, t2: Int = 1200, t3: Int = 2, t4: Int = 600, t5: Int = 2) {
             self.highEndTrim = highEndTrim
             self.lowEndTrim = lowEndTrim
             self.occupancyLevel = occupancyLevel

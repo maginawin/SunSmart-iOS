@@ -365,7 +365,7 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
                 })
                 
                 // 判断是否是亮度配置
-                let levelConfig = !(self.selectProfile.type == .occupancy_daylight || self.selectProfile.type == .vacancy_daylight || self.selectProfile.type == .daylight)
+                let levelConfig = !self.selectProfile.type.daylightType
         
                     lightControlDatas.forEach({ data in
                         // level 百分比数据时修改最高最低亮度输出需判断其它阶段参数是否超出输出范围
@@ -384,9 +384,7 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
                                 data.standbyLevel = max(min(data.standbyLevel, high), low)
                             }
                         }else {
-                            if !range.contains(data.autoMinLevel) {
-                                data.autoMinLevel = max(min(data.autoMinLevel, high), low)
-                            }
+                            data.clampAutoMinLevel(to: range)
                         }
                     })
                 
@@ -429,7 +427,7 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
             case .taskLux(let lux):
                 lightControlData.taskLevel = lux
             case .autoMinValue(let level, let enabled):
-                lightControlData.autoMinLevel = enabled ? level : 255
+                lightControlData.autoMinLevel = enabled ? level : Profile.LightControlData.disabledAutoMinLevel
 //                lightData.updateLevel(lightType: .autoMinValue(enabled ? level : 0, enabled: enabled))
             case .standbyLevel(let level):
                 lightControlData.standbyLevel = level
@@ -1329,7 +1327,7 @@ extension ProfileSettingsViewController: ProfileTriggerConditionPhasesViewDelega
             phasesType = .night
         }
         
-        showLevelSettings(type: .autoMinValue(level: data.autoMinLevel, inputRange: data.lowEndTrim...data.highEndTrim, enabled: data.autoMinLevel != 255), phasesType: phasesType)
+        showLevelSettings(type: .autoMinValue(level: data.autoMinLevel, inputRange: data.lowEndTrim...data.highEndTrim, enabled: data.autoMinLevelEnabled), phasesType: phasesType)
     }
     
     /// Task level (%/lx)

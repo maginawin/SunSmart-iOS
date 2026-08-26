@@ -1580,7 +1580,11 @@ extension Profile {
         if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
             for row in rows {
                 let profileType: ProfileType = .init(rawValue: row[ExpressionKey.type]) ?? .occupancy_daylight
-                let lightData = LightControlData(highEndTrim: row[ExpressionKey.highEndTrim], lowEndTrim: row[ExpressionKey.lowEndTrim], occupancyLevel: row[ExpressionKey.occupancyLevel], vacantLevel: row[ExpressionKey.vacantLevel], standbyLevel: row[ExpressionKey.standbyLevel], taskLevel: row[ExpressionKey.taskLevel], autoMinLevel: row[ExpressionKey.autoMinLevel], t1: row[ExpressionKey.timeT1], t2: row[ExpressionKey.timeT2], t3: row[ExpressionKey.timeT3], t4: row[ExpressionKey.timeT4], t5: row[ExpressionKey.timeT5])
+                let storedAutoMinLevel = row[ExpressionKey.autoMinLevel]
+                let autoMinLevel = profileType.daylightType
+                    ? LightControlData.normalizedAutoMinLevel(storedAutoMinLevel)
+                    : storedAutoMinLevel
+                let lightData = LightControlData(highEndTrim: row[ExpressionKey.highEndTrim], lowEndTrim: row[ExpressionKey.lowEndTrim], occupancyLevel: row[ExpressionKey.occupancyLevel], vacantLevel: row[ExpressionKey.vacantLevel], standbyLevel: row[ExpressionKey.standbyLevel], taskLevel: row[ExpressionKey.taskLevel], autoMinLevel: autoMinLevel, t1: row[ExpressionKey.timeT1], t2: row[ExpressionKey.timeT2], t3: row[ExpressionKey.timeT3], t4: row[ExpressionKey.timeT4], t5: row[ExpressionKey.timeT5])
                 
                 let powerUpState: PowerUpState = .init(rawValue: UInt8(row[ExpressionKey.powerUpState]))
                 let powerUpCct = UInt16(row[ExpressionKey.powerUpCct])
@@ -1589,6 +1593,11 @@ extension Profile {
                 
                 var scenes: [Profile.LightControlScene] = []
                 if let data = row[ExpressionKey.scenes], let profileScenes = try? jsonDecoder.decode([Profile.LightControlScene].self, from: data) {
+                    if profileType.daylightType {
+                        profileScenes.forEach { scene in
+                            scene.lightControlData.autoMinLevel = LightControlData.normalizedAutoMinLevel(scene.lightControlData.autoMinLevel)
+                        }
+                    }
                     scenes = profileScenes
                 }
                 

@@ -1663,8 +1663,12 @@ extension SpaceData {
                     if let profileDict = groupJson["profile"].dictionaryObject {
                         let profileJson = JSON(profileDict)
                         if let id = profileJson["id"].string, let type = Profile.ProfileType(rawValue: profileJson["type"].int ?? 1) {
+
+                            let importedAutoMinLevel = type.daylightType
+                                ? Profile.LightControlData.normalizedAutoMinLevel(profileJson["autoMinLevel"].int)
+                                : profileJson["autoMinLevel"].int ?? 0
                             
-                            let lightControlData = Profile.LightControlData(highEndTrim: profileJson["highEndTrim"].int ?? 100, lowEndTrim: profileJson["lowEndTrim"].int ?? 0, occupancyLevel: profileJson["occupancyLevel"].int ?? 100, vacantLevel: profileJson["vacantLevel"].int ?? 50, standbyLevel: profileJson["standbyLevel"].int ?? 0, taskLevel: profileJson["taskLevel"].int ?? 100, autoMinLevel: profileJson["autoMinLevel"].int ?? 0, t1: profileJson["timeT1"].int ?? 0, t2: profileJson["timeT2"].int ?? 0, t3: profileJson["timeT3"].int ?? 0, t4: profileJson["timeT4"].int ?? 0, t5: profileJson["timeT5"].int ?? 0)
+                            let lightControlData = Profile.LightControlData(highEndTrim: profileJson["highEndTrim"].int ?? 100, lowEndTrim: profileJson["lowEndTrim"].int ?? 0, occupancyLevel: profileJson["occupancyLevel"].int ?? 100, vacantLevel: profileJson["vacantLevel"].int ?? 50, standbyLevel: profileJson["standbyLevel"].int ?? 0, taskLevel: profileJson["taskLevel"].int ?? 100, autoMinLevel: importedAutoMinLevel, t1: profileJson["timeT1"].int ?? 0, t2: profileJson["timeT2"].int ?? 0, t3: profileJson["timeT3"].int ?? 0, t4: profileJson["timeT4"].int ?? 0, t5: profileJson["timeT5"].int ?? 0)
                             
                             var scenes: [Profile.LightControlScene] = []
                             if let sceneJsons = profileJson["scenes"].array {
@@ -1684,7 +1688,9 @@ extension SpaceData {
                                         if let taskLevel = sceneJson["taskLevel"].int {
                                             sceneLightControlData.taskLevel = taskLevel
                                         }
-                                        if let autoMinLevel = sceneJson["autoMinLevel"].int {
+                                        if type.daylightType {
+                                            sceneLightControlData.autoMinLevel = Profile.LightControlData.normalizedAutoMinLevel(sceneJson["autoMinLevel"].int)
+                                        }else if let autoMinLevel = sceneJson["autoMinLevel"].int {
                                             sceneLightControlData.autoMinLevel = autoMinLevel
                                         }
                                         if let timeT1 = sceneJson["timeT1"].int {
