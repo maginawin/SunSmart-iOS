@@ -56,6 +56,7 @@ en_strings="${repo_root}/SunSmart/en.lproj/Localizable.strings"
 zh_strings="${repo_root}/SunSmart/zh-Hans.lproj/Localizable.strings"
 sdk_manager="${sdk_root}/Sources/NordicSigMeshSDK/nRFMeshProvision/MeshNetworkManager.swift"
 sdk_policy="${sdk_root}/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/OutgoingAccessMessageTtlPolicy.swift"
+sdk_access_layer="${sdk_root}/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/Access Layer/AccessLayer.swift"
 sdk_lower_transport="${sdk_root}/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/Lower Transport Layer/LowerTransportLayer.swift"
 sdk_tests="${sdk_root}/Tests/NordicSigMeshSDKTests/OutgoingAccessMessageTtlPolicyTests.swift"
 sdk_standalone_tests="${sdk_root}/Tests/Standalone/OutgoingAccessMessageTtlPolicyTests.swift"
@@ -72,6 +73,7 @@ for file in \
   "$zh_strings" \
   "$sdk_manager" \
   "$sdk_policy" \
+  "$sdk_access_layer" \
   "$sdk_lower_transport" \
   "$sdk_tests" \
   "$sdk_standalone_tests"; do
@@ -102,8 +104,12 @@ assert_contains "$sdk_manager" 'setOutgoingAccessMessageTtlOverride' "SDK must e
 assert_contains "$sdk_manager" 'ttl == nil \|\| ttl! <= 127' "SDK must reject TTL values above 127"
 assert_contains "$sdk_manager" 'outgoingAccessMessageTtlOverrideLock' "SDK global override access must be synchronized"
 assert_contains "$sdk_policy" 'override \?\? initialTtl \?\? provisionerDefaultTtl \?\? networkDefaultTtl' "SDK policy must give Lab override the highest priority"
+assert_match_count "$sdk_access_layer" 'OutgoingAccessMessageTtlPolicy\.resolve' 1 "Acknowledged message retry timing must resolve the effective outgoing Access TTL"
+assert_contains "$sdk_access_layer" 'acknowledgmentMessageInterval\(forTtl: ttl' "Acknowledged message retry timing must use the effective outgoing Access TTL"
 assert_match_count "$sdk_lower_transport" 'OutgoingAccessMessageTtlPolicy\.resolve' 2 "Only segmented and unsegmented Access Message exits must apply the override"
 assert_contains "$sdk_tests" 'testOverrideHasHighestPriority' "SDK tests must cover override priority"
+assert_contains "$sdk_tests" 'testAcknowledgmentIntervalUsesOverrideTtl' "SDK tests must cover the override TTL acknowledgment interval"
+assert_contains "$sdk_tests" 'testAcknowledgmentIntervalKeepsSegmentCountCompensation' "SDK tests must preserve acknowledgment segment compensation"
 assert_contains "$sdk_tests" 'testGlobalOverrideRejectsValueAbove127WithoutChangingCurrentValue' "SDK tests must cover invalid TTL rejection"
 assert_contains "$sdk_standalone_tests" 'OutgoingAccessMessageTtlPolicy\.resolve' "Standalone SDK policy test must execute the production resolver"
 

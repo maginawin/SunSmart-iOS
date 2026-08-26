@@ -204,7 +204,7 @@ extension DeviceEmerFireData {
                 to: MeshAddress(publishGroupAddress),
                 using: MeshNetworkManager.instance.currentApplicationKey,
                 usingFriendshipMaterial: false,
-                ttl: MeshNetworkManager.instance.networkParameters.defaultTtl,
+                ttl: 0xFF,
                 period: .disabled,
                 retransmit: .disabled
             ),
