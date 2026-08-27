@@ -12,6 +12,686 @@
 		084EF312302AB496008CB48A /* all_utc_timezones.json in Resources */ = {isa = PBXBuildFile; fileRef = 084EF310302AB496008CB48A /* all_utc_timezones.json */; };
 		084EF313302AB496008CB48A /* all_utc_timezones.json in Resources */ = {isa = PBXBuildFile; fileRef = 084EF310302AB496008CB48A /* all_utc_timezones.json */; };
 		084EF314302AB496008CB48A /* all_utc_timezones.json in Resources */ = {isa = PBXBuildFile; fileRef = 084EF310302AB496008CB48A /* all_utc_timezones.json */; };
+		08B54C5E30402CCB0017ED49 /* SiteTimeZoneValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000100 /* SiteTimeZoneValue.swift */; };
+		08B54C5F30402CCB0017ED49 /* SiteTimeSetMessageFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608160000000000000200 /* SiteTimeSetMessageFactory.swift */; };
+		08B54C6030402CCB0017ED49 /* SiteTimeZoneCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000200 /* SiteTimeZoneCatalog.swift */; };
+		08B54C6130402CCB0017ED49 /* SitePropsEditPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000300 /* SitePropsEditPolicy.swift */; };
+		08B54C6230402CCB0017ED49 /* SitePropsAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000400 /* SitePropsAPIClient.swift */; };
+		08B54C6330402CCB0017ED49 /* SitePropsEditCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000500 /* SitePropsEditCoordinator.swift */; };
+		08B54C6430402CCB0017ED49 /* SiteTimeZoneSelectionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000600 /* SiteTimeZoneSelectionViewController.swift */; };
+		08B54C6530402CCB0017ED49 /* SiteTimeZoneSelectionCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000700 /* SiteTimeZoneSelectionCell.swift */; };
+		08B54C6630402CCB0017ED49 /* SiteTimeZoneSyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000800 /* SiteTimeZoneSyncStatusView.swift */; };
+		08B54C6730402CCB0017ED49 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001300 /* SiteEntryTimeZoneSyncOverlay.swift */; };
+		08B54C6830402CCB0017ED49 /* SiteEntryTimeZoneSyncPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001000 /* SiteEntryTimeZoneSyncPolicy.swift */; };
+		08B54C6930402CCB0017ED49 /* SiteEntryTimeZoneSyncResponseParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001100 /* SiteEntryTimeZoneSyncResponseParser.swift */; };
+		08B54C6A30402CCB0017ED49 /* SiteEntryTimeZoneSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608120000000000001200 /* SiteEntryTimeZoneSyncCoordinator.swift */; };
+		08B54C6B30402CCB0017ED49 /* SiteTimeZoneSyncPresentationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081600000000000006000 /* SiteTimeZoneSyncPresentationState.swift */; };
+		08B54C6C30402CCB0017ED49 /* SiteGatewayCloudTimeZoneTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000004000 /* SiteGatewayCloudTimeZoneTarget.swift */; };
+		08B54C6D30402CCB0017ED49 /* SiteGatewayCloudTimeZoneLocalContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081600000000000005000 /* SiteGatewayCloudTimeZoneLocalContext.swift */; };
+		08B54C6E30402CCB0017ED49 /* SiteGatewayCloudTimeZoneSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081600000000000007000 /* SiteGatewayCloudTimeZoneSessionCoordinator.swift */; };
+		08B54C6F30402CCB0017ED49 /* SiteTimeZoneEditSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081600000000000008000 /* SiteTimeZoneEditSyncCoordinator.swift */; };
+		08B54C7030402CCB0017ED49 /* SiteGatewayCloudTimeZoneSyncState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000005000 /* SiteGatewayCloudTimeZoneSyncState.swift */; };
+		08B54C7130402CCB0017ED49 /* SiteGatewayCloudTimeZoneResponseParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000006000 /* SiteGatewayCloudTimeZoneResponseParser.swift */; };
+		08B54C7230402CCB0017ED49 /* SiteGatewayCloudTimeZoneAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000007000 /* SiteGatewayCloudTimeZoneAPIClient.swift */; };
+		08B54C7330402CCB0017ED49 /* SiteGatewayCloudTimeZoneSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000008000 /* SiteGatewayCloudTimeZoneSyncCoordinator.swift */; };
+		08B54C7430402CCB0017ED49 /* SiteEntryGatewayTimeZoneStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000009000 /* SiteEntryGatewayTimeZoneStatusView.swift */; };
+		08B54C7530402CCB0017ED49 /* SiteTimeZoneReviewSyncView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001400 /* SiteTimeZoneReviewSyncView.swift */; };
+		08B54C7630402CCB0017ED49 /* SyncGatewaysViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001500 /* SyncGatewaysViewController.swift */; };
+		08B54C7730402CCB0017ED49 /* SiteGatewayAccessScope.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001600 /* SiteGatewayAccessScope.swift */; };
+		08B54C7830402CCB0017ED49 /* SyncGatewaysContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001700 /* SyncGatewaysContext.swift */; };
+		08B54C7930402CCB0017ED49 /* SyncGatewaysState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001800 /* SyncGatewaysState.swift */; };
+		08B54C7A30402CCB0017ED49 /* SyncGatewaysScanSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000001900 /* SyncGatewaysScanSession.swift */; };
+		08B54C7B30402CCB0017ED49 /* GatewayTimeSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002000 /* GatewayTimeSyncCoordinator.swift */; };
+		08B54C7C30402CCB0017ED49 /* GatewayFastAddTimeInitialization.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002800 /* GatewayFastAddTimeInitialization.swift */; };
+		08B54C7D30402CCB0017ED49 /* SiteGatewayHeaderLayoutPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002900 /* SiteGatewayHeaderLayoutPolicy.swift */; };
+		08B54C7E30402CCB0017ED49 /* SyncGatewaysCloudBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002100 /* SyncGatewaysCloudBridge.swift */; };
+		08B54C7F30402CCB0017ED49 /* SyncGatewaysDirtyTimeOverride.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002200 /* SyncGatewaysDirtyTimeOverride.swift */; };
+		08B54C8030402CCB0017ED49 /* SyncGatewaysTimeZoneCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002300 /* SyncGatewaysTimeZoneCardView.swift */; };
+		08B54C8130402CCB0017ED49 /* SyncGatewayCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002400 /* SyncGatewayCell.swift */; };
+		08B54C8230402CCB0017ED49 /* SyncGatewaysSupportingViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002500 /* SyncGatewaysSupportingViews.swift */; };
+		08B54C8330402CCB0017ED49 /* GatewayCloudSyncGenerationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608130000000000002600 /* GatewayCloudSyncGenerationPolicy.swift */; };
+		08B54C8430402CCB0017ED49 /* GatewayTimeInformationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002700 /* GatewayTimeInformationCoordinator.swift */; };
+		08B54C8530402CCB0017ED49 /* GatewayDetailClockCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608170000000000003100 /* GatewayDetailClockCoordinator.swift */; };
+		08B54C8630402CCB0017ED49 /* GatewayMenuPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000000100 /* GatewayMenuPolicy.swift */; };
+		08B54C8730402CCB0017ED49 /* GatewayDetailProxyConnectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000003500 /* GatewayDetailProxyConnectionState.swift */; };
+		08B54C8830402CCB0017ED49 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */; };
+		08B54C8930402CCB0017ED49 /* SimulateFaultAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10012F11000100000001 /* SimulateFaultAction.swift */; };
+		08B54C8A30402CCB0017ED49 /* SimulateFaultRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FB10012F11000400000001 /* SimulateFaultRequest.swift */; };
+		08B54C8B30402CCB0017ED49 /* SimulateFaultSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10022F11000200000001 /* SimulateFaultSectionView.swift */; };
+		08B54C8C30402CCB0017ED49 /* SimulateFaultViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10032F11000300000001 /* SimulateFaultViewController.swift */; };
+		08B54C8D30402CCB0017ED49 /* FirmwareUpdateStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89B53282C7DB5DC00D2959F /* FirmwareUpdateStateView.swift */; };
+		08B54C8E30402CCB0017ED49 /* GroupAddViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08582B2705B400144BAC /* GroupAddViewController.swift */; };
+		08B54C8F30402CCB0017ED49 /* ScheduleAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A29C2D2B4800E400104634 /* ScheduleAddView.swift */; };
+		08B54C9030402CCB0017ED49 /* EmerFireSelectionCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CF15F762F9628F90044FCF3 /* EmerFireSelectionCell.swift */; };
+		08B54C9130402CCB0017ED49 /* EmerFireAlarmDevicesRepairView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7789162F98B48A000887FE /* EmerFireAlarmDevicesRepairView.swift */; };
+		08B54C9230402CCB0017ED49 /* DevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3290A2AC568A300BC7389 /* DevicesViewController.swift */; };
+		08B54C9330402CCB0017ED49 /* DeviceNameFilterSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000101 /* DeviceNameFilterSession.swift */; };
+		08B54C9430402CCB0017ED49 /* DeviceNameFilterMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000109 /* DeviceNameFilterMenuView.swift */; };
+		08B54C9530402CCB0017ED49 /* DeviceNameFilterSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000110 /* DeviceNameFilterSearchView.swift */; };
+		08B54C9630402CCB0017ED49 /* MeshNetwork+SunSmart.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2E02AB840FE00C71315 /* MeshNetwork+SunSmart.swift */; };
+		08B54C9730402CCB0017ED49 /* SiteAddressDataHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DCD0FB2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift */; };
+		08B54C9830402CCB0017ED49 /* ProvisioningDevice+Add.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89941972AD4FB0C008DCD76 /* ProvisioningDevice+Add.swift */; };
+		08B54C9930402CCB0017ED49 /* SpaceNodeCapacityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F500012F3B000100000001 /* SpaceNodeCapacityPolicy.swift */; };
+		08B54C9A30402CCB0017ED49 /* PJEightKeySwitchMonitorVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778C252FA34688000887FE /* PJEightKeySwitchMonitorVC.swift */; };
+		08B54C9B30402CCB0017ED49 /* LightSensorCalibrationSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */; };
+		08B54C9C30402CCB0017ED49 /* ProfileManualOverrideTimeoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F1D2B8F1FDC00A09FFA /* ProfileManualOverrideTimeoutView.swift */; };
+		08B54C9D30402CCB0017ED49 /* EnergyStaticDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82F99F52DBE1AF20019C3FB /* EnergyStaticDataViewController.swift */; };
+		08B54C9E30402CCB0017ED49 /* SceneTemplates.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130C82B32C5F00008C353 /* SceneTemplates.swift */; };
+		08B54C9F30402CCB0017ED49 /* GroupPathSequencePathHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5C2A2DDB0F9200F09467 /* GroupPathSequencePathHeaderView.swift */; };
+		08B54CA030402CCB0017ED49 /* BuoySliderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08652B2842A300144BAC /* BuoySliderView.swift */; };
+		08B54CA130402CCB0017ED49 /* ServerSelectionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86B0AB72C106BE00038F669 /* ServerSelectionViewController.swift */; };
+		08B54CA230402CCB0017ED49 /* ImagesPickerViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130CE2B32EE220008C353 /* ImagesPickerViewController.swift */; };
+		08B54CA330402CCB0017ED49 /* GroupSwitch.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4522BA0856700F9285B /* GroupSwitch.swift */; };
+		08B54CA430402CCB0017ED49 /* GroupPowerSwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */; };
+		08B54CA530402CCB0017ED49 /* MeshFirmwareListViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89BAB202C4F3EC8000A4173 /* MeshFirmwareListViewCell.swift */; };
+		08B54CA630402CCB0017ED49 /* DeviceForceResetDevicePageController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F9B2E4DDEF2000576F5 /* DeviceForceResetDevicePageController.swift */; };
+		08B54CA730402CCB0017ED49 /* WebViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FEF472ABD6A6300DCCFB6 /* WebViewController.swift */; };
+		08B54CA830402CCB0017ED49 /* SpaceMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898EA6A2AC2C3270023B480 /* SpaceMenuView.swift */; };
+		08B54CA930402CCB0017ED49 /* PJDevicesAddFlowType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA75B2FAAF2A60073F100 /* PJDevicesAddFlowType.swift */; };
+		08B54CAA30402CCB0017ED49 /* DeviceBottomActionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CBEC6322F961030003859AB /* DeviceBottomActionView.swift */; };
+		08B54CAB30402CCB0017ED49 /* ReadDevicesDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B57F702DB0DD1100E5CD7E /* ReadDevicesDataViewController.swift */; };
+		08B54CAC30402CCB0017ED49 /* ProfileSettingsSphasesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F182B8EE37700A09FFA /* ProfileSettingsSphasesView.swift */; };
+		08B54CAD30402CCB0017ED49 /* DeviceRestoreEmptyViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3516D2D8D73B800325FC6 /* DeviceRestoreEmptyViewCell.swift */; };
+		08B54CAE30402CCB0017ED49 /* MeshSelectDistributorViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C70B22CD3731C00B9A76A /* MeshSelectDistributorViewController.swift */; };
+		08B54CAF30402CCB0017ED49 /* EnergyTimeSeriesDataImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43642DC0A7A700018392 /* EnergyTimeSeriesDataImportView.swift */; };
+		08B54CB030402CCB0017ED49 /* ProfileDeviceDayNightLuxViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C81DB7822EFAC3D000D65664 /* ProfileDeviceDayNightLuxViewCell.swift */; };
+		08B54CB130402CCB0017ED49 /* NoInternetHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C884EF6F2C05788900B5F869 /* NoInternetHeaderView.swift */; };
+		08B54CB230402CCB0017ED49 /* LightSensorManualCorrectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE62262EC488E90075ED42 /* LightSensorManualCorrectionView.swift */; };
+		08B54CB330402CCB0017ED49 /* ProfileLightSensorTemplateController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E432EF92CDC00207225 /* ProfileLightSensorTemplateController.swift */; };
+		08B54CB430402CCB0017ED49 /* DeviceParameterData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AEB9AF2DCC98F80053102B /* DeviceParameterData.swift */; };
+		08B54CB530402CCB0017ED49 /* UIViewController+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF12F2AA1B2BA00E24B4A /* UIViewController+Extension.swift */; };
+		08B54CB630402CCB0017ED49 /* MeshDeviceConfigInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EF752CA69758000A1226 /* MeshDeviceConfigInfo.swift */; };
+		08B54CB730402CCB0017ED49 /* LBXScanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB45C2BA17D3E00F9285B /* LBXScanView.swift */; };
+		08B54CB830402CCB0017ED49 /* GroupPathSequencePathViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5C282DDB06A300F09467 /* GroupPathSequencePathViewCell.swift */; };
+		08B54CB930402CCB0017ED49 /* RoundProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8219F692E585F3500253A9A /* RoundProgressView.swift */; };
+		08B54CBA30402CCB0017ED49 /* EnergyConsumptionInstructionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AEB9A22DCB45C60053102B /* EnergyConsumptionInstructionController.swift */; };
+		08B54CBB30402CCB0017ED49 /* PJEightKeySwitchActivationAlertController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778C022FA2FFA6000887FE /* PJEightKeySwitchActivationAlertController.swift */; };
+		08B54CBC30402CCB0017ED49 /* DeviceDongleSectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F4B2DB7331D00A6E36C /* DeviceDongleSectionHeaderView.swift */; };
+		08B54CBD30402CCB0017ED49 /* PopGestureScrollView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87415DC2ADFD1510020E3C2 /* PopGestureScrollView.swift */; };
+		08B54CBE30402CCB0017ED49 /* ServerSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86B0AB92C11434C0038F669 /* ServerSelectionView.swift */; };
+		08B54CBF30402CCB0017ED49 /* DeviceParameterRatedPowerPhaseData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AEB9AD2DCC98CF0053102B /* DeviceParameterRatedPowerPhaseData.swift */; };
+		08B54CC030402CCB0017ED49 /* ProfileDayNightLuxDevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D3ADAF2EFD3599003D15CB /* ProfileDayNightLuxDevicesViewController.swift */; };
+		08B54CC130402CCB0017ED49 /* EmerFireAlarmMonitorVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788CB2F97099D000887FE /* EmerFireAlarmMonitorVC.swift */; };
+		08B54CC230402CCB0017ED49 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
+		08B54CC330402CCB0017ED49 /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
+		08B54CC430402CCB0017ED49 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
+		08B54CC530402CCB0017ED49 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
+		08B54CC630402CCB0017ED49 /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
+		08B54CC730402CCB0017ED49 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
+		08B54CC830402CCB0017ED49 /* DeviceParameterDeviceCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0116A2DA8F8010058E7E7 /* DeviceParameterDeviceCell.swift */; };
+		08B54CC930402CCB0017ED49 /* EnergyFileData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83D8C4F2DD1A0C300A59AFA /* EnergyFileData.swift */; };
+		08B54CCA30402CCB0017ED49 /* DeviceLightControlViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B257D2ADE594600CF1AE4 /* DeviceLightControlViewCell.swift */; };
+		08B54CCB30402CCB0017ED49 /* DeviceLightControlPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0002F10000000000001 /* DeviceLightControlPanelView.swift */; };
+		08B54CCC30402CCB0017ED49 /* DeviceUpDownRatioControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0102F10000000000001 /* DeviceUpDownRatioControlView.swift */; };
+		08B54CCD30402CCB0017ED49 /* UpDownRatioCommandScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C1002F20000000000001 /* UpDownRatioCommandScheduler.swift */; };
+		08B54CCE30402CCB0017ED49 /* ELControllerFunctionTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700002FAF000000000001 /* ELControllerFunctionTestView.swift */; };
+		08B54CCF30402CCB0017ED49 /* ELControllerFunctionTestHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F700102FAF000000000001 /* ELControllerFunctionTestHelper.swift */; };
+		08B54CD030402CCB0017ED49 /* UpDownLightView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D1C0202F10000000000001 /* UpDownLightView.swift */; };
+		08B54CD130402CCB0017ED49 /* UIImage+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF12C2AA1B2BA00E24B4A /* UIImage+Extension.swift */; };
+		08B54CD230402CCB0017ED49 /* LBXScanViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB45D2BA17D3E00F9285B /* LBXScanViewController.swift */; };
+		08B54CD330402CCB0017ED49 /* SceneAddTemplateTitleHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130C52B32C2EC0008C353 /* SceneAddTemplateTitleHeaderView.swift */; };
+		08B54CD430402CCB0017ED49 /* MacroDefinition.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF1272AA1B2BA00E24B4A /* MacroDefinition.swift */; };
+		08B54CD530402CCB0017ED49 /* GatewayNameViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A14F2E37257500876028 /* GatewayNameViewCell.swift */; };
+		08B54CD630402CCB0017ED49 /* DeviceGroupsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0589D2B50C9C6006FC36F /* DeviceGroupsView.swift */; };
+		08B54CD730402CCB0017ED49 /* Database.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AAE2762A97435A00238C1C /* Database.swift */; };
+		08B54CD830402CCB0017ED49 /* ProgressHUD+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B7AE372EB99CBF006CA3EE /* ProgressHUD+Extension.swift */; };
+		08B54CD930402CCB0017ED49 /* DeviceInformationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85CB5F82BB6BE8E006598C0 /* DeviceInformationViewController.swift */; };
+		08B54CDA30402CCB0017ED49 /* UIColor+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84FBCC02DBF72070030E136 /* UIColor+Extension.swift */; };
+		08B54CDB30402CCB0017ED49 /* ShareAuthorityViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89B3CB22C08650400820277 /* ShareAuthorityViewController.swift */; };
+		08B54CDC30402CCB0017ED49 /* UILabel+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF1292AA1B2BA00E24B4A /* UILabel+Extension.swift */; };
+		08B54CDD30402CCB0017ED49 /* GroupProfilesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89AABE32B52376A00A17FB0 /* GroupProfilesViewController.swift */; };
+		08B54CDE30402CCB0017ED49 /* LBXScanLineAnimation.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB45E2BA17D3E00F9285B /* LBXScanLineAnimation.swift */; };
+		08B54CDF30402CCB0017ED49 /* GroupDevicesFunctionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5A1DF2B2C2AFD00728E36 /* GroupDevicesFunctionView.swift */; };
+		08B54CE030402CCB0017ED49 /* DeviceSwitchData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FD66E2C89A2FF00DE431D /* DeviceSwitchData.swift */; };
+		08B54CE130402CCB0017ED49 /* KineticSwitchBindingPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A1B0013A27000100000001 /* KineticSwitchBindingPolicy.swift */; };
+		08B54CE230402CCB0017ED49 /* DeviceSettingsCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C0E4472E2774C60024E77E /* DeviceSettingsCollectionViewCell.swift */; };
+		08B54CE330402CCB0017ED49 /* SwitchSelectGroupsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A9A992C8AF9430032287D /* SwitchSelectGroupsViewController.swift */; };
+		08B54CE430402CCB0017ED49 /* ProfileNightDayIlluminanceThresholdView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD3142F0A36E200BE3F20 /* ProfileNightDayIlluminanceThresholdView.swift */; };
+		08B54CE530402CCB0017ED49 /* SiteViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A099FE2AC138E30068C814 /* SiteViewController.swift */; };
+		08B54CE630402CCB0017ED49 /* ScheduleDevicesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A1C382B5535A8004912B9 /* ScheduleDevicesView.swift */; };
+		08B54CE730402CCB0017ED49 /* GroupPathSequenceTriggerZoneController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC02192DDD61DF0098E165 /* GroupPathSequenceTriggerZoneController.swift */; };
+		08B54CE830402CCB0017ED49 /* GroupPathSequenceAddDescriptionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F1A0052F0A000100123456 /* GroupPathSequenceAddDescriptionController.swift */; };
+		08B54CE930402CCB0017ED49 /* CustomTableViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2EE2ABA8BEE00C71315 /* CustomTableViewCell.swift */; };
+		08B54CEA30402CCB0017ED49 /* BatchImportResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88DE4442C0828B5005A38C1 /* BatchImportResultView.swift */; };
+		08B54CEB30402CCB0017ED49 /* SyncDevicesTitleHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FED2B3C271200074031 /* SyncDevicesTitleHeaderView.swift */; };
+		08B54CEC30402CCB0017ED49 /* SwitchProxyInstructionsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A9A972C8AB2140032287D /* SwitchProxyInstructionsViewController.swift */; };
+		08B54CED30402CCB0017ED49 /* LightSensorCalibrationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE12B90267F00A94F0B /* LightSensorCalibrationViewController.swift */; };
+		08B54CEE30402CCB0017ED49 /* LightSensorCalibrationModeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21012F50000100000001 /* LightSensorCalibrationModeView.swift */; };
+		08B54CEF30402CCB0017ED49 /* LightSensorCalibrationAboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CA21022F50000100000002 /* LightSensorCalibrationAboutView.swift */; };
+		08B54CF030402CCB0017ED49 /* DeviceMeshNetworkProxyScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EC4BA82EAA1BD30082892D /* DeviceMeshNetworkProxyScanner.swift */; };
+		08B54CF130402CCB0017ED49 /* EnergyStatisticsTimeSeriesData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B707052DCF2FF50002133E /* EnergyStatisticsTimeSeriesData.swift */; };
+		08B54CF230402CCB0017ED49 /* UIButton+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF12A2AA1B2BA00E24B4A /* UIButton+Extension.swift */; };
+		08B54CF330402CCB0017ED49 /* DeviceAddViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3290C2AC5690D00BC7389 /* DeviceAddViewController.swift */; };
+		08B54CF430402CCB0017ED49 /* SceneExecuteDataPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE852B3420F60082A772 /* SceneExecuteDataPickerView.swift */; };
+		08B54CF530402CCB0017ED49 /* SiteData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADEFE2A97350400238C1C /* SiteData.swift */; };
+		08B54CF630402CCB0017ED49 /* FireAlarmTableReusable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CBEC6382F961B6C003859AB /* FireAlarmTableReusable.swift */; };
+		08B54CF730402CCB0017ED49 /* BatchImportResultHelpController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88DE4482C085A5D005A38C1 /* BatchImportResultHelpController.swift */; };
+		08B54CF830402CCB0017ED49 /* DeviceAddSectionBackgroundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B444A22E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift */; };
+		08B54CF930402CCB0017ED49 /* Node+SyncData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */; };
+		08B54CFA30402CCB0017ED49 /* DeviceScheduleAddressCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0013003000000000001 /* DeviceScheduleAddressCleanup.swift */; };
+		08B54CFB30402CCB0017ED49 /* DevicePermanentDeletionCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0023003000000000001 /* DevicePermanentDeletionCleanup.swift */; };
+		08B54CFC30402CCB0017ED49 /* SceneDeleteCapability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0033003000000000001 /* SceneDeleteCapability.swift */; };
+		08B54CFD30402CCB0017ED49 /* TimedScheduleTimeSyncPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F0A0013000000000000001 /* TimedScheduleTimeSyncPolicy.swift */; };
+		08B54CFE30402CCB0017ED49 /* MeshFirmwareUpgradeResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89D560E2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift */; };
+		08B54CFF30402CCB0017ED49 /* PJDevicesLegacyContainerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7652FAAF2A60073F100 /* PJDevicesLegacyContainerController.swift */; };
+		08B54D0030402CCB0017ED49 /* ProfileTriggerConditionPhasesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B8362D2EE987DD00D85077 /* ProfileTriggerConditionPhasesView.swift */; };
+		08B54D0130402CCB0017ED49 /* GroupMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C958B82EBC876900F0E6E2 /* GroupMenuView.swift */; };
+		08B54D0230402CCB0017ED49 /* LightSensorCalibrationAdjustSpeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE62222EC467510075ED42 /* LightSensorCalibrationAdjustSpeedView.swift */; };
+		08B54D0330402CCB0017ED49 /* ScheduleAddViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A29C2B2B47FE2300104634 /* ScheduleAddViewController.swift */; };
+		08B54D0430402CCB0017ED49 /* DeviceResetDeviceStepController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC57362E9FC501009E79A3 /* DeviceResetDeviceStepController.swift */; };
+		08B54D0530402CCB0017ED49 /* ProfileInstructionsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F0A2B8DFBF700A09FFA /* ProfileInstructionsViewCell.swift */; };
+		08B54D0630402CCB0017ED49 /* UIViewController+WMPageController.m in Sources */ = {isa = PBXBuildFile; fileRef = C898EA522AC2BD8B0023B480 /* UIViewController+WMPageController.m */; };
+		08B54D0730402CCB0017ED49 /* EnergyStaticDataSpaceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82F99F72DBE1C1E0019C3FB /* EnergyStaticDataSpaceView.swift */; };
+		08B54D0830402CCB0017ED49 /* Int+Hex.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D663722BFF14A000BFF81A /* Int+Hex.swift */; };
+		08B54D0930402CCB0017ED49 /* EmerFireAlarmInfoRowCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788EE2F974BC2000887FE /* EmerFireAlarmInfoRowCell.swift */; };
+		08B54D0A30402CCB0017ED49 /* DaliDevicesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AFDBFC2D700A1800839A38 /* DaliDevicesViewCell.swift */; };
+		08B54D0B30402CCB0017ED49 /* SyncDevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FE32B3C197B00074031 /* SyncDevicesViewController.swift */; };
+		08B54D0C30402CCB0017ED49 /* DevicePwmFrequencySelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87141B52DB24C86007A64B4 /* DevicePwmFrequencySelectView.swift */; };
+		08B54D0D30402CCB0017ED49 /* PJEightKeySwitchPanelDefinition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BC52FA20589000887FE /* PJEightKeySwitchPanelDefinition.swift */; };
+		08B54D0E30402CCB0017ED49 /* GatewayAPNMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F89D372E3B6F8500FA1544 /* GatewayAPNMenuView.swift */; };
+		08B54D0F30402CCB0017ED49 /* SiteEditViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A099FC2AC134C30068C814 /* SiteEditViewController.swift */; };
+		08B54D1030402CCB0017ED49 /* AttributedTextViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F6E2C8568F600FB50BD /* AttributedTextViewController.swift */; };
+		08B54D1130402CCB0017ED49 /* GroupSwitchPanelViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44F2BA0822E00F9285B /* GroupSwitchPanelViewCell.swift */; };
+		08B54D1230402CCB0017ED49 /* GroupPowerSwitchCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C897B311461F95CC1204CFB1 /* GroupPowerSwitchCell.swift */; };
+		08B54D1330402CCB0017ED49 /* EmerFireToggleCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CBEC6422F961B93003859AB /* EmerFireToggleCell.swift */; };
+		08B54D1430402CCB0017ED49 /* EmerFireStepperCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CF15F802F9628FA0044FCF3 /* EmerFireStepperCell.swift */; };
+		08B54D1530402CCB0017ED49 /* DeviceDongleScheduleViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DF845B2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift */; };
+		08B54D1630402CCB0017ED49 /* SpaceData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADF002A973DA600238C1C /* SpaceData.swift */; };
+		08B54D1730402CCB0017ED49 /* PJPreAddEightKeySwitchesVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BB12FA1FD42000887FE /* PJPreAddEightKeySwitchesVC.swift */; };
+		08B54D1830402CCB0017ED49 /* GroupAddHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF085A2B27146B00144BAC /* GroupAddHeaderView.swift */; };
+		08B54D1930402CCB0017ED49 /* LCWeakTimer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89941922AD4E382008DCD76 /* LCWeakTimer.swift */; };
+		08B54D1A30402CCB0017ED49 /* TimeSeriesDataGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43682DC0AE9900018392 /* TimeSeriesDataGuideView.swift */; };
+		08B54D1B30402CCB0017ED49 /* MeshFirmwareUpdateLogViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC83C82D068CC70033513E /* MeshFirmwareUpdateLogViewCell.swift */; };
+		08B54D1C30402CCB0017ED49 /* SWCirclePieView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84FBCBB2DBF6EB50030E136 /* SWCirclePieView.swift */; };
+		08B54D1D30402CCB0017ED49 /* LYCirclePieModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84FBCB92DBF6EB50030E136 /* LYCirclePieModel.swift */; };
+		08B54D1E30402CCB0017ED49 /* LYCirclePieView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84FBCBA2DBF6EB50030E136 /* LYCirclePieView.swift */; };
+		08B54D1F30402CCB0017ED49 /* ScheduleGroupsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A1C3C2B561850004912B9 /* ScheduleGroupsView.swift */; };
+		08B54D2030402CCB0017ED49 /* GroupPathSequencePathTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A18D8C2DE40E17009AC6A2 /* GroupPathSequencePathTestView.swift */; };
+		08B54D2130402CCB0017ED49 /* DaliSettingDeviceWarnHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AFDC002D70557100839A38 /* DaliSettingDeviceWarnHeaderView.swift */; };
+		08B54D2230402CCB0017ED49 /* WMMenuItem.m in Sources */ = {isa = PBXBuildFile; fileRef = C898EA582AC2BD8B0023B480 /* WMMenuItem.m */; };
+		08B54D2330402CCB0017ED49 /* ShareBacthListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C830CFDC2C0EBE730035CD5B /* ShareBacthListViewController.swift */; };
+		08B54D2430402CCB0017ED49 /* BleFirmwareTypeUpdateViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F089F2C7712F2005C0711 /* BleFirmwareTypeUpdateViewCell.swift */; };
+		08B54D2530402CCB0017ED49 /* SpaceNewCreationProcessController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87B2D2E2BCFC6CD0034E9C2 /* SpaceNewCreationProcessController.swift */; };
+		08B54D2630402CCB0017ED49 /* PJDevicesRestoreFlowFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA76F2FAAF2A70073F100 /* PJDevicesRestoreFlowFactory.swift */; };
+		08B54D2730402CCB0017ED49 /* EmerFireAlarmStatusSetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788DA2F972177000887FE /* EmerFireAlarmStatusSetView.swift */; };
+		08B54D2830402CCB0017ED49 /* PJLinkedStaOpertionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000006 /* PJLinkedStaOpertionsView.swift */; };
+		08B54D2930402CCB0017ED49 /* DevicesReplySetViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAE8E22D75D76A00FCCA5A /* DevicesReplySetViewController.swift */; };
+		08B54D2A30402CCB0017ED49 /* DeviceRatedPowerCalibrationSetSeparatelyViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA401B2EE3C22D00C12FCB /* DeviceRatedPowerCalibrationSetSeparatelyViewCell.swift */; };
+		08B54D2B30402CCB0017ED49 /* EmerFireAlarmMoniHead.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7789072F977694000887FE /* EmerFireAlarmMoniHead.swift */; };
+		08B54D2C30402CCB0017ED49 /* CALayer+Animations.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF1312AA1B2BA00E24B4A /* CALayer+Animations.swift */; };
+		08B54D2D30402CCB0017ED49 /* WMPageController.m in Sources */ = {isa = PBXBuildFile; fileRef = C898EA512AC2BD8B0023B480 /* WMPageController.m */; };
+		08B54D2E30402CCB0017ED49 /* FirmwareVersionData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F7B2C86EEFA00FB50BD /* FirmwareVersionData.swift */; };
+		08B54D2F30402CCB0017ED49 /* DeviceForceResetDeviceController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F972E4DDE5A000576F5 /* DeviceForceResetDeviceController.swift */; };
+		08B54D3030402CCB0017ED49 /* DeviceAllOnOffViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0589B2B500D21006FC36F /* DeviceAllOnOffViewCell.swift */; };
+		08B54D3130402CCB0017ED49 /* ProfilePowerUpBehaviorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F1F2B8F28B400A09FFA /* ProfilePowerUpBehaviorView.swift */; };
+		08B54D3230402CCB0017ED49 /* ScheduleScenesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A1C3E2B566B96004912B9 /* ScheduleScenesView.swift */; };
+		08B54D3330402CCB0017ED49 /* EmerFireAlarmDeviceCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C77890C2F987931000887FE /* EmerFireAlarmDeviceCell.swift */; };
+		08B54D3430402CCB0017ED49 /* DeviceEmerFireData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B1B2F9EF6FD000887FE /* DeviceEmerFireData.swift */; };
+		08B54D3530402CCB0017ED49 /* DeviceEmerFireCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7002002FC0000000007002 /* DeviceEmerFireCache.swift */; };
+		08B54D3630402CCB0017ED49 /* EmerFireAlarmControllerSyncVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift */; };
+		08B54D3730402CCB0017ED49 /* DeviceEmerFireData+Sync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000004 /* DeviceEmerFireData+Sync.swift */; };
+		08B54D3830402CCB0017ED49 /* EmergencyFireControllerSyncPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000001 /* EmergencyFireControllerSyncPlan.swift */; };
+		08B54D3930402CCB0017ED49 /* EmergencyFireControllerSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000002 /* EmergencyFireControllerSyncPlanner.swift */; };
+		08B54D3A30402CCB0017ED49 /* EmergencyFireControllerSceneEventManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000003 /* EmergencyFireControllerSceneEventManager.swift */; };
+		08B54D3B30402CCB0017ED49 /* ShareAuthoritySpaceViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89B3CB42C08807200820277 /* ShareAuthoritySpaceViewCell.swift */; };
+		08B54D3C30402CCB0017ED49 /* GatewayModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F89D3C2E3CBD1F00FA1544 /* GatewayModel.swift */; };
+		08B54D3D30402CCB0017ED49 /* GatewayAssociatedSpaceCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA30152FD0000100000005 /* GatewayAssociatedSpaceCandidatePolicy.swift */; };
+		08B54D3E30402CCB0017ED49 /* DeviceRestoreCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA40152FD0000300000005 /* DeviceRestoreCandidatePolicy.swift */; };
+		08B54D3F30402CCB0017ED49 /* DeviceRestoreEFCRecoveryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA40252FD0000300000005 /* DeviceRestoreEFCRecoveryPolicy.swift */; };
+		08B54D4030402CCB0017ED49 /* DaylightSensorInstructionsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F282B8F4C0E00A09FFA /* DaylightSensorInstructionsViewCell.swift */; };
+		08B54D4130402CCB0017ED49 /* LinkedEmerFireEditViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B2D2F9F584F000887FE /* LinkedEmerFireEditViewModel.swift */; };
+		08B54D4230402CCB0017ED49 /* FSCalendarStickyHeader.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A082DB8800B00E32092 /* FSCalendarStickyHeader.m */; };
+		08B54D4330402CCB0017ED49 /* EmerFireNameCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CBEC63D2F961B84003859AB /* EmerFireNameCell.swift */; };
+		08B54D4430402CCB0017ED49 /* EnergyHarvestHistoryViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AEB9962DCA11F30053102B /* EnergyHarvestHistoryViewCell.swift */; };
+		08B54D4530402CCB0017ED49 /* PJEightKeySwitchRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BFD2FA2155D000887FE /* PJEightKeySwitchRepository.swift */; };
+		08B54D4630402CCB0017ED49 /* FSCalendarAppearance.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69F12DB8800B00E32092 /* FSCalendarAppearance.m */; };
+		08B54D4730402CCB0017ED49 /* ProfileLightSensorTemplateListController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E4D2EF9482500207225 /* ProfileLightSensorTemplateListController.swift */; };
+		08B54D4830402CCB0017ED49 /* PJEightKeySwitchInfoRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BC02FA200C2000887FE /* PJEightKeySwitchInfoRowView.swift */; };
+		08B54D4930402CCB0017ED49 /* FSCalendarCalculator.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69F32DB8800B00E32092 /* FSCalendarCalculator.m */; };
+		08B54D4A30402CCB0017ED49 /* FSCalendarCell.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69F52DB8800B00E32092 /* FSCalendarCell.m */; };
+		08B54D4B30402CCB0017ED49 /* PJEightKeySwitchPeriodicReportingSliderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BDE2FA20E1D000887FE /* PJEightKeySwitchPeriodicReportingSliderView.swift */; };
+		08B54D4C30402CCB0017ED49 /* DeviceAddCandidateDeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */; };
+		08B54D4D30402CCB0017ED49 /* DeviceAddTargetSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE42E0A4886007F9B81 /* DeviceAddTargetSelectView.swift */; };
+		08B54D4E30402CCB0017ED49 /* GroupPathSequenceDeviceAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BE72DDABF5C00F09467 /* GroupPathSequenceDeviceAddView.swift */; };
+		08B54D4F30402CCB0017ED49 /* FSCalendarHeaderView.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A042DB8800B00E32092 /* FSCalendarHeaderView.m */; };
+		08B54D5030402CCB0017ED49 /* EnergyConsumptionInstructionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AEB9A42DCB45FD0053102B /* EnergyConsumptionInstructionView.swift */; };
+		08B54D5130402CCB0017ED49 /* ProfileDayNightLuxViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7432EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift */; };
+		08B54D5230402CCB0017ED49 /* PJDevicesRestoreFlowType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7602FAAF2A60073F100 /* PJDevicesRestoreFlowType.swift */; };
+		08B54D5330402CCB0017ED49 /* SiteGatewayStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C833B8552ECACF110005F84F /* SiteGatewayStatusView.swift */; };
+		08B54D5430402CCB0017ED49 /* FSCalendarSeparatorDecorationView.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A062DB8800B00E32092 /* FSCalendarSeparatorDecorationView.m */; };
+		08B54D5530402CCB0017ED49 /* ToastStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C026322F303B3400C7C2AA /* ToastStatusView.swift */; };
+		08B54D5630402CCB0017ED49 /* FSCalendarExtensions.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A022DB8800B00E32092 /* FSCalendarExtensions.m */; };
+		08B54D5730402CCB0017ED49 /* FSCalendarWeekdayView.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A0C2DB8800B00E32092 /* FSCalendarWeekdayView.m */; };
+		08B54D5830402CCB0017ED49 /* SpacePathTriggerZoneController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D5314D2F7630B90069C71B /* SpacePathTriggerZoneController.swift */; };
+		08B54D5930402CCB0017ED49 /* FSCalendarCollectionView.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69F72DB8800B00E32092 /* FSCalendarCollectionView.m */; };
+		08B54D5A30402CCB0017ED49 /* FSCalendar.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69EF2DB8800B00E32092 /* FSCalendar.m */; };
+		08B54D5B30402CCB0017ED49 /* SiteDeviceAddViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C833B8592ECB0F990005F84F /* SiteDeviceAddViewController.swift */; };
+		08B54D5C30402CCB0017ED49 /* FSCalendarDelegationProxy.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69FF2DB8800B00E32092 /* FSCalendarDelegationProxy.m */; };
+		08B54D5D30402CCB0017ED49 /* FSCalendarDelegationFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69FD2DB8800B00E32092 /* FSCalendarDelegationFactory.m */; };
+		08B54D5E30402CCB0017ED49 /* FSCalendarTransitionCoordinator.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A0A2DB8800B00E32092 /* FSCalendarTransitionCoordinator.m */; };
+		08B54D5F30402CCB0017ED49 /* FSCalendarConstants.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69FB2DB8800B00E32092 /* FSCalendarConstants.m */; };
+		08B54D6030402CCB0017ED49 /* DeviceAudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B483D92E4B37CB006D85BC /* DeviceAudioManager.swift */; };
+		08B54D6130402CCB0017ED49 /* DeviceMeshNetworkResetConfiguredController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BEA9FE2EAC5FC5006D0F32 /* DeviceMeshNetworkResetConfiguredController.swift */; };
+		08B54D6230402CCB0017ED49 /* DeviceForceResetStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC624C2EA0E06D009E79A3 /* DeviceForceResetStepView.swift */; };
+		08B54D6330402CCB0017ED49 /* FSCalendarCollectionViewLayout.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69F92DB8800B00E32092 /* FSCalendarCollectionViewLayout.m */; };
+		08B54D6430402CCB0017ED49 /* SpaceFunctionFooterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898EA6F2AC3C64C0023B480 /* SpaceFunctionFooterView.swift */; };
+		08B54D6530402CCB0017ED49 /* DeviceAddBottomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E694232D8D424100005832 /* DeviceAddBottomView.swift */; };
+		08B54D6630402CCB0017ED49 /* SceneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85829F12B397F2B002A4367 /* SceneViewController.swift */; };
+		08B54D6730402CCB0017ED49 /* PJEightKeySwitchActivationAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778C0C2FA307A6000887FE /* PJEightKeySwitchActivationAlertView.swift */; };
+		08B54D6830402CCB0017ED49 /* MainMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2EC2ABA8BAD00C71315 /* MainMenuView.swift */; };
+		08B54D6930402CCB0017ED49 /* ShareBacthListViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C830CFDE2C0EC0240035CD5B /* ShareBacthListViewCell.swift */; };
+		08B54D6A30402CCB0017ED49 /* String+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF1302AA1B2BA00E24B4A /* String+Extension.swift */; };
+		08B54D6B30402CCB0017ED49 /* EmerFireStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7789022F975954000887FE /* EmerFireStatus.swift */; };
+		08B54D6C30402CCB0017ED49 /* GatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22DFF2E010A47001A2BDA /* GatewayViewController.swift */; };
+		08B54D6D30402CCB0017ED49 /* WiFiGatewayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1042FA3000000000001 /* WiFiGatewayViewController.swift */; };
+		08B54D6E30402CCB0017ED49 /* WiFiGatewayAutomaticLoadGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A2052FA3000000000005 /* WiFiGatewayAutomaticLoadGate.swift */; };
+		08B54D6F30402CCB0017ED49 /* WiFiGatewayV19Timing.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A3052FA3000000000005 /* WiFiGatewayV19Timing.swift */; };
+		08B54D7030402CCB0017ED49 /* WiFiGatewayCredentialMutationReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A3152FA3000000000005 /* WiFiGatewayCredentialMutationReducer.swift */; };
+		08B54D7130402CCB0017ED49 /* WiFiGatewayConnectionPollingReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A3252FA3000000000005 /* WiFiGatewayConnectionPollingReducer.swift */; };
+		08B54D7230402CCB0017ED49 /* WiFiSSIDProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900012F80000100000001 /* WiFiSSIDProvider.swift */; };
+		08B54D7330402CCB0017ED49 /* GatewayServerAuthorizationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A901012F81000100000001 /* GatewayServerAuthorizationService.swift */; };
+		08B54D7430402CCB0017ED49 /* GatewayNetworkConnectivityCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900112F80000100000011 /* GatewayNetworkConnectivityCell.swift */; };
+		08B54D7530402CCB0017ED49 /* GatewayChangeWiFiAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A900162F80000100000016 /* GatewayChangeWiFiAlertView.swift */; };
+		08B54D7630402CCB0017ED49 /* UIView+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF12B2AA1B2BA00E24B4A /* UIView+Extension.swift */; };
+		08B54D7730402CCB0017ED49 /* ScenesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F98422B5E5AC8007EABF5 /* ScenesViewCell.swift */; };
+		08B54D7830402CCB0017ED49 /* DeviceLightInfoSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89AC9302B62372300744868 /* DeviceLightInfoSectionView.swift */; };
+		08B54D7930402CCB0017ED49 /* NavigationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FEF452ABD65F700DCCFB6 /* NavigationViewController.swift */; };
+		08B54D7A30402CCB0017ED49 /* PJUIDebugConsoleTracer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B162F9CBD47000887FE /* PJUIDebugConsoleTracer.swift */; };
+		08B54D7B30402CCB0017ED49 /* PJDevicesFireAlarmRestoreContainerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7792FAAF2C90073F100 /* PJDevicesFireAlarmRestoreContainerController.swift */; };
+		08B54D7C30402CCB0017ED49 /* DeviceAddMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86618EE2D8BB3DA00FB3D2F /* DeviceAddMenuView.swift */; };
+		08B54D7D30402CCB0017ED49 /* GroupDeviceViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF088B2B29903E00144BAC /* GroupDeviceViewCell.swift */; };
+		08B54D7E30402CCB0017ED49 /* SceneAddGroupViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE812B34087A0082A772 /* SceneAddGroupViewCell.swift */; };
+		08B54D7F30402CCB0017ED49 /* DeviceAddParameterSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B483CD2E4AEEBB006D85BC /* DeviceAddParameterSettingsView.swift */; };
+		08B54D8030402CCB0017ED49 /* DeviceDongleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DF84592DB6464E0070CBD9 /* DeviceDongleData.swift */; };
+		08B54D8130402CCB0017ED49 /* DeviceLightBasicController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25752ADD399C00CF1AE4 /* DeviceLightBasicController.swift */; };
+		08B54D8230402CCB0017ED49 /* DeviceBaseViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A347CF2D63103B0092D3E4 /* DeviceBaseViewController.swift */; };
+		08B54D8330402CCB0017ED49 /* BleFirmwareUpdateRestoreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DC673E2D95523E00C2BC22 /* BleFirmwareUpdateRestoreView.swift */; };
+		08B54D8430402CCB0017ED49 /* FirmwareVersionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F712C86A3CF00FB50BD /* FirmwareVersionViewController.swift */; };
+		08B54D8530402CCB0017ED49 /* WiFiFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1092FA3000000000001 /* WiFiFirmwareUpdateViewController.swift */; };
+		08B54D8630402CCB0017ED49 /* WiFiFirmwareDFUMetadataBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1102FA3000000000001 /* WiFiFirmwareDFUMetadataBuilder.swift */; };
+		08B54D8730402CCB0017ED49 /* WiFiFirmwareDFUState.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1112FA3000000000001 /* WiFiFirmwareDFUState.swift */; };
+		08B54D8830402CCB0017ED49 /* WiFiFirmwareDFUStatusReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1302FA3000000000001 /* WiFiFirmwareDFUStatusReducer.swift */; };
+		08B54D8930402CCB0017ED49 /* WiFiFirmwareDFUCancelReducer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1402FA3000000000001 /* WiFiFirmwareDFUCancelReducer.swift */; };
+		08B54D8A30402CCB0017ED49 /* WiFiFirmwareDFUTransactionGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A3352FA3000000000005 /* WiFiFirmwareDFUTransactionGate.swift */; };
+		08B54D8B30402CCB0017ED49 /* WiFiFirmwareDFUCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1202FA3000000000001 /* WiFiFirmwareDFUCoordinator.swift */; };
+		08B54D8C30402CCB0017ED49 /* WiFiFirmwareUpdatingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F6A1252FA3000000000001 /* WiFiFirmwareUpdatingView.swift */; };
+		08B54D8D30402CCB0017ED49 /* SitesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FEF4E2ABEB37900DCCFB6 /* SitesViewCell.swift */; };
+		08B54D8E30402CCB0017ED49 /* RangeSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC95E12E04FC830058D41E /* RangeSlider.swift */; };
+		08B54D8F30402CCB0017ED49 /* ProfileInstructionsHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F0E2B8E049E00A09FFA /* ProfileInstructionsHeaderView.swift */; };
+		08B54D9030402CCB0017ED49 /* DaliReplaceMasterSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B444AB2E682A3B002F4CD6 /* DaliReplaceMasterSelectView.swift */; };
+		08B54D9130402CCB0017ED49 /* DeviceGroupsSelectData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B058A62B5115B2006FC36F /* DeviceGroupsSelectData.swift */; };
+		08B54D9230402CCB0017ED49 /* CharacterSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF085D2B27F2C300144BAC /* CharacterSelectView.swift */; };
+		08B54D9330402CCB0017ED49 /* ZipHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0CB4E2C9A81E1009A37E3 /* ZipHandler.swift */; };
+		08B54D9430402CCB0017ED49 /* CustomActivityItemSource.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C663E52C199DCF0058A5F5 /* CustomActivityItemSource.swift */; };
+		08B54D9530402CCB0017ED49 /* ProfileSettingsHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F162B8EDAD500A09FFA /* ProfileSettingsHeaderView.swift */; };
+		08B54D9630402CCB0017ED49 /* GroupViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08612B2840D800144BAC /* GroupViewController.swift */; };
+		08B54D9730402CCB0017ED49 /* DaliMasterViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A347C92D62D0740092D3E4 /* DaliMasterViewController.swift */; };
+		08B54D9830402CCB0017ED49 /* PJEightKeySwitchSelectPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BD42FA20872000887FE /* PJEightKeySwitchSelectPanelController.swift */; };
+		08B54D9930402CCB0017ED49 /* MultiseriatePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A1C352B54C64B004912B9 /* MultiseriatePickerView.swift */; };
+		08B54D9A30402CCB0017ED49 /* SwitchSelectScenePageController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAE8E62D76FE1500FCCA5A /* SwitchSelectScenePageController.swift */; };
+		08B54D9B30402CCB0017ED49 /* GroupSwitchEnOceanProxyHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87D8B262BA818AA00F930F9 /* GroupSwitchEnOceanProxyHeaderView.swift */; };
+		08B54D9C30402CCB0017ED49 /* DeviceParameterDevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A011662DA8EAFF0058E7E7 /* DeviceParameterDevicesViewController.swift */; };
+		08B54D9D30402CCB0017ED49 /* DeviceRatedPowerCalibrationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA40162EE3BBA900C12FCB /* DeviceRatedPowerCalibrationController.swift */; };
+		08B54D9E30402CCB0017ED49 /* SharePermissionSelectionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88DE4422C072C8C005A38C1 /* SharePermissionSelectionController.swift */; };
+		08B54D9F30402CCB0017ED49 /* EnergyTestData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84FBCC22DBF79D00030E136 /* EnergyTestData.swift */; };
+		08B54DA030402CCB0017ED49 /* DeviceRatedPowerCalibrationHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA40202EE42F5C00C12FCB /* DeviceRatedPowerCalibrationHeaderView.swift */; };
+		08B54DA130402CCB0017ED49 /* DeviceRatedPowerCalibrationSetAllViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6CE6B2EE6620200C8AE32 /* DeviceRatedPowerCalibrationSetAllViewCell.swift */; };
+		08B54DA230402CCB0017ED49 /* EnergyStaticDataGroupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84FBCAC2DBF28D80030E136 /* EnergyStaticDataGroupView.swift */; };
+		08B54DA330402CCB0017ED49 /* DeviceParameterRetedPowerViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AEB9A82DCC5A660053102B /* DeviceParameterRetedPowerViewCell.swift */; };
+		08B54DA430402CCB0017ED49 /* DeviceMeshNetworkResetController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C8137F2EA615C5008B3515 /* DeviceMeshNetworkResetController.swift */; };
+		08B54DA530402CCB0017ED49 /* ContentDisplayViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7D72E6EB6D9004FB923 /* ContentDisplayViewController.swift */; };
+		08B54DA630402CCB0017ED49 /* SitesTransferredView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C86760A42C37F4B4006AD978 /* SitesTransferredView.swift */; };
+		08B54DA730402CCB0017ED49 /* DeviceAddSelectAllViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CDD2E09014B007F9B81 /* DeviceAddSelectAllViewCell.swift */; };
+		08B54DA830402CCB0017ED49 /* SyncDeviceStepViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FEB2B3C26BA00074031 /* SyncDeviceStepViewCell.swift */; };
+		08B54DA930402CCB0017ED49 /* ScenesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130B82B3129960008C353 /* ScenesViewController.swift */; };
+		08B54DAA30402CCB0017ED49 /* DeviceAddViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89941942AD4F192008DCD76 /* DeviceAddViewCell.swift */; };
+		08B54DAB30402CCB0017ED49 /* ImportProjectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C884EF712C057B5100B5F869 /* ImportProjectView.swift */; };
+		08B54DAC30402CCB0017ED49 /* OthersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC4A6A82F95D01500839EC4 /* OthersViewController.swift */; };
+		08B54DAD30402CCB0017ED49 /* DeviceResetBroadcasterCentral.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC57322E9F88A0009E79A3 /* DeviceResetBroadcasterCentral.swift */; };
+		08B54DAE30402CCB0017ED49 /* LinkedEmerFireEditRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CF15F8A2F962C7C0044FCF3 /* LinkedEmerFireEditRow.swift */; };
+		08B54DAF30402CCB0017ED49 /* PJPreAddEightKeySwitchesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BB62FA200C2000887FE /* PJPreAddEightKeySwitchesViewModel.swift */; };
+		08B54DB030402CCB0017ED49 /* CollectionTitleHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A437B12D35F11A00F3424C /* CollectionTitleHeaderView.swift */; };
+		08B54DB130402CCB0017ED49 /* GlobalData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B4DE202E540A1E00AF6CE0 /* GlobalData.swift */; };
+		08B54DB230402CCB0017ED49 /* BluetoothRequiredViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A18FEA2AE105F300260707 /* BluetoothRequiredViewController.swift */; };
+		08B54DB330402CCB0017ED49 /* DeviceAddInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E6F3572E0E4A3F00730971 /* DeviceAddInstructionsController.swift */; };
+		08B54DB430402CCB0017ED49 /* DeviceAddResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E694212D8D407E00005832 /* DeviceAddResultView.swift */; };
+		08B54DB530402CCB0017ED49 /* NetworkRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C884EF742C05B93200B5F869 /* NetworkRequest.swift */; };
+		08B54DB630402CCB0017ED49 /* EmerFireCardPosition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CF15F992F96311F0044FCF3 /* EmerFireCardPosition.swift */; };
+		08B54DB730402CCB0017ED49 /* ExternalVendorMessage+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84A2C542C2D465A0064D3F1 /* ExternalVendorMessage+Extension.swift */; };
+		08B54DB830402CCB0017ED49 /* DeviceSwitchHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A9A952C8AAB0D0032287D /* DeviceSwitchHeaderView.swift */; };
+		08B54DB930402CCB0017ED49 /* Keychain.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D6636C2BFED12B00BFF81A /* Keychain.swift */; };
+		08B54DBA30402CCB0017ED49 /* GroupPathSequenceSelectData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5C2F2DDC6E9700F09467 /* GroupPathSequenceSelectData.swift */; };
+		08B54DBB30402CCB0017ED49 /* GroupPathSequenceViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88CCD922DD480B9003D5754 /* GroupPathSequenceViewController.swift */; };
+		08B54DBC30402CCB0017ED49 /* DeviceResetDeviceSafeModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC573A2E9FC79E009E79A3 /* DeviceResetDeviceSafeModeController.swift */; };
+		08B54DBD30402CCB0017ED49 /* DaliMasterMultipleControlsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AFDBFA2D6FF6D600839A38 /* DaliMasterMultipleControlsView.swift */; };
+		08B54DBE30402CCB0017ED49 /* GatewayAssociatedSpacesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A1532E374C7500876028 /* GatewayAssociatedSpacesController.swift */; };
+		08B54DBF30402CCB0017ED49 /* SiteGatewayHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA57DA2ED18AA300C4FCFD /* SiteGatewayHeaderView.swift */; };
+		08B54DC030402CCB0017ED49 /* DeviceProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A347CD2D6307CC0092D3E4 /* DeviceProtocol.swift */; };
+		08B54DC130402CCB0017ED49 /* BleFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F089D2C77112F005C0711 /* BleFirmwareUpdateViewController.swift */; };
+		08B54DC230402CCB0017ED49 /* SceneAddTemplateTitleCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130C32B32C2B90008C353 /* SceneAddTemplateTitleCell.swift */; };
+		08B54DC330402CCB0017ED49 /* SceneAddTemplateInfoSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE7D2B33D62F0082A772 /* SceneAddTemplateInfoSectionView.swift */; };
+		08B54DC430402CCB0017ED49 /* SpaceViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898EA642AC2BDC50023B480 /* SpaceViewController.swift */; };
+		08B54DC530402CCB0017ED49 /* SpaceDebugModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000001 /* SpaceDebugModels.swift */; };
+		08B54DC630402CCB0017ED49 /* SpaceDebugViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000002 /* SpaceDebugViewModel.swift */; };
+		08B54DC730402CCB0017ED49 /* DebugBluetoothSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000003 /* DebugBluetoothSession.swift */; };
+		08B54DC830402CCB0017ED49 /* SpaceDebugSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000004 /* SpaceDebugSummaryView.swift */; };
+		08B54DC930402CCB0017ED49 /* SpaceDebugDeviceCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000005 /* SpaceDebugDeviceCell.swift */; };
+		08B54DCA30402CCB0017ED49 /* SpaceDebugViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000006 /* SpaceDebugViewController.swift */; };
+		08B54DCB30402CCB0017ED49 /* SpaceDebugDeviceViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000007 /* SpaceDebugDeviceViewController.swift */; };
+		08B54DCC30402CCB0017ED49 /* SpaceDebugUARTViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82605160000000100000009 /* SpaceDebugUARTViewController.swift */; };
+		08B54DCD30402CCB0017ED49 /* SpaceDebugUARTMessageCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8260516000000010000000A /* SpaceDebugUARTMessageCell.swift */; };
+		08B54DCE30402CCB0017ED49 /* SpaceDebugUARTLogExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8260516000000010000000B /* SpaceDebugUARTLogExporter.swift */; };
+		08B54DCF30402CCB0017ED49 /* SpaceDebugUARTManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8260516000000010000000C /* SpaceDebugUARTManager.swift */; };
+		08B54DD030402CCB0017ED49 /* PJDeviceGroupSelectionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7C72FAC8A890073F100 /* PJDeviceGroupSelectionContext.swift */; };
+		08B54DD130402CCB0017ED49 /* SpaceMoreViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC50992C4E3234003CE437 /* SpaceMoreViewCell.swift */; };
+		08B54DD230402CCB0017ED49 /* GroupFilterSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43602DC0724C00018392 /* GroupFilterSelectView.swift */; };
+		08B54DD330402CCB0017ED49 /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */; };
+		08B54DD430402CCB0017ED49 /* TimedSchedulerOwnerPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D73D2F0000010025FFF7 /* TimedSchedulerOwnerPolicy.swift */; };
+		08B54DD530402CCB0017ED49 /* SceneMembersViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898F7032B3AB698008B4124 /* SceneMembersViewCell.swift */; };
+		08B54DD630402CCB0017ED49 /* ScheduleServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898D1CF2B59134A00B2033B /* ScheduleServer.swift */; };
+		08B54DD730402CCB0017ED49 /* SpaceMoreViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC50972C4E2FF1003CE437 /* SpaceMoreViewController.swift */; };
+		08B54DD830402CCB0017ED49 /* SceneAddDataListViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE7F2B33E43C0082A772 /* SceneAddDataListViewCell.swift */; };
+		08B54DD930402CCB0017ED49 /* EnergyStaticDataDeviceViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8002CD12DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift */; };
+		08B54DDA30402CCB0017ED49 /* LinePageControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF088D2B299DD700144BAC /* LinePageControl.swift */; };
+		08B54DDB30402CCB0017ED49 /* DeviceMeshNetworkResetSecitonHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C822A85B2EA7682E00A7073B /* DeviceMeshNetworkResetSecitonHeaderView.swift */; };
+		08B54DDC30402CCB0017ED49 /* DeviceParameterSliderViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B444A62E67D00D002F4CD6 /* DeviceParameterSliderViewCell.swift */; };
+		08B54DDD30402CCB0017ED49 /* ProfileLightSensorTemplateViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB3E482EF945C500207225 /* ProfileLightSensorTemplateViewCell.swift */; };
+		08B54DDE30402CCB0017ED49 /* InfoEditViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A09A062AC1790B0068C814 /* InfoEditViewController.swift */; };
+		08B54DDF30402CCB0017ED49 /* BatchSpaceData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84A2C562C2D571D0064D3F1 /* BatchSpaceData.swift */; };
+		08B54DE030402CCB0017ED49 /* ShareChangePasswordController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88DE4402C070D3F005A38C1 /* ShareChangePasswordController.swift */; };
+		08B54DE130402CCB0017ED49 /* GroupCheckViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5A1E12B2C48DE00728E36 /* GroupCheckViewController.swift */; };
+		08B54DE230402CCB0017ED49 /* CloudSynchronizationManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D58F652C1D34090066B770 /* CloudSynchronizationManager.swift */; };
+		08B54DE330402CCB0017ED49 /* PJEightKeySwitchStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BE82FA2102D000887FE /* PJEightKeySwitchStatus.swift */; };
+		08B54DE430402CCB0017ED49 /* FirmwareUpdateTypeData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C82C92C81B7FE009D43F6 /* FirmwareUpdateTypeData.swift */; };
+		08B54DE530402CCB0017ED49 /* FirmwareVersionUpdatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA71012FA7000000000005 /* FirmwareVersionUpdatePolicy.swift */; };
+		08B54DE630402CCB0017ED49 /* GatewayFirmwareScanDebugLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA60012FB5000000000005 /* GatewayFirmwareScanDebugLogger.swift */; };
+		08B54DE730402CCB0017ED49 /* GatewayFirmwareScanDiagnosticPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA60022FB5000000000005 /* GatewayFirmwareScanDiagnosticPolicy.swift */; };
+		08B54DE830402CCB0017ED49 /* GatewayFirmwareScanNetworkKeyScopePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA60032FB5000000000005 /* GatewayFirmwareScanNetworkKeyScopePolicy.swift */; };
+		08B54DE930402CCB0017ED49 /* NetworkLoggerPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EF54732C1AFA53008389CE /* NetworkLoggerPlugin.swift */; };
+		08B54DEA30402CCB0017ED49 /* NumberOfNeghbourNodeInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A18D902DE45CE0009AC6A2 /* NumberOfNeghbourNodeInstructionsController.swift */; };
+		08B54DEB30402CCB0017ED49 /* Array+Split.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0AC4A2C3E21B200DFE803 /* Array+Split.swift */; };
+		08B54DEC30402CCB0017ED49 /* DeviceDongleViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DF84562DB639960070CBD9 /* DeviceDongleViewController.swift */; };
+		08B54DED30402CCB0017ED49 /* PJEightKeySwitchMoreSettingsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BE32FA20E1D000887FE /* PJEightKeySwitchMoreSettingsController.swift */; };
+		08B54DEE30402CCB0017ED49 /* DeviceAddProfessionalModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1C2E04100D001A2BDA /* DeviceAddProfessionalModeController.swift */; };
+		08B54DEF30402CCB0017ED49 /* EnergyHarvestSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A7A6B72DC216FA00191E9C /* EnergyHarvestSelectView.swift */; };
+		08B54DF030402CCB0017ED49 /* CalendarChooseView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A1F2DB885C500E32092 /* CalendarChooseView.swift */; };
+		08B54DF130402CCB0017ED49 /* GroupMembersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B5A1DD2B2BE9B300728E36 /* GroupMembersViewController.swift */; };
+		08B54DF230402CCB0017ED49 /* SpaceVisitorListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C830CFDA2C0DC23F0035CD5B /* SpaceVisitorListViewController.swift */; };
+		08B54DF330402CCB0017ED49 /* ContinuousTapGestureRecognizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C15722D9A9D8000789F0B /* ContinuousTapGestureRecognizer.swift */; };
+		08B54DF430402CCB0017ED49 /* DeviceOthersCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A559E2DBA2C9D00E04252 /* DeviceOthersCollectionViewCell.swift */; };
+		08B54DF530402CCB0017ED49 /* FirmwareVersionHistoryController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F772C86E8C100FB50BD /* FirmwareVersionHistoryController.swift */; };
+		08B54DF630402CCB0017ED49 /* ProfileInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F082B8DFA5900A09FFA /* ProfileInstructionsController.swift */; };
+		08B54DF730402CCB0017ED49 /* PJDevicesRestoreEntryContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7562FAAF2A60073F100 /* PJDevicesRestoreEntryContext.swift */; };
+		08B54DF830402CCB0017ED49 /* SpaceTriggerZone.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84284A32F7A1C9000BECD6D /* SpaceTriggerZone.swift */; };
+		08B54DF930402CCB0017ED49 /* TableSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C830CFE22C0F1C6B0035CD5B /* TableSelectView.swift */; };
+		08B54DFA30402CCB0017ED49 /* SceneGroupsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85829F32B398354002A4367 /* SceneGroupsViewCell.swift */; };
+		08B54DFB30402CCB0017ED49 /* PJDeviceGroupSelectionViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7CC2FAC8A890073F100 /* PJDeviceGroupSelectionViewController.swift */; };
+		08B54DFC30402CCB0017ED49 /* LBXScanWrapper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4612BA17D3F00F9285B /* LBXScanWrapper.swift */; };
+		08B54DFD30402CCB0017ED49 /* DeviceCategorysViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A011642DA8C1DA0058E7E7 /* DeviceCategorysViewController.swift */; };
+		08B54DFE30402CCB0017ED49 /* GradientLoadingBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC6D582EA24498009E79A3 /* GradientLoadingBar.swift */; };
+		08B54DFF30402CCB0017ED49 /* PJSwitchesTypesVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BA72FA1FA2D000887FE /* PJSwitchesTypesVC.swift */; };
+		08B54E0030402CCB0017ED49 /* MeshFirmwareUpgradeGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A030212CD8C2AD0063FEC4 /* MeshFirmwareUpgradeGuideView.swift */; };
+		08B54E0130402CCB0017ED49 /* UIBarButtonItem+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF1322AA1B2BA00E24B4A /* UIBarButtonItem+Extension.swift */; };
+		08B54E0230402CCB0017ED49 /* DeviceParameterSettingsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AE17512DACA8E80071A9B1 /* DeviceParameterSettingsController.swift */; };
+		08B54E0330402CCB0017ED49 /* GroupPathSequencePathLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5C2C2DDB6CD900F09467 /* GroupPathSequencePathLayout.swift */; };
+		08B54E0430402CCB0017ED49 /* DeviceForceResetViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC57422E9FCB84009E79A3 /* DeviceForceResetViewCell.swift */; };
+		08B54E0530402CCB0017ED49 /* DaliMasterSingleControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A347CB2D62E8660092D3E4 /* DaliMasterSingleControlView.swift */; };
+		08B54E0630402CCB0017ED49 /* GatewayInformationHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A1632E37705500876028 /* GatewayInformationHeaderView.swift */; };
+		08B54E0730402CCB0017ED49 /* MenuPopView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2F22ABAD3DF00C71315 /* MenuPopView.swift */; };
+		08B54E0830402CCB0017ED49 /* SyncDevicesProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0B48A2B468BC700747CF4 /* SyncDevicesProgressView.swift */; };
+		08B54E0930402CCB0017ED49 /* MeshFirmwareListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89BAB1E2C4F3CF4000A4173 /* MeshFirmwareListViewController.swift */; };
+		08B54E0A30402CCB0017ED49 /* WMMenuView.m in Sources */ = {isa = PBXBuildFile; fileRef = C898EA5A2AC2BD8B0023B480 /* WMMenuView.m */; };
+		08B54E0B30402CCB0017ED49 /* GroupPathSequenceDeviceAddStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC021D2DDDA8680098E165 /* GroupPathSequenceDeviceAddStepView.swift */; };
+		08B54E0C30402CCB0017ED49 /* MeshFirmwareUpdateStepHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC83C62D068A670033513E /* MeshFirmwareUpdateStepHeaderView.swift */; };
+		08B54E0D30402CCB0017ED49 /* ManualOverrideTimeoutInstructionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F2C2B8F5C9200A09FFA /* ManualOverrideTimeoutInstructionController.swift */; };
+		08B54E0E30402CCB0017ED49 /* DevicesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898EA712AC3D17C0023B480 /* DevicesViewCell.swift */; };
+		08B54E0F30402CCB0017ED49 /* PJEightKeySwitchSelectPanelViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BCA2FA20871000887FE /* PJEightKeySwitchSelectPanelViewModel.swift */; };
+		08B54E1030402CCB0017ED49 /* DeviceResyncHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BFC68F2F04AEC5007F83F2 /* DeviceResyncHeaderView.swift */; };
+		08B54E1130402CCB0017ED49 /* LightSensorCalibrationPointLuxView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE621D2EC4624C0075ED42 /* LightSensorCalibrationPointLuxView.swift */; };
+		08B54E1230402CCB0017ED49 /* LinkedEmerFireEditVC+Table.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CF15F942F962C7C0044FCF3 /* LinkedEmerFireEditVC+Table.swift */; };
+		08B54E1330402CCB0017ED49 /* LightSensorCalibrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE52B905F5100A94F0B /* LightSensorCalibrationView.swift */; };
+		08B54E1430402CCB0017ED49 /* PJEightKeySwitchRefreshAlertController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778C342FA35FD7000887FE /* PJEightKeySwitchRefreshAlertController.swift */; };
+		08B54E1530402CCB0017ED49 /* GatewayListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C833B8512EC7257C0005F84F /* GatewayListView.swift */; };
+		08B54E1630402CCB0017ED49 /* RelativeSensitivityInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C0E5E02E2A3D190024E77E /* RelativeSensitivityInstructionsController.swift */; };
+		08B54E1730402CCB0017ED49 /* EnergyHarvestStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AEB9922DC9A0300053102B /* EnergyHarvestStateView.swift */; };
+		08B54E1830402CCB0017ED49 /* LinkedEmerFireEditVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CF15F852F962AE70044FCF3 /* LinkedEmerFireEditVC.swift */; };
+		08B54E1930402CCB0017ED49 /* BetaTestingAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C15702D9A873500789F0B /* BetaTestingAlertView.swift */; };
+		08B54E1A30402CCB0017ED49 /* TimedSelectTypeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A29C272B47D5CF00104634 /* TimedSelectTypeView.swift */; };
+		08B54E1B30402CCB0017ED49 /* AdjustSpeedInstructionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F302B8F670200A09FFA /* AdjustSpeedInstructionController.swift */; };
+		08B54E1C30402CCB0017ED49 /* PJSwitchesTypesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BAC2FA1FB42000887FE /* PJSwitchesTypesViewModel.swift */; };
+		08B54E1D30402CCB0017ED49 /* GatewayServerInformationViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A15F2E375D9400876028 /* GatewayServerInformationViewCell.swift */; };
+		08B54E1E30402CCB0017ED49 /* LBXScanViewStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB45F2BA17D3E00F9285B /* LBXScanViewStyle.swift */; };
+		08B54E1F30402CCB0017ED49 /* UIView+frame.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ACF12E2AA1B2BA00E24B4A /* UIView+frame.swift */; };
+		08B54E2030402CCB0017ED49 /* SwitchSelectGroupsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A9A9B2C8AFA2D0032287D /* SwitchSelectGroupsViewCell.swift */; };
+		08B54E2130402CCB0017ED49 /* SpacesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A09A002AC13A660068C814 /* SpacesViewCell.swift */; };
+		08B54E2230402CCB0017ED49 /* EnergyTimeSeriesDataExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43662DC0A7B300018392 /* EnergyTimeSeriesDataExportView.swift */; };
+		08B54E2330402CCB0017ED49 /* GroupsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF084F2B26FA7700144BAC /* GroupsViewCell.swift */; };
+		08B54E2430402CCB0017ED49 /* ProfilePhasesTimePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE92B91D56B00A94F0B /* ProfilePhasesTimePickerView.swift */; };
+		08B54E2530402CCB0017ED49 /* ProfileLevelSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE72B9165AC00A94F0B /* ProfileLevelSettingsView.swift */; };
+		08B54E2630402CCB0017ED49 /* FlashlightSwingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C8137B2EA60E8C008B3515 /* FlashlightSwingView.swift */; };
+		08B54E2730402CCB0017ED49 /* DeviceParameterFilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85120F42DB0A11200714111 /* DeviceParameterFilterView.swift */; };
+		08B54E2830402CCB0017ED49 /* UITableView+Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B337212E44983E006931C2 /* UITableView+Keyboard.swift */; };
+		08B54E2930402CCB0017ED49 /* PJEightKeySwitchMonitorKeyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778C162FA3452A000887FE /* PJEightKeySwitchMonitorKeyView.swift */; };
+		08B54E2A30402CCB0017ED49 /* DeviceSwitchesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FD66C2C899D4B00DE431D /* DeviceSwitchesViewCell.swift */; };
+		08B54E2B30402CCB0017ED49 /* Device+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85BC5EF2C3BBE39002D4CB6 /* Device+Extension.swift */; };
+		08B54E2C30402CCB0017ED49 /* EmerFireAlarmMoniView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788D52F9719AF000887FE /* EmerFireAlarmMoniView.swift */; };
+		08B54E2D30402CCB0017ED49 /* GatewayAssociatedSpacesInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A15B2E37551C00876028 /* GatewayAssociatedSpacesInstructionsController.swift */; };
+		08B54E2E30402CCB0017ED49 /* GroupsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF084B2B26F78100144BAC /* GroupsViewController.swift */; };
+		08B54E2F30402CCB0017ED49 /* PJEightKeySwitchDimmingPopupController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778C2F2FA35EB7000887FE /* PJEightKeySwitchDimmingPopupController.swift */; };
+		08B54E3030402CCB0017ED49 /* EmerFireAlarmDevicesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7789112F987B48000887FE /* EmerFireAlarmDevicesController.swift */; };
+		08B54E3130402CCB0017ED49 /* GroupPathSequenceManuallyAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC845B2DE15F6000213DE2 /* GroupPathSequenceManuallyAddView.swift */; };
+		08B54E3230402CCB0017ED49 /* AboutViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FEF422ABD657F00DCCFB6 /* AboutViewController.swift */; };
+		08B54E3330402CCB0017ED49 /* PJDevicesEightKeyAddContainerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA77E2FAAF2C90073F100 /* PJDevicesEightKeyAddContainerController.swift */; };
+		08B54E3430402CCB0017ED49 /* PJEightKeySwitchData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BEE2FA2153E000887FE /* PJEightKeySwitchData.swift */; };
+		08B54E3530402CCB0017ED49 /* BatteryPowerSwitchAddConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C2605202A010001000887FE /* BatteryPowerSwitchAddConfiguration.swift */; };
+		08B54E3630402CCB0017ED49 /* LinkedEmerFireEditState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CF15F8F2F962C7C0044FCF3 /* LinkedEmerFireEditState.swift */; };
+		08B54E3730402CCB0017ED49 /* DeviceMeshNetworkResetHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C822A84E2EA75A9400A7073B /* DeviceMeshNetworkResetHeaderView.swift */; };
+		08B54E3830402CCB0017ED49 /* DeviceMeshNetworkResetHandle.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EC4BAC2EAA1FF00082892D /* DeviceMeshNetworkResetHandle.swift */; };
+		08B54E3930402CCB0017ED49 /* SchedulesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A29C292B47E0D300104634 /* SchedulesViewCell.swift */; };
+		08B54E3A30402CCB0017ED49 /* DeviceMeshNetworkResetSectionData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C822A85F2EA76E9600A7073B /* DeviceMeshNetworkResetSectionData.swift */; };
+		08B54E3B30402CCB0017ED49 /* TitleSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08452B26A45100144BAC /* TitleSelectView.swift */; };
+		08B54E3C30402CCB0017ED49 /* DeviceParameterSettingsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AE17532DACAABD0071A9B1 /* DeviceParameterSettingsViewCell.swift */; };
+		08B54E3D30402CCB0017ED49 /* MeshDistributionData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89B40CD2CEB37C90082A89A /* MeshDistributionData.swift */; };
+		08B54E3E30402CCB0017ED49 /* GatewaysViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A4C50A2C956262003EE5E5 /* GatewaysViewController.swift */; };
+		08B54E3F30402CCB0017ED49 /* PJDevicesEntrySource.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA74C2FAAF2A60073F100 /* PJDevicesEntrySource.swift */; };
+		08B54E4030402CCB0017ED49 /* DevicePromptHudView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F4F2DB7709100A6E36C /* DevicePromptHudView.swift */; };
+		08B54E4130402CCB0017ED49 /* PJEightKeySwitchMonitorHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778C2A2FA34A33000887FE /* PJEightKeySwitchMonitorHeaderView.swift */; };
+		08B54E4230402CCB0017ED49 /* HorizontalDirectionFlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0589F2B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift */; };
+		08B54E4330402CCB0017ED49 /* ConfigurationFlowGuidanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C803EC4B2BCCC9F0003C48B1 /* ConfigurationFlowGuidanceView.swift */; };
+		08B54E4430402CCB0017ED49 /* DeviceDongleStorageUsageCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F492DB72F3500A6E36C /* DeviceDongleStorageUsageCell.swift */; };
+		08B54E4530402CCB0017ED49 /* EnergyStatisticsStaticData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B707032DCF2FDC0002133E /* EnergyStatisticsStaticData.swift */; };
+		08B54E4630402CCB0017ED49 /* CustomDeviceSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898EA782AC41AFB0023B480 /* CustomDeviceSlider.swift */; };
+		08B54E4730402CCB0017ED49 /* DaliDeviceInformationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FC6B9D2E7502F6004EE2BA /* DaliDeviceInformationController.swift */; };
+		08B54E4830402CCB0017ED49 /* SceneAddCustomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130BF2B327FF40008C353 /* SceneAddCustomView.swift */; };
+		08B54E4930402CCB0017ED49 /* Node+Capability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD8A52F0E32AA00BE3F20 /* Node+Capability.swift */; };
+		08B54E4A30402CCB0017ED49 /* Node+ELControllerRxTx.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F7A0002FBF000000000001 /* Node+ELControllerRxTx.swift */; };
+		08B54E4B30402CCB0017ED49 /* MeshFirmwareSelectDeviceViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A030192CD85FC40063FEC4 /* MeshFirmwareSelectDeviceViewCell.swift */; };
+		08B54E4C30402CCB0017ED49 /* DeviceSignalStrengthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC95E72E055C540058D41E /* DeviceSignalStrengthView.swift */; };
+		08B54E4D30402CCB0017ED49 /* MeshFirmwareUpgradeSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0301F2CD89EC00063FEC4 /* MeshFirmwareUpgradeSectionView.swift */; };
+		08B54E4E30402CCB0017ED49 /* Data+Gzip.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A68A272DA67B110011A389 /* Data+Gzip.swift */; };
+		08B54E4F30402CCB0017ED49 /* DeviceParameterSetupInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85D55122E6189D300BFEEDA /* DeviceParameterSetupInstructionsController.swift */; };
+		08B54E5030402CCB0017ED49 /* SitesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2F02ABA9BB900C71315 /* SitesViewController.swift */; };
+		08B54E5130402CCB0017ED49 /* MeshFirmwareUpgradeHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0301D2CD878C10063FEC4 /* MeshFirmwareUpgradeHeaderView.swift */; };
+		08B54E5230402CCB0017ED49 /* GroupPathSequencePageController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8ED59F82DD743960074A5BB /* GroupPathSequencePageController.swift */; };
+		08B54E5330402CCB0017ED49 /* PJEightKeySwitchSelectPanelCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BCF2FA20871000887FE /* PJEightKeySwitchSelectPanelCell.swift */; };
+		08B54E5430402CCB0017ED49 /* PJTopbtBoLabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CC4A6AD2F95D0CF00839EC4 /* PJTopbtBoLabView.swift */; };
+		08B54E5530402CCB0017ED49 /* MotionSensorInstructionsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F122B8E14F800A09FFA /* MotionSensorInstructionsViewCell.swift */; };
+		08B54E5630402CCB0017ED49 /* LinkedEmerFireGroupSelectionVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788FD2F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift */; };
+		08B54E5730402CCB0017ED49 /* SiteGatewaysMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BB67772ED46298000C63EE /* SiteGatewaysMenuView.swift */; };
+		08B54E5830402CCB0017ED49 /* PJEightKeySwitchesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */; };
+		08B54E5930402CCB0017ED49 /* SceneExecuteAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F98402B5E5A56007EABF5 /* SceneExecuteAnimationView.swift */; };
+		08B54E5A30402CCB0017ED49 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C896B9A72A930BA800217512 /* AppDelegate.swift */; };
+		08B54E5B30402CCB0017ED49 /* UserSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85BC5F12C3BEEF8002D4CB6 /* UserSettingsViewController.swift */; };
+		08B54E5C30402CCB0017ED49 /* LabViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100022FF0000000000002 /* LabViewController.swift */; };
+		08B54E5D30402CCB0017ED49 /* PJDevicesEightKeyRestoreContainerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7832FAAF2C90073F100 /* PJDevicesEightKeyRestoreContainerController.swift */; };
+		08B54E5E30402CCB0017ED49 /* ShareAuthorityFilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8699DB62C09661700424A60 /* ShareAuthorityFilterView.swift */; };
+		08B54E5F30402CCB0017ED49 /* DeviceAddClassicModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */; };
+		08B54E6030402CCB0017ED49 /* DeviceGroupDeferredSyncPlanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8EFC1012FBD000000000001 /* DeviceGroupDeferredSyncPlanner.swift */; };
+		08B54E6130402CCB0017ED49 /* FastAddTaskCheckpointTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA20012F12000100000001 /* FastAddTaskCheckpointTracker.swift */; };
+		08B54E6230402CCB0017ED49 /* EnergySelectExportDevicesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA436A2DC0D75A00018392 /* EnergySelectExportDevicesController.swift */; };
+		08B54E6330402CCB0017ED49 /* SharingSettingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C884EF7A2C05C9C500B5F869 /* SharingSettingViewController.swift */; };
+		08B54E6430402CCB0017ED49 /* EmerFireAlarmSyncAliases.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7789252F99FE29000887FE /* EmerFireAlarmSyncAliases.swift */; };
+		08B54E6530402CCB0017ED49 /* DeviceLightsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FD66A2C89845D00DE431D /* DeviceLightsViewController.swift */; };
+		08B54E6630402CCB0017ED49 /* LightAckProgressAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100032FF0000000000003 /* LightAckProgressAlertView.swift */; };
+		08B54E6730402CCB0017ED49 /* LightAckProgressTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100042FF0000000000004 /* LightAckProgressTracker.swift */; };
+		08B54E6830402CCB0017ED49 /* LightTimeInformationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608200000000000004000 /* LightTimeInformationCoordinator.swift */; };
+		08B54E6930402CCB0017ED49 /* WelcomeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F6C2C854AF300FB50BD /* WelcomeViewController.swift */; };
+		08B54E6A30402CCB0017ED49 /* FirmwareDistributeUpdateStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A4E8942CDB1C3600A22C77 /* FirmwareDistributeUpdateStateView.swift */; };
+		08B54E6B30402CCB0017ED49 /* DeviceParameterEnergyReportViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA400C2EE28B3900C12FCB /* DeviceParameterEnergyReportViewCell.swift */; };
+		08B54E6C30402CCB0017ED49 /* SyncDeviceViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FE92B3C24C700074031 /* SyncDeviceViewCell.swift */; };
+		08B54E6D30402CCB0017ED49 /* PJEightKeySwitchMonitorPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778C1B2FA34550000887FE /* PJEightKeySwitchMonitorPanelView.swift */; };
+		08B54E6E30402CCB0017ED49 /* DeviceParameterTitleHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA40112EE2F40400C12FCB /* DeviceParameterTitleHeaderView.swift */; };
+		08B54E6F30402CCB0017ED49 /* DeviceSensorsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A4C5072C95624E003EE5E5 /* DeviceSensorsViewController.swift */; };
+		08B54E7030402CCB0017ED49 /* SRAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2FC2ABBD61200C71315 /* SRAlertView.swift */; };
+		08B54E7130402CCB0017ED49 /* SyncDevicesGroupViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FEF2B3D4E6200074031 /* SyncDevicesGroupViewCell.swift */; };
+		08B54E7230402CCB0017ED49 /* CustomProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85829F52B398443002A4367 /* CustomProgressView.swift */; };
+		08B54E7330402CCB0017ED49 /* DeviceFlashlightBeastModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BC6D5C2EA249F9009E79A3 /* DeviceFlashlightBeastModeController.swift */; };
+		08B54E7430402CCB0017ED49 /* Date+Extension.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A242DB8E6D600E32092 /* Date+Extension.swift */; };
+		08B54E7530402CCB0017ED49 /* DeviceSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C0E4442E2633B80024E77E /* DeviceSettingsViewController.swift */; };
+		08B54E7630402CCB0017ED49 /* UserData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8699DB82C0978F300424A60 /* UserData.swift */; };
+		08B54E7730402CCB0017ED49 /* LabSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100012FF0000000000001 /* LabSettings.swift */; };
+		08B54E7830402CCB0017ED49 /* LightGroupControlCommandSender.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A101522FF0000000000152 /* LightGroupControlCommandSender.swift */; };
+		08B54E7930402CCB0017ED49 /* WMProgressView.m in Sources */ = {isa = PBXBuildFile; fileRef = C898EA5B2AC2BD8B0023B480 /* WMProgressView.m */; };
+		08B54E7A30402CCB0017ED49 /* DeviceBottomBtnView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69DA2DB87C9B00E32092 /* DeviceBottomBtnView.swift */; };
+		08B54E7B30402CCB0017ED49 /* PJEightKeySwitchMonitorStatusSetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778C202FA34688000887FE /* PJEightKeySwitchMonitorStatusSetView.swift */; };
+		08B54E7C30402CCB0017ED49 /* DaliSettingViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AFDBFE2D70326E00839A38 /* DaliSettingViewController.swift */; };
+		08B54E7D30402CCB0017ED49 /* String+Date.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A09A022AC162660068C814 /* String+Date.swift */; };
+		08B54E7E30402CCB0017ED49 /* ImportEnergyDeviceSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AEB9A62DCB664E0053102B /* ImportEnergyDeviceSelectView.swift */; };
+		08B54E7F30402CCB0017ED49 /* ProfileTextInstructionsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAD89A2F0B9D5100BE3F20 /* ProfileTextInstructionsViewController.swift */; };
+		08B54E8030402CCB0017ED49 /* DeviceLightControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898EA732AC400100023B480 /* DeviceLightControlView.swift */; };
+		08B54E8130402CCB0017ED49 /* DeviceParameterPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0116E2DA90A480058E7E7 /* DeviceParameterPromptView.swift */; };
+		08B54E8230402CCB0017ED49 /* EnergyTimeSeriesDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43622DC0A6FD00018392 /* EnergyTimeSeriesDataViewController.swift */; };
+		08B54E8330402CCB0017ED49 /* PJEightKeySwitchForcedAutoPopupController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7392FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift */; };
+		08B54E8430402CCB0017ED49 /* PJEightKeySwitchMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778C112FA344FF000887FE /* PJEightKeySwitchMonitorViewModel.swift */; };
+		08B54E8530402CCB0017ED49 /* LBXPermissions.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4602BA17D3F00F9285B /* LBXPermissions.swift */; };
+		08B54E8630402CCB0017ED49 /* PJDevicesAddFlowFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA76A2FAAF2A60073F100 /* PJDevicesAddFlowFactory.swift */; };
+		08B54E8730402CCB0017ED49 /* DeviceMeshNetworkResetBottomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C822A8522EA765F100A7073B /* DeviceMeshNetworkResetBottomView.swift */; };
+		08B54E8830402CCB0017ED49 /* DongleAddCollectionScheduleController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F532DB793E200A6E36C /* DongleAddCollectionScheduleController.swift */; };
+		08B54E8930402CCB0017ED49 /* ProfileProximityLightingNumberView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88CCD982DD4A8AD003D5754 /* ProfileProximityLightingNumberView.swift */; };
+		08B54E8A30402CCB0017ED49 /* PJEightKeySwitchPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BBB2FA200C2000887FE /* PJEightKeySwitchPanelView.swift */; };
+		08B54E8B30402CCB0017ED49 /* DeviceDongleCollectionStrategyCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F472DB72C1F00A6E36C /* DeviceDongleCollectionStrategyCell.swift */; };
+		08B54E8C30402CCB0017ED49 /* GatewaySectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F8373F2E3B52560003B292 /* GatewaySectionHeaderView.swift */; };
+		08B54E8D30402CCB0017ED49 /* EmerFireAlarmInfoSectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788F32F974BC2000887FE /* EmerFireAlarmInfoSectionHeaderView.swift */; };
+		08B54E8E30402CCB0017ED49 /* DaylightSensorInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F212B8F388200A09FFA /* DaylightSensorInstructionsController.swift */; };
+		08B54E8F30402CCB0017ED49 /* GroupSwitchsHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44D2BA07E7E00F9285B /* GroupSwitchsHeaderView.swift */; };
+		08B54E9030402CCB0017ED49 /* PJDevicesAddEntryContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7512FAAF2A60073F100 /* PJDevicesAddEntryContext.swift */; };
+		08B54E9130402CCB0017ED49 /* FirmwareVersionHistoryViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F792C86EABB00FB50BD /* FirmwareVersionHistoryViewCell.swift */; };
+		08B54E9230402CCB0017ED49 /* EnOceanProxyViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4542BA13BA400F9285B /* EnOceanProxyViewController.swift */; };
+		08B54E9330402CCB0017ED49 /* UIView+Shade.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A1C3A2B554F56004912B9 /* UIView+Shade.swift */; };
+		08B54E9430402CCB0017ED49 /* ProfileDaylightSensorControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F1B2B8F179900A09FFA /* ProfileDaylightSensorControlView.swift */; };
+		08B54E9530402CCB0017ED49 /* PJDevicesAddBehavior.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7922FAB126A0073F100 /* PJDevicesAddBehavior.swift */; };
+		08B54E9630402CCB0017ED49 /* MotionSensorInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F102B8E0FE400A09FFA /* MotionSensorInstructionsController.swift */; };
+		08B54E9730402CCB0017ED49 /* MeshSelectUpgradeDevicesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A030232CDA17FB0063FEC4 /* MeshSelectUpgradeDevicesViewController.swift */; };
+		08B54E9830402CCB0017ED49 /* CalibrationInstructionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F322B8F692A00A09FFA /* CalibrationInstructionController.swift */; };
+		08B54E9930402CCB0017ED49 /* ProfileSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F142B8ED37800A09FFA /* ProfileSettingsViewController.swift */; };
+		08B54E9A30402CCB0017ED49 /* DeviceDongleScheduleHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F4D2DB7361300A6E36C /* DeviceDongleScheduleHeaderView.swift */; };
+		08B54E9B30402CCB0017ED49 /* String+Localized.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898E2DB2AB7E62100C71315 /* String+Localized.swift */; };
+		08B54E9C30402CCB0017ED49 /* TimedViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A29C252B47D47500104634 /* TimedViewController.swift */; };
+		08B54E9D30402CCB0017ED49 /* DeviceForceResetDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95F9F2E4EE25D000576F5 /* DeviceForceResetDeviceView.swift */; };
+		08B54E9E30402CCB0017ED49 /* ProfileLightSensorTemplateDevicesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BCDB3A2EFA748600D35DA5 /* ProfileLightSensorTemplateDevicesController.swift */; };
+		08B54E9F30402CCB0017ED49 /* ShareSpaceListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C830CFD82C0DBE520035CD5B /* ShareSpaceListViewController.swift */; };
+		08B54EA030402CCB0017ED49 /* ContentDisplayViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7DB2E6EB8E8004FB923 /* ContentDisplayViewCell.swift */; };
+		08B54EA130402CCB0017ED49 /* ContentDisplaySwitchViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D001002FCE000100ABCDEF /* ContentDisplaySwitchViewCell.swift */; };
+		08B54EA230402CCB0017ED49 /* ContentDisplayControlStyleViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D001012FCE000100ABCDEF /* ContentDisplayControlStyleViewCell.swift */; };
+		08B54EA330402CCB0017ED49 /* SceneServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FE12B3BC1B900074031 /* SceneServer.swift */; };
+		08B54EA430402CCB0017ED49 /* ProfileSensitivityView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B707072DCF349D0002133E /* ProfileSensitivityView.swift */; };
+		08B54EA530402CCB0017ED49 /* SceneSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898F7012B3A810E008B4124 /* SceneSettingsViewController.swift */; };
+		08B54EA630402CCB0017ED49 /* EmerFireAlarmMoniCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788D02F970F99000887FE /* EmerFireAlarmMoniCell.swift */; };
+		08B54EA730402CCB0017ED49 /* GroupSwitchsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB44B2BA07D1800F9285B /* GroupSwitchsViewController.swift */; };
+		08B54EA830402CCB0017ED49 /* GroupPowerSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */; };
+		08B54EA930402CCB0017ED49 /* GroupSensorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82AE2EA2B95756600FA4BDB /* GroupSensorView.swift */; };
+		08B54EAA30402CCB0017ED49 /* EmerFireAlarmStatusItemCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788DF2F972591000887FE /* EmerFireAlarmStatusItemCell.swift */; };
+		08B54EAB30402CCB0017ED49 /* DeviceForceResetDeviceInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B95FA32E502F25000576F5 /* DeviceForceResetDeviceInstructionsController.swift */; };
+		08B54EAC30402CCB0017ED49 /* DeviceParameterAbsoluteSensitivityViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C0E44A2E28869F0024E77E /* DeviceParameterAbsoluteSensitivityViewCell.swift */; };
+		08B54EAD30402CCB0017ED49 /* AlignCenterFlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF084D2B26F84800144BAC /* AlignCenterFlowLayout.swift */; };
+		08B54EAE30402CCB0017ED49 /* SwitchSelectPanelTypeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CAE8E42D76EF9500FCCA5A /* SwitchSelectPanelTypeController.swift */; };
+		08B54EAF30402CCB0017ED49 /* EmptyDataView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FEF502ABECEEC00DCCFB6 /* EmptyDataView.swift */; };
+		08B54EB030402CCB0017ED49 /* NetowrkReqeustApi.swift in Sources */ = {isa = PBXBuildFile; fileRef = C884EF762C05B96600B5F869 /* NetowrkReqeustApi.swift */; };
+		08B54EB130402CCB0017ED49 /* PowerUpBehaviorInstructionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F2E2B8F5E1B00A09FFA /* PowerUpBehaviorInstructionController.swift */; };
+		08B54EB230402CCB0017ED49 /* Profile.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82AE2EC2B96EC6600FA4BDB /* Profile.swift */; };
+		08B54EB330402CCB0017ED49 /* PJEightKeySwitchMoreSettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BD92FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift */; };
+		08B54EB430402CCB0017ED49 /* GatewayAssociatedSpacesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C3A1572E37509800876028 /* GatewayAssociatedSpacesViewCell.swift */; };
+		08B54EB530402CCB0017ED49 /* DeviceEmerFireRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778B232F9F584E000887FE /* DeviceEmerFireRepository.swift */; };
+		08B54EB630402CCB0017ED49 /* ImportData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D6636E2BFEDDC900BFF81A /* ImportData.swift */; };
+		08B54EB730402CCB0017ED49 /* SiteGatewayAssociationConsistencyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA30252FD0000200000005 /* SiteGatewayAssociationConsistencyPolicy.swift */; };
+		08B54EB830402CCB0017ED49 /* DeviceLightViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25732ADD180900CF1AE4 /* DeviceLightViewController.swift */; };
+		08B54EB930402CCB0017ED49 /* EmerFireStatusTextCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CF15F9E2F964E240044FCF3 /* EmerFireStatusTextCell.swift */; };
+		08B54EBA30402CCB0017ED49 /* DevicePowerCalibrationInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6CE702EE7EFE600C8AE32 /* DevicePowerCalibrationInstructionsController.swift */; };
+		08B54EBB30402CCB0017ED49 /* FirmwareData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A16F7D2C8725EF00FB50BD /* FirmwareData.swift */; };
+		08B54EBC30402CCB0017ED49 /* DeviceLightHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25792ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift */; };
+		08B54EBD30402CCB0017ED49 /* SwitchSelectSceneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4562BA1500500F9285B /* SwitchSelectSceneViewController.swift */; };
+		08B54EBE30402CCB0017ED49 /* GroupProximityLightingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */; };
+		08B54EBF30402CCB0017ED49 /* GroupPathSequenceQuickAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BE92DDABFDC00F09467 /* GroupPathSequenceQuickAddView.swift */; };
+		08B54EC030402CCB0017ED49 /* MeshFirmwareTypeUpdateViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C70B02CD31DC900B9A76A /* MeshFirmwareTypeUpdateViewCell.swift */; };
+		08B54EC130402CCB0017ED49 /* DeviceDongleDeleteAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A55972DBA103500E04252 /* DeviceDongleDeleteAlertView.swift */; };
+		08B54EC230402CCB0017ED49 /* ImageCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A09A042AC178910068C814 /* ImageCollectionViewCell.swift */; };
+		08B54EC330402CCB0017ED49 /* ScrollView+Indicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B7B3BC2EBB32C1006CA3EE /* ScrollView+Indicator.swift */; };
+		08B54EC430402CCB0017ED49 /* Node+MessageHandles.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */; };
+		08B54EC530402CCB0017ED49 /* DeviceSwitchViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A9A932C8A91ED0032287D /* DeviceSwitchViewController.swift */; };
+		08B54EC630402CCB0017ED49 /* DeviceOthersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A559B2DBA2B5900E04252 /* DeviceOthersViewController.swift */; };
+		08B54EC730402CCB0017ED49 /* ProfileProximityLightingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88CCD962DD4A552003D5754 /* ProfileProximityLightingStepView.swift */; };
+		08B54EC830402CCB0017ED49 /* GroupServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08902B2A8DCD00144BAC /* GroupServer.swift */; };
+		08B54EC930402CCB0017ED49 /* WYProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = C896BB872A930C3800217512 /* WYProgressHUD.m */; };
+		08B54ECA30402CCB0017ED49 /* SyncDevicesCellModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FF12B3D60CC00074031 /* SyncDevicesCellModel.swift */; };
+		08B54ECB30402CCB0017ED49 /* DeviceOfflinePromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F512DB790B700A6E36C /* DeviceOfflinePromptView.swift */; };
+		08B54ECC30402CCB0017ED49 /* PJDevicesFireAlarmAddContainerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7742FAAF2C90073F100 /* PJDevicesFireAlarmAddContainerController.swift */; };
+		08B54ECD30402CCB0017ED49 /* EmerFireAlarmAddProfessionalVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C77891B2F99A678000887FE /* EmerFireAlarmAddProfessionalVC.swift */; };
+		08B54ECE30402CCB0017ED49 /* SystemVoiumeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7DF2E702BF7004FB923 /* SystemVoiumeManager.swift */; };
+		08B54ECF30402CCB0017ED49 /* BLEUpgradeInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C82CB2C81C8BA009D43F6 /* BLEUpgradeInstructionsController.swift */; };
+		08B54ED030402CCB0017ED49 /* MeshFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A4E8922CDB0F5D00A22C77 /* MeshFirmwareUpdateViewController.swift */; };
+		08B54ED130402CCB0017ED49 /* CustomSegmentedControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FEF4B2ABD9F2700DCCFB6 /* CustomSegmentedControl.swift */; };
+		08B54ED230402CCB0017ED49 /* AdaptiveTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7CB2E6E768B004FB923 /* AdaptiveTextView.swift */; };
+		08B54ED330402CCB0017ED49 /* LinkedEmerFireConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788F82F9757B0000887FE /* LinkedEmerFireConfig.swift */; };
+		08B54ED430402CCB0017ED49 /* DeviceMeshNetworkResetNotConfiguredController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C822A84A2EA75A0E00A7073B /* DeviceMeshNetworkResetNotConfiguredController.swift */; };
+		08B54ED530402CCB0017ED49 /* DeviceRestoreViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FB7CC2CF079A500411D96 /* DeviceRestoreViewController.swift */; };
+		08B54ED630402CCB0017ED49 /* EnergyDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82F99F12DBE10A90019C3FB /* EnergyDataViewController.swift */; };
+		08B54ED730402CCB0017ED49 /* XWHUDManager.m in Sources */ = {isa = PBXBuildFile; fileRef = C896BB882A930C3800217512 /* XWHUDManager.m */; };
+		08B54ED830402CCB0017ED49 /* SceneAddGroupTitleSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE832B34146D0082A772 /* SceneAddGroupTitleSectionView.swift */; };
+		08B54ED930402CCB0017ED49 /* SyncDevicesSectionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FE72B3C248100074031 /* SyncDevicesSectionHeaderView.swift */; };
+		08B54EDA30402CCB0017ED49 /* GroupPathSequenceTriggerZoneViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC021B2DDD64AE0098E165 /* GroupPathSequenceTriggerZoneViewCell.swift */; };
+		08B54EDB30402CCB0017ED49 /* PJEightKeySwitchEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778C072FA30549000887FE /* PJEightKeySwitchEditorView.swift */; };
+		08B54EDC30402CCB0017ED49 /* SceneAddViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130BD2B32785E0008C353 /* SceneAddViewController.swift */; };
+		08B54EDD30402CCB0017ED49 /* ExportData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D663702BFEDDE000BFF81A /* ExportData.swift */; };
+		08B54EDE30402CCB0017ED49 /* CirclePieMarkerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88CCD8D2DD442CA003D5754 /* CirclePieMarkerView.swift */; };
+		08B54EDF30402CCB0017ED49 /* WMScrollView.m in Sources */ = {isa = PBXBuildFile; fileRef = C898EA592AC2BD8B0023B480 /* WMScrollView.m */; };
+		08B54EE030402CCB0017ED49 /* DaylightSensorInstructionsHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F262B8F3A7200A09FFA /* DaylightSensorInstructionsHeaderView.swift */; };
+		08B54EE130402CCB0017ED49 /* GroupPathSequenceAddDeviceCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BED2DDADEE100F09467 /* GroupPathSequenceAddDeviceCell.swift */; };
+		08B54EE230402CCB0017ED49 /* EnergyHarvestHistoryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AEB9942DCA11370053102B /* EnergyHarvestHistoryViewController.swift */; };
+		08B54EE330402CCB0017ED49 /* LBXScanNetAnimation.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB45B2BA17D3E00F9285B /* LBXScanNetAnimation.swift */; };
+		08B54EE430402CCB0017ED49 /* GatewayInformationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DA57D62ED14B7A00C4FCFD /* GatewayInformationViewController.swift */; };
+		08B54EE530402CCB0017ED49 /* EmerFireInfoCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CF15F7B2F9628F90044FCF3 /* EmerFireInfoCell.swift */; };
+		08B54EE630402CCB0017ED49 /* DeviceParameterBottomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0116C2DA90A290058E7E7 /* DeviceParameterBottomView.swift */; };
+		08B54EE730402CCB0017ED49 /* GroupPathSequenceTriggerAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BEB2DDAD45100F09467 /* GroupPathSequenceTriggerAddView.swift */; };
+		08B54EE830402CCB0017ED49 /* DeviceSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FD6652C89840400DE431D /* DeviceSwitchesViewController.swift */; };
+		08B54EE930402CCB0017ED49 /* DeviceSliderFunctionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898EA752AC409230023B480 /* DeviceSliderFunctionView.swift */; };
+		08B54EEA30402CCB0017ED49 /* EmerFireAlarmStatusLegendHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788E42F972B46000887FE /* EmerFireAlarmStatusLegendHeaderView.swift */; };
+		08B54EEC30402CCB0017ED49 /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
+		08B54EED30402CCB0017ED49 /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 08B54C5A30402CCB0017ED49 /* NordicSigMeshSDK */; };
+		08B54EEE30402CCB0017ED49 /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
+		08B54EF030402CCB0017ED49 /* Privacy Policy.html in Resources */ = {isa = PBXBuildFile; fileRef = C89B34222C93E3B700A77DB6 /* Privacy Policy.html */; };
+		08B54EF130402CCB0017ED49 /* XWHUDManager_right@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB8E2A930C3800217512 /* XWHUDManager_right@3x.png */; };
+		08B54EF230402CCB0017ED49 /* User Agreement.html in Resources */ = {isa = PBXBuildFile; fileRef = C89B34202C93E2B600A77DB6 /* User Agreement.html */; };
+		08B54EF330402CCB0017ED49 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = C898E2D72AB7E46300C71315 /* Localizable.strings */; };
+		08B54EF430402CCB0017ED49 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C8A900062F80000100000006 /* InfoPlist.strings */; };
+		08B54EF530402CCB0017ED49 /* device_add.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C8B483D12E4B361F006D85BC /* device_add.mp3 */; };
+		08B54EF630402CCB0017ED49 /* device_reset.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C8B483D22E4B361F006D85BC /* device_reset.mp3 */; };
+		08B54EF730402CCB0017ED49 /* all_utc_timezones.json in Resources */ = {isa = PBXBuildFile; fileRef = 084EF310302AB496008CB48A /* all_utc_timezones.json */; };
+		08B54EF830402CCB0017ED49 /* XWHUDManager_successful@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A52B6A1FA400F60E62 /* XWHUDManager_successful@2x.png */; };
+		08B54EF930402CCB0017ED49 /* XWHUDManager_tip@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB902A930C3800217512 /* XWHUDManager_tip@3x.png */; };
+		08B54EFA30402CCB0017ED49 /* XWHUDManager_loading.gif in Resources */ = {isa = PBXBuildFile; fileRef = C8BC494B2C1C1CD5006BAF89 /* XWHUDManager_loading.gif */; };
+		08B54EFB30402CCB0017ED49 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C896B9B22A930BAA00217512 /* LaunchScreen.storyboard */; };
+		08B54EFC30402CCB0017ED49 /* XWHUDManager_error@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A92B6A1FDC00F60E62 /* XWHUDManager_error@2x.png */; };
+		08B54EFD30402CCB0017ED49 /* CodeScan.bundle in Resources */ = {isa = PBXBuildFile; fileRef = C87EB45A2BA17D3E00F9285B /* CodeScan.bundle */; };
+		08B54EFE30402CCB0017ED49 /* broadcast_loading.gif in Resources */ = {isa = PBXBuildFile; fileRef = C85D550E2E6182DC00BFEEDA /* broadcast_loading.gif */; };
+		08B54EFF30402CCB0017ED49 /* devices_config.json in Resources */ = {isa = PBXBuildFile; fileRef = C89B78802CC1EFEA0048B746 /* devices_config.json */; };
+		08B54F0030402CCB0017ED49 /* XWHUDManager_error@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5AA2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png */; };
+		08B54F0130402CCB0017ED49 /* devices1.5.md in Resources */ = {isa = PBXBuildFile; fileRef = 8CC3F7AB2FBAB35700CD3373 /* devices1.5.md */; };
+		08B54F0230402CCB0017ED49 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C896B9B02A930BAA00217512 /* Assets.xcassets */; };
+		08B54F0330402CCB0017ED49 /* XWHUDManager_info@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB8F2A930C3800217512 /* XWHUDManager_info@2x.png */; };
+		08B54F0430402CCB0017ED49 /* XWHUDManager_info@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB8C2A930C3800217512 /* XWHUDManager_info@3x.png */; };
+		08B54F0530402CCB0017ED49 /* XWHUDManager_right@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB8D2A930C3800217512 /* XWHUDManager_right@2x.png */; };
+		08B54F0630402CCB0017ED49 /* XWHUDManager_tip@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB932A930C3800217512 /* XWHUDManager_tip@2x.png */; };
+		08B54F0730402CCB0017ED49 /* XWHUDManager_successful@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A62B6A1FA500F60E62 /* XWHUDManager_successful@3x.png */; };
 		0C36C97F8A95474C9D655F09 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
 		15F6AEDF416B45D6BC28749E /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
 		1FAE4DDDBDF446118B26374D /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
@@ -2734,6 +3414,8 @@
 
 /* Begin PBXFileReference section */
 		084EF310302AB496008CB48A /* all_utc_timezones.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = all_utc_timezones.json; sourceTree = "<group>"; };
+		08B54F0C30402CCB0017ED49 /* Lumineux.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lumineux.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		08B54F0D30402CCB0017ED49 /* SunSmart copy-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "SunSmart copy-Info.plist"; path = "/Users/maginawin/Developer/iOS/YKH/sun-smart-worktrees/Lumineux/SunSmart copy-Info.plist"; sourceTree = "<absolute>"; };
 		0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorViewModel.swift; sourceTree = "<group>"; };
 		29E6735F1867DC54FBDDBAA9 /* Pods-Common-SylSmart.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SylSmart.debug.xcconfig"; path = "Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart.debug.xcconfig"; sourceTree = "<group>"; };
 		3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyFireControllerIconName.swift; sourceTree = "<group>"; };
@@ -3487,6 +4169,16 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		08B54EEB30402CCB0017ED49 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				08B54EEC30402CCB0017ED49 /* Pods_Common_SunSmart.framework in Frameworks */,
+				08B54EED30402CCB0017ED49 /* NordicSigMeshSDK in Frameworks */,
+				08B54EEE30402CCB0017ED49 /* Pods_Common_SunSmart.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C88555122DE6B44C00C8B688 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -4276,6 +4968,7 @@
 				C896B9A52A930BA800217512 /* Products */,
 				D768458DC30C9D1E66429902 /* Pods */,
 				4EFDC03D8D0C5DDD54D9D8A8 /* Frameworks */,
+				08B54F0D30402CCB0017ED49 /* SunSmart copy-Info.plist */,
 			);
 			sourceTree = "<group>";
 		};
@@ -4286,6 +4979,7 @@
 				C885552E2DE6B44C00C8B688 /* Archipelago.app */,
 				C886E1882E30DE4900D0C3A6 /* SylSmart.app */,
 				C8BB676F2ED3F056000C63EE /* SLG Sync Plus.app */,
+				08B54F0C30402CCB0017ED49 /* Lumineux.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -5550,6 +6244,28 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		08B54C5930402CCB0017ED49 /* Lumineux */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 08B54F0930402CCB0017ED49 /* Build configuration list for PBXNativeTarget "Lumineux" */;
+			buildPhases = (
+				08B54C5C30402CCB0017ED49 /* [CP] Check Pods Manifest.lock */,
+				08B54C5D30402CCB0017ED49 /* Sources */,
+				08B54EEB30402CCB0017ED49 /* Frameworks */,
+				08B54EEF30402CCB0017ED49 /* Resources */,
+				08B54F0830402CCB0017ED49 /* [CP] Embed Pods Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Lumineux;
+			packageProductDependencies = (
+				08B54C5A30402CCB0017ED49 /* NordicSigMeshSDK */,
+			);
+			productName = SunSmart;
+			productReference = 08B54F0C30402CCB0017ED49 /* Lumineux.app */;
+			productType = "com.apple.product-type.application";
+		};
 		C88553AD2DE6B44C00C8B688 /* Archipelago */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = C885552B2DE6B44C00C8B688 /* Build configuration list for PBXNativeTarget "Archipelago" */;
@@ -5674,11 +6390,43 @@
 				C88553AD2DE6B44C00C8B688 /* Archipelago */,
 				C886DFFD2E30DE4900D0C3A6 /* SylSmart */,
 				C8BB65AB2ED3F056000C63EE /* SLG Sync Plus */,
+				08B54C5930402CCB0017ED49 /* Lumineux */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		08B54EEF30402CCB0017ED49 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				08B54EF030402CCB0017ED49 /* Privacy Policy.html in Resources */,
+				08B54EF130402CCB0017ED49 /* XWHUDManager_right@3x.png in Resources */,
+				08B54EF230402CCB0017ED49 /* User Agreement.html in Resources */,
+				08B54EF330402CCB0017ED49 /* Localizable.strings in Resources */,
+				08B54EF430402CCB0017ED49 /* InfoPlist.strings in Resources */,
+				08B54EF530402CCB0017ED49 /* device_add.mp3 in Resources */,
+				08B54EF630402CCB0017ED49 /* device_reset.mp3 in Resources */,
+				08B54EF730402CCB0017ED49 /* all_utc_timezones.json in Resources */,
+				08B54EF830402CCB0017ED49 /* XWHUDManager_successful@2x.png in Resources */,
+				08B54EF930402CCB0017ED49 /* XWHUDManager_tip@3x.png in Resources */,
+				08B54EFA30402CCB0017ED49 /* XWHUDManager_loading.gif in Resources */,
+				08B54EFB30402CCB0017ED49 /* LaunchScreen.storyboard in Resources */,
+				08B54EFC30402CCB0017ED49 /* XWHUDManager_error@2x.png in Resources */,
+				08B54EFD30402CCB0017ED49 /* CodeScan.bundle in Resources */,
+				08B54EFE30402CCB0017ED49 /* broadcast_loading.gif in Resources */,
+				08B54EFF30402CCB0017ED49 /* devices_config.json in Resources */,
+				08B54F0030402CCB0017ED49 /* XWHUDManager_error@3x.png in Resources */,
+				08B54F0130402CCB0017ED49 /* devices1.5.md in Resources */,
+				08B54F0230402CCB0017ED49 /* Assets.xcassets in Resources */,
+				08B54F0330402CCB0017ED49 /* XWHUDManager_info@2x.png in Resources */,
+				08B54F0430402CCB0017ED49 /* XWHUDManager_info@3x.png in Resources */,
+				08B54F0530402CCB0017ED49 /* XWHUDManager_right@2x.png in Resources */,
+				08B54F0630402CCB0017ED49 /* XWHUDManager_tip@2x.png in Resources */,
+				08B54F0730402CCB0017ED49 /* XWHUDManager_successful@3x.png in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C88555152DE6B44C00C8B688 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -5831,6 +6579,49 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		08B54C5C30402CCB0017ED49 /* [CP] Check Pods Manifest.lock */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"${PODS_PODFILE_DIR_PATH}/Podfile.lock",
+				"${PODS_ROOT}/Manifest.lock",
+			);
+			name = "[CP] Check Pods Manifest.lock";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/Pods-Common-SunSmart-checkManifestLockResult.txt",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "diff \"${PODS_PODFILE_DIR_PATH}/Podfile.lock\" \"${PODS_ROOT}/Manifest.lock\" > /dev/null\nif [ $? != 0 ] ; then\n    # print error to STDERR\n    echo \"error: The sandbox is not in sync with the Podfile.lock. Run 'pod install' or update your CocoaPods installation.\" >&2\n    exit 1\nfi\n# This output is used by Xcode 'outputs' to avoid re-running this script phase.\necho \"SUCCESS\" > \"${SCRIPT_OUTPUT_FILE_0}\"\n";
+			showEnvVarsInLog = 0;
+		};
+		08B54F0830402CCB0017ED49 /* [CP] Embed Pods Frameworks */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+			);
+			inputPaths = (
+			);
+			name = "[CP] Embed Pods Frameworks";
+			outputFileListPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		4189671A43483BFE748246A1 /* [CP] Check Pods Manifest.lock */ = {
@@ -5986,6 +6777,666 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		08B54C5D30402CCB0017ED49 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				08B54C5E30402CCB0017ED49 /* SiteTimeZoneValue.swift in Sources */,
+				08B54C5F30402CCB0017ED49 /* SiteTimeSetMessageFactory.swift in Sources */,
+				08B54C6030402CCB0017ED49 /* SiteTimeZoneCatalog.swift in Sources */,
+				08B54C6130402CCB0017ED49 /* SitePropsEditPolicy.swift in Sources */,
+				08B54C6230402CCB0017ED49 /* SitePropsAPIClient.swift in Sources */,
+				08B54C6330402CCB0017ED49 /* SitePropsEditCoordinator.swift in Sources */,
+				08B54C6430402CCB0017ED49 /* SiteTimeZoneSelectionViewController.swift in Sources */,
+				08B54C6530402CCB0017ED49 /* SiteTimeZoneSelectionCell.swift in Sources */,
+				08B54C6630402CCB0017ED49 /* SiteTimeZoneSyncStatusView.swift in Sources */,
+				08B54C6730402CCB0017ED49 /* SiteEntryTimeZoneSyncOverlay.swift in Sources */,
+				08B54C6830402CCB0017ED49 /* SiteEntryTimeZoneSyncPolicy.swift in Sources */,
+				08B54C6930402CCB0017ED49 /* SiteEntryTimeZoneSyncResponseParser.swift in Sources */,
+				08B54C6A30402CCB0017ED49 /* SiteEntryTimeZoneSyncCoordinator.swift in Sources */,
+				08B54C6B30402CCB0017ED49 /* SiteTimeZoneSyncPresentationState.swift in Sources */,
+				08B54C6C30402CCB0017ED49 /* SiteGatewayCloudTimeZoneTarget.swift in Sources */,
+				08B54C6D30402CCB0017ED49 /* SiteGatewayCloudTimeZoneLocalContext.swift in Sources */,
+				08B54C6E30402CCB0017ED49 /* SiteGatewayCloudTimeZoneSessionCoordinator.swift in Sources */,
+				08B54C6F30402CCB0017ED49 /* SiteTimeZoneEditSyncCoordinator.swift in Sources */,
+				08B54C7030402CCB0017ED49 /* SiteGatewayCloudTimeZoneSyncState.swift in Sources */,
+				08B54C7130402CCB0017ED49 /* SiteGatewayCloudTimeZoneResponseParser.swift in Sources */,
+				08B54C7230402CCB0017ED49 /* SiteGatewayCloudTimeZoneAPIClient.swift in Sources */,
+				08B54C7330402CCB0017ED49 /* SiteGatewayCloudTimeZoneSyncCoordinator.swift in Sources */,
+				08B54C7430402CCB0017ED49 /* SiteEntryGatewayTimeZoneStatusView.swift in Sources */,
+				08B54C7530402CCB0017ED49 /* SiteTimeZoneReviewSyncView.swift in Sources */,
+				08B54C7630402CCB0017ED49 /* SyncGatewaysViewController.swift in Sources */,
+				08B54C7730402CCB0017ED49 /* SiteGatewayAccessScope.swift in Sources */,
+				08B54C7830402CCB0017ED49 /* SyncGatewaysContext.swift in Sources */,
+				08B54C7930402CCB0017ED49 /* SyncGatewaysState.swift in Sources */,
+				08B54C7A30402CCB0017ED49 /* SyncGatewaysScanSession.swift in Sources */,
+				08B54C7B30402CCB0017ED49 /* GatewayTimeSyncCoordinator.swift in Sources */,
+				08B54C7C30402CCB0017ED49 /* GatewayFastAddTimeInitialization.swift in Sources */,
+				08B54C7D30402CCB0017ED49 /* SiteGatewayHeaderLayoutPolicy.swift in Sources */,
+				08B54C7E30402CCB0017ED49 /* SyncGatewaysCloudBridge.swift in Sources */,
+				08B54C7F30402CCB0017ED49 /* SyncGatewaysDirtyTimeOverride.swift in Sources */,
+				08B54C8030402CCB0017ED49 /* SyncGatewaysTimeZoneCardView.swift in Sources */,
+				08B54C8130402CCB0017ED49 /* SyncGatewayCell.swift in Sources */,
+				08B54C8230402CCB0017ED49 /* SyncGatewaysSupportingViews.swift in Sources */,
+				08B54C8330402CCB0017ED49 /* GatewayCloudSyncGenerationPolicy.swift in Sources */,
+				08B54C8430402CCB0017ED49 /* GatewayTimeInformationCoordinator.swift in Sources */,
+				08B54C8530402CCB0017ED49 /* GatewayDetailClockCoordinator.swift in Sources */,
+				08B54C8630402CCB0017ED49 /* GatewayMenuPolicy.swift in Sources */,
+				08B54C8730402CCB0017ED49 /* GatewayDetailProxyConnectionState.swift in Sources */,
+				08B54C8830402CCB0017ED49 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
+				08B54C8930402CCB0017ED49 /* SimulateFaultAction.swift in Sources */,
+				08B54C8A30402CCB0017ED49 /* SimulateFaultRequest.swift in Sources */,
+				08B54C8B30402CCB0017ED49 /* SimulateFaultSectionView.swift in Sources */,
+				08B54C8C30402CCB0017ED49 /* SimulateFaultViewController.swift in Sources */,
+				08B54C8D30402CCB0017ED49 /* FirmwareUpdateStateView.swift in Sources */,
+				08B54C8E30402CCB0017ED49 /* GroupAddViewController.swift in Sources */,
+				08B54C8F30402CCB0017ED49 /* ScheduleAddView.swift in Sources */,
+				08B54C9030402CCB0017ED49 /* EmerFireSelectionCell.swift in Sources */,
+				08B54C9130402CCB0017ED49 /* EmerFireAlarmDevicesRepairView.swift in Sources */,
+				08B54C9230402CCB0017ED49 /* DevicesViewController.swift in Sources */,
+				08B54C9330402CCB0017ED49 /* DeviceNameFilterSession.swift in Sources */,
+				08B54C9430402CCB0017ED49 /* DeviceNameFilterMenuView.swift in Sources */,
+				08B54C9530402CCB0017ED49 /* DeviceNameFilterSearchView.swift in Sources */,
+				08B54C9630402CCB0017ED49 /* MeshNetwork+SunSmart.swift in Sources */,
+				08B54C9730402CCB0017ED49 /* SiteAddressDataHeaderView.swift in Sources */,
+				08B54C9830402CCB0017ED49 /* ProvisioningDevice+Add.swift in Sources */,
+				08B54C9930402CCB0017ED49 /* SpaceNodeCapacityPolicy.swift in Sources */,
+				08B54C9A30402CCB0017ED49 /* PJEightKeySwitchMonitorVC.swift in Sources */,
+				08B54C9B30402CCB0017ED49 /* LightSensorCalibrationSelectView.swift in Sources */,
+				08B54C9C30402CCB0017ED49 /* ProfileManualOverrideTimeoutView.swift in Sources */,
+				08B54C9D30402CCB0017ED49 /* EnergyStaticDataViewController.swift in Sources */,
+				08B54C9E30402CCB0017ED49 /* SceneTemplates.swift in Sources */,
+				08B54C9F30402CCB0017ED49 /* GroupPathSequencePathHeaderView.swift in Sources */,
+				08B54CA030402CCB0017ED49 /* BuoySliderView.swift in Sources */,
+				08B54CA130402CCB0017ED49 /* ServerSelectionViewController.swift in Sources */,
+				08B54CA230402CCB0017ED49 /* ImagesPickerViewController.swift in Sources */,
+				08B54CA330402CCB0017ED49 /* GroupSwitch.swift in Sources */,
+				08B54CA430402CCB0017ED49 /* GroupPowerSwitchesViewModel.swift in Sources */,
+				08B54CA530402CCB0017ED49 /* MeshFirmwareListViewCell.swift in Sources */,
+				08B54CA630402CCB0017ED49 /* DeviceForceResetDevicePageController.swift in Sources */,
+				08B54CA730402CCB0017ED49 /* WebViewController.swift in Sources */,
+				08B54CA830402CCB0017ED49 /* SpaceMenuView.swift in Sources */,
+				08B54CA930402CCB0017ED49 /* PJDevicesAddFlowType.swift in Sources */,
+				08B54CAA30402CCB0017ED49 /* DeviceBottomActionView.swift in Sources */,
+				08B54CAB30402CCB0017ED49 /* ReadDevicesDataViewController.swift in Sources */,
+				08B54CAC30402CCB0017ED49 /* ProfileSettingsSphasesView.swift in Sources */,
+				08B54CAD30402CCB0017ED49 /* DeviceRestoreEmptyViewCell.swift in Sources */,
+				08B54CAE30402CCB0017ED49 /* MeshSelectDistributorViewController.swift in Sources */,
+				08B54CAF30402CCB0017ED49 /* EnergyTimeSeriesDataImportView.swift in Sources */,
+				08B54CB030402CCB0017ED49 /* ProfileDeviceDayNightLuxViewCell.swift in Sources */,
+				08B54CB130402CCB0017ED49 /* NoInternetHeaderView.swift in Sources */,
+				08B54CB230402CCB0017ED49 /* LightSensorManualCorrectionView.swift in Sources */,
+				08B54CB330402CCB0017ED49 /* ProfileLightSensorTemplateController.swift in Sources */,
+				08B54CB430402CCB0017ED49 /* DeviceParameterData.swift in Sources */,
+				08B54CB530402CCB0017ED49 /* UIViewController+Extension.swift in Sources */,
+				08B54CB630402CCB0017ED49 /* MeshDeviceConfigInfo.swift in Sources */,
+				08B54CB730402CCB0017ED49 /* LBXScanView.swift in Sources */,
+				08B54CB830402CCB0017ED49 /* GroupPathSequencePathViewCell.swift in Sources */,
+				08B54CB930402CCB0017ED49 /* RoundProgressView.swift in Sources */,
+				08B54CBA30402CCB0017ED49 /* EnergyConsumptionInstructionController.swift in Sources */,
+				08B54CBB30402CCB0017ED49 /* PJEightKeySwitchActivationAlertController.swift in Sources */,
+				08B54CBC30402CCB0017ED49 /* DeviceDongleSectionHeaderView.swift in Sources */,
+				08B54CBD30402CCB0017ED49 /* PopGestureScrollView.swift in Sources */,
+				08B54CBE30402CCB0017ED49 /* ServerSelectionView.swift in Sources */,
+				08B54CBF30402CCB0017ED49 /* DeviceParameterRatedPowerPhaseData.swift in Sources */,
+				08B54CC030402CCB0017ED49 /* ProfileDayNightLuxDevicesViewController.swift in Sources */,
+				08B54CC130402CCB0017ED49 /* EmerFireAlarmMonitorVC.swift in Sources */,
+				08B54CC230402CCB0017ED49 /* EmerFireAlarmMonitorDelegates.swift in Sources */,
+				08B54CC330402CCB0017ED49 /* EmerFireAlarmMonitorRouting.swift in Sources */,
+				08B54CC430402CCB0017ED49 /* EmerFireAlarmMonitorRendering.swift in Sources */,
+				08B54CC530402CCB0017ED49 /* EmerFireAlarmMonitorViewModel.swift in Sources */,
+				08B54CC630402CCB0017ED49 /* EmerFireAlarmMonitorState.swift in Sources */,
+				08B54CC730402CCB0017ED49 /* EmergencyFireControllerIconName.swift in Sources */,
+				08B54CC830402CCB0017ED49 /* DeviceParameterDeviceCell.swift in Sources */,
+				08B54CC930402CCB0017ED49 /* EnergyFileData.swift in Sources */,
+				08B54CCA30402CCB0017ED49 /* DeviceLightControlViewCell.swift in Sources */,
+				08B54CCB30402CCB0017ED49 /* DeviceLightControlPanelView.swift in Sources */,
+				08B54CCC30402CCB0017ED49 /* DeviceUpDownRatioControlView.swift in Sources */,
+				08B54CCD30402CCB0017ED49 /* UpDownRatioCommandScheduler.swift in Sources */,
+				08B54CCE30402CCB0017ED49 /* ELControllerFunctionTestView.swift in Sources */,
+				08B54CCF30402CCB0017ED49 /* ELControllerFunctionTestHelper.swift in Sources */,
+				08B54CD030402CCB0017ED49 /* UpDownLightView.swift in Sources */,
+				08B54CD130402CCB0017ED49 /* UIImage+Extension.swift in Sources */,
+				08B54CD230402CCB0017ED49 /* LBXScanViewController.swift in Sources */,
+				08B54CD330402CCB0017ED49 /* SceneAddTemplateTitleHeaderView.swift in Sources */,
+				08B54CD430402CCB0017ED49 /* MacroDefinition.swift in Sources */,
+				08B54CD530402CCB0017ED49 /* GatewayNameViewCell.swift in Sources */,
+				08B54CD630402CCB0017ED49 /* DeviceGroupsView.swift in Sources */,
+				08B54CD730402CCB0017ED49 /* Database.swift in Sources */,
+				08B54CD830402CCB0017ED49 /* ProgressHUD+Extension.swift in Sources */,
+				08B54CD930402CCB0017ED49 /* DeviceInformationViewController.swift in Sources */,
+				08B54CDA30402CCB0017ED49 /* UIColor+Extension.swift in Sources */,
+				08B54CDB30402CCB0017ED49 /* ShareAuthorityViewController.swift in Sources */,
+				08B54CDC30402CCB0017ED49 /* UILabel+Extension.swift in Sources */,
+				08B54CDD30402CCB0017ED49 /* GroupProfilesViewController.swift in Sources */,
+				08B54CDE30402CCB0017ED49 /* LBXScanLineAnimation.swift in Sources */,
+				08B54CDF30402CCB0017ED49 /* GroupDevicesFunctionView.swift in Sources */,
+				08B54CE030402CCB0017ED49 /* DeviceSwitchData.swift in Sources */,
+				08B54CE130402CCB0017ED49 /* KineticSwitchBindingPolicy.swift in Sources */,
+				08B54CE230402CCB0017ED49 /* DeviceSettingsCollectionViewCell.swift in Sources */,
+				08B54CE330402CCB0017ED49 /* SwitchSelectGroupsViewController.swift in Sources */,
+				08B54CE430402CCB0017ED49 /* ProfileNightDayIlluminanceThresholdView.swift in Sources */,
+				08B54CE530402CCB0017ED49 /* SiteViewController.swift in Sources */,
+				08B54CE630402CCB0017ED49 /* ScheduleDevicesView.swift in Sources */,
+				08B54CE730402CCB0017ED49 /* GroupPathSequenceTriggerZoneController.swift in Sources */,
+				08B54CE830402CCB0017ED49 /* GroupPathSequenceAddDescriptionController.swift in Sources */,
+				08B54CE930402CCB0017ED49 /* CustomTableViewCell.swift in Sources */,
+				08B54CEA30402CCB0017ED49 /* BatchImportResultView.swift in Sources */,
+				08B54CEB30402CCB0017ED49 /* SyncDevicesTitleHeaderView.swift in Sources */,
+				08B54CEC30402CCB0017ED49 /* SwitchProxyInstructionsViewController.swift in Sources */,
+				08B54CED30402CCB0017ED49 /* LightSensorCalibrationViewController.swift in Sources */,
+				08B54CEE30402CCB0017ED49 /* LightSensorCalibrationModeView.swift in Sources */,
+				08B54CEF30402CCB0017ED49 /* LightSensorCalibrationAboutView.swift in Sources */,
+				08B54CF030402CCB0017ED49 /* DeviceMeshNetworkProxyScanner.swift in Sources */,
+				08B54CF130402CCB0017ED49 /* EnergyStatisticsTimeSeriesData.swift in Sources */,
+				08B54CF230402CCB0017ED49 /* UIButton+Extension.swift in Sources */,
+				08B54CF330402CCB0017ED49 /* DeviceAddViewController.swift in Sources */,
+				08B54CF430402CCB0017ED49 /* SceneExecuteDataPickerView.swift in Sources */,
+				08B54CF530402CCB0017ED49 /* SiteData.swift in Sources */,
+				08B54CF630402CCB0017ED49 /* FireAlarmTableReusable.swift in Sources */,
+				08B54CF730402CCB0017ED49 /* BatchImportResultHelpController.swift in Sources */,
+				08B54CF830402CCB0017ED49 /* DeviceAddSectionBackgroundView.swift in Sources */,
+				08B54CF930402CCB0017ED49 /* Node+SyncData.swift in Sources */,
+				08B54CFA30402CCB0017ED49 /* DeviceScheduleAddressCleanup.swift in Sources */,
+				08B54CFB30402CCB0017ED49 /* DevicePermanentDeletionCleanup.swift in Sources */,
+				08B54CFC30402CCB0017ED49 /* SceneDeleteCapability.swift in Sources */,
+				08B54CFD30402CCB0017ED49 /* TimedScheduleTimeSyncPolicy.swift in Sources */,
+				08B54CFE30402CCB0017ED49 /* MeshFirmwareUpgradeResultsView.swift in Sources */,
+				08B54CFF30402CCB0017ED49 /* PJDevicesLegacyContainerController.swift in Sources */,
+				08B54D0030402CCB0017ED49 /* ProfileTriggerConditionPhasesView.swift in Sources */,
+				08B54D0130402CCB0017ED49 /* GroupMenuView.swift in Sources */,
+				08B54D0230402CCB0017ED49 /* LightSensorCalibrationAdjustSpeedView.swift in Sources */,
+				08B54D0330402CCB0017ED49 /* ScheduleAddViewController.swift in Sources */,
+				08B54D0430402CCB0017ED49 /* DeviceResetDeviceStepController.swift in Sources */,
+				08B54D0530402CCB0017ED49 /* ProfileInstructionsViewCell.swift in Sources */,
+				08B54D0630402CCB0017ED49 /* UIViewController+WMPageController.m in Sources */,
+				08B54D0730402CCB0017ED49 /* EnergyStaticDataSpaceView.swift in Sources */,
+				08B54D0830402CCB0017ED49 /* Int+Hex.swift in Sources */,
+				08B54D0930402CCB0017ED49 /* EmerFireAlarmInfoRowCell.swift in Sources */,
+				08B54D0A30402CCB0017ED49 /* DaliDevicesViewCell.swift in Sources */,
+				08B54D0B30402CCB0017ED49 /* SyncDevicesViewController.swift in Sources */,
+				08B54D0C30402CCB0017ED49 /* DevicePwmFrequencySelectView.swift in Sources */,
+				08B54D0D30402CCB0017ED49 /* PJEightKeySwitchPanelDefinition.swift in Sources */,
+				08B54D0E30402CCB0017ED49 /* GatewayAPNMenuView.swift in Sources */,
+				08B54D0F30402CCB0017ED49 /* SiteEditViewController.swift in Sources */,
+				08B54D1030402CCB0017ED49 /* AttributedTextViewController.swift in Sources */,
+				08B54D1130402CCB0017ED49 /* GroupSwitchPanelViewCell.swift in Sources */,
+				08B54D1230402CCB0017ED49 /* GroupPowerSwitchCell.swift in Sources */,
+				08B54D1330402CCB0017ED49 /* EmerFireToggleCell.swift in Sources */,
+				08B54D1430402CCB0017ED49 /* EmerFireStepperCell.swift in Sources */,
+				08B54D1530402CCB0017ED49 /* DeviceDongleScheduleViewCell.swift in Sources */,
+				08B54D1630402CCB0017ED49 /* SpaceData.swift in Sources */,
+				08B54D1730402CCB0017ED49 /* PJPreAddEightKeySwitchesVC.swift in Sources */,
+				08B54D1830402CCB0017ED49 /* GroupAddHeaderView.swift in Sources */,
+				08B54D1930402CCB0017ED49 /* LCWeakTimer.swift in Sources */,
+				08B54D1A30402CCB0017ED49 /* TimeSeriesDataGuideView.swift in Sources */,
+				08B54D1B30402CCB0017ED49 /* MeshFirmwareUpdateLogViewCell.swift in Sources */,
+				08B54D1C30402CCB0017ED49 /* SWCirclePieView.swift in Sources */,
+				08B54D1D30402CCB0017ED49 /* LYCirclePieModel.swift in Sources */,
+				08B54D1E30402CCB0017ED49 /* LYCirclePieView.swift in Sources */,
+				08B54D1F30402CCB0017ED49 /* ScheduleGroupsView.swift in Sources */,
+				08B54D2030402CCB0017ED49 /* GroupPathSequencePathTestView.swift in Sources */,
+				08B54D2130402CCB0017ED49 /* DaliSettingDeviceWarnHeaderView.swift in Sources */,
+				08B54D2230402CCB0017ED49 /* WMMenuItem.m in Sources */,
+				08B54D2330402CCB0017ED49 /* ShareBacthListViewController.swift in Sources */,
+				08B54D2430402CCB0017ED49 /* BleFirmwareTypeUpdateViewCell.swift in Sources */,
+				08B54D2530402CCB0017ED49 /* SpaceNewCreationProcessController.swift in Sources */,
+				08B54D2630402CCB0017ED49 /* PJDevicesRestoreFlowFactory.swift in Sources */,
+				08B54D2730402CCB0017ED49 /* EmerFireAlarmStatusSetView.swift in Sources */,
+				08B54D2830402CCB0017ED49 /* PJLinkedStaOpertionsView.swift in Sources */,
+				08B54D2930402CCB0017ED49 /* DevicesReplySetViewController.swift in Sources */,
+				08B54D2A30402CCB0017ED49 /* DeviceRatedPowerCalibrationSetSeparatelyViewCell.swift in Sources */,
+				08B54D2B30402CCB0017ED49 /* EmerFireAlarmMoniHead.swift in Sources */,
+				08B54D2C30402CCB0017ED49 /* CALayer+Animations.swift in Sources */,
+				08B54D2D30402CCB0017ED49 /* WMPageController.m in Sources */,
+				08B54D2E30402CCB0017ED49 /* FirmwareVersionData.swift in Sources */,
+				08B54D2F30402CCB0017ED49 /* DeviceForceResetDeviceController.swift in Sources */,
+				08B54D3030402CCB0017ED49 /* DeviceAllOnOffViewCell.swift in Sources */,
+				08B54D3130402CCB0017ED49 /* ProfilePowerUpBehaviorView.swift in Sources */,
+				08B54D3230402CCB0017ED49 /* ScheduleScenesView.swift in Sources */,
+				08B54D3330402CCB0017ED49 /* EmerFireAlarmDeviceCell.swift in Sources */,
+				08B54D3430402CCB0017ED49 /* DeviceEmerFireData.swift in Sources */,
+				08B54D3530402CCB0017ED49 /* DeviceEmerFireCache.swift in Sources */,
+				08B54D3630402CCB0017ED49 /* EmerFireAlarmControllerSyncVC.swift in Sources */,
+				08B54D3730402CCB0017ED49 /* DeviceEmerFireData+Sync.swift in Sources */,
+				08B54D3830402CCB0017ED49 /* EmergencyFireControllerSyncPlan.swift in Sources */,
+				08B54D3930402CCB0017ED49 /* EmergencyFireControllerSyncPlanner.swift in Sources */,
+				08B54D3A30402CCB0017ED49 /* EmergencyFireControllerSceneEventManager.swift in Sources */,
+				08B54D3B30402CCB0017ED49 /* ShareAuthoritySpaceViewCell.swift in Sources */,
+				08B54D3C30402CCB0017ED49 /* GatewayModel.swift in Sources */,
+				08B54D3D30402CCB0017ED49 /* GatewayAssociatedSpaceCandidatePolicy.swift in Sources */,
+				08B54D3E30402CCB0017ED49 /* DeviceRestoreCandidatePolicy.swift in Sources */,
+				08B54D3F30402CCB0017ED49 /* DeviceRestoreEFCRecoveryPolicy.swift in Sources */,
+				08B54D4030402CCB0017ED49 /* DaylightSensorInstructionsViewCell.swift in Sources */,
+				08B54D4130402CCB0017ED49 /* LinkedEmerFireEditViewModel.swift in Sources */,
+				08B54D4230402CCB0017ED49 /* FSCalendarStickyHeader.m in Sources */,
+				08B54D4330402CCB0017ED49 /* EmerFireNameCell.swift in Sources */,
+				08B54D4430402CCB0017ED49 /* EnergyHarvestHistoryViewCell.swift in Sources */,
+				08B54D4530402CCB0017ED49 /* PJEightKeySwitchRepository.swift in Sources */,
+				08B54D4630402CCB0017ED49 /* FSCalendarAppearance.m in Sources */,
+				08B54D4730402CCB0017ED49 /* ProfileLightSensorTemplateListController.swift in Sources */,
+				08B54D4830402CCB0017ED49 /* PJEightKeySwitchInfoRowView.swift in Sources */,
+				08B54D4930402CCB0017ED49 /* FSCalendarCalculator.m in Sources */,
+				08B54D4A30402CCB0017ED49 /* FSCalendarCell.m in Sources */,
+				08B54D4B30402CCB0017ED49 /* PJEightKeySwitchPeriodicReportingSliderView.swift in Sources */,
+				08B54D4C30402CCB0017ED49 /* DeviceAddCandidateDeviceListView.swift in Sources */,
+				08B54D4D30402CCB0017ED49 /* DeviceAddTargetSelectView.swift in Sources */,
+				08B54D4E30402CCB0017ED49 /* GroupPathSequenceDeviceAddView.swift in Sources */,
+				08B54D4F30402CCB0017ED49 /* FSCalendarHeaderView.m in Sources */,
+				08B54D5030402CCB0017ED49 /* EnergyConsumptionInstructionView.swift in Sources */,
+				08B54D5130402CCB0017ED49 /* ProfileDayNightLuxViewController.swift in Sources */,
+				08B54D5230402CCB0017ED49 /* PJDevicesRestoreFlowType.swift in Sources */,
+				08B54D5330402CCB0017ED49 /* SiteGatewayStatusView.swift in Sources */,
+				08B54D5430402CCB0017ED49 /* FSCalendarSeparatorDecorationView.m in Sources */,
+				08B54D5530402CCB0017ED49 /* ToastStatusView.swift in Sources */,
+				08B54D5630402CCB0017ED49 /* FSCalendarExtensions.m in Sources */,
+				08B54D5730402CCB0017ED49 /* FSCalendarWeekdayView.m in Sources */,
+				08B54D5830402CCB0017ED49 /* SpacePathTriggerZoneController.swift in Sources */,
+				08B54D5930402CCB0017ED49 /* FSCalendarCollectionView.m in Sources */,
+				08B54D5A30402CCB0017ED49 /* FSCalendar.m in Sources */,
+				08B54D5B30402CCB0017ED49 /* SiteDeviceAddViewController.swift in Sources */,
+				08B54D5C30402CCB0017ED49 /* FSCalendarDelegationProxy.m in Sources */,
+				08B54D5D30402CCB0017ED49 /* FSCalendarDelegationFactory.m in Sources */,
+				08B54D5E30402CCB0017ED49 /* FSCalendarTransitionCoordinator.m in Sources */,
+				08B54D5F30402CCB0017ED49 /* FSCalendarConstants.m in Sources */,
+				08B54D6030402CCB0017ED49 /* DeviceAudioManager.swift in Sources */,
+				08B54D6130402CCB0017ED49 /* DeviceMeshNetworkResetConfiguredController.swift in Sources */,
+				08B54D6230402CCB0017ED49 /* DeviceForceResetStepView.swift in Sources */,
+				08B54D6330402CCB0017ED49 /* FSCalendarCollectionViewLayout.m in Sources */,
+				08B54D6430402CCB0017ED49 /* SpaceFunctionFooterView.swift in Sources */,
+				08B54D6530402CCB0017ED49 /* DeviceAddBottomView.swift in Sources */,
+				08B54D6630402CCB0017ED49 /* SceneViewController.swift in Sources */,
+				08B54D6730402CCB0017ED49 /* PJEightKeySwitchActivationAlertView.swift in Sources */,
+				08B54D6830402CCB0017ED49 /* MainMenuView.swift in Sources */,
+				08B54D6930402CCB0017ED49 /* ShareBacthListViewCell.swift in Sources */,
+				08B54D6A30402CCB0017ED49 /* String+Extension.swift in Sources */,
+				08B54D6B30402CCB0017ED49 /* EmerFireStatus.swift in Sources */,
+				08B54D6C30402CCB0017ED49 /* GatewayViewController.swift in Sources */,
+				08B54D6D30402CCB0017ED49 /* WiFiGatewayViewController.swift in Sources */,
+				08B54D6E30402CCB0017ED49 /* WiFiGatewayAutomaticLoadGate.swift in Sources */,
+				08B54D6F30402CCB0017ED49 /* WiFiGatewayV19Timing.swift in Sources */,
+				08B54D7030402CCB0017ED49 /* WiFiGatewayCredentialMutationReducer.swift in Sources */,
+				08B54D7130402CCB0017ED49 /* WiFiGatewayConnectionPollingReducer.swift in Sources */,
+				08B54D7230402CCB0017ED49 /* WiFiSSIDProvider.swift in Sources */,
+				08B54D7330402CCB0017ED49 /* GatewayServerAuthorizationService.swift in Sources */,
+				08B54D7430402CCB0017ED49 /* GatewayNetworkConnectivityCell.swift in Sources */,
+				08B54D7530402CCB0017ED49 /* GatewayChangeWiFiAlertView.swift in Sources */,
+				08B54D7630402CCB0017ED49 /* UIView+Extension.swift in Sources */,
+				08B54D7730402CCB0017ED49 /* ScenesViewCell.swift in Sources */,
+				08B54D7830402CCB0017ED49 /* DeviceLightInfoSectionView.swift in Sources */,
+				08B54D7930402CCB0017ED49 /* NavigationViewController.swift in Sources */,
+				08B54D7A30402CCB0017ED49 /* PJUIDebugConsoleTracer.swift in Sources */,
+				08B54D7B30402CCB0017ED49 /* PJDevicesFireAlarmRestoreContainerController.swift in Sources */,
+				08B54D7C30402CCB0017ED49 /* DeviceAddMenuView.swift in Sources */,
+				08B54D7D30402CCB0017ED49 /* GroupDeviceViewCell.swift in Sources */,
+				08B54D7E30402CCB0017ED49 /* SceneAddGroupViewCell.swift in Sources */,
+				08B54D7F30402CCB0017ED49 /* DeviceAddParameterSettingsView.swift in Sources */,
+				08B54D8030402CCB0017ED49 /* DeviceDongleData.swift in Sources */,
+				08B54D8130402CCB0017ED49 /* DeviceLightBasicController.swift in Sources */,
+				08B54D8230402CCB0017ED49 /* DeviceBaseViewController.swift in Sources */,
+				08B54D8330402CCB0017ED49 /* BleFirmwareUpdateRestoreView.swift in Sources */,
+				08B54D8430402CCB0017ED49 /* FirmwareVersionViewController.swift in Sources */,
+				08B54D8530402CCB0017ED49 /* WiFiFirmwareUpdateViewController.swift in Sources */,
+				08B54D8630402CCB0017ED49 /* WiFiFirmwareDFUMetadataBuilder.swift in Sources */,
+				08B54D8730402CCB0017ED49 /* WiFiFirmwareDFUState.swift in Sources */,
+				08B54D8830402CCB0017ED49 /* WiFiFirmwareDFUStatusReducer.swift in Sources */,
+				08B54D8930402CCB0017ED49 /* WiFiFirmwareDFUCancelReducer.swift in Sources */,
+				08B54D8A30402CCB0017ED49 /* WiFiFirmwareDFUTransactionGate.swift in Sources */,
+				08B54D8B30402CCB0017ED49 /* WiFiFirmwareDFUCoordinator.swift in Sources */,
+				08B54D8C30402CCB0017ED49 /* WiFiFirmwareUpdatingView.swift in Sources */,
+				08B54D8D30402CCB0017ED49 /* SitesViewCell.swift in Sources */,
+				08B54D8E30402CCB0017ED49 /* RangeSlider.swift in Sources */,
+				08B54D8F30402CCB0017ED49 /* ProfileInstructionsHeaderView.swift in Sources */,
+				08B54D9030402CCB0017ED49 /* DaliReplaceMasterSelectView.swift in Sources */,
+				08B54D9130402CCB0017ED49 /* DeviceGroupsSelectData.swift in Sources */,
+				08B54D9230402CCB0017ED49 /* CharacterSelectView.swift in Sources */,
+				08B54D9330402CCB0017ED49 /* ZipHandler.swift in Sources */,
+				08B54D9430402CCB0017ED49 /* CustomActivityItemSource.swift in Sources */,
+				08B54D9530402CCB0017ED49 /* ProfileSettingsHeaderView.swift in Sources */,
+				08B54D9630402CCB0017ED49 /* GroupViewController.swift in Sources */,
+				08B54D9730402CCB0017ED49 /* DaliMasterViewController.swift in Sources */,
+				08B54D9830402CCB0017ED49 /* PJEightKeySwitchSelectPanelController.swift in Sources */,
+				08B54D9930402CCB0017ED49 /* MultiseriatePickerView.swift in Sources */,
+				08B54D9A30402CCB0017ED49 /* SwitchSelectScenePageController.swift in Sources */,
+				08B54D9B30402CCB0017ED49 /* GroupSwitchEnOceanProxyHeaderView.swift in Sources */,
+				08B54D9C30402CCB0017ED49 /* DeviceParameterDevicesViewController.swift in Sources */,
+				08B54D9D30402CCB0017ED49 /* DeviceRatedPowerCalibrationController.swift in Sources */,
+				08B54D9E30402CCB0017ED49 /* SharePermissionSelectionController.swift in Sources */,
+				08B54D9F30402CCB0017ED49 /* EnergyTestData.swift in Sources */,
+				08B54DA030402CCB0017ED49 /* DeviceRatedPowerCalibrationHeaderView.swift in Sources */,
+				08B54DA130402CCB0017ED49 /* DeviceRatedPowerCalibrationSetAllViewCell.swift in Sources */,
+				08B54DA230402CCB0017ED49 /* EnergyStaticDataGroupView.swift in Sources */,
+				08B54DA330402CCB0017ED49 /* DeviceParameterRetedPowerViewCell.swift in Sources */,
+				08B54DA430402CCB0017ED49 /* DeviceMeshNetworkResetController.swift in Sources */,
+				08B54DA530402CCB0017ED49 /* ContentDisplayViewController.swift in Sources */,
+				08B54DA630402CCB0017ED49 /* SitesTransferredView.swift in Sources */,
+				08B54DA730402CCB0017ED49 /* DeviceAddSelectAllViewCell.swift in Sources */,
+				08B54DA830402CCB0017ED49 /* SyncDeviceStepViewCell.swift in Sources */,
+				08B54DA930402CCB0017ED49 /* ScenesViewController.swift in Sources */,
+				08B54DAA30402CCB0017ED49 /* DeviceAddViewCell.swift in Sources */,
+				08B54DAB30402CCB0017ED49 /* ImportProjectView.swift in Sources */,
+				08B54DAC30402CCB0017ED49 /* OthersViewController.swift in Sources */,
+				08B54DAD30402CCB0017ED49 /* DeviceResetBroadcasterCentral.swift in Sources */,
+				08B54DAE30402CCB0017ED49 /* LinkedEmerFireEditRow.swift in Sources */,
+				08B54DAF30402CCB0017ED49 /* PJPreAddEightKeySwitchesViewModel.swift in Sources */,
+				08B54DB030402CCB0017ED49 /* CollectionTitleHeaderView.swift in Sources */,
+				08B54DB130402CCB0017ED49 /* GlobalData.swift in Sources */,
+				08B54DB230402CCB0017ED49 /* BluetoothRequiredViewController.swift in Sources */,
+				08B54DB330402CCB0017ED49 /* DeviceAddInstructionsController.swift in Sources */,
+				08B54DB430402CCB0017ED49 /* DeviceAddResultView.swift in Sources */,
+				08B54DB530402CCB0017ED49 /* NetworkRequest.swift in Sources */,
+				08B54DB630402CCB0017ED49 /* EmerFireCardPosition.swift in Sources */,
+				08B54DB730402CCB0017ED49 /* ExternalVendorMessage+Extension.swift in Sources */,
+				08B54DB830402CCB0017ED49 /* DeviceSwitchHeaderView.swift in Sources */,
+				08B54DB930402CCB0017ED49 /* Keychain.swift in Sources */,
+				08B54DBA30402CCB0017ED49 /* GroupPathSequenceSelectData.swift in Sources */,
+				08B54DBB30402CCB0017ED49 /* GroupPathSequenceViewController.swift in Sources */,
+				08B54DBC30402CCB0017ED49 /* DeviceResetDeviceSafeModeController.swift in Sources */,
+				08B54DBD30402CCB0017ED49 /* DaliMasterMultipleControlsView.swift in Sources */,
+				08B54DBE30402CCB0017ED49 /* GatewayAssociatedSpacesController.swift in Sources */,
+				08B54DBF30402CCB0017ED49 /* SiteGatewayHeaderView.swift in Sources */,
+				08B54DC030402CCB0017ED49 /* DeviceProtocol.swift in Sources */,
+				08B54DC130402CCB0017ED49 /* BleFirmwareUpdateViewController.swift in Sources */,
+				08B54DC230402CCB0017ED49 /* SceneAddTemplateTitleCell.swift in Sources */,
+				08B54DC330402CCB0017ED49 /* SceneAddTemplateInfoSectionView.swift in Sources */,
+				08B54DC430402CCB0017ED49 /* SpaceViewController.swift in Sources */,
+				08B54DC530402CCB0017ED49 /* SpaceDebugModels.swift in Sources */,
+				08B54DC630402CCB0017ED49 /* SpaceDebugViewModel.swift in Sources */,
+				08B54DC730402CCB0017ED49 /* DebugBluetoothSession.swift in Sources */,
+				08B54DC830402CCB0017ED49 /* SpaceDebugSummaryView.swift in Sources */,
+				08B54DC930402CCB0017ED49 /* SpaceDebugDeviceCell.swift in Sources */,
+				08B54DCA30402CCB0017ED49 /* SpaceDebugViewController.swift in Sources */,
+				08B54DCB30402CCB0017ED49 /* SpaceDebugDeviceViewController.swift in Sources */,
+				08B54DCC30402CCB0017ED49 /* SpaceDebugUARTViewController.swift in Sources */,
+				08B54DCD30402CCB0017ED49 /* SpaceDebugUARTMessageCell.swift in Sources */,
+				08B54DCE30402CCB0017ED49 /* SpaceDebugUARTLogExporter.swift in Sources */,
+				08B54DCF30402CCB0017ED49 /* SpaceDebugUARTManager.swift in Sources */,
+				08B54DD030402CCB0017ED49 /* PJDeviceGroupSelectionContext.swift in Sources */,
+				08B54DD130402CCB0017ED49 /* SpaceMoreViewCell.swift in Sources */,
+				08B54DD230402CCB0017ED49 /* GroupFilterSelectView.swift in Sources */,
+				08B54DD330402CCB0017ED49 /* Scheduler.swift in Sources */,
+				08B54DD430402CCB0017ED49 /* TimedSchedulerOwnerPolicy.swift in Sources */,
+				08B54DD530402CCB0017ED49 /* SceneMembersViewCell.swift in Sources */,
+				08B54DD630402CCB0017ED49 /* ScheduleServer.swift in Sources */,
+				08B54DD730402CCB0017ED49 /* SpaceMoreViewController.swift in Sources */,
+				08B54DD830402CCB0017ED49 /* SceneAddDataListViewCell.swift in Sources */,
+				08B54DD930402CCB0017ED49 /* EnergyStaticDataDeviceViewCell.swift in Sources */,
+				08B54DDA30402CCB0017ED49 /* LinePageControl.swift in Sources */,
+				08B54DDB30402CCB0017ED49 /* DeviceMeshNetworkResetSecitonHeaderView.swift in Sources */,
+				08B54DDC30402CCB0017ED49 /* DeviceParameterSliderViewCell.swift in Sources */,
+				08B54DDD30402CCB0017ED49 /* ProfileLightSensorTemplateViewCell.swift in Sources */,
+				08B54DDE30402CCB0017ED49 /* InfoEditViewController.swift in Sources */,
+				08B54DDF30402CCB0017ED49 /* BatchSpaceData.swift in Sources */,
+				08B54DE030402CCB0017ED49 /* ShareChangePasswordController.swift in Sources */,
+				08B54DE130402CCB0017ED49 /* GroupCheckViewController.swift in Sources */,
+				08B54DE230402CCB0017ED49 /* CloudSynchronizationManager.swift in Sources */,
+				08B54DE330402CCB0017ED49 /* PJEightKeySwitchStatus.swift in Sources */,
+				08B54DE430402CCB0017ED49 /* FirmwareUpdateTypeData.swift in Sources */,
+				08B54DE530402CCB0017ED49 /* FirmwareVersionUpdatePolicy.swift in Sources */,
+				08B54DE630402CCB0017ED49 /* GatewayFirmwareScanDebugLogger.swift in Sources */,
+				08B54DE730402CCB0017ED49 /* GatewayFirmwareScanDiagnosticPolicy.swift in Sources */,
+				08B54DE830402CCB0017ED49 /* GatewayFirmwareScanNetworkKeyScopePolicy.swift in Sources */,
+				08B54DE930402CCB0017ED49 /* NetworkLoggerPlugin.swift in Sources */,
+				08B54DEA30402CCB0017ED49 /* NumberOfNeghbourNodeInstructionsController.swift in Sources */,
+				08B54DEB30402CCB0017ED49 /* Array+Split.swift in Sources */,
+				08B54DEC30402CCB0017ED49 /* DeviceDongleViewController.swift in Sources */,
+				08B54DED30402CCB0017ED49 /* PJEightKeySwitchMoreSettingsController.swift in Sources */,
+				08B54DEE30402CCB0017ED49 /* DeviceAddProfessionalModeController.swift in Sources */,
+				08B54DEF30402CCB0017ED49 /* EnergyHarvestSelectView.swift in Sources */,
+				08B54DF030402CCB0017ED49 /* CalendarChooseView.swift in Sources */,
+				08B54DF130402CCB0017ED49 /* GroupMembersViewController.swift in Sources */,
+				08B54DF230402CCB0017ED49 /* SpaceVisitorListViewController.swift in Sources */,
+				08B54DF330402CCB0017ED49 /* ContinuousTapGestureRecognizer.swift in Sources */,
+				08B54DF430402CCB0017ED49 /* DeviceOthersCollectionViewCell.swift in Sources */,
+				08B54DF530402CCB0017ED49 /* FirmwareVersionHistoryController.swift in Sources */,
+				08B54DF630402CCB0017ED49 /* ProfileInstructionsController.swift in Sources */,
+				08B54DF730402CCB0017ED49 /* PJDevicesRestoreEntryContext.swift in Sources */,
+				08B54DF830402CCB0017ED49 /* SpaceTriggerZone.swift in Sources */,
+				08B54DF930402CCB0017ED49 /* TableSelectView.swift in Sources */,
+				08B54DFA30402CCB0017ED49 /* SceneGroupsViewCell.swift in Sources */,
+				08B54DFB30402CCB0017ED49 /* PJDeviceGroupSelectionViewController.swift in Sources */,
+				08B54DFC30402CCB0017ED49 /* LBXScanWrapper.swift in Sources */,
+				08B54DFD30402CCB0017ED49 /* DeviceCategorysViewController.swift in Sources */,
+				08B54DFE30402CCB0017ED49 /* GradientLoadingBar.swift in Sources */,
+				08B54DFF30402CCB0017ED49 /* PJSwitchesTypesVC.swift in Sources */,
+				08B54E0030402CCB0017ED49 /* MeshFirmwareUpgradeGuideView.swift in Sources */,
+				08B54E0130402CCB0017ED49 /* UIBarButtonItem+Extension.swift in Sources */,
+				08B54E0230402CCB0017ED49 /* DeviceParameterSettingsController.swift in Sources */,
+				08B54E0330402CCB0017ED49 /* GroupPathSequencePathLayout.swift in Sources */,
+				08B54E0430402CCB0017ED49 /* DeviceForceResetViewCell.swift in Sources */,
+				08B54E0530402CCB0017ED49 /* DaliMasterSingleControlView.swift in Sources */,
+				08B54E0630402CCB0017ED49 /* GatewayInformationHeaderView.swift in Sources */,
+				08B54E0730402CCB0017ED49 /* MenuPopView.swift in Sources */,
+				08B54E0830402CCB0017ED49 /* SyncDevicesProgressView.swift in Sources */,
+				08B54E0930402CCB0017ED49 /* MeshFirmwareListViewController.swift in Sources */,
+				08B54E0A30402CCB0017ED49 /* WMMenuView.m in Sources */,
+				08B54E0B30402CCB0017ED49 /* GroupPathSequenceDeviceAddStepView.swift in Sources */,
+				08B54E0C30402CCB0017ED49 /* MeshFirmwareUpdateStepHeaderView.swift in Sources */,
+				08B54E0D30402CCB0017ED49 /* ManualOverrideTimeoutInstructionController.swift in Sources */,
+				08B54E0E30402CCB0017ED49 /* DevicesViewCell.swift in Sources */,
+				08B54E0F30402CCB0017ED49 /* PJEightKeySwitchSelectPanelViewModel.swift in Sources */,
+				08B54E1030402CCB0017ED49 /* DeviceResyncHeaderView.swift in Sources */,
+				08B54E1130402CCB0017ED49 /* LightSensorCalibrationPointLuxView.swift in Sources */,
+				08B54E1230402CCB0017ED49 /* LinkedEmerFireEditVC+Table.swift in Sources */,
+				08B54E1330402CCB0017ED49 /* LightSensorCalibrationView.swift in Sources */,
+				08B54E1430402CCB0017ED49 /* PJEightKeySwitchRefreshAlertController.swift in Sources */,
+				08B54E1530402CCB0017ED49 /* GatewayListView.swift in Sources */,
+				08B54E1630402CCB0017ED49 /* RelativeSensitivityInstructionsController.swift in Sources */,
+				08B54E1730402CCB0017ED49 /* EnergyHarvestStateView.swift in Sources */,
+				08B54E1830402CCB0017ED49 /* LinkedEmerFireEditVC.swift in Sources */,
+				08B54E1930402CCB0017ED49 /* BetaTestingAlertView.swift in Sources */,
+				08B54E1A30402CCB0017ED49 /* TimedSelectTypeView.swift in Sources */,
+				08B54E1B30402CCB0017ED49 /* AdjustSpeedInstructionController.swift in Sources */,
+				08B54E1C30402CCB0017ED49 /* PJSwitchesTypesViewModel.swift in Sources */,
+				08B54E1D30402CCB0017ED49 /* GatewayServerInformationViewCell.swift in Sources */,
+				08B54E1E30402CCB0017ED49 /* LBXScanViewStyle.swift in Sources */,
+				08B54E1F30402CCB0017ED49 /* UIView+frame.swift in Sources */,
+				08B54E2030402CCB0017ED49 /* SwitchSelectGroupsViewCell.swift in Sources */,
+				08B54E2130402CCB0017ED49 /* SpacesViewCell.swift in Sources */,
+				08B54E2230402CCB0017ED49 /* EnergyTimeSeriesDataExportView.swift in Sources */,
+				08B54E2330402CCB0017ED49 /* GroupsViewCell.swift in Sources */,
+				08B54E2430402CCB0017ED49 /* ProfilePhasesTimePickerView.swift in Sources */,
+				08B54E2530402CCB0017ED49 /* ProfileLevelSettingsView.swift in Sources */,
+				08B54E2630402CCB0017ED49 /* FlashlightSwingView.swift in Sources */,
+				08B54E2730402CCB0017ED49 /* DeviceParameterFilterView.swift in Sources */,
+				08B54E2830402CCB0017ED49 /* UITableView+Keyboard.swift in Sources */,
+				08B54E2930402CCB0017ED49 /* PJEightKeySwitchMonitorKeyView.swift in Sources */,
+				08B54E2A30402CCB0017ED49 /* DeviceSwitchesViewCell.swift in Sources */,
+				08B54E2B30402CCB0017ED49 /* Device+Extension.swift in Sources */,
+				08B54E2C30402CCB0017ED49 /* EmerFireAlarmMoniView.swift in Sources */,
+				08B54E2D30402CCB0017ED49 /* GatewayAssociatedSpacesInstructionsController.swift in Sources */,
+				08B54E2E30402CCB0017ED49 /* GroupsViewController.swift in Sources */,
+				08B54E2F30402CCB0017ED49 /* PJEightKeySwitchDimmingPopupController.swift in Sources */,
+				08B54E3030402CCB0017ED49 /* EmerFireAlarmDevicesController.swift in Sources */,
+				08B54E3130402CCB0017ED49 /* GroupPathSequenceManuallyAddView.swift in Sources */,
+				08B54E3230402CCB0017ED49 /* AboutViewController.swift in Sources */,
+				08B54E3330402CCB0017ED49 /* PJDevicesEightKeyAddContainerController.swift in Sources */,
+				08B54E3430402CCB0017ED49 /* PJEightKeySwitchData.swift in Sources */,
+				08B54E3530402CCB0017ED49 /* BatteryPowerSwitchAddConfiguration.swift in Sources */,
+				08B54E3630402CCB0017ED49 /* LinkedEmerFireEditState.swift in Sources */,
+				08B54E3730402CCB0017ED49 /* DeviceMeshNetworkResetHeaderView.swift in Sources */,
+				08B54E3830402CCB0017ED49 /* DeviceMeshNetworkResetHandle.swift in Sources */,
+				08B54E3930402CCB0017ED49 /* SchedulesViewCell.swift in Sources */,
+				08B54E3A30402CCB0017ED49 /* DeviceMeshNetworkResetSectionData.swift in Sources */,
+				08B54E3B30402CCB0017ED49 /* TitleSelectView.swift in Sources */,
+				08B54E3C30402CCB0017ED49 /* DeviceParameterSettingsViewCell.swift in Sources */,
+				08B54E3D30402CCB0017ED49 /* MeshDistributionData.swift in Sources */,
+				08B54E3E30402CCB0017ED49 /* GatewaysViewController.swift in Sources */,
+				08B54E3F30402CCB0017ED49 /* PJDevicesEntrySource.swift in Sources */,
+				08B54E4030402CCB0017ED49 /* DevicePromptHudView.swift in Sources */,
+				08B54E4130402CCB0017ED49 /* PJEightKeySwitchMonitorHeaderView.swift in Sources */,
+				08B54E4230402CCB0017ED49 /* HorizontalDirectionFlowLayout.swift in Sources */,
+				08B54E4330402CCB0017ED49 /* ConfigurationFlowGuidanceView.swift in Sources */,
+				08B54E4430402CCB0017ED49 /* DeviceDongleStorageUsageCell.swift in Sources */,
+				08B54E4530402CCB0017ED49 /* EnergyStatisticsStaticData.swift in Sources */,
+				08B54E4630402CCB0017ED49 /* CustomDeviceSlider.swift in Sources */,
+				08B54E4730402CCB0017ED49 /* DaliDeviceInformationController.swift in Sources */,
+				08B54E4830402CCB0017ED49 /* SceneAddCustomView.swift in Sources */,
+				08B54E4930402CCB0017ED49 /* Node+Capability.swift in Sources */,
+				08B54E4A30402CCB0017ED49 /* Node+ELControllerRxTx.swift in Sources */,
+				08B54E4B30402CCB0017ED49 /* MeshFirmwareSelectDeviceViewCell.swift in Sources */,
+				08B54E4C30402CCB0017ED49 /* DeviceSignalStrengthView.swift in Sources */,
+				08B54E4D30402CCB0017ED49 /* MeshFirmwareUpgradeSectionView.swift in Sources */,
+				08B54E4E30402CCB0017ED49 /* Data+Gzip.swift in Sources */,
+				08B54E4F30402CCB0017ED49 /* DeviceParameterSetupInstructionsController.swift in Sources */,
+				08B54E5030402CCB0017ED49 /* SitesViewController.swift in Sources */,
+				08B54E5130402CCB0017ED49 /* MeshFirmwareUpgradeHeaderView.swift in Sources */,
+				08B54E5230402CCB0017ED49 /* GroupPathSequencePageController.swift in Sources */,
+				08B54E5330402CCB0017ED49 /* PJEightKeySwitchSelectPanelCell.swift in Sources */,
+				08B54E5430402CCB0017ED49 /* PJTopbtBoLabView.swift in Sources */,
+				08B54E5530402CCB0017ED49 /* MotionSensorInstructionsViewCell.swift in Sources */,
+				08B54E5630402CCB0017ED49 /* LinkedEmerFireGroupSelectionVC.swift in Sources */,
+				08B54E5730402CCB0017ED49 /* SiteGatewaysMenuView.swift in Sources */,
+				08B54E5830402CCB0017ED49 /* PJEightKeySwitchesViewCell.swift in Sources */,
+				08B54E5930402CCB0017ED49 /* SceneExecuteAnimationView.swift in Sources */,
+				08B54E5A30402CCB0017ED49 /* AppDelegate.swift in Sources */,
+				08B54E5B30402CCB0017ED49 /* UserSettingsViewController.swift in Sources */,
+				08B54E5C30402CCB0017ED49 /* LabViewController.swift in Sources */,
+				08B54E5D30402CCB0017ED49 /* PJDevicesEightKeyRestoreContainerController.swift in Sources */,
+				08B54E5E30402CCB0017ED49 /* ShareAuthorityFilterView.swift in Sources */,
+				08B54E5F30402CCB0017ED49 /* DeviceAddClassicModeController.swift in Sources */,
+				08B54E6030402CCB0017ED49 /* DeviceGroupDeferredSyncPlanner.swift in Sources */,
+				08B54E6130402CCB0017ED49 /* FastAddTaskCheckpointTracker.swift in Sources */,
+				08B54E6230402CCB0017ED49 /* EnergySelectExportDevicesController.swift in Sources */,
+				08B54E6330402CCB0017ED49 /* SharingSettingViewController.swift in Sources */,
+				08B54E6430402CCB0017ED49 /* EmerFireAlarmSyncAliases.swift in Sources */,
+				08B54E6530402CCB0017ED49 /* DeviceLightsViewController.swift in Sources */,
+				08B54E6630402CCB0017ED49 /* LightAckProgressAlertView.swift in Sources */,
+				08B54E6730402CCB0017ED49 /* LightAckProgressTracker.swift in Sources */,
+				08B54E6830402CCB0017ED49 /* LightTimeInformationCoordinator.swift in Sources */,
+				08B54E6930402CCB0017ED49 /* WelcomeViewController.swift in Sources */,
+				08B54E6A30402CCB0017ED49 /* FirmwareDistributeUpdateStateView.swift in Sources */,
+				08B54E6B30402CCB0017ED49 /* DeviceParameterEnergyReportViewCell.swift in Sources */,
+				08B54E6C30402CCB0017ED49 /* SyncDeviceViewCell.swift in Sources */,
+				08B54E6D30402CCB0017ED49 /* PJEightKeySwitchMonitorPanelView.swift in Sources */,
+				08B54E6E30402CCB0017ED49 /* DeviceParameterTitleHeaderView.swift in Sources */,
+				08B54E6F30402CCB0017ED49 /* DeviceSensorsViewController.swift in Sources */,
+				08B54E7030402CCB0017ED49 /* SRAlertView.swift in Sources */,
+				08B54E7130402CCB0017ED49 /* SyncDevicesGroupViewCell.swift in Sources */,
+				08B54E7230402CCB0017ED49 /* CustomProgressView.swift in Sources */,
+				08B54E7330402CCB0017ED49 /* DeviceFlashlightBeastModeController.swift in Sources */,
+				08B54E7430402CCB0017ED49 /* Date+Extension.swift in Sources */,
+				08B54E7530402CCB0017ED49 /* DeviceSettingsViewController.swift in Sources */,
+				08B54E7630402CCB0017ED49 /* UserData.swift in Sources */,
+				08B54E7730402CCB0017ED49 /* LabSettings.swift in Sources */,
+				08B54E7830402CCB0017ED49 /* LightGroupControlCommandSender.swift in Sources */,
+				08B54E7930402CCB0017ED49 /* WMProgressView.m in Sources */,
+				08B54E7A30402CCB0017ED49 /* DeviceBottomBtnView.swift in Sources */,
+				08B54E7B30402CCB0017ED49 /* PJEightKeySwitchMonitorStatusSetView.swift in Sources */,
+				08B54E7C30402CCB0017ED49 /* DaliSettingViewController.swift in Sources */,
+				08B54E7D30402CCB0017ED49 /* String+Date.swift in Sources */,
+				08B54E7E30402CCB0017ED49 /* ImportEnergyDeviceSelectView.swift in Sources */,
+				08B54E7F30402CCB0017ED49 /* ProfileTextInstructionsViewController.swift in Sources */,
+				08B54E8030402CCB0017ED49 /* DeviceLightControlView.swift in Sources */,
+				08B54E8130402CCB0017ED49 /* DeviceParameterPromptView.swift in Sources */,
+				08B54E8230402CCB0017ED49 /* EnergyTimeSeriesDataViewController.swift in Sources */,
+				08B54E8330402CCB0017ED49 /* PJEightKeySwitchForcedAutoPopupController.swift in Sources */,
+				08B54E8430402CCB0017ED49 /* PJEightKeySwitchMonitorViewModel.swift in Sources */,
+				08B54E8530402CCB0017ED49 /* LBXPermissions.swift in Sources */,
+				08B54E8630402CCB0017ED49 /* PJDevicesAddFlowFactory.swift in Sources */,
+				08B54E8730402CCB0017ED49 /* DeviceMeshNetworkResetBottomView.swift in Sources */,
+				08B54E8830402CCB0017ED49 /* DongleAddCollectionScheduleController.swift in Sources */,
+				08B54E8930402CCB0017ED49 /* ProfileProximityLightingNumberView.swift in Sources */,
+				08B54E8A30402CCB0017ED49 /* PJEightKeySwitchPanelView.swift in Sources */,
+				08B54E8B30402CCB0017ED49 /* DeviceDongleCollectionStrategyCell.swift in Sources */,
+				08B54E8C30402CCB0017ED49 /* GatewaySectionHeaderView.swift in Sources */,
+				08B54E8D30402CCB0017ED49 /* EmerFireAlarmInfoSectionHeaderView.swift in Sources */,
+				08B54E8E30402CCB0017ED49 /* DaylightSensorInstructionsController.swift in Sources */,
+				08B54E8F30402CCB0017ED49 /* GroupSwitchsHeaderView.swift in Sources */,
+				08B54E9030402CCB0017ED49 /* PJDevicesAddEntryContext.swift in Sources */,
+				08B54E9130402CCB0017ED49 /* FirmwareVersionHistoryViewCell.swift in Sources */,
+				08B54E9230402CCB0017ED49 /* EnOceanProxyViewController.swift in Sources */,
+				08B54E9330402CCB0017ED49 /* UIView+Shade.swift in Sources */,
+				08B54E9430402CCB0017ED49 /* ProfileDaylightSensorControlView.swift in Sources */,
+				08B54E9530402CCB0017ED49 /* PJDevicesAddBehavior.swift in Sources */,
+				08B54E9630402CCB0017ED49 /* MotionSensorInstructionsController.swift in Sources */,
+				08B54E9730402CCB0017ED49 /* MeshSelectUpgradeDevicesViewController.swift in Sources */,
+				08B54E9830402CCB0017ED49 /* CalibrationInstructionController.swift in Sources */,
+				08B54E9930402CCB0017ED49 /* ProfileSettingsViewController.swift in Sources */,
+				08B54E9A30402CCB0017ED49 /* DeviceDongleScheduleHeaderView.swift in Sources */,
+				08B54E9B30402CCB0017ED49 /* String+Localized.swift in Sources */,
+				08B54E9C30402CCB0017ED49 /* TimedViewController.swift in Sources */,
+				08B54E9D30402CCB0017ED49 /* DeviceForceResetDeviceView.swift in Sources */,
+				08B54E9E30402CCB0017ED49 /* ProfileLightSensorTemplateDevicesController.swift in Sources */,
+				08B54E9F30402CCB0017ED49 /* ShareSpaceListViewController.swift in Sources */,
+				08B54EA030402CCB0017ED49 /* ContentDisplayViewCell.swift in Sources */,
+				08B54EA130402CCB0017ED49 /* ContentDisplaySwitchViewCell.swift in Sources */,
+				08B54EA230402CCB0017ED49 /* ContentDisplayControlStyleViewCell.swift in Sources */,
+				08B54EA330402CCB0017ED49 /* SceneServer.swift in Sources */,
+				08B54EA430402CCB0017ED49 /* ProfileSensitivityView.swift in Sources */,
+				08B54EA530402CCB0017ED49 /* SceneSettingsViewController.swift in Sources */,
+				08B54EA630402CCB0017ED49 /* EmerFireAlarmMoniCell.swift in Sources */,
+				08B54EA730402CCB0017ED49 /* GroupSwitchsViewController.swift in Sources */,
+				08B54EA830402CCB0017ED49 /* GroupPowerSwitchesViewController.swift in Sources */,
+				08B54EA930402CCB0017ED49 /* GroupSensorView.swift in Sources */,
+				08B54EAA30402CCB0017ED49 /* EmerFireAlarmStatusItemCell.swift in Sources */,
+				08B54EAB30402CCB0017ED49 /* DeviceForceResetDeviceInstructionsController.swift in Sources */,
+				08B54EAC30402CCB0017ED49 /* DeviceParameterAbsoluteSensitivityViewCell.swift in Sources */,
+				08B54EAD30402CCB0017ED49 /* AlignCenterFlowLayout.swift in Sources */,
+				08B54EAE30402CCB0017ED49 /* SwitchSelectPanelTypeController.swift in Sources */,
+				08B54EAF30402CCB0017ED49 /* EmptyDataView.swift in Sources */,
+				08B54EB030402CCB0017ED49 /* NetowrkReqeustApi.swift in Sources */,
+				08B54EB130402CCB0017ED49 /* PowerUpBehaviorInstructionController.swift in Sources */,
+				08B54EB230402CCB0017ED49 /* Profile.swift in Sources */,
+				08B54EB330402CCB0017ED49 /* PJEightKeySwitchMoreSettingsViewModel.swift in Sources */,
+				08B54EB430402CCB0017ED49 /* GatewayAssociatedSpacesViewCell.swift in Sources */,
+				08B54EB530402CCB0017ED49 /* DeviceEmerFireRepository.swift in Sources */,
+				08B54EB630402CCB0017ED49 /* ImportData.swift in Sources */,
+				08B54EB730402CCB0017ED49 /* SiteGatewayAssociationConsistencyPolicy.swift in Sources */,
+				08B54EB830402CCB0017ED49 /* DeviceLightViewController.swift in Sources */,
+				08B54EB930402CCB0017ED49 /* EmerFireStatusTextCell.swift in Sources */,
+				08B54EBA30402CCB0017ED49 /* DevicePowerCalibrationInstructionsController.swift in Sources */,
+				08B54EBB30402CCB0017ED49 /* FirmwareData.swift in Sources */,
+				08B54EBC30402CCB0017ED49 /* DeviceLightHeaderView.swift in Sources */,
+				08B54EBD30402CCB0017ED49 /* SwitchSelectSceneViewController.swift in Sources */,
+				08B54EBE30402CCB0017ED49 /* GroupProximityLightingData.swift in Sources */,
+				08B54EBF30402CCB0017ED49 /* GroupPathSequenceQuickAddView.swift in Sources */,
+				08B54EC030402CCB0017ED49 /* MeshFirmwareTypeUpdateViewCell.swift in Sources */,
+				08B54EC130402CCB0017ED49 /* DeviceDongleDeleteAlertView.swift in Sources */,
+				08B54EC230402CCB0017ED49 /* ImageCollectionViewCell.swift in Sources */,
+				08B54EC330402CCB0017ED49 /* ScrollView+Indicator.swift in Sources */,
+				08B54EC430402CCB0017ED49 /* Node+MessageHandles.swift in Sources */,
+				08B54EC530402CCB0017ED49 /* DeviceSwitchViewController.swift in Sources */,
+				08B54EC630402CCB0017ED49 /* DeviceOthersViewController.swift in Sources */,
+				08B54EC730402CCB0017ED49 /* ProfileProximityLightingStepView.swift in Sources */,
+				08B54EC830402CCB0017ED49 /* GroupServer.swift in Sources */,
+				08B54EC930402CCB0017ED49 /* WYProgressHUD.m in Sources */,
+				08B54ECA30402CCB0017ED49 /* SyncDevicesCellModel.swift in Sources */,
+				08B54ECB30402CCB0017ED49 /* DeviceOfflinePromptView.swift in Sources */,
+				08B54ECC30402CCB0017ED49 /* PJDevicesFireAlarmAddContainerController.swift in Sources */,
+				08B54ECD30402CCB0017ED49 /* EmerFireAlarmAddProfessionalVC.swift in Sources */,
+				08B54ECE30402CCB0017ED49 /* SystemVoiumeManager.swift in Sources */,
+				08B54ECF30402CCB0017ED49 /* BLEUpgradeInstructionsController.swift in Sources */,
+				08B54ED030402CCB0017ED49 /* MeshFirmwareUpdateViewController.swift in Sources */,
+				08B54ED130402CCB0017ED49 /* CustomSegmentedControl.swift in Sources */,
+				08B54ED230402CCB0017ED49 /* AdaptiveTextView.swift in Sources */,
+				08B54ED330402CCB0017ED49 /* LinkedEmerFireConfig.swift in Sources */,
+				08B54ED430402CCB0017ED49 /* DeviceMeshNetworkResetNotConfiguredController.swift in Sources */,
+				08B54ED530402CCB0017ED49 /* DeviceRestoreViewController.swift in Sources */,
+				08B54ED630402CCB0017ED49 /* EnergyDataViewController.swift in Sources */,
+				08B54ED730402CCB0017ED49 /* XWHUDManager.m in Sources */,
+				08B54ED830402CCB0017ED49 /* SceneAddGroupTitleSectionView.swift in Sources */,
+				08B54ED930402CCB0017ED49 /* SyncDevicesSectionHeaderView.swift in Sources */,
+				08B54EDA30402CCB0017ED49 /* GroupPathSequenceTriggerZoneViewCell.swift in Sources */,
+				08B54EDB30402CCB0017ED49 /* PJEightKeySwitchEditorView.swift in Sources */,
+				08B54EDC30402CCB0017ED49 /* SceneAddViewController.swift in Sources */,
+				08B54EDD30402CCB0017ED49 /* ExportData.swift in Sources */,
+				08B54EDE30402CCB0017ED49 /* CirclePieMarkerView.swift in Sources */,
+				08B54EDF30402CCB0017ED49 /* WMScrollView.m in Sources */,
+				08B54EE030402CCB0017ED49 /* DaylightSensorInstructionsHeaderView.swift in Sources */,
+				08B54EE130402CCB0017ED49 /* GroupPathSequenceAddDeviceCell.swift in Sources */,
+				08B54EE230402CCB0017ED49 /* EnergyHarvestHistoryViewController.swift in Sources */,
+				08B54EE330402CCB0017ED49 /* LBXScanNetAnimation.swift in Sources */,
+				08B54EE430402CCB0017ED49 /* GatewayInformationViewController.swift in Sources */,
+				08B54EE530402CCB0017ED49 /* EmerFireInfoCell.swift in Sources */,
+				08B54EE630402CCB0017ED49 /* DeviceParameterBottomView.swift in Sources */,
+				08B54EE730402CCB0017ED49 /* GroupPathSequenceTriggerAddView.swift in Sources */,
+				08B54EE830402CCB0017ED49 /* DeviceSwitchesViewController.swift in Sources */,
+				08B54EE930402CCB0017ED49 /* DeviceSliderFunctionView.swift in Sources */,
+				08B54EEA30402CCB0017ED49 /* EmerFireAlarmStatusLegendHeaderView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		C88553B12DE6B44C00C8B688 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -8668,6 +10119,52 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		08B54F0A30402CCB0017ED49 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = F10000000000000000000003 /* Debug.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = SunSmart/SunSmart.entitlements;
+				DEVELOPMENT_TEAM = JTD3WYUC58;
+				INFOPLIST_FILE = "SunSmart copy-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = SunSmart;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SunSmart uses location permission to display the currently connected Wi-Fi network name.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = "";
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart.Lumineux;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		08B54F0B30402CCB0017ED49 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = F10000000000000000000004 /* Release.xcconfig */;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = SunSmart/SunSmart.entitlements;
+				DEVELOPMENT_TEAM = JTD3WYUC58;
+				INFOPLIST_FILE = "SunSmart copy-Info.plist";
+				INFOPLIST_KEY_CFBundleDisplayName = SunSmart;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SunSmart uses location permission to display the currently connected Wi-Fi network name.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
+				INFOPLIST_KEY_UIMainStoryboardFile = "";
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart.Lumineux;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 		C885552C2DE6B44C00C8B688 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F10000000000000000000006 /* Debug.xcconfig */;
@@ -8891,6 +10388,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		08B54F0930402CCB0017ED49 /* Build configuration list for PBXNativeTarget "Lumineux" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				08B54F0A30402CCB0017ED49 /* Debug */,
+				08B54F0B30402CCB0017ED49 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		C885552B2DE6B44C00C8B688 /* Build configuration list for PBXNativeTarget "Archipelago" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
@@ -8939,6 +10445,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		08B54C5B30402CCB0017ED49 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "git@gitee.com:sunricher-i-os/nordic-sig-mesh-sdk.git";
+			requirement = {
+				branch = release;
+				kind = branch;
+			};
+		};
 		C8D5314A2F76294A0069C71B /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "git@gitee.com:sunricher-i-os/nordic-sig-mesh-sdk.git";
@@ -8950,6 +10464,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		08B54C5A30402CCB0017ED49 /* NordicSigMeshSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 08B54C5B30402CCB0017ED49 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			productName = NordicSigMeshSDK;
+		};
 		C88553AE2DE6B44C00C8B688 /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = C8D5314A2F76294A0069C71B /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
