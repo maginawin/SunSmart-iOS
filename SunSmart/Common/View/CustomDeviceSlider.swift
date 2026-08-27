@@ -65,6 +65,8 @@ extension CustomDeviceSliderDelegate {
 
 class CustomDeviceSlider: UISlider {
 
+    var sendsFinalValueOnTouchCancel = false
+
     /// 是否需要限流（ture：滑动数据限流300ms返回一次最新的数据    false：滑动则返回当前数据）
     var throttle: Bool = false
     /// 数据回调间隔（打开限流时）
@@ -307,6 +309,13 @@ class CustomDeviceSlider: UISlider {
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesEnded(touches, with: event)
         sliderEndValueChange()
+    }
+
+    override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+        super.touchesCancelled(touches, with: event)
+        if sendsFinalValueOnTouchCancel {
+            sliderEndValueChange()
+        }
     }
     
     

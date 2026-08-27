@@ -1,17 +1,17 @@
 ## 项目简介
 
 - 这是一个 iOS 智能照明/蓝牙 Mesh 控制应用工程，主 workspace 为 `SunSmart.xcworkspace`，主工程为 `SunSmart.xcodeproj`。
-- 工程包含多个品牌 target：`SunSmart`、`Archipelago`、`SLG Sync Plus`、`SylSmart`，共享 Common 抽象 target 与部分通用业务代码。
+- 工程包含多个品牌 target：`SunSmart`、`Archipelago`、`SLG Sync Plus`、`SylSmart` 等，共享 Common 抽象 target 与部分通用业务代码。
 - 主要代码位于 `SunSmart/`，以 Swift 为主，包含少量 Objective-C 第三方或历史组件；品牌资源和启动页分别位于 `Archipelago/`、`SLGSync/`、`SylSmart/` 等目录。
 - 依赖管理同时使用 CocoaPods 和 Swift Package。CocoaPods 依赖见 `Podfile`，Swift Package 中包含 `NordicSigMeshSDK`。
 - 业务重点包含设备添加、Mesh 网络、网关、开关、应急/消防设备等智能设备控制功能。
-- 项目的 Author 是 `One`。
 
 ## SDK Notes
 
-- `NordicSigMeshSDK` 的本地开发路径是 `/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk`。
-- 当前工程中 `NordicSigMeshSDK` 作为 Swift Package 被多个 target 引用，默认远程地址为 `https://gitee.com/sunricher-i-os/nordic-sig-mesh-sdk.git`。
-- 需要修改 SDK 开发功能时，应先将工程中的 SDK 依赖切换为上述本地路径引用，再在本地 SDK 仓库中修改和验证。
+- `NordicSigMeshSDK` 的本地开发路径是 `/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk-worktrees/one-dev`。
+  
+- 当前工程中 `NordicSigMeshSDK` 作为 Swift Package 被多个 target 引用，默认远程地址为 `git@gitee.com:sunricher-i-os/nordic-sig-mesh-sdk.git` 中的 `release` 分支。
+- 需要修改 SDK 开发功能时，应先判断本地 SDK 开发路径是否存在，若存在就继续开发，若本地不存在此路径，则终止修改 SDK 的行为并提示用户。
 - 修改 SDK 相关功能后，需要检查所有引用 `NordicSigMeshSDK` 的 target 是否仍能正常编译与运行。
 
 ## 国际化要求

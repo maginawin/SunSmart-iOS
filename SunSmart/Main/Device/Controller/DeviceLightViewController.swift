@@ -30,6 +30,8 @@ class DeviceLightViewController: UIViewController {
     private var upDownRatioView: DeviceUpDownRatioControlView!
     private var confirmedUpRatioValue = 50
     private var hasEditedUpRatioValue = false
+    private var upRatioEditGeneration: UInt = 0
+    private var upRatioCommandScheduler = UpDownRatioCommandScheduler()
     
     private var relayLabel: UILabel!
     private var relaySwitch: UISwitch!
@@ -1063,12 +1065,20 @@ class DeviceLightViewController: UIViewController {
             self?.showCCTInputAlert()
         }
         upDownRatioView.valueChanging = { [weak self] value in
-            self?.hasEditedUpRatioValue = true
-            self?.applyLocalUpRatioValue(value)
+            guard let self else { return }
+            self.hasEditedUpRatioValue = true
+            self.upRatioEditGeneration &+= 1
+            self.applyLocalUpRatioValue(value)
+        }
+        upDownRatioView.valueSampled = { [weak self] value in
+            guard let self else { return }
+            self.hasEditedUpRatioValue = true
+            self.enqueueUpRatioCommand(value: value, kind: .sampling)
         }
         upDownRatioView.valueChanged = { [weak self] value in
-            self?.hasEditedUpRatioValue = true
-            self?.sendUpRatioValue(value)
+            guard let self else { return }
+            self.hasEditedUpRatioValue = true
+            self.enqueueUpRatioCommand(value: value, kind: .final)
         }
     }
 
@@ -1123,35 +1133,74 @@ class DeviceLightViewController: UIViewController {
         updateData(refreshControlPanel: false)
     }
 
-    private func sendUpRatioValue(_ value: Int) {
-        let clampedValue = max(0, min(100, value))
-        applyLocalUpRatioValue(clampedValue)
+    private func enqueueUpRatioCommand(value: Int, kind: UpDownRatioCommandScheduler.Kind) {
+        let command: UpDownRatioCommandScheduler.Command?
+        switch kind {
+        case .sampling:
+            command = upRatioCommandScheduler.enqueueSampling(
+                value: value,
+                editGeneration: upRatioEditGeneration
+            )
+        case .final:
+            command = upRatioCommandScheduler.enqueueFinal(
+                value: value,
+                editGeneration: upRatioEditGeneration
+            )
+        }
+        if let command {
+            sendUpRatioCommand(command)
+        }
+    }
 
+    private func sendUpRatioCommand(_ command: UpDownRatioCommandScheduler.Command) {
         guard let vendorModel = node.sunricherVendorModel else {
-            rollbackUpRatioValue()
-            ToastStatusView.show(in: view, message: "configuration_failed".localizedString, type: .failure)
+            finishUpRatioCommand(command, succeeded: false)
             return
         }
 
         MeshAPI.sendMessage(
-            message: SunricherVendorSet(function: .upDownLightUpRatio(UInt8(clampedValue))),
+            message: SunricherVendorSet(function: .upDownLightUpRatio(UInt8(command.value))),
             model: vendorModel,
             timeout: 7
         ) { [weak self] response in
             DispatchQueue.main.async {
-                guard let self = self else { return }
-                guard let status = response as? SunricherVendorStatus,
-                      status.status.isSuccessful,
-                      status.status.code == .upDownLightUpRatio else {
-                    self.rollbackUpRatioValue()
-                    ToastStatusView.show(in: self.view, message: "configuration_failed".localizedString, type: .failure)
-                    return
-                }
-
-                self.confirmedUpRatioValue = clampedValue
-                self.saveLocalUpRatioValue(clampedValue)
-                self.updateData(refreshControlPanel: false)
+                guard let self else { return }
+                let succeeded = (response as? SunricherVendorStatus).map {
+                    $0.status.isSuccessful && $0.status.code == .upDownLightUpRatio
+                } ?? false
+                self.finishUpRatioCommand(command, succeeded: succeeded)
             }
+        }
+    }
+
+    private func finishUpRatioCommand(
+        _ command: UpDownRatioCommandScheduler.Command,
+        succeeded: Bool
+    ) {
+        let isCurrentEdit = command.editGeneration == upRatioEditGeneration
+        if succeeded {
+            confirmedUpRatioValue = command.value
+            if command.kind == .final {
+                saveConfirmedUpRatioValue(command.value, preservingVisibleValue: !isCurrentEdit)
+                if isCurrentEdit {
+                    updateData(refreshControlPanel: false)
+                }
+            }
+        } else if command.kind == .final, isCurrentEdit {
+            rollbackUpRatioValue()
+            ToastStatusView.show(in: view, message: "configuration_failed".localizedString, type: .failure)
+        }
+
+        if let nextCommand = upRatioCommandScheduler.completeCurrentCommand() {
+            sendUpRatioCommand(nextCommand)
+        }
+    }
+
+    private func saveConfirmedUpRatioValue(_ value: Int, preservingVisibleValue: Bool) {
+        let visibleValue = node.upRatio
+        saveLocalUpRatioValue(value)
+        if preservingVisibleValue {
+            node.upRatio = visibleValue
         }
     }
 

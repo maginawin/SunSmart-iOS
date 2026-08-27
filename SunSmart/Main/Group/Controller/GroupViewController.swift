@@ -738,7 +738,7 @@ class GroupViewController: UIViewController {
         deferNextScheduledUIFlush()
     }
 
-    private func saveGroupUpRatioValue(_ value: Int) {
+    private func sendGroupUpRatioValue(_ value: Int, persist: Bool) {
         let clampedValue = max(0, min(100, value))
         MeshAPI.sendMessage(
             message: SunricherVendorSet(function: .upDownLightUpRatio(UInt8(clampedValue))),
@@ -746,6 +746,7 @@ class GroupViewController: UIViewController {
         )
 
         applyGroupUpRatioValue(clampedValue)
+        guard persist else { return }
         upDownRatioNodes.forEach { node in
             if let meshUUID = node.network?.uuid.uuidString {
                 node.preConfiguration.save(meshUUID: meshUUID, nodeAddress: node.primaryUnicastAddress)
@@ -1215,9 +1216,14 @@ class GroupViewController: UIViewController {
             self.applyGroupUpRatioValue(value)
         }
 
+        upDownRatioControlView.valueSampled = { [weak self] value in
+            guard let self else { return }
+            self.sendGroupUpRatioValue(value, persist: false)
+        }
+
         upDownRatioControlView.valueChanged = { [weak self] value in
             guard let self else { return }
-            self.saveGroupUpRatioValue(value)
+            self.sendGroupUpRatioValue(value, persist: true)
         }
     }
 

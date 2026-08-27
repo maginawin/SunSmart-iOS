@@ -10,6 +10,7 @@ import UIKit
 final class DeviceUpDownRatioControlView: UIView {
 
     var valueChanging: ((Int) -> Void)?
+    var valueSampled: ((Int) -> Void)?
     var valueChanged: ((Int) -> Void)?
 
     var upValue: Int {
@@ -61,6 +62,8 @@ final class DeviceUpDownRatioControlView: UIView {
         sliderView.slider.maximumValue = 100
         sliderView.slider.step = 1
         sliderView.slider.limitRange = 0...100
+        sliderView.slider.interval = 0.3
+        sliderView.slider.sendsFinalValueOnTouchCancel = true
         sliderView.slider.minimumTrackTintColor = Slider_Color
         sliderView.slider.maximumTrackTintColor = RGB(229, 229, 229)
         sliderView.valueTextProvider = { [weak self] value in
@@ -89,9 +92,13 @@ final class DeviceUpDownRatioControlView: UIView {
         }
 
         sliderView.valueThrottleChangedCallback = { [weak self] value, ended in
-            guard ended else { return }
             guard let self = self else { return }
-            self.setUpValue(self.upValue(fromSliderValue: value), notifyChanging: false, notifyChanged: true)
+            let upValue = self.upValue(fromSliderValue: value)
+            if ended {
+                self.valueChanged?(upValue)
+            } else {
+                self.valueSampled?(upValue)
+            }
         }
 
         quickButtonsView.valueSelected = { [weak self] value in
