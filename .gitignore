@@ -45,6 +45,10 @@ fastlane/test_output
 .swiftpm
 .build/
 
+# Developer-local NordicSigMeshSDK workspace
+SunSmartLocal.xcworkspace/
+.local-sdk/
+
 # Other
 *.log
 *.swp

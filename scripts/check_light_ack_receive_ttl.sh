@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-sdk_root="${NORDIC_SIG_MESH_SDK_ROOT:-/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk}"
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+app_root="$(cd "$script_dir/.." && pwd)"
+source "$script_dir/lib/resolve_nordic_sdk_root.sh"
+sdk_root="$(resolve_nordic_sdk_root "$app_root" "${1:-}")"
 access_message="$sdk_root/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/Lower Transport Layer/AccessMessage.swift"
 segmented_message="$sdk_root/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/Lower Transport Layer/SegmentedAccessMessage.swift"
 upper_transport="$sdk_root/Sources/NordicSigMeshSDK/nRFMeshProvision/Layers/Upper Transport Layer/UpperTransportPdu.swift"

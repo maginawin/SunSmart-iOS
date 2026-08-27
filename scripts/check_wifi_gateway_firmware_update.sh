@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+app_root="$(cd "$script_dir/.." && pwd)"
+source "$script_dir/lib/resolve_nordic_sdk_root.sh"
+sdk_root="$(resolve_nordic_sdk_root "$app_root" "${1:-}")"
+
 fail() {
   echo "FAIL: $1" >&2
   exit 1
@@ -28,13 +33,13 @@ cancel_focused_test="Tests/Firmware/WiFiFirmwareDFUCancelReducerTests.swift"
 transaction_gate_test="Tests/Firmware/WiFiFirmwareDFUTransactionGateTests.swift"
 cancel_protocol_contract="Tests/Firmware/WiFiGatewayDFUCancelV19Contract.swift"
 builder_test="Tests/Firmware/WiFiFirmwareDFUMetadataBuilderTests.swift"
-sdk_source="/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK"
+sdk_source="$sdk_root/Sources/NordicSigMeshSDK"
 sdk_text_validator="$sdk_source/MeshLib/Message/Vendor/WiFiGatewayV19TextValidator.swift"
 sdk_status="$sdk_source/MeshLib/Message/Vendor/WiFiGatewayDFUStatus.swift"
-sdk_contract="/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk/scripts/check_wifi_gateway_dfu_status_v19.swift"
+sdk_contract="$sdk_root/scripts/check_wifi_gateway_dfu_status_v19.swift"
 sdk_start="$sdk_source/MeshLib/Message/Vendor/WiFiGatewayDFUStart.swift"
 sdk_cancel="$sdk_source/MeshLib/Message/Vendor/WiFiGatewayDFUCancel.swift"
-sdk_start_contract="/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk/scripts/check_wifi_gateway_dfu_start_v19.swift"
+sdk_start_contract="$sdk_root/scripts/check_wifi_gateway_dfu_start_v19.swift"
 
 [ -f "$builder" ] || fail "missing WiFi firmware DFU metadata builder"
 [ -f "$state" ] || fail "missing WiFi firmware DFU state model"

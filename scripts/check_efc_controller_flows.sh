@@ -1,6 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+app_root="$(cd "$script_dir/.." && pwd)"
+source "$script_dir/lib/resolve_nordic_sdk_root.sh"
+sdk_root="$(resolve_nordic_sdk_root "$app_root" "${1:-}")"
+
 assert_contains() {
   local file="$1"
   local pattern="$2"
@@ -889,7 +894,7 @@ assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Add/Controller/PJDevic
   "vc.bindTarget = context.bindTarget" \
   "Legacy FireAlarm add container must forward bindTarget."
 
-assert_contains "/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshLibManager.swift" \
+assert_contains "$sdk_root/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshLibManager.swift" \
   "addGlobalMessageObserver" \
   "SDK must expose a global message observer for Space-level EFC scene dispatch."
 

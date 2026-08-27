@@ -1,0 +1,15 @@
+{
+  "originHash" : "bf9cf495574a1e0f25a81fe4e9088e943469a296557d7259feef26fe4d9fe624",
+  "pins" : [
+    {
+      "identity" : "nordic-sig-mesh-sdk",
+      "kind" : "remoteSourceControl",
+      "location" : "git@gitee.com:sunricher-i-os/nordic-sig-mesh-sdk.git",
+      "state" : {
+        "branch" : "release",
+        "revision" : "9504e5ba7286205f8d4749d8127bf2178b19d9a2"
+      }
+    }
+  ],
+  "version" : 3
+}

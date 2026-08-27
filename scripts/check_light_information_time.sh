@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+script_dir="$(cd "$(dirname "$0")" && pwd)"
+app_root="$(cd "$script_dir/.." && pwd)"
+source "$script_dir/lib/resolve_nordic_sdk_root.sh"
+sdk_root="$(resolve_nordic_sdk_root "$app_root" "${1:-}")"
 coordinator="SunSmart/Main/Device/Lights/Model/LightTimeInformationCoordinator.swift"
-sdk_manager="/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshLibManager.swift"
+sdk_manager="$sdk_root/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshLibManager.swift"
 
 swiftc -parse-as-library \
   "$coordinator" \

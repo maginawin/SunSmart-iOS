@@ -3,7 +3,8 @@ set -euo pipefail
 
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 app_root="$(cd "$script_dir/.." && pwd)"
-sdk_root="$(cd "$app_root/../../nordic-sig-mesh-sdk" && pwd)"
+source "$script_dir/lib/resolve_nordic_sdk_root.sh"
+sdk_root="$(resolve_nordic_sdk_root "$app_root" "${1:-}")"
 
 assert_contains() {
   local file="$1"

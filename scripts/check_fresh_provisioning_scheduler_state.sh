@@ -3,7 +3,8 @@
 set -euo pipefail
 
 repo_root="${0:A:h:h}"
-sdk_root="${repo_root}/../../nordic-sig-mesh-sdk"
+source "${repo_root}/scripts/lib/resolve_nordic_sdk_root.sh"
+sdk_root="$(resolve_nordic_sdk_root "$repo_root" "${1:-}")"
 test_binary="/tmp/FreshProvisioningSchedulerStateTests"
 
 swiftc -parse-as-library \
