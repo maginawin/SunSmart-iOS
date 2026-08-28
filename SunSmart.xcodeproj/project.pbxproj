@@ -665,21 +665,15 @@
 		08B54EE830402CCB0017ED49 /* DeviceSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89FD6652C89840400DE431D /* DeviceSwitchesViewController.swift */; };
 		08B54EE930402CCB0017ED49 /* DeviceSliderFunctionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898EA752AC409230023B480 /* DeviceSliderFunctionView.swift */; };
 		08B54EEA30402CCB0017ED49 /* EmerFireAlarmStatusLegendHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788E42F972B46000887FE /* EmerFireAlarmStatusLegendHeaderView.swift */; };
-		08B54EEC30402CCB0017ED49 /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
 		08B54EED30402CCB0017ED49 /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 08B54C5A30402CCB0017ED49 /* NordicSigMeshSDK */; };
-		08B54EEE30402CCB0017ED49 /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
-		08B54EF030402CCB0017ED49 /* Privacy Policy.html in Resources */ = {isa = PBXBuildFile; fileRef = C89B34222C93E3B700A77DB6 /* Privacy Policy.html */; };
 		08B54EF130402CCB0017ED49 /* XWHUDManager_right@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB8E2A930C3800217512 /* XWHUDManager_right@3x.png */; };
-		08B54EF230402CCB0017ED49 /* User Agreement.html in Resources */ = {isa = PBXBuildFile; fileRef = C89B34202C93E2B600A77DB6 /* User Agreement.html */; };
 		08B54EF330402CCB0017ED49 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = C898E2D72AB7E46300C71315 /* Localizable.strings */; };
-		08B54EF430402CCB0017ED49 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = C8A900062F80000100000006 /* InfoPlist.strings */; };
 		08B54EF530402CCB0017ED49 /* device_add.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C8B483D12E4B361F006D85BC /* device_add.mp3 */; };
 		08B54EF630402CCB0017ED49 /* device_reset.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = C8B483D22E4B361F006D85BC /* device_reset.mp3 */; };
 		08B54EF730402CCB0017ED49 /* all_utc_timezones.json in Resources */ = {isa = PBXBuildFile; fileRef = 084EF310302AB496008CB48A /* all_utc_timezones.json */; };
 		08B54EF830402CCB0017ED49 /* XWHUDManager_successful@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A52B6A1FA400F60E62 /* XWHUDManager_successful@2x.png */; };
 		08B54EF930402CCB0017ED49 /* XWHUDManager_tip@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB902A930C3800217512 /* XWHUDManager_tip@3x.png */; };
 		08B54EFA30402CCB0017ED49 /* XWHUDManager_loading.gif in Resources */ = {isa = PBXBuildFile; fileRef = C8BC494B2C1C1CD5006BAF89 /* XWHUDManager_loading.gif */; };
-		08B54EFB30402CCB0017ED49 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C896B9B22A930BAA00217512 /* LaunchScreen.storyboard */; };
 		08B54EFC30402CCB0017ED49 /* XWHUDManager_error@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A92B6A1FDC00F60E62 /* XWHUDManager_error@2x.png */; };
 		08B54EFD30402CCB0017ED49 /* CodeScan.bundle in Resources */ = {isa = PBXBuildFile; fileRef = C87EB45A2BA17D3E00F9285B /* CodeScan.bundle */; };
 		08B54EFE30402CCB0017ED49 /* broadcast_loading.gif in Resources */ = {isa = PBXBuildFile; fileRef = C85D550E2E6182DC00BFEEDA /* broadcast_loading.gif */; };
@@ -692,6 +686,12 @@
 		08B54F0530402CCB0017ED49 /* XWHUDManager_right@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB8D2A930C3800217512 /* XWHUDManager_right@2x.png */; };
 		08B54F0630402CCB0017ED49 /* XWHUDManager_tip@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB932A930C3800217512 /* XWHUDManager_tip@2x.png */; };
 		08B54F0730402CCB0017ED49 /* XWHUDManager_successful@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A62B6A1FA500F60E62 /* XWHUDManager_successful@3x.png */; };
+		08B54F1C30402CCB0017ED49 /* Assets-Lumineux.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 08B54F1530402CCB0017ED49 /* Assets-Lumineux.xcassets */; };
+		08B54F2530402CCB0017ED49 /* Assets-Lumineux-Merged.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 08B54F2430402CCB0017ED49 /* Assets-Lumineux-Merged.xcassets */; };
+		08B54F1D30402CCB0017ED49 /* Privacy Policy.html in Resources */ = {isa = PBXBuildFile; fileRef = 08B54F1630402CCB0017ED49 /* Privacy Policy.html */; };
+		08B54F1E30402CCB0017ED49 /* User Agreement.html in Resources */ = {isa = PBXBuildFile; fileRef = 08B54F1730402CCB0017ED49 /* User Agreement.html */; };
+		08B54F1F30402CCB0017ED49 /* Lumineux-LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 08B54F1830402CCB0017ED49 /* Lumineux-LaunchScreen.storyboard */; };
+		08B54F2030402CCB0017ED49 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 08B54F1B30402CCB0017ED49 /* InfoPlist.strings */; };
 		0C36C97F8A95474C9D655F09 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
 		15F6AEDF416B45D6BC28749E /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
 		1FAE4DDDBDF446118B26374D /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
@@ -703,7 +703,7 @@
 		39FE1B9D3CB748E99E153094 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
 		4D4A0F032EE24DA7965F1B78 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
 		59406AF3301C4F9EA72AE09D /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
-		6116D0D0F05DFA292964E9B9 /* (null) in Frameworks */ = {isa = PBXBuildFile; };
+		6116D0D0F05DFA292964E9B9 /* BuildFile in Frameworks */ = {isa = PBXBuildFile; };
 		641FEC57DE5645609932974D /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
 		7119A2FC8208465ABF6EF1D3 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
 		7A97BDEC9C6E47B78123C040 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
@@ -3217,6 +3217,7 @@
 		C8FDE9A72DD595A30002394B /* GroupProximityLightingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */; };
 		C8FF8A7E146827711D87F57C /* GroupPowerSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */; };
 		C8FFD7D52E7D03B20074CC6A /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
+		D3C2B2A90073BA539A94D739 /* Pods_Common_Lumineux.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 15FF8143AF8FD80AB9279AE9 /* Pods_Common_Lumineux.framework */; };
 		DC176B45FDD04BF2B211C2D1 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
 		E4EABB296C324CDB9BF69468 /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
 		EAB7CC4E471C03663E94EFE1 /* Pods_Common_SylSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1025845F30FDFC9F8C9ACCB /* Pods_Common_SylSmart.framework */; };
@@ -3415,12 +3416,26 @@
 /* Begin PBXFileReference section */
 		084EF310302AB496008CB48A /* all_utc_timezones.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = all_utc_timezones.json; sourceTree = "<group>"; };
 		08B54F0C30402CCB0017ED49 /* Lumineux.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lumineux.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		08B54F0D30402CCB0017ED49 /* SunSmart copy-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "SunSmart copy-Info.plist"; path = "/Users/maginawin/Developer/iOS/YKH/sun-smart-worktrees/Lumineux/SunSmart copy-Info.plist"; sourceTree = "<absolute>"; };
+		08B54F0D30402CCB0017ED49 /* Lumineux-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Lumineux/Lumineux-Info.plist"; sourceTree = SOURCE_ROOT; };
+		08B54F1030402CCB0017ED49 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
+		08B54F1130402CCB0017ED49 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		08B54F1230402CCB0017ED49 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		08B54F1430402CCB0017ED49 /* Lumineux.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Lumineux.entitlements; sourceTree = "<group>"; };
+		08B54F1530402CCB0017ED49 /* Assets-Lumineux.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets-Lumineux.xcassets"; sourceTree = "<group>"; };
+		08B54F1630402CCB0017ED49 /* Privacy Policy.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "Privacy Policy.html"; sourceTree = "<group>"; };
+		08B54F1730402CCB0017ED49 /* User Agreement.html */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.html; path = "User Agreement.html"; sourceTree = "<group>"; };
+		08B54F1830402CCB0017ED49 /* Lumineux-LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = "Lumineux-LaunchScreen.storyboard"; sourceTree = "<group>"; };
+		08B54F1930402CCB0017ED49 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		08B54F1A30402CCB0017ED49 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		08B54F2430402CCB0017ED49 /* Assets-Lumineux-Merged.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "LumineuxAssets/Assets-Lumineux-Merged.xcassets"; sourceTree = DERIVED_FILE_DIR; };
 		0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorViewModel.swift; sourceTree = "<group>"; };
+		15FF8143AF8FD80AB9279AE9 /* Pods_Common_Lumineux.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_Lumineux.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		29E6735F1867DC54FBDDBAA9 /* Pods-Common-SylSmart.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SylSmart.debug.xcconfig"; path = "Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart.debug.xcconfig"; sourceTree = "<group>"; };
 		3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyFireControllerIconName.swift; sourceTree = "<group>"; };
+		40600A1CA2E3F5AAD4720361 /* Pods-Common-Lumineux.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-Lumineux.debug.xcconfig"; path = "Target Support Files/Pods-Common-Lumineux/Pods-Common-Lumineux.debug.xcconfig"; sourceTree = "<group>"; };
 		45931D652AFCE854D4A27862 /* Pods-Common-SunSmart.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SunSmart.debug.xcconfig"; path = "Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart.debug.xcconfig"; sourceTree = "<group>"; };
 		5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorRouting.swift; sourceTree = "<group>"; };
+		5DE88F1025D2BB6E473AD28D /* Pods-Common-Lumineux.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-Lumineux.release.xcconfig"; path = "Target Support Files/Pods-Common-Lumineux/Pods-Common-Lumineux.release.xcconfig"; sourceTree = "<group>"; };
 		7CF816C3063D0EF30B936BA4 /* Pods_Common_SLG_Sync_Plus.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_SLG_Sync_Plus.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		8C1DA7392FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchForcedAutoPopupController.swift; sourceTree = "<group>"; };
 		8C1DA74C2FAAF2A60073F100 /* PJDevicesEntrySource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJDevicesEntrySource.swift; sourceTree = "<group>"; };
@@ -3513,6 +3528,7 @@
 		8CFE26002FB0000000000006 /* PJLinkedStaOpertionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJLinkedStaOpertionsView.swift; sourceTree = "<group>"; };
 		8F7ED1D6D6BFC3B3813C473D /* Pods_Common_Archipelago.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_Archipelago.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		BAC59D3E13FBA419B630C430 /* Pods-Common-Archipelago.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-Archipelago.release.xcconfig"; path = "Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago.release.xcconfig"; sourceTree = "<group>"; };
+		C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Pods_Common_SunSmart.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		C8002CD12DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStaticDataDeviceViewCell.swift; sourceTree = "<group>"; };
 		C803EC4B2BCCC9F0003C48B1 /* ConfigurationFlowGuidanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationFlowGuidanceView.swift; sourceTree = "<group>"; };
 		C8047F082B8DFA5900A09FFA /* ProfileInstructionsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileInstructionsController.swift; sourceTree = "<group>"; };
@@ -4096,7 +4112,6 @@
 		C8FB10012F11000400000001 /* SimulateFaultRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulateFaultRequest.swift; sourceTree = "<group>"; };
 		C8FC6B9D2E7502F6004EE2BA /* DaliDeviceInformationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaliDeviceInformationController.swift; sourceTree = "<group>"; };
 		C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupProximityLightingData.swift; sourceTree = "<group>"; };
-		C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Pods_Common_SunSmart.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		CA14D3D265B3B74E304A61D7 /* Pods-Common-Archipelago.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-Archipelago.debug.xcconfig"; path = "Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago.debug.xcconfig"; sourceTree = "<group>"; };
 		D1025845F30FDFC9F8C9ACCB /* Pods_Common_SylSmart.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_SylSmart.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorRendering.swift; sourceTree = "<group>"; };
@@ -4173,9 +4188,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				08B54EEC30402CCB0017ED49 /* Pods_Common_SunSmart.framework in Frameworks */,
 				08B54EED30402CCB0017ED49 /* NordicSigMeshSDK in Frameworks */,
-				08B54EEE30402CCB0017ED49 /* Pods_Common_SunSmart.framework in Frameworks */,
+				D3C2B2A90073BA539A94D739 /* Pods_Common_Lumineux.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -4184,7 +4198,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C88555142DE6B44C00C8B688 /* NordicSigMeshSDK in Frameworks */,
-				6116D0D0F05DFA292964E9B9 /* (null) in Frameworks */,
+				6116D0D0F05DFA292964E9B9 /* BuildFile in Frameworks */,
 				C8D3BC5211D39346ECD5E3AF /* Pods_Common_Archipelago.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -4220,13 +4234,38 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
+		08B54F2130402CCB0017ED49 /* Lumineux */ = {
+			isa = PBXGroup;
+			children = (
+				08B54F0D30402CCB0017ED49 /* Lumineux-Info.plist */,
+				08B54F1430402CCB0017ED49 /* Lumineux.entitlements */,
+				08B54F1530402CCB0017ED49 /* Assets-Lumineux.xcassets */,
+				08B54F1830402CCB0017ED49 /* Lumineux-LaunchScreen.storyboard */,
+				08B54F1630402CCB0017ED49 /* Privacy Policy.html */,
+				08B54F1730402CCB0017ED49 /* User Agreement.html */,
+				08B54F1B30402CCB0017ED49 /* InfoPlist.strings */,
+			);
+			path = Lumineux;
+			sourceTree = "<group>";
+		};
+		08B54F2230402CCB0017ED49 /* Lumineux */ = {
+			isa = PBXGroup;
+			children = (
+				08B54F1030402CCB0017ED49 /* Base.xcconfig */,
+				08B54F1130402CCB0017ED49 /* Debug.xcconfig */,
+				08B54F1230402CCB0017ED49 /* Release.xcconfig */,
+			);
+			path = Lumineux;
+			sourceTree = "<group>";
+		};
 		4EFDC03D8D0C5DDD54D9D8A8 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */,
 				D1025845F30FDFC9F8C9ACCB /* Pods_Common_SylSmart.framework */,
 				8F7ED1D6D6BFC3B3813C473D /* Pods_Common_Archipelago.framework */,
 				7CF816C3063D0EF30B936BA4 /* Pods_Common_SLG_Sync_Plus.framework */,
+				15FF8143AF8FD80AB9279AE9 /* Pods_Common_Lumineux.framework */,
+				C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -4968,7 +5007,7 @@
 				C896B9A52A930BA800217512 /* Products */,
 				D768458DC30C9D1E66429902 /* Pods */,
 				4EFDC03D8D0C5DDD54D9D8A8 /* Frameworks */,
-				08B54F0D30402CCB0017ED49 /* SunSmart copy-Info.plist */,
+				08B54F2130402CCB0017ED49 /* Lumineux */,
 			);
 			sourceTree = "<group>";
 		};
@@ -6151,6 +6190,8 @@
 				E08E6FB7E3FFE82A5A620CAF /* Pods-Common-SunSmart.release.xcconfig */,
 				E51C037D44D1F333E8E14E98 /* Pods-Common-SLG Sync Plus.debug.xcconfig */,
 				DB94D08D018A81456AF735FC /* Pods-Common-SLG Sync Plus.release.xcconfig */,
+				40600A1CA2E3F5AAD4720361 /* Pods-Common-Lumineux.debug.xcconfig */,
+				5DE88F1025D2BB6E473AD28D /* Pods-Common-Lumineux.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -6163,6 +6204,7 @@
 				F10000000000000000000011 /* Archipelago */,
 				F10000000000000000000012 /* SylSmart */,
 				F10000000000000000000013 /* SLGSync */,
+				08B54F2230402CCB0017ED49 /* Lumineux */,
 			);
 			path = Config;
 			sourceTree = "<group>";
@@ -6249,6 +6291,7 @@
 			buildConfigurationList = 08B54F0930402CCB0017ED49 /* Build configuration list for PBXNativeTarget "Lumineux" */;
 			buildPhases = (
 				08B54C5C30402CCB0017ED49 /* [CP] Check Pods Manifest.lock */,
+				08B54F2630402CCB0017ED49 /* Merge Lumineux Assets */,
 				08B54C5D30402CCB0017ED49 /* Sources */,
 				08B54EEB30402CCB0017ED49 /* Frameworks */,
 				08B54EEF30402CCB0017ED49 /* Resources */,
@@ -6400,25 +6443,25 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				08B54EF030402CCB0017ED49 /* Privacy Policy.html in Resources */,
+				08B54F1D30402CCB0017ED49 /* Privacy Policy.html in Resources */,
 				08B54EF130402CCB0017ED49 /* XWHUDManager_right@3x.png in Resources */,
-				08B54EF230402CCB0017ED49 /* User Agreement.html in Resources */,
+				08B54F1E30402CCB0017ED49 /* User Agreement.html in Resources */,
 				08B54EF330402CCB0017ED49 /* Localizable.strings in Resources */,
-				08B54EF430402CCB0017ED49 /* InfoPlist.strings in Resources */,
+				08B54F2030402CCB0017ED49 /* InfoPlist.strings in Resources */,
 				08B54EF530402CCB0017ED49 /* device_add.mp3 in Resources */,
 				08B54EF630402CCB0017ED49 /* device_reset.mp3 in Resources */,
 				08B54EF730402CCB0017ED49 /* all_utc_timezones.json in Resources */,
 				08B54EF830402CCB0017ED49 /* XWHUDManager_successful@2x.png in Resources */,
 				08B54EF930402CCB0017ED49 /* XWHUDManager_tip@3x.png in Resources */,
 				08B54EFA30402CCB0017ED49 /* XWHUDManager_loading.gif in Resources */,
-				08B54EFB30402CCB0017ED49 /* LaunchScreen.storyboard in Resources */,
+				08B54F1F30402CCB0017ED49 /* Lumineux-LaunchScreen.storyboard in Resources */,
 				08B54EFC30402CCB0017ED49 /* XWHUDManager_error@2x.png in Resources */,
 				08B54EFD30402CCB0017ED49 /* CodeScan.bundle in Resources */,
 				08B54EFE30402CCB0017ED49 /* broadcast_loading.gif in Resources */,
 				08B54EFF30402CCB0017ED49 /* devices_config.json in Resources */,
 				08B54F0030402CCB0017ED49 /* XWHUDManager_error@3x.png in Resources */,
 				08B54F0130402CCB0017ED49 /* devices1.5.md in Resources */,
-				08B54F0230402CCB0017ED49 /* Assets.xcassets in Resources */,
+				08B54F2530402CCB0017ED49 /* Assets-Lumineux-Merged.xcassets in Resources */,
 				08B54F0330402CCB0017ED49 /* XWHUDManager_info@2x.png in Resources */,
 				08B54F0430402CCB0017ED49 /* XWHUDManager_info@3x.png in Resources */,
 				08B54F0530402CCB0017ED49 /* XWHUDManager_right@2x.png in Resources */,
@@ -6559,6 +6602,29 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		08B54F2630402CCB0017ED49 /* Merge Lumineux Assets */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+				"$(SRCROOT)/Lumineux/Scripts/merge_assets.rb",
+				"$(SRCROOT)/SunSmart/Assets.xcassets",
+				"$(SRCROOT)/Lumineux/Assets-Lumineux.xcassets",
+			);
+			name = "Merge Lumineux Assets";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(DERIVED_FILE_DIR)/LumineuxAssets",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\n/usr/bin/ruby \"${SRCROOT}/Lumineux/Scripts/merge_assets.rb\" \\\n  \"${SRCROOT}/SunSmart/Assets.xcassets\" \\\n  \"${SRCROOT}/Lumineux/Assets-Lumineux.xcassets\" \\\n  \"${DERIVED_FILE_DIR}/LumineuxAssets/Assets-Lumineux-Merged.xcassets\"\n";
+		};
 		0728664D324602E16688C0AF /* [CP] Check Pods Manifest.lock */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -6596,7 +6662,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-Common-SunSmart-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-Common-Lumineux-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -6609,19 +6675,15 @@
 			files = (
 			);
 			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart-frameworks-${CONFIGURATION}-input-files.xcfilelist",
-			);
-			inputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Common-Lumineux/Pods-Common-Lumineux-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
+				"${PODS_ROOT}/Target Support Files/Pods-Common-Lumineux/Pods-Common-Lumineux-frameworks-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart-frameworks.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Common-Lumineux/Pods-Common-Lumineux-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		4189671A43483BFE748246A1 /* [CP] Check Pods Manifest.lock */ = {
@@ -6654,13 +6716,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -6719,13 +6777,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -6740,13 +6794,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -6761,13 +6811,9 @@
 			inputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
-			inputPaths = (
-			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
 				"${PODS_ROOT}/Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus-frameworks-${CONFIGURATION}-output-files.xcfilelist",
-			);
-			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -10082,6 +10128,15 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXVariantGroup section */
+		08B54F1B30402CCB0017ED49 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				08B54F1930402CCB0017ED49 /* en */,
+				08B54F1A30402CCB0017ED49 /* zh-Hans */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
 		C88555382DE6BD3000C8B688 /* Archipelago-LaunchScreen.storyboard */ = {
 			isa = PBXVariantGroup;
 			children = (
@@ -10121,46 +10176,26 @@
 /* Begin XCBuildConfiguration section */
 		08B54F0A30402CCB0017ED49 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = F10000000000000000000003 /* Debug.xcconfig */;
+			baseConfigurationReference = 08B54F1130402CCB0017ED49 /* Debug.xcconfig */;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = SunSmart/SunSmart.entitlements;
-				DEVELOPMENT_TEAM = JTD3WYUC58;
-				INFOPLIST_FILE = "SunSmart copy-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = SunSmart;
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
-				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SunSmart uses location permission to display the currently connected Wi-Fi network name.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart.Lumineux;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
 		};
 		08B54F0B30402CCB0017ED49 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = F10000000000000000000004 /* Release.xcconfig */;
+			baseConfigurationReference = 08B54F1230402CCB0017ED49 /* Release.xcconfig */;
 			buildSettings = {
-				CODE_SIGN_ENTITLEMENTS = SunSmart/SunSmart.entitlements;
-				DEVELOPMENT_TEAM = JTD3WYUC58;
-				INFOPLIST_FILE = "SunSmart copy-Info.plist";
-				INFOPLIST_KEY_CFBundleDisplayName = SunSmart;
-				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
-				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SunSmart uses location permission to display the currently connected Wi-Fi network name.";
-				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
-				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart.Lumineux;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -10445,14 +10480,6 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
-		08B54C5B30402CCB0017ED49 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "git@gitee.com:sunricher-i-os/nordic-sig-mesh-sdk.git";
-			requirement = {
-				branch = release;
-				kind = branch;
-			};
-		};
 		C8D5314A2F76294A0069C71B /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "git@gitee.com:sunricher-i-os/nordic-sig-mesh-sdk.git";
@@ -10466,7 +10493,7 @@
 /* Begin XCSwiftPackageProductDependency section */
 		08B54C5A30402CCB0017ED49 /* NordicSigMeshSDK */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = 08B54C5B30402CCB0017ED49 /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
+			package = C8D5314A2F76294A0069C71B /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */;
 			productName = NordicSigMeshSDK;
 		};
 		C88553AE2DE6B44C00C8B688 /* NordicSigMeshSDK */ = {

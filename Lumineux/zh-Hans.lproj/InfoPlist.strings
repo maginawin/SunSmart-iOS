@@ -1,0 +1,4 @@
+"NSLocationWhenInUseUsageDescription" = "Lumineux 需要定位权限以显示当前连接的 Wi-Fi 网络名称。";
+"NSBluetoothAlwaysUsageDescription" = "需要通过蓝牙连接设备。";
+"NSCameraUsageDescription" = "需要访问相机以扫描设备二维码。";
+"NSPhotoLibraryUsageDescription" = "需要访问照片图库以选择设备二维码。";

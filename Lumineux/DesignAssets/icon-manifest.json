@@ -1,0 +1,405 @@
+{
+  "fileKey": "P4AaSxu8SJe2Tf2gpyTFT9",
+  "export": "Whole Figma node, PDF, contentsOnly=true, useAbsoluteBounds=true. Mechanically rendered to PNG at original iOS logical dimensions; no recoloring or redrawing.",
+  "assets": [
+    {
+      "asset": "space_main",
+      "node": "0:18511",
+      "size": 28,
+      "category": "Tabs",
+      "source": "Figma/node-0-18511.pdf"
+    },
+    {
+      "asset": "space_main_selected",
+      "node": "0:18507",
+      "size": 28,
+      "category": "Tabs",
+      "source": "Figma/node-0-18507.pdf"
+    },
+    {
+      "asset": "space_group",
+      "node": "0:18502",
+      "size": 28,
+      "category": "Tabs",
+      "source": "Figma/node-0-18502.pdf"
+    },
+    {
+      "asset": "space_group_selected",
+      "node": "0:18497",
+      "size": 28,
+      "category": "Tabs",
+      "source": "Figma/node-0-18497.pdf"
+    },
+    {
+      "asset": "space_scene",
+      "node": "0:18488",
+      "size": 28,
+      "category": "Tabs",
+      "source": "Figma/node-0-18488.pdf"
+    },
+    {
+      "asset": "space_scene_selected",
+      "node": "0:18479",
+      "size": 28,
+      "category": "Tabs",
+      "source": "Figma/node-0-18479.pdf"
+    },
+    {
+      "asset": "space_timed",
+      "node": "0:18474",
+      "size": 28,
+      "category": "Tabs",
+      "source": "Figma/node-0-18474.pdf"
+    },
+    {
+      "asset": "space_timed_selected",
+      "node": "0:18469",
+      "size": 28,
+      "category": "Tabs",
+      "source": "Figma/node-0-18469.pdf"
+    },
+    {
+      "asset": "space_more",
+      "node": "0:18464",
+      "size": 28,
+      "category": "Tabs",
+      "source": "Figma/node-0-18464.pdf"
+    },
+    {
+      "asset": "space_more_selected",
+      "node": "0:18459",
+      "size": 28,
+      "category": "Tabs",
+      "source": "Figma/node-0-18459.pdf"
+    },
+    {
+      "asset": "menu_icon",
+      "node": "0:18450",
+      "size": 30,
+      "category": "Navigation",
+      "source": "Figma/node-0-18450.pdf"
+    },
+    {
+      "asset": "import",
+      "node": "0:17667",
+      "size": 30,
+      "category": "Navigation",
+      "source": "Figma/node-0-17667.pdf"
+    },
+    {
+      "asset": "navigation_back",
+      "node": "0:18531",
+      "size": 30,
+      "category": "Navigation",
+      "source": "Figma/node-0-18531.pdf"
+    },
+    {
+      "asset": "device_add_setting",
+      "node": "2115:139236",
+      "size": 30,
+      "category": "Navigation",
+      "source": "Figma/node-2115-139236.pdf"
+    },
+    {
+      "asset": "firmware_history",
+      "node": "3978:227693",
+      "size": 30,
+      "category": "Navigation",
+      "source": "Figma/node-3978-227693.pdf"
+    },
+    {
+      "asset": "more_vertical",
+      "node": "0:17653",
+      "size": 30,
+      "category": "Navigation",
+      "source": "Figma/node-0-17653.pdf"
+    },
+    {
+      "asset": "no_Internet",
+      "node": "2612:99575",
+      "size": 30,
+      "category": "Navigation",
+      "source": "Figma/node-2612-99575.pdf"
+    },
+    {
+      "asset": "reset",
+      "node": "0:18515",
+      "size": 30,
+      "category": "Navigation",
+      "source": "Figma/node-0-18515.pdf"
+    },
+    {
+      "asset": "server_download",
+      "node": "3729:178519",
+      "size": 30,
+      "category": "Navigation",
+      "source": "Figma/node-3729-178519.pdf"
+    },
+    {
+      "asset": "firmware_delete",
+      "node": "3729:178568",
+      "size": 30,
+      "category": "Navigation",
+      "source": "Figma/node-3729-178568.pdf"
+    },
+    {
+      "asset": "light_value_add",
+      "node": "0:17723",
+      "size": 40,
+      "category": "Buttons",
+      "source": "Figma/node-0-17723.pdf"
+    },
+    {
+      "asset": "light_value_minus",
+      "node": "0:17712",
+      "size": 40,
+      "category": "Buttons",
+      "source": "Figma/node-0-17712.pdf"
+    },
+    {
+      "asset": "device_control_on",
+      "node": "0:19609",
+      "size": 40,
+      "category": "Buttons",
+      "source": "Figma/node-0-19609.pdf"
+    },
+    {
+      "asset": "device_control_on_big",
+      "node": "0:19609",
+      "size": 56,
+      "category": "Buttons",
+      "source": "Figma/node-0-19609.pdf"
+    },
+    {
+      "asset": "device_control_off",
+      "node": "0:19600",
+      "size": 40,
+      "category": "Buttons",
+      "source": "Figma/node-0-19600.pdf"
+    },
+    {
+      "asset": "device_control_off_big",
+      "node": "0:19600",
+      "size": 56,
+      "category": "Buttons",
+      "source": "Figma/node-0-19600.pdf"
+    },
+    {
+      "asset": "group_on",
+      "node": "0:19609",
+      "size": 40,
+      "category": "Buttons",
+      "source": "Figma/node-0-19609.pdf"
+    },
+    {
+      "asset": "group_on_big",
+      "node": "0:19609",
+      "size": 56,
+      "category": "Buttons",
+      "source": "Figma/node-0-19609.pdf"
+    },
+    {
+      "asset": "group_off",
+      "node": "0:19600",
+      "size": 40,
+      "category": "Buttons",
+      "source": "Figma/node-0-19600.pdf"
+    },
+    {
+      "asset": "group_off_big",
+      "node": "0:19600",
+      "size": 56,
+      "category": "Buttons",
+      "source": "Figma/node-0-19600.pdf"
+    },
+    {
+      "asset": "group_control_disable",
+      "node": "0:19591",
+      "size": 40,
+      "category": "Buttons",
+      "source": "Figma/node-0-19591.pdf"
+    },
+    {
+      "asset": "group_control_disable_big",
+      "node": "0:19591",
+      "size": 56,
+      "category": "Buttons",
+      "source": "Figma/node-0-19591.pdf"
+    },
+    {
+      "asset": "device_all_on",
+      "node": "0:19558",
+      "size": 30,
+      "category": "Buttons",
+      "source": "Figma/node-0-19558.pdf"
+    },
+    {
+      "asset": "device_all_off",
+      "node": "0:19551",
+      "size": 30,
+      "category": "Buttons",
+      "source": "Figma/node-0-19551.pdf"
+    },
+    {
+      "asset": "scene_group_on",
+      "node": "0:19558",
+      "size": 30,
+      "category": "Buttons",
+      "source": "Figma/node-0-19558.pdf"
+    },
+    {
+      "asset": "scene_group_off",
+      "node": "0:19551",
+      "size": 30,
+      "category": "Buttons",
+      "source": "Figma/node-0-19551.pdf"
+    },
+    {
+      "asset": "scene_group_disable",
+      "node": "0:19544",
+      "size": 30,
+      "category": "Buttons",
+      "source": "Figma/node-0-19544.pdf"
+    },
+    {
+      "asset": "device_restore",
+      "node": "7642:243075",
+      "size": 30,
+      "category": "Buttons",
+      "source": "Figma/node-7642-243075.pdf"
+    },
+    {
+      "asset": "device_restore_disable",
+      "node": "7642:243100",
+      "size": 30,
+      "category": "Buttons",
+      "source": "Figma/node-7642-243100.pdf"
+    },
+    {
+      "asset": "scene_data_value_add",
+      "node": "0:17723",
+      "size": 30,
+      "category": "Buttons",
+      "source": "Figma/node-0-17723.pdf"
+    },
+    {
+      "asset": "scene_data_value_minus",
+      "node": "0:17712",
+      "size": 30,
+      "category": "Buttons",
+      "source": "Figma/node-0-17712.pdf"
+    },
+    {
+      "asset": "device_add",
+      "node": "0:17734",
+      "size": 30,
+      "category": "Buttons",
+      "source": "Figma/node-0-17734.pdf"
+    },
+    {
+      "asset": "device_add_disable",
+      "node": "0:17730",
+      "size": 30,
+      "category": "Buttons",
+      "source": "Figma/node-0-17730.pdf"
+    },
+    {
+      "asset": "device_identify",
+      "node": "7569:199924",
+      "size": 30,
+      "category": "Buttons",
+      "source": "Figma/node-7569-199924.pdf"
+    },
+    {
+      "asset": "slider_point",
+      "node": "0:19256",
+      "size": 40,
+      "category": "Buttons",
+      "source": "Figma/node-0-19256.pdf"
+    },
+    {
+      "asset": "slider_point_disable",
+      "node": "0:19254",
+      "size": 40,
+      "category": "Buttons",
+      "source": "Figma/node-0-19254.pdf"
+    },
+    {
+      "asset": "favourite_normal",
+      "node": "0:18447",
+      "size": 30,
+      "category": "Misc",
+      "source": "Figma/node-0-18447.pdf"
+    },
+    {
+      "asset": "favourite_selected",
+      "node": "0:18444",
+      "size": 30,
+      "category": "Misc",
+      "source": "Figma/node-0-18444.pdf"
+    },
+    {
+      "asset": "loading",
+      "node": "0:19404",
+      "size": 30,
+      "category": "Misc",
+      "source": "Figma/node-0-19404.pdf"
+    },
+    {
+      "asset": "loading_big",
+      "node": "0:19404",
+      "size": 56,
+      "category": "Misc",
+      "source": "Figma/node-0-19404.pdf"
+    },
+    {
+      "asset": "hud_loading",
+      "node": "0:19404",
+      "size": 48,
+      "category": "Misc",
+      "source": "Figma/node-0-19404.pdf"
+    },
+    {
+      "asset": "space_energy_data",
+      "node": "8082:257701",
+      "size": 30,
+      "category": "Misc",
+      "source": "Figma/node-8082-257701.pdf"
+    },
+    {
+      "asset": "device_add_waiting",
+      "node": "0:18434",
+      "size": 30,
+      "category": "Misc",
+      "source": "Figma/node-0-18434.pdf"
+    },
+    {
+      "asset": "sync_loading_small",
+      "node": "0:19404",
+      "size": 24,
+      "category": "Misc",
+      "source": "Figma/node-0-19404.pdf"
+    },
+    {
+      "asset": "add",
+      "node": "16001:24116",
+      "size": 48,
+      "category": "Buttons",
+      "source": "Figma/node-16001-24116.pdf"
+    },
+    {
+      "asset": "select",
+      "node": "5776:95965",
+      "size": 30,
+      "category": "Misc",
+      "source": "Figma/node-5776-95965.pdf"
+    },
+    {
+      "asset": "space_add",
+      "node": "16001:97684",
+      "size": 30,
+      "category": "Buttons",
+      "source": "Figma/node-16001-97684.pdf"
+    }
+  ]
+}
