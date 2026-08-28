@@ -62,12 +62,15 @@ struct SensorCalibrationWorkflowContractTests {
         )
         require(
             planeStart.contains("event=app_start mode=plane") &&
+                planeStart.contains("beginDaylightCalibration(mode: \"plane\")") &&
                 nightStart.contains("event=app_start mode=night") &&
+                nightStart.contains("beginDaylightCalibration(mode: \"night\")") &&
                 nightStart.contains("targetBrightnessPercent=") &&
                 sensorStart.contains("event=app_start mode=sensor") &&
+                sensorStart.contains("beginDaylightCalibration(mode: \"sensor\")") &&
                 sensorStart.contains("targetLux=") &&
                 sensorStart.contains("dimLevelPercent="),
-            "Plane, Night and Sensor must all log their App start event and mode-specific inputs"
+            "Plane, Night and Sensor must suspend Group Auto before logging and starting their SDK flow"
         )
         let sensorSDKEntry = section(
             in: manager,
@@ -108,12 +111,18 @@ struct SensorCalibrationWorkflowContractTests {
         )
         require(
             manager.contains("public struct LightnessLuxStabilityPolicy") &&
+                manager.components(separatedBy: "settleTimeout: TimeInterval = 60").count == 3 &&
                 manager.contains("requiredNoDirectionalChangeCount") &&
                 manager.contains("static func stableRepresentative(") &&
                 manager.contains("private func collectStableLux(") &&
+                manager.contains("environmentStabilityAttempts = 2") &&
+                manager.contains("case .ambientInstability = self.calibrateError") &&
+                manager.contains("event: \"environment_stability_retry\"") &&
+                manager.contains("startTimeoutTimer(timeInterval: 900)") &&
+                manager.contains("startTimeoutTimer(timeInterval: 1800)") &&
                 manager.contains("await getStableLightnessLuxData(lightness: lightness, policy: lightnessStabilityPolicy)") &&
                 !manager.contains("publishLuxs.count == 0"),
-            "Plane, Sensor and Night must share active stable sampling and must not accept zero passive samples"
+            "Stable sampling must use the 60-second policy, scaled workflow timers and one ambient-instability retry"
         )
         require(
             manager.contains("private var calibrationLightNodes") &&
@@ -233,11 +242,17 @@ struct SensorCalibrationWorkflowContractTests {
             "Use sensor reading must be sensor-bound, freshness-aware and constrained to 0...2500 lx"
         )
         require(
-            controller.contains("suspendGroupAutoForSensorCalibration") &&
+            controller.contains("suspendGroupAutoForDaylightCalibration") &&
+                controller.contains("private func beginDaylightCalibration(mode: String)") &&
+                controller.contains("finishDaylightCalibrationFailure(allowAutoRestore:") &&
+                controller.contains("if case .calibrationRollbackFailed = error") &&
+                controller.contains("isDaylightCalibrationInProgress") &&
+                controller.contains("setDaylightCalibrationNavigationLocked(true)") &&
+                controller.contains("daylightAutoRestoreBlocked = !allowAutoRestore") &&
                 controller.contains("restoreSensorDimLevel") &&
-                controller.contains("sensorConfigurationPending") &&
+                controller.contains("daylightConfigurationPending") &&
                 controller.contains("Node.getLightness(lightness100: sensorCalibrationDimLevel)"),
-            "Sensor manual dimming must suspend Auto and restore the Apply-time level without bypassing pending configuration"
+            "All calibration modes must share a guarded Group Auto lifecycle while Sensor retains its manual dim level"
         )
         require(
             meshAPI.contains("public static func setGroupLightnessState"),
