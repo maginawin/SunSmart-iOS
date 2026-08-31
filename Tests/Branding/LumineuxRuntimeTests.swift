@@ -1024,6 +1024,7 @@ final class LumineuxRuntimeTests: XCTestCase {
                 "Production view did not load image: \(name)")
             try assertResolvedImageMatchesLumineuxSource(imageView.image, name: name)
             assertContained(imageView, in: imageView.superview ?? container)
+            assertContained(imageView, in: container)
             return imageView
         }
 
@@ -1049,6 +1050,7 @@ final class LumineuxRuntimeTests: XCTestCase {
         try assertResolvedImageMatchesLumineuxSource(nodesButton.currentImage,
                                                      name: "distributor_nodes_highlight")
         assertContained(nodesButton, in: firmwareHeader)
+        snapshot(window, "New3-firmware-header-and-flow")
 
         let flow = BLEUpgradeInstructionsController()
         flow.datas = [
@@ -1069,6 +1071,7 @@ final class LumineuxRuntimeTests: XCTestCase {
             try assertResolvedImageMatchesLumineuxSource(button.image(for: .normal), name: name)
             assertContained(button, in: flow.view)
         }
+        snapshot(window, "New3-firmware-header-and-flow")
 
         let firmware = NoRequestFirmwareVersionViewController(
             type: FirmwareUpdateTypeData(productId: 0x0001, targetVersion: nil, nodes: [])
@@ -1089,6 +1092,7 @@ final class LumineuxRuntimeTests: XCTestCase {
         for name in ["mesh_upgrade_guide_1", "mesh_upgrade_guide_2", "mesh_upgrade_guide_3"] {
             _ = try imageView(named: name, in: upgradeGuide)
         }
+        snapshot(window, "New3-firmware-guides")
         upgradeGuide.removeFromSuperview()
 
         let distributorGuide = MeshFirmwareUpgradeGuideView(
@@ -1109,16 +1113,19 @@ final class LumineuxRuntimeTests: XCTestCase {
         for name in ["power_state_off", "power_state_restore", "power_state_defined"] {
             _ = try imageView(named: name, in: power.view)
         }
+        snapshot(window, "New3-profile-instructions")
 
         let speed = AdjustSpeedInstructionController()
         show(NavigationViewController(rootViewController: speed))
         for name in ["adjust_speed_slow", "adjust_speed_fast"] {
             _ = try imageView(named: name, in: speed.view)
         }
+        snapshot(window, "New3-profile-instructions")
 
         let timeout = ManualOverrideTimeoutInstructionController()
         show(NavigationViewController(rootViewController: timeout))
         _ = try imageView(named: "sensor_manul_override_timeout", in: timeout.view)
+        snapshot(window, "New3-profile-instructions")
 
         let daylightHeader = DaylightSensorInstructionsHeaderView(frame: .zero)
         _ = host(daylightHeader, size: CGSize(width: 343, height: 227))
@@ -1127,10 +1134,12 @@ final class LumineuxRuntimeTests: XCTestCase {
         try assertResolvedImageMatchesLumineuxSource(standalone.image(for: .normal),
                                                      name: "daylight_standalone_sensor")
         assertContained(standalone, in: daylightHeader)
+        snapshot(window, "New3-profile-instructions")
 
         let proximityNumber = ProfileProximityLightingNumberView(frame: .zero)
         _ = host(proximityNumber, size: CGSize(width: 343, height: 250))
         _ = try imageView(named: "profile_person", in: proximityNumber)
+        snapshot(window, "New3-profile-instructions")
 
         let daylight = DaylightSensorInstructionsController()
         show(NavigationViewController(rootViewController: daylight))
@@ -1146,10 +1155,12 @@ final class LumineuxRuntimeTests: XCTestCase {
             try assertResolvedImageMatchesLumineuxSource(cell.imageView.image, name: name)
             assertContained(cell.imageView, in: cell.contentView)
         }
+        snapshot(window, "New3-profile-instructions")
 
         let neighbour = NumberOfNeghbourNodeInstructionsController()
         show(NavigationViewController(rootViewController: neighbour))
         _ = try imageView(named: "profile_person_big", in: neighbour.view)
+        snapshot(window, "New3-profile-instructions")
 
         let profileInstructions = ProfileInstructionsViewCell(style: .default, reuseIdentifier: nil)
         profileInstructions.type = .proximityLighting
@@ -1172,11 +1183,11 @@ final class LumineuxRuntimeTests: XCTestCase {
                 try assertResolvedImageMatchesLumineuxSource(chart.image, name: name)
             }
             assertContained(chart, in: phases)
+            snapshot(window, "New3-profile-charts")
         }
         try assertProductionChart(.daylight, named: "profile_chart_daylight")
         try assertProductionChart(.manualControl, named: "profile_chart_manual_control")
         try assertProductionChart(.occupancy, named: "profile_chart_occupancy")
-        snapshot(window, "New3-profile-charts")
 
         let sceneAndSpace = UIView()
         let sceneCell = SceneAddDataAddCell(frame: .zero)
