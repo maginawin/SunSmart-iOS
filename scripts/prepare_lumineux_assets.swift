@@ -56,7 +56,9 @@ func writeOpaqueAppIcon(_ image: CGImage, to url: URL) {
 }
 
 try writeJSON(["info": info], to: catalog)
-for (name, logicalSize) in [("launch_logo", 88), ("launch_logo_120", 120)] {
+for (name, logicalSize) in [("launch_logo", 88),
+                            ("launch_logo_120", 120),
+                            ("lumineux_launch_logo", 88)] {
     let directory = catalog.appendingPathComponent("\(name).imageset")
     let images = (1...3).map { scale in
         ["idiom": "universal", "filename": "\(name)@\(scale)x.png", "scale": "\(scale)x"]
@@ -68,4 +70,4 @@ let iconDirectory = catalog.appendingPathComponent("AppIcon.appiconset")
 try writeJSON(["images": [["filename": "AppIcon.png", "idiom": "universal", "platform": "ios", "size": "1024x1024"]], "info": info], to: iconDirectory)
 writeOpaqueAppIcon(appIcon, to: iconDirectory.appendingPathComponent("AppIcon.png"))
 try writeJSON(["colors": [["idiom": "universal", "color": ["color-space": "srgb", "components": ["red": "0x4D", "green": "0x73", "blue": "0x8A", "alpha": "1.000"]]]], "info": info], to: catalog.appendingPathComponent("AccentColor.colorset"))
-print("Prepared Lumineux shared-name iOS assets from the high-resolution original export without recoloring")
+print("Prepared Lumineux shared-name and dedicated launch iOS assets from the high-resolution original export without recoloring")

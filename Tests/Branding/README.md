@@ -4,10 +4,10 @@ Lumineux 在构建期把公共 catalog 与 Lumineux catalog 合并为一份无�
 
 ## 检查范围
 
-- 57 组已提供图标与 88/120pt Logo 均保持原有 iOS 逻辑尺寸和 1x/2x/3x 图片；AppIcon 为无 alpha 的 1024px 派生文件，AccentColor 为 `#4D738A`。
+- 66 组已提供图标、4 组空状态插图与 88/120pt Logo 均保持原始画布和 iOS 逻辑尺寸；其中 65 组来自 Figma 完整向量节点，`auto` 来自用户提供的 Retina PNG。系统启动页另使用独立的 88pt `lumineux_launch_logo`，AppIcon 为无 alpha 的 1024px 派生文件，AccentColor 为 `#4D738A`。
 - Lumineux 的 `Merge Lumineux Assets` phase 每次构建调用 `Lumineux/Scripts/merge_assets.rb`，把 `SunSmart/Assets.xcassets` 复制到 `DERIVED_FILE_DIR` 后以完整 Lumineux asset set 覆盖；Resources 只编译 `LumineuxAssets/Assets-Lumineux-Merged.xcassets`。签名 Team、Bundle ID、协议与独立启动页归属不变。
-- 真实 UIKit 测试覆盖 Welcome、菜单/服务器入口、Sites 单元格和滑块回调、启动页及协议内容/路由、Sites 空页、全部已提供图片尺寸与来源、Tab/收藏状态，以及真实 menu/back 导航图片、target/action、渲染 bounds 与返回路径。
-- 临时 XCTest bundle 会独立编译完整原始 Lumineux 61 组 catalog（59 个 image set、AppIcon、AccentColor）。主 App 的 `UIImage(named:)` 与该 reference catalog 逐像素 RGBA 对比；common launch logo 仅以三个唯一前缀的 loose PNG 作为严格负对照，不参与正向 catalog 编译。reference bundle ID 必须不同于主 App；不以两次主 bundle 同名读取或平铺 PNG 自比代替来源验证。
+- 真实 UIKit 测试覆盖 Welcome、菜单/服务器入口、Sites 单元格和滑块回调、启动页及协议内容/路由、四类真实空状态容器、强制 AUTO 弹窗、全部已提供图片尺寸与来源、Tab/收藏状态，以及真实 menu/back 导航图片、target/action、渲染 bounds 与返回路径。
+- 临时 XCTest bundle 会独立编译完整原始 Lumineux 75 组 catalog（73 个 image set、AppIcon、AccentColor）。主 App 的 `UIImage(named:)` 与该 reference catalog 逐像素 RGBA 对比；common launch logo 仅以三个唯一前缀的 loose PNG 作为严格负对照，不参与正向 catalog 编译。reference bundle ID 必须不同于主 App；不以两次主 bundle 同名读取或平铺 PNG 自比代替来源验证。
 - 测试不修改生产工程/AppDelegate，不选择服务器、不登录、不添加站点、不连接或控制真实设备。截图必须人工查看；编译通过不等同于布局通过。
 
 ## 静态配置与素材
@@ -30,7 +30,7 @@ swift scripts/prepare_lumineux_assets.swift
 swift scripts/prepare_lumineux_icons.swift
 ```
 
-原始 Logo 与 Figma PDF 均不改写；AppIcon 去除 alpha，其他透明图保留透明度。两组显示 Logo 均从 `app_logo_1024.png` 缩小生成，不再放大带灰角的 `launch_logo_88.png` 预览图，打包器禁止源图放大。Logo 测试直接与已确认的高清源图比较，并检查四角在白底合成后没有灰色装饰。图标打包器显式按完整 PDF 画布缩放，保留图形及留白；素材测试同时检查像素尺寸和可见内容范围。
+原始 Logo 与 Figma PDF 均不改写；AppIcon 去除 alpha，其他透明图保留透明度。`launch_logo`、`launch_logo_120` 与系统启动页专用的 `lumineux_launch_logo` 均从 `app_logo_1024.png` 缩小生成，不再放大带灰角的 `launch_logo_88.png` 预览图，打包器禁止源图放大。Logo 测试直接与已确认的高清源图比较，并检查四角在白底合成后没有灰色装饰。图标打包器显式按完整 PDF 画布缩放，保留图形及留白；素材测试同时检查像素尺寸和可见内容范围。
 
 ## 实际布局测试
 
@@ -105,10 +105,59 @@ Welcome 模糊和灰角来自旧打包器：它把自带灰色圆角的 88×88 �
 - 启动页测试改为读取 App 实际 `UILaunchStoryboardName`，同时另外验证系统冷启动：iPhone 16 模拟器使用 `simctl launch --wait-for-debugger` 将进程停在进入 App 代码前，等待系统启动动画结束后截图。旧版本显示带灰角的 Lumineux 图；不卸载、不清数据，直接覆盖安装新版本后，系统启动画面显示高清 Lumineux 图。该验证与手动实例化 storyboard 的布局测试分开记录。
 - 正式 workspace 的 Lumineux 真机 Debug 构建、签名校验通过，仍为 Wen Xu / JTD3WYUC58；694 组生成资源中 61 组逐文件匹配 Lumineux、633 组匹配公共图库。4249 个受保护文件中仅上述六张 PNG 变化，其他四个 target、全局设置、生产工程和合并器保持不变。未安装或启动用户真机 App。
 
-用户真机“仍显示 SunSmart”的现象尚未直接复现，不能据模拟器结果宣称已确认其根因。当前构建包配置为 `Lumineux-LaunchScreen` 且合并 Logo 正确；旧启动快照只是待验证方向，参见 [Apple TN3118](https://developer.apple.com/documentation/technotes/tn3118-debugging-your-apps-launch-screen)。如真机覆盖构建后仍出现旧图，需先核对截图与安装包，不自行卸载 App 或清除站点 / Mesh 数据，也不为未证实的缓存问题修改共享 UI 或资源命名。
+用户随后在 iPhone 16 真机上复现了白色启动页。11:05 的真机构建产物已确认 `UILaunchStoryboardName`、编译后的 storyboard 和 `Assets.car` 都包含正确的 Lumineux 专用资源，因此这次现象不是 catalog 漏打包。11:17 的真机 SpringBoard/SplashBoard 日志直接记录了 `found matching snapshot; will not generate` 与 `not purging the cached image; force: 0`，证明系统仍在复用旧的白色启动快照；参见 [Apple TN3118](https://developer.apple.com/documentation/technotes/tn3118-debugging-your-apps-launch-screen)。
+
+后续真机对照进一步确认，临时把 storyboard 改名为 `Lumineux-LaunchScreen-V2`、把 Bundle Version 覆盖为 2，以及整机重启后首次解锁，SplashBoard 都继续返回同一个旧 snapshot `…50CFFB617A46`，没有进入重新生成分支。因此已撤销无效的改名和版本实验，不把缓存规避写入正式配置。用户选择严格保持 SLGSync 的实现边界：最终仍为独立 `Lumineux-LaunchScreen` storyboard 加独立 `lumineux_launch_logo` 资源，不增加 Lumineux 应用内启动层，不修改共享 AppDelegate。当前这台曾安装旧启动页的 iPhone 16 仍显示系统缓存白屏，不能宣称真机问题已由工程代码修复。
 
 本轮本机临时证据位于 `/private/tmp/lumineux-logo-fix.Qad0mL`：`matrix-en.xcresult`、`matrix-zh.xcresult`、`screenshots-en`、`screenshots-zh`、`cold-launch-before.png`、`cold-launch-after-stable.png`。
 
+## 2026-08-29 启动页专用资源
+
+用户真机截图中的紫色光束图标与 `SunSmart/Assets.xcassets/Common/launch_logo.imageset` 完全一致。当时的 Lumineux 构建包虽已把同名 `launch_logo` 合并为 Lumineux 图片，但编译后的启动 storyboard 仍请求这个共享名称。仅替换 asset catalog 内部的同名图片，没有让真机的旧启动画面更新。
+
+SLGSync 的启动 storyboard 并不使用共享 `launch_logo`，而是引用品牌专用的 `slg_launch_logo`。Lumineux 现以同样方式改为 `lumineux_launch_logo`，并在 Lumineux catalog 中新增独立 88pt 1x/2x/3x 资源。该资源与已确认的高清 Lumineux Logo 逐文件一致，启动 storyboard 不再依赖 SunSmart 共享图名。本轮只修改 Lumineux 启动 storyboard、新增的专用 asset、素材生成器及回归测试，没有修改 SunSmart 共享代码、共享图片或其他 target。
+
+回归测试已先在缺少专用资源时失败，补入后通过。UIKit 启动页在 iPhone SE 3、iPhone 16 和 iPad Pro 11 M4 上各通过 1 个实例化与资源来源测试；3 张截图已人工核对，Logo 清晰、无灰角、无裁切或重叠。iPhone 16 模拟器还在不卸载 App、不清除数据的情况下覆盖安装，用 `simctl launch --wait-for-debugger` 在进入 App 代码前捕获系统冷启动画面，已显示新的 Lumineux Logo。真机已完成正式 Build 1 覆盖安装，但 SpringBoard 仍复用旧白色快照；按用户选择的方案 1 保留该系统缓存现状，不以应用内启动层规避。
+
+正式 `SunSmart.xcworkspace` 的 Lumineux 真机 Debug 构建已在用户当前 `DerivedData3` 路径中成功，`codesign --verify --deep --strict` 通过，Team 仍为 JTD3WYUC58。最终配置的 `UILaunchStoryboardName` 为 `Lumineux-LaunchScreen`，二进制 storyboard 只引用 `lumineux_launch_logo`，`Assets.car` 包含 88/176/264px 三套专用 rendition。生成 catalog 共 695 组，62 组匹配 Lumineux，其余 633 组保持公共资源。真机系统缓存白屏作为设备状态问题保留记录，不再用额外业务代码规避。
+
+## 2026-08-29 空状态插图
+
+按 Figma 页面语义补入 `site_empty`（`0:11425`）、`group_empty`（`0:2719`）、`scene_empty`（`0:4474`）；`space_empty` 使用实际 “No spaces!” 页面中的插图实例 `2090:132420`。四组均保留完整节点画布，直接使用 Figma 2x/3x PNG，不重绘、改色或修改共享图片调用。
+
+素材测试固定节点、逻辑尺寸、像素尺寸和原始导出 SHA-256。UIKit 测试通过真实 `UIView.showEmptyDataView` 装载四个同名资源，并与独立编译的 Lumineux reference catalog 逐像素比较；iPhone SE 3、iPhone 16、iPad Pro 11 M4 各执行 1 个测试，全部通过。12 张快照均已人工检查，无错图、裁切、重叠或约束歧义。
+
+正式 `SunSmart.xcworkspace` 的 Lumineux 真机 Debug 构建成功，Wen Xu 签名完整性校验通过。合并后的 catalog 仍为 695 组：66 组来自 Lumineux，629 组保留公共资源；真机裁剪后的 `Assets.car` 可查到四组 Lumineux 3x rendition 及对应逻辑尺寸。本轮只构建，未安装或启动真机 App。
+
+## 2026-08-29 24pt 状态与扫描图标
+
+从 Figma 组件 `9339:293204` 补入 `sync_success_small`、`sync_failed_small`、`sync_waiting_small` 和 `device_scan`，并把已有 `sync_loading_small` 的源节点从内层圆环纠正为完整 24pt 组件。共保存 5 份完整节点 PDF，生成对应 1x/2x/3x PNG；没有改共享图片调用或生产 Swift。组件 `9338:150316` 中的 30pt 设备状态图与公共 catalog 当前设计一致，因此不重复放进 Lumineux；无法确认资源名的 `power24`、`repair` 等仍保留原实现。
+
+- 素材测试先在缺少 `sync_success_small` 时失败，补齐后 61 组 manifest 的节点、尺寸、倍率和可见范围全部通过；合并器 16 项 / 70 个断言、Lumineux 配置、Nordic SDK 配置与 `git diff --check` 均通过。
+- 真实 `SyncDeviceViewCell` 与 `DeviceAddCandidateDeviceListView` 在 iPhone SE 3、iPhone 16、iPad Pro 11 M4 上分别以英文和简体中文执行，合计 6 个通过、无失败或跳过。12 张最终截图已人工核对，4 个同步状态图标与扫描图标均无错图、裁切、重叠或约束歧义。
+- 正式 `SunSmart.xcworkspace` 的 Lumineux 真机 Debug 构建在正常 `DerivedData3` 路径成功，`codesign --verify --deep --strict` 通过，签名仍为 Wen Xu / JTD3WYUC58。生成 catalog 共 695 组；70 组 Lumineux asset set 已逐组与源 catalog 一致，其余 625 组保留公共资源。本轮只构建，未安装或启动真机 App。
+
+本轮测试结果与截图保存在 `/private/tmp/lumineux-status.F3a1xm`，正式构建产物位于 `/Users/sr/Library/Developer/Xcode/DerivedData3/LumineuxFigmaAssets.UzlG2a/AppBuild`；这些路径均为本机临时验证产物。
+
+## 2026-08-29 外部 PNG 素材补充
+
+从用户提供的 `/Users/sr/Documents/SunSmart/assets` 中仅接入可唯一映射的 40pt `auto`。原始 2x/3x PNG 存档在 `Lumineux/DesignAssets/Provided` 并逐字节保持不变，catalog 的 1x 由 2x 机械缩小生成。文件夹中的扫描、加减号和电源图标要么已经接入，要么无法唯一映射到待补资源，因此没有覆盖现有版本。
+
+- 素材测试先因缺少 `auto@2x.png` 失败，补入后通过固定 SHA-256、40pt 画布和 1x/2x/3x 完整性检查。
+- 真实 `PJEightKeySwitchForcedAutoPopupController` 在 iPhone SE 3、iPhone 16 上分别以英文和简体中文执行，合计 4 个通过。4 张最终截图已人工核对，标题和 AUTO 图标均无错图、裁切、重叠或约束歧义。iPad 仍使用独立的 56pt `auto_big`，没有放大这张 40pt 图片。
+- 正式 Lumineux 真机 Debug 增量构建成功，签名仍为 Wen Xu / JTD3WYUC58；生成 catalog 共 695 组，71 组 Lumineux asset set 逐组匹配源 catalog，`auto` 覆盖已明确验证，其余 624 组保留公共资源。本轮只构建，未安装或启动真机 App。
+
+本轮测试结果与截图保存在 `/private/tmp/lumineux-auto.3yb4Fl`，正式构建沿用上述独立 `LumineuxFigmaAssets.UzlG2a/AppBuild`；这些路径均为本机临时验证产物。
+
+## 2026-08-29 Profile 与 Safe Mode 素材补充
+
+从四个已确认节点补入 `profile_chart_occupancy_daylight`、`schedule_target_select`、`sensor_move` 和 `device_select`。前三组保持完整节点画布；`device_select` 保持项目既有 30pt 画布，把 Figma 的 18pt 图形原尺寸居中，不放大内部图形。四组均使用 PDF 原稿机械生成 1x／2x／3x，没有修改共享 UIKit 代码或图片调用。
+
+- 素材测试先因缺少 `profile_chart_occupancy_daylight` 按预期失败；补入后 65 组 Figma 图标、1 组外部 PNG、4 组空状态、Logo、AppIcon 和 AccentColor 全部通过。
+- 主 App 的四个 `UIImage(named:)` 均与独立 reference catalog 逐像素一致；真实 `ProfileTriggerConditionPhasesView`、`ProfilePowerUpBehaviorView`、`GroupSensorView` 及项目 UIButton 图片加载路径在 iPhone 16 的英文、简体中文环境中各执行 3 个测试，合计 6 个通过。
+- 8 张最终截图已人工核对：图表和三个小图标均为 Lumineux `#4D738A`，无错图、拉伸、裁切、偏移或文字挤压。测试结果与截图保存在 `/private/tmp/lumineux-profile-safe-mode.gkELNL`。
+- 正式 `SunSmart.xcworkspace` 的 Lumineux 真机 Debug 构建成功，`codesign --verify --deep --strict` 通过，Bundle ID 为 `com.azoula.sunsmart.Lumineux`，签名仍为 Wen Xu / JTD3WYUC58。生成 catalog 共 695 组；75 组 Lumineux asset set 逐组与源 catalog 一致，其余 620 组保留公共资源。SunSmart 的 iPhone 16 模拟器 Debug 构建回归同时通过。
+
 ## 待办边界
 
-剩余 66 组 SLGSync 范围资源见 `docs/lumineux-missing-assets.md`；没有新版的继续保留共享原图。硬编码在共享控件中的剩余紫色按 SLGSync 现状保留，不为其新增 UI 分支。协议正文、服务器、云端身份和空间默认值仍待产品确认。
+剩余 57 组 SLGSync 范围资源见 `docs/lumineux-missing-assets.md`；没有新版的继续保留共享原图。硬编码在共享控件中的剩余紫色按 SLGSync 现状保留，不为其新增 UI 分支。协议正文、服务器、云端身份和空间默认值仍待产品确认。

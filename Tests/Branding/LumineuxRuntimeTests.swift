@@ -76,9 +76,14 @@ final class LumineuxRuntimeTests: XCTestCase {
 
     private func assertNamedImage(_ name: String, size: CGFloat,
                                   file: StaticString = #filePath, line: UInt = #line) throws {
+        try assertNamedImage(name, size: CGSize(width: size, height: size), file: file, line: line)
+    }
+
+    private func assertNamedImage(_ name: String, size: CGSize,
+                                  file: StaticString = #filePath, line: UInt = #line) throws {
         let image = try XCTUnwrap(UIImage(named: name), "Missing Lumineux asset: \(name)", file: file, line: line)
-        XCTAssertEqual(image.size.width, size, accuracy: 0.01, name, file: file, line: line)
-        XCTAssertEqual(image.size.height, size, accuracy: 0.01, name, file: file, line: line)
+        XCTAssertEqual(image.size.width, size.width, accuracy: 0.01, name, file: file, line: line)
+        XCTAssertEqual(image.size.height, size.height, accuracy: 0.01, name, file: file, line: line)
     }
 
     private struct AssetManifest: Decodable {
@@ -125,7 +130,7 @@ final class LumineuxRuntimeTests: XCTestCase {
         let differences = zip(rendered.rgba, expected.rgba).map { abs(Int($0.0) - Int($0.1)) }
         if rendered.rgba != expected.rgba {
             print("ASSET_ORACLE \(name) maxDelta=\(differences.max() ?? 0) meanDelta=\(Double(differences.reduce(0, +)) / Double(max(differences.count, 1)))")
-            if ["launch_logo", "space_main_selected"].contains(name) {
+            if ["launch_logo", "lumineux_launch_logo", "space_main_selected"].contains(name) {
                 for (label, value) in [("actual", actual), ("source", source)] {
                     let attachment = XCTAttachment(image: value)
                     attachment.name = "\(name)-\(label)"
@@ -135,6 +140,90 @@ final class LumineuxRuntimeTests: XCTestCase {
             }
         }
         XCTAssertTrue(rendered.rgba == expected.rgba, "Resolved image does not match Lumineux source PNG: \(name)", file: file, line: line)
+    }
+
+    private func image(_ image: UIImage?, matchesNamed name: String) -> Bool {
+        guard let image,
+              let expected = UIImage(named: name),
+              let actualPixels = try? oraclePixels(image),
+              let expectedPixels = try? oraclePixels(expected) else {
+            return false
+        }
+        return actualPixels.width == expectedPixels.width &&
+               actualPixels.height == expectedPixels.height &&
+               actualPixels.rgba == expectedPixels.rgba
+    }
+
+    private func host(_ contentView: UIView, size: CGSize) -> UIViewController {
+        let controller = UIViewController()
+        controller.view.backgroundColor = Background_Color
+        contentView.translatesAutoresizingMaskIntoConstraints = false
+        controller.view.addSubview(contentView)
+        NSLayoutConstraint.activate([
+            contentView.centerXAnchor.constraint(equalTo: controller.view.centerXAnchor),
+            contentView.topAnchor.constraint(equalTo: controller.view.safeAreaLayoutGuide.topAnchor, constant: 8),
+            contentView.widthAnchor.constraint(equalToConstant: size.width),
+            contentView.heightAnchor.constraint(equalToConstant: size.height)
+        ])
+        show(controller)
+        return controller
+    }
+
+    func testProfileAndSafeModeSupplementalAssetsResolveFromLumineuxSources() throws {
+        let assets: [(String, CGSize)] = [
+            ("profile_chart_occupancy_daylight", CGSize(width: 212, height: 234)),
+            ("schedule_target_select", CGSize(width: 30, height: 30)),
+            ("sensor_move", CGSize(width: 20, height: 20)),
+            ("device_select", CGSize(width: 30, height: 30))
+        ]
+        for (name, size) in assets {
+            try assertNamedImage(name, size: size)
+            try assertResolvedImageMatchesLumineuxSource(UIImage(named: name), name: name)
+        }
+    }
+
+    func testProfileSupplementalArtworkUsesRealViews() throws {
+        let phases = ProfileTriggerConditionPhasesView(frame: .zero)
+        _ = host(phases, size: CGSize(width: 343, height: 690))
+        let chart = try XCTUnwrap(descendants(phases).compactMap { $0 as? UIImageView }
+            .first { image($0.image, matchesNamed: "profile_chart_occupancy_daylight") })
+        try assertResolvedImageMatchesLumineuxSource(chart.image, name: "profile_chart_occupancy_daylight")
+        let chartFrame = chart.convert(chart.bounds, to: phases)
+        XCTAssertTrue(phases.bounds.insetBy(dx: -0.5, dy: -0.5).contains(chartFrame))
+        XCTAssertFalse(chart.hasAmbiguousLayout)
+        snapshot(window, "Profile-occupancy-daylight-chart")
+
+        let powerUp = ProfilePowerUpBehaviorView(frame: .zero)
+        _ = host(powerUp, size: CGSize(width: 343, height: 320))
+        let selectedButton = try XCTUnwrap(descendants(powerUp).compactMap { $0 as? UIButton }
+            .first { image($0.image(for: .selected), matchesNamed: "schedule_target_select") })
+        try assertResolvedImageMatchesLumineuxSource(selectedButton.image(for: .selected),
+                                                     name: "schedule_target_select")
+        XCTAssertFalse(selectedButton.hasAmbiguousLayout)
+        let buttonFrame = selectedButton.convert(selectedButton.bounds, to: powerUp)
+        XCTAssertTrue(powerUp.bounds.insetBy(dx: -0.5, dy: -0.5).contains(buttonFrame))
+        snapshot(window, "Profile-schedule-selected")
+    }
+
+    func testSensorMovementAndDeviceSelectionArtworkUsesLumineuxSources() throws {
+        let sensor = GroupSensorView(frame: .zero)
+        _ = host(sensor, size: CGSize(width: 343, height: 500))
+        let movement = try XCTUnwrap(descendants(sensor).compactMap { $0 as? UIImageView }
+            .first { image($0.image, matchesNamed: "sensor_move") })
+        try assertResolvedImageMatchesLumineuxSource(movement.image, name: "sensor_move")
+        XCTAssertFalse(movement.hasAmbiguousLayout)
+        let movementFrame = movement.convert(movement.bounds, to: sensor)
+        XCTAssertTrue(sensor.bounds.insetBy(dx: -0.5, dy: -0.5).contains(movementFrame))
+        snapshot(window, "Group-sensor-movement")
+
+        let selectedControl = UIButton(normalImageName: "device_select_un",
+                                       selectedImageName: "device_select")
+        selectedControl.isSelected = true
+        _ = host(selectedControl, size: CGSize(width: 44, height: 44))
+        try assertResolvedImageMatchesLumineuxSource(selectedControl.currentImage, name: "device_select")
+        XCTAssertEqual(selectedControl.currentImage?.size, CGSize(width: 30, height: 30))
+        XCTAssertFalse(selectedControl.hasAmbiguousLayout)
+        snapshot(window, "SafeMode-device-selected")
     }
 
     func testWelcomeLayoutAndConsentStates() throws {
@@ -257,7 +346,7 @@ final class LumineuxRuntimeTests: XCTestCase {
         XCTAssertEqual(logo.bounds.width, 88, accuracy: 0.5)
         XCTAssertEqual(logo.bounds.height, 88, accuracy: 0.5)
         XCTAssertEqual(logo.center.x, launch.view.bounds.midX, accuracy: 0.5)
-        try assertResolvedImageMatchesLumineuxSource(logo.image, name: "launch_logo")
+        try assertResolvedImageMatchesLumineuxSource(logo.image, name: "lumineux_launch_logo")
         XCTAssertFalse(logo.hasAmbiguousLayout)
         snapshot(window, "Launch")
         let expected = [
@@ -352,8 +441,10 @@ final class LumineuxRuntimeTests: XCTestCase {
     func testSharedNameAssetsResolveAtTheirNativeGeometry() throws {
         try assertNamedImage("launch_logo", size: 88)
         try assertNamedImage("launch_logo_120", size: 120)
+        try assertNamedImage("lumineux_launch_logo", size: 88)
         try assertResolvedImageMatchesLumineuxSource(UIImage(named: "launch_logo"), name: "launch_logo")
         try assertResolvedImageMatchesLumineuxSource(UIImage(named: "launch_logo_120"), name: "launch_logo_120")
+        try assertResolvedImageMatchesLumineuxSource(UIImage(named: "lumineux_launch_logo"), name: "lumineux_launch_logo")
         let expectedManifestAssets: [(String, CGFloat)] = [
             ("space_main", 28),
             ("space_main_selected", 28),
@@ -408,22 +499,145 @@ final class LumineuxRuntimeTests: XCTestCase {
             ("hud_loading", 48),
             ("space_energy_data", 30),
             ("device_add_waiting", 30),
+            ("sync_success_small", 24),
+            ("sync_failed_small", 24),
+            ("sync_waiting_small", 24),
             ("sync_loading_small", 24),
+            ("device_scan", 24),
             ("add", 48),
             ("select", 30),
             ("space_add", 30)
         ]
-        XCTAssertEqual(expectedManifestAssets.count, 57)
+        XCTAssertEqual(expectedManifestAssets.count, 61)
         for (name, size) in expectedManifestAssets {
             try assertNamedImage(name, size: size)
         }
         let bundle = Bundle(for: LumineuxRuntimeTests.self)
         let manifestURL = try XCTUnwrap(bundle.url(forResource: "icon-manifest", withExtension: "json"))
         let manifest = try JSONDecoder().decode(AssetManifest.self, from: Data(contentsOf: manifestURL))
-        XCTAssertEqual(manifest.assets.count, 57)
+        XCTAssertEqual(manifest.assets.count, 61)
         for asset in manifest.assets {
             try assertNamedImage(asset.asset, size: asset.size)
             try assertResolvedImageMatchesLumineuxSource(UIImage(named: asset.asset), name: asset.asset)
+        }
+    }
+
+    func testCompactStatusAssetsFitRealSyncCellAndScanControl() throws {
+        let host = UIViewController()
+        host.view.backgroundColor = Background_Color
+        show(host)
+
+        let statusCases: [(SyncDevicesState, String)] = [
+            (.successful, "sync_success_small"),
+            (.failed, "sync_failed_small"),
+            (.wait, "sync_waiting_small"),
+            (.inSettings, "sync_loading_small")
+        ]
+        for (index, statusCase) in statusCases.enumerated() {
+            let cell = SyncDeviceViewCell(style: .default, reuseIdentifier: nil)
+            cell.frame = CGRect(x: 0, y: 80 + CGFloat(index * 70), width: host.view.bounds.width, height: 70)
+            let model = SyncDevicesModel(name: statusCase.1, address: UInt16(index + 1))
+            model.state = statusCase.0
+            cell.model = model
+            host.view.addSubview(cell)
+            cell.setNeedsLayout()
+            cell.layoutIfNeeded()
+
+            try assertResolvedImageMatchesLumineuxSource(cell.stateImageView.image, name: statusCase.1)
+            XCTAssertEqual(cell.stateImageView.image?.size, CGSize(width: 24, height: 24))
+            XCTAssertFalse(cell.stateImageView.hasAmbiguousLayout)
+            let stateFrame = cell.stateImageView.convert(cell.stateImageView.bounds, to: cell.contentView)
+            XCTAssertTrue(cell.contentView.bounds.insetBy(dx: -0.5, dy: -0.5).contains(stateFrame),
+                          "Status artwork is outside the real sync cell: \(statusCase.1) \(stateFrame)")
+        }
+        host.view.layoutIfNeeded()
+        snapshot(window, "Compact-sync-statuses")
+
+        let space = SpaceData(name: "Asset layout test", id: "asset-layout-space", siteId: "asset-layout-site",
+                              create: 0, isFavourite: false, permission: .owner, sourceType: .create,
+                              meshUUID: "asset-layout-mesh", meshNetworkId: "asset-layout-network")
+        let candidateView = DeviceAddCandidateDeviceListView(frame: window.bounds, space: space)
+        candidateView.lightSeningMode = true
+        host.view.addSubview(candidateView)
+        candidateView.setNeedsLayout()
+        candidateView.layoutIfNeeded()
+        candidateView.show()
+        settleAppearance()
+
+        let scanButton = try XCTUnwrap(descendants(candidateView).compactMap { $0 as? UIButton }
+            .first { $0.title(for: .normal) == "scan".localizedString })
+        XCTAssertFalse(scanButton.isHidden)
+        XCTAssertFalse(scanButton.hasAmbiguousLayout)
+        XCTAssertGreaterThanOrEqual(scanButton.bounds.width, 72)
+        XCTAssertGreaterThanOrEqual(scanButton.bounds.height, 24)
+        try assertResolvedImageMatchesLumineuxSource(scanButton.image(for: .normal), name: "device_scan")
+        XCTAssertEqual(scanButton.image(for: .normal)?.size, CGSize(width: 24, height: 24))
+        scanButton.layoutIfNeeded()
+        let scanImageView = try XCTUnwrap(scanButton.imageView)
+        let imageFrame = scanImageView.convert(scanImageView.bounds, to: scanButton)
+        XCTAssertTrue(scanButton.bounds.insetBy(dx: -0.5, dy: -0.5).contains(imageFrame),
+                      "Scan artwork is outside the real scan button: \(imageFrame)")
+        snapshot(window, "Device-scan-control")
+        candidateView.removeFromSuperview()
+    }
+
+    func testProvidedAutoAssetFitsRealForcedAutoPopup() throws {
+        let popup = PJEightKeySwitchForcedAutoPopupController()
+        show(popup)
+        settleAppearance()
+
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            // The supplied artwork is the 40pt iPhone asset. iPad deliberately
+            // continues to use the separate, still-pending 56pt auto_big image.
+            try assertNamedImage("auto_big", size: 56)
+            return
+        }
+
+        let autoButton = try XCTUnwrap(descendants(popup.view).compactMap { $0 as? UIButton }
+            .first { $0.image(for: .normal) != nil })
+        try assertResolvedImageMatchesLumineuxSource(autoButton.image(for: .normal), name: "auto")
+        XCTAssertEqual(autoButton.image(for: .normal)?.size, CGSize(width: 40, height: 40))
+        XCTAssertGreaterThanOrEqual(autoButton.bounds.width, 40)
+        XCTAssertGreaterThanOrEqual(autoButton.bounds.height, 40)
+        XCTAssertFalse(autoButton.hasAmbiguousLayout)
+        autoButton.layoutIfNeeded()
+        let imageView = try XCTUnwrap(autoButton.imageView)
+        let imageFrame = imageView.convert(imageView.bounds, to: autoButton)
+        XCTAssertTrue(autoButton.bounds.insetBy(dx: -0.5, dy: -0.5).contains(imageFrame),
+                      "AUTO artwork is outside its production button: \(imageFrame)")
+        let buttonFrame = autoButton.convert(autoButton.bounds, to: popup.view)
+        XCTAssertTrue(popup.view.bounds.insetBy(dx: -0.5, dy: -0.5).contains(buttonFrame),
+                      "AUTO artwork is outside the real forced-auto popup: \(buttonFrame)")
+        snapshot(window, "Provided-auto-popup")
+    }
+
+    func testEmptyStateIllustrationsUseLumineuxAssetsAndFitRealEmptyView() throws {
+        let host = UIViewController()
+        host.view.backgroundColor = Background_Color
+        show(host)
+        let assets: [(name: String, size: CGSize)] = [
+            ("site_empty", CGSize(width: 353, height: 298)),
+            ("space_empty", CGSize(width: 240, height: 194)),
+            ("group_empty", CGSize(width: 343, height: 288)),
+            ("scene_empty", CGSize(width: 343, height: 288))
+        ]
+        for asset in assets {
+            host.view.showEmptyDataView(imageName: asset.name,
+                                        title: "Empty-state layout check",
+                                        tipText: nil,
+                                        position: .center)
+            host.view.layoutIfNeeded()
+            let emptyView = try XCTUnwrap(host.view.emptyView)
+            let imageView = try XCTUnwrap(emptyView.imageView)
+            try assertNamedImage(asset.name, size: asset.size)
+            try assertResolvedImageMatchesLumineuxSource(imageView.image, name: asset.name)
+            XCTAssertEqual(imageView.bounds.size, asset.size)
+            XCTAssertFalse(imageView.hasAmbiguousLayout)
+            let frame = imageView.convert(imageView.bounds, to: host.view)
+            XCTAssertTrue(host.view.bounds.insetBy(dx: -0.5, dy: -0.5).contains(frame),
+                          "\(asset.name) falls outside the empty-state screen: \(frame)")
+            snapshot(window, "Empty-\(asset.name)")
+            host.view.hideEmptyDataView()
         }
     }
 

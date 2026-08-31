@@ -374,11 +374,39 @@
       "source": "Figma/node-0-18434.pdf"
     },
     {
-      "asset": "sync_loading_small",
-      "node": "0:19404",
+      "asset": "sync_success_small",
+      "node": "0:18004",
       "size": 24,
-      "category": "Misc",
-      "source": "Figma/node-0-19404.pdf"
+      "category": "Status",
+      "source": "Figma/node-0-18004.pdf"
+    },
+    {
+      "asset": "sync_failed_small",
+      "node": "0:18014",
+      "size": 24,
+      "category": "Status",
+      "source": "Figma/node-0-18014.pdf"
+    },
+    {
+      "asset": "sync_waiting_small",
+      "node": "0:18424",
+      "size": 24,
+      "category": "Status",
+      "source": "Figma/node-0-18424.pdf"
+    },
+    {
+      "asset": "sync_loading_small",
+      "node": "0:19394",
+      "size": 24,
+      "category": "Status",
+      "source": "Figma/node-0-19394.pdf"
+    },
+    {
+      "asset": "device_scan",
+      "node": "0:19460",
+      "size": 24,
+      "category": "Device",
+      "source": "Figma/node-0-19460.pdf"
     },
     {
       "asset": "add",
@@ -400,6 +428,36 @@
       "size": 30,
       "category": "Buttons",
       "source": "Figma/node-16001-97684.pdf"
+    },
+    {
+      "asset": "profile_chart_occupancy_daylight",
+      "node": "16001:174597",
+      "width": 212,
+      "height": 234,
+      "category": "Profile",
+      "source": "Figma/node-16001-174597.pdf"
+    },
+    {
+      "asset": "schedule_target_select",
+      "node": "16001:174651",
+      "size": 30,
+      "category": "Timed",
+      "source": "Figma/node-16001-174651.pdf"
+    },
+    {
+      "asset": "sensor_move",
+      "node": "16001:174616",
+      "size": 20,
+      "category": "Group",
+      "source": "Figma/node-16001-174616.pdf"
+    },
+    {
+      "asset": "device_select",
+      "node": "0:17954",
+      "size": 30,
+      "contentSize": 18,
+      "category": "Device",
+      "source": "Figma/node-0-17954.pdf"
     }
   ]
 }

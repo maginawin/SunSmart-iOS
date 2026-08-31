@@ -41,7 +41,7 @@ test_files.each { |path| tests.add_file_references([project.main_group.new_file(
 reference_catalog = File.join(output, 'LumineuxReference.xcassets')
 brand_catalog = File.join(root, 'Lumineux/Assets-Lumineux.xcassets')
 brand_sets = Dir[File.join(brand_catalog, '*')].select { |path| File.directory?(path) }
-abort('Expected 61 complete Lumineux catalog sets for reference catalog') unless brand_sets.length == 61
+abort('Expected 75 complete Lumineux catalog sets for reference catalog') unless brand_sets.length == 75
 FileUtils.mkdir_p(reference_catalog)
 FileUtils.cp_r(File.join(brand_catalog, '.'), reference_catalog)
 # The common launch logo stays loose and uniquely named, outside the positive

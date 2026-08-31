@@ -40,6 +40,16 @@ project = Xcodeproj::Project.open(PROJECT_PATH)
 target = project.targets.find { |candidate| candidate.name == TARGET_NAME }
 assert(target, 'Lumineux target is missing')
 
+launch_storyboard_path = ROOT.join('Lumineux/Lumineux-LaunchScreen.storyboard')
+assert(launch_storyboard_path.file?, 'Lumineux launch storyboard is missing')
+launch_storyboard = launch_storyboard_path.read
+assert(launch_storyboard.include?('image="lumineux_launch_logo"'),
+       'Lumineux launch storyboard must use its dedicated launch image name')
+assert(!launch_storyboard.include?('image="launch_logo"'),
+       'Lumineux launch storyboard must not resolve the shared SunSmart launch image name')
+assert(ROOT.join('Lumineux/Assets-Lumineux.xcassets/lumineux_launch_logo.imageset').directory?,
+       'Lumineux dedicated launch image set is missing')
+
 expected_config_paths = {
   'Debug' => 'Config/Lumineux/Debug.xcconfig',
   'Release' => 'Config/Lumineux/Release.xcconfig'
