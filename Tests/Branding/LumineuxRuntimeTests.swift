@@ -89,7 +89,17 @@ final class LumineuxRuntimeTests: XCTestCase {
     private struct AssetManifest: Decodable {
         struct Asset: Decodable {
             let asset: String
-            let size: CGFloat
+            let size: CGFloat?
+            let width: CGFloat?
+            let height: CGFloat?
+
+            var geometry: CGSize? {
+                if let size {
+                    return CGSize(width: size, height: size)
+                }
+                guard let width, let height else { return nil }
+                return CGSize(width: width, height: height)
+            }
         }
         let assets: [Asset]
     }
@@ -515,9 +525,24 @@ final class LumineuxRuntimeTests: XCTestCase {
         let bundle = Bundle(for: LumineuxRuntimeTests.self)
         let manifestURL = try XCTUnwrap(bundle.url(forResource: "icon-manifest", withExtension: "json"))
         let manifest = try JSONDecoder().decode(AssetManifest.self, from: Data(contentsOf: manifestURL))
-        XCTAssertEqual(manifest.assets.count, 61)
+        XCTAssertEqual(manifest.assets.count, 65)
+        let expectedSupplementalGeometry: [(String, CGSize)] = [
+            ("profile_chart_occupancy_daylight", CGSize(width: 212, height: 234)),
+            ("schedule_target_select", CGSize(width: 30, height: 30)),
+            ("sensor_move", CGSize(width: 20, height: 20)),
+            ("device_select", CGSize(width: 30, height: 30))
+        ]
+        for (name, expectedGeometry) in expectedSupplementalGeometry {
+            let asset = try XCTUnwrap(manifest.assets.first { $0.asset == name },
+                                      "Missing independently expected manifest asset: \(name)")
+            XCTAssertEqual(try XCTUnwrap(asset.geometry,
+                                         "Manifest asset \(name) must define size or width and height"),
+                           expectedGeometry, name)
+        }
         for asset in manifest.assets {
-            try assertNamedImage(asset.asset, size: asset.size)
+            let geometry = try XCTUnwrap(asset.geometry,
+                                         "Manifest asset \(asset.asset) must define size or width and height")
+            try assertNamedImage(asset.asset, size: geometry)
             try assertResolvedImageMatchesLumineuxSource(UIImage(named: asset.asset), name: asset.asset)
         }
     }
