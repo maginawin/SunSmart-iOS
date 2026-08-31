@@ -977,7 +977,7 @@ Expected: every test/check exits 0. The SDK check confirms the existing package 
 
 - [ ] **Step 3: Run the existing Lumineux runtime suite on iPhone 16 in English**
 
-Use the `branding_tmp` workspace created in Task 4 and the existing local package checkout:
+Use the `branding_tmp` workspace created in Task 3 and the existing local package checkout:
 
 ```bash
 branding_tmp="$(/bin/cat /private/tmp/lumineux-grouped-branding-root)"

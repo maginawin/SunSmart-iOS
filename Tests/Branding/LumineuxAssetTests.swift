@@ -156,6 +156,16 @@ for group in expectedGroups {
 }
 
 let supportedSetExtensions = Set(["imageset", "appiconset", "colorset"])
+let catalogGroupNames = try FileManager.default.contentsOfDirectory(
+    at: catalog,
+    includingPropertiesForKeys: [.isDirectoryKey]
+).filter { url in
+    let values = try url.resourceValues(forKeys: [.isDirectoryKey])
+    return values.isDirectory == true && !supportedSetExtensions.contains(url.pathExtension)
+}.map(\.lastPathComponent)
+check(Set(catalogGroupNames) == Set(expectedGroups),
+      "Lumineux catalog top-level groups must exactly match the approved groups")
+
 let enumerator = FileManager.default.enumerator(
     at: catalog,
     includingPropertiesForKeys: [.isDirectoryKey],

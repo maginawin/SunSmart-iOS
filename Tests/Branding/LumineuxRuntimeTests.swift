@@ -532,6 +532,14 @@ final class LumineuxRuntimeTests: XCTestCase {
             ("sensor_move", CGSize(width: 20, height: 20)),
             ("device_select", CGSize(width: 30, height: 30))
         ]
+        let manifestNames = manifest.assets.map(\.asset)
+        XCTAssertEqual(Set(manifestNames).count, manifestNames.count,
+                       "Manifest asset names must be unique")
+        let expectedManifestNames = Set(
+            expectedManifestAssets.map(\.0) + expectedSupplementalGeometry.map(\.0)
+        )
+        XCTAssertEqual(Set(manifestNames), expectedManifestNames,
+                       "Manifest asset names must exactly match the approved runtime assets")
         for (name, expectedGeometry) in expectedSupplementalGeometry {
             let asset = try XCTUnwrap(manifest.assets.first { $0.asset == name },
                                       "Missing independently expected manifest asset: \(name)")
