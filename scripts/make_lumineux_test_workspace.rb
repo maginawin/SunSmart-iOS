@@ -40,8 +40,11 @@ test_files.each { |path| tests.add_file_references([project.main_group.new_file(
 # decoding behavior used by the strict RGBA source oracle.
 reference_catalog = File.join(output, 'LumineuxReference.xcassets')
 brand_catalog = File.join(root, 'Lumineux/Assets-Lumineux.xcassets')
-brand_sets = Dir[File.join(brand_catalog, '*')].select { |path| File.directory?(path) }
-abort('Expected 75 complete Lumineux catalog sets for reference catalog') unless brand_sets.length == 75
+asset_set_extensions = %w[.imageset .appiconset .colorset]
+brand_sets = Dir.glob(File.join(brand_catalog, '**', '*')).select do |path|
+  File.directory?(path) && asset_set_extensions.include?(File.extname(path))
+end
+abort("Expected 75 complete Lumineux catalog sets for reference catalog; found #{brand_sets.length}") unless brand_sets.length == 75
 FileUtils.mkdir_p(reference_catalog)
 FileUtils.cp_r(File.join(brand_catalog, '.'), reference_catalog)
 # The common launch logo stays loose and uniquely named, outside the positive

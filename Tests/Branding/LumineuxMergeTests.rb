@@ -23,7 +23,7 @@ class LumineuxMergeTests < Minitest::Test
         'untouched.png' => 'common bytes stay exact'
       })
       write_catalog(brand)
-      write_set(brand, 'logo.imageset', {
+      write_set(brand, 'Common/logo.imageset', {
         'Contents.json' => '{"images":["brand"]}',
         'logo@2x.png' => 'brand pixels'
       })
@@ -39,6 +39,23 @@ class LumineuxMergeTests < Minitest::Test
       assert_equal %w[Contents.json logo@2x.png], Dir.children(matches.first).sort
       assert_equal 'common bytes stay exact', File.binread(File.join(output, 'Other', 'untouched.imageset', 'untouched.png'))
       refute File.exist?(File.join(output, '.lumineux-assets-merger'))
+    end
+  end
+
+  def test_preserves_group_path_for_a_brand_only_set
+    with_catalogs do |common, brand, output|
+      write_catalog(common)
+      write_catalog(brand)
+      write_set(brand, 'Profile/chart.imageset', {
+        'Contents.json' => '{"images":["brand-only"]}',
+        'chart@2x.png' => 'brand-only pixels'
+      })
+
+      LumineuxAssetMerger.merge(common: common, brand: brand, output: output)
+
+      set = File.join(output, 'Profile', 'chart.imageset')
+      assert_equal 'brand-only pixels', File.binread(File.join(set, 'chart@2x.png'))
+      assert_equal 1, Dir.glob(File.join(output, '**', 'chart.imageset')).length
     end
   end
 

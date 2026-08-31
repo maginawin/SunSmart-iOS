@@ -47,7 +47,7 @@ assert(launch_storyboard.include?('image="lumineux_launch_logo"'),
        'Lumineux launch storyboard must use its dedicated launch image name')
 assert(!launch_storyboard.include?('image="launch_logo"'),
        'Lumineux launch storyboard must not resolve the shared SunSmart launch image name')
-assert(ROOT.join('Lumineux/Assets-Lumineux.xcassets/lumineux_launch_logo.imageset').directory?,
+assert(ROOT.join('Lumineux/Assets-Lumineux.xcassets/Common/lumineux_launch_logo.imageset').directory?,
        'Lumineux dedicated launch image set is missing')
 
 expected_config_paths = {
