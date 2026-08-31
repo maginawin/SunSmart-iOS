@@ -998,6 +998,224 @@ final class LumineuxRuntimeTests: XCTestCase {
         try assertResolvedImageMatchesLumineuxSource(cell.favoriteBtn.currentImage, name: "favourite_selected")
         XCTAssertFalse(cell.favoriteBtn.hasAmbiguousLayout)
     }
+
+    func testProvidedNew3RetinaAssetsFitProductionControls() throws {
+        let names = [
+            "value_buoy",
+            "distributor_nodes_highlight", "updatating_nodes", "firmware_cloud_version",
+            "initiator", "mesh_distributor_guide_4", "mesh_upgrade_guide_1",
+            "mesh_upgrade_guide_2", "mesh_upgrade_guide_3", "single_device",
+            "adjust_speed_fast", "adjust_speed_slow", "daylight_scheme4",
+            "daylight_scheme5", "daylight_scheme6", "daylight_scheme7",
+            "daylight_standalone_sensor", "power_state_defined", "power_state_off",
+            "power_state_restore", "profile_chart_daylight", "profile_chart_manual_control",
+            "profile_chart_occupancy", "profile_person", "profile_person_big",
+            "profile_proximity_lighting", "sensor_manul_override_timeout",
+            "scene_data_add", "locked"
+        ]
+        XCTAssertEqual(names.count, 29)
+        for name in names {
+            try assertResolvedImageMatchesLumineuxSource(UIImage(named: name), name: name)
+        }
+
+        func imageView(named name: String, in container: UIView) throws -> UIImageView {
+            let imageView = try XCTUnwrap(descendants(container).compactMap { $0 as? UIImageView }
+                .first { image($0.image, matchesNamed: name) },
+                "Production view did not load image: \(name)")
+            try assertResolvedImageMatchesLumineuxSource(imageView.image, name: name)
+            assertContained(imageView, in: imageView.superview ?? container)
+            return imageView
+        }
+
+        let buoy = BuoySliderView(frame: .zero, functionType: .level())
+        _ = host(buoy, size: CGSize(width: 300, height: 100))
+        buoy.value = 40
+        buoy.slider.sendActions(for: .touchDown)
+        buoy.layoutIfNeeded()
+        let buoyImage = try imageView(named: "value_buoy", in: buoy)
+        XCTAssertGreaterThan(buoyImage.alpha, 0.99)
+        XCTAssertEqual(buoyImage.bounds.width, 50, accuracy: 0.01)
+        XCTAssertGreaterThanOrEqual(buoyImage.bounds.height, 36.33)
+        XCTAssertLessThanOrEqual(buoyImage.bounds.height, 36.5)
+        snapshot(window, "New3-common-buoy")
+
+        let firmwareHeader = MeshFirmwareUpgradeHeaderView(frame: .zero)
+        _ = host(firmwareHeader, size: CGSize(width: 343, height: 130))
+        firmwareHeader.step = .upgradeNodes
+        firmwareHeader.layoutIfNeeded()
+        let nodesButton = try XCTUnwrap(descendants(firmwareHeader).compactMap { $0 as? UIButton }
+            .first { image($0.image(for: .selected), matchesNamed: "distributor_nodes_highlight") })
+        XCTAssertTrue(nodesButton.isSelected)
+        try assertResolvedImageMatchesLumineuxSource(nodesButton.currentImage,
+                                                     name: "distributor_nodes_highlight")
+        assertContained(nodesButton, in: firmwareHeader)
+
+        let flow = BLEUpgradeInstructionsController()
+        flow.datas = [
+            .init(iconName: "initiator", name: "initiator".localizedString,
+                  message: "initiator_message".localizedString + "\n\n",
+                  showArrow: true, arrowX: SCRXFrom(149), ratio: 0.33),
+            .init(iconName: "single_device", name: "Distributor".localizedString,
+                  message: "distributor_message".localizedString + "\n\n",
+                  showArrow: true, arrowX: SCRXFrom(219), ratio: 0.33),
+            .init(iconName: "updatating_nodes", name: "updatating_nodes".localizedString,
+                  message: "updatating_nodes_message".localizedString,
+                  showArrow: false, arrowX: 0, ratio: 0.34)
+        ]
+        show(NavigationViewController(rootViewController: flow))
+        for name in ["initiator", "single_device", "updatating_nodes"] {
+            let button = try XCTUnwrap(descendants(flow.view).compactMap { $0 as? UIButton }
+                .first { image($0.image(for: .normal), matchesNamed: name) })
+            try assertResolvedImageMatchesLumineuxSource(button.image(for: .normal), name: name)
+            assertContained(button, in: flow.view)
+        }
+
+        let firmware = NoRequestFirmwareVersionViewController(
+            type: FirmwareUpdateTypeData(productId: 0x0001, targetVersion: nil, nodes: [])
+        )
+        show(NavigationViewController(rootViewController: firmware))
+        _ = try imageView(named: "firmware_cloud_version", in: firmware.view)
+        snapshot(window, "New3-firmware-header-and-flow")
+
+        let upgradeGuide = MeshFirmwareUpgradeGuideView(
+            title: "how_to_mesh_upgrade".localizedString,
+            message: "mesh_upgrade_instructions_message".localizedString,
+            steps: [.selectDistributor, .selectDevices, .waiting],
+            contentHeight: 700
+        )
+        upgradeGuide.show()
+        upgradeGuide.layoutIfNeeded()
+        descendants(upgradeGuide).compactMap { $0 as? UITableView }.forEach { $0.layoutIfNeeded() }
+        for name in ["mesh_upgrade_guide_1", "mesh_upgrade_guide_2", "mesh_upgrade_guide_3"] {
+            _ = try imageView(named: name, in: upgradeGuide)
+        }
+        upgradeGuide.removeFromSuperview()
+
+        let distributorGuide = MeshFirmwareUpgradeGuideView(
+            title: "how_to_select_a_distributor".localizedString,
+            message: "distributor_message".localizedString,
+            steps: [.distributor],
+            contentHeight: 400
+        )
+        distributorGuide.show()
+        distributorGuide.layoutIfNeeded()
+        descendants(distributorGuide).compactMap { $0 as? UITableView }.forEach { $0.layoutIfNeeded() }
+        _ = try imageView(named: "mesh_distributor_guide_4", in: distributorGuide)
+        snapshot(window, "New3-firmware-guides")
+        distributorGuide.removeFromSuperview()
+
+        let power = PowerUpBehaviorInstructionController()
+        show(NavigationViewController(rootViewController: power))
+        for name in ["power_state_off", "power_state_restore", "power_state_defined"] {
+            _ = try imageView(named: name, in: power.view)
+        }
+
+        let speed = AdjustSpeedInstructionController()
+        show(NavigationViewController(rootViewController: speed))
+        for name in ["adjust_speed_slow", "adjust_speed_fast"] {
+            _ = try imageView(named: name, in: speed.view)
+        }
+
+        let timeout = ManualOverrideTimeoutInstructionController()
+        show(NavigationViewController(rootViewController: timeout))
+        _ = try imageView(named: "sensor_manul_override_timeout", in: timeout.view)
+
+        let daylightHeader = DaylightSensorInstructionsHeaderView(frame: .zero)
+        _ = host(daylightHeader, size: CGSize(width: 343, height: 227))
+        let standalone = try XCTUnwrap(descendants(daylightHeader).compactMap { $0 as? UIButton }
+            .first { image($0.image(for: .normal), matchesNamed: "daylight_standalone_sensor") })
+        try assertResolvedImageMatchesLumineuxSource(standalone.image(for: .normal),
+                                                     name: "daylight_standalone_sensor")
+        assertContained(standalone, in: daylightHeader)
+
+        let proximityNumber = ProfileProximityLightingNumberView(frame: .zero)
+        _ = host(proximityNumber, size: CGSize(width: 343, height: 250))
+        _ = try imageView(named: "profile_person", in: proximityNumber)
+
+        let daylight = DaylightSensorInstructionsController()
+        show(NavigationViewController(rootViewController: daylight))
+        let daylightCollection = try XCTUnwrap(descendants(daylight.view)
+            .compactMap { $0 as? UICollectionView }.first)
+        for index in 3...6 {
+            let indexPath = IndexPath(item: index, section: 0)
+            daylightCollection.scrollToItem(at: indexPath, at: .centeredVertically, animated: false)
+            daylightCollection.layoutIfNeeded()
+            let cell = try XCTUnwrap(daylightCollection.cellForItem(at: indexPath)
+                as? DaylightSensorInstructionsViewCell)
+            let name = "daylight_scheme\(index + 1)"
+            try assertResolvedImageMatchesLumineuxSource(cell.imageView.image, name: name)
+            assertContained(cell.imageView, in: cell.contentView)
+        }
+
+        let neighbour = NumberOfNeghbourNodeInstructionsController()
+        show(NavigationViewController(rootViewController: neighbour))
+        _ = try imageView(named: "profile_person_big", in: neighbour.view)
+
+        let profileInstructions = ProfileInstructionsViewCell(style: .default, reuseIdentifier: nil)
+        profileInstructions.type = .proximityLighting
+        _ = host(profileInstructions, size: CGSize(width: 343, height: 360))
+        _ = try imageView(named: "profile_proximity_lighting", in: profileInstructions)
+        snapshot(window, "New3-profile-instructions")
+
+        func assertProductionChart(_ type: Profile.ProfileType, named name: String) throws {
+            let phases = ProfileSettingsSphasesView(frame: .zero)
+            phases.profile = Profile(type: type)
+            _ = host(phases, size: CGSize(width: isIPad ? 720 : 343, height: 500))
+            let expectedName = isIPad ? "\(name)_ipad" : name
+            let chart = try XCTUnwrap(descendants(phases).compactMap { $0 as? UIImageView }
+                .first { image($0.image, matchesNamed: expectedName) },
+                "Production phase view did not load image: \(expectedName)")
+            if isIPad {
+                XCTAssertTrue(image(chart.image, matchesNamed: expectedName),
+                              "iPad must retain the existing Common _ipad chart")
+            } else {
+                try assertResolvedImageMatchesLumineuxSource(chart.image, name: name)
+            }
+            assertContained(chart, in: phases)
+        }
+        try assertProductionChart(.daylight, named: "profile_chart_daylight")
+        try assertProductionChart(.manualControl, named: "profile_chart_manual_control")
+        try assertProductionChart(.occupancy, named: "profile_chart_occupancy")
+        snapshot(window, "New3-profile-charts")
+
+        let sceneAndSpace = UIView()
+        let sceneCell = SceneAddDataAddCell(frame: .zero)
+        let spaceCell = SpacesViewCell(frame: .zero)
+        sceneAndSpace.addSubview(sceneCell)
+        sceneAndSpace.addSubview(spaceCell)
+        sceneCell.translatesAutoresizingMaskIntoConstraints = false
+        spaceCell.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            sceneCell.topAnchor.constraint(equalTo: sceneAndSpace.topAnchor),
+            sceneCell.centerXAnchor.constraint(equalTo: sceneAndSpace.centerXAnchor),
+            sceneCell.widthAnchor.constraint(equalToConstant: 64),
+            sceneCell.heightAnchor.constraint(equalToConstant: 64),
+            spaceCell.topAnchor.constraint(equalTo: sceneCell.bottomAnchor, constant: 16),
+            spaceCell.leftAnchor.constraint(equalTo: sceneAndSpace.leftAnchor),
+            spaceCell.rightAnchor.constraint(equalTo: sceneAndSpace.rightAnchor),
+            spaceCell.heightAnchor.constraint(equalToConstant: 210)
+        ])
+        _ = host(sceneAndSpace, size: CGSize(width: 343, height: 300))
+        _ = try imageView(named: "scene_data_add", in: sceneCell)
+
+        let protectedSpace = SpaceData(
+            name: "Protected space", id: "new3-space", siteId: "new3-site",
+            create: 0, isFavourite: false, permission: .editor, sourceType: .share,
+            meshUUID: "new3-mesh", meshNetworkId: "new3-network"
+        )
+        protectedSpace.requiresPasswordVerification = true
+        spaceCell.space = protectedSpace
+        sceneAndSpace.layoutIfNeeded()
+        let lock = try imageView(named: "locked", in: spaceCell)
+        XCTAssertFalse(lock.isHidden)
+        snapshot(window, "New3-scene-and-space")
+    }
+}
+
+@MainActor
+private final class NoRequestFirmwareVersionViewController: FirmwareVersionViewController {
+    override var createsUIBeforeCloudRequest: Bool { true }
+    override func loadFirmwareData() {}
 }
 
 private final class RecordingSpaceFooterDelegate: SpaceFunctionFooterViewDelegate {
