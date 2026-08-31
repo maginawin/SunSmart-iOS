@@ -111,7 +111,35 @@ let expectedAssetGroups: [String: String] = [
     "space_scene_selected": "Space",
     "space_timed": "Space",
     "space_timed_selected": "Space",
-    "schedule_target_select": "Timed"
+    "schedule_target_select": "Timed",
+    "value_buoy": "Common",
+    "distributor_nodes_highlight": "Firmware",
+    "updatating_nodes": "Firmware",
+    "firmware_cloud_version": "Firmware",
+    "initiator": "Firmware",
+    "mesh_distributor_guide_4": "Firmware",
+    "mesh_upgrade_guide_1": "Firmware",
+    "mesh_upgrade_guide_2": "Firmware",
+    "mesh_upgrade_guide_3": "Firmware",
+    "single_device": "Firmware",
+    "adjust_speed_fast": "Profile",
+    "adjust_speed_slow": "Profile",
+    "daylight_scheme4": "Profile",
+    "daylight_scheme5": "Profile",
+    "daylight_scheme6": "Profile",
+    "daylight_scheme7": "Profile",
+    "daylight_standalone_sensor": "Profile",
+    "power_state_defined": "Profile",
+    "power_state_off": "Profile",
+    "power_state_restore": "Profile",
+    "profile_chart_daylight": "Profile",
+    "profile_chart_manual_control": "Profile",
+    "profile_person": "Profile",
+    "profile_person_big": "Profile",
+    "profile_proximity_lighting": "Profile",
+    "sensor_manul_override_timeout": "Profile",
+    "scene_data_add": "Scene",
+    "locked": "Space"
 ]
 
 let groupManifestURL = root.appendingPathComponent("Lumineux/DesignAssets/asset-groups.json")
@@ -124,7 +152,7 @@ let groupManifest = try JSONDecoder().decode(
 check(groupManifest.groups == expectedGroups,
       "Lumineux groups must match SLGSync order and names")
 check(groupManifest.assets == expectedAssetGroups,
-      "Lumineux asset group manifest differs from the approved 92-resource mapping")
+      "Lumineux asset group manifest differs from the approved 121-resource mapping")
 
 func setExtension(for name: String) -> String {
     switch name {
@@ -195,7 +223,7 @@ while let url = enumerator.nextObject() as? URL {
     discovered[name, default: []].append(url.standardizedFileURL)
     enumerator.skipDescendants()
 }
-check(discovered.count == 92, "Lumineux catalog must contain exactly 92 asset names")
+check(discovered.count == 121, "Lumineux catalog must contain exactly 121 asset names")
 check(Set(discovered.keys) == Set(expectedAssetGroups.keys),
       "Lumineux catalog asset names differ from the approved set")
 for name in expectedAssetGroups.keys.sorted() {
@@ -447,6 +475,125 @@ struct ProvidedGroupedAsset {
     let hashes: [Int: String]
 }
 
+let providedNew3Assets: [ProvidedGroupedAsset] = [
+    .init(group: "Common", name: "value_buoy", pixels: [2: (100, 73), 3: (150, 109)], hashes: [
+        2: "314496171ff95b6fdba18fa7ce228f78f389638f59b06cca8242bc58b1d9eaf1",
+        3: "0670eec5decc5fb11a70bb13ccb984c9074af4338ef624b4cf113859ac43698c"
+    ]),
+    .init(group: "Firmware", name: "distributor_nodes_highlight", pixels: [2: (72, 40), 3: (108, 60)], hashes: [
+        2: "36f0a38152134589b81472876aba99e72a46fd4390ccacbafb05b5b78a01a788",
+        3: "c27ae96c5af3336c8a14664ae8b8f9eef4d4e3a58ff957a05de79d6edde0ecb2"
+    ]),
+    .init(group: "Firmware", name: "updatating_nodes", pixels: [2: (72, 40), 3: (108, 60)], hashes: [
+        2: "36f0a38152134589b81472876aba99e72a46fd4390ccacbafb05b5b78a01a788",
+        3: "c27ae96c5af3336c8a14664ae8b8f9eef4d4e3a58ff957a05de79d6edde0ecb2"
+    ]),
+    .init(group: "Firmware", name: "firmware_cloud_version", pixels: [2: (192, 140), 3: (288, 210)], hashes: [
+        2: "4bdce49e99f6fd5a74fc0776c1b2da3333e4dd343c8f48a3896c602ed467168e",
+        3: "c6f7940c1165e2cfed2c967f3c94c91622adcde1afe9f9d9ac11be743db9720f"
+    ]),
+    .init(group: "Firmware", name: "initiator", pixels: [2: (60, 60), 3: (90, 90)], hashes: [
+        2: "260a665e7765dab06ddafc1763b8485fa3e56dddc3c6cc5ffd73770985219bad",
+        3: "d894559ce0f5e24feb6672a4e729e4638f00604ff2bbf54e726bf93032a046df"
+    ]),
+    .init(group: "Firmware", name: "mesh_distributor_guide_4", pixels: [2: (528, 108), 3: (792, 162)], hashes: [
+        2: "280c56032b5f062b975718cf4f57b12871fd50794c4c5014bfc9a5d706635d0a",
+        3: "363cabc1856db8c3f1192c9475e6c89f1d6699d0ef07e11141379cfb59a31622"
+    ]),
+    .init(group: "Firmware", name: "mesh_upgrade_guide_1", pixels: [2: (344, 202), 3: (516, 303)], hashes: [
+        2: "fd5c3e9e4cdf000f5bc61f4085c43651d69660227440b27c8af045f9f151d3a8",
+        3: "b932710262290615780588d3be155c58d3b740dcc4a6ca17f52a6180772ec863"
+    ]),
+    .init(group: "Firmware", name: "mesh_upgrade_guide_2", pixels: [2: (288, 108), 3: (432, 162)], hashes: [
+        2: "c7bbadb19562f2d709aad1a37691638a36879fc7d6cc11707aafd1580d28e549",
+        3: "d6cce986836e6d5726a68462d291fd63f976de5f19984e9ab1cdcd7ac7610578"
+    ]),
+    .init(group: "Firmware", name: "mesh_upgrade_guide_3", pixels: [2: (288, 80), 3: (432, 120)], hashes: [
+        2: "7f18fd2220bac8be20088b031ae3659669363028565963b167f6d3023e25c219",
+        3: "c15d48f11fd31fc4630fd3d60a7b2cd98d6889ee2e75c3b6c50623cfdfd979fe"
+    ]),
+    .init(group: "Firmware", name: "single_device", pixels: [2: (60, 60), 3: (90, 90)], hashes: [
+        2: "ccca7ac0dea8066400f754481b11e0e7c53263477924897e7aa6db60106eb728",
+        3: "14d088745bf4d4a157493541d79aaba9bde22c629056402f8520bdb7bd354174"
+    ]),
+    .init(group: "Profile", name: "adjust_speed_fast", pixels: [2: (579, 326), 3: (869, 489)], hashes: [
+        2: "0e39685c6fd2b3d99055a453f7d3734af984def2c9a54f42614a90b38b1aacbe",
+        3: "499d528f56359d316ae16ff05802a2e268a9297ebd787809429335386f856886"
+    ]),
+    .init(group: "Profile", name: "adjust_speed_slow", pixels: [2: (579, 326), 3: (869, 489)], hashes: [
+        2: "fd670c7e645ca1ff95ad083c6191e0c69dc7a75f994323d4f38b8a2118d41234",
+        3: "c773db949d8f90f0372c55ed837652b0c9e92eff98c4c5f736cfba950be74335"
+    ]),
+    .init(group: "Profile", name: "daylight_scheme4", pixels: [2: (312, 240), 3: (468, 360)], hashes: [
+        2: "6428878d086f6353d0732e4fe5f459bad2a786b0ea2d77095f7b5aa70dc72514",
+        3: "fdf551c7a9ef15143b8110825dc42ea87f4179c2b26e2f19512f1ccb4a3956b6"
+    ]),
+    .init(group: "Profile", name: "daylight_scheme5", pixels: [2: (312, 240), 3: (468, 360)], hashes: [
+        2: "70769706125f5ff7a8524ca4d3c140ae33eb2b8dcb3c9456616a297951a6f14b",
+        3: "073230fed3604f20c490b9e98e100edddd86b18774a2b67e003bbfbbef50e3cc"
+    ]),
+    .init(group: "Profile", name: "daylight_scheme6", pixels: [2: (312, 240), 3: (468, 360)], hashes: [
+        2: "6f0c7c6ae38a24e8d73a077aaa0687a66418d41562ab831ebb8459fce4d85e80",
+        3: "3b7931dc85a6aae4b5e34ce195e9e5f54c04b0ccc3630a73d7df1970874db936"
+    ]),
+    .init(group: "Profile", name: "daylight_scheme7", pixels: [2: (312, 240), 3: (468, 360)], hashes: [
+        2: "ad76ea9565e52fd47a44d9de61acb0d3f992259fbe165ac4b81d9a70e1c6e96b",
+        3: "96d6cd831010d60f33097487c038c33ac5d838658ceb52a716c21d17395875c6"
+    ]),
+    .init(group: "Profile", name: "daylight_standalone_sensor", pixels: [2: (40, 40), 3: (60, 60)], hashes: [
+        2: "a1da73476f481a01bae01be4c9881519a1ff8dede20580dba9773be4d1b8bf9b",
+        3: "66dd69e8099e8a62fb3cafd1c62b6ee51f8b169ef52ee4f36f28971fb3aec06c"
+    ]),
+    .init(group: "Profile", name: "power_state_defined", pixels: [2: (132, 132), 3: (198, 198)], hashes: [
+        2: "7a892dfd8d4b49a1abbd426e53080f4de2b3e7ca974e1f01f8a0f90ced39f74f",
+        3: "e72d56445adc7d41382566e77ac9e762db09407e2d1c734ba3b21da8d6fdfadd"
+    ]),
+    .init(group: "Profile", name: "power_state_off", pixels: [2: (132, 132), 3: (198, 198)], hashes: [
+        2: "0fb6fcf32a0e463e921b3c3deac54576f2b0458d2846c8270f9d3af0c623d6e6",
+        3: "fd93c0965d3ab105ee6b27af85032098b8f85291f5b0299e1e6a3c570f770223"
+    ]),
+    .init(group: "Profile", name: "power_state_restore", pixels: [2: (132, 132), 3: (198, 198)], hashes: [
+        2: "d98946e4fe4a5dc0ff8252a22329e2621f4408a83afb5608613d89cbdb068e8b",
+        3: "6b21cb63c28a6a99217e8288b59abb3345384c06c43fe5788b2708f750e6ce5c"
+    ]),
+    .init(group: "Profile", name: "profile_chart_daylight", pixels: [2: (424, 467), 3: (636, 701)], hashes: [
+        2: "96aea8518a8bf0c586c8a8317478ae768e53495dfabb68c69c191759cfda0f4a",
+        3: "7b031dbb30a284fe82695c9e57be557369d362315f21a773dfb1f94126f045db"
+    ]),
+    .init(group: "Profile", name: "profile_chart_manual_control", pixels: [2: (424, 467), 3: (636, 701)], hashes: [
+        2: "de9c4d9f5c0b62cf10d0a770cb87c80df8f2c9ca5ce4d09d1f1b62d99a6fad7f",
+        3: "5b0bc11a5a7a4292549419069d795340765a025ad8f53d41130571b2efd56135"
+    ]),
+    .init(group: "Profile", name: "profile_chart_occupancy", pixels: [2: (424, 467), 3: (636, 701)], hashes: [
+        2: "db5f8b765ba235f058d1f0b7568080a18b405f4c90d6c1af4d88bc847a6fef4a",
+        3: "10c23ff6b118bc45832a7df28145fad6a708b0d06b8dc3df5894d1ccc9a5a0a8"
+    ]),
+    .init(group: "Profile", name: "profile_person", pixels: [2: (40, 40), 3: (60, 60)], hashes: [
+        2: "ffe253066fbef81ec3820d68be3ea65c6b128b17ad7039e50def8632660ff0b4",
+        3: "ad5734adee040d153213b9fca0fa06be25dfdb38a634c68bf89b7cb8d1aa531f"
+    ]),
+    .init(group: "Profile", name: "profile_person_big", pixels: [2: (60, 60), 3: (90, 90)], hashes: [
+        2: "aae99a437ca1b219182ac958b6c0261571010b516dc7217473408ba54dfecd2b",
+        3: "cf3afd3eb8cd0a8c4fbb9007138ef2f306b5b624d55e89663c88207df7970b37"
+    ]),
+    .init(group: "Profile", name: "profile_proximity_lighting", pixels: [2: (670, 408), 3: (1005, 612)], hashes: [
+        2: "1010235c5252a4cbd4d7ab1797b97ac84c9a6cc2d72c56d5a4add642d996e0f4",
+        3: "5c2902bb4c32252567faa54bb0ff22170a8f262c913e0584c70361c63770372d"
+    ]),
+    .init(group: "Profile", name: "sensor_manul_override_timeout", pixels: [2: (656, 282), 3: (984, 423)], hashes: [
+        2: "cd71eeef261639816d6179d3c1231854b9fefbfc8bfde28b864136051af195e8",
+        3: "f0f18f0a78536a74abafa841cc4bce500432e9f5431c63759817a1b735d5545f"
+    ]),
+    .init(group: "Scene", name: "scene_data_add", pixels: [2: (48, 48), 3: (72, 72)], hashes: [
+        2: "9f659569ee5d8d983e00cd836c4ae553fef4eafcd6d865e15555e0efd2dcbe02",
+        3: "0ddf3b7c0a17f3926e55aa3cec2d674e9fa25da36f7a87dee3a7082dbc7ffe28"
+    ]),
+    .init(group: "Space", name: "locked", pixels: [2: (60, 60), 3: (90, 90)], hashes: [
+        2: "e3b4ded572f7b005134b4b5f243a8325ed4044962420a145b19acec821216e52",
+        3: "8465bd47533051bea362c25973c4490a08496a656c658ec1436e36e7cfccc85f"
+    ])
+]
+
 let providedGroupedAssets: [ProvidedGroupedAsset] = [
     .init(group: "Device", name: "switch_proxy_instructions_1", pixels: [
         2: (620, 656), 3: (930, 984)
@@ -518,7 +665,9 @@ let providedGroupedAssets: [ProvidedGroupedAsset] = [
 
 check(providedGroupedAssets.count == 11,
       "Expected exactly 11 supplied Device/Energy/Group/Path assets")
-for asset in providedGroupedAssets {
+check(providedNew3Assets.count == 29,
+      "Expected exactly 29 new3 supplied Retina assets")
+for asset in providedGroupedAssets + providedNew3Assets {
     check(expectedAssetGroups[asset.name] == asset.group,
           "Wrong business group for supplied asset: \(asset.name)")
     let entries = try contents(named: asset.name)["images"] as! [[String: String]]
@@ -609,4 +758,4 @@ check([CGImageAlphaInfo.none, .noneSkipFirst, .noneSkipLast].contains(icon.alpha
 let colors = try contents(named: "AccentColor")["colors"] as! [[String: Any]]
 let components = (colors[0]["color"] as! [String: Any])["components"] as! [String: String]
 check(components == ["red": "0x4D", "green": "0x73", "blue": "0x8A", "alpha": "1.000"], "Accent color must be #4D738A")
-print("Lumineux asset tests passed: \(iconAssets.count) Figma-vector icons, 7 supplied PNG icons, 4 exact Figma empty states, retina logos, opaque 1024 AppIcon, exact AccentColor")
+print("Lumineux asset tests passed: 29 new3 supplied Retina assets, 121 asset groups, \(iconAssets.count) Figma-vector icons, 7 supplied PNG icons, 4 exact Figma empty states, retina logos, opaque 1024 AppIcon, exact AccentColor")
