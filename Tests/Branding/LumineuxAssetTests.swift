@@ -23,6 +23,7 @@ let expectedAssetGroups: [String: String] = [
     "AccentColor": "root",
     "AppIcon": "root",
     "add": "Common",
+    "filter_selected": "Common",
     "favourite_normal": "Common",
     "favourite_selected": "Common",
     "hud_loading": "Common",
@@ -32,9 +33,14 @@ let expectedAssetGroups: [String: String] = [
     "loading": "Common",
     "loading_big": "Common",
     "lumineux_launch_logo": "Common",
+    "menu_select": "Common",
     "navigation_back": "Common",
+    "order_down": "Common",
+    "order_up": "Common",
     "reset": "Common",
     "select": "Common",
+    "server_select": "Common",
+    "user_big": "Common",
     "device_add": "Device",
     "device_add_disable": "Device",
     "device_add_setting": "Device",
@@ -54,6 +60,11 @@ let expectedAssetGroups: [String: String] = [
     "light_value_minus": "Device",
     "slider_point": "Device",
     "slider_point_disable": "Device",
+    "switch_proxy_instructions_1": "Device",
+    "switch_proxy_instructions_2": "Device",
+    "energy_csv": "Energy",
+    "energy_device": "Energy",
+    "energy_phone": "Energy",
     "firmware_delete": "Firmware",
     "firmware_history": "Firmware",
     "server_download": "Firmware",
@@ -70,6 +81,12 @@ let expectedAssetGroups: [String: String] = [
     "sync_loading_small": "Group",
     "sync_success_small": "Group",
     "sync_waiting_small": "Group",
+    "switch_press": "Group",
+    "switch_press_long": "Group",
+    "switch_save": "Group",
+    "path_direction_left": "Path",
+    "path_direction_right": "Path",
+    "path_item_add": "Path",
     "profile_chart_occupancy_daylight": "Profile",
     "scene_data_value_add": "Scene",
     "scene_data_value_minus": "Scene",
@@ -107,7 +124,7 @@ let groupManifest = try JSONDecoder().decode(
 check(groupManifest.groups == expectedGroups,
       "Lumineux groups must match SLGSync order and names")
 check(groupManifest.assets == expectedAssetGroups,
-      "Lumineux asset group manifest differs from the approved 75-resource mapping")
+      "Lumineux asset group manifest differs from the approved 92-resource mapping")
 
 func setExtension(for name: String) -> String {
     switch name {
@@ -178,7 +195,7 @@ while let url = enumerator.nextObject() as? URL {
     discovered[name, default: []].append(url.standardizedFileURL)
     enumerator.skipDescendants()
 }
-check(discovered.count == 75, "Lumineux catalog must contain exactly 75 asset names")
+check(discovered.count == 92, "Lumineux catalog must contain exactly 92 asset names")
 check(Set(discovered.keys) == Set(expectedAssetGroups.keys),
       "Lumineux catalog asset names differ from the approved set")
 for name in expectedAssetGroups.keys.sorted() {
@@ -365,6 +382,185 @@ for scale in 1...3 {
     }
 }
 
+// These supplied Common assets intentionally match the existing two-scale
+// catalog contract: preserve exact 2x/3x bytes and leave the 1x slot empty.
+let providedCommonDirectory = providedDirectory.appendingPathComponent("Common")
+let providedCommonAssets: [(name: String, points: Int, hashes: [Int: String])] = [
+    ("filter_selected", 30, [
+        2: "7cc3af31b9f828c33d7765d96fc994843ffbca6d244474ae27326da10f3aafbb",
+        3: "d49d67ea0137cd5c292ac421acbca80acb989d462e88e53a91f91ce2db33ddbb"
+    ]),
+    ("menu_select", 30, [
+        2: "51fef836f1866e60b602ca435294a001abad681855d07e38b7ef95c7e9d29b05",
+        3: "6b6e29ab8be3581095143edc8395bf065ffc88308edf532f271501e2f11d9bc3"
+    ]),
+    ("order_down", 30, [
+        2: "cf7cff430c9ff3bd08ef60e461a740fc43d0d460ee3e1098acb17f0a1ce08d98",
+        3: "a381f2c1266f7fa7fff2c0f60b5083f4d89accc43fe59c7b818e9640d14bb492"
+    ]),
+    ("order_up", 30, [
+        2: "5eef3c88c7cbf77f8d472b2256efb2b5791af8224fd8407c762e46ae5cf1eede",
+        3: "ddaeb1db793212aebaf7b1f28af29afc0f9531f60e2e8749ced29ac147c7443f"
+    ]),
+    ("server_select", 30, [
+        2: "b17653195109f25d9ec08df9454a6976e314f1c50055c8c1c5d6b7cccd49c61b",
+        3: "067222632c85ea3c9f3e35f9a046c280844015fc48e96b0c3dddb5333e6f216a"
+    ]),
+    ("user_big", 88, [
+        2: "6c7d79fe8c5757fbdf067820f2c810a7792325b040ec7cef5beb7372b5bbd0f7",
+        3: "c0063e0e178986fd318c08bfd3de7af92e4298233e197c3f467005f8606b159b"
+    ])
+]
+for asset in providedCommonAssets {
+    let entries = try contents(named: asset.name)["images"] as! [[String: String]]
+    check(entries.count == 3,
+          "Expected empty 1x plus supplied 2x/3x for \(asset.name)")
+    check(entries.first { $0["scale"] == "1x" }?["filename"] == nil,
+          "\(asset.name) must not generate a 1x file")
+    for scale in 2...3 {
+        let filename = "\(asset.name)@\(scale)x.png"
+        let source = providedCommonDirectory.appendingPathComponent(filename)
+        check(FileManager.default.fileExists(atPath: source.path),
+              "Missing supplied Common source artwork: \(filename)")
+        let sourceData = try Data(contentsOf: source)
+        let digest = SHA256.hash(data: sourceData).map { String(format: "%02x", $0) }.joined()
+        check(digest == asset.hashes[scale],
+              "Supplied \(asset.name) @\(scale)x bytes changed")
+        let catalogFilename = entries.first { $0["scale"] == "\(scale)x" }?["filename"]
+        check(catalogFilename == filename,
+              "Unexpected catalog filename for \(asset.name) @\(scale)x")
+        let catalogData = try Data(
+            contentsOf: assetSetURL(named: asset.name).appendingPathComponent(catalogFilename!)
+        )
+        check(catalogData == sourceData,
+              "Catalog must preserve \(asset.name) @\(scale)x bytes")
+        let pixels = try image(named: asset.name, filename: catalogFilename!)
+        check(pixels.width == asset.points * scale && pixels.height == asset.points * scale,
+              "Incorrect logical canvas for \(asset.name) @\(scale)x")
+    }
+}
+
+struct ProvidedGroupedAsset {
+    let group: String
+    let name: String
+    let pixels: [Int: (width: Int, height: Int)]
+    let hashes: [Int: String]
+}
+
+let providedGroupedAssets: [ProvidedGroupedAsset] = [
+    .init(group: "Device", name: "switch_proxy_instructions_1", pixels: [
+        2: (620, 656), 3: (930, 984)
+    ], hashes: [
+        2: "4ee9aac82760cb73c59d3603e4a3131a48847cf2909de4de87b44caff3369a7b",
+        3: "08a1667ed117e6208be89c4001e19edd509bcf09c68f3063e640d6a16a31462b"
+    ]),
+    .init(group: "Device", name: "switch_proxy_instructions_2", pixels: [
+        2: (574, 624), 3: (861, 936)
+    ], hashes: [
+        2: "0007d325a3167bef8d7b2feea361487ba388066eb14f401bea017e7cca4302a8",
+        3: "c66671007ea1611dbd17d31d1537387cf3e1987f0cc606f5980806f8f718bf90"
+    ]),
+    .init(group: "Energy", name: "energy_device", pixels: [
+        2: (40, 40), 3: (60, 60)
+    ], hashes: [
+        2: "ab8fc4aa61032e4354b143b6902f69e9baa78d36b86bc62edf4c4c35388953a3",
+        3: "47b67bbccee798e86fab035f185a6c8c0412460559def2b12a905d6c20297f68"
+    ]),
+    .init(group: "Energy", name: "energy_csv", pixels: [
+        2: (40, 40), 3: (60, 60)
+    ], hashes: [
+        2: "25869578488f78ef74bb79ce53f87db86ff1130e63f1b5fc89469975ede6c56e",
+        3: "fefa6ba82e6b3ccd53e5605448676ff8da897497a08f08794c6833900ab6af4a"
+    ]),
+    .init(group: "Energy", name: "energy_phone", pixels: [
+        2: (40, 40), 3: (60, 60)
+    ], hashes: [
+        2: "e2141c49d0815ae3b8cd84c0e575bffdf9afab90df0e28ff72949d42fc8fa90c",
+        3: "53b02514e7d4d146bc25f69c2cdc33e3eb852f025b6fa94898ed80a8666d1e2f"
+    ]),
+    .init(group: "Group", name: "switch_press", pixels: [
+        2: (60, 60), 3: (90, 90)
+    ], hashes: [
+        2: "71cae800452a091d06494af4c192f6ad3c2c19d01e705a95de801c98e0fc2c4d",
+        3: "04456b561da19a53092c0772eea760fd0c0049c1d0407ff9f1e635d9e7da00ee"
+    ]),
+    .init(group: "Group", name: "switch_press_long", pixels: [
+        2: (60, 60), 3: (90, 90)
+    ], hashes: [
+        2: "fa75a3ef9ad252d2c0afea24c4029bb7b5f05a582e380ae88a63d4e2bca547a5",
+        3: "dd5a9f72ce69b4126b95c955c4dc1cc1bbc72eaa836b7a5ad672a093eb8acc86"
+    ]),
+    .init(group: "Group", name: "switch_save", pixels: [
+        2: (80, 80), 3: (120, 120)
+    ], hashes: [
+        2: "fcd2afa2fef32f35f07882754d8d6a04a659796ab2d793d177389e79704b5cd9",
+        3: "e7260fed14aac7e10b7d685bcab9c75b827f26a80cd8f472ddd27b064da33c00"
+    ]),
+    .init(group: "Path", name: "path_direction_left", pixels: [
+        2: (31, 12), 3: (47, 18)
+    ], hashes: [
+        2: "10bc5d45a0d8c8047660c46972aeeaf66078d8a00f01a191c1f64b5ddc44fb47",
+        3: "b93eac894add60b74f0f34798af4bc2380b6610dff3ddd5e13ad7c42b0aa01c8"
+    ]),
+    .init(group: "Path", name: "path_direction_right", pixels: [
+        2: (31, 12), 3: (47, 18)
+    ], hashes: [
+        2: "2db9d4d9abf8ab8eaabf76d19e7f29150e1af1f0384198e1f8a4e4c48a4c92ef",
+        3: "3ac355dbb4898ada7129e2cebce6e49511408083e5a8c9d8a655e60e81a317ee"
+    ]),
+    .init(group: "Path", name: "path_item_add", pixels: [
+        2: (18, 18), 3: (27, 27)
+    ], hashes: [
+        2: "1f9c61bb7e67e47f14b0ddb4b9b1bdb010ce4fab4536db4dade4d1b648314ed9",
+        3: "30a80c61759e1c18fc1c2562e5d555bd9360fd8615935e8498e6ce3d9c9b9fe5"
+    ])
+]
+
+check(providedGroupedAssets.count == 11,
+      "Expected exactly 11 supplied Device/Energy/Group/Path assets")
+for asset in providedGroupedAssets {
+    check(expectedAssetGroups[asset.name] == asset.group,
+          "Wrong business group for supplied asset: \(asset.name)")
+    let entries = try contents(named: asset.name)["images"] as! [[String: String]]
+    check(entries.count == 3,
+          "Expected empty 1x plus supplied 2x/3x for \(asset.name)")
+    for scale in 1...3 {
+        check(entries.filter { $0["scale"] == "\(scale)x" }.count == 1,
+              "Expected exactly one universal \(scale)x entry for \(asset.name)")
+    }
+    check(entries.allSatisfy { $0["idiom"] == "universal" },
+          "All scale entries must use the universal idiom for \(asset.name)")
+    check(entries.first { $0["scale"] == "1x" }!["filename"] == nil,
+          "\(asset.name) must not generate a 1x file")
+    let sourceDirectory = providedDirectory.appendingPathComponent(asset.group)
+    for scale in 2...3 {
+        let filename = "\(asset.name)@\(scale)x.png"
+        let source = sourceDirectory.appendingPathComponent(filename)
+        check(FileManager.default.fileExists(atPath: source.path),
+              "Missing supplied \(asset.group) source artwork: \(filename)")
+        let sourceData = try Data(contentsOf: source)
+        let digest = SHA256.hash(data: sourceData)
+            .map { String(format: "%02x", $0) }.joined()
+        check(digest == asset.hashes[scale],
+              "Supplied \(asset.name) @\(scale)x bytes changed")
+        let catalogFilename = entries.first { $0["scale"] == "\(scale)x" }?["filename"]
+        check(catalogFilename == filename,
+              "Unexpected catalog filename for \(asset.name) @\(scale)x")
+        let catalogData = try Data(contentsOf:
+            assetSetURL(named: asset.name).appendingPathComponent(catalogFilename!))
+        check(catalogData == sourceData,
+              "Catalog must preserve \(asset.name) @\(scale)x bytes")
+        let rendered = try image(named: asset.name, filename: catalogFilename!)
+        let expected = asset.pixels[scale]!
+        check(rendered.width == expected.width && rendered.height == expected.height,
+              "Incorrect pixel canvas for \(asset.name) @\(scale)x")
+    }
+    let unexpectedOneX = assetSetURL(named: asset.name)
+        .appendingPathComponent("\(asset.name)@1x.png")
+    check(!FileManager.default.fileExists(atPath: unexpectedOneX.path),
+          "\(asset.name) must not contain a generated 1x PNG")
+}
+
 // Empty-state illustrations are complete Figma node exports. Keep their
 // original non-square canvas, scale, alpha, and exact exported bytes.
 let emptyStates: [(name: String, node: String, width: Int, height: Int, hashes: [Int: String])] = [
@@ -413,4 +609,4 @@ check([CGImageAlphaInfo.none, .noneSkipFirst, .noneSkipLast].contains(icon.alpha
 let colors = try contents(named: "AccentColor")["colors"] as! [[String: Any]]
 let components = (colors[0]["color"] as! [String: Any])["components"] as! [String: String]
 check(components == ["red": "0x4D", "green": "0x73", "blue": "0x8A", "alpha": "1.000"], "Accent color must be #4D738A")
-print("Lumineux asset tests passed: \(iconAssets.count) Figma-vector icons, 1 supplied PNG icon, 4 exact Figma empty states, retina logos, opaque 1024 AppIcon, exact AccentColor")
+print("Lumineux asset tests passed: \(iconAssets.count) Figma-vector icons, 7 supplied PNG icons, 4 exact Figma empty states, retina logos, opaque 1024 AppIcon, exact AccentColor")

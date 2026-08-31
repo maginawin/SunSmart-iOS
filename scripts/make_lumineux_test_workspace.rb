@@ -44,7 +44,7 @@ asset_set_extensions = %w[.imageset .appiconset .colorset]
 brand_sets = Dir.glob(File.join(brand_catalog, '**', '*')).select do |path|
   File.directory?(path) && asset_set_extensions.include?(File.extname(path))
 end
-abort("Expected 75 complete Lumineux catalog sets for reference catalog; found #{brand_sets.length}") unless brand_sets.length == 75
+abort("Expected 92 complete Lumineux catalog sets for reference catalog; found #{brand_sets.length}") unless brand_sets.length == 92
 FileUtils.mkdir_p(reference_catalog)
 FileUtils.cp_r(File.join(brand_catalog, '.'), reference_catalog)
 # The common launch logo stays loose and uniquely named, outside the positive

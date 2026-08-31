@@ -2,14 +2,14 @@
 
 # Lumineux 资源接入与待提供清单
 
-核对日期：2026-08-29。Lumineux 现使用专属构建期资源合并：公共 catalog 先复制到 `DERIVED_FILE_DIR`，再由 Lumineux 完整 asset set 覆盖同名资源，原生 actool 只编译这份生成 catalog。旧双 catalog 顺序方案已废弃；不使用运行时染色或改写共享图片调用。英文和简体中文三设备 UIKit 矩阵、截图审阅、Release 签名与 SunSmart Debug 回归均已完成。
+核对日期：2026-08-31。Lumineux 现使用专属构建期资源合并：公共 catalog 先复制到 `DERIVED_FILE_DIR`，再由 Lumineux 完整 asset set 覆盖同名资源，原生 actool 只编译这份生成 catalog。旧双 catalog 顺序方案已废弃；不使用运行时染色或改写共享图片调用。本轮已接入 11 组 grouped Retina 资源；Task 5 已完成 iPhone SE 3、iPhone 16、iPad Pro 11 M4 的 en-US、zh-Hans-CN 六组合 focused UIKit 矩阵（6/6 次均 1 passed、0 failed、0 skipped），30 张截图已人工审阅。正常 `DerivedData3` 路径的 Lumineux 真机 Debug 构建及 `codesign --verify --deep --strict` 均通过；合并 catalog 为 695 组（92 组 Lumineux、603 组公共资源）。本轮未更新依赖、未安装或启动 App。
 
 ## 本次已下载并打包
 
-- 66 组同名图标：原有 54 组（Tab 10、导航 10、设备/分组/场景按钮与尺寸变体 26、收藏/加载/等待/能耗 8）、页面稿补充 3 组、4 组紧凑状态/扫描图标、Profile／Safe Mode 补充 4 组，再加用户文件夹提供的 `auto`；已有的 `sync_loading_small` 同时改用完整 24pt 组件节点，数量不重复计算。
+- 83 组同名图标：原有 72 组（Tab 10、导航 10、设备/分组/场景按钮与尺寸变体 26、收藏/加载/等待/能耗 8、页面稿补充 3、紧凑状态/扫描图标 4、Profile／Safe Mode 补充 4、用户文件夹提供的 `auto` 1、Common Retina PNG 6），再加本轮 Device 2、Energy 3、Group 3、Path 3 组 grouped Retina PNG；另有 4 组空状态插图，因此已提供资源总数为 87。已有的 `sync_loading_small` 同时改用完整 24pt 组件节点，数量不重复计算。
 - 首批原稿来自四个用户提供的 Figma 框架：[Tab](https://www.figma.com/design/P4AaSxu8SJe2Tf2gpyTFT9/Lumineux_260814?node-id=9338-252618)、[导航](https://www.figma.com/design/P4AaSxu8SJe2Tf2gpyTFT9/Lumineux_260814?node-id=9338-259821)、[按钮](https://www.figma.com/design/P4AaSxu8SJe2Tf2gpyTFT9/Lumineux_260814?node-id=9338-290273)、[其他](https://www.figma.com/design/P4AaSxu8SJe2Tf2gpyTFT9/Lumineux_260814?node-id=1038-38735)。
 - 52 份完整节点矢量导出保存在 `Lumineux/DesignAssets/Figma`；资源名、节点 ID、原有 iOS 逻辑尺寸逐项记录在 `Lumineux/DesignAssets/icon-manifest.json`。仅机械缩放生成 1x/2x/3x PNG，不重绘或改色。
-- `auto` 的原始 2x/3x PNG 单独保存在 `Lumineux/DesignAssets/Provided`，catalog 保留这两份源文件的原始字节，1x 由 2x 机械缩小生成。
+- `auto` 的原始 2x/3x PNG 单独保存在 `Lumineux/DesignAssets/Provided`，catalog 保留这两份源文件的原始字节，1x 由 2x 机械缩小生成。本轮六组 Common PNG 保存在 `Lumineux/DesignAssets/Provided/Common`，只使用用户提供的 2x/3x 原文件，1x 槽位按项目现状留空，不生成图片。
 - 两份已提供 Logo 保留为源文件；catalog 使用 `AppIcon`、`launch_logo`（88pt）、`launch_logo_120`（120pt）和系统启动页专用的 `lumineux_launch_logo`（88pt），`AccentColor` 为 `#4D738A`。三组显示 Logo 现统一从 `app_logo_1024.png` 高清原图缩小生成，88px 小图仅存档、不再放大使用；避免原小图自带的灰色圆角和细节模糊。AppIcon 仅派生文件去除 alpha，源图不变。
 - 所有资源位于 `Lumineux/Assets-Lumineux.xcassets`；原 SunSmart、SLGSync 资源没有修改。缺少的新图继续使用现有共享原图，不能理解为 Lumineux 所有图标已完全换色。
 
@@ -23,7 +23,7 @@
 
 本轮来源为 [Sites](https://www.figma.com/design/P4AaSxu8SJe2Tf2gpyTFT9/Lumineux_260814?node-id=16001-24109)、[Welcome](https://www.figma.com/design/P4AaSxu8SJe2Tf2gpyTFT9/Lumineux_260814?node-id=5776-95955)、[Space](https://www.figma.com/design/P4AaSxu8SJe2Tf2gpyTFT9/Lumineux_260814?node-id=16001-97645)。均导出整个节点，保留透明留白并提供 1x/2x/3x；未把页面文字、进度或原生控件烘焙成图片。
 
-[Launch](https://www.figma.com/design/P4AaSxu8SJe2Tf2gpyTFT9/Lumineux_260814?node-id=0-10522) 与 Welcome 的 Logo 已有对应素材，页面补充阶段未替换；后续质量修正已使用 [1024px 原稿](https://www.figma.com/design/P4AaSxu8SJe2Tf2gpyTFT9/Lumineux_260814?node-id=0-39925) 重生成两组显示 Logo，尺寸与资源名不变。Space 的排序按钮实际使用 `space_sort`，不能据此把另一用途的 `order_down` 标记为已补；其他选择态也不共用这张实心圆勾选图。
+[Launch](https://www.figma.com/design/P4AaSxu8SJe2Tf2gpyTFT9/Lumineux_260814?node-id=0-10522) 与 Welcome 的 Logo 已有对应素材，页面补充阶段未替换；后续质量修正已使用 [1024px 原稿](https://www.figma.com/design/P4AaSxu8SJe2Tf2gpyTFT9/Lumineux_260814?node-id=0-39925) 重生成两组显示 Logo，尺寸与资源名不变。Space 的排序按钮实际使用 `space_sort`，因此页面补充阶段没有据此推断 `order_down`；该资源后来使用用户单独提供的同名语义 PNG 接入。
 
 ### 2026-08-29 空状态插图
 
@@ -67,11 +67,42 @@
 
 四组均直接使用 Figma 完整节点的 PDF 矢量导出，生成 1x／2x／3x；没有改色、重绘或修改共享图片调用。`device_select` 只在 18pt 原图外增加透明留白，以适配项目原有 30pt 同名资源画布。`sensor_move` 是此前按 SLGSync catalog 范围统计时遗漏的 Lumineux 品牌资源，因此不从下方原 60 组清单中扣减。
 
+### 2026-08-31 Common Retina PNG 补充
+
+| 用户文件 | 同名资源 | iOS 逻辑尺寸 | 导出 |
+| --- | --- | --- | --- |
+| `Property 1=filter` | `filter_selected` | 30 × 30pt | 2x / 3x |
+| `images/select` | `menu_select` | 30 × 30pt | 2x / 3x |
+| `Property 1=order_down` | `order_down` | 30 × 30pt | 2x / 3x |
+| `Property 1=order_up` | `order_up` | 30 × 30pt | 2x / 3x |
+| `images/select_2` | `server_select` | 30 × 30pt | 2x / 3x |
+| `images/user` | `user_big` | 88 × 88pt | 2x / 3x |
+
+六组均逐字节保存用户提供的 Retina PNG，不缩放、不改色、不重绘；对应 imageset 只填写 2x 与 3x 文件，1x 保持空槽。`images/select_3` 无唯一待补资源映射，因此未接入；`value_buoy` 仍待提供。
+
+### 2026-08-31 Device、Energy、Group、Path Retina PNG 补充
+
+| 用户文件 | 同名资源 | iOS 逻辑尺寸 | 导出 |
+| --- | --- | --- | --- |
+| `Frame 133` | `Device/switch_proxy_instructions_1` | 310 × 328pt | 2x / 3x |
+| `Frame 132` | `Device/switch_proxy_instructions_2` | 287 × 312pt | 2x / 3x |
+| `images/Hard-Drive20` | `Energy/energy_device` | 20 × 20pt | 2x / 3x |
+| `images/csv` | `Energy/energy_csv` | 20 × 20pt | 2x / 3x |
+| `images/phone20` | `Energy/energy_phone` | 20 × 20pt | 2x / 3x |
+| `images/press` | `Group/switch_press` | 30 × 30pt | 2x / 3x |
+| `images/press_long` | `Group/switch_press_long` | 30 × 30pt | 2x / 3x |
+| `images/save` | `Group/switch_save` | 40 × 40pt | 2x / 3x |
+| `箭头左` | `Path/path_direction_left` | 31 × 12px / 47 × 18px | 2x / 3x |
+| `箭头右` | `Path/path_direction_right` | 31 × 12px / 47 × 18px | 2x / 3x |
+| `images/add` | `Path/path_item_add` | 9 × 9pt | 2x / 3x |
+
+十一组均逐字节保存用户提供的 Retina PNG，imageset 仅填写 2x 与 3x，1x 保持空槽。PNG 文件字节与运行时布局属于不同层次：`switch_proxy_instructions_1` 的 310 × 328pt 原图在 iPhone 现有 324/310 约束下约有 1.2% 纵向压缩；用户已确认影响可忽略，本轮不改生产 Swift。`new2/icon/路径` 暂不处理；`energy_light`、`auto_big`、`member_add`、`switch_save_un` 没有接入。
+
 ## 剩余数量如何计算
 
 原清单按 SLGSync 的 128 组资源，扣除 4 组 Logo 和与 SunSmart 图片内容一致的 30 组 FireAlarm1.5 资源，得到 94 组品牌资源。
 
-现有素材覆盖其中 **37 组**（首批 25 + 页面补充 3 + 空状态 4 + `device_scan` 1 + `auto` 1 + 本轮原清单内 3 组），剩余 **57 组**待提供或确认沿用；另外已打包的 **33 组**是 Tab 正常态、导航、按钮配对状态、紧凑同步状态及额外的 `sensor_move` 等，因此目前已提供资源总数是 70，不是从 94 中扣除 70。数量均按资源名称计，不按 PNG 文件计，不能等同于运行时已生效。
+SLGSync 94 组范围内已覆盖：**54**；SLGSync 94 组范围内待提供：**40**；额外已打包：**33**；已提供资源总数：**87**。其中本轮 Device、Energy、Group、Path Retina PNG 补充 11 组；数量均按资源名称计，不按 PNG 文件计，不能等同于运行时已生效。
 
 ## 待提供或确认沿用
 
@@ -79,40 +110,26 @@
 
 | 分类 | 剩余组数 |
 | --- | ---: |
-| 通用操作与加载（Common） | 7 |
-| 设备（Device） | 2 |
-| 能耗（Energy） | 4 |
+| 通用操作与加载（Common） | 1 |
+| 设备（Device） | 0 |
+| 能耗（Energy） | 1 |
 | 固件与升级引导（Firmware） | 10 |
-| 分组与开关（Group） | 6 |
-| 路径（Path） | 3 |
+| 分组与开关（Group） | 3 |
+| 路径（Path） | 0 |
 | 策略与图表（Profile） | 23 |
 | 场景（Scene） | 1 |
 | 项目列表（Site） | 0 |
 | 空间（Space） | 1 |
 | 定时（Timed） | 0 |
-| 合计 | 57 |
+| 合计 | 40 |
 
-### 通用操作与加载（Common，7 组）
+### 通用操作与加载（Common，1 组）
 
-- `filter_selected`
-- `menu_select`
-- `order_down`
-- `order_up`
-- `server_select`
-- `user_big`
 - `value_buoy`
 
-### 设备（Device，2 组）
+### 能耗（Energy，1 组）
 
-- `switch_proxy_instructions_1`
-- `switch_proxy_instructions_2`
-
-### 能耗（Energy，4 组）
-
-- `energy_csv`
-- `energy_device`
 - `energy_light`
-- `energy_phone`
 
 ### 固件与升级引导（Firmware，10 组）
 
@@ -127,20 +144,11 @@
 - `single_device`
 - `updatating_nodes`
 
-### 分组与开关（Group，6 组）
+### 分组与开关（Group，3 组）
 
 - `auto_big`
 - `member_add`
-- `switch_press`
-- `switch_press_long`
-- `switch_save`
 - `switch_save_un`
-
-### 路径（Path，3 组）
-
-- `path_direction_left`
-- `path_direction_right`
-- `path_item_add`
 
 ### 策略与图表（Profile，23 组）
 
@@ -182,7 +190,7 @@
 - `control_add_unactive40` / `control_minus_unactive40` 的命名与视觉状态不一致，暂不推断成 `light_value_add_higtlighted` / `light_value_minus_highlighted` 的按下态。正常态的增减按钮已经接入；需要确认这两个填充圆形是否用于按下态。
 - `switch_on/off` 是整颗开关设计，项目现有开关由 UIKit 控件绘制；只保留已有主题入口，不添加图片开关或改共享控件代码。
 - 带 ON/OFF/Identify 文字的按钮、静态“45%”进度示例不直接烘焙成新图，避免替换现有国际化文字或动态进度逻辑。
-- 其他没有对应此次品牌替换清单、或不能确认一一对应的普通帮助/信息/状态图标保留原实现。已提供的中性图形不代表 `user_big` 等不同填充/尺寸用途的品牌变体已确认。
+- 其他没有对应此次品牌替换清单、或不能确认一一对应的普通帮助/信息/状态图标保留原实现。已提供的中性图形不代表不同填充、尺寸或业务用途的品牌变体已确认。
 
 ## 代码与配置边界
 
@@ -211,3 +219,5 @@
 同日 iPhone 16 真机又出现纯白启动页。构建产物中的专用 storyboard 和 `Assets.car` 均正确；真机 SpringBoard/SplashBoard 日志明确显示系统找到了旧 snapshot、拒绝重新生成且未清除缓存。临时 storyboard 改名、Bundle Version 2 和整机重启均未改变同一 snapshot 命中，相关实验已撤销。用户最终选择严格保持 SLGSync 结构：`Lumineux-LaunchScreen` 继续使用独立 `lumineux_launch_logo`，不增加应用内启动层，不修改 SunSmart、SLGSync 或共享 AppDelegate。当前测试 iPhone 的缓存白屏不作为工程接入成功证据。
 
 同日从 Figma 补入 `profile_chart_occupancy_daylight`、`schedule_target_select`、`sensor_move`、`device_select`。四组素材、合并器、配置与 SDK 检查通过；真实 Profile、Group Sensor 与 Safe Mode 图片加载路径在 iPhone 16 的英文及简体中文环境中合计执行 6 个测试，全部通过。8 张截图已人工核对，无错图、拉伸、裁切、偏移或文字挤压。正式 Lumineux 真机 Debug 构建和 Wen Xu / JTD3WYUC58 签名校验通过；生成 catalog 仍为 695 组，75 组来自 Lumineux，其余 620 组保留公共资源。SunSmart 的 iPhone 16 模拟器 Debug 构建回归通过；未安装或启动真机 App，也未修改共享 Swift、SunSmart/SLGSync 资源、合并脚本或其他 target。
+
+2026-08-31 从用户提供的 `assets/new` 接入六组 Common Retina PNG，只保留原始 2x/3x，1x 槽位为空。静态素材、分组、合并器、生成器、工程配置与 SDK 依赖检查均通过；真实用户设置、服务器选择、标题选择和静态能耗页面在 iPhone SE 3、iPhone 16、iPad Pro 11 M4 的英文及简体中文环境中合计执行 6 次测试，0 失败、0 跳过。24 张快照已逐张核对，新增图片无拉伸、裁切、重叠或越界。正式 Lumineux 真机 Debug 构建与 Wen Xu / JTD3WYUC58 签名校验通过；生成 catalog 仍为 695 组，其中 81 组逐文件匹配 Lumineux，其余 614 组保留公共资源。`value_buoy` 与 `images/select_3` 未接入；未安装或启动真机 App，也未修改共享 Swift、SunSmart/SLGSync 资源、合并脚本或其他 target。

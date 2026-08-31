@@ -179,6 +179,15 @@ final class LumineuxRuntimeTests: XCTestCase {
         return controller
     }
 
+    private func assertContained(_ child: UIView, in parent: UIView,
+                                 file: StaticString = #filePath, line: UInt = #line) {
+        let frame = child.convert(child.bounds, to: parent)
+        XCTAssertTrue(parent.bounds.insetBy(dx: -0.5, dy: -0.5).contains(frame),
+                      "View is outside its production container: \(frame)",
+                      file: file, line: line)
+        XCTAssertFalse(child.hasAmbiguousLayout, file: file, line: line)
+    }
+
     func testProfileAndSafeModeSupplementalAssetsResolveFromLumineuxSources() throws {
         let assets: [(String, CGSize)] = [
             ("profile_chart_occupancy_daylight", CGSize(width: 212, height: 234)),
@@ -272,7 +281,9 @@ final class LumineuxRuntimeTests: XCTestCase {
         snapshot(window, "Welcome-disabled")
     }
 
-    func testMenuLogoAndServerMenuPreserved() throws {
+    func testEuropeRegionAndMenuWithoutServerSelection() throws {
+        XCTAssertEqual(ServerRegion.defaultRegions.map(\.rawValue), [ServerRegion.europe.rawValue],
+                       "Lumineux must expose Europe as its only server region")
         let host = UIViewController()
         host.view.backgroundColor = Background_Color
         show(host)
@@ -284,9 +295,237 @@ final class LumineuxRuntimeTests: XCTestCase {
         XCTAssertEqual(logo.bounds.width, logo.bounds.height, accuracy: 0.5)
         XCTAssertFalse(logo.hasAmbiguousLayout)
         let table = try XCTUnwrap(descendants(menu).compactMap { $0 as? UITableView }.first)
-        XCTAssertEqual(table.numberOfRows(inSection: 0), 3, "Server selection must remain available for Lumineux")
+        XCTAssertEqual(table.numberOfRows(inSection: 0), 2,
+                       "Lumineux must hide server selection like SLGSync")
         XCTAssertTrue(descendants(menu).compactMap { $0 as? UILabel }.contains { $0.text == "Lumineux" })
         snapshot(window, "Menu")
+    }
+
+    func testProvidedCommonRetinaAssetsFitProductionControls() throws {
+        for name in [
+            "filter_selected", "menu_select", "order_down",
+            "order_up", "server_select", "user_big"
+        ] {
+            try assertResolvedImageMatchesLumineuxSource(UIImage(named: name), name: name)
+        }
+
+        let user = UserSettingsViewController()
+        show(NavigationViewController(rootViewController: user))
+        let userIcon = try XCTUnwrap(descendants(user.view).compactMap { $0 as? UIImageView }
+            .first { $0.image?.size == CGSize(width: 88, height: 88) })
+        try assertResolvedImageMatchesLumineuxSource(userIcon.image, name: "user_big")
+        XCTAssertFalse(userIcon.hasAmbiguousLayout)
+        let userIconFrame = userIcon.convert(userIcon.bounds, to: user.view)
+        XCTAssertTrue(user.view.bounds.insetBy(dx: -0.5, dy: -0.5).contains(userIconFrame))
+        snapshot(window, "Provided-common-user")
+
+        let server = ServerSelectionViewController()
+        show(NavigationViewController(rootViewController: server))
+        server.view.layoutIfNeeded()
+        let serverCell = try XCTUnwrap(
+            descendants(server.view).compactMap { $0 as? ServerSelectionViewCell }.first
+        )
+        try assertResolvedImageMatchesLumineuxSource(
+            serverCell.selectedImageView.image,
+            name: "server_select"
+        )
+        XCTAssertFalse(serverCell.selectedImageView.hasAmbiguousLayout)
+        let serverIconFrame = serverCell.selectedImageView.convert(
+            serverCell.selectedImageView.bounds,
+            to: serverCell.contentView
+        )
+        XCTAssertTrue(serverCell.contentView.bounds.insetBy(dx: -0.5, dy: -0.5)
+            .contains(serverIconFrame))
+        snapshot(window, "Provided-common-server")
+
+        let menuHost = UIViewController()
+        show(menuHost)
+        TitleSelectView.show(
+            titles: ["First", "Second"],
+            anchorPoint: CGPoint(x: 20, y: 80),
+            selectIndex: 1,
+            menuWidth: 180,
+            itemHeight: 44,
+            selectBack: { _ in }
+        )
+        settleAppearance()
+        let titleSelect = try XCTUnwrap(window.viewWithTag(100) as? TitleSelectView)
+        titleSelect.layoutIfNeeded()
+        let titleTable = try XCTUnwrap(
+            descendants(titleSelect).compactMap { $0 as? UITableView }.first
+        )
+        titleTable.layoutIfNeeded()
+        let selectedCell = try XCTUnwrap(
+            titleTable.cellForRow(at: IndexPath(row: 1, section: 0)) as? CustomTableViewCell
+        )
+        try assertResolvedImageMatchesLumineuxSource(
+            selectedCell.iconImageView.image,
+            name: "menu_select"
+        )
+        XCTAssertFalse(selectedCell.iconImageView.hasAmbiguousLayout)
+        let menuIconFrame = selectedCell.iconImageView.convert(
+            selectedCell.iconImageView.bounds,
+            to: selectedCell.contentView
+        )
+        XCTAssertTrue(selectedCell.contentView.bounds.insetBy(dx: -0.5, dy: -0.5)
+            .contains(menuIconFrame))
+        snapshot(window, "Provided-common-title-select")
+        titleSelect.dismiss()
+        settleAppearance()
+
+        let space = SpaceData(
+            name: "Common asset layout",
+            id: "common-asset-space",
+            siteId: "common-asset-site",
+            create: 0,
+            isFavourite: false,
+            permission: .owner,
+            sourceType: .create,
+            meshUUID: "common-asset-mesh",
+            meshNetworkId: "common-asset-network"
+        )
+        let energy = EnergyStaticDataViewController(space: space)
+        show(NavigationViewController(rootViewController: energy))
+        let buttons = descendants(energy.view).compactMap { $0 as? UIButton }
+        let filter = try XCTUnwrap(buttons.first {
+            image($0.image(for: .selected), matchesNamed: "filter_selected")
+        })
+        let order = try XCTUnwrap(buttons.first {
+            image($0.image(for: .normal), matchesNamed: "order_down") &&
+                image($0.image(for: .selected), matchesNamed: "order_up")
+        })
+        try assertResolvedImageMatchesLumineuxSource(
+            filter.image(for: .selected),
+            name: "filter_selected"
+        )
+        try assertResolvedImageMatchesLumineuxSource(
+            order.image(for: .normal),
+            name: "order_down"
+        )
+        try assertResolvedImageMatchesLumineuxSource(
+            order.image(for: .selected),
+            name: "order_up"
+        )
+        for button in [filter, order] {
+            XCTAssertFalse(button.hasAmbiguousLayout)
+            let frame = button.convert(button.bounds, to: energy.view)
+            XCTAssertTrue(energy.view.bounds.insetBy(dx: -0.5, dy: -0.5).contains(frame))
+        }
+        snapshot(window, "Provided-common-energy-controls")
+    }
+
+    func testProvidedGroupedRetinaAssetsFitProductionControls() throws {
+        let expectedGeometry: [(String, CGSize)] = [
+            ("switch_proxy_instructions_1", CGSize(width: 310, height: 328)),
+            ("switch_proxy_instructions_2", CGSize(width: 287, height: 312)),
+            ("energy_device", CGSize(width: 20, height: 20)),
+            ("energy_csv", CGSize(width: 20, height: 20)),
+            ("energy_phone", CGSize(width: 20, height: 20)),
+            ("switch_press", CGSize(width: 30, height: 30)),
+            ("switch_press_long", CGSize(width: 30, height: 30)),
+            ("switch_save", CGSize(width: 40, height: 40)),
+            ("path_item_add", CGSize(width: 9, height: 9))
+        ]
+        for (name, size) in expectedGeometry {
+            try assertResolvedImageMatchesLumineuxSource(UIImage(named: name), name: name)
+            try assertNamedImage(name, size: size)
+        }
+        for name in ["path_direction_left", "path_direction_right"] {
+            let direction = try XCTUnwrap(UIImage(named: name))
+            try assertResolvedImageMatchesLumineuxSource(direction, name: name)
+            XCTAssertEqual(direction.size.height, 6, accuracy: 0.01, name)
+            XCTAssertGreaterThan(direction.size.width, 15, name)
+            XCTAssertLessThan(direction.size.width, 16, name)
+        }
+
+        let instructions = SwitchProxyInstructionsViewController()
+        show(NavigationViewController(rootViewController: instructions))
+        let guides = descendants(instructions.view)
+            .compactMap { $0 as? SwitchProxyInstructionsGuideView }
+        XCTAssertEqual(guides.count, 2)
+        for name in ["switch_proxy_instructions_1", "switch_proxy_instructions_2"] {
+            let guide = try XCTUnwrap(guides.first {
+                image($0.imageView.image, matchesNamed: name)
+            })
+            try assertResolvedImageMatchesLumineuxSource(guide.imageView.image, name: name)
+            assertContained(guide.imageView, in: guide)
+        }
+        snapshot(window, "Provided-grouped-device-instructions")
+
+        let importView = EnergyTimeSeriesDataImportView(frame: .zero)
+        _ = host(importView, size: CGSize(width: 343, height: 190))
+        for name in ["energy_device", "energy_csv", "energy_phone"] {
+            let imageView = try XCTUnwrap(descendants(importView)
+                .compactMap { $0 as? UIImageView }
+                .first { image($0.image, matchesNamed: name) })
+            try assertResolvedImageMatchesLumineuxSource(imageView.image, name: name)
+            assertContained(imageView, in: importView)
+        }
+        snapshot(window, "Provided-grouped-energy-import")
+
+        let exportView = EnergyTimeSeriesDataExportView(frame: .zero)
+        _ = host(exportView, size: CGSize(width: 343, height: 330))
+        for name in ["energy_phone", "energy_csv"] {
+            let imageView = try XCTUnwrap(descendants(exportView)
+                .compactMap { $0 as? UIImageView }
+                .first { image($0.image, matchesNamed: name) })
+            try assertResolvedImageMatchesLumineuxSource(imageView.image, name: name)
+            assertContained(imageView, in: exportView)
+        }
+        snapshot(window, "Provided-grouped-energy-export")
+
+        let switchCell = GroupSwitchPanelViewCell(style: .default, reuseIdentifier: nil)
+        _ = host(switchCell, size: CGSize(width: 343, height: 520))
+        for (button, name) in [
+            (switchCell.key1ShortPressBtn!, "switch_press"),
+            (switchCell.key1LongPressBtn!, "switch_press_long"),
+            (switchCell.saveBtn!, "switch_save")
+        ] {
+            try assertResolvedImageMatchesLumineuxSource(button.image(for: .normal), name: name)
+            assertContained(button, in: switchCell.contentView)
+        }
+        snapshot(window, "Provided-grouped-switch-panel")
+
+        let path = GroupProximityLightingSequencePath(
+            items: GroupProximityLightingSequencePath.GroupProximityLightingPathItem.default(count: 1)
+        )
+        let pathCell = GroupPathSequencePathViewCell(style: .default, reuseIdentifier: nil)
+        pathCell.reloadData(pathIndex: 0, path: path)
+        _ = host(pathCell, size: CGSize(width: 343, height: 116))
+        let selected = GroupPathSequenceSelectData()
+        selected.path = path
+        selected.item = path.items[0]
+        selected.direction = .right
+        pathCell.selectPathData = selected
+        pathCell.layoutIfNeeded()
+        let collection = try XCTUnwrap(descendants(pathCell)
+            .compactMap { $0 as? UICollectionView }.first)
+        collection.layoutIfNeeded()
+        let addItem = try XCTUnwrap(
+            collection.cellForItem(at: IndexPath(item: 0, section: 0))
+                as? GroupPathSequencePathAddItem
+        )
+        try assertResolvedImageMatchesLumineuxSource(addItem.addImageView.image,
+                                                     name: "path_item_add")
+        assertContained(addItem.addImageView, in: addItem.boxView)
+        var pathItem = try XCTUnwrap(
+            collection.cellForItem(at: IndexPath(item: 1, section: 0))
+                as? GroupPathSequencePathItem
+        )
+        try assertResolvedImageMatchesLumineuxSource(pathItem.arrowImageView.image,
+                                                     name: "path_direction_right")
+        assertContained(pathItem.arrowImageView, in: pathItem.boxView)
+        selected.direction = .left
+        pathCell.selectPathData = selected
+        collection.layoutIfNeeded()
+        pathItem = try XCTUnwrap(
+            collection.cellForItem(at: IndexPath(item: 1, section: 0))
+                as? GroupPathSequencePathItem
+        )
+        try assertResolvedImageMatchesLumineuxSource(pathItem.arrowImageView.image,
+                                                     name: "path_direction_left")
+        assertContained(pathItem.arrowImageView, in: pathItem.boxView)
+        snapshot(window, "Provided-grouped-path")
     }
 
     func testBrandControlsAndSitesCell() throws {

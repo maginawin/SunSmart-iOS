@@ -6,14 +6,17 @@ Lumineux 在构建期把公共 catalog 与 Lumineux catalog 合并为一份无�
 
 ### Catalog 物理分组
 
-`Lumineux/Assets-Lumineux.xcassets` 使用与 SLGSync 相同的十二个一级业务目录：`Common`、`Device`、`Energy`、`FireAlarm1.5`、`Firmware`、`Group`、`Path`、`Profile`、`Scene`、`Site`、`Space`、`Timed`。`AppIcon` 与 `AccentColor` 保留在根目录；当前 73 个 imageset 全部位于业务目录中。
+`Lumineux/Assets-Lumineux.xcassets` 使用与 SLGSync 相同的十二个一级业务目录：`Common`、`Device`、`Energy`、`FireAlarm1.5`、`Firmware`、`Group`、`Path`、`Profile`、`Scene`、`Site`、`Space`、`Timed`。`AppIcon` 与 `AccentColor` 保留在根目录；Lumineux 原始 catalog 为 90 imageset 加 AppIcon、AccentColor，共 92 组，imageset 全部位于业务目录中。
 
 `Lumineux/DesignAssets/asset-groups.json` 是生成器的分组来源。`icon-manifest.json` 中的 `Tabs`、`Navigation`、`Buttons` 等字段只描述 Figma 来源，不决定 Xcode 目录。两个资源生成器会拒绝缺失分组、未知分组、错误位置和同名重复资源；重新运行后不得在 catalog 根目录生成 imageset。
 
-- 66 组已提供图标、4 组空状态插图与 88/120pt Logo 均保持原始画布和 iOS 逻辑尺寸；其中 65 组来自 Figma 完整向量节点，`auto` 来自用户提供的 Retina PNG。系统启动页另使用独立的 88pt `lumineux_launch_logo`，AppIcon 为无 alpha 的 1024px 派生文件，AccentColor 为 `#4D738A`。
+- 临时 XCTest reference catalog 同样为 92 组。当前已提供资源为 87 组；其中新增 grouped Retina 11 组、22 个原始 PNG，全部保留空的 1x 槽位。合并 catalog 为 695 组，其中 92 组匹配 Lumineux，603 组保留公共资源；待提供 40 组，Common 仍只有 `value_buoy`。
+- 已提供素材均保持原始画布和 iOS 逻辑尺寸；其中 Figma 完整向量节点、`auto`、六组 Common Retina PNG 与本轮 grouped Retina PNG 按各自来源保存。系统启动页另使用独立的 88pt `lumineux_launch_logo`，AppIcon 为无 alpha 的 1024px 派生文件，AccentColor 为 `#4D738A`。
+- PNG 文件字节与运行时布局属于不同层次：`switch_proxy_instructions_1` 的 310 × 328pt 原图在 iPhone 现有 324/310 约束下约有 1.2% 纵向压缩；用户确认影响可忽略，本轮不改生产 Swift。
 - Lumineux 的 `Merge Lumineux Assets` phase 每次构建调用 `Lumineux/Scripts/merge_assets.rb`，把 `SunSmart/Assets.xcassets` 复制到 `DERIVED_FILE_DIR` 后以完整 Lumineux asset set 覆盖；Resources 只编译 `LumineuxAssets/Assets-Lumineux-Merged.xcassets`。签名 Team、Bundle ID、协议与独立启动页归属不变。
-- 真实 UIKit 测试覆盖 Welcome、菜单/服务器入口、Sites 单元格和滑块回调、启动页及协议内容/路由、四类真实空状态容器、强制 AUTO 弹窗、全部已提供图片尺寸与来源、Tab/收藏状态，以及真实 menu/back 导航图片、target/action、渲染 bounds 与返回路径。
-- 临时 XCTest bundle 会独立编译完整原始 Lumineux 75 组 catalog（73 个 image set、AppIcon、AccentColor）。主 App 的 `UIImage(named:)` 与该 reference catalog 逐像素 RGBA 对比；common launch logo 仅以三个唯一前缀的 loose PNG 作为严格负对照，不参与正向 catalog 编译。reference bundle ID 必须不同于主 App；不以两次主 bundle 同名读取或平铺 PNG 自比代替来源验证。
+- 真实 UIKit 测试覆盖 Welcome、仅保留用户与关于入口的菜单、Europe-only 服务器地区契约、Sites 单元格和滑块回调、启动页及协议内容/路由、四类真实空状态容器、强制 AUTO 弹窗、全部已提供图片尺寸与来源、Tab/收藏状态，以及真实 menu/back 导航图片、target/action、渲染 bounds 与返回路径。
+- 临时 XCTest bundle 会独立编译完整原始 Lumineux 92 组 catalog（90 个 imageset、AppIcon、AccentColor）。主 App 的 `UIImage(named:)` 与该 reference catalog 逐像素 RGBA 对比；common launch logo 仅以三个唯一前缀的 loose PNG 作为严格负对照，不参与正向 catalog 编译。reference bundle ID 必须不同于主 App；不以两次主 bundle 同名读取或平铺 PNG 自比代替来源验证。
+- 本轮 grouped Retina 的真实调用点为 Device 代理说明页、Energy 导入/导出组件、Group 开关面板与 Path 路径 item。Task 5 已在 iPhone SE 3、iPhone 16、iPad Pro 11 M4 的 en-US、zh-Hans-CN 六种组合完成 focused UIKit 矩阵：6/6 次运行均为 1 passed、0 failed、0 skipped；30 张附件（每次 5 张）已人工审阅，无错图、超出用户接受的 Device 比例压缩之外的裁切/拉伸、重叠或控件边界溢出。正常 `DerivedData3` 路径的 Lumineux 真机 Debug 构建成功，`codesign --verify --deep --strict` 通过；合并 catalog 为 695 组（92 组 Lumineux、603 组公共资源）。本轮未更新依赖、未安装或启动 App。
 - 测试不修改生产工程/AppDelegate，不选择服务器、不登录、不添加站点、不连接或控制真实设备。截图必须人工查看；编译通过不等同于布局通过。
 
 ## 静态配置与素材
@@ -165,6 +168,14 @@ SLGSync 的启动 storyboard 并不使用共享 `launch_logo`，而是引用品�
 - 8 张最终截图已人工核对：图表和三个小图标均为 Lumineux `#4D738A`，无错图、拉伸、裁切、偏移或文字挤压。测试结果与截图保存在 `/private/tmp/lumineux-profile-safe-mode.gkELNL`。
 - 正式 `SunSmart.xcworkspace` 的 Lumineux 真机 Debug 构建成功，`codesign --verify --deep --strict` 通过，Bundle ID 为 `com.azoula.sunsmart.Lumineux`，签名仍为 Wen Xu / JTD3WYUC58。生成 catalog 共 695 组；75 组 Lumineux asset set 逐组与源 catalog 一致，其余 620 组保留公共资源。SunSmart 的 iPhone 16 模拟器 Debug 构建回归同时通过。
 
+## 2026-08-31 Common Retina PNG 素材补充
+
+从用户提供的 `/Users/sr/Documents/SunSmart/assets/new` 中接入 `filter_selected`、`menu_select`、`order_down`、`order_up`、`server_select`、`user_big`。六组源文件存档在 `Lumineux/DesignAssets/Provided/Common`，catalog 逐字节使用原始 2x/3x PNG；Contents.json 保留空的 universal 1x 槽位，不生成 1x 文件。`images/select_3` 与 `value_buoy` 均未接入。
+
+- 静态素材测试固定十二个源文件的 SHA-256、逻辑尺寸、倍率、目录和源文件字节一致性；同时断言每组恰有 1x/2x/3x 三个槽位且 1x 没有文件名。
+- UIKit 回归使用真实 `UserSettingsViewController`、`ServerSelectionViewController`、`TitleSelectView` 与 `EnergyStaticDataViewController`，验证六组图片来自独立 reference catalog，并检查实际控件 bounds、包含关系与页面快照。
+- 英文和简体中文分别在 iPhone SE 3、iPhone 16、iPad Pro 11 M4 上执行，合计 6 次测试运行，0 失败、0 跳过；24 张快照已逐张核对，六组图片无拉伸、裁切、重叠或越界。正式 `SunSmart.xcworkspace` 的 Lumineux 真机 Debug 构建成功，`codesign --verify --deep --strict` 通过，签名为 Wen Xu / JTD3WYUC58；生成 catalog 共 695 组，其中 81 组逐文件匹配 Lumineux，其余 614 组保留公共资源。本轮未安装或启动真机 App。
+
 ## 待办边界
 
-剩余 57 组 SLGSync 范围资源见 `docs/lumineux-missing-assets.md`；没有新版的继续保留共享原图。硬编码在共享控件中的剩余紫色按 SLGSync 现状保留，不为其新增 UI 分支。协议正文、服务器、云端身份和空间默认值仍待产品确认。
+剩余 40 组 SLGSync 范围资源见 `docs/lumineux-missing-assets.md`；Common 中仅剩 `value_buoy`。没有新版的继续保留共享原图。硬编码在共享控件中的剩余紫色按 SLGSync 现状保留，不为其新增 UI 分支。服务器固定为 Europe；协议正文、云端身份和空间默认值仍待产品确认。
