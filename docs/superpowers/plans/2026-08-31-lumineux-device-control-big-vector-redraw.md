@@ -216,7 +216,7 @@ Delete the temporary renderer, image contract, temporary XCTest file, and genera
 - Consumes: approved `group_off/on` 2x/3x PNG geometry and the current Group big PNGs.
 - Produces: four independently rendered Group PNGs plus focused image and UIKit evidence for `group_off_big` and `group_on_big`.
 
-- [ ] **Step 1: Add and run the failing Group image contract**
+- [x] **Step 1: Add and run the failing Group image contract**
 
 Decode the standard and big Group images with `CGImageSourceCreateImageAtIndex`, draw them into an sRGB RGBA context, and assert for scales 2 and 3:
 
@@ -240,7 +240,7 @@ xcrun swift /private/tmp/lumineux_group_control_big_contract.swift
 
 Expected: FAIL because the old Group off-big center is opaque gray and both old Group big images retain approximately 80% visible extent.
 
-- [ ] **Step 2: Implement and run the Group CoreGraphics renderer**
+- [x] **Step 2: Implement and run the Group CoreGraphics renderer**
 
 Create an sRGB RGBA context for each side in `[112, 168]`, calculate `unit = CGFloat(side) / 120`, and draw each output directly with this geometry:
 
@@ -286,13 +286,13 @@ SWIFT_MODULECACHE_PATH=/private/tmp/lumineux-group-big-swift-cache \
 xcrun swift /private/tmp/render_lumineux_group_control_big.swift
 ```
 
-- [ ] **Step 3: Align the Group asset-catalog contract and re-run the image contract**
+- [x] **Step 3: Align the Group asset-catalog contract and re-run the image contract**
 
 Keep the existing 2x/3x filenames, leave each universal 1x dictionary without `filename`, and ensure the stale 1x PNGs are absent. Re-run the Step 1 command.
 
 Expected: PASS for dimensions, visible extents, transparency, brand color, and empty 1x slots.
 
-- [ ] **Step 4: Run the real 56pt Group UIKit layout test**
+- [x] **Step 4: Run the real 56pt Group UIKit layout test**
 
 Create a temporary `@MainActor XCTestCase` using the production initializer:
 
@@ -317,7 +317,7 @@ Attach normal and selected 56pt screenshots. Generate the temporary branding wor
 
 Expected: 1 test passed; both compiled Group big images resolve at 56pt with no ambiguous layout.
 
-- [ ] **Step 5: Export screenshots, run repository checks, and clean up**
+- [x] **Step 5: Export screenshots, run repository checks, and clean up**
 
 Export both XCTest attachments and inspect them at original detail for centered full-canvas circles, matching off/on geometry, round caps, no clipping, and no interpolation blur. Run:
 
