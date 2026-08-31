@@ -132,6 +132,7 @@ let expectedAssetGroups: [String: String] = [
     "power_state_restore": "Profile",
     "profile_chart_daylight": "Profile",
     "profile_chart_manual_control": "Profile",
+    "profile_chart_occupancy": "Profile",
     "profile_person": "Profile",
     "profile_person_big": "Profile",
     "profile_proximity_lighting": "Profile",
