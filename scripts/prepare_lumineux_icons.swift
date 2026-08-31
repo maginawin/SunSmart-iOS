@@ -31,6 +31,51 @@ struct Asset: Decodable {
 let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 let designAssets = root.appendingPathComponent("Lumineux/DesignAssets")
 let catalog = root.appendingPathComponent("Lumineux/Assets-Lumineux.xcassets")
+
+struct AssetGroupManifest: Decodable {
+    let groups: [String]
+    let assets: [String: String]
+}
+
+func loadAssetGroupManifest() throws -> AssetGroupManifest {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/ruby")
+    process.arguments = [
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent("validate_lumineux_asset_groups.rb").path,
+        catalog.path,
+        designAssets.appendingPathComponent("asset-groups.json").path
+    ]
+    let output = Pipe()
+    let errors = Pipe()
+    process.standardOutput = output
+    process.standardError = errors
+    try process.run()
+    process.waitUntilExit()
+    let errorText = String(
+        data: errors.fileHandleForReading.readDataToEndOfFile(),
+        encoding: .utf8
+    ) ?? ""
+    precondition(process.terminationStatus == 0, errorText)
+    return try JSONDecoder().decode(
+        AssetGroupManifest.self,
+        from: output.fileHandleForReading.readDataToEndOfFile()
+    )
+}
+
+let assetGroupManifest = try loadAssetGroupManifest()
+
+func assetSetDirectory(named name: String, type: String) throws -> URL {
+    guard let group = assetGroupManifest.assets[name] else {
+        preconditionFailure("Missing asset group for \(name)")
+    }
+    let parent = group == "root" ? catalog : catalog.appendingPathComponent(group)
+    let directory = parent.appendingPathComponent("\(name).\(type)")
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    return directory
+}
+
 let manifest = try JSONDecoder().decode(Manifest.self, from: Data(contentsOf: designAssets.appendingPathComponent("icon-manifest.json")))
 precondition(Set(manifest.assets.map(\.asset)).count == manifest.assets.count, "Duplicate asset name")
 for asset in manifest.assets {
@@ -45,8 +90,7 @@ for asset in manifest.assets {
     precondition(asset.contentWidth > 0 && asset.contentWidth <= asset.canvasWidth &&
                  asset.contentHeight > 0 && asset.contentHeight <= asset.canvasHeight,
                  "Invalid content canvas for \(asset.node)")
-    let directory = catalog.appendingPathComponent("\(asset.asset).imageset")
-    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    let directory = try assetSetDirectory(named: asset.asset, type: "imageset")
     var images: [[String: String]] = []
     for scale in 1...3 {
         let pixelWidth = asset.canvasWidth * scale

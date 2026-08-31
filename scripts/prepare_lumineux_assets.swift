@@ -6,6 +6,7 @@ import UniformTypeIdentifiers
 // Mechanical iOS asset packaging only. The Figma artwork is never redrawn or recolored.
 // Run from repository root: swift scripts/prepare_lumineux_assets.swift
 let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+let designAssets = root.appendingPathComponent("Lumineux/DesignAssets")
 func sourceImage(_ relativePath: String) -> CGImage {
     let url = root.appendingPathComponent(relativePath)
     guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
@@ -20,6 +21,51 @@ let appIcon = sourceImage("Lumineux/DesignAssets/app_logo_1024.png")
 let launchLogo = appIcon
 precondition(appIcon.width == 1024 && appIcon.height == 1024)
 let catalog = root.appendingPathComponent("Lumineux/Assets-Lumineux.xcassets")
+
+struct AssetGroupManifest: Decodable {
+    let groups: [String]
+    let assets: [String: String]
+}
+
+func loadAssetGroupManifest() throws -> AssetGroupManifest {
+    let process = Process()
+    process.executableURL = URL(fileURLWithPath: "/usr/bin/ruby")
+    process.arguments = [
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent("validate_lumineux_asset_groups.rb").path,
+        catalog.path,
+        designAssets.appendingPathComponent("asset-groups.json").path
+    ]
+    let output = Pipe()
+    let errors = Pipe()
+    process.standardOutput = output
+    process.standardError = errors
+    try process.run()
+    process.waitUntilExit()
+    let errorText = String(
+        data: errors.fileHandleForReading.readDataToEndOfFile(),
+        encoding: .utf8
+    ) ?? ""
+    precondition(process.terminationStatus == 0, errorText)
+    return try JSONDecoder().decode(
+        AssetGroupManifest.self,
+        from: output.fileHandleForReading.readDataToEndOfFile()
+    )
+}
+
+let assetGroupManifest = try loadAssetGroupManifest()
+
+func assetSetDirectory(named name: String, type: String) throws -> URL {
+    guard let group = assetGroupManifest.assets[name] else {
+        preconditionFailure("Missing asset group for \(name)")
+    }
+    let parent = group == "root" ? catalog : catalog.appendingPathComponent(group)
+    let directory = parent.appendingPathComponent("\(name).\(type)")
+    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+    return directory
+}
+
 let info: [String: Any] = ["author": "xcode", "version": 1]
 
 func writeJSON(_ object: [String: Any], to directory: URL) throws {
@@ -59,15 +105,16 @@ try writeJSON(["info": info], to: catalog)
 for (name, logicalSize) in [("launch_logo", 88),
                             ("launch_logo_120", 120),
                             ("lumineux_launch_logo", 88)] {
-    let directory = catalog.appendingPathComponent("\(name).imageset")
+    let directory = try assetSetDirectory(named: name, type: "imageset")
     let images = (1...3).map { scale in
         ["idiom": "universal", "filename": "\(name)@\(scale)x.png", "scale": "\(scale)x"]
     }
     try writeJSON(["images": images, "info": info], to: directory)
     for scale in 1...3 { writePNG(launchLogo, size: logicalSize * scale, to: directory.appendingPathComponent("\(name)@\(scale)x.png")) }
 }
-let iconDirectory = catalog.appendingPathComponent("AppIcon.appiconset")
+let iconDirectory = try assetSetDirectory(named: "AppIcon", type: "appiconset")
 try writeJSON(["images": [["filename": "AppIcon.png", "idiom": "universal", "platform": "ios", "size": "1024x1024"]], "info": info], to: iconDirectory)
 writeOpaqueAppIcon(appIcon, to: iconDirectory.appendingPathComponent("AppIcon.png"))
-try writeJSON(["colors": [["idiom": "universal", "color": ["color-space": "srgb", "components": ["red": "0x4D", "green": "0x73", "blue": "0x8A", "alpha": "1.000"]]]], "info": info], to: catalog.appendingPathComponent("AccentColor.colorset"))
+let accentDirectory = try assetSetDirectory(named: "AccentColor", type: "colorset")
+try writeJSON(["colors": [["idiom": "universal", "color": ["color-space": "srgb", "components": ["red": "0x4D", "green": "0x73", "blue": "0x8A", "alpha": "1.000"]]]], "info": info], to: accentDirectory)
 print("Prepared Lumineux shared-name and dedicated launch iOS assets from the high-resolution original export without recoloring")
