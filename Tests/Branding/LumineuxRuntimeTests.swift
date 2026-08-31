@@ -529,6 +529,7 @@ final class LumineuxRuntimeTests: XCTestCase {
     }
 
     func testSceneGroupOffButtonUsesLumineuxThemeAndKeepsLayout() throws {
+        window.makeKeyAndVisible()
         SceneExecuteDataPickerView.show(
             lightness: 50,
             isOn: true,
