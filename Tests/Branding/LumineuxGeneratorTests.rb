@@ -66,6 +66,15 @@ class LumineuxGeneratorTests < Minitest::Test
     end
   end
 
+  def test_icon_generator_rejects_a_non_root_asset_mapped_to_root
+    with_fixture do |directory|
+      rewrite_manifest(directory) { |manifest| manifest.fetch('assets')['add'] = 'root' }
+      _stdout, stderr, status = run_script(ICON_SCRIPT, directory)
+      refute status.success?
+      assert_match(/Only AppIcon and AccentColor may use root for add/, stderr)
+    end
+  end
+
   def test_icon_generator_rejects_duplicate_asset_locations
     with_fixture do |directory|
       catalog = File.join(directory, 'Lumineux/Assets-Lumineux.xcassets')

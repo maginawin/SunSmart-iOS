@@ -9,6 +9,7 @@ module LumineuxAssetGroups
   ].freeze
   SET_EXTENSIONS = %w[.imageset .appiconset .colorset].freeze
   ROOT_GROUP = 'root'
+  ROOT_ASSETS = %w[AppIcon AccentColor].freeze
   class Error < StandardError; end
 
   module_function
@@ -22,6 +23,9 @@ module LumineuxAssetGroups
     raise Error, 'Asset mappings must be an object' unless assets.is_a?(Hash)
 
     assets.each do |name, group|
+      if group == ROOT_GROUP && !ROOT_ASSETS.include?(name)
+        raise Error, "Only AppIcon and AccentColor may use root for #{name}"
+      end
       next if group == ROOT_GROUP || APPROVED_GROUPS.include?(group)
 
       raise Error, "Unknown asset group #{group} for #{name}"
