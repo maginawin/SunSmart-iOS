@@ -1,3 +1,5 @@
+> 目录说明：已接入的 Lumineux 资源按 SLGSync 的十二个业务分组保存；SLGSync 不存在的同名资源只参考 SunSmart 的业务目录归类。该规则不代表复用或复制 SunSmart 图片，也不改变下文对缺失素材的判断。
+
 # Lumineux 资源接入与待提供清单
 
 核对日期：2026-08-29。Lumineux 现使用专属构建期资源合并：公共 catalog 先复制到 `DERIVED_FILE_DIR`，再由 Lumineux 完整 asset set 覆盖同名资源，原生 actool 只编译这份生成 catalog。旧双 catalog 顺序方案已废弃；不使用运行时染色或改写共享图片调用。英文和简体中文三设备 UIKit 矩阵、截图审阅、Release 签名与 SunSmart Debug 回归均已完成。

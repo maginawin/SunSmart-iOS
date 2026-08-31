@@ -4,6 +4,12 @@ Lumineux 在构建期把公共 catalog 与 Lumineux catalog 合并为一份无�
 
 ## 检查范围
 
+### Catalog 物理分组
+
+`Lumineux/Assets-Lumineux.xcassets` 使用与 SLGSync 相同的十二个一级业务目录：`Common`、`Device`、`Energy`、`FireAlarm1.5`、`Firmware`、`Group`、`Path`、`Profile`、`Scene`、`Site`、`Space`、`Timed`。`AppIcon` 与 `AccentColor` 保留在根目录；当前 73 个 imageset 全部位于业务目录中。
+
+`Lumineux/DesignAssets/asset-groups.json` 是生成器的分组来源。`icon-manifest.json` 中的 `Tabs`、`Navigation`、`Buttons` 等字段只描述 Figma 来源，不决定 Xcode 目录。两个资源生成器会拒绝缺失分组、未知分组、错误位置和同名重复资源；重新运行后不得在 catalog 根目录生成 imageset。
+
 - 66 组已提供图标、4 组空状态插图与 88/120pt Logo 均保持原始画布和 iOS 逻辑尺寸；其中 65 组来自 Figma 完整向量节点，`auto` 来自用户提供的 Retina PNG。系统启动页另使用独立的 88pt `lumineux_launch_logo`，AppIcon 为无 alpha 的 1024px 派生文件，AccentColor 为 `#4D738A`。
 - Lumineux 的 `Merge Lumineux Assets` phase 每次构建调用 `Lumineux/Scripts/merge_assets.rb`，把 `SunSmart/Assets.xcassets` 复制到 `DERIVED_FILE_DIR` 后以完整 Lumineux asset set 覆盖；Resources 只编译 `LumineuxAssets/Assets-Lumineux-Merged.xcassets`。签名 Team、Bundle ID、协议与独立启动页归属不变。
 - 真实 UIKit 测试覆盖 Welcome、菜单/服务器入口、Sites 单元格和滑块回调、启动页及协议内容/路由、四类真实空状态容器、强制 AUTO 弹窗、全部已提供图片尺寸与来源、Tab/收藏状态，以及真实 menu/back 导航图片、target/action、渲染 bounds 与返回路径。
@@ -18,6 +24,7 @@ Lumineux 在构建期把公共 catalog 与 Lumineux catalog 合并为一份无�
 export LUMINEUX_SOURCE_PACKAGES_DIR=/Users/sr/Library/Developer/Xcode/DerivedData3/SunSmart-gzeywntloehznchfwsjhwyxxsoot/SourcePackages
 ruby Tests/Branding/LumineuxConfigurationTests.rb
 ruby Tests/Branding/LumineuxMergeTests.rb
+ruby Tests/Branding/LumineuxGeneratorTests.rb
 swift Tests/Branding/LumineuxAssetTests.swift
 bash scripts/check_nordic_sdk_dependency.sh
 git diff --check
