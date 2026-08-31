@@ -10,13 +10,178 @@ func check(_ condition: @autoclosure () -> Bool, _ message: String) {
 
 let root = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
 let catalog = root.appendingPathComponent("Lumineux/Assets-Lumineux.xcassets")
-func json(_ path: String) throws -> [String: Any] {
-    try JSONSerialization.jsonObject(with: Data(contentsOf: catalog.appendingPathComponent(path))) as! [String: Any]
+struct AssetGroupManifest: Decodable {
+    let groups: [String]
+    let assets: [String: String]
 }
-func image(_ path: String) throws -> CGImage {
-    let data = try Data(contentsOf: catalog.appendingPathComponent(path))
+
+let expectedGroups = [
+    "Common", "Device", "Energy", "FireAlarm1.5", "Firmware", "Group",
+    "Path", "Profile", "Scene", "Site", "Space", "Timed"
+]
+let expectedAssetGroups: [String: String] = [
+    "AccentColor": "root",
+    "AppIcon": "root",
+    "add": "Common",
+    "favourite_normal": "Common",
+    "favourite_selected": "Common",
+    "hud_loading": "Common",
+    "import": "Common",
+    "launch_logo": "Common",
+    "launch_logo_120": "Common",
+    "loading": "Common",
+    "loading_big": "Common",
+    "lumineux_launch_logo": "Common",
+    "navigation_back": "Common",
+    "reset": "Common",
+    "select": "Common",
+    "device_add": "Device",
+    "device_add_disable": "Device",
+    "device_add_setting": "Device",
+    "device_add_waiting": "Device",
+    "device_all_off": "Device",
+    "device_all_on": "Device",
+    "device_control_off": "Device",
+    "device_control_off_big": "Device",
+    "device_control_on": "Device",
+    "device_control_on_big": "Device",
+    "device_identify": "Device",
+    "device_restore": "Device",
+    "device_restore_disable": "Device",
+    "device_scan": "Device",
+    "device_select": "Device",
+    "light_value_add": "Device",
+    "light_value_minus": "Device",
+    "slider_point": "Device",
+    "slider_point_disable": "Device",
+    "firmware_delete": "Firmware",
+    "firmware_history": "Firmware",
+    "server_download": "Firmware",
+    "auto": "Group",
+    "group_control_disable": "Group",
+    "group_control_disable_big": "Group",
+    "group_empty": "Group",
+    "group_off": "Group",
+    "group_off_big": "Group",
+    "group_on": "Group",
+    "group_on_big": "Group",
+    "sensor_move": "Group",
+    "sync_failed_small": "Group",
+    "sync_loading_small": "Group",
+    "sync_success_small": "Group",
+    "sync_waiting_small": "Group",
+    "profile_chart_occupancy_daylight": "Profile",
+    "scene_data_value_add": "Scene",
+    "scene_data_value_minus": "Scene",
+    "scene_empty": "Scene",
+    "scene_group_disable": "Scene",
+    "scene_group_off": "Scene",
+    "scene_group_on": "Scene",
+    "menu_icon": "Site",
+    "more_vertical": "Site",
+    "no_Internet": "Site",
+    "site_empty": "Site",
+    "space_add": "Space",
+    "space_empty": "Space",
+    "space_energy_data": "Space",
+    "space_group": "Space",
+    "space_group_selected": "Space",
+    "space_main": "Space",
+    "space_main_selected": "Space",
+    "space_more": "Space",
+    "space_more_selected": "Space",
+    "space_scene": "Space",
+    "space_scene_selected": "Space",
+    "space_timed": "Space",
+    "space_timed_selected": "Space",
+    "schedule_target_select": "Timed"
+]
+
+let groupManifestURL = root.appendingPathComponent("Lumineux/DesignAssets/asset-groups.json")
+check(FileManager.default.fileExists(atPath: groupManifestURL.path),
+      "Missing Lumineux asset group manifest")
+let groupManifest = try JSONDecoder().decode(
+    AssetGroupManifest.self,
+    from: Data(contentsOf: groupManifestURL)
+)
+check(groupManifest.groups == expectedGroups,
+      "Lumineux groups must match SLGSync order and names")
+check(groupManifest.assets == expectedAssetGroups,
+      "Lumineux asset group manifest differs from the approved 75-resource mapping")
+
+func setExtension(for name: String) -> String {
+    switch name {
+    case "AppIcon": return "appiconset"
+    case "AccentColor": return "colorset"
+    default: return "imageset"
+    }
+}
+
+func assetSetURL(named name: String) -> URL {
+    guard let group = expectedAssetGroups[name] else {
+        preconditionFailure("No approved group for \(name)")
+    }
+    let parent = group == "root" ? catalog : catalog.appendingPathComponent(group)
+    return parent.appendingPathComponent("\(name).\(setExtension(for: name))")
+}
+
+func contents(in set: URL) throws -> [String: Any] {
+    try JSONSerialization.jsonObject(
+        with: Data(contentsOf: set.appendingPathComponent("Contents.json"))
+    ) as! [String: Any]
+}
+
+func image(in set: URL, filename: String) throws -> CGImage {
+    let data = try Data(contentsOf: set.appendingPathComponent(filename))
     return CGImageSourceCreateImageAtIndex(CGImageSourceCreateWithData(data as CFData, nil)!, 0, nil)!
 }
+
+func contents(named name: String) throws -> [String: Any] {
+    try contents(in: assetSetURL(named: name))
+}
+
+func image(named name: String, filename: String) throws -> CGImage {
+    try image(in: assetSetURL(named: name), filename: filename)
+}
+
+for group in expectedGroups {
+    let directory = catalog.appendingPathComponent(group)
+    check(FileManager.default.fileExists(atPath: directory.path),
+          "Missing Lumineux asset group: \(group)")
+    let metadata = try JSONSerialization.jsonObject(
+        with: Data(contentsOf: directory.appendingPathComponent("Contents.json"))
+    ) as! [String: Any]
+    check(metadata["properties"] == nil,
+          "Lumineux asset groups must not provide a namespace: \(group)")
+}
+
+let supportedSetExtensions = Set(["imageset", "appiconset", "colorset"])
+let enumerator = FileManager.default.enumerator(
+    at: catalog,
+    includingPropertiesForKeys: [.isDirectoryKey],
+    options: [.skipsHiddenFiles]
+)!
+var discovered: [String: [URL]] = [:]
+while let url = enumerator.nextObject() as? URL {
+    guard supportedSetExtensions.contains(url.pathExtension) else { continue }
+    let name = url.deletingPathExtension().lastPathComponent
+    discovered[name, default: []].append(url.standardizedFileURL)
+    enumerator.skipDescendants()
+}
+check(discovered.count == 75, "Lumineux catalog must contain exactly 75 asset names")
+check(Set(discovered.keys) == Set(expectedAssetGroups.keys),
+      "Lumineux catalog asset names differ from the approved set")
+for name in expectedAssetGroups.keys.sorted() {
+    let locations = discovered[name] ?? []
+    check(locations.count == 1, "Lumineux asset \(name) must appear exactly once")
+    check(locations.first == assetSetURL(named: name).standardizedFileURL,
+          "Lumineux asset \(name) is in the wrong business group")
+}
+let rootImagesets = try FileManager.default.contentsOfDirectory(
+    at: catalog,
+    includingPropertiesForKeys: [.isDirectoryKey]
+).filter { $0.pathExtension == "imageset" }
+check(rootImagesets.isEmpty, "Lumineux catalog root must not contain imagesets")
 
 func whiteBackgroundPixels(_ image: CGImage, side: Int) -> [UInt8] {
     let context = CGContext(data: nil, width: side, height: side,
@@ -39,16 +204,16 @@ var logoFailures: [String] = []
 for (name, logicalSize) in [("launch_logo", 88),
                             ("launch_logo_120", 120),
                             ("lumineux_launch_logo", 88)] {
-    let imageSet = catalog.appendingPathComponent("\(name).imageset")
+    let imageSet = assetSetURL(named: name)
     guard FileManager.default.fileExists(atPath: imageSet.path) else {
         print("FAIL: Missing dedicated Lumineux image set: \(name)")
         exit(1)
     }
-    let entries = try json("\(name).imageset/Contents.json")["images"] as! [[String: String]]
+    let entries = try contents(named: name)["images"] as! [[String: String]]
     check(entries.count == 3, "Each logo needs 1x/2x/3x variants")
     for scale in 1...3 {
         let entry = entries.first { $0["scale"] == "\(scale)x" }!
-        let pixels = try image("\(name).imageset/\(entry["filename"]!)")
+        let pixels = try image(named: name, filename: entry["filename"]!)
         check(pixels.width == logicalSize * scale && pixels.height == logicalSize * scale,
               "Wrong pixel size for \(name) @\(scale)x")
         let side = logicalSize * scale
@@ -124,11 +289,11 @@ for asset in iconAssets {
     let name = asset["asset"] as! String
     let width = (asset["width"] as? Int) ?? (asset["size"] as! Int)
     let height = (asset["height"] as? Int) ?? (asset["size"] as! Int)
-    let entries = try json("\(name).imageset/Contents.json")["images"] as! [[String: String]]
+    let entries = try contents(named: name)["images"] as! [[String: String]]
     check(entries.count == 3, "Missing scale variants for \(name)")
     for scale in 1...3 {
         let entry = entries.first { $0["scale"] == "\(scale)x" }!
-        let pixels = try image("\(name).imageset/\(entry["filename"]!)")
+        let pixels = try image(named: name, filename: entry["filename"]!)
         check(pixels.width == width * scale && pixels.height == height * scale, "Incorrect logical size for \(name)")
         var rgba = [UInt8](repeating: 0, count: pixels.width * pixels.height * 4)
         rgba.withUnsafeMutableBytes { buffer in
@@ -172,17 +337,18 @@ for scale in 2...3 {
     check(sourceDigest == providedAutoHashes[scale],
           "Supplied auto@\(scale)x source bytes must remain unchanged")
 }
-let autoEntries = try json("auto.imageset/Contents.json")["images"] as! [[String: String]]
+let autoSet = assetSetURL(named: "auto")
+let autoEntries = try contents(named: "auto")["images"] as! [[String: String]]
 check(autoEntries.count == 3, "Supplied auto icon needs 1x/2x/3x variants")
 for scale in 1...3 {
     let entry = autoEntries.first { $0["scale"] == "\(scale)x" }
     check(entry != nil, "Missing auto @\(scale)x")
     let filename = entry!["filename"]!
-    let pixels = try image("auto.imageset/\(filename)")
+    let pixels = try image(named: "auto", filename: filename)
     check(pixels.width == 40 * scale && pixels.height == 40 * scale,
           "Incorrect 40pt canvas for auto @\(scale)x")
     if scale >= 2 {
-        let data = try Data(contentsOf: catalog.appendingPathComponent("auto.imageset/\(filename)"))
+        let data = try Data(contentsOf: autoSet.appendingPathComponent(filename))
         let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
         check(digest == providedAutoHashes[scale],
               "auto @\(scale)x must remain the exact supplied PNG")
@@ -211,10 +377,10 @@ let emptyStates: [(name: String, node: String, width: Int, height: Int, hashes: 
 ]
 check(Set(emptyStates.map(\.name)).count == 4, "Empty-state manifest must contain four distinct assets")
 for asset in emptyStates {
-    let imageSet = catalog.appendingPathComponent("\(asset.name).imageset")
+    let imageSet = assetSetURL(named: asset.name)
     check(FileManager.default.fileExists(atPath: imageSet.path),
           "Missing Lumineux empty-state image set: \(asset.name) from Figma \(asset.node)")
-    let entries = try json("\(asset.name).imageset/Contents.json")["images"] as! [[String: String]]
+    let entries = try contents(named: asset.name)["images"] as! [[String: String]]
     let populatedEntries = entries.filter { $0["filename"] != nil }
     check(populatedEntries.count == 2, "Empty-state assets must contain exact 2x/3x Figma exports")
     for scale in 2...3 {
@@ -222,7 +388,7 @@ for asset in emptyStates {
         check(entry != nil, "Missing \(asset.name) @\(scale)x")
         let filename = entry!["filename"]!
         let data = try Data(contentsOf: imageSet.appendingPathComponent(filename))
-        let pixels = try image("\(asset.name).imageset/\(filename)")
+        let pixels = try image(named: asset.name, filename: filename)
         check(pixels.width == asset.width * scale && pixels.height == asset.height * scale,
               "Incorrect Figma canvas for \(asset.name) @\(scale)x")
         let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
@@ -230,11 +396,11 @@ for asset in emptyStates {
               "\(asset.name) @\(scale)x must remain the exact Figma node \(asset.node) export")
     }
 }
-let iconEntries = try json("AppIcon.appiconset/Contents.json")["images"] as! [[String: String]]
-let icon = try image("AppIcon.appiconset/\(iconEntries[0]["filename"]!)")
+let iconEntries = try contents(named: "AppIcon")["images"] as! [[String: String]]
+let icon = try image(named: "AppIcon", filename: iconEntries[0]["filename"]!)
 check(icon.width == 1024 && icon.height == 1024, "App icon must be 1024 square")
 check([CGImageAlphaInfo.none, .noneSkipFirst, .noneSkipLast].contains(icon.alphaInfo), "App icon must be opaque")
-let colors = try json("AccentColor.colorset/Contents.json")["colors"] as! [[String: Any]]
+let colors = try contents(named: "AccentColor")["colors"] as! [[String: Any]]
 let components = (colors[0]["color"] as! [String: Any])["components"] as! [String: String]
 check(components == ["red": "0x4D", "green": "0x73", "blue": "0x8A", "alpha": "1.000"], "Accent color must be #4D738A")
 print("Lumineux asset tests passed: \(iconAssets.count) Figma-vector icons, 1 supplied PNG icon, 4 exact Figma empty states, retina logos, opaque 1024 AppIcon, exact AccentColor")
