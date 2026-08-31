@@ -528,6 +528,49 @@ final class LumineuxRuntimeTests: XCTestCase {
         snapshot(window, "Provided-grouped-path")
     }
 
+    func testSceneGroupOffButtonUsesLumineuxThemeAndKeepsLayout() throws {
+        SceneExecuteDataPickerView.show(
+            lightness: 50,
+            isOn: true,
+            cct: 4500,
+            showCct: true,
+            showDelete: false,
+            picker: nil
+        )
+
+        let picker = try XCTUnwrap(
+            window.subviews.compactMap { $0 as? SceneExecuteDataPickerView }.last
+        )
+        defer { picker.removeFromSuperview() }
+        window.layoutIfNeeded()
+        picker.layoutIfNeeded()
+
+        let offButton = try XCTUnwrap(
+            descendants(picker).compactMap { $0 as? UIButton }
+                .first { $0.title(for: .normal) == "OFF" }
+        )
+        let container = try XCTUnwrap(offButton.superview)
+
+        XCTAssertEqual(offButton.bounds.width, SCRXFrom(52), accuracy: 0.5)
+        XCTAssertEqual(offButton.bounds.height, SCRYFrom(32), accuracy: 0.5)
+        XCTAssertEqual(offButton.layer.cornerRadius, SCRYFrom(10), accuracy: 0.5)
+        XCTAssertFalse(offButton.hasAmbiguousLayout)
+        assertContained(offButton, in: container)
+        XCTAssertEqual(offButton.backgroundColor, .white)
+        assertBlue(offButton.titleColor(for: .normal))
+        assertBlue(UIColor(cgColor: try XCTUnwrap(offButton.layer.borderColor)), alpha: 0.6)
+        XCTAssertEqual(offButton.layer.borderWidth, 1, accuracy: 0.01)
+
+        offButton.sendActions(for: .touchUpInside)
+
+        assertBlue(offButton.backgroundColor)
+        XCTAssertEqual(offButton.titleColor(for: .normal), .white)
+        XCTAssertEqual(offButton.layer.borderWidth, 0, accuracy: 0.01)
+        XCTAssertFalse(offButton.hasAmbiguousLayout)
+        assertContained(offButton, in: container)
+        snapshot(window, "Scene-group-off-theme")
+    }
+
     func testBrandControlsAndSitesCell() throws {
         [Bar_Color, Bottom_Done_Color, Title_Done_Color, Slider_Color].forEach { assertBlue($0) }
         let host = UIViewController()
