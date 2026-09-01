@@ -327,28 +327,17 @@ final class LightSensorTargetNightBrightnessView: UIView {
         backgroundColor = .white
         layer.cornerRadius = SCRYFrom(16)
 
-        let titleLabel = UILabel(
-            text: "calibration_target_night_brightness".localizedString,
-            textColor: TextBlack_Color,
-            fontSize: 15,
-            fontWeight: .regular
+        let titleLabel = UILabel()
+        titleLabel.attributedText = attributedText(
+            "calibration_target_night_brightness".localizedString,
+            color: TextBlack_Color,
+            fontSize: 14,
+            lineHeight: 20
         )
         addSubview(titleLabel)
         titleLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.top.equalTo(SCRYFrom(16))
-        }
-
-        let noteLabel = UILabel()
-        noteLabel.text = "calibration_target_night_brightness_note".localizedString
-        noteLabel.textColor = AssistText_Color
-        noteLabel.font = UIFont.systemFont(ofSize: SCRYFrom(11), weight: .regular)
-        noteLabel.numberOfLines = 0
-        addSubview(noteLabel)
-        noteLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
-            make.right.equalTo(SCRXFrom(-16))
-            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(12))
         }
 
         dimLevelView.valueChangedHandler = { [weak self] value in
@@ -358,12 +347,43 @@ final class LightSensorTargetNightBrightnessView: UIView {
         dimLevelView.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
-            make.top.equalTo(noteLabel.snp.bottom).offset(SCRYFrom(16))
+            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(16))
+        }
+
+        let noteLabel = UILabel()
+        noteLabel.attributedText = attributedText(
+            "calibration_target_night_brightness_note".localizedString,
+            color: AssistText_Color,
+            fontSize: 12,
+            lineHeight: 19.5
+        )
+        noteLabel.numberOfLines = 0
+        addSubview(noteLabel)
+        noteLabel.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.equalTo(dimLevelView.snp.bottom).offset(SCRYFrom(20))
             make.bottom.equalTo(SCRYFrom(-24))
         }
 
         dimLevelView.allowedRange = allowedRange
         value = Profile.defaultTargetNightBrightness
+    }
+
+    private func attributedText(
+        _ text: String,
+        color: UIColor,
+        fontSize: CGFloat,
+        lineHeight: CGFloat
+    ) -> NSAttributedString {
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.minimumLineHeight = SCRYFrom(lineHeight)
+        paragraphStyle.maximumLineHeight = SCRYFrom(lineHeight)
+        return NSAttributedString(string: text, attributes: [
+            .font: UIFont.systemFont(ofSize: SCRYFrom(fontSize), weight: .regular),
+            .foregroundColor: color,
+            .paragraphStyle: paragraphStyle
+        ])
     }
 }
 
@@ -377,6 +397,7 @@ final class LightSensorTargetSensorValueView: UIView {
     var dimLevelThrottleChangedHandler: ((Int, Bool) -> Void)?
 
     private let targetTextField = UITextField()
+    private let noteLabel = UILabel()
     private let dimLevelView = LightSensorCalibrationDimLevelView()
 
     var targetValue: Int? {
@@ -396,6 +417,15 @@ final class LightSensorTargetSensorValueView: UIView {
 
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let preferredWidth = max(noteLabel.bounds.width, 0)
+        if preferredWidth > 0, noteLabel.preferredMaxLayoutWidth != preferredWidth {
+            noteLabel.preferredMaxLayoutWidth = preferredWidth
+            noteLabel.invalidateIntrinsicContentSize()
+        }
     }
 
     func setTargetValue(_ value: Int?) {
@@ -488,14 +518,13 @@ final class LightSensorTargetSensorValueView: UIView {
             make.height.equalTo(32)
         }
 
-        let noteLabel = UILabel(
-            text: "calibration_target_sensor_value_note".localizedString,
-            textColor: AssistText_Color,
-            fontSize: 12,
-            fontWeight: .regular,
-            fit: false
-        )
+        noteLabel.text = "calibration_target_sensor_value_note".localizedString
+        noteLabel.textColor = AssistText_Color
+        noteLabel.font = UIFont.systemFont(ofSize: 12, weight: .regular)
         noteLabel.numberOfLines = 0
+        noteLabel.lineBreakMode = .byWordWrapping
+        noteLabel.setContentHuggingPriority(.required, for: .vertical)
+        noteLabel.setContentCompressionResistancePriority(.required, for: .vertical)
         addSubview(noteLabel)
         noteLabel.snp.makeConstraints { make in
             make.left.right.equalTo(inputRow)
