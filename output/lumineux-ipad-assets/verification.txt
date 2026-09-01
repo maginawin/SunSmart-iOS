@@ -1,0 +1,15 @@
+PASS Group/auto_big.imageset/auto_big@2x.png size=112x112 alpha=yes dominant=#5E869C neutralMismatch=0 alphaMismatch=0
+PASS Group/auto_big.imageset/auto_big@3x.png size=168x168 alpha=yes dominant=#5E869C neutralMismatch=0 alphaMismatch=0
+PASS Profile/profile_chart_daylight_ipad.imageset/profile_chart_daylight_ipad@2x.png size=980x467 alpha=yes dominant=#5E869C neutralMismatch=0 alphaMismatch=0
+PASS Profile/profile_chart_daylight_ipad.imageset/profile_chart_daylight_ipad@3x.png size=1470x701 alpha=yes dominant=#5E869C neutralMismatch=0 alphaMismatch=0
+PASS Profile/profile_chart_manual_control_ipad.imageset/profile_chart_manual_control_ipad@2x.png size=980x467 alpha=yes dominant=#5E869C neutralMismatch=0 alphaMismatch=0
+PASS Profile/profile_chart_manual_control_ipad.imageset/profile_chart_manual_control_ipad@3x.png size=1470x701 alpha=yes dominant=#5E869C neutralMismatch=0 alphaMismatch=0
+PASS Profile/profile_chart_occupancy_ipad.imageset/profile_chart_occupancy_ipad@2x.png size=980x467 alpha=yes dominant=#5E869C neutralMismatch=0 alphaMismatch=0
+PASS Profile/profile_chart_occupancy_ipad.imageset/profile_chart_occupancy_ipad@3x.png size=1470x701 alpha=yes dominant=#5E869C neutralMismatch=0 alphaMismatch=0
+PASS Profile/profile_chart_occupancy_daylight_ipad.imageset/profile_chart_occupancy_daylight_ipad@2x.png size=980x467 alpha=yes dominant=#5E869C neutralMismatch=0 alphaMismatch=0
+PASS Profile/profile_chart_occupancy_daylight_ipad.imageset/profile_chart_occupancy_daylight_ipad@3x.png size=1470x701 alpha=yes dominant=#5E869C neutralMismatch=0 alphaMismatch=0
+PASS Profile/profile_chart_occupancy_standby.imageset/profile_chart_occupancy_standby@2x.png size=424x467 alpha=yes dominant=#5E869C neutralMismatch=0 alphaMismatch=0
+PASS Profile/profile_chart_occupancy_standby.imageset/profile_chart_occupancy_standby@3x.png size=636x701 alpha=yes dominant=#5E869C neutralMismatch=0 alphaMismatch=0
+PASS Profile/profile_chart_occupancy_standby_ipad.imageset/profile_chart_occupancy_standby_ipad@2x.png size=980x467 alpha=yes dominant=#5E869C neutralMismatch=0 alphaMismatch=0
+PASS Profile/profile_chart_occupancy_standby_ipad.imageset/profile_chart_occupancy_standby_ipad@3x.png size=1470x701 alpha=yes dominant=#5E869C neutralMismatch=0 alphaMismatch=0
+PASS 14/14

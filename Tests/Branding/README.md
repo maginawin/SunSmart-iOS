@@ -6,16 +6,16 @@ Lumineux 在构建期把公共 catalog 与 Lumineux catalog 合并为一份无�
 
 ### Catalog 物理分组
 
-`Lumineux/Assets-Lumineux.xcassets` 使用与 SLGSync 相同的十二个一级业务目录：`Common`、`Device`、`Energy`、`FireAlarm1.5`、`Firmware`、`Group`、`Path`、`Profile`、`Scene`、`Site`、`Space`、`Timed`。`AppIcon` 与 `AccentColor` 保留在根目录；当前 Lumineux source catalog 为 119 imageset 加 AppIcon、AccentColor，共 121 组；imageset 全部位于业务目录中。较早批次的 92 组统计保留在下方带日期的历史验证记录中。
+`Lumineux/Assets-Lumineux.xcassets` 使用与 SLGSync 相同的十二个一级业务目录：`Common`、`Device`、`Energy`、`FireAlarm1.5`、`Firmware`、`Group`、`Path`、`Profile`、`Scene`、`Site`、`Space`、`Timed`。`AppIcon` 与 `AccentColor` 保留在根目录；当前 Lumineux source catalog 为 126 imageset 加 AppIcon、AccentColor，共 128 组；imageset 全部位于业务目录中。较早批次的统计保留在下方带日期的历史验证记录中。
 
 `Lumineux/DesignAssets/asset-groups.json` 是生成器的分组来源。`icon-manifest.json` 中的 `Tabs`、`Navigation`、`Buttons` 等字段只描述 Figma 来源，不决定 Xcode 目录。两个资源生成器会拒绝缺失分组、未知分组、错误位置和同名重复资源；重新运行后不得在 catalog 根目录生成 imageset。
 
-- 临时 XCTest reference catalog 与 source catalog 同为 121 组。当前 SLGSync non-Fire 覆盖为 83 / 94，待提供为 11；额外已打包 33，因此已提供总数为 116。Task 6 的构建验收合同为合并 catalog 695 组，其中 121 组匹配 Lumineux、574 组保留 Common。
+- 临时 XCTest reference catalog 与 source catalog 同为 128 组。当前 SLGSync non-Fire 覆盖为 90 / 94，待提供为 4；额外已打包 33，因此已提供总数为 123。合并 catalog 的当前合同仍为 695 组，其中 128 组匹配 Lumineux、567 组保留 Common。
 - 已提供素材均保持原始画布和 iOS 逻辑尺寸；其中 Figma 完整向量节点、`auto`、六组 Common Retina PNG 与本轮 grouped Retina PNG 按各自来源保存。系统启动页另使用独立的 88pt `lumineux_launch_logo`，AppIcon 为无 alpha 的 1024px 派生文件，AccentColor 为 `#4D738A`。
 - PNG 文件字节与运行时布局属于不同层次：`switch_proxy_instructions_1` 的 310 × 328pt 原图在 iPhone 现有 324/310 约束下约有 1.2% 纵向压缩；用户确认影响可忽略，本轮不改生产 Swift。
 - Lumineux 的 `Merge Lumineux Assets` phase 每次构建调用 `Lumineux/Scripts/merge_assets.rb`，把 `SunSmart/Assets.xcassets` 复制到 `DERIVED_FILE_DIR` 后以完整 Lumineux asset set 覆盖；Resources 只编译 `LumineuxAssets/Assets-Lumineux-Merged.xcassets`。签名 Team、Bundle ID、协议与独立启动页归属不变。
 - 真实 UIKit 测试覆盖 Welcome、仅保留用户与关于入口的菜单、Europe-only 服务器地区契约、Sites 单元格和滑块回调、启动页及协议内容/路由、四类真实空状态容器、强制 AUTO 弹窗、全部已提供图片尺寸与来源、Tab/收藏状态，以及真实 menu/back 导航图片、target/action、渲染 bounds 与返回路径。
-- 临时 XCTest bundle 会独立编译完整原始 Lumineux 121 组 catalog（119 个 imageset、AppIcon、AccentColor）。主 App 的 `UIImage(named:)` 与该 reference catalog 逐像素 RGBA 对比；common launch logo 仅以三个唯一前缀的 loose PNG 作为严格负对照，不参与正向 catalog 编译。reference bundle ID 必须不同于主 App；不以两次主 bundle 同名读取或平铺 PNG 自比代替来源验证。
+- 临时 XCTest bundle 会独立编译完整原始 Lumineux 128 组 catalog（126 个 imageset、AppIcon、AccentColor）。主 App 的 `UIImage(named:)` 与该 reference catalog 逐像素 RGBA 对比；common launch logo 仅以三个唯一前缀的 loose PNG 作为严格负对照，不参与正向 catalog 编译。reference bundle ID 必须不同于主 App；不以两次主 bundle 同名读取或平铺 PNG 自比代替来源验证。
 - new3 focused UIKit 的真实调用点为 Buoy、Firmware、Profile、Scene 与 Space。Task 3 的 iPhone 16 focused 运行已产生并审阅 18 张附件；Task 5 的 iPhone SE 3、iPhone 16、iPad Pro 11 M4 与 en-US、zh-Hans-CN 六组合矩阵已全部通过并审阅 108 张附件。Task 6 又在全新的正常 `DerivedData3` 目录完成 Debug generic iOS 构建、签名与生成 catalog 验证，实际证据见本页末尾。
 - 测试不修改生产工程/AppDelegate，不选择服务器、不登录、不添加站点、不连接或控制真实设备。截图必须人工查看；编译通过不等同于布局通过。
 
@@ -205,11 +205,11 @@ SLGSync 的启动 storyboard 并不使用共享 `launch_logo`，而是引用品�
 
 ## 待办边界
 
-当前仅剩 11 组非 FireAlarm 待提供资源，完整清单见 `docs/lumineux-missing-assets.md`；确认前继续保留共享原图。硬编码在共享控件中的剩余紫色按 SLGSync 现状保留，不为其新增 UI 分支。服务器固定为 Europe；协议正文、云端身份和空间默认值仍待产品确认。
+当前仅剩 4 组非 FireAlarm 待提供资源，完整清单见 `docs/lumineux-missing-assets.md`；确认前继续保留共享原图。硬编码在共享控件中的剩余紫色按 SLGSync 现状保留，不为其新增 UI 分支。服务器固定为 Europe；协议正文、云端身份和空间默认值仍待产品确认。
 
 ## 2026-09-01 new3 Retina 合同与待办
 
-本轮将 28 对原始 2x/3x PNG 接入为 29 个 Lumineux 资源，`button/Group 160` 是唯一的一对双目标映射。静态合同固定每个目标的分组、像素尺寸、SHA-256、catalog/source 逐字节一致性以及 universal 1x 空槽；不生成 `@1x.png`，不重编码，也不修改生产 Swift。四对排除素材为根目录 `Group 160`、`icon/Nav`、`images/download`、`Proximity/images/数据表`；不接入 FireAlarm 内容。当前数值为 121 source catalog、83 / 94 non-Fire covered、11 non-Fire missing、33 additional packaged、116 provided total；Task 6 的 merged catalog 验收为 695 = 121 Lumineux + 574 Common。
+本轮将 28 对原始 2x/3x PNG 接入为 29 个 Lumineux 资源，`button/Group 160` 是唯一的一对双目标映射。静态合同固定每个目标的分组、像素尺寸、SHA-256、catalog/source 逐字节一致性以及 universal 1x 空槽；不生成 `@1x.png`，不重编码，也不修改生产 Swift。四对排除素材为根目录 `Group 160`、`icon/Nav`、`images/download`、`Proximity/images/数据表`；不接入 FireAlarm 内容。该阶段数值为 121 source catalog、83 / 94 non-Fire covered、11 non-Fire missing、33 additional packaged、116 provided total；Task 6 的 merged catalog 验收为 695 = 121 Lumineux + 574 Common。
 
 focused XCTest 为：
 
@@ -226,3 +226,11 @@ iPhone SE 3 的固定高度固件步骤行会让 `mesh_upgrade_guide_1` 和 `mes
 Task 6 使用 `/Users/sr/Library/Developer/Xcode/DerivedData3/LumineuxNew3.GfYbuK` 作为全新正常 Library DerivedData，以 `-disableAutomaticPackageResolution -skipPackageUpdates` 和已缓存的 NordicSigMeshSDK `9504e5ba7286205f8d4749d8127bf2178b19d9a2` 完成 `SunSmart.xcworkspace` / Lumineux / Debug / generic iOS 构建。生成的 `Debug-iphoneos/Lumineux.app` 通过 `codesign --verify --deep --strict`，Bundle ID 为 `com.azoula.sunsmart.Lumineux`，签名为 Apple Development: Wen Xu (Y4NBSLQQ63)，Team 为 `JTD3WYUC58`。
 
 派生 catalog 位于 `Build/Intermediates.noindex/SunSmart.build/Debug-iphoneos/Lumineux.build/DerivedSources/LumineuxAssets/Assets-Lumineux-Merged.xcassets`。独立逐文件 SHA-256 核对得到 695 组：121 组完整匹配 Lumineux source catalog，574 组未覆盖 Common 保持一致；历史 `Initiator` / `initiator` 大小写差异按 actool 的大小写不敏感名称视为同一覆盖。构建日志无 duplicate asset 或 actool error，合并器 17 项 / 72 个断言与 Lumineux 配置检查均通过；`Package.resolved` 和 `project.pbxproj` 相对 Task 6 起点无差异。该步骤只构建，未安装或启动 App。构建、签名和 catalog 核对日志分别为 `/private/tmp/lumineux-new3-task6-build.log`、`/private/tmp/lumineux-new3-task6-signing.log` 与 `/private/tmp/lumineux-new3-task6-catalog-verify.log`。
+
+## 2026-09-01 iPad 与 standby Retina 资源接入
+
+在用户确认 iPad 图与 iPhone 图内容相同、仅画布和布局尺寸不同后，新增 `auto_big`、四组已有 Profile 图表的 `_ipad` 版本，以及 `profile_chart_occupancy_standby` 的 iPhone／iPad 两组资源，共 7 个 imageset、14 张 2x/3x PNG。生成过程按 iPhone 版本保留图形语义和中性色细节，并在现有完整 iPad 画布结构上重建品牌色像素，没有对 iPhone 位图做插值放大；Lumineux 显示色为 `#5E869C`。
+
+七组源文件保存在 `Lumineux/DesignAssets/Provided/Group` 和 `Lumineux/DesignAssets/Provided/Profile`，Asset Catalog 使用相同 PNG 字节；每组保留 universal 1x 空槽。静态合同固定 14 张图片的尺寸、SHA-256、透明度、分组以及 source/catalog 字节一致性。UIKit 合同通过真实强制 AUTO 弹窗、`ProfileSettingsSphasesView` 和 `ProfileTriggerConditionPhasesView` 验证：iPad 分支必须解析到 Lumineux 的 `auto_big` 与五组 `_ipad` 图表，iPhone standby 分支必须解析到新的非 `_ipad` 资源，且图片位于生产控件边界内。
+
+iPad Pro 11-inch M4 上两个 focused 用例均通过，iPhone 16 上包含非 `_ipad` standby 的 focused 用例也通过，合计 3 个通过、0 失败、0 跳过。真实弹窗保持现有 40pt 按钮约束，56pt `auto_big` 由 UIButton 等比容纳，来源、图片尺寸、imageView containment 与外层弹窗 containment 均通过。已人工检查 6 张 iPad 直接相关快照和 1 张 iPhone standby 快照，图片清晰，无错图、裁切、重叠或异常拉伸。结果与附件保存在 `/private/tmp/lumineux-ipad-catalog.OabkQH`；该目录为临时验证产物。

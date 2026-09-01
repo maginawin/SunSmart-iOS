@@ -69,6 +69,7 @@ let expectedAssetGroups: [String: String] = [
     "firmware_history": "Firmware",
     "server_download": "Firmware",
     "auto": "Group",
+    "auto_big": "Group",
     "group_control_disable": "Group",
     "group_control_disable_big": "Group",
     "group_empty": "Group",
@@ -131,8 +132,14 @@ let expectedAssetGroups: [String: String] = [
     "power_state_off": "Profile",
     "power_state_restore": "Profile",
     "profile_chart_daylight": "Profile",
+    "profile_chart_daylight_ipad": "Profile",
     "profile_chart_manual_control": "Profile",
+    "profile_chart_manual_control_ipad": "Profile",
     "profile_chart_occupancy": "Profile",
+    "profile_chart_occupancy_daylight_ipad": "Profile",
+    "profile_chart_occupancy_ipad": "Profile",
+    "profile_chart_occupancy_standby": "Profile",
+    "profile_chart_occupancy_standby_ipad": "Profile",
     "profile_person": "Profile",
     "profile_person_big": "Profile",
     "profile_proximity_lighting": "Profile",
@@ -153,7 +160,7 @@ let groupManifest = try JSONDecoder().decode(
 check(groupManifest.groups == expectedGroups,
       "Lumineux groups must match SLGSync order and names")
 check(groupManifest.assets == expectedAssetGroups,
-      "Lumineux asset group manifest differs from the approved 121-resource mapping")
+      "Lumineux asset group manifest differs from the approved 128-resource mapping")
 
 func setExtension(for name: String) -> String {
     switch name {
@@ -224,7 +231,7 @@ while let url = enumerator.nextObject() as? URL {
     discovered[name, default: []].append(url.standardizedFileURL)
     enumerator.skipDescendants()
 }
-check(discovered.count == 121, "Lumineux catalog must contain exactly 121 asset names")
+check(discovered.count == 128, "Lumineux catalog must contain exactly 128 asset names")
 check(Set(discovered.keys) == Set(expectedAssetGroups.keys),
       "Lumineux catalog asset names differ from the approved set")
 for name in expectedAssetGroups.keys.sorted() {
@@ -612,6 +619,51 @@ let providedNew3Assets: [ProvidedGroupedAsset] = [
     ])
 ]
 
+let providedGeneratedIPadAssets: [ProvidedGroupedAsset] = [
+    .init(group: "Group", name: "auto_big", pixels: [
+        2: (112, 112), 3: (168, 168)
+    ], hashes: [
+        2: "34ae6cd6ef02a60fddcc9ffbc94365d80001d5982b5524b69edf3ac8a5eb6c35",
+        3: "218bfa26011c1ef8ee93519883d01bb26a5b69f9eb4a1affd050fd3aeb3d70c8"
+    ]),
+    .init(group: "Profile", name: "profile_chart_daylight_ipad", pixels: [
+        2: (980, 467), 3: (1470, 701)
+    ], hashes: [
+        2: "7dcddd20ea92a591cb0823f557b0456330911db2fb65632f0935e546e3ee5acf",
+        3: "e98b9a121ad71904c601984c886d5560bee806a542d81e7bfcc36999f256fc11"
+    ]),
+    .init(group: "Profile", name: "profile_chart_manual_control_ipad", pixels: [
+        2: (980, 467), 3: (1470, 701)
+    ], hashes: [
+        2: "8b99a31e6b04364373fc61185ba76e6a1182fb86c33fc17304fafc9718613e39",
+        3: "9d4147ddcbd4efe584897f69c94794309bd09ea91a684693c67bab962c615a49"
+    ]),
+    .init(group: "Profile", name: "profile_chart_occupancy_daylight_ipad", pixels: [
+        2: (980, 467), 3: (1470, 701)
+    ], hashes: [
+        2: "a45d3812f01c9a82a5988e484082b93007f2d2ec7fdc5b75131e5b493bb9bb0a",
+        3: "27c90e16d96a6fb816c831d21828eb23ebb4ed02d2c8b5493cbdad9359f4961c"
+    ]),
+    .init(group: "Profile", name: "profile_chart_occupancy_ipad", pixels: [
+        2: (980, 467), 3: (1470, 701)
+    ], hashes: [
+        2: "1ef2461ae887887aec23f7dbd82f34ea91bd73e7ceac9568259d944183cca44c",
+        3: "d9674e91d1136dff4fda0a18ccf8f4bdc8efb4b114d6cde5290275bb7ea8546b"
+    ]),
+    .init(group: "Profile", name: "profile_chart_occupancy_standby", pixels: [
+        2: (424, 467), 3: (636, 701)
+    ], hashes: [
+        2: "b5cd3d2d6cac46841a4f8114308672b3dc94d3babac0c9b605f48aa6183301b0",
+        3: "2dee0ba4cb24bbbf14abddf2382403583dd50b55a6fa706efab6bb62223d1528"
+    ]),
+    .init(group: "Profile", name: "profile_chart_occupancy_standby_ipad", pixels: [
+        2: (980, 467), 3: (1470, 701)
+    ], hashes: [
+        2: "f163d64f05a6f82ff324deccb333a5b6beb2e62f1b1a24cbdd9248e2e7ad6d54",
+        3: "63ab04102615be338aaf86e7e2688850d8f3b6c93236432dd23878645b071bc6"
+    ])
+]
+
 let providedGroupedAssets: [ProvidedGroupedAsset] = [
     .init(group: "Device", name: "switch_proxy_instructions_1", pixels: [
         2: (620, 656), 3: (930, 984)
@@ -685,7 +737,9 @@ check(providedGroupedAssets.count == 11,
       "Expected exactly 11 supplied Device/Energy/Group/Path assets")
 check(providedNew3Assets.count == 29,
       "Expected exactly 29 new3 supplied Retina assets")
-for asset in providedGroupedAssets + providedNew3Assets {
+check(providedGeneratedIPadAssets.count == 7,
+      "Expected exactly 7 generated iPad and standby Retina assets")
+for asset in providedGroupedAssets + providedNew3Assets + providedGeneratedIPadAssets {
     check(expectedAssetGroups[asset.name] == asset.group,
           "Wrong business group for supplied asset: \(asset.name)")
     let entries = try contents(named: asset.name)["images"] as! [[String: String]]
@@ -776,4 +830,4 @@ check([CGImageAlphaInfo.none, .noneSkipFirst, .noneSkipLast].contains(icon.alpha
 let colors = try contents(named: "AccentColor")["colors"] as! [[String: Any]]
 let components = (colors[0]["color"] as! [String: Any])["components"] as! [String: String]
 check(components == ["red": "0x4D", "green": "0x73", "blue": "0x8A", "alpha": "1.000"], "Accent color must be #4D738A")
-print("Lumineux asset tests passed: 29 new3 supplied Retina assets, 121 asset groups, \(iconAssets.count) Figma-vector icons, 7 supplied PNG icons, 4 exact Figma empty states, retina logos, opaque 1024 AppIcon, exact AccentColor")
+print("Lumineux asset tests passed: 29 new3 and 7 generated iPad/standby Retina assets, 128 asset groups, \(iconAssets.count) Figma-vector icons, 7 supplied PNG icons, 4 exact Figma empty states, retina logos, opaque 1024 AppIcon, exact AccentColor")

@@ -902,19 +902,16 @@ final class LumineuxRuntimeTests: XCTestCase {
         show(popup)
         settleAppearance()
 
-        if UIDevice.current.userInterfaceIdiom == .pad {
-            // The supplied artwork is the 40pt iPhone asset. iPad deliberately
-            // continues to use the separate, still-pending 56pt auto_big image.
-            try assertNamedImage("auto_big", size: 56)
-            return
-        }
-
+        let expectedName = isIPad ? "auto_big" : "auto"
+        let expectedSize: CGFloat = isIPad ? 56 : 40
+        let expectedButtonSize: CGFloat = 40
         let autoButton = try XCTUnwrap(descendants(popup.view).compactMap { $0 as? UIButton }
             .first { $0.image(for: .normal) != nil })
-        try assertResolvedImageMatchesLumineuxSource(autoButton.image(for: .normal), name: "auto")
-        XCTAssertEqual(autoButton.image(for: .normal)?.size, CGSize(width: 40, height: 40))
-        XCTAssertGreaterThanOrEqual(autoButton.bounds.width, 40)
-        XCTAssertGreaterThanOrEqual(autoButton.bounds.height, 40)
+        try assertResolvedImageMatchesLumineuxSource(autoButton.image(for: .normal), name: expectedName)
+        XCTAssertEqual(autoButton.image(for: .normal)?.size,
+                       CGSize(width: expectedSize, height: expectedSize))
+        XCTAssertEqual(autoButton.bounds.width, expectedButtonSize, accuracy: 0.01)
+        XCTAssertEqual(autoButton.bounds.height, expectedButtonSize, accuracy: 0.01)
         XCTAssertFalse(autoButton.hasAmbiguousLayout)
         autoButton.layoutIfNeeded()
         let imageView = try XCTUnwrap(autoButton.imageView)
@@ -1274,18 +1271,29 @@ final class LumineuxRuntimeTests: XCTestCase {
             let chart = try XCTUnwrap(descendants(phases).compactMap { $0 as? UIImageView }
                 .first { image($0.image, matchesNamed: expectedName) },
                 "Production phase view did not load image: \(expectedName)")
-            if isIPad {
-                XCTAssertTrue(image(chart.image, matchesNamed: expectedName),
-                              "iPad must retain the existing Common _ipad chart")
-            } else {
-                try assertResolvedImageMatchesLumineuxSource(chart.image, name: name)
-            }
+            try assertResolvedImageMatchesLumineuxSource(chart.image, name: expectedName)
             assertContained(chart, in: phases)
             snapshot(window, "New3-profile-charts")
         }
         try assertProductionChart(.daylight, named: "profile_chart_daylight")
         try assertProductionChart(.manualControl, named: "profile_chart_manual_control")
         try assertProductionChart(.occupancy, named: "profile_chart_occupancy")
+        try assertProductionChart(.occupancy_daylight, named: "profile_chart_occupancy_daylight")
+
+        let standbyProfile = Profile(type: .proximityLightingWithPhotocell)
+        let triggerPhases = ProfileTriggerConditionPhasesView(frame: .zero)
+        triggerPhases.updateData(profile: standbyProfile,
+                                 conditionData: try XCTUnwrap(standbyProfile.nightData))
+        _ = host(triggerPhases, size: CGSize(width: isIPad ? 720 : 343, height: 690))
+        let standbyName = isIPad
+            ? "profile_chart_occupancy_standby_ipad"
+            : "profile_chart_occupancy_standby"
+        let standbyChart = try XCTUnwrap(descendants(triggerPhases).compactMap { $0 as? UIImageView }
+            .first { image($0.image, matchesNamed: standbyName) },
+            "Production trigger phase view did not load image: \(standbyName)")
+        try assertResolvedImageMatchesLumineuxSource(standbyChart.image, name: standbyName)
+        assertContained(standbyChart, in: triggerPhases)
+        snapshot(window, "Generated-profile-standby-chart")
 
         let sceneAndSpace = UIView()
         let sceneCell = SceneAddDataAddCell(frame: .zero)

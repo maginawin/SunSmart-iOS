@@ -2,11 +2,11 @@
 
 # Lumineux 资源接入与待提供清单
 
-核对日期：2026-09-01。Lumineux 继续使用专属构建期资源合并：公共 catalog 先复制到 `DERIVED_FILE_DIR`，再由 Lumineux 完整 asset set 覆盖同名资源，原生 actool 只编译这份生成 catalog。旧双 catalog 顺序方案已废弃；不使用运行时染色或改写共享图片调用。本轮 new3 已接入 28 对原始 Retina PNG 对应的 29 个资源，未生成 1x、未重编码、未修改生产 Swift。当前合同为 source catalog 121 组、SLGSync non-Fire 覆盖 83 / 94、待提供 11、额外已打包 33、已提供总数 116。Task 5 六组合 focused UIKit 矩阵已全部通过并完成人工截图核对；Task 6 的正常 DerivedData Debug 构建、签名及 695 = 121 Lumineux + 574 Common 合并 catalog 验证也已通过。
+核对日期：2026-09-01。Lumineux 继续使用专属构建期资源合并：公共 catalog 先复制到 `DERIVED_FILE_DIR`，再由 Lumineux 完整 asset set 覆盖同名资源，原生 actool 只编译这份生成 catalog。旧双 catalog 顺序方案已废弃；不使用运行时染色或改写共享图片调用。new3 已接入 28 对原始 Retina PNG 对应的 29 个资源；本轮又接入 7 组 iPad／standby Retina 资源，均未生成 1x，也未修改生产 Swift。当前合同为 source catalog 128 组、SLGSync non-Fire 覆盖 90 / 94、待提供 4、额外已打包 33、已提供总数 123；合并 catalog 为 695 = 128 Lumineux + 567 Common。
 
 ## 本次已下载并打包
 
-- 83 组同名图标：原有 72 组（Tab 10、导航 10、设备/分组/场景按钮与尺寸变体 26、收藏/加载/等待/能耗 8、页面稿补充 3、紧凑状态/扫描图标 4、Profile／Safe Mode 补充 4、用户文件夹提供的 `auto` 1、Common Retina PNG 6），再加 Device 2、Energy 3、Group 3、Path 3 组 grouped Retina PNG；另有 4 组空状态插图和 new3 的 29 个 Retina 目标资源，因此当前已提供资源总数为 116。已有的 `sync_loading_small` 同时改用完整 24pt 组件节点，数量不重复计算。
+- 90 组 SLGSync non-Fire 同名图标：原有 83 组覆盖，再加本轮 `auto_big` 与六组 Profile iPad／standby 资源；另有 33 组额外已打包资源，因此当前已提供资源总数为 123。已有的 `sync_loading_small` 同时改用完整 24pt 组件节点，数量不重复计算。
 - 首批原稿来自四个用户提供的 Figma 框架：[Tab](https://www.figma.com/design/P4AaSxu8SJe2Tf2gpyTFT9/Lumineux_260814?node-id=9338-252618)、[导航](https://www.figma.com/design/P4AaSxu8SJe2Tf2gpyTFT9/Lumineux_260814?node-id=9338-259821)、[按钮](https://www.figma.com/design/P4AaSxu8SJe2Tf2gpyTFT9/Lumineux_260814?node-id=9338-290273)、[其他](https://www.figma.com/design/P4AaSxu8SJe2Tf2gpyTFT9/Lumineux_260814?node-id=1038-38735)。
 - 52 份完整节点矢量导出保存在 `Lumineux/DesignAssets/Figma`；资源名、节点 ID、原有 iOS 逻辑尺寸逐项记录在 `Lumineux/DesignAssets/icon-manifest.json`。仅机械缩放生成 1x/2x/3x PNG，不重绘或改色。
 - `auto` 的原始 2x/3x PNG 单独保存在 `Lumineux/DesignAssets/Provided`，catalog 保留这两份源文件的原始字节，1x 由 2x 机械缩小生成。本轮六组 Common PNG 保存在 `Lumineux/DesignAssets/Provided/Common`，只使用用户提供的 2x/3x 原文件，1x 槽位按项目现状留空，不生成图片。
@@ -98,20 +98,35 @@
 
 十一组均逐字节保存用户提供的 Retina PNG，imageset 仅填写 2x 与 3x，1x 保持空槽。PNG 文件字节与运行时布局属于不同层次：`switch_proxy_instructions_1` 的 310 × 328pt 原图在 iPhone 现有 324/310 约束下约有 1.2% 纵向压缩；用户已确认影响可忽略，本轮不改生产 Swift。`new2/icon/路径` 暂不处理；`energy_light`、`auto_big`、`member_add`、`switch_save_un` 没有接入。
 
+### 2026-09-01 iPad 与 standby Retina 补充
+
+| 分类 | 同名资源 | 2x 像素 | 3x 像素 |
+| --- | --- | --- | --- |
+| Group | `auto_big` | 112 × 112 | 168 × 168 |
+| Profile | `profile_chart_daylight_ipad` | 980 × 467 | 1470 × 701 |
+| Profile | `profile_chart_manual_control_ipad` | 980 × 467 | 1470 × 701 |
+| Profile | `profile_chart_occupancy_daylight_ipad` | 980 × 467 | 1470 × 701 |
+| Profile | `profile_chart_occupancy_ipad` | 980 × 467 | 1470 × 701 |
+| Profile | `profile_chart_occupancy_standby` | 424 × 467 | 636 × 701 |
+| Profile | `profile_chart_occupancy_standby_ipad` | 980 × 467 | 1470 × 701 |
+
+七组图片按对应 iPhone 版本保留图形内容和中性色细节，在现有完整尺寸画布结构上生成 Lumineux `#5E869C` 品牌色版本；没有对 iPhone 位图做插值放大。14 张 2x/3x PNG 均保留透明通道，静态检查确认画布尺寸、透明度与中性色像素一致，source/catalog 文件逐字节相同；imageset 的 universal 1x 槽位保持为空。
+
+真实 UIKit 回归在 iPad Pro 11-inch M4 上验证强制 AUTO 弹窗、四种 Profile 设置图表和 standby 触发图表，在 iPhone 16 上验证非 `_ipad` standby 图表；3 个 focused 用例全部通过。7 张与本轮资源直接相关的快照已人工检查，未发现错图、裁切、重叠或异常拉伸。生产 Swift 与现有控件约束未修改。
+
 ## 剩余数量如何计算
 
-SLGSync 的 128 组范围扣除 4 组 Logo 和与 SunSmart 内容一致的 30 组 FireAlarm1.5 资源后，非 Fire 范围为 94 组；本轮覆盖数为 **83 / 94**，待提供数为 **11**。另有 **33** 组额外已打包资源，因此已提供资源总数为 **116**。Lumineux source catalog 为 **121** 组（119 个 imageset 加 AppIcon、AccentColor）。Task 6 已完成正常 Library DerivedData 的 Lumineux Debug 真机构建：`codesign --verify --deep --strict` 通过，Bundle ID 为 `com.azoula.sunsmart.Lumineux`，签名为 Apple Development: Wen Xu (Y4NBSLQQ63)，Team 为 `JTD3WYUC58`；构建产物的 merged catalog 已逐文件验证为 **695 = 121 Lumineux + 574 Common**。
+SLGSync 的 128 组范围扣除 4 组 Logo 和与 SunSmart 内容一致的 30 组 FireAlarm1.5 资源后，非 Fire 范围为 94 组；当前覆盖数为 **90 / 94**，待提供数为 **4**。另有 **33** 组额外已打包资源，因此已提供资源总数为 **123**。Lumineux source catalog 为 **128** 组（126 个 imageset 加 AppIcon、AccentColor）；merged catalog 的当前合同为 **695 = 128 Lumineux + 567 Common**。
 
 ## 待提供或确认沿用
 
-仅保留下列 11 组非 FireAlarm 待提供资源。请后续提供 Lumineux 设计节点/导出包，或者标记“沿用原图”；确认前继续使用现有共享原图，不用 SLG 绿色图标替代，也不在共享 Swift 中自动换色。
+仅保留下列 4 组非 FireAlarm 待提供资源。请后续提供 Lumineux 设计节点/导出包，或者标记“沿用原图”；确认前继续使用现有共享原图，不用 SLG 绿色图标替代，也不在共享 Swift 中自动换色。
 
 | 分类 | 待提供资源 |
 | --- | --- |
 | Energy | `energy_light` |
 | Firmware | `distributor_single_device_highlight` |
-| Group | `auto_big`、`member_add`、`switch_save_un` |
-| Profile | `profile_chart_daylight_ipad`、`profile_chart_manual_control_ipad`、`profile_chart_occupancy_daylight_ipad`、`profile_chart_occupancy_ipad`、`profile_chart_occupancy_standby`、`profile_chart_occupancy_standby_ipad` |
+| Group | `member_add`、`switch_save_un` |
 
 ## 已提供设计中暂不直接替换的内容
 
