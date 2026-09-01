@@ -229,6 +229,7 @@ extension SpaceData {
                         nodeDict.updateValue(uuid, forKey: "uuid")
                         nodeDict.removeValue(forKey: "UUID")
                     }
+                    nodeDict.updateValue(node.createdTimestamp, forKey: "createdTimestamp")
                     nodeDict.updateValue(node.macAddress ?? "", forKey: "macAddress")
                     let types = node.sensorModels.compactMap({ node.sensorModelTypes[$0]?.id.hex })
                     nodeDict.updateValue(types, forKey: "sensorTypes")

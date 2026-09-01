@@ -577,6 +577,9 @@ extension SiteData {
                 // 新Gateway直接导入；已有Gateway按dirty、生命周期和可选远端版本决策。
                 // 远端不返回Gateway版本时，对clean缓存执行幂等字段级合并。
                 for (mac, gatewayData) in serverByMac {
+                    let remoteCreatedTimestamp = JSON(gatewayData)["createdTimestamp"]
+                        .int64
+                        .flatMap { $0 >= 0 ? $0 : nil }
                     let cloudPatch = GatewayCloudConfigurationPatch(
                         nodePayload: gatewayData
                     )
@@ -672,6 +675,11 @@ extension SiteData {
                         }
 
                         var nodeChanged = false
+                        if let remoteCreatedTimestamp,
+                           cacheNode.createdTimestamp != remoteCreatedTimestamp {
+                            cacheNode.restoreCreatedTimestamp(remoteCreatedTimestamp)
+                            nodeChanged = true
+                        }
                         if case .value(let remoteName) = cloudPatch.name,
                            cacheNode.name != remoteName {
                             cacheNode.name = remoteName
@@ -745,12 +753,17 @@ extension SiteData {
                             }
                         }
                         if nodeChanged {
+                            cacheNode.save()
                             updateNetwork = true
                         }
                         continue
 
                     case .importNew, .replaceRemote:
                         break
+                    }
+
+                    if remoteCreatedTimestamp == nil, let cacheNode {
+                        serverNode.restoreCreatedTimestamp(cacheNode.createdTimestamp)
                     }
                     
                     if let cacheGateway {
@@ -1345,6 +1358,7 @@ extension SpaceData {
                 
                 if let data = try? JSONSerialization.data(withJSONObject: decodeNodeDict), let node = try? jsonDecoder.decode(Node.self, from: data) {
                     let nodeJson = JSON(nodeDict)
+                    node.restoreCreatedTimestamp(nodeJson["createdTimestamp"].int64 ?? 0)
                     if let version = nodeJson["versionSEQ"].uInt32 {
                         node.versionSEQ = version
                     }
@@ -1997,6 +2011,7 @@ extension Node {
                 return
             }
             let nodeJson = JSON(decodeNodeDict)
+            node.restoreCreatedTimestamp(nodeJson["createdTimestamp"].int64 ?? 0)
             if let version = nodeJson["versionSEQ"].uInt32 {
                 node.versionSEQ = version
             }
