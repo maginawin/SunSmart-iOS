@@ -341,6 +341,16 @@ for (name, node) in [("sync_success_small", "0:18004"),
     check(asset?["node"] as? String == node, "Incorrect Figma source node for \(name)")
     check(asset?["size"] as? Int == 24, "Compact status artwork must preserve its 24pt canvas for \(name)")
 }
+let retinaOnlyControlAssets: Set<String> = [
+    "device_control_off",
+    "device_control_off_big",
+    "device_control_on",
+    "device_control_on_big",
+    "group_off",
+    "group_off_big",
+    "group_on",
+    "group_on_big"
+]
 for asset in iconAssets {
     let name = asset["asset"] as! String
     let width = (asset["width"] as? Int) ?? (asset["size"] as! Int)
@@ -349,6 +359,13 @@ for asset in iconAssets {
     check(entries.count == 3, "Missing scale variants for \(name)")
     for scale in 1...3 {
         let entry = entries.first { $0["scale"] == "\(scale)x" }!
+        if scale == 1 && retinaOnlyControlAssets.contains(name) {
+            check(entry["filename"] == nil, "Retina-only control asset must not provide a 1x filename for \(name)")
+            let unexpectedOneX = assetSetURL(named: name).appendingPathComponent("\(name)@1x.png")
+            check(!FileManager.default.fileExists(atPath: unexpectedOneX.path), "Retina-only control asset must not contain a generated 1x PNG for \(name)")
+            continue
+        }
+        check(entry["filename"] != nil, "Every non-exception scale must provide a filename for \(name) @\(scale)x")
         let pixels = try image(named: name, filename: entry["filename"]!)
         check(pixels.width == width * scale && pixels.height == height * scale, "Incorrect logical size for \(name)")
         var rgba = [UInt8](repeating: 0, count: pixels.width * pixels.height * 4)
