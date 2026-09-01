@@ -69,15 +69,35 @@ xcodebuild \
   -clonedSourcePackagesDirPath "$LUMINEUX_SOURCE_PACKAGES_DIR" \
   -disableAutomaticPackageResolution -skipPackageUpdates \
   -resultBundlePath "$branding_tmp/matrix-en.xcresult" \
-  -testLanguage en -testRegion US -parallel-testing-enabled NO -jobs 4 \
+  -testLanguage en -testRegion US \
+  -only-testing:LumineuxBrandingTests/LumineuxRuntimeTests/testProvidedNew3RetinaAssetsFitProductionControls \
+  -parallel-testing-enabled NO -jobs 4 \
   test CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- ARCHS=x86_64 ONLY_ACTIVE_ARCH=YES
+
+xcodebuild \
+  -workspace "$branding_tmp/runtime/LumineuxBranding.xcworkspace" \
+  -scheme LumineuxBranding -configuration Debug \
+  -destination 'platform=iOS Simulator,id=9FCF83EB-38F9-4B61-A35E-D88F8665A1B5,arch=x86_64' \
+  -destination 'platform=iOS Simulator,id=5E6F7D5C-CC01-4760-8D6E-2489835F1748,arch=x86_64' \
+  -destination 'platform=iOS Simulator,id=1B4321CD-F455-4252-8504-105435A02C9A,arch=x86_64' \
+  -maximum-concurrent-test-simulator-destinations 1 \
+  -derivedDataPath "$branding_tmp/DerivedData" \
+  -clonedSourcePackagesDirPath "$LUMINEUX_SOURCE_PACKAGES_DIR" \
+  -disableAutomaticPackageResolution -skipPackageUpdates \
+  -resultBundlePath "$branding_tmp/matrix-zh.xcresult" \
+  -testLanguage zh-Hans -testRegion CN \
+  -only-testing:LumineuxBrandingTests/LumineuxRuntimeTests/testProvidedNew3RetinaAssetsFitProductionControls \
+  -parallel-testing-enabled NO -jobs 4 \
+  test-without-building CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- ARCHS=x86_64 ONLY_ACTIVE_ARCH=YES
 ```
 
-其他机器用 `xcrun simctl list devices available` 替换设备 ID。中文沿用命令，把动作改为 `test-without-building`，语言/地区改为 `zh-Hans`/`CN`，结果路径改为新的 `matrix-zh.xcresult`。
+其他机器用 `xcrun simctl list devices available` 替换设备 ID。两条命令均只执行 new3 focused 方法：英文以 `test` 构建并运行三台设备，中文以相同产物 `test-without-building` 运行三台设备。
 
 ```sh
 xcrun xcresulttool get test-results summary --path "$branding_tmp/matrix-en.xcresult"
+xcrun xcresulttool get test-results summary --path "$branding_tmp/matrix-zh.xcresult"
 xcrun xcresulttool export attachments --path "$branding_tmp/matrix-en.xcresult" --output-path "$branding_tmp/screenshots-en"
+xcrun xcresulttool export attachments --path "$branding_tmp/matrix-zh.xcresult" --output-path "$branding_tmp/screenshots-zh"
 ```
 
 ## 构建与签名
@@ -185,7 +205,7 @@ SLGSync 的启动 storyboard 并不使用共享 `launch_logo`，而是引用品�
 
 ## 待办边界
 
-剩余 40 组 SLGSync 范围资源见 `docs/lumineux-missing-assets.md`；Common 中仅剩 `value_buoy`。没有新版的继续保留共享原图。硬编码在共享控件中的剩余紫色按 SLGSync 现状保留，不为其新增 UI 分支。服务器固定为 Europe；协议正文、云端身份和空间默认值仍待产品确认。
+当前仅剩 11 组非 FireAlarm 待提供资源，完整清单见 `docs/lumineux-missing-assets.md`；确认前继续保留共享原图。硬编码在共享控件中的剩余紫色按 SLGSync 现状保留，不为其新增 UI 分支。服务器固定为 Europe；协议正文、云端身份和空间默认值仍待产品确认。
 
 ## 2026-09-01 new3 Retina 合同与待办
 
