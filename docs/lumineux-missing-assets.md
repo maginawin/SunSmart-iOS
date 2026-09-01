@@ -1,4 +1,3 @@
-/opt/homebrew/Library/Homebrew/cmd/shellenv.sh: line 18: /bin/ps: Operation not permitted
 > 目录说明：已接入的 Lumineux 资源按 SLGSync 的十二个业务分组保存；SLGSync 不存在的同名资源只参考 SunSmart 的业务目录归类。该规则不代表复用或复制 SunSmart 图片，也不改变下文对缺失素材的判断。
 
 # Lumineux 资源接入与待提供清单
@@ -7,7 +6,7 @@
 
 ## 本次已下载并打包
 
-- 83 组同名图标：原有 72 组（Tab 10、导航 10、设备/分组/场景按钮与尺寸变体 26、收藏/加载/等待/能耗 8、页面稿补充 3、紧凑状态/扫描图标 4、Profile／Safe Mode 补充 4、用户文件夹提供的 `auto` 1、Common Retina PNG 6），再加本轮 Device 2、Energy 3、Group 3、Path 3 组 grouped Retina PNG；另有 4 组空状态插图，因此已提供资源总数为 87。已有的 `sync_loading_small` 同时改用完整 24pt 组件节点，数量不重复计算。
+- 83 组同名图标：原有 72 组（Tab 10、导航 10、设备/分组/场景按钮与尺寸变体 26、收藏/加载/等待/能耗 8、页面稿补充 3、紧凑状态/扫描图标 4、Profile／Safe Mode 补充 4、用户文件夹提供的 `auto` 1、Common Retina PNG 6），再加 Device 2、Energy 3、Group 3、Path 3 组 grouped Retina PNG；另有 4 组空状态插图和 new3 的 29 个 Retina 目标资源，因此当前已提供资源总数为 116。已有的 `sync_loading_small` 同时改用完整 24pt 组件节点，数量不重复计算。
 - 首批原稿来自四个用户提供的 Figma 框架：[Tab](https://www.figma.com/design/P4AaSxu8SJe2Tf2gpyTFT9/Lumineux_260814?node-id=9338-252618)、[导航](https://www.figma.com/design/P4AaSxu8SJe2Tf2gpyTFT9/Lumineux_260814?node-id=9338-259821)、[按钮](https://www.figma.com/design/P4AaSxu8SJe2Tf2gpyTFT9/Lumineux_260814?node-id=9338-290273)、[其他](https://www.figma.com/design/P4AaSxu8SJe2Tf2gpyTFT9/Lumineux_260814?node-id=1038-38735)。
 - 52 份完整节点矢量导出保存在 `Lumineux/DesignAssets/Figma`；资源名、节点 ID、原有 iOS 逻辑尺寸逐项记录在 `Lumineux/DesignAssets/icon-manifest.json`。仅机械缩放生成 1x/2x/3x PNG，不重绘或改色。
 - `auto` 的原始 2x/3x PNG 单独保存在 `Lumineux/DesignAssets/Provided`，catalog 保留这两份源文件的原始字节，1x 由 2x 机械缩小生成。本轮六组 Common PNG 保存在 `Lumineux/DesignAssets/Provided/Common`，只使用用户提供的 2x/3x 原文件，1x 槽位按项目现状留空，不生成图片。
@@ -101,7 +100,7 @@
 
 ## 剩余数量如何计算
 
-SLGSync 的 128 组范围扣除 4 组 Logo 和与 SunSmart 内容一致的 30 组 FireAlarm1.5 资源后，非 Fire 范围为 94 组；本轮覆盖数为 **83 / 94**，待提供数为 **11**。另有 **33** 组额外已打包资源，因此已提供资源总数为 **116**。Lumineux source catalog 为 **121** 组（119 个 imageset 加 AppIcon、AccentColor）；Task 6 构建产物需验证 merged catalog 为 **695 = 121 Lumineux + 574 Common**。
+SLGSync 的 128 组范围扣除 4 组 Logo 和与 SunSmart 内容一致的 30 组 FireAlarm1.5 资源后，非 Fire 范围为 94 组；本轮覆盖数为 **83 / 94**，待提供数为 **11**。另有 **33** 组额外已打包资源，因此已提供资源总数为 **116**。Lumineux source catalog 为 **121** 组（119 个 imageset 加 AppIcon、AccentColor）。Task 6 已完成正常 Library DerivedData 的 Lumineux Debug 真机构建：`codesign --verify --deep --strict` 通过，Bundle ID 为 `com.azoula.sunsmart.Lumineux`，签名为 Apple Development: Wen Xu (Y4NBSLQQ63)，Team 为 `JTD3WYUC58`；构建产物的 merged catalog 已逐文件验证为 **695 = 121 Lumineux + 574 Common**。
 
 ## 待提供或确认沿用
 
@@ -160,8 +159,8 @@ SLGSync 的 128 组范围扣除 4 组 Logo 和与 SunSmart 内容一致的 30 �
 
 `testProvidedNew3RetinaAssetsFitProductionControls()` 覆盖 29 个资源的独立 Lumineux source 比对和真实生产容器。Buoy 在 slider 实际触发 `valueChanged` 后严格检查布局。四个 `daylight_scheme4...7` 的 `DaylightSensorInstructionsViewCell` 存在已确认的 2.934pt 竖向 hugging 歧义；按已接受边界不改生产 Swift，测试对它们仍严格检查独立来源、可见性、具体 containment 与截图，但不使用通用 `hasAmbiguousLayout == false` 断言。其他组件继续保持严格歧义检查。
 
-Task 3 的 iPhone 16 focused 运行已产出并人工审阅 18 张附件。Task 5 已在 iOS 18.0（22A3351）的 iPhone SE 3（`9FCF83EB-38F9-4B61-A35E-D88F8665A1B5`）、iPhone 16（`5E6F7D5C-CC01-4760-8D6E-2489835F1748`）和 iPad Pro 11 M4（`1B4321CD-F455-4252-8504-105435A02C9A`）完成 en-US 与 zh-Hans-CN 六组合 focused UIKit 验证，6 次运行全部通过，0 失败、0 跳过。英文、中文结果分别为 `/private/tmp/lumineux-new3-matrix.bEfAtG/matrix-en-accepted.xcresult` 与 `/private/tmp/lumineux-new3-matrix.bEfAtG/matrix-zh-accepted.xcresult`，导出目录分别为 `/private/tmp/lumineux-new3-matrix.bEfAtG/screenshots-en-accepted` 与 `/private/tmp/lumineux-new3-matrix.bEfAtG/screenshots-zh-accepted`；共 108 张附件已逐张人工核对。
+Task 3 的 iPhone 16 focused 运行已产出并人工审阅 18 张附件。最终复核在合并后的源码提交 `1b571e871169625a61b57047594ca8d07ca5b200` 上，使用 iOS 18.0（22A3351）的 iPhone SE 3（`9FCF83EB-38F9-4B61-A35E-D88F8665A1B5`）、iPhone 16（`5E6F7D5C-CC01-4760-8D6E-2489835F1748`）和 iPad Pro 11 M4（`1B4321CD-F455-4252-8504-105435A02C9A`）重新完成 en-US `test` 与 zh-Hans-CN `test-without-building` 六组合 focused UIKit 验证，6 次运行全部通过，0 失败、0 跳过。英文、中文结果分别为 `/private/tmp/lumineux-new3-final-review.YqrNvt/matrix-en.xcresult` 与 `/private/tmp/lumineux-new3-final-review.YqrNvt/matrix-zh.xcresult`，导出目录分别为 `/private/tmp/lumineux-new3-final-review.YqrNvt/screenshots-en` 与 `/private/tmp/lumineux-new3-final-review.YqrNvt/screenshots-zh`；各 54 张、共 108 张附件已再次逐张人工核对。
 
-iPhone SE 3 的固定高度固件步骤行存在两处已接受的既有越界重叠，仅涉及 `mesh_upgrade_guide_1` 和 `mesh_upgrade_guide_3`；SunSmart 与 SLGSync 使用的对应 2x 画布同样为 344 × 202 和 288 × 80。测试只对该紧凑屏幕组合放宽两张图的行内容 containment，仍验证 Lumineux 独立来源、可见性、有限正尺寸、生产 frame、与固定高度行的有效交集和外层容器 containment；未修改生产 Swift 或 PNG。其余截图中的 buoy、固件、图表、Scene 与 Space lock 等均无错图、不合理拉伸/裁切、重叠或越界，iPad 图表保持 `_ipad` 分支。
+iPhone SE 3 的固定高度固件步骤行存在两处已接受的既有越界重叠，仅涉及 `mesh_upgrade_guide_1` 和 `mesh_upgrade_guide_3`；SunSmart 与 SLGSync 使用的对应 2x 画布同样为 344 × 202 和 288 × 80。测试只对该紧凑屏幕组合放宽两张图的行内容 containment，仍验证 Lumineux 独立来源、可见性、有限正尺寸、生产 frame、与固定高度行的有效交集和外层容器 containment；未修改生产 Swift 或 PNG。四个 `daylight_scheme4...7` cell 继续使用已接受的 2.934pt hugging 歧义边界。其余截图中的 buoy、固件、图表、Scene 与 Space lock 等均无错图、不合理拉伸/裁切、重叠或越界，iPad 图表保持 `_ipad` 分支。
 
 Task 6 在全新的正常 Library DerivedData `/Users/sr/Library/Developer/Xcode/DerivedData3/LumineuxNew3.GfYbuK` 中，以 `-disableAutomaticPackageResolution -skipPackageUpdates` 完成 Lumineux Debug generic iOS 构建。生成的 `Lumineux.app` 通过 `codesign --verify --deep --strict`；Bundle ID 为 `com.azoula.sunsmart.Lumineux`，签名为 Apple Development: Wen Xu (Y4NBSLQQ63)，Team 为 `JTD3WYUC58`。生成 catalog 共 695 组，121 组逐文件匹配 Lumineux source catalog，574 组未覆盖 Common 保持一致；`Initiator` / `initiator` 的既有大小写差异按 actool 名称语义计为同一覆盖。构建日志没有 duplicate asset 或 actool error，依赖锁、NordicSigMeshSDK revision 和工程文件均未变化。本轮只构建，未安装或启动 App；构建、签名和 catalog 核对日志分别为 `/private/tmp/lumineux-new3-task6-build.log`、`/private/tmp/lumineux-new3-task6-signing.log` 与 `/private/tmp/lumineux-new3-task6-catalog-verify.log`。
