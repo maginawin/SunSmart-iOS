@@ -3,7 +3,7 @@
 
 # Lumineux 资源接入与待提供清单
 
-核对日期：2026-09-01。Lumineux 继续使用专属构建期资源合并：公共 catalog 先复制到 `DERIVED_FILE_DIR`，再由 Lumineux 完整 asset set 覆盖同名资源，原生 actool 只编译这份生成 catalog。旧双 catalog 顺序方案已废弃；不使用运行时染色或改写共享图片调用。本轮 new3 已接入 28 对原始 Retina PNG 对应的 29 个资源，未生成 1x、未重编码、未修改生产 Swift。当前合同为 source catalog 121 组、SLGSync non-Fire 覆盖 83 / 94、待提供 11、额外已打包 33、已提供总数 116；Task 6 的合并 catalog 验收为 695 = 121 Lumineux + 574 Common。Task 5 六组合 focused UIKit 矩阵已全部通过并完成人工截图核对；Task 6 正常 DerivedData 构建/签名尚待执行，不能引用下方较早批次的验证记录作为本轮结果。
+核对日期：2026-09-01。Lumineux 继续使用专属构建期资源合并：公共 catalog 先复制到 `DERIVED_FILE_DIR`，再由 Lumineux 完整 asset set 覆盖同名资源，原生 actool 只编译这份生成 catalog。旧双 catalog 顺序方案已废弃；不使用运行时染色或改写共享图片调用。本轮 new3 已接入 28 对原始 Retina PNG 对应的 29 个资源，未生成 1x、未重编码、未修改生产 Swift。当前合同为 source catalog 121 组、SLGSync non-Fire 覆盖 83 / 94、待提供 11、额外已打包 33、已提供总数 116。Task 5 六组合 focused UIKit 矩阵已全部通过并完成人工截图核对；Task 6 的正常 DerivedData Debug 构建、签名及 695 = 121 Lumineux + 574 Common 合并 catalog 验证也已通过。
 
 ## 本次已下载并打包
 
@@ -162,4 +162,6 @@ SLGSync 的 128 组范围扣除 4 组 Logo 和与 SunSmart 内容一致的 30 �
 
 Task 3 的 iPhone 16 focused 运行已产出并人工审阅 18 张附件。Task 5 已在 iOS 18.0（22A3351）的 iPhone SE 3（`9FCF83EB-38F9-4B61-A35E-D88F8665A1B5`）、iPhone 16（`5E6F7D5C-CC01-4760-8D6E-2489835F1748`）和 iPad Pro 11 M4（`1B4321CD-F455-4252-8504-105435A02C9A`）完成 en-US 与 zh-Hans-CN 六组合 focused UIKit 验证，6 次运行全部通过，0 失败、0 跳过。英文、中文结果分别为 `/private/tmp/lumineux-new3-matrix.bEfAtG/matrix-en-accepted.xcresult` 与 `/private/tmp/lumineux-new3-matrix.bEfAtG/matrix-zh-accepted.xcresult`，导出目录分别为 `/private/tmp/lumineux-new3-matrix.bEfAtG/screenshots-en-accepted` 与 `/private/tmp/lumineux-new3-matrix.bEfAtG/screenshots-zh-accepted`；共 108 张附件已逐张人工核对。
 
-iPhone SE 3 的固定高度固件步骤行存在两处已接受的既有越界重叠，仅涉及 `mesh_upgrade_guide_1` 和 `mesh_upgrade_guide_3`；SunSmart 与 SLGSync 使用的对应 2x 画布同样为 344 × 202 和 288 × 80。测试只对该紧凑屏幕组合放宽两张图的行内容 containment，仍验证 Lumineux 独立来源、可见性、有限正尺寸、生产 frame、与固定高度行的有效交集和外层容器 containment；未修改生产 Swift 或 PNG。其余截图中的 buoy、固件、图表、Scene 与 Space lock 等均无错图、不合理拉伸/裁切、重叠或越界，iPad 图表保持 `_ipad` 分支。Task 6 仍须在新的正常 Library DerivedData 中完成 Lumineux Debug 构建、签名与 695/121/574 合并 catalog 证据，尚未执行。
+iPhone SE 3 的固定高度固件步骤行存在两处已接受的既有越界重叠，仅涉及 `mesh_upgrade_guide_1` 和 `mesh_upgrade_guide_3`；SunSmart 与 SLGSync 使用的对应 2x 画布同样为 344 × 202 和 288 × 80。测试只对该紧凑屏幕组合放宽两张图的行内容 containment，仍验证 Lumineux 独立来源、可见性、有限正尺寸、生产 frame、与固定高度行的有效交集和外层容器 containment；未修改生产 Swift 或 PNG。其余截图中的 buoy、固件、图表、Scene 与 Space lock 等均无错图、不合理拉伸/裁切、重叠或越界，iPad 图表保持 `_ipad` 分支。
+
+Task 6 在全新的正常 Library DerivedData `/Users/sr/Library/Developer/Xcode/DerivedData3/LumineuxNew3.GfYbuK` 中，以 `-disableAutomaticPackageResolution -skipPackageUpdates` 完成 Lumineux Debug generic iOS 构建。生成的 `Lumineux.app` 通过 `codesign --verify --deep --strict`；Bundle ID 为 `com.azoula.sunsmart.Lumineux`，签名为 Apple Development: Wen Xu (Y4NBSLQQ63)，Team 为 `JTD3WYUC58`。生成 catalog 共 695 组，121 组逐文件匹配 Lumineux source catalog，574 组未覆盖 Common 保持一致；`Initiator` / `initiator` 的既有大小写差异按 actool 名称语义计为同一覆盖。构建日志没有 duplicate asset 或 actool error，依赖锁、NordicSigMeshSDK revision 和工程文件均未变化。本轮只构建，未安装或启动 App；构建、签名和 catalog 核对日志分别为 `/private/tmp/lumineux-new3-task6-build.log`、`/private/tmp/lumineux-new3-task6-signing.log` 与 `/private/tmp/lumineux-new3-task6-catalog-verify.log`。
