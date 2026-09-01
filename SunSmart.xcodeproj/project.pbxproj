@@ -10205,7 +10205,7 @@
 			baseConfigurationReference = F10000000000000000000006 /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Archipelago/Archipelago.entitlements;
-				MARKETING_VERSION = 1.1.8;
+				MARKETING_VERSION = 1.1.10;
 			};
 			name = Debug;
 		};
@@ -10214,7 +10214,7 @@
 			baseConfigurationReference = F10000000000000000000007 /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Archipelago/Archipelago.entitlements;
-				MARKETING_VERSION = 1.1.8;
+				MARKETING_VERSION = 1.1.10;
 			};
 			name = Release;
 		};
@@ -10223,7 +10223,7 @@
 			baseConfigurationReference = F10000000000000000000009 /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SylSmart/SylSmart.entitlements;
-				MARKETING_VERSION = 1.1.8;
+				MARKETING_VERSION = 1.1.10;
 			};
 			name = Debug;
 		};
@@ -10232,7 +10232,7 @@
 			baseConfigurationReference = F1000000000000000000000A /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SylSmart/SylSmart.entitlements;
-				MARKETING_VERSION = 1.1.8;
+				MARKETING_VERSION = 1.1.10;
 			};
 			name = Release;
 		};
@@ -10368,7 +10368,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.1.8;
+				MARKETING_VERSION = 1.1.10;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Debug;
@@ -10389,7 +10389,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.1.8;
+				MARKETING_VERSION = 1.1.10;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Release;
@@ -10402,7 +10402,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.1.8;
+				MARKETING_VERSION = 1.1.10;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Debug;
@@ -10415,7 +10415,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.1.8;
+				MARKETING_VERSION = 1.1.10;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Release;
@@ -10484,8 +10484,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "git@gitee.com:sunricher-i-os/nordic-sig-mesh-sdk.git";
 			requirement = {
-				branch = release;
-				kind = branch;
+				kind = revision;
+				revision = 86f5ec9e40148b9cd93e0512702337fcec41dd40;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

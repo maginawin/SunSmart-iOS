@@ -24,6 +24,20 @@ struct NightCalibrationWorkflowContractTests {
                 manager.contains("stableWindowSize"),
             "SDK must expose a three-pair Night calibration path with stable-window sampling"
         )
+        let initialize = section(
+            in: manager,
+            from: "private func initialize()",
+            to: "private func stabilityVerify()"
+        )
+        require(
+            initialize.contains("case .night:") &&
+                initialize.contains("event: \"environment_stability_skipped\"") &&
+                initialize.contains("reason=controlled_night_sampling") &&
+                initialize.contains("self.setLightingAndSensorInflectionPoint()") &&
+                initialize.contains("case .plane, .sensor:") &&
+                initialize.contains("self.stabilityVerify()"),
+            "Night must skip the uncontrolled environment gate while Plane and Sensor retain it"
+        )
         require(
             manager.contains("case .night:") &&
                 manager.contains("setIdentityCalibrateRate()") &&
@@ -87,13 +101,20 @@ struct NightCalibrationWorkflowContractTests {
         )
         require(
             controller.contains("LightLCLightOnOffSetUnacknowledged(false)") &&
+                controller.contains("beginDaylightCalibration(mode: \"plane\")") &&
+                controller.contains("beginDaylightCalibration(mode: \"night\")") &&
+                controller.contains("beginDaylightCalibration(mode: \"sensor\")") &&
                 controller.contains("saveCalibrationMode(.none)"),
-            "An incomplete rollback must clear Active and disable Group auto"
+            "Every calibration mode must suspend Group Auto and an incomplete rollback must keep Auto disabled"
         )
         require(
             controller.contains("isNightRecalibrationDraft = true") &&
                 controller.contains("effectiveActiveCalibrationMode == .nightCal && !isNightRecalibrationDraft"),
             "Re-calibrate must be a page-only draft that does not erase stored Night Active"
+        )
+        require(
+            controller.contains("let initialMode = lightSensorMode(for: effectiveActiveCalibrationMode) ?? .night"),
+            "An uncalibrated daylight Group must initially select Night Cal. while Active remains None"
         )
         let initialAboutExpansion = "calibrationAboutView.setExpanded(effectiveActiveCalibrationMode == .none)"
         require(
@@ -163,5 +184,13 @@ struct NightCalibrationWorkflowContractTests {
         guard condition() else {
             fatalError(message)
         }
+    }
+
+    private static func section(in source: String, from start: String, to end: String) -> String {
+        guard let startRange = source.range(of: start),
+              let endRange = source.range(of: end, range: startRange.upperBound..<source.endIndex) else {
+            fatalError("Missing section from \(start) to \(end)")
+        }
+        return String(source[startRange.lowerBound..<endRange.lowerBound])
     }
 }

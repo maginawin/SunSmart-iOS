@@ -40,9 +40,12 @@ class LightSensorCalibrationViewController: UIViewController {
     private var isNightRecalibrationDraft = false
     private var isSensorRecalibrationDraft = false
     private var sensorCalibrationDimLevel = 50
-    private var isSensorGroupAutoSuspended = false
-    private var sensorConfigurationPending = false
-    private var sensorAutoRestoreBlocked = false
+    private var isDaylightGroupAutoSuspended = false
+    private var daylightConfigurationPending = false
+    private var daylightAutoRestoreBlocked = false
+    private var isDaylightCalibrationInProgress = false
+    private var activeDaylightCalibrationMode: String?
+    private var interactivePopGestureWasEnabled: Bool?
     private var pendingUseSensorReadingAddress: Address?
     private var pendingUseSensorReadingToken: UUID?
     private var latestFreshSensorLux: (address: Address, lux: UInt16, date: Date)?
@@ -133,7 +136,7 @@ class LightSensorCalibrationViewController: UIViewController {
         }
         sensorSelectView.daylightSensors = group.ambientLightSensorNodes
         updateActiveCalibrationMode()
-        let initialMode = lightSensorMode(for: effectiveActiveCalibrationMode) ?? .plane
+        let initialMode = lightSensorMode(for: effectiveActiveCalibrationMode) ?? .night
         calibrationModeView.setSelectedMode(initialMode, notify: true)
         calibrationAboutView.setExpanded(effectiveActiveCalibrationMode == .none)
         updateManualCorrectionBtn()
@@ -190,6 +193,16 @@ class LightSensorCalibrationViewController: UIViewController {
 //    }
     
     @objc private func backAction() {
+        if isDaylightCalibrationInProgress {
+            SRAlertView(
+                title: "configuring".localizedString,
+                message: "calibration_exit_failed".localizedString,
+                actions: [
+                    SRAlertAction(title: "keep_calibrating".localizedString, style: .cancel)
+                ]
+            ).show()
+            return
+        }
         
         let loading = group.ambientLightSensorNodes.contains(where: { $0.selectState == .loading })
         
@@ -441,10 +454,16 @@ class LightSensorCalibrationViewController: UIViewController {
     }
     
     private func restoreGroupAutoAfterDaylightCalibration() {
-        guard shouldRestoreAutoAfterDaylightCalibration else { return }
-        isSensorGroupAutoSuspended = false
-        sensorConfigurationPending = false
-        sensorAutoRestoreBlocked = false
+        let mode = activeDaylightCalibrationMode ?? "<none>"
+        let wasSuspended = isDaylightGroupAutoSuspended
+        isDaylightGroupAutoSuspended = false
+        daylightConfigurationPending = false
+        daylightAutoRestoreBlocked = false
+        isDaylightCalibrationInProgress = false
+        activeDaylightCalibrationMode = nil
+        setDaylightCalibrationNavigationLocked(false)
+        guard wasSuspended, shouldRestoreAutoAfterDaylightCalibration else { return }
+        print("[DaylightCalibrationDebug] event=group_auto_restore mode=\(mode)")
         MeshAPI.sendMessage(
             message: LightLCLightOnOffSetUnacknowledged(true, transitionTime: .default, delay: 0),
             address: group.address.address
@@ -456,25 +475,75 @@ class LightSensorCalibrationViewController: UIViewController {
         sensorComplete: Bool
     ) {
         if mode == .sensor && !sensorComplete {
-            suspendGroupAutoForSensorCalibration()
+            suspendGroupAutoForDaylightCalibration()
         } else {
             restoreGroupAutoAfterSensorDraftIfNeeded()
         }
     }
 
-    private func suspendGroupAutoForSensorCalibration() {
-        guard !isSensorGroupAutoSuspended else { return }
-        isSensorGroupAutoSuspended = true
+    private func suspendGroupAutoForDaylightCalibration() {
+        guard shouldRestoreAutoAfterDaylightCalibration,
+              !isDaylightGroupAutoSuspended else {
+            return
+        }
+        isDaylightGroupAutoSuspended = true
         MeshAPI.sendMessage(
             message: LightLCLightOnOffSetUnacknowledged(false),
             address: group.address.address
         )
     }
 
+    private func beginDaylightCalibration(mode: String) {
+        isDaylightCalibrationInProgress = true
+        daylightConfigurationPending = false
+        daylightAutoRestoreBlocked = false
+        activeDaylightCalibrationMode = mode
+        setDaylightCalibrationNavigationLocked(true)
+        suspendGroupAutoForDaylightCalibration()
+        print("[DaylightCalibrationDebug] event=group_auto_suspend mode=\(mode) suspended=\(isDaylightGroupAutoSuspended)")
+    }
+
+    private func finishDaylightCalibrationSDKStage() {
+        isDaylightCalibrationInProgress = false
+        daylightConfigurationPending = true
+        setDaylightCalibrationNavigationLocked(false)
+    }
+
+    private func finishDaylightCalibrationFailure(allowAutoRestore: Bool) {
+        isDaylightCalibrationInProgress = false
+        daylightConfigurationPending = false
+        daylightAutoRestoreBlocked = !allowAutoRestore
+        setDaylightCalibrationNavigationLocked(false)
+        if allowAutoRestore {
+            restoreGroupAutoAfterDaylightCalibration()
+        }
+    }
+
+    private func canRestoreGroupAuto(after error: CalibrateError) -> Bool {
+        if case .calibrationRollbackFailed = error {
+            return false
+        }
+        return true
+    }
+
+    private func setDaylightCalibrationNavigationLocked(_ locked: Bool) {
+        guard let gesture = navigationController?.interactivePopGestureRecognizer else { return }
+        if locked {
+            if interactivePopGestureWasEnabled == nil {
+                interactivePopGestureWasEnabled = gesture.isEnabled
+            }
+            gesture.isEnabled = false
+        } else if let wasEnabled = interactivePopGestureWasEnabled {
+            gesture.isEnabled = wasEnabled
+            interactivePopGestureWasEnabled = nil
+        }
+    }
+
     private func restoreGroupAutoAfterSensorDraftIfNeeded() {
-        guard isSensorGroupAutoSuspended,
-              !sensorConfigurationPending,
-              !sensorAutoRestoreBlocked else {
+        guard isDaylightGroupAutoSuspended,
+              !isDaylightCalibrationInProgress,
+              !daylightConfigurationPending,
+              !daylightAutoRestoreBlocked else {
             return
         }
         restoreGroupAutoAfterDaylightCalibration()
@@ -485,8 +554,8 @@ class LightSensorCalibrationViewController: UIViewController {
               !isSensorCalibrationComplete else {
             return
         }
-        let wasSuspended = isSensorGroupAutoSuspended
-        suspendGroupAutoForSensorCalibration()
+        let wasSuspended = isDaylightGroupAutoSuspended
+        suspendGroupAutoForDaylightCalibration()
         if !wasSuspended {
             restoreSensorDimLevel()
         }
@@ -514,7 +583,7 @@ class LightSensorCalibrationViewController: UIViewController {
             return
         }
         sensorCalibrationDimLevel = value
-        suspendGroupAutoForSensorCalibration()
+        suspendGroupAutoForDaylightCalibration()
         MeshAPI.setGroupLightnessState(
             address: group.address.address,
             lightness: Node.getLightness(lightness100: value)
@@ -530,11 +599,7 @@ class LightSensorCalibrationViewController: UIViewController {
 
     private func restoreSensorDimLevelAndAutoAfterFailure(allowAutoRestore: Bool) {
         restoreSensorDimLevel()
-        sensorConfigurationPending = false
-        sensorAutoRestoreBlocked = !allowAutoRestore
-        if allowAutoRestore {
-            restoreGroupAutoAfterSensorDraftIfNeeded()
-        }
+        finishDaylightCalibrationFailure(allowAutoRestore: allowAutoRestore)
     }
 
     private func requestSensorTargetReading() {
@@ -666,6 +731,7 @@ class LightSensorCalibrationViewController: UIViewController {
         // 禁用组内移动传感器上报
 //        disablePresenceDetectedSensorPublish()
         
+        beginDaylightCalibration(mode: "plane")
         setLuxPollingSuspended(true, for: .calibration)
         showConnecting()
 
@@ -688,6 +754,7 @@ class LightSensorCalibrationViewController: UIViewController {
             }
         } successful: { [weak self] _ in
             guard let self = self else { return }
+            self.finishDaylightCalibrationSDKStage()
             SRAlertView.hide()
             sensor.selectState = .loading
             self.sensorSelectView.reloadSensorCell(sensor: sensor)
@@ -729,12 +796,16 @@ class LightSensorCalibrationViewController: UIViewController {
                         self.updateManualCorrectionBtn()
                     } else {
                         self.saveCalibrationMode(.none)
+                        self.finishDaylightCalibrationFailure(allowAutoRestore: true)
                     }
                 }
                 self.setLuxPollingSuspended(false, for: .calibration)
             }
         } failed: {[weak self] _, error in
             guard let self = self  else { return }
+            self.finishDaylightCalibrationFailure(
+                allowAutoRestore: self.canRestoreGroupAuto(after: error)
+            )
             switch error {
             case .connectTimeout, .disconnect:
                 self.showConnectFailed()
@@ -856,6 +927,7 @@ class LightSensorCalibrationViewController: UIViewController {
             return
         }
 
+        beginDaylightCalibration(mode: "night")
         setLuxPollingSuspended(true, for: .calibration)
         showConnecting()
         let targetBrightness = targetNightBrightnessView.value
@@ -884,6 +956,7 @@ class LightSensorCalibrationViewController: UIViewController {
             },
             successful: { [weak self] _, result in
                 guard let self else { return }
+                self.finishDaylightCalibrationSDKStage()
                 SRAlertView.hide()
                 self.finishNightCalibration(
                     sensor: sensor,
@@ -894,6 +967,9 @@ class LightSensorCalibrationViewController: UIViewController {
             },
             failed: { [weak self] _, error in
                 guard let self else { return }
+                self.finishDaylightCalibrationFailure(
+                    allowAutoRestore: self.canRestoreGroupAuto(after: error)
+                )
                 switch error {
                 case .connectTimeout, .disconnect:
                     self.showConnectFailed()
@@ -940,7 +1016,8 @@ class LightSensorCalibrationViewController: UIViewController {
                     to: rollbackSnapshot.selectedSensorCalibrationData
                 ) { [weak self] calibrationRollbackSucceeded in
                     guard let self else { return }
-                    if !publicationRollbackSucceeded || !calibrationRollbackSucceeded {
+                    let rollbackSucceeded = publicationRollbackSucceeded && calibrationRollbackSucceeded
+                    if !rollbackSucceeded {
                         self.invalidateCalibrationAfterRollbackFailure()
                     }
                     self.group.ambientLightSensorNodes
@@ -951,7 +1028,8 @@ class LightSensorCalibrationViewController: UIViewController {
                     self.sensorSelectView.reloadSensorCell(sensor: sensor)
                     self.setLuxPollingSuspended(false, for: .calibration)
                     self.setLuxPollingSuspended(false, for: .configuration)
-                    let message = publicationRollbackSucceeded && calibrationRollbackSucceeded
+                    self.finishDaylightCalibrationFailure(allowAutoRestore: rollbackSucceeded)
+                    let message = rollbackSucceeded
                         ? "connection_failure".localizedString
                         : "calibration_rollback_failure".localizedString
                     self.showCalibrationFailed(message: message)
@@ -1039,9 +1117,7 @@ class LightSensorCalibrationViewController: UIViewController {
         }
 
         sensorCalibrationDimLevel = targetSensorValueView.dimLevel
-        sensorConfigurationPending = false
-        sensorAutoRestoreBlocked = false
-        suspendGroupAutoForSensorCalibration()
+        beginDaylightCalibration(mode: "sensor")
         setLuxPollingSuspended(true, for: .calibration)
         showConnecting()
         let rollbackSnapshot = makeDaylightCalibrationSnapshot(for: sensor)
@@ -1067,6 +1143,7 @@ class LightSensorCalibrationViewController: UIViewController {
             },
             successful: { [weak self] _ in
                 guard let self else { return }
+                self.finishDaylightCalibrationSDKStage()
                 SRAlertView.hide()
                 self.finishSensorCalibration(
                     sensor: sensor,
@@ -1141,7 +1218,6 @@ class LightSensorCalibrationViewController: UIViewController {
             NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
 
             self.isSensorRecalibrationDraft = false
-            self.sensorConfigurationPending = true
             sensor.selectState = .switchOn
             self.selectSensor = sensor
             self.sensorSelectView.reloadSensorCell(sensor: sensor)
