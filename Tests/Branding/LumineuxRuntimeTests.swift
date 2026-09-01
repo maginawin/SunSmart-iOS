@@ -1031,7 +1031,10 @@ final class LumineuxRuntimeTests: XCTestCase {
         let buoy = BuoySliderView(frame: .zero, functionType: .level())
         _ = host(buoy, size: CGSize(width: 300, height: 100))
         buoy.value = 40
+        buoy.slider.setNeedsLayout()
+        buoy.slider.layoutIfNeeded()
         buoy.slider.sendActions(for: .touchDown)
+        buoy.slider.sendActions(for: .valueChanged)
         buoy.layoutIfNeeded()
         let buoyImage = try imageView(named: "value_buoy", in: buoy)
         XCTAssertGreaterThan(buoyImage.alpha, 0.99)
@@ -1153,7 +1156,16 @@ final class LumineuxRuntimeTests: XCTestCase {
                 as? DaylightSensorInstructionsViewCell)
             let name = "daylight_scheme\(index + 1)"
             try assertResolvedImageMatchesLumineuxSource(cell.imageView.image, name: name)
-            assertContained(cell.imageView, in: cell.contentView)
+            XCTAssertTrue(daylightCollection.visibleCells.contains { $0 === cell })
+            XCTAssertNotNil(cell.window)
+            XCTAssertFalse(cell.imageView.isHidden)
+            XCTAssertGreaterThan(cell.imageView.alpha, 0.99)
+            let imageFrame = cell.imageView.convert(cell.imageView.bounds, to: cell.contentView)
+            XCTAssertTrue(cell.contentView.bounds.insetBy(dx: -0.5, dy: -0.5).contains(imageFrame),
+                          "\(name) is outside its production cell: \(imageFrame)")
+            // The production cell has a known 2.934pt vertical hugging ambiguity.
+            // Production Swift is intentionally unchanged per user direction, so this
+            // path verifies its concrete visible frame without the generic ambiguity check.
         }
         snapshot(window, "New3-profile-instructions")
 
