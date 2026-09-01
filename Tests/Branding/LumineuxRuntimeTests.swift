@@ -1018,12 +1018,54 @@ final class LumineuxRuntimeTests: XCTestCase {
             try assertResolvedImageMatchesLumineuxSource(UIImage(named: name), name: name)
         }
 
+        func assertAcceptedCompactFirmwareGuideOverflow(_ imageView: UIImageView,
+                                                        named name: String,
+                                                        in parent: UIView) {
+            // SunSmart and SLGSync use the same @2x canvases (344x202 and
+            // 288x80) inside these fixed-height production rows. The user
+            // accepted the existing compact-iPhone overflow for only these
+            // two guide images, so keep concrete layout evidence while the
+            // outer guide container remains subject to strict containment.
+            let expectedSizes: [String: CGSize] = [
+                "mesh_upgrade_guide_1": CGSize(width: 172, height: 101),
+                "mesh_upgrade_guide_3": CGSize(width: 144, height: 40)
+            ]
+            let expectedSize = expectedSizes[name]!
+            let frame = imageView.convert(imageView.bounds, to: parent)
+            let components = [frame.minX, frame.minY, frame.width, frame.height]
+
+            XCTAssertFalse(imageView.isHidden)
+            XCTAssertGreaterThan(imageView.alpha, 0.99)
+            XCTAssertTrue(components.allSatisfy(\.isFinite),
+                          "\(name) must retain a finite production frame: \(frame)")
+            XCTAssertGreaterThan(frame.width, 0)
+            XCTAssertGreaterThan(frame.height, 0)
+            XCTAssertEqual(frame.width, expectedSize.width, accuracy: 0.01)
+            XCTAssertEqual(frame.height, expectedSize.height, accuracy: 0.01)
+            XCTAssertGreaterThanOrEqual(frame.minX, -0.5)
+            XCTAssertGreaterThanOrEqual(frame.minY, -0.5)
+            let intersection = parent.bounds.intersection(frame)
+            XCTAssertFalse(intersection.isNull,
+                           "\(name) must intersect its fixed-height production row")
+            XCTAssertGreaterThan(intersection.width * intersection.height, 0)
+            XCTAssertFalse(imageView.hasAmbiguousLayout)
+        }
+
         func imageView(named name: String, in container: UIView) throws -> UIImageView {
             let imageView = try XCTUnwrap(descendants(container).compactMap { $0 as? UIImageView }
                 .first { image($0.image, matchesNamed: name) },
                 "Production view did not load image: \(name)")
             try assertResolvedImageMatchesLumineuxSource(imageView.image, name: name)
-            assertContained(imageView, in: imageView.superview ?? container)
+            let parent = imageView.superview ?? container
+            let compactIPhoneGeometry = !isIPad &&
+                window.bounds.width <= 375 && window.bounds.height <= 667
+            let acceptsCompactFirmwareGuideOverflow = compactIPhoneGeometry &&
+                ["mesh_upgrade_guide_1", "mesh_upgrade_guide_3"].contains(name)
+            if acceptsCompactFirmwareGuideOverflow {
+                assertAcceptedCompactFirmwareGuideOverflow(imageView, named: name, in: parent)
+            } else {
+                assertContained(imageView, in: parent)
+            }
             assertContained(imageView, in: container)
             return imageView
         }
