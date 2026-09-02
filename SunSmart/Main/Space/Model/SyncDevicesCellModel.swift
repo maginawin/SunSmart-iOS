@@ -400,7 +400,9 @@ enum DeviceOperationType {
             case .proximityLightingRelayNumber(let relayNumber):
                 return node.proximityLightingRelayCount == relayNumber
             case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
-                return node.proximityLightingRelayCount == relayNumber && node.proximityLightingNeighborAddresses.sorted() == neighborAddresses.sorted()
+                return node.proximityLightingEnabled
+                    && node.proximityLightingRelayCount == relayNumber
+                    && node.proximityLightingNeighborAddresses.sorted() == neighborAddresses.sorted()
             case .gatewaySIMAPN(let apn):
                 return node.gatewayInfo?.simInfo?.apn == apn
             case .gatewayMQTTInformation(let mqttInformation):

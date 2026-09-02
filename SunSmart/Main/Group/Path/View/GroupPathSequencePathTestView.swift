@@ -39,21 +39,33 @@ class GroupPathSequencePathTestView: UIView {
     private var progressLabel: UILabel!
     
     private let type: TestType
-    private let group: Group
+    private let groupAddresses: [Address]
     private var addresses: [Address]
     private var state: State = .none
     private var controlTimer: Timer?
     
     private var progress: Int = 0
 
-    init(type: TestType = .path, group: Group, addresses: [Address]) {
+    init(
+        type: TestType = .path,
+        groupAddresses: [Address],
+        addresses: [Address]
+    ) {
         self.type = type
-        self.group = group
+        self.groupAddresses = Array(Set(groupAddresses)).sorted()
         self.addresses = addresses
         
         super.init(frame: UIScreen.main.bounds)
         
         setupUI()
+    }
+
+    convenience init(type: TestType = .path, group: Group, addresses: [Address]) {
+        self.init(
+            type: type,
+            groupAddresses: [group.address.address],
+            addresses: addresses
+        )
     }
     
     required init?(coder: NSCoder) {
@@ -193,7 +205,9 @@ class GroupPathSequencePathTestView: UIView {
         if sender.isSelected {
             if state == .none {
                 // 把组内灯熄灭
-                MeshAPI.setGroupOnOffState(address: group.address.address, isOn: false)
+                groupAddresses.forEach { groupAddress in
+                    MeshAPI.setGroupOnOffState(address: groupAddress, isOn: false)
+                }
                 startControlTimer(fireDelay: 2.5)
             }else {
                 startControlTimer()

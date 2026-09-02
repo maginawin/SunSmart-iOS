@@ -302,7 +302,7 @@ class GroupPathSequenceManuallyAddView: UIView {
         groupFilterSelectedIndex = max(0, min(selectedGroupIndex, max(groupTitles.count - 1, 0)))
         groupTitleLabel.text = groupFilterTitles.isEmpty ? nil : groupFilterTitles[groupFilterSelectedIndex]
         showAdded = showAddedOnly
-        groupFilterView.isHidden = false
+        groupFilterView.isHidden = !guideContentView.isHidden
         updateFilterTitle()
         addTypeView.snp.remakeConstraints { make in
             make.left.equalTo(groupFilterView.snp.right).offset(8)

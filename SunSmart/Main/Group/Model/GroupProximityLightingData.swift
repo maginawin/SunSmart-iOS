@@ -212,6 +212,202 @@ class GroupProximityLightingPathZone: NSObject, Codable, Copyable {
     
 }
 
+enum ProximityLightingTopologyPlanner {
+
+    typealias Plan = ProximityLightingTopologyPolicy.Plan
+
+    static func capacityLimitMessage(for plan: Plan) -> String? {
+        guard let violation = plan.capacityViolations.first else {
+            return nil
+        }
+        return String(
+            format: "proximity_lighting_neighbor_limit_exceeded".localizedString,
+            violation.maximumNeighborCount
+        )
+    }
+
+    static func makePlan(
+        space: SpaceData,
+        groupPathOverrides: [Address: GroupProximityLightingPathData] = [:],
+        spaceTriggerZonesOverride: [SpaceTriggerZone]? = nil,
+        additionalGroupMembers: [Address: Set<Address>] = [:]
+    ) -> Plan {
+        let groups = MeshNetworkManager.instance.groups.filter {
+            $0.subNetworkId == space.meshNetworkId
+        }
+        return makePlan(
+            groups: groups,
+            groupPathOverrides: groupPathOverrides,
+            spaceTriggerZones: spaceTriggerZonesOverride ?? space.triggerZones,
+            additionalGroupMembers: additionalGroupMembers
+        )
+    }
+
+    static func makePlan(
+        groups: [Group],
+        groupPathOverrides: [Address: GroupProximityLightingPathData] = [:],
+        spaceTriggerZones: [SpaceTriggerZone] = [],
+        additionalGroupMembers: [Address: Set<Address>] = [:]
+    ) -> Plan {
+        let eligibleGroups = groups.filter { isEligible($0) }
+        let groupSnapshots = eligibleGroups.map { group in
+            makeGroupSnapshot(
+                group: group,
+                pathOverride: groupPathOverrides[group.address.address],
+                additionalMemberAddresses: additionalGroupMembers[group.address.address] ?? []
+            )
+        }
+        return ProximityLightingTopologyPolicy.makePlan(
+            groups: groupSnapshots,
+            spaceZones: makeSpaceZoneSnapshots(spaceTriggerZones)
+        )
+    }
+
+    static func makePlan(
+        for node: Node,
+        contextGroup: Group? = nil
+    ) -> Plan {
+        let group = contextGroup ?? node.group
+        var additionalGroupMembers: [Address: Set<Address>] = [:]
+        if let group, node.groupState != .exitFailure {
+            additionalGroupMembers[group.address.address] = [normalizedAddress(for: node)]
+        }
+
+        if let subNetworkId = group?.subNetworkId,
+           let space = SpaceData.load(subNetworkId: subNetworkId) {
+            return makePlan(
+                space: space,
+                additionalGroupMembers: additionalGroupMembers
+            )
+        }
+
+        return makePlan(
+            groups: group.map { [$0] } ?? [],
+            additionalGroupMembers: additionalGroupMembers
+        )
+    }
+
+    static func makeSpaceZoneSnapshots(
+        _ zones: [SpaceTriggerZone]
+    ) -> [ProximityLightingTopologyPolicy.SpaceZoneSnapshot] {
+        return zones.map { zone in
+            .init(
+                members: zone.items.map {
+                    .init(
+                        groupAddress: $0.groupAddress,
+                        deviceAddress: $0.deviceAddress
+                    )
+                }
+            )
+        }
+    }
+
+    static func affectedDeviceAddresses(
+        oldSpaceZones: [SpaceTriggerZone],
+        newSpaceZones: [SpaceTriggerZone]
+    ) -> Set<Address> {
+        return ProximityLightingTopologyPolicy.affectedDeviceAddresses(
+            oldSpaceZones: makeSpaceZoneSnapshots(oldSpaceZones),
+            newSpaceZones: makeSpaceZoneSnapshots(newSpaceZones)
+        )
+    }
+
+    static func normalizedAddress(for node: Node) -> Address {
+        return node.sunricherVendorModel?.parentElement?.unicastAddress
+            ?? node.primaryUnicastAddress
+    }
+
+    static func isEligible(_ group: Group) -> Bool {
+        return group.info.profile.type == .proximityLighting
+            || group.info.profile.type == .proximityLightingWithPhotocell
+    }
+
+    private static func makeGroupSnapshot(
+        group: Group,
+        pathOverride: GroupProximityLightingPathData?,
+        additionalMemberAddresses: Set<Address>
+    ) -> ProximityLightingTopologyPolicy.GroupSnapshot {
+        let path = pathOverride ?? group.info.proximityLightingPath
+        let currentMemberAddresses = Set(
+            group.nodes
+                .filter { $0.groupState != .exitFailure }
+                .map { normalizedAddress(for: $0) }
+        )
+        return .init(
+            address: group.address.address,
+            relayNumber: group.info.profile.proximityLightingNumber,
+            memberAddresses: currentMemberAddresses.union(additionalMemberAddresses),
+            paths: path?.paths.map { $0.items.map(\.address) } ?? [],
+            zones: path?.zones.map(\.addresses) ?? []
+        )
+    }
+}
+
+extension SpaceData {
+
+    @discardableResult
+    func migrateProximityLightingReferences(
+        from oldAddress: Address,
+        to newAddress: Address
+    ) -> Bool {
+        guard oldAddress != newAddress else {
+            return false
+        }
+
+        let affectedGroups = MeshNetworkManager.instance.groups.filter { group in
+            guard group.subNetworkId == meshNetworkId,
+                  let path = group.info.proximityLightingPath else {
+                return false
+            }
+            return path.paths.contains { path in
+                path.items.contains { $0.address == oldAddress }
+            } || path.zones.contains { $0.addresses.contains(oldAddress) }
+        }
+        let hasSpaceZoneReference = triggerZones.contains { zone in
+            zone.items.contains { $0.deviceAddress == oldAddress }
+        }
+
+        guard !affectedGroups.isEmpty || hasSpaceZoneReference else {
+            return false
+        }
+
+        markLocalChangePendingCloudSync()
+
+        affectedGroups.forEach { group in
+            guard let path = group.info.proximityLightingPath else {
+                return
+            }
+            path.paths.forEach { path in
+                path.items.forEach { item in
+                    if item.address == oldAddress {
+                        item.address = newAddress
+                    }
+                }
+            }
+            path.zones.forEach { zone in
+                zone.addresses = zone.addresses.map { address in
+                    address == oldAddress ? newAddress : address
+                }
+            }
+            group.info.save()
+            group.updateGroupSyncState()
+        }
+
+        if hasSpaceZoneReference {
+            triggerZones.forEach { zone in
+                zone.items.forEach { item in
+                    if item.deviceAddress == oldAddress {
+                        item.deviceAddress = newAddress
+                    }
+                }
+            }
+            save()
+        }
+
+        return true
+    }
+}
+
 /// 邻近照明-节点信息
 class NodeProximityLightingData {
     

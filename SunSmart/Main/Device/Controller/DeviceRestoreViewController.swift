@@ -1959,6 +1959,22 @@ class DeviceRestoreViewController: UIViewController {
         return SpaceData.load(subNetworkId: site.meshNetworkId)
     }
 
+    private func proximityLightingRestoreSpace(
+        oldNode: Node,
+        newNode: Node,
+        restoredGroup: Group?
+    ) -> SpaceData? {
+        if let space {
+            return space
+        }
+        if let subNetworkId = restoredGroup?.subNetworkId
+            ?? newNode.subNetworkId
+            ?? oldNode.subNetworkId {
+            return SpaceData.load(subNetworkId: subNetworkId)
+        }
+        return SpaceData.load(subNetworkId: site.meshNetworkId)
+    }
+
     @discardableResult
     private func restoreEmergencyFireControllerIfNeeded(oldNode: Node, newNode: Node) -> DeviceEmerFireData? {
         guard isMatchingRegisteredEmergencyController(oldNode: oldNode, newNode: newNode),
@@ -2234,6 +2250,16 @@ class DeviceRestoreViewController: UIViewController {
             if addDevice.deviceType != .emergencyController {
                 // EFC 必须等待 Composition 身份确认，不能降级执行普通恢复数据迁移。
                 node.updateResoreData(oldNode: oldNode, resoreGroup: addToGroup)
+                if let restoreSpace = proximityLightingRestoreSpace(
+                    oldNode: oldNode,
+                    newNode: node,
+                    restoredGroup: addToGroup
+                ) {
+                    restoreSpace.migrateProximityLightingReferences(
+                        from: ProximityLightingTopologyPlanner.normalizedAddress(for: oldNode),
+                        to: ProximityLightingTopologyPlanner.normalizedAddress(for: node)
+                    )
+                }
                 node.batteryPowerSwitchRestoreTargetSubscriptionSnapshots = oldNode.makeBatteryPowerSwitchRestoreTargetSubscriptionSnapshots(
                     group: addToGroup
                 )

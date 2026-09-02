@@ -40,6 +40,14 @@ struct PathTopologyPersistenceContractTests {
             root,
             "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift"
         )
+        let topologyPolicy = try source(
+            root,
+            "SunSmart/Main/Group/Model/ProximityLightingTopologyPolicy.swift"
+        )
+        let nodeSyncData = try source(
+            root,
+            "SunSmart/Common/Data/Node+SyncData.swift"
+        )
 
         require(
             spaceController.contains("func markLocalChangePendingCloudSync()"),
@@ -75,11 +83,23 @@ struct PathTopologyPersistenceContractTests {
         )
         require(
             appearsBefore(
-                "let equalPath = groupPath.copy()",
-                "groupPath.paths = vc.setPaths",
+                "let savedPath = group.info.proximityLightingPath?.copy()",
+                "proposedPath.paths = vc.setPaths",
                 in: groupSave
             ),
             "Group Path must snapshot persisted data before merging child edits"
+        )
+        require(
+            appearsBefore(
+                "ProximityLightingTopologyPlanner.makePlan(",
+                "group.info.proximityLightingPath = groupPath",
+                in: groupSave
+            ),
+            "Group Path must validate the merged topology before persistence"
+        )
+        require(
+            groupSave.contains("groupPathOverrides: [group.address.address: proposedPath]"),
+            "Group Path save must compile the proposed path with Space topology"
         )
         require(
             appearsBefore(
@@ -176,6 +196,17 @@ struct PathTopologyPersistenceContractTests {
             triggerZoneController.contains("private func sanitizeSetZones()"),
             "Trigger Zone must expose one sanitizer for its working copy"
         )
+        require(
+            topologyPolicy.contains("relayNumbersByDeviceAddress[address] = group.relayNumber"),
+            "Each device relay must come from its owner Group Profile snapshot"
+        )
+        require(
+            !topologyPolicy.contains("RelayConflict")
+                && !groupPathController.contains("hasRelayConflict")
+                && !triggerZoneController.contains("hasRelayConflict")
+                && !nodeSyncData.contains("hasRelayConflict"),
+            "Different Group Profile relay values must not block merged topology sync"
+        )
 
         let initializer = section(
             in: triggerZoneController,
@@ -198,21 +229,21 @@ struct PathTopologyPersistenceContractTests {
             ),
             "Space Trigger Zone must write the cloud marker before logical persistence"
         )
-
-        let desiredNeighbors = section(
-            in: triggerZoneController,
-            from: "private func desiredNeighborAddresses",
-            to: "private func appendNode"
-        )
         require(
-            !desiredNeighbors.contains("eligibleZoneMemberKeys()"),
-            "Per-node neighbor calculation must not rebuild global eligibility"
-        )
-        require(
-            desiredNeighbors.contains(
-                "eligibleKeys: Set<SpaceTriggerZoneMemberKey>"
+            appearsBefore(
+                "ProximityLightingTopologyPlanner.makePlan(",
+                "space.triggerZones = newZones",
+                in: triggerZoneSave
             ),
-            "Per-node neighbor calculation must receive the operation eligibility set"
+            "Space Trigger Zone must validate the merged topology before persistence"
+        )
+        require(
+            triggerZoneSave.contains("spaceTriggerZonesOverride: newZones"),
+            "Space Trigger Zone must compile its proposed zones with Group topology"
+        )
+        require(
+            triggerZoneSave.contains("let syncDatas = buildAllSyncDatas(using: plan)"),
+            "Space Trigger Zone save must include every outstanding task shown by Devices not synced"
         )
 
         let sanitizer = section(
@@ -231,22 +262,56 @@ struct PathTopologyPersistenceContractTests {
 
         let syncBuilder = section(
             in: triggerZoneController,
-            from: "private func buildSyncDatas()",
-            to: "private func desiredNeighborAddresses"
+            from: "private func buildAllSyncDatas(",
+            to: "@discardableResult"
         )
         require(
-            syncBuilder.contains(".proximityLightingEnabled(false)"),
-            "An eligible node with no desired neighbors must retain disable behavior"
+            syncBuilder.contains("return eligibleNodes.compactMap")
+                && syncBuilder.contains("plan.targets[address] != nil"),
+            "Space SAVE tasks must cover all outstanding eligible devices in the current topology"
         )
         require(
-            occurrenceCount("eligibleZoneMemberKeys()", in: syncBuilder) == 1,
-            "One device-task build must calculate eligibility exactly once"
+            !syncBuilder.contains("affectedAddresses"),
+            "Space SAVE tasks must not be limited to members changed in the current edit"
+        )
+        require(
+            !syncBuilder.contains(".proximityLightingEnabled(false)"),
+            "Space task construction must not infer disable from Space-only empty neighbors"
         )
         require(
             syncBuilder.contains(
-                "desiredNeighborAddresses(for: node, eligibleKeys: eligibleKeys)"
+                "node.getNodeSyncProximityLighting("
             ),
-            "Device-task construction must reuse the operation eligibility set"
+            "Space device tasks must compare against the unified topology plan"
+        )
+
+        let groupSyncCase = section(
+            in: syncDevicesController,
+            from: "case .proximityLightingPath(let datas):",
+            to: "case .spaceTriggerZones"
+        )
+        require(
+            !groupSyncCase.contains("getNodeSyncProximityLighting"),
+            "Sync UI must not recalculate Group topology without Space context"
+        )
+        require(
+            groupSyncCase.contains("datas.forEach"),
+            "Sync UI must consume precomputed unified topology tasks"
+        )
+
+        require(
+            topologyPolicy.contains("group.paths.forEach")
+                && topologyPolicy.contains("group.zones.forEach")
+                && topologyPolicy.contains("spaceZones.forEach"),
+            "Unified topology policy must include Group paths, Group zones, and Space zones"
+        )
+        require(
+            topologyPolicy.contains("neighborAddresses[address, default: []].formUnion"),
+            "Unified topology policy must merge and deduplicate neighbor sources"
+        )
+        require(
+            topologyPolicy.contains("static func affectedDeviceAddresses("),
+            "Unified topology policy must expose old/new Space member scoping"
         )
 
         print("PASS: Path topology persistence contracts hold.")

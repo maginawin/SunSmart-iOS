@@ -1320,6 +1320,7 @@
 "zone_manual_add_step3" = "添加后，\n测试是否\n正确";
 "path_manual_add_step2" = "识别，选择\n正确的设备";
 "not_zones_remaining" = "无剩余区域";
+"proximity_lighting_neighbor_limit_exceeded" = "每个设备最多支持 %d 个邻居。请减少路径或触发区域中的设备后重试。";
 "No_Data" = "无数据";
 "zone" = "区域";
 "zone_quick_add_show_added_devices" = "包含在其他区域中添加的设备";

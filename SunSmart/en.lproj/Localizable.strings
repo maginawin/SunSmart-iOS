@@ -1318,6 +1318,7 @@
 "zone_manual_add_step3" = "After adding,\nTest whether it\nis correct";
 "path_manual_add_step2" = "Identify, pick\nup the correct\ndevice";
 "not_zones_remaining" = "Not zones remaining";
+"proximity_lighting_neighbor_limit_exceeded" = "A device can have up to %d neighbors. Reduce the devices in Paths or Trigger Zones and try again.";
 "No_Data" = "No Data";
 "zone" = "Zone";
 "zone_quick_add_show_added_devices" = "Contains the devices added in other Zones";

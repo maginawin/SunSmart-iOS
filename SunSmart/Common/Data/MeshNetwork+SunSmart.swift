@@ -2664,34 +2664,6 @@ extension Node {
                 switchData.save()
             }
             
-            // 邻近照明路径
-            if let proximityLightingPath = group.info.proximityLightingPath {
-                let oldAddress = oldNode.sunricherVendorModel?.parentElement?.unicastAddress ?? oldNode.primaryUnicastAddress
-  
-                let newAddress = self.sunricherVendorModel?.parentElement?.unicastAddress ?? self.primaryUnicastAddress
-                /// 是否更新数据
-                var update = false
-                
-                // 替换之前路径的设备地址
-                let paths = proximityLightingPath.paths.filter({ $0.items.contains(where: { $0.address == oldAddress }) })
-                paths.forEach({ path in
-                    if let item = path.items.first(where: { $0.address == oldAddress }) {
-                        item.address = newAddress
-                        update = true
-                    }
-                })
-                let zones = proximityLightingPath.zones.filter({ $0.addresses.contains(oldAddress) })
-                zones.forEach { zone in
-                    if let index = zone.addresses.firstIndex(of: oldAddress) {
-                        zone.addresses.replaceSubrange(index...index, with: [newAddress])
-                        update = true
-                    }
-                }
-                if update {
-                    group.info.save()
-                    group.updateGroupSyncState()
-                }
-            }
         }
         
         // 日程

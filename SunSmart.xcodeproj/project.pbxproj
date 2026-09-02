@@ -621,6 +621,7 @@
 		08B54EBC30402CCB0017ED49 /* DeviceLightHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25792ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift */; };
 		08B54EBD30402CCB0017ED49 /* SwitchSelectSceneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4562BA1500500F9285B /* SwitchSelectSceneViewController.swift */; };
 		08B54EBE30402CCB0017ED49 /* GroupProximityLightingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */; };
+		C8A0F00232A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */; };
 		08B54EBF30402CCB0017ED49 /* GroupPathSequenceQuickAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BE92DDABFDC00F09467 /* GroupPathSequenceQuickAddView.swift */; };
 		08B54EC030402CCB0017ED49 /* MeshFirmwareTypeUpdateViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C70B02CD31DC900B9A76A /* MeshFirmwareTypeUpdateViewCell.swift */; };
 		08B54EC130402CCB0017ED49 /* DeviceDongleDeleteAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A55972DBA103500E04252 /* DeviceDongleDeleteAlertView.swift */; };
@@ -1568,6 +1569,7 @@
 		C88554EE2DE6B44C00C8B688 /* DeviceLightHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25792ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift */; };
 		C88554EF2DE6B44C00C8B688 /* SwitchSelectSceneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4562BA1500500F9285B /* SwitchSelectSceneViewController.swift */; };
 		C88554F02DE6B44C00C8B688 /* GroupProximityLightingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */; };
+		C8A0F00332A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */; };
 		C88554F12DE6B44C00C8B688 /* GroupPathSequenceQuickAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BE92DDABFDC00F09467 /* GroupPathSequenceQuickAddView.swift */; };
 		C88554F22DE6B44C00C8B688 /* MeshFirmwareTypeUpdateViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C70B02CD31DC900B9A76A /* MeshFirmwareTypeUpdateViewCell.swift */; };
 		C88554F32DE6B44C00C8B688 /* DeviceDongleDeleteAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A55972DBA103500E04252 /* DeviceDongleDeleteAlertView.swift */; };
@@ -1950,6 +1952,7 @@
 		C886E14A2E30DE4900D0C3A6 /* DeviceLightHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25792ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift */; };
 		C886E14B2E30DE4900D0C3A6 /* SwitchSelectSceneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4562BA1500500F9285B /* SwitchSelectSceneViewController.swift */; };
 		C886E14C2E30DE4900D0C3A6 /* GroupProximityLightingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */; };
+		C8A0F00432A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */; };
 		C886E14D2E30DE4900D0C3A6 /* GroupPathSequenceQuickAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BE92DDABFDC00F09467 /* GroupPathSequenceQuickAddView.swift */; };
 		C886E14E2E30DE4900D0C3A6 /* MeshFirmwareTypeUpdateViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C70B02CD31DC900B9A76A /* MeshFirmwareTypeUpdateViewCell.swift */; };
 		C886E14F2E30DE4900D0C3A6 /* DeviceDongleDeleteAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A55972DBA103500E04252 /* DeviceDongleDeleteAlertView.swift */; };
@@ -2771,6 +2774,7 @@
 		C8BB67292ED3F056000C63EE /* DeviceLightHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25792ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift */; };
 		C8BB672A2ED3F056000C63EE /* SwitchSelectSceneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4562BA1500500F9285B /* SwitchSelectSceneViewController.swift */; };
 		C8BB672B2ED3F056000C63EE /* GroupProximityLightingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */; };
+		C8A0F00632A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */; };
 		C8BB672C2ED3F056000C63EE /* GroupPathSequenceQuickAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BE92DDABFDC00F09467 /* GroupPathSequenceQuickAddView.swift */; };
 		C8BB672D2ED3F056000C63EE /* MeshFirmwareTypeUpdateViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C70B02CD31DC900B9A76A /* MeshFirmwareTypeUpdateViewCell.swift */; };
 		C8BB672E2ED3F056000C63EE /* DeviceDongleDeleteAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A55972DBA103500E04252 /* DeviceDongleDeleteAlertView.swift */; };
@@ -3215,6 +3219,7 @@
 		C8FC6B9F2E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FC6B9D2E7502F6004EE2BA /* DaliDeviceInformationController.swift */; };
 		C8FC6BA02E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FC6B9D2E7502F6004EE2BA /* DaliDeviceInformationController.swift */; };
 		C8FDE9A72DD595A30002394B /* GroupProximityLightingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */; };
+		C8A0F00532A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */; };
 		C8FF8A7E146827711D87F57C /* GroupPowerSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */; };
 		C8FFD7D52E7D03B20074CC6A /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
 		DC176B45FDD04BF2B211C2D1 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
@@ -4096,6 +4101,7 @@
 		C8FB10012F11000400000001 /* SimulateFaultRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulateFaultRequest.swift; sourceTree = "<group>"; };
 		C8FC6B9D2E7502F6004EE2BA /* DaliDeviceInformationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaliDeviceInformationController.swift; sourceTree = "<group>"; };
 		C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupProximityLightingData.swift; sourceTree = "<group>"; };
+		C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProximityLightingTopologyPolicy.swift; sourceTree = "<group>"; };
 		C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Pods_Common_SunSmart.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		CA14D3D265B3B74E304A61D7 /* Pods-Common-Archipelago.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-Archipelago.debug.xcconfig"; path = "Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago.debug.xcconfig"; sourceTree = "<group>"; };
 		D1025845F30FDFC9F8C9ACCB /* Pods_Common_SylSmart.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_SylSmart.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -5971,6 +5977,7 @@
 			children = (
 				C8BF08902B2A8DCD00144BAC /* GroupServer.swift */,
 				C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */,
+				C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -7390,6 +7397,7 @@
 				08B54EBC30402CCB0017ED49 /* DeviceLightHeaderView.swift in Sources */,
 				08B54EBD30402CCB0017ED49 /* SwitchSelectSceneViewController.swift in Sources */,
 				08B54EBE30402CCB0017ED49 /* GroupProximityLightingData.swift in Sources */,
+				C8A0F00232A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
 				08B54EBF30402CCB0017ED49 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				08B54EC030402CCB0017ED49 /* MeshFirmwareTypeUpdateViewCell.swift in Sources */,
 				08B54EC130402CCB0017ED49 /* DeviceDongleDeleteAlertView.swift in Sources */,
@@ -8039,6 +8047,7 @@
 				C88554EF2DE6B44C00C8B688 /* SwitchSelectSceneViewController.swift in Sources */,
 				8C778BF62FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */,
 				C88554F02DE6B44C00C8B688 /* GroupProximityLightingData.swift in Sources */,
+				C8A0F00332A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
 				C88554F12DE6B44C00C8B688 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				8C7788FF2F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift in Sources */,
 				C88554F22DE6B44C00C8B688 /* MeshFirmwareTypeUpdateViewCell.swift in Sources */,
@@ -8700,6 +8709,7 @@
 				C886E14B2E30DE4900D0C3A6 /* SwitchSelectSceneViewController.swift in Sources */,
 				8C778BF52FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */,
 				C886E14C2E30DE4900D0C3A6 /* GroupProximityLightingData.swift in Sources */,
+				C8A0F00432A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
 				C886E14D2E30DE4900D0C3A6 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				8C7788FE2F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift in Sources */,
 				C886E14E2E30DE4900D0C3A6 /* MeshFirmwareTypeUpdateViewCell.swift in Sources */,
@@ -9371,6 +9381,7 @@
 				C88B257A2ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift in Sources */,
 				C87EB4572BA1500500F9285B /* SwitchSelectSceneViewController.swift in Sources */,
 				C8FDE9A72DD595A30002394B /* GroupProximityLightingData.swift in Sources */,
+				C8A0F00532A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
 				C8CD5BEA2DDABFDC00F09467 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				C89C70B12CD31DC900B9A76A /* MeshFirmwareTypeUpdateViewCell.swift in Sources */,
 				C83A55982DBA103500E04252 /* DeviceDongleDeleteAlertView.swift in Sources */,
@@ -10021,6 +10032,7 @@
 				C8BB672A2ED3F056000C63EE /* SwitchSelectSceneViewController.swift in Sources */,
 				8C778BF42FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */,
 				C8BB672B2ED3F056000C63EE /* GroupProximityLightingData.swift in Sources */,
+				C8A0F00632A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
 				C8BB672C2ED3F056000C63EE /* GroupPathSequenceQuickAddView.swift in Sources */,
 				8C7789012F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift in Sources */,
 				C8BB672D2ED3F056000C63EE /* MeshFirmwareTypeUpdateViewCell.swift in Sources */,
@@ -10457,8 +10469,8 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "git@gitee.com:sunricher-i-os/nordic-sig-mesh-sdk.git";
 			requirement = {
-				kind = revision;
-				revision = 86f5ec9e40148b9cd93e0512702337fcec41dd40;
+				branch = release;
+				kind = branch;
 			};
 		};
 /* End XCRemoteSwiftPackageReference section */

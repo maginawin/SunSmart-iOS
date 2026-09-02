@@ -650,44 +650,43 @@ class SyncDevicesViewController: UIViewController {
                         removeSection.devices.append(deleteDeviceModel)
                     }
                 }
-            case .proximityLightingPath(let group, _):
-                
-                group.nodes.forEach { node in
-                    if let syncData = node.getNodeSyncProximityLighting() {
-                        let syncDeviceModel = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
-                        syncDeviceModel.imageName = node.iconName
+            case .proximityLightingPath(let datas):
+                datas.forEach { (node: Node, syncData: NodeSyncData) in
+                    let syncDeviceModel = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+                    syncDeviceModel.imageName = node.iconName
                         
-                        switch syncData {
-                        case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
+                    switch syncData {
+                    case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
                             
-                            let taskModel = SyncDeviceStepTaskModel(name: "path_sequence".localizedString, operationType: .configuration(node: node, type: .proximityLightingNeighbor(relayNumber: relayNumber, neighborAddresses: neighborAddresses)))
+                        let taskModel = SyncDeviceStepTaskModel(name: "path_sequence".localizedString, operationType: .configuration(node: node, type: .proximityLightingNeighbor(relayNumber: relayNumber, neighborAddresses: neighborAddresses)))
                             
-                            let step = SyncDeviceStepModel(type: "path_sequence".localizedString, state: .none, tasks: [taskModel])
-                            taskModel.parentStepModel = step
+                        let step = SyncDeviceStepModel(type: "path_sequence".localizedString, state: .none, tasks: [taskModel])
+                        taskModel.parentStepModel = step
                             
-                            step.parentDeviceModel = syncDeviceModel
-                            syncDeviceModel.steps.append(step)
-                        case .proximityLightingRelayNumber(let relayNumber):
-                            let taskModel = SyncDeviceStepTaskModel(name: "path_sequence".localizedString, operationType: .configuration(node: node, type: .proximityLightingRelayNumber(relayNumber: relayNumber)))
+                        step.parentDeviceModel = syncDeviceModel
+                        syncDeviceModel.steps.append(step)
+                    case .proximityLightingRelayNumber(let relayNumber):
+                        let taskModel = SyncDeviceStepTaskModel(name: "path_sequence".localizedString, operationType: .configuration(node: node, type: .proximityLightingRelayNumber(relayNumber: relayNumber)))
                             
-                            let step = SyncDeviceStepModel(type: "path_sequence".localizedString, state: .none, tasks: [taskModel])
-                            taskModel.parentStepModel = step
+                        let step = SyncDeviceStepModel(type: "path_sequence".localizedString, state: .none, tasks: [taskModel])
+                        taskModel.parentStepModel = step
                             
-                            step.parentDeviceModel = syncDeviceModel
-                            syncDeviceModel.steps.append(step)
+                        step.parentDeviceModel = syncDeviceModel
+                        syncDeviceModel.steps.append(step)
                             
-                        case .proximityLightingEnabled(let enabled):
-                            let name = enabled ? "proximity_lighting_enabled".localizedString : "proximity_lighting_disable".localizedString
-                            let taskModel = SyncDeviceStepTaskModel(name: name, operationType: .configuration(node: node, type: .proximityLightingEnabled(enabled: enabled)))
+                    case .proximityLightingEnabled(let enabled):
+                        let name = enabled ? "proximity_lighting_enabled".localizedString : "proximity_lighting_disable".localizedString
+                        let taskModel = SyncDeviceStepTaskModel(name: name, operationType: .configuration(node: node, type: .proximityLightingEnabled(enabled: enabled)))
                             
-                            let step = SyncDeviceStepModel(type: name, state: .none, tasks: [taskModel])
-                            taskModel.parentStepModel = step
+                        let step = SyncDeviceStepModel(type: name, state: .none, tasks: [taskModel])
+                        taskModel.parentStepModel = step
                             
-                            step.parentDeviceModel = syncDeviceModel
-                            syncDeviceModel.steps.append(step)
-                        default:
-                            break
-                        }
+                        step.parentDeviceModel = syncDeviceModel
+                        syncDeviceModel.steps.append(step)
+                    default:
+                        break
+                    }
+                    if !syncDeviceModel.steps.isEmpty {
                         configurationSection.devices.append(syncDeviceModel)
                     }
                 }
@@ -3929,7 +3928,7 @@ extension SyncDevicesViewController {
         /// 应急火警控制器
         case emergencyFire(data: DeviceEmerFireData, items: [EmergencyFireControllerSyncItem]?, context: EmergencyFireSyncContext)
         /// 邻近照明路径
-        case proximityLightingPath(group: Group, path: GroupProximityLightingPathData)
+        case proximityLightingPath(datas: [(node: Node, syncData: NodeSyncData)])
         /// space级触发区域
         case spaceTriggerZones(datas: [(node: Node, syncData: NodeSyncData)])
     }

@@ -237,8 +237,8 @@ class GroupPathSequenceTriggerAddView: UIView {
         groupFilterSelectedIndex = max(0, min(selectedGroupIndex, max(groupTitles.count - 1, 0)))
         groupTitleLabel.text = groupFilterTitles.isEmpty ? nil : groupFilterTitles[groupFilterSelectedIndex]
         showAdded = showAddedOnly
-        groupFilterView.isHidden = false
-        hintLabel.isHidden = false
+        groupFilterView.isHidden = !guideContentView.isHidden
+        hintLabel.isHidden = !guideContentView.isHidden
         hintLabel.text = "space_trigger_zone_quick_add_hint".localizedString
         updateFilterTitle()
         addTypeView.snp.remakeConstraints { make in
