@@ -279,7 +279,7 @@ class DeviceOthersViewController: UIViewController, DeviceProtocol {
         footerView = SpaceFunctionFooterView()
         footerView.sortBtn.isHidden = true
         footerView.editBtn.isEnabled = false
-        footerView.deviceNameFilterEnabled = true
+        footerView.configureDeviceNameFilter(placement: .beforeEdit)
         footerView.deviceNameFilterActive = deviceNameFilterSession.isActive
         footerView.delegate = self
         view.addSubview(footerView)
@@ -438,7 +438,7 @@ extension DeviceOthersViewController: SpaceFunctionFooterViewDelegate {
     }
 
     func functionDidClickDeviceFilter(view: SpaceFunctionFooterView) {
-        (parent as? DevicesViewController)?.showDeviceNameFilterMenu(from: view.countBtn)
+        (parent as? DevicesViewController)?.showDeviceNameFilterMenu(from: view.deviceFilterBtn)
     }
 }
 

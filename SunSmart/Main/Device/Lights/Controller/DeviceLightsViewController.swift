@@ -446,7 +446,7 @@ class DeviceLightsViewController: UIViewController {
         footerView = SpaceFunctionFooterView()
         footerView.sortBtn.isHidden = true
         footerView.enableTestDelete = true
-        footerView.deviceNameFilterEnabled = true
+        footerView.configureDeviceNameFilter(placement: .beforeSort)
         footerView.deviceNameFilterActive = deviceNameFilterSession.isActive
         footerView.delegate = self
         view.addSubview(footerView)
@@ -1174,7 +1174,7 @@ extension DeviceLightsViewController: SpaceFunctionFooterViewDelegate {
     }
 
     func functionDidClickDeviceFilter(view: SpaceFunctionFooterView) {
-        (parent as? DevicesViewController)?.showDeviceNameFilterMenu(from: view.countBtn)
+        (parent as? DevicesViewController)?.showDeviceNameFilterMenu(from: view.deviceFilterBtn)
     }
     
     /// 进入调试删除页面
