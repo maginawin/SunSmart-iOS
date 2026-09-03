@@ -100,11 +100,11 @@ class GroupPathSequencePageController: WMPageController {
     }
     
     @objc private func syncFailedBtnAction() {
-        let plan = ProximityLightingTopologyPlanner.makePlan(space: space)
-        guard !showCapacityLimitIfNeeded(for: plan) else {
+        let preparation = ProximityLightingLifecycleCoordinator.begin(space: space).prepare()
+        guard let result = prepareLifecycleResult(preparation) else {
             return
         }
-        let syncDatas = makeSyncDatas(using: plan)
+        let syncDatas = result.syncDatas
         guard !syncDatas.isEmpty else {
             syncFailedBtn.isHidden = true
             return
@@ -126,8 +126,6 @@ class GroupPathSequencePageController: WMPageController {
     
     
     @objc private func saveAction() {
-        let savedPath = group.info.proximityLightingPath?.copy()
-            ?? GroupProximityLightingPathData(paths: [], zones: [])
         let proposedPath = groupPath.copy()
         if let vc = self.sequenceVc {
             vc.stopSetPath()
@@ -137,28 +135,22 @@ class GroupPathSequencePageController: WMPageController {
             vc.stopSetZone()
             proposedPath.zones = vc.setZones
         }
-        let edit = !(savedPath == proposedPath)
-        let plan = ProximityLightingTopologyPlanner.makePlan(
-            space: space,
-            groupPathOverrides: [group.address.address: proposedPath]
-        )
-        guard !showCapacityLimitIfNeeded(for: plan) else {
+        var transaction = ProximityLightingLifecycleCoordinator.begin(space: space)
+        transaction.replaceGroupTopology(group: group, path: proposedPath)
+        let preparation = transaction.prepare()
+        guard prepareLifecycleResult(preparation) != nil else {
             return
         }
-        let syncDatas = makeSyncDatas(using: plan)
-
-        if edit {
-            space.markLocalChangePendingCloudSync()
+        guard let result = ProximityLightingLifecycleCoordinator.commit(preparation) else {
+            return
         }
+        let syncDatas = result.syncDatas
         groupPath.paths = proposedPath.paths
         groupPath.zones = proposedPath.zones
-        group.info.proximityLightingPath = groupPath
-        group.info.save()
-        group.updateGroupSyncState()
 
         guard !syncDatas.isEmpty else {
             navigationController?.popViewController(animated: true)
-            if edit {
+            if result.didChange {
                 NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             }
             return
@@ -177,25 +169,30 @@ class GroupPathSequencePageController: WMPageController {
         
     }
 
-    private func makeSyncDatas(
-        using plan: ProximityLightingTopologyPlanner.Plan
-    ) -> [(node: Node, syncData: NodeSyncData)] {
-        return group.nodes.compactMap { node in
-            guard let syncData = node.getNodeSyncProximityLighting(
-                group: group,
-                topologyPlan: plan
-            ) else {
-                return nil
-            }
-            return (node, syncData)
-        }
-    }
-
     private func updateSyncFailedState(
         using plan: ProximityLightingTopologyPlanner.Plan
     ) {
+        let preparation = ProximityLightingLifecycleCoordinator.begin(space: space).prepare()
+        let result = ProximityLightingLifecycleCoordinator.preview(preparation)
         syncFailedBtn.isHidden = !plan.hasCapacityViolation
-            && makeSyncDatas(using: plan).isEmpty
+            && preparation.isValid
+            && (result?.syncDatas.isEmpty ?? true)
+    }
+
+    private func prepareLifecycleResult(
+        _ preparation: ProximityLightingLifecyclePreparation
+    ) -> ProximityLightingLifecycleResult? {
+        if showCapacityLimitIfNeeded(for: preparation.normalized.plan) {
+            return nil
+        }
+        guard preparation.isValid else {
+            XWHUDManager.showTipHUD(
+                "proximity_lighting_topology_invalid".localizedString,
+                isLineFeed: true
+            )
+            return nil
+        }
+        return ProximityLightingLifecycleCoordinator.preview(preparation)
     }
 
     @discardableResult

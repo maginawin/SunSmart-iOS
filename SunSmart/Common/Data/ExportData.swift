@@ -18,16 +18,16 @@ private var jsonEncoder: JSONEncoder {
 extension SiteData {
     
     /// 导出site数据
-    func export(spaceIds: [String]? = nil) async -> [String: Any]  {
+    func export(spaceIds: [String]? = nil) async -> [String: Any]?  {
         
 //        return await withTaskCancellationHandler {
-            var siteData = await withCheckedContinuation { continuation in
+            let exportedSiteData: [String: Any]? = await withCheckedContinuation { continuation in
                 
                 var siteJsonData: [String: Any] = [:]
                 guard let meshNetwork = MeshNetwork.load(meshUUID: self.id, allData: false),
                       let networkKey = meshNetwork.networkKeys.first(where: { $0.isPrimary }),
                       let appKey = meshNetwork.applicationKeys.first(where: { $0.boundNetworkKey == networkKey }) else {
-                    continuation.resume(returning: siteJsonData)
+                    continuation.resume(returning: nil)
                     return
                 }
                 
@@ -101,6 +101,9 @@ extension SiteData {
                 
 //            }
         }
+        guard var siteData = exportedSiteData else {
+            return nil
+        }
         
         if spaceIds != nil {
             let exportSpaces = self.spaces.filter({ space in spaceIds!.contains(where: { $0 == space.id }) })
@@ -120,6 +123,9 @@ extension SiteData {
                     }
                 }
             }
+            guard spaceDicts.count == exportSpaces.count else {
+                return nil
+            }
             siteData.updateValue(spaceDicts, forKey: "spaces")
         }else {
             siteData.updateValue(self.spaces.count > 0 ? [[:]] : [], forKey: "spaces")
@@ -132,7 +138,7 @@ extension SiteData {
 extension SpaceData {
     
     /// 导出space数据
-    func export() async -> [String: Any]  {
+    func export() async -> [String: Any]?  {
        
         return await withCheckedContinuation { continuation in
             
@@ -143,7 +149,7 @@ extension SpaceData {
 //                return
 //            }
             guard let meshNetwork = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId) else {
-                continuation.resume(returning: spaceJsonData)
+                continuation.resume(returning: nil)
                 return
             }
             let switchs = DeviceSwitchData.load(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId)
@@ -160,6 +166,40 @@ extension SpaceData {
                 })
                 group.info.bindSchedules = bindSchedules
             })
+            let proximityPreparation = ProximityLightingLifecycleCoordinator.begin(
+                space: self,
+                groups: meshNetwork.groups.filter { !$0.isVirtual },
+                nodes: meshNetwork.nodes.filter {
+                    !$0.isLocalProvisioner && !$0.isProvisioner && !$0.isConfigComplete
+                }
+            ).prepare()
+            guard proximityPreparation.isValid else {
+                print(
+                    "[ProximityLightingExport] rejected hardErrors=" +
+                    "\(proximityPreparation.hardErrors.count)"
+                )
+                continuation.resume(returning: nil)
+                return
+            }
+            guard let proximityResult = ProximityLightingLifecycleCoordinator.commit(
+                proximityPreparation
+            ) else {
+                continuation.resume(returning: nil)
+                return
+            }
+            #if DEBUG
+            let proximityGroups = proximityPreparation.normalized.snapshot.groups
+                .filter(\.eligible)
+            print(
+                "[ProximityLightingExport] schema=1 " +
+                "groups=\(proximityGroups.count) " +
+                "paths=\(proximityGroups.reduce(0) { $0 + $1.paths.count }) " +
+                "groupZones=\(proximityGroups.reduce(0) { $0 + $1.zones.count }) " +
+                "spaceZones=\(proximityPreparation.normalized.snapshot.spaceZones.count) " +
+                "repairs=\(proximityResult.repairs.count) " +
+                "pending=\(proximityResult.syncDatas.count)"
+            )
+            #endif
             meshNetwork.scenes.forEach({
                 $0.info = SceneInfo.load(meshUUID: meshUUID, sceneId: $0.number) ?? SceneInfo(sceneId: $0.number)
             })
@@ -175,10 +215,11 @@ extension SpaceData {
             spaceJsonData.updateValue(self.showCCTQuickButtons, forKey: "showCCTQuickButtons")
             spaceJsonData.updateValue(self.controlType.rawValue, forKey: "controlType")
             spaceJsonData.updateValue(self.deviceBlinkMode.rawValue, forKey: "deviceBlinkMode")
-            if let data = try? jsonEncoder.encode(self.triggerZones),
-               let triggerZonesArray = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] {
-                spaceJsonData.updateValue(triggerZonesArray, forKey: "triggerZones")
-            }
+            spaceJsonData.updateValue(1, forKey: "proximityLightingSchemaVersion")
+            let triggerZonesArray = (try? jsonEncoder.encode(self.triggerZones))
+                .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [[String: Any]] }
+                ?? []
+            spaceJsonData.updateValue(triggerZonesArray, forKey: "triggerZones")
             
             
             let networkKey = meshNetwork.networkKeys.first(where: { $0.networkId.hex == self.meshNetworkId })
@@ -522,7 +563,8 @@ extension SpaceData {
                     }
                     
                     // 临近照明
-                    if let proximityLightingPath = group.info.proximityLightingPath {
+                    if ProximityLightingLifecycleCoordinator.isEligible(group.info.profile.type),
+                       let proximityLightingPath = group.info.proximityLightingPath {
                         
                         let pathDicts = proximityLightingPath.paths.map({ path in
                             ["items": path.items.map({ Int($0.address ?? 0) })]

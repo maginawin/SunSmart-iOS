@@ -21,6 +21,12 @@ protocol DeviceProtocol {
     
     /// 删除设备
     func deleteNodes(nodes: [Node], forceDeleteMessage: String?, forceDeleteNote: String?, result: DevicesResultCallback?)
+
+    /// 永久删除后同步仍存在设备的邻近照明目标。
+    func syncPermanentDeletionPeers(
+        _ results: [ProximityLightingLifecycleResult],
+        completion: @escaping () -> Void
+    )
     
 }
 
@@ -124,15 +130,17 @@ extension DeviceProtocol {
         MeshAPI.resetNodes(addressList: nodes.map({ $0.primaryUnicastAddress }), resetSuccess: nil, resetFail: nil, resetFinish: { successAddressList, failAddressList in
             XWHUDManager.hide()
             let successNodes = nodes.filter({ successAddressList.contains($0.primaryUnicastAddress) })
-            successNodes.forEach({
+            var lifecycleResults = successNodes.compactMap {
                 deletionContexts[$0.primaryUnicastAddress]?.commit()
-            })
+            }
             if failAddressList.isEmpty { // 删除成功
-                XWHUDManager.showSuccessTipHUD("done!".localizedString)
                 if MeshNetworkManager.instance.realNodes.isEmpty, MeshLibManager.manager.isMeshNetworkConnected {
                     MeshLibManager.manager.close()
                 }
-                result?(nodes, [])
+                self.syncPermanentDeletionPeers(lifecycleResults) {
+                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                    result?(nodes, [])
+                }
                 
             }else { // 删除失败（提示是否强制删除这部分设备）
                 
@@ -140,18 +148,21 @@ extension DeviceProtocol {
                 let failedNodes = nodes.filter({ failAddressList.contains($0.primaryUnicastAddress) })
                 
                 let alertView = SRAlertView(title: "notification".localizedString, actions: [SRAlertAction(title: "alert_item_cancel".localizedString, style: .cancel, actionHandler: { _ in
-                    
-                    result?(successNodes, failedNodes)
+                    self.syncPermanentDeletionPeers(lifecycleResults) {
+                        result?(successNodes, failedNodes)
+                    }
                     
                 }), SRAlertAction(title: "force_delete".localizedString, actionHandler: { _ in
-                    
-                    failedNodes.forEach({
-                        deletionContexts[$0.primaryUnicastAddress]?.commit()
-                        MeshNetworkManager.instance.meshNetwork?.remove(node: $0)
-                    })
-                    
-                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                    result?(nodes, [])
+                    failedNodes.forEach { node in
+                        MeshNetworkManager.instance.meshNetwork?.remove(node: node)
+                        if let lifecycleResult = deletionContexts[node.primaryUnicastAddress]?.commit() {
+                            lifecycleResults.append(lifecycleResult)
+                        }
+                    }
+                    self.syncPermanentDeletionPeers(lifecycleResults) {
+                        XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                        result?(nodes, [])
+                    }
                 })])
                 let messageAttStr = NSMutableAttributedString(string: forceDeleteMessage ?? "devices_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
                 messageAttStr.append(NSAttributedString(string: forceDeleteNote ?? "devices_force_delete_note".localizedString, attributes: [.foregroundColor: Message_Color]))
@@ -164,4 +175,31 @@ extension DeviceProtocol {
         
     }
     
+}
+
+extension DeviceProtocol where Self: UIViewController {
+
+    func syncPermanentDeletionPeers(
+        _ results: [ProximityLightingLifecycleResult],
+        completion: @escaping () -> Void
+    ) {
+        let datas = ProximityLightingLifecycleCoordinator.mergedSyncDatas(from: results)
+        guard MeshLibManager.manager.isMeshNetworkConnected, !datas.isEmpty else {
+            completion()
+            return
+        }
+        let vc = SyncDevicesViewController(type: .spaceTriggerZones(datas: datas))
+        var didFinish = false
+        let finish = { [weak vc] in
+            guard !didFinish else { return }
+            didFinish = true
+            if let vc, vc.navigationController?.topViewController === vc {
+                vc.navigationController?.popViewController(animated: false)
+            }
+            completion()
+        }
+        vc.syncSuccessCallback = { _ in finish() }
+        vc.backActionCallback = { _ in finish() }
+        navigationController?.pushViewController(vc, animated: true)
+    }
 }

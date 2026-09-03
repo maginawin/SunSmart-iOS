@@ -58,6 +58,7 @@ class DeviceRestoreViewController: UIViewController {
     private var successfulBatteryPowerSwitchRestoreLinkGroupAddresses: Set<Address> = []
     private var successfulBatteryPowerSwitchTargetSubscriptions: Set<BatteryPowerSwitchTargetSubscriptionKey> = []
     private var deferredRestoreSyncDatasByAddress: [Address: [NodeSyncData]] = [:]
+    private var proximityLightingRestoreSyncDatasByAddress: [Address: [(node: Node, syncData: NodeSyncData)]] = [:]
     private var emergencyFireRestoreContextsByAddress: [Address: EmergencyFireRestoreContext] = [:]
     private var didReportDeviceRestoreResult = false
     private let deferredRestoreTaskMaxRetryCount = 1
@@ -2254,11 +2255,13 @@ class DeviceRestoreViewController: UIViewController {
                     oldNode: oldNode,
                     newNode: node,
                     restoredGroup: addToGroup
-                ) {
-                    restoreSpace.migrateProximityLightingReferences(
-                        from: ProximityLightingTopologyPlanner.normalizedAddress(for: oldNode),
-                        to: ProximityLightingTopologyPlanner.normalizedAddress(for: node)
-                    )
+                   ),
+                   let lifecycleResult = restoreSpace.migrateProximityLightingReferences(
+                    from: oldNode,
+                    to: node,
+                    group: addToGroup
+                   ) {
+                    proximityLightingRestoreSyncDatasByAddress[node.primaryUnicastAddress] = lifecycleResult.syncDatas
                 }
                 node.batteryPowerSwitchRestoreTargetSubscriptionSnapshots = oldNode.makeBatteryPowerSwitchRestoreTargetSubscriptionSnapshots(
                     group: addToGroup
@@ -2331,6 +2334,13 @@ class DeviceRestoreViewController: UIViewController {
             }
             let syncDatas = newNode.getSyncData(type: .all)
             self.appendRestoreSyncMessages(syncDatas: syncDatas, node: newNode, appendMessages: &appendMessages)
+            let proximityLightingDatas = self.proximityLightingRestoreSyncDatasByAddress
+                .removeValue(forKey: newNode.primaryUnicastAddress) ?? []
+            proximityLightingDatas
+                .filter { $0.node.primaryUnicastAddress != newNode.primaryUnicastAddress }
+                .forEach {
+                    appendMessages.append(contentsOf: $0.syncData.getMessageHandles(node: $0.node))
+                }
 //            appendMessages.append(contentsOf: newNode.getResoreMessageHandles(oldNode: oldNode))
             
             if addToGroup == nil {

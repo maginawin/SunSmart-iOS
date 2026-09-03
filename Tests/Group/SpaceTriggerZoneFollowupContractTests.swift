@@ -79,12 +79,12 @@ struct SpaceTriggerZoneFollowupContractTests {
         let groupSave = section(
             in: groupPage,
             from: "@objc private func saveAction()",
-            to: "private func makeSyncDatas("
+            to: "private func updateSyncFailedState("
         )
         require(
             appearsBefore(
-                "showCapacityLimitIfNeeded(for: plan)",
-                "space.markLocalChangePendingCloudSync()",
+                "prepareLifecycleResult(preparation)",
+                "ProximityLightingLifecycleCoordinator.commit(preparation)",
                 in: groupSave
             ),
             "Group Path must reject over-capacity topology before persistence"
@@ -93,25 +93,25 @@ struct SpaceTriggerZoneFollowupContractTests {
         let spaceSave = section(
             in: spacePage,
             from: "@objc private func saveAction()",
-            to: "private func zonesEqual"
+            to: "private func prepareLifecycleResult"
         )
         require(
             appearsBefore(
-                "showCapacityLimitIfNeeded(for: plan)",
-                "space.markLocalChangePendingCloudSync()",
+                "prepareLifecycleResult(preparation)",
+                "ProximityLightingLifecycleCoordinator.commit(preparation)",
                 in: spaceSave
             ),
             "Space Trigger Zone must reject over-capacity topology before persistence"
         )
         require(
-            groupSave.contains("let syncDatas = makeSyncDatas(using: plan)")
+            groupSave.contains("let syncDatas = result.syncDatas")
                 && groupSave.contains(
                     "SyncDevicesViewController(\n            type: .proximityLightingPath(datas: syncDatas)\n        )"
                 ),
             "Group Sequence and Trigger Zone SAVE must enter an auto-starting sync page for every outstanding Group task"
         )
         require(
-            spaceSave.contains("let syncDatas = buildAllSyncDatas(using: plan)")
+            spaceSave.contains("let syncDatas = result.syncDatas")
                 && spaceSave.contains(
                     "SyncDevicesViewController(type: .spaceTriggerZones(datas: syncDatas))"
                 ),
@@ -119,9 +119,13 @@ struct SpaceTriggerZoneFollowupContractTests {
         )
         require(
             spacePage.contains("title: \"devices_not_synced\".localizedString")
-                && spacePage.contains("private func buildAllSyncDatas(")
+                && spacePage.contains("ProximityLightingLifecycleCoordinator.preview(preparation)")
                 && spacePage.contains("reSync: true"),
             "Space Trigger Zone must expose Devices not synced and Re-sync"
+        )
+        require(
+            spacePage.contains("tableView.allowsSelection = false"),
+            "Space Trigger Zone rows must not enter UITableViewCell selection state"
         )
 
         let syncViewDidLoad = section(
@@ -173,18 +177,13 @@ struct SpaceTriggerZoneFollowupContractTests {
             to: "/// 邻近照明-节点信息"
         )
         require(
-            migration.contains("path.paths.forEach")
-                && migration.contains("path.zones.forEach")
-                && migration.contains("triggerZones.forEach"),
-            "Space migration must cover Group paths, Group zones, and Space zones"
+            migration.contains("transaction.replaceNodeAddress")
+                && migration.contains("transaction.removeNode"),
+            "Space migration must route address replacement and ungrouped cleanup through the lifecycle coordinator"
         )
         require(
-            appearsBefore(
-                "markLocalChangePendingCloudSync()",
-                "group.info.save()",
-                in: migration
-            ),
-            "Restore migration must use one write-ahead cloud dirty marker"
+            migration.contains("ProximityLightingLifecycleCoordinator.commit"),
+            "Restore migration must use the lifecycle write-ahead commit"
         )
         let nodeRestore = section(
             in: restoreData,

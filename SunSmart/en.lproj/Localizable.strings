@@ -1319,6 +1319,7 @@
 "path_manual_add_step2" = "Identify, pick\nup the correct\ndevice";
 "not_zones_remaining" = "Not zones remaining";
 "proximity_lighting_neighbor_limit_exceeded" = "A device can have up to %d neighbors. Reduce the devices in Paths or Trigger Zones and try again.";
+"proximity_lighting_topology_invalid" = "The proximity lighting setup contains invalid data. Review the group profile, members, paths, and trigger zones, then try again.";
 "No_Data" = "No Data";
 "zone" = "Zone";
 "zone_quick_add_show_added_devices" = "Contains the devices added in other Zones";
@@ -2162,3 +2163,5 @@
 "gateway_force_clear_spaces_failed" = "Failed to clear all associated spaces";
 "gateway_associated_spaces_changed_message" = "Associated spaces changed on another device. The latest data has been loaded.";
 "gateway_delete_server_failed" = "Failed to delete gateway from server";
+"proximity_lighting_export_invalid" = "Proximity lighting data is invalid and could not be exported.";
+"proximity_lighting_import_invalid" = "Proximity lighting data is invalid and was not imported.";

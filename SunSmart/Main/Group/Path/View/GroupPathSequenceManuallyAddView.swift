@@ -287,6 +287,12 @@ class GroupPathSequenceManuallyAddView: UIView {
         groupFilterEnabledStates.removeAll()
         groupFilterSelectedIndex = 0
         groupFilterView.isHidden = true
+        arrowImageView.snp.updateConstraints { make in
+            make.right.equalTo(-12)
+        }
+        titleLabel.snp.updateConstraints { make in
+            make.right.equalTo(arrowImageView.snp.left).offset(-12)
+        }
         addTypeView.snp.remakeConstraints { make in
             make.left.equalTo(helpImageView.snp.right).offset(6)
             make.right.equalTo(-16)
@@ -305,11 +311,22 @@ class GroupPathSequenceManuallyAddView: UIView {
         groupFilterView.isHidden = !guideContentView.isHidden
         updateFilterTitle()
         addTypeView.snp.remakeConstraints { make in
-            make.left.equalTo(groupFilterView.snp.right).offset(8)
             make.top.equalTo(topContentInset)
             make.height.equalTo(30)
-            make.width.equalTo(90)
-            make.right.lessThanOrEqualTo(-16)
+            make.width.equalTo(100)
+            make.right.equalTo(-12)
+        }
+        groupFilterView.snp.remakeConstraints { make in
+            make.left.equalTo(helpImageView.snp.right).offset(6)
+            make.right.equalTo(addTypeView.snp.left).offset(-8)
+            make.top.equalTo(topContentInset)
+            make.height.equalTo(30)
+        }
+        arrowImageView.snp.updateConstraints { make in
+            make.right.equalTo(-8)
+        }
+        titleLabel.snp.updateConstraints { make in
+            make.right.equalTo(arrowImageView.snp.left).offset(-4)
         }
     }
     

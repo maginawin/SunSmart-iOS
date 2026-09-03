@@ -70,21 +70,40 @@ enum SyncOperation {
         }
     }
     
-    func getNetworkApi() async -> NetowrkReqeustApi {
+    func getNetworkApi() async -> NetowrkReqeustApi? {
         switch self {
         case .syncSite(let site, let syncSpaces):
             if site.uploadCloud {
-                return .siteUpload(siteData: await site.export(spaceIds: syncSpaces.map({ $0.id })))
+                guard let siteData = await site.export(
+                    spaceIds: syncSpaces.map({ $0.id })
+                ) else {
+                    return nil
+                }
+                return .siteUpload(siteData: siteData)
             }else {
                 // 获取最后分配的设备地址
                 let maxAddress = MeshAPI.getTheUsedDeviceAddresses(meshUUID: site.meshUUID).max()
-                return .siteAdd(siteData: await site.export(spaceIds: syncSpaces.map({ $0.id })), useDeivceAddressNum: Int(maxAddress ?? 0))
+                guard let siteData = await site.export(
+                    spaceIds: syncSpaces.map({ $0.id })
+                ) else {
+                    return nil
+                }
+                return .siteAdd(
+                    siteData: siteData,
+                    useDeivceAddressNum: Int(maxAddress ?? 0)
+                )
             }
         case .syncSpace(let space):
-            return .spaceUpload(siteId: space.siteId, spaceData: await space.export())
+            guard let spaceData = await space.export() else {
+                return nil
+            }
+            return .spaceUpload(siteId: space.siteId, spaceData: spaceData)
         case .addSpaces(let site, let spaces):
-            
-            let siteData = await site.export(spaceIds: spaces.map({ $0.id }))
+            guard let siteData = await site.export(
+                spaceIds: spaces.map({ $0.id })
+            ) else {
+                return nil
+            }
             return .siteUpload(siteData: siteData)
 //                .spacesAdd(siteId: site.id, spaceDatas: spaceDicts)
         case .syncGateway(let gateway, let node):
@@ -692,6 +711,39 @@ class CloudSynchronizationHandle: NSObject {
         waitTimer?.cancel()
         waitTimer = nil
     }
+
+    private func finishExportFailure() {
+        let error = NetworkApiError(
+            code: -2,
+            message: "Invalid local export payload",
+            httpStatusCode: nil,
+            responseBody: nil
+        )
+        state = .failure(error: error)
+        switch operation {
+        case .syncSite(let site, let spaces):
+            site.syncCloudError = error
+            site.save()
+            spaces.forEach {
+                $0.syncCloudError = error
+                $0.save()
+            }
+        case .addSpaces(_, let spaces):
+            spaces.forEach {
+                $0.syncCloudError = error
+                $0.save()
+            }
+        case .syncSpace(let space):
+            space.syncCloudError = error
+            space.save()
+        case .syncGateway(let gateway, _):
+            gateway.syncCloudError = error
+            gateway.save()
+        }
+        DispatchQueue.main.async {
+            self.handleCallback?(self, self.state)
+        }
+    }
     
     /// 开始同步到服务器
     func syncOperation() {
@@ -764,7 +816,10 @@ class CloudSynchronizationHandle: NSObject {
             return
         }
         AsyncTask {
-            let api = await self.operation.getNetworkApi()
+            guard let api = await self.operation.getNetworkApi() else {
+                self.finishExportFailure()
+                return
+            }
             let initialSiteTimeZoneSubmission = api.initialSiteTimeZoneSubmission
             #if DEBUG
             print("""

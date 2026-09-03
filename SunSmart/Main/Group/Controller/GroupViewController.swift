@@ -1419,6 +1419,10 @@ class GroupViewController: UIViewController {
                 guard let self = self else { return }
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
                 NotificationCenter.default.post(name: .init(groupsRefreshNotificationName), object: nil)
+                NotificationCenter.default.post(
+                    name: .init(spaceDataChangedNotificaitonName),
+                    object: SpaceChangeDataType.device
+                )
 //                self.groupDeleteCallback?(self.group)
                 self.close()
                 
@@ -1438,8 +1442,9 @@ class GroupViewController: UIViewController {
     
     /// 删除失败去手动同步
     private func deleteFailedCheck() {
-        
-        let vc = SyncDevicesViewController(type: .group(group, outNodes: group.nodes))
+
+        let exitFailedNodes = group.nodes.filter { $0.groupState == .exitFailure }
+        let vc = SyncDevicesViewController(type: .group(group, outNodes: exitFailedNodes))
         vc.syncSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             guard let self = self else { return }
@@ -1468,18 +1473,36 @@ class GroupViewController: UIViewController {
         vc.editable = space.groupOperates.contains(.edit)
         vc.saveActionCallback = {[weak self] profile in
             guard let self = self else {
-                return
+                return nil
             }
 
-            if !(profile.type == .occupancy_daylight || profile.type == .vacancy_daylight || profile.type == .daylight) {
-                self.group.info.ambientLightSensorNodeAddress = nil
+            var transaction = ProximityLightingLifecycleCoordinator.begin(space: self.space)
+            transaction.updateProfile(group: self.group, profile: profile)
+            let preparation = transaction.prepare()
+            guard preparation.isValid
+                    || preparation.doesNotIntroduceHardErrors else {
+                return nil
             }
-            self.group.info.profile.updateData(profile: profile)
-            self.group.info.save()
-            self.group.info.profile.save(meshUUID: self.space.meshUUID, meshNetworkId: self.space.meshNetworkId)
+
+            let result = ProximityLightingLifecycleCoordinator.commit(
+                preparation,
+                allowExistingHardErrors: true,
+                hasAdditionalLogicalChange: true
+            ) {
+                if !(profile.type == .occupancy_daylight || profile.type == .vacancy_daylight || profile.type == .daylight) {
+                    self.group.info.ambientLightSensorNodeAddress = nil
+                }
+                self.group.info.profile.updateData(profile: profile)
+                self.group.info.save()
+                self.group.info.profile.save(
+                    meshUUID: self.space.meshUUID,
+                    meshNetworkId: self.space.meshNetworkId
+                )
+                self.group.updateGroupSyncState()
+            }
             self.updateUI()
-            self.group.updateGroupSyncState()
             NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
+            return result
         }
         navigationController?.pushViewController(vc, animated: true)
     }

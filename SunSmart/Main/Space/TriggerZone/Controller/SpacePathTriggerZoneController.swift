@@ -212,17 +212,18 @@ class SpacePathTriggerZoneController: UIViewController {
     }
 
     private func updateSyncFailedState() {
-        let plan = ProximityLightingTopologyPlanner.makePlan(space: space)
-        syncFailedBtn.isHidden = !plan.hasCapacityViolation
-            && buildAllSyncDatas(using: plan).isEmpty
+        let preparation = ProximityLightingLifecycleCoordinator.begin(space: space).prepare()
+        let result = ProximityLightingLifecycleCoordinator.preview(preparation)
+        syncFailedBtn.isHidden = preparation.isValid
+            && (result?.syncDatas.isEmpty ?? true)
     }
 
     @objc private func syncFailedBtnAction() {
-        let plan = ProximityLightingTopologyPlanner.makePlan(space: space)
-        guard !showCapacityLimitIfNeeded(for: plan) else {
+        let preparation = ProximityLightingLifecycleCoordinator.begin(space: space).prepare()
+        guard let result = prepareLifecycleResult(preparation) else {
             return
         }
-        let syncDatas = buildAllSyncDatas(using: plan)
+        let syncDatas = result.syncDatas
         guard !syncDatas.isEmpty else {
             syncFailedBtn.isHidden = true
             return
@@ -421,26 +422,20 @@ class SpacePathTriggerZoneController: UIViewController {
         stopSetZone()
         sanitizeSetZones()
         
-        let oldZones = space.triggerZones.map { $0.copy() }
         let newZones = setZones.map { $0.copy() }
-        let didEdit = !zonesEqual(oldZones, newZones)
-        let plan = ProximityLightingTopologyPlanner.makePlan(
-            space: space,
-            spaceTriggerZonesOverride: newZones
-        )
-        guard !showCapacityLimitIfNeeded(for: plan) else {
+        var transaction = ProximityLightingLifecycleCoordinator.begin(space: space)
+        transaction.replaceSpaceZones(newZones)
+        let preparation = transaction.prepare()
+        guard prepareLifecycleResult(preparation) != nil else {
             return
         }
-        let syncDatas = buildAllSyncDatas(using: plan)
-        
-        if didEdit {
-            space.markLocalChangePendingCloudSync()
-            space.triggerZones = newZones
-            space.save()
+        guard let result = ProximityLightingLifecycleCoordinator.commit(preparation) else {
+            return
         }
+        let syncDatas = result.syncDatas
         
         guard syncDatas.count > 0 else {
-            if didEdit {
+            if result.didChange {
                 NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             }
             exitToSpaceMore()
@@ -460,27 +455,21 @@ class SpacePathTriggerZoneController: UIViewController {
     private func exitToSpaceMore() {
         navigationController?.dismiss(animated: true)
     }
-    
-    private func zonesEqual(_ lhs: [SpaceTriggerZone], _ rhs: [SpaceTriggerZone]) -> Bool {
-        guard lhs.count == rhs.count else {
-            return false
+
+    private func prepareLifecycleResult(
+        _ preparation: ProximityLightingLifecyclePreparation
+    ) -> ProximityLightingLifecycleResult? {
+        if showCapacityLimitIfNeeded(for: preparation.normalized.plan) {
+            return nil
         }
-        return zip(lhs, rhs).allSatisfy { $0 == $1 }
-    }
-    
-    private func buildAllSyncDatas(
-        using plan: ProximityLightingTopologyPlanner.Plan
-    ) -> [(node: Node, syncData: NodeSyncData)] {
-        return eligibleNodes.compactMap { node in
-            let address = normalizedAddress(for: node)
-            guard plan.targets[address] != nil,
-                  let syncData = node.getNodeSyncProximityLighting(
-                    topologyPlan: plan
-                  ) else {
-                return nil
-            }
-            return (node, syncData)
+        guard preparation.isValid else {
+            XWHUDManager.showTipHUD(
+                "proximity_lighting_topology_invalid".localizedString,
+                isLineFeed: true
+            )
+            return nil
         }
+        return ProximityLightingLifecycleCoordinator.preview(preparation)
     }
 
     @discardableResult
@@ -580,6 +569,7 @@ class SpacePathTriggerZoneController: UIViewController {
         
         tableView = UITableView(frame: .zero, style: .grouped)
         tableView.separatorStyle = .none
+        tableView.allowsSelection = false
         tableView.backgroundColor = .clear
         tableView.layer.cornerRadius = SCRYFrom(10)
         tableView.register(GroupPathSequencePathHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")

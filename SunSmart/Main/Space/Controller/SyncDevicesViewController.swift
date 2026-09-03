@@ -60,6 +60,9 @@ class SyncDevicesViewController: UIViewController {
     var profileSensorProtectionContext: ProfileSensorProtectionContext?
     /// Group profile switch context. Only applies to normal group profile SAVE, not member add/remove flows.
     var groupProfileSyncContext: GroupProfileSyncContext?
+    /// Group/Profile/Member 生命周期变更产生的跨 Group 邻近照明任务。
+    var supplementaryProximityLightingSyncDatas: [(node: Node, syncData: NodeSyncData)] = []
+    private var proximityLightingTaskModels: [SyncDeviceStepTaskModel] = []
     private var batteryPowerSwitchActivationFlow: PJEightKeySwitchActivationFlow?
     private var batteryPowerSwitchOwnConfigurationFailed = false
     private var batteryPowerSwitchKeyConfigurationCompleted = false
@@ -200,6 +203,17 @@ class SyncDevicesViewController: UIViewController {
                     }
                 }
                 appendEmergencyFireControllerGroupMutationItems(to: configurationSection, group: group, addNodes: inNodes ?? [], exitNodes: outNodes ?? [])
+                let coveredAddresses = Set(
+                    (group.nodes + (inNodes ?? []) + (outNodes ?? []))
+                        .map(\.primaryUnicastAddress)
+                )
+                appendProximityLightingItems(
+                    to: configurationSection,
+                    datas: supplementaryProximityLightingSyncDatas.filter {
+                        !coveredAddresses.contains($0.node.primaryUnicastAddress)
+                    },
+                    title: "path_sequence".localizedString
+                )
             case .emergencyFire(let data, let suppliedItems, let context):
                 let targetSection = context.persistsSyncResult ? configurationSection : removeSection
                 targetSection.prefersDevicesBeforeGroups = true
@@ -651,78 +665,17 @@ class SyncDevicesViewController: UIViewController {
                     }
                 }
             case .proximityLightingPath(let datas):
-                datas.forEach { (node: Node, syncData: NodeSyncData) in
-                    let syncDeviceModel = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
-                    syncDeviceModel.imageName = node.iconName
-                        
-                    switch syncData {
-                    case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
-                            
-                        let taskModel = SyncDeviceStepTaskModel(name: "path_sequence".localizedString, operationType: .configuration(node: node, type: .proximityLightingNeighbor(relayNumber: relayNumber, neighborAddresses: neighborAddresses)))
-                            
-                        let step = SyncDeviceStepModel(type: "path_sequence".localizedString, state: .none, tasks: [taskModel])
-                        taskModel.parentStepModel = step
-                            
-                        step.parentDeviceModel = syncDeviceModel
-                        syncDeviceModel.steps.append(step)
-                    case .proximityLightingRelayNumber(let relayNumber):
-                        let taskModel = SyncDeviceStepTaskModel(name: "path_sequence".localizedString, operationType: .configuration(node: node, type: .proximityLightingRelayNumber(relayNumber: relayNumber)))
-                            
-                        let step = SyncDeviceStepModel(type: "path_sequence".localizedString, state: .none, tasks: [taskModel])
-                        taskModel.parentStepModel = step
-                            
-                        step.parentDeviceModel = syncDeviceModel
-                        syncDeviceModel.steps.append(step)
-                            
-                    case .proximityLightingEnabled(let enabled):
-                        let name = enabled ? "proximity_lighting_enabled".localizedString : "proximity_lighting_disable".localizedString
-                        let taskModel = SyncDeviceStepTaskModel(name: name, operationType: .configuration(node: node, type: .proximityLightingEnabled(enabled: enabled)))
-                            
-                        let step = SyncDeviceStepModel(type: name, state: .none, tasks: [taskModel])
-                        taskModel.parentStepModel = step
-                            
-                        step.parentDeviceModel = syncDeviceModel
-                        syncDeviceModel.steps.append(step)
-                    default:
-                        break
-                    }
-                    if !syncDeviceModel.steps.isEmpty {
-                        configurationSection.devices.append(syncDeviceModel)
-                    }
-                }
+                appendProximityLightingItems(
+                    to: configurationSection,
+                    datas: datas,
+                    title: "path_sequence".localizedString
+                )
             case .spaceTriggerZones(let datas):
-                datas.forEach { (node: Node, syncData: NodeSyncData) in
-                    let syncDeviceModel = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
-                    syncDeviceModel.imageName = node.iconName
-                    
-                    switch syncData {
-                    case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
-                        let taskModel = SyncDeviceStepTaskModel(name: "trigger_zone".localizedString, operationType: .configuration(node: node, type: .proximityLightingNeighbor(relayNumber: relayNumber, neighborAddresses: neighborAddresses)))
-                        let step = SyncDeviceStepModel(type: "trigger_zone".localizedString, state: .none, tasks: [taskModel])
-                        taskModel.parentStepModel = step
-                        step.parentDeviceModel = syncDeviceModel
-                        syncDeviceModel.steps.append(step)
-                    case .proximityLightingRelayNumber(let relayNumber):
-                        let taskModel = SyncDeviceStepTaskModel(name: "trigger_zone".localizedString, operationType: .configuration(node: node, type: .proximityLightingRelayNumber(relayNumber: relayNumber)))
-                        let step = SyncDeviceStepModel(type: "trigger_zone".localizedString, state: .none, tasks: [taskModel])
-                        taskModel.parentStepModel = step
-                        step.parentDeviceModel = syncDeviceModel
-                        syncDeviceModel.steps.append(step)
-                    case .proximityLightingEnabled(let enabled):
-                        let name = enabled ? "proximity_lighting_enabled".localizedString : "proximity_lighting_disable".localizedString
-                        let taskModel = SyncDeviceStepTaskModel(name: name, operationType: .configuration(node: node, type: .proximityLightingEnabled(enabled: enabled)))
-                        let step = SyncDeviceStepModel(type: name, state: .none, tasks: [taskModel])
-                        taskModel.parentStepModel = step
-                        step.parentDeviceModel = syncDeviceModel
-                        syncDeviceModel.steps.append(step)
-                    default:
-                        break
-                    }
-                    
-                    if syncDeviceModel.steps.count > 0 {
-                        configurationSection.devices.append(syncDeviceModel)
-                    }
-                }
+                appendProximityLightingItems(
+                    to: configurationSection,
+                    datas: datas,
+                    title: "trigger_zone".localizedString
+                )
             }
         
             let appendSectionIfNeeded: (SyncDevicesSectionModel) -> Void = { section in
@@ -757,6 +710,56 @@ class SyncDevicesViewController: UIViewController {
                     })
                 }
             }
+    }
+
+    private func appendProximityLightingItems(
+        to section: SyncDevicesSectionModel,
+        datas: [(node: Node, syncData: NodeSyncData)],
+        title: String
+    ) {
+        datas.forEach { node, syncData in
+            let device = SyncDevicesModel(
+                name: node.name ?? "",
+                address: node.primaryUnicastAddress
+            )
+            device.imageName = node.iconName
+
+            let operation: ActionType
+            let itemTitle: String
+            switch syncData {
+            case .proximityLightingNeighbor(let relayNumber, let neighborAddresses):
+                operation = .proximityLightingNeighbor(
+                    relayNumber: relayNumber,
+                    neighborAddresses: neighborAddresses
+                )
+                itemTitle = title
+            case .proximityLightingRelayNumber(let relayNumber):
+                operation = .proximityLightingRelayNumber(relayNumber: relayNumber)
+                itemTitle = title
+            case .proximityLightingEnabled(let enabled):
+                operation = .proximityLightingEnabled(enabled: enabled)
+                itemTitle = enabled
+                    ? "proximity_lighting_enabled".localizedString
+                    : "proximity_lighting_disable".localizedString
+            default:
+                return
+            }
+
+            let task = SyncDeviceStepTaskModel(
+                name: itemTitle,
+                operationType: .configuration(node: node, type: operation)
+            )
+            let step = SyncDeviceStepModel(
+                type: itemTitle,
+                state: .none,
+                tasks: [task]
+            )
+            task.parentStepModel = step
+            proximityLightingTaskModels.append(task)
+            step.parentDeviceModel = device
+            device.steps.append(step)
+            section.devices.append(device)
+        }
     }
 
     private func linkProxyReplacementDependency(
@@ -2818,6 +2821,21 @@ class SyncDevicesViewController: UIViewController {
                 })
             }
             self.syncState = self.sections.contains(where: { $0.allModels.contains(where: { $0.state == .failed }) }) ? .syncFailure : .syncSuccess
+            #if DEBUG
+            if !self.proximityLightingTaskModels.isEmpty {
+                let successCount = self.proximityLightingTaskModels.filter {
+                    $0.state == .successful
+                }.count
+                let failedCount = self.proximityLightingTaskModels.filter {
+                    $0.state == .failed
+                }.count
+                print(
+                    "[ProximityLightingSync] total=" +
+                    "\(self.proximityLightingTaskModels.count) " +
+                    "success=\(successCount) failed=\(failedCount)"
+                )
+            }
+            #endif
             if self.syncState == .syncFailure {
                 self.persistEmergencyFireDeleteCleanupFailureIfNeeded()
             }

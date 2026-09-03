@@ -347,64 +347,20 @@ extension SpaceData {
 
     @discardableResult
     func migrateProximityLightingReferences(
-        from oldAddress: Address,
-        to newAddress: Address
-    ) -> Bool {
-        guard oldAddress != newAddress else {
-            return false
+        from oldNode: Node,
+        to newNode: Node,
+        group: Group?
+    ) -> ProximityLightingLifecycleResult? {
+        var transaction = ProximityLightingLifecycleCoordinator.begin(space: self)
+        if let group {
+            transaction.replaceNodeAddress(from: oldNode, to: newNode, group: group)
+        } else {
+            transaction.removeNode(oldNode)
         }
-
-        let affectedGroups = MeshNetworkManager.instance.groups.filter { group in
-            guard group.subNetworkId == meshNetworkId,
-                  let path = group.info.proximityLightingPath else {
-                return false
-            }
-            return path.paths.contains { path in
-                path.items.contains { $0.address == oldAddress }
-            } || path.zones.contains { $0.addresses.contains(oldAddress) }
-        }
-        let hasSpaceZoneReference = triggerZones.contains { zone in
-            zone.items.contains { $0.deviceAddress == oldAddress }
-        }
-
-        guard !affectedGroups.isEmpty || hasSpaceZoneReference else {
-            return false
-        }
-
-        markLocalChangePendingCloudSync()
-
-        affectedGroups.forEach { group in
-            guard let path = group.info.proximityLightingPath else {
-                return
-            }
-            path.paths.forEach { path in
-                path.items.forEach { item in
-                    if item.address == oldAddress {
-                        item.address = newAddress
-                    }
-                }
-            }
-            path.zones.forEach { zone in
-                zone.addresses = zone.addresses.map { address in
-                    address == oldAddress ? newAddress : address
-                }
-            }
-            group.info.save()
-            group.updateGroupSyncState()
-        }
-
-        if hasSpaceZoneReference {
-            triggerZones.forEach { zone in
-                zone.items.forEach { item in
-                    if item.deviceAddress == oldAddress {
-                        item.deviceAddress = newAddress
-                    }
-                }
-            }
-            save()
-        }
-
-        return true
+        return ProximityLightingLifecycleCoordinator.commit(
+            transaction.prepare(),
+            allowExistingHardErrors: true
+        )
     }
 }
 

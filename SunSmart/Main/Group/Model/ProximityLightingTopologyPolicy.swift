@@ -24,7 +24,7 @@ struct ProximityLightingTopologyPolicy {
         let deviceAddress: DeviceAddress
     }
 
-    struct SpaceZoneSnapshot {
+    struct SpaceZoneSnapshot: Equatable {
         let members: [SpaceZoneMember]
     }
 

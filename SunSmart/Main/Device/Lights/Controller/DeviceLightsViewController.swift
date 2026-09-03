@@ -793,11 +793,12 @@ class DeviceLightsViewController: UIViewController {
             MeshAPI.resetNodes(addressDataList: addressDataList, resetSuccess: nil, resetFail: nil) {[weak self] successAddressList, failAddressList in
                 XWHUDManager.hide()
                 guard let self = self else { return }
-                
+                var lifecycleResults: [ProximityLightingLifecycleResult] = []
                 successAddressList.forEach({ address in
                     if let index = self.devices.firstIndex(where: { $0.primaryUnicastAddress == address }) {
-                        let node = self.devices[index]
-                        deletionContexts[address]?.commit()
+                        if let result = deletionContexts[address]?.commit() {
+                            lifecycleResults.append(result)
+                        }
                         self.devices.remove(at: index)
                     }
                 })
@@ -809,7 +810,6 @@ class DeviceLightsViewController: UIViewController {
                 }
                 
                 if failAddressList.isEmpty { // 删除成功
-                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
                     self.isEdit = false
                     self.applyDeviceNameFilter()
                     self.updateUI()
@@ -818,23 +818,30 @@ class DeviceLightsViewController: UIViewController {
                     if MeshNetworkManager.instance.realNodes.isEmpty, MeshLibManager.manager.isMeshNetworkConnected {
                         MeshLibManager.manager.close()
                     }
+                    self.syncDeletionPeersIfNeeded(lifecycleResults) {
+                        XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                    }
                     
                 }else { // 删除失败（提示是否强制删除这部分设备）
                     
                     let alertView = SRAlertView(title: "notification".localizedString, actions: [SRAlertAction(title: "alert_item_cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
-                        self?.devices.removeAll(where: { successAddressList.contains($0.primaryUnicastAddress) })
-                        self?.applyDeviceNameFilter()
-                        self?.updateUI(reloadTableView: false)
-                        self?.updateEditUI()
-                        self?.isDeletingDevice = false
-                        self?.collectionView.reloadData()
+                        guard let self else { return }
+                        self.devices.removeAll(where: { successAddressList.contains($0.primaryUnicastAddress) })
+                        self.applyDeviceNameFilter()
+                        self.updateUI(reloadTableView: false)
+                        self.updateEditUI()
+                        self.isDeletingDevice = false
+                        self.collectionView.reloadData()
+                        self.syncDeletionPeersIfNeeded(lifecycleResults, completion: {})
                     }), SRAlertAction(title: "force_delete".localizedString, actionHandler: {[weak self] _ in
                         guard let self = self else { return }
                         let forceDeleteNodes = self.devices.filter({ failAddressList.contains($0.primaryUnicastAddress) })
-                        forceDeleteNodes.forEach({
-                            deletionContexts[$0.primaryUnicastAddress]?.commit()
-                            MeshNetworkManager.instance.meshNetwork?.remove(node: $0)
-                        })
+                        forceDeleteNodes.forEach { node in
+                            MeshNetworkManager.instance.meshNetwork?.remove(node: node)
+                            if let result = deletionContexts[node.primaryUnicastAddress]?.commit() {
+                                lifecycleResults.append(result)
+                            }
+                        }
 //                        _ = self.space.meshManager?.save()
                         self.devices.removeAll(where: { failAddressList.contains($0.primaryUnicastAddress) })
                         self.isEdit = false
@@ -845,8 +852,9 @@ class DeviceLightsViewController: UIViewController {
                         self.collectionView.reloadData()
                         
                         self.space.commitLocalChangeForCloudSync(site: self.site, changeType: .network(type: .address))
-                        
-                        XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                        self.syncDeletionPeersIfNeeded(lifecycleResults) {
+                            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                        }
                         
                     })])
                     let messageAttStr = NSMutableAttributedString(string: "devices_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
@@ -857,6 +865,30 @@ class DeviceLightsViewController: UIViewController {
             }
         })]).show()
         
+    }
+
+    private func syncDeletionPeersIfNeeded(
+        _ results: [ProximityLightingLifecycleResult],
+        completion: @escaping () -> Void
+    ) {
+        let datas = ProximityLightingLifecycleCoordinator.mergedSyncDatas(from: results)
+        guard MeshLibManager.manager.isMeshNetworkConnected, !datas.isEmpty else {
+            completion()
+            return
+        }
+        let vc = SyncDevicesViewController(type: .spaceTriggerZones(datas: datas))
+        var didFinish = false
+        let finish = { [weak vc] in
+            guard !didFinish else { return }
+            didFinish = true
+            if let vc, vc.navigationController?.topViewController === vc {
+                vc.navigationController?.popViewController(animated: false)
+            }
+            completion()
+        }
+        vc.syncSuccessCallback = { _ in finish() }
+        vc.backActionCallback = { _ in finish() }
+        navigationController?.pushViewController(vc, animated: true)
     }
     
     

@@ -621,7 +621,6 @@
 		08B54EBC30402CCB0017ED49 /* DeviceLightHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25792ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift */; };
 		08B54EBD30402CCB0017ED49 /* SwitchSelectSceneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4562BA1500500F9285B /* SwitchSelectSceneViewController.swift */; };
 		08B54EBE30402CCB0017ED49 /* GroupProximityLightingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */; };
-		C8A0F00232A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */; };
 		08B54EBF30402CCB0017ED49 /* GroupPathSequenceQuickAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BE92DDABFDC00F09467 /* GroupPathSequenceQuickAddView.swift */; };
 		08B54EC030402CCB0017ED49 /* MeshFirmwareTypeUpdateViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C70B02CD31DC900B9A76A /* MeshFirmwareTypeUpdateViewCell.swift */; };
 		08B54EC130402CCB0017ED49 /* DeviceDongleDeleteAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A55972DBA103500E04252 /* DeviceDongleDeleteAlertView.swift */; };
@@ -1569,7 +1568,6 @@
 		C88554EE2DE6B44C00C8B688 /* DeviceLightHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25792ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift */; };
 		C88554EF2DE6B44C00C8B688 /* SwitchSelectSceneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4562BA1500500F9285B /* SwitchSelectSceneViewController.swift */; };
 		C88554F02DE6B44C00C8B688 /* GroupProximityLightingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */; };
-		C8A0F00332A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */; };
 		C88554F12DE6B44C00C8B688 /* GroupPathSequenceQuickAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BE92DDABFDC00F09467 /* GroupPathSequenceQuickAddView.swift */; };
 		C88554F22DE6B44C00C8B688 /* MeshFirmwareTypeUpdateViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C70B02CD31DC900B9A76A /* MeshFirmwareTypeUpdateViewCell.swift */; };
 		C88554F32DE6B44C00C8B688 /* DeviceDongleDeleteAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A55972DBA103500E04252 /* DeviceDongleDeleteAlertView.swift */; };
@@ -1952,7 +1950,6 @@
 		C886E14A2E30DE4900D0C3A6 /* DeviceLightHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25792ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift */; };
 		C886E14B2E30DE4900D0C3A6 /* SwitchSelectSceneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4562BA1500500F9285B /* SwitchSelectSceneViewController.swift */; };
 		C886E14C2E30DE4900D0C3A6 /* GroupProximityLightingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */; };
-		C8A0F00432A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */; };
 		C886E14D2E30DE4900D0C3A6 /* GroupPathSequenceQuickAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BE92DDABFDC00F09467 /* GroupPathSequenceQuickAddView.swift */; };
 		C886E14E2E30DE4900D0C3A6 /* MeshFirmwareTypeUpdateViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C70B02CD31DC900B9A76A /* MeshFirmwareTypeUpdateViewCell.swift */; };
 		C886E14F2E30DE4900D0C3A6 /* DeviceDongleDeleteAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A55972DBA103500E04252 /* DeviceDongleDeleteAlertView.swift */; };
@@ -2127,6 +2124,11 @@
 		C8A09A072AC1790B0068C814 /* InfoEditViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A09A062AC1790B0068C814 /* InfoEditViewController.swift */; };
 		C8A0AC4B2C3E21B200DFE803 /* Array+Split.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0AC4A2C3E21B200DFE803 /* Array+Split.swift */; };
 		C8A0CB4F2C9A81E1009A37E3 /* ZipHandler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0CB4E2C9A81E1009A37E3 /* ZipHandler.swift */; };
+		C8A0F00232A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */; };
+		C8A0F00332A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */; };
+		C8A0F00432A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */; };
+		C8A0F00532A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */; };
+		C8A0F00632A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */; };
 		C8A100102FF0000000000010 /* LabSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100012FF0000000000001 /* LabSettings.swift */; };
 		C8A100112FF0000000000011 /* LabViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100022FF0000000000002 /* LabViewController.swift */; };
 		C8A100122FF0000000000012 /* LightAckProgressAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100032FF0000000000003 /* LightAckProgressAlertView.swift */; };
@@ -2774,7 +2776,6 @@
 		C8BB67292ED3F056000C63EE /* DeviceLightHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88B25792ADE1D2100CF1AE4 /* DeviceLightHeaderView.swift */; };
 		C8BB672A2ED3F056000C63EE /* SwitchSelectSceneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87EB4562BA1500500F9285B /* SwitchSelectSceneViewController.swift */; };
 		C8BB672B2ED3F056000C63EE /* GroupProximityLightingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */; };
-		C8A0F00632A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */; };
 		C8BB672C2ED3F056000C63EE /* GroupPathSequenceQuickAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BE92DDABFDC00F09467 /* GroupPathSequenceQuickAddView.swift */; };
 		C8BB672D2ED3F056000C63EE /* MeshFirmwareTypeUpdateViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C70B02CD31DC900B9A76A /* MeshFirmwareTypeUpdateViewCell.swift */; };
 		C8BB672E2ED3F056000C63EE /* DeviceDongleDeleteAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A55972DBA103500E04252 /* DeviceDongleDeleteAlertView.swift */; };
@@ -3219,7 +3220,6 @@
 		C8FC6B9F2E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FC6B9D2E7502F6004EE2BA /* DaliDeviceInformationController.swift */; };
 		C8FC6BA02E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FC6B9D2E7502F6004EE2BA /* DaliDeviceInformationController.swift */; };
 		C8FDE9A72DD595A30002394B /* GroupProximityLightingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */; };
-		C8A0F00532A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */; };
 		C8FF8A7E146827711D87F57C /* GroupPowerSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */; };
 		C8FFD7D52E7D03B20074CC6A /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
 		DC176B45FDD04BF2B211C2D1 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
@@ -3414,6 +3414,16 @@
 		F2608200000000000004002 /* LightTimeInformationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608200000000000004000 /* LightTimeInformationCoordinator.swift */; };
 		F2608200000000000004003 /* LightTimeInformationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608200000000000004000 /* LightTimeInformationCoordinator.swift */; };
 		F2608200000000000004004 /* LightTimeInformationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608200000000000004000 /* LightTimeInformationCoordinator.swift */; };
+		F26090310000000000000001 /* ProximityLightingTopologyReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090300000000000000001 /* ProximityLightingTopologyReconciler.swift */; };
+		F26090310000000000000002 /* ProximityLightingTopologyReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090300000000000000001 /* ProximityLightingTopologyReconciler.swift */; };
+		F26090310000000000000003 /* ProximityLightingTopologyReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090300000000000000001 /* ProximityLightingTopologyReconciler.swift */; };
+		F26090310000000000000004 /* ProximityLightingTopologyReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090300000000000000001 /* ProximityLightingTopologyReconciler.swift */; };
+		F26090310000000000000005 /* ProximityLightingTopologyReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090300000000000000001 /* ProximityLightingTopologyReconciler.swift */; };
+		F26090320000000000000001 /* ProximityLightingLifecycleCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090300000000000000002 /* ProximityLightingLifecycleCoordinator.swift */; };
+		F26090320000000000000002 /* ProximityLightingLifecycleCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090300000000000000002 /* ProximityLightingLifecycleCoordinator.swift */; };
+		F26090320000000000000003 /* ProximityLightingLifecycleCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090300000000000000002 /* ProximityLightingLifecycleCoordinator.swift */; };
+		F26090320000000000000004 /* ProximityLightingLifecycleCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090300000000000000002 /* ProximityLightingLifecycleCoordinator.swift */; };
+		F26090320000000000000005 /* ProximityLightingLifecycleCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090300000000000000002 /* ProximityLightingLifecycleCoordinator.swift */; };
 		F3C661B473314BCA9FC4EADC /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
 /* End PBXBuildFile section */
 
@@ -3771,6 +3781,7 @@
 		C8A09A062AC1790B0068C814 /* InfoEditViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoEditViewController.swift; sourceTree = "<group>"; };
 		C8A0AC4A2C3E21B200DFE803 /* Array+Split.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Array+Split.swift"; sourceTree = "<group>"; };
 		C8A0CB4E2C9A81E1009A37E3 /* ZipHandler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZipHandler.swift; sourceTree = "<group>"; };
+		C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProximityLightingTopologyPolicy.swift; sourceTree = "<group>"; };
 		C8A100012FF0000000000001 /* LabSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabSettings.swift; sourceTree = "<group>"; };
 		C8A100022FF0000000000002 /* LabViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LabViewController.swift; sourceTree = "<group>"; };
 		C8A100032FF0000000000003 /* LightAckProgressAlertView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightAckProgressAlertView.swift; sourceTree = "<group>"; };
@@ -4101,7 +4112,6 @@
 		C8FB10012F11000400000001 /* SimulateFaultRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SimulateFaultRequest.swift; sourceTree = "<group>"; };
 		C8FC6B9D2E7502F6004EE2BA /* DaliDeviceInformationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DaliDeviceInformationController.swift; sourceTree = "<group>"; };
 		C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupProximityLightingData.swift; sourceTree = "<group>"; };
-		C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProximityLightingTopologyPolicy.swift; sourceTree = "<group>"; };
 		C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Pods_Common_SunSmart.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		CA14D3D265B3B74E304A61D7 /* Pods-Common-Archipelago.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-Archipelago.debug.xcconfig"; path = "Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago.debug.xcconfig"; sourceTree = "<group>"; };
 		D1025845F30FDFC9F8C9ACCB /* Pods_Common_SylSmart.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_SylSmart.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -4171,6 +4181,8 @@
 		F26081600000000000008000 /* SiteTimeZoneEditSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteTimeZoneEditSyncCoordinator.swift; sourceTree = "<group>"; };
 		F2608170000000000003100 /* GatewayDetailClockCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayDetailClockCoordinator.swift; sourceTree = "<group>"; };
 		F2608200000000000004000 /* LightTimeInformationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightTimeInformationCoordinator.swift; sourceTree = "<group>"; };
+		F26090300000000000000001 /* ProximityLightingTopologyReconciler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProximityLightingTopologyReconciler.swift; sourceTree = "<group>"; };
+		F26090300000000000000002 /* ProximityLightingLifecycleCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProximityLightingLifecycleCoordinator.swift; sourceTree = "<group>"; };
 		FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorState.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -5978,6 +5990,8 @@
 				C8BF08902B2A8DCD00144BAC /* GroupServer.swift */,
 				C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */,
 				C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */,
+				F26090300000000000000001 /* ProximityLightingTopologyReconciler.swift */,
+				F26090300000000000000002 /* ProximityLightingLifecycleCoordinator.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -7398,6 +7412,8 @@
 				08B54EBD30402CCB0017ED49 /* SwitchSelectSceneViewController.swift in Sources */,
 				08B54EBE30402CCB0017ED49 /* GroupProximityLightingData.swift in Sources */,
 				C8A0F00232A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
+				F26090310000000000000001 /* ProximityLightingTopologyReconciler.swift in Sources */,
+				F26090320000000000000001 /* ProximityLightingLifecycleCoordinator.swift in Sources */,
 				08B54EBF30402CCB0017ED49 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				08B54EC030402CCB0017ED49 /* MeshFirmwareTypeUpdateViewCell.swift in Sources */,
 				08B54EC130402CCB0017ED49 /* DeviceDongleDeleteAlertView.swift in Sources */,
@@ -8048,6 +8064,8 @@
 				8C778BF62FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */,
 				C88554F02DE6B44C00C8B688 /* GroupProximityLightingData.swift in Sources */,
 				C8A0F00332A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
+				F26090310000000000000002 /* ProximityLightingTopologyReconciler.swift in Sources */,
+				F26090320000000000000002 /* ProximityLightingLifecycleCoordinator.swift in Sources */,
 				C88554F12DE6B44C00C8B688 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				8C7788FF2F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift in Sources */,
 				C88554F22DE6B44C00C8B688 /* MeshFirmwareTypeUpdateViewCell.swift in Sources */,
@@ -8710,6 +8728,8 @@
 				8C778BF52FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */,
 				C886E14C2E30DE4900D0C3A6 /* GroupProximityLightingData.swift in Sources */,
 				C8A0F00432A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
+				F26090310000000000000003 /* ProximityLightingTopologyReconciler.swift in Sources */,
+				F26090320000000000000003 /* ProximityLightingLifecycleCoordinator.swift in Sources */,
 				C886E14D2E30DE4900D0C3A6 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				8C7788FE2F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift in Sources */,
 				C886E14E2E30DE4900D0C3A6 /* MeshFirmwareTypeUpdateViewCell.swift in Sources */,
@@ -9382,6 +9402,8 @@
 				C87EB4572BA1500500F9285B /* SwitchSelectSceneViewController.swift in Sources */,
 				C8FDE9A72DD595A30002394B /* GroupProximityLightingData.swift in Sources */,
 				C8A0F00532A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
+				F26090310000000000000004 /* ProximityLightingTopologyReconciler.swift in Sources */,
+				F26090320000000000000004 /* ProximityLightingLifecycleCoordinator.swift in Sources */,
 				C8CD5BEA2DDABFDC00F09467 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				C89C70B12CD31DC900B9A76A /* MeshFirmwareTypeUpdateViewCell.swift in Sources */,
 				C83A55982DBA103500E04252 /* DeviceDongleDeleteAlertView.swift in Sources */,
@@ -10033,6 +10055,8 @@
 				8C778BF42FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */,
 				C8BB672B2ED3F056000C63EE /* GroupProximityLightingData.swift in Sources */,
 				C8A0F00632A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
+				F26090310000000000000005 /* ProximityLightingTopologyReconciler.swift in Sources */,
+				F26090320000000000000005 /* ProximityLightingLifecycleCoordinator.swift in Sources */,
 				C8BB672C2ED3F056000C63EE /* GroupPathSequenceQuickAddView.swift in Sources */,
 				8C7789012F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift in Sources */,
 				C8BB672D2ED3F056000C63EE /* MeshFirmwareTypeUpdateViewCell.swift in Sources */,
@@ -10182,7 +10206,7 @@
 			baseConfigurationReference = F10000000000000000000006 /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Archipelago/Archipelago.entitlements;
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.2.1;
 			};
 			name = Debug;
 		};
@@ -10191,7 +10215,7 @@
 			baseConfigurationReference = F10000000000000000000007 /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Archipelago/Archipelago.entitlements;
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.2.1;
 			};
 			name = Release;
 		};
@@ -10200,7 +10224,7 @@
 			baseConfigurationReference = F10000000000000000000009 /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SylSmart/SylSmart.entitlements;
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.2.1;
 			};
 			name = Debug;
 		};
@@ -10209,7 +10233,7 @@
 			baseConfigurationReference = F1000000000000000000000A /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SylSmart/SylSmart.entitlements;
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.2.1;
 			};
 			name = Release;
 		};
@@ -10345,7 +10369,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Debug;
@@ -10366,7 +10390,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.2.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Release;
@@ -10379,7 +10403,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.2.1;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Debug;
@@ -10392,7 +10416,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.2.0;
+				MARKETING_VERSION = 1.2.1;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Release;
