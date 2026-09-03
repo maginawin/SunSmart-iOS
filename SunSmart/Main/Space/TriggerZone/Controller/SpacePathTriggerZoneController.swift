@@ -322,14 +322,16 @@ class SpacePathTriggerZoneController: UIViewController {
         if setZones.isEmpty {
             tableView.layoutIfNeeded()
             UIView.performWithoutAnimation {
-                view.showEmptyDataView(frame: tableView.frame,
-                                       title: "no_trigger_zones".localizedString,
+                view.showEmptyDataView(title: "no_trigger_zones".localizedString,
                                        backgroundColor: Background_Color,
                                        buttonText: "add_trigger_zone".localizedString,
                                        buttomWidth: SCRXFrom(216),
                                        position: .center,
                                        bottomMargin: SCRYFrom(100)) { [weak self] in
                     self?.addZone()
+                }
+                view.emptyView?.snp.makeConstraints { make in
+                    make.edges.equalTo(tableView)
                 }
             }
             tableView.isScrollEnabled = false

@@ -70,10 +70,16 @@ struct GroupPathSequenceDeviceAddViewContractTests {
             from: "private func updateEmptyUI()",
             to: "private func updateDeviceAddViewUI()"
         )
+        let spaceZoneEmptyState = section(
+            in: spaceController,
+            from: "private func updateEmptyUI()",
+            to: "private func updateDeviceAddViewUI()"
+        )
 
         for (name, emptyState) in [
             ("Sequence", sequenceEmptyState),
             ("Trigger Zone", zoneEmptyState),
+            ("Space Trigger Zone", spaceZoneEmptyState),
         ] {
             require(
                 !emptyState.contains("frame: tableView.frame"),
