@@ -188,6 +188,34 @@ final class LumineuxRuntimeTests: XCTestCase {
         XCTAssertFalse(child.hasAmbiguousLayout, file: file, line: line)
     }
 
+    func testBluetoothRequiredPageUsesLumineuxOverrideWithoutLayoutAmbiguity() throws {
+        let controller = BluetoothRequiredViewController()
+        show(NavigationViewController(rootViewController: controller))
+        defer { SRAlertView.hide() }
+
+        let emptyView = try XCTUnwrap(controller.view.emptyView)
+        let imageView = try XCTUnwrap(emptyView.imageView)
+        let titleLabel = try XCTUnwrap(emptyView.titleLabel)
+        let tipLabel = try XCTUnwrap(emptyView.tipLabel)
+
+        XCTAssertEqual(titleLabel.text, "Bluetooth required")
+        XCTAssertEqual(tipLabel.text, "Turn on bluetooth to use the app.")
+        XCTAssertEqual(imageView.image?.size, CGSize(width: 240, height: 194))
+        try assertResolvedImageMatchesLumineuxSource(imageView.image, name: "bluetooth_required")
+
+        for view in [emptyView, imageView, titleLabel, tipLabel] {
+            XCTAssertFalse(view.hasAmbiguousLayout,
+                           "Ambiguous Bluetooth-required layout: \(type(of: view))")
+            assertContained(view, in: controller.view)
+        }
+        let titleFrame = titleLabel.convert(titleLabel.bounds, to: controller.view)
+        let imageFrame = imageView.convert(imageView.bounds, to: controller.view)
+        let tipFrame = tipLabel.convert(tipLabel.bounds, to: controller.view)
+        XCTAssertLessThan(titleFrame.maxY, imageFrame.minY)
+        XCTAssertLessThanOrEqual(imageFrame.maxY, tipFrame.minY)
+        snapshot(window, "Bluetooth-required-page")
+    }
+
     func testProfileAndSafeModeSupplementalAssetsResolveFromLumineuxSources() throws {
         let assets: [(String, CGSize)] = [
             ("profile_chart_occupancy_daylight", CGSize(width: 212, height: 234)),

@@ -6,16 +6,16 @@ Lumineux 在构建期把公共 catalog 与 Lumineux catalog 合并为一份无�
 
 ### Catalog 物理分组
 
-`Lumineux/Assets-Lumineux.xcassets` 使用与 SLGSync 相同的十二个一级业务目录：`Common`、`Device`、`Energy`、`FireAlarm1.5`、`Firmware`、`Group`、`Path`、`Profile`、`Scene`、`Site`、`Space`、`Timed`。`AppIcon` 与 `AccentColor` 保留在根目录；当前 Lumineux source catalog 为 126 imageset 加 AppIcon、AccentColor，共 128 组；imageset 全部位于业务目录中。较早批次的统计保留在下方带日期的历史验证记录中。
+`Lumineux/Assets-Lumineux.xcassets` 使用与 SLGSync 相同的十二个一级业务目录：`Common`、`Device`、`Energy`、`FireAlarm1.5`、`Firmware`、`Group`、`Path`、`Profile`、`Scene`、`Site`、`Space`、`Timed`。`AppIcon` 与 `AccentColor` 保留在根目录；当前 Lumineux source catalog 为 127 imageset 加 AppIcon、AccentColor，共 129 组；imageset 全部位于业务目录中。较早批次的统计保留在下方带日期的历史验证记录中。
 
 `Lumineux/DesignAssets/asset-groups.json` 是生成器的分组来源。`icon-manifest.json` 中的 `Tabs`、`Navigation`、`Buttons` 等字段只描述 Figma 来源，不决定 Xcode 目录。两个资源生成器会拒绝缺失分组、未知分组、错误位置和同名重复资源；重新运行后不得在 catalog 根目录生成 imageset。
 
-- 临时 XCTest reference catalog 与 source catalog 同为 128 组。当前 SLGSync non-Fire 覆盖为 90 / 94，待提供为 4；额外已打包 33，因此已提供总数为 123。合并 catalog 的当前合同仍为 695 组，其中 128 组匹配 Lumineux、567 组保留 Common。
+- 临时 XCTest reference catalog 与 source catalog 同为 129 组。当前 SLGSync non-Fire 覆盖为 90 / 94，待提供为 4；额外已打包 34，因此已提供总数为 124。合并 catalog 的当前合同仍为 695 组，其中 129 组匹配 Lumineux、566 组保留 Common。
 - 已提供素材均保持原始画布和 iOS 逻辑尺寸；其中 Figma 完整向量节点、`auto`、六组 Common Retina PNG 与本轮 grouped Retina PNG 按各自来源保存。系统启动页另使用独立的 88pt `lumineux_launch_logo`，AppIcon 为无 alpha 的 1024px 派生文件，AccentColor 为 `#4D738A`。
 - PNG 文件字节与运行时布局属于不同层次：`switch_proxy_instructions_1` 的 310 × 328pt 原图在 iPhone 现有 324/310 约束下约有 1.2% 纵向压缩；用户确认影响可忽略，本轮不改生产 Swift。
 - Lumineux 的 `Merge Lumineux Assets` phase 每次构建调用 `Lumineux/Scripts/merge_assets.rb`，把 `SunSmart/Assets.xcassets` 复制到 `DERIVED_FILE_DIR` 后以完整 Lumineux asset set 覆盖；Resources 只编译 `LumineuxAssets/Assets-Lumineux-Merged.xcassets`。签名 Team、Bundle ID、协议与独立启动页归属不变。
-- 真实 UIKit 测试覆盖 Welcome、仅保留用户与关于入口的菜单、Europe-only 服务器地区契约、Sites 单元格和滑块回调、启动页及协议内容/路由、四类真实空状态容器、强制 AUTO 弹窗、全部已提供图片尺寸与来源、Tab/收藏状态，以及真实 menu/back 导航图片、target/action、渲染 bounds 与返回路径。
-- 临时 XCTest bundle 会独立编译完整原始 Lumineux 128 组 catalog（126 个 imageset、AppIcon、AccentColor）。主 App 的 `UIImage(named:)` 与该 reference catalog 逐像素 RGBA 对比；common launch logo 仅以三个唯一前缀的 loose PNG 作为严格负对照，不参与正向 catalog 编译。reference bundle ID 必须不同于主 App；不以两次主 bundle 同名读取或平铺 PNG 自比代替来源验证。
+- 真实 UIKit 测试覆盖 Welcome、仅保留用户与关于入口的菜单、Europe-only 服务器地区契约、Sites 单元格和滑块回调、启动页及协议内容/路由、五类真实空状态容器、Bluetooth Required 页面、强制 AUTO 弹窗、全部已提供图片尺寸与来源、Tab/收藏状态，以及真实 menu/back 导航图片、target/action、渲染 bounds 与返回路径。
+- 临时 XCTest bundle 会独立编译完整原始 Lumineux 129 组 catalog（127 个 imageset、AppIcon、AccentColor）。主 App 的 `UIImage(named:)` 与该 reference catalog 逐像素 RGBA 对比；common launch logo 仅以三个唯一前缀的 loose PNG 作为严格负对照，不参与正向 catalog 编译。reference bundle ID 必须不同于主 App；不以两次主 bundle 同名读取或平铺 PNG 自比代替来源验证。
 - new3 focused UIKit 的真实调用点为 Buoy、Firmware、Profile、Scene 与 Space。Task 3 的 iPhone 16 focused 运行已产生并审阅 18 张附件；Task 5 的 iPhone SE 3、iPhone 16、iPad Pro 11 M4 与 en-US、zh-Hans-CN 六组合矩阵已全部通过并审阅 108 张附件。Task 6 又在全新的正常 `DerivedData3` 目录完成 Debug generic iOS 构建、签名与生成 catalog 验证，实际证据见本页末尾。
 - 测试不修改生产工程/AppDelegate，不选择服务器、不登录、不添加站点、不连接或控制真实设备。截图必须人工查看；编译通过不等同于布局通过。
 

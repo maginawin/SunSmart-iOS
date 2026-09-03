@@ -16,7 +16,7 @@ struct AssetGroupManifest: Decodable {
 }
 
 let expectedGroups = [
-    "Common", "Device", "Energy", "FireAlarm1.5", "Firmware", "Group",
+    "Common", "Device", "Energy", "EightKeySwitches1.5", "FireAlarm1.5", "Firmware", "Group",
     "Path", "Profile", "Scene", "Site", "Space", "Timed"
 ]
 let expectedAssetGroups: [String: String] = [
@@ -41,6 +41,7 @@ let expectedAssetGroups: [String: String] = [
     "select": "Common",
     "server_select": "Common",
     "user_big": "Common",
+    "bluetooth_required": "Space",
     "device_add": "Device",
     "device_add_disable": "Device",
     "device_add_setting": "Device",
@@ -70,6 +71,7 @@ let expectedAssetGroups: [String: String] = [
     "server_download": "Firmware",
     "auto": "Group",
     "auto_big": "Group",
+    "Brightness Panel (8 key)": "EightKeySwitches1.5",
     "group_control_disable": "Group",
     "group_control_disable_big": "Group",
     "group_empty": "Group",
@@ -95,6 +97,7 @@ let expectedAssetGroups: [String: String] = [
     "scene_group_disable": "Scene",
     "scene_group_off": "Scene",
     "scene_group_on": "Scene",
+    "Scene Panel (8 key)": "EightKeySwitches1.5",
     "menu_icon": "Site",
     "more_vertical": "Site",
     "no_Internet": "Site",
@@ -160,7 +163,7 @@ let groupManifest = try JSONDecoder().decode(
 check(groupManifest.groups == expectedGroups,
       "Lumineux groups must match SLGSync order and names")
 check(groupManifest.assets == expectedAssetGroups,
-      "Lumineux asset group manifest differs from the approved 128-resource mapping")
+      "Lumineux asset group manifest differs from the approved 131-resource mapping")
 
 func setExtension(for name: String) -> String {
     switch name {
@@ -231,7 +234,7 @@ while let url = enumerator.nextObject() as? URL {
     discovered[name, default: []].append(url.standardizedFileURL)
     enumerator.skipDescendants()
 }
-check(discovered.count == 128, "Lumineux catalog must contain exactly 128 asset names")
+check(discovered.count == 131, "Lumineux catalog must contain exactly 131 asset names")
 check(Set(discovered.keys) == Set(expectedAssetGroups.keys),
       "Lumineux catalog asset names differ from the approved set")
 for name in expectedAssetGroups.keys.sorted() {
@@ -664,6 +667,21 @@ let providedGeneratedIPadAssets: [ProvidedGroupedAsset] = [
     ])
 ]
 
+let providedEightKeyPanelAssets: [ProvidedGroupedAsset] = [
+    .init(group: "EightKeySwitches1.5", name: "Brightness Panel (8 key)", pixels: [
+        2: (686, 640), 3: (1029, 960)
+    ], hashes: [
+        2: "6bfbdaa3ed5b078963224e97949d103cd77eef2521c9dbb844ae08c1421335b6",
+        3: "85ac4b8145bac7601a15e551aa060b71341ac2348ef81414442170b76a5297eb"
+    ]),
+    .init(group: "EightKeySwitches1.5", name: "Scene Panel (8 key)", pixels: [
+        2: (686, 640), 3: (1029, 960)
+    ], hashes: [
+        2: "6335ec2c238c8ddbb3d75c1e2ae23a58d88e9d0dcb1eeea9817bcac5b73befda",
+        3: "2283d349c95df775d59ebbfbd8dd1cee7dc09b00f85a00ec1ba8e43d7e5d824a"
+    ])
+]
+
 let providedGroupedAssets: [ProvidedGroupedAsset] = [
     .init(group: "Device", name: "switch_proxy_instructions_1", pixels: [
         2: (620, 656), 3: (930, 984)
@@ -739,7 +757,9 @@ check(providedNew3Assets.count == 29,
       "Expected exactly 29 new3 supplied Retina assets")
 check(providedGeneratedIPadAssets.count == 7,
       "Expected exactly 7 generated iPad and standby Retina assets")
-for asset in providedGroupedAssets + providedNew3Assets + providedGeneratedIPadAssets {
+check(providedEightKeyPanelAssets.count == 2,
+      "Expected exactly 2 supplied eight-key panel Retina assets")
+for asset in providedGroupedAssets + providedNew3Assets + providedGeneratedIPadAssets + providedEightKeyPanelAssets {
     check(expectedAssetGroups[asset.name] == asset.group,
           "Wrong business group for supplied asset: \(asset.name)")
     let entries = try contents(named: asset.name)["images"] as! [[String: String]]
@@ -782,9 +802,13 @@ for asset in providedGroupedAssets + providedNew3Assets + providedGeneratedIPadA
           "\(asset.name) must not contain a generated 1x PNG")
 }
 
-// Empty-state illustrations are complete Figma node exports. Keep their
-// original non-square canvas, scale, alpha, and exact exported bytes.
-let emptyStates: [(name: String, node: String, width: Int, height: Int, hashes: [Int: String])] = [
+// Empty-state illustrations are complete supplied exports. Keep their original
+// non-square canvas, scale, alpha, and exact exported bytes.
+let emptyStates: [(name: String, source: String, width: Int, height: Int, hashes: [Int: String])] = [
+    ("bluetooth_required", "provided empty_1", 240, 194, [
+        2: "82f42e27406d67bff533811bdb51d9d739354978ddb048a3689bf805e046db4d",
+        3: "379ff2bf589091e8b64bd14ae12e934b552fe26efae8b83fa4fb36a08f7f4c3d"
+    ]),
     ("site_empty", "0:11425", 353, 298, [
         2: "8b454a46adee9a1f18f730cab8b24788abbaaa17c6b3a67922dd9e6be2180ef7",
         3: "9f4bdd85208ca2bb8d94d27de802ea875731587b082f5b2b7ef62cec8e626e83"
@@ -802,14 +826,14 @@ let emptyStates: [(name: String, node: String, width: Int, height: Int, hashes: 
         3: "12fd0972a9694161e6197a29f9d54fe7a8d36c950a9ebb5a1076324550b69898"
     ])
 ]
-check(Set(emptyStates.map(\.name)).count == 4, "Empty-state manifest must contain four distinct assets")
+check(Set(emptyStates.map(\.name)).count == 5, "Empty-state manifest must contain five distinct assets")
 for asset in emptyStates {
     let imageSet = assetSetURL(named: asset.name)
     check(FileManager.default.fileExists(atPath: imageSet.path),
-          "Missing Lumineux empty-state image set: \(asset.name) from Figma \(asset.node)")
+          "Missing Lumineux empty-state image set: \(asset.name) from \(asset.source)")
     let entries = try contents(named: asset.name)["images"] as! [[String: String]]
     let populatedEntries = entries.filter { $0["filename"] != nil }
-    check(populatedEntries.count == 2, "Empty-state assets must contain exact 2x/3x Figma exports")
+    check(populatedEntries.count == 2, "Empty-state assets must contain exact supplied 2x/3x exports")
     for scale in 2...3 {
         let entry = populatedEntries.first { $0["scale"] == "\(scale)x" }
         check(entry != nil, "Missing \(asset.name) @\(scale)x")
@@ -817,10 +841,10 @@ for asset in emptyStates {
         let data = try Data(contentsOf: imageSet.appendingPathComponent(filename))
         let pixels = try image(named: asset.name, filename: filename)
         check(pixels.width == asset.width * scale && pixels.height == asset.height * scale,
-              "Incorrect Figma canvas for \(asset.name) @\(scale)x")
+              "Incorrect supplied canvas for \(asset.name) @\(scale)x")
         let digest = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
         check(digest == asset.hashes[scale],
-              "\(asset.name) @\(scale)x must remain the exact Figma node \(asset.node) export")
+              "\(asset.name) @\(scale)x must remain the exact \(asset.source) export")
     }
 }
 let iconEntries = try contents(named: "AppIcon")["images"] as! [[String: String]]
@@ -830,4 +854,4 @@ check([CGImageAlphaInfo.none, .noneSkipFirst, .noneSkipLast].contains(icon.alpha
 let colors = try contents(named: "AccentColor")["colors"] as! [[String: Any]]
 let components = (colors[0]["color"] as! [String: Any])["components"] as! [String: String]
 check(components == ["red": "0x4D", "green": "0x73", "blue": "0x8A", "alpha": "1.000"], "Accent color must be #4D738A")
-print("Lumineux asset tests passed: 29 new3 and 7 generated iPad/standby Retina assets, 128 asset groups, \(iconAssets.count) Figma-vector icons, 7 supplied PNG icons, 4 exact Figma empty states, retina logos, opaque 1024 AppIcon, exact AccentColor")
+print("Lumineux asset tests passed: 29 new3, 7 generated iPad/standby, and 2 eight-key panel Retina assets, 131 asset groups, \(iconAssets.count) Figma-vector icons, 7 supplied PNG icons, 5 exact empty states, retina logos, opaque 1024 AppIcon, exact AccentColor")

@@ -105,7 +105,7 @@ open class LBXScanViewController: UIViewController {
         
         
         let statusBarManager = UIApplication.shared.windows.first!.windowScene!.statusBarManager!
-        
+
         NSLayoutConstraint.activate([
             backBtn.leftAnchor.constraint(equalTo: view.leftAnchor, constant: 16),
             backBtn.topAnchor.constraint(equalTo: view.topAnchor, constant: isIphoneX ? statusBarManager.statusBarFrame.height : 12),
@@ -145,7 +145,17 @@ open class LBXScanViewController: UIViewController {
     }
 
     @objc private func backAction() {
-        navigationController?.popViewController(animated: true)
+        dismissScanViewController(animated: true)
+    }
+
+    open func dismissScanViewController(animated: Bool, completion: (() -> Void)? = nil) {
+        if presentingViewController != nil {
+            dismiss(animated: animated, completion: completion)
+            return
+        }
+
+        navigationController?.popViewController(animated: animated)
+        completion?()
     }
     
     open func setNeedCodeImage(needCodeImg: Bool) {
@@ -159,7 +169,7 @@ open class LBXScanViewController: UIViewController {
 
     open override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        
+
         navigationController?.setNavigationBarHidden(true, animated: true)
     }
     
@@ -239,7 +249,7 @@ open class LBXScanViewController: UIViewController {
         }
         //  !isSupportContinuous
         if scanFineshedExit {
-            navigationController?.popViewController(animated: true)
+            dismissScanViewController(animated: true)
 
         }
         
@@ -252,10 +262,11 @@ open class LBXScanViewController: UIViewController {
     }
     
     open override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
         NSObject.cancelPreviousPerformRequests(withTarget: self)
         qRScanView?.stopScanAnimation()
         scanObj?.stop()
-        
+
         navigationController?.setNavigationBarHidden(false, animated: true)
     }
     
