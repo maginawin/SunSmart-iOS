@@ -269,6 +269,27 @@ class GroupMembersViewController: UIViewController {
         addNodes: [Node],
         proxyRemovalPlans: [GroupMemberProxyRemovalPlan]
     ) {
+        guard MeshLibManager.manager.isMeshNetworkConnected else {
+            XWHUDManager.showTipHUD(
+                "device_notconnect_message".localizedString,
+                isLineFeed: true
+            )
+            return
+        }
+
+        let newMembers = group.nodes.filter { !exitNodes.contains($0) } + addNodes
+        var transaction = ProximityLightingLifecycleCoordinator.begin(space: space)
+        transaction.updateMembers(group: group, members: newMembers)
+        let preparation = transaction.prepare()
+        guard preparation.isValid
+                || preparation.doesNotIntroduceHardErrors else {
+            XWHUDManager.showTipHUD(
+                "proximity_lighting_topology_invalid".localizedString,
+                isLineFeed: true
+            )
+            return
+        }
+
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
         DispatchQueue.global().async {
             let pendingRemovalSnapshots = proxyRemovalPlans.map {
@@ -288,47 +309,56 @@ class GroupMembersViewController: UIViewController {
                     return
                 }
             }
-            exitNodes.forEach({ node in
-                node.groupState = .exitFailure
-                node.preConfiguration.dayProfileStartsAboveLux = nil
-                node.preConfiguration.nightProfileStartsBelowLux = nil
-                node.preConfiguration.dayProfileLightData = nil
-                node.preConfiguration.nightProfileLightData = nil
-                if node.sensorCalibrationData?.isCalibration ?? false { // 退出组清空校准数据
-                    node.preConfiguration.resetDaylightCalibration = true
-                }
-                if let meshUUD = node.network?.uuid.uuidString {
-                    node.preConfiguration.save(meshUUID: meshUUD, nodeAddress: node.primaryUnicastAddress)
-                }
-                node.clearSyncStateCache()
-            })
-            // 退出组的设备，整理邻近照明路径关系
-            if exitNodes.count > 0, self.group.info.profile.type == .proximityLighting || self.group.info.profile.type == .proximityLightingWithPhotocell, let path = self.group.info.proximityLightingPath {
-    //            let proximityNodes = path.nodes
-                exitNodes.forEach { node in
-                    path.removeNode(node)
-                }
-                self.group.info.save()
-                self.group.updateGroupSyncState()
-            }
-            
-            addNodes.forEach({
-                $0.groupState = .inGroup
-                if self.group.info.profile.type == .proximityLightingWithPhotocell {
-                    // 使用最新的profile功能需要绑定对应model
-                    if !$0.requiredFunctionTypes.contains(.lightLCScene) {
-                        $0.requiredFunctionTypes.append(.lightLCScene)
-                    }
-                }
-            })
-            
+
             DispatchQueue.main.async {
                 XWHUDManager.hide()
                 guard MeshLibManager.manager.isMeshNetworkConnected else {
+                    pendingRemovalSnapshots.forEach { switchData, pendingRemoval in
+                        switchData.deleteProxyNodeAddress = pendingRemoval
+                        switchData.save()
+                    }
                     XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
                     return
                 }
+
+                guard let lifecycleResult = ProximityLightingLifecycleCoordinator.commit(
+                    preparation,
+                    allowExistingHardErrors: true,
+                    hasAdditionalLogicalChange: true,
+                    applyAdditionalChanges: {
+                    exitNodes.forEach { node in
+                        node.groupState = .exitFailure
+                        node.preConfiguration.dayProfileStartsAboveLux = nil
+                        node.preConfiguration.nightProfileStartsBelowLux = nil
+                        node.preConfiguration.dayProfileLightData = nil
+                        node.preConfiguration.nightProfileLightData = nil
+                        if node.sensorCalibrationData?.isCalibration ?? false {
+                            node.preConfiguration.resetDaylightCalibration = true
+                        }
+                        if let meshUUID = node.network?.uuid.uuidString {
+                            node.preConfiguration.save(
+                                meshUUID: meshUUID,
+                                nodeAddress: node.primaryUnicastAddress
+                            )
+                        }
+                    }
+                    addNodes.forEach { node in
+                        node.groupState = .inGroup
+                        if self.group.info.profile.type == .proximityLightingWithPhotocell,
+                           !node.requiredFunctionTypes.contains(.lightLCScene) {
+                            node.requiredFunctionTypes.append(.lightLCScene)
+                        }
+                    }
+                }) else {
+                    XWHUDManager.showTipHUD(
+                        "proximity_lighting_topology_invalid".localizedString,
+                        isLineFeed: true
+                    )
+                    return
+                }
+
                 let vc = SyncDevicesViewController(type: .group(self.group, inNodes: addNodes, outNodes: exitNodes))
+                vc.supplementaryProximityLightingSyncDatas = lifecycleResult.syncDatas
                 vc.syncSuccessCallback = {[weak self] _ in
                     XWHUDManager.showSuccessTipHUD("done!".localizedString)
                     guard let self = self else { return }

@@ -140,6 +140,25 @@ struct NightCalibrationWorkflowContractTests {
                 modeView.contains("calibration_complete_occupancy_notice_format"),
             "Night UI must include the Figma value, notice and action components without losing pending state"
         )
+        let targetNightBrightnessView = section(
+            in: modeView,
+            from: "final class LightSensorTargetNightBrightnessView",
+            to: "final class LightSensorTargetSensorValueView"
+        )
+        require(
+            targetNightBrightnessView.contains("make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(16))") &&
+                targetNightBrightnessView.contains("make.top.equalTo(dimLevelView.snp.bottom).offset(SCRYFrom(20))") &&
+                targetNightBrightnessView.contains("make.bottom.equalTo(SCRYFrom(-24))") &&
+                !targetNightBrightnessView.contains("make.height.equalTo"),
+            "Night Target Brightness must order Dim level before its description and keep an adaptive height"
+        )
+        require(
+            targetNightBrightnessView.contains("calibration_target_night_brightness_note") &&
+                targetNightBrightnessView.contains("fontSize: 12") &&
+                targetNightBrightnessView.contains("lineHeight: 19.5") &&
+                targetNightBrightnessView.contains("noteLabel.numberOfLines = 0"),
+            "Night Target Brightness description must retain the localized Figma typography and wrapping"
+        )
         require(
             modeView.contains("RGB(246, 248, 255)") &&
                 modeView.contains("RGB(255, 249, 239)") &&
@@ -167,6 +186,11 @@ struct NightCalibrationWorkflowContractTests {
             require(english.contains("\"\(key)\""), "English localization is missing \(key)")
             require(chinese.contains("\"\(key)\""), "Chinese localization is missing \(key)")
         }
+        require(
+            english.contains("Once applied, the device will automatically learn the environment and adjust brightness to maintain the target illuminance. When ambient light drops to zero, the device will stabilize close to the target night brightness.") &&
+                chinese.contains("应用后，设备将自动学习环境并调节亮度，以维持目标照度。当环境光降至零时，设备将稳定在接近目标夜间亮度的水平。"),
+            "Night Target Brightness learning description must match the approved English and Chinese copy"
+        )
         require(
             modeView.contains("return \"calibration_about_sensor_title\".localizedString") &&
                 modeView.contains("return \"calibration_about_sensor_description\".localizedString"),

@@ -229,30 +229,16 @@ class DeviceDongleViewController: UIViewController, DeviceProtocol {
         MeshAPI.resetNode(address: node.primaryUnicastAddress) {[weak self] _ in
             
             XWHUDManager.hide()
-            XWHUDManager.showSuccessTipHUD("done!".localizedString)
-            deletionContext.commit()
-            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {
-                NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
-                // 通知space数据修改
-                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
-                self?.back()
-            }
+            let lifecycleResult = deletionContext.commit()
+            self?.completePermanentDeletion(lifecycleResult)
             
         } resetFail: { _, _ in
             
             let alertView = SRAlertView(title: "notification".localizedString, actions: [.cancelAction, SRAlertAction(title: "force_delete".localizedString, actionHandler: {[weak self] _ in
                 guard let self = self else { return }
-                deletionContext.commit()
                 MeshNetworkManager.instance.meshNetwork?.remove(node: node)
-                
-                XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
-                    NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
-                    // 通知space数据修改
-//                        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
-                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
-                    self?.back()
-                }
+                let lifecycleResult = deletionContext.commit()
+                self.completePermanentDeletion(lifecycleResult)
             })])
             let messageAttStr = NSMutableAttributedString(string: "device_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
             messageAttStr.append(NSAttributedString(string: "device_force_delete_note".localizedString, attributes: [.foregroundColor: Message_Color]))
@@ -275,6 +261,37 @@ class DeviceDongleViewController: UIViewController, DeviceProtocol {
                 NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
             }
         }
+    }
+
+    private func completePermanentDeletion(
+        _ lifecycleResult: ProximityLightingLifecycleResult?
+    ) {
+        let finish = { [weak self] in
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) { [weak self] in
+                NotificationCenter.default.post(
+                    name: .init(devicesUpdateNotificationName),
+                    object: nil
+                )
+                NotificationCenter.default.post(
+                    name: .init(spaceDataChangedNotificaitonName),
+                    object: SpaceChangeDataType.network(type: .address)
+                )
+                self?.back()
+            }
+        }
+        let syncDatas = lifecycleResult?.syncDatas ?? []
+        guard MeshLibManager.manager.isMeshNetworkConnected,
+              !syncDatas.isEmpty else {
+            finish()
+            return
+        }
+        let vc = SyncDevicesViewController(
+            type: .spaceTriggerZones(datas: syncDatas)
+        )
+        vc.syncSuccessCallback = { _ in finish() }
+        vc.backActionCallback = { _ in finish() }
+        navigationController?.pushViewController(vc, animated: true)
     }
     
     /// 绑定真实设备

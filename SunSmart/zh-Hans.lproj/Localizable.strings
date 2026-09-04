@@ -1320,6 +1320,8 @@
 "zone_manual_add_step3" = "添加后，\n测试是否\n正确";
 "path_manual_add_step2" = "识别，选择\n正确的设备";
 "not_zones_remaining" = "无剩余区域";
+"proximity_lighting_neighbor_limit_exceeded" = "每个设备最多支持 %d 个邻居。请减少路径或触发区域中的设备后重试。";
+"proximity_lighting_topology_invalid" = "邻近照明配置包含无效数据。请检查组 Profile、成员、路径和触发区域后重试。";
 "No_Data" = "无数据";
 "zone" = "区域";
 "zone_quick_add_show_added_devices" = "包含在其他区域中添加的设备";
@@ -1610,12 +1612,12 @@
 "apply_sensor_calibration" = "应用传感器校准";
 "apply_plane_calibration" = "应用平面校准";
 "apply_calibration_title" = "应用校准？";
-"apply_calibration_message" = "传感器测量目标照度时，组内灯具将依次关闭和开启。";
-"apply_sensor_calibration_message" = "传感器校准灯光响应曲线时，组内灯具将依次关闭和开启。";
+"apply_calibration_message" = "这将更新所选传感器的校准设置。确定要应用吗？";
+"apply_sensor_calibration_message" = "这将更新所选传感器的校准设置。确定要应用吗？";
 "APPLY" = "应用";
 "calibration_target_night_brightness" = "目标夜间亮度";
 "calibration_target_night_brightness_value" = "%d%% 调光等级";
-"calibration_target_night_brightness_note" = "此值仅作为取样亮度，不会直接修改组亮度。";
+"calibration_target_night_brightness_note" = "应用后，设备将自动学习环境并调节亮度，以维持目标照度。当环境光降至零时，设备将稳定在接近目标夜间亮度的水平。";
 "calibration_target_sensor_value" = "目标传感器值";
 "calibration_target_value_placeholder" = "目标值";
 "calibration_use_sensor_reading" = "使用传感器读数";
@@ -2177,3 +2179,5 @@
 "gateway_force_clear_spaces_failed" = "无法清除所有关联空间";
 "gateway_associated_spaces_changed_message" = "关联空间已在其他设备上发生变化，已加载最新数据。";
 "gateway_delete_server_failed" = "无法从服务器删除网关";
+"proximity_lighting_export_invalid" = "邻近照明数据无效，无法导出。";
+"proximity_lighting_import_invalid" = "邻近照明数据无效，未执行导入。";

@@ -1218,7 +1218,17 @@ self.updateAddressData()
             case .success(let response):
                 if let spaceData = JSON(response)["data"].dictionaryObject {
                     Task {
-                        await space.update(spaceJsonData: spaceData)
+                        let outcome = await space.update(
+                            spaceJsonData: spaceData
+                        )
+                        guard outcome.status != .rejected else {
+                            XWHUDManager.hide()
+                            XWHUDManager.showErrorTipHUD(
+                                "proximity_lighting_import_invalid".localizedString
+                            )
+                            callback?(false)
+                            return
+                        }
                         if verificationPassword != nil { // 验证通过
                             // 缓存密码
                             space.authorizationPassword = verificationPassword
@@ -2220,10 +2230,17 @@ self.updateAddressData()
     
     private func exportSpace(_ space: SpaceData) {
         Task {
-            let spaceJsonDict = await space.export()
+            guard let spaceJsonDict = await space.export() else {
+                XWHUDManager.showErrorTipHUD(
+                    "proximity_lighting_export_invalid".localizedString
+                )
+                return
+            }
             let name = space.name
             guard let data = try? JSONSerialization.data(withJSONObject: spaceJsonDict) else {
-                XWHUDManager.showErrorTipHUD("导出数据失败")
+                XWHUDManager.showErrorTipHUD(
+                    "proximity_lighting_export_invalid".localizedString
+                )
                 return
             }
             
@@ -2283,11 +2300,12 @@ self.updateAddressData()
         // 数据有更新没提交,先提交完成数据再解绑
         if space.permission == .editor && space.needUploadCloud {
             Task {
-                let spaceData = await space.export()
-                // 数据不完整则不上传直接解绑
-                if spaceData.isEmpty || !spaceData.keys.contains("netKey") {
-                    space.lastUploadCloudTimestamp = space.lastUpdate
-                    self.unbindSpace(space)
+                guard let spaceData = await space.export(),
+                      spaceData.keys.contains("netKey") else {
+                    XWHUDManager.hide()
+                    XWHUDManager.showErrorTipHUD(
+                        "proximity_lighting_export_invalid".localizedString
+                    )
                     return
                 }
                 NetworkRequest.shared.request(.spaceUpload(siteId: space.siteId, spaceData: spaceData)) {[weak self] result in
@@ -3592,7 +3610,17 @@ extension SiteViewController: UIDocumentPickerDelegate {
                 json.updateValue("\(Int64(Date().timeIntervalSince1970))", forKey: "updateTimestamp")
                 
                 Task {
-                    _ = await SpaceData.import(siteId: site.id, meshUUID: site.meshUUID, spaceJsonData: json)
+                    let importResult = await SpaceData.import(
+                        siteId: site.id,
+                        meshUUID: site.meshUUID,
+                        spaceJsonData: json
+                    )
+                    guard importResult.space != nil else {
+                        XWHUDManager.showErrorTipHUD(
+                            "proximity_lighting_import_invalid".localizedString
+                        )
+                        return
+                    }
                     XWHUDManager.showSuccessTipHUD("done!".localizedString)
                     self.loadSiteRequest()
                 }

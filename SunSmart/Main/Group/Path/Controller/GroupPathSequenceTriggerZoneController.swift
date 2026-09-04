@@ -184,7 +184,7 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
         let remainingZoneCount = GroupProximityLightingPathZone.maxZoneCount - setZones.count
         
          guard remainingZoneCount > 0 else {
-            XWHUDManager.showTipHUD("not_zones_remaining", isLineFeed: true)
+            XWHUDManager.showTipHUD("not_zones_remaining".localizedString, isLineFeed: true)
             return
         }
         
@@ -209,8 +209,7 @@ class GroupPathSequenceTriggerZoneController: UIViewController {
     
     /// 停止设置路径
     func stopSetZone() {
-        selectZone = nil
-        updateDeviceAddViewUI()
+        deselectZone()
     }
     
     /// 区域操作

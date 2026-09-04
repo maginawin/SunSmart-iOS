@@ -58,6 +58,7 @@ class DeviceRestoreViewController: UIViewController {
     private var successfulBatteryPowerSwitchRestoreLinkGroupAddresses: Set<Address> = []
     private var successfulBatteryPowerSwitchTargetSubscriptions: Set<BatteryPowerSwitchTargetSubscriptionKey> = []
     private var deferredRestoreSyncDatasByAddress: [Address: [NodeSyncData]] = [:]
+    private var proximityLightingRestoreSyncDatasByAddress: [Address: [(node: Node, syncData: NodeSyncData)]] = [:]
     private var emergencyFireRestoreContextsByAddress: [Address: EmergencyFireRestoreContext] = [:]
     private var didReportDeviceRestoreResult = false
     private let deferredRestoreTaskMaxRetryCount = 1
@@ -1959,6 +1960,22 @@ class DeviceRestoreViewController: UIViewController {
         return SpaceData.load(subNetworkId: site.meshNetworkId)
     }
 
+    private func proximityLightingRestoreSpace(
+        oldNode: Node,
+        newNode: Node,
+        restoredGroup: Group?
+    ) -> SpaceData? {
+        if let space {
+            return space
+        }
+        if let subNetworkId = restoredGroup?.subNetworkId
+            ?? newNode.subNetworkId
+            ?? oldNode.subNetworkId {
+            return SpaceData.load(subNetworkId: subNetworkId)
+        }
+        return SpaceData.load(subNetworkId: site.meshNetworkId)
+    }
+
     @discardableResult
     private func restoreEmergencyFireControllerIfNeeded(oldNode: Node, newNode: Node) -> DeviceEmerFireData? {
         guard isMatchingRegisteredEmergencyController(oldNode: oldNode, newNode: newNode),
@@ -2234,6 +2251,18 @@ class DeviceRestoreViewController: UIViewController {
             if addDevice.deviceType != .emergencyController {
                 // EFC 必须等待 Composition 身份确认，不能降级执行普通恢复数据迁移。
                 node.updateResoreData(oldNode: oldNode, resoreGroup: addToGroup)
+                if let restoreSpace = proximityLightingRestoreSpace(
+                    oldNode: oldNode,
+                    newNode: node,
+                    restoredGroup: addToGroup
+                   ),
+                   let lifecycleResult = restoreSpace.migrateProximityLightingReferences(
+                    from: oldNode,
+                    to: node,
+                    group: addToGroup
+                   ) {
+                    proximityLightingRestoreSyncDatasByAddress[node.primaryUnicastAddress] = lifecycleResult.syncDatas
+                }
                 node.batteryPowerSwitchRestoreTargetSubscriptionSnapshots = oldNode.makeBatteryPowerSwitchRestoreTargetSubscriptionSnapshots(
                     group: addToGroup
                 )
@@ -2305,6 +2334,13 @@ class DeviceRestoreViewController: UIViewController {
             }
             let syncDatas = newNode.getSyncData(type: .all)
             self.appendRestoreSyncMessages(syncDatas: syncDatas, node: newNode, appendMessages: &appendMessages)
+            let proximityLightingDatas = self.proximityLightingRestoreSyncDatasByAddress
+                .removeValue(forKey: newNode.primaryUnicastAddress) ?? []
+            proximityLightingDatas
+                .filter { $0.node.primaryUnicastAddress != newNode.primaryUnicastAddress }
+                .forEach {
+                    appendMessages.append(contentsOf: $0.syncData.getMessageHandles(node: $0.node))
+                }
 //            appendMessages.append(contentsOf: newNode.getResoreMessageHandles(oldNode: oldNode))
             
             if addToGroup == nil {

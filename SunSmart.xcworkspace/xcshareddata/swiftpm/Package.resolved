@@ -6,6 +6,7 @@
       "kind" : "remoteSourceControl",
       "location" : "git@gitee.com:sunricher-i-os/nordic-sig-mesh-sdk.git",
       "state" : {
+        "branch" : "release",
         "revision" : "86f5ec9e40148b9cd93e0512702337fcec41dd40"
       }
     }

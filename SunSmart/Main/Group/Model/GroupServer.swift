@@ -89,15 +89,7 @@ struct GroupServer {
     ///   - failed: 失败回调
     ///   - finshed: 完成回调（成功设备list，失败设备list）
     static func groupDeleteNodes(group: Group, nodes: [Node], progress: GroupOperateProgressCallback?, successful: GroupOperateNodeSuccessCallback?, failed: GroupOperateNodeFailedCallback?, finshed: GroupOperateNodeFinshedCallback?) {
-        
-        // 解绑本地节点订阅组信息
-        for element in MeshNetworkManager.instance.localNode?.elements ?? [] {
-            let subscribeModels = element.models.filter({ $0.isSubscribed(to: group) })
-            subscribeModels.forEach({
-                $0.unsubscribe(from: group)
-            })
-        }
-        
+
         guard nodes.count > 0 else {
             finshed?([], [])
             return
@@ -150,20 +142,136 @@ struct GroupServer {
     ///   - successful: 成功回调
     ///   - failed: 失败回调
     static func deleteGroup(group: Group, progress: GroupOperateProgressCallback?, successful: GroupOperateSuccessCallback?, failed: GroupOperateFailedCallback?) {
-        
-        self.groupDeleteNodes(group: group, nodes: group.nodes, progress: progress, successful: nil, failed: nil) { (_, deleteFailedNodes) in
-            if deleteFailedNodes.isEmpty { // 删除成功
-                // 删除组缓存数据
+        guard let subnetworkId = group.subNetworkId,
+              let space = SpaceData.load(subNetworkId: subnetworkId) else {
+            failed?(group)
+            return
+        }
+
+        let groupNodes = group.nodes
+        var transaction = ProximityLightingLifecycleCoordinator.begin(space: space)
+        transaction.removeGroup(group)
+        let preparation = transaction.prepare()
+        guard let preview = ProximityLightingLifecycleCoordinator.preview(
+            preparation,
+            allowExistingHardErrors: true
+        ) else {
+            failed?(group)
+            return
+        }
+        let groupNodeAddresses = Set(groupNodes.map(\.primaryUnicastAddress))
+        let peerDatas = preview.syncDatas.filter {
+            !groupNodeAddresses.contains($0.node.primaryUnicastAddress)
+        }
+        let total = groupNodes.count + peerDatas.count
+
+        self.groupDeleteNodes(
+            group: group,
+            nodes: groupNodes,
+            progress: { current, _ in progress?(current, total) },
+            successful: nil,
+            failed: nil
+        ) { (_, deleteFailedNodes) in
+            guard deleteFailedNodes.isEmpty else {
+                failed?(group)
+                return
+            }
+
+            syncProximityLightingDatas(
+                peerDatas,
+                progressOffset: groupNodes.count,
+                total: total,
+                progress: progress
+            ) { peerSyncSucceeded in
+                guard peerSyncSucceeded else {
+                    failed?(group)
+                    return
+                }
+                guard let meshNetwork = MeshNetworkManager.instance.meshNetwork else {
+                    failed?(group)
+                    return
+                }
+
+                // Write-ahead marker must precede SDK and extension persistence.
+                space.markLocalChangePendingCloudSync()
                 do {
-                    try MeshNetworkManager.instance.meshNetwork?.remove(group: group)
-                    group.deleteExtension()
+                    try meshNetwork.remove(group: group)
+                    unsubscribeLocalProvisioner(from: group)
+                    guard ProximityLightingLifecycleCoordinator.commit(
+                        preparation,
+                        allowExistingHardErrors: true,
+                        hasAdditionalLogicalChange: true,
+                        applyAdditionalChanges: {
+                            group.deleteExtension()
+                        }
+                    ) != nil else {
+                        failed?(group)
+                        return
+                    }
                     successful?(group)
-                } catch  {
+                } catch {
                     failed?(group)
                 }
-            }else {
-                failed?(group)
             }
+        }
+    }
+
+    private static func syncProximityLightingDatas(
+        _ datas: [(node: Node, syncData: NodeSyncData)],
+        progressOffset: Int,
+        total: Int,
+        progress: GroupOperateProgressCallback?,
+        completion: @escaping (Bool) -> Void
+    ) {
+        guard !datas.isEmpty else {
+            completion(true)
+            return
+        }
+
+        DispatchQueue.global().async {
+            let semaphore = DispatchSemaphore(value: 0)
+            var succeeded = true
+            for (index, data) in datas.enumerated() {
+                DispatchQueue.main.async {
+                    progress?(progressOffset + index + 1, total)
+                }
+                let handles = data.syncData.getMessageHandles(node: data.node)
+                guard !handles.isEmpty else {
+                    succeeded = false
+                    break
+                }
+                MeshProxyMessageCommand.shared.addMessage(
+                    messageHandles: handles,
+                    progressBack: nil
+                ) { sendMessageHandle, responseMessage in
+                    data.node.updateData(
+                        message: sendMessageHandle.message,
+                        model: sendMessageHandle.model
+                    )
+                } failedBack: { messageHandle in
+                    print("node send message failed \(messageHandle.message)")
+                } finishedBack: { messageHandles in
+                    if messageHandles.contains(where: { !$0.isSuccessful }) {
+                        succeeded = false
+                    }
+                    semaphore.signal()
+                }
+                semaphore.wait()
+                if !succeeded {
+                    break
+                }
+            }
+            DispatchQueue.main.async {
+                completion(succeeded)
+            }
+        }
+    }
+
+    private static func unsubscribeLocalProvisioner(from group: Group) {
+        for element in MeshNetworkManager.instance.localNode?.elements ?? [] {
+            element.models
+                .filter { $0.isSubscribed(to: group) }
+                .forEach { $0.unsubscribe(from: group) }
         }
     }
     

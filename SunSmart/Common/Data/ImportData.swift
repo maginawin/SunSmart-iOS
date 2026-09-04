@@ -15,6 +15,60 @@ private var jsonDecoder: JSONDecoder {
     return decoder
 }
 
+struct SpaceImportOutcome {
+    enum Status: Equatable {
+        case applied
+        case skipped
+        case rejected
+    }
+
+    let status: Status
+    let repairs: [ProximityLightingTopologyReconciler.Repair]
+    let hardErrors: [ProximityLightingTopologyReconciler.HardError]
+    let syncDatas: [(node: Node, syncData: NodeSyncData)]
+    let rejectionReason: String?
+
+    static func rejected(
+        _ reason: String,
+        hardErrors: [ProximityLightingTopologyReconciler.HardError] = []
+    ) -> SpaceImportOutcome {
+        return .init(
+            status: .rejected,
+            repairs: [],
+            hardErrors: hardErrors,
+            syncDatas: [],
+            rejectionReason: reason
+        )
+    }
+
+    static var skipped: SpaceImportOutcome {
+        return .init(
+            status: .skipped,
+            repairs: [],
+            hardErrors: [],
+            syncDatas: [],
+            rejectionReason: nil
+        )
+    }
+}
+
+struct SpaceImportResult {
+    let serverSpaceId: String?
+    let space: SpaceData?
+    let outcome: SpaceImportOutcome
+
+    static func rejected(
+        serverSpaceId: String?,
+        reason: String
+    ) -> SpaceImportResult {
+        return .init(
+            serverSpaceId: serverSpaceId,
+            space: nil,
+            outcome: .rejected(reason)
+        )
+    }
+}
+
 private struct SpaceImportSummary: Equatable {
     let deviceCount: Int
     let groupCount: Int
@@ -48,6 +102,189 @@ private struct SpaceImportSummary: Equatable {
         self.scheduleCount = scheduleDicts.count
         self.switchesCount = switchesDicts.count
         self.emergencyFireControllerCount = emergencyFireControllerCount
+    }
+}
+
+private struct ProximityLightingImportPreflight {
+    let schemaVersion: Int?
+    let triggerZones: [SpaceTriggerZone]?
+    let reconciliation: ProximityLightingTopologyReconciler.Result?
+    let hardErrors: [ProximityLightingTopologyReconciler.HardError]
+
+    static func parse(
+        spaceJsonData: [String: Any],
+        nodeDicts: [[String: Any]],
+        groupDicts: [[String: Any]],
+        initialize: Bool
+    ) -> ProximityLightingImportPreflight? {
+        let json = JSON(spaceJsonData)
+        let schemaVersion: Int?
+        if json["proximityLightingSchemaVersion"].exists() {
+            guard let version = json["proximityLightingSchemaVersion"].int,
+                  version == 1 else {
+                return nil
+            }
+            schemaVersion = version
+        } else {
+            schemaVersion = nil
+        }
+
+        let triggerZones: [SpaceTriggerZone]?
+        if let zoneObjects = json["triggerZones"].arrayObject as? [[String: Any]],
+           let data = try? JSONSerialization.data(withJSONObject: zoneObjects),
+           let decoded = try? jsonDecoder.decode([SpaceTriggerZone].self, from: data) {
+            triggerZones = decoded
+        } else if schemaVersion == 1 {
+            return nil
+        } else {
+            triggerZones = initialize ? [] : nil
+        }
+
+        var decodedGroups: [(dictionary: [String: Any], group: Group)] = []
+        for groupDict in groupDicts where !JSON(groupDict)["isVirtual"].boolValue {
+            guard let data = try? JSONSerialization.data(withJSONObject: groupDict),
+                  let group = try? jsonDecoder.decode(Group.self, from: data) else {
+                return nil
+            }
+            decodedGroups.append((groupDict, group))
+        }
+        let importedGroupAddresses = Set(
+            decodedGroups.map { $0.group.address.address }
+        )
+        var membersByGroupAddress: [Address: Set<Address>] = [:]
+        if schemaVersion == 1 {
+            for nodeDict in nodeDicts {
+                let nodeJson = JSON(nodeDict)
+                guard let rawGroupState = nodeJson["groupState"].int,
+                      let groupState = Node.GroupState(rawValue: rawGroupState) else {
+                    return nil
+                }
+                var decodeNodeDict = nodeDict
+                if let uuid = nodeDict["uuid"] as? String {
+                    decodeNodeDict["UUID"] = uuid
+                }
+                guard let data = try? JSONSerialization.data(withJSONObject: decodeNodeDict),
+                      let node = try? jsonDecoder.decode(Node.self, from: data) else {
+                    return nil
+                }
+                guard groupState == .inGroup else {
+                    continue
+                }
+                guard let groupAddressHex = nodeJson["groupAddress"].string,
+                      let groupAddress = Address(hex: groupAddressHex),
+                      importedGroupAddresses.contains(groupAddress) else {
+                    return nil
+                }
+                membersByGroupAddress[groupAddress, default: []].insert(
+                    ProximityLightingTopologyPlanner.normalizedAddress(for: node)
+                )
+            }
+        }
+
+        var groupStates: [ProximityLightingTopologyReconciler.GroupState] = []
+        for importedGroup in decodedGroups {
+            let groupDict = importedGroup.dictionary
+            let decodedGroup = importedGroup.group
+            let groupJson = JSON(groupDict)
+            let profileType: Profile.ProfileType?
+            if schemaVersion == 1 {
+                guard let rawProfileType = groupJson["profile"]["type"].int,
+                      let decodedProfileType = Profile.ProfileType(
+                        rawValue: rawProfileType
+                      ) else {
+                    return nil
+                }
+                profileType = decodedProfileType
+            } else {
+                profileType = groupJson["profile"]["type"].int
+                    .flatMap(Profile.ProfileType.init(rawValue:))
+            }
+            let eligible = profileType.map(
+                ProximityLightingLifecycleCoordinator.isEligible
+            ) ?? false
+            let importedRelay = groupJson["profile"]["proximityLightingNumber"].int
+            if schemaVersion == 1, eligible, importedRelay == nil {
+                return nil
+            }
+            let rawRelay = importedRelay ?? 0
+            guard rawRelay >= 0, rawRelay <= Int(UInt8.max) else {
+                return nil
+            }
+
+            let hasPath = groupDict.keys.contains("proximityLightingPath")
+            let pathObject = groupJson["proximityLightingPath"].dictionaryObject
+            if hasPath, pathObject == nil {
+                return nil
+            }
+            if schemaVersion == 1, !eligible, hasPath {
+                return nil
+            }
+            guard let topology = parseTopology(pathObject) else {
+                return nil
+            }
+            groupStates.append(
+                .init(
+                    address: decodedGroup.address.address,
+                    eligible: eligible,
+                    relayNumber: UInt8(rawRelay),
+                    memberAddresses: membersByGroupAddress[decodedGroup.address.address] ?? [],
+                    hasTopology: hasPath,
+                    paths: topology.paths,
+                    zones: topology.zones
+                )
+            )
+        }
+
+        let snapshot = ProximityLightingTopologyReconciler.Snapshot(
+            groups: groupStates,
+            spaceZones: ProximityLightingTopologyPlanner.makeSpaceZoneSnapshots(
+                triggerZones ?? []
+            )
+        )
+        let reconciliation = ProximityLightingTopologyReconciler.normalize(snapshot)
+        return .init(
+            schemaVersion: schemaVersion,
+            triggerZones: triggerZones,
+            reconciliation: schemaVersion == 1 ? reconciliation : nil,
+            hardErrors: reconciliation.hardErrors
+        )
+    }
+
+    private static func parseTopology(
+        _ object: [String: Any]?
+    ) -> (paths: [[Address?]], zones: [[Address]])? {
+        guard let object else {
+            return ([], [])
+        }
+        guard let pathObjects = object["paths"] as? [[String: Any]],
+              let zoneObjects = object["zones"] as? [[String: Any]] else {
+            return nil
+        }
+        var paths: [[Address?]] = []
+        for pathObject in pathObjects {
+            guard let rawItems = pathObject["items"] as? [Int] else {
+                return nil
+            }
+            let path = rawItems.map { rawAddress -> Address? in
+                rawAddress == 0 ? nil : Address(rawAddress)
+            }
+            guard path.allSatisfy({ $0 == nil || $0!.isUnicast }) else {
+                return nil
+            }
+            paths.append(path)
+        }
+        var zones: [[Address]] = []
+        for zoneObject in zoneObjects {
+            guard let rawAddresses = zoneObject["addresses"] as? [Int] else {
+                return nil
+            }
+            let addresses = rawAddresses.map(Address.init)
+            guard addresses.allSatisfy(\.isUnicast) else {
+                return nil
+            }
+            zones.append(addresses)
+        }
+        return (paths, zones)
     }
 }
 
@@ -460,7 +697,9 @@ extension SiteData {
 
         if let spaceDicts = json["spaces"].arrayObject as? [[String: Any]] {
             var spaces: [SpaceData] = []
-            await withTaskGroup(of: SpaceData?.self) { group in
+            var serverSpaceIds = Set<String>()
+            var snapshotHasUnidentifiableSpace = false
+            await withTaskGroup(of: SpaceImportResult.self) { group in
                 for data in spaceDicts {
                     group.addTask {
                         // 异步处理每个数据
@@ -468,8 +707,13 @@ extension SiteData {
                     }
                 }
                 // 收集结果
-                for await space in group {
-                    if let space = space {
+                for await result in group {
+                    if let serverSpaceId = result.serverSpaceId {
+                        serverSpaceIds.insert(serverSpaceId)
+                    } else {
+                        snapshotHasUnidentifiableSpace = true
+                    }
+                    if let space = result.space {
                         spaces.append(space)
                     }
                 }
@@ -497,15 +741,19 @@ extension SiteData {
                 }
             }
             
-            // space已提交到服务器，但是本地有但是服务器没有
-            let deleteSpaces = self.spaces.filter({ localSpace in !spaces.contains(where: { $0.id == localSpace.id }) && localSpace.uploadCloud })
-            deleteSpaces.forEach({ space in
-                if space.permission == .editor || space.permission == .visitor {
-                    // 设置space为待删除状态
-                    space.state = .waitDeleted
-                    space.save()
-                }
-            })
+            if !snapshotHasUnidentifiableSpace {
+                // space已提交到服务器，但是本地有但是服务器没有
+                let deleteSpaces = self.spaces.filter({ localSpace in
+                    !serverSpaceIds.contains(localSpace.id) && localSpace.uploadCloud
+                })
+                deleteSpaces.forEach({ space in
+                    if space.permission == .editor || space.permission == .visitor {
+                        // 设置space为待删除状态
+                        space.state = .waitDeleted
+                        space.save()
+                    }
+                })
+            }
             // 更新site下space数据
             spaces.forEach { space in
                 if let index = self.spaces.firstIndex(where: { $0.id == space.id }) {
@@ -1071,14 +1319,18 @@ extension SpaceData {
     ///   - siteId: 所属site id
     ///   - meshUUID: 网络uuid
     ///   - spaceJsonData: space数据
-    /// - Returns: space
-    static func `import`(siteId: String, meshUUID: String, spaceJsonData: [String: Any]) async -> SpaceData? {
+    /// - Returns: space导入结果
+    static func `import`(siteId: String, meshUUID: String, spaceJsonData: [String: Any]) async -> SpaceImportResult {
         
         //       return await withCheckedContinuation { continuation in
         let json = JSON(spaceJsonData)
-        guard let uuid = json["uuid"].string,
+        let serverSpaceId = json["uuid"].string
+        guard let uuid = serverSpaceId,
               let name = json["spaceName"].string else {
-            return nil
+            return .rejected(
+                serverSpaceId: serverSpaceId,
+                reason: "missingSpaceIdentity"
+            )
         }
         
         var space = SpaceData.load(siteId: siteId, spaceId: uuid).first
@@ -1088,7 +1340,10 @@ extension SpaceData {
             guard let netKeyDict = json["netKey"].dictionaryObject,
                   let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
                   let netKey = try? jsonDecoder.decode(NetworkKey.self, from: netKeyData) else {
-                return nil
+                return .rejected(
+                    serverSpaceId: serverSpaceId,
+                    reason: "invalidNetworkKey"
+                )
             }
             
             var permission: Permission = .visitor
@@ -1108,19 +1363,33 @@ extension SpaceData {
             space = newSpace
             initialize = true
         }
-        //            Task {
-        await space?.update(spaceJsonData: spaceJsonData, initialize: initialize)
-        //                continuation.resume(returning: space)
-        //            }
-        return space
+        guard let space else {
+            return .rejected(
+                serverSpaceId: serverSpaceId,
+                reason: "spaceUnavailable"
+            )
+        }
+        let outcome = await space.update(
+            spaceJsonData: spaceJsonData,
+            initialize: initialize
+        )
+        return .init(
+            serverSpaceId: serverSpaceId,
+            space: outcome.status == .rejected ? nil : space,
+            outcome: outcome
+        )
         //        }
     }
     
     /// 更新空间内基本数据+设备、组、场景、日程
     /// - Parameter spaceJsonData: 空间数据
     /// - Parameter initialize: 是否初始化数据（本地无记录）
-    func update(spaceJsonData: [String: Any], initialize: Bool = false) async {
-        await withCheckedContinuation { continuation in
+    @discardableResult
+    func update(
+        spaceJsonData: [String: Any],
+        initialize: Bool = false
+    ) async -> SpaceImportOutcome {
+        return await withCheckedContinuation { continuation in
             let json = JSON(spaceJsonData)
             guard json["uuid"].string == self.id,
                   //              let netKeyDict = json["netKey"].dictionary,
@@ -1133,10 +1402,52 @@ extension SpaceData {
                 printSpaceCountProbe(phase: "invalidPayload", json: json, space: self, initialize: initialize, note: "missingRequiredArray")
 #endif
                 //                return
-                continuation.resume()
+                continuation.resume(returning: .rejected("missingRequiredArray"))
                 return
             }
             let switchesDicts = json["switches"].arrayObject as? [[String: Any]] ?? []
+            guard let proximityPreflight = ProximityLightingImportPreflight.parse(
+                spaceJsonData: spaceJsonData,
+                nodeDicts: nodeDicts,
+                groupDicts: groupDicts,
+                initialize: initialize
+            ) else {
+                print("[ProximityLightingImport] rejected during parse or validation")
+                continuation.resume(
+                    returning: .rejected("invalidProximityLightingPayload")
+                )
+                return
+            }
+            guard proximityPreflight.hardErrors.isEmpty else {
+                let errorCounts = Dictionary(
+                    grouping: proximityPreflight.hardErrors.map(\.diagnosticName),
+                    by: { $0 }
+                ).mapValues(\.count)
+                print(
+                    "[ProximityLightingImport] rejected hardErrors=" +
+                    "\(proximityPreflight.hardErrors.count) " +
+                    "types=\(errorCounts)"
+                )
+                continuation.resume(
+                    returning: .rejected(
+                        "invalidProximityLightingTopology",
+                        hardErrors: proximityPreflight.hardErrors
+                    )
+                )
+                return
+            }
+            if let reconciliation = proximityPreflight.reconciliation {
+                let maximumNeighborCount = reconciliation.plan.targets.values
+                    .map { $0.neighborAddresses.count }
+                    .max() ?? 0
+                print(
+                    "[ProximityLightingImport] schema=\(proximityPreflight.schemaVersion ?? 0) " +
+                    "groups=\(reconciliation.snapshot.groups.count) " +
+                    "spaceZones=\(reconciliation.snapshot.spaceZones.count) " +
+                    "repairs=\(reconciliation.repairs.count) " +
+                    "maxNeighbors=\(maximumNeighborCount)"
+                )
+            }
             let emergencyFireControllerDicts = json["emergencyFireControllers"].arrayObject as? [[String: Any]]
             let localEmergencyFireControllerCount = DeviceEmerFireData
                 .load(meshUUID: self.meshUUID, meshNetworkId: self.meshNetworkId, spaceId: self.id)
@@ -1271,7 +1582,7 @@ extension SpaceData {
                 printSpaceCountProbe(phase: "skipped", json: json, space: self, initialize: initialize, note: skipNote)
 #endif
                 //                return
-                continuation.resume()
+                continuation.resume(returning: .skipped)
                 self.save()
                 return
             }
@@ -1286,7 +1597,7 @@ extension SpaceData {
             }
             
             guard let network = meshNetwork else {
-                continuation.resume()
+                continuation.resume(returning: .rejected("meshNetworkUnavailable"))
                 return
             }
             
@@ -1332,11 +1643,9 @@ extension SpaceData {
             if let value = json["deviceBlinkMode"].int, let mode = DeviceBlinkMode(rawValue: value) {
                 self.deviceBlinkMode = mode
             }
-            if let triggerZonesArray = json["triggerZones"].arrayObject as? [[String: Any]],
-               let data = try? JSONSerialization.data(withJSONObject: triggerZonesArray),
-               let triggerZones = try? jsonDecoder.decode([SpaceTriggerZone].self, from: data) {
+            if let triggerZones = proximityPreflight.triggerZones {
                 self.triggerZones = triggerZones
-            } else {
+            } else if initialize {
                 self.triggerZones = []
             }
             //            }
@@ -1984,11 +2293,41 @@ extension SpaceData {
             self.sceneCount = scenes.count
             self.scheheduleCount = schedules.count
             self.switchesCount = switches.count
+            let proximityPreparation = ProximityLightingLifecycleCoordinator.begin(
+                space: self,
+                groups: groups.filter { !$0.isVirtual },
+                nodes: nodes
+            ).prepare()
+            let proximityResult = ProximityLightingLifecycleCoordinator.commit(
+                proximityPreparation,
+                allowExistingHardErrors: proximityPreflight.schemaVersion == nil
+            )
+            if let proximityResult, !proximityResult.syncDatas.isEmpty {
+                print(
+                    "[ProximityLightingImport] convergencePending=" +
+                    "\(proximityResult.syncDatas.count)"
+                )
+                NotificationCenter.default.post(
+                    name: .init(proximityLightingImportSyncNotificationName),
+                    object: ProximityLightingImportSyncRequest(
+                        spaceId: self.id,
+                        syncDatas: proximityResult.syncDatas
+                    )
+                )
+            }
 #if DEBUG
             printSpaceCountProbe(phase: "applied", json: json, space: self, initialize: initialize, note: sameTimestampSummaryDiffers ? serverSummaryDiffersNote : nil)
 #endif
             self.save()
-            continuation.resume()
+            continuation.resume(
+                returning: .init(
+                    status: .applied,
+                    repairs: proximityResult?.repairs ?? [],
+                    hardErrors: proximityPreparation.hardErrors,
+                    syncDatas: proximityResult?.syncDatas ?? [],
+                    rejectionReason: nil
+                )
+            )
         }
     }
     

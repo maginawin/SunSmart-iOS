@@ -609,7 +609,15 @@ class ShareAuthorityViewController: UIViewController {
             let uploadSpaces = spaces.filter({ $0.state == .normal && $0.needUploadCloud })
             if uploadSpaces.count > 0 {
                 
-                let siteDict = await site.export(spaceIds: uploadSpaces.map({ $0.id }))
+                guard let siteDict = await site.export(
+                    spaceIds: uploadSpaces.map({ $0.id })
+                ) else {
+                    XWHUDManager.hide()
+                    XWHUDManager.showErrorTipHUD(
+                        "proximity_lighting_export_invalid".localizedString
+                    )
+                    return
+                }
                 NetworkRequest.shared.request(.siteUpload(siteData: siteDict)) {[weak self] result in
                     XWHUDManager.hide()
                     switch result {

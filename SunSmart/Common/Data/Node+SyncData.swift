@@ -1613,93 +1613,42 @@ extension Node {
     
     
     /// 获取需要同步的邻近照明数据
-    func getNodeSyncProximityLighting(group: Group? = nil) -> NodeSyncData? {
+    func getNodeSyncProximityLighting(
+        group: Group? = nil,
+        topologyPlan: ProximityLightingTopologyPlanner.Plan? = nil
+    ) -> NodeSyncData? {
         guard self.sunricherVendorModel != nil else {
             return nil
         }
-        // 检查所在组的profile类型是否是临近照明
-        guard let group = group ?? self.group, group.info.profile.type == .proximityLighting || group.info.profile.type == .proximityLightingWithPhotocell, groupState != .exitFailure else {
-            if self.proximityLightingEnabled { // 禁用邻近照明功能
-                return .proximityLightingEnabled(false)
-            }
+
+        let plan = topologyPlan
+            ?? ProximityLightingTopologyPlanner.makePlan(for: self, contextGroup: group)
+        let address = ProximityLightingTopologyPlanner.normalizedAddress(for: self)
+
+        return getNodeSyncProximityLighting(target: plan.target(for: address))
+    }
+
+    private func getNodeSyncProximityLighting(
+        target: ProximityLightingTopologyPolicy.Target
+    ) -> NodeSyncData? {
+        let currentState = ProximityLightingTopologyPolicy.CurrentState(
+            enabled: proximityLightingEnabled,
+            relayNumber: proximityLightingRelayCount,
+            neighborAddresses: proximityLightingNeighborAddresses
+        )
+        switch ProximityLightingTopologyPolicy.mutation(from: currentState, to: target) {
+        case .enabled(let enabled):
+            return .proximityLightingEnabled(enabled)
+        case .relayNumber(let relayNumber):
+            return .proximityLightingRelayNumber(relayNumber)
+        case .neighbors(let relayNumber, let neighborAddresses):
+            return .proximityLightingNeighbor(
+                relayNumber: relayNumber,
+                neighborAddresses: neighborAddresses
+            )
+        case nil:
             return nil
         }
-        
-        // 邻居数量
-        let neighborNumber = group.info.profile.proximityLightingNumber
-        let proximityLightingPath = group.info.proximityLightingPath
-//        guard let proximityLightingPath = group.info.proximityLightingPath else {
-//            return nil
-//        }
-        // 邻居地址list
-        var neighborAddresses: [Address] = []
-        
-        let groupNodes = group.nodes
-        // 获取路径上的邻居
-        for path in proximityLightingPath?.paths ?? [] {
-            // 包含当前设备的item index
-            if let pathItemIndex = path.items.firstIndex(where: { $0.address != nil && self.contains(elementWithAddress: $0.address!) }) {
-                
-                // 获取设备前一个邻居
-                if pathItemIndex > 0 {
-//                    let neighborItems = path.items[max(0, pathItemIndex - Int(neighborNumber))..<pathItemIndex]
-//                    neighborItems.forEach({ item in
-//                        if let address = item.address, !neighborAddresses.contains(address) {
-//                            neighborAddresses.append(address)
-//                        }
-//                    })
-                    let neighborItem = path.items[pathItemIndex - 1]
-                    if let address = neighborItem.address, groupNodes.contains(where: { $0.contains(elementWithAddress: address) }), !neighborAddresses.contains(address) {
-                        neighborAddresses.append(address)
-                    }
-                }
-                
-                // 获取设备后一个邻居
-                if pathItemIndex + 1 < path.items.count {
-//                    let start = pathItemIndex + 1
-//                    let neighborItems = path.items[start..<min(start + Int(neighborNumber), path.items.count)]
-//                    neighborItems.forEach({ item in
-//                        if let address = item.address, !neighborAddresses.contains(address) {
-//                            neighborAddresses.append(address)
-//                        }
-//                    })
-                    let neighborItem = path.items[pathItemIndex + 1]
-                    if let address = neighborItem.address, groupNodes.contains(where: { $0.contains(elementWithAddress: address) }), !neighborAddresses.contains(address) {
-                        neighborAddresses.append(address)
-                    }
-                }
-            }
-        }
-        
-        // 获取zone内的邻居
-        for zone in proximityLightingPath?.zones ?? [] {
-            var addresses = zone.addresses
-            if let index = addresses.firstIndex(where: { self.contains(elementWithAddress: $0) }) {
-                addresses.remove(at: index)
-                let zoneNeighborAddresses = addresses.filter({ address in groupNodes.contains(where: { $0.contains(elementWithAddress: address) }) && !neighborAddresses.contains(address)  })
-                neighborAddresses.append(contentsOf: zoneNeighborAddresses)
-            }
-        }
-//        let proximityLightingNeighborNodes = self.proximityLightingNeighborAddresses.compactMap({ self.network?.node(withAddress: $0) })
-//        print("node: \((self.name ?? "", self.primaryUnicastAddress)) neighbors: \(proximityLightingNeighborNodes.compactMap({ ($0.name, $0.primaryUnicastAddress) }))")
-        
-        // 邻居是否一致
-        let neighborsEqual = self.proximityLightingNeighborAddresses.sorted() == neighborAddresses.sorted()
-        
-        // 需配置的邻居列表与设备是否相符
-        if neighborsEqual, self.proximityLightingRelayCount == neighborNumber {
-            if !self.proximityLightingEnabled {
-                return .proximityLightingEnabled(true)
-            }
-        }else {
-            // 同步转发次数
-            if self.proximityLightingEnabled, neighborsEqual, self.proximityLightingRelayCount != neighborNumber {
-                return .proximityLightingRelayNumber(neighborNumber)
-            }
-            // 同步邻居数据
-            return .proximityLightingNeighbor(relayNumber: neighborNumber, neighborAddresses: neighborAddresses)
-        }
-        return nil
     }
     
     /// 获取网关设备同步的配置

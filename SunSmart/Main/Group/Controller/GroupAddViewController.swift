@@ -127,15 +127,29 @@ class GroupAddViewController: UIViewController {
             return
         }
         
-        if self.group != nil { // 编辑
-            self.group?.name = name
-            self.group?.save()
-//            _ = MeshNetworkManager.instance.save()
-            finnished()
-            close()
-            NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group!)
-            // 通知space数据修改
-            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
+        if let group = self.group { // 编辑
+            var transaction = ProximityLightingLifecycleCoordinator.begin(space: space)
+            transaction.updateProfile(group: group, profile: selectProfile)
+            let preparation = transaction.prepare()
+            guard preparation.isValid
+                    || preparation.doesNotIntroduceHardErrors,
+                  let lifecycleResult = ProximityLightingLifecycleCoordinator.commit(
+                    preparation,
+                    allowExistingHardErrors: true,
+                    hasAdditionalLogicalChange: true,
+                    applyAdditionalChanges: {
+                        group.name = name
+                        group.save()
+                        self.applyGroupInfoEdits(to: group)
+                    }
+                  ) else {
+                XWHUDManager.showTipHUD(
+                    "proximity_lighting_topology_invalid".localizedString,
+                    isLineFeed: true
+                )
+                return
+            }
+            finishGroupEdit(group, lifecycleResult: lifecycleResult)
         }else { // 新增
             // 判断组地址是否足够创建
             guard MeshAPI.getAvailableGroupAddresses(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId).count > 0 else {
@@ -229,12 +243,7 @@ class GroupAddViewController: UIViewController {
             return
         }
         
-        let source = self.dataSource[self.selectImageIndex]
-        group.info.imageId = self.selectImageIndex + 1
-        group.info.imageText = source.type == .text ? source.name : nil
-        group.info.profile.updateData(profile: self.selectProfile)
-        group.info.save()
-        group.info.profile.save()
+        applyGroupInfoEdits(to: group)
         group.updateGroupSyncState()
         
 //        let groupInfo = GroupInfo(address: group.address.address, imageId: self.selectImageIndex + 1, imageText: source.type == .text ? source.name : nil)
@@ -246,6 +255,51 @@ class GroupAddViewController: UIViewController {
         // 保存配置数据
 //        self.selectProfile.save()
 //        self.doneCallback?(group)
+    }
+
+    private func applyGroupInfoEdits(to group: Group) {
+        let source = dataSource[selectImageIndex]
+        group.info.imageId = selectImageIndex + 1
+        group.info.imageText = source.type == .text ? source.name : nil
+        group.info.profile.updateData(profile: selectProfile)
+        group.info.save()
+        group.info.profile.save(
+            meshUUID: space.meshUUID,
+            meshNetworkId: space.meshNetworkId
+        )
+        group.updateGroupSyncState()
+    }
+
+    private func finishGroupEdit(
+        _ group: Group,
+        lifecycleResult: ProximityLightingLifecycleResult
+    ) {
+        let finish = { [weak self] in
+            guard let self else { return }
+            NotificationCenter.default.post(
+                name: .init(groupDataUpdateNotificationName),
+                object: group
+            )
+            NotificationCenter.default.post(
+                name: .init(spaceDataChangedNotificaitonName),
+                object: SpaceChangeDataType.common
+            )
+            if self.navigationController?.topViewController !== self {
+                self.navigationController?.popToViewController(self, animated: false)
+            }
+            self.close()
+        }
+        guard group.needSync || !lifecycleResult.syncDatas.isEmpty else {
+            finish()
+            return
+        }
+        let vc = SyncDevicesViewController(
+            type: .group(group, inNodes: nil, outNodes: nil)
+        )
+        vc.supplementaryProximityLightingSyncDatas = lifecycleResult.syncDatas
+        vc.syncSuccessCallback = { _ in finish() }
+        vc.backActionCallback = { _ in finish() }
+        navigationController?.pushViewController(vc, animated: true)
     }
     
     private func setupUI() {
@@ -451,12 +505,13 @@ extension GroupAddViewController: GroupAddHeaderViewDelegate {
         
         let vc = ProfileSettingsViewController(group: nil, profile: selectProfile)
         vc.saveActionCallback = {[weak self] profile in
-            guard let self = self else { return }
+            guard let self = self else { return nil }
             self.selectProfile = profile
             view.profileBtn.setTitle(profile.type.instruction.name, for: .normal)
             if let index = self.profiles.firstIndex(where: { $0.type == profile.type }) {
                 self.profiles.replaceSubrange(index...index, with: [profile])
             }
+            return nil
         }
         navigationController?.pushViewController(vc, animated: true)
     }

@@ -222,6 +222,17 @@ struct SensorCalibrationWorkflowContractTests {
             "Sensor input row must preserve the full button and unit text while assigning remaining width to the text field"
         )
         require(
+            targetSensorValueView.contains("private let noteLabel = UILabel()") &&
+                targetSensorValueView.contains("noteLabel.numberOfLines = 0") &&
+                targetSensorValueView.contains("noteLabel.lineBreakMode = .byWordWrapping") &&
+                targetSensorValueView.contains("noteLabel.setContentHuggingPriority(.required, for: .vertical)") &&
+                targetSensorValueView.contains("noteLabel.setContentCompressionResistancePriority(.required, for: .vertical)") &&
+                targetSensorValueView.contains("let preferredWidth = max(noteLabel.bounds.width, 0)") &&
+                targetSensorValueView.contains("noteLabel.preferredMaxLayoutWidth != preferredWidth") &&
+                targetSensorValueView.contains("noteLabel.preferredMaxLayoutWidth = preferredWidth"),
+            "Sensor target note must wrap at its final width without vertical compression or tail truncation"
+        )
+        require(
             modeView.contains("showsTargetBrightness") &&
                 modeView.contains("brightnessLabel.isHidden = !showsTargetBrightness"),
             "The shared completed card must hide the Night brightness row for Sensor"

@@ -189,7 +189,7 @@ class GroupPathSequenceViewController: UIViewController {
         let remainingPathCount = GroupProximityLightingSequencePath.maxPathCount - setPaths.count
         
          guard remainingPathCount > 0 else {
-            XWHUDManager.showTipHUD("not_paths_remaining", isLineFeed: true)
+            XWHUDManager.showTipHUD("not_paths_remaining".localizedString, isLineFeed: true)
             return
         }
         
@@ -213,9 +213,7 @@ class GroupPathSequenceViewController: UIViewController {
     
     /// 停止设置路径
     func stopSetPath() {
-        selectPathData.path = nil
-        selectPathData.item = nil
-        updateDeviceAddViewUI()
+        deselectPath()
     }
     
     /// 路径操作

@@ -70,10 +70,16 @@ struct GroupPathSequenceDeviceAddViewContractTests {
             from: "private func updateEmptyUI()",
             to: "private func updateDeviceAddViewUI()"
         )
+        let spaceZoneEmptyState = section(
+            in: spaceController,
+            from: "private func updateEmptyUI()",
+            to: "private func updateDeviceAddViewUI()"
+        )
 
         for (name, emptyState) in [
             ("Sequence", sequenceEmptyState),
             ("Trigger Zone", zoneEmptyState),
+            ("Space Trigger Zone", spaceZoneEmptyState),
         ] {
             require(
                 !emptyState.contains("frame: tableView.frame"),
@@ -327,6 +333,40 @@ struct GroupPathSequenceDeviceAddViewContractTests {
             ),
             "Manual multi-row content must grow above 160"
         )
+        let dynamicHeightSection = section(
+            in: addView,
+            from: "case .dynamicSelected:",
+            to: "private func switchMode"
+        )
+        require(
+            dynamicHeightSection.contains(
+                "return max(LayoutMetrics.baseContentHeight, maximumPreferredContentHeightAcrossModes())"
+            ),
+            "Space content height must use one maximum across all add modes"
+        )
+        for preferredHeight in [
+            "quickAddView.preferredContentHeight",
+            "triggerAddView.preferredContentHeight",
+            "manuallyAddView.preferredContentHeight",
+        ] {
+            require(
+                dynamicHeightSection.contains(preferredHeight),
+                "Space stable height must include \(preferredHeight)"
+            )
+        }
+        require(
+            !dynamicHeightSection.contains("visibleContentHeight()"),
+            "Space content height must not depend on the currently visible add mode"
+        )
+        let accessoryVisibilitySection = section(
+            in: addView,
+            from: "private func updateAccessoryButtons()",
+            to: "private func emitPreferredHeightIfNeeded()"
+        )
+        require(
+            accessoryVisibilitySection.contains("guard !collapsed, canAddDevice else"),
+            "Guide-only state must hide refresh, unfold, and device-filter accessories"
+        )
         let preferredHeightSection = section(
             in: addView,
             from: "private func emitPreferredHeightIfNeeded()",
@@ -545,6 +585,47 @@ struct GroupPathSequenceDeviceAddViewContractTests {
             "Quick Add top inset must retain CGFloat typing"
         )
         require(
+            quickAddView.contains("private let spacePreferredContentHeight: CGFloat = 186"),
+            "Space Quick Add must reserve enough height for the proximity-group hint"
+        )
+        require(
+            quickAddView.contains("private let spaceControlCenterYOffset: CGFloat = 20"),
+            "Space Quick Add controls must move below the proximity-group hint"
+        )
+        require(
+            quickAddView.contains(
+                "return usesDualFilterLayout ? spacePreferredContentHeight : 130"
+            ),
+            "Space Quick Add must report its expanded selected-content height"
+        )
+        let quickSpaceVisibilitySection = section(
+            in: quickAddView,
+            from: "private func updateSpaceContentVisibility()",
+            to: "@objc private func startBtnAction"
+        )
+        require(
+            quickSpaceVisibilitySection.contains(
+                "let shouldShowSpaceContent = usesDualFilterLayout && guideContentView.isHidden"
+            ),
+            "Space Quick Add filters must remain hidden while the guide is visible"
+        )
+        require(
+            quickSpaceVisibilitySection.contains("groupFilterView.isHidden = !shouldShowSpaceContent")
+                && quickSpaceVisibilitySection.contains("hintLabel.isHidden = !shouldShowSpaceContent"),
+            "Space Quick Add group and hint controls must share guide-aware visibility"
+        )
+        require(
+            quickSpaceVisibilitySection.contains(
+                "make.centerY.equalToSuperview().offset(centerYOffset)"
+            ),
+            "Space Quick Add controls must apply the configured vertical offset"
+        )
+        let quickSpaceConfiguration = section(
+            in: quickAddView,
+            from: "func configureSpaceTriggerZoneQuickAdd",
+            to: "private func setupUI()"
+        )
+        require(
             triggerAddView.contains("layoutStyle: .equalColumns"),
             "Trigger Add guide must use equal columns"
         )
@@ -571,6 +652,19 @@ struct GroupPathSequenceDeviceAddViewContractTests {
                 "return topContentInset + 66 + extraHintHeight + collectionViewHeight"
             ),
             "Trigger Add preferred height must use the same 68-point collection height"
+        )
+        let triggerSpaceConfiguration = section(
+            in: triggerAddView,
+            from: "func configureSpaceTriggerZoneFilterLayout",
+            to: "@objc private func pageControlValueChanged"
+        )
+        require(
+            triggerSpaceConfiguration.contains(
+                "groupFilterView.isHidden = !guideContentView.isHidden"
+            ) && triggerSpaceConfiguration.contains(
+                "hintLabel.isHidden = !guideContentView.isHidden"
+            ),
+            "Space Trigger Add controls must remain hidden while the guide is visible"
         )
         let triggerCollectionConstraints = section(
             in: triggerAddView,
@@ -608,6 +702,97 @@ struct GroupPathSequenceDeviceAddViewContractTests {
             manuallyAddView.contains("private let topContentInset: CGFloat = 8"),
             "Manually Add top inset must retain CGFloat typing"
         )
+        let manuallySpaceConfiguration = section(
+            in: manuallyAddView,
+            from: "func configureSpaceTriggerZoneFilterLayout",
+            to: "@objc private func pageControlValueChanged"
+        )
+        require(
+            manuallySpaceConfiguration.contains(
+                "groupFilterView.isHidden = !guideContentView.isHidden"
+            ),
+            "Space Manually Add controls must remain hidden while the guide is visible"
+        )
+        for (name, source, configuration) in [
+            ("Quick Add", quickAddView, quickSpaceConfiguration),
+            ("Trigger Add", triggerAddView, triggerSpaceConfiguration),
+            ("Manually Add", manuallyAddView, manuallySpaceConfiguration),
+        ] {
+            require(
+                configuration.contains("groupFilterView.snp.remakeConstraints")
+                    && configuration.contains(
+                        "make.right.equalTo(addTypeView.snp.left).offset(-8)"
+                    ),
+                "Space \(name) group filter must fill the space before the filter widget"
+            )
+            require(
+                configuration.contains("make.width.equalTo(100)")
+                    && configuration.contains("make.right.equalTo(-12)"),
+                "Space \(name) filter widget must be 100 points wide and 12 points from the card edge"
+            )
+            require(
+                !configuration.contains("make.width.equalTo(90)")
+                    && !configuration.contains("make.right.lessThanOrEqualTo(-16)"),
+                "Space \(name) must remove the old 90-point width and non-anchoring right constraint"
+            )
+            require(
+                configuration.contains("arrowImageView.snp.updateConstraints")
+                    && configuration.contains("make.right.equalTo(-8)"),
+                "Space \(name) filter arrow must be 8 points from the widget edge"
+            )
+            require(
+                configuration.contains("titleLabel.snp.updateConstraints")
+                    && configuration.contains(
+                        "make.right.equalTo(arrowImageView.snp.left).offset(-4)"
+                    ),
+                "Space \(name) filter title must remain 4 points from the arrow"
+            )
+
+            let menuSection = section(
+                in: source,
+                from: "@objc private func addTypeSelectAction",
+                to: "@objc private func groupFilterSelectAction"
+            )
+            require(
+                menuSection.contains(
+                    "CGPoint(x: addTypeView.frame.maxX - menuWidth, y: addTypeView.frame.maxY + 4)"
+                ),
+                "Space \(name) menu must remain right-aligned to the filter widget"
+            )
+        }
+        let quickDefaultConfiguration = section(
+            in: quickAddView,
+            from: "func configureDefaultQuickAdd()",
+            to: "func configureSpaceTriggerZoneQuickAdd"
+        )
+        let triggerDefaultConfiguration = section(
+            in: triggerAddView,
+            from: "func configureDefaultFilterLayout()",
+            to: "func configureSpaceTriggerZoneFilterLayout"
+        )
+        let manuallyDefaultConfiguration = section(
+            in: manuallyAddView,
+            from: "func configureDefaultFilterLayout()",
+            to: "func configureSpaceTriggerZoneFilterLayout"
+        )
+        for (name, configuration) in [
+            ("Quick Add", quickDefaultConfiguration),
+            ("Trigger Add", triggerDefaultConfiguration),
+            ("Manually Add", manuallyDefaultConfiguration),
+        ] {
+            require(
+                configuration.contains("arrowImageView.snp.updateConstraints")
+                    && configuration.contains("make.right.equalTo(-12)"),
+                "Default \(name) must restore the original 12-point arrow inset"
+            )
+            require(
+                configuration.contains("titleLabel.snp.updateConstraints")
+                    && configuration.contains(
+                        "make.right.equalTo(arrowImageView.snp.left).offset(-12)"
+                    ),
+                "Default \(name) must restore the original 12-point title spacing"
+            )
+        }
         for (name, source) in [
             ("Trigger Add", triggerAddView),
             ("Manually Add", manuallyAddView),

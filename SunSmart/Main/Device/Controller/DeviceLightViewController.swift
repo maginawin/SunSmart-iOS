@@ -575,36 +575,16 @@ class DeviceLightViewController: UIViewController {
   
             MeshAPI.resetNode(address: self.node.primaryUnicastAddress) {[weak self] _ in
                 XWHUDManager.hide()
-                XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                self?.space.deviceCount = MeshNetworkManager.instance.realNodes.count
-                self?.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count
-                self?.space.save()
-                deletionContext.commit()
-                DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {
-                    NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
-                    // 通知space数据修改
-                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
-                    self?.backAction()
-                }
+                let lifecycleResult = deletionContext.commit()
+                self?.completePermanentDeletion(lifecycleResult)
             } resetFail: { _, error in
                 XWHUDManager.hide()
                 
                 let alertView = SRAlertView(title: "notification".localizedString, actions: [.cancelAction, SRAlertAction(title: "force_delete".localizedString, style: .destructive, actionHandler: {[weak self] _ in
                     guard let self = self else { return }
-                    deletionContext.commit()
                     MeshNetworkManager.instance.meshNetwork?.remove(node: self.node)
-//                    _ = self.space.meshManager?.save()
-                    self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
-                    self.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count
-                    self.space.save()
-                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                    DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
-                        NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
-                        // 通知space数据修改
-//                        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
-                        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
-                        self?.backAction()
-                    }
+                    let lifecycleResult = deletionContext.commit()
+                    self.completePermanentDeletion(lifecycleResult)
                 })])
                 let messageAttStr = NSMutableAttributedString(string: "device_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
                 messageAttStr.append(NSAttributedString(string: "device_force_delete_note".localizedString, attributes: [.foregroundColor: Message_Color]))
@@ -614,6 +594,44 @@ class DeviceLightViewController: UIViewController {
             
         })]).show()
         
+    }
+
+    private func completePermanentDeletion(
+        _ lifecycleResult: ProximityLightingLifecycleResult?
+    ) {
+        space.deviceCount = MeshNetworkManager.instance.realNodes.count
+        space.luminairesCount = MeshNetworkManager.instance.realNodes.filter {
+            $0.deviceType == .light
+        }.count
+        space.save()
+
+        let finish = { [weak self] in
+            guard let self else { return }
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) { [weak self] in
+                guard let self else { return }
+                NotificationCenter.default.post(
+                    name: .init(devicesUpdateNotificationName),
+                    object: nil
+                )
+                NotificationCenter.default.post(
+                    name: .init(spaceDataChangedNotificaitonName),
+                    object: SpaceChangeDataType.network(type: .address)
+                )
+                self.navigationController?.popToViewController(self, animated: false)
+                self.backAction()
+            }
+        }
+
+        let syncDatas = lifecycleResult?.syncDatas ?? []
+        guard MeshLibManager.manager.isMeshNetworkConnected, !syncDatas.isEmpty else {
+            finish()
+            return
+        }
+        let vc = SyncDevicesViewController(type: .spaceTriggerZones(datas: syncDatas))
+        vc.syncSuccessCallback = { _ in finish() }
+        vc.backActionCallback = { _ in finish() }
+        navigationController?.pushViewController(vc, animated: true)
     }
     
     /// 修复设备

@@ -26,6 +26,7 @@ class SpacePathTriggerZoneController: UIViewController {
     
     private var tableView: UITableView!
     private var deviceAddView: GroupPathSequenceDeviceAddView!
+    private var syncFailedBtn: UIButton!
     private var deviceAddViewHeightConstraint: NSLayoutConstraint?
     private var allowDeviceAddAnimations = false
     private var didApplyInitialEmptyState = false
@@ -64,6 +65,7 @@ class SpacePathTriggerZoneController: UIViewController {
         ]
         
         setupUI()
+        setupSyncFailedButton()
         view.layoutIfNeeded()
         updateEmptyUI()
         updateDeviceAddViewUI()
@@ -77,9 +79,19 @@ class SpacePathTriggerZoneController: UIViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         allowDeviceAddAnimations = true
+        navigationController?.navigationBar.addSubview(syncFailedBtn)
+        syncFailedBtn.snp.makeConstraints { make in
+            make.centerX.bottom.equalToSuperview()
+        }
+        updateSyncFailedState()
         if tableView.firstShowFlashScrollIndicators {
             tableView.flashScrollIndicatorsIfNeeded()
         }
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        syncFailedBtn.removeFromSuperview()
     }
     
     override func viewDidLayoutSubviews() {
@@ -93,11 +105,7 @@ class SpacePathTriggerZoneController: UIViewController {
     
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
-        if let zone = selectZone, let section = setZones.firstIndex(of: zone) {
-            selectZone = nil
-            tableView.reloadSections(IndexSet(integer: section), with: .none)
-            updateDeviceAddViewUI()
-        }
+        stopSetZone()
     }
     
     private var spaceGroups: [Group] {
@@ -187,6 +195,52 @@ class SpacePathTriggerZoneController: UIViewController {
     private func normalizedAddress(for node: Node) -> Address {
         return node.sunricherVendorModel?.parentElement?.unicastAddress ?? node.primaryUnicastAddress
     }
+
+    private func setupSyncFailedButton() {
+        syncFailedBtn = UIButton(
+            title: "devices_not_synced".localizedString,
+            titleSize: 14,
+            titleWeight: .light,
+            titleColor: Red_Color,
+            fit: false,
+            normalImageName: "schedule_sync_failed",
+            target: self,
+            action: #selector(syncFailedBtnAction)
+        )
+        syncFailedBtn.setImagePosition(position: .left, spacing: SCRXFrom(4))
+        syncFailedBtn.isHidden = true
+    }
+
+    private func updateSyncFailedState() {
+        let preparation = ProximityLightingLifecycleCoordinator.begin(space: space).prepare()
+        let result = ProximityLightingLifecycleCoordinator.preview(preparation)
+        syncFailedBtn.isHidden = preparation.isValid
+            && (result?.syncDatas.isEmpty ?? true)
+    }
+
+    @objc private func syncFailedBtnAction() {
+        let preparation = ProximityLightingLifecycleCoordinator.begin(space: space).prepare()
+        guard let result = prepareLifecycleResult(preparation) else {
+            return
+        }
+        let syncDatas = result.syncDatas
+        guard !syncDatas.isEmpty else {
+            syncFailedBtn.isHidden = true
+            return
+        }
+
+        let vc = SyncDevicesViewController(
+            type: .spaceTriggerZones(datas: syncDatas),
+            reSync: true
+        )
+        vc.syncSuccessCallback = { [weak self] _ in
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                self?.navigationController?.popViewController(animated: true)
+            }
+        }
+        navigationController?.pushViewController(vc, animated: true)
+    }
     
     private func allAddedAddresses(usingCurrentZoneOnly: Bool) -> [Address] {
         if usingCurrentZoneOnly {
@@ -268,14 +322,16 @@ class SpacePathTriggerZoneController: UIViewController {
         if setZones.isEmpty {
             tableView.layoutIfNeeded()
             UIView.performWithoutAnimation {
-                view.showEmptyDataView(frame: tableView.frame,
-                                       title: "no_trigger_zones".localizedString,
+                view.showEmptyDataView(title: "no_trigger_zones".localizedString,
                                        backgroundColor: Background_Color,
                                        buttonText: "add_trigger_zone".localizedString,
                                        buttomWidth: SCRXFrom(216),
                                        position: .center,
                                        bottomMargin: SCRYFrom(100)) { [weak self] in
                     self?.addZone()
+                }
+                view.emptyView?.snp.makeConstraints { make in
+                    make.edges.equalTo(tableView)
                 }
             }
             tableView.isScrollEnabled = false
@@ -327,7 +383,7 @@ class SpacePathTriggerZoneController: UIViewController {
     func addZone() {
         let remainingZoneCount = SpaceTriggerZone.maxZoneCount - setZones.count
         guard remainingZoneCount > 0 else {
-            XWHUDManager.showTipHUD("not_zones_remaining", isLineFeed: true)
+            XWHUDManager.showTipHUD("not_zones_remaining".localizedString, isLineFeed: true)
             return
         }
         
@@ -348,9 +404,16 @@ class SpacePathTriggerZoneController: UIViewController {
         }.show()
     }
     
+    func deselectZone() {
+        if let zone = selectZone, let section = setZones.firstIndex(of: zone) {
+            selectZone = nil
+            tableView.reloadSections(IndexSet(integer: section), with: .none)
+            updateDeviceAddViewUI()
+        }
+    }
+
     func stopSetZone() {
-        selectZone = nil
-        updateDeviceAddViewUI()
+        deselectZone()
     }
     
     @objc private func addAction() {
@@ -361,22 +424,23 @@ class SpacePathTriggerZoneController: UIViewController {
         stopSetZone()
         sanitizeSetZones()
         
-        let oldZones = space.triggerZones.map { $0.copy() }
         let newZones = setZones.map { $0.copy() }
-        let didEdit = !zonesEqual(oldZones, newZones)
-        
-        if didEdit {
-            space.markLocalChangePendingCloudSync()
-            space.triggerZones = newZones
-            space.save()
+        var transaction = ProximityLightingLifecycleCoordinator.begin(space: space)
+        transaction.replaceSpaceZones(newZones)
+        let preparation = transaction.prepare()
+        guard prepareLifecycleResult(preparation) != nil else {
+            return
         }
+        guard let result = ProximityLightingLifecycleCoordinator.commit(preparation) else {
+            return
+        }
+        let syncDatas = result.syncDatas
         
-        let syncDatas = buildSyncDatas()
         guard syncDatas.count > 0 else {
-            if didEdit {
+            if result.didChange {
                 NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             }
-            navigationController?.popViewController(animated: true)
+            exitToSpaceMore()
             return
         }
         
@@ -384,81 +448,78 @@ class SpacePathTriggerZoneController: UIViewController {
         vc.syncSuccessCallback = { [weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                self?.navigationController?.popViewController(animated: true)
+                self?.exitToSpaceMore()
             }
         }
         navigationController?.pushViewController(vc, animated: true)
     }
-    
-    private func zonesEqual(_ lhs: [SpaceTriggerZone], _ rhs: [SpaceTriggerZone]) -> Bool {
-        guard lhs.count == rhs.count else {
+
+    private func exitToSpaceMore() {
+        navigationController?.dismiss(animated: true)
+    }
+
+    private func prepareLifecycleResult(
+        _ preparation: ProximityLightingLifecyclePreparation
+    ) -> ProximityLightingLifecycleResult? {
+        if showCapacityLimitIfNeeded(for: preparation.normalized.plan) {
+            return nil
+        }
+        guard preparation.isValid else {
+            XWHUDManager.showTipHUD(
+                "proximity_lighting_topology_invalid".localizedString,
+                isLineFeed: true
+            )
+            return nil
+        }
+        return ProximityLightingLifecycleCoordinator.preview(preparation)
+    }
+
+    @discardableResult
+    private func showCapacityLimitIfNeeded(
+        for plan: ProximityLightingTopologyPlanner.Plan
+    ) -> Bool {
+        guard let message = ProximityLightingTopologyPlanner.capacityLimitMessage(
+            for: plan
+        ) else {
             return false
         }
-        return zip(lhs, rhs).allSatisfy { $0 == $1 }
+        XWHUDManager.showTipHUD(message, isLineFeed: true)
+        return true
     }
     
-    private func buildSyncDatas() -> [(node: Node, syncData: NodeSyncData)] {
-        let eligibleKeys = eligibleZoneMemberKeys()
-        return eligibleNodes.compactMap { node in
-            let desiredNeighbors = desiredNeighborAddresses(for: node, eligibleKeys: eligibleKeys)
-            let relayNumber = node.group?.info.profile.proximityLightingNumber ?? 0
-            let neighborsEqual = node.proximityLightingNeighborAddresses.sorted() == desiredNeighbors.sorted()
-            
-            if desiredNeighbors.isEmpty {
-                return node.proximityLightingEnabled ? (node, .proximityLightingEnabled(false)) : nil
-            }
-            
-            if neighborsEqual, node.proximityLightingRelayCount == relayNumber {
-                return !node.proximityLightingEnabled ? (node, .proximityLightingEnabled(true)) : nil
-            }
-            
-            if node.proximityLightingEnabled, neighborsEqual, node.proximityLightingRelayCount != relayNumber {
-                return (node, .proximityLightingRelayNumber(relayNumber))
-            }
-            
-            return (node, .proximityLightingNeighbor(relayNumber: relayNumber, neighborAddresses: desiredNeighbors))
-        }
-    }
-    
-    private func desiredNeighborAddresses(for node: Node, eligibleKeys: Set<SpaceTriggerZoneMemberKey>) -> [Address] {
-        let currentAddress = normalizedAddress(for: node)
-        var neighbors: [Address] = []
-        
-        setZones.forEach { zone in
-            guard zone.items.contains(where: { item in
-                item.deviceAddress == currentAddress &&
-                eligibleKeys.contains(
-                    .init(
-                        groupAddress: item.groupAddress,
-                        deviceAddress: item.deviceAddress
-                    )
-                )
-            }) else {
-                return
-            }
-            zone.items.forEach { item in
-                let key = SpaceTriggerZoneMemberKey(
-                    groupAddress: item.groupAddress,
-                    deviceAddress: item.deviceAddress
-                )
-                guard eligibleKeys.contains(key),
-                      item.deviceAddress != currentAddress,
-                      !neighbors.contains(item.deviceAddress) else {
-                    return
-                }
-                neighbors.append(item.deviceAddress)
-            }
-        }
-        return neighbors
-    }
-    
-    private func appendNode(_ node: Node, to zone: SpaceTriggerZone) {
+    @discardableResult
+    private func appendNode(_ node: Node, to zone: SpaceTriggerZone) -> Bool {
         let address = normalizedAddress(for: node)
-        guard !zone.items.contains(where: { $0.deviceAddress == address }),
-              let groupAddress = node.group?.address.address else {
-            return
+        guard !zone.items.contains(where: { $0.deviceAddress == address }) else {
+            return false
         }
-        zone.items.append(.init(groupAddress: groupAddress, deviceAddress: address))
+        guard let group = selectedEligibleGroup(for: node) else {
+            return false
+        }
+        zone.items.append(
+            .init(
+                groupAddress: group.address.address,
+                deviceAddress: address
+            )
+        )
+        return true
+    }
+
+    private func selectedEligibleGroup(for node: Node) -> Group? {
+        guard let owningGroup = node.group,
+              eligibleGroups.contains(where: {
+                  $0.address.address == owningGroup.address.address
+              }) else {
+            return nil
+        }
+
+        if quickAddGroupFilterIndex > 0,
+           quickAddGroupFilterIndex < quickAddGroupFilterOptions.count,
+           let selectedGroup = quickAddGroupFilterOptions[quickAddGroupFilterIndex].group,
+           selectedGroup.address.address == owningGroup.address.address {
+            return selectedGroup
+        }
+        return owningGroup
     }
     
     private func setupUI() {
@@ -510,6 +571,7 @@ class SpacePathTriggerZoneController: UIViewController {
         
         tableView = UITableView(frame: .zero, style: .grouped)
         tableView.separatorStyle = .none
+        tableView.allowsSelection = false
         tableView.backgroundColor = .clear
         tableView.layer.cornerRadius = SCRYFrom(10)
         tableView.register(GroupPathSequencePathHeaderView.classForCoder(), forHeaderFooterViewReuseIdentifier: "header")
@@ -552,8 +614,7 @@ extension SpacePathTriggerZoneController: UITableViewDataSource, UITableViewDele
         let zone = setZones[section]
         headerView.isSelect = selectZone == zone
         headerView.nameLabel.text = "\("zone".localizedString) \(section + 1)"
-        let groupCount = Set(zone.items.map { $0.groupAddress.hex }).count
-        headerView.testBtn.isEnabled = zone.items.count > 0 && groupCount == 1
+        headerView.testBtn.isEnabled = !zone.items.isEmpty
         headerView.resetBtn.isEnabled = zone.items.count > 0
         headerView.operationActionCallback = { [weak self] type in
             self?.zoneOperation(zone: zone, type: type)
@@ -602,12 +663,15 @@ extension SpacePathTriggerZoneController: UITableViewDataSource, UITableViewDele
         case .save:
             break
         case .test:
-            guard let groupAddress = zone.items.first?.groupAddress,
-                  zone.items.allSatisfy({ $0.groupAddress == groupAddress }),
-                  let group = zone.items.first?.group else {
+            let groupAddresses = Array(Set(zone.items.map(\.groupAddress))).sorted()
+            guard !groupAddresses.isEmpty, !zone.addresses.isEmpty else {
                 return
             }
-            GroupPathSequencePathTestView(type: .zone, group: group, addresses: zone.addresses).show()
+            GroupPathSequencePathTestView(
+                type: .zone,
+                groupAddresses: groupAddresses,
+                addresses: zone.addresses
+            ).show()
         case .reset:
             SRAlertView(title: "notification".localizedString, message: "path_reset_devices_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, actionHandler: { [weak self] _ in
                 guard let self else { return }
@@ -686,7 +750,9 @@ extension SpacePathTriggerZoneController: GroupPathSequenceTriggerZoneViewCellDe
             return
         }
         let zone = setZones[section]
-        appendNode(node, to: zone)
+        guard appendNode(node, to: zone) else {
+            return
+        }
         
         if deviceAddMode == .triggerAdd {
             if let index = triggerDevices.firstIndex(where: { normalizedAddress(for: $0) == address }) {
@@ -735,13 +801,17 @@ extension SpacePathTriggerZoneController: GroupPathSequenceDeviceAddViewDelegate
         let address = normalizedAddress(for: device)
         
         if deviceAddMode == .triggerAdd {
-            appendNode(device, to: zone)
+            guard appendNode(device, to: zone) else {
+                return
+            }
             if let index = triggerDevices.firstIndex(where: { normalizedAddress(for: $0) == address }) {
                 triggerDevices.remove(at: index)
                 refreshAddModeDevices()
             }
         } else if deviceAddMode == .manuallyAdd {
-            appendNode(device, to: zone)
+            guard appendNode(device, to: zone) else {
+                return
+            }
             refreshAddModeDevices()
         }
         
@@ -797,8 +867,9 @@ extension SpacePathTriggerZoneController: MeshLibManagerMessageDelegate {
                     quickAddingBusy = true
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
                         guard let self else { return }
-                        self.appendNode(node, to: zone)
-                        if let section = self.setZones.firstIndex(of: zone) {
+                        let didAppend = self.appendNode(node, to: zone)
+                        if didAppend,
+                           let section = self.setZones.firstIndex(of: zone) {
                             self.tableView.reloadSections(IndexSet(integer: section), with: .none)
                         }
                         self.quickAddingBusy = false

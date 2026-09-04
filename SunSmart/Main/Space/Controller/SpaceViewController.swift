@@ -226,6 +226,7 @@ class SpaceViewController: WMPageController {
     private var isAllOn: Bool = true
     private var emergencyFireControllerSceneEventManager: EmergencyFireControllerSceneEventManager?
     private var emergencyFireSceneMessageObserverId: UUID?
+    private var pendingProximityLightingRepairSyncDatas: [(node: Node, syncData: NodeSyncData)] = []
     
     private var networkableObservation: NSKeyValueObservation?
     private var meshNetworkConnectedObservation: NSKeyValueObservation?
@@ -368,6 +369,7 @@ class SpaceViewController: WMPageController {
         super.viewDidAppear(animated)
         
         updateSyncState()
+        presentProximityLightingRepairSyncIfNeeded()
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -588,6 +590,20 @@ class SpaceViewController: WMPageController {
             }
             self.space.commitLocalChangeForCloudSync(site: self.site, changeType: type)
         }
+
+        NotificationCenter.default.addObserver(
+            forName: .init(proximityLightingImportSyncNotificationName),
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            guard let self,
+                  let request = notification.object as? ProximityLightingImportSyncRequest,
+                  request.spaceId == self.space.id else {
+                return
+            }
+            self.pendingProximityLightingRepairSyncDatas = request.syncDatas
+            self.presentProximityLightingRepairSyncIfNeeded()
+        }
         
         // 页面page禁止滑动通知
         NotificationCenter.default.addObserver(forName: .init(spacePageDisableScrollNotificaitonName), object: nil, queue: nil) {[weak self] notification in
@@ -698,6 +714,7 @@ class SpaceViewController: WMPageController {
 //                    XWHUDManager.hideInView(with: self.view)
                     XWHUDManager.hide()
                     self.loadNetworkData = true
+                    self.reconcileLegacyProximityLightingTopology()
                     self.emergencyFireControllerSceneEventManager = EmergencyFireControllerSceneEventManager {
                         DeviceEmerFireStore.shared.devices(in: self.space)
                     }
@@ -720,6 +737,42 @@ class SpaceViewController: WMPageController {
             }
         }
     }
+
+    private func reconcileLegacyProximityLightingTopology() {
+        let preparation = ProximityLightingLifecycleCoordinator.begin(space: space).prepare()
+        guard let result = ProximityLightingLifecycleCoordinator.commit(
+            preparation,
+            allowExistingHardErrors: true
+        ) else {
+            return
+        }
+        if result.didChange {
+            NotificationCenter.default.post(
+                name: .init(spaceDataChangedNotificaitonName),
+                object: SpaceChangeDataType.common
+            )
+        }
+    }
+
+    private func presentProximityLightingRepairSyncIfNeeded() {
+        guard viewIfLoaded?.window != nil,
+              MeshLibManager.manager.isMeshNetworkConnected,
+              space.deviceOperates.contains(.edit),
+              !space.disableEditorPermission,
+              !pendingProximityLightingRepairSyncDatas.isEmpty,
+              navigationController?.topViewController === self,
+              presentedViewController == nil else {
+            return
+        }
+        let datas = pendingProximityLightingRepairSyncDatas
+        pendingProximityLightingRepairSyncDatas = []
+        let vc = SyncDevicesViewController(type: .spaceTriggerZones(datas: datas))
+        vc.syncSuccessCallback = { [weak vc] _ in
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            vc?.navigationController?.popViewController(animated: true)
+        }
+        navigationController?.pushViewController(vc, animated: true)
+    }
     
     // MARK: - Request
     /// 获取space数据
@@ -734,7 +787,17 @@ class SpaceViewController: WMPageController {
                 if let spaceData = JSON(response)["data"].dictionaryObject {
                     Task { [weak self] in
                         guard let self = self else { return }
-                        await self.space.update(spaceJsonData: spaceData)
+                        let outcome = await self.space.update(
+                            spaceJsonData: spaceData
+                        )
+                        guard outcome.status != .rejected else {
+                            await MainActor.run {
+                                XWHUDManager.showErrorTipHUD(
+                                    "proximity_lighting_import_invalid".localizedString
+                                )
+                            }
+                            return
+                        }
                         self.space.save()
                         await MainActor.run {
                             self.title = self.space.name
@@ -783,7 +846,13 @@ class SpaceViewController: WMPageController {
         // 数据有更新没提交,先提交完成数据再解绑
         if space.permission == .editor && space.needUploadCloud {
             Task {
-                let spaceData = await space.export()
+                guard let spaceData = await space.export() else {
+                    XWHUDManager.hide()
+                    XWHUDManager.showErrorTipHUD(
+                        "proximity_lighting_export_invalid".localizedString
+                    )
+                    return
+                }
                 NetworkRequest.shared.request(.spaceUpload(siteId: space.siteId, spaceData: spaceData)) {[weak self] result in
                     switch result {
                     case .success(_):

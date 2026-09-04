@@ -73,7 +73,7 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
     /// 是否可编辑
     var editable: Bool = true
     /// 保存事件回调
-    var saveActionCallback: ((Profile)->Void)?
+    var saveActionCallback: ((Profile) -> ProximityLightingLifecycleResult?)?
 
     var keyboardScrollView: UIScrollView {
         return self.scrollView
@@ -261,13 +261,23 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
         }
         selectProfile.powerUpCct = min(effectiveCctRange.upperBound, max(effectiveCctRange.lowerBound, selectProfile.powerUpCct))
         
-        saveActionCallback?(selectProfile)
+        let lifecycleResult = saveActionCallback?(selectProfile)
+        if group != nil, saveActionCallback != nil, lifecycleResult == nil {
+            XWHUDManager.showTipHUD(
+                "proximity_lighting_topology_invalid".localizedString,
+                isLineFeed: true
+            )
+            return
+        }
      
         if let group = group,
-           group.nodes.contains(where: { $0.needSync }) || (groupProfileSyncContext?.shouldForceFullProfileSync == true && !group.nodes.isEmpty) {
+           group.nodes.contains(where: { $0.needSync })
+            || (groupProfileSyncContext?.shouldForceFullProfileSync == true && !group.nodes.isEmpty)
+            || !(lifecycleResult?.syncDatas.isEmpty ?? true) {
             let vc = SyncDevicesViewController(type: .group(group, inNodes: nil, outNodes: nil))
             vc.profileSensorProtectionContext = sensorProtectionContext
             vc.groupProfileSyncContext = groupProfileSyncContext
+            vc.supplementaryProximityLightingSyncDatas = lifecycleResult?.syncDatas ?? []
             vc.syncSuccessCallback = {[weak self] _ in
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
                 guard let self = self else { return }

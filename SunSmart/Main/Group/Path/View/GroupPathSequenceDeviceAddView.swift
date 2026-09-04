@@ -430,7 +430,7 @@ class GroupPathSequenceDeviceAddView: UIView {
     }
 
     private func updateAccessoryButtons() {
-        guard !collapsed else {
+        guard !collapsed, canAddDevice else {
             refreshBtn.isHidden = true
             unfoldBtn.isHidden = true
             deviceFilterBtn.isHidden = true
@@ -482,19 +482,18 @@ class GroupPathSequenceDeviceAddView: UIView {
             }
             return LayoutMetrics.baseContentHeight
         case .dynamicSelected:
-            return max(LayoutMetrics.baseContentHeight, visibleContentHeight())
+            return max(LayoutMetrics.baseContentHeight, maximumPreferredContentHeightAcrossModes())
         }
     }
 
-    private func visibleContentHeight() -> CGFloat {
-        switch currentMode {
-        case .quickAdd:
-            return quickAddView.preferredContentHeight
-        case .triggerAdd:
-            return triggerAddView.preferredContentHeight
-        case .manuallyAdd:
-            return manuallyAddView.preferredContentHeight
-        }
+    private func maximumPreferredContentHeightAcrossModes() -> CGFloat {
+        return max(
+            quickAddView.preferredContentHeight,
+            max(
+                triggerAddView.preferredContentHeight,
+                manuallyAddView.preferredContentHeight
+            )
+        )
     }
 
     private func switchMode(to type: PathSequenceDeviceAddMode) {

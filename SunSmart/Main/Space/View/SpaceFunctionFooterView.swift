@@ -7,6 +7,11 @@
 
 import UIKit
 
+enum SpaceDeviceFilterPlacement {
+    case beforeSort
+    case beforeEdit
+}
+
 protocol SpaceFunctionFooterViewDelegate: AnyObject {
     
     /// 点击排序回调
@@ -79,6 +84,7 @@ class SpaceFunctionFooterView: UIView {
     var editBtn: UIButton!
     var addBtn: UIButton!
     var syncBtn: UIButton!
+    var deviceFilterBtn: UIButton!
     
     var cancelBtn: UIButton!
     var lineView: UIView!
@@ -86,21 +92,13 @@ class SpaceFunctionFooterView: UIView {
     /// 是否启用测试删除
     var enableTestDelete: Bool = false
 
-    /// 是否启用设备名称过滤入口。仅 Site - Space - Main 使用。
-    var deviceNameFilterEnabled: Bool = false {
-        didSet {
-            countBtn.isUserInteractionEnabled = deviceNameFilterEnabled
-            countBtn.accessibilityTraits = deviceNameFilterEnabled ? .button : .staticText
-        }
-    }
+    /// 设备名称过滤按钮位置。仅 Site - Space - Main 使用。
+    private var deviceFilterPlacement: SpaceDeviceFilterPlacement?
 
     /// 当前是否存在已提交的设备名称过滤条件。
     var deviceNameFilterActive: Bool = false {
         didSet {
-            let imageName = deviceNameFilterActive
-                ? "space_device_count_selected"
-                : "space_device_count"
-            countBtn.setImage(UIImage(named: imageName), for: .normal)
+            deviceFilterBtn.isSelected = deviceNameFilterActive
         }
     }
     
@@ -134,11 +132,36 @@ class SpaceFunctionFooterView: UIView {
     }
 
     /// 设备名称过滤
-    @objc private func countBtnClick() {
-        guard deviceNameFilterEnabled else {
-            return
-        }
+    @objc private func deviceFilterBtnClick() {
         delegate?.functionDidClickDeviceFilter(view: self)
+    }
+
+    func configureDeviceNameFilter(placement: SpaceDeviceFilterPlacement) {
+        deviceFilterPlacement = placement
+        deviceFilterBtn.isHidden = isEditing
+
+        deviceFilterBtn.snp.remakeConstraints { make in
+            make.width.height.equalTo(30)
+            switch placement {
+            case .beforeSort:
+                make.right.equalTo(sortBtn.snp.left).offset(SCRXFrom(-20))
+                make.centerY.equalTo(sortBtn)
+            case .beforeEdit:
+                make.right.equalTo(editBtn.snp.left).offset(SCRXFrom(-20))
+                make.centerY.equalTo(editBtn)
+            }
+        }
+
+        syncBtn.snp.remakeConstraints { make in
+            switch placement {
+            case .beforeSort:
+                make.right.equalTo(deviceFilterBtn.snp.left).offset(SCRXFrom(-20))
+                make.centerY.equalTo(deviceFilterBtn)
+            case .beforeEdit:
+                make.right.equalTo(sortBtn.snp.left).offset(SCRXFrom(-20))
+                make.centerY.equalTo(sortBtn)
+            }
+        }
     }
     
     /// 编辑
@@ -227,6 +250,7 @@ class SpaceFunctionFooterView: UIView {
             addBtn.isHidden = true
             sortBtn.isHidden = true
             syncBtn.isHidden = true
+            deviceFilterBtn.isHidden = true
             longPressTestBtn.isHidden = true
 //            switchCountBtn.isHidden = true
         }else {
@@ -237,6 +261,7 @@ class SpaceFunctionFooterView: UIView {
             editBtn.isHidden = false
             addBtn.isHidden = false
             sortBtn.isHidden = false
+            deviceFilterBtn.isHidden = deviceFilterPlacement == nil
             longPressTestBtn.isHidden = false
 //            switchCountBtn.isHidden = false
         }
@@ -247,8 +272,7 @@ class SpaceFunctionFooterView: UIView {
         countBtn = UIButton(title: "25/100", titleSize: 12, titleColor: TextBlack_Color, normalImageName: "space_device_count")
         countBtn.setImagePosition(position: .left, spacing: SCRXFrom(2))
         countBtn.isUserInteractionEnabled = false
-        countBtn.accessibilityLabel = "device_filter_search_by_name".localizedString
-        countBtn.addTarget(self, action: #selector(countBtnClick), for: .touchUpInside)
+        countBtn.accessibilityTraits = .staticText
         addSubview(countBtn)
         countBtn.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(20))
@@ -341,6 +365,21 @@ class SpaceFunctionFooterView: UIView {
         syncBtn.snp.makeConstraints { make in
             make.right.equalTo(sortBtn.snp.left).offset(SCRXFrom(-20))
             make.centerY.equalTo(sortBtn)
+        }
+
+        deviceFilterBtn = UIButton(
+            normalImageName: "device_filter",
+            selectedImageName: "device_filter_selected",
+            target: self,
+            action: #selector(deviceFilterBtnClick)
+        )
+        deviceFilterBtn.isHidden = true
+        deviceFilterBtn.accessibilityLabel = "device_filter_search_by_name".localizedString
+        addSubview(deviceFilterBtn)
+        deviceFilterBtn.snp.makeConstraints { make in
+            make.right.equalTo(sortBtn.snp.left).offset(SCRXFrom(-20))
+            make.centerY.equalTo(sortBtn)
+            make.width.height.equalTo(30)
         }
         
     }

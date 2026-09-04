@@ -121,7 +121,7 @@ class DeviceSensorsViewController: UIViewController {
         footerView.sortBtn.isHidden = true
         footerView.enableTestDelete = true
         footerView.editBtn.isEnabled = false
-        footerView.deviceNameFilterEnabled = true
+        footerView.configureDeviceNameFilter(placement: .beforeEdit)
         footerView.deviceNameFilterActive = deviceNameFilterSession.isActive
         footerView.delegate = self
         view.addSubview(footerView)
@@ -192,6 +192,6 @@ extension DeviceSensorsViewController: SpaceFunctionFooterViewDelegate {
     }
 
     func functionDidClickDeviceFilter(view: SpaceFunctionFooterView) {
-        (parent as? DevicesViewController)?.showDeviceNameFilterMenu(from: view.countBtn)
+        (parent as? DevicesViewController)?.showDeviceNameFilterMenu(from: view.deviceFilterBtn)
     }
 }

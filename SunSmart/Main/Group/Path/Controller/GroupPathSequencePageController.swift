@@ -67,7 +67,8 @@ class GroupPathSequencePageController: WMPageController {
             make.centerX.bottom.equalToSuperview()
         }
         
-        syncFailedBtn.isHidden = !group.nodes.contains(where: { $0.getNodeSyncProximityLighting() != nil })
+        let plan = ProximityLightingTopologyPlanner.makePlan(space: space)
+        updateSyncFailedState(using: plan)
     }
     
     override func viewWillDisappear(_ animated: Bool) {
@@ -99,8 +100,20 @@ class GroupPathSequencePageController: WMPageController {
     }
     
     @objc private func syncFailedBtnAction() {
-        
-        let vc = SyncDevicesViewController(type: .proximityLightingPath(group: group, path: groupPath), reSync: true)
+        let preparation = ProximityLightingLifecycleCoordinator.begin(space: space).prepare()
+        guard let result = prepareLifecycleResult(preparation) else {
+            return
+        }
+        let syncDatas = result.syncDatas
+        guard !syncDatas.isEmpty else {
+            syncFailedBtn.isHidden = true
+            return
+        }
+
+        let vc = SyncDevicesViewController(
+            type: .proximityLightingPath(datas: syncDatas),
+            reSync: true
+        )
         vc.syncSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             guard let self = self else { return }
@@ -113,36 +126,39 @@ class GroupPathSequencePageController: WMPageController {
     
     
     @objc private func saveAction() {
-   
-        var edit = false
-        let equalPath = groupPath.copy()
+        let proposedPath = groupPath.copy()
         if let vc = self.sequenceVc {
             vc.stopSetPath()
-            groupPath.paths = vc.setPaths
+            proposedPath.paths = vc.setPaths
         }
         if let vc = self.triggerZoneVc {
             vc.stopSetZone()
-            groupPath.zones = vc.setZones
+            proposedPath.zones = vc.setZones
         }
-        if !(equalPath == groupPath) {
-            edit = true
+        var transaction = ProximityLightingLifecycleCoordinator.begin(space: space)
+        transaction.replaceGroupTopology(group: group, path: proposedPath)
+        let preparation = transaction.prepare()
+        guard prepareLifecycleResult(preparation) != nil else {
+            return
         }
-        if edit {
-            space.markLocalChangePendingCloudSync()
+        guard let result = ProximityLightingLifecycleCoordinator.commit(preparation) else {
+            return
         }
-        group.info.proximityLightingPath = groupPath
-        group.info.save()
-        group.updateGroupSyncState()
+        let syncDatas = result.syncDatas
+        groupPath.paths = proposedPath.paths
+        groupPath.zones = proposedPath.zones
 
-        guard group.nodes.contains(where: { $0.getNodeSyncProximityLighting() != nil }) else {
+        guard !syncDatas.isEmpty else {
             navigationController?.popViewController(animated: true)
-            if edit {
+            if result.didChange {
                 NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             }
             return
         }
         
-        let vc = SyncDevicesViewController(type: .proximityLightingPath(group: group, path: groupPath))
+        let vc = SyncDevicesViewController(
+            type: .proximityLightingPath(datas: syncDatas)
+        )
         vc.syncSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {[weak self] in
@@ -151,6 +167,45 @@ class GroupPathSequencePageController: WMPageController {
         }
         navigationController?.pushViewController(vc, animated: true)
         
+    }
+
+    private func updateSyncFailedState(
+        using plan: ProximityLightingTopologyPlanner.Plan
+    ) {
+        let preparation = ProximityLightingLifecycleCoordinator.begin(space: space).prepare()
+        let result = ProximityLightingLifecycleCoordinator.preview(preparation)
+        syncFailedBtn.isHidden = !plan.hasCapacityViolation
+            && preparation.isValid
+            && (result?.syncDatas.isEmpty ?? true)
+    }
+
+    private func prepareLifecycleResult(
+        _ preparation: ProximityLightingLifecyclePreparation
+    ) -> ProximityLightingLifecycleResult? {
+        if showCapacityLimitIfNeeded(for: preparation.normalized.plan) {
+            return nil
+        }
+        guard preparation.isValid else {
+            XWHUDManager.showTipHUD(
+                "proximity_lighting_topology_invalid".localizedString,
+                isLineFeed: true
+            )
+            return nil
+        }
+        return ProximityLightingLifecycleCoordinator.preview(preparation)
+    }
+
+    @discardableResult
+    private func showCapacityLimitIfNeeded(
+        for plan: ProximityLightingTopologyPlanner.Plan
+    ) -> Bool {
+        guard let message = ProximityLightingTopologyPlanner.capacityLimitMessage(
+            for: plan
+        ) else {
+            return false
+        }
+        XWHUDManager.showTipHUD(message, isLineFeed: true)
+        return true
     }
     
     @objc private func addItemAction() {

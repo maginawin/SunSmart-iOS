@@ -29,6 +29,8 @@ protocol GroupPathSequenceQuickAddViewDelegate: AnyObject {
 
 class GroupPathSequenceQuickAddView: UIView {
     private let topContentInset: CGFloat = 8
+    private let spacePreferredContentHeight: CGFloat = 186
+    private let spaceControlCenterYOffset: CGFloat = 20
     
     private var helpImageView: UIImageView!
     private var groupFilterView: UIView!
@@ -67,7 +69,7 @@ class GroupPathSequenceQuickAddView: UIView {
         if !guideContentView.isHidden {
             return guidePreferredContentHeight
         }
-        return usesDualFilterLayout ? 136 : 130
+        return usesDualFilterLayout ? spacePreferredContentHeight : 130
     }
     
     override init(frame: CGRect) {
@@ -87,6 +89,7 @@ class GroupPathSequenceQuickAddView: UIView {
         guideContentView.isHidden = false
         addView.isHidden = true
         stopBtn.isHidden = true
+        updateSpaceContentVisibility()
         startBtn.snp.updateConstraints { make in
             make.centerX.equalToSuperview()
         }
@@ -96,6 +99,7 @@ class GroupPathSequenceQuickAddView: UIView {
     func updateQuickAddState(_ state: QuickAddState) {
         guideContentView.isHidden = true
         addView.isHidden = false
+        updateSpaceContentVisibility()
         switch state {
         case .adding:
             stopBtn.isHidden = false
@@ -122,6 +126,19 @@ class GroupPathSequenceQuickAddView: UIView {
             startBtn.snp.updateConstraints { make in
                 make.centerX.equalToSuperview()
             }
+        }
+    }
+
+    private func updateSpaceContentVisibility() {
+        let shouldShowSpaceContent = usesDualFilterLayout && guideContentView.isHidden
+        groupFilterView.isHidden = !shouldShowSpaceContent
+        hintLabel.isHidden = !shouldShowSpaceContent
+    }
+
+    private func updateAddControlCenterY() {
+        let centerYOffset = usesDualFilterLayout ? spaceControlCenterYOffset : 0
+        startBtn.snp.updateConstraints { make in
+            make.centerY.equalToSuperview().offset(centerYOffset)
         }
     }
     
@@ -256,9 +273,15 @@ class GroupPathSequenceQuickAddView: UIView {
         showAdded = false
         titleLabel.text = "quick_add_ignore_added_devices".localizedString
         hintLabel.text = nil
-        hintLabel.isHidden = true
-        groupFilterView.isHidden = true
         messageLabel.text = "path_quick_add_message".localizedString
+        updateSpaceContentVisibility()
+        updateAddControlCenterY()
+        arrowImageView.snp.updateConstraints { make in
+            make.right.equalTo(-12)
+        }
+        titleLabel.snp.updateConstraints { make in
+            make.right.equalTo(arrowImageView.snp.left).offset(-12)
+        }
         addTypeView.snp.remakeConstraints { make in
             make.left.equalTo(helpImageView.snp.right).offset(6)
             make.top.equalTo(topContentInset)
@@ -276,15 +299,26 @@ class GroupPathSequenceQuickAddView: UIView {
         showAdded = showAddedOnly
         titleLabel.text = showAddedOnly ? "space_trigger_zone_used".localizedString : "space_trigger_zone_new_only".localizedString
         hintLabel.text = "space_trigger_zone_quick_add_hint".localizedString
-        hintLabel.isHidden = false
-        groupFilterView.isHidden = false
         messageLabel.text = "space_trigger_zone_quick_add_message".localizedString
+        updateSpaceContentVisibility()
+        updateAddControlCenterY()
         addTypeView.snp.remakeConstraints { make in
-            make.left.equalTo(groupFilterView.snp.right).offset(8)
             make.top.equalTo(topContentInset)
             make.height.equalTo(30)
-            make.width.equalTo(90)
-            make.right.lessThanOrEqualTo(-16)
+            make.width.equalTo(100)
+            make.right.equalTo(-12)
+        }
+        groupFilterView.snp.remakeConstraints { make in
+            make.left.equalTo(helpImageView.snp.right).offset(6)
+            make.right.equalTo(addTypeView.snp.left).offset(-8)
+            make.top.equalTo(topContentInset)
+            make.height.equalTo(30)
+        }
+        arrowImageView.snp.updateConstraints { make in
+            make.right.equalTo(-8)
+        }
+        titleLabel.snp.updateConstraints { make in
+            make.right.equalTo(arrowImageView.snp.left).offset(-4)
         }
     }
     
