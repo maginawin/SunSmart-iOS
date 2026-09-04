@@ -1614,19 +1614,17 @@ extension Schedule {
     }
     
     func needsDelete(from node: Node, contextGroup: Group? = nil) -> Bool {
-        guard !targets(node: node, contextGroup: contextGroup) else {
-            return false
+        let modelEntryStates: [Bool?] = node.schedulerSetupModels.map { model in
+            guard let modelEntrys = node.allSchedulerModelEntrys[model] else {
+                return nil
+            }
+            return modelEntrys[id]?.isValid == true
         }
-        if node.schedulerSetupModels.contains(where: { model in
-            node.allSchedulerModelEntrys[model] == nil
-        }) {
-            return true
-        }
-        let hasModelEntry = node.schedulerSetupModels.contains {
-            node.allSchedulerModelEntrys[$0]?[id]?.isValid == true
-        }
-        let hasLegacyEntry = node.schedulerActions[id]?.isValid == true
-        return hasModelEntry || hasLegacyEntry
+        return TimedSchedulerDeletePolicy.shouldDelete(
+            targetsNode: targets(node: node, contextGroup: contextGroup),
+            modelEntryStates: modelEntryStates,
+            legacyEntryIsValid: node.schedulerActions[id]?.isValid == true
+        )
     }
     
     /// 获取日程需要同步/删除的数据

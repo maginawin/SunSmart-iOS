@@ -215,11 +215,13 @@ extension SpaceData {
             spaceJsonData.updateValue(self.showCCTQuickButtons, forKey: "showCCTQuickButtons")
             spaceJsonData.updateValue(self.controlType.rawValue, forKey: "controlType")
             spaceJsonData.updateValue(self.deviceBlinkMode.rawValue, forKey: "deviceBlinkMode")
-            spaceJsonData.updateValue(1, forKey: "proximityLightingSchemaVersion")
+            var spaceExtensionData: [String: Any] = [:]
+            spaceExtensionData.updateValue(1, forKey: "proximityLightingSchemaVersion")
             let triggerZonesArray = (try? jsonEncoder.encode(self.triggerZones))
                 .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [[String: Any]] }
                 ?? []
-            spaceJsonData.updateValue(triggerZonesArray, forKey: "triggerZones")
+            spaceExtensionData.updateValue(triggerZonesArray, forKey: "triggerZones")
+            spaceJsonData.updateValue(spaceExtensionData, forKey: "spaceData")
             
             
             let networkKey = meshNetwork.networkKeys.first(where: { $0.networkId.hex == self.meshNetworkId })

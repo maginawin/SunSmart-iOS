@@ -133,13 +133,33 @@ struct PathTopologyPersistenceContractTests {
         )
         require(
             spaceExport.contains(
+                "spaceExtensionData.updateValue(triggerZonesArray, forKey: \"triggerZones\")"
+            ),
+            "Space export must write triggerZones into the extension container"
+        )
+        require(
+            spaceExport.contains(
+                "spaceJsonData.updateValue(spaceExtensionData, forKey: \"spaceData\")"
+            ),
+            "Space export must place extensible properties under spaceData"
+        )
+        require(
+            !spaceExport.contains(
+                "spaceJsonData.updateValue(1, forKey: \"proximityLightingSchemaVersion\")"
+            ) && !spaceExport.contains(
                 "spaceJsonData.updateValue(triggerZonesArray, forKey: \"triggerZones\")"
             ),
-            "Space export must write the triggerZones key after successful encoding"
+            "New exports must not duplicate extension properties at the Space root"
         )
         require(
             importData.contains("let proximityPreflight = ProximityLightingImportPreflight.parse("),
             "Space import must preflight proximity data before destructive apply"
+        )
+        require(
+            importData.contains("if rootJson[\"spaceData\"].exists()")
+                && importData.contains("rootJson[\"spaceData\"].dictionaryObject")
+                && importData.contains("payloadJson = rootJson"),
+            "Space import must prefer nested spaceData and fall back to legacy root properties"
         )
         require(
             importData.contains("if let triggerZones = proximityPreflight.triggerZones"),

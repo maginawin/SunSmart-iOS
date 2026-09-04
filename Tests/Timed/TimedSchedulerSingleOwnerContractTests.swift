@@ -390,8 +390,13 @@ struct TimedSchedulerSingleOwnerContractTests {
             "needsDelete must use Model-aware entries"
         )
         require(
-            needsDelete.contains("allSchedulerModelEntrys[model] == nil"),
-            "Delete must retry Scheduler models whose state is still unknown"
+            needsDelete.contains("TimedSchedulerDeletePolicy.shouldDelete")
+                && needsDelete.contains("modelEntryStates"),
+            "Delete must route known, unknown, and residual Model states through the safety policy"
+        )
+        require(
+            !needsDelete.contains("allSchedulerModelEntrys[model] == nil"),
+            "Unknown Scheduler Models must not directly generate delete tasks"
         )
 
         let updateData = section(
@@ -438,6 +443,28 @@ struct TimedSchedulerSingleOwnerContractTests {
                 "schedule.needDeleteNodeAddresses.removeAll()"
             ),
             "Delete must not immediately erase direct device targets"
+        )
+        require(
+            deleteSchedule.contains(
+                "nodesRequiringAuthoritativeSchedulerRead"
+            )
+                && deleteSchedule.contains(
+                    "readUnknownSchedulerState"
+                ),
+            "Explicit deletion must read unknown Scheduler Model state before mutating targets"
+        )
+        let unknownRead = section(
+            in: source,
+            from: "static func nodesRequiringAuthoritativeSchedulerRead(",
+            to: "static func saveSchedule("
+        )
+        require(
+            unknownRead.contains(
+                "TimedSchedulerCacheRepairPolicy.needsAuthoritativeRead"
+            )
+                && unknownRead.contains("MeshAPI.getSchedule(")
+                && unknownRead.contains("index: nil"),
+            "Unknown Scheduler Model state must be resolved by a full authoritative read"
         )
     }
 

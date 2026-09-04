@@ -853,7 +853,13 @@ class SpaceViewController: WMPageController {
                     )
                     return
                 }
-                NetworkRequest.shared.request(.spaceUpload(siteId: space.siteId, spaceData: spaceData)) {[weak self] result in
+                NetworkRequest.shared.request(
+                    .spaceUpload(
+                        siteId: space.siteId,
+                        spaceId: space.id,
+                        spaceData: spaceData
+                    )
+                ) {[weak self] result in
                     switch result {
                     case .success(_):
                         self?.space.lastUploadCloudTimestamp = self?.space.lastUpdate

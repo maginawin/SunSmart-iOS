@@ -24,6 +24,7 @@ struct ProximityLightingLifecycleContractTests {
         let importData = try source(root, "SunSmart/Common/Data/ImportData.swift")
         let exportData = try source(root, "SunSmart/Common/Data/ExportData.swift")
         let cloudSync = try source(root, "SunSmart/Common/Cloud/CloudSynchronizationManager.swift")
+        let networkAPI = try source(root, "SunSmart/Common/Network/NetowrkReqeustApi.swift")
         let sync = try source(root, "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift")
 
         require(
@@ -128,10 +129,23 @@ struct ProximityLightingLifecycleContractTests {
             "Import must distinguish schema-v1 authority from legacy missing-field preservation"
         )
         require(
-            exportData.contains("forKey: \"proximityLightingSchemaVersion\"")
+            exportData.contains("spaceExtensionData.updateValue(1, forKey: \"proximityLightingSchemaVersion\")")
+                && exportData.contains("spaceJsonData.updateValue(spaceExtensionData, forKey: \"spaceData\")")
                 && exportData.contains("ProximityLightingLifecycleCoordinator.isEligible(group.info.profile.type)")
                 && appearsBefore("ProximityLightingLifecycleCoordinator.begin(", "spaceJsonData.updateValue(self.id", in: exportData),
-            "Export must normalize first, emit schema v1, and omit ineligible Group paths"
+            "Export must normalize first, emit schema v1 under spaceData, and omit ineligible Group paths"
+        )
+        require(
+            importData.contains("if rootJson[\"spaceData\"].exists()")
+                && importData.contains("payloadJson = rootJson")
+                && importData.contains("payloadJson[\"proximityLightingSchemaVersion\"]"),
+            "Import must support the nested Space extension contract and legacy root payloads"
+        )
+        require(
+            networkAPI.contains("case spaceUpload(siteId: String, spaceId: String, spaceData: [String: Any])")
+                && networkAPI.contains("\"spaceId\": spaceId")
+                && networkAPI.contains("\"spaces\": [spaceData]"),
+            "Standalone Space uploads must include the explicit Space id and exported spaceData container"
         )
         require(
             exportData.contains("func export() async -> [String: Any]?")

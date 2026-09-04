@@ -86,6 +86,23 @@ struct ScheduleServer {
     ///   - success: 成功回调
     ///   - failed: 失败回调
     static func deleteSchedule(schedule: Schedule, success: ScheduleOperateSuccessCallback?, failed: ScheduleOperateFailedCallback?) {
+        let unknownNodes = nodesRequiringAuthoritativeSchedulerRead(
+            schedule.existNodes
+        )
+        guard unknownNodes.isEmpty else {
+            readUnknownSchedulerState(nodes: unknownNodes) { resolved in
+                guard resolved else {
+                    failed?(schedule)
+                    return
+                }
+                deleteSchedule(
+                    schedule: schedule,
+                    success: success,
+                    failed: failed
+                )
+            }
+            return
+        }
         
 //      日程删除 => (action=noAction)
 //      日程关闭 => (month=空 && action != noAction)
@@ -136,6 +153,53 @@ struct ScheduleServer {
         } failed: { _ in
             failed?(schedule)
         }
+    }
+
+    static func nodesRequiringAuthoritativeSchedulerRead(
+        _ nodes: [Node]
+    ) -> [Node] {
+        var result: [Node] = []
+        nodes.forEach { node in
+            let modelKnownStates = node.schedulerSetupModels.map {
+                node.allSchedulerModelEntrys[$0] != nil
+            }
+            guard TimedSchedulerCacheRepairPolicy.needsAuthoritativeRead(
+                modelKnownStates: modelKnownStates
+            ), !result.contains(node) else {
+                return
+            }
+            result.append(node)
+        }
+        return result
+    }
+
+    static func readUnknownSchedulerState(
+        nodes: [Node],
+        completion: @escaping (Bool) -> Void
+    ) {
+        let unknownNodes = nodesRequiringAuthoritativeSchedulerRead(nodes)
+        guard !unknownNodes.isEmpty else {
+            completion(true)
+            return
+        }
+        guard !MeshProxyMessageCommand.shared.isBusy else {
+            completion(false)
+            return
+        }
+        MeshAPI.getSchedule(
+            index: nil,
+            nodes: unknownNodes,
+            successful: nil,
+            failed: nil,
+            finished: { _, failedAddresses in
+                completion(
+                    failedAddresses.isEmpty
+                        && nodesRequiringAuthoritativeSchedulerRead(
+                            unknownNodes
+                        ).isEmpty
+                )
+            }
+        )
     }
     
     /// 保存日程

@@ -97,7 +97,11 @@ enum SyncOperation {
             guard let spaceData = await space.export() else {
                 return nil
             }
-            return .spaceUpload(siteId: space.siteId, spaceData: spaceData)
+            return .spaceUpload(
+                siteId: space.siteId,
+                spaceId: space.id,
+                spaceData: spaceData
+            )
         case .addSpaces(let site, let spaces):
             guard let siteData = await site.export(
                 spaceIds: spaces.map({ $0.id })

@@ -55,7 +55,7 @@ enum NetowrkReqeustApi {
     /// 添加spaces
 //    case spacesAdd(siteId: String, spaceDatas: [[String: Any]])
     /// 更新/提交space数据
-    case spaceUpload(siteId: String, spaceData: [String: Any])
+    case spaceUpload(siteId: String, spaceId: String, spaceData: [String: Any])
     /// 删除space
     case spaceDelete(siteId: String, spaceId: String)
     /// 批量删除space
@@ -415,8 +415,13 @@ extension NetowrkReqeustApi: TargetType {
 //        case .spacesAdd(let siteId, let spaceDatas):
 //            let spaceDatas = spaces.map({ $0.export() })
 //            return ["siteId": siteId, "spaces": spaceDatas, "user": user]
-        case .spaceUpload(let siteId, let spaceDatas):
-            return ["siteId": siteId, "spaces": [spaceDatas], "userId": UserData.currentUserId]
+        case .spaceUpload(let siteId, let spaceId, let spaceData):
+            return [
+                "siteId": siteId,
+                "spaceId": spaceId,
+                "spaces": [spaceData],
+                "userId": UserData.currentUserId
+            ]
         case .spaceDelete(let siteId, let spaceId):
             return ["siteId": siteId, "spaces": [spaceId], "userId": UserData.currentUserId]
         case .spacesDelete(let siteId, let spaceIds):

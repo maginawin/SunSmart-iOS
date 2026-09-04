@@ -16,6 +16,10 @@ struct TimedSchedulerOwnerPolicyTests {
         testUnknownCleanupModelIsReported()
         testResidualCleanupEntryIsReported()
         testMatchingOwnerAndClearCleanupAreSynchronized()
+        testUnknownSchedulerModelDoesNotDelete()
+        testKnownResidualSchedulerEntryDeletes()
+        testKnownEmptySchedulerModelsDoNotDelete()
+        testTargetedScheduleDoesNotDelete()
         testGroupMemberExitRoutesScheduleMigrationToRemoval()
         testGroupMemberExitScheduleMigrationDoesNotBlockRemoval()
         testOrdinaryScheduleSyncRoutesToConfiguration()
@@ -150,6 +154,50 @@ struct TimedSchedulerOwnerPolicyTests {
 
         require(difference == .synchronized, "Matching owner and clear cleanup Models must be synchronized")
         require(!difference.needsSync, "Synchronized state must not request another SAVE")
+    }
+
+    private static func testUnknownSchedulerModelDoesNotDelete() {
+        require(
+            !TimedSchedulerDeletePolicy.shouldDelete(
+                targetsNode: false,
+                modelEntryStates: [true, nil],
+                legacyEntryIsValid: true
+            ),
+            "An unknown Scheduler Model must be read before any delete"
+        )
+    }
+
+    private static func testKnownResidualSchedulerEntryDeletes() {
+        require(
+            TimedSchedulerDeletePolicy.shouldDelete(
+                targetsNode: false,
+                modelEntryStates: [false, true],
+                legacyEntryIsValid: false
+            ),
+            "A confirmed residual Scheduler entry must be deleted"
+        )
+    }
+
+    private static func testKnownEmptySchedulerModelsDoNotDelete() {
+        require(
+            !TimedSchedulerDeletePolicy.shouldDelete(
+                targetsNode: false,
+                modelEntryStates: [false, false],
+                legacyEntryIsValid: false
+            ),
+            "Known-empty Scheduler Models must not generate delete tasks"
+        )
+    }
+
+    private static func testTargetedScheduleDoesNotDelete() {
+        require(
+            !TimedSchedulerDeletePolicy.shouldDelete(
+                targetsNode: true,
+                modelEntryStates: [true],
+                legacyEntryIsValid: true
+            ),
+            "A targeted Schedule must use synchronization rather than deletion"
+        )
     }
 
     private static func testGroupMemberExitRoutesScheduleMigrationToRemoval() {

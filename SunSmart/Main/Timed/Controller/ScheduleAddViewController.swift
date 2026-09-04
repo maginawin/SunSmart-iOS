@@ -309,6 +309,11 @@ class ScheduleAddViewController: UIViewController {
         } failed: { _ in
             XWHUDManager.hide()
             XWHUDManager.showErrorTipHUD("schedule_delete_failed".localizedString)
+            guard ScheduleServer.nodesRequiringAuthoritativeSchedulerRead(
+                schedule.existNodes
+            ).isEmpty else {
+                return
+            }
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
                 self?.pushToSyncDevices(schedule: schedule, delete: true)
             }
@@ -357,6 +362,35 @@ class ScheduleAddViewController: UIViewController {
         
         guard MeshLibManager.manager.isMeshNetworkConnected || !isExitNodes else {
             XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+            return
+        }
+
+        let unknownNodes = ScheduleServer
+            .nodesRequiringAuthoritativeSchedulerRead(schedule.existNodes)
+        guard unknownNodes.isEmpty else {
+            doneBtn.isEnabled = false
+            XWHUDManager.showCustomHUD(
+                withMessage: "syncing_data".localizedString,
+                isWindow: true
+            )
+            ScheduleServer.readUnknownSchedulerState(
+                nodes: unknownNodes
+            ) { [weak self] resolved in
+                DispatchQueue.main.async {
+                    guard let self = self else {
+                        return
+                    }
+                    XWHUDManager.hide()
+                    self.doneBtn.isEnabled = true
+                    if resolved {
+                        self.doneBtnAction()
+                    } else {
+                        XWHUDManager.showErrorTipHUD(
+                            "sync_failed".localizedString
+                        )
+                    }
+                }
+            }
             return
         }
         

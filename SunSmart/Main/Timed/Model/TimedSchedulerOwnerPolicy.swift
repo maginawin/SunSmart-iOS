@@ -54,6 +54,22 @@ enum TimedSchedulerCacheRepairPolicy {
     }
 }
 
+enum TimedSchedulerDeletePolicy {
+    static func shouldDelete(
+        targetsNode: Bool,
+        modelEntryStates: [Bool?],
+        legacyEntryIsValid: Bool
+    ) -> Bool {
+        guard !targetsNode,
+              !modelEntryStates.isEmpty,
+              modelEntryStates.allSatisfy({ $0 != nil }) else {
+            return false
+        }
+        return modelEntryStates.contains(where: { $0 == true })
+            || legacyEntryIsValid
+    }
+}
+
 enum TimedSchedulerOwnerEntryState {
     case unknownModel
     case missingEntry

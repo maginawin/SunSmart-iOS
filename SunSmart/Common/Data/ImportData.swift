@@ -117,10 +117,20 @@ private struct ProximityLightingImportPreflight {
         groupDicts: [[String: Any]],
         initialize: Bool
     ) -> ProximityLightingImportPreflight? {
-        let json = JSON(spaceJsonData)
+        let rootJson = JSON(spaceJsonData)
+        let payloadJson: JSON
+        if rootJson["spaceData"].exists() {
+            guard let spaceExtensionData = rootJson["spaceData"].dictionaryObject else {
+                return nil
+            }
+            payloadJson = JSON(spaceExtensionData)
+        } else {
+            // Legacy projects stored extension properties at the Space root.
+            payloadJson = rootJson
+        }
         let schemaVersion: Int?
-        if json["proximityLightingSchemaVersion"].exists() {
-            guard let version = json["proximityLightingSchemaVersion"].int,
+        if payloadJson["proximityLightingSchemaVersion"].exists() {
+            guard let version = payloadJson["proximityLightingSchemaVersion"].int,
                   version == 1 else {
                 return nil
             }
@@ -130,7 +140,7 @@ private struct ProximityLightingImportPreflight {
         }
 
         let triggerZones: [SpaceTriggerZone]?
-        if let zoneObjects = json["triggerZones"].arrayObject as? [[String: Any]],
+        if let zoneObjects = payloadJson["triggerZones"].arrayObject as? [[String: Any]],
            let data = try? JSONSerialization.data(withJSONObject: zoneObjects),
            let decoded = try? jsonDecoder.decode([SpaceTriggerZone].self, from: data) {
             triggerZones = decoded
