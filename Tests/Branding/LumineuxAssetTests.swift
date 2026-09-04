@@ -146,6 +146,7 @@ let expectedAssetGroups: [String: String] = [
     "profile_person": "Profile",
     "profile_person_big": "Profile",
     "profile_proximity_lighting": "Profile",
+    "purple selected": "Common",
     "scene_data_add": "Scene",
     "sensor_manul_override_timeout": "Profile",
     "single_device": "Firmware",
@@ -234,7 +235,7 @@ while let url = enumerator.nextObject() as? URL {
     discovered[name, default: []].append(url.standardizedFileURL)
     enumerator.skipDescendants()
 }
-check(discovered.count == 131, "Lumineux catalog must contain exactly 131 asset names")
+check(discovered.count == 132, "Lumineux catalog must contain exactly 132 asset names")
 check(Set(discovered.keys) == Set(expectedAssetGroups.keys),
       "Lumineux catalog asset names differ from the approved set")
 for name in expectedAssetGroups.keys.sorted() {
@@ -276,10 +277,20 @@ for (name, logicalSize) in [("launch_logo", 88),
         exit(1)
     }
     let entries = try contents(named: name)["images"] as! [[String: String]]
-    check(entries.count == 3, "Each logo needs 1x/2x/3x variants")
+    check(entries.count == 3, "Each logo needs universal 1x/2x/3x slots")
+    let usesRetinaOnlyFiles = ["launch_logo", "lumineux_launch_logo"].contains(name)
     for scale in 1...3 {
         let entry = entries.first { $0["scale"] == "\(scale)x" }!
-        let pixels = try image(named: name, filename: entry["filename"]!)
+        if usesRetinaOnlyFiles && scale == 1 {
+            check(entry["filename"] == nil, "\(name) must keep its universal 1x slot empty")
+            check(!FileManager.default.fileExists(atPath: imageSet.appendingPathComponent("\(name)@1x.png").path),
+                  "\(name) must not package a 1x file")
+            continue
+        }
+        guard let filename = entry["filename"] else {
+            fatalError("Missing \(name) @\(scale)x filename")
+        }
+        let pixels = try image(named: name, filename: filename)
         check(pixels.width == logicalSize * scale && pixels.height == logicalSize * scale,
               "Wrong pixel size for \(name) @\(scale)x")
         let side = logicalSize * scale
@@ -802,6 +813,33 @@ for asset in providedGroupedAssets + providedNew3Assets + providedGeneratedIPadA
           "\(asset.name) must not contain a generated 1x PNG")
 }
 
+let purpleSelectedEntries = try contents(named: "purple selected")["images"] as! [[String: String]]
+check(purpleSelectedEntries.count == 3,
+      "purple selected must contain universal 1x/2x/3x slots")
+check(purpleSelectedEntries.first { $0["scale"] == "1x" }?["filename"] == nil,
+      "purple selected must keep the universal 1x slot empty")
+let purpleSelectedHashes = [
+    2: "efd8de3e90578bb8c4ad33bc6d2b8e8f691689ff75b588ab1800340943f885f5",
+    3: "0eb456e4e08755c0ed0e88cacf387ebe4c88f3e4a7f897c683281b06a20d84b1"
+]
+for scale in 2...3 {
+    let filename = "purple selected@\(scale)x.png"
+    check(purpleSelectedEntries.first { $0["scale"] == "\(scale)x" }?["filename"] == filename,
+          "Unexpected purple selected @\(scale)x filename")
+    let catalogData = try Data(contentsOf: assetSetURL(named: "purple selected").appendingPathComponent(filename))
+    let sourceData = try Data(contentsOf: root.appendingPathComponent(
+        "output/lumineux-radio-icons/purple selected lumineux@\(scale)x.png"
+    ))
+    check(catalogData == sourceData,
+          "purple selected @\(scale)x must preserve the approved source bytes")
+    let digest = SHA256.hash(data: catalogData).map { String(format: "%02x", $0) }.joined()
+    check(digest == purpleSelectedHashes[scale],
+          "purple selected @\(scale)x bytes changed")
+    let pixels = try image(named: "purple selected", filename: filename)
+    check(pixels.width == 16 * scale && pixels.height == 16 * scale,
+          "purple selected must remain a 16pt asset")
+}
+
 // Empty-state illustrations are complete supplied exports. Keep their original
 // non-square canvas, scale, alpha, and exact exported bytes.
 let emptyStates: [(name: String, source: String, width: Int, height: Int, hashes: [Int: String])] = [
@@ -813,9 +851,9 @@ let emptyStates: [(name: String, source: String, width: Int, height: Int, hashes
         2: "8b454a46adee9a1f18f730cab8b24788abbaaa17c6b3a67922dd9e6be2180ef7",
         3: "9f4bdd85208ca2bb8d94d27de802ea875731587b082f5b2b7ef62cec8e626e83"
     ]),
-    ("space_empty", "2090:132420", 240, 194, [
-        2: "d30ec96f934f2a8ad396f4cb1d96adad43ab21effadfb863f046727fcd9bffed",
-        3: "f8c28f59f9a714cf68e7a0f8a2468774416f7bddf9b58d6302c720c5e92ed279"
+    ("space_empty", "provided replacement", 353, 298, [
+        2: "ce4138aaf49351437670db4d0eecd4ef73a198fd1e65645f95839607882b972a",
+        3: "41c3fe170d3f79cbd52ccde4899e948ba742eb9485b3a00f9bdefa290449d90c"
     ]),
     ("group_empty", "0:2719", 343, 288, [
         2: "801044b73511933f50e71c2a1a6184bc6218c1934e6662cb6d535b42a7fd9a6a",
@@ -854,4 +892,4 @@ check([CGImageAlphaInfo.none, .noneSkipFirst, .noneSkipLast].contains(icon.alpha
 let colors = try contents(named: "AccentColor")["colors"] as! [[String: Any]]
 let components = (colors[0]["color"] as! [String: Any])["components"] as! [String: String]
 check(components == ["red": "0x4D", "green": "0x73", "blue": "0x8A", "alpha": "1.000"], "Accent color must be #4D738A")
-print("Lumineux asset tests passed: 29 new3, 7 generated iPad/standby, and 2 eight-key panel Retina assets, 131 asset groups, \(iconAssets.count) Figma-vector icons, 7 supplied PNG icons, 5 exact empty states, retina logos, opaque 1024 AppIcon, exact AccentColor")
+print("Lumineux asset tests passed: 29 new3, 7 generated iPad/standby, and 2 eight-key panel Retina assets, 132 asset groups, \(iconAssets.count) Figma-vector icons, 7 supplied PNG icons, 5 exact empty states, Retina-only 88pt logos, opaque 1024 AppIcon, exact AccentColor")

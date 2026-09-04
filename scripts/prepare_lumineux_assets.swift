@@ -106,11 +106,26 @@ for (name, logicalSize) in [("launch_logo", 88),
                             ("launch_logo_120", 120),
                             ("lumineux_launch_logo", 88)] {
     let directory = try assetSetDirectory(named: name, type: "imageset")
-    let images = (1...3).map { scale in
-        ["idiom": "universal", "filename": "\(name)@\(scale)x.png", "scale": "\(scale)x"]
+    let usesRetinaOnlyFiles = ["launch_logo", "lumineux_launch_logo"].contains(name)
+    let images = (1...3).map { scale -> [String: String] in
+        var entry = ["idiom": "universal", "scale": "\(scale)x"]
+        if !usesRetinaOnlyFiles || scale > 1 {
+            entry["filename"] = "\(name)@\(scale)x.png"
+        }
+        return entry
     }
     try writeJSON(["images": images, "info": info], to: directory)
-    for scale in 1...3 { writePNG(launchLogo, size: logicalSize * scale, to: directory.appendingPathComponent("\(name)@\(scale)x.png")) }
+    if usesRetinaOnlyFiles {
+        let oneX = directory.appendingPathComponent("\(name)@1x.png")
+        if FileManager.default.fileExists(atPath: oneX.path) {
+            try FileManager.default.removeItem(at: oneX)
+        }
+    }
+    let scales = usesRetinaOnlyFiles ? 2...3 : 1...3
+    for scale in scales {
+        writePNG(launchLogo, size: logicalSize * scale,
+                 to: directory.appendingPathComponent("\(name)@\(scale)x.png"))
+    }
 }
 let iconDirectory = try assetSetDirectory(named: "AppIcon", type: "appiconset")
 try writeJSON(["images": [["filename": "AppIcon.png", "idiom": "universal", "platform": "ios", "size": "1024x1024"]], "info": info], to: iconDirectory)

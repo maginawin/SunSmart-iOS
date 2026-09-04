@@ -671,13 +671,13 @@ final class LumineuxRuntimeTests: XCTestCase {
         XCTAssertFalse(logo.hasAmbiguousLayout)
         snapshot(window, "Launch")
         let expected = [
-            "Privacy Policy": "25c028291a17557bd9bb4d9f79b491f5dde9186868d5de2bd16fc593aed0d969",
-            "User Agreement": "39e7a4ddbb8d996fabef0ea84191135ae68f7a81e5bfc32c17ac221dd5fc2d40"
+            "Privacy Policy": "90d85bfa42fd93d8b514bc81fc3afd1359734416568c817d382bfd6131ddcd76",
+            "User Agreement": "8a9806f280875132f487cd74f02b7ef59cc937ef86dff516072ed166dc74821f"
         ]
         for (name, digest) in expected {
             let url = try XCTUnwrap(Bundle.main.url(forResource: name, withExtension: "html"))
             let actual = SHA256.hash(data: try Data(contentsOf: url)).map { String(format: "%02x", $0) }.joined()
-            XCTAssertEqual(actual, digest, "App must package the unchanged SLG copy for \(name)")
+            XCTAssertEqual(actual, digest, "App must package the approved LumiSmart copy for \(name)")
         }
         let welcome = WelcomeViewController()
         let navigation = RecordingNavigationController(rootViewController: welcome)

@@ -48,6 +48,38 @@ class LumineuxGeneratorTests < Minitest::Test
     end
   end
 
+  def test_asset_generator_keeps_88pt_launch_logos_retina_only
+    with_fixture do |directory|
+      catalog = File.join(directory, 'Lumineux/Assets-Lumineux.xcassets/Common')
+      %w[launch_logo lumineux_launch_logo].each do |name|
+        File.write(File.join(catalog, "#{name}.imageset/#{name}@1x.png"), 'stale-1x')
+      end
+
+      _stdout, stderr, status = run_script(ASSET_SCRIPT, directory)
+      assert status.success?, stderr
+
+      %w[launch_logo lumineux_launch_logo].each do |name|
+        directory_path = File.join(catalog, "#{name}.imageset")
+        contents = JSON.parse(File.read(File.join(directory_path, 'Contents.json')))
+        one_x = contents.fetch('images').find { |entry| entry.fetch('scale') == '1x' }
+        assert_nil one_x['filename'], "#{name} must keep an empty universal 1x slot"
+        refute File.exist?(File.join(directory_path, "#{name}@1x.png")),
+               "#{name} must remove a stale 1x file"
+        [2, 3].each do |scale|
+          entry = contents.fetch('images').find { |candidate| candidate.fetch('scale') == "#{scale}x" }
+          assert_equal "#{name}@#{scale}x.png", entry.fetch('filename')
+          assert File.file?(File.join(directory_path, entry.fetch('filename')))
+        end
+      end
+
+      full_scale_directory = File.join(catalog, 'launch_logo_120.imageset')
+      full_scale_contents = JSON.parse(File.read(File.join(full_scale_directory, 'Contents.json')))
+      one_x = full_scale_contents.fetch('images').find { |entry| entry.fetch('scale') == '1x' }
+      assert_equal 'launch_logo_120@1x.png', one_x.fetch('filename')
+      assert File.file?(File.join(full_scale_directory, one_x.fetch('filename')))
+    end
+  end
+
   def test_icon_generator_rejects_a_missing_mapping
     with_fixture do |directory|
       rewrite_manifest(directory) { |manifest| manifest.fetch('assets').delete('add') }

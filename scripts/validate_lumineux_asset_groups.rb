@@ -5,7 +5,7 @@ require 'json'
 
 module LumineuxAssetGroups
   APPROVED_GROUPS = %w[
-    Common Device Energy FireAlarm1.5 Firmware Group Path Profile Scene Site Space Timed
+    Common Device Energy EightKeySwitches1.5 FireAlarm1.5 Firmware Group Path Profile Scene Site Space Timed
   ].freeze
   SET_EXTENSIONS = %w[.imageset .appiconset .colorset].freeze
   ROOT_GROUP = 'root'
