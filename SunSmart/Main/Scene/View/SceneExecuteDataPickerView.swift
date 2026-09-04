@@ -99,10 +99,10 @@ class SceneExecuteDataPickerView: UIView {
     
     private func updateOffButtonState() {
         let isOff = !isOn
-        offBtn.backgroundColor = isOff ? RGB(102, 103, 171) : .white
-        offBtn.setTitleColor(isOff ? .white : RGB(102, 103, 171), for: .normal)
+        offBtn.backgroundColor = isOff ? Bar_Color : .white
+        offBtn.setTitleColor(isOff ? .white : Bar_Color, for: .normal)
         offBtn.layer.borderWidth = isOff ? 0 : 1
-        offBtn.layer.borderColor = RGB(147, 148, 196).cgColor
+        offBtn.layer.borderColor = Bar_Color.withAlphaComponent(0.6).cgColor
     }
     
     private func setLightnessValue(_ value: Int) {
@@ -221,10 +221,8 @@ class SceneExecuteDataPickerView: UIView {
             make.height.equalTo(contentHeight)
         }
         
-        offBtn = UIButton(title: "OFF", titleSize: 12, titleWeight: .medium, titleColor: RGB(102, 103, 171), target: self, action: #selector(offBtnAction))
+        offBtn = UIButton(title: "OFF", titleSize: 12, titleWeight: .medium, titleColor: Bar_Color, target: self, action: #selector(offBtnAction))
         offBtn.layer.cornerRadius = SCRYFrom(10)
-        offBtn.layer.borderWidth = 1
-        offBtn.layer.borderColor = RGB(147, 148, 196).cgColor
         contentView.addSubview(offBtn)
         offBtn.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(20))

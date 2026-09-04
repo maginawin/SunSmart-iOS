@@ -28,6 +28,9 @@ abstract_target 'Common' do
   
   target 'SylSmart' do
   end
+
+  target 'Lumineux' do
+  end
 end
 
 post_install do |installer|

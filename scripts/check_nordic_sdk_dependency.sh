@@ -36,8 +36,8 @@ grep -Fq "branch = release;" "$project_file" || \
   fail "NordicSigMeshSDK must follow the release branch."
 
 product_dependency_count="$(grep -Fc "package = $package_id" "$project_file")"
-[[ "$product_dependency_count" == "4" ]] || \
-  fail "Expected four App targets to link NordicSigMeshSDK; found $product_dependency_count."
+[[ "$product_dependency_count" == "5" ]] || \
+  fail "Expected five App targets to link NordicSigMeshSDK; found $product_dependency_count."
 
 [[ -f "$resolved_file" ]] || fail "Shared Package.resolved is missing."
 grep -Fq '"identity" : "nordic-sig-mesh-sdk"' "$resolved_file" || \

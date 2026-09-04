@@ -76,7 +76,7 @@ class EnOceanProxyViewController: UIViewController {
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-    
+
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -203,10 +203,20 @@ class EnOceanProxyViewController: UIViewController {
             vc.isOpenInterestRect = true
             vc.scanResultDelegate = self
             vc.scanFineshedExit = false
-            navigationController?.pushViewController(vc, animated: true)
-
             scanCodeVc = vc
+            vc.modalPresentationStyle = .fullScreen
+            present(vc, animated: true)
         }
+    }
+
+    private func dismissScanner(animated: Bool, completion: (() -> Void)? = nil) {
+        guard let scanCodeVc = scanCodeVc else {
+            completion?()
+            return
+        }
+
+        self.scanCodeVc = nil
+        scanCodeVc.dismissScanViewController(animated: animated, completion: completion)
     }
     
     /// 提示扫码失败
@@ -270,8 +280,7 @@ extension EnOceanProxyViewController: LBXScanViewControllerDelegate {
                 guard self.switchDataSaved?() ?? false else {
                     SRAlertView(title: "notification".localizedString, message: "switch_copy_failed_message".localizedString, actions: [.init(title: "ok".localizedString, actionHandler: {[weak self] _ in
 //                        self?.scanCodeVc?.startScan()
-                        self?.scanCodeVc = nil
-                        self?.navigationController?.popViewController(animated: true)
+                        self?.dismissScanner(animated: true)
                     })]).show()
                     return
                 }
@@ -281,47 +290,48 @@ extension EnOceanProxyViewController: LBXScanViewControllerDelegate {
                     self?.scanCodeVc?.startScan()
                 }), .init(title: "ok".localizedString, actionHandler: {[weak self] _ in
                     guard let self = self else { return }
-                    self.scanCodeVc = nil
-                    self.navigationController?.popViewController(animated: false)
-                    // 生成一个新的虚拟开关
-                    guard self.switchs.count < 16 else {
-                        SRAlertView(title: "notification".localizedString, message: "switchs_overrun_message".localizedString, actions: [SRAlertAction(title: "GOT_IT".localizedString)]).show()
-                        return
+                    self.dismissScanner(animated: false) { [weak self] in
+                        guard let self = self else { return }
+                        // 生成一个新的虚拟开关
+                        guard self.switchs.count < 16 else {
+                            SRAlertView(title: "notification".localizedString, message: "switchs_overrun_message".localizedString, actions: [SRAlertAction(title: "GOT_IT".localizedString)]).show()
+                            return
+                        }
+                        let newSwitch = DeviceSwitchData.default()
+                        newSwitch.enabled = switchData.enabled
+                        newSwitch.bindGroupAddresses = switchData.bindGroupAddresses
+                        newSwitch.sceneANumber = switchData.sceneANumber
+                        newSwitch.sceneBNumber = switchData.sceneBNumber
+                        newSwitch.sceneCNumber = switchData.sceneCNumber
+                        newSwitch.sceneDNumber = switchData.sceneDNumber
+                        newSwitch.panelType = switchData.panelType
+                        newSwitch.enOceanMacAddress = data.macAddress
+                        newSwitch.enOceanSecurityKey = data.securityKey
+                        newSwitch.proxyNodeAddress = selectProxy?.primaryUnicastAddress
+                        if self.switchCreateCallback != nil {
+                            self.switchCreateCallback?(newSwitch)
+                        }else {
+                            self.navigationController?.popViewController(animated: true)
+                        }
+//                        self.enOceanSwitchBind(enOceanData: data)
+                        // 通知space数据修改
+                        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
                     }
-                    let newSwitch = DeviceSwitchData.default()
-                    newSwitch.enabled = switchData.enabled
-                    newSwitch.bindGroupAddresses = switchData.bindGroupAddresses
-                    newSwitch.sceneANumber = switchData.sceneANumber
-                    newSwitch.sceneBNumber = switchData.sceneBNumber
-                    newSwitch.sceneCNumber = switchData.sceneCNumber
-                    newSwitch.sceneDNumber = switchData.sceneDNumber
-                    newSwitch.panelType = switchData.panelType
-                    newSwitch.enOceanMacAddress = data.macAddress
-                    newSwitch.enOceanSecurityKey = data.securityKey
-                    newSwitch.proxyNodeAddress = selectProxy?.primaryUnicastAddress
-                    if self.switchCreateCallback != nil {
-                        self.switchCreateCallback?(newSwitch)
-                    }else {
-                        self.navigationController?.popViewController(animated: true)
-                    }
-//                    self.enOceanSwitchBind(enOceanData: data)
-                    // 通知space数据修改
-                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
-                    
                 })]).show()
                 
             }else { // 开始绑定
-                self.navigationController?.popViewController(animated: true)
-                self.scanCodeVc = nil
-                self.switchData.enOceanMacAddress = data.macAddress
-                self.switchData.enOceanSecurityKey = data.securityKey
-                if let node = self.selectProxy {
-                    self.enOceanMacMap.updateValue(data.macAddress, forKey: node.primaryUnicastAddress)
-                    self.switchData.proxyNodeAddress = node.primaryUnicastAddress
-                    self.reloadProxyItem(proxy: node)
+                dismissScanner(animated: true) { [weak self] in
+                    guard let self = self else { return }
+                    self.switchData.enOceanMacAddress = data.macAddress
+                    self.switchData.enOceanSecurityKey = data.securityKey
+                    if let node = self.selectProxy {
+                        self.enOceanMacMap.updateValue(data.macAddress, forKey: node.primaryUnicastAddress)
+                        self.switchData.proxyNodeAddress = node.primaryUnicastAddress
+                        self.reloadProxyItem(proxy: node)
+                    }
+                    self.switchDataUpdateCallback?(self.switchData)
+//                    self.enOceanSwitchBind(enOceanData: data)
                 }
-                self.switchDataUpdateCallback?(self.switchData)
-//                self.enOceanSwitchBind(enOceanData: data)
             }
             
         }else {

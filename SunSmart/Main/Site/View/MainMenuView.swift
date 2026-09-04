@@ -22,7 +22,7 @@ class MainMenuView: UIView {
     private var shadeView: UIView!
     
     private var menuTapBack: MenuTapActionCallback?
-    #if Archipelago || SylSmart || SLGSync
+    #if Archipelago || SylSmart || SLGSync || Lumineux
     private var options: [Options] = [.user, .about]
     #else
     private var options: [Options] = [.user, .serverSelection, .about]

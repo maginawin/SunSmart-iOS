@@ -413,37 +413,40 @@ class SitesViewController: UIViewController {
                 case .site(let site, let owner, _):
                     // 自己的site转让且未转让出去，跳转到site页面
                     if let mySite = self.allSites.first(where: { $0.id == site.id && $0.permission == .owner && $0.state == .normal }) {
-                        self.navigationController?.popViewController(animated: false)
-                        let vc = SiteViewController(site: mySite)
-                        self.navigationController?.pushViewController(vc, animated: true)
+                        self.dismissScannerIfNeeded(animated: false) { [weak self] in
+                            let vc = SiteViewController(site: mySite)
+                            self?.navigationController?.pushViewController(vc, animated: true)
+                        }
                         return
                     }
                 case .space(_, let space, _, _):
                     // 已存在的space分享数据，跳转到site->space页面
                     if let mySite = self.allSites.first(where: { $0.id == space.siteId  && $0.state == .normal }), let mySpace = mySite.spaces.first(where: { $0.id == space.id }), mySpace.state == .normal {
-                        self.navigationController?.popViewController(animated: false)
-                        let vc = SiteViewController(site: mySite)
-                        vc.enterSpaceId = space.id
-                        self.navigationController?.pushViewController(vc, animated: true)
+                        self.dismissScannerIfNeeded(animated: false) { [weak self] in
+                            let vc = SiteViewController(site: mySite)
+                            vc.enterSpaceId = space.id
+                            self?.navigationController?.pushViewController(vc, animated: true)
+                        }
                         return
                     }
                 case .spaceList(let data, _, _):
                     // 自己分享的space，并且owner权限，跳转到site页面
                     if let mySite = self.allSites.first(where: { $0.id == data.siteId && $0.permission == .owner && $0.state == .normal }) {
-                        self.navigationController?.popViewController(animated: false)
-                        let vc = SiteViewController(site: mySite)
-                        self.navigationController?.pushViewController(vc, animated: true)
+                        self.dismissScannerIfNeeded(animated: false) { [weak self] in
+                            let vc = SiteViewController(site: mySite)
+                            self?.navigationController?.pushViewController(vc, animated: true)
+                        }
                         return
                     }
                 }
-                self.navigationController?.popViewController(animated: false)
-                
-                let vc = SharePermissionSelectionController(type: type)
-                if isIPad {
-                    vc.preferredContentSize = iPadPreferredContentSize
+                self.dismissScannerIfNeeded(animated: false) { [weak self] in
+                    guard let self = self else { return }
+                    let vc = SharePermissionSelectionController(type: type)
+                    if isIPad {
+                        vc.preferredContentSize = iPadPreferredContentSize
+                    }
+                    self.present(NavigationViewController(rootViewController: vc), animated: true)
                 }
-                self.present(NavigationViewController(rootViewController: vc), animated: true)
-                self.scanCodeVc = nil
                 
             case .failure(let error):
                 if error == .resourceNotFound {
@@ -568,9 +571,21 @@ class SitesViewController: UIViewController {
             vc.isOpenInterestRect = true
             vc.scanResultDelegate = self
             vc.scanFineshedExit = false
-            navigationController?.pushViewController(vc, animated: true)
             scanCodeVc = vc
+            vc.modalPresentationStyle = .fullScreen
+            present(vc, animated: true)
         }
+    }
+
+    private func dismissScannerIfNeeded(animated: Bool, completion: (() -> Void)? = nil) {
+        guard let scanCodeVc = scanCodeVc else {
+            navigationController?.popViewController(animated: animated)
+            completion?()
+            return
+        }
+
+        self.scanCodeVc = nil
+        scanCodeVc.dismissScanViewController(animated: animated, completion: completion)
     }
     
     /// 输入uuid导入数据

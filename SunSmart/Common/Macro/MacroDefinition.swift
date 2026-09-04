@@ -187,6 +187,15 @@ let customId: UInt8 = 0x00
 let appKey = "zqh4SXYM"
 let appSecret = "Qsv6XbvqweGuB1Kg"
 
+#elseif Lumineux
+
+/// 主色
+let Bar_Color = RGB(77, 115, 138)
+let Bottom_Done_Color = RGB(77, 115, 138)
+let Title_Done_Color = RGB(77, 115, 138)
+let Slider_Color = RGB(77, 115, 138)
+let customId: UInt8 = 0x00
+
 #else
 
 /// 主色
