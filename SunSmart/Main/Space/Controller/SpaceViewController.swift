@@ -846,7 +846,7 @@ class SpaceViewController: WMPageController {
         // 数据有更新没提交,先提交完成数据再解绑
         if space.permission == .editor && space.needUploadCloud {
             Task {
-                guard let spaceData = await space.export() else {
+                guard let spaceData = await space.export(purpose: .cloudSync) else {
                     XWHUDManager.hide()
                     XWHUDManager.showErrorTipHUD(
                         "proximity_lighting_export_invalid".localizedString

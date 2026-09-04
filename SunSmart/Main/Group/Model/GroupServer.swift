@@ -149,6 +149,44 @@ struct GroupServer {
         }
 
         let groupNodes = group.nodes
+        let unknownNodes = ScheduleServer.nodesRequiringAuthoritativeSchedulerRead(groupNodes)
+        guard !unknownNodes.isEmpty else {
+            deleteGroupWithKnownSchedulerState(
+                group: group,
+                space: space,
+                groupNodes: groupNodes,
+                progress: progress,
+                successful: successful,
+                failed: failed
+            )
+            return
+        }
+        ScheduleServer.readUnknownSchedulerState(nodes: unknownNodes) { resolved in
+            DispatchQueue.main.async {
+                guard resolved else {
+                    failed?(group)
+                    return
+                }
+                deleteGroupWithKnownSchedulerState(
+                    group: group,
+                    space: space,
+                    groupNodes: groupNodes,
+                    progress: progress,
+                    successful: successful,
+                    failed: failed
+                )
+            }
+        }
+    }
+
+    private static func deleteGroupWithKnownSchedulerState(
+        group: Group,
+        space: SpaceData,
+        groupNodes: [Node],
+        progress: GroupOperateProgressCallback?,
+        successful: GroupOperateSuccessCallback?,
+        failed: GroupOperateFailedCallback?
+    ) {
         var transaction = ProximityLightingLifecycleCoordinator.begin(space: space)
         transaction.removeGroup(group)
         let preparation = transaction.prepare()

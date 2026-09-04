@@ -1,5 +1,56 @@
 import Foundation
 
+enum ProximityLightingImportValidationPolicy {
+    enum Disposition: Equatable {
+        case applyAuthoritative
+        case preserveLocalSnapshot
+        case applyWithoutProximityMutation
+    }
+
+    static func resolve(
+        hasValidationIssues: Bool,
+        hasUsableLocalSnapshot: Bool
+    ) -> Disposition {
+        guard hasValidationIssues else {
+            return .applyAuthoritative
+        }
+        return hasUsableLocalSnapshot
+            ? .preserveLocalSnapshot
+            : .applyWithoutProximityMutation
+    }
+}
+
+enum SpaceSnapshotExportIntegrityPolicy {
+    struct OrphanedMembership: Hashable {
+        let nodeAddress: String
+        let groupAddress: String?
+    }
+
+    enum Decision: Equatable {
+        case allowWithoutRemoteVerification
+        case allowVerifiedRemoteOrphans
+        case reject
+    }
+
+    static func resolve(
+        localGroupAddresses: Set<String>,
+        localOrphans: Set<OrphanedMembership>,
+        remoteGroupAddresses: Set<String>?,
+        remoteOrphans: Set<OrphanedMembership>?
+    ) -> Decision {
+        guard !localOrphans.isEmpty else {
+            return .allowWithoutRemoteVerification
+        }
+        guard let remoteGroupAddresses,
+              let remoteOrphans,
+              remoteGroupAddresses.isSubset(of: localGroupAddresses),
+              localOrphans.isSubset(of: remoteOrphans) else {
+            return .reject
+        }
+        return .allowVerifiedRemoteOrphans
+    }
+}
+
 struct ProximityLightingTopologyReconciler {
 
     typealias Policy = ProximityLightingTopologyPolicy

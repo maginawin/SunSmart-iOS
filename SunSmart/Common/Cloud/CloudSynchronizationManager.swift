@@ -94,7 +94,7 @@ enum SyncOperation {
                 )
             }
         case .syncSpace(let space):
-            guard let spaceData = await space.export() else {
+            guard let spaceData = await space.export(purpose: .cloudSync) else {
                 return nil
             }
             return .spaceUpload(

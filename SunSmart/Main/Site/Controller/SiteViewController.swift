@@ -2300,7 +2300,7 @@ self.updateAddressData()
         // 数据有更新没提交,先提交完成数据再解绑
         if space.permission == .editor && space.needUploadCloud {
             Task {
-                guard let spaceData = await space.export(),
+                guard let spaceData = await space.export(purpose: .cloudSync),
                       spaceData.keys.contains("netKey") else {
                     XWHUDManager.hide()
                     XWHUDManager.showErrorTipHUD(

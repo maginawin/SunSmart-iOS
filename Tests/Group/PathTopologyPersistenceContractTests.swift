@@ -152,7 +152,7 @@ struct PathTopologyPersistenceContractTests {
             "New exports must not duplicate extension properties at the Space root"
         )
         require(
-            importData.contains("let proximityPreflight = ProximityLightingImportPreflight.parse("),
+            importData.contains("let parsedProximityPreflight = ProximityLightingImportPreflight.parse("),
             "Space import must preflight proximity data before destructive apply"
         )
         require(

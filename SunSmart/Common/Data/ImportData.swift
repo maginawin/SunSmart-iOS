@@ -110,6 +110,11 @@ private struct ProximityLightingImportPreflight {
     let triggerZones: [SpaceTriggerZone]?
     let reconciliation: ProximityLightingTopologyReconciler.Result?
     let hardErrors: [ProximityLightingTopologyReconciler.HardError]
+    let warnings: [String]
+
+    var hasValidationIssues: Bool {
+        return !warnings.isEmpty || !hardErrors.isEmpty
+    }
 
     static func parse(
         spaceJsonData: [String: Any],
@@ -162,12 +167,34 @@ private struct ProximityLightingImportPreflight {
             decodedGroups.map { $0.group.address.address }
         )
         var membersByGroupAddress: [Address: Set<Address>] = [:]
+        var warnings: [String] = []
         if schemaVersion == 1 {
             for nodeDict in nodeDicts {
                 let nodeJson = JSON(nodeDict)
+                let nodeAddress = nodeJson["unicastAddress"].string ?? "unknown"
                 guard let rawGroupState = nodeJson["groupState"].int,
                       let groupState = Node.GroupState(rawValue: rawGroupState) else {
-                    return nil
+                    warnings.append(
+                        "invalidNodeGroupState[node=\(nodeAddress)]"
+                    )
+                    continue
+                }
+                guard groupState == .inGroup else {
+                    continue
+                }
+                guard let groupAddressHex = nodeJson["groupAddress"].string,
+                      !groupAddressHex.isEmpty,
+                      let groupAddress = Address(hex: groupAddressHex) else {
+                    warnings.append(
+                        "missingNodeGroupAddress[node=\(nodeAddress)]"
+                    )
+                    continue
+                }
+                guard importedGroupAddresses.contains(groupAddress) else {
+                    warnings.append(
+                        "missingReferencedGroup[node=\(nodeAddress),group=\(groupAddress.hex)]"
+                    )
+                    continue
                 }
                 var decodeNodeDict = nodeDict
                 if let uuid = nodeDict["uuid"] as? String {
@@ -175,15 +202,10 @@ private struct ProximityLightingImportPreflight {
                 }
                 guard let data = try? JSONSerialization.data(withJSONObject: decodeNodeDict),
                       let node = try? jsonDecoder.decode(Node.self, from: data) else {
-                    return nil
-                }
-                guard groupState == .inGroup else {
+                    warnings.append(
+                        "invalidNodeForTopology[node=\(nodeAddress)]"
+                    )
                     continue
-                }
-                guard let groupAddressHex = nodeJson["groupAddress"].string,
-                      let groupAddress = Address(hex: groupAddressHex),
-                      importedGroupAddresses.contains(groupAddress) else {
-                    return nil
                 }
                 membersByGroupAddress[groupAddress, default: []].insert(
                     ProximityLightingTopologyPlanner.normalizedAddress(for: node)
@@ -256,7 +278,38 @@ private struct ProximityLightingImportPreflight {
             schemaVersion: schemaVersion,
             triggerZones: triggerZones,
             reconciliation: schemaVersion == 1 ? reconciliation : nil,
-            hardErrors: reconciliation.hardErrors
+            hardErrors: reconciliation.hardErrors,
+            warnings: warnings
+        )
+    }
+
+    static func bestEffort(
+        spaceJsonData: [String: Any],
+        initialize: Bool
+    ) -> ProximityLightingImportPreflight {
+        let rootJson = JSON(spaceJsonData)
+        let payloadJson: JSON
+        if let spaceExtensionData = rootJson["spaceData"].dictionaryObject {
+            payloadJson = JSON(spaceExtensionData)
+        } else if !rootJson["spaceData"].exists() {
+            payloadJson = rootJson
+        } else {
+            payloadJson = JSON([String: Any]())
+        }
+        let triggerZones: [SpaceTriggerZone]?
+        if let zoneObjects = payloadJson["triggerZones"].arrayObject as? [[String: Any]],
+           let data = try? JSONSerialization.data(withJSONObject: zoneObjects),
+           let decoded = try? jsonDecoder.decode([SpaceTriggerZone].self, from: data) {
+            triggerZones = decoded
+        } else {
+            triggerZones = initialize ? [] : nil
+        }
+        return .init(
+            schemaVersion: nil,
+            triggerZones: triggerZones,
+            reconciliation: nil,
+            hardErrors: [],
+            warnings: ["invalidProximityExtensionPayload"]
         )
     }
 
@@ -1416,35 +1469,64 @@ extension SpaceData {
                 return
             }
             let switchesDicts = json["switches"].arrayObject as? [[String: Any]] ?? []
-            guard let proximityPreflight = ProximityLightingImportPreflight.parse(
+            let parsedProximityPreflight = ProximityLightingImportPreflight.parse(
                 spaceJsonData: spaceJsonData,
                 nodeDicts: nodeDicts,
                 groupDicts: groupDicts,
                 initialize: initialize
-            ) else {
-                print("[ProximityLightingImport] rejected during parse or validation")
-                continuation.resume(
-                    returning: .rejected("invalidProximityLightingPayload")
+            )
+            let proximityPreflight = parsedProximityPreflight
+                ?? ProximityLightingImportPreflight.bestEffort(
+                    spaceJsonData: spaceJsonData,
+                    initialize: initialize
                 )
-                return
+            let currentMeshNetwork = MeshNetworkManager.instance.meshNetwork
+            let localMeshNetwork: MeshNetwork?
+            if currentMeshNetwork?.uuid.uuidString == self.meshUUID,
+               MeshNetworkManager.instance.currentNetworkKey.networkId.hex == self.meshNetworkId {
+                localMeshNetwork = currentMeshNetwork
+            } else {
+                localMeshNetwork = MeshNetwork.load(
+                    meshUUID: self.meshUUID,
+                    subnetworkId: self.meshNetworkId
+                )
             }
-            guard proximityPreflight.hardErrors.isEmpty else {
+            let hasUsableLocalSnapshot = localMeshNetwork?.nodes.contains {
+                !$0.isLocalProvisioner
+                    && !$0.isProvisioner
+                    && !$0.isConfigComplete
+                    && $0.subNetworkId == self.meshNetworkId
+            } == true || localMeshNetwork?.groups.contains {
+                !$0.isVirtual && $0.subNetworkId == self.meshNetworkId
+            } == true
+            let proximityImportDisposition = ProximityLightingImportValidationPolicy.resolve(
+                hasValidationIssues: proximityPreflight.hasValidationIssues,
+                hasUsableLocalSnapshot: hasUsableLocalSnapshot
+            )
+            let shouldCommitProximityTopology: Bool
+            switch proximityImportDisposition {
+            case .applyAuthoritative:
+                shouldCommitProximityTopology = true
+            case .preserveLocalSnapshot:
+                shouldCommitProximityTopology = false
                 let errorCounts = Dictionary(
                     grouping: proximityPreflight.hardErrors.map(\.diagnosticName),
                     by: { $0 }
                 ).mapValues(\.count)
                 print(
-                    "[ProximityLightingImport] rejected hardErrors=" +
-                    "\(proximityPreflight.hardErrors.count) " +
-                    "types=\(errorCounts)"
+                    "[ProximityLightingImport] preserved local snapshot " +
+                    "warnings=\(proximityPreflight.warnings) " +
+                    "hardErrors=\(errorCounts)"
                 )
-                continuation.resume(
-                    returning: .rejected(
-                        "invalidProximityLightingTopology",
-                        hardErrors: proximityPreflight.hardErrors
-                    )
-                )
+                continuation.resume(returning: .skipped)
                 return
+            case .applyWithoutProximityMutation:
+                shouldCommitProximityTopology = false
+                print(
+                    "[ProximityLightingImport] applying decodable Space data without proximity mutation " +
+                    "warnings=\(proximityPreflight.warnings) " +
+                    "hardErrors=\(proximityPreflight.hardErrors.map(\.diagnosticName))"
+                )
             }
             if let reconciliation = proximityPreflight.reconciliation {
                 let maximumNeighborCount = reconciliation.plan.targets.values
@@ -1599,12 +1681,7 @@ extension SpaceData {
             
             let meshUUID = self.meshUUID
             
-            var meshNetwork: MeshNetwork?
-            if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == meshUUID && MeshNetworkManager.instance.currentNetworkKey.networkId.hex == self.meshNetworkId {
-                meshNetwork = MeshNetworkManager.instance.meshNetwork
-            }else {
-                meshNetwork = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId)
-            }
+            let meshNetwork = localMeshNetwork
             
             guard let network = meshNetwork else {
                 continuation.resume(returning: .rejected("meshNetworkUnavailable"))
@@ -2308,10 +2385,12 @@ extension SpaceData {
                 groups: groups.filter { !$0.isVirtual },
                 nodes: nodes
             ).prepare()
-            let proximityResult = ProximityLightingLifecycleCoordinator.commit(
-                proximityPreparation,
-                allowExistingHardErrors: proximityPreflight.schemaVersion == nil
-            )
+            let proximityResult = shouldCommitProximityTopology
+                ? ProximityLightingLifecycleCoordinator.commit(
+                    proximityPreparation,
+                    allowExistingHardErrors: proximityPreflight.schemaVersion == nil
+                )
+                : nil
             if let proximityResult, !proximityResult.syncDatas.isEmpty {
                 print(
                     "[ProximityLightingImport] convergencePending=" +

@@ -17,7 +17,107 @@ struct ProximityLightingLifecyclePolicyTests {
         testNormalizationDeduplicatesZoneMembers()
         testHardLimitsAreRejected()
         testChangedAndCandidateAddressesCoverOldAndNewTopology()
+        testInvalidExtensionPreservesUsableLocalSnapshot()
+        testInvalidExtensionFallsBackToCoreImportWithoutLocalSnapshot()
+        testValidExtensionRemainsAuthoritative()
+        testCleanExportDoesNotRequireRemoteVerification()
+        testRemoteOrphansMustMatchBeforeExport()
+        testRemoteGroupsCannotBeDroppedDuringOrphanRecovery()
         print("PASS: Proximity Lighting lifecycle policy tests.")
+    }
+
+    private static func testInvalidExtensionPreservesUsableLocalSnapshot() {
+        require(
+            ProximityLightingImportValidationPolicy.resolve(
+                hasValidationIssues: true,
+                hasUsableLocalSnapshot: true
+            ) == .preserveLocalSnapshot,
+            "Invalid extension data must not replace a usable local Space snapshot"
+        )
+    }
+
+    private static func testInvalidExtensionFallsBackToCoreImportWithoutLocalSnapshot() {
+        require(
+            ProximityLightingImportValidationPolicy.resolve(
+                hasValidationIssues: true,
+                hasUsableLocalSnapshot: false
+            ) == .applyWithoutProximityMutation,
+            "Invalid extension data must not make a Space inaccessible when no local snapshot exists"
+        )
+    }
+
+    private static func testValidExtensionRemainsAuthoritative() {
+        for hasLocalSnapshot in [false, true] {
+            require(
+                ProximityLightingImportValidationPolicy.resolve(
+                    hasValidationIssues: false,
+                    hasUsableLocalSnapshot: hasLocalSnapshot
+                ) == .applyAuthoritative,
+                "Valid extension data must keep the normal authoritative import path"
+            )
+        }
+    }
+
+    private static func testCleanExportDoesNotRequireRemoteVerification() {
+        require(
+            SpaceSnapshotExportIntegrityPolicy.resolve(
+                localGroupAddresses: ["C007"],
+                localOrphans: [],
+                remoteGroupAddresses: nil,
+                remoteOrphans: nil
+            ) == .allowWithoutRemoteVerification,
+            "A clean Space export must not require an additional server request"
+        )
+    }
+
+    private static func testRemoteOrphansMustMatchBeforeExport() {
+        let orphan = SpaceSnapshotExportIntegrityPolicy.OrphanedMembership(
+            nodeAddress: "008C",
+            groupAddress: nil
+        )
+        require(
+            SpaceSnapshotExportIntegrityPolicy.resolve(
+                localGroupAddresses: ["C007", "C00A"],
+                localOrphans: [orphan],
+                remoteGroupAddresses: nil,
+                remoteOrphans: nil
+            ) == .reject,
+            "An orphaned local snapshot must not upload without remote verification"
+        )
+        require(
+            SpaceSnapshotExportIntegrityPolicy.resolve(
+                localGroupAddresses: ["C007", "C00A"],
+                localOrphans: [orphan],
+                remoteGroupAddresses: ["C007", "C00A"],
+                remoteOrphans: [orphan]
+            ) == .allowVerifiedRemoteOrphans,
+            "A matching orphan already present on the server may be preserved while other changes upload"
+        )
+        require(
+            SpaceSnapshotExportIntegrityPolicy.resolve(
+                localGroupAddresses: ["C007", "C00A"],
+                localOrphans: [orphan],
+                remoteGroupAddresses: ["C007", "C00A"],
+                remoteOrphans: []
+            ) == .reject,
+            "A newly introduced local orphan must not overwrite a valid remote membership"
+        )
+    }
+
+    private static func testRemoteGroupsCannotBeDroppedDuringOrphanRecovery() {
+        let orphan = SpaceSnapshotExportIntegrityPolicy.OrphanedMembership(
+            nodeAddress: "008C",
+            groupAddress: nil
+        )
+        require(
+            SpaceSnapshotExportIntegrityPolicy.resolve(
+                localGroupAddresses: ["C007", "C00A"],
+                localOrphans: [orphan],
+                remoteGroupAddresses: ["C000", "C007", "C00A"],
+                remoteOrphans: [orphan]
+            ) == .reject,
+            "Remote Groups missing from the local snapshot must never be deleted by recovery upload"
+        )
     }
 
     private static func testProfileDemotionRemovesGroupAndSpaceTopology() {

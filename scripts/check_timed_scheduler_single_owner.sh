@@ -33,4 +33,5 @@ swiftc -parse-as-library \
   "${repo_root}/SunSmart/Main/Timed/Controller/TimedViewController.swift" \
   "${repo_root}/SunSmart/Main/Space/Model/SyncDevicesCellModel.swift" \
   "${repo_root}/SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
-  "${repo_root}/SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift"
+  "${repo_root}/SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
+  "${repo_root}/SunSmart/Main/Group/Controller/GroupMembersViewController.swift"

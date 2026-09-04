@@ -3,13 +3,14 @@ import Foundation
 @main
 struct TimedSchedulerSingleOwnerContractTests {
     static func main() throws {
-        guard CommandLine.arguments.count == 15 else {
+        guard CommandLine.arguments.count == 16 else {
             fatalError(
                 "Expected Node+SupportModels, Node+Messages, MeshScheduleServer, "
                 + "Node+MessageHandles, MeshNetwork+SunSmart, ScheduleServer, "
                 + "GroupServer, Scheduler, DeviceGroupDeferredSyncPlanner, "
                 + "MeshDatabase, TimedViewController, SyncDevicesCellModel and "
-                + "SyncDevicesViewController and DeviceRestoreViewController paths"
+                + "SyncDevicesViewController, DeviceRestoreViewController and "
+                + "GroupMembersViewController paths"
             )
         }
 
@@ -27,6 +28,7 @@ struct TimedSchedulerSingleOwnerContractTests {
         let operationModel = try source(at: 12)
         let syncDevicesController = try source(at: 13)
         let deviceRestoreController = try source(at: 14)
+        let groupMembersController = try source(at: 15)
 
         testOwnerPolicy(in: supportModels)
         testSetAndDeleteRouting(
@@ -64,6 +66,10 @@ struct TimedSchedulerSingleOwnerContractTests {
         )
         testSchedulerModelPersistence(in: meshDatabase)
         testUnknownSchedulerModelRepair(in: timedViewController)
+        testGroupRemovalUnknownSchedulerPreflight(
+            groupServer: groupServer,
+            groupMembersController: groupMembersController
+        )
 
         print("TimedSchedulerSingleOwnerContractTests passed")
     }
@@ -465,6 +471,60 @@ struct TimedSchedulerSingleOwnerContractTests {
                 && unknownRead.contains("MeshAPI.getSchedule(")
                 && unknownRead.contains("index: nil"),
             "Unknown Scheduler Model state must be resolved by a full authoritative read"
+        )
+    }
+
+    private static func testGroupRemovalUnknownSchedulerPreflight(
+        groupServer: String,
+        groupMembersController: String
+    ) {
+        let memberPreflight = normalized(section(
+            in: groupMembersController,
+            from: "private func resolveUnknownSchedulerStateBeforeSave(",
+            to: "private func groupMemberProxyRemovalPlans("
+        ))
+        require(
+            memberPreflight.contains(
+                "ScheduleServer.nodesRequiringAuthoritativeSchedulerRead(exitNodes)"
+            )
+                && memberPreflight.contains(
+                    "ScheduleServer.readUnknownSchedulerState(nodes: unknownNodes)"
+                )
+                && memberPreflight.contains("guard resolved else")
+                && memberPreflight.contains("self.performSave("),
+            "Group Members must resolve unknown Scheduler Models before committing removal"
+        )
+        require(
+            memberPreflight.contains("sync_failed"),
+            "A failed Group Members Scheduler read must stop removal and remain retryable"
+        )
+
+        let deleteGroup = normalized(section(
+            in: groupServer,
+            from: "static func deleteGroup(",
+            to: "private static func deleteGroupWithKnownSchedulerState("
+        ))
+        require(
+            deleteGroup.contains(
+                "ScheduleServer.nodesRequiringAuthoritativeSchedulerRead(groupNodes)"
+            )
+                && deleteGroup.contains(
+                    "ScheduleServer.readUnknownSchedulerState(nodes: unknownNodes)"
+                )
+                && deleteGroup.contains("guard resolved else")
+                && deleteGroup.contains("deleteGroupWithKnownSchedulerState("),
+            "Whole-Group deletion must resolve unknown Scheduler Models before removal"
+        )
+
+        let resolvedDelete = section(
+            in: groupServer,
+            from: "private static func deleteGroupWithKnownSchedulerState(",
+            to: "private static func syncProximityLightingDatas("
+        )
+        require(
+            resolvedDelete.contains("transaction.removeGroup(group)")
+                && resolvedDelete.contains("self.groupDeleteNodes("),
+            "Group deletion mutations and exit messages must remain behind the Scheduler preflight"
         )
     }
 

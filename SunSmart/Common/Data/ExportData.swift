@@ -15,6 +15,193 @@ private var jsonEncoder: JSONEncoder {
     return encoder
 }
 
+private struct SpaceSnapshotExportIntegritySnapshot: Equatable {
+    typealias OrphanedMembership = SpaceSnapshotExportIntegrityPolicy.OrphanedMembership
+
+    let groupAddresses: Set<String>
+    let orphanedMemberships: Set<OrphanedMembership>
+
+    init(meshNetwork: MeshNetwork) {
+        let groups = meshNetwork.groups.filter { !$0.isVirtual }
+        let exportedGroupAddresses = Set(groups.map { $0.address.address.hex })
+        groupAddresses = exportedGroupAddresses
+        orphanedMemberships = Set(
+            meshNetwork.nodes.compactMap { node -> OrphanedMembership? in
+                guard !node.isLocalProvisioner,
+                      !node.isProvisioner,
+                      !node.isConfigComplete,
+                      node.groupState == .inGroup else {
+                    return nil
+                }
+                guard let group = node.group,
+                      exportedGroupAddresses.contains(group.address.address.hex) else {
+                    return .init(
+                        nodeAddress: node.primaryUnicastAddress.hex,
+                        groupAddress: Self.declaredGroupAddress(for: node)
+                    )
+                }
+                return nil
+            }
+        )
+    }
+
+    init?(spaceData: [String: Any]) {
+        guard let groupDicts = spaceData["groups"] as? [[String: Any]],
+              let nodeDicts = spaceData["nodes"] as? [[String: Any]] else {
+            return nil
+        }
+        let importedGroupAddresses: Set<String> = Set(
+            groupDicts.compactMap { groupDict in
+                guard !(groupDict["isVirtual"] as? Bool ?? false) else {
+                    return nil
+                }
+                return Self.normalizedAddress(groupDict["address"] as? String)
+            }
+        )
+        groupAddresses = importedGroupAddresses
+        orphanedMemberships = Set(
+            nodeDicts.compactMap { nodeDict -> OrphanedMembership? in
+                guard let rawGroupState = nodeDict["groupState"] as? Int,
+                      rawGroupState == Node.GroupState.inGroup.rawValue,
+                      let nodeAddress = Self.normalizedAddress(
+                        nodeDict["unicastAddress"] as? String
+                      ) else {
+                    return nil
+                }
+                let groupAddress = Self.normalizedAddress(
+                    nodeDict["groupAddress"] as? String
+                )
+                guard let groupAddress else {
+                    return .init(
+                        nodeAddress: nodeAddress,
+                        groupAddress: nil
+                    )
+                }
+                guard !importedGroupAddresses.contains(groupAddress) else {
+                    return nil
+                }
+                return .init(
+                    nodeAddress: nodeAddress,
+                    groupAddress: groupAddress
+                )
+            }
+        )
+    }
+
+    private static func declaredGroupAddress(for node: Node) -> String? {
+        if let group = node.group {
+            return group.address.address.hex
+        }
+        guard let data = try? jsonEncoder.encode(node),
+              let dictionary = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        return normalizedAddress(dictionary["groupAddress"] as? String)
+    }
+
+    private static func normalizedAddress(_ value: String?) -> String? {
+        guard let value, !value.isEmpty, let address = Address(hex: value) else {
+            return nil
+        }
+        return address.hex
+    }
+}
+
+private struct SpaceSnapshotExportAuthorization {
+    let expectedLocalSnapshot: SpaceSnapshotExportIntegritySnapshot
+    let orphanPreservationReason: String?
+
+    func permits(_ snapshot: SpaceSnapshotExportIntegritySnapshot) -> Bool {
+        return snapshot == expectedLocalSnapshot
+    }
+}
+
+enum SpaceSnapshotExportPurpose {
+    case localBackup
+    case cloudSync
+}
+
+private extension SpaceData {
+    func snapshotExportAuthorization(
+        purpose: SpaceSnapshotExportPurpose
+    ) async -> SpaceSnapshotExportAuthorization? {
+        guard let meshNetwork = MeshNetwork.load(
+            meshUUID: meshUUID,
+            subnetworkId: meshNetworkId
+        ) else {
+            return nil
+        }
+        let localSnapshot = SpaceSnapshotExportIntegritySnapshot(
+            meshNetwork: meshNetwork
+        )
+        let initialDecision = SpaceSnapshotExportIntegrityPolicy.resolve(
+            localGroupAddresses: localSnapshot.groupAddresses,
+            localOrphans: localSnapshot.orphanedMemberships,
+            remoteGroupAddresses: nil,
+            remoteOrphans: nil
+        )
+        if initialDecision == .allowWithoutRemoteVerification {
+            return .init(
+                expectedLocalSnapshot: localSnapshot,
+                orphanPreservationReason: nil
+            )
+        }
+        if case .localBackup = purpose {
+            print(
+                "[SpaceSnapshotExport] preserved local orphanedGroupMembership " +
+                "purpose=localBackup " +
+                "nodes=\(localSnapshot.orphanedMemberships.map(\.nodeAddress).sorted())"
+            )
+            return .init(
+                expectedLocalSnapshot: localSnapshot,
+                orphanPreservationReason: "localBackup"
+            )
+        }
+
+        let remoteResult = await NetworkRequest.shared.request(
+            .spaceInfo(
+                siteId: siteId,
+                spaceId: id,
+                password: authorizationPassword
+            )
+        )
+        guard case .success(let response) = remoteResult,
+              let remoteData = response["data"] as? [String: Any],
+              let remoteSnapshot = SpaceSnapshotExportIntegritySnapshot(
+                spaceData: remoteData
+              ) else {
+            print(
+                "[SpaceSnapshotExport] rejected orphanedGroupMembership " +
+                "reason=remoteVerificationUnavailable " +
+                "nodes=\(localSnapshot.orphanedMemberships.map(\.nodeAddress).sorted())"
+            )
+            return nil
+        }
+        let verifiedDecision = SpaceSnapshotExportIntegrityPolicy.resolve(
+            localGroupAddresses: localSnapshot.groupAddresses,
+            localOrphans: localSnapshot.orphanedMemberships,
+            remoteGroupAddresses: remoteSnapshot.groupAddresses,
+            remoteOrphans: remoteSnapshot.orphanedMemberships
+        )
+        guard verifiedDecision == .allowVerifiedRemoteOrphans else {
+            print(
+                "[SpaceSnapshotExport] rejected orphanedGroupMembership " +
+                "reason=remoteSnapshotDiffers " +
+                "nodes=\(localSnapshot.orphanedMemberships.map(\.nodeAddress).sorted())"
+            )
+            return nil
+        }
+        print(
+            "[SpaceSnapshotExport] verified remote orphanedGroupMembership " +
+            "nodes=\(localSnapshot.orphanedMemberships.map(\.nodeAddress).sorted())"
+        )
+        return .init(
+            expectedLocalSnapshot: localSnapshot,
+            orphanPreservationReason: "verifiedRemote"
+        )
+    }
+}
+
 extension SiteData {
     
     /// 导出site数据
@@ -113,7 +300,7 @@ extension SiteData {
                 for space in exportSpaces {
                     group.addTask {
                         // 异步处理每个数据
-                        return await space.export()
+                        return await space.export(purpose: .cloudSync)
                     }
                 }
                 // 收集结果
@@ -138,8 +325,14 @@ extension SiteData {
 extension SpaceData {
     
     /// 导出space数据
-    func export() async -> [String: Any]?  {
-       
+    func export(
+        purpose: SpaceSnapshotExportPurpose = .localBackup
+    ) async -> [String: Any]?  {
+        guard let snapshotAuthorization = await snapshotExportAuthorization(
+            purpose: purpose
+        ) else {
+            return nil
+        }
         return await withCheckedContinuation { continuation in
             
             var spaceJsonData: [String: Any] = [:]
@@ -151,6 +344,9 @@ extension SpaceData {
             guard let meshNetwork = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId) else {
                 continuation.resume(returning: nil)
                 return
+            }
+            let allNodes = meshNetwork.nodes.filter {
+                !$0.isLocalProvisioner && !$0.isProvisioner && !$0.isConfigComplete
             }
             let switchs = DeviceSwitchData.load(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId)
 //            meshNetworkManager.switchs = DeviceSwitchData.load(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId)
@@ -166,12 +362,21 @@ extension SpaceData {
                 })
                 group.info.bindSchedules = bindSchedules
             })
+            let currentIntegritySnapshot = SpaceSnapshotExportIntegritySnapshot(
+                meshNetwork: meshNetwork
+            )
+            guard snapshotAuthorization.permits(currentIntegritySnapshot) else {
+                print(
+                    "[SpaceSnapshotExport] rejected orphanedGroupMembership " +
+                    "reason=localSnapshotChangedDuringVerification"
+                )
+                continuation.resume(returning: nil)
+                return
+            }
             let proximityPreparation = ProximityLightingLifecycleCoordinator.begin(
                 space: self,
                 groups: meshNetwork.groups.filter { !$0.isVirtual },
-                nodes: meshNetwork.nodes.filter {
-                    !$0.isLocalProvisioner && !$0.isProvisioner && !$0.isConfigComplete
-                }
+                nodes: allNodes
             ).prepare()
             guard proximityPreparation.isValid else {
                 print(
@@ -181,11 +386,21 @@ extension SpaceData {
                 continuation.resume(returning: nil)
                 return
             }
-            guard let proximityResult = ProximityLightingLifecycleCoordinator.commit(
-                proximityPreparation
-            ) else {
-                continuation.resume(returning: nil)
-                return
+            let proximityResult: ProximityLightingLifecycleResult?
+            if let preservationReason = snapshotAuthorization.orphanPreservationReason {
+                proximityResult = nil
+                print(
+                    "[ProximityLightingExport] preserved orphan state " +
+                    "reason=\(preservationReason)"
+                )
+            } else {
+                guard let committedResult = ProximityLightingLifecycleCoordinator.commit(
+                    proximityPreparation
+                ) else {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                proximityResult = committedResult
             }
             #if DEBUG
             let proximityGroups = proximityPreparation.normalized.snapshot.groups
@@ -196,8 +411,8 @@ extension SpaceData {
                 "paths=\(proximityGroups.reduce(0) { $0 + $1.paths.count }) " +
                 "groupZones=\(proximityGroups.reduce(0) { $0 + $1.zones.count }) " +
                 "spaceZones=\(proximityPreparation.normalized.snapshot.spaceZones.count) " +
-                "repairs=\(proximityResult.repairs.count) " +
-                "pending=\(proximityResult.syncDatas.count)"
+                "repairs=\(proximityResult?.repairs.count ?? 0) " +
+                "pending=\(proximityResult?.syncDatas.count ?? 0)"
             )
             #endif
             meshNetwork.scenes.forEach({
@@ -264,7 +479,6 @@ extension SpaceData {
             var sceneDicts: [[String: Any]] = []
             var scheheduleDicts: [[String: Any]] = []
             
-            let allNodes = meshNetwork.nodes.filter({!$0.isLocalProvisioner && !$0.isProvisioner && !$0.isConfigComplete })
             // 设备
             allNodes.filter({ !$0.isProvisioner }).forEach { node in
                 if let data = try? jsonEncoder.encode(node), var nodeDict = try? JSONSerialization.jsonObject(with: data) as? [String : Any] {

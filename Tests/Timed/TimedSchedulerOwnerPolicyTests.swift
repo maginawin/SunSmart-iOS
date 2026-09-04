@@ -9,6 +9,7 @@ struct TimedSchedulerOwnerPolicyTests {
         testOrdinaryActionsAlwaysUseOrdinaryScheduler()
         testKnownSchedulerModelsDoNotNeedAuthoritativeRead()
         testMissingSchedulerModelNeedsAuthoritativeRead()
+        testAllUnknownSchedulerModelsNeedAuthoritativeRead()
         testNodeWithoutSchedulerModelsDoesNotNeedAuthoritativeRead()
         testUnknownOwnerModelIsReported()
         testMissingOwnerEntryIsReported()
@@ -84,6 +85,15 @@ struct TimedSchedulerOwnerPolicyTests {
                 modelKnownStates: [true, false]
             ),
             "A Node with any unknown Scheduler Model must be read"
+        )
+    }
+
+    private static func testAllUnknownSchedulerModelsNeedAuthoritativeRead() {
+        require(
+            TimedSchedulerCacheRepairPolicy.needsAuthoritativeRead(
+                modelKnownStates: [false, false]
+            ),
+            "A Cloud-imported Node with every Scheduler Model unknown must be read"
         )
     }
 

@@ -123,6 +123,22 @@ struct ProximityLightingLifecycleContractTests {
             "Import must parse and validate proximity topology before destructive node replacement"
         )
         require(
+            importUpdate.contains("ProximityLightingImportValidationPolicy.resolve(")
+                && importUpdate.contains("case .preserveLocalSnapshot:")
+                && importUpdate.contains("continuation.resume(returning: .skipped)"),
+            "Invalid proximity data must preserve a usable local snapshot without blocking Space entry"
+        )
+        require(
+            importUpdate.contains("case .applyWithoutProximityMutation:")
+                && importUpdate.contains("shouldCommitProximityTopology = false"),
+            "A first import must remain accessible by isolating invalid proximity extension data"
+        )
+        require(
+            !importUpdate.contains(".rejected(\"invalidProximityLightingPayload\")")
+                && !importUpdate.contains("\"invalidProximityLightingTopology\""),
+            "Proximity-only validation failures must not reject the whole Space"
+        )
+        require(
             importData.contains("version == 1")
                 && importData.contains("triggerZones = initialize ? [] : nil")
                 && importData.contains("allowExistingHardErrors: proximityPreflight.schemaVersion == nil"),
@@ -134,6 +150,15 @@ struct ProximityLightingLifecycleContractTests {
                 && exportData.contains("ProximityLightingLifecycleCoordinator.isEligible(group.info.profile.type)")
                 && appearsBefore("ProximityLightingLifecycleCoordinator.begin(", "spaceJsonData.updateValue(self.id", in: exportData),
             "Export must normalize first, emit schema v1 under spaceData, and omit ineligible Group paths"
+        )
+        require(
+            exportData.contains("snapshotExportAuthorization(")
+                && exportData.contains("verified remote orphanedGroupMembership")
+                && exportData.contains("reason=remoteSnapshotDiffers")
+                && exportData.contains("localSnapshotChangedDuringVerification")
+                && exportData.contains("[ProximityLightingExport] preserved orphan state")
+                && appearsBefore("snapshotExportAuthorization(", "spaceJsonData.updateValue(self.id", in: exportData),
+            "An orphaned Space upload must verify the remote baseline and avoid proximity mutation"
         )
         require(
             importData.contains("if rootJson[\"spaceData\"].exists()")
@@ -148,16 +173,19 @@ struct ProximityLightingLifecycleContractTests {
             "Standalone Space uploads must include the explicit Space id and exported spaceData container"
         )
         require(
-            exportData.contains("func export() async -> [String: Any]?")
+            exportData.contains("purpose: SpaceSnapshotExportPurpose = .localBackup")
+                && exportData.contains("space.export(purpose: .cloudSync)")
+                && cloudSync.contains("space.export(purpose: .cloudSync)")
+                && exportData.contains("purpose=localBackup")
                 && cloudSync.contains("guard let api = await self.operation.getNetworkApi() else")
                 && cloudSync.contains("self.finishExportFailure()"),
-            "Invalid local export must fail cloud sync without sending an empty payload"
+            "Cloud uploads must verify orphan baselines while local backups remain recoverable"
         )
         require(
             importData.contains("struct SpaceImportOutcome")
                 && importData.contains("status: .rejected")
-                && importData.contains("hardErrors: proximityPreflight.hardErrors"),
-            "Space import must expose rejected and hard-error outcomes"
+                && importData.contains("hardErrors: proximityPreparation.hardErrors"),
+            "Space import must retain core rejection and topology diagnostic outcomes"
         )
         require(
             sync.contains("private func appendProximityLightingItems(")

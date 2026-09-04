@@ -39,6 +39,7 @@ class GroupMembersViewController: UIViewController {
     private var itemMargin: CGFloat = isIPad ? SCRXFrom(30) : SCRXFrom(16)
     
     private var meshNetworkConnectedObservation: NSKeyValueObservation?
+    private var isResolvingUnknownSchedulerState = false
     
     let space: SpaceData
     var group: Group
@@ -185,6 +186,9 @@ class GroupMembersViewController: UIViewController {
     }
     
     @objc private func saveAction() {
+        guard !isResolvingUnknownSchedulerState else {
+            return
+        }
         
         if selectNodes.isEmpty && nodes.isEmpty {
             backAction()
@@ -200,7 +204,7 @@ class GroupMembersViewController: UIViewController {
             return
         }
         let continueSave = { [weak self] in
-            self?.performSave(
+            self?.resolveUnknownSchedulerStateBeforeSave(
                 exitNodes: exitNodes,
                 addNodes: addNodes,
                 proxyRemovalPlans: proxyRemovalPlans
@@ -221,6 +225,55 @@ class GroupMembersViewController: UIViewController {
                 )
             ]
         ).show()
+    }
+
+    private func resolveUnknownSchedulerStateBeforeSave(
+        exitNodes: [Node],
+        addNodes: [Node],
+        proxyRemovalPlans: [GroupMemberProxyRemovalPlan]
+    ) {
+        let unknownNodes = ScheduleServer.nodesRequiringAuthoritativeSchedulerRead(exitNodes)
+        guard !unknownNodes.isEmpty else {
+            performSave(
+                exitNodes: exitNodes,
+                addNodes: addNodes,
+                proxyRemovalPlans: proxyRemovalPlans
+            )
+            return
+        }
+        guard MeshLibManager.manager.isMeshNetworkConnected else {
+            XWHUDManager.showTipHUD(
+                "device_notconnect_message".localizedString,
+                isLineFeed: true
+            )
+            return
+        }
+
+        isResolvingUnknownSchedulerState = true
+        navigationItem.rightBarButtonItem?.isEnabled = false
+        XWHUDManager.showCustomHUD(
+            withMessage: "syncing_data".localizedString,
+            isWindow: false
+        )
+        ScheduleServer.readUnknownSchedulerState(nodes: unknownNodes) { [weak self] resolved in
+            DispatchQueue.main.async {
+                XWHUDManager.hide()
+                guard let self = self else {
+                    return
+                }
+                self.isResolvingUnknownSchedulerState = false
+                self.navigationItem.rightBarButtonItem?.isEnabled = true
+                guard resolved else {
+                    XWHUDManager.showErrorTipHUD("sync_failed".localizedString)
+                    return
+                }
+                self.performSave(
+                    exitNodes: exitNodes,
+                    addNodes: addNodes,
+                    proxyRemovalPlans: proxyRemovalPlans
+                )
+            }
+        }
     }
 
     private func groupMemberProxyRemovalPlans(
