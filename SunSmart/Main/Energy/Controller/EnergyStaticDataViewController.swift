@@ -48,6 +48,17 @@ class EnergyStaticDataViewController: UIViewController {
                 return "manual_data_entry".localizedString
             }
         }
+
+        var filter: EnergyStatisticsFilter {
+            switch self {
+            case .all:
+                return .all
+            case .realPower:
+                return .truePowerMeter
+            case .manualDataEnrty:
+                return .manualDataEntry
+            }
+        }
         
         /// 所有
         case all
@@ -86,16 +97,12 @@ class EnergyStaticDataViewController: UIViewController {
     private var deviceSortType: DeviceEnergySortType = .descending
     /// 有统计数据的组list
     private var groups: [Group] = []
-    /// 统计数据设备list
-    private var devices: [DeviceTotalEnergyData] = []
     /// 页面展示的设备list
     private var showDevices: [DeviceTotalEnergyData] = []
     /// 最近采集的数据
     private var latestHarvestData: EnergyStatisticsStaticData?
     /// 更早采集的数据
     private var previousHarvestData: EnergyStatisticsStaticData?
-    /// 组能耗统计数据
-    private var groupEnergyPieDatas: [EnergyPieData] = []
     
     let space: SpaceData
     
@@ -186,55 +193,55 @@ class EnergyStaticDataViewController: UIViewController {
         latestHarvestData = energyDataStaticData(staticDatas.first)
         previousHarvestData = staticDatas.count > 1 ? energyDataStaticData(staticDatas[1]) : nil
         
-        // Group数据
         if let harvestData = latestHarvestData {
-            groups.removeAll()
-            // 未在组里的设备能耗数据list
-            let notInGroupDeviceEnergyDatas = harvestData.deviceEnergyDatas.filter({ deviceEnergyData in deviceEnergyData.groupAddress == nil })
-            
-            let colors = UIColor.generateDistinctColors(count: harvestData.groups.count + (notInGroupDeviceEnergyDatas.count > 0 ? 1 : 0))
-            
-            var energyPieDatas: [EnergyPieData] = []
-            
-            
-            for (index, group) in harvestData.groups.enumerated() {
-                
-                let deviceEnergyDatas = harvestData.deviceEnergyDatas.filter({ deviceEnergyData in deviceEnergyData.groupAddress == group.address.address })
-                
-                let total = deviceEnergyDatas.reduce(UInt64(0)) { partial, energyData in
-                    partial + UInt64(energyData.preciseTotalEnergyUse ?? 0)
-                }
-                let percent = Double(total) / Double(max(harvestData.preciseTotalEnergyUse, 1))
-                
-                let data = EnergyPieData(name: group.name, color: colors[index], percent: percent, data: String(format: "%.3f kWh", Double(total) / 1000))
-                energyPieDatas.append(data)
-                if deviceEnergyDatas.count > 0 {
-                    groups.append(group)
-                }
-            }
-            
-            // 不在组里面设备能耗数据
-            if notInGroupDeviceEnergyDatas.count > 0 {
-                
-                let total = notInGroupDeviceEnergyDatas.reduce(UInt64(0)) { partial, energyData in
-                    partial + UInt64(energyData.preciseTotalEnergyUse ?? 0)
-                }
-                let percent = Double(total) / Double(max(harvestData.preciseTotalEnergyUse, 1))
-                
-                let data = EnergyPieData(name: "not_in_group".localizedString, color: colors.last!, percent: percent, data: String(format: "%.3f kWh", Double(total) / 1000))
-                energyPieDatas.append(data)
-            }
-            groupEnergyPieDatas = energyPieDatas
-            
             groups = harvestData.groups
-            devices = harvestData.deviceEnergyDatas
         }else {
             viewType = .space
-            groupEnergyPieDatas = []
             groups = []
-            devices = []
         }
-        
+    }
+
+    private func groupEnergyPieDatas(for harvestData: EnergyStatisticsStaticData?) -> [EnergyPieData] {
+        guard let harvestData, !harvestData.deviceEnergyDatas.isEmpty else {
+            return []
+        }
+
+        let groupedDatas = harvestData.groups.compactMap { group -> (Group, [DeviceTotalEnergyData])? in
+            let deviceEnergyDatas = harvestData.deviceEnergyDatas.filter {
+                $0.groupAddress == group.address.address
+            }
+            return deviceEnergyDatas.isEmpty ? nil : (group, deviceEnergyDatas)
+        }
+        let notInGroupDatas = harvestData.deviceEnergyDatas.filter { $0.groupAddress == nil }
+        let colors = UIColor.generateDistinctColors(
+            count: groupedDatas.count + (notInGroupDatas.isEmpty ? 0 : 1)
+        )
+        let denominator = Double(max(harvestData.preciseTotalEnergyUse, 1))
+
+        var energyPieDatas = groupedDatas.enumerated().map { index, groupedData in
+            let total = groupedData.1.reduce(UInt64(0)) { partial, energyData in
+                partial + UInt64(energyData.preciseTotalEnergyUse ?? 0)
+            }
+            return EnergyPieData(
+                name: groupedData.0.name,
+                color: colors[index],
+                percent: Double(total) / denominator,
+                data: String(format: "%.3f kWh", Double(total) / 1000)
+            )
+        }
+
+        if !notInGroupDatas.isEmpty, let color = colors.last {
+            let total = notInGroupDatas.reduce(UInt64(0)) { partial, energyData in
+                partial + UInt64(energyData.preciseTotalEnergyUse ?? 0)
+            }
+            energyPieDatas.append(EnergyPieData(
+                name: "not_in_group".localizedString,
+                color: color,
+                percent: Double(total) / denominator,
+                data: String(format: "%.3f kWh", Double(total) / 1000)
+            ))
+        }
+        return energyPieDatas
     }
     
     
@@ -267,7 +274,11 @@ class EnergyStaticDataViewController: UIViewController {
                     state = .failed
                 }
             }
-            return DeviceTotalEnergyData(name: node.name ?? "", address: node.primaryUnicastAddress, productId: node.productIdentifier, groupAddress: node.group?.address.address, timestamp: timestamp, maxRatedPower: maxRatedPower, maxTotalEnergyUse: totalDeviceEnergyUse, preciseTotalEnergyUse: preciseTotalEnergyUse, state: state)
+            let meteringType = EnergyStatisticsFilterPolicy.meteringType(
+                productIdentifier: node.productIdentifier,
+                supportsTruePowerMeter: node.supportRealPowerMetering
+            )
+            return DeviceTotalEnergyData(name: node.name ?? "", address: node.primaryUnicastAddress, productId: node.productIdentifier, groupAddress: node.group?.address.address, timestamp: timestamp, maxRatedPower: maxRatedPower, maxTotalEnergyUse: totalDeviceEnergyUse, preciseTotalEnergyUse: preciseTotalEnergyUse, meteringType: meteringType, state: state)
         })
         
         let staticData = EnergyStatisticsStaticData(timestamp: timestamp, incomplete: enrtgyDatas.contains(where: { $0.state == .failed }), deviceEnergyDatas: enrtgyDatas, groups: MeshNetworkManager.instance.groups)
@@ -309,7 +320,9 @@ class EnergyStaticDataViewController: UIViewController {
     }
     
     private func updateUI() {
-        
+        let latestStatisticsData = latestHarvestData?.filtered(by: statisticsFilterType.filter)
+        let previousStatisticsData = previousHarvestData?.filtered(by: statisticsFilterType.filter)
+
         viewTypeBtn.setTitle(viewType.title, for: .normal)
         
         switch viewType {
@@ -319,18 +332,17 @@ class EnergyStaticDataViewController: UIViewController {
             devicesTableView.isHidden = true
             deviceSortBtn.isHidden = true
             deviceFilterBtn.isHidden = true
-            energySpaceView.updateData(latestHarvestData: self.latestHarvestData, previousHarvestData: self.previousHarvestData, statisticsType: self.statisticsFilterType)
+            energySpaceView.updateData(latestHarvestData: latestStatisticsData, previousHarvestData: previousStatisticsData)
         case .group:
             energySpaceView.isHidden = true
             energyGroupView.isHidden = false
             devicesTableView.isHidden = true
             deviceSortBtn.isHidden = true
             deviceFilterBtn.isHidden = true
-            var groupEnergyPieDatas = self.groupEnergyPieDatas
-            if statisticsFilterType == .realPower {
-                groupEnergyPieDatas = self.groupEnergyPieDatas.map({ EnergyPieData(name: $0.name, color: $0.color, percent: 0, data: "0.00 kWh") })
-            }
-            energyGroupView.updateData(latestHarvestData: self.latestHarvestData, energyPieDatas: groupEnergyPieDatas, statisticsType: self.statisticsFilterType)
+            energyGroupView.updateData(
+                latestHarvestData: latestStatisticsData,
+                energyPieDatas: groupEnergyPieDatas(for: latestStatisticsData)
+            )
         case .device:
             energySpaceView.isHidden = true
             energyGroupView.isHidden = true
@@ -338,28 +350,23 @@ class EnergyStaticDataViewController: UIViewController {
             deviceSortBtn.isHidden = false
             deviceFilterBtn.isHidden = false
             deviceFilterBtn.isSelected = deviceFilterType != nil
-            if devices.isEmpty {
-                devicesTableView.showEmptyDataView(title: "no_devices".localizedString)
-            }
+            let statisticsDevices = latestStatisticsData?.deviceEnergyDatas ?? []
             // 筛选条件
             if let filterType = deviceFilterType {
                 switch filterType {
                 case .notInGroup:
-                    showDevices = devices.filter({ $0.groupAddress == nil })
+                    showDevices = statisticsDevices.filter({ $0.groupAddress == nil })
                 case .group(let group):
-                    showDevices = devices.filter({ $0.groupAddress == group.address.address })
+                    showDevices = statisticsDevices.filter({ $0.groupAddress == group.address.address })
                 }
             }else {
-                showDevices = devices
+                showDevices = statisticsDevices
             }
-            
-            switch statisticsFilterType {
-            case .all:
-                break
-            case .realPower:
-                showDevices = []
-            case .manualDataEnrty:
-                showDevices = showDevices.filter({ $0.state != .notSetPower })
+
+            if showDevices.isEmpty {
+                devicesTableView.showEmptyDataView(title: "no_devices".localizedString)
+            }else {
+                devicesTableView.hideEmptyDataView()
             }
             
             // 排序

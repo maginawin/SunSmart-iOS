@@ -2520,12 +2520,7 @@ extension Node {
         guard self.sunricherVendorModel != nil, let pid = self.productIdentifier else {
             return false
         }
-        switch pid {
-        case 0x2302, 0x2303, 0x2304, 0x2305, 0x2801, 0x2802:
-            return true
-        default:
-            return false
-        }
+        return EnergyStatisticsFilterPolicy.supportsTruePowerMeter(productIdentifier: pid)
     }
     
     /// 是否支持真实功率校准

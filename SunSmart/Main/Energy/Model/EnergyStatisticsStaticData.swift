@@ -85,6 +85,27 @@ class EnergyStatisticsStaticData {
         self.deviceEnergyDatas = deviceEnergyDatas
         self.groups = groups
     }
+
+    func filtered(by filter: EnergyStatisticsFilter) -> EnergyStatisticsStaticData {
+        let filteredDeviceEnergyDatas = EnergyStatisticsFilterPolicy.filter(
+            deviceEnergyDatas,
+            by: filter,
+            meteringType: { $0.effectiveMeteringType }
+        )
+        let filteredIncomplete: Bool
+        switch filter {
+        case .all:
+            filteredIncomplete = incomplete
+        case .truePowerMeter, .manualDataEntry:
+            filteredIncomplete = filteredDeviceEnergyDatas.contains(where: { $0.state == .failed })
+        }
+        return EnergyStatisticsStaticData(
+            timestamp: timestamp,
+            incomplete: filteredIncomplete,
+            deviceEnergyDatas: filteredDeviceEnergyDatas,
+            groups: groups
+        )
+    }
     
     
     /// 转换为CSV文件
@@ -237,6 +258,8 @@ class DeviceTotalEnergyData: Codable {
     let maxTotalEnergyUse: UInt32?
     /// 实际使用的总能耗（W/h）
     let preciseTotalEnergyUse: UInt32?
+    /// 能耗计量来源。旧快照没有该字段时，根据 Product ID 兼容判断。
+    let meteringType: EnergyMeteringType?
     /// 状态
     let state: State
     /// 图标名称
@@ -258,8 +281,12 @@ class DeviceTotalEnergyData: Codable {
         }
         return Float(Double(energySaving) / Double(max(maxTotalEnergyUse, 1)) * 100)
     }
+
+    var effectiveMeteringType: EnergyMeteringType {
+        meteringType ?? EnergyStatisticsFilterPolicy.meteringType(productIdentifier: productId)
+    }
     
-    init(name: String, address: Address, productId: UInt16?, groupAddress: Address?, timestamp: Int64, maxRatedPower: UInt16?, maxTotalEnergyUse: UInt32?, preciseTotalEnergyUse: UInt32?, state: State) {
+    init(name: String, address: Address, productId: UInt16?, groupAddress: Address?, timestamp: Int64, maxRatedPower: UInt16?, maxTotalEnergyUse: UInt32?, preciseTotalEnergyUse: UInt32?, meteringType: EnergyMeteringType?, state: State) {
         self.name = name
         self.address = address
         self.productId = productId
@@ -268,6 +295,7 @@ class DeviceTotalEnergyData: Codable {
         self.maxRatedPower = maxRatedPower
         self.maxTotalEnergyUse = maxTotalEnergyUse
         self.preciseTotalEnergyUse = preciseTotalEnergyUse
+        self.meteringType = meteringType
         self.state = state
     }
     

@@ -33,19 +33,14 @@ class EnergyStaticDataGroupView: UIView {
     var energyPieDatas: [EnergyPieData] = []
     
     /// 更新数据
-    func updateData(latestHarvestData: EnergyStatisticsStaticData?, energyPieDatas: [EnergyPieData], statisticsType: EnergyStaticDataViewController.StatisticsType) {
+    func updateData(latestHarvestData: EnergyStatisticsStaticData?, energyPieDatas: [EnergyPieData]) {
         
         self.energyPieDatas = energyPieDatas
         
         if let harvestData = latestHarvestData {
-            var preciseTotalEnergyUse = Double(harvestData.preciseTotalEnergyUse) / 1000
-            var energySaving = Double(harvestData.energySaving) / 1000
-            var energySavingPercentage = harvestData.energySavingPercentage
-            if statisticsType == .realPower {
-                preciseTotalEnergyUse = 0
-                energySaving = 0
-                energySavingPercentage = 0
-            }
+            let preciseTotalEnergyUse = Double(harvestData.preciseTotalEnergyUse) / 1000
+            let energySaving = Double(harvestData.energySaving) / 1000
+            let energySavingPercentage = harvestData.energySavingPercentage
             
             let totalEnergyAttStr = NSMutableAttributedString(string: String(format: "%.3f kWh", preciseTotalEnergyUse), attributes: [.font: UIFont.systemFont(ofSize: 16, weight: .semibold)])
             totalEnergyAttStr.addAttributes([.font: UIFont.systemFont(ofSize: 16)], range: (totalEnergyAttStr.string as NSString).range(of: "kWh"))

@@ -76,6 +76,11 @@
 		08B54C9B30402CCB0017ED49 /* LightSensorCalibrationSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */; };
 		08B54C9C30402CCB0017ED49 /* ProfileManualOverrideTimeoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F1D2B8F1FDC00A09FFA /* ProfileManualOverrideTimeoutView.swift */; };
 		08B54C9D30402CCB0017ED49 /* EnergyStaticDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82F99F52DBE1AF20019C3FB /* EnergyStaticDataViewController.swift */; };
+		F26090410000000000000201 /* EnergyStatisticsFilterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */; };
+		F26090410000000000000202 /* EnergyStatisticsFilterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */; };
+		F26090410000000000000203 /* EnergyStatisticsFilterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */; };
+		F26090410000000000000204 /* EnergyStatisticsFilterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */; };
+		F26090410000000000000205 /* EnergyStatisticsFilterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */; };
 		08B54C9E30402CCB0017ED49 /* SceneTemplates.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130C82B32C5F00008C353 /* SceneTemplates.swift */; };
 		08B54C9F30402CCB0017ED49 /* GroupPathSequencePathHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5C2A2DDB0F9200F09467 /* GroupPathSequencePathHeaderView.swift */; };
 		08B54CA030402CCB0017ED49 /* BuoySliderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08652B2842A300144BAC /* BuoySliderView.swift */; };
@@ -3910,6 +3915,7 @@
 		C8B6D7DB2E6EB8E8004FB923 /* ContentDisplayViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentDisplayViewCell.swift; sourceTree = "<group>"; };
 		C8B6D7DF2E702BF7004FB923 /* SystemVoiumeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemVoiumeManager.swift; sourceTree = "<group>"; };
 		C8B707032DCF2FDC0002133E /* EnergyStatisticsStaticData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStatisticsStaticData.swift; sourceTree = "<group>"; };
+		F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStatisticsFilterPolicy.swift; sourceTree = "<group>"; };
 		C8B707052DCF2FF50002133E /* EnergyStatisticsTimeSeriesData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStatisticsTimeSeriesData.swift; sourceTree = "<group>"; };
 		C8B707072DCF349D0002133E /* ProfileSensitivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSensitivityView.swift; sourceTree = "<group>"; };
 		C8B7AE372EB99CBF006CA3EE /* ProgressHUD+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProgressHUD+Extension.swift"; sourceTree = "<group>"; };
@@ -4818,6 +4824,7 @@
 			isa = PBXGroup;
 			children = (
 				C84FBCC22DBF79D00030E136 /* EnergyTestData.swift */,
+				F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */,
 				C8B707032DCF2FDC0002133E /* EnergyStatisticsStaticData.swift */,
 				C8B707052DCF2FF50002133E /* EnergyStatisticsTimeSeriesData.swift */,
 				C83D8C4F2DD1A0C300A59AFA /* EnergyFileData.swift */,
@@ -7289,6 +7296,7 @@
 				08B54E4230402CCB0017ED49 /* HorizontalDirectionFlowLayout.swift in Sources */,
 				08B54E4330402CCB0017ED49 /* ConfigurationFlowGuidanceView.swift in Sources */,
 				08B54E4430402CCB0017ED49 /* DeviceDongleStorageUsageCell.swift in Sources */,
+				F26090410000000000000201 /* EnergyStatisticsFilterPolicy.swift in Sources */,
 				08B54E4530402CCB0017ED49 /* EnergyStatisticsStaticData.swift in Sources */,
 				08B54E4630402CCB0017ED49 /* CustomDeviceSlider.swift in Sources */,
 				08B54E4730402CCB0017ED49 /* DaliDeviceInformationController.swift in Sources */,
@@ -7947,6 +7955,7 @@
 				C88554A92DE6B44C00C8B688 /* HorizontalDirectionFlowLayout.swift in Sources */,
 				C88554AA2DE6B44C00C8B688 /* ConfigurationFlowGuidanceView.swift in Sources */,
 				C88554AB2DE6B44C00C8B688 /* DeviceDongleStorageUsageCell.swift in Sources */,
+				F26090410000000000000202 /* EnergyStatisticsFilterPolicy.swift in Sources */,
 				C88554AC2DE6B44C00C8B688 /* EnergyStatisticsStaticData.swift in Sources */,
 				C88554AD2DE6B44C00C8B688 /* CustomDeviceSlider.swift in Sources */,
 				C8FC6B9E2E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */,
@@ -8611,6 +8620,7 @@
 				C886E1012E30DE4900D0C3A6 /* HorizontalDirectionFlowLayout.swift in Sources */,
 				C886E1022E30DE4900D0C3A6 /* ConfigurationFlowGuidanceView.swift in Sources */,
 				C886E1032E30DE4900D0C3A6 /* DeviceDongleStorageUsageCell.swift in Sources */,
+				F26090410000000000000203 /* EnergyStatisticsFilterPolicy.swift in Sources */,
 				C886E1042E30DE4900D0C3A6 /* EnergyStatisticsStaticData.swift in Sources */,
 				C886E1052E30DE4900D0C3A6 /* CustomDeviceSlider.swift in Sources */,
 				C8FC6B9F2E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */,
@@ -9279,6 +9289,7 @@
 				C8B058A02B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift in Sources */,
 				C803EC4C2BCCC9F0003C48B1 /* ConfigurationFlowGuidanceView.swift in Sources */,
 				C80A7F4A2DB72F3500A6E36C /* DeviceDongleStorageUsageCell.swift in Sources */,
+				F26090410000000000000204 /* EnergyStatisticsFilterPolicy.swift in Sources */,
 				C8B707042DCF2FDC0002133E /* EnergyStatisticsStaticData.swift in Sources */,
 				C898EA792AC41AFB0023B480 /* CustomDeviceSlider.swift in Sources */,
 				C8FC6BA02E7502F6004EE2BA /* DaliDeviceInformationController.swift in Sources */,
@@ -9938,6 +9949,7 @@
 				C8BB66D72ED3F056000C63EE /* HorizontalDirectionFlowLayout.swift in Sources */,
 				C8BB66D82ED3F056000C63EE /* ConfigurationFlowGuidanceView.swift in Sources */,
 				C8BB66D92ED3F056000C63EE /* DeviceDongleStorageUsageCell.swift in Sources */,
+				F26090410000000000000205 /* EnergyStatisticsFilterPolicy.swift in Sources */,
 				C8BB66DA2ED3F056000C63EE /* EnergyStatisticsStaticData.swift in Sources */,
 				C8BB66DB2ED3F056000C63EE /* CustomDeviceSlider.swift in Sources */,
 				C8BB66DC2ED3F056000C63EE /* DaliDeviceInformationController.swift in Sources */,
