@@ -1477,7 +1477,10 @@ class SpaceViewController: WMPageController {
     
     /// 更新同步状态
     private func updateSyncState() {
-        
+        if view.window != nil, SpaceConfigurationSafety.isBlocked(space) {
+            showNavigationBarFailure { [weak self] in self?.showConfigurationRecovery() }
+            return
+        }
         if view.window != nil, let state = CloudSynchronizationManager.shared.getSpaceCurrentSyncState(space)?.state {
             switch state {
             case .inProgress:
@@ -1495,6 +1498,60 @@ class SpaceViewController: WMPageController {
             default:
                 break
             }
+        }
+    }
+
+    private func showConfigurationRecovery() {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let local = await self.space.export(allowsProtectedInspection: true)
+            var actions: [SRAlertAction] = [.cancelAction,
+                SRAlertAction(title: "configuration_reload_cloud".localizedString, actionHandler: { [weak self] _ in
+                    self?.reloadConfigurationFromCloud()
+                })]
+            if let local, !self.space.disableEditorPermission, !self.space.requiresPasswordVerification,
+               self.space.permission == .owner || self.space.permission == .editor {
+                actions.append(SRAlertAction(title: "configuration_use_local".localizedString, actionHandler: { [weak self] _ in
+                    guard let self else { return }
+                    SRAlertView(title: "configuration_use_local".localizedString,
+                        message: "configuration_use_local_confirm".localizedString,
+                        actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, actionHandler: { [weak self] _ in
+                            Task { @MainActor [weak self] in
+                                guard let self else { return }
+                                XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: true)
+                                let authorized = await SpaceConfigurationSafety.authorizeLocalRecovery(self.space, reviewed: local)
+                                XWHUDManager.hide()
+                                if authorized { self.syncSpace(level: .promptly) }
+                                else { XWHUDManager.showErrorTipHUD("proximity_lighting_export_invalid".localizedString) }
+                            }
+                        })]).show()
+                }))
+            }
+            SRAlertView(title: "synchronization_failure".localizedString,
+                message: "configuration_review_message".localizedString, actions: actions).show()
+        }
+    }
+
+    private func reloadConfigurationFromCloud() {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: true)
+            let result = await NetworkRequest.shared.request(.spaceInfo(siteId: self.space.siteId,
+                spaceId: self.space.id, password: self.space.authorizationPassword))
+            if case .success(let response) = result, let remote = response["data"] as? [String: Any] {
+                let outcome = await self.space.update(spaceJsonData: remote)
+                XWHUDManager.hide()
+                if outcome.status != .rejected, !SpaceConfigurationSafety.isBlocked(self.space) {
+                    _ = CloudSynchronizationManager.shared.cancelSynchronizationHandle(operation: .syncSpace(space: self.space))
+                    self.space.syncCloudError = nil
+                    self.space.save()
+                    self.title = self.space.name
+                    self.setNetworkConnected()
+                    self.showNavigationBarSuccessful()
+                    return
+                }
+            } else { XWHUDManager.hide() }
+            XWHUDManager.showErrorTipHUD("proximity_lighting_import_invalid".localizedString)
         }
     }
     

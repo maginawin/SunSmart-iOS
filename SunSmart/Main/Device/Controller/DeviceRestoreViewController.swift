@@ -1518,6 +1518,13 @@ class DeviceRestoreViewController: UIViewController {
         }
 
         let device = devices[index]
+        guard SpaceConfigurationSafety.currentConfigurationAvailable else {
+            device.addState = .syncFailed
+            reloadDeviceState(device)
+            updateUIState()
+            completion()
+            return
+        }
         guard let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: device.address) else {
             device.addState = .syncFailed
             reloadDeviceState(device)
@@ -2183,7 +2190,12 @@ class DeviceRestoreViewController: UIViewController {
     // MARK: - Device Restore
     /// 添加设备
     private func addDevice(_ deviceData: DeviceRestoreData) {
-        
+        guard SpaceConfigurationSafety.currentConfigurationAvailable else {
+            deviceData.unprovisionedDevice?.addState = .failed
+            updateUIState()
+            XWHUDManager.showErrorTipHUD("proximity_lighting_import_invalid".localizedString)
+            return
+        }
         guard let unprovisionedDevice = deviceData.unprovisionedDevice else {
             return
         }

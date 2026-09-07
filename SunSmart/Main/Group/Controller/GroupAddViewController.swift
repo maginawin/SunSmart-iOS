@@ -140,7 +140,11 @@ class GroupAddViewController: UIViewController {
                     applyAdditionalChanges: {
                         group.name = name
                         group.save()
-                        self.applyGroupInfoEdits(to: group)
+                        guard MeshNetwork.load(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId)?
+                            .groups.first(where: { $0.address == group.address })?.name == name else {
+                            throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+                        }
+                        try self.applyGroupInfoEdits(to: group)
                     }
                   ) else {
                 XWHUDManager.showTipHUD(
@@ -209,8 +213,16 @@ class GroupAddViewController: UIViewController {
         MeshAPI.createGroup(name: self.name) {[weak self] group in
             guard let self = self else { return }
             self.group = group
+            guard self.finnished() else {
+                MeshNetworkManager.instance.meshNetwork?.forceRemove(group: group)
+                self.group = nil
+                if MeshNetwork.load(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId)?
+                    .groups.contains(where: { $0.address == group.address }) != false {
+                    SpaceConfigurationSafety.block(self.space, reason: "failedGroupCreationCleanup")
+                }
+                return
+            }
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
-            self.finnished()
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
                 guard let self = self else { return }
                 if self.addFinishedCallback != nil {
@@ -236,14 +248,19 @@ class GroupAddViewController: UIViewController {
         
     }
     
-    private func finnished() {
+    private func finnished() -> Bool {
         
         guard let group = self.group else {
             close()
-            return
+            return false
         }
         
-        applyGroupInfoEdits(to: group)
+        do {
+            try applyGroupInfoEdits(to: group)
+        } catch {
+            XWHUDManager.showErrorTipHUD("save_failure".localizedString)
+            return false
+        }
         group.updateGroupSyncState()
         
 //        let groupInfo = GroupInfo(address: group.address.address, imageId: self.selectImageIndex + 1, imageText: source.type == .text ? source.name : nil)
@@ -255,18 +272,18 @@ class GroupAddViewController: UIViewController {
         // 保存配置数据
 //        self.selectProfile.save()
 //        self.doneCallback?(group)
+        return true
     }
 
-    private func applyGroupInfoEdits(to group: Group) {
+    private func applyGroupInfoEdits(to group: Group) throws {
         let source = dataSource[selectImageIndex]
         group.info.imageId = selectImageIndex + 1
         group.info.imageText = source.type == .text ? source.name : nil
         group.info.profile.updateData(profile: selectProfile)
-        group.info.save()
-        group.info.profile.save(
-            meshUUID: space.meshUUID,
-            meshNetworkId: space.meshNetworkId
-        )
+        group.info.profileLoadFailed = false
+        guard group.info.save(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId) else {
+            throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+        }
         group.updateGroupSyncState()
     }
 

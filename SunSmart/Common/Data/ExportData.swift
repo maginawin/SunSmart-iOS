@@ -326,24 +326,25 @@ extension SpaceData {
     
     /// 导出space数据
     func export(
-        purpose: SpaceSnapshotExportPurpose = .localBackup
+        purpose: SpaceSnapshotExportPurpose = .localBackup,
+        allowsProtectedInspection: Bool = false
     ) async -> [String: Any]?  {
-        guard let snapshotAuthorization = await snapshotExportAuthorization(
+        if allowsProtectedInspection, case .cloudSync = purpose { return nil }
+        guard !SpaceConfigurationSafety.hasPendingImport(self),
+              allowsProtectedInspection || !SpaceConfigurationSafety.isBlocked(self),
+              !triggerZonesLoadFailed,
+              let snapshotAuthorization = await snapshotExportAuthorization(
             purpose: purpose
         ) else {
             return nil
         }
-        return await withCheckedContinuation { continuation in
+        if allowsProtectedInspection, snapshotAuthorization.orphanPreservationReason != nil { return nil }
+        let payload: [String: Any]? = await MainActor.run {
             
             var spaceJsonData: [String: Any] = [:]
             
-//            guard let meshNetworkManager = MeshNetworkManager.loadMeshNetwork(meshUUID: meshUUID, subnetworkId: self.meshNetworkId) else {
-//                continuation.resume(returning: spaceJsonData)
-//                return
-//            }
             guard let meshNetwork = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId) else {
-                continuation.resume(returning: nil)
-                return
+                return nil
             }
             let allNodes = meshNetwork.nodes.filter {
                 !$0.isLocalProvisioner && !$0.isProvisioner && !$0.isConfigComplete
@@ -353,7 +354,7 @@ extension SpaceData {
             // SigMesh + SunSmart扩展数据
             let schedules = Schedule.load(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId)
             meshNetwork.groups.forEach({ group in
-                group.info = GroupInfo.load(meshUUID: meshUUID, address: group.address.address) ?? GroupInfo(address: group.address.address)
+                group.info = GroupInfo.load(meshUUID: meshUUID, address: group.address.address) ?? GroupInfo.unavailable(address: group.address.address)
                 
                 let bindSchedules = schedules.filter({ schedule in
                     schedule.groups.contains(where: { $0.address == group.address }) ||
@@ -362,6 +363,10 @@ extension SpaceData {
                 })
                 group.info.bindSchedules = bindSchedules
             })
+            guard meshNetwork.groups.filter({ !$0.isVirtual }).allSatisfy({ !$0.info.profileLoadFailed && !$0.info.topologyLoadFailed }) else {
+                SpaceConfigurationSafety.block(self, reason: "invalidStoredGroupConfiguration")
+                return nil
+            }
             let currentIntegritySnapshot = SpaceSnapshotExportIntegritySnapshot(
                 meshNetwork: meshNetwork
             )
@@ -370,8 +375,7 @@ extension SpaceData {
                     "[SpaceSnapshotExport] rejected orphanedGroupMembership " +
                     "reason=localSnapshotChangedDuringVerification"
                 )
-                continuation.resume(returning: nil)
-                return
+                return nil
             }
             let proximityPreparation = ProximityLightingLifecycleCoordinator.begin(
                 space: self,
@@ -383,24 +387,14 @@ extension SpaceData {
                     "[ProximityLightingExport] rejected hardErrors=" +
                     "\(proximityPreparation.hardErrors.count)"
                 )
-                continuation.resume(returning: nil)
-                return
+                return nil
             }
-            let proximityResult: ProximityLightingLifecycleResult?
-            if let preservationReason = snapshotAuthorization.orphanPreservationReason {
-                proximityResult = nil
-                print(
-                    "[ProximityLightingExport] preserved orphan state " +
-                    "reason=\(preservationReason)"
-                )
-            } else {
-                guard let committedResult = ProximityLightingLifecycleCoordinator.commit(
-                    proximityPreparation
-                ) else {
-                    continuation.resume(returning: nil)
-                    return
-                }
-                proximityResult = committedResult
+            // Export must never turn a failed load or stale topology into a
+            // persisted deletion. Explicit edits/import apply their own cleanup.
+            guard snapshotAuthorization.orphanPreservationReason != nil
+                    || proximityPreparation.normalized.repairs.isEmpty else {
+                print("[ProximityLightingExport] rejected unapplied topology repairs")
+                return nil
             }
             #if DEBUG
             let proximityGroups = proximityPreparation.normalized.snapshot.groups
@@ -411,8 +405,7 @@ extension SpaceData {
                 "paths=\(proximityGroups.reduce(0) { $0 + $1.paths.count }) " +
                 "groupZones=\(proximityGroups.reduce(0) { $0 + $1.zones.count }) " +
                 "spaceZones=\(proximityPreparation.normalized.snapshot.spaceZones.count) " +
-                "repairs=\(proximityResult?.repairs.count ?? 0) " +
-                "pending=\(proximityResult?.syncDatas.count ?? 0)"
+                "repairs=\(proximityPreparation.normalized.repairs.count)"
             )
             #endif
             meshNetwork.scenes.forEach({
@@ -906,8 +899,14 @@ extension SpaceData {
             spaceJsonData.updateValue(emergencyFireControllerDicts, forKey: "emergencyFireControllers")
             spaceJsonData.updateValue(sceneDicts, forKey: "scenes")
             spaceJsonData.updateValue(scheheduleDicts, forKey: "schedules")
-            continuation.resume(returning: spaceJsonData)
+            guard SpaceConfigurationIntegrityPolicy.profilesIssue(in: spaceJsonData) == nil else { return nil }
+            return spaceJsonData
         }
+        guard let payload else { return nil }
+        if case .cloudSync = purpose {
+            guard await SpaceConfigurationSafety.prepareUpload(self, payload: payload) else { return nil }
+        }
+        return payload
     }
     
 }

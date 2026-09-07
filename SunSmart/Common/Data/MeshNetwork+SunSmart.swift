@@ -610,7 +610,11 @@ extension MeshNetworkManager {
             self.schedules = Schedule.load(meshUUID: uuid, meshNetworkId: subNetworkId)
             
             self.groups.forEach({ group in
-                group.info = GroupInfo.load(meshUUID: uuid, address: group.address.address) ?? GroupInfo(address: group.address.address)
+                group.info = GroupInfo.load(meshUUID: uuid, address: group.address.address) ?? GroupInfo.unavailable(address: group.address.address)
+                if !group.isVirtual, group.info.profileLoadFailed || group.info.topologyLoadFailed {
+                    SpaceConfigurationSafety.block(meshUUID: uuid, networkId: subNetworkId,
+                        reason: "invalidStoredGroupConfiguration")
+                }
                 
                 // 兼容旧版本profile未保存到场景的设备
 //                let noGeneralLightControlSceneNodes = group.nodes.filter({ node in node.requiredFunctionTypes.contains(.lightLCScene) && node.lightLCSceneSetupModel != nil && !node.lightControlSceneExecuteDatas.contains(where: { $0.sceneNumber == .generalLightControlScene }) })
@@ -1233,25 +1237,25 @@ extension Group {
     }
     
     /// 本地化缓存组数据（只处理业务扩展数据）
-    func saveExtension() {
+    @discardableResult func saveExtension() -> Bool {
         
         guard let uuid = self.network?.uuid.uuidString else {
-            return
+            return false
         }
 //        let subnetworkId = self.network?.networkKeys.first(where: { $0.isSecondary })?.networkId.hex
         // 保存基本信息
-        self.info.save(meshUUID: uuid, subnetworkId: self.subNetworkId)
+        guard self.info.save(meshUUID: uuid, subnetworkId: self.subNetworkId) else { return false }
         // 保存场景数据
 //        self.info.sceneExecuteDatas.forEach({
 //            SceneExecuteData.save(meshUUID: uuid, networkKey: networkKey, address: address.address, sceneId: Int($0.key), sceneData: $0.value)
 //        })
-        self.info.profile.save(meshUUID: uuid, meshNetworkId: self.subNetworkId)
         
         updateGroupSyncState()
         // 保存虚拟按键数据
 //        self.info.switchs.forEach({
 //            $0.save(meshUUID: uuid, networkId: subnetworkId)
 //        })
+        return true
     }
     
     
@@ -1415,7 +1419,17 @@ class SceneInfo {
 }
 
 class GroupInfo {
+
+    /// A default UI placeholder must never become an authoritative profile.
+    var profileLoadFailed = false
+    var topologyLoadFailed = false
     
+    static func unavailable(address: Address) -> GroupInfo {
+        let info = GroupInfo(address: address)
+        info.profileLoadFailed = true
+        return info
+    }
+
     /// 组地址
     let address: Address
 

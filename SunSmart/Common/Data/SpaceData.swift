@@ -219,6 +219,8 @@ class SpaceData: Copyable {
     var deviceBlinkMode: DeviceBlinkMode = .none
     /// space级触发区域数据
     var triggerZones: [SpaceTriggerZone] = []
+    /// A malformed stored blob is not an explicit empty configuration.
+    var triggerZonesLoadFailed = false
     
     /// 关联的网关id
     var relevanceGatewayId: String?
@@ -330,6 +332,7 @@ class SpaceData: Copyable {
         space.controlType = self.controlType
         space.deviceBlinkMode = self.deviceBlinkMode
         space.triggerZones = self.triggerZones.map({ $0.copy() })
+        space.triggerZonesLoadFailed = self.triggerZonesLoadFailed
         return space as! Self
     }
     

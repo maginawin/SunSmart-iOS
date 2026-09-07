@@ -2181,3 +2181,8 @@
 "gateway_delete_server_failed" = "无法从服务器删除网关";
 "proximity_lighting_export_invalid" = "邻近照明数据无效，无法导出。";
 "proximity_lighting_import_invalid" = "邻近照明数据无效，未执行导入。";
+"profile_unavailable" = "配置文件不可用";
+"configuration_reload_cloud" = "重新加载云端数据";
+"configuration_use_local" = "使用本机数据";
+"configuration_review_message" = "此空间需要核对后才能同步。可以重新加载云端数据；如果本机保存的完整配置正确，也可使用本机数据恢复。导入未完成或本机数据无效时无法执行本地恢复。";
+"configuration_use_local_confirm" = "使用本机保存的数据替换云端的整个空间？请先核对配置文件、路径和触发区域。其他手机的修改可能被替换，双方数据会先备份到本机。继续前请升级所有具有编辑权限的手机。";

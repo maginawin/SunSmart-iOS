@@ -771,8 +771,9 @@ class GroupViewController: UIViewController {
         updateUpDownRatioUI()
         
         let profileType = group.info.profile.type
+        let profileAvailable = !group.info.profileLoadFailed
         // 提示校准
-        if group.info.ambientLightSensorNode == nil || !group.info.ambientLightSensorNode!.sensorCalibrated, group.ambientLightSensorNodes.count > 0, profileType == .occupancy_daylight || profileType == .vacancy_daylight || profileType == .daylight, space.groupOperates.contains(.edit) {
+        if profileAvailable, group.info.ambientLightSensorNode == nil || !group.info.ambientLightSensorNode!.sensorCalibrated, group.ambientLightSensorNodes.count > 0, profileType == .occupancy_daylight || profileType == .vacancy_daylight || profileType == .daylight, space.groupOperates.contains(.edit) {
             calibrateBtn.isHidden = false
             calibrateLabel.isHidden = false
         }else {
@@ -792,7 +793,8 @@ class GroupViewController: UIViewController {
         // 显示profile文件类型
         if calibrateBtn.isHidden && setPathBtn.isHidden {
             profileTypeBtn.isHidden = false
-            let attStr = NSMutableAttributedString(string: "P.\(profileType.instruction.name)", attributes: [.underlineStyle: 1])
+            let title = profileAvailable ? "P.\(profileType.instruction.name)" : "profile_unavailable".localizedString
+            let attStr = NSMutableAttributedString(string: title, attributes: [.underlineStyle: 1])
             profileTypeBtn.setAttributedTitle(attStr, for: .normal)
         }else {
             profileTypeBtn.isHidden = true
@@ -1468,7 +1470,10 @@ class GroupViewController: UIViewController {
     
     /// 配置文件
     private func groupProfile() {
-        
+        guard !group.info.profileLoadFailed else {
+            XWHUDManager.showErrorTipHUD("proximity_lighting_import_invalid".localizedString)
+            return
+        }
         let vc = ProfileSettingsViewController(group: group, profile: group.info.profile)
         vc.editable = space.groupOperates.contains(.edit)
         vc.saveActionCallback = {[weak self] profile in
@@ -1493,11 +1498,10 @@ class GroupViewController: UIViewController {
                     self.group.info.ambientLightSensorNodeAddress = nil
                 }
                 self.group.info.profile.updateData(profile: profile)
-                self.group.info.save()
-                self.group.info.profile.save(
-                    meshUUID: self.space.meshUUID,
-                    meshNetworkId: self.space.meshNetworkId
-                )
+                self.group.info.profileLoadFailed = false
+                guard self.group.info.save(meshUUID: self.space.meshUUID, subnetworkId: self.space.meshNetworkId) else {
+                    throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+                }
                 self.group.updateGroupSyncState()
             }
             self.updateUI()

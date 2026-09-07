@@ -133,6 +133,22 @@ enum SyncOperation {
 
 private extension NetowrkReqeustApi {
 
+    var configurationSpacePayloads: [[String: Any]] {
+        switch self {
+        case .spaceUpload(_, _, let space): return [space]
+        case .siteUpload(let site), .siteAdd(let site, _): return site["spaces"] as? [[String: Any]] ?? []
+        default: return []
+        }
+    }
+
+    var configurationSiteTimestamp: Int64? {
+        switch self {
+        case .siteUpload(let site), .siteAdd(let site, _):
+            return SpaceConfigurationIntegrityPolicy.integer(site["updateTimestamp"])
+        default: return nil
+        }
+    }
+
     var initialSiteTimeZoneSubmission: SiteInitialTimeZoneSubmission? {
         guard case .siteAdd(let siteData, _) = self,
               let timezoneStorageValue = siteData["timezone"] as? String,
@@ -623,6 +639,7 @@ class CloudSynchronizationHandle: NSObject {
     private var requestHandle: Cancellable?
     /// Gateway Register 使用共享 Authorization 服务执行。
     private var gatewayAuthorizationTask: _Concurrency.Task<Void, Never>?
+    private var configurationUploadTask: _Concurrency.Task<Void, Never>?
     /// 同步数据操作回调
     private var handleCallback: SyncHandleCallback?
     
@@ -689,6 +706,8 @@ class CloudSynchronizationHandle: NSObject {
         requestHandle?.cancel()
         gatewayAuthorizationTask?.cancel()
         gatewayAuthorizationTask = nil
+        configurationUploadTask?.cancel()
+        configurationUploadTask = nil
         state = .cancel
         DispatchQueue.main.async {
             self.handleCallback?(self, self.state)
@@ -719,7 +738,7 @@ class CloudSynchronizationHandle: NSObject {
     private func finishExportFailure() {
         let error = NetworkApiError(
             code: -2,
-            message: "Invalid local export payload",
+            message: "proximity_lighting_export_invalid".localizedString,
             httpStatusCode: nil,
             responseBody: nil
         )
@@ -749,6 +768,14 @@ class CloudSynchronizationHandle: NSObject {
         }
     }
     
+    private var configurationSpaces: [SpaceData] {
+        switch operation {
+        case .syncSpace(let space): return [space]
+        case .syncSite(_, let spaces), .addSpaces(_, let spaces): return spaces
+        case .syncGateway: return []
+        }
+    }
+
     /// 开始同步到服务器
     func syncOperation() {
         if waitTimer != nil {
@@ -819,7 +846,8 @@ class CloudSynchronizationHandle: NSObject {
             }
             return
         }
-        AsyncTask {
+        configurationUploadTask?.cancel()
+        configurationUploadTask = AsyncTask {
             guard let api = await self.operation.getNetworkApi() else {
                 self.finishExportFailure()
                 return
@@ -834,10 +862,54 @@ class CloudSynchronizationHandle: NSObject {
             level=\(self.level.diagnosticDescription)
             """)
             #endif
-            requestHandle = NetworkRequest.shared.request(api) {[weak self] result in
-                guard let self = self else { return }
-                self.requestHandle = nil
-                switch result {
+            guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
+            let submissions = api.configurationSpacePayloads
+            let submittedTimestamps = Dictionary(submissions.compactMap { payload -> (String, Int64)? in
+                guard let id = payload["uuid"] as? String,
+                      let timestamp = SpaceConfigurationIntegrityPolicy.integer(payload["updateTimestamp"]) else { return nil }
+                return (id, timestamp)
+            }, uniquingKeysWith: max)
+            var result = await NetworkRequest.shared.request(api)
+            guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
+            // Creation can remap address resources. Existing Space updates must
+            // round-trip the submitted logical configuration before confirmation.
+            if case .success = result, case .siteAdd = api {
+                // The existing creation flow performs its resource reconciliation below.
+            } else if case .success = result {
+                for payload in submissions {
+                    guard let id = payload["uuid"] as? String,
+                          let space = self.configurationSpaces.first(where: { $0.id == id }) else {
+                        result = .failure(NetworkApiError(code: -2,
+                            message: "proximity_lighting_export_invalid".localizedString,
+                            httpStatusCode: nil, responseBody: nil))
+                        break
+                    }
+                    let readback = await NetworkRequest.shared.request(.spaceInfo(siteId: space.siteId,
+                        spaceId: space.id, password: space.authorizationPassword))
+                    guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
+                    guard case .success(let response) = readback,
+                          let remote = response["data"] as? [String: Any],
+                          remote["uuid"] as? String == id,
+                          let expected = SpaceConfigurationIntegrityPolicy.configurationData(payload),
+                          expected == SpaceConfigurationIntegrityPolicy.configurationData(remote) else {
+                        SpaceConfigurationSafety.block(space, reason: "uploadReadbackUnconfirmed")
+                        result = .failure(NetworkApiError(code: -2,
+                            message: "proximity_lighting_export_invalid".localizedString,
+                            httpStatusCode: nil, responseBody: nil))
+                        break
+                    }
+                }
+            }
+            let completionResult = result
+            await MainActor.run {
+                guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
+                func confirmSpace(_ space: SpaceData) {
+                    if let submitted = submittedTimestamps[space.id] {
+                        space.lastUploadCloudTimestamp = SpaceConfigurationIntegrityPolicy.confirmedTimestamp(
+                            previous: space.lastUploadCloudTimestamp, submitted: submitted)
+                    }
+                }
+                switch completionResult {
                 case .success(let response):
                     #if DEBUG
                     print("""
@@ -882,27 +954,33 @@ class CloudSynchronizationHandle: NSObject {
                             site.pendingSitePropsMask = reconciled.pending.fields
                             site.pendingSitePropsTimestamp = reconciled.pending.timestamp
                         } else {
-                            site.lastUploadCloudTimestamp = site.lastUpdate
+                            if let submitted = api.configurationSiteTimestamp {
+                                site.lastUploadCloudTimestamp = SpaceConfigurationIntegrityPolicy.confirmedTimestamp(
+                                    previous: site.lastUploadCloudTimestamp, submitted: submitted)
+                            }
                         }
                         site.syncCloudError = nil
                         site.save()
                         syncSpaces.forEach({
-                            $0.lastUploadCloudTimestamp = $0.lastUpdate
+                            confirmSpace($0)
                             $0.syncCloudError = nil
                             $0.save()
                         })
                         
                     case .addSpaces(let site, let spaces):
-                        site.lastUploadCloudTimestamp = site.lastUpdate
+                        if let submitted = api.configurationSiteTimestamp {
+                                site.lastUploadCloudTimestamp = SpaceConfigurationIntegrityPolicy.confirmedTimestamp(
+                                    previous: site.lastUploadCloudTimestamp, submitted: submitted)
+                            }
                         site.syncCloudError = nil
                         spaces.forEach({
-                            $0.lastUploadCloudTimestamp = $0.lastUpdate
+                            confirmSpace($0)
                             $0.syncCloudError = nil
                             $0.save()
                         })
                         site.save()
                     case .syncSpace(let space):
-                        space.lastUploadCloudTimestamp = space.lastUpdate
+                        confirmSpace(space)
                         space.syncCloudError = nil
                         space.save()
                     case .syncGateway(let gateway, _):

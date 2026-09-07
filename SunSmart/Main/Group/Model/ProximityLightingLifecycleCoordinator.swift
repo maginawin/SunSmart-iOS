@@ -141,7 +141,8 @@ enum ProximityLightingLifecycleCoordinator {
         _ preparation: ProximityLightingLifecyclePreparation,
         allowExistingHardErrors: Bool = false,
         hasAdditionalLogicalChange: Bool = false,
-        applyAdditionalChanges: () -> Void = {}
+        isImportApplication: Bool = false,
+        applyAdditionalChanges: () throws -> Void = {}
     ) -> ProximityLightingLifecycleResult? {
         guard preparation.isValid
                 || (allowExistingHardErrors && preparation.doesNotIntroduceHardErrors) else {
@@ -153,15 +154,41 @@ enum ProximityLightingLifecycleCoordinator {
         let topologyChanged = transaction.sourceSnapshot != normalized.snapshot
         let didChange = topologyChanged || hasAdditionalLogicalChange
 
+        guard isImportApplication || (!SpaceConfigurationSafety.isBlocked(transaction.space)
+            && !transaction.space.triggerZonesLoadFailed
+            && transaction.groups.allSatisfy { !$0.info.profileLoadFailed && !$0.info.topologyLoadFailed }
+            && SpaceConfigurationSafety.checkpoint(transaction.space)) else { return nil }
         if didChange {
-            transaction.space.markLocalChangePendingCloudSync()
-            applyAdditionalChanges()
-            apply(
-                normalized.snapshot,
-                sourceSnapshot: transaction.sourceSnapshot,
-                to: transaction.space,
-                groups: transaction.groups
-            )
+            let space = transaction.space
+            let originalZones = space.triggerZones
+            let originalTimestamp = space.lastUpdate
+            let originals = transaction.groups.map { group in
+                (group: group, name: group.name,
+                 info: GroupInfo.load(meshUUID: space.meshUUID, address: group.address.address))
+            }
+            let saved = SunSmartDataManager.shared.configurationTransaction {
+                transaction.space.markLocalChangePendingCloudSync()
+                try applyAdditionalChanges()
+                try apply(
+                    normalized.snapshot,
+                    sourceSnapshot: transaction.sourceSnapshot,
+                    to: transaction.space,
+                    groups: transaction.groups
+                )
+            }
+            guard saved else {
+                space.triggerZones = originalZones
+                space.lastUpdate = originalTimestamp
+                for original in originals {
+                    if let info = original.info { original.group.info = info }
+                    if original.group.name != original.name {
+                        original.group.name = original.name
+                        original.group.save()
+                    }
+                    original.group.updateGroupSyncState()
+                }
+                return nil
+            }
         }
 
         return makeResult(
@@ -336,7 +363,7 @@ enum ProximityLightingLifecycleCoordinator {
         sourceSnapshot: Reconciler.Snapshot,
         to space: SpaceData,
         groups: [Group]
-    ) {
+    ) throws {
         let groupsByAddress = Dictionary(
             uniqueKeysWithValues: groups
                 .map { ($0.address.address, $0) }
@@ -345,24 +372,26 @@ enum ProximityLightingLifecycleCoordinator {
             uniqueKeysWithValues: sourceSnapshot.groups.map { ($0.address, $0) }
         )
 
-        snapshot.groups.forEach { groupState in
+        for groupState in snapshot.groups {
             guard let group = groupsByAddress[groupState.address],
                   sourceGroupsByAddress[groupState.address] != groupState else {
-                return
+                continue
             }
             if groupState.hasTopology {
                 group.info.proximityLightingPath = makePath(from: groupState)
             } else {
                 group.info.proximityLightingPath = nil
             }
-            group.info.save()
+            guard group.info.save(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId) else {
+                throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+            }
         }
 
         let newZones = makeSpaceZones(from: snapshot.spaceZones)
         if !spaceZonesEqual(space.triggerZones, newZones) {
             space.triggerZones = newZones
         }
-        space.save()
+        guard space.save() else { throw SpaceConfigurationSafety.SafetyError.persistenceFailed }
     }
 
     private static func makePath(

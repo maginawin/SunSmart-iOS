@@ -34,3 +34,9 @@ swiftc -parse-as-library "$lifecycle_contract_source" -o "$lifecycle_contract_bi
 
 swiftc -parse-as-library "$review_regression_source" -o "$review_regression_binary"
 "$review_regression_binary" "$repo_root"
+
+configuration_policy="$repo_root/SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift"
+configuration_test="$repo_root/Tests/Group/SpaceConfigurationIntegrityPolicyTests.swift"
+configuration_binary="${TMPDIR:-/tmp}/SpaceConfigurationIntegrityPolicyTests"
+swiftc -parse-as-library "$configuration_policy" "$configuration_test" -o "$configuration_binary"
+"$configuration_binary"

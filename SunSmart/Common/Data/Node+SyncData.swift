@@ -437,6 +437,7 @@ extension Node {
     /// - Parameter type: 同步数据类型
     /// - Returns: 数据同步项list
     func getSyncData(type: NodeSyncType, profileSyncContext: GroupProfileSyncContext? = nil) -> [NodeSyncData] {
+        guard SpaceConfigurationSafety.configurationAvailable(for: self) else { return [] }
         
         var syncDatas: [NodeSyncData] = []
         switch type {
@@ -444,6 +445,7 @@ extension Node {
             guard let group = group ?? self.group else {
                 return syncDatas
             }
+            guard SpaceConfigurationSafety.configurationAvailable(for: self, group: group) else { return [] }
             // 未配置完成
             if !self.isKeybindComplete {
                 syncDatas.append(.deviceInitialize)
@@ -660,6 +662,7 @@ extension Node {
     
     /// 获取节点是否需要同步组数据
     func getNeedSyncGroup(group: Group? = nil) -> Bool {
+        guard SpaceConfigurationSafety.configurationAvailable(for: self, group: group) else { return true }
         
         // 设备退出组失败
         if self.group != nil && groupState == GroupState.exitFailure {
@@ -803,6 +806,7 @@ extension Node {
     
     /// 获取需要同步的白天晚上lux条件profile
     func getSyncDayNightLuxProfiles() -> [ProfileType] {
+        guard SpaceConfigurationSafety.configurationAvailable(for: self) else { return [] }
         guard let group = self.group else { return [] }
         let profile = group.info.profile
         var profileTypes: [ProfileType] = []
@@ -840,6 +844,7 @@ extension Node {
         profileSyncContext: GroupProfileSyncContext? = nil,
         sensorPublicationSyncMode: SensorPublicationSyncMode = .strictTarget
     ) -> [ProfileType] {
+        guard SpaceConfigurationSafety.configurationAvailable(for: self, group: group) else { return [] }
         
         var syncProfile: [ProfileType] = []
         
@@ -1617,6 +1622,7 @@ extension Node {
         group: Group? = nil,
         topologyPlan: ProximityLightingTopologyPlanner.Plan? = nil
     ) -> NodeSyncData? {
+        guard SpaceConfigurationSafety.configurationAvailable(for: self, group: group) else { return nil }
         guard self.sunricherVendorModel != nil else {
             return nil
         }

@@ -58,6 +58,18 @@ class SunSmartDataManager {
         // 初始化设备配置信息数据库
         MeshDeviceConfigInfo.initDatabase()
     }
+
+    @discardableResult
+    func configurationTransaction(_ body: () throws -> Void) -> Bool {
+        guard let db else { return false }
+        do {
+            try db.savepoint { try body() }
+            return true
+        } catch {
+            print("[ConfigurationPersistence] \(error)")
+            return false
+        }
+    }
 }
 
 extension SiteData {
@@ -588,7 +600,12 @@ extension SpaceData {
                 space.controlType = SpaceControlType(rawValue: row[ExpressionKey.controlType]) ?? SpaceContentDisplayDefaults.controlType
                 space.deviceBlinkMode = DeviceBlinkMode(rawValue: row[ExpressionKey.deviceBlinkMode]) ?? .breathing
                 if let triggerZonesData = row[ExpressionKey.triggerZones] {
-                    space.triggerZones = (try? jsonDecoder.decode([SpaceTriggerZone].self, from: triggerZonesData)) ?? []
+                    if let zones = try? jsonDecoder.decode([SpaceTriggerZone].self, from: triggerZonesData) {
+                        space.triggerZones = zones
+                    } else {
+                        space.triggerZonesLoadFailed = true
+                        SpaceConfigurationSafety.block(space, reason: "invalidStoredSpaceZones")
+                    }
                 }
                 
                 if let editorData = row[ExpressionKey.editor] {
@@ -644,7 +661,12 @@ extension SpaceData {
                 newSpace.controlType = SpaceControlType(rawValue: row[ExpressionKey.controlType]) ?? SpaceContentDisplayDefaults.controlType
                 newSpace.deviceBlinkMode = DeviceBlinkMode(rawValue: row[ExpressionKey.deviceBlinkMode]) ?? .breathing
                 if let triggerZonesData = row[ExpressionKey.triggerZones] {
-                    newSpace.triggerZones = (try? jsonDecoder.decode([SpaceTriggerZone].self, from: triggerZonesData)) ?? []
+                    if let zones = try? jsonDecoder.decode([SpaceTriggerZone].self, from: triggerZonesData) {
+                        newSpace.triggerZones = zones
+                    } else {
+                        newSpace.triggerZonesLoadFailed = true
+                        SpaceConfigurationSafety.block(newSpace, reason: "invalidStoredSpaceZones")
+                    }
                 }
                 
                 if let editorData = row[ExpressionKey.editor] {
@@ -694,7 +716,7 @@ extension SpaceData {
     
     /// 缓存当前空间数据
     @discardableResult func save() -> Bool {
-
+        guard !triggerZonesLoadFailed, SunSmartDataManager.shared.db != nil else { return false }
         _ = Keychain.saveSpacePassword(self.authorizationPassword, siteId: self.siteId, spaceId: self.id)
         
         var editorData: Data?
@@ -708,6 +730,7 @@ extension SpaceData {
         }
         
         let triggerZonesData = self.triggerZones.isEmpty ? nil : (try? jsonEncoder.encode(self.triggerZones))
+        guard triggerZones.isEmpty || triggerZonesData != nil else { return false }
         
         let interOrUpdate = SpaceData.spacesTable.insert(or: .replace, [
             ExpressionKey.uuid <- self.id,
@@ -935,15 +958,21 @@ extension GroupInfo {
 //                // 配置数据
                 if let profile = Profile.load(meshUUID: meshUUID, meshNetworkId: row[ExpressionKey.subNetworkKey], profileId: row[ExpressionKey.profileId]) {
                     info.profile = profile
+                } else {
+                    info.profileLoadFailed = true
+                    print("[ConfigurationPersistence] missing profile group=\(address) profileId=\(row[ExpressionKey.profileId])")
                 }
                 if let pwmPeriod = row[ExpressionKey.pwmPeriod] {
                     info.pwmPeriod = UInt16(pwmPeriod)
                 }
                 
                 // 邻近照明路径
-                if let proximityLightingPathData = row[ExpressionKey.proximityLightingPath],
-                    let proximityLightingPath = try? jsonDecoder.decode(GroupProximityLightingPathData.self, from: proximityLightingPathData) {
-                    info.proximityLightingPath = proximityLightingPath
+                if let proximityLightingPathData = row[ExpressionKey.proximityLightingPath] {
+                    if let path = try? jsonDecoder.decode(GroupProximityLightingPathData.self, from: proximityLightingPathData) {
+                        info.proximityLightingPath = path
+                    } else {
+                        info.topologyLoadFailed = true
+                    }
                 }
                 // 虚拟按键
 //                info.switchs = GroupSwitch.load(meshUUID: meshUUID, meshNetworkId: row[ExpressionKey.subNetworkKey], groupAddress: address)
@@ -998,6 +1027,7 @@ extension GroupInfo {
         
         guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
         let networkId = subnetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+        guard !profileLoadFailed, !topologyLoadFailed, let db = SunSmartDataManager.shared.db else { return false }
        
         let scenesData = try? jsonEncoder.encode(self.sceneExecuteDatas)
         
@@ -1005,6 +1035,7 @@ extension GroupInfo {
         if let proximityLightingPath = self.proximityLightingPath {
             proximityLightingPathData = try? jsonEncoder.encode(proximityLightingPath)
         }
+        guard scenesData != nil, proximityLightingPath == nil || proximityLightingPathData != nil else { return false }
         
         let insertOrUpdate = GroupInfo.groupInfosTable.insert(or: .replace, [
             ExpressionKey.meshUUID <- uuid,
@@ -1018,13 +1049,16 @@ extension GroupInfo {
             ExpressionKey.pwmPeriod <- self.pwmPeriod != nil ? Int(self.pwmPeriod!) : nil,
             ExpressionKey.proximityLightingPath <- proximityLightingPathData
         ])
-        do {
-            try SunSmartDataManager.shared.db?.run(insertOrUpdate)
-        } catch {
-            print(error)
-            return false
+        return SunSmartDataManager.shared.configurationTransaction {
+            guard self.profile.save(meshUUID: uuid, meshNetworkId: networkId) else {
+                throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+            }
+            try db.run(insertOrUpdate)
+            guard let saved = Profile.load(meshUUID: uuid, meshNetworkId: networkId, profileId: self.profile.id),
+                  saved.type == self.profile.type else {
+                throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+            }
         }
-        return true
     }
     
 }
@@ -1579,7 +1613,23 @@ extension Profile {
         var profiles: [Profile] = []
         if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
             for row in rows {
-                let profileType: ProfileType = .init(rawValue: row[ExpressionKey.type]) ?? .occupancy_daylight
+                guard let profileType = ProfileType(rawValue: row[ExpressionKey.type]) else {
+                    print("[ConfigurationPersistence] invalid profile type id=\(row[ExpressionKey.uuid])")
+                    continue
+                }
+                guard !row[ExpressionKey.uuid].isEmpty,
+                      (0...255).contains(row[ExpressionKey.powerUpState]),
+                      (0...65535).contains(row[ExpressionKey.powerUpCct]),
+                      (0...Int64(UInt32.max)).contains(row[ExpressionKey.manualOverrideTimeout]),
+                      (0...255).contains(row[ExpressionKey.sensitivity]),
+                      (0...255).contains(row[ExpressionKey.proximityLightingNumber]) else { continue }
+                guard [row[ExpressionKey.highEndTrim], row[ExpressionKey.lowEndTrim],
+                       row[ExpressionKey.occupancyLevel], row[ExpressionKey.vacantLevel],
+                       row[ExpressionKey.standbyLevel], row[ExpressionKey.taskLevel]]
+                        .allSatisfy({ (0...100).contains($0) }),
+                      [row[ExpressionKey.timeT1], row[ExpressionKey.timeT2], row[ExpressionKey.timeT3],
+                       row[ExpressionKey.timeT4], row[ExpressionKey.timeT5]]
+                        .allSatisfy({ $0 >= 0 && Int64($0) <= Int64(UInt32.max) }) else { continue }
                 let storedAutoMinLevel = row[ExpressionKey.autoMinLevel]
                 let autoMinLevel = profileType.daylightType
                     ? LightControlData.normalizedAutoMinLevel(storedAutoMinLevel)
@@ -1592,7 +1642,8 @@ extension Profile {
                 let manualOverrideTimeout = UInt32(row[ExpressionKey.manualOverrideTimeout])
                 
                 var scenes: [Profile.LightControlScene] = []
-                if let data = row[ExpressionKey.scenes], let profileScenes = try? jsonDecoder.decode([Profile.LightControlScene].self, from: data) {
+                if let data = row[ExpressionKey.scenes] {
+                    guard let profileScenes = try? jsonDecoder.decode([Profile.LightControlScene].self, from: data) else { continue }
                     if profileType.daylightType {
                         profileScenes.forEach { scene in
                             scene.lightControlData.autoMinLevel = LightControlData.normalizedAutoMinLevel(scene.lightControlData.autoMinLevel)
@@ -1619,6 +1670,11 @@ extension Profile {
                 }
                 
             
+                if profileType == .proximityLightingWithPhotocell {
+                    guard let dayData, let nightData,
+                          scenes.contains(where: { $0.sceneNumber == dayData.sceneData.sceneNumber }),
+                          scenes.contains(where: { $0.sceneNumber == nightData.sceneData.sceneNumber }) else { continue }
+                }
                 let profile = Profile(name: row[ExpressionKey.name], id: row[ExpressionKey.uuid], type: profileType, lightControlData: lightData, powerUpState: powerUpState, powerUpCct: powerUpCct, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: row[ExpressionKey.adjustSpeed], sensitivity: UInt8(row[ExpressionKey.sensitivity]), proximityLightingNumber: UInt8(row[ExpressionKey.proximityLightingNumber]), nightData: nightData, dayData: dayData, scenes: scenes)
                 if let rawCalibrationMode = row[ExpressionKey.calibrationMode] {
                     profile.calibrationMode = Profile.DaylightCalibrationMode(rawValue: rawCalibrationMode) ?? Profile.DaylightCalibrationMode.none
@@ -1651,16 +1707,21 @@ extension Profile {
     /// - Returns: 是否成功
     @discardableResult func save(meshUUID: String? = nil, meshNetworkId: String? = nil) -> Bool {
         
-        guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
+        guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString,
+              let db = SunSmartDataManager.shared.db else { return false }
 //        let subNetworkey = networkKey
         let subNetworkey = meshNetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         
         let dayProfileData = try? jsonEncoder.encode(self.dayData)
         let nightProfileData = try? jsonEncoder.encode(self.nightData)
         let scenesData = try? jsonEncoder.encode(self.scenes)
+        guard !id.isEmpty, scenesData != nil, dayProfileData != nil, nightProfileData != nil,
+              type != .proximityLightingWithPhotocell || (dayData != nil && nightData != nil
+                && scenes.contains(where: { $0.sceneNumber == dayData?.sceneData.sceneNumber })
+                && scenes.contains(where: { $0.sceneNumber == nightData?.sceneData.sceneNumber })) else { return false }
         
         let data = lightControlData
-        let insertOrUpdate = Profile.profilesTable.insert(or: .replace, [
+        var setters: [Setter] = [
             ExpressionKey.meshUUID <- uuid,
             ExpressionKey.subNetworkKey <- subNetworkey,
             ExpressionKey.uuid <- self.id,
@@ -1689,9 +1750,15 @@ extension Profile {
             ExpressionKey.dayProfile <- dayProfileData,
             ExpressionKey.nightProfile <- nightProfileData,
             ExpressionKey.scenes <- scenesData
-        ])
+        ]
         do {
-            try SunSmartDataManager.shared.db?.run(insertOrUpdate)
+            // The accuracy test build created this NOT NULL column without a
+            // schema default. Preserve existing values; seed new rows with that
+            // build's default only when the legacy column actually exists.
+            setters.append(contentsOf: try ProfileStorageCompatibility.preservedColumns(
+                db: db, table: Self.profilesTable, tableName: Self.profilesTableName,
+                identity: ExpressionKey.meshUUID == uuid && ExpressionKey.uuid == self.id))
+            try db.run(Profile.profilesTable.insert(or: .replace, setters))
         } catch {
             print(error)
             return false

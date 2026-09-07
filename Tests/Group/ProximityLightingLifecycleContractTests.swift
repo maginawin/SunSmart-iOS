@@ -149,14 +149,15 @@ struct ProximityLightingLifecycleContractTests {
                 && exportData.contains("spaceJsonData.updateValue(spaceExtensionData, forKey: \"spaceData\")")
                 && exportData.contains("ProximityLightingLifecycleCoordinator.isEligible(group.info.profile.type)")
                 && appearsBefore("ProximityLightingLifecycleCoordinator.begin(", "spaceJsonData.updateValue(self.id", in: exportData),
-            "Export must normalize first, emit schema v1 under spaceData, and omit ineligible Group paths"
+            "Export must validate first, emit schema v1 under spaceData, and omit ineligible Group paths"
         )
         require(
             exportData.contains("snapshotExportAuthorization(")
                 && exportData.contains("verified remote orphanedGroupMembership")
                 && exportData.contains("reason=remoteSnapshotDiffers")
                 && exportData.contains("localSnapshotChangedDuringVerification")
-                && exportData.contains("[ProximityLightingExport] preserved orphan state")
+                && exportData.contains("snapshotAuthorization.orphanPreservationReason != nil")
+                && !exportData.contains("ProximityLightingLifecycleCoordinator.commit(")
                 && appearsBefore("snapshotExportAuthorization(", "spaceJsonData.updateValue(self.id", in: exportData),
             "An orphaned Space upload must verify the remote baseline and avoid proximity mutation"
         )

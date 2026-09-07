@@ -83,7 +83,7 @@ struct SiteSpaceMeshContextOwnershipContractTests {
 
         let spaceImport = section(
             in: importSource,
-            from: "func update(spaceJsonData:",
+            from: "func update(\n        spaceJsonData:",
             to: "extension Node"
         )
         require(
@@ -96,6 +96,11 @@ struct SiteSpaceMeshContextOwnershipContractTests {
                 ) &&
                 spaceImport.contains("MeshNetworkManager.instance.schedules = schedules"),
             "Space schedules may update the global Manager only for the exact subnetwork"
+        )
+        require(
+            spaceImport.contains("getNodeSyncProximityLighting(topologyPlan: importedPlan)") &&
+                spaceImport.contains("groups: groups.filter { !$0.isVirtual }, spaceTriggerZones: self.triggerZones"),
+            "Import repair tasks must use the imported Space topology, including during a different active Space"
         )
 
         print("SiteSpaceMeshContextOwnershipContractTests passed")

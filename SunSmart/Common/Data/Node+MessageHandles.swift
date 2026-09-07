@@ -205,6 +205,7 @@ extension NodeSyncData {
         node: Node,
         contextGroup: Group? = nil
     ) -> [MeshMessageHandle] {
+        guard SpaceConfigurationSafety.configurationAvailable(for: node, group: contextGroup) else { return [] }
         var messageHandles: [MeshMessageHandle] = []
         switch self {
         case .addNetworkKey(let networkKey):

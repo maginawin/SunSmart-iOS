@@ -2391,6 +2391,12 @@ class SyncDevicesViewController: UIViewController {
     }
 
     private func startSync() {
+        if !SpaceConfigurationSafety.currentConfigurationAvailable {
+            syncState = .syncFailure
+            updateSyncStateUI()
+            XWHUDManager.showErrorTipHUD("proximity_lighting_import_invalid".localizedString)
+            return
+        }
         
 //        guard let section = sections.first, let model = section.allModels.first else { return }
         // 需要配置的设备list
@@ -2428,6 +2434,12 @@ class SyncDevicesViewController: UIViewController {
             
             while let model = self.getNextHandleModel() {
                 guard self.isActiveSyncRun(syncRunIdentifier) else {
+                    return
+                }
+                if !SpaceConfigurationSafety.currentConfigurationAvailable {
+                    model.state = .failed
+                    self.syncState = .syncFailure
+                    DispatchQueue.main.async { self.updateSyncStateUI(); self.tableView.reloadData() }
                     return
                 }
 
