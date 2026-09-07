@@ -881,6 +881,7 @@
 "firmware_version" = "固件版本";
 "wifi_dfu" = "WiFi DFU";
 "4g_dfu" = "4G DFU";
+"4g_firmware_update" = "4G 固件更新";
 "wifi_firmware_update" = "WiFi 固件更新";
 "wifi_firmware_upgrade" = "升级";
 "wifi_firmware_upgrade_again" = "再次升级";

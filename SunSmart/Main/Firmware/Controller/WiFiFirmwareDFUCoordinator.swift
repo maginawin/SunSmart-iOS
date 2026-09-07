@@ -33,6 +33,7 @@ final class WiFiFirmwareDFUCoordinator {
 
     private let node: Node
     private let sessionStore: WiFiFirmwareDFUSessionStore
+    private let sessionNamespace: String
     private let networkUUID: UUID?
     private let nodeAddress: UInt16
 
@@ -55,15 +56,18 @@ final class WiFiFirmwareDFUCoordinator {
 
     init(
         node: Node,
+        sessionNamespace: String = "wifi",
         sessionStore: WiFiFirmwareDFUSessionStore = .init()
     ) {
         self.node = node
+        self.sessionNamespace = sessionNamespace
         self.sessionStore = sessionStore
         self.networkUUID = MeshNetworkManager.instance.meshNetwork?.uuid
         self.nodeAddress = node.primaryUnicastAddress
 
         if let networkUUID,
            var restored = sessionStore.load(
+               namespace: sessionNamespace,
                networkUUID: networkUUID,
                nodeAddress: node.primaryUnicastAddress
            ) {
@@ -175,7 +179,10 @@ final class WiFiFirmwareDFUCoordinator {
         queryDFUStatus(purpose: .normal(authoritative: false))
     }
 
-    func start(filename: String, version: String) {
+    func start(
+        downloadLocation: GatewayFirmwareDFUDownloadLocation,
+        version: String
+    ) {
         guard canStartNewOTA() else { return }
         generation += 1
         statusQueryInFlight = false
@@ -192,7 +199,9 @@ final class WiFiFirmwareDFUCoordinator {
         let request: WiFiGatewayDFUStartRequest
         let firmwareID: String
         do {
-            let url = try WiFiFirmwareDFUMetadataBuilder.makeURL(filename: filename)
+            let url = try WiFiFirmwareDFUMetadataBuilder.makeURL(
+                location: downloadLocation
+            )
             firmwareID = try WiFiFirmwareDFUMetadataBuilder.firmwareID(version: version)
             request = try WiFiGatewayDFUStartRequest(
                 otaID: otaID,
@@ -1284,7 +1293,12 @@ final class WiFiFirmwareDFUCoordinator {
 
     private func saveSession() {
         guard let networkUUID, let session else { return }
-        sessionStore.save(session, networkUUID: networkUUID, nodeAddress: nodeAddress)
+        sessionStore.save(
+            session,
+            namespace: sessionNamespace,
+            networkUUID: networkUUID,
+            nodeAddress: nodeAddress
+        )
     }
 
     private func clearPendingStart() {
@@ -1309,7 +1323,11 @@ final class WiFiFirmwareDFUCoordinator {
 
     private func removeSessionCompletely() {
         if let networkUUID {
-            sessionStore.remove(networkUUID: networkUUID, nodeAddress: nodeAddress)
+            sessionStore.remove(
+                namespace: sessionNamespace,
+                networkUUID: networkUUID,
+                nodeAddress: nodeAddress
+            )
         }
         session = nil
         reducer = nil

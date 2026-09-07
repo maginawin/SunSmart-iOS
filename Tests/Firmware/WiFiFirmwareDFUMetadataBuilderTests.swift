@@ -22,6 +22,26 @@ struct WiFiFirmwareDFUMetadataBuilderTests {
             url == "http://www.mericher.com/srv2/sitespace/ota/download?key=\(filename)"
         )
 
+        let signed4GURL = "https://firmware.example.com/4g.bin?signature=test%3D&expires=1787888052"
+        let direct4GURL = try WiFiFirmwareDFUMetadataBuilder.makeURL(
+            location: .serverResponse(signed4GURL),
+            baseURL: UserData.currentServerRegion.baseURL
+        )
+        precondition(direct4GURL == signed4GURL)
+
+        do {
+            _ = try WiFiFirmwareDFUMetadataBuilder.makeURL(location: .serverResponse(""))
+            preconditionFailure("Empty server URL must not fall back to the WiFi download endpoint")
+        } catch WiFiFirmwareDFUMetadataBuilderError.invalidDownloadURL {
+            // Expected: an absent 4G URL cannot start an upgrade.
+        }
+
+        let rebuiltWiFiURL = try WiFiFirmwareDFUMetadataBuilder.makeURL(
+            location: .regionalFilename(filename),
+            baseURL: UserData.currentServerRegion.baseURL
+        )
+        precondition(rebuiltWiFiURL == url)
+
         for host in [
             "sunsmart-ap.mericher.com",
             "sunsmart-us.mericher.com",

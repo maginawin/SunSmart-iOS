@@ -3,6 +3,60 @@ import Foundation
 enum GatewayFirmwareKind {
     case fourG
     case wifi
+
+    var customerId: String {
+        switch self {
+        case .fourG:
+            return "4g"
+        case .wifi:
+            return "wifi"
+        }
+    }
+
+    var pageTitleLocalizationKey: String {
+        switch self {
+        case .fourG:
+            return "4g_firmware_update"
+        case .wifi:
+            return "wifi_firmware_update"
+        }
+    }
+
+    var sessionNamespace: String {
+        customerId
+    }
+}
+
+struct GatewayFirmwareDFUProfile: Equatable {
+    let firmwareKind: GatewayFirmwareKind
+    let nodeProductId: UInt16
+
+    let manufacturerId = "0A78"
+
+    var deviceType: UInt16 {
+        switch firmwareKind {
+        case .fourG:
+            return 0x2703
+        case .wifi:
+            return nodeProductId
+        }
+    }
+
+    var customerId: String {
+        firmwareKind.customerId
+    }
+
+    var usesServerProvidedDownloadURL: Bool {
+        firmwareKind == .fourG
+    }
+
+    var pageTitleLocalizationKey: String {
+        firmwareKind.pageTitleLocalizationKey
+    }
+
+    var sessionNamespace: String {
+        firmwareKind.sessionNamespace
+    }
 }
 
 enum GatewayMenuAction: Equatable {

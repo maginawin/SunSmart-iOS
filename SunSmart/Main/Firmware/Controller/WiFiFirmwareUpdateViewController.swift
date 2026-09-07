@@ -17,8 +17,12 @@ final class WiFiFirmwareUpdateViewController: FirmwareVersionViewController {
     }
 
     private let node: Node
+    private let profile: GatewayFirmwareDFUProfile
     private var currentVersionState: CurrentVersionState = .loading
-    private lazy var dfuCoordinator = WiFiFirmwareDFUCoordinator(node: node)
+    private lazy var dfuCoordinator = WiFiFirmwareDFUCoordinator(
+        node: node,
+        sessionNamespace: profile.sessionNamespace
+    )
     private lazy var updatingView = WiFiFirmwareUpdatingView()
     private var updatingState: WiFiFirmwareUpdatingState?
     private var primaryAction: WiFiFirmwarePrimaryAction = .upgrade
@@ -26,11 +30,17 @@ final class WiFiFirmwareUpdateViewController: FirmwareVersionViewController {
     private var canCancel = false
     private var coordinatorActive = false
 
-    init(node: Node) {
+    init(node: Node, firmwareKind: GatewayFirmwareKind = .wifi) {
+        let nodeProductId = node.productIdentifier ?? 0x2721
+        let profile = GatewayFirmwareDFUProfile(
+            firmwareKind: firmwareKind,
+            nodeProductId: nodeProductId
+        )
         self.node = node
+        self.profile = profile
         super.init(
             type: FirmwareUpdateTypeData(
-                productId: 0x2721,
+                productId: profile.deviceType,
                 targetVersion: nil,
                 nodes: [node]
             )
@@ -61,11 +71,11 @@ final class WiFiFirmwareUpdateViewController: FirmwareVersionViewController {
     }
 
     override var firmwarePageTitle: String {
-        return "wifi_firmware_update".localizedString
+        return profile.pageTitleLocalizationKey.localizedString
     }
 
     override var firmwareRequestCustomId: String {
-        return "wifi"
+        return profile.customerId
     }
 
     override func normalizedServerFirmwareVersion(_ rawVersion: String) -> String {
@@ -202,7 +212,14 @@ final class WiFiFirmwareUpdateViewController: FirmwareVersionViewController {
         switch primaryAction {
         case .upgrade, .retry:
             guard let serverData = type.serverData else { return }
-            dfuCoordinator.start(filename: serverData.filename, version: serverData.version)
+            let downloadLocation: GatewayFirmwareDFUDownloadLocation =
+                profile.usesServerProvidedDownloadURL
+                    ? .serverResponse(serverData.url)
+                    : .regionalFilename(serverData.filename)
+            dfuCoordinator.start(
+                downloadLocation: downloadLocation,
+                version: serverData.version
+            )
         case .cancel:
             canCancel = false
             refreshFirmwareUI()

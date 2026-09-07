@@ -13,6 +13,11 @@ enum WiFiFirmwareDFUMetadataBuilderError: Error, Equatable {
     case invalidFirmwareID
 }
 
+enum GatewayFirmwareDFUDownloadLocation: Equatable {
+    case serverResponse(String)
+    case regionalFilename(String)
+}
+
 struct WiFiFirmwareDFUMetadataBuilder {
     static let downloadPath = "/sitespace/ota/download"
 
@@ -34,6 +39,21 @@ struct WiFiFirmwareDFUMetadataBuilder {
             throw WiFiFirmwareDFUMetadataBuilderError.invalidDownloadURL
         }
         return value
+    }
+
+    static func makeURL(
+        location: GatewayFirmwareDFUDownloadLocation,
+        baseURL: URL = UserData.currentServerRegion.baseURL
+    ) throws -> String {
+        switch location {
+        case .serverResponse(let url):
+            guard !url.isEmpty else {
+                throw WiFiFirmwareDFUMetadataBuilderError.invalidDownloadURL
+            }
+            return url
+        case .regionalFilename(let filename):
+            return try makeURL(filename: filename, baseURL: baseURL)
+        }
     }
 
     static func firmwareID(version: String) throws -> String {

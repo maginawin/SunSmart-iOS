@@ -860,6 +860,7 @@
 "firmware_version" = "Firmware Version";
 "wifi_dfu" = "WiFi DFU";
 "4g_dfu" = "4G DFU";
+"4g_firmware_update" = "4G Firmware Update";
 "wifi_firmware_update" = "WiFi Firmware Update";
 "wifi_firmware_upgrade" = "UPGRADE";
 "wifi_firmware_upgrade_again" = "UPGRADE AGAIN";

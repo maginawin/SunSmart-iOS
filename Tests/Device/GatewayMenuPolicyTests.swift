@@ -9,6 +9,7 @@ struct GatewayMenuPolicyTests {
         testWiFiMenuKeepsCommonActions()
         testForceClearSpacesRequiresOfflineNonemptyAndPermission()
         testBottomActionModes()
+        testFirmwareProfilesForCurrentAndFutureProducts()
         print("GatewayMenuPolicyTests passed")
     }
 
@@ -85,6 +86,31 @@ struct GatewayMenuPolicyTests {
                 canForceClearSpaces: false
             ).contains(.forceClearSpaces)
         )
+    }
+
+    private static func testFirmwareProfilesForCurrentAndFutureProducts() {
+        let fourG = GatewayFirmwareDFUProfile(firmwareKind: .fourG, nodeProductId: 0x2703)
+        precondition(fourG.deviceType == 0x2703)
+        precondition(fourG.customerId == "4g")
+        precondition(fourG.usesServerProvidedDownloadURL)
+        precondition(fourG.pageTitleLocalizationKey == "4g_firmware_update")
+        precondition(fourG.sessionNamespace == "4g")
+        let wifi = GatewayFirmwareDFUProfile(firmwareKind: .wifi, nodeProductId: 0x2721)
+        precondition(wifi.deviceType == 0x2721)
+        precondition(wifi.customerId == "wifi")
+        precondition(!wifi.usesServerProvidedDownloadURL)
+        precondition(wifi.pageTitleLocalizationKey == "wifi_firmware_update")
+        precondition(wifi.sessionNamespace == "wifi")
+        for pid: UInt16 in [0x1701, 0x1702, 0x2701, 0x2702, 0x2711, 0x3703] {
+            let profile = GatewayFirmwareDFUProfile(firmwareKind: .fourG, nodeProductId: pid)
+            precondition(profile.deviceType == 0x2703)
+            precondition(profile.customerId == "4g")
+            precondition(profile.pageTitleLocalizationKey == "4g_firmware_update")
+        }
+        let futureWiFi = GatewayFirmwareDFUProfile(firmwareKind: .wifi, nodeProductId: 0x3721)
+        precondition(futureWiFi.deviceType == 0x3721)
+        precondition(futureWiFi.customerId == "wifi")
+        precondition(futureWiFi.pageTitleLocalizationKey == "wifi_firmware_update")
     }
 
     private static func testBottomActionModes() {
