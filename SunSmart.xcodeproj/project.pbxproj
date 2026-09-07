@@ -175,6 +175,7 @@
 		08B54CF930402CCB0017ED49 /* Node+SyncData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */; };
 		08B54CFA30402CCB0017ED49 /* DeviceScheduleAddressCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0013003000000000001 /* DeviceScheduleAddressCleanup.swift */; };
 		08B54CFB30402CCB0017ED49 /* DevicePermanentDeletionCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0023003000000000001 /* DevicePermanentDeletionCleanup.swift */; };
+		BA503B180B8C4C67AE831DAA /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
 		08B54CFC30402CCB0017ED49 /* SceneDeleteCapability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0033003000000000001 /* SceneDeleteCapability.swift */; };
 		08B54CFD30402CCB0017ED49 /* TimedScheduleTimeSyncPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F0A0013000000000000001 /* TimedScheduleTimeSyncPolicy.swift */; };
 		08B54CFE30402CCB0017ED49 /* MeshFirmwareUpgradeResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89D560E2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift */; };
@@ -3058,9 +3059,13 @@
 		C8DDA0133003000000000001 /* DeviceScheduleAddressCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0013003000000000001 /* DeviceScheduleAddressCleanup.swift */; };
 		C8DDA0143003000000000001 /* DeviceScheduleAddressCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0013003000000000001 /* DeviceScheduleAddressCleanup.swift */; };
 		C8DDA0213003000000000001 /* DevicePermanentDeletionCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0023003000000000001 /* DevicePermanentDeletionCleanup.swift */; };
+		67C0DB5D726D4866BCC1C8F7 /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
 		C8DDA0223003000000000001 /* DevicePermanentDeletionCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0023003000000000001 /* DevicePermanentDeletionCleanup.swift */; };
+		297EE68B722E4EDCAF2005C7 /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
 		C8DDA0233003000000000001 /* DevicePermanentDeletionCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0023003000000000001 /* DevicePermanentDeletionCleanup.swift */; };
+		734A6B4A739549B6A19BB925 /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
 		C8DDA0243003000000000001 /* DevicePermanentDeletionCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0023003000000000001 /* DevicePermanentDeletionCleanup.swift */; };
+		991A7D0B08964DB58D6F1C2D /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
 		C8DDA0313003000000000001 /* SceneDeleteCapability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0033003000000000001 /* SceneDeleteCapability.swift */; };
 		C8DDA0323003000000000001 /* SceneDeleteCapability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0033003000000000001 /* SceneDeleteCapability.swift */; };
 		C8DDA0333003000000000001 /* SceneDeleteCapability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0033003000000000001 /* SceneDeleteCapability.swift */; };
@@ -4092,6 +4097,7 @@
 		C8DCD0FB2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteAddressDataHeaderView.swift; sourceTree = "<group>"; };
 		C8DDA0013003000000000001 /* DeviceScheduleAddressCleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceScheduleAddressCleanup.swift; sourceTree = "<group>"; };
 		C8DDA0023003000000000001 /* DevicePermanentDeletionCleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicePermanentDeletionCleanup.swift; sourceTree = "<group>"; };
+		199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteDeviceOwnershipReconciler.swift; sourceTree = "<group>"; };
 		C8DDA0033003000000000001 /* SceneDeleteCapability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDeleteCapability.swift; sourceTree = "<group>"; };
 		C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPowerSwitchesViewModel.swift; sourceTree = "<group>"; };
 		C8DF84562DB639960070CBD9 /* DeviceDongleViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDongleViewController.swift; sourceTree = "<group>"; };
@@ -5889,6 +5895,7 @@
 				C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */,
 				C8DDA0013003000000000001 /* DeviceScheduleAddressCleanup.swift */,
 				C8DDA0023003000000000001 /* DevicePermanentDeletionCleanup.swift */,
+				199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */,
 				C8DDA0033003000000000001 /* SceneDeleteCapability.swift */,
 				C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */,
 				C8F0A0013000000000000001 /* TimedScheduleTimeSyncPolicy.swift */,
@@ -7054,6 +7061,7 @@
 				08B54CF930402CCB0017ED49 /* Node+SyncData.swift in Sources */,
 				08B54CFA30402CCB0017ED49 /* DeviceScheduleAddressCleanup.swift in Sources */,
 				08B54CFB30402CCB0017ED49 /* DevicePermanentDeletionCleanup.swift in Sources */,
+				BA503B180B8C4C67AE831DAA /* SiteDeviceOwnershipReconciler.swift in Sources */,
 				08B54CFC30402CCB0017ED49 /* SceneDeleteCapability.swift in Sources */,
 				08B54CFD30402CCB0017ED49 /* TimedScheduleTimeSyncPolicy.swift in Sources */,
 				08B54CFE30402CCB0017ED49 /* MeshFirmwareUpgradeResultsView.swift in Sources */,
@@ -7722,6 +7730,7 @@
 				C88553F62DE6B44C00C8B688 /* Node+SyncData.swift in Sources */,
 				C8DDA0113003000000000001 /* DeviceScheduleAddressCleanup.swift in Sources */,
 				C8DDA0213003000000000001 /* DevicePermanentDeletionCleanup.swift in Sources */,
+				67C0DB5D726D4866BCC1C8F7 /* SiteDeviceOwnershipReconciler.swift in Sources */,
 				C8DDA0313003000000000001 /* SceneDeleteCapability.swift in Sources */,
 				C8F0A0023000000000000001 /* TimedScheduleTimeSyncPolicy.swift in Sources */,
 				C88553F72DE6B44C00C8B688 /* MeshFirmwareUpgradeResultsView.swift in Sources */,
@@ -8388,6 +8397,7 @@
 				C886E0472E30DE4900D0C3A6 /* Node+SyncData.swift in Sources */,
 				C8DDA0123003000000000001 /* DeviceScheduleAddressCleanup.swift in Sources */,
 				C8DDA0223003000000000001 /* DevicePermanentDeletionCleanup.swift in Sources */,
+				297EE68B722E4EDCAF2005C7 /* SiteDeviceOwnershipReconciler.swift in Sources */,
 				C8DDA0323003000000000001 /* SceneDeleteCapability.swift in Sources */,
 				C8F0A0033000000000000001 /* TimedScheduleTimeSyncPolicy.swift in Sources */,
 				C886E0482E30DE4900D0C3A6 /* MeshFirmwareUpgradeResultsView.swift in Sources */,
@@ -9053,6 +9063,7 @@
 				C8A351702D8EB1FF00325FC6 /* Node+SyncData.swift in Sources */,
 				C8DDA0133003000000000001 /* DeviceScheduleAddressCleanup.swift in Sources */,
 				C8DDA0233003000000000001 /* DevicePermanentDeletionCleanup.swift in Sources */,
+				734A6B4A739549B6A19BB925 /* SiteDeviceOwnershipReconciler.swift in Sources */,
 				C8DDA0333003000000000001 /* SceneDeleteCapability.swift in Sources */,
 				C8F0A0043000000000000001 /* TimedScheduleTimeSyncPolicy.swift in Sources */,
 				C89D560F2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift in Sources */,
@@ -9721,6 +9732,7 @@
 				C8BB65FB2ED3F056000C63EE /* Node+SyncData.swift in Sources */,
 				C8DDA0143003000000000001 /* DeviceScheduleAddressCleanup.swift in Sources */,
 				C8DDA0243003000000000001 /* DevicePermanentDeletionCleanup.swift in Sources */,
+				991A7D0B08964DB58D6F1C2D /* SiteDeviceOwnershipReconciler.swift in Sources */,
 				C8DDA0343003000000000001 /* SceneDeleteCapability.swift in Sources */,
 				C8F0A0053000000000000001 /* TimedScheduleTimeSyncPolicy.swift in Sources */,
 				C8BB65FC2ED3F056000C63EE /* MeshFirmwareUpgradeResultsView.swift in Sources */,

@@ -2419,6 +2419,9 @@ class DeviceRestoreViewController: UIViewController {
                     node.name = data.node.name
                 }
                 node.save()
+                if let owner = SpaceData.load(subNetworkId: node.subNetworkId ?? "") {
+                    SiteDeviceOwnershipReconciler.provisioned(node, space: owner)
+                }
                 if let request = finalizeBatteryPowerSwitchRestoreConfiguration(for: node) {
                     pendingBatteryPowerSwitchInitialBatteryReads.append(request)
                 }

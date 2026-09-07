@@ -91,6 +91,10 @@ struct ProximityLightingLifecycleTransaction {
         )
     }
 
+    mutating func removeConfirmedAddresses(_ addresses: Set<Address>) {
+        draft.removeNodeAddresses(addresses)
+    }
+
     mutating func replaceNodeAddress(
         from oldNode: Node,
         to newNode: Node,
@@ -152,6 +156,8 @@ enum ProximityLightingLifecycleCoordinator {
         allowExistingHardErrors: Bool = false,
         hasAdditionalLogicalChange: Bool = false,
         isImportApplication: Bool = false,
+        confirmedDeletionAddresses: Set<Address>? = nil,
+        reviewedReferenceSnapshot: Reconciler.Snapshot? = nil,
         applyAdditionalChanges: () throws -> Void = {}
     ) -> ProximityLightingLifecycleResult? {
         guard preparation.transaction.contextAvailable else { return nil }
@@ -164,10 +170,27 @@ enum ProximityLightingLifecycleCoordinator {
         let normalized = preparation.normalized
         let topologyChanged = transaction.sourceSnapshot != normalized.snapshot
         let didChange = topologyChanged || hasAdditionalLogicalChange
+        var isScopedRecovery = false
+        if let addresses = confirmedDeletionAddresses {
+            var expected = transaction.sourceSnapshot
+            expected.removeNodeAddresses(addresses)
+            guard !isImportApplication, !addresses.isEmpty,
+                  expected == transaction.draft, expected == normalized.snapshot,
+                  normalized.isValid else { return nil }
+            isScopedRecovery = true
+        }
+        if let reviewed = reviewedReferenceSnapshot {
+            guard !isImportApplication, confirmedDeletionAddresses == nil,
+                  reviewed == transaction.sourceSnapshot,
+                  normalized.canReviewReferenceRepair else { return nil }
+            isScopedRecovery = true
+        }
         // A server snapshot is authoritative input, never an implicit local edit.
         guard !isImportApplication || !normalized.hasDestructiveRepairs else { return nil }
 
-        guard isImportApplication || (!SpaceConfigurationSafety.isBlocked(transaction.space)
+        guard isImportApplication || ((isScopedRecovery
+            ? !SpaceConfigurationSafety.hasPendingImport(transaction.space)
+            : !SpaceConfigurationSafety.isBlocked(transaction.space))
             && !transaction.space.triggerZonesLoadFailed
             && transaction.groups.allSatisfy { !$0.info.profileLoadFailed && !$0.info.topologyLoadFailed }
             && SpaceConfigurationSafety.checkpoint(transaction.space)) else { return nil }

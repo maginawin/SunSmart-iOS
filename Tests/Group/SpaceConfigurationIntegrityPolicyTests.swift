@@ -75,6 +75,112 @@ struct SpaceConfigurationIntegrityPolicyTests {
         precondition(!P.legacySpaceZoneDeletionNeedsReview(["triggerZones": []], hasLocalZones: false))
         precondition(!P.legacySpaceZoneDeletionNeedsReview(
             ["spaceData": ["proximityLightingSchemaVersion": 1, "triggerZones": []]], hasLocalZones: true))
+        testReadbackDiagnostics()
+        testEmptyGroupAddressCompatibility()
         print("PASS: complete profile switches, incomplete payloads, photocell references, readback and submission generation")
+    }
+
+    static func testEmptyGroupAddressCompatibility() {
+        typealias P = SpaceConfigurationIntegrityPolicy
+        let node: [String: Any] = ["uuid": "node", "unicastAddress": "0046", "groupState": 0]
+        let payload: [String: Any] = ["groups": [], "nodes": [node], "spaceData": ["triggerZones": []]]
+        let expected = P.configurationData(payload)!
+        var otherNode = node
+        otherNode["groupAddress"] = ""
+        var other = payload
+        other["nodes"] = [otherNode]
+        precondition(expected == P.configurationData(other))
+        // Build the on-disk shape directly, without the newly normalized exporter.
+        let legacy = try! JSONSerialization.data(withJSONObject: ["groups": [], "memberships": [otherNode], "triggerZones": []])
+        precondition(P.configurationsMatch(legacy, expected) && P.configurationsMatch(expected, legacy))
+        precondition(P.readbackDiagnostic(submittedConfiguration: legacy, remote: payload).contains("canonicalEqual=true"))
+        for address: Any in [NSNull(), " ", "0000", "C000", "invalid", 0] {
+            otherNode["groupAddress"] = address
+            other["nodes"] = [otherNode]
+            precondition(!P.configurationsMatch(expected, P.configurationData(other)))
+        }
+        for (key, value): (String, Any) in [("uuid", "another"), ("unicastAddress", "0047"), ("groupState", 2)] {
+            otherNode = node
+            otherNode[key] = value
+            other["nodes"] = [otherNode]
+            precondition(!P.configurationsMatch(legacy, P.configurationData(other)))
+        }
+        other = payload
+        other["spaceData"] = ["triggerZones": [["items": [["groupAddress": 49152, "deviceAddress": 70]]]]]
+        precondition(!P.configurationsMatch(legacy, P.configurationData(other)))
+        precondition(!P.configurationsMatch(nil, nil))
+        precondition(!P.configurationsMatch(Data("invalid".utf8), Data("invalid".utf8)))
+        print("PASS: empty Group address compatibility preserves membership, type and topology differences")
+    }
+
+    static func testReadbackDiagnostics() {
+        typealias P = SpaceConfigurationIntegrityPolicy
+        let node: [String: Any] = ["uuid": "private-node-identity", "unicastAddress": "0046", "groupState": 0]
+        let submitted: [String: Any] = ["groups": [], "nodes": [node], "spaceData": ["triggerZones": []], "updateTimestamp": 10]
+        var remote = submitted
+        remote["updateTimestamp"] = 20
+        remote.removeValue(forKey: "spaceData")
+        var remoteNode = node
+        remoteNode["groupState"] = "0"
+        remoteNode["groupAddress"] = NSNull()
+        remote["nodes"] = [remoteNode]
+        let text = P.readbackDiagnostic(submitted: submitted, remote: remote)
+        precondition(text.contains("submittedTimestamp=10 remoteTimestamp=20"))
+        precondition(text.contains("path=$.triggerZones submitted=array(count=0) remote=missing"))
+        precondition(text.contains("path=$.memberships[0].groupAddress submitted=missing remote=null"))
+        precondition(text.contains("path=$.memberships[0].groupState submitted=number(0) remote=string(length=1,sha256="))
+        let persisted = P.configurationData(submitted)!
+        precondition(text.hasSuffix(P.readbackDiagnostic(submittedConfiguration: persisted, remote: remote)))
+        remoteNode["groupState"] = false
+        remote["nodes"] = [remoteNode]
+        precondition(P.readbackDiagnostic(submitted: submitted, remote: remote)
+            .contains("groupState submitted=number(0) remote=bool(0)"))
+
+        // Unknown extension dictionaries may carry names or credentials: neither
+        // their keys nor values may escape through recursive diagnostics.
+        let secret = "PRIVATE-KEY-DO-NOT-LOG\n[forged-log]"
+        var privateRemote = submitted
+        remoteNode["uuid"] = "private-remote-node-identity"
+        remoteNode["deviceKey"] = secret
+        privateRemote["nodes"] = [remoteNode]
+        privateRemote["passwd"] = secret
+        privateRemote["netKey"] = ["key": secret]
+        privateRemote["appKey"] = ["key": secret]
+        var privateSubmitted = submitted
+        privateSubmitted["spaceData"] = ["triggerZones": [["items": [], "name": "old-private-name", secret: ["address": "0046", "number": 123456]]]]
+        privateRemote["spaceData"] = ["triggerZones": [["items": [], "name": "new-private-name", secret: ["address": "0047", "number": 654321]]]]
+        let privateText = P.readbackDiagnostic(submitted: privateSubmitted, remote: privateRemote)
+        for forbidden in [secret, "old-private-name", "new-private-name", "private-node-identity", "private-remote-node-identity", "deviceKey", "passwd", "netKey", "appKey", "123456", "654321", "string(0047)"] {
+            precondition(!privateText.contains(forbidden), "Unredacted diagnostic")
+        }
+        precondition(privateText.contains("redactedKey_"))
+        precondition(privateText.contains("number(redacted)"))
+        precondition(privateText.contains("extraRemoteNodes=1"))
+        precondition(privateText.contains("missingRemoteNodes=1"))
+
+        var ordered = submitted
+        var reordered = submitted
+        ordered["spaceData"] = ["triggerZones": [["items": [["groupAddress": 49152, "deviceAddress": 70], ["groupAddress": 49152, "deviceAddress": 71]]]]]
+        reordered["spaceData"] = ["triggerZones": [["items": [["groupAddress": 49152, "deviceAddress": 71], ["groupAddress": 49152, "deviceAddress": 70]]]]]
+        let orderText = P.readbackDiagnostic(submitted: ordered, remote: reordered)
+        precondition(orderText.contains("path=$.triggerZones[0].items[0].deviceAddress submitted=number(70) remote=number(71)"))
+        var many = submitted
+        many["nodes"] = (0..<100).map { ["uuid": "private-node-\($0)", "unicastAddress": String(format: "%04X", $0 + 100)] }
+        let limited = P.readbackDiagnostic(submitted: submitted, remote: many)
+        precondition(limited.contains("scanLimited=true"))
+        precondition(limited.components(separatedBy: "[SpaceConfigurationDiff] path=").count - 1 == 24)
+
+        // Observations and transport/auth metadata must not manufacture a diff.
+        var observations = submitted
+        observations["passwd"] = secret
+        observations["updateTimestamp"] = 99
+        var observedNode = node
+        observedNode["configComplete"] = true
+        observations["nodes"] = [observedNode]
+        let same = P.readbackDiagnostic(submitted: submitted, remote: observations)
+        precondition(same.contains("canonicalEqual=true differencesShown=0 scanLimited=false"))
+        precondition(!same.contains(secret))
+        print("PASS: readback field paths, missing/null/types/order, persisted submission, redaction and bounded output")
+        print(text)
     }
 }

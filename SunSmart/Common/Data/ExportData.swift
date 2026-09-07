@@ -327,9 +327,11 @@ extension SpaceData {
     /// 导出space数据
     func export(
         purpose: SpaceSnapshotExportPurpose = .localBackup,
-        allowsProtectedInspection: Bool = false
+        allowsProtectedInspection: Bool = false,
+        reviewingReferenceRepairs: Bool = false
     ) async -> [String: Any]?  {
         if allowsProtectedInspection, case .cloudSync = purpose { return nil }
+        if reviewingReferenceRepairs && !allowsProtectedInspection { return nil }
         guard !SpaceConfigurationSafety.hasPendingImport(self),
               allowsProtectedInspection || !SpaceConfigurationSafety.isBlocked(self),
               !triggerZonesLoadFailed,
@@ -393,7 +395,8 @@ extension SpaceData {
             // Export must never turn a failed load or stale topology into a
             // persisted deletion. Explicit edits/import apply their own cleanup.
             guard snapshotAuthorization.orphanPreservationReason != nil
-                    || proximityPreparation.normalized.repairs.isEmpty else {
+                    || proximityPreparation.normalized.repairs.isEmpty
+                    || (reviewingReferenceRepairs && proximityPreparation.normalized.canReviewReferenceRepair) else {
                 print("[ProximityLightingExport] rejected unapplied topology repairs")
                 return nil
             }

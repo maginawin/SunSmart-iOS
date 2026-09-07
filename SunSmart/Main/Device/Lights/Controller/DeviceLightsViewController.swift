@@ -747,7 +747,7 @@ class DeviceLightsViewController: UIViewController {
 //                guard let self = self else { return }
 //                self.isDeletingDevice = false
 //                XWHUDManager.hide()
-//                XWHUDManager.showSuccessTipHUD("done!".localizedString)
+//                DevicePermanentDeletionContext.showCompletion(space: self.space)
 //                let networkManager = MeshNetworkManager.instance
 //                selectDevices.forEach({
 //                    networkManager.meshNetwork?.remove(node: $0)
@@ -772,9 +772,14 @@ class DeviceLightsViewController: UIViewController {
             guard let self = self else { return }
             XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
             let deletionContexts = Dictionary(uniqueKeysWithValues: selectDevices.map {
-                ($0.primaryUnicastAddress, DevicePermanentDeletionContext(node: $0))
+                ($0.primaryUnicastAddress, DevicePermanentDeletionContext(node: $0, space: self.space))
             })
             
+            guard deletionContexts.values.allSatisfy({ $0.isPrepared }) else {
+                XWHUDManager.hide()
+                XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
+                return
+            }
             // 提供重置的设备地址+超时时长list数据
             var addressDataList: [(address: Address, timeout: TimeInterval)] = selectDevices.map({ ($0.primaryUnicastAddress, $0.state ? 10 : 2) })
             // 如果重置节点中存在代理节点，将代理节点放到最后重置
@@ -793,6 +798,7 @@ class DeviceLightsViewController: UIViewController {
             MeshAPI.resetNodes(addressDataList: addressDataList, resetSuccess: nil, resetFail: nil) {[weak self] successAddressList, failAddressList in
                 XWHUDManager.hide()
                 guard let self = self else { return }
+                failAddressList.forEach { deletionContexts[$0]?.cancel() }
                 var lifecycleResults: [ProximityLightingLifecycleResult] = []
                 successAddressList.forEach({ address in
                     if let index = self.devices.firstIndex(where: { $0.primaryUnicastAddress == address }) {
@@ -819,7 +825,7 @@ class DeviceLightsViewController: UIViewController {
                         MeshLibManager.manager.close()
                     }
                     self.syncDeletionPeersIfNeeded(lifecycleResults) {
-                        XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                        DevicePermanentDeletionContext.showCompletion(space: self.space)
                     }
                     
                 }else { // 删除失败（提示是否强制删除这部分设备）
@@ -835,10 +841,14 @@ class DeviceLightsViewController: UIViewController {
                         self.syncDeletionPeersIfNeeded(lifecycleResults, completion: {})
                     }), SRAlertAction(title: "force_delete".localizedString, actionHandler: {[weak self] _ in
                         guard let self = self else { return }
+                        guard failAddressList.allSatisfy({ deletionContexts[$0]?.prepareForForceRemoval() == true }) else {
+                            XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
+                            self.isDeletingDevice = false
+                            return
+                        }
                         let forceDeleteNodes = self.devices.filter({ failAddressList.contains($0.primaryUnicastAddress) })
                         forceDeleteNodes.forEach { node in
-                            MeshNetworkManager.instance.meshNetwork?.remove(node: node)
-                            if let result = deletionContexts[node.primaryUnicastAddress]?.commit() {
+                            if let result = deletionContexts[node.primaryUnicastAddress]?.forceRemove() {
                                 lifecycleResults.append(result)
                             }
                         }
@@ -853,7 +863,7 @@ class DeviceLightsViewController: UIViewController {
                         
                         self.space.commitLocalChangeForCloudSync(site: self.site, changeType: .network(type: .address))
                         self.syncDeletionPeersIfNeeded(lifecycleResults) {
-                            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                            DevicePermanentDeletionContext.showCompletion(space: self.space)
                         }
                         
                     })])

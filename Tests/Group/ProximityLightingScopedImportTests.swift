@@ -8,7 +8,7 @@ extension UInt16 {
     var hex: String { String(format: "%04X", self) }
     var isUnicast: Bool { self > 0 && self < 0x8000 }
 }
-extension String { var hex: String { self }; var localizedString: String { self } }
+extension String { var hex: String { self }; var localizedString: String { self }; var uuidString: String { self } }
 struct MeshAddress: Equatable { let address: Address }
 let jsonDecoder = JSONDecoder()
 struct SpaceTriggerZone: Codable, Equatable {
@@ -40,6 +40,7 @@ final class GroupInfo {
     var profile = Profile()
     var profileLoadFailed = false, topologyLoadFailed = false
     var proximityLightingPath: GroupProximityLightingPathData?
+    var ambientLightSensorNodeAddress: Address?
     static var stored: [String: GroupInfo] = [:]
     static func load(meshUUID: String, address: Address, subnetworkId: String? = nil) -> GroupInfo? {
         stored[meshUUID + (subnetworkId ?? "") + address.hex]
@@ -83,6 +84,16 @@ final class Node: Decodable {
     var subNetworkId: String?
     weak var network: MeshNetwork?
     var isLocalProvisioner = false, isProvisioner = false, isConfigComplete = false
+    var macAddress: String?
+    var createdTimestamp: Int64 = 1
+    func restoreCreatedTimestamp(_ value: Int64) { createdTimestamp = value }
+    func save() -> Bool { true }
+    var deletionFails = false
+    func delete() -> Bool { !deletionFails }
+    var productIdentifier: UInt16? { nil }
+    var lightnessModel: Model? { sunricherVendorModel }
+    enum DeviceType { case light }
+    var deviceType: DeviceType { .light }
     var proximityLightingEnabled = true
     var proximityLightingRelayCount: UInt8? = 2
     var proximityLightingNeighborAddresses: [Address] = []
@@ -109,37 +120,93 @@ final class Node: Decodable {
 final class MeshNetwork {
     let uuid: UUID
     var groups: [Group] = [], nodes: [Node] = []
+    var scenes: [Scene] = []
     static var stored: [String: MeshNetwork] = [:]
     init(_ uuid: UUID = UUID()) { self.uuid = uuid }
     static func load(meshUUID: String, subnetworkId: String) -> MeshNetwork? { stored[meshUUID + subnetworkId] }
+    func remove(node: Node) { nodes.removeAll { $0 === node }; node.network = nil }
+}
+final class Scene {
+    var addresses: [Address]
+    init(_ addresses: [Address]) { self.addresses = addresses }
+    func remove(address: Address) { addresses.removeAll { $0 == address } }
+    func save() -> Bool { true }
 }
 final class MeshNetworkManager {
     struct Key { var networkId: String }
     static let instance = MeshNetworkManager()
     var meshNetwork: MeshNetwork?
+    var schedules: [Schedule] = []
+    var switchs: [DeviceSwitchData] = []
     var currentNetworkKey = Key(networkId: "")
     var realNodes: [Node] { meshNetwork?.nodes ?? [] }
     var groups: [Group] { meshNetwork?.groups ?? [] }
 }
 final class SpaceData {
+    enum State { case normal }
+    var state = State.normal
     let id = UUID().uuidString, meshUUID: String, meshNetworkId: String
     var triggerZones: [SpaceTriggerZone] = [], triggerZonesLoadFailed = false
     var lastUpdate: Int64 = 10, dirtyCount = 0
+    var lastUploadCloudTimestamp: Int64?
+    var siteId: String { meshUUID }
+    var deviceCount = 0, luminairesCount = 0
     static var stored: [String: SpaceData] = [:]
     init(network: MeshNetwork, networkId: String) { meshUUID = network.uuid.uuidString; meshNetworkId = networkId }
-    static func load(subNetworkId: String) -> SpaceData? { stored[subNetworkId] }
+    static func load(subNetworkId: String) -> SpaceData? { stored.values.first { $0.meshNetworkId == subNetworkId } }
+    static func load(siteId: String, spaceId: String? = nil) -> [SpaceData] {
+        stored.values.filter { $0.siteId == siteId && (spaceId == nil || $0.id == spaceId) }
+    }
     func markLocalChangePendingCloudSync() { dirtyCount += 1; lastUpdate += 1 }
     @discardableResult func save() -> Bool { true }
 }
 enum SpaceConfigurationSafety {
+    static func canAutomaticallyUpload(_ space: SpaceData) -> Bool { !pendingImport }
     enum SafetyError: Error { case persistenceFailed }
-    static func isBlocked(_ space: SpaceData) -> Bool { false }
-    static func checkpoint(_ space: SpaceData) -> Bool { true }
-    static func configurationAvailable(for node: Node, group: Group?) -> Bool { true }
+    static var blocked = false
+    static var pendingImport = false
+    static var journals: [String: SpaceDeletionJournal] = [:]
+    static var journalWritesFail = false
+    static let defaultsSuite = "SpaceDeletionTests-" + UUID().uuidString
+    static let testDefaults = UserDefaults(suiteName: defaultsSuite)!
+    private static func key(_ space: SpaceData) -> String { space.id }
+    private static var recoveryStates: [String: SpaceRecoveryState] = [:]
+    static func recoveryState(_ space: SpaceData) throws -> SpaceRecoveryState {
+        if let state = recoveryStates[space.id] { return state }
+        let state = SpaceRecoveryState(identity: .init(account: "test", region: "test",
+            space: .init(siteId: space.siteId, spaceId: space.id, meshUUID: space.meshUUID, networkId: space.meshNetworkId)))
+        recoveryStates[space.id] = state
+        return state
+    }
+    static func isCurrent(_ context: SpaceRecoveryState, space: SpaceData) -> Bool {
+        (try? recoveryState(space).matches(context)) == true
+    }
+    // RECEIPT_METHODS
+    static func isBlocked(_ space: SpaceData) -> Bool { blocked || hasPendingDeletionCleanup(space) }
+    static func hasPendingImport(_ space: SpaceData) -> Bool { pendingImport }
+    static func checkpoint(_ space: SpaceData, refresh: Bool = false) -> Bool { true }
+    static func configurationAvailable(for node: Node, group: Group?) -> Bool {
+        guard let uuid = node.network?.uuid.uuidString,
+              let space = SpaceData.stored.values.first(where: { $0.meshUUID == uuid && $0.meshNetworkId == node.subNetworkId }) else { return true }
+        return !isBlocked(space)
+    }
+    static func block(_ space: SpaceData, reason: String) {}
+    static func deletionJournal(_ space: SpaceData) throws -> SpaceDeletionJournal {
+        journals[space.id] ?? .init(scope: .init(siteId: space.siteId, spaceId: space.id, meshUUID: space.meshUUID, networkId: space.meshNetworkId))
+    }
+    static func updateDeletionJournal(_ space: SpaceData, _ update: (inout SpaceDeletionJournal) -> Void) -> Bool {
+        guard !journalWritesFail else { return false }
+        var journal = try! deletionJournal(space); update(&journal); journals[space.id] = journal; return true
+    }
+    static func hasPendingDeletionCleanup(_ space: SpaceData) -> Bool { try! deletionJournal(space).needsCleanup }
 }
 final class SunSmartDataManager {
     static let shared = SunSmartDataManager()
-    func configurationTransaction(_ action: () throws -> Void) -> Bool { do { try action(); return true } catch { return false } }
+    var failTransactions = false
+    func configurationTransaction(_ action: () throws -> Void) -> Bool {
+        guard !failTransactions else { return false }
+        do { try action(); return true } catch { return false }
+    }
 }
 enum NodeSyncData: Equatable {
     case proximityLightingEnabled(Bool)
@@ -181,11 +248,13 @@ enum NodeSyncData: Equatable {
         let nodes = try (p["nodes"] as! [[String: Any]]).map { try jsonDecoder.decode(Node.self, from: JSONSerialization.data(withJSONObject: $0)) }
         for node in nodes { node.network = network; node.subNetworkId = networkId; node.proximityLightingNeighborAddresses = [node.primaryUnicastAddress == 2 ? 5 : 2] }
         network.nodes = nodes
-        MeshNetwork.stored[space.meshUUID + networkId] = network; SpaceData.stored[networkId] = space
+        MeshNetwork.stored[space.meshUUID + networkId] = network; SpaceData.stored[space.meshUUID + networkId] = space
         GroupInfo.stored[space.meshUUID + networkId + group.address.address.hex] = group.info
         return .init(network: network, space: space, group: group, nodes: nodes)
     }
     static func main() throws {
+        try testDeviceDeletionRecovery()
+        try testSiteDeviceOwnership()
         let target = try fixture(), other = try fixture(networkId: "BB"), sameSite = try fixture(networkId: "CC", uuid: target.network.uuid)
         let expected = preflight(payload())!.reconciliation!.snapshot
         require(target.nodes.map(\.uuid) == other.nodes.map(\.uuid), "fixture must reuse L1/L2 identities across Sites")
@@ -221,6 +290,38 @@ enum NodeSyncData: Equatable {
         ordinary["groups"] = ordinaryGroups; ordinary["spaceData"] = ["proximityLightingSchemaVersion": 1, "triggerZones": [[String: Any]]()]
         require(preflight(ordinary)?.hasValidationIssues == false, "non-proximity profile is a valid import")
         require(preflight(ordinary)?.reconciliation?.snapshot.groups.first?.relayNumber == 2, "preflight must match the runtime default for an omitted Relay")
+        // Execute the actual deferred page recomputation after replacing imported Node objects.
+        let importedOrdinary = try fixture(networkId: "AB")
+        let activatedOrdinary = try fixture(networkId: "AB", uuid: importedOrdinary.network.uuid)
+        for fixture in [importedOrdinary, activatedOrdinary] {
+            fixture.group.info.profile.type = .ordinary
+            fixture.group.info.proximityLightingPath = nil
+            fixture.space.triggerZones = []
+        }
+        MeshNetworkManager.instance.meshNetwork = activatedOrdinary.network
+        MeshNetworkManager.instance.currentNetworkKey.networkId = "AB"
+        let importPlan = ProximityLightingTopologyPlanner.makePlan(groups: [importedOrdinary.group],
+            nodes: importedOrdinary.nodes, spaceTriggerZones: [])
+        let importTasks = importedOrdinary.nodes.compactMap { $0.getNodeSyncProximityLighting(topologyPlan: importPlan) }
+        require(importTasks == [.proximityLightingEnabled(false), .proximityLightingEnabled(false)],
+                "ordinary Profile import must initially require two Disable tasks")
+        let repair = ImportRepairHarness()
+        repair.recompute(latestSpace: activatedOrdinary.space)
+        require(repair.capturedDatas?.map(\.syncData) == importTasks,
+                "deferred import sync must retain both Disable tasks after devices leave topology")
+        require(repair.capturedDatas!.allSatisfy { task in activatedOrdinary.nodes.contains { $0 === task.node } },
+                "deferred tasks must use activated network Node objects")
+        require(repair.pendingProximityLightingRepairRequest == nil, "successful recomputation must consume the request")
+        activatedOrdinary.nodes.forEach { $0.proximityLightingEnabled = false }
+        let alreadySynced = ImportRepairHarness()
+        alreadySynced.recompute(latestSpace: activatedOrdinary.space)
+        require(alreadySynced.capturedDatas?.isEmpty == true, "already disabled devices must not generate redundant tasks")
+        activatedOrdinary.group.info.profileLoadFailed = true
+        let unavailable = ImportRepairHarness()
+        unavailable.recompute(latestSpace: activatedOrdinary.space)
+        require(unavailable.capturedDatas == nil && unavailable.pendingProximityLightingRepairRequest != nil,
+                "invalid latest configuration must retain the request without generating tasks")
+        activatedOrdinary.group.info.profileLoadFailed = false
         var missing = payload(); missing["spaceData"] = ["proximityLightingSchemaVersion": 1]
         require(preflight(missing) == nil, "schema 1 must not silently accept missing zones")
         missing["spaceData"] = ["proximityLightingSchemaVersion": 2, "triggerZones": []]

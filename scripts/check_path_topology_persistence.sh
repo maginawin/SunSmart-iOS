@@ -42,3 +42,5 @@ swiftc -parse-as-library "$configuration_policy" "$configuration_test" -o "$conf
 "$configuration_binary"
 
 python3 "$repo_root/scripts/check_proximity_scoped_import.py"
+
+python3 "$repo_root/scripts/check_space_recovery_receipts.py"

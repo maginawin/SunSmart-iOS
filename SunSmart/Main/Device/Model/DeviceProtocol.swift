@@ -126,9 +126,16 @@ extension DeviceProtocol {
         let deletionContexts = Dictionary(uniqueKeysWithValues: nodes.map {
             ($0.primaryUnicastAddress, DevicePermanentDeletionContext(node: $0))
         })
+        guard deletionContexts.values.allSatisfy({ $0.isPrepared }) else {
+            XWHUDManager.hide()
+            XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
+            result?([], nodes)
+            return
+        }
         
         MeshAPI.resetNodes(addressList: nodes.map({ $0.primaryUnicastAddress }), resetSuccess: nil, resetFail: nil, resetFinish: { successAddressList, failAddressList in
             XWHUDManager.hide()
+            failAddressList.forEach { deletionContexts[$0]?.cancel() }
             let successNodes = nodes.filter({ successAddressList.contains($0.primaryUnicastAddress) })
             var lifecycleResults = successNodes.compactMap {
                 deletionContexts[$0.primaryUnicastAddress]?.commit()
@@ -138,7 +145,7 @@ extension DeviceProtocol {
                     MeshLibManager.manager.close()
                 }
                 self.syncPermanentDeletionPeers(lifecycleResults) {
-                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                    DevicePermanentDeletionContext.showCompletion(contexts: Array(deletionContexts.values))
                     result?(nodes, [])
                 }
                 
@@ -153,14 +160,18 @@ extension DeviceProtocol {
                     }
                     
                 }), SRAlertAction(title: "force_delete".localizedString, actionHandler: { _ in
+                    guard failedNodes.allSatisfy({ deletionContexts[$0.primaryUnicastAddress]?.prepareForForceRemoval() == true }) else {
+                        XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
+                        result?(successNodes, failedNodes)
+                        return
+                    }
                     failedNodes.forEach { node in
-                        MeshNetworkManager.instance.meshNetwork?.remove(node: node)
-                        if let lifecycleResult = deletionContexts[node.primaryUnicastAddress]?.commit() {
+                        if let lifecycleResult = deletionContexts[node.primaryUnicastAddress]?.forceRemove() {
                             lifecycleResults.append(lifecycleResult)
                         }
                     }
                     self.syncPermanentDeletionPeers(lifecycleResults) {
-                        XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                        DevicePermanentDeletionContext.showCompletion(contexts: Array(deletionContexts.values))
                         result?(nodes, [])
                     }
                 })])

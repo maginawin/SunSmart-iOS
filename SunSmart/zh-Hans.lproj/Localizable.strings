@@ -2187,3 +2187,11 @@
 "configuration_use_local" = "使用本机数据";
 "configuration_review_message" = "此空间需要核对后才能同步。可以重新加载云端数据；如果本机保存的完整配置正确，也可使用本机数据恢复。导入未完成或本机数据无效时无法执行本地恢复。";
 "configuration_use_local_confirm" = "使用本机保存的数据替换云端的整个空间？请先核对配置文件、路径和触发区域。其他手机的修改可能被替换，双方数据会先备份到本机。继续前请升级所有具有编辑权限的手机。";
+
+// Space deletion recovery
+"configuration_deletion_cleanup_pending" = "设备数据尚未清理完成。请重新进入此空间重试，完成后再同步。";
+"configuration_repair_local" = "检查本地修复";
+"configuration_repair_preview" = "此手机：%d 个设备\n云端：%d 个设备\n需要移除的无效路径／触发区域引用：%d\n\n保留此手机的设备列表并移除这些无效引用。组、配置文件和有效引用将保留。此手机保存的空间将替换云端副本。是否继续？";
+"configuration_repair_unavailable" = "修复未能完成，数据可能已发生变化或不完整。请重新检查此空间。";
+"configuration_reload_invalid" = "云端数据未能恢复此空间。请检查本地修复或使用完整的已保存副本。";
+"configuration_upload_unconfirmed" = "无法确认云端同步结果，已保留此手机保存的数据。";

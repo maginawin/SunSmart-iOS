@@ -236,20 +236,14 @@ extension SiteData {
     
     /// 删除当前场所数据
     @discardableResult func deleteData() -> Bool {
+        guard let database = SunSmartDataManager.shared.db,
+              SpaceData.deleteAll(siteId: id), GatewayModel.delete(siteId: id) else { return false }
         let filter = SiteData.sitesTable.filter(ExpressionKey.uuid == id)
-        do {
-            try SunSmartDataManager.shared.db?.run(filter.delete())
-        } catch {
-            print(error)
-            return false
-        }
-        spaces.forEach({
-            $0.delete()
-        })
-        GatewayModel.delete(siteId: self.id)
+        do { try database.run(filter.delete()) }
+        catch { print(error); return false }
         return true
     }
-    
+
     /// 删除所有场所数据
 //    static func deleteAllData() -> Bool {
 //        do {
@@ -685,35 +679,24 @@ extension SpaceData {
     /// - Parameter siteId: 对应场所
     /// - Returns: 是否成功
     static func deleteAll(siteId: String) -> Bool {
-        
-        SpaceData.load(siteId: siteId).forEach({
-            $0.clearStoredPassword()
-        })
-        
-        let filter = SpaceData.spacesTable.filter(ExpressionKey.siteUUID == siteId)
-        do {
-            try SunSmartDataManager.shared.db?.run(filter.delete())
-        } catch {
-            print(error)
-            return false
+        guard SunSmartDataManager.shared.db != nil else { return false }
+        for space in SpaceData.load(siteId: siteId) {
+            guard space.delete() else { return false }
         }
         return true
     }
-    
-    /// 删除当前空间数据
+
+    /// Delete the row only after a durable removal intent exists.
     @discardableResult func deleteData() -> Bool {
-        
-        self.clearStoredPassword()
-        let filter = SpaceData.spacesTable.filter(ExpressionKey.uuid == self.id)
-        do {
-            try SunSmartDataManager.shared.db?.run(filter.delete())
-        } catch {
-            print(error)
-            return false
-        }
-        return true
+        guard let database = SunSmartDataManager.shared.db,
+              SpaceConfigurationSafety.beginRemoval(self) else { return false }
+        let filter = SpaceData.spacesTable.filter(ExpressionKey.siteUUID == siteId && ExpressionKey.uuid == id)
+        do { try database.run(filter.delete()) }
+        catch { print(error); return false }
+        clearStoredPassword()
+        return SpaceConfigurationSafety.archiveDeletedSpace(self)
     }
-    
+
     /// 缓存当前空间数据
     @discardableResult func save() -> Bool {
         guard !triggerZonesLoadFailed, SunSmartDataManager.shared.db != nil else { return false }

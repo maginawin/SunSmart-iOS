@@ -81,10 +81,11 @@ struct ProximityLightingLifecycleContractTests {
         )
         let nodeDelete = section(in: deletion, from: "func commit()", to: "print(")
         require(
-            nodeDelete.contains("transaction.removeNode")
-                && nodeDelete.contains("allowExistingHardErrors: true")
-                && nodeDelete.contains("applyAdditionalChanges: applyDeletion"),
-            "Permanent deletion must atomically clean topology and extension data"
+            nodeDelete.contains("transaction.removeConfirmedAddresses")
+                && nodeDelete.contains("confirmedDeletionAddresses: addresses")
+                && nodeDelete.contains("try cleanExtensions")
+                && nodeDelete.contains("readback.isValid"),
+            "Permanent deletion must persist confirmed references and verify cleanup before completion"
         )
         require(
             deviceProtocol.contains("syncPermanentDeletionPeers")
@@ -203,7 +204,8 @@ struct ProximityLightingLifecycleContractTests {
         require(
             space.contains("request.meshUUID == self.space.meshUUID")
                 && space.contains("request.networkId == self.space.meshNetworkId")
-                && space.contains("let datas = result.syncDatas")
+                && space.contains("ProximityLightingTopologyContext.realNodes(in: network).compactMap")
+                && space.contains("node.getNodeSyncProximityLighting(topologyPlan: result.plan)")
                 && !space.contains("pendingProximityLightingRepairSyncDatas"),
             "Deferred import sync must retain only scope and regenerate tasks after activation"
         )

@@ -129,8 +129,17 @@ class SpaceData: Copyable {
     /// 展示的同步服务区错误信息
     var showSyncCloudError: NetworkApiError? {
         
-        guard needUploadCloud else {
+        guard needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(self) else {
             return nil
+        }
+        if SpaceConfigurationSafety.hasPendingUpload(self), syncCloudError == nil || syncCloudError?.code == -2 {
+            return .configurationUploadUnconfirmed
+        }
+        if let handle = CloudSynchronizationManager.shared.getSpaceCurrentSyncState(self) {
+            switch handle.state {
+            case .wait, .inProgress: return nil
+            default: break
+            }
         }
         // 同步过程中不显示错误
 //        if let handle = CloudSynchronizationManager.shared.getSpaceCurrentSyncState(self), handle.state.rawValue == CloudSynchronizationHandle.State.wait.rawValue || handle.state.rawValue == CloudSynchronizationHandle.State.inProgress.rawValue {

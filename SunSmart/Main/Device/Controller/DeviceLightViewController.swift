@@ -571,19 +571,28 @@ class DeviceLightViewController: UIViewController {
         SRAlertView(title: "notification".localizedString, message: "device_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             guard let self = self else { return }
             XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-            let deletionContext = DevicePermanentDeletionContext(node: self.node)
+            let deletionContext = DevicePermanentDeletionContext(node: self.node, space: self.space)
+            guard deletionContext.isPrepared else {
+                XWHUDManager.hide()
+                XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
+                return
+            }
   
             MeshAPI.resetNode(address: self.node.primaryUnicastAddress) {[weak self] _ in
                 XWHUDManager.hide()
                 let lifecycleResult = deletionContext.commit()
                 self?.completePermanentDeletion(lifecycleResult)
             } resetFail: { _, error in
+                deletionContext.cancel()
                 XWHUDManager.hide()
                 
                 let alertView = SRAlertView(title: "notification".localizedString, actions: [.cancelAction, SRAlertAction(title: "force_delete".localizedString, style: .destructive, actionHandler: {[weak self] _ in
                     guard let self = self else { return }
-                    MeshNetworkManager.instance.meshNetwork?.remove(node: self.node)
-                    let lifecycleResult = deletionContext.commit()
+                    guard deletionContext.prepareForForceRemoval() else {
+                        XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
+                        return
+                    }
+                    let lifecycleResult = deletionContext.forceRemove()
                     self.completePermanentDeletion(lifecycleResult)
                 })])
                 let messageAttStr = NSMutableAttributedString(string: "device_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
@@ -607,7 +616,7 @@ class DeviceLightViewController: UIViewController {
 
         let finish = { [weak self] in
             guard let self else { return }
-            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            DevicePermanentDeletionContext.showCompletion(space: self.space)
             DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) { [weak self] in
                 guard let self else { return }
                 NotificationCenter.default.post(

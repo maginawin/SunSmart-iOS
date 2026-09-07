@@ -364,6 +364,10 @@ public enum NetworkApiError: Error, Equatable {
             return 4012
         case .spacePasswordOverdue:
             return 4015
+        case .configurationUploadUnconfirmed:
+            return -2002
+        case .configurationExportInvalid:
+            return -2003
         }
     }
     
@@ -379,6 +383,10 @@ public enum NetworkApiError: Error, Equatable {
         underlyingError: NSError? = nil
     ) {
         switch code {
+        case -2002:
+            self = .configurationUploadUnconfirmed
+        case -2003:
+            self = .configurationExportInvalid
         case -1009, -1020:
             self = .noNetwork
         case -1001:
@@ -419,6 +427,9 @@ public enum NetworkApiError: Error, Equatable {
     
     /// 未知错误
     case unknown
+    /// Local configuration sync failures retain their localized meaning after reload.
+    case configurationUploadUnconfirmed
+    case configurationExportInvalid
     /// 未识别的服务器或底层错误，保留原始诊断信息
     case apiError(
         code: Int,
@@ -458,6 +469,10 @@ extension NetworkApiError: LocalizedError {
     
     public var errorDescription: String? {
         switch self {
+        case .configurationUploadUnconfirmed:
+            return "configuration_upload_unconfirmed".localizedString
+        case .configurationExportInvalid:
+            return "proximity_lighting_export_invalid".localizedString
         case .noNetwork:
             return "phone_no_network".localizedString
         case .requestTimeout:

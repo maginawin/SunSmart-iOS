@@ -1350,6 +1350,7 @@ class DeviceAddProfessionalModeController: UIViewController {
                 node.requiredFunctionTypes = [.lightLCScene, .lightLCScheduler]
             }
             node.save()
+            SiteDeviceOwnershipReconciler.provisioned(node, space: self.space)
             
             if addDevice.deviceType == .dongle { // dongle设备，需要一个dongle虚拟数据与之绑定
             

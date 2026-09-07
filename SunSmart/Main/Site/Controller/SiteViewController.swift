@@ -193,6 +193,15 @@ class SiteViewController: UIViewController {
         super.viewWillAppear(animated)
         (navigationController as? NavigationViewController)?.navigationDelegate = nil
 
+        let ownershipChanges = SiteDeviceOwnershipReconciler.reconcile(siteId: site.id)
+        site.spaces = site.spaces.map { current in
+            SpaceData.load(siteId: site.id, spaceId: current.id).first ?? current
+        }
+        if NetworkRequest.shared.networkable {
+            for old in site.spaces where ownershipChanges.contains(old.id) {
+                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSpace(space: old), level: .normal)
+            }
+        }
         setupData()
         refreshCurrentGatewayTimeZoneReviewProjection()
         retryDirtyGatewayCloudUploads()
@@ -1217,10 +1226,23 @@ self.updateAddressData()
             switch result {
             case .success(let response):
                 if let spaceData = JSON(response)["data"].dictionaryObject {
-                    Task {
-                        let outcome = await space.update(
-                            spaceJsonData: spaceData
-                        )
+                    Task { @MainActor in
+                        guard spaceData["uuid"] as? String == space.id else {
+                            XWHUDManager.hide()
+                            callback?(false)
+                            return
+                        }
+                        var importPayload = spaceData
+                        if let verificationPassword {
+                            space.authorizationPassword = verificationPassword
+                            space.requiresPasswordVerification = false
+                            // This successful GET explicitly verified the new password.
+                            // Do not immediately re-arm its already acknowledged event.
+                            importPayload["userEvents"] = (spaceData["userEvents"] as? [String] ?? []).filter {
+                                $0 != "EditorPasswdChanged" && $0 != "VisitorPasswdChanged"
+                            }
+                        }
+                        let outcome = await space.update(spaceJsonData: importPayload)
                         guard outcome.status != .rejected else {
                             XWHUDManager.hide()
                             XWHUDManager.showErrorTipHUD(
@@ -1253,6 +1275,7 @@ self.updateAddressData()
                     }
                 }
             case .failure(let error):
+                SpaceConfigurationSafety.handleAuthorityError(error, space: space)
                 XWHUDManager.hide()
                 
                 switch error {
@@ -1268,7 +1291,7 @@ self.updateAddressData()
                         }
                         self.reloadGatewaySpacePermissionState(space: space)
                     }
-                case .noSpacePermission, .userUnauthorized: // 无权限
+                case .noSpacePermission: // 无权限
                     if space.permission == .editor || space.permission == .visitor {
                         // 设置space为待删除状态
                         space.state = .waitDeleted
@@ -2298,47 +2321,40 @@ self.updateAddressData()
         // 是否有同步操作正在进行,进行中则取消任务
         CloudSynchronizationManager.shared.cancelSynchronizationHandle(space: space)
         // 数据有更新没提交,先提交完成数据再解绑
-        if space.permission == .editor && space.needUploadCloud {
-            Task {
-                guard let spaceData = await space.export(purpose: .cloudSync),
-                      spaceData.keys.contains("netKey") else {
+        if space.permission == .editor && (space.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(space)) {
+            Task { @MainActor in
+                switch await SpaceConfigurationSafety.uploadBeforeUnbind(space) {
+                case .success:
+                    self.unbindSpace(space)
+                case .failure(let error):
                     XWHUDManager.hide()
-                    XWHUDManager.showErrorTipHUD(
-                        "proximity_lighting_export_invalid".localizedString
-                    )
-                    return
-                }
-                NetworkRequest.shared.request(
-                    .spaceUpload(
-                        siteId: space.siteId,
-                        spaceId: space.id,
-                        spaceData: spaceData
-                    )
-                ) {[weak self] result in
-                    switch result {
-                    case .success(_):
-                        space.lastUploadCloudTimestamp = space.lastUpdate
-                        self?.unbindSpace(space)
-                    case .failure(let error):
-                        XWHUDManager.hide()
-                        XWHUDManager.showErrorTipHUD(error.localizedDescription)
-                    }
+                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
                 }
             }
             return
         }
-        
-        Task {
+
+        Task { @MainActor in
+            guard let context = SpaceConfigurationSafety.beginUnbind(space) else {
+                XWHUDManager.hide()
+                XWHUDManager.showErrorTipHUD(SpaceConfigurationSafety.uploadUnconfirmed.localizedDescription)
+                return
+            }
             let recycleData = await site.getRecycleAddressData(unbindSpaces: [space])
             
+            guard SpaceConfigurationSafety.isCurrent(context, space: space) else { XWHUDManager.hide(); return }
             let networkApi: NetowrkReqeustApi = .unbindSpaces(siteId: site.id, spaceIds: [space.id], recycleDeviceAddresses: recycleData.deviceAddresses, recycleGroupAddresses: recycleData.groupAddresses, recycleSceneAddresses: recycleData.sceneAddresses, exclusions: recycleData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }), provisionerData: recycleData.provisionerData)
             
             NetworkRequest.shared.request(networkApi) {[weak self] result in
                 XWHUDManager.hide()
                 
-                guard let self = self else { return }
+                guard let self = self, SpaceConfigurationSafety.isCurrent(context, space: space) else { return }
                 switch result {
                 case .success(_):
+                    guard space.delete() else {
+                        XWHUDManager.showErrorTipHUD(SpaceConfigurationSafety.uploadUnconfirmed.localizedDescription)
+                        return
+                    }
                     //                XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
                     // 删除回收的地址
                     self.site.deleteProvisionerAddress(deviceAddresses: recycleData.deviceAddresses, groupAddresses: recycleData.groupAddresses, sceneAddresses: recycleData.sceneAddresses)

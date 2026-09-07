@@ -18,11 +18,31 @@ def section(text, start, end):
 
 adapter = source('SunSmart/Main/Group/Model/GroupProximityLightingData.swift')
 start = 'enum ProximityLightingTopologyContext' if 'enum ProximityLightingTopologyContext' in adapter else 'enum ProximityLightingTopologyPlanner'
+space_controller = source('SunSmart/Main/Space/Controller/SpaceViewController.swift')
+repair_presentation = section(space_controller, '    private func presentProximityLightingRepairSyncIfNeeded()', '\n    // MARK: - Request')
+repair_recomputation = section(repair_presentation, '        let preparation =', '        guard !datas.isEmpty else { return }')
+test_source = (root / 'Tests/Group/ProximityLightingScopedImportTests.swift').read_text()
+safety = source('SunSmart/Common/Data/SpaceConfigurationSafety.swift')
+receipt_methods = section(safety, '    static func preservesLocalChanges(', '\n    /// Called only after successful local Space removal.')
+# Only dependencies/storage boundaries are doubled. Receipt decisions run the
+# actual safety methods against an isolated UserDefaults suite.
+test_source = test_source.replace('// RECEIPT_METHODS', receipt_methods.replace('UserDefaults.standard', 'testDefaults'))
 parts = [section(adapter, start, '\nextension SpaceData'),
+         source('SunSmart/Common/Data/DeviceScheduleAddressCleanup.swift'),
+         source('SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),
+         source('SunSmart/Common/Data/DevicePermanentDeletionCleanup.swift').replace('import NordicSigMeshSDK', ''),
+         source('SunSmart/Common/Data/SiteDeviceOwnershipReconciler.swift').replace('import NordicSigMeshSDK', ''),
          source('SunSmart/Main/Group/Model/ProximityLightingLifecycleCoordinator.swift').replace('import NordicSigMeshSDK', ''),
          section(source('SunSmart/Common/Data/ImportData.swift'), 'private struct ProximityLightingImportPreflight', '\n#if DEBUG'),
          'extension Node {\n' + section(source('SunSmart/Common/Data/Node+SyncData.swift'), '    func getNodeSyncProximityLighting(', '    /// 获取网关设备同步的配置') + '\n}',
-         (root / 'Tests/Group/ProximityLightingScopedImportTests.swift').read_text()]
+         'final class ImportRepairHarness {\n'
+         '    var pendingProximityLightingRepairRequest: Bool? = true\n'
+         '    var capturedDatas: [(node: Node, syncData: NodeSyncData)]?\n'
+         '    func recompute(latestSpace: SpaceData) {\n' + repair_recomputation +
+         '        capturedDatas = datas\n    }\n}',
+         test_source,
+         (root / 'Tests/Group/DeviceDeletionRecoveryExecutionTests.swift').read_text(),
+         (root / 'Tests/Group/SiteDeviceOwnershipExecutionTests.swift').read_text()]
 with tempfile.TemporaryDirectory(prefix='proximity-scoped-import-') as directory:
     directory = Path(directory)
     harness = directory / 'Harness.swift'

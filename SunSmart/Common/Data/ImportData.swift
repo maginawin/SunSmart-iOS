@@ -50,6 +50,10 @@ struct SpaceImportOutcome {
             rejectionReason: nil
         )
     }
+
+    static func preserved(_ reason: String, repairs: [ProximityLightingTopologyReconciler.Repair] = []) -> SpaceImportOutcome {
+        .init(status: .skipped, repairs: repairs, hardErrors: [], syncDatas: [], rejectionReason: reason)
+    }
 }
 
 struct SpaceImportResult {
@@ -826,6 +830,15 @@ extension SiteData {
                 }
             }
             self.spaces.sort(by: { $0.create > 0 && $0.create < $1.create })
+            await MainActor.run {
+                let changed = SiteDeviceOwnershipReconciler.reconcile(siteId: self.id)
+                self.spaces = self.spaces.map { current in
+                    SpaceData.load(siteId: self.id, spaceId: current.id).first ?? current
+                }
+                for space in self.spaces where changed.contains(space.id) {
+                    CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSpace(space: space), level: .normal)
+                }
+            }
             
 //            self.spaces = spaces
             self.spaceCount = nil
@@ -1430,6 +1443,13 @@ extension SpaceData {
                 reason: "spaceUnavailable"
             )
         }
+        if (try? SpaceConfigurationSafety.recoveryState(space).phase) == .removing {
+            guard space.delete() else { return .rejected(serverSpaceId: serverSpaceId, reason: "spaceRemovalPending") }
+            return await Self.import(siteId: siteId, meshUUID: meshUUID, spaceJsonData: spaceJsonData)
+        }
+        guard SpaceConfigurationSafety.activateImport(space) else {
+            return .rejected(serverSpaceId: serverSpaceId, reason: "spaceRecoveryUnavailable")
+        }
         let outcome = await space.update(
             spaceJsonData: spaceJsonData,
             initialize: initialize
@@ -1442,6 +1462,95 @@ extension SpaceData {
         //        }
     }
     
+    /// Server authority and presence are independent of the topology snapshot.
+    func applyRemoteSpaceMetadata(_ payload: [String: Any]) {
+        guard payload["uuid"] as? String == id else { return }
+        let json = JSON(payload)
+        // 分享id
+        if let shareId = json["shareId"].string {
+            self.shareCode = shareId
+        }
+        // 是否启用访客密码
+        if let vistorPasswordEnable = json["visitProtected"].bool {
+            self.vistorPasswordEnable = vistorPasswordEnable
+            if !vistorPasswordEnable, self.permission == .visitor {
+                self.requiresPasswordVerification = false
+            }
+        }
+        // 访客密码
+        if let visitorPasswd = json["visitorPasswd"].string {
+            self.vistorPassword = visitorPasswd.count > 0 ? visitorPasswd : nil
+        }
+
+        // 权限
+        if let role = json["role"].string {
+            var permission: Permission = .visitor
+            switch role {
+            case "owner":
+                permission = .owner
+            case "editor":
+                permission = .editor
+            default:
+                break
+            }
+            self.permission = permission
+        }
+
+        if let userId = json["owner"]["userId"].string, let userName = json["owner"]["username"].string {
+            self.owner = .init(name: userName, uuid: userId)
+        }else {
+            self.owner = nil
+        }
+
+        if let userId = json["editor"]["userId"].string, let userName = json["editor"]["username"].string {
+            self.editor = .init(name: userName, uuid: userId)
+        }else {
+            self.editor = nil
+        }
+        // 访客数据
+        if let visitors = json["visitors"].arrayObject as? [[String: Any]] {
+            self.visitors = visitors.compactMap({
+                if let userId = $0["userId"] as? String, let userName = $0["username"] as? String {
+                    return UserData(name: userName, uuid: userId)
+                }
+                return nil
+            })
+        }
+
+        if self.state == .waitDeleted {
+            self.state = .normal
+            self.requiresPasswordVerification = false
+            self.applyDeviceAddressCount = nil
+            self.applyGroupAddressCount = nil
+            self.releaseAddress = false
+            self.disableEditorPermission = false
+        }
+        // 用户事件
+        if let events = json["userEvents"].arrayObject as? [String] {
+    //                var requiresPasswordVerification = false
+            // 密码被修改
+            if (self.permission == .editor && events.contains("EditorPasswdChanged")) || (self.permission == .visitor && events.contains("VisitorPasswdChanged") && self.vistorPasswordEnable) {
+                self.requiresPasswordVerification = true
+            }
+        }
+
+        // 网关数据
+        if let gatewayId = json["gatewayId"].string, !gatewayId.isEmpty {
+            self.relevanceGatewayId = gatewayId
+            if json["gatewayOnline"].bool ?? false {
+                self.gatewayStatus = .online
+                self.gatewayLastOnline = nil
+            }else {
+                self.gatewayStatus = .offline
+                self.gatewayLastOnline = json["gatewayLastupdate"].int64
+            }
+        }else {
+            self.relevanceGatewayId = nil
+            self.gatewayStatus = .notBound
+        }
+        SpaceConfigurationSafety.reconcileAuthority(self, remote: payload)
+    }
+
     /// 更新空间内基本数据+设备、组、场景、日程
     /// - Parameter spaceJsonData: 空间数据
     /// - Parameter initialize: 是否初始化数据（本地无记录）
@@ -1451,6 +1560,17 @@ extension SpaceData {
         spaceJsonData: [String: Any],
         initialize: Bool = false
     ) async -> SpaceImportOutcome {
+        guard spaceJsonData["uuid"] as? String == id else { return .rejected("spaceIdentityMismatch") }
+        guard let context = try? SpaceConfigurationSafety.recoveryState(self), context.phase == .active else {
+            return .rejected("spaceRemovalPending")
+        }
+        applyRemoteSpaceMetadata(spaceJsonData)
+        if !initialize { save() }
+        DevicePermanentDeletionContext.resume(space: self)
+        if SpaceConfigurationSafety.preservesLocalChanges(self) {
+            print("[SpaceConfigurationSafety] preserved pending local deletion/recovery space=\(id)")
+            return .preserved("localDeletionOrRecoveryPendingUpload")
+        }
         let resumingImport = SpaceConfigurationSafety.hasPendingImport(self)
         let spaceJsonData = SpaceConfigurationSafety.pendingImport(self) ?? spaceJsonData
         if !resumingImport, SpaceConfigurationSafety.needsUpgradeBaseline(self),
@@ -1458,6 +1578,10 @@ extension SpaceData {
             SpaceConfigurationSafety.verifyUpgradeBaseline(self, local: local, remote: spaceJsonData)
         }
         return await withCheckedContinuation { continuation in
+            if SpaceConfigurationSafety.preservesLocalChanges(self) {
+                continuation.resume(returning: .preserved("localDeletionOrRecoveryPendingUpload"))
+                return
+            }
             let json = JSON(spaceJsonData)
             guard json["uuid"].string == self.id,
                   //              let netKeyDict = json["netKey"].dictionary,
@@ -1533,9 +1657,11 @@ extension SpaceData {
                 print(
                     "[ProximityLightingImport] preserved local snapshot " +
                     "warnings=\(proximityPreflight.warnings) " +
-                    "hardErrors=\(errorCounts)"
+                    "hardErrors=\(errorCounts) " +
+                    "repairs=\(proximityPreflight.reconciliation?.repairs.map(\.diagnosticDescription) ?? []) " +
+                    "remoteNodes=\(nodeDicts.count) localNodes=\(localMeshNetwork?.nodes.count ?? 0)"
                 )
-                continuation.resume(returning: .skipped)
+                continuation.resume(returning: .preserved("invalidRemoteTopology", repairs: proximityPreflight.reconciliation?.repairs ?? []))
                 return
             case .applyWithoutProximityMutation:
                 shouldCommitProximityTopology = false
@@ -1576,91 +1702,6 @@ extension SpaceData {
             printSpaceCountProbe(phase: "received", json: json, space: self, initialize: initialize)
 #endif
             
-            // 分享id
-            if let shareId = json["shareId"].string {
-                self.shareCode = shareId
-            }
-            // 是否启用访客密码
-            if let vistorPasswordEnable = json["visitProtected"].bool {
-                self.vistorPasswordEnable = vistorPasswordEnable
-                if !vistorPasswordEnable, self.permission == .visitor {
-                    self.requiresPasswordVerification = false
-                }
-            }
-            // 访客密码
-            if let visitorPasswd = json["visitorPasswd"].string {
-                self.vistorPassword = visitorPasswd.count > 0 ? visitorPasswd : nil
-            }
-            
-            // 权限
-            if let role = json["role"].string {
-                var permission: Permission = .visitor
-                switch role {
-                case "owner":
-                    permission = .owner
-                case "editor":
-                    permission = .editor
-                default:
-                    break
-                }
-                self.permission = permission
-            }
-            
-            if let userId = json["owner"]["userId"].string, let userName = json["owner"]["username"].string {
-                self.owner = .init(name: userName, uuid: userId)
-            }else {
-                self.owner = nil
-            }
-            
-            if let userId = json["editor"]["userId"].string, let userName = json["editor"]["username"].string {
-                self.editor = .init(name: userName, uuid: userId)
-            }else {
-                self.editor = nil
-            }
-            // 访客数据
-            if let visitors = json["visitors"].arrayObject as? [[String: Any]] {
-                self.visitors = visitors.compactMap({
-                    if let userId = $0["userId"] as? String, let userName = $0["username"] as? String {
-                        return UserData(name: userName, uuid: userId)
-                    }
-                    return nil
-                })
-            }
-            
-            if self.state == .waitDeleted {
-                self.state = .normal
-                self.requiresPasswordVerification = false
-                self.applyDeviceAddressCount = nil
-                self.applyGroupAddressCount = nil
-                self.releaseAddress = false
-                self.disableEditorPermission = false
-            }
-            // 用户事件
-            if let events = json["userEvents"].arrayObject as? [String] {
-//                var requiresPasswordVerification = false
-                // 密码被修改
-                if (self.permission == .editor && events.contains("EditorPasswdChanged")) || (self.permission == .visitor && events.contains("VisitorPasswdChanged") && self.vistorPasswordEnable) {
-                    self.requiresPasswordVerification = true
-                }
-            }
-            
-            // 网关数据
-            if let gatewayId = json["gatewayId"].string, !gatewayId.isEmpty {
-                self.relevanceGatewayId = gatewayId
-                if json["gatewayOnline"].bool ?? false {
-                    self.gatewayStatus = .online
-                    self.gatewayLastOnline = nil
-                }else {
-                    self.gatewayStatus = .offline
-                    self.gatewayLastOnline = json["gatewayLastupdate"].int64
-                }
-            }else {
-                self.relevanceGatewayId = nil
-                self.gatewayStatus = .notBound
-            }
-            
-            
-            
             // 子网key丢失
             if let network = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId, allData: false), !network.networkKeys.contains(where: { $0.networkId.hex == self.meshNetworkId }) {
                 // 修复子网key数据
@@ -1683,7 +1724,8 @@ extension SpaceData {
             let lastUpdate = json["updateTimestamp"].int64Value
             let sameTimestampSummaryDiffers = lastUpdate == self.lastUpdate && summaryDiffers
             let serverSummaryDiffersNote = localNeedsUpload ? "serverSummaryDiffersButLocalNeedsUpload" : "serverSummaryDiffers"
-            let shouldApplyServerData = resumingImport || SpaceConfigurationSafety.isBlocked(self) || lastUpdate > self.lastUpdate || initialize || (sameTimestampSummaryDiffers && !localNeedsUpload)
+            let shouldApplyServerData = resumingImport || SpaceConfigurationSafety.requiresAuthorityImport(self)
+                || SpaceConfigurationSafety.isBlocked(self) || lastUpdate > self.lastUpdate || initialize || (sameTimestampSummaryDiffers && !localNeedsUpload)
             // 服务器最后更新时间比本地时间新才覆盖本地数据
             guard shouldApplyServerData else {
 #if DEBUG

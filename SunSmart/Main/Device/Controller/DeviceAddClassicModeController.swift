@@ -1322,6 +1322,7 @@ class DeviceAddClassicModeController: UIViewController {
 //                node.name = MeshNetworkManager.instance.getNextNodeName(node.defaultNameCategory)
 //            }
             node.save()
+            SiteDeviceOwnershipReconciler.provisioned(node, space: self.space)
             
             // 配网完成
             if addDevice.deviceType == .dongle { // dongle设备，需要一个dongle虚拟数据与之绑定

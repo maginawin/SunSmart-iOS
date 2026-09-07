@@ -185,6 +185,17 @@ struct ProximityLightingTopologyReconciler {
         case removedDuplicateGroupZoneAddress(groupAddress: GroupAddress, deviceAddress: DeviceAddress)
         case removedInvalidSpaceZoneMember(groupAddress: GroupAddress, deviceAddress: DeviceAddress)
         case removedDuplicateSpaceZoneMember(groupAddress: GroupAddress, deviceAddress: DeviceAddress)
+
+        var diagnosticDescription: String {
+            switch self {
+            case .removedIneligibleGroupTopology(let group): return "ineligibleGroup[\(group)]"
+            case .clearedInvalidSequenceAddress(let group, let node): return "sequence[\(group):\(node)]"
+            case .removedInvalidGroupZoneAddress(let group, let node): return "groupZone[\(group):\(node)]"
+            case .removedDuplicateGroupZoneAddress(let group, let node): return "duplicateGroupZone[\(group):\(node)]"
+            case .removedInvalidSpaceZoneMember(let group, let node): return "spaceZone[\(group):\(node)]"
+            case .removedDuplicateSpaceZoneMember(let group, let node): return "duplicateSpaceZone[\(group):\(node)]"
+            }
+        }
     }
 
     enum HardError: Equatable {
@@ -234,6 +245,15 @@ struct ProximityLightingTopologyReconciler {
                 default:
                     return true
                 }
+            }
+        }
+
+        /// A reviewed repair may remove dangling references, but never discard
+        /// an entire Group configuration or repair ambiguous ownership/capacity.
+        var canReviewReferenceRepair: Bool {
+            isValid && !repairs.isEmpty && !repairs.contains {
+                if case .removedIneligibleGroupTopology = $0 { return true }
+                return false
             }
         }
 

@@ -124,7 +124,10 @@ extension SiteData {
     
     /// 删除场所数据+mesh网络
     @discardableResult func delete() -> Bool {
-        
+        for space in SpaceData.load(siteId: id) {
+            guard SpaceConfigurationSafety.beginRemoval(space) else { return false }
+        }
+        CloudSynchronizationManager.shared.cancelSynchronizationHandle(site: self)
         MeshLibManager.manager.removeMeshNetwork(meshUUID: meshUUID)
         return self.deleteData()
     }
@@ -458,33 +461,26 @@ extension SpaceData {
         return spaceData
     }
     
-    /// 删除空间数据+mesh网络
+    /// Finish local removal before returning; interrupted work is replayable.
     @discardableResult func delete() -> Bool {
-        
-//        MeshLibManager.manager.removeMeshNetwork(meshUUID: self.meshUUID)
-        // 删除子网并断开连接
-//        _ = MeshNetworkManager.instance.removeSubnetwork(networkKey: self.meshNetworkKey)
-//        let meshManager = MeshNetworkManager.loadMeshNetwork(meshUUID: meshUUID)
-//        _ = meshManager?.removeSubnetwork(networkId: self.meshNetworkId)
-        _ = MeshNetworkManager.removeSubnetwork(meshUUID: self.meshUUID, networkId: self.meshNetworkId)
-//        _ = meshManager?.removeSubnetwork(networkKey: self.meshNetworkKey)
-        if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.meshUUID && MeshNetworkManager.instance.currentNetworkKey.networkId.hex == self.meshNetworkId && MeshLibManager.manager.meshNetworkManager?.meshNetwork?.uuid == MeshNetworkManager.instance.meshNetwork?.uuid {
+        guard SunSmartDataManager.shared.db != nil, SpaceConfigurationSafety.beginRemoval(self) else { return false }
+        CloudSynchronizationManager.shared.cancelSynchronizationHandle(space: self)
+        if let network = MeshNetwork.load(meshUUID: meshUUID, allData: false),
+           network.networkKeys.contains(where: { $0.networkId.hex == meshNetworkId }) {
+            guard MeshNetworkManager.removeSubnetwork(meshUUID: meshUUID, networkId: meshNetworkId) else { return false }
+        }
+        if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == meshUUID,
+           MeshNetworkManager.instance.currentNetworkKey.networkId.hex == meshNetworkId {
             MeshLibManager.manager.meshNetworkDisconnect()
         }
-        DispatchQueue.global().async {
-//            _ = MeshNetworkManager.removeMeshNetwork(meshUUID: self.meshUUID)
-            // 删除网络扩展数据
-            GroupInfo.delete(meshUUID: self.meshUUID, networkId: self.meshNetworkId)
-            SceneInfo.delete(meshUUID: self.meshUUID, networkId: self.meshNetworkId)
-            Schedule.deleteAll(meshUUID: self.meshUUID, meshNetworkId: self.meshNetworkId)
-            Profile.deleteProfiles(meshUUID: self.meshUUID, meshNetworkId: self.meshNetworkId)
-//            GroupSwitch.deleteSwitchs(meshUUID: self.meshUUID, networkId: self.meshNetworkId)
-            DeviceSwitchData.deleteSwitchs(meshUUID: self.meshUUID, networkId: self.meshNetworkId)
-            self.deleteData()
-        }
-        return true
+        guard GroupInfo.delete(meshUUID: meshUUID, networkId: meshNetworkId),
+              SceneInfo.delete(meshUUID: meshUUID, networkId: meshNetworkId),
+              Schedule.deleteAll(meshUUID: meshUUID, meshNetworkId: meshNetworkId),
+              Profile.deleteProfiles(meshUUID: meshUUID, meshNetworkId: meshNetworkId),
+              DeviceSwitchData.deleteSwitchs(meshUUID: meshUUID, networkId: meshNetworkId) else { return false }
+        return deleteData()
     }
-    
+
 }
 
 extension MeshLibManager {

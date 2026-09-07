@@ -225,7 +225,12 @@ class DeviceDongleViewController: UIViewController, DeviceProtocol {
     private func deleteNode(node: Node) {
         
         XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-        let deletionContext = DevicePermanentDeletionContext(node: node)
+        let deletionContext = DevicePermanentDeletionContext(node: node, space: self.space)
+        guard deletionContext.isPrepared else {
+            XWHUDManager.hide()
+            XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
+            return
+        }
         MeshAPI.resetNode(address: node.primaryUnicastAddress) {[weak self] _ in
             
             XWHUDManager.hide()
@@ -233,11 +238,15 @@ class DeviceDongleViewController: UIViewController, DeviceProtocol {
             self?.completePermanentDeletion(lifecycleResult)
             
         } resetFail: { _, _ in
+            deletionContext.cancel()
             
             let alertView = SRAlertView(title: "notification".localizedString, actions: [.cancelAction, SRAlertAction(title: "force_delete".localizedString, actionHandler: {[weak self] _ in
                 guard let self = self else { return }
-                MeshNetworkManager.instance.meshNetwork?.remove(node: node)
-                let lifecycleResult = deletionContext.commit()
+                guard deletionContext.prepareForForceRemoval() else {
+                        XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
+                        return
+                    }
+                    let lifecycleResult = deletionContext.forceRemove()
                 self.completePermanentDeletion(lifecycleResult)
             })])
             let messageAttStr = NSMutableAttributedString(string: "device_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
@@ -267,7 +276,7 @@ class DeviceDongleViewController: UIViewController, DeviceProtocol {
         _ lifecycleResult: ProximityLightingLifecycleResult?
     ) {
         let finish = { [weak self] in
-            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            if let self { DevicePermanentDeletionContext.showCompletion(space: self.space) }
             DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) { [weak self] in
                 NotificationCenter.default.post(
                     name: .init(devicesUpdateNotificationName),

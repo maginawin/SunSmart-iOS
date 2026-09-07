@@ -94,6 +94,7 @@ extension SpaceData {
         if site.spaces.isEmpty {
             site.spaces = SpaceData.load(siteId: site.id)
         }
+        if let index = site.spaces.firstIndex(where: { $0.id == id }) { site.spaces[index] = self }
 
         switch changeType {
         case .device, .common:
@@ -369,6 +370,12 @@ class SpaceViewController: WMPageController {
         super.viewDidAppear(animated)
         
         updateSyncState()
+        if NetworkRequest.shared.networkable, SpaceConfigurationSafety.canAutomaticallyUpload(space),
+           (space.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(space)),
+           (!SpaceConfigurationSafety.isBlocked(space) || SpaceConfigurationSafety.hasPendingUpload(space)),
+           CloudSynchronizationManager.shared.getSpaceCurrentSyncState(space) == nil {
+            syncSpace(level: .promptly)
+        }
         presentProximityLightingRepairSyncIfNeeded()
     }
     
@@ -583,6 +590,15 @@ class SpaceViewController: WMPageController {
         
         
         // 空间内数据更新通知
+        NotificationCenter.default.addObserver(forName: deviceDeletionCleanupCompletedNotification, object: nil, queue: .main) { [weak self] notification in
+            guard let self, let updated = notification.object as? SpaceData,
+                  updated.id == self.space.id, updated.meshUUID == self.space.meshUUID,
+                  updated.meshNetworkId == self.space.meshNetworkId else { return }
+            self.space.triggerZones = updated.triggerZones
+            self.space.lastUpdate = max(self.space.lastUpdate, updated.lastUpdate)
+            self.space.deviceCount = updated.deviceCount
+            self.space.luminairesCount = updated.luminairesCount
+        }
         NotificationCenter.default.addObserver(forName: .init(spaceDataChangedNotificaitonName), object: nil, queue: .main) { [weak self] notification in
             guard let self,
                   let type = notification.object as? SpaceChangeDataType else {
@@ -742,6 +758,7 @@ class SpaceViewController: WMPageController {
     }
 
     private func reconcileLegacyProximityLightingTopology() {
+        DevicePermanentDeletionContext.resume(space: space)
         let preparation = ProximityLightingLifecycleCoordinator.begin(space: space).prepare()
         guard preparation.isValid, !preparation.normalized.hasDestructiveRepairs else {
             SpaceConfigurationSafety.block(space, reason: "entryTopologyNeedsReview")
@@ -780,9 +797,14 @@ class SpaceViewController: WMPageController {
         guard let latestSpace = SpaceData.load(siteId: space.siteId, spaceId: space.id).first else { return }
         let preparation = ProximityLightingLifecycleCoordinator.begin(space: latestSpace).prepare()
         guard !preparation.normalized.hasDestructiveRepairs,
-              let result = ProximityLightingLifecycleCoordinator.preview(preparation) else { return }
+              let result = ProximityLightingLifecycleCoordinator.preview(preparation),
+              let network = ProximityLightingTopologyContext.network(for: latestSpace) else { return }
+        // Devices outside the imported topology may still need Disable.
+        let datas = ProximityLightingTopologyContext.realNodes(in: network).compactMap { node -> (node: Node, syncData: NodeSyncData)? in
+            guard let data = node.getNodeSyncProximityLighting(topologyPlan: result.plan) else { return nil }
+            return (node, data)
+        }
         pendingProximityLightingRepairRequest = nil
-        let datas = result.syncDatas
         guard !datas.isEmpty else { return }
         let vc = SyncDevicesViewController(type: .spaceTriggerZones(datas: datas))
         vc.syncSuccessCallback = { [weak vc] _ in
@@ -862,46 +884,40 @@ class SpaceViewController: WMPageController {
         CloudSynchronizationManager.shared.cancelSynchronizationHandle(space: self.space)
         
         // 数据有更新没提交,先提交完成数据再解绑
-        if space.permission == .editor && space.needUploadCloud {
-            Task {
-                guard let spaceData = await space.export(purpose: .cloudSync) else {
+        if space.permission == .editor && (space.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(space)) {
+            Task { @MainActor in
+                switch await SpaceConfigurationSafety.uploadBeforeUnbind(space) {
+                case .success:
+                    self.unbindSpace()
+                case .failure(let error):
                     XWHUDManager.hide()
-                    XWHUDManager.showErrorTipHUD(
-                        "proximity_lighting_export_invalid".localizedString
-                    )
-                    return
-                }
-                NetworkRequest.shared.request(
-                    .spaceUpload(
-                        siteId: space.siteId,
-                        spaceId: space.id,
-                        spaceData: spaceData
-                    )
-                ) {[weak self] result in
-                    switch result {
-                    case .success(_):
-                        self?.space.lastUploadCloudTimestamp = self?.space.lastUpdate
-                        self?.unbindSpace()
-                    case .failure(let error):
-                        XWHUDManager.hide()
-                        XWHUDManager.showErrorTipHUD(error.localizedDescription)
-                    }
+                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
                 }
             }
             return
         }
-        
-        Task {
+
+        Task { @MainActor in
+            guard let context = SpaceConfigurationSafety.beginUnbind(space) else {
+                XWHUDManager.hide()
+                XWHUDManager.showErrorTipHUD(SpaceConfigurationSafety.uploadUnconfirmed.localizedDescription)
+                return
+            }
             let recycleData = await site.getRecycleAddressData(unbindSpaces: [space])
             
+            guard SpaceConfigurationSafety.isCurrent(context, space: space) else { XWHUDManager.hide(); return }
             let networkApi: NetowrkReqeustApi = .unbindSpaces(siteId: site.id, spaceIds: [space.id], recycleDeviceAddresses: recycleData.deviceAddresses, recycleGroupAddresses: recycleData.groupAddresses, recycleSceneAddresses: recycleData.sceneAddresses, exclusions: recycleData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }), provisionerData: recycleData.provisionerData)
             
             NetworkRequest.shared.request(networkApi) {[weak self] result in
                 XWHUDManager.hide()
                 
-                guard let self = self else { return }
+                guard let self = self, SpaceConfigurationSafety.isCurrent(context, space: space) else { return }
                 switch result {
                 case .success(_):
+                    guard space.delete() else {
+                        XWHUDManager.showErrorTipHUD(SpaceConfigurationSafety.uploadUnconfirmed.localizedDescription)
+                        return
+                    }
                     //                XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
                     if let spaceIndex = self.site.spaces.firstIndex(where: { $0.id == self.space.id }) {
                         self.site.spaces.remove(at: spaceIndex)
@@ -909,7 +925,6 @@ class SpaceViewController: WMPageController {
                     // 删除回收的地址
                     self.site.deleteProvisionerAddress(deviceAddresses: recycleData.deviceAddresses, groupAddresses: recycleData.groupAddresses, sceneAddresses: recycleData.sceneAddresses)
                     
-                    self.space.delete()
                     
                     self.navigationController?.popViewController(animated: true)
                     if self.site.spaces.isEmpty && self.site.permission != .owner { // 不属于site所有者并且解绑所有spaces则清空site记录
@@ -1065,6 +1080,7 @@ class SpaceViewController: WMPageController {
             case .success(_):
                 break
             case .failure(let error):
+                SpaceConfigurationSafety.handleAuthorityError(error, space: self.space)
 //                print(error.localizedDescription)
 //                if self.space.permission == .visitor {
 //                    return
@@ -1084,8 +1100,10 @@ class SpaceViewController: WMPageController {
                     }
                     // 返回到site列表 通知刷新site
                     NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: true)
-                case .noSpacePermission, .userUnauthorized: // 没有空间权限
+                case .noSpacePermission: // 没有空间权限
                     self.handleSpacePermissionLoss()
+                case .userUnauthorized:
+                    self.stopSpacePresenceTracking(reason: .permissionLoss)
                 case .incorrectPassword, .spacePasswordOverdue: // 密码修改
                     // 正在提示
                     if self.space.requiresPasswordVerification && SRAlertView.getCurrentAlertView() != nil {
@@ -1495,13 +1513,14 @@ class SpaceViewController: WMPageController {
     
     /// 更新同步状态
     private func updateSyncState() {
-        if view.window != nil, SpaceConfigurationSafety.isBlocked(space) {
+        if view.window != nil, SpaceConfigurationSafety.isBlocked(space),
+           (!SpaceConfigurationSafety.hasPendingUpload(space) || SpaceConfigurationSafety.requiresConfigurationReview(space)) {
             showNavigationBarFailure { [weak self] in self?.showConfigurationRecovery() }
             return
         }
         if view.window != nil, let state = CloudSynchronizationManager.shared.getSpaceCurrentSyncState(space)?.state {
             switch state {
-            case .inProgress:
+            case .wait, .inProgress:
                 self.showNavigationBarLoading()
             case .successful:
                 self.showNavigationBarSuccessful()
@@ -1522,32 +1541,67 @@ class SpaceViewController: WMPageController {
     private func showConfigurationRecovery() {
         Task { @MainActor [weak self] in
             guard let self else { return }
+            DevicePermanentDeletionContext.resume(space: self.space)
             let local = await self.space.export(allowsProtectedInspection: true)
-            var actions: [SRAlertAction] = [.cancelAction,
-                SRAlertAction(title: "configuration_reload_cloud".localizedString, actionHandler: { [weak self] _ in
-                    self?.reloadConfigurationFromCloud()
-                })]
-            if let local, !self.space.disableEditorPermission, !self.space.requiresPasswordVerification,
+            let alert = UIAlertController(title: "synchronization_failure".localizedString,
+                message: "configuration_review_message".localizedString, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "alert_item_cancel".localizedString, style: .cancel))
+            alert.addAction(UIAlertAction(title: "configuration_reload_cloud".localizedString, style: .default) { [weak self] _ in
+                self?.reloadConfigurationFromCloud()
+            })
+            if !self.space.disableEditorPermission, !self.space.requiresPasswordVerification,
                self.space.permission == .owner || self.space.permission == .editor {
-                actions.append(SRAlertAction(title: "configuration_use_local".localizedString, actionHandler: { [weak self] _ in
-                    guard let self else { return }
-                    SRAlertView(title: "configuration_use_local".localizedString,
-                        message: "configuration_use_local_confirm".localizedString,
-                        actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, actionHandler: { [weak self] _ in
-                            Task { @MainActor [weak self] in
-                                guard let self else { return }
-                                XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: true)
-                                let authorized = await SpaceConfigurationSafety.authorizeLocalRecovery(self.space, reviewed: local)
-                                XWHUDManager.hide()
-                                if authorized { self.syncSpace(level: .promptly) }
-                                else { XWHUDManager.showErrorTipHUD("proximity_lighting_export_invalid".localizedString) }
+                if let local {
+                    alert.addAction(UIAlertAction(title: "configuration_use_local".localizedString, style: .default) { [weak self] _ in
+                        self?.confirmConfigurationRecovery(message: "configuration_use_local_confirm".localizedString) { [weak self] in
+                            guard let self else { return false }
+                            return await SpaceConfigurationSafety.authorizeLocalRecovery(self.space, reviewed: local)
+                        }
+                    })
+                } else {
+                    alert.addAction(UIAlertAction(title: "configuration_repair_local".localizedString, style: .default) { [weak self] _ in
+                        Task { @MainActor [weak self] in
+                            guard let self else { return }
+                            XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: true)
+                            let review = await SpaceConfigurationSafety.referenceRepairReview(self.space)
+                            XWHUDManager.hide()
+                            guard let review else {
+                                XWHUDManager.showErrorTipHUD("configuration_repair_unavailable".localizedString)
+                                return
                             }
-                        })]).show()
-                }))
+                            self.confirmConfigurationRecovery(message: review.message) { [weak self] in
+                                guard let self else { return false }
+                                return await SpaceConfigurationSafety.applyReferenceRepair(self.space, review: review)
+                            }
+                        }
+                    })
+                }
             }
-            SRAlertView(title: "synchronization_failure".localizedString,
-                message: "configuration_review_message".localizedString, actions: actions).show()
+            guard self.presentedViewController == nil, self.viewIfLoaded?.window != nil else { return }
+            self.present(alert, animated: true)
         }
+    }
+
+    private func confirmConfigurationRecovery(message: String, apply: @escaping @MainActor () async -> Bool) {
+        let alert = UIAlertController(title: "configuration_use_local".localizedString,
+            message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "alert_item_cancel".localizedString, style: .cancel))
+        alert.addAction(UIAlertAction(title: "confirm".localizedString, style: .destructive) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: true)
+                let accepted = await apply()
+                XWHUDManager.hide()
+                if accepted {
+                    self.reloadData()
+                    self.syncSpace(level: .promptly)
+                    self.presentProximityLightingRepairSyncIfNeeded()
+                } else {
+                    XWHUDManager.showErrorTipHUD("configuration_repair_unavailable".localizedString)
+                }
+            }
+        })
+        present(alert, animated: true)
     }
 
     private func reloadConfigurationFromCloud() {
@@ -1568,8 +1622,11 @@ class SpaceViewController: WMPageController {
                     self.showNavigationBarSuccessful()
                     return
                 }
-            } else { XWHUDManager.hide() }
-            XWHUDManager.showErrorTipHUD("proximity_lighting_import_invalid".localizedString)
+            } else {
+                if case .failure(let error) = result { SpaceConfigurationSafety.handleAuthorityError(error, space: self.space) }
+                XWHUDManager.hide()
+            }
+            XWHUDManager.showErrorTipHUD("configuration_reload_invalid".localizedString)
         }
     }
     
@@ -1706,6 +1763,10 @@ extension SpaceViewController: CloudSynchronizationManagerDelegate {
     ///   - manager: 同步管理
     ///   - handle: 同步数据操作
     func cloudSyncManager(_ manager: CloudSynchronizationManager, didSyncFinished handle: CloudSynchronizationHandle) {
+        if let saved = SpaceData.load(siteId: space.siteId, spaceId: space.id).first {
+            space.lastUploadCloudTimestamp = saved.lastUploadCloudTimestamp
+            space.syncCloudError = saved.syncCloudError
+        }
         updateSyncState()
         if exitSyncSpace {
             XWHUDManager.hide()
