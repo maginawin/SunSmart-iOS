@@ -5,7 +5,8 @@ let proximityLightingImportSyncNotificationName = "proximityLightingImportSyncNo
 
 struct ProximityLightingImportSyncRequest {
     let spaceId: String
-    let syncDatas: [(node: Node, syncData: NodeSyncData)]
+    let meshUUID: String
+    let networkId: String
 }
 
 struct ProximityLightingLifecycleResult {
@@ -20,12 +21,14 @@ struct ProximityLightingLifecyclePreparation {
     let transaction: ProximityLightingLifecycleTransaction
     let normalized: ProximityLightingTopologyReconciler.Result
 
+    var sourceSnapshot: ProximityLightingTopologyReconciler.Snapshot { transaction.sourceSnapshot }
+
     var hardErrors: [ProximityLightingTopologyReconciler.HardError] {
         return normalized.hardErrors
     }
 
     var isValid: Bool {
-        return normalized.isValid
+        return transaction.contextAvailable && normalized.isValid
     }
 
     var doesNotIntroduceHardErrors: Bool {
@@ -39,6 +42,8 @@ struct ProximityLightingLifecycleTransaction {
     fileprivate let space: SpaceData
     fileprivate let groups: [Group]
     fileprivate let nodes: [Node]
+    fileprivate let network: MeshNetwork?
+    fileprivate let contextAvailable: Bool
     fileprivate let sourceSnapshot: ProximityLightingTopologyReconciler.Snapshot
     fileprivate let oldResult: ProximityLightingTopologyReconciler.Result
     fileprivate var draft: ProximityLightingTopologyReconciler.Snapshot
@@ -111,26 +116,31 @@ enum ProximityLightingLifecycleCoordinator {
     typealias Reconciler = ProximityLightingTopologyReconciler
 
     static func begin(space: SpaceData) -> ProximityLightingLifecycleTransaction {
+        let network = ProximityLightingTopologyContext.network(for: space)
         return begin(
             space: space,
-            groups: MeshNetworkManager.instance.groups.filter {
-                $0.subNetworkId == space.meshNetworkId && !$0.isVirtual
-            },
-            nodes: MeshNetworkManager.instance.realNodes
+            groups: network?.groups.filter { !$0.isVirtual && $0.subNetworkId == space.meshNetworkId } ?? [],
+            nodes: network.map { ProximityLightingTopologyContext.realNodes(in: $0) } ?? [],
+            network: network
         )
     }
 
     static func begin(
         space: SpaceData,
         groups: [Group],
-        nodes: [Node]
+        nodes: [Node],
+        network: MeshNetwork? = nil
     ) -> ProximityLightingLifecycleTransaction {
-        let sourceSnapshot = makeSnapshot(space: space, groups: groups)
+        let network = network ?? groups.first?.network ?? nodes.first?.network
+        let sourceSnapshot = makeSnapshot(space: space, groups: groups, nodes: nodes)
         let oldResult = Reconciler.normalize(sourceSnapshot)
         return .init(
             space: space,
             groups: groups,
             nodes: nodes,
+            network: network,
+            contextAvailable: ProximityLightingTopologyContext.isAvailable(
+                space: space, network: network, groups: groups, nodes: nodes),
             sourceSnapshot: sourceSnapshot,
             oldResult: oldResult,
             draft: sourceSnapshot
@@ -144,6 +154,7 @@ enum ProximityLightingLifecycleCoordinator {
         isImportApplication: Bool = false,
         applyAdditionalChanges: () throws -> Void = {}
     ) -> ProximityLightingLifecycleResult? {
+        guard preparation.transaction.contextAvailable else { return nil }
         guard preparation.isValid
                 || (allowExistingHardErrors && preparation.doesNotIntroduceHardErrors) else {
             return nil
@@ -153,6 +164,8 @@ enum ProximityLightingLifecycleCoordinator {
         let normalized = preparation.normalized
         let topologyChanged = transaction.sourceSnapshot != normalized.snapshot
         let didChange = topologyChanged || hasAdditionalLogicalChange
+        // A server snapshot is authoritative input, never an implicit local edit.
+        guard !isImportApplication || !normalized.hasDestructiveRepairs else { return nil }
 
         guard isImportApplication || (!SpaceConfigurationSafety.isBlocked(transaction.space)
             && !transaction.space.triggerZonesLoadFailed
@@ -164,10 +177,13 @@ enum ProximityLightingLifecycleCoordinator {
             let originalTimestamp = space.lastUpdate
             let originals = transaction.groups.map { group in
                 (group: group, name: group.name,
-                 info: GroupInfo.load(meshUUID: space.meshUUID, address: group.address.address))
+                 info: GroupInfo.load(meshUUID: space.meshUUID, address: group.address.address,
+                                      subnetworkId: space.meshNetworkId))
             }
             let saved = SunSmartDataManager.shared.configurationTransaction {
-                transaction.space.markLocalChangePendingCloudSync()
+                if !isImportApplication {
+                    transaction.space.markLocalChangePendingCloudSync()
+                }
                 try applyAdditionalChanges()
                 try apply(
                     normalized.snapshot,
@@ -203,6 +219,7 @@ enum ProximityLightingLifecycleCoordinator {
         _ preparation: ProximityLightingLifecyclePreparation,
         allowExistingHardErrors: Bool = false
     ) -> ProximityLightingLifecycleResult? {
+        guard preparation.transaction.contextAvailable else { return nil }
         guard preparation.isValid
                 || (allowExistingHardErrors && preparation.doesNotIntroduceHardErrors) else {
             return nil
@@ -218,18 +235,10 @@ enum ProximityLightingLifecycleCoordinator {
         )
     }
 
-    static func makeSnapshot(space: SpaceData) -> Reconciler.Snapshot {
-        return makeSnapshot(
-            space: space,
-            groups: MeshNetworkManager.instance.groups.filter {
-                $0.subNetworkId == space.meshNetworkId && !$0.isVirtual
-            }
-        )
-    }
-
     private static func makeSnapshot(
         space: SpaceData,
-        groups: [Group]
+        groups: [Group],
+        nodes: [Node]
     ) -> Reconciler.Snapshot {
         let groupStates = groups
             .sorted { $0.address.address < $1.address.address }
@@ -239,11 +248,7 @@ enum ProximityLightingLifecycleCoordinator {
                     address: group.address.address,
                     eligible: ProximityLightingTopologyPlanner.isEligible(group),
                     relayNumber: group.info.profile.proximityLightingNumber,
-                    memberAddresses: Set(
-                        group.nodes
-                            .filter { $0.groupState != .exitFailure }
-                            .map { ProximityLightingTopologyPlanner.normalizedAddress(for: $0) }
-                    ),
+                    memberAddresses: ProximityLightingTopologyContext.members(of: group, nodes: nodes),
                     hasTopology: path != nil,
                     paths: path?.paths.map { $0.items.map(\.address) } ?? [],
                     zones: path?.zones.map(\.addresses) ?? []

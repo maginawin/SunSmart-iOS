@@ -194,6 +194,20 @@ struct ProximityLightingLifecycleContractTests {
             "Sync UI must share one precomputed proximity task renderer"
         )
 
+        require(
+            importUpdate.contains("persistedPreparation.sourceSnapshot == proximityPreparation.normalized.snapshot")
+                && appearsBefore("persistedPreparation.sourceSnapshot ==", "SpaceConfigurationSafety.finishImport(", in: importUpdate)
+                && importUpdate.contains("validatedTopology: shouldCommitProximityTopology"),
+            "Import must verify persisted logical topology before lifting the barrier or confirming its baseline"
+        )
+        require(
+            space.contains("request.meshUUID == self.space.meshUUID")
+                && space.contains("request.networkId == self.space.meshNetworkId")
+                && space.contains("let datas = result.syncDatas")
+                && !space.contains("pendingProximityLightingRepairSyncDatas"),
+            "Deferred import sync must retain only scope and regenerate tasks after activation"
+        )
+
         print("PASS: Proximity Lighting lifecycle integration contracts hold.")
     }
 

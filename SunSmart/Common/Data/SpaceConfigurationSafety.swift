@@ -155,12 +155,23 @@ enum SpaceConfigurationSafety {
         }
     }
 
-    static func finishImport(_ space: SpaceData) -> Bool {
+    static func finishImport(_ space: SpaceData, validatedTopology: Bool = true) -> Bool {
         do {
             let url = try directory(space).appendingPathComponent("pending-import.json")
+            if !validatedTopology {
+                // Keep the original input for diagnosis without replaying an invalid
+                // extension on every launch or treating it as a confirmed baseline.
+                try Data(contentsOf: url).write(
+                    to: directory(space).appendingPathComponent("unvalidated-import.json"),
+                    options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            }
             if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
-            UserDefaults.standard.removeObject(forKey: "spaceConfigurationBlocked." + key(space))
-            UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
+            if validatedTopology {
+                UserDefaults.standard.removeObject(forKey: "spaceConfigurationBlocked." + key(space))
+                UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
+            } else {
+                block(space, reason: "incompleteImportedTopology")
+            }
             return true
         } catch { return false }
     }

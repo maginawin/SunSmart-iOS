@@ -226,6 +226,17 @@ struct ProximityLightingTopologyReconciler {
         let repairs: [Repair]
         let hardErrors: [HardError]
 
+        var hasDestructiveRepairs: Bool {
+            repairs.contains { repair in
+                switch repair {
+                case .removedDuplicateGroupZoneAddress, .removedDuplicateSpaceZoneMember:
+                    return false
+                default:
+                    return true
+                }
+            }
+        }
+
         var didRepair: Bool {
             return !repairs.isEmpty
         }

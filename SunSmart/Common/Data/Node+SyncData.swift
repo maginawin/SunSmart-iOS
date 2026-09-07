@@ -1629,6 +1629,7 @@ extension Node {
 
         let plan = topologyPlan
             ?? ProximityLightingTopologyPlanner.makePlan(for: self, contextGroup: group)
+        guard plan.isComplete else { return nil }
         let address = ProximityLightingTopologyPlanner.normalizedAddress(for: self)
 
         return getNodeSyncProximityLighting(target: plan.target(for: address))

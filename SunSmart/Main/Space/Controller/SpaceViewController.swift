@@ -70,8 +70,6 @@ fileprivate extension SpaceChangeDataType {
 
 extension SpaceData {
     func markLocalChangePendingCloudSync() {
-        refreshSummaryCountsFromCurrentMesh()
-
         guard permission == .owner || permission == .editor else {
             save()
             return
@@ -81,6 +79,7 @@ extension SpaceData {
     }
 
     func commitLocalChangeForCloudSync(site currentSite: SiteData? = nil, changeType: SpaceChangeDataType) {
+        refreshSummaryCountsFromSpaceMesh()
         markLocalChangePendingCloudSync()
 
         guard permission == .owner || permission == .editor else {
@@ -116,14 +115,15 @@ extension SpaceData {
         }
     }
 
-    private func refreshSummaryCountsFromCurrentMesh() {
-        let nodes = MeshNetworkManager.instance.realNodes
+    private func refreshSummaryCountsFromSpaceMesh() {
+        guard let network = ProximityLightingTopologyContext.network(for: self) else { return }
+        let nodes = ProximityLightingTopologyContext.realNodes(in: network)
         deviceCount = nodes.count
         luminairesCount = nodes.filter { $0.deviceType == .light }.count
-        groupCount = MeshNetworkManager.instance.groups.count
-        sceneCount = MeshNetworkManager.instance.scenes.count
-        scheheduleCount = MeshNetworkManager.instance.schedules.count
-        switchesCount = MeshNetworkManager.instance.switchs.count
+        groupCount = network.groups.filter { !$0.isVirtual }.count
+        sceneCount = network.scenes.count
+        scheheduleCount = Schedule.load(meshUUID: meshUUID, meshNetworkId: meshNetworkId).count
+        switchesCount = DeviceSwitchData.load(meshUUID: meshUUID, meshNetworkId: meshNetworkId).count
     }
 
     private func markSpaceUploadNeeded() {
@@ -226,7 +226,7 @@ class SpaceViewController: WMPageController {
     private var isAllOn: Bool = true
     private var emergencyFireControllerSceneEventManager: EmergencyFireControllerSceneEventManager?
     private var emergencyFireSceneMessageObserverId: UUID?
-    private var pendingProximityLightingRepairSyncDatas: [(node: Node, syncData: NodeSyncData)] = []
+    private var pendingProximityLightingRepairRequest: ProximityLightingImportSyncRequest?
     
     private var networkableObservation: NSKeyValueObservation?
     private var meshNetworkConnectedObservation: NSKeyValueObservation?
@@ -598,10 +598,12 @@ class SpaceViewController: WMPageController {
         ) { [weak self] notification in
             guard let self,
                   let request = notification.object as? ProximityLightingImportSyncRequest,
-                  request.spaceId == self.space.id else {
+                  request.spaceId == self.space.id,
+                  request.meshUUID == self.space.meshUUID,
+                  request.networkId == self.space.meshNetworkId else {
                 return
             }
-            self.pendingProximityLightingRepairSyncDatas = request.syncDatas
+            self.pendingProximityLightingRepairRequest = request
             self.presentProximityLightingRepairSyncIfNeeded()
         }
         
@@ -721,6 +723,7 @@ class SpaceViewController: WMPageController {
                     self.emergencyFireControllerSceneEventManager?.activate()
                     self.registerEmergencyFireSceneMessageObserverIfNeeded()
                     self.reloadData()
+                    self.presentProximityLightingRepairSyncIfNeeded()
                     SpaceDebugUARTManager.shared.evaluateCurrentProxy(space: self.space)
                     DispatchQueue.global().async {
 //                        print("设备同步状态:\(Date().timeIntervalSince1970)")
@@ -740,6 +743,10 @@ class SpaceViewController: WMPageController {
 
     private func reconcileLegacyProximityLightingTopology() {
         let preparation = ProximityLightingLifecycleCoordinator.begin(space: space).prepare()
+        guard preparation.isValid, !preparation.normalized.hasDestructiveRepairs else {
+            SpaceConfigurationSafety.block(space, reason: "entryTopologyNeedsReview")
+            return
+        }
         guard let result = ProximityLightingLifecycleCoordinator.commit(
             preparation,
             allowExistingHardErrors: true
@@ -759,13 +766,24 @@ class SpaceViewController: WMPageController {
               MeshLibManager.manager.isMeshNetworkConnected,
               space.deviceOperates.contains(.edit),
               !space.disableEditorPermission,
-              !pendingProximityLightingRepairSyncDatas.isEmpty,
+              let request = pendingProximityLightingRepairRequest,
+              loadNetworkData,
+              request.spaceId == space.id,
+              MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == request.meshUUID,
+              MeshNetworkManager.instance.currentNetworkKey.networkId.hex == request.networkId,
+              !SpaceConfigurationSafety.isBlocked(space),
               navigationController?.topViewController === self,
               presentedViewController == nil else {
             return
         }
-        let datas = pendingProximityLightingRepairSyncDatas
-        pendingProximityLightingRepairSyncDatas = []
+        // Recompute after network activation; imported Node objects and tasks may be stale.
+        guard let latestSpace = SpaceData.load(siteId: space.siteId, spaceId: space.id).first else { return }
+        let preparation = ProximityLightingLifecycleCoordinator.begin(space: latestSpace).prepare()
+        guard !preparation.normalized.hasDestructiveRepairs,
+              let result = ProximityLightingLifecycleCoordinator.preview(preparation) else { return }
+        pendingProximityLightingRepairRequest = nil
+        let datas = result.syncDatas
+        guard !datas.isEmpty else { return }
         let vc = SyncDevicesViewController(type: .spaceTriggerZones(datas: datas))
         vc.syncSuccessCallback = { [weak vc] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)

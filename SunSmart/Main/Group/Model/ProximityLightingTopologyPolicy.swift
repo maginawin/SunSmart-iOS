@@ -55,6 +55,11 @@ struct ProximityLightingTopologyPolicy {
     struct Plan {
         let targets: [DeviceAddress: Target]
         let capacityViolations: [CapacityViolation]
+        var isComplete: Bool = true
+
+        static var unavailable: Plan {
+            .init(targets: [:], capacityViolations: [], isComplete: false)
+        }
 
         var hasCapacityViolation: Bool {
             return !capacityViolations.isEmpty

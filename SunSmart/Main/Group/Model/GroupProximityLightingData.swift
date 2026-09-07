@@ -212,6 +212,60 @@ class GroupProximityLightingPathZone: NSObject, Codable, Copyable {
     
 }
 
+/// The network is retained while its Groups/Nodes (which hold weak SDK links) are used.
+enum ProximityLightingTopologyContext {
+    static func network(for space: SpaceData) -> MeshNetwork? {
+        let manager = MeshNetworkManager.instance
+        if let network = manager.meshNetwork,
+           network.uuid.uuidString == space.meshUUID,
+           manager.currentNetworkKey.networkId.hex == space.meshNetworkId {
+            return network
+        }
+        guard let network = MeshNetwork.load(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId) else {
+            return nil
+        }
+        loadGroupInfo(network: network, space: space)
+        return network
+    }
+
+    static func loadGroupInfo(network: MeshNetwork, space: SpaceData) {
+        for group in network.groups where !group.isVirtual {
+            group.info = GroupInfo.load(meshUUID: space.meshUUID, address: group.address.address,
+                                        subnetworkId: space.meshNetworkId)
+                ?? GroupInfo.unavailable(address: group.address.address)
+        }
+    }
+
+    static func realNodes(in network: MeshNetwork) -> [Node] {
+        network.nodes.filter { !$0.isLocalProvisioner && !$0.isProvisioner && !$0.isConfigComplete }
+    }
+
+    static func members(of group: Group, nodes: [Node]) -> Set<Address> {
+        guard let uuid = group.network?.uuid, let networkId = group.subNetworkId else { return [] }
+        return Set(nodes.filter { node in
+            node.network?.uuid == uuid && node.subNetworkId == networkId
+                && !node.isProvisioner && !node.isConfigComplete
+                && node.groupState != .exitFailure
+                && node.elements.contains { element in
+                    element.models.contains { $0.subscriptions.contains { $0.address == group.address } }
+                }
+        }.map { ProximityLightingTopologyPlanner.normalizedAddress(for: $0) })
+    }
+
+    static func isAvailable(space: SpaceData, network: MeshNetwork?, groups: [Group], nodes: [Node]) -> Bool {
+        guard let network, network.uuid.uuidString == space.meshUUID,
+              !space.triggerZonesLoadFailed,
+              Set(groups.map { $0.address.address }) == Set(network.groups.filter { !$0.isVirtual }.map { $0.address.address }),
+              Set(nodes.map { $0.primaryUnicastAddress }) == Set(realNodes(in: network).map { $0.primaryUnicastAddress }) else { return false }
+        return groups.allSatisfy {
+            $0.network?.uuid == network.uuid && $0.subNetworkId == space.meshNetworkId
+                && !$0.info.profileLoadFailed && !$0.info.topologyLoadFailed
+        } && nodes.allSatisfy {
+            $0.network?.uuid == network.uuid && $0.subNetworkId == space.meshNetworkId
+        }
+    }
+}
+
 enum ProximityLightingTopologyPlanner {
 
     typealias Plan = ProximityLightingTopologyPolicy.Plan
@@ -232,19 +286,26 @@ enum ProximityLightingTopologyPlanner {
         spaceTriggerZonesOverride: [SpaceTriggerZone]? = nil,
         additionalGroupMembers: [Address: Set<Address>] = [:]
     ) -> Plan {
-        let groups = MeshNetworkManager.instance.groups.filter {
-            $0.subNetworkId == space.meshNetworkId
+        guard let network = ProximityLightingTopologyContext.network(for: space) else { return .unavailable }
+        let groups = network.groups.filter { !$0.isVirtual && $0.subNetworkId == space.meshNetworkId }
+        let nodes = ProximityLightingTopologyContext.realNodes(in: network)
+        guard ProximityLightingTopologyContext.isAvailable(space: space, network: network, groups: groups, nodes: nodes) else {
+            return .unavailable
         }
-        return makePlan(
-            groups: groups,
-            groupPathOverrides: groupPathOverrides,
-            spaceTriggerZones: spaceTriggerZonesOverride ?? space.triggerZones,
-            additionalGroupMembers: additionalGroupMembers
-        )
+        return withExtendedLifetime(network) {
+            makePlan(
+                groups: groups,
+                nodes: nodes,
+                groupPathOverrides: groupPathOverrides,
+                spaceTriggerZones: spaceTriggerZonesOverride ?? space.triggerZones,
+                additionalGroupMembers: additionalGroupMembers
+            )
+        }
     }
 
     static func makePlan(
         groups: [Group],
+        nodes: [Node],
         groupPathOverrides: [Address: GroupProximityLightingPathData] = [:],
         spaceTriggerZones: [SpaceTriggerZone] = [],
         additionalGroupMembers: [Address: Set<Address>] = [:]
@@ -253,6 +314,7 @@ enum ProximityLightingTopologyPlanner {
         let groupSnapshots = eligibleGroups.map { group in
             makeGroupSnapshot(
                 group: group,
+                nodes: nodes,
                 pathOverride: groupPathOverrides[group.address.address],
                 additionalMemberAddresses: additionalGroupMembers[group.address.address] ?? []
             )
@@ -268,23 +330,21 @@ enum ProximityLightingTopologyPlanner {
         contextGroup: Group? = nil
     ) -> Plan {
         let group = contextGroup ?? node.group
+        if let group, group.network?.uuid != node.network?.uuid || group.subNetworkId != node.subNetworkId {
+            return .unavailable
+        }
         var additionalGroupMembers: [Address: Set<Address>] = [:]
         if let group, node.groupState != .exitFailure {
             additionalGroupMembers[group.address.address] = [normalizedAddress(for: node)]
         }
 
-        if let subNetworkId = group?.subNetworkId,
-           let space = SpaceData.load(subNetworkId: subNetworkId) {
-            return makePlan(
-                space: space,
-                additionalGroupMembers: additionalGroupMembers
-            )
+        guard let subNetworkId = node.subNetworkId,
+              let space = SpaceData.load(subNetworkId: subNetworkId),
+              space.meshUUID == node.network?.uuid.uuidString else {
+            // A Group-only fallback would silently omit Space zones.
+            return .unavailable
         }
-
-        return makePlan(
-            groups: group.map { [$0] } ?? [],
-            additionalGroupMembers: additionalGroupMembers
-        )
+        return makePlan(space: space, additionalGroupMembers: additionalGroupMembers)
     }
 
     static func makeSpaceZoneSnapshots(
@@ -324,15 +384,12 @@ enum ProximityLightingTopologyPlanner {
 
     private static func makeGroupSnapshot(
         group: Group,
+        nodes: [Node],
         pathOverride: GroupProximityLightingPathData?,
         additionalMemberAddresses: Set<Address>
     ) -> ProximityLightingTopologyPolicy.GroupSnapshot {
         let path = pathOverride ?? group.info.proximityLightingPath
-        let currentMemberAddresses = Set(
-            group.nodes
-                .filter { $0.groupState != .exitFailure }
-                .map { normalizedAddress(for: $0) }
-        )
+        let currentMemberAddresses = ProximityLightingTopologyContext.members(of: group, nodes: nodes)
         return .init(
             address: group.address.address,
             relayNumber: group.info.profile.proximityLightingNumber,

@@ -113,7 +113,7 @@ private struct ProximityLightingImportPreflight {
     let warnings: [String]
 
     var hasValidationIssues: Bool {
-        return !warnings.isEmpty || !hardErrors.isEmpty
+        return !warnings.isEmpty || !hardErrors.isEmpty || reconciliation?.hasDestructiveRepairs == true
     }
 
     static func parse(
@@ -169,48 +169,43 @@ private struct ProximityLightingImportPreflight {
         guard importedGroupAddresses.count == decodedGroups.count else { return nil }
         var membersByGroupAddress: [Address: Set<Address>] = [:]
         var warnings: [String] = []
-        if schemaVersion == 1 {
-            for nodeDict in nodeDicts {
-                let nodeJson = JSON(nodeDict)
-                let nodeAddress = nodeJson["unicastAddress"].string ?? "unknown"
-                guard let rawGroupState = nodeJson["groupState"].int,
-                      let groupState = Node.GroupState(rawValue: rawGroupState) else {
-                    warnings.append(
-                        "invalidNodeGroupState[node=\(nodeAddress)]"
-                    )
+        for nodeDict in nodeDicts {
+            let nodeJson = JSON(nodeDict)
+            let nodeAddress = nodeJson["unicastAddress"].string ?? "unknown"
+            let subscriptions = Set((nodeJson["elements"].array ?? []).flatMap { element in
+                (element["models"].array ?? []).flatMap { model in
+                    (model["subscribe"].array ?? []).compactMap { $0.string.flatMap { Address(hex: $0) } }
+                }
+            }).intersection(importedGroupAddresses)
+            let groupState = nodeJson["groupState"].int.flatMap(Node.GroupState.init(rawValue:))
+            if schemaVersion == 1 && groupState == nil {
+                warnings.append("invalidNodeGroupState[node=\(nodeAddress)]")
+                continue
+            }
+            if groupState == .exitFailure { continue }
+            if groupState == Node.GroupState.none && !subscriptions.isEmpty {
+                warnings.append("inconsistentNodeGroupState[node=\(nodeAddress)]")
+                continue
+            }
+            if groupState == Node.GroupState.none { continue }
+            let declaredGroup = nodeJson["groupAddress"].string.flatMap { Address(hex: $0) }
+            if schemaVersion == 1 || declaredGroup != nil {
+                guard let declaredGroup, importedGroupAddresses.contains(declaredGroup),
+                      subscriptions == [declaredGroup] else {
+                    warnings.append("inconsistentNodeGroupMembership[node=\(nodeAddress)]")
                     continue
                 }
-                guard groupState == .inGroup else {
-                    continue
-                }
-                guard let groupAddressHex = nodeJson["groupAddress"].string,
-                      !groupAddressHex.isEmpty,
-                      let groupAddress = Address(hex: groupAddressHex) else {
-                    warnings.append(
-                        "missingNodeGroupAddress[node=\(nodeAddress)]"
-                    )
-                    continue
-                }
-                guard importedGroupAddresses.contains(groupAddress) else {
-                    warnings.append(
-                        "missingReferencedGroup[node=\(nodeAddress),group=\(groupAddress.hex)]"
-                    )
-                    continue
-                }
-                var decodeNodeDict = nodeDict
-                if let uuid = nodeDict["uuid"] as? String {
-                    decodeNodeDict["UUID"] = uuid
-                }
-                guard let data = try? JSONSerialization.data(withJSONObject: decodeNodeDict),
-                      let node = try? jsonDecoder.decode(Node.self, from: data) else {
-                    warnings.append(
-                        "invalidNodeForTopology[node=\(nodeAddress)]"
-                    )
-                    continue
-                }
+            }
+            var decodeNodeDict = nodeDict
+            if let uuid = nodeDict["uuid"] as? String { decodeNodeDict["UUID"] = uuid }
+            guard let data = try? JSONSerialization.data(withJSONObject: decodeNodeDict),
+                  let node = try? jsonDecoder.decode(Node.self, from: data) else {
+                warnings.append("invalidNodeForTopology[node=\(nodeAddress)]")
+                continue
+            }
+            for groupAddress in subscriptions {
                 membersByGroupAddress[groupAddress, default: []].insert(
-                    ProximityLightingTopologyPlanner.normalizedAddress(for: node)
-                )
+                    ProximityLightingTopologyPlanner.normalizedAddress(for: node))
             }
         }
 
@@ -239,7 +234,7 @@ private struct ProximityLightingImportPreflight {
             if schemaVersion == 1, eligible, importedRelay == nil {
                 return nil
             }
-            let rawRelay = importedRelay ?? 0
+            let rawRelay = importedRelay ?? 2
             guard rawRelay >= 0, rawRelay <= Int(UInt8.max) else {
                 return nil
             }
@@ -278,7 +273,7 @@ private struct ProximityLightingImportPreflight {
         return .init(
             schemaVersion: schemaVersion,
             triggerZones: triggerZones,
-            reconciliation: schemaVersion == 1 ? reconciliation : nil,
+            reconciliation: reconciliation,
             hardErrors: reconciliation.hardErrors,
             warnings: warnings
         )
@@ -329,6 +324,7 @@ private struct ProximityLightingImportPreflight {
             guard let rawItems = pathObject["items"] as? [Int] else {
                 return nil
             }
+            guard rawItems.allSatisfy({ $0 >= 0 && $0 <= Int(UInt16.max) }) else { return nil }
             let path = rawItems.map { rawAddress -> Address? in
                 rawAddress == 0 ? nil : Address(rawAddress)
             }
@@ -342,6 +338,7 @@ private struct ProximityLightingImportPreflight {
             guard let rawAddresses = zoneObject["addresses"] as? [Int] else {
                 return nil
             }
+            guard rawAddresses.allSatisfy({ $0 > 0 && $0 < 0x8000 }) else { return nil }
             let addresses = rawAddresses.map(Address.init)
             guard addresses.allSatisfy(\.isUnicast) else {
                 return nil
@@ -2425,8 +2422,19 @@ extension SpaceData {
             let proximityPreparation = ProximityLightingLifecycleCoordinator.begin(
                 space: self,
                 groups: groups.filter { !$0.isVirtual },
-                nodes: nodes
+                nodes: nodes,
+                network: network
             ).prepare()
+            if shouldCommitProximityTopology {
+                guard proximityPreparation.isValid,
+                      !proximityPreparation.normalized.hasDestructiveRepairs,
+                      let expected = proximityPreflight.reconciliation?.snapshot,
+                      proximityPreparation.normalized.snapshot.groups == expected.groups,
+                      proximityPreflight.triggerZones == nil
+                        || proximityPreparation.normalized.snapshot.spaceZones == expected.spaceZones else {
+                    throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+                }
+            }
             let proximityResult = shouldCommitProximityTopology
                 ? ProximityLightingLifecycleCoordinator.commit(
                     proximityPreparation,
@@ -2446,6 +2454,22 @@ extension SpaceData {
                   nodes.allSatisfy({ node in persistedNetwork.node(withAddress: node.primaryUnicastAddress) != nil }) else {
                 throw SpaceConfigurationSafety.SafetyError.persistenceFailed
             }
+            if shouldCommitProximityTopology {
+                guard let persistedSpace = SpaceData.load(siteId: self.siteId, spaceId: self.id).first else {
+                    throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+                }
+                ProximityLightingTopologyContext.loadGroupInfo(network: persistedNetwork, space: persistedSpace)
+                let persistedPreparation = ProximityLightingLifecycleCoordinator.begin(
+                    space: persistedSpace,
+                    groups: persistedNetwork.groups.filter { !$0.isVirtual },
+                    nodes: ProximityLightingTopologyContext.realNodes(in: persistedNetwork),
+                    network: persistedNetwork
+                ).prepare()
+                guard persistedPreparation.isValid,
+                      persistedPreparation.sourceSnapshot == proximityPreparation.normalized.snapshot else {
+                    throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+                }
+            }
             appliedOutcome = .init(
                     status: .applied,
                     repairs: proximityResult?.repairs ?? [],
@@ -2454,7 +2478,8 @@ extension SpaceData {
                     rejectionReason: nil
                 )
             }
-            guard applied, let outcome = appliedOutcome, SpaceConfigurationSafety.finishImport(self) else {
+            guard applied, let outcome = appliedOutcome,
+                  SpaceConfigurationSafety.finishImport(self, validatedTopology: shouldCommitProximityTopology) else {
                 SpaceConfigurationSafety.block(self, reason: "importPersistenceFailed")
                 continuation.resume(returning: .rejected("configurationPersistenceFailed"))
                 return
@@ -2465,14 +2490,16 @@ extension SpaceData {
             // The persistent import barrier is lifted only after both stores
             // have been checked. Generate device tasks from the committed state.
             let importedPlan = ProximityLightingTopologyPlanner.makePlan(
-                groups: groups.filter { !$0.isVirtual }, spaceTriggerZones: self.triggerZones)
+                groups: groups.filter { !$0.isVirtual },
+                nodes: ProximityLightingTopologyContext.realNodes(in: network), spaceTriggerZones: self.triggerZones)
             let syncDatas = shouldCommitProximityTopology ? network.nodes.filter { !$0.isProvisioner }.compactMap { node -> (node: Node, syncData: NodeSyncData)? in
                 guard let data = node.getNodeSyncProximityLighting(topologyPlan: importedPlan) else { return nil }
                 return (node, data)
             } : []
             if !syncDatas.isEmpty {
                 NotificationCenter.default.post(name: .init(proximityLightingImportSyncNotificationName),
-                    object: ProximityLightingImportSyncRequest(spaceId: self.id, syncDatas: syncDatas))
+                    object: ProximityLightingImportSyncRequest(spaceId: self.id, meshUUID: self.meshUUID,
+                                                               networkId: self.meshNetworkId))
             }
             continuation.resume(returning: .init(status: outcome.status, repairs: outcome.repairs,
                 hardErrors: outcome.hardErrors, syncDatas: syncDatas, rejectionReason: nil))

@@ -61,7 +61,7 @@ struct PathTopologyPersistenceContractTests {
         let cloudCommit = section(
             in: spaceController,
             from: "func commitLocalChangeForCloudSync",
-            to: "private func refreshSummaryCountsFromCurrentMesh"
+            to: "private func refreshSummaryCountsFromSpaceMesh"
         )
         require(
             cloudCommit.contains("markLocalChangePendingCloudSync()"),

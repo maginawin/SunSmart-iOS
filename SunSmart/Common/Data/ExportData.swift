@@ -354,7 +354,7 @@ extension SpaceData {
             // SigMesh + SunSmart扩展数据
             let schedules = Schedule.load(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId)
             meshNetwork.groups.forEach({ group in
-                group.info = GroupInfo.load(meshUUID: meshUUID, address: group.address.address) ?? GroupInfo.unavailable(address: group.address.address)
+                group.info = GroupInfo.load(meshUUID: meshUUID, address: group.address.address, subnetworkId: self.meshNetworkId) ?? GroupInfo.unavailable(address: group.address.address)
                 
                 let bindSchedules = schedules.filter({ schedule in
                     schedule.groups.contains(where: { $0.address == group.address }) ||
@@ -380,7 +380,8 @@ extension SpaceData {
             let proximityPreparation = ProximityLightingLifecycleCoordinator.begin(
                 space: self,
                 groups: meshNetwork.groups.filter { !$0.isVirtual },
-                nodes: allNodes
+                nodes: allNodes,
+                network: meshNetwork
             ).prepare()
             guard proximityPreparation.isValid else {
                 print(

@@ -934,9 +934,10 @@ extension GroupInfo {
     /// - Parameter meshUUID: 网络id
     /// - Parameter address: 组地址
     /// - Returns: 组数据
-    static func load(meshUUID: String, address: UInt16) -> GroupInfo? {
+    static func load(meshUUID: String, address: UInt16, subnetworkId: String? = nil) -> GroupInfo? {
         
-        let predicate: Expression<Bool> = ExpressionKey.meshUUID == meshUUID && ExpressionKey.groupAddress == Int(address)
+        var predicate: Expression<Bool> = ExpressionKey.meshUUID == meshUUID && ExpressionKey.groupAddress == Int(address)
+        if let subnetworkId { predicate = predicate && ExpressionKey.subNetworkKey == subnetworkId }
         
         var groupInfo: GroupInfo?
         let filter = GroupInfo.groupInfosTable.filter(predicate)

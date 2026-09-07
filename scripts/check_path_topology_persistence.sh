@@ -40,3 +40,5 @@ configuration_test="$repo_root/Tests/Group/SpaceConfigurationIntegrityPolicyTest
 configuration_binary="${TMPDIR:-/tmp}/SpaceConfigurationIntegrityPolicyTests"
 swiftc -parse-as-library "$configuration_policy" "$configuration_test" -o "$configuration_binary"
 "$configuration_binary"
+
+python3 "$repo_root/scripts/check_proximity_scoped_import.py"
