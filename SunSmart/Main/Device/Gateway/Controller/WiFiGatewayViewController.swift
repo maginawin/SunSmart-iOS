@@ -281,12 +281,6 @@ final class WiFiGatewayViewController: GatewayViewController {
         NotificationCenter.default.removeObserver(self, name: UIApplication.didBecomeActiveNotification, object: nil)
     }
 
-    override func performGatewayDFUAction() {
-        let controller = WiFiFirmwareUpdateViewController(node: self.node)
-        preventModalStackDismissalUntilReturn()
-        navigationController?.pushViewController(controller, animated: true)
-    }
-
     private func setNetworkConnectivityVisible(_ visible: Bool) {
         guard isNetworkConnectivityVisible != visible else { return }
         isNetworkConnectivityVisible = visible

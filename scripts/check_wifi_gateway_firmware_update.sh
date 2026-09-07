@@ -224,7 +224,7 @@ customer_id_hook_count=$(grep -Fc 'customId: firmwareRequestCustomId' "$parent")
 [ -f "$wifi" ] || fail "missing WiFi firmware update controller"
 rg -n 'final class WiFiFirmwareUpdateViewController: FirmwareVersionViewController' "$wifi" >/dev/null || fail "WiFi firmware controller must inherit FirmwareVersionViewController"
 rg -n 'override var firmwareRequestCustomId: String' "$wifi" >/dev/null || fail "WiFi firmware controller missing customer id override"
-rg -n 'return "wifi"' "$wifi" >/dev/null || fail "WiFi firmware customer id must be wifi"
+rg -n 'return profile.customerId' "$wifi" >/dev/null || fail "Gateway firmware customer id must follow its profile"
 if rg -n '0\.0\.1' "$wifi" >/dev/null; then
   fail "WiFi firmware controller must not contain a fixed target version"
 fi
@@ -233,7 +233,7 @@ rg -n 'override var resetsServerFirmwareBeforeCloudRequest: Bool' "$wifi" >/dev/
 rg -n 'import NordicSigMeshSDK' "$wifi" >/dev/null || fail "WiFi firmware page must import SDK"
 rg -n 'private enum CurrentVersionState' "$wifi" >/dev/null || fail "missing current version state"
 rg -n 'private let node: Node' "$wifi" >/dev/null || fail "WiFi firmware page missing target node"
-rg -n 'init\(node: Node\)' "$wifi" >/dev/null || fail "WiFi firmware page initializer must require node"
+rg -n 'init\(node: Node, firmwareKind: GatewayFirmwareKind = \.wifi\)' "$wifi" >/dev/null || fail "WiFi firmware page initializer must require node"
 rg -n 'override var currentVersionTitleText: String' "$wifi" >/dev/null || fail "WiFi page missing Current version title"
 rg -n 'override var currentVersionDisplayText: String' "$wifi" >/dev/null || fail "WiFi page missing current version display state"
 rg -n 'override var createsUIBeforeCloudRequest: Bool' "$wifi" >/dev/null || fail "WiFi page must create UI before requests complete"
@@ -260,8 +260,12 @@ rg -n '@objc override func firmwarePrimaryAction\(\)' "$wifi" >/dev/null || fail
 if rg -n 'under_development' "$wifi" >/dev/null; then
   fail "WiFi upgrade placeholder must be removed"
 fi
-rg -n 'WiFiFirmwareDFUCoordinator\(node: node\)' "$wifi" >/dev/null || fail "WiFi page missing DFU coordinator"
-rg -n 'dfuCoordinator\.start\(filename: serverData\.filename, version: serverData\.version\)' "$wifi" >/dev/null || fail "WiFi page must start DFU with server filename and version"
+rg -n 'private lazy var dfuCoordinator = WiFiFirmwareDFUCoordinator\(' "$wifi" >/dev/null || fail "WiFi page missing DFU coordinator"
+rg -n 'downloadLocation: downloadLocation' "$wifi" >/dev/null || fail "Gateway page must pass the selected download location"
+rg -n 'version: serverData.version' "$wifi" >/dev/null || fail "Gateway page must pass the server version"
+rg -n '\.regionalFilename\(serverData.filename\)' "$wifi" >/dev/null || fail "WiFi must use the regional filename"
+rg -n '\.serverResponse\(serverData.url\)' "$wifi" >/dev/null || fail "4G must use the server URL"
+rg -n 'sessionNamespace: profile.sessionNamespace' "$wifi" >/dev/null || fail "Gateway sessions must follow the profile namespace"
 rg -n 'dfuCoordinator\.consumeSuccess\(\)' "$wifi" >/dev/null || fail "DONE must consume successful session"
 rg -n 'case \.cancelDisabled' "$wifi" >/dev/null || fail "WiFi page missing disabled CANCEL action"
 rg -n 'case \.cancel:' "$wifi" >/dev/null || fail "WiFi page missing enabled CANCEL action"
@@ -298,21 +302,21 @@ grep -Fq '"wifi_firmware_cancel_result_unknown" = "取消结果未知";' "$local
 grep -Fq '"wifi_firmware_waiting_status_confirmation" = "正在等待状态确认";' "$localizable_zh" || fail "incorrect Chinese cancel waiting localization"
 
 wifi_build_file_count=$(grep -F 'WiFiFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile;' "$project" | awk '{print $1}' | sort -u | wc -l | tr -d ' ')
-[ "$wifi_build_file_count" -eq 4 ] || fail "WiFi firmware controller must have four PBXBuildFile entries"
+[ "$wifi_build_file_count" -eq 5 ] || fail "WiFi firmware controller must have five PBXBuildFile entries"
 wifi_sources_count=$(grep -Fc 'WiFiFirmwareUpdateViewController.swift in Sources */,' "$project")
-[ "$wifi_sources_count" -eq 4 ] || fail "WiFi firmware controller must belong to all four target source phases"
+[ "$wifi_sources_count" -eq 5 ] || fail "WiFi firmware controller must belong to all five target source phases"
 reducer_build_file_count=$(grep -F 'WiFiFirmwareDFUStatusReducer.swift in Sources */ = {isa = PBXBuildFile;' "$project" | awk '{print $1}' | sort -u | wc -l | tr -d ' ')
-[ "$reducer_build_file_count" -eq 4 ] || fail "WiFi OTA reducer must have four PBXBuildFile entries"
+[ "$reducer_build_file_count" -eq 5 ] || fail "WiFi OTA reducer must have five PBXBuildFile entries"
 reducer_sources_count=$(grep -Fc 'WiFiFirmwareDFUStatusReducer.swift in Sources */,' "$project")
-[ "$reducer_sources_count" -eq 4 ] || fail "WiFi OTA reducer must belong to all four target source phases"
+[ "$reducer_sources_count" -eq 5 ] || fail "WiFi OTA reducer must belong to all five target source phases"
 cancel_reducer_build_file_count=$(grep -F 'WiFiFirmwareDFUCancelReducer.swift in Sources */ = {isa = PBXBuildFile;' "$project" | awk '{print $1}' | sort -u | wc -l | tr -d ' ')
-[ "$cancel_reducer_build_file_count" -eq 4 ] || fail "WiFi OTA cancel reducer must have four PBXBuildFile entries"
+[ "$cancel_reducer_build_file_count" -eq 5 ] || fail "WiFi OTA cancel reducer must have five PBXBuildFile entries"
 cancel_reducer_sources_count=$(grep -Fc 'WiFiFirmwareDFUCancelReducer.swift in Sources */,' "$project")
-[ "$cancel_reducer_sources_count" -eq 4 ] || fail "WiFi OTA cancel reducer must belong to all four target source phases"
+[ "$cancel_reducer_sources_count" -eq 5 ] || fail "WiFi OTA cancel reducer must belong to all five target source phases"
 
 rg -n 'UIImage\(named: "menu_wifi_dfu"\), title: "wifi_dfu"\.localizedString' "$gateway_base" >/dev/null || fail "WiFi DFU menu title must be localized by the shared Gateway menu"
-rg -n 'let controller = WiFiFirmwareUpdateViewController\(node: self\.node\)' "$gateway" >/dev/null || fail "WiFi DFU menu must pass current node"
-rg -n 'navigationController\?\.pushViewController\(controller, animated: true\)' "$gateway" >/dev/null || fail "WiFi DFU menu must push the WiFi firmware controller"
+rg -n 'let controller = WiFiFirmwareUpdateViewController\(node: node, firmwareKind: firmwareKind\)' "$gateway_base" >/dev/null || fail "WiFi DFU menu must pass current node"
+rg -n 'navigationController\?\.pushViewController\(controller, animated: true\)' "$gateway_base" >/dev/null || fail "WiFi DFU menu must push the WiFi firmware controller"
 
 [ -f "$focused_test" ] || fail "missing WiFi OTA reducer focused test"
 swiftc -parse-as-library "$transaction_gate" "$cancel_reducer" "$reducer" "$state" "$focused_test" -o /tmp/WiFiFirmwareDFUStatusReducerTests

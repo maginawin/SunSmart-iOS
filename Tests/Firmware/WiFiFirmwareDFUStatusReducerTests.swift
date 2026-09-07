@@ -32,6 +32,7 @@ struct WiFiFirmwareDFUStatusReducerTests {
         testTimingConstants()
         testStateMapping()
         testSessionStoreUsesV19KeyAndRemovesLegacyData()
+        testSessionStoreSeparatesFourGAndWiFi()
         testSessionCancelStateMigrationAndPersistence()
         testPageRecoveryRequiresAuthoritativeQuery()
         testAuthoritativeRecoveryPolicy()
@@ -201,6 +202,87 @@ struct WiFiFirmwareDFUStatusReducerTests {
 
         store.remove(networkUUID: networkUUID, nodeAddress: nodeAddress)
         precondition(defaults.object(forKey: v19Key) == nil)
+    }
+
+    private static func testSessionStoreSeparatesFourGAndWiFi() {
+        let suiteName = "WiFiFirmwareDFUStatusReducerTests.\(UUID().uuidString)"
+        guard let defaults = UserDefaults(suiteName: suiteName) else {
+            preconditionFailure("Unable to create test UserDefaults")
+        }
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+
+        let networkUUID = UUID()
+        let nodeAddress: UInt16 = 0x0123
+        let store = WiFiFirmwareDFUSessionStore(defaults: defaults)
+        let wifiSession = WiFiFirmwareDFUSession(
+            targetFirmwareID: "0.4.0",
+            otaID: 7,
+            lastStatus: snapshot(stage: .downloading, percent: 20),
+            lastState: .init(kind: .downloading, percent: 20),
+            terminalConsumed: false,
+            requiresAuthoritativeQuery: true
+        )
+        let fourGSession = WiFiFirmwareDFUSession(
+            targetFirmwareID: "1.4.0",
+            otaID: 8,
+            lastStatus: snapshot(
+                otaID: 8,
+                stage: .downloading,
+                percent: 30,
+                firmwareID: "1.4.0"
+            ),
+            lastState: .init(kind: .downloading, percent: 30),
+            terminalConsumed: false,
+            requiresAuthoritativeQuery: true
+        )
+
+        store.save(
+            wifiSession,
+            namespace: "wifi",
+            networkUUID: networkUUID,
+            nodeAddress: nodeAddress
+        )
+        store.save(
+            fourGSession,
+            namespace: "4g",
+            networkUUID: networkUUID,
+            nodeAddress: nodeAddress
+        )
+
+        precondition(
+            store.load(
+                namespace: "wifi",
+                networkUUID: networkUUID,
+                nodeAddress: nodeAddress
+            ) == wifiSession
+        )
+        precondition(
+            store.load(
+                namespace: "4g",
+                networkUUID: networkUUID,
+                nodeAddress: nodeAddress
+            ) == fourGSession
+        )
+
+        store.remove(
+            namespace: "4g",
+            networkUUID: networkUUID,
+            nodeAddress: nodeAddress
+        )
+        precondition(
+            store.load(
+                namespace: "wifi",
+                networkUUID: networkUUID,
+                nodeAddress: nodeAddress
+            ) == wifiSession
+        )
+        precondition(
+            store.load(
+                namespace: "4g",
+                networkUUID: networkUUID,
+                nodeAddress: nodeAddress
+            ) == nil
+        )
     }
 
     private static func testSessionCancelStateMigrationAndPersistence() {

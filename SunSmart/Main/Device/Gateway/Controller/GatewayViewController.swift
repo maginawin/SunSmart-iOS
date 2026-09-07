@@ -310,7 +310,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                 hideAnimation: false,
                 performsActionAfterDismiss: true,
                 tapItemBack: { [weak self] _ in
-                    self?.performGatewayDFUAction()
+                    self?.performGatewayDFUAction(firmwareKind: .fourG)
                 }
             )
         case .wifiDFU:
@@ -319,7 +319,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                 hideAnimation: false,
                 performsActionAfterDismiss: true,
                 tapItemBack: { [weak self] _ in
-                    self?.performGatewayDFUAction()
+                    self?.performGatewayDFUAction(firmwareKind: .wifi)
                 }
             )
         case .delete:
@@ -363,11 +363,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         }
     }
 
-    func performGatewayDFUAction() {
-        XWHUDManager.showTipHUD(
-            "under_development".localizedString,
-            isLineFeed: true
-        )
+    private func performGatewayDFUAction(firmwareKind: GatewayFirmwareKind) {
+        let controller = WiFiFirmwareUpdateViewController(node: node, firmwareKind: firmwareKind)
+        preventModalStackDismissalUntilReturn()
+        navigationController?.pushViewController(controller, animated: true)
     }
 
     func preventModalStackDismissalUntilReturn() {

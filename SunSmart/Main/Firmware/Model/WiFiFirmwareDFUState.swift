@@ -231,12 +231,22 @@ struct WiFiFirmwareDFUSessionStore {
         self.defaults = defaults
     }
 
-    func load(networkUUID: UUID, nodeAddress: UInt16) -> WiFiFirmwareDFUSession? {
-        defaults.removeObject(forKey: legacyStorageKey(
+    func load(
+        namespace: String = "wifi",
+        networkUUID: UUID,
+        nodeAddress: UInt16
+    ) -> WiFiFirmwareDFUSession? {
+        if namespace == "wifi" {
+            defaults.removeObject(forKey: legacyStorageKey(
+                networkUUID: networkUUID,
+                nodeAddress: nodeAddress
+            ))
+        }
+        let key = storageKey(
+            namespace: namespace,
             networkUUID: networkUUID,
             nodeAddress: nodeAddress
-        ))
-        let key = storageKey(networkUUID: networkUUID, nodeAddress: nodeAddress)
+        )
         guard let data = defaults.data(forKey: key) else { return nil }
         do {
             return try JSONDecoder().decode(WiFiFirmwareDFUSession.self, from: data)
@@ -248,29 +258,42 @@ struct WiFiFirmwareDFUSessionStore {
 
     func save(
         _ session: WiFiFirmwareDFUSession,
+        namespace: String = "wifi",
         networkUUID: UUID,
         nodeAddress: UInt16
     ) {
         guard let data = try? JSONEncoder().encode(session) else { return }
         defaults.set(data, forKey: storageKey(
+            namespace: namespace,
             networkUUID: networkUUID,
             nodeAddress: nodeAddress
         ))
     }
 
-    func remove(networkUUID: UUID, nodeAddress: UInt16) {
+    func remove(
+        namespace: String = "wifi",
+        networkUUID: UUID,
+        nodeAddress: UInt16
+    ) {
         defaults.removeObject(forKey: storageKey(
+            namespace: namespace,
             networkUUID: networkUUID,
             nodeAddress: nodeAddress
         ))
-        defaults.removeObject(forKey: legacyStorageKey(
-            networkUUID: networkUUID,
-            nodeAddress: nodeAddress
-        ))
+        if namespace == "wifi" {
+            defaults.removeObject(forKey: legacyStorageKey(
+                networkUUID: networkUUID,
+                nodeAddress: nodeAddress
+            ))
+        }
     }
 
-    private func storageKey(networkUUID: UUID, nodeAddress: UInt16) -> String {
-        "wifi_firmware_dfu_session.v19.\(networkUUID.uuidString).\(nodeAddress)"
+    private func storageKey(
+        namespace: String,
+        networkUUID: UUID,
+        nodeAddress: UInt16
+    ) -> String {
+        "\(namespace)_firmware_dfu_session.v19.\(networkUUID.uuidString).\(nodeAddress)"
     }
 
     private func legacyStorageKey(networkUUID: UUID, nodeAddress: UInt16) -> String {
