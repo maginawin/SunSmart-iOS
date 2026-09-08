@@ -1433,3 +1433,44 @@ class SyncDeviceStepTaskModel: SyncCellModel {
     }
     
 }
+
+/// 当前同步轮次的显示上下文，仅由主线程访问，不参与任务调度。
+final class SyncDevicesDisplayContext {
+    private var runIdentifier: UUID?
+    private var startedModels: Set<ObjectIdentifier> = []
+
+    func beginRun(_ identifier: UUID) {
+        runIdentifier = identifier
+        startedModels.removeAll()
+    }
+
+    func invalidateRun() {
+        runIdentifier = nil
+        startedModels.removeAll()
+    }
+
+    func taskDidStart(_ model: SyncCellModel, run identifier: UUID) {
+        guard runIdentifier == identifier else { return }
+        let device = (model as? SyncDevicesModel)
+            ?? (model as? SyncDeviceStepTaskModel)?.parentStepModel?.parentDeviceModel
+        guard let device else { return }
+        startedModels.insert(ObjectIdentifier(device))
+        if let group = device.parentGroupModel {
+            startedModels.insert(ObjectIdentifier(group))
+        }
+    }
+
+    func state(for model: SyncCellModel) -> SyncDevicesState {
+        let state = model.state
+        guard runIdentifier != nil, !model.isFineshed else { return state }
+        let hasStarted = startedModels.contains(ObjectIdentifier(model))
+        if hasStarted, state == .wait || state == .none {
+            return .inSettings
+        }
+        // 重试保留的成功步骤也可能让聚合状态成为 inSettings，但本轮尚未执行。
+        if !hasStarted, state == .inSettings {
+            return .wait
+        }
+        return state
+    }
+}

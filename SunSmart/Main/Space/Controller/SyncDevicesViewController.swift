@@ -68,6 +68,7 @@ class SyncDevicesViewController: UIViewController {
     private var batteryPowerSwitchKeyConfigurationCompleted = false
     private var batteryPowerSwitchKeyConfigEarliestDate: Date?
     private var syncRunIdentifier = UUID()
+    private let syncDisplayContext = SyncDevicesDisplayContext()
     private var daylightConditionRecallRecoveryKeys: Set<String> = []
 
     private static let batteryPowerSwitchKeyConfigInitialDelay: TimeInterval = 1
@@ -2472,6 +2473,7 @@ class SyncDevicesViewController: UIViewController {
                     return
                 }
 //                var nodeAddress: Address?
+                var needsListReload = false
                 var messageHandles: [MeshMessageHandle] = []
                 if let deviceModel = model as? SyncDevicesModel {
                     // code
@@ -2484,15 +2486,16 @@ class SyncDevicesViewController: UIViewController {
 //                    })
 //                    nodeAddress = deviceModel.address
                     deviceModel.state = .inSettings
-//                    self.tableView.reloadData()
 //                    self.updateCell(model: deviceModel)
                     if let groupModel = deviceModel.parentGroupModel {
+                        needsListReload = needsListReload || !groupModel.isShow
                         groupModel.isShow = true
 //                        self.updateCell(model: groupModel)
                         
                         if self.lastGroupModel != groupModel {
                             
                             if self.lastGroupModel != nil {
+                                needsListReload = needsListReload || self.lastGroupModel?.isShow == true
                                 self.lastGroupModel?.isShow = false
 //                                self.updateCell(model: self.lastGroupModel!)
                             }
@@ -2532,19 +2535,23 @@ class SyncDevicesViewController: UIViewController {
                     
                     if let deviceModel = taskModel.parentStepModel?.parentDeviceModel {
                         if let groupModel = deviceModel.parentGroupModel {
+                            needsListReload = needsListReload || !groupModel.isShow
                             groupModel.isShow = true
                             if self.lastGroupModel != groupModel {
                                 if self.lastGroupModel != nil {
+                                    needsListReload = needsListReload || self.lastGroupModel?.isShow == true
                                     self.lastGroupModel?.isShow = false
                                 }
                                 self.lastGroupModel = deviceModel.parentGroupModel
                             }
                         }
+                        needsListReload = needsListReload || !deviceModel.isShow
                         deviceModel.isShow = true
                         //                        self.updateCell(model: groupModel)
                         if self.lastDeviceModel != deviceModel {
                             
                             if self.lastDeviceModel != nil {
+                                needsListReload = needsListReload || self.lastDeviceModel?.isShow == true
                                 self.lastDeviceModel?.isShow = false
                                 //                                self.updateCell(model: self.lastGroupModel!)
                             }
@@ -2560,7 +2567,13 @@ class SyncDevicesViewController: UIViewController {
                 messageHandles = self.batteryPowerSwitchMessageHandles(for: model, defaultHandles: messageHandles)
                 
                 DispatchQueue.main.async {
-                    self.tableView.reloadData()
+                    guard self.syncRunIdentifier == syncRunIdentifier else { return }
+                    self.syncDisplayContext.taskDidStart(model, run: syncRunIdentifier)
+                    if needsListReload {
+                        self.tableView.reloadData()
+                    } else {
+                        self.refreshVisibleSyncCells()
+                    }
                 }
 
                 if self.completeGatewayServerAuthorizationTaskIfNeeded(
@@ -2921,6 +2934,7 @@ class SyncDevicesViewController: UIViewController {
     private func beginSyncRun() -> UUID {
         let identifier = UUID()
         syncRunIdentifier = identifier
+        syncDisplayContext.beginRun(identifier)
         daylightConditionRecallRecoveryKeys.removeAll()
         if batteryPowerSwitchDataForSync?.requiresActivationBeforeOwnConfiguration == true {
             batteryPowerSwitchKeyConfigEarliestDate = Date().addingTimeInterval(Self.batteryPowerSwitchKeyConfigInitialDelay)
@@ -2932,6 +2946,7 @@ class SyncDevicesViewController: UIViewController {
 
     private func invalidateCurrentSyncRun() {
         syncRunIdentifier = UUID()
+        syncDisplayContext.invalidateRun()
         batteryPowerSwitchKeyConfigEarliestDate = nil
     }
 
@@ -3469,55 +3484,28 @@ class SyncDevicesViewController: UIViewController {
     }
         
     private func updateCell(model: SyncCellModel) {
-        
-        
-//            var reloadIndexPath: IndexPath?
-            
-//            var sectionIndex: Int = 0
-//            
-//            if let groupModel = model as? SyncDevicesGroupModel, let section = groupModel.parentSectionIndex {
-//                sectionIndex = section
-//                
-//            }else if let deviceModel = model as? SyncDevicesModel {
-//                if let groupModel = deviceModel.parentGroupModel, let section = groupModel.parentSectionIndex {
-//                    sectionIndex = section
-//                    //                if let row = sections[section].rowModels.firstIndex(of: deviceModel) {
-//                    //                    reloadIndexPaths.append(IndexPath(item: row, section: section))
-//                    //                }
-//                }else if let section = deviceModel.parentSectionIndex {
-//                    sectionIndex = section
-//                    //                if let row = sections[section].rowModels.firstIndex(of: deviceModel) {
-//                    //                    reloadIndexPaths.append(IndexPath(item: row, section: section))
-//                    //                }
-//                }
-//                
-//            }else if let taskModel = model as? SyncDeviceStepTaskModel, let stepModel = taskModel.parentStepModel, let section = stepModel.parentDeviceModel?.parentSectionIndex {
-//                
-//                sectionIndex = section
-//                
-//                //            for (section, sectionModel) in sections.enumerated() {
-//                //                let row = (sectionModel.rowModels as NSArray).index(of: stepModel)
-//                //                if row != NSNotFound {
-//                //                    reloadIndexPaths.append(IndexPath(item: row, section: section))
-//                //                    break
-//                //                }
-//                //            }
-//            }
-            
-//            if let row = self.sections[sectionIndex].rowModels.firstIndex(of: model) {
-//                reloadIndexPath = IndexPath(item: row, section: sectionIndex)
-//            }
-            
-//            if reloadIndexPath != nil {
         DispatchQueue.main.async {
-//            self.tableView.reloadSections(IndexSet(integer: sectionIndex), with: .none)
-            self.tableView.reloadData()
+            self.refreshVisibleSyncCells()
         }
-                                
-//            }
-        
     }
-    
+
+    /// 任务进度不会改变列表结构，直接更新已显示的控件。
+    private func refreshVisibleSyncCells() {
+        for cell in tableView.visibleCells {
+            if let cell = cell as? SyncDeviceStepViewCell {
+                cell.updateProgress()
+            } else if let cell = cell as? SyncDeviceViewCell, let model = cell.model {
+                cell.updateState(syncDisplayContext.state(for: model))
+            } else if let cell = cell as? SyncDevicesGroupViewCell, let model = cell.groupModel,
+                      let indexPath = tableView.indexPath(for: cell),
+                      sections.indices.contains(indexPath.section),
+                      sections[indexPath.section].rowModels.indices.contains(indexPath.row),
+                      sections[indexPath.section].rowModels[indexPath.row] === model {
+                // groupCell 同时用于 Proxy 行，不能把复用前的 Group 状态写回 Proxy 行。
+                cell.updateState(syncDisplayContext.state(for: model))
+            }
+        }
+    }
 
     private func setupUI() {
         
@@ -3588,11 +3576,12 @@ extension SyncDevicesViewController: UITableViewDataSource, UITableViewDelegate 
         switch cellModel {
         case is SyncDevicesGroupModel:
             let cell = tableView.dequeueReusableCell(withIdentifier: "groupCell", for: indexPath) as! SyncDevicesGroupViewCell
-            cell.groupModel = cellModel as? SyncDevicesGroupModel
+            cell.configure(with: cellModel as! SyncDevicesGroupModel, displayState: syncDisplayContext.state(for: cellModel))
             cell.delegate = self
             return cell
         case is SyncDevicesSwitchProxyModel:
             let cell = tableView.dequeueReusableCell(withIdentifier: "groupCell", for: indexPath) as! SyncDevicesGroupViewCell
+            cell.clearBinding()
             cell.arrowImageView.isHidden = true
             cell.stateImageView.isHidden = true
             cell.selectBtn.isHidden = true
@@ -3612,7 +3601,7 @@ extension SyncDevicesViewController: UITableViewDataSource, UITableViewDelegate 
             
         case is SyncDevicesModel:
             let cell = tableView.dequeueReusableCell(withIdentifier: "deviceCell", for: indexPath) as! SyncDeviceViewCell
-            cell.model = cellModel as? SyncDevicesModel
+            cell.configure(with: cellModel as! SyncDevicesModel, displayState: syncDisplayContext.state(for: cellModel))
             cell.delegate = self
             return cell
         default:

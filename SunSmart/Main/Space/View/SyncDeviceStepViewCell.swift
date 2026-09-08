@@ -30,75 +30,74 @@ class SyncDeviceStepViewCell: UITableViewCell {
     
     weak var delegate: SyncDeviceStepViewCellDelegate?
     
+    private var displayedState: SyncDevicesState?
+    private var displayedFinished: Bool?
+    private var displayedFailure: Bool?
+
     var stepModel: SyncDeviceStepModel! {
         didSet {
-            
+            displayedState = nil
             stepNameLabel.text = stepModel.type
-            if stepModel.showProgress {
-                progressLabel.text = "\(stepModel.current)/\(stepModel.count)"
-            }else {
-                progressLabel.text = nil
+            let isGrouped = stepModel.parentDeviceModel?.parentGroupModel != nil
+            progressLabel.snp.updateConstraints { make in
+                make.left.equalTo(SCRXFrom(isGrouped ? 40 : 20))
             }
-            resyncBtn.isHidden = true
-            stateImageView.isHidden = false
-            
-//            var loadingStart: Double = 0
-//            if let loadingAnimation = stateImageView.layer.animation(forKey: "loading") as? CABasicAnimation, let fromValue =  loadingAnimation.fromValue as? Double {
-//                loadingStart = fromValue / 2.0 / .pi
-//            }
-            
-//            if stepModel.state != .inSettings {
-                stateImageView.layer.removeAnimation(forKey: "loading")
-//            }
-            failureLabel.isHidden = true
-            
-            switch stepModel.state {
-            case .wait:
-                stateImageView.image = UIImage(named: "sync_waiting_small")
-                progressLabel.isHidden = true
-            case .successful:
-                stateImageView.image = UIImage(named: "sync_success_small")
-                progressLabel.isHidden = true
-            case .failed:
-//                stateImageView.image = UIImage(named: "sync_failed_small")
-//                stateImageView.isHidden = false
-                stateImageView.image = UIImage(named: "sync_failed_small")
-                progressLabel.isHidden = false
-                
-                if stepModel.tasks.contains(where: { $0.failedCount > 1 }) {
-                    failureLabel.isHidden = false
-                }else {
-                    failureLabel.isHidden = true
-                }
-                resyncBtn.isHidden = !stepModel.isFineshed
-            case .inSettings:
-                stateImageView.image = UIImage(named: "sync_loading_small")
-                if let animation = stepModel.loadingAnimation {
-                    stateImageView.layer.add(animation, forKey: "loading")
-                }else {
-                    stateImageView.layer.addRotationAnimation(duration: 1.5, repeatCount: 9999, animationKey: "loading")
-                    if let animation = stateImageView.layer.animation(forKey: "loading") {
-                        stepModel.loadingAnimation = animation
-                    }
-                }
-                progressLabel.isHidden = false
-            default:
-                break
+            stateImageView.snp.updateConstraints { make in
+                make.left.equalTo(SCRXFrom(isGrouped ? 79 : 59))
             }
-            
-            if stepModel.parentDeviceModel?.parentGroupModel != nil {
-                progressLabel.snp.updateConstraints { make in
-                    make.left.equalTo(SCRXFrom(40))
-                }
-                stateImageView.snp.updateConstraints { make in
-                    make.left.equalTo(SCRXFrom(79))
-                }
-            }
-            
+            updateProgress()
         }
     }
-    
-    
+
+    /// 进度变化直接更新文字，保留现有 Cell 和正在运行的动画。
+    func updateProgress() {
+        guard let stepModel else { return }
+        let progressText = stepModel.showProgress ? "\(stepModel.current)/\(stepModel.count)" : nil
+        if progressLabel.text != progressText {
+            progressLabel.text = progressText
+        }
+
+        var state = stepModel.state
+        // 前一个任务完成、下一个任务尚未开始时，聚合状态会短暂返回 wait。
+        // 已开始的步骤保持进度可见，不改变任务模型的状态或调度语义。
+        if state == .wait, !stepModel.isFineshed,
+           stepModel.tasks.contains(where: { $0.state == .successful || $0.state == .failed }) {
+            state = .inSettings
+        }
+        let hasRepeatedFailure = stepModel.tasks.contains { $0.failedCount > 1 }
+        guard displayedState != state || displayedFinished != stepModel.isFineshed ||
+                displayedFailure != hasRepeatedFailure else { return }
+        displayedState = state
+        displayedFinished = stepModel.isFineshed
+        displayedFailure = hasRepeatedFailure
+
+        resyncBtn.isHidden = true
+        failureLabel.isHidden = true
+        stateImageView.isHidden = false
+        if state != .inSettings {
+            stateImageView.layer.removeAnimation(forKey: "loading")
+        }
+        switch state {
+        case .none, .wait:
+            stateImageView.image = UIImage(named: "sync_waiting_small")
+            progressLabel.isHidden = true
+        case .successful:
+            stateImageView.image = UIImage(named: "sync_success_small")
+            progressLabel.isHidden = true
+        case .failed:
+            stateImageView.image = UIImage(named: "sync_failed_small")
+            progressLabel.isHidden = false
+            failureLabel.isHidden = !hasRepeatedFailure
+            resyncBtn.isHidden = !stepModel.isFineshed
+        case .inSettings:
+            stateImageView.image = UIImage(named: "sync_loading_small")
+            progressLabel.isHidden = false
+            if stateImageView.layer.animation(forKey: "loading") == nil {
+                stateImageView.layer.addRotationAnimation(duration: 1.5, repeatCount: 9999, animationKey: "loading")
+            }
+        }
+    }
+
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         backgroundColor = .clear
@@ -117,6 +116,7 @@ class SyncDeviceStepViewCell: UITableViewCell {
     private func setupUI() {
         
         progressLabel = UILabel(text: "16/16", textColor: RGB(100, 116, 139), fontSize: 13, fontWeight: .light)
+        progressLabel.font = .monospacedDigitSystemFont(ofSize: progressLabel.font.pointSize, weight: .light)
         contentView.addSubview(progressLabel)
         progressLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(20))

@@ -39,59 +39,109 @@ class SyncDevicesGroupViewCell: UITableViewCell {
     
     weak var delegate: SyncDevicesGroupViewCellDelegate?
     
+    private struct DisplaySnapshot: Equatable {
+        let identity: ObjectIdentifier
+        let state: SyncDevicesState
+        let isFinished: Bool
+        let isShow: Bool
+        let isSelected: Bool
+        let name: String
+        let imageName: String
+    }
+
+    private var displayedSnapshot: DisplaySnapshot?
+    private var boundModel: SyncDevicesGroupModel?
     var groupModel: SyncDevicesGroupModel! {
-        didSet {
-            
-            iconImageBtn.setImage(UIImage(named: groupModel.imageName), for: .normal)
-            nameLabel.text = groupModel.name
-            
-            arrowImageView.isHidden = true
-            arrowImageView.image = UIImage(named: groupModel.isShow ? "arrow_up" : "arrow_down")
-            stateImageView.snp.updateConstraints { make in
-                make.right.equalTo(SCRXFrom(-16))
+        get { boundModel }
+        set {
+            guard let newValue else {
+                clearBinding()
+                return
             }
-            selectBtn.isHidden = true
+            configure(with: newValue, displayState: newValue.state)
+        }
+    }
+
+    func configure(with model: SyncDevicesGroupModel, displayState: SyncDevicesState) {
+        boundModel = model
+        displayedSnapshot = nil
+        updateState(displayState)
+    }
+
+    func clearBinding() {
+        boundModel = nil
+        displayedSnapshot = nil
+        stateImageView.layer.removeAnimation(forKey: "loading")
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        clearBinding()
+    }
+
+    /// 只有设备行的显示内容变化时才更新控件，任务计数变化不触发重新绑定。
+    func updateState(_ state: SyncDevicesState) {
+        guard let model = boundModel else { return }
+        let snapshot = DisplaySnapshot(
+            identity: ObjectIdentifier(model),
+            state: state,
+            isFinished: model.isFineshed,
+            isShow: model.isShow,
+            isSelected: model.isSelected,
+            name: model.name,
+            imageName: model.imageName
+        )
+        guard displayedSnapshot != snapshot else { return }
+        displayedSnapshot = snapshot
+
+        iconImageBtn.setImage(UIImage(named: model.imageName), for: .normal)
+        nameLabel.text = model.name
+
+        arrowImageView.isHidden = true
+        arrowImageView.image = UIImage(named: model.isShow ? "arrow_up" : "arrow_down")
+        stateImageView.snp.updateConstraints { make in
+            make.right.equalTo(SCRXFrom(-16))
+        }
+        selectBtn.isHidden = true
+        stateImageView.isHidden = false
+
+        if model.isFineshed {
+            iconImageBtn.snp.updateConstraints { make in
+                make.left.equalTo(SCRXFrom(48))
+            }
+        }else {
+            iconImageBtn.snp.updateConstraints { make in
+                make.left.equalTo(SCRXFrom(16))
+            }
+        }
+
+        switch state {
+        case .none, .inSettings:
+            stateImageView.isHidden = true
+        case .wait:
             stateImageView.isHidden = false
-            
-            if groupModel.isFineshed {
-                iconImageBtn.snp.updateConstraints { make in
-                    make.left.equalTo(SCRXFrom(48))
-                }
-            }else {
-                iconImageBtn.snp.updateConstraints { make in
-                    make.left.equalTo(SCRXFrom(16))
-                }
-            }
-            
-            switch groupModel.state {
-            case .none, .inSettings:
-                stateImageView.isHidden = true
-            case .wait:
-                stateImageView.isHidden = false
-                stateImageView.image = UIImage(named: "device_add_waiting")
+            stateImageView.image = UIImage(named: "device_add_waiting")
 //                stateImageView.snp.updateConstraints { make in
 //                    make.right.equalTo(SCRXFrom(-16))
 //                }
-            case .successful:
-                stateImageView.image = UIImage(named: "sync_success_small")
-                arrowImageView.isHidden = false
-                stateImageView.snp.updateConstraints { make in
-                    make.right.equalTo(SCRXFrom(-59))
-                }
-            case .failed:
-                stateImageView.image = UIImage(named: "sync_failed_small")
-                selectBtn.isHidden = !groupModel.isFineshed
-                selectBtn.isSelected = groupModel.isSelected
-                arrowImageView.isHidden = false
-                stateImageView.snp.updateConstraints { make in
-                    make.right.equalTo(SCRXFrom(-59))
-                }
-
+        case .successful:
+            stateImageView.image = UIImage(named: "sync_success_small")
+            arrowImageView.isHidden = false
+            stateImageView.snp.updateConstraints { make in
+                make.right.equalTo(SCRXFrom(-59))
             }
+        case .failed:
+            stateImageView.image = UIImage(named: "sync_failed_small")
+            selectBtn.isHidden = !model.isFineshed
+            selectBtn.isSelected = model.isSelected
+            arrowImageView.isHidden = false
+            stateImageView.snp.updateConstraints { make in
+                make.right.equalTo(SCRXFrom(-59))
+            }
+
         }
     }
-    
-    
+
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         

@@ -41,111 +41,171 @@ class SyncDeviceViewCell: UITableViewCell {
     var lineView: UIView!
     weak var delegate: SyncDeviceViewCellDelegate?
     
-    var model: SyncDevicesModel! {
-        didSet {
-            
-            nameLabel.text = model.name
-            
-            iconImageBtn.setImage(UIImage(named: model.imageName), for: .normal)
-            
-            let isGroup = model.steps.count > 0
+    private struct DisplaySnapshot: Equatable {
+        let identity: ObjectIdentifier
+        let hasSteps: Bool
+        let parentGroup: ObjectIdentifier?
+        let failedCount: Int
+        let state: SyncDevicesState
+        let isFinished: Bool
+        let isShow: Bool
+        let isSelected: Bool
+        let name: String
+        let imageName: String
+    }
 
-            
-            stateImageView.layer.removeAnimation(forKey: "loading")
-            resyncBtn.isHidden = true
-            failureLabel.isHidden = true
-            selectedImageView.isHidden = true
-            selectedImageView.image = UIImage(named: model.isSelected ? "device_select" : "device_select_un")
-            stateImageView.snp.updateConstraints { make in
-                make.right.equalTo(SCRXFrom(-60))
+    private var displayedSnapshot: DisplaySnapshot?
+    private var boundModel: SyncDevicesModel?
+    var model: SyncDevicesModel! {
+        get { boundModel }
+        set {
+            guard let newValue else {
+                clearBinding()
+                return
             }
-//            isFineshed
-            switch model.state {
-            case .none:
-                stateImageView.isHidden = true
-                
-            case .wait:
-                stateImageView.isHidden = false
-                if isGroup {
-                    stateImageView.image = UIImage(named: "device_add_waiting")
-                    stateImageView.snp.updateConstraints { make in
-                        make.right.equalTo(SCRXFrom(-16))
-                    }
-                }else {
-                    stateImageView.image = UIImage(named: "sync_waiting_small")
-                }
-                
-            case .successful:
-                stateImageView.isHidden = false
-                stateImageView.image = UIImage(named: "sync_success_small")
-            case .failed:
-                stateImageView.image = UIImage(named: "sync_failed_small")
-                if model.failedCount > 1 {
-                    failureLabel.isHidden = false
-                    stateImageView.isHidden = true
-                }else {
-                    stateImageView.isHidden = false
-                    failureLabel.isHidden = true
-                }
-                if model.isFineshed {
-                    selectedImageView.isHidden = false
-                    resyncBtn.isHidden = false
-                }else {
-                    resyncBtn.isHidden = true
-                }
-                
-            case .inSettings:
-                stateImageView.isHidden = false
-                stateImageView.image = UIImage(named: "sync_loading_small")
-                stateImageView.layer.addRotationAnimation(duration: 1.5, repeatCount: 9999, animationKey: "loading")
-            }
-            
-            var selectedImageLeft = SCRXFrom(36)
-            var iconImageLeft = SCRXFrom(68)
-            
-            if isGroup {
-                selectedImageView.isUserInteractionEnabled = true
-                resyncBtn.isHidden = true
-                failureLabel.isHidden = true
-                if model.isFineshed {
-                    selectedImageLeft = SCRXFrom(16)
-                    iconImageLeft = SCRXFrom(48)
-                    stateImageView.isHidden = false
-                }else {
-                    iconImageLeft = SCRXFrom(16)
-                    stateImageView.isHidden = model.state == .none || model.state == .inSettings
-                }
-                
-                if model.parentGroupModel != nil {
-                    iconImageLeft += SCRXFrom(20)
-                }
-                    arrowImageView.isHidden = model.state == .none || model.state == .wait
-                arrowImageView.image = UIImage(named: model.isShow ? "arrow_up" : "arrow_down")
-//                }
-                
-            }else {
-                selectedImageView.isUserInteractionEnabled = false
-                arrowImageView.isHidden = true
-                if model.isFineshed && model.parentGroupModel != nil {
-                    iconImageLeft = SCRXFrom(68)
-                }else {
-                    iconImageLeft = SCRXFrom(48)
-                    selectedImageLeft = SCRXFrom(16)
-                }
-            }
-            
-            selectedImageView.snp.updateConstraints { make in
-                make.left.equalTo(selectedImageLeft)
-            }
-            
-            iconImageBtn.snp.updateConstraints { make in
-                make.left.equalTo(iconImageLeft)
-            }
-            
+            configure(with: newValue, displayState: newValue.state)
         }
     }
-    
-    
+
+    func configure(with model: SyncDevicesModel, displayState: SyncDevicesState) {
+        boundModel = model
+        displayedSnapshot = nil
+        updateState(displayState)
+    }
+
+    func clearBinding() {
+        boundModel = nil
+        displayedSnapshot = nil
+        stateImageView.layer.removeAnimation(forKey: "loading")
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        clearBinding()
+    }
+
+    /// 只有设备行的显示内容变化时才更新控件，任务计数变化不触发重新绑定。
+    func updateState(_ state: SyncDevicesState) {
+        guard let model = boundModel else { return }
+        let snapshot = DisplaySnapshot(
+            identity: ObjectIdentifier(model),
+            hasSteps: !model.steps.isEmpty,
+            parentGroup: model.parentGroupModel.map { ObjectIdentifier($0) },
+            failedCount: model.failedCount,
+            state: state,
+            isFinished: model.isFineshed,
+            isShow: model.isShow,
+            isSelected: model.isSelected,
+            name: model.name,
+            imageName: model.imageName
+        )
+        guard displayedSnapshot != snapshot else { return }
+        displayedSnapshot = snapshot
+
+        nameLabel.text = model.name
+
+        iconImageBtn.setImage(UIImage(named: model.imageName), for: .normal)
+
+        let isGroup = model.steps.count > 0
+
+
+        if state != .inSettings || isGroup {
+            stateImageView.layer.removeAnimation(forKey: "loading")
+        }
+        resyncBtn.isHidden = true
+        failureLabel.isHidden = true
+        selectedImageView.isHidden = true
+        selectedImageView.image = UIImage(named: model.isSelected ? "device_select" : "device_select_un")
+        stateImageView.snp.updateConstraints { make in
+            make.right.equalTo(SCRXFrom(-60))
+        }
+//            isFineshed
+        switch state {
+        case .none:
+            stateImageView.isHidden = true
+
+        case .wait:
+            stateImageView.isHidden = false
+            if isGroup {
+                stateImageView.image = UIImage(named: "device_add_waiting")
+                stateImageView.snp.updateConstraints { make in
+                    make.right.equalTo(SCRXFrom(-16))
+                }
+            }else {
+                stateImageView.image = UIImage(named: "sync_waiting_small")
+            }
+
+        case .successful:
+            stateImageView.isHidden = false
+            stateImageView.image = UIImage(named: "sync_success_small")
+        case .failed:
+            stateImageView.image = UIImage(named: "sync_failed_small")
+            if model.failedCount > 1 {
+                failureLabel.isHidden = false
+                stateImageView.isHidden = true
+            }else {
+                stateImageView.isHidden = false
+                failureLabel.isHidden = true
+            }
+            if model.isFineshed {
+                selectedImageView.isHidden = false
+                resyncBtn.isHidden = false
+            }else {
+                resyncBtn.isHidden = true
+            }
+
+        case .inSettings:
+            stateImageView.isHidden = false
+            stateImageView.image = UIImage(named: "sync_loading_small")
+            if !isGroup, stateImageView.layer.animation(forKey: "loading") == nil {
+                stateImageView.layer.addRotationAnimation(duration: 1.5, repeatCount: 9999, animationKey: "loading")
+            }
+        }
+
+        var selectedImageLeft = SCRXFrom(36)
+        var iconImageLeft = SCRXFrom(68)
+
+        if isGroup {
+            selectedImageView.isUserInteractionEnabled = true
+            resyncBtn.isHidden = true
+            failureLabel.isHidden = true
+            if model.isFineshed {
+                selectedImageLeft = SCRXFrom(16)
+                iconImageLeft = SCRXFrom(48)
+                stateImageView.isHidden = false
+            }else {
+                iconImageLeft = SCRXFrom(16)
+                stateImageView.isHidden = state == .none || state == .inSettings
+            }
+
+            if model.parentGroupModel != nil {
+                iconImageLeft += SCRXFrom(20)
+            }
+            arrowImageView.isHidden = state == .none || state == .wait
+            arrowImageView.image = UIImage(named: model.isShow ? "arrow_up" : "arrow_down")
+//                }
+
+        }else {
+            selectedImageView.isUserInteractionEnabled = false
+            arrowImageView.isHidden = true
+            if model.isFineshed && model.parentGroupModel != nil {
+                iconImageLeft = SCRXFrom(68)
+            }else {
+                iconImageLeft = SCRXFrom(48)
+                selectedImageLeft = SCRXFrom(16)
+            }
+        }
+
+        selectedImageView.snp.updateConstraints { make in
+            make.left.equalTo(selectedImageLeft)
+        }
+
+        iconImageBtn.snp.updateConstraints { make in
+            make.left.equalTo(iconImageLeft)
+        }
+
+    }
+
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
         backgroundColor = .white
