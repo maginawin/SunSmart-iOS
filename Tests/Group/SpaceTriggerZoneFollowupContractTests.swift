@@ -131,11 +131,18 @@ struct SpaceTriggerZoneFollowupContractTests {
         let syncViewDidLoad = section(
             in: syncDevicesController,
             from: "override func viewDidLoad()",
+            to: "private func installTaskPlan("
+        )
+        let syncPlanInstallation = section(
+            in: syncDevicesController,
+            from: "private func installTaskPlan(",
             to: "override func viewDidAppear"
         )
         require(
-            syncViewDidLoad.contains("if self.syncState == .inSync")
-                && syncViewDidLoad.contains("self.startSync()"),
+            syncViewDidLoad.contains("self.installTaskPlan(result)")
+                && syncPlanInstallation.contains("guard !self.hasLeftSyncPage else { return }")
+                && syncPlanInstallation.contains("if self.syncState == .inSync")
+                && syncPlanInstallation.contains("self.startSync()"),
             "SAVE-created Sync device(s) pages must start their task automatically"
         )
 

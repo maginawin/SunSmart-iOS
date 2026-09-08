@@ -1,0 +1,98 @@
+Attributes: Application, 0x10addfac0, pid: 2948, label: 'SunSmart'
+Element subtree:
+ →Application, 0x10addfac0, pid: 2948, label: 'SunSmart'
+    Window (Main), 0x10addfc00, {{0.0, 0.0}, {393.0, 852.0}}
+      Other, 0x10addfd40, {{0.0, 0.0}, {393.0, 852.0}}
+        Other, 0x10addfe80, {{0.0, 0.0}, {393.0, 852.0}}
+          Other, 0x10e618000, {{0.0, 0.0}, {393.0, 852.0}}
+            NavigationBar, 0x10e618140, {{0.0, 53.7}, {393.0, 44.0}}, identifier: 'Space 2'
+              Button, 0x10e618280, {{8.0, 53.7}, {49.0, 44.0}}, label: 'navigation back'
+              StaticText, 0x10e6183c0, {{164.0, 64.7}, {65.3, 21.7}}, label: 'Space 2'
+              Button, 0x10e618500, {{336.0, 53.7}, {49.0, 44.0}}, label: 'more vertical'
+            Other, 0x10e618640, {{0.0, 0.0}, {393.0, 852.0}}
+              Other, 0x10e618780, {{0.0, 0.0}, {393.0, 852.0}}
+                Other, 0x10e6188c0, {{0.0, 0.0}, {393.0, 852.0}}
+                  Other, 0x10e618a00, {{0.0, 97.7}, {393.0, 48.0}}
+                    Button, 0x10e618b40, {{16.8, 97.7}, {66.9, 42.0}}, label: 'Main', Selected, Disabled
+                      StaticText, 0x10e618c80, {{36.4, 125.0}, {28.0, 16.0}}, label: 'Main'
+                    Button, 0x10e618dc0, {{89.9, 97.7}, {66.9, 42.0}}, label: 'Group', Disabled
+                      StaticText, 0x10e618f00, {{105.6, 125.0}, {36.0, 16.0}}, label: 'Group'
+                    Button, 0x10e619040, {{163.1, 97.7}, {66.9, 42.0}}, label: 'Scene', Disabled
+                      StaticText, 0x10e619180, {{178.1, 125.0}, {37.0, 16.0}}, label: 'Scene'
+                    Button, 0x10e6192c0, {{236.2, 97.7}, {66.9, 42.0}}, label: 'Timed', Disabled
+                      StaticText, 0x10e619400, {{251.2, 125.0}, {37.0, 16.0}}, label: 'Timed'
+                    Button, 0x10e619540, {{309.4, 97.7}, {66.9, 42.0}}, label: 'More', Disabled
+                      StaticText, 0x10e619680, {{328.0, 125.0}, {30.0, 16.0}}, label: 'More'
+                  Other, 0x10e6197c0, {{0.0, 97.7}, {393.0, 48.0}}
+                    ScrollView, 0x10e619900, {{10.5, 97.7}, {372.0, 48.0}}
+                      Button, 0x10e619a40, {{16.8, 97.7}, {67.1, 48.0}}
+                      Button, 0x10e619b80, {{90.1, 97.7}, {67.1, 48.0}}
+                      Button, 0x10e619cc0, {{163.5, 97.7}, {67.1, 48.0}}
+                      Button, 0x10e619e00, {{236.8, 97.7}, {67.1, 48.0}}
+                      Button, 0x10e619f40, {{310.2, 97.7}, {67.1, 48.0}}
+                      Other, 0x10e61a080, {{10.5, 143.7}, {373.1, 2.0}}
+                  ScrollView, 0x10e61a1c0, {{0.0, 145.7}, {393.0, 706.3}}
+                    Other, 0x10e61a300, {{0.0, 145.7}, {393.0, 706.3}}
+                      ScrollView, 0x10e61a440, {{0.0, 145.7}, {393.0, 706.3}}
+                        Other, 0x10e61a580, {{0.0, 145.7}, {393.0, 706.3}}
+                          CollectionView, 0x10e61a6c0, {{0.0, 145.7}, {393.0, 626.3}}
+                            Cell, 0x10e61a800, {{12.7, 420.0}, {111.4, 111.4}}
+                              Other, 0x10e61a940, {{12.7, 420.0}, {111.4, 111.4}}
+                                Image, 0x10e61aa80, {{47.3, 445.3}, {42.0, 41.7}}, identifier: 'device_all_on'
+                                TextView, 0x10e61abc0, {{36.7, 500.0}, {63.3, 26.3}}, value: All, Disabled
+                                  StaticText, 0x10e61ad00, {{60.2, 500.0}, {16.2, 15.8}}, label: 'All'
+                                  Other, 0x10e61ae40, {{67.0, 500.0}, {30.0, 26.3}}, label: 'Vertical scroll bar, 1 page', value: 0%
+                                    Other, 0x10e61af80, {{94.0, 461.0}, {3.0, 36.0}}
+                                  Other, 0x10e61b0c0, {{36.7, 510.1}, {63.3, 13.2}}, label: 'Horizontal scroll bar, 1 page', value: 0%
+                                    Other, 0x10e61b200, {{-2.3, 520.3}, {36.0, 3.0}}
+                            Cell, 0x10e61b340, {{141.0, 420.0}, {111.4, 111.4}}
+                              Other, 0x10e61b480, {{141.0, 420.0}, {111.4, 111.4}}
+                                Image, 0x10e61b5c0, {{175.7, 432.6}, {42.0, 42.0}}, identifier: 'device_Lighting'
+                                Other, 0x10e61b700, {{162.0, 441.0}, {6.0, 6.0}}
+                                Other, 0x10e61b840, {{167.3, 488.3}, {59.0, 4.0}}
+                                TextView, 0x10e61b980, {{165.0, 500.0}, {63.3, 26.3}}, value: Group 1-L2, Disabled
+                                  StaticText, 0x10e61bac0, {{168.6, 500.0}, {56.2, 26.2}}, label: 'Group 1-L2'
+                                  Other, 0x10e61bc00, {{195.3, 500.0}, {30.0, 26.3}}, label: 'Vertical scroll bar, 1 page', value: 0%
+                                    Other, 0x10e61bd40, {{222.3, 461.0}, {3.0, 36.0}}
+                                  Other, 0x10e61be80, {{165.0, 510.1}, {63.3, 13.2}}, label: 'Horizontal scroll bar, 1 page', value: 0%
+                                    Other, 0x10e6a4000, {{126.0, 520.3}, {36.0, 3.0}}
+                            Cell, 0x10e6a4140, {{269.0, 420.0}, {111.4, 111.4}}
+                              Other, 0x10e6a4280, {{269.0, 420.0}, {111.4, 111.4}}
+                                Image, 0x10e6a43c0, {{303.7, 432.6}, {42.0, 42.0}}, identifier: 'device_Lighting'
+                                Other, 0x10e6a4500, {{295.3, 488.3}, {59.0, 4.0}}
+                                TextView, 0x10e6a4640, {{293.0, 500.0}, {63.3, 26.3}}, value: Group 1-L3, Disabled
+                                  StaticText, 0x10e6a4780, {{296.6, 500.0}, {56.2, 26.2}}, label: 'Group 1-L3'
+                                  Other, 0x10e6a48c0, {{323.3, 500.0}, {30.0, 26.3}}, label: 'Vertical scroll bar, 1 page', value: 0%
+                                    Other, 0x10e6a4a00, {{350.3, 461.0}, {3.0, 36.0}}
+                                  Other, 0x10e6a4b40, {{293.0, 510.1}, {63.3, 13.2}}, label: 'Horizontal scroll bar, 1 page', value: 0%
+                                    Other, 0x10e6a4c80, {{254.0, 520.3}, {36.0, 3.0}}
+                            Other, 0x10e6a4dc0, {{360.0, 145.7}, {30.0, 626.3}}, label: 'Vertical scroll bar, 1 page', value: 0%
+                              Other, 0x10e6a4f00, {{387.0, 828.3}, {3.0, 86.3}}
+                            Other, 0x10e6a5040, {{0.0, 739.0}, {393.0, 30.0}}, label: 'Horizontal scroll bar, 2 pages', value: 0%
+                              Other, 0x10e6a5180, {{3.0, 766.0}, {387.0, 3.0}}
+                            Other, 0x10e6a52c0, {{360.0, 145.7}, {30.0, 626.3}}, label: 'Vertical scroll bar, 1 page', value: 0%
+                              Other, 0x10e6a5400, {{387.0, 828.3}, {3.0, 86.3}}
+                            Other, 0x10e6a5540, {{0.0, 739.0}, {393.0, 30.0}}, label: 'Horizontal scroll bar, 2 pages', value: 0%
+                              Other, 0x10e6a5680, {{3.0, 766.0}, {387.0, 3.0}}
+                          Other, 0x10e6a57c0, {{0.0, 772.0}, {393.0, 80.0}}
+                            StaticText, 0x10e6a5900, {{21.0, 777.0}, {67.0, 30.0}}, label: '2/500'
+                              StaticText, 0x10e6a5a40, {{53.0, 784.0}, {35.0, 16.0}}, label: '2/500'
+                            Button, 0x10e6a5b80, {{178.7, 777.0}, {30.0, 30.0}}, label: 'Search by Name'
+                            Button, 0x10e6a5cc0, {{229.7, 777.0}, {30.0, 30.0}}, label: 'space sort'
+                            Button, 0x10e6a5e00, {{280.7, 775.0}, {30.0, 34.0}}
+                              StaticText, 0x10e6a5f40, {{280.7, 775.0}, {0.0, 0.0}}
+                            Button, 0x10e6a6080, {{280.7, 777.0}, {30.0, 30.0}}, label: 'share delete'
+                            Button, 0x10e6a61c0, {{331.7, 777.0}, {30.0, 30.0}}, label: 'space add'
+                      Other, 0x10e6a6300, {{0.0, 156.2}, {393.0, 41.0}}
+                        ScrollView, 0x10e6a6440, {{0.0, 156.2}, {393.0, 41.0}}
+                          Button, 0x10e6a6580, {{13.5, 156.2}, {83.0, 41.0}}, label: 'Lights'
+                          Button, 0x10e6a66c0, {{107.8, 156.2}, {83.0, 41.0}}, label: 'Switches'
+                          Button, 0x10e6a6800, {{202.2, 156.2}, {83.0, 41.0}}, label: 'Sensors'
+                          Button, 0x10e6a6940, {{296.5, 156.2}, {83.0, 41.0}}, label: 'Others'
+Path to element:
+ →Application, 0x10addfac0, pid: 2948, label: 'SunSmart'
+Query chain:
+ →Find: Application 'com.azoula.sunsmart'
+  Output: {
+    Application, 0x10e6a6a80, pid: 2948, label: 'SunSmart'
+  }

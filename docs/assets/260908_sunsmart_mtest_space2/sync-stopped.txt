@@ -1,0 +1,120 @@
+Attributes: Application, 0x10cf00780, pid: 2948, label: 'SunSmart'
+Element subtree:
+ →Application, 0x10cf00780, pid: 2948, label: 'SunSmart'
+    Window (Main), 0x10cf008c0, {{0.0, 0.0}, {393.0, 852.0}}
+      Other, 0x10cf00a00, {{0.0, 0.0}, {393.0, 852.0}}
+        Other, 0x10cf00b40, {{16.0, 59.0}, {361.0, 782.6}}
+          Other, 0x10cf00c80, {{-345.0, -723.6}, {1083.0, 2347.9}}
+          Other, 0x10cf00dc0, {{16.0, 59.0}, {361.0, 782.6}}
+            NavigationBar, 0x10cf00f00, {{16.0, 108.3}, {361.0, 40.4}}, identifier: 'Space 2'
+              Button, 0x10cf01040, {{23.3, 108.3}, {45.0, 40.4}}, label: 'navigation back'
+              StaticText, 0x10cf01180, {{166.6, 118.4}, {60.0, 19.9}}, label: 'Space 2'
+              Button, 0x10cf012c0, {{324.6, 108.3}, {45.0, 40.4}}, label: 'more vertical'
+            Other, 0x10cf01400, {{16.0, 59.0}, {361.0, 782.6}}
+              Other, 0x10cf01540, {{16.0, 59.0}, {361.0, 782.6}}
+                Other, 0x10cf01680, {{16.0, 59.0}, {361.0, 782.6}}
+                  Other, 0x10cf017c0, {{16.0, 148.7}, {361.0, 44.1}}
+                    Button, 0x10cf01900, {{31.4, 148.7}, {61.4, 38.6}}, label: 'Main', Disabled
+                      StaticText, 0x10cf01a40, {{49.5, 173.8}, {25.7, 14.7}}, label: 'Main'
+                    Button, 0x10cf01b80, {{98.6, 148.7}, {61.4, 38.6}}, label: 'Group', Selected, Disabled
+                      StaticText, 0x10cf01cc0, {{113.0, 173.8}, {33.1, 14.7}}, label: 'Group'
+                    Button, 0x10cf01e00, {{165.8, 148.7}, {61.4, 38.6}}, label: 'Scene', Disabled
+                      StaticText, 0x10cf01f40, {{179.6, 173.8}, {34.0, 14.7}}, label: 'Scene'
+                    Button, 0x10cf02080, {{233.0, 148.7}, {61.4, 38.6}}, label: 'Timed', Disabled
+                      StaticText, 0x10cf021c0, {{246.8, 173.8}, {34.0, 14.7}}, label: 'Timed'
+                    Button, 0x10cf02300, {{300.2, 148.7}, {61.4, 38.6}}, label: 'More', Disabled
+                      StaticText, 0x10cf02440, {{317.3, 173.8}, {27.6, 14.7}}, label: 'More'
+                  Other, 0x10cf02580, {{16.0, 148.7}, {361.0, 44.1}}
+                    ScrollView, 0x10cf026c0, {{25.6, 148.7}, {341.7, 44.1}}
+                      Button, 0x10cf02800, {{92.6, 144.3}, {73.9, 52.9}}
+                      Button, 0x10cf02940, {{36.5, 152.4}, {51.3, 36.7}}
+                      Button, 0x10cf02a80, {{166.2, 148.7}, {61.6, 44.1}}
+                      Button, 0x10cf02bc0, {{233.6, 148.7}, {61.6, 44.1}}
+                      Button, 0x10cf02d00, {{300.9, 148.7}, {61.6, 44.1}}
+                      Other, 0x10cf02e40, {{25.6, 191.0}, {342.7, 1.8}}
+                  ScrollView, 0x10cf02f80, {{16.0, 192.8}, {361.0, 648.8}}
+                    Other, 0x10cf030c0, {{16.0, 192.8}, {361.0, 648.8}}
+                      CollectionView, 0x10cf03200, {{16.0, 192.8}, {361.0, 575.3}}
+                        Cell, 0x10cf03340, {{145.4, 424.7}, {102.4, 102.4}}
+                          Other, 0x10cf03480, {{145.4, 424.7}, {102.4, 102.4}}
+                            Image, 0x10cf035c0, {{180.0, 450.1}, {33.1, 32.2}}, identifier: 'group_image_1'
+                            TextView, 0x10cf03700, {{167.5, 498.2}, {58.2, 24.2}}, value: Group 1, Disabled
+                              StaticText, 0x10cf03840, {{173.0, 498.2}, {47.1, 14.5}}, label: 'Group 1'
+                              Other, 0x10cf03980, {{195.3, 498.2}, {27.6, 24.2}}, label: 'Vertical scroll bar, 1 page', value: 0%
+                                Other, 0x10cf03ac0, {{220.1, 462.4}, {2.8, 33.1}}
+                              Other, 0x10cf03c00, {{167.5, 507.5}, {58.2, 12.1}}, label: 'Horizontal scroll bar, 1 page', value: 0%
+                                Other, 0x10cf03d40, {{131.6, 516.9}, {33.1, 2.8}}
+                        Other, 0x10cf03e80, {{346.7, 192.8}, {27.6, 575.3}}, label: 'Vertical scroll bar, 1 page', value: 0%
+                          Other, 0x10ce4d680, {{371.5, 637.4}, {2.8, 128.0}}
+                        Other, 0x10ce4e300, {{16.0, 737.8}, {361.0, 27.6}}, label: 'Horizontal scroll bar, 2 pages', value: 0%
+                          Other, 0x10ce4f700, {{18.8, 762.6}, {355.5, 2.8}}
+                        Other, 0x10ce4e800, {{346.7, 192.8}, {27.6, 575.3}}, label: 'Vertical scroll bar, 1 page', value: 0%
+                          Other, 0x10ce4e940, {{371.5, 637.4}, {2.8, 128.0}}
+                        Other, 0x10ce4ca00, {{16.0, 737.8}, {361.0, 27.6}}, label: 'Horizontal scroll bar, 2 pages', value: 0%
+                          Other, 0x10ce4ea80, {{18.8, 762.6}, {355.5, 2.8}}
+                      Other, 0x10ce4e6c0, {{16.0, 768.1}, {361.0, 73.5}}
+                        StaticText, 0x10ce4ebc0, {{35.3, 772.7}, {34.9, 27.6}}, label: '1'
+                          StaticText, 0x10ce4cb40, {{64.7, 779.2}, {5.5, 14.7}}, label: '1'
+                        Button, 0x10ce4cc80, {{273.8, 770.9}, {27.6, 31.2}}
+                          StaticText, 0x10ce4c8c0, {{273.8, 770.9}, {0.0, 0.0}}
+                        Button, 0x10ce4c780, {{273.8, 772.7}, {27.6, 27.6}}, label: 'share delete'
+                        Button, 0x10ce4c280, {{320.7, 772.7}, {27.6, 27.6}}, label: 'space add'
+      Other, 0x10ce4c3c0, {{0.0, 0.0}, {393.0, 852.0}}
+        Other, 0x10ce4c640, {{-393.0, -852.0}, {1179.0, 2556.0}}
+        Other, 0x10ce4c500, {{0.0, 69.0}, {393.0, 783.0}}
+          Other, 0x10ce4ed00, {{0.0, 69.0}, {393.0, 783.0}}
+            Other, 0x10ce4cdc0, {{0.0, 69.0}, {393.0, 783.0}}
+              Other, 0x10ce4c140, {{0.0, 69.0}, {393.0, 783.0}}
+                NavigationBar, 0x10ce4c000, {{0.0, 69.0}, {393.0, 56.0}}, identifier: 'Sync device(s)'
+                  Button, 0x10ce4da40, {{16.0, 82.0}, {30.0, 30.0}}, label: 'navigation back'
+                  StaticText, 0x10ce4d900, {{137.0, 86.0}, {119.0, 21.7}}, label: 'Sync device(s)'
+                  Button, 0x10ce4e580, {{308.7, 75.0}, {76.3, 44.0}}, label: 'RE-SYNC', Disabled
+                Other, 0x10ce4d540, {{0.0, 69.0}, {393.0, 783.0}}
+                  Other, 0x10ce4df40, {{0.0, 69.0}, {393.0, 783.0}}
+                    Other, 0x10ce4e080, {{0.0, 69.0}, {393.0, 783.0}}
+                      Table, 0x10ce4db80, {{0.0, 125.0}, {393.0, 727.0}}
+                        Other, 0x10ce4d7c0, {{0.0, 125.0}, {393.0, 33.6}}, identifier: 'Configuration'
+                          StaticText, 0x10ce4ef80, {{21.0, 132.7}, {90.7, 17.7}}, label: 'Configuration'
+                        Cell, 0x10ce4f0c0, {{0.0, 158.6}, {393.0, 46.2}}
+                          Button, 0x10ce4ee40, {{16.7, 166.6}, {30.0, 30.0}}, label: 'device light'
+                          StaticText, 0x10ce4e1c0, {{53.0, 172.2}, {79.3, 19.0}}, label: 'PIR Disable'
+                          Image, 0x10ce4f480, {{346.3, 166.6}, {30.0, 30.0}}, identifier: 'arrow_down'
+                          Other, 0x10ce4f5c0, {{16.7, 203.9}, {376.3, 1.0}}
+                          Image, 0x10ce4f340, {{306.0, 169.6}, {24.0, 24.0}}, identifier: 'sync_success_small'
+                        Cell, 0x10ce4f200, {{0.0, 204.7}, {393.0, 46.2}}
+                          Button, 0x10ce4fac0, {{16.7, 212.7}, {30.0, 30.0}}, label: 'device Lighting'
+                          StaticText, 0x10ce4f980, {{53.0, 218.4}, {17.7, 19.0}}, label: 'L2'
+                          Image, 0x10ce4e440, {{346.3, 212.7}, {30.0, 30.0}}, identifier: 'arrow_down'
+                          Other, 0x10ce4f840, {{16.7, 250.1}, {376.3, 1.0}}
+                          Image, 0x10ce4fe80, {{306.0, 215.7}, {24.0, 24.0}}, identifier: 'sync_success_small'
+                        Cell, 0x10ce4fc00, {{0.0, 250.9}, {393.0, 46.2}}
+                          Button, 0x10ce4fd40, {{16.7, 258.9}, {30.0, 30.0}}, label: 'device Lighting'
+                          StaticText, 0x10ce4de00, {{53.0, 264.6}, {18.0, 19.0}}, label: 'L3'
+                          Image, 0x10ce4dcc0, {{346.3, 258.9}, {30.0, 30.0}}, identifier: 'arrow_down'
+                          Other, 0x10ce4d400, {{16.7, 296.2}, {376.3, 1.0}}
+                          Image, 0x10ce4d2c0, {{306.0, 261.9}, {24.0, 24.0}}, identifier: 'sync_success_small'
+                        Cell, 0x10ce4d180, {{0.0, 297.1}, {393.0, 46.2}}
+                          Button, 0x10ce4d040, {{16.7, 305.1}, {30.0, 30.0}}, label: 'device light'
+                          StaticText, 0x1181f9b80, {{53.0, 310.7}, {84.0, 19.0}}, label: 'PIR Enabled'
+                          Image, 0x1181fa440, {{346.3, 305.1}, {30.0, 30.0}}, identifier: 'arrow_up'
+                          Other, 0x1181fa300, {{16.7, 342.4}, {376.3, 1.0}}
+                          Image, 0x1181fa1c0, {{306.0, 308.1}, {24.0, 24.0}}, identifier: 'sync_failed_small'
+                        Cell, 0x1181fa080, {{0.0, 343.2}, {393.0, 46.2}}
+                          StaticText, 0x1181f9900, {{21.0, 358.2}, {20.7, 16.3}}, label: '0/1'
+                          Image, 0x1181f9a40, {{62.0, 354.2}, {24.0, 24.0}}, identifier: 'sync_failed_small'
+                          StaticText, 0x1181f9680, {{105.7, 357.6}, {79.3, 17.7}}, label: 'PIR Enabled'
+                        Other, 0x1181f97c0, {{360.0, 149.7}, {30.0, 647.3}}, label: 'Vertical scroll bar, 1 page', value: 0%
+                          Other, 0x1181f9400, {{387.0, 792.7}, {3.0, 7.0}}
+                        Other, 0x1181f8f00, {{55.0, 819.0}, {283.0, 30.0}}, label: 'Horizontal scroll bar, 1 page', value: 0%
+                          Other, 0x1181f8c80, {{52.3, 846.0}, {288.3, 3.0}}
+                      Other, 0x1181f8b40, {{0.0, 759.3}, {393.0, 92.7}}
+                        Button, 0x1181f8000, {{274.3, 777.0}, {91.3, 30.0}}, label: 'Select all'
+                          StaticText, 0x1181f8500, {{312.7, 784.0}, {53.0, 16.0}}, label: 'Select all'
+                        StaticText, 0x1181f8280, {{19.0, 785.3}, {19.7, 15.3}}, label: '3/4'
+Path to element:
+ →Application, 0x10cf00780, pid: 2948, label: 'SunSmart'
+Query chain:
+ →Find: Application 'com.azoula.sunsmart'
+  Output: {
+    Application, 0x1181f83c0, pid: 2948, label: 'SunSmart'
+  }

@@ -9,6 +9,9 @@ fail() {
 message_handles="SunSmart/Common/Data/Node+MessageHandles.swift"
 cell_model="SunSmart/Main/Space/Model/SyncDevicesCellModel.swift"
 sync_controller="SunSmart/Main/Space/Controller/SyncDevicesViewController.swift"
+sync_execution="SunSmart/Main/Space/Model/SyncExecutionSession+Acknowledgement.swift"
+gateway_builder="SunSmart/Main/Space/Model/SyncGatewayTaskBuilder.swift"
+plan_builder="SunSmart/Main/Space/Model/SyncTaskPlanBuilder.swift"
 gateway_controller="SunSmart/Main/Device/Gateway/Controller/GatewayViewController.swift"
 wifi_controller="SunSmart/Main/Device/Gateway/Controller/WiFiGatewayViewController.swift"
 en_strings="SunSmart/en.lproj/Localizable.strings"
@@ -59,14 +62,18 @@ rg -n "node\\.getNodeSyncGatewayData\\(gateway: gateway\\)\\.isEmpty" "$cell_mod
   || fail "Final verification must require an empty Gateway diff"
 rg -n "GatewayServerAuthorizationService\\.isValid\\(gateway\\.mqttServerInfo\\)" "$cell_model" >/dev/null \
   || fail "WiFi Gateway final verification must require valid Server Information"
-rg -n "isGatewayRepairInitialization" "$sync_controller" >/dev/null \
+rg -n "isGatewayRepairInitialization" "$sync_execution" >/dev/null \
   || fail "Sync controller must identify the Repair initializer"
-rg -n "statusMessage is ConfigCompositionDataStatus" "$sync_controller" >/dev/null \
+rg -n "statusMessage is ConfigCompositionDataStatus" "$sync_execution" >/dev/null \
   || fail "Repair must append initialization after Composition Status"
-rg -n "getGatewayRepairInitializationMessageHandles\\(\\)" "$sync_controller" >/dev/null \
+rg -n "getGatewayRepairInitializationMessageHandles\\(\\)" "$sync_execution" >/dev/null \
   || fail "Composition success must append forced Repair initialization"
-rg -n "gateway_recovery_verification" "$sync_controller" "$en_strings" "$zh_strings" >/dev/null \
-  || fail "Recovery verification task must be localized"
+rg -nF "SyncGatewayTaskBuilder().makeRecoveryDevice(" "$plan_builder" >/dev/null \
+  || fail "Recovery must delegate to the Gateway builder"
+for source in "$gateway_builder" "$en_strings" "$zh_strings"; do
+  rg -n "gateway_recovery_verification" "$source" >/dev/null \
+    || fail "Recovery verification task and both translations must exist"
+done
 
 rg -n "func performGatewayRepair\(\)" "$gateway_controller" >/dev/null \
   || fail "Base Gateway controller must expose an overridable Repair hook"

@@ -1,0 +1,24 @@
+    let executionSession: SyncExecutionSession
+    var hasLeftSyncPage = false
+    var sections: [SyncDevicesSectionModel] {
+        get { executionSession.sections }
+        set { executionSession.sections = newValue }
+    }
+    var syncState: SyncExecutionSession.SyncState {
+        get { executionSession.syncState }
+        set { executionSession.syncState = newValue }
+    }
+    var proximityLightingTaskModels: [SyncDeviceStepTaskModel] {
+        get { executionSession.proximityLightingTaskModels }
+        set { executionSession.proximityLightingTaskModels = newValue }
+    }
+    let view = 0
+    let tableView = Table()
+    init(session: SyncExecutionSession) { executionSession = session }
+    func startSync() { executionSession.start() }
+    func updateSyncStateUI() {}
+    final class Table { func reloadData() {} }
+    enum XWHUDManager {
+        static func hideInView(with view: Int) {}
+        static func showErrorTipHUD(_ message: String) {}
+    }

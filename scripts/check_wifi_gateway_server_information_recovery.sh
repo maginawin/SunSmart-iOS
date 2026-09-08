@@ -47,6 +47,9 @@ rg -n "gateway\.syncCloudError = authorizationError\.networkApiError" "$cloud_ma
 
 cell_model="SunSmart/Main/Space/Model/SyncDevicesCellModel.swift"
 sync_controller="SunSmart/Main/Space/Controller/SyncDevicesViewController.swift"
+sync_execution="SunSmart/Main/Space/Model/SyncExecutionSession.swift"
+gateway_builder="SunSmart/Main/Space/Model/SyncGatewayTaskBuilder.swift"
+plan_builder="SunSmart/Main/Space/Model/SyncTaskPlanBuilder.swift"
 progress_view="SunSmart/Main/Space/View/SyncDevicesProgressView.swift"
 en_strings="SunSmart/en.lproj/Localizable.strings"
 zh_strings="SunSmart/zh-Hans.lproj/Localizable.strings"
@@ -59,11 +62,13 @@ rg -n "GatewayServerAuthorizationService\.isValid\(gateway\.mqttServerInfo\)" "$
   || fail "Recovery verification must require a valid local MQTT target"
 rg -n "case gatewayServerRecovery\(" "$sync_controller" >/dev/null \
   || fail "SyncType must define focused server recovery"
-rg -n "makeGatewayServerRecoverySteps" "$sync_controller" >/dev/null \
-  || fail "Repair and Authorize must share a server task builder"
-rg -n "completeGatewayServerAuthorizationTaskIfNeeded" "$sync_controller" >/dev/null \
+rg -nF "SyncGatewayTaskBuilder().makeServerRecoverySteps(" "$plan_builder" >/dev/null \
+  || fail "Authorize must delegate to the Gateway builder"
+rg -nF "contentsOf: makeServerRecoverySteps(" "$gateway_builder" >/dev/null \
+  || fail "Repair must reuse the same server task builder"
+rg -n "completeGatewayServerAuthorizationTaskIfNeeded" "$sync_execution" >/dev/null \
   || fail "Sync worker must execute the HTTP Authorization task"
-rg -n "authorizationDependencies" "$sync_controller" >/dev/null \
+rg -nF "informationStep.relevanceStepModels = authorizationDependencies + [authorizationStep]" "$gateway_builder" >/dev/null \
   || fail "Server Information must depend on Authorization"
 rg -n "failureMessage" "$cell_model" "$progress_view" >/dev/null \
   || fail "Authorization errors must be visible in task details"

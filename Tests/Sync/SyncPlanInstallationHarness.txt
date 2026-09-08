@@ -1,0 +1,10 @@
+    var hasLeftSyncPage = false
+    var sections: [TestSection] = []
+    var syncState = SyncState.inSync
+    var proximityLightingTaskModels: [TestModel] = []
+    var view = 0
+    var starts = 0
+    var stateUpdates = 0
+    let tableView = TestTable()
+    func startSync() { starts += 1 }
+    func updateSyncStateUI() { stateUpdates += 1 }

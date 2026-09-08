@@ -36,10 +36,9 @@ struct PathTopologyPersistenceContractTests {
             root,
             "SunSmart/Main/Space/TriggerZone/Controller/SpacePathTriggerZoneController.swift"
         )
-        let syncDevicesController = try source(
-            root,
-            "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift"
-        )
+        let syncTaskPlanBuilder = try source(root, "SunSmart/Main/Space/Model/SyncTaskPlanBuilder.swift")
+        let syncExecutionSession = try source(root, "SunSmart/Main/Space/Model/SyncExecutionSession.swift")
+
         let topologyPolicy = try source(
             root,
             "SunSmart/Main/Group/Model/ProximityLightingTopologyPolicy.swift"
@@ -187,7 +186,7 @@ struct PathTopologyPersistenceContractTests {
             "The no-device branch must retain its common cloud notification"
         )
         require(
-            syncDevicesController.contains("object: SpaceChangeDataType.device"),
+            syncExecutionSession.contains("object: SpaceChangeDataType.device"),
             "The shared device sync controller must remain the device notification owner"
         )
 
@@ -270,7 +269,7 @@ struct PathTopologyPersistenceContractTests {
         )
 
         let groupSyncCase = section(
-            in: syncDevicesController,
+            in: syncTaskPlanBuilder,
             from: "case .proximityLightingPath(let datas):",
             to: "case .spaceTriggerZones"
         )

@@ -1,0 +1,253 @@
+Attributes: Application, 0x10e64b0c0, pid: 2948, label: 'SunSmart'
+Element subtree:
+ →Application, 0x10e64b0c0, pid: 2948, label: 'SunSmart'
+    Window (Main), 0x10e649a40, {{0.0, 0.0}, {393.0, 852.0}}
+      Other, 0x10e649b80, {{0.0, 0.0}, {393.0, 852.0}}
+        Other, 0x10e649cc0, {{16.0, 59.0}, {361.0, 782.6}}
+          Other, 0x10e649e00, {{-345.0, -723.6}, {1083.0, 2347.9}}
+          Other, 0x10e649f40, {{16.0, 59.0}, {361.0, 782.6}}
+            NavigationBar, 0x10e64a080, {{16.0, 108.3}, {361.0, 40.4}}, identifier: 'Space 2'
+              Button, 0x10e64a1c0, {{23.3, 108.3}, {45.0, 40.4}}, label: 'navigation back'
+              StaticText, 0x10e64a300, {{166.6, 118.4}, {60.0, 19.9}}, label: 'Space 2'
+              Button, 0x10e64a440, {{324.6, 108.3}, {45.0, 40.4}}, label: 'more vertical'
+            Other, 0x10e64a580, {{16.0, 59.0}, {361.0, 782.6}}
+              Other, 0x10e64a6c0, {{16.0, 59.0}, {361.0, 782.6}}
+                Other, 0x10e64a800, {{16.0, 59.0}, {361.0, 782.6}}
+                  Other, 0x10e64ad00, {{16.0, 148.7}, {361.0, 44.1}}
+                    Button, 0x10e64ae40, {{31.4, 148.7}, {61.4, 38.6}}, label: 'Main', Disabled
+                      StaticText, 0x10e64a940, {{49.5, 173.8}, {25.7, 14.7}}, label: 'Main'
+                    Button, 0x10e64aa80, {{98.6, 148.7}, {61.4, 38.6}}, label: 'Group', Selected, Disabled
+                      StaticText, 0x10e64abc0, {{113.0, 173.8}, {33.1, 14.7}}, label: 'Group'
+                    Button, 0x10e6483c0, {{165.8, 148.7}, {61.4, 38.6}}, label: 'Scene', Disabled
+                      StaticText, 0x10e648280, {{179.6, 173.8}, {34.0, 14.7}}, label: 'Scene'
+                    Button, 0x10e648000, {{233.0, 148.7}, {61.4, 38.6}}, label: 'Timed', Disabled
+                      StaticText, 0x10e64b200, {{246.8, 173.8}, {34.0, 14.7}}, label: 'Timed'
+                    Button, 0x10e64b340, {{300.2, 148.7}, {61.4, 38.6}}, label: 'More', Disabled
+                      StaticText, 0x10e64b480, {{317.3, 173.8}, {27.6, 14.7}}, label: 'More'
+                  Other, 0x10e64b5c0, {{16.0, 148.7}, {361.0, 44.1}}
+                    ScrollView, 0x10e64b700, {{25.6, 148.7}, {341.7, 44.1}}
+                      Button, 0x10e64b840, {{92.6, 144.3}, {73.9, 52.9}}
+                      Button, 0x10e64b980, {{36.5, 152.4}, {51.3, 36.7}}
+                      Button, 0x10e64bac0, {{166.2, 148.7}, {61.6, 44.1}}
+                      Button, 0x10e64bc00, {{233.6, 148.7}, {61.6, 44.1}}
+                      Button, 0x10e64bd40, {{300.9, 148.7}, {61.6, 44.1}}
+                      Other, 0x10e64be80, {{25.6, 191.0}, {342.7, 1.8}}
+                  ScrollView, 0x10a959180, {{16.0, 192.8}, {361.0, 648.8}}
+                    Other, 0x10a95bac0, {{16.0, 192.8}, {361.0, 648.8}}
+                      CollectionView, 0x10a95bc00, {{16.0, 192.8}, {361.0, 575.3}}
+                        Cell, 0x10a95bd40, {{145.4, 424.7}, {102.4, 102.4}}
+                          Other, 0x10a95be80, {{145.4, 424.7}, {102.4, 102.4}}
+                            Image, 0x11997c000, {{180.0, 450.1}, {33.1, 32.2}}, identifier: 'group_image_1'
+                            TextView, 0x11997c140, {{167.5, 498.2}, {58.2, 24.2}}, value: Group 1, Disabled
+                              StaticText, 0x11997c280, {{173.0, 498.2}, {47.1, 14.5}}, label: 'Group 1'
+                              Other, 0x11997c3c0, {{195.3, 498.2}, {27.6, 24.2}}, label: 'Vertical scroll bar, 1 page', value: 0%
+                                Other, 0x11997c500, {{220.1, 462.4}, {2.8, 33.1}}
+                              Other, 0x11997c640, {{167.5, 507.5}, {58.2, 12.1}}, label: 'Horizontal scroll bar, 1 page', value: 0%
+                                Other, 0x11997c780, {{131.6, 516.9}, {33.1, 2.8}}
+                        Other, 0x11997c8c0, {{346.7, 192.8}, {27.6, 575.3}}, label: 'Vertical scroll bar, 1 page', value: 0%
+                          Other, 0x11997ca00, {{371.5, 637.4}, {2.8, 128.0}}
+                        Other, 0x11997cb40, {{16.0, 737.8}, {361.0, 27.6}}, label: 'Horizontal scroll bar, 2 pages', value: 0%
+                          Other, 0x11997cc80, {{18.8, 762.6}, {355.5, 2.8}}
+                        Other, 0x11997cdc0, {{346.7, 192.8}, {27.6, 575.3}}, label: 'Vertical scroll bar, 1 page', value: 0%
+                          Other, 0x11997cf00, {{371.5, 637.4}, {2.8, 128.0}}
+                        Other, 0x11997d040, {{16.0, 737.8}, {361.0, 27.6}}, label: 'Horizontal scroll bar, 2 pages', value: 0%
+                          Other, 0x11997d180, {{18.8, 762.6}, {355.5, 2.8}}
+                      Other, 0x11997d2c0, {{16.0, 768.1}, {361.0, 73.5}}
+                        StaticText, 0x11997d400, {{35.3, 772.7}, {34.9, 27.6}}, label: '1'
+                          StaticText, 0x11997d540, {{64.7, 779.2}, {5.5, 14.7}}, label: '1'
+                        Button, 0x11997d680, {{273.8, 770.9}, {27.6, 31.2}}
+                          StaticText, 0x11997d7c0, {{273.8, 770.9}, {0.0, 0.0}}
+                        Button, 0x11997d900, {{273.8, 772.7}, {27.6, 27.6}}, label: 'share delete'
+                        Button, 0x11997da40, {{320.7, 772.7}, {27.6, 27.6}}, label: 'space add'
+      Other, 0x11997db80, {{0.0, 0.0}, {393.0, 852.0}}
+        Other, 0x11997dcc0, {{-393.0, -852.0}, {1179.0, 2556.0}}
+        Other, 0x11997de00, {{0.0, 69.0}, {393.0, 783.0}}
+          Other, 0x11997df40, {{0.0, 69.0}, {393.0, 783.0}}
+            Other, 0x11997e080, {{0.0, 69.0}, {393.0, 783.0}}
+              Other, 0x11997e1c0, {{0.0, 69.0}, {393.0, 783.0}}
+                NavigationBar, 0x11997e300, {{0.0, 69.0}, {393.0, 56.0}}, identifier: 'Group 1'
+                  Button, 0x11997e440, {{8.0, 75.0}, {49.0, 44.0}}, label: 'navigation back'
+                  Button, 0x11997e580, {{338.3, 75.0}, {46.7, 44.0}}, label: 'SAVE'
+                Other, 0x11997e6c0, {{0.0, 69.0}, {393.0, 783.0}}
+                  Other, 0x11997e800, {{0.0, 69.0}, {393.0, 783.0}}
+                    Other, 0x11997e940, {{0.0, 69.0}, {393.0, 783.0}}
+                      ScrollView, 0x11997ea80, {{0.0, 125.0}, {393.0, 727.0}}
+                        Other, 0x11997ebc0, {{0.0, -516.0}, {393.0, 1430.7}}
+                          Other, 0x11997ed00, {{0.0, -516.0}, {393.0, 79.7}}
+                            StaticText, 0x11997ee40, {{21.0, -516.0}, {45.7, 19.0}}, label: 'Profile'
+                            Button, 0x11997ef80, {{70.7, -521.7}, {30.0, 30.3}}, label: 'help'
+                            Button, 0x11997f0c0, {{21.0, -487.7}, {355.3, 42.0}}, label: 'Proximity/Predictive Lighting'
+                              StaticText, 0x11997f200, {{29.3, -475.0}, {181.0, 17.0}}, label: 'Proximity/Predictive Lighting'
+                          Other, 0x11997f340, {{16.7, -422.7}, {359.7, 138.3}}
+                            StaticText, 0x11997f480, {{25.0, -410.0}, {343.0, 37.7}}, label: 'This function will only work after adding devices to the group and completing the path sequence.'
+                            Other, 0x11997f5c0, {{16.7, -359.7}, {359.7, 58.7}}
+                              Other, 0x11997f700, {{62.3, -359.0}, {268.3, 57.0}}
+                                Other, 0x11997f840, {{62.3, -359.0}, {71.3, 42.7}}
+                                  Image, 0x11997f980, {{88.0, -359.0}, {20.0, 20.0}}, identifier: 'proximity_lighting_step1'
+                                  StaticText, 0x11997fac0, {{62.3, -330.7}, {71.3, 14.3}}, label: 'Save profile'
+                                Other, 0x11997fc00, {{154.7, -359.0}, {83.3, 57.0}}
+                                  Image, 0x11997fd40, {{186.3, -359.0}, {20.0, 20.0}}, identifier: 'proximity_lighting_step2'
+                                  StaticText, 0x11997fe80, {{154.7, -330.7}, {83.3, 28.7}}, label: 'Add devices to
+the group'
+                                Other, 0x10e6a4000, {{259.0, -359.0}, {71.7, 57.0}}
+                                  Image, 0x10e6a4140, {{284.7, -359.0}, {20.0, 20.0}}, identifier: 'proximity_lighting_step3'
+                                  StaticText, 0x10e6a4280, {{259.0, -330.7}, {71.7, 28.7}}, label: ' Set the path
+sequence'
+                              Other, 0x10e6a43c0, {{112.7, -349.3}, {42.0, 1.0}}
+                              Other, 0x10e6a4500, {{217.0, -349.3}, {42.0, 1.0}}
+                          Other, 0x10e6a4640, {{16.7, -267.3}, {359.7, 251.7}}
+                            StaticText, 0x10e6a4780, {{33.7, -250.7}, {201.7, 20.3}}, label: 'Number of neighbour node'
+                            Button, 0x10e6a48c0, {{342.0, -255.7}, {30.0, 30.3}}, label: 'help'
+                            Other, 0x10e6a4a00, {{25.0, -218.7}, {343.0, 100.7}}
+                              CollectionView, 0x10e6a4b40, {{47.0, -204.0}, {299.0, 37.7}}
+                                Cell, 0x10e6a4c80, {{47.0, -204.0}, {12.6, 37.8}}
+                                  Other, 0x10e6a4dc0, {{47.0, -204.0}, {12.6, 37.8}}
+                                    StaticText, 0x10e6a4f00, {{48.7, -204.0}, {9.0, 14.3}}, label: 'N'
+                                    Other, 0x10e6a5040, {{49.0, -174.7}, {8.3, 8.3}}
+                                Cell, 0x10e6a5180, {{67.3, -204.0}, {12.6, 37.8}}
+                                  Other, 0x10e6a52c0, {{67.3, -204.0}, {12.6, 37.8}}
+                                    StaticText, 0x10e6a5400, {{68.0, -181.7}, {11.0, 14.3}}, label: '...'
+                                Cell, 0x10e6a5540, {{88.0, -204.0}, {12.6, 37.8}}
+                                  Other, 0x10e6a5680, {{88.0, -204.0}, {12.6, 37.8}}
+                                    StaticText, 0x10e6a57c0, {{90.3, -204.0}, {7.7, 14.3}}, label: '5'
+                                    Other, 0x10e6a5900, {{90.0, -174.7}, {8.3, 8.3}}
+                                Cell, 0x10e6a5a40, {{108.3, -204.0}, {12.6, 37.8}}
+                                  Other, 0x10e6a5b80, {{108.3, -204.0}, {12.6, 37.8}}
+                                    StaticText, 0x10e6a5cc0, {{110.7, -204.0}, {8.0, 14.3}}, label: '4'
+                                    Other, 0x10e6a5e00, {{110.3, -174.7}, {8.3, 8.3}}
+                                Cell, 0x10e6a5f40, {{129.0, -204.0}, {12.6, 37.8}}
+                                  Other, 0x10e6a6080, {{129.0, -204.0}, {12.6, 37.8}}
+                                    StaticText, 0x10e6a61c0, {{131.3, -204.0}, {7.7, 14.3}}, label: '3'
+                                    Other, 0x10e6a6300, {{131.0, -174.7}, {8.3, 8.3}}
+                                Cell, 0x10e6a6440, {{149.3, -204.0}, {12.6, 37.8}}
+                                  Other, 0x10e6a6580, {{149.3, -204.0}, {12.6, 37.8}}
+                                    StaticText, 0x10e6a66c0, {{152.0, -204.0}, {7.3, 14.3}}, label: '2'
+                                    Other, 0x10e6a6800, {{151.3, -174.7}, {8.3, 8.3}}
+                                Cell, 0x10e6a6940, {{169.7, -204.0}, {12.6, 37.8}}
+                                  Other, 0x10e6a6a80, {{169.7, -204.0}, {12.6, 37.8}}
+                                    StaticText, 0x10e6a6bc0, {{173.3, -204.0}, {5.3, 14.3}}, label: '1'
+                                    Other, 0x10e6a6d00, {{171.7, -174.7}, {8.3, 8.3}}
+                                Cell, 0x10e6a6e40, {{190.3, -204.0}, {12.6, 37.8}}
+                                  Other, 0x10e6a6f80, {{190.3, -204.0}, {12.6, 37.8}}
+                                    StaticText, 0x10e6a70c0, {{192.7, -204.0}, {7.7, 14.3}}, label: '0'
+                                    Other, 0x10e6a7200, {{192.3, -174.7}, {8.3, 8.3}}
+                                Cell, 0x10e6a7340, {{210.7, -204.0}, {12.6, 37.8}}
+                                  Other, 0x10e6a7480, {{210.7, -204.0}, {12.6, 37.8}}
+                                    StaticText, 0x10e6a75c0, {{214.3, -204.0}, {5.3, 14.3}}, label: '1'
+                                    Other, 0x10e6a7700, {{212.7, -174.7}, {8.3, 8.3}}
+                                Cell, 0x10e6a7840, {{231.0, -204.0}, {12.6, 37.8}}
+                                  Other, 0x10e6a7980, {{231.0, -204.0}, {12.6, 37.8}}
+                                    StaticText, 0x10e6a7ac0, {{233.7, -204.0}, {7.3, 14.3}}, label: '2'
+                                    Other, 0x10e6a7c00, {{233.0, -174.7}, {8.3, 8.3}}
+                                Cell, 0x10e6a7d40, {{251.7, -204.0}, {12.6, 37.8}}
+                                  Other, 0x10e6a7e80, {{251.7, -204.0}, {12.6, 37.8}}
+                                    StaticText, 0x119970000, {{254.0, -204.0}, {7.7, 14.3}}, label: '3'
+                                    Other, 0x119970140, {{253.7, -174.7}, {8.3, 8.3}}
+                                Cell, 0x119970280, {{272.0, -204.0}, {12.6, 37.8}}
+                                  Other, 0x1199703c0, {{272.0, -204.0}, {12.6, 37.8}}
+                                    StaticText, 0x119970500, {{274.3, -204.0}, {8.0, 14.3}}, label: '4'
+                                    Other, 0x119970640, {{274.0, -174.7}, {8.3, 8.3}}
+                                Cell, 0x119970780, {{292.7, -204.0}, {12.6, 37.8}}
+                                  Other, 0x1199708c0, {{292.7, -204.0}, {12.6, 37.8}}
+                                    StaticText, 0x119970a00, {{295.0, -204.0}, {7.7, 14.3}}, label: '5'
+                                    Other, 0x119970b40, {{294.7, -174.7}, {8.3, 8.3}}
+                                Cell, 0x119970c80, {{313.0, -204.0}, {12.6, 37.8}}
+                                  Other, 0x119970dc0, {{313.0, -204.0}, {12.6, 37.8}}
+                                    StaticText, 0x119970f00, {{313.7, -181.7}, {11.0, 14.3}}, label: '...'
+                                Cell, 0x119971040, {{333.3, -204.0}, {12.6, 37.8}}
+                                  Other, 0x119971180, {{333.3, -204.0}, {12.6, 37.8}}
+                                    StaticText, 0x1199712c0, {{335.0, -204.0}, {9.0, 14.3}}, label: 'N'
+                                    Other, 0x119971400, {{335.3, -174.7}, {8.3, 8.3}}
+                                Other, 0x119971540, {{313.0, -204.0}, {30.0, 37.7}}, label: 'Vertical scroll bar, 2 pages', value: 0%
+                                  Other, 0x119971680, {{340.0, -243.0}, {3.0, 36.0}}
+                                Other, 0x1199717c0, {{47.0, -188.2}, {299.0, 18.8}}, label: 'Horizontal scroll bar, 1 page', value: 0%
+                                  Other, 0x119971900, {{8.0, -172.3}, {36.0, 3.0}}
+                                Other, 0x119971a40, {{313.0, -204.0}, {30.0, 37.7}}, label: 'Vertical scroll bar, 2 pages', value: 0%
+                                  Other, 0x119971b80, {{340.0, -243.0}, {3.0, 36.0}}
+                                Other, 0x119971cc0, {{47.0, -188.2}, {299.0, 18.8}}, label: 'Horizontal scroll bar, 1 page', value: 0%
+                                  Other, 0x119971e00, {{8.0, -172.3}, {36.0, 3.0}}
+                              Image, 0x119971f40, {{186.3, -152.7}, {20.0, 20.0}}, identifier: 'profile_person'
+                            Other, 0x119972080, {{16.7, -112.0}, {359.7, 79.7}}
+                              StaticText, 0x1199721c0, {{352.3, -108.0}, {7.0, 19.0}}, label: '1'
+                              Button, 0x119972300, {{33.7, -72.0}, {30.0, 30.0}}, label: 'scene data value minus'
+                              Slider, 0x119972440, {{78.7, -78.0}, {234.7, 43.0}}, value: 5%
+                              Button, 0x119972580, {{329.3, -72.0}, {30.0, 30.0}}, label: 'scene data value add'
+                            StaticText, 0x1199726c0, {{33.7, -104.3}, {53.7, 17.7}}, label: 'Number'
+                          Other, 0x119972800, {{16.7, 1.0}, {359.7, 381.3}}
+                            StaticText, 0x119972940, {{33.7, 18.0}, {150.7, 20.3}}, label: 'Device trigger curve'
+                            Button, 0x119972a80, {{342.0, 11.7}, {30.0, 30.3}}, label: 'help'
+                            Image, 0x119972bc0, {{19.0, 53.7}, {16.0, 257.3}}, identifier: 'profile_light_level'
+                            StaticText, 0x119972d00, {{44.0, 51.0}, {63.0, 30.3}}, label: 'Max.light output'
+                            Image, 0x119972e40, {{107.0, 66.3}, {222.0, 244.7}}, identifier: 'profile_chart_occupancy'
+                            Button, 0x119972f80, {{39.7, 81.0}, {67.3, 33.3}}, label: 'High-end trim'
+                              StaticText, 0x1199730c0, {{48.7, 82.0}, {49.0, 31.0}}, label: 'High-end trim'
+                            StaticText, 0x119973200, {{330.0, 91.3}, {28.3, 12.7}}, label: '100%'
+                            Button, 0x119973340, {{39.7, 123.0}, {67.3, 33.3}}, label: 'Occupa-ncy level'
+                              StaticText, 0x119973480, {{47.3, 124.0}, {52.0, 31.0}}, label: 'Occupa-ncy level'
+                            StaticText, 0x1199735c0, {{330.0, 133.3}, {28.3, 12.7}}, label: '100%'
+                            Button, 0x119973700, {{39.7, 164.7}, {67.3, 33.7}}, label: 'Vacant level'
+                              StaticText, 0x119973840, {{51.3, 166.0}, {44.0, 31.0}}, label: 'Vacant level'
+                            StaticText, 0x119973980, {{330.0, 175.3}, {23.3, 12.7}}, label: '50%'
+                            Button, 0x119973ac0, {{39.7, 248.7}, {67.3, 33.7}}, label: 'Low-end trim'
+                              StaticText, 0x119973c00, {{48.7, 250.0}, {49.0, 31.0}}, label: 'Low-end trim'
+                            StaticText, 0x119973d40, {{330.0, 259.3}, {15.0, 12.7}}, label: '1%'
+                            StaticText, 0x119973e80, {{64.0, 290.7}, {19.0, 15.3}}, label: 'Off'
+                            StaticText, 0x119978000, {{112.3, 320.3}, {12.0, 12.7}}, label: '2s'
+                            StaticText, 0x119978140, {{173.3, 320.3}, {24.0, 12.7}}, label: '7min'
+                            StaticText, 0x119978280, {{221.3, 320.3}, {12.0, 12.7}}, label: '2s'
+                            StaticText, 0x1199783c0, {{254.7, 320.3}, {19.0, 12.7}}, label: '30s'
+                            StaticText, 0x119978500, {{294.7, 320.3}, {12.0, 12.7}}, label: '2s'
+                            Button, 0x119978640, {{102.7, 338.3}, {31.3, 31.7}}, label: 'T1'
+                              StaticText, 0x119978780, {{111.3, 346.3}, {14.0, 16.0}}, label: 'T1'
+                            Button, 0x1199788c0, {{169.7, 338.3}, {31.7, 31.7}}, label: 'T2'
+                              StaticText, 0x119978a00, {{177.7, 346.3}, {16.0, 16.0}}, label: 'T2'
+                            Button, 0x119978b40, {{211.7, 338.3}, {31.3, 31.7}}, label: 'T3'
+                              StaticText, 0x119978c80, {{219.3, 346.3}, {16.0, 16.0}}, label: 'T3'
+                            Button, 0x119978dc0, {{248.3, 338.3}, {31.3, 31.7}}, label: 'T4'
+                              StaticText, 0x119978f00, {{256.7, 346.3}, {15.0, 16.0}}, label: 'T4'
+                            Button, 0x119979040, {{285.0, 338.3}, {31.3, 31.7}}, label: 'T5'
+                              StaticText, 0x119979180, {{292.7, 346.3}, {16.0, 16.0}}, label: 'T5'
+                          Other, 0x1199792c0, {{16.7, 399.3}, {359.7, 146.7}}
+                            StaticText, 0x119979400, {{33.7, 416.0}, {180.3, 20.0}}, label: 'Manual override timeout'
+                            Button, 0x119979540, {{222.3, 410.7}, {30.0, 30.3}}, label: 'help'
+                            Switch, 0x119979680, {{310.3, 410.3}, {51.0, 31.0}}, value: 1
+                            Button, 0x1199797c0, {{310.3, 410.3}, {49.0, 31.0}}
+                              StaticText, 0x119979900, {{310.3, 410.3}, {0.0, 0.0}}
+                            Other, 0x119979a40, {{16.7, 452.7}, {359.7, 93.3}}
+                              StaticText, 0x119979b80, {{33.7, 457.0}, {54.7, 17.7}}, label: 'Timeout'
+                              StaticText, 0x119979cc0, {{316.3, 456.3}, {43.0, 19.0}}, label: '11 min'
+                              Button, 0x119979e00, {{33.7, 494.0}, {30.0, 30.0}}, label: 'scene data value minus'
+                              Slider, 0x119979f40, {{78.7, 488.0}, {234.7, 43.0}}, value: 18%
+                              Button, 0x11997a080, {{329.3, 494.0}, {30.0, 30.0}}, label: 'scene data value add'
+                          Other, 0x11997a1c0, {{16.7, 563.0}, {359.7, 181.7}}
+                            StaticText, 0x11997a300, {{33.7, 579.7}, {138.0, 20.3}}, label: 'Power up behavior'
+                            Button, 0x11997a440, {{180.0, 574.7}, {30.0, 30.3}}, label: 'help'
+                            Button, 0x11997a580, {{25.0, 616.7}, {128.3, 31.7}}, label: 'Keep light off'
+                              StaticText, 0x11997a6c0, {{59.0, 623.0}, {94.0, 19.0}}, label: 'Keep light off'
+                            Button, 0x11997a800, {{25.0, 656.7}, {89.3, 31.3}}, label: 'Restore', Selected
+                              StaticText, 0x11997a940, {{59.0, 663.0}, {55.0, 19.0}}, label: 'Restore'
+                            Button, 0x11997aa80, {{25.0, 696.7}, {160.3, 31.3}}, label: 'Defined light level'
+                              StaticText, 0x11997abc0, {{59.3, 703.0}, {126.0, 19.0}}, label: 'Defined light level'
+                          Other, 0x11997ad00, {{16.7, 761.7}, {359.7, 136.3}}
+                            StaticText, 0x11997ae40, {{33.7, 778.3}, {136.0, 20.3}}, label: 'Relative sensitivity'
+                            Button, 0x11997af80, {{178.0, 773.3}, {30.0, 30.3}}, label: 'help'
+                            Other, 0x11997b0c0, {{16.7, 801.3}, {359.7, 79.7}}
+                              StaticText, 0x11997b200, {{329.0, 805.7}, {30.3, 19.0}}, label: '16%'
+                              Button, 0x11997b340, {{33.7, 841.7}, {30.0, 30.0}}, label: 'scene data value minus'
+                              Slider, 0x11997b480, {{78.7, 835.7}, {234.7, 43.0}}, value: 16%
+                              Button, 0x11997b5c0, {{329.3, 841.7}, {30.0, 30.0}}, label: 'scene data value add'
+                        Other, 0x11997b700, {{360.0, 149.7}, {30.0, 647.3}}, label: 'Vertical scroll bar, 3 pages', value: 87%
+                          Other, 0x11997b840, {{387.0, 433.3}, {3.0, 318.3}}
+                        Other, 0x11997b980, {{55.0, 819.0}, {283.0, 30.0}}, label: 'Horizontal scroll bar, 1 page', value: 0%
+                          Other, 0x11997bac0, {{58.0, 846.0}, {277.0, 3.0}}
+                        Other, 0x11997bc00, {{360.0, 149.7}, {30.0, 647.3}}, label: 'Vertical scroll bar, 3 pages', value: 87%
+                          Other, 0x11997bd40, {{387.0, 433.3}, {3.0, 318.3}}
+                        Other, 0x11997be80, {{55.0, 819.0}, {283.0, 30.0}}, label: 'Horizontal scroll bar, 1 page', value: 0%
+                          Other, 0x119968000, {{58.0, 846.0}, {277.0, 3.0}}
+Path to element:
+ →Application, 0x10e64b0c0, pid: 2948, label: 'SunSmart'
+Query chain:
+ →Find: Application 'com.azoula.sunsmart'
+  Output: {
+    Application, 0x119968140, pid: 2948, label: 'SunSmart'
+  }

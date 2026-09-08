@@ -34,4 +34,8 @@ swiftc -parse-as-library \
   "${repo_root}/SunSmart/Main/Space/Model/SyncDevicesCellModel.swift" \
   "${repo_root}/SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
   "${repo_root}/SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift" \
-  "${repo_root}/SunSmart/Main/Group/Controller/GroupMembersViewController.swift"
+  "${repo_root}/SunSmart/Main/Group/Controller/GroupMembersViewController.swift" \
+  "${repo_root}/SunSmart/Main/Space/Model/SyncDeviceTaskBuilder.swift" \
+  "${repo_root}/SunSmart/Main/Space/Model/SyncTaskPlanBuilder.swift" \
+  "${repo_root}/SunSmart/Main/Space/Model/SyncRetryPolicy.swift" \
+  "${repo_root}/SunSmart/Main/Space/Model/SyncExecutionSession+Operations.swift"
