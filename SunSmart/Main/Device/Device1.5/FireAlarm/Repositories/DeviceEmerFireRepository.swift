@@ -188,7 +188,9 @@ extension DeviceEmerFireData {
             try SunSmartDataManager.shared.db?.run(insert)
             return true
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
     }
@@ -203,7 +205,9 @@ extension DeviceEmerFireData {
             try SunSmartDataManager.shared.db?.run(filter.delete())
             return true
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
     }
@@ -217,7 +221,9 @@ extension DeviceEmerFireData {
             try SunSmartDataManager.shared.db?.run(filter.delete())
             return true
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
     }

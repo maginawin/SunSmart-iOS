@@ -674,7 +674,9 @@ class ReadDevicesDataViewController: UIViewController {
                 }
             }
             //            _ = MeshNetworkManager.instance.save()
+            #if DEBUG
             print("完成")
+            #endif
             
             self.sections.forEach { section in
                 section.allModels.forEach({

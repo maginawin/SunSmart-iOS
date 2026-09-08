@@ -325,8 +325,10 @@ final class EmergencyFireControllerSceneEventManager {
         }
     }
 
-    private func log(_ message: String) {
-        print("[EFC Scene] \(message)")
+    private func log(_ message: @autoclosure () -> String) {
+        #if DEBUG
+        print("[EFC Scene] \(message())")
+        #endif
     }
 
     private static func addressesDescription(_ addresses: Set<Address>) -> String {

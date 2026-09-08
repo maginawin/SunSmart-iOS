@@ -399,7 +399,9 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
             return false
         }
         let message = SceneRecallUnacknowledged(sceneNumber)
+        #if DEBUG
         print("[EFC] recall scene=\(String(format: "0x%04X", sceneNumber)), publishGroup=\(String(format: "0x%04X", publishGroupAddress))")
+        #endif
         MeshAPI.sendMessage(message: message, address: publishGroupAddress)
         return true
     }
@@ -469,7 +471,9 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
         case .setBrightness:
             return sendBrightness(configuration.restoreSettings.brightness, logName: "mock restore brightness")
         case .none:
+            #if DEBUG
             print("[EFC] mock restore none")
+            #endif
             return true
         }
     }
@@ -491,7 +495,9 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
         guard let publishGroupAddress = publishGroupAddressForAction() else {
             return false
         }
+        #if DEBUG
         print("[EFC] \(logName) publishGroup=\(String(format: "0x%04X", publishGroupAddress))")
+        #endif
         MeshAPI.sendMessage(message: LightLCLightOnOffSetUnacknowledged(true), address: publishGroupAddress)
         return true
     }
@@ -507,7 +513,9 @@ class EmerFireAlarmMonitorVC: UIViewController, DeviceProtocol {
         }
         let clampedBrightness = min(max(brightness, 0), 100)
         let lightness = Node.getLightness(lightness100: clampedBrightness)
+        #if DEBUG
         print("[EFC] \(logName) brightness=\(clampedBrightness), lightness=\(lightness), publishGroup=\(String(format: "0x%04X", publishGroupAddress))")
+        #endif
         MeshAPI.sendMessage(message: LightLightnessSetUnacknowledged(lightness: lightness), address: publishGroupAddress)
         return true
     }

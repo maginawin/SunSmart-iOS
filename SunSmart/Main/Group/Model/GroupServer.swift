@@ -55,7 +55,9 @@ struct GroupServer {
                         model: sendMessageHandle.model
                     )
                 } failedBack: { messageHandles in
+                    #if DEBUG
                     print("node send message failed \(messageHandles.message)")
+                    #endif
                 } finishedBack: { messageHandles in
                     DispatchQueue.main.async {
                         // 未设置完成
@@ -111,7 +113,9 @@ struct GroupServer {
                         model: sendMessageHandle.model
                     )
                 } failedBack: { messageHandle in
+                    #if DEBUG
                     print("node send message failed \(messageHandle.message)")
+                    #endif
                 } finishedBack: { messageHandles in
                     DispatchQueue.main.async {
                         // 未删除完成
@@ -287,7 +291,9 @@ struct GroupServer {
                         model: sendMessageHandle.model
                     )
                 } failedBack: { messageHandle in
+                    #if DEBUG
                     print("node send message failed \(messageHandle.message)")
+                    #endif
                 } finishedBack: { messageHandles in
                     if messageHandles.contains(where: { !$0.isSuccessful }) {
                         succeeded = false
@@ -353,7 +359,9 @@ struct GroupServer {
 //                        break
 //                    }
                 } failedBack: { messageHandle in
+                    #if DEBUG
                     print("node send message failed \(messageHandle.message)")
+                    #endif
                     
                 } finishedBack: { messageHandles in
                     // 本地化缓存

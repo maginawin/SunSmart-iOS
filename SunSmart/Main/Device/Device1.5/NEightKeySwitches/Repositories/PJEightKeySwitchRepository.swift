@@ -209,7 +209,9 @@ final class PJEightKeySwitchRepository {
             try SunSmartDataManager.shared.db?.run(insert)
             return true
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
     }
@@ -256,7 +258,9 @@ final class PJEightKeySwitchRepository {
             updateCachedBattery(level: level, lastUpdateTime: lastUpdateTime, for: switchData)
             return true
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
     }

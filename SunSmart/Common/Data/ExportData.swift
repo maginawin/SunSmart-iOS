@@ -147,11 +147,13 @@ private extension SpaceData {
             )
         }
         if case .localBackup = purpose {
+            #if DEBUG
             print(
                 "[SpaceSnapshotExport] preserved local orphanedGroupMembership " +
                 "purpose=localBackup " +
                 "nodes=\(localSnapshot.orphanedMemberships.map(\.nodeAddress).sorted())"
             )
+            #endif
             return .init(
                 expectedLocalSnapshot: localSnapshot,
                 orphanPreservationReason: "localBackup"
@@ -170,11 +172,13 @@ private extension SpaceData {
               let remoteSnapshot = SpaceSnapshotExportIntegritySnapshot(
                 spaceData: remoteData
               ) else {
+            #if DEBUG
             print(
                 "[SpaceSnapshotExport] rejected orphanedGroupMembership " +
                 "reason=remoteVerificationUnavailable " +
                 "nodes=\(localSnapshot.orphanedMemberships.map(\.nodeAddress).sorted())"
             )
+            #endif
             return nil
         }
         let verifiedDecision = SpaceSnapshotExportIntegrityPolicy.resolve(
@@ -184,17 +188,21 @@ private extension SpaceData {
             remoteOrphans: remoteSnapshot.orphanedMemberships
         )
         guard verifiedDecision == .allowVerifiedRemoteOrphans else {
+            #if DEBUG
             print(
                 "[SpaceSnapshotExport] rejected orphanedGroupMembership " +
                 "reason=remoteSnapshotDiffers " +
                 "nodes=\(localSnapshot.orphanedMemberships.map(\.nodeAddress).sorted())"
             )
+            #endif
             return nil
         }
+        #if DEBUG
         print(
             "[SpaceSnapshotExport] verified remote orphanedGroupMembership " +
             "nodes=\(localSnapshot.orphanedMemberships.map(\.nodeAddress).sorted())"
         )
+        #endif
         return .init(
             expectedLocalSnapshot: localSnapshot,
             orphanPreservationReason: "verifiedRemote"
@@ -373,10 +381,12 @@ extension SpaceData {
                 meshNetwork: meshNetwork
             )
             guard snapshotAuthorization.permits(currentIntegritySnapshot) else {
+                #if DEBUG
                 print(
                     "[SpaceSnapshotExport] rejected orphanedGroupMembership " +
                     "reason=localSnapshotChangedDuringVerification"
                 )
+                #endif
                 return nil
             }
             let proximityPreparation = ProximityLightingLifecycleCoordinator.begin(
@@ -386,10 +396,12 @@ extension SpaceData {
                 network: meshNetwork
             ).prepare()
             guard proximityPreparation.isValid else {
+                #if DEBUG
                 print(
                     "[ProximityLightingExport] rejected hardErrors=" +
                     "\(proximityPreparation.hardErrors.count)"
                 )
+                #endif
                 return nil
             }
             // Export must never turn a failed load or stale topology into a
@@ -397,7 +409,9 @@ extension SpaceData {
             guard snapshotAuthorization.orphanPreservationReason != nil
                     || proximityPreparation.normalized.repairs.isEmpty
                     || (reviewingReferenceRepairs && proximityPreparation.normalized.canReviewReferenceRepair) else {
+                #if DEBUG
                 print("[ProximityLightingExport] rejected unapplied topology repairs")
+                #endif
                 return nil
             }
             #if DEBUG

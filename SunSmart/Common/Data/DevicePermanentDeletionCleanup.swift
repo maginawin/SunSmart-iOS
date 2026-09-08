@@ -183,7 +183,9 @@ final class DevicePermanentDeletionContext {
             guard let data = node.getNodeSyncProximityLighting(topologyPlan: result.plan) else { return nil }
             return (node, data)
         }
+        #if DEBUG
         print("[DevicePermanentDeletion] space=\(space.id) node=\(entry.primaryAddress.hex) cleanup=complete proximityTasks=\(datas.count)")
+        #endif
         return .init(didChange: result.didChange, plan: result.plan,
                      affectedDeviceAddresses: result.affectedDeviceAddresses,
                      syncDatas: datas, repairs: result.repairs)

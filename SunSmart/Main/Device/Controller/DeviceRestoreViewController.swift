@@ -1125,11 +1125,15 @@ class DeviceRestoreViewController: UIViewController {
             unresolvedRestoreSyncDescriptions(for: $0, node: node, phase: phase)
         }
         guard !unresolvedSyncDescriptions.isEmpty else {
+            #if DEBUG
             print("[DeviceRestore] Skip sync failed for node=\(node.primaryUnicastAddress.hex), recovered BPS target subscription only")
+            #endif
             return false
         }
 
+        #if DEBUG
         print("[DeviceRestore] Mark sync failed for node=\(node.primaryUnicastAddress.hex), sync=\(unresolvedSyncDescriptions.joined(separator: ","))")
+        #endif
         return true
     }
 
@@ -1947,7 +1951,9 @@ class DeviceRestoreViewController: UIViewController {
     ) {
         if hadFailedTask || shouldMarkRestoredNodeSyncFailed(node, phase: .batchFinish) {
             if hadFailedTask {
+                #if DEBUG
                 print("[DeviceRestore] Mark sync failed for node=\(node.primaryUnicastAddress.hex), deferred task failed")
+                #endif
             }
             device.addState = .syncFailed
         } else {
@@ -2027,7 +2033,9 @@ class DeviceRestoreViewController: UIViewController {
         guard decision == .emergencyController else {
             device.addState = .failed
             device.selectedState = .disabled
+            #if DEBUG
             print("[DeviceRestore] Rejected provisioned EFC identity node=\(provisionedNode.primaryUnicastAddress.hex)")
+            #endif
             return context
         }
         _ = retryEmergencyFireRestoreMigrationIfNeeded(context)
@@ -2066,7 +2074,9 @@ class DeviceRestoreViewController: UIViewController {
             context.controller = nil
             context.state = .migrationFailed
             context.device.addState = .syncFailed
+            #if DEBUG
             print("[DeviceRestore] Failed to migrate EFC restore data node=\(context.provisionedNode.primaryUnicastAddress.hex)")
+            #endif
             return false
         }
 
@@ -3092,7 +3102,9 @@ class DeviceRestoreViewController: UIViewController {
         guard selectRSSIRange != changeRSSIRange else {
             return
         }
+        #if DEBUG
         print(changeRSSIRange)
+        #endif
         selectRSSIRange = changeRSSIRange
         // 筛选展示的设备
 //        showDevices = scanDevices.filter({ showDeviceTypes.contains($0.deviceType) && selectRSSIRange.contains($0.rssi.intValue) })

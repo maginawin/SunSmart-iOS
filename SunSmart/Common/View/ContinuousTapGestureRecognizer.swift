@@ -48,10 +48,14 @@ class ContinuousTapGestureRecognizer: UITapGestureRecognizer {
     }
     
     private func startTimer() {
+        #if DEBUG
         print("开始计数")
+        #endif
         timer = Timer(timeInterval: self.touchsRequiredDuration, repeats: false, block: {[weak self] _ in
             self?.stopTimer()
+            #if DEBUG
             print("未通过")
+            #endif
         })
         RunLoop.current.add(timer!, forMode: .common)
     }

@@ -406,7 +406,9 @@ class SpaceViewController: WMPageController {
         bluetoothStateObservation = nil
         networkableObservation = nil
         meshNetworkConnectedObservation = nil
+        #if DEBUG
         print("dealloc")
+        #endif
         stopAutoTestTimer()
     }
     
@@ -703,12 +705,16 @@ class SpaceViewController: WMPageController {
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 10)
         DispatchQueue.global().async {[weak self] in
             guard let self = self else { return }
+            #if DEBUG
             print("加载网络数据 \(Date().timeIntervalSince1970)")
+            #endif
             MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.space.meshUUID, subNetworkId: self.space.meshNetworkId)
             if let manager = MeshLibManager.manager.meshNetworkManager, let meshNetwork = manager.meshNetwork {
 //                self.space.meshManager = manager
                 
+                #if DEBUG
                 print("加载网络数据完成 \(Date().timeIntervalSince1970)")
+                #endif
                 if meshNetwork.localProvisioner == nil || meshNetwork.localProvisioner?.primaryUnicastAddress == nil { // 缺少手机供应者或手机地址
                     // 如果用户有地址则自己分配一个作为手机地址
                     if let localProvisioner = manager.meshNetwork?.localProvisioner, let address = meshNetwork.nextAvailableUnicastAddress(elementsCount: 1, elementsUsing: localProvisioner, lockInAddress: false) {
@@ -720,7 +726,9 @@ class SpaceViewController: WMPageController {
                 
                 manager.loadExtensionData {[weak self] result in
                     guard let self = self else { return }
+                    #if DEBUG
                     print("加载网络扩展数据完成 \(Date().timeIntervalSince1970)")
+                    #endif
                     guard result else {
                         XWHUDManager.showErrorTipHUD("unknown_error".localizedString)
                         return

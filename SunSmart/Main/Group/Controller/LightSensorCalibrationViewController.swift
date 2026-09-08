@@ -454,7 +454,9 @@ class LightSensorCalibrationViewController: UIViewController {
     }
     
     private func restoreGroupAutoAfterDaylightCalibration() {
+        #if DEBUG
         let mode = activeDaylightCalibrationMode ?? "<none>"
+        #endif
         let wasSuspended = isDaylightGroupAutoSuspended
         isDaylightGroupAutoSuspended = false
         daylightConfigurationPending = false
@@ -463,7 +465,9 @@ class LightSensorCalibrationViewController: UIViewController {
         activeDaylightCalibrationMode = nil
         setDaylightCalibrationNavigationLocked(false)
         guard wasSuspended, shouldRestoreAutoAfterDaylightCalibration else { return }
+        #if DEBUG
         print("[DaylightCalibrationDebug] event=group_auto_restore mode=\(mode)")
+        #endif
         MeshAPI.sendMessage(
             message: LightLCLightOnOffSetUnacknowledged(true, transitionTime: .default, delay: 0),
             address: group.address.address
@@ -500,7 +504,9 @@ class LightSensorCalibrationViewController: UIViewController {
         activeDaylightCalibrationMode = mode
         setDaylightCalibrationNavigationLocked(true)
         suspendGroupAutoForDaylightCalibration()
+        #if DEBUG
         print("[DaylightCalibrationDebug] event=group_auto_suspend mode=\(mode) suspended=\(isDaylightGroupAutoSuspended)")
+        #endif
     }
 
     private func finishDaylightCalibrationSDKStage() {
@@ -735,7 +741,9 @@ class LightSensorCalibrationViewController: UIViewController {
         setLuxPollingSuspended(true, for: .calibration)
         showConnecting()
 
+        #if DEBUG
         print("[DaylightCalibrationDebug] event=app_start mode=plane node=\(sensor.name ?? "<unnamed>") address=\(String(format: "0x%04X", sensor.primaryUnicastAddress)) ambientOnLux=\(onLux) ambientOffLux=\(offLux) ambientDeltaLux=\(onLux - offLux)")
+        #endif
         
         MeshSensorCalibrateManager.manager.calibrate(
             node: sensor,
@@ -933,7 +941,9 @@ class LightSensorCalibrationViewController: UIViewController {
         let targetBrightness = targetNightBrightnessView.value
         let rollbackSnapshot = makeDaylightCalibrationSnapshot(for: sensor)
 
+        #if DEBUG
         print("[DaylightCalibrationDebug] event=app_start mode=night node=\(sensor.name ?? "<unnamed>") address=\(String(format: "0x%04X", sensor.primaryUnicastAddress)) targetBrightnessPercent=\(targetBrightness)")
+        #endif
 
         MeshSensorCalibrateManager.manager.calibrateNight(
             node: sensor,
@@ -1122,7 +1132,9 @@ class LightSensorCalibrationViewController: UIViewController {
         showConnecting()
         let rollbackSnapshot = makeDaylightCalibrationSnapshot(for: sensor)
 
+        #if DEBUG
         print("[DaylightCalibrationDebug] event=app_start mode=sensor node=\(sensor.name ?? "<unnamed>") address=\(String(format: "0x%04X", sensor.primaryUnicastAddress)) targetLux=\(targetLux) dimLevelPercent=\(sensorCalibrationDimLevel)")
+        #endif
 
         MeshSensorCalibrateManager.manager.calibrateSensor(
             node: sensor,

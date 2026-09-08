@@ -1165,7 +1165,9 @@ extension SiteData {
                     self.localAddress = localAddress
                     self.save()
                 } catch {
+                    #if DEBUG
                     print("set local address error: \(error)")
+                    #endif
                 }
             }
         }
@@ -1568,7 +1570,9 @@ extension SpaceData {
         if !initialize { save() }
         DevicePermanentDeletionContext.resume(space: self)
         if SpaceConfigurationSafety.preservesLocalChanges(self) {
+            #if DEBUG
             print("[SpaceConfigurationSafety] preserved pending local deletion/recovery space=\(id)")
+            #endif
             return .preserved("localDeletionOrRecoveryPendingUpload")
         }
         let resumingImport = SpaceConfigurationSafety.hasPendingImport(self)
@@ -1650,6 +1654,7 @@ extension SpaceData {
             case .preserveLocalSnapshot:
                 shouldCommitProximityTopology = false
                 SpaceConfigurationSafety.block(self, reason: "invalidRemoteTopology")
+                #if DEBUG
                 let errorCounts = Dictionary(
                     grouping: proximityPreflight.hardErrors.map(\.diagnosticName),
                     by: { $0 }
@@ -1661,16 +1666,20 @@ extension SpaceData {
                     "repairs=\(proximityPreflight.reconciliation?.repairs.map(\.diagnosticDescription) ?? []) " +
                     "remoteNodes=\(nodeDicts.count) localNodes=\(localMeshNetwork?.nodes.count ?? 0)"
                 )
+                #endif
                 continuation.resume(returning: .preserved("invalidRemoteTopology", repairs: proximityPreflight.reconciliation?.repairs ?? []))
                 return
             case .applyWithoutProximityMutation:
                 shouldCommitProximityTopology = false
+                #if DEBUG
                 print(
                     "[ProximityLightingImport] applying decodable Space data without proximity mutation " +
                     "warnings=\(proximityPreflight.warnings) " +
                     "hardErrors=\(proximityPreflight.hardErrors.map(\.diagnosticName))"
                 )
+                #endif
             }
+            #if DEBUG
             if let reconciliation = proximityPreflight.reconciliation {
                 let maximumNeighborCount = reconciliation.plan.targets.values
                     .map { $0.neighborAddresses.count }
@@ -1683,6 +1692,7 @@ extension SpaceData {
                     "maxNeighbors=\(maximumNeighborCount)"
                 )
             }
+            #endif
             let emergencyFireControllerDicts = json["emergencyFireControllers"].arrayObject as? [[String: Any]]
             let localEmergencyFireControllerCount = DeviceEmerFireData
                 .load(meshUUID: self.meshUUID, meshNetworkId: self.meshNetworkId, spaceId: self.id)

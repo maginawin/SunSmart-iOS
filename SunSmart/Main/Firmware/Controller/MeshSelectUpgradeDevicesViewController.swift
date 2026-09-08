@@ -198,9 +198,13 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
                 guard let self = self else { return }
                 switch state {
                 case .check:
+                    #if DEBUG
                     print("分发设备检查固件中")
+                    #endif
                 case .relation:
+                    #if DEBUG
                     print("关联分发设备中")
+                    #endif
                 case .await, .started, .waitManualInstall:
                     XWHUDManager.hide()
                     var distributionData = MeshDistributionData(distributionAddress: distributorNode.primaryUnicastAddress, targetAddresses: selectNodes.map({ $0.primaryUnicastAddress }), distributionState: .await)

@@ -24,7 +24,11 @@ final class GatewayFirmwareScanDebugLogger {
 
     init(
         sessionID: String,
-        sink: @escaping (String) -> Void = { print($0) }
+        sink: @escaping (String) -> Void = { message in
+            #if DEBUG
+            print(message)
+            #endif
+        }
     ) {
         self.sessionID = sessionID
         self.sink = sink

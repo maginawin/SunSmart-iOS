@@ -724,7 +724,9 @@ extension DeviceMeshNetworkResetConfiguredController: DeviceMeshNetworkResetSeci
             return " "
         }, inputDoneBack: {[weak self] _ in
             guard let self = self else { return }
+            #if DEBUG
             print("删除网络")
+            #endif
             self.meshNetworkReset(networkData: networkData)
         }).show()
         

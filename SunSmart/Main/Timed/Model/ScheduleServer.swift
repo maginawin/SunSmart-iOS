@@ -319,7 +319,9 @@ struct ScheduleServer {
             }
             
         } failedBack: { messageHandle in
+            #if DEBUG
             print("node send message failed \(messageHandle.message)")
+            #endif
         } finishedBack: { resultMessageHandles in
             runScheduleDeviceBatches(
                 batches,

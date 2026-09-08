@@ -324,7 +324,9 @@ extension GroupPathSequencePathViewCell: UICollectionViewDataSource, UICollectio
             
             TitleSelectView.show(titles: options.map({ $0.name }), style: .default, anchorPoint: anchorPoint, menuWidth: menuWidth, itemHeight: 30, titleFont: UIFont.systemFont(ofSize: 13, weight: .light)) {[weak self] index in
                 guard let self = self else { return }
+                #if DEBUG
                 print(options[index].name)
+                #endif
                 let type = options[index]
                 switch type {
                 case .overturn:

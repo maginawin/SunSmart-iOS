@@ -126,12 +126,16 @@ class ShareAuthorityViewController: UIViewController {
     
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
+        #if DEBUG
         print(view.frame.size)
+        #endif
     }
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        #if DEBUG
         print(view.frame.size)
+        #endif
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -707,22 +711,30 @@ class ShareAuthorityViewController: UIViewController {
         
         let items: [TableSelectView.TableItem] = [
             .init(icon: UIImage(named: "sort_create"), title: "created_date".localizedString, tapItemBack: {[weak self] _ in
+                #if DEBUG
                 print("create")
+                #endif
                 self?.sortType = .createdDate
                 self?.updateUI()
             }),
             .init(icon: UIImage(named: "sort_update"), title: "updated_date".localizedString, tapItemBack: {[weak self] _ in
+                #if DEBUG
                 print("updated")
+                #endif
                 self?.sortType = .updatedDate
                 self?.updateUI()
             }),
             .init(icon: UIImage(named: "sort_alphabetical"), title: "alphabetical".localizedString, tapItemBack: {[weak self] _ in
+                #if DEBUG
                 print("alphabetical")
+                #endif
                 self?.sortType = .alphabetical
                 self?.updateUI()
             }),
             .init(icon: UIImage(named: "sort_device_quantity"), title: "device_quantity".localizedString, tapItemBack: {[weak self] _ in
+                #if DEBUG
                 print("device_quantity")
+                #endif
                 self?.sortType = .deviceQuantity
                 self?.updateUI()
             })

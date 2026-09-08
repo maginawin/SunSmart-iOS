@@ -604,7 +604,9 @@ class DeviceAddClassicModeController: UIViewController {
             emergencyFireDefaultConfigurationMessageHandles[nodeAddress, default: []].append(contentsOf: handles)
             failedEmergencyFireDefaultConfigurationNodeAddresses.remove(nodeAddress)
         } catch {
+            #if DEBUG
             print(error.localizedDescription)
+            #endif
         }
     }
 
@@ -1880,7 +1882,9 @@ class DeviceAddClassicModeController: UIViewController {
         guard selectRSSIRange != changeRSSIRange else {
             return
         }
+        #if DEBUG
         print(changeRSSIRange)
+        #endif
         selectRSSIRange = changeRSSIRange
         // 筛选展示的设备
         showDevices = scanDevices.filter({ showDeviceTypes.contains($0.deviceType) && selectRSSIRange.contains($0.rssi.intValue) })

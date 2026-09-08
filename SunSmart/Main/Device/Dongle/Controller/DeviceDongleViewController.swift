@@ -116,9 +116,13 @@ class DeviceDongleViewController: UIViewController, DeviceProtocol {
         DeviceDongleDeleteAlertView(deleteCallback: { mode in
             switch mode {
             case .retainStoredData:
+                #if DEBUG
                 print("删除但保留数据")
+                #endif
             case .clearAllStoredData:
+                #if DEBUG
                 print("删除并清空数据")
+                #endif
             }
         }).show()
     }

@@ -45,7 +45,9 @@ class DeviceResetBroadcasterCentral {
     }
     
     deinit {
+        #if DEBUG
         print("销毁了")
+        #endif
 //        stopBroadcasterCompleteTimer()
 //        bluetoothBroadcaster.stopBroadcasting()
     }

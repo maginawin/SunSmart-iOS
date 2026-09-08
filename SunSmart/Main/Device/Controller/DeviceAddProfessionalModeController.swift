@@ -688,7 +688,9 @@ class DeviceAddProfessionalModeController: UIViewController {
             emergencyFireDefaultConfigurationMessageHandles[nodeAddress, default: []].append(contentsOf: handles)
             failedEmergencyFireDefaultConfigurationNodeAddresses.remove(nodeAddress)
         } catch {
+            #if DEBUG
             print(error.localizedDescription)
+            #endif
         }
     }
 
@@ -1018,7 +1020,9 @@ class DeviceAddProfessionalModeController: UIViewController {
                 
                 if (self.addMode == .lightSening || self.addMode == .motionSensing) && device.triggerActionTypes.count > 0 {
                     device.activityDate = Date()
+                    #if DEBUG
                     print("触发了: \(device.macAddress!)")
+                    #endif
                 }
                 
                
@@ -1993,7 +1997,9 @@ class DeviceAddProfessionalModeController: UIViewController {
 //        isRefresh = false
         reloadDataing = true
         
+        #if DEBUG
         print(changeRSSIRange)
+        #endif
         selectRSSIRange = changeRSSIRange
         // 筛选展示的设备
 //        showDevices = scanDevices.filter({ showDeviceTypes.contains($0.deviceType) && selectRSSIRange.contains($0.rssi.intValue) })

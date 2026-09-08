@@ -327,7 +327,9 @@ extension LBXScanViewController: PHPickerViewControllerDelegate {
         picker.dismiss(animated: true, completion: nil)
         
         guard let result = results.first else {
+            #if DEBUG
             print("没有选择图片")
+            #endif
             showMsg(title: nil, message: NSLocalizedString("Identify failed", comment: "Identify failed"))
             return
         }

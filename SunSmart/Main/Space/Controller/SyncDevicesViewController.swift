@@ -2820,7 +2820,9 @@ class SyncDevicesViewController: UIViewController {
                 }
             }
 //            _ = MeshNetworkManager.instance.save()
+            #if DEBUG
             print("完成")
+            #endif
 
             self.markPendingGatewayRecoveryTasksSkipped()
             
@@ -3191,6 +3193,7 @@ class SyncDevicesViewController: UIViewController {
         maxAttempts: Int,
         willRetry: Bool
     ) {
+        #if DEBUG
         guard let taskContext = emergencyFireControllerTask(for: model),
               taskContext.task.kind == .deleteCleanup else {
             return
@@ -3209,6 +3212,7 @@ class SyncDevicesViewController: UIViewController {
             return "\(messageName){success=\(handle.isSuccessful),all=[\(all)],respond=[\(responded)],missing=[\(missing)]}"
         }.joined(separator: ";")
         print("[EFC Delete Cleanup] task=\(taskContext.task.kind.rawValue), group=\(formatEmergencyFireAddress(taskContext.task.pendingGroupAddress)), node=\(formatEmergencyFireAddress(taskContext.task.address)), attempt=\(attempt)/\(maxAttempts), willRetry=\(willRetry), resultSuccessful=\(resultSuccessful), state=\(model.state), failedTasksInGroup=\(failedTaskCount), handles=\(handleLogs)")
+        #endif
     }
 
     private func formatEmergencyFireAddress(_ address: Address?) -> String {

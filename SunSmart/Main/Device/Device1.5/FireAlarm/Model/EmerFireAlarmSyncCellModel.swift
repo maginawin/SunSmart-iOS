@@ -110,9 +110,11 @@ enum DeviceOperationType {
                     return false
                 }
                 guard nodeScene.isSynced(with: sceneData, for: node) else {
+                    #if DEBUG
                     let target = sceneData.deviceTarget(for: node)
                     print("scene\(sceneData.sceneNumber) target: lightness \(target.lightness) cct \(target.cct)")
                     print("scene\(nodeScene.sceneNumber) real: lightness \(nodeScene.lightness) cct \(nodeScene.cct)")
+                    #endif
                     return false
                 }
                 return true

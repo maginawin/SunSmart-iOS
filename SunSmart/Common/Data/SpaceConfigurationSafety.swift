@@ -97,7 +97,9 @@ enum SpaceConfigurationSafety {
 
     static func block(_ space: SpaceData, reason: String) {
         block(meshUUID: space.meshUUID, networkId: space.meshNetworkId, reason: reason)
+        #if DEBUG
         print("[SpaceConfigurationSafety] blocked space=\(space.id) reason=\(reason)")
+        #endif
         MeshNetworkManager.instance.realNodes.filter {
             $0.network?.uuid.uuidString == space.meshUUID && $0.subNetworkId == space.meshNetworkId
         }
@@ -146,7 +148,9 @@ enum SpaceConfigurationSafety {
             return true
         } catch {
             block(space, reason: "deletionCleanupPending")
+            #if DEBUG
             print("[DevicePermanentDeletion] journal failed space=\(space.id) error=\(error)")
+            #endif
             return false
         }
     }
@@ -203,7 +207,9 @@ enum SpaceConfigurationSafety {
             retryArchiveMoves(space)
             return true
         } catch {
+            #if DEBUG
             print("[SpaceConfigurationSafety] archive failed space=\(space.id) error=\(error)")
+            #endif
             return false
         }
     }
@@ -218,7 +224,11 @@ enum SpaceConfigurationSafety {
             do {
                 if FileManager.default.fileExists(atPath: root.path) { try FileManager.default.moveItem(at: root, to: archive) }
                 state.pendingArchives?.removeAll { $0 == name }
-            } catch { print("[SpaceConfigurationSafety] retired archive move pending space=\(space.id) error=\(error)") }
+            } catch {
+                #if DEBUG
+                print("[SpaceConfigurationSafety] retired archive move pending space=\(space.id) error=\(error)")
+                #endif
+            }
         }
         try? saveState(state, space: space)
     }
@@ -333,9 +343,11 @@ enum SpaceConfigurationSafety {
             space.applyRemoteSpaceMetadata(remote)
             guard space.save() else { return .failure(uploadUnconfirmed) }
             if expected != actual {
+                #if DEBUG
                 print("[SpaceConfigurationReadback] source=direct site=\(space.siteId) space=\(space.id) "
                     + "localTimestamp=\(space.lastUpdate) result=mismatch "
                     + SpaceConfigurationIntegrityPolicy.readbackDiagnostic(submitted: payload, remote: remote))
+                #endif
             }
             return .success(expected == actual)
         }
@@ -468,7 +480,9 @@ enum SpaceConfigurationSafety {
                 switch response {
                 case .failure(let error):
                     handleAuthorityError(error, space: space)
+                    #if DEBUG
                     print("[SpaceConfigurationReadback] space=\(space.id) submitted=\(submission.timestamp) result=unavailable code=\(error.code)")
+                    #endif
                     return .failure(error)
                 case .success(let response):
                     guard let remote = response["data"] as? [String: Any], remote["uuid"] as? String == space.id,
@@ -486,12 +500,14 @@ enum SpaceConfigurationSafety {
                         try saveState(context, space: space)
                         return finishSubmission(context, space: space) ? .success(()) : .failure(uploadUnconfirmed)
                     }
+                    #if DEBUG
                     print("[SpaceConfigurationReadback] source=resume site=\(space.siteId) space=\(space.id) "
                         + "submissionId=\(submission.id.uuidString) phase=\(submission.phase.rawValue) "
                         + "submitted=\(submission.timestamp) localTimestamp=\(space.lastUpdate) "
                         + "attempt=\(attempt + 1) result=mismatch "
                         + SpaceConfigurationIntegrityPolicy.readbackDiagnostic(
                             submittedConfiguration: expected, remote: remote))
+                    #endif
                     // A cancelled pre-send operation can be replaced only if the
                     // cloud still matches the last confirmed baseline.
                     if attempt == 2, submission.phase == .prepared,
@@ -723,7 +739,9 @@ enum SpaceConfigurationSafety {
             }
             return true
         } catch {
+            #if DEBUG
             print("[SpaceConfigurationSafety] checkpoint failed space=\(space.id) error=\(error)")
+            #endif
             return false
         }
     }

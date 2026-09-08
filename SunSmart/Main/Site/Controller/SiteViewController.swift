@@ -550,9 +550,13 @@ self.updateAddressData()
                     Task {[weak self] in
 
                         guard let self = self else { return }
+                        #if DEBUG
                         print("导入数据: \(Date().timeIntervalSince1970)")
+                        #endif
                         await self.site.update(siteJsonData: siteData)
+                        #if DEBUG
                         print("导入数据完成: \(Date().timeIntervalSince1970)")
+                        #endif
                         guard !Task.isCancelled else { return }
                         if let targetTimeZone = self.targetTimeZone(
                             for: entrySyncDecision,

@@ -86,16 +86,22 @@ enum SiteDeviceOwnershipReconciler {
             let removedAddresses = ProximityLightingLifecycleCoordinator.topologyAddresses(for: old.node)
             guard allNodes.allSatisfy({ $0 === old.node ||
                 removedAddresses.isDisjoint(with: ProximityLightingLifecycleCoordinator.topologyAddresses(for: $0)) }) else {
+                #if DEBUG
                 print("[SiteDeviceOwnership] site=\(siteId) oldSpace=\(old.space.id) result=blocked reason=overlappingAddresses")
+                #endif
                 continue
             }
             CloudSynchronizationManager.shared.cancelSynchronizationHandle(space: old.space)
             if DevicePermanentDeletionContext.removeSuperseded(node: old.node, space: old.space, replacement: decision.winner) {
                 changed.insert(old.space.id)
+                #if DEBUG
                 print("[SiteDeviceOwnership] site=\(siteId) oldSpace=\(old.space.id) winnerSpace=\(winner.space.id) oldAddress=\(decision.old.address.hex) winnerAddress=\(decision.winner.address.hex) result=cleaned")
+                #endif
             } else {
                 SpaceConfigurationSafety.block(old.space, reason: "deletionCleanupPending")
+                #if DEBUG
                 print("[SiteDeviceOwnership] site=\(siteId) oldSpace=\(old.space.id) result=cleanupPending")
+                #endif
             }
         }
         return changed

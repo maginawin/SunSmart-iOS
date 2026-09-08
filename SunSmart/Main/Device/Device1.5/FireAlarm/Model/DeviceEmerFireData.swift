@@ -229,7 +229,9 @@ final class DeviceEmerFireStore {
             mergeCache(with: [device])
             EmergencyFireControllerSceneEventManager.refreshProxyFilterAddresses()
         } catch {
+            #if DEBUG
             print("[EFC] failed to ensure publish group device=\(device.name), error=\(error.localizedDescription)")
+            #endif
         }
     }
 
@@ -242,9 +244,13 @@ final class DeviceEmerFireStore {
             // 这里只删除本地 MeshNetwork 缓存里的内部 virtual group。
             // 灯节点订阅清理由 SyncPlanner 生成 Mesh message 处理，不能混在这里做。
             try MeshNetworkManager.instance.meshNetwork?.remove(group: publishGroup)
+            #if DEBUG
             print("[EFC] removed cached publish group device=\(device.name), address=\(String(format: "0x%04X", publishGroupAddress))")
+            #endif
         } catch {
+            #if DEBUG
             print("[EFC] failed to remove cached publish group device=\(device.name), address=\(String(format: "0x%04X", publishGroupAddress)), error=\(error)")
+            #endif
         }
     }
 

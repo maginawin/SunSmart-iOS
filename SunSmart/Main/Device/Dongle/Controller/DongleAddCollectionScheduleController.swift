@@ -125,7 +125,9 @@ class DongleAddCollectionScheduleController: UIViewController {
 //            self.setSchedule.timestamp = Int64(selectDate.timeIntervalSince1970)
             self.selectDateTimestamp = Int64(selectDate.timeIntervalSince1970)
             self.updateUI()
+            #if DEBUG
             print(selectDate)
+            #endif
             return true
         }.show()
         

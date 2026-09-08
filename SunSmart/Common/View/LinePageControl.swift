@@ -112,8 +112,10 @@ class LinePageControl: UIView {
         case .began:
             self.transform = .init(scaleX: 1.5, y: 1.5)
         case .changed:
+            #if DEBUG
             let point = sender.velocity(in: self)
             print(point)
+            #endif
             
             
         case .ended:

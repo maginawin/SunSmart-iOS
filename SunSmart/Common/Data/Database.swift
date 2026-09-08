@@ -66,7 +66,9 @@ class SunSmartDataManager {
             try db.savepoint { try body() }
             return true
         } catch {
+            #if DEBUG
             print("[ConfigurationPersistence] \(error)")
+            #endif
             return false
         }
     }
@@ -240,7 +242,12 @@ extension SiteData {
               SpaceData.deleteAll(siteId: id), GatewayModel.delete(siteId: id) else { return false }
         let filter = SiteData.sitesTable.filter(ExpressionKey.uuid == id)
         do { try database.run(filter.delete()) }
-        catch { print(error); return false }
+        catch {
+            #if DEBUG
+            print(error)
+            #endif
+            return false
+        }
         return true
     }
 
@@ -394,7 +401,9 @@ extension SiteData {
         do {
             try SunSmartDataManager.shared.db?.run(insetOrUpdate)
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         if allData {
@@ -692,7 +701,12 @@ extension SpaceData {
               SpaceConfigurationSafety.beginRemoval(self) else { return false }
         let filter = SpaceData.spacesTable.filter(ExpressionKey.siteUUID == siteId && ExpressionKey.uuid == id)
         do { try database.run(filter.delete()) }
-        catch { print(error); return false }
+        catch {
+            #if DEBUG
+            print(error)
+            #endif
+            return false
+        }
         clearStoredPassword()
         return SpaceConfigurationSafety.archiveDeletedSpace(self)
     }
@@ -766,7 +780,9 @@ extension SpaceData {
 //            })
             
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -944,7 +960,9 @@ extension GroupInfo {
                     info.profile = profile
                 } else {
                     info.profileLoadFailed = true
+                    #if DEBUG
                     print("[ConfigurationPersistence] missing profile group=\(address) profileId=\(row[ExpressionKey.profileId])")
+                    #endif
                 }
                 if let pwmPeriod = row[ExpressionKey.pwmPeriod] {
                     info.pwmPeriod = UInt16(pwmPeriod)
@@ -979,7 +997,9 @@ extension GroupInfo {
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -996,7 +1016,9 @@ extension GroupInfo {
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -1100,7 +1122,9 @@ extension SceneInfo {
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -1117,7 +1141,9 @@ extension SceneInfo {
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -1140,7 +1166,9 @@ extension SceneInfo {
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -1319,7 +1347,9 @@ extension Schedule {
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -1339,7 +1369,9 @@ extension Schedule {
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -1398,7 +1430,9 @@ extension Schedule {
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         
@@ -1598,7 +1632,9 @@ extension Profile {
         if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
             for row in rows {
                 guard let profileType = ProfileType(rawValue: row[ExpressionKey.type]) else {
+                    #if DEBUG
                     print("[ConfigurationPersistence] invalid profile type id=\(row[ExpressionKey.uuid])")
+                    #endif
                     continue
                 }
                 guard !row[ExpressionKey.uuid].isEmpty,
@@ -1744,7 +1780,9 @@ extension Profile {
                 identity: ExpressionKey.meshUUID == uuid && ExpressionKey.uuid == self.id))
             try db.run(Profile.profilesTable.insert(or: .replace, setters))
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         
@@ -1761,7 +1799,9 @@ extension Profile {
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -1780,7 +1820,9 @@ extension Profile {
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -1958,7 +2000,9 @@ extension GroupSwitch {
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -1981,7 +2025,9 @@ extension GroupSwitch {
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -1996,7 +2042,9 @@ extension GroupSwitch {
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -2112,7 +2160,9 @@ extension FirmwareData {
                 _ = try? db.run("DROP TABLE IF EXISTS \(backupTableName)")
             }
         } catch {
+            #if DEBUG
             print(error)
+            #endif
         }
     }
     
@@ -2170,7 +2220,9 @@ extension FirmwareData {
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -2187,7 +2239,9 @@ extension FirmwareData {
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -2345,7 +2399,9 @@ extension MeshDistributionData {
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -2362,7 +2418,9 @@ extension MeshDistributionData {
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -2580,7 +2638,9 @@ extension DeviceSwitchData {
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -2600,7 +2660,9 @@ extension DeviceSwitchData {
             try SunSmartDataManager.shared.db?.run(filter.delete())
             PJEightKeySwitchRepository.shared.deleteAll(meshUUID: meshUUID, networkId: networkId)
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -2615,7 +2677,9 @@ extension DeviceSwitchData {
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -2728,7 +2792,9 @@ extension DeviceDongleData {
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -2747,7 +2813,9 @@ extension DeviceDongleData {
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -2762,7 +2830,9 @@ extension DeviceDongleData {
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -2886,7 +2956,9 @@ extension MeshDeviceConfigInfo {
         do {
             try SunSmartDataManager.shared.db?.run(predicate.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -2922,7 +2994,9 @@ extension MeshDeviceConfigInfo {
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -3000,7 +3074,9 @@ extension EnergyStatisticsStaticData {
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -3018,7 +3094,9 @@ extension EnergyStatisticsStaticData {
         do {
             try SunSmartDataManager.shared.db?.run(predicate.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -3219,7 +3297,9 @@ extension GatewayModel {
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -3241,7 +3321,9 @@ extension GatewayModel {
         do {
             try SunSmartDataManager.shared.db?.run(predicate.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -3258,7 +3340,9 @@ extension GatewayModel {
         do {
             try SunSmartDataManager.shared.db?.run(predicate.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -3397,7 +3481,9 @@ extension Node.PreConfiguration {
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -3408,7 +3494,9 @@ extension Node.PreConfiguration {
         do {
             try SunSmartDataManager.shared.db?.run(predicate.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -3491,7 +3579,9 @@ extension ProfileLightSensorTemplate {
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -3503,7 +3593,9 @@ extension ProfileLightSensorTemplate {
         do {
             try SunSmartDataManager.shared.db?.run(predicate.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true
@@ -3515,7 +3607,9 @@ extension ProfileLightSensorTemplate {
         do {
             try SunSmartDataManager.shared.db?.run(predicate.delete())
         } catch {
+            #if DEBUG
             print(error)
+            #endif
             return false
         }
         return true

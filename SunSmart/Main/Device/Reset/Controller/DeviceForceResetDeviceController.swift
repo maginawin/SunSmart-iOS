@@ -346,7 +346,9 @@ class DeviceForceResetDeviceController: UIViewController {
         guard selectRSSIRange != changeRSSIRange else {
             return
         }
+        #if DEBUG
         print(changeRSSIRange)
+        #endif
         selectRSSIRange = changeRSSIRange
 
         farLabel.text = "\(selectRSSIRange.lowerBound) dBm"

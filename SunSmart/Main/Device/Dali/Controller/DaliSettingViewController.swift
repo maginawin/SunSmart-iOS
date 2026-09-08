@@ -97,7 +97,9 @@ class DaliSettingViewController: UIViewController {
     private func replaceTheMaster() {
         DaliReplaceMasterSelectView(selectMaster: node, nodes: MeshNetworkManager.instance.realNodes) {[weak self] selectMaster in
             guard let self = self, self.node != selectMaster else { return }
+            #if DEBUG
             print("替换dali主机")
+            #endif
             
         }.show()
     }

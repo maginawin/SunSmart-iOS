@@ -844,7 +844,9 @@ class SiteDeviceAddViewController: UIViewController {
         guard selectRSSIRange != changeRSSIRange else {
             return
         }
+        #if DEBUG
         print(changeRSSIRange)
+        #endif
         selectRSSIRange = changeRSSIRange
         // 筛选展示的设备
         showDevices = scanDevices.filter({ selectRSSIRange.contains($0.rssi.intValue) })

@@ -614,7 +614,9 @@ extension FirmwareVersionViewController: UIDocumentPickerDelegate {
             self.updateUI()
             
         } catch { // 失败提示
+            #if DEBUG
             print(error)
+            #endif
             XWHUDManager.showErrorTipHUD("failed".localizedString + "!")
         }
     }

@@ -316,7 +316,9 @@ class SitesViewController: UIViewController {
                         }
                         
                         // 导入site数据属于耗时操作，等待异步线程完成
+                        #if DEBUG
                         print("导入数据: \(Date().timeIntervalSince1970)")
+                        #endif
 
                         await withTaskGroup(of: SiteData?.self) { group in
                             for data in siteDatas {
@@ -332,7 +334,9 @@ class SitesViewController: UIViewController {
                                 }
                             }
                         }
+                        #if DEBUG
                         print("导入数据完成: \(Date().timeIntervalSince1970)")
+                        #endif
 //                        if UserData.isReinstallation {
 //                           _ = Keychain.saveLastVendorIdentifier()
 //                        }

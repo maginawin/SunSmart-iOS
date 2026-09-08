@@ -158,7 +158,9 @@ extension DeviceEmerFireData {
     @discardableResult
     func ensurePublishGroup(meshUUID: String, subnetworkId: String) throws -> Address {
         if let publishGroupAddress {
+            #if DEBUG
             print("[EFC] reuse publish group device=\(name), address=\(String(format: "0x%04X", publishGroupAddress))")
+            #endif
             return publishGroupAddress
         }
 
@@ -176,7 +178,9 @@ extension DeviceEmerFireData {
 
         publishGroupAddress = group.address.address
         save(meshUUID: meshUUID, networkId: subnetworkId)
+        #if DEBUG
         print("[EFC] created publish group device=\(name), address=\(String(format: "0x%04X", group.address.address))")
+        #endif
         EmergencyFireControllerSceneEventManager.refreshProxyFilterAddresses()
         return group.address.address
     }
@@ -194,7 +198,9 @@ extension DeviceEmerFireData {
             throw missingModelError
         }
         guard model.publish?.publicationAddress.address != publishGroupAddress else {
+            #if DEBUG
             print("[EFC] publication already set device=\(name), node=\(node.primaryUnicastAddress), address=\(String(format: "0x%04X", publishGroupAddress))")
+            #endif
             return []
         }
         // EFC 控制器侧 Scene publication 是状态事件链路的源头：
@@ -212,7 +218,9 @@ extension DeviceEmerFireData {
         ) else {
             throw missingModelError
         }
+        #if DEBUG
         print("[EFC] set publication device=\(name), node=\(node.primaryUnicastAddress), address=\(String(format: "0x%04X", publishGroupAddress))")
+        #endif
         return [MeshMessageHandle(message: message, address: node.primaryUnicastAddress)]
     }
 

@@ -1234,7 +1234,9 @@ extension DeviceLightsViewController: SpaceFunctionFooterViewDelegate {
 extension DeviceLightsViewController: DeviceLightControlViewDelegate {
     
     func lightControl(_ view: DeviceLightControlView, levelValueChanged level: Int, ended: Bool) {
+        #if DEBUG
         print("level: \(level)")
+        #endif
         guard !showEmergencyControlBlockedIfNeeded() else {
             return
         }
@@ -1259,7 +1261,9 @@ extension DeviceLightsViewController: DeviceLightControlViewDelegate {
     }
     
     func lightControl(_ view: DeviceLightControlView, cctValueChanged cct: Int, ended: Bool) {
+        #if DEBUG
         print("cct: \(cct)")
+        #endif
         guard !showEmergencyControlBlockedIfNeeded() else {
             return
         }

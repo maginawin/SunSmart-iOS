@@ -115,8 +115,10 @@ enum PJUIDebugConsoleTracer {
         return items.reversed().joined(separator: " -> ")
     }
 
-    private static func log(_ message: String) {
-        print("[PJUIDebug] \(message)")
+    private static func log(_ message: @autoclosure () -> String) {
+        #if DEBUG
+        print("[PJUIDebug] \(message())")
+        #endif
     }
 
     private enum AssociatedKeys {

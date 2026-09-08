@@ -782,7 +782,9 @@ extension MeshNetworkManager {
                 break
             }
         }
+        #if DEBUG
         print(mac)
+        #endif
         return mac
     }
     
@@ -996,7 +998,9 @@ extension MeshNetworkManager {
         do {
             try MeshAPI.resetNodeWithoutWaitingForStatus(address: node.primaryUnicastAddress)
         } catch {
+            #if DEBUG
             print("Failed to send Power Switch reset node: \(error)")
+            #endif
         }
     }
 

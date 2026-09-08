@@ -117,7 +117,9 @@ class DaliMasterMultipleControlsView: UIView {
             }
             if collectionView.emptyView == nil {
                 collectionView.showEmptyDataView(title: "no_bus_devices".localizedString, buttonText: "Scan_Dali_Devices".localizedString, position: .center) {[weak self] in
+                    #if DEBUG
                     print("扫描dali设备")
+                    #endif
                     guard let self = self else { return }
                     self.delegate?.daliMasterDidScanDevices(view: self)
                 }

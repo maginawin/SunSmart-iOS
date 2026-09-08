@@ -283,7 +283,9 @@ class DeviceLightBasicController: UIViewController {
     /// 更新UI
     private func updateUI() {
         
+        #if DEBUG
         print("light lightness: \(node.lightness100)")
+        #endif
         // 设备功能是否绑定完成
         if node.isKeybindComplete {
             if node.state != onlineState {

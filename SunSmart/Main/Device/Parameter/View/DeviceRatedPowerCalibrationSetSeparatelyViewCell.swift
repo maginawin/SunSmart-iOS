@@ -207,7 +207,9 @@ class DeviceRatedPowerCalibrationSetSeparatelyViewCell: UITableViewCell {
         }
         calibrationBtn.isEnabled = true
         calibrationBtn.backgroundColor = Bar_Color
+        #if DEBUG
         print(UInt32(value * 100))
+        #endif
         device.inputPower = UInt32(value * 100)
     }
     

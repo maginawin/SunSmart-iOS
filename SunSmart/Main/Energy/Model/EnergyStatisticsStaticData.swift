@@ -122,7 +122,9 @@ class EnergyStatisticsStaticData {
             try csvString.write(to: fileURL, atomically: true, encoding: .utf8)
             return fileURL
         } catch {
+            #if DEBUG
             print("csv write error: \(error)")
+            #endif
             return nil
         }
     }

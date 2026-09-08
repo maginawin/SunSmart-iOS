@@ -185,7 +185,9 @@ class GroupsViewController: UIViewController {
         guard sender.state == .began else {
             return
         }
+        #if DEBUG
         print("长按")
+        #endif
         let point = sender.location(in: collectionView)
         if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < MeshNetworkManager.instance.groups.count {
             let group = MeshNetworkManager.instance.groups[indexPath.item]
