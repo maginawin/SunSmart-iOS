@@ -545,7 +545,7 @@ assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift"
   "case deleteCleanup" \
   "EFC Delete sync must have an explicit delete cleanup context."
 
-assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+assert_contains "SunSmart/Main/Space/Model/SyncExecutionSession+EmergencyFire.swift" \
   "context.isDeleteCleanup" \
   "EFC Delete sync retry must remain delete-only."
 
@@ -565,7 +565,7 @@ assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireCon
   "ConfigModelSubscriptionDelete" \
   "EFC Delete cleanup must clear group subscriptions."
 
-assert_not_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+assert_not_contains "SunSmart/Main/Space/Model/SyncExecutionSession+Result.swift" \
   "|| self.isEmergencyFireControllerDeleteCleanup(model)" \
   "EFC Delete cleanup must not bypass Mesh result failure detection."
 
@@ -577,51 +577,51 @@ assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireCon
   "handles.map { handle in" \
   "EFC Delete cleanup must map every unsubscribe handle to an independent task."
 
-assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+assert_contains "SunSmart/Main/Space/Model/SyncExecutionSession+Operations.swift" \
   "isSyncOperationSuccessful(" \
   "Sync success handling must use a general helper instead of Battery Power Switch-specific naming."
 
-assert_not_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+assert_not_contains "SunSmart/Main/Space/Model/SyncExecutionSession+Operations.swift" \
   "if self.isBatteryPowerSwitchOperationSuccessful(" \
   "EFC Delete cleanup must not be evaluated through the Battery Power Switch success helper."
 
-assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
-  "isEmergencyFireControllerDeleteCleanupSuccessful(" \
+assert_contains "SunSmart/Main/Space/Model/SyncExecutionSession+Operations.swift" \
+  "category = .emergencyFireDeleteCleanup" \
   "EFC Delete cleanup must have an explicit result-based success predicate."
 
 assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
   "prepareTaskForResync(task)" \
   "Progress retry for a single task must reset task retry state through a shared helper."
 
-assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+assert_contains "SunSmart/Main/Space/Model/SyncExecutionSession.swift" \
   "resetMessageHandlesForResync" \
   "Retry must clear stale MeshMessageHandle response state before resending."
 
-assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+assert_contains "SunSmart/Main/Space/Model/SyncRetryPolicy.swift" \
   "handle.respondAddresss = \\[\\]" \
   "Retry must clear stale responded addresses before resending."
 
-assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+assert_contains "SunSmart/Main/Space/Model/SyncRetryPolicy.swift" \
   "handle.notRespondAddresss = \\[\\]" \
   "Retry must clear stale missing addresses before resending."
 
-assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+assert_contains "SunSmart/Main/Space/Model/SyncExecutionSession+EmergencyFire.swift" \
   "[EFC Delete Cleanup]" \
   "EFC Delete cleanup retries must log task-level result details."
 
-assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+assert_contains "SunSmart/Main/Space/Model/SyncExecutionSession.swift" \
   "emergencyFireDeleteCleanupRetryPolicy" \
   "EFC Delete cleanup tasks must have an explicit retry policy."
 
-assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+assert_contains "SunSmart/Main/Space/Model/SyncOperationResultPolicy.swift" \
   "maxRetries: 2" \
   "EFC Delete cleanup must retry twice before marking a task failed."
 
-assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+assert_contains "SunSmart/Main/Space/Model/SyncOperationResultPolicy.swift" \
   "retryDelay: 0.2" \
   "EFC Delete cleanup retry delay must be long enough for the mesh command queue to reset."
 
-assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+assert_contains "SunSmart/Main/Space/Model/SyncExecutionSession+EmergencyFire.swift" \
   "willRetry=" \
   "EFC Delete cleanup retry decisions must be visible in logs."
 
@@ -649,9 +649,13 @@ assert_contains "SunSmart/Common/Data/Node+SyncData.swift" \
   "EmergencyFireControllerSyncPlanner.makeNodeAssociationSyncs" \
   "Node.needSync must discover EFC association subscription and pending cleanup through the EFC planner."
 
-assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+assert_contains "SunSmart/Main/Space/Model/SyncDeviceTaskBuilder.swift" \
   "case .emergencyFireControllerAssociations" \
   "Lights Sync Devices flow must render EFC association subscription and pending cleanup tasks from node sync data."
+
+assert_contains "SunSmart/Main/Space/Model/SyncTaskPlanBuilder.swift" \
+  "SyncDeviceTaskBuilder().makeDeviceModels(" \
+  "Lights Sync Devices must delegate to the builder that owns EFC association tasks."
 
 assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/DeviceEmerFireData.swift" \
   "controllerSelfSyncPending" \
@@ -673,15 +677,15 @@ assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireCon
   "changedFromConfiguration != nil" \
   "EFC planner must include incremental controller Others tasks immediately after a self-config edit."
 
-assert_not_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+assert_not_contains "SunSmart/Main/Space/Model/SyncExecutionSession+EmergencyFire.swift" \
   "data.isSynced = success" \
   "EFC sync completion must not overwrite aggregate sync state with the page-level success flag."
 
-assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+assert_contains "SunSmart/Main/Space/Model/SyncExecutionSession+EmergencyFire.swift" \
   "finishEmergencyFireControllerAssociationSyncIfNeeded" \
   "Lights Sync Devices flow must refresh EFC aggregate sync state after association tasks complete."
 
-assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+assert_contains "SunSmart/Main/Space/Model/SyncExecutionSession+EmergencyFire.swift" \
   "refreshEmergencyFireControllerSyncState" \
   "EFC sync completion must recompute aggregate state from self pending and remaining association tasks."
 
@@ -705,7 +709,7 @@ assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireCon
   "associationTargetNodes(in: group).flatMap" \
   "EFC associated group cleanup must not directly expand every group node."
 
-assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+assert_contains "SunSmart/Main/Space/Model/SyncExecutionSession+EmergencyFire.swift" \
   "isEmergencyFireControllerLocalGroupCleanupTask" \
   "EFC local-only group cleanup must have an explicit UI path instead of falling back to the EFC bind node."
 
@@ -757,7 +761,7 @@ assert_contains "SunSmart/Main/Device/Device1.5/FireAlarm/Model/EmergencyFireCon
   'case workingMode = "efc_sync_working_mode"' \
   "EFC sync task kind must include Working Mode."
 
-assert_contains "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift" \
+assert_contains "SunSmart/Main/Space/Model/SyncExecutionSession+EmergencyFire.swift" \
   ".workingMode" \
   "EFC Space sync must classify Working Mode as a controller self task."
 

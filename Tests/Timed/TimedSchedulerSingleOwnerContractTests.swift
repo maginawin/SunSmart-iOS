@@ -3,14 +3,14 @@ import Foundation
 @main
 struct TimedSchedulerSingleOwnerContractTests {
     static func main() throws {
-        guard CommandLine.arguments.count == 16 else {
+        guard CommandLine.arguments.count == 20 else {
             fatalError(
                 "Expected Node+SupportModels, Node+Messages, MeshScheduleServer, "
                 + "Node+MessageHandles, MeshNetwork+SunSmart, ScheduleServer, "
                 + "GroupServer, Scheduler, DeviceGroupDeferredSyncPlanner, "
                 + "MeshDatabase, TimedViewController, SyncDevicesCellModel and "
                 + "SyncDevicesViewController, DeviceRestoreViewController and "
-                + "GroupMembersViewController paths"
+                + "GroupMembersViewController and SyncDeviceTaskBuilder, SyncTaskPlanBuilder, SyncRetryPolicy, SyncExecutionSession+Operations paths"
             )
         }
 
@@ -29,6 +29,10 @@ struct TimedSchedulerSingleOwnerContractTests {
         let syncDevicesController = try source(at: 13)
         let deviceRestoreController = try source(at: 14)
         let groupMembersController = try source(at: 15)
+        let syncDeviceTaskBuilder = try source(at: 16)
+        let syncTaskPlanBuilder = try source(at: 17)
+        let retryPolicy = try source(at: 18)
+        let operations = try source(at: 19)
 
         testOwnerPolicy(in: supportModels)
         testSetAndDeleteRouting(
@@ -39,7 +43,7 @@ struct TimedSchedulerSingleOwnerContractTests {
             messageHandles: messageHandles,
             operationModel: operationModel
         )
-        testSyncDevicesTimeDependency(in: syncDevicesController)
+        testSyncDevicesTimeDependency(in: syncDevicesController, builder: syncDeviceTaskBuilder, plan: syncTaskPlanBuilder, retry: retryPolicy, operations: operations)
         testDeviceRestoreTimeDependency(in: deviceRestoreController)
         testModelAwareSync(in: meshNetwork)
         testDeleteTargets(in: scheduleServer)
@@ -233,9 +237,14 @@ struct TimedSchedulerSingleOwnerContractTests {
         )
     }
 
-    private static func testSyncDevicesTimeDependency(in source: String) {
+    private static func testSyncDevicesTimeDependency(in source: String, builder: String, plan: String, retry: String, operations: String) {
+        require(
+            source.contains("SyncTaskPlanBuilder(")
+                && plan.contains("SyncDeviceTaskBuilder().makeDeviceModels("),
+            "Sync Devices must delegate ordinary task construction to the tested builder"
+        )
         let scheduleTasks = section(
-            in: source,
+            in: builder,
             from: "case .syncSchedules(let schedules):",
             to: "case .deleteSchedules(let schedules):"
         )
@@ -267,7 +276,7 @@ struct TimedSchedulerSingleOwnerContractTests {
         )
 
         let retryDependencies = section(
-            in: source,
+            in: retry,
             from: "func resyncRelevanceCheck()",
             to: "return relevanceTaskModels"
         )
@@ -276,9 +285,9 @@ struct TimedSchedulerSingleOwnerContractTests {
             "Schedule retry must re-run its Time Set dependency"
         )
         require(
-            source.contains("isMissingRequiredTimeSynchronizationHandle")
-                && source.contains("operationType.requiresSiteTimeSetHandle")
-                && source.contains("messageHandles.isEmpty"),
+            operations.contains("isMissingRequiredTimeSynchronizationHandle")
+                && operations.contains("operationType.requiresSiteTimeSetHandle")
+                && operations.contains("messageHandles.isEmpty"),
             "Sync Devices must fail an empty required Time Set task"
         )
     }

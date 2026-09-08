@@ -26,6 +26,8 @@ struct ProximityLightingLifecycleContractTests {
         let cloudSync = try source(root, "SunSmart/Common/Cloud/CloudSynchronizationManager.swift")
         let networkAPI = try source(root, "SunSmart/Common/Network/NetowrkReqeustApi.swift")
         let sync = try source(root, "SunSmart/Main/Space/Controller/SyncDevicesViewController.swift")
+        let planBuilder = try source(root, "SunSmart/Main/Space/Model/SyncTaskPlanBuilder.swift")
+        let proximityBuilder = try source(root, "SunSmart/Main/Space/Model/SyncProximityTaskBuilder.swift")
 
         require(
             occurrenceCount("ProximityLightingTopologyReconciler.swift in Sources", in: project) == 10
@@ -190,8 +192,9 @@ struct ProximityLightingLifecycleContractTests {
             "Space import must retain core rejection and topology diagnostic outcomes"
         )
         require(
-            sync.contains("private func appendProximityLightingItems(")
-                && occurrenceCount("appendProximityLightingItems(", in: sync) >= 4,
+            sync.contains("SyncTaskPlanBuilder(")
+                && proximityBuilder.contains("func appendProximityLightingItems(")
+                && occurrenceCount("appendProximityLightingItems(", in: planBuilder) == 3,
             "Sync UI must share one precomputed proximity task renderer"
         )
 

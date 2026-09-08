@@ -6,17 +6,17 @@ struct GatewayRecoveryAssociatedSpacesContractTests {
     static func main() throws {
         let arguments = CommandLine.arguments
         guard arguments.count == 2 else {
-            fatalError("Expected SyncDevicesViewController source path")
+            fatalError("Expected SyncGatewayTaskBuilder source path")
         }
 
-        let controller = try String(
+        let builder = try String(
             contentsOfFile: arguments[1],
             encoding: .utf8
         )
         let recoveryBuilder = substring(
-            in: controller,
-            from: "private func makeGatewayRecoveryDeviceModel(",
-            through: "/// 返回"
+            in: builder,
+            from: "func makeRecoveryDevice(",
+            through: "return .success(deviceModel)"
         )
 
         require(

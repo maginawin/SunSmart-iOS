@@ -30,6 +30,8 @@ support += (repo / 'SunSmart/Common/Extension/CALayer+Animations.swift').read_te
 views = '\n'.join((repo / 'SunSmart/Main/Space/View' / name).read_text() for name in ['SyncDeviceViewCell.swift', 'SyncDevicesGroupViewCell.swift', 'SyncDeviceStepViewCell.swift'])
 controller = (repo / 'SunSmart/Main/Space/Controller/SyncDevicesViewController.swift').read_text()
 refresh = section(controller, '    private func refreshVisibleSyncCells()', '    private func setupUI()')
+start_event = section(controller, '    private func displayTaskStarted(', '    private func startSync()')
+row_height = section(controller, '    func tableView(_ tableView: UITableView, heightForRowAt', '\n    }') + '\n    }\n'
 app = '''import UIKit
 @main final class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
@@ -39,6 +41,10 @@ app = '''import UIKit
         window?.makeKeyAndVisible()
         return true
     }
+}
+final class SyncDevicesProgressView {
+    var stepModel: SyncDeviceStepModel?
+    static func current() -> SyncDevicesProgressView? { nil }
 }
 struct Section { let rowModels: [SyncCellModel] }
 final class LayoutController: UIViewController, UITableViewDataSource, UITableViewDelegate {
@@ -50,6 +56,12 @@ final class LayoutController: UIViewController, UITableViewDataSource, UITableVi
     var group: SyncDevicesGroupModel!
     var step: SyncDeviceStepModel!
     var started = false
+    var failures: [String] = []
+    var syncRunIdentifier = UUID()
+    var hasLeftSyncPage = false
+    var lastGroupModel: SyncDevicesGroupModel?
+    var lastDeviceModel: SyncDevicesModel?
+    var showProressStepModel: SyncDeviceStepModel?
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .white
@@ -87,7 +99,6 @@ final class LayoutController: UIViewController, UITableViewDataSource, UITableVi
         Task { @MainActor in await exercise() }
     }
     func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int { sections[section].rowModels.count }
-    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat { SCRYFrom(44) }
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         switch indexPath.row {
         case 0:
@@ -102,7 +113,7 @@ final class LayoutController: UIViewController, UITableViewDataSource, UITableVi
         }
     }
     func verify(_ value: Bool, _ reason: String) {
-        if !value { result.text = "FAIL: " + reason; fatalError(reason) }
+        if !value && !failures.contains(reason) { failures.append(reason) }
     }
     func inspectRunning() {
         tableView.layoutIfNeeded()
@@ -113,18 +124,18 @@ final class LayoutController: UIViewController, UITableViewDataSource, UITableVi
         verify(groupCell.stateImageView.isHidden, "Group waiting icon flicker")
         verify(!stepCell.progressLabel.isHidden, "Progress flicker")
         verify(!cell.arrowImageView.hasAmbiguousLayout, "Arrow ambiguous")
-        verify(cell.bounds.contains(cell.arrowImageView.frame), "Arrow outside cell")
+        verify(cell.bounds.contains(cell.arrowImageView.frame), "Arrow outside cell: bounds=\\(cell.bounds), arrow=\\(cell.arrowImageView.frame)")
         verify(stepCell.progressLabel.frame.minX >= 0, "Progress outside cell")
         verify(abs(cell.arrowImageView.center.y - cell.bounds.midY) < 1, "Arrow not centered")
         verify(stepCell.progressLabel.frame.maxX <= stepCell.stateImageView.frame.minX, "Progress overlaps status")
     }
     func pause() async { try? await Task.sleep(nanoseconds: 120_000_000) }
     func exercise() async {
-        let run = UUID(); syncDisplayContext.beginRun(run)
+        let run = UUID(); syncRunIdentifier = run; syncDisplayContext.beginRun(run)
         tableView.reloadData(); tableView.layoutIfNeeded()
         for index in step.tasks.indices {
             let task = step.tasks[index]
-            task.state = .inSettings; syncDisplayContext.taskDidStart(task, run: run)
+            task.state = .inSettings; displayTaskStarted(task, identifier: run)
             device.isShow = true; refreshVisibleSyncCells(); await pause(); inspectRunning()
             let cell = tableView.cellForRow(at: IndexPath(row: 1, section: 0))!
             task.state = index == 0 ? .failed : .successful
@@ -138,42 +149,60 @@ final class LayoutController: UIViewController, UITableViewDataSource, UITableVi
         refreshVisibleSyncCells(); await pause()
         let retry = UUID(); step.tasks[0].state = .wait
         device.isFineshed = false; group.isFineshed = false; step.isFineshed = false
-        syncDisplayContext.beginRun(retry); refreshVisibleSyncCells(); await pause()
+        syncRunIdentifier = retry; syncDisplayContext.beginRun(retry); refreshVisibleSyncCells(); await pause()
         step.tasks[0].state = .inSettings
-        syncDisplayContext.taskDidStart(step.tasks[0], run: retry); refreshVisibleSyncCells()
+        displayTaskStarted(step.tasks[0], identifier: retry); refreshVisibleSyncCells()
         // 重新绑定模拟离屏返回，显示上下文必须保持有效。
         tableView.reloadData(); await pause(); inspectRunning()
         device.isShow = false; refreshVisibleSyncCells(); await pause(); inspectRunning()
-        result.text = "PASS: stable icons and layout"
+        group.isShow = false; device.isShow = false
+        displayTaskStarted(step.tasks[0], identifier: run)
+        verify(!group.isShow && !device.isShow, "Stale session event changed expansion")
+        hasLeftSyncPage = true
+        displayTaskStarted(step.tasks[0], identifier: retry)
+        verify(!group.isShow && !device.isShow, "Closed page accepted a start event")
+        result.accessibilityValue = failures.joined(separator: "; ")
+        result.text = failures.isEmpty ? "PASS: stable icons and layout" : "FAIL: layout checks"
     }
 '''
-app += refresh + '\n}\n' + models + support + views
+app += refresh + start_event + row_height + '\n}\n' + models + support + views
 (out / 'App.swift').write_text(app)
 (out / 'RecoveryUITests.swift').write_text('''import XCTest
 final class SyncRowUITests: XCTestCase {
-    func testPortrait() { exercise(.portrait) }
-    func testLandscape() { exercise(.landscapeLeft) }
-    private func exercise(_ orientation: UIDeviceOrientation) {
+    func testPortrait() {
         continueAfterFailure = false
-        XCUIDevice.shared.orientation = orientation
+        XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication(); app.launch()
         let result = app.staticTexts["result"]
-        let success = NSPredicate(format: "label == %@", "PASS: stable icons and layout")
-        expectation(for: success, evaluatedWith: result)
+        let finished = NSPredicate(format: "label BEGINSWITH 'PASS:' OR label BEGINSWITH 'FAIL:'")
+        expectation(for: finished, evaluatedWith: result)
         waitForExpectations(timeout: 20)
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "Sync row layout"; attachment.lifetime = .keepAlways; add(attachment)
+        XCTAssertEqual(result.label, "PASS: stable icons and layout", String(describing: result.value))
+        let size = app.windows.firstMatch.frame.size
+        XCTAssertGreaterThan(size.height, size.width, "Expected portrait interface")
         app.terminate()
     }
 }
 ''')
+# 与生产 App 一致：iPad 全屏、仅竖屏，不继承通用布局工程的横屏配置。
+info_path = out / 'Info.plist'
+info = plistlib.loads(info_path.read_bytes())
+info['UISupportedInterfaceOrientations'] = ['UIInterfaceOrientationPortrait']
+info.pop('UISupportedInterfaceOrientations~ipad', None)
+info['UIRequiresFullScreen'] = True
+info_path.write_bytes(plistlib.dumps(info))
 assets = out / 'Assets.xcassets'; assets.mkdir(exist_ok=True)
 (assets / 'Contents.json').write_text('{"info":{"author":"xcode","version":1}}')
 for name in sorted(set(re.findall(r'"([a-z][a-z0-9_]+)"', views))):
     sources = list((repo / 'SunSmart/Assets.xcassets').rglob(name + '.imageset'))
     if sources:
         shutil.copytree(sources[0], assets / sources[0].name, dirs_exist_ok=True)
-shutil.copytree(repo / 'Pods/SnapKit/Sources', out / 'SnapKit', dirs_exist_ok=True)
+# Pods 源文件为只读，重复生成时只调整隔离工程内副本的写权限。
+for copied_source in (out / 'SnapKit').glob('*.swift'):
+    copied_source.chmod(copied_source.stat().st_mode | 0o200)
+shutil.copytree(repo / 'Pods/SnapKit/Sources', out / 'SnapKit', dirs_exist_ok=True, copy_function=shutil.copyfile)
 project_path = out / 'RecoveryLayout.xcodeproj/project.pbxproj'
 project = plistlib.loads(project_path.read_bytes()); objects = project['objects']
 def obj(isa, **kwargs):
