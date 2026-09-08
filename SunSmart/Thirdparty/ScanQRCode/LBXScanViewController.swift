@@ -11,7 +11,7 @@ import Foundation
 import AVFoundation
 import PhotosUI
 
-public protocol LBXScanViewControllerDelegate: class {
+public protocol LBXScanViewControllerDelegate: AnyObject {
      func scanFinished(scanResult: LBXScanResult, error: String?)
 }
 

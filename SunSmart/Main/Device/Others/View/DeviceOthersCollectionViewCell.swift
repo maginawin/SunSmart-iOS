@@ -21,7 +21,7 @@ class DeviceOthersCollectionViewCell: UICollectionViewCell {
     var dongle: DeviceDongleData! {
         didSet {
             nameLabel.text = dongle.name
-            iconImageView.image = UIImage(named: "device_dongle")
+            iconImageView.image = UIImage(named: "device_dongle_legacy")
             if let node = dongle.bindNode {
                 if node.isKeybindComplete {
                     if !node.state {

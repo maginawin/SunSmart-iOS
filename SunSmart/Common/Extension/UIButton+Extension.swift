@@ -129,3 +129,72 @@ extension UIButton {
     }
     
 }
+
+// Opt-in layout for the Scan and Identify buttons; other legacy buttons are unchanged.
+extension UIButton {
+    func applyPlainContentLayout(insets: NSDirectionalEdgeInsets, imagePadding: CGFloat = 0) {
+        let font = titleLabel?.font ?? UIFont.systemFont(ofSize: 14)
+        var content = UIButton.Configuration.plain()
+        content.cornerStyle = .fixed
+        content.background.cornerRadius = layer.cornerRadius
+        content.contentInsets = insets
+        content.imagePlacement = .leading
+        content.imagePadding = imagePadding
+        configuration = content
+        configurationUpdateHandler = { button in
+            guard var content = button.configuration else { return }
+            let color = button.currentTitleColor
+            content.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+                var attributes = attributes
+                attributes.font = font
+                attributes.foregroundColor = color
+                return attributes
+            }
+            button.configuration = content
+        }
+        setNeedsUpdateConfiguration()
+    }
+}
+
+/// A full-width selection button whose arrow stays at the trailing edge as its title changes.
+final class TrailingImageButton: UIButton {
+    let contentLabel = UILabel()
+    let trailingImageView = UIImageView()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        contentLabel.lineBreakMode = .byTruncatingTail
+        contentLabel.isUserInteractionEnabled = false
+        contentLabel.isAccessibilityElement = false
+        trailingImageView.isUserInteractionEnabled = false
+        trailingImageView.isAccessibilityElement = false
+        trailingImageView.setContentHuggingPriority(.required, for: .horizontal)
+        trailingImageView.setContentCompressionResistancePriority(.required, for: .horizontal)
+        addSubview(contentLabel)
+        addSubview(trailingImageView)
+        contentLabel.translatesAutoresizingMaskIntoConstraints = false
+        trailingImageView.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            contentLabel.leadingAnchor.constraint(equalTo: leadingAnchor, constant: SCRXFrom(8)),
+            contentLabel.centerYAnchor.constraint(equalTo: centerYAnchor),
+            contentLabel.trailingAnchor.constraint(lessThanOrEqualTo: trailingImageView.leadingAnchor, constant: -SCRXFrom(6)),
+            trailingImageView.trailingAnchor.constraint(equalTo: trailingAnchor),
+            trailingImageView.centerYAnchor.constraint(equalTo: centerYAnchor)
+        ])
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+
+    override func layoutSubviews() {
+        contentLabel.text = currentTitle
+        contentLabel.font = titleLabel?.font
+        contentLabel.textColor = currentTitleColor
+        trailingImageView.image = currentImage
+        trailingImageView.tintColor = tintColor
+        super.layoutSubviews()
+        titleLabel?.isHidden = true
+        imageView?.isHidden = true
+    }
+}

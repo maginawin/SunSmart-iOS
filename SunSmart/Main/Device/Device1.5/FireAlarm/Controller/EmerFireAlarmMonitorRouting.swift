@@ -149,7 +149,7 @@ extension EmerFireAlarmMonitorVC {
 
 
     func repairBtnClick() {
-        guard let space, let currentDevice else {
+        guard space != nil, let currentDevice else {
             return
         }
         let controller = SyncDevicesViewController(type: .emergencyFire(data: currentDevice, items: nil, context: .saveConfiguration(persistsSyncResult: true, changedFromConfiguration: nil)))

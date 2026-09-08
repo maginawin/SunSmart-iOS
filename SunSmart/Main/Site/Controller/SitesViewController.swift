@@ -414,7 +414,7 @@ class SitesViewController: UIViewController {
                 }
                 // 判断是否是自己分享的内容
                 switch type {
-                case .site(let site, let owner, _):
+                case .site(let site, _, _):
                     // 自己的site转让且未转让出去，跳转到site页面
                     if let mySite = self.allSites.first(where: { $0.id == site.id && $0.permission == .owner && $0.state == .normal }) {
                         self.dismissScannerIfNeeded(animated: false) { [weak self] in
@@ -705,7 +705,7 @@ class SitesViewController: UIViewController {
         SRAlertView(title: "notification".localizedString, message: "alert_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_delete".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             guard let self = self else { return }
             // 场所下面空间内存在设备
-            if let space = site.spaces.first(where: { $0.deviceCount > 0 }) {
+            if site.spaces.contains(where: { $0.deviceCount > 0 }) {
                 // 删除不存在设备的空间list
 //                    let emptySpaces = site.spaces.filter({ $0.deviceCount == 0 })
 //                    emptySpaces.forEach { emptySpace in
@@ -1488,7 +1488,7 @@ extension SitesViewController: CloudSynchronizationManagerDelegate {
             }
         case .addSpaces(let site, _):
             reloadSiteData(site)
-        case .syncGateway(let gateway, _):
+        case .syncGateway:
             break
         }
     }

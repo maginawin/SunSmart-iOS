@@ -436,7 +436,6 @@ extension DeviceInformationViewController: UITableViewDataSource, UITableViewDel
     
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         
-        let sectionType = sections[indexPath.section]
 //        if sectionType == .deviceInfo && indexPath.row == 3 {
 //            return SCRYFrom(60)
 //        }

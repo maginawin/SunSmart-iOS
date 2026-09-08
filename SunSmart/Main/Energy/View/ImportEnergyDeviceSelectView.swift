@@ -225,10 +225,7 @@ extension ImportEnergyDeviceSelectView: UITableViewDataSource, UITableViewDelega
 //        let device =
         cell.iconImageView.image = UIImage(named: "energy_storage_dongle")
         cell.selectImageView.image = UIImage(named: "device_select_un")
-        cell.identifyCallback = {[weak self] in
-            guard let self = self else { return }
-//            self.delegate?.view(self, energyStorageDeviceIdentify: <#T##Node#>)
-        }
+        cell.identifyCallback = {}
         cell.configureCell(isFirst: indexPath.row == 0, isLast: indexPath.row == tableView.numberOfRows(inSection: indexPath.section) - 1, backgroundColor: Background_Color)
         return cell
     }

@@ -15,11 +15,11 @@ internal extension FirmwareDistributionError {
             return "No Targets"
         case .deviceNotSupported:
             return "firmware_update_notSupport".localizedString
-        case .targetsCheckFailure(let failureNodes):
+        case .targetsCheckFailure:
             return "firmware_update_check_error".localizedString
-        case .targetsExceeded(let max):
+        case .targetsExceeded:
             return "升级设备超出分发上限"
-        case .subscribeTargetsFailure(let failureNodes):
+        case .subscribeTargetsFailure:
             return "升级设备订阅失败"
         case .distributionReceiversAddFailure:
             return "升级设备关联分发设备失败"
@@ -155,7 +155,7 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
                     startErrorNodes.append((node, error))
                 }
             }) {[weak self] result in
-                guard let self = self else { return }
+                guard self != nil else { return }
                 DispatchQueue.main.async {
                     XWHUDManager.hide()
                     switch result {
@@ -293,7 +293,7 @@ class MeshSelectUpgradeDevicesViewController: UIViewController {
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
         Task {
             // 判断是否需要排队，获取最后一个分发者，如果有分发者则提示
-            if let lastDistributionNode = await MeshFirmwareDistributionManager.shared.lastFirmwareDistributionNodeGet() {
+            if await MeshFirmwareDistributionManager.shared.lastFirmwareDistributionNodeGet() != nil {
                 XWHUDManager.hide()
                 SRAlertView(title: "notification".localizedString, message: "mesh_upgrade_waiting_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "ok".localizedString, actionHandler: {[weak self] _ in
                     // 进入排队

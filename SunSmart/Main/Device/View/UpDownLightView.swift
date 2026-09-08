@@ -59,7 +59,7 @@ final class UpDownLightView: UIControl {
 
         if configuration.isOn && brightnessPercent > 0 {
             let progress = CGFloat(brightnessPercent) / 100.0 * 0.5
-            var imageAlpha = 0.5 + progress
+            let imageAlpha = 0.5 + progress
             var grayAlpha: CGFloat = 0
 
             if configuration.supportsCCT {

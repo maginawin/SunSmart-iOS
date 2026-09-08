@@ -156,7 +156,7 @@ final class GatewayTimeInformationCoordinator {
         onReadState?(.reading)
         MeshAPI.sendMessage(message: TimeGet(), model: model, timeout: 10) { [self] response in
             DispatchQueue.main.async {
-                settle(attemptID: attemptID, response: response)
+                self.settle(attemptID: attemptID, response: response)
             }
         }
         return true

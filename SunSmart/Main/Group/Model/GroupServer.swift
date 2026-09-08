@@ -451,9 +451,6 @@ extension Group {
         let syncDatas = node.getSyncData(type: .group(node.group))
         let messages = syncDatas.reversed().flatMap({ $0.getMessageHandles(node: node) })
         
-        let removeSceneDatas = self.info.sceneExecuteDatas.filter { data in
-            return node.sceneExecuteDatas.contains(where: { $0.sceneNumber == data.sceneNumber })
-        }
 //        self.info.bindSceneDatas.filter { groupSceneData in
 //            return node.bindSceneDatas.contains(where: { $0.sceneId == groupSceneData.sceneId })
 //        }

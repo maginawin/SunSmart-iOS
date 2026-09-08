@@ -241,7 +241,9 @@ class DeviceForceResetViewCell: UITableViewCell {
         identifyBtn.layer.cornerRadius = 15
         identifyBtn.layer.borderColor = Bar_Color.cgColor
         identifyBtn.layer.borderWidth = 0.6
-        identifyBtn.contentEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(14), bottom: 0, right: SCRXFrom(14))
+        identifyBtn.applyPlainContentLayout(
+            insets: .init(top: 0, leading: SCRXFrom(14), bottom: 0, trailing: SCRXFrom(14))
+        )
         contentView.addSubview(identifyBtn)
         identifyBtn.snp.makeConstraints { make in
             make.right.equalTo(resetBtn.snp.left).offset(SCRXFrom(-8))

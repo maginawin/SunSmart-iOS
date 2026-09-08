@@ -2533,7 +2533,7 @@ extension SpaceData {
                     controller.save(meshUUID: meshUUID, networkId: self.meshNetworkId)
                 }
             }
-            DeviceEmerFireStore.shared.devices(in: self)
+            _ = DeviceEmerFireStore.shared.devices(in: self)
             EmergencyFireControllerSceneEventManager.refreshProxyFilterAddresses()
             
             self.deviceCount = (meshNetwork?.nodes.filter({ !$0.isLocalProvisioner && !$0.isProvisioner && !$0.isConfigComplete }) ?? nodes).count

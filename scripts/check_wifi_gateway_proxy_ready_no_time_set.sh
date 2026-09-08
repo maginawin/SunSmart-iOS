@@ -30,7 +30,7 @@ fi
   || fail "Old Proxy Ready TimeSet contract must be removed."
 
 source_membership_count="$(rg -c "WiFiGatewayAutomaticLoadGate\.swift in Sources \*/," "$project_file" || true)"
-[[ "$source_membership_count" == "4" ]] \
-  || fail "WiFiGatewayAutomaticLoadGate.swift must belong to all four app targets."
+[[ "$source_membership_count" == "5" ]] \
+  || fail "WiFiGatewayAutomaticLoadGate.swift must belong to all five app targets."
 
 printf 'PASS: WiFi Gateway Proxy Ready no longer sends TimeSet.\n'

@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import UniformTypeIdentifiers
 import NordicSigMeshSDK
 import SwiftyJSON
 
@@ -1626,7 +1627,7 @@ self.updateAddressData()
         SRAlertView(title: "notification".localizedString, message: "alert_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_delete".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             guard let self = self else { return }
             // 场所下面空间内存在设备
-            if let space = self.site.spaces.first(where: { $0.deviceCount > 0 }) {
+            if self.site.spaces.contains(where: { $0.deviceCount > 0 }) {
                 XWHUDManager.showTipHUD("site_delete_have_devies_message".localizedString, isLineFeed: true)
             }else { // 场所下空间未存在设备
                 // site已上传到云端
@@ -2313,7 +2314,7 @@ self.updateAddressData()
     
     private func importSpace() {
         
-        let picker = UIDocumentPickerViewController(documentTypes: ["public.data", "public.content"], in: .import)
+        let picker = UIDocumentPickerViewController(forOpeningContentTypes: [.data, .content], asCopy: true)
         picker.delegate = self
         present(picker, animated: true, completion: nil)
     }

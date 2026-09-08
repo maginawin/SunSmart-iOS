@@ -2195,3 +2195,6 @@
 "configuration_repair_unavailable" = "修复未能完成，数据可能已发生变化或不完整。请重新检查此空间。";
 "configuration_reload_invalid" = "云端数据未能恢复此空间。请检查本地修复或使用完整的已保存副本。";
 "configuration_upload_unconfirmed" = "无法确认云端同步结果，已保留此手机保存的数据。";
+
+"switch_mac_format" = "MAC: %@";
+"switch_mac_unavailable" = "MAC: 暂无";

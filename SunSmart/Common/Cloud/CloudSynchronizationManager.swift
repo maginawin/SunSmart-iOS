@@ -899,8 +899,8 @@ class CloudSynchronizationHandle: NSObject {
         requestHandle?.cancel()
         if case .syncGateway(let gateway, let node) = operation {
             gatewayAuthorizationTask?.cancel()
-            gatewayAuthorizationTask = AsyncTask { [weak self] in
-                guard let self else { return }
+            gatewayAuthorizationTask = AsyncTask { @MainActor [weak self] in
+                guard let self, !_Concurrency.Task<Never, Never>.isCancelled else { return }
                 while !_Concurrency.Task<Never, Never>.isCancelled {
                     let requestedGeneration = gateway.lastUpdate
                     let result = await GatewayServerAuthorizationService.shared.authorizeWithReceipt(
@@ -934,10 +934,9 @@ class CloudSynchronizationHandle: NSObject {
                     }
                     break
                 }
+                guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
                 self.gatewayAuthorizationTask = nil
-                DispatchQueue.main.async {
-                    self.handleCallback?(self, self.state)
-                }
+                self.handleCallback?(self, self.state)
             }
             return
         }
@@ -1198,9 +1197,7 @@ class CloudSynchronizationHandle: NSObject {
                     
                     
                 }
-                DispatchQueue.main.async {
-                    self.handleCallback?(self, self.state)
-                }
+                self.handleCallback?(self, self.state)
             }
         }
     }

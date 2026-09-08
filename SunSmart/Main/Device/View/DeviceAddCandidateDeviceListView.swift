@@ -201,10 +201,7 @@ class DeviceAddCandidateDeviceListView: UIView {
     override func layoutSubviews() {
         super.layoutSubviews()
         
-        addDeviceTargetBtn.imageView?.sizeToFit()
-        let imageW = addDeviceTargetBtn.imageView?.image?.size.width ?? 0
-        addDeviceTargetBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: addDeviceTargetBtn.width - imageW, bottom: 0, right: 0)
-        addDeviceTargetBtn.titleEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8) - imageW, bottom: 0, right: imageW + SCRXFrom(6))
+
         if categoryView.frame == .zero {
             contentView.layoutIfNeeded()
             
@@ -588,7 +585,7 @@ class DeviceAddCandidateDeviceListView: UIView {
             make.top.equalTo(candidateBtn.snp.bottom).offset(SCRYFrom(8))
         }
         
-        addDeviceTargetBtn = UIButton(title: "space", titleSize: 13, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "space_arrow_down", target: self, action: #selector(addDeviceTargetBtnClick))
+        addDeviceTargetBtn = TrailingImageButton(title: "space", titleSize: 13, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "space_arrow_down", target: self, action: #selector(addDeviceTargetBtnClick))
         addDeviceTargetBtn.contentHorizontalAlignment = .left
         addDeviceTargetBtn.layer.cornerRadius = SCRYFrom(5)
         addDeviceTargetBtn.layer.borderWidth = 1
@@ -611,8 +608,10 @@ class DeviceAddCandidateDeviceListView: UIView {
         scanBtn.layer.borderColor = RGB(220, 220, 220).cgColor
         scanBtn.backgroundColor = .white
         scanBtn.contentHorizontalAlignment = .left
-        scanBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8), bottom: 0, right: 0)
-        scanBtn.titleEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(10), bottom: 0, right: 0)
+        scanBtn.applyPlainContentLayout(
+            insets: .init(top: 0, leading: SCRXFrom(8), bottom: 0, trailing: 0),
+            imagePadding: SCRXFrom(2)
+        )
         scanBtn.isHidden = true
         contentView.addSubview(scanBtn)
         scanBtn.snp.makeConstraints { make in

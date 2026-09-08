@@ -76,7 +76,7 @@ class `DevicesReplySetViewController`: UIViewController {
             return
         }
         
-        let alertView =  SRAlertView(title: "reply set".localizedString, titleFont: FONTS(SCRYFrom(15)), message: "0/\(messageHandles.count)", messageColor: TextBlack_Color, messageFont: FONTS(SCRYFrom(15)), stateImage: UIImage(named: "loading_big"), loadingState: true, btnText: "STOP".localizedString, btnTextColor: .white, btnTextFont: Font_Medium_Size(SCRYFrom(15))) {[weak self] in
+        let alertView =  SRAlertView(title: "reply set".localizedString, titleFont: FONTS(SCRYFrom(15)), message: "0/\(messageHandles.count)", messageColor: TextBlack_Color, messageFont: FONTS(SCRYFrom(15)), stateImage: UIImage(named: "loading_big"), loadingState: true, btnText: "STOP".localizedString, btnTextColor: .white, btnTextFont: Font_Medium_Size(SCRYFrom(15))) {
             SRAlertView.hide()
             MeshProxyMessageCommand.shared.stopSendMessage(finishedBack: nil)
         }

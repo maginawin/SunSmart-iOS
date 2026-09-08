@@ -33,7 +33,26 @@ public struct LBXScanResult {
 
 
 
-open class LBXScanWrapper: NSObject,AVCaptureMetadataOutputObjectsDelegate {
+// Main-thread-owned request state. A stopped/restarted scan cannot consume an old photo.
+struct ScanPhotoCaptureState<Result> {
+    private var pending: (id: Int64, results: [Result])?
+
+    mutating func begin(id: Int64, results: [Result]) -> Bool {
+        guard pending == nil, !results.isEmpty else { return false }
+        pending = (id, results)
+        return true
+    }
+
+    mutating func take(id: Int64) -> [Result]? {
+        guard let pending, pending.id == id else { return nil }
+        self.pending = nil
+        return pending.results
+    }
+
+    mutating func cancel() { pending = nil }
+}
+
+open class LBXScanWrapper: NSObject, AVCaptureMetadataOutputObjectsDelegate, AVCapturePhotoCaptureDelegate {
     
     let device = AVCaptureDevice.default(for: AVMediaType.video)
     var input: AVCaptureDeviceInput?
@@ -45,7 +64,8 @@ open class LBXScanWrapper: NSObject,AVCaptureMetadataOutputObjectsDelegate {
         qos: .userInitiated
     )
     var previewLayer: AVCaptureVideoPreviewLayer?
-    var stillImageOutput: AVCaptureStillImageOutput
+    private let photoOutput = AVCapturePhotoOutput()
+    private var photoCaptureState = ScanPhotoCaptureState<LBXScanResult>()
 
     // 存储返回结果
     var arrayResult = [LBXScanResult]()
@@ -81,7 +101,6 @@ open class LBXScanWrapper: NSObject,AVCaptureMetadataOutputObjectsDelegate {
         successBlock = success
         output = AVCaptureMetadataOutput()
         isNeedCaptureImage = isCaptureImg
-        stillImageOutput = AVCaptureStillImageOutput()
 
         super.init()
         
@@ -107,11 +126,9 @@ open class LBXScanWrapper: NSObject,AVCaptureMetadataOutputObjectsDelegate {
             session.addOutput(output)
         }
 
-        if session.canAddOutput(stillImageOutput) {
-            session.addOutput(stillImageOutput)
+        if session.canAddOutput(photoOutput) {
+            session.addOutput(photoOutput)
         }
-
-        stillImageOutput.outputSettings = [AVVideoCodecJPEG: AVVideoCodecKey]
 
         session.sessionPreset = AVCaptureSession.Preset.high
 
@@ -156,6 +173,11 @@ open class LBXScanWrapper: NSObject,AVCaptureMetadataOutputObjectsDelegate {
     }
     
     func start() {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in self?.start() }
+            return
+        }
+        photoCaptureState.cancel()
         isNeedScanResult = true
         sessionQueue.async { [weak self] in
             guard let self = self, !self.session.isRunning else {
@@ -166,6 +188,11 @@ open class LBXScanWrapper: NSObject,AVCaptureMetadataOutputObjectsDelegate {
     }
     
     func stop() {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in self?.stop() }
+            return
+        }
+        photoCaptureState.cancel()
         isNeedScanResult = false
         sessionQueue.async { [weak self] in
             guard let self = self, self.session.isRunning else {
@@ -220,24 +247,59 @@ open class LBXScanWrapper: NSObject,AVCaptureMetadataOutputObjectsDelegate {
     
     //MARK: ----拍照
     open func captureImage() {
-        guard let stillImageConnection = connectionWithMediaType(mediaType: AVMediaType.video as AVMediaType,
-                                                                 connections: stillImageOutput.connections as [AnyObject]) else {
-                                                                    return
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in self?.captureImage() }
+            return
         }
-        stillImageOutput.captureStillImageAsynchronously(from: stillImageConnection, completionHandler: { (imageDataSampleBuffer, _) -> Void in
-            self.stop()
-            if let imageDataSampleBuffer = imageDataSampleBuffer,
-                let imageData = AVCaptureStillImageOutput.jpegStillImageNSDataRepresentation(imageDataSampleBuffer) {
-                
-                let scanImg = UIImage(data: imageData)
-                for idx in 0 ... self.arrayResult.count - 1 {
-                    self.arrayResult[idx].imgScanned = scanImg
+        let settings = photoOutput.availablePhotoCodecTypes.contains(.jpeg)
+            ? AVCapturePhotoSettings(format: [AVVideoCodecKey: AVVideoCodecType.jpeg])
+            : AVCapturePhotoSettings()
+        let id = settings.uniqueID
+        guard photoCaptureState.begin(id: id, results: arrayResult) else { return }
+        sessionQueue.async { [weak self] in
+            guard let self else { return }
+            guard self.session.isRunning,
+                  let connection = self.photoOutput.connection(with: .video),
+                  connection.isEnabled, connection.isActive else {
+                DispatchQueue.main.async { [weak self] in
+                    self?.finishPhotoCapture(id: id, image: nil)
                 }
+                return
             }
-            self.successBlock(self.arrayResult)
-        })
+            self.photoOutput.capturePhoto(with: settings, delegate: self)
+        }
     }
-    
+
+    public func photoOutput(_ output: AVCapturePhotoOutput,
+                            didFinishProcessingPhoto photo: AVCapturePhoto,
+                            error: Error?) {
+        let image = error == nil ? photo.fileDataRepresentation().flatMap { UIImage(data: $0) } : nil
+        let id = photo.resolvedSettings.uniqueID
+        DispatchQueue.main.async { [weak self] in
+            self?.finishPhotoCapture(id: id, image: image)
+        }
+    }
+
+    public func photoOutput(_ output: AVCapturePhotoOutput,
+                            didFinishCaptureFor resolvedSettings: AVCaptureResolvedPhotoSettings,
+                            error: Error?) {
+        // Also finish a failed capture that never produced a processing callback.
+        let id = resolvedSettings.uniqueID
+        DispatchQueue.main.async { [weak self] in
+            self?.finishPhotoCapture(id: id, image: nil)
+        }
+    }
+
+    private func finishPhotoCapture(id: Int64, image: UIImage?) {
+        dispatchPrecondition(condition: .onQueue(.main))
+        guard var results = photoCaptureState.take(id: id) else { return }
+        stop()
+        if let image {
+            for index in results.indices { results[index].imgScanned = image }
+        }
+        successBlock(results)
+    }
+
     open func connectionWithMediaType(mediaType: AVMediaType, connections: [AnyObject]) -> AVCaptureConnection? {
         for connection in connections {
             guard let connectionTmp = connection as? AVCaptureConnection else {

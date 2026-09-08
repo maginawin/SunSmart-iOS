@@ -2172,8 +2172,10 @@ class DeviceAddProfessionalModeController: UIViewController {
         scanBtn.layer.borderColor = Border_Color.cgColor
         scanBtn.backgroundColor = .white
         scanBtn.contentHorizontalAlignment = .left
-        scanBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8), bottom: 0, right: 0)
-        scanBtn.titleEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(10), bottom: 0, right: 0)
+        scanBtn.applyPlainContentLayout(
+            insets: .init(top: 0, leading: SCRXFrom(8), bottom: 0, trailing: 0),
+            imagePadding: SCRXFrom(2)
+        )
         
         headerView.addSubview(scanBtn)
         scanBtn.snp.makeConstraints { make in
@@ -2293,8 +2295,10 @@ class DeviceAddProfessionalModeController: UIViewController {
         scanBtn.layer.borderColor = Border_Color.cgColor
         scanBtn.backgroundColor = .white
         scanBtn.contentHorizontalAlignment = .left
-        scanBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8), bottom: 0, right: 0)
-        scanBtn.titleEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(10), bottom: 0, right: 0)
+        scanBtn.applyPlainContentLayout(
+            insets: .init(top: 0, leading: SCRXFrom(8), bottom: 0, trailing: 0),
+            imagePadding: SCRXFrom(2)
+        )
         headerView.addSubview(scanBtn)
         scanBtn.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))

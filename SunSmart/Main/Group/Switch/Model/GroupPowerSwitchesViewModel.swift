@@ -80,12 +80,12 @@ final class GroupPowerSwitchesViewModel {
             return "not_linked_to_switch".localizedString
         }
         if let mac = switchData.proxyNode?.macAddressResult, !mac.isEmpty {
-            return "MAC: \(mac)"
+            return String(format: "switch_mac_format".localizedString, mac)
         }
-        if let mac = switchData.enOceanMacAddress, !mac.isEmpty {
-            return "MAC: \(mac.getMacAddressSegmentString())"
+        if let mac = switchData.enOceanMacAddress?.getMacAddressSegmentString() {
+            return String(format: "switch_mac_format".localizedString, mac)
         }
-        return "MAC: N/A"
+        return "switch_mac_unavailable".localizedString
     }
 
     func groupTitle(for switchData: PJEightKeySwitchData) -> String {

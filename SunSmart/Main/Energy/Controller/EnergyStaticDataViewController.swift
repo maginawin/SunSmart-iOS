@@ -455,7 +455,7 @@ class EnergyStaticDataViewController: UIViewController {
             make.centerY.equalTo(energyReportLabel)
         }
         
-        viewTypeBtn = UIButton(title: "space".localizedString, titleSize: 13, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "arrow_down", target: self, action: #selector(viewTypeBtnAction))
+        viewTypeBtn = TrailingImageButton(title: "space".localizedString, titleSize: 13, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "arrow_down", target: self, action: #selector(viewTypeBtnAction))
         viewTypeBtn.contentHorizontalAlignment = .left
         viewTypeBtn.layer.cornerRadius = SCRYFrom(5)
         viewTypeBtn.layer.borderWidth = 1
@@ -468,11 +468,7 @@ class EnergyStaticDataViewController: UIViewController {
             make.width.equalTo(SCRXFrom(128))
             make.height.equalTo(SCRYFrom(32))
         }
-        viewTypeBtn.layoutIfNeeded()
-        viewTypeBtn.imageView?.sizeToFit()
-        let imageW = viewTypeBtn.imageView?.image?.size.width ?? 0
-        viewTypeBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: viewTypeBtn.width - imageW, bottom: 0, right: 0)
-        viewTypeBtn.titleEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8) - imageW, bottom: 0, right: imageW + SCRXFrom(6))
+
         
         energySpaceView = EnergyStaticDataSpaceView()
         energySpaceView.delegate = self

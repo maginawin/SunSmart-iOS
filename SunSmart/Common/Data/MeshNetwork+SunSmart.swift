@@ -3182,7 +3182,7 @@ extension Node {
                     self.scheduleIds = self.schedulerActions.keys.sorted()
                 }
                 let shouldFinalizeScheduleDeletion: Bool
-                if let model = model {
+                if model != nil {
                     shouldFinalizeScheduleDeletion =
                         self.schedulerSetupModels.allSatisfy { model in
                             self.allSchedulerModelEntrys[model] != nil

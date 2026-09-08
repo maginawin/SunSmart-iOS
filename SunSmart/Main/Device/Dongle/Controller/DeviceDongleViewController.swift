@@ -597,7 +597,7 @@ extension DeviceDongleViewController: UITableViewDataSource, UITableViewDelegate
             returnCell = cell
         case .storageUsage:
             let cell = tableView.dequeueReusableCell(withIdentifier: "storageUsageCell", for: indexPath) as! DeviceDongleStorageUsageCell
-            if let node = dongleData?.bindNode {
+            if dongleData?.bindNode != nil {
                 cell.clearBtn.isHidden = false
                 cell.progressLabel.isHidden = false
                 cell.progressView.progress = 50

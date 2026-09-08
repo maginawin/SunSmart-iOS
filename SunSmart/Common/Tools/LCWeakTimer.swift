@@ -26,7 +26,7 @@ class LCWeakTimer: NSObject {
     
     @objc private func timerBack() {
         if self.target != nil && self.selector != nil {
-            self.target.perform(self.selector)
+            _ = self.target.perform(self.selector)
         }
     }
     

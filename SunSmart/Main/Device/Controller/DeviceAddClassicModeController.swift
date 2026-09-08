@@ -1967,8 +1967,10 @@ class DeviceAddClassicModeController: UIViewController {
         scanBtn.layer.borderColor = Border_Color.cgColor
         scanBtn.backgroundColor = .white
         scanBtn.contentHorizontalAlignment = .left
-        scanBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8), bottom: 0, right: 0)
-        scanBtn.titleEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(10), bottom: 0, right: 0)
+        scanBtn.applyPlainContentLayout(
+            insets: .init(top: 0, leading: SCRXFrom(8), bottom: 0, trailing: 0),
+            imagePadding: SCRXFrom(2)
+        )
         
         headerView.addSubview(scanBtn)
         scanBtn.snp.makeConstraints { make in
@@ -1979,7 +1981,7 @@ class DeviceAddClassicModeController: UIViewController {
         }
         
         let targetName = currentTargetName
-        addDeviceTargetBtn = UIButton(title: targetName, titleSize: 13, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "space_arrow_down", target: self, action: #selector(addDeviceTargetBtnClick))
+        addDeviceTargetBtn = TrailingImageButton(title: targetName, titleSize: 13, titleWeight: .light, titleColor: TextBlack_Color, normalImageName: "space_arrow_down", target: self, action: #selector(addDeviceTargetBtnClick))
         addDeviceTargetBtn.contentHorizontalAlignment = .left
         addDeviceTargetBtn.layer.cornerRadius = SCRYFrom(5)
         addDeviceTargetBtn.layer.borderWidth = 1
@@ -1996,11 +1998,7 @@ class DeviceAddClassicModeController: UIViewController {
             }
             make.height.equalTo(SCRYFrom(32))
         }
-        addDeviceTargetBtn.layoutIfNeeded()
-        addDeviceTargetBtn.imageView?.sizeToFit()
-        let imageW = addDeviceTargetBtn.imageView?.image?.size.width ?? 0
-        addDeviceTargetBtn.imageEdgeInsets = UIEdgeInsets(top: 0, left: addDeviceTargetBtn.width - imageW, bottom: 0, right: 0)
-        addDeviceTargetBtn.titleEdgeInsets = UIEdgeInsets(top: 0, left: SCRXFrom(8) - imageW, bottom: 0, right: imageW + SCRXFrom(6))
+
         
         
         categoryView = WMMenuView(frame: CGRect(x: 0, y: view.safeAreaInsets.top + SCRYFrom(100) + SCRYFrom(12), width: view.width, height: CGFloat(Int(SCRYFrom(32)))))
