@@ -1700,7 +1700,7 @@
 "ACTIVATE" = "激活";
 "energy_reporting_note" = "1. 此设备具有真实功耗统计功能，可直接读取实测功率。\n2. 执行'激活额定功率'操作后，设备将自动读取额定功率并显示在页面上。\n3. 禁用后，设备将不再上报能耗数据。";
 "energy_inhibit_all_message" = "禁用后，设备将不再上报能耗数据。";
-"energy_activate_all_message" = "获取设备实际功耗时，设备将自动调整至100%亮度，这可能会干扰当前运行的自动化。完成后请手动恢复自动化。";
+"energy_activate_all_message" = "获取设备实际功耗时，设备将自动调整至100%亮度（受最高功率限制影响），这可能会干扰当前运行的自动化。完成后请手动恢复自动化。";
 "energy_reporting" = "能耗上报";
 "parameter_selection" = "参数选择";
 "Dim&Save" = "调光并保存";

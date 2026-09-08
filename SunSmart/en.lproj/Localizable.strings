@@ -1684,7 +1684,7 @@
 "ACTIVATE" = "ACTIVATE";
 "energy_reporting_note" = "1.This device has a true power consumption statistics function, which can directly read the actual test power.\n2.After Activate the rated power operation, the device will automatically read the rated power and display it on the page.\n3.After inhibit, the device no longer reports energy consumption.";
 "energy_inhibit_all_message" = "After inhibit, the device no longer reports energy consumption.";
-"energy_activate_all_message" = "Get the actual power consumption of the device will automatically adjust to 100% brightness, which will disrupt the currently running automation. Please manually restore the automation after completion.";
+"energy_activate_all_message" = "Get the actual power consumption of the device will automatically adjust to 100% brightness (Subject to maximum power limitations), which will disrupt the currently running automation. Please manually restore the automation after completion.";
 "energy_reporting" = "Energy Reporting";
 "parameter_selection" = "Parameter selection";
 "Dim&Save" = "Dim&Save";
