@@ -76,6 +76,7 @@ final class Model {
     var subscriptions: [Group] { (parentElement?.parentNode?.network?.groups ?? []).filter { subscribed.contains($0.address.address) } }
 }
 final class Node: Decodable {
+    static var decodeCount = 0
     enum GroupState: Int { case none = 0, inGroup = 1, exitFailure = 2 }
     let primaryUnicastAddress: Address
     let uuid: String
@@ -100,6 +101,7 @@ final class Node: Decodable {
     var sunricherVendorModel: Model? { elements.flatMap(\.models).first { $0.isVendor } }
     var group: Group? { elements.flatMap(\.models).flatMap(\.subscriptions).first }
     required init(from decoder: Decoder) throws {
+        Self.decodeCount += 1
         let json = try JSON(from: decoder)
         primaryUnicastAddress = Address(hex: json["unicastAddress"].stringValue)!
         uuid = json["uuid"].stringValue
@@ -122,8 +124,12 @@ final class MeshNetwork {
     var groups: [Group] = [], nodes: [Node] = []
     var scenes: [Scene] = []
     static var stored: [String: MeshNetwork] = [:]
+    static var loadCount = 0
     init(_ uuid: UUID = UUID()) { self.uuid = uuid }
-    static func load(meshUUID: String, subnetworkId: String) -> MeshNetwork? { stored[meshUUID + subnetworkId] }
+    static func load(meshUUID: String, subnetworkId: String) -> MeshNetwork? {
+        loadCount += 1
+        return stored[meshUUID + subnetworkId]
+    }
     func remove(node: Node) { nodes.removeAll { $0 === node }; node.network = nil }
 }
 final class Scene {
@@ -252,7 +258,7 @@ enum NodeSyncData: Equatable {
         GroupInfo.stored[space.meshUUID + networkId + group.address.address.hex] = group.info
         return .init(network: network, space: space, group: group, nodes: nodes)
     }
-    static func main() throws {
+    static func main() async throws {
         try testDeviceDeletionRecovery()
         try testSiteDeviceOwnership()
         let target = try fixture(), other = try fixture(networkId: "BB"), sameSite = try fixture(networkId: "CC", uuid: target.network.uuid)
@@ -361,6 +367,20 @@ enum NodeSyncData: Equatable {
             require(inspected?.hasValidationIssues == false, "provided server snapshot must pass actual import preflight")
             print("PASS: provided server snapshot preflight")
         }
+        let source = payload()
+        let prepared = await ProximityLightingImportPreflight.prepare(spaceJsonData: source, initialize: false)
+        let decodes = Node.decodeCount
+        let repeated = await ProximityLightingImportPreflight.prepare(spaceJsonData: source, initialize: false)
+        require(decodes > 0 && Node.decodeCount == decodes, "unchanged remote preflight must not decode Nodes again")
+        require(prepared.reconciliation?.snapshot == repeated.reconciliation?.snapshot, "cache must preserve topology")
+        var changedPayload = source
+        changedPayload["updateTimestamp"] = 42
+        _ = await ProximityLightingImportPreflight.prepare(spaceJsonData: changedPayload, initialize: false)
+        require(Node.decodeCount > decodes, "changed payload must invalidate remote preflight")
+        let afterChanged = Node.decodeCount
+        _ = await ProximityLightingImportPreflight.prepare(spaceJsonData: changedPayload, initialize: true)
+        require(Node.decodeCount > afterChanged, "initialization changes legacy interpretation and must invalidate")
+
         print("PASS: scoped import/planner/coordinator execution, colliding Sites/Spaces, no cloud side effects, destructive import guard, explicit deletion and equivalent logical edits")
     }
 }

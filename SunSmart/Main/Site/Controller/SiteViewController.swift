@@ -1454,11 +1454,12 @@ self.updateAddressData()
 //            return []
 //        }
         
-        guard let meshNetwork = sitePrimaryMeshNetwork() else {
+        let models = GatewayModel.load(siteId: site.id)
+        guard !models.isEmpty, let meshNetwork = sitePrimaryMeshNetwork() else {
             return []
         }
         
-        let gatewayModels: [Gateway] = GatewayModel.load(siteId: site.id).compactMap { model in
+        let gatewayModels: [Gateway] = models.compactMap { model in
             guard let node = model.resolveNode(in: meshNetwork) else {
                 return nil
             }

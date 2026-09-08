@@ -30,6 +30,57 @@ private enum ConfigurationPersistenceFailure: Error {
     case profileWrite, groupInfoWrite, profileReadback
 }
 
+/// Read-only projection of the SDK's persisted identity columns. This preflight
+/// never reads model JSON or changes SDK schema/state; failures use the SDK path.
+enum SiteDeviceOwnershipStore {
+    static func loadMACs(meshUUID: String) throws -> [(networkId: String, mac: String?)] {
+        let path = MeshDataManager.customDatabasePath ?? NSHomeDirectory() + "/Documents/mesh.sqlite3"
+        let db = try Connection(path, readonly: true)
+        db.busyTimeout = 0.05
+        return try loadMACs(meshUUID: meshUUID, database: db)
+    }
+
+    static func loadMACs(meshUUID: String, database: Connection) throws -> [(networkId: String, mac: String?)] {
+        let mesh = Expression<String>("meshUUID")
+        let subnet = Expression<String?>("subnetworkId")
+        let mac = Expression<String?>("macAddress")
+        let rows = try database.prepare(Table("nodes").select(subnet, mac).filter(mesh == meshUUID))
+        return rows.compactMap { row in
+            guard let networkId = row[subnet] else { return nil }
+            return (networkId, row[mac])
+        }
+    }
+}
+
+/// Conservative revision for detached read snapshots. Any unrelated database
+/// mutation also invalidates reuse; a failed revision query always reloads.
+struct ConfigurationSnapshotRevision: Equatable {
+    let account: String
+    let region: String
+    let app: String
+    let mesh: String
+
+    static func current() -> ConfigurationSnapshotRevision? {
+        guard let db = SunSmartDataManager.shared.db,
+              let version = try? db.scalar("PRAGMA data_version") as? Int64,
+              let mesh = MeshDataManager.shared.databaseReadRevision() else { return nil }
+        return .init(account: UserData.currentUserId,
+                     region: String(describing: UserData.currentServerRegion),
+                     app: "\(ObjectIdentifier(db)):\(db.totalChanges):\(version)", mesh: mesh)
+    }
+}
+
+/// One operation owns this detached network; reuse ends at the next database mutation.
+final class ConfigurationMeshReadSnapshot {
+    var network: MeshNetwork?
+    var revision: ConfigurationSnapshotRevision?
+
+    var currentNetwork: MeshNetwork? {
+        guard revision != nil, revision == ConfigurationSnapshotRevision.current() else { return nil }
+        return network
+    }
+}
+
 class SunSmartDataManager {
     
     static let shared = SunSmartDataManager()

@@ -680,9 +680,24 @@ enum SpaceConfigurationSafety {
     }
 
     static func verifyUpgradeBaseline(_ space: SpaceData, local: [String: Any], remote: [String: Any]) {
+        var started = ProcessInfo.processInfo.systemUptime
+        func mark(_ phase: String) {
+            let now = ProcessInfo.processInfo.systemUptime
+            #if DEBUG
+            print("[SiteImportBaseline] space=\(space.id) phase=\(phase) seconds=\(now - started) main=\(Thread.isMainThread)")
+            #endif
+            started = now
+        }
         guard !isBlocked(space), let expected = SpaceConfigurationIntegrityPolicy.configurationData(local),
-              expected == SpaceConfigurationIntegrityPolicy.configurationData(remote),
-              checkpoint(space), recordSnapshot(space, payload: local) else { return }
+              expected == SpaceConfigurationIntegrityPolicy.configurationData(remote) else {
+            mark("comparisonRejected")
+            return
+        }
+        mark("comparisonMatched")
+        guard checkpoint(space) else { mark("checkpointFailed"); return }
+        mark("checkpointCompleted")
+        guard recordSnapshot(space, payload: local) else { mark("snapshotFailed"); return }
+        mark("snapshotCompleted")
         UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
         if var state = try? recoveryState(space) {
             state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(remote)

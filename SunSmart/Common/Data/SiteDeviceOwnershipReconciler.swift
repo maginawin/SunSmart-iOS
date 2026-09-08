@@ -48,15 +48,27 @@ enum SiteDeviceOwnershipReconciler {
         runningSites.insert(siteId)
         defer { runningSites.remove(siteId) }
         let spaces = SpaceData.load(siteId: siteId).filter { $0.state == .normal }
+        guard needsReconciliation(spaces: spaces) else { return [] }
+        let started = Date()
+        // Nodes and Groups hold weak network links. Keep every loaded Space
+        // alive through identity validation and deletion, not only its loop body.
+        var networks: [MeshNetwork] = []
+        defer {
+            withExtendedLifetime(networks) {}
+            #if DEBUG
+            print("[SiteDeviceOwnership] site=\(siteId) phase=reconcile spaces=\(spaces.count) elapsed=\(Date().timeIntervalSince(started))")
+            #endif
+        }
         var records: [(space: SpaceData, node: Node, identity: SiteDeviceOwnershipPolicy.Instance)] = []
         var allNodes: [Node] = []
         var changed = Set<String>()
         for space in spaces {
-            guard !SpaceConfigurationSafety.hasPendingImport(space),
-                  let network = ProximityLightingTopologyContext.network(for: space) else { continue }
+            guard !SpaceConfigurationSafety.hasPendingImport(space) else { continue }
             let hadCleanup = SpaceConfigurationSafety.hasPendingDeletionCleanup(space)
-            DevicePermanentDeletionContext.resume(space: space)
+            if hadCleanup { DevicePermanentDeletionContext.resume(space: space) }
             if hadCleanup && !SpaceConfigurationSafety.hasPendingDeletionCleanup(space) { changed.insert(space.id) }
+            guard let network = ProximityLightingTopologyContext.network(for: space) else { continue }
+            networks.append(network)
             for node in network.nodes {
                 allNodes.append(node)
                 if let identity = instance(node, space: space) { records.append((space, node, identity)) }
@@ -105,5 +117,45 @@ enum SiteDeviceOwnershipReconciler {
             }
         }
         return changed
+    }
+
+    /// Do not decode Elements/Models just to discover that nothing needs repair.
+    /// Read failures conservatively retain the existing reconciliation path.
+    private static func needsReconciliation(spaces: [SpaceData]) -> Bool {
+        let spaces = spaces.filter { !SpaceConfigurationSafety.hasPendingImport($0) }
+        if spaces.contains(where: { SpaceConfigurationSafety.hasPendingDeletionCleanup($0) }) { return true }
+        guard spaces.count > 1 else { return false }
+        let started = Date()
+        do {
+            var identities: [(spaceId: String, mac: String?)] = []
+            for meshUUID in Set(spaces.map(\.meshUUID)) {
+                let rows = try SiteDeviceOwnershipStore.loadMACs(meshUUID: meshUUID)
+                let scopedSpaces = Dictionary(grouping: spaces.filter { $0.meshUUID == meshUUID }, by: \.meshNetworkId)
+                for row in rows {
+                    for space in scopedSpaces[row.networkId] ?? [] {
+                        identities.append((space.id, row.mac))
+                    }
+                }
+            }
+            // Include uncommitted live instances without loading another Mesh.
+            if let network = MeshNetworkManager.instance.meshNetwork {
+                for space in spaces where space.meshUUID == network.uuid.uuidString {
+                    identities.append(contentsOf: network.nodes.compactMap { node in
+                        guard let identity = instance(node, space: space) else { return nil }
+                        return (identity.spaceId, identity.mac)
+                    })
+                }
+            }
+            let needed = SiteDeviceOwnershipPolicy.hasCrossSpaceDuplicate(identities)
+            #if DEBUG
+            print("[SiteDeviceOwnership] phase=preflight spaces=\(spaces.count) identities=\(identities.count) needsRepair=\(needed) elapsed=\(Date().timeIntervalSince(started))")
+            #endif
+            return needed
+        } catch {
+            #if DEBUG
+            print("[SiteDeviceOwnership] phase=preflight result=unavailable")
+            #endif
+            return true
+        }
     }
 }

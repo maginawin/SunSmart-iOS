@@ -13,6 +13,11 @@ import Alamofire
 final class NetworkLoggerPlugin: PluginType {
 
     private let bodySummaryLimit = 3000
+    private let diagnosticBodyLimit = 32 * 1024
+    private let nodeProbeLimit = 10
+    private var nodeProbeEnabled: Bool {
+        ProcessInfo.processInfo.arguments.contains("-DeviceParameterNodeProbe")
+    }
 
     // Called immediately before a request is sent over the network (or stubbed).
     func willSend(_ request: RequestType, target: TargetType) {
@@ -31,11 +36,13 @@ final class NetworkLoggerPlugin: PluginType {
         path=\(networkTarget.path)
         headers=\(urlRequest?.allHTTPHeaderFields ?? [:])
         bodyBytes=\(urlRequest?.httpBody?.count ?? 0)
-        declaredContentEncodingGzip=\(networkTarget.declaredContentEncodingGzip)
-        actualBodyGzip=\(networkTarget.actualBodyGzip)
+        declaredContentEncodingGzip=\(urlRequest?.value(forHTTPHeaderField: "Content-Encoding") == "gzip")
+        actualBodyGzip=\(urlRequest?.httpBody?.isGzipData ?? false)
         body=\(requestBodySummary(urlRequest: urlRequest, target: networkTarget))
         """)
-        printDeviceParameterUploadNodeProbeIfNeeded(target: networkTarget)
+        if let body = urlRequest?.httpBody, body.count <= diagnosticBodyLimit, !body.isGzipData {
+            printDeviceParameterUploadNodeProbeIfNeeded(target: networkTarget)
+        }
         #endif
     }
 
@@ -45,16 +52,18 @@ final class NetworkLoggerPlugin: PluginType {
         let networkTarget = target as? NetowrkReqeustApi
         switch result {
         case .success(let response):
-            let responseJSON = try? JSON(data: response.data)
+            let responseJSON = response.data.count <= diagnosticBodyLimit ? try? JSON(data: response.data) : nil
             let businessCode = responseJSON?["code"].int
             let businessMessage = responseJSON?["message"].string ?? responseJSON?["msg"].string
+            let absent = response.data.count > diagnosticBodyLimit ? "<omitted: large response>" : "<missing>"
             print("""
             [HTTP][Response]
             target=\(networkTarget?.diagnosticName ?? String(describing: target))
             url=\(response.request?.url?.absoluteString ?? "<unknown>")
             status=\(response.statusCode)
-            businessCode=\(businessCode.map(String.init) ?? "<missing>")
-            businessMessage=\(businessMessage ?? "<missing>")
+            businessCode=\(businessCode.map(String.init) ?? absent)
+            businessMessage=\(businessMessage ?? absent)
+            contentEncoding=\(response.response?.value(forHTTPHeaderField: "Content-Encoding") ?? "identity")
             responseBytes=\(response.data.count)
             body=\(responseBodySummary(response.data))
             """)
@@ -83,6 +92,9 @@ final class NetworkLoggerPlugin: PluginType {
 private extension NetworkLoggerPlugin {
 
     func requestBodySummary(urlRequest: URLRequest?, target: NetowrkReqeustApi) -> String {
+        if let body = urlRequest?.httpBody, body.count > diagnosticBodyLimit || body.isGzipData {
+            return "<body omitted: \(body.count) bytes>"
+        }
         if let parameters = target.sanitizedParameters {
             return summary(jsonString(from: parameters))
         }
@@ -99,6 +111,7 @@ private extension NetworkLoggerPlugin {
         guard !data.isEmpty else {
             return "<empty>"
         }
+        guard data.count <= diagnosticBodyLimit else { return "<body omitted: \(data.count) bytes>" }
         if let json = try? JSONSerialization.jsonObject(with: data),
            JSONSerialization.isValidJSONObject(json),
            let jsonData = try? JSONSerialization.data(withJSONObject: NetowrkReqeustApi.sanitizedValue(json), options: [.sortedKeys]),
@@ -125,7 +138,9 @@ private extension NetworkLoggerPlugin {
     }
 
     func printDeviceParameterNodeProbeIfNeeded(data: Data, targetName: String?) {
-        guard targetName == "siteInfo" || targetName == "spaceInfo",
+        guard nodeProbeEnabled,
+              data.count <= diagnosticBodyLimit,
+              targetName == "siteInfo" || targetName == "spaceInfo",
               let json = try? JSON(data: data) else {
             return
         }
@@ -138,7 +153,7 @@ private extension NetworkLoggerPlugin {
             """)
             return
         }
-        let nodeLines = nodeProbes.map { probe in
+        let nodeLines = nodeProbes.prefix(nodeProbeLimit).map { probe in
             """
             - path=\(probe.path), uuid=\(probe.uuid), unicastAddress=\(probe.unicastAddress), cid=\(probe.cid), pid=\(probe.pid), changeControlPage=\(probe.changeControlPage), absoluteCctRangeMin=\(probe.absoluteCctRangeMin), absoluteCctRangeMax=\(probe.absoluteCctRangeMax)
             """
@@ -147,6 +162,7 @@ private extension NetworkLoggerPlugin {
         [HTTP][DeviceParameterNodeProbe]
         target=\(targetName ?? "<unknown>")
         nodeCount=\(nodeProbes.count)
+        omittedCount=\(max(0, nodeProbes.count - nodeProbeLimit))
         nodes:
         \(nodeLines)
         """)
@@ -154,7 +170,8 @@ private extension NetworkLoggerPlugin {
 
     func printDeviceParameterUploadNodeProbeIfNeeded(target: NetowrkReqeustApi) {
         let targetName = target.diagnosticName
-        guard targetName == "siteAdd" || targetName == "siteUpload" || targetName == "spaceUpload",
+        guard nodeProbeEnabled,
+              targetName == "siteAdd" || targetName == "siteUpload" || targetName == "spaceUpload",
               let parameters = target.sanitizedParameters else {
             return
         }
@@ -169,7 +186,7 @@ private extension NetworkLoggerPlugin {
             return
         }
 
-        let nodeLines = nodeProbes.map { probe in
+        let nodeLines = nodeProbes.prefix(nodeProbeLimit).map { probe in
             """
             - path=\(probe.path), uuid=\(probe.uuid), unicastAddress=\(probe.unicastAddress), cid=\(probe.cid), pid=\(probe.pid), changeControlPage=\(probe.changeControlPage), absoluteCctRangeMin=\(probe.absoluteCctRangeMin), absoluteCctRangeMax=\(probe.absoluteCctRangeMax)
             """
@@ -178,6 +195,7 @@ private extension NetworkLoggerPlugin {
         [HTTP][DeviceParameterUploadNodeProbe]
         target=\(targetName)
         nodeCount=\(nodeProbes.count)
+        omittedCount=\(max(0, nodeProbes.count - nodeProbeLimit))
         nodes:
         \(nodeLines)
         """)

@@ -36,11 +36,20 @@ methods += """
     static func testMigrated(_ space: SpaceData) -> Bool { testDefaults.bool(forKey: "spaceConfigurationMigrated." + key(space)) }
 }
 """
-metadata = section(read('SunSmart/Common/Data/ImportData.swift'),
+imports = read('SunSmart/Common/Data/ImportData.swift')
+metadata = section(imports,
     '    func applyRemoteSpaceMetadata(', '    /// 更新空间内基本数据')
 test = read('Tests/Group/SpaceRecoveryReceiptTests.swift').replace('// METADATA_METHOD', metadata)
+# Execute the production update prefix through both async freshness guards.
+# Mesh preparation/export and App database reads are controlled test boundaries.
+preparation = section(imports, '    func update(\n        spaceJsonData:',
+    '        return await withCheckedContinuation { continuation in')
+test = test.replace('// IMPORT_PREPARATION_METHOD', '@MainActor\n' + preparation
+    + '        _ = proximityPreflight\n        return .prepared\n    }\n')
+test += '\n' + section(imports, 'final class SiteImportTrace', '\nstruct SpaceImportOutcome')
+test += '\n' + read('Tests/Group/SpaceImportPreparationTests.swift')
 network = read('SunSmart/Common/Network/NetworkRequest.swift')
-test = test.replace('// NETWORK_ERROR_TYPE', network[network.index('public enum NetworkApiError:'):])
+test = test.replace('// NETWORK_ERROR_TYPE', section(network, 'public enum NetworkApiError:', '/// Encoding is selected'))
 with tempfile.TemporaryDirectory(prefix='space-receipt-tests-') as temp:
     temp = Path(temp)
     harness = temp / 'Harness.swift'

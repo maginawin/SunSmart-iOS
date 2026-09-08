@@ -1,6 +1,17 @@
 import Foundation
 
 enum UserData { static var currentUserId = "test", currentServerRegion = "region" }
+enum SiteDeviceOwnershipStore {
+    static var failReads = false
+    static func loadMACs(meshUUID: String) throws -> [(networkId: String, mac: String?)] {
+        if failReads { throw CocoaError(.fileReadCorruptFile) }
+        return SpaceData.stored.values.filter { $0.meshUUID == meshUUID }.flatMap { space in
+            (MeshNetwork.stored[space.meshUUID + space.meshNetworkId]?.nodes ?? []).map {
+                (space.meshNetworkId, $0.macAddress)
+            }
+        }
+    }
+}
 final class CloudSynchronizationManager {
     static let shared = CloudSynchronizationManager()
     enum Operation { case syncSpace(space: SpaceData) }
@@ -23,6 +34,24 @@ extension ScopedImportTests {
         let tie = P.Instance(siteId: "S", spaceId: "B", networkId: "B", uuid: "same", address: 70, created: 10, mac: old.mac)
         require(P.removals([old, tie]).isEmpty, "timestamp ties need explicit provisioning evidence")
         require(P.removals([old, tie], preferred: tie).map(\.old) == [old], "local provisioning breaks a same-second tie")
+        let clean = try fixture(networkId: "STARTUP-CLEAN")
+        clean.nodes[0].macAddress = "AA:BB:CC:DD:EE:01"
+        clean.nodes[1].macAddress = "aabbccddee01"
+        MeshNetwork.loadCount = 0
+        DevicePermanentDeletionContext.resume(space: clean.space)
+        require(MeshNetwork.loadCount == 0, "empty deletion journal must not decode any Mesh")
+        _ = SiteDeviceOwnershipReconciler.reconcile(siteId: clean.space.siteId)
+        require(MeshNetwork.loadCount == 0, "single normal Space must not decode any Mesh at startup")
+        let cleanPeerNetwork = MeshNetwork(clean.network.uuid)
+        let cleanPeer = SpaceData(network: cleanPeerNetwork, networkId: "STARTUP-CLEAN-PEER")
+        MeshNetwork.stored[cleanPeer.meshUUID + cleanPeer.meshNetworkId] = cleanPeerNetwork
+        SpaceData.stored[cleanPeer.meshUUID + cleanPeer.meshNetworkId] = cleanPeer
+        _ = SiteDeviceOwnershipReconciler.reconcile(siteId: clean.space.siteId)
+        require(MeshNetwork.loadCount == 0, "multiple Spaces without duplicate MACs must not decode any Mesh")
+        SiteDeviceOwnershipStore.failReads = true
+        _ = SiteDeviceOwnershipReconciler.reconcile(siteId: clean.space.siteId)
+        require(MeshNetwork.loadCount > 0, "failed preflight must preserve existing reconciliation instead of silently skipping")
+        SiteDeviceOwnershipStore.failReads = false
 
         let prior = try fixture(networkId: "OWNERSHIP-OLD")
         let unrelated = try fixture(networkId: "OWNERSHIP-OTHER")

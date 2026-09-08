@@ -71,6 +71,11 @@ enum SiteGatewayCloudTimeZoneLocalContextBuilder {
             }
             result[id] = gateway
         }
+        let models = GatewayModel.load(siteId: site.id).filter {
+            guard let id = SiteGatewayAccessScope.normalize($0.mac) else { return false }
+            return authorizedGatewayIDs.contains(id) && scope.contains(normalizedGatewayID: id)
+        }
+        guard !models.isEmpty else { return .init(snapshotsByID: [:], dirtyOverridesByID: [:]) }
         let meshNetwork = MeshNetwork.load(
             meshUUID: site.meshUUID,
             subnetworkId: site.meshNetworkId
@@ -78,7 +83,7 @@ enum SiteGatewayCloudTimeZoneLocalContextBuilder {
         var namesByID: [String: String] = [:]
         var dirtyCandidates: [SyncGatewayDirtyTimeCandidate] = []
 
-        GatewayModel.load(siteId: site.id).forEach { gateway in
+        models.forEach { gateway in
             guard let id = SiteGatewayAccessScope.normalize(gateway.mac),
                   authorizedGatewayIDs.contains(id),
                   scope.contains(normalizedGatewayID: id),

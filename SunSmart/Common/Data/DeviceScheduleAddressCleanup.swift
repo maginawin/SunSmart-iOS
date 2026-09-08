@@ -89,6 +89,18 @@ enum SiteDeviceOwnershipPolicy {
         return mac
     }
 
+    /// A conservative preflight: timestamps and deletion decisions still use
+    /// the complete, current instances after a cross-Space identity is found.
+    static func hasCrossSpaceDuplicate(_ identities: [(spaceId: String, mac: String?)]) -> Bool {
+        var owners: [String: String] = [:]
+        for identity in identities {
+            guard let mac = normalizedMAC(identity.mac) else { continue }
+            if let owner = owners[mac], owner != identity.spaceId { return true }
+            owners[mac] = identity.spaceId
+        }
+        return false
+    }
+
     static func removals(_ instances: [Instance], preferred: Instance? = nil) -> [(old: Instance, winner: Instance)] {
         let grouped = Dictionary(grouping: instances) { $0.siteId + "/" + $0.mac }
         return grouped.values.flatMap { candidates -> [(old: Instance, winner: Instance)] in

@@ -8,11 +8,30 @@
 import Foundation
 import NordicSigMeshSDK
 import SwiftyJSON
+import CryptoKit
 
 private var jsonDecoder: JSONDecoder {
     let decoder = JSONDecoder()
     decoder.dateDecodingStrategy = .iso8601
     return decoder
+}
+
+/// Stage timings use a monotonic clock; payloads and credentials are never logged.
+final class SiteImportTrace {
+    private let id = UUID().uuidString
+    private let scope: String
+    private let started = ProcessInfo.processInfo.systemUptime
+    private var previous = ProcessInfo.processInfo.systemUptime
+
+    init(_ scope: String) { self.scope = scope; mark("begin") }
+
+    func mark(_ phase: String) {
+        let now = ProcessInfo.processInfo.systemUptime
+        #if DEBUG
+        print("[SiteImportTiming] trace=\(id) scope=\(scope) phase=\(phase) main=\(Thread.isMainThread) stageSeconds=\(now - previous) totalSeconds=\(now - started)")
+        #endif
+        previous = now
+    }
 }
 
 struct SpaceImportOutcome {
@@ -115,6 +134,36 @@ private struct ProximityLightingImportPreflight {
     let reconciliation: ProximityLightingTopologyReconciler.Result?
     let hardErrors: [ProximityLightingTopologyReconciler.HardError]
     let warnings: [String]
+
+    private static let preparationQueue = DispatchQueue(label: "com.sunsmart.import-preflight", qos: .userInitiated)
+    private static var prepared: [(key: Data, value: ProximityLightingImportPreflight)] = []
+
+    static func prepare(spaceJsonData: [String: Any], initialize: Bool) async -> ProximityLightingImportPreflight {
+        await withCheckedContinuation { continuation in
+            preparationQueue.async {
+                let trace = SiteImportTrace("remotePreflight:" + (spaceJsonData["uuid"] as? String ?? "unknown"))
+                // Include every remote field and initialize in the cache identity. Results contain
+                // only value topology; local ownership/authority checks always run after this await.
+                let data = try? JSONSerialization.data(withJSONObject: spaceJsonData, options: [.sortedKeys])
+                let key = data.map { Data(SHA256.hash(data: $0 + Data([initialize ? 1 : 0]))) }
+                if let key, let cached = prepared.first(where: { $0.key == key }) {
+                    trace.mark("cacheHit")
+                    continuation.resume(returning: cached.value)
+                    return
+                }
+                let value = parse(spaceJsonData: spaceJsonData,
+                    nodeDicts: spaceJsonData["nodes"] as? [[String: Any]] ?? [],
+                    groupDicts: spaceJsonData["groups"] as? [[String: Any]] ?? [], initialize: initialize)
+                    ?? bestEffort(spaceJsonData: spaceJsonData, initialize: initialize)
+                if let key {
+                    prepared.append((key, value))
+                    if prepared.count > 8 { prepared.removeFirst() }
+                }
+                trace.mark("decoded")
+                continuation.resume(returning: value)
+            }
+        }
+    }
 
     var hasValidationIssues: Bool {
         return !warnings.isEmpty || !hardErrors.isEmpty || reconciliation?.hasDestructiveRepairs == true
@@ -446,6 +495,8 @@ extension SiteData {
     /// - Parameter changeAddress: 是否切换地址
     /// - Parameter initialize 首次更新数据（本地无记录）
     func update(siteJsonData: [String: Any], changeAddress: Bool = false, initialize: Bool = false) async {
+        let trace = SiteImportTrace("site:" + id)
+        defer { trace.mark("end") }
         
         let json = JSON(siteJsonData)
         guard let uuid = json["uuid"].string,
@@ -480,6 +531,7 @@ extension SiteData {
             subnetworkId: self.meshNetworkId,
             allData: false
         )
+        trace.mark("networkLoaded")
         // 增加主网络id
         if let mainNetworkKey = meshNetwork?.networkKeys.first(where: { $0.isPrimary }), self.meshNetworkId != mainNetworkKey.networkId.hex {
             self.meshNetworkId = mainNetworkKey.networkId.hex
@@ -720,13 +772,15 @@ extension SiteData {
                             if (meshNetwork?.currentIVIndex ?? 0) - ivIndex <= 1 {
                                 var appendAddresses = addresses
                                 if let exclusionData = exclusionDataList.first(where: { $0.ivIndex == ivIndex }) {
-                                    appendAddresses = addresses.filter({ !exclusionData.addresses.contains($0) })
+                                    let remoteAddresses = Set(exclusionData.addresses)
+                                    appendAddresses = addresses.filter { !remoteAddresses.contains($0) }
                                 }
                                 if appendAddresses.count > 0 {
                                     appendExclusionDatas.append((ivIndex: ivIndex, addresses: appendAddresses))
                                 }
                             }else { // 废弃地址回收后，删除已使用地址
-                                meshNetwork?.deviceUsedAddresses.removeAll(where: { addresses.contains($0) })
+                                let expiredAddresses = Set(addresses)
+                                meshNetwork?.deviceUsedAddresses.removeAll { expiredAddresses.contains($0) }
                             }
                         }
                     }
@@ -760,6 +814,7 @@ extension SiteData {
             }
         )
 
+        trace.mark("siteMetadataPrepared")
         if let spaceDicts = json["spaces"].arrayObject as? [[String: Any]] {
             var spaces: [SpaceData] = []
             var serverSpaceIds = Set<String>()
@@ -784,6 +839,7 @@ extension SiteData {
                 }
             }
 
+            trace.mark("spacesCompleted")
             spaces.forEach { space in
                 switch gatewaySnapshot.decision(for: space.relevanceGatewayId) {
                 case .preserve:
@@ -1562,8 +1618,10 @@ extension SpaceData {
         spaceJsonData: [String: Any],
         initialize: Bool = false
     ) async -> SpaceImportOutcome {
+        let trace = SiteImportTrace("space:" + id)
+        defer { trace.mark("end") }
         guard spaceJsonData["uuid"] as? String == id else { return .rejected("spaceIdentityMismatch") }
-        guard let context = try? SpaceConfigurationSafety.recoveryState(self), context.phase == .active else {
+        guard (try? SpaceConfigurationSafety.recoveryState(self).phase) == .active else {
             return .rejected("spaceRemovalPending")
         }
         applyRemoteSpaceMetadata(spaceJsonData)
@@ -1577,9 +1635,31 @@ extension SpaceData {
         }
         let resumingImport = SpaceConfigurationSafety.hasPendingImport(self)
         let spaceJsonData = SpaceConfigurationSafety.pendingImport(self) ?? spaceJsonData
+        trace.mark("metadataPrepared")
+        // Metadata may legitimately change the authority generation for this import.
+        // Capture the context after synchronous preparation, before the first await.
+        guard let context = try? SpaceConfigurationSafety.recoveryState(self), context.phase == .active else {
+            return .rejected("spaceRemovalPending")
+        }
+        let capturedLastUpdate = lastUpdate
+        let proximityPreflight = await ProximityLightingImportPreflight.prepare(
+            spaceJsonData: spaceJsonData, initialize: initialize)
+        guard !Task.isCancelled, SpaceConfigurationSafety.isCurrent(context, space: self),
+              lastUpdate == capturedLastUpdate,
+              initialize || SpaceData.load(siteId: siteId, spaceId: id).first?.lastUpdate == capturedLastUpdate
+        else { return .rejected("staleImportPreparation") }
+        trace.mark("remotePreflightPrepared")
+        let baselineSnapshot = ConfigurationMeshReadSnapshot()
         if !resumingImport, SpaceConfigurationSafety.needsUpgradeBaseline(self),
-           let local = await export(purpose: .localBackup) {
+           let local = await export(purpose: .localBackup, readSnapshot: baselineSnapshot) {
+            trace.mark("upgradeBaselineExported")
             SpaceConfigurationSafety.verifyUpgradeBaseline(self, local: local, remote: spaceJsonData)
+        }
+        trace.mark("upgradeBaselineCompleted")
+        guard !Task.isCancelled, SpaceConfigurationSafety.isCurrent(context, space: self),
+              lastUpdate == capturedLastUpdate,
+              initialize || SpaceData.load(siteId: siteId, spaceId: id).first?.lastUpdate == capturedLastUpdate else {
+            return .rejected("staleImportPreparation")
         }
         return await withCheckedContinuation { continuation in
             if SpaceConfigurationSafety.preservesLocalChanges(self) {
@@ -1602,28 +1682,18 @@ extension SpaceData {
                 return
             }
             let switchesDicts = json["switches"].arrayObject as? [[String: Any]] ?? []
-            let parsedProximityPreflight = ProximityLightingImportPreflight.parse(
-                spaceJsonData: spaceJsonData,
-                nodeDicts: nodeDicts,
-                groupDicts: groupDicts,
-                initialize: initialize
-            )
-            let proximityPreflight = parsedProximityPreflight
-                ?? ProximityLightingImportPreflight.bestEffort(
-                    spaceJsonData: spaceJsonData,
-                    initialize: initialize
-                )
             let currentMeshNetwork = MeshNetworkManager.instance.meshNetwork
             let localMeshNetwork: MeshNetwork?
             if currentMeshNetwork?.uuid.uuidString == self.meshUUID,
                MeshNetworkManager.instance.currentNetworkKey.networkId.hex == self.meshNetworkId {
                 localMeshNetwork = currentMeshNetwork
             } else {
-                localMeshNetwork = MeshNetwork.load(
+                localMeshNetwork = baselineSnapshot.currentNetwork ?? MeshNetwork.load(
                     meshUUID: self.meshUUID,
                     subnetworkId: self.meshNetworkId
                 )
             }
+            trace.mark("localNetworkLoaded")
             let hasUsableLocalSnapshot = localMeshNetwork?.nodes.contains {
                 !$0.isLocalProvisioner
                     && !$0.isProvisioner
@@ -1713,7 +1783,7 @@ extension SpaceData {
 #endif
             
             // 子网key丢失
-            if let network = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId, allData: false), !network.networkKeys.contains(where: { $0.networkId.hex == self.meshNetworkId }) {
+            if let network = localMeshNetwork ?? MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId, allData: false), !network.networkKeys.contains(where: { $0.networkId.hex == self.meshNetworkId }) {
                 // 修复子网key数据
                 if let netKeyDict = json["netKey"].dictionaryObject,
                    let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
@@ -1737,6 +1807,7 @@ extension SpaceData {
             let shouldApplyServerData = resumingImport || SpaceConfigurationSafety.requiresAuthorityImport(self)
                 || SpaceConfigurationSafety.isBlocked(self) || lastUpdate > self.lastUpdate || initialize || (sameTimestampSummaryDiffers && !localNeedsUpload)
             // 服务器最后更新时间比本地时间新才覆盖本地数据
+            trace.mark("applyDecision")
             guard shouldApplyServerData else {
 #if DEBUG
                 let skipNote = sameTimestampSummaryDiffers ? serverSummaryDiffersNote : "serverUpdateTimestampNotNewer"
@@ -2500,6 +2571,7 @@ extension SpaceData {
 #if DEBUG
             printSpaceCountProbe(phase: "applied", json: json, space: self, initialize: initialize, note: sameTimestampSummaryDiffers ? serverSummaryDiffersNote : nil)
 #endif
+            trace.mark("beforeTransactionReadback")
             guard self.save(),
                   let persistedNetwork = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId),
                   Set(persistedNetwork.groups.map { $0.address.address }) == Set(groups.map { $0.address.address }),

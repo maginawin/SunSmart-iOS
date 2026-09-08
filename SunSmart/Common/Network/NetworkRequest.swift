@@ -32,8 +32,13 @@ class NetworkRequest: NSObject {
 //        return session
 //    }()
     
+    private static let responseQueue = DispatchQueue(label: "com.sunsmart.http-response", qos: .userInitiated)
+    private static let encodingQueue = DispatchQueue(label: "com.sunsmart.http-encoding", qos: .userInitiated)
+
     lazy var provider = MoyaProvider<NetowrkReqeustApi>(
         requestClosure: requestClosure,
+        session: Session(configuration: URLSessionConfiguration.af.default, startRequestsImmediately: false,
+                         eventMonitors: [NetworkTransferMetricsMonitor()]),
         plugins: [NetworkRequestTimeoutPlugin(), NetworkLoggerPlugin()]
     )
     /// 手机是否联网
@@ -41,22 +46,15 @@ class NetworkRequest: NSObject {
     
     // MARK: - 设置请求token和超时时间
     private let requestClosure = { (endpoint: Endpoint, done: @escaping MoyaProvider.RequestResultClosure) in
-        do {
-            var request = try endpoint.urlRequest()
-            request.timeoutInterval = 10    //设置请求超时时间
-            // 判断请求体数据过大压缩
-//            if let body = request.httpBody, body.count > 1024 * 100 {
-//                let destinationBuffer = UnsafeMutablePointer<UInt8>.allocate(capacity: body.count)
-//                let compressedSize = compression_encode_buffer(destinationBuffer, body.count, [UInt8](body), body.count, nil, COMPRESSION_ZLIB)
-//                if compressedSize > 0 {
-//                    request.httpBody = Data(bytes: destinationBuffer, count: compressedSize)
-//                }
-//            }
-        
+        NetworkRequest.encodingQueue.async {
+            do {
+                var request = try endpoint.urlRequest()
+                request.timeoutInterval = 10
+                request = try HTTPBodyEncoding.prepare(request)
                 done(.success(request))
-//            }
-        } catch {
-            done(.failure(MoyaError.underlying(error, nil)))
+            } catch {
+                done(.failure(MoyaError.underlying(error, nil)))
+            }
         }
     }
     
@@ -113,7 +111,14 @@ class NetworkRequest: NSObject {
     
     @discardableResult func request(_ target: NetowrkReqeustApi, completion: @escaping Completion) -> Cancellable {
         
-        return provider.request(target) { result in
+        return provider.request(target, callbackQueue: Self.responseQueue) { result in
+            let deliver: Completion = { value in DispatchQueue.main.async { completion(value) } }
+            let started = ProcessInfo.processInfo.systemUptime
+            defer {
+                #if DEBUG
+                print("[HTTP][Decode] target=\(target.diagnosticName) seconds=\(ProcessInfo.processInfo.systemUptime - started) main=\(Thread.isMainThread)")
+                #endif
+            }
             switch result {
             case .success(let respond):
                 do {
@@ -123,7 +128,7 @@ class NetworkRequest: NSObject {
 //                    }
                     let jsonObject = try respond.mapJSON()
                     guard let json = jsonObject as? [String: Any] else {
-                        completion(.failure(.init(
+                        deliver(.failure(.init(
                             code: respond.statusCode,
                             message: "Expected JSON object response",
                             httpStatusCode: respond.statusCode,
@@ -135,11 +140,11 @@ class NetworkRequest: NSObject {
                     let code = JSON(json as Any)["code"].intValue
                     let isSuccess = JSON(json as Any)["isSuccess"].bool ?? false
                     if code == 200 || isSuccess || json.isEmpty {
-                        completion(.success(json))
+                        deliver(.success(json))
 //                        success?(json!)
                     }else {
                         let responseJSON = JSON(json as Any)
-                        completion(.failure(.init(
+                        deliver(.failure(.init(
                             code: code,
                             message: responseJSON["message"].string ?? responseJSON["msg"].string,
                             httpStatusCode: respond.statusCode,
@@ -153,7 +158,7 @@ class NetworkRequest: NSObject {
                     let moyaResponse = (error as? MoyaError)?.response
                     let nsError = error as NSError
                     let errorCode = moyaResponse?.statusCode ?? nsError.code
-                    completion(.failure(.init(
+                    deliver(.failure(.init(
                         code: errorCode,
                         message: error.localizedDescription,
                         httpStatusCode: moyaResponse?.statusCode,
@@ -175,7 +180,7 @@ class NetworkRequest: NSObject {
                     break
                 }
 
-                completion(.failure(.init(
+                deliver(.failure(.init(
                     code: errorCode,
                     message: error.localizedDescription,
                     httpStatusCode: error.response?.statusCode,
@@ -207,8 +212,9 @@ class NetworkRequest: NSObject {
     ///   - failure: 失败回调
     @discardableResult func request(_ target: NetowrkReqeustApi, success: Success?, failure: Failure?) -> Cancellable {
         
-       return provider.request(target) { result in
-            
+       return provider.request(target, callbackQueue: Self.responseQueue) { result in
+            let success: Success? = success.map { callback in { value in DispatchQueue.main.async { callback(value) } } }
+            let failure: Failure? = failure.map { callback in { value in DispatchQueue.main.async { callback(value) } } }
             switch result {
             case .success(let respond):
                 do {
@@ -508,5 +514,33 @@ extension NetworkApiError {
         default:
             return "code=\(code), localizedDescription=\(localizedDescription)"
         }
+    }
+}
+
+/// Encoding is selected from the final URLRequest; headers always describe actual bytes.
+enum HTTPBodyEncoding {
+    static func prepare(_ original: URLRequest) throws -> URLRequest {
+        var request = original
+        request.setValue(nil, forHTTPHeaderField: "Content-Encoding")
+        let path = request.url?.path ?? ""
+        let isUpload = path.hasSuffix("/sitespace/sync/siteprops") || path.hasSuffix("/sitespace/sync/spaceprops")
+        if isUpload, let body = request.httpBody, body.count >= 1024 {
+            request.httpBody = try body.gzipped(level: .bestSpeed)
+            request.setValue("gzip", forHTTPHeaderField: "Content-Encoding")
+            request.setValue(nil, forHTTPHeaderField: "Content-Length")
+        }
+        return request
+    }
+}
+
+private final class NetworkTransferMetricsMonitor: EventMonitor {
+    let queue = DispatchQueue(label: "com.sunsmart.http-metrics")
+    func urlSession(_ session: URLSession, task: URLSessionTask, didFinishCollecting metrics: URLSessionTaskMetrics) {
+        #if DEBUG
+        for metric in metrics.transactionMetrics {
+            let response = metric.response as? HTTPURLResponse
+            print("[HTTP][Metrics] task=\(task.taskIdentifier) path=\(metric.request.url?.path ?? "") encoding=\(response?.value(forHTTPHeaderField: "Content-Encoding") ?? "identity") receivedBytes=\(metric.countOfResponseBodyBytesReceived) decodedBytes=\(metric.countOfResponseBodyBytesAfterDecoding)")
+        }
+        #endif
     }
 }

@@ -303,6 +303,29 @@ extension CloudSynchronizationManagerDelegate {
     
 }
 
+/// Main-queue ownership of recovery work. A superseded task cannot release the
+/// gate for its replacement when it returns from an asynchronous request.
+final class PendingSynchronizationRecoveryGate {
+    struct Scope: Equatable {
+        let account: String
+        let region: String
+    }
+    private var active: (token: UUID, scope: Scope)?
+
+    func begin(scope: Scope) -> UUID? {
+        guard active?.scope != scope else { return nil }
+        let token = UUID()
+        active = (token, scope)
+        return token
+    }
+
+    func isCurrent(token: UUID) -> Bool { active?.token == token }
+
+    func finish(token: UUID) {
+        if isCurrent(token: token) { active = nil }
+    }
+}
+
 class CloudSynchronizationManager {
     
     static let shared = CloudSynchronizationManager()
@@ -314,6 +337,7 @@ class CloudSynchronizationManager {
     weak var delegate: CloudSynchronizationManagerDelegate?
     private var networkObservation: NSKeyValueObservation?
     private var foregroundObservation: NSObjectProtocol?
+    private let recoveryGate = PendingSynchronizationRecoveryGate()
 
     private init() {
         networkObservation = NetworkRequest.shared.observe(\.networkable, options: [.new]) { [weak self] _, _ in
@@ -325,14 +349,42 @@ class CloudSynchronizationManager {
     }
 
     func resumePendingSynchronizations() {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { self.resumePendingSynchronizations() }
+            return
+        }
         guard NetworkRequest.shared.networkable else { return }
-        SpaceConfigurationSafety.resumeLocalRemovals()
+        let scope = PendingSynchronizationRecoveryGate.Scope(account: UserData.currentUserId,
+            region: String(describing: UserData.currentServerRegion))
+        guard let token = recoveryGate.begin(scope: scope) else { return }
         _Concurrency.Task { @MainActor in
-            for site in SiteData.loadAll() where site.state == .normal {
+            defer { recoveryGate.finish(token: token) }
+            func isCurrent() -> Bool {
+                recoveryGate.isCurrent(token: token)
+                    && NetworkRequest.shared.networkable
+                    && scope.account == UserData.currentUserId
+                    && scope.region == String(describing: UserData.currentServerRegion)
+            }
+            // Hand the main queue back to UI/HTTP completions before recovery,
+            // and between Sites. Task.yield alone does not guarantee this handoff.
+            await withCheckedContinuation { continuation in
+                DispatchQueue.main.async { continuation.resume() }
+            }
+            guard isCurrent() else { return }
+            SpaceConfigurationSafety.resumeLocalRemovals()
+            let siteIds = SiteData.loadAll().filter { $0.state == .normal }.map(\.id)
+            for siteId in siteIds {
+                await withCheckedContinuation { continuation in
+                    DispatchQueue.main.async { continuation.resume() }
+                }
+                guard isCurrent() else { return }
+                guard let site = SiteData.load(siteId: siteId), site.state == .normal else { continue }
                 SiteDeviceOwnershipReconciler.reconcile(siteId: site.id)
                 for space in site.spaces where (try? SpaceConfigurationSafety.recoveryState(space).unbindRequested) == true {
                     _ = await SpaceConfigurationSafety.resumeUnbind(space)
+                    guard isCurrent() else { return }
                 }
+                guard let site = SiteData.load(siteId: siteId), site.state == .normal else { continue }
                 site.spaces = SpaceData.load(siteId: site.id)
                 let spaces = site.spaces.filter { space in
                     SpaceConfigurationSafety.canAutomaticallyUpload(space)

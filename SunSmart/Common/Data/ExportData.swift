@@ -110,6 +110,8 @@ private struct SpaceSnapshotExportIntegritySnapshot: Equatable {
 private struct SpaceSnapshotExportAuthorization {
     let expectedLocalSnapshot: SpaceSnapshotExportIntegritySnapshot
     let orphanPreservationReason: String?
+    var network: MeshNetwork? = nil
+    var revision: ConfigurationSnapshotRevision? = nil
 
     func permits(_ snapshot: SpaceSnapshotExportIntegritySnapshot) -> Bool {
         return snapshot == expectedLocalSnapshot
@@ -125,6 +127,7 @@ private extension SpaceData {
     func snapshotExportAuthorization(
         purpose: SpaceSnapshotExportPurpose
     ) async -> SpaceSnapshotExportAuthorization? {
+        let revisionBefore = ConfigurationSnapshotRevision.current()
         guard let meshNetwork = MeshNetwork.load(
             meshUUID: meshUUID,
             subnetworkId: meshNetworkId
@@ -143,7 +146,9 @@ private extension SpaceData {
         if initialDecision == .allowWithoutRemoteVerification {
             return .init(
                 expectedLocalSnapshot: localSnapshot,
-                orphanPreservationReason: nil
+                orphanPreservationReason: nil,
+                network: meshNetwork,
+                revision: revisionBefore == ConfigurationSnapshotRevision.current() ? revisionBefore : nil
             )
         }
         if case .localBackup = purpose {
@@ -156,7 +161,9 @@ private extension SpaceData {
             #endif
             return .init(
                 expectedLocalSnapshot: localSnapshot,
-                orphanPreservationReason: "localBackup"
+                orphanPreservationReason: "localBackup",
+                network: meshNetwork,
+                revision: revisionBefore == ConfigurationSnapshotRevision.current() ? revisionBefore : nil
             )
         }
 
@@ -336,7 +343,8 @@ extension SpaceData {
     func export(
         purpose: SpaceSnapshotExportPurpose = .localBackup,
         allowsProtectedInspection: Bool = false,
-        reviewingReferenceRepairs: Bool = false
+        reviewingReferenceRepairs: Bool = false,
+        readSnapshot: ConfigurationMeshReadSnapshot? = nil
     ) async -> [String: Any]?  {
         if allowsProtectedInspection, case .cloudSync = purpose { return nil }
         if reviewingReferenceRepairs && !allowsProtectedInspection { return nil }
@@ -353,9 +361,16 @@ extension SpaceData {
             
             var spaceJsonData: [String: Any] = [:]
             
-            guard let meshNetwork = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId) else {
+            let trace = SiteImportTrace("export:" + id)
+            defer { trace.mark("end") }
+            let revisionBeforeLoad = ConfigurationSnapshotRevision.current()
+            let reusableNetwork = snapshotAuthorization.revision != nil
+                && snapshotAuthorization.revision == ConfigurationSnapshotRevision.current()
+                ? snapshotAuthorization.network : nil
+            guard let meshNetwork = reusableNetwork ?? MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId) else {
                 return nil
             }
+            trace.mark(reusableNetwork == nil ? "networkReloaded" : "networkReused")
             let allNodes = meshNetwork.nodes.filter {
                 !$0.isLocalProvisioner && !$0.isProvisioner && !$0.isConfigComplete
             }
@@ -388,6 +403,10 @@ extension SpaceData {
                 )
                 #endif
                 return nil
+            }
+            if revisionBeforeLoad != nil, revisionBeforeLoad == ConfigurationSnapshotRevision.current() {
+                readSnapshot?.network = meshNetwork
+                readSnapshot?.revision = revisionBeforeLoad
             }
             let proximityPreparation = ProximityLightingLifecycleCoordinator.begin(
                 space: self,

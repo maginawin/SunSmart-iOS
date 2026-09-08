@@ -32,11 +32,12 @@ final class SpaceData {
     @discardableResult func delete() -> Bool {
         SpaceConfigurationSafety.beginRemoval(self) && SpaceConfigurationSafety.archiveDeletedSpace(self)
     }
-    enum Purpose { case cloudSync }
+    enum Purpose { case cloudSync, localBackup }
     @MainActor func export(purpose: Purpose) async -> [String: Any]? {
         await SpaceConfigurationSafety.prepareUpload(self, payload: payload) ? payload : nil
     }
     // METADATA_METHOD
+    // IMPORT_PREPARATION_METHOD
 }
 final class MeshNetworkManager {
     static let instance = MeshNetworkManager()
@@ -230,6 +231,7 @@ final class NetworkRequest {
 
         try await testEmptyGroupAddressRecovery()
         try await testSiteHandoffReadback()
+        try await testImportPreparation()
 
         // Account changes invalidate pending callbacks before looking up another store.
         let accountContext = try SpaceConfigurationSafety.recoveryState(b)

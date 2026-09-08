@@ -27,7 +27,8 @@ receipt_methods = section(safety, '    static func preservesLocalChanges(', '\n 
 # Only dependencies/storage boundaries are doubled. Receipt decisions run the
 # actual safety methods against an isolated UserDefaults suite.
 test_source = test_source.replace('// RECEIPT_METHODS', receipt_methods.replace('UserDefaults.standard', 'testDefaults'))
-parts = [section(adapter, start, '\nextension SpaceData'),
+parts = [section(source('SunSmart/Common/Data/ImportData.swift'), 'final class SiteImportTrace', '\nstruct SpaceImportOutcome'),
+         section(adapter, start, '\nextension SpaceData'),
          source('SunSmart/Common/Data/DeviceScheduleAddressCleanup.swift'),
          source('SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),
          source('SunSmart/Common/Data/DevicePermanentDeletionCleanup.swift').replace('import NordicSigMeshSDK', ''),

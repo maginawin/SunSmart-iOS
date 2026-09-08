@@ -628,7 +628,6 @@ extension NetowrkReqeustApi: TargetType {
         case .siteUpload:
             fallthrough
         case .spaceUpload:
-            headers.updateValue("gzip", forKey: "Content-Encoding")
             headers.updateValue("gzip", forKey: "Accept-Encoding")
         default:
             break
