@@ -26,6 +26,10 @@ private var jsonDecoder: JSONDecoder {
 /// 缓存场所/空间数据库名称
 let sqliteDBName = "sunsmart.sqlite"
 
+private enum ConfigurationPersistenceFailure: Error {
+    case profileWrite, groupInfoWrite, profileReadback
+}
+
 class SunSmartDataManager {
     
     static let shared = SunSmartDataManager()
@@ -961,7 +965,7 @@ extension GroupInfo {
                 } else {
                     info.profileLoadFailed = true
                     #if DEBUG
-                    print("[ConfigurationPersistence] missing profile group=\(address) profileId=\(row[ExpressionKey.profileId])")
+                    print("[ConfigurationPersistence] profileUnavailable group=\(address)")
                     #endif
                 }
                 if let pwmPeriod = row[ExpressionKey.pwmPeriod] {
@@ -1057,12 +1061,16 @@ extension GroupInfo {
         ])
         return SunSmartDataManager.shared.configurationTransaction {
             guard self.profile.save(meshUUID: uuid, meshNetworkId: networkId) else {
-                throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+                throw ConfigurationPersistenceFailure.profileWrite
             }
-            try db.run(insertOrUpdate)
+            do {
+                try db.run(insertOrUpdate)
+            } catch {
+                throw ConfigurationPersistenceFailure.groupInfoWrite
+            }
             guard let saved = Profile.load(meshUUID: uuid, meshNetworkId: networkId, profileId: self.profile.id),
                   saved.type == self.profile.type else {
-                throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+                throw ConfigurationPersistenceFailure.profileReadback
             }
         }
     }
@@ -1629,12 +1637,17 @@ extension Profile {
         let filter = Profile.profilesTable.filter(predicate)
         
         var profiles: [Profile] = []
-        if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
+        var foundRow = false
+        do {
+            guard let db = SunSmartDataManager.shared.db else {
+                logPersistenceIssue("databaseUnavailable")
+                return []
+            }
+            let rows = try db.prepare(filter)
             for row in rows {
+                foundRow = true
                 guard let profileType = ProfileType(rawValue: row[ExpressionKey.type]) else {
-                    #if DEBUG
-                    print("[ConfigurationPersistence] invalid profile type id=\(row[ExpressionKey.uuid])")
-                    #endif
+                    logPersistenceIssue("invalidField:type", type: row[ExpressionKey.type])
                     continue
                 }
                 guard !row[ExpressionKey.uuid].isEmpty,
@@ -1642,14 +1655,24 @@ extension Profile {
                       (0...65535).contains(row[ExpressionKey.powerUpCct]),
                       (0...Int64(UInt32.max)).contains(row[ExpressionKey.manualOverrideTimeout]),
                       (0...255).contains(row[ExpressionKey.sensitivity]),
-                      (0...255).contains(row[ExpressionKey.proximityLightingNumber]) else { continue }
-                guard [row[ExpressionKey.highEndTrim], row[ExpressionKey.lowEndTrim],
-                       row[ExpressionKey.occupancyLevel], row[ExpressionKey.vacantLevel],
-                       row[ExpressionKey.standbyLevel], row[ExpressionKey.taskLevel]]
-                        .allSatisfy({ (0...100).contains($0) }),
-                      [row[ExpressionKey.timeT1], row[ExpressionKey.timeT2], row[ExpressionKey.timeT3],
+                      (0...255).contains(row[ExpressionKey.proximityLightingNumber]) else {
+                    logPersistenceIssue("invalidScalar", type: profileType.rawValue)
+                    continue
+                }
+                if let field = SpaceConfigurationIntegrityPolicy.levelIssue(type: Int64(profileType.rawValue), values: [
+                    "highEndTrim": row[ExpressionKey.highEndTrim], "lowEndTrim": row[ExpressionKey.lowEndTrim],
+                    "occupancyLevel": row[ExpressionKey.occupancyLevel], "vacantLevel": row[ExpressionKey.vacantLevel],
+                    "standbyLevel": row[ExpressionKey.standbyLevel], "taskLevel": row[ExpressionKey.taskLevel]
+                ]) {
+                    logPersistenceIssue("invalidField:" + field, type: profileType.rawValue)
+                    continue
+                }
+                guard [row[ExpressionKey.timeT1], row[ExpressionKey.timeT2], row[ExpressionKey.timeT3],
                        row[ExpressionKey.timeT4], row[ExpressionKey.timeT5]]
-                        .allSatisfy({ $0 >= 0 && Int64($0) <= Int64(UInt32.max) }) else { continue }
+                        .allSatisfy({ $0 >= 0 && Int64($0) <= Int64(UInt32.max) }) else {
+                    logPersistenceIssue("invalidTime", type: profileType.rawValue)
+                    continue
+                }
                 let storedAutoMinLevel = row[ExpressionKey.autoMinLevel]
                 let autoMinLevel = profileType.daylightType
                     ? LightControlData.normalizedAutoMinLevel(storedAutoMinLevel)
@@ -1663,7 +1686,14 @@ extension Profile {
                 
                 var scenes: [Profile.LightControlScene] = []
                 if let data = row[ExpressionKey.scenes] {
-                    guard let profileScenes = try? jsonDecoder.decode([Profile.LightControlScene].self, from: data) else { continue }
+                    guard let profileScenes = try? jsonDecoder.decode([Profile.LightControlScene].self, from: data) else {
+                        logPersistenceIssue("decodeFailed:scenes", type: profileType.rawValue)
+                        continue
+                    }
+                    guard profileScenes.allSatisfy({ lightControlIssue($0.lightControlData, type: profileType) == nil }) else {
+                        logPersistenceIssue("invalidField:scenes", type: profileType.rawValue)
+                        continue
+                    }
                     if profileType.daylightType {
                         profileScenes.forEach { scene in
                             scene.lightControlData.autoMinLevel = LightControlData.normalizedAutoMinLevel(scene.lightControlData.autoMinLevel)
@@ -1693,7 +1723,10 @@ extension Profile {
                 if profileType == .proximityLightingWithPhotocell {
                     guard let dayData, let nightData,
                           scenes.contains(where: { $0.sceneNumber == dayData.sceneData.sceneNumber }),
-                          scenes.contains(where: { $0.sceneNumber == nightData.sceneData.sceneNumber }) else { continue }
+                          scenes.contains(where: { $0.sceneNumber == nightData.sceneData.sceneNumber }) else {
+                        logPersistenceIssue("invalidPhotocellCondition", type: profileType.rawValue)
+                        continue
+                    }
                 }
                 let profile = Profile(name: row[ExpressionKey.name], id: row[ExpressionKey.uuid], type: profileType, lightControlData: lightData, powerUpState: powerUpState, powerUpCct: powerUpCct, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: row[ExpressionKey.adjustSpeed], sensitivity: UInt8(row[ExpressionKey.sensitivity]), proximityLightingNumber: UInt8(row[ExpressionKey.proximityLightingNumber]), nightData: nightData, dayData: dayData, scenes: scenes)
                 if let rawCalibrationMode = row[ExpressionKey.calibrationMode] {
@@ -1706,6 +1739,9 @@ extension Profile {
                 profile.lightSensorTemplates = ProfileLightSensorTemplate.load(profileId: profile.id)
                 profiles.append(profile)
             }
+            if !foundRow, profileId != nil { logPersistenceIssue("rowMissing") }
+        } catch {
+            logPersistenceIssue("queryFailed")
         }
         return profiles
     }
@@ -1718,6 +1754,23 @@ extension Profile {
     static func load(meshUUID: String, meshNetworkId: String? = nil, profileId: String) -> Profile? {
         
         return loadAll(meshUUID: meshUUID, meshNetworkId: meshNetworkId, profileId: profileId).first
+    }
+
+    private static func logPersistenceIssue(_ issue: String, type: Int? = nil) {
+        #if DEBUG
+        print("[ConfigurationPersistence] profile \(issue) type=\(type.map(String.init) ?? "unknown")")
+        #endif
+    }
+
+    private static func lightControlIssue(_ data: LightControlData, type: ProfileType) -> String? {
+        if let field = SpaceConfigurationIntegrityPolicy.levelIssue(type: Int64(type.rawValue), values: [
+            "highEndTrim": data.highEndTrim, "lowEndTrim": data.lowEndTrim,
+            "occupancyLevel": data.occupancyLevel, "vacantLevel": data.vacantLevel,
+            "standbyLevel": data.standbyLevel, "taskLevel": data.taskLevel
+        ]) { return field }
+        guard [data.t1, data.t2, data.t3, data.t4, data.t5]
+            .allSatisfy({ $0 >= 0 && Int64($0) <= Int64(UInt32.max) }) else { return "time" }
+        return nil
     }
     
     /// 缓存配置数据
@@ -1732,6 +1785,12 @@ extension Profile {
 //        let subNetworkey = networkKey
         let subNetworkey = meshNetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         
+        for data in [lightControlData] + scenes.map({ $0.lightControlData }) {
+            if let field = Self.lightControlIssue(data, type: type) {
+                Self.logPersistenceIssue("writeRejected:" + field, type: type.rawValue)
+                return false
+            }
+        }
         let dayProfileData = try? jsonEncoder.encode(self.dayData)
         let nightProfileData = try? jsonEncoder.encode(self.nightData)
         let scenesData = try? jsonEncoder.encode(self.scenes)

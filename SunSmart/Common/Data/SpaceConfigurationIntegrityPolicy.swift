@@ -5,6 +5,24 @@ import CryptoKit
 /// Validity is independent of the previous profile type. A complete 7/8 -> 1
 /// change is a supported operation, including when it arrives from another phone.
 enum SpaceConfigurationIntegrityPolicy {
+    /// Types 1/2/5 store illuminance; Photocell (8) still stores percentages.
+    /// The SDK's received lux cache is UInt16, even though the wire format is wider.
+    static func levelIssue(type: Int64, values: [String: Any],
+                           requiredFields: [String] = ["highEndTrim", "lowEndTrim", "occupancyLevel",
+                                                       "vacantLevel", "standbyLevel", "taskLevel"]) -> String? {
+        let daylight = type == 1 || type == 2 || type == 5
+        for field in ["highEndTrim", "lowEndTrim", "occupancyLevel", "vacantLevel", "standbyLevel", "taskLevel"] {
+            guard let raw = values[field] else {
+                if requiredFields.contains(field) { return field }
+                continue
+            }
+            let maximum: Int64 = daylight && field != "highEndTrim" && field != "lowEndTrim"
+                ? Int64(UInt16.max) : 100
+            guard let value = integer(raw), (0...maximum).contains(value) else { return field }
+        }
+        return nil
+    }
+
     static func integer(_ value: Any?) -> Int64? {
         guard let number = value as? NSNumber,
               CFGetTypeID(number) != CFBooleanGetTypeID(),
@@ -19,11 +37,9 @@ enum SpaceConfigurationIntegrityPolicy {
               let type = integer(profile["type"]), (1...8).contains(type) else {
             return "missingOrInvalidProfileIdentity"
         }
-        let levels = ["highEndTrim", "lowEndTrim", "occupancyLevel", "vacantLevel", "taskLevel"]
-        for key in levels {
-            guard let value = integer(profile[key]), (0...100).contains(value) else {
-                return "invalidProfileField:\(key)"
-            }
+        if let field = levelIssue(type: type, values: profile,
+                                  requiredFields: ["highEndTrim", "lowEndTrim", "occupancyLevel", "vacantLevel", "taskLevel"]) {
+            return "invalidProfileField:\(field)"
         }
         for key in ["timeT1", "timeT2", "timeT3", "timeT4", "timeT5", "manualOverrideTimeout"] {
             guard let value = integer(profile[key]), (0...Int64(UInt32.max)).contains(value) else {
@@ -35,7 +51,7 @@ enum SpaceConfigurationIntegrityPolicy {
         }
         // These fields were optional in older payloads. Keep their established
         // defaults, but do not accept malformed values when they are present.
-        for key in ["standbyLevel", "autoMinLevel", "relativeSensitivity", "adjustSpeed"] {
+        for key in ["autoMinLevel", "relativeSensitivity", "adjustSpeed"] {
             if let raw = profile[key] {
                 guard let value = integer(raw), (0...255).contains(value) else {
                     return "invalidProfileField:\(key)"
@@ -46,6 +62,16 @@ enum SpaceConfigurationIntegrityPolicy {
             guard let relay = integer(profile["proximityLightingNumber"]),
                   (0...20).contains(relay) || relay == 255 else {
                 return "invalidProfileRelay"
+            }
+        }
+        // Legacy non-Photocell scenes may omit fields and use importer defaults.
+        // When present, their levels must have the same units as the parent.
+        if let rawScenes = profile["scenes"] {
+            guard let scenes = rawScenes as? [[String: Any]] else { return "invalidProfileScenes" }
+            for scene in scenes {
+                if let field = levelIssue(type: type, values: scene, requiredFields: []) {
+                    return type == 8 ? "invalidPhotocellSceneField:\(field)" : "invalidProfileSceneField:\(field)"
+                }
             }
         }
         if type == 8 {
@@ -59,10 +85,9 @@ enum SpaceConfigurationIntegrityPolicy {
                       sceneNumbers.insert(number).inserted, scene["name"] is String else {
                     return "invalidPhotocellScene"
                 }
-                for key in ["occupancyLevel", "vacantLevel", "standbyLevel", "taskLevel"] {
-                    guard let value = integer(scene[key]), (0...100).contains(value) else {
-                        return "invalidPhotocellSceneField:\(key)"
-                    }
+                if let field = levelIssue(type: type, values: scene,
+                                          requiredFields: ["occupancyLevel", "vacantLevel", "standbyLevel", "taskLevel"]) {
+                    return "invalidPhotocellSceneField:\(field)"
                 }
                 for key in ["timeT1", "timeT2", "timeT3", "timeT4", "timeT5"] {
                     guard let value = integer(scene[key]), (0...Int64(UInt32.max)).contains(value) else {
