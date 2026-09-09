@@ -621,13 +621,11 @@ extension NetowrkReqeustApi: TargetType {
         headers.updateValue(appSecret, forKey: "appSecret")
         #endif
         switch self {
-        case .siteInfo:
-            fallthrough
-        case .spaceInfo:
-            fallthrough
-        case .siteUpload:
-            fallthrough
-        case .spaceUpload:
+        case .siteInfo, .spaceInfo, .siteUpload, .spaceUpload,
+             .sites, .receiveSite, .joinSpace, .devicesConfig,
+             .batchShareList, .shareInfo, .gatewayAssociationSpaceList,
+             .firmwareVersionList, .spaceMembers, .spaceActiveMembers, .gatewayList:
+            // Response negotiation is independent of HTTPBodyEncoding's request policy.
             headers.updateValue("gzip", forKey: "Accept-Encoding")
         default:
             break
