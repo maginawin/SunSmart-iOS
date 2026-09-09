@@ -208,6 +208,7 @@ extension SiteData {
         }
 //        _ = try? SunSmartDataManager.shared.db?.run(SiteData.sitesTable.addColumn(ExpressionKey.localAddress))
         
+        try? SiteTriggerZoneStore.createTable()
         SpaceData.initDatabase()
     }
     
@@ -296,7 +297,12 @@ extension SiteData {
         guard let database = SunSmartDataManager.shared.db,
               SpaceData.deleteAll(siteId: id), GatewayModel.delete(siteId: id) else { return false }
         let filter = SiteData.sitesTable.filter(ExpressionKey.uuid == id)
-        do { try database.run(filter.delete()) }
+        do {
+            try database.savepoint("delete_site_" + UUID().uuidString) {
+                try database.run(filter.delete())
+                try SiteTriggerZoneStore.delete(self)
+            }
+        }
         catch {
             #if DEBUG
             print(error)
@@ -423,6 +429,7 @@ extension SiteData {
     /// allData：是否保存所有数据（true：场所基本信息+保存spaces数据，false：场所基本信息）
     @discardableResult func save(allData: Bool = false) -> Bool {
         
+        guard let database = SunSmartDataManager.shared.db else { return false }
         let table = SiteData.sitesTable
         var recycleAddressData: Data?
         if self.recycleAddressData != nil {
@@ -454,7 +461,10 @@ extension SiteData {
             ExpressionKey.recycleAddressData <- recycleAddressData
         ])
         do {
-            try SunSmartDataManager.shared.db?.run(insetOrUpdate)
+            try database.savepoint("save_site_" + UUID().uuidString) {
+                try database.run(insetOrUpdate)
+                try SiteTriggerZoneStore.bootstrap(self)
+            }
         } catch {
             #if DEBUG
             print(error)

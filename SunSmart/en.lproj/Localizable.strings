@@ -1269,7 +1269,7 @@
 "path" = "Path";
 "path_sequence" = "Path sequence";
 "sequence" = "Sequence";
-"trigger_zone" = "Trigger zone";
+"trigger_zone" = "Trigger Zone";
 "device_add_title_path" = "Add to Path";
 "device_add_title_zone" = "Add to Zone";
 "device_add_title_path_index" = "Add to Path %d";
@@ -2182,3 +2182,31 @@
 
 "switch_mac_format" = "MAC: %@";
 "switch_mac_unavailable" = "MAC: N/A";
+
+// Site Trigger Zone
+"site_zones_storage_failed" = "Unable to save or load Trigger Zones. Please retry.";
+"site_zones_unsupported" = "This Site contains Trigger Zone data that requires a newer app.";
+"site_zones_conflict" = "Trigger Zones changed on another device. Tap to review.";
+"site_zones_sync_pending" = "Saved on this device. Cloud sync pending. Tap to retry.";
+"site_zones_discard_draft" = "Replace your pending Trigger Zone changes with the latest server version?";
+
+/* Site Trigger Zone item presentation */
+"site_zones_no_access" = "No access";
+"site_zones_access_unknown" = "Pending";
+"site_zones_view_only" = "View only";
+"site_zones_no_access_message" = "You don't have access to this space · Contact the space owner to request access";
+"site_zones_access_pending_message" = "Space access needs to be verified before editing.";
+"site_zones_summary_incomplete" = "Some space information is unavailable. Editing is unavailable until it is verified.";
+"site_zones_device_count_one" = "%d device";
+"site_zones_device_count_many" = "%d devices";
+"site_zones_preview_toggle" = "Switch preview / real items";
+"site_zones_preview_mode" = "Preview mode · Tap Test to return to real items";
+"site_zones_live_mode" = "Real items";
+"site_zones_preview_action" = "Preview only. No changes have been saved or sent to devices.";
+"site_zones_item_needs_sync" = "Needs sync";
+"site_zones_item_sync_cloud" = "Cloud sync pending";
+"site_zones_item_sync_devices" = "Device sync pending";
+"site_zones_item_sync_both" = "Cloud and device sync pending";
+"site_zones_sync_explanation" = "Some devices have not finished synchronizing. You must have editing permissions for all relevant spaces to perform the synchronization operation.";
+"site_zones_preview_reset_confirm" = "Clear all devices from this trigger zone?";
+"site_zones_preview_delete_confirm" = "Delete this trigger zone?";

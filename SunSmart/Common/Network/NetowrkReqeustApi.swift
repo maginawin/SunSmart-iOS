@@ -385,6 +385,7 @@ extension NetowrkReqeustApi: TargetType {
             return ["siteId": siteId, "userId": UserData.currentUserId]
         case .sitePropsRetrieve(let siteId):
             let props: [String: Any] = [
+                "extensionData": NSNull(),
                 "timezone": NSNull(),
                 "imageId": NSNull(),
                 "siteName": NSNull(),

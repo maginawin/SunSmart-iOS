@@ -85,6 +85,13 @@ protocol Copyable {
 
 class SiteData: Copyable {
     
+    /// Site-owned metadata; durable state is stored independently of legacy Site saves.
+    var siteExtensionData = SiteExtensionData()
+
+    var canManageSiteTriggerZones: Bool {
+        state == .normal && spaces.contains { $0.canEditing }
+    }
+
     /// 地区
     let region: ServerRegion
     /// 场所id
@@ -219,6 +226,7 @@ class SiteData: Copyable {
     func copy() -> Self {
         
         let site = SiteData(region: self.region, id: self.id, meshUUID: self.meshUUID, meshNetworkId: self.meshNetworkId, name: self.name, imageId: self.imageId, type: self.type, permission: self.permission, create: self.create, lastUpdate: self.lastUpdate, isFavourite: self.isFavourite, sourceType: self.sourceType)
+        site.siteExtensionData = (try? SiteTriggerZoneStore.load(self).data) ?? self.siteExtensionData
         site.timezone = self.timezone
         site.pendingSitePropsMask = self.pendingSitePropsMask
         site.pendingSitePropsTimestamp = self.pendingSitePropsTimestamp

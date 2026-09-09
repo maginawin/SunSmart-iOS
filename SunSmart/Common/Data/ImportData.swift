@@ -504,6 +504,13 @@ extension SiteData {
             return
         }
         let lastUpdate = json["updateTimestamp"].int64Value
+        // Process extension fields independently of the legacy Site timestamp gate.
+        do {
+            try SiteTriggerZoneStore.receive(self, object: siteJsonData, timestamp: lastUpdate)
+        } catch {
+            // Preserve the durable extension if a partial/invalid response cannot be applied.
+            self.syncCloudError = .configurationExportInvalid
+        }
         
         var permission: Permission = .visitor
         switch json["role"].string {

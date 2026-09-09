@@ -307,6 +307,16 @@ extension SiteData {
             return nil
         }
         
+        // Read the durable extension, not a possibly stale Site instance.
+        guard let extensionState = try? SiteTriggerZoneStore.load(self),
+              !extensionState.conflict,
+              extensionState.rejectedRemote == nil,
+              let extensionObject = try? extensionState.data.jsonObject() else { return nil }
+        siteData["extensionData"] = extensionObject
+        if let pending = extensionState.pending {
+            siteData["updateTimestamp"] = max(self.lastUpdate, pending.timestamp)
+        }
+
         if spaceIds != nil {
             let exportSpaces = self.spaces.filter({ space in spaceIds!.contains(where: { $0 == space.id }) })
             var spaceDicts: [[String: Any]] = []

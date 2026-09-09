@@ -386,6 +386,10 @@ class CloudSynchronizationManager {
                 }
                 guard let site = SiteData.load(siteId: siteId), site.state == .normal else { continue }
                 site.spaces = SpaceData.load(siteId: site.id)
+                if (try? SiteTriggerZoneStore.load(site).pending) != nil, site.canManageSiteTriggerZones {
+                    _ = await SiteTriggerZoneCoordinator(site: site).synchronize()
+                    guard isCurrent() else { return }
+                }
                 let spaces = site.spaces.filter { space in
                     SpaceConfigurationSafety.canAutomaticallyUpload(space)
                         && (space.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(space))

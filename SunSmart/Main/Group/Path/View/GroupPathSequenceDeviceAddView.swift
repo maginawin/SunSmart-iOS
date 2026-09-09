@@ -96,6 +96,8 @@ class GroupPathSequenceDeviceAddView: UIView {
 
     private var currentMode: PathSequenceDeviceAddMode = .quickAdd
     private var collapsed: Bool = true
+    /// Allows the owning page to restore presentation after switching data sources.
+    var isCollapsed: Bool { collapsed }
     private var headerIndex: Int?
     private var lastPreferredContentHeight: CGFloat = 0
     private var lastMenuWidth: CGFloat = 0

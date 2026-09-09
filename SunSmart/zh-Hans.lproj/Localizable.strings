@@ -2198,3 +2198,31 @@
 
 "switch_mac_format" = "MAC: %@";
 "switch_mac_unavailable" = "MAC: 暂无";
+
+// Site Trigger Zone
+"site_zones_storage_failed" = "无法保存或读取触发区域，请重试。";
+"site_zones_unsupported" = "此场所包含需要新版应用处理的触发区域数据。";
+"site_zones_conflict" = "触发区域已在其他设备更改，点击处理。";
+"site_zones_sync_pending" = "已保存到此设备，等待云端同步。点击重试。";
+"site_zones_discard_draft" = "是否放弃待同步的触发区域修改，使用服务器最新版本？";
+
+/* Site Trigger Zone item presentation */
+"site_zones_no_access" = "无访问权限";
+"site_zones_access_unknown" = "待确认";
+"site_zones_view_only" = "仅查看";
+"site_zones_no_access_message" = "你没有此空间的访问权限，请联系空间所有者申请访问";
+"site_zones_access_pending_message" = "编辑前需要确认此空间的访问权限。";
+"site_zones_summary_incomplete" = "部分空间信息尚未取得，确认前无法编辑。";
+"site_zones_device_count_one" = "%d 个设备";
+"site_zones_device_count_many" = "%d 个设备";
+"site_zones_preview_toggle" = "切换模拟与真实条目";
+"site_zones_preview_mode" = "模拟展示 · 点击测试返回真实条目";
+"site_zones_live_mode" = "真实条目";
+"site_zones_preview_action" = "仅供预览，未保存更改或向设备发送命令。";
+"site_zones_item_needs_sync" = "需要同步";
+"site_zones_item_sync_cloud" = "等待云端同步";
+"site_zones_item_sync_devices" = "等待设备同步";
+"site_zones_item_sync_both" = "等待云端及设备同步";
+"site_zones_sync_explanation" = "部分设备尚未完成同步。您必须拥有所有相关空间的编辑权限，才能执行同步操作。";
+"site_zones_preview_reset_confirm" = "清空此触发区域中的所有设备？";
+"site_zones_preview_delete_confirm" = "删除此触发区域？";

@@ -1557,6 +1557,13 @@ self.updateAddressData()
             }))
         }
         
+        if site.canManageSiteTriggerZones {
+            items.append(.init(icon: UIImage(named: "menu_trigger_zone"), title: "trigger_zone".localizedString, tapItemBack: { [weak self] _ in
+                guard let self, self.site.canManageSiteTriggerZones else { return }
+                self.navigationController?.pushViewController(SiteTriggerZoneViewController(site: self.site), animated: true)
+            }))
+        }
+
 //        items.append(.init(icon: UIImage(named: "energy_export")?.withTintColor(.white), title: "Import Space", tapItemBack: {[weak self] _ in
 //            self?.importSpace()
 //        }))
