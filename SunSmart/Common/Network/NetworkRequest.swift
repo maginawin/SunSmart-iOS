@@ -137,15 +137,16 @@ class NetworkRequest: NSObject {
                         return
                     }
                     // 服务器返回成功
-                    let code = JSON(json as Any)["code"].intValue
+                    let businessCode = JSON(json as Any)["code"]
+                    let code = businessCode.int ?? businessCode.string.flatMap(Int.init)
                     let isSuccess = JSON(json as Any)["isSuccess"].bool ?? false
-                    if code == 200 || isSuccess || json.isEmpty {
+                    if (200..<300).contains(respond.statusCode), code == 200 || isSuccess || json.isEmpty {
                         deliver(.success(json))
 //                        success?(json!)
                     }else {
                         let responseJSON = JSON(json as Any)
                         deliver(.failure(.init(
-                            code: code,
+                            code: code ?? ((200..<300).contains(respond.statusCode) ? -1 : respond.statusCode),
                             message: responseJSON["message"].string ?? responseJSON["msg"].string,
                             httpStatusCode: respond.statusCode,
                             responseBody: Self.responseBodySummary(respond.data)
@@ -521,10 +522,25 @@ extension NetworkApiError: LocalizedError {
 
 extension NetworkApiError {
 
+    /// Keep string business codes without changing the persisted error shape.
+    var responseBusinessCode: String? {
+        guard case .apiError(_, _, _, let body, _, _) = self,
+              let data = body?.data(using: .utf8),
+              let response = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return nil }
+        return response["code"] as? String
+    }
+
+    /// A parser rejection occurs before configuration writes. Other 4xx/5xx
+    /// and transport errors remain unknown outcomes and still need readback.
+    var isRequestParseRejection: Bool {
+        guard case .apiError(_, _, let status, _, let domain, let underlyingCode) = self else { return false }
+        return status == 400 && responseBusinessCode == "parse_error" && domain == nil && underlyingCode == nil
+    }
+
     var diagnosticDescription: String {
         switch self {
         case .apiError(let code, let message, let httpStatusCode, let responseBody, let underlyingDomain, let underlyingCode):
-            return "code=\(code), message=\(message ?? "<missing>"), httpStatus=\(httpStatusCode?.description ?? "<missing>"), underlyingDomain=\(underlyingDomain ?? "<missing>"), underlyingCode=\(underlyingCode?.description ?? "<missing>"), responseBody=\(responseBody ?? "<missing>")"
+            return "code=\(code), businessCode=\(responseBusinessCode ?? "<missing>"), message=\(message ?? "<missing>"), httpStatus=\(httpStatusCode?.description ?? "<missing>"), underlyingDomain=\(underlyingDomain ?? "<missing>"), underlyingCode=\(underlyingCode?.description ?? "<missing>"), responseBody=\(responseBody ?? "<missing>")"
         default:
             return "code=\(code), localizedDescription=\(localizedDescription)"
         }
@@ -538,11 +554,16 @@ enum HTTPBodyEncoding {
         request.setValue(nil, forHTTPHeaderField: "Content-Encoding")
         let path = request.url?.path ?? ""
         let isUpload = path.hasSuffix("/sitespace/sync/siteprops") || path.hasSuffix("/sitespace/sync/spaceprops")
-        if isUpload, let body = request.httpBody, body.count >= 1024 {
-            request.httpBody = try body.gzipped(level: .bestSpeed)
-            request.setValue("gzip", forHTTPHeaderField: "Content-Encoding")
+        if isUpload {
             request.setValue(nil, forHTTPHeaderField: "Content-Length")
         }
+        // Both sync endpoints support request compression in all server regions.
+        // Accept-Encoding negotiates responses independently of this policy.
+        guard isUpload,
+              request.httpMethod == "POST",
+              let body = request.httpBody, !body.isEmpty else { return request }
+        request.httpBody = body.isGzipped ? body : try body.gzipped(level: .bestSpeed)
+        request.setValue("gzip", forHTTPHeaderField: "Content-Encoding")
         return request
     }
 }

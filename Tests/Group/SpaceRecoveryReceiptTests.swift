@@ -272,6 +272,7 @@ final class NetworkRequest {
         try await testNewerCloudReplacement()
         try await testMeshKeyReceipts()
         try await testSpaceRecordRemoval()
+        try await testParseRejectionRecovery()
 
         // Account changes invalidate pending callbacks before looking up another store.
         let accountContext = try SpaceConfigurationSafety.recoveryState(b)
@@ -435,6 +436,77 @@ final class NetworkRequest {
         precondition(archives.contains { $0.lastPathComponent.hasPrefix("suspended-import-") })
         precondition(!S.canAutomaticallyUpload(importing), "suspended partial import is not a complete upload baseline")
         print("PASS: record deletion bypasses upload, retains data on server failure, retries lost responses and rejects stale/unauthorized callbacks")
+    }
+
+    @MainActor static func testParseRejectionRecovery() async throws {
+        typealias S = SpaceConfigurationSafety
+        let body = #"{"code":"parse_error","message":"Invalid UTF-8"}"#
+        // Persisted legacy errors used integer code 0; both shapes must classify.
+        for code in [0, 400] {
+            let space = SpaceData("parse-rejected-\(code)")
+            precondition(S.updateDeletionJournal(space) {
+                $0.entries.append(.init(id: UUID(), nodeUUID: "deleted", primaryAddress: 2,
+                    elementAddresses: [2], macAddress: nil, productId: nil, stage: .cleaned, completedTimestamp: 50))
+            })
+            let journal = try S.deletionJournal(space)
+            let context = S.prepareSubmission(space, payload: space.payload, siteCreationTimestamp: 45)!
+            let error = NetworkApiError(code: code, message: "Invalid UTF-8", httpStatusCode: 400, responseBody: body)
+            S.rejectSubmission(context, space: space, error: error)
+            let state = try S.recoveryState(space)
+            precondition(state.submission == nil && state.siteCreationTimestamp == nil)
+            precondition(space.needUploadCloud && space.lastUploadCloudTimestamp == nil)
+            let remaining = try S.deletionJournal(space)
+            precondition(remaining.entries.count == journal.entries.count && remaining.entries[0].id == journal.entries[0].id)
+            let calls = NetworkRequest.shared.calls
+            if case .failure = await S.resumeUpload(space) { preconditionFailure("rejected attempt must not block retry") }
+            precondition(NetworkRequest.shared.calls == calls, "known parse rejection must not trigger three stale readbacks")
+            let newer = S.prepareSubmission(space, payload: space.payload)!
+            S.rejectSubmission(context, space: space, error: error)
+            let afterLate = try S.recoveryState(space)
+            precondition(afterLate.submission?.id == newer.submission?.id, "old failure cannot remove a newer receipt")
+            precondition(S.markSubmissionAccepted(newer, space: space))
+            S.rejectSubmission(newer, space: space, error: error)
+            let accepted = try S.recoveryState(space)
+            precondition(accepted.submission?.phase == .accepted, "accepted receipts still need readback")
+        }
+        let unknownErrors: [NetworkApiError] = [
+            .requestTimeout, .noNetwork, .serverNotRespond,
+            .init(code: 500, message: "failed", httpStatusCode: 500, responseBody: body),
+            .init(code: 400, message: "failed", httpStatusCode: 400, responseBody: #"{"code":"validation_error"}"#),
+            .init(code: 400, message: "failed", httpStatusCode: 400, responseBody: "truncated"),
+            .init(code: 400, message: "failed", httpStatusCode: 400, responseBody: body,
+                  underlyingError: NSError(domain: NSURLErrorDomain, code: -1005))
+        ]
+        for (index, error) in unknownErrors.enumerated() {
+            let space = SpaceData("unknown-result-\(index)")
+            let context = S.prepareSubmission(space, payload: space.payload)!
+            S.rejectSubmission(context, space: space, error: error)
+            precondition(S.hasPendingUpload(space), "unknown outcomes cannot drop their receipt")
+        }
+        // Previously persisted prepared receipts retain baseline-based recovery.
+        for conflict in [false, true] {
+            let space = SpaceData("legacy-prepared-\(conflict)")
+            space.lastUploadCloudTimestamp = 49
+            var state = try S.recoveryState(space)
+            var baseline = space.payload
+            baseline["nodes"] = [["uuid": "old", "unicastAddress": "0002"]]
+            state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(baseline)
+            try S.testSaveState(state, space: space)
+            _ = S.prepareSubmission(space, payload: space.payload)!
+            if conflict { baseline["nodes"] = [["uuid": "other", "unicastAddress": "0005"]] }
+            NetworkRequest.shared.result = .success(["data": baseline])
+            let calls = NetworkRequest.shared.calls
+            let result = await S.resumeUpload(space)
+            precondition(NetworkRequest.shared.calls == calls + 3)
+            if conflict {
+                if case .success = result { preconditionFailure("real conflict must remain protected") }
+                precondition(S.hasPendingUpload(space) && S.isBlocked(space))
+            } else {
+                if case .failure = result { preconditionFailure("unchanged baseline allows a new submission") }
+                precondition(!S.hasPendingUpload(space) && space.needUploadCloud)
+            }
+        }
+        print("PASS: parse rejection preserves edits/journals, skips readback, isolates new/accepted receipts and retains unknown/conflict recovery")
     }
 
     @MainActor static func testSiteHandoffReadback() async throws {

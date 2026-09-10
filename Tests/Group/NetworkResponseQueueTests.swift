@@ -48,18 +48,29 @@ final class TestProvider {
             (#"{"isSuccess":true}"#, 200, true),
             (#"{"code":4009,"message":"denied"}"#, 200, false),
             ("[1,2]", 200, false), ("invalid JSON", 200, false),
-            (#"{"code":503}"#, 503, false)
+            (#"{"code":503}"#, 503, false),
+            (#"{"code":"parse_error","message":"Invalid UTF-8"}"#, 400, false),
+            (#"{"code":"parse_error","message":"Invalid UTF-8"}"#, 200, false),
+            (#"{"code":200}"#, 400, false),
+            (#"{"isSuccess":true}"#, 500, false),
+            ("{}", 400, false)
         ]
         for (body, status, expected) in cases {
             request.provider.result = .success(.init(statusCode: status, data: Data(body.utf8)))
-            run(request, expected: expected)
+            run(request, expected: expected) { error in
+                if body.contains("parse_error") {
+                    precondition(error.responseBusinessCode == "parse_error")
+                    precondition(error.isRequestParseRejection == (status == 400))
+                    precondition(error.code == (status == 400 ? 400 : -1))
+                }
+            }
         }
         request.provider.result = .failure(.underlying(NSError(domain: NSURLErrorDomain, code: -1009), nil))
         run(request, expected: false)
         print("PASS: both production adapters parse off main, deliver success/failure on main, and preserve business/error outcomes")
     }
 
-    static func run(_ request: NetworkRequest, expected: Bool) {
+    static func run(_ request: NetworkRequest, expected: Bool, checkError: ((NetworkApiError) -> Void)? = nil) {
         var calls = 0
         func received(_ success: Bool) {
             precondition(Thread.isMainThread, "UI completion must return to main")
@@ -69,7 +80,7 @@ final class TestProvider {
         request.request(.siteInfo) { result in
             switch result {
             case .success: received(true)
-            case .failure: received(false)
+            case .failure(let error): checkError?(error); received(false)
             }
         }
         request.request(.siteInfo, success: { _ in received(true) }, failure: { _ in received(false) })

@@ -577,6 +577,12 @@ enum SpaceConfigurationSafety {
     /// A definite server rejection must not leave an unknown-outcome receipt.
     static func rejectSubmission(_ context: SpaceRecoveryState, space: SpaceData, error: NetworkApiError) {
         guard isCurrent(context, space: space) else { return }
+        if error.isRequestParseRejection {
+            // Only the matching prepared attempt was rejected. Preserve local
+            // edits, deletion journals, baselines and any newer/accepted receipt.
+            discardUnsentSubmission(context, space: space)
+            return
+        }
         handleAuthorityError(error, space: space)
         switch error {
         case .noSitePermission, .noSpacePermission, .userUnauthorized, .incorrectPassword, .spacePasswordOverdue,
