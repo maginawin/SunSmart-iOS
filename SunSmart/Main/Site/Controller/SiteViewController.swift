@@ -1194,14 +1194,17 @@ self.updateAddressData()
         
         
         XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-        NetworkRequest.shared.request(.spaceDelete(siteId: self.site.id, spaceId: space.id)) {[weak self] result in
+        Task { @MainActor [weak self] in
+            guard let self else { XWHUDManager.hide(); return }
+            let result = await SpaceConfigurationSafety.requestSpaceRemoval(space,
+                requireCloudDeletion: self.site.uploadCloud)
             XWHUDManager.hide()
             switch result {
             case .success(_):
                 // 删除本地数据
-                self?.deleteSpace(space: space)
+                guard self.deleteSpace(space: space) else { return }
                 // 删除网关内关联的space并同步到服务器
-                if let gateway = self?.gatewayModels.first(where: { $0.mac == space.relevanceGatewayId }) {
+                if let gateway = self.gatewayModels.first(where: { $0.mac == space.relevanceGatewayId }) {
                     gateway.associatedSpaces.removeAll(where: { $0.spaceId == space.id })
                     gateway.lastUpdate = GatewayCloudSyncGenerationPolicy.next(
                         now: Int64(Date().timeIntervalSince1970),
@@ -1757,20 +1760,17 @@ self.updateAddressData()
     /// 删除space弹窗
     private func showDeleteSpaceAlert(space: SpaceData) {
         
-        SRAlertView(title: "notification".localizedString, message: "alert_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_delete".localizedString, style: .destructive, actionHandler: {[weak self] _ in
+        let message = "space_delete_records_message"
+        SRAlertView(title: "notification".localizedString, message: message.localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_delete".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             guard let self = self else { return }
-            // 存在设备则不能删除
-            if space.deviceCount > 0 {
+            // 正常空间需为空；同步异常仅向 Owner 开放整空间记录删除。
+            if !space.canDeleteSpaceRecords {
                 XWHUDManager.showErrorTipHUD("site_delete_fail".localizedString)
-            }else { // 场所下空间未存在设备
+            }else {
                 // 是否有同步操作正在进行,进行中则取消任务
                 CloudSynchronizationManager.shared.cancelSynchronizationHandle(space: space)
                 
-                if space.uploadCloud { // space上传到云端，需要网络才能删除
-                    self.deleteSpaceRequest(space: space)
-                }else {
-                    self.deleteSpace(space: space)
-                }
+                self.deleteSpaceRequest(space: space)
             }
             
         })]).show()
@@ -1779,10 +1779,13 @@ self.updateAddressData()
     
 
     /// 删除空间
-    private func deleteSpace(space: SpaceData) {
+    @discardableResult private func deleteSpace(space: SpaceData) -> Bool {
         
         //            self.site.lastUpdate = Int64(Date().timeIntervalSince1970)
-        space.delete()
+        guard space.delete() else {
+            XWHUDManager.showErrorTipHUD("space_delete_local_cleanup_pending".localizedString)
+            return false
+        }
         
         if space.permission == .owner, let gateway = self.gatewayModels.first(where: { $0.associatedSpaces.contains(where: { $0.spaceId == space.id }) }) {
             gateway.associatedSpaces.removeAll(where: { $0.spaceId == space.id })
@@ -1817,6 +1820,7 @@ self.updateAddressData()
         }else {
             self.setupData()
         }
+        return true
     }
     
     
@@ -3648,7 +3652,8 @@ extension SiteViewController: UIDocumentPickerDelegate {
                     let importResult = await SpaceData.import(
                         siteId: site.id,
                         meshUUID: site.meshUUID,
-                        spaceJsonData: json
+                        spaceJsonData: json,
+                        allowsCloudReplacement: false
                     )
                     guard importResult.space != nil else {
                         XWHUDManager.showErrorTipHUD(

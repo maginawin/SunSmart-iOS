@@ -37,6 +37,9 @@ final class GroupProximityLightingPathData {
     }
 }
 final class GroupInfo {
+    struct SceneData { let sceneNumber: UInt16 }
+    var bindSchedules: [Schedule] = []
+    var sceneExecuteDatas: [SceneData] = []
     var profile = Profile()
     var profileLoadFailed = false, topologyLoadFailed = false
     var proximityLightingPath: GroupProximityLightingPathData?
@@ -48,7 +51,8 @@ final class GroupInfo {
     static func unavailable(address: Address) -> GroupInfo { let x = GroupInfo(); x.profileLoadFailed = true; return x }
     @discardableResult func save(meshUUID: String, subnetworkId: String) -> Bool { true }
 }
-final class Group: Decodable {
+final class Group: Decodable, Equatable {
+    static func == (lhs: Group, rhs: Group) -> Bool { lhs.address == rhs.address }
     let address: MeshAddress
     var name = "Group", isVirtual = false, info = GroupInfo()
     var subNetworkId: String?
@@ -84,6 +88,7 @@ final class Node: Decodable {
     var groupState = GroupState.inGroup
     var subNetworkId: String?
     weak var network: MeshNetwork?
+    var isProxy = false, state = true
     var isLocalProvisioner = false, isProvisioner = false, isConfigComplete = false
     var macAddress: String?
     var createdTimestamp: Int64 = 1
@@ -126,6 +131,12 @@ final class MeshNetwork {
     static var stored: [String: MeshNetwork] = [:]
     static var loadCount = 0
     init(_ uuid: UUID = UUID()) { self.uuid = uuid }
+    static func load(meshUUID: String) -> MeshNetwork? {
+        let values = stored.values.filter { $0.uuid.uuidString == meshUUID }
+        guard let first = values.first else { return nil }
+        let site = MeshNetwork(first.uuid); site.nodes = values.flatMap { $0.nodes }
+        return site
+    }
     static func load(meshUUID: String, subnetworkId: String) -> MeshNetwork? {
         loadCount += 1
         return stored[meshUUID + subnetworkId]
@@ -144,6 +155,7 @@ final class MeshNetworkManager {
     var meshNetwork: MeshNetwork?
     var schedules: [Schedule] = []
     var switchs: [DeviceSwitchData] = []
+    var dongles: [DeviceDongleData] = []
     var currentNetworkKey = Key(networkId: "")
     var realNodes: [Node] { meshNetwork?.nodes ?? [] }
     var groups: [Group] { meshNetwork?.groups ?? [] }
@@ -167,6 +179,8 @@ final class SpaceData {
     @discardableResult func save() -> Bool { true }
 }
 enum SpaceConfigurationSafety {
+    static func prepareForDeviceDeletion(_ space: SpaceData) async -> Bool { true }
+    static func canDeleteDeviceRecords(_ space: SpaceData) -> Bool { true }
     static func canAutomaticallyUpload(_ space: SpaceData) -> Bool { !pendingImport }
     enum SafetyError: Error { case persistenceFailed }
     static var blocked = false
@@ -381,6 +395,7 @@ enum NodeSyncData: Equatable {
         _ = await ProximityLightingImportPreflight.prepare(spaceJsonData: changedPayload, initialize: true)
         require(Node.decodeCount > afterChanged, "initialization changes legacy interpretation and must invalidate")
 
+        try await testDeviceDeletionUI()
         print("PASS: scoped import/planner/coordinator execution, colliding Sites/Spaces, no cloud side effects, destructive import guard, explicit deletion and equivalent logical edits")
     }
 }

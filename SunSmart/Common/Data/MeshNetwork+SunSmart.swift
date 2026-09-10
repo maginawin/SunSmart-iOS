@@ -461,14 +461,56 @@ extension SpaceData {
         return spaceData
     }
     
+    /// Count persisted records across every category; cached UI totals are not
+    /// evidence that a Space is empty. Missing keys do not prevent this read.
+    var canDeleteEmptySpaceRecords: Bool {
+        guard permission == .owner, !meshNetworkId.isEmpty,
+              SunSmartDataManager.shared.db != nil, MeshDataManager.shared.databaseReadRevision() != nil,
+              !SpaceConfigurationSafety.hasPendingDeletionCleanup(self),
+              !SpaceConfigurationSafety.hasPendingImport(self),
+              !SpaceData.load(siteId: siteId).contains(where: { $0.id != id && $0.meshNetworkId == meshNetworkId }),
+              let network = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: meshNetworkId),
+              !network.networkKeys.contains(where: { $0.isPrimary && $0.networkId.hex == meshNetworkId }) else { return false }
+        return network.nodes.allSatisfy { $0.isProvisioner || $0.isLocalProvisioner }
+            && DeviceSwitchData.load(meshUUID: meshUUID, meshNetworkId: meshNetworkId).isEmpty
+            && DeviceDongleData.load(meshUUID: meshUUID, meshNetworkId: meshNetworkId).isEmpty
+            && DeviceEmerFireData.load(meshUUID: meshUUID, meshNetworkId: meshNetworkId, spaceId: id).isEmpty
+    }
+
+    /// Only an explicit sync failure or blocked configuration opens the Owner
+    /// exception. A normal Space merely waiting to upload must still be empty.
+    var hasSyncFailureForRemoval: Bool {
+        (needUploadCloud && syncCloudError != nil) || SpaceConfigurationSafety.isBlocked(self)
+    }
+
+    var canDeleteSpaceRecords: Bool {
+        guard permission == .owner else { return false }
+        if canDeleteEmptySpaceRecords { return true }
+        guard hasSyncFailureForRemoval, !meshNetworkId.isEmpty,
+              SunSmartDataManager.shared.db != nil, MeshDataManager.shared.databaseReadRevision() != nil,
+              !SpaceData.load(siteId: siteId).contains(where: { $0.id != id && $0.meshNetworkId == meshNetworkId }),
+              let network = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: meshNetworkId),
+              !network.networkKeys.contains(where: { $0.isPrimary && $0.networkId.hex == meshNetworkId }) else { return false }
+        return true
+    }
+
     /// Finish local removal before returning; interrupted work is replayable.
     @discardableResult func delete() -> Bool {
-        guard SunSmartDataManager.shared.db != nil, SpaceConfigurationSafety.beginRemoval(self) else { return false }
+        guard SunSmartDataManager.shared.db != nil, MeshDataManager.shared.databaseReadRevision() != nil,
+              !meshNetworkId.isEmpty,
+              !SpaceData.load(siteId: siteId).contains(where: { $0.id != id && $0.meshNetworkId == meshNetworkId }),
+              SpaceConfigurationSafety.beginRemoval(self) else { return false }
         CloudSynchronizationManager.shared.cancelSynchronizationHandle(space: self)
         if let network = MeshNetwork.load(meshUUID: meshUUID, allData: false),
            network.networkKeys.contains(where: { $0.networkId.hex == meshNetworkId }) {
             guard MeshNetworkManager.removeSubnetwork(meshUUID: meshUUID, networkId: meshNetworkId) else { return false }
         }
+        // A missing NetKey must not leave this subnet's records orphaned. These
+        // APIs scope by Site UUID + Network ID, never by the conflicting index.
+        guard Node.deleteAllPropertys(meshUUID: meshUUID, subnetworkId: meshNetworkId),
+              Node.deleteAll(meshUUID: meshUUID, subnetworkId: meshNetworkId),
+              Group.deleteAll(meshUUID: meshUUID, subnetworkId: meshNetworkId),
+              Scene.deleteAll(meshUUID: meshUUID, subnetworkId: meshNetworkId) else { return false }
         if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == meshUUID,
            MeshNetworkManager.instance.currentNetworkKey.networkId.hex == meshNetworkId {
             MeshLibManager.manager.meshNetworkDisconnect()
@@ -477,7 +519,10 @@ extension SpaceData {
               SceneInfo.delete(meshUUID: meshUUID, networkId: meshNetworkId),
               Schedule.deleteAll(meshUUID: meshUUID, meshNetworkId: meshNetworkId),
               Profile.deleteProfiles(meshUUID: meshUUID, meshNetworkId: meshNetworkId),
-              DeviceSwitchData.deleteSwitchs(meshUUID: meshUUID, networkId: meshNetworkId) else { return false }
+              DeviceSwitchData.deleteSwitchs(meshUUID: meshUUID, networkId: meshNetworkId),
+              GroupSwitch.deleteSwitchs(meshUUID: meshUUID, networkId: meshNetworkId),
+              DeviceDongleData.deleteDongles(meshUUID: meshUUID, networkId: meshNetworkId),
+              DeviceEmerFireData.deleteAll(meshUUID: meshUUID, networkId: meshNetworkId) else { return false }
         return deleteData()
     }
 
@@ -592,55 +637,49 @@ extension MeshNetworkManager {
     }
     
     /// 获取网络扩展数据
-    func loadExtensionData(result: ((Bool)->Void)? = nil) {
-        
-        guard let uuid = self.meshNetwork?.uuid.uuidString else {
-            result?(false)
-            return
-        }
-        
-        DispatchQueue.global().async {
-            
-            let subNetworkId = self.currentNetworkKey.networkId.hex
-            
-            self.schedules = Schedule.load(meshUUID: uuid, meshNetworkId: subNetworkId)
-            
-            self.groups.forEach({ group in
-                group.info = GroupInfo.load(meshUUID: uuid, address: group.address.address) ?? GroupInfo.unavailable(address: group.address.address)
+    func loadExtensionData(networkId: String? = nil, isCurrent: @escaping () -> Bool = { true },
+                           result: ((Bool)->Void)? = nil) {
+        guard let uuid = meshNetwork?.uuid.uuidString else { result?(false); return }
+        let requestedId = networkId ?? currentNetworkKey.networkId.hex
+        let scope = DeviceSwitchData.RecordScope(meshUUID: uuid, networkId: requestedId)
+        // Publish extension caches on the main queue, after validating the exact
+        // manager and caller generation. No late callback can fill another Space.
+        DispatchQueue.main.async {
+            guard isCurrent(), MeshLibManager.manager.meshNetworkManager === self else {
+                result?(false); return
+            }
+            guard scope.matches(self) else {
+                self.switchs = []; self.schedules = []; self.dongles = []
+                result?(true) // Local records remain browsable by explicit scope.
+                return
+            }
+            self.schedules = Schedule.load(meshUUID: uuid, meshNetworkId: requestedId)
+            self.scenes.forEach {
+                $0.info = SceneInfo.load(meshUUID: uuid, sceneId: $0.number) ?? SceneInfo(sceneId: $0.number)
+            }
+            self.groups.forEach { group in
+                group.info = GroupInfo.load(meshUUID: uuid, address: group.address.address,
+                    subnetworkId: requestedId) ?? GroupInfo.unavailable(address: group.address.address)
                 if !group.isVirtual, group.info.profileLoadFailed || group.info.topologyLoadFailed {
-                    SpaceConfigurationSafety.block(meshUUID: uuid, networkId: subNetworkId,
+                    SpaceConfigurationSafety.block(meshUUID: uuid, networkId: requestedId,
                         reason: "invalidStoredGroupConfiguration")
                 }
-                
-                // 兼容旧版本profile未保存到场景的设备
-//                let noGeneralLightControlSceneNodes = group.nodes.filter({ node in node.requiredFunctionTypes.contains(.lightLCScene) && node.lightLCSceneSetupModel != nil && !node.lightControlSceneExecuteDatas.contains(where: { $0.sceneNumber == .generalLightControlScene }) })
-//                noGeneralLightControlSceneNodes.forEach({ node in
-//                    let sceneExecuteData = SceneExecuteData(sceneNumber: .generalLightControlScene, isOn: node.isOn, lightness: node.lightness, cct: node.temperature, lightControlData: node.lightLCProperty.copy())
-//                    node.lightControlSceneExecuteDatas.insert(sceneExecuteData, at: 0)
-//                })
-                
-               let bindSchedules = self.schedules.filter({ schedule in
-                   schedule.groups.contains(where: { $0.address == group.address }) ||
-                   schedule.needDeleteGroups.contains(where: { $0.address == group.address }) ||
-                   (schedule.scene?.info.groups.contains(where: { $0.address == group.address }) ?? false)
-               })
-                group.info.bindSchedules = bindSchedules
-            })
-            self.scenes.forEach({
-                $0.info = SceneInfo.load(meshUUID: uuid, sceneId: $0.number) ?? SceneInfo(sceneId: $0.number)
-            })
-            
-            self.switchs = DeviceSwitchData.load(meshUUID: uuid, meshNetworkId: subNetworkId)
-            self.normalizeInvalidBatteryPowerSwitchProxyLinks()
-            self.dongles = DeviceDongleData.load(meshUUID: uuid, meshNetworkId: subNetworkId)
-
-            DispatchQueue.main.async {
-                result?(true)
+                group.info.bindSchedules = self.schedules.filter { schedule in
+                    schedule.groups.contains { $0.address == group.address } ||
+                    schedule.needDeleteGroups.contains { $0.address == group.address } ||
+                    (schedule.scene?.info.groups.contains { $0.address == group.address } ?? false)
+                }
             }
+            self.switchs = DeviceSwitchData.load(meshUUID: uuid, meshNetworkId: requestedId)
+            self.normalizeInvalidBatteryPowerSwitchProxyLinks()
+            self.dongles = DeviceDongleData.load(meshUUID: uuid, meshNetworkId: requestedId)
+            #if DEBUG
+            print("[SpaceExtensionScope] site=\(uuid) requested=\(requestedId) switches=\(self.switchs.count)")
+            #endif
+            result?(true)
         }
-        
     }
-    
+
     /// 获取下一个节点名称
     /// - Parameter defaultName: 默认名称
     /// - Returns: 分配的节点名称
@@ -934,95 +973,14 @@ extension MeshNetworkManager {
         return didChange
     }
     
-    /// 删除动能开关
-    func deleteSwitch(switchData: DeviceSwitchData) {
-        guard let meshUUID = self.meshNetwork?.uuid.uuidString else { return }
-        let realPowerSwitchNode = switchData.proxyNode?.isPowerSwitch == true
-            ? switchData.proxyNode
-            : nil
-        silentlyResetPowerSwitchIfNeeded(realPowerSwitchNode)
-        // 检查代理设备的数据有没有清空
-        if let macAddress = switchData.enOceanMacAddress, !macAddress.isEmpty {
-            let proxyAddresses = KineticSwitchBindingPolicy.cleanupProxyAddresses(
-                current: switchData.proxyNodeAddress,
-                pendingRemoval: switchData.deleteProxyNodeAddress
-            )
-            let proxyNodes = proxyAddresses.compactMap {
-                MeshNetworkManager.instance.meshNetwork?.node(withAddress: $0)
-            }
-            proxyNodes
-                .filter { $0.enOceanMacAddress == macAddress }
-                .forEach {
-                    $0.enOceanMacAddress = nil
-                    $0.enOceanProxySwitchKeys = []
-                    $0.savePropertys()
-                }
-        }
-        PJEightKeySwitchRepository.shared.delete(for: switchData, meshUUID: meshUUID, networkId: self.currentNetworkKey.networkId.hex)
-        switchData.delete(meshUUID: meshUUID, networkId: self.currentNetworkKey.networkId.hex)
-        self.switchs.removeAll(where: { $0.id == switchData.id })
-        removeRealPowerSwitchNodeIfNeeded(realPowerSwitchNode)
-        
-        var switchGroups: [Group] = []
-        if let group = switchData.linkGroup {
-            switchGroups.append(group)
-        }
-        if let group = switchData.subLinkGroup {
-            switchGroups.append(group)
-        }
-        switchGroups.forEach { group in
-            var isUnsubscribe: Bool = false
-            // 解绑本地节点订阅组信息，用于接收按键发出指令本地显示状态
-            for element in MeshNetworkManager.instance.localNode?.elements ?? [] {
-                let subscribeModels = element.models.filter({ $0.isSubscribed(to: group) })
-                subscribeModels.forEach({
-                    $0.unsubscribe(from: group)
-                })
-                if subscribeModels.count > 0 {
-                    isUnsubscribe = true
-                }
-            }
-            if isUnsubscribe {
-                MeshNetworkManager.instance.localNode?.save()
-            }
-            try? self.meshNetwork?.remove(group: group)
-        }
-        notifyRealPowerSwitchDeletedIfNeeded(realPowerSwitchNode)
-        
+    /// Legacy callers also use the scoped persistence and receipt boundary.
+    @discardableResult
+    func deleteSwitch(switchData: DeviceSwitchData) -> Bool {
+        guard let scope = switchData.recordScope, scope.matches(self),
+              let space = SpaceData.load(siteId: scope.meshUUID).first(where: { $0.meshNetworkId == scope.networkId }) else { return false }
+        return SwitchRecordDeletion.remove(switchData, space: space, force: false)
     }
 
-    private func silentlyResetPowerSwitchIfNeeded(_ node: Node?) {
-        guard let node else {
-            return
-        }
-        do {
-            try MeshAPI.resetNodeWithoutWaitingForStatus(address: node.primaryUnicastAddress)
-        } catch {
-            #if DEBUG
-            print("Failed to send Power Switch reset node: \(error)")
-            #endif
-        }
-    }
-
-    private func removeRealPowerSwitchNodeIfNeeded(_ node: Node?) {
-        guard let node else {
-            return
-        }
-        node.deleteExtension()
-        self.meshNetwork?.forceRemove(node: node)
-    }
-
-    private func notifyRealPowerSwitchDeletedIfNeeded(_ node: Node?) {
-        guard node != nil else {
-            return
-        }
-        NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
-        NotificationCenter.default.post(
-            name: .init(spaceDataChangedNotificaitonName),
-            object: SpaceChangeDataType.network(type: .address)
-        )
-    }
-    
     /// 删除dongle
     func deleteDongle(dongleData: DeviceDongleData) {
         guard let meshUUID = self.meshNetwork?.uuid.uuidString else { return }

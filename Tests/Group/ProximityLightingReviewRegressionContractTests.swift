@@ -12,8 +12,6 @@ struct ProximityLightingReviewRegressionContractTests {
         let groupServer = try source(root, "SunSmart/Main/Group/Model/GroupServer.swift")
         let groupView = try source(root, "SunSmart/Main/Group/Controller/GroupViewController.swift")
         let groupAdd = try source(root, "SunSmart/Main/Group/Controller/GroupAddViewController.swift")
-        let deviceProtocol = try source(root, "SunSmart/Main/Device/Model/DeviceProtocol.swift")
-        let deviceLights = try source(root, "SunSmart/Main/Device/Lights/Controller/DeviceLightsViewController.swift")
 
         require(
             importData.contains("struct SpaceImportResult")
@@ -85,39 +83,7 @@ struct ProximityLightingReviewRegressionContractTests {
             "General Group edit must invalidate and evaluate full Group sync independently of proximity tasks"
         )
 
-        let protocolCallbacks = section(
-            in: deviceProtocol,
-            from: "let vc = SyncDevicesViewController(type: .spaceTriggerZones(datas: datas))",
-            to: "navigationController?.pushViewController(vc, animated: true)"
-        )
-        requireCallbackClosesBeforeCompletion(protocolCallbacks, owner: "Protocol-based deletion")
-
-        let batchSync = section(
-            in: deviceLights,
-            from: "private func syncDeletionPeersIfNeeded(",
-            to: "/// 修复设备"
-        )
-        let batchCallbacks = section(
-            in: batchSync,
-            from: "let vc = SyncDevicesViewController(type: .spaceTriggerZones(datas: datas))",
-            to: "navigationController?.pushViewController(vc, animated: true)"
-        )
-        requireCallbackClosesBeforeCompletion(batchCallbacks, owner: "Batch deletion")
-
         print("PASS: Proximity Lighting review regression contracts hold.")
-    }
-
-    private static func requireCallbackClosesBeforeCompletion(
-        _ source: String,
-        owner: String
-    ) {
-        require(
-            source.contains("var didFinish = false")
-                && source.contains("topViewController === vc")
-                && appearsBefore("popViewController(animated: false)", "completion()", in: source)
-                && occurrenceCount("finish()", in: source) >= 2,
-            "\(owner) must close its Sync Devices page before invoking the original completion"
-        )
     }
 
     private static func source(_ root: String, _ relativePath: String) throws -> String {

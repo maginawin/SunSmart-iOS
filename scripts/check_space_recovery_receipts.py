@@ -18,6 +18,7 @@ start = methods.index('    static func resumeLocalRemovals()')
 end = methods.index('    static func activateImport(', start)
 methods = methods[:start] + methods[end:]
 methods += section(safety, '    static func needsUpgradeBaseline(', '    /// Preserve both side stores')
+methods += section(safety, '    static func finishImport(', '    @MainActor\n    static func prepareUpload(')
 methods += section(safety, '    @MainActor\n    static func prepareUpload(', '    /// Called only after the user explicitly chooses')
 methods = methods.replace('UserDefaults.standard', 'testDefaults')
 methods += """
@@ -45,9 +46,24 @@ test = read('Tests/Group/SpaceRecoveryReceiptTests.swift').replace('// METADATA_
 preparation = section(imports, '    func update(\n        spaceJsonData:',
     '        return await withCheckedContinuation { continuation in')
 test = test.replace('// IMPORT_PREPARATION_METHOD', '@MainActor\n' + preparation
-    + '        _ = proximityPreflight\n        return .prepared\n    }\n')
+    + '        _ = proximityPreflight\n'
+    + '        if replacingCloud { return commitCloudForTest(spaceJsonData) }\n'
+    + '        return .prepared\n    }\n')
 test += '\n' + section(imports, 'final class SiteImportTrace', '\nstruct SpaceImportOutcome')
 test += '\n' + read('Tests/Group/SpaceImportPreparationTests.swift')
+test += '\n' + read('Tests/Group/SpaceNewerCloudReplacementTests.swift')
+test = test.replace('// CLOUD_REMOVE_NODES', section(imports,
+    '            network.nodes.filter({ !$0.isLocalProvisioner &&', '            // 设备\n'))
+test = test.replace('// CLOUD_REMOVE_GROUPS', section(imports,
+    '            for group in network.groups where group.subNetworkId == self.meshNetworkId {', '            // 按键\n'))
+test = test.replace('// CLOUD_REMOVE_SCENES', section(imports,
+    '            for scene in network.scenes where scene.subNetworkId == self.meshNetworkId {', '            guard SceneInfo.delete'))
+membership_check = next(line.strip().removesuffix(',') for line in imports.splitlines()
+    if 'Set(persistedNetwork.nodes.filter' in line)
+test = test.replace('// CLOUD_PERSISTED_NODES', 'return ' + membership_check)
+cloud = read('SunSmart/Common/Cloud/CloudSynchronizationManager.swift')
+test = test.replace('// CLOUD_UPLOAD_SELECTION', next(line.strip() for line in cloud.splitlines()
+    if 'let uploadSpaces = syncSpaces.filter' in line))
 network = read('SunSmart/Common/Network/NetworkRequest.swift')
 test = test.replace('// NETWORK_ERROR_TYPE', section(network, 'public enum NetworkApiError:', '/// Encoding is selected'))
 with tempfile.TemporaryDirectory(prefix='space-receipt-tests-') as temp:

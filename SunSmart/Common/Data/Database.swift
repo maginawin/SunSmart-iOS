@@ -2670,6 +2670,7 @@ extension DeviceSwitchData {
                 
                 let switchData = DeviceSwitchData(id: row[ExpressionKey.switchId], enabled: row[ExpressionKey.enabled], name: row[ExpressionKey.name], linkGroupAddress: linkGroupAddress != nil ? Address(linkGroupAddress!) : nil, subLinkGroupAddress: subLinkGroupAddress != nil ? Address(subLinkGroupAddress!) : nil, bindGroupAddresses: bindAddresses)
                 let panelType: PanelType = .init(rawValue: UInt8(row[ExpressionKey.panelType])) ?? .default_4key
+                switchData.recordScope = .init(meshUUID: meshUUID, networkId: subNetworkKey)
                 switchData.panelType = panelType
                 if let number = row[ExpressionKey.sceneA] { //  let sceneA = MeshNetworkManager.instance.scenes.first(where: { $0.number == number })
                     switchData.sceneANumber = SceneNumber(number)
@@ -2712,6 +2713,15 @@ extension DeviceSwitchData {
     }
     
 
+    static func loadForDeletion(meshUUID: String, networkId: String) throws -> [DeviceSwitchData] {
+        guard let db = SunSmartDataManager.shared.db else { throw SpaceConfigurationSafety.SafetyError.persistenceFailed }
+        let query = switchsTable.filter(ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == networkId)
+        let count = try db.scalar(query.count)
+        let records = load(meshUUID: meshUUID, meshNetworkId: networkId)
+        guard records.count == count else { throw SpaceConfigurationSafety.SafetyError.persistenceFailed }
+        return records
+    }
+
     /// 缓存虚拟按键数据
     /// - Parameters:
     ///   - meshUUID: 网络id
@@ -2719,8 +2729,8 @@ extension DeviceSwitchData {
     /// - Returns: 是否成功
     @discardableResult func save(meshUUID: String? = nil, networkId: String? = nil) -> Bool {
         
-        guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
-        let subNetworkey = networkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+        guard let uuid = meshUUID ?? recordScope?.meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
+        let subNetworkey = networkId ?? recordScope?.networkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         
         var proxyAddressesData: Data?
         if let proxyAddress = self.proxyNodeAddress {
@@ -2778,7 +2788,7 @@ extension DeviceSwitchData {
         let filter = DeviceSwitchData.switchsTable.filter(predicate)
         do {
             try SunSmartDataManager.shared.db?.run(filter.delete())
-            PJEightKeySwitchRepository.shared.deleteAll(meshUUID: meshUUID, networkId: networkId)
+            guard PJEightKeySwitchRepository.shared.deleteAll(meshUUID: meshUUID, networkId: networkId) else { return false }
         } catch {
             #if DEBUG
             print(error)
@@ -2789,13 +2799,14 @@ extension DeviceSwitchData {
     }
     
     @discardableResult func delete(meshUUID: String, networkId: String) -> Bool {
+        guard let db = SunSmartDataManager.shared.db else { return false }
         
         // 指定虚拟按键
         let predicate = ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == networkId && ExpressionKey.switchId == self.id
 
         let filter = DeviceSwitchData.switchsTable.filter(predicate)
         do {
-            try SunSmartDataManager.shared.db?.run(filter.delete())
+            try db.run(filter.delete())
         } catch {
             #if DEBUG
             print(error)

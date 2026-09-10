@@ -183,8 +183,8 @@ final class PJEightKeySwitchRepository {
 
     @discardableResult
     func save(_ switchData: PJEightKeySwitchData, meshUUID: String? = nil, networkId: String? = nil) -> Bool {
-        guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
-        let subNetworkKey = networkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+        guard let uuid = meshUUID ?? switchData.recordScope?.meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
+        let subNetworkKey = networkId ?? switchData.recordScope?.networkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         let moreSettingsState = switchData.moreSettingsState.reservingPeriodicReportingDisabled
         let insert = Self.table.insert(or: .replace, [
             ExpressionKey.meshUUID <- uuid,
@@ -225,10 +225,10 @@ final class PJEightKeySwitchRepository {
         networkId: String? = nil
     ) -> Bool {
         guard level <= 100,
-              let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else {
+              let uuid = meshUUID ?? switchData.recordScope?.meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else {
             return false
         }
-        let subNetworkKey = networkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+        let subNetworkKey = networkId ?? switchData.recordScope?.networkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         let filter = Self.table.filter(
             ExpressionKey.meshUUID == uuid &&
             ExpressionKey.subNetworkKey == subNetworkKey &&
@@ -303,8 +303,8 @@ final class PJEightKeySwitchRepository {
         networkId: String? = nil,
         inferredPowerSwitchKind: PJEightKeyPowerSwitchKind?
     ) -> Metadata? {
-        guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return nil }
-        let subNetworkKey = networkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+        guard let uuid = meshUUID ?? switchData.recordScope?.meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return nil }
+        let subNetworkKey = networkId ?? switchData.recordScope?.networkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         let filter = Self.table.filter(
             ExpressionKey.meshUUID == uuid &&
             ExpressionKey.subNetworkKey == subNetworkKey &&
@@ -359,23 +359,40 @@ final class PJEightKeySwitchRepository {
         metadata(for: switchData) != nil
     }
 
-    func delete(for switchData: DeviceSwitchData, meshUUID: String? = nil, networkId: String? = nil) {
-        guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return }
-        let subNetworkKey = networkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+    @discardableResult
+    func delete(for switchData: DeviceSwitchData, meshUUID: String? = nil, networkId: String? = nil) -> Bool {
+        guard let uuid = meshUUID ?? switchData.recordScope?.meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
+        let subNetworkKey = networkId ?? switchData.recordScope?.networkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         let filter = Self.table.filter(
             ExpressionKey.meshUUID == uuid &&
             ExpressionKey.subNetworkKey == subNetworkKey &&
             ExpressionKey.switchId == switchData.id
         )
-        _ = try? SunSmartDataManager.shared.db?.run(filter.delete())
+        guard let db = SunSmartDataManager.shared.db else { return false }
+        do {
+            try db.run(filter.delete())
+            return try db.pluck(filter) == nil
+        } catch { return false }
     }
 
-    func deleteAll(meshUUID: String, networkId: String) {
+    func recordIsAbsent(switchId: String, meshUUID: String, networkId: String) -> Bool {
+        guard let db = SunSmartDataManager.shared.db else { return false }
+        let query = Self.table.filter(ExpressionKey.meshUUID == meshUUID &&
+            ExpressionKey.subNetworkKey == networkId && ExpressionKey.switchId == switchId)
+        do { return try db.scalar(query.count) == 0 } catch { return false }
+    }
+
+    @discardableResult
+    func deleteAll(meshUUID: String, networkId: String) -> Bool {
+        guard let db = SunSmartDataManager.shared.db else { return false }
         let filter = Self.table.filter(
             ExpressionKey.meshUUID == meshUUID &&
             ExpressionKey.subNetworkKey == networkId
         )
-        _ = try? SunSmartDataManager.shared.db?.run(filter.delete())
+        do {
+            try db.run(filter.delete())
+            return try db.scalar(filter.count) == 0
+        } catch { return false }
     }
 }
 

@@ -31,16 +31,22 @@ parts = [section(source('SunSmart/Common/Data/ImportData.swift'), 'final class S
          section(adapter, start, '\nextension SpaceData'),
          source('SunSmart/Common/Data/DeviceScheduleAddressCleanup.swift'),
          source('SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),
-         source('SunSmart/Common/Data/DevicePermanentDeletionCleanup.swift').replace('import NordicSigMeshSDK', ''),
+         source('SunSmart/Common/Data/DevicePermanentDeletionCleanup.swift').split('/// Switch rows are Space records')[0].replace('import NordicSigMeshSDK', ''),
          source('SunSmart/Common/Data/SiteDeviceOwnershipReconciler.swift').replace('import NordicSigMeshSDK', ''),
          source('SunSmart/Main/Group/Model/ProximityLightingLifecycleCoordinator.swift').replace('import NordicSigMeshSDK', ''),
          section(source('SunSmart/Common/Data/ImportData.swift'), 'private struct ProximityLightingImportPreflight', '\n#if DEBUG'),
          'extension Node {\n' + section(source('SunSmart/Common/Data/Node+SyncData.swift'), '    func getNodeSyncProximityLighting(', '    /// 获取网关设备同步的配置') + '\n}',
+         'extension Group {\n' + section(source('SunSmart/Common/Data/MeshNetwork+SunSmart.swift'), '    func getNeedSyncScheduleDataNodes(', '\n}\n') + '\n}',
          'final class ImportRepairHarness {\n'
          '    var pendingProximityLightingRepairRequest: Bool? = true\n'
          '    var capturedDatas: [(node: Node, syncData: NodeSyncData)]?\n'
          '    func recompute(latestSpace: SpaceData) {\n' + repair_recomputation +
          '        capturedDatas = datas\n    }\n}',
+         'final class DeviceDeletionUIHarness {\n'
+         'typealias DevicesResultCallback = ([Node], [Node]) -> Void\n' +
+         section(source('SunSmart/Main/Device/Model/DeviceProtocol.swift'),
+                 '    func deleteNodes(nodes: [Node], space: SpaceData? = nil,', '\n}') + '\n}',
+         (root / 'Tests/Group/DeviceDeletionUIExecutionTests.swift').read_text(),
          test_source,
          (root / 'Tests/Group/DeviceDeletionRecoveryExecutionTests.swift').read_text(),
          (root / 'Tests/Group/SiteDeviceOwnershipExecutionTests.swift').read_text()]

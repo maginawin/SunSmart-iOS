@@ -20,14 +20,8 @@ protocol DeviceProtocol {
     func showRepairFailed(continue nodes: [Node], result: DevicesResultCallback?)
     
     /// 删除设备
-    func deleteNodes(nodes: [Node], forceDeleteMessage: String?, forceDeleteNote: String?, result: DevicesResultCallback?)
+    func deleteNodes(nodes: [Node], space: SpaceData?, forceDeleteMessage: String?, forceDeleteNote: String?, result: DevicesResultCallback?)
 
-    /// 永久删除后同步仍存在设备的邻近照明目标。
-    func syncPermanentDeletionPeers(
-        _ results: [ProximityLightingLifecycleResult],
-        completion: @escaping () -> Void
-    )
-    
 }
 
 extension DeviceProtocol {
@@ -119,98 +113,69 @@ extension DeviceProtocol {
         
     }
     
-    /// 删除设备
-    func deleteNodes(nodes: [Node], forceDeleteMessage: String? = nil, forceDeleteNote: String? = nil, result: DevicesResultCallback?) {
-        
-        XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-        let deletionContexts = Dictionary(uniqueKeysWithValues: nodes.map {
-            ($0.primaryUnicastAddress, DevicePermanentDeletionContext(node: $0))
-        })
-        guard deletionContexts.values.allSatisfy({ $0.isPrepared }) else {
-            XWHUDManager.hide()
-            XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
-            result?([], nodes)
-            return
-        }
-        
-        MeshAPI.resetNodes(addressList: nodes.map({ $0.primaryUnicastAddress }), resetSuccess: nil, resetFail: nil, resetFinish: { successAddressList, failAddressList in
-            XWHUDManager.hide()
-            failAddressList.forEach { deletionContexts[$0]?.cancel() }
-            let successNodes = nodes.filter({ successAddressList.contains($0.primaryUnicastAddress) })
-            var lifecycleResults = successNodes.compactMap {
-                deletionContexts[$0.primaryUnicastAddress]?.commit()
+    /// Deletion completion is local persistence, independent of cloud and peer sync.
+    func deleteNodes(nodes: [Node], space: SpaceData? = nil, forceDeleteMessage: String? = nil,
+                     forceDeleteNote: String? = nil, result: DevicesResultCallback?) {
+        guard !nodes.isEmpty else { result?([], []); return }
+        Task { @MainActor in
+            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
+            guard let target = space ?? nodes.first.flatMap({ node in
+                node.network.flatMap { network in
+                    SpaceData.load(siteId: network.uuid.uuidString).first { $0.meshNetworkId == node.subNetworkId }
+                }
+            }), await SpaceConfigurationSafety.prepareForDeviceDeletion(target) else {
+                XWHUDManager.hide()
+                XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
+                result?([], nodes)
+                return
             }
-            if failAddressList.isEmpty { // 删除成功
-                if MeshNetworkManager.instance.realNodes.isEmpty, MeshLibManager.manager.isMeshNetworkConnected {
-                    MeshLibManager.manager.close()
-                }
-                self.syncPermanentDeletionPeers(lifecycleResults) {
-                    DevicePermanentDeletionContext.showCompletion(contexts: Array(deletionContexts.values))
-                    result?(nodes, [])
-                }
-                
-            }else { // 删除失败（提示是否强制删除这部分设备）
-                
-                
-                let failedNodes = nodes.filter({ failAddressList.contains($0.primaryUnicastAddress) })
-                
-                let alertView = SRAlertView(title: "notification".localizedString, actions: [SRAlertAction(title: "alert_item_cancel".localizedString, style: .cancel, actionHandler: { _ in
-                    self.syncPermanentDeletionPeers(lifecycleResults) {
-                        result?(successNodes, failedNodes)
-                    }
-                    
-                }), SRAlertAction(title: "force_delete".localizedString, actionHandler: { _ in
-                    guard failedNodes.allSatisfy({ deletionContexts[$0.primaryUnicastAddress]?.prepareForForceRemoval() == true }) else {
-                        XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
-                        result?(successNodes, failedNodes)
-                        return
-                    }
-                    failedNodes.forEach { node in
-                        if let lifecycleResult = deletionContexts[node.primaryUnicastAddress]?.forceRemove() {
-                            lifecycleResults.append(lifecycleResult)
+            let contexts = nodes.map { DevicePermanentDeletionContext(node: $0, space: target) }
+            guard contexts.allSatisfy({ $0.isPrepared }) else {
+                contexts.forEach { $0.cancel() }
+                XWHUDManager.hide()
+                XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
+                result?([], nodes)
+                return
+            }
+            let finish = {
+                let success = zip(nodes, contexts).filter { $0.1.wasRemoved }.map { $0.0 }
+                let failed = zip(nodes, contexts).filter { !$0.1.wasRemoved }.map { $0.0 }
+                // Removal, cleanup and cloud confirmation have separate outcomes.
+                // Remaining peers retain their dirty configuration for later sync.
+                if !success.isEmpty && failed.isEmpty { DevicePermanentDeletionContext.showCompletion(space: target) }
+                result?(success, failed)
+            }
+            let resetFinished: () -> Void = {
+                XWHUDManager.hide()
+                contexts.forEach { _ = $0.commit() }
+                let remaining = contexts.filter { !$0.wasRemoved }
+                guard !remaining.isEmpty else { finish(); return }
+                let alertView = SRAlertView(title: "notification".localizedString, actions: [
+                    SRAlertAction(title: "alert_item_cancel".localizedString, style: .cancel, actionHandler: { _ in
+                        remaining.forEach { $0.cancel() }
+                        finish()
+                    }),
+                    SRAlertAction(title: "force_delete".localizedString, style: .destructive, actionHandler: { _ in
+                        remaining.forEach { _ = $0.forceRemove() }
+                        if remaining.contains(where: { !$0.wasRemoved }) {
+                            XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
                         }
-                    }
-                    self.syncPermanentDeletionPeers(lifecycleResults) {
-                        DevicePermanentDeletionContext.showCompletion(contexts: Array(deletionContexts.values))
-                        result?(nodes, [])
-                    }
-                })])
-                let messageAttStr = NSMutableAttributedString(string: forceDeleteMessage ?? "devices_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
-                messageAttStr.append(NSAttributedString(string: forceDeleteNote ?? "devices_force_delete_note".localizedString, attributes: [.foregroundColor: Message_Color]))
-                alertView.messageLabel.attributedText = messageAttStr
+                        finish()
+                    })
+                ])
+                let message = NSMutableAttributedString(string: forceDeleteMessage ?? "devices_force_delete_message".localizedString,
+                    attributes: [.foregroundColor: TextBlack_Color])
+                message.append(NSAttributedString(string: forceDeleteNote ?? "devices_force_delete_note".localizedString,
+                    attributes: [.foregroundColor: Message_Color]))
+                alertView.messageLabel.attributedText = message
                 alertView.show()
             }
-            
-            
-        })
-        
-    }
-    
-}
-
-extension DeviceProtocol where Self: UIViewController {
-
-    func syncPermanentDeletionPeers(
-        _ results: [ProximityLightingLifecycleResult],
-        completion: @escaping () -> Void
-    ) {
-        let datas = ProximityLightingLifecycleCoordinator.mergedSyncDatas(from: results)
-        guard MeshLibManager.manager.isMeshNetworkConnected, !datas.isEmpty else {
-            completion()
-            return
+            var resetNodes = zip(nodes, contexts).filter { $0.1.canReset }.map { $0.0 }
+            // Preserve the proxy-last behavior and short timeout for offline lights.
+            resetNodes.sort { !$0.isProxy && $1.isProxy }
+            guard !resetNodes.isEmpty else { resetFinished(); return }
+            MeshAPI.resetNodes(addressDataList: resetNodes.map { ($0.primaryUnicastAddress, $0.state || $0.isProxy ? 10 : 2) },
+                resetSuccess: nil, resetFail: nil) { _, _ in resetFinished() }
         }
-        let vc = SyncDevicesViewController(type: .spaceTriggerZones(datas: datas))
-        var didFinish = false
-        let finish = { [weak vc] in
-            guard !didFinish else { return }
-            didFinish = true
-            if let vc, vc.navigationController?.topViewController === vc {
-                vc.navigationController?.popViewController(animated: false)
-            }
-            completion()
-        }
-        vc.syncSuccessCallback = { _ in finish() }
-        vc.backActionCallback = { _ in finish() }
-        navigationController?.pushViewController(vc, animated: true)
     }
 }

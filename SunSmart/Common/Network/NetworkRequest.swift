@@ -374,6 +374,10 @@ public enum NetworkApiError: Error, Equatable {
             return -2002
         case .configurationExportInvalid:
             return -2003
+        case .meshKeysUnavailable:
+            return -2004
+        case .meshKeyConflict:
+            return -2005
         }
     }
     
@@ -393,6 +397,10 @@ public enum NetworkApiError: Error, Equatable {
             self = .configurationUploadUnconfirmed
         case -2003:
             self = .configurationExportInvalid
+        case -2004:
+            self = .meshKeysUnavailable
+        case -2005:
+            self = .meshKeyConflict
         case -1009, -1020:
             self = .noNetwork
         case -1001:
@@ -436,6 +444,8 @@ public enum NetworkApiError: Error, Equatable {
     /// Local configuration sync failures retain their localized meaning after reload.
     case configurationUploadUnconfirmed
     case configurationExportInvalid
+    case meshKeysUnavailable
+    case meshKeyConflict
     /// 未识别的服务器或底层错误，保留原始诊断信息
     case apiError(
         code: Int,
@@ -479,6 +489,10 @@ extension NetworkApiError: LocalizedError {
             return "configuration_upload_unconfirmed".localizedString
         case .configurationExportInvalid:
             return "proximity_lighting_export_invalid".localizedString
+        case .meshKeysUnavailable:
+            return "space_mesh_keys_unavailable".localizedString
+        case .meshKeyConflict:
+            return "space_mesh_key_conflict".localizedString
         case .noNetwork:
             return "phone_no_network".localizedString
         case .requestTimeout:

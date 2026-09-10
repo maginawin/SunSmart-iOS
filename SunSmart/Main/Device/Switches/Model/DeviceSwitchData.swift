@@ -6,9 +6,59 @@
 //
 
 import Foundation
+import CryptoKit
 import NordicSigMeshSDK
 
 class DeviceSwitchData: Copyable {
+
+    struct RecordScope: Equatable {
+        let meshUUID: String
+        let networkId: String
+
+        func matches(_ manager: MeshNetworkManager) -> Bool {
+            guard let network = manager.meshNetwork, network.uuid.uuidString == meshUUID,
+                  network.networkKeys.contains(where: { $0.networkId.hex == networkId }) else { return false }
+            return manager.currentNetworkKey.networkId.hex == networkId
+        }
+    }
+
+    // Persisted records carry their owner even when no matching Mesh Key exists.
+    var recordScope: RecordScope?
+
+    static func loadForDisplay(meshUUID: String, networkId: String, reuseMeshCache: Bool) -> [DeviceSwitchData] {
+        let records = load(meshUUID: meshUUID, meshNetworkId: networkId)
+        let scope = RecordScope(meshUUID: meshUUID, networkId: networkId)
+        let manager = MeshNetworkManager.instance
+        guard reuseMeshCache, scope.matches(manager) else { return records }
+        // Mesh unbind completion mutates these cached instances. Share them with
+        // the list while keeping persisted membership and scope authoritative.
+        let switches = records.map { record in
+            manager.switchs.first {
+                $0.recordScope == scope && $0.id == record.id
+                    && $0.deletionFingerprint == record.deletionFingerprint
+            } ?? record
+        }
+        manager.switchs = switches
+        return switches
+    }
+
+    private var referenceManager: MeshNetworkManager? {
+        let manager = MeshNetworkManager.instance
+        guard recordScope?.matches(manager) != false else { return nil }
+        return manager
+    }
+
+    var deletionFingerprint: String {
+        let fields: [Any] = [id, name, enabled, panelType.rawValue,
+            linkGroupAddress as Any? ?? NSNull(), subLinkGroupAddress as Any? ?? NSNull(),
+            bindGroupAddresses, unbindGroupAddresses,
+            sceneANumber as Any? ?? NSNull(), sceneBNumber as Any? ?? NSNull(),
+            sceneCNumber as Any? ?? NSNull(), sceneDNumber as Any? ?? NSNull(),
+            proxyNodeAddress as Any? ?? NSNull(), deleteProxyNodeAddress as Any? ?? NSNull(),
+            enOceanMacAddress as Any? ?? NSNull(), enOceanSecurityKey as Any? ?? NSNull()]
+        guard let data = try? JSONSerialization.data(withJSONObject: fields, options: [.sortedKeys]) else { return "" }
+        return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+    }
 
     static let maxNameLength = 32
 
@@ -76,50 +126,52 @@ class DeviceSwitchData: Copyable {
     /// 关联的组
     var linkGroup: Group? {
         guard let address = linkGroupAddress else { return nil }
-        return MeshNetworkManager.instance.virtualGroups.first(where: { $0.address.address == address })
+        return referenceManager?.virtualGroups.first(where: { $0.address.address == address })
     }
     /// 关联的子组地址Sub (cct)
     var subLinkGroupAddress: Address?
     /// 关联的子组
     var subLinkGroup: Group? {
         guard let address = subLinkGroupAddress else { return nil }
-        return MeshNetworkManager.instance.virtualGroups.first(where: { $0.address.address == address })
+        return referenceManager?.virtualGroups.first(where: { $0.address.address == address })
     }
     
     /// 绑定的组地址list
     var bindGroupAddresses: [Address] = []
     /// 绑定的组list
     var bindGroups: [Group] {
-        return bindGroupAddresses.compactMap({ address in MeshNetworkManager.instance.groups.first(where: { $0.address.address == address }) })
+        guard let manager = referenceManager else { return [] }
+        return bindGroupAddresses.compactMap({ address in manager.groups.first(where: { $0.address.address == address }) })
     }
     
     /// 需要解除绑定的组地址list
     var unbindGroupAddresses: [Address] = []
     /// 需要解除绑定的组list
     var unbindGroups: [Group] {
-        return unbindGroupAddresses.compactMap({ address in MeshNetworkManager.instance.groups.first(where: { $0.address.address == address }) })
+        guard let manager = referenceManager else { return [] }
+        return unbindGroupAddresses.compactMap({ address in manager.groups.first(where: { $0.address.address == address }) })
     }
     
     /// 一键选择的场景
     var sceneANumber: SceneNumber?
     var sceneA: Scene? {
-        return MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneANumber })
+        return referenceManager?.scenes.first(where: { $0.number == sceneANumber })
     }
     /// 二键选择的场景
     var sceneBNumber: SceneNumber?
     var sceneB: Scene? {
-        return MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneBNumber })
+        return referenceManager?.scenes.first(where: { $0.number == sceneBNumber })
     }
     
     /// 一键选择的场景
     var sceneCNumber: SceneNumber?
     var sceneC: Scene? {
-        return MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneCNumber })
+        return referenceManager?.scenes.first(where: { $0.number == sceneCNumber })
     }
     /// 二键选择的场景
     var sceneDNumber: SceneNumber?
     var sceneD: Scene? {
-        return MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneDNumber })
+        return referenceManager?.scenes.first(where: { $0.number == sceneDNumber })
     }
     
     
@@ -127,7 +179,7 @@ class DeviceSwitchData: Copyable {
     var proxyNodeAddress: Address?
     var proxyNode: Node? {
         guard let address = proxyNodeAddress else { return nil }
-        return MeshNetworkManager.instance.meshNetwork?.node(withAddress: address)
+        return referenceManager?.meshNetwork?.node(withAddress: address)
     }
     /// 绑定真实动能开关mac
     var enOceanMacAddress: String?
@@ -138,7 +190,7 @@ class DeviceSwitchData: Copyable {
     var deleteProxyNodeAddress: Address?
     var deleteProxyNode: Node? {
         guard let address = deleteProxyNodeAddress else { return nil }
-        return MeshNetworkManager.instance.meshNetwork?.node(withAddress: address)
+        return referenceManager?.meshNetwork?.node(withAddress: address)
     }
     
     /// 动能开关最大按键数量（因可切换开关类型，分配固件开关数量按最大支持数量分配）
@@ -166,6 +218,7 @@ class DeviceSwitchData: Copyable {
     
     func copy() -> Self {
         let copy = DeviceSwitchData(id: id, enabled: enabled, name: name, linkGroupAddress: linkGroupAddress, subLinkGroupAddress: subLinkGroupAddress, bindGroupAddresses: bindGroupAddresses, sceneANumber: sceneANumber, sceneBNumber: sceneBNumber, sceneCNumber: sceneCNumber, sceneDNumber: sceneDNumber, proxyNodeAddress: proxyNodeAddress) as! Self
+        copy.recordScope = recordScope
         copy.enOceanMacAddress = self.enOceanMacAddress
         copy.enOceanSecurityKey = self.enOceanSecurityKey
         copy.unbindGroupAddresses = self.unbindGroupAddresses
@@ -175,6 +228,7 @@ class DeviceSwitchData: Copyable {
     }
     
     func update(switchData: DeviceSwitchData) {
+        recordScope = switchData.recordScope
         self.name = switchData.name
         self.enabled = switchData.enabled
         self.panelType = switchData.panelType

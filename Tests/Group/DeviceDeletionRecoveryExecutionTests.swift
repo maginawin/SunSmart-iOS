@@ -3,6 +3,12 @@ import Foundation
 // Unrelated storage/UI boundaries. The deletion context, journal model and
 // topology commit/repair policy are compiled from their production sources.
 final class Schedule {
+    let id = UUID().uuidString
+    var groupAddresses: [Address] = [], needDeleteGroupAddresses: [Address] = []
+    var sceneNumber: UInt16?
+    var needDeleteGroups: [Group] { MeshNetworkManager.instance.groups.filter { needDeleteGroupAddresses.contains($0.address.address) } }
+    func needsSync(on node: Node, contextGroup: Group) -> Bool { !needDeleteGroupAddresses.contains(contextGroup.address.address) }
+    func needsDelete(from node: Node, contextGroup: Group) -> Bool { needDeleteGroupAddresses.contains(contextGroup.address.address) }
     var nodeAddresses: [Address] = [], needDeleteNodeAddresses: [Address] = []
     static var stored: [String: [Schedule]] = [:]
     static func load(meshUUID: String, meshNetworkId: String) -> [Schedule] { stored[meshUUID + meshNetworkId] ?? [] }
@@ -14,19 +20,40 @@ final class DeviceSwitchData {
     static func load(meshUUID: String, meshNetworkId: String) -> [DeviceSwitchData] { [] }
     func save(meshUUID: String, networkId: String) -> Bool { true }
 }
+final class DeviceDongleData {
+    var bindNodeAddress: Address?
+    static func load(meshUUID: String, meshNetworkId: String) -> [DeviceDongleData] { [] }
+    func save(meshUUID: String, networkId: String) -> Bool { true }
+}
 enum KineticSwitchBindingPolicy {
     struct Decision { let clearsCurrent: Bool, clearsPendingRemoval: Bool, clearsCredentials: Bool }
     static func referenceCleanupDecision(node: Address, current: Address?, pendingRemoval: Address?) -> Decision {
         .init(clearsCurrent: node == current, clearsPendingRemoval: node == pendingRemoval, clearsCredentials: node == current)
     }
 }
-enum GatewayModel { static func delete(siteId: String, macAddress: String) {} }
+enum GatewayModel {
+    static var deletions: [String] = []
+    static func delete(siteId: String, macAddress: String) { deletions.append(siteId + macAddress) }
+}
 struct MeshDistributionData {
     var distributionAddress: Address = 0
     static func load(meshUUID: String, meshNetworkId: String, productId: UInt16) -> Self? { nil }
     func delete(meshUUID: String, networkId: String, productId: UInt16) {}
 }
+final class MeshLibManager {
+    static let manager = MeshLibManager()
+    var isMeshNetworkConnected = true
+}
+enum SpaceMeshKeyStore {
+    enum Issue: Error { case missing }
+    static var missing = false
+    static func export(network: MeshNetwork, networkId: String) -> Result<Void, Issue> {
+        missing ? .failure(.missing) : .success(())
+    }
+}
 enum XWHUDManager {
+    static func showCustomHUD(withMessage: String, isWindow: Bool) {}
+    static func hide() {}
     static var lastMessage: String?
     static func showErrorTipHUD(_ message: String) { lastMessage = message }
     static func showSuccessTipHUD(_ message: String) { lastMessage = message }
@@ -60,6 +87,36 @@ extension ScopedImportTests {
         let timestamp = all.space.lastUpdate
         _ = contexts[0].commit()
         require(all.space.lastUpdate == timestamp, "repeated completion is idempotent")
+
+        let scheduled = try fixture(networkId: "DELETE-SCHEDULE-CACHE")
+        let active = MeshNetwork(scheduled.network.uuid)
+        let activeGroup = Group(scheduled.group.address.address)
+        activeGroup.subNetworkId = scheduled.space.meshNetworkId; activeGroup.network = active
+        active.groups = [activeGroup]; active.nodes = scheduled.nodes
+        let groupSchedule = Schedule(), sceneSchedule = Schedule(), pendingSchedule = Schedule(), unrelatedSchedule = Schedule()
+        groupSchedule.groupAddresses = [activeGroup.address.address]
+        sceneSchedule.sceneNumber = 7
+        pendingSchedule.needDeleteGroupAddresses = [activeGroup.address.address]
+        unrelatedSchedule.groupAddresses = [0xC123]
+        scheduled.group.info.sceneExecuteDatas = [.init(sceneNumber: 7)]
+        activeGroup.info.bindSchedules = [groupSchedule, sceneSchedule, pendingSchedule]
+        Schedule.stored[scheduled.space.meshUUID + scheduled.space.meshNetworkId] = [groupSchedule, sceneSchedule, pendingSchedule, unrelatedSchedule]
+        MeshNetworkManager.instance.meshNetwork = active
+        MeshNetworkManager.instance.currentNetworkKey.networkId = scheduled.space.meshNetworkId
+        let scheduleContext = DevicePermanentDeletionContext(node: scheduled.nodes[0], space: scheduled.space)
+        scheduled.network.remove(node: scheduled.nodes[0]); active.nodes.removeFirst()
+        require(scheduleContext.commit() != nil, "deletion with detached persisted GroupInfo completes")
+        require(activeGroup.info.bindSchedules.map(\.id) == [groupSchedule, sceneSchedule, pendingSchedule].map(\.id), "rebuild Group, Scene and pending-delete bindings only")
+        require(MeshNetworkManager.instance.schedules.count == 4, "manager and binding caches use the same loaded schedules")
+        // These UI consumers intentionally read active members. Keep their
+        // reads separate from the suite's scoped topology adapter invariant.
+        let lifecycleMemberReads = Group.globalMemberReads
+        require(activeGroup.getNeedSyncScheduleDataNodes(groupSchedule).syncNodes.count == 1, "remaining Group schedule task survives deletion")
+        require(activeGroup.getNeedSyncScheduleDataNodes(sceneSchedule).syncNodes.count == 1, "remaining Scene schedule task survives deletion")
+        require(activeGroup.getNeedSyncScheduleDataNodes(pendingSchedule).deleteNodes.count == 1, "pending schedule deletion task survives")
+        require(activeGroup.getNeedSyncScheduleDataNodes(unrelatedSchedule).syncNodes.isEmpty, "unrelated schedule is not bound")
+        Group.globalMemberReads = lifecycleMemberReads
+        activate(all)
         var pendingUpload = try SpaceConfigurationSafety.deletionJournal(all.space)
         require(pendingUpload.entries.allSatisfy { $0.stage == .cleaned }, "cleaned receipts remain until cloud confirmation")
         pendingUpload.confirmUpload(timestamp: timestamp - 1)
@@ -162,8 +219,60 @@ extension ScopedImportTests {
         unrelated.group.info.proximityLightingPath!.paths[0].items.append(.init(address: 99))
         let unrelatedContext = DevicePermanentDeletionContext(node: unrelated.nodes[0])
         unrelated.network.remove(node: unrelated.nodes[0])
-        require(unrelatedContext.commit() == nil, "confirmed deletion cannot remove unknown address 99")
+        require(unrelatedContext.commit() != nil, "unrelated dangling reference must not block scoped deletion")
         require(unrelated.group.info.proximityLightingPath!.paths[0].items.last!.address == 99, "unreviewed reference remains for review")
+
+        let offline = try fixture(networkId: "OFFLINE-DELETION")
+        activate(other)
+        let offlineContext = DevicePermanentDeletionContext(node: offline.nodes[0], space: offline.space)
+        require(offlineContext.isPrepared, "local deletion must not require the active Mesh network")
+        _ = offlineContext.forceRemove()
+        require(offline.network.nodes.count == 1 && other.network.nodes.count == 2,
+                "force removal targets the selected Space while another network is active")
+
+        require(offlineContext.outcome == .cleaned && !offlineContext.canReset, "local result is independent of communication")
+        let cleanJournal = try SpaceConfigurationSafety.deletionJournal(offline.space)
+        _ = offlineContext.forceRemove()
+        let afterDuplicate = try SpaceConfigurationSafety.deletionJournal(offline.space)
+        require(afterDuplicate.entries == cleanJournal.entries,
+                "duplicate Force Delete must not downgrade a cleaned receipt")
+
+        let keyless = try fixture(networkId: "KEYLESS")
+        activate(keyless)
+        SpaceMeshKeyStore.missing = true
+        let keylessContext = DevicePermanentDeletionContext(node: keyless.nodes[0], space: keyless.space)
+        require(keylessContext.isPrepared && !keylessContext.canReset, "missing keys prohibit Reset but allow local preparation")
+        _ = keylessContext.forceRemove()
+        require(keylessContext.outcome == .cleaned, "missing keys cannot prevent forced cleanup")
+        SpaceMeshKeyStore.missing = false
+
+        let replay = try fixture(networkId: "FORCE-REPLAY")
+        var replayContext: DevicePermanentDeletionContext? = DevicePermanentDeletionContext(node: replay.nodes[0], space: replay.space)
+        require(replayContext!.isPrepared, "prepare forced crash fixture")
+        _ = SpaceConfigurationSafety.updateDeletionJournal(replay.space) { $0.entries[0].stage = .forceRequested }
+        replayContext = nil // Process exits after confirmation, before removing the Node.
+        DevicePermanentDeletionContext.resume(space: replay.space)
+        require(replay.network.nodes.count == 1 && !SpaceConfigurationSafety.hasPendingDeletionCleanup(replay.space),
+                "confirmed force intent replays even when its node still exists")
+
+        let reused = try fixture(networkId: "REUSED-ADDRESS")
+        let stale = DevicePermanentDeletionContext(node: reused.nodes[0], space: reused.space)
+        reused.nodes[0].createdTimestamp += 100 // Same UUID/address, a different provisioning instance.
+        _ = stale.forceRemove()
+        require(stale.outcome == .notRemoved && reused.network.nodes.count == 2,
+                "stale intent cannot delete a new incarnation at the same address")
+
+        let gatewayOwner = try fixture(networkId: "GATEWAY-OLD")
+        let gatewayPeer = try fixture(networkId: "GATEWAY-PEER", uuid: gatewayOwner.network.uuid)
+        gatewayPeer.network.nodes = [gatewayPeer.nodes[0]]
+        gatewayOwner.nodes[1].macAddress = "AA:BB:CC:DD:EE:22"
+        gatewayPeer.nodes[0].macAddress = "aabbccddee22"
+        let gatewayCalls = GatewayModel.deletions.count
+        let oldGateway = DevicePermanentDeletionContext(node: gatewayOwner.nodes[1], space: gatewayOwner.space)
+        _ = oldGateway.forceRemove()
+        require(oldGateway.outcome == .cleaned && GatewayModel.deletions.count == gatewayCalls,
+                "removing an old instance retains Site-wide gateway association used by another Space")
+        require(gatewayPeer.network.nodes.count == 1, "peer gateway node remains")
 
         // Real durable model: round trip, scope isolation and corrupted data.
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

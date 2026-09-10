@@ -16,8 +16,6 @@ struct ProximityLightingLifecycleContractTests {
         let members = try source(root, "SunSmart/Main/Group/Controller/GroupMembersViewController.swift")
         let groupServer = try source(root, "SunSmart/Main/Group/Model/GroupServer.swift")
         let deletion = try source(root, "SunSmart/Common/Data/DevicePermanentDeletionCleanup.swift")
-        let deviceProtocol = try source(root, "SunSmart/Main/Device/Model/DeviceProtocol.swift")
-        let dongle = try source(root, "SunSmart/Main/Device/Dongle/Controller/DeviceDongleViewController.swift")
         let restore = try source(root, "SunSmart/Main/Device/Controller/DeviceRestoreViewController.swift")
         let topologyAdapter = try source(root, "SunSmart/Main/Group/Model/GroupProximityLightingData.swift")
         let space = try source(root, "SunSmart/Main/Space/Controller/SpaceViewController.swift")
@@ -90,17 +88,6 @@ struct ProximityLightingLifecycleContractTests {
             "Permanent deletion must persist confirmed references and verify cleanup before completion"
         )
         require(
-            deviceProtocol.contains("syncPermanentDeletionPeers")
-                && deviceProtocol.contains("mergedSyncDatas"),
-            "Batch and protocol-based deletion must present deduplicated peer tasks"
-        )
-        require(
-            dongle.contains("completePermanentDeletion(lifecycleResult)")
-                && dongle.contains("spaceTriggerZones(datas: syncDatas)"),
-            "Every permanent deletion caller must consume proximity peer tasks"
-        )
-
-        require(
             topologyAdapter.contains("transaction.replaceNodeAddress")
                 && topologyAdapter.contains("transaction.removeNode"),
             "Restore migration must replace or remove every old reference"
@@ -118,11 +105,11 @@ struct ProximityLightingLifecycleContractTests {
 
         let importUpdate = section(
             in: importData,
-            from: "@discardableResult\n    func update(",
+            from: "func update(\n        spaceJsonData:",
             to: "extension Node"
         )
         require(
-            appearsBefore("ProximityLightingImportPreflight.parse(", "network.forceRemove(node:", in: importUpdate),
+            appearsBefore("await ProximityLightingImportPreflight.prepare(", "network.forceRemove(node:", in: importUpdate),
             "Import must parse and validate proximity topology before destructive node replacement"
         )
         require(
@@ -181,7 +168,7 @@ struct ProximityLightingLifecycleContractTests {
                 && exportData.contains("space.export(purpose: .cloudSync)")
                 && cloudSync.contains("space.export(purpose: .cloudSync)")
                 && exportData.contains("purpose=localBackup")
-                && cloudSync.contains("guard let api = await self.operation.getNetworkApi() else")
+                && cloudSync.contains("guard let api = await self.operation.getNetworkApi(excludingAdoptedSpaces: adoptedCloudIDs) else")
                 && cloudSync.contains("self.finishExportFailure()"),
             "Cloud uploads must verify orphan baselines while local backups remain recoverable"
         )

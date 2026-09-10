@@ -21,6 +21,8 @@ struct ProximityLightingLifecyclePreparation {
     let transaction: ProximityLightingLifecycleTransaction
     let normalized: ProximityLightingTopologyReconciler.Result
 
+    var deletionSnapshot: ProximityLightingTopologyReconciler.Snapshot { transaction.draft }
+
     var sourceSnapshot: ProximityLightingTopologyReconciler.Snapshot { transaction.sourceSnapshot }
 
     var hardErrors: [ProximityLightingTopologyReconciler.HardError] {
@@ -161,22 +163,21 @@ enum ProximityLightingLifecycleCoordinator {
         applyAdditionalChanges: () throws -> Void = {}
     ) -> ProximityLightingLifecycleResult? {
         guard preparation.transaction.contextAvailable else { return nil }
-        guard preparation.isValid
+        guard confirmedDeletionAddresses != nil || preparation.isValid
                 || (allowExistingHardErrors && preparation.doesNotIntroduceHardErrors) else {
             return nil
         }
 
         let transaction = preparation.transaction
         let normalized = preparation.normalized
-        let topologyChanged = transaction.sourceSnapshot != normalized.snapshot
-        let didChange = topologyChanged || hasAdditionalLogicalChange
+        var appliedSnapshot = normalized.snapshot
         var isScopedRecovery = false
         if let addresses = confirmedDeletionAddresses {
             var expected = transaction.sourceSnapshot
             expected.removeNodeAddresses(addresses)
             guard !isImportApplication, !addresses.isEmpty,
-                  expected == transaction.draft, expected == normalized.snapshot,
-                  normalized.isValid else { return nil }
+                  expected == transaction.draft, preparation.doesNotIntroduceHardErrors else { return nil }
+            appliedSnapshot = expected
             isScopedRecovery = true
         }
         if let reviewed = reviewedReferenceSnapshot {
@@ -194,6 +195,7 @@ enum ProximityLightingLifecycleCoordinator {
             && !transaction.space.triggerZonesLoadFailed
             && transaction.groups.allSatisfy { !$0.info.profileLoadFailed && !$0.info.topologyLoadFailed }
             && SpaceConfigurationSafety.checkpoint(transaction.space)) else { return nil }
+        let didChange = transaction.sourceSnapshot != appliedSnapshot || hasAdditionalLogicalChange
         if didChange {
             let space = transaction.space
             let originalZones = space.triggerZones
@@ -209,7 +211,7 @@ enum ProximityLightingLifecycleCoordinator {
                 }
                 try applyAdditionalChanges()
                 try apply(
-                    normalized.snapshot,
+                    appliedSnapshot,
                     sourceSnapshot: transaction.sourceSnapshot,
                     to: transaction.space,
                     groups: transaction.groups
@@ -230,6 +232,13 @@ enum ProximityLightingLifecycleCoordinator {
             }
         }
 
+        if confirmedDeletionAddresses != nil && (!normalized.isValid || normalized.snapshot != appliedSnapshot) {
+            // Deletion may coexist with old topology damage. Do not apply or
+            // transmit normalization of unrelated references as a side effect.
+            SpaceConfigurationSafety.block(transaction.space, reason: "remainingTopologyNeedsReview")
+            return .init(didChange: didChange, plan: normalized.plan,
+                         affectedDeviceAddresses: [], syncDatas: [], repairs: normalized.repairs)
+        }
         return makeResult(
             transaction: transaction,
             normalized: normalized,

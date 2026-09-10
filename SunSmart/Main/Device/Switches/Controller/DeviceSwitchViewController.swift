@@ -22,6 +22,7 @@ class DeviceSwitchViewController: UIViewController {
     /// 是否可以编辑
     var editable: Bool = true
     
+    var deleteSwitchAction: ((DeviceSwitchData, UIViewController) -> Void)?
     var switchData: DeviceSwitchData?
     let space: SpaceData
 //    private var enabled: Bool = false
@@ -121,11 +122,22 @@ class DeviceSwitchViewController: UIViewController {
     }
     
     @objc private func deleteBtnAction() {
+        if let switchData, let deleteSwitchAction {
+            SRAlertView(title: "notification".localizedString, message: "switch_delete_message".localizedString,
+                actions: [.cancelAction, SRAlertAction(title: "confirm".localizedString, style: .destructive,
+                    actionHandler: { [weak self] _ in
+                        guard let self else { return }
+                        deleteSwitchAction(switchData, self)
+                    })]).show()
+            return
+        }
         
         guard let switchData = self.switchData, !switchData.getNeedSyncDatas(deleteSwitch: true).isEmpty() else { // 判断动能开关是否需要删除数据
             
             // 未使用过直接删除缓存数据即可
-            MeshNetworkManager.instance.deleteSwitch(switchData: self.switchData!)
+            guard let switchData = self.switchData, MeshNetworkManager.instance.deleteSwitch(switchData: switchData) else {
+                XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString); return
+            }
             // 空数据直接删除
             NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
             NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
@@ -328,7 +340,9 @@ class DeviceSwitchViewController: UIViewController {
         let vc = SyncDevicesViewController(type: .enOceanSwitch(switchData, deleteSwitch: true))
         vc.syncSuccessCallback = {[weak self] _ in
             guard let self = self else { return }
-            MeshNetworkManager.instance.deleteSwitch(switchData: switchData)
+            guard MeshNetworkManager.instance.deleteSwitch(switchData: switchData) else {
+                XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString); return
+            }
             NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {[weak self] in

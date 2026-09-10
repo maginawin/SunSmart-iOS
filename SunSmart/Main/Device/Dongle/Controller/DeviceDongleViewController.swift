@@ -227,41 +227,17 @@ class DeviceDongleViewController: UIViewController, DeviceProtocol {
     
     /// 删除设备
     private func deleteNode(node: Node) {
-        
-        XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-        let deletionContext = DevicePermanentDeletionContext(node: node, space: self.space)
-        guard deletionContext.isPrepared else {
-            XWHUDManager.hide()
-            XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
-            return
-        }
-        MeshAPI.resetNode(address: node.primaryUnicastAddress) {[weak self] _ in
-            
-            XWHUDManager.hide()
-            let lifecycleResult = deletionContext.commit()
-            self?.completePermanentDeletion(lifecycleResult)
-            
-        } resetFail: { _, _ in
-            deletionContext.cancel()
-            
-            let alertView = SRAlertView(title: "notification".localizedString, actions: [.cancelAction, SRAlertAction(title: "force_delete".localizedString, actionHandler: {[weak self] _ in
-                guard let self = self else { return }
-                guard deletionContext.prepareForForceRemoval() else {
-                        XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
-                        return
-                    }
-                    let lifecycleResult = deletionContext.forceRemove()
-                self.completePermanentDeletion(lifecycleResult)
-            })])
-            let messageAttStr = NSMutableAttributedString(string: "device_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
-            messageAttStr.append(NSAttributedString(string: "device_force_delete_note".localizedString, attributes: [.foregroundColor: Message_Color]))
-            alertView.messageLabel.attributedText = messageAttStr
-            alertView.show()
-            
-        }
-
+        deleteNodes(nodes: [node], space: space,
+            forceDeleteMessage: "device_force_delete_message".localizedString,
+            forceDeleteNote: "device_force_delete_note".localizedString) { [weak self] removed, _ in
+                guard !removed.isEmpty else { return }
+                NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName),
+                    object: SpaceChangeDataType.network(type: .address))
+                self?.back()
+            }
     }
-    
+
     @objc private func repairBtnClick() {
         guard let node = self.dongleData?.bindNode else {
             return
@@ -276,37 +252,6 @@ class DeviceDongleViewController: UIViewController, DeviceProtocol {
         }
     }
 
-    private func completePermanentDeletion(
-        _ lifecycleResult: ProximityLightingLifecycleResult?
-    ) {
-        let finish = { [weak self] in
-            if let self { DevicePermanentDeletionContext.showCompletion(space: self.space) }
-            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) { [weak self] in
-                NotificationCenter.default.post(
-                    name: .init(devicesUpdateNotificationName),
-                    object: nil
-                )
-                NotificationCenter.default.post(
-                    name: .init(spaceDataChangedNotificaitonName),
-                    object: SpaceChangeDataType.network(type: .address)
-                )
-                self?.back()
-            }
-        }
-        let syncDatas = lifecycleResult?.syncDatas ?? []
-        guard MeshLibManager.manager.isMeshNetworkConnected,
-              !syncDatas.isEmpty else {
-            finish()
-            return
-        }
-        let vc = SyncDevicesViewController(
-            type: .spaceTriggerZones(datas: syncDatas)
-        )
-        vc.syncSuccessCallback = { _ in finish() }
-        vc.backActionCallback = { _ in finish() }
-        navigationController?.pushViewController(vc, animated: true)
-    }
-    
     /// 绑定真实设备
     private func bindDevice() {
         

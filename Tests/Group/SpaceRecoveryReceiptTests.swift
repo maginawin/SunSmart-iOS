@@ -23,10 +23,19 @@ final class SpaceData {
     var gatewayStatus = GatewayStatus.notBound
     var lastUpdate: Int64 = 50, lastUploadCloudTimestamp: Int64?, syncCloudError: NetworkApiError?
     var savesSucceed = true
+    var failCloudCommit = false
     var uploadCloud: Bool { lastUploadCloudTimestamp != nil }
     var needUploadCloud: Bool { lastUpdate > (lastUploadCloudTimestamp ?? 0) && permission != .visitor }
+    var canDeleteEmptySpaceRecords: Bool { nodes.isEmpty }
+    // Persistence/primary-key scope is covered by SpaceRecordRemovalTests.
+    var canDeleteSpaceRecords: Bool { permission == .owner && (nodes.isEmpty || hasSyncFailureForRemoval) }
+    var hasSyncFailureForRemoval: Bool {
+        (needUploadCloud && syncCloudError != nil) || SpaceConfigurationSafety.isBlocked(self)
+    }
     var nodes: [[String: Any]] = []
-    var payload: [String: Any] { ["uuid": id, "groups": [], "nodes": nodes, "updateTimestamp": lastUpdate] }
+    var payload: [String: Any] { ["uuid": id, "groups": [], "nodes": nodes, "updateTimestamp": lastUpdate,
+        "netKey": ["index": 1, "key": String(repeating: "11", count: 16), "phase": 0],
+        "appKey": ["index": 1, "boundNetKey": 1, "key": String(repeating: "22", count: 16)]] }
     init(_ id: String = UUID().uuidString) { self.id = id }
     @discardableResult func save() -> Bool { savesSucceed }
     @discardableResult func delete() -> Bool {
@@ -46,7 +55,12 @@ final class MeshNetworkManager {
     var realNodes: [Node] = []
 }
 enum API { case spaceInfo(siteId: String, spaceId: String, password: String?)
+    case spaceDelete(siteId: String, spaceId: String)
     case spaceUpload(siteId: String, spaceId: String, spaceData: [String: Any]) }
+final class CloudSynchronizationManager {
+    static let shared = CloudSynchronizationManager()
+    func cancelSynchronizationHandle(space: SpaceData) {}
+}
 final class NetworkRequest {
     static let shared = NetworkRequest()
     var networkable = true
@@ -70,6 +84,29 @@ final class NetworkRequest {
         precondition(NetworkApiError(code: -2002) == .configurationUploadUnconfirmed)
         precondition(NetworkApiError(code: -2003) == .configurationExportInvalid)
         precondition(NetworkApiError.configurationUploadUnconfirmed.localizedDescription == "configuration_upload_unconfirmed")
+        let staleKeys = SpaceData("stale-keys")
+        SpaceConfigurationSafety.meshKeyFailure(staleKeys, issue: .staleSnapshot)
+        precondition(!SpaceConfigurationSafety.isBlocked(staleKeys) && staleKeys.syncCloudError == nil)
+        SpaceConfigurationSafety.meshKeyFailure(staleKeys, issue: .netKeyIndexConflict)
+        precondition(SpaceConfigurationSafety.isBlocked(staleKeys) && staleKeys.syncCloudError == .meshKeyConflict)
+        SpaceConfigurationSafety.meshKeysRestored(staleKeys)
+        precondition(!SpaceConfigurationSafety.isBlocked(staleKeys) && staleKeys.syncCloudError == nil)
+        let maintenance = SpaceData("virtual-group-maintenance")
+        precondition(SpaceConfigurationSafety.updateDeletionJournal(maintenance) { $0.pendingVirtualGroupAddresses = [0xC001] })
+        precondition(!SpaceConfigurationSafety.isBlocked(maintenance) && !SpaceConfigurationSafety.preservesLocalChanges(maintenance))
+        let switchSpace = SpaceData("switch-receipt")
+        precondition(SpaceConfigurationSafety.updateDeletionJournal(switchSpace) {
+            $0.switches = [.init(id: UUID(), switchId: "switch", fingerprint: "snapshot", completedTimestamp: 50)]
+        })
+        precondition(SpaceConfigurationSafety.preservesLocalChanges(switchSpace))
+        var olderPayload = switchSpace.payload
+        olderPayload["updateTimestamp"] = 49
+        precondition(SpaceConfigurationSafety.confirmLocalChanges(switchSpace, payload: olderPayload))
+        precondition(SpaceConfigurationSafety.preservesLocalChanges(switchSpace))
+        olderPayload["updateTimestamp"] = 50
+        precondition(SpaceConfigurationSafety.confirmLocalChanges(switchSpace, payload: olderPayload))
+        precondition(!SpaceConfigurationSafety.preservesLocalChanges(switchSpace))
+        print("PASS: pending Switch deletion survives old cloud receipts and clears only at its confirmed timestamp")
         let request = NetworkRequest.shared
         func remote(_ space: SpaceData) { request.result = .success(["data": space.payload]) }
         func addReceipt(_ space: SpaceData) {
@@ -232,6 +269,9 @@ final class NetworkRequest {
         try await testEmptyGroupAddressRecovery()
         try await testSiteHandoffReadback()
         try await testImportPreparation()
+        try await testNewerCloudReplacement()
+        try await testMeshKeyReceipts()
+        try await testSpaceRecordRemoval()
 
         // Account changes invalidate pending callbacks before looking up another store.
         let accountContext = try SpaceConfigurationSafety.recoveryState(b)
@@ -239,6 +279,162 @@ final class NetworkRequest {
         precondition(!SpaceConfigurationSafety.isCurrent(accountContext, space: b))
         UserData.currentUserId = "test-account"
         print("PASS: production durable readback/reconnect, first-upload baseline, persistence failures, versions, authority and lifecycle isolation")
+    }
+
+    @MainActor static func testSpaceRecordRemoval() async throws {
+        typealias S = SpaceConfigurationSafety
+        let request = NetworkRequest.shared
+        defer { ProximityLightingImportPreflight.storedSpace = nil; request.onRequest = nil }
+        for rejection: NetworkApiError in [.editorBeingUsedSpace, .visitorBeingUsedSpace,
+            .apiError(code: 403, message: nil, httpStatusCode: 403, responseBody: nil, underlyingDomain: nil, underlyingCode: nil)] {
+            let rejected = SpaceData(); rejected.lastUploadCloudTimestamp = rejected.lastUpdate
+            let before = try S.recoveryState(rejected)
+            var during: SpaceRecoveryState?
+            request.onRequest = { during = try! S.recoveryState(rejected) }
+            request.result = .failure(rejection)
+            let result = await S.requestSpaceRemoval(rejected)
+            if case .failure(let error) = result { precondition(error == rejection) } else { fatalError("expected rejection") }
+            let after = try S.recoveryState(rejected)
+            precondition(after.phase == .active && after.discardRequested != true && !S.isBlocked(rejected))
+            precondition(!S.isCurrent(before, space: rejected) && !S.isCurrent(during!, space: rejected))
+            precondition(S.canAutomaticallyUpload(rejected) && S.canDeleteDeviceRecords(rejected))
+            ProximityLightingImportPreflight.storedSpace = rejected
+            let imported = await rejected.update(spaceJsonData: rejected.payload)
+            precondition(imported == .prepared, "explicit rejection must allow cloud import preparation again")
+        }
+        let rejectedPending = SpaceData()
+        let pending = S.prepareSubmission(rejectedPending, payload: rejectedPending.payload)!
+        S.block(rejectedPending, reason: "unrelatedFailure")
+        request.result = .failure(.editorBeingUsedSpace)
+        _ = await S.requestSpaceRemoval(rejectedPending)
+        let retained = try S.recoveryState(rejectedPending)
+        precondition(retained.discardRequested != true && retained.submission == pending.submission)
+        precondition(S.isBlocked(rejectedPending), "rejection must not erase unrelated recovery protection")
+
+        for uncertain: NetworkApiError in [.noNetwork, .requestTimeout, .serverNotRespond, .unknown,
+            .apiError(code: 408, message: nil, httpStatusCode: 408, responseBody: nil, underlyingDomain: nil, underlyingCode: nil),
+            .apiError(code: 500, message: nil, httpStatusCode: 500, responseBody: nil, underlyingDomain: nil, underlyingCode: nil),
+            .apiError(code: 403, message: nil, httpStatusCode: 403, responseBody: nil, underlyingDomain: "transport", underlyingCode: -1)] {
+            let unresolved = SpaceData(); unresolved.lastUploadCloudTimestamp = 1
+            request.result = .failure(uncertain)
+            _ = await S.requestSpaceRemoval(unresolved)
+            let unresolvedState = try S.recoveryState(unresolved)
+            precondition(unresolvedState.discardRequested == true && S.isBlocked(unresolved))
+            let imported = await unresolved.update(spaceJsonData: unresolved.payload)
+            precondition(imported == .preserved("spaceDiscardPending"))
+        }
+        let staleRejection = SpaceData(); staleRejection.lastUploadCloudTimestamp = 1
+        var newer: SpaceRecoveryState?
+        request.result = .failure(.editorBeingUsedSpace)
+        request.onRequest = {
+            var state = try! S.recoveryState(staleRejection)
+            state.generation = UUID()
+            try! S.testSaveState(state, space: staleRejection)
+            newer = state
+        }
+        _ = await S.requestSpaceRemoval(staleRejection)
+        precondition(try! S.recoveryState(staleRejection) == newer, "stale rejection cannot clear a newer removal intent")
+        let authorityRejected = SpaceData(); authorityRejected.lastUploadCloudTimestamp = 1
+        request.result = .failure(.spacePasswordOverdue)
+        _ = await S.requestSpaceRemoval(authorityRejected)
+        let authorityState = try S.recoveryState(authorityRejected)
+        precondition(authorityState.discardRequested != true && authorityState.authority == .waitingForAuthorization)
+        precondition(authorityRejected.requiresPasswordVerification && !S.canAutomaticallyUpload(authorityRejected))
+        print("PASS: rejected deletion releases discard, retains recovery/authority, permits import; uncertain results and stale callbacks remain protected")
+
+        let space = SpaceData()
+        space.lastUploadCloudTimestamp = 1
+        precondition(S.prepareSubmission(space, payload: space.payload) != nil)
+        let old = try S.recoveryState(space)
+        let uploads = request.uploads
+        request.result = .failure(.noNetwork)
+        if case .failure(.noNetwork) = await S.requestSpaceRemoval(space) {} else { fatalError("network error must retain local data") }
+        var state = try S.recoveryState(space)
+        precondition(state.phase == .active && state.discardRequested == true && state.submission != nil)
+        precondition(!S.isCurrent(old, space: space) && !S.canAutomaticallyUpload(space))
+        let calls = request.calls
+        _ = await S.resumeUpload(space)
+        precondition(request.calls == calls, "discard intent must not resume old uploads")
+        request.result = .failure(.resourceNotFound)
+        if case .success = await S.requestSpaceRemoval(space) {} else { fatalError("lost response must be replayable") }
+        state = try S.recoveryState(space)
+        precondition(state.phase == .removing && request.uploads == uploads)
+        let replayCalls = request.calls
+        if case .success = await S.requestSpaceRemoval(space) {} else { fatalError("local cleanup retry") }
+        precondition(request.calls == replayCalls)
+        let denied = SpaceData(); denied.permission = .visitor
+        if case .failure(.noSpacePermission) = await S.requestSpaceRemoval(denied) {} else { fatalError("owner only") }
+        precondition(request.calls == replayCalls)
+        let switched = SpaceData(); switched.lastUploadCloudTimestamp = 1
+        request.result = .success([:])
+        request.onRequest = { UserData.currentUserId = "switched-account" }
+        if case .failure = await S.requestSpaceRemoval(switched) {} else { fatalError("stale response must not remove") }
+        UserData.currentUserId = "test-account"
+        let switchedState = try S.recoveryState(switched)
+        precondition(switchedState.phase == .active)
+        let local = SpaceData()
+        let localCalls = request.calls
+        if case .success = await S.requestSpaceRemoval(local) {} else { fatalError("local-only deletion") }
+        let localState = try S.recoveryState(local)
+        precondition(request.calls == localCalls && localState.phase == .removing)
+        let rejectedImport = SpaceData()
+        let remoteCalls = request.calls
+        if case .success = await S.requestSpaceRemoval(rejectedImport, requireCloudDeletion: true) {} else { fatalError("broken imported Space must delete remotely even without upload timestamp") }
+        precondition(request.calls == remoteCalls + 1 && request.uploads == uploads)
+        let failedOwner = SpaceData(); failedOwner.nodes = [["uuid": "remaining"]]
+        S.block(failedOwner, reason: "missingMeshKeys")
+        let failedOwnerCalls = request.calls
+        request.result = .failure(.noNetwork)
+        if case .failure(.noNetwork) = await S.requestSpaceRemoval(failedOwner) {} else { fatalError("abnormal Owner must try cloud even without an upload timestamp") }
+        precondition(request.calls == failedOwnerCalls + 1 && failedOwner.nodes.count == 1)
+        let retainedOwner = try S.recoveryState(failedOwner)
+        precondition(retainedOwner.phase == .active)
+        request.result = .success([:])
+        if case .success = await S.requestSpaceRemoval(failedOwner) {} else { fatalError("abnormal nonempty Owner deletion is allowed") }
+        let removedOwner = try S.recoveryState(failedOwner)
+        precondition(removedOwner.phase == .removing && request.uploads == uploads)
+        let editor = SpaceData(); editor.nodes = [["uuid": "remaining"]]; editor.permission = .editor
+        S.block(editor, reason: "missingMeshKeys")
+        let editorCalls = request.calls
+        if case .failure(.noSpacePermission) = await S.requestSpaceRemoval(editor) {} else { fatalError("Editor must not delete abnormal Space") }
+        precondition(request.calls == editorCalls)
+        let downgraded = SpaceData(); downgraded.nodes = [["uuid": "remaining"]]
+        S.block(downgraded, reason: "missingMeshKeys")
+        request.onRequest = { downgraded.permission = .editor }
+        if case .failure = await S.requestSpaceRemoval(downgraded) {} else { fatalError("Owner downgraded while awaiting deletion cannot retire local records") }
+        let downgradedState = try S.recoveryState(downgraded)
+        precondition(downgradedState.phase == .active && downgraded.nodes.count == 1)
+        let nonempty = SpaceData(); nonempty.nodes = [["uuid": "remaining"]]
+        let beforeNonempty = request.calls
+        if case .failure = await S.requestSpaceRemoval(nonempty, requireCloudDeletion: true) {} else {
+            fatalError("healthy nonempty Space must still be protected")
+        }
+        precondition(request.calls == beforeNonempty)
+
+        // A prior version's unconfirmed nonempty discard is checked by GET only.
+        var legacy = try S.recoveryState(nonempty)
+        legacy.discardRequested = true
+        try S.testSaveState(legacy, space: nonempty)
+        request.result = .success(["data": nonempty.payload])
+        let legacyPrepared = await S.prepareForDeviceDeletion(nonempty)
+        precondition(legacyPrepared && request.calls == beforeNonempty + 1)
+        precondition(!S.isCurrent(legacy, space: nonempty))
+        let legacyAfter = try S.recoveryState(nonempty)
+        precondition(legacyAfter.discardRequested != true && legacyAfter.phase == .active)
+        precondition(nonempty.nodes.count == 1)
+
+        // Pending import bytes survive suspension; a late importer loses its generation.
+        let importing = SpaceData()
+        let importState = try S.recoveryState(importing)
+        let root = try S.testDirectory(importing)
+        let pendingURL = root.appendingPathComponent("pending-import.json")
+        try JSONSerialization.data(withJSONObject: importing.payload).write(to: pendingURL)
+        let prepared = await S.prepareForDeviceDeletion(importing)
+        precondition(prepared && !S.hasPendingImport(importing) && !S.isCurrent(importState, space: importing))
+        let archives = try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)
+        precondition(archives.contains { $0.lastPathComponent.hasPrefix("suspended-import-") })
+        precondition(!S.canAutomaticallyUpload(importing), "suspended partial import is not a complete upload baseline")
+        print("PASS: record deletion bypasses upload, retains data on server failure, retries lost responses and rejects stale/unauthorized callbacks")
     }
 
     @MainActor static func testSiteHandoffReadback() async throws {
@@ -282,6 +478,51 @@ final class NetworkRequest {
         print("PASS: Site handoff supersedes only old membership, retains newer cleanup and protects unrelated peers")
     }
 
+    @MainActor static func testMeshKeyReceipts() async throws {
+        typealias S = SpaceConfigurationSafety
+        let request = NetworkRequest.shared
+        let incomplete = SpaceData("missing-payload-keys")
+        precondition(S.recordSnapshot(incomplete, payload: incomplete.payload))
+        let file = try S.testDirectory(incomplete).appendingPathComponent("last-complete-export.json")
+        let original = try Data(contentsOf: file)
+        var missing = incomplete.payload
+        missing.removeValue(forKey: "appKey")
+        precondition(!S.recordSnapshot(incomplete, payload: missing))
+        precondition((try? Data(contentsOf: file)) == original)
+        precondition(S.prepareSubmission(incomplete, payload: missing) == nil)
+        precondition(incomplete.syncCloudError == .meshKeysUnavailable)
+        precondition((try? S.recoveryState(incomplete))?.submission == nil)
+
+        let changed = SpaceData("changed-remote-keys")
+        let context = S.prepareSubmission(changed, payload: changed.payload)!
+        precondition(S.markSubmissionAccepted(context, space: changed))
+        var remote = changed.payload
+        var app = remote["appKey"] as! [String: Any]
+        app["key"] = String(repeating: "33", count: 16)
+        remote["appKey"] = app
+        request.result = .success(["data": remote])
+        let mismatch = await S.resumeUpload(changed)
+        if case .success = mismatch { fatalError("equal topology cannot confirm different keys") }
+        precondition(changed.lastUploadCloudTimestamp == nil)
+        precondition((try? S.recoveryState(changed))?.submission != nil)
+        request.result = .success(["data": changed.payload])
+        let confirmed = await S.resumeUpload(changed)
+        if case .failure = confirmed { fatalError("matching keys and configuration should confirm") }
+
+        let legacy = SpaceData("legacy-missing-keys")
+        var state = try S.recoveryState(legacy)
+        state.submission = .init(id: UUID(), timestamp: legacy.lastUpdate,
+            configuration: SpaceConfigurationIntegrityPolicy.configurationData(legacy.payload)!, phase: .accepted)
+        try S.testSaveState(state, space: legacy)
+        let calls = request.calls
+        request.result = .success(["data": legacy.payload])
+        let unproven = await S.resumeUpload(legacy)
+        if case .failure(.meshKeysUnavailable) = unproven {} else { fatalError("legacy missing snapshot must stay unconfirmed") }
+        precondition(request.calls == calls + 1 && legacy.lastUploadCloudTimestamp == nil)
+        precondition((try? S.recoveryState(legacy))?.submission != nil)
+        print("PASS: missing keys cannot overwrite complete backup or submit; readback proves keys; unproven legacy receipt is retained")
+    }
+
     @MainActor static func testEmptyGroupAddressRecovery() async throws {
         typealias S = SpaceConfigurationSafety
         let request = NetworkRequest.shared
@@ -294,6 +535,9 @@ final class NetworkRequest {
             let legacy = try JSONSerialization.data(withJSONObject: ["groups": [], "memberships": [storedNode]])
             var state = try S.recoveryState(space)
             state.submission = .init(id: UUID(), timestamp: 50, configuration: legacy, phase: .accepted)
+            var savedPayload = space.payload
+            savedPayload["nodes"] = [storedNode]
+            precondition(S.recordSnapshot(space, payload: savedPayload))
             try S.testSaveState(state, space: space)
             S.block(space, reason: "uploadReadbackConflict")
             space.lastUpdate = 60

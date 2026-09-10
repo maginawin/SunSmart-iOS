@@ -15,6 +15,123 @@ private var jsonEncoder: JSONEncoder {
     return encoder
 }
 
+/// SDK bridge for the shared wire policy. Export never guesses a key by index
+/// when the Space's Network ID is absent from the persisted Site network.
+enum SpaceMeshKeyStore {
+    private static let lock = NSRecursiveLock()
+
+    private static func object<T: Encodable>(_ value: T) -> [String: Any]? {
+        guard let data = try? jsonEncoder.encode(value) else { return nil }
+        return try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+    }
+
+    static func repairPreserved(_ payload: [String: Any], meshUUID: String, networkId: String) -> SpaceMeshKeyPolicy.Issue? {
+        guard let network = MeshNetwork.load(meshUUID: meshUUID, allData: false) else { return .persistenceFailed }
+        return reconcile(payload, network: network, networkId: networkId)
+    }
+
+    static func export(network: MeshNetwork, networkId: String) -> Result<[String: Any], SpaceMeshKeyPolicy.Issue> {
+        let matches = network.networkKeys.filter { $0.networkId.hex == networkId }
+        guard !matches.isEmpty else { return .failure(.missingNetKey) }
+        guard matches.count == 1, let netKey = matches.first else { return .failure(.ambiguousKeys) }
+        let apps = network.applicationKeys.filter { $0.boundNetworkKeyIndex == netKey.index }
+        guard !apps.isEmpty else { return .failure(.missingAppKey) }
+        guard apps.count == 1, let appKey = apps.first else { return .failure(.ambiguousKeys) }
+        guard let net = object(netKey) else { return .failure(.invalidNetKey) }
+        guard let app = object(appKey) else { return .failure(.invalidAppKey) }
+        let payload: [String: Any] = ["netKey": net, "appKey": app, "appKeyIndex": appKey.index]
+        if let issue = SpaceMeshKeyPolicy.issue(in: payload) { return .failure(issue) }
+        guard case .success(let pair) = SpaceMeshKeyPolicy.pair(payload) else { return .failure(.invalidBinding) }
+        let networks = network.networkKeys.compactMap { object($0) }
+        let applications = network.applicationKeys.compactMap { object($0) }
+        guard networks.count == network.networkKeys.count, applications.count == network.applicationKeys.count else {
+            return .failure(.invalidBinding)
+        }
+        if case .failure(let issue) = SpaceMeshKeyPolicy.additions(for: pair, networks: networks, applications: applications) {
+            return .failure(issue)
+        }
+        return .success(payload)
+    }
+
+    /// Read-only preflight is also used before topology's early return.
+    static func preflight(_ payload: [String: Any], network: MeshNetwork, networkId: String) -> SpaceMeshKeyPolicy.Issue? {
+        if let issue = SpaceMeshKeyPolicy.issue(in: payload) { return issue }
+        guard case .success(let pair) = SpaceMeshKeyPolicy.pair(payload),
+              let net = payload["netKey"] as? [String: Any],
+              let data = try? JSONSerialization.data(withJSONObject: net),
+              let key = try? JSONDecoder.iso8601MeshKey.decode(NetworkKey.self, from: data) else { return .invalidNetKey }
+        guard key.networkId.hex == networkId else { return .networkIdentityMismatch }
+        let networks = network.networkKeys.compactMap { object($0) }
+        let applications = network.applicationKeys.compactMap { object($0) }
+        guard networks.count == network.networkKeys.count, applications.count == network.applicationKeys.count else { return .invalidBinding }
+        if case .failure(let issue) = SpaceMeshKeyPolicy.additions(for: pair, networks: networks, applications: applications) { return issue }
+        return nil
+    }
+
+    /// Merge into a fresh database snapshot, preserving other Spaces. No key is
+    /// replaced, and failure does not advance the Space identity or sync receipt.
+    static func reconcile(_ payload: [String: Any], network: MeshNetwork, networkId: String) -> SpaceMeshKeyPolicy.Issue? {
+        lock.lock(); defer { lock.unlock() }
+        let issue = reconcileSnapshot(payload, network: network, networkId: networkId)
+        guard issue == .staleSnapshot else { return issue }
+        guard let latest = MeshNetwork.load(meshUUID: network.uuid.uuidString, allData: false) else { return .persistenceFailed }
+        if let issue = preflight(payload, network: latest, networkId: networkId) { return issue }
+        // Another Space may have filled missing slots since this object loaded.
+        // Refresh additions only: existing key material, bindings and refresh
+        // phases must still match before touching the active Mesh collections.
+        let networkIndices = Set(network.networkKeys.map(\.index))
+        let applicationIndices = Set(network.applicationKeys.map(\.index))
+        guard SpaceMeshKeyPolicy.sameInventory(network.networkKeys.compactMap { object($0) },
+                latest.networkKeys.filter { networkIndices.contains($0.index) }.compactMap { object($0) }, network: true),
+              SpaceMeshKeyPolicy.sameInventory(network.applicationKeys.compactMap { object($0) },
+                latest.applicationKeys.filter { applicationIndices.contains($0.index) }.compactMap { object($0) }, network: false)
+        else { return .keyRefreshNeedsReview }
+        for key in latest.networkKeys where !networkIndices.contains(key.index) { network.add(networkKey: key) }
+        for key in latest.applicationKeys where !applicationIndices.contains(key.index) { network.add(applicationKey: key) }
+        // One retry rechecks the complete inventory against persistence. Never
+        // loop indefinitely or save the caller's stale topology/Site metadata.
+        return reconcileSnapshot(payload, network: network, networkId: networkId)
+    }
+
+    private static func reconcileSnapshot(_ payload: [String: Any], network: MeshNetwork, networkId: String) -> SpaceMeshKeyPolicy.Issue? {
+        if let issue = preflight(payload, network: network, networkId: networkId) { return issue }
+        guard let latest = MeshNetwork.load(meshUUID: network.uuid.uuidString, allData: false) else { return .persistenceFailed }
+        if let issue = preflight(payload, network: latest, networkId: networkId) { return issue }
+        guard SpaceMeshKeyPolicy.sameInventory(network.networkKeys.compactMap { object($0) },
+                                              latest.networkKeys.compactMap { object($0) }, network: true),
+              SpaceMeshKeyPolicy.sameInventory(network.applicationKeys.compactMap { object($0) },
+                                              latest.applicationKeys.compactMap { object($0) }, network: false) else { return .staleSnapshot }
+        guard case .success(let pair) = SpaceMeshKeyPolicy.pair(payload),
+              let net = payload["netKey"] as? [String: Any], let app = payload["appKey"] as? [String: Any],
+              let netData = try? JSONSerialization.data(withJSONObject: net),
+              let appData = try? JSONSerialization.data(withJSONObject: app),
+              let netKey = try? JSONDecoder.iso8601MeshKey.decode(NetworkKey.self, from: netData),
+              let appKey = try? JSONDecoder.iso8601MeshKey.decode(ApplicationKey.self, from: appData),
+              case .success(let additions) = SpaceMeshKeyPolicy.additions(for: pair,
+                networks: latest.networkKeys.compactMap { object($0) }, applications: latest.applicationKeys.compactMap { object($0) }) else { return .invalidBinding }
+        if additions.network { latest.add(networkKey: netKey) }
+        if additions.application { latest.add(applicationKey: appKey) }
+        if additions.network || additions.application {
+            guard latest.save(), let saved = MeshNetwork.load(meshUUID: network.uuid.uuidString, allData: false),
+                  case .success(let keys) = export(network: saved, networkId: networkId),
+                  SpaceMeshKeyPolicy.fingerprint(keys) == SpaceMeshKeyPolicy.fingerprint(payload) else { return .persistenceFailed }
+        }
+        // Refresh the caller's key collections without overwriting its loaded
+        // nodes/groups or persisting stale Site metadata.
+        if !network.networkKeys.contains(where: { $0.index == netKey.index }) { network.add(networkKey: netKey) }
+        if !network.applicationKeys.contains(where: { $0.index == appKey.index }) { network.add(applicationKey: appKey) }
+        return nil
+    }
+}
+
+private extension JSONDecoder {
+    static var iso8601MeshKey: JSONDecoder {
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return decoder
+    }
+}
+
 private struct SpaceSnapshotExportIntegritySnapshot: Equatable {
     typealias OrphanedMembership = SpaceSnapshotExportIntegrityPolicy.OrphanedMembership
 
@@ -227,8 +344,7 @@ extension SiteData {
                 
                 var siteJsonData: [String: Any] = [:]
                 guard let meshNetwork = MeshNetwork.load(meshUUID: self.id, allData: false),
-                      let networkKey = meshNetwork.networkKeys.first(where: { $0.isPrimary }),
-                      let appKey = meshNetwork.applicationKeys.first(where: { $0.boundNetworkKey == networkKey }) else {
+                      let networkKey = meshNetwork.networkKeys.first(where: { $0.isPrimary }) else {
                     continuation.resume(returning: nil)
                     return
                 }
@@ -247,12 +363,12 @@ extension SiteData {
                 siteJsonData.updateValue(self.lastUpdate, forKey: "updateTimestamp")
                 siteJsonData.updateValue(meshNetwork.currentIVIndex, forKey: "ivIndex")
                 
-                if let data = try? jsonEncoder.encode(networkKey), let networkKeyDict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    siteJsonData.updateValue(networkKeyDict, forKey: "netKey")
+                guard case .success(let keys) = SpaceMeshKeyStore.export(network: meshNetwork, networkId: networkKey.networkId.hex) else {
+                    continuation.resume(returning: nil)
+                    return
                 }
-                if let data = try? jsonEncoder.encode(appKey), let appKeyDict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                    siteJsonData.updateValue(appKeyDict, forKey: "appKey")
-                }
+                siteJsonData["netKey"] = keys["netKey"]
+                siteJsonData["appKey"] = keys["appKey"]
                 
                 // 用户地址数据
                 if let provisioner = meshNetwork.localProvisioner {
@@ -381,6 +497,13 @@ extension SpaceData {
                 return nil
             }
             trace.mark(reusableNetwork == nil ? "networkReloaded" : "networkReused")
+            let keyPayload: [String: Any]
+            switch SpaceMeshKeyStore.export(network: meshNetwork, networkId: self.meshNetworkId) {
+            case .success(let keys): keyPayload = keys
+            case .failure(let issue):
+                SpaceConfigurationSafety.meshKeyFailure(self, issue: issue)
+                return nil
+            }
             let allNodes = meshNetwork.nodes.filter {
                 !$0.isLocalProvisioner && !$0.isProvisioner && !$0.isConfigComplete
             }
@@ -479,18 +602,7 @@ extension SpaceData {
             spaceJsonData.updateValue(spaceExtensionData, forKey: "spaceData")
             
             
-            let networkKey = meshNetwork.networkKeys.first(where: { $0.networkId.hex == self.meshNetworkId })
-            let appKey = meshNetwork.applicationKeys.first(where: { $0.boundNetworkKeyIndex == networkKey?.index })
-            
-            if let data = try? jsonEncoder.encode(networkKey), let networkKeyDict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                spaceJsonData.updateValue(networkKeyDict, forKey: "netKey")
-            }
-            if let data = try? jsonEncoder.encode(appKey), let appKeyDict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-                spaceJsonData.updateValue(appKeyDict, forKey: "appKey")
-            }
-            if let applicationKey = appKey {
-                spaceJsonData.updateValue(applicationKey.index, forKey: "appKeyIndex")
-            }
+            spaceJsonData.merge(keyPayload) { _, value in value }
             
             //        let networkKeyDict: [String: Any] = [
             //            "oldKey" : networkKey.oldKey?.hex ?? "00000000000000000000000000000000",
@@ -947,6 +1059,10 @@ extension SpaceData {
             spaceJsonData.updateValue(sceneDicts, forKey: "scenes")
             spaceJsonData.updateValue(scheheduleDicts, forKey: "schedules")
             guard SpaceConfigurationIntegrityPolicy.profilesIssue(in: spaceJsonData) == nil else { return nil }
+            if let issue = SpaceMeshKeyPolicy.issue(in: spaceJsonData) {
+                SpaceConfigurationSafety.meshKeyFailure(self, issue: issue)
+                return nil
+            }
             return spaceJsonData
         }
         guard let payload else { return nil }

@@ -71,15 +71,16 @@ enum SyncOperation {
         }
     }
     
-    func getNetworkApi() async -> NetowrkReqeustApi? {
+    func getNetworkApi(excludingAdoptedSpaces: Set<String> = []) async -> NetowrkReqeustApi? {
         switch self {
         case .syncSite(let site, let syncSpaces):
             for space in syncSpaces {
                 if let index = site.spaces.firstIndex(where: { $0.id == space.id }) { site.spaces[index] = space }
             }
+            let uploadSpaces = syncSpaces.filter { !excludingAdoptedSpaces.contains($0.id) || $0.needUploadCloud }
             if site.uploadCloud {
                 guard let siteData = await site.export(
-                    spaceIds: syncSpaces.map({ $0.id })
+                    spaceIds: uploadSpaces.map({ $0.id })
                 ) else {
                     return nil
                 }
@@ -88,7 +89,7 @@ enum SyncOperation {
                 // 获取最后分配的设备地址
                 let maxAddress = MeshAPI.getTheUsedDeviceAddresses(meshUUID: site.meshUUID).max()
                 guard let siteData = await site.export(
-                    spaceIds: syncSpaces.map({ $0.id })
+                    spaceIds: uploadSpaces.map({ $0.id })
                 ) else {
                     return nil
                 }
@@ -108,7 +109,7 @@ enum SyncOperation {
             )
         case .addSpaces(let site, let spaces):
             guard let siteData = await site.export(
-                spaceIds: spaces.map({ $0.id })
+                spaceIds: spaces.filter { !excludingAdoptedSpaces.contains($0.id) || $0.needUploadCloud }.map({ $0.id })
             ) else {
                 return nil
             }
@@ -948,7 +949,7 @@ class CloudSynchronizationHandle: NSObject {
         configurationUploadTask = AsyncTask { @MainActor in
             let account = UserData.currentUserId
             let region = UserData.currentServerRegion
-            let lifecycle = Dictionary(self.configurationSpaces.compactMap { space -> (String, SpaceRecoveryState)? in
+            var lifecycle = Dictionary(self.configurationSpaces.compactMap { space -> (String, SpaceRecoveryState)? in
                 guard let context = try? SpaceConfigurationSafety.recoveryState(space) else { return nil }
                 return (space.id, context)
             }, uniquingKeysWith: { first, _ in first })
@@ -959,6 +960,7 @@ class CloudSynchronizationHandle: NSObject {
             }
             guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
             let hadPending = self.configurationSpaces.contains { SpaceConfigurationSafety.hasPendingUpload($0) }
+            var adoptedCloudIDs = Set<String>()
             if case .syncSite(let site, _) = self.operation, !site.uploadCloud,
                let createdTimestamp = lifecycle.values.compactMap(\.siteCreationTimestamp).max() {
                 // Recover acceptance/resources after a crash before Site.save().
@@ -975,7 +977,15 @@ class CloudSynchronizationHandle: NSObject {
                 guard site.save() else { self.finishConfigurationFailure(SpaceConfigurationSafety.uploadUnconfirmed); return }
             }
             for space in self.configurationSpaces {
-                if case .failure(let error) = await SpaceConfigurationSafety.resumeUpload(space) {
+                switch await SpaceConfigurationSafety.resumeUpload(space) {
+                case .success(.adoptedCloud(let context)):
+                    lifecycle[space.id] = context
+                    adoptedCloudIDs.insert(space.id)
+                case .success(.superseded):
+                    self.finishInvalidatedConfiguration()
+                    return
+                case .success(.confirmed): break
+                case .failure(let error):
                     guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
                     guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
                     self.finishConfigurationFailure(error)
@@ -983,6 +993,7 @@ class CloudSynchronizationHandle: NSObject {
                 }
             }
             guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
+            guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
             if hadPending && !self.configurationSpaces.contains(where: { $0.needUploadCloud }) {
                 let sitePending: Bool
                 switch self.operation {
@@ -995,7 +1006,7 @@ class CloudSynchronizationHandle: NSObject {
                     return
                 }
             }
-            guard let api = await self.operation.getNetworkApi() else {
+            guard let api = await self.operation.getNetworkApi(excludingAdoptedSpaces: adoptedCloudIDs) else {
                 guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
                 guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
                 self.finishExportFailure()
@@ -1077,7 +1088,13 @@ class CloudSynchronizationHandle: NSObject {
                     let verification = await SpaceConfigurationSafety.resumeUpload(space)
                     guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
                     switch verification {
-                    case .success: confirmedConfigurationIds.insert(id)
+                    case .success(.superseded):
+                        self.finishInvalidatedConfiguration()
+                        return
+                    case .success(.adoptedCloud(let context)):
+                        lifecycle[space.id] = context
+                        confirmedConfigurationIds.insert(id)
+                    case .success(.confirmed): confirmedConfigurationIds.insert(id)
                     case .failure(let error): result = .failure(error)
                     }
                 }

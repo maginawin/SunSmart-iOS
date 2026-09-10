@@ -116,7 +116,8 @@ extension SpaceData {
         }
     }
 
-    private func refreshSummaryCountsFromSpaceMesh() {
+    func refreshSummaryCountsFromSpaceMesh() {
+        switchesCount = DeviceSwitchData.load(meshUUID: meshUUID, meshNetworkId: meshNetworkId).count
         guard let network = ProximityLightingTopologyContext.network(for: self) else { return }
         let nodes = ProximityLightingTopologyContext.realNodes(in: network)
         deviceCount = nodes.count
@@ -700,22 +701,33 @@ class SpaceViewController: WMPageController {
     }
     
     /// 获取网络数据+网络连接
+    private var networkLoadGeneration = UUID()
+
     private func setNetworkConnected() {
         // 读取网络数据
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 10)
-        DispatchQueue.global().async {[weak self] in
-            guard let self = self else { return }
+        networkLoadGeneration = UUID()
+        let generation = networkLoadGeneration
+        DispatchQueue.main.async {[weak self] in
+            guard let self, self.networkLoadGeneration == generation, !self.hasStoppedPresenceTracking else { return }
             #if DEBUG
             print("加载网络数据 \(Date().timeIntervalSince1970)")
             #endif
-            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.space.meshUUID, subNetworkId: self.space.meshNetworkId)
+            let keyAvailable: Bool
+            if let network = MeshNetwork.load(meshUUID: self.space.meshUUID, allData: false),
+               case .success = SpaceMeshKeyStore.export(network: network, networkId: self.space.meshNetworkId) {
+                keyAvailable = true
+            } else { keyAvailable = false }
+            if !keyAvailable { MeshLibManager.manager.meshNetworkDisconnect() }
+            MeshLibManager.manager.setMeshNetworkConnected(meshUUID: self.space.meshUUID,
+                subNetworkId: self.space.meshNetworkId, connected: keyAvailable)
             if let manager = MeshLibManager.manager.meshNetworkManager, let meshNetwork = manager.meshNetwork {
 //                self.space.meshManager = manager
                 
                 #if DEBUG
                 print("加载网络数据完成 \(Date().timeIntervalSince1970)")
                 #endif
-                if meshNetwork.localProvisioner == nil || meshNetwork.localProvisioner?.primaryUnicastAddress == nil { // 缺少手机供应者或手机地址
+                if keyAvailable && (meshNetwork.localProvisioner == nil || meshNetwork.localProvisioner?.primaryUnicastAddress == nil) { // 缺少手机供应者或手机地址
                     // 如果用户有地址则自己分配一个作为手机地址
                     if let localProvisioner = manager.meshNetwork?.localProvisioner, let address = meshNetwork.nextAvailableUnicastAddress(elementsCount: 1, elementsUsing: localProvisioner, lockInAddress: false) {
                         try? meshNetwork.changeLocalNodeAddress(address)
@@ -724,8 +736,11 @@ class SpaceViewController: WMPageController {
                     }
                 }
                 
-                manager.loadExtensionData {[weak self] result in
-                    guard let self = self else { return }
+                manager.loadExtensionData(networkId: self.space.meshNetworkId, isCurrent: { [weak self] in
+                    self?.networkLoadGeneration == generation && self?.hasStoppedPresenceTracking == false
+                }) { [weak self] result in
+                    guard let self, self.networkLoadGeneration == generation,
+                          MeshLibManager.manager.meshNetworkManager === manager else { return }
                     #if DEBUG
                     print("加载网络扩展数据完成 \(Date().timeIntervalSince1970)")
                     #endif
@@ -740,15 +755,16 @@ class SpaceViewController: WMPageController {
 //                    XWHUDManager.hideInView(with: self.view)
                     XWHUDManager.hide()
                     self.loadNetworkData = true
-                    self.reconcileLegacyProximityLightingTopology()
+                    SwitchRecordDeletion.resume(space: self.space)
+                    if keyAvailable { self.reconcileLegacyProximityLightingTopology() }
                     self.emergencyFireControllerSceneEventManager = EmergencyFireControllerSceneEventManager {
                         DeviceEmerFireStore.shared.devices(in: self.space)
                     }
-                    self.emergencyFireControllerSceneEventManager?.activate()
+                    if keyAvailable { self.emergencyFireControllerSceneEventManager?.activate() }
                     self.registerEmergencyFireSceneMessageObserverIfNeeded()
                     self.reloadData()
-                    self.presentProximityLightingRepairSyncIfNeeded()
-                    SpaceDebugUARTManager.shared.evaluateCurrentProxy(space: self.space)
+                    if keyAvailable { self.presentProximityLightingRepairSyncIfNeeded() }
+                    if keyAvailable { SpaceDebugUARTManager.shared.evaluateCurrentProxy(space: self.space) }
                     DispatchQueue.global().async {
 //                        print("设备同步状态:\(Date().timeIntervalSince1970)")
                         manager.realNodes.forEach { node in
@@ -864,15 +880,20 @@ class SpaceViewController: WMPageController {
     private func deleteSpaceRequest() {
         
         XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-        NetworkRequest.shared.request(.spaceDelete(siteId: self.site.id, spaceId: self.space.id)) {[weak self] result in
+        Task { @MainActor [weak self] in
+            guard let self else { XWHUDManager.hide(); return }
+            let result = await SpaceConfigurationSafety.requestSpaceRemoval(self.space,
+                requireCloudDeletion: self.site.uploadCloud)
             XWHUDManager.hide()
-            guard let self = self else { return }
             switch result {
             case .success(_):
                 
                 // 删除本地数据
+                guard self.space.delete() else {
+                    XWHUDManager.showErrorTipHUD("space_delete_local_cleanup_pending".localizedString)
+                    return
+                }
                 self.site.spaces.removeAll(where: { $0.id == self.space.id })
-                self.space.delete()
                 self.navigationController?.popViewController(animated: true)
                 self.deleteSpaceCallback?()
                 NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: nil)
@@ -1185,40 +1206,10 @@ class SpaceViewController: WMPageController {
     
     /// 更新空间缓存数据
     private func updateSpaceData() {
-        var saveData = false
-        let nodes = MeshNetworkManager.instance.realNodes
-        let lightNodes = nodes.filter({ $0.deviceType == .light })
-//        MeshNetworkManager.instance.lightNodes
-        if self.space.deviceCount != nodes.count {
-            self.space.deviceCount = nodes.count
-            saveData = true
-        }
-        if self.space.luminairesCount != lightNodes.count {
-            self.space.luminairesCount = lightNodes.count
-            saveData = true
-        }
-        if self.space.groupCount != MeshNetworkManager.instance.groups.count {
-            self.space.groupCount = MeshNetworkManager.instance.groups.count
-            saveData = true
-        }
-        if self.space.sceneCount != MeshNetworkManager.instance.scenes.count {
-            self.space.sceneCount = MeshNetworkManager.instance.scenes.count
-            saveData = true
-        }
-        if self.space.scheheduleCount != MeshNetworkManager.instance.schedules.count {
-            self.space.scheheduleCount = MeshNetworkManager.instance.schedules.count
-            saveData = true
-        }
-        if self.space.switchesCount != MeshNetworkManager.instance.switchs.count {
-            self.space.switchesCount = MeshNetworkManager.instance.switchs.count
-            saveData = true
-        }
-        
-        if saveData {
-            self.space.save()
-        }
+        space.refreshSummaryCountsFromSpaceMesh()
+        space.save()
     }
-    
+
     func checkBluetoothState() {
         if MeshLibManager.manager.bluetoothState == .unknown {
             return
@@ -1361,30 +1352,23 @@ class SpaceViewController: WMPageController {
     /// 删除空间
     private func deleteSpace() {
         
-        SRAlertView(title: "notification".localizedString, message: "space_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_delete".localizedString, style: .destructive, actionHandler: { _ in
+        let message = "space_delete_records_message"
+        SRAlertView(title: "notification".localizedString, message: message.localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_delete".localizedString, style: .destructive, actionHandler: { _ in
             // 提示1s
             XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {[weak self] in
                 XWHUDManager.hide()
                 guard let self = self else { return }
-                // 空间内存在设备
-                if self.space.deviceCount > 0 {
+                // 共用 Owner 权限、同步异常和作用域校验。
+                if !self.space.canDeleteSpaceRecords {
                     XWHUDManager.showErrorTipHUD("site_delete_fail".localizedString)
-                }else { // 空间未存在设备，删除成功
+                }else {
                     
                     // 是否有同步操作正在进行,进行中则取消任务
                     CloudSynchronizationManager.shared.cancelSynchronizationHandle(space: self.space)
                     
                     // 提交到云端需要网络才能删除
-                    if self.space.uploadCloud {
-                        self.deleteSpaceRequest()
-                    }else { // 只存在于本地，删除数据
-                        self.site.spaces.removeAll(where: { $0.id == self.space.id })
-                        self.space.delete()
-                        self.navigationController?.popViewController(animated: true)
-                        self.deleteSpaceCallback?()
-                        NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: nil)
-                    }
+                    self.deleteSpaceRequest()
           
                 }
             }
@@ -1549,6 +1533,17 @@ class SpaceViewController: WMPageController {
     private func showConfigurationRecovery() {
         Task { @MainActor [weak self] in
             guard let self else { return }
+            if SpaceConfigurationSafety.hasPendingUpload(self.space) {
+                XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: true)
+                let resolution = await SpaceConfigurationSafety.resumeUpload(self.space)
+                XWHUDManager.hide()
+                if case .success(.superseded) = resolution { return }
+                if case .success = resolution, !SpaceConfigurationSafety.isBlocked(self.space), !self.space.needUploadCloud {
+                    self.reloadData()
+                    self.showNavigationBarSuccessful()
+                    return
+                }
+            }
             DevicePermanentDeletionContext.resume(space: self.space)
             let local = await self.space.export(allowsProtectedInspection: true)
             let alert = UIAlertController(title: "synchronization_failure".localizedString,

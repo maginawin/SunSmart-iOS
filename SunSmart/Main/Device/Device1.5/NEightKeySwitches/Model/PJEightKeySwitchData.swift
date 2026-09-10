@@ -125,6 +125,7 @@ final class PJEightKeySwitchData: DeviceSwitchData {
             sceneDNumber: sceneDNumber,
             proxyNodeAddress: proxyNodeAddress
         )
+        copy.recordScope = recordScope
         copy.enOceanMacAddress = enOceanMacAddress
         copy.enOceanSecurityKey = enOceanSecurityKey
         copy.unbindGroupAddresses = unbindGroupAddresses

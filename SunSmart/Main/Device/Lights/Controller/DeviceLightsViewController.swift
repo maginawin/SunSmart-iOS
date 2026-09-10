@@ -10,7 +10,7 @@ import NordicSigMeshSDK
 import CoreBluetooth
 
 
-class DeviceLightsViewController: UIViewController {
+class DeviceLightsViewController: UIViewController, DeviceProtocol {
 
     // 设备列表
     private var flowLayout: AlignCenterFlowLayout!
@@ -716,190 +716,31 @@ class DeviceLightsViewController: UIViewController {
     }
     
     private func deleteNodes() {
-        
-        guard selectedAddresss.count > 0 else {
-            return
-        }
-//        guard MeshLibManager.manager.isMeshNetworkConnected else {
-//            return
-//        }
-        
-        
-        let selectDevices = devices.filter({ node in selectedAddresss.contains(where: { $0 == node.primaryUnicastAddress }) })
-        
-        guard selectDevices.count > 0 else {
-            return
-        }
-        
-//        let alertView = SRAlertView(message: "devices_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive, actionHandler: {[weak self] _ in
-//            guard let self = self else { return }
-//            
-//            // 提供重置的设备地址+超时时长list数据
-//            var addressDataList: [(address: Address, timeout: TimeInterval)] = selectDevices.map({ ($0.primaryUnicastAddress, $0.state ? 10 : 2) })
-//            // 如果重置节点中存在代理节点，将代理节点放到最后重置
-//            if let proxyNode = selectDevices.first(where: { $0.isProxy }) {
-//                addressDataList.removeAll(where: { $0.address == proxyNode.primaryUnicastAddress })
-//                addressDataList.append((proxyNode.primaryUnicastAddress, 10))
-//            }
-//            isDeletingDevice = true
-//            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-//            MeshAPI.resetNodes(addressDataList: addressDataList, resetSuccess: nil, resetFail: nil) {[weak self] successAddressList, failAddressList in
-//                guard let self = self else { return }
-//                self.isDeletingDevice = false
-//                XWHUDManager.hide()
-//                DevicePermanentDeletionContext.showCompletion(space: self.space)
-//                let networkManager = MeshNetworkManager.instance
-//                selectDevices.forEach({
-//                    networkManager.meshNetwork?.remove(node: $0)
-//                    $0.deleteExtension()
-//                })
-//                self.isEdit = false
-//                self.loadDevices()
-//            }
-//            
-//        })])
-//        // 存在离线设备
-//        if selectDevices.contains(where: { !$0.state }) {
-//            let messageAttStr = NSMutableAttributedString(string: "devices_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
-//            messageAttStr.append(NSAttributedString(string: "devices_force_delete_note".localizedString, attributes: [.foregroundColor: Message_Color]))
-//            alertView.messageLabel.attributedText = messageAttStr
-//        }
-//        alertView.show()
-        
-        
-        
-        SRAlertView(title: "notification".localizedString, message: "devices_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive, actionHandler: {[weak self] _ in
-            guard let self = self else { return }
-            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-            let deletionContexts = Dictionary(uniqueKeysWithValues: selectDevices.map {
-                ($0.primaryUnicastAddress, DevicePermanentDeletionContext(node: $0, space: self.space))
-            })
-            
-            guard deletionContexts.values.allSatisfy({ $0.isPrepared }) else {
-                XWHUDManager.hide()
-                XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
-                return
-            }
-            // 提供重置的设备地址+超时时长list数据
-            var addressDataList: [(address: Address, timeout: TimeInterval)] = selectDevices.map({ ($0.primaryUnicastAddress, $0.state ? 10 : 2) })
-            // 如果重置节点中存在代理节点，将代理节点放到最后重置
-            if let proxyNode = selectDevices.first(where: { $0.isProxy }) {
-                addressDataList.removeAll(where: { $0.address == proxyNode.primaryUnicastAddress })
-                addressDataList.append((proxyNode.primaryUnicastAddress, 10))
-            }
-            
-//            var resetAddressList = self.selectedAddresss
-//            // 如果重置节点中存在代理节点，将代理节点放到最后重置
-//            if let proxyNode = self.devices.first(where: { $0.isProxy }), self.selectedAddresss.contains(proxyNode.primaryUnicastAddress) {
-//                resetAddressList.removeAll(where: { $0 == proxyNode.primaryUnicastAddress })
-//                resetAddressList.append(proxyNode.primaryUnicastAddress)
-//            }
-            isDeletingDevice = true
-            MeshAPI.resetNodes(addressDataList: addressDataList, resetSuccess: nil, resetFail: nil) {[weak self] successAddressList, failAddressList in
-                XWHUDManager.hide()
-                guard let self = self else { return }
-                failAddressList.forEach { deletionContexts[$0]?.cancel() }
-                var lifecycleResults: [ProximityLightingLifecycleResult] = []
-                successAddressList.forEach({ address in
-                    if let index = self.devices.firstIndex(where: { $0.primaryUnicastAddress == address }) {
-                        if let result = deletionContexts[address]?.commit() {
-                            lifecycleResults.append(result)
-                        }
-                        self.devices.remove(at: index)
-                    }
-                })
-                
-//                self.devices.removeAll(where: { successAddressList.contains($0.primaryUnicastAddress) })
-                self.selectedAddresss.removeAll(where: { successAddressList.contains($0) })
-                if !successAddressList.isEmpty {
-                    self.space.commitLocalChangeForCloudSync(site: self.site, changeType: .network(type: .address))
-                }
-                
-                if failAddressList.isEmpty { // 删除成功
-                    self.isEdit = false
-                    self.applyDeviceNameFilter()
-                    self.updateUI()
-                    self.isDeletingDevice = false
-                    self.collectionView.reloadData()
-                    if MeshNetworkManager.instance.realNodes.isEmpty, MeshLibManager.manager.isMeshNetworkConnected {
-                        MeshLibManager.manager.close()
-                    }
-                    self.syncDeletionPeersIfNeeded(lifecycleResults) {
-                        DevicePermanentDeletionContext.showCompletion(space: self.space)
-                    }
-                    
-                }else { // 删除失败（提示是否强制删除这部分设备）
-                    
-                    let alertView = SRAlertView(title: "notification".localizedString, actions: [SRAlertAction(title: "alert_item_cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
+        let selected = devices.filter { selectedAddresss.contains($0.primaryUnicastAddress) }
+        guard !selected.isEmpty, !isDeletingDevice else { return }
+        SRAlertView(title: "notification".localizedString, message: "devices_delete_message".localizedString,
+            actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive,
+                actionHandler: { [weak self] _ in
+                    guard let self, !self.isDeletingDevice else { return }
+                    self.isDeletingDevice = true
+                    self.deleteNodes(nodes: selected, space: self.space) { [weak self] removed, failed in
                         guard let self else { return }
-                        self.devices.removeAll(where: { successAddressList.contains($0.primaryUnicastAddress) })
-                        self.applyDeviceNameFilter()
-                        self.updateUI(reloadTableView: false)
-                        self.updateEditUI()
+                        let uuids = Set(removed.map { $0.uuid })
+                        self.devices.removeAll { uuids.contains($0.uuid) }
+                        self.selectedAddresss = failed.map { $0.primaryUnicastAddress }
+                        self.isEdit = !failed.isEmpty
                         self.isDeletingDevice = false
-                        self.collectionView.reloadData()
-                        self.syncDeletionPeersIfNeeded(lifecycleResults, completion: {})
-                    }), SRAlertAction(title: "force_delete".localizedString, actionHandler: {[weak self] _ in
-                        guard let self = self else { return }
-                        guard failAddressList.allSatisfy({ deletionContexts[$0]?.prepareForForceRemoval() == true }) else {
-                            XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
-                            self.isDeletingDevice = false
-                            return
-                        }
-                        let forceDeleteNodes = self.devices.filter({ failAddressList.contains($0.primaryUnicastAddress) })
-                        forceDeleteNodes.forEach { node in
-                            if let result = deletionContexts[node.primaryUnicastAddress]?.forceRemove() {
-                                lifecycleResults.append(result)
-                            }
-                        }
-//                        _ = self.space.meshManager?.save()
-                        self.devices.removeAll(where: { failAddressList.contains($0.primaryUnicastAddress) })
-                        self.isEdit = false
-                        self.isDeletingDevice = false
-                        self.selectedAddresss.removeAll()
                         self.applyDeviceNameFilter()
                         self.updateUI()
                         self.collectionView.reloadData()
-                        
-                        self.space.commitLocalChangeForCloudSync(site: self.site, changeType: .network(type: .address))
-                        self.syncDeletionPeersIfNeeded(lifecycleResults) {
-                            DevicePermanentDeletionContext.showCompletion(space: self.space)
+                        if !removed.isEmpty {
+                            self.space.commitLocalChangeForCloudSync(site: self.site, changeType: .network(type: .address))
                         }
-                        
-                    })])
-                    let messageAttStr = NSMutableAttributedString(string: "devices_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
-                    messageAttStr.append(NSAttributedString(string: "devices_force_delete_note".localizedString, attributes: [.foregroundColor: Message_Color]))
-                    alertView.messageLabel.attributedText = messageAttStr
-                    alertView.show()
-                }
-            }
-        })]).show()
-        
+                    }
+                })]).show()
     }
 
-    private func syncDeletionPeersIfNeeded(
-        _ results: [ProximityLightingLifecycleResult],
-        completion: @escaping () -> Void
-    ) {
-        let datas = ProximityLightingLifecycleCoordinator.mergedSyncDatas(from: results)
-        guard MeshLibManager.manager.isMeshNetworkConnected, !datas.isEmpty else {
-            completion()
-            return
-        }
-        let vc = SyncDevicesViewController(type: .spaceTriggerZones(datas: datas))
-        var didFinish = false
-        let finish = { [weak vc] in
-            guard !didFinish else { return }
-            didFinish = true
-            if let vc, vc.navigationController?.topViewController === vc {
-                vc.navigationController?.popViewController(animated: false)
-            }
-            completion()
-        }
-        vc.syncSuccessCallback = { _ in finish() }
-        vc.backActionCallback = { _ in finish() }
-        navigationController?.pushViewController(vc, animated: true)
-    }
+
     
     
     /// 修复设备

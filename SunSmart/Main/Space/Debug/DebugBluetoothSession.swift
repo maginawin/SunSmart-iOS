@@ -37,11 +37,11 @@ final class DebugBluetoothSession {
                 return
             }
 
-            manager.loadExtensionData { result in
+            manager.loadExtensionData(networkId: self.space.meshNetworkId, result: { result in
                 DispatchQueue.main.async {
                     completion(result, currentNode)
                 }
-            }
+            })
         }
     }
 

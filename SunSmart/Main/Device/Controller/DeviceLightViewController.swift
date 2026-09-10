@@ -8,7 +8,7 @@
 import UIKit
 import NordicSigMeshSDK
 
-class DeviceLightViewController: UIViewController {
+class DeviceLightViewController: UIViewController, DeviceProtocol {
 
     private let scrollView = UIScrollView()
     private let contentView = UIView()
@@ -567,82 +567,22 @@ class DeviceLightViewController: UIViewController {
     
     /// 删除设备
     private func deleteNode() {
-        
-        SRAlertView(title: "notification".localizedString, message: "device_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive, actionHandler: {[weak self] _ in
-            guard let self = self else { return }
-            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-            let deletionContext = DevicePermanentDeletionContext(node: self.node, space: self.space)
-            guard deletionContext.isPrepared else {
-                XWHUDManager.hide()
-                XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
-                return
-            }
-  
-            MeshAPI.resetNode(address: self.node.primaryUnicastAddress) {[weak self] _ in
-                XWHUDManager.hide()
-                let lifecycleResult = deletionContext.commit()
-                self?.completePermanentDeletion(lifecycleResult)
-            } resetFail: { _, error in
-                deletionContext.cancel()
-                XWHUDManager.hide()
-                
-                let alertView = SRAlertView(title: "notification".localizedString, actions: [.cancelAction, SRAlertAction(title: "force_delete".localizedString, style: .destructive, actionHandler: {[weak self] _ in
-                    guard let self = self else { return }
-                    guard deletionContext.prepareForForceRemoval() else {
-                        XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
-                        return
-                    }
-                    let lifecycleResult = deletionContext.forceRemove()
-                    self.completePermanentDeletion(lifecycleResult)
-                })])
-                let messageAttStr = NSMutableAttributedString(string: "device_force_delete_message".localizedString, attributes: [.foregroundColor: TextBlack_Color])
-                messageAttStr.append(NSAttributedString(string: "device_force_delete_note".localizedString, attributes: [.foregroundColor: Message_Color]))
-                alertView.messageLabel.attributedText = messageAttStr
-                alertView.show()
-            }
-            
-        })]).show()
-        
+        SRAlertView(title: "notification".localizedString, message: "device_delete_message".localizedString,
+            actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive,
+                actionHandler: { [weak self] _ in
+                    guard let self else { return }
+                    self.deleteNodes(nodes: [self.node], space: self.space,
+                        forceDeleteMessage: "device_force_delete_message".localizedString,
+                        forceDeleteNote: "device_force_delete_note".localizedString) { [weak self] removed, _ in
+                            guard let self, !removed.isEmpty else { return }
+                            NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
+                            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName),
+                                object: SpaceChangeDataType.network(type: .address))
+                            self.backAction()
+                        }
+                })]).show()
     }
 
-    private func completePermanentDeletion(
-        _ lifecycleResult: ProximityLightingLifecycleResult?
-    ) {
-        space.deviceCount = MeshNetworkManager.instance.realNodes.count
-        space.luminairesCount = MeshNetworkManager.instance.realNodes.filter {
-            $0.deviceType == .light
-        }.count
-        space.save()
-
-        let finish = { [weak self] in
-            guard let self else { return }
-            DevicePermanentDeletionContext.showCompletion(space: self.space)
-            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) { [weak self] in
-                guard let self else { return }
-                NotificationCenter.default.post(
-                    name: .init(devicesUpdateNotificationName),
-                    object: nil
-                )
-                NotificationCenter.default.post(
-                    name: .init(spaceDataChangedNotificaitonName),
-                    object: SpaceChangeDataType.network(type: .address)
-                )
-                self.navigationController?.popToViewController(self, animated: false)
-                self.backAction()
-            }
-        }
-
-        let syncDatas = lifecycleResult?.syncDatas ?? []
-        guard MeshLibManager.manager.isMeshNetworkConnected, !syncDatas.isEmpty else {
-            finish()
-            return
-        }
-        let vc = SyncDevicesViewController(type: .spaceTriggerZones(datas: syncDatas))
-        vc.syncSuccessCallback = { _ in finish() }
-        vc.backActionCallback = { _ in finish() }
-        navigationController?.pushViewController(vc, animated: true)
-    }
-    
     /// 修复设备
     @objc private func repairBtnClick() {
         

@@ -33,24 +33,42 @@ struct SpaceDeletionJournal: Codable {
     }
 
     struct Entry: Codable, Equatable {
-        enum Stage: String, Codable { case prepared, removed, cleaned }
+        enum Stage: String, Codable { case prepared, forceRequested, removed, cleaned }
         let id: UUID
         let nodeUUID: String
         let primaryAddress: UInt16
         let elementAddresses: Set<UInt16>
         let macAddress: String?
         let productId: UInt16?
+        var createdTimestamp: Int64?
         var stage: Stage = .prepared
         var completedTimestamp: Int64?
         var replacement: SiteDeviceOwnershipPolicy.Instance?
     }
 
+    struct SwitchEntry: Codable, Equatable {
+        let id: UUID
+        let switchId: String
+        let fingerprint: String
+        var completedTimestamp: Int64?
+    }
+
     let scope: Scope
+    // Optional keeps existing device journals decodable without migration.
+    var switches: [SwitchEntry]?
+    // Residual SDK subscriptions may outlive a confirmed Switch row deletion.
+    // SDK private Switch groups use ordinary group addresses, not virtual labels.
+    // This maintenance queue is independent of blocking cleanup/upload receipts.
+    var pendingVirtualGroupAddresses: Set<UInt16>?
     var entries: [Entry] = []
 
-    var needsCleanup: Bool { entries.contains { $0.stage != .cleaned } }
+    var needsCleanup: Bool {
+        entries.contains { $0.stage != .cleaned } || (switches ?? []).contains { $0.completedTimestamp == nil }
+    }
+    var hasReceipts: Bool { !entries.isEmpty || !(switches ?? []).isEmpty }
 
     mutating func confirmUpload(timestamp: Int64) {
+        switches?.removeAll { $0.completedTimestamp.map { $0 <= timestamp } == true }
         entries.removeAll { entry in
             entry.stage == .cleaned && entry.completedTimestamp.map { $0 <= timestamp } == true
         }
@@ -134,6 +152,7 @@ struct SpaceRecoveryState: Codable, Equatable {
         let timestamp: Int64
         let configuration: Data
         var phase: Phase = .prepared
+        var meshKeyFingerprint: String? = nil
     }
     let identity: Identity
     var generation = UUID()
@@ -144,9 +163,12 @@ struct SpaceRecoveryState: Codable, Equatable {
     var submission: Submission?
     var authorizationBaseline: Data?
     var unbindRequested: Bool?
+    var discardRequested: Bool?
     var requiresRemoteImport: Bool?
     var siteCreationTimestamp: Int64?
     var pendingArchives: [String]?
+    // A selected cloud snapshot must survive a crash independently of the old upload.
+    var cloudReplacementTimestamp: Int64?
 
     var preservesUpload: Bool {
         phase == .active && authority != .readOnly && authority != .revoked

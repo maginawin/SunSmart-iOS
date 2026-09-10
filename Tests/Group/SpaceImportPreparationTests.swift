@@ -1,10 +1,24 @@
 // The runner inserts SpaceData.update through its two async freshness guards.
 // A prepared result means that boundary passed, not that Mesh import committed.
 enum SpaceImportOutcome: Equatable {
-    case prepared, rejected(String), preserved(String)
+    case prepared, applied, rejected(String), preserved(String)
+    enum Status { case applied, rejected }
+    var status: Status { self == .applied ? .applied : .rejected }
+    var rejectionReason: String? {
+        if case .rejected(let reason) = self { return reason }
+        if case .preserved(let reason) = self { return reason }
+        return nil
+    }
 }
 struct ConfigurationMeshReadSnapshot {}
+// SDK persistence is exercised by SpaceMeshKeyStoreTests; here it is an import
+// preparation boundary just like the existing Mesh export/load substitutes.
+enum SpaceMeshKeyStore {
+    static func repairPreserved(_ payload: [String: Any], meshUUID: String, networkId: String) -> SpaceMeshKeyPolicy.Issue? { nil }
+}
 enum DevicePermanentDeletionContext {
+    static var activeOperation = false
+    static func hasActiveOperation(space: SpaceData) -> Bool { activeOperation }
     static func resume(space: SpaceData) {}
 }
 @MainActor enum ProximityLightingImportPreflight {
@@ -20,6 +34,16 @@ enum DevicePermanentDeletionContext {
     }
 }
 extension SpaceData {
+    // The recovery tests execute production staging/finishing with a controlled
+    // Mesh persistence boundary. This is not a full App import/UI acceptance test.
+    @MainActor func commitCloudForTest(_ payload: [String: Any]) -> SpaceImportOutcome {
+        guard SpaceConfigurationSafety.beginCloudReplacement(self, payload: payload) else { return .rejected("stageFailed") }
+        guard !failCloudCommit else { return .rejected("persistenceFailed") }
+        nodes = payload["nodes"] as! [[String: Any]]
+        lastUpdate = SpaceConfigurationIntegrityPolicy.integer(payload["updateTimestamp"])!
+        lastUploadCloudTimestamp = lastUpdate
+        return SpaceConfigurationSafety.finishImport(self) ? .applied : .rejected("finishFailed")
+    }
     @MainActor static func load(siteId: String, spaceId: String) -> [SpaceData] {
         guard let space = ProximityLightingImportPreflight.storedSpace,
               space.siteId == siteId, space.id == spaceId else { return [] }
@@ -101,3 +125,6 @@ extension SpaceRecoveryReceiptTests {
         print("PASS: production import preparation accepts fresh/repeated visitors and owner/editor downgrade; both awaits reject authority, removal, account, version changes and cancellation")
     }
 }
+
+// Switch persistence is exercised by check_switch_record_scope.py.
+enum SwitchRecordDeletion { static func resume(space: SpaceData) {} }

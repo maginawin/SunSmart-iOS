@@ -97,6 +97,7 @@
 "no_devices" = "无设备！";
 "no_devices_message" = "您还没有设备，请先添加设备。或者您也可以先创建分组以进行预设。";
 "space_delete_message" = "确认删除空间？";
+"space_delete_local_cleanup_pending" = "空间记录尚未清理完成，请重新进入场所或重试删除此空间。";
 
 "add_device" = "添加设备";
 "near" = "近";
@@ -2181,6 +2182,8 @@
 "gateway_associated_spaces_changed_message" = "关联空间已在其他设备上发生变化，已加载最新数据。";
 "gateway_delete_server_failed" = "无法从服务器删除网关";
 "proximity_lighting_export_invalid" = "邻近照明数据无效，无法导出。";
+"space_mesh_keys_unavailable" = "此空间的网络密钥或应用密钥缺失或无效，请恢复密钥后再同步。";
+"space_mesh_key_conflict" = "此空间的密钥与已保存的网络密钥冲突，请解决冲突后再同步。";
 "proximity_lighting_import_invalid" = "邻近照明数据无效，未执行导入。";
 "profile_unavailable" = "配置文件不可用";
 "configuration_reload_cloud" = "重新加载云端数据";
@@ -2226,3 +2229,7 @@
 "site_zones_sync_explanation" = "部分设备尚未完成同步。您必须拥有所有相关空间的编辑权限，才能执行同步操作。";
 "site_zones_preview_reset_confirm" = "清空此触发区域中的所有设备？";
 "site_zones_preview_delete_confirm" = "删除此触发区域？";
+
+"switch_record_force_delete_message" = "Mesh 通信不可用或尚未完成。是否从此空间移除此开关记录？实体设备需要手动重置，云端同步可能仍需修复。";
+
+"space_delete_records_message" = "是否从 App 和云端删除此空间及其中的所有设备记录？实体设备不会被重置，重新添加前请手动恢复出厂设置。";

@@ -60,7 +60,7 @@ struct PathTopologyPersistenceContractTests {
         let cloudCommit = section(
             in: spaceController,
             from: "func commitLocalChangeForCloudSync",
-            to: "private func refreshSummaryCountsFromSpaceMesh"
+            to: "func refreshSummaryCountsFromSpaceMesh"
         )
         require(
             cloudCommit.contains("markLocalChangePendingCloudSync()"),
@@ -151,7 +151,8 @@ struct PathTopologyPersistenceContractTests {
             "New exports must not duplicate extension properties at the Space root"
         )
         require(
-            importData.contains("let parsedProximityPreflight = ProximityLightingImportPreflight.parse("),
+            appearsBefore("await ProximityLightingImportPreflight.prepare(", "network.forceRemove(node:",
+                in: section(in: importData, from: "func update(\n        spaceJsonData:", to: "extension Node")),
             "Space import must preflight proximity data before destructive apply"
         )
         require(
@@ -165,9 +166,9 @@ struct PathTopologyPersistenceContractTests {
             "Space import must retain successfully decoded triggerZones"
         )
         require(
-            importData.contains("} else if initialize {")
+            importData.contains("} else if initialize || replacingCloud {")
                 && importData.contains("triggerZones = initialize ? [] : nil"),
-            "Legacy updates must preserve local zones while first imports default to empty"
+            "Legacy updates preserve local zones; first imports and selected complete cloud replacements default to empty"
         )
 
         let triggerZoneSave = section(

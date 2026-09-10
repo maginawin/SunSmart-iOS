@@ -99,6 +99,7 @@
 "no_devices" = "No Devices！";
 "no_devices_message" = "You do not have a device yet, please add a device first.Or you can create groups first for Off-site presets.";
 "space_delete_message" = "Confirm to delete space?";
+"space_delete_local_cleanup_pending" = "Space record cleanup is incomplete. Reopen the Site or retry deleting this Space.";
 
 "add_device" = "Add Device";
 "near" = "NEAR";
@@ -2165,6 +2166,8 @@
 "gateway_associated_spaces_changed_message" = "Associated spaces changed on another device. The latest data has been loaded.";
 "gateway_delete_server_failed" = "Failed to delete gateway from server";
 "proximity_lighting_export_invalid" = "Proximity lighting data is invalid and could not be exported.";
+"space_mesh_keys_unavailable" = "This Space’s network or application key is missing or invalid. Restore its keys before syncing.";
+"space_mesh_key_conflict" = "This Space’s keys conflict with the saved network keys. Resolve the conflict before syncing.";
 "proximity_lighting_import_invalid" = "Proximity lighting data is invalid and was not imported.";
 "profile_unavailable" = "Profile unavailable";
 "configuration_reload_cloud" = "Reload cloud data";
@@ -2210,3 +2213,7 @@
 "site_zones_sync_explanation" = "Some devices have not finished synchronizing. You must have editing permissions for all relevant spaces to perform the synchronization operation.";
 "site_zones_preview_reset_confirm" = "Clear all devices from this trigger zone?";
 "site_zones_preview_delete_confirm" = "Delete this trigger zone?";
+
+"switch_record_force_delete_message" = "Mesh communication is unavailable or incomplete. Remove this Switch record from this Space? Any physical device must be reset manually. Cloud synchronization may still need repair.";
+
+"space_delete_records_message" = "Delete this Space and all its device records from the app and cloud? Physical devices will not be reset. Reset them manually before adding them again.";

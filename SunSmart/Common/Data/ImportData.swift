@@ -548,7 +548,14 @@ extension SiteData {
 //        print("导入数据：site load network \(Date().timeIntervalSince1970)")
         // 服务器最后更新时间比本地时间新才覆盖本地数据
         if lastUpdate > self.lastUpdate || initialize {
-            
+            if let network = meshNetwork,
+               let issue = SpaceMeshKeyStore.reconcile(siteJsonData, network: network, networkId: self.meshNetworkId) {
+                self.syncCloudError = .meshKeyConflict
+                #if DEBUG
+                print("[SiteMeshKeys] rejected site=\(self.id) reason=\(issue.rawValue)")
+                #endif
+                return
+            }
             self.name = name
             self.imageId = json["imageId"].intValue
             if let timezone = json["timezone"].string,
@@ -700,10 +707,11 @@ extension SiteData {
                 }
                 
                 
-                if !(meshNetwork?.networkKeys.contains(where: { $0.index == netKey.index }) ?? false) {
-                    meshNetwork?.add(networkKey: netKey)
-                    try? appKey.bind(to: netKey)
-                    meshNetwork?.add(applicationKey: appKey)
+                // createMeshNetwork already installs the validated root pair.
+                if let network = meshNetwork,
+                   SpaceMeshKeyStore.preflight(siteJsonData, network: network, networkId: netKey.networkId.hex) != nil {
+                    self.syncCloudError = .meshKeyConflict
+                    return
                 }
                
             
@@ -1459,7 +1467,7 @@ extension SpaceData {
     ///   - meshUUID: 网络uuid
     ///   - spaceJsonData: space数据
     /// - Returns: space导入结果
-    static func `import`(siteId: String, meshUUID: String, spaceJsonData: [String: Any]) async -> SpaceImportResult {
+    static func `import`(siteId: String, meshUUID: String, spaceJsonData: [String: Any], allowsCloudReplacement: Bool = true) async -> SpaceImportResult {
         
         //       return await withCheckedContinuation { continuation in
         let json = JSON(spaceJsonData)
@@ -1510,14 +1518,15 @@ extension SpaceData {
         }
         if (try? SpaceConfigurationSafety.recoveryState(space).phase) == .removing {
             guard space.delete() else { return .rejected(serverSpaceId: serverSpaceId, reason: "spaceRemovalPending") }
-            return await Self.import(siteId: siteId, meshUUID: meshUUID, spaceJsonData: spaceJsonData)
+            return await Self.import(siteId: siteId, meshUUID: meshUUID, spaceJsonData: spaceJsonData, allowsCloudReplacement: allowsCloudReplacement)
         }
         guard SpaceConfigurationSafety.activateImport(space) else {
             return .rejected(serverSpaceId: serverSpaceId, reason: "spaceRecoveryUnavailable")
         }
         let outcome = await space.update(
             spaceJsonData: spaceJsonData,
-            initialize: initialize
+            initialize: initialize,
+            allowsCloudReplacement: allowsCloudReplacement
         )
         return .init(
             serverSpaceId: serverSpaceId,
@@ -1623,7 +1632,9 @@ extension SpaceData {
     @discardableResult
     func update(
         spaceJsonData: [String: Any],
-        initialize: Bool = false
+        initialize: Bool = false,
+        authoritativeCloud: Bool = false,
+        allowsCloudReplacement: Bool = true
     ) async -> SpaceImportOutcome {
         let trace = SiteImportTrace("space:" + id)
         defer { trace.mark("end") }
@@ -1631,17 +1642,56 @@ extension SpaceData {
         guard (try? SpaceConfigurationSafety.recoveryState(self).phase) == .active else {
             return .rejected("spaceRemovalPending")
         }
-        applyRemoteSpaceMetadata(spaceJsonData)
+        guard (try? SpaceConfigurationSafety.recoveryState(self).discardRequested) != true else {
+            return .preserved("spaceDiscardPending")
+        }
+        let resumingCloudReplacement = (try? SpaceConfigurationSafety.recoveryState(self).cloudReplacementTimestamp) != nil
+        // Site responses may contain summaries. Select a complete authenticated
+        // detail response before allowing it to supersede local pending writes.
+        if allowsCloudReplacement, !initialize, !authoritativeCloud, !resumingCloudReplacement,
+           SpaceConfigurationSafety.cloudIsNewer(spaceJsonData, space: self) {
+            guard let context = try? SpaceConfigurationSafety.recoveryState(self) else { return .rejected("recoveryUnavailable") }
+            let version = lastUpdate
+            let response = await NetworkRequest.shared.request(.spaceInfo(siteId: siteId, spaceId: id, password: authorizationPassword))
+            guard !Task.isCancelled, SpaceConfigurationSafety.isCurrent(context, space: self), lastUpdate == version,
+                  SpaceData.load(siteId: siteId, spaceId: id).first?.lastUpdate == version else { return .rejected("staleImportPreparation") }
+            guard case .success(let result) = response, let detail = result["data"] as? [String: Any] else {
+                if case .failure(let error) = response { SpaceConfigurationSafety.handleAuthorityError(error, space: self) }
+                return .rejected("cloudDetailUnavailable")
+            }
+            return await update(spaceJsonData: detail, authoritativeCloud: true)
+        }
+        let replacingCloud = resumingCloudReplacement || (authoritativeCloud && !initialize)
+        let incomingPayload = resumingCloudReplacement ? (SpaceConfigurationSafety.pendingImport(self) ?? spaceJsonData) : spaceJsonData
+        if replacingCloud {
+            guard SpaceConfigurationIntegrityPolicy.completeCloudSnapshot(incomingPayload),
+                  resumingCloudReplacement || SpaceConfigurationSafety.cloudIsNewer(incomingPayload, space: self) else {
+                return .rejected("cloudSnapshotNotNewerOrIncomplete")
+            }
+        }
+        applyRemoteSpaceMetadata(incomingPayload)
         if !initialize { save() }
-        DevicePermanentDeletionContext.resume(space: self)
-        if SpaceConfigurationSafety.preservesLocalChanges(self) {
+        if !replacingCloud {
+            DevicePermanentDeletionContext.resume(space: self)
+            SwitchRecordDeletion.resume(space: self)
+        }
+        if !replacingCloud, SpaceConfigurationSafety.preservesLocalChanges(self) {
+            // Repair only the authenticated pair, never the pending business
+            // configuration. This keeps a missing key from deadlocking recovery.
+            if (try? SpaceConfigurationSafety.recoveryState(self).authority) == .writable {
+                if let issue = SpaceMeshKeyStore.repairPreserved(spaceJsonData, meshUUID: meshUUID, networkId: meshNetworkId) {
+                    SpaceConfigurationSafety.meshKeyFailure(self, issue: issue)
+                    return .preserved("meshKeys:" + issue.rawValue)
+                }
+                SpaceConfigurationSafety.meshKeysRestored(self)
+            }
             #if DEBUG
             print("[SpaceConfigurationSafety] preserved pending local deletion/recovery space=\(id)")
             #endif
             return .preserved("localDeletionOrRecoveryPendingUpload")
         }
         let resumingImport = SpaceConfigurationSafety.hasPendingImport(self)
-        let spaceJsonData = SpaceConfigurationSafety.pendingImport(self) ?? spaceJsonData
+        let spaceJsonData = replacingCloud ? incomingPayload : (SpaceConfigurationSafety.pendingImport(self) ?? incomingPayload)
         trace.mark("metadataPrepared")
         // Metadata may legitimately change the authority generation for this import.
         // Capture the context after synchronous preparation, before the first await.
@@ -1657,7 +1707,7 @@ extension SpaceData {
         else { return .rejected("staleImportPreparation") }
         trace.mark("remotePreflightPrepared")
         let baselineSnapshot = ConfigurationMeshReadSnapshot()
-        if !resumingImport, SpaceConfigurationSafety.needsUpgradeBaseline(self),
+        if !replacingCloud, !resumingImport, SpaceConfigurationSafety.needsUpgradeBaseline(self),
            let local = await export(purpose: .localBackup, readSnapshot: baselineSnapshot) {
             trace.mark("upgradeBaselineExported")
             SpaceConfigurationSafety.verifyUpgradeBaseline(self, local: local, remote: spaceJsonData)
@@ -1669,7 +1719,7 @@ extension SpaceData {
             return .rejected("staleImportPreparation")
         }
         return await withCheckedContinuation { continuation in
-            if SpaceConfigurationSafety.preservesLocalChanges(self) {
+            if !replacingCloud, SpaceConfigurationSafety.preservesLocalChanges(self) {
                 continuation.resume(returning: .preserved("localDeletionOrRecoveryPendingUpload"))
                 return
             }
@@ -1689,6 +1739,10 @@ extension SpaceData {
                 return
             }
             let switchesDicts = json["switches"].arrayObject as? [[String: Any]] ?? []
+            if replacingCloud, proximityPreflight.hasValidationIssues {
+                continuation.resume(returning: .rejected("invalidRemoteTopology"))
+                return
+            }
             let currentMeshNetwork = MeshNetworkManager.instance.meshNetwork
             let localMeshNetwork: MeshNetwork?
             if currentMeshNetwork?.uuid.uuidString == self.meshUUID,
@@ -1709,6 +1763,14 @@ extension SpaceData {
             } == true || localMeshNetwork?.groups.contains {
                 !$0.isVirtual && $0.subNetworkId == self.meshNetworkId
             } == true
+            // Key identity is independent of topology. Detect collisions before
+            // preserving a local snapshot, without replacing another Space's key.
+            if let network = localMeshNetwork,
+               let issue = SpaceMeshKeyStore.preflight(spaceJsonData, network: network, networkId: self.meshNetworkId) {
+                SpaceConfigurationSafety.meshKeyFailure(self, issue: issue)
+                continuation.resume(returning: .preserved("meshKeys:" + issue.rawValue))
+                return
+            }
             if let issue = SpaceConfigurationIntegrityPolicy.profilesIssue(in: spaceJsonData) {
                 SpaceConfigurationSafety.block(self, reason: "invalidRemoteProfile:" + issue)
                 continuation.resume(returning: hasUsableLocalSnapshot ? .skipped : .rejected(issue))
@@ -1719,6 +1781,16 @@ extension SpaceData {
                 SpaceConfigurationSafety.block(self, reason: "legacySpaceZoneDeletionNeedsReview")
                 continuation.resume(returning: .skipped)
                 return
+            }
+            // A verified, non-conflicting key pair can be restored independently
+            // of dangling Zone references. No node/group configuration is applied.
+            if let network = localMeshNetwork {
+                if let issue = SpaceMeshKeyStore.reconcile(spaceJsonData, network: network, networkId: self.meshNetworkId) {
+                    SpaceConfigurationSafety.meshKeyFailure(self, issue: issue)
+                    continuation.resume(returning: .preserved("meshKeys:" + issue.rawValue))
+                    return
+                }
+                SpaceConfigurationSafety.meshKeysRestored(self)
             }
             let proximityImportDisposition = ProximityLightingImportValidationPolicy.resolve(
                 hasValidationIssues: proximityPreflight.hasValidationIssues,
@@ -1789,25 +1861,6 @@ extension SpaceData {
             printSpaceCountProbe(phase: "received", json: json, space: self, initialize: initialize)
 #endif
             
-            // 子网key丢失
-            if let network = localMeshNetwork ?? MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId, allData: false), !network.networkKeys.contains(where: { $0.networkId.hex == self.meshNetworkId }) {
-                // 修复子网key数据
-                if let netKeyDict = json["netKey"].dictionaryObject,
-                   let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
-                   let netKey = try? jsonDecoder.decode(NetworkKey.self, from: netKeyData),
-                   let appKeyDict = json["appKey"].dictionaryObject,
-                   let appKeyData = try? JSONSerialization.data(withJSONObject: appKeyDict),
-                   let appKey = try? jsonDecoder.decode(ApplicationKey.self, from: appKeyData) {
-                    
-                    if !network.networkKeys.contains(where: { $0.index == netKey.index }) {
-                        network.add(networkKey: netKey)
-                        network.add(applicationKey: appKey)
-                        network.save()
-                    }
-                    self.meshNetworkId = netKey.networkId.hex
-                }
-            }
-            
             let lastUpdate = json["updateTimestamp"].int64Value
             let sameTimestampSummaryDiffers = lastUpdate == self.lastUpdate && summaryDiffers
             let serverSummaryDiffersNote = localNeedsUpload ? "serverSummaryDiffersButLocalNeedsUpload" : "serverSummaryDiffers"
@@ -1838,6 +1891,26 @@ extension SpaceData {
             var schedules: [Schedule] = []
             if let data = try? JSONSerialization.data(withJSONObject: scheduleDicts), let list = try? jsonDecoder.decode([Schedule].self, from: data) {
                 schedules = list
+            }
+            if replacingCloud {
+                guard schedules.count == scheduleDicts.count,
+                      Set(schedules.map { $0.id }).count == schedules.count,
+                      Set(sceneDicts.compactMap { $0["number"] as? String }).count == sceneDicts.count,
+                      Set(switchesDicts.compactMap { $0["id"] as? String }).count == switchesDicts.count,
+                      Set((emergencyFireControllerDicts ?? []).compactMap { $0["id"] as? String }).count == (emergencyFireControllerDicts ?? []).count,
+                      (emergencyFireControllerDicts ?? []).allSatisfy({ record in
+                          guard let raw = record["configuration"] else { return true }
+                          guard let configuration = raw as? [String: Any],
+                                let data = try? JSONSerialization.data(withJSONObject: configuration) else { return false }
+                          return (try? jsonDecoder.decode(EmergencyFireControllerConfiguration.self, from: data)) != nil
+                      }),
+                      sceneDicts.allSatisfy({
+                          ($0["number"] as? String).flatMap { SceneNumber(hex: $0) } != nil && $0["name"] is String
+                      }),
+                      (switchesDicts + (emergencyFireControllerDicts ?? [])).allSatisfy({ $0["id"] is String && $0["name"] is String }) else {
+                    continuation.resume(returning: .rejected("invalidCloudRecords"))
+                    return
+                }
             }
             let groups = groupDicts.compactMap { groupDict in
                 if let data = try? JSONSerialization.data(withJSONObject: groupDict), let group = try? jsonDecoder.decode(Group.self, from: data) {
@@ -2029,11 +2102,14 @@ extension SpaceData {
                       guard let data = try? JSONSerialization.data(withJSONObject: node) else { return false }
                       return (try? jsonDecoder.decode(Node.self, from: data)) != nil
                   }),
-                  SpaceConfigurationSafety.beginImport(self, payload: spaceJsonData) else {
+                  (replacingCloud
+                    ? SpaceConfigurationSafety.beginCloudReplacement(self, payload: spaceJsonData)
+                    : SpaceConfigurationSafety.beginImport(self, payload: spaceJsonData)) else {
                 continuation.resume(returning: .rejected("configurationStagingFailed"))
                 return
             }
             var appliedOutcome: SpaceImportOutcome?
+            let previousUploadTimestamp = self.lastUploadCloudTimestamp
             let applied = SunSmartDataManager.shared.configurationTransaction {
                 // Validate and save the complete business configuration first.
                 // The savepoint restores all old rows if any later step fails.
@@ -2046,21 +2122,8 @@ extension SpaceData {
                         throw SpaceConfigurationSafety.SafetyError.persistenceFailed
                     }
                 }
-            if let netKeyDict = json["netKey"].dictionaryObject,
-               let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
-               let netKey = try? jsonDecoder.decode(NetworkKey.self, from: netKeyData),
-               let appKeyDict = json["appKey"].dictionaryObject,
-               let appKeyData = try? JSONSerialization.data(withJSONObject: appKeyDict),
-               let appKey = try? jsonDecoder.decode(ApplicationKey.self, from: appKeyData) {
-                
-                if !network.networkKeys.contains(where: { $0.index == netKey.index }) {
-                    network.add(networkKey: netKey)
-                    network.add(applicationKey: appKey)
-                    network.save()
-                }
-                self.meshNetworkId = netKey.networkId.hex
-            }
-            
+            // The pair was reconciled and read back before staging configuration.
+            // Never repeat an index-only insert or change Space identity here.
             self.name = json["spaceName"].stringValue
             self.imageId = json["imageId"].intValue
             self.sourceType = .init(rawValue: json["source"].intValue) ?? .create
@@ -2091,14 +2154,14 @@ extension SpaceData {
             if let triggerZones = proximityPreflight.triggerZones {
                 self.triggerZones = triggerZones
                 self.triggerZonesLoadFailed = false
-            } else if initialize {
+            } else if initialize || replacingCloud {
                 self.triggerZones = []
             }
             //            }
 //            let localNodes = Node.load(meshUUID: self.meshUUID, subnetworkId: self.meshNetworkId)
             
             
-            network.nodes.filter({ !$0.isLocalProvisioner }).forEach { node in
+            network.nodes.filter({ !$0.isLocalProvisioner && $0.subNetworkId == self.meshNetworkId }).forEach { node in
                 network.forceRemove(node: node)
                 if let mac = node.macAddress {
                     GatewayModel.delete(siteId: self.siteId, macAddress: mac)
@@ -2352,7 +2415,7 @@ extension SpaceData {
                 return nil
             }
             
-            nodes.forEach({
+            try nodes.forEach({
                 // 判断设备是否存在废弃地址内，如果存在则清空废弃地址内缓存（如多用户编辑数据并未及时提交，使用了旧数据则可能出现导入的设备地址在废弃地址内）
                 if network.isAddressInExclusion(node: $0) {
                     let range = AddressRange(from: $0.primaryUnicastAddress, elementsCount: $0.elementsCount)
@@ -2363,15 +2426,18 @@ extension SpaceData {
                         }
                     }
                 }
-                try? network.add(node: $0)
+                // An address collision is an import failure, never a dropped Node.
+                try network.add(node: $0)
             })
             
-            while network.scenes.count > 0 {
-                network.forceRemove(scene: network.scenes.first!.number)
+            for scene in network.scenes where scene.subNetworkId == self.meshNetworkId {
+                network.forceRemove(scene: scene.number)
             }
-            SceneInfo.delete(meshUUID: meshUUID, networkId: self.meshNetworkId)
+            guard SceneInfo.delete(meshUUID: meshUUID, networkId: self.meshNetworkId) else {
+                throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+            }
             // 场景
-            let scenes: [Scene] = sceneDicts.compactMap { sceneDict in
+            let scenes: [Scene] = try sceneDicts.compactMap { sceneDict in
                 let sceneJson = JSON(sceneDict)
                 if let sceneNumberHex = sceneJson["number"].string, let sceneNumber = SceneNumber(hex: sceneNumberHex), let name = sceneJson["name"].string {
                     guard !DeviceEmerFireData.reservedSceneNumbers.contains(sceneNumber) else {
@@ -2385,7 +2451,9 @@ extension SpaceData {
                     })
                     network.add(scene: scene)
                     scene.info = .init(sceneId: sceneNumber, imageId: sceneJson["imageId"].int ?? 0)
-                    scene.info.save(meshUUID: meshUUID, subnetworkId: self.meshNetworkId)
+                    guard scene.info.save(meshUUID: meshUUID, subnetworkId: self.meshNetworkId) else {
+                        throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+                    }
                     
                     return scene
                 }
@@ -2393,19 +2461,22 @@ extension SpaceData {
             }
             
             // 日程
-            Schedule.deleteAll(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId)
+            guard Schedule.deleteAll(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId) else {
+                throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+            }
             if meshUUID == MeshNetworkManager.instance.meshNetwork?.uuid.uuidString,
                MeshNetworkManager.instance.currentNetworkKey.networkId.hex == self.meshNetworkId {
                 MeshNetworkManager.instance.schedules = schedules
             }
-            schedules.forEach({
-                $0.save(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId)
-            })
+            for schedule in schedules {
+                guard schedule.save(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId) else {
+                    throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+                }
+            }
             
             // 组
             // TODO: 需判断是否业务组
-            while network.groups.count > 0 {
-                let group = network.groups.first!
+            for group in network.groups where group.subNetworkId == self.meshNetworkId {
                 //            try? network.remove(group: group)
                 network.forceRemove(group: group)
 //                group.deleteExtension()
@@ -2483,20 +2554,26 @@ extension SpaceData {
                     }
                 }
             }
-            DeviceSwitchData.deleteSwitchs(meshUUID: meshUUID, networkId: self.meshNetworkId)
-            switches.forEach { switchData in
-                switchData.save(meshUUID: meshUUID, networkId: self.meshNetworkId)
+            guard DeviceSwitchData.deleteSwitchs(meshUUID: meshUUID, networkId: self.meshNetworkId) else {
+                throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+            }
+            for switchData in switches {
+                guard switchData.save(meshUUID: meshUUID, networkId: self.meshNetworkId) else {
+                    throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+                }
                 if let powerSwitchData = switchData as? PJEightKeySwitchData {
-                    PJEightKeySwitchRepository.shared.save(
+                    guard PJEightKeySwitchRepository.shared.save(
                         powerSwitchData,
                         meshUUID: meshUUID,
                         networkId: self.meshNetworkId
-                    )
+                    ) else { throw SpaceConfigurationSafety.SafetyError.persistenceFailed }
                 }
             }
 
             if json["emergencyFireControllers"].exists() {
-                DeviceEmerFireData.deleteAll(meshUUID: meshUUID, networkId: self.meshNetworkId)
+                guard DeviceEmerFireData.deleteAll(meshUUID: meshUUID, networkId: self.meshNetworkId) else {
+                    throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+                }
                 var emergencyFireControllers: [DeviceEmerFireData] = []
                 let controllerDicts = json["emergencyFireControllers"].arrayObject as? [[String: Any]] ?? []
                 controllerDicts.forEach { dict in
@@ -2536,14 +2613,16 @@ extension SpaceData {
                     )
                     emergencyFireControllers.append(controller)
                 }
-                emergencyFireControllers.forEach { controller in
-                    controller.save(meshUUID: meshUUID, networkId: self.meshNetworkId)
+                for controller in emergencyFireControllers {
+                    guard controller.save(meshUUID: meshUUID, networkId: self.meshNetworkId) else {
+                        throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+                    }
                 }
             }
             _ = DeviceEmerFireStore.shared.devices(in: self)
             EmergencyFireControllerSceneEventManager.refreshProxyFilterAddresses()
             
-            self.deviceCount = (meshNetwork?.nodes.filter({ !$0.isLocalProvisioner && !$0.isProvisioner && !$0.isConfigComplete }) ?? nodes).count
+            self.deviceCount = (meshNetwork?.nodes.filter({ !$0.isLocalProvisioner && !$0.isProvisioner && !$0.isConfigComplete && $0.subNetworkId == self.meshNetworkId }) ?? nodes).count
             self.luminairesCount = nodes.filter({ $0.lightnessModel != nil }).count
             self.groupCount = groups.filter({ !$0.isVirtual }).count
             self.sceneCount = scenes.count
@@ -2582,8 +2661,18 @@ extension SpaceData {
             guard self.save(),
                   let persistedNetwork = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId),
                   Set(persistedNetwork.groups.map { $0.address.address }) == Set(groups.map { $0.address.address }),
+                  Set(persistedNetwork.scenes.map { $0.number }) == Set(scenes.map { $0.number }),
+                  Set(Schedule.load(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId).map { $0.id }) == Set(schedules.map { $0.id }),
+                  Set(DeviceSwitchData.load(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId).map { $0.id }) == Set(switches.map { $0.id }),
+                  Set(persistedNetwork.nodes.filter { !$0.isLocalProvisioner && $0.subNetworkId == self.meshNetworkId }.map { $0.uuid }) == Set(nodes.map { $0.uuid }),
                   nodes.allSatisfy({ node in persistedNetwork.node(withAddress: node.primaryUnicastAddress) != nil }) else {
                 throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+            }
+            if let controllers = emergencyFireControllerDicts {
+                guard Set(DeviceEmerFireData.load(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId, spaceId: self.id).map { $0.id })
+                    == Set(controllers.compactMap { $0["id"] as? String }) else {
+                    throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+                }
             }
             if shouldCommitProximityTopology {
                 guard let persistedSpace = SpaceData.load(siteId: self.siteId, spaceId: self.id).first else {
@@ -2609,6 +2698,12 @@ extension SpaceData {
                     rejectionReason: nil
                 )
             }
+            if !applied {
+                // SQLite rolled back; keep the in-memory version aligned so the
+                // staged snapshot can pass freshness checks on the next retry.
+                self.lastUpdate = capturedLastUpdate
+                self.lastUploadCloudTimestamp = previousUploadTimestamp
+            }
             guard applied, let outcome = appliedOutcome,
                   SpaceConfigurationSafety.finishImport(self, validatedTopology: shouldCommitProximityTopology) else {
                 SpaceConfigurationSafety.block(self, reason: "importPersistenceFailed")
@@ -2623,7 +2718,7 @@ extension SpaceData {
             let importedPlan = ProximityLightingTopologyPlanner.makePlan(
                 groups: groups.filter { !$0.isVirtual },
                 nodes: ProximityLightingTopologyContext.realNodes(in: network), spaceTriggerZones: self.triggerZones)
-            let syncDatas = shouldCommitProximityTopology ? network.nodes.filter { !$0.isProvisioner }.compactMap { node -> (node: Node, syncData: NodeSyncData)? in
+            let syncDatas = shouldCommitProximityTopology && !replacingCloud ? network.nodes.filter { !$0.isProvisioner }.compactMap { node -> (node: Node, syncData: NodeSyncData)? in
                 guard let data = node.getNodeSyncProximityLighting(topologyPlan: importedPlan) else { return nil }
                 return (node, data)
             } : []
