@@ -8,6 +8,12 @@
 
 /* Begin PBXBuildFile section */
 		0103BEF5A3F84EEB84317B31 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
+		0263A522319042329F21C235 /* SyncProfileTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8B635DA3424068A079D81E /* SyncProfileTaskBuilder.swift */; };
+		037F36246E3C45BCAA6080C5 /* SyncExecutionSession+Daylight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */; };
+		0409E220A8F748958A442047 /* SyncExecutionSession+EmergencyFire.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */; };
+		0428A2E1D04C4DFEBD5546ED /* SyncExecutionSession+Daylight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */; };
+		0524EA29AB964613B72DFA2D /* SyncParameterTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */; };
+		059D7E2827E3479CA850CC0A /* SyncDeviceTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C06007AE3FEB4B96850CEF9F /* SyncDeviceTaskBuilder.swift */; };
 		084EF311302AB496008CB48A /* all_utc_timezones.json in Resources */ = {isa = PBXBuildFile; fileRef = 084EF310302AB496008CB48A /* all_utc_timezones.json */; };
 		084EF312302AB496008CB48A /* all_utc_timezones.json in Resources */ = {isa = PBXBuildFile; fileRef = 084EF310302AB496008CB48A /* all_utc_timezones.json */; };
 		084EF313302AB496008CB48A /* all_utc_timezones.json in Resources */ = {isa = PBXBuildFile; fileRef = 084EF310302AB496008CB48A /* all_utc_timezones.json */; };
@@ -76,11 +82,6 @@
 		08B54C9B30402CCB0017ED49 /* LightSensorCalibrationSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8607BE32B9026F700A94F0B /* LightSensorCalibrationSelectView.swift */; };
 		08B54C9C30402CCB0017ED49 /* ProfileManualOverrideTimeoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F1D2B8F1FDC00A09FFA /* ProfileManualOverrideTimeoutView.swift */; };
 		08B54C9D30402CCB0017ED49 /* EnergyStaticDataViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C82F99F52DBE1AF20019C3FB /* EnergyStaticDataViewController.swift */; };
-		F26090410000000000000201 /* EnergyStatisticsFilterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */; };
-		F26090410000000000000202 /* EnergyStatisticsFilterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */; };
-		F26090410000000000000203 /* EnergyStatisticsFilterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */; };
-		F26090410000000000000204 /* EnergyStatisticsFilterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */; };
-		F26090410000000000000205 /* EnergyStatisticsFilterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */; };
 		08B54C9E30402CCB0017ED49 /* SceneTemplates.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A130C82B32C5F00008C353 /* SceneTemplates.swift */; };
 		08B54C9F30402CCB0017ED49 /* GroupPathSequencePathHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5C2A2DDB0F9200F09467 /* GroupPathSequencePathHeaderView.swift */; };
 		08B54CA030402CCB0017ED49 /* BuoySliderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08652B2842A300144BAC /* BuoySliderView.swift */; };
@@ -175,7 +176,6 @@
 		08B54CF930402CCB0017ED49 /* Node+SyncData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */; };
 		08B54CFA30402CCB0017ED49 /* DeviceScheduleAddressCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0013003000000000001 /* DeviceScheduleAddressCleanup.swift */; };
 		08B54CFB30402CCB0017ED49 /* DevicePermanentDeletionCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0023003000000000001 /* DevicePermanentDeletionCleanup.swift */; };
-		BA503B180B8C4C67AE831DAA /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
 		08B54CFC30402CCB0017ED49 /* SceneDeleteCapability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0033003000000000001 /* SceneDeleteCapability.swift */; };
 		08B54CFD30402CCB0017ED49 /* TimedScheduleTimeSyncPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8F0A0013000000000000001 /* TimedScheduleTimeSyncPolicy.swift */; };
 		08B54CFE30402CCB0017ED49 /* MeshFirmwareUpgradeResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89D560E2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift */; };
@@ -633,37 +633,12 @@
 		08B54EC230402CCB0017ED49 /* ImageCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A09A042AC178910068C814 /* ImageCollectionViewCell.swift */; };
 		08B54EC330402CCB0017ED49 /* ScrollView+Indicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B7B3BC2EBB32C1006CA3EE /* ScrollView+Indicator.swift */; };
 		08B54EC430402CCB0017ED49 /* Node+MessageHandles.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */; };
-		B123B89F54124138B5F14325 /* Node+SyncIdentify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */; };
 		08B54EC530402CCB0017ED49 /* DeviceSwitchViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A9A932C8A91ED0032287D /* DeviceSwitchViewController.swift */; };
 		08B54EC630402CCB0017ED49 /* DeviceOthersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A559B2DBA2B5900E04252 /* DeviceOthersViewController.swift */; };
 		08B54EC730402CCB0017ED49 /* ProfileProximityLightingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88CCD962DD4A552003D5754 /* ProfileProximityLightingStepView.swift */; };
 		08B54EC830402CCB0017ED49 /* GroupServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08902B2A8DCD00144BAC /* GroupServer.swift */; };
 		08B54EC930402CCB0017ED49 /* WYProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = C896BB872A930C3800217512 /* WYProgressHUD.m */; };
 		08B54ECA30402CCB0017ED49 /* SyncDevicesCellModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FF12B3D60CC00074031 /* SyncDevicesCellModel.swift */; };
-		558CD072850A4C179A8DAECC /* SyncCommandStopGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */; };
-		4AB3F84613304D6A828720B8 /* SyncSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */; };
-		58A40AFCFF874557A66FAB7C /* SyncExecutionSession+Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */; };
-		09FC399282C8488A9F8624C3 /* SyncExecutionSession+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571D8E4D3FAC4613841C496A /* SyncExecutionSession+Operations.swift */; };
-		037F36246E3C45BCAA6080C5 /* SyncExecutionSession+Daylight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */; };
-		8C399F6823F7450AACF3116C /* SyncExecutionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F3C5FD3C314692BB69EFBB /* SyncExecutionSession.swift */; };
-		E410DB268C7E4A8A9749F3D6 /* SyncExecutionSession+Acknowledgement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */; };
-		DD3BFE0E498A4A25A4038BC1 /* SyncExecutionSession+Tasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */; };
-		DBBE181D0D4E49BA9A6E9548 /* SyncExecutionSession+EmergencyFire.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */; };
-		F538067A4C66418F8CEBB201 /* SyncExecutionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */; };
-		9F7E88B8DB044143BC44E151 /* SyncOperationResultPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */; };
-		E2D0EFCDEA464E6ABCC3ACCF /* SyncRetryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */; };
-		1DC02BEC7E55467F93D3DC66 /* SyncResultCollector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84CD8F47ADF45A7A066761B /* SyncResultCollector.swift */; };
-		3C21596BC74D4CE996A6AC43 /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
-		2F0A03CA3726466C84DA06DE /* SyncSceneScheduleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */; };
-		B10EDCB40F104A2E822DE577 /* SyncEmergencyFireTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */; };
-		11332831BF5D4826A127B1AD /* SyncProfileTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8B635DA3424068A079D81E /* SyncProfileTaskBuilder.swift */; };
-		B507A21C390C4ED4A6D99A27 /* SyncParameterTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */; };
-		A61490AEE0C848BCB3E19FED /* SyncDongleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */; };
-		F9375905BFA6459CB7FDFB38 /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
-		CC193792A1B641B087BEB6A6 /* SyncTaskPlanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */; };
-		210444DCC3A9482FA4681C9C /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
-		CCEFC9FEE30045E6A1CC0391 /* SyncGatewayTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */; };
-		C465EE88FEE549699D40FC18 /* SyncDeviceTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C06007AE3FEB4B96850CEF9F /* SyncDeviceTaskBuilder.swift */; };
 		08B54ECB30402CCB0017ED49 /* DeviceOfflinePromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F512DB790B700A6E36C /* DeviceOfflinePromptView.swift */; };
 		08B54ECC30402CCB0017ED49 /* PJDevicesFireAlarmAddContainerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7742FAAF2C90073F100 /* PJDevicesFireAlarmAddContainerController.swift */; };
 		08B54ECD30402CCB0017ED49 /* EmerFireAlarmAddProfessionalVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C77891B2F99A678000887FE /* EmerFireAlarmAddProfessionalVC.swift */; };
@@ -721,23 +696,77 @@
 		08B54F1F30402CCB0017ED49 /* Lumineux-LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 08B54F1830402CCB0017ED49 /* Lumineux-LaunchScreen.storyboard */; };
 		08B54F2030402CCB0017ED49 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 08B54F1B30402CCB0017ED49 /* InfoPlist.strings */; };
 		08B54F2530402CCB0017ED49 /* LumineuxAssets/Assets-Lumineux-Merged.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 08B54F2430402CCB0017ED49 /* LumineuxAssets/Assets-Lumineux-Merged.xcassets */; };
+		08E370C1C71243E88D040805 /* SyncExecutionSession+Tasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */; };
+		09FC399282C8488A9F8624C3 /* SyncExecutionSession+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571D8E4D3FAC4613841C496A /* SyncExecutionSession+Operations.swift */; };
 		0C36C97F8A95474C9D655F09 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
+		0E6B8FFDB84C40B2945B61AC /* SyncRetryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */; };
+		0E77650C5A5C4CAB81E1554E /* SyncExecutionSession+Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */; };
+		1036B06D8D874051AD49DEE9 /* Node+SyncIdentify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */; };
+		11332831BF5D4826A127B1AD /* SyncProfileTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8B635DA3424068A079D81E /* SyncProfileTaskBuilder.swift */; };
+		12CA5740E4EB4F57AD47011D /* SyncDeviceTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C06007AE3FEB4B96850CEF9F /* SyncDeviceTaskBuilder.swift */; };
 		15F6AEDF416B45D6BC28749E /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
+		174C0AB0C7D44152AE7977A4 /* SyncDongleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */; };
+		1DC02BEC7E55467F93D3DC66 /* SyncResultCollector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84CD8F47ADF45A7A066761B /* SyncResultCollector.swift */; };
 		1FAE4DDDBDF446118B26374D /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
+		210444DCC3A9482FA4681C9C /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
 		21188D8724074062B2F0D8FF /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
 		215FA569CEC942FAB1753704 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
 		24F67C240565CE5F6A28CBD1 /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
 		2540F05968274821811E42BF /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
+		25E85457F7494782A2660C9D /* SyncCommandStopGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */; };
+		297EE68B722E4EDCAF2005C7 /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
+		2D3B0626182F426E8EB5F486 /* SyncExecutionSession+Acknowledgement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */; };
+		2E1D668B0C0B450AA3237276 /* SyncExecutionSession+Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */; };
+		2F0A03CA3726466C84DA06DE /* SyncSceneScheduleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */; };
 		307B3B9B8A75463FB014C992 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
+		31D4DE243B314B86896A178A /* SyncSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */; };
+		37A056ABB0BB45CBA2B91EFF /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
 		39FE1B9D3CB748E99E153094 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
+		3C21596BC74D4CE996A6AC43 /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
+		3EAA8714DA3D43F284F41B39 /* SyncExecutionSession+Acknowledgement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */; };
+		3F932FCFD6174A23A70213D5 /* SyncResultCollector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84CD8F47ADF45A7A066761B /* SyncResultCollector.swift */; };
+		416E0B12B9B549359B09E5F4 /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
+		4AB3F84613304D6A828720B8 /* SyncSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */; };
 		4D4A0F032EE24DA7965F1B78 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
+		50F2FD76381B4A75B7CEF70F /* SyncExecutionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F3C5FD3C314692BB69EFBB /* SyncExecutionSession.swift */; };
+		53314DFAE79344C9832532D9 /* SyncDongleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */; };
+		53DAD610D2BC41A38D24BF29 /* SyncExecutionSession+Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */; };
+		558CD072850A4C179A8DAECC /* SyncCommandStopGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */; };
+		56FF99A2BEDC4FAB9D78D00D /* SyncExecutionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */; };
+		58A40AFCFF874557A66FAB7C /* SyncExecutionSession+Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */; };
+		58E53CF5AB1F48AB92B1B40F /* Node+SyncIdentify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */; };
+		5925738839754ABE96C90866 /* SyncTaskPlanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */; };
 		59406AF3301C4F9EA72AE09D /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
+		5BCA82B0A4F74E7CA9A1CA07 /* SyncExecutionSession+Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */; };
+		5E95A84C510E4B66AC3125B8 /* Node+SyncIdentify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */; };
+		60EA47F24E93483A9453A327 /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
 		6116D0D0F05DFA292964E9B9 /* (null) in Frameworks */ = {isa = PBXBuildFile; };
+		61387877FEB646698C333487 /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
 		641FEC57DE5645609932974D /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
+		65266F139B8248DB8CDE19F0 /* SyncGatewayTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */; };
+		67C0DB5D726D4866BCC1C8F7 /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
+		6839561B2FD044F1B23BE3E3 /* Node+SyncIdentify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */; };
+		6DD203C84EC24200AD2D5FA2 /* SyncSceneScheduleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */; };
+		7081E41E05794E3A9C1A8708 /* SyncGatewayTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */; };
 		7119A2FC8208465ABF6EF1D3 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
+		715A3B1EBE7F4E3ABEF2BF28 /* SyncProfileTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8B635DA3424068A079D81E /* SyncProfileTaskBuilder.swift */; };
+		72D937AFBD0D40F0BB6DB84C /* SyncExecutionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */; };
+		734A6B4A739549B6A19BB925 /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
+		73CBEB8AE00143888D90908F /* SyncExecutionSession+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571D8E4D3FAC4613841C496A /* SyncExecutionSession+Operations.swift */; };
+		750EDAF90B844BD48C5D7A5F /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
+		7551F3FAE22945E884C3C118 /* SyncDeviceTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C06007AE3FEB4B96850CEF9F /* SyncDeviceTaskBuilder.swift */; };
+		77F543AA180E44E8995A3A29 /* SyncTaskPlanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */; };
+		781B24A7A85741D6AD49CE42 /* SyncCommandStopGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */; };
+		79A04E76FBAD49789B29DE10 /* SyncSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */; };
 		7A97BDEC9C6E47B78123C040 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
+		7B741B9E1DC848BEBBAB3D89 /* SyncEmergencyFireTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */; };
+		818AD5D2DCAB453EA5011E77 /* SyncExecutionSession+Tasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */; };
+		81919BDA89A04E6E82F7E821 /* SyncEmergencyFireTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */; };
 		830718D9737D4876899F9F16 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
+		8683B8A2634A4FA2A0BF419F /* SyncSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */; };
 		8828861F08BB437BB42EF3A6 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
+		88D7CF51D38E4C4DA6293997 /* SyncExecutionSession+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571D8E4D3FAC4613841C496A /* SyncExecutionSession+Operations.swift */; };
+		8A19DFF684F242A7B164DCCB /* SyncOperationResultPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */; };
 		8C1DA73A2FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7392FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift */; };
 		8C1DA73B2FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7392FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift */; };
 		8C1DA73C2FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7392FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift */; };
@@ -806,6 +835,7 @@
 		8C2605202A010003000887FE /* BatteryPowerSwitchAddConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C2605202A010001000887FE /* BatteryPowerSwitchAddConfiguration.swift */; };
 		8C2605202A010004000887FE /* BatteryPowerSwitchAddConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C2605202A010001000887FE /* BatteryPowerSwitchAddConfiguration.swift */; };
 		8C2605202A010005000887FE /* BatteryPowerSwitchAddConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C2605202A010001000887FE /* BatteryPowerSwitchAddConfiguration.swift */; };
+		8C399F6823F7450AACF3116C /* SyncExecutionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F3C5FD3C314692BB69EFBB /* SyncExecutionSession.swift */; };
 		8C7002012FC0000000007002 /* DeviceEmerFireCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7002002FC0000000007002 /* DeviceEmerFireCache.swift */; };
 		8C7002022FC0000000007002 /* DeviceEmerFireCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7002002FC0000000007002 /* DeviceEmerFireCache.swift */; };
 		8C7002032FC0000000007002 /* DeviceEmerFireCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7002002FC0000000007002 /* DeviceEmerFireCache.swift */; };
@@ -1094,11 +1124,43 @@
 		8CFE26042FB0000000000004 /* DeviceEmerFireData+Sync.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000004 /* DeviceEmerFireData+Sync.swift */; };
 		8CFE26042FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift */; };
 		8CFE26042FB0000000000006 /* PJLinkedStaOpertionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000006 /* PJLinkedStaOpertionsView.swift */; };
+		8F36B555ECD7471F9E36DE19 /* SyncExecutionSession+Daylight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */; };
 		9003D9FEB15B43869345C310 /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
+		92D1370D35A9433085BD3045 /* SyncRetryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */; };
+		966495B2063B4A23B018AD7D /* SyncExecutionSession+Daylight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */; };
+		9789F25FEAD9419098225926 /* SyncExecutionSession+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571D8E4D3FAC4613841C496A /* SyncExecutionSession+Operations.swift */; };
+		98136492B8AE4DAB816CE640 /* SyncRetryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */; };
 		98B74FAE2E2C42E5AF404B98 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
+		991A7D0B08964DB58D6F1C2D /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
+		9A4CD299538246D5AC9524AA /* SyncProfileTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8B635DA3424068A079D81E /* SyncProfileTaskBuilder.swift */; };
 		9A6E3E6B324843968130F4AF /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
+		9B797D1CB7184B7ABD68A916 /* SyncExecutionSession+EmergencyFire.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */; };
+		9BD95641AC8A4A669A272C64 /* SyncOperationResultPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */; };
+		9CF80A6452834A6DAF25D458 /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
+		9E9FBDED4035470FB220D1B3 /* SyncExecutionSession+Daylight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */; };
+		9F7E88B8DB044143BC44E151 /* SyncOperationResultPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */; };
+		A087E90DCA604B35895C75C7 /* SyncExecutionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */; };
+		A5C6B8EDA6DA4CE89D59A1D9 /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
+		A61490AEE0C848BCB3E19FED /* SyncDongleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */; };
+		A65F2457435B4706B09FFC48 /* SyncParameterTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */; };
+		A723FA44F715450384AD4A0D /* SyncExecutionSession+Acknowledgement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */; };
+		A75EA23949994C45A8BD7D45 /* SyncDongleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */; };
+		AB7317387679461CB79CFC74 /* SyncExecutionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F3C5FD3C314692BB69EFBB /* SyncExecutionSession.swift */; };
+		AD36EB7BBB144B4B8DDD2C5F /* SyncSceneScheduleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */; };
+		B10EDCB40F104A2E822DE577 /* SyncEmergencyFireTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */; };
+		B123B89F54124138B5F14325 /* Node+SyncIdentify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */; };
 		B27B8A12C92448E5A6D20353 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
+		B507A21C390C4ED4A6D99A27 /* SyncParameterTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */; };
+		B51BAADEE07742C4A1A8AD84 /* SyncGatewayTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */; };
+		BA4CE99EFE424711BA459C74 /* SyncExecutionSession+Tasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */; };
+		BA503B180B8C4C67AE831DAA /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
 		BCB01FD24C3B52D4E436283A /* Pods_Common_SLG_Sync_Plus.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7CF816C3063D0EF30B936BA4 /* Pods_Common_SLG_Sync_Plus.framework */; };
+		BCC659A6265A483A8E580C5B /* SyncResultCollector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84CD8F47ADF45A7A066761B /* SyncResultCollector.swift */; };
+		BD05C62705B845D0BE49AE10 /* SyncExecutionSession+Acknowledgement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */; };
+		BF7338014A1644FA82A4F19F /* SyncEmergencyFireTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */; };
+		C29122552EC7472DAB8B0D6D /* SyncSceneScheduleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */; };
+		C465EE88FEE549699D40FC18 /* SyncDeviceTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C06007AE3FEB4B96850CEF9F /* SyncDeviceTaskBuilder.swift */; };
+		C47A2205E8AD4EB4A6F5483B /* SyncExecutionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F3C5FD3C314692BB69EFBB /* SyncExecutionSession.swift */; };
 		C8002CD22DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8002CD12DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift */; };
 		C803EC4C2BCCC9F0003C48B1 /* ConfigurationFlowGuidanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C803EC4B2BCCC9F0003C48B1 /* ConfigurationFlowGuidanceView.swift */; };
 		C8047F092B8DFA5900A09FFA /* ProfileInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F082B8DFA5900A09FFA /* ProfileInstructionsController.swift */; };
@@ -1602,37 +1664,12 @@
 		C88554F32DE6B44C00C8B688 /* DeviceDongleDeleteAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A55972DBA103500E04252 /* DeviceDongleDeleteAlertView.swift */; };
 		C88554F42DE6B44C00C8B688 /* ImageCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A09A042AC178910068C814 /* ImageCollectionViewCell.swift */; };
 		C88554F52DE6B44C00C8B688 /* Node+MessageHandles.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */; };
-		1036B06D8D874051AD49DEE9 /* Node+SyncIdentify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */; };
 		C88554F62DE6B44C00C8B688 /* DeviceSwitchViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A9A932C8A91ED0032287D /* DeviceSwitchViewController.swift */; };
 		C88554F72DE6B44C00C8B688 /* DeviceOthersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A559B2DBA2B5900E04252 /* DeviceOthersViewController.swift */; };
 		C88554F82DE6B44C00C8B688 /* ProfileProximityLightingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88CCD962DD4A552003D5754 /* ProfileProximityLightingStepView.swift */; };
 		C88554F92DE6B44C00C8B688 /* GroupServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08902B2A8DCD00144BAC /* GroupServer.swift */; };
 		C88554FA2DE6B44C00C8B688 /* WYProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = C896BB872A930C3800217512 /* WYProgressHUD.m */; };
 		C88554FB2DE6B44C00C8B688 /* SyncDevicesCellModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FF12B3D60CC00074031 /* SyncDevicesCellModel.swift */; };
-		25E85457F7494782A2660C9D /* SyncCommandStopGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */; };
-		31D4DE243B314B86896A178A /* SyncSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */; };
-		0E77650C5A5C4CAB81E1554E /* SyncExecutionSession+Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */; };
-		9789F25FEAD9419098225926 /* SyncExecutionSession+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571D8E4D3FAC4613841C496A /* SyncExecutionSession+Operations.swift */; };
-		966495B2063B4A23B018AD7D /* SyncExecutionSession+Daylight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */; };
-		50F2FD76381B4A75B7CEF70F /* SyncExecutionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F3C5FD3C314692BB69EFBB /* SyncExecutionSession.swift */; };
-		3EAA8714DA3D43F284F41B39 /* SyncExecutionSession+Acknowledgement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */; };
-		F7943FD7B04B46168C1265F2 /* SyncExecutionSession+Tasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */; };
-		ECBD06629C06417FBF511113 /* SyncExecutionSession+EmergencyFire.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */; };
-		DD35E8D02A124C34BD491809 /* SyncExecutionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */; };
-		DBDFE837C4004A2F8104A1C3 /* SyncOperationResultPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */; };
-		92D1370D35A9433085BD3045 /* SyncRetryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */; };
-		BCC659A6265A483A8E580C5B /* SyncResultCollector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84CD8F47ADF45A7A066761B /* SyncResultCollector.swift */; };
-		37A056ABB0BB45CBA2B91EFF /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
-		E1952CC7B7DE46808DE3C7AB /* SyncSceneScheduleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */; };
-		7B741B9E1DC848BEBBAB3D89 /* SyncEmergencyFireTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */; };
-		0263A522319042329F21C235 /* SyncProfileTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8B635DA3424068A079D81E /* SyncProfileTaskBuilder.swift */; };
-		0524EA29AB964613B72DFA2D /* SyncParameterTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */; };
-		A75EA23949994C45A8BD7D45 /* SyncDongleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */; };
-		DEDD37F7AB6742E6871AEC02 /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
-		D81933E68654405495EBF0F4 /* SyncTaskPlanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */; };
-		750EDAF90B844BD48C5D7A5F /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
-		7081E41E05794E3A9C1A8708 /* SyncGatewayTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */; };
-		7551F3FAE22945E884C3C118 /* SyncDeviceTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C06007AE3FEB4B96850CEF9F /* SyncDeviceTaskBuilder.swift */; };
 		C88554FC2DE6B44C00C8B688 /* DeviceOfflinePromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F512DB790B700A6E36C /* DeviceOfflinePromptView.swift */; };
 		C88554FD2DE6B44C00C8B688 /* BLEUpgradeInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C82CB2C81C8BA009D43F6 /* BLEUpgradeInstructionsController.swift */; };
 		C88554FE2DE6B44C00C8B688 /* MeshFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A4E8922CDB0F5D00A22C77 /* MeshFirmwareUpdateViewController.swift */; };
@@ -2009,37 +2046,12 @@
 		C886E14F2E30DE4900D0C3A6 /* DeviceDongleDeleteAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A55972DBA103500E04252 /* DeviceDongleDeleteAlertView.swift */; };
 		C886E1502E30DE4900D0C3A6 /* ImageCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A09A042AC178910068C814 /* ImageCollectionViewCell.swift */; };
 		C886E1512E30DE4900D0C3A6 /* Node+MessageHandles.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */; };
-		6839561B2FD044F1B23BE3E3 /* Node+SyncIdentify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */; };
 		C886E1522E30DE4900D0C3A6 /* DeviceSwitchViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A9A932C8A91ED0032287D /* DeviceSwitchViewController.swift */; };
 		C886E1532E30DE4900D0C3A6 /* DeviceOthersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A559B2DBA2B5900E04252 /* DeviceOthersViewController.swift */; };
 		C886E1542E30DE4900D0C3A6 /* ProfileProximityLightingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88CCD962DD4A552003D5754 /* ProfileProximityLightingStepView.swift */; };
 		C886E1552E30DE4900D0C3A6 /* GroupServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08902B2A8DCD00144BAC /* GroupServer.swift */; };
 		C886E1562E30DE4900D0C3A6 /* WYProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = C896BB872A930C3800217512 /* WYProgressHUD.m */; };
 		C886E1572E30DE4900D0C3A6 /* SyncDevicesCellModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FF12B3D60CC00074031 /* SyncDevicesCellModel.swift */; };
-		DEB759AF3EF645F693A289DD /* SyncCommandStopGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */; };
-		8683B8A2634A4FA2A0BF419F /* SyncSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */; };
-		53DAD610D2BC41A38D24BF29 /* SyncExecutionSession+Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */; };
-		EC96CB91A1A5407F97E1C85F /* SyncExecutionSession+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571D8E4D3FAC4613841C496A /* SyncExecutionSession+Operations.swift */; };
-		0428A2E1D04C4DFEBD5546ED /* SyncExecutionSession+Daylight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */; };
-		AB7317387679461CB79CFC74 /* SyncExecutionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F3C5FD3C314692BB69EFBB /* SyncExecutionSession.swift */; };
-		2D3B0626182F426E8EB5F486 /* SyncExecutionSession+Acknowledgement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */; };
-		08E370C1C71243E88D040805 /* SyncExecutionSession+Tasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */; };
-		CA4AB051D62A499D9B62535E /* SyncExecutionSession+EmergencyFire.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */; };
-		56FF99A2BEDC4FAB9D78D00D /* SyncExecutionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */; };
-		CC62830B2CC84D939D36C8F7 /* SyncOperationResultPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */; };
-		98136492B8AE4DAB816CE640 /* SyncRetryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */; };
-		3F932FCFD6174A23A70213D5 /* SyncResultCollector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84CD8F47ADF45A7A066761B /* SyncResultCollector.swift */; };
-		61387877FEB646698C333487 /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
-		C29122552EC7472DAB8B0D6D /* SyncSceneScheduleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */; };
-		BF7338014A1644FA82A4F19F /* SyncEmergencyFireTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */; };
-		715A3B1EBE7F4E3ABEF2BF28 /* SyncProfileTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8B635DA3424068A079D81E /* SyncProfileTaskBuilder.swift */; };
-		FBE64B877BA941A086DD04D0 /* SyncParameterTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */; };
-		174C0AB0C7D44152AE7977A4 /* SyncDongleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */; };
-		FB8AA5CFA8964AA5AB8A7888 /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
-		77F543AA180E44E8995A3A29 /* SyncTaskPlanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */; };
-		60EA47F24E93483A9453A327 /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
-		65266F139B8248DB8CDE19F0 /* SyncGatewayTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */; };
-		059D7E2827E3479CA850CC0A /* SyncDeviceTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C06007AE3FEB4B96850CEF9F /* SyncDeviceTaskBuilder.swift */; };
 		C886E1582E30DE4900D0C3A6 /* DeviceOfflinePromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F512DB790B700A6E36C /* DeviceOfflinePromptView.swift */; };
 		C886E1592E30DE4900D0C3A6 /* BLEUpgradeInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C82CB2C81C8BA009D43F6 /* BLEUpgradeInstructionsController.swift */; };
 		C886E15A2E30DE4900D0C3A6 /* MeshFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A4E8922CDB0F5D00A22C77 /* MeshFirmwareUpdateViewController.swift */; };
@@ -2169,30 +2181,6 @@
 		C89C9FEE2B3C271200074031 /* SyncDevicesTitleHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FED2B3C271200074031 /* SyncDevicesTitleHeaderView.swift */; };
 		C89C9FF02B3D4E6200074031 /* SyncDevicesGroupViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FEF2B3D4E6200074031 /* SyncDevicesGroupViewCell.swift */; };
 		C89C9FF22B3D60CC00074031 /* SyncDevicesCellModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FF12B3D60CC00074031 /* SyncDevicesCellModel.swift */; };
-		FA434FCCC5B241269278E904 /* SyncCommandStopGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */; };
-		FAC069A4A5E44FBFA9D1FDB8 /* SyncSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */; };
-		5BCA82B0A4F74E7CA9A1CA07 /* SyncExecutionSession+Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */; };
-		73CBEB8AE00143888D90908F /* SyncExecutionSession+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571D8E4D3FAC4613841C496A /* SyncExecutionSession+Operations.swift */; };
-		9E9FBDED4035470FB220D1B3 /* SyncExecutionSession+Daylight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */; };
-		D52E820261BF4DF8A6E82A06 /* SyncExecutionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F3C5FD3C314692BB69EFBB /* SyncExecutionSession.swift */; };
-		A723FA44F715450384AD4A0D /* SyncExecutionSession+Acknowledgement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */; };
-		818AD5D2DCAB453EA5011E77 /* SyncExecutionSession+Tasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */; };
-		0409E220A8F748958A442047 /* SyncExecutionSession+EmergencyFire.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */; };
-		72D937AFBD0D40F0BB6DB84C /* SyncExecutionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */; };
-		8A19DFF684F242A7B164DCCB /* SyncOperationResultPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */; };
-		0E6B8FFDB84C40B2945B61AC /* SyncRetryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */; };
-		EA11BECBB5484297952D88DB /* SyncResultCollector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84CD8F47ADF45A7A066761B /* SyncResultCollector.swift */; };
-		F086D2572F1B4954AB2A63E0 /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
-		AD36EB7BBB144B4B8DDD2C5F /* SyncSceneScheduleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */; };
-		81919BDA89A04E6E82F7E821 /* SyncEmergencyFireTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */; };
-		9A4CD299538246D5AC9524AA /* SyncProfileTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8B635DA3424068A079D81E /* SyncProfileTaskBuilder.swift */; };
-		A65F2457435B4706B09FFC48 /* SyncParameterTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */; };
-		53314DFAE79344C9832532D9 /* SyncDongleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */; };
-		EFC0885EA2B94D0F9271C2FE /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
-		C8E0804477904B8B86A97B95 /* SyncTaskPlanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */; };
-		416E0B12B9B549359B09E5F4 /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
-		F04F0B4F0BA846C998DE86EC /* SyncGatewayTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */; };
-		12CA5740E4EB4F57AD47011D /* SyncDeviceTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C06007AE3FEB4B96850CEF9F /* SyncDeviceTaskBuilder.swift */; };
 		C89D560F2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89D560E2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift */; };
 		C89F089E2C77112F005C0711 /* BleFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F089D2C77112F005C0711 /* BleFirmwareUpdateViewController.swift */; };
 		C89F08A02C7712F2005C0711 /* BleFirmwareTypeUpdateViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F089F2C7712F2005C0711 /* BleFirmwareTypeUpdateViewCell.swift */; };
@@ -2380,7 +2368,6 @@
 		C8B058A02B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0589F2B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift */; };
 		C8B058A72B5115B2006FC36F /* DeviceGroupsSelectData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B058A62B5115B2006FC36F /* DeviceGroupsSelectData.swift */; };
 		C8B0779E2D9D36750078404C /* Node+MessageHandles.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */; };
-		5E95A84C510E4B66AC3125B8 /* Node+SyncIdentify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */; };
 		C8B0B48B2B468BC700747CF4 /* SyncDevicesProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0B48A2B468BC700747CF4 /* SyncDevicesProgressView.swift */; };
 		C8B337222E44983E006931C2 /* UITableView+Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B337212E44983E006931C2 /* UITableView+Keyboard.swift */; };
 		C8B337232E44983E006931C2 /* UITableView+Keyboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B337212E44983E006931C2 /* UITableView+Keyboard.swift */; };
@@ -2886,37 +2873,12 @@
 		C8BB672F2ED3F056000C63EE /* ImageCollectionViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A09A042AC178910068C814 /* ImageCollectionViewCell.swift */; };
 		C8BB67302ED3F056000C63EE /* ScrollView+Indicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B7B3BC2EBB32C1006CA3EE /* ScrollView+Indicator.swift */; };
 		C8BB67312ED3F056000C63EE /* Node+MessageHandles.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */; };
-		58E53CF5AB1F48AB92B1B40F /* Node+SyncIdentify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */; };
 		C8BB67322ED3F056000C63EE /* DeviceSwitchViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89A9A932C8A91ED0032287D /* DeviceSwitchViewController.swift */; };
 		C8BB67332ED3F056000C63EE /* DeviceOthersViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C83A559B2DBA2B5900E04252 /* DeviceOthersViewController.swift */; };
 		C8BB67342ED3F056000C63EE /* ProfileProximityLightingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88CCD962DD4A552003D5754 /* ProfileProximityLightingStepView.swift */; };
 		C8BB67352ED3F056000C63EE /* GroupServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08902B2A8DCD00144BAC /* GroupServer.swift */; };
 		C8BB67362ED3F056000C63EE /* WYProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = C896BB872A930C3800217512 /* WYProgressHUD.m */; };
 		C8BB67372ED3F056000C63EE /* SyncDevicesCellModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FF12B3D60CC00074031 /* SyncDevicesCellModel.swift */; };
-		781B24A7A85741D6AD49CE42 /* SyncCommandStopGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */; };
-		79A04E76FBAD49789B29DE10 /* SyncSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */; };
-		2E1D668B0C0B450AA3237276 /* SyncExecutionSession+Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */; };
-		88D7CF51D38E4C4DA6293997 /* SyncExecutionSession+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571D8E4D3FAC4613841C496A /* SyncExecutionSession+Operations.swift */; };
-		8F36B555ECD7471F9E36DE19 /* SyncExecutionSession+Daylight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */; };
-		C47A2205E8AD4EB4A6F5483B /* SyncExecutionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F3C5FD3C314692BB69EFBB /* SyncExecutionSession.swift */; };
-		BD05C62705B845D0BE49AE10 /* SyncExecutionSession+Acknowledgement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */; };
-		BA4CE99EFE424711BA459C74 /* SyncExecutionSession+Tasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */; };
-		9B797D1CB7184B7ABD68A916 /* SyncExecutionSession+EmergencyFire.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */; };
-		A087E90DCA604B35895C75C7 /* SyncExecutionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */; };
-		9BD95641AC8A4A669A272C64 /* SyncOperationResultPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */; };
-		D130E771F5A94087BE4AB465 /* SyncRetryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */; };
-		E6F49F904F0A4301BB18F924 /* SyncResultCollector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84CD8F47ADF45A7A066761B /* SyncResultCollector.swift */; };
-		FC37248A4BA9471492C67995 /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
-		6DD203C84EC24200AD2D5FA2 /* SyncSceneScheduleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */; };
-		D2FA400BEF0946569A71EF13 /* SyncEmergencyFireTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */; };
-		EC76EADBEBB348B99F7567B3 /* SyncProfileTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8B635DA3424068A079D81E /* SyncProfileTaskBuilder.swift */; };
-		E2D0F2A14B894FC9908F1392 /* SyncParameterTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */; };
-		FA40A89D8A0D48BDBEA6EA36 /* SyncDongleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */; };
-		A5C6B8EDA6DA4CE89D59A1D9 /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
-		5925738839754ABE96C90866 /* SyncTaskPlanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */; };
-		9CF80A6452834A6DAF25D458 /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
-		B51BAADEE07742C4A1A8AD84 /* SyncGatewayTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */; };
-		CE2D397D68F04EA0B545176C /* SyncDeviceTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C06007AE3FEB4B96850CEF9F /* SyncDeviceTaskBuilder.swift */; };
 		C8BB67382ED3F056000C63EE /* DeviceOfflinePromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F512DB790B700A6E36C /* DeviceOfflinePromptView.swift */; };
 		C8BB67392ED3F056000C63EE /* SystemVoiumeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7DF2E702BF7004FB923 /* SystemVoiumeManager.swift */; };
 		C8BB673A2ED3F056000C63EE /* BLEUpgradeInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C82CB2C81C8BA009D43F6 /* BLEUpgradeInstructionsController.swift */; };
@@ -3184,13 +3146,9 @@
 		C8DDA0133003000000000001 /* DeviceScheduleAddressCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0013003000000000001 /* DeviceScheduleAddressCleanup.swift */; };
 		C8DDA0143003000000000001 /* DeviceScheduleAddressCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0013003000000000001 /* DeviceScheduleAddressCleanup.swift */; };
 		C8DDA0213003000000000001 /* DevicePermanentDeletionCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0023003000000000001 /* DevicePermanentDeletionCleanup.swift */; };
-		67C0DB5D726D4866BCC1C8F7 /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
 		C8DDA0223003000000000001 /* DevicePermanentDeletionCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0023003000000000001 /* DevicePermanentDeletionCleanup.swift */; };
-		297EE68B722E4EDCAF2005C7 /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
 		C8DDA0233003000000000001 /* DevicePermanentDeletionCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0023003000000000001 /* DevicePermanentDeletionCleanup.swift */; };
-		734A6B4A739549B6A19BB925 /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
 		C8DDA0243003000000000001 /* DevicePermanentDeletionCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0023003000000000001 /* DevicePermanentDeletionCleanup.swift */; };
-		991A7D0B08964DB58D6F1C2D /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
 		C8DDA0313003000000000001 /* SceneDeleteCapability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0033003000000000001 /* SceneDeleteCapability.swift */; };
 		C8DDA0323003000000000001 /* SceneDeleteCapability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0033003000000000001 /* SceneDeleteCapability.swift */; };
 		C8DDA0333003000000000001 /* SceneDeleteCapability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0033003000000000001 /* SceneDeleteCapability.swift */; };
@@ -3199,6 +3157,7 @@
 		C8DF84572DB639960070CBD9 /* DeviceDongleViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DF84562DB639960070CBD9 /* DeviceDongleViewController.swift */; };
 		C8DF845A2DB6464E0070CBD9 /* DeviceDongleData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DF84592DB6464E0070CBD9 /* DeviceDongleData.swift */; };
 		C8DF845C2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DF845B2DB65ADF0070CBD9 /* DeviceDongleScheduleViewCell.swift */; };
+		C8E0804477904B8B86A97B95 /* SyncTaskPlanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */; };
 		C8E694222D8D407E00005832 /* DeviceAddResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E694212D8D407E00005832 /* DeviceAddResultView.swift */; };
 		C8E694242D8D424100005832 /* DeviceAddBottomView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E694232D8D424100005832 /* DeviceAddBottomView.swift */; };
 		C8E6F3582E0E4A3F00730971 /* DeviceAddInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8E6F3572E0E4A3F00730971 /* DeviceAddInstructionsController.swift */; };
@@ -3355,11 +3314,38 @@
 		C8FDE9A72DD595A30002394B /* GroupProximityLightingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */; };
 		C8FF8A7E146827711D87F57C /* GroupPowerSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */; };
 		C8FFD7D52E7D03B20074CC6A /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
+		CA4AB051D62A499D9B62535E /* SyncExecutionSession+EmergencyFire.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */; };
+		CC193792A1B641B087BEB6A6 /* SyncTaskPlanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */; };
+		CC62830B2CC84D939D36C8F7 /* SyncOperationResultPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */; };
+		CCEFC9FEE30045E6A1CC0391 /* SyncGatewayTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */; };
+		CE2D397D68F04EA0B545176C /* SyncDeviceTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C06007AE3FEB4B96850CEF9F /* SyncDeviceTaskBuilder.swift */; };
+		D130E771F5A94087BE4AB465 /* SyncRetryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */; };
+		D2FA400BEF0946569A71EF13 /* SyncEmergencyFireTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */; };
 		D3C2B2A90073BA539A94D739 /* Pods_Common_Lumineux.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 15FF8143AF8FD80AB9279AE9 /* Pods_Common_Lumineux.framework */; };
+		D52E820261BF4DF8A6E82A06 /* SyncExecutionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F3C5FD3C314692BB69EFBB /* SyncExecutionSession.swift */; };
+		D81933E68654405495EBF0F4 /* SyncTaskPlanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */; };
+		DBBE181D0D4E49BA9A6E9548 /* SyncExecutionSession+EmergencyFire.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */; };
+		DBDFE837C4004A2F8104A1C3 /* SyncOperationResultPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */; };
 		DC176B45FDD04BF2B211C2D1 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
+		DD35E8D02A124C34BD491809 /* SyncExecutionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */; };
+		DD3BFE0E498A4A25A4038BC1 /* SyncExecutionSession+Tasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */; };
+		DEB759AF3EF645F693A289DD /* SyncCommandStopGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */; };
+		DEDD37F7AB6742E6871AEC02 /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
+		E1952CC7B7DE46808DE3C7AB /* SyncSceneScheduleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */; };
+		E2D0EFCDEA464E6ABCC3ACCF /* SyncRetryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */; };
+		E2D0F2A14B894FC9908F1392 /* SyncParameterTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */; };
+		E410DB268C7E4A8A9749F3D6 /* SyncExecutionSession+Acknowledgement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */; };
 		E4EABB296C324CDB9BF69468 /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
+		E6F49F904F0A4301BB18F924 /* SyncResultCollector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84CD8F47ADF45A7A066761B /* SyncResultCollector.swift */; };
+		EA11BECBB5484297952D88DB /* SyncResultCollector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84CD8F47ADF45A7A066761B /* SyncResultCollector.swift */; };
 		EAB7CC4E471C03663E94EFE1 /* Pods_Common_SylSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1025845F30FDFC9F8C9ACCB /* Pods_Common_SylSmart.framework */; };
+		EC76EADBEBB348B99F7567B3 /* SyncProfileTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8B635DA3424068A079D81E /* SyncProfileTaskBuilder.swift */; };
+		EC96CB91A1A5407F97E1C85F /* SyncExecutionSession+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571D8E4D3FAC4613841C496A /* SyncExecutionSession+Operations.swift */; };
+		ECBD06629C06417FBF511113 /* SyncExecutionSession+EmergencyFire.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */; };
 		EE66645EF8E84E9191B47415 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
+		EFC0885EA2B94D0F9271C2FE /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
+		F04F0B4F0BA846C998DE86EC /* SyncGatewayTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */; };
+		F086D2572F1B4954AB2A63E0 /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
 		F26072200000000000000102 /* DeviceNameFilterSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000101 /* DeviceNameFilterSession.swift */; };
 		F26072200000000000000103 /* DeviceNameFilterSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000101 /* DeviceNameFilterSession.swift */; };
 		F26072200000000000000104 /* DeviceNameFilterSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000101 /* DeviceNameFilterSession.swift */; };
@@ -3558,17 +3544,31 @@
 		F26090320000000000000003 /* ProximityLightingLifecycleCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090300000000000000002 /* ProximityLightingLifecycleCoordinator.swift */; };
 		F26090320000000000000004 /* ProximityLightingLifecycleCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090300000000000000002 /* ProximityLightingLifecycleCoordinator.swift */; };
 		F26090320000000000000005 /* ProximityLightingLifecycleCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090300000000000000002 /* ProximityLightingLifecycleCoordinator.swift */; };
+		F26090410000000000000201 /* EnergyStatisticsFilterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */; };
+		F26090410000000000000202 /* EnergyStatisticsFilterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */; };
+		F26090410000000000000203 /* EnergyStatisticsFilterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */; };
+		F26090410000000000000204 /* EnergyStatisticsFilterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */; };
+		F26090410000000000000205 /* EnergyStatisticsFilterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */; };
+		F26090710000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift */; };
+		F26090710000000000000002 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift */; };
+		F26090710000000000000003 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift */; };
+		F26090710000000000000004 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift */; };
+		F26090710000000000000005 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift */; };
+		F26090720000000000000001 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */; };
+		F26090720000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */; };
+		F26090720000000000000003 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */; };
+		F26090720000000000000004 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */; };
+		F26090720000000000000005 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */; };
 		F3C661B473314BCA9FC4EADC /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
-		F26090710000000000000001 /* SpaceConfigurationIntegrityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000001 /* SpaceConfigurationIntegrityPolicy.swift */; };
-		F26090710000000000000002 /* SpaceConfigurationIntegrityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000001 /* SpaceConfigurationIntegrityPolicy.swift */; };
-		F26090710000000000000003 /* SpaceConfigurationIntegrityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000001 /* SpaceConfigurationIntegrityPolicy.swift */; };
-		F26090710000000000000004 /* SpaceConfigurationIntegrityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000001 /* SpaceConfigurationIntegrityPolicy.swift */; };
-		F26090710000000000000005 /* SpaceConfigurationIntegrityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000001 /* SpaceConfigurationIntegrityPolicy.swift */; };
-		F26090720000000000000001 /* SpaceConfigurationSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000002 /* SpaceConfigurationSafety.swift */; };
-		F26090720000000000000002 /* SpaceConfigurationSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000002 /* SpaceConfigurationSafety.swift */; };
-		F26090720000000000000003 /* SpaceConfigurationSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000002 /* SpaceConfigurationSafety.swift */; };
-		F26090720000000000000004 /* SpaceConfigurationSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000002 /* SpaceConfigurationSafety.swift */; };
-		F26090720000000000000005 /* SpaceConfigurationSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000002 /* SpaceConfigurationSafety.swift */; };
+		F538067A4C66418F8CEBB201 /* SyncExecutionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */; };
+		F7943FD7B04B46168C1265F2 /* SyncExecutionSession+Tasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */; };
+		F9375905BFA6459CB7FDFB38 /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
+		FA40A89D8A0D48BDBEA6EA36 /* SyncDongleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */; };
+		FA434FCCC5B241269278E904 /* SyncCommandStopGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */; };
+		FAC069A4A5E44FBFA9D1FDB8 /* SyncSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */; };
+		FB8AA5CFA8964AA5AB8A7888 /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
+		FBE64B877BA941A086DD04D0 /* SyncParameterTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */; };
+		FC37248A4BA9471492C67995 /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -3588,12 +3588,26 @@
 		08B54F2430402CCB0017ED49 /* LumineuxAssets/Assets-Lumineux-Merged.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "LumineuxAssets/Assets-Lumineux-Merged.xcassets"; sourceTree = DERIVED_FILE_DIR; };
 		0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorViewModel.swift; sourceTree = "<group>"; };
 		15FF8143AF8FD80AB9279AE9 /* Pods_Common_Lumineux.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_Lumineux.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteDeviceOwnershipReconciler.swift; sourceTree = "<group>"; };
 		29E6735F1867DC54FBDDBAA9 /* Pods-Common-SylSmart.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SylSmart.debug.xcconfig"; path = "Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart.debug.xcconfig"; sourceTree = "<group>"; };
+		2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncCommandStopGate.swift; sourceTree = "<group>"; };
+		377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEmergencyFireTaskBuilder.swift; sourceTree = "<group>"; };
+		389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncExecutionSession+Acknowledgement.swift"; sourceTree = "<group>"; };
 		3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyFireControllerIconName.swift; sourceTree = "<group>"; };
+		3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncSessionCoordinator.swift; sourceTree = "<group>"; };
 		40600A1CA2E3F5AAD4720361 /* Pods-Common-Lumineux.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-Lumineux.debug.xcconfig"; path = "Target Support Files/Pods-Common-Lumineux/Pods-Common-Lumineux.debug.xcconfig"; sourceTree = "<group>"; };
+		410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncSwitchTaskBuilder.swift; sourceTree = "<group>"; };
 		45931D652AFCE854D4A27862 /* Pods-Common-SunSmart.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SunSmart.debug.xcconfig"; path = "Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart.debug.xcconfig"; sourceTree = "<group>"; };
+		4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncRunLifecycle.swift; sourceTree = "<group>"; };
+		5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncExecutionSession+Daylight.swift"; sourceTree = "<group>"; };
+		53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncExecutionEnvironment.swift; sourceTree = "<group>"; };
+		53F3C5FD3C314692BB69EFBB /* SyncExecutionSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncExecutionSession.swift; sourceTree = "<group>"; };
+		571D8E4D3FAC4613841C496A /* SyncExecutionSession+Operations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncExecutionSession+Operations.swift"; sourceTree = "<group>"; };
+		58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncOperationResultPolicy.swift; sourceTree = "<group>"; };
 		5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorRouting.swift; sourceTree = "<group>"; };
 		5DE88F1025D2BB6E473AD28D /* Pods-Common-Lumineux.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-Lumineux.release.xcconfig"; path = "Target Support Files/Pods-Common-Lumineux/Pods-Common-Lumineux.release.xcconfig"; sourceTree = "<group>"; };
+		69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; lineEnding = 0; path = "Node+SyncIdentify.swift"; sourceTree = "<group>"; };
+		7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncTaskPlanBuilder.swift; sourceTree = "<group>"; };
 		7CF816C3063D0EF30B936BA4 /* Pods_Common_SLG_Sync_Plus.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_SLG_Sync_Plus.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		8C1DA7392FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchForcedAutoPopupController.swift; sourceTree = "<group>"; };
 		8C1DA74C2FAAF2A60073F100 /* PJDevicesEntrySource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJDevicesEntrySource.swift; sourceTree = "<group>"; };
@@ -3685,7 +3699,13 @@
 		8CFE26002FB0000000000005 /* EmerFireAlarmControllerSyncVC.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmControllerSyncVC.swift; sourceTree = "<group>"; };
 		8CFE26002FB0000000000006 /* PJLinkedStaOpertionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJLinkedStaOpertionsView.swift; sourceTree = "<group>"; };
 		8F7ED1D6D6BFC3B3813C473D /* Pods_Common_Archipelago.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_Archipelago.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncExecutionSession+Result.swift"; sourceTree = "<group>"; };
+		A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDongleTaskBuilder.swift; sourceTree = "<group>"; };
+		B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncSceneScheduleTaskBuilder.swift; sourceTree = "<group>"; };
+		B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncExecutionSession+Tasks.swift"; sourceTree = "<group>"; };
 		BAC59D3E13FBA419B630C430 /* Pods-Common-Archipelago.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-Archipelago.release.xcconfig"; path = "Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago.release.xcconfig"; sourceTree = "<group>"; };
+		C06007AE3FEB4B96850CEF9F /* SyncDeviceTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDeviceTaskBuilder.swift; sourceTree = "<group>"; };
+		C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncProximityTaskBuilder.swift; sourceTree = "<group>"; };
 		C8002CD12DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStaticDataDeviceViewCell.swift; sourceTree = "<group>"; };
 		C803EC4B2BCCC9F0003C48B1 /* ConfigurationFlowGuidanceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigurationFlowGuidanceView.swift; sourceTree = "<group>"; };
 		C8047F082B8DFA5900A09FFA /* ProfileInstructionsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileInstructionsController.swift; sourceTree = "<group>"; };
@@ -3751,6 +3771,7 @@
 		C84284A32F7A1C9000BECD6D /* SpaceTriggerZone.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceTriggerZone.swift; sourceTree = "<group>"; };
 		C84A2C542C2D465A0064D3F1 /* ExternalVendorMessage+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ExternalVendorMessage+Extension.swift"; sourceTree = "<group>"; };
 		C84A2C562C2D571D0064D3F1 /* BatchSpaceData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchSpaceData.swift; sourceTree = "<group>"; };
+		C84CD8F47ADF45A7A066761B /* SyncResultCollector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncResultCollector.swift; sourceTree = "<group>"; };
 		C84FBCAC2DBF28D80030E136 /* EnergyStaticDataGroupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStaticDataGroupView.swift; sourceTree = "<group>"; };
 		C84FBCB92DBF6EB50030E136 /* LYCirclePieModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LYCirclePieModel.swift; sourceTree = "<group>"; };
 		C84FBCBA2DBF6EB50030E136 /* LYCirclePieView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LYCirclePieView.swift; sourceTree = "<group>"; };
@@ -3905,30 +3926,6 @@
 		C89C9FED2B3C271200074031 /* SyncDevicesTitleHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesTitleHeaderView.swift; sourceTree = "<group>"; };
 		C89C9FEF2B3D4E6200074031 /* SyncDevicesGroupViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesGroupViewCell.swift; sourceTree = "<group>"; };
 		C89C9FF12B3D60CC00074031 /* SyncDevicesCellModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesCellModel.swift; sourceTree = "<group>"; };
-		2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncCommandStopGate.swift; sourceTree = "<group>"; };
-		3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncSessionCoordinator.swift; sourceTree = "<group>"; };
-		914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncExecutionSession+Result.swift"; sourceTree = "<group>"; };
-		571D8E4D3FAC4613841C496A /* SyncExecutionSession+Operations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncExecutionSession+Operations.swift"; sourceTree = "<group>"; };
-		5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncExecutionSession+Daylight.swift"; sourceTree = "<group>"; };
-		53F3C5FD3C314692BB69EFBB /* SyncExecutionSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncExecutionSession.swift; sourceTree = "<group>"; };
-		389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncExecutionSession+Acknowledgement.swift"; sourceTree = "<group>"; };
-		B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncExecutionSession+Tasks.swift"; sourceTree = "<group>"; };
-		DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncExecutionSession+EmergencyFire.swift"; sourceTree = "<group>"; };
-		53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncExecutionEnvironment.swift; sourceTree = "<group>"; };
-		58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncOperationResultPolicy.swift; sourceTree = "<group>"; };
-		FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncRetryPolicy.swift; sourceTree = "<group>"; };
-		C84CD8F47ADF45A7A066761B /* SyncResultCollector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncResultCollector.swift; sourceTree = "<group>"; };
-		4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncRunLifecycle.swift; sourceTree = "<group>"; };
-		B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncSceneScheduleTaskBuilder.swift; sourceTree = "<group>"; };
-		377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEmergencyFireTaskBuilder.swift; sourceTree = "<group>"; };
-		CE8B635DA3424068A079D81E /* SyncProfileTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncProfileTaskBuilder.swift; sourceTree = "<group>"; };
-		F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncParameterTaskBuilder.swift; sourceTree = "<group>"; };
-		A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDongleTaskBuilder.swift; sourceTree = "<group>"; };
-		C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncProximityTaskBuilder.swift; sourceTree = "<group>"; };
-		7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncTaskPlanBuilder.swift; sourceTree = "<group>"; };
-		410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncSwitchTaskBuilder.swift; sourceTree = "<group>"; };
-		CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncGatewayTaskBuilder.swift; sourceTree = "<group>"; };
-		C06007AE3FEB4B96850CEF9F /* SyncDeviceTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDeviceTaskBuilder.swift; sourceTree = "<group>"; };
 		C89D560E2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshFirmwareUpgradeResultsView.swift; sourceTree = "<group>"; };
 		C89F089D2C77112F005C0711 /* BleFirmwareUpdateViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleFirmwareUpdateViewController.swift; sourceTree = "<group>"; };
 		C89F089F2C7712F2005C0711 /* BleFirmwareTypeUpdateViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleFirmwareTypeUpdateViewCell.swift; sourceTree = "<group>"; };
@@ -4071,7 +4068,6 @@
 		C8B0589F2B50DE86006FC36F /* HorizontalDirectionFlowLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HorizontalDirectionFlowLayout.swift; sourceTree = "<group>"; };
 		C8B058A62B5115B2006FC36F /* DeviceGroupsSelectData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceGroupsSelectData.swift; sourceTree = "<group>"; };
 		C8B0779D2D9D36750078404C /* Node+MessageHandles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; lineEnding = 0; path = "Node+MessageHandles.swift"; sourceTree = "<group>"; };
-		69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; lineEnding = 0; path = "Node+SyncIdentify.swift"; sourceTree = "<group>"; };
 		C8B0B48A2B468BC700747CF4 /* SyncDevicesProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesProgressView.swift; sourceTree = "<group>"; };
 		C8B337212E44983E006931C2 /* UITableView+Keyboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "UITableView+Keyboard.swift"; sourceTree = "<group>"; };
 		C8B444A22E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddSectionBackgroundView.swift; sourceTree = "<group>"; };
@@ -4093,7 +4089,6 @@
 		C8B6D7DB2E6EB8E8004FB923 /* ContentDisplayViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentDisplayViewCell.swift; sourceTree = "<group>"; };
 		C8B6D7DF2E702BF7004FB923 /* SystemVoiumeManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemVoiumeManager.swift; sourceTree = "<group>"; };
 		C8B707032DCF2FDC0002133E /* EnergyStatisticsStaticData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStatisticsStaticData.swift; sourceTree = "<group>"; };
-		F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStatisticsFilterPolicy.swift; sourceTree = "<group>"; };
 		C8B707052DCF2FF50002133E /* EnergyStatisticsTimeSeriesData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStatisticsTimeSeriesData.swift; sourceTree = "<group>"; };
 		C8B707072DCF349D0002133E /* ProfileSensitivityView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileSensitivityView.swift; sourceTree = "<group>"; };
 		C8B7AE372EB99CBF006CA3EE /* ProgressHUD+Extension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ProgressHUD+Extension.swift"; sourceTree = "<group>"; };
@@ -4247,7 +4242,6 @@
 		C8DCD0FB2CC8E0DE00B8671E /* SiteAddressDataHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteAddressDataHeaderView.swift; sourceTree = "<group>"; };
 		C8DDA0013003000000000001 /* DeviceScheduleAddressCleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceScheduleAddressCleanup.swift; sourceTree = "<group>"; };
 		C8DDA0023003000000000001 /* DevicePermanentDeletionCleanup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DevicePermanentDeletionCleanup.swift; sourceTree = "<group>"; };
-		199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteDeviceOwnershipReconciler.swift; sourceTree = "<group>"; };
 		C8DDA0033003000000000001 /* SceneDeleteCapability.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDeleteCapability.swift; sourceTree = "<group>"; };
 		C8DDDEEA0487D9E098DB078F /* GroupPowerSwitchesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPowerSwitchesViewModel.swift; sourceTree = "<group>"; };
 		C8DF84562DB639960070CBD9 /* DeviceDongleViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceDongleViewController.swift; sourceTree = "<group>"; };
@@ -4299,8 +4293,11 @@
 		C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupProximityLightingData.swift; sourceTree = "<group>"; };
 		C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; path = Pods_Common_SunSmart.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		CA14D3D265B3B74E304A61D7 /* Pods-Common-Archipelago.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-Archipelago.debug.xcconfig"; path = "Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago.debug.xcconfig"; sourceTree = "<group>"; };
+		CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncGatewayTaskBuilder.swift; sourceTree = "<group>"; };
+		CE8B635DA3424068A079D81E /* SyncProfileTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncProfileTaskBuilder.swift; sourceTree = "<group>"; };
 		D1025845F30FDFC9F8C9ACCB /* Pods_Common_SylSmart.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_SylSmart.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorRendering.swift; sourceTree = "<group>"; };
+		DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncExecutionSession+EmergencyFire.swift"; sourceTree = "<group>"; };
 		DB94D08D018A81456AF735FC /* Pods-Common-SLG Sync Plus.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SLG Sync Plus.release.xcconfig"; path = "Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus.release.xcconfig"; sourceTree = "<group>"; };
 		DEFCD502EAD0464D20FC18F3 /* Pods-Common-SylSmart.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SylSmart.release.xcconfig"; path = "Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart.release.xcconfig"; sourceTree = "<group>"; };
 		E08E6FB7E3FFE82A5A620CAF /* Pods-Common-SunSmart.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SunSmart.release.xcconfig"; path = "Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart.release.xcconfig"; sourceTree = "<group>"; };
@@ -4368,9 +4365,12 @@
 		F2608200000000000004000 /* LightTimeInformationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightTimeInformationCoordinator.swift; sourceTree = "<group>"; };
 		F26090300000000000000001 /* ProximityLightingTopologyReconciler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProximityLightingTopologyReconciler.swift; sourceTree = "<group>"; };
 		F26090300000000000000002 /* ProximityLightingLifecycleCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProximityLightingLifecycleCoordinator.swift; sourceTree = "<group>"; };
+		F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStatisticsFilterPolicy.swift; sourceTree = "<group>"; };
+		F26090700000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift; sourceTree = SOURCE_ROOT; };
+		F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceConfigurationSafety.swift; sourceTree = SOURCE_ROOT; };
+		F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncParameterTaskBuilder.swift; sourceTree = "<group>"; };
 		FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorState.swift; sourceTree = "<group>"; };
-		F26090700000000000000001 /* SpaceConfigurationIntegrityPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift; sourceTree = SOURCE_ROOT; };
-		F26090700000000000000002 /* SpaceConfigurationSafety.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceConfigurationSafety.swift; sourceTree = SOURCE_ROOT; };
+		FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncRetryPolicy.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -6238,8 +6238,8 @@
 				C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */,
 				C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */,
 				F26090300000000000000001 /* ProximityLightingTopologyReconciler.swift */,
-				F26090700000000000000002 /* SpaceConfigurationSafety.swift */,
-				F26090700000000000000001 /* SpaceConfigurationIntegrityPolicy.swift */,
+				F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */,
+				F26090700000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift */,
 				F26090300000000000000002 /* ProximityLightingLifecycleCoordinator.swift */,
 			);
 			path = Model;
@@ -7691,8 +7691,8 @@
 				08B54EBE30402CCB0017ED49 /* GroupProximityLightingData.swift in Sources */,
 				C8A0F00232A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
 				F26090310000000000000001 /* ProximityLightingTopologyReconciler.swift in Sources */,
-				F26090720000000000000001 /* SpaceConfigurationSafety.swift in Sources */,
-				F26090710000000000000001 /* SpaceConfigurationIntegrityPolicy.swift in Sources */,
+				F26090720000000000000001 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */,
+				F26090710000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */,
 				F26090320000000000000001 /* ProximityLightingLifecycleCoordinator.swift in Sources */,
 				08B54EBF30402CCB0017ED49 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				08B54EC030402CCB0017ED49 /* MeshFirmwareTypeUpdateViewCell.swift in Sources */,
@@ -8372,8 +8372,8 @@
 				C88554F02DE6B44C00C8B688 /* GroupProximityLightingData.swift in Sources */,
 				C8A0F00332A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
 				F26090310000000000000002 /* ProximityLightingTopologyReconciler.swift in Sources */,
-				F26090720000000000000002 /* SpaceConfigurationSafety.swift in Sources */,
-				F26090710000000000000002 /* SpaceConfigurationIntegrityPolicy.swift in Sources */,
+				F26090720000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */,
+				F26090710000000000000002 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */,
 				F26090320000000000000002 /* ProximityLightingLifecycleCoordinator.swift in Sources */,
 				C88554F12DE6B44C00C8B688 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				8C7788FF2F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift in Sources */,
@@ -9065,8 +9065,8 @@
 				C886E14C2E30DE4900D0C3A6 /* GroupProximityLightingData.swift in Sources */,
 				C8A0F00432A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
 				F26090310000000000000003 /* ProximityLightingTopologyReconciler.swift in Sources */,
-				F26090720000000000000003 /* SpaceConfigurationSafety.swift in Sources */,
-				F26090710000000000000003 /* SpaceConfigurationIntegrityPolicy.swift in Sources */,
+				F26090720000000000000003 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */,
+				F26090710000000000000003 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */,
 				F26090320000000000000003 /* ProximityLightingLifecycleCoordinator.swift in Sources */,
 				C886E14D2E30DE4900D0C3A6 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				8C7788FE2F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift in Sources */,
@@ -9768,8 +9768,8 @@
 				C8FDE9A72DD595A30002394B /* GroupProximityLightingData.swift in Sources */,
 				C8A0F00532A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
 				F26090310000000000000004 /* ProximityLightingTopologyReconciler.swift in Sources */,
-				F26090720000000000000004 /* SpaceConfigurationSafety.swift in Sources */,
-				F26090710000000000000004 /* SpaceConfigurationIntegrityPolicy.swift in Sources */,
+				F26090720000000000000004 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */,
+				F26090710000000000000004 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */,
 				F26090320000000000000004 /* ProximityLightingLifecycleCoordinator.swift in Sources */,
 				C8CD5BEA2DDABFDC00F09467 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				C89C70B12CD31DC900B9A76A /* MeshFirmwareTypeUpdateViewCell.swift in Sources */,
@@ -10450,8 +10450,8 @@
 				C8BB672B2ED3F056000C63EE /* GroupProximityLightingData.swift in Sources */,
 				C8A0F00632A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
 				F26090310000000000000005 /* ProximityLightingTopologyReconciler.swift in Sources */,
-				F26090720000000000000005 /* SpaceConfigurationSafety.swift in Sources */,
-				F26090710000000000000005 /* SpaceConfigurationIntegrityPolicy.swift in Sources */,
+				F26090720000000000000005 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */,
+				F26090710000000000000005 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */,
 				F26090320000000000000005 /* ProximityLightingLifecycleCoordinator.swift in Sources */,
 				C8BB672C2ED3F056000C63EE /* GroupPathSequenceQuickAddView.swift in Sources */,
 				8C7789012F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift in Sources */,
@@ -10603,6 +10603,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				MARKETING_VERSION = 1.2.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lumineux.lumismart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -10627,6 +10628,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				MARKETING_VERSION = 1.2.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lumineux.lumismart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -10638,7 +10640,7 @@
 			baseConfigurationReference = F10000000000000000000006 /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Archipelago/Archipelago.entitlements;
-				MARKETING_VERSION = 1.2.1;
+				MARKETING_VERSION = 1.2.3;
 			};
 			name = Debug;
 		};
@@ -10647,7 +10649,7 @@
 			baseConfigurationReference = F10000000000000000000007 /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Archipelago/Archipelago.entitlements;
-				MARKETING_VERSION = 1.2.1;
+				MARKETING_VERSION = 1.2.3;
 			};
 			name = Release;
 		};
@@ -10656,7 +10658,7 @@
 			baseConfigurationReference = F10000000000000000000009 /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SylSmart/SylSmart.entitlements;
-				MARKETING_VERSION = 1.2.1;
+				MARKETING_VERSION = 1.2.3;
 			};
 			name = Debug;
 		};
@@ -10665,7 +10667,7 @@
 			baseConfigurationReference = F1000000000000000000000A /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SylSmart/SylSmart.entitlements;
-				MARKETING_VERSION = 1.2.1;
+				MARKETING_VERSION = 1.2.3;
 			};
 			name = Release;
 		};
@@ -10801,7 +10803,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.1;
+				MARKETING_VERSION = 1.2.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Debug;
@@ -10822,7 +10824,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.1;
+				MARKETING_VERSION = 1.2.3;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Release;
@@ -10835,7 +10837,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.2.1;
+				MARKETING_VERSION = 1.2.3;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Debug;
@@ -10848,7 +10850,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.2.1;
+				MARKETING_VERSION = 1.2.3;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Release;
