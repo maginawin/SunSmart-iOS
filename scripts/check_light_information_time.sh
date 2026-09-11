@@ -9,10 +9,10 @@ coordinator="SunSmart/Main/Device/Lights/Model/LightTimeInformationCoordinator.s
 sdk_manager="$sdk_root/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshLibManager.swift"
 
 swiftc -parse-as-library \
-  "$coordinator" \
-  Tests/Device/LightTimeInformationPolicyTests.swift \
-  -o /tmp/LightTimeInformationPolicyTests
-/tmp/LightTimeInformationPolicyTests
+  SunSmart/Main/Device/InformationClockRecovery.swift \
+  Tests/Device/InformationClockRecoveryTests.swift \
+  -o /tmp/InformationClockRecoveryTests
+/tmp/InformationClockRecoveryTests
 
 swiftc -parse-as-library \
   Tests/Device/LightTimeInformationRuntimeContractTests.swift \

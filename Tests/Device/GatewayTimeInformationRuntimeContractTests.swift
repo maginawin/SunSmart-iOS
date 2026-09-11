@@ -11,9 +11,9 @@ struct GatewayTimeInformationRuntimeContractTests {
 
         require(source.contains("currentProxyReadyContext"), "Read must require Proxy Ready")
         require(source.contains("currentProxy?.nodeAddress"), "Read must match the current direct Proxy")
-        require(source.contains("TimeGet()"), "Information must send TimeGet")
-        require(source.contains("node.timeModel"), "TimeGet must use the actual Time Server Model")
-        require(!source.contains("TimeSet("), "Information coordinator must never send TimeSet")
+        require(source.contains("InformationClockRecovery(transport: transport)"), "Gateway uses the shared bounded clock recovery")
+        require(source.contains("requiresDirectProxy: true"), "Gateway recovery retains direct Proxy scope")
+        require(source.contains("context.site.canConfigureGateway(context.gatewayModel)"), "Even bound Models require configuration permission")
         require(
             source.contains("GatewayCloudSyncGenerationPolicy.next"),
             "Gateway generation policy must be reused"
@@ -22,7 +22,7 @@ struct GatewayTimeInformationRuntimeContractTests {
             source.contains(".syncGateway(gateway: gatewayModel, node: node)"),
             "Gateway Register must update only the Cloud gateway snapshot"
         )
-        require(!source.contains("site.timezone"), "Information must not read or mutate Site timezone")
+        require(!source.contains("site.timezone"), "Gateway wrapper must delegate timezone resolution without mutating Site")
         require(
             occurrences(of: "GatewayTimeInformationCoordinator.swift", in: project) >= 9,
             "Coordinator must have one file reference and four target build memberships"

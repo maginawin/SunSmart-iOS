@@ -109,7 +109,8 @@ class DeviceInformationViewController: UIViewController {
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         let isNoLongerInNavigationStack = navigationController?.viewControllers.contains(where: { $0 === self }) == false
-        if isMovingFromParent || isBeingDismissed || isNoLongerInNavigationStack {
+        if isMovingFromParent || isBeingDismissed || isNoLongerInNavigationStack
+            || navigationController?.isBeingDismissed == true {
             gatewayTimeCoordinator?.finishPage()
             lightTimeCoordinator?.finishPage()
         }
@@ -134,11 +135,7 @@ class DeviceInformationViewController: UIViewController {
             case .failed:
                 gatewayIsDisconnected = false
                 reloadDeviceInfoSection()
-                XWHUDManager.showErrorTipHUD("failed_to_retrieve_data".localizedString)
             }
-        }
-        coordinator.onCloudFailure = {
-            XWHUDManager.showErrorTipHUD("site_entry_sync_failed_to_update_server".localizedString)
         }
         gatewayTimeCoordinator = coordinator
     }
@@ -159,7 +156,6 @@ class DeviceInformationViewController: UIViewController {
             case .disconnected:
                 lightTimeSnapshot = nil
                 reloadDeviceInfoSection()
-                XWHUDManager.showErrorTipHUD("device_offline_message".localizedString)
             case .reading:
                 reloadDeviceInfoSection()
             case .succeeded(let snapshot):
@@ -167,7 +163,6 @@ class DeviceInformationViewController: UIViewController {
                 reloadDeviceInfoSection()
             case .failed:
                 reloadDeviceInfoSection()
-                XWHUDManager.showErrorTipHUD("failed_to_retrieve_data".localizedString)
             }
         }
         lightTimeCoordinator = coordinator

@@ -7,6 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F26091100000000000000002 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
+		F26091100000000000000003 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
+		F26091100000000000000004 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
+		F26091100000000000000005 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
+		F26091100000000000000006 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
 		0103BEF5A3F84EEB84317B31 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
 		084EF311302AB496008CB48A /* all_utc_timezones.json in Resources */ = {isa = PBXBuildFile; fileRef = 084EF310302AB496008CB48A /* all_utc_timezones.json */; };
 		084EF312302AB496008CB48A /* all_utc_timezones.json in Resources */ = {isa = PBXBuildFile; fileRef = 084EF310302AB496008CB48A /* all_utc_timezones.json */; };
@@ -3572,6 +3577,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		F26091100000000000000001 /* InformationClockRecovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InformationClockRecovery.swift; sourceTree = "<group>"; };
 		084EF310302AB496008CB48A /* all_utc_timezones.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = all_utc_timezones.json; sourceTree = "<group>"; };
 		08B54F0C30402CCB0017ED49 /* Lumineux.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lumineux.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		08B54F0D30402CCB0017ED49 /* Lumineux/Lumineux-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Lumineux/Lumineux-Info.plist"; sourceTree = SOURCE_ROOT; };
@@ -5526,6 +5532,7 @@
 		C898EA6C2AC2D5890023B480 /* Device */ = {
 			isa = PBXGroup;
 			children = (
+				F26091100000000000000001 /* InformationClockRecovery.swift */,
 				F26072200000000000000106 /* Filter */,
 				8C778B332FA19FB9000887FE /* Device1.5 */,
 				C822A8572EA7677500A7073B /* Reset */,
@@ -7202,6 +7209,7 @@
 				08B54CD730402CCB0017ED49 /* Database.swift in Sources */,
 				08B54CD830402CCB0017ED49 /* ProgressHUD+Extension.swift in Sources */,
 				08B54CD930402CCB0017ED49 /* DeviceInformationViewController.swift in Sources */,
+				F26091100000000000000002 /* InformationClockRecovery.swift in Sources */,
 				08B54CDA30402CCB0017ED49 /* UIColor+Extension.swift in Sources */,
 				08B54CDB30402CCB0017ED49 /* ShareAuthorityViewController.swift in Sources */,
 				08B54CDC30402CCB0017ED49 /* UILabel+Extension.swift in Sources */,
@@ -7895,6 +7903,7 @@
 				C8B7AE382EB99CBF006CA3EE /* ProgressHUD+Extension.swift in Sources */,
 				8CF15F922F962C7C0044FCF3 /* LinkedEmerFireEditState.swift in Sources */,
 				C88553DF2DE6B44C00C8B688 /* DeviceInformationViewController.swift in Sources */,
+				F26091100000000000000003 /* InformationClockRecovery.swift in Sources */,
 				C88553E02DE6B44C00C8B688 /* UIColor+Extension.swift in Sources */,
 				C88553E12DE6B44C00C8B688 /* ShareAuthorityViewController.swift in Sources */,
 				C88553E22DE6B44C00C8B688 /* UILabel+Extension.swift in Sources */,
@@ -8587,6 +8596,7 @@
 				C8B7AE3A2EB99CBF006CA3EE /* ProgressHUD+Extension.swift in Sources */,
 				8CF15F932F962C7C0044FCF3 /* LinkedEmerFireEditState.swift in Sources */,
 				C886E02F2E30DE4900D0C3A6 /* DeviceInformationViewController.swift in Sources */,
+				F26091100000000000000004 /* InformationClockRecovery.swift in Sources */,
 				C886E0302E30DE4900D0C3A6 /* UIColor+Extension.swift in Sources */,
 				C886E0312E30DE4900D0C3A6 /* ShareAuthorityViewController.swift in Sources */,
 				C886E0322E30DE4900D0C3A6 /* UILabel+Extension.swift in Sources */,
@@ -9279,6 +9289,7 @@
 				C8AAE2772A97435A00238C1C /* Database.swift in Sources */,
 				C8B7AE392EB99CBF006CA3EE /* ProgressHUD+Extension.swift in Sources */,
 				C85CB5F92BB6BE8E006598C0 /* DeviceInformationViewController.swift in Sources */,
+				F26091100000000000000005 /* InformationClockRecovery.swift in Sources */,
 				C84FBCC12DBF72070030E136 /* UIColor+Extension.swift in Sources */,
 				C89B3CB32C08650400820277 /* ShareAuthorityViewController.swift in Sources */,
 				C8ACF1352AA1B2BA00E24B4A /* UILabel+Extension.swift in Sources */,
@@ -9972,6 +9983,7 @@
 				C8BB65E02ED3F056000C63EE /* ProgressHUD+Extension.swift in Sources */,
 				8CF15F912F962C7C0044FCF3 /* LinkedEmerFireEditState.swift in Sources */,
 				C8BB65E12ED3F056000C63EE /* DeviceInformationViewController.swift in Sources */,
+				F26091100000000000000006 /* InformationClockRecovery.swift in Sources */,
 				C8BB65E22ED3F056000C63EE /* UIColor+Extension.swift in Sources */,
 				C8BB65E32ED3F056000C63EE /* ShareAuthorityViewController.swift in Sources */,
 				C8BB65E42ED3F056000C63EE /* UILabel+Extension.swift in Sources */,
