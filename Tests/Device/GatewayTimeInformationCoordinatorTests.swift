@@ -8,9 +8,6 @@ struct GatewayTimeInformationCoordinatorTests {
         testFormatsZeroAndNegativeOffsets()
         testFormatsQuarterHourOffset()
         testRejectsUnknownTime()
-        testAttemptDeduplicatesAndRestoresAfterDetach()
-        testWrongAttemptIsIgnored()
-        testFailureAllowsRetry()
         print("GatewayTimeInformationCoordinatorTests passed")
     }
 
@@ -60,35 +57,6 @@ struct GatewayTimeInformationCoordinatorTests {
             GatewayTimeInformationFormatter.makeSnapshot(seconds: 0, offsetMinutes: 480) == nil,
             "seconds == 0 must remain unknown"
         )
-    }
-
-    private static func testAttemptDeduplicatesAndRestoresAfterDetach() {
-        var core = GatewayTimeInformationAttemptCore()
-        let attempt = core.begin()
-        require(attempt != nil, "First read must start")
-        require(core.begin() == nil, "Concurrent read must be ignored")
-        core.detach()
-        require(
-            core.receive(attemptID: attempt!, seconds: 100, offsetMinutes: 480) == .restoreOnly,
-            "A response after page exit must restore the pre-send Node state"
-        )
-    }
-
-    private static func testWrongAttemptIsIgnored() {
-        var core = GatewayTimeInformationAttemptCore()
-        require(core.begin() != nil, "Read must start")
-        require(
-            core.receive(attemptID: UUID(), seconds: 100, offsetMinutes: 480) == .ignored,
-            "A stale response must not finish the active read"
-        )
-        require(core.begin() == nil, "A stale response must leave the active read in progress")
-    }
-
-    private static func testFailureAllowsRetry() {
-        var core = GatewayTimeInformationAttemptCore()
-        let first = core.begin()!
-        require(core.fail(attemptID: first) == .failure(showError: true), "Timeout must report one read failure")
-        require(core.begin() != nil, "A terminal failure must allow a tap retry")
     }
 
     private static func require(

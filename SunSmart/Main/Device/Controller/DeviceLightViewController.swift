@@ -700,7 +700,9 @@ class DeviceLightViewController: UIViewController {
 //        MeshAPI.setLightnessRange(address: node.primaryUnicastAddress, range: 255...65535)
         let showsSceneSection = !node.isEmergencySignController
         let lightTimeContext = LightTimeInformationContext(
-            canConfigureTimeServer: space.deviceOperates.contains(.edit)
+            canConfigureTimeServer: { [weak self] in
+                self?.space.deviceOperates.contains(.edit) == true
+            }
         )
         pushDeviceInformationController(
             DeviceInformationViewController(

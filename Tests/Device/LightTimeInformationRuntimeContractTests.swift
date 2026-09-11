@@ -11,16 +11,35 @@ struct LightTimeInformationRuntimeContractTests {
         let informationController = try source(at: arguments[3])
         let sdkManager = try source(at: arguments[4])
         let project = try source(at: arguments[5])
+        let sharedClock = try source(at: "SunSmart/Main/Device/InformationClockRecovery.swift")
+
+        require(
+            sharedClock.contains("status.applicationKeyIndex == self.applicationKey.index")
+                && sharedClock.contains("status.elementAddress == model.parentElement?.unicastAddress")
+                && sharedClock.contains("status.modelIdentifier == model.modelIdentifier")
+                && sharedClock.contains("status.companyIdentifier == model.companyIdentifier"),
+            "The SDK adapter must validate the complete binding response identity"
+        )
+        require(
+            sharedClock.contains("model.parentElement?.unicastAddress")
+                && sharedClock.contains("message, to: MeshAddress(destination), using: applicationKey"),
+            "Clock commands must target the actual Element with the current AppKey"
+        )
+        require(
+            sharedClock.contains("ensureLocalTimeClientModelBinding()")
+                && sharedClock.contains("node.timeSetupModel")
+                && sharedClock.contains("SiteTimeSetMessageFactory.resolve(node: node, at: date)"),
+            "Both entries must share local-client preparation, setup capability and Site timezone resolution"
+        )
+        require(
+            occurrences(of: "InformationClockRecovery.swift in Sources */", in: project) == 10,
+            "The shared recovery must be compiled by all five brands"
+        )
 
         require(coordinator.contains("node.timeModel"), "Capability must come from the actual Time Server Model")
-        require(coordinator.contains("ensureLocalTimeClientModelBinding"), "Local Time Client binding must be repaired")
-        require(coordinator.contains("ConfigModelAppBind"), "Remote Time Server binding must be repairable")
-        require(coordinator.contains("canConfigureTimeServer"), "Remote binding must be permission-aware")
-        require(coordinator.contains("ConfigModelAppStatus"), "Binding must validate the typed status")
-        require(coordinator.contains("status.applicationKeyIndex == applicationKey.index"), "Binding must validate AppKey")
-        require(coordinator.contains("status.elementAddress == model.parentElement?.unicastAddress"), "Binding must validate the actual Element")
-        require(coordinator.contains("TimeGet()"), "A supported light must send TimeGet")
-        require(!coordinator.contains("TimeSet("), "Light Information must remain read-only")
+        require(coordinator.contains("InformationClockRecovery(transport: transport)"), "Use the shared bounded recovery")
+        require(coordinator.contains("canConfigure: context.canConfigureTimeServer"), "Recovery must use current Light permission")
+        require(coordinator.contains("requiresDirectProxy: false"), "Light may use another Mesh Proxy")
         require(!coordinator.contains("ConfigModelAppUnbind"), "A completed remote binding must not be rolled back")
         require(!coordinator.contains("syncGateway"), "Light Information must not trigger Gateway cloud sync")
         require(
@@ -32,7 +51,7 @@ struct LightTimeInformationRuntimeContractTests {
 
         require(
             lightController.contains("LightTimeInformationContext(")
-                && lightController.contains("canConfigureTimeServer: space.deviceOperates.contains(.edit)"),
+                && lightController.contains("self?.space.deviceOperates.contains(.edit) == true"),
             "Only the Light detail entry may inject its permission-aware context"
         )
         require(
@@ -45,8 +64,8 @@ struct LightTimeInformationRuntimeContractTests {
             "Unsupported lights must show both rows with localized Not supported values"
         )
         require(
-            informationController.contains("\"device_offline_message\".localizedString"),
-            "A disconnected light must show the localized offline Toast"
+            !informationController.contains("\"device_offline_message\".localizedString"),
+            "Information clock disconnection must remain silent"
         )
         require(
             informationController.contains("lightTimeCoordinator?.finishPage()"),

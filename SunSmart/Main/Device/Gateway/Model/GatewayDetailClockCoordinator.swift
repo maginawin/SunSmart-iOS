@@ -268,6 +268,7 @@ final class GatewayDetailClockCoordinator {
 
     private let context: GatewayInformationContext
     private var activeOperationID: UUID?
+    private var clockLease: InformationClockLease?
     private var activeBackup: NodeTimeBackup?
     private var isAttached = true
 
@@ -291,6 +292,8 @@ final class GatewayDetailClockCoordinator {
             return false
         }
 
+        guard let lease = InformationClockLease.acquire(node: context.node) else { return false }
+        clockLease = lease
         let operationID = UUID()
         activeOperationID = operationID
         let backup = makeBackup()
@@ -354,6 +357,8 @@ final class GatewayDetailClockCoordinator {
             completion(.failure(.missingApplicationKey))
             return false
         }
+        guard let lease = InformationClockLease.acquire(node: context.node) else { return false }
+        clockLease = lease
         let operationID = UUID()
         activeOperationID = operationID
         let backup = makeBackup()
@@ -548,6 +553,8 @@ final class GatewayDetailClockCoordinator {
     private func finishOperation(_ operationID: UUID) -> Bool {
         guard activeOperationID == operationID else { return false }
         activeOperationID = nil
+        clockLease?.release()
+        clockLease = nil
         let backup = activeBackup
         activeBackup = nil
         guard isAttached else {

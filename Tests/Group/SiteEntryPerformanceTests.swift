@@ -81,25 +81,58 @@ enum Node {
         UserData.currentUserId = "other"
         require(readSnapshot.currentNetwork == nil, "account switch must invalidate snapshot")
 
-        for path in ["/sitespace/get/siteprops", "/sitespace/get/spaceprops", "/sitespace/sync/siteprops", "/sitespace/sync/spaceprops"] {
-            var request = URLRequest(url: URL(string: "https://example.invalid/srv2" + path)!)
-            request.httpMethod = "POST"
-            request.httpBody = Data("{\"siteId\":\"test\"}".utf8)
-            request.setValue("gzip", forHTTPHeaderField: "Content-Encoding")
-            request.setValue("gzip", forHTTPHeaderField: "Accept-Encoding")
-            let small = try HTTPBodyEncoding.prepare(request)
-            require(small.httpBody == request.httpBody && small.value(forHTTPHeaderField: "Content-Encoding") == nil, "small JSON must use identity encoding")
-            request.httpBody = Data(String(repeating: "{\"payload\":123}", count: 1000).utf8)
-            let large = try HTTPBodyEncoding.prepare(request)
-            if path.contains("/sync/") {
-                require(large.value(forHTTPHeaderField: "Content-Encoding") == "gzip", "upload must declare actual gzip")
-                let restored = try large.httpBody!.gunzipped()
-                require(restored == request.httpBody && large.httpBody!.count < request.httpBody!.count, "gzip must round-trip without loss")
-            } else {
-                require(large.httpBody == request.httpBody && large.value(forHTTPHeaderField: "Content-Encoding") == nil, "read request must not claim gzip")
+        let uploads = ["/sitespace/sync/siteprops", "/sitespace/sync/spaceprops"]
+        let paths = ["/sitespace/get/siteprops", "/sitespace/get/spaceprops"] + uploads
+        let hosts = ["www.mericher.com", "sunsmart-ap.mericher.com", "sunsmart-us.mericher.com", "sunsmart-eu.mericher.com"]
+        let samples: [[String: Any]] = [
+            ["site": ["siteName": "测试 Site", "spaces": []], "user": ["userId": "test"]],
+            ["site": ["siteName": "New Site"], "user": ["userId": "test"], "devicesInSetle": 100],
+            ["siteId": "test", "spaceId": "space", "userId": "test", "spaces": []],
+            ["payload": String(repeating: "中英文 test ", count: 1000)]
+        ]
+        for host in hosts {
+            for path in paths {
+                for sample in samples {
+                    var request = URLRequest(url: URL(string: "https://" + host + "/srv2" + path)!)
+                    request.httpMethod = "POST"
+                    request.httpBody = try JSONSerialization.data(withJSONObject: sample)
+                    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+                    request.setValue("gzip", forHTTPHeaderField: "Content-Encoding")
+                    request.setValue("gzip", forHTTPHeaderField: "Accept-Encoding")
+                    request.setValue("1", forHTTPHeaderField: "Content-Length")
+                    let prepared = try HTTPBodyEncoding.prepare(request)
+                    let shouldCompress = uploads.contains(path)
+                    if shouldCompress {
+                        require(prepared.httpBody!.isGzipped, "upload must contain actual gzip bytes")
+                        let decoded = try prepared.httpBody!.gunzipped()
+                        require(decoded == request.httpBody, "gzip must preserve every JSON byte including UTF-8")
+                        require(prepared.value(forHTTPHeaderField: "Content-Encoding") == "gzip", "gzip body must have matching header")
+                    } else {
+                        require(prepared.httpBody == request.httpBody, "queries must retain JSON in every region")
+                        require(prepared.value(forHTTPHeaderField: "Content-Encoding") == nil, "identity body must not declare gzip")
+                    }
+                    if uploads.contains(path) {
+                        require(prepared.value(forHTTPHeaderField: "Content-Length") == nil, "upload length must be calculated from final bytes")
+                    }
+                    require(prepared.value(forHTTPHeaderField: "Content-Type") == "application/json", "media type remains JSON")
+                    require(prepared.value(forHTTPHeaderField: "Accept-Encoding") == "gzip", "response negotiation must remain")
+                    let repeated = try HTTPBodyEncoding.prepare(prepared)
+                    require(repeated.httpBody == prepared.httpBody && repeated.allHTTPHeaderFields == prepared.allHTTPHeaderFields,
+                            "repeated preparation must preserve body and headers")
+                }
             }
-            require(large.value(forHTTPHeaderField: "Accept-Encoding") == "gzip", "response compression negotiation must remain")
         }
-        print("PASS: SDK scalar projection, address semantics, real SQLite snapshot invalidation and gzip round-trip")
+        for method in ["GET", "POST"] {
+            var request = URLRequest(url: URL(string: "https://www.mericher.com/srv2/sitespace/sync/siteprops")!)
+            request.httpMethod = method
+            for body in [nil, Data(), Data("{}".utf8)] as [Data?] {
+                if method == "POST", body?.isEmpty == false { continue }
+                request.httpBody = body
+                let prepared = try HTTPBodyEncoding.prepare(request)
+                require(prepared.httpBody == body && prepared.value(forHTTPHeaderField: "Content-Encoding") == nil,
+                        "absent/empty bodies and non-POST requests must not be compressed")
+            }
+        }
+        print("PASS: SDK address semantics, SQLite snapshot invalidation and gzip request encoding in all regions")
     }
 }

@@ -52,8 +52,8 @@ struct GatewayInformationTimeRowsContractTests {
             "Leaving the page must detach the time coordinator"
         )
         require(
-            informationSource.contains("XWHUDManager.showErrorTipHUD(\"failed_to_retrieve_data\".localizedString)"),
-            "A read failure must use the approved localized Toast"
+            !informationSource.contains("XWHUDManager.showErrorTipHUD(\"failed_to_retrieve_data\".localizedString)"),
+            "Clock read failures must remain silent"
         )
         require(
             english.contains("\"gateway_date_time\" = \"Date time\";")

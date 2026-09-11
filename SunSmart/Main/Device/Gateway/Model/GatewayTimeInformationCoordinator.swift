@@ -7,13 +7,6 @@ struct GatewayTimeInformationSnapshot: Equatable {
     let timeZoneText: String
 }
 
-enum GatewayTimeInformationDecision: Equatable {
-    case success(GatewayTimeInformationSnapshot)
-    case failure(showError: Bool)
-    case restoreOnly
-    case ignored
-}
-
 enum GatewayTimeInformationFormatter {
     static let meshEpochOffset: TimeInterval = 946_684_800
 
@@ -53,45 +46,6 @@ enum GatewayTimeInformationFormatter {
     }
 }
 
-struct GatewayTimeInformationAttemptCore {
-    private var activeAttemptID: UUID?
-    private var isAttached = true
-
-    mutating func begin() -> UUID? {
-        guard activeAttemptID == nil, isAttached else { return nil }
-        let attemptID = UUID()
-        activeAttemptID = attemptID
-        return attemptID
-    }
-
-    mutating func receive(
-        attemptID: UUID,
-        seconds: UInt64,
-        offsetMinutes: Int
-    ) -> GatewayTimeInformationDecision {
-        guard activeAttemptID == attemptID else { return .ignored }
-        activeAttemptID = nil
-        guard isAttached else { return .restoreOnly }
-        guard let snapshot = GatewayTimeInformationFormatter.makeSnapshot(
-            seconds: seconds,
-            offsetMinutes: offsetMinutes
-        ) else {
-            return .failure(showError: true)
-        }
-        return .success(snapshot)
-    }
-
-    mutating func fail(attemptID: UUID) -> GatewayTimeInformationDecision {
-        guard activeAttemptID == attemptID else { return .ignored }
-        activeAttemptID = nil
-        return isAttached ? .failure(showError: true) : .restoreOnly
-    }
-
-    mutating func detach() {
-        isAttached = false
-    }
-}
-
 #if canImport(NordicSigMeshSDK)
 import NordicSigMeshSDK
 
@@ -112,28 +66,20 @@ enum GatewayTimeInformationReadState: Equatable {
 
 final class GatewayTimeInformationCoordinator {
     var onReadState: ((GatewayTimeInformationReadState) -> Void)?
-    var onCloudFailure: (() -> Void)?
-
-    private struct RuntimeAttempt {
-        let id: UUID
-        let previousTimestamp: UInt64
-        let previousTimeZone: TimeZone?
-    }
-
     private let context: GatewayInformationContext
-    private var core = GatewayTimeInformationAttemptCore()
-    private var runtimeAttempt: RuntimeAttempt?
+    private var recovery: InformationClockRecovery?
     private var isPageAttached = true
 
     init(context: GatewayInformationContext) {
         self.context = context
     }
 
+    deinit { recovery?.detach() }
+
     @discardableResult
     func read() -> Bool {
         dispatchPrecondition(condition: .onQueue(.main))
-        guard isPageAttached else { return false }
-
+        guard isPageAttached, recovery == nil else { return false }
         let node = context.node
         let manager = MeshLibManager.manager
         guard let readyContext = manager.currentProxyReadyContext,
@@ -142,90 +88,38 @@ final class GatewayTimeInformationCoordinator {
             onReadState?(.disconnected)
             return false
         }
-        guard let model = node.timeModel else {
+        guard let transport = InformationClockMeshTransport(
+            node: node,
+            requiresDirectProxy: true,
+            canConfigure: { [context] in context.site.canConfigureGateway(context.gatewayModel) }
+        ) else {
             onReadState?(.failed)
             return false
         }
-        guard let attemptID = core.begin() else { return false }
-
-        runtimeAttempt = RuntimeAttempt(
-            id: attemptID,
-            previousTimestamp: node.timestamp,
-            previousTimeZone: node.timezone
-        )
-        onReadState?(.reading)
-        MeshAPI.sendMessage(message: TimeGet(), model: model, timeout: 10) { [self] response in
-            DispatchQueue.main.async {
-                self.settle(attemptID: attemptID, response: response)
+        let operation = InformationClockRecovery(transport: transport)
+        recovery = operation
+        operation.onFinish = { [weak self] sample in
+            guard let self, self.isPageAttached else { return }
+            self.recovery = nil
+            guard let sample,
+                  let snapshot = GatewayTimeInformationFormatter.makeSnapshot(
+                    seconds: sample.seconds, offsetMinutes: sample.offsetMinutes
+                  ) else {
+                self.onReadState?(.failed)
+                return
             }
+            self.onReadState?(.succeeded(snapshot))
+            self.markGatewayDirtyAndSync()
         }
-        return true
+        onReadState?(.reading)
+        return operation.start()
     }
 
     func finishPage() {
         dispatchPrecondition(condition: .onQueue(.main))
-        guard isPageAttached else { return }
         isPageAttached = false
-        core.detach()
-    }
-
-    private func settle(attemptID: UUID, response: StaticMeshResponse?) {
-        dispatchPrecondition(condition: .onQueue(.main))
-        guard let runtimeAttempt, runtimeAttempt.id == attemptID else { return }
-
-        guard let status = response as? TimeStatus else {
-            let decision = core.fail(attemptID: attemptID)
-            if response != nil {
-                restoreNode(using: runtimeAttempt)
-            }
-            finishRead(attemptID: attemptID, decision: decision)
-            return
-        }
-
-        let offsetMinutes = status.time.tzOffset.secondsFromGMT() / 60
-        let decision = core.receive(
-            attemptID: attemptID,
-            seconds: status.time.seconds,
-            offsetMinutes: offsetMinutes
-        )
-        switch decision {
-        case .success(let snapshot):
-            let node = context.node
-            node.timestamp = status.time.seconds
-            node.timezone = status.time.tzOffset
-            guard node.savePropertys() else {
-                restoreNode(using: runtimeAttempt)
-                finishRead(attemptID: attemptID, decision: .failure(showError: true))
-                return
-            }
-            self.runtimeAttempt = nil
-            onReadState?(.succeeded(snapshot))
-            markGatewayDirtyAndSync()
-        case .failure, .restoreOnly:
-            restoreNode(using: runtimeAttempt)
-            finishRead(attemptID: attemptID, decision: decision)
-        case .ignored:
-            break
-        }
-    }
-
-    private func finishRead(
-        attemptID: UUID,
-        decision: GatewayTimeInformationDecision
-    ) {
-        guard runtimeAttempt?.id == attemptID else { return }
-        runtimeAttempt = nil
-        guard isPageAttached else { return }
-        if case .failure(let showError) = decision, showError {
-            onReadState?(.failed)
-        }
-    }
-
-    private func restoreNode(using attempt: RuntimeAttempt) {
-        let node = context.node
-        node.timestamp = attempt.previousTimestamp
-        node.timezone = attempt.previousTimeZone
-        _ = node.savePropertys()
+        recovery?.detach()
+        recovery = nil
     }
 
     private func markGatewayDirtyAndSync() {
@@ -238,7 +132,7 @@ final class GatewayTimeInformationCoordinator {
         )
         gatewayModel.syncCloudError = nil
         guard gatewayModel.save() else {
-            onCloudFailure?()
+            logCloudFailure()
             return
         }
 
@@ -251,12 +145,18 @@ final class GatewayTimeInformationCoordinator {
                 guard self.isPageAttached else { return }
                 switch state {
                 case .failure, .cancel:
-                    self.onCloudFailure?()
+                    self.logCloudFailure()
                 case .wait, .inProgress, .successful:
                     break
                 }
             }
         }
+    }
+
+    private func logCloudFailure() {
+        #if DEBUG
+        print("[InformationClock] Gateway time cloud synchronization failed")
+        #endif
     }
 }
 #endif
