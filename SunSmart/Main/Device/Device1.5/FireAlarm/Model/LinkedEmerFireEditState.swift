@@ -25,7 +25,7 @@ final class LinkedEmerFireEditState {
 
     var associatedGroupAddresses: [UInt16] = []
     var fireAlarmBrightness = 100
-    var powerLossBrightness = 10
+    var powerLossBrightness = EmergencyFireControllerModeSettings.powerLossDefaultValue.triggerBrightness
     var triggerIntervalSeconds = 5
     var restoreActionType: EmergencyFireRestoreActionType = .restoreAuto
     var restoreBrightness = 100

@@ -112,7 +112,7 @@ struct EmergencyFireControllerModeSettings: Codable, Equatable {
 
     static let powerLossDefaultValue = EmergencyFireControllerModeSettings(
         associateGroupAddresses: [],
-        triggerBrightness: 10,
+        triggerBrightness: 100,
         triggerIntervalSeconds: 5,
         triggerCount: 0xFFFF,
         triggerActionPreset: nil,
