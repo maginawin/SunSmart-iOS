@@ -875,6 +875,50 @@ class CloudSynchronizationHandle: NSObject {
         }
     }
 
+    /// Persist only the Site version actually accepted by this request.
+    @MainActor
+    private func confirmSiteUpload(api: NetowrkReqeustApi, response: [String: Any]) -> Bool {
+        let site: SiteData
+        switch operation {
+        case .syncSite(let value, _), .addSpaces(let value, _): site = value
+        default: return true
+        }
+        guard let submitted = api.configurationSiteTimestamp else { return false }
+        let previousTimestamp = site.lastUploadCloudTimestamp
+        let previousMask = site.pendingSitePropsMask
+        let previousPendingTimestamp = site.pendingSitePropsTimestamp
+        let previousError = site.syncCloudError
+        if case .siteAdd = api, let resources = JSON(response)["data"]["addrLists"].dictionaryObject {
+            site.setOwnerProvisioner(addressData: resources)
+        }
+        if let initialSubmission = api.initialSiteTimeZoneSubmission {
+            let current = SitePropsLocalState(
+                values: SitePropsValues(siteName: site.name, imageId: site.imageId,
+                    timezone: site.timezone.flatMap(SiteTimeZoneValue.init(storageValue:))),
+                lastUpdate: site.lastUpdate,
+                lastUploadCloudTimestamp: previousTimestamp,
+                pending: SitePropsPendingState(fields: previousMask, timestamp: previousPendingTimestamp)
+            )
+            let reconciled = SitePropsEditPolicy.localStateAfterSuccessfulInitialSiteUpload(
+                current: current, submission: initialSubmission)
+            site.lastUploadCloudTimestamp = reconciled.lastUploadCloudTimestamp
+            site.pendingSitePropsMask = reconciled.pending.fields
+            site.pendingSitePropsTimestamp = reconciled.pending.timestamp
+        } else {
+            site.lastUploadCloudTimestamp = SpaceConfigurationIntegrityPolicy.confirmedTimestamp(
+                previous: previousTimestamp, submitted: submitted)
+        }
+        site.syncCloudError = nil
+        guard site.save() else {
+            site.lastUploadCloudTimestamp = previousTimestamp
+            site.pendingSitePropsMask = previousMask
+            site.pendingSitePropsTimestamp = previousPendingTimestamp
+            site.syncCloudError = previousError
+            return false
+        }
+        return true
+    }
+
     /// 开始同步到服务器
     func syncOperation() {
         if waitTimer != nil {
@@ -1001,7 +1045,6 @@ class CloudSynchronizationHandle: NSObject {
                 self.finishExportFailure()
                 return
             }
-            let initialSiteTimeZoneSubmission = api.initialSiteTimeZoneSubmission
             #if DEBUG
             print("""
             [CloudSync][Request]
@@ -1047,48 +1090,35 @@ class CloudSynchronizationHandle: NSObject {
                     }
                 }
             }
-            // Creation is already accepted even if the subsequent readback fails.
-            // Persist that fact so retry uses siteUpload rather than siteAdd again.
-            if case .success(let response) = requestResult, case .siteAdd = api,
-               case .syncSite(let site, _) = self.operation {
-                await MainActor.run {
-                    if let resources = JSON(response)["data"]["addrLists"].dictionaryObject {
-                        site.setOwnerProvisioner(addressData: resources)
-                    }
-                    if let submitted = api.configurationSiteTimestamp {
-                        site.lastUploadCloudTimestamp = SpaceConfigurationIntegrityPolicy.confirmedTimestamp(
-                            previous: site.lastUploadCloudTimestamp, submitted: submitted)
-                    }
-                    if !site.save() { result = .failure(SpaceConfigurationSafety.uploadUnconfirmed) }
-                }
+            // Confirm the Site independently of per-Space local persistence.
+            // First creation must retain its assigned resources even if a Space save fails.
+            if case .success(let response) = requestResult,
+               !self.confirmSiteUpload(api: api, response: response) {
+                result = .failure(SpaceConfigurationSafety.uploadUnconfirmed)
             }
             guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
-            // Compare logical configuration; provisioner address allocations are
-            // intentionally excluded from this comparison, including first upload.
-            if case .success = result {
+            if case .success = requestResult {
                 for payload in submissions {
                     guard let id = payload["uuid"] as? String,
-                          let space = self.configurationSpaces.first(where: { $0.id == id }) else {
-                        result = .failure(NetworkApiError(code: -2,
-                            message: "proximity_lighting_export_invalid".localizedString,
-                            httpStatusCode: nil, responseBody: nil))
-                        break
+                          let space = self.configurationSpaces.first(where: { $0.id == id }),
+                          let context = contexts[id] else {
+                        result = .failure(SpaceConfigurationSafety.uploadUnconfirmed)
+                        continue
                     }
-                    let verification = await SpaceConfigurationSafety.resumeUpload(space)
-                    guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
-                    switch verification {
-                    case .success: confirmedConfigurationIds.insert(id)
-                    case .failure(let error): result = .failure(error)
+                    if SpaceConfigurationSafety.finishAcceptedSubmission(context, space: space) {
+                        confirmedConfigurationIds.insert(id)
+                    } else {
+                        result = .failure(SpaceConfigurationSafety.uploadUnconfirmed)
                     }
                 }
             }
             let completionResult = result
-            let verifiedConfigurationIds = confirmedConfigurationIds
+            let completedConfigurationIds = confirmedConfigurationIds
             await MainActor.run {
                 guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
                 guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
                 switch completionResult {
-                case .success(let response):
+                case .success:
                     #if DEBUG
                     print("""
                     [CloudSync][Success]
@@ -1098,72 +1128,7 @@ class CloudSynchronizationHandle: NSObject {
                     """)
                     #endif
                     self.state = .successful
-                    // 更新缓存
-                    switch self.operation {
-                    case .syncSite(let site, let syncSpaces):
-                        if !site.uploadCloud { // 首次上传site，更新owner的地址资源数据（将地址提交到服务器分配，并且服务器重分配地址给owner）
-                           if let provisionerData = JSON(response)["data"]["addrLists"].dictionaryObject {
-                                site.setOwnerProvisioner(addressData: provisionerData)
-                                
-                                // 更新完服务器分配地址后再次提交到服务器，首次上传的site还是最初mesh分配的地址
-//                                site.lastUpdate = Int64(Date().timeIntervalSince1970)
-//                                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
-                            }
-                        }
-                        if let initialSiteTimeZoneSubmission {
-                            let current = SitePropsLocalState(
-                                values: SitePropsValues(
-                                    siteName: site.name,
-                                    imageId: site.imageId,
-                                    timezone: site.timezone.flatMap(SiteTimeZoneValue.init(storageValue:))
-                                ),
-                                lastUpdate: site.lastUpdate,
-                                lastUploadCloudTimestamp: site.lastUploadCloudTimestamp,
-                                pending: SitePropsPendingState(
-                                    fields: site.pendingSitePropsMask,
-                                    timestamp: site.pendingSitePropsTimestamp
-                                )
-                            )
-                            let reconciled = SitePropsEditPolicy.localStateAfterSuccessfulInitialSiteUpload(
-                                current: current,
-                                submission: initialSiteTimeZoneSubmission
-                            )
-                            site.lastUploadCloudTimestamp = reconciled.lastUploadCloudTimestamp
-                            site.pendingSitePropsMask = reconciled.pending.fields
-                            site.pendingSitePropsTimestamp = reconciled.pending.timestamp
-                        } else {
-                            if let submitted = api.configurationSiteTimestamp {
-                                site.lastUploadCloudTimestamp = SpaceConfigurationIntegrityPolicy.confirmedTimestamp(
-                                    previous: site.lastUploadCloudTimestamp, submitted: submitted)
-                            }
-                        }
-                        site.syncCloudError = nil
-                        site.save()
-                        syncSpaces.forEach({
-                            $0.syncCloudError = nil
-                            $0.save()
-                        })
-                        
-                    case .addSpaces(let site, let spaces):
-                        if let submitted = api.configurationSiteTimestamp {
-                                site.lastUploadCloudTimestamp = SpaceConfigurationIntegrityPolicy.confirmedTimestamp(
-                                    previous: site.lastUploadCloudTimestamp, submitted: submitted)
-                            }
-                        site.syncCloudError = nil
-                        spaces.forEach({
-                            $0.syncCloudError = nil
-                            $0.save()
-                        })
-                        site.save()
-                    case .syncSpace(let space):
-                        space.syncCloudError = nil
-                        space.save()
-                    case .syncGateway(let gateway, _):
-                        gateway.lastUploadCloudTimestamp = gateway.lastUpdate
-                        gateway.syncCloudError = nil
-                        gateway.save()
-                    }
-                    
+
                 case .failure(let error):
                     #if DEBUG
                     print("""
@@ -1181,12 +1146,12 @@ class CloudSynchronizationHandle: NSObject {
                     case .syncSite(let site, let syncSpaces):
                         site.syncCloudError = error
                         site.save()
-                        syncSpaces.filter { !verifiedConfigurationIds.contains($0.id) }.forEach({
+                        syncSpaces.filter { !completedConfigurationIds.contains($0.id) }.forEach({
                             $0.syncCloudError = error
                             $0.save()
                         })
                     case .addSpaces(_, let spaces):
-                        spaces.filter { !verifiedConfigurationIds.contains($0.id) }.forEach({
+                        spaces.filter { !completedConfigurationIds.contains($0.id) }.forEach({
                             $0.syncCloudError = error
                             $0.save()
                         })

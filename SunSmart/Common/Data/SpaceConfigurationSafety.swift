@@ -160,7 +160,7 @@ enum SpaceConfigurationSafety {
     }
 
     /// A GET must not resurrect devices while their explicit deletion or local
-    /// recovery is waiting for the existing upload/readback flow to finish.
+    /// recovery is waiting for upload confirmation to finish.
     static func preservesLocalChanges(_ space: SpaceData) -> Bool {
         guard let state = try? recoveryState(space) else { return true }
         guard state.preservesUpload else { return false }
@@ -435,34 +435,48 @@ enum SpaceConfigurationSafety {
         try? saveState(state, space: space)
     }
 
+    /// A successful upload confirms its submitted version without a configuration GET.
+    /// Keep the accepted receipt until all local persistence has completed.
+    static func finishAcceptedSubmission(_ context: SpaceRecoveryState, space: SpaceData) -> Bool {
+        finishSubmission(context, space: space)
+    }
+
     private static func finishSubmission(_ context: SpaceRecoveryState, space: SpaceData) -> Bool {
         lock.lock(); defer { lock.unlock() }
         do {
             var state = try recoveryState(space)
             guard isCurrent(context, space: space), let submission = state.submission,
-                  submission.id == context.submission?.id, submission.phase == .verified else { return false }
+                  state.authority == .writable, space.permission != .visitor,
+                  !space.requiresPasswordVerification, !space.disableEditorPermission,
+                  submission.id == context.submission?.id,
+                  submission.phase == .accepted || submission.phase == .verified else { return false }
             guard confirmLocalChanges(space, payload: ["updateTimestamp": submission.timestamp,
                                                        "nodes": [[String: Any]]()]) else { return false }
             let previous = space.lastUploadCloudTimestamp
+            let previousError = space.syncCloudError
             space.lastUploadCloudTimestamp = SpaceConfigurationIntegrityPolicy.confirmedTimestamp(
                 previous: previous, submitted: submission.timestamp)
             space.syncCloudError = nil
-            guard space.save() else { space.lastUploadCloudTimestamp = previous; return false }
+            guard space.save() else {
+                space.lastUploadCloudTimestamp = previous
+                space.syncCloudError = previousError
+                return false
+            }
             // Establish the baseline on FIRST upload too; otherwise adding the next
             // device compares the changed local topology to the pre-add cloud copy.
             UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
             state.authorizationBaseline = readbackConfiguration(submission.configuration, timestamp: submission.timestamp, space: space)
-            state.submission = nil
-            try saveState(state, space: space)
             let blockedKey = "spaceConfigurationBlocked." + key(space)
             if ["uploadReadbackUnconfirmed", "uploadReadbackConflict"].contains(UserDefaults.standard.string(forKey: blockedKey) ?? "") {
                 UserDefaults.standard.removeObject(forKey: blockedKey)
             }
+            state.submission = nil
+            try saveState(state, space: space)
             return true
         } catch { return false }
     }
 
-    /// Reconcile the saved submission without exporting or writing to the server.
+    /// Accepted uploads only need local completion. Read back unknown outcomes.
     @MainActor
     static func resumeUpload(_ space: SpaceData) async -> Swift.Result<Void, NetworkApiError> {
         do {
@@ -471,7 +485,7 @@ enum SpaceConfigurationSafety {
             guard context.phase == .active else { return .failure(uploadUnconfirmed) }
             guard context.authority == .writable else { return .failure(authorityError(space)) }
             guard let submission = context.submission else { return .success(()) }
-            if submission.phase == .verified {
+            if submission.phase == .accepted || submission.phase == .verified {
                 return finishSubmission(context, space: space) ? .success(()) : .failure(uploadUnconfirmed)
             }
             for attempt in 0..<3 {
@@ -579,7 +593,7 @@ enum SpaceConfigurationSafety {
             return .failure(error)
         case .success:
             guard markSubmissionAccepted(context, space: space) else { return .failure(uploadUnconfirmed) }
-            return await resumeUpload(space)
+            return finishAcceptedSubmission(context, space: space) ? .success(()) : .failure(uploadUnconfirmed)
         }
     }
 

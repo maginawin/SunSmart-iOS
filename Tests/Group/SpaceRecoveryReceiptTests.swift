@@ -88,23 +88,17 @@ final class NetworkRequest {
         precondition(initialState.siteCreationTimestamp == 45)
         precondition(SpaceConfigurationSafety.markSubmissionAccepted(context, space: a))
         request.result = .failure(.noNetwork)
+        let callsBeforeAccepted = request.calls
         let offline = await SpaceConfigurationSafety.resumeUpload(a)
-        if case .success = offline { preconditionFailure("offline readback cannot confirm") }
-        precondition(SpaceConfigurationSafety.hasPendingUpload(a) && !SpaceConfigurationSafety.isBlocked(a))
-        // No extra edit or upload: the persisted pending task finishes on reconnect.
-        remote(a)
-        var remapped = a.payload
-        remapped["provisioners"] = [["allocatedUnicastRange": [["lowAddress": "0001", "highAddress": "1000"]]]]
-        request.result = .success(["data": remapped])
-        let resumed = await SpaceConfigurationSafety.resumeUpload(a)
-        if case .failure = resumed { preconditionFailure("reconnected readback must finish") }
+        if case .failure = offline { preconditionFailure("accepted upload must finish locally even while offline") }
+        precondition(request.calls == callsBeforeAccepted)
         precondition(!SpaceConfigurationSafety.hasPendingUpload(a) && !SpaceConfigurationSafety.preservesLocalChanges(a))
         precondition(SpaceConfigurationSafety.testMigrated(a) && request.uploads == 0)
         a.lastUpdate = 51
         let nextAdd = await SpaceConfigurationSafety.prepareUpload(a, payload: a.payload)
         precondition(nextAdd, "first upload must establish a baseline before the next addition")
 
-        // Failed receipt write must retain a durable verified submission.
+        // Failed receipt write must retain a durable accepted submission.
         addReceipt(b)
         let bContext = SpaceConfigurationSafety.prepareSubmission(b, payload: b.payload)!
         precondition(SpaceConfigurationSafety.markSubmissionAccepted(bContext, space: b))
@@ -187,7 +181,7 @@ final class NetworkRequest {
 
         let g = SpaceData("G")
         let gContext = SpaceConfigurationSafety.prepareSubmission(g, payload: g.payload)!
-        precondition(SpaceConfigurationSafety.markSubmissionAccepted(gContext, space: g))
+        precondition(!SpaceConfigurationSafety.finishAcceptedSubmission(gContext, space: g))
         var stale = g.payload
         stale["deviceCount"] = 0
         stale["nodes"] = [["uuid": "old-device", "unicastAddress": "0002"]]
@@ -229,6 +223,8 @@ final class NetworkRequest {
         precondition(!SpaceConfigurationSafety.canAutomaticallyUpload(a))
         precondition(SpaceConfigurationSafety.requiresConfigurationReview(a))
 
+        try await testCloudSiteConfirmation()
+        try await testDirectUploadConfirmation()
         try await testEmptyGroupAddressRecovery()
         try await testSiteHandoffReadback()
         try await testImportPreparation()
@@ -239,7 +235,72 @@ final class NetworkRequest {
         UserData.currentUserId = "another-account"
         precondition(!SpaceConfigurationSafety.isCurrent(accountContext, space: b))
         UserData.currentUserId = "test-account"
-        print("PASS: production durable readback/reconnect, first-upload baseline, persistence failures, versions, authority and lifecycle isolation")
+        print("PASS: production direct acceptance, unknown-outcome recovery, first-upload baseline, persistence failures, versions, authority and lifecycle isolation")
+    }
+
+    @MainActor static func testDirectUploadConfirmation() async throws {
+        typealias S = SpaceConfigurationSafety
+        let request = NetworkRequest.shared
+        for reason in ["uploadReadbackConflict", "uploadReadbackUnconfirmed", "invalidRemoteTopology"] {
+            let space = SpaceData("accepted-" + reason)
+            let context = S.prepareSubmission(space, payload: space.payload)!
+            precondition(S.markSubmissionAccepted(context, space: space))
+            S.block(space, reason: reason)
+            request.result = .success(["data": ["uuid": "wrong-space", "nodes": []]])
+            let calls = request.calls
+            precondition(S.finishAcceptedSubmission(context, space: space))
+            precondition(request.calls == calls && space.lastUploadCloudTimestamp == 50)
+            precondition(S.isBlocked(space) == (reason == "invalidRemoteTopology"))
+            precondition(!S.hasPendingUpload(space))
+            let newer = S.prepareSubmission(space, payload: space.payload)!
+            precondition(!S.finishAcceptedSubmission(context, space: space), "old completion must not consume a newer receipt")
+            S.discardUnsentSubmission(newer, space: space)
+        }
+        for succeeds in [false, true] {
+            let space = SpaceData("unbind-direct-\(succeeds)")
+            request.result = succeeds ? .success([:]) : .failure(.requestTimeout)
+            let calls = request.calls, uploads = request.uploads
+            // A new edit arrives while the submitted version is in flight.
+            request.onRequest = { space.lastUpdate = 60 }
+            let result = await S.uploadBeforeUnbind(space)
+            if succeeds {
+                if case .failure = result { preconditionFailure("successful upload must confirm without GET") }
+                precondition(space.lastUploadCloudTimestamp == 50 && !S.hasPendingUpload(space))
+            } else {
+                if case .success = result { preconditionFailure("timeout must not confirm") }
+                precondition(space.lastUploadCloudTimestamp == nil && S.hasPendingUpload(space))
+            }
+            precondition(space.needUploadCloud)
+            precondition(request.calls == calls + 1 && request.uploads == uploads + 1)
+        }
+        // Older accepted snapshots never move the confirmed version backwards.
+        let monotonic = SpaceData("accepted-monotonic")
+        let context = S.prepareSubmission(monotonic, payload: monotonic.payload)!
+        precondition(S.markSubmissionAccepted(context, space: monotonic))
+        monotonic.lastUploadCloudTimestamp = 80
+        precondition(S.finishAcceptedSubmission(context, space: monotonic))
+        precondition(monotonic.lastUploadCloudTimestamp == 80)
+
+        // One failed local confirmation must not undo another accepted Space.
+        let first = SpaceData("partial-first"), second = SpaceData("partial-second")
+        let firstContext = S.prepareSubmission(first, payload: first.payload)!
+        let secondContext = S.prepareSubmission(second, payload: second.payload)!
+        precondition(S.markSubmissionAccepted(firstContext, space: first))
+        precondition(S.markSubmissionAccepted(secondContext, space: second))
+        let calls = request.calls
+        precondition(S.finishAcceptedSubmission(firstContext, space: first))
+        second.savesSucceed = false
+        precondition(!S.finishAcceptedSubmission(secondContext, space: second))
+        precondition(!S.hasPendingUpload(first) && S.hasPendingUpload(second))
+        second.savesSucceed = true
+        S.failStateWrite = true
+        precondition(!S.finishAcceptedSubmission(secondContext, space: second))
+        S.failStateWrite = false
+        let persisted = try S.recoveryState(second)
+        precondition(persisted.submission?.phase == .accepted)
+        if case .failure = await S.resumeUpload(second) { preconditionFailure("state persistence retry must finish locally") }
+        precondition(!S.hasPendingUpload(second) && request.calls == calls)
+        print("PASS: direct success uses submitted timestamps, makes no GET, preserves newer edits and unrelated blocks")
     }
 
     @MainActor static func testParseRejectionRecovery() async throws {
@@ -271,7 +332,7 @@ final class NetworkRequest {
             precondition(S.markSubmissionAccepted(newer, space: space))
             S.rejectSubmission(newer, space: space, error: error)
             let accepted = try S.recoveryState(space)
-            precondition(accepted.submission?.phase == .accepted, "accepted receipts still need readback")
+            precondition(accepted.submission?.phase == .accepted, "a late rejection must preserve accepted evidence")
         }
         let unknownErrors: [NetworkApiError] = [
             .requestTimeout, .noNetwork, .serverNotRespond,
@@ -321,7 +382,7 @@ final class NetworkRequest {
             let peer: [String: Any] = ["uuid": "peer", "unicastAddress": "0005", "groupState": 0]
             space.nodes = [old, peer]
             let context = S.prepareSubmission(space, payload: space.payload)!
-            precondition(S.markSubmissionAccepted(context, space: space))
+            precondition(!S.finishAcceptedSubmission(context, space: space))
             space.lastUpdate = 60
             space.nodes = [peer]
             precondition(S.updateDeletionJournal(space) {
@@ -382,7 +443,7 @@ final class NetworkRequest {
             request.result = .success(["data": oldRemote])
             let calls = request.calls, uploads = request.uploads
             if case .failure = await S.resumeUpload(space) { preconditionFailure("legacy empty address must confirm") }
-            precondition(request.calls == calls + 1 && request.uploads == uploads)
+            precondition(request.calls == calls && request.uploads == uploads)
             precondition(!S.isBlocked(space) && !S.hasPendingUpload(space))
             precondition(space.lastUploadCloudTimestamp == 50 && space.lastUpdate == 60 && space.needUploadCloud)
             let remaining = try S.deletionJournal(space)
@@ -390,7 +451,7 @@ final class NetworkRequest {
 
             // The shared production upload path can now export and confirm the
             // newer two-node payload; it must not mark that version done early.
-            request.responses = [.success([:]), .success(["data": space.payload])]
+            request.responses = [.success([:])]
             if case .failure = await S.uploadBeforeUnbind(space) { preconditionFailure("newer edit must remain uploadable") }
             precondition(request.responses.isEmpty && request.uploads == uploads + 1)
             precondition(space.lastUploadCloudTimestamp == 60 && !space.needUploadCloud)
