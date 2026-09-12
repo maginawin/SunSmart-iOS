@@ -738,6 +738,24 @@ enum SpaceConfigurationSafety {
         return FileManager.default.fileExists(atPath: url.path)
     }
 
+    #if DEBUG
+    /// Unlike directory()/recoveryState(), this inspection never creates a journal.
+    static func canReadDebugSnapshot(_ space: SpaceData) -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        guard space.state == .normal else { return false }
+        do {
+            let state = try SpaceRecoveryState.read(from: stateURL(space), identity: identity(space))
+            if let state, state.phase != .active { return false }
+            let folder = state.map { storedDirectory(space, state: $0) }
+                ?? recoveryRoot.appendingPathComponent(key(space))
+            return !FileManager.default.fileExists(atPath: folder.appendingPathComponent("pending-import.json").path)
+                && !deletionCleanupPending(at: folder.appendingPathComponent("device-deletions.json"))
+        } catch {
+            return false
+        }
+    }
+    #endif
+
     /// Preserve both side stores using SQLite's backup API, not a copy of the
     /// main file without its WAL. A read transaction pins each source snapshot.
     static func checkpoint(_ space: SpaceData, refresh: Bool = false) -> Bool {

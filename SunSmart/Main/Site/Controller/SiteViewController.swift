@@ -19,6 +19,10 @@ let siteGatewayAssociationTopologyChangedNotificationName =
 
 class SiteViewController: UIViewController {
 
+    #if DEBUG
+    private let debugJSONExporter = DebugCloudJSONExporter()
+    #endif
+
     private enum SiteLoadPresentation: Equatable {
         case interactive
         case silentGatewayReconcile
@@ -1540,6 +1544,16 @@ self.updateAddressData()
             self?.share()
         }))
         
+        #if DEBUG
+        if DebugCloudJSONExporter.canExport(site.permission) {
+            items.append(.init(icon: UIImage(named: "menu_share"), title: "debug_export_json".localizedString,
+                               performsActionAfterDismiss: true, tapItemBack: { [weak self] _ in
+                guard let self else { return }
+                self.debugJSONExporter.share(site: self.site, from: self)
+            }))
+        }
+        #endif
+
         if site.permissionOperates.contains(.transfer) {
             items.append(.init(icon: UIImage(named: "menu_transfer_site"), title: "transfer_site".localizedString, tapItemBack: {[weak self] _ in
                 self?.transferSite()
@@ -1568,7 +1582,12 @@ self.updateAddressData()
 //            self?.importSpace()
 //        }))
         
+        #if DEBUG
+        let exportMenuWidth = DebugCloudJSONExporter.menuWidth(items: items, minimum: SCRXFrom(154))
+        MenuPopView.show(items: items, anchorPoint: CGPoint(x: touchCenterX, y: (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight)), menuWidth: exportMenuWidth)
+        #else
         MenuPopView.show(items: items, anchorPoint: CGPoint(x: touchCenterX, y: (navigationController?.navigationBar.frame.maxY ?? kNavigationHeight)), menuWidth: SCRXFrom(154))
+        #endif
     }
     
     /// 编辑场所

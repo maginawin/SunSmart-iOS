@@ -121,6 +121,16 @@ private struct SpaceSnapshotExportAuthorization {
 enum SpaceSnapshotExportPurpose {
     case localBackup
     case cloudSync
+    #if DEBUG
+    case debugInspection
+    #endif
+
+    var isReadOnlyInspection: Bool {
+        #if DEBUG
+        if case .debugInspection = self { return true }
+        #endif
+        return false
+    }
 }
 
 private extension SpaceData {
@@ -137,6 +147,16 @@ private extension SpaceData {
         let localSnapshot = SpaceSnapshotExportIntegritySnapshot(
             meshNetwork: meshNetwork
         )
+        #if DEBUG
+        if purpose.isReadOnlyInspection {
+            return .init(
+                expectedLocalSnapshot: localSnapshot,
+                orphanPreservationReason: localSnapshot.orphanedMemberships.isEmpty ? nil : "debugInspection",
+                network: meshNetwork,
+                revision: revisionBefore == ConfigurationSnapshotRevision.current() ? revisionBefore : nil
+            )
+        }
+        #endif
         let initialDecision = SpaceSnapshotExportIntegrityPolicy.resolve(
             localGroupAddresses: localSnapshot.groupAddresses,
             localOrphans: localSnapshot.orphanedMemberships,
@@ -358,8 +378,18 @@ extension SpaceData {
     ) async -> [String: Any]?  {
         if allowsProtectedInspection, case .cloudSync = purpose { return nil }
         if reviewingReferenceRepairs && !allowsProtectedInspection { return nil }
+        #if DEBUG
+        if purpose.isReadOnlyInspection {
+            guard SpaceConfigurationSafety.canReadDebugSnapshot(self) else { return nil }
+        } else {
+            guard !SpaceConfigurationSafety.hasPendingImport(self),
+                  allowsProtectedInspection || !SpaceConfigurationSafety.isBlocked(self) else { return nil }
+        }
+        #else
         guard !SpaceConfigurationSafety.hasPendingImport(self),
-              allowsProtectedInspection || !SpaceConfigurationSafety.isBlocked(self),
+              allowsProtectedInspection || !SpaceConfigurationSafety.isBlocked(self) else { return nil }
+        #endif
+        guard
               !triggerZonesLoadFailed,
               let snapshotAuthorization = await snapshotExportAuthorization(
             purpose: purpose
@@ -399,7 +429,9 @@ extension SpaceData {
                 group.info.bindSchedules = bindSchedules
             })
             guard meshNetwork.groups.filter({ !$0.isVirtual }).allSatisfy({ !$0.info.profileLoadFailed && !$0.info.topologyLoadFailed }) else {
-                SpaceConfigurationSafety.block(self, reason: "invalidStoredGroupConfiguration")
+                if !purpose.isReadOnlyInspection {
+                    SpaceConfigurationSafety.block(self, reason: "invalidStoredGroupConfiguration")
+                }
                 return nil
             }
             let currentIntegritySnapshot = SpaceSnapshotExportIntegritySnapshot(

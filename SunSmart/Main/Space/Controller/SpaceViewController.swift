@@ -196,6 +196,10 @@ let routeTest: Bool = false
 
 class SpaceViewController: WMPageController {
 
+    #if DEBUG
+    private let debugJSONExporter = DebugCloudJSONExporter()
+    #endif
+
     var site: SiteData!
     let space: SpaceData
     /// 删除空间回调
@@ -1289,6 +1293,16 @@ class SpaceViewController: WMPageController {
                 self?.shareSpace()
             }))
         }
+        #if DEBUG
+        if DebugCloudJSONExporter.canExport(space.permission) {
+            items.append(.init(icon: UIImage(named: "menu_share"), title: "debug_export_json".localizedString,
+                               performsActionAfterDismiss: true, tapItemBack: { [weak self] _ in
+                guard let self else { return }
+                self.debugJSONExporter.share(site: self.site, space: self.space, from: self)
+            }))
+        }
+        #endif
+
         if space.canDebug {
             items.append(.init(icon: UIImage(named: "menu_profile_test"), title: "debug".localizedString, tapItemBack: {[weak self] _ in
                 self?.openSpaceDebug()
@@ -1310,7 +1324,12 @@ class SpaceViewController: WMPageController {
 //#endif
         
         
+        #if DEBUG
+        let exportMenuWidth = DebugCloudJSONExporter.menuWidth(items: items, minimum: SCRXFrom(108))
+        MenuPopView.show(items: items, anchorPoint: CGPoint(x: touchCenterX, y: view.safeAreaInsets.top), menuWidth: exportMenuWidth)
+        #else
         MenuPopView.show(items: items, anchorPoint: CGPoint(x: touchCenterX, y: view.safeAreaInsets.top), menuWidth: SCRXFrom(108))
+        #endif
     }
     
     private func openSpaceDebug() {

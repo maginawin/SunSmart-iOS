@@ -2226,3 +2226,9 @@
 "site_zones_sync_explanation" = "部分设备尚未完成同步。您必须拥有所有相关空间的编辑权限，才能执行同步操作。";
 "site_zones_preview_reset_confirm" = "清空此触发区域中的所有设备？";
 "site_zones_preview_delete_confirm" = "删除此触发区域？";
+
+// Debug cloud JSON export
+"debug_export_json" = "导出 JSON";
+"debug_json_export_failed" = "导出 JSON 失败。";
+"debug_json_export_changed" = "数据或权限已变化，请重新导出。";
+"debug_json_export_unavailable" = "无法导出“%@”，本地数据不完整或无效。";

@@ -2210,3 +2210,9 @@
 "site_zones_sync_explanation" = "Some devices have not finished synchronizing. You must have editing permissions for all relevant spaces to perform the synchronization operation.";
 "site_zones_preview_reset_confirm" = "Clear all devices from this trigger zone?";
 "site_zones_preview_delete_confirm" = "Delete this trigger zone?";
+
+// Debug cloud JSON export
+"debug_export_json" = "Export Json";
+"debug_json_export_failed" = "Failed to export JSON.";
+"debug_json_export_changed" = "The data or access changed. Please try exporting again.";
+"debug_json_export_unavailable" = "Could not export “%@”. Local data is incomplete or invalid.";
