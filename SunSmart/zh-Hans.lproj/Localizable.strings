@@ -2198,3 +2198,9 @@
 
 "switch_mac_format" = "MAC: %@";
 "switch_mac_unavailable" = "MAC: 暂无";
+
+// Debug cloud JSON export
+"debug_export_json" = "导出 JSON";
+"debug_json_export_failed" = "导出 JSON 失败。";
+"debug_json_export_changed" = "数据或权限已变化，请重新导出。";
+"debug_json_export_unavailable" = "无法导出“%@”，本地数据不完整或无效。";

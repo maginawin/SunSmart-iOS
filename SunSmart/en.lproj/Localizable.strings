@@ -2182,3 +2182,9 @@
 
 "switch_mac_format" = "MAC: %@";
 "switch_mac_unavailable" = "MAC: N/A";
+
+// Debug cloud JSON export
+"debug_export_json" = "Export Json";
+"debug_json_export_failed" = "Failed to export JSON.";
+"debug_json_export_changed" = "The data or access changed. Please try exporting again.";
+"debug_json_export_unavailable" = "Could not export “%@”. Local data is incomplete or invalid.";

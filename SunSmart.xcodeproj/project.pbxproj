@@ -3574,6 +3574,16 @@
 		FB8AA5CFA8964AA5AB8A7888 /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
 		FBE64B877BA941A086DD04D0 /* SyncParameterTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */; };
 		FC37248A4BA9471492C67995 /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
+		092609120000000000100001 /* DebugCloudJSONFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000001 /* DebugCloudJSONFile.swift */; };
+		092609120000000000100002 /* DebugCloudJSONFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000001 /* DebugCloudJSONFile.swift */; };
+		092609120000000000100003 /* DebugCloudJSONFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000001 /* DebugCloudJSONFile.swift */; };
+		092609120000000000100004 /* DebugCloudJSONFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000001 /* DebugCloudJSONFile.swift */; };
+		092609120000000000100005 /* DebugCloudJSONFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000001 /* DebugCloudJSONFile.swift */; };
+		092609120000000000200001 /* DebugCloudJSONExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000002 /* DebugCloudJSONExporter.swift */; };
+		092609120000000000200002 /* DebugCloudJSONExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000002 /* DebugCloudJSONExporter.swift */; };
+		092609120000000000200003 /* DebugCloudJSONExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000002 /* DebugCloudJSONExporter.swift */; };
+		092609120000000000200004 /* DebugCloudJSONExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000002 /* DebugCloudJSONExporter.swift */; };
+		092609120000000000200005 /* DebugCloudJSONExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000002 /* DebugCloudJSONExporter.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -4377,6 +4387,8 @@
 		F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncParameterTaskBuilder.swift; sourceTree = "<group>"; };
 		FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorState.swift; sourceTree = "<group>"; };
 		FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncRetryPolicy.swift; sourceTree = "<group>"; };
+		092609120000000000000001 /* DebugCloudJSONFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugCloudJSONFile.swift; sourceTree = "<group>"; };
+		092609120000000000000002 /* DebugCloudJSONExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugCloudJSONExporter.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -6312,6 +6324,8 @@
 			isa = PBXGroup;
 			children = (
 				C8D58F652C1D34090066B770 /* CloudSynchronizationManager.swift */,
+				092609120000000000000002 /* DebugCloudJSONExporter.swift */,
+				092609120000000000000001 /* DebugCloudJSONFile.swift */,
 			);
 			path = Cloud;
 			sourceTree = "<group>";
@@ -7758,6 +7772,8 @@
 				08B54EDB30402CCB0017ED49 /* PJEightKeySwitchEditorView.swift in Sources */,
 				08B54EDC30402CCB0017ED49 /* SceneAddViewController.swift in Sources */,
 				08B54EDD30402CCB0017ED49 /* ExportData.swift in Sources */,
+				092609120000000000200001 /* DebugCloudJSONExporter.swift in Sources */,
+				092609120000000000100001 /* DebugCloudJSONFile.swift in Sources */,
 				08B54EDE30402CCB0017ED49 /* CirclePieMarkerView.swift in Sources */,
 				08B54EDF30402CCB0017ED49 /* WMScrollView.m in Sources */,
 				08B54EE030402CCB0017ED49 /* DaylightSensorInstructionsHeaderView.swift in Sources */,
@@ -8445,6 +8461,8 @@
 				C88555062DE6B44C00C8B688 /* SceneAddViewController.swift in Sources */,
 				8C1DA7822FAAF2C90073F100 /* PJDevicesEightKeyAddContainerController.swift in Sources */,
 				C88555072DE6B44C00C8B688 /* ExportData.swift in Sources */,
+				092609120000000000200002 /* DebugCloudJSONExporter.swift in Sources */,
+				092609120000000000100002 /* DebugCloudJSONFile.swift in Sources */,
 				C88555082DE6B44C00C8B688 /* CirclePieMarkerView.swift in Sources */,
 				8C778C222FA34688000887FE /* PJEightKeySwitchMonitorStatusSetView.swift in Sources */,
 				8C778BDC2FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift in Sources */,
@@ -9139,6 +9157,8 @@
 				C886E1622E30DE4900D0C3A6 /* SceneAddViewController.swift in Sources */,
 				8C1DA7812FAAF2C90073F100 /* PJDevicesEightKeyAddContainerController.swift in Sources */,
 				C886E1632E30DE4900D0C3A6 /* ExportData.swift in Sources */,
+				092609120000000000200003 /* DebugCloudJSONExporter.swift in Sources */,
+				092609120000000000100003 /* DebugCloudJSONFile.swift in Sources */,
 				C886E1642E30DE4900D0C3A6 /* CirclePieMarkerView.swift in Sources */,
 				8C778C232FA34688000887FE /* PJEightKeySwitchMonitorStatusSetView.swift in Sources */,
 				8C778BDB2FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift in Sources */,
@@ -9838,6 +9858,8 @@
 				8C778C0A2FA30549000887FE /* PJEightKeySwitchEditorView.swift in Sources */,
 				C8A130BE2B32785E0008C353 /* SceneAddViewController.swift in Sources */,
 				C8D663712BFEDDE000BFF81A /* ExportData.swift in Sources */,
+				092609120000000000200004 /* DebugCloudJSONExporter.swift in Sources */,
+				092609120000000000100004 /* DebugCloudJSONFile.swift in Sources */,
 				C88CCD8E2DD442CA003D5754 /* CirclePieMarkerView.swift in Sources */,
 				C898EA612AC2BD8B0023B480 /* WMScrollView.m in Sources */,
 				C8047F272B8F3A7200A09FFA /* DaylightSensorInstructionsHeaderView.swift in Sources */,
@@ -10526,6 +10548,8 @@
 				C8BB67452ED3F056000C63EE /* SceneAddViewController.swift in Sources */,
 				8C1DA7802FAAF2C90073F100 /* PJDevicesEightKeyAddContainerController.swift in Sources */,
 				C8BB67462ED3F056000C63EE /* ExportData.swift in Sources */,
+				092609120000000000200005 /* DebugCloudJSONExporter.swift in Sources */,
+				092609120000000000100005 /* DebugCloudJSONFile.swift in Sources */,
 				C8BB67472ED3F056000C63EE /* CirclePieMarkerView.swift in Sources */,
 				8C778C212FA34688000887FE /* PJEightKeySwitchMonitorStatusSetView.swift in Sources */,
 				8C778BDD2FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift in Sources */,
