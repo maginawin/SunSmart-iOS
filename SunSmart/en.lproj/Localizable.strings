@@ -2216,3 +2216,19 @@
 "debug_json_export_failed" = "Failed to export JSON.";
 "debug_json_export_changed" = "The data or access changed. Please try exporting again.";
 "debug_json_export_unavailable" = "Could not export “%@”. Local data is incomplete or invalid.";
+
+// Site Trigger Zone candidate browsing
+"site_zone_no_spaces" = "No spaces";
+"site_zone_no_eligible_spaces" = "No eligible spaces";
+"site_zone_assign_proximity_profile" = "Assign a Proximity Profile to a group in a space you can edit.";
+"site_zone_no_editable_spaces" = "No editable spaces";
+"site_zone_editable_space_required" = "Owner or Editor access to a space is required.";
+"site_zone_loading_spaces" = "Loading spaces…";
+"site_zone_loading_devices" = "Loading devices…";
+"site_zone_data_unavailable" = "Space data unavailable";
+"site_zone_data_retry" = "Space data unavailable. Tap to retry.";
+"site_zone_no_new_devices" = "No new devices";
+"site_zone_no_available_devices" = "No devices available to add";
+"site_zone_not_connected" = "Not connected to a space";
+"site_zone_retry_hint" = "Tap to retry.";
+"site_zone_browse_help" = "Devices are shown offline. Only devices in Proximity Profile groups in spaces you can edit are listed.";

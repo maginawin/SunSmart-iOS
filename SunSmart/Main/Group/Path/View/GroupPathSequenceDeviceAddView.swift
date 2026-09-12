@@ -95,6 +95,7 @@ class GroupPathSequenceDeviceAddView: UIView {
     }
 
     private var currentMode: PathSequenceDeviceAddMode = .quickAdd
+    private var isBrowsingCandidates = false
     private var collapsed: Bool = true
     /// Allows the owning page to restore presentation after switching data sources.
     var isCollapsed: Bool { collapsed }
@@ -107,7 +108,7 @@ class GroupPathSequenceDeviceAddView: UIView {
     /// 是否可添加设备
     var canAddDevice: Bool = false {
         didSet {
-            if canAddDevice {
+            if canAddDevice || isBrowsingCandidates {
                 quickAddView.updateQuickAddState(.stop)
                 triggerAddView.setGuideVisible(false)
                 manuallyAddView.setGuideVisible(false)
@@ -173,7 +174,7 @@ class GroupPathSequenceDeviceAddView: UIView {
     }
     
     @objc private func unfoldBtnAction(sender: UIButton) {
-        let rowNum = max(1, min(Int(ceilf(Float(manuallyAddView.visibleDevices.count) / Float(manuallyAddView.colNum))), 3))
+        let rowNum = max(1, min(Int(ceilf(Float(manuallyAddView.displayedDeviceCount) / Float(manuallyAddView.colNum))), 3))
         if !sender.isSelected, rowNum == 1 {
             return
         }
@@ -358,6 +359,23 @@ class GroupPathSequenceDeviceAddView: UIView {
         refreshPreferredHeight()
     }
 
+    func configureBrowse(_ configuration: GroupPathSequenceBrowseConfiguration) {
+        isBrowsingCandidates = true
+        quickAddView.configureBrowse(configuration)
+        triggerAddView.configureBrowse(configuration)
+        manuallyAddView.configureBrowse(configuration)
+        updateUnfoldState()
+    }
+
+    func clearBrowseTarget() {
+        isBrowsingCandidates = false
+        quickAddView.showStepGuideUI()
+        triggerAddView.setGuideVisible(true)
+        manuallyAddView.setGuideVisible(true)
+        setCollapsed(true)
+        updateUnfoldState()
+    }
+
     func configureDeviceNameFilter(session: DeviceNameFilterSession) {
         if let deviceNameFilterObservation {
             deviceNameFilterSession?.removeObserver(deviceNameFilterObservation)
@@ -374,7 +392,7 @@ class GroupPathSequenceDeviceAddView: UIView {
     private func manualVisibleDevicesDidChange() {
         let maxManualRows = max(
             1,
-            min(Int(ceilf(Float(manuallyAddView.visibleDevices.count) / Float(manuallyAddView.colNum))), 3)
+            min(Int(ceilf(Float(manuallyAddView.displayedDeviceCount) / Float(manuallyAddView.colNum))), 3)
         )
         if manuallyAddView.rowNum > maxManualRows {
             manuallyAddView.rowNum = maxManualRows
@@ -432,14 +450,14 @@ class GroupPathSequenceDeviceAddView: UIView {
     }
 
     private func updateAccessoryButtons() {
-        guard !collapsed, canAddDevice else {
+        guard !collapsed, canAddDevice || isBrowsingCandidates else {
             refreshBtn.isHidden = true
             unfoldBtn.isHidden = true
             deviceFilterBtn.isHidden = true
             return
         }
 
-        let maxManualRows = max(1, min(Int(ceilf(Float(manuallyAddView.visibleDevices.count) / Float(manuallyAddView.colNum))), 3))
+        let maxManualRows = max(1, min(Int(ceilf(Float(manuallyAddView.displayedDeviceCount) / Float(manuallyAddView.colNum))), 3))
         refreshBtn.isHidden = currentMode != .triggerAdd || triggerAddView.devices.isEmpty
         unfoldBtn.isHidden = currentMode != .manuallyAdd || maxManualRows <= 1 || !manuallyAddView.guideContentView.isHidden
         deviceFilterBtn.isHidden = currentMode != .manuallyAdd || deviceNameFilterSession == nil

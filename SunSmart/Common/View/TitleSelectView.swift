@@ -30,6 +30,7 @@ class TitleSelectView: UIView {
     private var titles: [String] = []
     private var startPoint: CGPoint = .zero
     private var selectIndex: Int = 0
+    private var maximumHeight: CGFloat?
     private var menuWidth: CGFloat = defalutWidth
     private var itemHeight: CGFloat = defalutItemHeight
     private var selectCallback: TitleSelectCallback?
@@ -52,13 +53,14 @@ class TitleSelectView: UIView {
 //        fatalError("init(coder:) has not been implemented")
 //    }
     
-    static func show(titles: [String], style: Style = .select, anchorPoint: CGPoint, selectIndex: Int = 0, menuWidth: CGFloat = TitleSelectView.defalutWidth, itemHeight: CGFloat = TitleSelectView.defalutItemHeight, titleColor: UIColor = .white, titleFont: UIFont = FONTS(13), backgroundColor: UIColor = RGB(102, 102, 102), selectBackgroundColor: UIColor = RGB(216, 216, 216, 0.1), shadowColor: UIColor? = nil, enabledStates: [Bool]? = nil, disabledTitleColor: UIColor = RGB(193, 198, 210), selectedTitleColor: UIColor? = nil, highlightSelectedWithoutIcon: Bool = false, titleAlignment: NSTextAlignment = .center, contentBorderColor: UIColor? = nil, contentBorderWidth: CGFloat = 0, contentCornerRadius: CGFloat = 8, rowHighlightInsets: UIEdgeInsets = .zero, rowHighlightCornerRadius: CGFloat = 5, selectBack: TitleSelectCallback?, hideCallback: HideCallback? = nil) {
+    static func show(titles: [String], style: Style = .select, anchorPoint: CGPoint, selectIndex: Int = 0, menuWidth: CGFloat = TitleSelectView.defalutWidth, itemHeight: CGFloat = TitleSelectView.defalutItemHeight, titleColor: UIColor = .white, titleFont: UIFont = FONTS(13), backgroundColor: UIColor = RGB(102, 102, 102), selectBackgroundColor: UIColor = RGB(216, 216, 216, 0.1), shadowColor: UIColor? = nil, enabledStates: [Bool]? = nil, disabledTitleColor: UIColor = RGB(193, 198, 210), selectedTitleColor: UIColor? = nil, highlightSelectedWithoutIcon: Bool = false, titleAlignment: NSTextAlignment = .center, contentBorderColor: UIColor? = nil, contentBorderWidth: CGFloat = 0, contentCornerRadius: CGFloat = 8, rowHighlightInsets: UIEdgeInsets = .zero, rowHighlightCornerRadius: CGFloat = 5, maximumHeight: CGFloat? = nil, hostWindow: UIWindow? = nil, selectBack: TitleSelectCallback?, hideCallback: HideCallback? = nil) {
         
-        let view = TitleSelectView(frame: UIScreen.main.bounds)
+        let view = TitleSelectView(frame: hostWindow?.bounds ?? UIScreen.main.bounds)
         view.menuWidth = menuWidth
         view.itemHeight = itemHeight
         view.startPoint = anchorPoint
         view.selectIndex = selectIndex
+        view.maximumHeight = maximumHeight
         view.titles = titles
         view.titleFont = titleFont
         view.titleColor = titleColor
@@ -85,7 +87,7 @@ class TitleSelectView: UIView {
             view.contentView.layer.cornerRadius = 6
         }
         view.tag = 100
-        UIApplication.shared.keyWindow().addSubview(view)
+        (hostWindow ?? UIApplication.shared.keyWindow()).addSubview(view)
         view.showAnimation()
     }
     
@@ -151,11 +153,12 @@ class TitleSelectView: UIView {
 //        tableView.showsVerticalScrollIndicator = false
         tableView.dataSource = self
         tableView.delegate = self
-        tableView.isScrollEnabled = titles.count > 8
+        let visibleHeight = min(CGFloat(min(titles.count, 8)) * itemHeight, maximumHeight ?? .greatestFiniteMagnitude)
+        tableView.isScrollEnabled = CGFloat(titles.count) * itemHeight > visibleHeight
         contentView.addSubview(tableView)
         tableView.snp.makeConstraints { make in
             make.left.right.top.bottom.equalToSuperview()
-            make.height.equalTo(CGFloat(min(titles.count, 8)) * tableView.rowHeight)
+            make.height.equalTo(visibleHeight)
         }
         
     }

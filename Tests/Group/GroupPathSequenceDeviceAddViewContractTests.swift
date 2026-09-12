@@ -364,8 +364,8 @@ struct GroupPathSequenceDeviceAddViewContractTests {
             to: "private func emitPreferredHeightIfNeeded()"
         )
         require(
-            accessoryVisibilitySection.contains("guard !collapsed, canAddDevice else"),
-            "Guide-only state must hide refresh, unfold, and device-filter accessories"
+            accessoryVisibilitySection.contains("guard !collapsed, canAddDevice || isBrowsingCandidates else"),
+            "Guide-only state must hide accessories; candidate browsing may expose presentation controls"
         )
         let preferredHeightSection = section(
             in: addView,
@@ -881,7 +881,7 @@ struct GroupPathSequenceDeviceAddViewContractTests {
         )
         require(
             manuallyPaginationSection.contains(
-                "let pageCount = Int(ceilf(Float(devices.count) / Float(pageCapacity)))"
+                "let pageCount = Int(ceilf(Float(displayedDeviceCount) / Float(pageCapacity)))"
             ),
             "Manually Add page count must use the current device count and capacity"
         )

@@ -8,18 +8,22 @@ final class SiteTriggerZoneContentView: UIView, UITableViewDataSource, UITableVi
     let addButton = UIButton(type: .system)
     private let panel: UIView
     private var panelHeight: NSLayoutConstraint!
+    private var panelBottom: NSLayoutConstraint!
     private var statusHeight: NSLayoutConstraint!
     private(set) var items: [SiteTriggerZoneItemModel] = []
     private(set) var selectedID: UUID?
     private(set) var canEdit = false
     private var canSave = false
     private var isPreview = false
+    var allowsSelectedEmptyPanel = false
     private var preferredPanelHeight: CGFloat = 44
+    private var isUpdatingPanelLayout = false
     private var lastTableWidth: CGFloat = 0
     private var measuredHeights: [UUID: CGFloat] = [:]
     private lazy var sizingCell = SiteTriggerZoneItemCell(style: .default, reuseIdentifier: nil)
     private var panelAllowed: Bool {
-        !items.isEmpty && items.first(where: { $0.id == selectedID })?.canEdit != false
+        if allowsSelectedEmptyPanel, let item = items.first(where: { $0.id == selectedID }), item.usesEmptyStyle { return true }
+        return !items.isEmpty && items.first(where: { $0.id == selectedID })?.canEdit != false
     }
     var add: (() -> Void)?
     var select: ((UUID) -> Void)?
@@ -44,6 +48,7 @@ final class SiteTriggerZoneContentView: UIView, UITableViewDataSource, UITableVi
         statusHeight = statusButton.heightAnchor.constraint(equalToConstant: 0)
         panelHeight = panel.heightAnchor.constraint(equalToConstant: 0)
         panelHeight.priority = .defaultHigh
+        panelBottom = panel.bottomAnchor.constraint(equalTo: bottomAnchor, constant: -SCRYFrom(16))
         NSLayoutConstraint.activate([
             statusButton.topAnchor.constraint(equalTo: safeAreaLayoutGuide.topAnchor, constant: 8),
             statusButton.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 16),
@@ -55,7 +60,7 @@ final class SiteTriggerZoneContentView: UIView, UITableViewDataSource, UITableVi
             tableView.heightAnchor.constraint(greaterThanOrEqualToConstant: 60),
             panel.leadingAnchor.constraint(equalTo: leadingAnchor),
             panel.trailingAnchor.constraint(equalTo: trailingAnchor),
-            panel.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -16), panelHeight,
+            panelBottom, panelHeight,
             emptyStateView.leadingAnchor.constraint(equalTo: tableView.leadingAnchor),
             emptyStateView.trailingAnchor.constraint(equalTo: tableView.trailingAnchor),
             emptyStateView.topAnchor.constraint(equalTo: tableView.topAnchor),
@@ -113,10 +118,28 @@ final class SiteTriggerZoneContentView: UIView, UITableViewDataSource, UITableVi
         reload()
     }
 
-    func setPanelHeight(_ height: CGFloat) {
+    func setPanelHeight(_ height: CGFloat, animated: Bool = false) {
         preferredPanelHeight = height
-        panelHeight.constant = panelAllowed ? height : 0
+        let targetHeight = panelAllowed ? height : 0
+        let visibilityChanged = panel.isHidden == panelAllowed
         panel.isHidden = !panelAllowed
+        guard abs(panelHeight.constant - targetHeight) > 0.5 else { return }
+        guard animated, window != nil, !visibilityChanged, panelAllowed,
+              !isUpdatingPanelLayout else {
+            panelHeight.constant = targetHeight
+            return
+        }
+
+        // Height callbacks can also arrive while the panel is laying out its content.
+        isUpdatingPanelLayout = true
+        defer { isUpdatingPanelLayout = false }
+        layoutIfNeeded()
+        // A layout callback may have supplied a newer preferred height.
+        panelHeight.constant = panelAllowed ? preferredPanelHeight : 0
+        UIView.animate(withDuration: 0.25, delay: 0,
+                       options: [.curveEaseInOut, .beginFromCurrentState, .allowUserInteraction]) {
+            self.layoutIfNeeded()
+        }
     }
 
     func setStatus(_ text: String?, allowsRetry: Bool = true) {
@@ -137,6 +160,7 @@ final class SiteTriggerZoneContentView: UIView, UITableViewDataSource, UITableVi
     }
 
     override func layoutSubviews() {
+        updatePanelBottomSpacing()
         super.layoutSubviews()
         // Invalidate self-sizing rows after rotation or an iPad window width change.
         if tableView.bounds.width > 0, abs(lastTableWidth - tableView.bounds.width) > 0.5 {
@@ -144,6 +168,16 @@ final class SiteTriggerZoneContentView: UIView, UITableViewDataSource, UITableVi
             measuredHeights.removeAll()
             tableView.reloadData()
         }
+    }
+
+    override func safeAreaInsetsDidChange() {
+        super.safeAreaInsetsDidChange()
+        updatePanelBottomSpacing()
+    }
+
+    private func updatePanelBottomSpacing() {
+        // Match Space Trigger Zone without adding padding on top of the safe area.
+        panelBottom?.constant = -max(safeAreaInsets.bottom, SCRYFrom(16))
     }
 
     @objc private func addAction() { add?() }

@@ -2232,3 +2232,19 @@
 "debug_json_export_failed" = "导出 JSON 失败。";
 "debug_json_export_changed" = "数据或权限已变化，请重新导出。";
 "debug_json_export_unavailable" = "无法导出“%@”，本地数据不完整或无效。";
+
+// Site Trigger Zone candidate browsing
+"site_zone_no_spaces" = "无空间";
+"site_zone_no_eligible_spaces" = "无符合条件的空间";
+"site_zone_assign_proximity_profile" = "请在你可编辑的空间中，为一个组设置邻近照明配置。";
+"site_zone_no_editable_spaces" = "无可编辑空间";
+"site_zone_editable_space_required" = "需要空间的所有者或编辑者权限。";
+"site_zone_loading_spaces" = "正在加载空间…";
+"site_zone_loading_devices" = "正在加载设备…";
+"site_zone_data_unavailable" = "空间数据不可用";
+"site_zone_data_retry" = "空间数据不可用，点按重试。";
+"site_zone_no_new_devices" = "无新增设备";
+"site_zone_no_available_devices" = "无可添加设备";
+"site_zone_not_connected" = "未连接空间";
+"site_zone_retry_hint" = "轻点重试。";
+"site_zone_browse_help" = "设备以离线状态显示。这里只列出你可编辑的空间内，邻近照明配置组中的设备。";

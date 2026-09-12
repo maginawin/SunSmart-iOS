@@ -35,7 +35,10 @@ class GroupPathSequenceManuallyAddView: UIView {
     private var pageControl: UIPageControl!
     private var noDevicesLabel: UILabel!
     /// 每行几个
-    let colNum: Int = isIPad ? 8 : 5
+    private(set) var colNum: Int = isIPad ? 8 : 5
+    private var browseConfiguration: GroupPathSequenceBrowseConfiguration?
+    var displayedDeviceCount: Int { browseConfiguration?.devices.count ?? visibleDevices.count }
+    private var lastBrowseWidth: CGFloat = 0
 
     /// 行数
     var rowNum: Int = 1 {
@@ -95,6 +98,10 @@ class GroupPathSequenceManuallyAddView: UIView {
             return guidePreferredContentHeight
         }
         let collectionHeight = max(currentCollectionHeight(), preferredMinimumCollectionHeight)
+        if let browseConfiguration {
+            return max(topContentInset + 30 + 16 + 38 + collectionHeight,
+                       GroupPathSequenceBrowseConfiguration.minimumHeight(message: browseConfiguration.emptyMessage, width: bounds.width))
+        }
         return topContentInset + 30 + 16 + 38 + collectionHeight
     }
 
@@ -122,12 +129,22 @@ class GroupPathSequenceManuallyAddView: UIView {
     
     override func layoutSubviews() {
         super.layoutSubviews()
+        if browseConfiguration != nil, bounds.width > 0, abs(lastBrowseWidth - bounds.width) > 0.5 {
+            lastBrowseWidth = bounds.width
+            configureBrowseGrid(width: bounds.width)
+            flowLayout.invalidateLayout()
+            collectionView.setContentOffset(.zero, animated: false)
+            pageControl.currentPage = 0
+            updatePageControlState()
+            visibleDevicesChanged?()
+        }
         collectionView.snp.updateConstraints { make in
             make.height.equalTo(currentCollectionHeight())
         }
     }
     
     func reloadData(devices: [Node], selectDevice: Node?) {
+        guard browseConfiguration == nil else { return }
         allDevices = devices
         self.selectDevice = selectDevice
         applyDeviceNameFilter()
@@ -169,7 +186,7 @@ class GroupPathSequenceManuallyAddView: UIView {
 
     private func updatePageControlState() {
         let pageCapacity = colNum * rowNum
-        let pageCount = Int(ceilf(Float(devices.count) / Float(pageCapacity)))
+        let pageCount = Int(ceilf(Float(displayedDeviceCount) / Float(pageCapacity)))
 
         pageControl.numberOfPages = pageCount
         pageControl.currentPage = min(pageControl.currentPage, max(pageCount - 1, 0))
@@ -177,6 +194,12 @@ class GroupPathSequenceManuallyAddView: UIView {
     }
 
     private func updateNoDevicesLabelVisibility() {
+        if let browseConfiguration {
+            GroupPathSequenceBrowseConfiguration.configureMessage(noDevicesLabel, message: browseConfiguration.emptyMessage,
+                                                                  retry: browseConfiguration.retry != nil)
+            noDevicesLabel.isHidden = !guideContentView.isHidden || displayedDeviceCount > 0 || browseConfiguration.emptyMessage == nil
+            return
+        }
         noDevicesLabel.isHidden = !guideContentView.isHidden || !devices.isEmpty
         noDevicesLabel.text = deviceNameFilterSession?.isActive == true
             ? "device_filter_no_matching_devices".localizedString
@@ -184,6 +207,7 @@ class GroupPathSequenceManuallyAddView: UIView {
     }
     
     @objc private func addTypeSelectAction() {
+        if let browseConfiguration { browseConfiguration.showFilter(from: addTypeView); return }
         let menuWidth: CGFloat = usesCompactFilterMenu ? (isIPad ? 320 : 256) : (isIPad ? 300 : 256)
         let titles = menuTitles()
         let btnPoint = CGPoint(x: addTypeView.frame.maxX - menuWidth, y: addTypeView.frame.maxY + 4)
@@ -226,6 +250,7 @@ class GroupPathSequenceManuallyAddView: UIView {
     }
 
     @objc private func groupFilterSelectAction() {
+        if let browseConfiguration { browseConfiguration.showSpaces(from: groupFilterView); return }
         guard usesGroupFilterLayout, !groupFilterTitles.isEmpty else {
             return
         }
@@ -262,7 +287,8 @@ class GroupPathSequenceManuallyAddView: UIView {
 
     private func menuTitles() -> [String] {
         if usesCompactFilterMenu {
-            return ["quick_add_ignore_added_devices".localizedString, "trigger_add_show_added_devices".localizedString]
+            return ["quick_add_ignore_added_devices".localizedString,
+                    (isSequence ? "trigger_add_show_added_devices" : "zone_trigger_add_show_added_devices").localizedString]
         }
         if !isSequence {
             return [
@@ -274,6 +300,7 @@ class GroupPathSequenceManuallyAddView: UIView {
     }
 
     private func updateFilterTitle() {
+        if let browseConfiguration { titleLabel.text = browseConfiguration.filterTitle; return }
         if usesCompactFilterMenu {
             titleLabel.text = showAdded ? "space_trigger_zone_used".localizedString : "space_trigger_zone_new_only".localizedString
             return
@@ -337,6 +364,56 @@ class GroupPathSequenceManuallyAddView: UIView {
 
     @objc private func helpImageAction() {
         GroupPathSequenceAddDescriptionController.push(mode: .manuallyAdd, isSequence: isSequence)
+    }
+
+    func configureBrowse(_ configuration: GroupPathSequenceBrowseConfiguration) {
+        let resetPage = browseConfiguration?.selectedSpaceID != configuration.selectedSpaceID
+            || browseConfiguration?.devices != configuration.devices
+        browseConfiguration = configuration
+        allDevices = []
+        visibleDevices = []
+        selectDevice = nil
+        usesCompactFilterMenu = true
+        configureSpaceTriggerZoneFilterLayout(groupTitles: [], enabledStates: [], selectedGroupIndex: 0, showAddedOnly: configuration.includeAdded)
+        groupTitleLabel.text = configuration.spaceTitle
+        groupTitleLabel.lineBreakMode = .byTruncatingTail
+        groupFilterView.isUserInteractionEnabled = !configuration.spaces.isEmpty
+        groupArrowImageView.isHidden = configuration.spaces.isEmpty
+        configuration.configureAccessibility(space: groupFilterView, filter: addTypeView)
+        addTypeView.snp.updateConstraints { $0.width.equalTo(configuration.filterWidth) }
+        collectionView.allowsSelection = false
+        configureBrowseGrid(width: bounds.width > 0 ? bounds.width : SCREEN_WIDTH - 32)
+        collectionView.snp.remakeConstraints { make in
+            make.left.right.equalToSuperview()
+            make.top.greaterThanOrEqualTo(addTypeView.snp.bottom).offset(16)
+            make.centerY.equalToSuperview().offset(8)
+            make.height.equalTo(currentCollectionHeight())
+            make.bottom.lessThanOrEqualTo(-24)
+        }
+        noDevicesLabel.snp.remakeConstraints { make in
+            make.left.equalTo(16)
+            make.right.equalTo(-16)
+            make.top.greaterThanOrEqualTo(addTypeView.snp.bottom).offset(12)
+            make.centerY.equalToSuperview().offset(20)
+            make.bottom.lessThanOrEqualTo(-12)
+        }
+        setGuideVisible(false)
+        if resetPage { collectionView.setContentOffset(.zero, animated: false); pageControl.currentPage = 0 }
+        collectionView.reloadData()
+        updatePageControlState()
+        visibleDevicesChanged?()
+    }
+
+    @objc private func retryBrowse() { browseConfiguration?.retry?() }
+
+    private func configureBrowseGrid(width: CGFloat) {
+        colNum = max(1, Int((width - 32 + 18) / (GroupPathSequenceDeviceItemMetrics.controlSize + 18)))
+        flowLayout.itemRowCount = colNum
+        flowLayout.sectionInset = UIEdgeInsets(top: 0, left: 16, bottom: 0, right: 16)
+        let itemWidth = max(1, (width - 32 - 18 * CGFloat(colNum - 1)) / CGFloat(colNum))
+        // UICollectionViewFlowLayout also validates its inherited itemSize.
+        // Its default 50pt height is invalid for our 44pt single-row grid.
+        flowLayout.itemSize = CGSize(width: itemWidth, height: GroupPathSequenceDeviceItemMetrics.controlSize)
     }
 
     private func currentCollectionHeight() -> CGFloat {
@@ -445,6 +522,7 @@ class GroupPathSequenceManuallyAddView: UIView {
         }
         
         noDevicesLabel = UILabel(text: "filter_no_devices".localizedString, textColor: Message_Color, fontSize: 14, fontWeight: .light)
+        noDevicesLabel.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(retryBrowse)))
 //        noDevicesLabel.isHidden = true
         addSubview(noDevicesLabel)
         noDevicesLabel.snp.makeConstraints { make in
@@ -490,11 +568,26 @@ class GroupPathSequenceManuallyAddView: UIView {
 extension GroupPathSequenceManuallyAddView: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return visibleDevices.count
+        return displayedDeviceCount
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! GroupPathSequenceAddDeviceCell
+        if let browseConfiguration {
+            let device = browseConfiguration.devices[indexPath.item]
+            cell.nameLabel.text = device.name
+            cell.nameLabel.textColor = SubText_Color
+            cell.iconImageView.image = UIImage(named: "path_device_offline")?.withRenderingMode(.alwaysTemplate)
+            cell.iconImageView.tintColor = SubText_Color
+            cell.boxView.backgroundColor = Background_Color
+            cell.boxView.layer.borderColor = RGB(241, 242, 244).cgColor
+            cell.interactions.forEach { cell.removeInteraction($0) }
+            cell.isAccessibilityElement = true
+            cell.accessibilityIdentifier = "site-zone-candidate-\(device.id)"
+            cell.accessibilityLabel = device.name
+            cell.accessibilityTraits = .staticText
+            return cell
+        }
         let node = visibleDevices[indexPath.item]
         cell.nameLabel.text = node.name
         if node == selectDevice {
@@ -516,7 +609,7 @@ extension GroupPathSequenceManuallyAddView: UICollectionViewDataSource, UICollec
 //    }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        
+        guard browseConfiguration == nil else { return }
         let device = visibleDevices[indexPath.item]
         if device == selectDevice {
             delegate?.manuallyAddView(self, selectDevice: device)
@@ -538,7 +631,7 @@ extension GroupPathSequenceManuallyAddView: UICollectionViewDataSource, UICollec
 
 extension GroupPathSequenceManuallyAddView: UIDragInteractionDelegate {
     func dragInteraction(_ interaction: UIDragInteraction, itemsForBeginning session: UIDragSession) -> [UIDragItem] {
-        
+        guard browseConfiguration == nil else { return [] }
         guard let item = interaction.view as? GroupPathSequenceAddDeviceCell, let index = collectionView.indexPath(for: item)?.item else { return [] }
         let node = devices[index]
         let address = node.sunricherVendorModel?.parentElement?.unicastAddress ?? node.primaryUnicastAddress

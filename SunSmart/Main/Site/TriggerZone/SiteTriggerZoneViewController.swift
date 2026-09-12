@@ -1,4 +1,5 @@
 import UIKit
+import NordicSigMeshSDK
 
 final class SiteTriggerZoneViewController: UIViewController {
     private let coordinator: SiteTriggerZoneCoordinator
@@ -7,6 +8,14 @@ final class SiteTriggerZoneViewController: UIViewController {
     private var presentation = SiteTriggerZonePresentationState()
     private var selectedID: UUID? { presentation.selectedID }
     private var addBarButton: UIBarButtonItem!
+    private var candidateSpaces: [SiteTriggerZoneCandidates.Space] = []
+    private var candidateSelection = SiteTriggerZoneCandidates.Selection()
+    private var candidateLoadState = SiteTriggerZoneCandidates.LoadState()
+    private var candidateListIncomplete = false
+    private var candidateRequestID = UUID()
+    private var candidatePageVisible = false
+    private var allowPanelAnimations = false
+    private var isChangingViewSize = false
     #if DEBUG
     private var previewBarButton: UIBarButtonItem!
     private var preview = SiteTriggerZonePreviewState()
@@ -14,6 +23,8 @@ final class SiteTriggerZoneViewController: UIViewController {
     private var liveScrollOffset = CGPoint.zero
     private var livePanelCollapsed = true
     private weak var previewDeviceMenu: TitleSelectView?
+    private var previewCandidateSpaces: [SiteTriggerZoneCandidates.Space] = []
+    private var previewCandidateSelection = SiteTriggerZoneCandidates.Selection()
     #endif
     private var syncTask: _Concurrency.Task<Void, Never>?
     private var failure: SiteTriggerZoneCoordinator.Failure?
@@ -29,7 +40,7 @@ final class SiteTriggerZoneViewController: UIViewController {
         addPanel = GroupPathSequenceDeviceAddView()
         addPanel.isSequence = false
         addPanel.contentHeightPolicy = .dynamicSelected
-        // Presentation only: no Mesh delegate, device enumeration or add/identify callbacks.
+        // Candidate browsing has no device-operation delegate or Mesh callbacks.
         addPanel.canAddDevice = false
         addPanel.quickAddView.guideView.steps = [
             .init(imageName: "proximity_lighting_step1", title: "zone_add_step1".localizedString, textColor: SubText_Color),
@@ -37,13 +48,16 @@ final class SiteTriggerZoneViewController: UIViewController {
             .init(imageName: "proximity_lighting_step3", title: "zone_quick_add_step3".localizedString, textColor: SubText_Color)
         ]
         content = SiteTriggerZoneContentView(panel: addPanel)
-        addPanel.contentHeightChanged = { [weak self] height in self?.content.setPanelHeight(height) }
+        addPanel.contentHeightChanged = { [weak self] height in
+            guard let self else { return }
+            self.content.setPanelHeight(height, animated: self.allowPanelAnimations && !self.isChangingViewSize)
+        }
         content.add = { [weak self] in self?.addZone() }
         content.select = { [weak self] id in
             guard let self else { return }
             self.presentation.select(id)
             self.reload()
-            if self.content.items.first(where: { $0.id == id })?.canEdit == true {
+            if let item = self.content.items.first(where: { $0.id == id }), item.canEdit || item.usesEmptyStyle {
                 self.addPanel.setCollapsed(false, animated: true)
             }
         }
@@ -75,18 +89,40 @@ final class SiteTriggerZoneViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        allowPanelAnimations = false
+        candidatePageVisible = true
         reload()
+        loadCandidateSpaces()
         synchronize()
     }
 
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated)
+        allowPanelAnimations = true
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        allowPanelAnimations = false
+        candidatePageVisible = false
+        candidateRequestID = UUID()
+        dismissCandidateMenus()
+    }
+
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        isChangingViewSize = true
+        dismissCandidateMenus()
         #if DEBUG
         previewDeviceMenu?.dismiss()
         #endif
         super.viewWillTransition(to: size, with: coordinator)
+        coordinator.animate(alongsideTransition: nil) { [weak self] _ in
+            self?.isChangingViewSize = false
+        }
     }
 
     private func reload() {
+        content.allowsSelectedEmptyPanel = true
         #if DEBUG
         if presentation.isPreview {
             content.render(items: previewItems, selectedID: selectedID, canCreate: false, canSave: true, isPreview: true)
@@ -125,9 +161,139 @@ final class SiteTriggerZoneViewController: UIViewController {
     }
 
     private func updatePanel(items: [SiteTriggerZoneItemModel]) {
-        let index = items.firstIndex { $0.id == selectedID && $0.canEdit }
+        let index = items.firstIndex { $0.id == selectedID && ($0.canEdit || $0.usesEmptyStyle) }
         addPanel.updateHeaderIndex(index.map { $0 + 1 })
+        guard let index else { addPanel.clearBrowseTarget(); return }
+        let spaces: [SiteTriggerZoneCandidates.Space]
+        let selection: SiteTriggerZoneCandidates.Selection
+        var memberships: [SiteTriggerZoneCandidates.Membership] = []
+        #if DEBUG
+        if presentation.isPreview {
+            spaces = previewCandidateSpaces
+            previewCandidateSelection.reconcile(spaces)
+            selection = previewCandidateSelection
+            memberships = previewItems.map { item in
+                .init(zoneID: item.id, devices: Set(item.spaces.flatMap { space in
+                    space.devices.map { .init(siteID: SiteTriggerZoneCandidatePreview.siteID, spaceID: space.id, deviceID: $0.id) }
+                }))
+            }
+        } else {
+            spaces = candidateSpaces
+            selection = candidateSelection
+        }
+        #else
+        spaces = candidateSpaces
+        selection = candidateSelection
+        #endif
+        let selected = spaces.first { $0.id == selection.spaceID && $0.isSelectable }
+        let devices = SiteTriggerZoneCandidates.filteredDevices(in: selected, zoneID: items[index].id,
+                                                                memberships: memberships, includeAdded: selection.includeAdded)
+        let listIncomplete = !presentation.isPreview && candidateListIncomplete
+        let retryAvailable = !presentation.isPreview && (listIncomplete || spaces.contains { $0.availability == .unavailable }) && selected == nil
+        let placeholder = listIncomplete ? "site_zone_data_unavailable" : SiteTriggerZoneCandidates.placeholderKey(for: spaces)
+        let empty = retryAvailable ? "site_zone_data_retry".localizedString : SiteTriggerZoneCandidates.emptyMessageKey(spaces: spaces, selected: selected,
+                                                             visibleDevices: devices, includeAdded: selection.includeAdded)?.localizedString
+        let unavailable = retryAvailable ? "site_zone_data_retry".localizedString : SiteTriggerZoneCandidates.emptyMessageKey(spaces: spaces, selected: nil,
+                                                                   visibleDevices: [], includeAdded: selection.includeAdded)?.localizedString
+        let requestID = candidateRequestID
+        let zoneID = selectedID
+        let isPreview = presentation.isPreview
+        let validCallback: () -> Bool = { [weak self] in
+            guard let self else { return false }
+            return self.candidatePageVisible && self.candidateRequestID == requestID
+                && self.selectedID == zoneID && self.presentation.isPreview == isPreview
+        }
+        addPanel.configureBrowse(.init(spaces: spaces.map { space in
+            let suffix: String?
+            switch space.availability {
+            case .restricted: suffix = (space.accessLabelKey ?? "site_zones_access_unknown").localizedString
+            case .unavailable: suffix = "site_zone_data_unavailable".localizedString
+            case .loading: suffix = "site_zone_loading_spaces".localizedString
+            case .ready, .noGroups: suffix = nil
+            }
+            return .init(id: space.id, title: space.name + (suffix.map { " · " + $0 } ?? ""), enabled: space.isSelectable)
+        }, selectedSpaceID: selected?.id, placeholder: placeholder.localizedString,
+           includeAdded: selection.includeAdded,
+           devices: devices.map { .init(id: "\($0.identity.spaceID)-\($0.identity.deviceID)", name: $0.name) },
+           emptyMessage: empty, unavailableMessage: unavailable,
+           selectSpace: { [weak self] id in
+            guard validCallback(), let self else { return }
+            #if DEBUG
+            if isPreview {
+                self.previewCandidateSelection.select(id, in: self.previewCandidateSpaces)
+                self.updatePanel(items: self.content.items)
+                return
+            }
+            #endif
+            self.candidateSelection.select(id, in: self.candidateSpaces)
+            self.loadCandidateSpaces(devicesFor: self.candidateSelection.spaceID)
+        }, changeFilter: { [weak self] includeAdded in
+            guard validCallback(), let self else { return }
+            #if DEBUG
+            if isPreview { self.previewCandidateSelection.includeAdded = includeAdded }
+            else { self.candidateSelection.includeAdded = includeAdded }
+            #else
+            self.candidateSelection.includeAdded = includeAdded
+            #endif
+            self.updatePanel(items: self.content.items)
+        }, retry: retryAvailable ? { [weak self] in
+            guard validCallback() else { return }
+            self?.loadCandidateSpaces()
+        } : nil))
         addPanel.refreshPreferredHeight()
+    }
+
+    private func loadCandidateSpaces(devicesFor spaceID: String? = nil) {
+        guard candidatePageVisible, !presentation.isPreview else { return }
+        dismissCandidateMenus()
+        let requestID = UUID()
+        candidateRequestID = requestID
+        let site = coordinator.site
+        let account = UserData.currentUserId
+        let region = UserData.currentServerRegion
+        let requests = site.spaces.map { space -> SiteTriggerZoneCandidateReader.Request in
+            let permitted = site.state == .normal && space.siteId == site.id && space.meshUUID == site.meshUUID && space.canEditing
+            return .init(siteID: site.id, meshUUID: space.meshUUID, subnetID: space.meshNetworkId,
+                         space: .init(id: space.id, name: space.name,
+                                      accessLabelKey: permitted ? nil : (space.permission == .visitor ? "visitor" : "site_zones_access_unknown"),
+                                      availability: permitted ? .loading : .restricted), expectedGroupCount: space.groupCount)
+        }
+        let source = SiteTriggerZoneCandidateReader.Source(
+            appPath: NSHomeDirectory() + "/Documents/\(account)/sunsmart.sqlite3",
+            meshPath: MeshDataManager.customDatabasePath ?? NSHomeDirectory() + "/Documents/mesh.sqlite3",
+            eligibleProfileTypes: [Profile.ProfileType.proximityLighting.rawValue, Profile.ProfileType.proximityLightingWithPhotocell.rawValue],
+            excludedGroupAddresses: [.meshOTAGroupAddress, .localClientGroupAddress, .subElementBroadcastGroupAddress])
+        if spaceID == nil {
+            candidateLoadState.reset()
+            candidateListIncomplete = (site.spaceCount ?? site.spaces.count) > site.spaces.count
+            candidateSpaces = requests.map(\.space)
+        } else {
+            candidateSpaces = candidateSpaces.map { current in
+                var current = current
+                if current.id == spaceID { current.devices = []; current.devicesLoaded = false }
+                return current
+            }
+        }
+        updatePanel(items: content.items)
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            let result = SiteTriggerZoneCandidateReader.load(requests, source: source, devicesFor: spaceID)
+            DispatchQueue.main.async {
+                guard let self, self.candidatePageVisible, !self.presentation.isPreview,
+                      self.candidateRequestID == requestID, UserData.currentUserId == account,
+                      UserData.currentServerRegion == region else { return }
+                self.candidateSpaces = self.candidateLoadState.accept(result, devicesFor: spaceID)
+                self.candidateSelection.reconcile(self.candidateSpaces)
+                self.updatePanel(items: self.content.items)
+                if let selected = self.candidateSelection.spaceID,
+                   self.candidateSpaces.first(where: { $0.id == selected })?.devicesLoaded == false {
+                    self.loadCandidateSpaces(devicesFor: selected)
+                }
+            }
+        }
+    }
+
+    private func dismissCandidateMenus() {
+        viewIfLoaded?.window?.subviews.compactMap { $0 as? TitleSelectView }.forEach { $0.dismiss() }
     }
 
     private func performOperation(_ operation: SiteTriggerZoneItemHeaderView.Operation, zoneID: UUID) {
@@ -210,10 +376,17 @@ final class SiteTriggerZoneViewController: UIViewController {
     }
 
     @objc private func togglePreview() {
+        let previousAnimationSetting = allowPanelAnimations
+        allowPanelAnimations = false
+        defer { allowPanelAnimations = previousAnimationSetting }
+        dismissCandidateMenus()
+        candidateRequestID = UUID()
         if !presentation.isPreview {
             liveScrollOffset = content.tableView.contentOffset
             livePanelCollapsed = addPanel.isCollapsed
             preview.begin(items: SiteTriggerZonePreviewFixtures.makeItems { "\("zone".localizedString) \($0)" })
+            previewCandidateSpaces = SiteTriggerZoneCandidatePreview.spaces(from: previewItems)
+            previewCandidateSelection = .init()
         } else {
             preview.end()
         }
@@ -224,6 +397,7 @@ final class SiteTriggerZoneViewController: UIViewController {
         previewBarButton.accessibilityValue = (presentation.isPreview ? "site_zones_preview_mode" : "site_zones_live_mode").localizedString
         addPanel.setCollapsed(presentation.isPreview ? true : livePanelCollapsed)
         reload()
+        if !presentation.isPreview { loadCandidateSpaces() }
         content.layoutIfNeeded()
         if presentation.isPreview, let index = previewItems.firstIndex(where: { $0.id == selectedID }) {
             let table = content.tableView

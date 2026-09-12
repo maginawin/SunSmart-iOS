@@ -264,6 +264,7 @@
 		08B54D4C30402CCB0017ED49 /* DeviceAddCandidateDeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */; };
 		08B54D4D30402CCB0017ED49 /* DeviceAddTargetSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE42E0A4886007F9B81 /* DeviceAddTargetSelectView.swift */; };
 		08B54D4E30402CCB0017ED49 /* GroupPathSequenceDeviceAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BE72DDABF5C00F09467 /* GroupPathSequenceDeviceAddView.swift */; };
+		ACC4C8C005A64123A9E004AE /* GroupPathSequenceBrowseConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABACB40755EC4EB7B9843EE2 /* GroupPathSequenceBrowseConfiguration.swift */; };
 		08B54D4F30402CCB0017ED49 /* FSCalendarHeaderView.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A042DB8800B00E32092 /* FSCalendarHeaderView.m */; };
 		08B54D5030402CCB0017ED49 /* EnergyConsumptionInstructionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AEB9A42DCB45FD0053102B /* EnergyConsumptionInstructionView.swift */; };
 		08B54D5130402CCB0017ED49 /* ProfileDayNightLuxViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7432EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift */; };
@@ -1457,6 +1458,7 @@
 		C885541F2DE6B44C00C8B688 /* FSCalendarCalculator.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69F32DB8800B00E32092 /* FSCalendarCalculator.m */; };
 		C88554202DE6B44C00C8B688 /* FSCalendarCell.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69F52DB8800B00E32092 /* FSCalendarCell.m */; };
 		C88554212DE6B44C00C8B688 /* GroupPathSequenceDeviceAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BE72DDABF5C00F09467 /* GroupPathSequenceDeviceAddView.swift */; };
+		A92143EE631744C4AE135D7E /* GroupPathSequenceBrowseConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABACB40755EC4EB7B9843EE2 /* GroupPathSequenceBrowseConfiguration.swift */; };
 		C88554222DE6B44C00C8B688 /* FSCalendarHeaderView.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A042DB8800B00E32092 /* FSCalendarHeaderView.m */; };
 		C88554232DE6B44C00C8B688 /* EnergyConsumptionInstructionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AEB9A42DCB45FD0053102B /* EnergyConsumptionInstructionView.swift */; };
 		C88554242DE6B44C00C8B688 /* FSCalendarSeparatorDecorationView.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A062DB8800B00E32092 /* FSCalendarSeparatorDecorationView.m */; };
@@ -1829,6 +1831,7 @@
 		C886E0712E30DE4900D0C3A6 /* FSCalendarCell.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69F52DB8800B00E32092 /* FSCalendarCell.m */; };
 		C886E0722E30DE4900D0C3A6 /* DeviceAddCandidateDeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */; };
 		C886E0732E30DE4900D0C3A6 /* GroupPathSequenceDeviceAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BE72DDABF5C00F09467 /* GroupPathSequenceDeviceAddView.swift */; };
+		7431593421BA47B48F414FD2 /* GroupPathSequenceBrowseConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABACB40755EC4EB7B9843EE2 /* GroupPathSequenceBrowseConfiguration.swift */; };
 		C886E0742E30DE4900D0C3A6 /* FSCalendarHeaderView.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A042DB8800B00E32092 /* FSCalendarHeaderView.m */; };
 		C886E0752E30DE4900D0C3A6 /* EnergyConsumptionInstructionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AEB9A42DCB45FD0053102B /* EnergyConsumptionInstructionView.swift */; };
 		C886E0762E30DE4900D0C3A6 /* FSCalendarSeparatorDecorationView.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A062DB8800B00E32092 /* FSCalendarSeparatorDecorationView.m */; };
@@ -2618,6 +2621,7 @@
 		C8BB662B2ED3F056000C63EE /* FSCalendarCell.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA69F52DB8800B00E32092 /* FSCalendarCell.m */; };
 		C8BB662C2ED3F056000C63EE /* DeviceAddCandidateDeviceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A85CE02E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift */; };
 		C8BB662D2ED3F056000C63EE /* GroupPathSequenceDeviceAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BE72DDABF5C00F09467 /* GroupPathSequenceDeviceAddView.swift */; };
+		52CAF194BDA84FE696B20255 /* GroupPathSequenceBrowseConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABACB40755EC4EB7B9843EE2 /* GroupPathSequenceBrowseConfiguration.swift */; };
 		C8BB662E2ED3F056000C63EE /* FSCalendarHeaderView.m in Sources */ = {isa = PBXBuildFile; fileRef = C8DA6A042DB8800B00E32092 /* FSCalendarHeaderView.m */; };
 		C8BB662F2ED3F056000C63EE /* EnergyConsumptionInstructionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AEB9A42DCB45FD0053102B /* EnergyConsumptionInstructionView.swift */; };
 		C8BB66302ED3F056000C63EE /* SiteGatewayStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C833B8552ECACF110005F84F /* SiteGatewayStatusView.swift */; };
@@ -3065,6 +3069,7 @@
 		C8CD4F4B2E337A6D00E4DE1F /* Privacy Policy.html in Resources */ = {isa = PBXBuildFile; fileRef = C8CD4F4A2E337A6D00E4DE1F /* Privacy Policy.html */; };
 		C8CD4F4F2E337D8500E4DE1F /* User Agreement.html in Resources */ = {isa = PBXBuildFile; fileRef = C8CD4F4E2E337D8500E4DE1F /* User Agreement.html */; };
 		C8CD5BE82DDABF5C00F09467 /* GroupPathSequenceDeviceAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BE72DDABF5C00F09467 /* GroupPathSequenceDeviceAddView.swift */; };
+		89F4EF20CBFC4DF09E9CB636 /* GroupPathSequenceBrowseConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABACB40755EC4EB7B9843EE2 /* GroupPathSequenceBrowseConfiguration.swift */; };
 		C8CD5BEA2DDABFDC00F09467 /* GroupPathSequenceQuickAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BE92DDABFDC00F09467 /* GroupPathSequenceQuickAddView.swift */; };
 		C8CD5BEC2DDAD45100F09467 /* GroupPathSequenceTriggerAddView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BEB2DDAD45100F09467 /* GroupPathSequenceTriggerAddView.swift */; };
 		C8CD5BEE2DDADEE100F09467 /* GroupPathSequenceAddDeviceCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8CD5BED2DDADEE100F09467 /* GroupPathSequenceAddDeviceCell.swift */; };
@@ -3591,10 +3596,25 @@
 		3937682FAB814778874D1620 /* SiteTriggerZoneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 154BFB1972C74A5A861900C9 /* SiteTriggerZoneViewController.swift */; };
 		A8218588333A4EBD83B49026 /* SiteTriggerZoneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 154BFB1972C74A5A861900C9 /* SiteTriggerZoneViewController.swift */; };
 		9EF0C872DE925B4BA1D8350F /* SiteTriggerZoneItemModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2128472FBA54D99C09F203 /* SiteTriggerZoneItemModel.swift */; };
+		242F3EE12D9F4F3FB59EE400 /* SiteTriggerZoneCandidatePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B123BF6F756412589B5D1FA /* SiteTriggerZoneCandidatePreview.swift */; };
+		F7D5E29923454120AF8BDCBC /* SiteTriggerZoneCandidateReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 392FAB0358444160BCBE29FC /* SiteTriggerZoneCandidateReader.swift */; };
+		C92C2151CAE74AC6A7056274 /* SiteTriggerZoneCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAFAFE40DD648E99ECF0CBF /* SiteTriggerZoneCandidatePolicy.swift */; };
 		442ED4DDE61A5015ACBDCF70 /* SiteTriggerZoneItemModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2128472FBA54D99C09F203 /* SiteTriggerZoneItemModel.swift */; };
+		3FB6E3B3ECFE47AFB2541CB3 /* SiteTriggerZoneCandidatePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B123BF6F756412589B5D1FA /* SiteTriggerZoneCandidatePreview.swift */; };
+		FEE1FB25CC954BC291397481 /* SiteTriggerZoneCandidateReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 392FAB0358444160BCBE29FC /* SiteTriggerZoneCandidateReader.swift */; };
+		6EA96793F71C4ACA838B74B7 /* SiteTriggerZoneCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAFAFE40DD648E99ECF0CBF /* SiteTriggerZoneCandidatePolicy.swift */; };
 		2907345B22D95406A6FA4EB1 /* SiteTriggerZoneItemModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2128472FBA54D99C09F203 /* SiteTriggerZoneItemModel.swift */; };
+		40CC1FFCBE354C9B8F5D9907 /* SiteTriggerZoneCandidatePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B123BF6F756412589B5D1FA /* SiteTriggerZoneCandidatePreview.swift */; };
+		5989A5823F05479B80061EC2 /* SiteTriggerZoneCandidateReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 392FAB0358444160BCBE29FC /* SiteTriggerZoneCandidateReader.swift */; };
+		D78290660D024B8E8015FE86 /* SiteTriggerZoneCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAFAFE40DD648E99ECF0CBF /* SiteTriggerZoneCandidatePolicy.swift */; };
 		AB95C7F3341F559891FC4E51 /* SiteTriggerZoneItemModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2128472FBA54D99C09F203 /* SiteTriggerZoneItemModel.swift */; };
+		7741D97284E54E13A0F938CF /* SiteTriggerZoneCandidatePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B123BF6F756412589B5D1FA /* SiteTriggerZoneCandidatePreview.swift */; };
+		5B5E3012A37C4DF392044EC8 /* SiteTriggerZoneCandidateReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 392FAB0358444160BCBE29FC /* SiteTriggerZoneCandidateReader.swift */; };
+		32E1DEEED4FE40498C304D21 /* SiteTriggerZoneCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAFAFE40DD648E99ECF0CBF /* SiteTriggerZoneCandidatePolicy.swift */; };
 		E710820FAB885D58AE1D42AF /* SiteTriggerZoneItemModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2128472FBA54D99C09F203 /* SiteTriggerZoneItemModel.swift */; };
+		7F78EA80D751466DB0884A03 /* SiteTriggerZoneCandidatePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B123BF6F756412589B5D1FA /* SiteTriggerZoneCandidatePreview.swift */; };
+		8BE469FC78CB435EBDA8E93D /* SiteTriggerZoneCandidateReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 392FAB0358444160BCBE29FC /* SiteTriggerZoneCandidateReader.swift */; };
+		3CB71F331A444946AB39DF5F /* SiteTriggerZoneCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAFAFE40DD648E99ECF0CBF /* SiteTriggerZoneCandidatePolicy.swift */; };
 		239F0495185E5EA5AF4BF2E9 /* SiteTriggerZonePreviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 496535143AA555DFA8D9869D /* SiteTriggerZonePreviewFixtures.swift */; };
 		F621BEBEAE6A5D4A8C2E5C1A /* SiteTriggerZonePreviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 496535143AA555DFA8D9869D /* SiteTriggerZonePreviewFixtures.swift */; };
 		DF2E645226CA54E8A4C220AC /* SiteTriggerZonePreviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 496535143AA555DFA8D9869D /* SiteTriggerZonePreviewFixtures.swift */; };
@@ -4238,6 +4258,7 @@
 		C8CD4F4A2E337A6D00E4DE1F /* Privacy Policy.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "Privacy Policy.html"; sourceTree = "<group>"; };
 		C8CD4F4E2E337D8500E4DE1F /* User Agreement.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = "User Agreement.html"; sourceTree = "<group>"; };
 		C8CD5BE72DDABF5C00F09467 /* GroupPathSequenceDeviceAddView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequenceDeviceAddView.swift; sourceTree = "<group>"; };
+		ABACB40755EC4EB7B9843EE2 /* GroupPathSequenceBrowseConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequenceBrowseConfiguration.swift; sourceTree = "<group>"; };
 		C8CD5BE92DDABFDC00F09467 /* GroupPathSequenceQuickAddView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequenceQuickAddView.swift; sourceTree = "<group>"; };
 		C8CD5BEB2DDAD45100F09467 /* GroupPathSequenceTriggerAddView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequenceTriggerAddView.swift; sourceTree = "<group>"; };
 		C8CD5BED2DDADEE100F09467 /* GroupPathSequenceAddDeviceCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequenceAddDeviceCell.swift; sourceTree = "<group>"; };
@@ -4437,6 +4458,9 @@
 		04DF0E02938F412FBC885F03 /* SiteTriggerZoneContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneContentView.swift; sourceTree = "<group>"; };
 		154BFB1972C74A5A861900C9 /* SiteTriggerZoneViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneViewController.swift; sourceTree = "<group>"; };
 		2F2128472FBA54D99C09F203 /* SiteTriggerZoneItemModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneItemModel.swift; sourceTree = "<group>"; };
+		3B123BF6F756412589B5D1FA /* SiteTriggerZoneCandidatePreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneCandidatePreview.swift; sourceTree = "<group>"; };
+		392FAB0358444160BCBE29FC /* SiteTriggerZoneCandidateReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneCandidateReader.swift; sourceTree = "<group>"; };
+		8BAFAFE40DD648E99ECF0CBF /* SiteTriggerZoneCandidatePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift; sourceTree = "<group>"; };
 		496535143AA555DFA8D9869D /* SiteTriggerZonePreviewFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZonePreviewFixtures.swift; sourceTree = "<group>"; };
 		2D54D3601C9A5C49B74362BF /* SiteTriggerZoneItemCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneItemCell.swift; sourceTree = "<group>"; };
 		959B7F8E7C225295876C500A /* SiteTriggerZoneItemHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneItemHeaderView.swift; sourceTree = "<group>"; };
@@ -5245,6 +5269,7 @@
 				C8CD5C282DDB06A300F09467 /* GroupPathSequencePathViewCell.swift */,
 				C8AC021B2DDD64AE0098E165 /* GroupPathSequenceTriggerZoneViewCell.swift */,
 				C8CD5BE72DDABF5C00F09467 /* GroupPathSequenceDeviceAddView.swift */,
+				ABACB40755EC4EB7B9843EE2 /* GroupPathSequenceBrowseConfiguration.swift */,
 				C8CD5BE92DDABFDC00F09467 /* GroupPathSequenceQuickAddView.swift */,
 				C8CD5BEB2DDAD45100F09467 /* GroupPathSequenceTriggerAddView.swift */,
 				C8AC845B2DE15F6000213DE2 /* GroupPathSequenceManuallyAddView.swift */,
@@ -5481,6 +5506,9 @@
 				2D54D3601C9A5C49B74362BF /* SiteTriggerZoneItemCell.swift */,
 				496535143AA555DFA8D9869D /* SiteTriggerZonePreviewFixtures.swift */,
 				2F2128472FBA54D99C09F203 /* SiteTriggerZoneItemModel.swift */,
+				3B123BF6F756412589B5D1FA /* SiteTriggerZoneCandidatePreview.swift */,
+				392FAB0358444160BCBE29FC /* SiteTriggerZoneCandidateReader.swift */,
+				8BAFAFE40DD648E99ECF0CBF /* SiteTriggerZoneCandidatePolicy.swift */,
 				328092E397014E308EBF7514 /* SiteTriggerZoneCoordinator.swift */,
 				663B9D0F54C24D039BAA03E8 /* SiteTriggerZoneStore.swift */,
 				D6CE8AF636BB4FFE942CAA9F /* SiteTriggerZoneData.swift */,
@@ -7172,6 +7200,9 @@
 				2F2F48BFC9705633B3411236 /* SiteTriggerZoneItemCell.swift in Sources */,
 				239F0495185E5EA5AF4BF2E9 /* SiteTriggerZonePreviewFixtures.swift in Sources */,
 				9EF0C872DE925B4BA1D8350F /* SiteTriggerZoneItemModel.swift in Sources */,
+				242F3EE12D9F4F3FB59EE400 /* SiteTriggerZoneCandidatePreview.swift in Sources */,
+				F7D5E29923454120AF8BDCBC /* SiteTriggerZoneCandidateReader.swift in Sources */,
+				C92C2151CAE74AC6A7056274 /* SiteTriggerZoneCandidatePolicy.swift in Sources */,
 				E90B963C52EA40729CDB700C /* SiteTriggerZoneCoordinator.swift in Sources */,
 				A441748F6325404B80CE11FD /* SiteTriggerZoneStore.swift in Sources */,
 				19D52AAF6D794F1E816D7AFC /* SiteTriggerZoneData.swift in Sources */,
@@ -7414,6 +7445,7 @@
 				08B54D4C30402CCB0017ED49 /* DeviceAddCandidateDeviceListView.swift in Sources */,
 				08B54D4D30402CCB0017ED49 /* DeviceAddTargetSelectView.swift in Sources */,
 				08B54D4E30402CCB0017ED49 /* GroupPathSequenceDeviceAddView.swift in Sources */,
+				ACC4C8C005A64123A9E004AE /* GroupPathSequenceBrowseConfiguration.swift in Sources */,
 				08B54D4F30402CCB0017ED49 /* FSCalendarHeaderView.m in Sources */,
 				08B54D5030402CCB0017ED49 /* EnergyConsumptionInstructionView.swift in Sources */,
 				08B54D5130402CCB0017ED49 /* ProfileDayNightLuxViewController.swift in Sources */,
@@ -7876,6 +7908,9 @@
 				82077EAE91105A2FB051C295 /* SiteTriggerZoneItemCell.swift in Sources */,
 				F621BEBEAE6A5D4A8C2E5C1A /* SiteTriggerZonePreviewFixtures.swift in Sources */,
 				442ED4DDE61A5015ACBDCF70 /* SiteTriggerZoneItemModel.swift in Sources */,
+				3FB6E3B3ECFE47AFB2541CB3 /* SiteTriggerZoneCandidatePreview.swift in Sources */,
+				FEE1FB25CC954BC291397481 /* SiteTriggerZoneCandidateReader.swift in Sources */,
+				6EA96793F71C4ACA838B74B7 /* SiteTriggerZoneCandidatePolicy.swift in Sources */,
 				9219B7792F424285A2B21A14 /* SiteTriggerZoneCoordinator.swift in Sources */,
 				9A52212DAE0A4501B150AACF /* SiteTriggerZoneStore.swift in Sources */,
 				A74BAAE36C924853BFC79B22 /* SiteTriggerZoneData.swift in Sources */,
@@ -8108,6 +8143,7 @@
 				C8A85CE22E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift in Sources */,
 				C8A85CE52E0A4886007F9B81 /* DeviceAddTargetSelectView.swift in Sources */,
 				C88554212DE6B44C00C8B688 /* GroupPathSequenceDeviceAddView.swift in Sources */,
+				A92143EE631744C4AE135D7E /* GroupPathSequenceBrowseConfiguration.swift in Sources */,
 				C88554222DE6B44C00C8B688 /* FSCalendarHeaderView.m in Sources */,
 				C88554232DE6B44C00C8B688 /* EnergyConsumptionInstructionView.swift in Sources */,
 				C8A8D7452EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */,
@@ -8580,6 +8616,9 @@
 				2BFBA6FDD46C58BE853C3589 /* SiteTriggerZoneItemCell.swift in Sources */,
 				DF2E645226CA54E8A4C220AC /* SiteTriggerZonePreviewFixtures.swift in Sources */,
 				2907345B22D95406A6FA4EB1 /* SiteTriggerZoneItemModel.swift in Sources */,
+				40CC1FFCBE354C9B8F5D9907 /* SiteTriggerZoneCandidatePreview.swift in Sources */,
+				5989A5823F05479B80061EC2 /* SiteTriggerZoneCandidateReader.swift in Sources */,
+				D78290660D024B8E8015FE86 /* SiteTriggerZoneCandidatePolicy.swift in Sources */,
 				7BA552BFAF76410E95F4834D /* SiteTriggerZoneCoordinator.swift in Sources */,
 				E4650E2CC7BD436F84FEE575 /* SiteTriggerZoneStore.swift in Sources */,
 				CE33830D778F4A9D8F5F83F6 /* SiteTriggerZoneData.swift in Sources */,
@@ -8813,6 +8852,7 @@
 				C8A85CE62E0A4886007F9B81 /* DeviceAddTargetSelectView.swift in Sources */,
 				C886E07A2E30DE4900D0C3A6 /* FSCalendar.m in Sources */,
 				C886E0732E30DE4900D0C3A6 /* GroupPathSequenceDeviceAddView.swift in Sources */,
+				7431593421BA47B48F414FD2 /* GroupPathSequenceBrowseConfiguration.swift in Sources */,
 				C886E0742E30DE4900D0C3A6 /* FSCalendarHeaderView.m in Sources */,
 				C886E0752E30DE4900D0C3A6 /* EnergyConsumptionInstructionView.swift in Sources */,
 				C8A8D7442EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */,
@@ -9285,6 +9325,9 @@
 				5D3E53BDC26E5D61BAFFFB4B /* SiteTriggerZoneItemCell.swift in Sources */,
 				CB571E9F60B15400B27C0516 /* SiteTriggerZonePreviewFixtures.swift in Sources */,
 				AB95C7F3341F559891FC4E51 /* SiteTriggerZoneItemModel.swift in Sources */,
+				7741D97284E54E13A0F938CF /* SiteTriggerZoneCandidatePreview.swift in Sources */,
+				5B5E3012A37C4DF392044EC8 /* SiteTriggerZoneCandidateReader.swift in Sources */,
+				32E1DEEED4FE40498C304D21 /* SiteTriggerZoneCandidatePolicy.swift in Sources */,
 				5D84E180E2BD41759EAD2D91 /* SiteTriggerZoneCoordinator.swift in Sources */,
 				DD59B7AC9CDB45BDA0B7E6A6 /* SiteTriggerZoneStore.swift in Sources */,
 				1650039162C947AF98A1FC38 /* SiteTriggerZoneData.swift in Sources */,
@@ -9527,6 +9570,7 @@
 				C8A85CE12E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift in Sources */,
 				C8A85CE32E0A4886007F9B81 /* DeviceAddTargetSelectView.swift in Sources */,
 				C8CD5BE82DDABF5C00F09467 /* GroupPathSequenceDeviceAddView.swift in Sources */,
+				89F4EF20CBFC4DF09E9CB636 /* GroupPathSequenceBrowseConfiguration.swift in Sources */,
 				C8DA6A132DB8800B00E32092 /* FSCalendarHeaderView.m in Sources */,
 				C8AEB9A52DCB45FD0053102B /* EnergyConsumptionInstructionView.swift in Sources */,
 				C8A8D7462EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */,
@@ -9989,6 +10033,9 @@
 				0B533BD5B2EF5D3B89AC5157 /* SiteTriggerZoneItemCell.swift in Sources */,
 				F33FAD57616D53F9A5030FF4 /* SiteTriggerZonePreviewFixtures.swift in Sources */,
 				E710820FAB885D58AE1D42AF /* SiteTriggerZoneItemModel.swift in Sources */,
+				7F78EA80D751466DB0884A03 /* SiteTriggerZoneCandidatePreview.swift in Sources */,
+				8BE469FC78CB435EBDA8E93D /* SiteTriggerZoneCandidateReader.swift in Sources */,
+				3CB71F331A444946AB39DF5F /* SiteTriggerZoneCandidatePolicy.swift in Sources */,
 				EA72537650B9492F846C526C /* SiteTriggerZoneCoordinator.swift in Sources */,
 				280496ECC5884DC8BE037C2D /* SiteTriggerZoneStore.swift in Sources */,
 				ECAA108436E54FB8A885381C /* SiteTriggerZoneData.swift in Sources */,
@@ -10222,6 +10269,7 @@
 				C8A85CE72E0A4886007F9B81 /* DeviceAddTargetSelectView.swift in Sources */,
 				C8BB66372ED3F056000C63EE /* FSCalendarDelegationProxy.m in Sources */,
 				C8BB662D2ED3F056000C63EE /* GroupPathSequenceDeviceAddView.swift in Sources */,
+				52CAF194BDA84FE696B20255 /* GroupPathSequenceBrowseConfiguration.swift in Sources */,
 				C8BB662E2ED3F056000C63EE /* FSCalendarHeaderView.m in Sources */,
 				C8BB662F2ED3F056000C63EE /* EnergyConsumptionInstructionView.swift in Sources */,
 				C8A8D7472EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */,
