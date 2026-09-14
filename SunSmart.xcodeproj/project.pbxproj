@@ -3575,6 +3575,21 @@
 		CE33830D778F4A9D8F5F83F6 /* SiteTriggerZoneData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6CE8AF636BB4FFE942CAA9F /* SiteTriggerZoneData.swift */; };
 		1650039162C947AF98A1FC38 /* SiteTriggerZoneData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6CE8AF636BB4FFE942CAA9F /* SiteTriggerZoneData.swift */; };
 		ECAA108436E54FB8A885381C /* SiteTriggerZoneData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6CE8AF636BB4FFE942CAA9F /* SiteTriggerZoneData.swift */; };
+		F2609140000000000000201 /* SiteTriggerZoneTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000200 /* SiteTriggerZoneTopologyPolicy.swift */; };
+		F2609140000000000000202 /* SiteTriggerZoneTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000200 /* SiteTriggerZoneTopologyPolicy.swift */; };
+		F2609140000000000000203 /* SiteTriggerZoneTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000200 /* SiteTriggerZoneTopologyPolicy.swift */; };
+		F2609140000000000000204 /* SiteTriggerZoneTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000200 /* SiteTriggerZoneTopologyPolicy.swift */; };
+		F2609140000000000000205 /* SiteTriggerZoneTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000200 /* SiteTriggerZoneTopologyPolicy.swift */; };
+		F2609140000000000000211 /* SiteTriggerZoneTopologyReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000210 /* SiteTriggerZoneTopologyReader.swift */; };
+		F2609140000000000000212 /* SiteTriggerZoneTopologyReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000210 /* SiteTriggerZoneTopologyReader.swift */; };
+		F2609140000000000000213 /* SiteTriggerZoneTopologyReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000210 /* SiteTriggerZoneTopologyReader.swift */; };
+		F2609140000000000000214 /* SiteTriggerZoneTopologyReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000210 /* SiteTriggerZoneTopologyReader.swift */; };
+		F2609140000000000000215 /* SiteTriggerZoneTopologyReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000210 /* SiteTriggerZoneTopologyReader.swift */; };
+		F2609140000000000000221 /* SiteTriggerZoneSyncPlanningPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000220 /* SiteTriggerZoneSyncPlanningPolicy.swift */; };
+		F2609140000000000000222 /* SiteTriggerZoneSyncPlanningPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000220 /* SiteTriggerZoneSyncPlanningPolicy.swift */; };
+		F2609140000000000000223 /* SiteTriggerZoneSyncPlanningPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000220 /* SiteTriggerZoneSyncPlanningPolicy.swift */; };
+		F2609140000000000000224 /* SiteTriggerZoneSyncPlanningPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000220 /* SiteTriggerZoneSyncPlanningPolicy.swift */; };
+		F2609140000000000000225 /* SiteTriggerZoneSyncPlanningPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000220 /* SiteTriggerZoneSyncPlanningPolicy.swift */; };
 		A441748F6325404B80CE11FD /* SiteTriggerZoneStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 663B9D0F54C24D039BAA03E8 /* SiteTriggerZoneStore.swift */; };
 		9A52212DAE0A4501B150AACF /* SiteTriggerZoneStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 663B9D0F54C24D039BAA03E8 /* SiteTriggerZoneStore.swift */; };
 		E4650E2CC7BD436F84FEE575 /* SiteTriggerZoneStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 663B9D0F54C24D039BAA03E8 /* SiteTriggerZoneStore.swift */; };
@@ -4453,6 +4468,9 @@
 		F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncParameterTaskBuilder.swift; sourceTree = "<group>"; };
 		FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorState.swift; sourceTree = "<group>"; };
 		D6CE8AF636BB4FFE942CAA9F /* SiteTriggerZoneData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneData.swift; sourceTree = "<group>"; };
+		F2609140000000000000200 /* SiteTriggerZoneTopologyPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift; sourceTree = "<group>"; };
+		F2609140000000000000210 /* SiteTriggerZoneTopologyReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneTopologyReader.swift; sourceTree = "<group>"; };
+		F2609140000000000000220 /* SiteTriggerZoneSyncPlanningPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift; sourceTree = "<group>"; };
 		663B9D0F54C24D039BAA03E8 /* SiteTriggerZoneStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneStore.swift; sourceTree = "<group>"; };
 		328092E397014E308EBF7514 /* SiteTriggerZoneCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneCoordinator.swift; sourceTree = "<group>"; };
 		04DF0E02938F412FBC885F03 /* SiteTriggerZoneContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneContentView.swift; sourceTree = "<group>"; };
@@ -5512,6 +5530,9 @@
 				328092E397014E308EBF7514 /* SiteTriggerZoneCoordinator.swift */,
 				663B9D0F54C24D039BAA03E8 /* SiteTriggerZoneStore.swift */,
 				D6CE8AF636BB4FFE942CAA9F /* SiteTriggerZoneData.swift */,
+				F2609140000000000000200 /* SiteTriggerZoneTopologyPolicy.swift */,
+				F2609140000000000000210 /* SiteTriggerZoneTopologyReader.swift */,
+				F2609140000000000000220 /* SiteTriggerZoneSyncPlanningPolicy.swift */,
 				F2608110000000000000400 /* SitePropsAPIClient.swift */,
 				F2608110000000000000500 /* SitePropsEditCoordinator.swift */,
 				F2608120000000000001000 /* SiteEntryTimeZoneSyncPolicy.swift */,
@@ -7206,6 +7227,9 @@
 				E90B963C52EA40729CDB700C /* SiteTriggerZoneCoordinator.swift in Sources */,
 				A441748F6325404B80CE11FD /* SiteTriggerZoneStore.swift in Sources */,
 				19D52AAF6D794F1E816D7AFC /* SiteTriggerZoneData.swift in Sources */,
+				F2609140000000000000201 /* SiteTriggerZoneTopologyPolicy.swift in Sources */,
+				F2609140000000000000211 /* SiteTriggerZoneTopologyReader.swift in Sources */,
+				F2609140000000000000221 /* SiteTriggerZoneSyncPlanningPolicy.swift in Sources */,
 				08B54C6230402CCB0017ED49 /* SitePropsAPIClient.swift in Sources */,
 				08B54C6330402CCB0017ED49 /* SitePropsEditCoordinator.swift in Sources */,
 				08B54C6430402CCB0017ED49 /* SiteTimeZoneSelectionViewController.swift in Sources */,
@@ -7914,6 +7938,9 @@
 				9219B7792F424285A2B21A14 /* SiteTriggerZoneCoordinator.swift in Sources */,
 				9A52212DAE0A4501B150AACF /* SiteTriggerZoneStore.swift in Sources */,
 				A74BAAE36C924853BFC79B22 /* SiteTriggerZoneData.swift in Sources */,
+				F2609140000000000000202 /* SiteTriggerZoneTopologyPolicy.swift in Sources */,
+				F2609140000000000000212 /* SiteTriggerZoneTopologyReader.swift in Sources */,
+				F2609140000000000000222 /* SiteTriggerZoneSyncPlanningPolicy.swift in Sources */,
 				F2608110000000000000401 /* SitePropsAPIClient.swift in Sources */,
 				F2608110000000000000501 /* SitePropsEditCoordinator.swift in Sources */,
 				F2608110000000000000601 /* SiteTimeZoneSelectionViewController.swift in Sources */,
@@ -8622,6 +8649,9 @@
 				7BA552BFAF76410E95F4834D /* SiteTriggerZoneCoordinator.swift in Sources */,
 				E4650E2CC7BD436F84FEE575 /* SiteTriggerZoneStore.swift in Sources */,
 				CE33830D778F4A9D8F5F83F6 /* SiteTriggerZoneData.swift in Sources */,
+				F2609140000000000000203 /* SiteTriggerZoneTopologyPolicy.swift in Sources */,
+				F2609140000000000000213 /* SiteTriggerZoneTopologyReader.swift in Sources */,
+				F2609140000000000000223 /* SiteTriggerZoneSyncPlanningPolicy.swift in Sources */,
 				F2608110000000000000402 /* SitePropsAPIClient.swift in Sources */,
 				F2608110000000000000502 /* SitePropsEditCoordinator.swift in Sources */,
 				F2608110000000000000602 /* SiteTimeZoneSelectionViewController.swift in Sources */,
@@ -9331,6 +9361,9 @@
 				5D84E180E2BD41759EAD2D91 /* SiteTriggerZoneCoordinator.swift in Sources */,
 				DD59B7AC9CDB45BDA0B7E6A6 /* SiteTriggerZoneStore.swift in Sources */,
 				1650039162C947AF98A1FC38 /* SiteTriggerZoneData.swift in Sources */,
+				F2609140000000000000204 /* SiteTriggerZoneTopologyPolicy.swift in Sources */,
+				F2609140000000000000214 /* SiteTriggerZoneTopologyReader.swift in Sources */,
+				F2609140000000000000224 /* SiteTriggerZoneSyncPlanningPolicy.swift in Sources */,
 				F2608110000000000000403 /* SitePropsAPIClient.swift in Sources */,
 				F2608110000000000000503 /* SitePropsEditCoordinator.swift in Sources */,
 				F2608110000000000000603 /* SiteTimeZoneSelectionViewController.swift in Sources */,
@@ -10039,6 +10072,9 @@
 				EA72537650B9492F846C526C /* SiteTriggerZoneCoordinator.swift in Sources */,
 				280496ECC5884DC8BE037C2D /* SiteTriggerZoneStore.swift in Sources */,
 				ECAA108436E54FB8A885381C /* SiteTriggerZoneData.swift in Sources */,
+				F2609140000000000000205 /* SiteTriggerZoneTopologyPolicy.swift in Sources */,
+				F2609140000000000000215 /* SiteTriggerZoneTopologyReader.swift in Sources */,
+				F2609140000000000000225 /* SiteTriggerZoneSyncPlanningPolicy.swift in Sources */,
 				F2608110000000000000404 /* SitePropsAPIClient.swift in Sources */,
 				F2608110000000000000504 /* SitePropsEditCoordinator.swift in Sources */,
 				F2608110000000000000604 /* SiteTimeZoneSelectionViewController.swift in Sources */,

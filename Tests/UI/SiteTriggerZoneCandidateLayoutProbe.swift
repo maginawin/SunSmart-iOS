@@ -4,6 +4,130 @@ import UIKit
 /// Runs real production controls in an isolated, device-hosted application.
 @MainActor
 enum SiteTriggerZoneCandidateLayoutProbe {
+    private final class FakeMeshTransport: SiteTriggerZoneMeshConnection.Transport {
+        private let lock = NSLock()
+        private var current: SiteTriggerZoneMeshConnection.Context?
+        private var observer: (() -> Void)?
+        private var calls: [String] = []
+
+        var context: SiteTriggerZoneMeshConnection.Context? {
+            lock.lock(); defer { lock.unlock() }
+            return current
+        }
+
+        func connect(_ target: SiteTriggerZoneMeshConnection.Target) {
+            lock.lock(); defer { lock.unlock() }
+            calls.append("connect:" + target.spaceID)
+            current = .init(meshUUID: target.meshUUID, networkID: target.networkID, connected: false)
+        }
+
+        func disconnect() {
+            lock.lock(); defer { lock.unlock() }
+            calls.append("disconnect")
+            current = nil
+        }
+
+        func loadPrimary(meshUUID: String, networkID: String) {
+            lock.lock(); defer { lock.unlock() }
+            calls.append("primary")
+            current = .init(meshUUID: meshUUID, networkID: networkID, connected: false)
+        }
+
+        func addObserver(_ observer: @escaping () -> Void) -> UUID {
+            lock.lock(); defer { lock.unlock() }
+            self.observer = observer
+            return UUID()
+        }
+
+        func removeObserver(_ id: UUID?) {
+            lock.lock(); defer { lock.unlock() }
+            observer = nil
+        }
+
+        func simulate(_ target: SiteTriggerZoneMeshConnection.Target, connected: Bool) {
+            lock.lock()
+            current = .init(meshUUID: target.meshUUID, networkID: target.networkID, connected: connected)
+            let callback = observer
+            lock.unlock()
+            callback?()
+        }
+
+        func count(_ call: String) -> Int {
+            lock.lock(); defer { lock.unlock() }
+            return calls.filter { $0 == call }.count
+        }
+    }
+
+    static func runConnectionSession() async -> [String] {
+        let transport = FakeMeshTransport()
+        let session = SiteTriggerZoneMeshConnection(primaryMeshUUID: "primary", primaryNetworkID: "0",
+                                                    transport: transport, connectionTimeout: 0.25)
+        let a = SiteTriggerZoneMeshConnection.Target(spaceID: "A", meshUUID: "mesh-a", networkID: "1")
+        let b = SiteTriggerZoneMeshConnection.Target(spaceID: "B", meshUUID: "mesh-b", networkID: "2")
+        let c = SiteTriggerZoneMeshConnection.Target(spaceID: "C", meshUUID: "mesh-c", networkID: "3")
+        var failures: [String] = []
+        func check(_ value: Bool, _ message: String) { if !value { failures.append(message) } }
+        func waitFor(_ condition: () -> Bool) async -> Bool {
+            let deadline = Date().addingTimeInterval(1)
+            while !condition(), Date() < deadline {
+                try? await _Concurrency.Task.sleep(nanoseconds: 10_000_000)
+            }
+            return condition()
+        }
+
+        session.select(a, autoConnect: false)
+        check(session.phase == .idle && transport.count("connect:A") == 0, "Quick selection connected before Start")
+        session.start()
+        check(session.phase == .connecting, "Start did not enter Connecting")
+        check(await waitFor { transport.count("connect:A") == 1 }, "A did not start connecting")
+        transport.simulate(a, connected: true)
+        check(await waitFor { session.phase == .connected }, "A did not become connected")
+        session.select(a, autoConnect: false)
+        check(session.phase == .connected, "Same Space selection lost the connection")
+
+        session.select(b, autoConnect: false)
+        check(session.phase == .idle, "Quick Space switch did not reset to Start")
+        check(await waitFor { transport.count("primary") == 1 }, "Quick Space switch did not restore Primary")
+        session.start()
+        check(await waitFor { transport.count("connect:B") == 1 }, "B did not start connecting")
+        transport.simulate(a, connected: true)
+        try? await _Concurrency.Task.sleep(nanoseconds: 20_000_000)
+        check(session.phase == .connecting, "Old Space callback completed the new Space")
+        transport.simulate(b, connected: true)
+        check(await waitFor { session.phase == .connected }, "B did not become connected")
+        transport.simulate(b, connected: false)
+        check(await waitFor { session.phase == .failed }, "Unexpected disconnect did not fail")
+        session.retry()
+        check(session.phase == .connecting, "Retry did not enter Connecting")
+        check(await waitFor { transport.count("connect:B") == 2 }, "Retry did not reconnect")
+        transport.simulate(b, connected: true)
+        check(await waitFor { session.phase == .connected }, "Retry did not recover")
+
+        session.select(c, autoConnect: false)
+        check(await waitFor { transport.count("primary") == 2 }, "Second Space switch did not restore Primary")
+        session.start()
+        check(await waitFor { transport.count("connect:C") == 1 }, "C did not start connecting")
+        check(await waitFor { session.phase == .failed }, "Connection timeout did not fail")
+        transport.simulate(c, connected: true)
+        try? await _Concurrency.Task.sleep(nanoseconds: 20_000_000)
+        check(session.phase == .failed, "Late callback cleared failed state without Retry")
+        session.retry()
+        check(await waitFor { transport.count("connect:C") == 2 }, "Timeout Retry did not reconnect")
+        session.select(a, autoConnect: true)
+        check(await waitFor { transport.count("connect:A") == 2 }, "Trigger/Manual switch did not auto-connect new Space")
+        transport.simulate(c, connected: true)
+        try? await _Concurrency.Task.sleep(nanoseconds: 20_000_000)
+        check(session.phase == .connecting, "Canceled Space callback completed current Space")
+        transport.simulate(a, connected: true)
+        check(await waitFor { session.phase == .connected }, "Auto-connected Space did not become connected")
+        session.leave()
+        check(session.phase == .idle, "Leaving did not clear connection state")
+        check(await waitFor { transport.count("primary") == 3 }, "Leaving did not restore Primary")
+        let result = failures.isEmpty ? "PASS" : failures.joined(separator: "\n")
+        try? result.write(to: outputDirectory.appendingPathComponent("connection-state.txt"), atomically: true, encoding: .utf8)
+        return failures
+    }
+
     /// Run separately from the static probes, after the production page has appeared.
     static func runPanelAnimations(in controller: SiteTriggerZoneViewController) async -> [String] {
         func descendants(_ view: UIView) -> [UIView] { view.subviews.flatMap { [$0] + descendants($0) } }
@@ -406,6 +530,67 @@ enum SiteTriggerZoneCandidateLayoutProbe {
                 }
             }
         }
+        for width: CGFloat in [320, 393, 768] {
+            root.frame = CGRect(x: 0, y: 0, width: width, height: 800)
+            for phase: GroupPathSequenceBrowseConfiguration.ConnectionPhase in [.connecting, .failed, .connected] {
+                var retryCount = 0
+                var configuration = GroupPathSequenceBrowseConfiguration(
+                    spaces: spaces, selectedSpaceID: "ready", placeholder: "", includeAdded: false,
+                    devices: (0..<8).map { .init(id: "device-\($0)", name: "Device \($0)") },
+                    emptyMessage: nil, unavailableMessage: nil,
+                    selectSpace: { _ in }, changeFilter: { _ in }, retry: nil)
+                configuration.connectionPhase = phase
+                configuration.quickConnectionActive = true
+                configuration.startConnection = {}
+                configuration.retryConnection = { retryCount += 1 }
+                panel.configureBrowse(configuration)
+                panel.setCollapsed(false)
+                root.layoutIfNeeded()
+                for mode in 0..<3 {
+                    descendants(panel).compactMap { $0 as? WMMenuView }.first?.selectItem(at: mode)
+                    panel.refreshPreferredHeight()
+                    root.layoutIfNeeded()
+                    let active: UIView = [panel.quickAddView!, panel.triggerAddView!, panel.manuallyAddView!][mode]
+                    let context = "Connection \(width) \(phase) mode=\(mode)"
+                    guard let status = descendants(panel).compactMap({ $0 as? GroupPathSequenceConnectionStatusView }).first else {
+                        failures.append(context + ": status view missing")
+                        continue
+                    }
+                    let shouldShow = true
+                    check(visible(status, within: panel) == shouldShow, context + ": status visibility")
+                    if shouldShow {
+                        let card = status.superview!
+                        let frame = status.convert(status.bounds, to: card)
+                        check(card.bounds.contains(frame), context + ": status outside card")
+                        if let hint = descendants(active).first(where: { $0.accessibilityIdentifier == "site-zone-proximity-hint" }),
+                           visible(hint, within: active) {
+                            check(hint.convert(hint.bounds, to: panel).maxY + 4 <= status.convert(status.bounds, to: panel).minY,
+                                  context + ": status overlaps proximity hint")
+                        }
+                        for label in descendants(status).compactMap({ $0 as? UILabel }) where !label.isHidden {
+                            let labelFrame = label.convert(label.bounds, to: status)
+                            check(status.bounds.contains(labelFrame), context + ": status text clipped")
+                        }
+                    }
+                    let retry = descendants(status).compactMap({ $0 as? UIButton }).first { $0.accessibilityIdentifier == "site-zone-connection-retry" }
+                    check(retry?.isHidden == (phase != .failed), context + ": Retry visibility")
+                    if phase == .failed, mode == 0 {
+                        retry?.sendActions(for: .touchUpInside)
+                        check(retryCount == 1, context + ": Retry callback")
+                    }
+                    if mode == 0 {
+                        let start = descendants(panel.quickAddView).compactMap({ $0 as? UIButton }).first { $0.accessibilityIdentifier == "site-zone-quick-start" }
+                        check(start?.isHidden == true, context + ": Start visible over connection feedback")
+                        let footer = descendants(panel.quickAddView).first { $0.accessibilityIdentifier == "site-zone-quick-footer" }
+                        check(footer.map { visible($0, within: panel) } == true, context + ": Quick footer hidden")
+                    } else if mode == 2 {
+                        check(descendants(active).compactMap({ $0 as? UIPageControl }).allSatisfy(\.isHidden),
+                              context + ": inactive Manual pagination visible")
+                    }
+                    if width == 393 { capture(root, name: "connection-\(phase)-mode-\(mode)") }
+                }
+            }
+        }
         if let window = host.window {
             let source = UIView()
             window.addSubview(source)
@@ -483,6 +668,107 @@ enum SiteTriggerZoneCandidateLayoutProbe {
         }
         let result = failures.isEmpty ? "PASS" : failures.joined(separator: "\n")
         try? result.write(to: outputDirectory.appendingPathComponent("result.txt"), atomically: true, encoding: .utf8)
+        return failures
+    }
+
+    static func runStage2(in host: UIView) -> [String] {
+        func descendants(_ view: UIView) -> [UIView] { view.subviews.flatMap { [$0] + descendants($0) } }
+        var failures: [String] = []
+        func check(_ value: Bool, _ message: String) { if !value { failures.append(message) } }
+        let panel = GroupPathSequenceDeviceAddView()
+        panel.isSequence = false
+        panel.contentHeightPolicy = .dynamicSelected
+        panel.canAddDevice = false
+        let root = SiteTriggerZoneContentView(panel: panel)
+        var responder: UIResponder? = host
+        while responder != nil && !(responder is UIViewController) { responder = responder?.next }
+        guard let parent = responder as? UIViewController else { return ["Stage 2 probe requires a controller"] }
+        let container = UIViewController()
+        container.view = root
+        parent.addChild(container)
+        host.addSubview(root)
+        container.didMove(toParent: parent)
+        defer {
+            container.willMove(toParent: nil)
+            root.removeFromSuperview()
+            container.removeFromParent()
+        }
+        panel.contentHeightChanged = { root.setPanelHeight($0) }
+        let zoneID = UUID()
+        var item = SiteTriggerZoneItemModel(id: zoneID, name: "Zone 1")
+        item.spaces = [
+            .init(id: "space-A", name: "A very long Space name that should truncate safely", access: .owner,
+                  devices: [.init(id: "node-A", name: "A very long device name that should truncate safely")]),
+            .init(id: "space-B", name: "Space B", access: .editor,
+                  devices: [.init(id: "node-B", name: "Device B")])
+        ]
+        item.sync.devices = .pending
+        item.hasUnsavedChanges = true
+        root.render(items: [item], selectedID: zoneID, canCreate: true, canSave: true)
+        panel.updateHeaderIndex(1)
+        let candidates = [GroupPathSequenceBrowseConfiguration.Device(id: "space-A-node-C", name: "A very long candidate device name"),
+                          .init(id: "space-A-node-D", name: "Device D")]
+        for width: CGFloat in [320, 393, 768] {
+            root.frame = CGRect(x: 0, y: 0, width: width, height: 800)
+            var selections: [String] = []
+            var quickChanges: [QuickAddState] = []
+            var configuration = GroupPathSequenceBrowseConfiguration(
+                spaces: [.init(id: "space-A", title: "A very long Space name that should truncate safely", enabled: true)],
+                selectedSpaceID: "space-A", placeholder: "", includeAdded: false,
+                devices: candidates, emptyMessage: nil, unavailableMessage: nil,
+                selectSpace: { _ in }, changeFilter: { _ in }, retry: nil)
+            configuration.connectionPhase = .connected
+            configuration.quickState = .adding
+            configuration.connectedNoticeKey = ""
+            configuration.triggerDevices = candidates
+            configuration.selectedDeviceID = candidates[0].id
+            configuration.selectDevice = { selections.append($0) }
+            configuration.changeQuickState = { quickChanges.append($0) }
+            panel.configureBrowse(configuration)
+            panel.setCollapsed(false)
+            root.layoutIfNeeded()
+            let context = "Stage 2 \(Int(width))pt"
+            let status = descendants(panel).compactMap { $0 as? GroupPathSequenceConnectionStatusView }.first
+            check(status?.isHidden == true, context + ": connected overlay obstructs candidates")
+            check(!panel.hasAmbiguousLayout, context + ": panel has ambiguous constraints")
+            check(!root.tableView.hasAmbiguousLayout, context + ": list has ambiguous constraints")
+            check(root.tableView.frame.maxY + 8 <= panel.frame.minY + 0.5,
+                  context + ": list overlaps add panel")
+            let start = descendants(panel.quickAddView).compactMap { $0 as? UIButton }
+                .first { $0.accessibilityIdentifier == "site-zone-quick-start" }
+            let stop = descendants(panel.quickAddView).compactMap { $0 as? UIButton }
+                .first { $0.accessibilityIdentifier == "site-zone-quick-stop" }
+            check(start?.isHidden == false && stop?.isHidden == false,
+                  context + ": Adding controls are missing")
+            start?.sendActions(for: .touchUpInside)
+            stop?.sendActions(for: .touchUpInside)
+            check(quickChanges.count == 2 && quickChanges[0] == .pause && quickChanges[1] == .stop,
+                  context + ": Pause/Stop callbacks are incorrect")
+            let menu = descendants(panel).compactMap { $0 as? WMMenuView }.first
+            menu?.selectItem(at: 1)
+            root.layoutIfNeeded()
+            let trigger = descendants(panel.triggerAddView).compactMap { $0 as? UICollectionView }.first
+            check(trigger?.numberOfItems(inSection: 0) == 2 && trigger?.isHidden == false,
+                  context + ": Trigger candidates are not visible")
+            if let trigger {
+                check(trigger.convert(trigger.bounds, to: panel).maxY + 4 <= panel.bounds.maxY,
+                      context + ": Trigger candidates are clipped by the panel")
+            }
+            trigger?.delegate?.collectionView?(trigger!, didSelectItemAt: IndexPath(item: 0, section: 0))
+            menu?.selectItem(at: 2)
+            root.layoutIfNeeded()
+            let manual = descendants(panel.manuallyAddView).compactMap { $0 as? UICollectionView }.first
+            check(manual?.allowsSelection == true && manual?.numberOfItems(inSection: 0) == 2,
+                  context + ": Manual candidates are not selectable")
+            manual?.delegate?.collectionView?(manual!, didSelectItemAt: IndexPath(item: 1, section: 0))
+            check(selections == [candidates[0].id, candidates[1].id], context + ": candidate callbacks crossed modes")
+            for view in descendants(panel) where !view.isHidden && view.bounds.width > 0 {
+                check(!view.hasAmbiguousLayout, context + ": ambiguous \(type(of: view))")
+            }
+            if width == 393 { capture(root, name: "stage2-connected-nonempty") }
+        }
+        let result = failures.isEmpty ? "PASS" : failures.joined(separator: "\n")
+        try? result.write(to: outputDirectory.appendingPathComponent("stage2-result.txt"), atomically: true, encoding: .utf8)
         return failures
     }
 

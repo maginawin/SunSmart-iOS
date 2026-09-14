@@ -10,6 +10,11 @@ struct SiteTriggerZoneItemModel: Equatable {
 
     enum TaskState: Equatable {
         case settled, pending, unknown
+
+        static func devices(hasMembers: Bool, hasPendingChange: Bool) -> Self {
+            if hasPendingChange { return .pending }
+            return hasMembers ? .unknown : .settled
+        }
     }
 
     struct Sync: Equatable {
@@ -17,6 +22,8 @@ struct SiteTriggerZoneItemModel: Equatable {
         var devices: TaskState = .settled
         var needsSync: Bool { cloud == .pending || devices == .pending }
         var isKnown: Bool { cloud != .unknown && devices != .unknown }
+        var isUnverified: Bool { !needsSync && !isKnown }
+        var showsStatus: Bool { needsSync || !isKnown }
     }
 
     struct Device: Equatable {
@@ -48,19 +55,25 @@ struct SiteTriggerZoneItemModel: Equatable {
     var spaces: [Space] = []
     var isConfirmedEmpty = false
     var hasCompleteSpaceList = true
+    var hasUnverifiedMembers = false
+    var needsCloudMigration = false
+    var allowsEditing = true
     var canEditEmpty = false
+    var hasUnsavedChanges = false
+    var hasSavedMembers = false
     /// Work that cannot be attributed to a member Space.
     var sync = Sync()
     var previewCode: String?
 
     var usesEmptyStyle: Bool { isConfirmedEmpty && spaces.isEmpty && hasCompleteSpaceList }
     var canEdit: Bool {
-        if usesEmptyStyle { return canEditEmpty }
-        return hasCompleteSpaceList && !spaces.isEmpty
+        if usesEmptyStyle { return allowsEditing && canEditEmpty }
+        return allowsEditing && hasCompleteSpaceList && !spaces.isEmpty
             && Set(spaces.map(\.id)).count == spaces.count
             && spaces.allSatisfy(\.canEdit)
     }
     var needsSync: Bool { sync.needsSync || spaces.contains { $0.sync.needsSync } }
+    var showsSyncStatus: Bool { sync.showsStatus || spaces.contains { $0.sync.showsStatus } }
     var dividerCount: Int { max(0, spaces.count - 1) }
 
     static func empty(id: UUID, name: String, canEdit: Bool) -> Self {

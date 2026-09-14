@@ -60,7 +60,10 @@ enum SiteTriggerZoneStore {
     static func receive(_ site: SiteData, object: [String: Any], timestamp: Int64) throws {
         guard let value = object["extensionData"] else { return }
         let remote: SiteExtensionData
-        do { remote = try SiteExtensionData.parse(value) }
+        do {
+            remote = try SiteExtensionData.parse(value)
+            guard remote.zones != nil else { throw SiteExtensionData.ParseError.invalidObject }
+        }
         catch {
             // Validate fragments too before preserving a rejected payload; serialization
             // of a non-JSON Foundation value would otherwise raise an uncaught NSException.
@@ -69,7 +72,6 @@ enum SiteTriggerZoneStore {
             try update(site) {
                 guard timestamp >= $0.serverTimestamp else { return }
                 $0.rejectedRemote = raw
-                $0.serverTimestamp = timestamp
             }
             throw error
         }

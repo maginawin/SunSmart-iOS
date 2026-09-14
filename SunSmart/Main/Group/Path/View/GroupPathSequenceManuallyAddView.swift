@@ -191,6 +191,7 @@ class GroupPathSequenceManuallyAddView: UIView {
         pageControl.numberOfPages = pageCount
         pageControl.currentPage = min(pageControl.currentPage, max(pageCount - 1, 0))
         pageControl.isHidden = !guideContentView.isHidden || pageCount <= 1
+            || (browseConfiguration != nil && browseConfiguration?.connectionPhase != .idle)
     }
 
     private func updateNoDevicesLabelVisibility() {
@@ -363,6 +364,7 @@ class GroupPathSequenceManuallyAddView: UIView {
     }
 
     @objc private func helpImageAction() {
+        if let browseConfiguration { browseConfiguration.showHelp?(); return }
         GroupPathSequenceAddDescriptionController.push(mode: .manuallyAdd, isSequence: isSequence)
     }
 
@@ -381,7 +383,7 @@ class GroupPathSequenceManuallyAddView: UIView {
         groupArrowImageView.isHidden = configuration.spaces.isEmpty
         configuration.configureAccessibility(space: groupFilterView, filter: addTypeView)
         addTypeView.snp.updateConstraints { $0.width.equalTo(configuration.filterWidth) }
-        collectionView.allowsSelection = false
+        collectionView.allowsSelection = configuration.selectDevice != nil && configuration.connectionPhase == .connected
         configureBrowseGrid(width: bounds.width > 0 ? bounds.width : SCREEN_WIDTH - 32)
         collectionView.snp.remakeConstraints { make in
             make.left.right.equalToSuperview()
@@ -398,6 +400,10 @@ class GroupPathSequenceManuallyAddView: UIView {
             make.bottom.lessThanOrEqualTo(-12)
         }
         setGuideVisible(false)
+        let connectionUnavailable = configuration.selectedSpaceID != nil && configuration.connectionPhase != .connected
+        collectionView.isHidden = connectionUnavailable
+        noDevicesLabel.isHidden = connectionUnavailable || noDevicesLabel.isHidden
+        pageControl.isHidden = connectionUnavailable || pageControl.isHidden
         if resetPage { collectionView.setContentOffset(.zero, animated: false); pageControl.currentPage = 0 }
         collectionView.reloadData()
         updatePageControlState()
@@ -580,12 +586,13 @@ extension GroupPathSequenceManuallyAddView: UICollectionViewDataSource, UICollec
             cell.iconImageView.image = UIImage(named: "path_device_offline")?.withRenderingMode(.alwaysTemplate)
             cell.iconImageView.tintColor = SubText_Color
             cell.boxView.backgroundColor = Background_Color
-            cell.boxView.layer.borderColor = RGB(241, 242, 244).cgColor
+            cell.boxView.layer.borderColor = browseConfiguration.selectedDeviceID == device.id
+                ? Yellow_Color.cgColor : RGB(241, 242, 244).cgColor
             cell.interactions.forEach { cell.removeInteraction($0) }
             cell.isAccessibilityElement = true
             cell.accessibilityIdentifier = "site-zone-candidate-\(device.id)"
             cell.accessibilityLabel = device.name
-            cell.accessibilityTraits = .staticText
+            cell.accessibilityTraits = browseConfiguration.selectDevice == nil ? .staticText : .button
             return cell
         }
         let node = visibleDevices[indexPath.item]
@@ -609,7 +616,12 @@ extension GroupPathSequenceManuallyAddView: UICollectionViewDataSource, UICollec
 //    }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        guard browseConfiguration == nil else { return }
+        if let browseConfiguration {
+            guard browseConfiguration.connectionPhase == .connected,
+                  browseConfiguration.devices.indices.contains(indexPath.item) else { return }
+            browseConfiguration.selectDevice?(browseConfiguration.devices[indexPath.item].id)
+            return
+        }
         let device = visibleDevices[indexPath.item]
         if device == selectDevice {
             delegate?.manuallyAddView(self, selectDevice: device)

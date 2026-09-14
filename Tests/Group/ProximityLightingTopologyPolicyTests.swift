@@ -8,6 +8,7 @@ struct ProximityLightingTopologyPolicyTests {
     static func main() {
         testEmptySpaceZonesDoNotChangeGroupTopology()
         testGroupAndSpaceTopologyAreMerged()
+        testRelationshipSourcesStaySeparateFromMergedTargets()
         testRemovingSpaceZoneRestoresGroupTopology()
         testCrossGroupZoneMergesBothGroupTopologies()
         testGroupProfileRelayChangePreservesMergedTopology()
@@ -62,6 +63,23 @@ struct ProximityLightingTopologyPolicyTests {
         require(plan.target(for: 1).neighborAddresses == [2, 3], "Space edge did not merge into Group path")
         require(plan.target(for: 2).neighborAddresses == [1, 3], "Unrelated Group path node changed")
         require(plan.target(for: 3).neighborAddresses == [1, 2], "Space edge did not merge into Group path end")
+    }
+
+    private static func testRelationshipSourcesStaySeparateFromMergedTargets() {
+        let group = makeGroup(address: 0xC000, relay: 1, members: [1, 2, 3],
+                              paths: [[1, 2]], zones: [[2, 3]])
+        let plan = Policy.makePlan(groups: [group],
+                                   spaceZones: [makeSpaceZone([(0xC000, 1), (0xC000, 3)])])
+        require(plan.sourcesByAddress[1] == [.groupProfile(0xC000), .groupPath(0xC000), .spaceZone],
+                "A Path and Space Zone must remain distinguishable after edge merging")
+        require(plan.sourcesByAddress[2] == [.groupProfile(0xC000), .groupPath(0xC000), .groupZone(0xC000)],
+                "A shared Path/Group Zone member must retain both sources")
+        require(plan.sourcesByAddress[3] == [.groupProfile(0xC000), .groupZone(0xC000), .spaceZone],
+                "A Group Zone and Space Zone member must retain both sources")
+        require(plan.neighborSourcesByAddress[1]?[2] == [.groupPath(0xC000)]
+                && plan.neighborSourcesByAddress[1]?[3] == [.spaceZone]
+                && plan.neighborSourcesByAddress[2]?[3] == [.groupZone(0xC000)],
+                "Each merged neighbor must retain the relationship that actually created it")
     }
 
     private static func testRemovingSpaceZoneRestoresGroupTopology() {
@@ -144,6 +162,9 @@ struct ProximityLightingTopologyPolicyTests {
 
         require(plan.target(for: 1).neighborAddresses == [2], "Duplicate neighbor edges were retained")
         require(plan.target(for: 2).neighborAddresses == [1], "Duplicate reverse edges were retained")
+        require(plan.neighborSourcesByAddress[1]?[2] == [
+            .groupPath(0xC000), .groupZone(0xC000), .spaceZone
+        ], "Deduplicating an edge must not discard its independent sources")
     }
 
     private static func testUnknownDeviceIsDisabled() {

@@ -35,7 +35,7 @@ final class SiteTriggerZoneItemHeaderView: UITableViewHeaderFooterView, UIGestur
         name.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         name.lineBreakMode = .byTruncatingTail
         titleRow.addArrangedSubview(name)
-        if item.sync.needsSync {
+        if item.sync.showsStatus {
             let icon = SiteTriggerZoneItemStyle.syncButton(item.sync, identifier: "site-zone-metadata-sync") { [weak self] in
                 self?.syncTap?()
             }
@@ -60,7 +60,7 @@ final class SiteTriggerZoneItemHeaderView: UITableViewHeaderFooterView, UIGestur
             titleRow.heightAnchor.constraint(equalToConstant: max(24, ceil(name.font.lineHeight))),
             name.topAnchor.constraint(equalTo: contentView.topAnchor, constant: SCRYFrom(15))
         ])
-        if selected && item.canEdit {
+        if selected {
             let actions = UIStackView()
             actions.spacing = SCRXFrom(8)
             actions.translatesAutoresizingMaskIntoConstraints = false
@@ -71,7 +71,19 @@ final class SiteTriggerZoneItemHeaderView: UITableViewHeaderFooterView, UIGestur
                 button.titleLabel?.font = .systemFont(ofSize: SCRYFrom(12))
                 button.setTitleColor(Bar_Color, for: .normal)
                 button.setTitleColor(Bar_Color.withAlphaComponent(0.5), for: .disabled)
-                button.isEnabled = actionsEnabled && !(item.usesEmptyStyle && (operation == .test || operation == .reset))
+                let allowed: Bool
+                if item.previewCode != nil {
+                    allowed = !(item.usesEmptyStyle && (operation == .test || operation == .reset))
+                } else {
+                    switch operation {
+                    case .test: allowed = false
+                    case .reset: allowed = item.hasUnsavedChanges
+                    case .delete: allowed = item.usesEmptyStyle && !item.hasSavedMembers && !item.hasUnsavedChanges
+                    case .save: allowed = item.hasUnsavedChanges || item.sync.cloud == .pending
+                        || item.needsCloudMigration
+                    }
+                }
+                button.isEnabled = actionsEnabled && allowed && (item.previewCode != nil || item.canEdit)
                 button.tag = index
                 button.accessibilityIdentifier = "site-zone-item-\(operation.key.lowercased())-\(item.id.uuidString)"
                 button.addTarget(self, action: #selector(operationAction(_:)), for: .touchUpInside)

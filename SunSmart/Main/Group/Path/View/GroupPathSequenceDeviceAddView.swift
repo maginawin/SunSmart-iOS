@@ -75,6 +75,7 @@ class GroupPathSequenceDeviceAddView: UIView {
     private var bodyContainerView: UIView!
     private var addTypeBar: WMMenuView!
     private var contentCardView: UIView!
+    private var connectionStatusView: GroupPathSequenceConnectionStatusView!
     private var bodyHeightConstraint: NSLayoutConstraint?
     private var contentCardHeightConstraint: NSLayoutConstraint?
 
@@ -95,7 +96,9 @@ class GroupPathSequenceDeviceAddView: UIView {
     }
 
     private var currentMode: PathSequenceDeviceAddMode = .quickAdd
+    var selectedMode: PathSequenceDeviceAddMode { currentMode }
     private var isBrowsingCandidates = false
+    private var browseConfiguration: GroupPathSequenceBrowseConfiguration?
     private var collapsed: Bool = true
     /// Allows the owning page to restore presentation after switching data sources.
     var isCollapsed: Bool { collapsed }
@@ -319,6 +322,14 @@ class GroupPathSequenceDeviceAddView: UIView {
         manuallyAddView.snp.makeConstraints { make in
             make.edges.equalToSuperview()
         }
+
+        connectionStatusView = GroupPathSequenceConnectionStatusView()
+        contentCardView.addSubview(connectionStatusView)
+        connectionStatusView.snp.makeConstraints {
+            $0.left.right.equalToSuperview()
+            $0.top.equalTo(82)
+            $0.height.equalTo(64)
+        }
         
         refreshBtn = UIButton(normalImageName: "trigger_device_refresh", target: self, action: #selector(refreshBtnAction))
         refreshBtn.isHidden = true
@@ -361,14 +372,18 @@ class GroupPathSequenceDeviceAddView: UIView {
 
     func configureBrowse(_ configuration: GroupPathSequenceBrowseConfiguration) {
         isBrowsingCandidates = true
+        browseConfiguration = configuration
         quickAddView.configureBrowse(configuration)
         triggerAddView.configureBrowse(configuration)
         manuallyAddView.configureBrowse(configuration)
+        updateConnectionStatus()
         updateUnfoldState()
     }
 
     func clearBrowseTarget() {
         isBrowsingCandidates = false
+        browseConfiguration = nil
+        connectionStatusView.isHidden = true
         quickAddView.showStepGuideUI()
         triggerAddView.setGuideVisible(true)
         manuallyAddView.setGuideVisible(true)
@@ -451,6 +466,13 @@ class GroupPathSequenceDeviceAddView: UIView {
 
     private func updateAccessoryButtons() {
         guard !collapsed, canAddDevice || isBrowsingCandidates else {
+            refreshBtn.isHidden = true
+            unfoldBtn.isHidden = true
+            deviceFilterBtn.isHidden = true
+            return
+        }
+
+        if !connectionStatusView.isHidden {
             refreshBtn.isHidden = true
             unfoldBtn.isHidden = true
             deviceFilterBtn.isHidden = true
@@ -540,8 +562,25 @@ class GroupPathSequenceDeviceAddView: UIView {
             delegate?.deviceAddView(self, showAddedDevices: manuallyAddView.showAdded)
         }
 
+        updateConnectionStatus()
+
         updateAccessoryButtons()
         refreshPreferredHeight()
+    }
+
+    private func updateConnectionStatus() {
+        guard let browseConfiguration, browseConfiguration.selectedSpaceID != nil else {
+            connectionStatusView.isHidden = true
+            return
+        }
+        let phase = browseConfiguration.connectionPhase
+        let show = phase == .connecting || phase == .failed
+            || (phase == .connected && browseConfiguration.connectedNoticeKey == "site_zone_add_unavailable"
+                && (currentMode != .quickAdd || browseConfiguration.quickConnectionActive))
+        connectionStatusView.update(phase: phase, spaceName: browseConfiguration.spaceTitle,
+                                    noticeText: browseConfiguration.connectedNoticeKey.localizedString,
+                                    retry: browseConfiguration.retryConnection)
+        connectionStatusView.isHidden = !show
     }
 }
 

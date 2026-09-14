@@ -16,7 +16,7 @@ enum SiteTriggerZoneCandidateTests {
         let nodeA = "11111111-1111-4111-8111-111111111111"
         let nodeB = "22222222-2222-4222-8222-222222222222"
         let provisioner = "33333333-3333-4333-8333-333333333333"
-        let subscriptions = "[{\"models\":[{\"subscribe\":[\"C001\"]}]}]"
+        let subscriptions = "[{\"models\":[{\"modelId\":\"1000\",\"subscribe\":[\"C001\"]}]},{\"models\":[{\"modelId\":\"0A780001\",\"subscribe\":[]}]}]"
         try execute(appPath, """
         CREATE TABLE spaces (uuid TEXT, siteUUID TEXT, subNetworkKey TEXT, permission INTEGER, state INTEGER, requiresPasswordVerification INTEGER);
         CREATE TABLE groupInfos (meshUUID TEXT, subNetworkKey TEXT, groupAddress INTEGER, profileId TEXT);
@@ -61,6 +61,24 @@ enum SiteTriggerZoneCandidateTests {
 
         let zone = UUID(), otherZone = UUID()
         let device = loadedB[1].devices[0]
+        check(device.deviceAddress == 2 && device.address == 1,
+              "Space Trigger Zone uses the Vendor Model element, not the trigger source or primary address")
+        check(Candidates.device(for: 1, in: loadedB[1]) == device, "Trigger address resolves only in the loaded Space")
+        check(Candidates.device(for: 1, in: loadedC[2]) == nil, "Same address in another Space cannot be borrowed")
+        check(Candidates.device(for: 2, in: loadedB[1]) == device, "Sensor element address resolves to its stable node")
+        check(Candidates.device(for: 3, in: loadedB[1]) == nil, "Unknown element address is ignored")
+        let member = SiteTriggerZoneMember(identity: .init(spaceID: "B", nodeUUID: UUID(uuidString: nodeB)!),
+                                           groupAddress: 0xC001, primaryAddress: 1, deviceAddress: 2)
+        check(Reader.validates([member], requests: requests, source: source),
+              "Save re-reads the same eligible Group, node and trigger element")
+        let staleMember = SiteTriggerZoneMember(identity: member.identity,
+                                                groupAddress: 0xC002, primaryAddress: 1, deviceAddress: 2)
+        check(!Reader.validates([staleMember], requests: requests, source: source),
+              "A stale Group snapshot cannot be uploaded")
+        let wrongElement = SiteTriggerZoneMember(identity: member.identity,
+                                                 groupAddress: 0xC001, primaryAddress: 1, deviceAddress: 1)
+        check(!Reader.validates([wrongElement], requests: requests, source: source),
+              "A primary-address guess cannot replace the Vendor Model element")
         var candidateSpace = loadedB[1]
         let fresh = Candidates.Device(identity: .init(siteID: "site", spaceID: "B", deviceID: nodeA), name: "New", address: 2, groupAddress: 0xC001)
         candidateSpace.devices = [device, fresh, fresh]
@@ -95,8 +113,12 @@ enum SiteTriggerZoneCandidateTests {
         // Failures must remain distinguishable from valid empty snapshots.
         try execute(appPath, "UPDATE spaces SET requiresPasswordVerification = 1 WHERE uuid = 'B'")
         check(Reader.load(requests, source: source, devicesFor: "B")[1].availability == .restricted, "Recheck authorization before reading device data")
+        check(!Reader.validates([member], requests: requests, source: source),
+              "Changed local authorization blocks Save")
         try execute(appPath, "UPDATE spaces SET requiresPasswordVerification = 0 WHERE uuid = 'B'; DELETE FROM profiles WHERE uuid = 'prox'")
         check(Reader.load(requests, source: source)[1].availability == .unavailable, "Missing Profile is not no eligible groups")
+        check(!Reader.validates([member], requests: requests, source: source),
+              "Removed Profile blocks Save")
         try execute(appPath, "INSERT INTO profiles VALUES ('prox','mesh','netB',7)")
         try execute(meshPath, "UPDATE nodes SET elements = CAST('invalid' AS BLOB) WHERE id = 2")
         check(Reader.load(requests, source: source, devicesFor: "B")[1].availability == .unavailable, "Corrupt membership is not an empty Space")

@@ -91,7 +91,7 @@ enum SiteTriggerZoneItemLayoutProbe {
                     } else { unselectedName = nameFrame }
                     let buttons = descendants(header.contentView).compactMap { $0 as? UIButton }
                         .filter { $0.accessibilityIdentifier?.hasPrefix("site-zone-item-") == true }.sorted { $0.tag < $1.tag }
-                    check(buttons.count == (selected && item.canEdit ? 4 : 0), "\(context): wrong action group")
+                    check(buttons.count == (selected ? 4 : 0), "\(context): wrong action group count=\(buttons.count) ids=\(buttons.map { $0.accessibilityIdentifier ?? "nil" })")
                     let readonly = descendants(header.contentView).filter { $0.accessibilityIdentifier == "site-zone-view-only" }
                     check(readonly.count == (item.canEdit ? 0 : 1), "\(context): View only changes on selection")
                     for (index, button) in buttons.enumerated() {

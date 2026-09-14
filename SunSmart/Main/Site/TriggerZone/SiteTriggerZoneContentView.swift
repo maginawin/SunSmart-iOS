@@ -19,18 +19,20 @@ final class SiteTriggerZoneContentView: UIView, UITableViewDataSource, UITableVi
     private var preferredPanelHeight: CGFloat = 44
     private var isUpdatingPanelLayout = false
     private var lastTableWidth: CGFloat = 0
+    private var needsTableReload = true
     private var measuredHeights: [UUID: CGFloat] = [:]
     private lazy var sizingCell = SiteTriggerZoneItemCell(style: .default, reuseIdentifier: nil)
     private var panelAllowed: Bool {
-        if allowsSelectedEmptyPanel, let item = items.first(where: { $0.id == selectedID }), item.usesEmptyStyle { return true }
-        return !items.isEmpty && items.first(where: { $0.id == selectedID })?.canEdit != false
+        guard let item = items.first(where: { $0.id == selectedID }) else { return false }
+        if allowsSelectedEmptyPanel && item.usesEmptyStyle { return true }
+        return item.canEdit
     }
     var add: (() -> Void)?
     var select: ((UUID) -> Void)?
     var operation: ((UUID, SiteTriggerZoneItemHeaderView.Operation) -> Void)?
     var retry: (() -> Void)?
     var deviceTap: ((UUID, String, String, UIView) -> Void)?
-    var syncTap: (() -> Void)?
+    var syncTap: ((UUID) -> Void)?
 
     init(panel: UIView) {
         self.panel = panel
@@ -104,7 +106,8 @@ final class SiteTriggerZoneContentView: UIView, UITableViewDataSource, UITableVi
             stack.leadingAnchor.constraint(greaterThanOrEqualTo: emptyStateView.leadingAnchor),
             addButton.heightAnchor.constraint(equalToConstant: 44)
         ])
-        reload()
+        panel.isHidden = true
+        emptyStateView.isHidden = false
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -156,7 +159,8 @@ final class SiteTriggerZoneContentView: UIView, UITableViewDataSource, UITableVi
         addButton.isEnabled = canEdit
         addButton.alpha = canEdit ? 1 : 0.5
         setPanelHeight(preferredPanelHeight)
-        tableView.reloadData()
+        needsTableReload = true
+        if bounds.width > 0, bounds.height > 0 { reloadTableIfNeeded() }
     }
 
     override func layoutSubviews() {
@@ -166,8 +170,15 @@ final class SiteTriggerZoneContentView: UIView, UITableViewDataSource, UITableVi
         if tableView.bounds.width > 0, abs(lastTableWidth - tableView.bounds.width) > 0.5 {
             lastTableWidth = tableView.bounds.width
             measuredHeights.removeAll()
-            tableView.reloadData()
+            needsTableReload = true
         }
+        reloadTableIfNeeded()
+    }
+
+    private func reloadTableIfNeeded() {
+        guard needsTableReload, bounds.width > 0, bounds.height > 0 else { return }
+        needsTableReload = false
+        tableView.reloadData()
     }
 
     override func safeAreaInsetsDidChange() {
@@ -208,7 +219,7 @@ final class SiteTriggerZoneContentView: UIView, UITableViewDataSource, UITableVi
             populated.deviceTap = { [weak self] spaceID, deviceID, source in
                 self?.deviceTap?(item.id, spaceID, deviceID, source)
             }
-            populated.syncTap = { [weak self] in self?.syncTap?() }
+            populated.syncTap = { [weak self] in self?.syncTap?(item.id) }
             cell = populated
         }
         cell.accessibilityIdentifier = "site-zone-\(indexPath.section + 1)"
@@ -224,12 +235,13 @@ final class SiteTriggerZoneContentView: UIView, UITableViewDataSource, UITableVi
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
         let item = items[section]
         let id = item.id
-        if !item.usesEmptyStyle || item.sync.needsSync {
+        if !item.usesEmptyStyle || item.sync.showsStatus {
             let header = tableView.dequeueReusableHeaderFooterView(withIdentifier: "item-header") as! SiteTriggerZoneItemHeaderView
-            header.configure(item, selected: id == selectedID, width: tableView.bounds.width, actionsEnabled: isPreview)
+            header.configure(item, selected: id == selectedID, width: tableView.bounds.width,
+                             actionsEnabled: canSave || isPreview)
             header.select = { [weak self] in self?.select?(id) }
             header.operate = { [weak self] action in self?.operation?(id, action) }
-            header.syncTap = { [weak self] in self?.syncTap?() }
+            header.syncTap = { [weak self] in self?.syncTap?(id) }
             return header
         }
         let header = tableView.dequeueReusableHeaderFooterView(withIdentifier: "header") as! GroupPathSequencePathHeaderView
@@ -240,6 +252,7 @@ final class SiteTriggerZoneContentView: UIView, UITableViewDataSource, UITableVi
         header.deleteBtn.isEnabled = item.canEdit
         header.deleteBtn.accessibilityIdentifier = "site-zone-delete-\(section + 1)"
         header.saveBtn.isEnabled = item.canEdit && canSave
+            && (item.hasUnsavedChanges || item.sync.cloud == .pending)
         header.saveBtn.accessibilityIdentifier = "site-zone-save-\(section + 1)"
         header.viewSelectActionCallback = { [weak self] in self?.select?(id) }
         header.operationActionCallback = { [weak self] operation in

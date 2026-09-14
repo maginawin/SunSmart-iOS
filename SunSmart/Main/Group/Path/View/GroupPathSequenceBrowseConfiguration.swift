@@ -2,6 +2,9 @@ import UIKit
 
 /// Read-only candidates supplied by the owning page; never wraps an SDK Node.
 struct GroupPathSequenceBrowseConfiguration {
+    enum ConnectionPhase: Equatable {
+        case idle, connecting, connected, failed
+    }
     private enum MenuPlacement {
         case belowSource
         case belowTrailing(width: CGFloat)
@@ -26,6 +29,17 @@ struct GroupPathSequenceBrowseConfiguration {
     let selectSpace: (String) -> Void
     let changeFilter: (Bool) -> Void
     let retry: (() -> Void)?
+    var connectionPhase: ConnectionPhase = .idle
+    var quickConnectionActive = false
+    var startConnection: (() -> Void)?
+    var retryConnection: (() -> Void)?
+    var quickState: QuickAddState = .stop
+    var changeQuickState: ((QuickAddState) -> Void)?
+    var triggerDevices: [Device] = []
+    var selectedDeviceID: String?
+    var selectDevice: ((String) -> Void)?
+    var connectedNoticeKey = "site_zone_add_unavailable"
+    var showHelp: (() -> Void)?
 
     var spaceTitle: String { spaces.first { $0.id == selectedSpaceID }?.title ?? placeholder }
     var filterTitle: String { (includeAdded ? "used" : "space_trigger_zone_new_only").localizedString }
@@ -120,4 +134,115 @@ struct GroupPathSequenceBrowseConfiguration {
         // Status messages remain centered 20pt below the card center, clear of the top content.
         return max(160, ceil(size.height) + max(86, 2 * (messageTop - 20)))
     }
+}
+
+/// Connection feedback shared by the three Site Zone browse tabs.
+final class GroupPathSequenceConnectionStatusView: UIView {
+    private let icon = UIImageView()
+    private let label = UILabel()
+    private let notice = UILabel()
+    private let retryButton = UIButton(type: .system)
+    private let statusRow = UIStackView()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = .white
+        statusRow.axis = .horizontal
+        statusRow.alignment = .center
+        statusRow.spacing = 8
+        icon.contentMode = .scaleAspectFit
+        icon.snp.makeConstraints { $0.width.height.equalTo(24) }
+        label.font = .systemFont(ofSize: 14, weight: .light)
+        label.textColor = ImportantText_Color
+        label.lineBreakMode = .byTruncatingMiddle
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        statusRow.addArrangedSubview(icon)
+        statusRow.addArrangedSubview(label)
+        addSubview(statusRow)
+        notice.font = .systemFont(ofSize: 11, weight: .light)
+        notice.textColor = SubText_Color
+        notice.textAlignment = .center
+        notice.numberOfLines = 2
+        notice.text = "site_zone_add_unavailable".localizedString
+        addSubview(notice)
+        notice.snp.makeConstraints {
+            $0.top.equalTo(statusRow.snp.bottom).offset(3)
+            $0.centerX.equalToSuperview()
+            $0.left.greaterThanOrEqualTo(12)
+            $0.right.lessThanOrEqualTo(-12)
+            $0.bottom.lessThanOrEqualToSuperview()
+        }
+        retryButton.setTitle("retry".localizedString, for: .normal)
+        retryButton.setTitleColor(.white, for: .normal)
+        retryButton.titleLabel?.font = .systemFont(ofSize: 14, weight: .light)
+        retryButton.backgroundColor = Bar_Color
+        retryButton.layer.cornerRadius = 5
+        retryButton.accessibilityIdentifier = "site-zone-connection-retry"
+        retryButton.addTarget(self, action: #selector(retryTapped), for: .touchUpInside)
+        addSubview(retryButton)
+        retryButton.snp.makeConstraints {
+            $0.width.equalTo(68)
+            $0.height.equalTo(28)
+            $0.right.equalTo(-12)
+            $0.centerY.equalToSuperview()
+        }
+        statusRow.snp.makeConstraints {
+            $0.centerX.equalToSuperview()
+            $0.centerY.equalToSuperview()
+            $0.left.greaterThanOrEqualTo(12)
+            $0.right.lessThanOrEqualTo(-12)
+        }
+        isHidden = true
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func update(phase: GroupPathSequenceBrowseConfiguration.ConnectionPhase, spaceName: String?,
+                noticeText: String, retry: (() -> Void)?) {
+        notice.text = noticeText
+        switch phase {
+        case .idle:
+            isHidden = true
+            notice.isHidden = true
+            icon.layer.removeAnimation(forKey: "rotation")
+        case .connecting:
+            isHidden = false
+            notice.isHidden = true
+            icon.image = UIImage(named: "loading_20")
+            label.text = String(format: "site_zone_connecting_to_space".localizedString, spaceName ?? "")
+            retryButton.isHidden = true
+            let rotation = CABasicAnimation(keyPath: "transform.rotation.z")
+            rotation.fromValue = 0
+            rotation.toValue = CGFloat.pi * 2
+            rotation.duration = 1
+            rotation.repeatCount = .infinity
+            icon.layer.add(rotation, forKey: "rotation")
+        case .connected:
+            isHidden = false
+            notice.isHidden = false
+            icon.layer.removeAnimation(forKey: "rotation")
+            icon.image = UIImage(named: "toast_success")
+            label.text = String(format: "site_zone_connected_to_space".localizedString, spaceName ?? "")
+            retryButton.isHidden = true
+        case .failed:
+            isHidden = false
+            notice.isHidden = true
+            icon.layer.removeAnimation(forKey: "rotation")
+            icon.image = UIImage(named: "alert_failed")
+            label.text = "wifi_firmware_connection_failed".localizedString
+            retryButton.isHidden = false
+        }
+        statusRow.snp.remakeConstraints {
+            $0.centerX.equalToSuperview().offset(phase == .failed ? -25 : 0)
+            $0.centerY.equalToSuperview().offset(phase == .connected ? -11 : 0)
+            $0.left.greaterThanOrEqualTo(12)
+            if phase == .failed { $0.right.lessThanOrEqualTo(retryButton.snp.left).offset(-8) }
+            else { $0.right.lessThanOrEqualTo(-12) }
+        }
+        retryButtonAction = retry
+    }
+
+    private var retryButtonAction: (() -> Void)?
+
+    @objc private func retryTapped() { retryButtonAction?() }
 }

@@ -13,6 +13,9 @@ enum SiteTriggerZoneCandidates {
         let name: String
         let address: UInt16
         let groupAddress: UInt16
+        var normalizedAddress: UInt16?
+        var elementAddresses: [UInt16] = []
+        var deviceAddress: UInt16 { normalizedAddress ?? address }
     }
 
     enum Availability: Equatable {
@@ -77,6 +80,12 @@ enum SiteTriggerZoneCandidates {
             .reduce(into: Set<Identity>()) { $0.formUnion($1.devices) }
         var seen = Set<Identity>()
         return space.devices.filter { seen.insert($0.identity).inserted && !excluded.contains($0.identity) }
+    }
+
+    static func device(for triggerAddress: UInt16, in space: Space?) -> Device? {
+        guard let space, space.isSelectable, space.devicesLoaded else { return nil }
+        let matches = space.devices.filter { $0.elementAddresses.contains(triggerAddress) }
+        return matches.count == 1 ? matches[0] : nil
     }
 
     static func placeholderKey(for spaces: [Space]) -> String {

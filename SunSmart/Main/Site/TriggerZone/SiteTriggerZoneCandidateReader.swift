@@ -21,6 +21,25 @@ enum SiteTriggerZoneCandidateReader {
 
     enum ReadError: Error { case database, invalidData }
 
+    /// Re-read the current Group/Profile and node address before a member snapshot is uploaded.
+    static func validates(_ members: [SiteTriggerZoneMember], requests: [Request], source: Source) -> Bool {
+        let bySpace = Dictionary(grouping: members, by: { $0.identity.spaceID })
+        for (spaceID, spaceMembers) in bySpace {
+            guard let request = requests.first(where: { $0.space.id == spaceID }),
+                  request.space.availability != .restricted else { return false }
+            let space = load([request], source: source, devicesFor: spaceID).first
+            guard space?.isSelectable == true, space?.devicesLoaded == true else { return false }
+            for member in spaceMembers {
+                guard let device = space?.devices.first(where: {
+                    $0.identity.deviceID == member.identity.nodeUUID.uuidString
+                }), device.groupAddress == member.groupAddress,
+                    device.address == member.primaryAddress,
+                    device.deviceAddress == member.deviceAddress else { return false }
+            }
+        }
+        return true
+    }
+
     static func load(_ requests: [Request], source: Source, devicesFor spaceID: String? = nil) -> [SiteTriggerZoneCandidates.Space] {
         // Restricted Spaces need only their already-authorized display summary.
         guard requests.contains(where: { $0.space.availability != .restricted }) else { return requests.map(\.space) }
@@ -98,7 +117,10 @@ enum SiteTriggerZoneCandidateReader {
     private struct Provisioner: Decodable { let UUID: UUID }
     private struct Element: Decodable {
         let models: [Model]
-        struct Model: Decodable { let subscribe: [String] }
+        struct Model: Decodable {
+            let modelId: String?
+            let subscribe: [String]
+        }
     }
 
     private static func loadDevices(_ request: Request, groups: [Group], mesh: Database) throws -> [SiteTriggerZoneCandidates.Device] {
@@ -110,6 +132,7 @@ enum SiteTriggerZoneCandidateReader {
         var devices: [SiteTriggerZoneCandidates.Device] = []
         var seenIDs = Set<UUID>()
         var seenAddresses = Set<UInt16>()
+        var seenElements = Set<UInt16>()
         for row in rows {
             guard let uuid = UUID(uuidString: try row[0].string()) else { throw ReadError.invalidData }
             if provisionerIDs.contains(uuid) { continue }
@@ -117,6 +140,12 @@ enum SiteTriggerZoneCandidateReader {
             guard (1...0x7FFF).contains(address), seenIDs.insert(uuid).inserted,
                   seenAddresses.insert(address).inserted else { throw ReadError.invalidData }
             let elements = try JSONDecoder().decode([Element].self, from: row[3].data())
+            guard !elements.isEmpty, Int(address) + elements.count - 1 <= 0x7FFF else { throw ReadError.invalidData }
+            let elementAddresses = elements.indices.map { UInt16(Int(address) + $0) }
+            guard elementAddresses.allSatisfy({ seenElements.insert($0).inserted }) else { throw ReadError.invalidData }
+            let normalizedAddress = elements.indices.first(where: { index in
+                elements[index].models.contains { $0.modelId?.uppercased() == "0A780001" }
+            }).map { elementAddresses[$0] } ?? address
             var group: Group?
             // Same element/model order and business-Group rule as Node.group.
             // Do not expand membership to every subscription on every model.
@@ -137,7 +166,8 @@ enum SiteTriggerZoneCandidateReader {
             let name = row[1] == .null ? "" : try row[1].string()
             devices.append(.init(identity: .init(siteID: request.siteID, spaceID: request.space.id, deviceID: uuid.uuidString),
                                  name: name.isEmpty ? String(format: "%04X", address) : name,
-                                 address: address, groupAddress: group.address))
+                                 address: address, groupAddress: group.address,
+                                 normalizedAddress: normalizedAddress, elementAddresses: elementAddresses))
         }
         return devices
     }

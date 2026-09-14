@@ -32,6 +32,11 @@ struct SiteTriggerZoneItemPolicyTests {
         zone = item("D06")
         zone.spaces = [zone.spaces[0], zone.spaces[0]]
         check(!zone.canEdit, "Duplicate Space summaries are not a complete authorized list")
+        zone = item("D06")
+        zone.allowsEditing = false
+        zone.hasUnverifiedMembers = true
+        check(!zone.canEdit && zone.spaces.count == 2 && zone.hasCompleteSpaceList,
+              "A legacy member blocks edits without hiding known Space sections")
         zone = item("E01")
         zone.canEditEmpty = false
         check(!zone.canEdit && zone.usesEmptyStyle, "An empty list does not grant edit rights")
@@ -54,7 +59,19 @@ struct SiteTriggerZoneItemPolicyTests {
         sync.cloud = .settled
         check(sync.needsSync, "Cloud success does not acknowledge device work")
         sync = .init(cloud: .unknown, devices: .unknown)
-        check(!sync.needsSync && !sync.isKnown, "Unknown is distinct from confirmed completion")
+        check(!sync.needsSync && !sync.isKnown && sync.showsStatus && sync.isUnverified,
+              "Unknown needs a visible status without claiming a pending device task")
+        check(Item.TaskState.devices(hasMembers: false, hasPendingChange: false) == .settled,
+              "An empty Zone without cleanup has no device work")
+        check(Item.TaskState.devices(hasMembers: true, hasPendingChange: false) == .unknown,
+              "A nonempty Zone without device evidence is unverified")
+        check(Item.TaskState.devices(hasMembers: true, hasPendingChange: true) == .pending
+                && Item.TaskState.devices(hasMembers: false, hasPendingChange: true) == .pending,
+              "Confirmed member changes and old-member cleanup stay pending")
+        zone = item("D01")
+        zone.sync.devices = .unknown
+        check(zone.showsSyncStatus && !zone.needsSync,
+              "An unverified Zone stays visible without being reported as synchronized")
         for fixture in fixtures {
             for space in fixture.spaces where space.canDisplayDevices {
                 check(space.displayedDeviceCount == space.devices.count, "Count matches displayed members")

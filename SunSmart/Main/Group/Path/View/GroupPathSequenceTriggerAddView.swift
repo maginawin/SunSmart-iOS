@@ -78,9 +78,13 @@ class GroupPathSequenceTriggerAddView: UIView {
             let hasSpace = browseConfiguration.selectedSpaceID != nil
             let hintHeight = hasSpace ? 8 + GroupPathSequenceBrowseConfiguration.proximityHintHeight(width: bounds.width) : 0
             let messageTop = topContentInset + 30 + hintHeight + 12
-            return GroupPathSequenceBrowseConfiguration.minimumHeight(
-                message: hasSpace ? "site_zone_not_connected".localizedString : browseConfiguration.unavailableMessage,
+            let connectionMessage = browseConfiguration.connectionPhase == .connected
+                ? "site_zone_wait_for_trigger".localizedString : "site_zone_not_connected".localizedString
+            let minimum = GroupPathSequenceBrowseConfiguration.minimumHeight(
+                message: hasSpace ? connectionMessage : browseConfiguration.unavailableMessage,
                 width: bounds.width, font: noDevicesLabel.font, messageTop: messageTop)
+            return browseConfiguration.triggerDevices.isEmpty ? minimum
+                : max(minimum, messageTop + collectionViewHeight + 22)
         }
         return topContentInset + 66 + extraHintHeight + collectionViewHeight
     }
@@ -132,9 +136,12 @@ class GroupPathSequenceTriggerAddView: UIView {
 
     private func updateNoDevicesLabelVisibility() {
         if let browseConfiguration {
-            let message = browseConfiguration.selectedSpaceID == nil ? browseConfiguration.unavailableMessage : "site_zone_not_connected".localizedString
+            let message = browseConfiguration.selectedSpaceID == nil ? browseConfiguration.unavailableMessage
+                : (browseConfiguration.connectionPhase == .connected
+                   ? "site_zone_wait_for_trigger".localizedString : "site_zone_not_connected".localizedString)
             GroupPathSequenceBrowseConfiguration.configureMessage(noDevicesLabel, message: message, retry: browseConfiguration.retry != nil)
             noDevicesLabel.isHidden = !guideContentView.isHidden || message == nil
+                || (browseConfiguration.connectionPhase == .connected && !browseConfiguration.triggerDevices.isEmpty)
             return
         }
         noDevicesLabel.isHidden = !guideContentView.isHidden || !devices.isEmpty
@@ -310,6 +317,7 @@ class GroupPathSequenceTriggerAddView: UIView {
     }
 
     @objc private func helpImageAction() {
+        if let browseConfiguration { browseConfiguration.showHelp?(); return }
         GroupPathSequenceAddDescriptionController.push(mode: .triggerAdd, isSequence: isSequence)
     }
     
@@ -328,7 +336,11 @@ class GroupPathSequenceTriggerAddView: UIView {
         hintLabel.numberOfLines = 0
         hintLabel.accessibilityIdentifier = "site-zone-proximity-hint"
         setGuideVisible(false)
-        pageControl.isHidden = true
+        let connectionUnavailable = configuration.selectedSpaceID != nil && configuration.connectionPhase != .connected
+        collectionView.isHidden = connectionUnavailable
+        noDevicesLabel.isHidden = connectionUnavailable || noDevicesLabel.isHidden
+        pageControl.numberOfPages = Int(ceil(Double(configuration.triggerDevices.count) / Double(colCount)))
+        pageControl.isHidden = connectionUnavailable || configuration.triggerDevices.count <= colCount
         collectionView.reloadData()
     }
 
@@ -488,11 +500,26 @@ class GroupPathSequenceTriggerAddView: UIView {
 extension GroupPathSequenceTriggerAddView: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return devices.count
+        return browseConfiguration?.triggerDevices.count ?? devices.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! GroupPathSequenceAddDeviceCell
+        if let browseConfiguration {
+            let device = browseConfiguration.triggerDevices[indexPath.item]
+            cell.nameLabel.text = device.name
+            cell.nameLabel.textColor = SubText_Color
+            cell.iconImageView.image = UIImage(named: "path_device_offline")?.withRenderingMode(.alwaysTemplate)
+            cell.iconImageView.tintColor = SubText_Color
+            cell.boxView.backgroundColor = Background_Color
+            cell.boxView.layer.borderColor = browseConfiguration.selectedDeviceID == device.id
+                ? Yellow_Color.cgColor : RGB(241, 242, 244).cgColor
+            cell.isAccessibilityElement = true
+            cell.accessibilityIdentifier = "site-zone-trigger-\(device.id)"
+            cell.accessibilityLabel = device.name
+            cell.accessibilityTraits = .button
+            return cell
+        }
         let node = devices[indexPath.item]
         cell.nameLabel.text = node.name
         if node == selectDevice {
@@ -511,7 +538,12 @@ extension GroupPathSequenceTriggerAddView: UICollectionViewDataSource, UICollect
 //    }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        guard browseConfiguration == nil else { return }
+        if let browseConfiguration {
+            guard browseConfiguration.connectionPhase == .connected,
+                  browseConfiguration.triggerDevices.indices.contains(indexPath.item) else { return }
+            browseConfiguration.selectDevice?(browseConfiguration.triggerDevices[indexPath.item].id)
+            return
+        }
         let device = devices[indexPath.item]
         if device == selectDevice {
             delegate?.triggerAddView(self, selectDevice: device)

@@ -61,6 +61,20 @@ struct SiteTriggerZoneDataTests {
         let second = state.pending!
         state.receive(second.target, timestamp: second.timestamp)
         check(state.pending == nil && state.data == secondData, "Exact readback acknowledges the current draft")
+        var serverClock = SiteTriggerZoneState()
+        serverClock.receive(SiteExtensionData(), timestamp: 100)
+        serverClock.commit(data, now: 10_000, siteTimestamp: 100)
+        serverClock.submitted = serverClock.pending
+        serverClock.receive(data, timestamp: 101)
+        check(serverClock.pending == nil && serverClock.serverTimestamp == 101,
+              "Server-generated time confirms an exact readback despite a newer local ordering token")
+        serverClock.commit(secondData, now: 10_001, siteTimestamp: 101)
+        let skewedFirst = serverClock.pending!
+        serverClock.submitted = skewedFirst
+        serverClock.commit(data, now: 10_002, siteTimestamp: 101)
+        serverClock.receive(skewedFirst.target, timestamp: 102)
+        check(serverClock.pending?.target == data && serverClock.pending?.base == secondData,
+              "An older submitted readback rebases a newer local edit under server time")
         var missing = SiteExtensionData()
         missing.fields.removeValue(forKey: "triggerZones")
         state.receive(missing, timestamp: second.timestamp + 1)
@@ -74,21 +88,233 @@ struct SiteTriggerZoneDataTests {
         state.receive(deleted, timestamp: deletion.timestamp)
         check(state.data.zones?.isEmpty == true && state.pending == nil, "Explicit empty array confirms deletion")
         state.commit(data, now: 60, siteTimestamp: 10)
+        let superseded = state.pending!
         state.receive(secondData, timestamp: 61)
-        check(state.conflict && state.data == data, "Concurrent remote edits preserve the local draft and signal conflict")
+        check(!state.conflict && state.data == secondData && state.pending == nil
+                && state.archivedPendings == [superseded] && state.needsArchivedReview,
+              "A complete conflicting server version becomes active and archives the local edit")
+        state.acknowledgeArchivedReview()
+        check(!state.needsArchivedReview && state.archivedPendings == [superseded],
+              "Acknowledging a review does not delete the archived snapshot")
         state.discardPending()
-        check(state.data == secondData && state.pending == nil, "Explicit conflict resolution adopts the server version")
+        check(state.data == secondData && state.pending == nil,
+              "Discard after server takeover does not resurrect an old local target")
         let beforeOldResponse = state
         state.receive(SiteExtensionData(), timestamp: 1)
         check(state == beforeOldResponse, "Old responses cannot resurrect deleted or replaced data")
+        var ambiguous = SiteTriggerZoneState()
+        ambiguous.receive(data, timestamp: 100)
+        ambiguous.receive(secondData, timestamp: 100)
+        check(ambiguous.hasAmbiguousRemote && ambiguous.data == data
+                && ambiguous.serverData == data && ambiguous.serverTimestamp == 100,
+              "Equal server versions with different content cannot replace a confirmed target")
+        ambiguous.receive(secondData, timestamp: 101)
+        check(!ambiguous.hasAmbiguousRemote && ambiguous.data == secondData,
+              "A newer version resolves an ambiguous response")
         var future = data
-        future.fields["schemaVersion"] = .integer(2)
-        check(!future.supportsEmptyZoneEditing && tryRoundTrip(future) == future, "Future schema is retained and read-only")
+        future.fields["schemaVersion"] = .integer(3)
+        check(!future.supportsMemberEditing && tryRoundTrip(future) == future, "Future schema is retained and read-only")
         var nonempty = zones[0]
         nonempty.fields["members"] = .array([.object(["spaceId": .string("private")])])
         future = SiteExtensionData()
         future.replaceZones([nonempty])
         check(!future.supportsEmptyZoneEditing, "Nonempty members cannot be edited by phase-one controls")
+        let identity = SiteTriggerZoneMember.Identity(spaceID: "space-A", nodeUUID: UUID())
+        var member = SiteTriggerZoneMember(identity: identity, groupAddress: 0xC001,
+                                           primaryAddress: 0x0120, deviceAddress: 0x0121)
+        member.fields["laterClientField"] = .object(["value": .bool(true)])
+        var editable = zones[0]
+        editable.replaceMembers([member])
+        var memberData = SiteExtensionData()
+        memberData.fields["schemaVersion"] = .integer(2)
+        memberData.replaceZones([editable])
+        check(memberData.supportsMemberEditing && editable.members == [member], "Version 2 members retain stable identity and extension fields")
+        var legacyFields = member.fields
+        legacyFields.removeValue(forKey: "deviceAddress")
+        legacyFields["triggerElementAddress"] = .integer(0x0120)
+        var legacyZone = SiteTriggerZone()
+        legacyZone.fields["members"] = .array([.object(legacyFields)])
+        var legacyData = memberData
+        legacyData.replaceZones([legacyZone, editable])
+        check(legacyZone.members == nil && legacyZone.hasCompleteDisplayMembers
+                && legacyZone.displayMembers.first?.identity == identity,
+              "Legacy trigger addresses retain visible member identity without guessing a device address")
+        var normalizedFields = legacyFields
+        normalizedFields.removeValue(forKey: "triggerElementAddress")
+        normalizedFields["deviceAddress"] = .integer(0x0120)
+        let metadataMigration = SiteTriggerZoneDeviceSyncChange(
+            zoneID: legacyZone.zoneId,
+            previousMembers: .array([.object(legacyFields)]),
+            targetMembers: .array([.object(normalizedFields)]))
+        check(metadataMigration.knownMemberImpact == .init(added: 0, removed: 0, changed: 0)
+                && !metadataMigration.hasKnownDeviceDelta,
+              "Matching legacy and normalized addresses remain unverified, not a known device delta")
+        let addressChange = SiteTriggerZoneDeviceSyncChange(
+            zoneID: legacyZone.zoneId,
+            previousMembers: .array([.object(legacyFields)]),
+            targetMembers: .array([.object(member.fields)]))
+        check(addressChange.knownMemberImpact == .init(added: 0, removed: 0, changed: 1)
+                && addressChange.hasKnownDeviceDelta,
+              "A changed normalized device address remains pending")
+        let addedMember = SiteTriggerZoneDeviceSyncChange(zoneID: legacyZone.zoneId,
+            previousMembers: .array([]), targetMembers: .array([.object(normalizedFields)]))
+        check(addedMember.knownMemberImpact == .init(added: 1, removed: 0, changed: 0)
+                && addedMember.hasKnownDeviceDelta,
+              "New device membership remains pending")
+        let removedMember = SiteTriggerZoneDeviceSyncChange(zoneID: legacyZone.zoneId,
+            previousMembers: .array([.object(normalizedFields)]), targetMembers: .array([]))
+        check(removedMember.knownMemberImpact == .init(added: 0, removed: 1, changed: 0),
+              "A removed Zone member remains attributable after its card disappears")
+        let invalidChange = SiteTriggerZoneDeviceSyncChange(zoneID: legacyZone.zoneId,
+            previousMembers: .string("invalid"), targetMembers: .array([]))
+        check(invalidChange.knownMemberImpact == nil && invalidChange.hasKnownDeviceDelta,
+              "Malformed old members must not be silently treated as settled")
+        check(!legacyData.supportsMemberEditing && legacyData.supportsZoneEditing(editable.zoneId)
+                && !legacyData.supportsZoneEditing(legacyZone.zoneId),
+              "A legacy Zone remains read-only without blocking an independent valid Zone")
+        var incidentServer = SiteExtensionData()
+        incidentServer.fields["schemaVersion"] = .integer(2)
+        incidentServer.replaceZones([legacyZone, SiteTriggerZone()])
+        var incidentLocal = SiteExtensionData()
+        incidentLocal.replaceZones([zones[0], zones[1], zones[2]])
+        var incidentState = SiteTriggerZoneState()
+        incidentState.receive(incidentLocal, timestamp: 100)
+        incidentState.commit(data, now: 101, siteTimestamp: 100)
+        incidentState.receive(incidentServer, timestamp: 102)
+        check(incidentState.pending == nil && incidentState.data.zones?.count == 2
+                && incidentState.data.zones?.first?.displayMembers.count == 1
+                && incidentState.archivedPendings?.count == 1,
+              "A three-Zone local draft yields to two confirmed server Zones without hiding legacy members")
+        var updatedValidZone = editable
+        updatedValidZone.replaceMembers([])
+        check(legacyData.replacingZone(updatedValidZone)?.zones?.first == legacyZone,
+              "A valid row update preserves an unrelated legacy Zone verbatim")
+        check(tryRoundTrip(memberData) == memberData, "Version 2 members survive roundtrip")
+        var serverExtension = SiteExtensionData()
+        var otherZone = zones[2]
+        otherZone.fields["futureZoneField"] = .object(["flag": .bool(true)])
+        serverExtension.fields["futureSiteField"] = .array([.string("retained")])
+        serverExtension.replaceZones([zones[0], otherZone])
+        let fullUpdate = serverExtension.replacingZone(editable)!
+        check(fullUpdate.zones == [editable, otherZone]
+                && fullUpdate.fields["futureSiteField"] == serverExtension.fields["futureSiteField"]
+                && fullUpdate.fields["schemaVersion"] == .integer(2)
+                && fullUpdate.supportsMemberEditing,
+              "A row Save sends the full server extension with other Zones and unknown fields")
+        let parsedFullUpdate = try SiteExtensionData.parse(fullUpdate.jsonObject())
+        check(parsedFullUpdate == fullUpdate,
+              "The complete extensionData request payload roundtrips")
+        let props = try SiteTriggerZoneUpdatePayload.props(extensionData: fullUpdate)
+        check(props.keys.sorted() == ["extensionData"],
+              "Site Trigger Zone updates let the server assign updateTimestamp")
+        let parsedProps = try SiteExtensionData.parse(props["extensionData"]!)
+        check(parsedProps == fullUpdate, "The update request contains the complete extension object")
+        var receipt = SiteTriggerZoneState()
+        receipt.receive(serverExtension, timestamp: 100)
+        receipt.commit(fullUpdate, now: 10_000, siteTimestamp: 100)
+        receipt.submitted = receipt.pending
+        receipt.receive(fullUpdate, timestamp: 101)
+        check(receipt.pending == nil && receipt.deviceSyncChanges?.count == 1
+                && receipt.deviceSyncChanges?.first?.zoneID == editable.zoneId
+                && receipt.deviceSyncChanges?.first?.previousMembers == .array([])
+                && receipt.deviceSyncChanges?.first?.targetMembers == editable.fields["members"],
+              "Any confirmed readback retains device cleanup evidence under server time")
+        receipt.commit(serverExtension, now: 10_001, siteTimestamp: 101)
+        receipt.receive(serverExtension, timestamp: 102)
+        check(receipt.deviceSyncChanges?.isEmpty == true,
+              "Returning to the original members clears the outstanding device change")
+        var deletedZoneTarget = fullUpdate
+        deletedZoneTarget.replaceZones([otherZone])
+        var deletedZoneReceipt = SiteTriggerZoneState()
+        deletedZoneReceipt.receive(fullUpdate, timestamp: 100)
+        deletedZoneReceipt.commit(deletedZoneTarget, now: 101, siteTimestamp: 100)
+        deletedZoneReceipt.receive(deletedZoneTarget, timestamp: 102)
+        check(deletedZoneReceipt.deviceSyncChanges?.count == 1
+                && deletedZoneReceipt.deviceSyncChanges?.first?.zoneID == editable.zoneId
+                && deletedZoneReceipt.deviceSyncChanges?.first?.previousMembers == editable.fields["members"]
+                && deletedZoneReceipt.deviceSyncChanges?.first?.targetMembers == .array([]),
+              "Deleting a nonempty Zone retains its old members for later device cleanup")
+        var localOther = otherZone
+        localOther.fields["localOnly"] = .bool(true)
+        var localTwoZoneEdit = fullUpdate
+        localTwoZoneEdit.replaceZones([editable, localOther])
+        var rowReceipt = SiteTriggerZoneState()
+        rowReceipt.receive(serverExtension, timestamp: 100)
+        rowReceipt.commit(localTwoZoneEdit, now: 10_000, siteTimestamp: 100)
+        rowReceipt.submitted = .init(operationId: UUID(), timestamp: 10_001,
+                                     base: serverExtension, target: fullUpdate)
+        rowReceipt.receive(fullUpdate, timestamp: 101)
+        check(rowReceipt.pending?.target == localTwoZoneEdit
+                && rowReceipt.pending?.base == fullUpdate
+                && rowReceipt.deviceSyncChanges?.count == 1
+                && rowReceipt.deviceSyncChanges?.first?.zoneID == editable.zoneId,
+              "A row Save records only confirmed members and retains another Zone's local pending edit")
+        check(serverExtension.replacingZone(zones[3])?.zones == [zones[0], otherZone, zones[3]],
+              "Adding one Zone retains all existing server Zones")
+        var draft = SiteTriggerZoneDraft(zone: zones[1])!
+        check(draft.add(member) && draft.isDirty, "Adding creates only a page draft")
+        check(!draft.add(member) && draft.members.count == 1, "Duplicate member identity is ignored")
+        draft.reset()
+        check(!draft.isDirty && draft.members.isEmpty, "Reset discards unsaved changes")
+        check(!draft.remove(identity) && draft.add(member) && draft.remove(identity) && !draft.isDirty,
+              "Remove and re-add compare against the saved base")
+        var coveredBase = SiteExtensionData()
+        coveredBase.replaceZones([zones[0], zones[1]])
+        var coveredFirst = zones[0]
+        coveredFirst.replaceMembers([member])
+        var coveredSecond = zones[1]
+        coveredSecond.replaceMembers([member])
+        var coveredServer = coveredBase
+        coveredServer.fields["schemaVersion"] = .integer(2)
+        coveredServer.replaceZones([coveredFirst, zones[1]])
+        var coveredTarget = coveredServer
+        coveredTarget.replaceZones([coveredFirst, coveredSecond, zones[2], zones[3]])
+        var coveredState = SiteTriggerZoneState()
+        coveredState.receive(coveredBase, timestamp: 100)
+        coveredState.commit(coveredTarget, now: 101, siteTimestamp: 100)
+        coveredState.receive(coveredServer, timestamp: 102)
+        check(!coveredState.conflict && coveredState.pending?.base == coveredServer
+                && coveredState.pending?.target == coveredTarget && coveredState.data == coveredTarget,
+              "A server change already present in the local target safely rebases without dropping new Zones")
+        check(coveredState.deviceSyncChanges?.first?.zoneID == coveredFirst.zoneId,
+              "The already-confirmed server member change retains its device-sync evidence")
+        coveredState.receive(coveredTarget, timestamp: 103)
+        check(coveredState.pending == nil && coveredState.deviceSyncChanges?.count == 2,
+              "Later cloud confirmation preserves both earlier and newly confirmed device changes")
+        var incompatibleTarget = coveredTarget
+        var incompatibleFirst = zones[0]
+        incompatibleFirst.replaceMembers([])
+        incompatibleTarget.replaceZones([incompatibleFirst, coveredSecond, zones[2], zones[3]])
+        var incompatibleState = SiteTriggerZoneState()
+        incompatibleState.receive(coveredBase, timestamp: 100)
+        incompatibleState.commit(incompatibleTarget, now: 101, siteTimestamp: 100)
+        incompatibleState.receive(coveredServer, timestamp: 102)
+        check(!incompatibleState.conflict && incompatibleState.pending == nil
+                && incompatibleState.data == coveredServer
+                && incompatibleState.archivedPendings?.first?.target == incompatibleTarget,
+              "An irreconcilable same-Zone target is archived without replacing the server")
+        var duplicate = editable
+        duplicate.replaceMembers([member, member])
+        memberData.replaceZones([duplicate])
+        check(!memberData.supportsMemberEditing, "Duplicate persisted members must not become editable")
+        var malformed = editable
+        malformed.fields["members"] = .array([.object(["spaceId": .string("space-A")])])
+        memberData.replaceZones([malformed])
+        check(!memberData.supportsMemberEditing, "Malformed members remain read-only")
+        let invalidAddress = SiteJSONValue.object([
+            "spaceId": .string("space-A"), "nodeUUID": .string(identity.nodeUUID.uuidString),
+            "groupAddress": .integer(0xC001), "primaryAddress": .integer(0x0120),
+            "deviceAddress": .integer(0x011F)
+        ])
+        check(SiteTriggerZoneMember(value: invalidAddress) == nil,
+              "A normalized device address before the node primary cannot be persisted")
+        var syncState = SiteTriggerZoneState()
+        syncState.deviceSyncChanges = [.init(zoneID: editable.zoneId, previousMembers: .array([]),
+                                             targetMembers: editable.fields["members"]!)]
+        let restoredSyncState = try JSONDecoder().decode(SiteTriggerZoneState.self,
+            from: JSONEncoder().encode(syncState))
+        check(restoredSyncState == syncState,
+            "Device cleanup evidence survives restart after cloud confirmation")
         let restored = try JSONDecoder().decode(SiteTriggerZoneState.self, from: JSONEncoder().encode(state))
         check(restored == state, "Restart restores the full sync state")
         print("PASS: Site Trigger Zone identity, 100-zone limit, compatibility, pending, conflict and restart checks")

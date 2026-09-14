@@ -169,7 +169,14 @@ class GroupPathSequenceQuickAddView: UIView {
     }
     
     @objc private func startBtnAction(sender: UIButton) {
-        guard browseConfiguration == nil else { return }
+        if let browseConfiguration {
+            if let change = browseConfiguration.changeQuickState {
+                change(browseConfiguration.quickState == .adding ? .pause : .adding)
+            } else {
+                browseConfiguration.startConnection?()
+            }
+            return
+        }
         sender.isSelected = !sender.isSelected
         
         if sender.isSelected {
@@ -188,7 +195,10 @@ class GroupPathSequenceQuickAddView: UIView {
     }
     
     @objc private func stopBtnAction() {
-        guard browseConfiguration == nil else { return }
+        if let browseConfiguration {
+            browseConfiguration.changeQuickState?(.stop)
+            return
+        }
         stopBtn.isHidden = true
         
         startBtn.isSelected = false
@@ -202,6 +212,7 @@ class GroupPathSequenceQuickAddView: UIView {
     }
 
     @objc private func helpImageAction() {
+        if let browseConfiguration { browseConfiguration.showHelp?(); return }
         GroupPathSequenceAddDescriptionController.push(mode: .quickAdd, isSequence: isSequence)
     }
     
@@ -356,7 +367,8 @@ class GroupPathSequenceQuickAddView: UIView {
     func configureBrowse(_ configuration: GroupPathSequenceBrowseConfiguration) {
         browseConfiguration = configuration
         configureSpaceTriggerZoneQuickAdd(groupTitles: [], enabledStates: [], selectedGroupIndex: 0, showAddedOnly: configuration.includeAdded)
-        updateQuickAddState(.stop)
+        updateQuickAddState(configuration.quickState)
+        startBtn.isSelected = configuration.quickState == .adding
         groupTitleLabel.text = configuration.spaceTitle
         groupTitleLabel.lineBreakMode = .byTruncatingTail
         groupFilterView.isUserInteractionEnabled = !configuration.spaces.isEmpty
@@ -365,8 +377,9 @@ class GroupPathSequenceQuickAddView: UIView {
         titleLabel.text = configuration.filterTitle
         addTypeView.snp.updateConstraints { $0.width.equalTo(configuration.filterWidth) }
         let noSpace = configuration.selectedSpaceID == nil
-        startBtn.isHidden = noSpace
-        addStateLabel.isHidden = noSpace
+        let showStart = configuration.connectionPhase == .idle || configuration.connectionPhase == .connected
+        startBtn.isHidden = noSpace || !showStart
+        addStateLabel.isHidden = noSpace || !showStart
         hintLabel.isHidden = noSpace
         hintLabel.numberOfLines = 0
         hintLabel.accessibilityIdentifier = "site-zone-proximity-hint"
@@ -509,6 +522,7 @@ class GroupPathSequenceQuickAddView: UIView {
 //        }
         
         stopBtn = UIButton(normalImageName: "quick_add_stop", target: self, action: #selector(stopBtnAction))
+        stopBtn.accessibilityIdentifier = "site-zone-quick-stop"
         stopBtn.isHidden = true
         addView.addSubview(stopBtn)
         stopBtn.snp.makeConstraints { make in

@@ -13,7 +13,16 @@ final class SiteTriggerZoneAlertView: SRAlertView {
 enum SiteTriggerZoneItemStyle {
     static func syncButton(_ sync: SiteTriggerZoneItemModel.Sync, identifier: String, action: @escaping () -> Void) -> UIButton {
         let button = UIButton(type: .custom)
-        button.setImage(UIImage(named: "site_zone_sync"), for: .normal)
+        if sync.isUnverified {
+            button.setTitle("?", for: .normal)
+            button.setTitleColor(AssistText_Color, for: .normal)
+            button.titleLabel?.font = .systemFont(ofSize: 16, weight: .semibold)
+            button.layer.borderColor = AssistText_Color.cgColor
+            button.layer.borderWidth = 1
+            button.layer.cornerRadius = 12
+        } else {
+            button.setImage(UIImage(named: "site_zone_sync"), for: .normal)
+        }
         button.accessibilityLabel = syncTitle(sync)
         button.accessibilityIdentifier = identifier
         button.translatesAutoresizingMaskIntoConstraints = false
@@ -70,7 +79,12 @@ enum SiteTriggerZoneItemStyle {
 
     static func syncTitle(_ sync: SiteTriggerZoneItemModel.Sync) -> String {
         if sync.cloud == .pending && sync.devices == .pending { return "site_zones_item_sync_both".localizedString }
-        return (sync.cloud == .pending ? "site_zones_item_sync_cloud" : "site_zones_item_sync_devices").localizedString
+        if sync.cloud == .pending { return "site_zones_item_sync_cloud".localizedString }
+        if sync.devices == .pending { return "site_zones_item_sync_devices".localizedString }
+        if sync.cloud == .unknown && sync.devices != .unknown {
+            return "site_zones_item_status_unverified".localizedString
+        }
+        return "site_zones_item_device_unverified".localizedString
     }
 
     static func label(_ text: String, size: CGFloat = 12, color: UIColor = SubText_Color) -> UILabel {
@@ -224,6 +238,11 @@ final class SiteTriggerZoneItemCell: UITableViewCell {
                 let message = SiteTriggerZoneItemStyle.label("site_zones_summary_incomplete".localizedString, color: AssistText_Color)
                 message.numberOfLines = 0
                 stack.addArrangedSubview(message)
+            } else if item.hasUnverifiedMembers {
+                let message = SiteTriggerZoneItemStyle.label("site_zone_members_need_verification".localizedString,
+                                                             color: AssistText_Color)
+                message.numberOfLines = 0
+                stack.addArrangedSubview(message)
             }
         }
         updateWidth(width)
@@ -271,7 +290,7 @@ final class SiteTriggerZoneSpaceSectionView: UIView {
         hasCount = space.displayedDeviceCount != nil
         let count = space.displayedDeviceCount ?? 0
         countLabel = SiteTriggerZoneItemStyle.label(String(format: (count == 1 ? "site_zones_device_count_one" : "site_zones_device_count_many").localizedString, count), color: AssistText_Color)
-        reservedIconWidth = (locked ? 22 : 0) + (space.sync.needsSync ? 30 : 0)
+        reservedIconWidth = (locked ? 22 : 0) + (space.sync.showsStatus ? 30 : 0)
         super.init(frame: .zero)
         accessibilityIdentifier = "site-zone-space-\(space.id)"
         stack.axis = .vertical
@@ -296,7 +315,7 @@ final class SiteTriggerZoneSpaceSectionView: UIView {
         spacer.setContentHuggingPriority(.init(1), for: .horizontal)
         spacer.heightAnchor.constraint(equalToConstant: 0).isActive = true
         row.addArrangedSubview(spacer)
-        if space.sync.needsSync {
+        if space.sync.showsStatus {
             let sync = SiteTriggerZoneItemStyle.syncButton(space.sync, identifier: "site-zone-space-sync", action: syncTap)
             row.addArrangedSubview(sync)
         }
