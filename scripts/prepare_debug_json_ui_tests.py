@@ -26,6 +26,10 @@ final class ExportController: UIViewController {
         super.viewDidLoad(); title = "Export JSON Test"; view.backgroundColor = .systemBackground
         let role = ProcessInfo.processInfo.arguments.contains("visitor") ? Permission.visitor : (ProcessInfo.processInfo.arguments.contains("editor") ? .editor : .owner)
         site.permission = role; space.permission = role; site.spaces = [space]
+        if ProcessInfo.processInfo.arguments.contains("protected") {
+            space.unavailable = true
+            SpaceConfigurationSafety.unavailable.insert(space.id)
+        }
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "Menu", style: .plain, target: self, action: #selector(openMenu))
         outcome.accessibilityIdentifier = "outcome"; outcome.text = "Starting"
         outcome.frame = CGRect(x: 20, y: 160, width: 350, height: 50); view.addSubview(outcome)
@@ -85,7 +89,7 @@ assets=out/'Assets.xcassets';assets.mkdir(exist_ok=True)
 for name in ['menu_bubble','menu_share','arrow_right']:
     source=next((repo/'SunSmart/Assets.xcassets').rglob(name+'.imageset'))
     shutil.copytree(source,assets/source.name,dirs_exist_ok=True)
-shutil.copytree(repo/'Pods/SnapKit/Sources',out/'SnapKit',dirs_exist_ok=True)
+shutil.copytree(repo/'Pods/SnapKit/Sources',out/'SnapKit',dirs_exist_ok=True,copy_function=shutil.copyfile)
 sources=[]
 for path in ['SunSmart/Common/View/MenuPopView.swift','SunSmart/Common/View/CustomTableViewCell.swift','SunSmart/Common/Cloud/DebugCloudJSONExporter.swift','SunSmart/Common/Cloud/DebugCloudJSONFile.swift']:
     source=repo/path;target=out/source.name

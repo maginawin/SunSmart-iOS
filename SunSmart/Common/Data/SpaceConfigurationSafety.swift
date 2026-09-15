@@ -741,18 +741,26 @@ enum SpaceConfigurationSafety {
     #if DEBUG
     /// Unlike directory()/recoveryState(), this inspection never creates a journal.
     static func canReadDebugSnapshot(_ space: SpaceData) -> Bool {
+        // A pending import or recovery journal is evidence to export, not an
+        // access restriction. Snapshot revision checks handle concurrent writes.
+        space.state == .normal
+    }
+
+    static func debugSnapshotStatus(_ space: SpaceData) -> [String: Any] {
         lock.lock(); defer { lock.unlock() }
-        guard space.state == .normal else { return false }
+        var result: [String: Any] = ["state": space.state.rawValue]
+        result["blockedReason"] = UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space))
         do {
             let state = try SpaceRecoveryState.read(from: stateURL(space), identity: identity(space))
-            if let state, state.phase != .active { return false }
+            result["recoveryPhase"] = state?.phase.rawValue
             let folder = state.map { storedDirectory(space, state: $0) }
                 ?? recoveryRoot.appendingPathComponent(key(space))
-            return !FileManager.default.fileExists(atPath: folder.appendingPathComponent("pending-import.json").path)
-                && !deletionCleanupPending(at: folder.appendingPathComponent("device-deletions.json"))
+            result["pendingImport"] = FileManager.default.fileExists(atPath: folder.appendingPathComponent("pending-import.json").path)
+            result["pendingDeletionCleanup"] = deletionCleanupPending(at: folder.appendingPathComponent("device-deletions.json"))
         } catch {
-            return false
+            result["recoveryReadError"] = String(describing: error)
         }
+        return result
     }
     #endif
 

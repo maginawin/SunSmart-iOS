@@ -122,7 +122,7 @@ enum SpaceSnapshotExportPurpose {
     case localBackup
     case cloudSync
     #if DEBUG
-    case debugInspection
+    case debugInspection(DebugJSONExportDiagnostics)
     #endif
 
     var isReadOnlyInspection: Bool {
@@ -130,6 +130,12 @@ enum SpaceSnapshotExportPurpose {
         if case .debugInspection = self { return true }
         #endif
         return false
+    }
+
+    func reportInspectionIssue(_ issue: String) {
+        #if DEBUG
+        if case .debugInspection(let diagnostics) = self { diagnostics.record(issue) }
+        #endif
     }
 }
 
@@ -142,6 +148,7 @@ private extension SpaceData {
             meshUUID: meshUUID,
             subnetworkId: meshNetworkId
         ) else {
+            purpose.reportInspectionIssue("meshNetwork: loadFailed")
             return nil
         }
         let localSnapshot = SpaceSnapshotExportIntegritySnapshot(
@@ -149,6 +156,9 @@ private extension SpaceData {
         )
         #if DEBUG
         if purpose.isReadOnlyInspection {
+            for orphan in localSnapshot.orphanedMemberships.sorted(by: { $0.nodeAddress < $1.nodeAddress }) {
+                purpose.reportInspectionIssue("nodes[\(orphan.nodeAddress)].groupAddress: orphanedMembership(\(orphan.groupAddress ?? "missing"))")
+            }
             return .init(
                 expectedLocalSnapshot: localSnapshot,
                 orphanPreservationReason: localSnapshot.orphanedMemberships.isEmpty ? nil : "debugInspection",
@@ -240,7 +250,7 @@ private extension SpaceData {
 extension SiteData {
     
     /// 导出site数据
-    func export(spaceIds: [String]? = nil) async -> [String: Any]?  {
+    func export(spaceIds: [String]? = nil, purpose: SpaceSnapshotExportPurpose = .cloudSync) async -> [String: Any]?  {
         
 //        return await withTaskCancellationHandler {
             let exportedSiteData: [String: Any]? = await withCheckedContinuation { continuation in
@@ -249,6 +259,7 @@ extension SiteData {
                 guard let meshNetwork = MeshNetwork.load(meshUUID: self.id, allData: false),
                       let networkKey = meshNetwork.networkKeys.first(where: { $0.isPrimary }),
                       let appKey = meshNetwork.applicationKeys.first(where: { $0.boundNetworkKey == networkKey }) else {
+                    purpose.reportInspectionIssue("site.meshNetwork: networkOrPrimaryKeysUnavailable")
                     continuation.resume(returning: nil)
                     return
                 }
@@ -329,9 +340,14 @@ extension SiteData {
         
         // Read the durable extension, not a possibly stale Site instance.
         guard let extensionState = try? SiteTriggerZoneStore.load(self),
-              !extensionState.conflict,
-              extensionState.rejectedRemote == nil,
-              let extensionObject = try? extensionState.data.jsonObject() else { return nil }
+              let extensionObject = try? extensionState.data.jsonObject() else {
+            purpose.reportInspectionIssue("site.extensionData: loadOrEncodingFailed")
+            return nil
+        }
+        if extensionState.conflict || extensionState.rejectedRemote != nil {
+            purpose.reportInspectionIssue("site.extensionData: conflict=\(extensionState.conflict), rejectedRemote=\(extensionState.rejectedRemote != nil)")
+            guard purpose.isReadOnlyInspection else { return nil }
+        }
         siteData["extensionData"] = extensionObject
         if let pending = extensionState.pending {
             siteData["updateTimestamp"] = max(self.lastUpdate, pending.timestamp)
@@ -345,7 +361,7 @@ extension SiteData {
                 for space in exportSpaces {
                     group.addTask {
                         // 异步处理每个数据
-                        return await space.export(purpose: .cloudSync)
+                        return await space.export(purpose: purpose)
                     }
                 }
                 // 收集结果
@@ -389,9 +405,11 @@ extension SpaceData {
         guard !SpaceConfigurationSafety.hasPendingImport(self),
               allowsProtectedInspection || !SpaceConfigurationSafety.isBlocked(self) else { return nil }
         #endif
-        guard
-              !triggerZonesLoadFailed,
-              let snapshotAuthorization = await snapshotExportAuthorization(
+        guard !triggerZonesLoadFailed else {
+            purpose.reportInspectionIssue("spaceData.triggerZones: storedJSONDecodeFailed; inspect rawLocal.app.spaces")
+            return nil
+        }
+        guard let snapshotAuthorization = await snapshotExportAuthorization(
             purpose: purpose
         ) else {
             return nil
@@ -408,6 +426,7 @@ extension SpaceData {
                 && snapshotAuthorization.revision == ConfigurationSnapshotRevision.current()
                 ? snapshotAuthorization.network : nil
             guard let meshNetwork = reusableNetwork ?? MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId) else {
+                purpose.reportInspectionIssue("meshNetwork: loadFailed")
                 return nil
             }
             trace.mark(reusableNetwork == nil ? "networkReloaded" : "networkReused")
@@ -429,6 +448,14 @@ extension SpaceData {
                 group.info.bindSchedules = bindSchedules
             })
             guard meshNetwork.groups.filter({ !$0.isVirtual }).allSatisfy({ !$0.info.profileLoadFailed && !$0.info.topologyLoadFailed }) else {
+                for group in meshNetwork.groups where !group.isVirtual {
+                    if group.info.profileLoadFailed {
+                        purpose.reportInspectionIssue("groups[\(group.address.address.hex)].profile: storedConfigurationLoadFailed")
+                    }
+                    if group.info.topologyLoadFailed {
+                        purpose.reportInspectionIssue("groups[\(group.address.address.hex)].proximityLightingPath: storedJSONDecodeFailed")
+                    }
+                }
                 if !purpose.isReadOnlyInspection {
                     SpaceConfigurationSafety.block(self, reason: "invalidStoredGroupConfiguration")
                 }
@@ -456,7 +483,13 @@ extension SpaceData {
                 nodes: allNodes,
                 network: meshNetwork
             ).prepare()
-            guard proximityPreparation.isValid else {
+            for error in proximityPreparation.hardErrors {
+                purpose.reportInspectionIssue("proximityLighting.hardError: \(error)")
+            }
+            for repair in proximityPreparation.normalized.repairs {
+                purpose.reportInspectionIssue("proximityLighting.unappliedRepair: \(repair.diagnosticDescription)")
+            }
+            guard purpose.isReadOnlyInspection || proximityPreparation.isValid else {
                 #if DEBUG
                 print(
                     "[ProximityLightingExport] rejected hardErrors=" +
@@ -467,7 +500,7 @@ extension SpaceData {
             }
             // Export must never turn a failed load or stale topology into a
             // persisted deletion. Explicit edits/import apply their own cleanup.
-            guard snapshotAuthorization.orphanPreservationReason != nil
+            guard purpose.isReadOnlyInspection || snapshotAuthorization.orphanPreservationReason != nil
                     || proximityPreparation.normalized.repairs.isEmpty
                     || (reviewingReferenceRepairs && proximityPreparation.normalized.canReviewReferenceRepair) else {
                 #if DEBUG
@@ -851,7 +884,7 @@ extension SpaceData {
                     }
                     
                     // 临近照明
-                    if ProximityLightingLifecycleCoordinator.isEligible(group.info.profile.type),
+                    if (purpose.isReadOnlyInspection || ProximityLightingLifecycleCoordinator.isEligible(group.info.profile.type)),
                        let proximityLightingPath = group.info.proximityLightingPath {
                         
                         let pathDicts = proximityLightingPath.paths.map({ path in
@@ -978,7 +1011,10 @@ extension SpaceData {
             spaceJsonData.updateValue(emergencyFireControllerDicts, forKey: "emergencyFireControllers")
             spaceJsonData.updateValue(sceneDicts, forKey: "scenes")
             spaceJsonData.updateValue(scheheduleDicts, forKey: "schedules")
-            guard SpaceConfigurationIntegrityPolicy.profilesIssue(in: spaceJsonData) == nil else { return nil }
+            if let issue = SpaceConfigurationIntegrityPolicy.profilesIssue(in: spaceJsonData) {
+                purpose.reportInspectionIssue("profiles: \(issue)")
+                guard purpose.isReadOnlyInspection else { return nil }
+            }
             return spaceJsonData
         }
         guard let payload else { return nil }

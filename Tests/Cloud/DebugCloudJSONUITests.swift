@@ -4,7 +4,8 @@ final class DebugCloudJSONUITests: XCTestCase {
     func testChinesePortrait() { exercise(language: "zh-Hans", landscape: false) }
     func testEnglishLandscape() { exercise(language: "en", landscape: true) }
     func testChineseLandscape() { exercise(language: "zh-Hans", landscape: true) }
-    private func exercise(language: String, landscape: Bool) {
+    func testProtectedLocalJSON() { exercise(language: "en", landscape: false, protected: true) }
+    private func exercise(language: String, landscape: Bool, protected: Bool = false) {
         continueAfterFailure = false
         XCUIDevice.shared.orientation = landscape ? .landscapeLeft : .portrait
         let title = language == "en" ? "Export Json" : "导出 JSON"
@@ -12,6 +13,7 @@ final class DebugCloudJSONUITests: XCTestCase {
             for role in ["owner", "editor", "visitor"] {
                 let app = XCUIApplication()
                 app.launchArguments = [scope, role, "-AppleLanguages", "(\(language))", "-AppleLocale", language == "en" ? "en_US" : "zh_CN"]
+                if protected { app.launchArguments.append("protected") }
                 app.launch()
                 XCTAssertTrue(app.staticTexts["Snapshot tests passed"].waitForExistence(timeout: 10))
                 app.navigationBars.buttons["Menu"].tap()

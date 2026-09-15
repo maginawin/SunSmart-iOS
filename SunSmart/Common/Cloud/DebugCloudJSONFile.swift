@@ -1,6 +1,12 @@
 #if DEBUG
 import Foundation
 
+/// Operation-local diagnostics; never persisted to configuration or normal logs.
+final class DebugJSONExportDiagnostics {
+    private(set) var issues: [String] = []
+    func record(_ issue: String) { issues.append(issue) }
+}
+
 /// File-only operations; never touches configuration or recovery storage.
 enum DebugCloudJSONFile {
     static var root: URL {
