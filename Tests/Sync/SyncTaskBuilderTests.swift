@@ -25,6 +25,7 @@ enum SyncTaskBuilderTests {
         testSectionOrdering()
         testDongleDeletion()
         #if !BASELINE_BUILD
+        testMissingGroupRetainsHardwareCleanup()
         testIndependentScenarioBuilders()
         testInjectedDependenciesAndFailures()
         #endif
@@ -32,6 +33,24 @@ enum SyncTaskBuilderTests {
     }
 
     #if !BASELINE_BUILD
+    static func testMissingGroupRetainsHardwareCleanup() {
+        let node = Node()
+        node.orphanAddresses = [0xC00D]
+        node.inputs = [.deleteSchedules(schedules: [Schedule(name: "Old schedule", enabled: true)]), .proximityLightingEnabled(false)]
+        let result = buildDevice(group: nil, node: node)
+        guard let removal = result.removeDevice else { preconditionFailure("Missing Group still needs real unsubscribe") }
+        validateParents(removal)
+        guard let last = removal.steps.last,
+              case .missingGroupSubscriptions = last.tasks[0].operationType.action else { preconditionFailure("Final unsubscribe task") }
+        require(last.relevanceStepModels == Array(removal.steps.dropLast()), "Existing hardware cleanup must finish before orphan subscription removal")
+        require(result.configturationDevice != nil, "Disabling obsolete proximity still has a device task")
+        node.orphanAddresses = []
+        let rebuilt = buildDevice(group: nil, node: node)
+        require(rebuilt.removeDevice?.steps.contains(where: { step in
+            step.tasks.contains { if case .missingGroupSubscriptions = $0.operationType.action { return true }; return false }
+        }) != true, "A real unsubscribe receipt removes that task from a rebuilt plan")
+    }
+
     static func testIndependentScenarioBuilders() {
         let node = Node()
         let profiles: [ProfileType] = [.profileToggleTriggerConditionLuxLock,

@@ -15,7 +15,11 @@ extension SyncExecutionSession {
             }
         }
 
-        let resultSuccessful = !resultMessageHandles.contains(where: { !$0.isSuccessful })
+        var resultSuccessful = !resultMessageHandles.contains(where: { !$0.isSuccessful })
+        if resultSuccessful, let operation = operationType(for: model),
+           case .delete(let node, .missingGroupSubscriptions) = operation {
+            resultSuccessful = MissingGroupSubscriptionCleanup.finish(for: node)
+        }
         let operationSuccessful = ((model as? SyncDevicesModel)?.operationType?.isSuccessful ?? (model as? SyncDeviceStepTaskModel)?.operationType.isSuccessful) ?? false
         let isSuccessful = self.isSyncOperationSuccessful(
             model: model,

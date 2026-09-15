@@ -770,23 +770,13 @@ class SpaceViewController: WMPageController {
     }
 
     private func reconcileLegacyProximityLightingTopology() {
-        DevicePermanentDeletionContext.resume(space: space)
-        let preparation = ProximityLightingLifecycleCoordinator.begin(space: space).prepare()
-        guard preparation.isValid, !preparation.normalized.hasDestructiveRepairs else {
-            SpaceConfigurationSafety.block(space, reason: "entryTopologyNeedsReview")
-            return
-        }
-        guard let result = ProximityLightingLifecycleCoordinator.commit(
-            preparation,
-            allowExistingHardErrors: true
-        ) else {
-            return
-        }
-        if result.didChange {
-            NotificationCenter.default.post(
-                name: .init(spaceDataChangedNotificaitonName),
-                object: SpaceChangeDataType.common
-            )
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            if await SpaceSyncCleanupCoordinator.prepare(self.space) {
+                self.reloadData()
+                self.updateSyncState()
+                self.presentProximityLightingRepairSyncIfNeeded()
+            }
         }
     }
 

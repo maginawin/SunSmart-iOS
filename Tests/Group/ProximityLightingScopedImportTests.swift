@@ -187,6 +187,8 @@ enum SpaceConfigurationSafety {
     static func isCurrent(_ context: SpaceRecoveryState, space: SpaceData) -> Bool {
         (try? recoveryState(space).matches(context)) == true
     }
+    static let cleanupRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    static func directory(_ space: SpaceData) throws -> URL { cleanupRoot.appendingPathComponent(space.id) }
     // RECEIPT_METHODS
     static func isBlocked(_ space: SpaceData) -> Bool { blocked || hasPendingDeletionCleanup(space) }
     static func hasPendingImport(_ space: SpaceData) -> Bool { pendingImport }
@@ -383,4 +385,8 @@ enum NodeSyncData: Equatable {
 
         print("PASS: scoped import/planner/coordinator execution, colliding Sites/Spaces, no cloud side effects, destructive import guard, explicit deletion and equivalent logical edits")
     }
+}
+
+enum SiteTriggerZoneTopologyReader {
+    static func mergedLocalTarget(for node: Node, local: ProximityLightingTopologyPolicy.Target) -> ProximityLightingTopologyPolicy.Target? { local }
 }

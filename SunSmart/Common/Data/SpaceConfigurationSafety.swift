@@ -88,6 +88,7 @@ enum SpaceConfigurationSafety {
         let pending = recoveryRoot.appendingPathComponent(directoryName).appendingPathComponent("pending-import.json")
         return UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + identity) != nil
             || FileManager.default.fileExists(atPath: pending.path)
+            || FileManager.default.fileExists(atPath: pending.deletingLastPathComponent().appendingPathComponent("pending-reference-cleanup.json").path)
             || deletionCleanupPending(at: pending.deletingLastPathComponent().appendingPathComponent("device-deletions.json"))
     }
 
@@ -159,6 +160,136 @@ enum SpaceConfigurationSafety {
         (try? deletionJournal(space).needsCleanup) ?? true
     }
 
+    private static let referenceCleanupReasons: Set<String> = [
+        "invalidRemoteTopology", "entryTopologyNeedsReview", "incompleteImportedTopology",
+        "deletionCleanupPending", "referenceCleanupPending"
+    ]
+
+    static func canCleanSyncReferences(_ space: SpaceData) -> Bool {
+        guard space.state == .normal, space.permission != .visitor,
+              !space.disableEditorPermission, !space.requiresPasswordVerification,
+              !hasPendingImport(space), let state = try? recoveryState(space),
+              state.phase == .active, state.authority == .writable,
+              state.requiresRemoteImport != true, state.unbindRequested != true,
+              state.submission == nil else { return false }
+        let reason = UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space))
+        return reason == nil || referenceCleanupReasons.contains(reason!)
+    }
+
+    /// Establish the pre-cleanup version before changing anything. A deletion
+    /// receipt proves only that specific absent instance, never arbitrary loss.
+    @MainActor
+    static func verifySyncCleanupBaseline(_ space: SpaceData, local: [String: Any]) async -> Bool {
+        guard canCleanSyncReferences(space) else { return false }
+        guard needsUpgradeBaseline(space) else { return true }
+        guard let context = try? recoveryState(space), let journal = try? deletionJournal(space),
+              let localNodes = local["nodes"] as? [[String: Any]] else { return false }
+        let present = Set(localNodes.compactMap { ($0["uuid"] as? String)?.uppercased() })
+        let elements = Set(localNodes.flatMap { node -> [UInt16] in
+            guard let primary = SpaceSyncCleanupPolicy.address(node["unicastAddress"]),
+                  let elements = node["elements"] as? [Any] else { return [] }
+            return elements.indices.compactMap { UInt16(exactly: Int(primary) + $0) }
+        })
+        let deleted = Set(journal.entries.filter {
+            !present.contains($0.nodeUUID.uppercased()) && elements.isDisjoint(with: $0.elementAddresses)
+        }.map { $0.nodeUUID.uppercased() })
+        var baseline = local
+        if let data = try? Data(contentsOf: directory(space).appendingPathComponent("last-complete-export.json")),
+           let saved = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+           saved["uuid"] as? String == space.id,
+           SpaceConfigurationIntegrityPolicy.integer(saved["updateTimestamp"]) == space.lastUploadCloudTimestamp {
+            baseline = saved
+        }
+        let revision = space.lastUpdate
+        let result = await NetworkRequest.shared.request(.spaceInfo(siteId: space.siteId, spaceId: space.id,
+                                                                   password: space.authorizationPassword))
+        guard isCurrent(context, space: space), space.lastUpdate == revision else { return false }
+        if case .failure(let error) = result { handleAuthorityError(error, space: space); return false }
+        guard case .success(let response) = result, let remote = response["data"] as? [String: Any],
+              remote["uuid"] as? String == space.id else { return false }
+        space.applyRemoteSpaceMetadata(remote)
+        guard space.save(), canCleanSyncReferences(space),
+              let expected = SpaceSyncCleanupPolicy.baseline(baseline, excludingDeletedUUIDs: deleted),
+              let actual = SpaceSyncCleanupPolicy.baseline(remote, excludingDeletedUUIDs: deleted),
+              expected == actual else { return false }
+        do {
+            var state = try recoveryState(space)
+            state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(remote)
+            try saveState(state, space: space)
+            UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
+            return true
+        } catch { return false }
+    }
+
+    static func preserveRemoteReferenceCleanup(_ space: SpaceData, payload: [String: Any], candidate: [String: Any]) -> Bool {
+        guard payload["uuid"] as? String == space.id else { return false }
+        do {
+            let raw = try JSONSerialization.data(withJSONObject: payload, options: .sortedKeys)
+            try raw.write(to: directory(space).appendingPathComponent("before-remote-reference-cleanup.json"),
+                          options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            let receipt = try JSONSerialization.data(withJSONObject: ["original": payload, "candidate": candidate], options: .sortedKeys)
+            try receipt.write(to: directory(space).appendingPathComponent("pending-import-reference-cleanup.json"),
+                              options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            return true
+        } catch { return false }
+    }
+
+    static func originalReferenceCleanupImport(_ space: SpaceData, candidate: [String: Any]) -> [String: Any]? {
+        guard let root = try? directory(space),
+              let raw = try? Data(contentsOf: root.appendingPathComponent("pending-import-reference-cleanup.json")),
+              let receipt = (try? JSONSerialization.jsonObject(with: raw)) as? [String: Any],
+              let expected = receipt["candidate"] as? [String: Any],
+              let original = receipt["original"] as? [String: Any], original["uuid"] as? String == space.id,
+              let actualData = try? JSONSerialization.data(withJSONObject: candidate, options: .sortedKeys),
+              let expectedData = try? JSONSerialization.data(withJSONObject: expected, options: .sortedKeys),
+              actualData == expectedData else { return nil }
+        return original
+    }
+
+    static func beginSyncReferenceCleanup(_ space: SpaceData, payload: [String: Any]) -> Bool {
+        guard canCleanSyncReferences(space), checkpoint(space, refresh: true) else { return false }
+        do {
+            let url = try directory(space).appendingPathComponent("pending-reference-cleanup.json")
+            if !FileManager.default.fileExists(atPath: url.path) {
+                try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys]).write(
+                    to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            }
+            return true
+        } catch { return false }
+    }
+
+    static func hasPendingReferenceCleanup(_ space: SpaceData) -> Bool {
+        guard let root = try? directory(space) else { return true }
+        return FileManager.default.fileExists(atPath: root.appendingPathComponent("pending-reference-cleanup.json").path)
+    }
+
+    static func finishSyncReferenceCleanup(_ space: SpaceData, changed: Bool) -> Bool {
+        guard canCleanSyncReferences(space), !hasPendingDeletionCleanup(space) else { return false }
+        do {
+            let root = try directory(space)
+            let pending = root.appendingPathComponent("pending-reference-cleanup.json")
+            if changed || FileManager.default.fileExists(atPath: pending.path) {
+                // Keep cleaned local configuration authoritative until its upload
+                // is confirmed, including after a crash between the two writes.
+                UserDefaults.standard.set(space.lastUpdate, forKey: "spaceConfigurationLocalRecoveryPending." + key(space))
+            }
+            if space.syncCloudError?.code == -2003 {
+                let previous = space.syncCloudError
+                space.syncCloudError = nil
+                guard space.save() else { space.syncCloudError = previous; return false }
+            }
+            if FileManager.default.fileExists(atPath: pending.path) {
+                try Data(contentsOf: pending).write(to: root.appendingPathComponent("before-reference-cleanup.json"), options: .atomic)
+                try FileManager.default.removeItem(at: pending)
+            }
+            let blockedKey = "spaceConfigurationBlocked." + key(space)
+            if let reason = UserDefaults.standard.string(forKey: blockedKey), referenceCleanupReasons.contains(reason) {
+                UserDefaults.standard.removeObject(forKey: blockedKey)
+            }
+            return true
+        } catch { return false }
+    }
+
     /// A GET must not resurrect devices while their explicit deletion or local
     /// recovery is waiting for upload confirmation to finish.
     static func preservesLocalChanges(_ space: SpaceData) -> Bool {
@@ -166,6 +297,7 @@ enum SpaceConfigurationSafety {
         guard state.preservesUpload else { return false }
         guard let journal = try? deletionJournal(space) else { return true }
         return state.submission != nil || state.authority == .waitingForAuthorization || !journal.entries.isEmpty
+            || hasPendingReferenceCleanup(space)
             || UserDefaults.standard.object(forKey: "spaceConfigurationLocalRecoveryPending." + key(space)) != nil
     }
 
@@ -827,7 +959,13 @@ enum SpaceConfigurationSafety {
             if validatedTopology {
                 var state = try recoveryState(space)
                 let payload = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
-                state.authorizationBaseline = payload.flatMap(SpaceConfigurationIntegrityPolicy.configurationData)
+                let original = payload.flatMap { originalReferenceCleanupImport(space, candidate: $0) }
+                state.authorizationBaseline = (original ?? payload).flatMap(SpaceConfigurationIntegrityPolicy.configurationData)
+                if original != nil, space.permission != .visitor {
+                    space.markLocalChangePendingCloudSync()
+                    guard space.save() else { return false }
+                    UserDefaults.standard.set(space.lastUpdate, forKey: "spaceConfigurationLocalRecoveryPending." + key(space))
+                }
                 state.requiresRemoteImport = false
                 try saveState(state, space: space)
             }
@@ -839,6 +977,8 @@ enum SpaceConfigurationSafety {
                     options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
             }
             if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+            let cleanup = try directory(space).appendingPathComponent("pending-import-reference-cleanup.json")
+            if FileManager.default.fileExists(atPath: cleanup.path) { try FileManager.default.removeItem(at: cleanup) }
             if validatedTopology {
                 UserDefaults.standard.removeObject(forKey: "spaceConfigurationBlocked." + key(space))
                 UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))

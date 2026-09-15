@@ -28,6 +28,7 @@ final class SpaceData {
     var nodes: [[String: Any]] = []
     var payload: [String: Any] { ["uuid": id, "groups": [], "nodes": nodes, "updateTimestamp": lastUpdate] }
     init(_ id: String = UUID().uuidString) { self.id = id }
+    func markLocalChangePendingCloudSync() { lastUpdate += 1 }
     @discardableResult func save() -> Bool { savesSucceed }
     @discardableResult func delete() -> Bool {
         SpaceConfigurationSafety.beginRemoval(self) && SpaceConfigurationSafety.archiveDeletedSpace(self)
@@ -229,6 +230,7 @@ final class NetworkRequest {
         try await testSiteHandoffReadback()
         try await testImportPreparation()
         try await testParseRejectionRecovery()
+        try testReferenceCleanupReceipts()
 
         // Account changes invalidate pending callbacks before looking up another store.
         let accountContext = try SpaceConfigurationSafety.recoveryState(b)
@@ -301,6 +303,49 @@ final class NetworkRequest {
         if case .failure = await S.resumeUpload(second) { preconditionFailure("state persistence retry must finish locally") }
         precondition(!S.hasPendingUpload(second) && request.calls == calls)
         print("PASS: direct success uses submitted timestamps, makes no GET, preserves newer edits and unrelated blocks")
+    }
+
+    @MainActor static func testReferenceCleanupReceipts() throws {
+        let space = SpaceData("reference-cleanup")
+        space.syncCloudError = .configurationExportInvalid
+        SpaceConfigurationSafety.block(space, reason: "entryTopologyNeedsReview")
+        precondition(SpaceConfigurationSafety.beginSyncReferenceCleanup(space, payload: space.payload))
+        precondition(SpaceConfigurationSafety.isBlocked(space) && SpaceConfigurationSafety.preservesLocalChanges(space))
+        space.savesSucceed = false
+        precondition(!SpaceConfigurationSafety.finishSyncReferenceCleanup(space, changed: true))
+        precondition(SpaceConfigurationSafety.hasPendingReferenceCleanup(space)
+            && space.syncCloudError == .configurationExportInvalid, "Save failure retains retry intent and prior error")
+        space.savesSucceed = true
+        precondition(SpaceConfigurationSafety.finishSyncReferenceCleanup(space, changed: true))
+        precondition(!SpaceConfigurationSafety.isBlocked(space) && space.syncCloudError == nil)
+        precondition(SpaceConfigurationSafety.preservesLocalChanges(space), "Cleanup stays local until its own upload receipt")
+        let timestamp = space.lastUpdate
+        precondition(SpaceConfigurationSafety.finishSyncReferenceCleanup(space, changed: false))
+        precondition(space.lastUpdate == timestamp, "Repeated validation does not create another edit")
+        SpaceConfigurationSafety.block(space, reason: "unrelatedConflict")
+        precondition(!SpaceConfigurationSafety.finishSyncReferenceCleanup(space, changed: false))
+        precondition(SpaceConfigurationSafety.isBlocked(space), "Reference cleanup never clears other conflicts")
+
+        let importing = SpaceData("reference-import")
+        let original = importing.payload
+        var candidate = original
+        candidate["nodes"] = [["uuid": "retained", "unicastAddress": "0010", "groupState": 2]]
+        precondition(SpaceConfigurationSafety.preserveRemoteReferenceCleanup(importing, payload: original, candidate: candidate))
+        precondition(SpaceConfigurationSafety.beginImport(importing, payload: candidate))
+        precondition(SpaceConfigurationSafety.originalReferenceCleanupImport(importing, candidate: candidate) != nil)
+        precondition(SpaceConfigurationSafety.originalReferenceCleanupImport(importing, candidate: original) == nil,
+                     "A stale receipt cannot claim a different import")
+        importing.savesSucceed = false
+        precondition(!SpaceConfigurationSafety.finishImport(importing))
+        precondition(SpaceConfigurationSafety.hasPendingImport(importing), "Interrupted import remains resumable")
+        importing.savesSucceed = true
+        precondition(SpaceConfigurationSafety.finishImport(importing))
+        let state = try SpaceConfigurationSafety.recoveryState(importing)
+        precondition(state.authorizationBaseline == SpaceConfigurationIntegrityPolicy.configurationData(original),
+                     "Authorization compares the actual original cloud version")
+        precondition(SpaceConfigurationSafety.preservesLocalChanges(importing) && !SpaceConfigurationSafety.hasPendingImport(importing))
+        precondition(SpaceConfigurationSafety.originalReferenceCleanupImport(importing, candidate: candidate) == nil)
+        print("PASS: reference cleanup save failure/retry, import interruption, original baseline, scoped unblock and upload intent")
     }
 
     @MainActor static func testParseRejectionRecovery() async throws {

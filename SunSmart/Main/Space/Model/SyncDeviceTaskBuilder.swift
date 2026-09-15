@@ -455,6 +455,16 @@ struct SyncDeviceTaskBuilder {
             })
         }
 
+        if !MissingGroupSubscriptionCleanup.addresses(for: node).isEmpty {
+            let task = SyncDeviceStepTaskModel(name: "remove_from_group".localizedString,
+                operationType: .delete(node: node, type: .missingGroupSubscriptions))
+            let step = SyncDeviceStepModel(type: "remove_from_group".localizedString, state: .none, tasks: [task])
+            task.parentStepModel = step
+            // Switch/scheduler removals run before the final subscription receipt.
+            step.relevanceStepModels = deleteSteps
+            deleteSteps.append(step)
+        }
+
         var configturationDevice: SyncDevicesModel?
         var removeDevice: SyncDevicesModel?
         if configturationSteps.count > 0 {

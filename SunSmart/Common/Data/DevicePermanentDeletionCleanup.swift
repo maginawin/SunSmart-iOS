@@ -101,9 +101,11 @@ final class DevicePermanentDeletionContext {
     static func resume(space: SpaceData) {
         guard !SpaceConfigurationSafety.hasPendingImport(space),
               let journal = try? SpaceConfigurationSafety.deletionJournal(space),
-              journal.entries.contains(where: { $0.stage != .cleaned && !activeEntries.contains($0.id) }),
+              journal.entries.contains(where: { $0.stage != .cleaned && ($0.stage == .removed || !activeEntries.contains($0.id)) }),
               let persisted = MeshNetwork.load(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId) else { return }
-        for entry in journal.entries where entry.stage != .cleaned && !activeEntries.contains(entry.id) {
+        // A completed physical removal may still have a live UI context after
+        // app-side cleanup failed. Its durable .removed stage permits recovery.
+        for entry in journal.entries where entry.stage != .cleaned && (entry.stage == .removed || !activeEntries.contains(entry.id)) {
             if persisted.nodes.contains(where: { $0.uuid.uuidString == entry.nodeUUID }) {
                 if entry.stage == .prepared {
                     if entry.replacement != nil { continue } // Reconciler retries only after checking the new owner.

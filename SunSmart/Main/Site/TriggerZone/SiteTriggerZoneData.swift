@@ -510,3 +510,26 @@ struct SiteTriggerZoneState: Codable, Equatable {
         conflict = false
     }
 }
+
+/// Only an explicit, complete inventory can classify a member as obsolete.
+/// Unknown members and all unrelated fields remain byte-for-byte JSON values.
+enum SiteTriggerZoneReferenceCleanup {
+    enum Classification { case valid, obsolete, unknown }
+
+    static func clean(_ zone: SiteTriggerZone,
+                      classify: (SiteJSONValue) -> Classification) -> SiteTriggerZone {
+        guard zone.hasCompleteDisplayMembers, case .array(let members) = zone.fields["members"] else { return zone }
+        var result = zone
+        result.fields["members"] = .array(members.filter { classify($0) != .obsolete })
+        return result
+    }
+
+    static func clean(_ data: SiteExtensionData,
+                      classify: (SiteJSONValue) -> Classification) -> SiteExtensionData {
+        guard data.fields["schemaVersion"] == .integer(1) || data.fields["schemaVersion"] == .integer(2),
+              let zones = data.zones else { return data }
+        var result = data
+        result.replaceZones(zones.map { clean($0, classify: classify) })
+        return result
+    }
+}

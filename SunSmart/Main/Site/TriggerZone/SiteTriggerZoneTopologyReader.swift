@@ -81,6 +81,69 @@ enum SiteTriggerZoneTopologyReader {
         return Set(members.map(\.identity)).count == members.count ? members : nil
     }
 
+    /// The inventory is scoped to a readable, authorized Space. Offline nodes
+    /// remain present; unavailable Spaces never become empty inventories.
+    static func cleanupClassifier(site: SiteData) -> (SiteJSONValue) -> SiteTriggerZoneReferenceCleanup.Classification {
+        struct Inventory {
+            let network: MeshNetwork
+            let nodes: [Node]
+            let plan: ProximityLightingTopologyPlanner.Plan
+        }
+        var inventories: [String: Inventory] = [:]
+        for space in site.spaces where space.canEditing && !SpaceConfigurationSafety.isBlocked(space) {
+            guard space.siteId == site.id, space.meshUUID == site.meshUUID,
+                  let network = ProximityLightingTopologyContext.network(for: space) else { continue }
+            ProximityLightingTopologyContext.loadGroupInfo(network: network, space: space)
+            let preparation = ProximityLightingLifecycleCoordinator.begin(space: space,
+                groups: network.groups.filter { !$0.isVirtual },
+                nodes: ProximityLightingTopologyContext.realNodes(in: network), network: network).prepare()
+            guard preparation.isValid, !preparation.normalized.hasDestructiveRepairs,
+                  let preview = ProximityLightingLifecycleCoordinator.preview(preparation) else { continue }
+            inventories[space.id] = .init(network: network,
+                nodes: ProximityLightingTopologyContext.realNodes(in: network), plan: preview.plan)
+        }
+        return { value in
+            guard let display = SiteTriggerZoneDisplayMember(value: value),
+                  let primary = display.primaryAddress, case .object(let fields) = value,
+                  case .integer(let rawGroup) = fields["groupAddress"],
+                  let groupAddress = UInt16(exactly: rawGroup),
+                  case .integer(let rawDevice) = fields["deviceAddress"] ?? fields["triggerElementAddress"],
+                  let address = UInt16(exactly: rawDevice), address > 0, address < 0x8000,
+                  let inventory = inventories[display.identity.spaceID] else { return .unknown }
+            let matches = inventory.nodes.filter { $0.uuid == display.identity.nodeUUID }
+            guard matches.count <= 1 else { return .unknown }
+            guard let node = matches.first, node.primaryUnicastAddress == primary else { return .obsolete }
+            guard node.groupState != .exitFailure, node.group?.address.address == groupAddress,
+                  let group = inventory.network.groups.first(where: { !$0.isVirtual && $0.address.address == groupAddress }),
+                  ProximityLightingLifecycleCoordinator.isEligible(group.info.profile.type) else { return .obsolete }
+            let normalized = ProximityLightingTopologyPlanner.normalizedAddress(for: node)
+            if fields["deviceAddress"] != nil, address != normalized { return .obsolete }
+            if fields["deviceAddress"] == nil,
+               !(Int(primary)..<(Int(primary) + node.elements.count)).contains(Int(address)) { return .obsolete }
+            guard inventory.plan.target(for: normalized).enabled == true else { return .obsolete }
+            return .valid
+        }
+    }
+
+    static func mergedLocalTarget(for node: Node, local: ProximityLightingTopologyPolicy.Target)
+        -> ProximityLightingTopologyPolicy.Target? {
+        guard let network = node.network,
+              let site = SiteData.load(siteId: network.uuid.uuidString) else { return local }
+        guard let state = try? SiteTriggerZoneStore.load(site) else { return nil }
+        let allMembers = (state.data.zones ?? []).flatMap(\.displayMembers)
+        let previousMembers = (state.deviceSyncChanges ?? []).flatMap { change -> [SiteTriggerZoneDisplayMember] in
+            guard case .array(let values) = change.previousMembers else { return [] }
+            return values.compactMap(SiteTriggerZoneDisplayMember.init(value:))
+        }
+        // A Site Zone can change forwarding for every node in a participating Space.
+        guard let space = site.spaces.first(where: { $0.meshNetworkId == node.subNetworkId }),
+              (allMembers + previousMembers).contains(where: { $0.identity.spaceID == space.id }) else { return local }
+        guard case .success(let plan) = makePlan(site: site, state: state), plan.canPreviewTasks,
+              let target = plan.targets[.init(spaceID: space.id, nodeUUID: node.uuid)] else { return nil }
+        return .init(enabled: target.enabled, relayNumber: target.relayNumber,
+                     neighborAddresses: target.neighborAddresses)
+    }
+
     static func makePlan(site: SiteData, state: SiteTriggerZoneState)
         -> Result<SiteTriggerZoneTopologyPolicy.Plan, ReadError> {
         read(site: site, state: state).map(\.topology)
@@ -121,6 +184,13 @@ enum SiteTriggerZoneTopologyReader {
                 return .failure(.invalidPreviousMembers(id))
             case .success(let zones):
                 historicalZones = zones
+            }
+            let classify = cleanupClassifier(site: site)
+            if historicalZones.contains(where: { SiteTriggerZoneReferenceCleanup.clean($0, classify: classify) != $0 }) {
+                // Old members may no longer have Nodes or an eligible Profile.
+                // Reconcile every surviving device from its observed state to
+                // the complete current Site target, preserving peer removals.
+                return makeRecoveryPlan(site: site, state: state)
             }
             var previousZones: [SiteTriggerZone] = []
             for zone in historicalZones {

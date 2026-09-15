@@ -3560,10 +3560,20 @@
 		F26090410000000000000204 /* EnergyStatisticsFilterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */; };
 		F26090410000000000000205 /* EnergyStatisticsFilterPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */; };
 		F26090710000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift */; };
+		260915B00000000000000021 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260915A00000000000000002 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift */; };
+		260915B00000000000000011 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260915A00000000000000001 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift */; };
 		F26090710000000000000002 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift */; };
+		260915B00000000000000022 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260915A00000000000000002 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift */; };
+		260915B00000000000000012 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260915A00000000000000001 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift */; };
 		F26090710000000000000003 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift */; };
+		260915B00000000000000023 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260915A00000000000000002 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift */; };
+		260915B00000000000000013 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260915A00000000000000001 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift */; };
 		F26090710000000000000004 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift */; };
+		260915B00000000000000024 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260915A00000000000000002 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift */; };
+		260915B00000000000000014 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260915A00000000000000001 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift */; };
 		F26090710000000000000005 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift */; };
+		260915B00000000000000025 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260915A00000000000000002 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift */; };
+		260915B00000000000000015 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260915A00000000000000001 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift */; };
 		F26090720000000000000001 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */; };
 		F26090720000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */; };
 		F26090720000000000000003 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */; };
@@ -4469,6 +4479,8 @@
 		F26090300000000000000002 /* ProximityLightingLifecycleCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProximityLightingLifecycleCoordinator.swift; sourceTree = "<group>"; };
 		F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStatisticsFilterPolicy.swift; sourceTree = "<group>"; };
 		F26090700000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift; sourceTree = SOURCE_ROOT; };
+		260915A00000000000000002 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift; sourceTree = SOURCE_ROOT; };
+		260915A00000000000000001 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift; sourceTree = SOURCE_ROOT; };
 		F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceConfigurationSafety.swift; sourceTree = SOURCE_ROOT; };
 		F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncParameterTaskBuilder.swift; sourceTree = "<group>"; };
 		FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorState.swift; sourceTree = "<group>"; };
@@ -6377,6 +6389,8 @@
 				F26090300000000000000001 /* ProximityLightingTopologyReconciler.swift */,
 				F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */,
 				F26090700000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift */,
+				260915A00000000000000002 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift */,
+				260915A00000000000000001 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift */,
 				F26090300000000000000002 /* ProximityLightingLifecycleCoordinator.swift */,
 			);
 			path = Model;
@@ -7850,6 +7864,8 @@
 				F26090310000000000000001 /* ProximityLightingTopologyReconciler.swift in Sources */,
 				F26090720000000000000001 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */,
 				F26090710000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */,
+				260915B00000000000000021 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */,
+				260915B00000000000000011 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */,
 				F26090320000000000000001 /* ProximityLightingLifecycleCoordinator.swift in Sources */,
 				08B54EBF30402CCB0017ED49 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				08B54EC030402CCB0017ED49 /* MeshFirmwareTypeUpdateViewCell.swift in Sources */,
@@ -8551,6 +8567,8 @@
 				F26090310000000000000002 /* ProximityLightingTopologyReconciler.swift in Sources */,
 				F26090720000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */,
 				F26090710000000000000002 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */,
+				260915B00000000000000022 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */,
+				260915B00000000000000012 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */,
 				F26090320000000000000002 /* ProximityLightingLifecycleCoordinator.swift in Sources */,
 				C88554F12DE6B44C00C8B688 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				8C7788FF2F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift in Sources */,
@@ -9264,6 +9282,8 @@
 				F26090310000000000000003 /* ProximityLightingTopologyReconciler.swift in Sources */,
 				F26090720000000000000003 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */,
 				F26090710000000000000003 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */,
+				260915B00000000000000023 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */,
+				260915B00000000000000013 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */,
 				F26090320000000000000003 /* ProximityLightingLifecycleCoordinator.swift in Sources */,
 				C886E14D2E30DE4900D0C3A6 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				8C7788FE2F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift in Sources */,
@@ -9987,6 +10007,8 @@
 				F26090310000000000000004 /* ProximityLightingTopologyReconciler.swift in Sources */,
 				F26090720000000000000004 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */,
 				F26090710000000000000004 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */,
+				260915B00000000000000024 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */,
+				260915B00000000000000014 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */,
 				F26090320000000000000004 /* ProximityLightingLifecycleCoordinator.swift in Sources */,
 				C8CD5BEA2DDABFDC00F09467 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				C89C70B12CD31DC900B9A76A /* MeshFirmwareTypeUpdateViewCell.swift in Sources */,
@@ -10689,6 +10711,8 @@
 				F26090310000000000000005 /* ProximityLightingTopologyReconciler.swift in Sources */,
 				F26090720000000000000005 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */,
 				F26090710000000000000005 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */,
+				260915B00000000000000025 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */,
+				260915B00000000000000015 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */,
 				F26090320000000000000005 /* ProximityLightingLifecycleCoordinator.swift in Sources */,
 				C8BB672C2ED3F056000C63EE /* GroupPathSequenceQuickAddView.swift in Sources */,
 				8C7789012F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift in Sources */,

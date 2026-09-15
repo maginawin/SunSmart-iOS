@@ -81,6 +81,27 @@ final class SiteTriggerZoneCoordinator {
         }
     }
 
+    @discardableResult
+    func cleanObsoleteMembers() throws -> Bool {
+        guard isCurrent, let current = SiteData.load(siteId: site.id), current.canManageSiteTriggerZones else { return false }
+        current.spaces = SpaceData.load(siteId: current.id)
+        let classify = SiteTriggerZoneTopologyReader.cleanupClassifier(site: current)
+        let before = try state()
+        guard !before.conflict, !before.hasAmbiguousRemote, before.rejectedRemote == nil,
+              before.submitted == nil,
+              SiteTriggerZoneReferenceCleanup.clean(before.data, classify: classify) != before.data else { return false }
+        var changed = false
+        try SiteTriggerZoneStore.update(site) { state in
+            guard !state.conflict, !state.hasAmbiguousRemote, state.rejectedRemote == nil,
+                  state.submitted == nil else { return }
+            let cleaned = SiteTriggerZoneReferenceCleanup.clean(state.data, classify: classify)
+            guard cleaned != state.data else { return }
+            state.commit(cleaned, now: Int64(Date().timeIntervalSince1970), siteTimestamp: current.lastUpdate)
+            changed = true
+        }
+        return changed
+    }
+
     private func mutate(_ mutation: (inout SiteExtensionData) throws -> Void) throws {
         guard isCurrent, let current = SiteData.load(siteId: site.id),
               current.canManageSiteTriggerZones else { throw Failure.permission }
@@ -179,6 +200,10 @@ final class SiteTriggerZoneCoordinator {
                 guard !current.conflict else { return .failure(.conflict) }
                 if let zoneID, current.data.zones?.contains(where: { $0.zoneId == zoneID }) != true {
                     return .failure(.unsupported)
+                }
+                if zoneID == nil {
+                    _ = try cleanObsoleteMembers()
+                    current = try state()
                 }
                 guard var pending = current.pending else { return .success(()) }
                 let supported = zoneID.map(current.data.supportsZoneEditing) ?? current.data.supportsMemberEditing

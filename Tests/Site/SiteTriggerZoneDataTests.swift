@@ -2,10 +2,47 @@ import Foundation
 
 @main
 struct SiteTriggerZoneDataTests {
+    static func cleanupPreservesReceiptsAndUnknownMembers() {
+        let existing = SiteTriggerZoneMember(identity: .init(spaceID: "editable", nodeUUID: UUID()),
+            groupAddress: 0xC001, primaryAddress: 16, deviceAddress: 16)
+        var obsolete = existing
+        obsolete.fields["nodeUUID"] = .string(UUID().uuidString)
+        obsolete.fields["deviceAddress"] = nil
+        obsolete.fields["triggerElementAddress"] = .integer(32)
+        var unknown = existing
+        unknown.fields["spaceId"] = .string("unavailable")
+        unknown.fields["futureMember"] = .integer(99)
+        var zone = SiteTriggerZone()
+        zone.fields["name"] = .string("Keep")
+        zone.fields["futureZone"] = .string("untouched")
+        zone.fields["members"] = .array([.object(existing.fields), .object(obsolete.fields), .object(unknown.fields)])
+        var data = SiteExtensionData()
+        data.fields["schemaVersion"] = .integer(2)
+        data.fields["futureSetting"] = .integer(5)
+        data.replaceZones([zone])
+        let classify: (SiteJSONValue) -> SiteTriggerZoneReferenceCleanup.Classification = { value in
+            guard case .object(let fields) = value else { return .unknown }
+            if fields["spaceId"] == .string("unavailable") { return .unknown }
+            return fields["triggerElementAddress"] != nil ? .obsolete : .valid
+        }
+        let cleaned = SiteTriggerZoneReferenceCleanup.clean(data, classify: classify)
+        precondition(cleaned.zones?.first?.fields["members"] == .array([.object(existing.fields), .object(unknown.fields)]))
+        precondition(cleaned.zones?.first?.zoneId == zone.zoneId && cleaned.zones?.first?.fields["futureZone"] == zone.fields["futureZone"])
+        precondition(cleaned.fields["futureSetting"] == data.fields["futureSetting"])
+        precondition(SiteTriggerZoneReferenceCleanup.clean(cleaned, classify: classify) == cleaned)
+        var state = SiteTriggerZoneState()
+        state.receive(data, timestamp: 10)
+        state.commit(cleaned, now: 20, siteTimestamp: 10)
+        precondition(state.pending != nil && state.serverData == data, "Cleanup does not fabricate a cloud receipt")
+        state.receive(cleaned, timestamp: 21)
+        precondition(state.pending == nil && state.deviceSyncChanges?.first?.previousMembers == zone.fields["members"],
+                     "Keep previous members after upload for surviving peer cleanup")
+    }
     static func main() throws {
         func check(_ condition: @autoclosure () -> Bool, _ message: String) {
             precondition(condition(), message)
         }
+        cleanupPreservesReceiptsAndUnknownMembers()
         var data = SiteExtensionData()
         let zones = (0..<100).map { _ in SiteTriggerZone() }
         data.replaceZones(zones)

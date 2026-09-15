@@ -994,6 +994,28 @@ extension GroupInfo {
         }
     }
     
+    /// Prepare only rows owned by vanished Groups in this exact Space.
+    /// Shared Profile rows are retained while any Group still references them.
+    static func obsoleteSyncExtensionCleanup(meshUUID: String, networkId: String,
+                                             validAddresses: Set<UInt16>) throws -> (() throws -> Void)? {
+        guard let database = SunSmartDataManager.shared.db else { throw SpaceConfigurationSafety.SafetyError.persistenceFailed }
+        let scoped = groupInfosTable.filter(ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == networkId)
+        let rows = try Array(database.prepare(scoped))
+        let obsolete = rows.filter { !validAddresses.contains(UInt16($0[ExpressionKey.groupAddress])) }
+        guard !obsolete.isEmpty else { return nil }
+        let retainedProfiles = Set(rows.filter { validAddresses.contains(UInt16($0[ExpressionKey.groupAddress])) }.map { $0[ExpressionKey.profileId] })
+        let candidateProfiles = Set(obsolete.map { $0[ExpressionKey.profileId] }).subtracting(retainedProfiles)
+        let rowIDs = obsolete.map { $0[ExpressionKey.id] }
+        return {
+            for id in rowIDs { try database.run(scoped.filter(ExpressionKey.id == id).delete()) }
+            for id in candidateProfiles {
+                // UUID identity is also checked across Spaces before removal.
+                guard try database.scalar(groupInfosTable.filter(ExpressionKey.profileId == id).count) == 0 else { continue }
+                try Profile.deleteObsoleteSyncProfile(meshUUID: meshUUID, networkId: networkId, profileId: id)
+            }
+        }
+    }
+
     /// 根据网络id和group地址获取对应配置的组数据
     /// - Parameter meshUUID: 网络id
     /// - Parameter address: 组地址
@@ -1563,6 +1585,12 @@ extension Schedule {
 
 extension Profile {
     
+    fileprivate static func deleteObsoleteSyncProfile(meshUUID: String, networkId: String, profileId: String) throws {
+        guard let database = SunSmartDataManager.shared.db else { throw SpaceConfigurationSafety.SafetyError.persistenceFailed }
+        try database.run(profilesTable.filter(ExpressionKey.meshUUID == meshUUID
+            && ExpressionKey.subNetworkKey == networkId && ExpressionKey.uuid == profileId).delete())
+    }
+
     private static let profilesTableName = "profiles"
     private static let profilesTable = Table(profilesTableName)
     

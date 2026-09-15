@@ -74,6 +74,7 @@ enum SyncOperation {
     func getNetworkApi() async -> NetowrkReqeustApi? {
         switch self {
         case .syncSite(let site, let syncSpaces):
+            for space in syncSpaces { _ = await SpaceSyncCleanupCoordinator.prepare(space) }
             for space in syncSpaces {
                 if let index = site.spaces.firstIndex(where: { $0.id == space.id }) { site.spaces[index] = space }
             }
@@ -98,6 +99,7 @@ enum SyncOperation {
                 )
             }
         case .syncSpace(let space):
+            _ = await SpaceSyncCleanupCoordinator.prepare(space)
             guard let spaceData = await space.export(purpose: .cloudSync) else {
                 return nil
             }
@@ -107,6 +109,7 @@ enum SyncOperation {
                 spaceData: spaceData
             )
         case .addSpaces(let site, let spaces):
+            for space in spaces { _ = await SpaceSyncCleanupCoordinator.prepare(space) }
             guard let siteData = await site.export(
                 spaceIds: spaces.map({ $0.id })
             ) else {
@@ -386,6 +389,10 @@ class CloudSynchronizationManager {
                 }
                 guard let site = SiteData.load(siteId: siteId), site.state == .normal else { continue }
                 site.spaces = SpaceData.load(siteId: site.id)
+                for space in site.spaces where getSpaceCurrentSyncState(space) == nil {
+                    _ = await SpaceSyncCleanupCoordinator.prepare(space)
+                    guard isCurrent() else { return }
+                }
                 if (try? SiteTriggerZoneStore.load(site).pending) != nil, site.canManageSiteTriggerZones {
                     _ = await SiteTriggerZoneCoordinator(site: site).synchronize()
                     guard isCurrent() else { return }

@@ -33,6 +33,7 @@ extension SyncDevicesViewController {
 final class ProfileSensorProtectionContext {
     var handles: [MeshMessageHandle] = []
     var starts = 0
+    func remainingCurrentTargetStateMessageHandles() -> [MeshMessageHandle] { handles }
     func remainingTargetStateMessageHandles() -> [MeshMessageHandle] { handles }
     func markPreDisableStarted() { starts += 1 }
     func markTargetStateTaskStarted(for node: Node) { starts += 1 }
@@ -41,6 +42,7 @@ enum SpaceChangeDataType { case device }
 let spaceDataChangedNotificaitonName = "session-test"
 
 final class SyncExecutionEnvironment {
+    var configurationIsCurrent: () -> Bool = { true }
     var configurationAvailable: () -> Bool = { true }
     var bluetoothAvailable: () -> Bool = { true }
     var delay: (TimeInterval, @escaping () -> Void) -> Void = { _, _ in fatalError("install clock") }

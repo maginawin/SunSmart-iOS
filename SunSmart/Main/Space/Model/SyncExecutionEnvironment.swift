@@ -3,6 +3,7 @@ import NordicSigMeshSDK
 
 /// SDK 回调在同一状态所有者上执行；完成异步交付，允许 SDK 先清空上一批队列。
 final class SyncExecutionEnvironment {
+    var configurationIsCurrent: () -> Bool = { true }
     var configurationAvailable: () -> Bool = { SpaceConfigurationSafety.currentConfigurationAvailable }
     var bluetoothAvailable: () -> Bool = { MeshLibManager.manager.isOpenBluetooth }
     var delay: (TimeInterval, @escaping () -> Void) -> Void = { interval, action in

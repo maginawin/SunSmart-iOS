@@ -1641,7 +1641,12 @@ extension SpaceData {
             return .preserved("localDeletionOrRecoveryPendingUpload")
         }
         let resumingImport = SpaceConfigurationSafety.hasPendingImport(self)
-        let spaceJsonData = SpaceConfigurationSafety.pendingImport(self) ?? spaceJsonData
+        let stagedSpaceJsonData = SpaceConfigurationSafety.pendingImport(self)
+        let originalSpaceJsonData = stagedSpaceJsonData.flatMap {
+            SpaceConfigurationSafety.originalReferenceCleanupImport(self, candidate: $0)
+        } ?? stagedSpaceJsonData ?? spaceJsonData
+        let referenceCleanup = try? SpaceSyncCleanupPolicy.normalize(originalSpaceJsonData)
+        let spaceJsonData = referenceCleanup?.payload ?? originalSpaceJsonData
         trace.mark("metadataPrepared")
         // Metadata may legitimately change the authority generation for this import.
         // Capture the context after synchronous preparation, before the first await.
@@ -2029,6 +2034,8 @@ extension SpaceData {
                       guard let data = try? JSONSerialization.data(withJSONObject: node) else { return false }
                       return (try? jsonDecoder.decode(Node.self, from: data)) != nil
                   }),
+                  (referenceCleanup?.didChange != true
+                    || SpaceConfigurationSafety.preserveRemoteReferenceCleanup(self, payload: originalSpaceJsonData, candidate: spaceJsonData)),
                   SpaceConfigurationSafety.beginImport(self, payload: spaceJsonData) else {
                 continuation.resume(returning: .rejected("configurationStagingFailed"))
                 return

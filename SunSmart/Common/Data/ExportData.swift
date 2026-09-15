@@ -121,11 +121,14 @@ private struct SpaceSnapshotExportAuthorization {
 enum SpaceSnapshotExportPurpose {
     case localBackup
     case cloudSync
+    /// Internal, detached input for explicit sync preparation. Never uploaded.
+    case cleanupInspection
     #if DEBUG
     case debugInspection(DebugJSONExportDiagnostics)
     #endif
 
     var isReadOnlyInspection: Bool {
+        if case .cleanupInspection = self { return true }
         #if DEBUG
         if case .debugInspection = self { return true }
         #endif
@@ -154,7 +157,6 @@ private extension SpaceData {
         let localSnapshot = SpaceSnapshotExportIntegritySnapshot(
             meshNetwork: meshNetwork
         )
-        #if DEBUG
         if purpose.isReadOnlyInspection {
             for orphan in localSnapshot.orphanedMemberships.sorted(by: { $0.nodeAddress < $1.nodeAddress }) {
                 purpose.reportInspectionIssue("nodes[\(orphan.nodeAddress)].groupAddress: orphanedMembership(\(orphan.groupAddress ?? "missing"))")
@@ -166,7 +168,6 @@ private extension SpaceData {
                 revision: revisionBefore == ConfigurationSnapshotRevision.current() ? revisionBefore : nil
             )
         }
-        #endif
         let initialDecision = SpaceSnapshotExportIntegrityPolicy.resolve(
             localGroupAddresses: localSnapshot.groupAddresses,
             localOrphans: localSnapshot.orphanedMemberships,
@@ -394,17 +395,12 @@ extension SpaceData {
     ) async -> [String: Any]?  {
         if allowsProtectedInspection, case .cloudSync = purpose { return nil }
         if reviewingReferenceRepairs && !allowsProtectedInspection { return nil }
-        #if DEBUG
         if purpose.isReadOnlyInspection {
-            guard SpaceConfigurationSafety.canReadDebugSnapshot(self) else { return nil }
+            guard state == .normal else { return nil }
         } else {
             guard !SpaceConfigurationSafety.hasPendingImport(self),
                   allowsProtectedInspection || !SpaceConfigurationSafety.isBlocked(self) else { return nil }
         }
-        #else
-        guard !SpaceConfigurationSafety.hasPendingImport(self),
-              allowsProtectedInspection || !SpaceConfigurationSafety.isBlocked(self) else { return nil }
-        #endif
         guard !triggerZonesLoadFailed else {
             purpose.reportInspectionIssue("spaceData.triggerZones: storedJSONDecodeFailed; inspect rawLocal.app.spaces")
             return nil

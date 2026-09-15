@@ -6,7 +6,7 @@ final class SyncExecutionSession {
     typealias SyncType = SyncDevicesViewController.SyncType
     typealias SyncState = SyncDevicesViewController.SyncState
     typealias EmergencyFireSyncContext = SyncDevicesViewController.EmergencyFireSyncContext
-    let type: SyncType
+    var type: SyncType
     let coordinator: SyncSessionCoordinator
     let environment: SyncExecutionEnvironment
     var sections: [SyncDevicesSectionModel] = []
@@ -26,6 +26,8 @@ final class SyncExecutionSession {
     private var pendingPreparations: [() -> Void] = []
     private var restoreOperation: DeviceOperationType?
 
+    var onPlanInvalidated: (() -> Void)?
+    private var invalidatingPlan = false
     var onRunBegan: ((UUID) -> Void)?
     var onTaskStarted: ((SyncCellModel, UUID) -> Void)?
     var onProgress: (() -> Void)?
@@ -55,6 +57,7 @@ final class SyncExecutionSession {
         let preparations = pendingPreparations
         pendingPreparations.removeAll()
         coordinator.start { [self] identifier in
+            guard validatePlan(identifier) else { return }
             guard environment.configurationAvailable() else {
                 syncState = .syncFailure
                 onError?("proximity_lighting_import_invalid".localizedString)
@@ -94,6 +97,7 @@ final class SyncExecutionSession {
     private func processNext(_ identifier: UUID) {
         precondition(Thread.isMainThread)
         guard isActiveSyncRun(identifier) else { return }
+        guard validatePlan(identifier) else { return }
         guard let model = getNextHandleModel() else {
             currentTask = nil
             finishRun(identifier)
@@ -151,16 +155,17 @@ final class SyncExecutionSession {
 
     private func send(_ model: SyncCellModel, handles: [MeshMessageHandle], identifier: UUID, attempt: Int) {
         guard isActiveSyncRun(identifier) else { return }
+        guard validatePlan(identifier) else { return }
         let completionGate = SyncAttemptCompletionGate()
         environment.addMessage(messageHandles: handles, ackMessageTimeout: ackTimeout(for: model), successfulBack: { [self] handle, status in
-            guard isActiveSyncRun(identifier), !completionGate.isCompleted else { return }
+            guard isActiveSyncRun(identifier), !completionGate.isCompleted, validatePlan(identifier) else { return }
             received(handle: handle, statusMessage: status, model: model, messageHandles: handles)
         }, failedBack: { [self] handle in
-            guard isActiveSyncRun(identifier), !completionGate.isCompleted else { return }
+            guard isActiveSyncRun(identifier), !completionGate.isCompleted, validatePlan(identifier) else { return }
             failed(handle: handle)
         }) { [self] resultMessageHandles in
             precondition(Thread.isMainThread)
-            guard isActiveSyncRun(identifier), completionGate.claim() else { return }
+            guard isActiveSyncRun(identifier), completionGate.claim(), validatePlan(identifier) else { return }
             let successful = applyResult(resultMessageHandles, model: model, messageHandles: handles)
             let retry = emergencyFireDeleteCleanupRetryPolicy(for: model)
             let maxAttempts = retry?.maxAttempts ?? 1
@@ -184,6 +189,27 @@ final class SyncExecutionSession {
                 advance(identifier)
             }
         }
+    }
+
+    private func validatePlan(_ identifier: UUID) -> Bool {
+        guard !invalidatingPlan else { return false }
+        guard !environment.configurationIsCurrent() else { return true }
+        invalidatingPlan = true
+        pendingPreparations.removeAll()
+        cancelAuthorization?()
+        cancelAuthorization = nil
+        // Old desired Profile values must not be replayed as compensation.
+        restoreOperation = nil
+        coordinator.finish(identifier, settle: { [self] done in
+            environment.stop { [self] in restoreSensorsAndUnlock(done, currentTargets: true) }
+        }) { [self] in
+            profileSensorProtectionContext = nil
+            currentTask = nil
+            syncState = .syncFailure
+            invalidatingPlan = false
+            onPlanInvalidated?()
+        }
+        return false
     }
 
     private func completeGatewayServerAuthorizationTaskIfNeeded(for model: SyncCellModel, syncRunIdentifier: UUID) -> Bool {
@@ -247,6 +273,11 @@ final class SyncExecutionSession {
 
     private func compensate(_ finished: @escaping () -> Void) {
         precondition(Thread.isMainThread)
+        if !environment.configurationIsCurrent() {
+            restoreOperation = nil
+            restoreSensorsAndUnlock(finished, currentTargets: true)
+            return
+        }
         if let operation = restoreOperation {
             restoreOperation = nil
             let gate = SyncAttemptCompletionGate()
@@ -261,8 +292,9 @@ final class SyncExecutionSession {
         }
     }
 
-    private func restoreSensorsAndUnlock(_ finished: @escaping () -> Void) {
-        let handles = profileSensorProtectionContext?.remainingTargetStateMessageHandles() ?? []
+    private func restoreSensorsAndUnlock(_ finished: @escaping () -> Void, currentTargets: Bool = false) {
+        let handles = (currentTargets ? profileSensorProtectionContext?.remainingCurrentTargetStateMessageHandles()
+            : profileSensorProtectionContext?.remainingTargetStateMessageHandles()) ?? []
         let gate = SyncAttemptCompletionGate()
         environment.addMessage(messageHandles: handles, ackMessageTimeout: 7) { [self] result in
             guard gate.claim() else { return }
@@ -273,16 +305,18 @@ final class SyncExecutionSession {
                     node.clearSyncStateCache()
                 }
             }
-            unlockLuxTriggers()
+            unlockLuxTriggers(allowBroadcast: !currentTargets)
             currentTask = nil
             finished()
         }
     }
 
-    private func unlockLuxTriggers() {
+    private func unlockLuxTriggers(allowBroadcast: Bool = true) {
+        let current = MeshNetworkManager.instance.meshNetwork?.nodes ?? []
+        luxTriggerLockDevices = luxTriggerLockDevices.filter { node in current.contains { $0 === node } }
         guard !luxTriggerLockDevices.isEmpty else { return }
         let message = SunricherVendorSet(function: .daylightLuxTriggerLock(delay: 0))
-        if luxTriggerLockDevices.count > 3 { MeshAPI.sendMessage(message: message, address: .allNodes) }
+        if allowBroadcast && luxTriggerLockDevices.count > 3 { MeshAPI.sendMessage(message: message, address: .allNodes) }
         else { luxTriggerLockDevices.forEach { if let model = $0.sunricherVendorModel { MeshAPI.sendMessage(message: message, model: model) } } }
         luxTriggerLockDevices.removeAll()
     }

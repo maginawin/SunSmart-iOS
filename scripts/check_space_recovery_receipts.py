@@ -20,6 +20,7 @@ start = methods.index('    static func resumeLocalRemovals()')
 end = methods.index('    static func activateImport(', start)
 methods = methods[:start] + methods[end:]
 methods += section(safety, '    static func needsUpgradeBaseline(', '    /// Preserve both side stores')
+methods += section(safety, '    static func beginImport(', '    @MainActor\n    static func prepareUpload(')
 methods += section(safety, '    @MainActor\n    static func prepareUpload(', '    /// Called only after the user explicitly chooses')
 methods = methods.replace('UserDefaults.standard', 'testDefaults')
 methods += """
@@ -80,5 +81,8 @@ with tempfile.TemporaryDirectory(prefix='space-receipt-tests-') as temp:
         str(root / 'SunSmart/Common/Data/SiteTimeZoneValue.swift'),
         str(root / 'SunSmart/Main/Site/Model/SitePropsEditPolicy.swift'),
         str(root / 'SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),
+        str(root / 'SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift'),
+        str(root / 'SunSmart/Main/Group/Model/ProximityLightingTopologyPolicy.swift'),
+        str(root / 'SunSmart/Main/Group/Model/ProximityLightingTopologyReconciler.swift'),
         str(harness), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)
