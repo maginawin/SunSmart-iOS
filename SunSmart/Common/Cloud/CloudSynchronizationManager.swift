@@ -389,7 +389,18 @@ class CloudSynchronizationManager {
                 }
                 guard let site = SiteData.load(siteId: siteId), site.state == .normal else { continue }
                 site.spaces = SpaceData.load(siteId: site.id)
-                for space in site.spaces where getSpaceCurrentSyncState(space) == nil {
+                // Foreground recovery must not export every synchronized Space.
+                // Full legacy inspection still runs on Space entry and explicit sync.
+                for space in site.spaces {
+                    guard getSpaceCurrentSyncState(space) == nil,
+                          space.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(space)
+                            || SpaceConfigurationSafety.isBlocked(space) else { continue }
+                    await withCheckedContinuation { continuation in
+                        DispatchQueue.main.async { continuation.resume() }
+                    }
+                    guard isCurrent() else { return }
+                    // A queued upload may have started during the main-queue handoff.
+                    guard getSpaceCurrentSyncState(space) == nil else { continue }
                     _ = await SpaceSyncCleanupCoordinator.prepare(space)
                     guard isCurrent() else { return }
                 }

@@ -90,17 +90,26 @@ enum SiteTriggerZoneTopologyReader {
             let plan: ProximityLightingTopologyPlanner.Plan
         }
         var inventories: [String: Inventory] = [:]
-        for space in site.spaces where space.canEditing && !SpaceConfigurationSafety.isBlocked(space) {
-            guard space.siteId == site.id, space.meshUUID == site.meshUUID,
-                  let network = ProximityLightingTopologyContext.network(for: space) else { continue }
+        var inspectedSpaces = Set<String>()
+        // Empty Zones need no Mesh load. Resolve only referenced Spaces, once per
+        // classifier, including failed reads so they remain conservatively unknown.
+        func inventory(for spaceID: String) -> Inventory? {
+            if let cached = inventories[spaceID] { return cached }
+            guard inspectedSpaces.insert(spaceID).inserted,
+                  let space = site.spaces.first(where: { $0.id == spaceID }),
+                  space.canEditing, !SpaceConfigurationSafety.isBlocked(space),
+                  space.siteId == site.id, space.meshUUID == site.meshUUID,
+                  let network = ProximityLightingTopologyContext.network(for: space) else { return nil }
             ProximityLightingTopologyContext.loadGroupInfo(network: network, space: space)
             let preparation = ProximityLightingLifecycleCoordinator.begin(space: space,
                 groups: network.groups.filter { !$0.isVirtual },
                 nodes: ProximityLightingTopologyContext.realNodes(in: network), network: network).prepare()
             guard preparation.isValid, !preparation.normalized.hasDestructiveRepairs,
-                  let preview = ProximityLightingLifecycleCoordinator.preview(preparation) else { continue }
-            inventories[space.id] = .init(network: network,
+                  let preview = ProximityLightingLifecycleCoordinator.preview(preparation) else { return nil }
+            let loaded = Inventory(network: network,
                 nodes: ProximityLightingTopologyContext.realNodes(in: network), plan: preview.plan)
+            inventories[spaceID] = loaded
+            return loaded
         }
         return { value in
             guard let display = SiteTriggerZoneDisplayMember(value: value),
@@ -109,7 +118,7 @@ enum SiteTriggerZoneTopologyReader {
                   let groupAddress = UInt16(exactly: rawGroup),
                   case .integer(let rawDevice) = fields["deviceAddress"] ?? fields["triggerElementAddress"],
                   let address = UInt16(exactly: rawDevice), address > 0, address < 0x8000,
-                  let inventory = inventories[display.identity.spaceID] else { return .unknown }
+                  let inventory = inventory(for: display.identity.spaceID) else { return .unknown }
             let matches = inventory.nodes.filter { $0.uuid == display.identity.nodeUUID }
             guard matches.count <= 1 else { return .unknown }
             guard let node = matches.first, node.primaryUnicastAddress == primary else { return .obsolete }
