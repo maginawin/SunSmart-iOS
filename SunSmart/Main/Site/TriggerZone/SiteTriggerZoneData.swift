@@ -373,6 +373,9 @@ struct SiteTriggerZoneDeviceSyncChange: Codable, Equatable {
 }
 
 struct SiteTriggerZoneState: Codable, Equatable {
+    /// Local recovery only. The table already isolates Site and region; accounts
+    /// retain independent generations even if a database is reused at sign-in.
+    var referenceCleanupRequests: [String: UUID]?
     var data = SiteExtensionData()
     var serverData: SiteExtensionData?
     var serverTimestamp: Int64 = 0

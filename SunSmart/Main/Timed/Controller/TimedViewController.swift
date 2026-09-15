@@ -20,9 +20,10 @@ class TimedViewController: UIViewController {
     private var selectTypeView: TimedSelectTypeView!
     
     private var schedules: [Schedule] = []
-    private var refreshData = false
-    private var isRepairingUnknownSchedulerModelCaches = false
-    private var isSchedulerModelCacheRepairRetryScheduled = false
+    private var refreshData = true
+    private var renderedRevision: SpacePageRevision?
+    private var isPageVisible = false
+    var schedulerCacheRead: (() -> Void)?
     
     let space: SpaceData
     
@@ -69,11 +70,10 @@ class TimedViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        
-//        if refreshData {
-//            refreshData = false
+        isPageVisible = true
+        if refreshData || renderedRevision?.isCurrent != true {
             updateUI()
-//        }
+        }
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -82,12 +82,14 @@ class TimedViewController: UIViewController {
         if scheduleCollectionView.firstShowFlashScrollIndicators {
             scheduleCollectionView.flashScrollIndicatorsIfNeeded()
         }
-        #if DEBUG
-        debugPrintScheduleDiagnostics()
-        #endif
-        repairUnknownSchedulerModelCachesIfNeeded()
+        schedulerCacheRead?()
     }
     
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        isPageVisible = false
+    }
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
@@ -104,10 +106,10 @@ class TimedViewController: UIViewController {
     /// 添加通知监听
     private func addNotification() {
         
-        NotificationCenter.default.addObserver(forName: .init(schedulesRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
+        NotificationCenter.default.addObserver(forName: .init(schedulesRefreshNotificationName), object: nil, queue: .main) {[weak self] _ in
             guard let self = self else { return }
-            if self.view.window != nil {
-                self.updateUI()
+            if self.isPageVisible && self.viewIfLoaded?.window != nil {
+                self.refreshVisibleUI()
             }else {
                 self.refreshData = true
             }
@@ -115,17 +117,21 @@ class TimedViewController: UIViewController {
             self.space.save()
         }
         
-        NotificationCenter.default.addObserver(forName: .init(scheduleDataUpdateNotificationName), object: nil, queue: nil) { [weak self] notification in
+        NotificationCenter.default.addObserver(forName: .init(scheduleDataUpdateNotificationName), object: nil, queue: .main) { [weak self] notification in
             guard let self = self, let schedule = notification.object as? Schedule else {
                 return
             }
             self.reloadCollectionItem(schedule: schedule)
         }
         
+        NotificationCenter.default.addObserver(forName: SpaceSchedulerReadCoordinator.didUpdate, object: nil, queue: .main) { [weak self] _ in
+            self?.refreshVisibleUI()
+        }
+
         // space编辑权限变更回调
-        NotificationCenter.default.addObserver(forName: .init(spacePermissionChangedNotificaitonName), object: nil, queue: nil) {[weak self] notification in
+        NotificationCenter.default.addObserver(forName: .init(spacePermissionChangedNotificaitonName), object: nil, queue: .main) {[weak self] notification in
             guard let self = self else { return }
-            self.updateUI()
+            self.refreshVisibleUI()
         }
         
     }
@@ -179,7 +185,15 @@ class TimedViewController: UIViewController {
         }
     }
     
+    private func refreshVisibleUI() {
+        refreshData = true
+        guard isPageVisible, viewIfLoaded?.window != nil else { return }
+        updateUI()
+    }
+
     private func updateUI() {
+        guard isViewLoaded else { refreshData = true; return }
+        defer { refreshData = false; renderedRevision = SpacePageRevision() }
   
         schedules = MeshNetworkManager.instance.schedules
         footerView.countBtn.setTitle("\(schedules.count)/16", for: .normal)
@@ -207,7 +221,7 @@ class TimedViewController: UIViewController {
     
     private func reloadCollectionItem(schedule: Schedule) {
         let latestSchedules = MeshNetworkManager.instance.schedules
-        guard view.window != nil else {
+        guard isPageVisible, viewIfLoaded?.window != nil else {
             refreshData = true
             schedules = latestSchedules
             return
@@ -229,82 +243,9 @@ class TimedViewController: UIViewController {
         CATransaction.commit()
     }
 
-    private func repairUnknownSchedulerModelCachesIfNeeded() {
-        guard view.window != nil,
-              MeshLibManager.manager.isMeshNetworkConnected,
-              !isRepairingUnknownSchedulerModelCaches else {
-            return
-        }
-
-        guard !MeshProxyMessageCommand.shared.isBusy else {
-            guard !isSchedulerModelCacheRepairRetryScheduled else {
-                return
-            }
-            isSchedulerModelCacheRepairRetryScheduled = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                [weak self] in
-                self?.isSchedulerModelCacheRepairRetryScheduled = false
-                self?.repairUnknownSchedulerModelCachesIfNeeded()
-            }
-            return
-        }
-
-        let nodes = MeshNetworkManager.instance.realNodes.filter { node in
-            guard node.deviceType != .dongle else {
-                return false
-            }
-            let modelKnownStates = node.schedulerSetupModels.map {
-                node.allSchedulerModelEntrys[$0] != nil
-            }
-            return TimedSchedulerCacheRepairPolicy.needsAuthoritativeRead(
-                modelKnownStates: modelKnownStates
-            )
-        }
-        guard !nodes.isEmpty else {
-            return
-        }
-
-        isRepairingUnknownSchedulerModelCaches = true
-#if DEBUG
-        let addresses = nodes
-            .map { $0.primaryUnicastAddress.hex }
-            .joined(separator: ",")
-        print("[SchedulerModelCacheRepair] start nodes=[\(addresses)]")
-#endif
-        MeshAPI.getSchedule(
-            index: nil,
-            nodes: nodes,
-            successful: nil,
-            failed: { address, index in
-#if DEBUG
-                print("[SchedulerModelCacheRepair] action failed node=\(address.hex) index=\(index)")
-#endif
-            },
-            finished: { [weak self] successfulAddresses, failedAddresses in
-                DispatchQueue.main.async {
-                    guard let self = self else {
-                        return
-                    }
-                    self.isRepairingUnknownSchedulerModelCaches = false
-#if DEBUG
-                    let successful = successfulAddresses
-                        .map(\.hex)
-                        .joined(separator: ",")
-                    let failed = failedAddresses
-                        .map(\.hex)
-                        .joined(separator: ",")
-                    print("[SchedulerModelCacheRepair] finished success=[\(successful)] failed=[\(failed)]")
-#endif
-                    self.updateUI()
-#if DEBUG
-                    self.debugPrintScheduleDiagnostics()
-#endif
-                }
-            }
-        )
-    }
 
 #if DEBUG
+    /// 仅供调试器显式调用；页面生命周期不执行全网诊断。
     /// 调试用：打印当前定时页面的 schedule 定义，以及节点侧保存的 schedulerActions 原始值。
     /// 目的：
     /// 1. 对照本地 schedule.id 与设备侧 scheduler slot/index

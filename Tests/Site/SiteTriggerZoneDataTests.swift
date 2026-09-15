@@ -346,12 +346,24 @@ struct SiteTriggerZoneDataTests {
         check(SiteTriggerZoneMember(value: invalidAddress) == nil,
               "A normalized device address before the node primary cannot be persisted")
         var syncState = SiteTriggerZoneState()
+        let cleanupGeneration = UUID()
+        syncState.referenceCleanupRequests = ["account": cleanupGeneration]
         syncState.deviceSyncChanges = [.init(zoneID: editable.zoneId, previousMembers: .array([]),
                                              targetMembers: editable.fields["members"]!)]
         let restoredSyncState = try JSONDecoder().decode(SiteTriggerZoneState.self,
             from: JSONEncoder().encode(syncState))
         check(restoredSyncState == syncState,
             "Device cleanup evidence survives restart after cloud confirmation")
+        var legacyObject = try JSONSerialization.jsonObject(with: JSONEncoder().encode(syncState)) as! [String: Any]
+        legacyObject.removeValue(forKey: "referenceCleanupRequests")
+        let legacyState = try JSONDecoder().decode(SiteTriggerZoneState.self,
+            from: JSONSerialization.data(withJSONObject: legacyObject))
+        check(legacyState.referenceCleanupRequests == nil, "Old local states decode without cleanup requests")
+        syncState.receive(syncState.data, timestamp: 100)
+        check(syncState.referenceCleanupRequests?["account"] == cleanupGeneration,
+              "Remote reception cannot acknowledge local reference cleanup")
+        let cloudObject = try JSONSerialization.jsonObject(with: JSONEncoder().encode(syncState.data)) as! [String: Any]
+        check(cloudObject["referenceCleanupRequests"] == nil, "Local cleanup requests never enter cloud extension data")
         let restored = try JSONDecoder().decode(SiteTriggerZoneState.self, from: JSONEncoder().encode(state))
         check(restored == state, "Restart restores the full sync state")
         print("PASS: Site Trigger Zone identity, 100-zone limit, compatibility, pending, conflict and restart checks")

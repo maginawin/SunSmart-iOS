@@ -62,6 +62,20 @@ enum SpaceSyncCleanupCoordinator {
         onPrepare?(space)
         return true
     }
+    static func prepareBatch(site: SiteData, spaces: [SpaceData],
+                             shouldContinue: () -> Bool,
+                             shouldPrepare: (SpaceData) -> Bool) async -> SiteData? {
+        for space in spaces where shouldPrepare(space) {
+            await withCheckedContinuation { continuation in
+                DispatchQueue.main.async { continuation.resume() }
+            }
+            guard shouldContinue() else { return nil }
+            guard shouldPrepare(space) else { continue }
+            _ = await prepare(space)
+            guard shouldContinue() else { return nil }
+        }
+        return site
+    }
 }
 final class CloudSynchronizationManager {
     let recoveryGate = PendingSynchronizationRecoveryGate()

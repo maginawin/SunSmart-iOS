@@ -412,6 +412,8 @@ extension SpaceData {
         }
         if allowsProtectedInspection, snapshotAuthorization.orphanPreservationReason != nil { return nil }
         let payload: [String: Any]? = await MainActor.run {
+            let performance = AppPerformance.begin("SpaceExportMain")
+            defer { performance.end() }
             
             var spaceJsonData: [String: Any] = [:]
             

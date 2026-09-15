@@ -12,6 +12,7 @@ class ScenesViewCell: GroupsViewCell {
     
     /// 场景执行动画view
     private var animationView: SceneExecuteAnimationView!
+    private var sceneRequestID = UUID()
     
     /// 是否执行中
     var isExecuting: Bool {
@@ -24,10 +25,20 @@ class ScenesViewCell: GroupsViewCell {
             self.imageView.image = UIImage(named: sceneImageNames[imageIndex])
             self.nameLabel.text = scene.name
             
-            if scene.needSyncGroups.count > 0 {
-                imageView.image = UIImage(named: "sync_failed_big")
+            sceneRequestID = UUID()
+            let requestID = sceneRequestID
+            // Pending and unavailable status must not look authoritatively synced.
+            imageView.image = UIImage(named: "sync_failed_big")
+            NodeSyncStatusRefresh.request(scene: scene, owner: self) { [weak self] needsSync in
+                guard let self, self.sceneRequestID == requestID else { return }
+                self.imageView.image = UIImage(named: needsSync ? "sync_failed_big" : sceneImageNames[imageIndex])
             }
         }
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        sceneRequestID = UUID()
     }
     
     override init(frame: CGRect) {

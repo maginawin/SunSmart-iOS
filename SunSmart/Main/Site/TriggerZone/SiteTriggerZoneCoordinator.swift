@@ -83,23 +83,38 @@ final class SiteTriggerZoneCoordinator {
 
     @discardableResult
     func cleanObsoleteMembers() throws -> Bool {
-        guard isCurrent, let current = SiteData.load(siteId: site.id), current.canManageSiteTriggerZones else { return false }
+        if case .completed(let changed) = try finishReferenceCleanup() { return changed }
+        return false
+    }
+
+    enum ReferenceCleanupResult: Equatable {
+        case completed(changed: Bool)
+        case deferred
+    }
+
+    /// A skipped cleanup must not acknowledge a durable recovery request.
+    func finishReferenceCleanup() throws -> ReferenceCleanupResult {
+        guard isCurrent, let current = SiteData.load(siteId: site.id), current.canManageSiteTriggerZones else { return .deferred }
         current.spaces = SpaceData.load(siteId: current.id)
         let classify = SiteTriggerZoneTopologyReader.cleanupClassifier(site: current)
         let before = try state()
         guard !before.conflict, !before.hasAmbiguousRemote, before.rejectedRemote == nil,
-              before.submitted == nil,
-              SiteTriggerZoneReferenceCleanup.clean(before.data, classify: classify) != before.data else { return false }
-        var changed = false
+              before.submitted == nil else { return .deferred }
+        guard SiteTriggerZoneReferenceCleanup.clean(before.data, classify: classify) != before.data else {
+            return .completed(changed: false)
+        }
+        var result = ReferenceCleanupResult.deferred
         try SiteTriggerZoneStore.update(site) { state in
             guard !state.conflict, !state.hasAmbiguousRemote, state.rejectedRemote == nil,
                   state.submitted == nil else { return }
             let cleaned = SiteTriggerZoneReferenceCleanup.clean(state.data, classify: classify)
-            guard cleaned != state.data else { return }
-            state.commit(cleaned, now: Int64(Date().timeIntervalSince1970), siteTimestamp: current.lastUpdate)
-            changed = true
+            let changed = cleaned != state.data
+            if changed {
+                state.commit(cleaned, now: Int64(Date().timeIntervalSince1970), siteTimestamp: current.lastUpdate)
+            }
+            result = .completed(changed: changed)
         }
-        return changed
+        return result
     }
 
     private func mutate(_ mutation: (inout SiteExtensionData) throws -> Void) throws {

@@ -19,6 +19,7 @@ methods = methods.replace('        try state.write(to: stateURL(space))',
 start = methods.index('    static func resumeLocalRemovals()')
 end = methods.index('    static func activateImport(', start)
 methods = methods[:start] + methods[end:]
+methods = methods[:methods.index('    static func syncReadRequest(')] if '    static func syncReadRequest(' in methods else methods
 methods += section(safety, '    static func needsUpgradeBaseline(', '    /// Preserve both side stores')
 methods += section(safety, '    static func beginImport(', '    @MainActor\n    static func prepareUpload(')
 methods += section(safety, '    @MainActor\n    static func prepareUpload(', '    /// Called only after the user explicitly chooses')
@@ -77,6 +78,8 @@ with tempfile.TemporaryDirectory(prefix='space-receipt-tests-') as temp:
     binary = temp / 'Tests'
     subprocess.run(['swiftc', '-parse-as-library',
         str(root / 'Pods/SwiftyJSON/Source/SwiftyJSON/SwiftyJSON.swift'),
+        str(root / 'SunSmart/Common/Data/AppPerformance.swift'),
+        str(root / 'SunSmart/Common/Data/SpaceProtectionReadSnapshot.swift'),
         str(root / 'SunSmart/Common/Data/DeviceScheduleAddressCleanup.swift'),
         str(root / 'SunSmart/Common/Data/SiteTimeZoneValue.swift'),
         str(root / 'SunSmart/Main/Site/Model/SitePropsEditPolicy.swift'),

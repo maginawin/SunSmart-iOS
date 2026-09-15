@@ -72,16 +72,20 @@ enum SyncOperation {
     }
     
     func getNetworkApi() async -> NetowrkReqeustApi? {
+        let account = UserData.currentUserId
+        let region = UserData.currentServerRegion
+        func isCurrent() -> Bool {
+            account == UserData.currentUserId && region == UserData.currentServerRegion
+                && !_Concurrency.Task<Never, Never>.isCancelled
+        }
         switch self {
         case .syncSite(let site, let syncSpaces):
-            for space in syncSpaces { _ = await SpaceSyncCleanupCoordinator.prepare(space) }
-            for space in syncSpaces {
-                if let index = site.spaces.firstIndex(where: { $0.id == space.id }) { site.spaces[index] = space }
-            }
+            guard let site = await SpaceSyncCleanupCoordinator.prepareBatch(site: site, spaces: syncSpaces),
+                  isCurrent() else { return nil }
             if site.uploadCloud {
                 guard let siteData = await site.export(
                     spaceIds: syncSpaces.map({ $0.id })
-                ) else {
+                ), isCurrent() else {
                     return nil
                 }
                 return .siteUpload(siteData: siteData)
@@ -90,7 +94,7 @@ enum SyncOperation {
                 let maxAddress = MeshAPI.getTheUsedDeviceAddresses(meshUUID: site.meshUUID).max()
                 guard let siteData = await site.export(
                     spaceIds: syncSpaces.map({ $0.id })
-                ) else {
+                ), isCurrent() else {
                     return nil
                 }
                 return .siteAdd(
@@ -100,7 +104,8 @@ enum SyncOperation {
             }
         case .syncSpace(let space):
             _ = await SpaceSyncCleanupCoordinator.prepare(space)
-            guard let spaceData = await space.export(purpose: .cloudSync) else {
+            guard isCurrent() else { return nil }
+            guard let spaceData = await space.export(purpose: .cloudSync), isCurrent() else {
                 return nil
             }
             return .spaceUpload(
@@ -109,10 +114,11 @@ enum SyncOperation {
                 spaceData: spaceData
             )
         case .addSpaces(let site, let spaces):
-            for space in spaces { _ = await SpaceSyncCleanupCoordinator.prepare(space) }
+            guard let site = await SpaceSyncCleanupCoordinator.prepareBatch(site: site, spaces: spaces),
+                  isCurrent() else { return nil }
             guard let siteData = await site.export(
                 spaceIds: spaces.map({ $0.id })
-            ) else {
+            ), isCurrent() else {
                 return nil
             }
             return .siteUpload(siteData: siteData)
@@ -391,23 +397,23 @@ class CloudSynchronizationManager {
                 site.spaces = SpaceData.load(siteId: site.id)
                 // Foreground recovery must not export every synchronized Space.
                 // Full legacy inspection still runs on Space entry and explicit sync.
-                for space in site.spaces {
-                    guard getSpaceCurrentSyncState(space) == nil,
-                          space.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(space)
-                            || SpaceConfigurationSafety.isBlocked(space) else { continue }
-                    await withCheckedContinuation { continuation in
-                        DispatchQueue.main.async { continuation.resume() }
+                let preparedSite = await SpaceSyncCleanupCoordinator.prepareBatch(
+                    site: site, spaces: site.spaces, shouldContinue: isCurrent,
+                    shouldPrepare: { space in
+                        self.getSpaceCurrentSyncState(space) == nil
+                            && (space.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(space)
+                                || SpaceConfigurationSafety.isBlocked(space))
                     }
-                    guard isCurrent() else { return }
-                    // A queued upload may have started during the main-queue handoff.
-                    guard getSpaceCurrentSyncState(space) == nil else { continue }
-                    _ = await SpaceSyncCleanupCoordinator.prepare(space)
-                    guard isCurrent() else { return }
-                }
+                )
+                guard isCurrent() else { return }
+                guard let site = preparedSite else { continue }
                 if (try? SiteTriggerZoneStore.load(site).pending) != nil, site.canManageSiteTriggerZones {
                     _ = await SiteTriggerZoneCoordinator(site: site).synchronize()
                     guard isCurrent() else { return }
                 }
+                // Remote Zone reconciliation can also update local Space state.
+                guard let site = SiteData.load(siteId: siteId), site.state == .normal else { continue }
+                site.spaces = SpaceData.load(siteId: site.id)
                 let spaces = site.spaces.filter { space in
                     SpaceConfigurationSafety.canAutomaticallyUpload(space)
                         && (space.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(space))

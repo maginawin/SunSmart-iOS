@@ -206,6 +206,7 @@ class SpaceViewController: WMPageController {
     var deleteSpaceCallback: (()->Void)?
     /// 是否已加载完成网络数据
     private var loadNetworkData: Bool = false
+    private var schedulerReadCoordinator: SpaceSchedulerReadCoordinator?
     /// 退出页面同步space中
     private var exitSyncSpace: Bool = false
     /// 心跳定时器
@@ -393,12 +394,17 @@ class SpaceViewController: WMPageController {
         super.viewDidDisappear(animated)
 
         if isMovingFromParent || !(navigationController?.viewControllers.contains(self) ?? false) {
+            NodeSyncStatusRefresh.endSession(owner: self)
+            schedulerReadCoordinator?.stop()
+            schedulerReadCoordinator = nil
             stopSpacePresenceTracking(reason: .leavingSpaceFlow)
         }
     }
 
     
     deinit {
+        NodeSyncStatusRefresh.endSession(owner: self)
+        schedulerReadCoordinator?.stop()
         stopSpacePresenceTracking(reason: .deallocated)
         
         if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == space.meshUUID && MeshNetworkManager.instance.currentNetworkKey.networkId.hex == space.meshNetworkId {
@@ -743,6 +749,9 @@ class SpaceViewController: WMPageController {
                     }
 //                    XWHUDManager.hideInView(with: self.view)
                     XWHUDManager.hide()
+                    NodeSyncStatusRefresh.beginSession(owner: self)
+                    self.schedulerReadCoordinator?.stop()
+                    self.schedulerReadCoordinator = SpaceSchedulerReadCoordinator(space: self.space)
                     self.loadNetworkData = true
                     self.reconcileLegacyProximityLightingTopology()
                     self.emergencyFireControllerSceneEventManager = EmergencyFireControllerSceneEventManager {
@@ -753,13 +762,7 @@ class SpaceViewController: WMPageController {
                     self.reloadData()
                     self.presentProximityLightingRepairSyncIfNeeded()
                     SpaceDebugUARTManager.shared.evaluateCurrentProxy(space: self.space)
-                    DispatchQueue.global().async {
-//                        print("设备同步状态:\(Date().timeIntervalSince1970)")
-                        manager.realNodes.forEach { node in
-                            node.reloadSyncStateCache()
-                        }
-//                        print("设备同步状态完成:\(Date().timeIntervalSince1970)")
-                    }
+                    NodeSyncStatusRefresh.warmUp(nodes: manager.realNodes, owner: self)
                     
 //                    if self.cloudPermissionValidation {
 //                        self.configurationFlowGuidance()
@@ -835,7 +838,7 @@ class SpaceViewController: WMPageController {
                         guard outcome.status != .rejected else {
                             await MainActor.run {
                                 XWHUDManager.showErrorTipHUD(
-                                    "proximity_lighting_import_invalid".localizedString
+                                    "configuration_reload_invalid".localizedString
                                 )
                             }
                             return
@@ -1690,6 +1693,7 @@ extension SpaceViewController {
             return vc
         case 3:
             let vc = TimedViewController(space: space)
+            vc.schedulerCacheRead = { [weak self] in self?.schedulerReadCoordinator?.request() }
             return vc
         case 4:
             let vc = SpaceMoreViewController(site: site, space: space)

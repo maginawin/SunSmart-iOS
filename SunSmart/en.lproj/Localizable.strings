@@ -2167,6 +2167,7 @@
 "proximity_lighting_export_invalid" = "Proximity lighting data is invalid and could not be exported.";
 "proximity_lighting_import_invalid" = "Proximity lighting data is invalid and was not imported.";
 "profile_unavailable" = "Profile unavailable";
+"configuration_sync_unavailable" = "Space data is unavailable. Reopen this Space to retry.";
 "configuration_reload_cloud" = "Reload cloud data";
 "configuration_use_local" = "Use this phone's data";
 "configuration_review_message" = "This Space needs review before synchronization. Reload the cloud data, or use this phone's complete saved configuration if it is the correct copy. Local recovery is unavailable while an import is incomplete or local data is invalid.";

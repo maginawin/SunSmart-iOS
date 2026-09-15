@@ -231,6 +231,8 @@ final class NetworkRequest {
         try await testImportPreparation()
         try await testParseRejectionRecovery()
         try testReferenceCleanupReceipts()
+        try testProximityAllImportRecovery()
+        try testProtectionGenerationWriters()
 
         // Account changes invalidate pending callbacks before looking up another store.
         let accountContext = try SpaceConfigurationSafety.recoveryState(b)
@@ -238,6 +240,37 @@ final class NetworkRequest {
         precondition(!SpaceConfigurationSafety.isCurrent(accountContext, space: b))
         UserData.currentUserId = "test-account"
         print("PASS: production direct acceptance, unknown-outcome recovery, first-upload baseline, persistence failures, versions, authority and lifecycle isolation")
+    }
+
+    @MainActor static func testProtectionGenerationWriters() throws {
+        typealias S = SpaceConfigurationSafety
+        let space = SpaceData("protection-generation")
+        var state = try S.recoveryState(space)
+        let request = SpaceProtectionReadRequest(scope: .init(account: UserData.currentUserId,
+            region: String(describing: UserData.currentServerRegion), meshUUID: space.meshUUID,
+            networkID: space.meshNetworkId), root: S.testRoot, defaults: S.testDefaults)
+        let original = request.read()
+        precondition(!original.isBlocked)
+        S.failStateWrite = true
+        do { try S.testSaveState(state, space: space); preconditionFailure("expected failed write") } catch {}
+        S.failStateWrite = false
+        precondition(!original.isCurrent && SpaceProtectionReadGeneration.current != nil)
+        let beforeAuthority = request.read()
+        state.authority = .readOnly
+        try S.testSaveState(state, space: space)
+        precondition(!beforeAuthority.isCurrent && request.read().authority == .readOnly)
+        let beforeJournal = request.read()
+        precondition(S.updateDeletionJournal(space) {
+            $0.entries.append(.init(id: UUID(), nodeUUID: "node", primaryAddress: 1,
+                elementAddresses: [1], macAddress: nil, productId: nil))
+        })
+        precondition(!beforeJournal.isCurrent && request.read().pendingDeletion)
+        let beforeBlock = request.read()
+        S.block(space, reason: "generation-test")
+        precondition(!beforeBlock.isCurrent && request.read().blockedReason == "generation-test")
+        #if DEBUG
+        print("PASS: production save failure, authority, deletion journal and blocked writer invalidate real snapshots")
+        #endif
     }
 
     @MainActor static func testDirectUploadConfirmation() async throws {
@@ -303,6 +336,39 @@ final class NetworkRequest {
         if case .failure = await S.resumeUpload(second) { preconditionFailure("state persistence retry must finish locally") }
         precondition(!S.hasPendingUpload(second) && request.calls == calls)
         print("PASS: direct success uses submitted timestamps, makes no GET, preserves newer edits and unrelated blocks")
+    }
+
+    @MainActor static func testProximityAllImportRecovery() throws {
+        typealias S = SpaceConfigurationSafety
+        let space = SpaceData("proximity-all-import")
+        let profile: [String: Any] = ["id": "profile", "type": 7,
+            "highEndTrim": 100, "lowEndTrim": 0, "occupancyLevel": 100,
+            "vacantLevel": 50, "taskLevel": 100, "timeT1": 0, "timeT2": 5,
+            "timeT3": 60, "timeT4": 0, "timeT5": 0,
+            "manualOverrideTimeout": 5, "powerUpState": 0, "proximityLightingNumber": 21]
+        var original = space.payload
+        original["groups"] = [["address": "C00D", "profile": profile]]
+        original["scenes"] = [[String: Any]]()
+        original["schedules"] = [[String: Any]]()
+        original["spaceData"] = ["proximityLightingSchemaVersion": 1, "triggerZones": []]
+        let cleaned = try SpaceSyncCleanupPolicy.normalize(original)
+        S.block(space, reason: "invalidRemoteProfile:C00D:invalidProfileRelay")
+        precondition(S.isBlocked(space))
+        precondition(S.preserveRemoteReferenceCleanup(space, payload: original, candidate: cleaned.payload))
+        precondition(S.beginImport(space, payload: cleaned.payload))
+        precondition(S.hasPendingImport(space) && S.isBlocked(space))
+        precondition(S.finishImport(space, validatedTopology: true))
+        precondition(!S.isBlocked(space) && !S.hasPendingImport(space),
+                     "Successful canonical import must lift the previously persisted invalid relay barrier")
+        let baseline = try S.recoveryState(space).authorizationBaseline
+        precondition(baseline != nil && baseline == SpaceConfigurationIntegrityPolicy.configurationData(original)
+                     && baseline == SpaceConfigurationIntegrityPolicy.configurationData(cleaned.payload),
+                     "The original cloud alias and saved canonical value share the upload authorization baseline")
+        precondition(S.preservesLocalChanges(space), "The repair remains pending until its upload is confirmed")
+        let timestamp = space.lastUpdate
+        let repeated = try SpaceSyncCleanupPolicy.normalize(cleaned.payload)
+        precondition(!repeated.didChange && !S.isBlocked(space) && timestamp == space.lastUpdate)
+        print("PASS: ALL alias import clears historical Profile block, preserves original baseline and retains repair upload intent")
     }
 
     @MainActor static func testReferenceCleanupReceipts() throws {

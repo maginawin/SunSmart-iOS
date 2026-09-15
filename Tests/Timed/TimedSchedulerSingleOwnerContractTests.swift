@@ -3,14 +3,14 @@ import Foundation
 @main
 struct TimedSchedulerSingleOwnerContractTests {
     static func main() throws {
-        guard CommandLine.arguments.count == 20 else {
+        guard CommandLine.arguments.count == 21 else {
             fatalError(
                 "Expected Node+SupportModels, Node+Messages, MeshScheduleServer, "
                 + "Node+MessageHandles, MeshNetwork+SunSmart, ScheduleServer, "
                 + "GroupServer, Scheduler, DeviceGroupDeferredSyncPlanner, "
                 + "MeshDatabase, TimedViewController, SyncDevicesCellModel and "
                 + "SyncDevicesViewController, DeviceRestoreViewController and "
-                + "GroupMembersViewController and SyncDeviceTaskBuilder, SyncTaskPlanBuilder, SyncRetryPolicy, SyncExecutionSession+Operations paths"
+                + "GroupMembersViewController and SyncDeviceTaskBuilder, SyncTaskPlanBuilder, SyncRetryPolicy, SyncExecutionSession+Operations, SpaceSchedulerReadCoordinator paths"
             )
         }
 
@@ -69,7 +69,7 @@ struct TimedSchedulerSingleOwnerContractTests {
             nodeMessages: nodeMessages
         )
         testSchedulerModelPersistence(in: meshDatabase)
-        testUnknownSchedulerModelRepair(in: timedViewController)
+        testUnknownSchedulerModelRepair(in: timedViewController, coordinator: try source(at: 20))
         testGroupRemovalUnknownSchedulerPreflight(
             groupServer: groupServer,
             groupMembersController: groupMembersController
@@ -180,7 +180,7 @@ struct TimedSchedulerSingleOwnerContractTests {
         )
         require(
             appOwnerPolicy.contains(
-                "contextGroup ?? node.restoreData?.addGroup ?? node.group"
+                "contextGroup ?? node.restoreData?.addGroup ?? node.syncReadGroup"
             ),
             "The App policy must prefer an explicit target or restore Group before current membership"
         )
@@ -932,12 +932,8 @@ struct TimedSchedulerSingleOwnerContractTests {
         )
     }
 
-    private static func testUnknownSchedulerModelRepair(in source: String) {
-        let repair = section(
-            in: source,
-            from: "private func repairUnknownSchedulerModelCachesIfNeeded()",
-            to: "private func debugPrintScheduleDiagnostics()"
-        )
+    private static func testUnknownSchedulerModelRepair(in source: String, coordinator: String) {
+        let repair = coordinator
         require(
             repair.contains(
                 "TimedSchedulerCacheRepairPolicy.needsAuthoritativeRead"
@@ -958,7 +954,9 @@ struct TimedSchedulerSingleOwnerContractTests {
             "Ordinary Timed migration must not consume Dongle collection Scheduler state"
         )
         require(
-            repair.contains("self.updateUI()"),
+            repair.contains("NotificationCenter.default.post(name: Self.didUpdate")
+                && source.contains("forName: SpaceSchedulerReadCoordinator.didUpdate")
+                && source.contains("self?.refreshVisibleUI()"),
             "Timed must recalculate sync markers after authoritative reads finish"
         )
 

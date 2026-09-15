@@ -114,6 +114,8 @@ class NetworkRequest: NSObject {
         return provider.request(target, callbackQueue: Self.responseQueue) { result in
             let deliver: Completion = { value in DispatchQueue.main.async { completion(value) } }
             let started = ProcessInfo.processInfo.systemUptime
+            let performance = AppPerformance.begin("ResponseDecode")
+            defer { performance.end() }
             defer {
                 #if DEBUG
                 print("[HTTP][Decode] target=\(target.diagnosticName) seconds=\(ProcessInfo.processInfo.systemUptime - started) main=\(Thread.isMainThread)")

@@ -54,6 +54,7 @@ enum SyncExecutionSessionTests {
         DeviceOperationType.allowsMessageFactory = true
         changedConfigurationInvalidatesOldCallbacks()
         changedConfigurationBeforeStart()
+        unavailableConfigurationNeedsReviewWithoutSending()
         normalAndDuplicateCompletion()
         stopBeforePlanDeliveryAndManualRetry()
         stopBeforeRetryAndLateCompletion()
@@ -72,6 +73,29 @@ enum SyncExecutionSessionTests {
         precondition(h.sends.isEmpty && node.updates == 0, "Deleted device or replaced Profile must never send an old plan")
         h.stopFinished?(); h.flush()
         precondition(invalidations == 1, "Rebuild only after transport has stopped")
+        session.close(); h.flush()
+    }
+    static func unavailableConfigurationNeedsReviewWithoutSending() {
+        let h = Harness(); let (session, _, _, node) = h.make()
+        var available = false
+        h.environment.configurationAvailable = { available }
+        var errors: [String] = []
+        var prepared = false, completed = 0
+        session.onError = { errors.append($0) }
+        session.onCompleted = { _ in completed += 1 }
+        session.enqueuePreparation { prepared = true }
+        session.start(); h.flush()
+        precondition(errors == ["configuration_sync_unavailable".localizedString],
+                     "A general configuration barrier must not report invalid proximity lighting")
+        precondition(!prepared && h.sends.isEmpty && node.updates == 0 && completed == 0,
+                     "Unavailable configuration must block preparation, commands, writeback and success")
+        precondition(session.syncState == .syncFailure, "The blocked run must remain failed")
+        available = true
+        session.start(); h.flush()
+        precondition(h.sends.count == 1 && !prepared, "Recovery permits a fresh run without replaying rejected preparation")
+        h.finish(0); h.flush()
+        precondition(session.syncState == .syncSuccess && completed == 1 && node.updates == 1,
+                     "A recovered configuration must still synchronize normally")
         session.close(); h.flush()
     }
     static func changedConfigurationInvalidatesOldCallbacks() {

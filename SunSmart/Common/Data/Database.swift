@@ -1020,14 +1020,14 @@ extension GroupInfo {
     /// - Parameter meshUUID: 网络id
     /// - Parameter address: 组地址
     /// - Returns: 组数据
-    static func load(meshUUID: String, address: UInt16, subnetworkId: String? = nil) -> GroupInfo? {
+    static func load(meshUUID: String, address: UInt16, subnetworkId: String? = nil, database: Connection? = SunSmartDataManager.shared.db, includeTemplates: Bool = true) -> GroupInfo? {
         
         var predicate: Expression<Bool> = ExpressionKey.meshUUID == meshUUID && ExpressionKey.groupAddress == Int(address)
         if let subnetworkId { predicate = predicate && ExpressionKey.subNetworkKey == subnetworkId }
         
         var groupInfo: GroupInfo?
         let filter = GroupInfo.groupInfosTable.filter(predicate)
-        if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
+        if let rows = try? database?.prepare(filter) {
             for row in rows {
                 let info = GroupInfo(address: Address(row[ExpressionKey.groupAddress]), imageId: row[ExpressionKey.imageId], imageText: row[ExpressionKey.imageText])
                 if let data = row[ExpressionKey.scenesData] {
@@ -1043,7 +1043,7 @@ extension GroupInfo {
 //                let schedules = Schedule.load(meshUUID: meshUUID, meshNetworkKey: meshNetworkKey, address: UInt16(address))
 //                groupInfo?.bindSchedules = schedules
 //                // 配置数据
-                if let profile = Profile.load(meshUUID: meshUUID, meshNetworkId: row[ExpressionKey.subNetworkKey], profileId: row[ExpressionKey.profileId]) {
+                if let profile = Profile.loadAll(meshUUID: meshUUID, meshNetworkId: row[ExpressionKey.subNetworkKey], profileId: row[ExpressionKey.profileId], database: database, includeTemplates: includeTemplates).first {
                     info.profile = profile
                 } else {
                     info.profileLoadFailed = true
@@ -1715,7 +1715,7 @@ extension Profile {
     /// - Parameter meshUUID: 网络id
     /// - Parameter networkKey: 子网网络key
     /// - Returns: 日程数据list
-    static func loadAll(meshUUID: String, meshNetworkId: String? = nil, profileId: String? = nil) -> [Profile] {
+    static func loadAll(meshUUID: String, meshNetworkId: String? = nil, profileId: String? = nil, database: Connection? = SunSmartDataManager.shared.db, includeTemplates: Bool = true) -> [Profile] {
        
         let subNetworkey = meshNetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         
@@ -1728,7 +1728,7 @@ extension Profile {
         var profiles: [Profile] = []
         var foundRow = false
         do {
-            guard let db = SunSmartDataManager.shared.db else {
+            guard let db = database else {
                 logPersistenceIssue("databaseUnavailable")
                 return []
             }
@@ -1744,7 +1744,7 @@ extension Profile {
                       (0...65535).contains(row[ExpressionKey.powerUpCct]),
                       (0...Int64(UInt32.max)).contains(row[ExpressionKey.manualOverrideTimeout]),
                       (0...255).contains(row[ExpressionKey.sensitivity]),
-                      (0...255).contains(row[ExpressionKey.proximityLightingNumber]) else {
+                      let proximityLightingNumber = SpaceConfigurationIntegrityPolicy.normalizedProximityLightingNumber(row[ExpressionKey.proximityLightingNumber]) else {
                     logPersistenceIssue("invalidScalar", type: profileType.rawValue)
                     continue
                 }
@@ -1817,7 +1817,7 @@ extension Profile {
                         continue
                     }
                 }
-                let profile = Profile(name: row[ExpressionKey.name], id: row[ExpressionKey.uuid], type: profileType, lightControlData: lightData, powerUpState: powerUpState, powerUpCct: powerUpCct, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: row[ExpressionKey.adjustSpeed], sensitivity: UInt8(row[ExpressionKey.sensitivity]), proximityLightingNumber: UInt8(row[ExpressionKey.proximityLightingNumber]), nightData: nightData, dayData: dayData, scenes: scenes)
+                let profile = Profile(name: row[ExpressionKey.name], id: row[ExpressionKey.uuid], type: profileType, lightControlData: lightData, powerUpState: powerUpState, powerUpCct: powerUpCct, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: row[ExpressionKey.adjustSpeed], sensitivity: UInt8(row[ExpressionKey.sensitivity]), proximityLightingNumber: proximityLightingNumber, nightData: nightData, dayData: dayData, scenes: scenes)
                 if let rawCalibrationMode = row[ExpressionKey.calibrationMode] {
                     profile.calibrationMode = Profile.DaylightCalibrationMode(rawValue: rawCalibrationMode) ?? Profile.DaylightCalibrationMode.none
                 }else {
@@ -1825,7 +1825,7 @@ extension Profile {
                 }
                 profile.targetNightBrightness = Profile.normalizedTargetNightBrightness(row[ExpressionKey.targetNightBrightness])
                 
-                profile.lightSensorTemplates = ProfileLightSensorTemplate.load(profileId: profile.id)
+                if includeTemplates { profile.lightSensorTemplates = ProfileLightSensorTemplate.load(profileId: profile.id) }
                 profiles.append(profile)
             }
             if !foundRow, profileId != nil { logPersistenceIssue("rowMissing") }

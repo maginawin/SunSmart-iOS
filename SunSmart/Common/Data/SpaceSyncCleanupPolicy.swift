@@ -1,7 +1,7 @@
 import Foundation
 
 /// Pure validation of a complete Space snapshot. Device observations are retained;
-/// only references whose owner is known to be absent/ineligible are repaired.
+/// known encoding aliases and references whose owner is absent/ineligible are repaired.
 enum SpaceSyncCleanupPolicy {
     typealias Reconciler = ProximityLightingTopologyReconciler
 
@@ -37,7 +37,7 @@ enum SpaceSyncCleanupPolicy {
     }
 
     static func normalize(_ input: [String: Any]) throws -> Result {
-        guard let groups = input["groups"] as? [[String: Any]],
+        guard var groups = input["groups"] as? [[String: Any]],
               var nodes = input["nodes"] as? [[String: Any]],
               input["scenes"] is [[String: Any]], input["schedules"] is [[String: Any]],
               SpaceConfigurationIntegrityPolicy.profilesIssue(in: input) == nil else {
@@ -115,11 +115,18 @@ enum SpaceSyncCleanupPolicy {
         }
 
         var states: [Reconciler.GroupState] = []
-        for group in groups where !(group["isVirtual"] as? Bool ?? false) {
+        for index in groups.indices where !(groups[index]["isVirtual"] as? Bool ?? false) {
+            let group = groups[index]
             let groupAddress = address(group["address"])!
-            let profile = group["profile"] as! [String: Any]
+            var profile = group["profile"] as! [String: Any]
             let type = SpaceConfigurationIntegrityPolicy.integer(profile["type"])!
             let eligible = type == 7 || type == 8
+            if let normalized = SpaceConfigurationIntegrityPolicy.normalizedProximityLightingNumber(profile["proximityLightingNumber"]),
+               SpaceConfigurationIntegrityPolicy.integer(profile["proximityLightingNumber"]) != Int64(normalized) {
+                profile["proximityLightingNumber"] = Int(normalized)
+                groups[index]["profile"] = profile
+                repairs.append("normalizedProximityRelay[group=\(groupAddress)]")
+            }
             let relay = SpaceConfigurationIntegrityPolicy.integer(profile["proximityLightingNumber"]) ?? 2
             guard let relay = UInt8(exactly: relay) else { throw Invalid.structure("relay") }
             var paths: [[UInt16?]] = [], zones: [[UInt16]] = []

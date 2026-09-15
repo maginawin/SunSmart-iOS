@@ -2203,7 +2203,7 @@ class DeviceRestoreViewController: UIViewController {
         guard SpaceConfigurationSafety.currentConfigurationAvailable else {
             deviceData.unprovisionedDevice?.addState = .failed
             updateUIState()
-            XWHUDManager.showErrorTipHUD("proximity_lighting_import_invalid".localizedString)
+            XWHUDManager.showErrorTipHUD("configuration_sync_unavailable".localizedString)
             return
         }
         guard let unprovisionedDevice = deviceData.unprovisionedDevice else {

@@ -179,6 +179,14 @@
 		08B54CF730402CCB0017ED49 /* BatchImportResultHelpController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88DE4482C085A5D005A38C1 /* BatchImportResultHelpController.swift */; };
 		08B54CF830402CCB0017ED49 /* DeviceAddSectionBackgroundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B444A22E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift */; };
 		08B54CF930402CCB0017ED49 /* Node+SyncData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */; };
+		1082CC5FED2CD2C6956522F8 /* NodeSyncReadContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 822E40AF256280460760DAE3 /* NodeSyncReadContext.swift */; };
+		179252A1DE2E4B5F8EC47827 /* SpaceSchedulerReadCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E72DEB715702E5821C506F /* SpaceSchedulerReadCoordinator.swift */; };
+		086B616CFCC46B5C2A29E4AA /* SpacePageSyncRead.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E8F30D155A131BDBDC78EE /* SpacePageSyncRead.swift */; };
+		4474AD0F1EB7690DD33D34D2 /* NodeSyncTopologyStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7B5C927EB09075DE812CA1 /* NodeSyncTopologyStorage.swift */; };
+		73C943066C805BD27DB9DC7E /* NodeSyncTopologySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4CE0208AB4FEC2A28B419B /* NodeSyncTopologySnapshot.swift */; };
+		F19DD94FD0DAD99699745673 /* SpaceProtectionReadSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F30B7015EA95EB1973F9EC1 /* SpaceProtectionReadSnapshot.swift */; };
+		9E2B0727EB4BE3646BD5385C /* AppPerformance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402BBE20BB0B8974D93669FC /* AppPerformance.swift */; };
+		4C35D17657761715AFA2E01C /* NodeSyncStatusRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E7E0653BE57CBB8AC8AE68 /* NodeSyncStatusRefresh.swift */; };
 		08B54CFA30402CCB0017ED49 /* DeviceScheduleAddressCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0013003000000000001 /* DeviceScheduleAddressCleanup.swift */; };
 		08B54CFB30402CCB0017ED49 /* DevicePermanentDeletionCleanup.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0023003000000000001 /* DevicePermanentDeletionCleanup.swift */; };
 		08B54CFC30402CCB0017ED49 /* SceneDeleteCapability.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8DDA0033003000000000001 /* SceneDeleteCapability.swift */; };
@@ -1415,6 +1423,14 @@
 		C88553F42DE6B44C00C8B688 /* SiteData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADEFE2A97350400238C1C /* SiteData.swift */; };
 		C88553F52DE6B44C00C8B688 /* BatchImportResultHelpController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88DE4482C085A5D005A38C1 /* BatchImportResultHelpController.swift */; };
 		C88553F62DE6B44C00C8B688 /* Node+SyncData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */; };
+		D9068A499B72DEA5BBD4FE04 /* NodeSyncReadContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 822E40AF256280460760DAE3 /* NodeSyncReadContext.swift */; };
+		0836DD01EB2F96B384CE66AD /* SpaceSchedulerReadCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E72DEB715702E5821C506F /* SpaceSchedulerReadCoordinator.swift */; };
+		73DEC597B405A3E51FB62A34 /* SpacePageSyncRead.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E8F30D155A131BDBDC78EE /* SpacePageSyncRead.swift */; };
+		FDC40E80058A7403C1FD84A7 /* NodeSyncTopologyStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7B5C927EB09075DE812CA1 /* NodeSyncTopologyStorage.swift */; };
+		B1FE29DA65B2AFFE4061B0FE /* NodeSyncTopologySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4CE0208AB4FEC2A28B419B /* NodeSyncTopologySnapshot.swift */; };
+		0AE584301CE7E067813F3BBB /* SpaceProtectionReadSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F30B7015EA95EB1973F9EC1 /* SpaceProtectionReadSnapshot.swift */; };
+		B5D1B6BAABF4CE91144C6849 /* AppPerformance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402BBE20BB0B8974D93669FC /* AppPerformance.swift */; };
+		8A552264EC85818C0F39049A /* NodeSyncStatusRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E7E0653BE57CBB8AC8AE68 /* NodeSyncStatusRefresh.swift */; };
 		C88553F72DE6B44C00C8B688 /* MeshFirmwareUpgradeResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89D560E2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift */; };
 		C88553F82DE6B44C00C8B688 /* ScheduleAddViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A29C2B2B47FE2300104634 /* ScheduleAddViewController.swift */; };
 		C88553F92DE6B44C00C8B688 /* ProfileInstructionsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F0A2B8DFBF700A09FFA /* ProfileInstructionsViewCell.swift */; };
@@ -1787,6 +1803,14 @@
 		C886E0452E30DE4900D0C3A6 /* SiteData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AADEFE2A97350400238C1C /* SiteData.swift */; };
 		C886E0462E30DE4900D0C3A6 /* BatchImportResultHelpController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88DE4482C085A5D005A38C1 /* BatchImportResultHelpController.swift */; };
 		C886E0472E30DE4900D0C3A6 /* Node+SyncData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */; };
+		A04C3EF76BE36D0D84A3EF6A /* NodeSyncReadContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 822E40AF256280460760DAE3 /* NodeSyncReadContext.swift */; };
+		71DED501C8438D1DDB66186C /* SpaceSchedulerReadCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E72DEB715702E5821C506F /* SpaceSchedulerReadCoordinator.swift */; };
+		2C5663599A9BE08DDEFA7A2E /* SpacePageSyncRead.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E8F30D155A131BDBDC78EE /* SpacePageSyncRead.swift */; };
+		BC4CA556FCF8EB79AE1D34C8 /* NodeSyncTopologyStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7B5C927EB09075DE812CA1 /* NodeSyncTopologyStorage.swift */; };
+		51FBDA12D0505A6CD2413768 /* NodeSyncTopologySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4CE0208AB4FEC2A28B419B /* NodeSyncTopologySnapshot.swift */; };
+		053FD281E651483703BF86B3 /* SpaceProtectionReadSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F30B7015EA95EB1973F9EC1 /* SpaceProtectionReadSnapshot.swift */; };
+		C4B49A3F24503FCF2E80CA4E /* AppPerformance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402BBE20BB0B8974D93669FC /* AppPerformance.swift */; };
+		1C19EA72705F013792205CE6 /* NodeSyncStatusRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E7E0653BE57CBB8AC8AE68 /* NodeSyncStatusRefresh.swift */; };
 		C886E0482E30DE4900D0C3A6 /* MeshFirmwareUpgradeResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89D560E2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift */; };
 		C886E0492E30DE4900D0C3A6 /* ScheduleAddViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A29C2B2B47FE2300104634 /* ScheduleAddViewController.swift */; };
 		C886E04A2E30DE4900D0C3A6 /* ProfileInstructionsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F0A2B8DFBF700A09FFA /* ProfileInstructionsViewCell.swift */; };
@@ -2282,6 +2306,14 @@
 		C8A347D02D63103B0092D3E4 /* DeviceBaseViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A347CF2D63103B0092D3E4 /* DeviceBaseViewController.swift */; };
 		C8A3516E2D8D73B800325FC6 /* DeviceRestoreEmptyViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3516D2D8D73B800325FC6 /* DeviceRestoreEmptyViewCell.swift */; };
 		C8A351702D8EB1FF00325FC6 /* Node+SyncData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */; };
+		115F67B989B0EA13AED61632 /* NodeSyncReadContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 822E40AF256280460760DAE3 /* NodeSyncReadContext.swift */; };
+		98D5A8CD172E9F14EB9FFD69 /* SpaceSchedulerReadCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E72DEB715702E5821C506F /* SpaceSchedulerReadCoordinator.swift */; };
+		AE487ED6F067C21D083482B8 /* SpacePageSyncRead.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E8F30D155A131BDBDC78EE /* SpacePageSyncRead.swift */; };
+		C4B85346D756FFDE36D44863 /* NodeSyncTopologyStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7B5C927EB09075DE812CA1 /* NodeSyncTopologyStorage.swift */; };
+		F6F825DBB9162A0A64B265FC /* NodeSyncTopologySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4CE0208AB4FEC2A28B419B /* NodeSyncTopologySnapshot.swift */; };
+		90057C0545CB24727D8453B8 /* SpaceProtectionReadSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F30B7015EA95EB1973F9EC1 /* SpaceProtectionReadSnapshot.swift */; };
+		F8B039C414E08A98492522FF /* AppPerformance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402BBE20BB0B8974D93669FC /* AppPerformance.swift */; };
+		3AC96C0575BBC20FC54DA192 /* NodeSyncStatusRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E7E0653BE57CBB8AC8AE68 /* NodeSyncStatusRefresh.swift */; };
 		C8A3EE7E2B33D62F0082A772 /* SceneAddTemplateInfoSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE7D2B33D62F0082A772 /* SceneAddTemplateInfoSectionView.swift */; };
 		C8A3EE802B33E43C0082A772 /* SceneAddDataListViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE7F2B33E43C0082A772 /* SceneAddDataListViewCell.swift */; };
 		C8A3EE822B34087A0082A772 /* SceneAddGroupViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE812B34087A0082A772 /* SceneAddGroupViewCell.swift */; };
@@ -2571,6 +2603,14 @@
 		C8BB65F92ED3F056000C63EE /* BatchImportResultHelpController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88DE4482C085A5D005A38C1 /* BatchImportResultHelpController.swift */; };
 		C8BB65FA2ED3F056000C63EE /* DeviceAddSectionBackgroundView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B444A22E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift */; };
 		C8BB65FB2ED3F056000C63EE /* Node+SyncData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */; };
+		2AB19399B4161D8589670A55 /* NodeSyncReadContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 822E40AF256280460760DAE3 /* NodeSyncReadContext.swift */; };
+		56AD80FC8A0CE4518363BA1D /* SpaceSchedulerReadCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E72DEB715702E5821C506F /* SpaceSchedulerReadCoordinator.swift */; };
+		DF46FB4076F9E05E5D710126 /* SpacePageSyncRead.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E8F30D155A131BDBDC78EE /* SpacePageSyncRead.swift */; };
+		7497BF094A6CDCCCCA82D087 /* NodeSyncTopologyStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7B5C927EB09075DE812CA1 /* NodeSyncTopologyStorage.swift */; };
+		EA679C3DC618521CAB9E7333 /* NodeSyncTopologySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4CE0208AB4FEC2A28B419B /* NodeSyncTopologySnapshot.swift */; };
+		0B813AF4DF11FD1927EB577D /* SpaceProtectionReadSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F30B7015EA95EB1973F9EC1 /* SpaceProtectionReadSnapshot.swift */; };
+		13FF3A0386C440FF2A120D35 /* AppPerformance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402BBE20BB0B8974D93669FC /* AppPerformance.swift */; };
+		443305C1158AA8B6AD1DE42E /* NodeSyncStatusRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E7E0653BE57CBB8AC8AE68 /* NodeSyncStatusRefresh.swift */; };
 		C8BB65FC2ED3F056000C63EE /* MeshFirmwareUpgradeResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89D560E2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift */; };
 		C8BB65FD2ED3F056000C63EE /* GroupMenuView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8C958B82EBC876900F0E6E2 /* GroupMenuView.swift */; };
 		C8BB65FE2ED3F056000C63EE /* LightSensorCalibrationAdjustSpeedView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE62222EC467510075ED42 /* LightSensorCalibrationAdjustSpeedView.swift */; };
@@ -4108,6 +4148,14 @@
 		C8A347CF2D63103B0092D3E4 /* DeviceBaseViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceBaseViewController.swift; sourceTree = "<group>"; };
 		C8A3516D2D8D73B800325FC6 /* DeviceRestoreEmptyViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceRestoreEmptyViewCell.swift; sourceTree = "<group>"; };
 		C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Node+SyncData.swift"; sourceTree = "<group>"; };
+		822E40AF256280460760DAE3 /* NodeSyncReadContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NodeSyncReadContext.swift"; sourceTree = "<group>"; };
+		23E72DEB715702E5821C506F /* SpaceSchedulerReadCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SpaceSchedulerReadCoordinator.swift"; sourceTree = "<group>"; };
+		F0E8F30D155A131BDBDC78EE /* SpacePageSyncRead.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SpacePageSyncRead.swift"; sourceTree = "<group>"; };
+		8C7B5C927EB09075DE812CA1 /* NodeSyncTopologyStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NodeSyncTopologyStorage.swift"; sourceTree = "<group>"; };
+		FF4CE0208AB4FEC2A28B419B /* NodeSyncTopologySnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NodeSyncTopologySnapshot.swift"; sourceTree = "<group>"; };
+		3F30B7015EA95EB1973F9EC1 /* SpaceProtectionReadSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SpaceProtectionReadSnapshot.swift"; sourceTree = "<group>"; };
+		402BBE20BB0B8974D93669FC /* AppPerformance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppPerformance.swift"; sourceTree = "<group>"; };
+		65E7E0653BE57CBB8AC8AE68 /* NodeSyncStatusRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NodeSyncStatusRefresh.swift"; sourceTree = "<group>"; };
 		C8A3EE7D2B33D62F0082A772 /* SceneAddTemplateInfoSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneAddTemplateInfoSectionView.swift; sourceTree = "<group>"; };
 		C8A3EE7F2B33E43C0082A772 /* SceneAddDataListViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneAddDataListViewCell.swift; sourceTree = "<group>"; };
 		C8A3EE812B34087A0082A772 /* SceneAddGroupViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneAddGroupViewCell.swift; sourceTree = "<group>"; };
@@ -6216,6 +6264,14 @@
 				C8699DB82C0978F300424A60 /* UserData.swift */,
 				C898E2E02AB840FE00C71315 /* MeshNetwork+SunSmart.swift */,
 				C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */,
+				822E40AF256280460760DAE3 /* NodeSyncReadContext.swift */,
+				23E72DEB715702E5821C506F /* SpaceSchedulerReadCoordinator.swift */,
+				F0E8F30D155A131BDBDC78EE /* SpacePageSyncRead.swift */,
+				8C7B5C927EB09075DE812CA1 /* NodeSyncTopologyStorage.swift */,
+				FF4CE0208AB4FEC2A28B419B /* NodeSyncTopologySnapshot.swift */,
+				3F30B7015EA95EB1973F9EC1 /* SpaceProtectionReadSnapshot.swift */,
+				402BBE20BB0B8974D93669FC /* AppPerformance.swift */,
+				65E7E0653BE57CBB8AC8AE68 /* NodeSyncStatusRefresh.swift */,
 				C8DDA0013003000000000001 /* DeviceScheduleAddressCleanup.swift */,
 				C8DDA0023003000000000001 /* DevicePermanentDeletionCleanup.swift */,
 				199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */,
@@ -7404,6 +7460,14 @@
 				08B54CF730402CCB0017ED49 /* BatchImportResultHelpController.swift in Sources */,
 				08B54CF830402CCB0017ED49 /* DeviceAddSectionBackgroundView.swift in Sources */,
 				08B54CF930402CCB0017ED49 /* Node+SyncData.swift in Sources */,
+				1082CC5FED2CD2C6956522F8 /* NodeSyncReadContext.swift in Sources */,
+				179252A1DE2E4B5F8EC47827 /* SpaceSchedulerReadCoordinator.swift in Sources */,
+				086B616CFCC46B5C2A29E4AA /* SpacePageSyncRead.swift in Sources */,
+				4474AD0F1EB7690DD33D34D2 /* NodeSyncTopologyStorage.swift in Sources */,
+				73C943066C805BD27DB9DC7E /* NodeSyncTopologySnapshot.swift in Sources */,
+				F19DD94FD0DAD99699745673 /* SpaceProtectionReadSnapshot.swift in Sources */,
+				9E2B0727EB4BE3646BD5385C /* AppPerformance.swift in Sources */,
+				4C35D17657761715AFA2E01C /* NodeSyncStatusRefresh.swift in Sources */,
 				08B54CFA30402CCB0017ED49 /* DeviceScheduleAddressCleanup.swift in Sources */,
 				08B54CFB30402CCB0017ED49 /* DevicePermanentDeletionCleanup.swift in Sources */,
 				BA503B180B8C4C67AE831DAA /* SiteDeviceOwnershipReconciler.swift in Sources */,
@@ -8120,6 +8184,14 @@
 				C88553F52DE6B44C00C8B688 /* BatchImportResultHelpController.swift in Sources */,
 				C8B444A32E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift in Sources */,
 				C88553F62DE6B44C00C8B688 /* Node+SyncData.swift in Sources */,
+				D9068A499B72DEA5BBD4FE04 /* NodeSyncReadContext.swift in Sources */,
+				0836DD01EB2F96B384CE66AD /* SpaceSchedulerReadCoordinator.swift in Sources */,
+				73DEC597B405A3E51FB62A34 /* SpacePageSyncRead.swift in Sources */,
+				FDC40E80058A7403C1FD84A7 /* NodeSyncTopologyStorage.swift in Sources */,
+				B1FE29DA65B2AFFE4061B0FE /* NodeSyncTopologySnapshot.swift in Sources */,
+				0AE584301CE7E067813F3BBB /* SpaceProtectionReadSnapshot.swift in Sources */,
+				B5D1B6BAABF4CE91144C6849 /* AppPerformance.swift in Sources */,
+				8A552264EC85818C0F39049A /* NodeSyncStatusRefresh.swift in Sources */,
 				C8DDA0113003000000000001 /* DeviceScheduleAddressCleanup.swift in Sources */,
 				C8DDA0213003000000000001 /* DevicePermanentDeletionCleanup.swift in Sources */,
 				67C0DB5D726D4866BCC1C8F7 /* SiteDeviceOwnershipReconciler.swift in Sources */,
@@ -8834,6 +8906,14 @@
 				C886E0462E30DE4900D0C3A6 /* BatchImportResultHelpController.swift in Sources */,
 				C8B444A52E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift in Sources */,
 				C886E0472E30DE4900D0C3A6 /* Node+SyncData.swift in Sources */,
+				A04C3EF76BE36D0D84A3EF6A /* NodeSyncReadContext.swift in Sources */,
+				71DED501C8438D1DDB66186C /* SpaceSchedulerReadCoordinator.swift in Sources */,
+				2C5663599A9BE08DDEFA7A2E /* SpacePageSyncRead.swift in Sources */,
+				BC4CA556FCF8EB79AE1D34C8 /* NodeSyncTopologyStorage.swift in Sources */,
+				51FBDA12D0505A6CD2413768 /* NodeSyncTopologySnapshot.swift in Sources */,
+				053FD281E651483703BF86B3 /* SpaceProtectionReadSnapshot.swift in Sources */,
+				C4B49A3F24503FCF2E80CA4E /* AppPerformance.swift in Sources */,
+				1C19EA72705F013792205CE6 /* NodeSyncStatusRefresh.swift in Sources */,
 				C8DDA0123003000000000001 /* DeviceScheduleAddressCleanup.swift in Sources */,
 				C8DDA0223003000000000001 /* DevicePermanentDeletionCleanup.swift in Sources */,
 				297EE68B722E4EDCAF2005C7 /* SiteDeviceOwnershipReconciler.swift in Sources */,
@@ -9547,6 +9627,14 @@
 				C88DE4492C085A5D005A38C1 /* BatchImportResultHelpController.swift in Sources */,
 				C8B444A42E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift in Sources */,
 				C8A351702D8EB1FF00325FC6 /* Node+SyncData.swift in Sources */,
+				115F67B989B0EA13AED61632 /* NodeSyncReadContext.swift in Sources */,
+				98D5A8CD172E9F14EB9FFD69 /* SpaceSchedulerReadCoordinator.swift in Sources */,
+				AE487ED6F067C21D083482B8 /* SpacePageSyncRead.swift in Sources */,
+				C4B85346D756FFDE36D44863 /* NodeSyncTopologyStorage.swift in Sources */,
+				F6F825DBB9162A0A64B265FC /* NodeSyncTopologySnapshot.swift in Sources */,
+				90057C0545CB24727D8453B8 /* SpaceProtectionReadSnapshot.swift in Sources */,
+				F8B039C414E08A98492522FF /* AppPerformance.swift in Sources */,
+				3AC96C0575BBC20FC54DA192 /* NodeSyncStatusRefresh.swift in Sources */,
 				C8DDA0133003000000000001 /* DeviceScheduleAddressCleanup.swift in Sources */,
 				C8DDA0233003000000000001 /* DevicePermanentDeletionCleanup.swift in Sources */,
 				734A6B4A739549B6A19BB925 /* SiteDeviceOwnershipReconciler.swift in Sources */,
@@ -10263,6 +10351,14 @@
 				C8BB65F92ED3F056000C63EE /* BatchImportResultHelpController.swift in Sources */,
 				C8BB65FA2ED3F056000C63EE /* DeviceAddSectionBackgroundView.swift in Sources */,
 				C8BB65FB2ED3F056000C63EE /* Node+SyncData.swift in Sources */,
+				2AB19399B4161D8589670A55 /* NodeSyncReadContext.swift in Sources */,
+				56AD80FC8A0CE4518363BA1D /* SpaceSchedulerReadCoordinator.swift in Sources */,
+				DF46FB4076F9E05E5D710126 /* SpacePageSyncRead.swift in Sources */,
+				7497BF094A6CDCCCCA82D087 /* NodeSyncTopologyStorage.swift in Sources */,
+				EA679C3DC618521CAB9E7333 /* NodeSyncTopologySnapshot.swift in Sources */,
+				0B813AF4DF11FD1927EB577D /* SpaceProtectionReadSnapshot.swift in Sources */,
+				13FF3A0386C440FF2A120D35 /* AppPerformance.swift in Sources */,
+				443305C1158AA8B6AD1DE42E /* NodeSyncStatusRefresh.swift in Sources */,
 				C8DDA0143003000000000001 /* DeviceScheduleAddressCleanup.swift in Sources */,
 				C8DDA0243003000000000001 /* DevicePermanentDeletionCleanup.swift in Sources */,
 				991A7D0B08964DB58D6F1C2D /* SiteDeviceOwnershipReconciler.swift in Sources */,

@@ -31,7 +31,9 @@ class GroupsViewController: UIViewController {
     private var editView: UIView!
     private var doneBtn: UIButton!
     /// 是否需要更新数据源
-    private var refreshData: Bool = false
+    private var refreshData: Bool = true
+    private var renderedRevision: SpacePageRevision?
+    private var isPageVisible = false
     private var networkableObservation: NSKeyValueObservation?
     
     /// 列数
@@ -79,13 +81,12 @@ class GroupsViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        
-        updateUI()
-//        if refreshData {
-//            refreshData = false
-//            collectionView.reloadData()
-//            updateGroupesEmptyUI()
-//        }
+        isPageVisible = true
+        if refreshData || renderedRevision?.isCurrent != true {
+            updateUI()
+        } else {
+            refreshVisibleOnOffAppearance()
+        }
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -95,6 +96,11 @@ class GroupsViewController: UIViewController {
         }
     }
     
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        isPageVisible = false
+    }
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
@@ -107,30 +113,30 @@ class GroupsViewController: UIViewController {
     }
     
     private func addNotificationObserver() {
-        NotificationCenter.default.addObserver(forName: .init(groupsRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
+        NotificationCenter.default.addObserver(forName: .init(groupsRefreshNotificationName), object: nil, queue: .main) {[weak self] _ in
 //            self?.refreshData = true
             guard let self = self else { return }
-            self.updateUI()
+            self.refreshVisibleUI()
         }
         
-        NotificationCenter.default.addObserver(forName: .init(groupDataUpdateNotificationName), object: nil, queue: nil) {[weak self] notification in
+        NotificationCenter.default.addObserver(forName: .init(groupDataUpdateNotificationName), object: nil, queue: .main) {[weak self] notification in
             if let group = notification.object as? Group {
                 self?.reloadCollectionItem(group: group)
             }
         }
         
         // space编辑权限变更回调
-        NotificationCenter.default.addObserver(forName: .init(spacePermissionChangedNotificaitonName), object: nil, queue: nil) {[weak self] notification in
+        NotificationCenter.default.addObserver(forName: .init(spacePermissionChangedNotificaitonName), object: nil, queue: .main) {[weak self] notification in
             guard let self = self else { return }
-            self.updateUI()
+            self.refreshVisibleUI()
         }
 
         NotificationCenter.default.addObserver(forName: .init(emergencyFireControllerManualControlStateDidChangeNotificationName), object: nil, queue: .main) {[weak self] _ in
-            self?.updateUI()
+            self?.refreshVisibleUI()
         }
 
         NotificationCenter.default.addObserver(forName: .linkedEmerFireConfigDidChange, object: nil, queue: .main) {[weak self] _ in
-            self?.updateUI()
+            self?.refreshVisibleUI()
         }
         
         networkableObservation = NetworkRequest.shared.observe(\.networkable, options: [.new]) { [weak self] _, _ in
@@ -392,7 +398,23 @@ class GroupsViewController: UIViewController {
     }
     
     /// 刷新UI
+    private func refreshVisibleOnOffAppearance() {
+        let cells = collectionView.visibleCells.compactMap { $0 as? GroupsViewCell }.filter { $0.group != nil }
+        let states = NodeSyncStatusRefresh.groupOnOffStates(cells.map { $0.group! })
+        for (cell, isOn) in zip(cells, states) {
+            cell.refreshOnOffAppearance(isOn: isOn)
+        }
+    }
+
+    private func refreshVisibleUI() {
+        refreshData = true
+        guard isPageVisible, viewIfLoaded?.window != nil else { return }
+        updateUI()
+    }
+
     private func updateUI() {
+        guard isViewLoaded else { refreshData = true; return }
+        defer { refreshData = false; renderedRevision = SpacePageRevision() }
         
         let groups = MeshNetworkManager.instance.groups
         self.footerView.countBtn.setTitle("\(groups.count)", for: .normal)
@@ -488,6 +510,7 @@ class GroupsViewController: UIViewController {
     }
     
     private func reloadCollectionItem(group: Group) {
+        guard isPageVisible, viewIfLoaded?.window != nil else { refreshData = true; return }
         if let index = MeshNetworkManager.instance.groups.firstIndex(where: {$0.address.address == group.address.address}) {
             //            CATransaction.setDisableActions(true)
             //            collectionView.reloadItems(at: [IndexPath(row: index, section: 0)])
@@ -566,6 +589,10 @@ extension GroupsViewController: UICollectionViewDataSource, UICollectionViewDele
             self?.deleteGroup(group: group)
         }
         return cell
+    }
+
+    public func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        (cell as? GroupsViewCell)?.refreshOnOffAppearance()
     }
     
     public func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {

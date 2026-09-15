@@ -47,7 +47,9 @@ struct EmergencyFireControllerSyncPlanner {
     }
 
     static func controllersAffecting(group: Group, in space: SpaceData) -> [DeviceEmerFireData] {
-        DeviceEmerFireStore.shared.devices(in: space).filter { controller in
+        let read = { DeviceEmerFireStore.shared.devices(in: space) }
+        let devices = NodeSyncReadContext.current?.memoized("emergencyControllers." + space.id, read: read) ?? read()
+        return devices.filter { controller in
             guard controller.bindNode != nil else { return false }
             let settings = [
                 controller.configuration.powerLossSettings,

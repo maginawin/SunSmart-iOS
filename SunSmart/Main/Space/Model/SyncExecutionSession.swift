@@ -60,7 +60,7 @@ final class SyncExecutionSession {
             guard validatePlan(identifier) else { return }
             guard environment.configurationAvailable() else {
                 syncState = .syncFailure
-                onError?("proximity_lighting_import_invalid".localizedString)
+                onError?("configuration_sync_unavailable".localizedString)
                 finishRun(identifier, publishesCompletion: false, forcedState: .syncFailure)
                 return
             }

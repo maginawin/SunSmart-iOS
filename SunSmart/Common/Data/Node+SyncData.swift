@@ -116,7 +116,7 @@ enum NodeSyncData {
 extension Group {
     
     func sensorServerPublicationRetransmit(effectiveMemberCount: Int? = nil) -> Publish.Retransmit {
-        let memberCount = effectiveMemberCount ?? nodes.count
+        let memberCount = effectiveMemberCount ?? NodeSyncReadContext.current?.members(of: self).count ?? nodes.count
         guard memberCount <= 3 else {
             return Publish.Retransmit(1, timesWithInterval: 0.1)
         }
@@ -442,7 +442,7 @@ extension Node {
         var syncDatas: [NodeSyncData] = []
         switch type {
         case .group(let group, let effectiveMemberCount):
-            guard let group = group ?? self.group else {
+            guard let group = group ?? self.syncReadGroup else {
                 return syncDatas
             }
             guard SpaceConfigurationSafety.configurationAvailable(for: self, group: group) else { return [] }
@@ -451,12 +451,12 @@ extension Node {
                 syncDatas.append(.deviceInitialize)
             }
             // 设备退出组失败
-            if self.group != nil && groupState == GroupState.exitFailure {
+            if self.syncReadGroup != nil && groupState == GroupState.exitFailure {
                 // 退出组时pir默认启用
                 if self.capabilities.contains(.pirEnabled), !self.pirEnabled {
                     syncDatas.append(.pirEnabled(true))
                 }
-                syncDatas.append(.unsubscribeGroup(group: self.group!))
+                syncDatas.append(.unsubscribeGroup(group: self.syncReadGroup!))
             }else if getSunSmartSubscribeToGroupMessageHandles(group).count > 0 { // 设备订阅组数据不完整
                 syncDatas.append(.subscribeGroup(group: group))
             }
@@ -601,7 +601,7 @@ extension Node {
             if !self.isKeybindComplete {
                 syncDatas.append(.deviceInitialize)
             }
-            if let group = self.group ?? self.restoreData?.addGroup {
+            if let group = self.syncReadGroup ?? self.restoreData?.addGroup {
                 syncDatas.append(contentsOf: getSyncData(type: .group(group)))
                 syncDatas.append(contentsOf: getNodeEmergencyFireControllerAssociationSyncDatas(group: group))
             }else { // 未加入组的profile
@@ -668,11 +668,18 @@ extension Node {
     
     /// 获取节点是否需要同步组数据
     func getNeedSyncGroup(group: Group? = nil) -> Bool {
+        if let context = NodeSyncReadContext.current {
+            return context.groupNeedsSync(for: self, group: group) { self.computeNeedSyncGroup(group: group) }
+        }
+        return computeNeedSyncGroup(group: group)
+    }
+
+    private func computeNeedSyncGroup(group: Group?) -> Bool {
         guard SpaceConfigurationSafety.configurationAvailable(for: self, group: group) else { return true }
         if !MissingGroupSubscriptionCleanup.addresses(for: self).isEmpty { return true }
         
         // 设备退出组失败
-        if self.group != nil && groupState == GroupState.exitFailure {
+        if self.syncReadGroup != nil && groupState == GroupState.exitFailure {
             return true
         }else if let addToGroup = group, getSunSmartSubscribeToGroupMessageHandles(addToGroup).count > 0 { // 设备订阅组数据不完整
             return true
@@ -735,7 +742,7 @@ extension Node {
     /// 获取节点是否要同步
     func getNeedSync() -> Bool {
         if !MissingGroupSubscriptionCleanup.addresses(for: self).isEmpty { return true }
-        if group == nil {
+        if syncReadGroup == nil {
             let switches = getNodeNeedDeleteSwitchs()
             if switches.delteSwitchProxy != nil || !switches.unlinkSwitchs.isEmpty
                 || getNodeSyncProximityLighting() != nil || !getNodeNeedDeleteSceneDatas().isEmpty { return true }
@@ -746,7 +753,7 @@ extension Node {
             return true
         }
         
-        if let group = self.group ?? self.restoreData?.addGroup {
+        if let group = self.syncReadGroup ?? self.restoreData?.addGroup {
             if getNeedSyncGroup(group: group) {
                 return true
             }
@@ -820,7 +827,7 @@ extension Node {
     /// 获取需要同步的白天晚上lux条件profile
     func getSyncDayNightLuxProfiles() -> [ProfileType] {
         guard SpaceConfigurationSafety.configurationAvailable(for: self) else { return [] }
-        guard let group = self.group else { return [] }
+        guard let group = self.syncReadGroup else { return [] }
         let profile = group.info.profile
         var profileTypes: [ProfileType] = []
         guard self.ambientLightSensorModel != nil, self.sunricherVendorModel != nil else {
@@ -861,7 +868,7 @@ extension Node {
         
         var syncProfile: [ProfileType] = []
         
-        guard let group = group ?? self.group else {
+        guard let group = group ?? self.syncReadGroup else {
             if self.deviceType != .dongle && self.deviceType != .gateway {
                 if powerUpState != .restore {
                     syncProfile.append(.powerOnState(state: .restore))
@@ -889,7 +896,7 @@ extension Node {
 //            publishAddress = .localClientGroupAddress
 //        }
         
-        if self.group == nil || groupState == .inGroup {
+        if self.syncReadGroup == nil || groupState == .inGroup {
             
             // 光照类型
             let daylightType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .daylight
@@ -1488,7 +1495,7 @@ extension Node {
     ///   - scene: 场景（传入则只获取该场景是否有同步，不传入则获取所有场景是否有同步）
     func getNodeSyncSceneDatas(group: Group? = nil, scene: Scene? = nil) -> [(scene: Scene, data: SceneExecuteData)] {
         
-        guard let group = group ?? self.group, self.sceneSetupModel != nil else {
+        guard let group = group ?? self.syncReadGroup, self.sceneSetupModel != nil else {
             return []
         }
         var syncSceneData: [(scene: Scene, data: SceneExecuteData)] = []
@@ -1526,7 +1533,7 @@ extension Node {
         if scene != nil {
             scenes = [scene!]
         }
-        guard let group = self.group else {
+        guard let group = self.syncReadGroup else {
             return groupState == .exitFailure ? scenes.filter { self.scenes.contains($0) } : []
         }
         
@@ -1544,7 +1551,7 @@ extension Node {
         guard schedulerSetupModel != nil else {
             return []
         }
-        let group = group ?? self.group
+        let group = group ?? self.syncReadGroup
         var schedules = MeshNetworkManager.instance.schedules
         if schedule != nil {
             schedules = [schedule!]
@@ -1564,7 +1571,7 @@ extension Node {
         guard self.schedulerSetupModel != nil else {
             return []
         }
-        let group = group ?? self.group
+        let group = group ?? self.syncReadGroup
 
         var schedules = MeshNetworkManager.instance.schedules
         if schedule != nil {
@@ -1581,7 +1588,7 @@ extension Node {
     ///   - switchData: 动能开关（传入则只获取该动能开关是否有同步，不传入则获取所有动能开关是否有同步）
     func getNodeSyncSwitchs(group: Group? = nil, switchData: DeviceSwitchData? = nil) -> (switchProxy: DeviceSwitchData?, linkSwitchs: [DeviceSwitchData]) {
         
-        guard let group = group ?? self.group else {
+        guard let group = group ?? self.syncReadGroup else {
             return (nil, [])
         }
         guard groupState != .exitFailure else {
@@ -1627,7 +1634,7 @@ extension Node {
     ///   - switchData: 动能开关（传入则只获取该动能开关是否需要删除，不传入则获取所有动能开关是否有需要删除）
     func getNodeNeedDeleteSwitchs(switchData: DeviceSwitchData? = nil) -> (delteSwitchProxy: DeviceSwitchData?, unlinkSwitchs: [DeviceSwitchData]) {
         
-        let group = self.group
+        let group = self.syncReadGroup
         let supportsEnOceanSwitchSync = self.sunricherVendorModel != nil
         var delteSwitchProxy: DeviceSwitchData?
         var switchs = MeshNetworkManager.instance.switchs
@@ -1681,8 +1688,15 @@ extension Node {
         let address = ProximityLightingTopologyPlanner.normalizedAddress(for: self)
 
         let localTarget = plan.target(for: address)
-        guard let target = topologyPlan != nil ? localTarget
-            : SiteTriggerZoneTopologyReader.mergedLocalTarget(for: self, local: localTarget) else { return nil }
+        let mergedTarget: ProximityLightingTopologyPolicy.Target?
+        if topologyPlan != nil {
+            mergedTarget = localTarget
+        } else if let context = NodeSyncReadContext.current {
+            mergedTarget = context.mergedTarget(for: self, local: localTarget)
+        } else {
+            mergedTarget = SiteTriggerZoneTopologyReader.mergedLocalTarget(for: self, local: localTarget)
+        }
+        guard let target = mergedTarget else { return nil }
         return getNodeSyncProximityLighting(target: target)
     }
 

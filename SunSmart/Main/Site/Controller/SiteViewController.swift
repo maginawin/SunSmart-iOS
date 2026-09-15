@@ -1255,7 +1255,7 @@ self.updateAddressData()
                         guard outcome.status != .rejected else {
                             XWHUDManager.hide()
                             XWHUDManager.showErrorTipHUD(
-                                "proximity_lighting_import_invalid".localizedString
+                                "configuration_reload_invalid".localizedString
                             )
                             callback?(false)
                             return
@@ -3671,7 +3671,7 @@ extension SiteViewController: UIDocumentPickerDelegate {
                     )
                     guard importResult.space != nil else {
                         XWHUDManager.showErrorTipHUD(
-                            "proximity_lighting_import_invalid".localizedString
+                            "failed".localizedString
                         )
                         return
                     }

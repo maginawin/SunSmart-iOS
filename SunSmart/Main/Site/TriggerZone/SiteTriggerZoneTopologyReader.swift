@@ -136,9 +136,31 @@ enum SiteTriggerZoneTopologyReader {
 
     static func mergedLocalTarget(for node: Node, local: ProximityLightingTopologyPolicy.Target)
         -> ProximityLightingTopologyPolicy.Target? {
+        localTargetSnapshot(for: node).target(for: node, local: local)
+    }
+
+    enum LocalTargetSnapshot {
+        case localOnly
+        case unavailable
+        case site(spaceID: String, plan: SiteTriggerZoneTopologyPolicy.Plan)
+
+        func target(for node: Node, local: ProximityLightingTopologyPolicy.Target)
+            -> ProximityLightingTopologyPolicy.Target? {
+            switch self {
+            case .localOnly: return local
+            case .unavailable: return nil
+            case .site(let spaceID, let plan):
+                guard let target = plan.targets[.init(spaceID: spaceID, nodeUUID: node.uuid)] else { return nil }
+                return .init(enabled: target.enabled, relayNumber: target.relayNumber,
+                             neighborAddresses: target.neighborAddresses)
+            }
+        }
+    }
+
+    static func localTargetSnapshot(for node: Node) -> LocalTargetSnapshot {
         guard let network = node.network,
-              let site = SiteData.load(siteId: network.uuid.uuidString) else { return local }
-        guard let state = try? SiteTriggerZoneStore.load(site) else { return nil }
+              let site = SiteData.load(siteId: network.uuid.uuidString) else { return .localOnly }
+        guard let state = try? SiteTriggerZoneStore.load(site) else { return .unavailable }
         let allMembers = (state.data.zones ?? []).flatMap(\.displayMembers)
         let previousMembers = (state.deviceSyncChanges ?? []).flatMap { change -> [SiteTriggerZoneDisplayMember] in
             guard case .array(let values) = change.previousMembers else { return [] }
@@ -146,11 +168,9 @@ enum SiteTriggerZoneTopologyReader {
         }
         // A Site Zone can change forwarding for every node in a participating Space.
         guard let space = site.spaces.first(where: { $0.meshNetworkId == node.subNetworkId }),
-              (allMembers + previousMembers).contains(where: { $0.identity.spaceID == space.id }) else { return local }
-        guard case .success(let plan) = makePlan(site: site, state: state), plan.canPreviewTasks,
-              let target = plan.targets[.init(spaceID: space.id, nodeUUID: node.uuid)] else { return nil }
-        return .init(enabled: target.enabled, relayNumber: target.relayNumber,
-                     neighborAddresses: target.neighborAddresses)
+              (allMembers + previousMembers).contains(where: { $0.identity.spaceID == space.id }) else { return .localOnly }
+        guard case .success(let plan) = makePlan(site: site, state: state), plan.canPreviewTasks else { return .unavailable }
+        return .site(spaceID: space.id, plan: plan)
     }
 
     static func makePlan(site: SiteData, state: SiteTriggerZoneState)

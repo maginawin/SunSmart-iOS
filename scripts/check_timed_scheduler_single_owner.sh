@@ -38,4 +38,5 @@ swiftc -parse-as-library \
   "${repo_root}/SunSmart/Main/Space/Model/SyncDeviceTaskBuilder.swift" \
   "${repo_root}/SunSmart/Main/Space/Model/SyncTaskPlanBuilder.swift" \
   "${repo_root}/SunSmart/Main/Space/Model/SyncRetryPolicy.swift" \
-  "${repo_root}/SunSmart/Main/Space/Model/SyncExecutionSession+Operations.swift"
+  "${repo_root}/SunSmart/Main/Space/Model/SyncExecutionSession+Operations.swift" \
+  "${repo_root}/SunSmart/Common/Data/SpaceSchedulerReadCoordinator.swift"

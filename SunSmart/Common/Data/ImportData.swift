@@ -18,6 +18,8 @@ private var jsonDecoder: JSONDecoder {
 
 /// Stage timings use a monotonic clock; payloads and credentials are never logged.
 final class SiteImportTrace {
+    private let performance = AppPerformance.begin("ImportOperation")
+    deinit { performance.end() }
     private let id = UUID().uuidString
     private let scope: String
     private let started = ProcessInfo.processInfo.systemUptime
@@ -284,10 +286,20 @@ private struct ProximityLightingImportPreflight {
                 ProximityLightingLifecycleCoordinator.isEligible
             ) ?? false
             let importedRelay = groupJson["profile"]["proximityLightingNumber"].int
-            if schemaVersion == 1, eligible, importedRelay == nil {
+            let rawValue = (groupDict["profile"] as? [String: Any])?["proximityLightingNumber"]
+            if schemaVersion == 1, eligible, rawValue == nil {
                 return nil
             }
-            let rawRelay = importedRelay ?? 2
+            let rawRelay: Int
+            if eligible {
+                guard let relay = SpaceConfigurationIntegrityPolicy.normalizedProximityLightingNumber(
+                    rawValue ?? 2
+                ) else { return nil }
+                rawRelay = Int(relay)
+            } else {
+                rawRelay = SpaceConfigurationIntegrityPolicy.normalizedProximityLightingNumber(rawValue ?? 2).map(Int.init)
+                    ?? importedRelay ?? 2
+            }
             guard rawRelay >= 0, rawRelay <= Int(UInt8.max) else {
                 return nil
             }
@@ -1952,7 +1964,7 @@ extension SpaceData {
                             }
                             profile.adjustSpeed = profileJson["adjustSpeed"].int ?? 50
 
-                            if let proximityLightingNumber = profileJson["proximityLightingNumber"].uInt8 {
+                            if let proximityLightingNumber = SpaceConfigurationIntegrityPolicy.normalizedProximityLightingNumber(profileDict["proximityLightingNumber"]) {
                                 profile.proximityLightingNumber = proximityLightingNumber
                             }
                             if let relativeSensitivity = profileJson["relativeSensitivity"].uInt8 {

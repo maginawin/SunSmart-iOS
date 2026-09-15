@@ -4,23 +4,140 @@ import NordicSigMeshSDK
 /// Runs at sync boundaries, never from needSync getters or a debug export.
 @MainActor
 enum SpaceSyncCleanupCoordinator {
-    private static var active: [String: _Concurrency.Task<Bool, Never>] = [:]
+    private struct Scope: Hashable {
+        let account = UserData.currentUserId
+        let region: String
+        let siteID: String
+
+        init(_ site: SiteData) {
+            region = String(describing: site.region)
+            siteID = site.id
+        }
+
+        var isCurrent: Bool {
+            account == UserData.currentUserId
+                && region == String(describing: UserData.currentServerRegion)
+        }
+    }
+
+    private struct WorkKey: Hashable {
+        let scope: Scope
+        let spaceID: String
+    }
+
+    private static var active: [WorkKey: _Concurrency.Task<Bool, Never>] = [:]
+    // A single-Space caller may clean while another batch is suspended, but it
+    // cannot erase the durable request for that batch's future mutations.
+    private static var owners: [Scope: Set<UUID>] = [:]
 
     @discardableResult
     static func prepare(_ space: SpaceData) async -> Bool {
-        let key = "\(UserData.currentUserId)|\(UserData.currentServerRegion)|\(space.siteId)|\(space.id)"
+        guard let site = SiteData.load(siteId: space.siteId) else { return false }
+        let scope = Scope(site)
+        guard scope.isCurrent, !_Concurrency.Task<Never, Never>.isCancelled,
+              markCleanup(scope) else { return false }
+        let owner = begin(scope)
+        defer { end(scope, owner: owner) }
+        let result = await prepareSpace(space, scope: scope)
+        guard scope.isCurrent, !_Concurrency.Task<Never, Never>.isCancelled else { return false }
+        end(scope, owner: owner)
+        return finish(scope) != nil && result
+    }
+
+    /// Returns fresh state for pending checks and export. Individual failures
+    /// retain the existing per-Space upload safety gates and do not skip cleanup.
+    static func prepareBatch(site: SiteData, spaces: [SpaceData],
+                             shouldContinue: () -> Bool = { true },
+                             shouldPrepare: (SpaceData) -> Bool = { _ in true }) async -> SiteData? {
+        let scope = Scope(site)
+        func isCurrent() -> Bool {
+            scope.isCurrent && !_Concurrency.Task<Never, Never>.isCancelled && shouldContinue()
+        }
+        guard isCurrent(), spaces.allSatisfy({ $0.siteId == site.id }) else { return nil }
+        let owner = begin(scope)
+        defer { end(scope, owner: owner) }
+        var marked = false
+        var visited = Set<String>()
+        for space in spaces {
+            guard visited.insert(space.id).inserted, shouldPrepare(space) else { continue }
+            // Preserve an actual main-queue handoff and recheck queued uploads.
+            await withCheckedContinuation { continuation in
+                DispatchQueue.main.async { continuation.resume() }
+            }
+            guard isCurrent() else { return nil }
+            guard shouldPrepare(space) else { continue }
+            if !marked {
+                guard markCleanup(scope) else { return nil }
+                marked = true
+            }
+            _ = await prepareSpace(space, scope: scope)
+            guard isCurrent() else { return nil }
+        }
+        guard isCurrent() else { return nil }
+        end(scope, owner: owner)
+        // Includes recovery with no Space candidates but an interrupted cleanup.
+        return finish(scope)
+    }
+
+    private static func begin(_ scope: Scope) -> UUID {
+        let owner = UUID()
+        owners[scope, default: []].insert(owner)
+        return owner
+    }
+
+    private static func end(_ scope: Scope, owner: UUID) {
+        owners[scope]?.remove(owner)
+        if owners[scope]?.isEmpty == true { owners[scope] = nil }
+    }
+
+    private static func markCleanup(_ scope: Scope) -> Bool {
+        guard scope.isCurrent, let site = SiteData.load(siteId: scope.siteID), site.state == .normal else { return false }
+        do {
+            try SiteTriggerZoneStore.update(site) { state in
+                var requests = state.referenceCleanupRequests ?? [:]
+                requests[scope.account] = UUID()
+                state.referenceCleanupRequests = requests
+            }
+            return true
+        } catch { return false }
+    }
+
+    private static func finish(_ scope: Scope) -> SiteData? {
+        guard scope.isCurrent, let site = SiteData.load(siteId: scope.siteID), site.state == .normal else { return nil }
+        do {
+            if let generation = try SiteTriggerZoneStore.load(site).referenceCleanupRequests?[scope.account] {
+                let result = try SiteTriggerZoneCoordinator(site: site).finishReferenceCleanup()
+                if case .completed = result, owners[scope] == nil, scope.isCurrent {
+                    try SiteTriggerZoneStore.update(site) { state in
+                        guard state.referenceCleanupRequests?[scope.account] == generation else { return }
+                        state.referenceCleanupRequests?.removeValue(forKey: scope.account)
+                        if state.referenceCleanupRequests?.isEmpty == true { state.referenceCleanupRequests = nil }
+                    }
+                }
+            }
+            guard scope.isCurrent, let current = SiteData.load(siteId: scope.siteID), current.state == .normal else { return nil }
+            return current
+        } catch { return nil }
+    }
+
+    private static func prepareSpace(_ space: SpaceData, scope: Scope) async -> Bool {
+        guard scope.isCurrent else { return false }
+        let key = WorkKey(scope: scope, spaceID: space.id)
         if let task = active[key] { return await task.value }
-        let task = _Concurrency.Task { @MainActor in await perform(space) }
+        let task = _Concurrency.Task { @MainActor in await perform(space, scope: scope) }
         active[key] = task
         let result = await task.value
         active[key] = nil
         return result
     }
 
-    private static func perform(_ space: SpaceData) async -> Bool {
-        guard SpaceConfigurationSafety.canCleanSyncReferences(space),
+    private static func perform(_ space: SpaceData, scope: Scope) async -> Bool {
+        let performance = AppPerformance.begin("SpaceCleanup")
+        defer { performance.end() }
+        guard scope.isCurrent, SpaceConfigurationSafety.canCleanSyncReferences(space),
               let context = try? SpaceConfigurationSafety.recoveryState(space),
-              let original = await space.export(purpose: .cleanupInspection) else { return false }
+              let original = await space.export(purpose: .cleanupInspection),
+              scope.isCurrent else { return false }
         let cleaned: SpaceSyncCleanupPolicy.Result
         do { cleaned = try SpaceSyncCleanupPolicy.normalize(original) }
         catch {
@@ -29,7 +146,7 @@ enum SpaceSyncCleanupCoordinator {
         }
         let timestamp = space.lastUpdate
         guard await SpaceConfigurationSafety.verifySyncCleanupBaseline(space, local: original),
-              SpaceConfigurationSafety.isCurrent(context, space: space), space.lastUpdate == timestamp,
+              scope.isCurrent, SpaceConfigurationSafety.isCurrent(context, space: space), space.lastUpdate == timestamp,
               let persisted = SpaceData.load(siteId: space.siteId, spaceId: space.id).first,
               persisted.lastUpdate == timestamp,
               let network = ProximityLightingTopologyContext.network(for: space) else { return false }
@@ -63,8 +180,13 @@ enum SpaceSyncCleanupCoordinator {
         // A deletion can now finish without absorbing unrelated historical repairs.
         DevicePermanentDeletionContext.resume(space: space)
         guard !SpaceConfigurationSafety.hasPendingDeletionCleanup(space),
-              let reloaded = SpaceData.load(siteId: space.siteId, spaceId: space.id).first,
-              let readback = await reloaded.export(purpose: .cleanupInspection),
+              let reloaded = SpaceData.load(siteId: space.siteId, spaceId: space.id).first else { return false }
+        // The caller may be an old Space object with the same second-level
+        // timestamp. Reload all persisted Space fields before validating cleanup;
+        // a Mesh revision alone cannot prove the first export is reusable.
+        let readback = await reloaded.export(purpose: .cleanupInspection)
+        guard let readback,
+              scope.isCurrent,
               let validated = try? SpaceSyncCleanupPolicy.normalize(readback), !validated.didChange,
               SpaceConfigurationSafety.isCurrent(context, space: space),
               let latest = SpaceData.load(siteId: space.siteId, spaceId: space.id).first,
@@ -90,9 +212,6 @@ enum SpaceSyncCleanupCoordinator {
             #if DEBUG
             print("[SpaceSyncCleanup] space=\(space.id) repairs=\(cleaned.repairs) extensionChanges=\(changes.count)")
             #endif
-        }
-        if let site = SiteData.load(siteId: space.siteId) {
-            _ = try? SiteTriggerZoneCoordinator(site: site).cleanObsoleteMembers()
         }
         return !SpaceConfigurationSafety.isBlocked(space)
     }

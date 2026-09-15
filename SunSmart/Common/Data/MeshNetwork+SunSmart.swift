@@ -1123,10 +1123,17 @@ extension Group {
     /// 组开关
     var isOn: Bool {
         get {
-            objc_getAssociatedObject(self, &Group.isOnKey) as? Bool ?? (nodes.isEmpty || nodes.contains(where: { $0.isOn }))
+            isOn(members: NodeSyncReadContext.current?.members(of: self) ?? nodes)
         }set {
             objc_setAssociatedObject(self, &Group.isOnKey, newValue, .OBJC_ASSOCIATION_RETAIN)
         }
+    }
+
+    /// A display batch may supply shared membership without caching live on/off.
+    func isOn(members: @autoclosure () -> [Node]) -> Bool {
+        if let value = objc_getAssociatedObject(self, &Group.isOnKey) as? Bool { return value }
+        let nodes = members()
+        return nodes.isEmpty || nodes.contains(where: { $0.isOn })
     }
     
     /// 是否支持onoff
@@ -1458,6 +1465,7 @@ class GroupInfo {
         guard let address = ambientLightSensorNodeAddress else {
             return nil
         }
+        if let context = NodeSyncReadContext.current { return context.node(elementAddress: address) }
         return MeshNetworkManager.instance.realNodes.first(where: {  $0.contains(elementWithAddress: address) })
     }
     /// 设置的pwm周期
@@ -1558,7 +1566,7 @@ extension Schedule {
         
         let canUseGroupContext = node.groupState != .exitFailure
         if canUseGroupContext {
-            if groups.contains(where: { $0.nodes.contains(node) }) {
+            if groups.contains(where: { NodeSyncReadContext.current?.contains(node, in: $0) ?? $0.nodes.contains(node) }) {
                 return true
             }
             if let contextGroup = contextGroup, groups.contains(contextGroup) {
@@ -1566,7 +1574,7 @@ extension Schedule {
             }
             
             if let scene = scene {
-                if scene.info.groups.contains(where: { $0.nodes.contains(node) }) {
+                if scene.info.groups.contains(where: { NodeSyncReadContext.current?.contains(node, in: $0) ?? $0.nodes.contains(node) }) {
                     return true
                 }
                 if let contextGroup = contextGroup, scene.info.groups.contains(contextGroup) {
@@ -2432,6 +2440,7 @@ extension Node {
         get {
             objc_getAssociatedObject(self, &Node.cacheNeedSync) as? Bool
         } set {
+            if newValue == nil { NodeSyncStatusGeneration.invalidate() }
             objc_setAssociatedObject(self, &Node.cacheNeedSync, newValue, .OBJC_ASSOCIATION_RETAIN)
         }
     }
@@ -2441,6 +2450,7 @@ extension Node {
         get {
             objc_getAssociatedObject(self, &Node.cacheGroupNeedSync) as? Bool
         } set {
+            if newValue == nil { NodeSyncStatusGeneration.invalidate() }
             objc_setAssociatedObject(self, &Node.cacheGroupNeedSync, newValue, .OBJC_ASSOCIATION_RETAIN)
         }
     }

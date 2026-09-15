@@ -31,6 +31,16 @@ enum SpaceConfigurationIntegrityPolicy {
         return number.int64Value
     }
 
+    /// Every integer above the supported 0...20 range represents ALL (255).
+    /// Normalize before narrowing so large imported values cannot overflow UInt8.
+    static func normalizedProximityLightingNumber(_ value: Any?) -> UInt8? {
+        guard let number = value as? NSNumber,
+              CFGetTypeID(number) != CFBooleanGetTypeID() else { return nil }
+        let value = number.doubleValue
+        guard value.isFinite, value >= 0, value.rounded(.towardZero) == value else { return nil }
+        return value > 20 ? .max : UInt8(value)
+    }
+
     static func profileIssue(_ profile: [String: Any]?) -> String? {
         guard let profile,
               let id = profile["id"] as? String, !id.isEmpty,
@@ -59,8 +69,7 @@ enum SpaceConfigurationIntegrityPolicy {
             }
         }
         if type == 7 || type == 8 {
-            guard let relay = integer(profile["proximityLightingNumber"]),
-                  (0...20).contains(relay) || relay == 255 else {
+            guard normalizedProximityLightingNumber(profile["proximityLightingNumber"]) != nil else {
                 return "invalidProfileRelay"
             }
         }
@@ -171,8 +180,8 @@ enum SpaceConfigurationIntegrityPolicy {
         return serializeConfiguration(result)
     }
 
-    // Cloud responses may fill an omitted Group address with an empty string.
-    // Normalize only that representation; null, invalid and real addresses stay distinct.
+    // Normalize equivalent Group address and ALL representations in both new
+    // configurations and persisted baselines. Invalid values stay distinct.
     private static func serializeConfiguration(_ configuration: [String: Any]) -> Data? {
         var result = configuration
         if let memberships = result["memberships"] as? [[String: Any]] {
@@ -181,6 +190,19 @@ enum SpaceConfigurationIntegrityPolicy {
                 if normalized["groupAddress"] as? String == "" {
                     normalized.removeValue(forKey: "groupAddress")
                 }
+                return normalized
+            }
+        }
+        if let groups = result["groups"] as? [[String: Any]] {
+            result["groups"] = groups.map { group in
+                var normalized = group
+                guard var profile = group["profile"] as? [String: Any],
+                      let type = integer(profile["type"]), type == 7 || type == 8,
+                      let relay = normalizedProximityLightingNumber(profile["proximityLightingNumber"]) else {
+                    return group
+                }
+                profile["proximityLightingNumber"] = relay
+                normalized["profile"] = profile
                 return normalized
             }
         }

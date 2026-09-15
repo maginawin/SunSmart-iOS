@@ -1471,7 +1471,7 @@ class GroupViewController: UIViewController {
     /// 配置文件
     private func groupProfile() {
         guard !group.info.profileLoadFailed else {
-            XWHUDManager.showErrorTipHUD("proximity_lighting_import_invalid".localizedString)
+            XWHUDManager.showErrorTipHUD("profile_unavailable".localizedString)
             return
         }
         let vc = ProfileSettingsViewController(group: group, profile: group.info.profile)

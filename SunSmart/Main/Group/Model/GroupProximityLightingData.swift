@@ -242,12 +242,20 @@ enum ProximityLightingTopologyContext {
 
     static func members(of group: Group, nodes: [Node]) -> Set<Address> {
         guard let uuid = group.network?.uuid, let networkId = group.subNetworkId else { return [] }
+        // The SDK subscription list also handles implicit All Nodes membership
+        // and virtual/special groups. Use the direct lookup only for a known
+        // ordinary group, where the two accessors have identical semantics.
+        let directLookup = (0xC000...0xFEFF).contains(group.address.address)
+            && group.network?.groups.contains(where: { $0.address == group.address }) == true
         return Set(nodes.filter { node in
             node.network?.uuid == uuid && node.subNetworkId == networkId
                 && !node.isProvisioner && !node.isConfigComplete
                 && node.groupState != .exitFailure
                 && node.elements.contains { element in
-                    element.models.contains { $0.subscriptions.contains { $0.address == group.address } }
+                    element.models.contains { model in
+                        directLookup ? model.isSubscribed(to: group.address)
+                            : model.subscriptions.contains { $0.address == group.address }
+                    }
                 }
         }.map { ProximityLightingTopologyPlanner.normalizedAddress(for: $0) })
     }
@@ -329,6 +337,9 @@ enum ProximityLightingTopologyPlanner {
         for node: Node,
         contextGroup: Group? = nil
     ) -> Plan {
+        if let plan = NodeSyncReadContext.current?.plan(for: node, contextGroup: contextGroup) {
+            return plan
+        }
         let group = contextGroup ?? node.group
         if let group, group.network?.uuid != node.network?.uuid || group.subNetworkId != node.subNetworkId {
             return .unavailable
