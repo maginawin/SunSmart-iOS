@@ -3416,6 +3416,8 @@ extension GatewayModel {
     
     /// 保存网关model数据
     @discardableResult func save() -> Bool {
+        guard SunSmartDataManager.shared.db != nil, !GatewayDeletionContext.blocksSave(self) else { return false }
+
         
         let spacesData = (try? jsonEncoder.encode(associatedSpaces)) ?? Data()
 

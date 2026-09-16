@@ -137,6 +137,21 @@ final class WiFiGatewayViewController: GatewayViewController {
         }
     }
 
+    override func gatewayDeletionWillBegin() {
+        super.gatewayDeletionWillBegin()
+        stopNetworkConnectionPolling()
+        stopWiFiRSSIStatusRefresh()
+        cancelPendingGatewayRecovery()
+        networkOperationID += 1
+        activeWiFiRequest = nil
+    }
+
+    override func gatewayDeletionDidFail() {
+        super.gatewayDeletionDidFail()
+        guard !GatewayDeletionContext.hasPendingDeletion(siteId: site.id, mac: gateway.mac) else { return }
+        requestAutomaticLoad(forceReload: true)
+    }
+
     override func closeGatewayPage() {
         cancelPendingGatewayRecovery()
         super.closeGatewayPage()
@@ -371,7 +386,7 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     private func drainAutomaticLoadIfPossible() {
-        guard isGatewayProxyReady,
+        guard !isDeletingGateway, isGatewayProxyReady,
               isNetworkPageVisible,
               node.isKeybindComplete,
               !isNetworkOperationInProgress,
@@ -421,7 +436,7 @@ final class WiFiGatewayViewController: GatewayViewController {
         origin: WiFiRequestOrigin,
         completion: @escaping (SunricherVendorStatus?) -> Void
     ) -> Bool {
-        guard isGatewayProxyReady else { return false }
+        guard !isDeletingGateway, isGatewayProxyReady else { return false }
         let requestID: Int?
         if origin == .automatic, subcode == .rssiStatus {
             requestID = beginWiFiRequest(
@@ -456,7 +471,7 @@ final class WiFiGatewayViewController: GatewayViewController {
         origin: WiFiRequestOrigin,
         completion: @escaping (WiFiGatewayCredentialsSetResult?) -> Void
     ) -> Bool {
-        guard isGatewayProxyReady else { return false }
+        guard !isDeletingGateway, isGatewayProxyReady else { return false }
         guard let requestID = beginWiFiRequest(origin: origin) else { return false }
         guard let vendorModel = node.sunricherVendorModel else {
             finishWiFiRequest(requestID) { completion(nil) }
@@ -486,7 +501,7 @@ final class WiFiGatewayViewController: GatewayViewController {
         origin: WiFiRequestOrigin,
         completion: @escaping (WiFiGatewayCredentialsClearResult?) -> Void
     ) -> Bool {
-        guard isGatewayProxyReady else { return false }
+        guard !isDeletingGateway, isGatewayProxyReady else { return false }
         guard let requestID = beginWiFiRequest(origin: origin) else { return false }
         guard let vendorModel = node.sunricherVendorModel else {
             finishWiFiRequest(requestID) { completion(nil) }
@@ -1215,7 +1230,7 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     private func startWiFiRSSIStatusRefresh() {
-        guard isNetworkPageVisible, node.isKeybindComplete else {
+        guard !isDeletingGateway, isNetworkPageVisible, node.isKeybindComplete else {
             stopWiFiRSSIStatusRefresh()
             return
         }
@@ -1235,7 +1250,7 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     private func scheduleNextWiFiRSSIStatusRefresh() {
-        guard isNetworkPageVisible,
+        guard !isDeletingGateway, isNetworkPageVisible,
               node.isKeybindComplete,
               isGatewayProxyReady,
               networkConnectState == .connected else {
@@ -1256,7 +1271,7 @@ final class WiFiGatewayViewController: GatewayViewController {
     }
 
     @objc private func refreshWiFiRSSIStatus() {
-        guard isNetworkPageVisible, node.isKeybindComplete else {
+        guard !isDeletingGateway, isNetworkPageVisible, node.isKeybindComplete else {
             stopWiFiRSSIStatusRefresh()
             return
         }

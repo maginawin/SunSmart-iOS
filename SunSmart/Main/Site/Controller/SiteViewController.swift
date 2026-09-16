@@ -198,6 +198,10 @@ class SiteViewController: UIViewController {
         super.viewWillAppear(animated)
         (navigationController as? NavigationViewController)?.navigationDelegate = nil
 
+        if GatewayDeletionContext.resume(site: site) {
+            ToastStatusView.show(in: view, message: "gateway_deleted_manual_reset".localizedString,
+                                 type: .success, appearance: .siteUpdate, position: .bottom, duration: 5)
+        }
         let ownershipChanges = SiteDeviceOwnershipReconciler.reconcile(siteId: site.id)
         site.spaces = site.spaces.map { current in
             SpaceData.load(siteId: site.id, spaceId: current.id).first ?? current

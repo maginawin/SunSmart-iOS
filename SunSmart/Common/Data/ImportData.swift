@@ -951,8 +951,12 @@ extension SiteData {
                 // 只有Owner响应才是完整Gateway快照，Editor/Visitor缺失项不能用于删除本地Node。
                 if gatewaySnapshot.isComplete {
                     cacheByMac.forEach { mac, cacheGateway in
+                        GatewayDeletionContext.lockImport()
+                        defer { GatewayDeletionContext.unlockImport() }
                         if cacheGateway.lastUploadCloudTimestamp != nil &&
-                            serverByMac[mac] == nil {
+                            serverByMac[mac] == nil,
+                            !cacheGateway.serverDeletionPendingLocalReset,
+                            !GatewayDeletionContext.hasPendingDeletion(siteId: self.id, mac: cacheGateway.mac) {
                             if let node = network.nodes.first(where: {
                                 $0.primaryUnicastAddress == cacheGateway.address
                             }) {
@@ -986,6 +990,23 @@ extension SiteData {
                             node: serverNode,
                             gatewayPreconfigured: gatewayData["gatewayPreconfigured"] as? [String: Any]
                           ) else {
+                        continue
+                    }
+
+                    GatewayDeletionContext.lockImport()
+                    defer { GatewayDeletionContext.unlockImport() }
+                    // Recheck after Node.import's suspension: a delete may have
+                    // started or finished while this older Site response waited.
+                    guard !GatewayDeletionContext.blocksImport(siteId: self.id, mac: mac,
+                        node: serverNode, createdTimestamp: remoteCreatedTimestamp) else {
+                        if GatewayDeletionContext.serverDeletionConfirmed(siteId: self.id, mac: mac) {
+                            for space in self.spaces where space.relevanceGatewayId?.lowercased() == mac {
+                                space.relevanceGatewayId = nil
+                                space.gatewayStatus = .notBound
+                                space.gatewayLastOnline = nil
+                                space.save()
+                            }
+                        }
                         continue
                     }
 

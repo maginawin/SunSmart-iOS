@@ -73,8 +73,8 @@ if rg -n 'node\.state' "$wifi_controller" >/dev/null; then
 fi
 
 build_file_count="$(rg -c 'GatewayDetailProxyConnectionState\.swift in Sources' "$project_file" || true)"
-[[ "$build_file_count" -eq 8 ]] \
-  || fail "Project must contain four Gateway detail Proxy build-file declarations and four Sources memberships"
+[[ "$build_file_count" -eq 10 ]] \
+  || fail "Project must contain five Gateway detail Proxy build-file declarations and five Sources memberships"
 file_reference_count="$(rg -c 'path = GatewayDetailProxyConnectionState\.swift;' "$project_file" || true)"
 [[ "$file_reference_count" -eq 1 ]] \
   || fail "Project must contain exactly one Gateway detail Proxy file reference"

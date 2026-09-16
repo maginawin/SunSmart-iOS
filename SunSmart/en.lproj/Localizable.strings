@@ -696,7 +696,7 @@
 "group_address_apply_message" = "You have applied for the group address from the server, are you sure to get it.";
 "group_address_insufficient" = "Insufficient group address, please connect to the internet to get more.Once connected to the network, the group address is automatically obtained.";
 "group_address_insufficient_no_network" = "Insufficient group address, please connect to the internet to get more.";
-"phone_no_network" = "internet connection required!";
+"phone_no_network" = "Internet connection required!";
 "network_request_timeout" = "The network request timed out";
 "site_delete_have_devies_message" = "Some spaces within the site have devies that cannot be deleted.";
 "site_delete_have_editor_message" = "Some spaces within the site have editors that cannot be deleted.";
@@ -1446,7 +1446,7 @@
 "Yes" = "Yes";
 "No" = "No";
 "delete_no_connect_server_message" = "Failed to delete.\nNo network or server failure.";
-"gateway_delete_message" = "After deleting the gateway, the space will lose remote control, data reporting and other related functions. Do you want to delete the gateway?";
+"gateway_delete_message" = "Deleting this gateway removes remote control and data reporting from its associated Spaces. If Bluetooth reset is unavailable or fails, reset the device manually before adding it again. Continue?";
 "gateway_force_delete_message" = "Server information deleted successfully！But failed to delete the gateway. The gateway is offline or the signal is weak.You can force delete the gateway.\n\n";
 "gateway_no_authorize_force_delete_message" = "Failed to delete the gateway. \nThe gateway is offline or the signal is weak.You can force delete the gateway.\n\n";
 "gateway_force_delete_note" = "Note:  you need to manually reset the gateway after force delete.";
@@ -2287,3 +2287,6 @@
 "site_zone_quick_help" = "Connect to a space, tap Start, then trigger devices to add them to this Zone draft. Save the Zone to store the changes.";
 "site_zone_trigger_help" = "Trigger a device, tap it once to select it, then tap it again to add it to the Zone draft. A connected device will identify after it is added.";
 "site_zone_manual_help" = "Tap a device once to select it, then tap it again to add it to the Zone draft. A connected device will identify after it is added.";
+
+"gateway_deleted_manual_reset" = "Gateway deleted. Reset the device manually before adding it again.";
+"gateway_delete_local_failed" = "Could not finish deleting this gateway locally. Reopen this Site to retry.";

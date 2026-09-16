@@ -413,6 +413,15 @@ final class GatewayDetailClockCoordinator {
         isAttached = false
     }
 
+    func cancelForDeletion() {
+        dispatchPrecondition(condition: .onQueue(.main))
+        activeOperationID = nil
+        clockLease?.release()
+        clockLease = nil
+        if let backup = activeBackup { restore(backup) }
+        activeBackup = nil
+    }
+
     private func sendFinalReadback(
         operationID: UUID,
         target: GatewayDetailTargetTimeZone,

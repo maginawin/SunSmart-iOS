@@ -1448,7 +1448,7 @@
 "Yes" = "是";
 "No" = "否";
 "delete_no_connect_server_message" = "删除失败。\n网络异常或服务器故障。";
-"gateway_delete_message" = "删除网关后，该空间将失去远程控制、数据上报等相关功能。确定要删除网关吗？";
+"gateway_delete_message" = "删除网关后，关联空间将失去远程控制和数据上报功能。如果无法通过蓝牙重置设备，重新添加前需要手动重置。是否继续？";
 "gateway_force_delete_message" = "服务器信息已删除成功！但网关删除失败，该设备已离线或信号微弱。您可强制删除网关。\n\n";
 "gateway_no_authorize_force_delete_message" = "删除网关失败。\n该网关已离线或信号弱，您可以强制删除网关。\n\n";
 "gateway_force_delete_note" = "注意：强制删除后需手动重置网关设备。";
@@ -2303,3 +2303,6 @@
 "site_zone_quick_help" = "连接空间后点击开始，触发设备即可加入此区域草稿。点击区域的保存按钮提交更改。";
 "site_zone_trigger_help" = "触发设备后，首次点击选中，再次点击加入区域草稿。若空间仍已连接，加入后设备会执行识别。";
 "site_zone_manual_help" = "首次点击设备选中，再次点击加入区域草稿。若空间仍已连接，加入后设备会执行识别。";
+
+"gateway_deleted_manual_reset" = "网关已删除。重新添加前，请手动重置设备。";
+"gateway_delete_local_failed" = "无法完成网关本地删除，请重新进入此 Site 重试。";

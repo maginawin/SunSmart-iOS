@@ -65,6 +65,8 @@
 		08B54C8530402CCB0017ED49 /* GatewayDetailClockCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608170000000000003100 /* GatewayDetailClockCoordinator.swift */; };
 		08B54C8630402CCB0017ED49 /* GatewayMenuPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000000100 /* GatewayMenuPolicy.swift */; };
 		08B54C8730402CCB0017ED49 /* GatewayDetailProxyConnectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000003500 /* GatewayDetailProxyConnectionState.swift */; };
+		E27B6D7C8FA265E11A17B5FC /* GatewayDeletionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27A6139D1DCF407070F1CC0 /* GatewayDeletionContext.swift */; };
+		4FECD17C41B4A88BE54743F1 /* GatewayDeletionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFACA4781FD19C0A7E602416 /* GatewayDeletionCoordinator.swift */; };
 		08B54C8830402CCB0017ED49 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260810A0000000000000100 /* DeviceRestoreDefaultTransitionTimePolicy.swift */; };
 		08B54C8930402CCB0017ED49 /* SimulateFaultAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FA10012F11000100000001 /* SimulateFaultAction.swift */; };
 		08B54C8A30402CCB0017ED49 /* SimulateFaultRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FB10012F11000400000001 /* SimulateFaultRequest.swift */; };
@@ -3539,9 +3541,17 @@
 		F2608140000000000002903 /* SiteGatewayHeaderLayoutPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002900 /* SiteGatewayHeaderLayoutPolicy.swift */; };
 		F2608140000000000002904 /* SiteGatewayHeaderLayoutPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608140000000000002900 /* SiteGatewayHeaderLayoutPolicy.swift */; };
 		F26081500000000000003501 /* GatewayDetailProxyConnectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000003500 /* GatewayDetailProxyConnectionState.swift */; };
+		7CD3BD361D807870CF8DA319 /* GatewayDeletionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27A6139D1DCF407070F1CC0 /* GatewayDeletionContext.swift */; };
+		7F5422D60F19C8DF31C37752 /* GatewayDeletionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFACA4781FD19C0A7E602416 /* GatewayDeletionCoordinator.swift */; };
 		F26081500000000000003502 /* GatewayDetailProxyConnectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000003500 /* GatewayDetailProxyConnectionState.swift */; };
+		0DFC463F67CE976FDA6EA791 /* GatewayDeletionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27A6139D1DCF407070F1CC0 /* GatewayDeletionContext.swift */; };
+		5D609FC7796C9A701C9C21E4 /* GatewayDeletionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFACA4781FD19C0A7E602416 /* GatewayDeletionCoordinator.swift */; };
 		F26081500000000000003503 /* GatewayDetailProxyConnectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000003500 /* GatewayDetailProxyConnectionState.swift */; };
+		3464D9C6D2D887FF33331C80 /* GatewayDeletionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27A6139D1DCF407070F1CC0 /* GatewayDeletionContext.swift */; };
+		2C05F98998D39F5F0029BBA9 /* GatewayDeletionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFACA4781FD19C0A7E602416 /* GatewayDeletionCoordinator.swift */; };
 		F26081500000000000003504 /* GatewayDetailProxyConnectionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000003500 /* GatewayDetailProxyConnectionState.swift */; };
+		CE913AD382397B8A2604C026 /* GatewayDeletionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27A6139D1DCF407070F1CC0 /* GatewayDeletionContext.swift */; };
+		107311C8932C6FC8573ABFB2 /* GatewayDeletionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFACA4781FD19C0A7E602416 /* GatewayDeletionCoordinator.swift */; };
 		F26081500000000000004001 /* SiteGatewayCloudTimeZoneTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000004000 /* SiteGatewayCloudTimeZoneTarget.swift */; };
 		F26081500000000000004002 /* SiteGatewayCloudTimeZoneTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000004000 /* SiteGatewayCloudTimeZoneTarget.swift */; };
 		F26081500000000000004003 /* SiteGatewayCloudTimeZoneTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26081500000000000004000 /* SiteGatewayCloudTimeZoneTarget.swift */; };
@@ -4520,6 +4530,8 @@
 		F2608140000000000002800 /* GatewayFastAddTimeInitialization.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayFastAddTimeInitialization.swift; sourceTree = "<group>"; };
 		F2608140000000000002900 /* SiteGatewayHeaderLayoutPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewayHeaderLayoutPolicy.swift; sourceTree = "<group>"; };
 		F26081500000000000003500 /* GatewayDetailProxyConnectionState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayDetailProxyConnectionState.swift; sourceTree = "<group>"; };
+		B27A6139D1DCF407070F1CC0 /* GatewayDeletionContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayDeletionContext.swift; sourceTree = "<group>"; };
+		CFACA4781FD19C0A7E602416 /* GatewayDeletionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayDeletionCoordinator.swift; sourceTree = "<group>"; };
 		F26081500000000000004000 /* SiteGatewayCloudTimeZoneTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewayCloudTimeZoneTarget.swift; sourceTree = "<group>"; };
 		F26081500000000000005000 /* SiteGatewayCloudTimeZoneSyncState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewayCloudTimeZoneSyncState.swift; sourceTree = "<group>"; };
 		F26081500000000000006000 /* SiteGatewayCloudTimeZoneResponseParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteGatewayCloudTimeZoneResponseParser.swift; sourceTree = "<group>"; };
@@ -6619,6 +6631,8 @@
 			children = (
 				F2608140000000000000100 /* GatewayMenuPolicy.swift */,
 				F26081500000000000003500 /* GatewayDetailProxyConnectionState.swift */,
+				B27A6139D1DCF407070F1CC0 /* GatewayDeletionContext.swift */,
+				CFACA4781FD19C0A7E602416 /* GatewayDeletionCoordinator.swift */,
 				F2608140000000000002700 /* GatewayTimeInformationCoordinator.swift */,
 				F2608170000000000003100 /* GatewayDetailClockCoordinator.swift */,
 				F2608130000000000002600 /* GatewayCloudSyncGenerationPolicy.swift */,
@@ -7372,6 +7386,8 @@
 				08B54C8530402CCB0017ED49 /* GatewayDetailClockCoordinator.swift in Sources */,
 				08B54C8630402CCB0017ED49 /* GatewayMenuPolicy.swift in Sources */,
 				08B54C8730402CCB0017ED49 /* GatewayDetailProxyConnectionState.swift in Sources */,
+				E27B6D7C8FA265E11A17B5FC /* GatewayDeletionContext.swift in Sources */,
+				4FECD17C41B4A88BE54743F1 /* GatewayDeletionCoordinator.swift in Sources */,
 				08B54C8830402CCB0017ED49 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				08B54C8930402CCB0017ED49 /* SimulateFaultAction.swift in Sources */,
 				08B54C8A30402CCB0017ED49 /* SimulateFaultRequest.swift in Sources */,
@@ -8095,6 +8111,8 @@
 				F2608170000000000003101 /* GatewayDetailClockCoordinator.swift in Sources */,
 				F2608140000000000000101 /* GatewayMenuPolicy.swift in Sources */,
 				F26081500000000000003501 /* GatewayDetailProxyConnectionState.swift in Sources */,
+				7CD3BD361D807870CF8DA319 /* GatewayDeletionContext.swift in Sources */,
+				7F5422D60F19C8DF31C37752 /* GatewayDeletionCoordinator.swift in Sources */,
 				F260810A0000000000000101 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				C8FA11012F11000100000001 /* SimulateFaultAction.swift in Sources */,
 				C8FB11012F11000400000001 /* SimulateFaultRequest.swift in Sources */,
@@ -8818,6 +8836,8 @@
 				F2608170000000000003102 /* GatewayDetailClockCoordinator.swift in Sources */,
 				F2608140000000000000102 /* GatewayMenuPolicy.swift in Sources */,
 				F26081500000000000003502 /* GatewayDetailProxyConnectionState.swift in Sources */,
+				0DFC463F67CE976FDA6EA791 /* GatewayDeletionContext.swift in Sources */,
+				5D609FC7796C9A701C9C21E4 /* GatewayDeletionCoordinator.swift in Sources */,
 				F260810A0000000000000102 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				C8FA11012F11000100000002 /* SimulateFaultAction.swift in Sources */,
 				C8FB11012F11000400000002 /* SimulateFaultRequest.swift in Sources */,
@@ -9542,6 +9562,8 @@
 				F2608170000000000003103 /* GatewayDetailClockCoordinator.swift in Sources */,
 				F2608140000000000000103 /* GatewayMenuPolicy.swift in Sources */,
 				F26081500000000000003503 /* GatewayDetailProxyConnectionState.swift in Sources */,
+				3464D9C6D2D887FF33331C80 /* GatewayDeletionContext.swift in Sources */,
+				2C05F98998D39F5F0029BBA9 /* GatewayDeletionCoordinator.swift in Sources */,
 				F260810A0000000000000103 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				C8FA11012F11000100000003 /* SimulateFaultAction.swift in Sources */,
 				C8FB11012F11000400000003 /* SimulateFaultRequest.swift in Sources */,
@@ -10265,6 +10287,8 @@
 				F2608170000000000003104 /* GatewayDetailClockCoordinator.swift in Sources */,
 				F2608140000000000000104 /* GatewayMenuPolicy.swift in Sources */,
 				F26081500000000000003504 /* GatewayDetailProxyConnectionState.swift in Sources */,
+				CE913AD382397B8A2604C026 /* GatewayDeletionContext.swift in Sources */,
+				107311C8932C6FC8573ABFB2 /* GatewayDeletionCoordinator.swift in Sources */,
 				F260810A0000000000000104 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				C8FA11012F11000100000004 /* SimulateFaultAction.swift in Sources */,
 				C8FB11012F11000400000004 /* SimulateFaultRequest.swift in Sources */,

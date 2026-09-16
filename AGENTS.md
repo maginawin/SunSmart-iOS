@@ -1,38 +1,58 @@
-## 项目简介
+## 项目与实际开发入口
 
-- 这是一个 iOS 智能照明/蓝牙 Mesh 控制应用工程，主 workspace 为 `SunSmart.xcworkspace`，主工程为 `SunSmart.xcodeproj`。
-- 工程包含多个品牌 target：`SunSmart`、`Archipelago`、`SLG Sync Plus`、`SylSmart` 等，共享 Common 抽象 target 与部分通用业务代码。
-- 主要代码位于 `SunSmart/`，以 Swift 为主，包含少量 Objective-C 第三方或历史组件；品牌资源和启动页分别位于 `Archipelago/`、`SLGSync/`、`SylSmart/` 等目录。
-- 依赖管理同时使用 CocoaPods 和 Swift Package。CocoaPods 依赖见 `Podfile`，Swift Package 中包含 `NordicSigMeshSDK`。
-- 业务重点包含设备添加、Mesh 网络、网关、开关、应急/消防设备等智能设备控制功能。
+- 本项目是 iOS 智能照明/Bluetooth Mesh 应用，主要代码在 `SunSmart/`。品牌 target 为 `SunSmart`、`Archipelago`、`SLG Sync Plus`、`SylSmart`、`Lumineux`，共享部分代码与 CocoaPods Common 依赖。
+- 依赖使用 CocoaPods 和 Swift Package。正式共享入口为 `SunSmart.xcworkspace`；本机 SDK 开发优先使用已存在且映射正确的 `SunSmartLocal.xcworkspace`。
+- 任务开始或切换分支后，核对当前分支是否包含目标功能，并将需求中的页面路径映射到实际控制器/模型；同名 Site/Space 功能不能互相替代。
+- 构建或 SDK 修改前确认实际 workspace、scheme 和 SDK realpath。若 `SunSmartLocal` 存在但映射损坏，先定位原因，不静默切到正式入口掩盖问题。
 
-## SDK Notes
+## NordicSigMeshSDK
 
-- `NordicSigMeshSDK` 的本地开发路径是 `/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk-worktrees/one-dev`。
-  
-- 当前工程中 `NordicSigMeshSDK` 作为 Swift Package 被多个 target 引用，默认远程地址为 `git@gitee.com:sunricher-i-os/nordic-sig-mesh-sdk.git` 中的 `release` 分支。
-- 需要修改 SDK 开发功能时，应先判断本地 SDK 开发路径是否存在，若存在就继续开发，若本地不存在此路径，则终止修改 SDK 的行为并提示用户。
-- 修改 SDK 相关功能后，需要检查所有引用 `NordicSigMeshSDK` 的 target 是否仍能正常编译与运行。
+- 本机 SDK 开发目录为 `/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk-worktrees/one-dev`。需要修改 SDK 时先确认目录存在；不存在则停止 SDK 修改并说明，可继续不依赖它的工作。
+- 正式 project 保留远端 `git@gitee.com:sunricher-i-os/nordic-sig-mesh-sdk.git` 的 `release` 分支配置。本地覆盖通过 `SunSmartLocal.xcworkspace` 与 `.local-sdk/` 完成；不为临时编译通过而把正式工程改绑个人绝对路径。
+- 按需复用 `scripts/setup_local_nordic_sdk_workspace.sh`；修改依赖声明时运行 `scripts/check_nordic_sdk_dependency.sh`。该检查不能替代本地路径解析核对。
+- 多个 App 工作树可能共用 `one-dev`，默认只允许一个任务写 SDK。并行 SDK 研发必须显式约定独立 SDK 工作树及 App 映射，不能擅自把修复落在用户没有使用的 SDK 中。
+- App 引用新 SDK API 时，同时记录所需 SDK revision/未提交差异及正式依赖发布待办；本地编译通过不代表远端依赖已具备该 API。
 
-## 国际化要求
+## 改动边界与业务验证
 
-* 所有新增或修改的用户可见文案均需支持国际化。
-* 当前支持语言：
-    * English（默认）
-    * 简体中文（zh-CN）
-* 优先复用现有国际化 Key。
-* 如不存在合适的 Key，则新增，并同步补充所有已支持语言的翻译。
-* 禁止硬编码用户可见文案。
+- 修复前确认触发条件、预期行为和最小影响链。只实现当前需求及其必要一致性保障，优先复用已有同步、取消、重试和持久化机制。
+- 导入、导出、分享、同步、删除、恢复或权限改动，按实际影响选择回归：旧数据/缺字段、空配置、相关角色、失败/重试/取消，以及本地与云端状态衔接。不把这份枚举当作每次全量回归清单。
+- 已知合法旧格式可以规范化；不得整体放宽网络身份、权限或数据完整性检查。新增拦截必须说明真实风险，并覆盖允许继续的兼容场景。
+- 协议常量与兼容范围以 SDK、协议和现场样本交叉核对，避免由单个异常样本推导一般规则。
+- 优先从 `scripts/check_*` 和 `Tests/` 选择相关回归。小修改不另建临时 Xcode 工程；新增夹具须说明可覆盖什么，不能将源码匹配或隔离结果当作完整 App 验收。
+- 性能修复优先使用用户提供的 trace 与真实规模样本，明确主线程、I/O、日志等实际成本；以相同条件比较前后结果，不能用隔离测试替代整 App 性能结论。
 
-## 开发要求
+## iOS 构建范围
 
-* 打印 Log 则必须包含在 `#if DEBUG` 和 `#endif` 内
+- 分析、文档、注释修改不构建。Swift 生产代码修改默认运行相关回归，并在一轮修改完成后构建一次受影响 scheme；通常使用 SunSmart。
+- 使用直接 `xcodebuild`，不额外包 `/bin/zsh -lc` 或 `bash -lc`，不重定向到临时日志；通过命令输出查看结果。普通编译使用 `Debug`、`-sdk iphoneos`、`-destination 'generic/platform=iOS'`、`CODE_SIGNING_ALLOWED=NO`，workspace 按上文选择。
+- 不使用 Simulator 校验。generic iOS 编译无需连接真机，不等于运行验收。
+- 共享代码、资源、本地化、编译条件、SDK 或依赖变化时，先分析全部受影响 target。开发阶段选代表 target；资源归属、target 配置、SDK 公共 API/依赖等存在跨品牌编译风险时，稳定后且合入前覆盖全部受影响品牌编译。
+- 只有 Debug/Release 条件、优化行为、配置或发布需求受影响时才额外验证 Release；不默认每次五品牌乘两种配置。
+- 纯共享逻辑修复且各品牌无不同编译路径时，不机械重复五品牌构建。同一代码与依赖状态已有可复用结果时不重跑，发生相关变化后才重新验证。
+- CLI 使用按工作树稳定区分的 DerivedData 目录；同目录构建串行。与 Xcode GUI 或其他任务并发时隔离目录，避免 `build.db` 争用；不要每次创建全新目录破坏增量缓存。
+- 遇到构建锁、依赖或环境错误先识别来源，不擅自杀其他会话进程、删除共享缓存、执行 clean 或调整业务代码来绕过环境问题。
 
-### UI 验证规则
+## UI 与真机
 
-- UI 改动须检查受影响页面的布局约束及适配，并实际运行验证；编译和静态检查不能替代布局验证。
-- 允许使用真机 `MtestiPhone15` 自查 UI，其他个人设备默认由人工操作；重复流程优先使用已有自动化测试。
-- 验证范围与改动风险匹配；涉及硬件、系统交互或性能时须做相关真机验证，避免小改动触发全量回归。
-- 最终体验由人工确认，不得仅凭构建成功或截图正常宣称 UI 验收通过。
-- 验证受阻时避免反复尝试，明确已验证项、未验证项及人工检查步骤。
-- 禁止使用 `Computer Use` 控制电脑
+- 小范围文案、样式和局部展示修改，检查相关约束、长文案、状态更新及复用；默认不自动安装或运行真机。
+- 复杂布局、交互、生命周期、BLE/网关/DFU、系统或性能变化，如结论依赖运行表现，必须有相应运行证据才能宣称该表现通过；优先复用现有自动化、日志和用户提供的 trace。
+- 默认由用户完成真实设备和最终体验验收。提供最短操作步骤、预期结果与必要 DEBUG 日志，未完成时标明待人工验收，不阻塞代码和自动化验证结果交付。
+- 用户明确要求自动真机验证，或本任务已有此授权且确有必要时，可使用 `MtestiPhone15`；其他个人设备由用户操作。不得因为设备已连接就自动开始。
+- 用户要求“我自己测”或“不需要真机测试”后，本任务不再次要求选择设备、解锁或配合现场操作。设备受阻时不反复重试。
+- 同一真机同时只由一个任务负责安装和运行；相同 Bundle ID 的各分支会覆盖同一 App，验证记录需标明分支和构建。
+- 编译、静态检查和隔离 UI 测试不能替代真实布局/体验验收，最终体验由人工确认。
+
+## 国际化、资源与日志
+
+- 新增或修改用户可见文案必须国际化；先复用 Key，无合适 Key 时同步补齐 English 与简体中文（当前目录为 `en.lproj`、`zh-Hans.lproj`），禁止硬编码。
+- 资源、本地化、target 或依赖变更需核对所有受影响品牌的资源归属和配置；实际构建范围按上文规则选择。
+- 打印日志必须置于 `#if DEBUG` / `#endif`；不输出凭据或完整密钥。高频循环避免逐项打印，仅添加有助于定位当前问题的诊断。
+
+## 分支协作与交接
+
+- 一个工作树保持一个写入负责人；相同模块的并行实现先约定文件范围，`project.pbxproj`、依赖锁文件和共享资源由一个集成人处理。
+- 基础修复与功能改动尽量分成独立提交；依赖分支基于已确认的基础修复继续，避免各分支重复实现。
+- 合并前核对两端提交和未提交改动，按双方业务意图处理冲突；合并后验证冲突区域和集成路径，不机械选择 ours/theirs。
+- 新工作树不会自动带上忽略的 `SunSmartLocal.xcworkspace`、`.local-sdk/`、`Pods/`；按任务需要复用既有初始化脚本，不修改正式工程来替代本地准备。
+- 交接仅记录目标、分支/HEAD及未提交差异、SDK 来源、已验证范围、未完成项与下一步。规则更新独立提交并同步活跃分支，不擅自改其他工作树或清理分支。
