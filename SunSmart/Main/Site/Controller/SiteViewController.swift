@@ -1683,10 +1683,7 @@ self.updateAddressData()
 //
 //        return
         
-        var imageNames: [String] = []
-        for id in 1...24 {
-            imageNames.append("space_picture_\(id)")
-        }
+        let imageNames = SpaceData.iconImageNames
         let columnNum = isIPad ? 4 : 2
         let vc = InfoEditViewController(name: SpaceData.getNextSpaceName(siteId: site.id), imageNames: imageNames, selectImageIndex: 0, columnNum: columnNum, isAdd: true)
         vc.itemHeight = isIPad ? SCRYFrom(104) : nil
@@ -1732,10 +1729,7 @@ self.updateAddressData()
     /// 编辑空间
     private func editSpace(space: SpaceData) {
         
-        var imageNames: [String] = []
-        for id in 1...24 {
-            imageNames.append("space_picture_\(id)")
-        }
+        let imageNames = SpaceData.iconImageNames
         let columnNum = isIPad ? 4 : 2
         let vc = InfoEditViewController(name: space.name, imageNames: imageNames, selectImageIndex: max(space.imageId - 1, 0), columnNum: columnNum)
         vc.itemHeight = isIPad ? SCRYFrom(104) : nil

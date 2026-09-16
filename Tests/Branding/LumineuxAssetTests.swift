@@ -19,7 +19,7 @@ let expectedGroups = [
     "Common", "Device", "Energy", "EightKeySwitches1.5", "FireAlarm1.5", "Firmware", "Group",
     "Path", "Profile", "Scene", "Site", "Space", "Timed"
 ]
-let expectedAssetGroups: [String: String] = [
+var expectedAssetGroups: [String: String] = [
     "AccentColor": "root",
     "AppIcon": "root",
     "add": "Common",
@@ -154,6 +154,8 @@ let expectedAssetGroups: [String: String] = [
     "value_buoy": "Common"
 ]
 
+for id in 1...60 { expectedAssetGroups["space_picture_\(id)"] = "Space" }
+
 let groupManifestURL = root.appendingPathComponent("Lumineux/DesignAssets/asset-groups.json")
 check(FileManager.default.fileExists(atPath: groupManifestURL.path),
       "Missing Lumineux asset group manifest")
@@ -164,7 +166,7 @@ let groupManifest = try JSONDecoder().decode(
 check(groupManifest.groups == expectedGroups,
       "Lumineux groups must match SLGSync order and names")
 check(groupManifest.assets == expectedAssetGroups,
-      "Lumineux asset group manifest differs from the approved 131-resource mapping")
+      "Lumineux asset group manifest differs from the approved 192-resource mapping")
 
 func setExtension(for name: String) -> String {
     switch name {
@@ -235,7 +237,7 @@ while let url = enumerator.nextObject() as? URL {
     discovered[name, default: []].append(url.standardizedFileURL)
     enumerator.skipDescendants()
 }
-check(discovered.count == 132, "Lumineux catalog must contain exactly 132 asset names")
+check(discovered.count == 192, "Lumineux catalog must contain exactly 192 asset names")
 check(Set(discovered.keys) == Set(expectedAssetGroups.keys),
       "Lumineux catalog asset names differ from the approved set")
 for name in expectedAssetGroups.keys.sorted() {
@@ -892,4 +894,4 @@ check([CGImageAlphaInfo.none, .noneSkipFirst, .noneSkipLast].contains(icon.alpha
 let colors = try contents(named: "AccentColor")["colors"] as! [[String: Any]]
 let components = (colors[0]["color"] as! [String: Any])["components"] as! [String: String]
 check(components == ["red": "0x4D", "green": "0x73", "blue": "0x8A", "alpha": "1.000"], "Accent color must be #4D738A")
-print("Lumineux asset tests passed: 29 new3, 7 generated iPad/standby, and 2 eight-key panel Retina assets, 132 asset groups, \(iconAssets.count) Figma-vector icons, 7 supplied PNG icons, 5 exact empty states, Retina-only 88pt logos, opaque 1024 AppIcon, exact AccentColor")
+print("Lumineux asset tests passed: 29 new3, 7 generated iPad/standby, and 2 eight-key panel Retina assets, 192 asset groups, \(iconAssets.count) Figma-vector icons, 7 supplied PNG icons, 5 exact empty states, Retina-only 88pt logos, opaque 1024 AppIcon, exact AccentColor")

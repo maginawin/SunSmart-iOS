@@ -1,0 +1,492 @@
+{
+  "fileKey": "P4AaSxu8SJe2Tf2gpyTFT9",
+  "node": "18007:18109",
+  "canvas": {
+    "width": 120,
+    "height": 96
+  },
+  "imageSize": 96,
+  "cornerRadius": 10,
+  "assets": [
+    {
+      "id": 1,
+      "name": "agriculture",
+      "node": "18007:18108",
+      "imageNode": "18007:18048",
+      "source": "Provided/SpaceIcons/space_picture_1.png",
+      "sha256": "bb8156ad6998f049af61db4084070bf6691c42e96d0775a3fbb01167ebcb2c50"
+    },
+    {
+      "id": 2,
+      "name": "archive-room",
+      "node": "18007:18110",
+      "imageNode": "18007:18112",
+      "source": "Provided/SpaceIcons/space_picture_2.png",
+      "sha256": "a0c2e8e5d069df87987a064a69286f1b703942ba44b408b12a212c137f5ecea1"
+    },
+    {
+      "id": 3,
+      "name": "art-studio",
+      "node": "18007:18232",
+      "imageNode": "18007:18234",
+      "source": "Provided/SpaceIcons/space_picture_3.png",
+      "sha256": "3c2beffcae479028e434c3b86a5f84aceae1a36308057b0aad59af2cd4f50fd4"
+    },
+    {
+      "id": 4,
+      "name": "auditorium",
+      "node": "18007:18236",
+      "imageNode": "18007:18238",
+      "source": "Provided/SpaceIcons/space_picture_4.png",
+      "sha256": "d17353f1404f634117f65f73fc55cff50e56ebc1512469c10b49b51fd0f90d9d"
+    },
+    {
+      "id": 5,
+      "name": "bicycle-store",
+      "node": "18007:18301",
+      "imageNode": "18007:18311",
+      "source": "Provided/SpaceIcons/space_picture_5.png",
+      "sha256": "11ad12e75b3189d48eeca5dcf82a8633018740ae3333ce8027abe08e42b9e068"
+    },
+    {
+      "id": 6,
+      "name": "boardroom",
+      "node": "18007:18303",
+      "imageNode": "18007:18315",
+      "source": "Provided/SpaceIcons/space_picture_6.png",
+      "sha256": "f02036f819cad9b97432973c9758ad2ece8bd9d3595d216c4717df7b9413f611"
+    },
+    {
+      "id": 7,
+      "name": "car-park",
+      "node": "18007:18305",
+      "imageNode": "18007:18319",
+      "source": "Provided/SpaceIcons/space_picture_7.png",
+      "sha256": "f144cce7645dc3ed4ba6c6dc7c08e2081c371434a6c4cabc61c6f6cf420131dc"
+    },
+    {
+      "id": 8,
+      "name": "changing-room",
+      "node": "18007:18307",
+      "imageNode": "18007:18321",
+      "source": "Provided/SpaceIcons/space_picture_8.png",
+      "sha256": "c1121d05c98481feb57adacdb482b3b9a81d4b96fa9fa838965579444b7fdd22"
+    },
+    {
+      "id": 9,
+      "name": "classroom",
+      "node": "18007:18323",
+      "imageNode": "18007:18383",
+      "source": "Provided/SpaceIcons/space_picture_9.png",
+      "sha256": "1ca857c9d392b45ece1d2836afd640dd1557a7f56d5989afa04ce76aeca8519d"
+    },
+    {
+      "id": 10,
+      "name": "clean-room",
+      "node": "18007:18329",
+      "imageNode": "18007:18381",
+      "source": "Provided/SpaceIcons/space_picture_10.png",
+      "sha256": "3427fdcaafa0d09dd718095df7936a47dd1499699bee88b6a2786f1ad333928e"
+    },
+    {
+      "id": 11,
+      "name": "cold-storage",
+      "node": "18007:18330",
+      "imageNode": "18007:18385",
+      "source": "Provided/SpaceIcons/space_picture_11.png",
+      "sha256": "e4fd695b9a02a35dfaa584292a245b5a4789418309e1309942d86dca8994faf9"
+    },
+    {
+      "id": 12,
+      "name": "commercial-kitchen",
+      "node": "18007:18331",
+      "imageNode": "18007:18387",
+      "source": "Provided/SpaceIcons/space_picture_12.png",
+      "sha256": "b567dd13d7ed1f8e8b3f5788bd1fedacd0747e81bc52a9b6cd9588b946d989e9"
+    },
+    {
+      "id": 13,
+      "name": "corridor",
+      "node": "18007:18332",
+      "imageNode": "18007:18389",
+      "source": "Provided/SpaceIcons/space_picture_13.png",
+      "sha256": "3bd5e8f53c8c8afd858d5499eb7ba0dce1e6624a195230057cc7e7c4a02a541e"
+    },
+    {
+      "id": 14,
+      "name": "dental-surgery",
+      "node": "18007:18333",
+      "imageNode": "18007:18391",
+      "source": "Provided/SpaceIcons/space_picture_14.png",
+      "sha256": "bce606e70a393eaef3d9e07bc4ddcab56cab1f76a372ed43a2a1c10b7d18169d"
+    },
+    {
+      "id": 15,
+      "name": "dining-hall-canteen",
+      "node": "18007:18334",
+      "imageNode": "18007:18393",
+      "source": "Provided/SpaceIcons/space_picture_15.png",
+      "sha256": "35c7d631d4495d3b35a29898b8acd49a3ab0fc9f496b05c57635336cd598993c"
+    },
+    {
+      "id": 16,
+      "name": "electrical-room",
+      "node": "18007:18335",
+      "imageNode": "18007:18395",
+      "source": "Provided/SpaceIcons/space_picture_16.png",
+      "sha256": "9dae793db77336b06b76b484603a95a81e9de7a99acf9b8909d0ad0314d6c132"
+    },
+    {
+      "id": 17,
+      "name": "fire-control-room",
+      "node": "18007:18336",
+      "imageNode": "18007:18397",
+      "source": "Provided/SpaceIcons/space_picture_17.png",
+      "sha256": "177ffc352874c13ed7ff420d12389e49b22def1afcd763973b02346714d5dc5b"
+    },
+    {
+      "id": 18,
+      "name": "first-aid-room",
+      "node": "18007:18337",
+      "imageNode": "18007:18399",
+      "source": "Provided/SpaceIcons/space_picture_18.png",
+      "sha256": "d86949506ccbb0e6a9fa411d395bb1be04ed565c9e4ef73423cd044906e042a9"
+    },
+    {
+      "id": 19,
+      "name": "generator-room",
+      "node": "18007:18338",
+      "imageNode": "18007:18401",
+      "source": "Provided/SpaceIcons/space_picture_19.png",
+      "sha256": "3758920b419f0965d0215f9255028e05df00d378dacae5bea8da23d5f8a17f15"
+    },
+    {
+      "id": 20,
+      "name": "hospital-ward",
+      "node": "18007:18339",
+      "imageNode": "18007:18403",
+      "source": "Provided/SpaceIcons/space_picture_20.png",
+      "sha256": "1a89c7a435121066fe52d021e2cc919f3d5c1215426e78feac6d937570c050d2"
+    },
+    {
+      "id": 21,
+      "name": "hotel-bedroom",
+      "node": "18007:18340",
+      "imageNode": "18007:18405",
+      "source": "Provided/SpaceIcons/space_picture_21.png",
+      "sha256": "dae620c2ee86b2c37817efdf18b9d5b82e3691a880d2ac3cbcdbddbc210e6089"
+    },
+    {
+      "id": 22,
+      "name": "interview-room",
+      "node": "18007:18341",
+      "imageNode": "18007:18407",
+      "source": "Provided/SpaceIcons/space_picture_22.png",
+      "sha256": "25d6bbd05816a92f42e7290a877a0888ba04835a7faf9a8fee0235c7c0c4ebbc"
+    },
+    {
+      "id": 23,
+      "name": "isolation-room",
+      "node": "18007:18342",
+      "imageNode": "18007:18409",
+      "source": "Provided/SpaceIcons/space_picture_23.png",
+      "sha256": "3c145a51721d8fb2c08c46756fa1ce37370b9b79b846a691099df3b0969c8187"
+    },
+    {
+      "id": 24,
+      "name": "kitchen-break-room",
+      "node": "18007:18343",
+      "imageNode": "18007:18411",
+      "source": "Provided/SpaceIcons/space_picture_24.png",
+      "sha256": "ed9c0baf838c2a83777381ef5795aeeba238657107da909e78664e8d33c72df4"
+    },
+    {
+      "id": 25,
+      "name": "laboratory",
+      "node": "18007:18344",
+      "imageNode": "18007:18413",
+      "source": "Provided/SpaceIcons/space_picture_25.png",
+      "sha256": "7864cc294a92f0dd56707a95717a739fb682c1fa6c5537896433f2c50a6b7719"
+    },
+    {
+      "id": 26,
+      "name": "laundry",
+      "node": "18007:18345",
+      "imageNode": "18007:18415",
+      "source": "Provided/SpaceIcons/space_picture_26.png",
+      "sha256": "2ef30b047e0e938263ebc70c8b1ee9f4b27e824ec1202c238c97aad9f938f7a4"
+    },
+    {
+      "id": 27,
+      "name": "library",
+      "node": "18007:18346",
+      "imageNode": "18007:18417",
+      "source": "Provided/SpaceIcons/space_picture_27.png",
+      "sha256": "127a4b3115af65e4804835b1656120e0d15dd5e5020efe678533ccad18b6211f"
+    },
+    {
+      "id": 28,
+      "name": "lift-elevator",
+      "node": "18007:18347",
+      "imageNode": "18007:18419",
+      "source": "Provided/SpaceIcons/space_picture_28.png",
+      "sha256": "dfe6cd22361bc88fe309ec4ffe2ad8e88fa305b5e24b0b96702446b5e46d2596"
+    },
+    {
+      "id": 29,
+      "name": "lift-lobby",
+      "node": "18007:18348",
+      "imageNode": "18007:18421",
+      "source": "Provided/SpaceIcons/space_picture_29.png",
+      "sha256": "6b88b4af9750601c3ed084e4bcb75dc6e2b68ec05eb291c3247d83ce40810844"
+    },
+    {
+      "id": 30,
+      "name": "loading-bay",
+      "node": "18007:18349",
+      "imageNode": "18007:18423",
+      "source": "Provided/SpaceIcons/space_picture_30.png",
+      "sha256": "52a0e59a482fb6d5f01fa5aa717c5add4a18aba6cab556210e1840c75efcf7ac"
+    },
+    {
+      "id": 31,
+      "name": "mail-room",
+      "node": "18007:18350",
+      "imageNode": "18007:18425",
+      "source": "Provided/SpaceIcons/space_picture_31.png",
+      "sha256": "d8fd0294a257c7845c5c3d1602c83eac03f3779f98f2058e2aeb638f87eedf37"
+    },
+    {
+      "id": 32,
+      "name": "medical-consultation-room",
+      "node": "18007:18351",
+      "imageNode": "18007:18427",
+      "source": "Provided/SpaceIcons/space_picture_32.png",
+      "sha256": "e6e3c4a7c8c1394f7bfcab2e2758f8460fe95a6efc610e7b97810385db2d5d39"
+    },
+    {
+      "id": 33,
+      "name": "meeting-room",
+      "node": "18007:18352",
+      "imageNode": "18007:18429",
+      "source": "Provided/SpaceIcons/space_picture_33.png",
+      "sha256": "7be0a207b602b75b92e55173f4303d5111a679caf51fe125c2daa8ada1033949"
+    },
+    {
+      "id": 34,
+      "name": "music-room",
+      "node": "18007:18353",
+      "imageNode": "18007:18431",
+      "source": "Provided/SpaceIcons/space_picture_34.png",
+      "sha256": "25a95c4fd9e9ae20655b2454bda730955c84479b25a30b107f7b413002c83986"
+    },
+    {
+      "id": 35,
+      "name": "nursery-daycare",
+      "node": "18007:18354",
+      "imageNode": "18007:18433",
+      "source": "Provided/SpaceIcons/space_picture_35.png",
+      "sha256": "3ede9db10c515925c1ed7a10ea7b7b49e0a4317c6f97f65ec976a78fac917333"
+    },
+    {
+      "id": 36,
+      "name": "office-room",
+      "node": "18007:18355",
+      "imageNode": "18007:18435",
+      "source": "Provided/SpaceIcons/space_picture_36.png",
+      "sha256": "2f9fed455f5e314608b07c19426e75c4253eeab581fc7b1f34f2955f205f7561"
+    },
+    {
+      "id": 37,
+      "name": "open-office",
+      "node": "18007:18356",
+      "imageNode": "18007:18437",
+      "source": "Provided/SpaceIcons/space_picture_37.png",
+      "sha256": "d76cde83be73004ac99c1181ad7dac4ae9f2577d732b215e7d5a3d0160cf8077"
+    },
+    {
+      "id": 38,
+      "name": "operating-theatre",
+      "node": "18007:18357",
+      "imageNode": "18007:18439",
+      "source": "Provided/SpaceIcons/space_picture_38.png",
+      "sha256": "ec6fe8d56f329699c50d87a81b9ade0dc85d9ac7495613cbbb71a537bc71f775"
+    },
+    {
+      "id": 39,
+      "name": "pharmacy",
+      "node": "18007:18358",
+      "imageNode": "18007:18441",
+      "source": "Provided/SpaceIcons/space_picture_39.png",
+      "sha256": "9b103f3dbd691793439f4949cd7e5693c7bd62784d9e2a76767b9817285ca4f0"
+    },
+    {
+      "id": 40,
+      "name": "plant-room",
+      "node": "18007:18359",
+      "imageNode": "18007:18443",
+      "source": "Provided/SpaceIcons/space_picture_40.png",
+      "sha256": "5a0a2438f8d5f64050b2c91390bb4cc0c5d9a11bfaa1f3b1fcb708b9f05caaa4"
+    },
+    {
+      "id": 41,
+      "name": "prayer-room",
+      "node": "18007:18360",
+      "imageNode": "18007:18445",
+      "source": "Provided/SpaceIcons/space_picture_41.png",
+      "sha256": "94039fb5fd541c587178e0bb231574df5af71c453910ce16dc6dfa502c414467"
+    },
+    {
+      "id": 42,
+      "name": "print-copy-room",
+      "node": "18007:18361",
+      "imageNode": "18007:18447",
+      "source": "Provided/SpaceIcons/space_picture_42.png",
+      "sha256": "0da6cd7e232c0501470e5c9242d4f18c4fb2a18bee62abbaf576cbefa03a1b33"
+    },
+    {
+      "id": 43,
+      "name": "quiet-room",
+      "node": "18007:18362",
+      "imageNode": "18007:18449",
+      "source": "Provided/SpaceIcons/space_picture_43.png",
+      "sha256": "1d616c2ca06a39c51c55f3c2aa91bf3c07ee4a6a55aa921be418590733faa944"
+    },
+    {
+      "id": 44,
+      "name": "reception",
+      "node": "18007:18363",
+      "imageNode": "18007:18451",
+      "source": "Provided/SpaceIcons/space_picture_44.png",
+      "sha256": "48d4f4bd937f698aa6b0caa79b1a271c40c330307fe2609821ae2e160de7b675"
+    },
+    {
+      "id": 45,
+      "name": "restaurant-cafe",
+      "node": "18007:18364",
+      "imageNode": "18007:18453",
+      "source": "Provided/SpaceIcons/space_picture_45.png",
+      "sha256": "071c6eb91568a5233858d65c66f53120a093eeee69d60dad7039690b7e35cfbd"
+    },
+    {
+      "id": 46,
+      "name": "retail-shop",
+      "node": "18007:18365",
+      "imageNode": "18007:18455",
+      "source": "Provided/SpaceIcons/space_picture_46.png",
+      "sha256": "3e7c3e5eedd6e5b3700b4398dc34fd3ad759879228021250396f712e4654efd2"
+    },
+    {
+      "id": 47,
+      "name": "roof-plant-area",
+      "node": "18007:18366",
+      "imageNode": "18007:18457",
+      "source": "Provided/SpaceIcons/space_picture_47.png",
+      "sha256": "8984e1f93b36e3a2751b81c1184fd7aaa04901c8f698089a604e439d5bd85670"
+    },
+    {
+      "id": 48,
+      "name": "security-control-room",
+      "node": "18007:18367",
+      "imageNode": "18007:18459",
+      "source": "Provided/SpaceIcons/space_picture_48.png",
+      "sha256": "3b60307979539d9425fe80d62c723127a4ff9a0975ed62c6a5e55cb74c198bd2"
+    },
+    {
+      "id": 49,
+      "name": "server-room",
+      "node": "18007:18368",
+      "imageNode": "18007:18461",
+      "source": "Provided/SpaceIcons/space_picture_49.png",
+      "sha256": "322a4b8ac9621a5261df793b7e2933e321575357df28ba9150b684cb939c4da3"
+    },
+    {
+      "id": 50,
+      "name": "sport-and-fitting-gym",
+      "node": "18007:18369",
+      "imageNode": "18007:18463",
+      "source": "Provided/SpaceIcons/space_picture_50.png",
+      "sha256": "7b6861402a450796da2a67dc9c3da2be516f41da4067e9929c036a291bc63d71"
+    },
+    {
+      "id": 51,
+      "name": "stairwell",
+      "node": "18007:18370",
+      "imageNode": "18007:18465",
+      "source": "Provided/SpaceIcons/space_picture_51.png",
+      "sha256": "7a2a5a206c0cb4d6945fc065de8846b13394715e7d5de62bafd2446c39dabd41"
+    },
+    {
+      "id": 52,
+      "name": "storage-room",
+      "node": "18007:18371",
+      "imageNode": "18007:18467",
+      "source": "Provided/SpaceIcons/space_picture_52.png",
+      "sha256": "afa8831ba8f05319363369cbd95ac59a5aa05aa63924693c1d96aafcd8c52440"
+    },
+    {
+      "id": 53,
+      "name": "swimming-pool",
+      "node": "18007:18372",
+      "imageNode": "18007:18469",
+      "source": "Provided/SpaceIcons/space_picture_53.png",
+      "sha256": "31a5dee6d3f2b48d5606ab7f37c64915fa491785b656033fdbbc7a77408c1c84"
+    },
+    {
+      "id": 54,
+      "name": "training-room",
+      "node": "18007:18373",
+      "imageNode": "18007:18471",
+      "source": "Provided/SpaceIcons/space_picture_54.png",
+      "sha256": "6bd75b04f4ddb18975e4bd6a5d0a0b68d1dd5e846c6d311097e7a3d66ff5d80c"
+    },
+    {
+      "id": 55,
+      "name": "ups-battery-room",
+      "node": "18007:18374",
+      "imageNode": "18007:18473",
+      "source": "Provided/SpaceIcons/space_picture_55.png",
+      "sha256": "74a50eb671137616b683d06035f774685aedc52e1e5fbd47f39b0938f6b4349e"
+    },
+    {
+      "id": 56,
+      "name": "warehouse-raking-aisle",
+      "node": "18007:18375",
+      "imageNode": "18007:18475",
+      "source": "Provided/SpaceIcons/space_picture_56.png",
+      "sha256": "e25f1f3e8dcdeec627558532aa9197e4c511a9c15adb02ee94410fd721b12c88"
+    },
+    {
+      "id": 57,
+      "name": "warehouse",
+      "node": "18007:18376",
+      "imageNode": "18007:18477",
+      "source": "Provided/SpaceIcons/space_picture_57.png",
+      "sha256": "a32e13d36fd244a9a944f78ad3759f5103ebc6f0d0592b2ec387b800a5ada0cf"
+    },
+    {
+      "id": 58,
+      "name": "washroom-toilet",
+      "node": "18007:18377",
+      "imageNode": "18007:18479",
+      "source": "Provided/SpaceIcons/space_picture_58.png",
+      "sha256": "8ff50c6af27b8ef94f15ba3aa21034431a23feaf541d04c600cfa62e404f2fbc"
+    },
+    {
+      "id": 59,
+      "name": "workshop",
+      "node": "18007:18378",
+      "imageNode": "18007:18481",
+      "source": "Provided/SpaceIcons/space_picture_59.png",
+      "sha256": "bae1f6cca4114eb54c73ee7b9b65dafd2c49fdf49c62ec387abd7642b2019881"
+    },
+    {
+      "id": 60,
+      "name": "x-ray-room",
+      "node": "18007:18379",
+      "imageNode": "18007:18483",
+      "source": "Provided/SpaceIcons/space_picture_60.png",
+      "sha256": "1f6c5ab17104ee114da69aee1926750e65657202ff8136005beb96dc0bef5c59"
+    }
+  ]
+}

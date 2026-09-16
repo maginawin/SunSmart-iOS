@@ -1,21 +1,21 @@
 # Lumineux 同名资源回归
 
-Lumineux 在构建期把公共 catalog 与 Lumineux catalog 合并为一份无重名的派生 catalog；共享 SunSmart Swift 只保留四个主题色的 Lumineux 分支，不使用运行时图片染色 helper，也不改共享布局。
+Lumineux 在构建期把公共 catalog 与 Lumineux catalog 合并为一份无重名的派生 catalog；共享 SunSmart Swift 对四个主题色及 Space 图片容器的底色、边框使用 Lumineux 编译分支，不使用运行时图片染色 helper，也不改共享布局。
 
 ## 检查范围
 
 ### Catalog 物理分组
 
-`Lumineux/Assets-Lumineux.xcassets` 使用十三个一级业务目录：`Common`、`Device`、`Energy`、`EightKeySwitches1.5`、`FireAlarm1.5`、`Firmware`、`Group`、`Path`、`Profile`、`Scene`、`Site`、`Space`、`Timed`。`AppIcon` 与 `AccentColor` 保留在根目录；当前 Lumineux source catalog 为 130 imageset 加 AppIcon、AccentColor，共 132 组；imageset 全部位于业务目录中。较早批次的统计保留在下方带日期的历史验证记录中。
+`Lumineux/Assets-Lumineux.xcassets` 使用十三个一级业务目录：`Common`、`Device`、`Energy`、`EightKeySwitches1.5`、`FireAlarm1.5`、`Firmware`、`Group`、`Path`、`Profile`、`Scene`、`Site`、`Space`、`Timed`。`AppIcon` 与 `AccentColor` 保留在根目录；当前 Lumineux source catalog 为 190 imageset 加 AppIcon、AccentColor，共 192 组；imageset 全部位于业务目录中。较早批次的统计保留在下方带日期的历史验证记录中。
 
 `Lumineux/DesignAssets/asset-groups.json` 是生成器的分组来源。`icon-manifest.json` 中的 `Tabs`、`Navigation`、`Buttons` 等字段只描述 Figma 来源，不决定 Xcode 目录。两个资源生成器会拒绝缺失分组、未知分组、错误位置和同名重复资源；重新运行后不得在 catalog 根目录生成 imageset。
 
-- 临时 XCTest reference catalog 与 source catalog 同为 132 组。合并 catalog 的当前合同为 695 组，其中 132 组匹配 Lumineux、563 组保留 Common。
+- 临时 XCTest reference catalog 与 source catalog 同为 192 组。合并 catalog 的当前合同为 724 组，其中 192 组匹配 Lumineux、532 组保留 Common。
 - 已提供素材均保持原始画布和 iOS 逻辑尺寸；其中 Figma 完整向量节点、`auto`、Common Retina PNG 与 grouped Retina PNG 按各自来源保存。88pt 的 `launch_logo` 与系统启动页专用 `lumineux_launch_logo` 保留空 universal 1x 槽，只打包 2x/3x；120pt 的 `launch_logo_120` 继续打包 1x/2x/3x。AppIcon 为无 alpha 的 1024px 派生文件，AccentColor 为 `#4D738A`。
 - PNG 文件字节与运行时布局属于不同层次：`switch_proxy_instructions_1` 的 310 × 328pt 原图在 iPhone 现有 324/310 约束下约有 1.2% 纵向压缩；用户确认影响可忽略，本轮不改生产 Swift。
 - Lumineux 的 `Merge Lumineux Assets` phase 每次构建调用 `Lumineux/Scripts/merge_assets.rb`，把 `SunSmart/Assets.xcassets` 复制到 `DERIVED_FILE_DIR` 后以完整 Lumineux asset set 覆盖；Resources 只编译 `LumineuxAssets/Assets-Lumineux-Merged.xcassets`。签名 Team、Bundle ID、协议与独立启动页归属不变。
 - 真实 UIKit 测试覆盖 Welcome、仅保留用户与关于入口的菜单、Europe-only 服务器地区契约、Sites 单元格和滑块回调、启动页及协议内容/路由、五类真实空状态容器、Bluetooth Required 页面、强制 AUTO 弹窗、全部已提供图片尺寸与来源、Tab/收藏状态，以及真实 menu/back 导航图片、target/action、渲染 bounds 与返回路径。
-- 临时 XCTest bundle 会独立编译完整原始 Lumineux 132 组 catalog（130 个 imageset、AppIcon、AccentColor）。主 App 的 `UIImage(named:)` 与该 reference catalog 逐像素 RGBA 对比；common launch logo 仅以三个唯一前缀的 loose PNG 作为严格负对照，不参与正向 catalog 编译。reference bundle ID 必须不同于主 App；不以两次主 bundle 同名读取或平铺 PNG 自比代替来源验证。
+- 临时 XCTest bundle 会独立编译完整原始 Lumineux 192 组 catalog（190 个 imageset、AppIcon、AccentColor）。主 App 的 `UIImage(named:)` 与该 reference catalog 逐像素 RGBA 对比；common launch logo 仅以三个唯一前缀的 loose PNG 作为严格负对照，不参与正向 catalog 编译。reference bundle ID 必须不同于主 App；不以两次主 bundle 同名读取或平铺 PNG 自比代替来源验证。
 - new3 focused UIKit 的真实调用点为 Buoy、Firmware、Profile、Scene 与 Space。Task 3 的 iPhone 16 focused 运行已产生并审阅 18 张附件；Task 5 的 iPhone SE 3、iPhone 16、iPad Pro 11 M4 与 en-US、zh-Hans-CN 六组合矩阵已全部通过并审阅 108 张附件。Task 6 又在全新的正常 `DerivedData3` 目录完成 Debug generic iOS 构建、签名与生成 catalog 验证，实际证据见本页末尾。
 - 测试不修改生产工程/AppDelegate，不选择服务器、不登录、不添加站点、不连接或控制真实设备。截图必须人工查看；编译通过不等同于布局通过。
 
@@ -27,6 +27,7 @@ Lumineux 在构建期把公共 catalog 与 Lumineux catalog 合并为一份无�
 export PATH=/opt/homebrew/opt/ruby/bin:$PATH
 export CLANG_MODULE_CACHE_PATH=/private/tmp/lumineux-new3-module-cache
 swift Tests/Branding/LumineuxAssetTests.swift
+ruby Tests/Branding/LumineuxSpaceIconTests.rb
 ruby Tests/Branding/LumineuxMergeTests.rb
 ruby Tests/Branding/LumineuxGeneratorTests.rb
 ruby Tests/Branding/LumineuxConfigurationTests.rb
@@ -48,6 +49,26 @@ swift scripts/prepare_lumineux_icons.swift
 ```
 
 原始 Logo 与 Figma PDF 均不改写；AppIcon 去除 alpha，其他透明图保留透明度。`launch_logo`、`launch_logo_120` 与系统启动页专用的 `lumineux_launch_logo` 均从 `app_logo_1024.png` 缩小生成，不再放大带灰角的 `launch_logo_88.png` 预览图，打包器禁止源图放大。Logo 测试直接与已确认的高清源图比较，并检查四角在白底合成后没有灰色装饰。图标打包器显式按完整 PDF 画布缩放，保留图形及留白；素材测试同时检查像素尺寸和可见内容范围。
+
+## 2026-09-16 Space 图标
+
+Figma `P4AaSxu8SJe2Tf2gpyTFT9` / `18007:18109` 的 60 个原始 PNG 已归档至 `Lumineux/DesignAssets/Provided/SpaceIcons`，节点、顺序与源文件 SHA-256 见 `space-icons.json`。`scripts/prepare_lumineux_space_icons.swift` 直接缩小 500×500 原图，按设计的 120×96pt 组件画布打包为 2x/3x，不改色或重绘原始图案。Lumineux 的 `SpaceIconCount=60`，其他品牌默认保持 24。图标原有编号保存规则不变。
+
+本次验证：素材检查、17 项合并器测试（72 断言）、7 项生成器测试（38 断言）通过。实际合并 catalog 中 60 个 Space imageset 与 Lumineux 来源逐文件一致，其他未覆盖 Common 素材保持原样。公共 catalog、其他品牌目录和生产 `project.pbxproj` 无本次改动。
+
+真实 UIKit 方法 `testSpaceIconPickerShowsAllFigmaIconsAndSavesLastSelection` 在 iPhone 16 和 iPad Pro 11-inch (M4)、iOS 18.0、英文环境下均通过，覆盖全部 60 张图的加载、尺寸、约束、滚动、末项选中、完成回调和 Space 列表卡片。已逐张审阅 6 个截图附件。结果保存在 `/private/tmp/lumineux-space-verification-20260916/space-icons-en.xcresult`，截图在同目录 `screenshots-en/`。
+
+首次接入验证时，原工作区 `Package.resolved` 处于本地删除状态，因此现有 `LumineuxConfigurationTests.rb` 当时未能完成依赖解析；临时宿主使用 Git 中原有锁定文件（SDK `a6246b1b0409824a3227a9c7cad8140219feb182`）完成构建及上述运行测试。未进行真机验证。
+
+用户随后在真机发现 Space 卡片中的白底图标与淡紫色容器不一致。`SpacesViewCell` 原有容器底色为 `#F7F7FF`，Lumineux 图稿画布为白色；现仅在 Lumineux 编译条件下把容器设为白色，其他品牌仍保留原底色，图片资源、尺寸和约束不变。新增 `testSpaceCardIconBackgroundMatchesArtwork`，直接比较实际 UIKit 渲染中 PNG 白色留白与容器露出区域的 RGBA，覆盖全部 60 张图标并保留 Agriculture 卡片快照；旧代码已复现 60 次底色断言失败。
+
+修复后该方法在 iPhone 16 和 iPad Pro 11-inch (M4)、iOS 18.0、简体中文环境下均通过，60 张图标的底色像素一致，图片容纳关系和约束检查通过，两个截图已人工审阅。结果为 `/private/tmp/lumineux-space-verification-20260916/background-green.xcresult`，截图位于同目录 `background-green-screenshots/`。本次未安装到真机。
+
+按 Figma `16001:96772` 中的背景节点 `16001:96781` 补充 Space 图片容器边框：1pt、主题色 `#4D738A` 的 10% 透明度，沿用现有 8pt 圆角的屏幕适配。边框只在 `#if Lumineux` 内设置，保留白底和原有布局。上述 UIKit 测试同时检查边缘合成色与 1pt 宽度，iPad 测试卡片宽度按生产双列布局计算；未加边框时已确认颜色断言失败。
+
+边框验证在 iPhone 16 与 iPad Pro 11-inch (M4) 的 iOS 18.0 简体中文模拟器上均通过，两个截图已人工核对，未发现边框裁切或图片重叠。结果为 `/private/tmp/lumineux-space-verification-20260916/border-green.xcresult`，截图位于同目录 `border-green-screenshots/`。未进行真机验证。
+
+提交前重新运行素材、合并器与生成器检查均通过。`LumineuxConfigurationTests.rb` 的依赖解析已可运行，但签名检查失败：当前已提交工程解析得到 `DEVELOPMENT_TEAM=T552326F7U`，脚本预期为 `JTD3WYUC58`。本轮未修改生产工程、品牌签名配置或该校验脚本，不将此项记录为通过。
 
 ## 实际布局测试
 

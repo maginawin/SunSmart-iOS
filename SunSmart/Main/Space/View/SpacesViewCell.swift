@@ -280,7 +280,14 @@ class SpacesViewCell: UICollectionViewCell {
         
         
         iconImageView = UIImageView()
+        #if Lumineux
+        // Match the white canvas of the Lumineux Space artwork.
+        iconImageView.backgroundColor = .white
+        iconImageView.layer.borderWidth = 1
+        iconImageView.layer.borderColor = Bar_Color.withAlphaComponent(0.1).cgColor
+        #else
         iconImageView.backgroundColor = RGB(247, 247, 255)
+        #endif
         iconImageView.contentMode = .center
         iconImageView.layer.cornerRadius = SCRYFrom(8)
         contentView.addSubview(iconImageView)

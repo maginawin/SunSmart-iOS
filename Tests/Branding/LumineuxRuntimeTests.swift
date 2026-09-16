@@ -54,6 +54,109 @@ final class LumineuxRuntimeTests: XCTestCase {
         [view] + view.subviews.flatMap { descendants($0) }
     }
 
+    func testSpaceCardIconBackgroundMatchesArtwork() throws {
+        let space = SpaceData(name: "Space 1", id: "space-background-layout", siteId: "space-background-site",
+            create: 0, isFavourite: false, permission: .owner, sourceType: .create,
+            meshUUID: "space-background-mesh", meshNetworkId: "space-background-network")
+        let cell = SpacesViewCell(frame: .zero)
+        space.imageId = 1
+        cell.space = space
+        let height = isIPad ? max(SCRYFrom(192), 192) : SCRYFrom(192)
+        let width = isIPad ? (SCREEN_WIDTH - SCRXFrom(60)) / 2 : SCREEN_WIDTH - SCRXFrom(32)
+        _ = host(cell, size: CGSize(width: width, height: height))
+        let icon = try XCTUnwrap(descendants(cell).compactMap { $0 as? UIImageView }
+            .first { image($0.image, matchesNamed: "space_picture_1") })
+        assertContained(icon, in: cell.contentView)
+        XCTAssertEqual(icon.contentMode, .center)
+        for id in 1...60 {
+            space.imageId = id
+            cell.space = space
+            cell.layoutIfNeeded()
+            let artwork = try XCTUnwrap(icon.image)
+            XCTAssertGreaterThanOrEqual(icon.bounds.width, artwork.size.width)
+            XCTAssertGreaterThanOrEqual(icon.bounds.height, artwork.size.height)
+            let rendered = UIGraphicsImageRenderer(bounds: icon.bounds).image { _ in
+                icon.drawHierarchy(in: icon.bounds, afterScreenUpdates: true)
+            }
+            let pixels = try oraclePixels(rendered)
+            let inset = (icon.bounds.width - artwork.size.width) / 2
+            func middlePixel(at x: CGFloat) -> [UInt8] {
+                let offset = ((pixels.height / 2) * pixels.width + Int(x * rendered.scale)) * 4
+                return Array(pixels.rgba[offset..<(offset + 4)])
+            }
+            // Compare the exposed view margin with the PNG's white left gutter.
+            let canvas = middlePixel(at: inset + 4)
+            XCTAssertEqual(canvas, [255, 255, 255, 255], "Space icon \(id) canvas")
+            XCTAssertEqual(middlePixel(at: inset / 2), canvas,
+                "Space icon \(id) has a visible seam between its background and artwork")
+            if id == 1 {
+                // Figma 16001:96781: 1pt #4D738A at 10% opacity over white.
+                let border = middlePixel(at: 0.5)
+                for (actual, expected) in zip(border, [237, 241, 243, 255]) {
+                    XCTAssertEqual(Int(actual), expected, accuracy: 1, "Space icon border color")
+                }
+                XCTAssertEqual(middlePixel(at: 1.5), canvas, "Space icon border must remain 1pt wide")
+                snapshot(window, "Space-agriculture-background")
+            }
+        }
+    }
+
+    func testSpaceIconPickerShowsAllFigmaIconsAndSavesLastSelection() throws {
+        XCTAssertEqual(SpaceData.iconImageNames, (1...60).map { "space_picture_\($0)" })
+        let controller = InfoEditViewController(name: "Space icon layout", imageNames: SpaceData.iconImageNames,
+            selectImageIndex: 0, columnNum: isIPad ? 4 : 2)
+        controller.itemHeight = isIPad ? SCRYFrom(104) : nil
+        if isIPad { controller.preferredContentSize = iPadPreferredContentSize }
+        let presenter = UIViewController()
+        show(presenter)
+        let navigation = NavigationViewController(rootViewController: controller)
+        presenter.present(navigation, animated: false)
+        settleAppearance()
+        controller.view.layoutIfNeeded()
+        let collection = try XCTUnwrap(descendants(controller.view).compactMap { $0 as? UICollectionView }.first)
+        XCTAssertEqual(collection.numberOfItems(inSection: 0), 60)
+        snapshot(window, "Space-icons-first-page")
+        for index in 0..<60 {
+            let path = IndexPath(item: index, section: 0)
+            collection.scrollToItem(at: path, at: .centeredVertically, animated: false)
+            collection.layoutIfNeeded()
+            let cell = try XCTUnwrap(collection.cellForItem(at: path) as? ImageCollectionViewCell)
+            let imageView = try XCTUnwrap(cell.imageView)
+            try assertResolvedImageMatchesLumineuxSource(imageView.image, name: "space_picture_\(index + 1)")
+            XCTAssertEqual(imageView.image?.size, CGSize(width: 120, height: 96))
+            XCTAssertFalse(imageView.hasAmbiguousLayout)
+            XCTAssertTrue(cell.contentView.bounds.insetBy(dx: -0.5, dy: -0.5).contains(imageView.frame),
+                "Space icon \(index + 1) is clipped")
+        }
+        let last = IndexPath(item: 59, section: 0)
+        collection.delegate?.collectionView?(collection, didSelectItemAt: last)
+        collection.layoutIfNeeded()
+        XCTAssertEqual(collection.cellForItem(at: last)?.layer.borderWidth, 1)
+        var savedIndex: Int?
+        controller.doneCallback = { _, index in savedIndex = index; return false }
+        let done = try XCTUnwrap(descendants(controller.view).compactMap { $0 as? UIButton }
+            .first { $0.title(for: .normal) == "done".localizedString })
+        done.sendActions(for: .touchUpInside)
+        XCTAssertEqual(savedIndex, 59)
+        snapshot(window, "Space-icons-last-selected")
+        navigation.dismiss(animated: false)
+        settleAppearance()
+
+        let space = SpaceData(name: "Space 60", id: "space-icon-layout", siteId: "space-icon-site",
+            create: 0, isFavourite: false, permission: .owner, sourceType: .create,
+            meshUUID: "space-icon-mesh", meshNetworkId: "space-icon-network")
+        space.imageId = 60
+        let cell = SpacesViewCell(frame: .zero)
+        cell.space = space
+        _ = host(cell, size: CGSize(width: isIPad ? 640 : 343, height: 210))
+        let selected = try XCTUnwrap(descendants(cell).compactMap { $0 as? UIImageView }
+            .first { image($0.image, matchesNamed: "space_picture_60") })
+        try assertResolvedImageMatchesLumineuxSource(selected.image, name: "space_picture_60")
+        XCTAssertGreaterThanOrEqual(selected.bounds.width, 120)
+        XCTAssertGreaterThanOrEqual(selected.bounds.height, 96)
+        snapshot(window, "Space-icons-list-card")
+    }
+
     private func assertBlue(_ color: UIColor?, alpha: CGFloat = 1, file: StaticString = #filePath, line: UInt = #line) {
         guard let color else { return XCTFail("Missing brand color", file: file, line: line) }
         var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, actualAlpha: CGFloat = 0

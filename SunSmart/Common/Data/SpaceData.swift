@@ -59,6 +59,12 @@ enum SpaceContentDisplayDefaults {
 }
 
 class SpaceData: Copyable {
+
+    /// Brand-specific catalog size; brands without an override keep the existing 24 icons.
+    static var iconImageNames: [String] {
+        let count = Bundle.main.object(forInfoDictionaryKey: "SpaceIconCount") as? Int ?? 24
+        return (1...count).map { "space_picture_\($0)" }
+    }
     
     /// 空间名称
     var name: String = ""

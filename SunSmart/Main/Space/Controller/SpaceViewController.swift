@@ -1350,10 +1350,7 @@ class SpaceViewController: WMPageController {
     /// 编辑空间
     private func editSpace() {
         
-        var imageNames: [String] = []
-        for id in 1...24 {
-            imageNames.append("space_picture_\(id)")
-        }
+        let imageNames = SpaceData.iconImageNames
         let columnNum = isIPad ? 4 : 2
         let vc = InfoEditViewController(name: space.name, imageNames: imageNames, selectImageIndex: max(space.imageId - 1, 0), columnNum: columnNum)
         vc.itemHeight = isIPad ? SCRYFrom(104) : nil
