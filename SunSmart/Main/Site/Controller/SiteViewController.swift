@@ -2551,10 +2551,15 @@ self.updateAddressData()
                 self?.shareSpace(space)
             }))
         }
-       
-//        items.append(.init(icon: UIImage(named: "menu_share"), title: "Export", tapItemBack: {[weak self] _ in
-//            self?.exportSpace(space)
-//        }))
+        #if DEBUG
+        if DebugCloudJSONExporter.canExport(space.permission) {
+            items.append(.init(icon: UIImage(named: "menu_share"), title: "debug_export_json".localizedString,
+                               performsActionAfterDismiss: true, tapItemBack: { [weak self] _ in
+                guard let self else { return }
+                self.debugJSONExporter.share(site: self.site, space: space, from: self)
+            }))
+        }
+        #endif
         
         if space.spaceOperates.contains(.exit) {
             items.append(.init(icon: UIImage(named: "menu_unbind"), title: "unbind".localizedString, tapItemBack: { _ in
@@ -2565,7 +2570,12 @@ self.updateAddressData()
             }))
         }
         
+        #if DEBUG
+        let exportMenuWidth = DebugCloudJSONExporter.menuWidth(items: items, minimum: MenuPopView.defalutMenuWidth)
+        MenuPopView.show(items: items, anchorPoint: point, menuWidth: exportMenuWidth)
+        #else
         MenuPopView.show(items: items, anchorPoint: point)
+        #endif
     }
     
     /// 更新同步状态
