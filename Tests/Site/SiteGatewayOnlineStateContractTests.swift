@@ -61,11 +61,12 @@ struct SiteGatewayOnlineStateContractTests {
         )
 
         require(
-            source.contains("private func shouldShowGatewayStatus(for spaces: [SpaceData]) -> Bool"),
-            "Gateway overview visibility must have a shared server-state policy"
+            source.contains("private func shouldShowGatewayStatus(") &&
+                source.contains("SiteGatewayHeaderLayoutPolicy.showsGatewayStatus("),
+            "Gateway visibility must have a shared selection and server-state policy"
         )
         let visibilityUseCount = source.components(
-            separatedBy: "shouldShowGatewayStatus(for: spaces)"
+            separatedBy: "shouldShowGatewayStatus(for: spaces, in: collectionView)"
         ).count - 1
         require(
             visibilityUseCount >= 2,

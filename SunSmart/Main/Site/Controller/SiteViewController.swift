@@ -1509,14 +1509,23 @@ self.updateAddressData()
         return gatewayModels
     }
     
-    private func shouldShowGatewayStatus(for spaces: [SpaceData]) -> Bool {
+    private func shouldShowGatewayStatus(
+        for spaces: [SpaceData],
+        in collectionView: UICollectionView
+    ) -> Bool {
+        let selectedGatewayID = collectionView == allSpacesCollectionView
+            ? allSpaceSelectGatewayId
+            : favouriteSpaceSelectGatewayId
         let hasServerGatewayStatus = spaces.contains {
             $0.gatewayStatus != .notBound
         }
-        return !site.spaces.isEmpty &&
-            (!showGatewayModels.isEmpty ||
-             hasServerGatewayStatus ||
-             site.permission != .owner)
+        return SiteGatewayHeaderLayoutPolicy.showsGatewayStatus(
+            selectedGatewayID: selectedGatewayID,
+            visibleGatewayIDs: showGatewayModels.map(\.mac),
+            hasSiteSpaces: !site.spaces.isEmpty,
+            hasServerGatewayStatus: hasServerGatewayStatus,
+            isSiteOwner: site.permission == .owner
+        )
     }
 
     // MARK: - Action
@@ -2937,7 +2946,8 @@ self.updateAddressData()
     }
     
     private func siteGatewayHeaderHeight(
-        for spaces: [SpaceData]
+        for spaces: [SpaceData],
+        in collectionView: UICollectionView
     ) -> CGFloat {
         let showsReviewSync: Bool
         if case .review = timeZoneReviewState {
@@ -2949,7 +2959,7 @@ self.updateAddressData()
             gatewayListHeight: SCRYFrom(48),
             gatewayStatusHeight: SCRYFrom(48),
             reviewSyncHeight: SCRYFrom(64),
-            showsGatewayStatus: shouldShowGatewayStatus(for: spaces),
+            showsGatewayStatus: shouldShowGatewayStatus(for: spaces, in: collectionView),
             showsReviewSync: showsReviewSync
         )
     }
@@ -2960,7 +2970,7 @@ self.updateAddressData()
     ) -> CGRect {
         SiteGatewayHeaderLayoutPolicy.emptyStateFrame(
             collectionBounds: collectionView.bounds,
-            headerHeight: siteGatewayHeaderHeight(for: spaces)
+            headerHeight: siteGatewayHeaderHeight(for: spaces, in: collectionView)
         )
     }
 
@@ -3374,7 +3384,7 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
             }
             spaces = favouriteSpaces
         }
-        let showGatewayStatus = shouldShowGatewayStatus(for: spaces)
+        let showGatewayStatus = shouldShowGatewayStatus(for: spaces, in: collectionView)
         
         if showGatewayModels.count > 0 {
             headerView.showGatewayListView = true
@@ -3448,7 +3458,7 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
             : favouriteSpaces
         return CGSize(
             width: headerW,
-            height: siteGatewayHeaderHeight(for: spaces)
+            height: siteGatewayHeaderHeight(for: spaces, in: collectionView)
         )
     }
     
