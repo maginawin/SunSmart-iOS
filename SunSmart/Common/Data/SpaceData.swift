@@ -180,6 +180,7 @@ class SpaceData: Copyable {
     
     /// 检查space是否可以编辑
     var canEditing: Bool {
+        guard SpaceMembershipCoordinator.allowsConfiguration(self), !SpaceConfigurationSafety.isBlocked(self) else { return false }
         // 是否有编辑权限
         guard permission == .owner || permission == .editor else {
             return false
@@ -193,7 +194,8 @@ class SpaceData: Copyable {
     
     /// 检查space是否可以进入调试
     var canDebug: Bool {
-        state == .normal && !requiresPasswordVerification
+        state == .normal && !requiresPasswordVerification && SpaceMembershipCoordinator.allowsConfiguration(self)
+            && !SpaceConfigurationSafety.isBlocked(self)
     }
     
     /// 是否数据空的空间
@@ -252,6 +254,11 @@ class SpaceData: Copyable {
     }
     /// 设备操作权限
     var deviceOperates: [MeshOperate] {
+        guard !SpaceMembershipCoordinator.isLeaving(self) else { return [] }
+        guard SpaceMembershipCoordinator.allowsConfiguration(self) else { return [] }
+        if SpaceConfigurationSafety.isBlocked(self) {
+            return lastUploadCloudTimestamp != nil && !requiresPasswordVerification && state == .normal ? [.control] : []
+        }
         if permission == .visitor || disableEditorPermission || meshOTADistribution {
             return [.control]
         }
@@ -260,6 +267,11 @@ class SpaceData: Copyable {
     
     /// 组操作权限
     var groupOperates: [MeshOperate] {
+        guard !SpaceMembershipCoordinator.isLeaving(self) else { return [] }
+        guard SpaceMembershipCoordinator.allowsConfiguration(self) else { return [] }
+        if SpaceConfigurationSafety.isBlocked(self) {
+            return lastUploadCloudTimestamp != nil && !requiresPasswordVerification && state == .normal ? [.control] : []
+        }
         if permission == .visitor || disableEditorPermission || meshOTADistribution {
             return [.control]
         }
@@ -268,6 +280,11 @@ class SpaceData: Copyable {
     
     /// 场景操作权限
     var sceneOperates: [MeshOperate] {
+        guard !SpaceMembershipCoordinator.isLeaving(self) else { return [] }
+        guard SpaceMembershipCoordinator.allowsConfiguration(self) else { return [] }
+        if SpaceConfigurationSafety.isBlocked(self) {
+            return lastUploadCloudTimestamp != nil && !requiresPasswordVerification && state == .normal ? [.control] : []
+        }
         if permission == .visitor || disableEditorPermission || meshOTADistribution {
             return [.control]
         }
@@ -276,6 +293,9 @@ class SpaceData: Copyable {
     
     /// 日程操作权限
     var scheduleOperates: [MeshOperate] {
+        guard !SpaceMembershipCoordinator.isLeaving(self) else { return [] }
+        guard SpaceMembershipCoordinator.allowsConfiguration(self) else { return [] }
+        guard !SpaceConfigurationSafety.isBlocked(self) else { return [] }
         if permission == .visitor || disableEditorPermission || meshOTADistribution {
             return []
         }
@@ -284,6 +304,9 @@ class SpaceData: Copyable {
     
     /// ble固件升级操作权限
     var bleOTAOperates: [MeshOperate] {
+        guard !SpaceMembershipCoordinator.isLeaving(self) else { return [] }
+        guard SpaceMembershipCoordinator.allowsConfiguration(self) else { return [] }
+        guard !SpaceConfigurationSafety.isBlocked(self) else { return [] }
         if permission == .visitor || disableEditorPermission || meshOTADistribution {
             return []
         }
@@ -292,6 +315,9 @@ class SpaceData: Copyable {
     
     /// mesh固件升级操作权限
     var meshOTAOperates: [MeshOperate] {
+        guard !SpaceMembershipCoordinator.isLeaving(self) else { return [] }
+        guard SpaceMembershipCoordinator.allowsConfiguration(self) else { return [] }
+        guard !SpaceConfigurationSafety.isBlocked(self) else { return [] }
         if permission == .visitor || (disableEditorPermission && !meshOTADistribution) {
             return []
         }
@@ -330,18 +356,7 @@ class SpaceData: Copyable {
     
     func copy() -> Self {
         let space = SpaceData(name: self.name, id: self.id, siteId: self.siteId, imageId: self.imageId, create: self.create, lastUpdate: self.lastUpdate, isFavourite: self.isFavourite, permission: self.permission, sourceType: self.sourceType, meshUUID: self.meshUUID, meshNetworkId: self.meshNetworkId)
-        space.deviceCount = self.deviceCount
-        space.switchesCount = self.switchesCount
-        space.luminairesCount = self.luminairesCount
-        space.groupCount = self.groupCount
-        space.sceneCount = self.sceneCount
-        space.scheheduleCount = self.scheheduleCount
-        space.displayDeviceNamePrefix = self.displayDeviceNamePrefix
-        space.showCCTQuickButtons = self.showCCTQuickButtons
-        space.controlType = self.controlType
-        space.deviceBlinkMode = self.deviceBlinkMode
-        space.triggerZones = self.triggerZones.map({ $0.copy() })
-        space.triggerZonesLoadFailed = self.triggerZonesLoadFailed
+        space.applyConfigurationState(from: self)
         return space as! Self
     }
     

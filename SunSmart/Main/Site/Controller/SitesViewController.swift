@@ -620,6 +620,9 @@ class SitesViewController: UIViewController {
         let touchCenterX = view.width - navigationRightItemMargin - 15
         
         let items: [MenuPopView.MenuItem] = [
+            .init(icon: UIImage(systemName: "doc.on.doc"), title: "space_saved_copies".localizedString, tapItemBack: { [weak self] _ in
+                self?.navigationController?.pushViewController(SpaceSavedCopiesViewController(), animated: true)
+            }),
             .init(icon: UIImage(named: "menu_nearby_network"), title: "nearby_network".localizedString, tapItemBack: { item in
                 XWHUDManager.showTipHUD("under_development".localizedString, isLineFeed: true)
             }),

@@ -126,11 +126,18 @@ class SharePermissionSelectionController: UIViewController {
     // MARK: - Request
     /// 加入space请求
     private func spaceJoinRequest(space: SpaceData, password: String?, permission: Permission) {
+        guard SpaceMembershipCoordinator.canJoin(space) else {
+            XWHUDManager.showErrorTipHUD("space_leave_pending".localizedString); return
+        }
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
             
+        let joinContext = SpaceMembershipResponseContext.capture(account: UserData.currentUserId,
+            region: String(describing: UserData.currentServerRegion))
         NetworkRequest.shared.request(.joinSpace(shareId: self.shareId, password: password, permission: permission)) {[weak self] result in
             XWHUDManager.hide()
             guard let self = self else { return }
+            guard SpaceMembershipResponseContext.matches(joinContext, account: UserData.currentUserId,
+                region: String(describing: UserData.currentServerRegion)) else { XWHUDManager.hide(); return }
             switch result {
             case .success(_):
                 Task {
@@ -157,6 +164,11 @@ class SharePermissionSelectionController: UIViewController {
                     }
                     
 //                    let localSpace = importSpace
+                    guard SpaceMembershipResponseContext.matches(joinContext, account: UserData.currentUserId,
+                        region: String(describing: UserData.currentServerRegion)),
+                        SpaceMembershipCoordinator.authorizeJoin(importSpace) else {
+                        XWHUDManager.showErrorTipHUD("space_recovery_storage_failed".localizedString); return
+                    }
                     importSpace.authorizationPassword = password
                     importSpace.permission = permission
                     importSpace.requiresPasswordVerification = false
@@ -184,10 +196,17 @@ class SharePermissionSelectionController: UIViewController {
     
     /// 批量加入space请求
     private func spacesJoinRequest(spaces: [SpaceData], password: String?, permission: Permission) {
+        guard spaces.allSatisfy({ SpaceMembershipCoordinator.canJoin($0) }) else {
+            XWHUDManager.showErrorTipHUD("space_leave_pending".localizedString); return
+        }
         
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+        let joinContext = SpaceMembershipResponseContext.capture(account: UserData.currentUserId,
+            region: String(describing: UserData.currentServerRegion))
         NetworkRequest.shared.request(.joinSpace(shareId: self.shareId, password: password, permission: permission)) {[weak self] result in
             guard let self = self else { return }
+            guard SpaceMembershipResponseContext.matches(joinContext, account: UserData.currentUserId,
+                region: String(describing: UserData.currentServerRegion)) else { XWHUDManager.hide(); return }
             switch result {
             case .success(let response):
 //                XWHUDManager.showSuccessTipHUD("successfully".localizedString + "!")
@@ -205,6 +224,7 @@ class SharePermissionSelectionController: UIViewController {
                             }
                             if status == .successfully {
                                 let space = spaces.first(where: { $0.id == spaceId })
+                                guard let joinedSpace = space, SpaceMembershipCoordinator.authorizeJoin(joinedSpace) else { return nil }
                                 space?.permission = permission
                                 if permission == .editor {
                                     space?.authorizationPassword = spaceData["editorPasswd"] as? String
@@ -266,9 +286,17 @@ class SharePermissionSelectionController: UIViewController {
     
     /// 接收site请求
     private func receiveSiteRequest(password: String) {
+        guard case .site(let receivingSite, _, _) = type,
+              SpaceMembershipCoordinator.canReceiveSite(receivingSite.id) else {
+            XWHUDManager.showErrorTipHUD("space_leave_pending".localizedString); return
+        }
+        let joinContext = SpaceMembershipResponseContext.capture(account: UserData.currentUserId,
+            region: String(describing: UserData.currentServerRegion))
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
         NetworkRequest.shared.request(.receiveSite(shareId: self.shareId, password: password)) {[weak self] result in
             guard let self = self else { return }
+            guard SpaceMembershipResponseContext.matches(joinContext, account: UserData.currentUserId,
+                region: String(describing: UserData.currentServerRegion)) else { XWHUDManager.hide(); return }
             switch result {
             case .success(let response):
 //                没有site   切换一个与之前owner不重复的地址，并回收之前owner的手机地址
@@ -281,6 +309,12 @@ class SharePermissionSelectionController: UIViewController {
                         siteData.updateValue(exclusions, forKey: "exclusions")
                     }
                     Task {
+                        guard let receivedSiteID = siteData["uuid"] as? String,
+                              receivedSiteID == receivingSite.id,
+                              SpaceMembershipCoordinator.canReceiveSite(receivedSiteID) else {
+                            XWHUDManager.hide(); return
+                        }
+                        let account = UserData.currentUserId, region = String(describing: UserData.currentServerRegion)
                         var recycleAddressData: SiteData.RecycleAddressData?
                         if let siteId = siteData["uuid"] as? String, let localSite = SiteData.load(siteId: siteId), localSite.permission != .owner {
                             // 判断是否存在这个site，如果有则主动回收自己之前拥有的地址
@@ -324,6 +358,13 @@ class SharePermissionSelectionController: UIViewController {
 //                            }
                         }
                         
+                        guard account == UserData.currentUserId, region == String(describing: UserData.currentServerRegion),
+                              SpaceMembershipCoordinator.authorizeSiteReceipt(receivedSiteID) else {
+                            XWHUDManager.hide()
+                            XWHUDManager.showErrorTipHUD("space_recovery_storage_failed".localizedString); return
+                        }
+                        let context = SpaceMembershipResponseContext.capture(account: account, region: region)
+                        siteData = SpaceMembershipResponseContext.annotate(["data": siteData], context: context)["data"] as? [String: Any] ?? siteData
                         if let site = await SiteData.import(siteJsonData: siteData, changeAddress: true) {
                             site.state = .normal
                             site.permission = .owner

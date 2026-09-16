@@ -380,6 +380,8 @@ class CloudSynchronizationManager {
                 DispatchQueue.main.async { continuation.resume() }
             }
             guard isCurrent() else { return }
+            await SpaceMembershipCoordinator.resumeLeaves()
+            guard isCurrent() else { return }
             SpaceConfigurationSafety.resumeLocalRemovals()
             let siteIds = SiteData.loadAll().filter { $0.state == .normal }.map(\.id)
             for siteId in siteIds {
@@ -389,7 +391,8 @@ class CloudSynchronizationManager {
                 guard isCurrent() else { return }
                 guard let site = SiteData.load(siteId: siteId), site.state == .normal else { continue }
                 SiteDeviceOwnershipReconciler.reconcile(siteId: site.id)
-                for space in site.spaces where (try? SpaceConfigurationSafety.recoveryState(space).unbindRequested) == true {
+                for space in site.spaces where !SpaceMembershipCoordinator.isLeaving(space)
+                    && (try? SpaceConfigurationSafety.recoveryState(space).unbindRequested) == true {
                     _ = await SpaceConfigurationSafety.resumeUnbind(space)
                     guard isCurrent() else { return }
                 }
@@ -537,6 +540,23 @@ class CloudSynchronizationManager {
         }
     }
     
+    /// Keep unrelated peers queued when a batch containing the leaving Space is cancelled.
+    func suspendForMembershipLeave(space: SpaceData) {
+        var remaining: [SyncOperation] = []
+        for handle in syncHandles {
+            switch handle.operation {
+            case .syncSite(let site, let spaces), .addSpaces(let site, let spaces):
+                if spaces.contains(where: { $0.siteId == space.siteId && $0.id == space.id }) {
+                    let peers = spaces.filter { $0.id != space.id && !SpaceMembershipCoordinator.isLeaving($0) }
+                    if !peers.isEmpty { remaining.append(.syncSite(site: site, syncSpaces: peers)) }
+                }
+            default: break
+            }
+        }
+        cancelSynchronizationHandle(space: space)
+        for operation in remaining { addSynchronizationHandle(operation: operation, level: .normal) }
+    }
+
     /// 取消space相关的同步操作
     func cancelSynchronizationHandle(space: SpaceData) {
         

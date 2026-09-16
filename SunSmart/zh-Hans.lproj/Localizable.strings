@@ -2306,3 +2306,21 @@
 
 "gateway_deleted_manual_reset" = "网关已删除。重新添加前，请手动重置设备。";
 "gateway_delete_local_failed" = "无法完成网关本地删除，请重新进入此 Site 重试。";
+
+/* Space recovery and membership */
+"space_leave_action" = "退出空间";
+"space_leave_pending" = "正在等待退出此空间。服务器确认前，本机数据会保留。联网后可重试。";
+"space_leave_cleanup_pending" = "已退出此空间，本机数据清理将在条件允许时继续。";
+"space_leave_complete" = "已退出此空间。";
+"space_leave_unsynced" = "部分修改尚未得到云端确认。你可以重试同步，或在本机保留副本后退出。保留的副本不会自动上传。";
+"space_leave_keep_copy" = "保留副本并退出";
+"space_recovery_retry" = "重试";
+"space_recovery_storage_failed" = "无法在此手机保存配置，之前保存的数据已保留。你可以重试恢复或退出此空间。";
+"space_recovery_identity_failed" = "无法确认此空间的网络身份。你可以重新获取云端数据或退出此空间。";
+"space_recovery_changed" = "恢复期间空间状态发生了变化，请重试以获取当前状态。";
+"space_recovery_network_failed" = "暂时无法获取云端数据。联网后可重试，也可以申请退出此空间。";
+"space_recovery_unavailable" = "此空间尚未完成恢复。你可以重试恢复或退出空间。在完整配置就绪前，暂时无法修改配置。";
+"space_saved_copies" = "空间保留副本";
+"space_saved_copies_description" = "此处可查看本机保留的副本，退出空间后仍可访问。部分副本仅包含诊断记录。恢复副本需要重新取得该空间的当前权限。";
+"space_leave_copy_failed" = "无法保存副本。你可以重试，或不保留副本并退出。继续退出可能丢失尚未同步的修改。";
+"space_leave_without_copy" = "不保留副本并退出";

@@ -53,6 +53,12 @@ test = test.replace('// IMPORT_PREPARATION_METHOD', '@MainActor\n' + preparation
     + '        _ = proximityPreflight\n        return .prepared\n    }\n')
 test += '\n' + section(imports, 'final class SiteImportTrace', '\nstruct SpaceImportOutcome')
 test += '\n' + read('Tests/Group/SpaceImportPreparationTests.swift')
+membership = section(read('SunSmart/Common/Data/SpaceMembershipCoordinator.swift'),
+    'enum SpaceMembershipCoordinator {', '    static var savedCopiesDirectory:') + '}\n'
+membership = membership.replace('URL(fileURLWithPath: NSHomeDirectory())\n        .appendingPathComponent("Library/Application Support/SpaceMembership")',
+    'SpaceConfigurationSafety.testRoot.appendingPathComponent("membership")')
+test += '\n' + membership
+
 cloud = read('SunSmart/Common/Cloud/CloudSynchronizationManager.swift')
 site_confirmation = section(cloud, '    /// Persist only the Site version', '    /// 开始同步到服务器')
 site_confirmation = site_confirmation.replace('private func confirmSiteUpload', 'func confirmSiteUpload')
@@ -81,6 +87,7 @@ with tempfile.TemporaryDirectory(prefix='space-receipt-tests-') as temp:
         str(root / 'SunSmart/Common/Data/AppPerformance.swift'),
         str(root / 'SunSmart/Common/Data/SpaceProtectionReadSnapshot.swift'),
         str(root / 'SunSmart/Common/Data/DeviceScheduleAddressCleanup.swift'),
+        str(root / 'SunSmart/Common/Data/SpaceMembershipStore.swift'),
         str(root / 'SunSmart/Common/Data/SiteTimeZoneValue.swift'),
         str(root / 'SunSmart/Main/Site/Model/SitePropsEditPolicy.swift'),
         str(root / 'SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),

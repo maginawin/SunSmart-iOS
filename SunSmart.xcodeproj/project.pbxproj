@@ -3739,6 +3739,21 @@
 		FC37248A4BA9471492C67995 /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
 		FDC40E80058A7403C1FD84A7 /* NodeSyncTopologyStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7B5C927EB09075DE812CA1 /* NodeSyncTopologyStorage.swift */; };
 		FEE1FB25CC954BC291397481 /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 392FAB0358444160BCBE29FC /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift */; };
+		F260916B0000000000000101 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */; };
+		F260916B0000000000000102 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */; };
+		F260916B0000000000000103 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */; };
+		F260916B0000000000000104 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */; };
+		F260916B0000000000000105 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */; };
+		F260916B0000000000000201 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */; };
+		F260916B0000000000000202 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */; };
+		F260916B0000000000000203 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */; };
+		F260916B0000000000000204 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */; };
+		F260916B0000000000000205 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */; };
+		F260916B0000000000000301 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
+		F260916B0000000000000302 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
+		F260916B0000000000000303 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
+		F260916B0000000000000304 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
+		F260916B0000000000000305 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -4575,6 +4590,9 @@
 		FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorState.swift; sourceTree = "<group>"; };
 		FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncRetryPolicy.swift; sourceTree = "<group>"; };
 		FF4CE0208AB4FEC2A28B419B /* NodeSyncTopologySnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeSyncTopologySnapshot.swift; sourceTree = "<group>"; };
+		F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceMembershipStore.swift; sourceTree = SOURCE_ROOT; };
+		F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceMembershipCoordinator.swift; sourceTree = SOURCE_ROOT; };
+		F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -6470,6 +6488,9 @@
 				C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */,
 				F26090300000000000000001 /* ProximityLightingTopologyReconciler.swift */,
 				F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */,
+				F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */,
+				F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */,
+				F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */,
 				F26090700000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift */,
 				260915A00000000000000002 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift */,
 				260915A00000000000000001 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift */,
@@ -7971,6 +7992,9 @@
 				C8A0F00232A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
 				F26090310000000000000001 /* ProximityLightingTopologyReconciler.swift in Sources */,
 				F26090720000000000000001 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */,
+				F260916B0000000000000301 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */,
+				F260916B0000000000000201 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */,
+				F260916B0000000000000101 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */,
 				F26090710000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */,
 				260915B00000000000000021 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */,
 				260915B00000000000000011 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */,
@@ -8685,6 +8709,9 @@
 				C8A0F00332A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
 				F26090310000000000000002 /* ProximityLightingTopologyReconciler.swift in Sources */,
 				F26090720000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */,
+				F260916B0000000000000302 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */,
+				F260916B0000000000000202 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */,
+				F260916B0000000000000102 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */,
 				F26090710000000000000002 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */,
 				260915B00000000000000022 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */,
 				260915B00000000000000012 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */,
@@ -9411,6 +9438,9 @@
 				C8A0F00432A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
 				F26090310000000000000003 /* ProximityLightingTopologyReconciler.swift in Sources */,
 				F26090720000000000000003 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */,
+				F260916B0000000000000303 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */,
+				F260916B0000000000000203 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */,
+				F260916B0000000000000103 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */,
 				F26090710000000000000003 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */,
 				260915B00000000000000023 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */,
 				260915B00000000000000013 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */,
@@ -10147,6 +10177,9 @@
 				C8A0F00532A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
 				F26090310000000000000004 /* ProximityLightingTopologyReconciler.swift in Sources */,
 				F26090720000000000000004 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */,
+				F260916B0000000000000304 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */,
+				F260916B0000000000000204 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */,
+				F260916B0000000000000104 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */,
 				F26090710000000000000004 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */,
 				260915B00000000000000024 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */,
 				260915B00000000000000014 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */,
@@ -10862,6 +10895,9 @@
 				C8A0F00632A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
 				F26090310000000000000005 /* ProximityLightingTopologyReconciler.swift in Sources */,
 				F26090720000000000000005 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */,
+				F260916B0000000000000305 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */,
+				F260916B0000000000000205 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */,
+				F260916B0000000000000105 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */,
 				F26090710000000000000005 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */,
 				260915B00000000000000025 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */,
 				260915B00000000000000015 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */,

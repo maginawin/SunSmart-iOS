@@ -99,7 +99,8 @@ struct SiteSpaceMeshContextOwnershipContractTests {
         )
         require(
             spaceImport.contains("getNodeSyncProximityLighting(topologyPlan: importedPlan)") &&
-                spaceImport.contains("groups: groups.filter { !$0.isVirtual }, spaceTriggerZones: self.triggerZones"),
+                spaceImport.contains("groups: groups.filter { !$0.isVirtual },") &&
+                spaceImport.contains("nodes: ProximityLightingTopologyContext.realNodes(in: network), spaceTriggerZones: self.triggerZones"),
             "Import repair tasks must use the imported Space topology, including during a different active Space"
         )
 

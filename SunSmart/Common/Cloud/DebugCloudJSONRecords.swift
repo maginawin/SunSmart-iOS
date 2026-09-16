@@ -1,4 +1,3 @@
-#if DEBUG
 import Foundation
 import SQLite
 import NordicSigMeshSDK
@@ -136,4 +135,3 @@ enum DebugCloudJSONRecords {
         return value
     }
 }
-#endif

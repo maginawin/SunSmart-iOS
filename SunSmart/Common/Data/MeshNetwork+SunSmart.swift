@@ -271,7 +271,7 @@ extension SiteData {
     /// 获取site解绑spaces回收地址数据（异步加载数据，避免阻塞主线程）
     /// - Parameter spaces: spaces
     /// - Returns: 回收地址数据
-    func getRecycleAddressData(unbindSpaces spaces: [SpaceData]) async -> RecycleAddressData {
+    func getRecycleAddressData(unbindSpaces spaces: [SpaceData], prepareOnly: Bool = false) async -> RecycleAddressData {
 
         return await withCheckedContinuation { continuation in
             
@@ -298,6 +298,12 @@ extension SiteData {
             var provisionerData: [String: Any]?
             
             let meshNetwork = MeshNetwork.load(meshUUID: self.meshUUID, allData: false)
+            // A detached provisioner provides the post-reclaim payload without mutating live allocation.
+            let plannedProvisioner: Provisioner?
+            if prepareOnly, let provisioner = meshNetwork?.localProvisioner,
+               let data = try? JSONEncoder().encode(provisioner) {
+                plannedProvisioner = try? JSONDecoder().decode(Provisioner.self, from: data)
+            } else { plannedProvisioner = meshNetwork?.localProvisioner }
             
             if self.spaces.count - spaces.count <= 0 { // 没有space了
                 /// 废弃的设备地址
@@ -321,10 +327,10 @@ extension SiteData {
                         availableDeviceAddresses.append(Int(localAddress))
                     }
                     // 删除本地手机节点
-                    if let localNode = localProvisioner.node {
+                    if !prepareOnly, let localNode = localProvisioner.node {
                         meshNetwork.remove(node: localNode)
                     }
-                    self.localAddress = nil
+                    if !prepareOnly { self.localAddress = nil }
                 }
                 
                 // 全部回收剩余地址和剩余废弃地址
@@ -359,7 +365,7 @@ extension SiteData {
                         
                         var usedSceneAddresses = Scene.loadAddresses(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId)
                         
-                        if let localProvisioner = meshNetwork?.localProvisioner {
+                        if let localProvisioner = plannedProvisioner {
                             // 该用户已使用的组地址
                             usedGroupAddresses = usedGroupAddresses.filter({ localProvisioner.allocatedGroupRange.contains($0) })
                             // 该用户已使用的场景地址
@@ -383,7 +389,7 @@ extension SiteData {
             })
             
             
-            if let localProvisioner = meshNetwork?.localProvisioner {
+            if let localProvisioner = plannedProvisioner {
                 let deallocatedUnicastRange = recycleDeviceAddresses.splitArray().compactMap { array in
                     if let lowAddress = array.first, let highAddress = array.last {
                         return AddressRange(from: UInt16(lowAddress), to: UInt16(highAddress))
@@ -415,6 +421,10 @@ extension SiteData {
                     localProvisioner.deallocate(sceneRange: $0)
                 })
                 provisionerData = localProvisioner.toJson()
+                if prepareOnly, let original = meshNetwork?.localProvisioner?.toJson() {
+                    // Detached Provisioner has no network reference. Preserve transport metadata.
+                    for key in ["usedAddresses", "address"] { provisionerData?[key] = original[key] }
+                }
             }
             continuation.resume(returning: .init(deviceAddresses: recycleDeviceAddresses.sorted(), groupAddresses: recycleGroupAddresses.sorted(), sceneAddresses: recycleSceneAddresses.sorted(), exclusionAddresses: exclusions, provisionerData: provisionerData))
         }
