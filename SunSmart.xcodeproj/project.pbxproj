@@ -410,6 +410,7 @@
 		08B54DD530402CCB0017ED49 /* SceneMembersViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898F7032B3AB698008B4124 /* SceneMembersViewCell.swift */; };
 		08B54DD630402CCB0017ED49 /* ScheduleServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898D1CF2B59134A00B2033B /* ScheduleServer.swift */; };
 		08B54DD730402CCB0017ED49 /* SpaceMoreViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC50972C4E2FF1003CE437 /* SpaceMoreViewController.swift */; };
+		F26091510000000000000010 /* FeatureVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000001 /* FeatureVisibility.swift */; };
 		08B54DD830402CCB0017ED49 /* SceneAddDataListViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE7F2B33E43C0082A772 /* SceneAddDataListViewCell.swift */; };
 		08B54DD930402CCB0017ED49 /* EnergyStaticDataDeviceViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8002CD12DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift */; };
 		08B54DDA30402CCB0017ED49 /* LinePageControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF088D2B299DD700144BAC /* LinePageControl.swift */; };
@@ -698,6 +699,7 @@
 		08B54EFD30402CCB0017ED49 /* CodeScan.bundle in Resources */ = {isa = PBXBuildFile; fileRef = C87EB45A2BA17D3E00F9285B /* CodeScan.bundle */; };
 		08B54EFE30402CCB0017ED49 /* broadcast_loading.gif in Resources */ = {isa = PBXBuildFile; fileRef = C85D550E2E6182DC00BFEEDA /* broadcast_loading.gif */; };
 		08B54EFF30402CCB0017ED49 /* devices_config.json in Resources */ = {isa = PBXBuildFile; fileRef = C89B78802CC1EFEA0048B746 /* devices_config.json */; };
+		F26091510000000000000020 /* debug_features.json in Resources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000002 /* debug_features.json */; };
 		08B54F0030402CCB0017ED49 /* XWHUDManager_error@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5AA2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png */; };
 		08B54F0130402CCB0017ED49 /* devices1.5.md in Resources */ = {isa = PBXBuildFile; fileRef = 8CC3F7AB2FBAB35700CD3373 /* devices1.5.md */; };
 		08B54F0330402CCB0017ED49 /* XWHUDManager_info@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB8F2A930C3800217512 /* XWHUDManager_info@2x.png */; };
@@ -1547,6 +1549,7 @@
 		C88554672DE6B44C00C8B688 /* SceneMembersViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898F7032B3AB698008B4124 /* SceneMembersViewCell.swift */; };
 		C88554682DE6B44C00C8B688 /* ScheduleServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898D1CF2B59134A00B2033B /* ScheduleServer.swift */; };
 		C88554692DE6B44C00C8B688 /* SpaceMoreViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC50972C4E2FF1003CE437 /* SpaceMoreViewController.swift */; };
+		F26091510000000000000011 /* FeatureVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000001 /* FeatureVisibility.swift */; };
 		C885546A2DE6B44C00C8B688 /* SceneAddDataListViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE7F2B33E43C0082A772 /* SceneAddDataListViewCell.swift */; };
 		C885546B2DE6B44C00C8B688 /* EnergyStaticDataDeviceViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8002CD12DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift */; };
 		C885546C2DE6B44C00C8B688 /* LinePageControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF088D2B299DD700144BAC /* LinePageControl.swift */; };
@@ -1726,6 +1729,7 @@
 		C885551F2DE6B44C00C8B688 /* XWHUDManager_error@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A92B6A1FDC00F60E62 /* XWHUDManager_error@2x.png */; };
 		C88555202DE6B44C00C8B688 /* CodeScan.bundle in Resources */ = {isa = PBXBuildFile; fileRef = C87EB45A2BA17D3E00F9285B /* CodeScan.bundle */; };
 		C88555212DE6B44C00C8B688 /* devices_config.json in Resources */ = {isa = PBXBuildFile; fileRef = C89B78802CC1EFEA0048B746 /* devices_config.json */; };
+		F26091510000000000000021 /* debug_features.json in Resources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000002 /* debug_features.json */; };
 		C88555222DE6B44C00C8B688 /* XWHUDManager_error@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5AA2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png */; };
 		C88555252DE6B44C00C8B688 /* XWHUDManager_info@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB8F2A930C3800217512 /* XWHUDManager_info@2x.png */; };
 		C88555262DE6B44C00C8B688 /* XWHUDManager_info@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB8C2A930C3800217512 /* XWHUDManager_info@3x.png */; };
@@ -1932,6 +1936,7 @@
 		C886E0BD2E30DE4900D0C3A6 /* SceneMembersViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898F7032B3AB698008B4124 /* SceneMembersViewCell.swift */; };
 		C886E0BE2E30DE4900D0C3A6 /* ScheduleServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898D1CF2B59134A00B2033B /* ScheduleServer.swift */; };
 		C886E0BF2E30DE4900D0C3A6 /* SpaceMoreViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC50972C4E2FF1003CE437 /* SpaceMoreViewController.swift */; };
+		F26091510000000000000012 /* FeatureVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000001 /* FeatureVisibility.swift */; };
 		C886E0C02E30DE4900D0C3A6 /* SceneAddDataListViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE7F2B33E43C0082A772 /* SceneAddDataListViewCell.swift */; };
 		C886E0C12E30DE4900D0C3A6 /* EnergyStaticDataDeviceViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8002CD12DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift */; };
 		C886E0C22E30DE4900D0C3A6 /* LinePageControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF088D2B299DD700144BAC /* LinePageControl.swift */; };
@@ -2115,6 +2120,7 @@
 		C886E17A2E30DE4900D0C3A6 /* XWHUDManager_error@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A92B6A1FDC00F60E62 /* XWHUDManager_error@2x.png */; };
 		C886E17B2E30DE4900D0C3A6 /* CodeScan.bundle in Resources */ = {isa = PBXBuildFile; fileRef = C87EB45A2BA17D3E00F9285B /* CodeScan.bundle */; };
 		C886E17C2E30DE4900D0C3A6 /* devices_config.json in Resources */ = {isa = PBXBuildFile; fileRef = C89B78802CC1EFEA0048B746 /* devices_config.json */; };
+		F26091510000000000000022 /* debug_features.json in Resources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000002 /* debug_features.json */; };
 		C886E17D2E30DE4900D0C3A6 /* XWHUDManager_error@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5AA2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png */; };
 		C886E17E2E30DE4900D0C3A6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C896B9B02A930BAA00217512 /* Assets.xcassets */; };
 		C886E17F2E30DE4900D0C3A6 /* XWHUDManager_info@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB8F2A930C3800217512 /* XWHUDManager_info@2x.png */; };
@@ -2197,6 +2203,7 @@
 		C89B40CE2CEB37CA0082A89A /* MeshDistributionData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89B40CD2CEB37C90082A89A /* MeshDistributionData.swift */; };
 		C89B53292C7DB5DC00D2959F /* FirmwareUpdateStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89B53282C7DB5DC00D2959F /* FirmwareUpdateStateView.swift */; };
 		C89B78812CC1EFEB0048B746 /* devices_config.json in Resources */ = {isa = PBXBuildFile; fileRef = C89B78802CC1EFEA0048B746 /* devices_config.json */; };
+		F26091510000000000000023 /* debug_features.json in Resources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000002 /* debug_features.json */; };
 		C89BAB1F2C4F3CF4000A4173 /* MeshFirmwareListViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89BAB1E2C4F3CF4000A4173 /* MeshFirmwareListViewController.swift */; };
 		C89BAB212C4F3EC8000A4173 /* MeshFirmwareListViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89BAB202C4F3EC8000A4173 /* MeshFirmwareListViewCell.swift */; };
 		C89C15712D9A873500789F0B /* BetaTestingAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C15702D9A873500789F0B /* BetaTestingAlertView.swift */; };
@@ -2374,6 +2381,7 @@
 		C8AC021C2DDD64AE0098E165 /* GroupPathSequenceTriggerZoneViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC021B2DDD64AE0098E165 /* GroupPathSequenceTriggerZoneViewCell.swift */; };
 		C8AC021E2DDDA8680098E165 /* GroupPathSequenceDeviceAddStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC021D2DDDA8680098E165 /* GroupPathSequenceDeviceAddStepView.swift */; };
 		C8AC50982C4E2FF1003CE437 /* SpaceMoreViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC50972C4E2FF1003CE437 /* SpaceMoreViewController.swift */; };
+		F26091510000000000000013 /* FeatureVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000001 /* FeatureVisibility.swift */; };
 		C8AC509A2C4E3234003CE437 /* SpaceMoreViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC50992C4E3234003CE437 /* SpaceMoreViewCell.swift */; };
 		C8AC83C72D068A670033513E /* MeshFirmwareUpdateStepHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC83C62D068A670033513E /* MeshFirmwareUpdateStepHeaderView.swift */; };
 		C8AC83C92D068CC70033513E /* MeshFirmwareUpdateLogViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC83C82D068CC70033513E /* MeshFirmwareUpdateLogViewCell.swift */; };
@@ -2752,6 +2760,7 @@
 		C8BB66852ED3F056000C63EE /* SceneMembersViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898F7032B3AB698008B4124 /* SceneMembersViewCell.swift */; };
 		C8BB66862ED3F056000C63EE /* ScheduleServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898D1CF2B59134A00B2033B /* ScheduleServer.swift */; };
 		C8BB66872ED3F056000C63EE /* SpaceMoreViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC50972C4E2FF1003CE437 /* SpaceMoreViewController.swift */; };
+		F26091510000000000000014 /* FeatureVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000001 /* FeatureVisibility.swift */; };
 		C8BB66882ED3F056000C63EE /* SceneAddDataListViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A3EE7F2B33E43C0082A772 /* SceneAddDataListViewCell.swift */; };
 		C8BB66892ED3F056000C63EE /* EnergyStaticDataDeviceViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8002CD12DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift */; };
 		C8BB668A2ED3F056000C63EE /* LinePageControl.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF088D2B299DD700144BAC /* LinePageControl.swift */; };
@@ -2966,6 +2975,7 @@
 		C8BB67612ED3F056000C63EE /* CodeScan.bundle in Resources */ = {isa = PBXBuildFile; fileRef = C87EB45A2BA17D3E00F9285B /* CodeScan.bundle */; };
 		C8BB67622ED3F056000C63EE /* broadcast_loading.gif in Resources */ = {isa = PBXBuildFile; fileRef = C85D550E2E6182DC00BFEEDA /* broadcast_loading.gif */; };
 		C8BB67632ED3F056000C63EE /* devices_config.json in Resources */ = {isa = PBXBuildFile; fileRef = C89B78802CC1EFEA0048B746 /* devices_config.json */; };
+		F26091510000000000000024 /* debug_features.json in Resources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000002 /* debug_features.json */; };
 		C8BB67642ED3F056000C63EE /* XWHUDManager_error@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5AA2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png */; };
 		C8BB67652ED3F056000C63EE /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C896B9B02A930BAA00217512 /* Assets.xcassets */; };
 		C8BB67662ED3F056000C63EE /* XWHUDManager_info@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB8F2A930C3800217512 /* XWHUDManager_info@2x.png */; };
@@ -4551,6 +4561,8 @@
 		092609120000000000000001 /* DebugCloudJSONFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugCloudJSONFile.swift; sourceTree = "<group>"; };
 		092609120000000000000003 /* DebugCloudJSONRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugCloudJSONRecords.swift; sourceTree = "<group>"; };
 		092609120000000000000002 /* DebugCloudJSONExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugCloudJSONExporter.swift; sourceTree = "<group>"; };
+		F26091510000000000000001 /* FeatureVisibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureVisibility.swift; sourceTree = "<group>"; };
+		F26091510000000000000002 /* debug_features.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = debug_features.json; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -6239,6 +6251,7 @@
 		C8AADEF82A97326D00238C1C /* Common */ = {
 			isa = PBXGroup;
 			children = (
+				F26091510000000000000003 /* Config */,
 				C84A2C4A2C2D022E0064D3F1 /* Mesh */,
 				C8D58F642C1D33B10066B770 /* Cloud */,
 				C884EF732C05B91200B5F869 /* Network */,
@@ -6312,6 +6325,7 @@
 				C8B483D12E4B361F006D85BC /* device_add.mp3 */,
 				C8B483D22E4B361F006D85BC /* device_reset.mp3 */,
 				C89B78802CC1EFEA0048B746 /* devices_config.json */,
+				F26091510000000000000002 /* debug_features.json */,
 				C896B9B02A930BAA00217512 /* Assets.xcassets */,
 				C896B9B22A930BAA00217512 /* LaunchScreen.storyboard */,
 				C896B9B52A930BAA00217512 /* Info.plist */,
@@ -6724,6 +6738,14 @@
 			path = View;
 			sourceTree = "<group>";
 		};
+		F26091510000000000000003 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				F26091510000000000000001 /* FeatureVisibility.swift */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -6900,6 +6922,7 @@
 				08B54EFD30402CCB0017ED49 /* CodeScan.bundle in Resources */,
 				08B54EFE30402CCB0017ED49 /* broadcast_loading.gif in Resources */,
 				08B54EFF30402CCB0017ED49 /* devices_config.json in Resources */,
+				F26091510000000000000020 /* debug_features.json in Resources */,
 				08B54F0030402CCB0017ED49 /* XWHUDManager_error@3x.png in Resources */,
 				08B54F0130402CCB0017ED49 /* devices1.5.md in Resources */,
 				08B54F2530402CCB0017ED49 /* LumineuxAssets/Assets-Lumineux-Merged.xcassets in Resources */,
@@ -6933,6 +6956,7 @@
 				C885551F2DE6B44C00C8B688 /* XWHUDManager_error@2x.png in Resources */,
 				C88555202DE6B44C00C8B688 /* CodeScan.bundle in Resources */,
 				C88555212DE6B44C00C8B688 /* devices_config.json in Resources */,
+				F26091510000000000000021 /* debug_features.json in Resources */,
 				C88555322DE6B5C900C8B688 /* Archipelago-Info.plist in Resources */,
 				C88555222DE6B44C00C8B688 /* XWHUDManager_error@3x.png in Resources */,
 				C88555252DE6B44C00C8B688 /* XWHUDManager_info@2x.png in Resources */,
@@ -6962,6 +6986,7 @@
 				C886E17A2E30DE4900D0C3A6 /* XWHUDManager_error@2x.png in Resources */,
 				C886E17B2E30DE4900D0C3A6 /* CodeScan.bundle in Resources */,
 				C886E17C2E30DE4900D0C3A6 /* devices_config.json in Resources */,
+				F26091510000000000000022 /* debug_features.json in Resources */,
 				C886E1A02E30E63200D0C3A6 /* Assets-SylSmart.xcassets in Resources */,
 				C8CD4F4F2E337D8500E4DE1F /* User Agreement.html in Resources */,
 				C886E17D2E30DE4900D0C3A6 /* XWHUDManager_error@3x.png in Resources */,
@@ -6997,6 +7022,7 @@
 				C87EB4622BA17D3F00F9285B /* CodeScan.bundle in Resources */,
 				C85D55102E6182DC00BFEEDA /* broadcast_loading.gif in Resources */,
 				C89B78812CC1EFEB0048B746 /* devices_config.json in Resources */,
+				F26091510000000000000023 /* debug_features.json in Resources */,
 				C8C1E5AC2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png in Resources */,
 				8CC3F7AE2FBAB35700CD3373 /* devices1.5.md in Resources */,
 				C896B9B12A930BAA00217512 /* Assets.xcassets in Resources */,
@@ -7028,6 +7054,7 @@
 				C8BB67732ED3F13A000C63EE /* Assets-SLGSync.xcassets in Resources */,
 				C8BB67622ED3F056000C63EE /* broadcast_loading.gif in Resources */,
 				C8BB67632ED3F056000C63EE /* devices_config.json in Resources */,
+				F26091510000000000000024 /* debug_features.json in Resources */,
 				C8BB67642ED3F056000C63EE /* XWHUDManager_error@3x.png in Resources */,
 				C8BB67652ED3F056000C63EE /* Assets.xcassets in Resources */,
 				C8BB67662ED3F056000C63EE /* XWHUDManager_info@2x.png in Resources */,
@@ -7692,6 +7719,7 @@
 				08B54DD530402CCB0017ED49 /* SceneMembersViewCell.swift in Sources */,
 				08B54DD630402CCB0017ED49 /* ScheduleServer.swift in Sources */,
 				08B54DD730402CCB0017ED49 /* SpaceMoreViewController.swift in Sources */,
+				F26091510000000000000010 /* FeatureVisibility.swift in Sources */,
 				08B54DD830402CCB0017ED49 /* SceneAddDataListViewCell.swift in Sources */,
 				08B54DD930402CCB0017ED49 /* EnergyStaticDataDeviceViewCell.swift in Sources */,
 				08B54DDA30402CCB0017ED49 /* LinePageControl.swift in Sources */,
@@ -8412,6 +8440,7 @@
 				C88554672DE6B44C00C8B688 /* SceneMembersViewCell.swift in Sources */,
 				C88554682DE6B44C00C8B688 /* ScheduleServer.swift in Sources */,
 				C88554692DE6B44C00C8B688 /* SpaceMoreViewController.swift in Sources */,
+				F26091510000000000000011 /* FeatureVisibility.swift in Sources */,
 				C885546A2DE6B44C00C8B688 /* SceneAddDataListViewCell.swift in Sources */,
 				C885546B2DE6B44C00C8B688 /* EnergyStaticDataDeviceViewCell.swift in Sources */,
 				C885546C2DE6B44C00C8B688 /* LinePageControl.swift in Sources */,
@@ -9135,6 +9164,7 @@
 				C886E0BD2E30DE4900D0C3A6 /* SceneMembersViewCell.swift in Sources */,
 				C886E0BE2E30DE4900D0C3A6 /* ScheduleServer.swift in Sources */,
 				C886E0BF2E30DE4900D0C3A6 /* SpaceMoreViewController.swift in Sources */,
+				F26091510000000000000012 /* FeatureVisibility.swift in Sources */,
 				C886E0C02E30DE4900D0C3A6 /* SceneAddDataListViewCell.swift in Sources */,
 				C886E0C12E30DE4900D0C3A6 /* EnergyStaticDataDeviceViewCell.swift in Sources */,
 				C886E0C22E30DE4900D0C3A6 /* LinePageControl.swift in Sources */,
@@ -9859,6 +9889,7 @@
 				C898F7042B3AB698008B4124 /* SceneMembersViewCell.swift in Sources */,
 				C898D1D02B59134A00B2033B /* ScheduleServer.swift in Sources */,
 				C8AC50982C4E2FF1003CE437 /* SpaceMoreViewController.swift in Sources */,
+				F26091510000000000000013 /* FeatureVisibility.swift in Sources */,
 				C8A3EE802B33E43C0082A772 /* SceneAddDataListViewCell.swift in Sources */,
 				C8002CD22DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift in Sources */,
 				C8BF088E2B299DD700144BAC /* LinePageControl.swift in Sources */,
@@ -10580,6 +10611,7 @@
 				C8BB66852ED3F056000C63EE /* SceneMembersViewCell.swift in Sources */,
 				C8BB66862ED3F056000C63EE /* ScheduleServer.swift in Sources */,
 				C8BB66872ED3F056000C63EE /* SpaceMoreViewController.swift in Sources */,
+				F26091510000000000000014 /* FeatureVisibility.swift in Sources */,
 				C8BB66882ED3F056000C63EE /* SceneAddDataListViewCell.swift in Sources */,
 				C8BB66892ED3F056000C63EE /* EnergyStaticDataDeviceViewCell.swift in Sources */,
 				C8BB668A2ED3F056000C63EE /* LinePageControl.swift in Sources */,

@@ -1571,11 +1571,8 @@ self.updateAddressData()
             }))
         }
         
-        if site.canManageSiteTriggerZones {
-            items.append(.init(icon: UIImage(named: "menu_trigger_zone"), title: "trigger_zone".localizedString, tapItemBack: { [weak self] _ in
-                guard let self, self.site.canManageSiteTriggerZones else { return }
-                self.navigationController?.pushViewController(SiteTriggerZoneViewController(site: self.site), animated: true)
-            }))
+        if let item = makeSiteTriggerZoneMenuItem() {
+            items.append(item)
         }
 
 //        items.append(.init(icon: UIImage(named: "energy_export")?.withTintColor(.white), title: "Import Space", tapItemBack: {[weak self] _ in
@@ -1590,6 +1587,19 @@ self.updateAddressData()
         #endif
     }
     
+    /// 每次打开菜单和点击入口时，使用当前 Site 角色重新判断。
+    private func makeSiteTriggerZoneMenuItem(visibility: FeatureVisibility = .shared) -> MenuPopView.MenuItem? {
+        guard visibility.isVisible(.siteTriggerZone, permission: site.permission) else { return nil }
+        return .init(icon: UIImage(named: "menu_trigger_zone"), title: "trigger_zone".localizedString, tapItemBack: { [weak self] _ in
+            guard let self, visibility.isVisible(.siteTriggerZone, permission: self.site.permission) else { return }
+            guard self.site.canManageSiteTriggerZones else {
+                XWHUDManager.showTipHUD("no_permission".localizedString)
+                return
+            }
+            self.navigationController?.pushViewController(SiteTriggerZoneViewController(site: self.site), animated: true)
+        })
+    }
+
     /// 编辑场所
     private func editSite() {
         let coordinator = SitePropsEditCoordinator(site: site)

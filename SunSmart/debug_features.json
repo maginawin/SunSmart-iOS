@@ -1,0 +1,10 @@
+{
+    "sites": {
+        "site": {
+            "triggerZone": {
+                "builds": ["debug"],
+                "roles": ["owner", "editor"]
+            }
+        }
+    }
+}
