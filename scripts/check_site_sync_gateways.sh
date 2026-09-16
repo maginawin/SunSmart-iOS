@@ -4,6 +4,8 @@ set -euo pipefail
 
 repo_root="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_root"
+source "$repo_root/scripts/lib/resolve_nordic_sdk_root.sh"
+sdk_root="$(resolve_nordic_sdk_root "$repo_root" "${1:-}")"
 
 swiftc -parse-as-library \
   SunSmart/Main/Site/Model/SiteGatewayHeaderLayoutPolicy.swift \
@@ -59,6 +61,7 @@ swiftc -parse-as-library \
 /tmp/SyncGatewaysScanSessionTests
 
 swiftc -parse-as-library \
+  "$sdk_root/Sources/NordicSigMeshSDK/MeshLib/Message/MeshTimeConversion.swift" \
   SunSmart/Main/Site/Model/GatewayTimeSyncCoordinator.swift \
   Tests/Site/GatewayTimeSyncCoordinatorTests.swift \
   -o /tmp/SyncGatewaysTimeCoordinatorTests

@@ -2,19 +2,24 @@ import Foundation
 
 struct GatewayTimeInformationSnapshot: Equatable {
     let seconds: UInt64
+    let taiDelta: Int16
     let offsetMinutes: Int
     let dateTimeText: String
     let timeZoneText: String
 }
 
 enum GatewayTimeInformationFormatter {
-    static let meshEpochOffset: TimeInterval = 946_684_800
-
     static func makeSnapshot(
         seconds: UInt64,
+        subSecond: UInt8,
+        taiDelta: Int16,
         offsetMinutes: Int
     ) -> GatewayTimeInformationSnapshot? {
-        guard seconds > 0,
+        guard let date = MeshTimeConversion.date(
+                seconds: seconds, subSecond: subSecond, taiDelta: taiDelta
+              ),
+              date.timeIntervalSince1970 >= MeshTimeConversion.unixEpochOffset,
+              date.timeIntervalSince1970 < 253_402_300_800,
               let timeZone = TimeZone(secondsFromGMT: offsetMinutes * 60) else {
             return nil
         }
@@ -33,12 +38,9 @@ enum GatewayTimeInformationFormatter {
             absoluteMinutes / 60,
             absoluteMinutes % 60
         )
-        let date = Date(
-            timeIntervalSince1970: TimeInterval(seconds) + meshEpochOffset
-        )
-
         return GatewayTimeInformationSnapshot(
             seconds: seconds,
+            taiDelta: taiDelta,
             offsetMinutes: offsetMinutes,
             dateTimeText: formatter.string(from: date),
             timeZoneText: timeZoneText
@@ -103,7 +105,8 @@ final class GatewayTimeInformationCoordinator {
             self.recovery = nil
             guard let sample,
                   let snapshot = GatewayTimeInformationFormatter.makeSnapshot(
-                    seconds: sample.seconds, offsetMinutes: sample.offsetMinutes
+                    seconds: sample.seconds, subSecond: sample.subSecond,
+                    taiDelta: sample.taiDelta, offsetMinutes: sample.offsetMinutes
                   ) else {
                 self.onReadState?(.failed)
                 return

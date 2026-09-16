@@ -16,6 +16,8 @@ enum GatewayTimeSyncAttemptPhase: Equatable {
 
 struct GatewayTimeStatusSnapshot: Equatable {
     let seconds: UInt64
+    let subSecond: UInt8
+    let taiDelta: Int16
     let offsetMinutes: Int
 }
 
@@ -93,7 +95,8 @@ struct GatewayTimeSyncAttemptCore {
     mutating func receive(
         attemptID: UUID,
         status: GatewayTimeStatusSnapshot,
-        targetOffsetMinutes: Int
+        targetOffsetMinutes: Int,
+        receivedAt: Date
     ) -> GatewayTimeSyncDecision {
         guard let attempt,
               attempt.id == attemptID,
@@ -102,7 +105,10 @@ struct GatewayTimeSyncAttemptCore {
         }
         let renderUI = isPageAttached && attempt.phase == .sent
         self.attempt = nil
-        guard status.seconds > 0,
+        guard let utcDate = MeshTimeConversion.date(
+                seconds: status.seconds, subSecond: status.subSecond, taiDelta: status.taiDelta
+              ),
+              abs(utcDate.timeIntervalSince(receivedAt)) <= 30,
               status.offsetMinutes == targetOffsetMinutes else {
             return .failure(renderUI: renderUI)
         }
@@ -198,6 +204,7 @@ final class GatewayTimeSyncCoordinator {
                     model: model,
                     timeout: 10
                 ) { [self] response in
+                    let receivedAt = Date()
                     DispatchQueue.main.async { [self] in
                         guard runtimeAttempt?.id == attemptID else { return }
                         guard let timeStatus = response as? TimeStatus else {
@@ -210,7 +217,8 @@ final class GatewayTimeSyncCoordinator {
                         settle(
                             attemptID: attemptID,
                             status: timeStatus,
-                            targetOffsetMinutes: resolution.offsetMinutes
+                            targetOffsetMinutes: resolution.offsetMinutes,
+                            receivedAt: receivedAt
                         )
                     }
                 }
@@ -252,16 +260,20 @@ final class GatewayTimeSyncCoordinator {
     private func settle(
         attemptID: UUID,
         status: TimeStatus,
-        targetOffsetMinutes: Int
+        targetOffsetMinutes: Int,
+        receivedAt: Date
     ) {
         let snapshot = GatewayTimeStatusSnapshot(
             seconds: status.time.seconds,
+            subSecond: status.time.subSecond,
+            taiDelta: status.time.taiDelta,
             offsetMinutes: status.time.tzOffset.secondsFromGMT() / 60
         )
         let decision = core.receive(
             attemptID: attemptID,
             status: snapshot,
-            targetOffsetMinutes: targetOffsetMinutes
+            targetOffsetMinutes: targetOffsetMinutes,
+            receivedAt: receivedAt
         )
         guard case .success(let renderUI) = decision,
               let runtimeAttempt,

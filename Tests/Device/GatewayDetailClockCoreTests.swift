@@ -8,6 +8,7 @@ struct GatewayDetailClockCoreTests {
         testFallsBackToCurrentPhoneOffset()
         testKeepsUnencodableSiteOffsetVisible()
         testOffByUsesGatewayDateTimeMinusLocalDateTime()
+        testReportedDeltaSurvivesClockSourceChange()
         testOffsetFormattingAndThreshold()
         testSyncVerificationRequiresReadbackOffsetAndThreshold()
         testRejectsUndisplayableGatewayDate()
@@ -59,7 +60,7 @@ struct GatewayDetailClockCoreTests {
     private static func testOffByUsesGatewayDateTimeMinusLocalDateTime() {
         let sample = GatewayDetailClockSample(
             seconds: 100,
-            subSecond: 0,
+            subSecond: 0, taiDelta: 0,
             offsetMinutes: 0
         )
         let gatewayAbsolute = TimeInterval(100) + GatewayDetailClockCore.meshEpochOffset
@@ -76,7 +77,7 @@ struct GatewayDetailClockCoreTests {
 
         let gatewayAheadSample = GatewayDetailClockSample(
             seconds: 190,
-            subSecond: 0,
+            subSecond: 0, taiDelta: 0,
             offsetMinutes: 480
         )
         let gatewayAhead = GatewayDetailClockCore.offBySeconds(
@@ -91,7 +92,7 @@ struct GatewayDetailClockCoreTests {
         require(
             GatewayDetailClockCore.gatewayDisplayDate(
                 localDate: localDate,
-                offBySeconds: gatewayAhead
+                offBySeconds: gatewayAhead!
             ) == localDate.addingTimeInterval(90),
             "Gateway display ticks must add Gateway-minus-Local Off by to Local"
         )
@@ -105,6 +106,36 @@ struct GatewayDetailClockCoreTests {
         require(GatewayDetailClockCore.isWithinTolerance(seconds: 30), "+30 seconds must be green")
         require(GatewayDetailClockCore.isWithinTolerance(seconds: -30), "-30 seconds must be green")
         require(!GatewayDetailClockCore.isWithinTolerance(seconds: 31), "31 seconds must be amber")
+    }
+
+    private static func testReportedDeltaSurvivesClockSourceChange() {
+        let local = Date(timeIntervalSince1970: 1_498_577_400.5)
+        for delta: Int16 in [0, 36, 37] {
+            let sample = GatewayDetailClockSample(
+                seconds: UInt64(551_892_600 + Int(delta)), subSecond: 128,
+                taiDelta: delta, offsetMinutes: 480
+            )
+            require(GatewayDetailClockCore.offBySeconds(
+                localDate: local, targetOffsetMinutes: 480, sample: sample
+            ) == 0, "Legacy sync and RTC/network TAI samples of the same instant must match")
+            require(GatewayDetailClockCore.offBySeconds(
+                localDate: local.addingTimeInterval(1), targetOffsetMinutes: 480, sample: sample
+            ) == -1, "Only the actual response delay remains after applying the reported delta")
+        }
+        let inconsistent = GatewayDetailClockSample(
+            seconds: 0x20E5369D, subSecond: 128, taiDelta: 0, offsetMinutes: 480
+        )
+        require(GatewayDetailClockCore.offBySeconds(
+            localDate: local, targetOffsetMinutes: 480, sample: inconsistent
+        ) == 37, "An inconsistent device must still expose its real clock error")
+        let unknown = GatewayDetailClockSample(seconds: 0, subSecond: 0, taiDelta: 37, offsetMinutes: 480)
+        require(GatewayDetailClockCore.offBySeconds(
+            localDate: local, targetOffsetMinutes: 480, sample: unknown
+        ) == nil, "Unknown samples cannot become a successful clock comparison")
+        let boundary = GatewayDetailClockSample(
+            seconds: 252_455_616_036, subSecond: 255, taiDelta: 37, offsetMinutes: 0
+        )
+        require(GatewayDetailClockCore.isDisplayable(sample: boundary), "Last UTC second of 9999 must use delta before checking the year")
     }
 
     private static func testSyncVerificationRequiresReadbackOffsetAndThreshold() {
@@ -135,7 +166,7 @@ struct GatewayDetailClockCoreTests {
     }
 
     private static func testReadAndSyncFailureRetainPreviousSample() {
-        let sample = GatewayDetailClockSample(seconds: 100, subSecond: 0, offsetMinutes: 480)
+        let sample = GatewayDetailClockSample(seconds: 100, subSecond: 0, taiDelta: 0, offsetMinutes: 480)
         var state = GatewayDetailClockState()
         state.accept(sample: sample, offBySeconds: 2, targetOffsetMinutes: 480)
         state.failRead()
@@ -151,7 +182,7 @@ struct GatewayDetailClockCoreTests {
     }
 
     private static func testReadCompletionCannotEndActiveSyncPresentation() {
-        let sample = GatewayDetailClockSample(seconds: 100, subSecond: 0, offsetMinutes: 480)
+        let sample = GatewayDetailClockSample(seconds: 100, subSecond: 0, taiDelta: 0, offsetMinutes: 480)
         var state = GatewayDetailClockState()
         state.beginSync()
         state.accept(sample: sample, offBySeconds: 2, targetOffsetMinutes: 480)
@@ -262,7 +293,7 @@ struct GatewayDetailClockCoreTests {
     private static func testRejectsUndisplayableGatewayDate() {
         let sample = GatewayDetailClockSample(
             seconds: (1 << 40) - 1,
-            subSecond: 0,
+            subSecond: 0, taiDelta: 0,
             offsetMinutes: 0
         )
         require(

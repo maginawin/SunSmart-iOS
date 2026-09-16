@@ -42,7 +42,7 @@ private final class FakeClockTransport: InformationClockTransport {
 @main
 struct InformationClockRecoveryTests {
     static let date = Date(timeIntervalSince1970: 1_788_800_000)
-    static let sample = InformationClockSample(seconds: 842_115_200, offsetMinutes: 345)
+    static let sample = InformationClockSample(seconds: 842_115_200, offsetMinutes: 345, taiDelta: 0)
 
     static func main() {
         normalReadAndDeduplication()
@@ -50,6 +50,7 @@ struct InformationClockRecoveryTests {
         terminalFailures()
         environmentAndDetach()
         readbackVerification()
+        readbackUsesReportedDelta()
         bindingUsesFreshTime()
         leaseOwnership()
         cacheOwnership()
@@ -84,7 +85,7 @@ struct InformationClockRecoveryTests {
                 if setupBound { t.bound.insert(.setup) }
                 let operation = make(t)
                 operation.start()
-                if serverBound { t.readCallbacks[0](.sample(.init(seconds: 0, offsetMinutes: 480))) }
+                if serverBound { t.readCallbacks[0](.sample(.init(seconds: 0, offsetMinutes: 480, taiDelta: 0))) }
                 while !t.bindCallbacks.isEmpty { t.bindCallbacks.removeFirst()(true) }
                 require(t.setCallbacks.count == 1, "Exactly one recovery write")
                 t.setCallbacks[0](.sample(sample))
@@ -99,7 +100,7 @@ struct InformationClockRecoveryTests {
     }
 
     private static func terminalFailures() {
-        for response in [InformationClockResponse.invalid, .sample(.init(seconds: 10, offsetMinutes: 1))] {
+        for response in [InformationClockResponse.invalid, .sample(.init(seconds: 10, offsetMinutes: 1, taiDelta: 0))] {
             let t = FakeClockTransport(); let operation = make(t); operation.start()
             t.readCallbacks[0](response)
             require(t.calls == ["get", "finish"], "Unrelated invalid responses do not cause writes")
@@ -115,7 +116,7 @@ struct InformationClockRecoveryTests {
         let operation = make(t); operation.start(); t.bindCallbacks[0](false)
         require(t.calls == ["bind-server", "finish"], "Binding failure stops immediately")
 
-        for response in [InformationClockResponse.noResponse, .invalid, .sample(.init(seconds: 0, offsetMinutes: 345)), .sample(.init(seconds: sample.seconds, offsetMinutes: 480))] {
+        for response in [InformationClockResponse.noResponse, .invalid, .sample(.init(seconds: 0, offsetMinutes: 345, taiDelta: 0)), .sample(.init(seconds: sample.seconds, offsetMinutes: 480, taiDelta: 0))] {
             let t = FakeClockTransport(); let operation = make(t); operation.start()
             t.readCallbacks[0](.noResponse); t.setCallbacks[0](response)
             require(t.calls == ["get", "set", "finish"], "Set failure never reads or writes again")
@@ -159,9 +160,9 @@ struct InformationClockRecoveryTests {
 
     private static func readbackVerification() {
         let responses: [InformationClockResponse] = [
-            .noResponse, .invalid, .sample(.init(seconds: 0, offsetMinutes: 345)),
-            .sample(.init(seconds: sample.seconds, offsetMinutes: 480)),
-            .sample(.init(seconds: sample.seconds + 31, offsetMinutes: 345))
+            .noResponse, .invalid, .sample(.init(seconds: 0, offsetMinutes: 345, taiDelta: 0)),
+            .sample(.init(seconds: sample.seconds, offsetMinutes: 480, taiDelta: 0)),
+            .sample(.init(seconds: sample.seconds + 31, offsetMinutes: 345, taiDelta: 0))
         ]
         for response in responses {
             let t = FakeClockTransport(); let operation = make(t); operation.start()
@@ -186,6 +187,26 @@ struct InformationClockRecoveryTests {
         t.bindCallbacks.removeFirst()(true)
         require(t.sentDate == now, "Construct time after binding, not at page entry")
         t.setCallbacks[0](.noResponse)
+    }
+
+    private static func readbackUsesReportedDelta() {
+        for delta: Int16 in [0, 36, 37] {
+            let t = FakeClockTransport(); let operation = make(t)
+            let actual = InformationClockSample(
+                seconds: sample.seconds + UInt64(delta), offsetMinutes: 345,
+                taiDelta: delta, subSecond: 128
+            )
+            operation.start()
+            t.readCallbacks[0](.sample(.init(seconds: 0, offsetMinutes: 345, taiDelta: 0)))
+            t.setCallbacks[0](.sample(actual))
+            t.readCallbacks[1](.sample(actual))
+            require(t.calls == ["get", "set", "get", "persist", "finish"], "Standard TAI readback must not fail the 30-second gate")
+            require(t.saved == [actual], "Persist raw seconds only after the converted readback is verified")
+        }
+        let t = FakeClockTransport(); let operation = make(t); operation.start()
+        t.readCallbacks[0](.noResponse); t.setCallbacks[0](.sample(sample))
+        t.readCallbacks[1](.sample(.init(seconds: sample.seconds + 37, offsetMinutes: 345, taiDelta: 0)))
+        require(t.saved.isEmpty, "Do not hide an actual 37-second error behind a guessed delta")
     }
 
     private static func leaseOwnership() {

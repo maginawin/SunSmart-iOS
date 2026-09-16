@@ -9,6 +9,7 @@ coordinator="SunSmart/Main/Device/Lights/Model/LightTimeInformationCoordinator.s
 sdk_manager="$sdk_root/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshLibManager.swift"
 
 swiftc -parse-as-library \
+  "$sdk_root/Sources/NordicSigMeshSDK/MeshLib/Message/MeshTimeConversion.swift" \
   SunSmart/Main/Device/InformationClockRecovery.swift \
   Tests/Device/InformationClockRecoveryTests.swift \
   -o /tmp/InformationClockRecoveryTests
@@ -24,7 +25,7 @@ swiftc -parse-as-library \
   "$sdk_manager" \
   SunSmart.xcodeproj/project.pbxproj
 
-bash scripts/check_gateway_information_time.sh
+bash scripts/check_gateway_information_time.sh "$sdk_root"
 plutil -lint SunSmart.xcodeproj/project.pbxproj
 git diff --check
 
