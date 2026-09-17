@@ -1406,7 +1406,8 @@ final class SiteTriggerZoneMeshConnection {
     var onChange: (() -> Void)?
 
     init(primaryMeshUUID: String, primaryNetworkID: String,
-         transport: Transport = SDKTransport(), connectionTimeout: TimeInterval = 30) {
+         transport: Transport = SDKTransport(),
+         connectionTimeout: TimeInterval = MeshProxyConnectionTiming.readyResultTimeout) {
         self.primaryMeshUUID = primaryMeshUUID
         self.primaryNetworkID = primaryNetworkID
         self.transport = transport

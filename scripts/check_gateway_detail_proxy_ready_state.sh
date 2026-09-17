@@ -24,14 +24,19 @@ test_count="$(rg -c 'private static func test' "$test_file")"
 swiftc -parse-as-library "$model" "$test_file" -o "$test_binary"
 "$test_binary"
 
+session_test_binary="$(mktemp /tmp/GatewayDetailConnectionSessionTests.XXXXXX)"
+trap 'rm -f "$session_test_binary"' EXIT
+swiftc -parse-as-library "$model" Tests/Device/GatewayDetailConnectionSessionTests.swift -o "$session_test_binary"
+"$session_test_binary"
+
 rg -n 'func updateData\(gateway: Gateway, isProxyReady: Bool\)' "$header_view" >/dev/null \
   || fail "Gateway header must receive explicit target Proxy Ready state"
 if rg -n 'node\.state' "$header_view" >/dev/null; then
   fail "Gateway header must not infer detail status from Node.state"
 fi
 
-rg -n 'GatewayDetailProxyConnectionStateMachine' "$gateway_controller" >/dev/null \
-  || fail "GatewayViewController must own the target Proxy state machine"
+rg -n 'GatewayDetailConnectionSession' "$gateway_controller" >/dev/null \
+  || fail "GatewayViewController must use the tested target connection session"
 rg -n 'var isGatewayProxyReady: Bool' "$gateway_controller" >/dev/null \
   || fail "GatewayViewController must expose target Proxy readiness to subclasses"
 rg -n 'addGlobalProxyReadyObserver' "$gateway_controller" >/dev/null \
@@ -46,10 +51,6 @@ rg -n 'currentProxyReadyContext' "$gateway_controller" >/dev/null \
   || fail "GatewayViewController must reconcile an existing Ready snapshot"
 rg -n 'context\.nodeAddress == node\.primaryUnicastAddress' "$gateway_controller" >/dev/null \
   || fail "GatewayViewController must match Proxy Ready to the target Gateway"
-rg -n 'readyTimedOut\(attemptID:' "$gateway_controller" >/dev/null \
-  || fail "GatewayViewController must isolate Proxy Ready timeout by attempt"
-rg -n 'withTimeInterval: 20' "$gateway_controller" >/dev/null \
-  || fail "GatewayViewController must wait 20 seconds for Proxy Ready after GATT success"
 
 if rg -n '^[[:space:]]*[^/].*onlineState|gatewayOnlineStateDidUpdate' "$gateway_controller" >/dev/null; then
   fail "GatewayViewController must not keep the old Node-driven online state"

@@ -165,7 +165,7 @@ final class GatewayTimeSyncCoordinator {
         }
         runtimeAttempt = RuntimeAttempt(id: attemptID, target: target)
 
-        MeshLibManager.manager.connectProxy(
+        MeshLibManager.manager.connectProxyReady(
             node: node,
             peripheral: peripheral
         ) { [self] connected in

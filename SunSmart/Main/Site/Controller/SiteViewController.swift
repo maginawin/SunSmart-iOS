@@ -203,9 +203,7 @@ class SiteViewController: UIViewController {
                                  type: .success, appearance: .siteUpdate, position: .bottom, duration: 5)
         }
         let ownershipChanges = SiteDeviceOwnershipReconciler.reconcile(siteId: site.id)
-        site.spaces = site.spaces.map { current in
-            SpaceData.load(siteId: site.id, spaceId: current.id).first ?? current
-        }
+        site.reloadSpacesPreservingGatewayMetadata(changedSpaceIds: ownershipChanges)
         if NetworkRequest.shared.networkable {
             for old in site.spaces where ownershipChanges.contains(old.id) {
                 CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSpace(space: old), level: .normal)
@@ -394,7 +392,7 @@ self.updateAddressData()
             guard let self = self else { return }
             if notification.object as? Bool ?? false {
                 // 更新缓存数据
-                self.site.spaces = SpaceData.load(siteId: site.id)
+                self.site.reloadSpacesPreservingGatewayMetadata()
             }
             self.setupData()
         }
@@ -898,6 +896,8 @@ self.updateAddressData()
 
     private func finishGatewayDetailPresentation(sessionID: UUID) {
         guard gatewayDetailPresentationSessionID == sessionID else { return }
+        (presentedGatewayNavigationController?.viewControllers.first as? GatewayViewController)?
+            .finishGatewayConnectionSession()
         gatewayDetailPresentationSessionID = nil
         presentedGatewayNavigationController = nil
         setupData()
@@ -1497,7 +1497,11 @@ self.updateAddressData()
 //        favouriteSpaceSelectGatewayId = nil
         
         gatewayModels.forEach { gateway in
-            if let space = self.allSpaces.first(where: { $0.relevanceGatewayId == gateway.mac }), space.gatewayStatus != .notBound {
+            gateway.lastOnlineTime = nil
+            if let space = self.allSpaces.first(where: {
+                $0.relevanceGatewayId?.trimmingCharacters(in: .whitespacesAndNewlines)
+                    .caseInsensitiveCompare(gateway.mac) == .orderedSame
+            }), space.gatewayStatus != .notBound {
                 if space.gatewayStatus == .online {
                     gateway.connectStatus = .online
                 }else {
@@ -1506,16 +1510,23 @@ self.updateAddressData()
                     }else {
                         gateway.connectStatus = .inactive
                     }
-                    if let lastOnline = space.gatewayLastOnline {
-                        gateway.lastOnlineTime = String.dateConvert(timestamp: "\(lastOnline)", dateFormat: "yyyy-MM-dd HH:mm")
-                    }
+                    gateway.lastOnlineTime = SiteTimeZoneValue.formattedGatewayLastOnline(
+                        timestamp: space.gatewayLastOnline,
+                        storageValue: site.timezone
+                    )
                 }
             }else {
-                if gateway.activate {
+                if site.gatewayPresence.online(for: gateway.mac) == true {
+                    gateway.connectStatus = .online
+                }else if gateway.activate {
                     gateway.connectStatus = .offline
                 }else {
                     gateway.connectStatus = .inactive
                 }
+                gateway.lastOnlineTime = SiteTimeZoneValue.formattedGatewayLastOnline(
+                    timestamp: site.gatewayPresence.timestamp(for: gateway.mac),
+                    storageValue: site.timezone
+                )
             }
         }
         
@@ -1654,6 +1665,7 @@ self.updateAddressData()
             )
             vc.siteDidChange = { [weak self] in
                 self?.title = self?.site.name
+                self?.setupData()
                 self?.refreshCurrentGatewayTimeZoneReviewProjection()
             }
             vc.timeZoneSyncDidFinish = { [weak self] outcome in
@@ -2660,7 +2672,7 @@ self.updateAddressData()
         case .online:
             gatewayStatus = .online
         case .offline:
-            gatewayStatus = .offline(lastOnlineTime: gateway.lastOnlineTime ?? "")
+            gatewayStatus = .offline(lastOnlineTime: gateway.lastOnlineTime ?? "--")
         case .inactive:
             gatewayStatus = .noActivated
         case .reset:

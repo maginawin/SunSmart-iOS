@@ -101,7 +101,7 @@ struct GatewayForceClearSpacesContractTests {
     private static func testForceClearUIAndCommit(_ controller: String) {
         require(
             controller.contains("isGatewayBluetoothOffline") &&
-                controller.contains("case .disconnected = proxyConnectionStateMachine.state") &&
+                controller.contains("(proxyConnectionSession?.state ?? .disconnected) == .disconnected") &&
                 controller.contains("hasAssociatedSpaces: !setGatewayModel.associatedSpaces.isEmpty"),
             "Force Clear visibility must use actual Offline plus a nonempty association list"
         )

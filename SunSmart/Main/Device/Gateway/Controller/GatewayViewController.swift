@@ -94,26 +94,25 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     private weak var lastMessageDelegate: MeshLibManagerMessageDelegate?
     private var proxyReadyObserverID: UUID?
     private var meshConnectionObserverID: UUID?
-    private var proxyReadyTimeoutTimer: Timer?
-    private var proxyConnectionStateMachine: GatewayDetailProxyConnectionStateMachine
+    private var bluetoothObservation: NSKeyValueObservation?
+    private var proxyConnectionSession: GatewayDetailConnectionSession?
+    private var proxyConnectionManager: MeshNetworkManager?
+    private var gatewayConnectionPageFinished = false
 
     var isGatewayProxyReady: Bool {
-        proxyConnectionStateMachine.state.isReady
+        proxyConnectionSession?.state.isReady == true
     }
 
     var gatewayProxyReadySessionID: UUID? {
-        proxyConnectionStateMachine.state.readySessionID
+        proxyConnectionSession?.state.readySessionID
     }
 
     private var isGatewayProxyConnecting: Bool {
-        proxyConnectionStateMachine.state.activeAttemptID != nil
+        proxyConnectionSession?.state.activeAttemptID != nil
     }
 
     private var isGatewayBluetoothOffline: Bool {
-        if case .disconnected = proxyConnectionStateMachine.state {
-            return true
-        }
-        return false
+        (proxyConnectionSession?.state ?? .disconnected) == .disconnected
     }
 
     private var canForceClearAssociatedSpaces: Bool {
@@ -157,9 +156,6 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         self.gatewayModel = gateway.model
         self.node = gateway.node
         self.setGatewayModel = self.gatewayModel.copy()
-        self.proxyConnectionStateMachine = GatewayDetailProxyConnectionStateMachine(
-            targetAddress: gateway.node.primaryUnicastAddress
-        )
         super.init(nibName: nil, bundle: nil)
 
 //        let gateways = GatewayModel.load(siteId: gateway.siteId).filter({ $0.mac != gateway.mac })
@@ -236,7 +232,6 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         updateData()
         updateSaveBtnState()
         tableView.reloadData()
-        reconcileCurrentProxyReadyContext()
         ensureTargetGatewayProxyConnection()
         syncSignalRefreshState(forceRefresh: isGatewayProxyReady)
         syncGatewayClockTimer()
@@ -247,9 +242,19 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         super.viewWillDisappear(animated)
 
         isViewVisible = false
+        proxyConnectionSession?.pause()
         cancelGatewayClockAutoPromptRetry()
         stopSignalRefreshTimer()
         stopGatewayClockTimer()
+        if isMovingFromParent || isBeingDismissed || navigationController?.isBeingDismissed == true {
+            if let coordinator = transitionCoordinator {
+                coordinator.animate(alongsideTransition: nil) { [weak self] context in
+                    if !context.isCancelled { self?.finishGatewayConnectionSession() }
+                }
+            } else {
+                finishGatewayConnectionSession()
+            }
+        }
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -401,6 +406,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
 
     func closeGatewayPage() {
+        finishGatewayConnectionSession()
         let feedbackView = presentingViewController?.view ?? navigationController?.view
         let deletionResult = completedDeletionResetConfirmed
         let completion = gatewayPageDidClose
@@ -427,8 +433,9 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         stopGatewayClockTimer()
         gatewayClockNotificationTokens.forEach(NotificationCenter.default.removeObserver)
         stopSignalRefreshTimer()
-        cancelProxyReadyTimeout()
-        MeshLibManager.manager.messageDelegate = self.lastMessageDelegate
+        proxyConnectionSession?.finish()
+        restoreGatewayMessageDelegateIfOwned()
+        bluetoothObservation?.invalidate()
         if let proxyReadyObserverID {
             MeshLibManager.manager.removeGlobalProxyReadyObserver(proxyReadyObserverID)
         }
@@ -436,108 +443,143 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             MeshLibManager.manager.removeGlobalConnectionObserver(meshConnectionObserverID)
         }
 
-        MeshLibManager.manager.close()
-
         NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
+    }
+
+    /// Also called by the presentation owner when the entire navigation stack
+    /// is dismissed while a Gateway child page is visible.
+    func finishGatewayConnectionSession() {
+        guard !gatewayConnectionPageFinished else { return }
+        gatewayConnectionPageFinished = true
+        isViewVisible = false
+        proxyConnectionSession?.finish()
+        restoreGatewayMessageDelegateIfOwned()
+        bluetoothObservation?.invalidate()
+        bluetoothObservation = nil
+        if let proxyReadyObserverID {
+            MeshLibManager.manager.removeGlobalProxyReadyObserver(proxyReadyObserverID)
+            self.proxyReadyObserverID = nil
+        }
+        if let meshConnectionObserverID {
+            MeshLibManager.manager.removeGlobalConnectionObserver(meshConnectionObserverID)
+            self.meshConnectionObserverID = nil
+        }
+    }
+
+    private func restoreGatewayMessageDelegateIfOwned() {
+        guard MeshLibManager.manager.messageDelegate === self else { return }
+        var previous = lastMessageDelegate
+        while let gatewayPage = previous as? GatewayViewController,
+              gatewayPage.gatewayConnectionPageFinished || gatewayPage.proxyConnectionSession?.isFinished == true {
+            previous = gatewayPage.lastMessageDelegate
+        }
+        MeshLibManager.manager.messageDelegate = previous
     }
 
     private func registerProxyConnectionObservers() {
         proxyReadyObserverID = MeshLibManager.manager.addGlobalProxyReadyObserver { [weak self] context in
-            self?.handleProxyReady(context)
+            DispatchQueue.main.async { self?.handleProxyReady(context) }
         }
-        meshConnectionObserverID = MeshLibManager.manager.addGlobalConnectionObserver { [weak self] _, isConnected in
+        meshConnectionObserverID = MeshLibManager.manager.addGlobalConnectionObserver { [weak self] manager, isConnected in
             guard !isConnected else { return }
-            self?.handleProxyConnectionEvent(.meshDisconnected)
-        }
-        reconcileCurrentProxyReadyContext()
-    }
-
-    private func reconcileCurrentProxyReadyContext() {
-        guard let context = MeshLibManager.manager.currentProxyReadyContext else {
-            if isGatewayProxyReady {
-                handleProxyConnectionEvent(.meshDisconnected)
+            DispatchQueue.main.async {
+                guard let self, manager === self.proxyConnectionManager else { return }
+                self.proxyConnectionSession?.connectionLost()
             }
-            return
         }
-        handleProxyReady(context)
+        bluetoothObservation = MeshLibManager.manager.observe(\.bluetoothState, options: [.new]) { [weak self] _, _ in
+            DispatchQueue.main.async {
+                self?.proxyConnectionSession?.availabilityChanged()
+            }
+        }
     }
 
     private func handleProxyReady(_ context: ProxyReadyContext) {
-        let isTargetContext = context.nodeAddress == node.primaryUnicastAddress
-        handleProxyConnectionEvent(
-            .proxyReady(nodeAddress: context.nodeAddress, sessionID: context.sessionID),
-            readyContext: isTargetContext ? context : nil
-        )
+        guard context.nodeAddress == node.primaryUnicastAddress else { return }
+        proxyConnectionSession?.receiveReady(sessionID: context.sessionID)
     }
 
     private func ensureTargetGatewayProxyConnection() {
-        guard !isDeletingGateway else { return }
-        if let context = MeshLibManager.manager.currentProxyReadyContext,
-           context.nodeAddress == node.primaryUnicastAddress {
-            handleProxyReady(context)
-            return
-        }
-        guard !isGatewayProxyReady, !isGatewayProxyConnecting else { return }
-
-        let attemptID = UUID()
-        handleProxyConnectionEvent(.startConnecting(attemptID: attemptID))
-        MeshLibManager.manager.connectProxy(node: node) { [weak self] succeeded in
-            DispatchQueue.main.async {
+        guard isViewVisible, !gatewayConnectionPageFinished, !isDeletingGateway,
+              let manager = MeshLibManager.manager.meshNetworkManager,
+              manager.meshNetwork?.uuid.uuidString == site.meshUUID,
+              manager.currentNetworkKey.networkId.hex == site.meshNetworkId else { return }
+        if proxyConnectionSession == nil || proxyConnectionSession?.isFinished == true || proxyConnectionManager !== manager {
+            proxyConnectionSession?.finish()
+            proxyConnectionManager = manager
+            let node = self.node
+            let meshUUID = site.meshUUID
+            let networkID = site.meshNetworkId
+            let contextIsCurrent = {
+                MeshLibManager.manager.meshNetworkManager === manager
+                    && manager.meshNetwork?.uuid.uuidString == meshUUID
+                    && manager.currentNetworkKey.networkId.hex == networkID
+            }
+            let session = GatewayDetailConnectionSession(
+                target: "\(meshUUID)|\(networkID)|\(gateway.mac)|\(node.primaryUnicastAddress)",
+                address: node.primaryUnicastAddress,
+                environment: .init(
+                    contextIsCurrent: contextIsCurrent,
+                    canConnect: {
+                        MeshLibManager.manager.bluetoothState == .poweredOn
+                            && node.features?.lowPower != .enabled
+                            && (node.companyIdentifier == 0x0211 || node.companyIdentifier == 0x0A78)
+                    },
+                    readySession: {
+                        guard contextIsCurrent(),
+                              let context = MeshLibManager.manager.currentProxyReadyContext,
+                              context.nodeAddress == node.primaryUnicastAddress,
+                              let proxy = MeshLibManager.manager.currentProxy,
+                              proxy.nodeAddress == node.primaryUnicastAddress, proxy.isOpen else { return nil }
+                        return context.sessionID
+                    },
+                    connect: { completion in
+                        MeshLibManager.manager.connectProxy(node: node) { succeeded in
+                            DispatchQueue.main.async { completion(succeeded) }
+                        }
+                    },
+                    disconnect: {
+                        // Keep the old bearer/central alive briefly while the SDK
+                        // removes it. This is not a physical-disconnect guarantee.
+                        let closingProxy = MeshLibManager.manager.currentProxy
+                        MeshLibManager.manager.disconnectProxy(node: node)
+                        MeshLibManager.manager.close()
+                        if let closingProxy {
+                            GatewayDetailConnectionSession.retainDuringDisconnect(closingProxy)
+                        }
+                    }
+                ),
+                callbackTimeout: MeshProxyConnectionTiming.gattResultTimeout,
+                readyTimeout: MeshProxyConnectionTiming.ready
+            )
+            session.onStateChange = { [weak self] in
                 guard let self else { return }
-                self.handleProxyConnectionEvent(
-                    .connectCompleted(attemptID: attemptID, succeeded: succeeded)
-                )
-                guard succeeded,
-                      self.proxyConnectionStateMachine.state.activeAttemptID == attemptID else {
-                    return
-                }
-                self.scheduleProxyReadyTimeout(for: attemptID)
+                self.renderProxyConnectionState()
+                self.gatewayProxyReadyStateDidUpdate(self.isGatewayProxyReady)
             }
-        }
-    }
-
-    private func handleProxyConnectionEvent(
-        _ event: GatewayDetailProxyConnectionEvent,
-        readyContext: ProxyReadyContext? = nil
-    ) {
-        let changed = proxyConnectionStateMachine.reduce(event)
-        let isCurrentReadyContext = readyContext.map {
-            gatewayProxyReadySessionID == $0.sessionID
-        } ?? false
-        guard changed || isCurrentReadyContext else { return }
-
-        if changed {
-            if !isGatewayProxyConnecting {
-                cancelProxyReadyTimeout()
+            session.onReady = { [weak self] sessionID in
+                guard let self, self.isViewVisible, !self.gatewayConnectionPageFinished,
+                      !self.isDeletingGateway,
+                      let context = MeshLibManager.manager.currentProxyReadyContext,
+                      context.sessionID == sessionID else { return }
+                self.gatewayProxyDidBecomeReady(context)
             }
-            renderProxyConnectionState()
-            gatewayProxyReadyStateDidUpdate(isGatewayProxyReady)
-        }
-
-        if let readyContext, isCurrentReadyContext, !isDeletingGateway {
-            gatewayProxyDidBecomeReady(readyContext)
-        }
-
-        guard changed else { return }
-
-        guard isViewVisible,
-              !isGatewayProxyReady,
-              !isGatewayProxyConnecting else {
-            return
-        }
-        switch event {
-        case .meshDisconnected,
-             .proxyReady(nodeAddress: _, sessionID: _):
-            DispatchQueue.main.async { [weak self] in
-                self?.ensureTargetGatewayProxyConnection()
+            session.onExhausted = { [weak self] in
+                guard let self, self.isViewVisible, !self.gatewayConnectionPageFinished else { return }
+                XWHUDManager.showErrorTipHUD("wifi_firmware_connection_failed".localizedString)
             }
-        default:
-            break
+            session.onDiagnostic = { event in
+                #if DEBUG
+                print("[GatewayConnection] address=\(String(format: "%04X", node.primaryUnicastAddress)) \(event)")
+                #endif
+            }
+            proxyConnectionSession = session
         }
+        proxyConnectionSession?.resume()
     }
 
     private func renderProxyConnectionState() {
-        switch proxyConnectionStateMachine.state {
+        switch proxyConnectionSession?.state ?? .disconnected {
         case .connecting:
             headerView.showConnectingUI()
             stopSignalRefreshTimer()
@@ -551,21 +593,6 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         }
         updateData()
         updateSaveBtnState()
-    }
-
-    private func scheduleProxyReadyTimeout(for attemptID: UUID) {
-        cancelProxyReadyTimeout()
-        proxyReadyTimeoutTimer = Timer.scheduledTimer(withTimeInterval: 20, repeats: false) { [weak self] _ in
-            self?.handleProxyConnectionEvent(.readyTimedOut(attemptID: attemptID))
-        }
-        if let proxyReadyTimeoutTimer {
-            RunLoop.main.add(proxyReadyTimeoutTimer, forMode: .common)
-        }
-    }
-
-    private func cancelProxyReadyTimeout() {
-        proxyReadyTimeoutTimer?.invalidate()
-        proxyReadyTimeoutTimer = nil
     }
 
     /// 获取网关信号
@@ -1322,11 +1349,12 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         cancelGatewayClockAutoPromptRetry()
         stopSignalRefreshTimer()
         stopGatewayClockTimer()
-        cancelProxyReadyTimeout()
+        proxyConnectionSession?.setAutomaticConnectionEnabled(false)
     }
 
     func gatewayDeletionDidFail() {
         guard !GatewayDeletionContext.hasPendingDeletion(siteId: site.id, mac: gateway.mac) else { return }
+        proxyConnectionSession?.setAutomaticConnectionEnabled(true)
         syncSignalRefreshState()
         syncGatewayClockTimer()
     }

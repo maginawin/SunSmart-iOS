@@ -828,6 +828,11 @@ extension SiteData {
 //        print("导入数据：site update proversioner success \(Date().timeIntervalSince1970)")
         let gatewayDicts =
             json["gateways"].arrayObject as? [[String: Any]]
+        let gatewayLastOnlineSnapshot = SiteGatewayLastOnlineSnapshot(gateways: gatewayDicts)
+        await MainActor.run {
+            guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return }
+            self.gatewayPresence = gatewayLastOnlineSnapshot
+        }
         let gatewaySnapshot = SiteGatewayAssociationSnapshot.make(
             isComplete: self.permission == .owner,
             rawGatewayIds: gatewayDicts?.map {
@@ -908,12 +913,16 @@ extension SiteData {
                 }
             }
             self.spaces.sort(by: { $0.create > 0 && $0.create < $1.create })
+            let importedSpaces = spaces
             await MainActor.run {
                 guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return }
-                let changed = SiteDeviceOwnershipReconciler.reconcile(siteId: self.id)
-                self.spaces = self.spaces.map { current in
-                    SpaceData.load(siteId: self.id, spaceId: current.id).first ?? current
+                for space in importedSpaces where space.siteId == self.id && space.state == .normal && space.gatewayStatus == .offline {
+                    if let timestamp = gatewayLastOnlineSnapshot.timestamp(for: space.relevanceGatewayId) {
+                        space.gatewayLastOnline = timestamp
+                    }
                 }
+                let changed = SiteDeviceOwnershipReconciler.reconcile(siteId: self.id)
+                self.reloadSpacesPreservingGatewayMetadata(changedSpaceIds: changed)
                 for space in self.spaces where changed.contains(space.id) {
                     CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSpace(space: space), level: .normal)
                 }
@@ -1639,11 +1648,12 @@ extension SpaceData {
                 self.gatewayLastOnline = nil
             }else {
                 self.gatewayStatus = .offline
-                self.gatewayLastOnline = json["gatewayLastupdate"].int64
+                self.gatewayLastOnline = SiteGatewayLastOnlineSnapshot.legacyTimestamp(json["gatewayLastupdate"].int64)
             }
         }else {
             self.relevanceGatewayId = nil
             self.gatewayStatus = .notBound
+            self.gatewayLastOnline = nil
         }
         SpaceConfigurationSafety.reconcileAuthority(self, remote: payload)
     }

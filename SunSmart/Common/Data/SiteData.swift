@@ -87,6 +87,8 @@ class SiteData: Copyable {
     
     /// Site-owned metadata; durable state is stored independently of legacy Site saves.
     var siteExtensionData = SiteExtensionData()
+    /// Latest server presence for gateways without a visible associated Space.
+    var gatewayPresence = SiteGatewayLastOnlineSnapshot(gateways: nil)
 
     var canManageSiteTriggerZones: Bool {
         state == .normal && spaces.contains { $0.canEditing }
@@ -223,11 +225,51 @@ class SiteData: Copyable {
         self.sourceType = sourceType
     }
     
+    /// Database rows do not contain the server-owned gateway presence fields.
+    /// A nil change set reloads list membership; an empty set keeps current instances.
+    func reloadSpacesPreservingGatewayMetadata(changedSpaceIds: Set<String>? = nil) {
+        let currentById = spaces.reduce(into: [String: SpaceData]()) { $0[$1.id] = $1 }
+        let reloadedSpaces: [SpaceData]
+        if let changedSpaceIds {
+            reloadedSpaces = spaces.map { current in
+                guard changedSpaceIds.contains(current.id) else { return current }
+                return SpaceData.load(siteId: id, spaceId: current.id).first ?? current
+            }
+        } else {
+            reloadedSpaces = SpaceData.load(siteId: id)
+        }
+        var deletedGateways: [String: Bool] = [:]
+        for space in reloadedSpaces {
+            if let current = currentById[space.id], space !== current,
+               space.siteId == id, current.siteId == space.siteId,
+               space.meshUUID == meshUUID, current.meshUUID == space.meshUUID,
+               !space.meshNetworkId.isEmpty, current.meshNetworkId == space.meshNetworkId,
+               current.state == .normal, space.state == .normal {
+                space.relevanceGatewayId = current.relevanceGatewayId
+                space.gatewayStatus = current.gatewayStatus
+                space.gatewayLastOnline = current.gatewayLastOnline
+            }
+            // Deletion can complete while this Site is hidden. Do not revive its
+            // old in-memory association, even when ownership repair changed nothing.
+            guard let gatewayId = space.relevanceGatewayId else { continue }
+            let deleted = deletedGateways[gatewayId] ??
+                GatewayDeletionContext.serverDeletionConfirmed(siteId: id, mac: gatewayId)
+            deletedGateways[gatewayId] = deleted
+            if deleted {
+                space.relevanceGatewayId = nil
+                space.gatewayStatus = .notBound
+                space.gatewayLastOnline = nil
+            }
+        }
+        spaces = reloadedSpaces
+    }
+
     func copy() -> Self {
         
         let site = SiteData(region: self.region, id: self.id, meshUUID: self.meshUUID, meshNetworkId: self.meshNetworkId, name: self.name, imageId: self.imageId, type: self.type, permission: self.permission, create: self.create, lastUpdate: self.lastUpdate, isFavourite: self.isFavourite, sourceType: self.sourceType)
         site.siteExtensionData = (try? SiteTriggerZoneStore.load(self).data) ?? self.siteExtensionData
         site.timezone = self.timezone
+        site.gatewayPresence = self.gatewayPresence
         site.pendingSitePropsMask = self.pendingSitePropsMask
         site.pendingSitePropsTimestamp = self.pendingSitePropsTimestamp
         let spaces = self.spaces.map({ $0.copy() })

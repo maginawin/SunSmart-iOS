@@ -30,15 +30,17 @@ swiftc -parse-as-library "$test_source" -o "$test_binary"
   "$gateway_source" \
   "$import_source"
 
+python3 "$repo_root/scripts/check_site_gateway_metadata_reload.py"
+
 source_phase_count="$(
   rg -c \
     '^[[:space:]]+[A-F0-9]+ /\* SiteGatewayAssociationConsistencyPolicy.swift in Sources \*/,$' \
     "$project_file" || true
 )"
 source_phase_count="${source_phase_count:-0}"
-[ "$source_phase_count" -eq 4 ] || {
-  echo "FAIL: consistency policy must belong to all four app targets" >&2
+[ "$source_phase_count" -eq 5 ] || {
+  echo "FAIL: consistency policy must belong to all five app targets" >&2
   exit 1
 }
 
-echo "PASS: Site Gateway online-state source ownership checks passed."
+echo "PASS: Site Gateway online-state behavior and source ownership checks passed."

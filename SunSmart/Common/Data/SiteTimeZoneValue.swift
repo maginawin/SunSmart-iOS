@@ -79,6 +79,22 @@ struct SiteTimeZoneValue: Hashable {
         formatter.dateFormat = "yyyy-M-d h:mm:ss a"
         return formatter.string(from: date)
     }
+
+    static func formattedGatewayLastOnline(
+        timestamp: Int64?,
+        storageValue: String?,
+        phoneTimeZone: TimeZone = .current
+    ) -> String? {
+        guard let timestamp, timestamp > 0 else { return nil }
+        let value = storageValue.flatMap { SiteTimeZoneValue(storageValue: $0) }
+        let formatter = DateFormatter()
+        formatter.calendar = Calendar(identifier: .gregorian)
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.timeZone = value.flatMap { TimeZone(secondsFromGMT: $0.offsetMinutes * 60) }
+            ?? phoneTimeZone
+        formatter.dateFormat = "yyyy-MM-dd HH:mm"
+        return formatter.string(from: Date(timeIntervalSince1970: TimeInterval(timestamp)))
+    }
 }
 
 private extension SiteTimeZoneValue {
