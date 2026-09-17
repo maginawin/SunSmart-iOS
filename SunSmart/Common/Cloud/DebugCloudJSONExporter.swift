@@ -17,6 +17,9 @@ final class DebugCloudJSONExporter {
     }
 
     func share(site: SiteData, space: SpaceData? = nil, from presenter: UIViewController) {
+        // Recheck the current resource role after the menu has been dismissed.
+        guard FeatureVisibility.shared.isVisible(.siteExportJson,
+                                                 permission: space?.permission ?? site.permission) else { return }
         guard !isExporting, presenter.viewIfLoaded?.window != nil,
               presenter.presentedViewController == nil else { return }
         guard Self.canExport(space?.permission ?? site.permission) else {

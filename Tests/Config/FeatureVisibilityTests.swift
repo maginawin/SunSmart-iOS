@@ -5,8 +5,8 @@ extension String { var localizedString: String { self } }
 
 @main
 struct FeatureVisibilityTests {
-    static func data(builds: [String], roles: [String]) throws -> Data {
-        try JSONSerialization.data(withJSONObject: ["sites": ["site": ["triggerZone": [
+    static func data(feature: FeatureVisibility.Feature, builds: [String], roles: [String]) throws -> Data {
+        try JSONSerialization.data(withJSONObject: ["sites": ["site": [feature.rawValue.components(separatedBy: ".").last!: [
             "builds": builds, "roles": roles
         ]]]])
     }
@@ -20,25 +20,27 @@ struct FeatureVisibilityTests {
         let roles = [["owner"], ["owner", "editor"], ["owner", "editor", "visitor"]]
         let permissions: [Permission] = [.owner, .editor, .visitor]
         var cases = 0
-        for allowedBuilds in builds {
-            for allowedRoles in roles {
-                let bytes = try data(builds: allowedBuilds, roles: allowedRoles)
-                for build in FeatureVisibility.BuildMode.allCases {
-                    var loads = 0
-                    let visibility = FeatureVisibility(build: build) { loads += 1; return bytes }
-                    for role in permissions {
-                        let expected = allowedBuilds.contains(build.rawValue) && allowedRoles.contains(role.dataString)
-                        check(visibility.isVisible(.siteTriggerZone, permission: role) == expected, "Matrix mismatch")
-                        cases += 1
+        for feature in FeatureVisibility.Feature.allCases {
+            for allowedBuilds in builds {
+                for allowedRoles in roles {
+                    let bytes = try data(feature: feature, builds: allowedBuilds, roles: allowedRoles)
+                    for build in FeatureVisibility.BuildMode.allCases {
+                        var loads = 0
+                        let visibility = FeatureVisibility(build: build) { loads += 1; return bytes }
+                        for role in permissions {
+                            let expected = allowedBuilds.contains(build.rawValue) && allowedRoles.contains(role.dataString)
+                            check(visibility.isVisible(feature, permission: role) == expected, "Matrix mismatch")
+                            cases += 1
+                        }
+                        check(!visibility.isVisible(feature, permission: nil), "Missing role must hide")
+                        check(loads == 1, "Role changes must reuse configuration")
                     }
-                    check(!visibility.isVisible(.siteTriggerZone, permission: nil), "Missing role must hide")
-                    check(loads == 1, "Role changes must reuse configuration")
-                }
-                let current = FeatureVisibility { bytes }
-                for role in permissions {
-                    check(current.isVisible(.siteTriggerZone, permission: role) ==
-                          (allowedBuilds.contains(FeatureVisibility.BuildMode.current.rawValue) && allowedRoles.contains(role.dataString)),
-                          "Actual compilation mode mismatch")
+                    let current = FeatureVisibility { bytes }
+                    for role in permissions {
+                        check(current.isVisible(feature, permission: role) ==
+                              (allowedBuilds.contains(FeatureVisibility.BuildMode.current.rawValue) && allowedRoles.contains(role.dataString)),
+                              "Actual compilation mode mismatch")
+                    }
                 }
             }
         }
@@ -65,20 +67,23 @@ struct FeatureVisibilityTests {
             #"{"builds":[],"roles":["owner"]}"#,
             #"{"builds":["debug"],"roles":[]}"#
         ]
-        for rule in invalidRules {
-            let bytes = Data("{\"sites\":{\"site\":{\"triggerZone\":\(rule)}}}".utf8)
-            for build in FeatureVisibility.BuildMode.allCases {
-                let visibility = FeatureVisibility(build: build) { bytes }
-                check(!visibility.isVisible(.siteTriggerZone, permission: .owner), "Invalid rule allowed owner: \(rule)")
+        for feature in FeatureVisibility.Feature.allCases {
+            for rule in invalidRules {
+                let bytes = Data("{\"sites\":{\"site\":{\"\(feature.rawValue.components(separatedBy: ".").last!)\":\(rule)}}}".utf8)
+                for build in FeatureVisibility.BuildMode.allCases {
+                    let visibility = FeatureVisibility(build: build) { bytes }
+                    check(!visibility.isVisible(feature, permission: .owner), "Invalid rule allowed owner: \(rule)")
+                }
             }
+            for raw in ["{", "[]", "null", "true", "{}", #"{"sites":{}}"#, #"{"sites":{"site":null}}"#,
+                        #"{"sites":"invalid"}"#, #"{"sites.site.triggerZone":{"builds":["debug"],"roles":["owner"]}}"#] {
+                let visibility = FeatureVisibility(build: .debug) { Data(raw.utf8) }
+                check(!visibility.isVisible(feature, permission: .owner), "Malformed/missing hierarchy allowed")
+            }
+            let unavailable = FeatureVisibility { throw CocoaError(.fileReadNoSuchFile) }
+            check(!unavailable.isVisible(feature, permission: .owner), "Missing file allowed")
+
         }
-        for raw in ["{", "[]", "null", "true", "{}", #"{"sites":{}}"#, #"{"sites":{"site":null}}"#,
-                    #"{"sites":"invalid"}"#, #"{"sites.site.triggerZone":{"builds":["debug"],"roles":["owner"]}}"#] {
-            let visibility = FeatureVisibility(build: .debug) { Data(raw.utf8) }
-            check(!visibility.isVisible(.siteTriggerZone, permission: .owner), "Malformed/missing hierarchy allowed")
-        }
-        let unavailable = FeatureVisibility { throw CocoaError(.fileReadNoSuchFile) }
-        check(!unavailable.isVisible(.siteTriggerZone, permission: .owner), "Missing file allowed")
 
         let mixed = Data(#"{"sites":{"site":{"triggerZone":{"builds":["debug","debug"],"roles":["owner","owner"],"note":123},"broken":{"builds":["oops"],"roles":["owner"]}},"badGroup":false},"other":{"valid":{"builds":["release"],"roles":["visitor"]}}}"#.utf8)
         let parsed = try JSONDecoder().decode(FeatureVisibility.Configuration.self, from: mixed)
@@ -88,6 +93,19 @@ struct FeatureVisibilityTests {
         let mixedVisibility = FeatureVisibility(build: .debug) { mixed }
         check(mixedVisibility.isVisible(.siteTriggerZone, permission: .owner), "Unknown rule field changed visibility")
 
+        for brokenFeature in FeatureVisibility.Feature.allCases {
+            let goodFeature: FeatureVisibility.Feature = brokenFeature == .siteExportJson ? .siteTriggerZone : .siteExportJson
+            let goodKey = goodFeature.rawValue.components(separatedBy: ".").last!
+            let badKey = brokenFeature.rawValue.components(separatedBy: ".").last!
+            let bytes = try JSONSerialization.data(withJSONObject: ["sites": ["site": [
+                goodKey: ["builds": ["debug"], "roles": ["owner", "editor"]],
+                badKey: ["builds": ["invalid"], "roles": ["owner"]]
+            ]]])
+            let visibility = FeatureVisibility(build: .debug) { bytes }
+            check(visibility.isVisible(goodFeature, permission: .editor), "Sibling feature must remain visible")
+            check(!visibility.isVisible(brokenFeature, permission: .owner), "Broken feature must hide")
+        }
+
         let configURL = URL(fileURLWithPath: CommandLine.arguments[1])
         let bundled = try Data(contentsOf: configURL)
         let config = try JSONDecoder().decode(FeatureVisibility.Configuration.self, from: bundled)
@@ -96,6 +114,6 @@ struct FeatureVisibilityTests {
             check(config.rules[feature.rawValue] != nil, "Missing known feature: \(feature.rawValue)")
         }
         check(Set(config.rules.keys) == Set(FeatureVisibility.Feature.allCases.map(\.rawValue)), "Unregistered feature path in configuration")
-        print("PASS: \(cases) matrix cases, 27 current-build cases, invalid input, isolation, roles, cache and bundle configuration (\(FeatureVisibility.BuildMode.current.rawValue))")
+        print("PASS: \(cases) matrix cases, 54 current-build cases, invalid input, isolation, roles, cache and bundle configuration (\(FeatureVisibility.BuildMode.current.rawValue))")
     }
 }

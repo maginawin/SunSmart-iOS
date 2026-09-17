@@ -1287,7 +1287,7 @@ class SpaceViewController: WMPageController {
             }))
         }
         #if DEBUG
-        if DebugCloudJSONExporter.canExport(space.permission) {
+        if FeatureVisibility.shared.isVisible(.siteExportJson, permission: space.permission) {
             items.append(.init(icon: UIImage(named: "menu_share"), title: "debug_export_json".localizedString,
                                performsActionAfterDismiss: true, tapItemBack: { [weak self] _ in
                 guard let self else { return }

@@ -29,7 +29,48 @@ final class SiteMenuHarness {
     }
 '''
 (Path(sys.argv[1]) / 'SiteMenuHarness.swift').write_text(fixture + method + '\n}\n')
-menu = controller[controller.index('    @objc private func moreClick()'):start]
+space_page = Path('SunSmart/Main/Space/Controller/SpaceViewController.swift').read_text()
+exporter = Path('SunSmart/Common/Cloud/DebugCloudJSONExporter.swift').read_text()
+# Compile actual menu blocks and share entry guards, substituting only the
+# configuration instance and the expensive UIKit/file work after admission.
+export_harness = '''import Foundation
+final class ExportJSONMenuHarness: UIViewController {
+    let site = SiteData(), space = SpaceData()
+    let visibility: FeatureVisibility
+    let debugJSONExporter: DebugCloudJSONExporter
+    init(visibility: FeatureVisibility) {
+        self.visibility = visibility
+        debugJSONExporter = DebugCloudJSONExporter(visibility: visibility)
+        super.init()
+    }
+'''
+for text, anchor, signature in [
+    (controller, '    @objc private func moreClick()', 'siteMenu()'),
+    (controller, '    private func spaceMenu(', 'cardMenu(space: SpaceData)'),
+    (space_page, '    @objc private func moreClick()', 'spaceMenu()')
+]:
+    start = text.index('        #if DEBUG\n        if FeatureVisibility.shared.isVisible(.siteExportJson,', text.index(anchor))
+    end = text.index('        #endif', start) + len('        #endif')
+    block = text[start:end].replace('FeatureVisibility.shared', 'visibility')
+    export_harness += f'    func {signature} -> [MenuPopView.MenuItem] {{\n        var items: [MenuPopView.MenuItem] = []\n'
+    export_harness += block + '\n        return items\n    }\n'
+export_harness += '''}
+final class DebugCloudJSONExporter {
+    let visibility: FeatureVisibility
+    var isExporting = false
+    var exports = 0
+    var lastSpace: SpaceData?
+    init(visibility: FeatureVisibility) { self.visibility = visibility }
+'''
+start = exporter.index('    static func canExport(')
+end = exporter.index('    /// Matches', start)
+export_harness += exporter[start:end]
+start = exporter.index('    func share(')
+end = exporter.index('        isExporting = true', start)
+export_harness += exporter[start:end].replace('FeatureVisibility.shared', 'visibility')
+export_harness += '        exports += 1\n        lastSpace = space\n    }\n}\n'
+(Path(sys.argv[1]) / 'ExportJSONMenuHarness.swift').write_text(export_harness)
+menu = controller[controller.index('    @objc private func moreClick()'):controller.index('    private func makeSiteTriggerZoneMenuItem(')]
 assert 'if let item = makeSiteTriggerZoneMenuItem()' in menu
 assert 'SiteTriggerZoneViewController(' not in menu, 'Site menu bypasses shared entry guard'
 space_controller = Path('SunSmart/Main/Space/Controller/SpaceMoreViewController.swift').read_text()
@@ -64,6 +105,13 @@ for mode in debug release; do
         Tests/Config/SiteTriggerZoneMenuTests.swift \
         -o "$test_dir/SiteTriggerZoneMenuTests-$mode"
     "$test_dir/SiteTriggerZoneMenuTests-$mode"
+    swiftc -parse-as-library "${flags[@]}" \
+        "$test_dir/Permission.swift" \
+        SunSmart/Common/Config/FeatureVisibility.swift \
+        "$test_dir/ExportJSONMenuHarness.swift" \
+        Tests/Config/ExportJSONMenuTests.swift \
+        -o "$test_dir/ExportJSONMenuTests-$mode"
+    "$test_dir/ExportJSONMenuTests-$mode"
 done
 
 plutil -lint SunSmart.xcodeproj/project.pbxproj

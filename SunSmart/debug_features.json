@@ -1,6 +1,10 @@
 {
     "sites": {
         "site": {
+            "exportJson": {
+                "builds": ["debug"],
+                "roles": ["owner", "editor"]
+            },
             "triggerZone": {
                 "builds": ["debug"],
                 "roles": ["owner", "editor"]

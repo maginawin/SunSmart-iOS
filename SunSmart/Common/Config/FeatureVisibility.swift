@@ -3,6 +3,7 @@ import Foundation
 /// 包内功能可见性规则。只决定入口展示，不授予业务操作权限。
 final class FeatureVisibility {
     enum Feature: String, CaseIterable {
+        case siteExportJson = "sites.site.exportJson"
         case siteTriggerZone = "sites.site.triggerZone"
     }
 

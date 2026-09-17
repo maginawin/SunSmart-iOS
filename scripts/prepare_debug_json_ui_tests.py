@@ -9,6 +9,9 @@ out=Path(sys.argv[1]) if len(sys.argv)>1 else Path('/tmp/DebugJSONLayout')
 sys.argv=[str(repo/'scripts/prepare_configuration_recovery_ui_tests.py'),str(out)]
 runpy.run_path(sys.argv[0],run_name='__main__')
 app=(repo/'Tests/Cloud/DebugCloudJSONFixtures.swift').read_text()
+permission=(repo/'SunSmart/Common/Data/SiteData.swift').read_text()
+permission=permission[permission.index('enum Permission: Int {'):permission.index('/// Mesh网络操作权限')]
+app=app.replace('enum Permission: Int { case owner = 1, editor, visitor }', permission)
 app+='''
 @main final class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
@@ -73,7 +76,7 @@ final class ExportController: UIViewController {
 '''
 for kind,titles,minimum in [('site',['edit_site','delete_site','share_authoority'],154),('space',['edit','delete','share'],108)]:
     text=(repo/f'SunSmart/Main/{kind.title()}/Controller/{kind.title()}ViewController.swift').read_text()
-    start=text.index('        #if DEBUG\n        if DebugCloudJSONExporter.canExport(',text.index('    @objc private func moreClick()'))
+    start=text.index('        #if DEBUG\n        if FeatureVisibility.shared.isVisible(.siteExportJson,',text.index('    @objc private func moreClick()'))
     end=text.index('        #endif',start)+len('        #endif')
     app+=f'    func {kind}Menu() {{\n        var items: [MenuPopView.MenuItem] = []\n'
     app+='        for key in '+repr(titles).replace("'",'"')+' { items.append(.init(icon: UIImage(named: "menu_share"), title: key.localizedString, tapItemBack: nil)) }\n'
@@ -91,7 +94,7 @@ for name in ['menu_bubble','menu_share','arrow_right']:
     shutil.copytree(source,assets/source.name,dirs_exist_ok=True)
 shutil.copytree(repo/'Pods/SnapKit/Sources',out/'SnapKit',dirs_exist_ok=True,copy_function=shutil.copyfile)
 sources=[]
-for path in ['SunSmart/Common/View/MenuPopView.swift','SunSmart/Common/View/CustomTableViewCell.swift','SunSmart/Common/Cloud/DebugCloudJSONExporter.swift','SunSmart/Common/Cloud/DebugCloudJSONFile.swift']:
+for path in ['SunSmart/Common/Config/FeatureVisibility.swift','SunSmart/Common/View/MenuPopView.swift','SunSmart/Common/View/CustomTableViewCell.swift','SunSmart/Common/Cloud/DebugCloudJSONExporter.swift','SunSmart/Common/Cloud/DebugCloudJSONFile.swift']:
     source=repo/path;target=out/source.name
     target.write_text(source.read_text().replace('import SnapKit',''))
     sources.append(target)
@@ -107,6 +110,9 @@ for source in sources:
     ref=obj('PBXFileReference',lastKnownFileType='sourcecode.swift',path=str(source.relative_to(out)),sourceTree='<group>')
     source_phase['files'].append(obj('PBXBuildFile',fileRef=ref))
 ref=obj('PBXFileReference',lastKnownFileType='folder.assetcatalog',path='Assets.xcassets',sourceTree='<group>')
+resource_phase['files'].append(obj('PBXBuildFile',fileRef=ref))
+shutil.copyfile(repo/'SunSmart/debug_features.json', out/'debug_features.json')
+ref=obj('PBXFileReference',lastKnownFileType='text.json',path='debug_features.json',sourceTree='<group>')
 resource_phase['files'].append(obj('PBXBuildFile',fileRef=ref))
 for value in objects.values():
     if value.get('isa')=='XCBuildConfiguration':
