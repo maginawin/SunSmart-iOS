@@ -1,5 +1,7 @@
 # Site 网关在线状态丢失分析
 
+最新实施与验证见文末「connectAt 激活展示修复交付」，基线为 `4a5a4176`；正文较早章节保留当时的分析与验证上下文。
+
 日期：2026-09-17。范围：分析用户提供的两份 JSON、进入 Site 的日志，并按用户确认实施最小修复。下文根因以修复前 HEAD 为基线；最终修改和验证记录见末节。
 
 ## 结论
@@ -235,3 +237,129 @@ Git blame 显示，导入末尾和 `viewWillAppear` 的这两组无条件重载�
 - SDK 来源：`.local-sdk/nordic-sig-mesh-sdk` 实际指向 `/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk-worktrees/one-dev`，HEAD `a971027`，核对时无未提交差异，本轮未修改，无远端 API 发布待办。
 - 构建复用 `/Users/maginawin/Library/Developer/Xcode/DerivedData/SunSmart-fix-gateway`；仅共享逻辑变化、没有品牌条件编译差异，选 SunSmart 代表构建。
 - 最短人工验收：刷新样本 Site，Gateway1 应为 Internet Offline / Last online: 2026-09-17 14:26，Gateway2 为 Internet Online；进入详情返回、同步状态刷新后保持；手机时区与 Site 不同时仍按 Site 显示；修改 Site 时区后时间重算，网关恢复在线后隐藏历史 Last online。
+
+## 2026-09-17 15:40 五种圆点场景复核
+
+本轮仅分析用户截图和五种预期，不修改生产代码。分支 `fix-gateway`，HEAD `4a5a417602c11e596ac3bad3bc5732006519139a`；开始时工作区干净，本轮仅更新本文档。未修改或重新验证 SDK 映射，未构建、未操作真机。截图无法证明所装 App 对应此 revision。
+
+### 结论
+
+用户后续明确：橙色表示「未激活」，不是「未联网」。据此修正本节第 1、2 项及修复方向；不再将已激活但未联网显示灰色判为缺陷。
+
+| 场景 | 用户预期 | 当前代码结果及判断 |
+| --- | --- | --- |
+| 1. 未激活、未关联空间 | 橙色 | activate=false 且网关未报在线时已显示橙黄色；但 gatewayOnline=true 会先命中 online，仍显示绿色，未激活优先级不完整。 |
+| 2. 未激活、关联空间 | 橙色 | activate=false 且 Space 报离线时已显示橙黄色；Space 仍报在线时显示绿色，同样存在优先级缺口。关联本身不会直接置绿。 |
+| 3. 已激活、联网、未关联空间 | 绿色 | 已有代码修复。没有可用关联 Space 状态时读取 Site 网关快照的 gatewayOnline=true，显示绿色；要求收到有效、身份无冲突的最新响应。 |
+| 4. 已激活、联网、关联空间 | 绿色 | Space gatewayOnline=true 时显示绿色，符合预期。 |
+| 5. 已激活、断电或离线 | 灰色 | 所采用的服务端状态更新为离线后显示灰色，符合预期；不能据此声称断电后立即变灰。未激活按橙色规则处理。 |
+
+### 直接证据与边界
+
+- [SiteDeviceAddViewController.swift](../SunSmart/Main/Site/Controller/SiteDeviceAddViewController.swift)：正常添加入口的 provisionCompleteCallback 显式创建 activate=true 的 GatewayModel；[ImportData.swift](../SunSmart/Common/Data/ImportData.swift) 中无预配置的网关模型导入也默认 true。
+- [SiteViewController.swift](../SunSmart/Main/Site/Controller/SiteViewController.swift) 的 loadGatewaysData：优先取第一个匹配且非 notBound 的 Space；Space 在线则 online，否则按 activate 选择 offline/inactive。只有没有可用 Space 状态时才采用 site.gatewayPresence.online。两个分支都先判断在线，再判断 activate，因此 activate=false 与在线元数据并存时会显示绿色。
+- [GatewayListView.swift](../SunSmart/Main/Site/View/GatewayListView.swift)：online 为绿色，offline/reset 为灰色，inactive 为 Yellow_Color（RGB 255,193,71，橙黄色）。橙黄色当前表达未激活，不表达未联网。[SiteGatewayStatusView.swift](../SunSmart/Main/Site/View/SiteGatewayStatusView.swift) 对应文字也是 gateway_not_activated。
+- [ImportData.swift](../SunSmart/Common/Data/ImportData.swift) 的 applyRemoteSpaceMetadata 从 Space 自己的 gatewayOnline 生成 gatewayStatus；不能因有关联就推断在线，也不能仅凭截图判定服务端是否上报错误。网关层 false、Space 层 true 的冲突输入仍会由 Space 优先规则得到绿色；这是静态可达路径，本轮没有该场景的现场响应。
+- [SiteGatewayAssociationConsistencyPolicy.swift](../SunSmart/Common/Data/SiteGatewayAssociationConsistencyPolicy.swift) 的 SiteGatewayLastOnlineSnapshot 已解析网关层 gatewayOnline，并拒绝身份冲突/不一致重复记录；缺失或冲突状态不会凭空判为在线。
+
+### 后续修复方向
+
+按用户澄清，建议状态优先级为：activate=false → inactive（橙色）；否则按服务端在线状态决定 online（绿色）或 offline（灰色）。与关联空间与否无关。现有 activate 已能表达该需求，无需增加首次联网历史或物理通电检测。
+
+待修复的是「未激活 + 在线元数据为 true」仍显示绿色的优先级缺口；这是代码可达条件，不证明截图当时确有此输入。正常添加默认 activate=true，因此单纯添加后未联网显示灰色符合修正后的规则，不应修改默认启用配置。两层在线字段冲突的权威来源属于另一个问题，仍需现场响应和服务端语义核实。本轮只分析，未实施。
+
+### 本轮验证
+
+`bash scripts/check_site_gateway_online_state.sh` 通过：关联一致性测试、源码约定检查、95 项元数据行为检查及五品牌文件归属检查均通过。行为检查包含实际生产状态投影片段，覆盖未关联网关在空 Site/有其他 Space 下的在线、离线、恢复在线，以及重载路径；这些检查没有证明未激活状态优先级符合要求。SQLite、SDK、UI 使用替身，不是完整 App 或真实断电验收。用户澄清后只修改文档并复核状态分支，未重复执行上述回归。
+
+待人工验收：使用当前 revision 构建，按修正后的五种场景刷新 Site 并观察圆点；未激活仍呈绿色时，对照 App 当前 activate 和同次响应中网关、关联 Space 的 gatewayOnline。未激活优先级调整及对应行为回归尚未实施。
+
+## 2026-09-17 15:50 删除重加后的 activate 来源与实际语义
+
+用户反馈：删除后重新添加同一 Wi-Fi 网关，尚未配置 SSID，activate 已为 true。本轮继续只读调查生产代码并更新本文档，分支和 HEAD 不变。没有修改业务代码、运行构建、重跑测试或操作设备/服务器。
+
+### 结论与直接原因
+
+当前添加路径由 App 主动创建 activate=true，再通过 gatewayPreconfigured.activate 上传服务器；它是可双向同步的配置字段，并非根据 Wi-Fi 联网结果生成的运行状态。即使删除完全成功，也会在新一轮添加中再次写入 true，无需旧记录残留即可解释现象。
+
+1. [SiteDeviceAddViewController.swift](../SunSmart/Main/Site/Controller/SiteDeviceAddViewController.swift) 的 provisionCompleteCallback，在 Mesh 入网完成后直接创建 `GatewayModel(... activate: true)`，随即 save。此处既不检查 SSID，也不检查 Wi-Fi/MQTT 是否连接成功。
+2. [Database.swift](../SunSmart/Common/Data/Database.swift) 的 GatewayModel.save 将 activate 写入本地 SQLite；load 按数据库值恢复。虽然 GatewayModel 属性及构造参数默认 false，但该入口的显式 true 覆盖默认值。
+3. 随后的 appendMessagesBack 调用 [GatewayServerAuthorizationService.swift](../SunSmart/Main/Device/Gateway/Model/GatewayServerAuthorizationService.swift) 的 authorize。它将 gateway.export 放到注册请求 node.gatewayPreconfigured 中；[ExportData.swift](../SunSmart/Common/Data/ExportData.swift) 明确导出 activate。注册响应解析只提取 MQTT 授权参数，不根据响应设置 activate。
+4. [CloudSynchronizationManager.swift](../SunSmart/Common/Cloud/CloudSynchronizationManager.swift) 的 syncGateway 同样上传该配置；[ImportData.swift](../SunSmart/Common/Data/ImportData.swift) 则按生命周期和版本合并策略导入云端 gatewayPreconfigured.activate。因此不能说字段只在本地维护，但本次新建 true 的直接来源已经确定为 App。未检查服务器实现，不能断言服务器绝不会改写该字段。
+5. 另一个默认 true 入口是 GatewayModel.import：整个 gatewayPreconfigured 缺失时返回 activate=true 的模型；已有预配置则读取 activate。对已有模型的字段级合并使用 GatewayCloudConfigurationPatch，缺失字段与明确 false 分开处理，不应混同新模型默认值。
+
+### 删除与 Wi-Fi 配置边界
+
+- [GatewayDeletionCoordinator.swift](../SunSmart/Main/Device/Gateway/Model/GatewayDeletionCoordinator.swift) 的正常流程先确认服务端删除，再尝试设备 Reset，最后本地收尾；[GatewayDeletionContext.swift](../SunSmart/Main/Device/Gateway/Model/GatewayDeletionContext.swift) 明确删除本地 GatewayModel 记录。新建入口没有「同一 MAC 恢复旧 activate」的逻辑。这不证明用户现场每步删除都成功，只说明当前 true 不需要依赖删除失败来解释。
+- [WiFiGatewayViewController.swift](../SunSmart/Main/Device/Gateway/Controller/WiFiGatewayViewController.swift) 的凭据写入、回读恢复、连接轮询、清除凭据流程维护 Wi-Fi 专属状态，没有给 GatewayModel.activate 赋值。未配置 SSID 与 activate=true 在当前实现中可以同时成立。
+
+### 现有 activate 实际控制的行为
+
+[Node+SyncData.swift](../SunSmart/Common/Data/Node+SyncData.swift) 使用 activate 计算网关应启用的 Space 子网 AppKey index 集合。[GatewayAssociatedSpaceCandidatePolicy.swift](../SunSmart/Main/Device/Gateway/Model/GatewayAssociatedSpaceCandidatePolicy.swift) 的 GatewaySubnetAppKeyIndexPolicy 在 false 时返回空列表，在 true 时返回关联空间 index 集合；随后可生成 gatewaySubnetsRelevanceSet 下发。它影响 Mesh 子网工作配置，不只是圆点显示字段，也不是 Wi-Fi 配置成功标记。
+
+当前 GatewayViewController.sections 已无 activate，WiFiGatewayViewController 只在父类 sections 中插入 networkConnectivity。历史 [Activate UI 移除记录](260704_1657_gateway_remove_activate_plan.md) 明确只移除开关，保留协议、字段、同步及 Site 展示；当前代码与该范围一致。旧的开关处理函数仍在源码中，不代表用户当前能通过页面操作它。
+
+### 对修复方向的影响
+
+「未激活优先于在线」能修复 activate=false 却显示绿色的状态优先级问题，但不能让新添加、未配 Wi-Fi 的网关显示橙色，因为新增值仍为 true。此前将 activate 直接当作产品所说的初始化完成状态，依据不足，需要补充这一语义区别。
+
+若产品要求「新添加未完成 Wi-Fi 配置也属于未激活」，必须明确激活发生在凭据确认写入、Wi-Fi 连接成功还是云端首次上线，以及断网/清除凭据后的行为，再决定使用独立配置完成状态或调整现有 activate 生命周期。不能只改新建默认值为 false：当前 Wi-Fi 成功路径不会将其恢复 true，详情页也没有激活开关，且 false 会影响子网同步。Wi-Fi 与 4G 共用添加及模型路径，实施时还须约束影响范围。此处记录风险与待决策点，不实施新语义。
+
+## 2026-09-17 以 connectAt 定义展示激活状态
+
+用户提出采用服务器网关记录的 connectAt：明确 null 表示未激活，非 null 表示已激活。本节据此更新方案，覆盖前节尚未确定的产品激活条件；不改变 GatewayModel.activate 的 Mesh 配置语义。本轮仍为分析，未修改生产代码或执行构建。
+
+### 展示规则
+
+| 服务端网关数据 | Site 圆点与状态 |
+| --- | --- |
+| connectAt 明确为 null | 未激活，橙色；先于在线判断，不受是否关联 Space 影响 |
+| connectAt 为非 null 的连接时间，当前在线 | 已激活且在线，绿色 |
+| connectAt 为非 null 的连接时间，当前离线 | 已激活但离线，灰色；Last online 继续使用断线时间 |
+
+这将展示上的「激活」定义为已有服务器连接记录。仅填写/写入 SSID，甚至 Wi-Fi 已连接但尚未连上服务器，都不保证已经激活；曾连接服务器后再次离线，则保持已激活并显示灰色。
+
+### 最小实现建议与兼容边界
+
+- 在现有 Site 网关运行期快照中增加独立的服务器激活状态，复用 Site 导入、身份匹配、重载保留链路，不覆盖 GatewayModel.activate、不修改注册 payload 或 Mesh 子网同步。
+- Site 投影先判断服务器激活状态，再判断在线状态；已有圆点、菜单及状态栏复用 connectStatus。非 null 的有效连接记录表示已激活，不再由旧 activate=false 将它投影成未激活。
+- 字段缺失与 JSON null 必须区分。缺失、异常类型或身份冲突表示未知，不能当作服务器明确未激活；旧响应可回退现有展示逻辑，保证兼容。正常 connectAt 为时间字符串，错误类型不应成为可靠连接记录。
+- 每次完整响应更新当前快照；删除重加后不能沿用旧生命周期的连接记录。本地首次添加、尚无服务端响应时也不能声称已经收到了 connectAt=null。
+- 现有在线数据来源选择先保持原逻辑；网关与 Space 在线字段冲突属于独立的权威来源问题，不由 connectAt 推断当前在线。
+
+### 服务器语义与验证边界
+
+本轮定向读取现有服务器样本，只提取名称、在线布尔值及连接/断线时间。两个在线网关均有非 null connectAt，符合建议规则，但样本不足以验证服务器完整生命周期。要稳定满足用户要求，服务器应在普通离线时保留 connectAt，并在删除后新注册、尚未连接时返回 null；若服务器仍保留同 MAC 的旧连接时间，按本规则会被判为已激活，这需要服务端生命周期配合，不能由客户端单凭非 null 时间识别。
+
+实施时直接覆盖：null + 在线字段 true 的优先级、非 null 的在线/离线、有无关联 Space、字段缺失兼容、重载保留以及删除重加 null 清除旧状态。现有 95 项回归不包含 connectAt，本轮没有声称新规则已通过测试或真机验收。
+
+## 2026-09-17 16:01 connectAt 激活展示修复交付
+
+用户明确授权仅修复 connectAt 激活判定及激活优先级。本节覆盖前文「尚未实施」，并按最终确认将所有非 null 值视为已激活；不采用前节建议中的类型/日期有效性限制。
+
+### 最终行为与范围
+
+- Site 网关运行期快照增加独立 activationStates。connectAt 明确 JSON null → false；存在且非 null → true；字段缺失 → 未知，保留旧响应兼容行为。沿用已有 MAC 标准化和冲突记录排除机制。
+- loadGatewaysData 先判断服务器激活状态：false 直接产生 inactive，清空展示用 Last online，即使在线字段为 true 也不会变绿；true 按既有在线来源产生 online/offline，不再受旧 Mesh activate 值影响。
+- 圆点、菜单及单网关状态栏继续消费同一个 connectStatus，复用已有橙黄色/绿色/灰色与本地化文案，没有资源、依赖、品牌配置或 SDK 改动。
+- 保留 GatewayModel.activate 的初始化、数据库、上传和 Mesh 子网同步逻辑；不调整 Space 与网关在线字段优先级、Overview 的 Space 计数、删除协议或 Wi-Fi 配置流程。
+
+### 验证结果
+
+| 检查 | 结果与边界 |
+| --- | --- |
+| 修复前行为复现 | 新增实际生产片段回归在 connectAt=null、online=true、未关联 Space 场景失败，确认原实现先显示 online |
+| check_site_gateway_online_state.sh | 通过；关联一致性测试、源码约定、864 项元数据行为断言及五品牌文件归属检查通过 |
+| 新增行为范围 | 空 Site、有其他 Space、已关联；旧 activate=true/false；在线/离线；null/非 null 多种 JSON 值；导入/页面返回/列表重载；缺字段兼容；重复或身份冲突；连接→离线→空快照→重新注册 null→再次连接 |
+| SunSmart generic iOS Debug | SunSmartLocal.xcworkspace，SunSmart scheme，iphoneos，generic/platform=iOS，CODE_SIGNING_ALLOWED=NO，一次 BUILD SUCCEEDED |
+| 差异检查 | git diff --check 通过 |
+| 真机/服务端生命周期 | 未执行；隔离回归不证明服务器删除重加会清空 connectAt，也不替代真实页面验收 |
+
+测试在现有夹具中执行生产快照解析、导入、重载及状态投影片段；SQLite、SDK、UIKit 和删除回执使用替身。864 是参数组合下的行为断言数，并非 864 次完整 App 测试。此次没有相关的新失败，不扩大其他模块回归。
+
+### 交接与人工验收
+
+- 分支 `fix-gateway`，HEAD `4a5a417602c11e596ac3bad3bc5732006519139a`。修改未提交：两个生产 Swift 文件、现有 SiteGatewayMetadataReloadTests 及本文档；保留此前分析文档增量。
+- 本地 workspace SDK 映射为 `/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk-worktrees/one-dev`，revision `a971027`，核对时工作区干净；未修改 SDK、未引用新 API。
+- 构建使用 `/Users/maginawin/Library/Developer/Xcode/DerivedData/SunSmart-fix-gateway`。此次是五品牌共享且无品牌条件分支的纯逻辑修复，以 SunSmart 代表编译。
+- 最短人工步骤：新增/删除重加后刷新 Site，服务端 connectAt=null 应橙色；首次连接后非 null 且在线应绿色；断网/断电并刷新为离线后应灰色。关联或取消关联 Space 后规则保持，进入详情返回后状态保持。

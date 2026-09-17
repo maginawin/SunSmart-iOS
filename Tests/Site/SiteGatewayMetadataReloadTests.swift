@@ -72,6 +72,7 @@ struct Node {}
 enum GatewayConnectStatus { case online, offline, inactive }
 struct GatewayModel {
     let mac: String
+    static var activationOverrides: [String: Bool] = [:]
     static func load(siteId: String) -> [GatewayModel] { [.init(mac: "G1"), .init(mac: "G2")] }
     func resolveNode(in network: MeshNetwork) -> Node? { Node() }
 }
@@ -80,7 +81,10 @@ final class Gateway {
     var activate = true
     var connectStatus = GatewayConnectStatus.offline
     var lastOnlineTime: String?
-    init(model: GatewayModel, node: Node) { mac = model.mac }
+    init(model: GatewayModel, node: Node) {
+        mac = model.mac
+        activate = GatewayModel.activationOverrides[mac] ?? true
+    }
 }
 extension String {
     var localizedString: String { self }
@@ -115,6 +119,7 @@ struct SiteGatewayMetadataReloadTests {
         SpaceData.reads = 0
         SiteDeviceOwnershipReconciler.changed = []
         GatewayDeletionContext.confirmed = []
+        GatewayModel.activationOverrides = [:]
         let site = SiteData()
         site.spaces = SpaceData.load(siteId: site.id)
         for (index, space) in site.spaces.enumerated() {
@@ -233,6 +238,7 @@ struct SiteGatewayMetadataReloadTests {
                "new Spaces must not inherit an unrelated gateway")
         await testDisconnectAt()
         await testUnassociatedGatewayPresence()
+        await testServerActivation()
         print("SiteGatewayMetadataReloadTests passed (\(checks) checks)")
     }
 
@@ -394,4 +400,91 @@ struct SiteGatewayMetadataReloadTests {
         }
     }
 
+    static func testServerActivation() async {
+        let connectedAt = "2026-09-17T05:57:25.751Z"
+        let disconnectedAt = "2026-09-17T06:26:52.401Z"
+        // Display activation is defined by JSON nullness, not date parsing or
+        // the separate Mesh configuration flag.
+        let connectionValues: [Any] = [NSNull(), connectedAt, "", 0, false, [], ["unexpected": true]]
+        for spaceMode in 0..<3 {
+            for legacyActivated in [true, false] {
+                for online in [true, false] {
+                    for connectedValue in connectionValues {
+                        let (site, controller) = fixture()
+                        GatewayModel.activationOverrides["G1"] = legacyActivated
+                        if spaceMode == 0 {
+                            site.spaces = []
+                            SpaceData.rows = []
+                        } else {
+                            site.spaces[0].applyRemoteSpaceMetadata([
+                                "uuid": "S1", "gatewayId": spaceMode == 1 ? "" : "G1",
+                                "gatewayOnline": online
+                            ])
+                        }
+                        await site.importReload(gateways: [[
+                            "gatewayId": " g1 ", "macAddress": "G1",
+                            "gatewayOnline": online, "connectAt": connectedValue,
+                            "disconnectAt": disconnectedAt
+                        ]])
+                        let inactive = connectedValue is NSNull
+                        let expected: GatewayConnectStatus = inactive ? .inactive : (online ? .online : .offline)
+                        for path in 0..<3 {
+                            if path == 1 { controller.reappear() }
+                            if path == 2 { controller.refreshList() }
+                            let gateway = controller.gateways()[0]
+                            expect(gateway.connectStatus == expected,
+                                   "connectAt must decide activation before online; spaces=\(spaceMode), legacy=\(legacyActivated), online=\(online), inactive=\(inactive), path=\(path)")
+                            expect(gateway.activate == legacyActivated,
+                                   "display activation must not mutate the Mesh configuration flag")
+                            let expectedTime: String? = inactive || online ? nil : "2026-09-17 14:26"
+                            expect(gateway.lastOnlineTime == expectedTime,
+                                   "only an activated offline gateway should display Last online")
+                        }
+                    }
+                }
+            }
+        }
+
+        let (site, controller) = fixture()
+        site.spaces = []
+        SpaceData.rows = []
+        func record(_ value: Any, online: Bool = true) -> [String: Any] {
+            ["gatewayId": "G1", "connectAt": value, "gatewayOnline": online,
+             "disconnectAt": disconnectedAt]
+        }
+        await site.importReload(gateways: [record(connectedAt)])
+        expect(controller.gateways()[0].connectStatus == .online, "first connection activates gateway display")
+        await site.importReload(gateways: [record(connectedAt, online: false)])
+        expect(controller.gateways()[0].connectStatus == .offline, "disconnect retains activation")
+        await site.importReload(gateways: [])
+        await site.importReload(gateways: [record(NSNull())])
+        expect(controller.gateways()[0].connectStatus == .inactive,
+               "a new registration with null connectAt must not inherit the previous activation")
+        await site.importReload(gateways: [record(connectedAt)])
+        expect(controller.gateways()[0].connectStatus == .online, "new connection replaces inactive snapshot")
+
+        // Missing fields keep legacy behavior; a previous explicit null must
+        // not leak into a later snapshot which omits activation metadata.
+        for online in [true, false] {
+            for legacyActivated in [true, false] {
+                GatewayModel.activationOverrides["G1"] = legacyActivated
+                await site.importReload(gateways: [record(NSNull())])
+                await site.importReload(gateways: [["gatewayId": "G1", "gatewayOnline": online]])
+                let expected: GatewayConnectStatus = online ? .online : (legacyActivated ? .offline : .inactive)
+                expect(controller.gateways()[0].connectStatus == expected,
+                       "absent connectAt must preserve the previous compatibility rule")
+            }
+        }
+        GatewayModel.activationOverrides["G1"] = true
+        let inactive = record(NSNull())
+        let active = record(connectedAt)
+        let mismatched: [String: Any] = ["gatewayId": "G1", "macAddress": "G2", "connectAt": NSNull()]
+        for records in [[inactive, active], [active, inactive], [inactive, mismatched], [mismatched, inactive]] {
+            await site.importReload(gateways: records)
+            expect(controller.gateways()[0].connectStatus == .offline,
+                   "ambiguous gateway records must not supply an activation state")
+        }
+        await site.importReload(gateways: [inactive, inactive])
+        expect(controller.gateways()[0].connectStatus == .inactive, "identical null observations remain usable")
+    }
 }

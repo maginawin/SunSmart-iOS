@@ -66,11 +66,13 @@ struct SiteGatewayAssociationSnapshot {
 struct SiteGatewayLastOnlineSnapshot {
     private struct Observation: Equatable {
         let online: Bool?
+        let activated: Bool?
         let timestamp: Int64?
     }
 
     private let timestamps: [String: Int64]
     private let onlineStates: [String: Bool]
+    private let activationStates: [String: Bool]
 
     init(gateways: [[String: Any]]?) {
         let fractionalParser = ISO8601DateFormatter()
@@ -88,6 +90,9 @@ struct SiteGatewayLastOnlineSnapshot {
                 continue
             }
             let online = gateway["gatewayOnline"] as? Bool
+            // Missing metadata remains unknown for older responses. For a
+            // present connectAt, only JSON null means not yet activated.
+            let activated = gateway["connectAt"].map { !($0 is NSNull) }
             var timestamp: Int64?
             if online == false, let rawDate = gateway["disconnectAt"] as? String {
                 let value = rawDate.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -96,7 +101,7 @@ struct SiteGatewayLastOnlineSnapshot {
                     timestamp = Int64(exactly: date.timeIntervalSince1970.rounded(.down))
                 }
             }
-            let observation = Observation(online: online, timestamp: timestamp)
+            let observation = Observation(online: online, activated: activated, timestamp: timestamp)
             if let previous = observations[id], previous != observation {
                 ambiguousIDs.insert(id)
             }
@@ -111,6 +116,15 @@ struct SiteGatewayLastOnlineSnapshot {
             guard !ambiguousIDs.contains(entry.key), let online = entry.value.online else { return }
             result[entry.key] = online
         }
+        activationStates = observations.reduce(into: [:]) { result, entry in
+            guard !ambiguousIDs.contains(entry.key), let activated = entry.value.activated else { return }
+            result[entry.key] = activated
+        }
+    }
+
+    func activated(for gatewayId: String?) -> Bool? {
+        guard let id = SiteGatewayAssociationSnapshot.normalized(gatewayId) else { return nil }
+        return activationStates[id]
     }
 
     func online(for gatewayId: String?) -> Bool? {

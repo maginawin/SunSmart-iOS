@@ -1498,6 +1498,11 @@ self.updateAddressData()
         
         gatewayModels.forEach { gateway in
             gateway.lastOnlineTime = nil
+            let serverActivated = site.gatewayPresence.activated(for: gateway.mac)
+            if serverActivated == false {
+                gateway.connectStatus = .inactive
+                return
+            }
             if let space = self.allSpaces.first(where: {
                 $0.relevanceGatewayId?.trimmingCharacters(in: .whitespacesAndNewlines)
                     .caseInsensitiveCompare(gateway.mac) == .orderedSame
@@ -1505,7 +1510,7 @@ self.updateAddressData()
                 if space.gatewayStatus == .online {
                     gateway.connectStatus = .online
                 }else {
-                    if gateway.activate {
+                    if serverActivated ?? gateway.activate {
                         gateway.connectStatus = .offline
                     }else {
                         gateway.connectStatus = .inactive
@@ -1518,7 +1523,7 @@ self.updateAddressData()
             }else {
                 if site.gatewayPresence.online(for: gateway.mac) == true {
                     gateway.connectStatus = .online
-                }else if gateway.activate {
+                }else if serverActivated ?? gateway.activate {
                     gateway.connectStatus = .offline
                 }else {
                     gateway.connectStatus = .inactive
