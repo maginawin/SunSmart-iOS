@@ -19,7 +19,8 @@ enum EnergyStatisticsFilter {
 struct EnergyStatisticsFilterPolicy {
 
     private static let truePowerMeterProductIdentifiers: Set<UInt16> = [
-        0x2302, 0x2303, 0x2304, 0x2305, 0x2801, 0x2802
+        0x2302, 0x2303, 0x2304, 0x2305, 0x2801, 0x2802,
+        0x2321, 0x2322
     ]
 
     static func supportsTruePowerMeter(productIdentifier: UInt16?) -> Bool {
