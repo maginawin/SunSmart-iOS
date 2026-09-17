@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+repo_root="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$repo_root"
+source "$repo_root/scripts/lib/resolve_nordic_sdk_root.sh"
+sdk_root="$(resolve_nordic_sdk_root "$repo_root" "${1:-}")"
+
 coordinator="SunSmart/Main/Device/Gateway/Model/GatewayTimeInformationCoordinator.swift"
 project="SunSmart.xcodeproj/project.pbxproj"
 
 swiftc -parse-as-library \
+  "$sdk_root/Sources/NordicSigMeshSDK/MeshLib/Message/MeshTimeConversion.swift" \
   "$coordinator" \
   Tests/Device/GatewayTimeInformationCoordinatorTests.swift \
   -o /tmp/GatewayTimeInformationCoordinatorTests
@@ -12,6 +18,7 @@ swiftc -parse-as-library \
 
 swiftc -parse-as-library \
   SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  "$sdk_root/Sources/NordicSigMeshSDK/MeshLib/Message/MeshTimeConversion.swift" \
   SunSmart/Main/Device/Gateway/Model/GatewayDetailClockCoordinator.swift \
   Tests/Device/GatewayDetailClockCoreTests.swift \
   -o /tmp/GatewayDetailClockCoreTests

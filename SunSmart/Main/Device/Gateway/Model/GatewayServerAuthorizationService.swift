@@ -169,7 +169,8 @@ actor GatewayServerAuthorizationService {
         requestedGeneration: Int64
     ) async -> Result<GatewayServerAuthorizationReceipt, GatewayServerAuthorizationError> {
         guard !gateway.isServerDeletionInProgress,
-              !gateway.serverDeletionPendingLocalReset else {
+              !gateway.serverDeletionPendingLocalReset,
+              !GatewayDeletionContext.blocksRegistration(gateway: gateway, node: node) else {
             return .failure(.serverDeletionPendingLocalReset)
         }
         if policy == .ifMissing,
@@ -236,7 +237,8 @@ actor GatewayServerAuthorizationService {
         }
 
         guard !gateway.isServerDeletionInProgress,
-              !gateway.serverDeletionPendingLocalReset else {
+              !gateway.serverDeletionPendingLocalReset,
+              !GatewayDeletionContext.blocksRegistration(gateway: gateway, node: node) else {
             return .failure(.serverDeletionPendingLocalReset)
         }
 

@@ -165,6 +165,24 @@ extension ScopedImportTests {
         require(unrelatedContext.commit() == nil, "confirmed deletion cannot remove unknown address 99")
         require(unrelated.group.info.proximityLightingPath!.paths[0].items.last!.address == 99, "unreviewed reference remains for review")
 
+        // Automatic cleanup owns the complete, unchanged source snapshot. It
+        // can remove both the explicit deletion and other confirmed stale refs.
+        let automatic = ProximityLightingLifecycleCoordinator.begin(space: unrelated.space).prepare()
+        let observation = unrelated.nodes[1].proximityLightingNeighborAddresses
+        let automaticResult = ProximityLightingLifecycleCoordinator.commit(automatic,
+            automaticCleanupSnapshot: automatic.sourceSnapshot)
+        require(automaticResult != nil, "validated complete source permits automatic historical cleanup")
+        DevicePermanentDeletionContext.resume(space: unrelated.space)
+        require(!SpaceConfigurationSafety.hasPendingDeletionCleanup(unrelated.space), "automatic cleanup unblocks real deletion receipts")
+        require(unrelated.nodes[1].proximityLightingNeighborAddresses == observation,
+                "logical repair preserves surviving device observations and needed hardware cleanup")
+        require(unrelated.nodes[1].getNodeSyncProximityLighting(topologyPlan: automaticResult!.plan) != nil,
+                "surviving device still has a real synchronization task")
+        var otherSnapshot = automatic.sourceSnapshot
+        otherSnapshot.spaceZones = []
+        require(ProximityLightingLifecycleCoordinator.commit(automatic, automaticCleanupSnapshot: otherSnapshot) == nil,
+                "a different version cannot authorize automatic cleanup")
+
         // Real durable model: round trip, scope isolation and corrupted data.
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

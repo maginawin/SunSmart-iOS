@@ -53,7 +53,12 @@ enum GatewayDetailTimeZoneResolver {
 struct GatewayDetailClockSample: Equatable {
     let seconds: UInt64
     let subSecond: UInt8
+    let taiDelta: Int16
     let offsetMinutes: Int
+
+    var utcDate: Date? {
+        MeshTimeConversion.date(seconds: seconds, subSecond: subSecond, taiDelta: taiDelta)
+    }
 }
 
 struct GatewayDetailClockState: Equatable {
@@ -167,7 +172,7 @@ final class GatewayDetailClockFormatter {
 }
 
 enum GatewayDetailClockCore {
-    static let meshEpochOffset: TimeInterval = 946_684_800
+    static let meshEpochOffset = MeshTimeConversion.unixEpochOffset
     static let syncToleranceSeconds = 30
     static let minimumSyncPresentationDuration: TimeInterval = 1
 
@@ -183,12 +188,11 @@ enum GatewayDetailClockCore {
         localDate: Date,
         targetOffsetMinutes: Int,
         sample: GatewayDetailClockSample
-    ) -> Int {
+    ) -> Int? {
+        guard isDisplayable(sample: sample), let gatewayDate = sample.utcDate else { return nil }
         let localWallTime = localDate.timeIntervalSince1970
             + TimeInterval(targetOffsetMinutes * 60)
-        let gatewayWallTime = TimeInterval(sample.seconds)
-            + meshEpochOffset
-            + TimeInterval(sample.subSecond) / 256
+        let gatewayWallTime = gatewayDate.timeIntervalSince1970
             + TimeInterval(sample.offsetMinutes * 60)
         return Int((gatewayWallTime - localWallTime).rounded())
     }
@@ -217,13 +221,10 @@ enum GatewayDetailClockCore {
     }
 
     static func isDisplayable(sample: GatewayDetailClockSample) -> Bool {
-        guard sample.seconds > 0,
+        guard let date = sample.utcDate,
               TimeZone(secondsFromGMT: sample.offsetMinutes * 60) != nil else {
             return false
         }
-        let date = Date(
-            timeIntervalSince1970: TimeInterval(sample.seconds) + meshEpochOffset
-        )
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(secondsFromGMT: 0)!
         let year = calendar.component(.year, from: date)
@@ -303,11 +304,15 @@ final class GatewayDetailClockCoordinator {
                 guard self.finishOperation(operationID) else { return }
                 switch result {
                 case .success(let sample):
-                    let offBy = GatewayDetailClockCore.offBySeconds(
+                    guard let offBy = GatewayDetailClockCore.offBySeconds(
                         localDate: Date(),
                         targetOffsetMinutes: target.offsetMinutes,
                         sample: sample
-                    )
+                    ) else {
+                        self.restore(backup)
+                        completion(.failure(.timeGetFailed))
+                        return
+                    }
                     guard self.persist(sample: sample) else {
                         self.restore(backup)
                         completion(.failure(.localPersistenceFailed))
@@ -413,6 +418,15 @@ final class GatewayDetailClockCoordinator {
         isAttached = false
     }
 
+    func cancelForDeletion() {
+        dispatchPrecondition(condition: .onQueue(.main))
+        activeOperationID = nil
+        clockLease?.release()
+        clockLease = nil
+        if let backup = activeBackup { restore(backup) }
+        activeBackup = nil
+    }
+
     private func sendFinalReadback(
         operationID: UUID,
         target: GatewayDetailTargetTimeZone,
@@ -425,11 +439,17 @@ final class GatewayDetailClockCoordinator {
                 guard self.activeOperationID == operationID else { return }
                 switch result {
                 case .success(let sample):
-                    let offBy = GatewayDetailClockCore.offBySeconds(
+                    guard let offBy = GatewayDetailClockCore.offBySeconds(
                         localDate: Date(),
                         targetOffsetMinutes: target.offsetMinutes,
                         sample: sample
-                    )
+                    ) else {
+                        self.failSync(
+                            operationID: operationID, backup: backup,
+                            error: .readbackVerificationFailed, completion: completion
+                        )
+                        return
+                    }
                     guard GatewayDetailClockCore.isVerifiedSync(
                         targetOffsetMinutes: target.offsetMinutes,
                         sampleOffsetMinutes: sample.offsetMinutes,
@@ -529,6 +549,7 @@ final class GatewayDetailClockCoordinator {
             let sample = GatewayDetailClockSample(
                 seconds: status.time.seconds,
                 subSecond: status.time.subSecond,
+                taiDelta: status.time.taiDelta,
                 offsetMinutes: status.time.tzOffset.secondsFromGMT() / 60
             )
             guard GatewayDetailClockCore.isDisplayable(sample: sample) else {

@@ -44,6 +44,7 @@ class DeviceLightViewController: UIViewController {
     private var elControllerFunctionTestHelper: ELControllerFunctionTestHelper?
     
     private weak var lastMessageDelegate: MeshLibManagerMessageDelegate?
+    private var setProxyAttemptID: UUID?
     
     let space: SpaceData
     let node: Node
@@ -144,6 +145,10 @@ class DeviceLightViewController: UIViewController {
         super.viewWillDisappear(animated)
 
         elControllerFunctionTestHelper?.stopPageSession()
+        if setProxyAttemptID != nil {
+            setProxyAttemptID = nil
+            XWHUDManager.hideInView(with: view)
+        }
     }
     
     deinit {
@@ -365,9 +370,12 @@ class DeviceLightViewController: UIViewController {
 //        }
         items.append(.init(icon: UIImage(named: "menu_set_proxy"), title: "set_proxy".localizedString, tapItemBack: {[weak self] _ in
             guard let self = self else { return }
+            let attemptID = UUID()
+            self.setProxyAttemptID = attemptID
             XWHUDManager.showCustomHUD(withMessage: nil, view: self.view)
-            MeshLibManager.manager.connectProxy(node: self.node) {[weak self] result in
-                guard let self = self else { return }
+            MeshLibManager.manager.connectProxyReady(node: self.node) {[weak self] result in
+                guard let self, self.setProxyAttemptID == attemptID else { return }
+                self.setProxyAttemptID = nil
                 XWHUDManager.hideInView(with: self.view)
                 if result {
                     XWHUDManager.showSuccessTipHUD("successful".localizedString + " !")

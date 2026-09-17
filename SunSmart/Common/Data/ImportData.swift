@@ -18,6 +18,8 @@ private var jsonDecoder: JSONDecoder {
 
 /// Stage timings use a monotonic clock; payloads and credentials are never logged.
 final class SiteImportTrace {
+    private let performance = AppPerformance.begin("ImportOperation")
+    deinit { performance.end() }
     private let id = UUID().uuidString
     private let scope: String
     private let started = ProcessInfo.processInfo.systemUptime
@@ -284,10 +286,20 @@ private struct ProximityLightingImportPreflight {
                 ProximityLightingLifecycleCoordinator.isEligible
             ) ?? false
             let importedRelay = groupJson["profile"]["proximityLightingNumber"].int
-            if schemaVersion == 1, eligible, importedRelay == nil {
+            let rawValue = (groupDict["profile"] as? [String: Any])?["proximityLightingNumber"]
+            if schemaVersion == 1, eligible, rawValue == nil {
                 return nil
             }
-            let rawRelay = importedRelay ?? 2
+            let rawRelay: Int
+            if eligible {
+                guard let relay = SpaceConfigurationIntegrityPolicy.normalizedProximityLightingNumber(
+                    rawValue ?? 2
+                ) else { return nil }
+                rawRelay = Int(relay)
+            } else {
+                rawRelay = SpaceConfigurationIntegrityPolicy.normalizedProximityLightingNumber(rawValue ?? 2).map(Int.init)
+                    ?? importedRelay ?? 2
+            }
             guard rawRelay >= 0, rawRelay <= Int(UInt8.max) else {
                 return nil
             }
@@ -452,6 +464,7 @@ extension SiteData {
     ///      2：卸载app后由于没有缓存数据，之前使用的手机地址对应SEQ序列号未知，所以把旧的地址放到地址回收池内回收，并分配新的手机地址
     /// - Returns: site
     static func `import`(siteJsonData: [String: Any], changeAddress: Bool = false) async -> SiteData? {
+        guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return nil }
         
         let json = JSON(siteJsonData)
         guard let uuid = json["uuid"].string,
@@ -485,7 +498,7 @@ extension SiteData {
             site?.state = .normal
         }
         await site?.update(siteJsonData: siteJsonData, changeAddress: isChangeAddress, initialize: initialize)
-        
+        guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return nil }
         return site
     }
     
@@ -495,6 +508,7 @@ extension SiteData {
     /// - Parameter changeAddress: 是否切换地址
     /// - Parameter initialize 首次更新数据（本地无记录）
     func update(siteJsonData: [String: Any], changeAddress: Bool = false, initialize: Bool = false) async {
+        guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return }
         let trace = SiteImportTrace("site:" + id)
         defer { trace.mark("end") }
         
@@ -504,6 +518,13 @@ extension SiteData {
             return
         }
         let lastUpdate = json["updateTimestamp"].int64Value
+        // Process extension fields independently of the legacy Site timestamp gate.
+        do {
+            try SiteTriggerZoneStore.receive(self, object: siteJsonData, timestamp: lastUpdate)
+        } catch {
+            // Preserve the durable extension if a partial/invalid response cannot be applied.
+            self.syncCloudError = .configurationExportInvalid
+        }
         
         var permission: Permission = .visitor
         switch json["role"].string {
@@ -807,6 +828,11 @@ extension SiteData {
 //        print("导入数据：site update proversioner success \(Date().timeIntervalSince1970)")
         let gatewayDicts =
             json["gateways"].arrayObject as? [[String: Any]]
+        let gatewayLastOnlineSnapshot = SiteGatewayLastOnlineSnapshot(gateways: gatewayDicts)
+        await MainActor.run {
+            guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return }
+            self.gatewayPresence = gatewayLastOnlineSnapshot
+        }
         let gatewaySnapshot = SiteGatewayAssociationSnapshot.make(
             isComplete: self.permission == .owner,
             rawGatewayIds: gatewayDicts?.map {
@@ -839,6 +865,7 @@ extension SiteData {
                 }
             }
 
+            guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return }
             trace.mark("spacesCompleted")
             spaces.forEach { space in
                 switch gatewaySnapshot.decision(for: space.relevanceGatewayId) {
@@ -886,15 +913,21 @@ extension SiteData {
                 }
             }
             self.spaces.sort(by: { $0.create > 0 && $0.create < $1.create })
+            let importedSpaces = spaces
             await MainActor.run {
-                let changed = SiteDeviceOwnershipReconciler.reconcile(siteId: self.id)
-                self.spaces = self.spaces.map { current in
-                    SpaceData.load(siteId: self.id, spaceId: current.id).first ?? current
+                guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return }
+                for space in importedSpaces where space.siteId == self.id && space.state == .normal && space.gatewayStatus == .offline {
+                    if let timestamp = gatewayLastOnlineSnapshot.timestamp(for: space.relevanceGatewayId) {
+                        space.gatewayLastOnline = timestamp
+                    }
                 }
+                let changed = SiteDeviceOwnershipReconciler.reconcile(siteId: self.id)
+                self.reloadSpacesPreservingGatewayMetadata(changedSpaceIds: changed)
                 for space in self.spaces where changed.contains(space.id) {
                     CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSpace(space: space), level: .normal)
                 }
             }
+            guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return }
             
 //            self.spaces = spaces
             self.spaceCount = nil
@@ -932,8 +965,12 @@ extension SiteData {
                 // 只有Owner响应才是完整Gateway快照，Editor/Visitor缺失项不能用于删除本地Node。
                 if gatewaySnapshot.isComplete {
                     cacheByMac.forEach { mac, cacheGateway in
+                        GatewayDeletionContext.lockImport()
+                        defer { GatewayDeletionContext.unlockImport() }
                         if cacheGateway.lastUploadCloudTimestamp != nil &&
-                            serverByMac[mac] == nil {
+                            serverByMac[mac] == nil,
+                            !cacheGateway.serverDeletionPendingLocalReset,
+                            !GatewayDeletionContext.hasPendingDeletion(siteId: self.id, mac: cacheGateway.mac) {
                             if let node = network.nodes.first(where: {
                                 $0.primaryUnicastAddress == cacheGateway.address
                             }) {
@@ -967,6 +1004,23 @@ extension SiteData {
                             node: serverNode,
                             gatewayPreconfigured: gatewayData["gatewayPreconfigured"] as? [String: Any]
                           ) else {
+                        continue
+                    }
+
+                    GatewayDeletionContext.lockImport()
+                    defer { GatewayDeletionContext.unlockImport() }
+                    // Recheck after Node.import's suspension: a delete may have
+                    // started or finished while this older Site response waited.
+                    guard !GatewayDeletionContext.blocksImport(siteId: self.id, mac: mac,
+                        node: serverNode, createdTimestamp: remoteCreatedTimestamp) else {
+                        if GatewayDeletionContext.serverDeletionConfirmed(siteId: self.id, mac: mac) {
+                            for space in self.spaces where space.relevanceGatewayId?.lowercased() == mac {
+                                space.relevanceGatewayId = nil
+                                space.gatewayStatus = .notBound
+                                space.gatewayLastOnline = nil
+                                space.save()
+                            }
+                        }
                         continue
                     }
 
@@ -1257,9 +1311,10 @@ extension SiteData {
     ///   - deviceAddresses: 删除的设备地址
     ///   - groupAddresses: 删除的组地址
     ///   - sceneAddresses: 删除的场景地址
-    func deleteProvisionerAddress(deviceAddresses: [Int], groupAddresses: [Int], sceneAddresses: [Int]) {
+    @discardableResult func deleteProvisionerAddress(deviceAddresses: [Int], groupAddresses: [Int], sceneAddresses: [Int]) -> Bool {
+        if deviceAddresses.isEmpty && groupAddresses.isEmpty && sceneAddresses.isEmpty { return true }
         let currentNetwork = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.meshUUID ? MeshNetworkManager.instance.meshNetwork : nil
-        guard let meshNetwork = currentNetwork ?? MeshNetwork.load(meshUUID: self.meshUUID, allData: false) else { return }
+        guard let meshNetwork = currentNetwork ?? MeshNetwork.load(meshUUID: self.meshUUID, allData: false) else { return false }
         
         let deallocatedUnicastRange = deviceAddresses.splitArray().compactMap { array in
             if let lowAddress = array.first, let highAddress = array.last {
@@ -1292,7 +1347,7 @@ extension SiteData {
         deallocatedSceneRange.forEach({
             meshNetwork.localProvisioner?.deallocate(sceneRange: $0)
         })
-        meshNetwork.save()
+        return meshNetwork.save()
     }
     
     
@@ -1501,14 +1556,7 @@ extension SpaceData {
                 reason: "spaceUnavailable"
             )
         }
-        if (try? SpaceConfigurationSafety.recoveryState(space).phase) == .removing {
-            guard space.delete() else { return .rejected(serverSpaceId: serverSpaceId, reason: "spaceRemovalPending") }
-            return await Self.import(siteId: siteId, meshUUID: meshUUID, spaceJsonData: spaceJsonData)
-        }
-        guard SpaceConfigurationSafety.activateImport(space) else {
-            return .rejected(serverSpaceId: serverSpaceId, reason: "spaceRecoveryUnavailable")
-        }
-        let outcome = await space.update(
+        let outcome = await space.restoreConfiguration(
             spaceJsonData: spaceJsonData,
             initialize: initialize
         )
@@ -1600,11 +1648,12 @@ extension SpaceData {
                 self.gatewayLastOnline = nil
             }else {
                 self.gatewayStatus = .offline
-                self.gatewayLastOnline = json["gatewayLastupdate"].int64
+                self.gatewayLastOnline = SiteGatewayLastOnlineSnapshot.legacyTimestamp(json["gatewayLastupdate"].int64)
             }
         }else {
             self.relevanceGatewayId = nil
             self.gatewayStatus = .notBound
+            self.gatewayLastOnline = nil
         }
         SpaceConfigurationSafety.reconcileAuthority(self, remote: payload)
     }
@@ -1634,7 +1683,12 @@ extension SpaceData {
             return .preserved("localDeletionOrRecoveryPendingUpload")
         }
         let resumingImport = SpaceConfigurationSafety.hasPendingImport(self)
-        let spaceJsonData = SpaceConfigurationSafety.pendingImport(self) ?? spaceJsonData
+        let stagedSpaceJsonData = SpaceConfigurationSafety.pendingImport(self)
+        let originalSpaceJsonData = stagedSpaceJsonData.flatMap {
+            SpaceConfigurationSafety.originalReferenceCleanupImport(self, candidate: $0)
+        } ?? stagedSpaceJsonData ?? spaceJsonData
+        let referenceCleanup = try? SpaceSyncCleanupPolicy.normalize(originalSpaceJsonData)
+        let spaceJsonData = referenceCleanup?.payload ?? originalSpaceJsonData
         trace.mark("metadataPrepared")
         // Metadata may legitimately change the authority generation for this import.
         // Capture the context after synchronous preparation, before the first await.
@@ -1782,25 +1836,6 @@ extension SpaceData {
             printSpaceCountProbe(phase: "received", json: json, space: self, initialize: initialize)
 #endif
             
-            // 子网key丢失
-            if let network = localMeshNetwork ?? MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId, allData: false), !network.networkKeys.contains(where: { $0.networkId.hex == self.meshNetworkId }) {
-                // 修复子网key数据
-                if let netKeyDict = json["netKey"].dictionaryObject,
-                   let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
-                   let netKey = try? jsonDecoder.decode(NetworkKey.self, from: netKeyData),
-                   let appKeyDict = json["appKey"].dictionaryObject,
-                   let appKeyData = try? JSONSerialization.data(withJSONObject: appKeyDict),
-                   let appKey = try? jsonDecoder.decode(ApplicationKey.self, from: appKeyData) {
-                    
-                    if !network.networkKeys.contains(where: { $0.index == netKey.index }) {
-                        network.add(networkKey: netKey)
-                        network.add(applicationKey: appKey)
-                        network.save()
-                    }
-                    self.meshNetworkId = netKey.networkId.hex
-                }
-            }
-            
             let lastUpdate = json["updateTimestamp"].int64Value
             let sameTimestampSummaryDiffers = lastUpdate == self.lastUpdate && summaryDiffers
             let serverSummaryDiffersNote = localNeedsUpload ? "serverSummaryDiffersButLocalNeedsUpload" : "serverSummaryDiffers"
@@ -1940,7 +1975,7 @@ extension SpaceData {
                             }
                             profile.adjustSpeed = profileJson["adjustSpeed"].int ?? 50
 
-                            if let proximityLightingNumber = profileJson["proximityLightingNumber"].uInt8 {
+                            if let proximityLightingNumber = SpaceConfigurationIntegrityPolicy.normalizedProximityLightingNumber(profileDict["proximityLightingNumber"]) {
                                 profile.proximityLightingNumber = proximityLightingNumber
                             }
                             if let relativeSensitivity = profileJson["relativeSensitivity"].uInt8 {
@@ -2022,6 +2057,8 @@ extension SpaceData {
                       guard let data = try? JSONSerialization.data(withJSONObject: node) else { return false }
                       return (try? jsonDecoder.decode(Node.self, from: data)) != nil
                   }),
+                  (referenceCleanup?.didChange != true
+                    || SpaceConfigurationSafety.preserveRemoteReferenceCleanup(self, payload: originalSpaceJsonData, candidate: spaceJsonData)),
                   SpaceConfigurationSafety.beginImport(self, payload: spaceJsonData) else {
                 continuation.resume(returning: .rejected("configurationStagingFailed"))
                 return
@@ -2051,7 +2088,6 @@ extension SpaceData {
                     network.add(applicationKey: appKey)
                     network.save()
                 }
-                self.meshNetworkId = netKey.networkId.hex
             }
             
             self.name = json["spaceName"].stringValue

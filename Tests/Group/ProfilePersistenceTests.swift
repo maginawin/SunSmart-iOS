@@ -38,6 +38,9 @@ class ProfileLightSensorTemplate {
     static func load(profileId: String) -> [ProfileLightSensorTemplate] { [] }
 }
 struct HarnessGroup { var info: GroupInfo }
+enum SpaceConfigurationSafety {
+    enum SafetyError: Error { case persistenceFailed }
+}
 
 @main
 enum ProfilePersistenceTests {
@@ -53,6 +56,14 @@ enum ProfilePersistenceTests {
         GroupInfo.initDatabase()
         Profile.initDatabase()
         try testDefaultsAndCloudRoundtrip(url)
+        let captured = try Connection(url.path, readonly: true)
+        SunSmartDataManager.shared.db = try Connection(.inMemory)
+        let scoped = GroupInfo.load(meshUUID: mesh, address: 0xC006, subnetworkId: subnet,
+                                    database: captured, includeTemplates: false)
+        precondition(scoped != nil && scoped?.profileLoadFailed == false)
+        precondition(scoped?.profile.type == .proximityLighting)
+        SunSmartDataManager.shared.db = try Connection(url.path)
+        try testProximityAllImport(url)
         try testLegacySchemaAndReload()
         try testInvalidWritesAndRollback()
         testLevelBoundaries()
@@ -106,6 +117,62 @@ enum ProfilePersistenceTests {
             precondition(imported.lightControlData == profile.lightControlData)
         }
         print("PASS: eight real defaults and create-style copies -> SQLite reopen -> cloud export/import -> SQLite -> export")
+    }
+
+    static func testProximityAllImport(_ url: URL) throws {
+        for (index, type) in [Profile.ProfileType.proximityLighting, .proximityLightingWithPhotocell].enumerated() {
+            let profile = Profile.defaultGroupProfile(type: type)
+            profile.proximityLightingNumber = 255
+            profile.lightControlData.t2 = 5
+            profile.lightControlData.t4 = 0
+            profile.manualOverrideTimeout = 5
+            let info = GroupInfo(address: Address(0xC700 + index), profile: profile)
+            let canonical = payload(info)
+            let allValues: [Any] = Array(21...255).map { $0 as Any }
+                + [256, 65535, Int64.max, UInt64.max]
+            for value in allValues {
+                var cloud = canonical
+                cloud["proximityLightingNumber"] = value
+                let wire = try JSONSerialization.data(withJSONObject: cloud)
+                let decoded = try JSONSerialization.jsonObject(with: wire) as! [String: Any]
+                precondition(SpaceConfigurationIntegrityPolicy.profileIssue(decoded) == nil)
+                let imported = importProfile(decoded)!
+                precondition(imported.proximityLightingNumber == 255)
+                info.profile = imported
+                precondition(NSDictionary(dictionary: canonical).isEqual(to: payload(info)),
+                             "Cloud import must normalize before narrowing while preserving every other Profile field")
+            }
+            precondition(save(info))
+            SunSmartDataManager.shared.db = try Connection(url.path)
+            let reloaded = load(info.address)!
+            precondition(!reloaded.profileLoadFailed && reloaded.profile.proximityLightingNumber == 255)
+            precondition(NSDictionary(dictionary: canonical).isEqual(to: payload(reloaded)),
+                         "Import, SQLite readback and export preserve the full Profile while canonicalizing ALL")
+            for number in [21, 22, 254, 255, 256, 65535, Int.max] {
+                try db().run("UPDATE profiles SET proximityLightingNumber = ? WHERE uuid = ?", number, info.profile.id)
+                SunSmartDataManager.shared.db = try Connection(url.path)
+                let legacyLocal = load(info.address)!
+                precondition(!legacyLocal.profileLoadFailed && legacyLocal.profile.proximityLightingNumber == 255,
+                             "Existing SQL integers above 20 must normalize before narrowing and topology validation")
+                try check(try db().scalar("SELECT proximityLightingNumber FROM profiles WHERE uuid = ?", info.profile.id) as? Int64 == Int64(number))
+                precondition(NSDictionary(dictionary: canonical).isEqual(to: payload(legacyLocal)),
+                             "Loading a normalized Profile must preserve its raw stored value and all other fields")
+                precondition(save(legacyLocal))
+                try check(try db().scalar("SELECT proximityLightingNumber FROM profiles WHERE uuid = ?", info.profile.id) as? Int64 == 255)
+            }
+            for number in 0...255 {
+                info.profile.proximityLightingNumber = UInt8(number)
+                precondition(info.profile.proximityLightingNumber == (number > 20 ? 255 : UInt8(number)))
+            }
+            precondition(save(info))
+            precondition(NSDictionary(dictionary: canonical).isEqual(to: payload(load(info.address)!)))
+            for invalid: Any in [-1, Int64.min, 1.5, 21.5, 256.5, "21", "255", true, false, NSNull()] {
+                var malformed = canonical
+                malformed["proximityLightingNumber"] = invalid
+                precondition(SpaceConfigurationIntegrityPolicy.profileIssue(malformed) == "invalidProfileRelay")
+            }
+        }
+        print("PASS: Profile 7/8 integer >20 import, SQL wide-integer reload, model updates and canonical export retain all other fields")
     }
 
     static func testLegacySchemaAndReload() throws {

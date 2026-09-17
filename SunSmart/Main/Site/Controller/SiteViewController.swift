@@ -198,10 +198,12 @@ class SiteViewController: UIViewController {
         super.viewWillAppear(animated)
         (navigationController as? NavigationViewController)?.navigationDelegate = nil
 
-        let ownershipChanges = SiteDeviceOwnershipReconciler.reconcile(siteId: site.id)
-        site.spaces = site.spaces.map { current in
-            SpaceData.load(siteId: site.id, spaceId: current.id).first ?? current
+        if GatewayDeletionContext.resume(site: site) {
+            ToastStatusView.show(in: view, message: "gateway_deleted_manual_reset".localizedString,
+                                 type: .success, appearance: .siteUpdate, position: .bottom, duration: 5)
         }
+        let ownershipChanges = SiteDeviceOwnershipReconciler.reconcile(siteId: site.id)
+        site.reloadSpacesPreservingGatewayMetadata(changedSpaceIds: ownershipChanges)
         if NetworkRequest.shared.networkable {
             for old in site.spaces where ownershipChanges.contains(old.id) {
                 CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSpace(space: old), level: .normal)
@@ -390,7 +392,7 @@ self.updateAddressData()
             guard let self = self else { return }
             if notification.object as? Bool ?? false {
                 // 更新缓存数据
-                self.site.spaces = SpaceData.load(siteId: site.id)
+                self.site.reloadSpacesPreservingGatewayMetadata()
             }
             self.setupData()
         }
@@ -894,6 +896,8 @@ self.updateAddressData()
 
     private func finishGatewayDetailPresentation(sessionID: UUID) {
         guard gatewayDetailPresentationSessionID == sessionID else { return }
+        (presentedGatewayNavigationController?.viewControllers.first as? GatewayViewController)?
+            .finishGatewayConnectionSession()
         gatewayDetailPresentationSessionID = nil
         presentedGatewayNavigationController = nil
         setupData()
@@ -1227,7 +1231,7 @@ self.updateAddressData()
     }
     
     /// 获取space数据
-    private func loadSpaceReqeust(space: SpaceData, verificationPassword: String? = nil, callback: ((Bool)->Void)? = nil) {
+    private func loadSpaceReqeust(space: SpaceData, verificationPassword: String? = nil, automaticRetries: Int = 1, callback: ((Bool)->Void)? = nil) {
         
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
         NetworkRequest.shared.request(.spaceInfo(siteId: space.siteId, spaceId: space.id, password: verificationPassword ?? space.authorizationPassword)) {[weak self] result in
@@ -1236,8 +1240,15 @@ self.updateAddressData()
             case .success(let response):
                 if let spaceData = JSON(response)["data"].dictionaryObject {
                     Task { @MainActor in
-                        guard spaceData["uuid"] as? String == space.id else {
+                        guard SpaceMembershipCoordinator.accepts(spaceData), spaceData["uuid"] as? String == space.id else {
                             XWHUDManager.hide()
+                            if automaticRetries > 0, spaceData["uuid"] as? String == space.id,
+                               !SpaceMembershipCoordinator.isLeaving(space) {
+                                self.loadSpaceReqeust(space: space, verificationPassword: verificationPassword,
+                                    automaticRetries: automaticRetries - 1, callback: callback)
+                                return
+                            }
+                            self.showSpaceRecovery(space, reason: "staleMembershipResponse")
                             callback?(false)
                             return
                         }
@@ -1251,12 +1262,17 @@ self.updateAddressData()
                                 $0 != "EditorPasswdChanged" && $0 != "VisitorPasswdChanged"
                             }
                         }
-                        let outcome = await space.update(spaceJsonData: importPayload)
+                        let outcome = await space.restoreConfiguration(spaceJsonData: importPayload)
                         guard outcome.status != .rejected else {
                             XWHUDManager.hide()
-                            XWHUDManager.showErrorTipHUD(
-                                "proximity_lighting_import_invalid".localizedString
-                            )
+                            if Task.isCancelled { callback?(false); return }
+                            if automaticRetries > 0, !SpaceMembershipCoordinator.isLeaving(space),
+                               ["staleImportPreparation", "staleMembershipResponse"].contains(outcome.rejectionReason ?? "") {
+                                self.loadSpaceReqeust(space: space, verificationPassword: verificationPassword,
+                                    automaticRetries: automaticRetries - 1, callback: callback)
+                                return
+                            }
+                            self.showSpaceRecovery(space, reason: outcome.rejectionReason ?? "configurationUnavailable")
                             callback?(false)
                             return
                         }
@@ -1313,8 +1329,9 @@ self.updateAddressData()
                     if verificationPassword != nil { // 正在输入密码验证
                         XWHUDManager.showErrorTipHUD(error.localizedDescription)
                     }else {
-                        if space.meshNetworkId.isEmpty { // 子网密钥未更新
-                            XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                        if space.meshNetworkId.isEmpty || space.lastUploadCloudTimestamp == nil {
+                            self.showSpaceRecovery(space, reason: "networkUnavailable")
+                            callback?(false)
                         }else {
                             if callback != nil {
                                 callback?(false)
@@ -1480,39 +1497,64 @@ self.updateAddressData()
 //        favouriteSpaceSelectGatewayId = nil
         
         gatewayModels.forEach { gateway in
-            if let space = self.allSpaces.first(where: { $0.relevanceGatewayId == gateway.mac }), space.gatewayStatus != .notBound {
+            gateway.lastOnlineTime = nil
+            let serverActivated = site.gatewayPresence.activated(for: gateway.mac)
+            if serverActivated == false {
+                gateway.connectStatus = .inactive
+                return
+            }
+            if let space = self.allSpaces.first(where: {
+                $0.relevanceGatewayId?.trimmingCharacters(in: .whitespacesAndNewlines)
+                    .caseInsensitiveCompare(gateway.mac) == .orderedSame
+            }), space.gatewayStatus != .notBound {
                 if space.gatewayStatus == .online {
                     gateway.connectStatus = .online
                 }else {
-                    if gateway.activate {
+                    if serverActivated ?? gateway.activate {
                         gateway.connectStatus = .offline
                     }else {
                         gateway.connectStatus = .inactive
                     }
-                    if let lastOnline = space.gatewayLastOnline {
-                        gateway.lastOnlineTime = String.dateConvert(timestamp: "\(lastOnline)", dateFormat: "yyyy-MM-dd HH:mm")
-                    }
+                    gateway.lastOnlineTime = SiteTimeZoneValue.formattedGatewayLastOnline(
+                        timestamp: space.gatewayLastOnline,
+                        storageValue: site.timezone
+                    )
                 }
             }else {
-                if gateway.activate {
+                if site.gatewayPresence.online(for: gateway.mac) == true {
+                    gateway.connectStatus = .online
+                }else if serverActivated ?? gateway.activate {
                     gateway.connectStatus = .offline
                 }else {
                     gateway.connectStatus = .inactive
                 }
+                gateway.lastOnlineTime = SiteTimeZoneValue.formattedGatewayLastOnline(
+                    timestamp: site.gatewayPresence.timestamp(for: gateway.mac),
+                    storageValue: site.timezone
+                )
             }
         }
         
         return gatewayModels
     }
     
-    private func shouldShowGatewayStatus(for spaces: [SpaceData]) -> Bool {
+    private func shouldShowGatewayStatus(
+        for spaces: [SpaceData],
+        in collectionView: UICollectionView
+    ) -> Bool {
+        let selectedGatewayID = collectionView == allSpacesCollectionView
+            ? allSpaceSelectGatewayId
+            : favouriteSpaceSelectGatewayId
         let hasServerGatewayStatus = spaces.contains {
             $0.gatewayStatus != .notBound
         }
-        return !site.spaces.isEmpty &&
-            (!showGatewayModels.isEmpty ||
-             hasServerGatewayStatus ||
-             site.permission != .owner)
+        return SiteGatewayHeaderLayoutPolicy.showsGatewayStatus(
+            selectedGatewayID: selectedGatewayID,
+            visibleGatewayIDs: showGatewayModels.map(\.mac),
+            hasSiteSpaces: !site.spaces.isEmpty,
+            hasServerGatewayStatus: hasServerGatewayStatus,
+            isSiteOwner: site.permission == .owner
+        )
     }
 
     // MARK: - Action
@@ -1545,7 +1587,7 @@ self.updateAddressData()
         }))
         
         #if DEBUG
-        if DebugCloudJSONExporter.canExport(site.permission) {
+        if FeatureVisibility.shared.isVisible(.siteExportJson, permission: site.permission) {
             items.append(.init(icon: UIImage(named: "menu_share"), title: "debug_export_json".localizedString,
                                performsActionAfterDismiss: true, tapItemBack: { [weak self] _ in
                 guard let self else { return }
@@ -1571,6 +1613,10 @@ self.updateAddressData()
             }))
         }
         
+        if let item = makeSiteTriggerZoneMenuItem() {
+            items.append(item)
+        }
+
 //        items.append(.init(icon: UIImage(named: "energy_export")?.withTintColor(.white), title: "Import Space", tapItemBack: {[weak self] _ in
 //            self?.importSpace()
 //        }))
@@ -1583,6 +1629,19 @@ self.updateAddressData()
         #endif
     }
     
+    /// 每次打开菜单和点击入口时，使用当前 Site 角色重新判断。
+    private func makeSiteTriggerZoneMenuItem(visibility: FeatureVisibility = .shared) -> MenuPopView.MenuItem? {
+        guard visibility.isVisible(.siteTriggerZone, permission: site.permission) else { return nil }
+        return .init(icon: UIImage(named: "menu_trigger_zone"), title: "trigger_zone".localizedString, tapItemBack: { [weak self] _ in
+            guard let self, visibility.isVisible(.siteTriggerZone, permission: self.site.permission) else { return }
+            guard self.site.canManageSiteTriggerZones else {
+                XWHUDManager.showTipHUD("no_permission".localizedString)
+                return
+            }
+            self.navigationController?.pushViewController(SiteTriggerZoneViewController(site: self.site), animated: true)
+        })
+    }
+
     /// 编辑场所
     private func editSite() {
         let coordinator = SitePropsEditCoordinator(site: site)
@@ -1611,6 +1670,7 @@ self.updateAddressData()
             )
             vc.siteDidChange = { [weak self] in
                 self?.title = self?.site.name
+                self?.setupData()
                 self?.refreshCurrentGatewayTimeZoneReviewProjection()
             }
             vc.timeZoneSyncDidFinish = { [weak self] outcome in
@@ -2333,78 +2393,96 @@ self.updateAddressData()
     }
     
     /// 解绑space
-    private func unbindSpace(_ space: SpaceData) {
-        
-        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
-        
-        // 是否有同步操作正在进行,进行中则取消任务
-        CloudSynchronizationManager.shared.cancelSynchronizationHandle(space: space)
-        // 数据有更新没提交,先提交完成数据再解绑
-        if space.permission == .editor && (space.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(space)) {
-            Task { @MainActor in
-                switch await SpaceConfigurationSafety.uploadBeforeUnbind(space) {
-                case .success:
-                    self.unbindSpace(space)
-                case .failure(let error):
+    private func unbindSpace(_ space: SpaceData, keepCopy: Bool = false, discardChanges: Bool = false) {
+        Task { @MainActor in
+            let target = SpaceData.load(siteId: space.siteId, spaceId: space.id).first ?? space
+            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
+            if !SpaceMembershipCoordinator.isLeaving(target), !keepCopy, !discardChanges,
+               target.permission == .editor,
+               target.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(target) {
+                switch await SpaceConfigurationSafety.uploadBeforeUnbind(target) {
+                case .success: break
+                case .failure:
                     XWHUDManager.hide()
-                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                    self.offerLeaveWithCopy(target)
+                    return
                 }
             }
-            return
-        }
-
-        Task { @MainActor in
-            guard let context = SpaceConfigurationSafety.beginUnbind(space) else {
-                XWHUDManager.hide()
-                XWHUDManager.showErrorTipHUD(SpaceConfigurationSafety.uploadUnconfirmed.localizedDescription)
-                return
-            }
-            let recycleData = await site.getRecycleAddressData(unbindSpaces: [space])
-            
-            guard SpaceConfigurationSafety.isCurrent(context, space: space) else { XWHUDManager.hide(); return }
-            let networkApi: NetowrkReqeustApi = .unbindSpaces(siteId: site.id, spaceIds: [space.id], recycleDeviceAddresses: recycleData.deviceAddresses, recycleGroupAddresses: recycleData.groupAddresses, recycleSceneAddresses: recycleData.sceneAddresses, exclusions: recycleData.exclusionAddresses?.map({ ($0.ivIndex, $0.addresses) }), provisionerData: recycleData.provisionerData)
-            
-            NetworkRequest.shared.request(networkApi) {[weak self] result in
-                XWHUDManager.hide()
-                
-                guard let self = self, SpaceConfigurationSafety.isCurrent(context, space: space) else { return }
-                switch result {
-                case .success(_):
-                    guard space.delete() else {
-                        XWHUDManager.showErrorTipHUD(SpaceConfigurationSafety.uploadUnconfirmed.localizedDescription)
+            do {
+                if !SpaceMembershipCoordinator.isLeaving(target) {
+                    let copy: URL?
+                    do { copy = keepCopy ? try await SpaceMembershipCoordinator.preserveCopy(target) : nil }
+                    catch {
+                        XWHUDManager.hide()
+                        self.offerLeaveWithoutCopy(target)
                         return
                     }
-                    //                XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
-                    // 删除回收的地址
-                    self.site.deleteProvisionerAddress(deviceAddresses: recycleData.deviceAddresses, groupAddresses: recycleData.groupAddresses, sceneAddresses: recycleData.sceneAddresses)
-                    
-                    self.deleteSpace(space: space)
-                    //                space.delete()
-                    if self.site.spaces.isEmpty && self.site.permission != .owner { // 不属于site所有者并且解绑所有spaces则清空site记录
-                        self.site.delete()
-                        self.site.state = .waitDeleted
-                        self.navigationController?.popViewController(animated: true)
-                    }
-                    NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: nil)
-                    
-                case .failure(let error):
-                    //                if error == .resourceNotFound { // 找不到资源
-                    //                    self.deleteSpace(space: space)
-                    //                    if self.site.spaces.isEmpty && self.site.permission != .owner { // 不属于site所有者并且解绑所有spaces则清空site记录
-                    //                        self.site.delete()
-                    //                        self.site.state = .waitDeleted
-                    //                        self.navigationController?.popViewController(animated: true)
-                    //                    }
-                    //                    NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: nil)
-                    //
-                    //                }else {
-                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
-                    //                }
+                    try await SpaceMembershipCoordinator.queueLeave(target, site: self.site, savedCopy: copy)
                 }
+                let error = await SpaceMembershipCoordinator.resumeLeave(SpaceMembershipCoordinator.scope(target))
+                XWHUDManager.hide()
+                let record = try SpaceMembershipCoordinator.store.read(SpaceMembershipCoordinator.scope(target))
+                if record?.phase == .left {
+                    self.site.spaces.removeAll { $0.id == target.id }
+                    self.allSpaces.removeAll { $0.id == target.id }
+                    self.favouriteSpaces.removeAll { $0.id == target.id }
+                    self.allSpacesCollectionView.reloadData(); self.favouritesCollectionView.reloadData()
+                    self.updateEmptyView()
+                    if self.navigationController?.topViewController is SpaceRecoveryViewController {
+                        self.navigationController?.popToViewController(self, animated: true)
+                    }
+                    XWHUDManager.showSuccessTipHUD("space_leave_complete".localizedString)
+                } else {
+                    self.showSpaceRecovery(target, reason: record?.phase == .confirmed ? "leaveConfirmed" : "spaceLeaving")
+                    if let error, error != .noNetwork, error != .configurationUploadUnconfirmed {
+                        XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                    }
+                }
+            } catch {
+                XWHUDManager.hide()
+                XWHUDManager.showErrorTipHUD("space_recovery_storage_failed".localizedString)
             }
         }
     }
-    
+
+    private func offerLeaveWithoutCopy(_ space: SpaceData) {
+        let presenter = navigationController?.topViewController ?? self
+        guard presenter.presentedViewController == nil else { return }
+        let alert = UIAlertController(title: "space_leave_action".localizedString,
+            message: "space_leave_copy_failed".localizedString, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "space_recovery_retry".localizedString, style: .default) { [weak self] _ in self?.unbindSpace(space, keepCopy: true) })
+        alert.addAction(UIAlertAction(title: "space_leave_without_copy".localizedString, style: .destructive) { [weak self] _ in self?.unbindSpace(space, discardChanges: true) })
+        alert.addAction(UIAlertAction(title: "cancel".localizedString, style: .cancel))
+        presenter.present(alert, animated: true)
+    }
+
+    private func offerLeaveWithCopy(_ space: SpaceData) {
+        let presenter = navigationController?.topViewController ?? self
+        guard presenter.presentedViewController == nil else { return }
+        let alert = UIAlertController(title: "space_leave_action".localizedString,
+            message: "space_leave_unsynced".localizedString, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "space_recovery_retry".localizedString, style: .default) { [weak self] _ in self?.unbindSpace(space) })
+        alert.addAction(UIAlertAction(title: "space_leave_keep_copy".localizedString, style: .destructive) { [weak self] _ in self?.unbindSpace(space, keepCopy: true) })
+        alert.addAction(UIAlertAction(title: "cancel".localizedString, style: .cancel))
+        presenter.present(alert, animated: true)
+    }
+
+    private func showSpaceRecovery(_ space: SpaceData, reason: String) {
+        if let recovery = navigationController?.topViewController as? SpaceRecoveryViewController,
+           recovery.spaceID == space.id { recovery.update(reason: reason); return }
+        let controller = SpaceRecoveryViewController(space: space, reason: reason, retry: { [weak self] in
+            guard let self else { return }
+            let latest = SpaceData.load(siteId: space.siteId, spaceId: space.id).first ?? space
+            if SpaceMembershipCoordinator.isLeaving(latest) { self.unbindSpace(latest); return }
+            self.loadSpaceReqeust(space: latest) { [weak self] success in
+                guard let self, success else { return }
+                self.navigationController?.popToViewController(self, animated: false)
+                DispatchQueue.main.async { self.intoSpace(space: latest) }
+            }
+        }, leave: space.permission == .owner ? nil : { [weak self] in self?.unbindSpace(space) })
+        navigationController?.pushViewController(controller, animated: true)
+    }
+
     /// site回收地址请求
     @MainActor
     private func siteRecyclingAddressRequest(site: SiteData) async throws {
@@ -2515,10 +2593,15 @@ self.updateAddressData()
                 self?.shareSpace(space)
             }))
         }
-       
-//        items.append(.init(icon: UIImage(named: "menu_share"), title: "Export", tapItemBack: {[weak self] _ in
-//            self?.exportSpace(space)
-//        }))
+        #if DEBUG
+        if FeatureVisibility.shared.isVisible(.siteExportJson, permission: space.permission) {
+            items.append(.init(icon: UIImage(named: "menu_share"), title: "debug_export_json".localizedString,
+                               performsActionAfterDismiss: true, tapItemBack: { [weak self] _ in
+                guard let self else { return }
+                self.debugJSONExporter.share(site: self.site, space: space, from: self)
+            }))
+        }
+        #endif
         
         if space.spaceOperates.contains(.exit) {
             items.append(.init(icon: UIImage(named: "menu_unbind"), title: "unbind".localizedString, tapItemBack: { _ in
@@ -2529,7 +2612,12 @@ self.updateAddressData()
             }))
         }
         
+        #if DEBUG
+        let exportMenuWidth = DebugCloudJSONExporter.menuWidth(items: items, minimum: MenuPopView.defalutMenuWidth)
+        MenuPopView.show(items: items, anchorPoint: point, menuWidth: exportMenuWidth)
+        #else
         MenuPopView.show(items: items, anchorPoint: point)
+        #endif
     }
     
     /// 更新同步状态
@@ -2583,7 +2671,7 @@ self.updateAddressData()
         case .online:
             gatewayStatus = .online
         case .offline:
-            gatewayStatus = .offline(lastOnlineTime: gateway.lastOnlineTime ?? "")
+            gatewayStatus = .offline(lastOnlineTime: gateway.lastOnlineTime ?? "--")
         case .inactive:
             gatewayStatus = .noActivated
         case .reset:
@@ -2702,6 +2790,9 @@ self.updateAddressData()
     /// 点击space事件
     private func selectSpaceAction(space: SpaceData) {
         
+        if SpaceMembershipCoordinator.isLeaving(space) {
+            showSpaceRecovery(space, reason: "spaceLeaving"); return
+        }
         // 判断是否还有space权限
         guard space.state == .normal else {
             // 权限被删除
@@ -2751,9 +2842,12 @@ self.updateAddressData()
         guard self.view.window != nil else {
             return
         }
+        if SpaceMembershipCoordinator.isLeaving(space) {
+            showSpaceRecovery(space, reason: "spaceLeaving"); return
+        }
         // 判断如果有编辑权限的成员进入space前是否拉过space数据，未拉取服务器space数据不让进入space防止数据覆盖
         if space.permission == .owner || space.permission == .editor, space.uploadCloud, space.lastUploadCloudTimestamp == nil {
-            XWHUDManager.showTipHUD("space_unsynchronized_cloud_message".localizedString, isLineFeed: true, afterDelay: 2)
+            showSpaceRecovery(space, reason: "configurationUnavailable")
             return
         }
         
@@ -2910,7 +3004,8 @@ self.updateAddressData()
     }
     
     private func siteGatewayHeaderHeight(
-        for spaces: [SpaceData]
+        for spaces: [SpaceData],
+        in collectionView: UICollectionView
     ) -> CGFloat {
         let showsReviewSync: Bool
         if case .review = timeZoneReviewState {
@@ -2922,7 +3017,7 @@ self.updateAddressData()
             gatewayListHeight: SCRYFrom(48),
             gatewayStatusHeight: SCRYFrom(48),
             reviewSyncHeight: SCRYFrom(64),
-            showsGatewayStatus: shouldShowGatewayStatus(for: spaces),
+            showsGatewayStatus: shouldShowGatewayStatus(for: spaces, in: collectionView),
             showsReviewSync: showsReviewSync
         )
     }
@@ -2933,7 +3028,7 @@ self.updateAddressData()
     ) -> CGRect {
         SiteGatewayHeaderLayoutPolicy.emptyStateFrame(
             collectionBounds: collectionView.bounds,
-            headerHeight: siteGatewayHeaderHeight(for: spaces)
+            headerHeight: siteGatewayHeaderHeight(for: spaces, in: collectionView)
         )
     }
 
@@ -3347,7 +3442,7 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
             }
             spaces = favouriteSpaces
         }
-        let showGatewayStatus = shouldShowGatewayStatus(for: spaces)
+        let showGatewayStatus = shouldShowGatewayStatus(for: spaces, in: collectionView)
         
         if showGatewayModels.count > 0 {
             headerView.showGatewayListView = true
@@ -3421,7 +3516,7 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
             : favouriteSpaces
         return CGSize(
             width: headerW,
-            height: siteGatewayHeaderHeight(for: spaces)
+            height: siteGatewayHeaderHeight(for: spaces, in: collectionView)
         )
     }
     
@@ -3658,7 +3753,7 @@ extension SiteViewController: UIDocumentPickerDelegate {
                     )
                     guard importResult.space != nil else {
                         XWHUDManager.showErrorTipHUD(
-                            "proximity_lighting_import_invalid".localizedString
+                            "failed".localizedString
                         )
                         return
                     }

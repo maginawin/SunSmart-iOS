@@ -122,7 +122,7 @@ struct ProximityLightingLifecycleContractTests {
             to: "extension Node"
         )
         require(
-            appearsBefore("ProximityLightingImportPreflight.parse(", "network.forceRemove(node:", in: importUpdate),
+            appearsBefore("await ProximityLightingImportPreflight.prepare(", "network.forceRemove(node:", in: importUpdate),
             "Import must parse and validate proximity topology before destructive node replacement"
         )
         require(
@@ -178,7 +178,7 @@ struct ProximityLightingLifecycleContractTests {
         )
         require(
             exportData.contains("purpose: SpaceSnapshotExportPurpose = .localBackup")
-                && exportData.contains("space.export(purpose: .cloudSync)")
+                && exportData.contains("space.export(purpose: purpose)")
                 && cloudSync.contains("space.export(purpose: .cloudSync)")
                 && exportData.contains("purpose=localBackup")
                 && cloudSync.contains("guard let api = await self.operation.getNetworkApi() else")

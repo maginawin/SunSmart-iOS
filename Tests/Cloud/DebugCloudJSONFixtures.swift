@@ -4,7 +4,7 @@ import UIKit
 enum Permission: Int { case owner = 1, editor, visitor }
 enum FixtureValue: Int { case normal = 1, other }
 struct FixtureZone: Codable { var value = 1 }
-enum UserData { static var currentUserName = "Fixture"; static var currentUserId = "fixture-user" }
+enum UserData { static var currentUserName = "Fixture"; static var currentUserId = "fixture-user"; static var currentServerRegion = "fixture-region" }
 struct ConfigurationSnapshotRevision: Equatable {
     static var version = 0
     let version: Int
@@ -27,12 +27,13 @@ final class SpaceData {
         return result
     }
     func export(purpose: SpaceSnapshotExportPurpose) async -> [String: Any]? {
-        precondition(purpose == .debugInspection)
+        guard case .debugInspection(let diagnostics) = purpose else { preconditionFailure() }
+        if unavailable { diagnostics.record("groups[C001].profile: storedConfigurationLoadFailed") }
         Self.exportHook?()
         return unavailable ? nil : ["uuid": id, "spaceName": name, "nodes": [], "groups": [], "updateTimestamp": lastUpdate]
     }
 }
-enum SpaceSnapshotExportPurpose { case debugInspection }
+enum SpaceSnapshotExportPurpose { case debugInspection(DebugJSONExportDiagnostics) }
 final class SiteData {
     var id = "site", meshUUID = "mesh", meshNetworkId = "network", name = "Site"
     var permission = Permission.owner, state = FixtureValue.normal, sourceType = FixtureValue.normal
@@ -44,14 +45,23 @@ final class SiteData {
     func copy() -> SiteData {
         let result = SiteData(); result.spaces = spaces.map { $0.copy() }; return result
     }
-    func export(spaceIds: [String]) async -> [String: Any]? {
+    func export(spaceIds: [String], purpose: SpaceSnapshotExportPurpose) async -> [String: Any]? {
         precondition(spaceIds.isEmpty)
         return ["uuid": id, "siteName": name, "spaces": [], "updateTimestamp": lastUpdate]
     }
 }
 enum SpaceConfigurationSafety {
     static var unavailable = Set<String>()
-    static func canReadDebugSnapshot(_ space: SpaceData) -> Bool { !unavailable.contains(space.id) }
+    static func canReadDebugSnapshot(_ space: SpaceData) -> Bool { space.state == .normal }
+    static func debugSnapshotStatus(_ space: SpaceData) -> [String: Any] {
+        ["pendingImport": unavailable.contains(space.id)]
+    }
+}
+enum DebugCloudJSONRecords {
+    static func space(_ space: SpaceData) throws -> [String: Any] {
+        ["app": ["spaces": [["uuid": space.id, "triggerZones": "invalid original fixture"]]]]
+    }
+    static func site(_ site: SiteData) throws -> [String: Any] { ["sites": [["uuid": site.id]]] }
 }
 enum NetowrkReqeustApi {
     case siteUpload(siteData: [String: Any]), spaceUpload(siteId: String, spaceId: String, spaceData: [String: Any])
@@ -94,10 +104,18 @@ enum NetowrkReqeustApi {
     owner.triggerZones.append(.init())
     rejects { try topologySnapshot.validate() }
     editor.unavailable = true
-    do {
-        _ = try await DebugCloudJSONExporter.Snapshot(site: site, space: nil).payload()
-        preconditionFailure("Failed Space silently omitted")
-    } catch {}
+    SpaceConfigurationSafety.unavailable.insert(editor.id)
+    let protected = try await DebugCloudJSONExporter.Snapshot(site: site, space: nil).payload()
+    let protectedSpaces = (protected["site"] as! [String: Any])["spaces"] as! [[String: Any]]
+    precondition(protectedSpaces.count == 2 && protectedSpaces[1]["uuid"] as? String == editor.id)
+    precondition(protectedSpaces[1]["nodes"] == nil, "Failed model assembly became an empty node list")
+    let inspection = protected["_debugInspection"] as! [String: Any]
+    let details = (inspection["spaces"] as! [[String: Any]])[1]
+    precondition(details["comparisonPayloadAvailable"] as? Bool == false)
+    precondition((details["issues"] as! [String]).first!.contains("C001"))
+    precondition((details["status"] as! [String: Any])["pendingImport"] as? Bool == true)
+    precondition(details["rawLocal"] != nil)
+    SpaceConfigurationSafety.unavailable.remove(editor.id)
     editor.unavailable = false
     SpaceData.exportHook = { ConfigurationSnapshotRevision.version += 1 }
     do {
@@ -105,10 +123,18 @@ enum NetowrkReqeustApi {
         preconditionFailure("Concurrent mutation accepted")
     } catch {}
     SpaceData.exportHook = nil
+    let captured = try DebugCloudJSONExporter.Snapshot(site: site, space: owner)
+    _ = try await captured.payload()
+    ConfigurationSnapshotRevision.version += 1
+    owner.name = "Changed after capture"
+    try captured.validateAccess()
+    UserData.currentServerRegion = "another-region"
+    rejects { try captured.validateAccess() }
+    UserData.currentServerRegion = "fixture-region"
     site.spaces = []
     let empty = try await DebugCloudJSONExporter.Snapshot(site: site, space: nil).payload()
     precondition(((empty["site"] as! [String: Any])["spaces"] as! [Any]).isEmpty)
-    print("PASS: snapshot scope, roles, invalid members, account, database and memory changes")
+    print("PASS: protected/invalid Space exports, raw records, scope, roles, account/region and capture consistency")
 }
 
 extension String { var localizedString: String { NSLocalizedString(self, comment: "") } }

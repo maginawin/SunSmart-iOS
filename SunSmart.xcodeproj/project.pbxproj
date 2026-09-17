@@ -7,22 +7,20 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		F26091100000000000000002 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
-		F26091100000000000000003 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
-		F26091100000000000000004 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
-		F26091100000000000000005 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
-		F26091100000000000000006 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
 		0103BEF5A3F84EEB84317B31 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
 		0263A522319042329F21C235 /* SyncProfileTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8B635DA3424068A079D81E /* SyncProfileTaskBuilder.swift */; };
 		037F36246E3C45BCAA6080C5 /* SyncExecutionSession+Daylight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */; };
 		0409E220A8F748958A442047 /* SyncExecutionSession+EmergencyFire.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */; };
 		0428A2E1D04C4DFEBD5546ED /* SyncExecutionSession+Daylight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */; };
 		0524EA29AB964613B72DFA2D /* SyncParameterTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */; };
+		053FD281E651483703BF86B3 /* SpaceProtectionReadSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F30B7015EA95EB1973F9EC1 /* SpaceProtectionReadSnapshot.swift */; };
 		059D7E2827E3479CA850CC0A /* SyncDeviceTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C06007AE3FEB4B96850CEF9F /* SyncDeviceTaskBuilder.swift */; };
+		0836DD01EB2F96B384CE66AD /* SpaceSchedulerReadCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E72DEB715702E5821C506F /* SpaceSchedulerReadCoordinator.swift */; };
 		084EF311302AB496008CB48A /* all_utc_timezones.json in Resources */ = {isa = PBXBuildFile; fileRef = 084EF310302AB496008CB48A /* all_utc_timezones.json */; };
 		084EF312302AB496008CB48A /* all_utc_timezones.json in Resources */ = {isa = PBXBuildFile; fileRef = 084EF310302AB496008CB48A /* all_utc_timezones.json */; };
 		084EF313302AB496008CB48A /* all_utc_timezones.json in Resources */ = {isa = PBXBuildFile; fileRef = 084EF310302AB496008CB48A /* all_utc_timezones.json */; };
 		084EF314302AB496008CB48A /* all_utc_timezones.json in Resources */ = {isa = PBXBuildFile; fileRef = 084EF310302AB496008CB48A /* all_utc_timezones.json */; };
+		086B616CFCC46B5C2A29E4AA /* SpacePageSyncRead.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E8F30D155A131BDBDC78EE /* SpacePageSyncRead.swift */; };
 		08B54C5E30402CCB0017ED49 /* SiteTimeZoneValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000100 /* SiteTimeZoneValue.swift */; };
 		08B54C5F30402CCB0017ED49 /* SiteTimeSetMessageFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608160000000000000200 /* SiteTimeSetMessageFactory.swift */; };
 		08B54C6030402CCB0017ED49 /* SiteTimeZoneCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000200 /* SiteTimeZoneCatalog.swift */; };
@@ -702,76 +700,162 @@
 		08B54F2030402CCB0017ED49 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 08B54F1B30402CCB0017ED49 /* InfoPlist.strings */; };
 		08B54F2530402CCB0017ED49 /* LumineuxAssets/Assets-Lumineux-Merged.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 08B54F2430402CCB0017ED49 /* LumineuxAssets/Assets-Lumineux-Merged.xcassets */; };
 		08E370C1C71243E88D040805 /* SyncExecutionSession+Tasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */; };
+		092609120000000000100001 /* DebugCloudJSONFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000001 /* DebugCloudJSONFile.swift */; };
+		092609120000000000100002 /* DebugCloudJSONFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000001 /* DebugCloudJSONFile.swift */; };
+		092609120000000000100003 /* DebugCloudJSONFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000001 /* DebugCloudJSONFile.swift */; };
+		092609120000000000100004 /* DebugCloudJSONFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000001 /* DebugCloudJSONFile.swift */; };
+		092609120000000000100005 /* DebugCloudJSONFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000001 /* DebugCloudJSONFile.swift */; };
+		092609120000000000200001 /* DebugCloudJSONExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000002 /* DebugCloudJSONExporter.swift */; };
+		092609120000000000200002 /* DebugCloudJSONExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000002 /* DebugCloudJSONExporter.swift */; };
+		092609120000000000200003 /* DebugCloudJSONExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000002 /* DebugCloudJSONExporter.swift */; };
+		092609120000000000200004 /* DebugCloudJSONExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000002 /* DebugCloudJSONExporter.swift */; };
+		092609120000000000200005 /* DebugCloudJSONExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000002 /* DebugCloudJSONExporter.swift */; };
+		092609120000000000300001 /* DebugCloudJSONRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000003 /* DebugCloudJSONRecords.swift */; };
+		092609120000000000300002 /* DebugCloudJSONRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000003 /* DebugCloudJSONRecords.swift */; };
+		092609120000000000300003 /* DebugCloudJSONRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000003 /* DebugCloudJSONRecords.swift */; };
+		092609120000000000300004 /* DebugCloudJSONRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000003 /* DebugCloudJSONRecords.swift */; };
+		092609120000000000300005 /* DebugCloudJSONRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000003 /* DebugCloudJSONRecords.swift */; };
 		09FC399282C8488A9F8624C3 /* SyncExecutionSession+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571D8E4D3FAC4613841C496A /* SyncExecutionSession+Operations.swift */; };
+		0AE584301CE7E067813F3BBB /* SpaceProtectionReadSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F30B7015EA95EB1973F9EC1 /* SpaceProtectionReadSnapshot.swift */; };
+		0B533BD5B2EF5D3B89AC5157 /* ../TriggerZone/SiteTriggerZoneItemCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D54D3601C9A5C49B74362BF /* ../TriggerZone/SiteTriggerZoneItemCell.swift */; };
+		0B813AF4DF11FD1927EB577D /* SpaceProtectionReadSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F30B7015EA95EB1973F9EC1 /* SpaceProtectionReadSnapshot.swift */; };
 		0C36C97F8A95474C9D655F09 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
+		0DFC463F67CE976FDA6EA791 /* GatewayDeletionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27A6139D1DCF407070F1CC0 /* GatewayDeletionContext.swift */; };
 		0E6B8FFDB84C40B2945B61AC /* SyncRetryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */; };
 		0E77650C5A5C4CAB81E1554E /* SyncExecutionSession+Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */; };
 		1036B06D8D874051AD49DEE9 /* Node+SyncIdentify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */; };
+		107311C8932C6FC8573ABFB2 /* GatewayDeletionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFACA4781FD19C0A7E602416 /* GatewayDeletionCoordinator.swift */; };
+		1082CC5FED2CD2C6956522F8 /* NodeSyncReadContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 822E40AF256280460760DAE3 /* NodeSyncReadContext.swift */; };
 		11332831BF5D4826A127B1AD /* SyncProfileTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8B635DA3424068A079D81E /* SyncProfileTaskBuilder.swift */; };
+		115F67B989B0EA13AED61632 /* NodeSyncReadContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 822E40AF256280460760DAE3 /* NodeSyncReadContext.swift */; };
 		12CA5740E4EB4F57AD47011D /* SyncDeviceTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C06007AE3FEB4B96850CEF9F /* SyncDeviceTaskBuilder.swift */; };
+		13FF3A0386C440FF2A120D35 /* AppPerformance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402BBE20BB0B8974D93669FC /* AppPerformance.swift */; };
 		15F6AEDF416B45D6BC28749E /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
+		1650039162C947AF98A1FC38 /* ../TriggerZone/SiteTriggerZoneData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6CE8AF636BB4FFE942CAA9F /* ../TriggerZone/SiteTriggerZoneData.swift */; };
 		174C0AB0C7D44152AE7977A4 /* SyncDongleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */; };
+		179252A1DE2E4B5F8EC47827 /* SpaceSchedulerReadCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E72DEB715702E5821C506F /* SpaceSchedulerReadCoordinator.swift */; };
+		19D52AAF6D794F1E816D7AFC /* ../TriggerZone/SiteTriggerZoneData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6CE8AF636BB4FFE942CAA9F /* ../TriggerZone/SiteTriggerZoneData.swift */; };
+		1C19EA72705F013792205CE6 /* NodeSyncStatusRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E7E0653BE57CBB8AC8AE68 /* NodeSyncStatusRefresh.swift */; };
 		1DC02BEC7E55467F93D3DC66 /* SyncResultCollector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84CD8F47ADF45A7A066761B /* SyncResultCollector.swift */; };
 		1FAE4DDDBDF446118B26374D /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
 		210444DCC3A9482FA4681C9C /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
 		21188D8724074062B2F0D8FF /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
 		215FA569CEC942FAB1753704 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
+		239F0495185E5EA5AF4BF2E9 /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 496535143AA555DFA8D9869D /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift */; };
+		242F3EE12D9F4F3FB59EE400 /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B123BF6F756412589B5D1FA /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift */; };
 		24F67C240565CE5F6A28CBD1 /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
 		2540F05968274821811E42BF /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
 		25E85457F7494782A2660C9D /* SyncCommandStopGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */; };
+		260915B00000000000000011 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260915A00000000000000001 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift */; };
+		260915B00000000000000012 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260915A00000000000000001 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift */; };
+		260915B00000000000000013 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260915A00000000000000001 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift */; };
+		260915B00000000000000014 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260915A00000000000000001 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift */; };
+		260915B00000000000000015 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260915A00000000000000001 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift */; };
+		260915B00000000000000021 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260915A00000000000000002 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift */; };
+		260915B00000000000000022 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260915A00000000000000002 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift */; };
+		260915B00000000000000023 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260915A00000000000000002 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift */; };
+		260915B00000000000000024 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260915A00000000000000002 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift */; };
+		260915B00000000000000025 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 260915A00000000000000002 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift */; };
+		280496ECC5884DC8BE037C2D /* ../TriggerZone/SiteTriggerZoneStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 663B9D0F54C24D039BAA03E8 /* ../TriggerZone/SiteTriggerZoneStore.swift */; };
+		2907345B22D95406A6FA4EB1 /* ../TriggerZone/SiteTriggerZoneItemModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2128472FBA54D99C09F203 /* ../TriggerZone/SiteTriggerZoneItemModel.swift */; };
 		297EE68B722E4EDCAF2005C7 /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
+		2AB19399B4161D8589670A55 /* NodeSyncReadContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 822E40AF256280460760DAE3 /* NodeSyncReadContext.swift */; };
+		2BFBA6FDD46C58BE853C3589 /* ../TriggerZone/SiteTriggerZoneItemCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D54D3601C9A5C49B74362BF /* ../TriggerZone/SiteTriggerZoneItemCell.swift */; };
+		2C05F98998D39F5F0029BBA9 /* GatewayDeletionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFACA4781FD19C0A7E602416 /* GatewayDeletionCoordinator.swift */; };
+		2C5663599A9BE08DDEFA7A2E /* SpacePageSyncRead.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E8F30D155A131BDBDC78EE /* SpacePageSyncRead.swift */; };
 		2D3B0626182F426E8EB5F486 /* SyncExecutionSession+Acknowledgement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */; };
 		2E1D668B0C0B450AA3237276 /* SyncExecutionSession+Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */; };
 		2F0A03CA3726466C84DA06DE /* SyncSceneScheduleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */; };
+		2F2F48BFC9705633B3411236 /* ../TriggerZone/SiteTriggerZoneItemCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D54D3601C9A5C49B74362BF /* ../TriggerZone/SiteTriggerZoneItemCell.swift */; };
 		307B3B9B8A75463FB014C992 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
 		31D4DE243B314B86896A178A /* SyncSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */; };
+		329A4E15E9DA40888CCBE8D6 /* ../TriggerZone/SiteTriggerZoneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 154BFB1972C74A5A861900C9 /* ../TriggerZone/SiteTriggerZoneViewController.swift */; };
+		32E1DEEED4FE40498C304D21 /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAFAFE40DD648E99ECF0CBF /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift */; };
+		3464D9C6D2D887FF33331C80 /* GatewayDeletionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27A6139D1DCF407070F1CC0 /* GatewayDeletionContext.swift */; };
 		37A056ABB0BB45CBA2B91EFF /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
+		3937682FAB814778874D1620 /* ../TriggerZone/SiteTriggerZoneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 154BFB1972C74A5A861900C9 /* ../TriggerZone/SiteTriggerZoneViewController.swift */; };
 		39FE1B9D3CB748E99E153094 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
+		3A1B5AE97D3B58E4BFAAA805 /* ../TriggerZone/SiteTriggerZoneItemHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 959B7F8E7C225295876C500A /* ../TriggerZone/SiteTriggerZoneItemHeaderView.swift */; };
+		3AC96C0575BBC20FC54DA192 /* NodeSyncStatusRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E7E0653BE57CBB8AC8AE68 /* NodeSyncStatusRefresh.swift */; };
 		3C21596BC74D4CE996A6AC43 /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
+		3CB71F331A444946AB39DF5F /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAFAFE40DD648E99ECF0CBF /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift */; };
 		3EAA8714DA3D43F284F41B39 /* SyncExecutionSession+Acknowledgement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */; };
 		3F932FCFD6174A23A70213D5 /* SyncResultCollector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84CD8F47ADF45A7A066761B /* SyncResultCollector.swift */; };
+		3FB6E3B3ECFE47AFB2541CB3 /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B123BF6F756412589B5D1FA /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift */; };
+		40CC1FFCBE354C9B8F5D9907 /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B123BF6F756412589B5D1FA /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift */; };
 		416E0B12B9B549359B09E5F4 /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
+		442ED4DDE61A5015ACBDCF70 /* ../TriggerZone/SiteTriggerZoneItemModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2128472FBA54D99C09F203 /* ../TriggerZone/SiteTriggerZoneItemModel.swift */; };
+		443305C1158AA8B6AD1DE42E /* NodeSyncStatusRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E7E0653BE57CBB8AC8AE68 /* NodeSyncStatusRefresh.swift */; };
+		4474AD0F1EB7690DD33D34D2 /* NodeSyncTopologyStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7B5C927EB09075DE812CA1 /* NodeSyncTopologyStorage.swift */; };
+		4495574E4E3B406BAF410B21 /* ../TriggerZone/SiteTriggerZoneContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04DF0E02938F412FBC885F03 /* ../TriggerZone/SiteTriggerZoneContentView.swift */; };
 		4AB3F84613304D6A828720B8 /* SyncSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */; };
+		4C35D17657761715AFA2E01C /* NodeSyncStatusRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E7E0653BE57CBB8AC8AE68 /* NodeSyncStatusRefresh.swift */; };
 		4D4A0F032EE24DA7965F1B78 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
+		4FECD17C41B4A88BE54743F1 /* GatewayDeletionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFACA4781FD19C0A7E602416 /* GatewayDeletionCoordinator.swift */; };
 		50F2FD76381B4A75B7CEF70F /* SyncExecutionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F3C5FD3C314692BB69EFBB /* SyncExecutionSession.swift */; };
+		51FBDA12D0505A6CD2413768 /* NodeSyncTopologySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4CE0208AB4FEC2A28B419B /* NodeSyncTopologySnapshot.swift */; };
+		52CAF194BDA84FE696B20255 /* GroupPathSequenceBrowseConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABACB40755EC4EB7B9843EE2 /* GroupPathSequenceBrowseConfiguration.swift */; };
 		53314DFAE79344C9832532D9 /* SyncDongleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */; };
 		53DAD610D2BC41A38D24BF29 /* SyncExecutionSession+Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */; };
 		558CD072850A4C179A8DAECC /* SyncCommandStopGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */; };
+		56AD80FC8A0CE4518363BA1D /* SpaceSchedulerReadCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E72DEB715702E5821C506F /* SpaceSchedulerReadCoordinator.swift */; };
 		56FF99A2BEDC4FAB9D78D00D /* SyncExecutionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */; };
 		58A40AFCFF874557A66FAB7C /* SyncExecutionSession+Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */; };
 		58E53CF5AB1F48AB92B1B40F /* Node+SyncIdentify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */; };
 		5925738839754ABE96C90866 /* SyncTaskPlanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */; };
 		59406AF3301C4F9EA72AE09D /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
+		5989A5823F05479B80061EC2 /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 392FAB0358444160BCBE29FC /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift */; };
+		5B5E3012A37C4DF392044EC8 /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 392FAB0358444160BCBE29FC /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift */; };
 		5BCA82B0A4F74E7CA9A1CA07 /* SyncExecutionSession+Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */; };
+		5D3E53BDC26E5D61BAFFFB4B /* ../TriggerZone/SiteTriggerZoneItemCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D54D3601C9A5C49B74362BF /* ../TriggerZone/SiteTriggerZoneItemCell.swift */; };
+		5D609FC7796C9A701C9C21E4 /* GatewayDeletionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFACA4781FD19C0A7E602416 /* GatewayDeletionCoordinator.swift */; };
+		5D84E180E2BD41759EAD2D91 /* ../TriggerZone/SiteTriggerZoneCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 328092E397014E308EBF7514 /* ../TriggerZone/SiteTriggerZoneCoordinator.swift */; };
 		5E95A84C510E4B66AC3125B8 /* Node+SyncIdentify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */; };
 		60EA47F24E93483A9453A327 /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
 		6116D0D0F05DFA292964E9B9 /* (null) in Frameworks */ = {isa = PBXBuildFile; };
 		61387877FEB646698C333487 /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
+		6256223098F74C39BA434977 /* ../TriggerZone/SiteTriggerZoneContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04DF0E02938F412FBC885F03 /* ../TriggerZone/SiteTriggerZoneContentView.swift */; };
 		641FEC57DE5645609932974D /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
 		65266F139B8248DB8CDE19F0 /* SyncGatewayTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */; };
 		67C0DB5D726D4866BCC1C8F7 /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
 		6839561B2FD044F1B23BE3E3 /* Node+SyncIdentify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */; };
+		6CBB1188A15047E2A3B5471C /* ../TriggerZone/SiteTriggerZoneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 154BFB1972C74A5A861900C9 /* ../TriggerZone/SiteTriggerZoneViewController.swift */; };
 		6DD203C84EC24200AD2D5FA2 /* SyncSceneScheduleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */; };
+		6EA96793F71C4ACA838B74B7 /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAFAFE40DD648E99ECF0CBF /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift */; };
 		7081E41E05794E3A9C1A8708 /* SyncGatewayTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */; };
 		7119A2FC8208465ABF6EF1D3 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
 		715A3B1EBE7F4E3ABEF2BF28 /* SyncProfileTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8B635DA3424068A079D81E /* SyncProfileTaskBuilder.swift */; };
+		71DED501C8438D1DDB66186C /* SpaceSchedulerReadCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E72DEB715702E5821C506F /* SpaceSchedulerReadCoordinator.swift */; };
 		72D937AFBD0D40F0BB6DB84C /* SyncExecutionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */; };
 		734A6B4A739549B6A19BB925 /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
+		73C943066C805BD27DB9DC7E /* NodeSyncTopologySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4CE0208AB4FEC2A28B419B /* NodeSyncTopologySnapshot.swift */; };
 		73CBEB8AE00143888D90908F /* SyncExecutionSession+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571D8E4D3FAC4613841C496A /* SyncExecutionSession+Operations.swift */; };
+		73DEC597B405A3E51FB62A34 /* SpacePageSyncRead.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E8F30D155A131BDBDC78EE /* SpacePageSyncRead.swift */; };
+		7431593421BA47B48F414FD2 /* GroupPathSequenceBrowseConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABACB40755EC4EB7B9843EE2 /* GroupPathSequenceBrowseConfiguration.swift */; };
+		7497BF094A6CDCCCCA82D087 /* NodeSyncTopologyStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7B5C927EB09075DE812CA1 /* NodeSyncTopologyStorage.swift */; };
 		750EDAF90B844BD48C5D7A5F /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
 		7551F3FAE22945E884C3C118 /* SyncDeviceTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C06007AE3FEB4B96850CEF9F /* SyncDeviceTaskBuilder.swift */; };
+		7741D97284E54E13A0F938CF /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B123BF6F756412589B5D1FA /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift */; };
 		77F543AA180E44E8995A3A29 /* SyncTaskPlanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */; };
 		781B24A7A85741D6AD49CE42 /* SyncCommandStopGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */; };
 		79A04E76FBAD49789B29DE10 /* SyncSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */; };
 		7A97BDEC9C6E47B78123C040 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
 		7B741B9E1DC848BEBBAB3D89 /* SyncEmergencyFireTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */; };
+		7BA552BFAF76410E95F4834D /* ../TriggerZone/SiteTriggerZoneCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 328092E397014E308EBF7514 /* ../TriggerZone/SiteTriggerZoneCoordinator.swift */; };
+		7CD3BD361D807870CF8DA319 /* GatewayDeletionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27A6139D1DCF407070F1CC0 /* GatewayDeletionContext.swift */; };
+		7F5422D60F19C8DF31C37752 /* GatewayDeletionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFACA4781FD19C0A7E602416 /* GatewayDeletionCoordinator.swift */; };
+		7F78EA80D751466DB0884A03 /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B123BF6F756412589B5D1FA /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift */; };
 		818AD5D2DCAB453EA5011E77 /* SyncExecutionSession+Tasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */; };
 		81919BDA89A04E6E82F7E821 /* SyncEmergencyFireTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */; };
+		82077EAE91105A2FB051C295 /* ../TriggerZone/SiteTriggerZoneItemCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D54D3601C9A5C49B74362BF /* ../TriggerZone/SiteTriggerZoneItemCell.swift */; };
 		830718D9737D4876899F9F16 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
 		8683B8A2634A4FA2A0BF419F /* SyncSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */; };
 		8828861F08BB437BB42EF3A6 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
 		88D7CF51D38E4C4DA6293997 /* SyncExecutionSession+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571D8E4D3FAC4613841C496A /* SyncExecutionSession+Operations.swift */; };
+		89F4EF20CBFC4DF09E9CB636 /* GroupPathSequenceBrowseConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABACB40755EC4EB7B9843EE2 /* GroupPathSequenceBrowseConfiguration.swift */; };
 		8A19DFF684F242A7B164DCCB /* SyncOperationResultPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */; };
+		8A552264EC85818C0F39049A /* NodeSyncStatusRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E7E0653BE57CBB8AC8AE68 /* NodeSyncStatusRefresh.swift */; };
+		8BE469FC78CB435EBDA8E93D /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 392FAB0358444160BCBE29FC /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift */; };
 		8C1DA73A2FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7392FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift */; };
 		8C1DA73B2FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7392FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift */; };
 		8C1DA73C2FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7392FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift */; };
@@ -1131,41 +1215,66 @@
 		8CFE26042FB0000000000006 /* PJLinkedStaOpertionsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8CFE26002FB0000000000006 /* PJLinkedStaOpertionsView.swift */; };
 		8F36B555ECD7471F9E36DE19 /* SyncExecutionSession+Daylight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */; };
 		9003D9FEB15B43869345C310 /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
+		90057C0545CB24727D8453B8 /* SpaceProtectionReadSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F30B7015EA95EB1973F9EC1 /* SpaceProtectionReadSnapshot.swift */; };
+		91D5DD4F656D558EAA48AC20 /* ../TriggerZone/SiteTriggerZoneItemHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 959B7F8E7C225295876C500A /* ../TriggerZone/SiteTriggerZoneItemHeaderView.swift */; };
+		9219B7792F424285A2B21A14 /* ../TriggerZone/SiteTriggerZoneCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 328092E397014E308EBF7514 /* ../TriggerZone/SiteTriggerZoneCoordinator.swift */; };
 		92D1370D35A9433085BD3045 /* SyncRetryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */; };
 		966495B2063B4A23B018AD7D /* SyncExecutionSession+Daylight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */; };
 		9789F25FEAD9419098225926 /* SyncExecutionSession+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571D8E4D3FAC4613841C496A /* SyncExecutionSession+Operations.swift */; };
 		98136492B8AE4DAB816CE640 /* SyncRetryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */; };
 		98B74FAE2E2C42E5AF404B98 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
+		98D5A8CD172E9F14EB9FFD69 /* SpaceSchedulerReadCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E72DEB715702E5821C506F /* SpaceSchedulerReadCoordinator.swift */; };
 		991A7D0B08964DB58D6F1C2D /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
 		9A4CD299538246D5AC9524AA /* SyncProfileTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8B635DA3424068A079D81E /* SyncProfileTaskBuilder.swift */; };
+		9A52212DAE0A4501B150AACF /* ../TriggerZone/SiteTriggerZoneStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 663B9D0F54C24D039BAA03E8 /* ../TriggerZone/SiteTriggerZoneStore.swift */; };
 		9A6E3E6B324843968130F4AF /* EmerFireAlarmMonitorRouting.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */; };
 		9B797D1CB7184B7ABD68A916 /* SyncExecutionSession+EmergencyFire.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */; };
 		9BD95641AC8A4A669A272C64 /* SyncOperationResultPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */; };
 		9CF80A6452834A6DAF25D458 /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
+		9E2B0727EB4BE3646BD5385C /* AppPerformance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402BBE20BB0B8974D93669FC /* AppPerformance.swift */; };
 		9E9FBDED4035470FB220D1B3 /* SyncExecutionSession+Daylight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */; };
+		9EF0C872DE925B4BA1D8350F /* ../TriggerZone/SiteTriggerZoneItemModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2128472FBA54D99C09F203 /* ../TriggerZone/SiteTriggerZoneItemModel.swift */; };
 		9F7E88B8DB044143BC44E151 /* SyncOperationResultPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */; };
+		A04C3EF76BE36D0D84A3EF6A /* NodeSyncReadContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 822E40AF256280460760DAE3 /* NodeSyncReadContext.swift */; };
 		A087E90DCA604B35895C75C7 /* SyncExecutionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */; };
+		A441748F6325404B80CE11FD /* ../TriggerZone/SiteTriggerZoneStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 663B9D0F54C24D039BAA03E8 /* ../TriggerZone/SiteTriggerZoneStore.swift */; };
 		A5C6B8EDA6DA4CE89D59A1D9 /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
 		A61490AEE0C848BCB3E19FED /* SyncDongleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */; };
 		A65F2457435B4706B09FFC48 /* SyncParameterTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */; };
 		A723FA44F715450384AD4A0D /* SyncExecutionSession+Acknowledgement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */; };
+		A74BAAE36C924853BFC79B22 /* ../TriggerZone/SiteTriggerZoneData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6CE8AF636BB4FFE942CAA9F /* ../TriggerZone/SiteTriggerZoneData.swift */; };
 		A75EA23949994C45A8BD7D45 /* SyncDongleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */; };
+		A8218588333A4EBD83B49026 /* ../TriggerZone/SiteTriggerZoneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 154BFB1972C74A5A861900C9 /* ../TriggerZone/SiteTriggerZoneViewController.swift */; };
+		A92143EE631744C4AE135D7E /* GroupPathSequenceBrowseConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABACB40755EC4EB7B9843EE2 /* GroupPathSequenceBrowseConfiguration.swift */; };
 		AB7317387679461CB79CFC74 /* SyncExecutionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F3C5FD3C314692BB69EFBB /* SyncExecutionSession.swift */; };
+		AB95C7F3341F559891FC4E51 /* ../TriggerZone/SiteTriggerZoneItemModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2128472FBA54D99C09F203 /* ../TriggerZone/SiteTriggerZoneItemModel.swift */; };
+		ACC4C8C005A64123A9E004AE /* GroupPathSequenceBrowseConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABACB40755EC4EB7B9843EE2 /* GroupPathSequenceBrowseConfiguration.swift */; };
+		AD0CA511ED5C51489C92B87E /* ../TriggerZone/SiteTriggerZoneItemHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 959B7F8E7C225295876C500A /* ../TriggerZone/SiteTriggerZoneItemHeaderView.swift */; };
 		AD36EB7BBB144B4B8DDD2C5F /* SyncSceneScheduleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */; };
+		AE487ED6F067C21D083482B8 /* SpacePageSyncRead.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E8F30D155A131BDBDC78EE /* SpacePageSyncRead.swift */; };
 		B10EDCB40F104A2E822DE577 /* SyncEmergencyFireTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */; };
 		B123B89F54124138B5F14325 /* Node+SyncIdentify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */; };
+		B1FE29DA65B2AFFE4061B0FE /* NodeSyncTopologySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4CE0208AB4FEC2A28B419B /* NodeSyncTopologySnapshot.swift */; };
 		B27B8A12C92448E5A6D20353 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
 		B507A21C390C4ED4A6D99A27 /* SyncParameterTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */; };
 		B51BAADEE07742C4A1A8AD84 /* SyncGatewayTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */; };
+		B5D1B6BAABF4CE91144C6849 /* AppPerformance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402BBE20BB0B8974D93669FC /* AppPerformance.swift */; };
 		BA4CE99EFE424711BA459C74 /* SyncExecutionSession+Tasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */; };
 		BA503B180B8C4C67AE831DAA /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
+		BB79E6DBD3A244CABCA8B5DA /* ../TriggerZone/SiteTriggerZoneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 154BFB1972C74A5A861900C9 /* ../TriggerZone/SiteTriggerZoneViewController.swift */; };
+		BC31AC95029A563DBD19AE96 /* ../TriggerZone/SiteTriggerZoneItemHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 959B7F8E7C225295876C500A /* ../TriggerZone/SiteTriggerZoneItemHeaderView.swift */; };
+		BC4CA556FCF8EB79AE1D34C8 /* NodeSyncTopologyStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7B5C927EB09075DE812CA1 /* NodeSyncTopologyStorage.swift */; };
 		BCB01FD24C3B52D4E436283A /* Pods_Common_SLG_Sync_Plus.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7CF816C3063D0EF30B936BA4 /* Pods_Common_SLG_Sync_Plus.framework */; };
 		BCC659A6265A483A8E580C5B /* SyncResultCollector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84CD8F47ADF45A7A066761B /* SyncResultCollector.swift */; };
 		BD05C62705B845D0BE49AE10 /* SyncExecutionSession+Acknowledgement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */; };
 		BF7338014A1644FA82A4F19F /* SyncEmergencyFireTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */; };
 		C29122552EC7472DAB8B0D6D /* SyncSceneScheduleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */; };
+		C39D2F0885274A2C85696239 /* ../TriggerZone/SiteTriggerZoneContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04DF0E02938F412FBC885F03 /* ../TriggerZone/SiteTriggerZoneContentView.swift */; };
 		C465EE88FEE549699D40FC18 /* SyncDeviceTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C06007AE3FEB4B96850CEF9F /* SyncDeviceTaskBuilder.swift */; };
 		C47A2205E8AD4EB4A6F5483B /* SyncExecutionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F3C5FD3C314692BB69EFBB /* SyncExecutionSession.swift */; };
+		C4B49A3F24503FCF2E80CA4E /* AppPerformance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402BBE20BB0B8974D93669FC /* AppPerformance.swift */; };
+		C4B85346D756FFDE36D44863 /* NodeSyncTopologyStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7B5C927EB09075DE812CA1 /* NodeSyncTopologyStorage.swift */; };
+		C7234FE10DC44AA79AD78D40 /* ../TriggerZone/SiteTriggerZoneContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04DF0E02938F412FBC885F03 /* ../TriggerZone/SiteTriggerZoneContentView.swift */; };
 		C8002CD22DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8002CD12DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift */; };
 		C803EC4C2BCCC9F0003C48B1 /* ConfigurationFlowGuidanceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C803EC4B2BCCC9F0003C48B1 /* ConfigurationFlowGuidanceView.swift */; };
 		C8047F092B8DFA5900A09FFA /* ProfileInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F082B8DFA5900A09FFA /* ProfileInstructionsController.swift */; };
@@ -3319,38 +3428,57 @@
 		C8FDE9A72DD595A30002394B /* GroupProximityLightingData.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8FDE9A62DD595A30002394B /* GroupProximityLightingData.swift */; };
 		C8FF8A7E146827711D87F57C /* GroupPowerSwitchesViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BE099331EBF36DB4714884 /* GroupPowerSwitchesViewController.swift */; };
 		C8FFD7D52E7D03B20074CC6A /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
+		C92C2151CAE74AC6A7056274 /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAFAFE40DD648E99ECF0CBF /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift */; };
 		CA4AB051D62A499D9B62535E /* SyncExecutionSession+EmergencyFire.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */; };
+		CB571E9F60B15400B27C0516 /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 496535143AA555DFA8D9869D /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift */; };
 		CC193792A1B641B087BEB6A6 /* SyncTaskPlanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */; };
 		CC62830B2CC84D939D36C8F7 /* SyncOperationResultPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */; };
 		CCEFC9FEE30045E6A1CC0391 /* SyncGatewayTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */; };
 		CE2D397D68F04EA0B545176C /* SyncDeviceTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C06007AE3FEB4B96850CEF9F /* SyncDeviceTaskBuilder.swift */; };
+		CE33830D778F4A9D8F5F83F6 /* ../TriggerZone/SiteTriggerZoneData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6CE8AF636BB4FFE942CAA9F /* ../TriggerZone/SiteTriggerZoneData.swift */; };
+		CE913AD382397B8A2604C026 /* GatewayDeletionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27A6139D1DCF407070F1CC0 /* GatewayDeletionContext.swift */; };
 		D130E771F5A94087BE4AB465 /* SyncRetryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */; };
 		D2FA400BEF0946569A71EF13 /* SyncEmergencyFireTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */; };
 		D3C2B2A90073BA539A94D739 /* Pods_Common_Lumineux.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 15FF8143AF8FD80AB9279AE9 /* Pods_Common_Lumineux.framework */; };
 		D52E820261BF4DF8A6E82A06 /* SyncExecutionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F3C5FD3C314692BB69EFBB /* SyncExecutionSession.swift */; };
+		D78290660D024B8E8015FE86 /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAFAFE40DD648E99ECF0CBF /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift */; };
 		D81933E68654405495EBF0F4 /* SyncTaskPlanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */; };
+		D9068A499B72DEA5BBD4FE04 /* NodeSyncReadContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 822E40AF256280460760DAE3 /* NodeSyncReadContext.swift */; };
+		DA9432B52C5F448A851D8FC1 /* ../TriggerZone/SiteTriggerZoneContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04DF0E02938F412FBC885F03 /* ../TriggerZone/SiteTriggerZoneContentView.swift */; };
 		DBBE181D0D4E49BA9A6E9548 /* SyncExecutionSession+EmergencyFire.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */; };
 		DBDFE837C4004A2F8104A1C3 /* SyncOperationResultPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */; };
 		DC176B45FDD04BF2B211C2D1 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
 		DD35E8D02A124C34BD491809 /* SyncExecutionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */; };
 		DD3BFE0E498A4A25A4038BC1 /* SyncExecutionSession+Tasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */; };
+		DD59B7AC9CDB45BDA0B7E6A6 /* ../TriggerZone/SiteTriggerZoneStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 663B9D0F54C24D039BAA03E8 /* ../TriggerZone/SiteTriggerZoneStore.swift */; };
 		DEB759AF3EF645F693A289DD /* SyncCommandStopGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */; };
 		DEDD37F7AB6742E6871AEC02 /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
+		DF2E645226CA54E8A4C220AC /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 496535143AA555DFA8D9869D /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift */; };
+		DF46FB4076F9E05E5D710126 /* SpacePageSyncRead.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E8F30D155A131BDBDC78EE /* SpacePageSyncRead.swift */; };
 		E1952CC7B7DE46808DE3C7AB /* SyncSceneScheduleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */; };
+		E27B6D7C8FA265E11A17B5FC /* GatewayDeletionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27A6139D1DCF407070F1CC0 /* GatewayDeletionContext.swift */; };
 		E2D0EFCDEA464E6ABCC3ACCF /* SyncRetryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */; };
 		E2D0F2A14B894FC9908F1392 /* SyncParameterTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */; };
 		E410DB268C7E4A8A9749F3D6 /* SyncExecutionSession+Acknowledgement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */; };
+		E4650E2CC7BD436F84FEE575 /* ../TriggerZone/SiteTriggerZoneStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 663B9D0F54C24D039BAA03E8 /* ../TriggerZone/SiteTriggerZoneStore.swift */; };
 		E4EABB296C324CDB9BF69468 /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
 		E6F49F904F0A4301BB18F924 /* SyncResultCollector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84CD8F47ADF45A7A066761B /* SyncResultCollector.swift */; };
+		E710820FAB885D58AE1D42AF /* ../TriggerZone/SiteTriggerZoneItemModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2128472FBA54D99C09F203 /* ../TriggerZone/SiteTriggerZoneItemModel.swift */; };
+		E90B963C52EA40729CDB700C /* ../TriggerZone/SiteTriggerZoneCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 328092E397014E308EBF7514 /* ../TriggerZone/SiteTriggerZoneCoordinator.swift */; };
 		EA11BECBB5484297952D88DB /* SyncResultCollector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84CD8F47ADF45A7A066761B /* SyncResultCollector.swift */; };
+		EA679C3DC618521CAB9E7333 /* NodeSyncTopologySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4CE0208AB4FEC2A28B419B /* NodeSyncTopologySnapshot.swift */; };
+		EA72537650B9492F846C526C /* ../TriggerZone/SiteTriggerZoneCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 328092E397014E308EBF7514 /* ../TriggerZone/SiteTriggerZoneCoordinator.swift */; };
 		EAB7CC4E471C03663E94EFE1 /* Pods_Common_SylSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D1025845F30FDFC9F8C9ACCB /* Pods_Common_SylSmart.framework */; };
 		EC76EADBEBB348B99F7567B3 /* SyncProfileTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE8B635DA3424068A079D81E /* SyncProfileTaskBuilder.swift */; };
 		EC96CB91A1A5407F97E1C85F /* SyncExecutionSession+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571D8E4D3FAC4613841C496A /* SyncExecutionSession+Operations.swift */; };
+		ECAA108436E54FB8A885381C /* ../TriggerZone/SiteTriggerZoneData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6CE8AF636BB4FFE942CAA9F /* ../TriggerZone/SiteTriggerZoneData.swift */; };
 		ECBD06629C06417FBF511113 /* SyncExecutionSession+EmergencyFire.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */; };
+		EDDE836C609A55D6A92961D8 /* ../TriggerZone/SiteTriggerZoneItemHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 959B7F8E7C225295876C500A /* ../TriggerZone/SiteTriggerZoneItemHeaderView.swift */; };
 		EE66645EF8E84E9191B47415 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
 		EFC0885EA2B94D0F9271C2FE /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
 		F04F0B4F0BA846C998DE86EC /* SyncGatewayTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */; };
 		F086D2572F1B4954AB2A63E0 /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
+		F19DD94FD0DAD99699745673 /* SpaceProtectionReadSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F30B7015EA95EB1973F9EC1 /* SpaceProtectionReadSnapshot.swift */; };
 		F26072200000000000000102 /* DeviceNameFilterSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000101 /* DeviceNameFilterSession.swift */; };
 		F26072200000000000000103 /* DeviceNameFilterSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000101 /* DeviceNameFilterSession.swift */; };
 		F26072200000000000000104 /* DeviceNameFilterSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26072200000000000000101 /* DeviceNameFilterSession.swift */; };
@@ -3564,9 +3692,59 @@
 		F26090720000000000000003 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */; };
 		F26090720000000000000004 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */; };
 		F26090720000000000000005 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */; };
+		F26091100000000000000002 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
+		F26091100000000000000003 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
+		F26091100000000000000004 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
+		F26091100000000000000005 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
+		F26091100000000000000006 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
+		F2609140000000000000201 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000200 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift */; };
+		F2609140000000000000202 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000200 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift */; };
+		F2609140000000000000203 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000200 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift */; };
+		F2609140000000000000204 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000200 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift */; };
+		F2609140000000000000205 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000200 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift */; };
+		F2609140000000000000211 /* ../TriggerZone/SiteTriggerZoneTopologyReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000210 /* ../TriggerZone/SiteTriggerZoneTopologyReader.swift */; };
+		F2609140000000000000212 /* ../TriggerZone/SiteTriggerZoneTopologyReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000210 /* ../TriggerZone/SiteTriggerZoneTopologyReader.swift */; };
+		F2609140000000000000213 /* ../TriggerZone/SiteTriggerZoneTopologyReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000210 /* ../TriggerZone/SiteTriggerZoneTopologyReader.swift */; };
+		F2609140000000000000214 /* ../TriggerZone/SiteTriggerZoneTopologyReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000210 /* ../TriggerZone/SiteTriggerZoneTopologyReader.swift */; };
+		F2609140000000000000215 /* ../TriggerZone/SiteTriggerZoneTopologyReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000210 /* ../TriggerZone/SiteTriggerZoneTopologyReader.swift */; };
+		F2609140000000000000221 /* ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000220 /* ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift */; };
+		F2609140000000000000222 /* ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000220 /* ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift */; };
+		F2609140000000000000223 /* ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000220 /* ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift */; };
+		F2609140000000000000224 /* ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000220 /* ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift */; };
+		F2609140000000000000225 /* ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000220 /* ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift */; };
+		F26091510000000000000010 /* FeatureVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000001 /* FeatureVisibility.swift */; };
+		F26091510000000000000011 /* FeatureVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000001 /* FeatureVisibility.swift */; };
+		F26091510000000000000012 /* FeatureVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000001 /* FeatureVisibility.swift */; };
+		F26091510000000000000013 /* FeatureVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000001 /* FeatureVisibility.swift */; };
+		F26091510000000000000014 /* FeatureVisibility.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000001 /* FeatureVisibility.swift */; };
+		F26091510000000000000020 /* debug_features.json in Resources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000002 /* debug_features.json */; };
+		F26091510000000000000021 /* debug_features.json in Resources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000002 /* debug_features.json */; };
+		F26091510000000000000022 /* debug_features.json in Resources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000002 /* debug_features.json */; };
+		F26091510000000000000023 /* debug_features.json in Resources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000002 /* debug_features.json */; };
+		F26091510000000000000024 /* debug_features.json in Resources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000002 /* debug_features.json */; };
+		F260916B0000000000000101 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */; };
+		F260916B0000000000000102 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */; };
+		F260916B0000000000000103 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */; };
+		F260916B0000000000000104 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */; };
+		F260916B0000000000000105 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */; };
+		F260916B0000000000000201 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */; };
+		F260916B0000000000000202 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */; };
+		F260916B0000000000000203 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */; };
+		F260916B0000000000000204 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */; };
+		F260916B0000000000000205 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */; };
+		F260916B0000000000000301 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
+		F260916B0000000000000302 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
+		F260916B0000000000000303 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
+		F260916B0000000000000304 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
+		F260916B0000000000000305 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
+		F33FAD57616D53F9A5030FF4 /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 496535143AA555DFA8D9869D /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift */; };
 		F3C661B473314BCA9FC4EADC /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
 		F538067A4C66418F8CEBB201 /* SyncExecutionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */; };
+		F621BEBEAE6A5D4A8C2E5C1A /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 496535143AA555DFA8D9869D /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift */; };
+		F6F825DBB9162A0A64B265FC /* NodeSyncTopologySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4CE0208AB4FEC2A28B419B /* NodeSyncTopologySnapshot.swift */; };
 		F7943FD7B04B46168C1265F2 /* SyncExecutionSession+Tasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */; };
+		F7D5E29923454120AF8BDCBC /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 392FAB0358444160BCBE29FC /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift */; };
+		F8B039C414E08A98492522FF /* AppPerformance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402BBE20BB0B8974D93669FC /* AppPerformance.swift */; };
 		F9375905BFA6459CB7FDFB38 /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
 		FA40A89D8A0D48BDBEA6EA36 /* SyncDongleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */; };
 		FA434FCCC5B241269278E904 /* SyncCommandStopGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */; };
@@ -3574,20 +3752,12 @@
 		FB8AA5CFA8964AA5AB8A7888 /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
 		FBE64B877BA941A086DD04D0 /* SyncParameterTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */; };
 		FC37248A4BA9471492C67995 /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
-		092609120000000000100001 /* DebugCloudJSONFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000001 /* DebugCloudJSONFile.swift */; };
-		092609120000000000100002 /* DebugCloudJSONFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000001 /* DebugCloudJSONFile.swift */; };
-		092609120000000000100003 /* DebugCloudJSONFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000001 /* DebugCloudJSONFile.swift */; };
-		092609120000000000100004 /* DebugCloudJSONFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000001 /* DebugCloudJSONFile.swift */; };
-		092609120000000000100005 /* DebugCloudJSONFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000001 /* DebugCloudJSONFile.swift */; };
-		092609120000000000200001 /* DebugCloudJSONExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000002 /* DebugCloudJSONExporter.swift */; };
-		092609120000000000200002 /* DebugCloudJSONExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000002 /* DebugCloudJSONExporter.swift */; };
-		092609120000000000200003 /* DebugCloudJSONExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000002 /* DebugCloudJSONExporter.swift */; };
-		092609120000000000200004 /* DebugCloudJSONExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000002 /* DebugCloudJSONExporter.swift */; };
-		092609120000000000200005 /* DebugCloudJSONExporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000002 /* DebugCloudJSONExporter.swift */; };
+		FDC40E80058A7403C1FD84A7 /* NodeSyncTopologyStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7B5C927EB09075DE812CA1 /* NodeSyncTopologyStorage.swift */; };
+		FEE1FB25CC954BC291397481 /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 392FAB0358444160BCBE29FC /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		F26091100000000000000001 /* InformationClockRecovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InformationClockRecovery.swift; sourceTree = "<group>"; };
+		04DF0E02938F412FBC885F03 /* ../TriggerZone/SiteTriggerZoneContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneContentView.swift; sourceTree = "<group>"; };
 		084EF310302AB496008CB48A /* all_utc_timezones.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = all_utc_timezones.json; sourceTree = "<group>"; };
 		08B54F0C30402CCB0017ED49 /* Lumineux.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lumineux.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		08B54F0D30402CCB0017ED49 /* Lumineux/Lumineux-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Lumineux/Lumineux-Info.plist"; sourceTree = SOURCE_ROOT; };
@@ -3602,18 +3772,33 @@
 		08B54F1930402CCB0017ED49 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		08B54F1A30402CCB0017ED49 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		08B54F2430402CCB0017ED49 /* LumineuxAssets/Assets-Lumineux-Merged.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "LumineuxAssets/Assets-Lumineux-Merged.xcassets"; sourceTree = DERIVED_FILE_DIR; };
+		092609120000000000000001 /* DebugCloudJSONFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugCloudJSONFile.swift; sourceTree = "<group>"; };
+		092609120000000000000002 /* DebugCloudJSONExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugCloudJSONExporter.swift; sourceTree = "<group>"; };
+		092609120000000000000003 /* DebugCloudJSONRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugCloudJSONRecords.swift; sourceTree = "<group>"; };
 		0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorViewModel.swift; sourceTree = "<group>"; };
+		154BFB1972C74A5A861900C9 /* ../TriggerZone/SiteTriggerZoneViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneViewController.swift; sourceTree = "<group>"; };
 		15FF8143AF8FD80AB9279AE9 /* Pods_Common_Lumineux.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_Lumineux.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteDeviceOwnershipReconciler.swift; sourceTree = "<group>"; };
+		23E72DEB715702E5821C506F /* SpaceSchedulerReadCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceSchedulerReadCoordinator.swift; sourceTree = "<group>"; };
+		260915A00000000000000001 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift; sourceTree = SOURCE_ROOT; };
+		260915A00000000000000002 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift; sourceTree = SOURCE_ROOT; };
 		29E6735F1867DC54FBDDBAA9 /* Pods-Common-SylSmart.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SylSmart.debug.xcconfig"; path = "Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart.debug.xcconfig"; sourceTree = "<group>"; };
+		2D54D3601C9A5C49B74362BF /* ../TriggerZone/SiteTriggerZoneItemCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneItemCell.swift; sourceTree = "<group>"; };
 		2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncCommandStopGate.swift; sourceTree = "<group>"; };
+		2F2128472FBA54D99C09F203 /* ../TriggerZone/SiteTriggerZoneItemModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneItemModel.swift; sourceTree = "<group>"; };
+		328092E397014E308EBF7514 /* ../TriggerZone/SiteTriggerZoneCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneCoordinator.swift; sourceTree = "<group>"; };
 		377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEmergencyFireTaskBuilder.swift; sourceTree = "<group>"; };
 		389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncExecutionSession+Acknowledgement.swift"; sourceTree = "<group>"; };
+		392FAB0358444160BCBE29FC /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneCandidateReader.swift; sourceTree = "<group>"; };
 		3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmergencyFireControllerIconName.swift; sourceTree = "<group>"; };
 		3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncSessionCoordinator.swift; sourceTree = "<group>"; };
+		3B123BF6F756412589B5D1FA /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneCandidatePreview.swift; sourceTree = "<group>"; };
+		3F30B7015EA95EB1973F9EC1 /* SpaceProtectionReadSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceProtectionReadSnapshot.swift; sourceTree = "<group>"; };
+		402BBE20BB0B8974D93669FC /* AppPerformance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPerformance.swift; sourceTree = "<group>"; };
 		40600A1CA2E3F5AAD4720361 /* Pods-Common-Lumineux.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-Lumineux.debug.xcconfig"; path = "Target Support Files/Pods-Common-Lumineux/Pods-Common-Lumineux.debug.xcconfig"; sourceTree = "<group>"; };
 		410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncSwitchTaskBuilder.swift; sourceTree = "<group>"; };
 		45931D652AFCE854D4A27862 /* Pods-Common-SunSmart.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SunSmart.debug.xcconfig"; path = "Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart.debug.xcconfig"; sourceTree = "<group>"; };
+		496535143AA555DFA8D9869D /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZonePreviewFixtures.swift; sourceTree = "<group>"; };
 		4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncRunLifecycle.swift; sourceTree = "<group>"; };
 		5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncExecutionSession+Daylight.swift"; sourceTree = "<group>"; };
 		53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncExecutionEnvironment.swift; sourceTree = "<group>"; };
@@ -3622,9 +3807,13 @@
 		58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncOperationResultPolicy.swift; sourceTree = "<group>"; };
 		5CAC8D9C0CD4494B961439D5 /* EmerFireAlarmMonitorRouting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorRouting.swift; sourceTree = "<group>"; };
 		5DE88F1025D2BB6E473AD28D /* Pods-Common-Lumineux.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-Lumineux.release.xcconfig"; path = "Target Support Files/Pods-Common-Lumineux/Pods-Common-Lumineux.release.xcconfig"; sourceTree = "<group>"; };
+		65E7E0653BE57CBB8AC8AE68 /* NodeSyncStatusRefresh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeSyncStatusRefresh.swift; sourceTree = "<group>"; };
+		663B9D0F54C24D039BAA03E8 /* ../TriggerZone/SiteTriggerZoneStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneStore.swift; sourceTree = "<group>"; };
 		69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; lineEnding = 0; path = "Node+SyncIdentify.swift"; sourceTree = "<group>"; };
 		7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncTaskPlanBuilder.swift; sourceTree = "<group>"; };
 		7CF816C3063D0EF30B936BA4 /* Pods_Common_SLG_Sync_Plus.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_SLG_Sync_Plus.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		822E40AF256280460760DAE3 /* NodeSyncReadContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeSyncReadContext.swift; sourceTree = "<group>"; };
+		8BAFAFE40DD648E99ECF0CBF /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift; sourceTree = "<group>"; };
 		8C1DA7392FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchForcedAutoPopupController.swift; sourceTree = "<group>"; };
 		8C1DA74C2FAAF2A60073F100 /* PJDevicesEntrySource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJDevicesEntrySource.swift; sourceTree = "<group>"; };
 		8C1DA7512FAAF2A60073F100 /* PJDevicesAddEntryContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJDevicesAddEntryContext.swift; sourceTree = "<group>"; };
@@ -3692,6 +3881,7 @@
 		8C778C2A2FA34A33000887FE /* PJEightKeySwitchMonitorHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchMonitorHeaderView.swift; sourceTree = "<group>"; };
 		8C778C2F2FA35EB7000887FE /* PJEightKeySwitchDimmingPopupController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchDimmingPopupController.swift; sourceTree = "<group>"; };
 		8C778C342FA35FD7000887FE /* PJEightKeySwitchRefreshAlertController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchRefreshAlertController.swift; sourceTree = "<group>"; };
+		8C7B5C927EB09075DE812CA1 /* NodeSyncTopologyStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeSyncTopologyStorage.swift; sourceTree = "<group>"; };
 		8CBEC6322F961030003859AB /* DeviceBottomActionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceBottomActionView.swift; sourceTree = "<group>"; };
 		8CBEC6382F961B6C003859AB /* FireAlarmTableReusable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FireAlarmTableReusable.swift; sourceTree = "<group>"; };
 		8CBEC63D2F961B84003859AB /* EmerFireNameCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireNameCell.swift; sourceTree = "<group>"; };
@@ -3716,7 +3906,10 @@
 		8CFE26002FB0000000000006 /* PJLinkedStaOpertionsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJLinkedStaOpertionsView.swift; sourceTree = "<group>"; };
 		8F7ED1D6D6BFC3B3813C473D /* Pods_Common_Archipelago.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_Archipelago.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncExecutionSession+Result.swift"; sourceTree = "<group>"; };
+		959B7F8E7C225295876C500A /* ../TriggerZone/SiteTriggerZoneItemHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneItemHeaderView.swift; sourceTree = "<group>"; };
 		A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDongleTaskBuilder.swift; sourceTree = "<group>"; };
+		ABACB40755EC4EB7B9843EE2 /* GroupPathSequenceBrowseConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequenceBrowseConfiguration.swift; sourceTree = "<group>"; };
+		B27A6139D1DCF407070F1CC0 /* GatewayDeletionContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayDeletionContext.swift; sourceTree = "<group>"; };
 		B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncSceneScheduleTaskBuilder.swift; sourceTree = "<group>"; };
 		B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncExecutionSession+Tasks.swift"; sourceTree = "<group>"; };
 		BAC59D3E13FBA419B630C430 /* Pods-Common-Archipelago.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-Archipelago.release.xcconfig"; path = "Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago.release.xcconfig"; sourceTree = "<group>"; };
@@ -4311,7 +4504,9 @@
 		CA14D3D265B3B74E304A61D7 /* Pods-Common-Archipelago.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-Archipelago.debug.xcconfig"; path = "Target Support Files/Pods-Common-Archipelago/Pods-Common-Archipelago.debug.xcconfig"; sourceTree = "<group>"; };
 		CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncGatewayTaskBuilder.swift; sourceTree = "<group>"; };
 		CE8B635DA3424068A079D81E /* SyncProfileTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncProfileTaskBuilder.swift; sourceTree = "<group>"; };
+		CFACA4781FD19C0A7E602416 /* GatewayDeletionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayDeletionCoordinator.swift; sourceTree = "<group>"; };
 		D1025845F30FDFC9F8C9ACCB /* Pods_Common_SylSmart.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_SylSmart.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		D6CE8AF636BB4FFE942CAA9F /* ../TriggerZone/SiteTriggerZoneData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneData.swift; sourceTree = "<group>"; };
 		D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorRendering.swift; sourceTree = "<group>"; };
 		DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncExecutionSession+EmergencyFire.swift"; sourceTree = "<group>"; };
 		DB94D08D018A81456AF735FC /* Pods-Common-SLG Sync Plus.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SLG Sync Plus.release.xcconfig"; path = "Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus.release.xcconfig"; sourceTree = "<group>"; };
@@ -4319,6 +4514,7 @@
 		E08E6FB7E3FFE82A5A620CAF /* Pods-Common-SunSmart.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SunSmart.release.xcconfig"; path = "Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart.release.xcconfig"; sourceTree = "<group>"; };
 		E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorDelegates.swift; sourceTree = "<group>"; };
 		E51C037D44D1F333E8E14E98 /* Pods-Common-SLG Sync Plus.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SLG Sync Plus.debug.xcconfig"; path = "Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus.debug.xcconfig"; sourceTree = "<group>"; };
+		F0E8F30D155A131BDBDC78EE /* SpacePageSyncRead.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpacePageSyncRead.swift; sourceTree = "<group>"; };
 		F10000000000000000000001 /* AppBase.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AppBase.xcconfig; sourceTree = "<group>"; };
 		F10000000000000000000002 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		F10000000000000000000003 /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
@@ -4384,11 +4580,19 @@
 		F26090410000000000000101 /* EnergyStatisticsFilterPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyStatisticsFilterPolicy.swift; sourceTree = "<group>"; };
 		F26090700000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift; sourceTree = SOURCE_ROOT; };
 		F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceConfigurationSafety.swift; sourceTree = SOURCE_ROOT; };
+		F26091100000000000000001 /* InformationClockRecovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InformationClockRecovery.swift; sourceTree = "<group>"; };
+		F2609140000000000000200 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift; sourceTree = "<group>"; };
+		F2609140000000000000210 /* ../TriggerZone/SiteTriggerZoneTopologyReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneTopologyReader.swift; sourceTree = "<group>"; };
+		F2609140000000000000220 /* ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift; sourceTree = "<group>"; };
+		F26091510000000000000001 /* FeatureVisibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureVisibility.swift; sourceTree = "<group>"; };
+		F26091510000000000000002 /* debug_features.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = debug_features.json; sourceTree = "<group>"; };
+		F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceMembershipStore.swift; sourceTree = SOURCE_ROOT; };
+		F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceMembershipCoordinator.swift; sourceTree = SOURCE_ROOT; };
+		F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift; sourceTree = SOURCE_ROOT; };
 		F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncParameterTaskBuilder.swift; sourceTree = "<group>"; };
 		FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorState.swift; sourceTree = "<group>"; };
 		FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncRetryPolicy.swift; sourceTree = "<group>"; };
-		092609120000000000000001 /* DebugCloudJSONFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugCloudJSONFile.swift; sourceTree = "<group>"; };
-		092609120000000000000002 /* DebugCloudJSONExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugCloudJSONExporter.swift; sourceTree = "<group>"; };
+		FF4CE0208AB4FEC2A28B419B /* NodeSyncTopologySnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeSyncTopologySnapshot.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -5191,6 +5395,7 @@
 				C8CD5C282DDB06A300F09467 /* GroupPathSequencePathViewCell.swift */,
 				C8AC021B2DDD64AE0098E165 /* GroupPathSequenceTriggerZoneViewCell.swift */,
 				C8CD5BE72DDABF5C00F09467 /* GroupPathSequenceDeviceAddView.swift */,
+				ABACB40755EC4EB7B9843EE2 /* GroupPathSequenceBrowseConfiguration.swift */,
 				C8CD5BE92DDABFDC00F09467 /* GroupPathSequenceQuickAddView.swift */,
 				C8CD5BEB2DDAD45100F09467 /* GroupPathSequenceTriggerAddView.swift */,
 				C8AC845B2DE15F6000213DE2 /* GroupPathSequenceManuallyAddView.swift */,
@@ -5421,6 +5626,21 @@
 				F2608130000000000002200 /* SyncGatewaysDirtyTimeOverride.swift */,
 				F2608110000000000000200 /* SiteTimeZoneCatalog.swift */,
 				F2608110000000000000300 /* SitePropsEditPolicy.swift */,
+				154BFB1972C74A5A861900C9 /* ../TriggerZone/SiteTriggerZoneViewController.swift */,
+				04DF0E02938F412FBC885F03 /* ../TriggerZone/SiteTriggerZoneContentView.swift */,
+				959B7F8E7C225295876C500A /* ../TriggerZone/SiteTriggerZoneItemHeaderView.swift */,
+				2D54D3601C9A5C49B74362BF /* ../TriggerZone/SiteTriggerZoneItemCell.swift */,
+				496535143AA555DFA8D9869D /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift */,
+				2F2128472FBA54D99C09F203 /* ../TriggerZone/SiteTriggerZoneItemModel.swift */,
+				3B123BF6F756412589B5D1FA /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift */,
+				392FAB0358444160BCBE29FC /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift */,
+				8BAFAFE40DD648E99ECF0CBF /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift */,
+				328092E397014E308EBF7514 /* ../TriggerZone/SiteTriggerZoneCoordinator.swift */,
+				663B9D0F54C24D039BAA03E8 /* ../TriggerZone/SiteTriggerZoneStore.swift */,
+				D6CE8AF636BB4FFE942CAA9F /* ../TriggerZone/SiteTriggerZoneData.swift */,
+				F2609140000000000000200 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift */,
+				F2609140000000000000210 /* ../TriggerZone/SiteTriggerZoneTopologyReader.swift */,
+				F2609140000000000000220 /* ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift */,
 				F2608110000000000000400 /* SitePropsAPIClient.swift */,
 				F2608110000000000000500 /* SitePropsEditCoordinator.swift */,
 				F2608120000000000001000 /* SiteEntryTimeZoneSyncPolicy.swift */,
@@ -6061,6 +6281,7 @@
 		C8AADEF82A97326D00238C1C /* Common */ = {
 			isa = PBXGroup;
 			children = (
+				F26091510000000000000003 /* Config */,
 				C84A2C4A2C2D022E0064D3F1 /* Mesh */,
 				C8D58F642C1D33B10066B770 /* Cloud */,
 				C884EF732C05B91200B5F869 /* Network */,
@@ -6086,6 +6307,14 @@
 				C8699DB82C0978F300424A60 /* UserData.swift */,
 				C898E2E02AB840FE00C71315 /* MeshNetwork+SunSmart.swift */,
 				C8A3516F2D8EB1FF00325FC6 /* Node+SyncData.swift */,
+				822E40AF256280460760DAE3 /* NodeSyncReadContext.swift */,
+				23E72DEB715702E5821C506F /* SpaceSchedulerReadCoordinator.swift */,
+				F0E8F30D155A131BDBDC78EE /* SpacePageSyncRead.swift */,
+				8C7B5C927EB09075DE812CA1 /* NodeSyncTopologyStorage.swift */,
+				FF4CE0208AB4FEC2A28B419B /* NodeSyncTopologySnapshot.swift */,
+				3F30B7015EA95EB1973F9EC1 /* SpaceProtectionReadSnapshot.swift */,
+				402BBE20BB0B8974D93669FC /* AppPerformance.swift */,
+				65E7E0653BE57CBB8AC8AE68 /* NodeSyncStatusRefresh.swift */,
 				C8DDA0013003000000000001 /* DeviceScheduleAddressCleanup.swift */,
 				C8DDA0023003000000000001 /* DevicePermanentDeletionCleanup.swift */,
 				199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */,
@@ -6126,6 +6355,7 @@
 				C8B483D12E4B361F006D85BC /* device_add.mp3 */,
 				C8B483D22E4B361F006D85BC /* device_reset.mp3 */,
 				C89B78802CC1EFEA0048B746 /* devices_config.json */,
+				F26091510000000000000002 /* debug_features.json */,
 				C896B9B02A930BAA00217512 /* Assets.xcassets */,
 				C896B9B22A930BAA00217512 /* LaunchScreen.storyboard */,
 				C896B9B52A930BAA00217512 /* Info.plist */,
@@ -6258,7 +6488,12 @@
 				C8A0F00132A0000000000001 /* ProximityLightingTopologyPolicy.swift */,
 				F26090300000000000000001 /* ProximityLightingTopologyReconciler.swift */,
 				F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */,
+				F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */,
+				F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */,
+				F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */,
 				F26090700000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift */,
+				260915A00000000000000002 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift */,
+				260915A00000000000000001 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift */,
 				F26090300000000000000002 /* ProximityLightingLifecycleCoordinator.swift */,
 			);
 			path = Model;
@@ -6326,6 +6561,7 @@
 				C8D58F652C1D34090066B770 /* CloudSynchronizationManager.swift */,
 				092609120000000000000002 /* DebugCloudJSONExporter.swift */,
 				092609120000000000000001 /* DebugCloudJSONFile.swift */,
+				092609120000000000000003 /* DebugCloudJSONRecords.swift */,
 			);
 			path = Cloud;
 			sourceTree = "<group>";
@@ -6416,6 +6652,8 @@
 			children = (
 				F2608140000000000000100 /* GatewayMenuPolicy.swift */,
 				F26081500000000000003500 /* GatewayDetailProxyConnectionState.swift */,
+				B27A6139D1DCF407070F1CC0 /* GatewayDeletionContext.swift */,
+				CFACA4781FD19C0A7E602416 /* GatewayDeletionCoordinator.swift */,
 				F2608140000000000002700 /* GatewayTimeInformationCoordinator.swift */,
 				F2608170000000000003100 /* GatewayDetailClockCoordinator.swift */,
 				F2608130000000000002600 /* GatewayCloudSyncGenerationPolicy.swift */,
@@ -6533,6 +6771,14 @@
 				F26072200000000000000110 /* DeviceNameFilterSearchView.swift */,
 			);
 			path = View;
+			sourceTree = "<group>";
+		};
+		F26091510000000000000003 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				F26091510000000000000001 /* FeatureVisibility.swift */,
+			);
+			path = Config;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -6711,6 +6957,7 @@
 				08B54EFD30402CCB0017ED49 /* CodeScan.bundle in Resources */,
 				08B54EFE30402CCB0017ED49 /* broadcast_loading.gif in Resources */,
 				08B54EFF30402CCB0017ED49 /* devices_config.json in Resources */,
+				F26091510000000000000020 /* debug_features.json in Resources */,
 				08B54F0030402CCB0017ED49 /* XWHUDManager_error@3x.png in Resources */,
 				08B54F0130402CCB0017ED49 /* devices1.5.md in Resources */,
 				08B54F2530402CCB0017ED49 /* LumineuxAssets/Assets-Lumineux-Merged.xcassets in Resources */,
@@ -6744,6 +6991,7 @@
 				C885551F2DE6B44C00C8B688 /* XWHUDManager_error@2x.png in Resources */,
 				C88555202DE6B44C00C8B688 /* CodeScan.bundle in Resources */,
 				C88555212DE6B44C00C8B688 /* devices_config.json in Resources */,
+				F26091510000000000000021 /* debug_features.json in Resources */,
 				C88555322DE6B5C900C8B688 /* Archipelago-Info.plist in Resources */,
 				C88555222DE6B44C00C8B688 /* XWHUDManager_error@3x.png in Resources */,
 				C88555252DE6B44C00C8B688 /* XWHUDManager_info@2x.png in Resources */,
@@ -6773,6 +7021,7 @@
 				C886E17A2E30DE4900D0C3A6 /* XWHUDManager_error@2x.png in Resources */,
 				C886E17B2E30DE4900D0C3A6 /* CodeScan.bundle in Resources */,
 				C886E17C2E30DE4900D0C3A6 /* devices_config.json in Resources */,
+				F26091510000000000000022 /* debug_features.json in Resources */,
 				C886E1A02E30E63200D0C3A6 /* Assets-SylSmart.xcassets in Resources */,
 				C8CD4F4F2E337D8500E4DE1F /* User Agreement.html in Resources */,
 				C886E17D2E30DE4900D0C3A6 /* XWHUDManager_error@3x.png in Resources */,
@@ -6808,6 +7057,7 @@
 				C87EB4622BA17D3F00F9285B /* CodeScan.bundle in Resources */,
 				C85D55102E6182DC00BFEEDA /* broadcast_loading.gif in Resources */,
 				C89B78812CC1EFEB0048B746 /* devices_config.json in Resources */,
+				F26091510000000000000023 /* debug_features.json in Resources */,
 				C8C1E5AC2B6A1FDC00F60E62 /* XWHUDManager_error@3x.png in Resources */,
 				8CC3F7AE2FBAB35700CD3373 /* devices1.5.md in Resources */,
 				C896B9B12A930BAA00217512 /* Assets.xcassets in Resources */,
@@ -6839,6 +7089,7 @@
 				C8BB67732ED3F13A000C63EE /* Assets-SLGSync.xcassets in Resources */,
 				C8BB67622ED3F056000C63EE /* broadcast_loading.gif in Resources */,
 				C8BB67632ED3F056000C63EE /* devices_config.json in Resources */,
+				F26091510000000000000024 /* debug_features.json in Resources */,
 				C8BB67642ED3F056000C63EE /* XWHUDManager_error@3x.png in Resources */,
 				C8BB67652ED3F056000C63EE /* Assets.xcassets in Resources */,
 				C8BB67662ED3F056000C63EE /* XWHUDManager_info@2x.png in Resources */,
@@ -7103,6 +7354,21 @@
 				08B54C5F30402CCB0017ED49 /* SiteTimeSetMessageFactory.swift in Sources */,
 				08B54C6030402CCB0017ED49 /* SiteTimeZoneCatalog.swift in Sources */,
 				08B54C6130402CCB0017ED49 /* SitePropsEditPolicy.swift in Sources */,
+				6CBB1188A15047E2A3B5471C /* ../TriggerZone/SiteTriggerZoneViewController.swift in Sources */,
+				4495574E4E3B406BAF410B21 /* ../TriggerZone/SiteTriggerZoneContentView.swift in Sources */,
+				AD0CA511ED5C51489C92B87E /* ../TriggerZone/SiteTriggerZoneItemHeaderView.swift in Sources */,
+				2F2F48BFC9705633B3411236 /* ../TriggerZone/SiteTriggerZoneItemCell.swift in Sources */,
+				239F0495185E5EA5AF4BF2E9 /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift in Sources */,
+				9EF0C872DE925B4BA1D8350F /* ../TriggerZone/SiteTriggerZoneItemModel.swift in Sources */,
+				242F3EE12D9F4F3FB59EE400 /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift in Sources */,
+				F7D5E29923454120AF8BDCBC /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift in Sources */,
+				C92C2151CAE74AC6A7056274 /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift in Sources */,
+				E90B963C52EA40729CDB700C /* ../TriggerZone/SiteTriggerZoneCoordinator.swift in Sources */,
+				A441748F6325404B80CE11FD /* ../TriggerZone/SiteTriggerZoneStore.swift in Sources */,
+				19D52AAF6D794F1E816D7AFC /* ../TriggerZone/SiteTriggerZoneData.swift in Sources */,
+				F2609140000000000000201 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift in Sources */,
+				F2609140000000000000211 /* ../TriggerZone/SiteTriggerZoneTopologyReader.swift in Sources */,
+				F2609140000000000000221 /* ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift in Sources */,
 				08B54C6230402CCB0017ED49 /* SitePropsAPIClient.swift in Sources */,
 				08B54C6330402CCB0017ED49 /* SitePropsEditCoordinator.swift in Sources */,
 				08B54C6430402CCB0017ED49 /* SiteTimeZoneSelectionViewController.swift in Sources */,
@@ -7141,6 +7407,8 @@
 				08B54C8530402CCB0017ED49 /* GatewayDetailClockCoordinator.swift in Sources */,
 				08B54C8630402CCB0017ED49 /* GatewayMenuPolicy.swift in Sources */,
 				08B54C8730402CCB0017ED49 /* GatewayDetailProxyConnectionState.swift in Sources */,
+				E27B6D7C8FA265E11A17B5FC /* GatewayDeletionContext.swift in Sources */,
+				4FECD17C41B4A88BE54743F1 /* GatewayDeletionCoordinator.swift in Sources */,
 				08B54C8830402CCB0017ED49 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				08B54C8930402CCB0017ED49 /* SimulateFaultAction.swift in Sources */,
 				08B54C8A30402CCB0017ED49 /* SimulateFaultRequest.swift in Sources */,
@@ -7256,6 +7524,14 @@
 				08B54CF730402CCB0017ED49 /* BatchImportResultHelpController.swift in Sources */,
 				08B54CF830402CCB0017ED49 /* DeviceAddSectionBackgroundView.swift in Sources */,
 				08B54CF930402CCB0017ED49 /* Node+SyncData.swift in Sources */,
+				1082CC5FED2CD2C6956522F8 /* NodeSyncReadContext.swift in Sources */,
+				179252A1DE2E4B5F8EC47827 /* SpaceSchedulerReadCoordinator.swift in Sources */,
+				086B616CFCC46B5C2A29E4AA /* SpacePageSyncRead.swift in Sources */,
+				4474AD0F1EB7690DD33D34D2 /* NodeSyncTopologyStorage.swift in Sources */,
+				73C943066C805BD27DB9DC7E /* NodeSyncTopologySnapshot.swift in Sources */,
+				F19DD94FD0DAD99699745673 /* SpaceProtectionReadSnapshot.swift in Sources */,
+				9E2B0727EB4BE3646BD5385C /* AppPerformance.swift in Sources */,
+				4C35D17657761715AFA2E01C /* NodeSyncStatusRefresh.swift in Sources */,
 				08B54CFA30402CCB0017ED49 /* DeviceScheduleAddressCleanup.swift in Sources */,
 				08B54CFB30402CCB0017ED49 /* DevicePermanentDeletionCleanup.swift in Sources */,
 				BA503B180B8C4C67AE831DAA /* SiteDeviceOwnershipReconciler.swift in Sources */,
@@ -7342,6 +7618,7 @@
 				08B54D4C30402CCB0017ED49 /* DeviceAddCandidateDeviceListView.swift in Sources */,
 				08B54D4D30402CCB0017ED49 /* DeviceAddTargetSelectView.swift in Sources */,
 				08B54D4E30402CCB0017ED49 /* GroupPathSequenceDeviceAddView.swift in Sources */,
+				ACC4C8C005A64123A9E004AE /* GroupPathSequenceBrowseConfiguration.swift in Sources */,
 				08B54D4F30402CCB0017ED49 /* FSCalendarHeaderView.m in Sources */,
 				08B54D5030402CCB0017ED49 /* EnergyConsumptionInstructionView.swift in Sources */,
 				08B54D5130402CCB0017ED49 /* ProfileDayNightLuxViewController.swift in Sources */,
@@ -7479,6 +7756,7 @@
 				08B54DD530402CCB0017ED49 /* SceneMembersViewCell.swift in Sources */,
 				08B54DD630402CCB0017ED49 /* ScheduleServer.swift in Sources */,
 				08B54DD730402CCB0017ED49 /* SpaceMoreViewController.swift in Sources */,
+				F26091510000000000000010 /* FeatureVisibility.swift in Sources */,
 				08B54DD830402CCB0017ED49 /* SceneAddDataListViewCell.swift in Sources */,
 				08B54DD930402CCB0017ED49 /* EnergyStaticDataDeviceViewCell.swift in Sources */,
 				08B54DDA30402CCB0017ED49 /* LinePageControl.swift in Sources */,
@@ -7714,7 +7992,12 @@
 				C8A0F00232A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
 				F26090310000000000000001 /* ProximityLightingTopologyReconciler.swift in Sources */,
 				F26090720000000000000001 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */,
+				F260916B0000000000000301 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */,
+				F260916B0000000000000201 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */,
+				F260916B0000000000000101 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */,
 				F26090710000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */,
+				260915B00000000000000021 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */,
+				260915B00000000000000011 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */,
 				F26090320000000000000001 /* ProximityLightingLifecycleCoordinator.swift in Sources */,
 				08B54EBF30402CCB0017ED49 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				08B54EC030402CCB0017ED49 /* MeshFirmwareTypeUpdateViewCell.swift in Sources */,
@@ -7774,6 +8057,7 @@
 				08B54EDD30402CCB0017ED49 /* ExportData.swift in Sources */,
 				092609120000000000200001 /* DebugCloudJSONExporter.swift in Sources */,
 				092609120000000000100001 /* DebugCloudJSONFile.swift in Sources */,
+				092609120000000000300001 /* DebugCloudJSONRecords.swift in Sources */,
 				08B54EDE30402CCB0017ED49 /* CirclePieMarkerView.swift in Sources */,
 				08B54EDF30402CCB0017ED49 /* WMScrollView.m in Sources */,
 				08B54EE030402CCB0017ED49 /* DaylightSensorInstructionsHeaderView.swift in Sources */,
@@ -7798,6 +8082,21 @@
 				F2608160000000000000201 /* SiteTimeSetMessageFactory.swift in Sources */,
 				F2608110000000000000201 /* SiteTimeZoneCatalog.swift in Sources */,
 				F2608110000000000000301 /* SitePropsEditPolicy.swift in Sources */,
+				BB79E6DBD3A244CABCA8B5DA /* ../TriggerZone/SiteTriggerZoneViewController.swift in Sources */,
+				DA9432B52C5F448A851D8FC1 /* ../TriggerZone/SiteTriggerZoneContentView.swift in Sources */,
+				EDDE836C609A55D6A92961D8 /* ../TriggerZone/SiteTriggerZoneItemHeaderView.swift in Sources */,
+				82077EAE91105A2FB051C295 /* ../TriggerZone/SiteTriggerZoneItemCell.swift in Sources */,
+				F621BEBEAE6A5D4A8C2E5C1A /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift in Sources */,
+				442ED4DDE61A5015ACBDCF70 /* ../TriggerZone/SiteTriggerZoneItemModel.swift in Sources */,
+				3FB6E3B3ECFE47AFB2541CB3 /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift in Sources */,
+				FEE1FB25CC954BC291397481 /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift in Sources */,
+				6EA96793F71C4ACA838B74B7 /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift in Sources */,
+				9219B7792F424285A2B21A14 /* ../TriggerZone/SiteTriggerZoneCoordinator.swift in Sources */,
+				9A52212DAE0A4501B150AACF /* ../TriggerZone/SiteTriggerZoneStore.swift in Sources */,
+				A74BAAE36C924853BFC79B22 /* ../TriggerZone/SiteTriggerZoneData.swift in Sources */,
+				F2609140000000000000202 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift in Sources */,
+				F2609140000000000000212 /* ../TriggerZone/SiteTriggerZoneTopologyReader.swift in Sources */,
+				F2609140000000000000222 /* ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift in Sources */,
 				F2608110000000000000401 /* SitePropsAPIClient.swift in Sources */,
 				F2608110000000000000501 /* SitePropsEditCoordinator.swift in Sources */,
 				F2608110000000000000601 /* SiteTimeZoneSelectionViewController.swift in Sources */,
@@ -7836,6 +8135,8 @@
 				F2608170000000000003101 /* GatewayDetailClockCoordinator.swift in Sources */,
 				F2608140000000000000101 /* GatewayMenuPolicy.swift in Sources */,
 				F26081500000000000003501 /* GatewayDetailProxyConnectionState.swift in Sources */,
+				7CD3BD361D807870CF8DA319 /* GatewayDeletionContext.swift in Sources */,
+				7F5422D60F19C8DF31C37752 /* GatewayDeletionCoordinator.swift in Sources */,
 				F260810A0000000000000101 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				C8FA11012F11000100000001 /* SimulateFaultAction.swift in Sources */,
 				C8FB11012F11000400000001 /* SimulateFaultRequest.swift in Sources */,
@@ -7953,6 +8254,14 @@
 				C88553F52DE6B44C00C8B688 /* BatchImportResultHelpController.swift in Sources */,
 				C8B444A32E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift in Sources */,
 				C88553F62DE6B44C00C8B688 /* Node+SyncData.swift in Sources */,
+				D9068A499B72DEA5BBD4FE04 /* NodeSyncReadContext.swift in Sources */,
+				0836DD01EB2F96B384CE66AD /* SpaceSchedulerReadCoordinator.swift in Sources */,
+				73DEC597B405A3E51FB62A34 /* SpacePageSyncRead.swift in Sources */,
+				FDC40E80058A7403C1FD84A7 /* NodeSyncTopologyStorage.swift in Sources */,
+				B1FE29DA65B2AFFE4061B0FE /* NodeSyncTopologySnapshot.swift in Sources */,
+				0AE584301CE7E067813F3BBB /* SpaceProtectionReadSnapshot.swift in Sources */,
+				B5D1B6BAABF4CE91144C6849 /* AppPerformance.swift in Sources */,
+				8A552264EC85818C0F39049A /* NodeSyncStatusRefresh.swift in Sources */,
 				C8DDA0113003000000000001 /* DeviceScheduleAddressCleanup.swift in Sources */,
 				C8DDA0213003000000000001 /* DevicePermanentDeletionCleanup.swift in Sources */,
 				67C0DB5D726D4866BCC1C8F7 /* SiteDeviceOwnershipReconciler.swift in Sources */,
@@ -8027,6 +8336,7 @@
 				C8A85CE22E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift in Sources */,
 				C8A85CE52E0A4886007F9B81 /* DeviceAddTargetSelectView.swift in Sources */,
 				C88554212DE6B44C00C8B688 /* GroupPathSequenceDeviceAddView.swift in Sources */,
+				A92143EE631744C4AE135D7E /* GroupPathSequenceBrowseConfiguration.swift in Sources */,
 				C88554222DE6B44C00C8B688 /* FSCalendarHeaderView.m in Sources */,
 				C88554232DE6B44C00C8B688 /* EnergyConsumptionInstructionView.swift in Sources */,
 				C8A8D7452EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */,
@@ -8172,6 +8482,7 @@
 				C88554672DE6B44C00C8B688 /* SceneMembersViewCell.swift in Sources */,
 				C88554682DE6B44C00C8B688 /* ScheduleServer.swift in Sources */,
 				C88554692DE6B44C00C8B688 /* SpaceMoreViewController.swift in Sources */,
+				F26091510000000000000011 /* FeatureVisibility.swift in Sources */,
 				C885546A2DE6B44C00C8B688 /* SceneAddDataListViewCell.swift in Sources */,
 				C885546B2DE6B44C00C8B688 /* EnergyStaticDataDeviceViewCell.swift in Sources */,
 				C885546C2DE6B44C00C8B688 /* LinePageControl.swift in Sources */,
@@ -8398,7 +8709,12 @@
 				C8A0F00332A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
 				F26090310000000000000002 /* ProximityLightingTopologyReconciler.swift in Sources */,
 				F26090720000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */,
+				F260916B0000000000000302 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */,
+				F260916B0000000000000202 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */,
+				F260916B0000000000000102 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */,
 				F26090710000000000000002 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */,
+				260915B00000000000000022 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */,
+				260915B00000000000000012 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */,
 				F26090320000000000000002 /* ProximityLightingLifecycleCoordinator.swift in Sources */,
 				C88554F12DE6B44C00C8B688 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				8C7788FF2F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift in Sources */,
@@ -8463,6 +8779,7 @@
 				C88555072DE6B44C00C8B688 /* ExportData.swift in Sources */,
 				092609120000000000200002 /* DebugCloudJSONExporter.swift in Sources */,
 				092609120000000000100002 /* DebugCloudJSONFile.swift in Sources */,
+				092609120000000000300002 /* DebugCloudJSONRecords.swift in Sources */,
 				C88555082DE6B44C00C8B688 /* CirclePieMarkerView.swift in Sources */,
 				8C778C222FA34688000887FE /* PJEightKeySwitchMonitorStatusSetView.swift in Sources */,
 				8C778BDC2FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift in Sources */,
@@ -8493,6 +8810,21 @@
 				F2608160000000000000202 /* SiteTimeSetMessageFactory.swift in Sources */,
 				F2608110000000000000202 /* SiteTimeZoneCatalog.swift in Sources */,
 				F2608110000000000000302 /* SitePropsEditPolicy.swift in Sources */,
+				329A4E15E9DA40888CCBE8D6 /* ../TriggerZone/SiteTriggerZoneViewController.swift in Sources */,
+				6256223098F74C39BA434977 /* ../TriggerZone/SiteTriggerZoneContentView.swift in Sources */,
+				3A1B5AE97D3B58E4BFAAA805 /* ../TriggerZone/SiteTriggerZoneItemHeaderView.swift in Sources */,
+				2BFBA6FDD46C58BE853C3589 /* ../TriggerZone/SiteTriggerZoneItemCell.swift in Sources */,
+				DF2E645226CA54E8A4C220AC /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift in Sources */,
+				2907345B22D95406A6FA4EB1 /* ../TriggerZone/SiteTriggerZoneItemModel.swift in Sources */,
+				40CC1FFCBE354C9B8F5D9907 /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift in Sources */,
+				5989A5823F05479B80061EC2 /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift in Sources */,
+				D78290660D024B8E8015FE86 /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift in Sources */,
+				7BA552BFAF76410E95F4834D /* ../TriggerZone/SiteTriggerZoneCoordinator.swift in Sources */,
+				E4650E2CC7BD436F84FEE575 /* ../TriggerZone/SiteTriggerZoneStore.swift in Sources */,
+				CE33830D778F4A9D8F5F83F6 /* ../TriggerZone/SiteTriggerZoneData.swift in Sources */,
+				F2609140000000000000203 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift in Sources */,
+				F2609140000000000000213 /* ../TriggerZone/SiteTriggerZoneTopologyReader.swift in Sources */,
+				F2609140000000000000223 /* ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift in Sources */,
 				F2608110000000000000402 /* SitePropsAPIClient.swift in Sources */,
 				F2608110000000000000502 /* SitePropsEditCoordinator.swift in Sources */,
 				F2608110000000000000602 /* SiteTimeZoneSelectionViewController.swift in Sources */,
@@ -8531,6 +8863,8 @@
 				F2608170000000000003102 /* GatewayDetailClockCoordinator.swift in Sources */,
 				F2608140000000000000102 /* GatewayMenuPolicy.swift in Sources */,
 				F26081500000000000003502 /* GatewayDetailProxyConnectionState.swift in Sources */,
+				0DFC463F67CE976FDA6EA791 /* GatewayDeletionContext.swift in Sources */,
+				5D609FC7796C9A701C9C21E4 /* GatewayDeletionCoordinator.swift in Sources */,
 				F260810A0000000000000102 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				C8FA11012F11000100000002 /* SimulateFaultAction.swift in Sources */,
 				C8FB11012F11000400000002 /* SimulateFaultRequest.swift in Sources */,
@@ -8648,6 +8982,14 @@
 				C886E0462E30DE4900D0C3A6 /* BatchImportResultHelpController.swift in Sources */,
 				C8B444A52E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift in Sources */,
 				C886E0472E30DE4900D0C3A6 /* Node+SyncData.swift in Sources */,
+				A04C3EF76BE36D0D84A3EF6A /* NodeSyncReadContext.swift in Sources */,
+				71DED501C8438D1DDB66186C /* SpaceSchedulerReadCoordinator.swift in Sources */,
+				2C5663599A9BE08DDEFA7A2E /* SpacePageSyncRead.swift in Sources */,
+				BC4CA556FCF8EB79AE1D34C8 /* NodeSyncTopologyStorage.swift in Sources */,
+				51FBDA12D0505A6CD2413768 /* NodeSyncTopologySnapshot.swift in Sources */,
+				053FD281E651483703BF86B3 /* SpaceProtectionReadSnapshot.swift in Sources */,
+				C4B49A3F24503FCF2E80CA4E /* AppPerformance.swift in Sources */,
+				1C19EA72705F013792205CE6 /* NodeSyncStatusRefresh.swift in Sources */,
 				C8DDA0123003000000000001 /* DeviceScheduleAddressCleanup.swift in Sources */,
 				C8DDA0223003000000000001 /* DevicePermanentDeletionCleanup.swift in Sources */,
 				297EE68B722E4EDCAF2005C7 /* SiteDeviceOwnershipReconciler.swift in Sources */,
@@ -8723,6 +9065,7 @@
 				C8A85CE62E0A4886007F9B81 /* DeviceAddTargetSelectView.swift in Sources */,
 				C886E07A2E30DE4900D0C3A6 /* FSCalendar.m in Sources */,
 				C886E0732E30DE4900D0C3A6 /* GroupPathSequenceDeviceAddView.swift in Sources */,
+				7431593421BA47B48F414FD2 /* GroupPathSequenceBrowseConfiguration.swift in Sources */,
 				C886E0742E30DE4900D0C3A6 /* FSCalendarHeaderView.m in Sources */,
 				C886E0752E30DE4900D0C3A6 /* EnergyConsumptionInstructionView.swift in Sources */,
 				C8A8D7442EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */,
@@ -8868,6 +9211,7 @@
 				C886E0BD2E30DE4900D0C3A6 /* SceneMembersViewCell.swift in Sources */,
 				C886E0BE2E30DE4900D0C3A6 /* ScheduleServer.swift in Sources */,
 				C886E0BF2E30DE4900D0C3A6 /* SpaceMoreViewController.swift in Sources */,
+				F26091510000000000000012 /* FeatureVisibility.swift in Sources */,
 				C886E0C02E30DE4900D0C3A6 /* SceneAddDataListViewCell.swift in Sources */,
 				C886E0C12E30DE4900D0C3A6 /* EnergyStaticDataDeviceViewCell.swift in Sources */,
 				C886E0C22E30DE4900D0C3A6 /* LinePageControl.swift in Sources */,
@@ -9094,7 +9438,12 @@
 				C8A0F00432A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
 				F26090310000000000000003 /* ProximityLightingTopologyReconciler.swift in Sources */,
 				F26090720000000000000003 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */,
+				F260916B0000000000000303 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */,
+				F260916B0000000000000203 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */,
+				F260916B0000000000000103 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */,
 				F26090710000000000000003 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */,
+				260915B00000000000000023 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */,
+				260915B00000000000000013 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */,
 				F26090320000000000000003 /* ProximityLightingLifecycleCoordinator.swift in Sources */,
 				C886E14D2E30DE4900D0C3A6 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				8C7788FE2F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift in Sources */,
@@ -9159,6 +9508,7 @@
 				C886E1632E30DE4900D0C3A6 /* ExportData.swift in Sources */,
 				092609120000000000200003 /* DebugCloudJSONExporter.swift in Sources */,
 				092609120000000000100003 /* DebugCloudJSONFile.swift in Sources */,
+				092609120000000000300003 /* DebugCloudJSONRecords.swift in Sources */,
 				C886E1642E30DE4900D0C3A6 /* CirclePieMarkerView.swift in Sources */,
 				8C778C232FA34688000887FE /* PJEightKeySwitchMonitorStatusSetView.swift in Sources */,
 				8C778BDB2FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift in Sources */,
@@ -9189,6 +9539,21 @@
 				F2608160000000000000203 /* SiteTimeSetMessageFactory.swift in Sources */,
 				F2608110000000000000203 /* SiteTimeZoneCatalog.swift in Sources */,
 				F2608110000000000000303 /* SitePropsEditPolicy.swift in Sources */,
+				3937682FAB814778874D1620 /* ../TriggerZone/SiteTriggerZoneViewController.swift in Sources */,
+				C7234FE10DC44AA79AD78D40 /* ../TriggerZone/SiteTriggerZoneContentView.swift in Sources */,
+				BC31AC95029A563DBD19AE96 /* ../TriggerZone/SiteTriggerZoneItemHeaderView.swift in Sources */,
+				5D3E53BDC26E5D61BAFFFB4B /* ../TriggerZone/SiteTriggerZoneItemCell.swift in Sources */,
+				CB571E9F60B15400B27C0516 /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift in Sources */,
+				AB95C7F3341F559891FC4E51 /* ../TriggerZone/SiteTriggerZoneItemModel.swift in Sources */,
+				7741D97284E54E13A0F938CF /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift in Sources */,
+				5B5E3012A37C4DF392044EC8 /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift in Sources */,
+				32E1DEEED4FE40498C304D21 /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift in Sources */,
+				5D84E180E2BD41759EAD2D91 /* ../TriggerZone/SiteTriggerZoneCoordinator.swift in Sources */,
+				DD59B7AC9CDB45BDA0B7E6A6 /* ../TriggerZone/SiteTriggerZoneStore.swift in Sources */,
+				1650039162C947AF98A1FC38 /* ../TriggerZone/SiteTriggerZoneData.swift in Sources */,
+				F2609140000000000000204 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift in Sources */,
+				F2609140000000000000214 /* ../TriggerZone/SiteTriggerZoneTopologyReader.swift in Sources */,
+				F2609140000000000000224 /* ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift in Sources */,
 				F2608110000000000000403 /* SitePropsAPIClient.swift in Sources */,
 				F2608110000000000000503 /* SitePropsEditCoordinator.swift in Sources */,
 				F2608110000000000000603 /* SiteTimeZoneSelectionViewController.swift in Sources */,
@@ -9227,6 +9592,8 @@
 				F2608170000000000003103 /* GatewayDetailClockCoordinator.swift in Sources */,
 				F2608140000000000000103 /* GatewayMenuPolicy.swift in Sources */,
 				F26081500000000000003503 /* GatewayDetailProxyConnectionState.swift in Sources */,
+				3464D9C6D2D887FF33331C80 /* GatewayDeletionContext.swift in Sources */,
+				2C05F98998D39F5F0029BBA9 /* GatewayDeletionCoordinator.swift in Sources */,
 				F260810A0000000000000103 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				C8FA11012F11000100000003 /* SimulateFaultAction.swift in Sources */,
 				C8FB11012F11000400000003 /* SimulateFaultRequest.swift in Sources */,
@@ -9342,6 +9709,14 @@
 				C88DE4492C085A5D005A38C1 /* BatchImportResultHelpController.swift in Sources */,
 				C8B444A42E669DD8002F4CD6 /* DeviceAddSectionBackgroundView.swift in Sources */,
 				C8A351702D8EB1FF00325FC6 /* Node+SyncData.swift in Sources */,
+				115F67B989B0EA13AED61632 /* NodeSyncReadContext.swift in Sources */,
+				98D5A8CD172E9F14EB9FFD69 /* SpaceSchedulerReadCoordinator.swift in Sources */,
+				AE487ED6F067C21D083482B8 /* SpacePageSyncRead.swift in Sources */,
+				C4B85346D756FFDE36D44863 /* NodeSyncTopologyStorage.swift in Sources */,
+				F6F825DBB9162A0A64B265FC /* NodeSyncTopologySnapshot.swift in Sources */,
+				90057C0545CB24727D8453B8 /* SpaceProtectionReadSnapshot.swift in Sources */,
+				F8B039C414E08A98492522FF /* AppPerformance.swift in Sources */,
+				3AC96C0575BBC20FC54DA192 /* NodeSyncStatusRefresh.swift in Sources */,
 				C8DDA0133003000000000001 /* DeviceScheduleAddressCleanup.swift in Sources */,
 				C8DDA0233003000000000001 /* DevicePermanentDeletionCleanup.swift in Sources */,
 				734A6B4A739549B6A19BB925 /* SiteDeviceOwnershipReconciler.swift in Sources */,
@@ -9428,6 +9803,7 @@
 				C8A85CE12E0A4886007F9B81 /* DeviceAddCandidateDeviceListView.swift in Sources */,
 				C8A85CE32E0A4886007F9B81 /* DeviceAddTargetSelectView.swift in Sources */,
 				C8CD5BE82DDABF5C00F09467 /* GroupPathSequenceDeviceAddView.swift in Sources */,
+				89F4EF20CBFC4DF09E9CB636 /* GroupPathSequenceBrowseConfiguration.swift in Sources */,
 				C8DA6A132DB8800B00E32092 /* FSCalendarHeaderView.m in Sources */,
 				C8AEB9A52DCB45FD0053102B /* EnergyConsumptionInstructionView.swift in Sources */,
 				C8A8D7462EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */,
@@ -9565,6 +9941,7 @@
 				C898F7042B3AB698008B4124 /* SceneMembersViewCell.swift in Sources */,
 				C898D1D02B59134A00B2033B /* ScheduleServer.swift in Sources */,
 				C8AC50982C4E2FF1003CE437 /* SpaceMoreViewController.swift in Sources */,
+				F26091510000000000000013 /* FeatureVisibility.swift in Sources */,
 				C8A3EE802B33E43C0082A772 /* SceneAddDataListViewCell.swift in Sources */,
 				C8002CD22DD33D60002A8629 /* EnergyStaticDataDeviceViewCell.swift in Sources */,
 				C8BF088E2B299DD700144BAC /* LinePageControl.swift in Sources */,
@@ -9800,7 +10177,12 @@
 				C8A0F00532A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
 				F26090310000000000000004 /* ProximityLightingTopologyReconciler.swift in Sources */,
 				F26090720000000000000004 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */,
+				F260916B0000000000000304 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */,
+				F260916B0000000000000204 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */,
+				F260916B0000000000000104 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */,
 				F26090710000000000000004 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */,
+				260915B00000000000000024 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */,
+				260915B00000000000000014 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */,
 				F26090320000000000000004 /* ProximityLightingLifecycleCoordinator.swift in Sources */,
 				C8CD5BEA2DDABFDC00F09467 /* GroupPathSequenceQuickAddView.swift in Sources */,
 				C89C70B12CD31DC900B9A76A /* MeshFirmwareTypeUpdateViewCell.swift in Sources */,
@@ -9860,6 +10242,7 @@
 				C8D663712BFEDDE000BFF81A /* ExportData.swift in Sources */,
 				092609120000000000200004 /* DebugCloudJSONExporter.swift in Sources */,
 				092609120000000000100004 /* DebugCloudJSONFile.swift in Sources */,
+				092609120000000000300004 /* DebugCloudJSONRecords.swift in Sources */,
 				C88CCD8E2DD442CA003D5754 /* CirclePieMarkerView.swift in Sources */,
 				C898EA612AC2BD8B0023B480 /* WMScrollView.m in Sources */,
 				C8047F272B8F3A7200A09FFA /* DaylightSensorInstructionsHeaderView.swift in Sources */,
@@ -9884,6 +10267,21 @@
 				F2608160000000000000204 /* SiteTimeSetMessageFactory.swift in Sources */,
 				F2608110000000000000204 /* SiteTimeZoneCatalog.swift in Sources */,
 				F2608110000000000000304 /* SitePropsEditPolicy.swift in Sources */,
+				A8218588333A4EBD83B49026 /* ../TriggerZone/SiteTriggerZoneViewController.swift in Sources */,
+				C39D2F0885274A2C85696239 /* ../TriggerZone/SiteTriggerZoneContentView.swift in Sources */,
+				91D5DD4F656D558EAA48AC20 /* ../TriggerZone/SiteTriggerZoneItemHeaderView.swift in Sources */,
+				0B533BD5B2EF5D3B89AC5157 /* ../TriggerZone/SiteTriggerZoneItemCell.swift in Sources */,
+				F33FAD57616D53F9A5030FF4 /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift in Sources */,
+				E710820FAB885D58AE1D42AF /* ../TriggerZone/SiteTriggerZoneItemModel.swift in Sources */,
+				7F78EA80D751466DB0884A03 /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift in Sources */,
+				8BE469FC78CB435EBDA8E93D /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift in Sources */,
+				3CB71F331A444946AB39DF5F /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift in Sources */,
+				EA72537650B9492F846C526C /* ../TriggerZone/SiteTriggerZoneCoordinator.swift in Sources */,
+				280496ECC5884DC8BE037C2D /* ../TriggerZone/SiteTriggerZoneStore.swift in Sources */,
+				ECAA108436E54FB8A885381C /* ../TriggerZone/SiteTriggerZoneData.swift in Sources */,
+				F2609140000000000000205 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift in Sources */,
+				F2609140000000000000215 /* ../TriggerZone/SiteTriggerZoneTopologyReader.swift in Sources */,
+				F2609140000000000000225 /* ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift in Sources */,
 				F2608110000000000000404 /* SitePropsAPIClient.swift in Sources */,
 				F2608110000000000000504 /* SitePropsEditCoordinator.swift in Sources */,
 				F2608110000000000000604 /* SiteTimeZoneSelectionViewController.swift in Sources */,
@@ -9922,6 +10320,8 @@
 				F2608170000000000003104 /* GatewayDetailClockCoordinator.swift in Sources */,
 				F2608140000000000000104 /* GatewayMenuPolicy.swift in Sources */,
 				F26081500000000000003504 /* GatewayDetailProxyConnectionState.swift in Sources */,
+				CE913AD382397B8A2604C026 /* GatewayDeletionContext.swift in Sources */,
+				107311C8932C6FC8573ABFB2 /* GatewayDeletionCoordinator.swift in Sources */,
 				F260810A0000000000000104 /* DeviceRestoreDefaultTransitionTimePolicy.swift in Sources */,
 				C8FA11012F11000100000004 /* SimulateFaultAction.swift in Sources */,
 				C8FB11012F11000400000004 /* SimulateFaultRequest.swift in Sources */,
@@ -10039,6 +10439,14 @@
 				C8BB65F92ED3F056000C63EE /* BatchImportResultHelpController.swift in Sources */,
 				C8BB65FA2ED3F056000C63EE /* DeviceAddSectionBackgroundView.swift in Sources */,
 				C8BB65FB2ED3F056000C63EE /* Node+SyncData.swift in Sources */,
+				2AB19399B4161D8589670A55 /* NodeSyncReadContext.swift in Sources */,
+				56AD80FC8A0CE4518363BA1D /* SpaceSchedulerReadCoordinator.swift in Sources */,
+				DF46FB4076F9E05E5D710126 /* SpacePageSyncRead.swift in Sources */,
+				7497BF094A6CDCCCCA82D087 /* NodeSyncTopologyStorage.swift in Sources */,
+				EA679C3DC618521CAB9E7333 /* NodeSyncTopologySnapshot.swift in Sources */,
+				0B813AF4DF11FD1927EB577D /* SpaceProtectionReadSnapshot.swift in Sources */,
+				13FF3A0386C440FF2A120D35 /* AppPerformance.swift in Sources */,
+				443305C1158AA8B6AD1DE42E /* NodeSyncStatusRefresh.swift in Sources */,
 				C8DDA0143003000000000001 /* DeviceScheduleAddressCleanup.swift in Sources */,
 				C8DDA0243003000000000001 /* DevicePermanentDeletionCleanup.swift in Sources */,
 				991A7D0B08964DB58D6F1C2D /* SiteDeviceOwnershipReconciler.swift in Sources */,
@@ -10114,6 +10522,7 @@
 				C8A85CE72E0A4886007F9B81 /* DeviceAddTargetSelectView.swift in Sources */,
 				C8BB66372ED3F056000C63EE /* FSCalendarDelegationProxy.m in Sources */,
 				C8BB662D2ED3F056000C63EE /* GroupPathSequenceDeviceAddView.swift in Sources */,
+				52CAF194BDA84FE696B20255 /* GroupPathSequenceBrowseConfiguration.swift in Sources */,
 				C8BB662E2ED3F056000C63EE /* FSCalendarHeaderView.m in Sources */,
 				C8BB662F2ED3F056000C63EE /* EnergyConsumptionInstructionView.swift in Sources */,
 				C8A8D7472EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */,
@@ -10259,6 +10668,7 @@
 				C8BB66852ED3F056000C63EE /* SceneMembersViewCell.swift in Sources */,
 				C8BB66862ED3F056000C63EE /* ScheduleServer.swift in Sources */,
 				C8BB66872ED3F056000C63EE /* SpaceMoreViewController.swift in Sources */,
+				F26091510000000000000014 /* FeatureVisibility.swift in Sources */,
 				C8BB66882ED3F056000C63EE /* SceneAddDataListViewCell.swift in Sources */,
 				C8BB66892ED3F056000C63EE /* EnergyStaticDataDeviceViewCell.swift in Sources */,
 				C8BB668A2ED3F056000C63EE /* LinePageControl.swift in Sources */,
@@ -10485,7 +10895,12 @@
 				C8A0F00632A0000000000001 /* ProximityLightingTopologyPolicy.swift in Sources */,
 				F26090310000000000000005 /* ProximityLightingTopologyReconciler.swift in Sources */,
 				F26090720000000000000005 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */,
+				F260916B0000000000000305 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */,
+				F260916B0000000000000205 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */,
+				F260916B0000000000000105 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */,
 				F26090710000000000000005 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift in Sources */,
+				260915B00000000000000025 /* SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift in Sources */,
+				260915B00000000000000015 /* SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift in Sources */,
 				F26090320000000000000005 /* ProximityLightingLifecycleCoordinator.swift in Sources */,
 				C8BB672C2ED3F056000C63EE /* GroupPathSequenceQuickAddView.swift in Sources */,
 				8C7789012F9758FF000887FE /* LinkedEmerFireGroupSelectionVC.swift in Sources */,
@@ -10550,6 +10965,7 @@
 				C8BB67462ED3F056000C63EE /* ExportData.swift in Sources */,
 				092609120000000000200005 /* DebugCloudJSONExporter.swift in Sources */,
 				092609120000000000100005 /* DebugCloudJSONFile.swift in Sources */,
+				092609120000000000300005 /* DebugCloudJSONRecords.swift in Sources */,
 				C8BB67472ED3F056000C63EE /* CirclePieMarkerView.swift in Sources */,
 				8C778C212FA34688000887FE /* PJEightKeySwitchMonitorStatusSetView.swift in Sources */,
 				8C778BDD2FA20E1D000887FE /* PJEightKeySwitchMoreSettingsViewModel.swift in Sources */,
@@ -10639,7 +11055,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.2.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lumineux.lumismart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -10664,7 +11080,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.2.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lumineux.lumismart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -10676,7 +11092,7 @@
 			baseConfigurationReference = F10000000000000000000006 /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Archipelago/Archipelago.entitlements;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.2.6;
 			};
 			name = Debug;
 		};
@@ -10685,7 +11101,7 @@
 			baseConfigurationReference = F10000000000000000000007 /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Archipelago/Archipelago.entitlements;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.2.6;
 			};
 			name = Release;
 		};
@@ -10694,7 +11110,7 @@
 			baseConfigurationReference = F10000000000000000000009 /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SylSmart/SylSmart.entitlements;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.2.6;
 			};
 			name = Debug;
 		};
@@ -10703,7 +11119,7 @@
 			baseConfigurationReference = F1000000000000000000000A /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SylSmart/SylSmart.entitlements;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.2.6;
 			};
 			name = Release;
 		};
@@ -10839,7 +11255,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.2.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Debug;
@@ -10860,7 +11276,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.2.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Release;
@@ -10873,7 +11289,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.2.6;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Debug;
@@ -10886,7 +11302,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.2.3;
+				MARKETING_VERSION = 1.2.6;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Release;

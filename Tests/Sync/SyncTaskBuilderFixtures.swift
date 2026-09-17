@@ -79,6 +79,7 @@ final class Node: Equatable {
     var deviceType: DeviceType = .light
     var isWiFiGateway = false
     var networkKeys: [NetworkKey] = []
+    var orphanAddresses: Set<Address> = []
     var inputs: [NodeSyncData] = []
     var requests: [(NodeSyncType, GroupProfileSyncContext?)] = []
     func getSyncData(type: NodeSyncType, profileSyncContext: GroupProfileSyncContext? = nil) -> [NodeSyncData] {
@@ -87,6 +88,7 @@ final class Node: Equatable {
     }
 }
 enum ActionType {
+    case missingGroupSubscriptions
     case collectionSchedule(index: Int, entry: SchedulerRegistryEntry)
     case group(group: Group), profile(type: ProfileType), pirEnabled(Bool)
     case scene(sceneId: UInt16, executeData: SceneExecuteData?), schedule(schedule: Schedule)
@@ -131,4 +133,9 @@ enum DeviceOperationType {
 }
 enum SyncDevicesViewController {
     enum GatewayRecoveryTrigger { case devicesNotSynced, repair }
+}
+
+enum MissingGroupSubscriptionCleanup {
+    static func addresses(for node: Node) -> Set<Address> { node.orphanAddresses }
+    static func finish(for node: Node) -> Bool { node.orphanAddresses.isEmpty }
 }

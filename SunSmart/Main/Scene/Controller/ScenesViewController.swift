@@ -33,7 +33,9 @@ class ScenesViewController: UIViewController {
     private var editView: UIView!
     private var doneBtn: UIButton!
     /// 是否需要更新数据源
-    private var refreshData: Bool = false
+    private var refreshData: Bool = true
+    private var renderedRevision: SpacePageRevision?
+    private var isPageVisible = false
     
     private var isEdit: Bool = false
     
@@ -69,11 +71,10 @@ class ScenesViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        
-//        if refreshData {
-//            refreshData = false
+        isPageVisible = true
+        if refreshData || renderedRevision?.isCurrent != true {
             updateUI()
-//        }
+        }
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -84,6 +85,11 @@ class ScenesViewController: UIViewController {
         }
     }
     
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        isPageVisible = false
+    }
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
@@ -93,10 +99,10 @@ class ScenesViewController: UIViewController {
     /// 添加通知监听
     private func addNotification() {
         
-        NotificationCenter.default.addObserver(forName: .init(scenesRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
+        NotificationCenter.default.addObserver(forName: .init(scenesRefreshNotificationName), object: nil, queue: .main) {[weak self] _ in
             guard let self = self else { return }
-            if self.view.window != nil {
-                self.updateUI()
+            if self.isPageVisible && self.viewIfLoaded?.window != nil {
+                self.refreshVisibleUI()
             }else {
                 self.refreshData = true
             }
@@ -104,7 +110,7 @@ class ScenesViewController: UIViewController {
             self.space.save()
         }
         
-        NotificationCenter.default.addObserver(forName: .init(sceneDataUpdateNotificationName), object: nil, queue: nil) { [weak self] notification in
+        NotificationCenter.default.addObserver(forName: .init(sceneDataUpdateNotificationName), object: nil, queue: .main) { [weak self] notification in
             guard let self = self, let scene = notification.object as? Scene else {
                 return
             }
@@ -112,9 +118,9 @@ class ScenesViewController: UIViewController {
         }
         
         // space编辑权限变更回调
-        NotificationCenter.default.addObserver(forName: .init(spacePermissionChangedNotificaitonName), object: nil, queue: nil) {[weak self] notification in
+        NotificationCenter.default.addObserver(forName: .init(spacePermissionChangedNotificaitonName), object: nil, queue: .main) {[weak self] notification in
             guard let self = self else { return }
-            self.updateUI()
+            self.refreshVisibleUI()
         }
         
     }
@@ -220,7 +226,15 @@ class ScenesViewController: UIViewController {
     }
     
     /// 刷新UI
+    private func refreshVisibleUI() {
+        refreshData = true
+        guard isPageVisible, viewIfLoaded?.window != nil else { return }
+        updateUI()
+    }
+
     private func updateUI() {
+        guard isViewLoaded else { refreshData = true; return }
+        defer { refreshData = false; renderedRevision = SpacePageRevision() }
         
         let scenes = visibleScenes
         self.scenes = scenes
@@ -317,7 +331,7 @@ class ScenesViewController: UIViewController {
             return
         }
         let latestScenes = visibleScenes
-        guard view.window != nil else {
+        guard isPageVisible, viewIfLoaded?.window != nil else {
             refreshData = true
             scenes = latestScenes
             return

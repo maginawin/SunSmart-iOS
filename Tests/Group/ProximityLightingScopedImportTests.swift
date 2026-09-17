@@ -16,7 +16,10 @@ struct SpaceTriggerZone: Codable, Equatable {
     var items: [Item]
 }
 final class Profile {
-    enum ProfileType: Int { case ordinary = 0, proximityLighting = 7, proximityLightingWithPhotocell = 8 }
+    enum ProfileType: Int {
+        case ordinary = 1, vacancyDaylight = 2, occupancy = 3, vacancy = 4, daylight = 5, manual = 6
+        case proximityLighting = 7, proximityLightingWithPhotocell = 8
+    }
     var type: ProfileType = .proximityLighting
     var proximityLightingNumber: UInt8 = 2
 }
@@ -74,6 +77,15 @@ final class Model {
     var subscribed: [Address] = []
     var isVendor = false
     var subscriptions: [Group] { (parentElement?.parentNode?.network?.groups ?? []).filter { subscribed.contains($0.address.address) } }
+    func isSubscribed(to address: MeshAddress) -> Bool { subscribed.contains(address.address) }
+}
+
+// Import runs outside a UI refresh batch. The production batch implementation
+// is exercised separately by NodeSyncStatusRefreshTests.
+final class NodeSyncReadContext {
+    static var current: NodeSyncReadContext? { nil }
+    func plan(for node: Node, contextGroup: Group?) -> ProximityLightingTopologyPlanner.Plan? { nil }
+    func mergedTarget(for node: Node, local: ProximityLightingTopologyPolicy.Target) -> ProximityLightingTopologyPolicy.Target? { local }
 }
 final class Node: Decodable {
     static var decodeCount = 0
@@ -187,6 +199,8 @@ enum SpaceConfigurationSafety {
     static func isCurrent(_ context: SpaceRecoveryState, space: SpaceData) -> Bool {
         (try? recoveryState(space).matches(context)) == true
     }
+    static let cleanupRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+    static func directory(_ space: SpaceData) throws -> URL { cleanupRoot.appendingPathComponent(space.id) }
     // RECEIPT_METHODS
     static func isBlocked(_ space: SpaceData) -> Bool { blocked || hasPendingDeletionCleanup(space) }
     static func hasPendingImport(_ space: SpaceData) -> Bool { pendingImport }
@@ -291,11 +305,50 @@ enum NodeSyncData: Equatable {
         var legacy = payload(); var legacyExtension = legacy["spaceData"] as! [String: Any]
         legacyExtension.removeValue(forKey: "proximityLightingSchemaVersion"); legacy["spaceData"] = legacyExtension
         require(preflight(legacy)?.hasValidationIssues == false, "legacy payload must retain valid topology")
+        for source in [payload(), legacy] {
+            var all = source
+            var allGroups = all["groups"] as! [[String: Any]]
+            var allProfile = allGroups[0]["profile"] as! [String: Any]
+            allProfile["proximityLightingNumber"] = 255
+            allGroups[0]["profile"] = allProfile
+            all["groups"] = allGroups
+            let canonical = preflight(all)?.reconciliation?.snapshot
+            let allValues: [Any] = Array(21...255).map { $0 as Any }
+                + [256, 65535, Int64.max, UInt64.max]
+            for value in allValues {
+                allProfile["proximityLightingNumber"] = value
+                allGroups[0]["profile"] = allProfile
+                all["groups"] = allGroups
+                let wire = try JSONSerialization.data(withJSONObject: all)
+                let decoded = try JSONSerialization.jsonObject(with: wire) as! [String: Any]
+                let compatible = preflight(decoded)
+                require(compatible?.hasValidationIssues == false, "Every integer above 20 must import as ALL")
+                require(compatible?.reconciliation?.snapshot.groups[0].relayNumber == 255,
+                        "preflight must normalize before narrowing to the stored/device ALL value")
+                require(compatible?.reconciliation?.snapshot == canonical,
+                        "Relay normalization must preserve paths, zones and membership")
+            }
+            for value: Any in [-1, Int64.min, 1.5, 21.5, 256.5, "21", "255", true, false, NSNull()] {
+                allProfile["proximityLightingNumber"] = value
+                allGroups[0]["profile"] = allProfile
+                all["groups"] = allGroups
+                require(preflight(all) == nil, "unknown relay data must remain protected")
+            }
+        }
         var ordinary = payload(); var ordinaryGroups = ordinary["groups"] as! [[String: Any]]
-        ordinaryGroups[0]["profile"] = ["type": 0]; ordinaryGroups[0].removeValue(forKey: "proximityLightingPath")
+        ordinaryGroups[0]["profile"] = ["type": 1]; ordinaryGroups[0].removeValue(forKey: "proximityLightingPath")
         ordinary["groups"] = ordinaryGroups; ordinary["spaceData"] = ["proximityLightingSchemaVersion": 1, "triggerZones": [[String: Any]]()]
         require(preflight(ordinary)?.hasValidationIssues == false, "non-proximity profile is a valid import")
         require(preflight(ordinary)?.reconciliation?.snapshot.groups.first?.relayNumber == 2, "preflight must match the runtime default for an omitted Relay")
+        var inactiveAlias = ordinary
+        var inactiveGroups = ordinaryGroups
+        for value: Any in [21, 254, 256, 65535, Int64.max, UInt64.max] {
+            inactiveGroups[0]["profile"] = ["type": 1, "proximityLightingNumber": value]
+            inactiveAlias["groups"] = inactiveGroups
+            require(preflight(inactiveAlias)?.hasValidationIssues == false
+                    && preflight(inactiveAlias)?.reconciliation?.snapshot.groups.first?.relayNumber == 255,
+                    "Inactive ALL values must match Profile model normalization without introducing topology")
+        }
         // Execute the actual deferred page recomputation after replacing imported Node objects.
         let importedOrdinary = try fixture(networkId: "AB")
         let activatedOrdinary = try fixture(networkId: "AB", uuid: importedOrdinary.network.uuid)
@@ -364,6 +417,9 @@ enum NodeSyncData: Equatable {
         if CommandLine.arguments.count == 2 {
             let root = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))) as! [String: Any]
             let inspected = preflight(root["data"] as! [String: Any])
+            if inspected?.hasValidationIssues != false {
+                print("Snapshot preflight diagnostics: decoded=\(inspected != nil) warnings=\(inspected?.warnings ?? []) errors=\(inspected?.hardErrors.map(\.diagnosticName) ?? []) repairs=\(inspected?.reconciliation?.repairs.map(\.diagnosticDescription) ?? [])")
+            }
             require(inspected?.hasValidationIssues == false, "provided server snapshot must pass actual import preflight")
             print("PASS: provided server snapshot preflight")
         }
@@ -383,4 +439,8 @@ enum NodeSyncData: Equatable {
 
         print("PASS: scoped import/planner/coordinator execution, colliding Sites/Spaces, no cloud side effects, destructive import guard, explicit deletion and equivalent logical edits")
     }
+}
+
+enum SiteTriggerZoneTopologyReader {
+    static func mergedLocalTarget(for node: Node, local: ProximityLightingTopologyPolicy.Target) -> ProximityLightingTopologyPolicy.Target? { local }
 }

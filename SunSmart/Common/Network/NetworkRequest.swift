@@ -111,9 +111,13 @@ class NetworkRequest: NSObject {
     
     @discardableResult func request(_ target: NetowrkReqeustApi, completion: @escaping Completion) -> Cancellable {
         
+        let membershipContext = SpaceMembershipResponseContext.capture(account: UserData.currentUserId,
+            region: String(describing: UserData.currentServerRegion))
         return provider.request(target, callbackQueue: Self.responseQueue) { result in
             let deliver: Completion = { value in DispatchQueue.main.async { completion(value) } }
             let started = ProcessInfo.processInfo.systemUptime
+            let performance = AppPerformance.begin("ResponseDecode")
+            defer { performance.end() }
             defer {
                 #if DEBUG
                 print("[HTTP][Decode] target=\(target.diagnosticName) seconds=\(ProcessInfo.processInfo.systemUptime - started) main=\(Thread.isMainThread)")
@@ -141,7 +145,11 @@ class NetworkRequest: NSObject {
                     let code = businessCode.int ?? businessCode.string.flatMap(Int.init)
                     let isSuccess = JSON(json as Any)["isSuccess"].bool ?? false
                     if (200..<300).contains(respond.statusCode), code == 200 || isSuccess || json.isEmpty {
-                        deliver(.success(json))
+                        switch target {
+                        case .spaceInfo, .siteInfo:
+                            deliver(.success(SpaceMembershipResponseContext.annotate(json, context: membershipContext)))
+                        default: deliver(.success(json))
+                        }
 //                        success?(json!)
                     }else {
                         let responseJSON = JSON(json as Any)

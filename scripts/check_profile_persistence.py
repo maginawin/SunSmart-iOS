@@ -41,6 +41,9 @@ with tempfile.TemporaryDirectory(prefix="profile-persistence-") as folder:
     model = model.replace(block(model, "var instruction:"), "")
     database = read("SunSmart/Common/Data/Database.swift")
     header = database[:database.index("class SunSmartDataManager")].replace("import NordicSigMeshSDK", "")
+    # Profile SQL tests do not use cross-Space identity queries or Mesh snapshot caching.
+    for marker in ["enum SiteDeviceOwnershipStore", "struct ConfigurationSnapshotRevision", "final class ConfigurationMeshReadSnapshot"]:
+        header = header.replace(block(header, marker), "")
     manager = """
 class SunSmartDataManager {
     static let shared = SunSmartDataManager()

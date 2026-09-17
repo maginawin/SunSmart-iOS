@@ -23,6 +23,7 @@ with tempfile.TemporaryDirectory(prefix='network-response-queue-') as folder:
     binary = folder / 'tests'
     subprocess.run(['swiftc', '-parse-as-library',
                     str(root / 'Pods/SwiftyJSON/Source/SwiftyJSON/SwiftyJSON.swift'),
+                    str(root / 'SunSmart/Common/Data/AppPerformance.swift'),
                     str(folder / 'Production.swift'),
                     str(root / 'Tests/Group/NetworkResponseQueueTests.swift'),
                     '-o', str(binary)], check=True)

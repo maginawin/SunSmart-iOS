@@ -101,7 +101,7 @@ struct GatewayForceClearSpacesContractTests {
     private static func testForceClearUIAndCommit(_ controller: String) {
         require(
             controller.contains("isGatewayBluetoothOffline") &&
-                controller.contains("case .disconnected = proxyConnectionStateMachine.state") &&
+                controller.contains("(proxyConnectionSession?.state ?? .disconnected) == .disconnected") &&
                 controller.contains("hasAssociatedSpaces: !setGatewayModel.associatedSpaces.isEmpty"),
             "Force Clear visibility must use actual Offline plus a nonempty association list"
         )
@@ -148,49 +148,18 @@ struct GatewayForceClearSpacesContractTests {
     }
 
     private static func testServerFirstDeletion(_ controller: String) {
-        let deletion = substring(
-            in: controller,
-            from: "private func beginGatewayDeletion()",
-            through: "private func finishGatewayServerDeletionWithFailure"
-        )
-        guard let serverCall = deletion.range(of: ".gatewayDelete(gatewayId: self.gateway.mac)"),
-              let resetCall = deletion.range(of: "self.resetNodeAfterServerDeletion()") else {
-            fatalError("Delete flow must contain server delete and Bluetooth reset")
-        }
-        require(
-            serverCall.lowerBound < resetCall.lowerBound,
-            "gatewayDelete must complete before Bluetooth Reset starts"
-        )
-        require(
-            deletion.contains("case .success:") &&
-                deletion.contains("serverDeletionPendingLocalReset = true") &&
-                !deletion.contains("mqttServerInfo = nil") &&
-                !deletion.contains("associatedSpaces.removeAll") &&
-                !deletion.contains("lastUploadCloudTimestamp = nil"),
-            "Server success may persist only the tombstone before Reset"
-        )
-        let failure = substring(
-            in: controller,
-            from: "private func finishGatewayServerDeletionWithFailure",
-            through: "/// 服务器删除成功后重置设备"
-        )
-        require(
-            failure.contains("gateway_delete_server_failed") &&
-                failure.contains("restoreCloudSynchronization") &&
-                !failure.contains("resetNodeAfterServerDeletion"),
-            "Server failure must restore prior sync intent, show the fixed Toast, and never Reset"
-        )
-        let reset = substring(
-            in: controller,
-            from: "private func resetNodeAfterServerDeletion()",
-            through: "/// 服务器授权绑定网关"
-        )
-        require(
-            reset.contains("guard serverDeletionConfirmed") &&
-                !reset.contains("siteGatewayDataChangedNotificaitonName") &&
-                !reset.contains("gatewayDelete"),
-            "Reset/Force Delete must be gated by server success and cannot re-delete or re-register"
-        )
+        let deletion = substring(in: controller, from: "private func beginGatewayDeletion()",
+                                 through: "/// 服务器授权绑定网关")
+        require(deletion.contains("deletionCoordinator.delete(using:") &&
+                deletion.contains(".gatewayDelete(gatewayId: self.gateway.mac)") &&
+                deletion.contains("context.recordServerDeletion()") &&
+                deletion.contains("MeshAPI.resetNodes") && !deletion.contains("deleteNodes(") &&
+                !deletion.contains("force_delete"),
+                "Shared coordinator must gate direct Mesh Reset and local completion after server success")
+        require(deletion.contains("serverDeletionPendingLocalReset = true") &&
+                deletion.contains("gateway_delete_server_failed") &&
+                deletion.contains("shouldRestoreCloudSynchronization"),
+                "Persist server confirmation and preserve failure feedback/sync recovery")
     }
 
     private static func testPersistentDeletionTombstone(
@@ -222,26 +191,13 @@ struct GatewayForceClearSpacesContractTests {
                 gatewayController.contains("getGatewayCurrentSyncState") &&
                 gatewayController.contains("isServerDeletionInProgress = true") &&
                 gatewayController.contains("waitForInFlightAuthorizationToFinish") &&
-                gatewayController.contains("restoreCloudSynchronization"),
+                gatewayController.contains("shouldRestoreCloudSynchronization"),
             "Delete must block new registration, drain the in-flight request, and restore sync only when server deletion fails"
         )
-        let deletionStart = substring(
-            in: gatewayController,
-            from: "private func beginGatewayDeletion()",
-            through: "private func finishGatewayServerDeletionWithFailure"
-        )
-        guard let pendingReset = deletionStart.range(
-            of: "if gatewayModel.serverDeletionPendingLocalReset"
-        ), let permissionCheck = deletionStart.range(
-            of: "verifyDestructiveOperationPermission"
-        ) else {
-            fatalError("A persisted server deletion must resume local Reset")
-        }
-        require(
-            pendingReset.lowerBound < permissionCheck.lowerBound &&
-                deletionStart.contains("resetNodeAfterServerDeletion()"),
-            "A retained tombstone must retry local Reset without querying the deleted Gateway"
-        )
+        require(gatewayController.contains("serverAlreadyDeleted:") &&
+                gatewayController.contains("context.serverAlreadyDeleted") &&
+                gatewayController.contains("resetNodeAfterServerDeletion()"),
+                "Persisted server confirmation must feed the shared deletion coordinator")
     }
 
     private static func testLocalization(english: String, chinese: String) {

@@ -610,35 +610,31 @@ class ShareAuthorityViewController: UIViewController {
     private func spacesUnbindRequest(spaces: [SpaceData]) {
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
         Task {
-            let uploadSpaces = spaces.filter({ $0.state == .normal && $0.needUploadCloud })
-            if uploadSpaces.count > 0 {
-                
-                guard let siteDict = await site.export(
-                    spaceIds: uploadSpaces.map({ $0.id })
-                ) else {
-                    XWHUDManager.hide()
-                    XWHUDManager.showErrorTipHUD(
-                        "proximity_lighting_export_invalid".localizedString
-                    )
-                    return
-                }
-                NetworkRequest.shared.request(.siteUpload(siteData: siteDict)) {[weak self] result in
-                    XWHUDManager.hide()
-                    switch result {
-                    case .success(_):
-                        uploadSpaces.forEach({
-                            $0.lastUploadCloudTimestamp = $0.lastUpdate
-                            $0.save()
-                        })
-                        // 同步完space数据后解绑space
-                        self?.spacesUnbindRequest(spaces: spaces)
+            let uploadSpaces = spaces.filter {
+                $0.state == .normal && ($0.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload($0))
+            }
+            if !uploadSpaces.isEmpty {
+                CloudSynchronizationManager.shared.addSynchronizationHandle(
+                    operation: .syncSite(site: site, syncSpaces: uploadSpaces), level: .promptly
+                ) { [weak self] state in
+                    switch state {
+                    case .successful:
+                        // Continue after the manager has removed the completed handle.
+                        Task { @MainActor [weak self] in
+                            self?.spacesUnbindRequest(spaces: spaces)
+                        }
                     case .failure(let error):
+                        XWHUDManager.hide()
                         XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                    case .cancel:
+                        XWHUDManager.hide()
+                    case .wait, .inProgress:
+                        break
                     }
                 }
                 return
             }
-            
+
             // 回收地址数据
             let recycleData = await site.getRecycleAddressData(unbindSpaces: spaces)
             

@@ -39,6 +39,14 @@ final class SitePropsEditCoordinator {
     ) {
         self.site = site
         self.apiClient = apiClient
+        if let client = apiClient as? SitePropsAPIClient {
+            let region = site.region
+            client.didReceiveProps = { [weak site] props, timestamp in
+                guard let site, region == UserData.currentServerRegion,
+                      site.state == .normal else { return }
+                try SiteTriggerZoneStore.receive(site, object: props, timestamp: timestamp)
+            }
+        }
     }
 
     func prepareDraft(online: Bool) async -> SitePropsEditDraft {

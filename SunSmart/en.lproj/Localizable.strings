@@ -696,7 +696,7 @@
 "group_address_apply_message" = "You have applied for the group address from the server, are you sure to get it.";
 "group_address_insufficient" = "Insufficient group address, please connect to the internet to get more.Once connected to the network, the group address is automatically obtained.";
 "group_address_insufficient_no_network" = "Insufficient group address, please connect to the internet to get more.";
-"phone_no_network" = "internet connection required!";
+"phone_no_network" = "Internet connection required!";
 "network_request_timeout" = "The network request timed out";
 "site_delete_have_devies_message" = "Some spaces within the site have devies that cannot be deleted.";
 "site_delete_have_editor_message" = "Some spaces within the site have editors that cannot be deleted.";
@@ -1269,7 +1269,7 @@
 "path" = "Path";
 "path_sequence" = "Path sequence";
 "sequence" = "Sequence";
-"trigger_zone" = "Trigger zone";
+"trigger_zone" = "Trigger Zone";
 "device_add_title_path" = "Add to Path";
 "device_add_title_zone" = "Add to Zone";
 "device_add_title_path_index" = "Add to Path %d";
@@ -1446,7 +1446,7 @@
 "Yes" = "Yes";
 "No" = "No";
 "delete_no_connect_server_message" = "Failed to delete.\nNo network or server failure.";
-"gateway_delete_message" = "After deleting the gateway, the space will lose remote control, data reporting and other related functions. Do you want to delete the gateway?";
+"gateway_delete_message" = "Deleting this gateway removes remote control and data reporting from its associated Spaces. If Bluetooth reset is unavailable or fails, reset the device manually before adding it again. Continue?";
 "gateway_force_delete_message" = "Server information deleted successfully！But failed to delete the gateway. The gateway is offline or the signal is weak.You can force delete the gateway.\n\n";
 "gateway_no_authorize_force_delete_message" = "Failed to delete the gateway. \nThe gateway is offline or the signal is weak.You can force delete the gateway.\n\n";
 "gateway_force_delete_note" = "Note:  you need to manually reset the gateway after force delete.";
@@ -2167,6 +2167,7 @@
 "proximity_lighting_export_invalid" = "Proximity lighting data is invalid and could not be exported.";
 "proximity_lighting_import_invalid" = "Proximity lighting data is invalid and was not imported.";
 "profile_unavailable" = "Profile unavailable";
+"configuration_sync_unavailable" = "Space data is unavailable. Reopen this Space to retry.";
 "configuration_reload_cloud" = "Reload cloud data";
 "configuration_use_local" = "Use this phone's data";
 "configuration_review_message" = "This Space needs review before synchronization. Reload the cloud data, or use this phone's complete saved configuration if it is the correct copy. Local recovery is unavailable while an import is incomplete or local data is invalid.";
@@ -2183,8 +2184,127 @@
 "switch_mac_format" = "MAC: %@";
 "switch_mac_unavailable" = "MAC: N/A";
 
+// Site Trigger Zone
+"site_zones_storage_failed" = "Unable to save or load Trigger Zones. Please retry.";
+"site_zones_unsupported" = "This Site contains Trigger Zone data that requires a newer app.";
+"site_zones_conflict" = "Trigger Zones changed on another device. Tap to review.";
+"site_zones_sync_pending" = "Saved on this device. Cloud sync pending. Tap to retry.";
+"site_zones_discard_draft" = "Replace your pending Trigger Zone changes with the latest server version?";
+
+/* Site Trigger Zone item presentation */
+"site_zones_no_access" = "No access";
+"site_zones_access_unknown" = "Pending";
+"site_zones_view_only" = "View only";
+"site_zones_no_access_message" = "You don't have access to this space · Contact the space owner to request access";
+"site_zones_access_pending_message" = "Space access needs to be verified before editing.";
+"site_zones_summary_incomplete" = "Some space information is unavailable. Editing is unavailable until it is verified.";
+"site_zone_members_need_verification" = "Some members need verification before this Zone can be edited or synced.";
+"site_zones_server_replaced" = "The server version is now active. Local pending changes were saved for review and will not be uploaded.";
+"site_zones_server_replaced_title" = "Server version is active";
+"site_zones_archived_review" = "The archived local draft contained %d Zones; the server has %d. Review the Zones shown here and make any needed edits again. The archived draft will not be uploaded automatically.";
+"site_zones_timestamp_ambiguous" = "The server returned different Trigger Zones with the same version. Refresh before editing or syncing.";
+"site_zone_draft_stale" = "Unsaved edits no longer match the server Zone. Review the latest Zone before editing.";
+"site_zones_device_count_one" = "%d device";
+"site_zones_device_count_many" = "%d devices";
+"site_zones_preview_toggle" = "Switch preview / real items";
+"site_zones_preview_mode" = "Preview mode · Tap Test to return to real items";
+"site_zones_live_mode" = "Real items";
+"site_zones_preview_action" = "Preview only. No changes have been saved or sent to devices.";
+"site_zones_item_needs_sync" = "Needs sync";
+"site_zones_item_sync_cloud" = "Cloud sync pending";
+"site_zones_item_sync_devices" = "Device sync pending";
+"site_zones_item_sync_both" = "Cloud and device sync pending";
+"site_zones_item_device_unverified" = "Device status unverified";
+"site_zones_item_status_unverified" = "Sync status unverified";
+"site_zones_sync_explanation" = "Some devices have not finished synchronizing. You must have editing permissions for all relevant spaces to perform the synchronization operation.";
+"site_zones_device_preview_title" = "Site-wide device task preview";
+"site_zones_device_sync_not_available" = "Device sync is not available yet. This preview does not send commands.";
+"site_zones_device_preview_zone_title" = "Zone %d device impact";
+"site_zones_device_preview_member_changes" = "Known changes in this Zone: %d added, %d removed, %d changed.";
+"site_zones_device_preview_unverified" = "No known member change in this Zone. Device state has not been verified.";
+"site_zones_device_preview_source_only" = "These Zone edits add no new device target. Existing device state remains unverified.";
+"site_zones_device_preview_cloud_unconfirmed" = "The cloud target has not been confirmed. Device changes cannot be previewed yet.";
+"site_zones_device_preview_shared_impact" = "Counts compare complete Site targets. Device state has not been verified.";
+"site_zones_device_preview_attribution" = "Tentative target tasks: %d direct, %d shared, %d Site-level.";
+"site_zones_device_preview_plan_unavailable" = "A complete Site task plan is unavailable; device status remains unverified.";
+"site_zones_site_tasks_title" = "Site-level device work";
+"site_zones_site_tasks_retained" = "Cleanup is retained for %d deleted Zone(s).";
+"site_zones_site_tasks_tentative" = "Tentative Site-level tasks: %d.";
+"site_zones_device_preview_cache" = "Compared with this phone's Node cache. Device state has not been verified; no commands will be sent.";
+"site_zones_device_preview_counts" = "Remove / Add / Update: %d / %d / %d";
+"site_zones_device_preview_blocked" = "Device sync preflight is incomplete. Tasks cannot run yet.";
+"site_zones_device_blocker_cloud" = "Cloud target is unconfirmed or has changed.";
+"site_zones_device_blocker_schema" = "The saved Zone format is unsupported or incomplete.";
+"site_zones_device_blocker_permission" = "Site or Space editing permission is unavailable.";
+"site_zones_device_blocker_mesh" = "A Space Mesh inventory is missing or inconsistent.";
+"site_zones_device_blocker_keys" = "A forwarding Key is missing, ambiguous, inconsistent, or refreshing.";
+"site_zones_device_blocker_ttl" = "The forwarding TTL has not been verified.";
+"site_zones_device_blocker_preparation" = "Primary Key or Model Bind readiness is unknown.";
+"site_zones_device_blocker_capacity" = "At least one device exceeds its neighbor limit.";
+"site_zones_device_blocker_addresses" = "A device or neighbor address is missing or duplicated.";
+"site_zones_device_blocker_members" = "Saved Zone members cannot be matched to devices.";
+"site_zones_device_blocker_topology" = "Group or Space topology is incomplete.";
+"site_zones_device_blocker_observations" = "Device state has not been read back or verified.";
+"site_zones_device_blocker_reconciliation" = "Device state must be reconciled with the current target before syncing.";
+"site_zones_device_blocker_previousTarget" = "The retained prior Zone target is stale or incomplete.";
+"site_zones_device_preview_unavailable" = "This Zone's saved member changes could not be determined. Device state remains unverified.";
+"site_zones_preview_reset_confirm" = "Clear all devices from this trigger zone?";
+"site_zones_preview_delete_confirm" = "Delete this trigger zone?";
+
 // Debug cloud JSON export
 "debug_export_json" = "Export Json";
 "debug_json_export_failed" = "Failed to export JSON.";
 "debug_json_export_changed" = "The data or access changed. Please try exporting again.";
 "debug_json_export_unavailable" = "Could not export “%@”. Local data is incomplete or invalid.";
+
+// Site Trigger Zone candidate browsing
+"site_zone_no_spaces" = "No spaces";
+"site_zone_no_eligible_spaces" = "No eligible spaces";
+"site_zone_assign_proximity_profile" = "Assign a Proximity Profile to a group in a space you can edit.";
+"site_zone_no_editable_spaces" = "No editable spaces";
+"site_zone_editable_space_required" = "Owner or Editor access to a space is required.";
+"site_zone_loading_spaces" = "Loading spaces…";
+"site_zone_loading_devices" = "Loading devices…";
+"site_zone_data_unavailable" = "Space data unavailable";
+"site_zone_data_retry" = "Space data unavailable. Tap to retry.";
+"site_zone_no_new_devices" = "No new devices";
+"site_zone_no_available_devices" = "No devices available to add";
+"site_zone_not_connected" = "Not connected to a space";
+"site_zone_connecting_to_space" = "Connecting to %@";
+"site_zone_connected_to_space" = "Connected to %@";
+"site_zone_add_unavailable" = "Adding devices is not available yet.";
+"site_zone_retry_hint" = "Tap to retry.";
+"site_zone_browse_help" = "Devices are shown offline. Only devices in Proximity Profile groups in spaces you can edit are listed.";
+"site_zone_wait_for_trigger" = "Trigger a device to see it here.";
+"site_zone_unsaved_changes" = "Save changes to this Trigger Zone before leaving?";
+"site_zone_discard" = "Discard";
+"site_zone_remove_member" = "Remove this device from the unsaved Zone draft?";
+"site_zone_saved_cloud_pending" = "Saved to cloud. Device sync pending.";
+"site_zone_saved_cloud_sync_unavailable" = "Saved to cloud. Device sync is not available yet.";
+"site_zone_saved_cloud_unverified" = "Saved to cloud. Device status unverified.";
+"site_zone_saved_cloud" = "Saved to cloud.";
+"site_zone_member_changed" = "A member's Group or device address changed. Refresh the Space and review this Zone before saving.";
+"site_zone_quick_help" = "Connect to a space, tap Start, then trigger devices to add them to this Zone draft. Save the Zone to store the changes.";
+"site_zone_trigger_help" = "Trigger a device, tap it once to select it, then tap it again to add it to the Zone draft. A connected device will identify after it is added.";
+"site_zone_manual_help" = "Tap a device once to select it, then tap it again to add it to the Zone draft. A connected device will identify after it is added.";
+
+"gateway_deleted_manual_reset" = "Gateway deleted. Reset the device manually before adding it again.";
+"gateway_delete_local_failed" = "Could not finish deleting this gateway locally. Reopen this Site to retry.";
+
+/* Space recovery and membership */
+"space_leave_action" = "Leave Space";
+"space_leave_pending" = "Waiting to leave this Space. Your saved data is kept until the server confirms. Retry when online.";
+"space_leave_cleanup_pending" = "You have left this Space. Local cleanup will continue when available.";
+"space_leave_complete" = "You have left this Space.";
+"space_leave_unsynced" = "Some changes have not been confirmed by the cloud. Retry synchronization, or keep a copy on this phone and leave. The saved copy will not be uploaded automatically.";
+"space_leave_keep_copy" = "Keep a Copy and Leave";
+"space_recovery_retry" = "Retry";
+"space_recovery_storage_failed" = "The configuration could not be saved on this phone. Your previous saved data has been kept. Retry recovery, or leave this Space.";
+"space_recovery_identity_failed" = "This Space’s network identity could not be verified. Retry with the latest cloud data, or leave this Space.";
+"space_recovery_changed" = "The Space changed while recovery was running. Retry to load its current state.";
+"space_recovery_network_failed" = "Cloud data is unavailable right now. Retry when online, or request to leave this Space.";
+"space_recovery_unavailable" = "This Space has not finished restoring. Retry recovery or leave this Space. Configuration changes are unavailable until a complete copy is ready.";
+"space_saved_copies" = "Saved Space Copies";
+"space_saved_copies_description" = "Copies kept on this phone are available here, including after leaving a Space. Some copies contain diagnostic records only. Restoring a copy requires current access to that Space.";
+"space_leave_copy_failed" = "The copy could not be saved. Retry, or leave without keeping a copy. Unsynchronized changes may be lost if you continue.";
+"space_leave_without_copy" = "Leave Without a Copy";

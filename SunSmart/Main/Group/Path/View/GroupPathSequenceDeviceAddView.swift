@@ -75,6 +75,7 @@ class GroupPathSequenceDeviceAddView: UIView {
     private var bodyContainerView: UIView!
     private var addTypeBar: WMMenuView!
     private var contentCardView: UIView!
+    private var connectionStatusView: GroupPathSequenceConnectionStatusView!
     private var bodyHeightConstraint: NSLayoutConstraint?
     private var contentCardHeightConstraint: NSLayoutConstraint?
 
@@ -95,7 +96,12 @@ class GroupPathSequenceDeviceAddView: UIView {
     }
 
     private var currentMode: PathSequenceDeviceAddMode = .quickAdd
+    var selectedMode: PathSequenceDeviceAddMode { currentMode }
+    private var isBrowsingCandidates = false
+    private var browseConfiguration: GroupPathSequenceBrowseConfiguration?
     private var collapsed: Bool = true
+    /// Allows the owning page to restore presentation after switching data sources.
+    var isCollapsed: Bool { collapsed }
     private var headerIndex: Int?
     private var lastPreferredContentHeight: CGFloat = 0
     private var lastMenuWidth: CGFloat = 0
@@ -105,7 +111,7 @@ class GroupPathSequenceDeviceAddView: UIView {
     /// 是否可添加设备
     var canAddDevice: Bool = false {
         didSet {
-            if canAddDevice {
+            if canAddDevice || isBrowsingCandidates {
                 quickAddView.updateQuickAddState(.stop)
                 triggerAddView.setGuideVisible(false)
                 manuallyAddView.setGuideVisible(false)
@@ -171,7 +177,7 @@ class GroupPathSequenceDeviceAddView: UIView {
     }
     
     @objc private func unfoldBtnAction(sender: UIButton) {
-        let rowNum = max(1, min(Int(ceilf(Float(manuallyAddView.visibleDevices.count) / Float(manuallyAddView.colNum))), 3))
+        let rowNum = max(1, min(Int(ceilf(Float(manuallyAddView.displayedDeviceCount) / Float(manuallyAddView.colNum))), 3))
         if !sender.isSelected, rowNum == 1 {
             return
         }
@@ -316,6 +322,14 @@ class GroupPathSequenceDeviceAddView: UIView {
         manuallyAddView.snp.makeConstraints { make in
             make.edges.equalToSuperview()
         }
+
+        connectionStatusView = GroupPathSequenceConnectionStatusView()
+        contentCardView.addSubview(connectionStatusView)
+        connectionStatusView.snp.makeConstraints {
+            $0.left.right.equalToSuperview()
+            $0.top.equalTo(82)
+            $0.height.equalTo(64)
+        }
         
         refreshBtn = UIButton(normalImageName: "trigger_device_refresh", target: self, action: #selector(refreshBtnAction))
         refreshBtn.isHidden = true
@@ -356,6 +370,27 @@ class GroupPathSequenceDeviceAddView: UIView {
         refreshPreferredHeight()
     }
 
+    func configureBrowse(_ configuration: GroupPathSequenceBrowseConfiguration) {
+        isBrowsingCandidates = true
+        browseConfiguration = configuration
+        quickAddView.configureBrowse(configuration)
+        triggerAddView.configureBrowse(configuration)
+        manuallyAddView.configureBrowse(configuration)
+        updateConnectionStatus()
+        updateUnfoldState()
+    }
+
+    func clearBrowseTarget() {
+        isBrowsingCandidates = false
+        browseConfiguration = nil
+        connectionStatusView.isHidden = true
+        quickAddView.showStepGuideUI()
+        triggerAddView.setGuideVisible(true)
+        manuallyAddView.setGuideVisible(true)
+        setCollapsed(true)
+        updateUnfoldState()
+    }
+
     func configureDeviceNameFilter(session: DeviceNameFilterSession) {
         if let deviceNameFilterObservation {
             deviceNameFilterSession?.removeObserver(deviceNameFilterObservation)
@@ -372,7 +407,7 @@ class GroupPathSequenceDeviceAddView: UIView {
     private func manualVisibleDevicesDidChange() {
         let maxManualRows = max(
             1,
-            min(Int(ceilf(Float(manuallyAddView.visibleDevices.count) / Float(manuallyAddView.colNum))), 3)
+            min(Int(ceilf(Float(manuallyAddView.displayedDeviceCount) / Float(manuallyAddView.colNum))), 3)
         )
         if manuallyAddView.rowNum > maxManualRows {
             manuallyAddView.rowNum = maxManualRows
@@ -430,14 +465,21 @@ class GroupPathSequenceDeviceAddView: UIView {
     }
 
     private func updateAccessoryButtons() {
-        guard !collapsed, canAddDevice else {
+        guard !collapsed, canAddDevice || isBrowsingCandidates else {
             refreshBtn.isHidden = true
             unfoldBtn.isHidden = true
             deviceFilterBtn.isHidden = true
             return
         }
 
-        let maxManualRows = max(1, min(Int(ceilf(Float(manuallyAddView.visibleDevices.count) / Float(manuallyAddView.colNum))), 3))
+        if !connectionStatusView.isHidden {
+            refreshBtn.isHidden = true
+            unfoldBtn.isHidden = true
+            deviceFilterBtn.isHidden = true
+            return
+        }
+
+        let maxManualRows = max(1, min(Int(ceilf(Float(manuallyAddView.displayedDeviceCount) / Float(manuallyAddView.colNum))), 3))
         refreshBtn.isHidden = currentMode != .triggerAdd || triggerAddView.devices.isEmpty
         unfoldBtn.isHidden = currentMode != .manuallyAdd || maxManualRows <= 1 || !manuallyAddView.guideContentView.isHidden
         deviceFilterBtn.isHidden = currentMode != .manuallyAdd || deviceNameFilterSession == nil
@@ -520,8 +562,25 @@ class GroupPathSequenceDeviceAddView: UIView {
             delegate?.deviceAddView(self, showAddedDevices: manuallyAddView.showAdded)
         }
 
+        updateConnectionStatus()
+
         updateAccessoryButtons()
         refreshPreferredHeight()
+    }
+
+    private func updateConnectionStatus() {
+        guard let browseConfiguration, browseConfiguration.selectedSpaceID != nil else {
+            connectionStatusView.isHidden = true
+            return
+        }
+        let phase = browseConfiguration.connectionPhase
+        let show = phase == .connecting || phase == .failed
+            || (phase == .connected && browseConfiguration.connectedNoticeKey == "site_zone_add_unavailable"
+                && (currentMode != .quickAdd || browseConfiguration.quickConnectionActive))
+        connectionStatusView.update(phase: phase, spaceName: browseConfiguration.spaceTitle,
+                                    noticeText: browseConfiguration.connectedNoticeKey.localizedString,
+                                    retry: browseConfiguration.retryConnection)
+        connectionStatusView.isHidden = !show
     }
 }
 

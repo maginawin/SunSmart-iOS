@@ -158,6 +158,7 @@ enum ProximityLightingLifecycleCoordinator {
         isImportApplication: Bool = false,
         confirmedDeletionAddresses: Set<Address>? = nil,
         reviewedReferenceSnapshot: Reconciler.Snapshot? = nil,
+        automaticCleanupSnapshot: Reconciler.Snapshot? = nil,
         applyAdditionalChanges: () throws -> Void = {}
     ) -> ProximityLightingLifecycleResult? {
         guard preparation.transaction.contextAvailable else { return nil }
@@ -183,6 +184,12 @@ enum ProximityLightingLifecycleCoordinator {
             guard !isImportApplication, confirmedDeletionAddresses == nil,
                   reviewed == transaction.sourceSnapshot,
                   normalized.canReviewReferenceRepair else { return nil }
+            isScopedRecovery = true
+        }
+        if let source = automaticCleanupSnapshot {
+            guard !isImportApplication, confirmedDeletionAddresses == nil, reviewedReferenceSnapshot == nil,
+                  source == transaction.sourceSnapshot, transaction.draft == source,
+                  normalized.isValid else { return nil }
             isScopedRecovery = true
         }
         // A server snapshot is authoritative input, never an implicit local edit.

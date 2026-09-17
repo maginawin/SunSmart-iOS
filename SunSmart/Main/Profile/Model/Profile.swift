@@ -796,7 +796,14 @@ class Profile: Copyable {
     /// 灵敏度（移动检测）
     var sensitivity: UInt8 = 95
     /// 邻近照明数量
-    var proximityLightingNumber: UInt8 = 2
+    var proximityLightingNumber: UInt8 = 2 {
+        didSet {
+            if let normalized = SpaceConfigurationIntegrityPolicy.normalizedProximityLightingNumber(proximityLightingNumber),
+               normalized != proximityLightingNumber {
+                proximityLightingNumber = normalized
+            }
+        }
+    }
     /// Daylight 校准模式。nil 仅表示旧数据未保存该字段。
     var calibrationMode: DaylightCalibrationMode? = DaylightCalibrationMode.none
     /// Night Cal. 取样时的目标亮度百分比。
@@ -839,7 +846,8 @@ class Profile: Copyable {
         self.manualOverrideTimeout = manualOverrideTimeout
         self.adjustSpeed = adjustSpeed
         self.sensitivity = sensitivity
-        self.proximityLightingNumber = proximityLightingNumber
+        self.proximityLightingNumber = SpaceConfigurationIntegrityPolicy.normalizedProximityLightingNumber(proximityLightingNumber)
+            ?? proximityLightingNumber
         self.scenes = scenes
         self.dayData = dayData
         self.nightData = nightData

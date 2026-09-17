@@ -208,6 +208,7 @@ extension SiteData {
         }
 //        _ = try? SunSmartDataManager.shared.db?.run(SiteData.sitesTable.addColumn(ExpressionKey.localAddress))
         
+        try? SiteTriggerZoneStore.createTable()
         SpaceData.initDatabase()
     }
     
@@ -296,7 +297,12 @@ extension SiteData {
         guard let database = SunSmartDataManager.shared.db,
               SpaceData.deleteAll(siteId: id), GatewayModel.delete(siteId: id) else { return false }
         let filter = SiteData.sitesTable.filter(ExpressionKey.uuid == id)
-        do { try database.run(filter.delete()) }
+        do {
+            try database.savepoint("delete_site_" + UUID().uuidString) {
+                try database.run(filter.delete())
+                try SiteTriggerZoneStore.delete(self)
+            }
+        }
         catch {
             #if DEBUG
             print(error)
@@ -423,6 +429,7 @@ extension SiteData {
     /// allData：是否保存所有数据（true：场所基本信息+保存spaces数据，false：场所基本信息）
     @discardableResult func save(allData: Bool = false) -> Bool {
         
+        guard let database = SunSmartDataManager.shared.db else { return false }
         let table = SiteData.sitesTable
         var recycleAddressData: Data?
         if self.recycleAddressData != nil {
@@ -454,7 +461,10 @@ extension SiteData {
             ExpressionKey.recycleAddressData <- recycleAddressData
         ])
         do {
-            try SunSmartDataManager.shared.db?.run(insetOrUpdate)
+            try database.savepoint("save_site_" + UUID().uuidString) {
+                try database.run(insetOrUpdate)
+                try SiteTriggerZoneStore.bootstrap(self)
+            }
         } catch {
             #if DEBUG
             print(error)
@@ -984,18 +994,40 @@ extension GroupInfo {
         }
     }
     
+    /// Prepare only rows owned by vanished Groups in this exact Space.
+    /// Shared Profile rows are retained while any Group still references them.
+    static func obsoleteSyncExtensionCleanup(meshUUID: String, networkId: String,
+                                             validAddresses: Set<UInt16>) throws -> (() throws -> Void)? {
+        guard let database = SunSmartDataManager.shared.db else { throw SpaceConfigurationSafety.SafetyError.persistenceFailed }
+        let scoped = groupInfosTable.filter(ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == networkId)
+        let rows = try Array(database.prepare(scoped))
+        let obsolete = rows.filter { !validAddresses.contains(UInt16($0[ExpressionKey.groupAddress])) }
+        guard !obsolete.isEmpty else { return nil }
+        let retainedProfiles = Set(rows.filter { validAddresses.contains(UInt16($0[ExpressionKey.groupAddress])) }.map { $0[ExpressionKey.profileId] })
+        let candidateProfiles = Set(obsolete.map { $0[ExpressionKey.profileId] }).subtracting(retainedProfiles)
+        let rowIDs = obsolete.map { $0[ExpressionKey.id] }
+        return {
+            for id in rowIDs { try database.run(scoped.filter(ExpressionKey.id == id).delete()) }
+            for id in candidateProfiles {
+                // UUID identity is also checked across Spaces before removal.
+                guard try database.scalar(groupInfosTable.filter(ExpressionKey.profileId == id).count) == 0 else { continue }
+                try Profile.deleteObsoleteSyncProfile(meshUUID: meshUUID, networkId: networkId, profileId: id)
+            }
+        }
+    }
+
     /// 根据网络id和group地址获取对应配置的组数据
     /// - Parameter meshUUID: 网络id
     /// - Parameter address: 组地址
     /// - Returns: 组数据
-    static func load(meshUUID: String, address: UInt16, subnetworkId: String? = nil) -> GroupInfo? {
+    static func load(meshUUID: String, address: UInt16, subnetworkId: String? = nil, database: Connection? = SunSmartDataManager.shared.db, includeTemplates: Bool = true) -> GroupInfo? {
         
         var predicate: Expression<Bool> = ExpressionKey.meshUUID == meshUUID && ExpressionKey.groupAddress == Int(address)
         if let subnetworkId { predicate = predicate && ExpressionKey.subNetworkKey == subnetworkId }
         
         var groupInfo: GroupInfo?
         let filter = GroupInfo.groupInfosTable.filter(predicate)
-        if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
+        if let rows = try? database?.prepare(filter) {
             for row in rows {
                 let info = GroupInfo(address: Address(row[ExpressionKey.groupAddress]), imageId: row[ExpressionKey.imageId], imageText: row[ExpressionKey.imageText])
                 if let data = row[ExpressionKey.scenesData] {
@@ -1011,7 +1043,7 @@ extension GroupInfo {
 //                let schedules = Schedule.load(meshUUID: meshUUID, meshNetworkKey: meshNetworkKey, address: UInt16(address))
 //                groupInfo?.bindSchedules = schedules
 //                // 配置数据
-                if let profile = Profile.load(meshUUID: meshUUID, meshNetworkId: row[ExpressionKey.subNetworkKey], profileId: row[ExpressionKey.profileId]) {
+                if let profile = Profile.loadAll(meshUUID: meshUUID, meshNetworkId: row[ExpressionKey.subNetworkKey], profileId: row[ExpressionKey.profileId], database: database, includeTemplates: includeTemplates).first {
                     info.profile = profile
                 } else {
                     info.profileLoadFailed = true
@@ -1553,6 +1585,12 @@ extension Schedule {
 
 extension Profile {
     
+    fileprivate static func deleteObsoleteSyncProfile(meshUUID: String, networkId: String, profileId: String) throws {
+        guard let database = SunSmartDataManager.shared.db else { throw SpaceConfigurationSafety.SafetyError.persistenceFailed }
+        try database.run(profilesTable.filter(ExpressionKey.meshUUID == meshUUID
+            && ExpressionKey.subNetworkKey == networkId && ExpressionKey.uuid == profileId).delete())
+    }
+
     private static let profilesTableName = "profiles"
     private static let profilesTable = Table(profilesTableName)
     
@@ -1677,7 +1715,7 @@ extension Profile {
     /// - Parameter meshUUID: 网络id
     /// - Parameter networkKey: 子网网络key
     /// - Returns: 日程数据list
-    static func loadAll(meshUUID: String, meshNetworkId: String? = nil, profileId: String? = nil) -> [Profile] {
+    static func loadAll(meshUUID: String, meshNetworkId: String? = nil, profileId: String? = nil, database: Connection? = SunSmartDataManager.shared.db, includeTemplates: Bool = true) -> [Profile] {
        
         let subNetworkey = meshNetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         
@@ -1690,7 +1728,7 @@ extension Profile {
         var profiles: [Profile] = []
         var foundRow = false
         do {
-            guard let db = SunSmartDataManager.shared.db else {
+            guard let db = database else {
                 logPersistenceIssue("databaseUnavailable")
                 return []
             }
@@ -1706,7 +1744,7 @@ extension Profile {
                       (0...65535).contains(row[ExpressionKey.powerUpCct]),
                       (0...Int64(UInt32.max)).contains(row[ExpressionKey.manualOverrideTimeout]),
                       (0...255).contains(row[ExpressionKey.sensitivity]),
-                      (0...255).contains(row[ExpressionKey.proximityLightingNumber]) else {
+                      let proximityLightingNumber = SpaceConfigurationIntegrityPolicy.normalizedProximityLightingNumber(row[ExpressionKey.proximityLightingNumber]) else {
                     logPersistenceIssue("invalidScalar", type: profileType.rawValue)
                     continue
                 }
@@ -1779,7 +1817,7 @@ extension Profile {
                         continue
                     }
                 }
-                let profile = Profile(name: row[ExpressionKey.name], id: row[ExpressionKey.uuid], type: profileType, lightControlData: lightData, powerUpState: powerUpState, powerUpCct: powerUpCct, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: row[ExpressionKey.adjustSpeed], sensitivity: UInt8(row[ExpressionKey.sensitivity]), proximityLightingNumber: UInt8(row[ExpressionKey.proximityLightingNumber]), nightData: nightData, dayData: dayData, scenes: scenes)
+                let profile = Profile(name: row[ExpressionKey.name], id: row[ExpressionKey.uuid], type: profileType, lightControlData: lightData, powerUpState: powerUpState, powerUpCct: powerUpCct, manualOverrideTimeout: manualOverrideTimeout, adjustSpeed: row[ExpressionKey.adjustSpeed], sensitivity: UInt8(row[ExpressionKey.sensitivity]), proximityLightingNumber: proximityLightingNumber, nightData: nightData, dayData: dayData, scenes: scenes)
                 if let rawCalibrationMode = row[ExpressionKey.calibrationMode] {
                     profile.calibrationMode = Profile.DaylightCalibrationMode(rawValue: rawCalibrationMode) ?? Profile.DaylightCalibrationMode.none
                 }else {
@@ -1787,7 +1825,7 @@ extension Profile {
                 }
                 profile.targetNightBrightness = Profile.normalizedTargetNightBrightness(row[ExpressionKey.targetNightBrightness])
                 
-                profile.lightSensorTemplates = ProfileLightSensorTemplate.load(profileId: profile.id)
+                if includeTemplates { profile.lightSensorTemplates = ProfileLightSensorTemplate.load(profileId: profile.id) }
                 profiles.append(profile)
             }
             if !foundRow, profileId != nil { logPersistenceIssue("rowMissing") }
@@ -3378,6 +3416,8 @@ extension GatewayModel {
     
     /// 保存网关model数据
     @discardableResult func save() -> Bool {
+        guard SunSmartDataManager.shared.db != nil, !GatewayDeletionContext.blocksSave(self) else { return false }
+
         
         let spacesData = (try? jsonEncoder.encode(associatedSpaces)) ?? Data()
 

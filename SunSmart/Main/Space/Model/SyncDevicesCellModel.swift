@@ -62,6 +62,7 @@ final class ProfileSensorProtectionContext {
     private weak var group: Group?
     let previousProfileType: Profile.ProfileType
     let savedProfileType: Profile.ProfileType
+    private let originalSensorNodes: [Node]
     private let sensorNodeAddresses: Set<Address>
     private let initiallyEnabledSensorAddresses: Set<Address>
     private var preDisableStarted = false
@@ -74,6 +75,7 @@ final class ProfileSensorProtectionContext {
             return nil
         }
         
+        self.originalSensorNodes = sensorNodes
         self.group = group
         self.previousProfileType = previousProfile.type
         self.savedProfileType = savedProfile.type
@@ -124,6 +126,24 @@ final class ProfileSensorProtectionContext {
         }
     }
     
+    /// Finish temporary sensor suppression against the latest Group/Profile.
+    /// UUID/object identity prevents an address-reused replacement receiving it.
+    func remainingCurrentTargetStateMessageHandles() -> [MeshMessageHandle] {
+        guard preDisableStarted else { return [] }
+        let currentNodes = MeshNetworkManager.instance.meshNetwork?.nodes ?? []
+        return originalSensorNodes.compactMap { node in
+            guard currentNodes.contains(where: { $0 === node }), !node.pirEnabled,
+                  let model = node.sunricherVendorModel else { return nil }
+            let enabled: Bool
+            if let currentGroup = node.group, node.groupState != .exitFailure {
+                enabled = currentGroup.info.profile.type.occupancyType
+                    && (!previousProfileType.occupancyType || initiallyEnabledSensorAddresses.contains(node.primaryUnicastAddress))
+            } else { enabled = true }
+            guard enabled else { return nil }
+            return MeshMessageHandle(message: SunricherVendorSet(function: .pirEnabled(enabled: true)), model: model)
+        }
+    }
+
     func preDisableDeviceModel() -> SyncDevicesModel? {
         let tasks = sensorNodes.map { node in
             SyncDeviceStepTaskModel(
@@ -240,6 +260,8 @@ enum DeviceOperationType {
                 return !node.sceneExecuteDatas.contains(where: { $0.sceneNumber == sceneId })
             case .schedule(let schedule):
                 return node.schedulerActions[schedule.id] == nil || !node.schedulerActions[schedule.id]!.isValid
+            case .missingGroupSubscriptions:
+                return MissingGroupSubscriptionCleanup.addresses(for: node).isEmpty
             case .group(let group):
                 return node.group != group
             case .profile(let type):
@@ -332,6 +354,8 @@ enum DeviceOperationType {
                 return true
             case .schedule(let schedule):
                 return node.schedulerActions[schedule.id] != nil && node.schedulerActions[schedule.id]! == schedule.schedulerEntry
+            case .missingGroupSubscriptions:
+                return MissingGroupSubscriptionCleanup.addresses(for: node).isEmpty
             case .group(let group):
                 return node.group == group && node.getSunSmartSubscribeToGroupMessageHandles(group).count == 0
             case .profile(let type):
@@ -476,6 +500,8 @@ enum DeviceOperationType {
         case .delete(let node, let type): // 删除操作
             
             switch type {
+            case .missingGroupSubscriptions:
+                messageHandles.append(contentsOf: MissingGroupSubscriptionCleanup.handles(for: node))
             case .group(let group):
                 // 设备退出组
                 node.getUnsubscribeGroupMessages(group).forEach({
@@ -571,6 +597,8 @@ enum DeviceOperationType {
                     handle.continuous = false
                     messageHandles.append(handle)
                 }
+            case .missingGroupSubscriptions:
+                messageHandles.append(contentsOf: MissingGroupSubscriptionCleanup.handles(for: node))
             case .group(let group):
                 // 设备加入组
                 messageHandles.append(contentsOf: node.getSunSmartSubscribeToGroupMessageHandles(group, continuous: false))
@@ -757,6 +785,8 @@ enum ActionType {
     case schedule(schedule: Schedule)
     /// 组
     case group(group: Group)
+    /// Remove observed subscriptions whose business Group no longer exists.
+    case missingGroupSubscriptions
     /// 配置
     case profile(type: ProfileType)
     /// 设备pir启用/禁用

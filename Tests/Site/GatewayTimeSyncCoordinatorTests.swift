@@ -7,6 +7,7 @@ struct GatewayTimeSyncCoordinatorTests {
         testOnlyOneAttemptAndOldResultsAreIgnored()
         testDetachBeforeAndAfterSendHaveDifferentOwnership()
         testTypedTimeStatusValidation()
+        testConvertedTimeValidation()
         testTimeoutSettlesOnlyMatchingAttempt()
         testBackgroundCancelsOnlyBeforeSend()
         print("GatewayTimeSyncCoordinatorTests passed")
@@ -21,8 +22,9 @@ struct GatewayTimeSyncCoordinatorTests {
 
         let result = core.receive(
             attemptID: first!,
-            status: .init(seconds: 100, offsetMinutes: 480),
-            targetOffsetMinutes: 480
+            status: .init(seconds: 100, subSecond: 0, taiDelta: 0, offsetMinutes: 480),
+            targetOffsetMinutes: 480,
+            receivedAt: Date(timeIntervalSince1970: 946_684_900)
         )
         require(result == .success(renderUI: true), "Matching known Time Status must finish the visible attempt")
 
@@ -30,8 +32,9 @@ struct GatewayTimeSyncCoordinatorTests {
         require(
             core.receive(
                 attemptID: first!,
-                status: .init(seconds: 101, offsetMinutes: 480),
-                targetOffsetMinutes: 480
+                status: .init(seconds: 101, subSecond: 0, taiDelta: 0, offsetMinutes: 480),
+                targetOffsetMinutes: 480,
+                receivedAt: Date(timeIntervalSince1970: 946_684_900)
             ) == .ignored,
             "A stale Time Status must not settle a newer Retry"
         )
@@ -52,8 +55,9 @@ struct GatewayTimeSyncCoordinatorTests {
         require(
             afterSend.receive(
                 attemptID: sent,
-                status: .init(seconds: 100, offsetMinutes: 480),
-                targetOffsetMinutes: 480
+                status: .init(seconds: 100, subSecond: 0, taiDelta: 0, offsetMinutes: 480),
+                targetOffsetMinutes: 480,
+                receivedAt: Date(timeIntervalSince1970: 946_684_900)
             ) == .success(renderUI: false),
             "Detached sent success must persist without rendering the closed page"
         )
@@ -66,8 +70,9 @@ struct GatewayTimeSyncCoordinatorTests {
         require(
             unknownTime.receive(
                 attemptID: unknownAttempt,
-                status: .init(seconds: 0, offsetMinutes: 480),
-                targetOffsetMinutes: 480
+                status: .init(seconds: 0, subSecond: 0, taiDelta: 0, offsetMinutes: 480),
+                targetOffsetMinutes: 480,
+                receivedAt: Date(timeIntervalSince1970: 946_684_900)
             ) == .failure(renderUI: true),
             "Unknown zero Time Status must fail Device sync"
         )
@@ -78,8 +83,9 @@ struct GatewayTimeSyncCoordinatorTests {
         require(
             wrongOffset.receive(
                 attemptID: wrongAttempt,
-                status: .init(seconds: 100, offsetMinutes: 0),
-                targetOffsetMinutes: 480
+                status: .init(seconds: 100, subSecond: 0, taiDelta: 0, offsetMinutes: 0),
+                targetOffsetMinutes: 480,
+                receivedAt: Date(timeIntervalSince1970: 946_684_900)
             ) == .failure(renderUI: true),
             "Mismatched Time Status offset must fail Device sync"
         )
@@ -92,6 +98,31 @@ struct GatewayTimeSyncCoordinatorTests {
         require(core.timeout(attemptID: UUID()) == .ignored, "Stale timeout must be ignored")
         require(core.timeout(attemptID: attempt) == .failure(renderUI: true), "Matching timeout must fail the attempt")
         require(core.timeout(attemptID: attempt) == .ignored, "Terminal attempt must ignore duplicate timeout")
+    }
+
+    private static func testConvertedTimeValidation() {
+        let receivedAt = Date(timeIntervalSince1970: 1_498_577_400.5)
+        for delta: Int16 in [0, 36, 37] {
+            var core = GatewayTimeSyncAttemptCore(pageSessionID: UUID())
+            let attempt = core.begin(gatewayID: "a")!
+            require(core.markSent(attemptID: attempt), "Start time sync")
+            require(core.receive(
+                attemptID: attempt,
+                status: .init(seconds: UInt64(551_892_600 + Int(delta)), subSecond: 128,
+                              taiDelta: delta, offsetMinutes: 480),
+                targetOffsetMinutes: 480, receivedAt: receivedAt
+            ) == .success(renderUI: true), "Validate the reported UTC instant, including legacy delta=0")
+        }
+        for seconds: UInt64 in [551_892_600 + 31, 0x20E5369D, UInt64.max] {
+            var core = GatewayTimeSyncAttemptCore(pageSessionID: UUID())
+            let attempt = core.begin(gatewayID: "a")!
+            require(core.markSent(attemptID: attempt), "Start time sync")
+            require(core.receive(
+                attemptID: attempt,
+                status: .init(seconds: seconds, subSecond: 128, taiDelta: 0, offsetMinutes: 480),
+                targetOffsetMinutes: 480, receivedAt: receivedAt
+            ) == .failure(renderUI: true), "Matching timezone alone must not accept wrong or invalid device time")
+        }
     }
 
     private static func testBackgroundCancelsOnlyBeforeSend() {

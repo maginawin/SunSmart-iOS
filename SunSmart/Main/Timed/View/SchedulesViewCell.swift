@@ -18,6 +18,7 @@ class SchedulesViewCell: UICollectionViewCell {
     private var actionLabel: UILabel!
     private var fadeTimeLabel: UILabel!
     private var failedImageView: UIImageView!
+    private var syncRequestID = UUID()
     
     /// 启用/禁用事件回调
     var enabledActionCallback: ((Bool)->Void)?
@@ -71,13 +72,21 @@ class SchedulesViewCell: UICollectionViewCell {
             
             fadeTimeLabel.text = "\("fade_time".localizedString): " + "\(schedule.fadeTime)s"
             
-            if schedule.getNeedSyncDatas().isEmpty() {
-                failedImageView.isHidden = true
-            }else {
-                failedImageView.isHidden = false
+            syncRequestID = UUID()
+            let requestID = syncRequestID
+            failedImageView.isHidden = false
+            NodeSyncStatusRefresh.request(schedule: schedule, owner: self) { [weak self] needsSync in
+                guard let self, self.syncRequestID == requestID else { return }
+                self.failedImageView.isHidden = !needsSync
             }
             
         }
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        syncRequestID = UUID()
+        NodeSyncStatusRefresh.cancel(owner: self)
     }
     
     

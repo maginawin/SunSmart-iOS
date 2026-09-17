@@ -14,6 +14,8 @@ protocol SitePropsAPIClientProtocol {
 
 final class SitePropsAPIClient: SitePropsAPIClientProtocol {
 
+    var didReceiveProps: (([String: Any], Int64) throws -> Void)?
+
     private let networkRequest: NetworkRequest
 
     init(networkRequest: NetworkRequest = .shared) {
@@ -39,6 +41,8 @@ final class SitePropsAPIClient: SitePropsAPIClientProtocol {
             if timezoneResult.wasProvided {
                 providedFields.insert(.timezone)
             }
+            do { try didReceiveProps?(props, timestamp) }
+            catch { return .failure(.unknown) }
             return .success(SitePropsRemoteSnapshot(
                 siteName: siteName,
                 imageId: imageId,
@@ -78,6 +82,8 @@ final class SitePropsAPIClient: SitePropsAPIClientProtocol {
             else {
                 return .failure(.unknown)
             }
+            do { try didReceiveProps?(data, parsed.timestamp) }
+            catch { return .failure(.unknown) }
             return .success(parsed)
 
         case .failure(let error):

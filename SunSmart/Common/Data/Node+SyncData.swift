@@ -116,7 +116,7 @@ enum NodeSyncData {
 extension Group {
     
     func sensorServerPublicationRetransmit(effectiveMemberCount: Int? = nil) -> Publish.Retransmit {
-        let memberCount = effectiveMemberCount ?? nodes.count
+        let memberCount = effectiveMemberCount ?? NodeSyncReadContext.current?.members(of: self).count ?? nodes.count
         guard memberCount <= 3 else {
             return Publish.Retransmit(1, timesWithInterval: 0.1)
         }
@@ -442,7 +442,7 @@ extension Node {
         var syncDatas: [NodeSyncData] = []
         switch type {
         case .group(let group, let effectiveMemberCount):
-            guard let group = group ?? self.group else {
+            guard let group = group ?? self.syncReadGroup else {
                 return syncDatas
             }
             guard SpaceConfigurationSafety.configurationAvailable(for: self, group: group) else { return [] }
@@ -451,12 +451,12 @@ extension Node {
                 syncDatas.append(.deviceInitialize)
             }
             // 设备退出组失败
-            if self.group != nil && groupState == GroupState.exitFailure {
+            if self.syncReadGroup != nil && groupState == GroupState.exitFailure {
                 // 退出组时pir默认启用
                 if self.capabilities.contains(.pirEnabled), !self.pirEnabled {
                     syncDatas.append(.pirEnabled(true))
                 }
-                syncDatas.append(.unsubscribeGroup(group: self.group!))
+                syncDatas.append(.unsubscribeGroup(group: self.syncReadGroup!))
             }else if getSunSmartSubscribeToGroupMessageHandles(group).count > 0 { // 设备订阅组数据不完整
                 syncDatas.append(.subscribeGroup(group: group))
             }
@@ -601,16 +601,22 @@ extension Node {
             if !self.isKeybindComplete {
                 syncDatas.append(.deviceInitialize)
             }
-            if let group = self.group ?? self.restoreData?.addGroup {
+            if let group = self.syncReadGroup ?? self.restoreData?.addGroup {
                 syncDatas.append(contentsOf: getSyncData(type: .group(group)))
                 syncDatas.append(contentsOf: getNodeEmergencyFireControllerAssociationSyncDatas(group: group))
             }else { // 未加入组的profile
+                if groupState == .exitFailure, capabilities.contains(.pirEnabled), !pirEnabled {
+                    syncDatas.append(.pirEnabled(true))
+                }
                 // profile
                 let syncProfiles = getNodeSyncProfiles(group: nil)
                 if syncProfiles.count > 0 {
                     syncDatas.append(.profile(types: syncProfiles))
                 }
                 syncDatas.append(contentsOf: getSyncData(type: .schedules()))
+                syncDatas.append(contentsOf: getSyncData(type: .scenes()))
+                syncDatas.append(contentsOf: getSyncData(type: .switches()))
+                if let data = getNodeSyncProximityLighting() { syncDatas.append(data) }
             }
             
             // 设备参数
@@ -662,10 +668,18 @@ extension Node {
     
     /// 获取节点是否需要同步组数据
     func getNeedSyncGroup(group: Group? = nil) -> Bool {
+        if let context = NodeSyncReadContext.current {
+            return context.groupNeedsSync(for: self, group: group) { self.computeNeedSyncGroup(group: group) }
+        }
+        return computeNeedSyncGroup(group: group)
+    }
+
+    private func computeNeedSyncGroup(group: Group?) -> Bool {
         guard SpaceConfigurationSafety.configurationAvailable(for: self, group: group) else { return true }
+        if !MissingGroupSubscriptionCleanup.addresses(for: self).isEmpty { return true }
         
         // 设备退出组失败
-        if self.group != nil && groupState == GroupState.exitFailure {
+        if self.syncReadGroup != nil && groupState == GroupState.exitFailure {
             return true
         }else if let addToGroup = group, getSunSmartSubscribeToGroupMessageHandles(addToGroup).count > 0 { // 设备订阅组数据不完整
             return true
@@ -727,13 +741,19 @@ extension Node {
     
     /// 获取节点是否要同步
     func getNeedSync() -> Bool {
+        if !MissingGroupSubscriptionCleanup.addresses(for: self).isEmpty { return true }
+        if syncReadGroup == nil {
+            let switches = getNodeNeedDeleteSwitchs()
+            if switches.delteSwitchProxy != nil || !switches.unlinkSwitchs.isEmpty
+                || getNodeSyncProximityLighting() != nil || !getNodeNeedDeleteSceneDatas().isEmpty { return true }
+        }
         
         // 未配置完成
         if !self.isKeybindComplete {
             return true
         }
         
-        if let group = self.group ?? self.restoreData?.addGroup {
+        if let group = self.syncReadGroup ?? self.restoreData?.addGroup {
             if getNeedSyncGroup(group: group) {
                 return true
             }
@@ -807,7 +827,7 @@ extension Node {
     /// 获取需要同步的白天晚上lux条件profile
     func getSyncDayNightLuxProfiles() -> [ProfileType] {
         guard SpaceConfigurationSafety.configurationAvailable(for: self) else { return [] }
-        guard let group = self.group else { return [] }
+        guard let group = self.syncReadGroup else { return [] }
         let profile = group.info.profile
         var profileTypes: [ProfileType] = []
         guard self.ambientLightSensorModel != nil, self.sunricherVendorModel != nil else {
@@ -848,7 +868,7 @@ extension Node {
         
         var syncProfile: [ProfileType] = []
         
-        guard let group = group ?? self.group else {
+        guard let group = group ?? self.syncReadGroup else {
             if self.deviceType != .dongle && self.deviceType != .gateway {
                 if powerUpState != .restore {
                     syncProfile.append(.powerOnState(state: .restore))
@@ -857,6 +877,7 @@ extension Node {
                     syncProfile.append(.manualOverrideTimeout(enabled: true, second: .max))
                 }
             }
+            syncProfile.append(contentsOf: getMissingGroupCleanupProfiles())
             return syncProfile
         }
         
@@ -875,7 +896,7 @@ extension Node {
 //            publishAddress = .localClientGroupAddress
 //        }
         
-        if self.group == nil || groupState == .inGroup {
+        if self.syncReadGroup == nil || groupState == .inGroup {
             
             // 光照类型
             let daylightType = groupProfile.type == .occupancy_daylight || groupProfile.type == .vacancy_daylight || groupProfile.type == .daylight
@@ -1224,6 +1245,33 @@ extension Node {
         
         return syncProfile
     }
+
+    /// A missing Group cannot supply its old Profile. Observed configuration is
+    /// still sufficient to finish an already pending exit without inventing it.
+    func getMissingGroupCleanupProfiles() -> [ProfileType] {
+        guard group == nil, groupState == .exitFailure else { return [] }
+        var profiles: [ProfileType] = []
+        let published = sensorModels.filter { $0.publish != nil }
+        if !published.isEmpty { profiles.append(.sensorDisable(sensorModels: published)) }
+        if lightnessSetupModel != nil, lightnessRange != 0...65535 {
+            profiles.append(.highLowEndTrim(range: 0...100))
+        }
+        if presenceDetectedSensorModel != nil, motionSensitivity != 65535 {
+            profiles.append(.sensitivity(value: 65535))
+        }
+        guard lightLCSetupModel != nil else { return profiles }
+        if supportLightLCScene {
+            profiles += lightControlSceneExecuteDatas.map { .lightControlDelete(sceneNumber: $0.sceneNumber) }
+            profiles += lightControlLuxTriggerConditions.map { .profileToggleTriggerConditionLuxDelete(id: $0.index) }
+        }
+        if lightLCProperty.mode == true { profiles.append(.mode(enabled: false)) }
+        if lightLCProperty.occupancyMode == true { profiles.append(.occupancyMode(enabled: false)) }
+        if sunricherVendorModel != nil {
+            if lightLCProperty.manualControlMode == true { profiles.append(.manualControl(enabled: false)) }
+            if lightLCProperty.lightAutoAdjustEnabled == true { profiles.append(.lightAutoAdujustEnabled(enabled: false)) }
+        }
+        return profiles
+    }
     
     func getNodeLightDataSyncProfiles(
         group: Group,
@@ -1447,7 +1495,7 @@ extension Node {
     ///   - scene: 场景（传入则只获取该场景是否有同步，不传入则获取所有场景是否有同步）
     func getNodeSyncSceneDatas(group: Group? = nil, scene: Scene? = nil) -> [(scene: Scene, data: SceneExecuteData)] {
         
-        guard let group = group ?? self.group, self.sceneSetupModel != nil else {
+        guard let group = group ?? self.syncReadGroup, self.sceneSetupModel != nil else {
             return []
         }
         var syncSceneData: [(scene: Scene, data: SceneExecuteData)] = []
@@ -1478,13 +1526,15 @@ extension Node {
     ///   - scene: 场景（传入则只获取该场景是否有同步，不传入则获取所有场景是否有同步）
     func getNodeNeedDeleteSceneDatas(scene: Scene? = nil) -> [Scene] {
         
-        guard let group = self.group,
-              SceneDeleteCapability.isSupported(sceneSetupModel: self.sceneSetupModel) else {
+        guard SceneDeleteCapability.isSupported(sceneSetupModel: self.sceneSetupModel) else {
             return []
         }
         var scenes = self.scenes
         if scene != nil {
             scenes = [scene!]
+        }
+        guard let group = self.syncReadGroup else {
+            return groupState == .exitFailure ? scenes.filter { self.scenes.contains($0) } : []
         }
         
         return scenes.filter({ scene in
@@ -1501,7 +1551,7 @@ extension Node {
         guard schedulerSetupModel != nil else {
             return []
         }
-        let group = group ?? self.group
+        let group = group ?? self.syncReadGroup
         var schedules = MeshNetworkManager.instance.schedules
         if schedule != nil {
             schedules = [schedule!]
@@ -1521,7 +1571,7 @@ extension Node {
         guard self.schedulerSetupModel != nil else {
             return []
         }
-        let group = group ?? self.group
+        let group = group ?? self.syncReadGroup
 
         var schedules = MeshNetworkManager.instance.schedules
         if schedule != nil {
@@ -1538,7 +1588,7 @@ extension Node {
     ///   - switchData: 动能开关（传入则只获取该动能开关是否有同步，不传入则获取所有动能开关是否有同步）
     func getNodeSyncSwitchs(group: Group? = nil, switchData: DeviceSwitchData? = nil) -> (switchProxy: DeviceSwitchData?, linkSwitchs: [DeviceSwitchData]) {
         
-        guard let group = group ?? self.group else {
+        guard let group = group ?? self.syncReadGroup else {
             return (nil, [])
         }
         guard groupState != .exitFailure else {
@@ -1584,18 +1634,23 @@ extension Node {
     ///   - switchData: 动能开关（传入则只获取该动能开关是否需要删除，不传入则获取所有动能开关是否有需要删除）
     func getNodeNeedDeleteSwitchs(switchData: DeviceSwitchData? = nil) -> (delteSwitchProxy: DeviceSwitchData?, unlinkSwitchs: [DeviceSwitchData]) {
         
-        guard let group = self.group else {
-            return (nil, [])
-        }
-        let supportsEnOceanSwitchSync = self.schedulerSetupModel != nil
+        let group = self.syncReadGroup
+        let supportsEnOceanSwitchSync = self.sunricherVendorModel != nil
         var delteSwitchProxy: DeviceSwitchData?
-        var switchs = group.info.allSwitchs
+        var switchs = MeshNetworkManager.instance.switchs
+        for item in group?.info.allSwitchs ?? [] where !switchs.contains(where: { $0.id == item.id }) { switchs.append(item) }
         if switchData != nil {
             switchs = [switchData!]
         }
         
         var unlinkSwitchs: [DeviceSwitchData] = []
-        switchs.filter({ self.groupState == .exitFailure || $0.unbindGroupAddresses.contains(group.address.address) }).forEach { switchData in
+        switchs.filter({ item in
+            if let group, self.groupState == .exitFailure || item.unbindGroupAddresses.contains(group.address.address) { return true }
+            let known = Set(self.network?.groups.map { $0.address.address } ?? [])
+            let missing = item.unbindGroupAddresses.contains { !known.contains($0) }
+            let stillTargeted = group.map { self.groupState != .exitFailure && item.bindGroupAddresses.contains($0.address.address) } ?? false
+            return missing && !stillTargeted
+        }).forEach { switchData in
             if switchData.batteryPowerSwitchData != nil {
                 if self.getBatteryPowerSwitchTargetSubscriptionMessageHandles(switchData: switchData, unsubscribe: true).count > 0 {
                     unlinkSwitchs.append(switchData)
@@ -1632,7 +1687,17 @@ extension Node {
         guard plan.isComplete else { return nil }
         let address = ProximityLightingTopologyPlanner.normalizedAddress(for: self)
 
-        return getNodeSyncProximityLighting(target: plan.target(for: address))
+        let localTarget = plan.target(for: address)
+        let mergedTarget: ProximityLightingTopologyPolicy.Target?
+        if topologyPlan != nil {
+            mergedTarget = localTarget
+        } else if let context = NodeSyncReadContext.current {
+            mergedTarget = context.mergedTarget(for: self, local: localTarget)
+        } else {
+            mergedTarget = SiteTriggerZoneTopologyReader.mergedLocalTarget(for: self, local: localTarget)
+        }
+        guard let target = mergedTarget else { return nil }
+        return getNodeSyncProximityLighting(target: target)
     }
 
     private func getNodeSyncProximityLighting(

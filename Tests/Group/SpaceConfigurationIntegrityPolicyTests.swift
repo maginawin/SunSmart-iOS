@@ -77,7 +77,56 @@ struct SpaceConfigurationIntegrityPolicyTests {
             ["spaceData": ["proximityLightingSchemaVersion": 1, "triggerZones": []]], hasLocalZones: true))
         testReadbackDiagnostics()
         testEmptyGroupAddressCompatibility()
+        testProximityAllCompatibility()
         print("PASS: complete profile switches, incomplete payloads, photocell references, readback and submission generation")
+    }
+
+    static func testProximityAllCompatibility() {
+        typealias P = SpaceConfigurationIntegrityPolicy
+        var profile: [String: Any] = ["id": "profile", "type": 7,
+            "highEndTrim": 100, "lowEndTrim": 0, "occupancyLevel": 100,
+            "vacantLevel": 50, "taskLevel": 100, "timeT1": 0, "timeT2": 30,
+            "timeT3": 60, "timeT4": 0, "timeT5": 0,
+            "manualOverrideTimeout": 600, "powerUpState": 0, "proximityLightingNumber": 255]
+        func payload(_ value: [String: Any]) -> [String: Any] {
+            ["groups": [["address": "C00D", "profile": value]], "spaceData": ["triggerZones": []]]
+        }
+        let canonical = P.configurationData(payload(profile))!
+        let allValues: [Any] = Array(21...255).map { $0 as Any }
+            + [256, 65535, Int64.max, UInt64.max]
+        for value in allValues {
+            profile["proximityLightingNumber"] = value
+            precondition(P.normalizedProximityLightingNumber(value) == 255)
+            precondition(P.profileIssue(profile) == nil)
+            precondition(P.configurationData(payload(profile)) == canonical,
+                         "Every integer above 20 must match ALL for recovery baselines and cloud readback")
+            let wire = try! JSONSerialization.data(withJSONObject: payload(profile))
+            let decoded = try! JSONSerialization.jsonObject(with: wire) as! [String: Any]
+            precondition(P.profilesIssue(in: decoded) == nil && P.configurationData(decoded) == canonical)
+            // Stored baselines may predate normalization, so bypass the exporter.
+            var baseline = try! JSONSerialization.jsonObject(with: canonical) as! [String: Any]
+            var groups = baseline["groups"] as! [[String: Any]]
+            var storedProfile = groups[0]["profile"] as! [String: Any]
+            storedProfile["proximityLightingNumber"] = value
+            groups[0]["profile"] = storedProfile
+            baseline["groups"] = groups
+            let rawBaseline = try! JSONSerialization.data(withJSONObject: baseline)
+            precondition(P.configurationsMatch(rawBaseline, canonical) && P.configurationsMatch(canonical, rawBaseline))
+            precondition(P.readbackDiagnostic(submittedConfiguration: rawBaseline, remote: decoded)
+                .contains("canonicalEqual=true"))
+        }
+        profile["timeT2"] = 5
+        precondition(P.configurationData(payload(profile)) != canonical,
+                     "Real Profile changes must not be hidden by relay compatibility")
+        for invalid: Any in [-1, Int64.min, 1.5, 21.5, 256.5, "21", "255", true, false, NSNull()] {
+            profile["proximityLightingNumber"] = invalid
+            precondition(P.normalizedProximityLightingNumber(invalid) == nil)
+            precondition(P.profileIssue(profile) == "invalidProfileRelay")
+            precondition(P.configurationData(payload(profile)) == nil)
+        }
+        for relay in Array(0...20) + [255] {
+            precondition(P.normalizedProximityLightingNumber(relay) == UInt8(relay))
+        }
     }
 
     static func testEmptyGroupAddressCompatibility() {

@@ -20,7 +20,7 @@ rg -n "case networkConnectivity|network_connectivity|GatewayNetworkConnectivityC
 rg -n "func reloadGatewayTable\(\)" "$gateway_controller" >/dev/null || fail "GatewayViewController missing full table reload hook"
 rg -n "func gatewayProxyReadyStateDidUpdate\(_ isReady: Bool\)" "$gateway_controller" >/dev/null || fail "GatewayViewController missing target Proxy Ready hook"
 rg -n "var supportsGatewaySignalRefresh: Bool" "$gateway_controller" >/dev/null || fail "GatewayViewController missing signal refresh capability hook"
-rg -n "guard supportsGatewaySignalRefresh else" "$gateway_controller" >/dev/null || fail "Gateway signal refresh must be capability-gated"
+rg -n "guard (!isDeletingGateway, )?supportsGatewaySignalRefresh else" "$gateway_controller" >/dev/null || fail "Gateway signal refresh must be capability-gated"
 
 rg -n "wifiGatewayCredentials|wifiGatewayConnectionStatus|wifiGatewayCredentialsSet" "$wifi_controller" >/dev/null || fail "WiFiGatewayViewController must use real WiFi Gateway vendor protocol"
 rg -n "override var supportsGatewaySignalRefresh: Bool" "$wifi_controller" >/dev/null || fail "WiFi Gateway must disable legacy 4G signal refresh"

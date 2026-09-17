@@ -28,6 +28,7 @@ final class SpaceData {
     var nodes: [[String: Any]] = []
     var payload: [String: Any] { ["uuid": id, "groups": [], "nodes": nodes, "updateTimestamp": lastUpdate] }
     init(_ id: String = UUID().uuidString) { self.id = id }
+    func markLocalChangePendingCloudSync() { lastUpdate += 1 }
     @discardableResult func save() -> Bool { savesSucceed }
     @discardableResult func delete() -> Bool {
         SpaceConfigurationSafety.beginRemoval(self) && SpaceConfigurationSafety.archiveDeletedSpace(self)
@@ -88,23 +89,17 @@ final class NetworkRequest {
         precondition(initialState.siteCreationTimestamp == 45)
         precondition(SpaceConfigurationSafety.markSubmissionAccepted(context, space: a))
         request.result = .failure(.noNetwork)
+        let callsBeforeAccepted = request.calls
         let offline = await SpaceConfigurationSafety.resumeUpload(a)
-        if case .success = offline { preconditionFailure("offline readback cannot confirm") }
-        precondition(SpaceConfigurationSafety.hasPendingUpload(a) && !SpaceConfigurationSafety.isBlocked(a))
-        // No extra edit or upload: the persisted pending task finishes on reconnect.
-        remote(a)
-        var remapped = a.payload
-        remapped["provisioners"] = [["allocatedUnicastRange": [["lowAddress": "0001", "highAddress": "1000"]]]]
-        request.result = .success(["data": remapped])
-        let resumed = await SpaceConfigurationSafety.resumeUpload(a)
-        if case .failure = resumed { preconditionFailure("reconnected readback must finish") }
+        if case .failure = offline { preconditionFailure("accepted upload must finish locally even while offline") }
+        precondition(request.calls == callsBeforeAccepted)
         precondition(!SpaceConfigurationSafety.hasPendingUpload(a) && !SpaceConfigurationSafety.preservesLocalChanges(a))
         precondition(SpaceConfigurationSafety.testMigrated(a) && request.uploads == 0)
         a.lastUpdate = 51
         let nextAdd = await SpaceConfigurationSafety.prepareUpload(a, payload: a.payload)
         precondition(nextAdd, "first upload must establish a baseline before the next addition")
 
-        // Failed receipt write must retain a durable verified submission.
+        // Failed receipt write must retain a durable accepted submission.
         addReceipt(b)
         let bContext = SpaceConfigurationSafety.prepareSubmission(b, payload: b.payload)!
         precondition(SpaceConfigurationSafety.markSubmissionAccepted(bContext, space: b))
@@ -187,7 +182,7 @@ final class NetworkRequest {
 
         let g = SpaceData("G")
         let gContext = SpaceConfigurationSafety.prepareSubmission(g, payload: g.payload)!
-        precondition(SpaceConfigurationSafety.markSubmissionAccepted(gContext, space: g))
+        precondition(!SpaceConfigurationSafety.finishAcceptedSubmission(gContext, space: g))
         var stale = g.payload
         stale["deviceCount"] = 0
         stale["nodes"] = [["uuid": "old-device", "unicastAddress": "0002"]]
@@ -229,17 +224,194 @@ final class NetworkRequest {
         precondition(!SpaceConfigurationSafety.canAutomaticallyUpload(a))
         precondition(SpaceConfigurationSafety.requiresConfigurationReview(a))
 
+        try await testCloudSiteConfirmation()
+        try await testDirectUploadConfirmation()
         try await testEmptyGroupAddressRecovery()
         try await testSiteHandoffReadback()
         try await testImportPreparation()
         try await testParseRejectionRecovery()
+        try testReferenceCleanupReceipts()
+        try testProximityAllImportRecovery()
+        try testProtectionGenerationWriters()
 
         // Account changes invalidate pending callbacks before looking up another store.
         let accountContext = try SpaceConfigurationSafety.recoveryState(b)
         UserData.currentUserId = "another-account"
         precondition(!SpaceConfigurationSafety.isCurrent(accountContext, space: b))
         UserData.currentUserId = "test-account"
-        print("PASS: production durable readback/reconnect, first-upload baseline, persistence failures, versions, authority and lifecycle isolation")
+        print("PASS: production direct acceptance, unknown-outcome recovery, first-upload baseline, persistence failures, versions, authority and lifecycle isolation")
+    }
+
+    @MainActor static func testProtectionGenerationWriters() throws {
+        typealias S = SpaceConfigurationSafety
+        let space = SpaceData("protection-generation")
+        var state = try S.recoveryState(space)
+        let request = SpaceProtectionReadRequest(scope: .init(account: UserData.currentUserId,
+            region: String(describing: UserData.currentServerRegion), meshUUID: space.meshUUID,
+            networkID: space.meshNetworkId), root: S.testRoot, defaults: S.testDefaults)
+        let original = request.read()
+        precondition(!original.isBlocked)
+        S.failStateWrite = true
+        do { try S.testSaveState(state, space: space); preconditionFailure("expected failed write") } catch {}
+        S.failStateWrite = false
+        precondition(!original.isCurrent && SpaceProtectionReadGeneration.current != nil)
+        let beforeAuthority = request.read()
+        state.authority = .readOnly
+        try S.testSaveState(state, space: space)
+        precondition(!beforeAuthority.isCurrent && request.read().authority == .readOnly)
+        let beforeJournal = request.read()
+        precondition(S.updateDeletionJournal(space) {
+            $0.entries.append(.init(id: UUID(), nodeUUID: "node", primaryAddress: 1,
+                elementAddresses: [1], macAddress: nil, productId: nil))
+        })
+        precondition(!beforeJournal.isCurrent && request.read().pendingDeletion)
+        let beforeBlock = request.read()
+        S.block(space, reason: "generation-test")
+        precondition(!beforeBlock.isCurrent && request.read().blockedReason == "generation-test")
+        #if DEBUG
+        print("PASS: production save failure, authority, deletion journal and blocked writer invalidate real snapshots")
+        #endif
+    }
+
+    @MainActor static func testDirectUploadConfirmation() async throws {
+        typealias S = SpaceConfigurationSafety
+        let request = NetworkRequest.shared
+        for reason in ["uploadReadbackConflict", "uploadReadbackUnconfirmed", "invalidRemoteTopology"] {
+            let space = SpaceData("accepted-" + reason)
+            let context = S.prepareSubmission(space, payload: space.payload)!
+            precondition(S.markSubmissionAccepted(context, space: space))
+            S.block(space, reason: reason)
+            request.result = .success(["data": ["uuid": "wrong-space", "nodes": []]])
+            let calls = request.calls
+            precondition(S.finishAcceptedSubmission(context, space: space))
+            precondition(request.calls == calls && space.lastUploadCloudTimestamp == 50)
+            precondition(S.isBlocked(space) == (reason == "invalidRemoteTopology"))
+            precondition(!S.hasPendingUpload(space))
+            let newer = S.prepareSubmission(space, payload: space.payload)!
+            precondition(!S.finishAcceptedSubmission(context, space: space), "old completion must not consume a newer receipt")
+            S.discardUnsentSubmission(newer, space: space)
+        }
+        for succeeds in [false, true] {
+            let space = SpaceData("unbind-direct-\(succeeds)")
+            request.result = succeeds ? .success([:]) : .failure(.requestTimeout)
+            let calls = request.calls, uploads = request.uploads
+            // A new edit arrives while the submitted version is in flight.
+            request.onRequest = { space.lastUpdate = 60 }
+            let result = await S.uploadBeforeUnbind(space)
+            if succeeds {
+                if case .failure = result { preconditionFailure("successful upload must confirm without GET") }
+                precondition(space.lastUploadCloudTimestamp == 50 && !S.hasPendingUpload(space))
+            } else {
+                if case .success = result { preconditionFailure("timeout must not confirm") }
+                precondition(space.lastUploadCloudTimestamp == nil && S.hasPendingUpload(space))
+            }
+            precondition(space.needUploadCloud)
+            precondition(request.calls == calls + 1 && request.uploads == uploads + 1)
+        }
+        // Older accepted snapshots never move the confirmed version backwards.
+        let monotonic = SpaceData("accepted-monotonic")
+        let context = S.prepareSubmission(monotonic, payload: monotonic.payload)!
+        precondition(S.markSubmissionAccepted(context, space: monotonic))
+        monotonic.lastUploadCloudTimestamp = 80
+        precondition(S.finishAcceptedSubmission(context, space: monotonic))
+        precondition(monotonic.lastUploadCloudTimestamp == 80)
+
+        // One failed local confirmation must not undo another accepted Space.
+        let first = SpaceData("partial-first"), second = SpaceData("partial-second")
+        let firstContext = S.prepareSubmission(first, payload: first.payload)!
+        let secondContext = S.prepareSubmission(second, payload: second.payload)!
+        precondition(S.markSubmissionAccepted(firstContext, space: first))
+        precondition(S.markSubmissionAccepted(secondContext, space: second))
+        let calls = request.calls
+        precondition(S.finishAcceptedSubmission(firstContext, space: first))
+        second.savesSucceed = false
+        precondition(!S.finishAcceptedSubmission(secondContext, space: second))
+        precondition(!S.hasPendingUpload(first) && S.hasPendingUpload(second))
+        second.savesSucceed = true
+        S.failStateWrite = true
+        precondition(!S.finishAcceptedSubmission(secondContext, space: second))
+        S.failStateWrite = false
+        let persisted = try S.recoveryState(second)
+        precondition(persisted.submission?.phase == .accepted)
+        if case .failure = await S.resumeUpload(second) { preconditionFailure("state persistence retry must finish locally") }
+        precondition(!S.hasPendingUpload(second) && request.calls == calls)
+        print("PASS: direct success uses submitted timestamps, makes no GET, preserves newer edits and unrelated blocks")
+    }
+
+    @MainActor static func testProximityAllImportRecovery() throws {
+        typealias S = SpaceConfigurationSafety
+        let space = SpaceData("proximity-all-import")
+        let profile: [String: Any] = ["id": "profile", "type": 7,
+            "highEndTrim": 100, "lowEndTrim": 0, "occupancyLevel": 100,
+            "vacantLevel": 50, "taskLevel": 100, "timeT1": 0, "timeT2": 5,
+            "timeT3": 60, "timeT4": 0, "timeT5": 0,
+            "manualOverrideTimeout": 5, "powerUpState": 0, "proximityLightingNumber": 21]
+        var original = space.payload
+        original["groups"] = [["address": "C00D", "profile": profile]]
+        original["scenes"] = [[String: Any]]()
+        original["schedules"] = [[String: Any]]()
+        original["spaceData"] = ["proximityLightingSchemaVersion": 1, "triggerZones": []]
+        let cleaned = try SpaceSyncCleanupPolicy.normalize(original)
+        S.block(space, reason: "invalidRemoteProfile:C00D:invalidProfileRelay")
+        precondition(S.isBlocked(space))
+        precondition(S.preserveRemoteReferenceCleanup(space, payload: original, candidate: cleaned.payload))
+        precondition(S.beginImport(space, payload: cleaned.payload))
+        precondition(S.hasPendingImport(space) && S.isBlocked(space))
+        precondition(S.finishImport(space, validatedTopology: true))
+        precondition(!S.isBlocked(space) && !S.hasPendingImport(space),
+                     "Successful canonical import must lift the previously persisted invalid relay barrier")
+        let baseline = try S.recoveryState(space).authorizationBaseline
+        precondition(baseline != nil && baseline == SpaceConfigurationIntegrityPolicy.configurationData(original)
+                     && baseline == SpaceConfigurationIntegrityPolicy.configurationData(cleaned.payload),
+                     "The original cloud alias and saved canonical value share the upload authorization baseline")
+        precondition(S.preservesLocalChanges(space), "The repair remains pending until its upload is confirmed")
+        let timestamp = space.lastUpdate
+        let repeated = try SpaceSyncCleanupPolicy.normalize(cleaned.payload)
+        precondition(!repeated.didChange && !S.isBlocked(space) && timestamp == space.lastUpdate)
+        print("PASS: ALL alias import clears historical Profile block, preserves original baseline and retains repair upload intent")
+    }
+
+    @MainActor static func testReferenceCleanupReceipts() throws {
+        let space = SpaceData("reference-cleanup")
+        space.syncCloudError = .configurationExportInvalid
+        SpaceConfigurationSafety.block(space, reason: "entryTopologyNeedsReview")
+        precondition(SpaceConfigurationSafety.beginSyncReferenceCleanup(space, payload: space.payload))
+        precondition(SpaceConfigurationSafety.isBlocked(space) && SpaceConfigurationSafety.preservesLocalChanges(space))
+        space.savesSucceed = false
+        precondition(!SpaceConfigurationSafety.finishSyncReferenceCleanup(space, changed: true))
+        precondition(SpaceConfigurationSafety.hasPendingReferenceCleanup(space)
+            && space.syncCloudError == .configurationExportInvalid, "Save failure retains retry intent and prior error")
+        space.savesSucceed = true
+        precondition(SpaceConfigurationSafety.finishSyncReferenceCleanup(space, changed: true))
+        precondition(!SpaceConfigurationSafety.isBlocked(space) && space.syncCloudError == nil)
+        precondition(SpaceConfigurationSafety.preservesLocalChanges(space), "Cleanup stays local until its own upload receipt")
+        let timestamp = space.lastUpdate
+        precondition(SpaceConfigurationSafety.finishSyncReferenceCleanup(space, changed: false))
+        precondition(space.lastUpdate == timestamp, "Repeated validation does not create another edit")
+        SpaceConfigurationSafety.block(space, reason: "unrelatedConflict")
+        precondition(!SpaceConfigurationSafety.finishSyncReferenceCleanup(space, changed: false))
+        precondition(SpaceConfigurationSafety.isBlocked(space), "Reference cleanup never clears other conflicts")
+
+        let importing = SpaceData("reference-import")
+        let original = importing.payload
+        var candidate = original
+        candidate["nodes"] = [["uuid": "retained", "unicastAddress": "0010", "groupState": 2]]
+        precondition(SpaceConfigurationSafety.preserveRemoteReferenceCleanup(importing, payload: original, candidate: candidate))
+        precondition(SpaceConfigurationSafety.beginImport(importing, payload: candidate))
+        precondition(SpaceConfigurationSafety.originalReferenceCleanupImport(importing, candidate: candidate) != nil)
+        precondition(SpaceConfigurationSafety.originalReferenceCleanupImport(importing, candidate: original) == nil,
+                     "A stale receipt cannot claim a different import")
+        importing.savesSucceed = false
+        precondition(!SpaceConfigurationSafety.finishImport(importing))
+        precondition(SpaceConfigurationSafety.hasPendingImport(importing), "Interrupted import remains resumable")
+        importing.savesSucceed = true
+        precondition(SpaceConfigurationSafety.finishImport(importing))
+        let state = try SpaceConfigurationSafety.recoveryState(importing)
+        precondition(state.authorizationBaseline == SpaceConfigurationIntegrityPolicy.configurationData(original),
+                     "Authorization compares the actual original cloud version")
+        precondition(SpaceConfigurationSafety.preservesLocalChanges(importing) && !SpaceConfigurationSafety.hasPendingImport(importing))
+        precondition(SpaceConfigurationSafety.originalReferenceCleanupImport(importing, candidate: candidate) == nil)
+        print("PASS: reference cleanup save failure/retry, import interruption, original baseline, scoped unblock and upload intent")
     }
 
     @MainActor static func testParseRejectionRecovery() async throws {
@@ -271,7 +443,7 @@ final class NetworkRequest {
             precondition(S.markSubmissionAccepted(newer, space: space))
             S.rejectSubmission(newer, space: space, error: error)
             let accepted = try S.recoveryState(space)
-            precondition(accepted.submission?.phase == .accepted, "accepted receipts still need readback")
+            precondition(accepted.submission?.phase == .accepted, "a late rejection must preserve accepted evidence")
         }
         let unknownErrors: [NetworkApiError] = [
             .requestTimeout, .noNetwork, .serverNotRespond,
@@ -321,7 +493,7 @@ final class NetworkRequest {
             let peer: [String: Any] = ["uuid": "peer", "unicastAddress": "0005", "groupState": 0]
             space.nodes = [old, peer]
             let context = S.prepareSubmission(space, payload: space.payload)!
-            precondition(S.markSubmissionAccepted(context, space: space))
+            precondition(!S.finishAcceptedSubmission(context, space: space))
             space.lastUpdate = 60
             space.nodes = [peer]
             precondition(S.updateDeletionJournal(space) {
@@ -382,7 +554,7 @@ final class NetworkRequest {
             request.result = .success(["data": oldRemote])
             let calls = request.calls, uploads = request.uploads
             if case .failure = await S.resumeUpload(space) { preconditionFailure("legacy empty address must confirm") }
-            precondition(request.calls == calls + 1 && request.uploads == uploads)
+            precondition(request.calls == calls && request.uploads == uploads)
             precondition(!S.isBlocked(space) && !S.hasPendingUpload(space))
             precondition(space.lastUploadCloudTimestamp == 50 && space.lastUpdate == 60 && space.needUploadCloud)
             let remaining = try S.deletionJournal(space)
@@ -390,7 +562,7 @@ final class NetworkRequest {
 
             // The shared production upload path can now export and confirm the
             // newer two-node payload; it must not mark that version done early.
-            request.responses = [.success([:]), .success(["data": space.payload])]
+            request.responses = [.success([:])]
             if case .failure = await S.uploadBeforeUnbind(space) { preconditionFailure("newer edit must remain uploadable") }
             precondition(request.responses.isEmpty && request.uploads == uploads + 1)
             precondition(space.lastUploadCloudTimestamp == 60 && !space.needUploadCloud)

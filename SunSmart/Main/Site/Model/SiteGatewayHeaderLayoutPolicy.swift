@@ -2,6 +2,20 @@ import Foundation
 
 enum SiteGatewayHeaderLayoutPolicy {
 
+    static func showsGatewayStatus(
+        selectedGatewayID: String?,
+        visibleGatewayIDs: [String],
+        hasSiteSpaces: Bool,
+        hasServerGatewayStatus: Bool,
+        isSiteOwner: Bool
+    ) -> Bool {
+        if let selectedGatewayID, visibleGatewayIDs.contains(selectedGatewayID) {
+            return true
+        }
+        return hasSiteSpaces &&
+            (!visibleGatewayIDs.isEmpty || hasServerGatewayStatus || !isSiteOwner)
+    }
+
     static func emptyStateFrame(
         collectionBounds: CGRect,
         headerHeight: CGFloat

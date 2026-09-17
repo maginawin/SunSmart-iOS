@@ -15,7 +15,7 @@ extension Schedule {
         contextGroup: Group? = nil
     ) -> SchedulerSetupModelOwner {
         let effectiveGroup = node.groupState != .exitFailure
-            ? contextGroup ?? node.restoreData?.addGroup ?? node.group
+            ? contextGroup ?? node.restoreData?.addGroup ?? node.syncReadGroup
             : nil
         let membership: TimedSchedulerMembership
         if let effectiveGroup {

@@ -15,6 +15,7 @@ class GroupsViewCell: UICollectionViewCell {
     var nameLabel: AdaptiveTextView!
     var deleteBtn: UIButton!
     var deleteActionCallback: (()->Void)?
+    private var syncStatusRequestID = UUID()
     
     var group: Group! {
         didSet {
@@ -28,19 +29,32 @@ class GroupsViewCell: UICollectionViewCell {
                 imageView.image = UIImage(named: "group_image_\(group.info.imageId)") //device_light_offline
             }
             nameLabel.text = group.name
-            backgroundColor = group.isOn ? .white : RGB(226, 226, 226)
+            refreshOnOffAppearance()
             
-            DispatchQueue.global().async {
-                if self.group.needSync {
-                    DispatchQueue.main.async {
-                        self.imageView.isHidden = false
-                        self.imageView.image = UIImage(named: "sync_failed_big")
-                        self.imageLabel.isHidden = true
-                    }
+            syncStatusRequestID = UUID()
+            let requestID = syncStatusRequestID
+            NodeSyncStatusRefresh.request(group: group, owner: self) { [weak self] needsSync in
+                guard let self, self.syncStatusRequestID == requestID else { return }
+                if needsSync {
+                    self.imageView.isHidden = false
+                    self.imageView.image = UIImage(named: "sync_failed_big")
+                    self.imageLabel.isHidden = true
                 }
             }
             
         }
+    }
+
+    func refreshOnOffAppearance(isOn: Bool? = nil) {
+        guard let group else { return }
+        let value = isOn ?? NodeSyncStatusRefresh.groupOnOffStates([group])[0]
+        backgroundColor = value ? .white : RGB(226, 226, 226)
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        syncStatusRequestID = UUID()
+        NodeSyncStatusRefresh.cancel(owner: self)
     }
     
     

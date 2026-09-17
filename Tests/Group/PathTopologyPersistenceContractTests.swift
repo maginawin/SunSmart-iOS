@@ -151,7 +151,7 @@ struct PathTopologyPersistenceContractTests {
             "New exports must not duplicate extension properties at the Space root"
         )
         require(
-            importData.contains("let parsedProximityPreflight = ProximityLightingImportPreflight.parse("),
+            appearsBefore("await ProximityLightingImportPreflight.prepare(", "GroupInfo.delete(meshUUID:", in: importData),
             "Space import must preflight proximity data before destructive apply"
         )
         require(
@@ -289,7 +289,8 @@ struct PathTopologyPersistenceContractTests {
             "Unified topology policy must include Group paths, Group zones, and Space zones"
         )
         require(
-            topologyPolicy.contains("neighborAddresses[address, default: []].formUnion"),
+            topologyPolicy.contains("var neighborAddresses: [DeviceAddress: Set<DeviceAddress>]")
+                && topologyPolicy.contains("neighborAddresses[address, default: []].insert(neighbor)"),
             "Unified topology policy must merge and deduplicate neighbor sources"
         )
         require(

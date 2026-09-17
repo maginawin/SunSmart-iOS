@@ -25,7 +25,7 @@ class SyncDevicesViewController: UIViewController {
         set { executionSession.sections = newValue }
     }
     
-    let type: SyncType
+    private(set) var type: SyncType
     /// 上一个group model
     private var lastGroupModel: SyncDevicesGroupModel?
     /// 上一个device model
@@ -115,23 +115,71 @@ class SyncDevicesViewController: UIViewController {
         
         deviceBlinkMode = SpaceViewController.currentDeviceBlinkMode
         
-        XWHUDManager.showCustomHUD(withMessage: nil, view: view)
-        let builder = SyncTaskPlanBuilder(
-            type: type, initialState: syncState,
-            profileSensorProtectionContext: profileSensorProtectionContext,
-            groupProfileSyncContext: groupProfileSyncContext,
-            supplementaryProximityLightingSyncDatas: supplementaryProximityLightingSyncDatas,
-            imageExists: { UIImage(named: $0) != nil }
-        )
-        DispatchQueue.global().async {
-            let result = builder.build()
-            DispatchQueue.main.async {
-                self.installTaskPlan(result)
-            }
+        executionSession.onPlanInvalidated = { [weak self] in
+            guard let self, !self.hasLeftSyncPage else { return }
+            self.profileSensorProtectionContext = nil
+            self.groupProfileSyncContext = nil
+            self.rebuildTaskPlan(resume: true)
         }
-        
+        rebuildTaskPlan(resume: syncState == .inSync)
     }
-    
+
+    private func rebuildTaskPlan(resume: Bool) {
+        XWHUDManager.showCustomHUD(withMessage: nil, view: view)
+        Task { @MainActor [weak self] in
+            guard let self, !self.hasLeftSyncPage else { return }
+            _ = await SpaceSyncCleanupCoordinator.prepareCurrentSpace()
+            guard !self.hasLeftSyncPage else { return }
+            self.type = self.currentSyncType()
+            self.executionSession.type = self.type
+            let isCurrent = SpaceSyncTaskScope.capture()
+            self.executionSession.environment.configurationIsCurrent = isCurrent
+            if resume { self.syncState = .inSync }
+            let builder = SyncTaskPlanBuilder(
+                type: self.type, initialState: self.syncState,
+                profileSensorProtectionContext: self.profileSensorProtectionContext,
+                groupProfileSyncContext: self.groupProfileSyncContext,
+                supplementaryProximityLightingSyncDatas: self.supplementaryProximityLightingSyncDatas.compactMap { item in
+                    guard let node = self.currentNode(item.node), let data = node.getNodeSyncProximityLighting() else { return nil }
+                    return (node, data)
+                }, imageExists: { UIImage(named: $0) != nil })
+            // Own the mutable Mesh snapshot on the same queue as its callbacks.
+            let result = builder.build()
+            guard isCurrent() else { self.rebuildTaskPlan(resume: resume); return }
+            self.installTaskPlan(result)
+        }
+    }
+
+    private func currentNode(_ original: Node) -> Node? {
+        MeshNetworkManager.instance.meshNetwork?.nodes.first {
+            $0.uuid == original.uuid && $0.primaryUnicastAddress == original.primaryUnicastAddress
+        }
+    }
+
+    private func currentSyncType() -> SyncType {
+        let network = MeshNetworkManager.instance.meshNetwork
+        switch type {
+        case .devices(let nodes): return .devices(nodes.compactMap(currentNode))
+        case .profile(let datas):
+            return .profile(datas.compactMap { item in
+                guard let node = currentNode(item.node) else { return nil }
+                return (node, node.getNodeSyncProfiles(group: node.group))
+            })
+        case .group(let original, let inNodes, let outNodes):
+            guard let group = network?.groups.first(where: { !$0.isVirtual && $0.address == original.address }) else {
+                return .devices(network.map { ProximityLightingTopologyContext.realNodes(in: $0) } ?? [])
+            }
+            return .group(group, inNodes: inNodes?.compactMap(currentNode), outNodes: outNodes?.compactMap(currentNode))
+        case .proximityLightingPath(let datas), .spaceTriggerZones(let datas):
+            let current = datas.compactMap { item -> (node: Node, syncData: NodeSyncData)? in
+                guard let node = currentNode(item.node), let data = node.getNodeSyncProximityLighting() else { return nil }
+                return (node, data)
+            }
+            return .spaceTriggerZones(datas: current)
+        default: return type
+        }
+    }
+
     private func installTaskPlan(_ result: SyncTaskPlanResult) {
         precondition(Thread.isMainThread)
         guard !self.hasLeftSyncPage else { return }

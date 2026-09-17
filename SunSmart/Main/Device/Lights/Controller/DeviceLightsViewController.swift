@@ -35,6 +35,7 @@ class DeviceLightsViewController: UIViewController {
     private var deviceNameFilterObservation: UUID?
     private var visibleDevices: [Node] = []
     private var showsAllControl = false
+    private var syncStatusRequestID = UUID()
     
     /// 列数
     private var columnNum: Int = isIPad ? 6 : 3
@@ -115,6 +116,12 @@ class DeviceLightsViewController: UIViewController {
         
     }
     
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+        syncStatusRequestID = UUID()
+        NodeSyncStatusRefresh.cancel(owner: self)
+    }
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
@@ -316,6 +323,8 @@ class DeviceLightsViewController: UIViewController {
     }
     
     private func updateUI(reloadTableView: Bool = true) {
+        syncStatusRequestID = UUID()
+        NodeSyncStatusRefresh.cancel(owner: self)
         
         self.updateDevicesEmptyUI()
         
@@ -344,11 +353,10 @@ class DeviceLightsViewController: UIViewController {
                 make.height.equalTo(SCRYFrom(44) + kSafeAreaBottomHeight)
             }
             
-            DispatchQueue.global().async {
-                let existSync = self.devices.contains(where: { $0.needSync })
-                DispatchQueue.main.async {
-                    self.footerView.syncBtn.isHidden = !existSync
-                }
+            let requestID = syncStatusRequestID
+            NodeSyncStatusRefresh.request(nodes: devices, owner: self) { [weak self] needsSync in
+                guard let self, self.syncStatusRequestID == requestID, !self.isEdit else { return }
+                self.footerView.syncBtn.isHidden = !needsSync
             }
             
             footerView.isEditing = false

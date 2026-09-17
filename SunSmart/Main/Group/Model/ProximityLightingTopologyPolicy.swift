@@ -28,6 +28,13 @@ struct ProximityLightingTopologyPolicy {
         let members: [SpaceZoneMember]
     }
 
+    enum Source: Hashable {
+        case groupProfile(GroupAddress)
+        case groupPath(GroupAddress)
+        case groupZone(GroupAddress)
+        case spaceZone
+    }
+
     struct Target: Equatable {
         let enabled: Bool
         let relayNumber: UInt8?
@@ -55,7 +62,19 @@ struct ProximityLightingTopologyPolicy {
     struct Plan {
         let targets: [DeviceAddress: Target]
         let capacityViolations: [CapacityViolation]
-        var isComplete: Bool = true
+        let sourcesByAddress: [DeviceAddress: Set<Source>]
+        let neighborSourcesByAddress: [DeviceAddress: [DeviceAddress: Set<Source>]]
+        var isComplete: Bool
+
+        init(targets: [DeviceAddress: Target], capacityViolations: [CapacityViolation],
+             isComplete: Bool = true, sourcesByAddress: [DeviceAddress: Set<Source>] = [:],
+             neighborSourcesByAddress: [DeviceAddress: [DeviceAddress: Set<Source>]] = [:]) {
+            self.targets = targets
+            self.capacityViolations = capacityViolations
+            self.sourcesByAddress = sourcesByAddress
+            self.neighborSourcesByAddress = neighborSourcesByAddress
+            self.isComplete = isComplete
+        }
 
         static var unavailable: Plan {
             .init(targets: [:], capacityViolations: [], isComplete: false)
@@ -84,11 +103,19 @@ struct ProximityLightingTopologyPolicy {
         }
         var relayNumbersByDeviceAddress: [DeviceAddress: UInt8] = [:]
         var neighborAddresses: [DeviceAddress: Set<DeviceAddress>] = [:]
+        var sourcesByAddress: [DeviceAddress: Set<Source>] = [:]
+        var neighborSourcesByAddress: [DeviceAddress: [DeviceAddress: Set<Source>]] = [:]
+
+        func addNeighbor(_ neighbor: DeviceAddress, to address: DeviceAddress, source: Source) {
+            neighborAddresses[address, default: []].insert(neighbor)
+            neighborSourcesByAddress[address, default: [:]][neighbor, default: []].insert(source)
+        }
 
         sortedGroups.forEach { group in
             group.memberAddresses.forEach { address in
                 relayNumbersByDeviceAddress[address] = group.relayNumber
                 _ = neighborAddresses[address, default: []]
+                sourcesByAddress[address, default: []].insert(.groupProfile(group.address))
             }
 
             group.paths.forEach { path in
@@ -97,17 +124,18 @@ struct ProximityLightingTopologyPolicy {
                           group.memberAddresses.contains(address) else {
                         return
                     }
+                    sourcesByAddress[address, default: []].insert(.groupPath(group.address))
                     if index > 0,
                        let previousAddress = path[index - 1],
                        group.memberAddresses.contains(previousAddress),
                        previousAddress != address {
-                        neighborAddresses[address, default: []].insert(previousAddress)
+                        addNeighbor(previousAddress, to: address, source: .groupPath(group.address))
                     }
                     if index + 1 < path.count,
                        let nextAddress = path[index + 1],
                        group.memberAddresses.contains(nextAddress),
                        nextAddress != address {
-                        neighborAddresses[address, default: []].insert(nextAddress)
+                        addNeighbor(nextAddress, to: address, source: .groupPath(group.address))
                     }
                 }
             }
@@ -117,9 +145,10 @@ struct ProximityLightingTopologyPolicy {
                     zone.filter { group.memberAddresses.contains($0) }
                 )
                 validAddresses.forEach { address in
-                    neighborAddresses[address, default: []].formUnion(
-                        validAddresses.filter { $0 != address }
-                    )
+                    sourcesByAddress[address, default: []].insert(.groupZone(group.address))
+                    validAddresses.filter { $0 != address }.forEach {
+                        addNeighbor($0, to: address, source: .groupZone(group.address))
+                    }
                 }
             }
         }
@@ -133,9 +162,10 @@ struct ProximityLightingTopologyPolicy {
             }
             let validAddresses = Set(validMembers.map(\.deviceAddress))
             validAddresses.forEach { address in
-                neighborAddresses[address, default: []].formUnion(
-                    validAddresses.filter { $0 != address }
-                )
+                sourcesByAddress[address, default: []].insert(.spaceZone)
+                validAddresses.filter { $0 != address }.forEach {
+                    addNeighbor($0, to: address, source: .spaceZone)
+                }
             }
         }
 
@@ -162,7 +192,9 @@ struct ProximityLightingTopologyPolicy {
 
         return Plan(
             targets: targets,
-            capacityViolations: capacityViolations
+            capacityViolations: capacityViolations,
+            sourcesByAddress: sourcesByAddress,
+            neighborSourcesByAddress: neighborSourcesByAddress
         )
     }
 

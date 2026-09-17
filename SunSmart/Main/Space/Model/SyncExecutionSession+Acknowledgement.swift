@@ -3,6 +3,11 @@ import NordicSigMeshSDK
 
 extension SyncExecutionSession {
     func received(handle: MeshMessageHandle, statusMessage: StaticMeshMessage, model: SyncCellModel, messageHandles: [MeshMessageHandle]) {
+        if let operation = operationType(for: model),
+           case .delete(let node, .missingGroupSubscriptions) = operation {
+            _ = MissingGroupSubscriptionCleanup.acknowledge(handle, status: statusMessage, for: node)
+            return
+        }
         // 判断如果是设备初始化消息，则需要再初始化完成后完成基本配置
         if self.isGatewayRepairInitialization(model),
            statusMessage is ConfigCompositionDataStatus,

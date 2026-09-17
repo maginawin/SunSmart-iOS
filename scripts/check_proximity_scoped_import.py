@@ -24,10 +24,12 @@ repair_recomputation = section(repair_presentation, '        let preparation =',
 test_source = (root / 'Tests/Group/ProximityLightingScopedImportTests.swift').read_text()
 safety = source('SunSmart/Common/Data/SpaceConfigurationSafety.swift')
 receipt_methods = section(safety, '    static func preservesLocalChanges(', '\n    /// Called only after successful local Space removal.')
+if 'static func hasPendingReferenceCleanup(' in safety:
+    receipt_methods = section(safety, '    static func hasPendingReferenceCleanup(', '\n    static func finishSyncReferenceCleanup(') + receipt_methods
 # Only dependencies/storage boundaries are doubled. Receipt decisions run the
 # actual safety methods against an isolated UserDefaults suite.
 test_source = test_source.replace('// RECEIPT_METHODS', receipt_methods.replace('UserDefaults.standard', 'testDefaults'))
-parts = [section(source('SunSmart/Common/Data/ImportData.swift'), 'final class SiteImportTrace', '\nstruct SpaceImportOutcome'),
+parts = [source('SunSmart/Common/Data/AppPerformance.swift'), source('SunSmart/Common/Data/SpaceProtectionReadSnapshot.swift'), section(source('SunSmart/Common/Data/ImportData.swift'), 'final class SiteImportTrace', '\nstruct SpaceImportOutcome'),
          section(adapter, start, '\nextension SpaceData'),
          source('SunSmart/Common/Data/DeviceScheduleAddressCleanup.swift'),
          source('SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),

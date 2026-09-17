@@ -41,6 +41,8 @@ enum SpaceConfigurationSafety {
     }
 
     private static func saveState(_ state: SpaceRecoveryState, space: SpaceData) throws {
+        SpaceProtectionReadGeneration.beginMutation()
+        defer { SpaceProtectionReadGeneration.endMutation() }
         guard state.identity == identity(space) else { throw SafetyError.invalidCheckpoint }
         try FileManager.default.createDirectory(at: recoveryRoot, withIntermediateDirectories: true)
         try state.write(to: stateURL(space))
@@ -55,7 +57,8 @@ enum SpaceConfigurationSafety {
     }
 
     static func isCurrent(_ context: SpaceRecoveryState, space: SpaceData) -> Bool {
-        guard context.identity == identity(space), let state = try? recoveryState(space) else { return false }
+        guard !SpaceMembershipCoordinator.isLeaving(space),
+              context.identity == identity(space), let state = try? recoveryState(space) else { return false }
         return state.matches(context)
     }
 
@@ -82,12 +85,13 @@ enum SpaceConfigurationSafety {
         if FileManager.default.fileExists(atPath: stateURL.path) {
             guard let data = try? Data(contentsOf: stateURL),
                   let state = try? JSONDecoder().decode(SpaceRecoveryState.self, from: data) else { return true }
-            if state.phase != .active { return true }
+            if state.phase != .active || state.unbindRequested == true { return true }
             directoryName = state.directoryName ?? identity
         }
         let pending = recoveryRoot.appendingPathComponent(directoryName).appendingPathComponent("pending-import.json")
         return UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + identity) != nil
             || FileManager.default.fileExists(atPath: pending.path)
+            || FileManager.default.fileExists(atPath: pending.deletingLastPathComponent().appendingPathComponent("pending-reference-cleanup.json").path)
             || deletionCleanupPending(at: pending.deletingLastPathComponent().appendingPathComponent("device-deletions.json"))
     }
 
@@ -107,6 +111,8 @@ enum SpaceConfigurationSafety {
     }
 
     static func block(meshUUID: String, networkId: String, reason: String) {
+        SpaceProtectionReadGeneration.beginMutation()
+        defer { SpaceProtectionReadGeneration.endMutation() }
         let identity = "spaceConfigurationBlocked." + key(meshUUID: meshUUID, networkId: networkId)
         // Keep the first cause; subsequent entry checks are consequences.
         if UserDefaults.standard.string(forKey: identity) == nil {
@@ -133,6 +139,8 @@ enum SpaceConfigurationSafety {
 
     @discardableResult
     static func updateDeletionJournal(_ space: SpaceData, _ update: (inout SpaceDeletionJournal) -> Void) -> Bool {
+        SpaceProtectionReadGeneration.beginMutation()
+        defer { SpaceProtectionReadGeneration.endMutation() }
         lock.lock(); defer { lock.unlock() }
         do {
             var journal = try deletionJournal(space)
@@ -159,18 +167,155 @@ enum SpaceConfigurationSafety {
         (try? deletionJournal(space).needsCleanup) ?? true
     }
 
+    private static let referenceCleanupReasons: Set<String> = [
+        "invalidRemoteTopology", "entryTopologyNeedsReview", "incompleteImportedTopology",
+        "deletionCleanupPending", "referenceCleanupPending"
+    ]
+
+    static func canCleanSyncReferences(_ space: SpaceData) -> Bool {
+        guard space.state == .normal, space.permission != .visitor,
+              !space.disableEditorPermission, !space.requiresPasswordVerification,
+              !hasPendingImport(space), let state = try? recoveryState(space),
+              state.phase == .active, state.authority == .writable,
+              state.requiresRemoteImport != true, state.unbindRequested != true,
+              state.submission == nil else { return false }
+        let reason = UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space))
+        return reason == nil || referenceCleanupReasons.contains(reason!)
+    }
+
+    /// Establish the pre-cleanup version before changing anything. A deletion
+    /// receipt proves only that specific absent instance, never arbitrary loss.
+    @MainActor
+    static func verifySyncCleanupBaseline(_ space: SpaceData, local: [String: Any]) async -> Bool {
+        guard canCleanSyncReferences(space) else { return false }
+        guard needsUpgradeBaseline(space) else { return true }
+        guard let context = try? recoveryState(space), let journal = try? deletionJournal(space),
+              let localNodes = local["nodes"] as? [[String: Any]] else { return false }
+        let present = Set(localNodes.compactMap { ($0["uuid"] as? String)?.uppercased() })
+        let elements = Set(localNodes.flatMap { node -> [UInt16] in
+            guard let primary = SpaceSyncCleanupPolicy.address(node["unicastAddress"]),
+                  let elements = node["elements"] as? [Any] else { return [] }
+            return elements.indices.compactMap { UInt16(exactly: Int(primary) + $0) }
+        })
+        let deleted = Set(journal.entries.filter {
+            !present.contains($0.nodeUUID.uppercased()) && elements.isDisjoint(with: $0.elementAddresses)
+        }.map { $0.nodeUUID.uppercased() })
+        var baseline = local
+        if let data = try? Data(contentsOf: directory(space).appendingPathComponent("last-complete-export.json")),
+           let saved = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+           saved["uuid"] as? String == space.id,
+           SpaceConfigurationIntegrityPolicy.integer(saved["updateTimestamp"]) == space.lastUploadCloudTimestamp {
+            baseline = saved
+        }
+        let revision = space.lastUpdate
+        let result = await NetworkRequest.shared.request(.spaceInfo(siteId: space.siteId, spaceId: space.id,
+                                                                   password: space.authorizationPassword))
+        guard isCurrent(context, space: space), space.lastUpdate == revision else { return false }
+        if case .failure(let error) = result { handleAuthorityError(error, space: space); return false }
+        guard case .success(let response) = result, let remote = response["data"] as? [String: Any],
+              remote["uuid"] as? String == space.id else { return false }
+        space.applyRemoteSpaceMetadata(remote)
+        guard space.save(), canCleanSyncReferences(space),
+              let expected = SpaceSyncCleanupPolicy.baseline(baseline, excludingDeletedUUIDs: deleted),
+              let actual = SpaceSyncCleanupPolicy.baseline(remote, excludingDeletedUUIDs: deleted),
+              expected == actual else { return false }
+        do {
+            var state = try recoveryState(space)
+            state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(remote)
+            try saveState(state, space: space)
+            UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
+            return true
+        } catch { return false }
+    }
+
+    static func preserveRemoteReferenceCleanup(_ space: SpaceData, payload: [String: Any], candidate: [String: Any]) -> Bool {
+        guard payload["uuid"] as? String == space.id else { return false }
+        do {
+            let raw = try JSONSerialization.data(withJSONObject: payload, options: .sortedKeys)
+            try raw.write(to: directory(space).appendingPathComponent("before-remote-reference-cleanup.json"),
+                          options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            let receipt = try JSONSerialization.data(withJSONObject: ["original": payload, "candidate": candidate], options: .sortedKeys)
+            try receipt.write(to: directory(space).appendingPathComponent("pending-import-reference-cleanup.json"),
+                              options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            return true
+        } catch { return false }
+    }
+
+    static func originalReferenceCleanupImport(_ space: SpaceData, candidate: [String: Any]) -> [String: Any]? {
+        guard let root = try? directory(space),
+              let raw = try? Data(contentsOf: root.appendingPathComponent("pending-import-reference-cleanup.json")),
+              let receipt = (try? JSONSerialization.jsonObject(with: raw)) as? [String: Any],
+              let expected = receipt["candidate"] as? [String: Any],
+              let original = receipt["original"] as? [String: Any], original["uuid"] as? String == space.id,
+              let actualData = try? JSONSerialization.data(withJSONObject: candidate, options: .sortedKeys),
+              let expectedData = try? JSONSerialization.data(withJSONObject: expected, options: .sortedKeys),
+              actualData == expectedData else { return nil }
+        return original
+    }
+
+    static func beginSyncReferenceCleanup(_ space: SpaceData, payload: [String: Any]) -> Bool {
+        SpaceProtectionReadGeneration.beginMutation()
+        defer { SpaceProtectionReadGeneration.endMutation() }
+        guard canCleanSyncReferences(space), checkpoint(space, refresh: true) else { return false }
+        do {
+            let url = try directory(space).appendingPathComponent("pending-reference-cleanup.json")
+            if !FileManager.default.fileExists(atPath: url.path) {
+                try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys]).write(
+                    to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            }
+            return true
+        } catch { return false }
+    }
+
+    static func hasPendingReferenceCleanup(_ space: SpaceData) -> Bool {
+        guard let root = try? directory(space) else { return true }
+        return FileManager.default.fileExists(atPath: root.appendingPathComponent("pending-reference-cleanup.json").path)
+    }
+
+    static func finishSyncReferenceCleanup(_ space: SpaceData, changed: Bool) -> Bool {
+        SpaceProtectionReadGeneration.beginMutation()
+        defer { SpaceProtectionReadGeneration.endMutation() }
+        guard canCleanSyncReferences(space), !hasPendingDeletionCleanup(space) else { return false }
+        do {
+            let root = try directory(space)
+            let pending = root.appendingPathComponent("pending-reference-cleanup.json")
+            if changed || FileManager.default.fileExists(atPath: pending.path) {
+                // Keep cleaned local configuration authoritative until its upload
+                // is confirmed, including after a crash between the two writes.
+                UserDefaults.standard.set(space.lastUpdate, forKey: "spaceConfigurationLocalRecoveryPending." + key(space))
+            }
+            if space.syncCloudError?.code == -2003 {
+                let previous = space.syncCloudError
+                space.syncCloudError = nil
+                guard space.save() else { space.syncCloudError = previous; return false }
+            }
+            if FileManager.default.fileExists(atPath: pending.path) {
+                try Data(contentsOf: pending).write(to: root.appendingPathComponent("before-reference-cleanup.json"), options: .atomic)
+                try FileManager.default.removeItem(at: pending)
+            }
+            let blockedKey = "spaceConfigurationBlocked." + key(space)
+            if let reason = UserDefaults.standard.string(forKey: blockedKey), referenceCleanupReasons.contains(reason) {
+                UserDefaults.standard.removeObject(forKey: blockedKey)
+            }
+            return true
+        } catch { return false }
+    }
+
     /// A GET must not resurrect devices while their explicit deletion or local
-    /// recovery is waiting for the existing upload/readback flow to finish.
+    /// recovery is waiting for upload confirmation to finish.
     static func preservesLocalChanges(_ space: SpaceData) -> Bool {
         guard let state = try? recoveryState(space) else { return true }
         guard state.preservesUpload else { return false }
         guard let journal = try? deletionJournal(space) else { return true }
         return state.submission != nil || state.authority == .waitingForAuthorization || !journal.entries.isEmpty
+            || hasPendingReferenceCleanup(space)
             || UserDefaults.standard.object(forKey: "spaceConfigurationLocalRecoveryPending." + key(space)) != nil
     }
 
     @discardableResult
     static func confirmLocalChanges(_ space: SpaceData, payload: [String: Any]) -> Bool {
+        SpaceProtectionReadGeneration.beginMutation()
+        defer { SpaceProtectionReadGeneration.endMutation() }
         guard let timestamp = SpaceConfigurationIntegrityPolicy.integer(payload["updateTimestamp"]),
               payload["nodes"] is [[String: Any]] else { return false }
         guard updateDeletionJournal(space, { journal in
@@ -188,6 +333,8 @@ enum SpaceConfigurationSafety {
     /// Preserve diagnostic files outside the active identity directory.
     @discardableResult
     static func archiveDeletedSpace(_ space: SpaceData) -> Bool {
+        SpaceProtectionReadGeneration.beginMutation()
+        defer { SpaceProtectionReadGeneration.endMutation() }
         lock.lock(); defer { lock.unlock() }
         do {
             var state = try recoveryState(space)
@@ -215,6 +362,8 @@ enum SpaceConfigurationSafety {
     }
 
     static func retryArchiveMoves(_ space: SpaceData) {
+        SpaceProtectionReadGeneration.beginMutation()
+        defer { SpaceProtectionReadGeneration.endMutation() }
         lock.lock(); defer { lock.unlock() }
         guard var state = try? recoveryState(space) else { return }
         for name in state.pendingArchives ?? [] {
@@ -234,6 +383,8 @@ enum SpaceConfigurationSafety {
     }
 
     private static func clearActiveMarkers(_ space: SpaceData) {
+        SpaceProtectionReadGeneration.beginMutation()
+        defer { SpaceProtectionReadGeneration.endMutation() }
         for prefix in ["spaceConfigurationBlocked.", "spaceConfigurationMigrated.",
                        "spaceConfigurationLocalRecoveryPending."] {
             UserDefaults.standard.removeObject(forKey: prefix + key(space))
@@ -247,6 +398,7 @@ enum SpaceConfigurationSafety {
             guard state.phase != .retired else { return true }
             state.phase = .removing
             try saveState(state, space: space)
+            SpaceMembershipResponseContext.invalidate()
             return true
         } catch { return false }
     }
@@ -257,6 +409,7 @@ enum SpaceConfigurationSafety {
             var state = try recoveryState(space)
             guard state.phase == .active else { return nil }
             state.unbindRequested = true
+            state.generation = UUID()
             try saveState(state, space: space)
             return state
         } catch { return nil }
@@ -368,7 +521,8 @@ enum SpaceConfigurationSafety {
     }
 
     static func canAutomaticallyUpload(_ space: SpaceData) -> Bool {
-        guard space.permission != .visitor, !space.requiresPasswordVerification, !space.disableEditorPermission,
+        guard SpaceMembershipCoordinator.allowsConfiguration(space),
+              space.permission != .visitor, !space.requiresPasswordVerification, !space.disableEditorPermission,
               space.state == .normal, let state = try? recoveryState(space), state.phase == .active else { return false }
         return state.authority == .writable && state.unbindRequested != true && state.requiresRemoteImport != true
     }
@@ -435,34 +589,50 @@ enum SpaceConfigurationSafety {
         try? saveState(state, space: space)
     }
 
+    /// A successful upload confirms its submitted version without a configuration GET.
+    /// Keep the accepted receipt until all local persistence has completed.
+    static func finishAcceptedSubmission(_ context: SpaceRecoveryState, space: SpaceData) -> Bool {
+        finishSubmission(context, space: space)
+    }
+
     private static func finishSubmission(_ context: SpaceRecoveryState, space: SpaceData) -> Bool {
+        SpaceProtectionReadGeneration.beginMutation()
+        defer { SpaceProtectionReadGeneration.endMutation() }
         lock.lock(); defer { lock.unlock() }
         do {
             var state = try recoveryState(space)
             guard isCurrent(context, space: space), let submission = state.submission,
-                  submission.id == context.submission?.id, submission.phase == .verified else { return false }
+                  state.authority == .writable, space.permission != .visitor,
+                  !space.requiresPasswordVerification, !space.disableEditorPermission,
+                  submission.id == context.submission?.id,
+                  submission.phase == .accepted || submission.phase == .verified else { return false }
             guard confirmLocalChanges(space, payload: ["updateTimestamp": submission.timestamp,
                                                        "nodes": [[String: Any]]()]) else { return false }
             let previous = space.lastUploadCloudTimestamp
+            let previousError = space.syncCloudError
             space.lastUploadCloudTimestamp = SpaceConfigurationIntegrityPolicy.confirmedTimestamp(
                 previous: previous, submitted: submission.timestamp)
             space.syncCloudError = nil
-            guard space.save() else { space.lastUploadCloudTimestamp = previous; return false }
+            guard space.save() else {
+                space.lastUploadCloudTimestamp = previous
+                space.syncCloudError = previousError
+                return false
+            }
             // Establish the baseline on FIRST upload too; otherwise adding the next
             // device compares the changed local topology to the pre-add cloud copy.
             UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
             state.authorizationBaseline = readbackConfiguration(submission.configuration, timestamp: submission.timestamp, space: space)
-            state.submission = nil
-            try saveState(state, space: space)
             let blockedKey = "spaceConfigurationBlocked." + key(space)
             if ["uploadReadbackUnconfirmed", "uploadReadbackConflict"].contains(UserDefaults.standard.string(forKey: blockedKey) ?? "") {
                 UserDefaults.standard.removeObject(forKey: blockedKey)
             }
+            state.submission = nil
+            try saveState(state, space: space)
             return true
         } catch { return false }
     }
 
-    /// Reconcile the saved submission without exporting or writing to the server.
+    /// Accepted uploads only need local completion. Read back unknown outcomes.
     @MainActor
     static func resumeUpload(_ space: SpaceData) async -> Swift.Result<Void, NetworkApiError> {
         do {
@@ -471,7 +641,7 @@ enum SpaceConfigurationSafety {
             guard context.phase == .active else { return .failure(uploadUnconfirmed) }
             guard context.authority == .writable else { return .failure(authorityError(space)) }
             guard let submission = context.submission else { return .success(()) }
-            if submission.phase == .verified {
+            if submission.phase == .accepted || submission.phase == .verified {
                 return finishSubmission(context, space: space) ? .success(()) : .failure(uploadUnconfirmed)
             }
             for attempt in 0..<3 {
@@ -579,7 +749,7 @@ enum SpaceConfigurationSafety {
             return .failure(error)
         case .success:
             guard markSubmissionAccepted(context, space: space) else { return .failure(uploadUnconfirmed) }
-            return await resumeUpload(space)
+            return finishAcceptedSubmission(context, space: space) ? .success(()) : .failure(uploadUnconfirmed)
         }
     }
 
@@ -660,7 +830,13 @@ enum SpaceConfigurationSafety {
         } catch { block(space, reason: "authorityPersistenceFailed") }
     }
 
+    static func syncReadRequest(meshUUID: String, networkId: String) -> SpaceProtectionReadRequest {
+        .init(scope: .init(account: UserData.currentUserId, region: String(describing: UserData.currentServerRegion),
+                           meshUUID: meshUUID, networkID: networkId), root: recoveryRoot, defaults: .standard)
+    }
+
     static func configurationAvailable(for node: Node, group: Group? = nil) -> Bool {
+        if let value = NodeSyncReadContext.current?.configurationAvailable(for: node, group: group) { return value }
         let group = group ?? node.group
         if let group, !group.isVirtual, group.info.profileLoadFailed || group.info.topologyLoadFailed { return false }
         guard let uuid = node.network?.uuid.uuidString,
@@ -727,18 +903,30 @@ enum SpaceConfigurationSafety {
     #if DEBUG
     /// Unlike directory()/recoveryState(), this inspection never creates a journal.
     static func canReadDebugSnapshot(_ space: SpaceData) -> Bool {
+        // A pending import or recovery journal is evidence to export, not an
+        // access restriction. Snapshot revision checks handle concurrent writes.
+        space.state == .normal
+    }
+
+    static func debugSnapshotStatus(_ space: SpaceData) -> [String: Any] {
         lock.lock(); defer { lock.unlock() }
-        guard space.state == .normal else { return false }
+        var result: [String: Any] = ["state": space.state.rawValue]
+        if let membership = try? SpaceMembershipCoordinator.store.read(SpaceMembershipCoordinator.scope(space)) {
+            result["membershipPhase"] = membership.phase.rawValue
+            result["configurationInitialized"] = membership.initialized
+        }
+        result["blockedReason"] = UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space))
         do {
             let state = try SpaceRecoveryState.read(from: stateURL(space), identity: identity(space))
-            if let state, state.phase != .active { return false }
+            result["recoveryPhase"] = state?.phase.rawValue
             let folder = state.map { storedDirectory(space, state: $0) }
                 ?? recoveryRoot.appendingPathComponent(key(space))
-            return !FileManager.default.fileExists(atPath: folder.appendingPathComponent("pending-import.json").path)
-                && !deletionCleanupPending(at: folder.appendingPathComponent("device-deletions.json"))
+            result["pendingImport"] = FileManager.default.fileExists(atPath: folder.appendingPathComponent("pending-import.json").path)
+            result["pendingDeletionCleanup"] = deletionCleanupPending(at: folder.appendingPathComponent("device-deletions.json"))
         } catch {
-            return false
+            result["recoveryReadError"] = String(describing: error)
         }
+        return result
     }
     #endif
 
@@ -786,6 +974,8 @@ enum SpaceConfigurationSafety {
     }
 
     static func beginImport(_ space: SpaceData, payload: [String: Any]) -> Bool {
+        SpaceProtectionReadGeneration.beginMutation()
+        defer { SpaceProtectionReadGeneration.endMutation() }
         guard checkpoint(space), hasPendingImport(space) || checkpoint(space, refresh: true) else { return false }
         do {
             let data = try JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])
@@ -800,12 +990,20 @@ enum SpaceConfigurationSafety {
     }
 
     static func finishImport(_ space: SpaceData, validatedTopology: Bool = true) -> Bool {
+        SpaceProtectionReadGeneration.beginMutation()
+        defer { SpaceProtectionReadGeneration.endMutation() }
         do {
             let url = try directory(space).appendingPathComponent("pending-import.json")
             if validatedTopology {
                 var state = try recoveryState(space)
                 let payload = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
-                state.authorizationBaseline = payload.flatMap(SpaceConfigurationIntegrityPolicy.configurationData)
+                let original = payload.flatMap { originalReferenceCleanupImport(space, candidate: $0) }
+                state.authorizationBaseline = (original ?? payload).flatMap(SpaceConfigurationIntegrityPolicy.configurationData)
+                if original != nil, space.permission != .visitor {
+                    space.markLocalChangePendingCloudSync()
+                    guard space.save() else { return false }
+                    UserDefaults.standard.set(space.lastUpdate, forKey: "spaceConfigurationLocalRecoveryPending." + key(space))
+                }
                 state.requiresRemoteImport = false
                 try saveState(state, space: space)
             }
@@ -817,6 +1015,8 @@ enum SpaceConfigurationSafety {
                     options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
             }
             if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
+            let cleanup = try directory(space).appendingPathComponent("pending-import-reference-cleanup.json")
+            if FileManager.default.fileExists(atPath: cleanup.path) { try FileManager.default.removeItem(at: cleanup) }
             if validatedTopology {
                 UserDefaults.standard.removeObject(forKey: "spaceConfigurationBlocked." + key(space))
                 UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
@@ -924,6 +1124,8 @@ enum SpaceConfigurationSafety {
             state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(remote)
             try saveState(state, space: space)
         } catch { return false }
+        SpaceProtectionReadGeneration.beginMutation()
+        defer { SpaceProtectionReadGeneration.endMutation() }
         UserDefaults.standard.set(space.lastUpdate,
             forKey: "spaceConfigurationLocalRecoveryPending." + key(space))
         UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
@@ -1004,6 +1206,8 @@ enum SpaceConfigurationSafety {
               preparation.normalized.canReviewReferenceRepair,
               checkpoint(space, refresh: true) else { return false }
         // Retain the user's chosen source across interruption and cloud retries.
+        SpaceProtectionReadGeneration.beginMutation()
+        defer { SpaceProtectionReadGeneration.endMutation() }
         UserDefaults.standard.set(Int64.max, forKey: "spaceConfigurationLocalRecoveryPending." + key(space))
         guard ProximityLightingLifecycleCoordinator.commit(preparation,
             reviewedReferenceSnapshot: review.snapshot) != nil else { return false }

@@ -79,7 +79,13 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     /// 网关 4G 信号刷新定时器
     private var signalRefreshTimer: Timer?
     private var destructiveOperationState: GatewayDestructiveOperationState = .idle
-    private var serverDeletionConfirmed = false
+    private let deletionCoordinator = GatewayDeletionCoordinator()
+    private var completedDeletionResetConfirmed: Bool?
+
+    var isDeletingGateway: Bool {
+        destructiveOperationState == .deletingGatewayFromServer
+            || destructiveOperationState == .resettingAfterServerDeletion
+    }
 
     let site: SiteData
     let gateway: Gateway
@@ -88,26 +94,25 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     private weak var lastMessageDelegate: MeshLibManagerMessageDelegate?
     private var proxyReadyObserverID: UUID?
     private var meshConnectionObserverID: UUID?
-    private var proxyReadyTimeoutTimer: Timer?
-    private var proxyConnectionStateMachine: GatewayDetailProxyConnectionStateMachine
+    private var bluetoothObservation: NSKeyValueObservation?
+    private var proxyConnectionSession: GatewayDetailConnectionSession?
+    private var proxyConnectionManager: MeshNetworkManager?
+    private var gatewayConnectionPageFinished = false
 
     var isGatewayProxyReady: Bool {
-        proxyConnectionStateMachine.state.isReady
+        proxyConnectionSession?.state.isReady == true
     }
 
     var gatewayProxyReadySessionID: UUID? {
-        proxyConnectionStateMachine.state.readySessionID
+        proxyConnectionSession?.state.readySessionID
     }
 
     private var isGatewayProxyConnecting: Bool {
-        proxyConnectionStateMachine.state.activeAttemptID != nil
+        proxyConnectionSession?.state.activeAttemptID != nil
     }
 
     private var isGatewayBluetoothOffline: Bool {
-        if case .disconnected = proxyConnectionStateMachine.state {
-            return true
-        }
-        return false
+        (proxyConnectionSession?.state ?? .disconnected) == .disconnected
     }
 
     private var canForceClearAssociatedSpaces: Bool {
@@ -151,9 +156,6 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         self.gatewayModel = gateway.model
         self.node = gateway.node
         self.setGatewayModel = self.gatewayModel.copy()
-        self.proxyConnectionStateMachine = GatewayDetailProxyConnectionStateMachine(
-            targetAddress: gateway.node.primaryUnicastAddress
-        )
         super.init(nibName: nil, bundle: nil)
 
 //        let gateways = GatewayModel.load(siteId: gateway.siteId).filter({ $0.mac != gateway.mac })
@@ -199,7 +201,9 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             guard let self else { return }
             XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
             let result = await self.loadAssociatedSpaces()
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, !self.isDeletingGateway,
+                  self.completedDeletionResetConfirmed == nil,
+                  !GatewayDeletionContext.hasPendingDeletion(siteId: self.site.id, mac: self.gateway.mac) else { return }
             XWHUDManager.hide()
             switch result {
             case .success(let bindSpaces):
@@ -228,7 +232,6 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         updateData()
         updateSaveBtnState()
         tableView.reloadData()
-        reconcileCurrentProxyReadyContext()
         ensureTargetGatewayProxyConnection()
         syncSignalRefreshState(forceRefresh: isGatewayProxyReady)
         syncGatewayClockTimer()
@@ -239,9 +242,19 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         super.viewWillDisappear(animated)
 
         isViewVisible = false
+        proxyConnectionSession?.pause()
         cancelGatewayClockAutoPromptRetry()
         stopSignalRefreshTimer()
         stopGatewayClockTimer()
+        if isMovingFromParent || isBeingDismissed || navigationController?.isBeingDismissed == true {
+            if let coordinator = transitionCoordinator {
+                coordinator.animate(alongsideTransition: nil) { [weak self] context in
+                    if !context.isCancelled { self?.finishGatewayConnectionSession() }
+                }
+            } else {
+                finishGatewayConnectionSession()
+            }
+        }
     }
 
     override func viewDidAppear(_ animated: Bool) {
@@ -267,6 +280,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 
     @objc func closeAction() {
 
+        guard !isDeletingGateway else { return }
         if setGatewayModel == gatewayModel {
             closeGatewayPage()
         }else {
@@ -279,6 +293,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
 
     @objc func moreClick() {
+        guard !isDeletingGateway else { return }
         let actions = GatewayMenuPolicy.menuActions(
             firmwareKind: gatewayFirmwareKind,
             canDelete: canConfigureCurrentGateway,
@@ -391,14 +406,24 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
 
     func closeGatewayPage() {
-        if self.presentingViewController != nil && navigationController?.viewControllers.count ?? 0 == 1  {
-            let completion = gatewayPageDidClose
-            dismiss(animated: true) {
-                completion?()
+        finishGatewayConnectionSession()
+        let feedbackView = presentingViewController?.view ?? navigationController?.view
+        let deletionResult = completedDeletionResetConfirmed
+        let completion = gatewayPageDidClose
+        let finish = {
+            completion?()
+            if let resetConfirmed = deletionResult, let feedbackView {
+                ToastStatusView.show(in: feedbackView,
+                    message: (resetConfirmed ? "done!" : "gateway_deleted_manual_reset").localizedString,
+                    type: .success, appearance: .siteUpdate, position: .bottom,
+                    duration: resetConfirmed ? 2 : 5)
             }
-        }else {
+        }
+        if self.presentingViewController != nil && navigationController?.viewControllers.count ?? 0 == 1 {
+            dismiss(animated: true, completion: finish)
+        } else {
             navigationController?.popViewController(animated: true)
-            gatewayPageDidClose?()
+            finish()
         }
     }
 
@@ -408,8 +433,9 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         stopGatewayClockTimer()
         gatewayClockNotificationTokens.forEach(NotificationCenter.default.removeObserver)
         stopSignalRefreshTimer()
-        cancelProxyReadyTimeout()
-        MeshLibManager.manager.messageDelegate = self.lastMessageDelegate
+        proxyConnectionSession?.finish()
+        restoreGatewayMessageDelegateIfOwned()
+        bluetoothObservation?.invalidate()
         if let proxyReadyObserverID {
             MeshLibManager.manager.removeGlobalProxyReadyObserver(proxyReadyObserverID)
         }
@@ -417,107 +443,143 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             MeshLibManager.manager.removeGlobalConnectionObserver(meshConnectionObserverID)
         }
 
-        MeshLibManager.manager.close()
-
         NotificationCenter.default.post(name: .init(devicesUpdateNotificationName), object: nil)
+    }
+
+    /// Also called by the presentation owner when the entire navigation stack
+    /// is dismissed while a Gateway child page is visible.
+    func finishGatewayConnectionSession() {
+        guard !gatewayConnectionPageFinished else { return }
+        gatewayConnectionPageFinished = true
+        isViewVisible = false
+        proxyConnectionSession?.finish()
+        restoreGatewayMessageDelegateIfOwned()
+        bluetoothObservation?.invalidate()
+        bluetoothObservation = nil
+        if let proxyReadyObserverID {
+            MeshLibManager.manager.removeGlobalProxyReadyObserver(proxyReadyObserverID)
+            self.proxyReadyObserverID = nil
+        }
+        if let meshConnectionObserverID {
+            MeshLibManager.manager.removeGlobalConnectionObserver(meshConnectionObserverID)
+            self.meshConnectionObserverID = nil
+        }
+    }
+
+    private func restoreGatewayMessageDelegateIfOwned() {
+        guard MeshLibManager.manager.messageDelegate === self else { return }
+        var previous = lastMessageDelegate
+        while let gatewayPage = previous as? GatewayViewController,
+              gatewayPage.gatewayConnectionPageFinished || gatewayPage.proxyConnectionSession?.isFinished == true {
+            previous = gatewayPage.lastMessageDelegate
+        }
+        MeshLibManager.manager.messageDelegate = previous
     }
 
     private func registerProxyConnectionObservers() {
         proxyReadyObserverID = MeshLibManager.manager.addGlobalProxyReadyObserver { [weak self] context in
-            self?.handleProxyReady(context)
+            DispatchQueue.main.async { self?.handleProxyReady(context) }
         }
-        meshConnectionObserverID = MeshLibManager.manager.addGlobalConnectionObserver { [weak self] _, isConnected in
+        meshConnectionObserverID = MeshLibManager.manager.addGlobalConnectionObserver { [weak self] manager, isConnected in
             guard !isConnected else { return }
-            self?.handleProxyConnectionEvent(.meshDisconnected)
-        }
-        reconcileCurrentProxyReadyContext()
-    }
-
-    private func reconcileCurrentProxyReadyContext() {
-        guard let context = MeshLibManager.manager.currentProxyReadyContext else {
-            if isGatewayProxyReady {
-                handleProxyConnectionEvent(.meshDisconnected)
+            DispatchQueue.main.async {
+                guard let self, manager === self.proxyConnectionManager else { return }
+                self.proxyConnectionSession?.connectionLost()
             }
-            return
         }
-        handleProxyReady(context)
+        bluetoothObservation = MeshLibManager.manager.observe(\.bluetoothState, options: [.new]) { [weak self] _, _ in
+            DispatchQueue.main.async {
+                self?.proxyConnectionSession?.availabilityChanged()
+            }
+        }
     }
 
     private func handleProxyReady(_ context: ProxyReadyContext) {
-        let isTargetContext = context.nodeAddress == node.primaryUnicastAddress
-        handleProxyConnectionEvent(
-            .proxyReady(nodeAddress: context.nodeAddress, sessionID: context.sessionID),
-            readyContext: isTargetContext ? context : nil
-        )
+        guard context.nodeAddress == node.primaryUnicastAddress else { return }
+        proxyConnectionSession?.receiveReady(sessionID: context.sessionID)
     }
 
     private func ensureTargetGatewayProxyConnection() {
-        if let context = MeshLibManager.manager.currentProxyReadyContext,
-           context.nodeAddress == node.primaryUnicastAddress {
-            handleProxyReady(context)
-            return
-        }
-        guard !isGatewayProxyReady, !isGatewayProxyConnecting else { return }
-
-        let attemptID = UUID()
-        handleProxyConnectionEvent(.startConnecting(attemptID: attemptID))
-        MeshLibManager.manager.connectProxy(node: node) { [weak self] succeeded in
-            DispatchQueue.main.async {
+        guard isViewVisible, !gatewayConnectionPageFinished, !isDeletingGateway,
+              let manager = MeshLibManager.manager.meshNetworkManager,
+              manager.meshNetwork?.uuid.uuidString == site.meshUUID,
+              manager.currentNetworkKey.networkId.hex == site.meshNetworkId else { return }
+        if proxyConnectionSession == nil || proxyConnectionSession?.isFinished == true || proxyConnectionManager !== manager {
+            proxyConnectionSession?.finish()
+            proxyConnectionManager = manager
+            let node = self.node
+            let meshUUID = site.meshUUID
+            let networkID = site.meshNetworkId
+            let contextIsCurrent = {
+                MeshLibManager.manager.meshNetworkManager === manager
+                    && manager.meshNetwork?.uuid.uuidString == meshUUID
+                    && manager.currentNetworkKey.networkId.hex == networkID
+            }
+            let session = GatewayDetailConnectionSession(
+                target: "\(meshUUID)|\(networkID)|\(gateway.mac)|\(node.primaryUnicastAddress)",
+                address: node.primaryUnicastAddress,
+                environment: .init(
+                    contextIsCurrent: contextIsCurrent,
+                    canConnect: {
+                        MeshLibManager.manager.bluetoothState == .poweredOn
+                            && node.features?.lowPower != .enabled
+                            && (node.companyIdentifier == 0x0211 || node.companyIdentifier == 0x0A78)
+                    },
+                    readySession: {
+                        guard contextIsCurrent(),
+                              let context = MeshLibManager.manager.currentProxyReadyContext,
+                              context.nodeAddress == node.primaryUnicastAddress,
+                              let proxy = MeshLibManager.manager.currentProxy,
+                              proxy.nodeAddress == node.primaryUnicastAddress, proxy.isOpen else { return nil }
+                        return context.sessionID
+                    },
+                    connect: { completion in
+                        MeshLibManager.manager.connectProxy(node: node) { succeeded in
+                            DispatchQueue.main.async { completion(succeeded) }
+                        }
+                    },
+                    disconnect: {
+                        // Keep the old bearer/central alive briefly while the SDK
+                        // removes it. This is not a physical-disconnect guarantee.
+                        let closingProxy = MeshLibManager.manager.currentProxy
+                        MeshLibManager.manager.disconnectProxy(node: node)
+                        MeshLibManager.manager.close()
+                        if let closingProxy {
+                            GatewayDetailConnectionSession.retainDuringDisconnect(closingProxy)
+                        }
+                    }
+                ),
+                callbackTimeout: MeshProxyConnectionTiming.gattResultTimeout,
+                readyTimeout: MeshProxyConnectionTiming.ready
+            )
+            session.onStateChange = { [weak self] in
                 guard let self else { return }
-                self.handleProxyConnectionEvent(
-                    .connectCompleted(attemptID: attemptID, succeeded: succeeded)
-                )
-                guard succeeded,
-                      self.proxyConnectionStateMachine.state.activeAttemptID == attemptID else {
-                    return
-                }
-                self.scheduleProxyReadyTimeout(for: attemptID)
+                self.renderProxyConnectionState()
+                self.gatewayProxyReadyStateDidUpdate(self.isGatewayProxyReady)
             }
-        }
-    }
-
-    private func handleProxyConnectionEvent(
-        _ event: GatewayDetailProxyConnectionEvent,
-        readyContext: ProxyReadyContext? = nil
-    ) {
-        let changed = proxyConnectionStateMachine.reduce(event)
-        let isCurrentReadyContext = readyContext.map {
-            gatewayProxyReadySessionID == $0.sessionID
-        } ?? false
-        guard changed || isCurrentReadyContext else { return }
-
-        if changed {
-            if !isGatewayProxyConnecting {
-                cancelProxyReadyTimeout()
+            session.onReady = { [weak self] sessionID in
+                guard let self, self.isViewVisible, !self.gatewayConnectionPageFinished,
+                      !self.isDeletingGateway,
+                      let context = MeshLibManager.manager.currentProxyReadyContext,
+                      context.sessionID == sessionID else { return }
+                self.gatewayProxyDidBecomeReady(context)
             }
-            renderProxyConnectionState()
-            gatewayProxyReadyStateDidUpdate(isGatewayProxyReady)
-        }
-
-        if let readyContext, isCurrentReadyContext {
-            gatewayProxyDidBecomeReady(readyContext)
-        }
-
-        guard changed else { return }
-
-        guard isViewVisible,
-              !isGatewayProxyReady,
-              !isGatewayProxyConnecting else {
-            return
-        }
-        switch event {
-        case .meshDisconnected,
-             .proxyReady(nodeAddress: _, sessionID: _):
-            DispatchQueue.main.async { [weak self] in
-                self?.ensureTargetGatewayProxyConnection()
+            session.onExhausted = { [weak self] in
+                guard let self, self.isViewVisible, !self.gatewayConnectionPageFinished else { return }
+                XWHUDManager.showErrorTipHUD("wifi_firmware_connection_failed".localizedString)
             }
-        default:
-            break
+            session.onDiagnostic = { event in
+                #if DEBUG
+                print("[GatewayConnection] address=\(String(format: "%04X", node.primaryUnicastAddress)) \(event)")
+                #endif
+            }
+            proxyConnectionSession = session
         }
+        proxyConnectionSession?.resume()
     }
 
     private func renderProxyConnectionState() {
-        switch proxyConnectionStateMachine.state {
+        switch proxyConnectionSession?.state ?? .disconnected {
         case .connecting:
             headerView.showConnectingUI()
             stopSignalRefreshTimer()
@@ -533,24 +595,9 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         updateSaveBtnState()
     }
 
-    private func scheduleProxyReadyTimeout(for attemptID: UUID) {
-        cancelProxyReadyTimeout()
-        proxyReadyTimeoutTimer = Timer.scheduledTimer(withTimeInterval: 20, repeats: false) { [weak self] _ in
-            self?.handleProxyConnectionEvent(.readyTimedOut(attemptID: attemptID))
-        }
-        if let proxyReadyTimeoutTimer {
-            RunLoop.main.add(proxyReadyTimeoutTimer, forMode: .common)
-        }
-    }
-
-    private func cancelProxyReadyTimeout() {
-        proxyReadyTimeoutTimer?.invalidate()
-        proxyReadyTimeoutTimer = nil
-    }
-
     /// 获取网关信号
     private func getGatewaySignal() {
-        guard supportsGatewaySignalRefresh else {
+        guard !isDeletingGateway, supportsGatewaySignalRefresh else {
             clearGatewaySignal()
             return
         }
@@ -576,7 +623,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
 
     @objc private func refreshGatewaySignal() {
-        guard supportsGatewaySignalRefresh else {
+        guard !isDeletingGateway, supportsGatewaySignalRefresh else {
             stopSignalRefreshTimer()
             clearGatewaySignal()
             return
@@ -590,7 +637,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
 
     private func syncSignalRefreshState(forceRefresh: Bool = false) {
-        guard supportsGatewaySignalRefresh else {
+        guard !isDeletingGateway, supportsGatewaySignalRefresh else {
             stopSignalRefreshTimer()
             clearGatewaySignal()
             return
@@ -1169,7 +1216,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             return
         }
 
-        SRAlertView(title: "notification".localizedString, message: "gateway_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive, actionHandler: {[weak self] _ in
+        SRAlertView(title: "notification".localizedString, message: "gateway_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive, performsActionAfterDismiss: true, actionHandler: {[weak self] _ in
             self?.beginGatewayDeletion()
         })]).show()
 
@@ -1177,129 +1224,140 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 
     private func beginGatewayDeletion() {
         guard destructiveOperationState == .idle else { return }
-        if gatewayModel.serverDeletionPendingLocalReset {
-            serverDeletionConfirmed = true
-            destructiveOperationState = .resettingAfterServerDeletion
-            resetNodeAfterServerDeletion()
+        guard NetworkRequest.shared.networkable else {
+            XWHUDManager.showTipHUD("phone_no_network".localizedString, isLineFeed: true)
             return
         }
-        destructiveOperationState = .deletingGatewayFromServer
-        serverDeletionConfirmed = false
+        guard let context = GatewayDeletionContext(site: site, gateway: gatewayModel, node: node) else {
+            XWHUDManager.showErrorTipHUD("gateway_delete_local_failed".localizedString)
+            return
+        }
+        let shouldRestoreCloudSynchronization = gatewayModel.needUploadCloud
+            || CloudSynchronizationManager.shared.getGatewayCurrentSyncState(gatewayModel) != nil
         let deadline = ProcessInfo.processInfo.systemUptime + 30
-        XWHUDManager.showCustomHUD(
-            withMessage: "deleting".localizedString,
-            isWindow: true
-        )
+        destructiveOperationState = .deletingGatewayFromServer
+        setGatewayDeletionInteractionLocked(true)
+        gatewayDeletionWillBegin()
+        XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
 
-        Task { [weak self] in
-            guard let self else { return }
-            switch await self.verifyDestructiveOperationPermission(deadline: deadline) {
-            case .allowed:
-                break
-            case .denied:
-                XWHUDManager.hide()
-                self.destructiveOperationState = .idle
-                XWHUDManager.showErrorTipHUD("no_permission".localizedString)
-                return
-            case .failed:
-                self.finishGatewayServerDeletionWithFailure(
-                    restoreCloudSynchronization: false
-                )
-                return
-            }
-
-            let syncOperation = SyncOperation.syncGateway(
-                gateway: self.gatewayModel,
-                node: self.node
-            )
-            let shouldRestoreCloudSynchronization =
-                self.gatewayModel.needUploadCloud ||
-                CloudSynchronizationManager.shared.getGatewayCurrentSyncState(
-                    self.gatewayModel
-                ) != nil
-            self.gatewayModel.isServerDeletionInProgress = true
-            CloudSynchronizationManager.shared.cancelSynchronizationHandle(
-                operation: syncOperation
-            )
-            await GatewayServerAuthorizationService.shared
-                .waitForInFlightAuthorizationToFinish(
-                    gateway: self.gatewayModel
-                )
-
-            let remainingDuration = self.remainingDuration(until: deadline)
-            let deleteResult = await NetworkRequest.shared.request(
-                .gatewayDelete(gatewayId: self.gateway.mac),
-                maximumDuration: remainingDuration
-            )
-            guard self.destructiveOperationState == .deletingGatewayFromServer else {
-                return
-            }
-            switch deleteResult {
-            case .success:
-                self.gatewayModel.serverDeletionPendingLocalReset = true
-                self.setGatewayModel.serverDeletionPendingLocalReset = true
-                self.gatewayModel.isServerDeletionInProgress = false
-                self.gatewayModel.save()
-                self.serverDeletionConfirmed = true
-                self.destructiveOperationState = .resettingAfterServerDeletion
-                XWHUDManager.hide()
-                self.resetNodeAfterServerDeletion()
-            case .failure:
-                self.finishGatewayServerDeletionWithFailure(
-                    restoreCloudSynchronization: shouldRestoreCloudSynchronization
-                )
-            }
-        }
-    }
-
-    private func finishGatewayServerDeletionWithFailure(
-        restoreCloudSynchronization: Bool
-    ) {
-        XWHUDManager.hide()
-        gatewayModel.isServerDeletionInProgress = false
-        destructiveOperationState = .idle
-        serverDeletionConfirmed = false
-        if restoreCloudSynchronization,
-           !gatewayModel.serverDeletionPendingLocalReset {
-            CloudSynchronizationManager.shared.addSynchronizationHandle(
-                operation: .syncGateway(gateway: gatewayModel, node: node),
-                level: .promptly
-            )
-        }
-        ToastStatusView.show(
-            in: view,
-            message: "gateway_delete_server_failed".localizedString,
-            type: .failure,
-            appearance: .siteUpdate,
-            position: .bottom
-        )
-    }
-
-    /// 服务器删除成功后重置设备
-    private func resetNodeAfterServerDeletion() {
-        guard serverDeletionConfirmed,
-              destructiveOperationState == .resettingAfterServerDeletion else {
-            return
-        }
-        self.deleteNodes(nodes: [node], forceDeleteMessage: "gateway_force_delete_message".localizedString, forceDeleteNote: "gateway_force_delete_note".localizedString) {[weak self] successNodes, _ in
-            guard let self = self else { return }
-            if successNodes.contains(where: { $0.primaryUnicastAddress == self.node.primaryUnicastAddress }) {
-                DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {
-                    self.gatewayModel.delete()
-                    self.serverDeletionConfirmed = false
-                    self.destructiveOperationState = .idle
-                    self.closeGatewayPage()
-                    NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
+        Task { [self] in
+            let outcome = await deletionCoordinator.delete(using: .init(
+                isOnline: { NetworkRequest.shared.networkable },
+                isCurrent: { context.isCurrent },
+                serverAlreadyDeleted: { self.gatewayModel.serverDeletionPendingLocalReset || context.serverAlreadyDeleted },
+                permission: {
+                    switch await self.verifyDestructiveOperationPermission(deadline: deadline) {
+                    case .allowed: return .allowed
+                    case .denied: return .denied
+                    case .failed: return .unavailable
+                    }
+                },
+                prepare: {
+                    guard context.prepare() else { return false }
+                    self.gatewayModel.isServerDeletionInProgress = true
+                    CloudSynchronizationManager.shared.cancelSynchronizationHandle(
+                        operation: .syncGateway(gateway: self.gatewayModel, node: self.node))
+                    return true
+                },
+                deleteServer: {
+                    await GatewayServerAuthorizationService.shared.waitForInFlightAuthorizationToFinish(gateway: self.gatewayModel)
+                    guard context.isCurrent else { return false }
+                    let remaining = self.remainingDuration(until: deadline)
+                    guard remaining > 0 else { return false }
+                    let result = await NetworkRequest.shared.request(.gatewayDelete(gatewayId: self.gateway.mac), maximumDuration: remaining)
+                    if case .success = result { return true }
+                    return false
+                },
+                recordServerDeletion: {
+                    guard context.recordServerDeletion() else { return false }
+                    self.gatewayModel.serverDeletionPendingLocalReset = true
+                    self.setGatewayModel.serverDeletionPendingLocalReset = true
+                    return self.gatewayModel.save()
+                },
+                canReset: {
+                    self.destructiveOperationState = .resettingAfterServerDeletion
+                    guard self.isGatewayProxyReady,
+                          let session = self.gatewayProxyReadySessionID,
+                          self.isCurrentGatewayProxySession(session),
+                          MeshNetworkManager.instance.meshNetwork === self.node.network,
+                          MeshNetworkManager.instance.currentNetworkKey.networkId.hex == self.site.meshNetworkId else { return false }
+                    return true
+                },
+                reset: { await self.resetNodeAfterServerDeletion() },
+                finishLocal: { context.finish(resetConfirmed: $0) },
+                cancelPreparation: { context.cancelPreparation() }
+            ))
+            context.release()
+            gatewayModel.isServerDeletionInProgress = false
+            destructiveOperationState = .idle
+            setGatewayDeletionInteractionLocked(false)
+            XWHUDManager.hide()
+            switch outcome {
+            case .deleted(let resetConfirmed):
+                completedDeletionResetConfirmed = resetConfirmed
+                closeGatewayPage()
+                NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
+            case .failed(let failure):
+                guard context.isCurrent else { return }
+                let key: String
+                switch failure {
+                case .offline: key = "phone_no_network"
+                case .permission: key = "no_permission"
+                case .server: key = "gateway_delete_server_failed"
+                case .local, .changedContext, .busy: key = "gateway_delete_local_failed"
                 }
-            }else {
-                self.serverDeletionConfirmed = false
-                self.destructiveOperationState = .idle
-                self.tableView.reloadData()
+                if shouldRestoreCloudSynchronization,
+                   !gatewayModel.serverDeletionPendingLocalReset,
+                   !GatewayDeletionContext.hasPendingDeletion(siteId: site.id, mac: gateway.mac) {
+                    CloudSynchronizationManager.shared.addSynchronizationHandle(
+                        operation: .syncGateway(gateway: gatewayModel, node: node), level: .promptly)
+                }
+                ToastStatusView.show(in: view, message: key.localizedString, type: .failure,
+                                     appearance: .siteUpdate, position: .bottom)
+                updateSaveBtnState()
+                tableView.reloadData()
+                gatewayDeletionDidFail()
             }
         }
-
     }
 
+    /// 服务器成功后仅尝试一次 Reset；离线、超时和失败均由同一本地收尾处理。
+    private func resetNodeAfterServerDeletion() async -> Bool {
+        guard destructiveOperationState == .resettingAfterServerDeletion else { return false }
+        return await withCheckedContinuation { continuation in
+            MeshAPI.resetNodes(addressList: [node.primaryUnicastAddress], resetSuccess: nil, resetFail: nil) { [node] success, _ in
+                continuation.resume(returning: success.contains(node.primaryUnicastAddress))
+            }
+        }
+    }
+
+    private func setGatewayDeletionInteractionLocked(_ locked: Bool) {
+        view.isUserInteractionEnabled = !locked
+        navigationItem.leftBarButtonItem?.isEnabled = !locked
+        navigationItem.rightBarButtonItem?.isEnabled = !locked
+        if locked { preventModalStackDismissalUntilReturn() }
+        else { restoreModalStackDismissalIfNeeded() }
+        updateSaveBtnState()
+    }
+
+    func gatewayDeletionWillBegin() {
+        gatewayClockCoordinator.cancelForDeletion()
+        gatewayClockSyncPresentationID = nil
+        pendingGatewayClockSync = nil
+        isGatewayClockReading = false
+        gatewayClockState = GatewayDetailClockState()
+        cancelGatewayClockAutoPromptRetry()
+        stopSignalRefreshTimer()
+        stopGatewayClockTimer()
+        proxyConnectionSession?.setAutomaticConnectionEnabled(false)
+    }
+
+    func gatewayDeletionDidFail() {
+        guard !GatewayDeletionContext.hasPendingDeletion(siteId: site.id, mac: gateway.mac) else { return }
+        proxyConnectionSession?.setAutomaticConnectionEnabled(true)
+        syncSignalRefreshState()
+        syncGatewayClockTimer()
+    }
 
     /// 服务器授权绑定网关
     private func authorizeRequest() {
@@ -1661,7 +1719,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 
     /// 更新保存按钮状态
     private func updateSaveBtnState() {
-        if self.isGatewayProxyConnecting {
+        if self.isGatewayProxyConnecting || isDeletingGateway || gatewayModel.serverDeletionPendingLocalReset {
             bottomView.saveBtn.isEnabled = false
         }else {
             bottomView.saveBtn.isEnabled = canConfigureCurrentGateway && (!(setGatewayModel == gatewayModel) || (!(name?.isAllInputTextEmpty() ?? true) && node.name != name))
@@ -1760,7 +1818,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
 
     private func readGatewayClock(autoPromptSessionID: UUID? = nil) {
-        guard showsGatewayClockSections, !isGatewayClockReading,
+        guard !isDeletingGateway, completedDeletionResetConfirmed == nil,
+              showsGatewayClockSections, !isGatewayClockReading,
               !gatewayClockState.isSyncing else { return }
         let target = currentGatewayClockTarget()
         isGatewayClockReading = true
@@ -1805,7 +1864,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
 
     private func synchronizeGatewayClock() {
-        guard showsGatewayClockSections, !gatewayClockState.isSyncing else { return }
+        guard !isDeletingGateway, completedDeletionResetConfirmed == nil,
+              showsGatewayClockSections, !gatewayClockState.isSyncing else { return }
         markCurrentGatewayClockSessionHandled()
         let target = currentGatewayClockTarget()
         let presentationID = UUID()
@@ -1963,6 +2023,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 
     private func attemptGatewayClockAutoPrompt() {
         cancelGatewayClockAutoPromptRetry()
+        guard !isDeletingGateway else { return }
         guard let sessionID = gatewayClockAutoPromptState.pendingSessionID else { return }
         guard isCurrentGatewayProxySession(sessionID) else {
             gatewayClockAutoPromptState.end(sessionID: sessionID)
@@ -2017,7 +2078,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
 
     private func syncGatewayClockTimer() {
-        guard isViewVisible, showsGatewayClockSections else {
+        guard !isDeletingGateway, isViewVisible, showsGatewayClockSections else {
             stopGatewayClockTimer()
             return
         }

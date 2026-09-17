@@ -51,7 +51,8 @@ final class LightTimeInformationCoordinator {
             self.recovery = nil
             guard let sample,
                   let snapshot = GatewayTimeInformationFormatter.makeSnapshot(
-                    seconds: sample.seconds, offsetMinutes: sample.offsetMinutes
+                    seconds: sample.seconds, subSecond: sample.subSecond,
+                    taiDelta: sample.taiDelta, offsetMinutes: sample.offsetMinutes
                   ) else {
                 self.onReadState?(.failed)
                 return

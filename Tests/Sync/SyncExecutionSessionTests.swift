@@ -52,6 +52,9 @@ private final class Harness {
 enum SyncExecutionSessionTests {
     static func main() {
         DeviceOperationType.allowsMessageFactory = true
+        changedConfigurationInvalidatesOldCallbacks()
+        changedConfigurationBeforeStart()
+        unavailableConfigurationNeedsReviewWithoutSending()
         normalAndDuplicateCompletion()
         stopBeforePlanDeliveryAndManualRetry()
         stopBeforeRetryAndLateCompletion()
@@ -60,6 +63,57 @@ enum SyncExecutionSessionTests {
         authorizationBeforeDynamicMessages()
         automaticRetryBudget()
         print("PASS: production Session scheduling, writeback ordering, late completion, stop/retry, Profile/PIR compensation and authorization cancellation")
+    }
+    static func changedConfigurationBeforeStart() {
+        let h = Harness(); let (session, _, _, node) = h.make()
+        h.environment.configurationIsCurrent = { false }
+        var invalidations = 0
+        session.onPlanInvalidated = { invalidations += 1 }
+        session.start(); h.flush()
+        precondition(h.sends.isEmpty && node.updates == 0, "Deleted device or replaced Profile must never send an old plan")
+        h.stopFinished?(); h.flush()
+        precondition(invalidations == 1, "Rebuild only after transport has stopped")
+        session.close(); h.flush()
+    }
+    static func unavailableConfigurationNeedsReviewWithoutSending() {
+        let h = Harness(); let (session, _, _, node) = h.make()
+        var available = false
+        h.environment.configurationAvailable = { available }
+        var errors: [String] = []
+        var prepared = false, completed = 0
+        session.onError = { errors.append($0) }
+        session.onCompleted = { _ in completed += 1 }
+        session.enqueuePreparation { prepared = true }
+        session.start(); h.flush()
+        precondition(errors == ["configuration_sync_unavailable".localizedString],
+                     "A general configuration barrier must not report invalid proximity lighting")
+        precondition(!prepared && h.sends.isEmpty && node.updates == 0 && completed == 0,
+                     "Unavailable configuration must block preparation, commands, writeback and success")
+        precondition(session.syncState == .syncFailure, "The blocked run must remain failed")
+        available = true
+        session.start(); h.flush()
+        precondition(h.sends.count == 1 && !prepared, "Recovery permits a fresh run without replaying rejected preparation")
+        h.finish(0); h.flush()
+        precondition(session.syncState == .syncSuccess && completed == 1 && node.updates == 1,
+                     "A recovered configuration must still synchronize normally")
+        session.close(); h.flush()
+    }
+    static func changedConfigurationInvalidatesOldCallbacks() {
+        let h = Harness(); let (session, _, task, node) = h.make(.profile(type: .occupancyLevel))
+        var current = true
+        h.environment.configurationIsCurrent = { current }
+        var invalidations = 0, completed = 0
+        session.onPlanInvalidated = { invalidations += 1 }
+        session.onCompleted = { _ in completed += 1 }
+        session.start(); h.flush()
+        current = false
+        h.finish(0); h.finish(0); h.flush()
+        precondition(node.updates == 0 && task.state != .successful && completed == 0,
+                     "Old response must not update a new device instance or acknowledge new Profile values")
+        precondition(h.stopCount == 1 && invalidations == 0, "One stopped transport owns invalidation")
+        h.stopFinished?(); h.flush()
+        precondition(invalidations == 1 && h.sends.count == 1, "Do not replay old Profile compensation")
+        session.close(); h.flush()
     }
     static func normalAndDuplicateCompletion() {
         let h = Harness(); let (session, _, task, node) = h.make()

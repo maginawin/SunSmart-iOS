@@ -3,18 +3,24 @@ import Foundation
 struct InformationClockSample: Equatable {
     let seconds: UInt64
     let offsetMinutes: Int
+    let taiDelta: Int16
     var subSecond: UInt8 = 0
 
+    var utcDate: Date? {
+        MeshTimeConversion.date(seconds: seconds, subSecond: subSecond, taiDelta: taiDelta)
+    }
+
     var isValid: Bool {
-        seconds > 0 && seconds < 252_455_616_000
+        guard let utcDate else { return false }
+        return utcDate.timeIntervalSince1970 >= MeshTimeConversion.unixEpochOffset
+            && utcDate.timeIntervalSince1970 < 253_402_300_800
             && offsetMinutes.isMultiple(of: 15)
             && TimeZone(secondsFromGMT: offsetMinutes * 60) != nil
     }
 
     func matches(offset: Int, date: Date) -> Bool {
-        isValid && offsetMinutes == offset
-            && abs(Double(seconds) + Double(subSecond) / 256
-                + 946_684_800 - date.timeIntervalSince1970) <= 30
+        guard isValid, let utcDate else { return false }
+        return offsetMinutes == offset && abs(utcDate.timeIntervalSince(date)) <= 30
     }
 }
 
@@ -383,6 +389,7 @@ final class InformationClockMeshTransport: InformationClockTransport {
                 completion(.sample(InformationClockSample(
                     seconds: status.time.seconds,
                     offsetMinutes: offset,
+                    taiDelta: status.time.taiDelta,
                     subSecond: status.time.subSecond
                 )))
             }

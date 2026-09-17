@@ -1448,7 +1448,7 @@
 "Yes" = "是";
 "No" = "否";
 "delete_no_connect_server_message" = "删除失败。\n网络异常或服务器故障。";
-"gateway_delete_message" = "删除网关后，该空间将失去远程控制、数据上报等相关功能。确定要删除网关吗？";
+"gateway_delete_message" = "删除网关后，关联空间将失去远程控制和数据上报功能。如果无法通过蓝牙重置设备，重新添加前需要手动重置。是否继续？";
 "gateway_force_delete_message" = "服务器信息已删除成功！但网关删除失败，该设备已离线或信号微弱。您可强制删除网关。\n\n";
 "gateway_no_authorize_force_delete_message" = "删除网关失败。\n该网关已离线或信号弱，您可以强制删除网关。\n\n";
 "gateway_force_delete_note" = "注意：强制删除后需手动重置网关设备。";
@@ -2183,6 +2183,7 @@
 "proximity_lighting_export_invalid" = "邻近照明数据无效，无法导出。";
 "proximity_lighting_import_invalid" = "邻近照明数据无效，未执行导入。";
 "profile_unavailable" = "配置文件不可用";
+"configuration_sync_unavailable" = "空间数据暂不可用，请重新进入此空间后重试。";
 "configuration_reload_cloud" = "重新加载云端数据";
 "configuration_use_local" = "使用本机数据";
 "configuration_review_message" = "此空间需要核对后才能同步。可以重新加载云端数据；如果本机保存的完整配置正确，也可使用本机数据恢复。导入未完成或本机数据无效时无法执行本地恢复。";
@@ -2199,8 +2200,127 @@
 "switch_mac_format" = "MAC: %@";
 "switch_mac_unavailable" = "MAC: 暂无";
 
+// Site Trigger Zone
+"site_zones_storage_failed" = "无法保存或读取触发区域，请重试。";
+"site_zones_unsupported" = "此场所包含需要新版应用处理的触发区域数据。";
+"site_zones_conflict" = "触发区域已在其他设备更改，点击处理。";
+"site_zones_sync_pending" = "已保存到此设备，等待云端同步。点击重试。";
+"site_zones_discard_draft" = "是否放弃待同步的触发区域修改，使用服务器最新版本？";
+
+/* Site Trigger Zone item presentation */
+"site_zones_no_access" = "无访问权限";
+"site_zones_access_unknown" = "待确认";
+"site_zones_view_only" = "仅查看";
+"site_zones_no_access_message" = "你没有此空间的访问权限，请联系空间所有者申请访问";
+"site_zones_access_pending_message" = "编辑前需要确认此空间的访问权限。";
+"site_zones_summary_incomplete" = "部分空间信息尚未取得，确认前无法编辑。";
+"site_zone_members_need_verification" = "部分成员需要核实，完成前无法编辑或同步此区域。";
+"site_zones_server_replaced" = "已采用服务器版本。本地待同步修改已留存供检查，不会自动上传。";
+"site_zones_server_replaced_title" = "已采用服务器版本";
+"site_zones_archived_review" = "归档的本地草稿包含 %d 个区域，服务器包含 %d 个。请检查当前显示的区域，并重新进行需要的修改。归档草稿不会自动上传。";
+"site_zones_timestamp_ambiguous" = "服务器同一版本返回了不同的触发区域数据。编辑或同步前请刷新。";
+"site_zone_draft_stale" = "未保存的修改与服务器区域不再一致，请检查最新内容后再编辑。";
+"site_zones_device_count_one" = "%d 个设备";
+"site_zones_device_count_many" = "%d 个设备";
+"site_zones_preview_toggle" = "切换模拟与真实条目";
+"site_zones_preview_mode" = "模拟展示 · 点击测试返回真实条目";
+"site_zones_live_mode" = "真实条目";
+"site_zones_preview_action" = "仅供预览，未保存更改或向设备发送命令。";
+"site_zones_item_needs_sync" = "需要同步";
+"site_zones_item_sync_cloud" = "等待云端同步";
+"site_zones_item_sync_devices" = "等待设备同步";
+"site_zones_item_sync_both" = "等待云端及设备同步";
+"site_zones_item_device_unverified" = "设备状态未验证";
+"site_zones_item_status_unverified" = "同步状态未验证";
+"site_zones_sync_explanation" = "部分设备尚未完成同步。您必须拥有所有相关空间的编辑权限，才能执行同步操作。";
+"site_zones_device_preview_title" = "全 Site 设备任务预览";
+"site_zones_device_sync_not_available" = "设备同步功能尚未开放。此预览不会发送命令。";
+"site_zones_device_preview_zone_title" = "区域 %d 的设备影响";
+"site_zones_device_preview_member_changes" = "此区域的已知变更：新增 %d 个、移除 %d 个、修改 %d 个。";
+"site_zones_device_preview_unverified" = "此区域没有已知成员变更，设备状态尚未验证。";
+"site_zones_device_preview_source_only" = "这些区域编辑没有新增设备目标，现有设备状态仍未验证。";
+"site_zones_device_preview_cloud_unconfirmed" = "云端目标尚未确认，暂时无法预览设备变更。";
+"site_zones_device_preview_shared_impact" = "数量按完整 Site 目标比较，尚未核实设备实际状态。";
+"site_zones_device_preview_attribution" = "暂定目标任务：直接关系 %d、共享影响 %d、Site 级 %d。";
+"site_zones_device_preview_plan_unavailable" = "无法生成完整 Site 任务计划，设备状态仍未验证。";
+"site_zones_site_tasks_title" = "Site 级设备工作";
+"site_zones_site_tasks_retained" = "仍保留 %d 个已删除区域的清理依据。";
+"site_zones_site_tasks_tentative" = "暂定 Site 级任务：%d。";
+"site_zones_device_preview_cache" = "以下结果基于本机 Node 缓存，尚未核实设备实际状态；不会发送命令。";
+"site_zones_device_preview_counts" = "移除 / 新增 / 更新：%d / %d / %d";
+"site_zones_device_preview_blocked" = "设备同步预检尚未完成，当前不能执行任务。";
+"site_zones_device_blocker_cloud" = "云端目标尚未确认或已变化。";
+"site_zones_device_blocker_schema" = "已保存的区域格式不支持或不完整。";
+"site_zones_device_blocker_permission" = "缺少 Site 或 Space 的编辑权限。";
+"site_zones_device_blocker_mesh" = "Space Mesh 清单缺失或不一致。";
+"site_zones_device_blocker_keys" = "转发 Key 缺失、有歧义、不一致或正在更新。";
+"site_zones_device_blocker_ttl" = "转发 TTL 尚未核实。";
+"site_zones_device_blocker_preparation" = "Primary Key 或 Model Bind 状态未知。";
+"site_zones_device_blocker_capacity" = "至少一台设备超过邻居数量上限。";
+"site_zones_device_blocker_addresses" = "设备或邻居地址缺失、重复。";
+"site_zones_device_blocker_members" = "已保存的区域成员无法匹配设备。";
+"site_zones_device_blocker_topology" = "Group 或 Space 拓扑不完整。";
+"site_zones_device_blocker_observations" = "设备状态尚未读回或核实。";
+"site_zones_device_blocker_reconciliation" = "同步前须按当前设备状态重新核对目标。";
+"site_zones_device_blocker_previousTarget" = "保留的旧区域目标已过期或不完整。";
+"site_zones_device_preview_unavailable" = "无法判定此区域已保存的成员变更，设备状态仍未验证。";
+"site_zones_preview_reset_confirm" = "清空此触发区域中的所有设备？";
+"site_zones_preview_delete_confirm" = "删除此触发区域？";
+
 // Debug cloud JSON export
 "debug_export_json" = "导出 JSON";
 "debug_json_export_failed" = "导出 JSON 失败。";
 "debug_json_export_changed" = "数据或权限已变化，请重新导出。";
 "debug_json_export_unavailable" = "无法导出“%@”，本地数据不完整或无效。";
+
+// Site Trigger Zone candidate browsing
+"site_zone_no_spaces" = "无空间";
+"site_zone_no_eligible_spaces" = "无符合条件的空间";
+"site_zone_assign_proximity_profile" = "请在你可编辑的空间中，为一个组设置邻近照明配置。";
+"site_zone_no_editable_spaces" = "无可编辑空间";
+"site_zone_editable_space_required" = "需要空间的所有者或编辑者权限。";
+"site_zone_loading_spaces" = "正在加载空间…";
+"site_zone_loading_devices" = "正在加载设备…";
+"site_zone_data_unavailable" = "空间数据不可用";
+"site_zone_data_retry" = "空间数据不可用，点按重试。";
+"site_zone_no_new_devices" = "无新增设备";
+"site_zone_no_available_devices" = "无可添加设备";
+"site_zone_not_connected" = "未连接空间";
+"site_zone_connecting_to_space" = "正在连接 %@";
+"site_zone_connected_to_space" = "已连接 %@";
+"site_zone_add_unavailable" = "暂时无法添加设备。";
+"site_zone_retry_hint" = "轻点重试。";
+"site_zone_browse_help" = "设备以离线状态显示。这里只列出你可编辑的空间内，邻近照明配置组中的设备。";
+"site_zone_wait_for_trigger" = "触发设备后会在此显示。";
+"site_zone_unsaved_changes" = "离开前保存此触发区域的更改吗？";
+"site_zone_discard" = "放弃更改";
+"site_zone_remove_member" = "从未保存的区域草稿中移除此设备吗？";
+"site_zone_saved_cloud_pending" = "已保存到云端，设备同步待完成。";
+"site_zone_saved_cloud_sync_unavailable" = "已保存到云端，设备同步功能尚未开放。";
+"site_zone_saved_cloud_unverified" = "已保存到云端，设备状态未验证。";
+"site_zone_saved_cloud" = "已保存到云端。";
+"site_zone_member_changed" = "成员所属分组或设备地址已变化。请刷新空间并检查此区域后再保存。";
+"site_zone_quick_help" = "连接空间后点击开始，触发设备即可加入此区域草稿。点击区域的保存按钮提交更改。";
+"site_zone_trigger_help" = "触发设备后，首次点击选中，再次点击加入区域草稿。若空间仍已连接，加入后设备会执行识别。";
+"site_zone_manual_help" = "首次点击设备选中，再次点击加入区域草稿。若空间仍已连接，加入后设备会执行识别。";
+
+"gateway_deleted_manual_reset" = "网关已删除。重新添加前，请手动重置设备。";
+"gateway_delete_local_failed" = "无法完成网关本地删除，请重新进入此 Site 重试。";
+
+/* Space recovery and membership */
+"space_leave_action" = "退出空间";
+"space_leave_pending" = "正在等待退出此空间。服务器确认前，本机数据会保留。联网后可重试。";
+"space_leave_cleanup_pending" = "已退出此空间，本机数据清理将在条件允许时继续。";
+"space_leave_complete" = "已退出此空间。";
+"space_leave_unsynced" = "部分修改尚未得到云端确认。你可以重试同步，或在本机保留副本后退出。保留的副本不会自动上传。";
+"space_leave_keep_copy" = "保留副本并退出";
+"space_recovery_retry" = "重试";
+"space_recovery_storage_failed" = "无法在此手机保存配置，之前保存的数据已保留。你可以重试恢复或退出此空间。";
+"space_recovery_identity_failed" = "无法确认此空间的网络身份。你可以重新获取云端数据或退出此空间。";
+"space_recovery_changed" = "恢复期间空间状态发生了变化，请重试以获取当前状态。";
+"space_recovery_network_failed" = "暂时无法获取云端数据。联网后可重试，也可以申请退出此空间。";
+"space_recovery_unavailable" = "此空间尚未完成恢复。你可以重试恢复或退出空间。在完整配置就绪前，暂时无法修改配置。";
+"space_saved_copies" = "空间保留副本";
+"space_saved_copies_description" = "此处可查看本机保留的副本，退出空间后仍可访问。部分副本仅包含诊断记录。恢复副本需要重新取得该空间的当前权限。";
+"space_leave_copy_failed" = "无法保存副本。你可以重试，或不保留副本并退出。继续退出可能丢失尚未同步的修改。";
+"space_leave_without_copy" = "不保留副本并退出";

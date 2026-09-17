@@ -45,6 +45,7 @@ class GroupPathSequenceQuickAddView: UIView {
 //    private var pauseBtn: UIButton!
     private var addStateLabel: UILabel!
     private var hintLabel: UILabel!
+    private var browseMessageLabel: UILabel!
     private var messageLabel: UILabel!
     
     var guideContentView: UIView!
@@ -58,6 +59,7 @@ class GroupPathSequenceQuickAddView: UIView {
     private var groupFilterEnabledStates: [Bool] = []
     private var groupFilterSelectedIndex: Int = 0
     private var usesDualFilterLayout: Bool = false
+    private var browseConfiguration: GroupPathSequenceBrowseConfiguration?
 
     private var guidePreferredContentHeight: CGFloat {
         let fallbackWidth = SCREEN_WIDTH - 48
@@ -68,6 +70,22 @@ class GroupPathSequenceQuickAddView: UIView {
     var preferredContentHeight: CGFloat {
         if !guideContentView.isHidden {
             return guidePreferredContentHeight
+        }
+        if let browseConfiguration {
+            let fittingWidth = max(1, (bounds.width > 0 ? bounds.width : SCREEN_WIDTH - 48) - 28)
+            let footerHeight = ceil(messageLabel.sizeThatFits(CGSize(width: fittingWidth, height: .greatestFiniteMagnitude)).height)
+            let bottomSpacing = 6 + footerHeight + 12
+            if browseConfiguration.selectedSpaceID != nil {
+                let hintBottom = topContentInset + 30 + 8 + GroupPathSequenceBrowseConfiguration.proximityHintHeight(width: bounds.width)
+                let controlHalfHeight = max(startBtn.intrinsicContentSize.height, addStateLabel.intrinsicContentSize.height) / 2
+                return max(spacePreferredContentHeight,
+                           2 * (hintBottom + 16 + controlHalfHeight - spaceControlCenterYOffset),
+                           2 * (spaceControlCenterYOffset + controlHalfHeight + bottomSpacing))
+            }
+            let messageHeight = ceil(browseMessageLabel.sizeThatFits(CGSize(width: max(1, fittingWidth - 4), height: .greatestFiniteMagnitude)).height)
+            return max(spacePreferredContentHeight,
+                       GroupPathSequenceBrowseConfiguration.minimumHeight(message: browseConfiguration.unavailableMessage, width: bounds.width),
+                       2 * (spaceControlCenterYOffset + messageHeight / 2 + bottomSpacing))
         }
         return usesDualFilterLayout ? spacePreferredContentHeight : 130
     }
@@ -90,8 +108,16 @@ class GroupPathSequenceQuickAddView: UIView {
         addView.isHidden = true
         stopBtn.isHidden = true
         updateSpaceContentVisibility()
-        startBtn.snp.updateConstraints { make in
-            make.centerX.equalToSuperview()
+        if browseConfiguration != nil {
+            // Hidden browsing controls must not impose their hint spacing on the shorter guide.
+            startBtn.snp.remakeConstraints { make in
+                make.centerX.equalToSuperview()
+                make.centerY.equalToSuperview().offset(spaceControlCenterYOffset)
+            }
+        } else {
+            startBtn.snp.updateConstraints { make in
+                make.centerX.equalToSuperview()
+            }
         }
     }
     
@@ -132,7 +158,7 @@ class GroupPathSequenceQuickAddView: UIView {
     private func updateSpaceContentVisibility() {
         let shouldShowSpaceContent = usesDualFilterLayout && guideContentView.isHidden
         groupFilterView.isHidden = !shouldShowSpaceContent
-        hintLabel.isHidden = !shouldShowSpaceContent
+        hintLabel.isHidden = !shouldShowSpaceContent || (browseConfiguration != nil && browseConfiguration?.selectedSpaceID == nil)
     }
 
     private func updateAddControlCenterY() {
@@ -143,6 +169,14 @@ class GroupPathSequenceQuickAddView: UIView {
     }
     
     @objc private func startBtnAction(sender: UIButton) {
+        if let browseConfiguration {
+            if let change = browseConfiguration.changeQuickState {
+                change(browseConfiguration.quickState == .adding ? .pause : .adding)
+            } else {
+                browseConfiguration.startConnection?()
+            }
+            return
+        }
         sender.isSelected = !sender.isSelected
         
         if sender.isSelected {
@@ -161,6 +195,10 @@ class GroupPathSequenceQuickAddView: UIView {
     }
     
     @objc private func stopBtnAction() {
+        if let browseConfiguration {
+            browseConfiguration.changeQuickState?(.stop)
+            return
+        }
         stopBtn.isHidden = true
         
         startBtn.isSelected = false
@@ -174,15 +212,18 @@ class GroupPathSequenceQuickAddView: UIView {
     }
 
     @objc private func helpImageAction() {
+        if let browseConfiguration { browseConfiguration.showHelp?(); return }
         GroupPathSequenceAddDescriptionController.push(mode: .quickAdd, isSequence: isSequence)
     }
     
     @objc private func addTypeSelectAction() {
+        if let browseConfiguration { browseConfiguration.showFilter(from: addTypeView); return }
         var menuWidth: CGFloat = isIPad ? 300 : 256
         var menuTitles = ["quick_add_ignore_added_devices".localizedString, "quick_add_show_added_devices".localizedString]
         var selectedTitles = menuTitles
         if usesDualFilterLayout {
-            menuTitles = ["quick_add_ignore_added_devices".localizedString, "trigger_add_show_added_devices".localizedString]
+            menuTitles = ["quick_add_ignore_added_devices".localizedString,
+                          (isSequence ? "trigger_add_show_added_devices" : "zone_trigger_add_show_added_devices").localizedString]
             selectedTitles = ["space_trigger_zone_new_only".localizedString, "space_trigger_zone_used".localizedString]
             menuWidth = isIPad ? 320 : 256
         } else if !isSequence {
@@ -231,6 +272,7 @@ class GroupPathSequenceQuickAddView: UIView {
     }
 
     @objc private func groupFilterSelectAction() {
+        if let browseConfiguration { browseConfiguration.showSpaces(from: groupFilterView); return }
         guard usesDualFilterLayout, !groupFilterTitles.isEmpty else {
             return
         }
@@ -322,6 +364,45 @@ class GroupPathSequenceQuickAddView: UIView {
         }
     }
     
+    func configureBrowse(_ configuration: GroupPathSequenceBrowseConfiguration) {
+        browseConfiguration = configuration
+        configureSpaceTriggerZoneQuickAdd(groupTitles: [], enabledStates: [], selectedGroupIndex: 0, showAddedOnly: configuration.includeAdded)
+        updateQuickAddState(configuration.quickState)
+        startBtn.isSelected = configuration.quickState == .adding
+        groupTitleLabel.text = configuration.spaceTitle
+        groupTitleLabel.lineBreakMode = .byTruncatingTail
+        groupFilterView.isUserInteractionEnabled = !configuration.spaces.isEmpty
+        groupArrowImageView.isHidden = configuration.spaces.isEmpty
+        configuration.configureAccessibility(space: groupFilterView, filter: addTypeView)
+        titleLabel.text = configuration.filterTitle
+        addTypeView.snp.updateConstraints { $0.width.equalTo(configuration.filterWidth) }
+        let noSpace = configuration.selectedSpaceID == nil
+        let showStart = configuration.connectionPhase == .idle || configuration.connectionPhase == .connected
+        startBtn.isHidden = noSpace || !showStart
+        addStateLabel.isHidden = noSpace || !showStart
+        hintLabel.isHidden = noSpace
+        hintLabel.numberOfLines = 0
+        hintLabel.accessibilityIdentifier = "site-zone-proximity-hint"
+        messageLabel.text = "path_quick_add_message".localizedString
+        messageLabel.numberOfLines = 0
+        messageLabel.accessibilityIdentifier = "site-zone-quick-footer"
+        GroupPathSequenceBrowseConfiguration.configureMessage(browseMessageLabel,
+            message: noSpace ? configuration.unavailableMessage : nil, retry: noSpace && configuration.retry != nil)
+        startBtn.snp.remakeConstraints { make in
+            make.centerX.equalToSuperview()
+            make.centerY.equalToSuperview().offset(spaceControlCenterYOffset)
+            if !noSpace {
+                make.top.greaterThanOrEqualTo(hintLabel.snp.bottom).offset(16)
+                make.bottom.lessThanOrEqualTo(messageLabel.snp.top).offset(-12)
+            } else {
+                make.bottom.lessThanOrEqualTo(-12)
+            }
+        }
+        startBtn.accessibilityIdentifier = "site-zone-quick-start"
+    }
+
+    @objc private func retryBrowse() { browseConfiguration?.retry?() }
+
     private func setupUI() {
         
         addView = UIView()
@@ -411,6 +492,19 @@ class GroupPathSequenceQuickAddView: UIView {
             make.right.equalTo(-14)
             make.top.equalTo(addTypeView.snp.bottom).offset(8)
         }
+
+        browseMessageLabel = UILabel(text: nil, textColor: Message_Color, fontSize: 14, fontWeight: .light, fit: false)
+        browseMessageLabel.isHidden = true
+        browseMessageLabel.accessibilityIdentifier = "site-zone-quick-message"
+        browseMessageLabel.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(retryBrowse)))
+        addView.addSubview(browseMessageLabel)
+        browseMessageLabel.snp.makeConstraints { make in
+            make.left.equalTo(16)
+            make.right.equalTo(-16)
+            make.top.greaterThanOrEqualTo(addTypeView.snp.bottom).offset(12)
+            make.centerY.equalToSuperview().offset(20)
+            make.bottom.lessThanOrEqualTo(-12)
+        }
         
         startBtn = UIButton(normalImageName: "quick_add_start", selectedImageName: "quick_add_pause", target: self, action: #selector(startBtnAction))
         addView.addSubview(startBtn)
@@ -428,6 +522,7 @@ class GroupPathSequenceQuickAddView: UIView {
 //        }
         
         stopBtn = UIButton(normalImageName: "quick_add_stop", target: self, action: #selector(stopBtnAction))
+        stopBtn.accessibilityIdentifier = "site-zone-quick-stop"
         stopBtn.isHidden = true
         addView.addSubview(stopBtn)
         stopBtn.snp.makeConstraints { make in
