@@ -57,7 +57,8 @@ enum SpaceConfigurationSafety {
     }
 
     static func isCurrent(_ context: SpaceRecoveryState, space: SpaceData) -> Bool {
-        guard context.identity == identity(space), let state = try? recoveryState(space) else { return false }
+        guard !SpaceMembershipCoordinator.isLeaving(space),
+              context.identity == identity(space), let state = try? recoveryState(space) else { return false }
         return state.matches(context)
     }
 
@@ -84,7 +85,7 @@ enum SpaceConfigurationSafety {
         if FileManager.default.fileExists(atPath: stateURL.path) {
             guard let data = try? Data(contentsOf: stateURL),
                   let state = try? JSONDecoder().decode(SpaceRecoveryState.self, from: data) else { return true }
-            if state.phase != .active { return true }
+            if state.phase != .active || state.unbindRequested == true { return true }
             directoryName = state.directoryName ?? identity
         }
         let pending = recoveryRoot.appendingPathComponent(directoryName).appendingPathComponent("pending-import.json")
@@ -397,6 +398,7 @@ enum SpaceConfigurationSafety {
             guard state.phase != .retired else { return true }
             state.phase = .removing
             try saveState(state, space: space)
+            SpaceMembershipResponseContext.invalidate()
             return true
         } catch { return false }
     }
@@ -407,6 +409,7 @@ enum SpaceConfigurationSafety {
             var state = try recoveryState(space)
             guard state.phase == .active else { return nil }
             state.unbindRequested = true
+            state.generation = UUID()
             try saveState(state, space: space)
             return state
         } catch { return nil }
@@ -518,7 +521,8 @@ enum SpaceConfigurationSafety {
     }
 
     static func canAutomaticallyUpload(_ space: SpaceData) -> Bool {
-        guard space.permission != .visitor, !space.requiresPasswordVerification, !space.disableEditorPermission,
+        guard SpaceMembershipCoordinator.allowsConfiguration(space),
+              space.permission != .visitor, !space.requiresPasswordVerification, !space.disableEditorPermission,
               space.state == .normal, let state = try? recoveryState(space), state.phase == .active else { return false }
         return state.authority == .writable && state.unbindRequested != true && state.requiresRemoteImport != true
     }
@@ -907,6 +911,10 @@ enum SpaceConfigurationSafety {
     static func debugSnapshotStatus(_ space: SpaceData) -> [String: Any] {
         lock.lock(); defer { lock.unlock() }
         var result: [String: Any] = ["state": space.state.rawValue]
+        if let membership = try? SpaceMembershipCoordinator.store.read(SpaceMembershipCoordinator.scope(space)) {
+            result["membershipPhase"] = membership.phase.rawValue
+            result["configurationInitialized"] = membership.initialized
+        }
         result["blockedReason"] = UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space))
         do {
             let state = try SpaceRecoveryState.read(from: stateURL(space), identity: identity(space))

@@ -64,6 +64,7 @@ struct SpaceProtectionReadRequest {
                       state.identity.space.networkId == scope.networkID else { throw CocoaError(.fileReadCorruptFile) }
                 result.phase = state.phase
                 result.authority = state.authority
+                result.pendingUnbind = state.unbindRequested == true
                 result.recoveryGeneration = state.generation
                 result.persistedSpace = state.identity.space
                 directory = state.directoryName ?? key
@@ -122,10 +123,11 @@ struct SpaceProtectionReadSnapshot {
     var pendingImport = false
     var pendingReferences = false
     var pendingDeletion = false
+    var pendingUnbind = false
     var isCurrent: Bool { version != nil && version == SpaceProtectionReadGeneration.current }
     func commit(_ body: () -> Void) -> Bool { SpaceProtectionReadGeneration.commit(ifCurrent: version, body) }
     var isBlocked: Bool {
         failure != nil || !isCurrent || phase.map { $0 != .active } == true
-            || blockedReason != nil || pendingImport || pendingReferences || pendingDeletion
+            || blockedReason != nil || pendingImport || pendingReferences || pendingDeletion || pendingUnbind
     }
 }

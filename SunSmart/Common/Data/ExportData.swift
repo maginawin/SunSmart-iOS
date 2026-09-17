@@ -1017,7 +1017,8 @@ extension SpaceData {
         }
         guard let payload else { return nil }
         if case .cloudSync = purpose {
-            guard await SpaceConfigurationSafety.prepareUpload(self, payload: payload) else { return nil }
+            guard SpaceMembershipCoordinator.allowsConfiguration(self),
+                  await SpaceConfigurationSafety.prepareUpload(self, payload: payload) else { return nil }
         }
         return payload
     }

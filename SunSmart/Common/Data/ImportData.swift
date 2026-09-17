@@ -464,6 +464,7 @@ extension SiteData {
     ///      2：卸载app后由于没有缓存数据，之前使用的手机地址对应SEQ序列号未知，所以把旧的地址放到地址回收池内回收，并分配新的手机地址
     /// - Returns: site
     static func `import`(siteJsonData: [String: Any], changeAddress: Bool = false) async -> SiteData? {
+        guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return nil }
         
         let json = JSON(siteJsonData)
         guard let uuid = json["uuid"].string,
@@ -497,7 +498,7 @@ extension SiteData {
             site?.state = .normal
         }
         await site?.update(siteJsonData: siteJsonData, changeAddress: isChangeAddress, initialize: initialize)
-        
+        guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return nil }
         return site
     }
     
@@ -507,6 +508,7 @@ extension SiteData {
     /// - Parameter changeAddress: 是否切换地址
     /// - Parameter initialize 首次更新数据（本地无记录）
     func update(siteJsonData: [String: Any], changeAddress: Bool = false, initialize: Bool = false) async {
+        guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return }
         let trace = SiteImportTrace("site:" + id)
         defer { trace.mark("end") }
         
@@ -858,6 +860,7 @@ extension SiteData {
                 }
             }
 
+            guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return }
             trace.mark("spacesCompleted")
             spaces.forEach { space in
                 switch gatewaySnapshot.decision(for: space.relevanceGatewayId) {
@@ -906,6 +909,7 @@ extension SiteData {
             }
             self.spaces.sort(by: { $0.create > 0 && $0.create < $1.create })
             await MainActor.run {
+                guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return }
                 let changed = SiteDeviceOwnershipReconciler.reconcile(siteId: self.id)
                 self.spaces = self.spaces.map { current in
                     SpaceData.load(siteId: self.id, spaceId: current.id).first ?? current
@@ -914,6 +918,7 @@ extension SiteData {
                     CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSpace(space: space), level: .normal)
                 }
             }
+            guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return }
             
 //            self.spaces = spaces
             self.spaceCount = nil
@@ -1297,9 +1302,10 @@ extension SiteData {
     ///   - deviceAddresses: 删除的设备地址
     ///   - groupAddresses: 删除的组地址
     ///   - sceneAddresses: 删除的场景地址
-    func deleteProvisionerAddress(deviceAddresses: [Int], groupAddresses: [Int], sceneAddresses: [Int]) {
+    @discardableResult func deleteProvisionerAddress(deviceAddresses: [Int], groupAddresses: [Int], sceneAddresses: [Int]) -> Bool {
+        if deviceAddresses.isEmpty && groupAddresses.isEmpty && sceneAddresses.isEmpty { return true }
         let currentNetwork = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.meshUUID ? MeshNetworkManager.instance.meshNetwork : nil
-        guard let meshNetwork = currentNetwork ?? MeshNetwork.load(meshUUID: self.meshUUID, allData: false) else { return }
+        guard let meshNetwork = currentNetwork ?? MeshNetwork.load(meshUUID: self.meshUUID, allData: false) else { return false }
         
         let deallocatedUnicastRange = deviceAddresses.splitArray().compactMap { array in
             if let lowAddress = array.first, let highAddress = array.last {
@@ -1332,7 +1338,7 @@ extension SiteData {
         deallocatedSceneRange.forEach({
             meshNetwork.localProvisioner?.deallocate(sceneRange: $0)
         })
-        meshNetwork.save()
+        return meshNetwork.save()
     }
     
     
@@ -1541,14 +1547,7 @@ extension SpaceData {
                 reason: "spaceUnavailable"
             )
         }
-        if (try? SpaceConfigurationSafety.recoveryState(space).phase) == .removing {
-            guard space.delete() else { return .rejected(serverSpaceId: serverSpaceId, reason: "spaceRemovalPending") }
-            return await Self.import(siteId: siteId, meshUUID: meshUUID, spaceJsonData: spaceJsonData)
-        }
-        guard SpaceConfigurationSafety.activateImport(space) else {
-            return .rejected(serverSpaceId: serverSpaceId, reason: "spaceRecoveryUnavailable")
-        }
-        let outcome = await space.update(
+        let outcome = await space.restoreConfiguration(
             spaceJsonData: spaceJsonData,
             initialize: initialize
         )
@@ -1827,25 +1826,6 @@ extension SpaceData {
             printSpaceCountProbe(phase: "received", json: json, space: self, initialize: initialize)
 #endif
             
-            // 子网key丢失
-            if let network = localMeshNetwork ?? MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId, allData: false), !network.networkKeys.contains(where: { $0.networkId.hex == self.meshNetworkId }) {
-                // 修复子网key数据
-                if let netKeyDict = json["netKey"].dictionaryObject,
-                   let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
-                   let netKey = try? jsonDecoder.decode(NetworkKey.self, from: netKeyData),
-                   let appKeyDict = json["appKey"].dictionaryObject,
-                   let appKeyData = try? JSONSerialization.data(withJSONObject: appKeyDict),
-                   let appKey = try? jsonDecoder.decode(ApplicationKey.self, from: appKeyData) {
-                    
-                    if !network.networkKeys.contains(where: { $0.index == netKey.index }) {
-                        network.add(networkKey: netKey)
-                        network.add(applicationKey: appKey)
-                        network.save()
-                    }
-                    self.meshNetworkId = netKey.networkId.hex
-                }
-            }
-            
             let lastUpdate = json["updateTimestamp"].int64Value
             let sameTimestampSummaryDiffers = lastUpdate == self.lastUpdate && summaryDiffers
             let serverSummaryDiffersNote = localNeedsUpload ? "serverSummaryDiffersButLocalNeedsUpload" : "serverSummaryDiffers"
@@ -2098,7 +2078,6 @@ extension SpaceData {
                     network.add(applicationKey: appKey)
                     network.save()
                 }
-                self.meshNetworkId = netKey.networkId.hex
             }
             
             self.name = json["spaceName"].stringValue

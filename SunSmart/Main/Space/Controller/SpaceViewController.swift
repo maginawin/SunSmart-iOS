@@ -832,13 +832,13 @@ class SpaceViewController: WMPageController {
                 if let spaceData = JSON(response)["data"].dictionaryObject {
                     Task { [weak self] in
                         guard let self = self else { return }
-                        let outcome = await self.space.update(
+                        let outcome = await self.space.restoreConfiguration(
                             spaceJsonData: spaceData
                         )
                         guard outcome.status != .rejected else {
                             await MainActor.run {
                                 XWHUDManager.showErrorTipHUD(
-                                    "configuration_reload_invalid".localizedString
+                                    SpaceRecoveryViewController.message(outcome.rejectionReason ?? "configurationUnavailable")
                                 )
                             }
                             return
@@ -1631,7 +1631,7 @@ class SpaceViewController: WMPageController {
             let result = await NetworkRequest.shared.request(.spaceInfo(siteId: self.space.siteId,
                 spaceId: self.space.id, password: self.space.authorizationPassword))
             if case .success(let response) = result, let remote = response["data"] as? [String: Any] {
-                let outcome = await self.space.update(spaceJsonData: remote)
+                let outcome = await self.space.restoreConfiguration(spaceJsonData: remote)
                 XWHUDManager.hide()
                 if outcome.status != .rejected, !SpaceConfigurationSafety.isBlocked(self.space) {
                     _ = CloudSynchronizationManager.shared.cancelSynchronizationHandle(operation: .syncSpace(space: self.space))
@@ -1646,7 +1646,7 @@ class SpaceViewController: WMPageController {
                 if case .failure(let error) = result { SpaceConfigurationSafety.handleAuthorityError(error, space: self.space) }
                 XWHUDManager.hide()
             }
-            XWHUDManager.showErrorTipHUD("configuration_reload_invalid".localizedString)
+            XWHUDManager.showErrorTipHUD("space_recovery_unavailable".localizedString)
         }
     }
     
