@@ -3722,6 +3722,21 @@
 		F26091510000000000000022 /* debug_features.json in Resources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000002 /* debug_features.json */; };
 		F26091510000000000000023 /* debug_features.json in Resources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000002 /* debug_features.json */; };
 		F26091510000000000000024 /* debug_features.json in Resources */ = {isa = PBXBuildFile; fileRef = F26091510000000000000002 /* debug_features.json */; };
+		F260916B0000000000000101 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */; };
+		F260916B0000000000000102 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */; };
+		F260916B0000000000000103 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */; };
+		F260916B0000000000000104 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */; };
+		F260916B0000000000000105 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */; };
+		F260916B0000000000000201 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */; };
+		F260916B0000000000000202 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */; };
+		F260916B0000000000000203 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */; };
+		F260916B0000000000000204 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */; };
+		F260916B0000000000000205 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */; };
+		F260916B0000000000000301 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
+		F260916B0000000000000302 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
+		F260916B0000000000000303 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
+		F260916B0000000000000304 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
+		F260916B0000000000000305 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
 		F33FAD57616D53F9A5030FF4 /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 496535143AA555DFA8D9869D /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift */; };
 		F3C661B473314BCA9FC4EADC /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
 		F538067A4C66418F8CEBB201 /* SyncExecutionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */; };
@@ -3739,21 +3754,6 @@
 		FC37248A4BA9471492C67995 /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
 		FDC40E80058A7403C1FD84A7 /* NodeSyncTopologyStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7B5C927EB09075DE812CA1 /* NodeSyncTopologyStorage.swift */; };
 		FEE1FB25CC954BC291397481 /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 392FAB0358444160BCBE29FC /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift */; };
-		F260916B0000000000000101 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */; };
-		F260916B0000000000000102 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */; };
-		F260916B0000000000000103 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */; };
-		F260916B0000000000000104 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */; };
-		F260916B0000000000000105 /* SunSmart/Common/Data/SpaceMembershipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */; };
-		F260916B0000000000000201 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */; };
-		F260916B0000000000000202 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */; };
-		F260916B0000000000000203 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */; };
-		F260916B0000000000000204 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */; };
-		F260916B0000000000000205 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */; };
-		F260916B0000000000000301 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
-		F260916B0000000000000302 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
-		F260916B0000000000000303 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
-		F260916B0000000000000304 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
-		F260916B0000000000000305 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -4586,13 +4586,13 @@
 		F2609140000000000000220 /* ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift; sourceTree = "<group>"; };
 		F26091510000000000000001 /* FeatureVisibility.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeatureVisibility.swift; sourceTree = "<group>"; };
 		F26091510000000000000002 /* debug_features.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = debug_features.json; sourceTree = "<group>"; };
+		F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceMembershipStore.swift; sourceTree = SOURCE_ROOT; };
+		F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceMembershipCoordinator.swift; sourceTree = SOURCE_ROOT; };
+		F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift; sourceTree = SOURCE_ROOT; };
 		F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncParameterTaskBuilder.swift; sourceTree = "<group>"; };
 		FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorState.swift; sourceTree = "<group>"; };
 		FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncRetryPolicy.swift; sourceTree = "<group>"; };
 		FF4CE0208AB4FEC2A28B419B /* NodeSyncTopologySnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeSyncTopologySnapshot.swift; sourceTree = "<group>"; };
-		F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceMembershipStore.swift; sourceTree = SOURCE_ROOT; };
-		F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceMembershipCoordinator.swift; sourceTree = SOURCE_ROOT; };
-		F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -11055,7 +11055,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.4;
+				MARKETING_VERSION = 1.2.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lumineux.lumismart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -11080,7 +11080,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.4;
+				MARKETING_VERSION = 1.2.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lumineux.lumismart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -11092,7 +11092,7 @@
 			baseConfigurationReference = F10000000000000000000006 /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Archipelago/Archipelago.entitlements;
-				MARKETING_VERSION = 1.2.4;
+				MARKETING_VERSION = 1.2.6;
 			};
 			name = Debug;
 		};
@@ -11101,7 +11101,7 @@
 			baseConfigurationReference = F10000000000000000000007 /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Archipelago/Archipelago.entitlements;
-				MARKETING_VERSION = 1.2.4;
+				MARKETING_VERSION = 1.2.6;
 			};
 			name = Release;
 		};
@@ -11110,7 +11110,7 @@
 			baseConfigurationReference = F10000000000000000000009 /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SylSmart/SylSmart.entitlements;
-				MARKETING_VERSION = 1.2.4;
+				MARKETING_VERSION = 1.2.6;
 			};
 			name = Debug;
 		};
@@ -11119,7 +11119,7 @@
 			baseConfigurationReference = F1000000000000000000000A /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SylSmart/SylSmart.entitlements;
-				MARKETING_VERSION = 1.2.4;
+				MARKETING_VERSION = 1.2.6;
 			};
 			name = Release;
 		};
@@ -11255,7 +11255,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.4;
+				MARKETING_VERSION = 1.2.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Debug;
@@ -11276,7 +11276,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.4;
+				MARKETING_VERSION = 1.2.6;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Release;
@@ -11289,7 +11289,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.2.4;
+				MARKETING_VERSION = 1.2.6;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Debug;
@@ -11302,7 +11302,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.2.4;
+				MARKETING_VERSION = 1.2.6;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Release;
