@@ -150,7 +150,6 @@ class LightSensorCalibrationViewController: UIViewController {
 
         isViewVisible = true
         MeshLibManager.manager.messageDelegate = self
-        resumeIncompleteSensorDraftIfNeeded()
         updateLuxPollingState()
     }
     
@@ -372,9 +371,6 @@ class LightSensorCalibrationViewController: UIViewController {
     }
 
     private func updateCalibrationModeUI(_ mode: LightSensorCalibrationMode) {
-        if mode == .plane {
-            restorePersistedSensorSelectionForPlane()
-        }
         let showsPlaneContent = mode == .plane
         onPointLuxView.isHidden = !showsPlaneContent
         offPointLuxView.isHidden = !showsPlaneContent
@@ -419,23 +415,9 @@ class LightSensorCalibrationViewController: UIViewController {
         } else {
             calibrationBtn.setTitle("apply_plane_calibration".localizedString, for: .normal)
         }
-        updateSensorManualControlState(for: mode, sensorComplete: sensorComplete)
+        // 模式展示只更新草稿/UI；由主动调光或正式校准接管灯光控制。
         updateManualCorrectionBtn()
         updateCalibrationState()
-    }
-
-    private func restorePersistedSensorSelectionForPlane() {
-        let persistedSensor = group.info.ambientLightSensorNode
-        guard persistedSensor?.primaryUnicastAddress != selectSensor?.primaryUnicastAddress else {
-            return
-        }
-        group.ambientLightSensorNodes.forEach { sensor in
-            sensor.selectState = sensor.primaryUnicastAddress == persistedSensor?.primaryUnicastAddress
-                ? .switchOn
-                : .switchOff
-            sensorSelectView.reloadSensorCell(sensor: sensor)
-        }
-        selectSensor = persistedSensor
     }
 
     private func recalibrateNight() {
@@ -472,17 +454,6 @@ class LightSensorCalibrationViewController: UIViewController {
             message: LightLCLightOnOffSetUnacknowledged(true, transitionTime: .default, delay: 0),
             address: group.address.address
         )
-    }
-
-    private func updateSensorManualControlState(
-        for mode: LightSensorCalibrationMode,
-        sensorComplete: Bool
-    ) {
-        if mode == .sensor && !sensorComplete {
-            suspendGroupAutoForDaylightCalibration()
-        } else {
-            restoreGroupAutoAfterSensorDraftIfNeeded()
-        }
     }
 
     private func suspendGroupAutoForDaylightCalibration() {
@@ -553,18 +524,6 @@ class LightSensorCalibrationViewController: UIViewController {
             return
         }
         restoreGroupAutoAfterDaylightCalibration()
-    }
-
-    private func resumeIncompleteSensorDraftIfNeeded() {
-        guard calibrationModeView.selectedMode == .sensor,
-              !isSensorCalibrationComplete else {
-            return
-        }
-        let wasSuspended = isDaylightGroupAutoSuspended
-        suspendGroupAutoForDaylightCalibration()
-        if !wasSuspended {
-            restoreSensorDimLevel()
-        }
     }
 
     private func restoreSensorDraftAutoAfterConfirmedExit() {
@@ -1648,6 +1607,21 @@ class LightSensorCalibrationViewController: UIViewController {
             return
         }
         setLuxPollingSuspended(true, for: .configuration)
+        // 跨模式保留的选择可能仍是草稿；真正启用时才关闭旧传感器上报。
+        if let previousSensor = group.info.ambientLightSensorNode,
+           previousSensor != sensor,
+           previousSensor.ambientLightSensorModel?.publish?.publicationAddress == group.address {
+            sensorDisable(sensor: previousSensor, lightConfig: false) { [weak self] success in
+                guard let self else { return }
+                guard success else {
+                    self.setLuxPollingSuspended(false, for: .configuration)
+                    result?(false)
+                    return
+                }
+                self.sensorEnabled(sensor: sensor, resetCalibrated: resetCalibrated, result: result)
+            }
+            return
+        }
         // 判断传感器是否已启用
         if ambientLightSensorModel.publish?.publicationAddress == self.group.address {
             result?(true)
