@@ -12,6 +12,9 @@ struct SiteGatewayHeaderLayoutPolicyTests {
         require(height(status: true, review: true) == 160)
         require(height(status: false, review: true) == 112)
         testEmptyStateFrameIgnoresVerticalBoundsOffset()
+        testGatewayWidthsAndOverflow()
+        testGatewaySelectionVisibility()
+        testGatewayScrollRestoration()
         print("SiteGatewayHeaderLayoutPolicyTests passed")
     }
 
@@ -121,6 +124,90 @@ struct SiteGatewayHeaderLayoutPolicyTests {
         require(frame.origin.y == 96)
         require(frame.size.width == bounds.size.width)
         require(frame.size.height == bounds.size.height)
+    }
+
+    private static func testGatewayWidthsAndOverflow() {
+        let empty = SiteGatewayListLayout(availableWidth: 303, gatewayCount: 0)
+        require(empty.itemWidth == 0 && empty.contentWidth == 0)
+        require(empty.clampedOffset(100) == 0)
+        let cases: [(width: CGFloat, count: Int, expected: CGFloat, scrolls: Bool)] = [
+            (303, 1, 151.5, false), (303, 2, 112, true),
+            (303, 3, 112, true), (303, 4, 112, true),
+            (303, 10, 112, true), (303, 50, 112, true),
+            (480, 1, 240, false), (480, 2, 160, false),
+            (480, 3, 120, false), (480, 4, 120, true)
+        ]
+        for test in cases {
+            let layout = SiteGatewayListLayout(availableWidth: test.width, gatewayCount: test.count)
+            require(layout.itemWidth == test.expected, "Keep equal shares with a 112 pt minimum")
+            require((layout.contentWidth > layout.viewportWidth) == test.scrolls)
+            require(layout.itemWidth + layout.viewportWidth == test.width)
+        }
+        for count in 1...3 {
+            let threshold = CGFloat(count + 1) * 112
+            let below = SiteGatewayListLayout(availableWidth: threshold - 1, gatewayCount: count)
+            let equal = SiteGatewayListLayout(availableWidth: threshold, gatewayCount: count)
+            let above = SiteGatewayListLayout(availableWidth: threshold + CGFloat(count + 1), gatewayCount: count)
+            require(below.itemWidth == 112 && below.contentWidth > below.viewportWidth)
+            require(equal.itemWidth == 112 && equal.contentWidth == equal.viewportWidth)
+            require(above.itemWidth == 113 && above.contentWidth == above.viewportWidth)
+        }
+    }
+
+    private static func testGatewaySelectionVisibility() {
+        let layout = SiteGatewayListLayout(availableWidth: 303, gatewayCount: 10)
+        require(layout.offsetToReveal(gatewayIndex: 9, currentOffset: 0) == 929, "Menu must reach the last gateway")
+        require(layout.offsetToReveal(gatewayIndex: 0, currentOffset: 929) == 0)
+        require(layout.offsetToReveal(gatewayIndex: 1, currentOffset: 100) == 100, "Already visible items must not move")
+        require(layout.offsetToReveal(gatewayIndex: 1, currentOffset: 0) == 33, "Only scroll the clipped portion")
+        require(layout.clampedOffset(-20) == 0)
+        require(layout.clampedOffset(2000) == 929)
+        for index in 0..<10 {
+            let offset = layout.offsetToReveal(gatewayIndex: index, currentOffset: 400)
+            let start = CGFloat(index) * layout.itemWidth
+            require(start >= offset && start + layout.itemWidth <= offset + layout.viewportWidth)
+        }
+        let narrow = SiteGatewayListLayout(availableWidth: 200, gatewayCount: 3)
+        require(narrow.offsetToReveal(gatewayIndex: 1, currentOffset: 0) == 112, "Extremely narrow viewports align the item's leading edge")
+    }
+
+    private static func testGatewayScrollRestoration() {
+        let ids = ["a", "b", "c", "d", "e"]
+        let layout = SiteGatewayListLayout(availableWidth: 303, gatewayCount: ids.count)
+        let position = SiteGatewayListScrollPosition(gatewayIDs: ids, offset: 130, layout: layout)
+        require(position.gatewayID == "b")
+        require(position.restoredOffset(gatewayIDs: ids, layout: layout) == 130, "Status refresh must retain browsing position")
+
+        let inserted = ["new"] + ids
+        let insertedLayout = SiteGatewayListLayout(availableWidth: 303, gatewayCount: inserted.count)
+        require(position.restoredOffset(gatewayIDs: inserted, layout: insertedLayout) == 242, "Inserting before the anchor must retain the visible gateway")
+        let removedBefore = ["b", "c", "d", "e"]
+        let smallerLayout = SiteGatewayListLayout(availableWidth: 303, gatewayCount: removedBefore.count)
+        require(position.restoredOffset(gatewayIDs: removedBefore, layout: smallerLayout) == 18)
+        require(position.restoredOffset(gatewayIDs: ["a", "c", "d", "e"], layout: smallerLayout) == 130, "Deleted anchors use the clamped previous offset")
+        let one = SiteGatewayListLayout(availableWidth: 303, gatewayCount: 1)
+        require(position.restoredOffset(gatewayIDs: ["e"], layout: one) == 0)
+        let empty = SiteGatewayListLayout(availableWidth: 303, gatewayCount: 0)
+        require(position.restoredOffset(gatewayIDs: [], layout: empty) == 0)
+
+        let wide = SiteGatewayListLayout(availableWidth: 640, gatewayCount: ids.count)
+        let widePosition = SiteGatewayListScrollPosition(gatewayIDs: ids, offset: 150, layout: wide)
+        require(widePosition.restoredOffset(gatewayIDs: ids, layout: layout) == 111, "Shrinking widths must not skip the anchor")
+        let all = SiteGatewayListScrollState()
+        let favourites = SiteGatewayListScrollState()
+        all.position = position
+        all.selectItem("e")
+        favourites.selectItem("")
+        require(favourites.position == nil && all.selectedItemID == "e", "Pages own independent scroll and selection state")
+        require(all.needsSelectionReveal)
+        all.needsSelectionReveal = false
+        all.selectItem("e")
+        require(!all.needsSelectionReveal, "A status refresh must not pull browsing back to the selected item")
+        all.selectItem("e", reveal: true)
+        require(all.needsSelectionReveal, "Reselecting the same gateway from the menu must reveal it")
+        all.needsSelectionReveal = false
+        all.selectItem("")
+        require(all.selectedItemID == "" && all.position?.gatewayID == "b", "Overview retains the browsing anchor")
     }
 
     private static func height(

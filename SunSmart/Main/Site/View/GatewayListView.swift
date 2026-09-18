@@ -51,90 +51,98 @@ protocol GatewayListViewDelegate: AnyObject {
     func gatewayListViewDidClickAdd(_ view: GatewayListView)
 }
 
-class GatewayListView: UIView {
-    
+/// Limit gesture coordination to this Site header, leaving other paged screens unchanged.
+private final class GatewayHorizontalScrollView: UIScrollView, UIGestureRecognizerDelegate {
+    weak var pagingPanGesture: UIGestureRecognizer?
+    weak var navigationBackGesture: UIGestureRecognizer?
+
+    override func gestureRecognizerShouldBegin(_ gestureRecognizer: UIGestureRecognizer) -> Bool {
+        if gestureRecognizer === panGestureRecognizer {
+            let velocity = panGestureRecognizer.velocity(in: self)
+            return contentSize.width > bounds.width && abs(velocity.x) > abs(velocity.y)
+        }
+        return super.gestureRecognizerShouldBegin(gestureRecognizer)
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldBeRequiredToFailBy otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        gestureRecognizer === panGestureRecognizer && otherGestureRecognizer === pagingPanGesture
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldRequireFailureOf otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        gestureRecognizer === panGestureRecognizer && otherGestureRecognizer === navigationBackGesture
+    }
+}
+
+class GatewayListView: UIView, UIScrollViewDelegate {
+
     weak var delegate: GatewayListViewDelegate?
-    
-    private var scrollView: UIScrollView!
-    private var contentView: UIView!
+
+    private let scrollView = GatewayHorizontalScrollView()
+    private let contentView = UIView()
+    private let menuSeparator = UIView()
     private var items: [GatewayListItem] = []
-    private var visibleItemIndexes: [Int] = []
+    private var gatewayIDs: [String] = []
     private var itemViews: [GatewayItemView] = []
     private var separatorViews: [UIView] = []
     private var menuButton: UIButton!
-    
     private var addGatewyaBtn: UIButton!
     private let menuAreaWidth = SCRXFrom(40)
-    private let maxVisibleItemCount = 4
-    
-    /// 当前选中的索引
-    var selectedIndex: Int = 0 {
-        didSet {
-            guard !items.isEmpty else {
-                return
-            }
-            if calculateVisibleItemIndexes() != visibleItemIndexes {
-                rebuildItemViews()
-            } else {
-                updateSelectedState()
-                setNeedsLayout()
-            }
-        }
-    }
-    
-    /// 菜单按钮是否显示
+    private var scrollState = SiteGatewayListScrollState()
+    private var currentLayout: SiteGatewayListLayout?
+    private var needsScrollRestore = false
+    private var isUpdatingLayout = false
+
+    private(set) var selectedIndex = 0
+
     var isMenuButtonVisible: Bool = true {
         didSet {
-            menuButton.isHidden = !isMenuButtonVisible
+            menuButton.isHidden = !isMenuButtonVisible || items.isEmpty
         }
     }
-    
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         setupUI()
     }
-    
+
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
-    
+
     override func layoutSubviews() {
         super.layoutSubviews()
         updateLayout()
     }
-    
+
+    func coordinateScrolling(with pagingScrollView: UIScrollView, navigationBackGesture: UIGestureRecognizer?) {
+        scrollView.pagingPanGesture = pagingScrollView.panGestureRecognizer
+        scrollView.navigationBackGesture = navigationBackGesture
+    }
+
     private func setupUI() {
         backgroundColor = .white
         layer.cornerRadius = SCRYFrom(10)
-        
+
+        scrollView.showsHorizontalScrollIndicator = true
+        scrollView.showsVerticalScrollIndicator = false
+        scrollView.bounces = false
+        scrollView.isDirectionalLockEnabled = true
+        scrollView.contentInsetAdjustmentBehavior = .never
+        scrollView.delegate = self
+        addSubview(scrollView)
+        scrollView.addSubview(contentView)
+
         menuButton = UIButton(normalImageName: "gateway_more", target: self, action: #selector(menuButtonAction))
         addSubview(menuButton)
         menuButton.snp.makeConstraints { make in
             make.right.equalToSuperview()
             make.centerY.equalToSuperview()
-            make.width.height.equalTo(40)
+            make.width.equalTo(menuAreaWidth)
+            make.height.equalTo(40)
         }
-        
-        scrollView = UIScrollView()
-        scrollView.showsHorizontalScrollIndicator = false
-        scrollView.showsVerticalScrollIndicator = false
-        scrollView.bounces = false
-        scrollView.isScrollEnabled = false
-        addSubview(scrollView)
-        scrollView.snp.makeConstraints { make in
-            make.left.equalToSuperview()
-            make.top.bottom.equalToSuperview()
-            make.right.equalTo(-menuAreaWidth)
-        }
-        
-        contentView = UIView()
-        scrollView.addSubview(contentView)
-        contentView.snp.makeConstraints { make in
-            make.edges.equalToSuperview()
-            make.height.equalToSuperview()
-            make.width.equalTo(0)
-        }
-        
+        menuSeparator.backgroundColor = RGB(220, 220, 220)
+        addSubview(menuSeparator)
+
         addGatewyaBtn = UIButton(title: "click_add_gateway".localizedString, titleSize: 14, titleWeight: .light, titleColor: ImportantText_Color, normalImageName: "gateway_add", target: self, action: #selector(addGatewyaBtnAction))
         addGatewyaBtn.setImagePosition(position: .left, spacing: SCRXFrom(4))
         addGatewyaBtn.layer.shadowColor = UIColor.black.withAlphaComponent(0.1).cgColor
@@ -146,117 +154,137 @@ class GatewayListView: UIView {
             make.edges.equalToSuperview()
         }
     }
-    
+
     @objc private func menuButtonAction() {
         delegate?.gatewayListViewDidClickMenu(self)
     }
-    
+
     @objc private func addGatewyaBtnAction() {
         delegate?.gatewayListViewDidClickAdd(self)
     }
-    
-    /// 更新网关列表数据
-    func updateItems(_ items: [GatewayListItem]) {
-        self.items = items
-        if !items.indices.contains(selectedIndex) {
-            selectedIndex = 0
+
+    /// Supply data and selection together so header reuse never reveals a stale index.
+    /// Status-only refreshes may omit selection and retain it by ID.
+    func updateItems(
+        _ items: [GatewayListItem],
+        selectedIndex: Int? = nil,
+        scrollState: SiteGatewayListScrollState? = nil
+    ) {
+        let stateChanged = scrollState.map { $0 !== self.scrollState } ?? false
+        if let scrollState {
+            self.scrollState = scrollState
         }
-        menuButton.isHidden = items.isEmpty
-        addGatewyaBtn.isHidden = items.count > 0
-        rebuildItemViews()
+        let idsChanged = self.items.map(\.id) != items.map(\.id)
+        let resolvedIndex = selectedIndex ?? items.firstIndex { $0.id == self.scrollState.selectedItemID } ?? 0
+        self.selectedIndex = items.indices.contains(resolvedIndex) ? resolvedIndex : 0
+        let selectedID = items.isEmpty ? nil : items[self.selectedIndex].id
+        self.scrollState.selectItem(selectedID)
+        needsScrollRestore = needsScrollRestore || stateChanged || idsChanged
+        self.items = items
+        gatewayIDs = items.dropFirst().map(\.id)
+        menuButton.isHidden = !isMenuButtonVisible || items.isEmpty
+        menuSeparator.isHidden = items.isEmpty
+        scrollView.isHidden = items.isEmpty
+        addGatewyaBtn.isHidden = !items.isEmpty
+        if idsChanged {
+            rebuildItemViews()
+        }
+        updateSelectedState()
+        setNeedsLayout()
+        layoutIfNeeded()
     }
-    
+
     @objc private func itemViewTapped(_ gesture: UITapGestureRecognizer) {
         guard let itemView = gesture.view as? GatewayItemView,
-              let index = itemViews.firstIndex(of: itemView),
-              index < visibleItemIndexes.count else {
+              let index = itemViews.firstIndex(of: itemView) else {
             return
         }
-        let itemIndex = visibleItemIndexes[index]
-        
-        guard itemIndex != selectedIndex else {
-            return
+        let selectionChanged = index != selectedIndex
+        selectedIndex = index
+        scrollState.selectItem(items[index].id, reveal: true)
+        updateSelectedState()
+        setNeedsLayout()
+        layoutIfNeeded()
+        if selectionChanged {
+            delegate?.gatewayListView(self, didSelectItem: items[index], at: index)
         }
-        
-        selectedIndex = itemIndex
-        delegate?.gatewayListView(self, didSelectItem: items[itemIndex], at: itemIndex)
     }
-    
+
     private func updateSelectedState() {
         for (index, itemView) in itemViews.enumerated() {
-            let itemIndex = visibleItemIndexes[index]
-            var item = items[itemIndex]
-            item.isSelected = (itemIndex == selectedIndex)
+            var item = items[index]
+            item.isSelected = index == selectedIndex
             itemView.update(with: item)
         }
     }
-    
+
     private func updateLayout() {
-        guard !itemViews.isEmpty, !frame.isEmpty else { return }
-        
-        let itemHeight = SCRYFrom(40)
-        let contentWidth = scrollView.bounds.width
-        guard contentWidth > 0 else { return }
-        let itemWidth = contentWidth / CGFloat(itemViews.count)
-        
+        let availableWidth = max(0, bounds.width - menuAreaWidth)
+        guard availableWidth > 0, bounds.height > 0 else { return }
+        isUpdatingLayout = true
+        let layout = SiteGatewayListLayout(availableWidth: availableWidth, gatewayCount: gatewayIDs.count)
+        let sizeChanged = scrollState.availableWidth.map { $0 != availableWidth } ?? false
+        let itemHeight = bounds.height
+        let separatorHeight = max(0, itemHeight - SCRYFrom(16))
+        scrollView.frame = CGRect(x: layout.itemWidth, y: 0, width: layout.viewportWidth, height: itemHeight)
+        contentView.frame = CGRect(x: 0, y: 0, width: layout.contentWidth, height: itemHeight)
+        scrollView.contentSize = contentView.bounds.size
+        scrollView.showsHorizontalScrollIndicator = false 
+        menuSeparator.frame = CGRect(x: availableWidth - 0.5, y: SCRYFrom(8), width: 1, height: separatorHeight)
+
         for (index, itemView) in itemViews.enumerated() {
-            itemView.frame = CGRect(x: itemWidth * CGFloat(index), y: 0, width: itemWidth, height: itemHeight)
+            let x = index == 0 ? 0 : CGFloat(index - 1) * layout.itemWidth
+            itemView.frame = CGRect(x: x, y: 0, width: layout.itemWidth, height: itemHeight)
+            separatorViews[index].frame = CGRect(x: x + layout.itemWidth - 0.5, y: SCRYFrom(8), width: 1, height: separatorHeight)
         }
-        
-        let separatorHeight = itemHeight - SCRYFrom(16)
-        for (index, separator) in separatorViews.enumerated() {
-            let separatorX = index == separatorViews.count - 1 ? (contentWidth - 0.5) : (itemWidth * CGFloat(index + 1) - 0.5)
-            separator.frame = CGRect(x: separatorX, y: SCRYFrom(8), width: 1, height: separatorHeight)
+
+        var offset = layout.clampedOffset(scrollView.contentOffset.x)
+        if needsScrollRestore || sizeChanged, let position = scrollState.position {
+            offset = position.restoredOffset(gatewayIDs: gatewayIDs, layout: layout)
         }
-        
-        contentView.snp.updateConstraints { make in
-            make.width.equalTo(contentWidth)
+        if (scrollState.needsSelectionReveal || sizeChanged), selectedIndex > 0 {
+            offset = layout.offsetToReveal(gatewayIndex: selectedIndex - 1, currentOffset: offset)
         }
-        
-        scrollView.contentSize = CGSize(width: contentWidth, height: itemHeight)
+        scrollView.setContentOffset(CGPoint(x: offset, y: 0), animated: false)
+        currentLayout = layout
+        scrollState.availableWidth = availableWidth
+        needsScrollRestore = false
+        scrollState.needsSelectionReveal = false
+        isUpdatingLayout = false
+        saveScrollPosition()
     }
-    
+
+    func scrollViewDidScroll(_ scrollView: UIScrollView) {
+        guard !isUpdatingLayout, !needsScrollRestore else { return }
+        saveScrollPosition()
+    }
+
+    private func saveScrollPosition() {
+        guard let currentLayout else { return }
+        scrollState.position = SiteGatewayListScrollPosition(
+            gatewayIDs: gatewayIDs,
+            offset: scrollView.contentOffset.x,
+            layout: currentLayout
+        )
+    }
+
     private func rebuildItemViews() {
         itemViews.forEach { $0.removeFromSuperview() }
         separatorViews.forEach { $0.removeFromSuperview() }
         itemViews.removeAll()
         separatorViews.removeAll()
-        visibleItemIndexes = calculateVisibleItemIndexes()
-        
-        for itemIndex in visibleItemIndexes {
+        for index in items.indices {
             let itemView = GatewayItemView()
-            var itemWithSelection = items[itemIndex]
-            itemWithSelection.isSelected = (itemIndex == selectedIndex)
-            itemView.update(with: itemWithSelection)
             itemView.isUserInteractionEnabled = true
-            let tapGesture = UITapGestureRecognizer(target: self, action: #selector(itemViewTapped(_:)))
-            itemView.addGestureRecognizer(tapGesture)
-            contentView.addSubview(itemView)
+            itemView.addGestureRecognizer(UITapGestureRecognizer(target: self, action: #selector(itemViewTapped(_:))))
+            let parent = index == 0 ? self : contentView
+            parent.addSubview(itemView)
             itemViews.append(itemView)
-        }
-        
-        for _ in 0..<visibleItemIndexes.count {
             let separator = UIView()
             separator.backgroundColor = RGB(220, 220, 220)
-            contentView.addSubview(separator)
+            parent.addSubview(separator)
             separatorViews.append(separator)
         }
-        
-        setNeedsLayout()
-        layoutIfNeeded()
-    }
-    
-    private func calculateVisibleItemIndexes() -> [Int] {
-        guard !items.isEmpty else {
-            return []
-        }
-        if items.count <= maxVisibleItemCount {
-            return Array(items.indices)
-        }
-        if selectedIndex < maxVisibleItemCount {
-            return Array(0..<maxVisibleItemCount)
-        }
-        return [0, 1, 2, selectedIndex]
     }
 }
 

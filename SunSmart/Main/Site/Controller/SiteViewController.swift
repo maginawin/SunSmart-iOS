@@ -138,6 +138,8 @@ class SiteViewController: UIViewController {
     
     private weak var allSpaceGatewayHeaderView: SiteGatewayHeaderView?
     private weak var favouriteSpaceGatewayHeaderView: SiteGatewayHeaderView?
+    private let allSpaceGatewayScrollState = SiteGatewayListScrollState()
+    private let favouriteSpaceGatewayScrollState = SiteGatewayListScrollState()
     
     init(site: SiteData, addSite: Bool = false) {
         self.site = site
@@ -2700,7 +2702,7 @@ self.updateAddressData()
             
             if gateway.syncCloudError != nil {
                 gateway.syncCloudError = nil
-                let items = makeGatewayListItems(gatewayModels)
+                let items = makeGatewayListItems(showGatewayModels)
                 favouriteSpaceGatewayHeaderView?.gatewayListView.updateItems(items)
             }
             
@@ -3276,8 +3278,10 @@ extension SiteViewController: GatewayListViewDelegate {
             guard let self = self else { return }
             if self.segmentedControl.selectedIndex == 0 {
                 self.allSpaceSelectGatewayId = self.showGatewayModels[safe: index]?.mac
+                self.allSpaceGatewayScrollState.selectItem(self.allSpaceSelectGatewayId ?? "", reveal: true)
             }else {
                 self.favouriteSpaceSelectGatewayId = self.showGatewayModels[safe: index]?.mac
+                self.favouriteSpaceGatewayScrollState.selectItem(self.favouriteSpaceSelectGatewayId ?? "", reveal: true)
             }
             self.setupData()
         } addCallback: {[weak self] in
@@ -3428,6 +3432,12 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
     
     func collectionView(_ collectionView: UICollectionView, viewForSupplementaryElementOfKind kind: String, at indexPath: IndexPath) -> UICollectionReusableView {
         let headerView = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: "header", for: indexPath) as! SiteGatewayHeaderView
+        let gatewayScrollState = collectionView == allSpacesCollectionView
+            ? allSpaceGatewayScrollState : favouriteSpaceGatewayScrollState
+        headerView.gatewayListView.coordinateScrolling(
+            with: scrollView,
+            navigationBackGesture: navigationController?.interactivePopGestureRecognizer
+        )
         
         var selectIndex: Int = 0
         var spaces: [SpaceData] = []
@@ -3447,14 +3457,13 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
         if showGatewayModels.count > 0 {
             headerView.showGatewayListView = true
             let items = makeGatewayListItems(showGatewayModels)
-            headerView.gatewayListView.updateItems(items)
-            headerView.gatewayListView.selectedIndex = selectIndex
+            headerView.gatewayListView.updateItems(items, selectedIndex: selectIndex, scrollState: gatewayScrollState)
         }else {
+            headerView.gatewayListView.updateItems([], selectedIndex: 0, scrollState: gatewayScrollState)
             if self.site.permission == .owner || self.allSpaces.contains(where: {
                 $0.canEditing && $0.deviceOperates.contains(.edit) && $0.gatewayStatus == .notBound
             }) { // 显示添加网关UI
                 headerView.showGatewayListView = true
-                headerView.gatewayListView.updateItems([])
             }else {
                 headerView.showGatewayListView = false
             }

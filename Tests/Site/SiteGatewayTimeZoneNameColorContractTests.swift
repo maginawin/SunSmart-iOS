@@ -57,12 +57,12 @@ struct SiteGatewayTimeZoneNameColorContractTests {
             "All horizontal Gateway items must use one builder"
         )
         require(
-            occurrences(of: "makeGatewayListItems(showGatewayModels)", in: siteController) == 2,
-            "Header and all-space refresh must share the same item builder"
+            occurrences(of: "makeGatewayListItems(showGatewayModels)", in: siteController) == 3,
+            "Header and both page refreshes must share the visible Gateway source"
         )
         require(
-            occurrences(of: "makeGatewayListItems(gatewayModels)", in: siteController) == 1,
-            "Favourite refresh must preserve its existing Gateway source"
+            occurrences(of: "makeGatewayListItems(gatewayModels)", in: siteController) == 0,
+            "Favourite refresh must not introduce Gateways absent from the selectable list"
         )
 
         require(gatewayMenu.contains("let needsTimeZoneSync: Bool"))
