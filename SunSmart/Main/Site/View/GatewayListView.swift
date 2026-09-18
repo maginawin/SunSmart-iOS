@@ -286,10 +286,9 @@ class GatewayItemView: UIView {
         contentView.alignment = .center
         addSubview(contentView)
         contentView.snp.makeConstraints { make in
-//            make.left.right.equalToSuperview()
             make.centerX.equalToSuperview()
             make.centerY.equalToSuperview()
-//            make.width.lessThanOrEqualToSuperview()
+            make.width.lessThanOrEqualToSuperview().offset(-SCRXFrom(12))
         }
         
         statusDot = UIView()
@@ -306,7 +305,7 @@ class GatewayItemView: UIView {
         titleLabel = UILabel()
         titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(12), weight: .light)
         titleLabel.textColor = ImportantText_Color
-        titleLabel.lineBreakMode = .byTruncatingTail
+        titleLabel.lineBreakMode = .byTruncatingMiddle
         titleLabel.numberOfLines = 1
 //        titleLabel.textAlignment = .center
 //        addSubview(titleLabel)
@@ -318,6 +317,7 @@ class GatewayItemView: UIView {
 //        }
         
         syncFailImageView = UIImageView(image: UIImage(named: "gateway_sync_fail"))
+        syncFailImageView.setContentCompressionResistancePriority(.required, for: .horizontal)
         syncFailImageView.isHidden = true
         
         underlineView = UIView()
