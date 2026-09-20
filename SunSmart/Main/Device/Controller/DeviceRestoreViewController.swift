@@ -58,7 +58,6 @@ class DeviceRestoreViewController: UIViewController {
     private var successfulBatteryPowerSwitchRestoreLinkGroupAddresses: Set<Address> = []
     private var successfulBatteryPowerSwitchTargetSubscriptions: Set<BatteryPowerSwitchTargetSubscriptionKey> = []
     private var deferredRestoreSyncDatasByAddress: [Address: [NodeSyncData]] = [:]
-    private var proximityLightingRestoreSyncDatasByAddress: [Address: [(node: Node, syncData: NodeSyncData)]] = [:]
     private var emergencyFireRestoreContextsByAddress: [Address: EmergencyFireRestoreContext] = [:]
     private var didReportDeviceRestoreResult = false
     private let deferredRestoreTaskMaxRetryCount = 1
@@ -1111,11 +1110,8 @@ class DeviceRestoreViewController: UIViewController {
         guard !node.isPowerSwitch else {
             return false
         }
-        // 恢复数据不包括邻近照明邻居关系，涉及其它节点，仍保持外部同步流程。
-        guard node.getNodeSyncProximityLighting() == nil else {
-            return false
-        }
-
+        // 只检查本恢复节点；其它节点的邻居变更由 Group/Space 同步处理。
+        // 本节点尚未完成邻居配置时，也必须继续检查订阅、Profile 等恢复项。
         let syncDatas = node.getSyncData(type: .all)
         guard !syncDatas.isEmpty else {
             return false
@@ -2277,13 +2273,14 @@ class DeviceRestoreViewController: UIViewController {
                     oldNode: oldNode,
                     newNode: node,
                     restoredGroup: addToGroup
-                   ),
-                   let lifecycleResult = restoreSpace.migrateProximityLightingReferences(
-                    from: oldNode,
-                    to: node,
-                    group: addToGroup
                    ) {
-                    proximityLightingRestoreSyncDatasByAddress[node.primaryUnicastAddress] = lifecycleResult.syncDatas
+                    // 迁移目标拓扑并持久化；其它节点的差异保留为待同步。
+                    // Fast Add 只连接本节点，跨节点命令必须由普通 Proxy 同步发送。
+                    _ = restoreSpace.migrateProximityLightingReferences(
+                        from: oldNode,
+                        to: node,
+                        group: addToGroup
+                    )
                 }
                 node.batteryPowerSwitchRestoreTargetSubscriptionSnapshots = oldNode.makeBatteryPowerSwitchRestoreTargetSubscriptionSnapshots(
                     group: addToGroup
@@ -2356,13 +2353,6 @@ class DeviceRestoreViewController: UIViewController {
             }
             let syncDatas = newNode.getSyncData(type: .all)
             self.appendRestoreSyncMessages(syncDatas: syncDatas, node: newNode, appendMessages: &appendMessages)
-            let proximityLightingDatas = self.proximityLightingRestoreSyncDatasByAddress
-                .removeValue(forKey: newNode.primaryUnicastAddress) ?? []
-            proximityLightingDatas
-                .filter { $0.node.primaryUnicastAddress != newNode.primaryUnicastAddress }
-                .forEach {
-                    appendMessages.append(contentsOf: $0.syncData.getMessageHandles(node: $0.node))
-                }
 //            appendMessages.append(contentsOf: newNode.getResoreMessageHandles(oldNode: oldNode))
             
             if addToGroup == nil {

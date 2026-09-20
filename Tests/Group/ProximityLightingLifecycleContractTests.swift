@@ -106,9 +106,9 @@ struct ProximityLightingLifecycleContractTests {
             "Restore migration must replace or remove every old reference"
         )
         require(
-            restore.contains("proximityLightingRestoreSyncDatasByAddress")
-                && restore.contains("$0.syncData.getMessageHandles(node: $0.node)"),
-            "Restore must append cross-device proximity tasks to the same restore flow"
+            restore.contains("restoreSpace.migrateProximityLightingReferences(")
+                && !restore.contains("proximityLightingRestoreSyncDatasByAddress"),
+            "Restore must persist migrated topology without putting peer tasks in the single-device Fast Add transport"
         )
         require(
             space.contains("reconcileLegacyProximityLightingTopology")

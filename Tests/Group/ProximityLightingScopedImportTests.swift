@@ -275,6 +275,7 @@ enum NodeSyncData: Equatable {
     static func main() async throws {
         try testDeviceDeletionRecovery()
         try testSiteDeviceOwnership()
+        try testRestoreKeepsPeerSyncPending()
         let target = try fixture(), other = try fixture(networkId: "BB"), sameSite = try fixture(networkId: "CC", uuid: target.network.uuid)
         let expected = preflight(payload())!.reconciliation!.snapshot
         require(target.nodes.map(\.uuid) == other.nodes.map(\.uuid), "fixture must reuse L1/L2 identities across Sites")
@@ -438,6 +439,36 @@ enum NodeSyncData: Equatable {
         require(Node.decodeCount > afterChanged, "initialization changes legacy interpretation and must invalidate")
 
         print("PASS: scoped import/planner/coordinator execution, colliding Sites/Spaces, no cloud side effects, destructive import guard, explicit deletion and equivalent logical edits")
+    }
+
+    static func testRestoreKeepsPeerSyncPending() throws {
+        let restored = try fixture(networkId: "RESTORE")
+        let oldNode = restored.nodes[0], peer = restored.nodes[1]
+        var replacementJSON = (payload()["nodes"] as! [[String: Any]])[0]
+        replacementJSON["unicastAddress"] = "0008"
+        let replacement = try jsonDecoder.decode(Node.self, from: JSONSerialization.data(withJSONObject: replacementJSON))
+        replacement.network = restored.network
+        replacement.subNetworkId = restored.space.meshNetworkId
+        restored.network.nodes.append(replacement)
+        var transaction = ProximityLightingLifecycleCoordinator.begin(
+            space: restored.space, groups: [restored.group], nodes: restored.network.nodes
+        )
+        transaction.replaceNodeAddress(from: oldNode, to: replacement, group: restored.group)
+        let result = ProximityLightingLifecycleCoordinator.commit(transaction.prepare())
+        require(result != nil && restored.space.dirtyCount == 1, "restore must persist the new topology")
+        restored.network.remove(node: oldNode)
+
+        // Fast Add deliberately does not send the returned peer task. Rebuilding
+        // ordinary Group/Space sync must still discover the pending new address.
+        require(peer.proximityLightingNeighborAddresses == [2], "migration must not fabricate a peer ACK")
+        guard case .proximityLightingNeighbor(_, let pending)? = peer.getNodeSyncProximityLighting() else {
+            require(false, "peer synchronization must survive discarding the Fast Add task list")
+            return
+        }
+        require(pending == [8], "ordinary sync must target the restored address, not the reset device's old address")
+        peer.proximityLightingNeighborAddresses = pending
+        require(peer.getNodeSyncProximityLighting() == nil, "only a successful peer update may clear pending sync")
+        print("PASS: restore migration retains peer sync until the peer acknowledges its new neighbors")
     }
 }
 
