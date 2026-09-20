@@ -3693,20 +3693,10 @@
 		F26090720000000000000004 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */; };
 		F26090720000000000000005 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */; };
 		F26091100000000000000002 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
-		F26092000000000000000102 /* InformationTTLMeshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000101 /* InformationTTLMeshService.swift */; };
-		F26092000000000000000002 /* InformationTTLCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000001 /* InformationTTLCoordinator.swift */; };
 		F26091100000000000000003 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
-		F26092000000000000000103 /* InformationTTLMeshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000101 /* InformationTTLMeshService.swift */; };
-		F26092000000000000000003 /* InformationTTLCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000001 /* InformationTTLCoordinator.swift */; };
 		F26091100000000000000004 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
-		F26092000000000000000104 /* InformationTTLMeshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000101 /* InformationTTLMeshService.swift */; };
-		F26092000000000000000004 /* InformationTTLCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000001 /* InformationTTLCoordinator.swift */; };
 		F26091100000000000000005 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
-		F26092000000000000000105 /* InformationTTLMeshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000101 /* InformationTTLMeshService.swift */; };
-		F26092000000000000000005 /* InformationTTLCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000001 /* InformationTTLCoordinator.swift */; };
 		F26091100000000000000006 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
-		F26092000000000000000106 /* InformationTTLMeshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000101 /* InformationTTLMeshService.swift */; };
-		F26092000000000000000006 /* InformationTTLCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000001 /* InformationTTLCoordinator.swift */; };
 		F2609140000000000000201 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000200 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift */; };
 		F2609140000000000000202 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000200 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift */; };
 		F2609140000000000000203 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000200 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift */; };
@@ -3747,6 +3737,16 @@
 		F260916B0000000000000303 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
 		F260916B0000000000000304 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
 		F260916B0000000000000305 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */; };
+		F26092000000000000000002 /* InformationTTLCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000001 /* InformationTTLCoordinator.swift */; };
+		F26092000000000000000003 /* InformationTTLCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000001 /* InformationTTLCoordinator.swift */; };
+		F26092000000000000000004 /* InformationTTLCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000001 /* InformationTTLCoordinator.swift */; };
+		F26092000000000000000005 /* InformationTTLCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000001 /* InformationTTLCoordinator.swift */; };
+		F26092000000000000000006 /* InformationTTLCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000001 /* InformationTTLCoordinator.swift */; };
+		F26092000000000000000102 /* InformationTTLMeshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000101 /* InformationTTLMeshService.swift */; };
+		F26092000000000000000103 /* InformationTTLMeshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000101 /* InformationTTLMeshService.swift */; };
+		F26092000000000000000104 /* InformationTTLMeshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000101 /* InformationTTLMeshService.swift */; };
+		F26092000000000000000105 /* InformationTTLMeshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000101 /* InformationTTLMeshService.swift */; };
+		F26092000000000000000106 /* InformationTTLMeshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000101 /* InformationTTLMeshService.swift */; };
 		F33FAD57616D53F9A5030FF4 /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 496535143AA555DFA8D9869D /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift */; };
 		F3C661B473314BCA9FC4EADC /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
 		F538067A4C66418F8CEBB201 /* SyncExecutionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */; };
@@ -4591,8 +4591,6 @@
 		F26090700000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift; sourceTree = SOURCE_ROOT; };
 		F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceConfigurationSafety.swift; sourceTree = SOURCE_ROOT; };
 		F26091100000000000000001 /* InformationClockRecovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InformationClockRecovery.swift; sourceTree = "<group>"; };
-		F26092000000000000000101 /* InformationTTLMeshService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InformationTTLMeshService.swift; sourceTree = "<group>"; };
-		F26092000000000000000001 /* InformationTTLCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InformationTTLCoordinator.swift; sourceTree = "<group>"; };
 		F2609140000000000000200 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift; sourceTree = "<group>"; };
 		F2609140000000000000210 /* ../TriggerZone/SiteTriggerZoneTopologyReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneTopologyReader.swift; sourceTree = "<group>"; };
 		F2609140000000000000220 /* ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift; sourceTree = "<group>"; };
@@ -4601,6 +4599,8 @@
 		F260916A0000000000000001 /* SunSmart/Common/Data/SpaceMembershipStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceMembershipStore.swift; sourceTree = SOURCE_ROOT; };
 		F260916A0000000000000002 /* SunSmart/Common/Data/SpaceMembershipCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceMembershipCoordinator.swift; sourceTree = SOURCE_ROOT; };
 		F260916A0000000000000003 /* SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift; sourceTree = SOURCE_ROOT; };
+		F26092000000000000000001 /* InformationTTLCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InformationTTLCoordinator.swift; sourceTree = "<group>"; };
+		F26092000000000000000101 /* InformationTTLMeshService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InformationTTLMeshService.swift; sourceTree = "<group>"; };
 		F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncParameterTaskBuilder.swift; sourceTree = "<group>"; };
 		FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorState.swift; sourceTree = "<group>"; };
 		FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncRetryPolicy.swift; sourceTree = "<group>"; };
@@ -11079,7 +11079,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.6;
+				MARKETING_VERSION = 1.2.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lumineux.lumismart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -11104,7 +11104,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.6;
+				MARKETING_VERSION = 1.2.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lumineux.lumismart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -11116,7 +11116,7 @@
 			baseConfigurationReference = F10000000000000000000006 /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Archipelago/Archipelago.entitlements;
-				MARKETING_VERSION = 1.2.6;
+				MARKETING_VERSION = 1.2.7;
 			};
 			name = Debug;
 		};
@@ -11125,7 +11125,7 @@
 			baseConfigurationReference = F10000000000000000000007 /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Archipelago/Archipelago.entitlements;
-				MARKETING_VERSION = 1.2.6;
+				MARKETING_VERSION = 1.2.7;
 			};
 			name = Release;
 		};
@@ -11134,7 +11134,7 @@
 			baseConfigurationReference = F10000000000000000000009 /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SylSmart/SylSmart.entitlements;
-				MARKETING_VERSION = 1.2.6;
+				MARKETING_VERSION = 1.2.7;
 			};
 			name = Debug;
 		};
@@ -11143,7 +11143,7 @@
 			baseConfigurationReference = F1000000000000000000000A /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SylSmart/SylSmart.entitlements;
-				MARKETING_VERSION = 1.2.6;
+				MARKETING_VERSION = 1.2.7;
 			};
 			name = Release;
 		};
@@ -11279,7 +11279,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.6;
+				MARKETING_VERSION = 1.2.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Debug;
@@ -11300,7 +11300,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.6;
+				MARKETING_VERSION = 1.2.7;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Release;
@@ -11313,7 +11313,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.2.6;
+				MARKETING_VERSION = 1.2.7;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Debug;
@@ -11326,7 +11326,7 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.2.6;
+				MARKETING_VERSION = 1.2.7;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Release;
