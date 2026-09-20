@@ -2308,3 +2308,22 @@
 "space_saved_copies_description" = "Copies kept on this phone are available here, including after leaving a Space. Some copies contain diagnostic records only. Restoring a copy requires current access to that Space.";
 "space_leave_copy_failed" = "The copy could not be saved. Retry, or leave without keeping a copy. Unsynchronized changes may be lost if you continue.";
 "space_leave_without_copy" = "Leave Without a Copy";
+
+// Device Information Default TTL
+"information_ttl_title" = "TTL";
+"information_ttl_reading" = "Reading…";
+"information_ttl_updating" = "Updating TTL…";
+"information_ttl_verifying" = "Verifying TTL…";
+"information_ttl_syncing" = "Syncing…";
+"information_ttl_hint" = "Enter an integer from 2 to 127. Setting TTL to 0 is not allowed because it can prevent communication across multiple hops.";
+"information_ttl_invalid" = "Enter an integer from 2 to 127. TTL cannot be set to 0.";
+"information_ttl_success" = "TTL updated successfully.";
+"information_ttl_disconnected" = "Connect to the Mesh network to read or update TTL. For a gateway, connect directly to that gateway.";
+"information_ttl_unavailable" = "TTL configuration is unavailable for this device in the current network.";
+"information_ttl_read_failed" = "Unable to read TTL. Check the device connection and try again.";
+"information_ttl_unconfirmed" = "Unable to confirm the TTL change. Reconnect and read TTL again.";
+"information_ttl_mismatch" = "The device did not confirm the requested TTL. Its reported value is shown.";
+"information_ttl_local_failed" = "The device TTL was read successfully, but could not be saved locally. Retry saving.";
+"information_ttl_cloud_failed" = "The device TTL is saved locally, but server sync has not completed. Retry sync.";
+"information_ttl_retry" = "Retry";
+"information_ttl_retry_sync" = "Retry sync";

@@ -91,7 +91,8 @@ extension EmerFireAlarmMonitorVC {
                 emptyGroupText: "efc_not_yet_linked_group".localizedString,
                 showsSceneSection: false,
                 groupTextOverride: self.informationGroupText(),
-                nameOverride: self.informationNameOverride(node: node)
+                nameOverride: self.informationNameOverride(node: node),
+                ttlContext: self.space.map(InformationTTLContext.device)
             )
             self.pushDeviceInformationController(controller)
         })

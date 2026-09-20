@@ -133,7 +133,8 @@ extension SpaceData {
         save()
     }
 
-    private func enqueueSpaceSync(site: SiteData, level: SyncLevel) {
+    /// Enqueue an already persisted change without advancing its generation again.
+    func enqueueSpaceSync(site: SiteData, level: SyncLevel) {
         if site.uploadCloud {
             CloudSynchronizationManager.shared.addSynchronizationHandle(
                 operation: .syncSpace(space: self),

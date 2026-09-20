@@ -14,6 +14,7 @@ class DeviceInformationViewController: UIViewController {
         enum ID {
             case name, mac, pid, address, versionIdentifier
             case model, deviceType, firmware, signalStrength
+            case ttl
             case dateTime, timeZone
         }
 
@@ -45,6 +46,17 @@ class DeviceInformationViewController: UIViewController {
     private let lightTimeContext: LightTimeInformationContext?
     private var lightTimeCoordinator: LightTimeInformationCoordinator?
     private var lightTimeSnapshot: GatewayTimeInformationSnapshot?
+    private let ttlContext: InformationTTLContext?
+    private var ttlService: InformationTTLMeshService?
+    private var ttlCoordinator: InformationTTLCoordinator?
+    private var ttlAlert: SRAlertView?
+    private var ttlProgressAlert: SRAlertView?
+    private var ttlInteractive = false
+    private var ttlEditAfterRead = false
+    private var ttlInitialReadPending = true
+    private var informationTimeReading = false
+    private var informationFirmwareReading = false
+    private var informationRequestsStarted = false
     
     init(
         node: Node,
@@ -56,7 +68,8 @@ class DeviceInformationViewController: UIViewController {
         nameOverride: String? = nil,
         showsFullDeviceInfo: Bool = false,
         gatewayContext: GatewayInformationContext? = nil,
-        lightTimeContext: LightTimeInformationContext? = nil
+        lightTimeContext: LightTimeInformationContext? = nil,
+        ttlContext: InformationTTLContext? = nil
     ) {
         self.node = node
         self.emptyGroupText = emptyGroupText ?? "device_not_added_group".localizedString
@@ -66,6 +79,7 @@ class DeviceInformationViewController: UIViewController {
         self.deviceInfoDisplayMode = showsFullDeviceInfo ? .full : .standard
         self.gatewayContext = gatewayContext
         self.lightTimeContext = lightTimeContext
+        self.ttlContext = ttlContext ?? gatewayContext.map(InformationTTLContext.gateway)
         self.sections = [.deviceInfo]
         if showsGroupSection {
             self.sections.append(.group)
@@ -91,16 +105,20 @@ class DeviceInformationViewController: UIViewController {
         sectionShowMap = [.deviceInfo: true, .group: true, .scene: true]
         
         setupTableView()
+        setupTTL()
         setupGatewayTimeCoordinator()
         setupLightTimeCoordinator()
         requestGatewayTime()
         requestLightTime()
         getData()
         refreshRSSI()
+        informationRequestsStarted = true
+        requestInitialTTL()
     }
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        reloadDeviceInfoSection()
         if self.tableView.firstShowFlashScrollIndicators {
             self.tableView.flashScrollIndicatorsIfNeeded()
         }
@@ -113,7 +131,159 @@ class DeviceInformationViewController: UIViewController {
             || navigationController?.isBeingDismissed == true {
             gatewayTimeCoordinator?.finishPage()
             lightTimeCoordinator?.finishPage()
+            ttlCoordinator?.detach()
+            ttlAlert?.dismiss(animation: false)
+            ttlProgressAlert?.dismiss(animation: false)
         }
+    }
+
+    private func setupTTL() {
+        guard let ttlContext, let service = InformationTTLMeshService(node: node, context: ttlContext) else { return }
+        ttlService = service
+        let coordinator = InformationTTLCoordinator(service: service)
+        ttlCoordinator = coordinator
+        coordinator.onChange = { [weak self] in self?.updateTTLPresentation() }
+        coordinator.onResult = { [weak self] result in self?.handleTTLResult(result) }
+    }
+
+    private func requestInitialTTL() {
+        guard informationRequestsStarted, ttlInitialReadPending, !informationTimeReading, !informationFirmwareReading,
+              ttlContext?.isVisible == true else { return }
+        ttlInitialReadPending = false
+        ttlCoordinator?.read()
+    }
+
+    private func updateTTLPresentation() {
+        reloadDeviceInfoSection()
+        guard let coordinator = ttlCoordinator else { return }
+        navigationItem.rightBarButtonItem = coordinator.needsRetry && coordinator.phase == .idle
+            && ttlService?.context.canEdit == true
+            ? UIBarButtonItem(title: (coordinator.retryFailure == .localSave
+                                ? "information_ttl_retry" : "information_ttl_retry_sync").localizedString,
+                              style: .plain, target: self, action: #selector(retryTTL)) : nil
+        guard ttlInteractive, coordinator.phase != .idle else {
+            ttlProgressAlert?.dismiss(animation: false)
+            ttlProgressAlert = nil
+            return
+        }
+        let key: String
+        switch coordinator.phase {
+        case .reading: key = "information_ttl_reading"
+        case .writing: key = "information_ttl_updating"
+        case .verifying: key = "information_ttl_verifying"
+        case .synchronizing: key = "information_ttl_syncing"
+        case .idle: return
+        }
+        if let alert = ttlProgressAlert {
+            alert.messageLabel.text = key.localizedString
+        } else {
+            let alert = SRAlertView(title: "information_ttl_title".localizedString,
+                                    message: key.localizedString,
+                                    stateImage: UIImage(named: "site_entry_sync_loading"),
+                                    loadingState: true, tapBackgroundHide: false)
+            ttlProgressAlert = alert
+            alert.show()
+        }
+    }
+
+    private func selectTTL() {
+        guard let service = ttlService, let coordinator = ttlCoordinator,
+              service.context.isVisible, coordinator.phase == .idle,
+              !informationTimeReading, !informationFirmwareReading else { return }
+        if let blocker = service.writeBlocker {
+            showTTLFailure(blocker)
+            return
+        }
+        if coordinator.value == nil {
+            ttlInteractive = true
+            ttlEditAfterRead = true
+            coordinator.read()
+        } else {
+            showTTLEditor()
+        }
+    }
+
+    @objc private func retryTTL() {
+        guard let coordinator = ttlCoordinator, coordinator.phase == .idle else { return }
+        showTTLFailure(coordinator.retryFailure)
+    }
+
+    private func showTTLEditor() {
+        guard let value = ttlCoordinator?.value, ttlService?.writeBlocker == nil else { return }
+        // Keep validation in this alert. SRAlertView's generic input callback
+        // dismisses first, so use an explicit non-closing Confirm action instead.
+        let confirm = SRAlertAction(title: "COMFIRM".localizedString, closeAlert: false) { [weak self] _ in
+            guard let self, let alert = self.ttlAlert else { return }
+            guard let target = InformationTTLValue.parse(alert.textField.text ?? "") else {
+                alert.messageLabel.text = "information_ttl_invalid".localizedString
+                alert.messageLabel.textColor = Red_Color
+                return
+            }
+            alert.dismiss { [weak self] in
+                guard let self else { return }
+                self.ttlAlert = nil
+                self.ttlInteractive = true
+                self.ttlCoordinator?.update(target)
+            }
+        }
+        let alert = SRAlertView(
+            title: "information_ttl_title".localizedString,
+            message: "information_ttl_hint".localizedString,
+            inputText: String(value),
+            inputFieldStyle: .init(keyboardType: .numberPad, maxInputLength: Int.max, textAlignment: .center, showClear: true),
+            showPrompt: false, actions: [.cancelAction, confirm],
+            textValueChangedBack: { text, _ in
+                InformationTTLValue.parse(text) == nil ? "information_ttl_invalid".localizedString : nil
+            }, inputDoneBack: nil
+        )
+        ttlAlert = alert
+        alert.show()
+    }
+
+    private func handleTTLResult(_ result: InformationTTLResult) {
+        let interactive = ttlInteractive
+        let editAfterRead = ttlEditAfterRead
+        ttlInteractive = false
+        ttlEditAfterRead = false
+        guard interactive else { return }
+        switch result {
+        case .read:
+            if editAfterRead { showTTLEditor() }
+        case .updated:
+            XWHUDManager.showSuccessTipHUD("information_ttl_success".localizedString)
+        case .unchanged:
+            break
+        case .failed(let failure):
+            showTTLFailure(failure)
+        }
+    }
+
+    private func showTTLFailure(_ failure: InformationTTLFailure) {
+        let key: String
+        switch failure {
+        case .permission: key = "no_permission"
+        case .disconnected: key = "information_ttl_disconnected"
+        case .unavailable: key = "information_ttl_unavailable"
+        case .readFailed: key = "information_ttl_read_failed"
+        case .unconfirmed: key = "information_ttl_unconfirmed"
+        case .mismatch: key = "information_ttl_mismatch"
+        case .localSave: key = "information_ttl_local_failed"
+        case .cloudSync: key = "information_ttl_cloud_failed"
+        }
+        guard ttlCoordinator?.needsRetry == true, ttlCoordinator?.value != nil,
+              failure == .localSave || failure == .cloudSync else {
+            XWHUDManager.showTipHUD(key.localizedString, isLineFeed: true)
+            return
+        }
+        let retry = SRAlertAction(title: "information_ttl_retry".localizedString, performsActionAfterDismiss: true) { [weak self] _ in
+            self?.ttlAlert = nil
+            self?.ttlInteractive = true
+            self?.ttlCoordinator?.retry()
+        }
+        let alert = SRAlertView(title: "information_ttl_title".localizedString,
+                                message: key.localizedString, actions: [.cancelAction, retry])
+        ttlAlert = alert
+        alert.show()
     }
 
     private func setupGatewayTimeCoordinator() {
@@ -136,11 +306,14 @@ class DeviceInformationViewController: UIViewController {
                 gatewayIsDisconnected = false
                 reloadDeviceInfoSection()
             }
+            if case .reading = state { informationTimeReading = true } else { informationTimeReading = false }
+            requestInitialTTL()
         }
         gatewayTimeCoordinator = coordinator
     }
 
     private func requestGatewayTime() {
+        guard ttlCoordinator?.phase == .idle || ttlCoordinator == nil else { return }
         _ = gatewayTimeCoordinator?.read()
     }
 
@@ -164,17 +337,21 @@ class DeviceInformationViewController: UIViewController {
             case .failed:
                 reloadDeviceInfoSection()
             }
+            if case .reading = state { informationTimeReading = true } else { informationTimeReading = false }
+            requestInitialTTL()
         }
         lightTimeCoordinator = coordinator
     }
 
     private func requestLightTime() {
+        guard ttlCoordinator?.phase == .idle || ttlCoordinator == nil else { return }
         _ = lightTimeCoordinator?.read()
     }
     
     private func getData() {
         
         if let model = node.firmwareUpdateServerModel {
+            informationFirmwareReading = true
             let cacheVersion = node.firmwareVersion
             MeshAPI.sendMessage(message: FirmwareUpdateInformationGet(firstIndex: 0, entriesLimit: 1), model: model) {[weak self] response in
                 guard let self = self else { return }
@@ -183,6 +360,8 @@ class DeviceInformationViewController: UIViewController {
                 }
                 self.setupDeviceInfoDataSource()
                 self.tableView.reloadSections(IndexSet(integer: 0), with: .none)
+                self.informationFirmwareReading = false
+                self.requestInitialTTL()
             }
         }
     }
@@ -273,6 +452,17 @@ class DeviceInformationViewController: UIViewController {
                 DeviceInfoRow(id: .firmware, model: firmwareModel),
                 DeviceInfoRow(id: .signalStrength, model: singleStrengthModel)
             ]
+        }
+
+        if let service = ttlService, service.context.isVisible {
+            let content = ttlInitialReadPending || ttlCoordinator?.phase == .reading
+                ? "information_ttl_reading".localizedString
+                : ttlCoordinator?.value.map(String.init) ?? "--"
+            rows.append(DeviceInfoRow(id: .ttl, model: CustomCellModel(
+                title: "information_ttl_title".localizedString, content: content,
+                contentColor: service.context.canEdit ? TextBlack_Color : TextBlack_Color.withAlphaComponent(0.5),
+                style: .arrow
+            )))
         }
 
         if gatewayContext != nil {
@@ -502,6 +692,8 @@ extension DeviceInformationViewController: UITableViewDataSource, UITableViewDel
         }
         let row = deviceInfoModels[indexPath.row]
         switch row.id {
+        case .ttl:
+            selectTTL()
         case .mac:
             if let content = row.model.content {
                 let pasteboard = UIPasteboard.general

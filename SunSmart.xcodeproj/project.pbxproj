@@ -3693,10 +3693,20 @@
 		F26090720000000000000004 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */; };
 		F26090720000000000000005 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */; };
 		F26091100000000000000002 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
+		F26092000000000000000102 /* InformationTTLMeshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000101 /* InformationTTLMeshService.swift */; };
+		F26092000000000000000002 /* InformationTTLCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000001 /* InformationTTLCoordinator.swift */; };
 		F26091100000000000000003 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
+		F26092000000000000000103 /* InformationTTLMeshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000101 /* InformationTTLMeshService.swift */; };
+		F26092000000000000000003 /* InformationTTLCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000001 /* InformationTTLCoordinator.swift */; };
 		F26091100000000000000004 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
+		F26092000000000000000104 /* InformationTTLMeshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000101 /* InformationTTLMeshService.swift */; };
+		F26092000000000000000004 /* InformationTTLCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000001 /* InformationTTLCoordinator.swift */; };
 		F26091100000000000000005 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
+		F26092000000000000000105 /* InformationTTLMeshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000101 /* InformationTTLMeshService.swift */; };
+		F26092000000000000000005 /* InformationTTLCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000001 /* InformationTTLCoordinator.swift */; };
 		F26091100000000000000006 /* InformationClockRecovery.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26091100000000000000001 /* InformationClockRecovery.swift */; };
+		F26092000000000000000106 /* InformationTTLMeshService.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000101 /* InformationTTLMeshService.swift */; };
+		F26092000000000000000006 /* InformationTTLCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26092000000000000000001 /* InformationTTLCoordinator.swift */; };
 		F2609140000000000000201 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000200 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift */; };
 		F2609140000000000000202 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000200 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift */; };
 		F2609140000000000000203 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2609140000000000000200 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift */; };
@@ -4581,6 +4591,8 @@
 		F26090700000000000000001 /* SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift; sourceTree = SOURCE_ROOT; };
 		F26090700000000000000002 /* SunSmart/Common/Data/SpaceConfigurationSafety.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/SpaceConfigurationSafety.swift; sourceTree = SOURCE_ROOT; };
 		F26091100000000000000001 /* InformationClockRecovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InformationClockRecovery.swift; sourceTree = "<group>"; };
+		F26092000000000000000101 /* InformationTTLMeshService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InformationTTLMeshService.swift; sourceTree = "<group>"; };
+		F26092000000000000000001 /* InformationTTLCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InformationTTLCoordinator.swift; sourceTree = "<group>"; };
 		F2609140000000000000200 /* ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneTopologyPolicy.swift; sourceTree = "<group>"; };
 		F2609140000000000000210 /* ../TriggerZone/SiteTriggerZoneTopologyReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneTopologyReader.swift; sourceTree = "<group>"; };
 		F2609140000000000000220 /* ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneSyncPlanningPolicy.swift; sourceTree = "<group>"; };
@@ -5765,6 +5777,8 @@
 			isa = PBXGroup;
 			children = (
 				F26091100000000000000001 /* InformationClockRecovery.swift */,
+				F26092000000000000000101 /* InformationTTLMeshService.swift */,
+				F26092000000000000000001 /* InformationTTLCoordinator.swift */,
 				F26072200000000000000106 /* Filter */,
 				8C778B332FA19FB9000887FE /* Device1.5 */,
 				C822A8572EA7677500A7073B /* Reset */,
@@ -7492,6 +7506,8 @@
 				08B54CD830402CCB0017ED49 /* ProgressHUD+Extension.swift in Sources */,
 				08B54CD930402CCB0017ED49 /* DeviceInformationViewController.swift in Sources */,
 				F26091100000000000000002 /* InformationClockRecovery.swift in Sources */,
+				F26092000000000000000102 /* InformationTTLMeshService.swift in Sources */,
+				F26092000000000000000002 /* InformationTTLCoordinator.swift in Sources */,
 				08B54CDA30402CCB0017ED49 /* UIColor+Extension.swift in Sources */,
 				08B54CDB30402CCB0017ED49 /* ShareAuthorityViewController.swift in Sources */,
 				08B54CDC30402CCB0017ED49 /* UILabel+Extension.swift in Sources */,
@@ -8221,6 +8237,8 @@
 				8CF15F922F962C7C0044FCF3 /* LinkedEmerFireEditState.swift in Sources */,
 				C88553DF2DE6B44C00C8B688 /* DeviceInformationViewController.swift in Sources */,
 				F26091100000000000000003 /* InformationClockRecovery.swift in Sources */,
+				F26092000000000000000103 /* InformationTTLMeshService.swift in Sources */,
+				F26092000000000000000003 /* InformationTTLCoordinator.swift in Sources */,
 				C88553E02DE6B44C00C8B688 /* UIColor+Extension.swift in Sources */,
 				C88553E12DE6B44C00C8B688 /* ShareAuthorityViewController.swift in Sources */,
 				C88553E22DE6B44C00C8B688 /* UILabel+Extension.swift in Sources */,
@@ -8949,6 +8967,8 @@
 				8CF15F932F962C7C0044FCF3 /* LinkedEmerFireEditState.swift in Sources */,
 				C886E02F2E30DE4900D0C3A6 /* DeviceInformationViewController.swift in Sources */,
 				F26091100000000000000004 /* InformationClockRecovery.swift in Sources */,
+				F26092000000000000000104 /* InformationTTLMeshService.swift in Sources */,
+				F26092000000000000000004 /* InformationTTLCoordinator.swift in Sources */,
 				C886E0302E30DE4900D0C3A6 /* UIColor+Extension.swift in Sources */,
 				C886E0312E30DE4900D0C3A6 /* ShareAuthorityViewController.swift in Sources */,
 				C886E0322E30DE4900D0C3A6 /* UILabel+Extension.swift in Sources */,
@@ -9677,6 +9697,8 @@
 				C8B7AE392EB99CBF006CA3EE /* ProgressHUD+Extension.swift in Sources */,
 				C85CB5F92BB6BE8E006598C0 /* DeviceInformationViewController.swift in Sources */,
 				F26091100000000000000005 /* InformationClockRecovery.swift in Sources */,
+				F26092000000000000000105 /* InformationTTLMeshService.swift in Sources */,
+				F26092000000000000000005 /* InformationTTLCoordinator.swift in Sources */,
 				C84FBCC12DBF72070030E136 /* UIColor+Extension.swift in Sources */,
 				C89B3CB32C08650400820277 /* ShareAuthorityViewController.swift in Sources */,
 				C8ACF1352AA1B2BA00E24B4A /* UILabel+Extension.swift in Sources */,
@@ -10406,6 +10428,8 @@
 				8CF15F912F962C7C0044FCF3 /* LinkedEmerFireEditState.swift in Sources */,
 				C8BB65E12ED3F056000C63EE /* DeviceInformationViewController.swift in Sources */,
 				F26091100000000000000006 /* InformationClockRecovery.swift in Sources */,
+				F26092000000000000000106 /* InformationTTLMeshService.swift in Sources */,
+				F26092000000000000000006 /* InformationTTLCoordinator.swift in Sources */,
 				C8BB65E22ED3F056000C63EE /* UIColor+Extension.swift in Sources */,
 				C8BB65E32ED3F056000C63EE /* ShareAuthorityViewController.swift in Sources */,
 				C8BB65E42ED3F056000C63EE /* UILabel+Extension.swift in Sources */,

@@ -207,7 +207,7 @@ class DeviceBaseViewController: UIViewController, DeviceProtocol {
     func information() {
         
 //        MeshAPI.setLightnessRange(address: node.primaryUnicastAddress, range: 255...65535)
-        pushDeviceInformationController(DeviceInformationViewController(node: self.node))
+        pushDeviceInformationController(DeviceInformationViewController(node: self.node, ttlContext: .device(space)))
     }
     
     /// 刷新

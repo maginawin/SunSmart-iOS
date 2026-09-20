@@ -520,7 +520,8 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
             groupTextOverride: groupText,
             sceneTextOverride: sceneText,
             nameOverride: viewModel.title,
-            showsFullDeviceInfo: true
+            showsFullDeviceInfo: true,
+            ttlContext: .device(viewModel.space)
         )
         pushDeviceInformationController(vc)
     }

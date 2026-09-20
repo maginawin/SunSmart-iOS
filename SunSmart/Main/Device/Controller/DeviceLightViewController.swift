@@ -716,7 +716,8 @@ class DeviceLightViewController: UIViewController {
             DeviceInformationViewController(
                 node: self.node,
                 showsSceneSection: showsSceneSection,
-                lightTimeContext: lightTimeContext
+                lightTimeContext: lightTimeContext,
+                ttlContext: .device(space)
             )
         )
     }

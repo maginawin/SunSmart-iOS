@@ -2324,3 +2324,22 @@
 "space_saved_copies_description" = "此处可查看本机保留的副本，退出空间后仍可访问。部分副本仅包含诊断记录。恢复副本需要重新取得该空间的当前权限。";
 "space_leave_copy_failed" = "无法保存副本。你可以重试，或不保留副本并退出。继续退出可能丢失尚未同步的修改。";
 "space_leave_without_copy" = "不保留副本并退出";
+
+// Device Information Default TTL
+"information_ttl_title" = "TTL";
+"information_ttl_reading" = "正在读取…";
+"information_ttl_updating" = "正在修改 TTL…";
+"information_ttl_verifying" = "正在核实 TTL…";
+"information_ttl_syncing" = "正在同步…";
+"information_ttl_hint" = "请输入 2～127 的整数。为避免影响多跳通信，不允许将 TTL 设置为 0。";
+"information_ttl_invalid" = "请输入 2～127 的整数，TTL 不可设置为 0。";
+"information_ttl_success" = "TTL 修改成功。";
+"information_ttl_disconnected" = "请连接 Mesh 网络后读取或修改 TTL。操作网关时，请直接连接该网关。";
+"information_ttl_unavailable" = "当前网络无法配置此设备的 TTL。";
+"information_ttl_read_failed" = "读取 TTL 失败，请检查设备连接后重试。";
+"information_ttl_unconfirmed" = "无法确认 TTL 修改结果，请重新连接并读取 TTL。";
+"information_ttl_mismatch" = "设备未确认目标 TTL，页面已显示设备实际返回值。";
+"information_ttl_local_failed" = "已取得设备实际 TTL，但本地保存失败，请重试保存。";
+"information_ttl_cloud_failed" = "设备实际 TTL 已保存到本地，但服务器同步尚未完成，请重试同步。";
+"information_ttl_retry" = "重试";
+"information_ttl_retry_sync" = "重试同步";
