@@ -1283,12 +1283,12 @@ class LightSensorCalibrationViewController: UIViewController {
         }
 
         if let sensorModel = sensor.ambientLightSensorModel,
-           sensorModel.publish?.publicationAddress != group.address {
+           !sensorModel.isSensorServerPublicationTargetConfigured(publishAddress: group.address.address) {
             let publish = Publish(
                 to: group.address,
                 using: MeshNetworkManager.instance.currentApplicationKey,
                 usingFriendshipMaterial: false,
-                ttl: MeshNetworkManager.instance.networkParameters.defaultTtl,
+                ttl: SensorPublicationPolicy.ttl,
                 period: .disabled,
                 retransmit: group.sensorServerPublicationRetransmit()
             )
@@ -1315,7 +1315,9 @@ class LightSensorCalibrationViewController: UIViewController {
             return
         }
         MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles) { resultHandles in
-            let success = resultHandles.count == messageHandles.count && resultHandles.allSatisfy(\.isSuccessful)
+            let success = resultHandles.count == messageHandles.count
+                && resultHandles.allSatisfy(\.isSuccessful)
+                && sensor.ambientLightSensorModel?.isSensorServerPublicationTargetConfigured(publishAddress: self.group.address.address) == true
             guard !success else {
                 finish(true)
                 return
@@ -1623,7 +1625,7 @@ class LightSensorCalibrationViewController: UIViewController {
             return
         }
         // 判断传感器是否已启用
-        if ambientLightSensorModel.publish?.publicationAddress == self.group.address {
+        if ambientLightSensorModel.isSensorServerPublicationTargetConfigured(publishAddress: self.group.address.address) {
             result?(true)
             DispatchQueue.main.async {
                 self.configuring(lightNodes: self.group.nodes) { [weak self] success in
@@ -1636,11 +1638,12 @@ class LightSensorCalibrationViewController: UIViewController {
         
         
         let retransmit = group.sensorServerPublicationRetransmit()
-        let publishMessage = ConfigModelPublicationSet(Publish(to: self.group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: .disabled, retransmit: retransmit), to: ambientLightSensorModel)!
+        let publishMessage = ConfigModelPublicationSet(Publish(to: self.group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: SensorPublicationPolicy.ttl, period: .disabled, retransmit: retransmit), to: ambientLightSensorModel)!
         
         MeshProxyMessageCommand.shared.addMessage(messageHandles: [MeshMessageHandle(message: publishMessage, address: sensor.primaryUnicastAddress)]) {[weak self] resultHandles in
             guard let self = self else { return }
-            if let handle = resultHandles.first, handle.isSuccessful {
+            if let handle = resultHandles.first, handle.isSuccessful,
+               ambientLightSensorModel.isSensorServerPublicationTargetConfigured(publishAddress: self.group.address.address) {
                 sensor.sendHandleCompleteIdentify(deviceBlinkMode: self.deviceBlinkMode)
                 // 启用传感器，更新缓存
                 self.group.info.ambientLightSensorNodeAddress = sensor.primaryUnicastAddress

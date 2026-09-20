@@ -1,7 +1,8 @@
 """Run extracted controller methods with UI stubs and a recording MeshAPI.
 
 Checks mode browsing, sensor selection/activation, explicit dimming and calibration lifecycle.
-Does not exercise UIKit, BLE, SDK sampling or asynchronous configuration callbacks.
+Includes publication TTL repair and transaction rollback with immediate callbacks.
+Does not exercise UIKit, BLE, SDK sampling or real asynchronous callback timing.
 Run: python3 Tests/Group/CalibrationModeControlBehaviorTests.py
 """
 
@@ -11,6 +12,7 @@ import tempfile
 
 repo = Path(__file__).resolve().parents[2]
 source = (repo / 'SunSmart/Main/Group/Controller/LightSensorCalibrationViewController.swift').read_text()
+policy_source = (repo / 'SunSmart/Common/Data/Node+SyncData.swift').read_text()
 
 def method(name, optional=False):
     import re
@@ -33,7 +35,7 @@ methods = ['updateCalibrationModeUI', 'recalibrateNight', 'recalibrateSensor',
            'beginDaylightCalibration', 'finishDaylightCalibrationSDKStage',
            'finishDaylightCalibrationFailure', 'restoreGroupAutoAfterSensorDraftIfNeeded',
            'setSensorCalibrationGroupDimLevel', 'restoreSensorDimLevel', 'viewWillAppear',
-           'sensorEnabled']
+           'sensorEnabled', 'commitCalibrationSensorSelection', 'publicationRestoreHandle']
 swift = r'''
 import Foundation
 extension String { var localizedString: String { self } }
@@ -55,11 +57,13 @@ final class Info {
     }
 }
 final class Group {
-    var info = Info(); var address = Address(); var nodes: [Node] = []
+    var info = Info(); var address = MeshAddress(); var nodes: [Node] = []
     var ambientLightSensorNodes: [Node] { nodes }
     func sensorServerPublicationRetransmit() -> Int { 0 }
 }
-struct Address: Equatable { var address = 49153 }
+typealias Address = Int
+struct MeshAddress: Equatable { var address = 49153 }
+extension UInt16 { static let sensorServerModelId: UInt16 = 0x1100 }
 enum SelectState { case switchOn, switchOff, loading }
 final class Node: Equatable {
     static var registry: [Int: Node] = [:]
@@ -72,15 +76,29 @@ final class Node: Equatable {
     static func getLightness(lightness100: Int) -> Int { lightness100 }
     func sendHandleCompleteIdentify(deviceBlinkMode: Int) {}
 }
-final class Model { var publish: Publish? }
-struct Publish {
-    enum Period { case disabled }
-    let publicationAddress: Address
-    init(to: Address, using: Int, usingFriendshipMaterial: Bool, ttl: Int,
-         period: Period, retransmit: Int) { publicationAddress = to }
+final class Model { var publish: Publish?; let modelIdentifier: UInt16 = .sensorServerModelId }
+struct Publish: Equatable {
+    enum Period: Equatable { case disabled, periodic }
+    let publicationAddress: MeshAddress
+    let ttl: UInt8
+    let index: Int
+    let friendship: Bool
+    let period: Period
+    let retransmit: Int
+    init(to: MeshAddress, using: Int, usingFriendshipMaterial: Bool, ttl: UInt8,
+         period: Period, retransmit: Int) {
+        publicationAddress = to; self.ttl = ttl; index = using
+        friendship = usingFriendshipMaterial; self.period = period; self.retransmit = retransmit
+    }
 }
-struct ConfigModelPublicationSet { let publish: Publish; let model: Model
+struct ConfigModelPublicationSet { let publish: Publish?; let model: Model
     init?(_ publish: Publish, to model: Model) { self.publish = publish; self.model = model }
+    init?(disablePublicationFor model: Model) { self.publish = nil; self.model = model }
+}
+struct DaylightCalibrationSnapshot {
+    let selectedSensorPublish: Publish?
+    let groupSensor: Node?
+    let groupSensorPublish: Publish?
 }
 struct MeshMessageHandle {
     let message: ConfigModelPublicationSet
@@ -90,12 +108,16 @@ struct MeshMessageHandle {
 final class MeshProxyMessageCommand {
     static let shared = MeshProxyMessageCommand()
     var publishSucceeds = true
+    var keepOldTTL = false
+    var outcomes: [Bool] = []
+    var sentPublications: [Publish?] = []
     func addMessage(messageHandles: [MeshMessageHandle], finishedBack: ([MeshMessageHandle]) -> Void) {
         let results = messageHandles.map { handle in
             var result = handle
-            MeshAPI.commands.append("publish:\(handle.address)")
-            result.isSuccessful = publishSucceeds
-            if publishSucceeds { handle.message.model.publish = handle.message.publish }
+            MeshAPI.commands.append(handle.message.publish == nil ? "unpublish:\(handle.address)" : "publish:\(handle.address)")
+            sentPublications.append(handle.message.publish)
+            result.isSuccessful = outcomes.isEmpty ? publishSucceeds : outcomes.removeFirst()
+            if result.isSuccessful && !keepOldTTL { handle.message.model.publish = handle.message.publish }
             return result
         }
         finishedBack(results)
@@ -192,6 +214,11 @@ swift += '\n' + method('resumeIncompleteSensorDraftIfNeeded', True)
 swift += '\n' + method('restorePersistedSensorSelectionForPlane', True)
 swift += r'''
 }
+'''
+policy_start = policy_source.index('enum SensorPublicationPolicy {')
+policy_end = policy_source.index('    func isSensorServerPublicationConfigured(', policy_start)
+swift += policy_source[policy_start:policy_end] + '\n}\n'
+swift += r'''
 var assertions = 0
 func require(_ condition: Bool, _ label: String) {
     assertions += 1
@@ -305,12 +332,68 @@ for alreadyPublished in [false, true] {
     if alreadyPublished {
         selected.ambientLightSensorModel?.publish = Publish(
             to: h.group.address, using: 0, usingFriendshipMaterial: false,
-            ttl: 5, period: .disabled, retransmit: 0)
+            ttl: 0xFF, period: .disabled, retransmit: 0)
     }
     var result: Bool?
     h.sensorEnabled(sensor: selected) { result = $0 }
     expect(alreadyPublished ? [] : ["publish:24"], "existing and first sensor activation")
     require(result == true, "activation without previous sensor succeeds")
+}
+
+for keepOldTTL in [false, true] {
+    let h = Harness(), selected = Node(30)
+    h.group.info.ambientLightSensorNode = selected
+    selected.ambientLightSensorModel?.publish = Publish(
+        to: h.group.address, using: 0, usingFriendshipMaterial: false,
+        ttl: 5, period: .disabled, retransmit: 0)
+    MeshProxyMessageCommand.shared.keepOldTTL = keepOldTTL
+    var result: Bool?
+    h.sensorEnabled(sensor: selected) { result = $0 }
+    expect(["publish:30"], "same-address old TTL must be repaired")
+    require(result == !keepOldTTL, "status success with old TTL must fail target verification")
+    require(MeshProxyMessageCommand.shared.sentPublications.last!!.ttl == 0xFF, "activation sends default TTL sentinel")
+    MeshProxyMessageCommand.shared.keepOldTTL = false
+    if keepOldTTL {
+        h.sensorEnabled(sensor: selected) { result = $0 }
+        expect(["publish:30"], "failed TTL verification remains retryable")
+        require(result == true, "TTL retry succeeds after device applies target")
+    }
+    h.sensorEnabled(sensor: selected) { result = $0 }
+    expect([], "repaired TTL is idempotent")
+}
+for sameSensor in [false, true] {
+    for failure in ["none", "write", "staleTTL", "rollback"] {
+        let h = Harness(), previous = Node(40)
+        let selected = sameSensor ? previous : Node(41)
+        h.group.nodes = sameSensor ? [previous] : [previous, selected]
+        h.group.info.ambientLightSensorNode = previous
+        let original = Publish(to: h.group.address, using: 7, usingFriendshipMaterial: true,
+                               ttl: 5, period: .periodic, retransmit: 6)
+        previous.ambientLightSensorModel?.publish = original
+        let snapshot = DaylightCalibrationSnapshot(selectedSensorPublish: selected.ambientLightSensorModel?.publish,
+            groupSensor: previous, groupSensorPublish: previous.ambientLightSensorModel?.publish)
+        let command = MeshProxyMessageCommand.shared
+        command.keepOldTTL = failure == "staleTTL"
+        let succeeds = failure == "none" || failure == "staleTTL"
+        command.outcomes = sameSensor ? [succeeds] : [true, succeeds]
+        command.outcomes += sameSensor ? [failure != "rollback"] : [failure != "rollback", true]
+        var result: (Bool, Bool)?
+        h.commitCalibrationSensorSelection(selected, rollbackSnapshot: snapshot) { result = ($0, $1) }
+        require(result?.0 == (failure == "none"), "transaction target verification")
+        if failure == "none" {
+            require(h.group.info.ambientLightSensorNodeAddress == selected.primaryUnicastAddress, "commit selected sensor")
+            require(selected.ambientLightSensorModel?.publish?.ttl == 0xFF, "committed publication TTL")
+            if !sameSensor { require(previous.ambientLightSensorModel?.publish == nil, "previous publication disabled") }
+        } else {
+            require(result?.1 == (failure != "rollback"), "rollback outcome is reported")
+            require(h.group.info.ambientLightSensorNodeAddress == previous.primaryUnicastAddress, "failed transaction retains selection")
+            if failure != "rollback" {
+                require(previous.ambientLightSensorModel?.publish == original, "rollback preserves ALL old publication fields")
+                require(selected.ambientLightSensorModel?.publish == snapshot.selectedSensorPublish, "selected sensor snapshot restored")
+            }
+        }
+        command.outcomes = []; command.keepOldTTL = false; MeshAPI.commands = []
+    }
 }
 print("PASS: \(assertions) command-sequence assertions using extracted production methods")
 '''

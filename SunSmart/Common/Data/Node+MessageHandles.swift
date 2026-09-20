@@ -615,7 +615,7 @@ extension ProfileType {
                 period = .init(delay)
             }
             models.forEach({
-                let message = ConfigModelPublicationSet(Publish(to: MeshAddress(publishAddress), using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: period, retransmit: retransmit), to: $0)!
+                let message = ConfigModelPublicationSet(Publish(to: MeshAddress(publishAddress), using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: SensorPublicationPolicy.ttl, period: period, retransmit: retransmit), to: $0)!
                 messageHandles.append(MeshMessageHandle(message: message, address: node.primaryUnicastAddress))
             })
       

@@ -410,7 +410,7 @@ class GroupViewController: UIViewController {
         var messageHandles: [MeshMessageHandle] = []
         // 检查校准后的光照传感器是否有上报
         if let publishAmbientLightSensor = self.group.info.ambientLightSensorNode, let sensorModel = publishAmbientLightSensor.ambientLightSensorModel, sensorModel.publish?.publicationAddress != group.address {
-            let message = ConfigModelPublicationSet(Publish(to: group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: .disabled, retransmit: .disabled), to: sensorModel)!
+            let message = ConfigModelPublicationSet(Publish(to: group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: SensorPublicationPolicy.ttl, period: .disabled, retransmit: .disabled), to: sensorModel)!
             let messageHandle = MeshMessageHandle(message: message, address: publishAmbientLightSensor.primaryUnicastAddress)
             messageHandles.append(messageHandle)
         }
@@ -543,13 +543,13 @@ class GroupViewController: UIViewController {
         let publishPresenceDetectedSensors = self.group.presenceDetectedSensorNodes.filter({ $0.presenceDetectedSensorModel?.publish?.publicationAddress != group.address })
         
         publishPresenceDetectedSensors.forEach({
-            let message = ConfigModelPublicationSet(Publish(to: group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: .disabled, retransmit: .disabled), to: $0.presenceDetectedSensorModel!)!
+            let message = ConfigModelPublicationSet(Publish(to: group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: SensorPublicationPolicy.ttl, period: .disabled, retransmit: .disabled), to: $0.presenceDetectedSensorModel!)!
             let messageHandle = MeshMessageHandle(message: message, address: $0.primaryUnicastAddress)
             messageHandles.append(messageHandle)
         })
         // 检查校准后的光照传感器是否有上报
         if let publishAmbientLightSensor = self.group.info.ambientLightSensorNode, let sensorModel = publishAmbientLightSensor.ambientLightSensorModel, sensorModel.publish?.publicationAddress != group.address {
-            let message = ConfigModelPublicationSet(Publish(to: group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: MeshNetworkManager.instance.networkParameters.defaultTtl, period: .disabled, retransmit: .disabled), to: sensorModel)!
+            let message = ConfigModelPublicationSet(Publish(to: group.address, using: MeshNetworkManager.instance.currentApplicationKey, usingFriendshipMaterial: false, ttl: SensorPublicationPolicy.ttl, period: .disabled, retransmit: .disabled), to: sensorModel)!
             let messageHandle = MeshMessageHandle(message: message, address: publishAmbientLightSensor.primaryUnicastAddress)
             messageHandles.append(messageHandle)
         }

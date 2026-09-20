@@ -130,17 +130,29 @@ enum SensorPublicationSyncMode {
     case legacyCompatible
 }
 
+enum SensorPublicationPolicy {
+    /// 标准 Model Publication 使用源设备的 Default TTL，不复制 App 的发送 TTL。
+    static let ttl: UInt8 = 0xFF
+}
+
 extension Model {
+
+    /// 校准入口只核对发布目标和 TTL，保留已有重发参数的兼容行为。
+    func isSensorServerPublicationTargetConfigured(publishAddress: Address) -> Bool {
+        guard modelIdentifier == .sensorServerModelId, let publication = self.publish else {
+            return false
+        }
+        return publication.publicationAddress.address == publishAddress
+            && publication.ttl == SensorPublicationPolicy.ttl
+    }
     
     func isSensorServerPublicationConfigured(
         publishAddress: Address,
         retransmit: Publish.Retransmit,
         syncMode: SensorPublicationSyncMode = .strictTarget
     ) -> Bool {
-        guard modelIdentifier == .sensorServerModelId, let publication = self.publish else {
-            return false
-        }
-        guard publication.publicationAddress.address == publishAddress else {
+        guard isSensorServerPublicationTargetConfigured(publishAddress: publishAddress),
+              let publication = self.publish else {
             return false
         }
 
