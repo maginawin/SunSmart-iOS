@@ -103,8 +103,7 @@ enum SyncOperation {
                 )
             }
         case .syncSpace(let space):
-            _ = await SpaceSyncCleanupCoordinator.prepare(space)
-            guard isCurrent() else { return nil }
+            guard await SpaceSyncCleanupCoordinator.prepare(space), isCurrent() else { return nil }
             guard let spaceData = await space.export(purpose: .cloudSync), isCurrent() else {
                 return nil
             }
@@ -401,7 +400,7 @@ class CloudSynchronizationManager {
                 // Foreground recovery must not export every synchronized Space.
                 // Full legacy inspection still runs on Space entry and explicit sync.
                 let preparedSite = await SpaceSyncCleanupCoordinator.prepareBatch(
-                    site: site, spaces: site.spaces, shouldContinue: isCurrent,
+                    site: site, spaces: site.spaces, requiringSuccessfulPreparation: false, shouldContinue: isCurrent,
                     shouldPrepare: { space in
                         self.getSpaceCurrentSyncState(space) == nil
                             && (space.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(space)
@@ -875,7 +874,7 @@ class CloudSynchronizationHandle: NSObject {
     }
 
     private func finishExportFailure() {
-        let error = configurationSpaces.compactMap { $0.syncCloudError }.first ?? .configurationExportInvalid
+        let error = configurationSpaces.compactMap { $0.syncCloudError }.first ?? .configurationUnavailable
         finishConfigurationFailure(error)
     }
 

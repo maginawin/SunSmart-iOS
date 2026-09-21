@@ -246,18 +246,31 @@ enum SpaceSyncCleanupPolicy {
         result["nodes"] = (result["nodes"] as? [[String: Any]])?.filter {
             !excludingDeletedUUIDs.contains(($0["uuid"] as? String ?? "").uppercased())
         }
-        result["groups"] = (result["groups"] as? [[String: Any]])?.map { original -> [String: Any] in
-            var group = original
-            if var profile = group["profile"] as? [String: Any] {
-                if profile["calibrationMode"] == nil { profile["calibrationMode"] = "none" }
-                if profile["targetNightBrightness"] == nil { profile["targetNightBrightness"] = 50 }
-                group["profile"] = profile
-            }
-            return group
+        return SpaceConfigurationIntegrityPolicy.upgradeConfigurationData(result)
+    }
+
+    /// A historical upgrade block can be lifted only for already valid, equal
+    /// configuration. Unlike cleanup baselines, this must not absorb repairs.
+    static func upgradeRecoveryConfiguration(_ payload: [String: Any]) -> Data? {
+        guard let cleaned = try? normalize(payload), !cleaned.didChange,
+              let data = SpaceConfigurationIntegrityPolicy.upgradeConfigurationData(payload),
+              let configuration = try? JSONSerialization.jsonObject(with: data),
+              let uuid = payload["uuid"] as? String,
+              let groups = payload["groups"] as? [[String: Any]] else { return nil }
+        var result: [String: Any] = ["uuid": uuid, "configuration": configuration]
+        for field in ["netKey", "appKey"] {
+            guard let key = payload[field] as? [String: Any], key["key"] is String,
+                  SpaceConfigurationIntegrityPolicy.integer(key["index"]) != nil else { return nil }
+            if field == "appKey", SpaceConfigurationIntegrityPolicy.integer(key["boundNetKey"]) == nil { return nil }
+            result[field] = key.filter { ["index", "key", "oldKey", "phase", "boundNetKey"].contains($0.key) }
         }
-        var extensionData = result["spaceData"] as? [String: Any] ?? [:]
-        if extensionData["triggerZones"] == nil { extensionData["triggerZones"] = [[String: Any]]() }
-        result["spaceData"] = extensionData
-        return SpaceConfigurationIntegrityPolicy.configurationData(result)
+        for field in ["scenes", "schedules", "switches", "emergencyFireControllers"] {
+            guard let values = payload[field] as? [[String: Any]] else { return nil }
+            result[field] = values
+        }
+        result["groupSettings"] = groups.map { group in
+            group.filter { $0.key != "profile" && $0.key != "proximityLightingPath" }
+        }.sorted { ($0["address"] as? String ?? "") < ($1["address"] as? String ?? "") }
+        return try? JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
     }
 }

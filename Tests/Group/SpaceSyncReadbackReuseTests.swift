@@ -1,4 +1,5 @@
 import Foundation
+enum NetworkApiError { case configurationUnavailable, configurationExportInvalid }
 
 enum Fixture {
     static var revision: Int? = 1, dirty = false, baselineWrite = false, resumeWrite = false
@@ -14,11 +15,13 @@ final class ConfigurationMeshReadSnapshot {
 final class SpaceData {
     let siteId = "site", id = "space", meshUUID = "mesh", meshNetworkId = "net"
     var lastUpdate = 10, deviceCount = 1, luminairesCount = 1
+    var syncCloudError: NetworkApiError?
     static var instance = SpaceData()
     var storedZoneNeedsRepair = false, storedZoneUnreadable = false
     static func load(siteId: String, spaceId: String) -> [SpaceData] { [instance] }
     enum Purpose { case cleanupInspection }
-    func export(purpose: Purpose, readSnapshot: ConfigurationMeshReadSnapshot? = nil) async -> [String: Any]? {
+    func export(purpose: Purpose = .cleanupInspection, allowsProtectedInspection: Bool = false,
+                readSnapshot: ConfigurationMeshReadSnapshot? = nil) async -> [String: Any]? {
         Fixture.exports += 1
         if storedZoneUnreadable || (Fixture.failReadback && Fixture.exports == 2) { return nil }
         readSnapshot?.network = MeshNetwork.instance; readSnapshot?.revision = Fixture.revision
@@ -68,6 +71,12 @@ enum ProximityLightingLifecycleCoordinator {
     }
 }
 enum SpaceConfigurationSafety {
+    static func configurationSyncError(_ space: SpaceData) -> NetworkApiError { .configurationUnavailable }
+    @discardableResult
+    static func recordSyncFailure(_ space: SpaceData, error: NetworkApiError, stage: String) -> Bool {
+        space.syncCloudError = error; return false
+    }
+    static func recoverUpgradeBaselineIfNeeded(_ space: SpaceData, readLocal: () async -> [String: Any]?) async -> Bool { true }
     static func canCleanSyncReferences(_ space: SpaceData) -> Bool { true }
     static func recoveryState(_ space: SpaceData) throws -> Context { Context() }
     static func block(_ space: SpaceData, reason: String) {}

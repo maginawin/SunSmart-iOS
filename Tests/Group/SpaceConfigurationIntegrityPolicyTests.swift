@@ -78,6 +78,7 @@ struct SpaceConfigurationIntegrityPolicyTests {
         testReadbackDiagnostics()
         testEmptyGroupAddressCompatibility()
         testProximityAllCompatibility()
+        testUpgradeOnlyDefaults()
         print("PASS: complete profile switches, incomplete payloads, photocell references, readback and submission generation")
     }
 
@@ -127,6 +128,25 @@ struct SpaceConfigurationIntegrityPolicyTests {
         for relay in Array(0...20) + [255] {
             precondition(P.normalizedProximityLightingNumber(relay) == UInt8(relay))
         }
+    }
+
+    static func testUpgradeOnlyDefaults() {
+        typealias P = SpaceConfigurationIntegrityPolicy
+        let legacy: [String: Any] = ["groups": [], "nodes": [], "spaceData": [:]]
+        let modern: [String: Any] = ["groups": [], "nodes": [],
+                                    "spaceData": ["proximityLightingSchemaVersion": 1, "triggerZones": []]]
+        precondition(P.upgradeConfigurationData(legacy) == P.upgradeConfigurationData(modern))
+        precondition(P.configurationData(legacy) != P.configurationData(modern))
+        for data: Any in ["invalid", NSNull(), ["proximityLightingSchemaVersion": 2, "triggerZones": []],
+                           ["proximityLightingSchemaVersion": 1], ["triggerZones": NSNull()]] {
+            var invalid = legacy; invalid["spaceData"] = data
+            precondition(P.upgradeConfigurationData(invalid) == nil)
+        }
+        var changed = modern
+        changed["spaceData"] = ["proximityLightingSchemaVersion": 1,
+            "triggerZones": [["items": [["groupAddress": 49160, "deviceAddress": 554]]]]]
+        precondition(P.upgradeConfigurationData(legacy) != P.upgradeConfigurationData(changed))
+        print("PASS: omitted legacy empty zones are upgrade-only compatibility; malformed/schema/nonempty differences remain distinct")
     }
 
     static func testEmptyGroupAddressCompatibility() {

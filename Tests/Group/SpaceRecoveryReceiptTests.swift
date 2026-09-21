@@ -68,6 +68,8 @@ final class NetworkRequest {
             try? FileManager.default.removeItem(at: SpaceConfigurationSafety.testRoot)
             SpaceConfigurationSafety.testDefaults.removePersistentDomain(forName: SpaceConfigurationSafety.suite)
         }
+        try await testLegacyUpgradeRetry()
+        try await testLegacyUpgradeRecovery()
         precondition(NetworkApiError(code: -2002) == .configurationUploadUnconfirmed)
         precondition(NetworkApiError(code: -2003) == .configurationExportInvalid)
         precondition(NetworkApiError.configurationUploadUnconfirmed.localizedDescription == "configuration_upload_unconfirmed")
@@ -271,6 +273,171 @@ final class NetworkRequest {
         #if DEBUG
         print("PASS: production save failure, authority, deletion journal and blocked writer invalidate real snapshots")
         #endif
+    }
+
+    /// A complete, synthetic legacy Space. No customer identities or keys.
+    static func legacyUpgradePayload(_ space: SpaceData, modern: Bool) -> [String: Any] {
+        var payload = space.payload
+        var profile: [String: Any] = ["id": "legacy-profile", "type": 7,
+            "highEndTrim": 100, "lowEndTrim": 0, "occupancyLevel": 100,
+            "vacantLevel": 50, "standbyLevel": 0, "taskLevel": 100,
+            "timeT1": 2, "timeT2": 1200, "timeT3": 2, "timeT4": 600, "timeT5": 2,
+            "manualOverrideTimeout": 4294967295, "powerUpState": 255, "proximityLightingNumber": 1]
+        if modern { profile["calibrationMode"] = "none"; profile["targetNightBrightness"] = 50 }
+        payload["groups"] = [["address": "C008", "profile": profile,
+            "proximityLightingPath": ["paths": [["items": [554, 557]]], "zones": [["addresses": [554, 557]]]]]]
+        payload["nodes"] = [554, 557].map { address -> [String: Any] in
+            ["uuid": String(format: "00000000-0000-0000-0000-%012d", address),
+             "unicastAddress": String(format: "%04X", address), "groupAddress": "C008", "groupState": 1,
+             "elements": [["models": [["modelId": "0A780001", "subscribe": ["C008"]]]]]]
+        }
+        payload["scenes"] = [[String: Any]](); payload["schedules"] = [[String: Any]]()
+        payload["switches"] = [[String: Any]](); payload["emergencyFireControllers"] = [[String: Any]]()
+        payload["spaceData"] = modern ? ["proximityLightingSchemaVersion": 1, "triggerZones": []] : [:]
+        payload["netKey"] = ["index": 1, "key": String(repeating: "0", count: 32)]
+        payload["appKey"] = ["index": 1, "boundNetKey": 1, "key": String(repeating: "1", count: 32)]
+        return payload
+    }
+
+    @MainActor static func testLegacyUpgradeRetry() async throws {
+        typealias S = SpaceConfigurationSafety
+        let request = NetworkRequest.shared
+        let space = SpaceData("legacy-upgrade-retry")
+        space.lastUploadCloudTimestamp = space.lastUpdate
+        let remote = legacyUpgradePayload(space, modern: false)
+        let local = legacyUpgradePayload(space, modern: true)
+        precondition(SpaceSyncCleanupPolicy.baseline(remote) == SpaceSyncCleanupPolicy.baseline(local))
+        request.result = .failure(.noNetwork)
+        let failed = await S.verifySyncCleanupBaseline(space, local: local)
+        precondition(!failed && !S.isBlocked(space) && space.syncCloudError == .noNetwork)
+        request.result = .success(["data": remote])
+        let retry = await S.prepareUpload(space, payload: local)
+        precondition(retry && !S.isBlocked(space), "known legacy defaults must not create a permanent upgrade block")
+        precondition(S.testMigrated(space))
+        // A submitted snapshot still requires exact readback, including new fields.
+        let strictReadback = await S.verifyUploadedConfiguration(space, payload: local)
+        precondition(!strictReadback, "upgrade compatibility must never weaken submission readback")
+        let conflicting = SpaceData("legacy-real-conflict"); conflicting.lastUploadCloudTimestamp = conflicting.lastUpdate
+        var changed = legacyUpgradePayload(conflicting, modern: false)
+        var groups = changed["groups"] as! [[String: Any]]
+        var profile = groups[0]["profile"] as! [String: Any]; profile["timeT2"] = 42
+        groups[0]["profile"] = profile; changed["groups"] = groups
+        request.result = .success(["data": changed])
+        let conflict = await S.verifySyncCleanupBaseline(conflicting, local: legacyUpgradePayload(conflicting, modern: true))
+        precondition(!conflict && S.isBlocked(conflicting) && conflicting.syncCloudError == .configurationReviewRequired)
+        let importing = SpaceData("legacy-entry-baseline"); importing.lastUploadCloudTimestamp = importing.lastUpdate
+        _ = try S.recoveryState(importing)
+        S.failStateWrite = true
+        S.verifyUpgradeBaseline(importing, local: legacyUpgradePayload(importing, modern: true),
+                                remote: legacyUpgradePayload(importing, modern: false))
+        precondition(!S.testMigrated(importing), "failed state persistence must not establish a migration receipt")
+        S.failStateWrite = false
+        S.verifyUpgradeBaseline(importing, local: legacyUpgradePayload(importing, modern: true),
+                                remote: legacyUpgradePayload(importing, modern: false))
+        precondition(S.testMigrated(importing))
+        print("PASS: failed upgrade precheck retries with legacy compatibility; submission readback stays strict")
+    }
+
+    @MainActor static func testLegacyUpgradeRecovery() async throws {
+        typealias S = SpaceConfigurationSafety
+        let request = NetworkRequest.shared
+        func blocked() -> SpaceData {
+            let space = SpaceData()
+            space.lastUploadCloudTimestamp = space.lastUpdate
+            S.block(space, reason: "upgradeBaselineNeedsImport")
+            space.syncCloudError = .configurationExportInvalid
+            return space
+        }
+        for role in [Permission.owner, .editor] {
+            let space = blocked(); space.permission = role
+            let local = legacyUpgradePayload(space, modern: true)
+            request.result = .success(["data": legacyUpgradePayload(space, modern: false)])
+            var reads = 0
+            let result = await S.recoverUpgradeBaselineIfNeeded(space) { reads += 1; return local }
+            precondition(result && reads == 2 && !S.isBlocked(space) && S.testMigrated(space) && space.syncCloudError == nil)
+            let calls = request.calls
+            let repeated = await S.recoverUpgradeBaselineIfNeeded(space) { preconditionFailure("already recovered") }
+            precondition(repeated && request.calls == calls)
+            precondition(!S.needsUpgradeBaseline(space), "migration receipt survives a new recovery-state read")
+        }
+        // Even if timestamps match, real configuration/identity differences stay protected.
+        for field in ["profile", "members", "path", "zone", "netKey", "scene", "schedule", "version", "invalid"] {
+            let space = blocked(), local = legacyUpgradePayload(space, modern: true)
+            var remote = legacyUpgradePayload(space, modern: false)
+            var groups = remote["groups"] as! [[String: Any]]
+            switch field {
+            case "profile":
+                var profile = groups[0]["profile"] as! [String: Any]; profile["timeT2"] = 1201; groups[0]["profile"] = profile
+            case "members": remote["nodes"] = Array((remote["nodes"] as! [[String: Any]]).prefix(1))
+            case "path": groups[0]["proximityLightingPath"] = ["paths": [["items": [557, 554]]], "zones": [["addresses": [554, 557]]]]
+            case "zone": remote["spaceData"] = ["triggerZones": [["items": [["groupAddress": 49160, "deviceAddress": 554]]]]]
+            case "netKey": remote["netKey"] = ["index": 1, "key": String(repeating: "2", count: 32)]
+            case "scene": remote["scenes"] = [["number": "0001", "name": "changed", "addresses": [554]]]
+            case "schedule": remote["schedules"] = [["id": 1, "hour": 12]]
+            case "version": remote["updateTimestamp"] = space.lastUpdate + 1
+            default: remote["spaceData"] = "invalid"
+            }
+            remote["groups"] = groups
+            request.result = .success(["data": remote])
+            let result = await S.recoverUpgradeBaselineIfNeeded(space) { local }
+            precondition(!result && S.isBlocked(space) && !S.testMigrated(space), "must preserve \(field) difference")
+        }
+        for condition in ["visitor", "password", "localWrite", "import", "cleanup", "deletion", "submission", "authority", "otherReason"] {
+            let space = SpaceData(); space.lastUploadCloudTimestamp = space.lastUpdate
+            let local = legacyUpgradePayload(space, modern: true)
+            if condition == "submission" { precondition(S.prepareSubmission(space, payload: local) != nil) }
+            S.block(space, reason: condition == "otherReason" ? "invalidRemoteTopology" : "upgradeBaselineNeedsImport")
+            switch condition {
+            case "visitor": space.permission = .visitor
+            case "password": space.requiresPasswordVerification = true
+            case "localWrite": space.lastUpdate += 1
+            case "import": precondition(S.beginImport(space, payload: local))
+            case "cleanup": try Data("{}".utf8).write(to: S.testDirectory(space).appendingPathComponent("pending-reference-cleanup.json"))
+            case "deletion": precondition(S.updateDeletionJournal(space) {
+                $0.entries.append(.init(id: UUID(), nodeUUID: "deleted-node", primaryAddress: 5, elementAddresses: [5], macAddress: nil, productId: nil))
+            })
+            case "authority": var state = try S.recoveryState(space); state.requiresRemoteImport = true; try S.testSaveState(state, space: space)
+            default: break
+            }
+            let calls = request.calls
+            let result = await S.recoverUpgradeBaselineIfNeeded(space) { preconditionFailure("ineligible local read") }
+            precondition(result == (condition == "otherReason") && S.isBlocked(space) && !S.testMigrated(space) && request.calls == calls)
+        }
+        for failure in ["network", "stateSave", "spaceSave", "firstRead", "secondRead", "sameSecondEdit", "versionChange", "accountChange", "permissionChange", "cancel"] {
+            let space = blocked(); var local = legacyUpgradePayload(space, modern: true)
+            let remote = legacyUpgradePayload(space, modern: false)
+            _ = try S.recoveryState(space)
+            request.result = failure == "network" ? .failure(.noNetwork) : .success(["data": remote])
+            S.failStateWrite = failure == "stateSave"
+            space.savesSucceed = failure != "spaceSave"
+            request.onRequest = {
+                switch failure {
+                case "sameSecondEdit": local["spaceName"] = "changed-during-await"
+                case "versionChange": space.lastUpdate += 1
+                case "accountChange": UserData.currentUserId = "different-account"
+                case "permissionChange": space.permission = .visitor
+                case "cancel": withUnsafeCurrentTask { $0?.cancel() }
+                default: break
+                }
+            }
+            var reads = 0
+            let task = Task { @MainActor in
+                await S.recoverUpgradeBaselineIfNeeded(space) {
+                    reads += 1
+                    if failure == "firstRead" || (failure == "secondRead" && reads == 2) { return nil }
+                    return local
+                }
+            }
+            let result = await task.value
+            UserData.currentUserId = "test-account"; request.onRequest = nil; S.failStateWrite = false
+            precondition(!result && S.isBlocked(space) && !S.testMigrated(space), "must retain recovery on \(failure)")
+        }
+        for (error, key) in [(NetworkApiError.configurationUnavailable, "configuration_sync_unavailable"),
+                             (.configurationReviewRequired, "configuration_review_message"),
+                             (.configurationExportInvalid, "proximity_lighting_export_invalid")] {
+            precondition(NetworkApiError(code: error.code) == error && error.localizedDescription == key)
+        }
+        print("PASS: legacy block recovery; full valid inputs, roles, strict conflicts, pending operations, repeated reads, persistence, cancellation and error round-trip")
     }
 
     @MainActor static func testDirectUploadConfirmation() async throws {

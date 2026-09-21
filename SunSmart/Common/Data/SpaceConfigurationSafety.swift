@@ -183,6 +183,92 @@ enum SpaceConfigurationSafety {
         return reason == nil || referenceCleanupReasons.contains(reason!)
     }
 
+    static func configurationSyncError(_ space: SpaceData) -> NetworkApiError {
+        if space.requiresPasswordVerification { return .spacePasswordOverdue }
+        if space.permission == .visitor || space.disableEditorPermission { return .noSpacePermission }
+        let reason = UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space))
+        if reason == "invalidStoredGroupConfiguration" || hasPendingImport(space) { return .configurationUnavailable }
+        if requiresConfigurationReview(space) { return .configurationReviewRequired }
+        return .configurationUnavailable
+    }
+
+    @discardableResult
+    static func recordSyncFailure(_ space: SpaceData, error: NetworkApiError, stage: String) -> Bool {
+        // The cloud operation persists its final error. Do not save a possibly
+        // stale Space object merely to report a failed preparation/export.
+        space.syncCloudError = error
+        #if DEBUG
+        let reason = UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space)) ?? "none"
+        print("[SpaceConfigurationSync] stage=\(stage) error=\(error.code) reason=\(reason)")
+        #endif
+        return false
+    }
+
+    /// Recheck only the known legacy comparison block. Never use this path to
+    /// clear an import, deletion, changed configuration, or a different cause.
+    @MainActor
+    static func recoverUpgradeBaselineIfNeeded(_ space: SpaceData,
+                                               readLocal: () async -> [String: Any]?) async -> Bool {
+        let reasonKey = "spaceConfigurationBlocked." + key(space)
+        guard UserDefaults.standard.string(forKey: reasonKey) == "upgradeBaselineNeedsImport" else { return true }
+        func eligible() -> Bool {
+            guard !_Concurrency.Task<Never, Never>.isCancelled,
+                  UserDefaults.standard.string(forKey: reasonKey) == "upgradeBaselineNeedsImport",
+                  canAutomaticallyUpload(space), !space.needUploadCloud,
+                  space.lastUploadCloudTimestamp == space.lastUpdate,
+                  !hasPendingImport(space), !hasPendingReferenceCleanup(space),
+                  let journal = try? deletionJournal(space), journal.entries.isEmpty,
+                  let state = try? recoveryState(space), state.submission == nil,
+                  UserDefaults.standard.object(forKey: "spaceConfigurationLocalRecoveryPending." + key(space)) == nil
+            else { return false }
+            return true
+        }
+        guard eligible(), let context = try? recoveryState(space) else { return false }
+        let revision = space.lastUpdate
+        guard let local = await readLocal(), eligible(), isCurrent(context, space: space),
+              space.lastUpdate == revision, local["uuid"] as? String == space.id,
+              SpaceConfigurationIntegrityPolicy.integer(local["updateTimestamp"]) == revision,
+              let expected = SpaceSyncCleanupPolicy.upgradeRecoveryConfiguration(local),
+              let captured = try? JSONSerialization.data(withJSONObject: local, options: [.sortedKeys]) else { return false }
+        let response = await NetworkRequest.shared.request(.spaceInfo(siteId: space.siteId,
+            spaceId: space.id, password: space.authorizationPassword))
+        guard eligible(), isCurrent(context, space: space), space.lastUpdate == revision else { return false }
+        if case .failure(let error) = response {
+            handleAuthorityError(error, space: space)
+            return recordSyncFailure(space, error: error, stage: "upgradeRecoveryRequest")
+        }
+        guard case .success(let response) = response,
+              let remote = response["data"] as? [String: Any], remote["uuid"] as? String == space.id else { return false }
+        guard SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"]) == space.lastUploadCloudTimestamp,
+              let actual = SpaceSyncCleanupPolicy.upgradeRecoveryConfiguration(remote), expected == actual else { return false }
+        // Timestamp alone cannot detect same-second edits or changed persisted data.
+        guard let current = await readLocal(), eligible(), isCurrent(context, space: space),
+              space.lastUpdate == revision,
+              captured == (try? JSONSerialization.data(withJSONObject: current, options: [.sortedKeys])),
+              checkpoint(space), recordSnapshot(space, payload: current) else { return false }
+        space.applyRemoteSpaceMetadata(remote)
+        guard space.save(), eligible(), isCurrent(context, space: space) else { return false }
+        do {
+            var state = try recoveryState(space)
+            state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(remote)
+            try saveState(state, space: space)
+            let previousError = space.syncCloudError
+            space.syncCloudError = nil
+            guard space.save() else { space.syncCloudError = previousError; return false }
+            SpaceProtectionReadGeneration.beginMutation()
+            defer { SpaceProtectionReadGeneration.endMutation() }
+            UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
+            UserDefaults.standard.removeObject(forKey: reasonKey)
+            MeshNetworkManager.instance.realNodes.filter {
+                $0.network?.uuid.uuidString == space.meshUUID && $0.subNetworkId == space.meshNetworkId
+            }.forEach { $0.clearSyncStateCache() }
+            #if DEBUG
+            print("[SpaceConfigurationSync] stage=upgradeRecovery result=equivalentLegacyConfiguration")
+            #endif
+            return true
+        } catch { return false }
+    }
+
     /// Establish the pre-cleanup version before changing anything. A deletion
     /// receipt proves only that specific absent instance, never arbitrary loss.
     @MainActor
@@ -210,15 +296,24 @@ enum SpaceConfigurationSafety {
         let revision = space.lastUpdate
         let result = await NetworkRequest.shared.request(.spaceInfo(siteId: space.siteId, spaceId: space.id,
                                                                    password: space.authorizationPassword))
-        guard isCurrent(context, space: space), space.lastUpdate == revision else { return false }
-        if case .failure(let error) = result { handleAuthorityError(error, space: space); return false }
+        guard !_Concurrency.Task<Never, Never>.isCancelled, isCurrent(context, space: space),
+              space.lastUpdate == revision else { return false }
+        if case .failure(let error) = result {
+            handleAuthorityError(error, space: space)
+            return recordSyncFailure(space, error: error, stage: "cleanupBaselineRequest")
+        }
         guard case .success(let response) = result, let remote = response["data"] as? [String: Any],
               remote["uuid"] as? String == space.id else { return false }
         space.applyRemoteSpaceMetadata(remote)
-        guard space.save(), canCleanSyncReferences(space),
-              let expected = SpaceSyncCleanupPolicy.baseline(baseline, excludingDeletedUUIDs: deleted),
-              let actual = SpaceSyncCleanupPolicy.baseline(remote, excludingDeletedUUIDs: deleted),
-              expected == actual else { return false }
+        guard space.save(), canCleanSyncReferences(space) else { return false }
+        guard let expected = SpaceSyncCleanupPolicy.baseline(baseline, excludingDeletedUUIDs: deleted),
+              let actual = SpaceSyncCleanupPolicy.baseline(remote, excludingDeletedUUIDs: deleted) else {
+            return recordSyncFailure(space, error: .configurationExportInvalid, stage: "cleanupBaselineValidation")
+        }
+        guard expected == actual else {
+            block(space, reason: "upgradeBaselineNeedsImport")
+            return recordSyncFailure(space, error: .configurationReviewRequired, stage: "cleanupBaselineConflict")
+        }
         do {
             var state = try recoveryState(space)
             state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(remote)
@@ -480,21 +575,26 @@ enum SpaceConfigurationSafety {
     }
 
     @MainActor
-    private static func readUploadedConfiguration(_ space: SpaceData, payload: [String: Any]) async -> Swift.Result<Bool, NetworkApiError> {
+    private static func readUploadedConfiguration(_ space: SpaceData, payload: [String: Any],
+                                                  upgrading: Bool = false) async -> Swift.Result<Bool, NetworkApiError> {
         guard let context = try? recoveryState(space) else { return .failure(uploadUnconfirmed) }
+        let revision = space.lastUpdate
         let result = await NetworkRequest.shared.request(.spaceInfo(siteId: space.siteId,
             spaceId: space.id, password: space.authorizationPassword))
-        guard isCurrent(context, space: space) else { return .failure(uploadUnconfirmed) }
+        guard !_Concurrency.Task<Never, Never>.isCancelled, isCurrent(context, space: space),
+              !upgrading || space.lastUpdate == revision else { return .failure(uploadUnconfirmed) }
         switch result {
         case .failure(let error):
             handleAuthorityError(error, space: space)
             return .failure(error)
         case .success(let response):
+            let compare = upgrading ? SpaceConfigurationIntegrityPolicy.upgradeConfigurationData
+                : SpaceConfigurationIntegrityPolicy.configurationData
             guard let remote = response["data"] as? [String: Any], remote["uuid"] as? String == space.id,
-                  let expected = SpaceConfigurationIntegrityPolicy.configurationData(payload),
-                  let actual = SpaceConfigurationIntegrityPolicy.configurationData(remote) else { return .failure(uploadUnconfirmed) }
+                  let expected = compare(payload), let actual = compare(remote) else { return .failure(uploadUnconfirmed) }
             space.applyRemoteSpaceMetadata(remote)
-            guard space.save() else { return .failure(uploadUnconfirmed) }
+            guard space.save(), isCurrent(context, space: space),
+                  !upgrading || canAutomaticallyUpload(space) else { return .failure(uploadUnconfirmed) }
             if expected != actual {
                 #if DEBUG
                 print("[SpaceConfigurationReadback] source=direct site=\(space.siteId) space=\(space.id) "
@@ -870,8 +970,8 @@ enum SpaceConfigurationSafety {
             #endif
             started = now
         }
-        guard !isBlocked(space), let expected = SpaceConfigurationIntegrityPolicy.configurationData(local),
-              expected == SpaceConfigurationIntegrityPolicy.configurationData(remote) else {
+        guard !isBlocked(space), let expected = SpaceConfigurationIntegrityPolicy.upgradeConfigurationData(local),
+              expected == SpaceConfigurationIntegrityPolicy.upgradeConfigurationData(remote) else {
             mark("comparisonRejected")
             return
         }
@@ -880,10 +980,12 @@ enum SpaceConfigurationSafety {
         mark("checkpointCompleted")
         guard recordSnapshot(space, payload: local) else { mark("snapshotFailed"); return }
         mark("snapshotCompleted")
-        UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
         if var state = try? recoveryState(space) {
             state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(remote)
-            try? saveState(state, space: space)
+            do {
+                try saveState(state, space: space)
+                UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
+            } catch { mark("statePersistenceFailed") }
         }
     }
 
@@ -1044,15 +1146,13 @@ enum SpaceConfigurationSafety {
                timestamp == space.lastUploadCloudTimestamp {
                 baseline = saved
             }
-            switch await readUploadedConfiguration(space, payload: baseline) {
+            switch await readUploadedConfiguration(space, payload: baseline, upgrading: true) {
             case .success(true): break
             case .success(false):
                 block(space, reason: "upgradeBaselineNeedsImport")
-                return false
+                return recordSyncFailure(space, error: .configurationReviewRequired, stage: "uploadUpgradeBaseline")
             case .failure(let error):
-                space.syncCloudError = error
-                space.save()
-                return false
+                return recordSyncFailure(space, error: error, stage: "uploadUpgradeBaselineRequest")
             }
             UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
         }

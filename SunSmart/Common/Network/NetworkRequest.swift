@@ -383,6 +383,10 @@ public enum NetworkApiError: Error, Equatable {
             return -2002
         case .configurationExportInvalid:
             return -2003
+        case .configurationUnavailable:
+            return -2004
+        case .configurationReviewRequired:
+            return -2005
         }
     }
     
@@ -402,6 +406,10 @@ public enum NetworkApiError: Error, Equatable {
             self = .configurationUploadUnconfirmed
         case -2003:
             self = .configurationExportInvalid
+        case -2004:
+            self = .configurationUnavailable
+        case -2005:
+            self = .configurationReviewRequired
         case -1009, -1020:
             self = .noNetwork
         case -1001:
@@ -445,6 +453,8 @@ public enum NetworkApiError: Error, Equatable {
     /// Local configuration sync failures retain their localized meaning after reload.
     case configurationUploadUnconfirmed
     case configurationExportInvalid
+    case configurationUnavailable
+    case configurationReviewRequired
     /// 未识别的服务器或底层错误，保留原始诊断信息
     case apiError(
         code: Int,
@@ -488,6 +498,10 @@ extension NetworkApiError: LocalizedError {
             return "configuration_upload_unconfirmed".localizedString
         case .configurationExportInvalid:
             return "proximity_lighting_export_invalid".localizedString
+        case .configurationUnavailable:
+            return "configuration_sync_unavailable".localizedString
+        case .configurationReviewRequired:
+            return "configuration_review_message".localizedString
         case .noNetwork:
             return "phone_no_network".localizedString
         case .requestTimeout:
