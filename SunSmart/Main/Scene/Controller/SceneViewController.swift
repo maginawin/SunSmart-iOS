@@ -16,7 +16,12 @@ class SceneViewController: UIViewController {
     private var flowLayout: AlignCenterFlowLayout!
     private var pageControl: UIPageControl!
     /// 是否需要更新数据源
-    private var refreshData: Bool = false
+    private var refreshData: Bool = true
+    private var renderedRevision: SpacePageRevision?
+    private var isPageVisible = false
+    private var groups: [Group] = []
+    private let syncDisplay = SceneGroupDisplayState()
+    private var appearances: [ObjectIdentifier: SceneGroupAppearance] = [:]
     
     /// 列数
     private var columnNum: Int = isIPad ? 4 : 3
@@ -65,11 +70,19 @@ class SceneViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        
-        if refreshData {
-            refreshData = false
+        isPageVisible = true
+        if refreshData || renderedRevision?.isCurrent != true {
             updateUI()
+        } else {
+            refreshVisibleAppearance()
         }
+        refreshSyncStatus()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        isPageVisible = false
+        syncDisplay.cancel()
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -84,8 +97,10 @@ class SceneViewController: UIViewController {
         super.viewDidLayoutSubviews()
         
         var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.minimumInteritemSpacing * CGFloat(rowNum - 1) - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / CGFloat(rowNum)
+        guard itemW > 0 else { return }
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
         let itemSize = CGSize(width: itemW, height: itemW + SCRYFrom(16))
+        guard flowLayout.itemSize != itemSize else { return }
         flowLayout.itemSize = itemSize
         
         collectionView.snp.updateConstraints { make in
@@ -94,50 +109,74 @@ class SceneViewController: UIViewController {
 //            height = CGFloat(ceil(Float(height) * 100) / 100.0)
             make.height.equalTo(ceil(height))
         }
-        collectionView.layoutIfNeeded()
-        updateUI()
     }
     
     /// 添加通知监听
     private func addNotification() {
         
-        NotificationCenter.default.addObserver(forName: .init(sceneDataUpdateNotificationName), object: nil, queue: nil) {[weak self] _ in
-            self?.titleLabel.text = self?.scene.name
-            if self?.view.window != nil {
-                self?.updateUI()
-            }else {
-                self?.refreshData = true
-            }
+        NotificationCenter.default.addObserver(forName: .init(sceneDataUpdateNotificationName), object: nil, queue: .main) {[weak self] notification in
+            guard let self else { return }
+            if let changed = notification.object as? Scene, changed !== self.scene { return }
+            self.refreshVisibleUI()
         }
         
-        NotificationCenter.default.addObserver(forName: .init(groupsRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
-            if self?.view.window != nil {
-                self?.collectionView.reloadData()
-                self?.updateEmptyUI()
-            }else {
-                self?.refreshData = true
-            }
+        NotificationCenter.default.addObserver(forName: .init(groupsRefreshNotificationName), object: nil, queue: .main) {[weak self] _ in
+            self?.refreshVisibleUI()
         }
         
-        NotificationCenter.default.addObserver(forName: .init(groupDataUpdateNotificationName), object: nil, queue: nil) {[weak self] notification in
-            guard let self = self, let group = notification.object as? Group else { return }
-//            CATransaction.setDisableActions(true)
-            if let index = self.scene.info.groups.firstIndex(of: group), let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? SceneGroupsViewCell {
-                let data = group.info.sceneExecuteDatas.first(where: { $0.sceneNumber == self.scene.number })
-                item.updateData(group: group, sceneData: data != nil ? .init(data: data!) : nil)
-            }else {
-                collectionView.reloadData()
-            }
-//            CATransaction.commit()
+        NotificationCenter.default.addObserver(forName: .init(groupDataUpdateNotificationName), object: nil, queue: .main) {[weak self] _ in
+            guard let self else { return }
+            guard self.isPageVisible else { self.refreshData = true; return }
+            if self.renderedRevision?.isCurrent != true { self.updateUI() }
+            else { self.refreshVisibleAppearance(); self.refreshSyncStatus() }
+        }
+        NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.refreshVisibleUI()
         }
         
     }
     
     
     private func updateUI() {
+        groups = scene.info.groups
+        titleLabel.text = scene.name
+        appearances = NodeSyncStatusRefresh.sceneGroupAppearances(groups)
+        refreshData = false
+        renderedRevision = SpacePageRevision()
         collectionView.reloadData()
         updateEmptyUI()
-        pageControl.numberOfPages = Int(ceil(Double(scene.info.groups.count) / Double(columnNum * rowNum)))
+        pageControl.numberOfPages = Int(ceil(Double(groups.count) / Double(columnNum * rowNum)))
+        refreshSyncStatus()
+    }
+
+    private func refreshVisibleUI() {
+        refreshData = true
+        guard isPageVisible, isViewLoaded else { return }
+        updateUI()
+    }
+
+    private func refreshSyncStatus() {
+        guard isPageVisible else { return }
+        syncDisplay.refresh(scene: scene) { [weak self] in
+            guard let self, self.isPageVisible else { return }
+            self.refreshVisibleAppearance()
+        }
+    }
+
+    private func refreshVisibleAppearance() {
+        appearances = NodeSyncStatusRefresh.sceneGroupAppearances(groups)
+        for indexPath in collectionView.indexPathsForVisibleItems where indexPath.item < groups.count {
+            if let cell = collectionView.cellForItem(at: indexPath) as? SceneGroupsViewCell {
+                configure(cell, group: groups[indexPath.item])
+            }
+        }
+    }
+
+    private func configure(_ cell: SceneGroupsViewCell, group: Group) {
+        let data = group.info.sceneExecuteDatas.first { $0.sceneNumber == scene.number }
+        let needsSync = syncDisplay.currentSnapshot?.needsSync.contains(ObjectIdentifier(group)) ?? true
+        cell.updateData(group: group, sceneData: data.map { .init(data: $0) },
+                        appearance: appearances[ObjectIdentifier(group)], needsSync: needsSync)
     }
     
     @objc private func close() {
@@ -286,9 +325,9 @@ class SceneViewController: UIViewController {
             return
         }
         let point = sender.location(in: collectionView)
-        if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < scene.info.groups.count {
+        if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < groups.count {
             
-            let group = scene.info.groups[indexPath.item]
+            let group = groups[indexPath.item]
 //            let data = group.info.bindSceneDatas.first(where: { $0.sceneId == scene.number })?.data
             let vc = GroupViewController(space: space, group: group)
             navigationController?.pushViewController(vc, animated: true)
@@ -304,7 +343,7 @@ class SceneViewController: UIViewController {
 
     private func updateEmptyUI() {
         
-        if scene.info.groups.isEmpty {
+        if groups.isEmpty {
             collectionView.showEmptyDataView(title: "No Members!", position: .center, bottomMargin: 3.5)
         }else {
             collectionView.hideEmptyDataView()
@@ -372,24 +411,18 @@ extension SceneViewController: UICollectionViewDataSource, UICollectionViewDeleg
     
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
 //        return 9
-        return scene.info.groups.count
+        return groups.count
     }
     
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! SceneGroupsViewCell
-        let group = scene.info.groups[indexPath.item]
-        let data = group.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number })
-        cell.updateData(group: group, sceneData: data != nil ? .init(data: data!) : nil)
-        // 获取组是否需要同步
-        if scene.needSyncGroups.contains(group) {
-            cell.iconImageView.image = UIImage(named: "sync_failed")
-        }
+        configure(cell, group: groups[indexPath.item])
         return cell
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
-        let group = scene.info.groups[indexPath.item]
+        let group = groups[indexPath.item]
         if group.nodes.isEmpty { // 空组
             XWHUDManager.showTipHUD("group_empty".localizedString, isLineFeed: true)
             return
@@ -408,6 +441,7 @@ extension SceneViewController: UICollectionViewDataSource, UICollectionViewDeleg
         
         group.isOn = !group.isOn
         MeshAPI.setGroupOnOffState(address: group.address.address, isOn: group.isOn)
+        appearances = NodeSyncStatusRefresh.sceneGroupAppearances(groups)
         CATransaction.setDisableActions(true)
         collectionView.reloadItems(at: [indexPath])
         CATransaction.commit()

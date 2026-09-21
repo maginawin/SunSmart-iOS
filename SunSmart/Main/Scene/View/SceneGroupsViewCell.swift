@@ -31,7 +31,8 @@ class SceneGroupsViewCell: UICollectionViewCell {
     /// - Parameters:
     ///   - group: 组
     ///   - sceneData: 执行的场景数据
-    func updateData(group: Group, sceneData: ExecuteSceneData?) {
+    func updateData(group: Group, sceneData: ExecuteSceneData?, appearance: SceneGroupAppearance? = nil,
+                    needsSync: Bool = false) {
         
 //        iconImageView.image = UIImage(named: "group_image_\(group.info.imageId)")
         if let text = group.info.imageText, text.count > 0 {
@@ -44,7 +45,7 @@ class SceneGroupsViewCell: UICollectionViewCell {
             iconImageView.image = UIImage(named: "group_image_\(group.info.imageId)") //device_light_offline
         }
         
-        if group.isOn {
+        if appearance?.isOn ?? group.isOn {
             bgView.backgroundColor = .white
             nameLabel.textColor = Title_Color
         }else {
@@ -61,8 +62,13 @@ class SceneGroupsViewCell: UICollectionViewCell {
 //            data.lightness
             // max(groupLightData.data.lowEndTrim, min(groupLightData.data.highEndTrim, <#T##y: Comparable##Comparable#>))
            
-            let cct100 = Node.getTemperature100(temperature: UInt16(data.cct), range: group.effectiveCctRange)
+            let cct100 = Node.getTemperature100(temperature: UInt16(data.cct), range: appearance?.cctRange ?? group.effectiveCctRange)
             progressView.progressColor = Node.getCctMixColor(temperature100: cct100)
+        }
+        if needsSync {
+            imageLabel.isHidden = true
+            iconImageView.isHidden = false
+            iconImageView.image = UIImage(named: "sync_failed")
         }
         
 //        syncFailImageView.isHidden = !group.nodes.contains(where: {

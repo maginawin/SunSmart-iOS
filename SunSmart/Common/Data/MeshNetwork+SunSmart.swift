@@ -1168,7 +1168,11 @@ extension Group {
 
     /// 有效色温范围，组内 CCT 设备取并集
     var effectiveCctRange: ClosedRange<UInt16> {
-        let ranges = nodes.filter({ $0.effectiveSupportCct }).map({ $0.effectiveCctRange })
+        effectiveCctRange(members: nodes)
+    }
+
+    func effectiveCctRange(members: [Node]) -> ClosedRange<UInt16> {
+        let ranges = members.filter({ $0.effectiveSupportCct }).map({ $0.effectiveCctRange })
         guard let first = ranges.first else {
             return NodeAbsoluteCctRange.defaultRange
         }

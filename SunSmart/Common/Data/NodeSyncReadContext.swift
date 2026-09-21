@@ -74,6 +74,7 @@ final class NodeSyncReadContext {
 
     var isPrepared: Bool { prepared != nil }
     var inputsAvailable: Bool { prepared?.isAvailable == true }
+    var isProtectionAvailable: Bool { !protection.isBlocked }
 
     func cancelPreparation() { cancellation.cancel() }
 

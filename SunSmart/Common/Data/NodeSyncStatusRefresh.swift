@@ -57,11 +57,25 @@ enum NodeSyncStatusRefresh {
     /// Live appearance never waits for protection/topology preparation. Reuse
     /// only membership from a valid context, not the cached synchronization result.
     static func groupOnOffStates(_ groups: [Group]) -> [Bool] {
+        mapGroupMembers(groups) { group, members in group.isOn(members: members()) }
+    }
+
+    static func sceneGroupAppearances(_ groups: [Group]) -> [ObjectIdentifier: SceneGroupAppearance] {
+        let values = mapGroupMembers(groups) { group, members in
+            let nodes = members()
+            return (ObjectIdentifier(group), SceneGroupAppearance(
+                isOn: group.isOn(members: nodes), cctRange: group.effectiveCctRange(members: nodes)))
+        }
+        return Dictionary(uniqueKeysWithValues: values)
+    }
+
+    private static func mapGroupMembers<Value>(_ groups: [Group],
+                                               read: (Group, () -> [Node]) -> Value) -> [Value] {
         precondition(Thread.isMainThread)
         guard !groups.isEmpty else { return [] }
         if let context, context.isPrepared, context.inputsAvailable, context.isCurrent,
            groups.allSatisfy({ $0.network === context.network && $0.subNetworkId == context.networkID }) {
-            return groups.map { $0.isOn(members: context.members(of: $0)) }
+            return groups.map { group in read(group, { context.members(of: group) }) }
         }
         // One lazy projection per display batch also works when sync inputs are
         // unavailable. A local Group override does not require any member read.
@@ -78,7 +92,7 @@ enum NodeSyncStatusRefresh {
             }
             return members?[group.address.address] ?? []
         }
-        return groups.map { $0.isOn(members: liveMembers(of: $0)) }
+        return groups.map { group in read(group, { liveMembers(of: group) }) }
     }
 
     static func warmUp(nodes: [Node], owner: AnyObject) {

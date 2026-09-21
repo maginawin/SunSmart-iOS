@@ -25,6 +25,13 @@ def production():
     appearance = appearance.replace('// PRODUCTION_APPEAR', section(controller, '    override func viewWillAppear', '    override func viewDidAppear'))
     appearance = appearance.replace('// PRODUCTION_VISIBLE', section(controller, '    private func refreshVisibleOnOffAppearance()', '    private func refreshVisibleUI()'))
     appearance = appearance.replace('// PRODUCTION_DISPLAY', section(controller, '    public func collectionView(_ collectionView: UICollectionView, willDisplay', '    public func collectionView(_ collectionView: UICollectionView, layout'))
+    scene = read('SunSmart/Main/Scene/Controller/SceneViewController.swift')
+    settings = read('SunSmart/Main/Scene/Controller/SceneSettingsViewController.swift')
+    appearance = appearance.replace('// PRODUCTION_SCENE_APPEAR', section(scene, '    override func viewWillAppear', '    override func viewDidAppear'))
+    appearance = appearance.replace('// PRODUCTION_SCENE_LAYOUT', section(scene, '    override func viewDidLayoutSubviews', '    /// 添加通知监听'))
+    appearance = appearance.replace('// PRODUCTION_SCENE_SETTINGS_APPEAR', section(settings, '    override func viewWillAppear', '    override func viewDidAppear'))
+    scene_tests = read('Tests/Scene/SceneGroupSyncReadTests.swift').replace('// PRODUCTION_SCENE_COMPARISON',
+        section(read('SunSmart/Common/Data/MeshNetwork+SunSmart.swift'), '    /// 当前场景数据应用到指定设备时的目标值', '//    convenience init(lightness:'))
     pieces = [read('SunSmart/Common/Data/AppPerformance.swift'),
         read('SunSmart/Common/Data/DeviceScheduleAddressCleanup.swift'),
         read('SunSmart/Common/Data/SpaceProtectionReadSnapshot.swift'), policy, section(adapter, 'enum ProximityLightingTopologyContext', '\nextension SpaceData'),
@@ -33,10 +40,11 @@ def production():
         read('SunSmart/Common/Data/SpacePageSyncRead.swift'),
         read('SunSmart/Main/Timed/Model/TimedSchedulerOwnerPolicy.swift'),
         'import ObjectiveC\nextension Group {\nprivate static var isOnKey: UInt8 = 0\n'
-        + section(read('SunSmart/Common/Data/MeshNetwork+SunSmart.swift'), '    /// 组开关', '    /// 是否支持onoff') + '\n}',
+        + section(read('SunSmart/Common/Data/MeshNetwork+SunSmart.swift'), '    /// 组开关', '    /// 是否支持onoff')
+        + section(read('SunSmart/Common/Data/MeshNetwork+SunSmart.swift'), '    /// 有效色温范围', '    func clampEffectiveCct') + '\n}',
         section(read('SunSmart/Common/Data/SpaceSchedulerReadCoordinator.swift'), 'final class SpaceSchedulerReadQueue', '\nfinal class SpaceSchedulerReadCoordinator'),
         'extension Schedule {\n' + section(read('SunSmart/Common/Data/MeshNetwork+SunSmart.swift'), '    func getNeedSyncDatas() -> ScheduleSyncData', '\nextension DeviceSwitchData'),
-        read('Tests/Group/SpaceRuntimeCacheTests.swift'), appearance,
+        read('Tests/Group/SpaceRuntimeCacheTests.swift'), scene_tests, appearance,
         'extension Node {\n' + section(read('SunSmart/Common/Data/Node+SyncData.swift'), '    func getNodeSyncProximityLighting(', '    /// 获取网关设备同步的配置') + '\n}',
         'extension Schedule {\n' + section(read('SunSmart/Common/Data/MeshNetwork+SunSmart.swift'), '    func targets(node:', '\n    func needsSync(on') + '\n}', tests]
     return '\n'.join(pieces).replace('import NordicSigMeshSDK', '')

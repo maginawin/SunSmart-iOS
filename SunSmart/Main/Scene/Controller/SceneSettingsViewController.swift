@@ -24,6 +24,12 @@ class SceneSettingsViewController: UIViewController {
     private var bottomView: UIView!
     private var syncBtn: UIButton!
     private var previewBtn: UIButton!
+    private var groups: [Group] = []
+    private var isPageVisible = false
+    private var refreshData = true
+    private var renderedRevision: SpacePageRevision?
+    private let syncDisplay = SceneGroupDisplayState()
+    private var appearances: [ObjectIdentifier: SceneGroupAppearance] = [:]
     
     let space: SpaceData
     let scene: Scene
@@ -65,8 +71,10 @@ class SceneSettingsViewController: UIViewController {
         setupUI()
         
         
-        MeshNetworkManager.instance.groups.forEach({
-            if scene.info.groups.contains($0) {
+        groups = MeshNetworkManager.instance.groups
+        let sceneGroups = scene.info.groups
+        groups.forEach({
+            if sceneGroups.contains($0) {
                 $0.isSelected = true
                 if let data = $0.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
                     $0.executeSceneData = .init(data: data)
@@ -104,11 +112,19 @@ class SceneSettingsViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        
-        if mode == .settings {
-            syncBtn.isHidden = scene.needSyncGroups.isEmpty
-            collectionView.reloadData()
+        isPageVisible = true
+        if refreshData || renderedRevision?.isCurrent != true {
+            updateUI()
+        } else {
+            refreshVisibleAppearance()
         }
+        refreshSyncStatus()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        isPageVisible = false
+        syncDisplay.cancel()
     }
     
     override func viewDidAppear(_ animated: Bool) {
@@ -119,11 +135,6 @@ class SceneSettingsViewController: UIViewController {
         }
     }
     
-    override func viewDidLayoutSubviews() {
-        super.viewDidLayoutSubviews()
-        updateEmptyUI()
-    }
-    
     deinit {
         if self.mode == .members && self.space.isConfiguring { // 未创建场景退出页面，停止引导配置流程
             self.space.isConfiguring = false
@@ -132,13 +143,74 @@ class SceneSettingsViewController: UIViewController {
     
     /// 添加组/编辑通知监听
     private func addNotificationObserver() {
-        NotificationCenter.default.addObserver(forName: .init(groupsRefreshNotificationName), object: nil, queue: nil) {[weak self] _ in
-//            self?.refreshData = true
-            guard let self = self else { return }
-            self.updateEmptyUI()
-            self.collectionView.reloadData()
+        NotificationCenter.default.addObserver(forName: .init(groupsRefreshNotificationName), object: nil, queue: .main) {[weak self] _ in
+            self?.refreshVisibleUI()
         }
-        
+        NotificationCenter.default.addObserver(forName: .init(sceneDataUpdateNotificationName), object: nil, queue: .main) { [weak self] notification in
+            guard let self else { return }
+            if let changed = notification.object as? Scene, changed !== self.scene { return }
+            self.refreshVisibleUI()
+        }
+        NotificationCenter.default.addObserver(forName: .init(groupDataUpdateNotificationName), object: nil, queue: .main) { [weak self] _ in
+            guard let self else { return }
+            guard self.isPageVisible else { self.refreshData = true; return }
+            if self.renderedRevision?.isCurrent != true { self.updateUI() }
+            else { self.refreshVisibleAppearance(); self.refreshSyncStatus() }
+        }
+        NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.refreshVisibleUI()
+        }
+    }
+
+    private func refreshVisibleUI() {
+        refreshData = true
+        guard isPageVisible, isViewLoaded else { return }
+        updateUI()
+    }
+
+    private func updateUI() {
+        groups = MeshNetworkManager.instance.groups
+        appearances = NodeSyncStatusRefresh.sceneGroupAppearances(groups)
+        renderedRevision = SpacePageRevision()
+        refreshData = false
+        collectionView.reloadData()
+        updateEmptyUI()
+        updateSyncButton()
+        refreshSyncStatus()
+    }
+
+    private func refreshSyncStatus() {
+        guard isPageVisible else { return }
+        syncDisplay.refresh(scene: scene) { [weak self] in
+            guard let self, self.isPageVisible else { return }
+            self.updateSyncButton()
+            self.refreshVisibleAppearance()
+        }
+    }
+
+    private func updateSyncButton() {
+        if mode == .settings {
+            syncBtn.isHidden = syncDisplay.currentSnapshot?.needsSync.isEmpty == true
+        }
+    }
+
+    private func refreshVisibleAppearance() {
+        appearances = NodeSyncStatusRefresh.sceneGroupAppearances(groups)
+        updateSyncButton()
+        for indexPath in collectionView.indexPathsForVisibleItems where indexPath.item < groups.count {
+            if let cell = collectionView.cellForItem(at: indexPath) as? SceneMembersViewCell {
+                configure(cell, group: groups[indexPath.item])
+            }
+        }
+    }
+
+    private func configure(_ cell: SceneMembersViewCell, group: Group) {
+        let belongsToScene = group.info.sceneExecuteDatas.contains { $0.sceneNumber == scene.number }
+        let needsSync = belongsToScene && (syncDisplay.currentSnapshot?.needsSync.contains(ObjectIdentifier(group)) ?? true)
+        cell.updateData(group: group, sceneData: group.executeSceneData,
+                        appearance: appearances[ObjectIdentifier(group)], needsSync: needsSync)
+        cell.selectBtn.isSelected = group.isSelected
+        cell.progressView.isHidden = !group.isSelected
     }
     
     private func addSuccessHandle() {
@@ -338,9 +410,9 @@ class SceneSettingsViewController: UIViewController {
             return
         }
         let point = sender.location(in: collectionView)
-        if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < MeshNetworkManager.instance.groups.count {
+        if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < groups.count {
             
-            let group = MeshNetworkManager.instance.groups[indexPath.item]
+            let group = groups[indexPath.item]
 //            let data = group.info.bindSceneDatas.first(where: { $0.sceneId == scene.number })?.data
             updateGroupSceneExecuteData(group: group)
         }
@@ -456,7 +528,7 @@ class SceneSettingsViewController: UIViewController {
 //            if !self.selectGroups.contains(group) {
 //                self.selectGroups.append(group)
 //            }
-            if let index = MeshNetworkManager.instance.groups.firstIndex(of: group) {
+            if let index = self.groups.firstIndex(of: group) {
                 CATransaction.setDisableActions(true)
                 self.collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
                 CATransaction.commit()
@@ -469,7 +541,7 @@ class SceneSettingsViewController: UIViewController {
     
     private func updateEmptyUI() {
         
-        if MeshNetworkManager.instance.groups.isEmpty {
+        if groups.isEmpty {
             view.showEmptyDataView(title: "no_groups".localizedString, tipText: "scene_not_groups_message".localizedString, buttonText: "create_group".localizedString, buttomWidth: SCRXFrom(216), position: .center, bottomMargin: SCRYFit(50), btnClickBack: {[weak self] in
                 self?.addGroup()
             })
@@ -558,24 +630,13 @@ class SceneSettingsViewController: UIViewController {
 extension SceneSettingsViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
    
     public func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return MeshNetworkManager.instance.groups.count
+        return groups.count
     }
     
     public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! SceneMembersViewCell
-        let group = MeshNetworkManager.instance.groups[indexPath.item]
-        cell.updateData(group: group, sceneData: group.executeSceneData)
-        if group.isSelected {
-            cell.selectBtn.isSelected = true
-            cell.progressView.isHidden = false
-        }else {
-            cell.selectBtn.isSelected = false
-            cell.progressView.isHidden = true
-        }
-        // 获取组是否需要同步
-        if scene.needSyncGroups.contains(group) {
-            cell.iconImageView.image = UIImage(named: "sync_failed")
-        }
+        let group = groups[indexPath.item]
+        configure(cell, group: group)
         
         cell.selectActionCallBack = {[weak self] isSelected in
             guard let self = self else { return }
@@ -602,7 +663,7 @@ extension SceneSettingsViewController: UICollectionViewDataSource, UICollectionV
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
            
-        let group = MeshNetworkManager.instance.groups[indexPath.item]
+        let group = groups[indexPath.item]
         if group.nodes.isEmpty { // 空组
             XWHUDManager.showTipHUD("group_empty".localizedString, isLineFeed: true)
             return
@@ -620,6 +681,7 @@ extension SceneSettingsViewController: UICollectionViewDataSource, UICollectionV
         }
         
         group.isOn = !group.isOn
+        appearances = NodeSyncStatusRefresh.sceneGroupAppearances(groups)
         CATransaction.setDisableActions(true)
         collectionView.reloadItems(at: [indexPath])
         CATransaction.commit()

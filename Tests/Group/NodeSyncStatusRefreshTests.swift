@@ -70,6 +70,10 @@ final class Node: Equatable {
     var isLocalProvisioner = false, isProvisioner = false, isConfigComplete = false
     var groupState = GroupState.inGroup
     var isOn = false
+    var effectiveSupportCct = false
+    var effectiveCctRange: ClosedRange<UInt16> = 2700...6500
+    var sceneChecks = 0
+    static var onSceneCheck: ((Node) -> Void)?
     var group: Group? {
         for element in elements {
             for model in element.models {
@@ -198,12 +202,22 @@ enum NodeSyncTopologyStorage {
 final class Scene {
     struct Info { var groups: [Group] = [] }
     var info = Info(), unsynced = Set<Address>()
+    var comparisons: [Address: (cached: SceneExecuteData, target: SceneExecuteData)] = [:]
 }
 extension Group: Hashable { func hash(into hasher: inout Hasher) { hasher.combine(ObjectIdentifier(self)) } }
 enum PageNodeSyncType { case scenes(scene: Scene) }
+enum NodeAbsoluteCctRange { static let defaultRange: ClosedRange<UInt16> = 2700...6500 }
 extension Node {
     func getSyncData(type: PageNodeSyncType) -> [Int] {
-        switch type { case .scenes(let scene): return scene.unsynced.contains(primaryUnicastAddress) ? [1] : [] }
+        sceneChecks += 1
+        Self.onSceneCheck?(self)
+        switch type {
+        case .scenes(let scene):
+            if let comparison = scene.comparisons[primaryUnicastAddress] {
+                return comparison.cached.isSynced(with: comparison.target, for: self) ? [] : [1]
+            }
+            return scene.unsynced.contains(primaryUnicastAddress) ? [1] : []
+        }
     }
 }
 final class Schedule {
@@ -445,8 +459,10 @@ struct NodeSyncStatusRefreshTests {
     static func run() async {
         require(Thread.isMainThread, "test refresh on main queue")
         await spaceRuntimeCacheTests()
+        await sceneGroupSyncReadTests()
         #if os(macOS)
         await groupsLiveAppearanceTests()
+        scenePresentationLayoutTests()
         #endif
         var network = fixture(500)
         let owners = (0..<14).map { _ in NSObject() }
