@@ -88,6 +88,7 @@ with tempfile.TemporaryDirectory(prefix='space-receipt-tests-') as temp:
         str(root / 'SunSmart/Common/Data/SpaceProtectionReadSnapshot.swift'),
         str(root / 'SunSmart/Common/Data/DeviceScheduleAddressCleanup.swift'),
         str(root / 'SunSmart/Common/Data/SpaceMembershipStore.swift'),
+        str(root / 'SunSmart/Common/Data/SiteGatewayAssociationConsistencyPolicy.swift'),
         str(root / 'SunSmart/Common/Data/SiteTimeZoneValue.swift'),
         str(root / 'SunSmart/Main/Site/Model/SitePropsEditPolicy.swift'),
         str(root / 'SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),

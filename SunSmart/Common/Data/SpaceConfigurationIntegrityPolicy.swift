@@ -180,6 +180,36 @@ enum SpaceConfigurationIntegrityPolicy {
         return serializeConfiguration(result)
     }
 
+    /// Compatibility is only for establishing an upgrade baseline. Submission
+    /// receipts continue to use configurationData and require explicit fields.
+    static func upgradeConfigurationData(_ payload: [String: Any]) -> Data? {
+        let extensionData: [String: Any]
+        if let raw = payload["spaceData"] {
+            guard let value = raw as? [String: Any] else { return nil }
+            extensionData = value
+        } else {
+            extensionData = payload
+        }
+        if let version = extensionData["proximityLightingSchemaVersion"] {
+            guard integer(version) == 1, extensionData["triggerZones"] != nil else { return nil }
+        }
+        if let zones = extensionData["triggerZones"], !(zones is [[String: Any]]) { return nil }
+        guard let data = configurationData(payload),
+              var configuration = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let groups = configuration["groups"] as? [[String: Any]] else { return nil }
+        configuration["groups"] = groups.map { original in
+            var group = original
+            if var profile = group["profile"] as? [String: Any] {
+                if profile["calibrationMode"] == nil { profile["calibrationMode"] = "none" }
+                if profile["targetNightBrightness"] == nil { profile["targetNightBrightness"] = 50 }
+                group["profile"] = profile
+            }
+            return group
+        }
+        if configuration["triggerZones"] == nil { configuration["triggerZones"] = [[String: Any]]() }
+        return serializeConfiguration(configuration)
+    }
+
     // Normalize equivalent Group address and ALL representations in both new
     // configurations and persisted baselines. Invalid values stay distinct.
     private static func serializeConfiguration(_ configuration: [String: Any]) -> Data? {

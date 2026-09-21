@@ -4,6 +4,7 @@ import SQLite
 // Real production coordinator, Zone classifier, JSON state and SQLite store.
 // Only Mesh/Space repair and network transport are replaced by controlled inputs.
 enum ServerRegion: Int { case first, second }
+enum NetworkApiError: Equatable { case noNetwork }
 enum UserData { static var currentUserId = "account", currentServerRegion = ServerRegion.first }
 final class SunSmartDataManager {
     static let shared = SunSmartDataManager()
@@ -43,6 +44,7 @@ final class SpaceData {
     let id: String, siteId: String, meshUUID: String
     var canEditing = true, blocked = false, needUploadCloud = true, pendingUpload = false, synchronizing = false
     var revision = 0
+    var syncCloudError: NetworkApiError?
     init(_ id: String, site: String = "site") { self.id = id; siteId = site; meshUUID = site }
     static func load(siteId: String) -> [SpaceData] {
         stored.filter { $0.siteId == siteId }.map { source in
@@ -54,7 +56,10 @@ final class SpaceData {
         }
     }
     enum Purpose { case cloudSync }
-    func export(purpose: Purpose) async -> [String: Any]? { ["id": id] }
+    @MainActor func export(purpose: Purpose) async -> [String: Any]? {
+        CleanupFixture.spaceExports += 1
+        return ["id": id]
+    }
 }
 struct MeshAddress { let address: UInt16 }
 final class Group {
@@ -111,6 +116,10 @@ enum SpaceConfigurationSafety {
 }
 final class NetworkRequest { static let shared = NetworkRequest(); var networkable = true }
 enum SiteDeviceOwnershipReconciler { static func reconcile(siteId: String) {} }
+enum SpaceMembershipCoordinator {
+    static func resumeLeaves() async {}
+    static func isLeaving(_ space: SpaceData) -> Bool { false }
+}
 final class CloudSynchronizationManager {
     let recoveryGate = PendingSynchronizationRecoveryGate()
     enum Level { case promptly }
@@ -135,6 +144,7 @@ enum CleanupFixture {
     static var pauseSpace: String?
     static var onPrepare: ((SpaceData) -> Void)?
     static var exportedMembers = -1, exportedRevisions: [Int] = []
+    static var spaceExports = 0
     static var synchronizations = 0, membersAtSynchronization = -1
     static func perform(_ space: SpaceData) async -> Bool {
         prepared.append(space.id)
@@ -144,6 +154,7 @@ enum CleanupFixture {
         }
         onPrepare?(space)
         SpaceData.stored.first { $0.id == space.id }?.revision += 1
+        space.syncCloudError = failures.contains(space.id) ? .noNetwork : nil
         return !failures.contains(space.id)
     }
 }
@@ -196,6 +207,7 @@ enum SiteZoneCleanupBatchTests {
     }
     static func main() async throws {
         try await testCountsAndExports()
+        try await testPreparationFailureGatesUpload()
         try await testPersistenceAndFailures()
         try await testOverlap()
         try await testCancellationAndScope()
@@ -240,6 +252,44 @@ enum SiteZoneCleanupBatchTests {
         _ = try SiteTriggerZoneCoordinator(site: unavailable).cleanObsoleteMembers()
         require(ProximityLightingTopologyContext.loads["space-0"] == readsBeforeRemote + 1,
                 "Independent post-remote cleanup is not suppressed by a completed batch")
+    }
+
+    static func testPreparationFailureGatesUpload() async throws {
+        for kind in ["space", "site", "addSpaces"] {
+            let site = try reset(count: 2, references: 0)
+            CleanupFixture.failures = [site.spaces[0].id]
+            CleanupFixture.spaceExports = 0
+            let operation: SyncOperation
+            switch kind {
+            case "space": operation = .syncSpace(space: site.spaces[0])
+            case "site": operation = .syncSite(site: site, syncSpaces: site.spaces)
+            default: operation = .addSpaces(site: site, spaces: site.spaces)
+            }
+            let failed = await operation.getNetworkApi()
+            require(failed == nil && CleanupFixture.spaceExports == 0 && CleanupFixture.exportedMembers == -1,
+                    "\(kind) must not export after failed preparation")
+            CleanupFixture.failures = []
+            require(await operation.getNetworkApi() != nil, "\(kind) preparation can retry without permanent blocking")
+        }
+        let site = try reset(count: 2, references: 0)
+        CleanupFixture.failures = [site.spaces[0].id]
+        let discovered = await SpaceSyncCleanupCoordinator.prepareBatch(site: site, spaces: site.spaces,
+                                                                        requiringSuccessfulPreparation: false)
+        require(discovered != nil && CleanupFixture.prepared.count == 2,
+                "background discovery must still inspect independent Spaces")
+        let shared = try reset(count: 1, references: 0)
+        let first = shared.spaces[0], second = SpaceData.load(siteId: shared.id)[0]
+        CleanupFixture.failures = [first.id]; CleanupFixture.pauseSpace = first.id
+        let started = Task { await SpaceSyncCleanupCoordinator.prepare(first) }
+        await wait { CleanupFixture.suspended != nil }
+        let joined = Task { await SpaceSyncCleanupCoordinator.prepare(second) }
+        await settle()
+        CleanupFixture.suspended?.resume(); CleanupFixture.suspended = nil
+        let firstResult = await started.value, secondResult = await joined.value
+        require(!firstResult && !secondResult && CleanupFixture.prepared.count == 1
+                && first.syncCloudError == .noNetwork && second.syncCloudError == .noNetwork,
+                "joining the same preparation must receive its network error on a different Space instance")
+        print("PASS: single/batch upload stops before export on preparation failure and retries; independent discovery remains available")
     }
     static func testPersistenceAndFailures() async throws {
         let site = try reset()

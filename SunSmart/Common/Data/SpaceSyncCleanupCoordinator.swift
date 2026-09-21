@@ -25,7 +25,11 @@ enum SpaceSyncCleanupCoordinator {
         let spaceID: String
     }
 
-    private static var active: [WorkKey: _Concurrency.Task<Bool, Never>] = [:]
+    private struct Preparation {
+        let succeeded: Bool
+        let error: NetworkApiError?
+    }
+    private static var active: [WorkKey: _Concurrency.Task<Preparation, Never>] = [:]
     // A single-Space caller may clean while another batch is suspended, but it
     // cannot erase the durable request for that batch's future mutations.
     private static var owners: [Scope: Set<UUID>] = [:]
@@ -44,9 +48,10 @@ enum SpaceSyncCleanupCoordinator {
         return finish(scope) != nil && result
     }
 
-    /// Returns fresh state for pending checks and export. Individual failures
-    /// retain the existing per-Space upload safety gates and do not skip cleanup.
+    /// Explicit uploads require every selected Space to be prepared. Background
+    /// discovery may retain unrelated failures while selecting ready Spaces.
     static func prepareBatch(site: SiteData, spaces: [SpaceData],
+                             requiringSuccessfulPreparation: Bool = true,
                              shouldContinue: () -> Bool = { true },
                              shouldPrepare: (SpaceData) -> Bool = { _ in true }) async -> SiteData? {
         let scope = Scope(site)
@@ -57,6 +62,7 @@ enum SpaceSyncCleanupCoordinator {
         let owner = begin(scope)
         defer { end(scope, owner: owner) }
         var marked = false
+        var allPrepared = true
         var visited = Set<String>()
         for space in spaces {
             guard visited.insert(space.id).inserted, shouldPrepare(space) else { continue }
@@ -70,13 +76,14 @@ enum SpaceSyncCleanupCoordinator {
                 guard markCleanup(scope) else { return nil }
                 marked = true
             }
-            _ = await prepareSpace(space, scope: scope)
+            if !(await prepareSpace(space, scope: scope)) { allPrepared = false }
             guard isCurrent() else { return nil }
         }
         guard isCurrent() else { return nil }
         end(scope, owner: owner)
         // Includes recovery with no Space candidates but an interrupted cleanup.
-        return finish(scope)
+        let current = finish(scope)
+        return allPrepared || !requiringSuccessfulPreparation ? current : nil
     }
 
     private static func begin(_ scope: Scope) -> UUID {
@@ -123,17 +130,40 @@ enum SpaceSyncCleanupCoordinator {
     private static func prepareSpace(_ space: SpaceData, scope: Scope) async -> Bool {
         guard scope.isCurrent else { return false }
         let key = WorkKey(scope: scope, spaceID: space.id)
-        if let task = active[key] { return await task.value }
-        let task = _Concurrency.Task { @MainActor in await perform(space, scope: scope) }
+        if let task = active[key] {
+            let result = await task.value
+            guard scope.isCurrent else { return false }
+            space.syncCloudError = result.error
+            return result.succeeded
+        }
+        let task = _Concurrency.Task { @MainActor in
+            let succeeded = await perform(space, scope: scope)
+            return Preparation(succeeded: succeeded, error: space.syncCloudError)
+        }
         active[key] = task
         let result = await task.value
         active[key] = nil
-        return result
+        return result.succeeded
     }
 
     private static func perform(_ space: SpaceData, scope: Scope) async -> Bool {
         let performance = AppPerformance.begin("SpaceCleanup")
         defer { performance.end() }
+        guard scope.isCurrent else { return false }
+        space.syncCloudError = nil
+        var completed = false
+        defer {
+            if !completed, scope.isCurrent, !_Concurrency.Task<Never, Never>.isCancelled,
+               space.syncCloudError == nil {
+                SpaceConfigurationSafety.recordSyncFailure(space,
+                    error: SpaceConfigurationSafety.configurationSyncError(space), stage: "cleanupPreparation")
+            }
+        }
+        guard await SpaceConfigurationSafety.recoverUpgradeBaselineIfNeeded(space, readLocal: {
+            guard let current = SpaceData.load(siteId: space.siteId, spaceId: space.id).first,
+                  current.lastUpdate == space.lastUpdate else { return nil }
+            return await current.export(allowsProtectedInspection: true)
+        }) else { return false }
         guard scope.isCurrent, SpaceConfigurationSafety.canCleanSyncReferences(space),
               let context = try? SpaceConfigurationSafety.recoveryState(space),
               let original = await space.export(purpose: .cleanupInspection),
@@ -142,7 +172,8 @@ enum SpaceSyncCleanupCoordinator {
         do { cleaned = try SpaceSyncCleanupPolicy.normalize(original) }
         catch {
             SpaceConfigurationSafety.block(space, reason: "entryTopologyNeedsReview")
-            return false
+            return SpaceConfigurationSafety.recordSyncFailure(space, error: .configurationExportInvalid,
+                                                               stage: "cleanupTopology")
         }
         let timestamp = space.lastUpdate
         guard await SpaceConfigurationSafety.verifySyncCleanupBaseline(space, local: original),
@@ -213,7 +244,8 @@ enum SpaceSyncCleanupCoordinator {
             print("[SpaceSyncCleanup] space=\(space.id) repairs=\(cleaned.repairs) extensionChanges=\(changes.count)")
             #endif
         }
-        return !SpaceConfigurationSafety.isBlocked(space)
+        completed = !SpaceConfigurationSafety.isBlocked(space)
+        return completed
     }
 
     static func prepareCurrentSpace() async -> Bool {

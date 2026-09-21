@@ -393,6 +393,19 @@ extension SpaceData {
         reviewingReferenceRepairs: Bool = false,
         readSnapshot: ConfigurationMeshReadSnapshot? = nil
     ) async -> [String: Any]?  {
+        let reportsSyncFailure: Bool
+        if case .cloudSync = purpose { reportsSyncFailure = true } else { reportsSyncFailure = false }
+        let failureAccount = UserData.currentUserId
+        let failureRegion = UserData.currentServerRegion
+        var completed = false
+        defer {
+            if reportsSyncFailure, !completed, syncCloudError == nil,
+               !_Concurrency.Task<Never, Never>.isCancelled,
+               failureAccount == UserData.currentUserId, failureRegion == UserData.currentServerRegion {
+                SpaceConfigurationSafety.recordSyncFailure(self,
+                    error: SpaceConfigurationSafety.configurationSyncError(self), stage: "exportPreparation")
+            }
+        }
         if allowsProtectedInspection, case .cloudSync = purpose { return nil }
         if reviewingReferenceRepairs && !allowsProtectedInspection { return nil }
         if purpose.isReadOnlyInspection {
@@ -488,6 +501,9 @@ extension SpaceData {
                 purpose.reportInspectionIssue("proximityLighting.unappliedRepair: \(repair.diagnosticDescription)")
             }
             guard purpose.isReadOnlyInspection || proximityPreparation.isValid else {
+                if reportsSyncFailure {
+                    SpaceConfigurationSafety.recordSyncFailure(self, error: .configurationExportInvalid, stage: "exportTopology")
+                }
                 #if DEBUG
                 print(
                     "[ProximityLightingExport] rejected hardErrors=" +
@@ -501,6 +517,9 @@ extension SpaceData {
             guard purpose.isReadOnlyInspection || snapshotAuthorization.orphanPreservationReason != nil
                     || proximityPreparation.normalized.repairs.isEmpty
                     || (reviewingReferenceRepairs && proximityPreparation.normalized.canReviewReferenceRepair) else {
+                if reportsSyncFailure {
+                    SpaceConfigurationSafety.recordSyncFailure(self, error: .configurationExportInvalid, stage: "exportTopologyRepairs")
+                }
                 #if DEBUG
                 print("[ProximityLightingExport] rejected unapplied topology repairs")
                 #endif
@@ -1011,6 +1030,9 @@ extension SpaceData {
             spaceJsonData.updateValue(scheheduleDicts, forKey: "schedules")
             if let issue = SpaceConfigurationIntegrityPolicy.profilesIssue(in: spaceJsonData) {
                 purpose.reportInspectionIssue("profiles: \(issue)")
+                if reportsSyncFailure {
+                    SpaceConfigurationSafety.recordSyncFailure(self, error: .configurationExportInvalid, stage: "exportProfile")
+                }
                 guard purpose.isReadOnlyInspection else { return nil }
             }
             return spaceJsonData
@@ -1020,6 +1042,7 @@ extension SpaceData {
             guard SpaceMembershipCoordinator.allowsConfiguration(self),
                   await SpaceConfigurationSafety.prepareUpload(self, payload: payload) else { return nil }
         }
+        completed = true
         return payload
     }
     
