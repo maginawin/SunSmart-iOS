@@ -1,7 +1,8 @@
 """Execute production Sensor publication policy, planning and payload branches.
 
-Uses value/model stubs and the current SDK's retransmit and payload encoding code.
-Covers the relevant slice of profile planning, not the whole App, BLE or firmware.
+Uses value/model stubs and the current SDK's publication constructors and payload
+encoding code. Covers profile planning, SDK publication construction and calibration
+rollback, not the whole App, BLE, sampling or real asynchronous callback timing.
 """
 from pathlib import Path
 import subprocess
@@ -15,6 +16,9 @@ status = (repo / 'SunSmart/Main/Space/Model/SyncDevicesCellModel.swift').read_te
 page = (repo / 'SunSmart/Main/Group/Controller/GroupViewController.swift').read_text()
 publish = (sdk / 'Sources/NordicSigMeshSDK/nRFMeshProvision/Mesh Model/Publish.swift').read_text()
 config = (sdk / 'Sources/NordicSigMeshSDK/nRFMeshProvision/Mesh Messages/Foundation/Configuration/ConfigModelPublicationSet.swift').read_text()
+resolution = (sdk / 'Sources/NordicSigMeshSDK/nRFMeshProvision/Mesh Model/StepResolution.swift').read_text()
+sdk_lib = sdk / 'Sources/NordicSigMeshSDK/MeshLib'
+calibration = (sdk_lib / 'Manager/MeshSensorCalibrateManager.swift').read_text()
 
 
 def block(source, marker):
@@ -35,31 +39,67 @@ build_branch = handles[handles.index('        case .sensorEnabled(let sensorMode
 success_branch = status[status.index('        case .sensorEnabled(let sensorModels', status.index('    func isSuccessful(node: Node)')):status.index('        case .mode(let enabled):', status.index('    func isSuccessful(node: Node)'))]
 page_branch = block(page, '        if let publishAmbientLightSensor = self.group.info.ambientLightSensorNode, let sensorModel = publishAmbientLightSensor.ambientLightSensorModel, sensorModel.publish?.publicationAddress != group.address {')
 
+
+def sdk_publication_expression(path, variable):
+    """Extract the executable construction, excluding commented legacy code."""
+    prefix = f'let {variable} = ConfigModelPublicationSet'
+    matches = [line.strip().split(' = ', 1)[1]
+               for line in (sdk_lib / path).read_text().splitlines()
+               if line.strip().startswith(prefix)]
+    if len(matches) != 1:
+        raise RuntimeError(f'Expected one publication construction: {path} / {variable}')
+    return matches[0]
+
+
+sdk_constructions = [
+    ('calibration', 'Manager/MeshSensorCalibrateManager.swift', 'publishMessage', 'localNode.primaryUnicastAddress', '0'),
+    ('node initialization', 'Node/Node+Messages.swift', 'publicationMessage', 'publishAddress', '0x40'),
+    ('publish API', 'MeshAPI.swift', 'publicationMessage', 'publishAddress', '0x40 | UInt8(interval)'),
+    ('legacy calibration', 'Manager/MeshSensorCalibrateServer.swift', 'publishMessage', 'localNode.primaryUnicastAddress', '0'),
+    ('beta calibration', 'Manager/MeshSensorBetaCalibrateServer.swift', 'publishMessage', 'localNode.primaryUnicastAddress', '0'),
+    ('legacy add', 'Manager/MeshAddDeviceManager.swift', 'publicationMessage', 'publishAddress', '0x40'),
+    ('legacy periodic add', 'Manager/MeshAddDeviceManager.swift', 'publicationTimeMessage', 'publishAddress', '0x50'),
+]
+
 swift = r'''
 import Foundation
 typealias Address = UInt16
-extension UInt16 { static let sensorServerModelId: UInt16 = 0x1100 }
-struct MeshAddress: Equatable { let address: Address; init(_ address: Address) { self.address = address } }
+extension UInt16 {
+    static let sensorServerModelId: UInt16 = 0x1100
+    var isVirtual: Bool { (0x8000...0xBFFF).contains(self) }
+}
+struct MeshAddress: Equatable {
+    let address: Address
+    var hex: String { String(format: "%04X", address) }
+    init(_ address: Address) { self.address = address }
+    init?(hex: String) { guard let value = UInt16(hex, radix: 16) else { return nil }; address = value }
+}
 struct ApplicationKey { let index: UInt16 }
-struct Publish {
-    let publicationAddress: MeshAddress
+'''
+swift += resolution[resolution.index('public enum StepResolution:'):]
+swift += r'''
+struct Publish: Equatable {
+    let address: String
+    var publicationAddress: MeshAddress { MeshAddress(hex: address)! }
     let index: UInt16
     let credentials: Int
     let ttl: UInt8
     let period: Period
     let retransmit: Retransmit
-    init(to: MeshAddress, using: ApplicationKey, usingFriendshipMaterial: Bool, ttl: UInt8, period: Period, retransmit: Retransmit) {
-        publicationAddress = to; index = using.index; credentials = usingFriendshipMaterial ? 1 : 0
-        self.ttl = ttl; self.period = period; self.retransmit = retransmit
-    }
-    struct Period {
-        struct Resolution { let rawValue: UInt8 }
-        let numberOfSteps: UInt8
-        let resolution = Resolution(rawValue: 0)
-        static let disabled = Period(0)
-        init(_ seconds: TimeInterval) { numberOfSteps = UInt8(seconds * 10) }
-    }
 '''
+swift += block(publish, '    public init(to destination: MeshAddress, using applicationKey: ApplicationKey,').replace('public ', '') + '\n'
+swift += block(publish[publish.index('    /// This initializer for disabling publication'):], '    public init()').replace('public ', '') + '\n'
+swift += r'''
+    struct Period: Equatable {
+        let numberOfSteps: UInt8
+        let resolution: StepResolution
+        let interval: TimeInterval
+        static let disabled = Period()
+'''
+period = block(publish, '    public struct Period:')
+for marker in ['        public init()', '        public init(_ interval:', '        public init(steps:']:
+    swift += block(period, marker).replace('public ', '') + '\n'
+swift += '\n}\n'
 swift += block(publish, '    public struct Retransmit:') + '\n}\n'
 swift += r'''
 func + (lhs: Data, rhs: UInt16) -> Data { lhs + Data([UInt8(rhs & 0xFF), UInt8(rhs >> 8)]) }
@@ -69,22 +109,22 @@ struct ConfigModelPublicationSet {
     let publish: Publish
     let elementAddress: Address
     let modelIdentifier: UInt16
-    let companyIdentifier: UInt16? = nil
-    init?(_ publish: Publish, to model: Model) {
-        self.publish = publish; elementAddress = model.elementAddress; modelIdentifier = model.modelIdentifier
-    }
-    init?(disablePublicationFor model: Model) {
-        self.init(Publish(to: MeshAddress(0), using: ApplicationKey(index: 0), usingFriendshipMaterial: false,
-                          ttl: 0, period: .disabled, retransmit: .disabled), to: model)
-    }
+    let companyIdentifier: UInt16?
 '''
+swift += block(config, '    public init?(_ publish:').replace('public ', '') + '\n'
+swift += block(config, '    public init?(disablePublicationFor').replace('public ', '') + '\n'
 swift += block(config, '    public var parameters: Data?') + '\n}\n'
 swift += r'''
+struct Element { let unicastAddress: Address? }
 final class Model {
     var publish: Publish?
     let modelIdentifier: UInt16
+    let companyIdentifier: UInt16? = nil
     let elementAddress: Address
-    init(_ element: Address, id: UInt16 = .sensorServerModelId) { elementAddress = element; modelIdentifier = id }
+    var parentElement: Element?
+    init(_ element: Address, id: UInt16 = .sensorServerModelId) {
+        elementAddress = element; modelIdentifier = id; parentElement = Element(unicastAddress: element)
+    }
 }
 struct MeshMessageHandle { let message: ConfigModelPublicationSet; let address: Address }
 struct MeshNetworkManager {
@@ -109,7 +149,8 @@ struct NodeSyncReadContext {
     func members(of group: Group) -> [Node] { Array(repeating: Node(), count: count) }
 }
 final class Node {
-    let primaryUnicastAddress: Address = 0x0010
+    let primaryUnicastAddress: Address
+    init(_ address: Address = 0x0010) { primaryUnicastAddress = address }
     var defaultTTL: UInt8 = 15
     var presenceDetectedSensorModel: Model? = Model(0x0011)
     var ambientLightSensorModel: Model? = Model(0x0012)
@@ -221,7 +262,97 @@ require(page.appearancePublications().isEmpty, "page must not auto-migrate same-
 n.ambientLightSensorModel?.publish = nil
 let pageHandle = page.appearancePublications().first!
 require(pageHandle.message.publish.ttl == 255 && pageHandle.message.publish.retransmit == .disabled, "page repair retains retransmit behavior")
-print("PASS: \(checks) Sensor publication behavior/payload assertions")
+'''
+swift += r'''
+func sdkPublications(node: Node, localNode: Node, publishAddress: Address, interval: Int)
+    -> [(String, ConfigModelPublicationSet?, Address, UInt8)] {
+    let manager = MeshNetworkManager.instance
+    let currentAppkey = manager.currentApplicationKey
+    let sensorModel = node.ambientLightSensorModel!
+    let model = sensorModel
+'''
+utils = (sdk_lib / 'Utils/MeshUtils.swift').read_text()
+swift += next(line for line in utils.splitlines() if line.startswith('public let TimeModelPublishInterval')).replace('public ', '') + '\n'
+swift += '    return [\n'
+for label, path, variable, target, period_byte in sdk_constructions:
+    swift += f'        ("{label}", {sdk_publication_expression(path, variable)}, {target}, {period_byte}),\n'
+swift += '    ]\n}\n'
+swift += r'''
+let sdkNode = Node(), phone = Node(0x0101)
+for networkTTL: UInt8 in [5, 15, 127] {
+    MeshNetworkManager.instance.networkParameters.defaultTtl = networkTTL
+    for keyIndex: UInt16 in [0x123, 0xABC] {
+        MeshNetworkManager.instance.currentApplicationKey = ApplicationKey(index: keyIndex)
+        for interval in [0, 16, 63] {
+            for destination: Address in [0xC123, 0xFFFF] {
+                let results = sdkPublications(node: sdkNode, localNode: phone, publishAddress: destination, interval: interval)
+                require(results.count == 7, "all seven SDK constructions execute")
+                for (label, message, target, periodByte) in results {
+                    require(message != nil, "\(label) builds publication")
+                    let message = message!, p = message.publish
+                    require(p.ttl == 0xFF, "\(label) must inherit device Default TTL, network TTL=\(networkTTL)")
+                    require(p.publicationAddress.address == target && p.index == keyIndex && p.credentials == 0,
+                            "\(label) preserves destination, AppKey and credentials")
+                    require(p.retransmit == .disabled, "\(label) preserves retransmit")
+                    let element = sdkNode.ambientLightSensorModel!.elementAddress
+                    require(Array(message.parameters!) == [UInt8(element), 0, UInt8(target & 0xFF), UInt8(target >> 8),
+                            UInt8(keyIndex & 0xFF), UInt8(keyIndex >> 8), 0xFF, periodByte, 0, 0, 0x11],
+                            "\(label) encodes unchanged fields and period with TTL FF")
+                }
+            }
+        }
+    }
+}
+
+struct ConfigModelPublicationStatus { let isSuccess: Bool }
+enum MeshAPI {
+    static var sent: [(ConfigModelPublicationSet, Address)] = []
+    static var response: ConfigModelPublicationStatus? = ConfigModelPublicationStatus(isSuccess: true)
+    static func sendMessage(message: ConfigModelPublicationSet, address: Address) async -> Any? {
+        sent.append((message, address))
+        return response
+    }
+}
+struct CalibrationRollback {
+    var didModifyCalibration = true
+    var sensorNode: Node?
+    var previousSensorPublish: Publish?
+'''
+swift += block(calibration, '    private func restorePreviousPublicationIfNeeded()').replace('private func ', 'func ') + '\n}\n'
+swift += r'''
+for oldTTL: UInt8 in [0, 5, 15, 0xFF] {
+    let old = Publish(to: MeshAddress(0xC789), using: ApplicationKey(index: 0xABC), usingFriendshipMaterial: true,
+                      ttl: oldTTL, period: .init(steps: 7, resolution: .tensOfSeconds), retransmit: .init(3, timesWithInterval: 0.15))
+    for snapshot in [nil, old] {
+        for response in [nil, ConfigModelPublicationStatus(isSuccess: false), ConfigModelPublicationStatus(isSuccess: true)] {
+            MeshAPI.sent = []; MeshAPI.response = response
+            let restored = await CalibrationRollback(sensorNode: sdkNode, previousSensorPublish: snapshot).restorePreviousPublicationIfNeeded()
+            require(restored == (response?.isSuccess == true), "SDK rollback reports success, rejection or missing response")
+            require(MeshAPI.sent.count == 1 && MeshAPI.sent[0].1 == sdkNode.primaryUnicastAddress, "SDK rollback targets sensor node")
+            let message = MeshAPI.sent[0].0
+            if let snapshot {
+                require(message.publish == snapshot, "SDK rollback preserves complete snapshot including old TTL")
+                require(message.parameters![6] == oldTTL, "SDK rollback preserves old TTL on wire")
+            } else {
+                require(Array(message.parameters!) == [0x12, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x11],
+                        "SDK rollback without snapshot disables publication with address and TTL zero")
+            }
+        }
+    }
+}
+MeshAPI.sent = []
+let untouched = await CalibrationRollback(didModifyCalibration: false).restorePreviousPublicationIfNeeded()
+require(untouched && MeshAPI.sent.isEmpty, "unchanged calibration skips rollback")
+let missingNode = await CalibrationRollback().restorePreviousPublicationIfNeeded()
+require(!missingNode && MeshAPI.sent.isEmpty, "missing sensor cannot restore")
+sdkNode.ambientLightSensorModel = nil
+let missingModel = await CalibrationRollback(sensorNode: sdkNode).restorePreviousPublicationIfNeeded()
+require(!missingModel && MeshAPI.sent.isEmpty, "missing model cannot restore")
+sdkNode.ambientLightSensorModel = Model(0x12)
+sdkNode.ambientLightSensorModel!.parentElement = nil
+let missingElement = await CalibrationRollback(sensorNode: sdkNode).restorePreviousPublicationIfNeeded()
+require(!missingElement && MeshAPI.sent.isEmpty, "invalid element cannot send disable publication")
+print("PASS: \(checks) App/SDK publication behavior/payload assertions")
 '''
 with tempfile.TemporaryDirectory(prefix='sensor-publication-') as directory:
     source = Path(directory) / 'main.swift'
