@@ -1,8 +1,8 @@
-# iPad 长按 Scene 卡顿：数据、引入历史与待确认修复方案
+# iPad 长按 Scene 卡顿与 Group 设备列表共享读取修复
 
 日期：2026-09-21，UTC+8。
 
-> 实施进展：用户已确认第 7 节范围，App 侧修复与 SunSmart generic iOS 构建已完成；新增回归与最终验证记录见第 8 节。iPad 实际体验仍待人工验收。
+> 实施进展：Scene 修复及后续获批的 Group 详情／Members 共享读取已完成，回归与 SunSmart generic iOS Debug 构建通过。Scene 记录见第 8 节，Group 记录见第 10 节；iPad 实际体验仍待人工验收。
 
 ## 结论与证据边界
 
@@ -226,3 +226,59 @@ SpaceRecoveryState 中的 authorizationBaseline 是 Data，JSON 持久化时以 
 3. 如观察 CPU/磁盘，比较相同构建配置和操作窗口；待同步判断不应再从 Cell 或布局回调逐节点读保护文件。本轮没有本次 iPad 修复后 CPU、Disk Read 或弹窗耗时测量，不给出数值改善承诺。
 
 代码保持未提交，未执行 commit/push。本文持续记录本任务，未另建重复计划或总结文件。
+
+## 9. Group 设备列表的同类风险复核（补齐前）
+
+2026-09-21 用户追问 Group 设备列表是否存在相同问题。本节基于 `fix` 当前 HEAD `e25970e1` 只读复核；Scene 修复已出现在该提交中。复核开始时另有 SunSmart Scheme 的未提交修改，本轮未触碰；未修改业务代码、构建或运行设备。第 8 节的未提交状态是上轮交付时记录。
+
+结论：**Group 列表卡片已接入共享读取，但 Group 详情与 Members 仍有主线程同步计算、保护文件读取的入口，不能保证没有同类卡顿。** 未发现 Scene 原先“每张组卡片重扫整个 Scene + 布局无条件重载”的完整放大组合，也没有 Group 真机 trace 证明会出现同样的数分钟、86% CPU 或 45 MB/s。
+
+| 页面 | 当前代码 | 风险与条件 |
+| --- | --- | --- |
+| Space → Groups 组卡片 | `GroupsViewCell.group` 调用 `NodeSyncStatusRefresh.request(group:owner:)` | 同步状态已走共享快照、分片和取消机制；不能据此推断后续详情同样被覆盖 |
+| Group 详情设备卡片 | `GroupViewController.cellForItemAt` 与 `refreshDeviceCell` 直接读取 `node.needSyncGroupData` | 在线节点的 `cacheGroupNeedSync` 为空时，UIKit 配置/更新卡片直接执行完整判断 |
+| Group → Members | `viewWillAppear` 在非添加设备模式读取 `group.needSync`；卡片与局部刷新读取 `node.needSyncGroupData` | 进入页面可能同步遍历组成员直到发现待同步节点；整组入口没有在线状态过滤。已一致且缓存为空时需要检查全部成员 |
+
+缓存未命中的实际链为 `needSyncGroupData → getNeedSyncGroup → computeNeedSyncGroup → SpaceConfigurationSafety.configurationAvailable → isBlocked → Data(contentsOf:) / JSONDecoder.decode`。完整 Group 判断还包含 Profile、Scene、Schedule、Switch、Proximity Lighting 等，部分分支再次调用保护检查；因此不能将一次节点判断简单计为一次文件读取。现有 `NodeSyncReadContext` 仅在调度器分片期间安装，普通 UIKit 回调不会自动继承。
+
+与 Scene 原问题不同，`needSyncGroupData` 有节点缓存：命中时直接返回 Bool；Space 初始化会提交 `warmUp`，调度器也会写入节点缓存。这能解释平时进入 Group 可能流畅，但不是正确性/性能保证：预热尚未覆盖目标节点，或 `updateGroupSyncState`、设备更新时间回调等清空缓存后，页面会回退到同步计算。Group 详情已有约 1 秒合并 UI 更新、滚动时延后刷新的机制；未发现有效的 `viewDidLayoutSubviews → reloadData` 链，但这些措施不能消除缓存未命中的同步 I/O。
+
+建议的最小补齐范围：Group 详情与 Members 的设备图标、Members 同步按钮统一请求现有状态调度器；提供明确的“节点组配置状态”结果，保留 `needSyncGroupData` 语义，不能直接用包含设备初始化等额外状态的 `request(nodes:)` Bool 替代。覆盖冷缓存、清缓存后返回、在线/离线、页面取消和 Cell 复用；实际同步执行仍保留完整实时校验。本轮只交付风险判断，未扩大实施范围。
+
+人工关注路径：同一大 Space 打开成员较多的 Group，再进入 Members；重点比较首次进入、修改组配置后返回，以及设备同步状态缓存失效后的刷新。只反复打开已预热且未变化的页面可能掩盖问题。是否产生可感知卡顿及其时长仍需设备证据。
+
+## 10. Group 详情与 Members 补齐记录
+
+2026-09-21 用户确认补齐两个页面的设备同步图标和 Members 同步按钮。实施基于 `fix/e25970e1`；第 9 节记录的问题入口已按本节替换。
+
+### 改动与语义
+
+- `NodeSyncStatusRefresh.requestGroupData(node:owner:)` 新增单节点组配置读取选择，返回现有 `Status.group`，与 `needSyncGroupData → getNeedSyncGroup(group: nil)` 一致。没有改成显式目标 Group 的添加成员检查，也没有使用包含设备初始化等状态的 `Status.device`。
+- Members 同步按钮使用已有 `request(group:owner:)`，检查实际组成员。保持添加设备模式隐藏按钮；未完成计算或输入不可用时保守显示待同步，只有有效的已同步结果才隐藏。离线成员继续参与整个 Group 的判定。
+- `GroupSyncDisplayState` 按节点／Group 对象和现有 Space revision 复用显示结果，并拥有请求取消票据；共享计算、保护文件准备与分片仍由原调度器负责。
+- `DevicesViewCell` 增加可选的组状态展示入口，只有上述两个页面调用后才创建显示状态。保留 Group 详情的在线条件，以及 Members 的在线＋Key Bind 完成条件。正常结果恢复当前普通／EL Controller 图标；离线、未绑定修复图标沿用原条件。异步回调只改同步图标，不重绑整张卡片、不重置亮度或成员选择。
+- 页面隐藏、Cell 离屏／复用／重新绑定时取消旧请求；重新显示、配置或设备更新时间导致版本失效、App 回到前台时按需读取。Members 的筛选、排序、选中集合和实际同步任务未改动。
+- 两个页面的卡片配置、局部刷新和 Members 进入路径已无直接 `needSyncGroupData`／`group.needSync` 调用。Group 详情原有的 UI 合并刷新机制保留；其他成员关系 accessor 的成本未扩大优化，不据此保证所有 Group 操作均无卡顿。
+
+### 验证结果
+
+| 验证 | 结果与边界 |
+| --- | --- |
+| `python3 scripts/check_node_sync_status_refresh.py` | 通过。新增 490 个节点图标请求＋1 个 Members 按钮请求，强制跨分片：490 次节点判断、2 次保护文件读取，保护读取均不在主线程。原 Scene、拓扑、取消和保护竞态回归也通过 |
+| 组配置语义 | 设备侧有独立待办但组配置一致时，设备通用查询为待同步，Group 图标／按钮仍为已同步；离线组成员待同步、空组、输入不可用、计算途中版本变化、对象替换和释放均覆盖 |
+| 生产显示函数隔离回归 | 图标／Members 按钮、页面隐藏、Cell 复用和滚动显示／离屏函数体真实执行；覆盖在线／离线／Key Bind、计算中／已同步、添加设备模式、返回页面及取消后的旧回调。UIKit 和常规设备渲染以数值接收器隔离，不是 App 实际界面验收 |
+| `bash scripts/check_group_page_ui_refresh_coalescing.sh` | 通过。这是现有源码契约检查，只证明原合并刷新入口保留，不代表帧率或触摸响应测量 |
+| SunSmart generic iOS Debug | 2026-09-21 16:54 构建输出 `BUILD SUCCEEDED`，退出码 0；SunSmartLocal、iphoneos、generic/platform=iOS、CODE_SIGNING_ALLOWED=NO，DerivedData 使用既有 `SunSmart-fix-cli` |
+| `git diff --check` | 通过 |
+
+本轮没有修改保护读取实现，复用第 8 节的独立保护快照验证；新增入口由本轮共享调度回归覆盖。没有修改 SDK 或新增 SDK API，仍映射 `one-dev/a971027e08f9775d7a3f071a06f89be1c38ecc96`，其预存改动未触碰。工作树原有 SunSmart Scheme 的 LaunchAction 从 Debug 改为 Release，保留原样；本轮命令明确选择 Debug，未声称验证了 Release。
+
+此次生产改动仅四个共享 Swift 文件，无品牌条件、资源归属或依赖变化，使用 SunSmart 代表构建。未安装真机、未运行 Simulator，未提交或推送。
+
+### 最短人工验收
+
+1. 同一 iPad／兴东2，进入成员较多的 Group，再打开 Members；首次进入、滚动和返回均应可交互，图标与同步按钮在计算完成后符合实际状态。
+2. 修改组配置后返回、重新进入 Members，确认重新判断；离线设备保持离线图标，未绑定设备在 Members 保持修复图标，添加设备模式仍隐藏同步按钮。
+3. 快速滚动、打开设备页再返回、退出再进入，检查无旧图标覆盖新设备；Members 中勾选／取消、筛选和亮度显示不应被同步状态回调重置。
+
+上述设备体验与修复后 CPU／Disk Read 指标尚待人工验收；490 节点数字来自隔离夹具，不能当作本次 iPad 性能测量。

@@ -38,6 +38,7 @@ class GroupViewController: UIViewController {
     private var isFullSensorReloadPending = false
     private var isSensorControlStateRefreshPending = false
     private var isDeviceCollectionScrolling = false
+    private var isSyncPageVisible = false
     private var isSensorTableScrolling = false
     private var controlPanelView: DeviceLightControlPanelView!
     private var pageControl: UIPageControl!
@@ -379,10 +380,12 @@ class GroupViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        isSyncPageVisible = true
         
 //        collectionView.reloadData()
 //        updateEmptyUI()
         updateUI()
+        refreshVisibleGroupSyncStatus()
         isDeviceCollectionScrolling = false
         isSensorTableScrolling = false
         startUIRefreshTimer()
@@ -435,6 +438,10 @@ class GroupViewController: UIViewController {
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        isSyncPageVisible = false
+        for case let cell as DevicesViewCell in collectionView.visibleCells {
+            cell.cancelGroupSyncStatus()
+        }
         stopUIRefreshTimer()
 //        if isGroupUpdateData {
             NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: group)
@@ -467,7 +474,7 @@ class GroupViewController: UIViewController {
             }
         })
         
-        NotificationCenter.default.addObserver(forName: .init(groupDataUpdateNotificationName), object: nil, queue: nil) {[weak self] notification in
+        NotificationCenter.default.addObserver(forName: .init(groupDataUpdateNotificationName), object: nil, queue: .main) {[weak self] notification in
             //            self?.refreshData = true
             guard let self = self, let group = notification.object as? Group else { return }
         
@@ -489,6 +496,9 @@ class GroupViewController: UIViewController {
 
         NotificationCenter.default.addObserver(forName: .linkedEmerFireConfigDidChange, object: nil, queue: .main) {[weak self] _ in
             self?.updateUI()
+        }
+        NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            self?.refreshVisibleGroupSyncStatus()
         }
         
     }
@@ -1592,10 +1602,17 @@ class GroupViewController: UIViewController {
             if let item = collectionView.cellForItem(at: IndexPath(item: index, section: 0)) as? DevicesViewCell {
                 item.device = node
                 item.displayDeviceNamePrefix = space.displayDeviceNamePrefix
-                if node.state && node.needSyncGroupData {
-                    item.iconImageView.image = UIImage(named: node.unsyncIconName)
+                if isSyncPageVisible {
+                    item.refreshGroupSyncStatus(requireKeybindComplete: false)
                 }
             }
+        }
+    }
+
+    private func refreshVisibleGroupSyncStatus() {
+        guard isSyncPageVisible else { return }
+        for case let cell as DevicesViewCell in collectionView.visibleCells {
+            cell.refreshGroupSyncStatus(requireKeybindComplete: false)
         }
     }
 
@@ -1865,12 +1882,21 @@ extension GroupViewController: UICollectionViewDataSource, UICollectionViewDeleg
         let node = group.nodes[indexPath.item]
         cell.device = node
         cell.displayDeviceNamePrefix = space.displayDeviceNamePrefix
-        if node.state && node.needSyncGroupData {
-            cell.iconImageView.image = UIImage(named: node.unsyncIconName)
+        if isSyncPageVisible {
+            cell.refreshGroupSyncStatus(requireKeybindComplete: false)
         }
 //        let node = MeshNetworkManager.instance.localNode!
 //        cell.nameLabel.text = node.name! + "\(indexPath.item + 1)"
         return cell
+    }
+
+    func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        guard isSyncPageVisible else { return }
+        (cell as? DevicesViewCell)?.refreshGroupSyncStatus(requireKeybindComplete: false)
+    }
+
+    func collectionView(_ collectionView: UICollectionView, didEndDisplaying cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        (cell as? DevicesViewCell)?.cancelGroupSyncStatus()
     }
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
@@ -1945,6 +1971,9 @@ extension GroupViewController: MeshLibManagerMessageDelegate {
     func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdateTimeChange node: Node, lastUpdate: Int64) {
 //        if node.lastUpdateSyncTime != lastUpdate {
             node.clearSyncStateCache()
+            if isSyncPageVisible {
+                refreshVisibleGroupSyncStatus()
+            }
 //        }
     }
     

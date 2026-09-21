@@ -31,7 +31,7 @@ class DevicesViewCell: UICollectionViewCell {
     
     var device: Node! {
         didSet {
-
+            cancelGroupSyncStatus()
             backgroundColor = .white
 
             var name = device.name ?? ""
@@ -130,6 +130,38 @@ class DevicesViewCell: UICollectionViewCell {
     }
     
     
+    private var groupSyncDisplay: GroupSyncDisplayState?
+
+    /// Opted into only by Group detail and Members; live appearance stays above.
+    func refreshGroupSyncStatus(requireKeybindComplete: Bool) {
+        guard let node = device, node.state, !requireKeybindComplete || node.isKeybindComplete else {
+            cancelGroupSyncStatus()
+            return
+        }
+        if groupSyncDisplay == nil { groupSyncDisplay = GroupSyncDisplayState() }
+        applyGroupSyncIcon(node: node)
+        groupSyncDisplay?.refresh(node: node) { [weak self, weak node] in
+            guard let self, let node, self.device === node, node.state,
+                  !requireKeybindComplete || node.isKeybindComplete else { return }
+            self.applyGroupSyncIcon(node: node)
+        }
+    }
+
+    private func applyGroupSyncIcon(node: Node) {
+        let normalIcon = node.isKeybindComplete ? node.elControllerLightsIconName : "device_repair"
+        iconImageView.image = UIImage(named: (groupSyncDisplay?.needsSync(for: node) ?? true)
+                                      ? node.unsyncIconName : normalIcon)
+    }
+
+    func cancelGroupSyncStatus() {
+        groupSyncDisplay?.cancel()
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        cancelGroupSyncStatus()
+    }
+
     override init(frame: CGRect) {
         super.init(frame: frame)
         

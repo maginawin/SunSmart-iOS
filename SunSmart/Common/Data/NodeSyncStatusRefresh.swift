@@ -12,6 +12,7 @@ enum NodeSyncStatusRefresh {
 
     private enum Selection {
         case nodes([Node])
+        case nodeGroup(Node)
         case group(Group)
         case warmUp([Node])
         case read(AnyObject, MeshNetwork?, String, () -> Bool, (NodeSyncReadContext) -> (TimeInterval) -> Bool?)
@@ -52,6 +53,11 @@ enum NodeSyncStatusRefresh {
     static func request(group: Group, owner: AnyObject, completion: @escaping (Bool) -> Void) {
         AppPerformance.event("SyncGroupRequest")
         enqueue(.group(group), owner: owner, completion: completion)
+    }
+
+    /// Same nil-Group semantics as Node.needSyncGroupData, not device needSync.
+    static func requestGroupData(node: Node, owner: AnyObject, completion: @escaping (Bool) -> Void) {
+        enqueue(.nodeGroup(node), owner: owner, completion: completion)
     }
 
     /// Live appearance never waits for protection/topology preparation. Reuse
@@ -252,6 +258,7 @@ enum NodeSyncStatusRefresh {
                 let warmUp: Bool
                 switch request.selection {
                 case .nodes(let selected): nodes = selected; groupOnly = false; warmUp = false
+                case .nodeGroup(let node): nodes = [node]; groupOnly = true; warmUp = false
                 case .warmUp(let selected): nodes = selected; groupOnly = false; warmUp = true
                 case .group(let group):
                     guard group.network === network, group.subNetworkId == networkID else {
@@ -357,4 +364,55 @@ enum NodeSyncStatusRefresh {
         results.removeAll()
         readResults.removeAll()
     }
+}
+
+/// A display owner can reuse a result only for the same object and Space revision.
+/// The refresher still owns shared computation, protection and in-flight retries.
+final class GroupSyncDisplayState {
+    private weak var object: AnyObject?
+    private var revision: SpacePageRevision?
+    private var value: Bool?
+    private var reading = false
+    private var ticket = UUID()
+
+    func needsSync(for object: AnyObject) -> Bool? {
+        self.object === object && revision?.isCurrent == true ? value : nil
+    }
+
+    func refresh(node: Node, didUpdate: @escaping () -> Void) {
+        refresh(object: node, request: { completion in
+            NodeSyncStatusRefresh.requestGroupData(node: node, owner: self, completion: completion)
+        }, didUpdate: didUpdate)
+    }
+
+    func refresh(group: Group, didUpdate: @escaping () -> Void) {
+        refresh(object: group, request: { completion in
+            NodeSyncStatusRefresh.request(group: group, owner: self, completion: completion)
+        }, didUpdate: didUpdate)
+    }
+
+    private func refresh(object: AnyObject, request: (@escaping (Bool) -> Void) -> Void,
+                         didUpdate: @escaping () -> Void) {
+        if self.object === object, needsSync(for: object) != nil || reading { return }
+        cancel()
+        self.object = object
+        value = nil
+        reading = true
+        let ticket = self.ticket
+        request { [weak self] value in
+            guard let self, self.ticket == ticket else { return }
+            self.reading = false
+            self.value = value
+            self.revision = SpacePageRevision()
+            didUpdate()
+        }
+    }
+
+    func cancel() {
+        ticket = UUID()
+        reading = false
+        NodeSyncStatusRefresh.cancel(owner: self)
+    }
+
+    deinit { NodeSyncStatusRefresh.cancel(owner: self) }
 }

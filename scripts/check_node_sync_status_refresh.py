@@ -32,6 +32,18 @@ def production():
     appearance = appearance.replace('// PRODUCTION_SCENE_SETTINGS_APPEAR', section(settings, '    override func viewWillAppear', '    override func viewDidAppear'))
     scene_tests = read('Tests/Scene/SceneGroupSyncReadTests.swift').replace('// PRODUCTION_SCENE_COMPARISON',
         section(read('SunSmart/Common/Data/MeshNetwork+SunSmart.swift'), '    /// 当前场景数据应用到指定设备时的目标值', '//    convenience init(lightness:'))
+    device_cell = read('SunSmart/Main/Device/View/DevicesViewCell.swift')
+    group_detail = read('SunSmart/Main/Group/Controller/GroupViewController.swift')
+    members = read('SunSmart/Main/Group/Controller/GroupMembersViewController.swift')
+    group_device_tests = read('Tests/Group/GroupDeviceSyncDisplayTests.swift')
+    group_device_tests = group_device_tests.replace('// PRODUCTION_DEVICE_SYNC', section(device_cell, '    private var groupSyncDisplay', '    override init('))
+    group_device_tests = group_device_tests.replace('// PRODUCTION_MEMBERS_SYNC', section(members, '    override func viewWillDisappear', '    private func isVisibleGroupMemberNode'))
+    group_device_tests = group_device_tests.replace('// PRODUCTION_DETAIL_SYNC', section(group_detail, '    private func refreshVisibleGroupSyncStatus()', '    private func updateGroupControlSummaryIfNeeded'))
+    group_device_tests = group_device_tests.replace('// PRODUCTION_DETAIL_DISAPPEAR', section(group_detail, '    override func viewWillDisappear', '    /// 刷新Auto状态'))
+    for marker, source in [('DETAIL', group_detail), ('MEMBERS', members)]:
+        group_device_tests = group_device_tests.replace('// PRODUCTION_' + marker + '_DISPLAY',
+            section(source, '    func collectionView(_ collectionView: UICollectionView, willDisplay',
+                    '    func collectionView(_ collectionView: UICollectionView, didSelectItemAt' if marker == 'DETAIL' else '    public func collectionView(_ collectionView: UICollectionView, layout'))
     pieces = [read('SunSmart/Common/Data/AppPerformance.swift'),
         read('SunSmart/Common/Data/DeviceScheduleAddressCleanup.swift'),
         read('SunSmart/Common/Data/SpaceProtectionReadSnapshot.swift'), policy, section(adapter, 'enum ProximityLightingTopologyContext', '\nextension SpaceData'),
@@ -44,7 +56,7 @@ def production():
         + section(read('SunSmart/Common/Data/MeshNetwork+SunSmart.swift'), '    /// 有效色温范围', '    func clampEffectiveCct') + '\n}',
         section(read('SunSmart/Common/Data/SpaceSchedulerReadCoordinator.swift'), 'final class SpaceSchedulerReadQueue', '\nfinal class SpaceSchedulerReadCoordinator'),
         'extension Schedule {\n' + section(read('SunSmart/Common/Data/MeshNetwork+SunSmart.swift'), '    func getNeedSyncDatas() -> ScheduleSyncData', '\nextension DeviceSwitchData'),
-        read('Tests/Group/SpaceRuntimeCacheTests.swift'), scene_tests, appearance,
+        read('Tests/Group/SpaceRuntimeCacheTests.swift'), scene_tests, appearance, group_device_tests,
         'extension Node {\n' + section(read('SunSmart/Common/Data/Node+SyncData.swift'), '    func getNodeSyncProximityLighting(', '    /// 获取网关设备同步的配置') + '\n}',
         'extension Schedule {\n' + section(read('SunSmart/Common/Data/MeshNetwork+SunSmart.swift'), '    func targets(node:', '\n    func needsSync(on') + '\n}', tests]
     return '\n'.join(pieces).replace('import NordicSigMeshSDK', '')

@@ -70,6 +70,9 @@ final class Node: Equatable {
     var isLocalProvisioner = false, isProvisioner = false, isConfigComplete = false
     var groupState = GroupState.inGroup
     var isOn = false
+    var state = true, isKeybindComplete = true, deviceOnlyNeedSync = false
+    var elControllerLightsIconName: String { "device_normal" }
+    var unsyncIconName: String { "device_unsynced" }
     var effectiveSupportCct = false
     var effectiveCctRange: ClosedRange<UInt16> = 2700...6500
     var sceneChecks = 0
@@ -97,6 +100,7 @@ final class Node: Equatable {
         let model = Model(); model.parentElement = element; element.models = [model]; elements = [element]
     }
     func getNeedSync() -> Bool {
+        if deviceOnlyNeedSync { return true }
         guard let pending = restoreData?.addGroup else { return false }
         return getNodeSyncProximityLighting(group: pending) != nil
     }
@@ -460,8 +464,10 @@ struct NodeSyncStatusRefreshTests {
         require(Thread.isMainThread, "test refresh on main queue")
         await spaceRuntimeCacheTests()
         await sceneGroupSyncReadTests()
+        await groupDeviceSyncReadTests()
         #if os(macOS)
         await groupsLiveAppearanceTests()
+        await groupDeviceSyncDisplayTests()
         scenePresentationLayoutTests()
         #endif
         var network = fixture(500)

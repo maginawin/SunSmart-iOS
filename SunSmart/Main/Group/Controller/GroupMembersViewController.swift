@@ -27,6 +27,8 @@ class GroupMembersViewController: UIViewController {
     
     private var nodes: [Node] = []
     private var visibleNodes: [Node] = []
+    private var isSyncPageVisible = false
+    private let groupSyncDisplay = GroupSyncDisplayState()
     /// 配置过程是否去创建场景
     private var configurationCreateScene: Bool = false
     
@@ -64,6 +66,12 @@ class GroupMembersViewController: UIViewController {
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "save".localizedString, color: RGB(0, 0, 0, 0.85), font: UIFont.systemFont(ofSize: 16, weight: .light), target: self, sel: #selector(saveAction))
         
         setupUI()
+        for name in [Notification.Name(groupDataUpdateNotificationName),
+                     Notification.Name(groupsRefreshNotificationName), UIApplication.didBecomeActiveNotification] {
+            NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                self?.refreshVisibleGroupSyncStatus()
+            }
+        }
         functionView.setDeviceFilterEnabled(true)
         deviceNameFilterObservation = deviceNameFilterSession.observe { [weak self] _ in
             self?.applyDeviceNameFilter()
@@ -105,6 +113,7 @@ class GroupMembersViewController: UIViewController {
     
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        isSyncPageVisible = true
         
 //        if space.nodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address }).count != nodes.count || group.nodes.count != selectNodes.count {
         nodes = MeshNetworkManager.instance.realNodes.filter({ isVisibleGroupMemberNode($0) && ($0.group == nil || $0.group?.address.address == group.address.address) })
@@ -122,12 +131,7 @@ class GroupMembersViewController: UIViewController {
         }
 //        selectNodes.append(contentsOf: nodes.filter({ $0.group?.address.address == group.address.address }).filter({ !selectNodes.contains($0) && $0.group?.address.address == group.address.address }))
 //        }
-//        DispatchQueue.global().async {
-//            let isSync = self.group.needSync
-//            DispatchQueue.main.async {
-                self.functionView.setSyncButtonHidden(self.isAddDevices || !self.group.needSync)
-//            }
-//        }
+        refreshSyncButton()
         MeshLibManager.manager.messageDelegate = self
         
 //        if collectionView.frame != .zero {
@@ -135,6 +139,40 @@ class GroupMembersViewController: UIViewController {
 //        }
         
         updateFunctionView()
+        refreshVisibleGroupSyncStatus()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        isSyncPageVisible = false
+        groupSyncDisplay.cancel()
+        for case let cell as DevicesViewCell in collectionView.visibleCells {
+            cell.cancelGroupSyncStatus()
+        }
+    }
+
+    private func refreshSyncButton() {
+        guard isSyncPageVisible else { return }
+        if isAddDevices {
+            groupSyncDisplay.cancel()
+            functionView.setSyncButtonHidden(true)
+            return
+        }
+        let group = self.group
+        functionView.setSyncButtonHidden(groupSyncDisplay.needsSync(for: group) == false)
+        groupSyncDisplay.refresh(group: group) { [weak self, weak group] in
+            guard let self, let group, self.isSyncPageVisible, !self.isAddDevices,
+                  self.group === group else { return }
+            self.functionView.setSyncButtonHidden(self.groupSyncDisplay.needsSync(for: group) == false)
+        }
+    }
+
+    private func refreshVisibleGroupSyncStatus() {
+        guard isSyncPageVisible else { return }
+        refreshSyncButton()
+        for case let cell as DevicesViewCell in collectionView.visibleCells {
+            cell.refreshGroupSyncStatus(requireKeybindComplete: true)
+        }
     }
 
     private func isVisibleGroupMemberNode(_ node: Node) -> Bool {
@@ -679,12 +717,13 @@ class GroupMembersViewController: UIViewController {
                     item.selectImageView.image = UIImage(named: "device_select_un")
                 }
 //                item.selectImageView.image = selectNodes.contains(node) ? UIImage(named: "device_select") : UIImage(named: "device_select_un")
-                if node.state && node.isKeybindComplete && node.needSyncGroupData {
-                    item.iconImageView.image = UIImage(named: node.unsyncIconName)
+                if isSyncPageVisible {
+                    item.refreshGroupSyncStatus(requireKeybindComplete: true)
                 }
             }
             updateFunctionView()
         }
+        refreshSyncButton()
     }
     
     /// 开始修复节点
@@ -773,6 +812,7 @@ extension GroupMembersViewController: MeshLibManagerMessageDelegate {
     func meshNetworkManager(_ manager: MeshNetworkManager, deviceDataUpdateTimeChange node: Node, lastUpdate: Int64) {
 //        if node.lastUpdateSyncTime != lastUpdate {
             node.clearSyncStateCache()
+            refreshVisibleGroupSyncStatus()
 //        }
     }
     
@@ -809,8 +849,8 @@ extension GroupMembersViewController: UICollectionViewDataSource, UICollectionVi
         
 //        cell.selectImageView.image = selectNodes.contains(node) ? UIImage(named: "device_select") : UIImage(named: "device_select_un")
         
-        if node.state && node.isKeybindComplete && node.needSyncGroupData {
-            cell.iconImageView.image = UIImage(named: node.unsyncIconName)
+        if isSyncPageVisible {
+            cell.refreshGroupSyncStatus(requireKeybindComplete: true)
         }
         cell.editClickCallback = {[weak self] node in
             guard let self = self else { return }
@@ -827,6 +867,15 @@ extension GroupMembersViewController: UICollectionViewDataSource, UICollectionVi
             self.updateFunctionView()
         }
         return cell
+    }
+
+    func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        guard isSyncPageVisible else { return }
+        (cell as? DevicesViewCell)?.refreshGroupSyncStatus(requireKeybindComplete: true)
+    }
+
+    func collectionView(_ collectionView: UICollectionView, didEndDisplaying cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        (cell as? DevicesViewCell)?.cancelGroupSyncStatus()
     }
     
     public func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
