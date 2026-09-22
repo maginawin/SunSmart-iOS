@@ -225,7 +225,17 @@ enum SpaceSyncCleanupCoordinator {
               SpaceConfigurationIntegrityPolicy.integer(readback["updateTimestamp"]) == reloaded.lastUpdate,
               let savedNetwork = MeshNetwork.load(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId) else { return false }
         ProximityLightingTopologyContext.loadGroupInfo(network: savedNetwork, space: latest)
-        guard let remaining = try? extensionChanges(space: latest, network: savedNetwork, cleaned: validated), remaining.isEmpty else { return false }
+        guard let remaining = try? extensionChanges(space: latest, network: savedNetwork, cleaned: validated) else {
+            return SpaceConfigurationSafety.recordSyncFailure(space,
+                error: SpaceConfigurationSafety.configurationSyncError(space), stage: "cleanupExtensionReadback")
+        }
+        guard remaining.isEmpty else {
+            #if DEBUG
+            print("[SpaceSyncCleanup] stage=extensionReadback remainingChanges=\(remaining.count)")
+            #endif
+            return SpaceConfigurationSafety.recordSyncFailure(space,
+                error: SpaceConfigurationSafety.configurationSyncError(space), stage: "cleanupExtensionRemaining")
+        }
         space.lastUpdate = reloaded.lastUpdate
         space.deviceCount = reloaded.deviceCount
         space.luminairesCount = reloaded.luminairesCount
@@ -335,9 +345,11 @@ enum SpaceSyncCleanupCoordinator {
             for template in group.info.profile.lightSensorTemplates {
                 let retained = template.deviceAddresses.filter { addresses.contains($0) }
                 if retained != template.deviceAddresses {
+                    let profileID = group.info.profile.id
                     changes.append {
                         template.deviceAddresses = retained
-                        guard group.info.save(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId) else {
+                        // Templates have their own table; saving GroupInfo does not persist these addresses.
+                        guard template.save(profileId: profileID) else {
                             throw SpaceConfigurationSafety.SafetyError.persistenceFailed
                         }
                     }

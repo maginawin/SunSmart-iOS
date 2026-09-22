@@ -11,7 +11,7 @@ method = source[start:end].replace('private static func perform(', 'static func 
 production = '''import Foundation
 @MainActor enum SpaceSyncCleanupCoordinator {
     struct Scope { var isCurrent: Bool { true } }
-    static func extensionChanges(space: SpaceData, network: MeshNetwork, cleaned: SpaceSyncCleanupPolicy.Result) throws -> [() throws -> Void] { [] }
+    static func extensionChanges(space: SpaceData, network: MeshNetwork, cleaned: SpaceSyncCleanupPolicy.Result) throws -> [() throws -> Void] { try Fixture.extensionChanges() }
 ''' + method + '\n}\n'
 with tempfile.TemporaryDirectory(prefix='sync-readback-') as directory:
     path = Path(directory); (path / 'Production.swift').write_text(production)

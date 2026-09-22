@@ -11,6 +11,7 @@ extension UInt16 {
     static let minLightControlScene: UInt16 = 0xFF00
     static let maxLightControlScene: UInt16 = 0xFFEF
     var hex: String { String(format: "%04X", self) }
+    var isUnicast: Bool { (1..<0x8000).contains(self) }
     init?(hex: String) { self.init(hex, radix: 16) }
 }
 extension String { var localizedString: String { self } }
@@ -33,11 +34,12 @@ class MeshNetworkManager {
     var realNodes: [Node] = []
     var switchs: [DeviceSwitchData] = []
 }
-class ProfileLightSensorTemplate {
-    static func initDatabase() {}
-    static func load(profileId: String) -> [ProfileLightSensorTemplate] { [] }
+enum NodeSyncReadContext {
+    static var current: Context? { nil }
+    struct Context { func node(elementAddress: Address) -> Node? { nil } }
 }
 struct HarnessGroup { var info: GroupInfo }
+struct HarnessSpace { let meshUUID = "test-mesh", meshNetworkId = "test-subnet" }
 enum SpaceConfigurationSafety {
     enum SafetyError: Error { case persistenceFailed }
 }
@@ -68,6 +70,7 @@ enum ProfilePersistenceTests {
         try testInvalidWritesAndRollback()
         testLevelBoundaries()
         try testSceneValidationAndLegacyAutoMin()
+        try testTemplateCleanupPersistence(root.appendingPathComponent("templates.sqlite3"))
         print("PASS: production Profile + GroupInfo SQLite save/load, defaults, cloud field roundtrip, legacy rows, rollback and level boundaries")
     }
 
@@ -79,6 +82,69 @@ enum ProfilePersistenceTests {
     static func check(_ condition: @autoclosure () throws -> Bool) rethrows {
         let passed = try condition()
         precondition(passed)
+    }
+
+    static func testTemplateCleanupPersistence(_ url: URL) throws {
+        SunSmartDataManager.shared.db = try Connection(url.path)
+        GroupInfo.initDatabase()
+        Profile.initDatabase()
+        let info = GroupInfo(address: 0xC800, profile: Profile.defaultGroupProfile(type: .daylight))
+        let other = GroupInfo(address: 0xC801)
+        precondition(save(info) && save(other))
+        let valid: [Address] = [0x0010, 0x0020, 0x0030]
+        let stale = (0..<11).map { Address(0x0100 + $0) }
+        let mixed = ProfileLightSensorTemplate(id: "mixed", name: "Mixed", nightStartsBelowLux: 300,
+            dayStartsAboveLux: 500, deviceAddresses: valid + stale)
+        let unchanged = ProfileLightSensorTemplate(id: "valid", name: "Valid", nightStartsBelowLux: 100,
+            dayStartsAboveLux: 200, deviceAddresses: valid)
+        let empty = ProfileLightSensorTemplate(id: "stale", name: "Stale", nightStartsBelowLux: 400,
+            dayStartsAboveLux: 600, deviceAddresses: stale)
+        let unrelated = ProfileLightSensorTemplate(id: "other", name: "Other", nightStartsBelowLux: 50,
+            dayStartsAboveLux: 150, deviceAddresses: stale)
+        for template in [mixed, unchanged, empty] { precondition(template.save(profileId: info.profile.id)) }
+        precondition(unrelated.save(profileId: other.profile.id))
+        let profileBefore = payload(load(info.address)!)
+        let changes = templateCleanupChanges(HarnessGroup(info: load(info.address)!), addresses: Set(valid))
+        precondition(changes.count == 2)
+        precondition(SunSmartDataManager.shared.configurationTransaction { for change in changes { try change() } })
+        SunSmartDataManager.shared.db = try Connection(url.path)
+        let restored = load(info.address)!
+        let templates = Dictionary(uniqueKeysWithValues: restored.profile.lightSensorTemplates.map { ($0.id, $0) })
+        precondition(templates.count == 3 && templates[mixed.id]?.deviceAddresses == valid,
+                     "Cleanup must persist the 14 -> 3 address change in the template table")
+        precondition(templates[unchanged.id]?.deviceAddresses == valid && templates[empty.id]?.deviceAddresses == [])
+        for original in [mixed, unchanged, empty] {
+            let saved = templates[original.id]!
+            precondition(saved.name == original.name && saved.nightStartsBelowLux == original.nightStartsBelowLux
+                && saved.dayStartsAboveLux == original.dayStartsAboveLux)
+        }
+        precondition(load(other.address)!.profile.lightSensorTemplates[0].deviceAddresses == stale)
+        precondition(NSDictionary(dictionary: profileBefore).isEqual(to: payload(restored)))
+        let writes = db().totalChanges
+        precondition(templateCleanupChanges(HarnessGroup(info: restored), addresses: Set(valid)).isEmpty)
+        precondition(db().totalChanges == writes, "Already-clean templates must not write again")
+
+        // A failing template write must also roll back preceding work in the same configuration transaction.
+        precondition(mixed.save(profileId: info.profile.id))
+        let imageBefore = load(info.address)!.imageId
+        try db().execute("CREATE TRIGGER reject_template BEFORE INSERT ON profileLightSensorTemplate BEGIN SELECT RAISE(ABORT, 'injected template failure'); END")
+        let retryChanges = templateCleanupChanges(HarnessGroup(info: load(info.address)!), addresses: Set(valid))
+        precondition(retryChanges.count == 1)
+        precondition(!SunSmartDataManager.shared.configurationTransaction {
+            try db().run("UPDATE groupInfos SET imageId = 99 WHERE groupAddress = ?", Int(info.address))
+            for change in retryChanges { try change() }
+        }, "A template persistence failure cannot be reported as a successful cleanup")
+        SunSmartDataManager.shared.db = try Connection(url.path)
+        let failed = load(info.address)!
+        precondition(failed.imageId == imageBefore)
+        precondition(failed.profile.lightSensorTemplates.first { $0.id == mixed.id }!.deviceAddresses == valid + stale)
+        try db().execute("DROP TRIGGER reject_template")
+        let retry = templateCleanupChanges(HarnessGroup(info: failed), addresses: Set(valid))
+        precondition(SunSmartDataManager.shared.configurationTransaction { for change in retry { try change() } })
+        SunSmartDataManager.shared.db = try Connection(url.path)
+        precondition(templateCleanupChanges(HarnessGroup(info: load(info.address)!), addresses: Set(valid)).isEmpty)
+        precondition(load(other.address)!.profile.lightSensorTemplates[0].deviceAddresses == stale)
+        print("PASS: production template cleanup -> SQLite reopen; mixed/valid/empty targets, metadata/ownership retained, idempotency, transaction failure and retry")
     }
 
     static func testDefaultsAndCloudRoundtrip(_ url: URL) throws {

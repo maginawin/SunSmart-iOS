@@ -5,7 +5,23 @@ enum Fixture {
     static var revision: Int? = 1, dirty = false, baselineWrite = false, resumeWrite = false
     static var failReadback = false, pendingDeletion = false, current = true
     static var exports = 0, commits = 0, finishes = 0, validations = 0
-    static func reset() { revision = 1; dirty = false; baselineWrite = false; resumeWrite = false; failReadback = false; pendingDeletion = false; current = true; exports = 0; commits = 0; finishes = 0; validations = 0 }
+    static var extensionDirty = false, failExtensionWrite = false, failExtensionReadback = false, ignoreExtensionWrite = false
+    static var failureStage: String?
+    enum Failure: Error { case persistence }
+    static func extensionChanges() throws -> [() throws -> Void] {
+        if failExtensionReadback && exports == 2 { throw Failure.persistence }
+        guard extensionDirty else { return [] }
+        return [{
+            if failExtensionWrite { throw Failure.persistence }
+            if !ignoreExtensionWrite { extensionDirty = false }
+        }]
+    }
+    static func reset() {
+        revision = 1; dirty = false; baselineWrite = false; resumeWrite = false; failReadback = false
+        pendingDeletion = false; current = true; exports = 0; commits = 0; finishes = 0; validations = 0
+        extensionDirty = false; failExtensionWrite = false; failExtensionReadback = false; ignoreExtensionWrite = false
+        failureStage = nil
+    }
 }
 struct Context {}
 final class ConfigurationMeshReadSnapshot {
@@ -66,7 +82,8 @@ enum ProximityLightingLifecycleCoordinator {
     struct Transaction { func prepare() -> Preparation { .init() } }
     static func begin(space: SpaceData, groups: [Group], nodes: [Node], network: MeshNetwork) -> Transaction { .init() }
     static func commit(_ preparation: Preparation, hasAdditionalLogicalChange: Bool, automaticCleanupSnapshot: Int, applyAdditionalChanges: () throws -> Void) -> Bool? {
-        try! applyAdditionalChanges(); Fixture.commits += 1; Fixture.dirty = false
+        do { try applyAdditionalChanges() } catch { return nil }
+        Fixture.commits += 1; Fixture.dirty = false
         Fixture.revision = Fixture.revision.map { $0 + 1 }; return true
     }
 }
@@ -74,7 +91,7 @@ enum SpaceConfigurationSafety {
     static func configurationSyncError(_ space: SpaceData) -> NetworkApiError { .configurationUnavailable }
     @discardableResult
     static func recordSyncFailure(_ space: SpaceData, error: NetworkApiError, stage: String) -> Bool {
-        space.syncCloudError = error; return false
+        space.syncCloudError = error; Fixture.failureStage = stage; return false
     }
     static func recoverUpgradeBaselineIfNeeded(_ space: SpaceData, readLocal: () async -> [String: Any]?) async -> Bool { true }
     static func canCleanSyncReferences(_ space: SpaceData) -> Bool { true }
@@ -125,6 +142,22 @@ struct ProximityLightingImportSyncRequest { let spaceId: String, meshUUID: Strin
         Fixture.reset(); Fixture.pendingDeletion = true
         success = await SpaceSyncCleanupCoordinator.run(space, scope: .init())
         precondition(!success && Fixture.finishes == 0, "pending deletion must not be skipped")
+        Fixture.reset(); Fixture.extensionDirty = true; Fixture.failExtensionWrite = true
+        success = await SpaceSyncCleanupCoordinator.run(space, scope: .init())
+        precondition(!success && Fixture.finishes == 0 && Fixture.commits == 0 && Fixture.extensionDirty,
+                     "Failed extension persistence must not finish cleanup or permit upload")
+        Fixture.failExtensionWrite = false
+        success = await SpaceSyncCleanupCoordinator.run(space, scope: .init())
+        precondition(success && Fixture.finishes == 1 && !Fixture.extensionDirty,
+                     "A retry must finish only after the extension write succeeds")
+        Fixture.reset(); Fixture.extensionDirty = true; Fixture.ignoreExtensionWrite = true
+        success = await SpaceSyncCleanupCoordinator.run(space, scope: .init())
+        precondition(!success && Fixture.finishes == 0 && Fixture.failureStage == "cleanupExtensionRemaining",
+                     "A successful transaction with an unpersisted extension must remain protected")
+        Fixture.reset(); Fixture.failExtensionReadback = true
+        success = await SpaceSyncCleanupCoordinator.run(space, scope: .init())
+        precondition(!success && Fixture.finishes == 0 && Fixture.failureStage == "cleanupExtensionReadback",
+                     "An unreadable extension must remain protected and report a distinct failure stage")
         for unreadable in [false, true] {
             Fixture.reset()
             let caller = SpaceData()
@@ -137,5 +170,6 @@ struct ProximityLightingImportSyncRequest { let spaceId: String, meshUUID: Strin
                          "same-timestamp stale caller must not hide persisted Zone repairs or decode failure")
         }
         print("PASS: persisted Space readback; unchanged/mutating/unknown revision export=2; same-timestamp stale/damaged Zones and recovery protections")
+        print("PASS: extension write failure/retry and readback failure/nonconvergence cannot finish recovery")
     }
 }

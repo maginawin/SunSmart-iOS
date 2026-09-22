@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run production Profile/GroupInfo persistence against temporary real SQLite.
 
-Only UIKit presentation and unrelated Mesh/template services are replaced.
+Only UIKit presentation and unrelated Mesh services are replaced.
 Model defaults, copying, Codable, SQL schema/save/load/transaction and Profile
 cloud mapping are extracted verbatim (the import result assignment becomes return).
 No device, account database or network is accessed.
@@ -59,9 +59,16 @@ class SunSmartDataManager {
     parse = block(imported, 'if let id = profileJson["id"].string, let type = Profile.ProfileType')
     parse = parse.replace("group.info.profile = profile", "return profile")
     import_profile = 'func importProfile(_ profileDict: [String: Any]) -> Profile? {\nlet profileJson = JSON(profileDict)\n' + parse + '\nreturn nil\n}\n'
+    template = block(read("SunSmart/Main/Profile/Model/Profile.swift"), "class ProfileLightSensorTemplate {")
+    cleanup = block(read("SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift"),
+                    "for template in group.info.profile.lightSensorTemplates {")
+    cleanup = """func templateCleanupChanges(_ group: HarnessGroup, space: HarnessSpace = .init(), addresses: Set<Address>) -> [() throws -> Void] {
+    var changes: [() throws -> Void] = []
+""" + cleanup + "\nreturn changes\n}\n"
     (output / "Production.swift").write_text("\n".join([header, model, manager, group_info,
         block(database, "extension GroupInfo {"), block(database, "extension Profile {"),
-        compatibility, export, import_profile]))
+        template, block(database, "extension ProfileLightSensorTemplate {"),
+        compatibility, export, import_profile, cleanup]))
     subprocess.run(["swiftc", "-D", "DEBUG", "-parse-as-library", "-I", folder,
                     "-L", folder, "-lSQLite", str(output / "Production.swift"),
                     str(ROOT / "Pods/SwiftyJSON/Source/SwiftyJSON/SwiftyJSON.swift"),
