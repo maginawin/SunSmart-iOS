@@ -84,7 +84,7 @@ class DevicesViewController: WMPageController {
     /// 引导内容轮播定时器
     private var guidanceTimer: Timer?
     /// 连接loading弹窗
-    private weak var connectLoadingHUD: WYProgressHUD?
+    private var connectLoadingHUD: WYProgressHUD?
     /// 是否首次连接
     private var firstConnectionNetwork: Bool = true
     
@@ -154,28 +154,7 @@ class DevicesViewController: WMPageController {
         
         // 未连接上mesh网络
         if !MeshNetworkManager.instance.realNodes.isEmpty && !MeshLibManager.manager.isMeshNetworkConnected && (MeshLibManager.manager.bluetoothState == .poweredOn || MeshLibManager.manager.bluetoothState == .unknown) {
-            
-//            guard self.view.window != nil else { return }
-            //            XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false, afterDelay: 10)
-            // loading
-            let margin: CGFloat = isIPad ? 100 : 36
-            XWHUDManager.showGifImagesHUD(in: self.wm_pageController?.view ?? self.view, gifFileName: "XWHUDManager_loading", message: getNextGuidanceMessage() ?? "", timer: 10, margin: margin)
-            self.perform(#selector(self.guidanceTimeout), with: nil, afterDelay: 10)
-            if let hud = XWHUDManager.currentHUD() {
-                hud.bezelView.layer.cornerRadius = 20
-                hud.minSize = CGSizeMake(SCREEN_WIDTH - margin * 2, 185)
-                self.connectLoadingHUD = hud
-                hud.addCloseButton {[weak self] in
-                    guard let self = self else { return }
-                    self.stopGuidanceTimer()
-                    
-                    // 判断是否需要申请地址
-                    if self.space.applyDeviceAddressCount != nil {
-                        applyDeviceAddressAlert()
-                    }
-                }
-            }
-            startGuidanceTimer()
+            showConnectionGuidance()
             // 获取设备信号
             //            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 5, result: nil)
         }else {
@@ -205,16 +184,21 @@ class DevicesViewController: WMPageController {
         //        XWHUDManager.showGifImagesHUD(inView: "XWHUDManager_loading", message: "Some devices prompt REPAIR when they are added because some models cannot be set to the device.", timer: 10)
         //        addNotificaiton()
         
-        startGuidanceTimer()
-        
         //        selectIndex = 1
+    }
+
+    override func willMove(toParent parent: UIViewController?) {
+        if parent == nil {
+            // HUD 挂在 Space 父视图上，分页重建移除本页时必须显式结束。
+            stopConnectionGuidance()
+        }
+        super.willMove(toParent: parent)
     }
     
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         
-//        XWHUDManager.currentHUD()?.hide(animated: false)
-        stopGuidanceTimer()
+        stopConnectionGuidance()
     }
     
     deinit {
@@ -235,12 +219,7 @@ class DevicesViewController: WMPageController {
                     SpaceDebugUARTManager.shared.setActiveSpace(self.space)
                     SpaceDebugUARTManager.shared.evaluateCurrentProxy(space: self.space)
                     
-                    if let view = self.wm_pageController?.view {
-                        XWHUDManager.hideInView(with: view)
-                    }else {
-                        XWHUDManager.hide()
-                    }
-                    self.stopGuidanceTimer()
+                    self.stopConnectionGuidance()
                     
                     // 判断是否需要申请地址
                     if self.space.applyDeviceAddressCount != nil {
@@ -279,6 +258,37 @@ class DevicesViewController: WMPageController {
     }
     
     // MARK: - Guidance
+
+    private func showConnectionGuidance() {
+        stopConnectionGuidance()
+        let hostView = wm_pageController?.view ?? view!
+        let margin: CGFloat = isIPad ? 100 : 36
+        XWHUDManager.showGifImagesHUD(in: hostView, gifFileName: "XWHUDManager_loading", message: getNextGuidanceMessage() ?? "", timer: 10, margin: margin)
+        // 创建是同步的，只取本次宿主上的新 HUD，不使用优先查找 window 的全局入口。
+        guard let hud = WYProgressHUD.forView(hostView) else { return }
+        connectLoadingHUD = hud
+        hud.bezelView.layer.cornerRadius = 20
+        hud.minSize = CGSizeMake(SCREEN_WIDTH - margin * 2, 185)
+        hud.addCloseButton { [weak self] in
+            guard let self else { return }
+            // 关闭按钮扩展会负责隐藏此 HUD，这里结束本页计时与持有关系。
+            self.stopConnectionGuidance(dismissHUD: false)
+            if self.space.applyDeviceAddressCount != nil {
+                self.applyDeviceAddressAlert()
+            }
+        }
+        perform(#selector(guidanceTimeout), with: nil, afterDelay: 10)
+        startGuidanceTimer()
+    }
+
+    private func stopConnectionGuidance(dismissHUD: Bool = true) {
+        stopGuidanceTimer()
+        let hud = connectLoadingHUD
+        connectLoadingHUD = nil
+        if dismissHUD {
+            hud?.hide(animated: false)
+        }
+    }
     
     /// 获取下一个引导文本
     private func getNextGuidanceMessage() -> String? {
@@ -298,6 +308,7 @@ class DevicesViewController: WMPageController {
     
     /// 开始轮播引导文本
     private func startGuidanceTimer() {
+        guidanceTimer?.invalidate()
         guidanceTimer = Timer(timeInterval: 5, repeats: true, block: {[weak self] _ in
             guard let self = self else {
                 return
@@ -316,7 +327,7 @@ class DevicesViewController: WMPageController {
     
     /// 连接网络引导超时
     @objc private func guidanceTimeout() {
-        stopGuidanceTimer()
+        stopConnectionGuidance()
         
         // 判断是否需要申请地址
         if space.applyDeviceAddressCount != nil {
