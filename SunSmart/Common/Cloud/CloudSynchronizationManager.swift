@@ -1144,11 +1144,11 @@ class CloudSynchronizationHandle: NSObject {
                 for payload in submissions {
                     guard let id = payload["uuid"] as? String,
                           let space = self.configurationSpaces.first(where: { $0.id == id }),
-                          let context = contexts[id] else {
+                          contexts[id] != nil else {
                         result = .failure(SpaceConfigurationSafety.uploadUnconfirmed)
                         continue
                     }
-                    if SpaceConfigurationSafety.finishAcceptedSubmission(context, space: space) {
+                    if case .success = await SpaceConfigurationSafety.resumeUpload(space) {
                         confirmedConfigurationIds.insert(id)
                     } else {
                         result = .failure(SpaceConfigurationSafety.uploadUnconfirmed)

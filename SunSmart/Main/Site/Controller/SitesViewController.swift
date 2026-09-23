@@ -349,7 +349,10 @@ class SitesViewController: UIViewController {
                             return nil
                         })
                         // site已提交到服务器，但是本地有但是服务器没有
-                        let deleteSites = self.allSites.filter({ localSite in !sites.contains(where: { $0.id == localSite.id }) && localSite.uploadCloud })
+                        let serverSiteIds = Set(siteDatas.compactMap { $0["uuid"] as? String })
+                        let deleteSites = self.allSites.filter({ localSite in
+                            !serverSiteIds.contains(localSite.id) && localSite.uploadCloud
+                        })
                         // 需要提示已被转让的site
                         var showTransferredDatas: [SitesTransferredView.TransferredData] = []
                         deleteSites.forEach({ site in

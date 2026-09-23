@@ -134,6 +134,7 @@ struct SpaceRecoveryState: Codable, Equatable {
         let timestamp: Int64
         let configuration: Data
         var phase: Phase = .prepared
+        var keyFingerprint: String?
     }
     let identity: Identity
     var generation = UUID()

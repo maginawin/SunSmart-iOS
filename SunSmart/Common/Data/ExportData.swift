@@ -1039,6 +1039,11 @@ extension SpaceData {
         }
         guard let payload else { return nil }
         if case .cloudSync = purpose {
+            guard SpaceKeyIntegrity.pair(payload, networkID: meshNetworkId) != nil else {
+                SpaceConfigurationSafety.recordSyncFailure(self, error: .configurationExportInvalid,
+                                                           stage: "exportMissingSpaceKey")
+                return nil
+            }
             guard SpaceMembershipCoordinator.allowsConfiguration(self),
                   await SpaceConfigurationSafety.prepareUpload(self, payload: payload) else { return nil }
         }

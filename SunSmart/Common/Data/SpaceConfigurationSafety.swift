@@ -3,6 +3,157 @@ import NordicSigMeshSDK
 import SQLite
 import CryptoKit
 
+/// The Mesh identity required by a complete Space upload. Never log the key material.
+enum SpaceKeyIntegrity {
+    struct Pair {
+        let network: NetworkKey
+        let application: ApplicationKey
+
+        var fingerprint: String {
+            var bytes = Data()
+            for value in [network.index, application.index, application.boundNetworkKeyIndex] {
+                bytes.append(UInt8(value >> 8)); bytes.append(UInt8(value & 0xff))
+            }
+            bytes.append(network.oldKey == nil ? 0 : 1)
+            bytes.append(application.oldKey == nil ? 0 : 1)
+            bytes.append(network.key)
+            bytes.append(network.oldKey ?? Data())
+            bytes.append(application.key)
+            bytes.append(application.oldKey ?? Data())
+            bytes.append(UInt8(network.phase.rawValue))
+            return Data(SHA256.hash(data: bytes)).hex
+        }
+    }
+
+    static func valid(_ key: NetworkKey) -> Bool {
+        key.index < 4096 && key.key.count == 16 && (key.oldKey == nil || key.oldKey?.count == 16)
+            && key.networkId.count == 8
+    }
+
+    static func valid(_ key: ApplicationKey) -> Bool {
+        key.index < 4096 && key.boundNetworkKeyIndex < 4096 && key.key.count == 16
+            && (key.oldKey == nil || key.oldKey?.count == 16)
+    }
+
+    static func same(_ lhs: NetworkKey, _ rhs: NetworkKey) -> Bool {
+        lhs.index == rhs.index && lhs.key == rhs.key && lhs.oldKey == rhs.oldKey && lhs.phase == rhs.phase
+    }
+
+    static func same(_ lhs: ApplicationKey, _ rhs: ApplicationKey) -> Bool {
+        lhs.index == rhs.index && lhs.boundNetworkKeyIndex == rhs.boundNetworkKeyIndex
+            && lhs.key == rhs.key && lhs.oldKey == rhs.oldKey
+    }
+
+    private static func hasValidHexKey(_ object: [String: Any]) -> Bool {
+        func valid(_ value: Any?) -> Bool {
+            guard let value = value as? String, value.utf8.count == 32 else { return false }
+            return value.unicodeScalars.allSatisfy { CharacterSet(charactersIn: "0123456789abcdefABCDEF").contains($0) }
+        }
+        let old = object["oldKey"]
+        return valid(object["key"]) && (old == nil || old is NSNull || valid(old))
+    }
+
+    static func decodeNetwork(_ payload: [String: Any]) -> NetworkKey? {
+        guard let object = payload["netKey"] as? [String: Any], hasValidHexKey(object),
+              let data = try? JSONSerialization.data(withJSONObject: object) else { return nil }
+        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+        return (try? decoder.decode(NetworkKey.self, from: data)).flatMap { valid($0) ? $0 : nil }
+    }
+
+    static func decodeApplication(_ payload: [String: Any]) -> ApplicationKey? {
+        guard let object = payload["appKey"] as? [String: Any], hasValidHexKey(object),
+              let data = try? JSONSerialization.data(withJSONObject: object) else { return nil }
+        return (try? JSONDecoder().decode(ApplicationKey.self, from: data)).flatMap { valid($0) ? $0 : nil }
+    }
+
+    static func pair(_ payload: [String: Any], networkID: String) -> Pair? {
+        guard let network = decodeNetwork(payload), let application = decodeApplication(payload),
+              network.networkId.hex == networkID, application.boundNetworkKeyIndex == network.index,
+              (payload["appKeyIndex"] == nil || SpaceConfigurationIntegrityPolicy.integer(payload["appKeyIndex"]) == Int64(application.index))
+        else { return nil }
+        return Pair(network: network, application: application)
+    }
+
+    static func pair(_ network: MeshNetwork, networkID: String, applicationIndex: KeyIndex? = nil) -> Pair? {
+        guard let key = network.networkKeys.first(where: { $0.networkId.hex == networkID && valid($0) }),
+              let app = network.applicationKeys.first(where: {
+                  $0.boundNetworkKeyIndex == key.index && valid($0)
+                      && (applicationIndex == nil || $0.index == applicationIndex)
+              })
+        else { return nil }
+        return Pair(network: key, application: app)
+    }
+
+    static func presentServerKeysMatchLocal(_ payload: [String: Any], local: Pair) -> Bool {
+        let hasNetwork = payload["netKey"] != nil
+        let hasApplication = payload["appKey"] != nil
+        guard hasNetwork != hasApplication,
+              (payload["appKeyIndex"] == nil ||
+                  SpaceConfigurationIntegrityPolicy.integer(payload["appKeyIndex"]) == Int64(local.application.index)) else { return false }
+        if hasNetwork {
+            guard let key = decodeNetwork(payload), same(key, local.network) else { return false }
+        }
+        if hasApplication {
+            guard let key = decodeApplication(payload), same(key, local.application) else { return false }
+        }
+        return true
+    }
+
+    /// Site metadata may be held while child Space imports persist new keys.
+    @MainActor
+    static func saveSiteNetworkPreservingKeys(_ network: MeshNetwork, meshUUID: String) -> Bool {
+        guard let latest = MeshNetwork.load(meshUUID: meshUUID, allData: false) else { return false }
+        for key in latest.networkKeys {
+            if let existing = network.networkKeys.first(where: { $0.index == key.index }) {
+                guard same(existing, key) else { return false }
+            } else {
+                network.add(networkKey: key)
+            }
+        }
+        for key in latest.applicationKeys {
+            if let existing = network.applicationKeys.first(where: { $0.index == key.index }) {
+                guard same(existing, key) else { return false }
+            } else {
+                network.add(applicationKey: key)
+            }
+        }
+        return network.save()
+    }
+
+    /// Runs synchronously on the main actor so two Space imports cannot save stale key arrays.
+    @MainActor
+    static func replenish(_ space: SpaceData, from remote: Pair) -> Bool {
+        guard let network = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
+              remote.network.networkId.hex == space.meshNetworkId else { return false }
+        let manager = MeshNetworkManager.instance
+        let active = manager.meshNetwork?.uuid.uuidString == space.meshUUID ? manager.meshNetwork : nil
+        for snapshot in [network, active].compactMap({ $0 }) {
+            if let old = snapshot.networkKeys.first(where: { $0.index == remote.network.index }),
+               !same(old, remote.network) { return false }
+            if let old = snapshot.applicationKeys.first(where: { $0.index == remote.application.index }),
+               !same(old, remote.application) { return false }
+            if snapshot.networkKeys.contains(where: { $0.networkId.hex == space.meshNetworkId && $0.index != remote.network.index }) {
+                return false
+            }
+        }
+        let hasNetwork = network.networkKeys.contains(where: { $0.index == remote.network.index })
+        let hasApplication = network.applicationKeys.contains(where: { $0.index == remote.application.index })
+        if !hasNetwork { network.add(networkKey: remote.network) }
+        if !hasApplication { network.add(applicationKey: remote.application) }
+        if !hasNetwork || !hasApplication {
+            guard network.save(), let reloaded = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
+                  let confirmed = pair(reloaded, networkID: space.meshNetworkId,
+                                       applicationIndex: remote.application.index),
+                  confirmed.fingerprint == remote.fingerprint else { return false }
+        }
+        if let active {
+            if !active.networkKeys.contains(where: { $0.index == remote.network.index }) { active.add(networkKey: remote.network) }
+            if !active.applicationKeys.contains(where: { $0.index == remote.application.index }) { active.add(applicationKey: remote.application) }
+        }
+        return true
+    }
+}
+
 /// Recovery data stays on this device. It is not a new server schema or a cloud
 /// conflict token. Interrupted imports are replayed, never restored by replacing
 /// the live Mesh database (which could roll back sequence numbers).
@@ -591,7 +742,10 @@ enum SpaceConfigurationSafety {
             let compare = upgrading ? SpaceConfigurationIntegrityPolicy.upgradeConfigurationData
                 : SpaceConfigurationIntegrityPolicy.configurationData
             guard let remote = response["data"] as? [String: Any], remote["uuid"] as? String == space.id,
-                  let expected = compare(payload), let actual = compare(remote) else { return .failure(uploadUnconfirmed) }
+                  let expected = compare(payload), let actual = compare(remote),
+                  let submittedKeys = SpaceKeyIntegrity.pair(payload, networkID: space.meshNetworkId),
+                  let serverKeys = SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId),
+                  submittedKeys.fingerprint == serverKeys.fingerprint else { return .failure(uploadUnconfirmed) }
             space.applyRemoteSpaceMetadata(remote)
             guard space.save(), isCurrent(context, space: space),
                   !upgrading || canAutomaticallyUpload(space) else { return .failure(uploadUnconfirmed) }
@@ -639,8 +793,14 @@ enum SpaceConfigurationSafety {
             guard state.phase == .active, state.authority == .writable, state.submission == nil,
                   let timestamp = SpaceConfigurationIntegrityPolicy.integer(payload["updateTimestamp"]),
                   payload["uuid"] as? String == space.id, payload["nodes"] is [[String: Any]],
-                  let configuration = SpaceConfigurationIntegrityPolicy.configurationData(payload) else { return nil }
-            state.submission = .init(id: UUID(), timestamp: timestamp, configuration: configuration)
+                  let configuration = SpaceConfigurationIntegrityPolicy.configurationData(payload),
+                  let keys = SpaceKeyIntegrity.pair(payload, networkID: space.meshNetworkId),
+                  let current = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
+                  let local = SpaceKeyIntegrity.pair(current, networkID: space.meshNetworkId,
+                                                     applicationIndex: keys.application.index),
+                  keys.fingerprint == local.fingerprint else { return nil }
+            state.submission = .init(id: UUID(), timestamp: timestamp, configuration: configuration,
+                                     keyFingerprint: keys.fingerprint)
             state.siteCreationTimestamp = siteCreationTimestamp
             try saveState(state, space: space)
             return state
@@ -689,10 +849,10 @@ enum SpaceConfigurationSafety {
         try? saveState(state, space: space)
     }
 
-    /// A successful upload confirms its submitted version without a configuration GET.
-    /// Keep the accepted receipt until all local persistence has completed.
+    /// Only a verified readback may clear the submitted version.
     static func finishAcceptedSubmission(_ context: SpaceRecoveryState, space: SpaceData) -> Bool {
-        finishSubmission(context, space: space)
+        guard (try? recoveryState(space).submission?.phase) == .verified else { return false }
+        return finishSubmission(context, space: space)
     }
 
     private static func finishSubmission(_ context: SpaceRecoveryState, space: SpaceData) -> Bool {
@@ -705,7 +865,7 @@ enum SpaceConfigurationSafety {
                   state.authority == .writable, space.permission != .visitor,
                   !space.requiresPasswordVerification, !space.disableEditorPermission,
                   submission.id == context.submission?.id,
-                  submission.phase == .accepted || submission.phase == .verified else { return false }
+                  submission.phase == .verified else { return false }
             guard confirmLocalChanges(space, payload: ["updateTimestamp": submission.timestamp,
                                                        "nodes": [[String: Any]]()]) else { return false }
             let previous = space.lastUploadCloudTimestamp
@@ -741,9 +901,18 @@ enum SpaceConfigurationSafety {
             guard context.phase == .active else { return .failure(uploadUnconfirmed) }
             guard context.authority == .writable else { return .failure(authorityError(space)) }
             guard let submission = context.submission else { return .success(()) }
-            if submission.phase == .accepted || submission.phase == .verified {
+            if submission.phase == .verified {
                 return finishSubmission(context, space: space) ? .success(()) : .failure(uploadUnconfirmed)
             }
+            let expectedKeyFingerprint: String?
+            if let fingerprint = submission.keyFingerprint {
+                expectedKeyFingerprint = fingerprint
+            } else if let localNetwork = MeshNetwork.load(meshUUID: space.meshUUID, allData: false) {
+                expectedKeyFingerprint = SpaceKeyIntegrity.pair(localNetwork, networkID: space.meshNetworkId)?.fingerprint
+            } else {
+                expectedKeyFingerprint = nil
+            }
+            guard let expectedKeyFingerprint else { return .failure(uploadUnconfirmed) }
             for attempt in 0..<3 {
                 guard !_Concurrency.Task<Never, Never>.isCancelled, isCurrent(context, space: space) else {
                     return .failure(uploadUnconfirmed)
@@ -764,12 +933,29 @@ enum SpaceConfigurationSafety {
                     guard let remote = response["data"] as? [String: Any], remote["uuid"] as? String == space.id,
                           let configuration = SpaceConfigurationIntegrityPolicy.configurationData(remote),
                           remote["nodes"] is [[String: Any]] else { return .failure(uploadUnconfirmed) }
+                    let remoteKeyFingerprint = SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId)?.fingerprint
                     space.applyRemoteSpaceMetadata(remote)
                     guard space.save(), isCurrent(context, space: space), canAutomaticallyUpload(space) else {
                         return .failure(authorityError(space))
                     }
                     let expected = readbackConfiguration(submission.configuration, timestamp: submission.timestamp, space: space)
-                    if SpaceConfigurationIntegrityPolicy.configurationsMatch(configuration, expected) {
+                    if remoteKeyFingerprint != expectedKeyFingerprint,
+                       space.permission == .owner, remote["role"] as? String == "owner",
+                       let localNetwork = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
+                       let localKeys = SpaceKeyIntegrity.pair(localNetwork, networkID: space.meshNetworkId),
+                       localKeys.fingerprint == expectedKeyFingerprint,
+                       SpaceKeyIntegrity.presentServerKeysMatchLocal(remote, local: localKeys),
+                       SpaceConfigurationIntegrityPolicy.configurationsMatch(configuration, expected) {
+                        // The submitted business configuration arrived, but one Key did not.
+                        // Keep the Space dirty and send a new complete snapshot.
+                        context = try recoveryState(space)
+                        guard context.submission?.id == submission.id else { return .failure(uploadUnconfirmed) }
+                        context.submission = nil
+                        try saveState(context, space: space)
+                        return .success(())
+                    }
+                    if remoteKeyFingerprint == expectedKeyFingerprint,
+                       SpaceConfigurationIntegrityPolicy.configurationsMatch(configuration, expected) {
                         context = try recoveryState(space)
                         guard context.submission?.id == submission.id else { return .failure(uploadUnconfirmed) }
                         context.submission?.phase = .verified
@@ -787,6 +973,7 @@ enum SpaceConfigurationSafety {
                     // A cancelled pre-send operation can be replaced only if the
                     // cloud still matches the last confirmed baseline.
                     if attempt == 2, submission.phase == .prepared,
+                       remoteKeyFingerprint == expectedKeyFingerprint,
                        SpaceConfigurationIntegrityPolicy.configurationsMatch(configuration, context.authorizationBaseline.map {
                            readbackConfiguration($0, timestamp: space.lastUploadCloudTimestamp ?? 0, space: space)
                        }) {
@@ -849,7 +1036,7 @@ enum SpaceConfigurationSafety {
             return .failure(error)
         case .success:
             guard markSubmissionAccepted(context, space: space) else { return .failure(uploadUnconfirmed) }
-            return finishAcceptedSubmission(context, space: space) ? .success(()) : .failure(uploadUnconfirmed)
+            return await resumeUpload(space)
         }
     }
 

@@ -53,12 +53,17 @@ extension SpaceRecoveryReceiptTests {
             precondition(api.configurationSpacePayloads.count == 1)
             let context = SpaceConfigurationSafety.prepareSubmission(uploaded, payload: api.configurationSpacePayloads[0])!
             precondition(SpaceConfigurationSafety.markSubmissionAccepted(context, space: uploaded))
-            precondition(SpaceConfigurationSafety.finishAcceptedSubmission(context, space: uploaded))
+            precondition(!SpaceConfigurationSafety.finishAcceptedSubmission(context, space: uploaded))
+            request.result = .success(["data": uploaded.payload])
+            if case .failure = await SpaceConfigurationSafety.resumeUpload(uploaded) {
+                preconditionFailure("Site Space upload requires a complete Key readback")
+            }
             precondition(uploaded.lastUploadCloudTimestamp == 50 && untouched.lastUploadCloudTimestamp == nil)
             site.lastUploadCloudTimestamp = 200
             precondition(handler.confirmSiteUpload(api: api, response: [:]))
             precondition(site.lastUploadCloudTimestamp == 200)
         }
+        let callsAfterSpaceReadback = request.calls
         let siteOnly = SiteData()
         let handler = SiteConfirmationHarness(.syncSite(site: siteOnly, syncSpaces: []))
         let api = NetowrkReqeustApi.siteUpload(siteData: ["updateTimestamp": 100])
@@ -86,7 +91,8 @@ extension SpaceRecoveryReceiptTests {
             precondition(site.resources?["marker"] as? Int == 7 && site.lastUploadCloudTimestamp == 100)
             precondition(site.pendingSitePropsMask.isEmpty == !newEdit)
         }
-        precondition(request.calls == calls, "Site confirmation must never issue a GET")
+        precondition(request.calls == callsAfterSpaceReadback && callsAfterSpaceReadback == calls + 2,
+            "Site confirmation itself must never issue a GET")
         print("PASS: production Site-only, Site/Space versions, addSpaces, creation resources, timezone pending and save failures")
     }
 }

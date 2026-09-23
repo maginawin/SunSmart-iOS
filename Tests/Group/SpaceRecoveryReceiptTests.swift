@@ -26,7 +26,10 @@ final class SpaceData {
     var uploadCloud: Bool { lastUploadCloudTimestamp != nil }
     var needUploadCloud: Bool { lastUpdate > (lastUploadCloudTimestamp ?? 0) && permission != .visitor }
     var nodes: [[String: Any]] = []
-    var payload: [String: Any] { ["uuid": id, "groups": [], "nodes": nodes, "updateTimestamp": lastUpdate] }
+    var payload: [String: Any] {
+        ["uuid": id, "groups": [], "nodes": nodes, "updateTimestamp": lastUpdate,
+         "netKey": ["key": id], "appKey": ["key": "app"]]
+    }
     init(_ id: String = UUID().uuidString) { self.id = id }
     func markLocalChangePendingCloudSync() { lastUpdate += 1 }
     @discardableResult func save() -> Bool { savesSucceed }
@@ -45,6 +48,37 @@ final class MeshNetworkManager {
     struct Node { var network: Network?; var subNetworkId: String?; func clearSyncStateCache() {} }
     struct Network { let uuid: UUID }
     var realNodes: [Node] = []
+}
+final class MeshNetwork {
+    let meshUUID: String
+    init(_ meshUUID: String) { self.meshUUID = meshUUID }
+    static func load(meshUUID: String, allData: Bool) -> MeshNetwork? { .init(meshUUID) }
+}
+enum SpaceKeyIntegrity {
+    struct Pair { let fingerprint: String; let application: Application }
+    struct Application { let index: UInt16 }
+    static func pair(_ payload: [String: Any], networkID: String) -> Pair? {
+        guard networkID == "network", let id = payload["uuid"] as? String,
+              let net = payload["netKey"] as? [String: Any],
+              let app = payload["appKey"] as? [String: Any],
+              let value = net["key"] as? String, let appValue = app["key"] as? String else { return nil }
+        guard value == id || value == String(repeating: "0", count: 32),
+              appValue == "app" || appValue == String(repeating: "1", count: 32) else {
+            return .init(fingerprint: "different-key", application: .init(index: 1))
+        }
+        return .init(fingerprint: id + ":app", application: .init(index: 1))
+    }
+    static func pair(_ network: MeshNetwork, networkID: String, applicationIndex: UInt16? = nil) -> Pair? {
+        networkID == "network"
+            ? .init(fingerprint: String(network.meshUUID.dropFirst(5)) + ":app", application: .init(index: 1)) : nil
+    }
+    static func presentServerKeysMatchLocal(_ payload: [String: Any], local: Pair) -> Bool {
+        let net = payload["netKey"] as? [String: String]
+        let app = payload["appKey"] as? [String: String]
+        guard (net == nil) != (app == nil) else { return false }
+        if let net { return net["key"] == String(local.fingerprint.dropLast(4)) }
+        return app?["key"] == "app"
+    }
 }
 enum API { case spaceInfo(siteId: String, spaceId: String, password: String?)
     case spaceUpload(siteId: String, spaceId: String, spaceData: [String: Any]) }
@@ -93,8 +127,10 @@ final class NetworkRequest {
         request.result = .failure(.noNetwork)
         let callsBeforeAccepted = request.calls
         let offline = await SpaceConfigurationSafety.resumeUpload(a)
-        if case .failure = offline { preconditionFailure("accepted upload must finish locally even while offline") }
-        precondition(request.calls == callsBeforeAccepted)
+        if case .success = offline { preconditionFailure("accepted upload requires Key readback") }
+        precondition(request.calls == callsBeforeAccepted + 1 && SpaceConfigurationSafety.hasPendingUpload(a))
+        remote(a)
+        if case .failure = await SpaceConfigurationSafety.resumeUpload(a) { preconditionFailure("complete readback must confirm") }
         precondition(!SpaceConfigurationSafety.hasPendingUpload(a) && !SpaceConfigurationSafety.preservesLocalChanges(a))
         precondition(SpaceConfigurationSafety.testMigrated(a) && request.uploads == 0)
         a.lastUpdate = 51
@@ -443,44 +479,61 @@ final class NetworkRequest {
     @MainActor static func testDirectUploadConfirmation() async throws {
         typealias S = SpaceConfigurationSafety
         let request = NetworkRequest.shared
-        for reason in ["uploadReadbackConflict", "uploadReadbackUnconfirmed", "invalidRemoteTopology"] {
-            let space = SpaceData("accepted-" + reason)
+        for variant in ["complete", "missing-net", "different-app"] {
+            let space = SpaceData("accepted-" + variant)
             let context = S.prepareSubmission(space, payload: space.payload)!
             precondition(S.markSubmissionAccepted(context, space: space))
-            S.block(space, reason: reason)
-            request.result = .success(["data": ["uuid": "wrong-space", "nodes": []]])
-            let calls = request.calls
-            precondition(S.finishAcceptedSubmission(context, space: space))
-            precondition(request.calls == calls && space.lastUploadCloudTimestamp == 50)
-            precondition(S.isBlocked(space) == (reason == "invalidRemoteTopology"))
-            precondition(!S.hasPendingUpload(space))
-            let newer = S.prepareSubmission(space, payload: space.payload)!
-            precondition(!S.finishAcceptedSubmission(context, space: space), "old completion must not consume a newer receipt")
-            S.discardUnsentSubmission(newer, space: space)
+            precondition(!S.finishAcceptedSubmission(context, space: space))
+            var remote = space.payload
+            if variant == "missing-net" { remote.removeValue(forKey: "netKey") }
+            if variant == "different-app" { remote["appKey"] = ["key": "different"] }
+            request.result = .success(["data": remote])
+            let result = await S.resumeUpload(space)
+            if variant == "complete" {
+                if case .failure = result { preconditionFailure("complete Key readback must confirm") }
+                precondition(!S.hasPendingUpload(space) && space.lastUploadCloudTimestamp == 50)
+            } else {
+                if case .success = result { preconditionFailure("missing or different Key must retain receipt") }
+                precondition(S.hasPendingUpload(space) && space.lastUploadCloudTimestamp == nil)
+            }
         }
+        let serverMissing = SpaceData("server-missing-single-key")
+        let missingContext = S.prepareSubmission(serverMissing, payload: serverMissing.payload)!
+        precondition(S.markSubmissionAccepted(missingContext, space: serverMissing))
+        var partial = serverMissing.payload
+        partial.removeValue(forKey: "netKey")
+        partial["role"] = "owner"
+        request.result = .success(["data": partial])
+        if case .failure = await S.resumeUpload(serverMissing) {
+            preconditionFailure("confirmed business data with one missing server Key may retry full upload")
+        }
+        precondition(!S.hasPendingUpload(serverMissing) && serverMissing.lastUploadCloudTimestamp == nil
+                     && serverMissing.needUploadCloud)
         for succeeds in [false, true] {
             let space = SpaceData("unbind-direct-\(succeeds)")
             request.result = succeeds ? .success([:]) : .failure(.requestTimeout)
+            if succeeds { request.responses = [.success([:]), .success(["data": space.payload])] }
             let calls = request.calls, uploads = request.uploads
             // A new edit arrives while the submitted version is in flight.
             request.onRequest = { space.lastUpdate = 60 }
             let result = await S.uploadBeforeUnbind(space)
             if succeeds {
-                if case .failure = result { preconditionFailure("successful upload must confirm without GET") }
+                if case .failure = result { preconditionFailure("successful upload needs a complete GET") }
                 precondition(space.lastUploadCloudTimestamp == 50 && !S.hasPendingUpload(space))
             } else {
                 if case .success = result { preconditionFailure("timeout must not confirm") }
                 precondition(space.lastUploadCloudTimestamp == nil && S.hasPendingUpload(space))
             }
             precondition(space.needUploadCloud)
-            precondition(request.calls == calls + 1 && request.uploads == uploads + 1)
+            precondition(request.calls == calls + (succeeds ? 2 : 1) && request.uploads == uploads + 1)
         }
         // Older accepted snapshots never move the confirmed version backwards.
         let monotonic = SpaceData("accepted-monotonic")
         let context = S.prepareSubmission(monotonic, payload: monotonic.payload)!
         precondition(S.markSubmissionAccepted(context, space: monotonic))
         monotonic.lastUploadCloudTimestamp = 80
-        precondition(S.finishAcceptedSubmission(context, space: monotonic))
+        request.result = .success(["data": monotonic.payload])
+        if case .failure = await S.resumeUpload(monotonic) { preconditionFailure("valid readback must keep newer timestamp") }
         precondition(monotonic.lastUploadCloudTimestamp == 80)
 
         // One failed local confirmation must not undo another accepted Space.
@@ -489,20 +542,18 @@ final class NetworkRequest {
         let secondContext = S.prepareSubmission(second, payload: second.payload)!
         precondition(S.markSubmissionAccepted(firstContext, space: first))
         precondition(S.markSubmissionAccepted(secondContext, space: second))
-        let calls = request.calls
-        precondition(S.finishAcceptedSubmission(firstContext, space: first))
+        request.result = .success(["data": first.payload])
+        if case .failure = await S.resumeUpload(first) { preconditionFailure("first Space must confirm") }
         second.savesSucceed = false
         precondition(!S.finishAcceptedSubmission(secondContext, space: second))
         precondition(!S.hasPendingUpload(first) && S.hasPendingUpload(second))
         second.savesSucceed = true
-        S.failStateWrite = true
-        precondition(!S.finishAcceptedSubmission(secondContext, space: second))
-        S.failStateWrite = false
         let persisted = try S.recoveryState(second)
         precondition(persisted.submission?.phase == .accepted)
-        if case .failure = await S.resumeUpload(second) { preconditionFailure("state persistence retry must finish locally") }
-        precondition(!S.hasPendingUpload(second) && request.calls == calls)
-        print("PASS: direct success uses submitted timestamps, makes no GET, preserves newer edits and unrelated blocks")
+        request.result = .success(["data": second.payload])
+        if case .failure = await S.resumeUpload(second) { preconditionFailure("second Space must confirm independently") }
+        precondition(!S.hasPendingUpload(second))
+        print("PASS: accepted uploads verify Key and configuration, preserve receipts on mismatch, and keep newer edits")
     }
 
     @MainActor static func testProximityAllImportRecovery() throws {
@@ -721,7 +772,7 @@ final class NetworkRequest {
             request.result = .success(["data": oldRemote])
             let calls = request.calls, uploads = request.uploads
             if case .failure = await S.resumeUpload(space) { preconditionFailure("legacy empty address must confirm") }
-            precondition(request.calls == calls && request.uploads == uploads)
+            precondition(request.calls == calls + 1 && request.uploads == uploads)
             precondition(!S.isBlocked(space) && !S.hasPendingUpload(space))
             precondition(space.lastUploadCloudTimestamp == 50 && space.lastUpdate == 60 && space.needUploadCloud)
             let remaining = try S.deletionJournal(space)
@@ -729,7 +780,7 @@ final class NetworkRequest {
 
             // The shared production upload path can now export and confirm the
             // newer two-node payload; it must not mark that version done early.
-            request.responses = [.success([:])]
+            request.responses = [.success([:]), .success(["data": space.payload])]
             if case .failure = await S.uploadBeforeUnbind(space) { preconditionFailure("newer edit must remain uploadable") }
             precondition(request.responses.isEmpty && request.uploads == uploads + 1)
             precondition(space.lastUploadCloudTimestamp == 60 && !space.needUploadCloud)

@@ -834,7 +834,7 @@ class SpaceViewController: WMPageController {
                     Task { [weak self] in
                         guard let self = self else { return }
                         let outcome = await self.space.restoreConfiguration(
-                            spaceJsonData: spaceData
+                            spaceJsonData: spaceData, authoritativeGET: true
                         )
                         guard outcome.status != .rejected else {
                             await MainActor.run {
@@ -1629,8 +1629,10 @@ class SpaceViewController: WMPageController {
             let result = await NetworkRequest.shared.request(.spaceInfo(siteId: self.space.siteId,
                 spaceId: self.space.id, password: self.space.authorizationPassword))
             if case .success(let response) = result, let remote = response["data"] as? [String: Any] {
-                let outcome = await self.space.restoreConfiguration(spaceJsonData: remote)
+                let outcome = await self.space.restoreConfiguration(spaceJsonData: remote,
+                    authoritativeGET: true)
                 XWHUDManager.hide()
+                if outcome.rejectionReason == "serverKeyRepairQueued" { return }
                 if outcome.status != .rejected, !SpaceConfigurationSafety.isBlocked(self.space) {
                     _ = CloudSynchronizationManager.shared.cancelSynchronizationHandle(operation: .syncSpace(space: self.space))
                     self.space.syncCloudError = nil

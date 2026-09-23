@@ -20,7 +20,8 @@ with tempfile.TemporaryDirectory(prefix='space-membership-') as directory:
     coordinator += section('    @MainActor static func queueLeave(', '\nextension SpaceData {')
     coordinator = coordinator.replace('URL(fileURLWithPath: NSHomeDirectory())\n        .appendingPathComponent("Library/Application Support/SpaceMembership")',
                                       'URL(fileURLWithPath: ' + '"' + str(temp / 'records') + '"' + ')')
-    restore = section('    @MainActor\n    func restoreConfiguration(', '    /// Configuration copies')
+    restore = section('    @MainActor\n    func restoreConfiguration(',
+                      '    @MainActor\n    private func repairMissingServerKeys(')
     test = (root / 'Tests/Group/SpaceMembershipLifecycleTests.swift').read_text().replace('// RESTORE_METHOD', restore)
     # Swift precondition uses a synchronous nonthrowing autoclosure.
     test = test.replace('precondition(try ', 'try expect(')

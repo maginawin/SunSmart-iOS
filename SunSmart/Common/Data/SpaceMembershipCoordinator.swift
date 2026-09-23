@@ -249,19 +249,20 @@ enum SpaceMembershipCoordinator {
 extension SpaceData {
     /// Resolve identity once, before any configuration journal or Mesh lookup.
     @MainActor
-    func restoreConfiguration(spaceJsonData payload: [String: Any], initialize: Bool = false) async -> SpaceImportOutcome {
+    func restoreConfiguration(spaceJsonData payload: [String: Any], initialize: Bool = false,
+                              authoritativeGET: Bool = false) async -> SpaceImportOutcome {
         guard SpaceMembershipCoordinator.accepts(payload), payload["uuid"] as? String == id else {
             return .rejected("staleMembershipResponse")
         }
         guard !SpaceMembershipCoordinator.isLeaving(self) else { return .rejected("spaceLeaving") }
-        let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
-        guard let net = payload["netKey"] as? [String: Any], let app = payload["appKey"] as? [String: Any],
-              let netData = try? JSONSerialization.data(withJSONObject: net),
-              let appData = try? JSONSerialization.data(withJSONObject: app),
-              let networkKey = try? decoder.decode(NetworkKey.self, from: netData),
-              let applicationKey = try? decoder.decode(ApplicationKey.self, from: appData),
-              applicationKey.boundNetworkKeyIndex == networkKey.index else { return .rejected("invalidNetworkIdentity") }
-        let canonicalID = networkKey.networkId.hex
+        guard let remoteNetwork = SpaceKeyIntegrity.decodeNetwork(payload),
+              let remoteKeys = SpaceKeyIntegrity.pair(payload, networkID: remoteNetwork.networkId.hex) else {
+            if authoritativeGET, await repairMissingServerKeys(payload) {
+                return .preserved("serverKeyRepairQueued")
+            }
+            return .rejected("invalidNetworkIdentity")
+        }
+        let canonicalID = remoteKeys.network.networkId.hex
         let uninitialized = lastUploadCloudTimestamp == nil && (permission != .owner || initialize)
         guard meshNetworkId == canonicalID || uninitialized else { return .rejected("networkIdentityMismatch") }
         let candidate = copy()
@@ -270,7 +271,15 @@ extension SpaceData {
             let membership = try SpaceMembershipCoordinator.preparedRecord(candidate, networkID: canonicalID)
             let state = try SpaceConfigurationSafety.recoveryState(candidate)
             guard state.phase != .removing, !(state.phase == .active && state.unbindRequested == true),
-                  SpaceConfigurationSafety.activateImport(candidate) else { return .rejected("spaceRemovalPending") }
+                  SpaceMembershipCoordinator.current(membership) else { return .rejected("spaceRemovalPending") }
+            if MeshNetwork.load(meshUUID: meshUUID, allData: false) != nil {
+                guard SpaceKeyIntegrity.replenish(candidate, from: remoteKeys) else {
+                    return .rejected("networkKeyConflictOrPersistenceFailed")
+                }
+            } else if lastUploadCloudTimestamp != nil {
+                return .rejected("networkKeyConflictOrPersistenceFailed")
+            }
+            guard SpaceConfigurationSafety.activateImport(candidate) else { return .rejected("spaceRemovalPending") }
             // Persist a canonical but explicitly uninitialized row before asynchronous work.
             // A crash resumes under the same identity; upload remains disabled.
             guard candidate.save() else { return .rejected("configurationPersistenceFailed") }
@@ -290,6 +299,22 @@ extension SpaceData {
             }
             return outcome
         } catch { return .rejected("configurationPersistenceFailed") }
+    }
+
+    @MainActor
+    private func repairMissingServerKeys(_ remote: [String: Any]) async -> Bool {
+        guard permission == .owner, remote["role"] as? String == "owner",
+              state == .normal, !requiresPasswordVerification,
+              SpaceMembershipCoordinator.allowsConfiguration(self),
+              let network = MeshNetwork.load(meshUUID: meshUUID, allData: false),
+              let local = SpaceKeyIntegrity.pair(network, networkID: meshNetworkId),
+              SpaceKeyIntegrity.presentServerKeysMatchLocal(remote, local: local) else { return false }
+        guard let localPayload = await export(purpose: .cleanupInspection),
+              SpaceConfigurationIntegrityPolicy.configurationsMatch(
+                  SpaceConfigurationIntegrityPolicy.configurationData(localPayload),
+                  SpaceConfigurationIntegrityPolicy.configurationData(remote)) else { return false }
+        CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSpace(space: self), level: .promptly)
+        return true
     }
 
     /// Configuration copies must preserve authority and cloud baselines as well as UI values.

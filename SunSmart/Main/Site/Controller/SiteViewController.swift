@@ -1264,7 +1264,8 @@ self.updateAddressData()
                                 $0 != "EditorPasswdChanged" && $0 != "VisitorPasswdChanged"
                             }
                         }
-                        let outcome = await space.restoreConfiguration(spaceJsonData: importPayload)
+                        let outcome = await space.restoreConfiguration(spaceJsonData: importPayload,
+                            authoritativeGET: true)
                         guard outcome.status != .rejected else {
                             XWHUDManager.hide()
                             if Task.isCancelled { callback?(false); return }

@@ -3,6 +3,7 @@
 from pathlib import Path
 import subprocess
 import tempfile
+import re
 
 root = Path(__file__).resolve().parents[1]
 def read(path): return (root / path).read_text()
@@ -66,11 +67,10 @@ api_properties = section(cloud, 'private extension NetowrkReqeustApi {', '\n#if 
 api_properties = api_properties.replace('private extension', 'extension')
 test += '\n' + read('Tests/Group/CloudUploadConfirmationTests.swift').replace(
     '// SITE_CONFIRMATION_METHOD', site_confirmation) + '\n' + api_properties
-# Ensure every normal success entry uses the tested local-only completion method.
+# Ensure a successful upload reads the submitted Space back before clearing its receipt.
 after_upload = section(cloud, '            let requestResult = await NetworkRequest.shared.request(api)',
                        '            let completionResult = result')
-assert 'finishAcceptedSubmission(context, space: space)' in after_upload
-assert 'resumeUpload(' not in after_upload and '.spaceInfo(' not in after_upload and '.siteInfo(' not in after_upload
+assert 'await SpaceConfigurationSafety.resumeUpload(space)' in after_upload
 share = read('SunSmart/Main/Share/Controller/ShareAuthorityViewController.swift')
 assert '.siteUpload(siteData:' not in share
 assert '.syncSite(site: site, syncSpaces: uploadSpaces)' in share
@@ -96,4 +96,14 @@ with tempfile.TemporaryDirectory(prefix='space-receipt-tests-') as temp:
         str(root / 'SunSmart/Main/Group/Model/ProximityLightingTopologyPolicy.swift'),
         str(root / 'SunSmart/Main/Group/Model/ProximityLightingTopologyReconciler.swift'),
         str(harness), '-o', str(binary)], check=True)
-    subprocess.run([str(binary)], check=True)
+    result = subprocess.run([str(binary)], capture_output=True, text=True)
+    if result.returncode:
+        print(result.stdout + result.stderr)
+        match = re.search(r'Harness.swift:(\d+):', result.stderr)
+        if match:
+            line = int(match.group(1))
+            lines = harness.read_text().splitlines()
+            for index in range(max(0, line - 4), min(len(lines), line + 3)):
+                print(f'{index + 1}: {lines[index]}')
+        raise SystemExit(result.returncode)
+    print(result.stdout, end='')

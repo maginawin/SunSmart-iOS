@@ -365,14 +365,21 @@ class SharePermissionSelectionController: UIViewController {
                         }
                         let context = SpaceMembershipResponseContext.capture(account: account, region: region)
                         siteData = SpaceMembershipResponseContext.annotate(["data": siteData], context: context)["data"] as? [String: Any] ?? siteData
-                        if let site = await SiteData.import(siteJsonData: siteData, changeAddress: true) {
-                            site.state = .normal
-                            site.permission = .owner
-                            site.recycleAddressData = recycleAddressData
-                            site.save()
-                            // 修改手机地址需要合并到服务器
-                            CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
+                        guard let site = await SiteData.import(siteJsonData: siteData, changeAddress: true) else {
+                            XWHUDManager.hide()
+                            XWHUDManager.showErrorTipHUD("space_recovery_storage_failed".localizedString)
+                            return
                         }
+                        site.state = .normal
+                        site.permission = .owner
+                        site.recycleAddressData = recycleAddressData
+                        guard site.save() else {
+                            XWHUDManager.hide()
+                            XWHUDManager.showErrorTipHUD("space_recovery_storage_failed".localizedString)
+                            return
+                        }
+                        // 修改手机地址需要合并到服务器
+                        CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: []), level: .promptly)
                          
                         XWHUDManager.hide()
                         XWHUDManager.showSuccessTipHUD("successfully".localizedString + "!")

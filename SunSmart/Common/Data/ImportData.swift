@@ -484,21 +484,55 @@ extension SiteData {
             default:
                 break
             }
-            guard let netKeyDict = json["netKey"].dictionaryObject,
-                  let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
-                  let netKey = try? jsonDecoder.decode(NetworkKey.self, from: netKeyData) else {
+            guard let netKey = SpaceKeyIntegrity.decodeNetwork(siteJsonData), netKey.isPrimary,
+                  SpaceKeyIntegrity.pair(siteJsonData, networkID: netKey.networkId.hex) != nil else {
                 return nil
             }
             
             site = SiteData(region: UserData.currentServerRegion, id: uuid, meshUUID: uuid, meshNetworkId: netKey.networkId.hex, name: name, type: .init(rawValue: json["type"].intValue) ?? .office, permission: permission, create: json["createTimestamp"].int64Value, lastUpdate: json["updateTimestamp"].int64Value, isFavourite: false, sourceType: .create)
             initialize = true
-        }else if site?.state == .waitDeleted { // 已转让site再次加入算重新
+        }else if site?.state == .waitDeleted { // 转回只需重新分配地址，不能重建原网络
             initialize = true
             isChangeAddress = true
-            site?.state = .normal
         }
-        await site?.update(siteJsonData: siteJsonData, changeAddress: isChangeAddress, initialize: initialize)
+        let returningSite = site?.state == .waitDeleted
+        let preservedKeys: ([NetworkKey], [ApplicationKey])?
+        if returningSite, let site,
+           let existing = MeshNetwork.load(meshUUID: site.meshUUID, allData: false) {
+            guard let remoteNet = SpaceKeyIntegrity.decodeNetwork(siteJsonData), remoteNet.isPrimary,
+                  let remoteApp = SpaceKeyIntegrity.decodeApplication(siteJsonData),
+                  let localNet = existing.networkKeys.first(where: { $0.isPrimary }),
+                  let localApp = existing.applicationKeys.first(where: { $0.boundNetworkKeyIndex == localNet.index }),
+                  SpaceKeyIntegrity.same(remoteNet, localNet), SpaceKeyIntegrity.same(remoteApp, localApp),
+                  remoteNet.networkId.hex == site.meshNetworkId else { return nil }
+            if let active = MeshNetworkManager.instance.meshNetwork,
+               active.uuid.uuidString == site.meshUUID {
+                guard existing.networkKeys.allSatisfy({ key in active.networkKeys.contains(where: { SpaceKeyIntegrity.same($0, key) }) }),
+                      existing.applicationKeys.allSatisfy({ key in active.applicationKeys.contains(where: { SpaceKeyIntegrity.same($0, key) }) }) else { return nil }
+            }
+            preservedKeys = (existing.networkKeys, existing.applicationKeys)
+        } else {
+            preservedKeys = nil
+        }
+        guard await site?.update(siteJsonData: siteJsonData, changeAddress: isChangeAddress,
+                                 initialize: initialize) == true else { return nil }
         guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return nil }
+        if returningSite, let site {
+            guard let saved = SiteData.load(siteId: uuid),
+                  let reloaded = MeshNetwork.load(meshUUID: site.meshUUID, allData: false),
+                  saved.meshUUID == site.meshUUID,
+                  let remoteNet = SpaceKeyIntegrity.decodeNetwork(siteJsonData),
+                  let remoteKeys = SpaceKeyIntegrity.pair(siteJsonData, networkID: remoteNet.networkId.hex),
+                  let confirmed = SpaceKeyIntegrity.pair(reloaded, networkID: remoteNet.networkId.hex,
+                                                         applicationIndex: remoteKeys.application.index),
+                  confirmed.fingerprint == remoteKeys.fingerprint,
+                  preservedKeys.map({ keys in
+                      keys.0.allSatisfy { key in reloaded.networkKeys.contains(where: { SpaceKeyIntegrity.same($0, key) }) }
+                          && keys.1.allSatisfy { key in reloaded.applicationKeys.contains(where: { SpaceKeyIntegrity.same($0, key) }) }
+                  }) ?? true else { return nil }
+            site.state = .normal
+            guard site.save() else { return nil }
+        }
         return site
     }
     
@@ -507,20 +541,21 @@ extension SiteData {
     /// - Parameter siteJsonData: site数据
     /// - Parameter changeAddress: 是否切换地址
     /// - Parameter initialize 首次更新数据（本地无记录）
-    func update(siteJsonData: [String: Any], changeAddress: Bool = false, initialize: Bool = false) async {
-        guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return }
+    @discardableResult
+    func update(siteJsonData: [String: Any], changeAddress: Bool = false, initialize: Bool = false) async -> Bool {
+        guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return false }
         let gatewayImportScope = GatewayOrphanGuard.Scope.current(siteID: id)
         GatewayOrphanGuard.beginImport(gatewayImportScope)
         var gatewayImportActive = true
         defer { if gatewayImportActive { GatewayOrphanGuard.endImport(gatewayImportScope) } }
-        guard GatewayOrphanGuard.acceptsSnapshot(siteJsonData, scope: gatewayImportScope) else { return }
+        guard GatewayOrphanGuard.acceptsSnapshot(siteJsonData, scope: gatewayImportScope) else { return false }
         let trace = SiteImportTrace("site:" + id)
         defer { trace.mark("end") }
         
         let json = JSON(siteJsonData)
         guard let uuid = json["uuid"].string,
               let name = json["siteName"].string else {
-            return
+            return false
         }
         let lastUpdate = json["updateTimestamp"].int64Value
         // Process extension fields independently of the legacy Site timestamp gate.
@@ -593,15 +628,13 @@ extension SiteData {
             
             /// 是否保存mesh数据
 //            var meshNetworkSave = false
-            if meshNetwork == nil || initialize {
-                guard let netKeyDict = siteJsonData["netKey"] as? [String: Any],
-                      let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
-                      let netKey = try? jsonDecoder.decode(NetworkKey.self, from: netKeyData),
-                      let appKeyDict = siteJsonData["appKey"] as? [String: Any],
-                      let appKeyData = try? JSONSerialization.data(withJSONObject: appKeyDict),
-                      let appKey = try? jsonDecoder.decode(ApplicationKey.self, from: appKeyData) else {
-                    return
+            if meshNetwork == nil {
+                guard let remoteNet = SpaceKeyIntegrity.decodeNetwork(siteJsonData), remoteNet.isPrimary,
+                      let siteKeys = SpaceKeyIntegrity.pair(siteJsonData, networkID: remoteNet.networkId.hex) else {
+                    return false
                 }
+                let netKey = siteKeys.network
+                let appKey = siteKeys.application
                 
                 // Local Provisioner
                 // 本地手机供应者
@@ -870,7 +903,7 @@ extension SiteData {
                 }
             }
 
-            guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return }
+            guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return false }
             trace.mark("spacesCompleted")
             spaces.forEach { space in
                 switch gatewaySnapshot.decision(for: space.relevanceGatewayId) {
@@ -932,7 +965,7 @@ extension SiteData {
                     CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSpace(space: space), level: .normal)
                 }
             }
-            guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return }
+            guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return false }
             
 //            self.spaces = spaces
             self.spaceCount = nil
@@ -1242,18 +1275,19 @@ extension SiteData {
         }
         
         if updateNetwork {
-            meshNetwork?.save()
+            guard let meshNetwork,
+                  await SpaceKeyIntegrity.saveSiteNetworkPreservingKeys(meshNetwork, meshUUID: self.meshUUID) else { return false }
         }
         
         
-//        print("导入数据：site update spaces success \(Date().timeIntervalSince1970)")
-        if self.save(), meshNetwork != nil {
-            GatewayOrphanGuard.endImport(gatewayImportScope)
-            gatewayImportActive = false
-            // Only a completed detail import may reconcile orphan records.
-            // The response context excludes list summaries and stale requests.
-            await GatewayOrphanCleanup.reconcile(site: self, payload: siteJsonData)
-        }
+        //        print("导入数据：site update spaces success \(Date().timeIntervalSince1970)")
+        guard self.save(), meshNetwork != nil else { return false }
+        GatewayOrphanGuard.endImport(gatewayImportScope)
+        gatewayImportActive = false
+        // Only a completed detail import may reconcile orphan records.
+        // The response context excludes list summaries and stale requests.
+        await GatewayOrphanCleanup.reconcile(site: self, payload: siteJsonData)
+        return true
     }
     
     /// 添加site内用户资源
@@ -1539,9 +1573,7 @@ extension SpaceData {
         var initialize = false
         if space == nil{
             
-            guard let netKeyDict = json["netKey"].dictionaryObject,
-                  let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
-                  let netKey = try? jsonDecoder.decode(NetworkKey.self, from: netKeyData) else {
+            guard let netKey = SpaceKeyIntegrity.decodeNetwork(spaceJsonData) else {
                 return .rejected(
                     serverSpaceId: serverSpaceId,
                     reason: "invalidNetworkKey"
@@ -2091,20 +2123,6 @@ extension SpaceData {
                         throw SpaceConfigurationSafety.SafetyError.persistenceFailed
                     }
                 }
-            if let netKeyDict = json["netKey"].dictionaryObject,
-               let netKeyData = try? JSONSerialization.data(withJSONObject: netKeyDict),
-               let netKey = try? jsonDecoder.decode(NetworkKey.self, from: netKeyData),
-               let appKeyDict = json["appKey"].dictionaryObject,
-               let appKeyData = try? JSONSerialization.data(withJSONObject: appKeyDict),
-               let appKey = try? jsonDecoder.decode(ApplicationKey.self, from: appKeyData) {
-                
-                if !network.networkKeys.contains(where: { $0.index == netKey.index }) {
-                    network.add(networkKey: netKey)
-                    network.add(applicationKey: appKey)
-                    network.save()
-                }
-            }
-            
             self.name = json["spaceName"].stringValue
             self.imageId = json["imageId"].intValue
             self.sourceType = .init(rawValue: json["source"].intValue) ?? .create

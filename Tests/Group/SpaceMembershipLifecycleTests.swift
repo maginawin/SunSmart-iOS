@@ -13,11 +13,27 @@ struct NetworkKey: Decodable {
     var networkId: TestID { .init(hex: testNetworkID) }
 }
 struct ApplicationKey: Decodable { let boundNetworkKeyIndex: Int }
+enum SpaceKeyIntegrity {
+    struct Pair { let network: NetworkKey }
+    static func decodeNetwork(_ payload: [String: Any]) -> NetworkKey? {
+        guard let value = payload["netKey"] as? [String: Any],
+              let data = try? JSONSerialization.data(withJSONObject: value) else { return nil }
+        return try? JSONDecoder().decode(NetworkKey.self, from: data)
+    }
+    static func pair(_ payload: [String: Any], networkID: String) -> Pair? {
+        guard let key = decodeNetwork(payload), key.networkId.hex == networkID,
+              let app = payload["appKey"] as? [String: Any],
+              app["boundNetworkKeyIndex"] as? Int == key.index else { return nil }
+        return .init(network: key)
+    }
+    @MainActor static func replenish(_ space: SpaceData, from pair: Pair) -> Bool { true }
+}
 struct SpaceImportOutcome: Equatable {
     enum Status { case applied, rejected, skipped }
     let status: Status
     let rejectionReason: String?
     static func rejected(_ reason: String) -> Self { .init(status: .rejected, rejectionReason: reason) }
+    static func preserved(_ reason: String) -> Self { .init(status: .skipped, rejectionReason: reason) }
 }
 final class SpaceData {
     let id: String
@@ -55,6 +71,7 @@ final class SpaceData {
         lastUploadCloudTimestamp = 42
         return .init(status: .applied, rejectionReason: nil)
     }
+    @MainActor private func repairMissingServerKeys(_ remote: [String: Any]) async -> Bool { false }
     // RESTORE_METHOD
 }
 enum SpaceConfigurationSafety {
@@ -89,9 +106,10 @@ final class SiteData {
     func deleteProvisionerAddress(deviceAddresses: [Int], groupAddresses: [Int], sceneAddresses: [Int]) -> Bool { cleanup += 1; return true }
 }
 final class MeshNetwork {
+    static var loadAvailable = false
     struct Provisioner { var node: Int? = 1 }
     var localProvisioner: Provisioner? = .init()
-    static func load(meshUUID: String, allData: Bool) -> MeshNetwork? { nil }
+    static func load(meshUUID: String, allData: Bool) -> MeshNetwork? { loadAvailable ? MeshNetwork() : nil }
     func remove(node: Int) {}
     func save() -> Bool { true }
 }
@@ -134,6 +152,7 @@ final class CloudSynchronizationManager {
         SpaceConfigurationSafety.phases["canonical"] = .init(phase: .retired, unbindRequested: true)
         let restored = await first.restoreConfiguration(spaceJsonData: payload(first))
         precondition(restored.status == .applied && first.meshNetworkId == "canonical")
+        MeshNetwork.loadAvailable = true
         precondition(SpaceMembershipCoordinator.allowsConfiguration(first))
         let emptyReplacement = SpaceData(first.id)
         precondition(!SpaceMembershipCoordinator.allowsConfiguration(emptyReplacement), "an old membership receipt cannot authorize a new placeholder")
@@ -161,6 +180,7 @@ final class CloudSynchronizationManager {
         precondition(unsavedResult.status == .rejected)
 
         let request = NetworkRequest.shared
+        MeshNetwork.loadAvailable = false
         let site = SiteData([second]); SiteData.sites["site"] = site
         _ = second.save()
         request.networkable = false
