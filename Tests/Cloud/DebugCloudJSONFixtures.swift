@@ -43,7 +43,7 @@ final class SiteData {
     var localAddress: UInt16? = 12
     var spaces = [SpaceData]()
     func copy() -> SiteData {
-        let result = SiteData(); result.spaces = spaces.map { $0.copy() }; return result
+        let result = SiteData(); result.permission = permission; result.spaces = spaces.map { $0.copy() }; return result
     }
     func export(spaceIds: [String], purpose: SpaceSnapshotExportPurpose) async -> [String: Any]? {
         precondition(spaceIds.isEmpty)
@@ -80,9 +80,15 @@ enum NetowrkReqeustApi {
     let snapshot = try DebugCloudJSONExporter.Snapshot(site: site, space: nil)
     let payload = try await snapshot.payload()
     let members = (payload["site"] as! [String: Any])["spaces"] as! [[String: Any]]
-    precondition(members.compactMap { $0["uuid"] as? String } == [owner.id, editor.id])
+    precondition(members.compactMap { $0["uuid"] as? String } == [owner.id, editor.id, visitor.id])
     let single = try await DebugCloudJSONExporter.Snapshot(site: site, space: editor).payload()
     precondition(single["spaceId"] as? String == editor.id && (single["spaces"] as! [Any]).count == 1)
+    let visitorPayload = try await DebugCloudJSONExporter.Snapshot(site: site, space: visitor).payload()
+    precondition(visitorPayload["spaceId"] as? String == visitor.id)
+    site.permission = .visitor
+    let visitorSitePayload = try await DebugCloudJSONExporter.Snapshot(site: site, space: nil).payload()
+    precondition(((visitorSitePayload["site"] as! [String: Any])["spaces"] as! [Any]).count == 3)
+    site.permission = .owner
     func rejects(_ action: () throws -> Void) {
         do { try action(); preconditionFailure("Invalid snapshot accepted") } catch {}
     }
@@ -94,9 +100,12 @@ enum NetowrkReqeustApi {
     UserData.currentUserId = "fixture-user"
     let permissionSnapshot = try DebugCloudJSONExporter.Snapshot(site: site, space: editor)
     editor.permission = .visitor
-    rejects { try permissionSnapshot.validate() }
-    rejects { _ = try DebugCloudJSONExporter.Snapshot(site: site, space: visitor) }
+    rejects { try permissionSnapshot.validateAccess() }
     editor.permission = .editor
+    let sitePermissionSnapshot = try DebugCloudJSONExporter.Snapshot(site: site, space: nil)
+    site.permission = .visitor
+    rejects { try sitePermissionSnapshot.validateAccess() }
+    site.permission = .owner
     let dbSnapshot = try DebugCloudJSONExporter.Snapshot(site: site, space: nil)
     ConfigurationSnapshotRevision.version += 1
     rejects { try dbSnapshot.validate() }
@@ -107,7 +116,7 @@ enum NetowrkReqeustApi {
     SpaceConfigurationSafety.unavailable.insert(editor.id)
     let protected = try await DebugCloudJSONExporter.Snapshot(site: site, space: nil).payload()
     let protectedSpaces = (protected["site"] as! [String: Any])["spaces"] as! [[String: Any]]
-    precondition(protectedSpaces.count == 2 && protectedSpaces[1]["uuid"] as? String == editor.id)
+    precondition(protectedSpaces.count == 3 && protectedSpaces[1]["uuid"] as? String == editor.id)
     precondition(protectedSpaces[1]["nodes"] == nil, "Failed model assembly became an empty node list")
     let inspection = protected["_debugInspection"] as! [String: Any]
     let details = (inspection["spaces"] as! [[String: Any]])[1]

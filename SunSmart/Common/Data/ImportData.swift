@@ -1808,6 +1808,11 @@ extension SpaceData {
                 continuation.resume(returning: hasUsableLocalSnapshot ? .skipped : .rejected(issue))
                 return
             }
+            guard let remoteSchedulerModelStates = SchedulerModelSnapshot.spaceData(spaceJsonData) else {
+                SpaceConfigurationSafety.block(self, reason: "invalidRemoteSchedulerModelStates")
+                continuation.resume(returning: .rejected("invalidRemoteSchedulerModelStates"))
+                return
+            }
             if !resumingImport, SpaceConfigurationIntegrityPolicy.legacySpaceZoneDeletionNeedsReview(
                 spaceJsonData, hasLocalZones: !self.triggerZones.isEmpty) {
                 SpaceConfigurationSafety.block(self, reason: "legacySpaceZoneDeletionNeedsReview")
@@ -1884,7 +1889,9 @@ extension SpaceData {
 #endif
             
             let lastUpdate = json["updateTimestamp"].int64Value
-            let sameTimestampSummaryDiffers = lastUpdate == self.lastUpdate && summaryDiffers
+            let modelStatesDiffer = SchedulerModelSnapshot.remoteChanged(remoteSchedulerModelStates,
+                since: context.schedulerModelStatesBaseline)
+            let sameTimestampSummaryDiffers = lastUpdate == self.lastUpdate && (summaryDiffers || modelStatesDiffer)
             let serverSummaryDiffersNote = localNeedsUpload ? "serverSummaryDiffersButLocalNeedsUpload" : "serverSummaryDiffers"
             let shouldApplyServerData = resumingImport || SpaceConfigurationSafety.requiresAuthorityImport(self)
                 || SpaceConfigurationSafety.isBlocked(self) || lastUpdate > self.lastUpdate || initialize || (sameTimestampSummaryDiffers && !localNeedsUpload)
@@ -2102,7 +2109,8 @@ extension SpaceData {
                       var node = dictionary
                       if let uuid = node["uuid"] as? String { node["UUID"] = uuid }
                       guard let data = try? JSONSerialization.data(withJSONObject: node) else { return false }
-                      return (try? jsonDecoder.decode(Node.self, from: data)) != nil
+                      guard let decoded = try? jsonDecoder.decode(Node.self, from: data) else { return false }
+                      return decoded.restoreSchedulerModelSnapshot(nodeData: dictionary)
                   }),
                   (referenceCleanup?.didChange != true
                     || SpaceConfigurationSafety.preserveRemoteReferenceCleanup(self, payload: originalSpaceJsonData, candidate: spaceJsonData)),
@@ -2167,7 +2175,7 @@ extension SpaceData {
                 }
             }
             // 设备
-            let nodes = nodeDicts.compactMap { nodeDict in
+            let nodes: [Node] = nodeDicts.compactMap { nodeDict -> Node? in
                 var decodeNodeDict = nodeDict
                 if let uuid = nodeDict["uuid"] as? String { // 换算成大写UUID提供Node解码
                     decodeNodeDict.updateValue(uuid, forKey: "UUID")
@@ -2409,11 +2417,15 @@ extension SpaceData {
                         }
                     }
                     
+                    guard node.restoreSchedulerModelSnapshot(nodeData: nodeDict) else { return nil }
                     return node
                 }
                 return nil
             }
             
+            guard nodes.count == nodeDicts.count else {
+                throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+            }
             nodes.forEach({
                 // 判断设备是否存在废弃地址内，如果存在则清空废弃地址内缓存（如多用户编辑数据并未及时提交，使用了旧数据则可能出现导入的设备地址在废弃地址内）
                 if network.isAddressInExclusion(node: $0) {
@@ -2644,7 +2656,10 @@ extension SpaceData {
             guard self.save(),
                   let persistedNetwork = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId),
                   Set(persistedNetwork.groups.map { $0.address.address }) == Set(groups.map { $0.address.address }),
-                  nodes.allSatisfy({ node in persistedNetwork.node(withAddress: node.primaryUnicastAddress) != nil }) else {
+                  zip(nodes, nodeDicts).allSatisfy({ imported, dictionary in
+                      guard let persisted = persistedNetwork.node(withAddress: imported.primaryUnicastAddress) else { return false }
+                      return persisted.matchesSchedulerModelSnapshot(nodeData: dictionary)
+                  }) else {
                 throw SpaceConfigurationSafety.SafetyError.persistenceFailed
             }
             if shouldCommitProximityTopology {
@@ -2707,6 +2722,10 @@ extension Node {
     static func `import`(siteId: String, nodeJsonData: [String: Any]) async -> Node? {
         
         await withCheckedContinuation { continuation in
+            guard SchedulerModelSnapshot.spaceData(["nodes": [nodeJsonData]]) != nil else {
+                continuation.resume(returning: nil)
+                return
+            }
             
             var decodeNodeDict = nodeJsonData
             if let uuid = nodeJsonData["uuid"] as? String { // 换算成大写UUID提供Node解码
@@ -2896,6 +2915,10 @@ extension Node {
                 }
             }
             
+            guard node.restoreSchedulerModelSnapshot(nodeData: nodeJsonData) else {
+                continuation.resume(returning: nil)
+                return
+            }
             continuation.resume(returning: node)
         }
     }

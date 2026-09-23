@@ -33,7 +33,7 @@ with tempfile.TemporaryDirectory(prefix='debug-json-tests-') as output:
     fixture = read('Tests/Cloud/DebugCloudJSONFixtures.swift')
     fixture = fixture[:fixture.index('extension String {')].replace('import UIKit', 'import Foundation')
     source = 'import Foundation\n@MainActor final class DebugCloudJSONExporter {\n'
-    source += 'static func canExport(_ permission: Permission) -> Bool { permission == .owner || permission == .editor }\n'
+    source += exporter[exporter.index('    static func canExport('):exporter.index('    /// Matches')]
     source += exporter[start:exporter.rindex('#endif')]
     source += '\nextension String { var localizedString: String { self } }\n'
     source += fixture + '\n@main struct Run { static func main() async throws { try await runSnapshotTests() } }\n'

@@ -339,7 +339,7 @@ class Schedule: Codable, Copyable {
         try container.encode(Schedule.getWeekValue(weekDays: self.weekDays), forKey: .dayOfWeek)
         try container.encode(self.nodeAddresses.map { $0.hex }, forKey: .nodeAddresses)
         try container.encode(self.groupAddresses.map { $0.hex }, forKey: .groupAddresses)
-        try container.encode(self.scene?.number.hex, forKey: .sceneNumber)
+        try container.encode(self.sceneNumber?.hex, forKey: .sceneNumber)
         try container.encode(self.profiles, forKey: .profiles)
     }
     

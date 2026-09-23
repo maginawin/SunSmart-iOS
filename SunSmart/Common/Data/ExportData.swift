@@ -600,6 +600,7 @@ extension SpaceData {
             var groupDicts: [[String: Any]] = []
             var sceneDicts: [[String: Any]] = []
             var scheheduleDicts: [[String: Any]] = []
+            var schedulerSnapshotInvalid = false
             
             // 设备
             allNodes.filter({ !$0.isProvisioner }).forEach { node in
@@ -797,6 +798,16 @@ extension SpaceData {
                            let data = try? jsonEncoder.encode(gatewaInfo), let gatewayInfoDict = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
                             nodeDict.updateValue(gatewayInfoDict, forKey: "gatewayInfo")
                         }
+                    }
+                    do {
+                        if let snapshot = try node.schedulerModelSnapshot(nodeData: nodeDict) {
+                            var properties = nodeDict["custProps"] as? [String: Any] ?? [:]
+                            properties["schedulerModelStates"] = try snapshot.dictionary()
+                            nodeDict["custProps"] = properties
+                        }
+                    } catch {
+                        schedulerSnapshotInvalid = true
+                        purpose.reportInspectionIssue("nodes.schedulerModelStates: invalidLocalSnapshot")
                     }
                     nodeDicts.append(nodeDict)
                 }
@@ -1028,12 +1039,27 @@ extension SpaceData {
             spaceJsonData.updateValue(emergencyFireControllerDicts, forKey: "emergencyFireControllers")
             spaceJsonData.updateValue(sceneDicts, forKey: "scenes")
             spaceJsonData.updateValue(scheheduleDicts, forKey: "schedules")
+            guard !schedulerSnapshotInvalid else {
+                if reportsSyncFailure {
+                    SpaceConfigurationSafety.recordSyncFailure(self, error: .configurationExportInvalid,
+                                                               stage: "exportSchedulerModelStates")
+                }
+                return nil
+            }
             if let issue = SpaceConfigurationIntegrityPolicy.profilesIssue(in: spaceJsonData) {
                 purpose.reportInspectionIssue("profiles: \(issue)")
                 if reportsSyncFailure {
                     SpaceConfigurationSafety.recordSyncFailure(self, error: .configurationExportInvalid, stage: "exportProfile")
                 }
                 guard purpose.isReadOnlyInspection else { return nil }
+            }
+            if let issue = SpaceConfigurationIntegrityPolicy.scheduleTargetIssue(in: spaceJsonData) {
+                purpose.reportInspectionIssue("schedules: \(issue)")
+                if reportsSyncFailure {
+                    SpaceConfigurationSafety.recordSyncFailure(self, error: .configurationExportInvalid,
+                                                               stage: "exportScheduleTarget")
+                    return nil
+                }
             }
             return spaceJsonData
         }
@@ -1210,6 +1236,16 @@ extension Node {
                     nodeDict.updateValue(gatewayInfoDict, forKey: "gatewayInfo")
                 }
             }
+            do {
+                if let snapshot = try schedulerModelSnapshot(nodeData: nodeDict) {
+                    var properties = nodeDict["custProps"] as? [String: Any] ?? [:]
+                    properties["schedulerModelStates"] = try snapshot.dictionary()
+                    nodeDict["custProps"] = properties
+                }
+            } catch {
+                continuation.resume(returning: nil)
+                return
+            }
             continuation.resume(returning: nodeDict)
             //                nodeDicts.append(nodeDict)
             
@@ -1218,6 +1254,81 @@ extension Node {
     }
     
 }
+
+// MARK: - Scheduler Model snapshot adapter
+
+extension Node {
+    func schedulerModelSnapshot(nodeData: [String: Any]) throws -> SchedulerModelSnapshot? {
+        guard corruptedSchedulerModelActionsData == nil, schedulerModelCacheDecodeError == nil else {
+            throw SchedulerModelSnapshot.Invalid.entries
+        }
+        let supported = schedulerSetupModels
+        guard allSchedulerModelEntrys.keys.allSatisfy({ supported.contains($0) }) else {
+            throw SchedulerModelSnapshot.Invalid.topology
+        }
+        guard !supported.isEmpty else { return nil }
+        func bytes(_ entries: [Int: SchedulerRegistryEntry]) throws -> Data {
+            var data = Data()
+            for (index, entry) in entries.sorted(by: { $0.key < $1.key }) {
+                guard (0...15).contains(index) else { throw SchedulerModelSnapshot.Invalid.entries }
+                data.append(SchedulerRegistryEntry.marshal(index: UInt8(index), entry: entry))
+            }
+            return data
+        }
+        let containers: [SchedulerModelSnapshot.Container] = try supported.compactMap { model in
+            guard let entries = allSchedulerModelEntrys[model] else { return nil }
+            guard let address = model.parentElement?.unicastAddress else { throw SchedulerModelSnapshot.Invalid.topology }
+            return .init(elementAddress: address.hex, modelId: "1207", entriesData: try bytes(entries))
+        }
+        let snapshot = SchedulerModelSnapshot(schemaVersion: 1, nodeUUID: uuid.uuidString,
+            unicastAddress: primaryUnicastAddress.hex,
+            deviceKeyFingerprint: try SchedulerModelSnapshot.keyFingerprint(nodeData),
+            models: containers, legacyEntriesData: try bytes(schedulerActions))
+        try snapshot.validate(node: nodeData)
+        return snapshot
+    }
+
+    /// Called on the newly decoded Node before the existing database save.
+    func restoreSchedulerModelSnapshot(nodeData: [String: Any]) -> Bool {
+        do {
+            guard let snapshot = try SchedulerModelSnapshot.decode(node: nodeData) else { return true }
+            var restored: [Model: [Int: SchedulerRegistryEntry]] = [:]
+            func entries(_ data: Data) throws -> [Int: SchedulerRegistryEntry] {
+                var result: [Int: SchedulerRegistryEntry] = [:]
+                for bytes in try SchedulerModelSnapshot.entries(data) {
+                    let value = SchedulerRegistryEntry.unmarshal(bytes)
+                    result[Int(value.index)] = value.entry
+                }
+                return result
+            }
+            for container in snapshot.models {
+                guard let address = SchedulerModelSnapshot.address(container.elementAddress),
+                      let model = element(withAddress: address)?.model(withSigModelId: .schedulerSetupServerModelId) else {
+                    return false
+                }
+                restored[model] = try entries(container.entriesData)
+            }
+            let legacy = try entries(snapshot.legacyEntriesData)
+            allSchedulerModelEntrys = restored
+            schedulerActions = legacy
+            scheduleIds = legacy.keys.sorted()
+            return true
+        } catch { return false }
+    }
+
+    func matchesSchedulerModelSnapshot(nodeData: [String: Any]) -> Bool {
+        do {
+            guard try SchedulerModelSnapshot.decode(node: nodeData) != nil else { return true }
+            guard let snapshot = try schedulerModelSnapshot(nodeData: nodeData) else { return false }
+            var actual = nodeData
+            actual["custProps"] = ["schedulerModelStates": try snapshot.dictionary()]
+            return SchedulerModelSnapshot.spaceData(["nodes": [actual]])
+                == SchedulerModelSnapshot.spaceData(["nodes": [nodeData]])
+        } catch { return false }
+    }
+}
+
+// MARK: - Gateway export
 
 extension GatewayModel {
     

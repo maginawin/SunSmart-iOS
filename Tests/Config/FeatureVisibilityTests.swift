@@ -114,6 +114,11 @@ struct FeatureVisibilityTests {
             check(config.rules[feature.rawValue] != nil, "Missing known feature: \(feature.rawValue)")
         }
         check(Set(config.rules.keys) == Set(FeatureVisibility.Feature.allCases.map(\.rawValue)), "Unregistered feature path in configuration")
+        let checkedInVisibility = FeatureVisibility(build: .debug) { bundled }
+        check(checkedInVisibility.isVisible(.siteExportJson, permission: .visitor),
+              "Checked-in Debug export rule must allow visitor")
+        check(!FeatureVisibility(build: .release, loadData: { bundled }).isVisible(.siteExportJson, permission: .visitor),
+              "Checked-in Release export rule must remain hidden")
         print("PASS: \(cases) matrix cases, 54 current-build cases, invalid input, isolation, roles, cache and bundle configuration (\(FeatureVisibility.BuildMode.current.rawValue))")
     }
 }

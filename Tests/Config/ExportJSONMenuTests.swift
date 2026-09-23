@@ -27,7 +27,7 @@ enum XWHUDManager {
 @main
 struct ExportJSONMenuTests {
     static func visibility(build: FeatureVisibility.BuildMode = .current,
-                           roles: [String] = ["owner", "editor"]) throws -> FeatureVisibility {
+                           roles: [String] = ["owner", "editor", "visitor"]) throws -> FeatureVisibility {
         let data = try JSONSerialization.data(withJSONObject: ["sites": ["site": [
             "exportJson": ["builds": ["debug"], "roles": roles]
         ]]])
@@ -44,12 +44,12 @@ struct ExportJSONMenuTests {
                     menu.site.permission = siteRole
                     menu.space.permission = spaceRole
                     card.permission = cardRole
-                    let entries = [(menu.siteMenu(), siteRole, Optional<SpaceData>.none),
-                                   (menu.cardMenu(space: card), cardRole, Optional(card)),
-                                   (menu.spaceMenu(), spaceRole, Optional(menu.space))]
-                    for (items, role, expectedSpace) in entries {
+                    let entries = [(menu.siteMenu(), Optional<SpaceData>.none),
+                                   (menu.cardMenu(space: card), Optional(card)),
+                                   (menu.spaceMenu(), Optional(menu.space))]
+                    for (items, expectedSpace) in entries {
                         #if DEBUG
-                        let expected = role != .visitor
+                        let expected = true
                         #else
                         let expected = false
                         #endif
@@ -77,25 +77,21 @@ struct ExportJSONMenuTests {
                      && release.cardMenu(space: card).isEmpty)
 
         #if DEBUG
-        // Opening a menu must not freeze the permission used by its later action.
+        // A restricted rule must still reject a role change after the menu opens.
+        let restricted = ExportJSONMenuHarness(visibility: try visibility(roles: ["owner", "editor"]))
         for kind in 0..<3 {
-            menu.site.permission = .editor; menu.space.permission = .editor; card.permission = .editor
-            let item = [menu.siteMenu(), menu.cardMenu(space: card), menu.spaceMenu()][kind][0]
+            restricted.site.permission = .editor; restricted.space.permission = .editor; card.permission = .editor
+            let item = [restricted.siteMenu(), restricted.cardMenu(space: card), restricted.spaceMenu()][kind][0]
             switch kind {
-            case 0: menu.site.permission = .visitor
+            case 0: restricted.site.permission = .visitor
             case 1: card.permission = .visitor
-            default: menu.space.permission = .visitor
+            default: restricted.space.permission = .visitor
             }
-            let before = menu.debugJSONExporter.exports
+            let before = restricted.debugJSONExporter.exports
             item.tapItemBack(0)
-            precondition(menu.debugJSONExporter.exports == before, "Stale menu must not export")
+            precondition(restricted.debugJSONExporter.exports == before, "Stale menu must not export")
         }
-        // A more permissive display rule must never grant export authorization.
-        let visitor = ExportJSONMenuHarness(visibility: try visibility(roles: ["visitor"]))
-        visitor.site.permission = .visitor
-        visitor.siteMenu()[0].tapItemBack(0)
-        precondition(visitor.debugJSONExporter.exports == 0)
-        precondition(XWHUDManager.messages == ["no_permission"])
+        precondition(XWHUDManager.messages.isEmpty, "Allowed visitor must not see a permission error")
         #endif
         print("PASS: \(checks) production menu cases, configuration denial, resource selection and stale action guards (\(FeatureVisibility.BuildMode.current.rawValue))")
     }

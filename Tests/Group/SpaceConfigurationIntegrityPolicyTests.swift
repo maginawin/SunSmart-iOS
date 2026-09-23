@@ -76,10 +76,47 @@ struct SpaceConfigurationIntegrityPolicyTests {
         precondition(!P.legacySpaceZoneDeletionNeedsReview(
             ["spaceData": ["proximityLightingSchemaVersion": 1, "triggerZones": []]], hasLocalZones: true))
         testReadbackDiagnostics()
+        testSceneScheduleTargets()
         testEmptyGroupAddressCompatibility()
         testProximityAllCompatibility()
         testUpgradeOnlyDefaults()
         print("PASS: complete profile switches, incomplete payloads, photocell references, readback and submission generation")
+    }
+
+    static func testSceneScheduleTargets() {
+        typealias P = SpaceConfigurationIntegrityPolicy
+        let scene: [String: Any] = ["number": "0006", "name": "All off"]
+        let sceneSchedule: [String: Any] = ["id": 0, "selectTarget": 2, "sceneAddress": "0006"]
+        let groupSchedule: [String: Any] = ["id": 1, "selectTarget": 0, "sceneAddress": NSNull()]
+        precondition(P.scheduleTargetIssue(in: ["scenes": [[String: Any]](), "schedules": [[String: Any]]()]) == nil,
+                     "Empty Spaces remain uploadable")
+        let exported: [String: Any] = ["scenes": [scene], "schedules": [sceneSchedule, groupSchedule]]
+        precondition(P.scheduleTargetIssue(in: exported) == nil)
+        let expected = P.scheduleTargetsData(exported)
+        precondition(expected != nil)
+
+        var remote = exported
+        remote["schedules"] = [groupSchedule, sceneSchedule]
+        remote["role"] = "visitor"
+        precondition(P.scheduleTargetsData(remote) == expected,
+                     "Readback must ignore schedule order and role metadata")
+        var missingTarget = sceneSchedule
+        missingTarget["sceneAddress"] = NSNull()
+        remote["schedules"] = [missingTarget, groupSchedule]
+        precondition(P.scheduleTargetIssue(in: remote) != nil)
+        precondition(P.scheduleTargetsData(remote) != expected,
+                     "Server-side sceneAddress loss must not confirm an upload")
+
+        var unknownTarget = sceneSchedule
+        unknownTarget["sceneAddress"] = "0007"
+        remote["schedules"] = [unknownTarget, groupSchedule]
+        precondition(P.scheduleTargetIssue(in: remote) != nil)
+        remote["schedules"] = [sceneSchedule, sceneSchedule]
+        precondition(P.scheduleTargetIssue(in: remote) != nil)
+        remote["schedules"] = [groupSchedule]
+        precondition(P.scheduleTargetsData(remote) != expected)
+        remote.removeValue(forKey: "schedules")
+        precondition(P.scheduleTargetIssue(in: remote) != nil)
     }
 
     static func testProximityAllCompatibility() {

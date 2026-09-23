@@ -2,6 +2,143 @@ import Foundation
 import CoreFoundation
 import CryptoKit
 
+/// Lossless node observations transported in the server's existing JSON column.
+/// A missing container is unknown; a present container with zero bytes is known empty.
+struct SchedulerModelSnapshot: Codable, Equatable {
+    struct Container: Codable, Equatable {
+        let elementAddress: String
+        let modelId: String
+        let entriesData: Data
+    }
+    enum Invalid: Error { case schema, identity, topology, entries, legacyProjection }
+
+    let schemaVersion: Int
+    let nodeUUID: String
+    let unicastAddress: String
+    let deviceKeyFingerprint: String
+    let models: [Container]
+    // Preserve the existing compatibility projection too, without rounding its
+    // transition time or replacing its month mask during import.
+    let legacyEntriesData: Data
+
+    static func keyFingerprint(_ node: [String: Any]) throws -> String {
+        guard let key = node["deviceKey"] as? String, key.count == 32,
+              key.allSatisfy({ $0.isASCII && $0.isHexDigit }) else { throw Invalid.identity }
+        return SHA256.hash(data: Data(key.uppercased().utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+
+    static func decode(node: [String: Any]) throws -> Self? {
+        // custProps predates this contract and is opaque to other clients. Only
+        // the explicit schedulerModelStates member declares our schema.
+        guard let properties = node["custProps"] as? [String: Any] else { return nil }
+        guard let raw = properties["schedulerModelStates"] else { return nil }
+        let snapshot = try JSONDecoder().decode(Self.self, from: JSONSerialization.data(withJSONObject: raw))
+        try snapshot.validate(node: node)
+        return snapshot
+    }
+
+    func validate(node: [String: Any]) throws {
+        guard schemaVersion == 1 else { throw Invalid.schema }
+        guard let uuid = UUID(uuidString: node["uuid"] as? String ?? node["UUID"] as? String ?? ""),
+              UUID(uuidString: nodeUUID) == uuid,
+              let address = Self.address(node["unicastAddress"]),
+              Self.address(unicastAddress) == address,
+              deviceKeyFingerprint == (try Self.keyFingerprint(node)) else { throw Invalid.identity }
+        guard let elements = node["elements"] as? [[String: Any]] else { throw Invalid.topology }
+        var elementIndices = Set<Int64>()
+        var supported = Set<UInt16>()
+        for element in elements {
+            guard let index = SpaceConfigurationIntegrityPolicy.integer(element["index"]),
+                  (0...255).contains(index), elementIndices.insert(index).inserted,
+                  Int64(address) + index <= 0x7FFF,
+                  let modelList = element["models"] as? [[String: Any]] else { throw Invalid.topology }
+            let setupModels = modelList.filter { ($0["modelId"] as? String)?.uppercased() == "1207" }
+            guard setupModels.count <= 1 else { throw Invalid.topology }
+            if !setupModels.isEmpty { supported.insert(address + UInt16(index)) }
+        }
+        var seen = Set<UInt16>()
+        for model in models {
+            guard model.modelId.uppercased() == "1207", let address = Self.address(model.elementAddress),
+                  supported.contains(address), seen.insert(address).inserted else { throw Invalid.topology }
+            _ = try Self.entries(model.entriesData)
+        }
+        let legacy = try Self.entries(legacyEntriesData)
+        guard let schedules = node["schedules"] as? [[String: Any]], schedules.count == legacy.count else {
+            throw Invalid.legacyProjection
+        }
+        var indices = Set<Int64>()
+        for schedule in schedules {
+            guard let index = SpaceConfigurationIntegrityPolicy.integer(schedule["id"]),
+                  indices.insert(index).inserted,
+                  let entry = legacy.first(where: { Int64($0[0] & 0x0F) == index }) else { throw Invalid.legacyProjection }
+            for (key, value) in Self.legacyFields(entry) {
+                guard SpaceConfigurationIntegrityPolicy.integer(schedule[key]) == value else { throw Invalid.legacyProjection }
+            }
+        }
+    }
+
+    static func address(_ raw: Any?) -> UInt16? {
+        guard let hex = raw as? String, hex.count == 4,
+              let value = UInt16(hex, radix: 16), (1...0x7FFF).contains(value) else { return nil }
+        return value
+    }
+
+    /// Validate before calling SDK unmarshal, which assumes ten bytes and a valid action.
+    static func entries(_ data: Data) throws -> [Data] {
+        guard data.count <= 160, data.count.isMultiple(of: 10) else { throw Invalid.entries }
+        var indices = Set<UInt8>()
+        return try stride(from: 0, to: data.count, by: 10).map { offset in
+            let entry = data.subdata(in: offset..<offset + 10)
+            guard indices.insert(entry[0] & 0x0F).inserted,
+                  [0, 1, 2, 15].contains(entry[6] >> 4) else { throw Invalid.entries }
+            return entry
+        }.sorted { ($0[0] & 0x0F) < ($1[0] & 0x0F) }
+    }
+
+    private static func legacyFields(_ data: Data) -> [String: Int64] {
+        func bits(_ offset: Int, _ length: Int) -> Int64 {
+            (0..<length).reduce(0) { $0 | (Int64((data[(offset + $1) / 8] >> ((offset + $1) % 8)) & 1) << $1) }
+        }
+        let steps = Int64(data[7] & 0x3F)
+        let resolution = [0.1, 1, 10, 600][Int(data[7] >> 6)]
+        return ["id": bits(0, 4), "year": bits(4, 7), "month": bits(11, 12), "day": bits(23, 5),
+                "hour": bits(28, 5), "minute": bits(33, 6), "second": bits(39, 6), "dayOfWeek": bits(45, 7),
+                "action": bits(52, 4), "transitionTime": steps == 63 ? 0 : Int64(Double(steps) * resolution),
+                "sceneNumber": bits(64, 16)]
+    }
+
+    func dictionary() throws -> [String: Any] {
+        try JSONSerialization.jsonObject(with: JSONEncoder().encode(self)) as! [String: Any]
+    }
+
+    private func canonical() throws -> Self {
+        .init(schemaVersion: schemaVersion, nodeUUID: nodeUUID.uppercased(), unicastAddress: unicastAddress.uppercased(),
+              deviceKeyFingerprint: deviceKeyFingerprint, models: try models.map {
+                  .init(elementAddress: $0.elementAddress.uppercased(), modelId: $0.modelId.uppercased(),
+                        entriesData: try Self.entries($0.entriesData).reduce(into: Data()) { $0.append($1) })
+              }.sorted { $0.elementAddress < $1.elementAddress },
+              legacyEntriesData: try Self.entries(legacyEntriesData).reduce(into: Data()) { $0.append($1) })
+    }
+
+    static func spaceData(_ payload: [String: Any]) -> Data? {
+        guard let nodes = payload["nodes"] as? [[String: Any]] else { return nil }
+        do {
+            let snapshots = try nodes.compactMap { try decode(node: $0)?.canonical() }.sorted { $0.nodeUUID < $1.nodeUUID }
+            guard Set(snapshots.map(\.nodeUUID)).count == snapshots.count else { return nil }
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.sortedKeys]
+            return try encoder.encode(snapshots)
+        } catch { return nil }
+    }
+
+    static func remoteChanged(_ data: Data, since baseline: Data?) -> Bool {
+        // Old installations have no baseline. Only a new-format snapshot can
+        // trigger a same-timestamp import in that case. Never compare cloud
+        // observations to live local observations: the latter may be newer.
+        data != (baseline ?? Data("[]".utf8))
+    }
+}
+
 /// Validity is independent of the previous profile type. A complete 7/8 -> 1
 /// change is a supported operation, including when it arrives from another phone.
 enum SpaceConfigurationIntegrityPolicy {
@@ -129,6 +266,37 @@ enum SpaceConfigurationIntegrityPolicy {
             }
         }
         return nil
+    }
+
+    /// Check scene schedules against this exported Space, never the active Mesh manager.
+    static func scheduleTargetIssue(in payload: [String: Any]) -> String? {
+        guard let schedules = payload["schedules"] as? [[String: Any]],
+              let scenes = payload["scenes"] as? [[String: Any]] else { return "missingSchedulesOrScenes" }
+        let sceneNumbers = Set(scenes.compactMap { $0["number"] as? String })
+        var ids = Set<Int64>()
+        for schedule in schedules {
+            guard let id = integer(schedule["id"]), ids.insert(id).inserted,
+                  let target = integer(schedule["selectTarget"]), (0...3).contains(target) else {
+                return "invalidScheduleIdentityOrTarget"
+            }
+            if target == 2 {
+                guard let number = schedule["sceneAddress"] as? String,
+                      sceneNumbers.contains(number) else { return "missingSceneTarget:\(id)" }
+            }
+        }
+        return nil
+    }
+
+    /// An additive readback check for new submissions. Old receipts lack this field.
+    static func scheduleTargetsData(_ payload: [String: Any]) -> Data? {
+        guard scheduleTargetIssue(in: payload) == nil,
+              let schedules = payload["schedules"] as? [[String: Any]] else { return nil }
+        let targets: [[String: Any]] = schedules.compactMap { schedule in
+            guard let id = integer(schedule["id"]), let target = integer(schedule["selectTarget"]) else { return nil }
+            return ["id": id, "selectTarget": target,
+                    "sceneAddress": target == 2 ? schedule["sceneAddress"] as? String ?? "" : ""]
+        }.sorted { (integer($0["id"]) ?? 0) < (integer($1["id"]) ?? 0) }
+        return try? JSONSerialization.data(withJSONObject: targets, options: [.sortedKeys])
     }
 
     static func legacySpaceZoneDeletionNeedsReview(_ payload: [String: Any], hasLocalZones: Bool) -> Bool {

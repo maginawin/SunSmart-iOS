@@ -135,6 +135,10 @@ struct SpaceRecoveryState: Codable, Equatable {
         let configuration: Data
         var phase: Phase = .prepared
         var keyFingerprint: String?
+        /// Absent on receipts written before scene-target readback was added.
+        var scheduleTargets: Data? = nil
+        /// Exact observations submitted by clients that support Model snapshots.
+        var schedulerModelStates: Data? = nil
     }
     let identity: Identity
     var generation = UUID()
@@ -144,6 +148,8 @@ struct SpaceRecoveryState: Codable, Equatable {
     var directoryName: String?
     var submission: Submission?
     var authorizationBaseline: Data?
+    /// Last confirmed cloud observations, independent of subsequent device reads.
+    var schedulerModelStatesBaseline: Data? = nil
     var unbindRequested: Bool?
     var requiresRemoteImport: Bool?
     var siteCreationTimestamp: Int64?

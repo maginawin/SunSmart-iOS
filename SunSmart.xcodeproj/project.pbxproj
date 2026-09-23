@@ -11279,7 +11279,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.8;
+				MARKETING_VERSION = 1.2.9.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Debug;
@@ -11300,7 +11300,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.8;
+				MARKETING_VERSION = 1.2.9.1;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Release;

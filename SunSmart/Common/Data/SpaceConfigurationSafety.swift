@@ -746,6 +746,18 @@ enum SpaceConfigurationSafety {
                   let submittedKeys = SpaceKeyIntegrity.pair(payload, networkID: space.meshNetworkId),
                   let serverKeys = SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId),
                   submittedKeys.fingerprint == serverKeys.fingerprint else { return .failure(uploadUnconfirmed) }
+            let schedulesMatch: Bool
+            if upgrading {
+                schedulesMatch = true
+            } else if let targets = SpaceConfigurationIntegrityPolicy.scheduleTargetsData(payload) {
+                schedulesMatch = SpaceConfigurationIntegrityPolicy.scheduleTargetsData(remote) == targets
+            } else {
+                schedulesMatch = false
+            }
+            let modelsMatch = upgrading || (SchedulerModelSnapshot.spaceData(payload).map {
+                SchedulerModelSnapshot.spaceData(remote) == $0
+            } ?? false)
+            guard schedulesMatch, modelsMatch else { return .success(false) }
             space.applyRemoteSpaceMetadata(remote)
             guard space.save(), isCurrent(context, space: space),
                   !upgrading || canAutomaticallyUpload(space) else { return .failure(uploadUnconfirmed) }
@@ -794,13 +806,16 @@ enum SpaceConfigurationSafety {
                   let timestamp = SpaceConfigurationIntegrityPolicy.integer(payload["updateTimestamp"]),
                   payload["uuid"] as? String == space.id, payload["nodes"] is [[String: Any]],
                   let configuration = SpaceConfigurationIntegrityPolicy.configurationData(payload),
+                  let scheduleTargets = SpaceConfigurationIntegrityPolicy.scheduleTargetsData(payload),
+                  let schedulerModelStates = SchedulerModelSnapshot.spaceData(payload),
                   let keys = SpaceKeyIntegrity.pair(payload, networkID: space.meshNetworkId),
                   let current = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
                   let local = SpaceKeyIntegrity.pair(current, networkID: space.meshNetworkId,
                                                      applicationIndex: keys.application.index),
                   keys.fingerprint == local.fingerprint else { return nil }
             state.submission = .init(id: UUID(), timestamp: timestamp, configuration: configuration,
-                                     keyFingerprint: keys.fingerprint)
+                                     keyFingerprint: keys.fingerprint, scheduleTargets: scheduleTargets,
+                                     schedulerModelStates: schedulerModelStates)
             state.siteCreationTimestamp = siteCreationTimestamp
             try saveState(state, space: space)
             return state
@@ -882,6 +897,7 @@ enum SpaceConfigurationSafety {
             // device compares the changed local topology to the pre-add cloud copy.
             UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
             state.authorizationBaseline = readbackConfiguration(submission.configuration, timestamp: submission.timestamp, space: space)
+            state.schedulerModelStatesBaseline = submission.schedulerModelStates
             let blockedKey = "spaceConfigurationBlocked." + key(space)
             if ["uploadReadbackUnconfirmed", "uploadReadbackConflict"].contains(UserDefaults.standard.string(forKey: blockedKey) ?? "") {
                 UserDefaults.standard.removeObject(forKey: blockedKey)
@@ -939,13 +955,19 @@ enum SpaceConfigurationSafety {
                         return .failure(authorityError(space))
                     }
                     let expected = readbackConfiguration(submission.configuration, timestamp: submission.timestamp, space: space)
+                    let schedulesMatch = submission.scheduleTargets.map {
+                        SpaceConfigurationIntegrityPolicy.scheduleTargetsData(remote) == $0
+                    } ?? true
+                    let modelsMatch = submission.schedulerModelStates.map {
+                        SchedulerModelSnapshot.spaceData(remote) == $0
+                    } ?? true
                     if remoteKeyFingerprint != expectedKeyFingerprint,
                        space.permission == .owner, remote["role"] as? String == "owner",
                        let localNetwork = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
                        let localKeys = SpaceKeyIntegrity.pair(localNetwork, networkID: space.meshNetworkId),
                        localKeys.fingerprint == expectedKeyFingerprint,
                        SpaceKeyIntegrity.presentServerKeysMatchLocal(remote, local: localKeys),
-                       SpaceConfigurationIntegrityPolicy.configurationsMatch(configuration, expected) {
+                       SpaceConfigurationIntegrityPolicy.configurationsMatch(configuration, expected), schedulesMatch, modelsMatch {
                         // The submitted business configuration arrived, but one Key did not.
                         // Keep the Space dirty and send a new complete snapshot.
                         context = try recoveryState(space)
@@ -955,7 +977,7 @@ enum SpaceConfigurationSafety {
                         return .success(())
                     }
                     if remoteKeyFingerprint == expectedKeyFingerprint,
-                       SpaceConfigurationIntegrityPolicy.configurationsMatch(configuration, expected) {
+                       SpaceConfigurationIntegrityPolicy.configurationsMatch(configuration, expected), schedulesMatch, modelsMatch {
                         context = try recoveryState(space)
                         guard context.submission?.id == submission.id else { return .failure(uploadUnconfirmed) }
                         context.submission?.phase = .verified
@@ -966,7 +988,7 @@ enum SpaceConfigurationSafety {
                     print("[SpaceConfigurationReadback] source=resume site=\(space.siteId) space=\(space.id) "
                         + "submissionId=\(submission.id.uuidString) phase=\(submission.phase.rawValue) "
                         + "submitted=\(submission.timestamp) localTimestamp=\(space.lastUpdate) "
-                        + "attempt=\(attempt + 1) result=mismatch "
+                        + "attempt=\(attempt + 1) result=mismatch scheduleTargetsMatch=\(schedulesMatch) schedulerModelsMatch=\(modelsMatch) "
                         + SpaceConfigurationIntegrityPolicy.readbackDiagnostic(
                             submittedConfiguration: expected, remote: remote))
                     #endif
@@ -1016,8 +1038,11 @@ enum SpaceConfigurationSafety {
         guard let payload = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any],
               payload["uuid"] as? String == space.id, payload["nodes"] is [[String: Any]],
               let timestamp = SpaceConfigurationIntegrityPolicy.integer(payload["updateTimestamp"]),
+              let schedulerModelStates = SchedulerModelSnapshot.spaceData(payload),
               let configuration = SpaceConfigurationIntegrityPolicy.configurationData(payload) else { throw SafetyError.invalidCheckpoint }
-        state.submission = .init(id: UUID(), timestamp: timestamp, configuration: configuration, phase: .accepted)
+        state.submission = .init(id: UUID(), timestamp: timestamp, configuration: configuration, phase: .accepted,
+                                 scheduleTargets: SpaceConfigurationIntegrityPolicy.scheduleTargetsData(payload),
+                                 schedulerModelStates: schedulerModelStates)
         try saveState(state, space: space)
     }
 
@@ -1288,6 +1313,7 @@ enum SpaceConfigurationSafety {
                 let payload = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
                 let original = payload.flatMap { originalReferenceCleanupImport(space, candidate: $0) }
                 state.authorizationBaseline = (original ?? payload).flatMap(SpaceConfigurationIntegrityPolicy.configurationData)
+                state.schedulerModelStatesBaseline = payload.flatMap(SchedulerModelSnapshot.spaceData)
                 if original != nil, space.permission != .visitor {
                     space.markLocalChangePendingCloudSync()
                     guard space.save() else { return false }

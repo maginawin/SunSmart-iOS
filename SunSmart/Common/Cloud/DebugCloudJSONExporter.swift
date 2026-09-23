@@ -6,7 +6,7 @@ final class DebugCloudJSONExporter {
     private var isExporting = false
 
     static func canExport(_ permission: Permission) -> Bool {
-        permission == .owner || permission == .editor
+        permission == .owner || permission == .editor || permission == .visitor
     }
 
     /// Matches MenuPopView's icon inset and font, with space for the full label.
@@ -141,10 +141,13 @@ final class DebugCloudJSONExporter {
 
         func validateAccess() throws {
             guard Self.allowed(site: site, space: space),
+                  site.permission == siteCopy.permission,
                   account == UserData.currentUserId, region == String(describing: UserData.currentServerRegion),
                   username == UserData.currentUserName,
-                  spaces.allSatisfy({ DebugCloudJSONExporter.canExport($0.permission)
-                      && $0.siteId == site.id && $0.state == .normal }) else { throw ExportError.changed }
+                  spaces.count == copies.count,
+                  zip(spaces, copies).allSatisfy({ $0.0.permission == $0.1.permission
+                      && DebugCloudJSONExporter.canExport($0.0.permission)
+                      && $0.0.siteId == site.id && $0.0.state == .normal }) else { throw ExportError.changed }
         }
 
         func validate() throws {

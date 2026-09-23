@@ -27,7 +27,7 @@ final class SpaceData {
     var needUploadCloud: Bool { lastUpdate > (lastUploadCloudTimestamp ?? 0) && permission != .visitor }
     var nodes: [[String: Any]] = []
     var payload: [String: Any] {
-        ["uuid": id, "groups": [], "nodes": nodes, "updateTimestamp": lastUpdate,
+        ["uuid": id, "groups": [], "scenes": [], "schedules": [], "nodes": nodes, "updateTimestamp": lastUpdate,
          "netKey": ["key": id], "appKey": ["key": "app"]]
     }
     init(_ id: String = UUID().uuidString) { self.id = id }
@@ -264,6 +264,8 @@ final class NetworkRequest {
 
         try await testCloudSiteConfirmation()
         try await testDirectUploadConfirmation()
+        try await testSceneTargetReadback()
+        try await testSchedulerModelReadback()
         try await testEmptyGroupAddressRecovery()
         try await testSiteHandoffReadback()
         try await testImportPreparation()
@@ -554,6 +556,97 @@ final class NetworkRequest {
         if case .failure = await S.resumeUpload(second) { preconditionFailure("second Space must confirm independently") }
         precondition(!S.hasPendingUpload(second))
         print("PASS: accepted uploads verify Key and configuration, preserve receipts on mismatch, and keep newer edits")
+    }
+
+    @MainActor static func testSceneTargetReadback() async throws {
+        typealias S = SpaceConfigurationSafety
+        let space = SpaceData("scene-target-readback")
+        var submitted = space.payload
+        submitted["scenes"] = [["number": "0006", "name": "All off"]]
+        submitted["schedules"] = [["id": 0, "selectTarget": 2, "sceneAddress": "0006"]]
+        let context = S.prepareSubmission(space, payload: submitted)!
+        precondition(context.submission?.scheduleTargets != nil)
+        var legacy = try JSONSerialization.jsonObject(with: JSONEncoder().encode(context)) as! [String: Any]
+        var legacySubmission = legacy["submission"] as! [String: Any]
+        legacySubmission.removeValue(forKey: "scheduleTargets")
+        legacy["submission"] = legacySubmission
+        let legacyData = try JSONSerialization.data(withJSONObject: legacy)
+        let decodedLegacy = try JSONDecoder().decode(SpaceRecoveryState.self, from: legacyData)
+        precondition(decodedLegacy.submission?.scheduleTargets == nil,
+                     "Old receipts must remain decodable")
+        precondition(S.markSubmissionAccepted(context, space: space))
+
+        var missingTarget = submitted
+        missingTarget["schedules"] = [["id": 0, "selectTarget": 2, "sceneAddress": NSNull()]]
+        NetworkRequest.shared.result = .success(["data": missingTarget])
+        let calls = NetworkRequest.shared.calls
+        if case .success = await S.resumeUpload(space) {
+            preconditionFailure("A stripped scene target cannot confirm the upload")
+        }
+        precondition(NetworkRequest.shared.calls == calls + 3 && S.hasPendingUpload(space) && S.isBlocked(space))
+        NetworkRequest.shared.result = .success(["data": submitted])
+        if case .failure = await S.resumeUpload(space) { preconditionFailure("Correct readback must finish the receipt") }
+        precondition(!S.hasPendingUpload(space) && !S.isBlocked(space))
+        print("PASS: scene target readback mismatch retains receipt and succeeds on retry")
+    }
+
+    @MainActor static func testSchedulerModelReadback() async throws {
+        typealias S = SpaceConfigurationSafety
+        for permission in [Permission.owner, .editor] {
+            let space = SpaceData("scheduler-readback-\(permission)")
+            space.permission = permission
+            space.lastUploadCloudTimestamp = 49 // An editor must have completed its initial import.
+            var node: [String: Any] = [
+                "uuid": "00000000-0000-0000-0000-000000000010", "unicastAddress": "0010",
+                "deviceKey": String(repeating: "A1", count: 16), "schedules": [],
+                "elements": [["index": 0, "models": [["modelId": "1207"]]]]
+            ]
+            let snapshot = SchedulerModelSnapshot(schemaVersion: 1, nodeUUID: node["uuid"] as! String,
+                unicastAddress: "0010", deviceKeyFingerprint: try SchedulerModelSnapshot.keyFingerprint(node),
+                models: [.init(elementAddress: "0010", modelId: "1207", entriesData: Data())], legacyEntriesData: Data())
+            node["custProps"] = ["schedulerModelStates": try snapshot.dictionary()]
+            space.nodes = [node]
+            let submitted = space.payload
+            let context = S.prepareSubmission(space, payload: submitted)!
+            precondition(context.submission?.schedulerModelStates != nil)
+            var old = try JSONSerialization.jsonObject(with: JSONEncoder().encode(context)) as! [String: Any]
+            var receipt = old["submission"] as! [String: Any]
+            receipt.removeValue(forKey: "schedulerModelStates")
+            old["submission"] = receipt
+            let decoded = try JSONDecoder().decode(SpaceRecoveryState.self, from: JSONSerialization.data(withJSONObject: old))
+            precondition(decoded.submission?.schedulerModelStates == nil)
+            precondition(S.markSubmissionAccepted(context, space: space))
+
+            var stripped = submitted
+            node.removeValue(forKey: "custProps")
+            stripped["nodes"] = [node]
+            stripped["role"] = permission == .owner ? "owner" : "editor"
+            NetworkRequest.shared.result = .success(["data": stripped])
+            let calls = NetworkRequest.shared.calls
+            if case .success = await S.resumeUpload(space) { preconditionFailure("Missing snapshots cannot confirm") }
+            precondition(NetworkRequest.shared.calls == calls + 3 && S.hasPendingUpload(space),
+                         "role=\(permission) calls=\(NetworkRequest.shared.calls - calls) pending=\(S.hasPendingUpload(space))")
+            let strippedMatches = await S.verifyUploadedConfiguration(space, payload: submitted)
+            precondition(!strippedMatches)
+            var partial = try snapshot.dictionary()
+            partial["models"] = []
+            node["custProps"] = ["schedulerModelStates": partial]
+            stripped["nodes"] = [node]
+            NetworkRequest.shared.result = .success(["data": stripped])
+            if case .success = await S.resumeUpload(space) { preconditionFailure("Lost known-empty containers cannot confirm") }
+            NetworkRequest.shared.result = .success(["data": submitted])
+            let directMatches = await S.verifyUploadedConfiguration(space, payload: submitted)
+            precondition(directMatches)
+            if case .failure = await S.resumeUpload(space) { preconditionFailure("Correct retry must finish") }
+            precondition(!S.hasPendingUpload(space))
+            let state = try S.recoveryState(space)
+            precondition(state.schedulerModelStatesBaseline == SchedulerModelSnapshot.spaceData(submitted))
+            precondition(!SchedulerModelSnapshot.remoteChanged(SchedulerModelSnapshot.spaceData(submitted)!, since: state.schedulerModelStatesBaseline))
+        }
+        let visitor = SpaceData("snapshot-read-only")
+        visitor.permission = .visitor
+        precondition(!S.canAutomaticallyUpload(visitor))
+        print("PASS: Model snapshot readback rejects stripping/partial loss, retries, preserves old receipts and visitor write restrictions")
     }
 
     @MainActor static func testProximityAllImportRecovery() throws {

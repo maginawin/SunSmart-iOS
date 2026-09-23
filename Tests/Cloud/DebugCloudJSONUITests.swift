@@ -19,7 +19,6 @@ final class DebugCloudJSONUITests: XCTestCase {
                 app.navigationBars.buttons["Menu"].tap()
                 XCTAssertTrue(app.staticTexts["Layout passed"].waitForExistence(timeout: 5))
                 let item = app.tables.staticTexts[title]
-                if role == "visitor" { XCTAssertFalse(item.exists); app.terminate(); continue }
                 XCTAssertTrue(item.isHittable)
                 attach(app, name: "\(scope)-\(role)-\(language)-\(landscape)-menu")
                 item.tap()
