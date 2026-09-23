@@ -168,6 +168,10 @@ actor GatewayServerAuthorizationService {
         policy: GatewayServerAuthorizationRequestPolicy = .ifMissing,
         requestedGeneration: Int64
     ) async -> Result<GatewayServerAuthorizationReceipt, GatewayServerAuthorizationError> {
+        let orphanScope = gateway.orphanPersistenceToken.scope
+        GatewayOrphanGuard.beginActivity(orphanScope)
+        defer { GatewayOrphanGuard.endActivity(orphanScope) }
+        guard gateway.isCurrentPersistenceContext else { return .failure(.persistenceFailed) }
         guard !gateway.isServerDeletionInProgress,
               !gateway.serverDeletionPendingLocalReset,
               !GatewayDeletionContext.blocksRegistration(gateway: gateway, node: node) else {
@@ -197,6 +201,7 @@ actor GatewayServerAuthorizationService {
                 guard var nodeData = await node.export() else {
                     return .failure(.nodeExportFailed)
                 }
+                guard gateway.isCurrentPersistenceContext else { return .failure(.persistenceFailed) }
                 nodeData = GatewayRegistrationPayloadPolicy
                     .mergeOpaqueAssociationData(
                         localNode: nodeData,
@@ -236,6 +241,7 @@ actor GatewayServerAuthorizationService {
             inFlightAuthorizations[key] = nil
         }
 
+        guard gateway.isCurrentPersistenceContext else { return .failure(.persistenceFailed) }
         guard !gateway.isServerDeletionInProgress,
               !gateway.serverDeletionPendingLocalReset,
               !GatewayDeletionContext.blocksRegistration(gateway: gateway, node: node) else {

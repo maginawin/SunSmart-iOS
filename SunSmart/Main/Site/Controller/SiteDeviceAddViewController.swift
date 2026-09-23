@@ -57,9 +57,12 @@ class SiteDeviceAddViewController: UIViewController {
     var deviceAddCallback: (([Node])->Void)?
     
     let site: SiteData
+    private let orphanActivityScope: GatewayOrphanGuard.Scope
     
     init(site: SiteData) {
         self.site = site
+        orphanActivityScope = .current(siteID: site.id)
+        GatewayOrphanGuard.beginActivity(orphanActivityScope)
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -107,6 +110,7 @@ class SiteDeviceAddViewController: UIViewController {
     }
     
     deinit {
+        GatewayOrphanGuard.endActivity(orphanActivityScope)
         if state == .adding {
             MeshAPI.stopFastAddDevice(finishBack: nil)
         }

@@ -7,6 +7,70 @@
 
 import Foundation
 import NordicSigMeshSDK
+import SQLite
+
+extension GatewayOrphanGuard.Scope {
+    static func current(siteID: String) -> Self {
+        .init(account: UserData.currentUserId, region: String(describing: UserData.currentServerRegion), siteID: siteID)
+    }
+}
+
+@MainActor
+enum GatewayOrphanCleanup {
+    static func reconcile(site: SiteData, payload: [String: Any]) {
+        let scope = GatewayOrphanGuard.Scope.current(siteID: site.id)
+        let meshUUID = site.meshUUID, networkID = site.meshNetworkId
+        guard SpaceMembershipCoordinator.accepts(payload), site.permission == .owner,
+              GatewayOrphanGuard.canReconcile(payload, scope: scope),
+              let gateways = payload["gateways"] as? [[String: Any]],
+              let app = SunSmartDataManager.shared.db,
+              let path = MeshDataManager.customDatabasePath else { return }
+        let snapshot = SiteGatewayAssociationSnapshot.make(isComplete: true,
+            rawGatewayIds: gateways.map { $0["macAddress"] as? String })
+        guard snapshot.isComplete else { return }
+        let remoteMACs = Set(gateways.compactMap { ($0["macAddress"] as? String).map(GatewayOrphanGuard.normalized) })
+        GatewayDeletionContext.lockImport()
+        defer { GatewayDeletionContext.unlockImport() }
+        GatewayOrphanGuard.synchronized {
+            do {
+                guard let revision = MeshDataManager.shared.databaseReadRevision(),
+                      GatewayOrphanGuard.canReconcile(payload, scope: scope) else { return }
+                let mesh = try Connection(path, readonly: true)
+                mesh.busyTimeout = 0.05
+                let removed = try GatewayOrphanStore.remove(app: app, mesh: mesh, siteID: site.id,
+                    meshUUID: meshUUID, remoteMACs: remoteMACs, canRemove: { candidate in
+                        guard !GatewayDeletionContext.hasPendingDeletion(siteId: site.id, mac: candidate.mac),
+                              let model = GatewayModel.load(siteId: site.id, macAddress: candidate.mac).first,
+                              model.address == candidate.address, !model.serverDeletionPendingLocalReset,
+                              CloudSynchronizationManager.shared.getGatewayCurrentSyncState(model) == nil else { return false }
+                        return true
+                    }, isCurrent: {
+                        scope == .current(siteID: site.id) && site.permission == .owner
+                            && site.meshUUID == meshUUID && site.meshNetworkId == networkID
+                            && SpaceMembershipCoordinator.accepts(payload)
+                            && app === SunSmartDataManager.shared.db
+                            && revision == MeshDataManager.shared.databaseReadRevision()
+                            && GatewayOrphanGuard.canReconcile(payload, scope: scope)
+                    })
+                GatewayOrphanGuard.didRemove(scope: scope, macs: removed)
+                // These Space fields are transient server metadata, not columns
+                // in the spaces table. Publish only after the row transaction commits.
+                for space in site.spaces where space.relevanceGatewayId.map({ removed.contains(GatewayOrphanGuard.normalized($0)) }) == true {
+                    space.relevanceGatewayId = nil
+                    space.gatewayStatus = .notBound
+                    space.gatewayLastOnline = nil
+                }
+#if DEBUG
+                if !removed.isEmpty { print("[GatewayOrphanCleanup] site=\(site.id) removed=\(removed.count)") }
+#endif
+            } catch {
+#if DEBUG
+                print("[GatewayOrphanCleanup] deferred site=\(site.id) error=\(error)")
+#endif
+            }
+        }
+    }
+}
 
 
 /// 网关连接状态
@@ -53,6 +117,12 @@ class GatewayModel: Copyable, Equatable {
     
     /// mac地址
     let mac: String
+    /// Copied with the model so a late callback cannot recreate a cleaned row.
+    var orphanPersistenceToken: GatewayOrphanGuard.Token
+    var isCurrentPersistenceContext: Bool {
+        orphanPersistenceToken.scope == .current(siteID: siteId)
+            && GatewayOrphanGuard.isCurrent(orphanPersistenceToken)
+    }
     /// 是否启用
     var activate: Bool = false
     /// 关联的space list
@@ -131,6 +201,7 @@ class GatewayModel: Copyable, Equatable {
         self.name = name
         self.address = address
         self.mac = mac
+        self.orphanPersistenceToken = GatewayOrphanGuard.token(scope: .current(siteID: siteId), mac: mac)
         self.activate = activate
         self.associatedSpaces = associatedSpaces
         self.apn = apn
@@ -142,6 +213,7 @@ class GatewayModel: Copyable, Equatable {
     func copy() -> Self {
         let model = GatewayModel(siteId: self.siteId, name: self.name, address: self.address, mac: self.mac, lastUpdate: self.lastUpdate, activate: self.activate, associatedSpaces: self.associatedSpaces, apn: self.apn, mqttServerInfo: self.mqttServerInfo, serverDeletionPendingLocalReset: self.serverDeletionPendingLocalReset)
         model.registrationProtectionSnapshot = registrationProtectionSnapshot
+        model.orphanPersistenceToken = orphanPersistenceToken
         return model as! Self
     }
     

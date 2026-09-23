@@ -509,6 +509,11 @@ extension SiteData {
     /// - Parameter initialize 首次更新数据（本地无记录）
     func update(siteJsonData: [String: Any], changeAddress: Bool = false, initialize: Bool = false) async {
         guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return }
+        let gatewayImportScope = GatewayOrphanGuard.Scope.current(siteID: id)
+        GatewayOrphanGuard.beginImport(gatewayImportScope)
+        var gatewayImportActive = true
+        defer { if gatewayImportActive { GatewayOrphanGuard.endImport(gatewayImportScope) } }
+        guard GatewayOrphanGuard.acceptsSnapshot(siteJsonData, scope: gatewayImportScope) else { return }
         let trace = SiteImportTrace("site:" + id)
         defer { trace.mark("end") }
         
@@ -967,6 +972,8 @@ extension SiteData {
                     cacheByMac.forEach { mac, cacheGateway in
                         GatewayDeletionContext.lockImport()
                         defer { GatewayDeletionContext.unlockImport() }
+                        guard gatewayImportScope == .current(siteID: self.id),
+                              GatewayOrphanGuard.allowsImport(siteJsonData, scope: gatewayImportScope, mac: mac) else { return }
                         if cacheGateway.lastUploadCloudTimestamp != nil &&
                             serverByMac[mac] == nil,
                             !cacheGateway.serverDeletionPendingLocalReset,
@@ -1009,6 +1016,8 @@ extension SiteData {
 
                     GatewayDeletionContext.lockImport()
                     defer { GatewayDeletionContext.unlockImport() }
+                    guard gatewayImportScope == .current(siteID: self.id),
+                          GatewayOrphanGuard.allowsImport(siteJsonData, scope: gatewayImportScope, mac: mac) else { continue }
                     // Recheck after Node.import's suspension: a delete may have
                     // started or finished while this older Site response waited.
                     guard !GatewayDeletionContext.blocksImport(siteId: self.id, mac: mac,
@@ -1238,7 +1247,13 @@ extension SiteData {
         
         
 //        print("导入数据：site update spaces success \(Date().timeIntervalSince1970)")
-        self.save()
+        if self.save(), meshNetwork != nil {
+            GatewayOrphanGuard.endImport(gatewayImportScope)
+            gatewayImportActive = false
+            // Only a completed detail import may reconcile orphan records.
+            // The response context excludes list summaries and stale requests.
+            await GatewayOrphanCleanup.reconcile(site: self, payload: siteJsonData)
+        }
     }
     
     /// 添加site内用户资源

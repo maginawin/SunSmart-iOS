@@ -26,6 +26,7 @@ struct SiteGatewayLocalTimeZoneCandidate: Equatable {
     let displayName: String
     let currentOffsetMinutes: Int?
     let canConfigure: Bool
+    let hasNode: Bool
 }
 
 enum SiteGatewayLocalTimeZoneTargetBuilder {
@@ -35,7 +36,7 @@ enum SiteGatewayLocalTimeZoneTargetBuilder {
     ) -> [SiteGatewayCloudTimeZoneTarget] {
         var seen = Set<String>()
         return candidates.enumerated().compactMap { index, candidate in
-            guard candidate.canConfigure,
+            guard candidate.canConfigure, candidate.hasNode,
                   let id = SiteGatewayAccessScope.normalize(candidate.requestMAC),
                   seen.insert(id).inserted else {
                 return nil

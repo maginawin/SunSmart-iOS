@@ -3373,7 +3373,8 @@ extension GatewayModel {
     ///   - siteId: site id
     /// - Returns: 网关list
     static func load(siteId: String, macAddress: String? = nil, address: Address? = nil) -> [GatewayModel] {
-        
+        let scope = GatewayOrphanGuard.Scope.current(siteID: siteId)
+        let readContext = GatewayOrphanGuard.capture(account: scope.account, region: scope.region, detailSiteID: nil)
         var query = GatewayModel.gatewaysTable.filter(ExpressionKey.siteUUID == siteId)
         if let macAddress = macAddress {
             query = query.filter(ExpressionKey.macAddress == normalizedMac(macAddress))
@@ -3405,6 +3406,10 @@ extension GatewayModel {
                 }
                 
                 let gateway = GatewayModel(siteId: siteId, name: row[ExpressionKey.name], address: address, mac: normalizedMac(row[ExpressionKey.macAddress]), lastUpdate: row[ExpressionKey.lastUpdateTimestamp], activate: row[ExpressionKey.activate], associatedSpaces: spaceDatas, apn: row[ExpressionKey.apn], mqttServerInfo: nil, serverDeletionPendingLocalReset: row[ExpressionKey.serverDeletionPendingLocalReset])
+                // A read begun before cleanup must not mint a new valid token
+                // from an old SQLite row after the cleanup has committed.
+                guard scope == .current(siteID: siteId), GatewayOrphanGuard.allowsImport(
+                    [GatewayOrphanGuard.payloadKey: readContext], scope: scope, mac: gateway.mac) else { continue }
                 
                 gateway.lastUploadCloudTimestamp = row[ExpressionKey.lastUploadCloudTimestamp]
                 if let errorCode = row[ExpressionKey.syncCloudError] {
@@ -3427,7 +3432,14 @@ extension GatewayModel {
     
     /// 保存网关model数据
     @discardableResult func save() -> Bool {
-        guard SunSmartDataManager.shared.db != nil, !GatewayDeletionContext.blocksSave(self) else { return false }
+        GatewayDeletionContext.lockImport()
+        defer { GatewayDeletionContext.unlockImport() }
+        return GatewayOrphanGuard.synchronized { saveCurrentGateway() }
+    }
+
+    private func saveCurrentGateway() -> Bool {
+        guard isCurrentPersistenceContext, SunSmartDataManager.shared.db != nil,
+              !GatewayDeletionContext.blocksSave(self) else { return false }
 
         
         let spacesData = (try? jsonEncoder.encode(associatedSpaces)) ?? Data()
@@ -3510,6 +3522,67 @@ extension GatewayModel {
     }
     
     
+}
+
+/// Strict raw reads for destructive orphan cleanup; never decode a missing or
+/// malformed Node into "absent". The caller serializes Gateway mutations.
+enum GatewayOrphanStore {
+    enum Failure: Error { case unavailable, invalidRow, changed }
+    struct Candidate {
+        let id: Int64
+        let mac: String
+        let address: UInt16
+    }
+
+    static func remove(app: Connection, mesh: Connection, siteID: String, meshUUID: String,
+                       remoteMACs: Set<String>, canRemove: (Candidate) -> Bool,
+                       isCurrent: () -> Bool) throws -> Set<String> {
+        var removed = Set<String>()
+        var addresses = Set<UInt16>(), macs = Set<String>()
+        try mesh.transaction(.deferred) {
+            guard try mesh.scalar("SELECT count(*) FROM meshNetwork WHERE meshUUID = ?", meshUUID) as? Int64 == 1 else {
+                throw Failure.unavailable
+            }
+            // Include all subnets of this Site. A wrong-subnet node or reused
+            // address is an identity conflict, not permission to remove data.
+            let nodes = try mesh.prepare("SELECT unicastAddress, macAddress FROM nodes WHERE meshUUID = ?", meshUUID)
+            while let row = try nodes.failableNext() {
+                guard let rawAddress = row[0] as? Int64, let address = UInt16(exactly: rawAddress) else { throw Failure.invalidRow }
+                addresses.insert(address)
+                if let value = row[1] {
+                    guard let mac = value as? String else { throw Failure.invalidRow }
+                    macs.insert(GatewayOrphanGuard.normalized(mac))
+                }
+            }
+        }
+        try app.transaction {
+            guard isCurrent() else { throw Failure.changed }
+            let rows = try app.prepare("SELECT id, macAddress, address, serverDeletionPendingLocalReset FROM gateways WHERE siteUUID = ?", siteID)
+            var candidates: [Candidate] = []
+            while let row = try rows.failableNext() {
+                guard let id = row[0] as? Int64, let rawMAC = row[1] as? String,
+                      let rawAddress = row[2] as? Int64, let address = UInt16(exactly: rawAddress),
+                      let pending = row[3] as? Int64, pending == 0 || pending == 1 else { throw Failure.invalidRow }
+                let mac = GatewayOrphanGuard.normalized(rawMAC)
+                guard !mac.isEmpty else { throw Failure.invalidRow }
+                guard pending == 0, !remoteMACs.contains(mac), !addresses.contains(address), !macs.contains(mac) else { continue }
+                candidates.append(.init(id: id, mac: mac, address: address))
+            }
+            for candidate in candidates {
+                let changes = app.totalChanges
+                guard canRemove(candidate) else { continue }
+                guard isCurrent(), changes == app.totalChanges else { throw Failure.changed }
+                // Also verify identity in the DELETE itself; never delete a new
+                // instance which replaced this row between selection and mutation.
+                try app.run("DELETE FROM gateways WHERE id = ? AND siteUUID = ? AND UPPER(TRIM(macAddress)) = ? AND address = ? AND serverDeletionPendingLocalReset = 0",
+                            candidate.id, siteID, candidate.mac, Int64(candidate.address))
+                guard app.changes == 1 else { throw Failure.changed }
+                removed.insert(candidate.mac)
+            }
+            guard isCurrent() else { throw Failure.changed }
+        }
+        return removed
+    }
 }
 
 extension Node.PreConfiguration {

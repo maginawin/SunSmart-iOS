@@ -30,7 +30,8 @@ enum SiteGatewayLocalTimeZoneContextBuilder {
                 displayName: gateway.name,
                 currentOffsetMinutes:
                     (node?.timezone?.secondsFromGMT()).map { $0 / 60 },
-                canConfigure: site.canConfigureGateway(gateway)
+                canConfigure: site.canConfigureGateway(gateway),
+                hasNode: node != nil
             )
         }
         return SiteGatewayLocalTimeZoneTargetBuilder.build(

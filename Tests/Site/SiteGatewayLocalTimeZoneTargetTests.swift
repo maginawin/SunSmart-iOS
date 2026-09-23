@@ -6,6 +6,7 @@ struct SiteGatewayLocalTimeZoneTargetTests {
         testFiltersPermissionAndComparesOffsets()
         testUnknownOffsetRemainsPending()
         testNormalizesDeduplicatesAndPreservesWireMAC()
+        testOrphanRowsDoNotBecomeTargets()
         print("SiteGatewayLocalTimeZoneTargetTests passed")
     }
 
@@ -47,7 +48,8 @@ struct SiteGatewayLocalTimeZoneTargetTests {
                     requestMAC: " EF725643A2B9 ",
                     displayName: " Kitchen Gateway ",
                     currentOffsetMinutes: 0,
-                    canConfigure: true
+                    canConfigure: true,
+                    hasNode: true
                 ),
                 candidate("ef725643a2b9", offset: 480, canConfigure: true),
                 candidate("   ", offset: 0, canConfigure: true)
@@ -63,14 +65,28 @@ struct SiteGatewayLocalTimeZoneTargetTests {
     private static func candidate(
         _ mac: String,
         offset: Int?,
-        canConfigure: Bool
+        canConfigure: Bool,
+        hasNode: Bool = true
     ) -> SiteGatewayLocalTimeZoneCandidate {
         SiteGatewayLocalTimeZoneCandidate(
             requestMAC: mac,
             displayName: mac,
             currentOffsetMinutes: offset,
-            canConfigure: canConfigure
+            canConfigure: canConfigure,
+            hasNode: hasNode
         )
+    }
+
+    private static func testOrphanRowsDoNotBecomeTargets() {
+        let orphans = ["CC9E27179B40", "E2F54FDEECEB", "F1ADFFA8B2C7"].map {
+            candidate($0, offset: nil, canConfigure: true, hasNode: false)
+        }
+        require(SiteGatewayLocalTimeZoneTargetBuilder.build(targetOffsetMinutes: -180, candidates: orphans).isEmpty,
+                "The three orphan rows must produce no task despite Owner permission and unknown offsets")
+        let mixed = SiteGatewayLocalTimeZoneTargetBuilder.build(targetOffsetMinutes: -180,
+            candidates: orphans + [candidate("valid-unknown", offset: nil, canConfigure: true)])
+        require(mixed.count == 1 && mixed.first?.id == "valid-unknown" && mixed.first?.requiresSync == true,
+                "A real Node with unknown timezone must remain syncable next to orphan records")
     }
 }
 

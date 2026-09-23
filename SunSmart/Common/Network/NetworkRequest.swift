@@ -113,6 +113,10 @@ class NetworkRequest: NSObject {
         
         let membershipContext = SpaceMembershipResponseContext.capture(account: UserData.currentUserId,
             region: String(describing: UserData.currentServerRegion))
+        let gatewayDetailSiteID: String?
+        if case .siteInfo(let siteID) = target { gatewayDetailSiteID = siteID } else { gatewayDetailSiteID = nil }
+        let gatewayContext = GatewayOrphanGuard.capture(account: UserData.currentUserId,
+            region: String(describing: UserData.currentServerRegion), detailSiteID: gatewayDetailSiteID)
         return provider.request(target, callbackQueue: Self.responseQueue) { result in
             let deliver: Completion = { value in DispatchQueue.main.async { completion(value) } }
             let started = ProcessInfo.processInfo.systemUptime
@@ -146,7 +150,12 @@ class NetworkRequest: NSObject {
                     let isSuccess = JSON(json as Any)["isSuccess"].bool ?? false
                     if (200..<300).contains(respond.statusCode), code == 200 || isSuccess || json.isEmpty {
                         switch target {
-                        case .spaceInfo, .siteInfo:
+                        case .siteInfo:
+                            let annotated = GatewayOrphanGuard.annotate(json, context: gatewayContext)
+                            deliver(.success(SpaceMembershipResponseContext.annotate(annotated, context: membershipContext)))
+                        case .sites:
+                            deliver(.success(GatewayOrphanGuard.annotate(json, context: gatewayContext)))
+                        case .spaceInfo:
                             deliver(.success(SpaceMembershipResponseContext.annotate(json, context: membershipContext)))
                         default: deliver(.success(json))
                         }

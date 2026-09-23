@@ -37,18 +37,12 @@ enum DebugCloudJSONRecords {
     }
 
     static func site(_ site: SiteData) throws -> [String: Any] {
-        guard let db = SunSmartDataManager.shared.db else { throw CocoaError(.fileReadUnknown) }
-        var result: [String: Any] = [
-            "sites": try rows(db, table: "sites", predicate: "uuid = ? AND regionType = ?",
-                              bindings: [site.id, Int64(site.region.rawValue)]),
-            "site_extensions": try rows(db, table: "site_extensions", predicate: "siteId = ? AND region = ?",
-                                        bindings: [site.id, Int64(site.region.rawValue)])
-        ]
-        guard let path = MeshDataManager.customDatabasePath else { throw CocoaError(.fileReadUnknown) }
+        guard let app = SunSmartDataManager.shared.db,
+              let path = MeshDataManager.customDatabasePath else { throw CocoaError(.fileReadUnknown) }
         let mesh = try Connection(path, readonly: true)
-        result["meshNetwork"] = try rows(mesh, table: "meshNetwork", predicate: "meshUUID = ?", bindings: [site.meshUUID])
-        result["exclusions"] = try rows(mesh, table: "exclusions", predicate: "meshUUID = ?", bindings: [site.meshUUID])
-        return result
+        mesh.busyTimeout = 1.5
+        return try readSite(app: app, mesh: mesh, siteID: site.id, region: Int64(site.region.rawValue),
+                            meshUUID: site.meshUUID, networkID: site.meshNetworkId)
     }
 
     static func read(app: Connection, mesh: Connection, scope: Scope) throws -> [String: Any] {
@@ -87,6 +81,37 @@ enum DebugCloudJSONRecords {
         return ["app": appRows, "mesh": meshRows]
     }
 
+    static func readSite(app: Connection, mesh: Connection, siteID: String, region: Int64,
+                         meshUUID: String, networkID: String) throws -> [String: Any] {
+        let omittedColumns: [String: Set<String>] = [
+            "gateways": ["mqttServerInfo", "registrationProtectionSnapshot"],
+            "primaryMesh.nodes": ["deviceKey"],
+            "primaryMesh.nodePropertys": ["gatewayInfo", "enOceanProxySwitchKeys"]
+        ]
+        var result: [String: Any] = ["omittedColumns": omittedColumns.mapValues { $0.sorted() }]
+        try app.savepoint {
+            result["sites"] = try rows(app, table: "sites", predicate: "uuid = ? AND regionType = ?",
+                                       bindings: [siteID, region])
+            result["site_extensions"] = try rows(app, table: "site_extensions", predicate: "siteId = ? AND region = ?",
+                                                 bindings: [siteID, region])
+            // Keep orphaned, never-uploaded and pending-deletion rows. Loading
+            // Gateway/Node models here would hide the inconsistency being inspected.
+            result["gateways"] = try rows(app, table: "gateways", predicate: "siteUUID = ?",
+                                          bindings: [siteID], excluding: omittedColumns["gateways"]!)
+        }
+        try mesh.transaction(.deferred) {
+            result["meshNetwork"] = try rows(mesh, table: "meshNetwork", predicate: "meshUUID = ?", bindings: [meshUUID])
+            result["exclusions"] = try rows(mesh, table: "exclusions", predicate: "meshUUID = ?", bindings: [meshUUID])
+            var primary: [String: Any] = ["meshUUID": meshUUID, "networkId": networkID]
+            for table in ["nodes", "nodePropertys"] {
+                primary[table] = try rows(mesh, table: table, predicate: "meshUUID = ? AND subnetworkId = ?",
+                                          bindings: [meshUUID, networkID], excluding: omittedColumns["primaryMesh.\(table)"]!)
+            }
+            result["primaryMesh"] = primary
+        }
+        return result
+    }
+
     private static func placeholders(_ count: Int) -> String {
         count == 0 ? "NULL" : Array(repeating: "?", count: count).joined(separator: ",")
     }
@@ -97,13 +122,15 @@ enum DebugCloudJSONRecords {
     ]
 
     static func rows(_ db: Connection, table: String, predicate: String,
-                     bindings: [Binding?]) throws -> [[String: Any]] {
+                     bindings: [Binding?], excluding additionalExcludedColumns: Set<String> = []) throws -> [[String: Any]] {
         // Optional tables did not exist in older app versions. A failed SELECT
         // on an existing table must throw, never masquerade as an empty table.
         guard try db.scalar("SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = ?", table) as? Int64 == 1 else {
             return []
         }
-        let columns = try db.schema.columnDefinitions(table: table).map(\.name).filter { !excludedColumns.contains($0) }
+        let columns = try db.schema.columnDefinitions(table: table).map(\.name).filter {
+            !excludedColumns.contains($0) && !additionalExcludedColumns.contains($0)
+        }
         func quoted(_ name: String) -> String { "\"" + name.replacingOccurrences(of: "\"", with: "\"\"") + "\"" }
         let statement = try db.prepare("SELECT \(columns.map(quoted).joined(separator: ",")) FROM \(quoted(table)) WHERE \(predicate)", bindings)
         var result: [[String: Any]] = []
