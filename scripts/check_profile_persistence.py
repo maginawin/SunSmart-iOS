@@ -60,9 +60,11 @@ class SunSmartDataManager {
     parse = parse.replace("group.info.profile = profile", "return profile")
     import_profile = 'func importProfile(_ profileDict: [String: Any]) -> Profile? {\nlet profileJson = JSON(profileDict)\n' + parse + '\nreturn nil\n}\n'
     template = block(read("SunSmart/Main/Profile/Model/Profile.swift"), "class ProfileLightSensorTemplate {")
-    cleanup = block(read("SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift"),
-                    "for template in group.info.profile.lightSensorTemplates {")
-    cleanup = """func templateCleanupChanges(_ group: HarnessGroup, space: HarnessSpace = .init(), addresses: Set<Address>) -> [() throws -> Void] {
+    coordinator = read("SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift")
+    cleanup_start = coordinator.index("changes.append(contentsOf: try ProfileLightSensorTemplate.referenceCleanupChanges(")
+    cleanup_end = coordinator.index("            if let sensor =", cleanup_start)
+    cleanup = coordinator[cleanup_start:cleanup_end]
+    cleanup = """func templateCleanupChanges(_ group: HarnessGroup, space: HarnessSpace = .init(), addresses: Set<Address>) throws -> [() throws -> Void] {
     var changes: [() throws -> Void] = []
 """ + cleanup + "\nreturn changes\n}\n"
     (output / "Production.swift").write_text("\n".join([header, model, manager, group_info,

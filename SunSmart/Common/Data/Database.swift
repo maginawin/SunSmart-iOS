@@ -118,7 +118,18 @@ class SunSmartDataManager {
     func configurationTransaction(_ body: () throws -> Void) -> Bool {
         guard let db else { return false }
         do {
-            try db.savepoint { try body() }
+            let name = "configuration_" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
+            var failure: Error?
+            try db.savepoint(name) {
+                do { try body() }
+                catch {
+                    // ROLLBACK TO leaves the savepoint open. Let the SDK release it
+                    // normally, on the same serialized connection, before reporting failure.
+                    try db.run("ROLLBACK TO SAVEPOINT \(name)")
+                    failure = error
+                }
+            }
+            if let failure { throw failure }
             return true
         } catch {
             #if DEBUG
@@ -3668,19 +3679,124 @@ extension ProfileLightSensorTemplate {
         static let deviceAddresses = Expression<Data?>("deviceAddresses")
     }
     
-    /// 初始化Node业务数据扩展表
+    private enum PersistenceError: Error {
+        case unavailable, invalidStoredData, conflictingIdentity, conflictingDuplicates, changedDuringCleanup
+    }
+
+    private struct StoredTemplate: Equatable {
+        let id: String
+        let profileID: String
+        let name: String
+        let day: Int
+        let night: Int
+        var addresses: [Address]
+
+        func equivalent(to other: StoredTemplate) -> Bool {
+            id == other.id && profileID == other.profileID && name == other.name
+                && day == other.day && night == other.night && Set(addresses) == Set(other.addresses)
+        }
+    }
+
+    /// Read strictly for mutations; the display loader's fallback to [] must not
+    /// turn corrupt stored data into permission to erase it.
+    private static func storedTemplates(database: Connection, identity: Expression<Bool>) throws -> [StoredTemplate] {
+        try database.prepare(profileLightSensorTemplateTable.filter(identity)
+            .order(Expression<Int64>("rowid"))).map { row in
+            let day = row[ExpressionKey.dayStartsAboveLux], night = row[ExpressionKey.nightStartsBelowLux]
+            guard UInt16(exactly: day) != nil, UInt16(exactly: night) != nil else {
+                throw PersistenceError.invalidStoredData
+            }
+            let strings = try row[ExpressionKey.deviceAddresses].map { try jsonDecoder.decode([String].self, from: $0) } ?? []
+            let addresses = try strings.map { value -> Address in
+                guard let address = Address(value, radix: 16), address.isUnicast else {
+                    throw PersistenceError.invalidStoredData
+                }
+                return address
+            }
+            return StoredTemplate(id: row[ExpressionKey.id], profileID: row[ExpressionKey.profileId],
+                name: row[ExpressionKey.name], day: day, night: night, addresses: addresses)
+        }
+    }
+
+    /// Old installations can have duplicate IDs. Defer the global index while
+    /// any remain; only scoped cleanup with a verified topology may merge them.
+    private static func installUniqueIndexIfPossible(database: Connection) throws {
+        for index in try database.prepare("PRAGMA index_list('profileLightSensorTemplate')") {
+            guard index[2] as? Int64 == 1, index[4] as? Int64 == 0, let name = index[1] as? String else { continue }
+            let columns = try database.prepare("SELECT name FROM pragma_index_info(?)", name).map { $0[0] as? String }
+            if columns == ["id"] { return }
+        }
+        let duplicate = try database.scalar("SELECT id FROM profileLightSensorTemplate GROUP BY id HAVING COUNT(*) > 1 LIMIT 1")
+        guard duplicate == nil else { return }
+        try database.run("CREATE UNIQUE INDEX IF NOT EXISTS profileLightSensorTemplate_unique_id ON profileLightSensorTemplate(id)")
+    }
+
+    // The caller must own a configuration transaction and validate all existing
+    // rows first. Explicit replacement also works before the old table is migrated.
+    private static func replace(_ template: StoredTemplate, database: Connection) throws {
+        let data = try jsonEncoder.encode(template.addresses.map { $0.hex })
+        try database.run(profileLightSensorTemplateTable.filter(ExpressionKey.id == template.id).delete())
+        try database.run(profileLightSensorTemplateTable.insert([
+            ExpressionKey.id <- template.id, ExpressionKey.profileId <- template.profileID,
+            ExpressionKey.name <- template.name, ExpressionKey.dayStartsAboveLux <- template.day,
+            ExpressionKey.nightStartsBelowLux <- template.night, ExpressionKey.deviceAddresses <- data
+        ]))
+        try installUniqueIndexIfPossible(database: database)
+    }
+
+    /// 初始化模板表，同时升级没有重复数据的历史表；不在启动时猜测冲突记录的取舍。
     static func initDatabase() {
-        
-        _ = try? SunSmartDataManager.shared.db?.run(ProfileLightSensorTemplate.profileLightSensorTemplateTable.create(temporary: false, ifNotExists: true, withoutRowid: false, block: { builder in
-            builder.column(ExpressionKey.id)
-            builder.column(ExpressionKey.profileId)
-            builder.column(ExpressionKey.name)
-            builder.column(ExpressionKey.dayStartsAboveLux)
-            builder.column(ExpressionKey.nightStartsBelowLux)
-            builder.column(ExpressionKey.deviceAddresses)
-            builder.unique(ExpressionKey.id)
-        }))
-        
+        SunSmartDataManager.shared.configurationTransaction {
+            guard let db = SunSmartDataManager.shared.db else { throw PersistenceError.unavailable }
+            try db.run(profileLightSensorTemplateTable.create(ifNotExists: true) { builder in
+                builder.column(ExpressionKey.id)
+                builder.column(ExpressionKey.profileId)
+                builder.column(ExpressionKey.name)
+                builder.column(ExpressionKey.dayStartsAboveLux)
+                builder.column(ExpressionKey.nightStartsBelowLux)
+                builder.column(ExpressionKey.deviceAddresses)
+                builder.unique(ExpressionKey.id)
+            })
+            try installUniqueIndexIfPossible(database: db)
+        }
+    }
+
+    /// Prepare one mutation per identity, including duplicates whose references
+    /// are already valid. Execute these closures in the cleanup's existing transaction.
+    static func referenceCleanupChanges(profileId: String, validAddresses: Set<Address>) throws -> [() throws -> Void] {
+        do {
+            guard let db = SunSmartDataManager.shared.db else { throw PersistenceError.unavailable }
+            let scoped = try storedTemplates(database: db, identity: ExpressionKey.profileId == profileId)
+            var changes: [() throws -> Void] = []
+            for id in Set(scoped.map { $0.id }).sorted() {
+                let original = try storedTemplates(database: db, identity: ExpressionKey.id == id)
+                guard original.allSatisfy({ $0.profileID == profileId }) else { throw PersistenceError.conflictingIdentity }
+                let normalized = original.map { item -> StoredTemplate in
+                    var item = item
+                    item.addresses = item.addresses.filter { validAddresses.contains($0) }
+                    return item
+                }
+                guard let retained = normalized.first else { throw PersistenceError.changedDuringCleanup }
+                guard normalized.allSatisfy({ $0.equivalent(to: retained) }) else { throw PersistenceError.conflictingDuplicates }
+                guard original.count > 1 || original != normalized else { continue }
+                changes.append {
+                    guard SunSmartDataManager.shared.db === db,
+                          try storedTemplates(database: db, identity: ExpressionKey.id == id) == original else {
+                        throw PersistenceError.changedDuringCleanup
+                    }
+                    try replace(retained, database: db)
+                    #if DEBUG
+                    print("[ProfileTemplatePersistence] stage=referenceCleanup rowsBefore=\(original.count) rowsAfter=1 addressesAfter=\(retained.addresses.count)")
+                    #endif
+                }
+            }
+            return changes
+        } catch {
+            #if DEBUG
+            print("[ProfileTemplatePersistence] stage=cleanupPreparation error=\(error)")
+            #endif
+            throw error
+        }
     }
     
     /// 加载profile下的模板数据
@@ -3715,26 +3831,17 @@ extension ProfileLightSensorTemplate {
     
     /// 保存
     @discardableResult func save(profileId: String) -> Bool {
-        
-        let addressData = try? jsonEncoder.encode(deviceAddresses.map({ $0.hex }))
-        
-        let insertOrUpdate = ProfileLightSensorTemplate.profileLightSensorTemplateTable.insert(or: .replace, [
-            ExpressionKey.name <- self.name,
-            ExpressionKey.profileId <- profileId,
-            ExpressionKey.id <- self.id,
-            ExpressionKey.dayStartsAboveLux <- Int(self.dayStartsAboveLux),
-            ExpressionKey.nightStartsBelowLux <- Int(self.nightStartsBelowLux),
-            ExpressionKey.deviceAddresses <- addressData
-        ])
-        do {
-            try SunSmartDataManager.shared.db?.run(insertOrUpdate)
-        } catch {
-            #if DEBUG
-            print(error)
-            #endif
-            return false
+        SunSmartDataManager.shared.configurationTransaction {
+            guard let db = SunSmartDataManager.shared.db else { throw PersistenceError.unavailable }
+            let rows = try Self.storedTemplates(database: db, identity: ExpressionKey.id == id)
+            guard rows.allSatisfy({ $0.profileID == profileId }) else { throw PersistenceError.conflictingIdentity }
+            if let first = rows.first, !rows.allSatisfy({ $0.equivalent(to: first) }) {
+                throw PersistenceError.conflictingDuplicates
+            }
+            guard deviceAddresses.allSatisfy({ $0.isUnicast }) else { throw PersistenceError.invalidStoredData }
+            try Self.replace(StoredTemplate(id: id, profileID: profileId, name: name,
+                day: Int(dayStartsAboveLux), night: Int(nightStartsBelowLux), addresses: deviceAddresses), database: db)
         }
-        return true
     }
     
     /// 删除profile下全部模板

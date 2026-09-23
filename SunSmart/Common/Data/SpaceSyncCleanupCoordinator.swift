@@ -342,19 +342,8 @@ enum SpaceSyncCleanupCoordinator {
                     }
                 }
             }
-            for template in group.info.profile.lightSensorTemplates {
-                let retained = template.deviceAddresses.filter { addresses.contains($0) }
-                if retained != template.deviceAddresses {
-                    let profileID = group.info.profile.id
-                    changes.append {
-                        template.deviceAddresses = retained
-                        // Templates have their own table; saving GroupInfo does not persist these addresses.
-                        guard template.save(profileId: profileID) else {
-                            throw SpaceConfigurationSafety.SafetyError.persistenceFailed
-                        }
-                    }
-                }
-            }
+            changes.append(contentsOf: try ProfileLightSensorTemplate.referenceCleanupChanges(
+                profileId: group.info.profile.id, validAddresses: addresses))
             if let sensor = group.info.ambientLightSensorNodeAddress, !addresses.contains(sensor) {
                 changes.append {
                     group.info.ambientLightSensorNodeAddress = nil

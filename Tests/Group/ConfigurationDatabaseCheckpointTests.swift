@@ -48,6 +48,12 @@ struct ConfigurationDatabaseCheckpointTests {
         }
         let outerRolledBack = try app.scalar("SELECT value FROM evidence") as? Int64
         precondition(!nested && outerRolledBack == 1)
+        // Retry on the same live connection must commit durably, even after a
+        // nested failure. A read on that connection alone can hide an open savepoint.
+        precondition(store.configurationTransaction { try app.run("UPDATE evidence SET value = 9") })
+        let independent = try Connection(appURL.path, readonly: true)
+        let retried = try independent.scalar("SELECT value FROM evidence") as? Int64
+        precondition(retried == 9, "Failed savepoints must not trap subsequent successful retries")
         precondition(!SunSmartDataManager(db: nil).configurationTransaction {})
         // Reproduce the historical NOT NULL schema using the same production
         // compatibility setter called by Profile.save().

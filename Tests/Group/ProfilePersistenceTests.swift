@@ -71,6 +71,8 @@ enum ProfilePersistenceTests {
         testLevelBoundaries()
         try testSceneValidationAndLegacyAutoMin()
         try testTemplateCleanupPersistence(root.appendingPathComponent("templates.sqlite3"))
+        try testLegacyTemplateCleanup(root.appendingPathComponent("legacy-templates.sqlite3"))
+        try testTemplateConflictsAndMigration(root)
         print("PASS: production Profile + GroupInfo SQLite save/load, defaults, cloud field roundtrip, legacy rows, rollback and level boundaries")
     }
 
@@ -79,9 +81,9 @@ enum ProfilePersistenceTests {
     static func db() -> Connection { SunSmartDataManager.shared.db! }
     static func payload(_ info: GroupInfo) -> [String: Any] { exportProfile(HarnessGroup(info: info)) }
     static func count(_ table: String) throws -> Int64 { try db().scalar("SELECT count(*) FROM \(table)") as! Int64 }
-    static func check(_ condition: @autoclosure () throws -> Bool) rethrows {
+    static func check(_ condition: @autoclosure () throws -> Bool, _ message: String = "") rethrows {
         let passed = try condition()
-        precondition(passed)
+        precondition(passed, message)
     }
 
     static func testTemplateCleanupPersistence(_ url: URL) throws {
@@ -104,7 +106,7 @@ enum ProfilePersistenceTests {
         for template in [mixed, unchanged, empty] { precondition(template.save(profileId: info.profile.id)) }
         precondition(unrelated.save(profileId: other.profile.id))
         let profileBefore = payload(load(info.address)!)
-        let changes = templateCleanupChanges(HarnessGroup(info: load(info.address)!), addresses: Set(valid))
+        let changes = try templateCleanupChanges(HarnessGroup(info: load(info.address)!), addresses: Set(valid))
         precondition(changes.count == 2)
         precondition(SunSmartDataManager.shared.configurationTransaction { for change in changes { try change() } })
         SunSmartDataManager.shared.db = try Connection(url.path)
@@ -121,14 +123,14 @@ enum ProfilePersistenceTests {
         precondition(load(other.address)!.profile.lightSensorTemplates[0].deviceAddresses == stale)
         precondition(NSDictionary(dictionary: profileBefore).isEqual(to: payload(restored)))
         let writes = db().totalChanges
-        precondition(templateCleanupChanges(HarnessGroup(info: restored), addresses: Set(valid)).isEmpty)
+        try check(templateCleanupChanges(HarnessGroup(info: restored), addresses: Set(valid)).isEmpty)
         precondition(db().totalChanges == writes, "Already-clean templates must not write again")
 
         // A failing template write must also roll back preceding work in the same configuration transaction.
         precondition(mixed.save(profileId: info.profile.id))
         let imageBefore = load(info.address)!.imageId
         try db().execute("CREATE TRIGGER reject_template BEFORE INSERT ON profileLightSensorTemplate BEGIN SELECT RAISE(ABORT, 'injected template failure'); END")
-        let retryChanges = templateCleanupChanges(HarnessGroup(info: load(info.address)!), addresses: Set(valid))
+        let retryChanges = try templateCleanupChanges(HarnessGroup(info: load(info.address)!), addresses: Set(valid))
         precondition(retryChanges.count == 1)
         precondition(!SunSmartDataManager.shared.configurationTransaction {
             try db().run("UPDATE groupInfos SET imageId = 99 WHERE groupAddress = ?", Int(info.address))
@@ -139,12 +141,155 @@ enum ProfilePersistenceTests {
         precondition(failed.imageId == imageBefore)
         precondition(failed.profile.lightSensorTemplates.first { $0.id == mixed.id }!.deviceAddresses == valid + stale)
         try db().execute("DROP TRIGGER reject_template")
-        let retry = templateCleanupChanges(HarnessGroup(info: failed), addresses: Set(valid))
+        let retry = try templateCleanupChanges(HarnessGroup(info: failed), addresses: Set(valid))
         precondition(SunSmartDataManager.shared.configurationTransaction { for change in retry { try change() } })
         SunSmartDataManager.shared.db = try Connection(url.path)
-        precondition(templateCleanupChanges(HarnessGroup(info: load(info.address)!), addresses: Set(valid)).isEmpty)
+        try check(templateCleanupChanges(HarnessGroup(info: load(info.address)!), addresses: Set(valid)).isEmpty)
         precondition(load(other.address)!.profile.lightSensorTemplates[0].deviceAddresses == stale)
         print("PASS: production template cleanup -> SQLite reopen; mixed/valid/empty targets, metadata/ownership retained, idempotency, transaction failure and retry")
+    }
+
+    // The shipped 2025 schema had no UNIQUE(id). Seed the same 1 old + 12 cleaned
+    // row pattern as the field export, without using the persistence under test.
+    static func testLegacyTemplateCleanup(_ url: URL) throws {
+        SunSmartDataManager.shared.db = try Connection(url.path)
+        try createLegacyTemplateTable()
+        let info = GroupInfo(address: 0xC900, profile: Profile.defaultGroupProfile(type: .daylight))
+        let valid: [Address] = [0x0711, 0x0714, 0x0720]
+        let stale: [Address] = [0x0636, 0x070E, 0x0717, 0x071A, 0x071D, 0x0723,
+                                0x0726, 0x0729, 0x072C, 0x072F, 0x0738]
+        for index in 0..<13 {
+            try insertTemplate(id: "field-template", profile: info.profile.id, addresses: index == 0 ? valid + stale : valid)
+        }
+        GroupInfo.initDatabase()
+        Profile.initDatabase()
+        precondition(save(info))
+        try check(count("profileLightSensorTemplate") == 13)
+        let before = try rawTemplates()
+        let changes = try templateCleanupChanges(HarnessGroup(info: load(info.address)!), addresses: Set(valid))
+        precondition(changes.count == 1)
+        try check(rawTemplates() == before, "Preparation must not mutate raw duplicates")
+
+        try db().execute("CREATE TRIGGER reject_template BEFORE INSERT ON profileLightSensorTemplate BEGIN SELECT RAISE(ABORT, 'injected legacy failure'); END")
+        precondition(!SunSmartDataManager.shared.configurationTransaction {
+            try db().run("UPDATE groupInfos SET imageId = 99 WHERE groupAddress = ?", Int(info.address))
+            for change in changes { try change() }
+        })
+        try check(rawTemplates() == before)
+        precondition(load(info.address)!.imageId == info.imageId)
+        // Retry without replacing the connection, then verify from another connection.
+        try db().execute("DROP TRIGGER reject_template")
+        precondition(SunSmartDataManager.shared.configurationTransaction { for change in changes { try change() } })
+        let independent = try Connection(url.path, readonly: true)
+        let committedCount = try independent.scalar("SELECT count(*) FROM profileLightSensorTemplate") as? Int64
+        precondition(committedCount == 1)
+        SunSmartDataManager.shared.db = try Connection(url.path)
+        let templates = load(info.address)!.profile.lightSensorTemplates
+        precondition(templates.count == 1 && templates[0].deviceAddresses == valid)
+        precondition(templates[0].name == "Field" && templates[0].dayStartsAboveLux == 500
+            && templates[0].nightStartsBelowLux == 300 && templates[0].id == "field-template")
+        let writes = db().totalChanges
+        try check(templateCleanupChanges(HarnessGroup(info: load(info.address)!), addresses: Set(valid)).isEmpty)
+        precondition(db().totalChanges == writes)
+        for _ in 0..<3 { precondition(templates[0].save(profileId: info.profile.id)) }
+        try check(count("profileLightSensorTemplate") == 1)
+        try rejects { try insertTemplate(id: "field-template", profile: info.profile.id, addresses: valid) }
+        ProfileLightSensorTemplate.initDatabase()
+        try check(count("profileLightSensorTemplate") == 1)
+        print("PASS: historical schema, 13 rows -> 1, rollback and same-connection retry, durable readback, unique migration and repeated saves")
+    }
+
+    static func createLegacyTemplateTable() throws {
+        try db().execute("""
+            CREATE TABLE profileLightSensorTemplate (
+                id TEXT NOT NULL, profileId TEXT NOT NULL, name TEXT NOT NULL,
+                dayStartsAboveLux INTEGER NOT NULL, nightStartsBelowLux INTEGER NOT NULL,
+                deviceAddresses BLOB)
+            """)
+    }
+
+    static func insertTemplate(id: String = "template", profile: String = "profile", name: String = "Field",
+                               day: Int = 500, night: Int = 300, addresses: [Address] = [0x0010], data: Data? = nil) throws {
+        let data = try data ?? JSONEncoder().encode(addresses.map { $0.hex })
+        try db().run("INSERT INTO profileLightSensorTemplate VALUES (?, ?, ?, ?, ?, ?)",
+                     id, profile, name, day, night, data.datatypeValue)
+    }
+
+    static func rawTemplates() throws -> [String] {
+        try db().prepare("SELECT quote(id), quote(profileId), quote(name), quote(dayStartsAboveLux), quote(nightStartsBelowLux), quote(deviceAddresses) FROM profileLightSensorTemplate ORDER BY rowid")
+            .map { $0.map { $0 as! String }.joined(separator: "|") }
+    }
+
+    static func rejects(_ body: () throws -> Void) throws {
+        do { try body(); preconditionFailure("Expected protected failure") } catch {}
+    }
+
+    static func testTemplateConflictsAndMigration(_ root: URL) throws {
+        let valid: Set<Address> = [0x0010, 0x0020]
+        for kind in ["name", "day", "night", "addresses", "owner", "malformed", "invalidAddress", "invalidLux"] {
+            let url = root.appendingPathComponent("conflict-\(kind).sqlite3")
+            SunSmartDataManager.shared.db = try Connection(url.path)
+            try createLegacyTemplateTable()
+            try insertTemplate()
+            try insertTemplate(profile: kind == "owner" ? "other" : "profile",
+                name: kind == "name" ? "Different" : "Field", day: kind == "day" ? 600 : 500,
+                night: kind == "night" ? 200 : (kind == "invalidLux" ? -1 : 300),
+                addresses: kind == "addresses" ? [0x0020] : (kind == "invalidAddress" ? [0x8001] : [0x0010]),
+                data: kind == "malformed" ? Data("not-json".utf8) : nil)
+            let before = try rawTemplates()
+            ProfileLightSensorTemplate.initDatabase()
+            try rejects { _ = try ProfileLightSensorTemplate.referenceCleanupChanges(profileId: "profile", validAddresses: valid) }
+            let template = ProfileLightSensorTemplate(id: "template", name: "Field", nightStartsBelowLux: 300,
+                dayStartsAboveLux: 500, deviceAddresses: [0x0010])
+            precondition(!template.save(profileId: "profile"))
+            SunSmartDataManager.shared.db = try Connection(url.path)
+            try check(rawTemplates() == before)
+        }
+
+        SunSmartDataManager.shared.db = try Connection(root.appendingPathComponent("deferred-index.sqlite3").path)
+        try createLegacyTemplateTable()
+        try insertTemplate(id: "unrelated", profile: "other", name: "A")
+        try insertTemplate(id: "unrelated", profile: "other", name: "B")
+        try insertTemplate()
+        try insertTemplate()
+        let otherBefore = try rawTemplates().prefix(2)
+        ProfileLightSensorTemplate.initDatabase()
+        let changes = try ProfileLightSensorTemplate.referenceCleanupChanges(profileId: "profile", validAddresses: valid)
+        precondition(changes.count == 1, "Duplicates must be cleaned even when all references are already valid")
+        precondition(SunSmartDataManager.shared.configurationTransaction { for change in changes { try change() } })
+        let template = ProfileLightSensorTemplate(id: "template", name: "Edited", nightStartsBelowLux: 200,
+            dayStartsAboveLux: 600, deviceAddresses: [0x0020])
+        for _ in 0..<3 { precondition(template.save(profileId: "profile")) }
+        try check(count("profileLightSensorTemplate") == 3)
+        try check(rawTemplates().prefix(2) == otherBefore)
+        precondition(ProfileLightSensorTemplate.load(profileId: "profile").first?.name == "Edited")
+        precondition(!template.save(profileId: "other"), "A globally unique ID cannot move between profiles")
+        try check(ProfileLightSensorTemplate.referenceCleanupChanges(profileId: "profile", validAddresses: valid).isEmpty)
+        // With the unrelated conflict resolved explicitly, initialization can finish the deferred migration.
+        try db().run("DELETE FROM profileLightSensorTemplate WHERE id = 'unrelated' AND name = 'B'")
+        ProfileLightSensorTemplate.initDatabase()
+        try rejects { try insertTemplate() }
+
+        SunSmartDataManager.shared.db = try Connection(.inMemory)
+        try createLegacyTemplateTable()
+        try insertTemplate()
+        ProfileLightSensorTemplate.initDatabase()
+        try rejects { try insertTemplate() }
+        let beforeFailedSave = try rawTemplates()
+        try db().execute("CREATE TRIGGER reject_template BEFORE INSERT ON profileLightSensorTemplate BEGIN SELECT RAISE(ABORT, 'injected shared save failure'); END")
+        precondition(!template.save(profileId: "profile"))
+        try check(rawTemplates() == beforeFailedSave)
+        try db().execute("DROP TRIGGER reject_template")
+        precondition(template.save(profileId: "profile"))
+        let pending = try ProfileLightSensorTemplate.referenceCleanupChanges(profileId: "profile", validAddresses: [])
+        precondition(pending.count == 1)
+        template.name = "Changed after preparation"
+        precondition(template.save(profileId: "profile"))
+        precondition(!SunSmartDataManager.shared.configurationTransaction { for change in pending { try change() } })
+        precondition(ProfileLightSensorTemplate.load(profileId: "profile").first?.name == template.name)
+        SunSmartDataManager.shared.db = nil
+        precondition(!template.save(profileId: "profile"))
+        print("PASS: conflicting duplicates/cross-profile IDs/corrupt data retained; unrelated conflicts isolated; old-schema save remains idempotent; migration and stale preparation protected")
     }
 
     static func testDefaultsAndCloudRoundtrip(_ url: URL) throws {
