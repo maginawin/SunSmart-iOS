@@ -26,7 +26,7 @@
 
 ### 已确定的展示方向：未知时使用正常图标
 
-按本次交互确认，Group 设备列表只使用两种图标：`needsSync == true` 显示“需要同步”；`false` 或尚未得到结果的 `nil` 显示正常图标，不另加“核对中”状态。异步结果若为 `true`，立即切换到“需要同步”；读取输入不可用而保守返回 `true` 时也照常显示“需要同步”。仅改变 `DevicesViewCell.applyGroupSyncIcon` 的未知态显示，不改变实际同步判定、请求和失效机制。
+按本次交互确认，Group 设备列表只使用两种图标：`needsSync == true` 显示“需要同步”；`false` 或尚未得到结果的 `nil` 显示正常图标，不另加“核对中”状态。异步结果若为 `true`，立即切换到“需要同步”；读取输入不可用而保守返回 `true` 时也照常显示“需要同步”。实现仅改变 `DevicesViewCell.applyGroupSyncIcon` 的未知态显示，不改变实际同步判定、请求和失效机制。这个 Cell 同时用于 Group 详情和 Members 页，因此两页的设备图标行为一致；Members 页的同步按钮仍沿用原有的保守判定。
 
 此方案接受一个取舍：真实需要同步的设备在异步核对返回前也可能短暂显示正常图标。当前核对涉及保护数据读取、拓扑准备和主线程分片，通常可较快完成，但源码没有完成时限保证；不能将“很快”作为正确性前提。页面隐藏或 Cell 复用时请求可能取消，再次可见时会重新核对。
 
@@ -38,6 +38,9 @@
 
 在 Group 页对支持占用传感器的灯分别禁用、启用，覆盖命令成功和超时/失败：传感器行在请求期间提示处理中，成功后状态正确；设备图标在同步结果未知时保持正常，核对为 `false` 时继续正常；若制造真实 Group 配置差异，核对返回 `true` 后显示需要同步；滚动、Cell 复用和离线/重新进入页面不显示旧设备结果。自动化可复用 `GroupDeviceSyncDisplayTests`，但最终闪烁时长和传感器行为仍需真机体验验收。
 
-## 本次范围
+## 实施与验证
 
-只读分析 App 与当前本地 SDK 源码，未修改业务代码，未构建或运行真机。工作树原有 `DebugCloudJSONRecords`、相关测试和 Site 时区分析文档的未提交修改未触碰。
+- `DevicesViewCell.applyGroupSyncIcon` 在结果为 `nil` 时选用正常设备图标；结果为 `true` 时仍显示“需要同步”。
+- 更新 `GroupDeviceSyncDisplayTests`，覆盖首次核对未知、旧结果失效、真实 Group 差异最终返回 `true`、离线和 Cell 复用。`python3 scripts/check_node_sync_status_refresh.py` 通过。
+- `SunSmartLocal.xcworkspace` 的 SunSmart scheme，Debug、generic iOS、`CODE_SIGNING_ALLOWED=NO` 编译通过。变更位于所有品牌共用的 Cell，未涉及品牌编译条件或资源，因此本轮以 SunSmart 作为代表 target。
+- 未进行真机 UI/传感器行为验收；需实际点击启用、禁用并观察 Group 页图标和底部传感器状态。

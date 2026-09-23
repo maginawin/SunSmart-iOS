@@ -149,7 +149,7 @@ class DevicesViewCell: UICollectionViewCell {
 
     private func applyGroupSyncIcon(node: Node) {
         let normalIcon = node.isKeybindComplete ? node.elControllerLightsIconName : "device_repair"
-        iconImageView.image = UIImage(named: (groupSyncDisplay?.needsSync(for: node) ?? true)
+        iconImageView.image = UIImage(named: (groupSyncDisplay?.needsSync(for: node) ?? false)
                                       ? node.unsyncIconName : normalIcon)
     }
 

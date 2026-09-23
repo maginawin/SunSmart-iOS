@@ -148,8 +148,8 @@ extension NodeSyncStatusRefreshTests {
         let detail = GroupViewController(network.groups[0])
         page.collectionView.visibleCells = [cell]; detail.collectionView.visibleCells = [cell]
         cell.bind(node); page.refresh()
-        require(!page.functionView.hidden && cell.iconImageView.image == UIImage(named: node.unsyncIconName),
-                "pending Group read appeared synchronized")
+        require(!page.functionView.hidden && cell.iconImageView.image == UIImage(named: node.elControllerLightsIconName),
+                "pending Group read displayed a need-sync icon")
         await drain { page.functionView.hidden && cell.iconImageView.image == UIImage(named: node.elControllerLightsIconName) }
         require(cell.selection && cell.brightness == 75, "sync callback changed selection or brightness")
         let checks = node.checks
@@ -158,8 +158,11 @@ extension NodeSyncStatusRefreshTests {
 
         node.proximityLightingEnabled.toggle(); NodeSyncStatusGeneration.invalidate()
         page.refresh()
+        require(cell.iconImageView.image == UIImage(named: node.elControllerLightsIconName),
+                "invalidated Group result displayed a need-sync icon before recomputation")
         await drain { page.groupSyncDisplay.needsSync(for: page.group) == true }
         require(!page.functionView.hidden, "Members hid pending Group after configuration changed")
+        await drain { cell.iconImageView.image == UIImage(named: node.unsyncIconName) }
 
         // Cancellation on scrolling and replacement must reject old icon writes.
         cell.prepareForReuse(); cell.bind(replacement)
@@ -200,7 +203,7 @@ extension NodeSyncStatusRefreshTests {
         page.isSyncPageVisible = true; page.refresh()
         await drain { cell.iconImageView.image == UIImage(named: replacement.unsyncIconName) }
         require(!page.functionView.hidden, "reentry did not restore current Group status")
-        print("PASS: production Group icon/Members button functions: online/offline/keybind, pending/normal, add mode, Cell reuse/scroll cancellation, hidden/reentry, live appearance preservation")
+        print("PASS: production Group icon/Members button functions: online/offline/keybind, pending-as-normal/need-sync, add mode, Cell reuse/scroll cancellation, hidden/reentry, live appearance preservation")
     }
 }
 #endif

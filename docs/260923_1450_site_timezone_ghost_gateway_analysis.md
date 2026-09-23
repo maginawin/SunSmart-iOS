@@ -4,7 +4,7 @@
 
 ## 结论
 
-**实施状态（2026-09-23）：用户已确认 A+B+C+D，四部分已落地；本轮实现与验证记录见文末。现场数据实际清理和真机时区同步仍待人工验收。**
+**实施状态（2026-09-23）：A+B+C+D 已落地。用户反馈“测试没有问题”，15:44:32 的新导出确认本地 gateways 从 3 条变为 0 条；本次现场问题验收通过。实现、自动化验证及现场导出核对见文末。**
 
 15:07 的新导出已确认：该 Site 的本地 `gateways` 表恰好保留 3 条网关记录，对应主网络 Node 全部不存在，Edit Site 时区同步仍把它们纳入任务。三条记录 lastUploadCloudTimestamp 都为 null，命中了现有远端导入清理的保留条件。可以确定当前任务来源；仍不能仅凭快照还原三条记录当年如何产生、是否经过完整删除操作。
 
@@ -285,4 +285,30 @@ Site 页 Export JSON 的 `_debugInspection.rawSite` 新增：
 2. Edit Site 修改 Time Zone 后 Sync：Site 更新正常，不出现三条 Gateway 时区任务；重启后重复并导出，记录仍为空。
 3. 正常带网关的 Site 仍能同步；有效 Node 但时区未知时仍有任务。同 MAC 重新入网应能正常保存、注册和展示。
 
-未自动安装 App、操作真机或请求真实服务器；上述现场验收待用户执行。隔离测试、generic iOS 编译和真实设备/服务器收敛分别作为不同证据。
+实施阶段未自动安装 App、操作真机或请求真实服务器；后续用户现场测试结果见下一节。隔离测试、generic iOS 编译和真实设备/服务器收敛分别作为不同证据。
+
+
+## 用户现场验收与新导出核对
+
+日期：2026-09-23。用户反馈“测试没有问题”，提供 `/Users/maginawin/Desktop/tmp/1545 Site_5楼测试_20260923_154432_664+0800.json`。文件实际 capturedAt 为 `2026-09-23T07:44:32Z`（UTC+08:00 15:44:32）。本轮核对时工作树为 `fix`，HEAD `35e1cced`（`fix: wrong gateways list`），开始时工作树干净；本轮仅更新验收记录，没有修改业务代码、重新构建或操作设备。
+
+与 15:07:25 的旧导出对比：
+
+| 核对项 | 修复前 | 用户测试后的导出 |
+| --- | --- | --- |
+| Site UUID | `D7CA28AE-0134-4AFD-9AB1-3389AC5C111F` | 相同 |
+| 原始 `rawSite.gateways` | 3 条 | 明确空数组，0 条 |
+| 三个旧 MAC | CC9E27179B40、E2F54FDEECEB、F1ADFFA8B2C7 | 新 JSON 全部字段的字符串值中均未找到精确匹配 |
+| 主网 Node | iPhone，地址 1 | 仍只有 iPhone，地址 1 |
+| 主网 networkId | `0968AA474D4F8AAE` | 相同 |
+| Site 时区 | America/Argentina/Catamarca (UTC-03:00) | America/Adak (UTC-10:00) |
+| lastUpdateTimestamp / lastUploadCloudTimestamp | 1790145842 / 1790145842 | 1790149465 / 1790149465 |
+| pendingSitePropsMask / syncCloudError | 0 / null | 0 / null |
+| Site 诊断 issues | 空数组 | 空数组 |
+| Space 数量 | 8 | 8 |
+
+结论：新导出直接证明三条孤立 Gateway 数据已实际清除，Site 的本地修改版本与已上传版本一致、没有待提交属性或同步错误。结合用户操作测试反馈，本次“无网关却出现三个时区任务”的现场问题验收通过。
+
+范围说明：新导出不是新的 `get/siteprops` 服务器响应，因此“上传完成”证据来自本地持久化标记及用户测试反馈，本轮没有独立请求服务器。用户没有逐项列出重启、正常网关和同 MAC 重加的操作，本记录不将这些边界场景额外标为已完成真机验收。
+
+附带对比：各 Space 的 Group/Scene/Schedule 数量保持一致；“5楼”Space 的 Node 数量从 1 增至 3，其余 Space 数量一致，不能据此宣称全部业务数据逐字段不变。既有 proximityLighting 诊断条目与旧导出一致，没有扩大本次修复范围。导出里的 `uploadable=false` 是诊断文件格式固定标记，不是 Site 上传失败状态。
