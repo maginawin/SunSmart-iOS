@@ -38,6 +38,14 @@ open SunSmart.xcworkspace
 
 在 Xcode 中选择需要开发的品牌 Scheme 和目标设备后运行。
 
+## Xcode Cloud
+
+Workflow 使用 `SunSmart.xcworkspace` 和需要构建的品牌 Scheme；SunSmart 使用 `SunSmart` Scheme。
+
+仓库中的 Pods 文件不完整，云端必须重新安装依赖。`ci_scripts/ci_post_clone.sh` 会在克隆后切换到仓库根目录，使用 Xcode Cloud 预装的 CocoaPods 执行 `pod install --deployment`，补齐各品牌的 `.xcconfig`、`.xcfilelist` 等生成文件。安装失败或 `Podfile` 与 `Podfile.lock` 不一致时直接终止，避免继续构建。
+
+该脚本须保留可执行权限并提交到 Cloud 构建的分支。修改依赖后，先在本地运行 `pod install` 并同步提交 `Podfile` 与 `Podfile.lock`。云端日志应先显示 post-clone 脚本安装依赖成功，再开始 Xcode 构建。
+
 ## 使用本地 NordicSigMeshSDK
 
 需要同时开发 App 和 `NordicSigMeshSDK` 时，运行：
