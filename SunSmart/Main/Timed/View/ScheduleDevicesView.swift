@@ -51,7 +51,7 @@ class ScheduleDevicesView: UIView {
     
     private var isShowing = false
     private let syncDisplay = ScheduleTargetDisplayState()
-    private var schedulerObservation: NSObjectProtocol?
+    private var syncStatusObservations: [NSObjectProtocol] = []
 
     private func refreshSyncStatus() {
         guard isShowing, superview != nil, let schedule else { return }
@@ -62,10 +62,13 @@ class ScheduleDevicesView: UIView {
         refreshVisibleSyncStatus()
     }
 
-    private func observeSchedulerChanges() {
-        schedulerObservation = NotificationCenter.default.addObserver(
-            forName: SpaceSchedulerReadCoordinator.didUpdate, object: nil, queue: .main
-        ) { [weak self] _ in self?.refreshSyncStatus() }
+    private func observeSyncStatusChanges() {
+        // Activation follows the shared reader's will-enter-foreground invalidation.
+        for name in [SpaceSchedulerReadCoordinator.didUpdate, UIApplication.didBecomeActiveNotification] {
+            syncStatusObservations.append(NotificationCenter.default.addObserver(
+                forName: name, object: nil, queue: .main
+            ) { [weak self] _ in self?.refreshSyncStatus() })
+        }
     }
 
     init(nodes: [Node], selectNodes: [Node], schedule: Schedule? = nil, selectBack: DevicesSelectFinishedCallback?) {
@@ -81,7 +84,7 @@ class ScheduleDevicesView: UIView {
         
         setupUI()
         
-        observeSchedulerChanges()
+        observeSyncStatusChanges()
         deviceNameFilterObservation = deviceNameFilterSession.observe { [weak self] _ in
             self?.applyDeviceNameFilter()
         }
@@ -93,7 +96,7 @@ class ScheduleDevicesView: UIView {
     }
 
     deinit {
-        if let schedulerObservation { NotificationCenter.default.removeObserver(schedulerObservation) }
+        syncStatusObservations.forEach { NotificationCenter.default.removeObserver($0) }
         if let deviceNameFilterObservation {
             deviceNameFilterSession.removeObserver(deviceNameFilterObservation)
         }

@@ -36,7 +36,7 @@ class ScheduleScenesView: UIView {
     
     private var isShowing = false
     private let syncDisplay = ScheduleTargetDisplayState()
-    private var schedulerObservation: NSObjectProtocol?
+    private var syncStatusObservations: [NSObjectProtocol] = []
 
     private func refreshSyncStatus() {
         guard isShowing, superview != nil, let schedule else { return }
@@ -47,10 +47,13 @@ class ScheduleScenesView: UIView {
         refreshVisibleSyncStatus()
     }
 
-    private func observeSchedulerChanges() {
-        schedulerObservation = NotificationCenter.default.addObserver(
-            forName: SpaceSchedulerReadCoordinator.didUpdate, object: nil, queue: .main
-        ) { [weak self] _ in self?.refreshSyncStatus() }
+    private func observeSyncStatusChanges() {
+        // Activation follows the shared reader's will-enter-foreground invalidation.
+        for name in [SpaceSchedulerReadCoordinator.didUpdate, UIApplication.didBecomeActiveNotification] {
+            syncStatusObservations.append(NotificationCenter.default.addObserver(
+                forName: name, object: nil, queue: .main
+            ) { [weak self] _ in self?.refreshSyncStatus() })
+        }
     }
 
     init(scenes: [Scene], selectScene: Scene?, schedule: Schedule? = nil, selectBack: SceneSelectFinishedCallback?) {
@@ -61,7 +64,7 @@ class ScheduleScenesView: UIView {
         super.init(frame: UIScreen.main.bounds)
         
         setupUI()
-        observeSchedulerChanges()
+        observeSyncStatusChanges()
     }
     
     required init?(coder: NSCoder) {
@@ -69,7 +72,7 @@ class ScheduleScenesView: UIView {
     }
     
     deinit {
-        if let schedulerObservation { NotificationCenter.default.removeObserver(schedulerObservation) }
+        syncStatusObservations.forEach { NotificationCenter.default.removeObserver($0) }
     }
 
     private func refreshVisibleSyncStatus() {

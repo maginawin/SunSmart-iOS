@@ -469,6 +469,7 @@ struct NodeSyncStatusRefreshTests {
         await sceneGroupSyncReadTests()
         await groupDeviceSyncReadTests()
         #if os(macOS)
+        await timedPickerForegroundTests()
         await groupsLiveAppearanceTests()
         await groupDeviceSyncDisplayTests()
         scenePresentationLayoutTests()

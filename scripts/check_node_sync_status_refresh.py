@@ -3,6 +3,7 @@
 from pathlib import Path
 import subprocess
 import tempfile
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 def section(text, start, end):
@@ -44,6 +45,39 @@ def production():
         group_device_tests = group_device_tests.replace('// PRODUCTION_' + marker + '_DISPLAY',
             section(source, '    func collectionView(_ collectionView: UICollectionView, willDisplay',
                     '    func collectionView(_ collectionView: UICollectionView, didSelectItemAt' if marker == 'DETAIL' else '    public func collectionView(_ collectionView: UICollectionView, layout'))
+    picker_probes = []
+    for kind in ['Devices', 'Groups', 'Scenes']:
+        source = read(f'SunSmart/Main/Timed/View/Schedule{kind}View.swift')
+        observer = re.search(r'        (observe\w+Changes)\(\)', source).group(1)
+        cleanup = section(source, '    deinit {', '\n    }') + '\n    }'
+        picker_probes.append(f'''
+private final class Schedule{kind}ForegroundProbe: PickerForegroundProbe {{
+    let schedule: Schedule?
+    var superview: NSObject?
+    var attached: Bool {{
+        get {{ superview != nil }}
+        set {{ superview = newValue ? NSObject() : nil }}
+    }}
+    var appearanceUpdates = 0
+    private var deviceNameFilterObservation: UUID?
+    private let deviceNameFilterSession = PickerFilterSession()
+    private var meshNetworkConnectedObservation: NSObject?
+    {section(source, '    private var isShowing', '    init(')}
+    init(schedule: Schedule?) {{
+        self.schedule = schedule
+        {observer}()
+    }}
+    {cleanup}
+    var currentSnapshot: ScheduleTargetSyncSnapshot? {{ syncDisplay.currentSnapshot }}
+    func refreshVisibleSyncStatus() {{ appearanceUpdates += 1 }}
+    func present() {{ isShowing = true; attached = true; refreshSyncStatus() }}
+    func dismiss() {{ hide(); attached = false }}
+    {section(source, '    private func hide()', '        UIView.animate')}
+    }}
+}}
+''')
+    picker_tests = read('Tests/Timed/TimedPickerForegroundTests.swift').replace(
+        '// PRODUCTION_PICKER_PROBES', '\n'.join(picker_probes))
     pieces = [read('SunSmart/Common/Data/AppPerformance.swift'),
         read('SunSmart/Common/Data/DeviceScheduleAddressCleanup.swift'),
         read('SunSmart/Common/Data/SpaceProtectionReadSnapshot.swift'), policy, section(adapter, 'enum ProximityLightingTopologyContext', '\nextension SpaceData'),
@@ -56,7 +90,7 @@ def production():
         + section(read('SunSmart/Common/Data/MeshNetwork+SunSmart.swift'), '    /// 有效色温范围', '    func clampEffectiveCct') + '\n}',
         section(read('SunSmart/Common/Data/SpaceSchedulerReadCoordinator.swift'), 'final class SpaceSchedulerReadQueue', '\nfinal class SpaceSchedulerReadCoordinator'),
         'extension Schedule {\n' + section(read('SunSmart/Common/Data/MeshNetwork+SunSmart.swift'), '    func getNeedSyncDatas() -> ScheduleSyncData', '\nextension DeviceSwitchData'),
-        read('Tests/Group/SpaceRuntimeCacheTests.swift'), read('Tests/Timed/TimedSyncReadTests.swift'), scene_tests, appearance, group_device_tests,
+        read('Tests/Group/SpaceRuntimeCacheTests.swift'), read('Tests/Timed/TimedSyncReadTests.swift'), picker_tests, scene_tests, appearance, group_device_tests,
         'extension Node {\n' + section(read('SunSmart/Common/Data/Node+SyncData.swift'), '    func getNodeSyncProximityLighting(', '    /// 获取网关设备同步的配置') + '\n}',
         'extension Group {\n' + section(read('SunSmart/Common/Data/MeshNetwork+SunSmart.swift'), '    func getNeedSyncScheduleDataNodes(', '\nextension Scene'),
         'extension Schedule {\n' + section(read('SunSmart/Common/Data/MeshNetwork+SunSmart.swift'), '    func targets(node:', '\n    func needsSync(on') + '\n}', tests]
