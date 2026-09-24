@@ -114,8 +114,88 @@ extension NodeSyncStatusRefresh {
             MeshNetworkManager.instance.schedules.contains { $0 === schedule }
         }, makeRead: { context in
             let read = SpacePageSyncRead(schedule: schedule, context: context)
-            return { read.advance(until: $0) }
+            return { context.isProtectionAvailable ? read.advance(until: $0) : true }
         }, completion: completion)
+    }
+}
+
+struct ScheduleTargetSyncSnapshot {
+    let nodes: Set<ObjectIdentifier>
+    let groups: Set<ObjectIdentifier>
+    let scenes: Set<ObjectIdentifier>
+    private let revision = SpacePageRevision()
+    var isCurrent: Bool { revision.isCurrent }
+
+    init(schedule: Schedule, data: Schedule.ScheduleSyncData, context: NodeSyncReadContext) {
+        nodes = Set((data.syncNodes + data.deleteNodes).map(ObjectIdentifier.init))
+        var groups = Set((Array(data.syncGroups.keys) + Array(data.deleteGroups.keys)).map(ObjectIdentifier.init))
+        // Direct-device work is stored outside syncGroups/deleteGroups, but a
+        // pending Group containing that device must still display its warning.
+        for node in data.syncNodes + data.deleteNodes {
+            if let group = context.group(for: node), group.info.bindSchedules.contains(where: { $0.id == schedule.id }) {
+                groups.insert(ObjectIdentifier(group))
+            }
+        }
+        self.groups = groups
+        var scenes = Set(schedule.needDeleteScenes.map(ObjectIdentifier.init))
+        if let scene = schedule.scene, scene.info.groups.contains(where: { groups.contains(ObjectIdentifier($0)) }) {
+            scenes.insert(ObjectIdentifier(scene))
+        }
+        self.scenes = scenes
+    }
+}
+
+/// Each picker owns cancellation and a separate cache key from the list's Bool
+/// query. Pickers share the same incremental plan inside one valid read context.
+final class ScheduleTargetDisplayState {
+    private weak var schedule: Schedule?
+    private var readKey = NSObject()
+    private var snapshot: ScheduleTargetSyncSnapshot?
+    private var ticket = UUID()
+    private var reading = false
+
+    var currentSnapshot: ScheduleTargetSyncSnapshot? {
+        snapshot?.isCurrent == true ? snapshot : nil
+    }
+
+    func refresh(schedule: Schedule, didUpdate: @escaping () -> Void) {
+        if self.schedule === schedule, currentSnapshot != nil || reading { return }
+        cancel()
+        if self.schedule !== schedule { readKey = NSObject() }
+        self.schedule = schedule
+        snapshot = nil
+        reading = true
+        let ticket = self.ticket
+        NodeSyncStatusRefresh.requestRead(object: readKey, owner: self, isValid: {
+            MeshNetworkManager.instance.schedules.contains { $0 === schedule }
+        }, makeRead: { context in
+            let read = context.scheduleDataRead(schedule)
+            return { context.isProtectionAvailable ? read.advance(until: $0) : true }
+        }, completion: { [weak self] _ in
+            guard let self, self.ticket == ticket else { return }
+            self.reading = false
+            if let context = NodeSyncReadContext.current, context.isProtectionAvailable,
+               let data = context.scheduleDataRead(schedule).result {
+                self.snapshot = ScheduleTargetSyncSnapshot(schedule: schedule, data: data, context: context)
+            }
+            didUpdate()
+        })
+    }
+
+    func cancel() {
+        ticket = UUID()
+        reading = false
+        NodeSyncStatusRefresh.cancel(owner: self)
+    }
+
+    deinit { NodeSyncStatusRefresh.cancel(owner: self) }
+}
+
+private extension NodeSyncReadContext {
+    func scheduleDataRead(_ schedule: Schedule) -> Schedule.SyncDataRead {
+        memoized("schedule-targets-\(ObjectIdentifier(schedule))") {
+            Schedule.SyncDataRead(schedule: schedule, nodes: nodes, members: members(of:))
+        }
     }
 }
 

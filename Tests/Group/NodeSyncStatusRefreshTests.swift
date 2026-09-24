@@ -25,6 +25,7 @@ final class GroupProximityLightingPathData {
     var paths: [Path] = []; var zones: [Zone] = []
 }
 final class GroupInfo {
+    var bindSchedules: [Schedule] = []
     var imageText: String?, imageId = 1
     var profile = Profile(), proximityLightingPath: GroupProximityLightingPathData? = nil
     var profileLoadFailed = false, topologyLoadFailed = false
@@ -225,6 +226,7 @@ extension Node {
     }
 }
 final class Schedule {
+    var id = 0
     enum TargetType: CaseIterable { case devices, groups, scene, profile }
     var nodeAddresses: [Address] = [], groups: [Group] = [], scene: Scene?
     var selectTargetType = TargetType.groups
@@ -463,6 +465,7 @@ struct NodeSyncStatusRefreshTests {
     static func run() async {
         require(Thread.isMainThread, "test refresh on main queue")
         await spaceRuntimeCacheTests()
+        await timedSyncReadTests()
         await sceneGroupSyncReadTests()
         await groupDeviceSyncReadTests()
         #if os(macOS)

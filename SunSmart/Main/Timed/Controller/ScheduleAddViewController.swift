@@ -28,6 +28,9 @@ class ScheduleAddViewController: UIViewController {
     private var deleteBtn: UIButton!
     /// 添加日程完成
     private var addFineshed = false
+    private var syncRequestID = UUID()
+    private var schedulerObservation: NSObjectProtocol?
+    private var isDisplaying = false
     
     let space: SpaceData
     var schedule: Schedule?
@@ -51,6 +54,12 @@ class ScheduleAddViewController: UIViewController {
         navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back))
         setupUI()
         setupData()
+        schedulerObservation = NotificationCenter.default.addObserver(
+            forName: SpaceSchedulerReadCoordinator.didUpdate, object: nil, queue: .main
+        ) { [weak self] _ in
+            guard let self, self.isDisplaying else { return }
+            self.refreshSyncStatus()
+        }
      
 //        updateBtnState()
         
@@ -58,8 +67,34 @@ class ScheduleAddViewController: UIViewController {
     }
     
     deinit {
+        if let schedulerObservation { NotificationCenter.default.removeObserver(schedulerObservation) }
+        NodeSyncStatusRefresh.cancel(owner: self)
         if space.isConfiguring {
             space.isConfiguring = false
+        }
+    }
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        isDisplaying = true
+        refreshSyncStatus()
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        isDisplaying = false
+        syncRequestID = UUID()
+        NodeSyncStatusRefresh.cancel(owner: self)
+    }
+
+    private func refreshSyncStatus() {
+        guard let schedule else { return }
+        syncRequestID = UUID()
+        let requestID = syncRequestID
+        scheduleAddView.isSyncCompletion = false
+        NodeSyncStatusRefresh.request(schedule: schedule, owner: self) { [weak self] needsSync in
+            guard let self, self.syncRequestID == requestID, self.schedule === schedule else { return }
+            self.scheduleAddView.isSyncCompletion = !needsSync
         }
     }
     
@@ -88,12 +123,7 @@ class ScheduleAddViewController: UIViewController {
             scheduleAddView.hour = schedule.hour
             scheduleAddView.minute = schedule.minute
             
-            // 判断需要同步设备数据
-            if !schedule.getNeedSyncDatas().isEmpty() {
-                scheduleAddView.isSyncCompletion = false
-            }else {
-                scheduleAddView.isSyncCompletion = true
-            }
+            refreshSyncStatus()
             
             saveBtn.isHidden = true
             deleteBtn.isHidden = false
@@ -620,9 +650,9 @@ extension ScheduleAddViewController: ScheduleAddTargetViewDelegate {
     
     func view(_ view: ScheduleAddTargetView, didClickTargetAction target: ScheduleTarget) {
         switch target {
-        case .devices:
+        case .devices(let selectedNodes):
             let nodes = MeshNetworkManager.instance.realNodes.filter({ $0.schedulerModel != nil })
-            ScheduleDevicesView(nodes: nodes, selectNodes: nodes, schedule: self.schedule, selectBack: {[weak self] selectNodes in
+            ScheduleDevicesView(nodes: nodes, selectNodes: selectedNodes, schedule: self.schedule, selectBack: {[weak self] selectNodes in
                 self?.updateScheduleTarget(.devices(selectNodes))
             }).show()
             

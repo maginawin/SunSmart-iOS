@@ -56,8 +56,9 @@ def production():
         + section(read('SunSmart/Common/Data/MeshNetwork+SunSmart.swift'), '    /// 有效色温范围', '    func clampEffectiveCct') + '\n}',
         section(read('SunSmart/Common/Data/SpaceSchedulerReadCoordinator.swift'), 'final class SpaceSchedulerReadQueue', '\nfinal class SpaceSchedulerReadCoordinator'),
         'extension Schedule {\n' + section(read('SunSmart/Common/Data/MeshNetwork+SunSmart.swift'), '    func getNeedSyncDatas() -> ScheduleSyncData', '\nextension DeviceSwitchData'),
-        read('Tests/Group/SpaceRuntimeCacheTests.swift'), scene_tests, appearance, group_device_tests,
+        read('Tests/Group/SpaceRuntimeCacheTests.swift'), read('Tests/Timed/TimedSyncReadTests.swift'), scene_tests, appearance, group_device_tests,
         'extension Node {\n' + section(read('SunSmart/Common/Data/Node+SyncData.swift'), '    func getNodeSyncProximityLighting(', '    /// 获取网关设备同步的配置') + '\n}',
+        'extension Group {\n' + section(read('SunSmart/Common/Data/MeshNetwork+SunSmart.swift'), '    func getNeedSyncScheduleDataNodes(', '\nextension Scene'),
         'extension Schedule {\n' + section(read('SunSmart/Common/Data/MeshNetwork+SunSmart.swift'), '    func targets(node:', '\n    func needsSync(on') + '\n}', tests]
     return '\n'.join(pieces).replace('import NordicSigMeshSDK', '')
 if __name__ == '__main__':

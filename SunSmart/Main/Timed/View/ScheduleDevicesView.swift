@@ -35,8 +35,6 @@ class ScheduleDevicesView: UIView {
     private var disableUnselectNodes: [Node] = []
     /// 日程（编辑时传入）
     private let schedule: Schedule?
-    /// 需要同步的设备list（编辑）
-    private var needSyncNodes: [Node] = []
     /// 选择设备完成回调
     private var selectCallback: DevicesSelectFinishedCallback?
     private let deviceNameFilterSession = DeviceNameFilterSession()
@@ -51,6 +49,25 @@ class ScheduleDevicesView: UIView {
     
     private var displayDeviceNamePrefix: Bool = true
     
+    private var isShowing = false
+    private let syncDisplay = ScheduleTargetDisplayState()
+    private var schedulerObservation: NSObjectProtocol?
+
+    private func refreshSyncStatus() {
+        guard isShowing, superview != nil, let schedule else { return }
+        syncDisplay.refresh(schedule: schedule) { [weak self] in
+            guard let self, self.isShowing, self.superview != nil else { return }
+            self.refreshVisibleSyncStatus()
+        }
+        refreshVisibleSyncStatus()
+    }
+
+    private func observeSchedulerChanges() {
+        schedulerObservation = NotificationCenter.default.addObserver(
+            forName: SpaceSchedulerReadCoordinator.didUpdate, object: nil, queue: .main
+        ) { [weak self] _ in self?.refreshSyncStatus() }
+    }
+
     init(nodes: [Node], selectNodes: [Node], schedule: Schedule? = nil, selectBack: DevicesSelectFinishedCallback?) {
         self.nodes = nodes
         self.selectNodes = selectNodes
@@ -64,12 +81,7 @@ class ScheduleDevicesView: UIView {
         
         setupUI()
         
-        // 获取是否有设备需要同步
-        if let schedule = self.schedule {
-            let data = schedule.getNeedSyncDatas()
-            needSyncNodes.append(contentsOf: data.syncNodes)
-            needSyncNodes.append(contentsOf: data.deleteNodes)
-        }
+        observeSchedulerChanges()
         deviceNameFilterObservation = deviceNameFilterSession.observe { [weak self] _ in
             self?.applyDeviceNameFilter()
         }
@@ -81,12 +93,29 @@ class ScheduleDevicesView: UIView {
     }
 
     deinit {
+        if let schedulerObservation { NotificationCenter.default.removeObserver(schedulerObservation) }
         if let deviceNameFilterObservation {
             deviceNameFilterSession.removeObserver(deviceNameFilterObservation)
         }
     }
     
+    private func updateSyncAppearance(_ cell: DevicesViewCell, node: Node) {
+        let needsSync = schedule != nil && (syncDisplay.currentSnapshot?.nodes.contains(ObjectIdentifier(node)) ?? true)
+        let icon = needsSync ? node.unsyncIconName : !node.isKeybindComplete ? "device_repair"
+            : node.state ? node.elControllerLightsIconName : node.offlineIconName
+        cell.iconImageView.image = UIImage(named: icon)
+    }
+
+    private func refreshVisibleSyncStatus() {
+        for indexPath in collectionView.indexPathsForVisibleItems {
+            guard indexPath.item < visibleNodes.count,
+                  let cell = collectionView.cellForItem(at: indexPath) as? DevicesViewCell else { continue }
+            updateSyncAppearance(cell, node: visibleNodes[indexPath.item])
+        }
+    }
+
     func show() {
+        isShowing = true
         if self.superview == nil {
             self.tag = 100
             UIApplication.shared.keyWindow().addSubview(self)
@@ -95,6 +124,7 @@ class ScheduleDevicesView: UIView {
             checkOffline()
             updateSelectAllState()
         }
+        refreshSyncStatus()
         self.shadeView.alpha = 0
         self.contentView.y = height
         UIView.animate(withDuration: 0.3) {
@@ -108,6 +138,8 @@ class ScheduleDevicesView: UIView {
     }
     
     private func hide() {
+        isShowing = false
+        syncDisplay.cancel()
         UIView.animate(withDuration: 0.3) {
             self.shadeView.alpha = 0
             self.contentView.y = self.height
@@ -399,9 +431,7 @@ extension ScheduleDevicesView: UICollectionViewDataSource, UICollectionViewDeleg
         let node = visibleNodes[indexPath.item]
         cell.device = node
         cell.displayDeviceNamePrefix = displayDeviceNamePrefix
-        if needSyncNodes.contains(node) {
-            cell.iconImageView.image = UIImage(named: node.unsyncIconName)
-        }
+        updateSyncAppearance(cell, node: node)
         if node.isKeybindComplete && node.state {
             cell.selectImageView.isHidden = false
         }else {

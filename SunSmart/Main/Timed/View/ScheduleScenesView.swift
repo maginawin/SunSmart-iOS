@@ -33,9 +33,26 @@ class ScheduleScenesView: UIView {
     private let schedule: Schedule?
     /// 选择场景完成回调
     private let selectCallback: SceneSelectFinishedCallback?
-    /// 需要同步的场景list（编辑）
-    private var syncScenes: [Scene] = []
     
+    private var isShowing = false
+    private let syncDisplay = ScheduleTargetDisplayState()
+    private var schedulerObservation: NSObjectProtocol?
+
+    private func refreshSyncStatus() {
+        guard isShowing, superview != nil, let schedule else { return }
+        syncDisplay.refresh(schedule: schedule) { [weak self] in
+            guard let self, self.isShowing, self.superview != nil else { return }
+            self.refreshVisibleSyncStatus()
+        }
+        refreshVisibleSyncStatus()
+    }
+
+    private func observeSchedulerChanges() {
+        schedulerObservation = NotificationCenter.default.addObserver(
+            forName: SpaceSchedulerReadCoordinator.didUpdate, object: nil, queue: .main
+        ) { [weak self] _ in self?.refreshSyncStatus() }
+    }
+
     init(scenes: [Scene], selectScene: Scene?, schedule: Schedule? = nil, selectBack: SceneSelectFinishedCallback?) {
         self.scenes = scenes
         self.selectScene = selectScene
@@ -43,25 +60,29 @@ class ScheduleScenesView: UIView {
         self.selectCallback = selectBack
         super.init(frame: UIScreen.main.bounds)
         
-        if let schedule = self.schedule {
-            if let scene = schedule.scene, scene.info.groups.contains(where: { group in
-                group.nodes.contains(where: { node in
-                    schedule.needsSync(on: node, contextGroup: group) || schedule.needsDelete(from: node, contextGroup: group)
-                })
-            }) {
-                syncScenes.append(scene)
-            }
-            syncScenes.append(contentsOf: schedule.needDeleteScenes)
-        }
-        
         setupUI()
+        observeSchedulerChanges()
     }
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
     
+    deinit {
+        if let schedulerObservation { NotificationCenter.default.removeObserver(schedulerObservation) }
+    }
+
+    private func refreshVisibleSyncStatus() {
+        for indexPath in collectionView.indexPathsForVisibleItems {
+            guard indexPath.item < scenes.count,
+                  let cell = collectionView.cellForItem(at: indexPath) as? ScheduleGroupsViewCell else { continue }
+            cell.failedImageView.isHidden = schedule == nil ||
+                syncDisplay.currentSnapshot?.scenes.contains(ObjectIdentifier(scenes[indexPath.item])) == false
+        }
+    }
+
     func show() {
+        isShowing = true
         if self.superview == nil {
             self.tag = 100
             UIApplication.shared.keyWindow().addSubview(self)
@@ -70,6 +91,7 @@ class ScheduleScenesView: UIView {
                 showEmptyUI()
             }
         }
+        refreshSyncStatus()
         self.shadeView.alpha = 0
         self.contentView.y = height
         UIView.animate(withDuration: 0.3) {
@@ -83,6 +105,8 @@ class ScheduleScenesView: UIView {
     }
     
     private func hide() {
+        isShowing = false
+        syncDisplay.cancel()
         UIView.animate(withDuration: 0.3) {
             self.shadeView.alpha = 0
             self.contentView.y = self.height
@@ -207,16 +231,8 @@ extension ScheduleScenesView: UICollectionViewDataSource, UICollectionViewDelega
         cell.nameLabel.text = scene.name
         cell.selectedImageView.image = UIImage(named: selectScene == scene ? "schedule_target_select" : "schedule_target_select_un")
         cell.onoffBtn.isHidden = true
-        if schedule != nil {
-            // 是否需要同步日程
-            if syncScenes.contains(scene) {
-                cell.failedImageView.isHidden = false
-            }else {
-                cell.failedImageView.isHidden = true
-            }
-        }else {
-            cell.failedImageView.isHidden = true
-        }
+        cell.failedImageView.isHidden = schedule == nil ||
+            syncDisplay.currentSnapshot?.scenes.contains(ObjectIdentifier(scene)) == false
         return cell
     }
     

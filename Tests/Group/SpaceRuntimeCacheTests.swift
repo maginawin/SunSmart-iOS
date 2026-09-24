@@ -81,6 +81,8 @@ extension NodeSyncStatusRefreshTests {
                 schedule.deleteRead = { [weak schedule] node, group in
                     schedule?.targets(node: node, contextGroup: group) == false && (Int(node.primaryUnicastAddress) + seed + Int(group?.address.address ?? 0)) % 6 == 0
                 }
+                require(schedule.signature(schedule.getNeedSyncDatas()) == schedule.signature(schedule.legacyNeedSyncDatas()),
+                        "schedule plan changed target/removal semantics")
                 let expected = !schedule.getNeedSyncDatas().isEmpty()
                 let read = context.perform { SpacePageSyncRead(schedule: schedule, context: context) }
                 var actual: Bool?

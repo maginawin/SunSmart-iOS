@@ -66,6 +66,14 @@ enum NodeSyncStatusRefresh {
         mapGroupMembers(groups) { group, members in group.isOn(members: members()) }
     }
 
+    static func groupControlStates(_ groups: [Group]) -> [ObjectIdentifier: (online: Bool, isOn: Bool)] {
+        let values = mapGroupMembers(groups) { group, members in
+            let nodes = members()
+            return (ObjectIdentifier(group), (online: nodes.contains { $0.state }, isOn: group.isOn(members: nodes)))
+        }
+        return Dictionary(uniqueKeysWithValues: values)
+    }
+
     static func sceneGroupAppearances(_ groups: [Group]) -> [ObjectIdentifier: SceneGroupAppearance] {
         let values = mapGroupMembers(groups) { group, members in
             let nodes = members()

@@ -1320,13 +1320,11 @@ extension Group {
             return (needSyncNodes, needDeleteNodes)
         }
         
-        // 待删除的组,获取组内待删除的设备
-        if schedule.needDeleteGroups.contains(self) {
-            needDeleteNodes = self.nodes.filter({ schedule.needsDelete(from: $0, contextGroup: self) })
-        }else { // 待同步，获取组内待同步的设备
-            needSyncNodes = self.nodes.filter({ schedule.needsSync(on: $0, contextGroup: self) })
-            needDeleteNodes = self.nodes.filter({ schedule.needsDelete(from: $0, contextGroup: self) })
-        }
+        // A pending removal may overlap the current Scene's targets.
+        // The target/entry policies decide whether to sync or delete each node.
+        let members = NodeSyncReadContext.current?.members(of: self) ?? nodes
+        needSyncNodes = members.filter { schedule.needsSync(on: $0, contextGroup: self) }
+        needDeleteNodes = members.filter { schedule.needsDelete(from: $0, contextGroup: self) }
         return (needSyncNodes, needDeleteNodes)
     }
 
@@ -1578,26 +1576,19 @@ extension Schedule {
             return true
         }
         
-        let canUseGroupContext = node.groupState != .exitFailure
-        if canUseGroupContext {
-            if groups.contains(where: { NodeSyncReadContext.current?.contains(node, in: $0) ?? $0.nodes.contains(node) }) {
-                return true
-            }
-            if let contextGroup = contextGroup, groups.contains(contextGroup) {
-                return true
-            }
-            
-            if let scene = scene {
-                if scene.info.groups.contains(where: { NodeSyncReadContext.current?.contains(node, in: $0) ?? $0.nodes.contains(node) }) {
-                    return true
-                }
-                if let contextGroup = contextGroup, scene.info.groups.contains(contextGroup) {
-                    return true
-                }
-            }
+        guard node.groupState != .exitFailure else { return false }
+        let targetGroups = groups + (scene?.info.groups ?? [])
+        guard !targetGroups.isEmpty else { return false }
+        // Explicit context also covers newly added/restored members whose
+        // subscriptions have not caught up yet. It is an OR, not an override.
+        if let contextGroup, targetGroups.contains(contextGroup) { return true }
+        if let context = NodeSyncReadContext.current {
+            return targetGroups.contains { context.contains(node, in: $0) }
         }
-        
-        return false
+        // Group.nodes itself resolves membership using node.group. Reading
+        // that once avoids rebuilding every target Group's entire member list.
+        guard MeshNetworkManager.instance.realNodes.contains(node), let group = node.group else { return false }
+        return targetGroups.contains { $0.address == group.address }
     }
     
     func needsSync(on node: Node, contextGroup: Group? = nil) -> Bool {
@@ -1668,79 +1659,110 @@ extension Schedule {
     /// groups：add/remove 【(group: [Node])】
     /// scene: add/remove  【(scene：[Group])】
     func getNeedSyncDatas() -> ScheduleSyncData {
-        
-        var syncNodes: [Node] = []
-        var syncGroupData: [Group: [Node]] = [:]
-        
-//        var allSetScheduleNodes: [Node] = []
-        
-        // 所有需要同步的设备 直接关联-间接关联（组、场景）只设置一次不需要重复同步
-        var allSyncNodes: [Node] = []
-        // 所有需要删的设备 直接关联-间接关联（组、场景） 只删除一次不需要重复删除
-//        var allDeleteNodes: [Node] = []
-        
-        switch selectTargetType {
-        case .devices:
-            syncNodes = nodes.filter({ needsSync(on: $0) })
-            allSyncNodes.append(contentsOf: nodes)
-        case .groups:
-            groups.forEach({ group in
-                let groupTargetNodes = group.nodes.filter({ node in targets(node: node, contextGroup: group) })
-                let groupSyncNodes = groupTargetNodes.filter({ node in needsSync(on: node, contextGroup: group) })
-                if groupSyncNodes.count > 0 {
-                    syncGroupData.updateValue(groupSyncNodes, forKey: group)
+        let nodes = MeshNetworkManager.instance.realNodes
+        var grouped: [Address: [Node]]?
+        func members(of group: Group) -> [Node] {
+            if let context = NodeSyncReadContext.current { return context.members(of: group) }
+            if grouped == nil {
+                var values: [Address: [Node]] = [:]
+                for node in nodes {
+                    if let address = node.group?.address.address {
+                        values[address, default: []].append(node)
+                    }
                 }
-                allSyncNodes.append(contentsOf: groupTargetNodes)
-            })
-        case .scene:
-            scene?.info.groups.forEach({ group in
-                let groupTargetNodes = group.nodes.filter({ node in targets(node: node, contextGroup: group) })
-                let groupSyncNodes = groupTargetNodes.filter({ node in needsSync(on: node, contextGroup: group) })
-                if groupSyncNodes.count > 0 {
-                    syncGroupData.updateValue(groupSyncNodes, forKey: group)
-                }
-                allSyncNodes.append(contentsOf: groupTargetNodes)
-            })
-        case .profile:
-            break
+                grouped = values
+            }
+            return grouped?[group.address.address] ?? []
         }
-        
-        var deleteNodes = needDeleteNodes.filter({ needsDelete(from: $0) && !allSyncNodes.contains($0) })
-        
-        var deleteGroupData: [Group: [Node]] = [:]
-        needDeleteGroups.forEach({ group in
-            let groupDeleteNodes = group.nodes.filter({ node in needsDelete(from: node, contextGroup: group) && !allSyncNodes.contains(node) && !deleteNodes.contains(node) })
-            // ((!allSyncNodes.contains($0) && !allDeleteNodes.contains($0)) || !nodes.contains($0))
-            if groupDeleteNodes.count > 0 {
-                deleteGroupData.updateValue(groupDeleteNodes, forKey: group)
-//                allDeleteNodes.append(contentsOf: groupDeleteNodes)
-            }
-        })
-
-        needDeleteScenes.forEach({ scene in
-            scene.info.groups.forEach { group in
-                let groupDeleteNodes = group.nodes.filter({ node in needsDelete(from: node, contextGroup: group) && !allSyncNodes.contains(node) && !deleteNodes.contains(node) })
-                // && !allSyncNodes.contains($0)) && !allDeleteNodes.contains($0)
-                if groupDeleteNodes.count > 0 {
-                    deleteGroupData.updateValue(groupDeleteNodes, forKey: group)
-//                    allDeleteNodes.append(contentsOf: groupDeleteNodes)
-                }
-            }
-        })
-        
-        let groupedDeleteNodes = deleteGroupData.values.flatMap({ $0 })
-        let orphanDeleteNodes = MeshNetworkManager.instance.realNodes.filter({
-            needsDelete(from: $0) &&
-            !allSyncNodes.contains($0) &&
-            !deleteNodes.contains($0) &&
-            !groupedDeleteNodes.contains($0)
-        })
-        deleteNodes.append(contentsOf: orphanDeleteNodes)
-        
-        let data = ScheduleSyncData(syncNodes: syncNodes, deleteNodes: deleteNodes, syncGroups: syncGroupData, deleteGroups: deleteGroupData)
-        return data
+        let read = SyncDataRead(schedule: self, nodes: nodes, members: members)
+        _ = read.advance(until: .greatestFiniteMagnitude)
+        return read.result!
     }
-    
+
+    /// One planning pass, also consumed in bounded display slices. The reader
+    /// owns no persistent cache and never substitutes for execution authorization.
+    final class SyncDataRead {
+        private enum Check {
+            case sync(Node, Group?)
+            case delete(Node, Group?)
+            case orphan(Node)
+        }
+        private let schedule: Schedule
+        private var checks: [Check] = []
+        private var cursor = 0
+        private var targetIDs = Set<ObjectIdentifier>()
+        private var deletedIDs = Set<ObjectIdentifier>()
+        private var groupedDeleteIDs = Set<ObjectIdentifier>()
+        private var data = ScheduleSyncData()
+        private(set) var result: ScheduleSyncData?
+
+        init(schedule: Schedule, nodes: [Node], members: (Group) -> [Node]) {
+            self.schedule = schedule
+            switch schedule.selectTargetType {
+            case .devices:
+                let addresses = Set(schedule.nodeAddresses)
+                for node in nodes where addresses.contains(node.primaryUnicastAddress) {
+                    targetIDs.insert(ObjectIdentifier(node))
+                    checks.append(.sync(node, nil))
+                }
+            case .groups, .scene:
+                let groups = schedule.selectTargetType == .groups ? schedule.groups : schedule.scene?.info.groups ?? []
+                for group in groups {
+                    for node in members(group) where schedule.targets(node: node, contextGroup: group) {
+                        targetIDs.insert(ObjectIdentifier(node))
+                        checks.append(.sync(node, group))
+                    }
+                }
+            case .profile:
+                break
+            }
+            checks += schedule.needDeleteNodes.filter { !targetIDs.contains(ObjectIdentifier($0)) }.map { .delete($0, nil) }
+            var pendingGroups = Set<ObjectIdentifier>()
+            for group in schedule.needDeleteGroups + schedule.needDeleteScenes.flatMap({ $0.info.groups }) {
+                guard pendingGroups.insert(ObjectIdentifier(group)).inserted else { continue }
+                checks += members(group).filter { !targetIDs.contains(ObjectIdentifier($0)) }.map { .delete($0, group) }
+            }
+            checks += nodes.filter { !targetIDs.contains(ObjectIdentifier($0)) }.map { .orphan($0) }
+        }
+
+        /// nil means unfinished. A completed empty plan is the only false result.
+        func advance(until deadline: TimeInterval) -> Bool? {
+            if let result { return !result.isEmpty() }
+            while cursor < checks.count {
+                let check = checks[cursor]
+                cursor += 1
+                switch check {
+                case .sync(let node, let group):
+                    if schedule.needsSync(on: node, contextGroup: group) {
+                        if let group { data.syncGroups[group, default: []].append(node) }
+                        else { data.syncNodes.append(node) }
+                    }
+                case .delete(let node, let group):
+                    let id = ObjectIdentifier(node)
+                    guard !deletedIDs.contains(id) else { break }
+                    if schedule.needsDelete(from: node, contextGroup: group) {
+                        if let group {
+                            data.deleteGroups[group, default: []].append(node)
+                            groupedDeleteIDs.insert(id)
+                        } else {
+                            data.deleteNodes.append(node)
+                            deletedIDs.insert(id)
+                        }
+                    }
+                case .orphan(let node):
+                    let id = ObjectIdentifier(node)
+                    if !deletedIDs.contains(id), !groupedDeleteIDs.contains(id), schedule.needsDelete(from: node) {
+                        data.deleteNodes.append(node)
+                        deletedIDs.insert(id)
+                    }
+                }
+                if ProcessInfo.processInfo.systemUptime >= deadline { return nil }
+            }
+            result = data
+            return !data.isEmpty()
+        }
+    }
+
     /// 日程同步数据
     struct ScheduleSyncData {
         /// 需要同步的节点

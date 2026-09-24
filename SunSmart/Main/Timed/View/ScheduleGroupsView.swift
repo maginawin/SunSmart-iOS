@@ -36,6 +36,25 @@ class ScheduleGroupsView: UIView {
     
     private var meshNetworkConnectedObservation: NSKeyValueObservation?
     
+    private var isShowing = false
+    private let syncDisplay = ScheduleTargetDisplayState()
+    private var schedulerObservation: NSObjectProtocol?
+
+    private func refreshSyncStatus() {
+        guard isShowing, superview != nil, let schedule else { return }
+        syncDisplay.refresh(schedule: schedule) { [weak self] in
+            guard let self, self.isShowing, self.superview != nil else { return }
+            self.refreshVisibleSyncStatus()
+        }
+        refreshVisibleSyncStatus()
+    }
+
+    private func observeSchedulerChanges() {
+        schedulerObservation = NotificationCenter.default.addObserver(
+            forName: SpaceSchedulerReadCoordinator.didUpdate, object: nil, queue: .main
+        ) { [weak self] _ in self?.refreshSyncStatus() }
+    }
+
     init(groups: [Group], selectGroups: [Group], schedule: Schedule? = nil, selectBack: GroupsSelectFinishedCallback?) {
         self.groups = groups
         self.selectGroups = selectGroups
@@ -45,6 +64,7 @@ class ScheduleGroupsView: UIView {
         
         setupUI()
         addObserver()
+        observeSchedulerChanges()
     }
     
     required init?(coder: NSCoder) {
@@ -52,6 +72,7 @@ class ScheduleGroupsView: UIView {
     }
     
     deinit {
+        if let schedulerObservation { NotificationCenter.default.removeObserver(schedulerObservation) }
         meshNetworkConnectedObservation = nil
     }
     
@@ -61,12 +82,24 @@ class ScheduleGroupsView: UIView {
         meshNetworkConnectedObservation = MeshLibManager.manager.observe(\.isMeshNetworkConnected, options: [.new], changeHandler: {[weak self] _, _ in
             guard let self = self else { return }
             DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1) {[weak self] in
-                self?.collectionView.reloadData()
+                guard let self, self.isShowing, self.superview != nil else { return }
+                self.refreshSyncStatus()
+                self.collectionView.reloadData()
             }
         })
     }
     
+    private func refreshVisibleSyncStatus() {
+        for indexPath in collectionView.indexPathsForVisibleItems {
+            guard indexPath.item < groups.count,
+                  let cell = collectionView.cellForItem(at: indexPath) as? ScheduleGroupsViewCell else { continue }
+            cell.failedImageView.isHidden = schedule == nil ||
+                syncDisplay.currentSnapshot?.groups.contains(ObjectIdentifier(groups[indexPath.item])) == false
+        }
+    }
+
     func show() {
+        isShowing = true
         if self.superview == nil {
             self.tag = 100
             UIApplication.shared.keyWindow().addSubview(self)
@@ -75,6 +108,7 @@ class ScheduleGroupsView: UIView {
                 showEmptyUI()
             }
         }
+        refreshSyncStatus()
         self.shadeView.alpha = 0
         self.contentView.y = height
         UIView.animate(withDuration: 0.3) {
@@ -88,6 +122,8 @@ class ScheduleGroupsView: UIView {
     }
     
     private func hide() {
+        isShowing = false
+        syncDisplay.cancel()
         UIView.animate(withDuration: 0.3) {
             self.shadeView.alpha = 0
             self.contentView.y = self.height
@@ -234,22 +270,22 @@ extension ScheduleGroupsView: UICollectionViewDataSource, UICollectionViewDelega
         let group = groups[indexPath.item]
         cell.nameLabel.text = group.name
         cell.selectedImageView.image = UIImage(named: selectGroups.contains(group) ? "device_select" : "device_select_un")
-        if group.nodes.isEmpty || !group.nodes.contains(where: { $0.state }) {
+        // Only membership is reused by the read context; online/on-off values
+        // stay live when a cell is redisplayed after a device report.
+        let state = NodeSyncStatusRefresh.groupControlStates([group])[ObjectIdentifier(group)]
+        if state?.online != true {
 //            cell.onoffBtn.isEnabled = false
             cell.onoffBtn.setImage(UIImage(named: "scene_group_disable"), for: .normal)
         }else {
 //            cell.onoffBtn.isEnabled = true
             cell.onoffBtn.setImage(UIImage(named: "scene_group_off"), for: .normal)
-            cell.onoffBtn.isSelected = group.isOn
+            cell.onoffBtn.isSelected = state?.isOn == true
         }
-        if let schedule = schedule {
-            let result = group.getNeedSyncScheduleDataNodes(schedule)
-            cell.failedImageView.isHidden = result.syncNodes.isEmpty && result.deleteNodes.isEmpty
-        }else {
-            cell.failedImageView.isHidden = true
-        }
-        
-        cell.onoffCallback = { isOn in
+        cell.failedImageView.isHidden = schedule == nil ||
+            syncDisplay.currentSnapshot?.groups.contains(ObjectIdentifier(group)) == false
+
+        cell.onoffCallback = { [weak cell] isOn in
+            guard let cell else { return }
             if group.nodes.count > 0 && group.nodes.contains(where: { $0.state }) {
                 cell.onoffBtn.isSelected = isOn
                 group.isOn = isOn
