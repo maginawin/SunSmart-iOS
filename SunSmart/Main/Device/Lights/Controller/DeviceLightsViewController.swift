@@ -36,6 +36,8 @@ class DeviceLightsViewController: UIViewController {
     private var visibleDevices: [Node] = []
     private var showsAllControl = false
     private var syncStatusRequestID = UUID()
+    private var isPageVisible = false
+    private var needsNodeStateRefresh = false
     
     /// 列数
     private var columnNum: Int = isIPad ? 6 : 3
@@ -106,9 +108,11 @@ class DeviceLightsViewController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        isPageVisible = true
 //        devices.filter({ !$0.state }).count
         MeshLibManager.manager.register(self)
         MeshLibManager.manager.messageDelegate = self
+        refreshPendingNodeStateIfPossible()
         
         if collectionView.firstShowFlashScrollIndicators {
             collectionView.flashScrollIndicatorsIfNeeded()
@@ -116,6 +120,11 @@ class DeviceLightsViewController: UIViewController {
         
     }
     
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        isPageVisible = false
+    }
+
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         syncStatusRequestID = UUID()
@@ -266,7 +275,15 @@ class DeviceLightsViewController: UIViewController {
     
     /// 获取节点状态
     private func getNodesState() {
-        guard MeshLibManager.manager.isMeshNetworkConnected else {
+        needsNodeStateRefresh = true
+        refreshPendingNodeStateIfPossible()
+    }
+
+    private func refreshPendingNodeStateIfPossible() {
+        guard needsNodeStateRefresh,
+              isPageVisible,
+              viewIfLoaded?.window != nil,
+              MeshLibManager.manager.isMeshNetworkConnected else {
             return
         }
 //        if let view = self.wm_pageController?.view {
@@ -275,6 +292,7 @@ class DeviceLightsViewController: UIViewController {
 //            XWHUDManager.hide()
 //        }
         
+        needsNodeStateRefresh = false
         MeshNodeHeartbeatManager.shared.refresh()
 //        MeshAPI.sendMessage(message: LightLightnessGet(), address: .allNodes)
 //        
@@ -1386,8 +1404,7 @@ extension DeviceLightsViewController: MeshLibManagerDelegate, MeshLibManagerMess
     ///   - state: 蓝牙状态
     func meshNetworkManager(bluetoothDidUpdateState state: CBManagerState) {
         if state == .poweredOn && devices.count > 0 {
-            // 获取设备信号
-            MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 10, finished: nil)
+            getNodesState()
         }
     }
     
@@ -1400,10 +1417,8 @@ extension DeviceLightsViewController: MeshLibManagerDelegate, MeshLibManagerMess
 //       let addressList = space.meshManager?.realNodes.map({ $0.primaryUnicastAddress }) ?? []
 //        MeshAPI.resetNodes(addressList: addressList, resetSuccess: nil, resetFail: nil, resetFinish: nil)
         
-        if view.window != nil {
-            if !MeshNodeHeartbeatManager.shared.autoHeartbeatLoop {
-                getNodesState()
-            }
+        if needsNodeStateRefresh || !MeshNodeHeartbeatManager.shared.autoHeartbeatLoop {
+            getNodesState()
         }
     }
  
