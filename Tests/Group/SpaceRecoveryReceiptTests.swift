@@ -634,6 +634,21 @@ final class NetworkRequest {
             stripped["nodes"] = [node]
             NetworkRequest.shared.result = .success(["data": stripped])
             if case .success = await S.resumeUpload(space) { preconditionFailure("Lost known-empty containers cannot confirm") }
+            for raw in ["null", "\"invalid\"", "0", "true", "[]", "{}", "{\"schemaVersion\":1}"] {
+                node["custProps"] = try JSONSerialization.jsonObject(with: Data("{\"schedulerModelStates\":\(raw)}".utf8))
+                stripped["nodes"] = [node]
+                NetworkRequest.shared.result = .success(["data": stripped])
+                let malformedMatches = await S.verifyUploadedConfiguration(space, payload: submitted)
+                precondition(!malformedMatches, "Malformed snapshots cannot confirm a direct readback")
+                if case .success = await S.resumeUpload(space) {
+                    preconditionFailure("Malformed snapshots cannot finish an upload receipt")
+                }
+                let pending = try S.recoveryState(space)
+                precondition(S.hasPendingUpload(space) && pending.submission?.id == context.submission?.id)
+                precondition(pending.schedulerModelStatesBaseline == context.schedulerModelStatesBaseline)
+                precondition(SchedulerModelSnapshot.spaceData(space.payload) == SchedulerModelSnapshot.spaceData(submitted),
+                             "Malformed readback must not replace local scheduler data")
+            }
             NetworkRequest.shared.result = .success(["data": submitted])
             let directMatches = await S.verifyUploadedConfiguration(space, payload: submitted)
             precondition(directMatches)
@@ -646,7 +661,7 @@ final class NetworkRequest {
         let visitor = SpaceData("snapshot-read-only")
         visitor.permission = .visitor
         precondition(!S.canAutomaticallyUpload(visitor))
-        print("PASS: Model snapshot readback rejects stripping/partial loss, retries, preserves old receipts and visitor write restrictions")
+        print("PASS: Model snapshot readback rejects malformed roots/stripping/partial loss, retains receipts and local schedules, retries, preserves old receipts and visitor write restrictions")
     }
 
     @MainActor static func testProximityAllImportRecovery() throws {

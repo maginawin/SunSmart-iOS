@@ -32,7 +32,10 @@ struct SchedulerModelSnapshot: Codable, Equatable {
         // the explicit schedulerModelStates member declares our schema.
         guard let properties = node["custProps"] as? [String: Any] else { return nil }
         guard let raw = properties["schedulerModelStates"] else { return nil }
-        let snapshot = try JSONDecoder().decode(Self.self, from: JSONSerialization.data(withJSONObject: raw))
+        // JSONSerialization raises an Objective-C exception for scalar roots.
+        // A declared snapshot must be an object, not an absent legacy snapshot.
+        guard let dictionary = raw as? [String: Any] else { throw Invalid.schema }
+        let snapshot = try JSONDecoder().decode(Self.self, from: JSONSerialization.data(withJSONObject: dictionary))
         try snapshot.validate(node: node)
         return snapshot
     }

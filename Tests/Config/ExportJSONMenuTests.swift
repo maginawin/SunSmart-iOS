@@ -35,7 +35,8 @@ struct ExportJSONMenuTests {
     }
 
     static func main() throws {
-        let menu = ExportJSONMenuHarness(visibility: try visibility())
+        let bundled = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))
+        let menu = ExportJSONMenuHarness(visibility: FeatureVisibility { bundled })
         let card = SpaceData()
         var checks = 0
         for siteRole in [Permission.owner, .editor, .visitor] {
@@ -72,9 +73,16 @@ struct ExportJSONMenuTests {
                      && disabled.cardMenu(space: card).isEmpty)
         disabled.debugJSONExporter.share(site: disabled.site, from: disabled)
         precondition(disabled.debugJSONExporter.exports == 0, "Direct share must respect configuration")
-        let release = ExportJSONMenuHarness(visibility: try visibility(build: .release))
-        precondition(release.siteMenu().isEmpty && release.spaceMenu().isEmpty
-                     && release.cardMenu(space: card).isEmpty)
+        let release = ExportJSONMenuHarness(visibility: FeatureVisibility(build: .release) { bundled })
+        for role in [Permission.owner, .editor, .visitor] {
+            release.site.permission = role; release.space.permission = role; card.permission = role
+            precondition(release.siteMenu().isEmpty && release.spaceMenu().isEmpty
+                         && release.cardMenu(space: card).isEmpty)
+            release.debugJSONExporter.share(site: release.site, from: release)
+            release.debugJSONExporter.share(site: release.site, space: card, from: release)
+            release.debugJSONExporter.share(site: release.site, space: release.space, from: release)
+            precondition(release.debugJSONExporter.exports == 0, "Release direct share must remain hidden")
+        }
 
         #if DEBUG
         // A restricted rule must still reject a role change after the menu opens.
@@ -93,6 +101,6 @@ struct ExportJSONMenuTests {
         }
         precondition(XWHUDManager.messages.isEmpty, "Allowed visitor must not see a permission error")
         #endif
-        print("PASS: \(checks) production menu cases, configuration denial, resource selection and stale action guards (\(FeatureVisibility.BuildMode.current.rawValue))")
+        print("PASS: \(checks) production menu cases using bundled configuration, configuration denial, resource selection and stale action guards (\(FeatureVisibility.BuildMode.current.rawValue))")
     }
 }

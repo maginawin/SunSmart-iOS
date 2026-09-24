@@ -3,7 +3,7 @@
         "site": {
             "exportJson": {
                 "builds": ["debug"],
-                "roles": ["owner", "editor"]
+                "roles": ["owner", "editor", "visitor"]
             },
             "triggerZone": {
                 "builds": ["debug"],

@@ -135,10 +135,12 @@ final class Node {
         legacyPayload.removeValue(forKey: "custProps")
         let unknown = Node(legacyPayload)
         precondition(unknown.restoreSchedulerModelSnapshot(nodeData: legacyPayload) && unknown.allSchedulerModelEntrys.isEmpty)
-        for properties in [NSNull(), ["unrelated": [1, 2]], [1, 2]] as [Any] {
+        precondition(SchedulerModelSnapshot.spaceData(["nodes": [legacyPayload]]) == Data("[]".utf8))
+        for properties in [NSNull(), ["unrelated": [1, 2]], [1, 2], [String: Any]()] as [Any] {
             legacyPayload["custProps"] = properties
             let decoded = try SchedulerModelSnapshot.decode(node: legacyPayload)
             precondition(decoded == nil)
+            precondition(SchedulerModelSnapshot.spaceData(["nodes": [legacyPayload]]) == Data("[]".utf8))
         }
         var partial = try snapshot.dictionary()
         partial["models"] = [["elementAddress": node.primaryUnicastAddress.hex, "modelId": "1207", "entriesData": ""]]
@@ -149,6 +151,26 @@ final class Node {
         precondition(partialNode.allSchedulerModelEntrys.count == 1)
         precondition(partialNode.allSchedulerModelEntrys[partialNode.schedulerSetupModels[0]]?.isEmpty == true)
         precondition(partialNode.allSchedulerModelEntrys[partialNode.schedulerSetupModels[1]] == nil)
+
+        let preserved = Node(json)
+        precondition(preserved.restoreSchedulerModelSnapshot(nodeData: json))
+        let preservedSnapshot = try preserved.schedulerModelSnapshot(nodeData: json)
+        let preservedIDs = preserved.scheduleIds
+        for raw in ["null", "\"invalid\"", "0", "1.5", "true", "[]", "[{}]", "{}", "{\"schemaVersion\":1}"] {
+            var bad = json
+            // Parse a cloud-shaped envelope so null/numbers use Foundation's real JSON types.
+            bad["custProps"] = try JSONSerialization.jsonObject(with: Data("{\"schedulerModelStates\":\(raw)}".utf8))
+            do {
+                _ = try SchedulerModelSnapshot.decode(node: bad)
+                preconditionFailure("Declared invalid snapshot must throw: \(raw)")
+            } catch {}
+            precondition(SchedulerModelSnapshot.spaceData(["nodes": [bad]]) == nil)
+            precondition(!preserved.restoreSchedulerModelSnapshot(nodeData: bad))
+            precondition(!preserved.matchesSchedulerModelSnapshot(nodeData: bad))
+            let after = try preserved.schedulerModelSnapshot(nodeData: json)
+            precondition(after == preservedSnapshot && preserved.scheduleIds == preservedIDs,
+                         "Rejected snapshot must preserve existing Model and legacy schedules")
+        }
 
         func rejects(_ change: (inout [String: Any]) -> Void) throws {
             var invalid = try snapshot.dictionary()
@@ -173,5 +195,6 @@ final class Node {
         precondition((try? node.schedulerModelSnapshot(nodeData: json)) == nil)
         print("PASS: 70 nodes / 140 Model containers round-trip; SDK reload preserves 32 empty + 108 populated containers")
         print("PASS: all 16 slots, independent Models, raw month/time, legacy/partial unknown, canonical order, identity/topology/malformed rejection")
+        print("PASS: invalid snapshot root types and incomplete objects reject without changing existing schedules; missing legacy fields remain compatible")
     }
 }

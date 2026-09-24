@@ -111,7 +111,7 @@ for mode in debug release; do
         "$test_dir/ExportJSONMenuHarness.swift" \
         Tests/Config/ExportJSONMenuTests.swift \
         -o "$test_dir/ExportJSONMenuTests-$mode"
-    "$test_dir/ExportJSONMenuTests-$mode"
+    "$test_dir/ExportJSONMenuTests-$mode" SunSmart/debug_features.json
 done
 
 plutil -lint SunSmart.xcodeproj/project.pbxproj
