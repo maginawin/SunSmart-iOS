@@ -42,7 +42,9 @@ open SunSmart.xcworkspace
 
 Workflow 使用 `SunSmart.xcworkspace` 和需要构建的品牌 Scheme；SunSmart 使用 `SunSmart` Scheme。
 
-仓库中的 Pods 文件不完整，云端必须重新安装依赖。`ci_scripts/ci_post_clone.sh` 会在克隆后切换到仓库根目录，使用 Xcode Cloud 预装的 CocoaPods 执行 `pod install --deployment`，补齐各品牌的 `.xcconfig`、`.xcfilelist` 等生成文件。安装失败或 `Podfile` 与 `Podfile.lock` 不一致时直接终止，避免继续构建。
+仓库中的 Pods 文件不完整，云端必须重新安装依赖。`ci_scripts/ci_post_clone.sh` 会在克隆后切换到仓库根目录，使用 Xcode Cloud 预装的 CocoaPods 执行 `pod install`，按 `Podfile.lock` 安装已有依赖并补齐各品牌的 `.xcconfig`、`.xcfilelist` 等生成文件。安装失败时直接终止，避免继续构建。
+
+云端 CocoaPods 版本可能与本地不同，因此不使用 `--deployment`：该选项连锁文件中的 `COCOAPODS` 工具版本变化也会拒绝。普通安装允许更新云端副本的工具版本字段；该变化不会自动提交回仓库。
 
 该脚本须保留可执行权限并提交到 Cloud 构建的分支。修改依赖后，先在本地运行 `pod install` 并同步提交 `Podfile` 与 `Podfile.lock`。云端日志应先显示 post-clone 脚本安装依赖成功，再开始 Xcode 构建。
 
