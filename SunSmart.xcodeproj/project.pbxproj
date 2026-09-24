@@ -11393,7 +11393,7 @@
 /* Begin XCRemoteSwiftPackageReference section */
 		C8D5314A2F76294A0069C71B /* XCRemoteSwiftPackageReference "nordic-sig-mesh-sdk" */ = {
 			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "git@gitee.com:sunricher-i-os/nordic-sig-mesh-sdk.git";
+			repositoryURL = "git@github.com:maginawin/nordic-sig-mesh-sdk.git";
 			requirement = {
 				branch = release;
 				kind = branch;
