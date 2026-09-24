@@ -864,6 +864,15 @@
     },
     {
         "companyId": "0A78",
+        "productId": "2322",
+        "categoryName": "Driver Lighting",
+        "elementCount": 3,
+        "iconCategory": "Lighting",
+        "deviceCategory": "Lighting",
+        "modelName": "SRPL-BL9105N-XXCCTXXE"
+    },
+    {
+        "companyId": "0A78",
         "productId": "2401",
         "categoryName": "Controller Lighting",
         "elementCount": 2,
