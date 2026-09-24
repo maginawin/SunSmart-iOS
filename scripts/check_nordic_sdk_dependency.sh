@@ -8,7 +8,7 @@ workspace_file="$app_root/SunSmart.xcworkspace/contents.xcworkspacedata"
 resolved_file="$app_root/SunSmart.xcworkspace/xcshareddata/swiftpm/Package.resolved"
 ignore_file="$app_root/.gitignore"
 package_id="C8D5314A2F76294A0069C71B"
-repository_url="git@gitee.com:sunricher-i-os/nordic-sig-mesh-sdk.git"
+repository_url="git@github.com:maginawin/nordic-sig-mesh-sdk.git"
 
 fail() {
   echo "FAIL: $1" >&2
