@@ -1,12 +1,8 @@
 #!/bin/sh
 set -eu
 
-# Xcode Cloud starts this script in ci_scripts, while Podfile is at the repository root.
-if [ -n "${CI_PRIMARY_REPOSITORY_PATH:-}" ]; then
-  cd "$CI_PRIMARY_REPOSITORY_PATH"
-else
-  cd "$(dirname "$0")/.."
-fi
+# Xcode Cloud starts this script in ci_scripts; Podfile is one directory above.
+cd "$(dirname "$0")/.."
 
-# Recreate all Pods support files without changing the locked dependency versions.
-pod install --deployment
+# Allow CocoaPods version metadata to follow the tool installed on Xcode Cloud.
+pod install
