@@ -2,6 +2,128 @@ import Foundation
 import CoreFoundation
 import CryptoKit
 
+/// A complete GET is authoritative for membership in an already accepted version
+/// of this Space. It says nothing about unsent local provisioning instances.
+enum SpaceCloudNodeRemovalPolicy {
+    struct Instance: Codable, Equatable {
+        let uuid: String
+        let address: UInt16
+        let keyFingerprint: String
+        var elementAddresses: Set<UInt16> = []
+
+        func matches(_ other: Instance) -> Bool {
+            uuid == other.uuid && address == other.address && keyFingerprint == other.keyFingerprint
+        }
+
+        func matches(_ member: [String: Any]) -> Bool {
+            (member["uuid"] as? String)?.uppercased() == uuid
+                && SchedulerModelSnapshot.address(member["unicastAddress"]) == address
+        }
+    }
+
+    static func instances(_ payload: [String: Any]) -> [Instance]? {
+        guard let nodes = payload["nodes"] as? [[String: Any]] else { return nil }
+        var result: [Instance] = []
+        for node in nodes {
+            guard let uuid = (node["uuid"] as? String).flatMap(UUID.init(uuidString:)),
+                  let address = SchedulerModelSnapshot.address(node["unicastAddress"]),
+                  let fingerprint = try? SchedulerModelSnapshot.keyFingerprint(node),
+                  let elements = node["elements"] as? [[String: Any]], !elements.isEmpty else { return nil }
+            var addresses = Set<UInt16>()
+            for element in elements {
+                guard let index = SpaceConfigurationIntegrityPolicy.integer(element["index"]),
+                      (0...255).contains(index), Int64(address) + index <= 0x7FFF,
+                      element["models"] is [[String: Any]],
+                      addresses.insert(address + UInt16(index)).inserted else { return nil }
+            }
+            guard addresses.contains(address),
+                  !result.contains(where: { $0.uuid == uuid.uuidString || !$0.elementAddresses.isDisjoint(with: addresses) }) else { return nil }
+            result.append(.init(uuid: uuid.uuidString, address: address, keyFingerprint: fingerprint,
+                                elementAddresses: addresses))
+        }
+        return result
+    }
+
+    /// Older receipts retain exact Device Key identity in their Scheduler snapshot.
+    /// Require coverage of every membership; a partial cache is not a baseline.
+    static func legacyInstances(configuration: Data, models: Data?) -> [Instance]? {
+        guard let models, let snapshots = try? JSONDecoder().decode([SchedulerModelSnapshot].self, from: models),
+              let object = (try? JSONSerialization.jsonObject(with: configuration)) as? [String: Any],
+              let members = object["memberships"] as? [[String: Any]], snapshots.count == members.count else { return nil }
+        var result: [Instance] = []
+        for snapshot in snapshots {
+            guard let uuid = UUID(uuidString: snapshot.nodeUUID), let address = SchedulerModelSnapshot.address(snapshot.unicastAddress),
+                  snapshot.deviceKeyFingerprint.count == 64 else { return nil }
+            let instance = Instance(uuid: uuid.uuidString, address: address, keyFingerprint: snapshot.deviceKeyFingerprint)
+            guard members.filter({ instance.matches($0) }).count == 1,
+                  !result.contains(where: { $0.uuid == instance.uuid || $0.address == address }) else { return nil }
+            result.append(instance)
+        }
+        return result
+    }
+
+    /// Only a strict subset of the same provisioning instances is a removal.
+    static func removed(from baseline: [Instance], remote: [Instance]) -> [Instance]? {
+        guard remote.allSatisfy({ node in baseline.contains(where: { $0.matches(node) }) }) else { return nil }
+        return baseline.filter { old in !remote.contains(where: { old.matches($0) }) }
+    }
+
+    static func projectModels(_ data: Data, removing instances: [Instance]) -> Data? {
+        guard let snapshots = try? JSONDecoder().decode([SchedulerModelSnapshot].self, from: data) else { return nil }
+        let remaining = snapshots.filter { snapshot in
+            !instances.contains { $0.uuid == snapshot.nodeUUID.uppercased()
+                && $0.address == SchedulerModelSnapshot.address(snapshot.unicastAddress)
+                && ($0.keyFingerprint.isEmpty || $0.keyFingerprint == snapshot.deviceKeyFingerprint) }
+        }
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        return try? encoder.encode(remaining)
+    }
+
+    /// Remove only references to the proven old instances. Other values and
+    /// malformed structures stay unchanged so ordinary comparison still rejects them.
+    static func projectConfiguration(_ data: Data, removing instances: [Instance]) -> Data? {
+        guard var object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return nil }
+        let addresses = Set(instances.flatMap { $0.elementAddresses.union([$0.address]) })
+        func removed(_ value: Any?) -> Bool {
+            SpaceConfigurationIntegrityPolicy.integer(value).flatMap(UInt16.init(exactly:)).map(addresses.contains) == true
+        }
+        if let members = object["memberships"] as? [[String: Any]] {
+            object["memberships"] = members.filter { member in !instances.contains { $0.matches(member) } }
+        }
+        if let groups = object["groups"] as? [[String: Any]] {
+            object["groups"] = groups.map { original in
+                var group = original
+                if var path = group["proximityLightingPath"] as? [String: Any] {
+                    if let paths = path["paths"] as? [[String: Any]] {
+                        path["paths"] = paths.map { original in
+                            var row = original
+                            if let items = row["items"] as? [Any] { row["items"] = items.map { removed($0) ? 0 : $0 } }
+                            return row
+                        }
+                    }
+                    if let zones = path["zones"] as? [[String: Any]] {
+                        path["zones"] = zones.map { original in
+                            var row = original
+                            if let items = row["addresses"] as? [Any] { row["addresses"] = items.filter { !removed($0) } }
+                            return row
+                        }
+                    }
+                    group["proximityLightingPath"] = path
+                }
+                return group
+            }
+        }
+        if let zones = object["triggerZones"] as? [[String: Any]] {
+            object["triggerZones"] = zones.map { original in
+                var zone = original
+                if let items = zone["items"] as? [[String: Any]] { zone["items"] = items.filter { !removed($0["deviceAddress"]) } }
+                return zone
+            }
+        }
+        return try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys])
+    }
+}
+
 /// Lossless node observations transported in the server's existing JSON column.
 /// A missing container is unknown; a present container with zero bytes is known empty.
 struct SchedulerModelSnapshot: Codable, Equatable {

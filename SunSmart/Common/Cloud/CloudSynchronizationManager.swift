@@ -1149,7 +1149,11 @@ class CloudSynchronizationHandle: NSObject {
                         continue
                     }
                     if case .success = await SpaceConfigurationSafety.resumeUpload(space) {
-                        confirmedConfigurationIds.insert(id)
+                        if case .success = await SpaceConfigurationSafety.finishCloudRemovalUpload(space) {
+                            confirmedConfigurationIds.insert(id)
+                        } else {
+                            result = .failure(SpaceConfigurationSafety.uploadUnconfirmed)
+                        }
                     } else {
                         result = .failure(SpaceConfigurationSafety.uploadUnconfirmed)
                     }

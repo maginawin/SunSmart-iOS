@@ -98,6 +98,18 @@ class SpaceMoreViewController: UIViewController {
         collectionView?.reloadData()
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        reloadOptions()
+    }
+
+    private func showEditingUnavailable() {
+        let key = space.permission != .visitor && !space.disableEditorPermission
+            && !space.requiresPasswordVerification && !space.meshOTADistribution && SpaceConfigurationSafety.isBlocked(space)
+            ? "configuration_sync_unavailable" : "no_permission"
+        XWHUDManager.showTipHUD(key.localizedString, isLineFeed: true)
+    }
+
     private func observeSpacePermissionChanges() {
         NotificationCenter.default.addObserver(
             forName: .init(spacePermissionChangedNotificaitonName),
@@ -171,7 +183,7 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
         switch options[indexPath.item] {
         case .ble:
             guard self.space.bleOTAOperates.contains(.edit) else {
-                XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+                showEditingUnavailable()
                 return
             }
             
@@ -182,7 +194,7 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
             present(NavigationViewController(rootViewController: vc), animated: true)
         case .mesh:
             guard self.space.meshOTAOperates.contains(.edit) else {
-                XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+                showEditingUnavailable()
                 return
             }
             let vc = MeshFirmwareListViewController()
@@ -192,7 +204,7 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
             present(NavigationViewController(rootViewController: vc), animated: true)
         case .deviceParameters:
             guard self.space.deviceOperates.contains(.edit) else {
-                XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+                showEditingUnavailable()
                 return
             }
             let vc = DeviceCategorysViewController()
@@ -212,7 +224,7 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
             present(NavigationViewController(rootViewController: vc), animated: true)
         case .triggerZone:
             guard self.space.groupOperates.contains(.edit) else {
-                XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+                showEditingUnavailable()
                 return
             }
             let vc = SpacePathTriggerZoneController(site: site, space: space)
@@ -222,7 +234,7 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
             present(NavigationViewController(rootViewController: vc), animated: true)
         case .contentDisplay:
             guard self.space.deviceOperates.contains(.edit) else {
-                XWHUDManager.showTipHUD("no_permission".localizedString + "！")
+                showEditingUnavailable()
                 reloadOptions()
                 return
             }

@@ -268,6 +268,7 @@ final class NetworkRequest {
         try await testSchedulerModelReadback()
         try await testEmptyGroupAddressRecovery()
         try await testSiteHandoffReadback()
+        try await testCloudMembershipRemoval()
         try await testImportPreparation()
         try await testParseRejectionRecovery()
         try testReferenceCleanupReceipts()
@@ -913,5 +914,112 @@ final class NetworkRequest {
             precondition(S.isBlocked(space) && !S.canAutomaticallyUpload(space))
         }
         print("PASS: persisted empty address in both directions, older receipts, newer upload and authorization baseline")
+    }
+}
+
+
+extension SpaceRecoveryReceiptTests {
+    static func membershipNode(_ value: Int) throws -> [String: Any] {
+        let address = String(format: "%04X", value * 3)
+        var node: [String: Any] = ["uuid": String(format: "00000000-0000-0000-0000-%012d", value),
+            "unicastAddress": address, "groupState": 0, "deviceKey": String(repeating: "A1", count: 16),
+            "schedules": [], "elements": [["index": 0, "models": [["modelId": "1207", "subscribe": []]]]]]
+        let snapshot = SchedulerModelSnapshot(schemaVersion: 1, nodeUUID: node["uuid"] as! String,
+            unicastAddress: address, deviceKeyFingerprint: try SchedulerModelSnapshot.keyFingerprint(node),
+            models: [.init(elementAddress: address, modelId: "1207", entriesData: Data())], legacyEntriesData: Data())
+        node["custProps"] = ["schedulerModelStates": try snapshot.dictionary()]
+        return node
+    }
+
+    @MainActor static func testCloudMembershipRemoval() async throws {
+        typealias S = SpaceConfigurationSafety
+        let original = try (1...5).map(membershipNode)
+        for mode in ["accepted", "import", "legacy", "all", "prepared", "unknown", "stale", "malformed", "peerKey", "peerModels", "unrelated", "writeFailure"] {
+            let space = SpaceData("cloud-membership-" + mode)
+            space.lastUploadCloudTimestamp = 49; space.nodes = original
+            let context = S.prepareSubmission(space, payload: space.payload)!
+            if mode != "prepared" { precondition(S.markSubmissionAccepted(context, space: space)) }
+            if mode == "unknown" || mode == "legacy" {
+                var state = try S.recoveryState(space)
+                state.submission?.permitsCloudRemoval = mode == "unknown" ? false : nil
+                state.submission?.nodeIdentities = nil
+                try S.testSaveState(state, space: space)
+            }
+            var remote = space.payload
+            var remoteNodes = mode == "all" ? [] : Array(original.prefix(3))
+            if mode == "peerKey" { remoteNodes[0]["deviceKey"] = String(repeating: "B2", count: 16) }
+            if mode == "peerModels" { remoteNodes[0].removeValue(forKey: "custProps") }
+            remote["nodes"] = remoteNodes
+            remote["deviceCount"] = 5 // Stale server summary is deliberately not authoritative.
+            if mode == "stale" { remote["updateTimestamp"] = 49 }
+            if mode == "malformed" { remote["nodes"] = NSNull() }
+            if mode == "unrelated" { remote["triggerZones"] = [["items": [["groupAddress": 49152, "deviceAddress": 3]]]] }
+            // An unsent local addition must survive removal of older submitted instances.
+            space.nodes.append(try membershipNode(9)); space.lastUpdate = 55
+            NetworkRequest.shared.result = .success(["data": remote])
+            DevicePermanentDeletionContext.failCloudRemoval = mode == "writeFailure"
+            if mode == "import" {
+                _ = await space.update(spaceJsonData: remote)
+                precondition(space.nodes.count == 4 && S.hasPendingUpload(space), "entry import cleans nodes but preserves the immutable pending receipt")
+                _ = await space.update(spaceJsonData: remote)
+                let replayed = try S.deletionJournal(space)
+                precondition(replayed.entries.count == 2, "entry retry must not create duplicate removals")
+            }
+            let result = await S.resumeUpload(space)
+            DevicePermanentDeletionContext.failCloudRemoval = false
+            if ["accepted", "import", "legacy", "all"].contains(mode) {
+                if case .failure = result { preconditionFailure("current Space removal must complete: " + mode) }
+                precondition(space.nodes.count == remoteNodes.count + 1 && space.needUploadCloud)
+                precondition(space.lastUploadCloudTimestamp == 50 && !S.hasPendingUpload(space))
+                let state = try S.recoveryState(space)
+                precondition(state.schedulerModelStatesBaseline == SchedulerModelSnapshot.spaceData(remote))
+                precondition(trySnapshotCount(state.schedulerModelStatesBaseline) == remoteNodes.count)
+                let entries = try S.deletionJournal(space).entries
+                precondition(entries.count == 5 - remoteNodes.count && entries.allSatisfy { $0.cloudRemoval != nil })
+                // Finish the newer cleanup upload, never resurrecting either old node.
+                NetworkRequest.shared.responses = [.success(["data": remote]), .success([:]), .success(["data": space.payload])]
+                if case .failure = await S.finishCloudRemovalUpload(space) { preconditionFailure("sync completion must upload and verify the cleaned version") }
+                precondition(NetworkRequest.shared.responses.isEmpty)
+                let finished = try S.deletionJournal(space)
+                precondition(finished.entries.isEmpty && !space.needUploadCloud)
+            } else {
+                if case .success = result { preconditionFailure("invalid removal must stay unconfirmed: " + mode) }
+                precondition(space.nodes.count == 6 && S.hasPendingUpload(space))
+            }
+        }
+        // No pending submission: a previously confirmed Space may lose a member
+        // while this phone adds another device offline.
+        let space = SpaceData("cloud-baseline-only")
+        space.nodes = original; space.lastUploadCloudTimestamp = 50
+        var state = try S.recoveryState(space)
+        state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(space.payload)
+        state.schedulerModelStatesBaseline = SchedulerModelSnapshot.spaceData(space.payload)
+        state.nodeIdentitiesBaseline = SpaceCloudNodeRemovalPolicy.instances(space.payload)
+        try S.testSaveState(state, space: space)
+        var remote = space.payload; remote["nodes"] = Array(original.prefix(3))
+        space.nodes.append(try membershipNode(9)); space.lastUpdate = 55
+        NetworkRequest.shared.result = .success(["data": remote])
+        if case .failure = await S.resumeUpload(space) { preconditionFailure("baseline-only cleanup must precede upload") }
+        precondition(space.nodes.count == 4 && space.needUploadCloud)
+        let updated = try S.recoveryState(space)
+        precondition(updated.nodeIdentitiesBaseline?.count == 3)
+        if case .failure = await S.resumeUpload(space) { preconditionFailure("baseline cleanup replay must remain uploadable") }
+        remote["triggerZones"] = [["items": [["groupAddress": 49152, "deviceAddress": 3]]]]
+        NetworkRequest.shared.result = .success(["data": remote])
+        if case .success = await S.resumeUpload(space) { preconditionFailure("offline local edit must not overwrite unrelated remote changes") }
+        let clean = SpaceData("cloud-ordinary-import")
+        clean.nodes = original; clean.lastUploadCloudTimestamp = clean.lastUpdate
+        var cleanState = try S.recoveryState(clean)
+        cleanState.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(clean.payload)
+        cleanState.nodeIdentitiesBaseline = SpaceCloudNodeRemovalPolicy.instances(clean.payload)
+        try S.testSaveState(cleanState, space: clean)
+        remote["uuid"] = clean.id
+        precondition(S.reconcileCloudMembership(clean, remote: remote), "without protected local work, ordinary import owns remote changes")
+        print("PASS: current-Space accepted/legacy/baseline removal, all removed, unsent addition, exact Scheduler baseline, strict invalid/unknown/readback rejection and cleanup upload")
+    }
+
+    static func trySnapshotCount(_ data: Data?) -> Int {
+        guard let data else { return -1 }
+        return (try? JSONDecoder().decode([SchedulerModelSnapshot].self, from: data).count) ?? -1
     }
 }

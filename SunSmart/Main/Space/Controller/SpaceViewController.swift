@@ -611,6 +611,8 @@ class SpaceViewController: WMPageController {
             self.space.lastUpdate = max(self.space.lastUpdate, updated.lastUpdate)
             self.space.deviceCount = updated.deviceCount
             self.space.luminairesCount = updated.luminairesCount
+            if self.loadNetworkData { self.reloadData() }
+            self.updateSyncState()
         }
         NotificationCenter.default.addObserver(forName: .init(spaceDataChangedNotificaitonName), object: nil, queue: .main) { [weak self] notification in
             guard let self,
@@ -1789,6 +1791,7 @@ extension SpaceViewController: CloudSynchronizationManagerDelegate {
             space.syncCloudError = saved.syncCloudError
         }
         updateSyncState()
+        NotificationCenter.default.post(name: .init(spacePermissionChangedNotificaitonName), object: space)
         if exitSyncSpace {
             XWHUDManager.hide()
             navigationController?.popViewController(animated: true)

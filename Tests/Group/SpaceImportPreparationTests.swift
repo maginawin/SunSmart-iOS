@@ -6,6 +6,26 @@ enum SpaceImportOutcome: Equatable {
 struct ConfigurationMeshReadSnapshot {}
 enum DevicePermanentDeletionContext {
     static func resume(space: SpaceData) {}
+    static var failCloudRemoval = false
+    static func cloudRemovalInstances(space: SpaceData, expected: [SpaceCloudNodeRemovalPolicy.Instance]) -> [SpaceCloudNodeRemovalPolicy.Instance]? {
+        let local = SpaceCloudNodeRemovalPolicy.instances(space.payload) ?? []
+        return expected.map { old in local.first(where: { old.matches($0) }) ?? old }
+    }
+    static func removeCloudInstances(space: SpaceData, instances: [SpaceCloudNodeRemovalPolicy.Instance],
+                                     baselineTimestamp: Int64, remoteTimestamp: Int64, submissionID: UUID?) -> Bool {
+        guard !failCloudRemoval else { return false }
+        space.nodes.removeAll { node in instances.contains { $0.matches(node) } }
+        space.lastUpdate = max(space.lastUpdate, remoteTimestamp) + 1
+        return SpaceConfigurationSafety.updateDeletionJournal(space) { journal in
+            for identity in instances {
+                journal.entries.append(.init(id: UUID(), nodeUUID: identity.uuid, primaryAddress: identity.address,
+                    elementAddresses: identity.elementAddresses, macAddress: nil, productId: nil,
+                    stage: .cleaned, completedTimestamp: space.lastUpdate,
+                    cloudRemoval: .init(baselineTimestamp: baselineTimestamp, remoteTimestamp: remoteTimestamp,
+                                        submissionID: submissionID, instance: identity)))
+            }
+        }
+    }
 }
 @MainActor enum ProximityLightingImportPreflight {
     static var onPrepare: (() -> Void)?

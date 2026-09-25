@@ -9,6 +9,7 @@ extension UInt16 {
     var isUnicast: Bool { self > 0 && self < 0x8000 }
 }
 extension String { var hex: String { self }; var localizedString: String { self }; var uuidString: String { self } }
+extension Data { var hex: String { map { String(format: "%02X", $0) }.joined() } }
 struct MeshAddress: Equatable { let address: Address }
 let jsonDecoder = JSONDecoder()
 struct SpaceTriggerZone: Codable, Equatable {
@@ -98,6 +99,7 @@ final class Node: Decodable {
     weak var network: MeshNetwork?
     var isLocalProvisioner = false, isProvisioner = false, isConfigComplete = false
     var macAddress: String?
+    var deviceKey: Data? = Data(repeating: 0xA1, count: 16)
     var createdTimestamp: Int64 = 1
     func restoreCreatedTimestamp(_ value: Int64) { createdTimestamp = value }
     func save() -> Bool { true }

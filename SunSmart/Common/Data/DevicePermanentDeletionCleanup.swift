@@ -106,9 +106,9 @@ final class DevicePermanentDeletionContext {
         // A completed physical removal may still have a live UI context after
         // app-side cleanup failed. Its durable .removed stage permits recovery.
         for entry in journal.entries where entry.stage != .cleaned && (entry.stage == .removed || !activeEntries.contains(entry.id)) {
-            if persisted.nodes.contains(where: { $0.uuid.uuidString == entry.nodeUUID }) {
+            if persisted.nodes.contains(where: { isRecordedInstance($0, entry: entry) }) {
                 if entry.stage == .prepared {
-                    if entry.replacement != nil { continue } // Reconciler retries only after checking the new owner.
+                    if entry.replacement != nil || entry.cloudRemoval != nil { continue } // Recheck authoritative evidence before retrying removal.
                     _ = SpaceConfigurationSafety.updateDeletionJournal(space) {
                         $0.entries.removeAll { $0.id == entry.id }
                     }
@@ -125,14 +125,14 @@ final class DevicePermanentDeletionContext {
               let persisted = MeshNetwork.load(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId),
               let network = ProximityLightingTopologyContext.network(for: space),
               !persisted.nodes.contains(where: {
-                  $0.uuid.uuidString == entry.nodeUUID || !entry.elementAddresses.isDisjoint(
+                  isRecordedInstance($0, entry: entry) || !entry.elementAddresses.isDisjoint(
                     with: ProximityLightingLifecycleCoordinator.topologyAddresses(for: $0))
               }),
-              !network.nodes.contains(where: { $0.uuid.uuidString == entry.nodeUUID }) else { return nil }
+              !network.nodes.contains(where: { isRecordedInstance($0, entry: entry) }) else { return nil }
         guard let journal = try? SpaceConfigurationSafety.deletionJournal(space) else { return nil }
         let removed = journal.entries.filter { candidate in
             candidate.stage != .cleaned && !persisted.nodes.contains { node in
-                node.uuid.uuidString == candidate.nodeUUID || !candidate.elementAddresses.isDisjoint(
+                isRecordedInstance(node, entry: candidate) || !candidate.elementAddresses.isDisjoint(
                     with: ProximityLightingLifecycleCoordinator.topologyAddresses(for: node))
             }
         }
@@ -146,6 +146,10 @@ final class DevicePermanentDeletionContext {
             applyAdditionalChanges: {
                 for removedEntry in removed {
                     try cleanExtensions(entry: removedEntry, space: space, network: network)
+                }
+                if let version = removed.compactMap({ $0.cloudRemoval?.remoteTimestamp }).max() {
+                    guard version < Int64.max else { throw SpaceConfigurationSafety.SafetyError.persistenceFailed }
+                    space.lastUpdate = max(space.lastUpdate, version + 1)
                 }
                 let nodes = ProximityLightingTopologyContext.realNodes(in: network)
                 space.deviceCount = nodes.count
@@ -229,6 +233,80 @@ final class DevicePermanentDeletionContext {
         return complete(entry: intent, space: space) != nil
     }
 
+    /// Read only this Space. Resolve the exact old key before touching a Node;
+    /// a newly provisioned instance must never inherit an old deletion intent.
+    static func cloudRemovalInstances(space: SpaceData,
+                                      expected: [SpaceCloudNodeRemovalPolicy.Instance]) -> [SpaceCloudNodeRemovalPolicy.Instance]? {
+        guard let network = ProximityLightingTopologyContext.network(for: space) else { return nil }
+        var result: [SpaceCloudNodeRemovalPolicy.Instance] = []
+        for var identity in expected {
+            if let node = network.nodes.first(where: { $0.uuid.uuidString.uppercased() == identity.uuid
+                && $0.primaryUnicastAddress == identity.address }) {
+                guard let key = node.deviceKey, key.count == 16,
+                      (try? SchedulerModelSnapshot.keyFingerprint(["deviceKey": key.hex])) == identity.keyFingerprint else { return nil }
+                identity.elementAddresses = ProximityLightingLifecycleCoordinator.topologyAddresses(for: node)
+            } else if let entry = try? SpaceConfigurationSafety.deletionJournal(space).entries.first(where: {
+                $0.cloudRemoval?.instance.matches(identity) == true
+            }) {
+                identity.elementAddresses = entry.elementAddresses
+            }
+            guard !identity.elementAddresses.isEmpty,
+                  network.nodes.allSatisfy({ node in
+                      (node.uuid.uuidString.uppercased() == identity.uuid && node.primaryUnicastAddress == identity.address)
+                        || identity.elementAddresses.isDisjoint(with: ProximityLightingLifecycleCoordinator.topologyAddresses(for: node))
+                  }) else { return nil }
+            result.append(identity)
+        }
+        return result
+    }
+
+    @discardableResult
+    static func removeCloudInstances(space: SpaceData, instances: [SpaceCloudNodeRemovalPolicy.Instance],
+                                     baselineTimestamp: Int64, remoteTimestamp: Int64, submissionID: UUID?) -> Bool {
+        guard !instances.isEmpty, !SpaceConfigurationSafety.hasPendingImport(space),
+              let checked = cloudRemovalInstances(space: space, expected: instances), checked == instances,
+              let network = ProximityLightingTopologyContext.network(for: space),
+              SpaceConfigurationSafety.checkpoint(space, refresh: !SpaceConfigurationSafety.hasPendingDeletionCleanup(space)) else { return false }
+        var entries: [SpaceDeletionJournal.Entry] = []
+        guard SpaceConfigurationSafety.updateDeletionJournal(space, { journal in
+            for identity in instances {
+                if let existing = journal.entries.first(where: { $0.cloudRemoval?.instance == identity }) {
+                    entries.append(existing)
+                } else {
+                    let node = network.nodes.first { $0.uuid.uuidString.uppercased() == identity.uuid && $0.primaryUnicastAddress == identity.address }
+                    let entry = SpaceDeletionJournal.Entry(id: UUID(), nodeUUID: identity.uuid,
+                        primaryAddress: identity.address, elementAddresses: identity.elementAddresses,
+                        macAddress: node?.macAddress, productId: node?.productIdentifier,
+                        cloudRemoval: .init(baselineTimestamp: baselineTimestamp, remoteTimestamp: remoteTimestamp,
+                                            submissionID: submissionID, instance: identity))
+                    journal.entries.append(entry); entries.append(entry)
+                }
+            }
+        }) else { return false }
+        for entry in entries where entry.stage != .cleaned {
+            if let node = network.nodes.first(where: { $0.uuid.uuidString.uppercased() == entry.nodeUUID && $0.primaryUnicastAddress == entry.primaryAddress }) {
+                guard node.delete() else { return false }
+                network.remove(node: node)
+            }
+            guard let persisted = MeshNetwork.load(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId),
+                  !persisted.nodes.contains(where: { $0.uuid.uuidString.uppercased() == entry.nodeUUID && $0.primaryUnicastAddress == entry.primaryAddress }),
+                  SpaceConfigurationSafety.updateDeletionJournal(space, { journal in
+                      if let index = journal.entries.firstIndex(where: { $0.id == entry.id }) { journal.entries[index].stage = .removed }
+                  }) else { return false }
+        }
+        // Complete as one batch after all Nodes have been removed.
+        for entry in entries {
+            if (try? SpaceConfigurationSafety.deletionJournal(space).entries.first(where: { $0.id == entry.id })?.stage) == .cleaned { continue }
+            guard complete(entry: entry, space: space) != nil else { return false }
+        }
+        return true
+    }
+
+    private static func isRecordedInstance(_ node: Node, entry: SpaceDeletionJournal.Entry) -> Bool {
+        node.uuid.uuidString.uppercased() == entry.nodeUUID.uppercased()
+            && (entry.cloudRemoval == nil || node.primaryUnicastAddress == entry.primaryAddress)
+    }
+
     private static func cleanExtensions(entry: SpaceDeletionJournal.Entry, space: SpaceData, network: MeshNetwork) throws {
         for scene in network.scenes where !entry.elementAddresses.isDisjoint(with: scene.addresses) {
             for address in entry.elementAddresses {
@@ -266,7 +344,7 @@ final class DevicePermanentDeletionContext {
             }
         }
         // Gateway identity is Site-wide: moving a node must not delete its new owner's association.
-        if entry.replacement == nil, let mac = entry.macAddress { GatewayModel.delete(siteId: space.siteId, macAddress: mac) }
+        if entry.replacement == nil, entry.cloudRemoval == nil, let mac = entry.macAddress { GatewayModel.delete(siteId: space.siteId, macAddress: mac) }
         if let productId = entry.productId,
            let distribution = MeshDistributionData.load(meshUUID: space.meshUUID, meshNetworkId: space.meshNetworkId, productId: productId),
            distribution.distributionAddress == entry.primaryAddress {

@@ -183,6 +183,52 @@ extension ScopedImportTests {
         require(ProximityLightingLifecycleCoordinator.commit(automatic, automaticCleanupSnapshot: otherSnapshot) == nil,
                 "a different version cannot authorize automatic cleanup")
 
+
+        // Authoritative current-Space removal does not require a destination
+        // Space, a local provisioning callback, or a physical Reset.
+        let cloud = try fixture(networkId: "CLOUD-REMOVAL")
+        activate(cloud)
+        let secondary = Element(3); secondary.parentNode = cloud.nodes[0]; cloud.nodes[0].elements.append(secondary)
+        let cloudSchedule = Schedule(); cloudSchedule.nodeAddresses = [2, 3, 5]
+        cloudSchedule.needDeleteNodeAddresses = [2, 3, 5]
+        Schedule.stored[cloud.space.meshUUID + cloud.space.meshNetworkId] = [cloudSchedule]
+        let cloudIdentity = SpaceCloudNodeRemovalPolicy.Instance(uuid: cloud.nodes[0].uuid.uppercased(), address: 2,
+            keyFingerprint: try SchedulerModelSnapshot.keyFingerprint(["deviceKey": cloud.nodes[0].deviceKey!.hex]))
+        let resolved = DevicePermanentDeletionContext.cloudRemovalInstances(space: cloud.space, expected: [cloudIdentity])!
+        cloud.nodes[0].deletionFails = true
+        require(!DevicePermanentDeletionContext.removeCloudInstances(space: cloud.space, instances: resolved,
+            baselineTimestamp: 10, remoteTimestamp: 40, submissionID: nil), "failed removal keeps its durable cloud intent")
+        require(cloud.network.nodes.count == 2 && SpaceConfigurationSafety.hasPendingDeletionCleanup(cloud.space), "failure cannot change peers")
+        cloud.nodes[0].deletionFails = false
+        require(DevicePermanentDeletionContext.removeCloudInstances(space: cloud.space, instances: resolved,
+            baselineTimestamp: 10, remoteTimestamp: 40, submissionID: nil), "retry completes without looking up destination")
+        require(cloud.network.nodes.count == 1 && cloud.space.deviceCount == 1 && cloud.space.lastUpdate > 40, "counts and cleanup version cover cloud version")
+        require(cloudSchedule.nodeAddresses == [5] && cloudSchedule.needDeleteNodeAddresses == [5], "clear active and pending old references")
+        require(cloud.group.info.proximityLightingPath!.paths[0].items[0].address == nil, "clear only old Sequence slot")
+        require(cloud.space.triggerZones[1].items.map(\.deviceAddress) == [5], "retain peer Space Zone")
+        let cloudReceipt = try SpaceConfigurationSafety.deletionJournal(cloud.space)
+        require(cloudReceipt.entries.count == 1 && cloudReceipt.entries[0].cloudRemoval != nil && cloudReceipt.entries[0].stage == .cleaned, "completed cloud receipt remains pending upload")
+        require(DevicePermanentDeletionContext.removeCloudInstances(space: cloud.space, instances: resolved,
+            baselineTimestamp: 10, remoteTimestamp: 40, submissionID: nil), "replay is idempotent")
+        let replacement = try fixture(networkId: "CLOUD-NEW-KEY")
+        let oldKeyIdentity = SpaceCloudNodeRemovalPolicy.Instance(uuid: replacement.nodes[0].uuid.uppercased(), address: 2,
+            keyFingerprint: try SchedulerModelSnapshot.keyFingerprint(["deviceKey": String(repeating: "B2", count: 16)]))
+        require(DevicePermanentDeletionContext.cloudRemovalInstances(space: replacement.space, expected: [oldKeyIdentity]) == nil,
+            "same UUID/address with a different key cannot authorize deleting a new instance")
+
+        let reprovisioned = try fixture(networkId: "CLOUD-NEW-ADDRESS")
+        let oldIdentity = SpaceCloudNodeRemovalPolicy.Instance(uuid: reprovisioned.nodes[0].uuid.uppercased(), address: 2,
+            keyFingerprint: cloudIdentity.keyFingerprint, elementAddresses: [2])
+        var newPayload = (payload()["nodes"] as! [[String: Any]])[0]
+        newPayload["unicastAddress"] = "0046"
+        let newNode = try jsonDecoder.decode(Node.self, from: JSONSerialization.data(withJSONObject: newPayload))
+        newNode.network = reprovisioned.network; newNode.subNetworkId = reprovisioned.space.meshNetworkId
+        reprovisioned.network.nodes = [newNode, reprovisioned.nodes[1]]
+        activate(reprovisioned)
+        require(DevicePermanentDeletionContext.removeCloudInstances(space: reprovisioned.space, instances: [oldIdentity],
+            baselineTimestamp: 10, remoteTimestamp: 40, submissionID: nil), "old absent instance can finish its reference cleanup")
+        require(reprovisioned.network.nodes.contains { $0 === newNode }, "same UUID at a new provisioning address must survive")
+
         // Real durable model: round trip, scope isolation and corrupted data.
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

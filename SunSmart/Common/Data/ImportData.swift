@@ -1723,6 +1723,10 @@ extension SpaceData {
         applyRemoteSpaceMetadata(spaceJsonData)
         if !initialize { save() }
         DevicePermanentDeletionContext.resume(space: self)
+        if !initialize, !SpaceConfigurationSafety.reconcileCloudMembership(self, remote: spaceJsonData) {
+            SpaceConfigurationSafety.recordSyncFailure(self, error: .configurationUploadUnconfirmed, stage: "cloudMembership")
+            return .preserved("cloudMembershipNeedsReview")
+        }
         if SpaceConfigurationSafety.preservesLocalChanges(self) {
             #if DEBUG
             print("[SpaceConfigurationSafety] preserved pending local deletion/recovery space=\(id)")

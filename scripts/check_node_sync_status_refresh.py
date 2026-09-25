@@ -80,6 +80,7 @@ private final class Schedule{kind}ForegroundProbe: PickerForegroundProbe {{
         '// PRODUCTION_PICKER_PROBES', '\n'.join(picker_probes))
     pieces = [read('SunSmart/Common/Data/AppPerformance.swift'),
         read('SunSmart/Common/Data/DeviceScheduleAddressCleanup.swift'),
+        read('SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),
         read('SunSmart/Common/Data/SpaceProtectionReadSnapshot.swift'), policy, section(adapter, 'enum ProximityLightingTopologyContext', '\nextension SpaceData'),
         read('SunSmart/Common/Data/NodeSyncTopologySnapshot.swift'),
         read('SunSmart/Common/Data/NodeSyncReadContext.swift'), read('SunSmart/Common/Data/NodeSyncStatusRefresh.swift'),

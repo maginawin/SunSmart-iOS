@@ -118,7 +118,7 @@ struct ProximityLightingLifecycleContractTests {
 
         let importUpdate = section(
             in: importData,
-            from: "@discardableResult\n    func update(",
+            from: "func update(\n        spaceJsonData:",
             to: "extension Node"
         )
         require(

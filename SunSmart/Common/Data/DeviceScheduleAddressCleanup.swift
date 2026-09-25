@@ -33,6 +33,12 @@ struct SpaceDeletionJournal: Codable {
     }
 
     struct Entry: Codable, Equatable {
+        struct CloudRemoval: Codable, Equatable {
+            let baselineTimestamp: Int64
+            let remoteTimestamp: Int64
+            let submissionID: UUID?
+            let instance: SpaceCloudNodeRemovalPolicy.Instance
+        }
         enum Stage: String, Codable { case prepared, removed, cleaned }
         let id: UUID
         let nodeUUID: String
@@ -43,6 +49,7 @@ struct SpaceDeletionJournal: Codable {
         var stage: Stage = .prepared
         var completedTimestamp: Int64?
         var replacement: SiteDeviceOwnershipPolicy.Instance?
+        var cloudRemoval: CloudRemoval? = nil
     }
 
     let scope: Scope
@@ -139,6 +146,9 @@ struct SpaceRecoveryState: Codable, Equatable {
         var scheduleTargets: Data? = nil
         /// Exact observations submitted by clients that support Model snapshots.
         var schedulerModelStates: Data? = nil
+        var nodeIdentities: [SpaceCloudNodeRemovalPolicy.Instance]? = nil
+        /// Explicitly false for migrated unknown-outcome receipts.
+        var permitsCloudRemoval: Bool? = nil
     }
     let identity: Identity
     var generation = UUID()
@@ -150,6 +160,7 @@ struct SpaceRecoveryState: Codable, Equatable {
     var authorizationBaseline: Data?
     /// Last confirmed cloud observations, independent of subsequent device reads.
     var schedulerModelStatesBaseline: Data? = nil
+    var nodeIdentitiesBaseline: [SpaceCloudNodeRemovalPolicy.Instance]? = nil
     var unbindRequested: Bool?
     var requiresRemoteImport: Bool?
     var siteCreationTimestamp: Int64?
