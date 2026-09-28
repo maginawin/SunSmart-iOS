@@ -530,6 +530,7 @@
 		08B54E5830402CCB0017ED49 /* PJEightKeySwitchesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */; };
 		08B54E5930402CCB0017ED49 /* SceneExecuteAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F98402B5E5A56007EABF5 /* SceneExecuteAnimationView.swift */; };
 		08B54E5A30402CCB0017ED49 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C896B9A72A930BA800217512 /* AppDelegate.swift */; };
+		D92709280000000000000002 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92709280000000000000001 /* SceneDelegate.swift */; };
 		08B54E5B30402CCB0017ED49 /* UserSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85BC5F12C3BEEF8002D4CB6 /* UserSettingsViewController.swift */; };
 		08B54E5C30402CCB0017ED49 /* LabViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100022FF0000000000002 /* LabViewController.swift */; };
 		08B54E5D30402CCB0017ED49 /* PJDevicesEightKeyRestoreContainerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7832FAAF2C90073F100 /* PJDevicesEightKeyRestoreContainerController.swift */; };
@@ -1716,6 +1717,7 @@
 		C88554B52DE6B44C00C8B688 /* MotionSensorInstructionsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F122B8E14F800A09FFA /* MotionSensorInstructionsViewCell.swift */; };
 		C88554B62DE6B44C00C8B688 /* SceneExecuteAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F98402B5E5A56007EABF5 /* SceneExecuteAnimationView.swift */; };
 		C88554B72DE6B44C00C8B688 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C896B9A72A930BA800217512 /* AppDelegate.swift */; };
+		D92709280000000000000003 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92709280000000000000001 /* SceneDelegate.swift */; };
 		C88554B82DE6B44C00C8B688 /* UserSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85BC5F12C3BEEF8002D4CB6 /* UserSettingsViewController.swift */; };
 		C88554B92DE6B44C00C8B688 /* ShareAuthorityFilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8699DB62C09661700424A60 /* ShareAuthorityFilterView.swift */; };
 		C88554BA2DE6B44C00C8B688 /* EnergySelectExportDevicesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA436A2DC0D75A00018392 /* EnergySelectExportDevicesController.swift */; };
@@ -2095,6 +2097,7 @@
 		C886E10E2E30DE4900D0C3A6 /* MotionSensorInstructionsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F122B8E14F800A09FFA /* MotionSensorInstructionsViewCell.swift */; };
 		C886E10F2E30DE4900D0C3A6 /* SceneExecuteAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F98402B5E5A56007EABF5 /* SceneExecuteAnimationView.swift */; };
 		C886E1102E30DE4900D0C3A6 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C896B9A72A930BA800217512 /* AppDelegate.swift */; };
+		D92709280000000000000004 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92709280000000000000001 /* SceneDelegate.swift */; };
 		C886E1112E30DE4900D0C3A6 /* UserSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85BC5F12C3BEEF8002D4CB6 /* UserSettingsViewController.swift */; };
 		C886E1122E30DE4900D0C3A6 /* ShareAuthorityFilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8699DB62C09661700424A60 /* ShareAuthorityFilterView.swift */; };
 		C886E1132E30DE4900D0C3A6 /* DeviceAddClassicModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */; };
@@ -2222,6 +2225,7 @@
 		C88DE4452C0828B5005A38C1 /* BatchImportResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88DE4442C0828B5005A38C1 /* BatchImportResultView.swift */; };
 		C88DE4492C085A5D005A38C1 /* BatchImportResultHelpController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88DE4482C085A5D005A38C1 /* BatchImportResultHelpController.swift */; };
 		C896B9A82A930BA800217512 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C896B9A72A930BA800217512 /* AppDelegate.swift */; };
+		D92709280000000000000005 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92709280000000000000001 /* SceneDelegate.swift */; };
 		C896B9B12A930BAA00217512 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C896B9B02A930BAA00217512 /* Assets.xcassets */; };
 		C896B9B42A930BAA00217512 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C896B9B22A930BAA00217512 /* LaunchScreen.storyboard */; };
 		C896BD3A2A930C3A00217512 /* WYProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = C896BB872A930C3800217512 /* WYProgressHUD.m */; };
@@ -2914,6 +2918,7 @@
 		C8BB66E62ED3F056000C63EE /* MotionSensorInstructionsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F122B8E14F800A09FFA /* MotionSensorInstructionsViewCell.swift */; };
 		C8BB66E72ED3F056000C63EE /* SceneExecuteAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F98402B5E5A56007EABF5 /* SceneExecuteAnimationView.swift */; };
 		C8BB66E82ED3F056000C63EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C896B9A72A930BA800217512 /* AppDelegate.swift */; };
+		D92709280000000000000006 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92709280000000000000001 /* SceneDelegate.swift */; };
 		C8BB66E92ED3F056000C63EE /* UserSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85BC5F12C3BEEF8002D4CB6 /* UserSettingsViewController.swift */; };
 		C8BB66EA2ED3F056000C63EE /* ShareAuthorityFilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8699DB62C09661700424A60 /* ShareAuthorityFilterView.swift */; };
 		C8BB66EB2ED3F056000C63EE /* DeviceAddClassicModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */; };
@@ -4062,6 +4067,7 @@
 		C88DE4482C085A5D005A38C1 /* BatchImportResultHelpController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchImportResultHelpController.swift; sourceTree = "<group>"; };
 		C896B9A42A930BA800217512 /* SunSmart.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SunSmart.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C896B9A72A930BA800217512 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		D92709280000000000000001 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		C896B9B02A930BAA00217512 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C896B9B32A930BAA00217512 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		C896B9B52A930BAA00217512 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -6385,6 +6391,7 @@
 			isa = PBXGroup;
 			children = (
 				C896B9A72A930BA800217512 /* AppDelegate.swift */,
+				D92709280000000000000001 /* SceneDelegate.swift */,
 			);
 			path = AppDelegate;
 			sourceTree = "<group>";
@@ -7905,6 +7912,7 @@
 				08B54E5830402CCB0017ED49 /* PJEightKeySwitchesViewCell.swift in Sources */,
 				08B54E5930402CCB0017ED49 /* SceneExecuteAnimationView.swift in Sources */,
 				08B54E5A30402CCB0017ED49 /* AppDelegate.swift in Sources */,
+				D92709280000000000000002 /* SceneDelegate.swift in Sources */,
 				08B54E5B30402CCB0017ED49 /* UserSettingsViewController.swift in Sources */,
 				08B54E5C30402CCB0017ED49 /* LabViewController.swift in Sources */,
 				08B54E5D30402CCB0017ED49 /* PJDevicesEightKeyRestoreContainerController.swift in Sources */,
@@ -8627,6 +8635,7 @@
 				C8BB67782ED46298000C63EE /* SiteGatewaysMenuView.swift in Sources */,
 				C88554B62DE6B44C00C8B688 /* SceneExecuteAnimationView.swift in Sources */,
 				C88554B72DE6B44C00C8B688 /* AppDelegate.swift in Sources */,
+				D92709280000000000000003 /* SceneDelegate.swift in Sources */,
 				C88554B82DE6B44C00C8B688 /* UserSettingsViewController.swift in Sources */,
 				C8A100112FF0000000000011 /* LabViewController.swift in Sources */,
 				C88554B92DE6B44C00C8B688 /* ShareAuthorityFilterView.swift in Sources */,
@@ -9358,6 +9367,7 @@
 				C8BB67792ED46298000C63EE /* SiteGatewaysMenuView.swift in Sources */,
 				C886E10F2E30DE4900D0C3A6 /* SceneExecuteAnimationView.swift in Sources */,
 				C886E1102E30DE4900D0C3A6 /* AppDelegate.swift in Sources */,
+				D92709280000000000000004 /* SceneDelegate.swift in Sources */,
 				C886E1112E30DE4900D0C3A6 /* UserSettingsViewController.swift in Sources */,
 				C8A100212FF0000000000021 /* LabViewController.swift in Sources */,
 				C886E1122E30DE4900D0C3A6 /* ShareAuthorityFilterView.swift in Sources */,
@@ -10096,6 +10106,7 @@
 				8C778BF72FA2153E000887FE /* PJEightKeySwitchesViewCell.swift in Sources */,
 				C89F98412B5E5A56007EABF5 /* SceneExecuteAnimationView.swift in Sources */,
 				C896B9A82A930BA800217512 /* AppDelegate.swift in Sources */,
+				D92709280000000000000005 /* SceneDelegate.swift in Sources */,
 				C85BC5F22C3BEEF8002D4CB6 /* UserSettingsViewController.swift in Sources */,
 				C8A100312FF0000000000031 /* LabViewController.swift in Sources */,
 				8C1DA7852FAAF2C90073F100 /* PJDevicesEightKeyRestoreContainerController.swift in Sources */,
@@ -10819,6 +10830,7 @@
 				C8BB677B2ED46298000C63EE /* SiteGatewaysMenuView.swift in Sources */,
 				C8BB66E72ED3F056000C63EE /* SceneExecuteAnimationView.swift in Sources */,
 				C8BB66E82ED3F056000C63EE /* AppDelegate.swift in Sources */,
+				D92709280000000000000006 /* SceneDelegate.swift in Sources */,
 				C8BB66E92ED3F056000C63EE /* UserSettingsViewController.swift in Sources */,
 				C8A100412FF0000000000041 /* LabViewController.swift in Sources */,
 				C8BB66EA2ED3F056000C63EE /* ShareAuthorityFilterView.swift in Sources */,

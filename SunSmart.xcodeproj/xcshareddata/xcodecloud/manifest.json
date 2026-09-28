@@ -1,0 +1,25 @@
+{
+  "id" : "049e9f1f-dd8e-486d-af90-a9f23eb6d931",
+  "targets" : [
+    {
+      "id" : "33F6243C-A6DF-41A9-92D2-AAF2CBC8DA3A",
+      "name" : "Archipelago"
+    },
+    {
+      "id" : "33F6243C-A6DF-41A9-92D2-AAF2CBC8DA3A",
+      "name" : "Lumineux"
+    },
+    {
+      "id" : "33F6243C-A6DF-41A9-92D2-AAF2CBC8DA3A",
+      "name" : "SLG Sync Plus"
+    },
+    {
+      "id" : "33F6243C-A6DF-41A9-92D2-AAF2CBC8DA3A",
+      "name" : "SunSmart"
+    },
+    {
+      "id" : "33F6243C-A6DF-41A9-92D2-AAF2CBC8DA3A",
+      "name" : "SylSmart"
+    }
+  ]
+}
