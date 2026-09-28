@@ -74,6 +74,7 @@ struct GatewayDeletionReceipt: Codable, Equatable {
     let createdTimestamp: Int64
     var phase: Phase
     var resetConfirmed = false
+    var serverRequestStarted: Bool? = nil
 
     func matches(nodeUUID: String, address: UInt16, createdTimestamp: Int64? = nil) -> Bool {
         self.nodeUUID.caseInsensitiveCompare(nodeUUID) == .orderedSame
@@ -111,7 +112,7 @@ struct GatewayDeletionReceiptStore {
     }
 
     func cancelPreparation() throws {
-        guard try read()?.phase == .prepared else { return }
+        guard let receipt = try read(), receipt.phase == .prepared, receipt.serverRequestStarted != true else { return }
         try FileManager.default.removeItem(at: url)
     }
 }

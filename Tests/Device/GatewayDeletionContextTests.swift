@@ -116,6 +116,40 @@ final class SunSmartDataManager {
     var db: Database? = Database()
 }
 
+// Only authorization, HTTP and time are substituted for the batch request path.
+@MainActor
+enum BatchRequestClock { static var now: TimeInterval = 100 }
+@MainActor
+final class GatewayServerAuthorizationService {
+    static let shared = GatewayServerAuthorizationService()
+    var duringWait: (() -> Void)?
+    func waitForInFlightAuthorizationToFinish(gateway: GatewayModel) async {
+        await Task.yield()
+        duringWait?()
+    }
+}
+@MainActor
+final class NetworkRequest {
+    enum API { case gatewayDelete(gatewayId: String) }
+    enum Failure: Error { case unavailable }
+    static let shared = NetworkRequest()
+    var succeeded = true
+    var durations: [TimeInterval] = []
+    var beforeRequest: (() -> Void)?
+    func request(_ api: API, maximumDuration: TimeInterval) async -> Result<Void, Failure> {
+        beforeRequest?()
+        durations.append(maximumDuration)
+        return succeeded ? .success(()) : .failure(.unavailable)
+    }
+}
+@MainActor
+final class BatchGatewayRequestHarness {
+    var isCurrent = true
+    func deleteServer(context: GatewayDeletionContext, gateway: GatewayModel, deadline: TimeInterval) async -> Bool {
+        // BATCH_DELETE_SERVER
+    }
+}
+
 @main
 struct GatewayDeletionContextTests {
     struct Fixture {
@@ -135,6 +169,7 @@ struct GatewayDeletionContextTests {
             MeshNetwork.stored[site.meshUUID] = mesh
             Node.records[site.meshUUID] = [node]
             MeshNetworkManager.instance.meshNetwork = mesh
+            MeshNetworkManager.instance.currentNetworkKey = NetworkKey()
             GatewayModel.records = [gateway]
             SpaceData.records = (0..<spaceCount).map { _ in SpaceData(site, mac: gateway.mac) }
             Schedule.records = [Schedule()]
@@ -144,7 +179,8 @@ struct GatewayDeletionContextTests {
             GatewayDeletionContext(site: site, gateway: gateway, node: node)!
         }
     }
-    static func main() {
+    @MainActor
+    static func main() async {
         for product: UInt16 in [0x2721, 0x2701, 0x2702, 0x2703] {
             for count in [0, 1, 3] {
                 let f = Fixture(product: product, spaceCount: count)
@@ -190,6 +226,37 @@ struct GatewayDeletionContextTests {
         check(!GatewayDeletionContext.resume(site: prepared.site) && !GatewayModel.records.isEmpty
             && !GatewayDeletionContext.hasPendingDeletion(siteId: prepared.site.id, mac: prepared.gateway.mac), "unconfirmed interruption releases only preparation")
 
+        let ambiguous = Fixture()
+        var request: GatewayDeletionContext? = ambiguous.context()
+        check(request!.prepare() && request!.recordServerRequest(), "HTTP must have durable intent")
+        request = nil
+        check(!GatewayDeletionContext.resume(site: ambiguous.site)
+            && GatewayDeletionContext.blocksRegistration(gateway: ambiguous.gateway, node: ambiguous.node),
+            "unknown HTTP outcome survives restart and cannot register again")
+
+        let confirmedFlag = Fixture()
+        var beforeConfirmation: GatewayDeletionContext? = confirmedFlag.context()
+        check(beforeConfirmation!.prepare() && beforeConfirmation!.recordServerRequest(), "prepare pending flag recovery")
+        confirmedFlag.gateway.serverDeletionPendingLocalReset = true
+        beforeConfirmation = nil
+        let manualRetry = confirmedFlag.context()
+        check(manualRetry.prepare() && manualRetry.finish(resetConfirmed: false),
+            "durable pending flag upgrades prepared receipt when retrying directly from Space")
+
+        let fromSpace = Fixture(spaceCount: 2)
+        let spaceRoute = MeshNetwork()
+        MeshNetworkManager.instance.meshNetwork = spaceRoute
+        MeshNetworkManager.instance.currentNetworkKey.isPrimary = false
+        check(GatewayDeletionContext(site: fromSpace.site, gateway: fromSpace.gateway, node: fromSpace.node) == nil,
+            "legacy initializer cannot silently use the wrong route")
+        let explicitSite = GatewayDeletionContext(site: fromSpace.site, gateway: fromSpace.gateway,
+            node: fromSpace.node, siteNetwork: fromSpace.mesh)!
+        check(explicitSite.prepare() && explicitSite.recordServerRequest()
+            && explicitSite.recordServerDeletion() && explicitSite.finish(resetConfirmed: false),
+            "explicit Site snapshot supports server and local stages from Space")
+        check(MeshNetworkManager.instance.meshNetwork === spaceRoute && spaceRoute.nodes.isEmpty,
+            "Gateway cleanup never switches or removes the active Space route")
+
         let disk = Fixture()
         var retry: GatewayDeletionContext? = disk.context()
         check(retry!.prepare() && retry!.recordServerDeletion(), "prepare failed cleanup")
@@ -227,7 +294,72 @@ struct GatewayDeletionContextTests {
 
         UserData.currentUserId = "editor"
         check(!deletion.isCurrent && !GatewayDeletionContext.hasPendingDeletion(siteId: reused.site.id, mac: reused.gateway.mac), "account scope isolated")
+        await testBatchServerRequestStart()
         print("GatewayDeletionContextTests passed")
+    }
+
+    @MainActor
+    static func testBatchServerRequestStart() async {
+        enum Scenario: CaseIterable { case cancelled, deadlineReached, deadlineExceeded, success, requestFailed }
+        for scenario in Scenario.allCases {
+            let f = Fixture(), context = f.context(), operation = BatchGatewayRequestHarness()
+            let request = NetworkRequest.shared
+            BatchRequestClock.now = 100
+            request.durations = []
+            request.succeeded = scenario != .requestFailed
+            request.beforeRequest = {
+                // Once HTTP begins, cancellation must retain uncertainty protection.
+                context.cancelPreparation()
+                check(GatewayDeletionContext.hasPendingDeletion(siteId: f.site.id, mac: f.gateway.mac),
+                      "request intent must be durable before invoking HTTP")
+            }
+            GatewayServerAuthorizationService.shared.duringWait = {
+                check(GatewayDeletionContext.hasPendingDeletion(siteId: f.site.id, mac: f.gateway.mac),
+                      "preparation must protect the Gateway during authorization")
+                switch scenario {
+                case .cancelled: operation.isCurrent = false
+                case .deadlineReached: BatchRequestClock.now = 130
+                case .deadlineExceeded: BatchRequestClock.now = 131
+                case .success, .requestFailed: BatchRequestClock.now = 105
+                }
+            }
+            let result = await GatewayDeletionCoordinator().delete(using: .init(
+                isOnline: { true }, isCurrent: { operation.isCurrent && context.isCurrent },
+                serverAlreadyDeleted: { context.serverAlreadyDeleted }, permission: { .allowed },
+                prepare: { context.prepare() },
+                deleteServer: { await operation.deleteServer(context: context, gateway: f.gateway, deadline: 130) },
+                recordServerDeletion: { context.recordServerDeletion() },
+                canReset: { false }, reset: { false },
+                finishLocal: { context.finish(resetConfirmed: $0) },
+                cancelPreparation: { context.cancelPreparation() }))
+            context.release()
+            switch scenario {
+            case .cancelled, .deadlineReached, .deadlineExceeded:
+                check(result == .failed(.server) && request.durations.isEmpty,
+                      "cancelled or expired preflight must not call HTTP")
+                if scenario != .cancelled {
+                    check(!GatewayDeletionContext.hasPendingDeletion(siteId: f.site.id, mac: f.gateway.mac),
+                          "expired preflight releases its preparation immediately")
+                }
+                _ = GatewayDeletionContext.resume(site: f.site)
+                check(!GatewayDeletionContext.hasPendingDeletion(siteId: f.site.id, mac: f.gateway.mac)
+                    && !GatewayDeletionContext.blocksSave(f.gateway)
+                    && !GatewayDeletionContext.blocksRegistration(gateway: f.gateway, node: f.node),
+                    "unsent request must not leave persistent save or registration protection")
+                check(f.mesh.nodes.contains { $0 === f.node } && GatewayModel.records.contains { $0 === f.gateway },
+                      "unsent request preserves the local Gateway and node")
+            case .success:
+                check(result == .deleted(resetConfirmed: false) && request.durations == [25],
+                      "valid preflight sends once with remaining duration and completes deletion")
+            case .requestFailed:
+                _ = GatewayDeletionContext.resume(site: f.site)
+                check(result == .failed(.server) && request.durations == [25]
+                    && GatewayDeletionContext.blocksRegistration(gateway: f.gateway, node: f.node),
+                    "an actual request with unknown outcome retains protection across recovery")
+            }
+            request.beforeRequest = nil
+            GatewayServerAuthorizationService.shared.duringWait = nil
+        }
     }
     static func check(_ condition: Bool, _ message: String) { if !condition { fatalError(message) } }
 }

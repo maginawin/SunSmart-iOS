@@ -229,7 +229,7 @@ enum SpaceConfigurationSafety {
         return url
     }
 
-    static func isBlocked(meshUUID: String, networkId: String) -> Bool {
+    static func isBlocked(meshUUID: String, networkId: String, excludingDeletionEntries: Set<UUID> = []) -> Bool {
         let identity = key(meshUUID: meshUUID, networkId: networkId)
         let stateURL = recoveryRoot.appendingPathComponent(identity + ".json")
         var directoryName = identity
@@ -243,11 +243,12 @@ enum SpaceConfigurationSafety {
         return UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + identity) != nil
             || FileManager.default.fileExists(atPath: pending.path)
             || FileManager.default.fileExists(atPath: pending.deletingLastPathComponent().appendingPathComponent("pending-reference-cleanup.json").path)
-            || deletionCleanupPending(at: pending.deletingLastPathComponent().appendingPathComponent("device-deletions.json"))
+            || deletionCleanupPending(at: pending.deletingLastPathComponent().appendingPathComponent("device-deletions.json"),
+                                      excludingEntries: excludingDeletionEntries)
     }
 
-    static func isBlocked(_ space: SpaceData) -> Bool {
-        isBlocked(meshUUID: space.meshUUID, networkId: space.meshNetworkId)
+    static func isBlocked(_ space: SpaceData, excludingDeletionEntries: Set<UUID> = []) -> Bool {
+        isBlocked(meshUUID: space.meshUUID, networkId: space.meshNetworkId, excludingDeletionEntries: excludingDeletionEntries)
     }
 
     static func block(_ space: SpaceData, reason: String) {
@@ -275,11 +276,11 @@ enum SpaceConfigurationSafety {
         .init(siteId: space.siteId, spaceId: space.id, meshUUID: space.meshUUID, networkId: space.meshNetworkId)
     }
 
-    private static func deletionCleanupPending(at url: URL) -> Bool {
+    private static func deletionCleanupPending(at url: URL, excludingEntries: Set<UUID> = []) -> Bool {
         guard FileManager.default.fileExists(atPath: url.path) else { return false }
         guard let data = try? Data(contentsOf: url),
               let journal = try? JSONDecoder().decode(SpaceDeletionJournal.self, from: data) else { return true }
-        return journal.needsCleanup
+        return journal.entries.contains { $0.stage != .cleaned && !excludingEntries.contains($0.id) }
     }
 
     static func deletionJournal(_ space: SpaceData) throws -> SpaceDeletionJournal {

@@ -2327,3 +2327,14 @@
 "information_ttl_cloud_failed" = "The device TTL is saved locally, but server sync has not completed. Retry sync.";
 "information_ttl_retry" = "Retry";
 "information_ttl_retry_sync" = "Retry sync";
+
+/* Lights batch deletion */
+"batch_delete_scope_message" = "Delete the %d selected lights, or all %d devices in this Space?";
+"batch_delete_gateway_warning" = "This will also delete gateway “%@” from the Site. Other linked Spaces will lose this gateway. To keep it, unlink it from this Space first.";
+"batch_delete_selected_lights" = "Delete Selected Lights";
+"batch_delete_all_devices" = "Delete All Devices";
+"batch_delete_proxy_required" = "Connect to a Proxy in this Space to send deletion commands. Force Delete removes local records only. Gateway deletion still requires server authorization.";
+"batch_delete_context_changed" = "The Space, connection, or operation state changed. Please try again when the network is ready.";
+"batch_delete_failed_message" = "Some devices could not be deleted. Keep them, or force delete their local records? Devices may still need a manual factory reset.";
+"batch_delete_completed" = "Local device records deleted. Broadcast and group commands do not confirm that every device has left the network.";
+"batch_delete_kept" = "Devices without a confirmed result were kept. You can retry or force delete their local records later.";

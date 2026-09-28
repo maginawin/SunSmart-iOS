@@ -14,13 +14,14 @@ final class GatewayDeletionContext {
     private var receipt: GatewayDeletionReceipt
     private var ownsActiveOperation = false
 
-    init?(site: SiteData, gateway: GatewayModel, node: Node) {
+    init?(site: SiteData, gateway: GatewayModel, node: Node, siteNetwork: MeshNetwork? = nil) {
         guard let network = node.network,
               network.uuid.uuidString == site.meshUUID,
               node.subNetworkId == site.meshNetworkId,
               gateway.siteId == site.id, gateway.address == node.primaryUnicastAddress,
-              MeshNetworkManager.instance.meshNetwork === network,
-              MeshNetworkManager.instance.currentNetworkKey.isPrimary else { return nil }
+              (siteNetwork === network ||
+               (MeshNetworkManager.instance.meshNetwork === network &&
+                MeshNetworkManager.instance.currentNetworkKey.isPrimary)) else { return nil }
         self.network = network
         store = Self.store(siteId: site.id, mac: gateway.mac)
         receipt = Self.makeReceipt(site: site, gateway: gateway, node: node)
@@ -44,13 +45,28 @@ final class GatewayDeletionContext {
             if let saved = try store.read(),
                saved.matches(nodeUUID: receipt.nodeUUID, address: receipt.address,
                              createdTimestamp: receipt.createdTimestamp) {
+                // A persisted pending flag may be newer than the receipt if the
+                // confirmation write failed after HTTP succeeded.
+                let confirmedByPendingFlag = receipt.phase == .serverDeleted
                 receipt = saved
+                if receipt.phase == .prepared && confirmedByPendingFlag {
+                    receipt.phase = .serverDeleted
+                }
             }
             try store.write(receipt)
             Self.active.insert(Self.activeKey(store.url))
             ownsActiveOperation = true
             return true
         } catch { return false }
+    }
+
+    /// Durable uncertainty marker before HTTP; a lost response or failed
+    /// confirmation write must not allow automatic registration on restart.
+    func recordServerRequest() -> Bool {
+        Self.lock.lock(); defer { Self.lock.unlock() }
+        guard isCurrent, ownsActiveOperation else { return false }
+        receipt.serverRequestStarted = true
+        do { try store.write(receipt); return true } catch { return false }
     }
 
     func recordServerDeletion() -> Bool {
@@ -176,9 +192,15 @@ final class GatewayDeletionContext {
             let store = store(siteId: site.id, mac: gateway.mac)
             guard !active.contains(activeKey(store.url)) else { continue }
             do {
-                if try store.read() == nil {
-                    let node = network.nodes.first { $0.primaryUnicastAddress == gateway.address }
+                let saved = try store.read()
+                let node = network.nodes.first { $0.primaryUnicastAddress == gateway.address }
+                if saved == nil {
                     try store.write(makeReceipt(site: site, gateway: gateway, node: node))
+                } else if var receipt = saved, receipt.phase == .prepared,
+                          let node, receipt.matches(nodeUUID: node.uuid.uuidString,
+                          address: node.primaryUnicastAddress, createdTimestamp: node.createdTimestamp) {
+                    receipt.phase = .serverDeleted
+                    try store.write(receipt)
                 }
             } catch { continue }
         }

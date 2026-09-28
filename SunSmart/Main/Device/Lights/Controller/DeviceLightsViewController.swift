@@ -55,6 +55,7 @@ class DeviceLightsViewController: UIViewController {
     private var selectedAddresss: [Address] = []
     /// 删除设备中
     private var isDeletingDevice: Bool = false
+    private var batchDeletion: LightsBatchDeletionOperation?
     
     /// 全开/全关状态（读取设备）
     private var allOnOffState: DeviceAllOnOffState = .disable
@@ -756,6 +757,11 @@ class DeviceLightsViewController: UIViewController {
         guard selectDevices.count > 0 else {
             return
         }
+
+        if Set(selectedAddresss).count > 1 {
+            beginBatchDeletion(selected: selectDevices)
+            return
+        }
         
 //        let alertView = SRAlertView(message: "devices_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive, actionHandler: {[weak self] _ in
 //            guard let self = self else { return }
@@ -901,6 +907,121 @@ class DeviceLightsViewController: UIViewController {
             }
         })]).show()
         
+    }
+
+    private func beginBatchDeletion(selected: [Node]) {
+        guard !isDeletingDevice, space.deviceOperates.contains(.delete),
+              let operation = LightsBatchDeletionOperation(site: site, space: space) else {
+            XWHUDManager.showErrorTipHUD("batch_delete_context_changed".localizedString)
+            return
+        }
+        batchDeletion = operation
+        let fullLightsSelected = Set(selected.map(\.uuid)) == Set(devices.map(\.uuid))
+        if fullLightsSelected && operation.allCount > selected.count {
+            var message = String(format: "batch_delete_scope_message".localizedString,
+                                 selected.count, operation.allCount)
+            if let gateway = operation.gatewayWarningName {
+                message += "\n\n" + String(format: "batch_delete_gateway_warning".localizedString, gateway)
+            }
+            SRAlertView(title: "notification".localizedString, message: message, actions: [
+                .cancelAction,
+                SRAlertAction(title: "batch_delete_selected_lights".localizedString, style: .destructive,
+                              performsActionAfterDismiss: true, actionHandler: { [weak self] _ in
+                    self?.startBatchDeletion(operation, selected: selected, all: false)
+                }),
+                SRAlertAction(title: "batch_delete_all_devices".localizedString, style: .destructive,
+                              performsActionAfterDismiss: true, actionHandler: { [weak self] _ in
+                    self?.startBatchDeletion(operation, selected: selected, all: true)
+                })
+            ]).show()
+        } else {
+            SRAlertView(message: "devices_delete_message".localizedString, actions: [
+                .cancelAction,
+                SRAlertAction(title: "alert_item_continue".localizedString, style: .destructive,
+                              performsActionAfterDismiss: true, actionHandler: { [weak self] _ in
+                    self?.startBatchDeletion(operation, selected: selected, all: false)
+                })
+            ]).show()
+        }
+    }
+
+    private func startBatchDeletion(_ operation: LightsBatchDeletionOperation, selected: [Node],
+                                    all: Bool, forceLocal: Bool = false) {
+        guard !isDeletingDevice, batchDeletion === operation else { return }
+        if !forceLocal && !operation.hasReadyProxy {
+            SRAlertView(title: "notification".localizedString,
+                        message: "batch_delete_proxy_required".localizedString, actions: [
+                .cancelAction,
+                SRAlertAction(title: "force_delete".localizedString, style: .destructive,
+                              performsActionAfterDismiss: true, actionHandler: { [weak self] _ in
+                    self?.startBatchDeletion(operation, selected: selected, all: all, forceLocal: true)
+                })
+            ]).show()
+            return
+        }
+        isDeletingDevice = true
+        view.isUserInteractionEnabled = false
+        navigationController?.interactivePopGestureRecognizer?.isEnabled = false
+        XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
+        Task { [self] in
+            let outcome = await operation.run(selectedNodes: selected, all: all, forceLocal: forceLocal)
+            XWHUDManager.hide()
+            view.isUserInteractionEnabled = true
+            navigationController?.interactivePopGestureRecognizer?.isEnabled = true
+            guard isPageVisible else { isDeletingDevice = false; batchDeletion = nil; return }
+            loadDevices()
+            selectedAddresss = selectedAddresss.filter { address in devices.contains { $0.primaryUnicastAddress == address } }
+            if !outcome.failed.isEmpty {
+                SRAlertView(title: "notification".localizedString,
+                            message: "batch_delete_failed_message".localizedString, actions: [
+                    SRAlertAction(title: "alert_item_cancel".localizedString, style: .cancel,
+                                  performsActionAfterDismiss: true, actionHandler: { [weak self] _ in
+                        self?.finishBatchDeletion(outcome)
+                    }),
+                    SRAlertAction(title: "force_delete".localizedString, style: .destructive,
+                                  performsActionAfterDismiss: true, actionHandler: { [weak self] _ in
+                        guard let self else { return }
+                        var forced = operation.forceRemaining(outcome.failed)
+                        forced.lifecycle = outcome.lifecycle + forced.lifecycle
+                        // Force only resolves Space-node failures. A separate
+                        // Gateway/server cleanup failure must remain visible.
+                        if let error = outcome.errorKey {
+                            forced.errorKey = error
+                            forced.cleanupPending = true
+                        }
+                        self.finishBatchDeletion(forced)
+                    })
+                ]).show()
+            } else { finishBatchDeletion(outcome) }
+        }
+    }
+
+    private func finishBatchDeletion(_ outcome: LightsBatchDeletionOperation.Outcome) {
+        isDeletingDevice = false
+        batchDeletion = nil
+        loadDevices()
+        selectedAddresss = selectedAddresss.filter { address in devices.contains { $0.primaryUnicastAddress == address } }
+        if selectedAddresss.isEmpty { isEdit = false }
+        updateUI()
+        updateEditUI()
+        collectionView.reloadData()
+        let manager = MeshNetworkManager.instance
+        if manager.currentNetworkKey.networkId.hex == space.meshNetworkId,
+           manager.meshNetwork?.nodes.contains(where: { !$0.isProvisioner && !$0.isLocalProvisioner }) == false {
+            MeshLibManager.manager.close()
+        }
+        syncDeletionPeersIfNeeded(outcome.lifecycle) {
+            if let key = outcome.errorKey {
+                XWHUDManager.showErrorTipHUD(key.localizedString)
+            } else if outcome.cleanupPending {
+                XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
+            } else if !outcome.failed.isEmpty {
+                XWHUDManager.showTipHUD("batch_delete_kept".localizedString)
+            } else {
+                XWHUDManager.showTipHUD("batch_delete_completed".localizedString)
+                DevicePermanentDeletionContext.showCompletion(space: self.space)
+            }
+        }
     }
 
     private func syncDeletionPeersIfNeeded(

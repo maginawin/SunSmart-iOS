@@ -945,12 +945,12 @@ extension MeshNetworkManager {
     }
     
     /// 删除动能开关
-    func deleteSwitch(switchData: DeviceSwitchData) {
+    func deleteSwitch(switchData: DeviceSwitchData, resetDevice: Bool = true, removeNodeAndGroups: Bool = true) {
         guard let meshUUID = self.meshNetwork?.uuid.uuidString else { return }
         let realPowerSwitchNode = switchData.proxyNode?.isPowerSwitch == true
             ? switchData.proxyNode
             : nil
-        silentlyResetPowerSwitchIfNeeded(realPowerSwitchNode)
+        if resetDevice { silentlyResetPowerSwitchIfNeeded(realPowerSwitchNode) }
         // 检查代理设备的数据有没有清空
         if let macAddress = switchData.enOceanMacAddress, !macAddress.isEmpty {
             let proxyAddresses = KineticSwitchBindingPolicy.cleanupProxyAddresses(
@@ -971,7 +971,7 @@ extension MeshNetworkManager {
         PJEightKeySwitchRepository.shared.delete(for: switchData, meshUUID: meshUUID, networkId: self.currentNetworkKey.networkId.hex)
         switchData.delete(meshUUID: meshUUID, networkId: self.currentNetworkKey.networkId.hex)
         self.switchs.removeAll(where: { $0.id == switchData.id })
-        removeRealPowerSwitchNodeIfNeeded(realPowerSwitchNode)
+        if removeNodeAndGroups { removeRealPowerSwitchNodeIfNeeded(realPowerSwitchNode) }
         
         var switchGroups: [Group] = []
         if let group = switchData.linkGroup {
@@ -995,7 +995,7 @@ extension MeshNetworkManager {
             if isUnsubscribe {
                 MeshNetworkManager.instance.localNode?.save()
             }
-            try? self.meshNetwork?.remove(group: group)
+            if removeNodeAndGroups { try? self.meshNetwork?.remove(group: group) }
         }
         notifyRealPowerSwitchDeletedIfNeeded(realPowerSwitchNode)
         

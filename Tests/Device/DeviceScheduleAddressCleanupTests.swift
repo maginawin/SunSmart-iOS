@@ -17,6 +17,17 @@ struct DeviceScheduleAddressCleanupTests {
         try testRemovesDeletedAddressFromActiveAndPendingTargets()
         try testPreservesOtherTargetsAndRemovesDuplicates()
         try testReportsNoChangeWhenAddressIsNotReferenced()
+        let legacy = Data("""
+        {"scope":{"siteId":"s","spaceId":"p","meshUUID":"m","networkId":"n"},"entries":[{"id":"11111111-1111-1111-1111-111111111111","nodeUUID":"node","primaryAddress":1,"elementAddresses":[1],"stage":"prepared"}]}
+        """.utf8)
+        let decoded = try JSONDecoder().decode(SpaceDeletionJournal.self, from: legacy)
+        try expect(decoded.entries[0].leaveReceipt == nil, "Old prepared intents must not become success.")
+        var entry = decoded.entries[0]
+        entry.leaveReceipt = .init(evidence: "acknowledged", notBefore: 103, createdTimestamp: 55)
+        try expect(!entry.permitsLeaveRecovery(now: 102, createdTimestamp: 55, address: 1), "Recovery must respect settling time.")
+        try expect(entry.permitsLeaveRecovery(now: 103, createdTimestamp: 55, address: 1), "Complete receipt permits local recovery.")
+        try expect(!entry.permitsLeaveRecovery(now: 104, createdTimestamp: 56, address: 1), "Reused provisioning instance is protected.")
+        try expect(!entry.permitsLeaveRecovery(now: 104, createdTimestamp: 55, address: 2), "Same UUID at a new address is not the recorded instance.")
         print("DeviceScheduleAddressCleanupTests passed")
     }
 

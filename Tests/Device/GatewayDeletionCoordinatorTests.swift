@@ -123,6 +123,10 @@ struct GatewayDeletionCoordinatorTests {
         require(receipt.blocksImport(nodeUUID: "old-node", address: 3, createdTimestamp: nil), "pending delete protects Reset target")
         try store.cancelPreparation()
         require(try store.read() == nil, "server failure can release only its preparation")
+        receipt.serverRequestStarted = true
+        try store.write(receipt)
+        try store.cancelPreparation()
+        require(try store.read() != nil, "ambiguous server result must keep registration protection")
         receipt.phase = .serverDeleted
         try store.write(receipt)
         try store.cancelPreparation()

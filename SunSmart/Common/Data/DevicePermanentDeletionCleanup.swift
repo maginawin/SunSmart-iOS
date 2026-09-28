@@ -5,6 +5,7 @@ let deviceDeletionCleanupCompletedNotification = Notification.Name("deviceDeleti
 
 final class DevicePermanentDeletionContext {
     private let node: Node
+    private let createdTimestamp: Int64
     private let network: MeshNetwork?
     private let space: SpaceData?
     private let entry: SpaceDeletionJournal.Entry
@@ -13,8 +14,13 @@ final class DevicePermanentDeletionContext {
     private(set) var isPrepared = false
     private var didCommit = false
 
+    /// Only the operation owning this prepared context may exclude its intent
+    /// from the pending-deletion guard. Device UUIDs are not ownership tokens.
+    var preparedEntryID: UUID? { isPrepared ? entry.id : nil }
+
     init(node: Node, space currentSpace: SpaceData? = nil) {
         self.node = node
+        createdTimestamp = node.createdTimestamp
         network = node.network
         space = currentSpace ?? node.network.flatMap { network in
             SpaceData.load(siteId: network.uuid.uuidString).first { $0.meshNetworkId == node.subNetworkId }
@@ -48,7 +54,7 @@ final class DevicePermanentDeletionContext {
         guard let space, let recoveryContext, SpaceConfigurationSafety.isCurrent(recoveryContext, space: space),
               network?.nodes.contains(where: { $0.uuid == node.uuid }) == true else { return }
         if SpaceConfigurationSafety.updateDeletionJournal(space, {
-            $0.entries.removeAll { $0.id == entry.id && $0.stage == .prepared }
+            $0.entries.removeAll { $0.id == entry.id && $0.stage == .prepared && $0.leaveReceipt == nil }
         }) { isPrepared = false; Self.activeEntries.remove(entry.id) }
     }
 
@@ -58,8 +64,22 @@ final class DevicePermanentDeletionContext {
         if let space, let recoveryContext, SpaceConfigurationSafety.isCurrent(recoveryContext, space: space),
            network?.nodes.contains(where: { $0.uuid == node.uuid }) == true {
             _ = SpaceConfigurationSafety.updateDeletionJournal(space) {
-                $0.entries.removeAll { $0.id == entry.id && $0.stage == .prepared }
+                $0.entries.removeAll { $0.id == entry.id && $0.stage == .prepared && $0.leaveReceipt == nil }
             }
+        }
+    }
+
+    /// Persist before any local removal. A crash never causes a radio replay.
+    func recordLeave(evidence: String) -> Bool {
+        guard isPrepared, let space, let recoveryContext,
+              SpaceConfigurationSafety.isCurrent(recoveryContext, space: space),
+              node.createdTimestamp == createdTimestamp, node.primaryUnicastAddress == entry.primaryAddress,
+              network?.nodes.contains(where: { $0 === node }) == true,
+              (try? SpaceConfigurationSafety.deletionJournal(space).entries.contains { $0.id == entry.id && $0.stage == .prepared }) == true else { return false }
+        return SpaceConfigurationSafety.updateDeletionJournal(space) { journal in
+            guard let index = journal.entries.firstIndex(where: { $0.id == entry.id }) else { return }
+            journal.entries[index].leaveReceipt = .init(evidence: evidence,
+                notBefore: Date().timeIntervalSince1970 + 3, createdTimestamp: node.createdTimestamp)
         }
     }
 
@@ -73,7 +93,11 @@ final class DevicePermanentDeletionContext {
     func forceRemove() -> ProximityLightingLifecycleResult? {
         if !isPrepared { prepare() }
         guard isPrepared, let network, let space, let recoveryContext,
-              SpaceConfigurationSafety.isCurrent(recoveryContext, space: space) else { return nil }
+              SpaceConfigurationSafety.isCurrent(recoveryContext, space: space),
+              MeshNetworkManager.instance.meshNetwork === network,
+              MeshNetworkManager.instance.currentNetworkKey.networkId.hex == space.meshNetworkId,
+              node.createdTimestamp == createdTimestamp, node.primaryUnicastAddress == entry.primaryAddress,
+              !network.nodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress && $0 !== node }) else { return nil }
         network.remove(node: node)
         return commit()
     }
@@ -106,7 +130,22 @@ final class DevicePermanentDeletionContext {
         // A completed physical removal may still have a live UI context after
         // app-side cleanup failed. Its durable .removed stage permits recovery.
         for entry in journal.entries where entry.stage != .cleaned && (entry.stage == .removed || !activeEntries.contains(entry.id)) {
-            if persisted.nodes.contains(where: { isRecordedInstance($0, entry: entry) }) {
+            if let recorded = persisted.nodes.first(where: { isRecordedInstance($0, entry: entry) }) {
+                if entry.leaveReceipt != nil {
+                    guard entry.permitsLeaveRecovery(now: Date().timeIntervalSince1970,
+                                                     createdTimestamp: recorded.createdTimestamp, address: recorded.primaryUnicastAddress),
+                          let current = ProximityLightingTopologyContext.network(for: space),
+                          !current.nodes.contains(where: {
+                              $0.primaryUnicastAddress == entry.primaryAddress &&
+                              (!isRecordedInstance($0, entry: entry) || $0.createdTimestamp != recorded.createdTimestamp)
+                          }) else { continue }
+                    persisted.remove(node: recorded)
+                    if let live = current.nodes.first(where: { isRecordedInstance($0, entry: entry) }) {
+                        current.remove(node: live)
+                    }
+                    _ = complete(entry: entry, space: space)
+                    continue
+                }
                 if entry.stage == .prepared {
                     if entry.replacement != nil || entry.cloudRemoval != nil { continue } // Recheck authoritative evidence before retrying removal.
                     _ = SpaceConfigurationSafety.updateDeletionJournal(space) {
@@ -304,7 +343,7 @@ final class DevicePermanentDeletionContext {
 
     private static func isRecordedInstance(_ node: Node, entry: SpaceDeletionJournal.Entry) -> Bool {
         node.uuid.uuidString.uppercased() == entry.nodeUUID.uppercased()
-            && (entry.cloudRemoval == nil || node.primaryUnicastAddress == entry.primaryAddress)
+            && ((entry.cloudRemoval == nil && entry.leaveReceipt == nil) || node.primaryUnicastAddress == entry.primaryAddress)
     }
 
     private static func cleanExtensions(entry: SpaceDeletionJournal.Entry, space: SpaceData, network: MeshNetwork) throws {

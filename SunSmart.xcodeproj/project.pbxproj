@@ -530,7 +530,6 @@
 		08B54E5830402CCB0017ED49 /* PJEightKeySwitchesViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C778BF32FA2153E000887FE /* PJEightKeySwitchesViewCell.swift */; };
 		08B54E5930402CCB0017ED49 /* SceneExecuteAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F98402B5E5A56007EABF5 /* SceneExecuteAnimationView.swift */; };
 		08B54E5A30402CCB0017ED49 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C896B9A72A930BA800217512 /* AppDelegate.swift */; };
-		D92709280000000000000002 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92709280000000000000001 /* SceneDelegate.swift */; };
 		08B54E5B30402CCB0017ED49 /* UserSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85BC5F12C3BEEF8002D4CB6 /* UserSettingsViewController.swift */; };
 		08B54E5C30402CCB0017ED49 /* LabViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A100022FF0000000000002 /* LabViewController.swift */; };
 		08B54E5D30402CCB0017ED49 /* PJDevicesEightKeyRestoreContainerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7832FAAF2C90073F100 /* PJDevicesEightKeyRestoreContainerController.swift */; };
@@ -1717,7 +1716,6 @@
 		C88554B52DE6B44C00C8B688 /* MotionSensorInstructionsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F122B8E14F800A09FFA /* MotionSensorInstructionsViewCell.swift */; };
 		C88554B62DE6B44C00C8B688 /* SceneExecuteAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F98402B5E5A56007EABF5 /* SceneExecuteAnimationView.swift */; };
 		C88554B72DE6B44C00C8B688 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C896B9A72A930BA800217512 /* AppDelegate.swift */; };
-		D92709280000000000000003 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92709280000000000000001 /* SceneDelegate.swift */; };
 		C88554B82DE6B44C00C8B688 /* UserSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85BC5F12C3BEEF8002D4CB6 /* UserSettingsViewController.swift */; };
 		C88554B92DE6B44C00C8B688 /* ShareAuthorityFilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8699DB62C09661700424A60 /* ShareAuthorityFilterView.swift */; };
 		C88554BA2DE6B44C00C8B688 /* EnergySelectExportDevicesController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA436A2DC0D75A00018392 /* EnergySelectExportDevicesController.swift */; };
@@ -2097,7 +2095,6 @@
 		C886E10E2E30DE4900D0C3A6 /* MotionSensorInstructionsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F122B8E14F800A09FFA /* MotionSensorInstructionsViewCell.swift */; };
 		C886E10F2E30DE4900D0C3A6 /* SceneExecuteAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F98402B5E5A56007EABF5 /* SceneExecuteAnimationView.swift */; };
 		C886E1102E30DE4900D0C3A6 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C896B9A72A930BA800217512 /* AppDelegate.swift */; };
-		D92709280000000000000004 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92709280000000000000001 /* SceneDelegate.swift */; };
 		C886E1112E30DE4900D0C3A6 /* UserSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85BC5F12C3BEEF8002D4CB6 /* UserSettingsViewController.swift */; };
 		C886E1122E30DE4900D0C3A6 /* ShareAuthorityFilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8699DB62C09661700424A60 /* ShareAuthorityFilterView.swift */; };
 		C886E1132E30DE4900D0C3A6 /* DeviceAddClassicModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */; };
@@ -2225,7 +2222,6 @@
 		C88DE4452C0828B5005A38C1 /* BatchImportResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88DE4442C0828B5005A38C1 /* BatchImportResultView.swift */; };
 		C88DE4492C085A5D005A38C1 /* BatchImportResultHelpController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88DE4482C085A5D005A38C1 /* BatchImportResultHelpController.swift */; };
 		C896B9A82A930BA800217512 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C896B9A72A930BA800217512 /* AppDelegate.swift */; };
-		D92709280000000000000005 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92709280000000000000001 /* SceneDelegate.swift */; };
 		C896B9B12A930BAA00217512 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C896B9B02A930BAA00217512 /* Assets.xcassets */; };
 		C896B9B42A930BAA00217512 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C896B9B22A930BAA00217512 /* LaunchScreen.storyboard */; };
 		C896BD3A2A930C3A00217512 /* WYProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = C896BB872A930C3800217512 /* WYProgressHUD.m */; };
@@ -2918,7 +2914,6 @@
 		C8BB66E62ED3F056000C63EE /* MotionSensorInstructionsViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8047F122B8E14F800A09FFA /* MotionSensorInstructionsViewCell.swift */; };
 		C8BB66E72ED3F056000C63EE /* SceneExecuteAnimationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F98402B5E5A56007EABF5 /* SceneExecuteAnimationView.swift */; };
 		C8BB66E82ED3F056000C63EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C896B9A72A930BA800217512 /* AppDelegate.swift */; };
-		D92709280000000000000006 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92709280000000000000001 /* SceneDelegate.swift */; };
 		C8BB66E92ED3F056000C63EE /* UserSettingsViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85BC5F12C3BEEF8002D4CB6 /* UserSettingsViewController.swift */; };
 		C8BB66EA2ED3F056000C63EE /* ShareAuthorityFilterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8699DB62C09661700424A60 /* ShareAuthorityFilterView.swift */; };
 		C8BB66EB2ED3F056000C63EE /* DeviceAddClassicModeController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8D22E1F2E041020001A2BDA /* DeviceAddClassicModeController.swift */; };
@@ -3443,12 +3438,32 @@
 		CE33830D778F4A9D8F5F83F6 /* ../TriggerZone/SiteTriggerZoneData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6CE8AF636BB4FFE942CAA9F /* ../TriggerZone/SiteTriggerZoneData.swift */; };
 		CE913AD382397B8A2604C026 /* GatewayDeletionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27A6139D1DCF407070F1CC0 /* GatewayDeletionContext.swift */; };
 		D130E771F5A94087BE4AB465 /* SyncRetryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */; };
+		D26092810000000000000002 /* LightsBatchDeletionPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = D26092810000000000000001 /* LightsBatchDeletionPlan.swift */; };
+		D26092810000000000000003 /* LightsBatchDeletionPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = D26092810000000000000001 /* LightsBatchDeletionPlan.swift */; };
+		D26092810000000000000004 /* LightsBatchDeletionPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = D26092810000000000000001 /* LightsBatchDeletionPlan.swift */; };
+		D26092810000000000000005 /* LightsBatchDeletionPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = D26092810000000000000001 /* LightsBatchDeletionPlan.swift */; };
+		D26092810000000000000006 /* LightsBatchDeletionPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = D26092810000000000000001 /* LightsBatchDeletionPlan.swift */; };
+		D26092820000000000000002 /* LightsBatchDeletionExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D26092820000000000000001 /* LightsBatchDeletionExecutor.swift */; };
+		D26092820000000000000003 /* LightsBatchDeletionExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D26092820000000000000001 /* LightsBatchDeletionExecutor.swift */; };
+		D26092820000000000000004 /* LightsBatchDeletionExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D26092820000000000000001 /* LightsBatchDeletionExecutor.swift */; };
+		D26092820000000000000005 /* LightsBatchDeletionExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D26092820000000000000001 /* LightsBatchDeletionExecutor.swift */; };
+		D26092820000000000000006 /* LightsBatchDeletionExecutor.swift in Sources */ = {isa = PBXBuildFile; fileRef = D26092820000000000000001 /* LightsBatchDeletionExecutor.swift */; };
+		D26092830000000000000002 /* LightsBatchDeletionOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = D26092830000000000000001 /* LightsBatchDeletionOperation.swift */; };
+		D26092830000000000000003 /* LightsBatchDeletionOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = D26092830000000000000001 /* LightsBatchDeletionOperation.swift */; };
+		D26092830000000000000004 /* LightsBatchDeletionOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = D26092830000000000000001 /* LightsBatchDeletionOperation.swift */; };
+		D26092830000000000000005 /* LightsBatchDeletionOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = D26092830000000000000001 /* LightsBatchDeletionOperation.swift */; };
+		D26092830000000000000006 /* LightsBatchDeletionOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = D26092830000000000000001 /* LightsBatchDeletionOperation.swift */; };
 		D2FA400BEF0946569A71EF13 /* SyncEmergencyFireTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */; };
 		D3C2B2A90073BA539A94D739 /* Pods_Common_Lumineux.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 15FF8143AF8FD80AB9279AE9 /* Pods_Common_Lumineux.framework */; };
 		D52E820261BF4DF8A6E82A06 /* SyncExecutionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F3C5FD3C314692BB69EFBB /* SyncExecutionSession.swift */; };
 		D78290660D024B8E8015FE86 /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAFAFE40DD648E99ECF0CBF /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift */; };
 		D81933E68654405495EBF0F4 /* SyncTaskPlanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */; };
 		D9068A499B72DEA5BBD4FE04 /* NodeSyncReadContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 822E40AF256280460760DAE3 /* NodeSyncReadContext.swift */; };
+		D92709280000000000000002 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92709280000000000000001 /* SceneDelegate.swift */; };
+		D92709280000000000000003 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92709280000000000000001 /* SceneDelegate.swift */; };
+		D92709280000000000000004 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92709280000000000000001 /* SceneDelegate.swift */; };
+		D92709280000000000000005 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92709280000000000000001 /* SceneDelegate.swift */; };
+		D92709280000000000000006 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = D92709280000000000000001 /* SceneDelegate.swift */; };
 		DA9432B52C5F448A851D8FC1 /* ../TriggerZone/SiteTriggerZoneContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04DF0E02938F412FBC885F03 /* ../TriggerZone/SiteTriggerZoneContentView.swift */; };
 		DBBE181D0D4E49BA9A6E9548 /* SyncExecutionSession+EmergencyFire.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */; };
 		DBDFE837C4004A2F8104A1C3 /* SyncOperationResultPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */; };
@@ -4067,7 +4082,6 @@
 		C88DE4482C085A5D005A38C1 /* BatchImportResultHelpController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchImportResultHelpController.swift; sourceTree = "<group>"; };
 		C896B9A42A930BA800217512 /* SunSmart.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = SunSmart.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		C896B9A72A930BA800217512 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
-		D92709280000000000000001 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		C896B9B02A930BAA00217512 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		C896B9B32A930BAA00217512 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		C896B9B52A930BAA00217512 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -4522,8 +4536,12 @@
 		CE8B635DA3424068A079D81E /* SyncProfileTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncProfileTaskBuilder.swift; sourceTree = "<group>"; };
 		CFACA4781FD19C0A7E602416 /* GatewayDeletionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayDeletionCoordinator.swift; sourceTree = "<group>"; };
 		D1025845F30FDFC9F8C9ACCB /* Pods_Common_SylSmart.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_SylSmart.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		D26092810000000000000001 /* LightsBatchDeletionPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightsBatchDeletionPlan.swift; sourceTree = "<group>"; };
+		D26092820000000000000001 /* LightsBatchDeletionExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightsBatchDeletionExecutor.swift; sourceTree = "<group>"; };
+		D26092830000000000000001 /* LightsBatchDeletionOperation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightsBatchDeletionOperation.swift; sourceTree = "<group>"; };
 		D6CE8AF636BB4FFE942CAA9F /* ../TriggerZone/SiteTriggerZoneData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneData.swift; sourceTree = "<group>"; };
 		D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorRendering.swift; sourceTree = "<group>"; };
+		D92709280000000000000001 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncExecutionSession+EmergencyFire.swift"; sourceTree = "<group>"; };
 		DB94D08D018A81456AF735FC /* Pods-Common-SLG Sync Plus.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SLG Sync Plus.release.xcconfig"; path = "Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus.release.xcconfig"; sourceTree = "<group>"; };
 		DEFCD502EAD0464D20FC18F3 /* Pods-Common-SylSmart.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SylSmart.release.xcconfig"; path = "Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart.release.xcconfig"; sourceTree = "<group>"; };
@@ -6335,6 +6353,9 @@
 				3F30B7015EA95EB1973F9EC1 /* SpaceProtectionReadSnapshot.swift */,
 				402BBE20BB0B8974D93669FC /* AppPerformance.swift */,
 				65E7E0653BE57CBB8AC8AE68 /* NodeSyncStatusRefresh.swift */,
+				D26092810000000000000001 /* LightsBatchDeletionPlan.swift */,
+				D26092820000000000000001 /* LightsBatchDeletionExecutor.swift */,
+				D26092830000000000000001 /* LightsBatchDeletionOperation.swift */,
 				C8DDA0013003000000000001 /* DeviceScheduleAddressCleanup.swift */,
 				C8DDA0023003000000000001 /* DevicePermanentDeletionCleanup.swift */,
 				199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */,
@@ -7514,6 +7535,9 @@
 				08B54CD930402CCB0017ED49 /* DeviceInformationViewController.swift in Sources */,
 				F26091100000000000000002 /* InformationClockRecovery.swift in Sources */,
 				F26092000000000000000102 /* InformationTTLMeshService.swift in Sources */,
+				D26092810000000000000002 /* LightsBatchDeletionPlan.swift in Sources */,
+				D26092820000000000000002 /* LightsBatchDeletionExecutor.swift in Sources */,
+				D26092830000000000000002 /* LightsBatchDeletionOperation.swift in Sources */,
 				F26092000000000000000002 /* InformationTTLCoordinator.swift in Sources */,
 				08B54CDA30402CCB0017ED49 /* UIColor+Extension.swift in Sources */,
 				08B54CDB30402CCB0017ED49 /* ShareAuthorityViewController.swift in Sources */,
@@ -8246,6 +8270,9 @@
 				C88553DF2DE6B44C00C8B688 /* DeviceInformationViewController.swift in Sources */,
 				F26091100000000000000003 /* InformationClockRecovery.swift in Sources */,
 				F26092000000000000000103 /* InformationTTLMeshService.swift in Sources */,
+				D26092810000000000000003 /* LightsBatchDeletionPlan.swift in Sources */,
+				D26092820000000000000003 /* LightsBatchDeletionExecutor.swift in Sources */,
+				D26092830000000000000003 /* LightsBatchDeletionOperation.swift in Sources */,
 				F26092000000000000000003 /* InformationTTLCoordinator.swift in Sources */,
 				C88553E02DE6B44C00C8B688 /* UIColor+Extension.swift in Sources */,
 				C88553E12DE6B44C00C8B688 /* ShareAuthorityViewController.swift in Sources */,
@@ -8977,6 +9004,9 @@
 				C886E02F2E30DE4900D0C3A6 /* DeviceInformationViewController.swift in Sources */,
 				F26091100000000000000004 /* InformationClockRecovery.swift in Sources */,
 				F26092000000000000000104 /* InformationTTLMeshService.swift in Sources */,
+				D26092810000000000000004 /* LightsBatchDeletionPlan.swift in Sources */,
+				D26092820000000000000004 /* LightsBatchDeletionExecutor.swift in Sources */,
+				D26092830000000000000004 /* LightsBatchDeletionOperation.swift in Sources */,
 				F26092000000000000000004 /* InformationTTLCoordinator.swift in Sources */,
 				C886E0302E30DE4900D0C3A6 /* UIColor+Extension.swift in Sources */,
 				C886E0312E30DE4900D0C3A6 /* ShareAuthorityViewController.swift in Sources */,
@@ -9708,6 +9738,9 @@
 				C85CB5F92BB6BE8E006598C0 /* DeviceInformationViewController.swift in Sources */,
 				F26091100000000000000005 /* InformationClockRecovery.swift in Sources */,
 				F26092000000000000000105 /* InformationTTLMeshService.swift in Sources */,
+				D26092810000000000000005 /* LightsBatchDeletionPlan.swift in Sources */,
+				D26092820000000000000005 /* LightsBatchDeletionExecutor.swift in Sources */,
+				D26092830000000000000005 /* LightsBatchDeletionOperation.swift in Sources */,
 				F26092000000000000000005 /* InformationTTLCoordinator.swift in Sources */,
 				C84FBCC12DBF72070030E136 /* UIColor+Extension.swift in Sources */,
 				C89B3CB32C08650400820277 /* ShareAuthorityViewController.swift in Sources */,
@@ -10440,6 +10473,9 @@
 				C8BB65E12ED3F056000C63EE /* DeviceInformationViewController.swift in Sources */,
 				F26091100000000000000006 /* InformationClockRecovery.swift in Sources */,
 				F26092000000000000000106 /* InformationTTLMeshService.swift in Sources */,
+				D26092810000000000000006 /* LightsBatchDeletionPlan.swift in Sources */,
+				D26092820000000000000006 /* LightsBatchDeletionExecutor.swift in Sources */,
+				D26092830000000000000006 /* LightsBatchDeletionOperation.swift in Sources */,
 				F26092000000000000000006 /* InformationTTLCoordinator.swift in Sources */,
 				C8BB65E22ED3F056000C63EE /* UIColor+Extension.swift in Sources */,
 				C8BB65E32ED3F056000C63EE /* ShareAuthorityViewController.swift in Sources */,
@@ -11082,6 +11118,7 @@
 				DEVELOPMENT_TEAM = T552326F7U;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_KEY_CFBundleDisplayName = LumiSmart;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera to scan a device QR code.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Lumineux uses location permission to display the currently connected Wi-Fi network name.";
@@ -11091,7 +11128,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.11;
+				MARKETING_VERSION = 1.2.12;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lumineux.lumismart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -11107,6 +11144,7 @@
 				DEVELOPMENT_TEAM = T552326F7U;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				INFOPLIST_KEY_CFBundleDisplayName = LumiSmart;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera to scan a device QR code.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Lumineux uses location permission to display the currently connected Wi-Fi network name.";
@@ -11116,7 +11154,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.11;
+				MARKETING_VERSION = 1.2.12;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lumineux.lumismart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -11128,7 +11166,19 @@
 			baseConfigurationReference = F10000000000000000000006 /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Archipelago/Archipelago.entitlements;
-				MARKETING_VERSION = 1.2.11;
+				INFOPLIST_KEY_CFBundleDisplayName = "ACS by ALG";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SunSmart uses location permission to display the currently connected Wi-Fi network name.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = "Archipelago-LaunchScreen";
+				INFOPLIST_KEY_UIMainStoryboardFile = "";
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
+				MARKETING_VERSION = 1.2.12;
 			};
 			name = Debug;
 		};
@@ -11137,7 +11187,19 @@
 			baseConfigurationReference = F10000000000000000000007 /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = Archipelago/Archipelago.entitlements;
-				MARKETING_VERSION = 1.2.11;
+				INFOPLIST_KEY_CFBundleDisplayName = "ACS by ALG";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SunSmart uses location permission to display the currently connected Wi-Fi network name.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = "Archipelago-LaunchScreen";
+				INFOPLIST_KEY_UIMainStoryboardFile = "";
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
+				MARKETING_VERSION = 1.2.12;
 			};
 			name = Release;
 		};
@@ -11146,7 +11208,19 @@
 			baseConfigurationReference = F10000000000000000000009 /* Debug.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SylSmart/SylSmart.entitlements;
-				MARKETING_VERSION = 1.2.11;
+				INFOPLIST_KEY_CFBundleDisplayName = SylSmart;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SunSmart uses location permission to display the currently connected Wi-Fi network name.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = "SylSmart-LaunchScreen";
+				INFOPLIST_KEY_UIMainStoryboardFile = "";
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
+				MARKETING_VERSION = 1.2.12;
 			};
 			name = Debug;
 		};
@@ -11155,7 +11229,19 @@
 			baseConfigurationReference = F1000000000000000000000A /* Release.xcconfig */;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SylSmart/SylSmart.entitlements;
-				MARKETING_VERSION = 1.2.11;
+				INFOPLIST_KEY_CFBundleDisplayName = SylSmart;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SunSmart uses location permission to display the currently connected Wi-Fi network name.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = "SylSmart-LaunchScreen";
+				INFOPLIST_KEY_UIMainStoryboardFile = "";
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
+				MARKETING_VERSION = 1.2.12;
 			};
 			name = Release;
 		};
@@ -11282,6 +11368,7 @@
 				CODE_SIGN_ENTITLEMENTS = SunSmart/SunSmart.entitlements;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				INFOPLIST_KEY_CFBundleDisplayName = SunSmart;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
 				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SunSmart uses location permission to display the currently connected Wi-Fi network name.";
@@ -11291,7 +11378,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.11;
+				MARKETING_VERSION = 1.2.12;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Debug;
@@ -11303,6 +11390,7 @@
 				CODE_SIGN_ENTITLEMENTS = SunSmart/SunSmart.entitlements;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
 				INFOPLIST_KEY_CFBundleDisplayName = SunSmart;
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
 				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SunSmart uses location permission to display the currently connected Wi-Fi network name.";
@@ -11312,7 +11400,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.11;
+				MARKETING_VERSION = 1.2.12;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Release;
@@ -11325,7 +11413,18 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.2.11;
+				INFOPLIST_KEY_CFBundleDisplayName = "SLG Sync Plus";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SunSmart uses location permission to display the currently connected Wi-Fi network name.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = "SLGSync-LaunchScreen";
+				INFOPLIST_KEY_UIMainStoryboardFile = "";
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				MARKETING_VERSION = 1.2.12;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Debug;
@@ -11338,7 +11437,18 @@
 				CODE_SIGN_IDENTITY = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = 97QC5USUD2;
-				MARKETING_VERSION = 1.2.11;
+				INFOPLIST_KEY_CFBundleDisplayName = "SLG Sync Plus";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
+				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera for scanning the QR code of device";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "SunSmart uses location permission to display the currently connected Wi-Fi network name.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "We need to use your photo album to get the device's QR code";
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchStoryboardName = "SLGSync-LaunchScreen";
+				INFOPLIST_KEY_UIMainStoryboardFile = "";
+				INFOPLIST_KEY_UIRequiresFullScreen = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
+				MARKETING_VERSION = 1.2.12;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Release;

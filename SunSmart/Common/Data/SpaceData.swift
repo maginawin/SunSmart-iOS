@@ -260,9 +260,15 @@ class SpaceData: Copyable {
     }
     /// 设备操作权限
     var deviceOperates: [MeshOperate] {
+        deviceOperates(excludingDeletionEntries: [])
+    }
+
+    /// A running deletion may own pending intents; all other protection and
+    /// permission checks still apply, including explicit cleanup failures.
+    func deviceOperates(excludingDeletionEntries: Set<UUID>) -> [MeshOperate] {
         guard !SpaceMembershipCoordinator.isLeaving(self) else { return [] }
         guard SpaceMembershipCoordinator.allowsConfiguration(self) else { return [] }
-        if SpaceConfigurationSafety.isBlocked(self) {
+        if SpaceConfigurationSafety.isBlocked(self, excludingDeletionEntries: excludingDeletionEntries) {
             return lastUploadCloudTimestamp != nil && !requiresPasswordVerification && state == .normal ? [.control] : []
         }
         if permission == .visitor || disableEditorPermission || meshOTADistribution {

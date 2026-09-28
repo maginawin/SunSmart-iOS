@@ -39,6 +39,11 @@ struct SpaceDeletionJournal: Codable {
             let submissionID: UUID?
             let instance: SpaceCloudNodeRemovalPolicy.Instance
         }
+        struct LeaveReceipt: Codable, Equatable {
+            let evidence: String
+            let notBefore: TimeInterval
+            let createdTimestamp: Int64
+        }
         enum Stage: String, Codable { case prepared, removed, cleaned }
         let id: UUID
         let nodeUUID: String
@@ -50,6 +55,13 @@ struct SpaceDeletionJournal: Codable {
         var completedTimestamp: Int64?
         var replacement: SiteDeviceOwnershipPolicy.Instance?
         var cloudRemoval: CloudRemoval? = nil
+        var leaveReceipt: LeaveReceipt? = nil
+
+        func permitsLeaveRecovery(now: TimeInterval, createdTimestamp: Int64, address: UInt16) -> Bool {
+            guard let receipt = leaveReceipt else { return false }
+            return ["acknowledged", "submitted"].contains(receipt.evidence)
+                && now >= receipt.notBefore && receipt.createdTimestamp == createdTimestamp && address == primaryAddress
+        }
     }
 
     let scope: Scope

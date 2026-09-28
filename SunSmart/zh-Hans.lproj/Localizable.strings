@@ -2343,3 +2343,14 @@
 "information_ttl_cloud_failed" = "设备实际 TTL 已保存到本地，但服务器同步尚未完成，请重试同步。";
 "information_ttl_retry" = "重试";
 "information_ttl_retry_sync" = "重试同步";
+
+/* Lights batch deletion */
+"batch_delete_scope_message" = "删除选中的 %d 盏灯，还是删除此空间的全部 %d 个设备？";
+"batch_delete_gateway_warning" = "这也会从 Site 删除网关“%@”，其他关联空间将失去此网关。若要保留网关，请先将它与当前空间解绑。";
+"batch_delete_selected_lights" = "仅删除选中的灯";
+"batch_delete_all_devices" = "删除全部设备";
+"batch_delete_proxy_required" = "请先连接此空间的 Proxy，才能发送删除指令。强制删除只移除本地记录；网关仍需完成服务器授权与删除。";
+"batch_delete_context_changed" = "空间、连接或任务状态已变化，请在网络就绪后重试。";
+"batch_delete_failed_message" = "部分设备删除失败。是否保留这些设备，或强制删除其本地记录？设备可能仍需手动恢复出厂设置。";
+"batch_delete_completed" = "设备本地记录已删除。广播和组播不代表每台设备都已确认离网。";
+"batch_delete_kept" = "未获得成功结果的设备已保留，可稍后重试或强制删除其本地记录。";
