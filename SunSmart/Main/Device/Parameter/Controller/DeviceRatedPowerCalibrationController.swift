@@ -44,7 +44,7 @@ class DeviceRatedPowerCalibrationController: UIViewController {
         title = "calibration".localizedString
         view.backgroundColor = Background_Color
         
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "help")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(helpAction))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "help")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(helpAction)).withoutSharedBackground()
         
         devices.forEach({
             $0.unfold = false

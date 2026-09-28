@@ -75,10 +75,10 @@ class DeviceLightViewController: UIViewController {
         if self.presentingViewController != nil && navigationController?.viewControllers.count ?? 0 == 1 {
             
             navigationController?.setNavigationBarBackgroundColor(color: Background_Color)
-            navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backAction))
+            navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backAction)).withoutSharedBackground()
         }
 //        menuView?.backgroundColor = .white
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick)).withoutSharedBackground()
 //        let tap = UITapGestureRecognizer(target: self, action: #selector(test))
 //        tap.numberOfTapsRequired = 2
 //        view.addGestureRecognizer(tap)

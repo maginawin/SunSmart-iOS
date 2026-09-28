@@ -36,10 +36,10 @@ class DeviceBaseViewController: UIViewController, DeviceProtocol {
         if self.presentingViewController != nil && navigationController?.viewControllers.count ?? 0 == 1 {
             
             navigationController?.setNavigationBarBackgroundColor(color: .clear)
-            navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backAction))
+            navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backAction)).withoutSharedBackground()
         }
 
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick)).withoutSharedBackground()
     }
     
     override func viewWillAppear(_ animated: Bool) {

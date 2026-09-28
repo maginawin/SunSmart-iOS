@@ -62,7 +62,7 @@ class ContentDisplayViewController: UIViewController {
         
         view.backgroundColor = Background_Color
         
-        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back)).withoutSharedBackground()
         
         navigationController?.setNavigationBarBackgroundColor(color: Background_Color)
         

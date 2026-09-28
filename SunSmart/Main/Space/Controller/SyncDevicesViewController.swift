@@ -106,7 +106,7 @@ class SyncDevicesViewController: UIViewController {
         title = vcTitle ?? "sync_device(s)".localizedString
         view.backgroundColor = Background_Color
         
-        navigationItem.leftBarButtonItem = UIBarButtonItem(customView: backBtn)
+        navigationItem.leftBarButtonItem = UIBarButtonItem(customView: backBtn).withoutSharedBackground()
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "re_sync".localizedString, color: Title_Color, font: UIFont.systemFont(ofSize: 16, weight: .light), target: self, sel: #selector(rightItemAction))
         
         
@@ -330,7 +330,7 @@ class SyncDevicesViewController: UIViewController {
             selectAllBtn.isHidden = true
         }else if syncState == .syncSuccess {
             bottomView.isHidden = true
-            navigationItem.rightBarButtonItem = UIBarButtonItem()
+            navigationItem.rightBarButtonItem = UIBarButtonItem().withoutSharedBackground()
             backBtn.isHidden = false
         }else if syncState == .syncFailure{
             navigationItem.rightBarButtonItem?.title = "re_sync".localizedString

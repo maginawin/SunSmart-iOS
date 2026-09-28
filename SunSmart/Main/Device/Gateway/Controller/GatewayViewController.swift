@@ -269,13 +269,13 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             style: .plain,
             target: self,
             action: #selector(closeAction)
-        )
+        ).withoutSharedBackground()
         navigationItem.rightBarButtonItem = UIBarButtonItem(
             image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal),
             style: .done,
             target: self,
             action: #selector(moreClick)
-        )
+        ).withoutSharedBackground()
     }
 
     @objc func closeAction() {

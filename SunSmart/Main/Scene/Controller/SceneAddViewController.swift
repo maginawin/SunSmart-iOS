@@ -118,7 +118,7 @@ class SceneAddViewController: UIViewController {
         title = "create_scene".localizedString
         
         view.backgroundColor = Background_Color
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close)).withoutSharedBackground()
         
         groups = MeshNetworkManager.instance.groups
         
@@ -132,7 +132,7 @@ class SceneAddViewController: UIViewController {
         
         backBtn = UIButton(normalImageName: "navigation_back", target: self, action: #selector(backAction))
         backBtn.isHidden = true
-        navigationItem.leftBarButtonItem = UIBarButtonItem(customView: backBtn)
+        navigationItem.leftBarButtonItem = UIBarButtonItem(customView: backBtn).withoutSharedBackground()
         
         setupUI()
 //        setupTemplateDataUI()

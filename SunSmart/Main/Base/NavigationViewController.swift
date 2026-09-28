@@ -55,6 +55,10 @@ class NavigationViewController: UINavigationController {
             appearance.titleTextAttributes = titleTextAttributes
             navigationBar.standardAppearance = appearance
             navigationBar.scrollEdgeAppearance = appearance
+            navigationBar.compactAppearance = appearance
+            if #available(iOS 15.0, *) {
+                navigationBar.compactScrollEdgeAppearance = appearance
+            }
             
         }
         interactivePopGestureRecognizer?.delegate = self
@@ -65,7 +69,7 @@ class NavigationViewController: UINavigationController {
         if viewControllers.count > 0 {
             viewController.hidesBottomBarWhenPushed = true
             
-            let backItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backItemClick))
+            let backItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backItemClick)).withoutSharedBackground()
             viewController.navigationItem.leftBarButtonItem = backItem
         }else {
             viewController.hidesBottomBarWhenPushed = false

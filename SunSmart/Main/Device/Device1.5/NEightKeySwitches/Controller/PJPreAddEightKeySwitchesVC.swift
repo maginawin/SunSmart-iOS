@@ -358,13 +358,13 @@ final class PJPreAddEightKeySwitchesVC: UIViewController {
             style: .done,
             target: self,
             action: #selector(closeAction)
-        )
+        ).withoutSharedBackground()
         let backBarButtonItem = UIBarButtonItem(
             image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal),
             style: .done,
             target: self,
             action: #selector(backAction)
-        )
+        ).withoutSharedBackground()
         if viewModel.sourceSwitchData == nil {
             navigationItem.rightBarButtonItem = closeBarButtonItem
             navigationItem.leftBarButtonItem = nil

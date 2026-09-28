@@ -20,7 +20,7 @@ class DeviceCategorysViewController: UIViewController {
         title = "device_parameter_settings".localizedString
         view.backgroundColor = Background_Color
         navigationController?.setNavigationBarBackgroundColor(color: .clear)
-        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back)).withoutSharedBackground()
         
         setupUI()
         setupData()

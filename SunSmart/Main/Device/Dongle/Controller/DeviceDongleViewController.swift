@@ -59,7 +59,7 @@ class DeviceDongleViewController: UIViewController, DeviceProtocol {
         view.backgroundColor = Background_Color
         title = "dongle".localizedString
         
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back)).withoutSharedBackground()
         
         editable = space.deviceOperates.contains(.edit)
         setupUI()

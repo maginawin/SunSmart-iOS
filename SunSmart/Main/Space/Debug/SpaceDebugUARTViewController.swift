@@ -64,7 +64,7 @@ final class SpaceDebugUARTViewController: UIViewController {
             style: .plain,
             target: self,
             action: #selector(shareButtonTapped)
-        )
+        ).withoutSharedBackground()
         view.backgroundColor = Background_Color
         setupUI()
         SpaceDebugUARTManager.shared.setActiveSpace(space)

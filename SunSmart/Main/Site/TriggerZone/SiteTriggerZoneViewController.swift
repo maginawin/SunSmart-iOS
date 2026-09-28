@@ -118,16 +118,16 @@ final class SiteTriggerZoneViewController: UIViewController {
             name: UIApplication.willEnterForegroundNotification, object: nil)
         title = "trigger_zone".localizedString
         navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(systemName: "chevron.left"),
-            style: .plain, target: self, action: #selector(attemptLeave))
-        addBarButton = UIBarButtonItem(image: UIImage(named: "path_add")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(addZone))
+            style: .plain, target: self, action: #selector(attemptLeave)).withoutSharedBackground()
+        addBarButton = UIBarButtonItem(image: UIImage(named: "path_add")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(addZone)).withoutSharedBackground()
         addBarButton.accessibilityIdentifier = "site-zones-add"
         siteTasksBarButton = UIBarButtonItem(image: UIImage(systemName: "list.bullet.rectangle"),
                                             style: .plain, target: self,
-                                            action: #selector(showSiteDeviceSyncPreview))
+                                            action: #selector(showSiteDeviceSyncPreview)).withoutSharedBackground()
         siteTasksBarButton.accessibilityIdentifier = "site-zones-site-tasks"
         siteTasksBarButton.accessibilityLabel = "site_zones_site_tasks_title".localizedString
         #if DEBUG
-        previewBarButton = UIBarButtonItem(title: "test".localizedString, style: .plain, target: self, action: #selector(togglePreview))
+        previewBarButton = UIBarButtonItem(title: "test".localizedString, style: .plain, target: self, action: #selector(togglePreview)).withoutSharedBackground()
         previewBarButton.accessibilityIdentifier = "site-zones-preview-toggle"
         previewBarButton.accessibilityLabel = "site_zones_preview_toggle".localizedString
         #endif

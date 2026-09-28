@@ -25,7 +25,7 @@ class DeviceForceResetDeviceInstructionsController: UIViewController {
         title = "force_reset_the_device".localizedString
         navigationController?.setNavigationBarBackgroundColor(color: Background_Color)
         view.backgroundColor = Background_Color
-        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(closeAction))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(closeAction)).withoutSharedBackground()
         
         setupUI()
     }

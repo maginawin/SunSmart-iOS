@@ -41,7 +41,7 @@ class ImagesPickerViewController: UIViewController {
         view.backgroundColor = Background_Color
         
         if presentationController != nil {
-            navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
+            navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close)).withoutSharedBackground()
             navigationController?.setNavigationBarBackgroundColor(color: .clear)
         }
         

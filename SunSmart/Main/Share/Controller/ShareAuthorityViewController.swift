@@ -83,11 +83,11 @@ class ShareAuthorityViewController: UIViewController {
         switch self.type {
         case .share:
             title = "share_authoority".localizedString
-            navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
+            navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close)).withoutSharedBackground()
             if site.permission == .owner {
-                navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "share_management")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(management))
+                navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "share_management")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(management)).withoutSharedBackground()
             }else {
-                navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "share_unbind")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(unbindItemAction))
+                navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "share_unbind")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(unbindItemAction)).withoutSharedBackground()
             }
             NotificationCenter.default.addObserver(forName: .init(spacesRefreshChangeNotificationName), object: nil, queue: nil) {[weak self] _ in
                 self?.setupData()

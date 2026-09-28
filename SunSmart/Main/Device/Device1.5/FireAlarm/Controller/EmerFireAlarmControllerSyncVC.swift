@@ -62,7 +62,7 @@ final class EmerFireAlarmControllerSyncVC: UIViewController {
         isModalInPresentation = true
         title = "sync_device(s)".localizedString
         view.backgroundColor = Background_Color
-        navigationItem.leftBarButtonItem = UIBarButtonItem(customView: backBtn)
+        navigationItem.leftBarButtonItem = UIBarButtonItem(customView: backBtn).withoutSharedBackground()
         navigationItem.rightBarButtonItem = UIBarButtonItem(title: "re_sync".localizedString, color: Title_Color, font: UIFont.systemFont(ofSize: 16, weight: .light), target: self, sel: #selector(rightItemAction))
 
         setupUI()
@@ -226,7 +226,7 @@ final class EmerFireAlarmControllerSyncVC: UIViewController {
         case .syncSuccess:
             bottomView.isHidden = true
             tableView.contentInset = .zero
-            navigationItem.rightBarButtonItem = UIBarButtonItem()
+            navigationItem.rightBarButtonItem = UIBarButtonItem().withoutSharedBackground()
             backBtn.isHidden = false
         }
     }

@@ -166,8 +166,8 @@ class SiteViewController: UIViewController {
             style: .done,
             target: self,
             action: #selector(backAction)
-        )
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick))
+        ).withoutSharedBackground()
+        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "more_vertical")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(moreClick)).withoutSharedBackground()
 
         setupUI()
         

@@ -51,7 +51,7 @@ class ScheduleAddViewController: UIViewController {
         navigationController?.setNavigationBarBackgroundColor(color: Background_Color)
         
         view.backgroundColor = Background_Color
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back)).withoutSharedBackground()
         setupUI()
         setupData()
         schedulerObservation = NotificationCenter.default.addObserver(

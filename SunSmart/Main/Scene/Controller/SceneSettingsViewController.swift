@@ -88,7 +88,7 @@ class SceneSettingsViewController: UIViewController {
         
         if mode == .members {
             title = "settings".localizedString
-            navigationItem.leftBarButtonItem = UIBarButtonItem()
+            navigationItem.leftBarButtonItem = UIBarButtonItem().withoutSharedBackground()
             navigationController?.interactivePopGestureRecognizer?.isEnabled = false
             navigationItem.rightBarButtonItem = UIBarButtonItem(title: "done".localizedString, color: RGB(0, 0, 0, 0.85), font: UIFont.systemFont(ofSize: 16, weight: .light), target: self, sel: #selector(doneAction))
             bottomView.isHidden = true

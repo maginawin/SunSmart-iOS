@@ -17,8 +17,8 @@ class SwitchProxyInstructionsViewController: UIViewController {
 
         title = "kinetic_switch_proxy_instructions".localizedString
         view.backgroundColor = Background_Color
-        navigationItem.leftBarButtonItem = UIBarButtonItem()
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back))
+        navigationItem.leftBarButtonItem = UIBarButtonItem().withoutSharedBackground()
+        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back)).withoutSharedBackground()
         isModalInPresentation = true
         
         setupUI()

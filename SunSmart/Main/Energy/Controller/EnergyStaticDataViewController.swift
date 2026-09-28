@@ -124,7 +124,7 @@ class EnergyStaticDataViewController: UIViewController {
         if self.wm_pageController == nil {
             title = "static_data".localizedString
             navigationController?.setNavigationBarBackgroundColor(color: Background_Color)
-            navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back))
+            navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back)).withoutSharedBackground()
         }
         
         view.backgroundColor = Background_Color

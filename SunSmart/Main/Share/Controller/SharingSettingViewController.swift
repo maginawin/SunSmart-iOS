@@ -63,7 +63,7 @@ class SharingSettingViewController: UIViewController {
         navigationController?.setNavigationBarBackgroundColor(color: .clear)
         view.backgroundColor = Background_Color
         if navigationController?.viewControllers.count == 1 {
-            navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
+            navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close)).withoutSharedBackground()
         }
         
 //        switch self.type {

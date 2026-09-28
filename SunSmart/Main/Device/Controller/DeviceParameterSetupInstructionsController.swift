@@ -49,7 +49,7 @@ class DeviceParameterSetupInstructionsController: UIViewController {
         view.backgroundColor = Background_Color
         
         navigationController?.setNavigationBarBackgroundColor(color: Background_Color)
-        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(closeAction))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(closeAction)).withoutSharedBackground()
         
         setupUI()
     }

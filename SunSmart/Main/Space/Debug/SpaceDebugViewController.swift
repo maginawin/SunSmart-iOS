@@ -67,7 +67,7 @@ final class SpaceDebugViewController: UIViewController {
     }
 
     private func setupUI() {
-        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "stop".localizedString, style: .plain, target: self, action: #selector(scanButtonTapped))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: "stop".localizedString, style: .plain, target: self, action: #selector(scanButtonTapped)).withoutSharedBackground()
 
         view.addSubview(summaryView)
         summaryView.snp.makeConstraints { make in

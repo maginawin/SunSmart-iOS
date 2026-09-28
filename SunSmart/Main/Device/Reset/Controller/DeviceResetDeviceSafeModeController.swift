@@ -714,7 +714,7 @@ class DeviceResetDeviceSafeModeController: UIViewController {
             make.centerY.equalToSuperview().offset(0.5)
             make.width.height.equalTo(5)
         }
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: settingsView)
+        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: settingsView).withoutSharedBackground()
     }
     
     

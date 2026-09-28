@@ -351,13 +351,13 @@ final class LinkedEmerFireEditVC: UIViewController {
             style: .done,
             target: self,
             action: #selector(backAction)
-        )
+        ).withoutSharedBackground()
         let backBarButtonItem = UIBarButtonItem(
             image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal),
             style: .done,
             target: self,
             action: #selector(backAction)
-        )
+        ).withoutSharedBackground()
         if isCreateMode {
             navigationItem.leftBarButtonItem = nil
             navigationItem.rightBarButtonItem = closeBarButtonItem

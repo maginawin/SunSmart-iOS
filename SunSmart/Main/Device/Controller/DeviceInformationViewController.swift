@@ -160,7 +160,7 @@ class DeviceInformationViewController: UIViewController {
             && ttlService?.context.canEdit == true
             ? UIBarButtonItem(title: (coordinator.retryFailure == .localSave
                                 ? "information_ttl_retry" : "information_ttl_retry_sync").localizedString,
-                              style: .plain, target: self, action: #selector(retryTTL)) : nil
+                              style: .plain, target: self, action: #selector(retryTTL)).withoutSharedBackground() : nil
         guard ttlInteractive, coordinator.phase != .idle else {
             ttlProgressAlert?.dismiss(animation: false)
             ttlProgressAlert = nil

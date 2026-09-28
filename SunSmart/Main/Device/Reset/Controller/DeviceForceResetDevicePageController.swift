@@ -112,7 +112,7 @@ class DeviceForceResetDevicePageController: WMPageController {
     private func setupUI() {
         
         navigationBackBtn = UIButton(normalImageName: "navigation_back", target: self, action: #selector(backClick))
-        navigationItem.leftBarButtonItem = UIBarButtonItem(customView: navigationBackBtn)
+        navigationItem.leftBarButtonItem = UIBarButtonItem(customView: navigationBackBtn).withoutSharedBackground()
         
         helpBtn = UIButton(normalImageName: "help", target: self, action: #selector(helpBtnAction))
         

@@ -84,7 +84,7 @@ class ProfileDayNightLuxDevicesViewController: UIViewController, KeyboardScrolla
         super.viewDidAppear(animated)
         
         if nodes.count > 0 {
-            wm_pageController?.navigationItem.rightBarButtonItem = UIBarButtonItem(customView: sortBtn)
+            wm_pageController?.navigationItem.rightBarButtonItem = UIBarButtonItem(customView: sortBtn).withoutSharedBackground()
         }
     }
     

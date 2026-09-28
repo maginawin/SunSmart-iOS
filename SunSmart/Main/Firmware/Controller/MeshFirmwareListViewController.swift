@@ -86,7 +86,7 @@ class MeshFirmwareListViewController: UIViewController {
         view.backgroundColor = Background_Color
         navigationController?.setNavigationBarBackgroundColor(color: .clear)
         
-        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backAction))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backAction)).withoutSharedBackground()
         
         helpBtn = UIButton(normalImageName: "help", target: self, action: #selector(helpAction))
 //        #if DEBUG
@@ -95,7 +95,7 @@ class MeshFirmwareListViewController: UIViewController {
         helpBtn.addGestureRecognizer(testTap)
 //        #endif
         
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: helpBtn)
+        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: helpBtn).withoutSharedBackground()
         setupUI()
         self.isModalInPresentation = true
         

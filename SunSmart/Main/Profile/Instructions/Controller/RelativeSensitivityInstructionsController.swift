@@ -18,7 +18,7 @@ class RelativeSensitivityInstructionsController: UIViewController {
         super.viewDidLoad()
 
         title = "relative_sensitivity".localizedString
-        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back)).withoutSharedBackground()
         view.backgroundColor = Background_Color
         
         setupUI()

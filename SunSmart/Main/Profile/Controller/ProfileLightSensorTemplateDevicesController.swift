@@ -69,7 +69,7 @@ class ProfileLightSensorTemplateDevicesController: UIViewController {
         
         sortBtn = UIButton(title: "Start".localizedString, titleSize: 14, titleColor: TextBlack_Color, normalImageName: "space_sort", target: self, action: #selector(sortBtnAction))
         sortBtn.setImagePosition(position: .left, spacing: SCRXFrom(4))
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: sortBtn)
+        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: sortBtn).withoutSharedBackground()
         
         setupUI()
         updateBottomViewUI()

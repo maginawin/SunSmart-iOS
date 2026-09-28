@@ -80,12 +80,12 @@ class SitesViewController: UIViewController {
         title = "sites".localizedString
         view.backgroundColor = Background_Color
         
-        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "menu_icon")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(menuClick))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "menu_icon")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(menuClick)).withoutSharedBackground()
 //        navigationItem.rightBarButtonItems = [
 //            UIBarButtonItem(customView: UIButton(normalImageName: "more_vertical", target: self, action: #selector(moreClick))),
 //            UIBarButtonItem(customView: UIButton(normalImageName: "import", target: self, action: #selector(importClick))),
 //        ]
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: UIButton(normalImageName: "import", target: self, action: #selector(importClick)))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: UIButton(normalImageName: "import", target: self, action: #selector(importClick))).withoutSharedBackground()
 
         NotificationCenter.default.addObserver(self, selector: #selector(refreshData), name: .init(SitesDataRefreshNotifiacationName), object: nil)
         

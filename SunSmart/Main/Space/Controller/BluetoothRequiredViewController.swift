@@ -26,7 +26,7 @@ class BluetoothRequiredViewController: UIViewController {
         showBluetoothRequiredUI()
         
 //        cbCentralManager = CBCentralManager(delegate: nil, queue: nil, options: [CBCentralManagerOptionShowPowerAlertKey: true])
-        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backItemClick))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backItemClick)).withoutSharedBackground()
     }
     
     override func viewDidAppear(_ animated: Bool) {

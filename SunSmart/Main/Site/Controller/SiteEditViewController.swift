@@ -82,7 +82,7 @@ final class SiteEditViewController: UIViewController {
             style: .done,
             target: self,
             action: #selector(close)
-        )
+        ).withoutSharedBackground()
         setupUI()
         registerLifecycleNotifications()
         updateTimeZoneDisplay()

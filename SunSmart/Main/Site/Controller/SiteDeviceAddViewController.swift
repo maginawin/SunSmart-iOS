@@ -77,11 +77,11 @@ class SiteDeviceAddViewController: UIViewController {
         title = "add_device".localizedString
         
         navigationBackBtn = UIButton(normalImageName: "navigation_back", target: self, action: #selector(backClick))
-        navigationItem.leftBarButtonItem = UIBarButtonItem(customView: navigationBackBtn)
+        navigationItem.leftBarButtonItem = UIBarButtonItem(customView: navigationBackBtn).withoutSharedBackground()
         
         scanAnimationView = UIImageView(image: UIImage(named: "loading"))
         scanAnimationView.isHidden = true
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: scanAnimationView)
+        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: scanAnimationView).withoutSharedBackground()
         
         if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString != self.site.meshUUID || !MeshNetworkManager.instance.currentNetworkKey.isPrimary {
             DispatchQueue.global().async {[weak self] in

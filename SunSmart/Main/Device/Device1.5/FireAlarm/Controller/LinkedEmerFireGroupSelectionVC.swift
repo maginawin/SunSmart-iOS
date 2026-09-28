@@ -91,7 +91,7 @@ final class LinkedEmerFireGroupSelectionVC: UIViewController {
     }
 
     private func setupNavigation() {
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: selectAllBtn)
+        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: selectAllBtn).withoutSharedBackground()
     }
 
     private func setupLayout() {

@@ -81,7 +81,7 @@ final class SyncGatewaysViewController: UIViewController {
             style: .done,
             target: self,
             action: #selector(backDidTap)
-        )
+        ).withoutSharedBackground()
         setupUI()
         bindRuntime()
         installLifecycleObservers()

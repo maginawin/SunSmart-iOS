@@ -48,7 +48,7 @@ class DeviceSwitchViewController: UIViewController {
         view.backgroundColor = Background_Color
         title = "switch".localizedString
         
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(back)).withoutSharedBackground()
         
         setupDataSource()
         setupUI()

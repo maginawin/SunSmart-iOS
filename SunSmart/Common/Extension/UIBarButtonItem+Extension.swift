@@ -10,6 +10,19 @@ import UIKit
 
 
 extension UIBarButtonItem {
+
+    /// Configure each app-owned item before attaching it, including dynamically replaced items.
+    @discardableResult
+    func withoutSharedBackground() -> Self {
+        if #available(iOS 26.0, *) {
+            // Legacy .done image items become prominent buttons with the new system design.
+            if image != nil, title == nil, style == .prominent {
+                style = .plain
+            }
+            hidesSharedBackground = true
+        }
+        return self
+    }
     
     convenience init(title: String, color: UIColor, font: UIFont = UIFont.systemFont(ofSize: 16, weight: .light), target: AnyObject?, sel: Selector?) {
         //        let barButtonItem = UIBarButtonItem(title: title, style: .done, target: tagter, action: sel)
@@ -26,6 +39,7 @@ extension UIBarButtonItem {
         
         attributes.updateValue(color.withAlphaComponent(0.5), forKey: .foregroundColor)
         self.setTitleTextAttributes(attributes, for: .disabled)
+        withoutSharedBackground()
         
     }
     

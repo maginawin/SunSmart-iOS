@@ -54,7 +54,7 @@ class GatewayAssociatedSpacesController: UIViewController {
         title = "associated_spaces".localizedString
         
         view.backgroundColor = Background_Color
-        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "help")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(help))
+        navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "help")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(help)).withoutSharedBackground()
         
         loadAssociatedSpaces()
     }

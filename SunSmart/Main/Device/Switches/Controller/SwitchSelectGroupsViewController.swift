@@ -71,7 +71,7 @@ class SwitchSelectGroupsViewController: UIViewController {
         }else {
             if editable {
                 selectAllBtn.isSelected = selectGroups.count == groups.count
-                navigationItem.rightBarButtonItem = UIBarButtonItem(customView: selectAllBtn)
+                navigationItem.rightBarButtonItem = UIBarButtonItem(customView: selectAllBtn).withoutSharedBackground()
             }
         }
     }

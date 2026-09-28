@@ -39,7 +39,7 @@ class SpaceVisitorListViewController: UIViewController {
         view.backgroundColor = Background_Color
         
         selectAllBtn.isHidden = true
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: selectAllBtn)
+        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: selectAllBtn).withoutSharedBackground()
         
         setupTableView()
         

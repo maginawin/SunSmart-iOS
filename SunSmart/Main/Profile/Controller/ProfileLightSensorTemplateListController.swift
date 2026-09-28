@@ -49,7 +49,7 @@ class ProfileLightSensorTemplateListController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
-        wm_pageController?.navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "profile_help")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(helpAction))
+        wm_pageController?.navigationItem.rightBarButtonItem = UIBarButtonItem(image: UIImage(named: "profile_help")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(helpAction)).withoutSharedBackground()
     }
     
     override func viewWillDisappear(_ animated: Bool) {

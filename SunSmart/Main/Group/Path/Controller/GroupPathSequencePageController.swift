@@ -51,7 +51,7 @@ class GroupPathSequencePageController: WMPageController {
         
         navigationItem.rightBarButtonItems = [
             UIBarButtonItem(title: "save".localizedString, color: TextBlack_Color, target: self, sel: #selector(saveAction)),
-            UIBarButtonItem(image: UIImage(named: "path_add")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(addItemAction))
+            UIBarButtonItem(image: UIImage(named: "path_add")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(addItemAction)).withoutSharedBackground()
         ]
         self.isModalInPresentation = true
         

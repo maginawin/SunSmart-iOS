@@ -301,11 +301,11 @@ class DeviceAddViewController: WMPageController, DeviceProtocol {
     private func setupUI() {
         
         navigationBackBtn = UIButton(normalImageName: "navigation_back", target: self, action: #selector(backClick))
-        navigationItem.leftBarButtonItem = UIBarButtonItem(customView: navigationBackBtn)
+        navigationItem.leftBarButtonItem = UIBarButtonItem(customView: navigationBackBtn).withoutSharedBackground()
         
         scanAnimationView = UIImageView(image: UIImage(named: "loading"))
         scanAnimationView.isHidden = true
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: scanAnimationView)
+        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: scanAnimationView).withoutSharedBackground()
         
         helpBtn = UIButton(normalImageName: "help", target: self, action: #selector(helpBtnAction))
         

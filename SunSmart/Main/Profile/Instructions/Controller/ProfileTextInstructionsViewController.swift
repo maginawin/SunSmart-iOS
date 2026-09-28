@@ -36,7 +36,7 @@ class ProfileTextInstructionsViewController: UIViewController {
 //        title = "calibration_instructions".localizedString
         view.backgroundColor = Background_Color
         
-        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(close)).withoutSharedBackground()
         
         setupUI()
     }

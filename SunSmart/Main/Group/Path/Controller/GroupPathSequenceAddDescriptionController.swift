@@ -124,7 +124,7 @@ final class GroupPathSequenceAddDescriptionController: UIViewController {
         super.viewDidLoad()
         
         navigationItem.title = mode.title
-        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .plain, target: self, action: #selector(closeAction))
+        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .plain, target: self, action: #selector(closeAction)).withoutSharedBackground()
         
         view.backgroundColor = Background_Color
         setupUI()

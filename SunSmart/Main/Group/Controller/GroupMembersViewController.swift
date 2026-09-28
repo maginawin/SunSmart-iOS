@@ -78,7 +78,7 @@ class GroupMembersViewController: UIViewController {
         }
         
         if isAddDevices {
-            navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backAction))
+            navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "navigation_back")?.withRenderingMode(.alwaysOriginal), style: .done, target: self, action: #selector(backAction)).withoutSharedBackground()
             functionView.setSyncButtonHidden(true)
             navigationItem.rightBarButtonItem?.title = "done".localizedString
             if space.isConfiguring {
