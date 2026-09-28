@@ -60,6 +60,7 @@ class ProfileDayNightLuxDevicesViewController: UIViewController, KeyboardScrolla
         view.backgroundColor = Background_Color
         
         sortBtn = UIButton(title: "Start".localizedString, titleSize: 14, titleColor: TextBlack_Color, normalImageName: "space_sort", target: self, action: #selector(sortBtnAction))
+        sortBtn.imageView?.contentMode = .scaleAspectFit
         sortBtn.setImagePosition(position: .left, spacing: SCRXFrom(4))
         
         

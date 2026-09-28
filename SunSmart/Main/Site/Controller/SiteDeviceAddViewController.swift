@@ -81,7 +81,7 @@ class SiteDeviceAddViewController: UIViewController {
         
         scanAnimationView = UIImageView(image: UIImage(named: "loading"))
         scanAnimationView.isHidden = true
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: scanAnimationView).withoutSharedBackground()
+        navigationItem.rightBarButtonItem = UIBarButtonItem(loadingImageView: scanAnimationView)
         
         if MeshNetworkManager.instance.meshNetwork?.uuid.uuidString != self.site.meshUUID || !MeshNetworkManager.instance.currentNetworkKey.isPrimary {
             DispatchQueue.global().async {[weak self] in

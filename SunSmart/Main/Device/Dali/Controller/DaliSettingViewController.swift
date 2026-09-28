@@ -60,7 +60,7 @@ class DaliSettingViewController: UIViewController {
         title = "dali_setting".localizedString
         view.backgroundColor = Background_Color
         
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: loadingImageView).withoutSharedBackground()
+        navigationItem.rightBarButtonItem = UIBarButtonItem(loadingImageView: loadingImageView)
         setupTableView()
     }
     

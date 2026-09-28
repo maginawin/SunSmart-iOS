@@ -338,7 +338,7 @@ class DeviceRestoreViewController: UIViewController {
         
         scanAnimationView = UIImageView(image: UIImage(named: "loading"))
         scanAnimationView.isHidden = true
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: scanAnimationView).withoutSharedBackground()
+        navigationItem.rightBarButtonItem = UIBarButtonItem(loadingImageView: scanAnimationView)
         
         setupUI()
         scanBtn.isSelected = true

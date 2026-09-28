@@ -305,7 +305,7 @@ class DeviceAddViewController: WMPageController, DeviceProtocol {
         
         scanAnimationView = UIImageView(image: UIImage(named: "loading"))
         scanAnimationView.isHidden = true
-        navigationItem.rightBarButtonItem = UIBarButtonItem(customView: scanAnimationView).withoutSharedBackground()
+        navigationItem.rightBarButtonItem = UIBarButtonItem(loadingImageView: scanAnimationView)
         
         helpBtn = UIButton(normalImageName: "help", target: self, action: #selector(helpBtnAction))
         
