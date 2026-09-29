@@ -1,9 +1,9 @@
 # Space Lights All 防连续点击：需求分析与开发方案
 
 - 日期：2026-09-29
-- 状态：待用户确认；本轮仅分析与规划，未修改业务代码，未运行构建或真机验证。
+- 状态：防连点组合及加载样式优化均已实施，通过针对性回归与 SunSmart generic iOS 编译。最新样式使用 Site 同步检查弹窗圆环，真实 UI / 设备响应待人工验收。
 - 工作树：`fix-delete-devices-260928`
-- 分支 / HEAD：`fix/delete-devices-260928` / `ee3b1c0a`。开始分析时工作树干净。
+- 分支：`fix/delete-devices-260928`；分析基线 `ee3b1c0a`，实施基线 `510e4b1f`。两次开始时工作树均干净；中间新增的已提交修改未改变本需求入口，本次修改尚未提交。
 - 本地入口：存在 `SunSmartLocal.xcworkspace`；`.local-sdk/nordic-sig-mesh-sdk` 指向 `/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk-worktrees/one-dev`。本方案不需要 SDK 修改或新 API。
 
 ## 结论
@@ -12,7 +12,7 @@
 
 需要明确：转圈表达短暂操作等待，到期表示允许再次点击；不能据此判断所有设备已执行成功。当前控制链没有聚合完成回执，现场响应时间是否完全落在这些分档内尚无运行证据。本次改善快速反复切换，不承诺解决设备离线、命令丢失或网络拥塞。
 
-建议同时确认计数口径、长按行为和页面生命周期边界，详见下文。
+计数口径、长按行为和页面生命周期边界均已由用户确认，详见下文。
 
 ## 已核对的实际行为
 
@@ -37,7 +37,7 @@
 - [LightGroupControlCommandSender.swift](../SunSmart/Common/Data/LightGroupControlCommandSender.swift)
 - [GroupViewController.swift](../SunSmart/Main/Group/Controller/GroupViewController.swift)
 
-## 建议确认的交互规则
+## 已确认的交互规则
 
 ### 1. 数量与时间
 
@@ -60,7 +60,7 @@
 4. 保留 All 名称及原有卡片布局，在图标位置显示 Group Auto 同风格转圈，使用品牌色；只旋转图标。
 5. 到期移除转圈，按当时的现有状态逻辑重绘 All，恢复点击。不在完成回调中写入旧开关状态，不添加成功提示。
 
-建议冷却期间同时屏蔽 All 长按进入调光面板，使 All 入口的等待交互一致。单灯控制、滚动、返回及其他页面维持现有行为。本次不限制其他控制入口、其他手机或物理开关。
+冷却期间同时屏蔽 All 长按进入调光面板，使 All 入口的等待交互一致。单灯控制、滚动、返回及其他页面维持现有行为。本次不限制其他控制入口、其他手机或物理开关。
 
 ### 3. 异常与生命周期
 
@@ -68,8 +68,7 @@
 - `.disable` 当前是汇总展示状态，并非点击入口现有的在线拦截。本次不额外用该状态增加新的连接/权限条件；沿用现有发送与应急处理。
 - 状态回报、权限刷新、`reloadData`、筛选、Cell 滚出再滚入，均从页面保存的截止时间恢复显示，不重启计时。
 - Lights 页面临时隐藏、切换页签后回到同一页面实例，以及前后台切换，按剩余时间恢复；期限已过立即恢复正常图标。
-- **建议生命周期边界：冷却归属于当前 Lights 页面实例；完整退出 Space、或分页实际销毁重建后结束本次页面冷却。** 不跨页面重建、App 重启或不同 Space 保存；不建立全局按 Space 索引的冷却缓存。
-- 如产品要求“退出重进同一 Space 也必须承接剩余时间”，需将状态放到 Space 会话层；这会扩大本次状态管理范围，应在实施前明确。默认采用上面的页面级边界。
+- **已确认生命周期边界：冷却归属于当前 Lights 页面实例；完整退出 Space、或分页实际销毁重建后结束本次页面冷却。** 不跨页面重建、App 重启或不同 Space 保存；不建立全局按 Space 索引的冷却缓存。
 - 离开页面清理显示层动画及定时唤醒；同一实例的截止时间保留。销毁时取消待执行任务，回调弱引用控制器；旧回调不能解除下一轮冷却。
 
 ## 开发方案与影响范围
@@ -99,7 +98,7 @@
 
 ## 验证与验收
 
-### 自动验证（确认并实施后执行）
+### 自动验证范围
 
 - 边界值：0、1、100、101、200、201 以及大规模数量。
 - 重复点击：一次有效点击只触发一次发送与一次目标切换；期限内多次点击被忽略；到期再次点击正常反向切换；被忽略点击不延长截止时间。
@@ -116,8 +115,59 @@
 3. 验证应急控制拦截、断连后到期可重试、空 Space 不显示 All，以及 iPhone / iPad 的图标尺寸与品牌色。
 4. 完整退出 Space 后重新进入，确认符合已选定的页面生命周期边界；Group Auto 和单灯操作维持原行为。
 
-自动行为测试与编译不替代真实设备响应和 UI 体验验收。本轮没有实际执行上述验证。
+自动行为测试与编译不替代真实设备响应和 UI 体验验收。上述人工步骤尚未执行。
 
-## 待确认
+## 实施与验证结果（2026-09-29 19:35）
 
-建议按以下组合实施：**完整 Lights 数量的 1 / 2 / 3 秒分档；点击立即执行；等待期间忽略 All 点击与长按；同一页面实例保留剩余时间；完整退出或页面销毁后不跨实例保存。**
+已按确认组合实施：**完整 Lights 数量的 1 / 2 / 3 秒分档；点击立即执行；等待期间忽略 All 点击与长按；同一页面实例保留剩余时间；完整退出或页面销毁后不跨实例保存。**
+
+- 生产改动集中在 `DeviceLightsViewController.swift` 和 `DeviceAllOnOffViewCell.swift`。控制器持有截止时间及可取消刷新任务；Cell 使用独立 loading 状态并复用 Group Auto 图标和旋转方法，重绘不重复启动已有旋转。
+- 计时采用 `clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW)`，包含系统休眠时间且不受系统日期调整影响；保持项目最低 iOS 15 兼容。SDK 自带 `clock_gettime(3)` 手册及 iPhoneOS SDK 声明已核对。到期任务只读取当前期限，不清除下一轮状态。
+- 页面隐藏、前后台及 Cell 显示/复用路径已接入恢复或清理；新增通知观察者在销毁时移除。没有修改 SDK、资源、国际化或工程 target 配置。
+
+| 验证 | 结果与证据边界 |
+| --- | --- |
+| `bash scripts/check_lights_all_control_cooldown.sh` | PASS；执行实际控制器点击、全开全关、长按调光入口、截止时间、生命周期方法及完整 All Cell 展示代码；UIKit / Mesh 使用替身，时钟可控 |
+| 新增行为覆盖 | 0 / 1 / 100 / 101 / 200 / 201 / 1000 数量、期限内连续点击、到期反向操作、初始存在开灯、空列表、应急拒绝、离线/待修复灯计数、保留关灯前亮度、`routeTest` 原行为、刷新复用、筛选隐藏后恢复、同实例离开返回、后台跨越期限、到期不补发、按最新状态恢复、iPad 资源选择、销毁取消与新页面无旧冷却 |
+| `bash scripts/check_device_lights_state_refresh.sh` | PASS；原有 hidden / coalesced / return / reconnect / manual refresh 回归通过。该夹具补充冷却方法替身，冷却逻辑由上一项独立执行 |
+| `git diff --check` | PASS |
+| SunSmart Debug generic iOS | `BUILD SUCCEEDED`；`SunSmartLocal.xcworkspace`、`CODE_SIGNING_ALLOWED=NO`，DerivedData 为 `SunSmart-fix-delete-devices-260928`；实际编译目标为 iOS 15.0 |
+
+本地 SDK 来源为 `one-dev`，revision `2598bd1`，开始实施时无未提交差异。本次没有引入新 SDK API 或发布依赖。构建有常规 AppIntents 元数据跳过提示，不影响成功结果。
+
+未执行真机安装或运行、Simulator、其他品牌和 Release 编译。真实 UIKit 动画、前后台通知与分页生命周期表现，以及 1 / 2 / 3 秒现场体验仍按上面的最短人工步骤验收。
+
+## 加载样式优化（2026-09-29 19:58 规划，20:01 完成）
+
+用户已明确参考 **进入 Site 后“Checking sync status…”弹窗中的圆环动画**，并确认实施。此次仅调整 All Cell 展示及对应测试，覆盖前文第一轮的 Group Auto 图标方案。
+
+### 已证实的差异
+
+- 优化前 All 使用 `group_auto_progress` / `group_auto_progress_big`，图标整体以 1 秒周期旋转。实际资源以接近完整的同心圆为主，方向性较弱；这可以解释为什么旋转不够直观，但本轮没有真实页面录像可量化视觉效果。
+- 指定弹窗由 [SiteEntryTimeZoneSyncOverlay.swift](../SunSmart/Main/Site/View/SiteEntryTimeZoneSyncOverlay.swift) 展示，加载图标是 `site_entry_sync_loading`：浅色底环透明度 0.3，加一段明显的粗弧；调用现有 `addRotationAnimation`，周期为 1.2 秒。
+- `site_entry_sync_loading` 为 42 × 42 的 SVG，并保留矢量表示。当前 All 的图标容器为 `SCRXFrom(40)` 正方形，可在既有布局内等比显示。
+- Site 数据请求还会显示 `XWHUDManager` 的通用小型加载框，使用 `hud_loading` 和 1.5 秒周期；用户已明确本次参考的是前面的同步检查弹窗。
+
+### 已确认的最小改动
+
+1. **只调整 `DeviceAllOnOffViewCell.swift` 的加载展示。** 将加载图标替换为 `site_entry_sync_loading`，沿用 All 的 `Bar_Color` 着色并保留图像透明度；SunSmart 的品牌色与该资源原色一致，其他品牌继续使用自己的主色。
+2. 图标保持在当前位置与尺寸，使用等比显示；iPhone / iPad 共用这一矢量资源。All 名称、卡片背景及到期后的开关图标保持现有表现。
+3. 旋转周期改为与指定弹窗相同的 **1.2 秒**，继续使用现有旋转方法与 All 独立的动画 key。重复重绘不重启动画，结束、复用和隐藏时仍清理动画。
+4. 复用图标资源和动画方法即可；直接嵌入整个弹窗会引入遮罩、模态交互和弹窗状态，不适合 All 卡片。本次无需新增组件或修改 Site 弹窗及共享动画方法。
+5. **1.2 秒是旋转一圈的周期；1 / 2 / 3 秒仍是操作冷却时长。** 时长分档、重复点击与长按拦截、命令发送、状态刷新、前后台及页面生命周期沿用已实施规则。
+
+### 关联影响和验证
+
+- 该资源已经用于 Site 进入检查、时区同步状态、网关搜索/同步及设备信息加载。直接引用、不修改资源和公共动画方法，不会改变这些使用方。
+- 资源位于共享资产目录；Lumineux 通过已有合并机制继承。无需新增资源、国际化文本或工程配置，五品牌共享 Cell 的加载图形会同步改善，颜色继续遵循原品牌配置。
+- 调整现有 `LightsAllControlCooldownTests.swift` 中的图标预期，并验证动画周期、连续重绘不重启、复用清理与到期恢复；继续运行 `scripts/check_lights_all_control_cooldown.sh`，覆盖原 1 / 2 / 3 秒及点击行为。
+- 若最终只修改 Cell 展示，不重新扩大控制器回归；实施后运行 `git diff --check` 与一次 SunSmart Debug generic iOS 编译。
+- 人工验收重点：All 圆环与指定弹窗的图形/节奏一致；All On / Off 背景下均清楚；iPhone / iPad 不拉伸、不偏心；1 秒等待可在一圈尚未结束时正常恢复，2 / 3 秒同理，不为转完整圈延长等待。
+
+### 本次实施与验证结果
+
+- `DeviceAllOnOffViewCell.swift` 已替换为 `site_entry_sync_loading`，保持品牌色、图标位置与尺寸，使用 `scaleAspectFit`；旋转周期为 1.2 秒，控制器及其冷却逻辑未进一步改动。
+- `bash scripts/check_lights_all_control_cooldown.sh`：PASS。更新了 iPhone / iPad 图标预期，并覆盖 1.2 秒旋转周期与等比显示配置；已有 1 / 2 / 3 秒边界、重复点击/长按、重绘不重启动画、复用清理、前后台恢复及销毁回归仍通过。
+- `git diff --check`：PASS。
+- `SunSmartLocal.xcworkspace / SunSmart / Debug / generic iOS / CODE_SIGNING_ALLOWED=NO`：20:01 输出 `BUILD SUCCEEDED`，沿用 `SunSmart-fix-delete-devices-260928` DerivedData。SDK 仍为 `one-dev` / `2598bd1`，无 SDK 修改。
+- 未执行真机或 Simulator。圆环透明度、实际旋转观感、On / Off 背景对比及 iPad 布局仍待人工验收；隔离测试仅证明资源与展示参数选择和状态行为。

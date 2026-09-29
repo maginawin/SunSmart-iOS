@@ -8,6 +8,7 @@
 import UIKit
 import NordicSigMeshSDK
 import CoreBluetooth
+import Darwin
 
 
 class DeviceLightsViewController: UIViewController {
@@ -61,6 +62,11 @@ class DeviceLightsViewController: UIViewController {
     private var allOnOffState: DeviceAllOnOffState = .disable
     /// 是否手动控制 全开/全关
     private var controlAllOn: Bool?
+    /// 页面级操作间隔，不代表设备执行完成；单调时钟包含后台和休眠时间。
+    private var allControlCooldownDeadline: TimeInterval?
+    private var allControlCooldownWorkItem: DispatchWorkItem?
+    private var allControlNow: () -> TimeInterval = { Double(clock_gettime_nsec_np(CLOCK_MONOTONIC_RAW)) / 1e9 }
+    private var allControlActivityObservations: [NSObjectProtocol] = []
     
     lazy var lightControlView: DeviceLightControlView = {
         let view = DeviceLightControlView(frame: self.view.bounds)
@@ -92,6 +98,8 @@ class DeviceLightsViewController: UIViewController {
     }
 
     deinit {
+        allControlCooldownWorkItem?.cancel()
+        allControlActivityObservations.forEach { NotificationCenter.default.removeObserver($0) }
         if let deviceNameFilterObservation {
             deviceNameFilterSession.removeObserver(deviceNameFilterObservation)
         }
@@ -110,6 +118,7 @@ class DeviceLightsViewController: UIViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         isPageVisible = true
+        refreshAllControlCooldown()
 //        devices.filter({ !$0.state }).count
         MeshLibManager.manager.register(self)
         MeshLibManager.manager.messageDelegate = self
@@ -124,6 +133,7 @@ class DeviceLightsViewController: UIViewController {
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         isPageVisible = false
+        suspendAllControlCooldownDisplay()
     }
 
     override func viewDidDisappear(_ animated: Bool) {
@@ -139,6 +149,14 @@ class DeviceLightsViewController: UIViewController {
     }
     
     private func addNotificationObserver() {
+        allControlActivityObservations = [
+            NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+                self?.refreshAllControlCooldown()
+            },
+            NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
+                self?.suspendAllControlCooldownDisplay()
+            }
+        ]
         NotificationCenter.default.addObserver(forName: .init(devicesAddNotificationName), object: nil, queue: nil) {[weak self] _ in
             //            self?.refreshData = true
             guard let self = self else { return }
@@ -460,11 +478,58 @@ class DeviceLightsViewController: UIViewController {
         }
         if showsAllControl,
            let item = collectionView.cellForItem(at: IndexPath(item: 0, section: 0)) as? DeviceAllOnOffViewCell {
-            if allOnOffState != .disable, let isOn = controlAllOn {
-                item.state = isOn ? .on : .off
-            }else {
-                item.state = allOnOffState
-            }
+            configureAllControlCell(item)
+        }
+    }
+
+    private var isAllControlCoolingDown: Bool {
+        guard let deadline = allControlCooldownDeadline else { return false }
+        return allControlNow() < deadline
+    }
+
+    private func configureAllControlCell(_ cell: DeviceAllOnOffViewCell) {
+        if allOnOffState != .disable, let isOn = controlAllOn {
+            cell.state = isOn ? .on : .off
+        } else {
+            cell.state = allOnOffState
+        }
+        cell.isLoading = isPageVisible && UIApplication.shared.applicationState == .active && isAllControlCoolingDown
+    }
+
+    private func toggleAllLights() {
+        guard !devices.isEmpty, !isAllControlCoolingDown,
+              !showEmergencyControlBlockedIfNeeded() else { return }
+        let seconds = devices.count <= 100 ? 1 : (devices.count <= 200 ? 2 : 3)
+        allControlCooldownDeadline = allControlNow() + Double(seconds)
+        controlAllOn = !(controlAllOn ?? (allOnOffState == .on))
+        refreshAllControlCooldown()
+        if controlAllOn == true {
+            allOnAction()
+        } else {
+            allOffAction()
+        }
+    }
+
+    private func refreshAllControlCooldown() {
+        allControlCooldownWorkItem?.cancel()
+        allControlCooldownWorkItem = nil
+        updateAllOnOffItemUI()
+        let now = allControlNow()
+        guard isPageVisible, UIApplication.shared.applicationState == .active,
+              let deadline = allControlCooldownDeadline, now < deadline else { return }
+        let work = DispatchWorkItem { [weak self] in
+            // 只重绘并检查当前期限；旧回调不能清除下一次点击的冷却。
+            self?.refreshAllControlCooldown()
+        }
+        allControlCooldownWorkItem = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + (deadline - now), execute: work)
+    }
+
+    private func suspendAllControlCooldownDisplay() {
+        allControlCooldownWorkItem?.cancel()
+        allControlCooldownWorkItem = nil
+        for case let cell as DeviceAllOnOffViewCell in collectionView.visibleCells {
+            cell.isLoading = false
         }
     }
     
@@ -597,6 +662,7 @@ class DeviceLightsViewController: UIViewController {
     
     /// 设备调节
     @objc func deviceAllSetting() {
+        guard !isAllControlCoolingDown else { return }
         if lightControlView.superview == nil {
             (self.wm_pageController?.view ?? view).addSubview(lightControlView)
 //            view.addSubview(lightControlView)
@@ -1167,11 +1233,7 @@ extension DeviceLightsViewController: UICollectionViewDataSource, UICollectionVi
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         if showsAllControl, indexPath.item == 0 {// 全开全关
             let allControlCell = collectionView.dequeueReusableCell(withReuseIdentifier: "allControlCell", for: indexPath) as! DeviceAllOnOffViewCell
-            if allOnOffState != .disable, let isOn = controlAllOn {
-                allControlCell.state = isOn ? .on : .off
-            }else {
-                allControlCell.state = allOnOffState
-            }
+            configureAllControlCell(allControlCell)
             return allControlCell
         }
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! DevicesViewCell
@@ -1201,6 +1263,16 @@ extension DeviceLightsViewController: UICollectionViewDataSource, UICollectionVi
         }
         return cell
     }
+
+    func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        if let cell = cell as? DeviceAllOnOffViewCell {
+            configureAllControlCell(cell)
+        }
+    }
+
+    func collectionView(_ collectionView: UICollectionView, didEndDisplaying cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        (cell as? DeviceAllOnOffViewCell)?.isLoading = false
+    }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.sectionInset.left - flowLayout.sectionInset.right - flowLayout.minimumInteritemSpacing * CGFloat(columnNum - 1)) / CGFloat(columnNum)
@@ -1211,20 +1283,7 @@ extension DeviceLightsViewController: UICollectionViewDataSource, UICollectionVi
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
         if showsAllControl, indexPath.item == 0 { // 全开/全关
-            guard !showEmergencyControlBlockedIfNeeded() else {
-                return
-            }
-            if let isOn = controlAllOn {
-                controlAllOn = isOn
-            }else {
-                controlAllOn = allOnOffState == .on
-            }
-            controlAllOn = !controlAllOn!
-            if controlAllOn! {
-                allOnAction()
-            }else {
-                allOffAction()
-            }
+            toggleAllLights()
         } else if let node = device(at: indexPath) { // 设备点击
             guard !node.isEmergencySignController else {
                 return

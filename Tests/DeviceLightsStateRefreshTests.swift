@@ -34,6 +34,12 @@ final class MeshNodeHeartbeatManager {
 
 // PRODUCTION_CONTROLLER_METHODS
 
+// All cooldown behavior is exercised separately by LightsAllControlCooldownTests.
+extension DeviceLightsViewController {
+    func refreshAllControlCooldown() {}
+    func suspendAllControlCooldownDisplay() {}
+}
+
 @main
 struct DeviceLightsStateRefreshTests {
     static func main() {

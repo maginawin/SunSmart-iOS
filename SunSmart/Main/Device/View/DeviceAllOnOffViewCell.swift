@@ -10,29 +10,49 @@ import UIKit
 class DeviceAllOnOffViewCell: DevicesViewCell {
     
     var state: DeviceAllOnOffState = .disable {
-        didSet {
-            self.progressView.isHidden = true
-            nameLabel.text = "all".localizedString
-            switch state {
-            case .on:
-                backgroundColor = .white
-                iconImageView.image = UIImage(named: "device_all_on")?.withTintColor(Bar_Color)
-                nameLabel.textColor = Title_Color
-            case .off:
-                iconImageView.image = UIImage(named: "device_all_on")?.withTintColor(Bar_Color)
-                nameLabel.textColor = Title_Color
-                backgroundColor = RGB(226, 226, 226)
-            case .disable:
-                nameLabel.textColor = RGB(148, 163, 184)
-                backgroundColor = .white
-                iconImageView.image = UIImage(named: "device_all_off")
-            }
+        didSet { updateAppearance() }
+    }
+
+    var isLoading = false {
+        didSet { updateAppearance() }
+    }
+
+    private func updateAppearance() {
+        progressView.isHidden = true
+        nameLabel.text = "all".localizedString
+        switch state {
+        case .on:
+            backgroundColor = .white
+            nameLabel.textColor = Title_Color
+        case .off:
+            backgroundColor = RGB(226, 226, 226)
+            nameLabel.textColor = Title_Color
+        case .disable:
+            backgroundColor = .white
+            nameLabel.textColor = RGB(148, 163, 184)
         }
+        if isLoading {
+            iconImageView.image = UIImage(named: "site_entry_sync_loading")?.withTintColor(Bar_Color)
+            if iconImageView.layer.animation(forKey: "allControlLoading") == nil {
+                iconImageView.layer.addRotationAnimation(duration: 1.2, repeatCount: .max, animationKey: "allControlLoading")
+            }
+        } else {
+            iconImageView.layer.removeAnimation(forKey: "allControlLoading")
+            iconImageView.image = state == .disable
+                ? UIImage(named: "device_all_off")
+                : UIImage(named: "device_all_on")?.withTintColor(Bar_Color)
+        }
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        isLoading = false
     }
     
     override init(frame: CGRect) {
         super.init(frame: frame)
         
+        self.iconImageView.contentMode = .scaleAspectFit
         self.iconImageView.snp.updateConstraints { make in
             make.top.equalTo(SCRYFrom(24))
         }
