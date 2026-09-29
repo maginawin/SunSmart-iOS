@@ -36,6 +36,7 @@ class SharingSettingViewController: UIViewController {
     private var options: [Options] = []
     /// 是否展示密码
     private var viewPassword: Bool = false
+    private var clearingEditor = false
     /// editor密码
 //    private var editorPassword: String?
 //    /// visitor密码
@@ -117,30 +118,31 @@ class SharingSettingViewController: UIViewController {
     
     /// 清除space editor
     private func clearSpaceEditorRequest(space: SpaceData) {
-        
-        guard let editor = space.editor else {
-            return
-        }
+        guard !clearingEditor, space.editor != nil else { return }
+        clearingEditor = true
+        let context = SpaceMembershipResponseContext.capture(account: UserData.currentUserId,
+            region: String(describing: UserData.currentServerRegion))
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
-        NetworkRequest.shared.request(.clearSpaceMember(siteId: space.siteId, spaceId: space.id, userId: editor.uuid, permission: .editor, force: false)) {[weak self] result in
+        Task { @MainActor [weak self] in
+            guard let self else { XWHUDManager.hide(); return }
+            defer { self.clearingEditor = false }
+            guard SpaceMembershipResponseContext.matches(context, account: UserData.currentUserId,
+                region: String(describing: UserData.currentServerRegion)) else { XWHUDManager.hide(); return }
+            let outcomes = await SpaceEditorReclaim.clear(spaces: [space], single: true)
             XWHUDManager.hide()
-            guard let self = self else { return }
-            switch result {
-            case .success(_):
+            guard SpaceMembershipResponseContext.matches(context, account: UserData.currentUserId,
+                region: String(describing: UserData.currentServerRegion)) else { return }
+            NotificationCenter.default.post(name: .init(spacesRefreshChangeNotificationName), object: nil)
+            guard self.viewIfLoaded?.window != nil else { return }
+            self.options = self.type.data.options
+            self.tableView.reloadData()
+            self.editorNameLabel?.text = space.editor?.name ?? "no_editor_yet".localizedString
+            if outcomes == [.cleared] {
                 XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
-                space.editor = nil
-                space.save()
-                self.options = self.type.data.options
-                self.tableView.reloadData()
-                self.editorNameLabel?.text = "no_editor_yet".localizedString
-                NotificationCenter.default.post(name: .init(spacesRefreshChangeNotificationName), object: nil)
-                
-            case .failure(let error):
-                if error == .editorBeingUsedSpace { // 正在使用空间
-                    SRAlertView(title: "notification".localizedString, message: "space_clear_editor_failed".localizedString, actions: [SRAlertAction(title: "confirm".localizedString)]).show()
-                }else {
-                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
-                }
+            } else {
+                let key = outcomes == [.busy] ? "space_clear_editor_failed" : "space_editor_reclaim_unconfirmed"
+                SRAlertView(title: "notification".localizedString, message: key.localizedString,
+                    actions: [SRAlertAction(title: "confirm".localizedString)]).show()
             }
         }
     }

@@ -58,6 +58,7 @@ class ShareAuthorityViewController: UIViewController {
     private var orderedType: SortOrder = .descending
     /// 正在加载空间数据中
     private var loadingSpacesData: Bool = false
+    private var clearingEditors = false
     
     /// 每行个数
     private var rowNum: Int = isIPad ? 4 : 2
@@ -186,57 +187,32 @@ class ShareAuthorityViewController: UIViewController {
     
     /// 批量清除space editor
     private func clearSpacesEditorRequest(spaces: [SpaceData]) {
-        
-//        let deleteEditorSpaces = spaces.filter({ $0.editor != nil })
-
+        guard !clearingEditors, !spaces.isEmpty else { return }
+        clearingEditors = true
+        let context = SpaceMembershipResponseContext.capture(account: UserData.currentUserId,
+            region: String(describing: UserData.currentServerRegion))
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
-        NetworkRequest.shared.request(.clearSpacesMembers(siteId: site.id, spaces: spaces.map({ $0.id }), permission: .editor, force: false)) {[weak self] result in
+        Task { @MainActor [weak self] in
+            guard let self else { XWHUDManager.hide(); return }
+            defer { self.clearingEditors = false }
+            guard SpaceMembershipResponseContext.matches(context, account: UserData.currentUserId,
+                region: String(describing: UserData.currentServerRegion)) else { XWHUDManager.hide(); return }
+            let outcomes = await SpaceEditorReclaim.clear(spaces: spaces)
             XWHUDManager.hide()
-            guard let self = self else { return }
-            switch result {
-            case .success(let response):
-                // 删除成员的结果
-                if let detail = JSON(response)["data"]["detail"].dictionaryObject as? [String: [String: Int]] {
-                    // 删除的Editor中正在使用space
-                    var usedEditorIds: [String] = []
-                    // 删除成功的Editor
-                    var successEditorIds: [String] = []
-                    detail.forEach({ data in
-                        usedEditorIds.append(contentsOf: data.value.filter({ $0.value == NetworkApiError.editorBeingUsedSpace.code }).map({ $0.key }))
-                        if data.value.isEmpty {
-                            if let space = spaces.first(where: { space in data.key == space.id }), let editorId = space.editor?.uuid {
-                                successEditorIds.append(editorId)
-                            }
-                        }else {
-                            successEditorIds.append(contentsOf: data.value.filter({ $0.value == 200 }).map({ $0.key }))
-                        }
-                    })
-                    // 删除editor成功的space更新缓存
-                    spaces.forEach({
-                        if let editorId = $0.editor?.uuid, successEditorIds.contains(editorId) {
-                            $0.editor = nil
-                            $0.save()
-                        }
-                    })
-                    self.isSelectState = false
-                    self.selectSpaces.removeAll()
-                    self.updateUI()
-                    
-                    // 通知外部site刷新space列表
-                    NotificationCenter.default.post(name: .init(spacesRefreshChangeNotificationName), object: true)
-                    
-                    if usedEditorIds.count > 0 { // 部分用户正在使用space，无法删除
-                        SRAlertView(title: "notification".localizedString, message: "spaces_clear_editor_failed".localizedString, actions: [SRAlertAction(title: "confirm".localizedString)]).show()
-                    }else {
-                        XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
-                    }
-                    
-                }else {
-                    XWHUDManager.showErrorTipHUD(NetworkApiError.unknown.localizedDescription)
-                }
-    
-            case .failure(let error):
-                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+            guard SpaceMembershipResponseContext.matches(context, account: UserData.currentUserId,
+                region: String(describing: UserData.currentServerRegion)) else { return }
+            self.isSelectState = false
+            self.selectSpaces.removeAll()
+            self.updateUI()
+            NotificationCenter.default.post(name: .init(spacesRefreshChangeNotificationName), object: true)
+            guard self.viewIfLoaded?.window != nil else { return }
+            if !outcomes.isEmpty, outcomes.allSatisfy({ $0 == .cleared }) {
+                XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
+            } else {
+                let onlyBusy = outcomes.contains(.busy) && outcomes.allSatisfy { $0 == .cleared || $0 == .busy }
+                let key = onlyBusy ? "spaces_clear_editor_failed" : "space_editor_reclaim_unconfirmed"
+                SRAlertView(title: "notification".localizedString, message: key.localizedString,
+                    actions: [SRAlertAction(title: "confirm".localizedString)]).show()
             }
         }
     }

@@ -16,6 +16,44 @@ private var jsonDecoder: JSONDecoder {
     return decoder
 }
 
+/// Cloud responses may encode an unknown optional VID as an empty string.
+/// Normalize only the decoding copy; retain the original recovery/upload evidence.
+enum CloudNodeImport {
+    static func decodingDictionary(_ dictionary: [String: Any]) -> [String: Any] {
+        var result = dictionary
+        if let uuid = dictionary["uuid"] as? String { result["UUID"] = uuid }
+        if dictionary["vid"] as? String == "" { result.removeValue(forKey: "vid") }
+        return result
+    }
+
+    static func decode(_ dictionary: [String: Any]) throws -> Node {
+        do {
+            let data = try JSONSerialization.data(withJSONObject: decodingDictionary(dictionary))
+            return try jsonDecoder.decode(Node.self, from: data)
+        } catch {
+            logDecodeFailure(error, kind: "node", address: dictionary["unicastAddress"] as? String)
+            throw error
+        }
+    }
+
+    static func logDecodeFailure(_ error: Error, kind: String, address: String?) {
+        #if DEBUG
+        let path: [CodingKey]
+        let category: String
+        switch error {
+        case DecodingError.dataCorrupted(let context): path = context.codingPath; category = "dataCorrupted"
+        case DecodingError.typeMismatch(_, let context): path = context.codingPath; category = "typeMismatch"
+        case DecodingError.valueNotFound(_, let context): path = context.codingPath; category = "valueNotFound"
+        case DecodingError.keyNotFound(let key, let context): path = context.codingPath + [key]; category = "keyNotFound"
+        default: path = []; category = "serialization"
+        }
+        let safeAddress = address.flatMap { $0.count == 4 && UInt16($0, radix: 16) != nil ? $0 : nil } ?? "unknown"
+        // DecodingError descriptions can include payload values. Log field paths only.
+        print("[SpaceImportDecode] kind=\(kind) address=\(safeAddress) field=\(path.map(\.stringValue).joined(separator: ".")) category=\(category)")
+        #endif
+    }
+}
+
 /// Stage timings use a monotonic clock; payloads and credentials are never logged.
 final class SiteImportTrace {
     private let performance = AppPerformance.begin("ImportOperation")
@@ -53,6 +91,9 @@ struct SpaceImportOutcome {
         _ reason: String,
         hardErrors: [ProximityLightingTopologyReconciler.HardError] = []
     ) -> SpaceImportOutcome {
+        #if DEBUG
+        print("[SpaceImport] result=rejected reason=\(reason)")
+        #endif
         return .init(
             status: .rejected,
             repairs: [],
@@ -253,10 +294,7 @@ private struct ProximityLightingImportPreflight {
                     continue
                 }
             }
-            var decodeNodeDict = nodeDict
-            if let uuid = nodeDict["uuid"] as? String { decodeNodeDict["UUID"] = uuid }
-            guard let data = try? JSONSerialization.data(withJSONObject: decodeNodeDict),
-                  let node = try? jsonDecoder.decode(Node.self, from: data) else {
+            guard let node = try? CloudNodeImport.decode(nodeDict) else {
                 warnings.append("invalidNodeForTopology[node=\(nodeAddress)]")
                 continue
             }
@@ -1929,7 +1967,9 @@ extension SpaceData {
                 schedules = list
             }
             let groups = groupDicts.compactMap { groupDict in
-                if let data = try? JSONSerialization.data(withJSONObject: groupDict), let group = try? jsonDecoder.decode(Group.self, from: data) {
+                do {
+                    let data = try JSONSerialization.data(withJSONObject: groupDict)
+                    let group = try jsonDecoder.decode(Group.self, from: data)
                     let groupJson = JSON(groupDict)
                     group.isVirtual = groupJson["isVirtual"].boolValue
                     group.subNetworkId = self.meshNetworkId
@@ -2108,20 +2148,37 @@ extension SpaceData {
                     }
 
                     return group
+                } catch {
+                    CloudNodeImport.logDecodeFailure(error, kind: "group", address: groupDict["address"] as? String)
+                    return nil
                 }
-                return nil
             }
-            guard groups.count == groupDicts.count,
-                  nodeDicts.allSatisfy({ dictionary in
-                      var node = dictionary
-                      if let uuid = node["uuid"] as? String { node["UUID"] = uuid }
-                      guard let data = try? JSONSerialization.data(withJSONObject: node) else { return false }
-                      guard let decoded = try? jsonDecoder.decode(Node.self, from: data) else { return false }
-                      return decoded.restoreSchedulerModelSnapshot(nodeData: dictionary)
-                  }),
-                  (referenceCleanup?.didChange != true
-                    || SpaceConfigurationSafety.preserveRemoteReferenceCleanup(self, payload: originalSpaceJsonData, candidate: spaceJsonData)),
-                  SpaceConfigurationSafety.beginImport(self, payload: spaceJsonData) else {
+            guard groups.count == groupDicts.count else {
+                continuation.resume(returning: .rejected("configurationGroupDecodeFailed"))
+                return
+            }
+            for (index, dictionary) in nodeDicts.enumerated() {
+                guard let decoded = try? CloudNodeImport.decode(dictionary) else {
+                    #if DEBUG
+                    print("[SpaceImport] space=\(self.id) nodeIndex=\(index) stage=nodeDecode")
+                    #endif
+                    continuation.resume(returning: .rejected("configurationNodeDecodeFailed"))
+                    return
+                }
+                guard decoded.restoreSchedulerModelSnapshot(nodeData: dictionary) else {
+                    #if DEBUG
+                    print("[SpaceImport] space=\(self.id) nodeIndex=\(index) stage=schedulerRestore")
+                    #endif
+                    continuation.resume(returning: .rejected("configurationSchedulerRestoreFailed"))
+                    return
+                }
+            }
+            guard referenceCleanup?.didChange != true
+                    || SpaceConfigurationSafety.preserveRemoteReferenceCleanup(self, payload: originalSpaceJsonData, candidate: spaceJsonData) else {
+                continuation.resume(returning: .rejected("configurationReferenceStagingFailed"))
+                return
+            }
+            guard SpaceConfigurationSafety.beginImport(self, payload: spaceJsonData) else {
                 continuation.resume(returning: .rejected("configurationStagingFailed"))
                 return
             }
@@ -2183,12 +2240,7 @@ extension SpaceData {
             }
             // 设备
             let nodes: [Node] = nodeDicts.compactMap { nodeDict -> Node? in
-                var decodeNodeDict = nodeDict
-                if let uuid = nodeDict["uuid"] as? String { // 换算成大写UUID提供Node解码
-                    decodeNodeDict.updateValue(uuid, forKey: "UUID")
-                }
-                
-                if let data = try? JSONSerialization.data(withJSONObject: decodeNodeDict), let node = try? jsonDecoder.decode(Node.self, from: data) {
+                if let node = try? CloudNodeImport.decode(nodeDict) {
                     let nodeJson = JSON(nodeDict)
                     node.restoreCreatedTimestamp(nodeJson["createdTimestamp"].int64 ?? 0)
                     if let version = nodeJson["versionSEQ"].uInt32 {
@@ -2693,10 +2745,14 @@ extension SpaceData {
                     rejectionReason: nil
                 )
             }
-            guard applied, let outcome = appliedOutcome,
-                  SpaceConfigurationSafety.finishImport(self, validatedTopology: shouldCommitProximityTopology) else {
+            guard applied, let outcome = appliedOutcome else {
                 SpaceConfigurationSafety.block(self, reason: "importPersistenceFailed")
                 continuation.resume(returning: .rejected("configurationPersistenceFailed"))
+                return
+            }
+            guard SpaceConfigurationSafety.finishImport(self, validatedTopology: shouldCommitProximityTopology) else {
+                SpaceConfigurationSafety.block(self, reason: "importPersistenceFailed")
+                continuation.resume(returning: .rejected("configurationFinalizationFailed"))
                 return
             }
             if !shouldCommitProximityTopology {
@@ -2734,16 +2790,11 @@ extension Node {
                 return
             }
             
-            var decodeNodeDict = nodeJsonData
-            if let uuid = nodeJsonData["uuid"] as? String { // 换算成大写UUID提供Node解码
-                decodeNodeDict.updateValue(uuid, forKey: "UUID")
-            }
-            
-            guard let data = try? JSONSerialization.data(withJSONObject: decodeNodeDict), let node = try? jsonDecoder.decode(Node.self, from: data) else {
+            guard let node = try? CloudNodeImport.decode(nodeJsonData) else {
                 continuation.resume(returning: nil)
                 return
             }
-            let nodeJson = JSON(decodeNodeDict)
+            let nodeJson = JSON(nodeJsonData)
             node.restoreCreatedTimestamp(nodeJson["createdTimestamp"].int64 ?? 0)
             if let version = nodeJson["versionSEQ"].uInt32 {
                 node.versionSEQ = version

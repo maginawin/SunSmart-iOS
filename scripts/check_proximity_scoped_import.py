@@ -53,6 +53,9 @@ parts = [source('SunSmart/Common/Data/AppPerformance.swift'), source('SunSmart/C
          test_source,
          (root / 'Tests/Group/DeviceDeletionRecoveryExecutionTests.swift').read_text(),
          (root / 'Tests/Group/SiteDeviceOwnershipExecutionTests.swift').read_text()]
+imports = source('SunSmart/Common/Data/ImportData.swift')
+if 'enum CloudNodeImport {' in imports:
+    parts.append(section(imports, 'enum CloudNodeImport {', '\n/// Stage timings'))
 with tempfile.TemporaryDirectory(prefix='proximity-scoped-import-') as directory:
     directory = Path(directory)
     harness = directory / 'Harness.swift'

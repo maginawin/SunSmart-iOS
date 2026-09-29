@@ -21,7 +21,10 @@ final class SpaceRecoveryViewController: UIViewController {
         switch reason {
         case "spaceLeaving": return "space_leave_pending".localizedString
         case "leaveConfirmed": return "space_leave_cleanup_pending".localizedString
-        case "configurationPersistenceFailed", "configurationStagingFailed": return "space_recovery_storage_failed".localizedString
+        case "configurationNodeDecodeFailed", "configurationGroupDecodeFailed", "configurationSchedulerRestoreFailed",
+             "invalidRemoteSchedulerModelStates", "missingRequiredArray": return "space_recovery_data_failed".localizedString
+        case "configurationPersistenceFailed", "configurationStagingFailed", "configurationReferenceStagingFailed": return "space_recovery_storage_failed".localizedString
+        case "configurationFinalizationFailed": return "space_recovery_finalize_failed".localizedString
         case "networkIdentityMismatch", "invalidNetworkIdentity": return "space_recovery_identity_failed".localizedString
         case "staleMembershipResponse", "staleImportPreparation": return "space_recovery_changed".localizedString
         case "networkUnavailable": return "space_recovery_network_failed".localizedString

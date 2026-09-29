@@ -794,7 +794,8 @@
 "space_clear_editor_failed" = "该空间正被编辑者使用，无法清除，请稍后再试。";
 "batch_share_revoked_message" = "批量分享撤销后将无法恢复，并将从列表中删除。";
 "spaces_clear_editor_message" = "确定清除该空间中所有编辑者？";
-"spaces_clear_editor_failed" = "部分空间正被编辑者使用，无法立即删除，请稍后再试。";
+"spaces_clear_editor_failed" = "部分空间正被编辑者使用，这些编辑者未能清除，请稍后再试。";
+"space_editor_reclaim_unconfirmed" = "尚未确认所有目标空间的编辑者均已清除。请先核对成员列表，再决定是否重试。";
 "spaces_clear_visitors_message" = "确定清除该空间中所有访客？";
 "spaces_reset_visitor_password_message" = "确定重新生成该空间中所有访客密码？";
 "spaces_reset_editor_password_message" = "确定重新生成该空间中所有编辑者密码？";
@@ -2315,11 +2316,13 @@
 "space_leave_unsynced" = "部分修改尚未得到云端确认。你可以重试同步，或在本机保留副本后退出。保留的副本不会自动上传。";
 "space_leave_keep_copy" = "保留副本并退出";
 "space_recovery_retry" = "重试";
-"space_recovery_storage_failed" = "无法在此手机保存配置，之前保存的数据已保留。你可以重试恢复或退出此空间。";
-"space_recovery_identity_failed" = "无法确认此空间的网络身份。你可以重新获取云端数据或退出此空间。";
+"space_recovery_storage_failed" = "无法在此手机保存配置，之前保存的数据已保留。请重试恢复。";
+"space_recovery_data_failed" = "无法读取云端配置，之前保存的数据已保留。请重新获取最新云端数据并重试。";
+"space_recovery_finalize_failed" = "配置已保存，但恢复尚未完成。请重试恢复后再修改配置。";
+"space_recovery_identity_failed" = "无法确认此空间的网络身份。请重新获取最新云端数据并重试。";
 "space_recovery_changed" = "恢复期间空间状态发生了变化，请重试以获取当前状态。";
-"space_recovery_network_failed" = "暂时无法获取云端数据。联网后可重试，也可以申请退出此空间。";
-"space_recovery_unavailable" = "此空间尚未完成恢复。你可以重试恢复或退出空间。在完整配置就绪前，暂时无法修改配置。";
+"space_recovery_network_failed" = "暂时无法获取云端数据，请联网后重试。";
+"space_recovery_unavailable" = "此空间尚未完成恢复，请重试恢复。在完整配置就绪前，暂时无法修改配置。";
 "space_saved_copies" = "空间保留副本";
 "space_saved_copies_description" = "此处可查看本机保留的副本，退出空间后仍可访问。部分副本仅包含诊断记录。恢复副本需要重新取得该空间的当前权限。";
 "space_leave_copy_failed" = "无法保存副本。你可以重试，或不保留副本并退出。继续退出可能丢失尚未同步的修改。";

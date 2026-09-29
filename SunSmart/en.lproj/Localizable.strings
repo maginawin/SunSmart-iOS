@@ -776,7 +776,8 @@
 "space_clear_editor_failed" = "The space is being used by the editor and cannot be cleared.Please try again later.";
 "batch_share_revoked_message" = "After the batch share is revoked, it cannot be restored and is deleted from the list.";
 "spaces_clear_editor_message" = "Are you sure to clear all the editors in the space?";
-"spaces_clear_editor_failed" = "Some spaces are being used by the editor. These spaces cannot be deleted immediately. Please try again later.";
+"spaces_clear_editor_failed" = "Some spaces are being used by the editor. These editors could not be cleared. Please try again later.";
+"space_editor_reclaim_unconfirmed" = "Editor removal could not be confirmed for every Space. Check the member list before trying again.";
 "spaces_clear_visitors_message" = "Are you sure to clear all the visitors in the space?";
 "spaces_reset_visitor_password_message" = "Are you sure to regenerate all visitor passwords in the space?";
 "spaces_reset_editor_password_message" = "Are you sure to regenerate all editor passwords in the space?";
@@ -2299,11 +2300,13 @@
 "space_leave_unsynced" = "Some changes have not been confirmed by the cloud. Retry synchronization, or keep a copy on this phone and leave. The saved copy will not be uploaded automatically.";
 "space_leave_keep_copy" = "Keep a Copy and Leave";
 "space_recovery_retry" = "Retry";
-"space_recovery_storage_failed" = "The configuration could not be saved on this phone. Your previous saved data has been kept. Retry recovery, or leave this Space.";
-"space_recovery_identity_failed" = "This Space’s network identity could not be verified. Retry with the latest cloud data, or leave this Space.";
+"space_recovery_storage_failed" = "The configuration could not be saved on this phone. Your previous saved data has been kept. Retry recovery.";
+"space_recovery_data_failed" = "The cloud configuration could not be read. Your previous saved data has been kept. Retry with the latest cloud data.";
+"space_recovery_finalize_failed" = "The configuration was saved, but recovery could not be completed. Retry recovery before making changes.";
+"space_recovery_identity_failed" = "This Space’s network identity could not be verified. Retry with the latest cloud data.";
 "space_recovery_changed" = "The Space changed while recovery was running. Retry to load its current state.";
-"space_recovery_network_failed" = "Cloud data is unavailable right now. Retry when online, or request to leave this Space.";
-"space_recovery_unavailable" = "This Space has not finished restoring. Retry recovery or leave this Space. Configuration changes are unavailable until a complete copy is ready.";
+"space_recovery_network_failed" = "Cloud data is unavailable right now. Retry when online.";
+"space_recovery_unavailable" = "This Space has not finished restoring. Retry recovery. Configuration changes are unavailable until a complete copy is ready.";
 "space_saved_copies" = "Saved Space Copies";
 "space_saved_copies_description" = "Copies kept on this phone are available here, including after leaving a Space. Some copies contain diagnostic records only. Restoring a copy requires current access to that Space.";
 "space_leave_copy_failed" = "The copy could not be saved. Retry, or leave without keeping a copy. Unsynchronized changes may be lost if you continue.";
