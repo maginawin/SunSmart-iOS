@@ -17,7 +17,7 @@ final class LightsBatchDeletionOperation {
     let site: SiteData
     let space: SpaceData
     let network: MeshNetwork
-    let allNodes: [Node]
+    private(set) var allNodes: [Node]
     let switches: [DeviceSwitchData]
     let gateway: GatewayModel?
     private let siteNetwork: MeshNetwork?
@@ -34,6 +34,7 @@ final class LightsBatchDeletionOperation {
     private var gatewayRemoved = false
     private var didRun = false
     private var acknowledged = Set<String>()
+    private var latestLifecycle: ProximityLightingLifecycleResult?
 
     init?(site: SiteData, space: SpaceData) {
         let manager = MeshNetworkManager.instance
@@ -79,6 +80,7 @@ final class LightsBatchDeletionOperation {
     func run(selectedNodes: [Node], all: Bool, forceLocal: Bool) async -> Outcome {
         guard !didRun, isCurrent, !manager.busy else { return .init(errorKey: "batch_delete_context_changed") }
         didRun = true; deletesAll = all
+        defer { allNodes.removeAll() }
         let targets = all ? allNodes : selectedNodes
         guard targets.allSatisfy({ target in network.nodes.contains { $0 === target } }) else {
             return .init(errorKey: "batch_delete_context_changed")
@@ -165,7 +167,11 @@ final class LightsBatchDeletionOperation {
             meshResult = await send(targets: targets, gatewayNode: nil, forceLocal: forceLocal)
         }
         guard isCurrent, let meshResult else { return .init(errorKey: "batch_delete_context_changed") }
-        var outcome = cleanup(ids: meshResult.succeeded, force: forceLocal)
+        // Unconfirmed devices remain in the Space. Cancel only their unexecuted
+        // intents before computing the survivors' final synchronization tasks.
+        // A Leave receipt, if any, is retained by cancel() for recovery.
+        for id in meshResult.failed { contexts[id]?.cancel() }
+        var outcome = await cleanup(ids: meshResult.succeeded)
         outcome.failed.formUnion(meshResult.failed.intersection(Set(contexts.keys)))
         outcome.changed = outcome.changed || gatewayRemoved
         if let gatewayResult, case .failed = gatewayResult {
@@ -177,9 +183,9 @@ final class LightsBatchDeletionOperation {
         return outcome
     }
 
-    func forceRemaining(_ failed: Set<String>) -> Outcome {
+    func forceRemaining(_ failed: Set<String>) async -> Outcome {
         guard isCurrent else { return .init(errorKey: "batch_delete_context_changed") }
-        var outcome = cleanup(ids: failed.intersection(Set(contexts.keys)), force: true)
+        var outcome = await cleanup(ids: failed.intersection(Set(contexts.keys)))
         cleanupSwitches(outcome: &outcome, force: true)
         finishChange(outcome.changed)
         return outcome
@@ -243,17 +249,20 @@ final class LightsBatchDeletionOperation {
         })
     }
 
-    private func cleanup(ids: Set<String>, force: Bool) -> Outcome {
-        var outcome = Outcome()
-        for id in ids {
-            guard let context = contexts[id] else { continue }
-            guard !force || context.prepareForForceRemoval() else { outcome.failed.insert(id); continue }
-            if let result = context.forceRemove() {
-                outcome.lifecycle.append(result); outcome.changed = true
-            } else {
-                outcome.failed.insert(id); outcome.cleanupPending = true
-            }
+    private func cleanup(ids: Set<String>) async -> Outcome {
+        let started = ProcessInfo.processInfo.systemUptime
+        let result = await DevicePermanentDeletionContext.forceRemoveBatch(
+            ids.sorted().compactMap { contexts[$0] }, isCurrent: { self.isCurrent })
+        if result.changed { latestLifecycle = result.lifecycle }
+        for id in result.completed { contexts.removeValue(forKey: id) }
+        var outcome = Outcome(failed: result.failed, cleanupPending: result.cleanupPending, changed: result.changed)
+        if result.interrupted { outcome.errorKey = "batch_delete_context_changed" }
+        if !result.cleanupPending && !result.interrupted, let latestLifecycle {
+            outcome.lifecycle = [latestLifecycle]
         }
+        #if DEBUG
+        print("[LightsBatchDeletion] cleanup requested=\(ids.count) completed=\(result.completed.count) failed=\(result.failed.count) interrupted=\(result.interrupted) seconds=\(ProcessInfo.processInfo.systemUptime - started)")
+        #endif
         return outcome
     }
 

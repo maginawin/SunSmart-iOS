@@ -85,6 +85,7 @@ final class Model {
 // is exercised separately by NodeSyncStatusRefreshTests.
 final class NodeSyncReadContext {
     static var current: NodeSyncReadContext? { nil }
+    func configurationAvailable(for node: Node, group: Group?) -> Bool? { nil }
     func plan(for node: Node, contextGroup: Group?) -> ProximityLightingTopologyPlanner.Plan? { nil }
     func mergedTarget(for node: Node, local: ProximityLightingTopologyPolicy.Target) -> ProximityLightingTopologyPolicy.Target? { local }
 }
@@ -187,13 +188,14 @@ enum SpaceConfigurationSafety {
     static var pendingImport = false
     static var journals: [String: SpaceDeletionJournal] = [:]
     static var journalWritesFail = false
+    static var protectionReads = 0
     static let defaultsSuite = "SpaceDeletionTests-" + UUID().uuidString
     static let testDefaults = UserDefaults(suiteName: defaultsSuite)!
     private static func key(_ space: SpaceData) -> String { space.id }
     private static var recoveryStates: [String: SpaceRecoveryState] = [:]
     static func recoveryState(_ space: SpaceData) throws -> SpaceRecoveryState {
         if let state = recoveryStates[space.id] { return state }
-        let state = SpaceRecoveryState(identity: .init(account: "test", region: "test",
+        let state = SpaceRecoveryState(identity: .init(account: UserData.currentUserId, region: UserData.currentServerRegion,
             space: .init(siteId: space.siteId, spaceId: space.id, meshUUID: space.meshUUID, networkId: space.meshNetworkId)))
         recoveryStates[space.id] = state
         return state
@@ -207,10 +209,24 @@ enum SpaceConfigurationSafety {
     static func isBlocked(_ space: SpaceData) -> Bool { blocked || hasPendingDeletionCleanup(space) }
     static func hasPendingImport(_ space: SpaceData) -> Bool { pendingImport }
     static func checkpoint(_ space: SpaceData, refresh: Bool = false) -> Bool { true }
-    static func configurationAvailable(for node: Node, group: Group?) -> Bool {
-        guard let uuid = node.network?.uuid.uuidString,
-              let space = SpaceData.stored.values.first(where: { $0.meshUUID == uuid && $0.meshNetworkId == node.subNetworkId }) else { return true }
-        return !isBlocked(space)
+    static func isBlocked(meshUUID: String, networkId: String) -> Bool {
+        guard let space = SpaceData.stored.values.first(where: { $0.meshUUID == meshUUID && $0.meshNetworkId == networkId }) else { return blocked }
+        return isBlocked(space)
+    }
+    // CONFIGURATION_AVAILABLE
+    static func syncReadRequest(meshUUID: String, networkId: String) -> SpaceProtectionReadRequest {
+        protectionReads += 1
+        let scope = SpaceProtectionReadRequest.Scope(account: UserData.currentUserId, region: UserData.currentServerRegion,
+                                                     meshUUID: meshUUID, networkID: networkId)
+        let space = SpaceData.stored.values.first { $0.meshUUID == meshUUID && $0.meshNetworkId == networkId }!
+        var state = try! recoveryState(space)
+        state.directoryName = space.id
+        let folder = try! directory(space)
+        try! FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try! JSONEncoder().encode(state).write(to: cleanupRoot.appendingPathComponent(scope.storageKey + ".json"))
+        try! JSONEncoder().encode(deletionJournal(space)).write(to: folder.appendingPathComponent("device-deletions.json"))
+        testDefaults.set(blocked ? "test-block" : nil, forKey: "spaceConfigurationBlocked." + scope.storageKey)
+        return .init(scope: scope, root: cleanupRoot, defaults: testDefaults)
     }
     static func block(_ space: SpaceData, reason: String) {}
     static func deletionJournal(_ space: SpaceData) throws -> SpaceDeletionJournal {
@@ -465,6 +481,9 @@ enum NodeSyncData: Equatable {
         require(Node.decodeCount > afterChanged, "initialization changes legacy interpretation and must invalidate")
 
         print("PASS: scoped import/planner/coordinator execution, colliding Sites/Spaces, no cloud side effects, destructive import guard, explicit deletion and equivalent logical edits")
+        // Existing ownership fixtures pump RunLoop.main synchronously. Keep
+        // those before the first suspension of this command-line entry point.
+        try await testBatchDeletionCleanup()
     }
 
     static func testRestoreKeepsPeerSyncPending() throws {

@@ -29,6 +29,8 @@ if 'static func hasPendingReferenceCleanup(' in safety:
 # Only dependencies/storage boundaries are doubled. Receipt decisions run the
 # actual safety methods against an isolated UserDefaults suite.
 test_source = test_source.replace('// RECEIPT_METHODS', receipt_methods.replace('UserDefaults.standard', 'testDefaults'))
+test_source = test_source.replace('// CONFIGURATION_AVAILABLE', section(safety,
+    '    static func configurationAvailable(for node:', '    static var currentConfigurationAvailable:'))
 parts = [source('SunSmart/Common/Data/AppPerformance.swift'), source('SunSmart/Common/Data/SpaceProtectionReadSnapshot.swift'), section(source('SunSmart/Common/Data/ImportData.swift'), 'final class SiteImportTrace', '\nstruct SpaceImportOutcome'),
          section(adapter, start, '\nextension SpaceData'),
          source('SunSmart/Common/Data/DeviceScheduleAddressCleanup.swift'),

@@ -33,6 +33,155 @@ enum XWHUDManager {
 }
 
 extension ScopedImportTests {
+    @MainActor
+    static func testBatchDeletionCleanup() async throws {
+        // Same batch size as the incident, with one surviving PA member. This
+        // checks real cleanup work counts, not device/radio performance.
+        let batch = try fixture(networkId: "BATCH-128")
+        activate(batch)
+        for address in 8..<135 {
+            let object: [String: Any] = ["uuid": "batch-\(address)", "unicastAddress": Address(address).hex,
+                "elements": [["models": [["modelId": "0A780001", "subscribe": ["C000"]]]]]]
+            let node = try jsonDecoder.decode(Node.self, from: JSONSerialization.data(withJSONObject: object))
+            node.network = batch.network; node.subNetworkId = batch.space.meshNetworkId
+            batch.network.nodes.append(node)
+        }
+        let targets = batch.network.nodes.filter { $0 !== batch.nodes[1] }
+        require(targets.count == 128, "incident-sized batch")
+        let contexts = targets.map { DevicePermanentDeletionContext(node: $0, space: batch.space) }
+        let scene = Scene([2, 2, 5, 8, 134]); batch.network.scenes = [scene]
+        let schedule = Schedule(); schedule.nodeAddresses = [2, 5, 8, 134]; schedule.needDeleteNodeAddresses = [2, 5, 134]
+        Schedule.stored[batch.space.meshUUID + batch.space.meshNetworkId] = [schedule]
+        var notifications = 0
+        let observer = NotificationCenter.default.addObserver(forName: deviceDeletionCleanupCompletedNotification,
+                                                              object: nil, queue: nil) { _ in notifications += 1 }
+        defer { NotificationCenter.default.removeObserver(observer) }
+        MeshNetwork.loadCount = 0; SpaceConfigurationSafety.protectionReads = 0
+        let result = await DevicePermanentDeletionContext.forceRemoveBatch(contexts, isCurrent: { true })
+        require(result.completed.count == 128 && result.failed.isEmpty && !result.cleanupPending, "all acknowledged/forced targets complete")
+        require(MeshNetwork.loadCount == 2, "batch performs one persisted precheck and one readback, not two per device")
+        require(SpaceConfigurationSafety.protectionReads == 1, "survivor tasks share one protection snapshot")
+        require(notifications == 1 && batch.space.dirtyCount == 1, "one notification and one logical commit per batch")
+        require(batch.network.nodes.count == 1 && batch.network.nodes[0] === batch.nodes[1], "unselected device survives")
+        require(scene.addresses == [5] && schedule.nodeAddresses == [5] && schedule.needDeleteNodeAddresses == [5], "remove all selected Scene/Schedule references including duplicates")
+        require(result.lifecycle?.syncDatas.contains(where: { $0.node === batch.nodes[1] }) == true, "surviving PA device receives final neighbor cleanup")
+        require(batch.nodes[1].proximityLightingNeighborAddresses == [2], "planning does not pretend device observations have changed")
+        let repeated = await DevicePermanentDeletionContext.forceRemoveBatch(contexts, isCurrent: { true })
+        require(repeated.completed.count == 128 && repeated.failed.isEmpty && !repeated.changed && MeshNetwork.loadCount == 2,
+                "repeated completion neither deletes nor reloads the network")
+
+        // Failed Mesh targets are cancelled before cleanup, then can be prepared
+        // again for Force Delete without keeping the whole batch protected.
+        let partial = try fixture(networkId: "BATCH-PARTIAL")
+        activate(partial)
+        let success = DevicePermanentDeletionContext(node: partial.nodes[0], space: partial.space)
+        let failed = DevicePermanentDeletionContext(node: partial.nodes[1], space: partial.space)
+        failed.cancel()
+        let first = await DevicePermanentDeletionContext.forceRemoveBatch([success], isCurrent: { true })
+        require(first.lifecycle?.syncDatas.count == 1 && !SpaceConfigurationSafety.hasPendingDeletionCleanup(partial.space), "cancelled failed target does not suppress survivor synchronization")
+        let forced = await DevicePermanentDeletionContext.forceRemoveBatch([failed], isCurrent: { true })
+        require(forced.completed.count == 1 && partial.network.nodes.isEmpty && forced.lifecycle?.syncDatas.isEmpty == true,
+                "Force Delete produces the final empty topology instead of retaining the previous survivor task")
+
+        let storageFailure = try fixture(networkId: "BATCH-WRITE-FAIL")
+        activate(storageFailure)
+        let storageContexts = storageFailure.nodes.map { DevicePermanentDeletionContext(node: $0, space: storageFailure.space) }
+        storageFailure.nodes[1].deletionFails = true
+        let storageResult = await DevicePermanentDeletionContext.forceRemoveBatch(storageContexts, isCurrent: { true })
+        require(storageResult.completed == [storageFailure.nodes[0].uuid] && storageResult.failed == [storageFailure.nodes[1].uuid], "failed persistent removal is not reported as completed")
+        require(storageFailure.network.nodes.count == 1 && storageResult.lifecycle?.syncDatas.count == 1, "failed physical-local removal preserves device and final peer work")
+
+        let receiptFailure = try fixture(networkId: "BATCH-RECEIPT-WRITE-FAIL")
+        activate(receiptFailure)
+        let receiptContexts = receiptFailure.nodes.map { DevicePermanentDeletionContext(node: $0, space: receiptFailure.space) }
+        require(receiptContexts.allSatisfy { $0.recordLeave(evidence: "acknowledged") }, "both targets have durable Leave receipts")
+        // Exercise the ownership-sensitive pending-journal guard while invoking
+        // real batch cleanup. The full operation guard runs in the context suite.
+        let ownsPendingEntries = {
+            let owned = Set(receiptContexts.compactMap(\.preparedEntryID))
+            return try! SpaceConfigurationSafety.deletionJournal(receiptFailure.space).entries.allSatisfy {
+                $0.stage == .cleaned || owned.contains($0.id)
+            }
+        }
+        receiptFailure.nodes[1].deletionFails = true
+        let receiptResult = await DevicePermanentDeletionContext.forceRemoveBatch(receiptContexts, isCurrent: ownsPendingEntries)
+        require(!receiptResult.interrupted && receiptResult.completed == [receiptFailure.nodes[0].uuid]
+                && receiptResult.failed == [receiptFailure.nodes[1].uuid] && receiptResult.cleanupPending,
+                "receipt-backed local failure must not interrupt cleanup of already removed peers")
+        require(receiptFailure.space.triggerZones[1].items.map(\.deviceAddress) == [5], "successful peer cleanup is committed")
+        require(ownsPendingEntries() && receiptContexts[1].isPrepared, "Force Delete entry guard remains authorized for retained receipt")
+        require(SpaceConfigurationSafety.updateDeletionJournal(receiptFailure.space) { journal in
+            for index in journal.entries.indices {
+                journal.entries[index].leaveReceipt = .init(evidence: "acknowledged", notBefore: 0, createdTimestamp: 1)
+            }
+        }, "make receipts eligible for recovery")
+        DevicePermanentDeletionContext.resume(space: receiptFailure.space)
+        require(receiptFailure.network.nodes.count == 1 && receiptFailure.network.nodes[0] === receiptFailure.nodes[1],
+                "automatic recovery cannot take over a receipt still owned by the live operation")
+        receiptFailure.nodes[1].deletionFails = false
+        let receiptRetry = await DevicePermanentDeletionContext.forceRemoveBatch([receiptContexts[1]], isCurrent: ownsPendingEntries)
+        require(receiptRetry.completed == [receiptFailure.nodes[1].uuid] && !receiptRetry.interrupted
+                && !receiptRetry.cleanupPending && receiptFailure.network.nodes.isEmpty,
+                "Force Delete retry completes the receipt-backed failure")
+
+        let transactionFailure = try fixture(networkId: "BATCH-TRANSACTION-FAIL")
+        activate(transactionFailure)
+        var recoveryContexts = transactionFailure.nodes.map { DevicePermanentDeletionContext(node: $0, space: transactionFailure.space) }
+        SunSmartDataManager.shared.failTransactions = true
+        let pending = await DevicePermanentDeletionContext.forceRemoveBatch(recoveryContexts, isCurrent: { true })
+        require(pending.cleanupPending && pending.completed.isEmpty && pending.failed.count == 2, "transaction failure retains recoverable deletion")
+        SunSmartDataManager.shared.failTransactions = false
+        recoveryContexts.removeAll()
+        MeshNetwork.loadCount = 0
+        DevicePermanentDeletionContext.resume(space: transactionFailure.space)
+        require(!SpaceConfigurationSafety.hasPendingDeletionCleanup(transactionFailure.space) && transactionFailure.space.deviceCount == 0, "restart finishes failed batch cleanup")
+        require(MeshNetwork.loadCount == 3, "recovery loads once and completes the batch once")
+
+        let interrupted = try fixture(networkId: "BATCH-INTERRUPTED")
+        activate(interrupted)
+        // Reuse the large node shape so the operation must yield and recheck.
+        for target in targets {
+            let object: [String: Any] = ["uuid": target.uuid, "unicastAddress": (target.primaryUnicastAddress + 200).hex,
+                "elements": [["models": [["modelId": "0A780001", "subscribe": ["C000"]]]]]]
+            let node = try jsonDecoder.decode(Node.self, from: JSONSerialization.data(withJSONObject: object))
+            node.network = interrupted.network; node.subNetworkId = interrupted.space.meshNetworkId
+            interrupted.network.nodes.append(node)
+        }
+        var interruptedContexts = interrupted.network.nodes.map { DevicePermanentDeletionContext(node: $0, space: interrupted.space) }
+        let originalCount = interrupted.network.nodes.count
+        var checks = 0
+        let stopped = await DevicePermanentDeletionContext.forceRemoveBatch(interruptedContexts, isCurrent: { checks += 1; return checks == 1 })
+        require(stopped.interrupted && stopped.cleanupPending && stopped.lifecycle == nil, "context change stops between durable slices")
+        require(interrupted.network.nodes.count > 0 && interrupted.network.nodes.count < originalCount, "only the completed slice was removed")
+        let remainingCount = interrupted.network.nodes.count
+        interruptedContexts.removeAll()
+        DevicePermanentDeletionContext.resume(space: interrupted.space)
+        require(interrupted.network.nodes.count == remainingCount && !SpaceConfigurationSafety.hasPendingDeletionCleanup(interrupted.space), "recovery cleans removed instances and retains unexecuted targets")
+
+        let reused = try fixture(networkId: "BATCH-REUSED")
+        activate(reused)
+        let stale = DevicePermanentDeletionContext(node: reused.nodes[0], space: reused.space)
+        reused.nodes[0].createdTimestamp += 1
+        let rejected = await DevicePermanentDeletionContext.forceRemoveBatch([stale], isCurrent: { true })
+        require(rejected.completed.isEmpty && reused.network.nodes.count == 2, "a replacement incarnation cannot be deleted")
+
+        // The snapshot optimization executes the production authorization read.
+        let protection = SpaceConfigurationSafety.syncReadRequest(meshUUID: reused.space.meshUUID, networkId: reused.space.meshNetworkId).read()
+        require(SpaceConfigurationSafety.configurationAvailable(for: reused.nodes[1], protectionSnapshot: protection), "current snapshot allows the valid survivor")
+        SpaceProtectionReadGeneration.invalidate()
+        require(!SpaceConfigurationSafety.configurationAvailable(for: reused.nodes[1], protectionSnapshot: protection), "mutation invalidates a cached protection result")
+        let freshProtection = SpaceConfigurationSafety.syncReadRequest(meshUUID: reused.space.meshUUID, networkId: reused.space.meshNetworkId).read()
+        let other = try fixture(networkId: "BATCH-OTHER")
+        require(!SpaceConfigurationSafety.configurationAvailable(for: other.nodes[1], protectionSnapshot: freshProtection), "snapshot cannot authorize a different Space")
+        let movedContext = DevicePermanentDeletionContext(node: reused.nodes[1], space: reused.space)
+        reused.nodes[1].network = other.network
+        let moved = await DevicePermanentDeletionContext.forceRemoveBatch([movedContext], isCurrent: { true })
+        require(!moved.changed && moved.failed.count == 1 && reused.network.nodes.count == 2 && other.network.nodes.count == 2,
+                "a Node rebound to another network cannot direct deletion to that network's database")
+        reused.nodes[1].network = reused.network
+        print("BatchDeletionCleanup passed: 128 devices, 2 network loads, 1 protection snapshot, 1 notification; failure/retry/cancellation/recovery covered")
+    }
+
     static func activate(_ fixture: Fixture) {
         MeshNetworkManager.instance.meshNetwork = fixture.network
         MeshNetworkManager.instance.currentNetworkKey.networkId = fixture.space.meshNetworkId
@@ -130,6 +279,39 @@ extension ScopedImportTests {
         require(!SpaceConfigurationSafety.hasPendingDeletionCleanup(interrupted.space), "restart retries the removed Node")
         require(other.network.nodes.count == 2 && other.space.triggerZones[1].items.count == 2, "same UUID/address/Network ID in another Site remains unchanged")
         require(interrupted.space.triggerZones[1].items.map(\.deviceAddress) == [5], "cleanup targets the original Site")
+
+        // The first stale intent must not starve a later recoverable deletion
+        // when another provisioning instance now occupies its address.
+        let collision = try fixture(networkId: "RECOVERY-ADDRESS-REUSED")
+        activate(collision)
+        var collisionContexts = collision.nodes.map { DevicePermanentDeletionContext(node: $0, space: collision.space) }
+        let collisionEntryIDs = collisionContexts.compactMap(\.preparedEntryID)
+        collision.nodes.forEach { collision.network.remove(node: $0) }
+        collisionContexts.removeAll()
+        var replacementJSON = (payload()["nodes"] as! [[String: Any]])[0]
+        replacementJSON["uuid"] = "replacement-instance"
+        let occupyingNode = try jsonDecoder.decode(Node.self, from: JSONSerialization.data(withJSONObject: replacementJSON))
+        occupyingNode.network = collision.network; occupyingNode.subNetworkId = collision.space.meshNetworkId
+        collision.network.nodes.append(occupyingNode)
+        let collisionScene = Scene([2, 5]); collision.network.scenes = [collisionScene]
+        let collisionSchedule = Schedule(); collisionSchedule.nodeAddresses = [2, 5]; collisionSchedule.needDeleteNodeAddresses = [2, 5]
+        Schedule.stored[collision.space.meshUUID + collision.space.meshNetworkId] = [collisionSchedule]
+        MeshNetwork.loadCount = 0
+        DevicePermanentDeletionContext.resume(space: collision.space)
+        let collisionJournal = try SpaceConfigurationSafety.deletionJournal(collision.space)
+        require(collisionJournal.entries.first { $0.id == collisionEntryIDs[1] }?.stage == .cleaned,
+                "a conflicting first recovery entry must not starve later valid entries")
+        require(collisionJournal.entries.first { $0.id == collisionEntryIDs[0] }?.stage == .prepared,
+                "address reuse retains the conflicting deletion guard")
+        require(collision.network.nodes.count == 1 && collision.network.nodes[0] === occupyingNode,
+                "recovery preserves the replacement instance")
+        require(collision.space.triggerZones[1].items.map(\.deviceAddress) == [2]
+                && collisionScene.addresses == [2] && collisionSchedule.nodeAddresses == [2]
+                && collisionSchedule.needDeleteNodeAddresses == [2], "only safely removed addresses lose their references")
+        require(MeshNetwork.loadCount == 3 && collision.space.dirtyCount == 1, "mixed recovery still performs one batch completion")
+        DevicePermanentDeletionContext.resume(space: collision.space)
+        require(collision.space.dirtyCount == 1 && collision.network.nodes[0] === occupyingNode,
+                "repeated recovery neither recommits cleanup nor removes the replacement")
 
         // Journal failure occurs before Reset and must not authorize removal.
         activate(other)

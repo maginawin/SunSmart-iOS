@@ -1687,9 +1687,11 @@ extension Node {
     /// 获取需要同步的邻近照明数据
     func getNodeSyncProximityLighting(
         group: Group? = nil,
-        topologyPlan: ProximityLightingTopologyPlanner.Plan? = nil
+        topologyPlan: ProximityLightingTopologyPlanner.Plan? = nil,
+        protectionSnapshot: SpaceProtectionReadSnapshot? = nil
     ) -> NodeSyncData? {
-        guard SpaceConfigurationSafety.configurationAvailable(for: self, group: group) else { return nil }
+        guard SpaceConfigurationSafety.configurationAvailable(for: self, group: group,
+                                                              protectionSnapshot: protectionSnapshot) else { return nil }
         guard self.sunricherVendorModel != nil else {
             return nil
         }

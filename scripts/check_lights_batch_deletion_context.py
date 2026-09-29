@@ -29,7 +29,7 @@ fixture = fixture.replace('// SAFETY_METHODS', '\n'.join([
     section(safety, '    static func hasPendingImport(', '    #if DEBUG'),
 ]).replace('UserDefaults.standard', 'testDefaults'))
 preparation = section(source('DevicePermanentDeletionCleanup.swift'),
-    'final class DevicePermanentDeletionContext {', '    func cancel()') + '\n}\n'
+    'final class DevicePermanentDeletionContext {', '    @discardableResult\n    func prepareForForceRemoval()') + '\n}\n'
 
 with tempfile.TemporaryDirectory(prefix='lights-deletion-context-') as folder:
     folder = Path(folder)

@@ -1299,16 +1299,27 @@ enum SpaceConfigurationSafety {
                            meshUUID: meshUUID, networkID: networkId), root: recoveryRoot, defaults: .standard)
     }
 
-    static func configurationAvailable(for node: Node, group: Group? = nil) -> Bool {
-        if let value = NodeSyncReadContext.current?.configurationAvailable(for: node, group: group) { return value }
+    static func configurationAvailable(for node: Node, group: Group? = nil,
+                                       protectionSnapshot: SpaceProtectionReadSnapshot? = nil) -> Bool {
+        if protectionSnapshot == nil,
+           let value = NodeSyncReadContext.current?.configurationAvailable(for: node, group: group) { return value }
         let group = group ?? node.group
         if let group, !group.isVirtual, group.info.profileLoadFailed || group.info.topologyLoadFailed { return false }
         guard let uuid = node.network?.uuid.uuidString,
-              let networkId = node.subNetworkId else { return true }
+              let networkId = node.subNetworkId else { return protectionSnapshot == nil }
         if node.network?.groups.contains(where: {
             !$0.isVirtual && $0.subNetworkId == networkId
                 && ($0.info.profileLoadFailed || $0.info.topologyLoadFailed)
         }) == true { return false }
+        if let protectionSnapshot {
+            // This is a pure read optimization, never deletion authorization.
+            // A changed generation/account/network fails closed.
+            guard protectionSnapshot.scope.account == UserData.currentUserId,
+                  protectionSnapshot.scope.region == String(describing: UserData.currentServerRegion),
+                  protectionSnapshot.scope.meshUUID == uuid,
+                  protectionSnapshot.scope.networkID == networkId else { return false }
+            return !protectionSnapshot.isBlocked
+        }
         return !isBlocked(meshUUID: uuid, networkId: networkId)
     }
 

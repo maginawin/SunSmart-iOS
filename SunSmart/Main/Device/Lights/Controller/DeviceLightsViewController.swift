@@ -981,15 +981,23 @@ class DeviceLightsViewController: UIViewController {
                     SRAlertAction(title: "force_delete".localizedString, style: .destructive,
                                   performsActionAfterDismiss: true, actionHandler: { [weak self] _ in
                         guard let self else { return }
-                        var forced = operation.forceRemaining(outcome.failed)
-                        forced.lifecycle = outcome.lifecycle + forced.lifecycle
-                        // Force only resolves Space-node failures. A separate
-                        // Gateway/server cleanup failure must remain visible.
-                        if let error = outcome.errorKey {
-                            forced.errorKey = error
-                            forced.cleanupPending = true
+                        self.view.isUserInteractionEnabled = false
+                        self.navigationController?.interactivePopGestureRecognizer?.isEnabled = false
+                        XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
+                        Task { [self] in
+                            var forced = await operation.forceRemaining(outcome.failed)
+                            XWHUDManager.hide()
+                            self.view.isUserInteractionEnabled = true
+                            self.navigationController?.interactivePopGestureRecognizer?.isEnabled = true
+                            guard self.isPageVisible else { self.isDeletingDevice = false; self.batchDeletion = nil; return }
+                            // Use the final topology, not tasks captured before
+                            // Force Delete removed additional devices.
+                            if let error = outcome.errorKey {
+                                forced.errorKey = error
+                                forced.cleanupPending = true
+                            }
+                            self.finishBatchDeletion(forced)
                         }
-                        self.finishBatchDeletion(forced)
                     })
                 ]).show()
             } else { finishBatchDeletion(outcome) }

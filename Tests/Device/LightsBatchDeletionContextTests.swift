@@ -134,6 +134,20 @@ struct LightsBatchDeletionContextTests {
         operation.contexts[second.uuid.uuidString] = secondContext
         expect(operation.isCurrent, "all intents owned by this batch permit continuation")
 
+        secondContext.cancel()
+        expect(!secondContext.isPrepared && secondContext.preparedEntryID == nil,
+               "cancelling an unexecuted intent releases ownership")
+        expect(!tryJournal(space).entries.contains { $0.nodeUUID == second.uuid.uuidString }, "unexecuted intent is removed")
+        expect(operation.isCurrent, "cancelled unexecuted intent does not block the batch")
+        expect(context.recordLeave(evidence: "acknowledged"), "persist Leave receipt before local deletion")
+        let ownedEntryID = context.preparedEntryID
+        context.cancel()
+        expect(context.isPrepared && context.preparedEntryID == ownedEntryID,
+               "local deletion failure retains ownership of its durable Leave receipt")
+        expect(tryJournal(space).entries.first?.leaveReceipt != nil, "cancellation retains the receipt for recovery")
+        expect(operation.isCurrent, "retained receipt permits this batch to finish peers and retry Force Delete")
+        expect(!space.deviceOperates.contains(.delete), "retained receipt still blocks unrelated operations")
+
         for stage in [SpaceDeletionJournal.Entry.Stage.removed, .cleaned, .prepared] {
             expect(SpaceConfigurationSafety.updateDeletionJournal(space) { $0.entries[0].stage = stage }, "stage persisted")
             expect(operation.isCurrent, "own deletion remains current through cleanup and force retry")

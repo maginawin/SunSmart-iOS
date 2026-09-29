@@ -241,7 +241,10 @@ enum ProximityLightingLifecycleCoordinator {
             transaction: transaction,
             normalized: normalized,
             didChange: didChange,
-            clearSyncStateCache: didChange
+            clearSyncStateCache: didChange,
+            // Confirmed deletion builds tasks only after its journal/readback
+            // barrier. Intermediate tasks are blocked by its own pending entries.
+            includeSyncDatas: confirmedDeletionAddresses == nil
         )
     }
 
@@ -323,7 +326,8 @@ enum ProximityLightingLifecycleCoordinator {
         transaction: ProximityLightingLifecycleTransaction,
         normalized: Reconciler.Result,
         didChange: Bool,
-        clearSyncStateCache: Bool
+        clearSyncStateCache: Bool,
+        includeSyncDatas: Bool = true
     ) -> ProximityLightingLifecycleResult {
         let candidateAddresses = Reconciler.candidateDeviceAddresses(
             old: transaction.oldResult,
@@ -343,14 +347,14 @@ enum ProximityLightingLifecycleCoordinator {
         if clearSyncStateCache {
             candidateNodes.forEach { $0.clearSyncStateCache() }
         }
-        let syncDatas = makeSyncDatas(
+        let syncDatas = includeSyncDatas ? makeSyncDatas(
             plan: normalized.plan,
             nodes: candidateNodes.filter {
                 !overCapacityAddresses.contains(
                     ProximityLightingTopologyPlanner.normalizedAddress(for: $0)
                 )
             }
-        )
+        ) : []
         return .init(
             didChange: didChange,
             plan: normalized.plan,
