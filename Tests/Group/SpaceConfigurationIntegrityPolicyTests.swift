@@ -103,9 +103,37 @@ struct SpaceConfigurationIntegrityPolicyTests {
         var missingTarget = sceneSchedule
         missingTarget["sceneAddress"] = NSNull()
         remote["schedules"] = [missingTarget, groupSchedule]
-        precondition(P.scheduleTargetIssue(in: remote) != nil)
+        precondition(P.scheduleTargetIssue(in: remote) == nil,
+                     "Explicitly empty scene targets are supported saved schedules")
+        precondition(P.scheduleTargetsData(remote) != nil)
         precondition(P.scheduleTargetsData(remote) != expected,
                      "Server-side sceneAddress loss must not confirm an upload")
+
+        for enabled in [true, false] {
+            missingTarget["enabled"] = enabled
+            let empty: [String: Any] = ["scenes": [[String: Any]](), "schedules": [missingTarget]]
+            precondition(P.scheduleTargetIssue(in: empty) == nil,
+                         "An empty scene target remains valid whether enabled or disabled")
+            let emptyTargets = P.scheduleTargetsData(empty)
+            precondition(emptyTargets != nil)
+            let decoded = try! JSONSerialization.jsonObject(with: JSONSerialization.data(withJSONObject: empty)) as! [String: Any]
+            precondition(P.scheduleTargetsData(decoded) == emptyTargets,
+                         "Explicit null must survive a JSON round trip and confirm the same target")
+        }
+        for malformed in ["", "0007", 6, true, [String](), [String: String]()] as [Any] {
+            var invalid = sceneSchedule
+            invalid["sceneAddress"] = malformed
+            var empty = missingTarget
+            empty["id"] = 1
+            let payload: [String: Any] = ["scenes": [scene], "schedules": [empty, invalid]]
+            precondition(P.scheduleTargetIssue(in: payload) != nil,
+                         "An empty target must not bypass validation of subsequent scene references")
+            precondition(P.scheduleTargetsData(payload) == nil)
+        }
+        var absent = sceneSchedule
+        absent.removeValue(forKey: "sceneAddress")
+        precondition(P.scheduleTargetsData(["scenes": [scene], "schedules": [absent]]) == nil,
+                     "An omitted field is not an explicitly empty target")
 
         var unknownTarget = sceneSchedule
         unknownTarget["sceneAddress"] = "0007"
@@ -113,6 +141,9 @@ struct SpaceConfigurationIntegrityPolicyTests {
         precondition(P.scheduleTargetIssue(in: remote) != nil)
         remote["schedules"] = [sceneSchedule, sceneSchedule]
         precondition(P.scheduleTargetIssue(in: remote) != nil)
+        remote["schedules"] = [missingTarget, missingTarget]
+        precondition(P.scheduleTargetIssue(in: remote) != nil,
+                     "Explicitly empty targets must still have unique schedule IDs")
         remote["schedules"] = [groupSchedule]
         precondition(P.scheduleTargetsData(remote) != expected)
         remote.removeValue(forKey: "schedules")

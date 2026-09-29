@@ -405,6 +405,9 @@ enum SpaceConfigurationIntegrityPolicy {
                 return "invalidScheduleIdentityOrTarget"
             }
             if target == 2 {
+                // The editor can persist a scene schedule with no selected scene.
+                // Only explicit null is empty; omitted or invalid references still fail.
+                if schedule["sceneAddress"] is NSNull { continue }
                 guard let number = schedule["sceneAddress"] as? String,
                       sceneNumbers.contains(number) else { return "missingSceneTarget:\(id)" }
             }
@@ -413,6 +416,7 @@ enum SpaceConfigurationIntegrityPolicy {
     }
 
     /// An additive readback check for new submissions. Old receipts lack this field.
+    /// Empty targets retain their schedule identity and differ from every valid scene address.
     static func scheduleTargetsData(_ payload: [String: Any]) -> Data? {
         guard scheduleTargetIssue(in: payload) == nil,
               let schedules = payload["schedules"] as? [[String: Any]] else { return nil }

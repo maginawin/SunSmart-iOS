@@ -265,6 +265,7 @@ final class NetworkRequest {
         try await testCloudSiteConfirmation()
         try await testDirectUploadConfirmation()
         try await testSceneTargetReadback()
+        try await testEmptySceneTargetReadback()
         try await testSchedulerModelReadback()
         try await testEmptyGroupAddressRecovery()
         try await testSiteHandoffReadback()
@@ -580,6 +581,8 @@ final class NetworkRequest {
         var missingTarget = submitted
         missingTarget["schedules"] = [["id": 0, "selectTarget": 2, "sceneAddress": NSNull()]]
         NetworkRequest.shared.result = .success(["data": missingTarget])
+        let directMismatch = await S.verifyUploadedConfiguration(space, payload: submitted)
+        precondition(!directMismatch, "Direct readback must detect a lost nonempty scene target")
         let calls = NetworkRequest.shared.calls
         if case .success = await S.resumeUpload(space) {
             preconditionFailure("A stripped scene target cannot confirm the upload")
@@ -589,6 +592,59 @@ final class NetworkRequest {
         if case .failure = await S.resumeUpload(space) { preconditionFailure("Correct readback must finish the receipt") }
         precondition(!S.hasPendingUpload(space) && !S.isBlocked(space))
         print("PASS: scene target readback mismatch retains receipt and succeeds on retry")
+    }
+
+    @MainActor static func testEmptySceneTargetReadback() async throws {
+        typealias S = SpaceConfigurationSafety
+        let request = NetworkRequest.shared
+        for enabled in [true, false] {
+            let space = SpaceData("empty-scene-target-\(enabled)")
+            var submitted = space.payload
+            submitted["scenes"] = [["number": "0001", "name": "Scene 1"], ["number": "0002", "name": "Scene 2"]]
+            let schedule: [String: Any] = ["id": 0, "name": "Schedule 1", "enabled": enabled,
+                "selectTarget": 2, "sceneAddress": NSNull(), "action": 2, "hour": 8,
+                "minute": 0, "dayOfWeek": 12, "fadeTime": 4,
+                "groupAddresses": [], "deviceAddresses": [], "profiles": []]
+            submitted["schedules"] = [schedule]
+            guard let context = S.prepareSubmission(space, payload: submitted) else {
+                preconditionFailure("An explicitly empty scene target must permit a durable upload receipt")
+            }
+            precondition(context.submission?.scheduleTargets != nil)
+            precondition(S.markSubmissionAccepted(context, space: space))
+            request.result = .failure(.noNetwork)
+            if case .success = await S.resumeUpload(space) {
+                preconditionFailure("An unavailable readback must retain the empty-target receipt")
+            }
+            precondition(S.hasPendingUpload(space) && space.lastUploadCloudTimestamp == nil)
+
+            var changed = schedule
+            changed["sceneAddress"] = "0001"
+            var omitted = schedule
+            omitted.removeValue(forKey: "sceneAddress")
+            for schedules in [[changed], [omitted], [[String: Any]]()] {
+                var remote = submitted
+                remote["schedules"] = schedules
+                request.result = .success(["data": remote])
+                let directMatches = await S.verifyUploadedConfiguration(space, payload: submitted)
+                precondition(!directMatches, "Empty targets must not absorb added targets, missing fields or deleted schedules")
+                if case .success = await S.resumeUpload(space) {
+                    preconditionFailure("Changed empty-target readback must not confirm an upload")
+                }
+                let pending = try S.recoveryState(space)
+                precondition(pending.submission?.id == context.submission?.id
+                    && space.lastUploadCloudTimestamp == nil)
+            }
+
+            let readback = try JSONSerialization.jsonObject(with: JSONSerialization.data(withJSONObject: submitted)) as! [String: Any]
+            request.result = .success(["data": readback])
+            let directMatches = await S.verifyUploadedConfiguration(space, payload: submitted)
+            precondition(directMatches, "Matching empty targets must pass direct readback")
+            if case .failure = await S.resumeUpload(space) {
+                preconditionFailure("Matching empty-target retry must finish the receipt")
+            }
+            precondition(!S.hasPendingUpload(space) && space.lastUploadCloudTimestamp == 50)
+        }
+        print("PASS: enabled/disabled empty scene targets submit, retain receipts on failed/changed readback, and confirm on matching retry")
     }
 
     @MainActor static func testSchedulerModelReadback() async throws {
