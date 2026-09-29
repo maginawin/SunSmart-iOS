@@ -203,7 +203,9 @@ private struct ProximityLightingImportPreflight {
         if let zoneObjects = payloadJson["triggerZones"].arrayObject as? [[String: Any]],
            let data = try? JSONSerialization.data(withJSONObject: zoneObjects),
            let decoded = try? jsonDecoder.decode([SpaceTriggerZone].self, from: data) {
-            triggerZones = decoded
+            // Old exporters also emit [] when they do not understand Space zones.
+            // Keep saved empty slots; only schema 1 declares an explicit clear.
+            triggerZones = schemaVersion == nil && decoded.isEmpty && !initialize ? nil : decoded
         } else if schemaVersion == 1 {
             return nil
         } else {
@@ -1818,7 +1820,8 @@ extension SpaceData {
                 return
             }
             if !resumingImport, SpaceConfigurationIntegrityPolicy.legacySpaceZoneDeletionNeedsReview(
-                spaceJsonData, hasLocalZones: !self.triggerZones.isEmpty) {
+                spaceJsonData, hasLocalZoneMembers: self.triggerZonesLoadFailed
+                    || self.triggerZones.contains(where: { !$0.items.isEmpty })) {
                 SpaceConfigurationSafety.block(self, reason: "legacySpaceZoneDeletionNeedsReview")
                 continuation.resume(returning: .skipped)
                 return

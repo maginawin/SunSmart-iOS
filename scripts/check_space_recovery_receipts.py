@@ -46,12 +46,16 @@ imports = read('SunSmart/Common/Data/ImportData.swift')
 metadata = section(imports,
     '    func applyRemoteSpaceMetadata(', '    /// 更新空间内基本数据')
 test = read('Tests/Group/SpaceRecoveryReceiptTests.swift').replace('// METADATA_METHOD', metadata)
-# Execute the production update prefix through both async freshness guards.
+# Execute the production update prefix through both async freshness guards,
+# followed by its actual legacy Zone gate (without the unrelated Mesh importer).
 # Mesh preparation/export and App database reads are controlled test boundaries.
 preparation = section(imports, '    func update(\n        spaceJsonData:',
     '        return await withCheckedContinuation { continuation in')
+zone_gate = section(imports, '            if !resumingImport, SpaceConfigurationIntegrityPolicy.legacySpaceZoneDeletionNeedsReview(',
+                    '            let proximityImportDisposition =')
+zone_gate = zone_gate.replace('continuation.resume(returning: .skipped)\n                return', 'return .skipped')
 test = test.replace('// IMPORT_PREPARATION_METHOD', '@MainActor\n' + preparation
-    + '        _ = proximityPreflight\n        return .prepared\n    }\n')
+    + '        _ = proximityPreflight\n' + zone_gate + '        return .prepared\n    }\n')
 test += '\n' + section(imports, 'final class SiteImportTrace', '\nstruct SpaceImportOutcome')
 test += '\n' + read('Tests/Group/SpaceImportPreparationTests.swift')
 membership = section(read('SunSmart/Common/Data/SpaceMembershipCoordinator.swift'),

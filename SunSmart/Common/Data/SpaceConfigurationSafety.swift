@@ -356,17 +356,19 @@ enum SpaceConfigurationSafety {
         return false
     }
 
-    /// Recheck only the known legacy comparison block. Never use this path to
+    /// Recheck only known legacy comparison/empty-Zone blocks. Never use this path to
     /// clear an import, deletion, changed configuration, or a different cause.
     @MainActor
     static func recoverUpgradeBaselineIfNeeded(_ space: SpaceData,
                                                readLocal: () async -> [String: Any]?) async -> Bool {
         let reasonKey = "spaceConfigurationBlocked." + key(space)
-        guard UserDefaults.standard.string(forKey: reasonKey) == "upgradeBaselineNeedsImport" else { return true }
+        guard let reason = UserDefaults.standard.string(forKey: reasonKey),
+              reason == "upgradeBaselineNeedsImport" || reason == "legacySpaceZoneDeletionNeedsReview" else { return true }
         func eligible() -> Bool {
             guard !_Concurrency.Task<Never, Never>.isCancelled,
-                  UserDefaults.standard.string(forKey: reasonKey) == "upgradeBaselineNeedsImport",
+                  UserDefaults.standard.string(forKey: reasonKey) == reason,
                   canAutomaticallyUpload(space), !space.needUploadCloud,
+                  !space.triggerZonesLoadFailed,
                   space.lastUploadCloudTimestamp == space.lastUpdate,
                   !hasPendingImport(space), !hasPendingReferenceCleanup(space),
                   let journal = try? deletionJournal(space), journal.entries.isEmpty,
@@ -380,7 +382,10 @@ enum SpaceConfigurationSafety {
         guard let local = await readLocal(), eligible(), isCurrent(context, space: space),
               space.lastUpdate == revision, local["uuid"] as? String == space.id,
               SpaceConfigurationIntegrityPolicy.integer(local["updateTimestamp"]) == revision,
+              reason != "legacySpaceZoneDeletionNeedsReview"
+                || SpaceConfigurationIntegrityPolicy.hasOnlyEmptySpaceZones(local),
               let expected = SpaceSyncCleanupPolicy.upgradeRecoveryConfiguration(local),
+              let expectedNodes = SpaceCloudNodeRemovalPolicy.instances(local),
               let captured = try? JSONSerialization.data(withJSONObject: local, options: [.sortedKeys]) else { return false }
         let response = await NetworkRequest.shared.request(.spaceInfo(siteId: space.siteId,
             spaceId: space.id, password: space.authorizationPassword))
@@ -392,7 +397,9 @@ enum SpaceConfigurationSafety {
         guard case .success(let response) = response,
               let remote = response["data"] as? [String: Any], remote["uuid"] as? String == space.id else { return false }
         guard SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"]) == space.lastUploadCloudTimestamp,
-              let actual = SpaceSyncCleanupPolicy.upgradeRecoveryConfiguration(remote), expected == actual else { return false }
+              let actual = SpaceSyncCleanupPolicy.upgradeRecoveryConfiguration(remote), expected == actual,
+              let actualNodes = SpaceCloudNodeRemovalPolicy.instances(remote),
+              expectedNodes.sorted(by: { $0.uuid < $1.uuid }) == actualNodes.sorted(by: { $0.uuid < $1.uuid }) else { return false }
         // Timestamp alone cannot detect same-second edits or changed persisted data.
         guard let current = await readLocal(), eligible(), isCurrent(context, space: space),
               space.lastUpdate == revision,
@@ -403,7 +410,7 @@ enum SpaceConfigurationSafety {
         do {
             var state = try recoveryState(space)
             state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(remote)
-            state.nodeIdentitiesBaseline = SpaceCloudNodeRemovalPolicy.instances(remote)
+            state.nodeIdentitiesBaseline = actualNodes
             state.schedulerModelStatesBaseline = SchedulerModelSnapshot.spaceData(remote)
             try saveState(state, space: space)
             let previousError = space.syncCloudError

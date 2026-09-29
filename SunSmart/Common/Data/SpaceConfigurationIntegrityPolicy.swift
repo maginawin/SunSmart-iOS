@@ -428,8 +428,8 @@ enum SpaceConfigurationIntegrityPolicy {
         return try? JSONSerialization.data(withJSONObject: targets, options: [.sortedKeys])
     }
 
-    static func legacySpaceZoneDeletionNeedsReview(_ payload: [String: Any], hasLocalZones: Bool) -> Bool {
-        guard hasLocalZones else { return false }
+    static func legacySpaceZoneDeletionNeedsReview(_ payload: [String: Any], hasLocalZoneMembers: Bool) -> Bool {
+        guard hasLocalZoneMembers else { return false }
         let extensionData = payload["spaceData"] as? [String: Any] ?? payload
         // The released old App emits an empty root array when it has never
         // understood the new Space zones. A schema 1 explicit clear is valid.
@@ -480,18 +480,8 @@ enum SpaceConfigurationIntegrityPolicy {
     /// Compatibility is only for establishing an upgrade baseline. Submission
     /// receipts continue to use configurationData and require explicit fields.
     static func upgradeConfigurationData(_ payload: [String: Any]) -> Data? {
-        let extensionData: [String: Any]
-        if let raw = payload["spaceData"] {
-            guard let value = raw as? [String: Any] else { return nil }
-            extensionData = value
-        } else {
-            extensionData = payload
-        }
-        if let version = extensionData["proximityLightingSchemaVersion"] {
-            guard integer(version) == 1, extensionData["triggerZones"] != nil else { return nil }
-        }
-        if let zones = extensionData["triggerZones"], !(zones is [[String: Any]]) { return nil }
-        guard let data = configurationData(payload),
+        guard let zones = spaceZonesForUpgradeComparison(payload),
+              let data = configurationData(payload),
               var configuration = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               let groups = configuration["groups"] as? [[String: Any]] else { return nil }
         configuration["groups"] = groups.map { original in
@@ -503,8 +493,39 @@ enum SpaceConfigurationIntegrityPolicy {
             }
             return group
         }
-        if configuration["triggerZones"] == nil { configuration["triggerZones"] = [[String: Any]]() }
+        configuration["triggerZones"] = zones
         return serializeConfiguration(configuration)
+    }
+
+    static func hasOnlyEmptySpaceZones(_ payload: [String: Any]) -> Bool {
+        spaceZonesForUpgradeComparison(payload)?.isEmpty == true
+    }
+
+    /// Empty slots are a legal editor state, but carry no Zone membership.
+    /// Canonicalize only this comparison copy; keep mixed/unknown fields intact.
+    private static func spaceZonesForUpgradeComparison(_ payload: [String: Any]) -> [[String: Any]]? {
+        let extensionData: [String: Any]
+        if let raw = payload["spaceData"] {
+            guard let value = raw as? [String: Any] else { return nil }
+            extensionData = value
+        } else {
+            extensionData = payload
+        }
+        if let version = extensionData["proximityLightingSchemaVersion"] {
+            guard integer(version) == 1, extensionData["triggerZones"] != nil else { return nil }
+        }
+        guard let raw = extensionData["triggerZones"] else { return [] }
+        guard let zones = raw as? [[String: Any]] else { return nil }
+        var onlyEmptySlots = true
+        for zone in zones {
+            guard let items = zone["items"] as? [[String: Any]] else { return nil }
+            for item in items {
+                guard let group = integer(item["groupAddress"]), (0xC000...0xFEFF).contains(group),
+                      let device = integer(item["deviceAddress"]), (1..<0x8000).contains(device) else { return nil }
+            }
+            onlyEmptySlots = onlyEmptySlots && zone.count == 1 && items.isEmpty
+        }
+        return onlyEmptySlots ? [] : zones
     }
 
     // Normalize equivalent Group address and ALL representations in both new

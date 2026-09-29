@@ -37,6 +37,11 @@ parts = [source('SunSmart/Common/Data/AppPerformance.swift'), source('SunSmart/C
          source('SunSmart/Common/Data/SiteDeviceOwnershipReconciler.swift').replace('import NordicSigMeshSDK', ''),
          source('SunSmart/Main/Group/Model/ProximityLightingLifecycleCoordinator.swift').replace('import NordicSigMeshSDK', ''),
          section(source('SunSmart/Common/Data/ImportData.swift'), 'private struct ProximityLightingImportPreflight', '\n#if DEBUG'),
+         'extension SpaceData {\n'
+         '    fileprivate func applyImportedZoneFields(_ proximityPreflight: ProximityLightingImportPreflight, initialize: Bool) {\n'
+         + section(source('SunSmart/Common/Data/ImportData.swift'),
+                   '            if let triggerZones = proximityPreflight.triggerZones {', '            //            }')
+         + '    }\n}\n',
          'extension Node {\n' + section(source('SunSmart/Common/Data/Node+SyncData.swift'), '    func getNodeSyncProximityLighting(', '    /// 获取网关设备同步的配置') + '\n}',
          'final class ImportRepairHarness {\n'
          '    var pendingProximityLightingRepairRequest: Bool? = true\n'

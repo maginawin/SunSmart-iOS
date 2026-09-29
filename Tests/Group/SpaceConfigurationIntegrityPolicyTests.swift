@@ -70,16 +70,17 @@ struct SpaceConfigurationIntegrityPolicyTests {
         precondition(P.configurationData(observed) != P.configurationData(differentCache))
         precondition(P.confirmedTimestamp(previous: 10, submitted: 20) == 20)
         precondition(P.confirmedTimestamp(previous: 30, submitted: 20) == 30)
-        precondition(P.legacySpaceZoneDeletionNeedsReview(["triggerZones": []], hasLocalZones: true))
-        precondition(P.legacySpaceZoneDeletionNeedsReview([:], hasLocalZones: true))
-        precondition(!P.legacySpaceZoneDeletionNeedsReview(["triggerZones": []], hasLocalZones: false))
+        precondition(P.legacySpaceZoneDeletionNeedsReview(["triggerZones": []], hasLocalZoneMembers: true))
+        precondition(P.legacySpaceZoneDeletionNeedsReview([:], hasLocalZoneMembers: true))
+        precondition(!P.legacySpaceZoneDeletionNeedsReview(["triggerZones": []], hasLocalZoneMembers: false))
         precondition(!P.legacySpaceZoneDeletionNeedsReview(
-            ["spaceData": ["proximityLightingSchemaVersion": 1, "triggerZones": []]], hasLocalZones: true))
+            ["spaceData": ["proximityLightingSchemaVersion": 1, "triggerZones": []]], hasLocalZoneMembers: true))
         testReadbackDiagnostics()
         testSceneScheduleTargets()
         testEmptyGroupAddressCompatibility()
         testProximityAllCompatibility()
         testUpgradeOnlyDefaults()
+        testEmptyZoneUpgradeCompatibility()
         print("PASS: complete profile switches, incomplete payloads, photocell references, readback and submission generation")
     }
 
@@ -215,6 +216,45 @@ struct SpaceConfigurationIntegrityPolicyTests {
             "triggerZones": [["items": [["groupAddress": 49160, "deviceAddress": 554]]]]]
         precondition(P.upgradeConfigurationData(legacy) != P.upgradeConfigurationData(changed))
         print("PASS: omitted legacy empty zones are upgrade-only compatibility; malformed/schema/nonempty differences remain distinct")
+    }
+
+    static func testEmptyZoneUpgradeCompatibility() {
+        typealias P = SpaceConfigurationIntegrityPolicy
+        let legacy: [String: Any] = ["groups": [], "nodes": [], "spaceData": [:]]
+        let expected = P.upgradeConfigurationData(legacy)!
+        for count in [0, 1, 5] {
+            let zones = Array(repeating: ["items": [[String: Any]]()], count: count)
+            for schema in [false, true] {
+                var extensionData: [String: Any] = ["triggerZones": zones]
+                if schema { extensionData["proximityLightingSchemaVersion"] = 1 }
+                let payload: [String: Any] = ["groups": [], "nodes": [], "spaceData": extensionData]
+                let before = try! JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys])
+                precondition(P.upgradeConfigurationData(payload) == expected,
+                             "Valid empty Zone slots must match omitted legacy zones during upgrade")
+                precondition(!P.configurationsMatch(P.configurationData(payload), P.configurationData(legacy)),
+                             "Formal readback must still detect missing Zone fields")
+                precondition(try! JSONSerialization.data(withJSONObject: payload, options: [.sortedKeys]) == before)
+            }
+        }
+        for zones: Any in [NSNull(), "invalid", [[:]], [["items": NSNull()]], [["items": [1]]],
+                            [["items": [["groupAddress": "C008", "deviceAddress": 554]]]],
+                            [["items": [["groupAddress": 49160, "deviceAddress": 0]]]]] {
+            let malformed: [String: Any] = ["groups": [], "spaceData": ["triggerZones": zones]]
+            precondition(P.upgradeConfigurationData(malformed) == nil, "Malformed zones are not empty")
+        }
+        let empty: [String: Any] = ["items": [[String: Any]]()]
+        let populated: [String: Any] = ["items": [["groupAddress": 49160, "deviceAddress": 554]]]
+        func payload(_ zones: [[String: Any]]) -> [String: Any] {
+            ["groups": [], "nodes": [], "spaceData": ["proximityLightingSchemaVersion": 1, "triggerZones": zones]]
+        }
+        let mixed = payload([empty, populated, empty])
+        precondition(P.upgradeConfigurationData(mixed) != expected)
+        precondition(P.upgradeConfigurationData(mixed) != P.upgradeConfigurationData(payload([populated, empty, empty])),
+                     "Empty slots must not be removed or reordered around populated zones")
+        precondition(P.upgradeConfigurationData(payload([["items": [], "name": "Keep"]])) != expected,
+                     "Unknown Zone fields must not disappear in empty-slot compatibility")
+        precondition(!P.configurationsMatch(P.configurationData(payload([empty])), P.configurationData(payload([empty, empty]))))
+        print("PASS: empty Zone upgrade compatibility preserves stored slots, mixed ordering, unknown fields and strict readback")
     }
 
     static func testEmptyGroupAddressCompatibility() {

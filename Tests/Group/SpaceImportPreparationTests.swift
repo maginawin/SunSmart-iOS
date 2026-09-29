@@ -1,7 +1,11 @@
-// The runner inserts SpaceData.update through its two async freshness guards.
-// A prepared result means that boundary passed, not that Mesh import committed.
+// The runner inserts SpaceData.update through its async guards and legacy Zone gate.
+// A prepared result means those boundaries passed, not that Mesh import committed.
 enum SpaceImportOutcome: Equatable {
-    case prepared, rejected(String), preserved(String)
+    case prepared, skipped, rejected(String), preserved(String)
+}
+struct SpaceTriggerZone {
+    struct Item { let groupAddress: UInt16; let deviceAddress: UInt16 }
+    var items: [Item] = []
 }
 struct ConfigurationMeshReadSnapshot {}
 enum DevicePermanentDeletionContext {
@@ -52,6 +56,38 @@ extension SpaceData {
     }
 }
 extension SpaceRecoveryReceiptTests {
+    @MainActor static func testEmptyZoneImportGate() async throws {
+        typealias S = SpaceConfigurationSafety
+        typealias P = ProximityLightingImportPreflight
+        defer { P.storedSpace = nil }
+        for count in [0, 1, 5] {
+            let space = SpaceData()
+            space.lastUploadCloudTimestamp = space.lastUpdate
+            space.triggerZones = Array(repeating: SpaceTriggerZone(), count: count)
+            P.storedSpace = space
+            var remote = space.payload
+            remote["spaceData"] = [String: Any]()
+            for _ in 0..<2 {
+                let outcome = await space.update(spaceJsonData: remote)
+                precondition(outcome == .prepared && !S.isBlocked(space),
+                             "Repeated legacy GETs must not block empty Zone slots")
+                precondition(space.triggerZones.count == count && space.triggerZones.allSatisfy { $0.items.isEmpty })
+            }
+        }
+        for malformedLocal in [false, true] {
+            let space = SpaceData()
+            space.lastUploadCloudTimestamp = space.lastUpdate
+            space.triggerZonesLoadFailed = malformedLocal
+            space.triggerZones = malformedLocal ? [] : [.init(items: [.init(groupAddress: 49160, deviceAddress: 554)])]
+            P.storedSpace = space
+            var remote = space.payload
+            remote["spaceData"] = [String: Any]()
+            let outcome = await space.update(spaceJsonData: remote)
+            precondition(outcome == .skipped && S.isBlocked(space), "Members or unreadable local zones must stay protected")
+        }
+        print("PASS: production import Zone gate accepts repeated legacy reads with empty slots and protects members/unreadable storage")
+    }
+
     @MainActor static func testImportPreparation() async throws {
         typealias S = SpaceConfigurationSafety
         typealias P = ProximityLightingImportPreflight

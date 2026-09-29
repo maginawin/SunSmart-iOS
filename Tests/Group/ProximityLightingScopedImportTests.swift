@@ -384,6 +384,30 @@ enum NodeSyncData: Equatable {
         require(unavailable.capturedDatas == nil && unavailable.pendingProximityLightingRepairRequest != nil,
                 "invalid latest configuration must retain the request without generating tasks")
         activatedOrdinary.group.info.profileLoadFailed = false
+        for legacyExtension: [String: Any] in [[:], ["triggerZones": [[String: Any]]()]] {
+            var legacy = payload(); legacy["spaceData"] = legacyExtension
+            let parsed = ProximityLightingImportPreflight.parse(spaceJsonData: legacy,
+                nodeDicts: legacy["nodes"] as! [[String: Any]], groupDicts: legacy["groups"] as! [[String: Any]], initialize: false)!
+            require(parsed.triggerZones == nil && !parsed.hasValidationIssues,
+                    "Legacy omission/[] must preserve local empty slots during import")
+            let local = try fixture(networkId: "EMPTY-SLOTS")
+            local.space.triggerZones = Array(repeating: .init(items: []), count: 5)
+            local.space.applyImportedZoneFields(parsed, initialize: false)
+            let prepared = ProximityLightingLifecycleCoordinator.begin(space: local.space,
+                groups: [local.group], nodes: local.nodes, network: local.network).prepare()
+            require(ProximityLightingLifecycleCoordinator.commit(prepared, isImportApplication: true) != nil,
+                    "Preserved empty slots must pass the import lifecycle")
+            require(local.space.triggerZones.count == 5 && local.space.dirtyCount == 0,
+                    "Legacy import must neither delete saved empty slots nor create an edit")
+            let initial = preflight(legacy)!
+            require(initial.triggerZones?.isEmpty == true, "Initialization still starts with no zones")
+
+            legacy["spaceData"] = ["proximityLightingSchemaVersion": 1, "triggerZones": [[String: Any]]()]
+            let explicitClear = preflight(legacy)!
+            local.space.applyImportedZoneFields(explicitClear, initialize: false)
+            require(local.space.triggerZones.isEmpty, "Schema 1 explicit clearing must still apply")
+        }
+        print("PASS: actual legacy preflight/Zone assignment/lifecycle preserve five empty slots; initialization and schema 1 clear remain valid")
         var missing = payload(); missing["spaceData"] = ["proximityLightingSchemaVersion": 1]
         require(preflight(missing) == nil, "schema 1 must not silently accept missing zones")
         missing["spaceData"] = ["proximityLightingSchemaVersion": 2, "triggerZones": []]
