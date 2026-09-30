@@ -1569,7 +1569,8 @@ class SpaceViewController: WMPageController {
             alert.addAction(UIAlertAction(title: "configuration_reload_cloud".localizedString, style: .default) { [weak self] _ in
                 self?.reloadConfigurationFromCloud()
             })
-            if !self.space.disableEditorPermission, !self.space.requiresPasswordVerification,
+            if !SpaceConfigurationSafety.needsCloudReview(self.space),
+               !self.space.disableEditorPermission, !self.space.requiresPasswordVerification,
                self.space.permission == .owner || self.space.permission == .editor {
                 if let local {
                     alert.addAction(UIAlertAction(title: "configuration_use_local".localizedString, style: .default) { [weak self] _ in
@@ -1627,31 +1628,83 @@ class SpaceViewController: WMPageController {
     private func reloadConfigurationFromCloud() {
         Task { @MainActor [weak self] in
             guard let self else { return }
-            XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: true)
-            let result = await NetworkRequest.shared.request(.spaceInfo(siteId: self.space.siteId,
-                spaceId: self.space.id, password: self.space.authorizationPassword))
-            if case .success(let response) = result, let remote = response["data"] as? [String: Any] {
-                let outcome = await self.space.restoreConfiguration(spaceJsonData: remote,
-                    authoritativeGET: true)
-                XWHUDManager.hide()
-                if outcome.rejectionReason == "serverKeyRepairQueued" { return }
-                if outcome.status != .rejected, !SpaceConfigurationSafety.isBlocked(self.space) {
-                    _ = CloudSynchronizationManager.shared.cancelSynchronizationHandle(operation: .syncSpace(space: self.space))
-                    self.space.syncCloudError = nil
-                    self.space.save()
-                    self.title = self.space.name
-                    self.setNetworkConnected()
-                    self.showNavigationBarSuccessful()
-                    return
-                }
-            } else {
-                if case .failure(let error) = result { SpaceConfigurationSafety.handleAuthorityError(error, space: self.space) }
-                XWHUDManager.hide()
+            if !SpaceConfigurationSafety.needsCloudReview(self.space)
+                || self.space.permission == .visitor || SpaceConfigurationSafety.hasPendingImport(self.space) {
+                await self.resumeReviewedConfiguration()
+                return
             }
+            XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: true)
+            let review = await SpaceConfigurationSafety.cloudRecoveryReview(self.space)
+            XWHUDManager.hide()
+            guard let review else {
+                XWHUDManager.showErrorTipHUD("space_recovery_unavailable".localizedString)
+                return
+            }
+            func names(_ values: [String]) -> String {
+                values.prefix(8).joined(separator: ", ") + (values.count > 8 ? " …" : "")
+            }
+            let message = String(format: "configuration_cloud_merge_preview".localizedString,
+                review.preview.retainedLocal.count, names(review.preview.retainedLocal),
+                review.preview.replaced.count, names(review.preview.replaced),
+                review.ambiguousRemote.count, names(review.preview.cloudOnly))
+            let alert = UIAlertController(title: "configuration_reload_cloud".localizedString,
+                                          message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "alert_item_cancel".localizedString, style: .cancel))
+            func apply(includeCloudOnly: Bool) {
+                Task { @MainActor [weak self] in
+                    guard let self else { return }
+                    CloudSynchronizationManager.shared.cancelSynchronizationHandle(space: self.space)
+                    XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: true)
+                    let staged = await SpaceConfigurationSafety.applyCloudRecovery(self.space,
+                        review: review, includeCloudOnly: includeCloudOnly)
+                    XWHUDManager.hide()
+                    guard staged else {
+                        XWHUDManager.showErrorTipHUD("configuration_recovery_changed".localizedString)
+                        return
+                    }
+                    await self.resumeReviewedConfiguration()
+                }
+            }
+            if review.ambiguousRemote.isEmpty {
+                alert.addAction(UIAlertAction(title: "confirm".localizedString, style: .default) { _ in apply(includeCloudOnly: true) })
+            } else {
+                alert.addAction(UIAlertAction(title: "configuration_include_cloud_devices".localizedString, style: .default) { _ in apply(includeCloudOnly: true) })
+                alert.addAction(UIAlertAction(title: "configuration_exclude_cloud_devices".localizedString, style: .destructive) { _ in apply(includeCloudOnly: false) })
+            }
+            guard self.presentedViewController == nil, self.viewIfLoaded?.window != nil else { return }
+            self.present(alert, animated: true)
+        }
+    }
+
+    @MainActor
+    private func resumeReviewedConfiguration() async {
+        XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: true)
+        let result = await NetworkRequest.shared.request(.spaceInfo(siteId: space.siteId,
+            spaceId: space.id, password: space.authorizationPassword))
+        if case .success(let response) = result, let remote = response["data"] as? [String: Any] {
+            let outcome = await space.restoreConfiguration(spaceJsonData: remote, authoritativeGET: true)
+            XWHUDManager.hide()
+            if outcome.rejectionReason == "serverKeyRepairQueued" { return }
+            guard outcome.status == .applied, !SpaceConfigurationSafety.isBlocked(space) else {
+                XWHUDManager.showErrorTipHUD("space_recovery_unavailable".localizedString)
+                return
+            }
+            title = space.name
+            setNetworkConnected()
+            reloadData()
+            if space.needUploadCloud {
+                syncSpace(level: .promptly)
+            } else {
+                showNavigationBarSuccessful()
+            }
+            presentProximityLightingRepairSyncIfNeeded()
+        } else {
+            if case .failure(let error) = result { SpaceConfigurationSafety.handleAuthorityError(error, space: space) }
+            XWHUDManager.hide()
             XWHUDManager.showErrorTipHUD("space_recovery_unavailable".localizedString)
         }
     }
-    
+
     /// 退出页面立即同步space数据
     private func promptlySyncSpace() {
         

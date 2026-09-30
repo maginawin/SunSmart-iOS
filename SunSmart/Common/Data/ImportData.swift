@@ -1763,9 +1763,21 @@ extension SpaceData {
         applyRemoteSpaceMetadata(spaceJsonData)
         if !initialize { save() }
         DevicePermanentDeletionContext.resume(space: self)
-        if !initialize, !SpaceConfigurationSafety.reconcileCloudMembership(self, remote: spaceJsonData) {
-            SpaceConfigurationSafety.recordSyncFailure(self, error: .configurationUploadUnconfirmed, stage: "cloudMembership")
+        guard await SpaceConfigurationSafety.prepareReviewedImport(self, remote: spaceJsonData) else {
+            return .preserved("reviewedImportChanged")
+        }
+        if !initialize, SpaceConfigurationSafety.reconcileCloudMembership(self, remote: spaceJsonData).error != nil {
             return .preserved("cloudMembershipNeedsReview")
+        }
+        if !initialize, !SpaceConfigurationSafety.hasPendingImport(self),
+           let error = SpaceConfigurationSafety.reconcileFirmwareObservations(self, remote: spaceJsonData) {
+            SpaceConfigurationSafety.recordSyncFailure(self, error: error, stage: "firmwareObservation")
+            return .preserved("firmwareNeedsReview")
+        }
+        if !initialize, !SpaceConfigurationSafety.hasPendingImport(self),
+           SpaceConfigurationSafety.canAutomaticallyUpload(self), needUploadCloud,
+           lastUploadCloudTimestamp != nil {
+            return .preserved("localEditsPendingUpload")
         }
         if SpaceConfigurationSafety.preservesLocalChanges(self) {
             #if DEBUG
@@ -2715,6 +2727,12 @@ extension SpaceData {
             guard self.save(),
                   let persistedNetwork = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId),
                   Set(persistedNetwork.groups.map { $0.address.address }) == Set(groups.map { $0.address.address }),
+                  (SpaceConfigurationSafety.hasReviewedImport(self) == false
+                    || SpaceFirmwareObservation.snapshots(spaceJsonData).map { expected in
+                        self.firmwareObservations().map {
+                            SpaceFirmwareObservation.confirms(expected, remote: $0, removed: [])
+                        } ?? false
+                    } == true),
                   zip(nodes, nodeDicts).allSatisfy({ imported, dictionary in
                       guard let persisted = persistedNetwork.node(withAddress: imported.primaryUnicastAddress) else { return false }
                       return persisted.matchesSchedulerModelSnapshot(nodeData: dictionary)

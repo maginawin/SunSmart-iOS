@@ -418,6 +418,7 @@ class CloudSynchronizationManager {
                 site.spaces = SpaceData.load(siteId: site.id)
                 let spaces = site.spaces.filter { space in
                     SpaceConfigurationSafety.canAutomaticallyUpload(space)
+                        && !SpaceConfigurationSafety.requiresConfigurationReview(space)
                         && (space.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(space))
                         && (!SpaceConfigurationSafety.isBlocked(space) || SpaceConfigurationSafety.hasPendingUpload(space))
                         && getSpaceCurrentSyncState(space) == nil

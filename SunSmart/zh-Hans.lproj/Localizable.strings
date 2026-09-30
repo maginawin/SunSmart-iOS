@@ -2186,6 +2186,10 @@
 "profile_unavailable" = "配置文件不可用";
 "configuration_sync_unavailable" = "空间数据暂不可用，请重新进入此空间后重试。";
 "configuration_reload_cloud" = "重新加载云端数据";
+"configuration_cloud_merge_preview" = "使用云端的设置，替换其他本地设置修改。\n\n保留仅此手机保存的 %d 个设备：%@\n使用云端记录替换重新添加的 %d 个设备：%@\n\n云端还有 %d 个设备未在此手机中：%@\n请选择是否包含这些设备。已确认的本地删除仍会保留。恢复前将保留两端副本。";
+"configuration_include_cloud_devices" = "包含云端设备";
+"configuration_exclude_cloud_devices" = "保持排除这些设备";
+"configuration_recovery_changed" = "未能应用恢复，保存的数据可能已变化。请重新核对此空间，已保留保存的副本。";
 "configuration_use_local" = "使用本机数据";
 "configuration_review_message" = "此空间需要核对后才能同步。可以重新加载云端数据；如果本机保存的完整配置正确，也可使用本机数据恢复。导入未完成或本机数据无效时无法执行本地恢复。";
 "configuration_use_local_confirm" = "使用本机保存的数据替换云端的整个空间？请先核对配置文件、路径和触发区域。其他手机的修改可能被替换，双方数据会先备份到本机。继续前请升级所有具有编辑权限的手机。";

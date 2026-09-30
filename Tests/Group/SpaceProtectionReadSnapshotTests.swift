@@ -55,6 +55,11 @@ struct SpaceProtectionReadSnapshotTests {
         let clean = request.read()
         require(!clean.isBlocked && clean.phase == .active && clean.authority == .writable, "clean state not preserved")
         require(clean.recoveryGeneration == state.generation, "recovery generation not retained")
+        state.reviewedImport = .init(candidate: Data(), remote: Data(), local: Data(), previousState: Data())
+        try mutation { try state.write(to: stateURL) }
+        require(request.read().pendingImport && request.read().isBlocked, "durable reviewed import without a marker must block")
+        state.reviewedImport = nil
+        try mutation { try state.write(to: stateURL) }
         for marker in ["pending-import.json", "pending-reference-cleanup.json"] {
             let file = directory.appendingPathComponent(marker)
             try mutation { try Data("pending".utf8).write(to: file, options: .atomic) }

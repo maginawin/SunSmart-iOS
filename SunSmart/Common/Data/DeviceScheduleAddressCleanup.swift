@@ -159,6 +159,7 @@ struct SpaceRecoveryState: Codable, Equatable {
         /// Exact observations submitted by clients that support Model snapshots.
         var schedulerModelStates: Data? = nil
         var nodeIdentities: [SpaceCloudNodeRemovalPolicy.Instance]? = nil
+        var firmwareObservations: [SpaceFirmwareObservation]? = nil
         /// Explicitly false for migrated unknown-outcome receipts.
         var permitsCloudRemoval: Bool? = nil
     }
@@ -173,6 +174,16 @@ struct SpaceRecoveryState: Codable, Equatable {
     /// Last confirmed cloud observations, independent of subsequent device reads.
     var schedulerModelStatesBaseline: Data? = nil
     var nodeIdentitiesBaseline: [SpaceCloudNodeRemovalPolicy.Instance]? = nil
+    var firmwareBaseline: [SpaceFirmwareObservation]? = nil
+    var firmwareBaselineTimestamp: Int64? = nil
+    /// Written before any database mutation; ordinary entry can replay it after a crash.
+    struct ReviewedImport: Codable, Equatable {
+        let candidate: Data
+        let remote: Data
+        let local: Data
+        let previousState: Data
+    }
+    var reviewedImport: ReviewedImport? = nil
     var unbindRequested: Bool?
     var requiresRemoteImport: Bool?
     var siteCreationTimestamp: Int64?

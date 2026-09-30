@@ -75,6 +75,7 @@ struct SpaceConfigurationIntegrityPolicyTests {
         precondition(!P.legacySpaceZoneDeletionNeedsReview(["triggerZones": []], hasLocalZoneMembers: false))
         precondition(!P.legacySpaceZoneDeletionNeedsReview(
             ["spaceData": ["proximityLightingSchemaVersion": 1, "triggerZones": []]], hasLocalZoneMembers: true))
+        testReviewedRecoveryCandidate()
         testReadbackDiagnostics()
         testSceneScheduleTargets()
         testEmptyGroupAddressCompatibility()
@@ -82,6 +83,43 @@ struct SpaceConfigurationIntegrityPolicyTests {
         testUpgradeOnlyDefaults()
         testEmptyZoneUpgradeCompatibility()
         print("PASS: complete profile switches, incomplete payloads, photocell references, readback and submission generation")
+    }
+
+    static func testReviewedRecoveryCandidate() {
+        func node(_ id: Int) -> [String: Any] {
+            ["uuid": String(format: "00000000-0000-0000-0000-%012d", id),
+             "unicastAddress": String(format: "%04X", id * 3), "deviceKey": String(repeating: "A1", count: 16),
+             "groupState": 0, "firmwareID": "0201060000000000", "vid": "0003", "compositionHash": "00000001",
+             "elements": [["index": 0, "models": [["modelId": "1000", "subscribe": []]]]]]
+        }
+        let local: [String: Any] = ["uuid": "space", "nodes": [node(1)], "groups": [], "scenes": [], "schedules": []]
+        var unknown = node(1); unknown.removeValue(forKey: "firmwareID")
+        var remote = local
+        remote["nodes"] = [unknown, node(2)]
+        remote["groups"] = [["address": "C000", "isVirtual": true, "daylightSensorAddress": "0006"]]
+        remote["scenes"] = [["number": "0001", "addresses": ["0003", "0006"]]]
+        remote["schedules"] = [["id": 0, "selectTarget": 0, "deviceAddresses": ["0003", "0006"], "deviceDeleteAddresses": ["0006"]]]
+        remote["switches"] = [["proxyNodeAddress": "0006", "deleteProxyNodeAddress": "0006", "enOceanMacAddress": "fixture", "enOceanSecurityKey": "fixture"]]
+        remote["emergencyFireControllers"] = [["bindNodeAddress": "0006", "isSynced": true, "controllerSelfSyncPending": true]]
+        let excluded: Set<String> = [node(2)["uuid"] as! String]
+        let candidate = try! SpaceCloudRecoveryPolicy.candidate(local: local, remote: remote, excluding: excluded)
+        let nodes = candidate.payload["nodes"] as! [[String: Any]]
+        precondition(nodes.count == 1 && nodes[0]["firmwareID"] as? String == "0201060000000000")
+        precondition(candidate.cloudOnly.isEmpty)
+        let groups = candidate.payload["groups"] as! [[String: Any]]
+        precondition(groups[0]["daylightSensorAddress"] == nil)
+        let scenes = candidate.payload["scenes"] as! [[String: Any]]
+        precondition(scenes[0]["addresses"] as? [String] == ["0003"])
+        let schedules = candidate.payload["schedules"] as! [[String: Any]]
+        precondition(schedules[0]["deviceAddresses"] as? [String] == ["0003"] && schedules[0]["deviceDeleteAddresses"] as? [String] == [])
+        let switches = candidate.payload["switches"] as! [[String: Any]]
+        precondition(switches[0]["proxyNodeAddress"] == nil && switches[0]["deleteProxyNodeAddress"] == nil && switches[0]["enOceanSecurityKey"] == nil)
+        let controllers = candidate.payload["emergencyFireControllers"] as! [[String: Any]]
+        precondition(controllers[0]["bindNodeAddress"] == nil && controllers[0]["isSynced"] as? Bool == false)
+        var overlapping = node(3); overlapping["unicastAddress"] = "0003"
+        var conflict = remote; conflict["nodes"] = [overlapping]
+        precondition((try? SpaceCloudRecoveryPolicy.candidate(local: local, remote: conflict, excluding: [])) == nil)
+        print("PASS: reviewed recovery preserves unknown observations, prunes excluded device references and rejects address collisions")
     }
 
     static func testSceneScheduleTargets() {
