@@ -236,7 +236,7 @@ enum SpaceConfigurationSafety {
         if FileManager.default.fileExists(atPath: stateURL.path) {
             guard let data = try? Data(contentsOf: stateURL),
                   let state = try? JSONDecoder().decode(SpaceRecoveryState.self, from: data) else { return true }
-            if state.phase != .active || state.unbindRequested == true || state.reviewedImport != nil { return true }
+            if state.phase != .active || state.unbindRequested == true { return true }
             directoryName = state.directoryName ?? identity
         }
         let pending = recoveryRoot.appendingPathComponent(directoryName).appendingPathComponent("pending-import.json")
@@ -480,13 +480,6 @@ enum SpaceConfigurationSafety {
             state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(remote)
             state.nodeIdentitiesBaseline = SpaceCloudNodeRemovalPolicy.instances(remote)
             state.schedulerModelStatesBaseline = SchedulerModelSnapshot.spaceData(remote)
-            // Reference equality cannot establish firmware provenance.
-            if let remoteFirmware = SpaceFirmwareObservation.snapshots(remote),
-               let localFirmware = SpaceFirmwareObservation.snapshots(local),
-               SpaceFirmwareObservation.confirms(remoteFirmware, remote: localFirmware, removed: []) {
-                state.firmwareBaseline = remoteFirmware
-                state.firmwareBaselineTimestamp = SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"])
-            }
             try saveState(state, space: space)
             UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
             return true
@@ -571,7 +564,6 @@ enum SpaceConfigurationSafety {
     static func preservesLocalChanges(_ space: SpaceData) -> Bool {
         guard let state = try? recoveryState(space) else { return true }
         guard state.preservesUpload else { return false }
-        if state.reviewedImport != nil, state.authority == .writable { return false }
         guard let journal = try? deletionJournal(space) else { return true }
         return state.submission != nil || state.authority == .waitingForAuthorization || !journal.entries.isEmpty
             || hasPendingReferenceCleanup(space)
@@ -806,13 +798,6 @@ enum SpaceConfigurationSafety {
         return reason != nil && reason != "uploadReadbackUnconfirmed"
     }
 
-    static func needsCloudReview(_ space: SpaceData) -> Bool {
-        let reason = UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space)) ?? ""
-        return ["cloudMembershipChanged", "cloudConfigurationChanged", "cloudSchedulerChanged",
-                "firmwareObservationConflict", "uploadReadbackConflict", "reviewedImportPending"].contains(reason)
-            || (try? recoveryState(space).reviewedImport) != nil
-    }
-
     static func canAutomaticallyUpload(_ space: SpaceData) -> Bool {
         guard SpaceMembershipCoordinator.allowsConfiguration(space),
               space.permission != .visitor, !space.requiresPasswordVerification, !space.disableEditorPermission,
@@ -843,8 +828,7 @@ enum SpaceConfigurationSafety {
             state.submission = .init(id: UUID(), timestamp: timestamp, configuration: configuration,
                                      keyFingerprint: keys.fingerprint, scheduleTargets: scheduleTargets,
                                      schedulerModelStates: schedulerModelStates,
-                                     nodeIdentities: SpaceCloudNodeRemovalPolicy.instances(payload),
-                                     firmwareObservations: SpaceFirmwareObservation.snapshots(payload))
+                                     nodeIdentities: SpaceCloudNodeRemovalPolicy.instances(payload))
             state.siteCreationTimestamp = siteCreationTimestamp
             try saveState(state, space: space)
             return state
@@ -955,13 +939,10 @@ enum SpaceConfigurationSafety {
             var context = try recoveryState(space)
             guard context.phase == .active else { return .failure(uploadUnconfirmed) }
             guard context.authority == .writable else { return .failure(authorityError(space)) }
-            let reason = UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space))
-            guard !needsCloudReview(space) || reason == "uploadReadbackConflict"
-                    || context.submission?.phase == .verified else { return .failure(.configurationReviewRequired) }
             guard let submission = context.submission else {
                 // An offline local edit must not resurrect nodes removed remotely
                 // since our last confirmed version. Read only this Space.
-                if space.needUploadCloud, space.lastUploadCloudTimestamp != nil {
+                if space.needUploadCloud, context.nodeIdentitiesBaseline != nil || context.schedulerModelStatesBaseline != nil {
                     let response = await NetworkRequest.shared.request(.spaceInfo(siteId: space.siteId,
                         spaceId: space.id, password: space.authorizationPassword))
                     guard !_Concurrency.Task<Never, Never>.isCancelled, isCurrent(context, space: space) else { return .failure(uploadUnconfirmed) }
@@ -970,9 +951,7 @@ enum SpaceConfigurationSafety {
                     case .success(let response):
                         guard let remote = response["data"] as? [String: Any], remote["uuid"] as? String == space.id else { return .failure(uploadUnconfirmed) }
                         space.applyRemoteSpaceMetadata(remote)
-                        guard space.save() else { return .failure(.configurationUnavailable) }
-                        if let error = reconcileCloudMembership(space, remote: remote).error { return .failure(error) }
-                        if let error = reconcileFirmwareObservations(space, remote: remote) { return .failure(error) }
+                        guard space.save(), reconcileCloudMembership(space, remote: remote) else { return .failure(uploadUnconfirmed) }
                     }
                 }
                 return .success(())
@@ -1014,9 +993,7 @@ enum SpaceConfigurationSafety {
                     guard space.save(), isCurrent(context, space: space), canAutomaticallyUpload(space) else {
                         return .failure(authorityError(space))
                     }
-                    if remoteKeyFingerprint == expectedKeyFingerprint,
-                       let error = reconcileCloudMembership(space, remote: remote).error { return .failure(error) }
-                    guard isCurrent(context, space: space) else { return .failure(uploadUnconfirmed) }
+                    guard reconcileCloudMembership(space, remote: remote), isCurrent(context, space: space) else { return .failure(uploadUnconfirmed) }
                     let expected = readbackConfiguration(submission.configuration, timestamp: submission.timestamp, space: space)
                     let actual = readbackRemoteConfiguration(configuration, timestamp: submission.timestamp, space: space)
                     let schedulesMatch = submission.scheduleTargets.map {
@@ -1042,20 +1019,11 @@ enum SpaceConfigurationSafety {
                         try saveState(context, space: space)
                         return .success(())
                     }
-                    let remoteFirmware = SpaceFirmwareObservation.snapshots(remote)
-                    let firmwareMatches = submission.firmwareObservations.map { submitted in
-                        remoteFirmware.map { SpaceFirmwareObservation.confirms(submitted, remote: $0,
-                            removed: readbackRemovals(timestamp: submission.timestamp, space: space)) } ?? false
-                    } ?? true
                     if remoteKeyFingerprint == expectedKeyFingerprint,
-                       SpaceConfigurationIntegrityPolicy.configurationsMatch(actual, expected), schedulesMatch, modelsMatch, firmwareMatches {
+                       SpaceConfigurationIntegrityPolicy.configurationsMatch(actual, expected), schedulesMatch, modelsMatch {
                         context = try recoveryState(space)
                         guard context.submission?.id == submission.id else { return .failure(uploadUnconfirmed) }
                         context.submission?.phase = .verified
-                        if let remoteFirmware {
-                            context.firmwareBaseline = remoteFirmware
-                            context.firmwareBaselineTimestamp = SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"])
-                        }
                         try saveState(context, space: space)
                         return finishSubmission(context, space: space) ? .success(()) : .failure(uploadUnconfirmed)
                     }
@@ -1117,91 +1085,25 @@ enum SpaceConfigurationSafety {
         SpaceCloudNodeRemovalPolicy.projectModels(data, removing: readbackRemovals(timestamp: timestamp, space: space))
     }
 
-    /// Called only after a complete, identity-checked GET. Do not advance the
-    /// observation baseline until all local writes succeeded; replay is idempotent.
+    /// Reconcile the current Space's authoritative membership before a pending
+    /// submission or local edit prevents ordinary import. No destination lookup.
     @MainActor
-    static func reconcileFirmwareObservations(_ space: SpaceData, remote: [String: Any]) -> NetworkApiError? {
-        guard !hasPendingImport(space), let state = try? recoveryState(space),
-              state.phase == .active, state.authority == .writable,
-              remote["uuid"] as? String == space.id else { return nil }
-        guard let remoteTimestamp = SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"]),
-              let network = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
-              let localKeys = SpaceKeyIntegrity.pair(network, networkID: space.meshNetworkId),
-              SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId)?.fingerprint == localKeys.fingerprint,
-              let remoteValues = SpaceFirmwareObservation.snapshots(remote),
-              let localValues = space.firmwareObservations() else { return .configurationExportInvalid }
-        guard remoteTimestamp >= (state.firmwareBaselineTimestamp ?? space.lastUploadCloudTimestamp ?? 0) else {
-            return .configurationUploadUnconfirmed
-        }
-        let merged = SpaceFirmwareObservation.merge(local: localValues, remote: remoteValues, baseline: state.firmwareBaseline)
-        #if DEBUG
-        if !merged.updates.isEmpty || !merged.conflicts.isEmpty {
-            print("[SpaceFirmwareObservation] space=\(space.id) updates=\(merged.updates.count) conflicts=\(merged.conflicts.count) remoteTimestamp=\(remoteTimestamp)")
-        }
-        #endif
-        guard merged.conflicts.isEmpty else {
-            block(space, reason: "firmwareObservationConflict")
-            return .configurationReviewRequired
-        }
-        guard space.applyFirmwareObservations(merged.updates, expected: localValues) else { return .configurationUnavailable }
-        do {
-            var current = try recoveryState(space)
-            guard current.matches(state), current.submission?.id == state.submission?.id else { return .configurationUploadUnconfirmed }
-            current.firmwareBaseline = merged.baseline
-            current.firmwareBaselineTimestamp = remoteTimestamp
-            try saveState(current, space: space)
-            // Device reads/DFU can update observations without a Space edit clock.
-            // Preserve those known local values, including fields the server omits,
-            // before a newer cloud timestamp can trigger a complete import.
-            let sharedLocal = localValues.filter { local in remoteValues.contains { $0.instance.matches(local.instance) } }
-                .map { local in merged.updates.first { $0.instance.matches(local.instance) } ?? local }
-            if !space.needUploadCloud,
-               !SpaceFirmwareObservation.confirms(sharedLocal, remote: remoteValues, removed: []) {
-                space.markLocalChangePendingCloudSync()
-                guard space.save() else { return .configurationUnavailable }
-            }
-            return nil
-        } catch { return .configurationUnavailable }
-    }
-
-    enum CloudMembershipResult: Equatable {
-        case ready, retryLater, invalidRemote, persistenceFailed
-        case review(String)
-        var error: NetworkApiError? {
-            switch self {
-            case .ready: return nil
-            case .retryLater: return .configurationUploadUnconfirmed
-            case .invalidRemote: return .configurationExportInvalid
-            case .persistenceFailed: return .configurationUnavailable
-            case .review: return .configurationReviewRequired
-            }
-        }
-    }
-
-    /// A conflict is actionable and durable; a stale readback remains retryable.
-    @MainActor
-    static func reconcileCloudMembership(_ space: SpaceData, remote: [String: Any]) -> CloudMembershipResult {
-        let result = reconcileCloudMembershipResult(space, remote: remote)
-        if case .review(let reason) = result { block(space, reason: reason) }
-        if let error = result.error { recordSyncFailure(space, error: error, stage: "cloudMembership") }
-        return result
-    }
-
-    @MainActor
-    private static func reconcileCloudMembershipResult(_ space: SpaceData, remote: [String: Any]) -> CloudMembershipResult {
-        guard remote["uuid"] as? String == space.id else { return .invalidRemote }
+    static func reconcileCloudMembership(_ space: SpaceData, remote: [String: Any]) -> Bool {
         guard canAutomaticallyUpload(space), !hasPendingImport(space),
-              let state = try? recoveryState(space) else { return .ready }
+              let state = try? recoveryState(space), remote["uuid"] as? String == space.id else { return true }
         let submission = state.submission
-        if let submission, submission.phase != .accepted || submission.permitsCloudRemoval == false { return .ready }
-        guard submission != nil || space.needUploadCloud || preservesLocalChanges(space) else { return .ready }
+        if let submission, submission.phase != .accepted || submission.permitsCloudRemoval == false { return true }
+        // With no protected local work, the existing full import applies remote
+        // additions and other configuration edits together with the removals.
+        guard submission != nil || space.needUploadCloud || preservesLocalChanges(space) else { return true }
         guard let timestamp = submission?.timestamp ?? space.lastUploadCloudTimestamp,
               let configuration = submission?.configuration ?? state.authorizationBaseline,
               let source = submission?.nodeIdentities ?? (submission == nil ? state.nodeIdentitiesBaseline : nil)
                 ?? SpaceCloudNodeRemovalPolicy.legacyInstances(configuration: configuration,
-                    models: submission?.schedulerModelStates ?? state.schedulerModelStatesBaseline) else { return .ready }
+                    models: submission?.schedulerModelStates ?? state.schedulerModelStatesBaseline) else { return true }
+        guard !source.isEmpty else { return true }
         guard let remoteTimestamp = SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"]),
-              remoteTimestamp < Int64.max,
+              remoteTimestamp >= timestamp, remoteTimestamp < Int64.max,
               let remoteNodes = SpaceCloudNodeRemovalPolicy.instances(remote),
               remote["groups"] is [[String: Any]], remote["scenes"] is [[String: Any]], remote["schedules"] is [[String: Any]],
               let remoteConfiguration = SpaceConfigurationIntegrityPolicy.configurationData(remote),
@@ -1210,56 +1112,53 @@ enum SpaceConfigurationSafety {
               let localKeys = SpaceKeyIntegrity.pair(localNetwork, networkID: space.meshNetworkId),
               let remoteKeys = SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId),
               localKeys.fingerprint == remoteKeys.fingerprint,
-              submission?.keyFingerprint == nil || submission?.keyFingerprint == remoteKeys.fingerprint else { return .invalidRemote }
-        guard remoteTimestamp >= timestamp else { return .retryLater }
+              submission?.keyFingerprint == nil || submission?.keyFingerprint == remoteKeys.fingerprint else { return false }
         guard let missing = SpaceCloudNodeRemovalPolicy.removed(from: source, remote: remoteNodes) else {
-            return .review("cloudMembershipChanged")
+            return submission == nil && !space.needUploadCloud // Ordinary authoritative import may apply additions.
         }
-        if missing.isEmpty, submission != nil { return .ready }
+        if missing.isEmpty, submission != nil { return true } // Keep ordinary readback retries for unchanged membership.
         if !missing.isEmpty {
             guard (try? SpaceSyncCleanupPolicy.normalize(remote)) != nil,
-                  SpaceConfigurationIntegrityPolicy.scheduleTargetIssue(in: remote) == nil else { return .invalidRemote }
+                  SpaceConfigurationIntegrityPolicy.scheduleTargetIssue(in: remote) == nil else { return false }
         }
         let completed = readbackRemovals(timestamp: timestamp, space: space)
-        guard !remoteNodes.contains(where: { node in completed.contains { $0.uuid == node.uuid && $0.address == node.address } }) else {
-            return .review("cloudMembershipChanged")
-        }
+        guard !remoteNodes.contains(where: { node in completed.contains { $0.uuid == node.uuid && $0.address == node.address } }) else { return false }
         let pending = missing.filter { node in !completed.contains { $0.uuid == node.uuid && $0.address == node.address } }
-        guard let resolved = DevicePermanentDeletionContext.cloudRemovalInstances(space: space, expected: pending) else {
-            return .review("cloudMembershipChanged")
-        }
+        guard let resolved = DevicePermanentDeletionContext.cloudRemovalInstances(space: space, expected: pending) else { return false }
         let removed = completed + resolved
-        guard let expected = SpaceCloudNodeRemovalPolicy.projectConfiguration(configuration, removing: removed),
+        guard
+              let expected = SpaceCloudNodeRemovalPolicy.projectConfiguration(configuration, removing: removed),
               let actual = SpaceCloudNodeRemovalPolicy.projectConfiguration(remoteConfiguration, removing: removed),
-              SpaceConfigurationIntegrityPolicy.configurationsMatch(expected, actual) else { return .review("cloudConfigurationChanged") }
-        if let modelBaseline = submission?.schedulerModelStates ?? state.schedulerModelStatesBaseline {
-            guard SpaceCloudNodeRemovalPolicy.projectModels(modelBaseline, removing: removed) == remoteModels else {
-                return .review("cloudSchedulerChanged")
-            }
+              SpaceConfigurationIntegrityPolicy.configurationsMatch(expected, actual) else { return false }
+        let modelBaseline = submission?.schedulerModelStates ?? state.schedulerModelStatesBaseline
+        if let modelBaseline {
+            guard SpaceCloudNodeRemovalPolicy.projectModels(modelBaseline, removing: removed) == remoteModels else { return false }
         }
         if let targets = submission?.scheduleTargets {
-            guard SpaceConfigurationIntegrityPolicy.scheduleTargetsData(remote) == targets else { return .review("cloudConfigurationChanged") }
+            guard SpaceConfigurationIntegrityPolicy.scheduleTargetsData(remote) == targets else { return false }
         }
-        guard !pending.isEmpty else { return .ready }
+        guard !pending.isEmpty else { return true }
         guard DevicePermanentDeletionContext.removeCloudInstances(space: space, instances: resolved,
             baselineTimestamp: timestamp, remoteTimestamp: remoteTimestamp, submissionID: submission?.id) else {
             block(space, reason: "deletionCleanupPending")
-            return .persistenceFailed
+            return false
         }
+        // A baseline-only cleanup has no pending submission to finish later.
+        // Retain the newer local cleanup generation for the next complete upload.
         if submission == nil {
             do {
                 var current = try recoveryState(space)
-                guard current.matches(state), current.submission == nil else { return .retryLater }
+                guard current.matches(state), current.submission == nil else { return false }
                 current.authorizationBaseline = expected
                 current.schedulerModelStatesBaseline = remoteModels
                 current.nodeIdentitiesBaseline = remoteNodes
                 try saveState(current, space: space)
-            } catch { return .persistenceFailed }
+            } catch { return false }
         }
         #if DEBUG
         print("[SpaceCloudMembership] space=\(space.id) removed=\(removed.count) remaining=\(remoteNodes.count) source=\(timestamp) remote=\(remoteTimestamp)")
         #endif
-        return .ready
+        return true
     }
 
     private static func migratePendingUpload(_ space: SpaceData) throws {
@@ -1387,9 +1286,6 @@ enum SpaceConfigurationSafety {
                 state.authorizationBaseline = nil
                 state.nodeIdentitiesBaseline = nil
                 state.schedulerModelStatesBaseline = nil
-                state.firmwareBaseline = nil
-                state.firmwareBaselineTimestamp = nil
-                state.reviewedImport = nil
                 state.requiresRemoteImport = true
             }
             state.authority = authority
@@ -1401,134 +1297,6 @@ enum SpaceConfigurationSafety {
     static func syncReadRequest(meshUUID: String, networkId: String) -> SpaceProtectionReadRequest {
         .init(scope: .init(account: UserData.currentUserId, region: String(describing: UserData.currentServerRegion),
                            meshUUID: meshUUID, networkID: networkId), root: recoveryRoot, defaults: .standard)
-    }
-
-    struct CloudRecoveryReview {
-        let context: SpaceRecoveryState
-        let local: [String: Any]
-        let remote: [String: Any]
-        let deletionEntries: [SpaceDeletionJournal.Entry]
-        let knownDeleted: Set<String>
-        let ambiguousRemote: Set<String>
-        let preview: SpaceCloudRecoveryPolicy.Candidate
-    }
-
-    @MainActor
-    static func cloudRecoveryReview(_ space: SpaceData) async -> CloudRecoveryReview? {
-        guard !hasPendingImport(space), !hasPendingDeletionCleanup(space),
-              let initial = try? recoveryState(space), initial.phase == .active,
-              initial.authority == .writable, !space.requiresPasswordVerification, !space.disableEditorPermission,
-              let local = await space.export(allowsProtectedInspection: true), isCurrent(initial, space: space) else { return nil }
-        let result = await NetworkRequest.shared.request(.spaceInfo(siteId: space.siteId,
-            spaceId: space.id, password: space.authorizationPassword))
-        guard !Task.isCancelled, isCurrent(initial, space: space) else { return nil }
-        if case .failure(let error) = result { handleAuthorityError(error, space: space) }
-        guard case .success(let response) = result, let remote = response["data"] as? [String: Any],
-              remote["uuid"] as? String == space.id else { return nil }
-        space.applyRemoteSpaceMetadata(remote)
-        guard space.save(), isCurrent(initial, space: space), canAutomaticallyUpload(space),
-              let localKeys = SpaceKeyIntegrity.pair(local, networkID: space.meshNetworkId),
-              SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId)?.fingerprint == localKeys.fingerprint,
-              let nodes = SpaceCloudNodeRemovalPolicy.instances(remote),
-              let localNodes = SpaceCloudNodeRemovalPolicy.instances(local),
-              let journal = try? deletionJournal(space), !journal.needsCleanup,
-              SchedulerModelSnapshot.spaceData(remote) != nil,
-              SpaceFirmwareObservation.snapshots(remote) != nil else { return nil }
-        let absent = Set(nodes.map(\.uuid)).subtracting(localNodes.map(\.uuid))
-        let knownDeleted = Set(nodes.filter { node in
-            absent.contains(node.uuid) && journal.entries.contains { entry in
-                guard entry.stage == .cleaned, entry.nodeUUID.uppercased() == node.uuid, entry.primaryAddress == node.address else { return false }
-                let old = entry.cloudRemoval?.instance ?? initial.nodeIdentitiesBaseline?.first {
-                    $0.uuid == entry.nodeUUID.uppercased() && $0.address == entry.primaryAddress
-                }
-                return old?.matches(node) == true
-            }
-        }.map(\.uuid))
-        guard let preview = try? SpaceCloudRecoveryPolicy.candidate(local: local, remote: remote, excluding: knownDeleted),
-              let currentLocal = await space.export(allowsProtectedInspection: true),
-              SpaceCloudRecoveryPolicy.fingerprint(currentLocal) == SpaceCloudRecoveryPolicy.fingerprint(local),
-              isCurrent(initial, space: space) else { return nil }
-        return .init(context: initial, local: local, remote: remote, deletionEntries: journal.entries,
-                     knownDeleted: knownDeleted, ambiguousRemote: absent.subtracting(knownDeleted), preview: preview)
-    }
-
-    /// The remote configuration is an explicit choice; local-only devices and
-    /// proven deletion intents survive. Revalidate both snapshots before staging.
-    @MainActor
-    static func applyCloudRecovery(_ space: SpaceData, review: CloudRecoveryReview,
-                                   includeCloudOnly: Bool) async -> Bool {
-        guard isCurrent(review.context, space: space), !hasPendingImport(space),
-              !hasPendingDeletionCleanup(space), canAutomaticallyUpload(space) else { return false }
-        let result = await NetworkRequest.shared.request(.spaceInfo(siteId: space.siteId,
-            spaceId: space.id, password: space.authorizationPassword))
-        guard !Task.isCancelled, isCurrent(review.context, space: space) else { return false }
-        if case .failure(let error) = result { handleAuthorityError(error, space: space) }
-        guard case .success(let response) = result, let remote = response["data"] as? [String: Any],
-              remote["uuid"] as? String == space.id else { return false }
-        space.applyRemoteSpaceMetadata(remote)
-        guard space.save(), canAutomaticallyUpload(space), isCurrent(review.context, space: space),
-              SpaceCloudRecoveryPolicy.fingerprint(remote) == SpaceCloudRecoveryPolicy.fingerprint(review.remote),
-              let current = await space.export(allowsProtectedInspection: true),
-              SpaceCloudRecoveryPolicy.fingerprint(current) == SpaceCloudRecoveryPolicy.fingerprint(review.local),
-              isCurrent(review.context, space: space), !hasPendingImport(space),
-              let journal = try? deletionJournal(space), journal.entries == review.deletionEntries,
-              let timestamp = SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"]),
-              max(timestamp, space.lastUpdate, space.lastUploadCloudTimestamp ?? 0) < Int64.max else { return false }
-        let excluded = includeCloudOnly ? review.knownDeleted : review.knownDeleted.union(review.ambiguousRemote)
-        guard let prepared = try? SpaceCloudRecoveryPolicy.candidate(local: current, remote: remote, excluding: excluded),
-              let cleaned = try? SpaceSyncCleanupPolicy.normalize(prepared.payload),
-              cleaned.topology.isValid, checkpoint(space, refresh: true) else { return false }
-        var candidate = cleaned.payload
-        candidate["updateTimestamp"] = max(timestamp, space.lastUpdate, space.lastUploadCloudTimestamp ?? 0) + 1
-        do {
-            let root = try directory(space)
-            let localData = try JSONSerialization.data(withJSONObject: current, options: [.sortedKeys])
-            let remoteData = try JSONSerialization.data(withJSONObject: remote, options: [.sortedKeys])
-            let candidateData = try JSONSerialization.data(withJSONObject: candidate, options: [.sortedKeys])
-            try localData.write(to: root.appendingPathComponent("before-reviewed-local.json"), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
-            try remoteData.write(to: root.appendingPathComponent("before-reviewed-cloud.json"), options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
-            var state = try recoveryState(space)
-            guard state.matches(review.context), state.submission == review.context.submission else { return false }
-            let previousState = try JSONEncoder().encode(state)
-            try previousState.write(to: root.appendingPathComponent("before-reviewed-state.json"),
-                                    options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
-            state.generation = UUID()
-            state.submission = nil
-            state.reviewedImport = .init(candidate: candidateData, remote: remoteData,
-                                         local: localData, previousState: previousState)
-            state.requiresRemoteImport = true
-            try saveState(state, space: space)
-            block(space, reason: "reviewedImportPending")
-            return true
-        } catch { return false }
-    }
-
-    /// Before the first write, require the exact reviewed snapshots. Once import
-    /// has started, replay the durable candidate to complete the interrupted write.
-    @MainActor
-    static func prepareReviewedImport(_ space: SpaceData, remote: [String: Any]) async -> Bool {
-        guard let context = try? recoveryState(space) else { return false }
-        guard let reviewed = context.reviewedImport else { return true }
-        guard context.authority == .writable, context.unbindRequested != true,
-              SpaceMembershipCoordinator.allowsConfiguration(space), space.permission != .visitor,
-              !space.disableEditorPermission, !space.requiresPasswordVerification,
-              let root = try? directory(space) else { return false }
-        if FileManager.default.fileExists(atPath: root.appendingPathComponent("pending-import.json").path) { return true }
-        guard let expectedRemote = (try? JSONSerialization.jsonObject(with: reviewed.remote)) as? [String: Any],
-              let expectedLocal = (try? JSONSerialization.jsonObject(with: reviewed.local)) as? [String: Any],
-              let local = await space.export(allowsProtectedInspection: true),
-              isCurrent(context, space: space), !Task.isCancelled else { return false }
-        if SpaceCloudRecoveryPolicy.fingerprint(remote) == SpaceCloudRecoveryPolicy.fingerprint(expectedRemote),
-           SpaceCloudRecoveryPolicy.fingerprint(local) == SpaceCloudRecoveryPolicy.fingerprint(expectedLocal) { return true }
-        // No database writes have started. Restore the prior receipt/baselines,
-        // but invalidate callbacks from both the old review and the staged import.
-        do {
-            var previous = try JSONDecoder().decode(SpaceRecoveryState.self, from: reviewed.previousState)
-            previous.generation = UUID()
-            try saveState(previous, space: space)
-            block(space, reason: "cloudMembershipChanged")
-        } catch { return false }
-        return false
     }
 
     static func configurationAvailable(for node: Node, group: Group? = nil,
@@ -1591,12 +1359,6 @@ enum SpaceConfigurationSafety {
             state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(remote)
             state.nodeIdentitiesBaseline = SpaceCloudNodeRemovalPolicy.instances(remote)
             state.schedulerModelStatesBaseline = SchedulerModelSnapshot.spaceData(remote)
-            if let remoteFirmware = SpaceFirmwareObservation.snapshots(remote),
-               let localFirmware = SpaceFirmwareObservation.snapshots(local),
-               SpaceFirmwareObservation.confirms(remoteFirmware, remote: localFirmware, removed: []) {
-                state.firmwareBaseline = remoteFirmware
-                state.firmwareBaselineTimestamp = SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"])
-            }
             do {
                 try saveState(state, space: space)
                 UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
@@ -1605,19 +1367,14 @@ enum SpaceConfigurationSafety {
     }
 
     static func pendingImport(_ space: SpaceData) -> [String: Any]? {
-        let data = (try? directory(space)).flatMap { try? Data(contentsOf: $0.appendingPathComponent("pending-import.json")) }
-            ?? (try? recoveryState(space).reviewedImport?.candidate)
-        guard let data, let payload = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+        guard let url = try? directory(space).appendingPathComponent("pending-import.json"),
+              let data = try? Data(contentsOf: url),
+              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               payload["uuid"] as? String == space.id else { return nil }
         return payload
     }
 
-    static func hasReviewedImport(_ space: SpaceData) -> Bool {
-        (try? recoveryState(space).reviewedImport) != nil
-    }
-
     static func hasPendingImport(_ space: SpaceData) -> Bool {
-        if hasReviewedImport(space) { return true }
         guard let url = try? directory(space).appendingPathComponent("pending-import.json") else { return true }
         return FileManager.default.fileExists(atPath: url.path)
     }
@@ -1720,19 +1477,9 @@ enum SpaceConfigurationSafety {
                 var state = try recoveryState(space)
                 let payload = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
                 let original = payload.flatMap { originalReferenceCleanupImport(space, candidate: $0) }
-                let reviewedRemote = state.reviewedImport.flatMap { (try? JSONSerialization.jsonObject(with: $0.remote)) as? [String: Any] }
-                let baseline = reviewedRemote ?? original ?? payload
-                state.authorizationBaseline = baseline.flatMap(SpaceConfigurationIntegrityPolicy.configurationData)
-                state.schedulerModelStatesBaseline = baseline.flatMap(SchedulerModelSnapshot.spaceData)
-                state.nodeIdentitiesBaseline = baseline.flatMap(SpaceCloudNodeRemovalPolicy.instances)
-                state.firmwareBaseline = baseline.flatMap(SpaceFirmwareObservation.snapshots)
-                state.firmwareBaselineTimestamp = baseline.flatMap { SpaceConfigurationIntegrityPolicy.integer($0["updateTimestamp"]) }
-                if let reviewedRemote {
-                    guard let remoteTimestamp = SpaceConfigurationIntegrityPolicy.integer(reviewedRemote["updateTimestamp"]) else { return false }
-                    space.lastUploadCloudTimestamp = remoteTimestamp
-                    guard space.save() else { return false }
-                    UserDefaults.standard.set(space.lastUpdate, forKey: "spaceConfigurationLocalRecoveryPending." + key(space))
-                }
+                state.authorizationBaseline = (original ?? payload).flatMap(SpaceConfigurationIntegrityPolicy.configurationData)
+                state.schedulerModelStatesBaseline = payload.flatMap(SchedulerModelSnapshot.spaceData)
+                state.nodeIdentitiesBaseline = (original ?? payload).flatMap(SpaceCloudNodeRemovalPolicy.instances)
                 if original != nil, space.permission != .visitor {
                     space.markLocalChangePendingCloudSync()
                     guard space.save() else { return false }
@@ -1754,11 +1501,6 @@ enum SpaceConfigurationSafety {
             if validatedTopology {
                 UserDefaults.standard.removeObject(forKey: "spaceConfigurationBlocked." + key(space))
                 UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
-                var state = try recoveryState(space)
-                if state.reviewedImport != nil {
-                    state.reviewedImport = nil
-                    try saveState(state, space: space)
-                }
             } else {
                 block(space, reason: "incompleteImportedTopology")
             }
@@ -1844,11 +1586,6 @@ enum SpaceConfigurationSafety {
             try data.write(to: directory(space).appendingPathComponent("before-local-recovery-remote.json"),
                            options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
         } catch { return false }
-        guard let localFirmware = SpaceFirmwareObservation.snapshots(current),
-              let remoteFirmware = SpaceFirmwareObservation.snapshots(remote),
-              let state = try? recoveryState(space) else { return false }
-        let firmware = SpaceFirmwareObservation.merge(local: localFirmware, remote: remoteFirmware, baseline: state.firmwareBaseline)
-        guard firmware.conflicts.isEmpty, firmware.updates.isEmpty else { return false }
         let timestamp = space.lastUpdate
         let saved = SunSmartDataManager.shared.configurationTransaction {
             space.lastUpdate = max(space.lastUpdate, remoteTimestamp)
@@ -1866,8 +1603,6 @@ enum SpaceConfigurationSafety {
             state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(remote)
             state.nodeIdentitiesBaseline = SpaceCloudNodeRemovalPolicy.instances(remote)
             state.schedulerModelStatesBaseline = SchedulerModelSnapshot.spaceData(remote)
-            state.firmwareBaseline = SpaceFirmwareObservation.snapshots(remote)
-            state.firmwareBaselineTimestamp = SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"])
             try saveState(state, space: space)
         } catch { return false }
         SpaceProtectionReadGeneration.beginMutation()
@@ -1973,59 +1708,6 @@ enum SpaceConfigurationSafety {
     }
 
     enum SafetyError: Error { case invalidCheckpoint, persistenceFailed }
-}
-
-extension SpaceData {
-    @MainActor
-    func firmwareObservations() -> [SpaceFirmwareObservation]? {
-        guard let network = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: meshNetworkId) else { return nil }
-        return firmwareObservations(nodes: network.nodes.filter { !$0.isProvisioner && !$0.isConfigComplete && $0.subNetworkId == meshNetworkId })
-    }
-
-    private func firmwareObservations(nodes: [Node]) -> [SpaceFirmwareObservation]? {
-        var payload: [[String: Any]] = []
-        for node in nodes {
-            guard let data = try? JSONEncoder().encode(node),
-                  var dictionary = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return nil }
-            dictionary["uuid"] = node.uuid.uuidString
-            dictionary["firmwareID"] = node.firmwareID?.hex
-            dictionary["compositionHash"] = node.compositionHash
-            payload.append(dictionary)
-        }
-        return SpaceFirmwareObservation.snapshots(["nodes": payload])
-    }
-
-    @MainActor
-    func applyFirmwareObservations(_ updates: [SpaceFirmwareObservation], expected: [SpaceFirmwareObservation]) -> Bool {
-        guard !updates.isEmpty else { return true }
-        guard let network = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: meshNetworkId) else { return false }
-        let stored = network.nodes.filter { !$0.isProvisioner && !$0.isConfigComplete && $0.subNetworkId == meshNetworkId }
-        let active = MeshNetworkManager.instance.realNodes.filter {
-            $0.network?.uuid.uuidString == meshUUID && $0.subNetworkId == meshNetworkId
-        }
-        guard let storedValues = firmwareObservations(nodes: stored),
-              let activeValues = firmwareObservations(nodes: active) else { return false }
-        for update in updates {
-            guard let previous = expected.first(where: { $0.instance.matches(update.instance) }),
-                  storedValues.contains(where: { $0.instance.matches(previous.instance) && $0.value == previous.value }),
-                  activeValues.filter({ $0.instance.matches(previous.instance) }).allSatisfy({ $0.value == previous.value }) else { return false }
-        }
-        func apply(_ value: SpaceFirmwareObservation.Value, to node: Node) {
-            if let firmware = value.firmwareID { node.firmwareID = Data(hex: firmware) }
-            if let vid = value.vid.flatMap({ UInt16($0, radix: 16) }) { node.setVersionIdentifier(versionIdentifier: vid) }
-            if let hash = value.compositionHash { node.compositionHash = hash }
-        }
-        for update in updates {
-            guard let node = stored.first(where: { $0.uuid.uuidString == update.instance.uuid && $0.primaryUnicastAddress == update.instance.address }) else { return false }
-            apply(update.value, to: node)
-            guard node.save() else { return false }
-            for node in active where node.uuid.uuidString == update.instance.uuid && node.primaryUnicastAddress == update.instance.address {
-                apply(update.value, to: node)
-                node.clearSyncStateCache()
-            }
-        }
-        return true
-    }
 }
 
 /// Kept independent of App state so WAL, rollback and failed checkpoints can be

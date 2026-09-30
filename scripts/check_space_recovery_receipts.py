@@ -21,7 +21,6 @@ start = methods.index('    static func resumeLocalRemovals()')
 end = methods.index('    static func activateImport(', start)
 methods = methods[:start] + methods[end:]
 methods = methods[:methods.index('    static func syncReadRequest(')] if '    static func syncReadRequest(' in methods else methods
-methods += section(safety, '    struct CloudRecoveryReview {', '    static func configurationAvailable(')
 methods += section(safety, '    static func needsUpgradeBaseline(', '    /// Preserve both side stores')
 methods += section(safety, '    static func beginImport(', '    @MainActor\n    static func prepareUpload(')
 methods += section(safety, '    @MainActor\n    static func prepareUpload(', '    /// Called only after the user explicitly chooses')
@@ -59,7 +58,6 @@ test = test.replace('// IMPORT_PREPARATION_METHOD', '@MainActor\n' + preparation
     + '        _ = proximityPreflight\n' + zone_gate + '        return .prepared\n    }\n')
 test += '\n' + section(imports, 'final class SiteImportTrace', '\nstruct SpaceImportOutcome')
 test += '\n' + read('Tests/Group/SpaceImportPreparationTests.swift')
-test += '\n' + read('Tests/Group/SpaceCloudConflictRecoveryTests.swift')
 membership = section(read('SunSmart/Common/Data/SpaceMembershipCoordinator.swift'),
     'enum SpaceMembershipCoordinator {', '    static var savedCopiesDirectory:') + '}\n'
 membership = membership.replace('URL(fileURLWithPath: NSHomeDirectory())\n        .appendingPathComponent("Library/Application Support/SpaceMembership")',

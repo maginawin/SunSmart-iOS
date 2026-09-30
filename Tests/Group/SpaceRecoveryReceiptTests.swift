@@ -41,21 +41,6 @@ final class SpaceData {
     @MainActor func export(purpose: Purpose) async -> [String: Any]? {
         await SpaceConfigurationSafety.prepareUpload(self, payload: payload) ? payload : nil
     }
-    @MainActor func export(allowsProtectedInspection: Bool) async -> [String: Any]? { payload }
-    var firmwareWritesSucceed = true
-    @MainActor func firmwareObservations() -> [SpaceFirmwareObservation]? {
-        SpaceFirmwareObservation.snapshots(payload)
-    }
-    @MainActor func applyFirmwareObservations(_ updates: [SpaceFirmwareObservation], expected: [SpaceFirmwareObservation]) -> Bool {
-        guard firmwareWritesSucceed else { return false }
-        for update in updates {
-            guard let index = nodes.firstIndex(where: { $0["uuid"] as? String == update.instance.uuid }) else { return false }
-            nodes[index]["firmwareID"] = update.value.firmwareID
-            nodes[index]["vid"] = update.value.vid
-            nodes[index]["compositionHash"] = update.value.compositionHash
-        }
-        return true
-    }
     // METADATA_METHOD
     // IMPORT_PREPARATION_METHOD
 }
@@ -293,11 +278,6 @@ final class NetworkRequest {
         try testReferenceCleanupReceipts()
         try testProximityAllImportRecovery()
         try testProtectionGenerationWriters()
-
-        try await testOrdinaryFirmwareRefresh()
-        try testFirmwareThreeWayMerge()
-        try await testCloudConflictClassification()
-        try await testReviewedCloudRecovery()
 
         // Account changes invalidate pending callbacks before looking up another store.
         let accountContext = try SpaceConfigurationSafety.recoveryState(b)
@@ -1010,19 +990,17 @@ final class NetworkRequest {
         let request = NetworkRequest.shared
         for storedEmpty in [false, true] {
             let space = SpaceData("empty-address-\(storedEmpty)")
-            var node = try membershipNode(1)
-            node["unicastAddress"] = "0046"
-            node.removeValue(forKey: "custProps")
+            let node: [String: Any] = ["uuid": "node", "unicastAddress": "0046", "groupState": 0]
             var storedNode = node, remoteNode = node
             if storedEmpty { storedNode["groupAddress"] = "" } else { remoteNode["groupAddress"] = "" }
             // Seed an accepted pre-fix snapshot on disk, including the old block.
-            let legacy = try JSONSerialization.data(withJSONObject: ["groups": [], "memberships": [storedNode.filter { ["uuid", "unicastAddress", "groupState", "groupAddress"].contains($0.key) }]])
+            let legacy = try JSONSerialization.data(withJSONObject: ["groups": [], "memberships": [storedNode]])
             var state = try S.recoveryState(space)
             state.submission = .init(id: UUID(), timestamp: 50, configuration: legacy, phase: .accepted)
             try S.testSaveState(state, space: space)
             S.block(space, reason: "uploadReadbackConflict")
             space.lastUpdate = 60
-            space.nodes = [node, try membershipNode(9)]
+            space.nodes = [node, ["uuid": "new-node", "unicastAddress": "0049", "groupState": 0]]
             precondition(S.updateDeletionJournal(space) { journal in
                 for timestamp: Int64 in [50, 60] {
                     journal.entries.append(.init(id: UUID(), nodeUUID: "deleted-\(timestamp)", primaryAddress: 2,
@@ -1043,7 +1021,7 @@ final class NetworkRequest {
 
             // The shared production upload path can now export and confirm the
             // newer two-node payload; it must not mark that version done early.
-            request.responses = [.success(["data": oldRemote]), .success([:]), .success(["data": space.payload])]
+            request.responses = [.success([:]), .success(["data": space.payload])]
             if case .failure = await S.uploadBeforeUnbind(space) { preconditionFailure("newer edit must remain uploadable") }
             precondition(request.responses.isEmpty && request.uploads == uploads + 1)
             precondition(space.lastUploadCloudTimestamp == 60 && !space.needUploadCloud)
@@ -1168,7 +1146,7 @@ extension SpaceRecoveryReceiptTests {
         cleanState.nodeIdentitiesBaseline = SpaceCloudNodeRemovalPolicy.instances(clean.payload)
         try S.testSaveState(cleanState, space: clean)
         remote["uuid"] = clean.id
-        precondition(S.reconcileCloudMembership(clean, remote: remote) == .ready, "without protected local work, ordinary import owns remote changes")
+        precondition(S.reconcileCloudMembership(clean, remote: remote), "without protected local work, ordinary import owns remote changes")
         print("PASS: current-Space accepted/legacy/baseline removal, all removed, unsent addition, exact Scheduler baseline, strict invalid/unknown/readback rejection and cleanup upload")
     }
 

@@ -65,7 +65,6 @@ struct SpaceProtectionReadRequest {
                 result.phase = state.phase
                 result.authority = state.authority
                 result.pendingUnbind = state.unbindRequested == true
-                result.pendingImport = state.reviewedImport != nil
                 result.recoveryGeneration = state.generation
                 result.persistedSpace = state.identity.space
                 directory = state.directoryName ?? key
@@ -74,7 +73,7 @@ struct SpaceProtectionReadRequest {
                       !directory.contains("/"), !directory.contains("\\") else { throw CocoaError(.fileReadCorruptFile) }
             }
             let folder = root.appendingPathComponent(directory, isDirectory: true)
-            result.pendingImport = try exists(folder.appendingPathComponent("pending-import.json")) || result.pendingImport
+            result.pendingImport = try exists(folder.appendingPathComponent("pending-import.json"))
             result.pendingReferences = try exists(folder.appendingPathComponent("pending-reference-cleanup.json"))
             if let data = try readIfPresent(folder.appendingPathComponent("device-deletions.json")) {
                 let journal = try JSONDecoder().decode(SpaceDeletionJournal.self, from: data)
