@@ -459,14 +459,19 @@ extension Schedule {
         delete: Bool = false
     ) -> [MeshMessageHandle] {
         var messageHandles: [MeshMessageHandle] = []
+        if !delete, !TimedSchedulerBindings.reserveForSending(schedule: self, node: node, contextGroup: contextGroup) {
+            return []
+        }
+        if delete, !TimedSchedulerBindings.reserveForDeletion(schedule: self, node: node) { return [] }
+        guard let slot = slot(on: node), (0..<16).contains(slot) else { return [] }
         if delete {
             let deleteEntry = SchedulerRegistryEntry()
             #if DEBUG
-            let payloadHex = SchedulerRegistryEntry.marshal(index: UInt8(self.id), entry: deleteEntry).map { String(format: "%02X", $0) }.joined()
+            let payloadHex = SchedulerRegistryEntry.marshal(index: UInt8(slot), entry: deleteEntry).map { String(format: "%02X", $0) }.joined()
             print("ScheduleSend delete node:\(node.primaryUnicastAddress.hex) id:\(self.id) payload:\(payloadHex)")
             #endif
             
-            let message = SchedulerActionSet(index: UInt8(self.id), entry: deleteEntry)
+            let message = SchedulerActionSet(index: UInt8(slot), entry: deleteEntry)
             // SIG Scheduler 不支持删除，必须清理节点全部 Scheduler Model 的同 index。
             node.schedulerSetupModels.forEach { model in
                 messageHandles.append(MeshMessageHandle(message: message, model: model))
@@ -479,15 +484,15 @@ extension Schedule {
             // 设置日程
             let entry = self.schedulerEntry
             #if DEBUG
-            let payloadHex = SchedulerRegistryEntry.marshal(index: UInt8(self.id), entry: entry).map { String(format: "%02X", $0) }.joined()
+            let payloadHex = SchedulerRegistryEntry.marshal(index: UInt8(slot), entry: entry).map { String(format: "%02X", $0) }.joined()
             print("ScheduleSend set node:\(node.primaryUnicastAddress.hex) id:\(self.id) enabled:\(self.enabled) hour:\(self.hour) minute:\(self.minute) weekDays:\(self.weekDays.count) action:\(self.action.rawValue) payload:\(payloadHex)")
             #endif
-            let message = SchedulerActionSet(index: UInt8(self.id), entry: entry)
+            let message = SchedulerActionSet(index: UInt8(slot), entry: entry)
 
             // 先清理全部非 Owner Model，避免同一个 id 在两个 Register 中同时有效。
             node.schedulerCleanupModels(for: owner).forEach { model in
                 let cleanupMessage = SchedulerActionSet(
-                    index: UInt8(self.id),
+                    index: UInt8(slot),
                     entry: SchedulerRegistryEntry()
                 )
                 messageHandles.append(MeshMessageHandle(message: cleanupMessage, model: model))
@@ -495,6 +500,8 @@ extension Schedule {
             messageHandles.append(MeshMessageHandle(message: message, model: schedulerSetupModel))
         }
         
+        let context = TimedSchedulerMessageContext(schedule: self, node: node)
+        messageHandles.forEach { $0.timedSchedulerContext = context }
         return messageHandles
     }
     

@@ -157,6 +157,7 @@ struct SpaceRecoveryState: Codable, Equatable {
         /// Absent on receipts written before scene-target readback was added.
         var scheduleTargets: Data? = nil
         /// Exact observations submitted by clients that support Model snapshots.
+        var timedConfiguration: Data? = nil
         var schedulerModelStates: Data? = nil
         var nodeIdentities: [SpaceCloudNodeRemovalPolicy.Instance]? = nil
         /// Explicitly false for migrated unknown-outcome receipts.
@@ -171,6 +172,7 @@ struct SpaceRecoveryState: Codable, Equatable {
     var submission: Submission?
     var authorizationBaseline: Data?
     /// Last confirmed cloud observations, independent of subsequent device reads.
+    var timedConfigurationBaseline: Data? = nil
     var schedulerModelStatesBaseline: Data? = nil
     var nodeIdentitiesBaseline: [SpaceCloudNodeRemovalPolicy.Instance]? = nil
     var unbindRequested: Bool?

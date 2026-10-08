@@ -494,7 +494,7 @@ struct TimedSchedulerSingleOwnerContractTests {
         ))
         require(
             memberPreflight.contains(
-                "ScheduleServer.nodesRequiringAuthoritativeSchedulerRead(exitNodes)"
+                "ScheduleServer.nodesRequiringAuthoritativeSchedulerRead(exitNodes + addNodes)"
             )
                 && memberPreflight.contains(
                     "ScheduleServer.readUnknownSchedulerState(nodes: unknownNodes)"
@@ -767,7 +767,7 @@ struct TimedSchedulerSingleOwnerContractTests {
             "Deferred runner must skip enabled Schedules after a failed Time Set"
         )
         require(
-            attempts.contains("completion(!task.operationType.requiresSiteTimeSetHandle)"),
+            attempts.contains("completion(!task.operationType.requiresSiteTimeSetHandle && task.isSuccessful(contextGroup: group))"),
             "Deferred runner must fail an operation whose required Time Set is missing"
         )
         require(

@@ -148,7 +148,8 @@ enum SpaceConfigurationSafety {
         .init(scope: .init(account: UserData.currentUserId, region: UserData.currentServerRegion,
                            meshUUID: meshUUID, networkID: networkId), root: root, defaults: .standard)
     }
-    static func configurationAvailable(for node: Node, group: Group?) -> Bool {
+    static func configurationAvailable(for node: Node, group: Group?,
+                                       protectionSnapshot: SpaceProtectionReadSnapshot? = nil) -> Bool {
         currentConfigurationAvailable && (NodeSyncReadContext.current?.configurationAvailable(for: node, group: group) ?? true)
     }
     static func testSnapshot(_ network: MeshNetwork) -> SpaceProtectionReadSnapshot {
@@ -226,6 +227,9 @@ extension Node {
     }
 }
 final class Schedule {
+    // This reader fixture uses active Scene groups; waitDelete membership is
+    // exercised with the production binding policy in TimedSlotPersistenceTests.
+    var activeSceneGroups: [Group] { scene?.info.groups ?? [] }
     var id = 0
     enum TargetType: CaseIterable { case devices, groups, scene, profile }
     var nodeAddresses: [Address] = [], groups: [Group] = [], scene: Scene?

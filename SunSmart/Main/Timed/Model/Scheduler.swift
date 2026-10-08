@@ -114,8 +114,11 @@ class Schedule: Codable, Copyable {
         }
     }
     
-    /// 计划id  0~15
+    /// Space 内稳定业务身份，不能用作设备 Scheduler index。
     var id: Int = 0
+    /// nil is the legacy id=slot format; an explicit array is the node-slot format.
+    var nodeSlots: [TimedSchedulerNodeSlot]?
+    var nodeSlotsLoadFailed = false
     /// 是否启用
     var enabled: Bool = false
     /// 名称
@@ -189,6 +192,11 @@ class Schedule: Codable, Copyable {
                 nodes.append(contentsOf: $0.nodes.filter({ !nodes.contains($0) }))
             })
         }
+        if let nodeSlots {
+            nodes.append(contentsOf: MeshNetworkManager.instance.realNodes.filter { node in
+                !nodes.contains(node) && nodeSlots.contains { $0.identity == node.timedSchedulerIdentity }
+            })
+        }
         return nodes
     }
     
@@ -223,8 +231,9 @@ class Schedule: Codable, Copyable {
     
     
     /// 设置的数据
-    var data: Data {
-        return SchedulerRegistryEntry.marshal(index: UInt8(id), entry: schedulerEntry)
+    func data(slot: UInt8) -> Data? {
+        guard slot < 16 else { return nil }
+        return SchedulerRegistryEntry.marshal(index: slot, entry: schedulerEntry)
     }
     /// 设备的日程数据
     var schedulerEntry: SchedulerRegistryEntry {
@@ -287,6 +296,10 @@ class Schedule: Codable, Copyable {
         case hour
         case minute
         case second
+        case nodeSlots
+        case needDeleteNodeAddresses
+        case needDeleteGroupAddresses
+        case needDeleteSceneNumbers
     }
     
     public required init(from decoder: Decoder) throws {
@@ -324,9 +337,26 @@ class Schedule: Codable, Copyable {
         }
         
         self.profiles = try container.decodeIfPresent([ScheduleProfile].self, forKey: .profiles) ?? []
+        self.nodeSlots = try container.decodeIfPresent([TimedSchedulerNodeSlot].self, forKey: .nodeSlots)
+        guard id >= 0, nodeSlots != nil || id < 16,
+              nodeSlots?.allSatisfy(\.isValid) != false,
+              nodeSlots.map({ Set($0.map(\.identity)).count == $0.count }) != false else {
+            throw DecodingError.dataCorruptedError(forKey: .nodeSlots, in: container,
+                debugDescription: "Invalid timed schedule identity or node slots")
+        }
+        self.needDeleteNodeAddresses = try container.decodeIfPresent([String].self, forKey: .needDeleteNodeAddresses)?
+            .compactMap { Address(hex: $0) } ?? []
+        self.needDeleteGroupAddresses = try container.decodeIfPresent([String].self, forKey: .needDeleteGroupAddresses)?
+            .compactMap { Address(hex: $0) } ?? []
+        self.needDeleteSceneNumbers = try container.decodeIfPresent([String].self, forKey: .needDeleteSceneNumbers)?
+            .compactMap { SceneNumber(hex: $0) } ?? []
     }
     
     public func encode(to encoder: Encoder) throws {
+        guard !nodeSlotsLoadFailed else {
+            throw EncodingError.invalidValue(id, .init(codingPath: encoder.codingPath,
+                debugDescription: "Stored timed node slots cannot be decoded"))
+        }
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(self.id, forKey: .id)
         try container.encode(self.name, forKey: .name)
@@ -341,11 +371,20 @@ class Schedule: Codable, Copyable {
         try container.encode(self.groupAddresses.map { $0.hex }, forKey: .groupAddresses)
         try container.encode(self.sceneNumber?.hex, forKey: .sceneNumber)
         try container.encode(self.profiles, forKey: .profiles)
+        try container.encodeIfPresent(self.nodeSlots, forKey: .nodeSlots)
+        try container.encode(self.needDeleteNodeAddresses.map { $0.hex }, forKey: .needDeleteNodeAddresses)
+        try container.encode(self.needDeleteGroupAddresses.map { $0.hex }, forKey: .needDeleteGroupAddresses)
+        try container.encode(self.needDeleteSceneNumbers.map { $0.hex }, forKey: .needDeleteSceneNumbers)
     }
     
     /// 复制日程
     func copy() -> Self {
         let schedule = Schedule(id: id, name: name, enabled: enabled, nodeAddresses: nodeAddresses, groupAddresses: groupAddresses, sceneNumber: sceneNumber, profiles: profiles, selectTargetType: selectTargetType, action: action, fadeTime: fadeTime, weekDays: weekDays, hour: hour, minute: minute)
+        schedule.nodeSlots = nodeSlots
+        schedule.nodeSlotsLoadFailed = nodeSlotsLoadFailed
+        schedule.needDeleteNodeAddresses = needDeleteNodeAddresses
+        schedule.needDeleteGroupAddresses = needDeleteGroupAddresses
+        schedule.needDeleteSceneNumbers = needDeleteSceneNumbers
         return schedule as! Self
     }
     

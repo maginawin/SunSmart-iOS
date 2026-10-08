@@ -243,30 +243,36 @@ class SceneSettingsViewController: UIViewController {
             return
         }
         
-        selectGroups.forEach({
-            let executeSceneData = $0.executeSceneData!
-            let isOn = executeSceneData.isOn
-            let lightness = isOn ? Node.getLightness(lightness100: executeSceneData.lightness) : 0
-            let cct = $0.clampEffectiveCct(UInt16(executeSceneData.cct))
-            if let data = $0.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
-                data.isOn = isOn
-                data.lightness = lightness
-                data.cct = cct
-            }else {
-                $0.info.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: scene.number, isOn: isOn, lightness: lightness, cct: cct))
-            }
-            $0.info.save()
-            $0.updateGroupSyncState()
-//            scene.info.groups.sort(by: { $0.address.address < $1.address.address })
-        })
-        
+        guard prepareTimedSceneMembership(selectGroups, retry: { [weak self] in self?.doneAction() }) else { return }
+
+        guard persistTimedSceneMembership(selectGroups, applying: {
+            try selectGroups.forEach({
+                let executeSceneData = $0.executeSceneData!
+                let isOn = executeSceneData.isOn
+                let lightness = isOn ? Node.getLightness(lightness100: executeSceneData.lightness) : 0
+                let cct = $0.clampEffectiveCct(UInt16(executeSceneData.cct))
+                if let data = $0.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
+                    data.state = .normal
+                    data.isOn = isOn
+                    data.lightness = lightness
+                    data.cct = cct
+                }else {
+                    $0.info.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: scene.number, isOn: isOn, lightness: lightness, cct: cct))
+                }
+                guard $0.info.save() else { throw TimedSchedulerBindings.Failure.persistence }
+                $0.updateGroupSyncState()
+    //            scene.info.groups.sort(by: { $0.address.address < $1.address.address })
+            })
+
+        }) else { return }
+
         if existNodeGroups.isEmpty { // 都是空组
 //            scene.info.groups = selectGroups
 //            dismiss(animated: true)
             addSuccessHandle()
-            
+
         }else { // 去同步
-            
+
             let vc = SyncDevicesViewController(type: .scene(scene))
             vc.syncSuccessCallback = {[weak self] _ in
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
@@ -282,98 +288,161 @@ class SceneSettingsViewController: UIViewController {
             }
             navigationController?.pushViewController(vc, animated: true)
         }
-        
+
     }
-    
+
+    private func prepareTimedSceneMembership(_ groups: [Group], retry: @escaping () -> Void) -> Bool {
+        let nodes = (groups + scene.info.groups).flatMap(\.nodes)
+        let unknown = ScheduleServer.nodesRequiringAuthoritativeSchedulerRead(nodes)
+        if !unknown.isEmpty {
+            navigationItem.rightBarButtonItem?.isEnabled = false
+            XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: false)
+            ScheduleServer.readUnknownSchedulerState(nodes: unknown) { [weak self] resolved in
+                DispatchQueue.main.async {
+                    XWHUDManager.hide()
+                    guard let self else { return }
+                    self.navigationItem.rightBarButtonItem?.isEnabled = true
+                    if resolved { retry() }
+                    else { XWHUDManager.showErrorTipHUD("sync_failed".localizedString) }
+                }
+            }
+            return false
+        }
+        do {
+            _ = try TimedSchedulerBindings.prepareTopology(scene: scene, sceneGroups: groups)
+            return true
+        } catch {
+            TimedSchedulerBindings.showFailure(error)
+            return false
+        }
+    }
+
+    private func persistTimedSceneMembership(_ groups: [Group], applying changes: () throws -> Void) -> Bool {
+        let previousSchema = space.timedSchemaVersion
+        let affected = MeshNetworkManager.instance.groups
+        do {
+            let snapshots = try affected.map { try JSONEncoder().encode($0.info.sceneExecuteDatas) }
+            do {
+                let plan = try TimedSchedulerBindings.prepareTopology(scene: scene, sceneGroups: groups)
+                try TimedSchedulerBindings.commit(plan, applying: changes)
+                return true
+            } catch {
+                space.timedSchemaVersion = previousSchema
+                for (group, snapshot) in zip(affected, snapshots) {
+                    if let data = try? JSONDecoder().decode([SceneExecuteData].self, from: snapshot) {
+                        group.info.sceneExecuteDatas = data
+                    }
+                    group.updateGroupSyncState()
+                }
+                throw error
+            }
+        } catch {
+            TimedSchedulerBindings.showFailure(error)
+            return false
+        }
+    }
+
     /// 保存（设置模式）
     @objc private func saveAction() {
-        
+
         // 获取已选择的组
         let selectGroups = MeshNetworkManager.instance.groups.filter({ $0.isSelected && $0.executeSceneData != nil })
         // 有设备的组
 //        let existNodeGroups = selectGroups.filter({ $0.nodes.count > 0 })
-       
+
         // 获取新增的组
         let addGroups = selectGroups.filter({ !scene.info.groups.contains($0) })
 //        scene.info.groups.filter({ selectGroups.contains($0) })
         // 删除的组
         let deleteGroups = scene.info.groups.filter({ !selectGroups.contains($0) })
-        
+
         // 修改数据的组
         let updateGroups = selectGroups.filter({ group in
-            
+
             guard let oldData = group.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) else {
                 return true
             }
             if scene.info.groups.contains(group), let newData = group.executeSceneData {
-                return newData.isOn != oldData.isOn || newData.lightness != Node.getLightness100(lightness: oldData.lightness) || newData.cct != oldData.cct
+                return oldData.state == .waitDelete || newData.isOn != oldData.isOn || newData.lightness != Node.getLightness100(lightness: oldData.lightness) || newData.cct != oldData.cct
             }
             return false
         })
         // 组是否存在设备
         let existNodes = addGroups.contains(where: { $0.nodes.count > 0 }) || deleteGroups.contains(where: { $0.nodes.count > 0 }) || updateGroups.contains(where: { $0.nodes.count > 0 })
-        
+            || selectGroups.contains(where: { !$0.getNeedSyncDataNodes(scene: scene).syncNodes.isEmpty })
+
         guard MeshLibManager.manager.isMeshNetworkConnected || !existNodes else {
             XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
             return
         }
-        
+
+        guard prepareTimedSceneMembership(selectGroups, retry: { [weak self] in self?.saveAction() }) else { return }
+
         // 需要同步的节点
         var syncNodes: [Node] = []
-        
-        addGroups.forEach({
-//            scene.info.groups.append($0)
-//            scene.info.groups.sort(by: { $0.address.address < $1.address.address })
-            let isOn = $0.executeSceneData!.isOn
-            let lightness = isOn ? Node.getLightness(lightness100: $0.executeSceneData!.lightness) : 0
-            let cct = $0.clampEffectiveCct(UInt16($0.executeSceneData!.cct))
-            $0.info.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: scene.number, isOn: isOn, lightness: lightness, cct: cct))
-            $0.info.save()
-            syncNodes.append(contentsOf: $0.getNeedSyncDataNodes(scene: scene).syncNodes)
-            $0.updateGroupSyncState()
-        })
-        
-        updateGroups.forEach({
-            if let data = $0.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
-                data.isOn = $0.executeSceneData!.isOn
-                data.lightness = data.isOn ? Node.getLightness(lightness100: $0.executeSceneData!.lightness) : 0
-                data.cct = $0.clampEffectiveCct(UInt16($0.executeSceneData!.cct))
-                $0.info.save()
+
+        guard persistTimedSceneMembership(selectGroups, applying: {
+            try addGroups.forEach({
+    //            scene.info.groups.append($0)
+    //            scene.info.groups.sort(by: { $0.address.address < $1.address.address })
+                let isOn = $0.executeSceneData!.isOn
+                let lightness = isOn ? Node.getLightness(lightness100: $0.executeSceneData!.lightness) : 0
+                let cct = $0.clampEffectiveCct(UInt16($0.executeSceneData!.cct))
+                $0.info.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: scene.number, isOn: isOn, lightness: lightness, cct: cct))
+                guard $0.info.save() else { throw TimedSchedulerBindings.Failure.persistence }
+                syncNodes.append(contentsOf: $0.getNeedSyncDataNodes(scene: scene).syncNodes)
                 $0.updateGroupSyncState()
-            }
-            syncNodes.append(contentsOf: $0.getNeedSyncDataNodes(scene: scene).syncNodes)
-        })
-        
-        deleteGroups.forEach({
-            var deleteNodes: [Node] = []
-            // 同步过场景则去同步删除设备场景
-            if let sceneData = $0.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
-                sceneData.state = .waitDelete
-                // 判断组内是否有设备同步过该场景
-                deleteNodes = $0.getNeedSyncDataNodes(scene: scene).deleteNodes
-                if deleteNodes.isEmpty {
-                    $0.info.sceneExecuteDatas.removeAll(where: { $0.sceneNumber == sceneData.sceneNumber })
+            })
+
+            try updateGroups.forEach({
+                if let data = $0.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
+                    data.state = .normal
+                    data.isOn = $0.executeSceneData!.isOn
+                    data.lightness = data.isOn ? Node.getLightness(lightness100: $0.executeSceneData!.lightness) : 0
+                    data.cct = $0.clampEffectiveCct(UInt16($0.executeSceneData!.cct))
+                    guard $0.info.save() else { throw TimedSchedulerBindings.Failure.persistence }
+                    $0.updateGroupSyncState()
                 }
-                $0.info.save()
-                $0.updateGroupSyncState()
-            }
-            // 未同步则直接删除组场景
-//            if deleteNodes.isEmpty {
-//                if let index = scene.info.groups.firstIndex(of: $0) {
-//                    scene.info.groups.remove(at: index)
-//                }
-//                SceneExecuteData.deleteData(meshUUID: space.meshUUID, address: $0.address.address, sceneId: Int(scene.number))
-//            }
-            syncNodes.append(contentsOf: deleteNodes)
-            
-        })
-        
+                syncNodes.append(contentsOf: $0.getNeedSyncDataNodes(scene: scene).syncNodes)
+            })
+
+            try deleteGroups.forEach({
+                var deleteNodes: [Node] = []
+                // 同步过场景则去同步删除设备场景
+                if let sceneData = $0.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
+                    sceneData.state = .waitDelete
+                    // 判断组内是否有设备同步过该场景
+                    deleteNodes = $0.getNeedSyncDataNodes(scene: scene).deleteNodes
+                    if deleteNodes.isEmpty {
+                        $0.info.sceneExecuteDatas.removeAll(where: { $0.sceneNumber == sceneData.sceneNumber })
+                    }
+                    guard $0.info.save() else { throw TimedSchedulerBindings.Failure.persistence }
+                    $0.updateGroupSyncState()
+                }
+                // 未同步则直接删除组场景
+    //            if deleteNodes.isEmpty {
+    //                if let index = scene.info.groups.firstIndex(of: $0) {
+    //                    scene.info.groups.remove(at: index)
+    //                }
+    //                SceneExecuteData.deleteData(meshUUID: space.meshUUID, address: $0.address.address, sceneId: Int(scene.number))
+    //            }
+                syncNodes.append(contentsOf: deleteNodes)
+
+            })
+
+        }) else { return }
+
+        // A restored group can already have identical Scene data while its
+        // schedules were cleared before a failed SceneDelete. Include retries
+        // even when the user saves again without changing Scene parameters.
+        syncNodes.append(contentsOf: selectGroups.flatMap { $0.getNeedSyncDataNodes(scene: scene).syncNodes })
+
         // 未编辑
-        if addGroups.isEmpty && deleteGroups.isEmpty && updateGroups.isEmpty {
+        if addGroups.isEmpty && deleteGroups.isEmpty && updateGroups.isEmpty && syncNodes.isEmpty {
             navigationController?.popViewController(animated: true)
             return
         }
-        
+
         if syncNodes.isEmpty { // 都是空组/无设备操作
 //            scene.info.groups = selectGroups
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
@@ -384,7 +453,7 @@ class SceneSettingsViewController: UIViewController {
                 self?.navigationController?.popViewController(animated: true)
             }
         }else {
-            
+
             let vc = SyncDevicesViewController(type: .scene(scene))
             vc.syncSuccessCallback = {[weak self] _ in
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
@@ -403,7 +472,7 @@ class SceneSettingsViewController: UIViewController {
             navigationController?.pushViewController(vc, animated: true)
         }
     }
-    
+
     @objc private func collectionLongPressAction(sender: UIGestureRecognizer) {
         
         guard sender.state == .began else {

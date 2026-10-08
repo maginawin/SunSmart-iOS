@@ -2357,3 +2357,6 @@
 "batch_delete_failed_message" = "部分设备删除失败。是否保留这些设备，或强制删除其本地记录？设备可能仍需手动恢复出厂设置。";
 "batch_delete_completed" = "设备本地记录已删除。广播和组播不代表每台设备都已确认离网。";
 "batch_delete_kept" = "未获得成功结果的设备已保留，可稍后重试或强制删除其本地记录。";
+
+"timed_device_capacity_exceeded" = "%@ 没有可用的定时槽位（每台设备最多 16 条）。停用的定时和待删除的定时也会占用槽位。";
+"timed_device_capacity_unknown" = "请先读取 %@ 的定时数据。连接设备后重试。";

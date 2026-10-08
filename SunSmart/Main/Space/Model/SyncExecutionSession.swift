@@ -301,7 +301,7 @@ final class SyncExecutionSession {
             result.forEach { handle in
                 if let address = handle.address ?? handle.model?.parentElement?.unicastAddress,
                    let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-                    node.updateData(message: handle.message, isSuccess: handle.isSuccessful, model: handle.model)
+                    node.applyMessageHandle(handle, isSuccess: handle.isSuccessful)
                     node.clearSyncStateCache()
                 }
             }

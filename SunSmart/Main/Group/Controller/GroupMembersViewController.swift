@@ -91,7 +91,7 @@ class GroupMembersViewController: UIViewController {
             guard let self = self else { return }
             DispatchQueue.main.async {
                 if MeshLibManager.manager.isMeshNetworkConnected {
-                    let inGroupNodes = self.nodes.filter({ $0.group?.address.address == self.group.address.address })
+                    let inGroupNodes = self.nodes.filter({ $0.groupState != .exitFailure && $0.group?.address.address == self.group.address.address })
                     self.selectNodes.append(contentsOf: inGroupNodes.filter({ !self.selectNodes.contains($0) }))
             //        nodes.filter({ $0.group?.address.address == group.address.address })
                     self.collectionView.reloadData()
@@ -119,7 +119,7 @@ class GroupMembersViewController: UIViewController {
         nodes = MeshNetworkManager.instance.realNodes.filter({ isVisibleGroupMemberNode($0) && ($0.group == nil || $0.group?.address.address == group.address.address) })
         selectNodes.removeAll()
         nodes.forEach { node in
-            if node.group != nil {
+            if node.group != nil && node.groupState != .exitFailure {
                 if !selectNodes.contains(node) {
                     selectNodes.append(node)
                 }
@@ -233,7 +233,7 @@ class GroupMembersViewController: UIViewController {
             return
         }
         let exitNodes = group.nodes.filter({ !selectNodes.contains($0) })
-        let addNodes = selectNodes.filter({ !group.nodes.contains($0) })
+        let addNodes = selectNodes.filter({ !group.nodes.contains($0) || $0.groupState == .exitFailure })
         guard exitNodes.count > 0 || addNodes.count > 0 else {
             backAction()
             return
@@ -270,7 +270,7 @@ class GroupMembersViewController: UIViewController {
         addNodes: [Node],
         proxyRemovalPlans: [GroupMemberProxyRemovalPlan]
     ) {
-        let unknownNodes = ScheduleServer.nodesRequiringAuthoritativeSchedulerRead(exitNodes)
+        let unknownNodes = ScheduleServer.nodesRequiringAuthoritativeSchedulerRead(exitNodes + addNodes)
         guard !unknownNodes.isEmpty else {
             performSave(
                 exitNodes: exitNodes,
@@ -368,7 +368,13 @@ class GroupMembersViewController: UIViewController {
             return
         }
 
-        let newMembers = group.nodes.filter { !exitNodes.contains($0) } + addNodes
+        let newMembers = group.nodes.filter { !exitNodes.contains($0) && !addNodes.contains($0) } + addNodes
+        do {
+            _ = try TimedSchedulerBindings.prepareTopology(group: group, members: newMembers, addingMembers: addNodes)
+        } catch {
+            TimedSchedulerBindings.showFailure(error)
+            return
+        }
         var transaction = ProximityLightingLifecycleCoordinator.begin(space: space)
         transaction.updateMembers(group: group, members: newMembers)
         let preparation = transaction.prepare()
@@ -412,41 +418,79 @@ class GroupMembersViewController: UIViewController {
                     return
                 }
 
-                guard let lifecycleResult = ProximityLightingLifecycleCoordinator.commit(
-                    preparation,
-                    allowExistingHardErrors: true,
-                    hasAdditionalLogicalChange: true,
-                    applyAdditionalChanges: {
-                    exitNodes.forEach { node in
-                        node.groupState = .exitFailure
-                        node.preConfiguration.dayProfileStartsAboveLux = nil
-                        node.preConfiguration.nightProfileStartsBelowLux = nil
-                        node.preConfiguration.dayProfileLightData = nil
-                        node.preConfiguration.nightProfileLightData = nil
-                        if node.sensorCalibrationData?.isCalibration ?? false {
-                            node.preConfiguration.resetDaylightCalibration = true
-                        }
-                        if let meshUUID = node.network?.uuid.uuidString {
-                            node.preConfiguration.save(
-                                meshUUID: meshUUID,
-                                nodeAddress: node.primaryUnicastAddress
-                            )
-                        }
+                let previousSchema = self.space.timedSchemaVersion
+                let previousZones = self.space.triggerZones
+                let previousTimestamp = self.space.lastUpdate
+                let previousGroups = MeshNetworkManager.instance.groups.map {
+                    ($0, GroupInfo.load(meshUUID: self.space.meshUUID, address: $0.address.address,
+                                        subnetworkId: self.space.meshNetworkId))
+                }
+                let previousNodes = (exitNodes + addNodes).map {
+                    ($0, $0.groupState, $0.requiredFunctionTypes,
+                     $0.preConfiguration.dayProfileStartsAboveLux, $0.preConfiguration.nightProfileStartsBelowLux,
+                     $0.preConfiguration.dayProfileLightData, $0.preConfiguration.nightProfileLightData,
+                     $0.preConfiguration.resetDaylightCalibration)
+                }
+                var lifecycleResult: ProximityLightingLifecycleResult?
+                do {
+                    let timedPlan = try TimedSchedulerBindings.prepareTopology(group: self.group, members: newMembers, addingMembers: addNodes)
+                    try TimedSchedulerBindings.commit(timedPlan) {
+                        guard let result = ProximityLightingLifecycleCoordinator.commit(
+                            preparation,
+                            allowExistingHardErrors: true,
+                            hasAdditionalLogicalChange: true,
+                            applyAdditionalChanges: {
+                                try exitNodes.forEach { node in
+                                    node.groupState = .exitFailure
+                                    node.preConfiguration.dayProfileStartsAboveLux = nil
+                                    node.preConfiguration.nightProfileStartsBelowLux = nil
+                                    node.preConfiguration.dayProfileLightData = nil
+                                    node.preConfiguration.nightProfileLightData = nil
+                                    if node.sensorCalibrationData?.isCalibration ?? false {
+                                        node.preConfiguration.resetDaylightCalibration = true
+                                    }
+                                    if let meshUUID = node.network?.uuid.uuidString {
+                                        guard node.preConfiguration.save(
+                                            meshUUID: meshUUID,
+                                            nodeAddress: node.primaryUnicastAddress
+                                        ) else { throw TimedSchedulerBindings.Failure.persistence }
+                                    }
+                                }
+                                addNodes.forEach { node in
+                                    node.groupState = .inGroup
+                                    if self.group.info.profile.type == .proximityLightingWithPhotocell,
+                                       !node.requiredFunctionTypes.contains(.lightLCScene) {
+                                        node.requiredFunctionTypes.append(.lightLCScene)
+                                    }
+                                }
+                        }) else { throw TimedSchedulerBindings.Failure.persistence }
+                        lifecycleResult = result
                     }
-                    addNodes.forEach { node in
-                        node.groupState = .inGroup
-                        if self.group.info.profile.type == .proximityLightingWithPhotocell,
-                           !node.requiredFunctionTypes.contains(.lightLCScene) {
-                            node.requiredFunctionTypes.append(.lightLCScene)
-                        }
+                } catch {
+                    self.space.timedSchemaVersion = previousSchema
+                    self.space.triggerZones = previousZones
+                    self.space.lastUpdate = previousTimestamp
+                    previousGroups.forEach { group, info in
+                        if let info { group.info = info }
+                        group.updateGroupSyncState()
                     }
-                }) else {
-                    XWHUDManager.showTipHUD(
-                        "proximity_lighting_topology_invalid".localizedString,
-                        isLineFeed: true
-                    )
+                    previousNodes.forEach { node, state, functions, dayLux, nightLux, dayLight, nightLight, calibration in
+                        node.groupState = state
+                        node.requiredFunctionTypes = functions
+                        node.preConfiguration.dayProfileStartsAboveLux = dayLux
+                        node.preConfiguration.nightProfileStartsBelowLux = nightLux
+                        node.preConfiguration.dayProfileLightData = dayLight
+                        node.preConfiguration.nightProfileLightData = nightLight
+                        node.preConfiguration.resetDaylightCalibration = calibration
+                    }
+                    pendingRemovalSnapshots.forEach { switchData, pendingRemoval in
+                        switchData.deleteProxyNodeAddress = pendingRemoval
+                        switchData.save()
+                    }
+                    TimedSchedulerBindings.showFailure(error)
                     return
                 }
+                guard let lifecycleResult else { return }
 
                 let vc = SyncDevicesViewController(type: .group(self.group, inNodes: addNodes, outNodes: exitNodes))
                 vc.supplementaryProximityLightingSyncDatas = lifecycleResult.syncDatas
@@ -740,7 +784,7 @@ class GroupMembersViewController: UIViewController {
 //                if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
 //                    node.saveNodeInfo(meshUUID: uuid, networkKey: MeshNetworkManager.instance.currentNetworkKey)
 //                }
-                if node.group?.address.address == group.address.address, !selectNodes.contains(node) {
+                if node.groupState != .exitFailure, node.group?.address.address == group.address.address, !selectNodes.contains(node) {
                     selectNodes.append(node)
                 }
                 if let index = self.visibleNodes.firstIndex(of: node), let cell = collectionView.cellForItem(at: IndexPath(row: index, section: 0)) as? DevicesViewCell {

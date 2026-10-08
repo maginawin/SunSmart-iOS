@@ -15,7 +15,8 @@ struct SyncSceneScheduleTaskBuilder {
                     let model = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
                     model.imageName = node.iconName
                     // 场景绑定日程
-                    if scene.info.bindSchedules.count > 0 {
+                    let schedules = scene.info.bindSchedules.filter { $0.needsSync(on: node, contextGroup: group) }
+                    if !schedules.isEmpty {
 
                         let addSceneTask = SyncDeviceStepTaskModel(name: scene.name, operationType: .configuration(node: node, type: .scene(sceneId: scene.number, executeData: groupSceneData)))
                         let addSceneStep = SyncDeviceStepModel(type: "scene".localizedString, state: .none, tasks: [addSceneTask])
@@ -23,7 +24,7 @@ struct SyncSceneScheduleTaskBuilder {
                         addSceneStep.showProgress = false
                         addSceneTask.parentStepModel = addSceneStep
 
-                        let addScheduleTasks = scene.info.bindSchedules.map({ schedule in
+                        let addScheduleTasks = schedules.map({ schedule in
                              SyncDeviceStepTaskModel(name: schedule.name, operationType: .configuration(node: node, type: .schedule(schedule: schedule)))
                         })
                         let addScheduleStep = SyncDeviceStepModel(type: "schedule".localizedString, state: .none, tasks: addScheduleTasks)

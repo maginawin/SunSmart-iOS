@@ -50,7 +50,7 @@ enum DeviceOperationType {
             case .scene(let sceneId, _):
                 return !node.sceneExecuteDatas.contains(where: { $0.sceneNumber == sceneId })
             case .schedule(let schedule):
-                return node.schedulerActions[schedule.id] == nil || !node.schedulerActions[schedule.id]!.isValid
+                return schedule.deletionIsSynchronized(on: node)
             case .group(let group):
                 return node.group != group
             case .profile(let type):
@@ -119,7 +119,7 @@ enum DeviceOperationType {
                 }
                 return true
             case .schedule(let schedule):
-                return node.schedulerActions[schedule.id] != nil && node.schedulerActions[schedule.id]! == schedule.schedulerEntry
+                return schedule.slot(on: node) != nil && !schedule.needsSync(on: node)
             case .group(let group):
                 return node.group == group && node.getSubscribeToGroupMessages(group).count == 0
             case .profile(let type):

@@ -63,7 +63,7 @@ class TimedViewController: UIViewController {
 //            schedules.append(schedule)
 //        }
         
-        footerView.countBtn.setTitle("\(MeshNetworkManager.instance.schedules.count)/16", for: .normal)
+        footerView.countBtn.setTitle("\(MeshNetworkManager.instance.schedules.count)", for: .normal)
         
         addNotification()
     }
@@ -196,7 +196,7 @@ class TimedViewController: UIViewController {
         defer { refreshData = false; renderedRevision = SpacePageRevision() }
   
         schedules = MeshNetworkManager.instance.schedules
-        footerView.countBtn.setTitle("\(schedules.count)/16", for: .normal)
+        footerView.countBtn.setTitle("\(schedules.count)", for: .normal)
         
         footerView.addBtn.isEnabled = space.scheduleOperates.contains(.add)
         
@@ -265,7 +265,7 @@ class TimedViewController: UIViewController {
             schedule.existNodes.sorted(by: { $0.primaryUnicastAddress < $1.primaryUnicastAddress }).forEach { node in
                 let difference = schedule.schedulerSyncDifference(on: node)
                 print("[schedule-sync] id=\(schedule.id) node=\(node.name ?? "-")@\(node.primaryUnicastAddress.hex) reason=\(difference.rawValue)")
-                if let nodeEntry = node.schedulerActions[schedule.id] {
+                if let slot = schedule.slot(on: node), let nodeEntry = node.schedulerActions[slot] {
                     print("[schedule-node] id=\(schedule.id) node=\(node.name ?? "-")@\(node.primaryUnicastAddress.hex) year=\(nodeEntry.year.value) month=\(nodeEntry.month.value) day=\(nodeEntry.day.value) dow=\(nodeEntry.dayOfWeek.value) hour=\(nodeEntry.hour.value) minute=\(nodeEntry.minute.value) second=\(nodeEntry.second.value) action=\(nodeEntry.action.rawValue) scene=\(nodeEntry.sceneNumber) valid=\(nodeEntry.isValid)")
                 } else {
                     print("[schedule-node] id=\(schedule.id) node=\(node.name ?? "-")@\(node.primaryUnicastAddress.hex) missing")
@@ -422,10 +422,7 @@ extension TimedViewController: SpaceFunctionFooterViewDelegate {
     
     /// 点击添加回调
     func functionDidClickAdd(view: SpaceFunctionFooterView) {
-        guard schedules.count < 16 else {
-            SRAlertView(title: "notification".localizedString, message: "schedules_overrun_message".localizedString, actions: [SRAlertAction(title: "GOT_IT".localizedString)]).show()
-            return
-        }
+
         
         let vc = ScheduleAddViewController(space: space)
         if isIPad {

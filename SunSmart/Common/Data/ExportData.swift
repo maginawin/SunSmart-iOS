@@ -554,6 +554,10 @@ extension SpaceData {
             spaceJsonData.updateValue(self.deviceBlinkMode.rawValue, forKey: "deviceBlinkMode")
             var spaceExtensionData: [String: Any] = [:]
             spaceExtensionData.updateValue(1, forKey: "proximityLightingSchemaVersion")
+            let timedVersion = max(self.timedSchemaVersion,
+                SpaceData.load(siteId: self.siteId, spaceId: self.id).first?.timedSchemaVersion ?? 1)
+            spaceExtensionData["timedSchemaVersion"] = timedVersion
+
             let triggerZonesArray = (try? jsonEncoder.encode(self.triggerZones))
                 .flatMap { try? JSONSerialization.jsonObject(with: $0) as? [[String: Any]] }
                 ?? []
@@ -1025,11 +1029,16 @@ extension SpaceData {
                     return dict
                 }
             
-            // 日程
-            if let data = try? jsonEncoder.encode(schedules), let schedules = try? JSONSerialization.jsonObject(with: data) as? [[String : Any]] {
-                scheheduleDicts = schedules
+            // Never turn an encoding failure into an authoritative empty list.
+            guard let data = try? jsonEncoder.encode(schedules),
+                  let encoded = try? JSONSerialization.jsonObject(with: data) as? [[String: Any]] else {
+                if reportsSyncFailure {
+                    SpaceConfigurationSafety.recordSyncFailure(self, error: .configurationExportInvalid, stage: "exportTimed")
+                }
+                return nil
             }
-            
+            scheheduleDicts = encoded
+
             // IVIndex
 //            meshNetworkManager.meshNetwork.networkExclusions
             spaceJsonData.updateValue(nodeDicts.count, forKey: "deviceCount")
@@ -1039,6 +1048,13 @@ extension SpaceData {
             spaceJsonData.updateValue(emergencyFireControllerDicts, forKey: "emergencyFireControllers")
             spaceJsonData.updateValue(sceneDicts, forKey: "scenes")
             spaceJsonData.updateValue(scheheduleDicts, forKey: "schedules")
+            guard TimedSchedulerPayloadPolicy.canonical(spaceJsonData) != nil else {
+                purpose.reportInspectionIssue("invalidTimedPayload")
+                if reportsSyncFailure {
+                    SpaceConfigurationSafety.recordSyncFailure(self, error: .configurationExportInvalid, stage: "exportTimed")
+                }
+                return nil
+            }
             guard !schedulerSnapshotInvalid else {
                 if reportsSyncFailure {
                     SpaceConfigurationSafety.recordSyncFailure(self, error: .configurationExportInvalid,

@@ -469,7 +469,12 @@ final class DevicePermanentDeletionContext {
         for schedule in Schedule.load(meshUUID: space.meshUUID, meshNetworkId: space.meshNetworkId) {
             let active = schedule.nodeAddresses.filter { !addresses.contains($0) }
             let pending = schedule.needDeleteNodeAddresses.filter { !addresses.contains($0) }
-            if active != schedule.nodeAddresses || pending != schedule.needDeleteNodeAddresses {
+            let bindings = schedule.nodeSlots?.filter { binding in
+                !entries.contains { $0.nodeUUID.uppercased() == binding.identity.nodeUUID.uppercased()
+                    && $0.primaryAddress.hex == binding.identity.unicastAddress }
+            }
+            if active != schedule.nodeAddresses || pending != schedule.needDeleteNodeAddresses || bindings != schedule.nodeSlots {
+                schedule.nodeSlots = bindings
                 schedule.nodeAddresses = active
                 schedule.needDeleteNodeAddresses = pending
                 guard schedule.save(meshUUID: space.meshUUID, meshNetworkId: space.meshNetworkId) else {

@@ -23,7 +23,7 @@ source = source.replace('// PRODUCTION_EDITOR_REFRESH', section(
 source = source.replace('// PRODUCTION_EDITOR_HIDE', section(
     controller, '    override func viewWillDisappear', '    private func refreshSyncStatus()'))
 source = source.replace('// PRODUCTION_PICKER_REFRESH', section(
-    picker, '    private func refreshSyncStatus()', '    private func observeSchedulerChanges()'))
+    picker, '    private func refreshSyncStatus()', '    private func observeSyncStatusChanges()'))
 source = source.replace('// PRODUCTION_OFFLINE', section(
     picker, '    private func checkOffline()', '    private func updateEmptyUI()'))
 source = source.replace('// PRODUCTION_SELECT_ALL', section(

@@ -732,7 +732,7 @@ extension MeshNetworkManager {
     func getNextScheduleName(_ defaultName: String = "schedule_defalut_name".localizedString) -> String {
         // 已存在的日程名称
         let existNames = schedules.map({ $0.name })
-        for index in 1...16 {
+        for index in 1...(existNames.count + 1) {
             let name = defaultName + "\(index)"
             if !existNames.contains(name) {
                 return name
@@ -741,14 +741,11 @@ extension MeshNetworkManager {
         return defaultName + "1"
     }
     
-    /// 获取下一个日程id 0~15
+    /// Space 内业务身份；设备槽位由每节点绑定独立分配。
     func getNextAvailableScheduleId() -> Int? {
-        for id in 0...15 {
-            if !schedules.contains(where: { $0.id == id }) {
-                return id
-            }
-        }
-        return nil
+        guard let maximum = schedules.map(\.id).max() else { return 0 }
+        guard maximum >= 0, maximum < Int.max else { return nil }
+        return maximum + 1
     }
     
     /// 日程是否重名
@@ -1294,12 +1291,15 @@ extension Group {
         if sceneData.state == .waitDelete { // 待删除
             needDeleteNodes = nodes.filter({ $0.sceneSetupModel != nil && $0.sceneExecuteDatas.contains(where: { $0.sceneNumber == scene.number }) })
         }else { // 同步
-            needSyncNodes = nodes.filter({
-                guard $0.sceneSetupModel != nil else {
+            needSyncNodes = nodes.filter({ node in
+                guard node.sceneSetupModel != nil, node.groupState != .exitFailure else {
                     return false
                 }
-                if let nodeSceneData = $0.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
-                    return !nodeSceneData.isSynced(with: sceneData, for: $0)
+                if scene.info.bindSchedules.contains(where: { $0.needsSync(on: node, contextGroup: self) }) {
+                    return true
+                }
+                if let nodeSceneData = node.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
+                    return !nodeSceneData.isSynced(with: sceneData, for: node)
                 }
                 return true
             })
@@ -1577,7 +1577,7 @@ extension Schedule {
         }
         
         guard node.groupState != .exitFailure else { return false }
-        let targetGroups = groups + (scene?.info.groups ?? [])
+        let targetGroups = groups + activeSceneGroups
         guard !targetGroups.isEmpty else { return false }
         // Explicit context also covers newly added/restored members whose
         // subscriptions have not caught up yet. It is an OR, not an override.
@@ -1608,9 +1608,10 @@ extension Schedule {
             return .notApplicable
         }
 
+        guard let slot = slot(on: node) else { return .ownerEntryMissing }
         let ownerState: TimedSchedulerOwnerEntryState
         if let ownerEntrys = node.allSchedulerModelEntrys[schedulerSetupModel] {
-            if let nodeEntry = ownerEntrys[id] {
+            if let nodeEntry = ownerEntrys[slot] {
                 ownerState = nodeEntry == schedulerEntry
                     ? .matchingEntry
                     : .mismatchingEntry
@@ -1627,7 +1628,7 @@ extension Schedule {
                 cleanupStates.append(.unknownModel)
                 continue
             }
-            if cleanupEntrys[id]?.isValid == true {
+            if cleanupEntrys[slot]?.isValid == true {
                 cleanupStates.append(.residualEntry)
             } else {
                 cleanupStates.append(.clearEntry)
@@ -1641,16 +1642,17 @@ extension Schedule {
     }
     
     func needsDelete(from node: Node, contextGroup: Group? = nil) -> Bool {
+        guard let slot = slot(on: node) else { return false }
         let modelEntryStates: [Bool?] = node.schedulerSetupModels.map { model in
             guard let modelEntrys = node.allSchedulerModelEntrys[model] else {
                 return nil
             }
-            return modelEntrys[id]?.isValid == true
+            return modelEntrys[slot]?.isValid == true
         }
         return TimedSchedulerDeletePolicy.shouldDelete(
             targetsNode: targets(node: node, contextGroup: contextGroup),
             modelEntryStates: modelEntryStates,
-            legacyEntryIsValid: node.schedulerActions[id]?.isValid == true
+            legacyEntryIsValid: node.schedulerActions[slot]?.isValid == true
         )
     }
     
@@ -1706,7 +1708,7 @@ extension Schedule {
                     checks.append(.sync(node, nil))
                 }
             case .groups, .scene:
-                let groups = schedule.selectTargetType == .groups ? schedule.groups : schedule.scene?.info.groups ?? []
+                let groups = schedule.selectTargetType == .groups ? schedule.groups : schedule.activeSceneGroups
                 for group in groups {
                     for node in members(group) where schedule.targets(node: node, contextGroup: group) {
                         targetIDs.insert(ObjectIdentifier(node))
@@ -2720,17 +2722,22 @@ extension Node {
         }
         
         // 日程
-        if oldNode.schedulerActions.count > 0 {
-            let schedulers: [Schedule] = oldNode.schedulerActions.compactMap({ action in MeshNetworkManager.instance.schedules.first(where: { $0.id == action.key && action.value.isValid && $0.selectTargetType == .devices }) })
-            
-            schedulers.forEach { schedule in
-                if let index = schedule.nodeAddresses.firstIndex(of: oldNode.primaryUnicastAddress) {
-                    schedule.nodeAddresses.replaceSubrange(index...index, with: [self.primaryUnicastAddress])
-                    schedule.save()
+        // Restore desired schedules even when the old device never acknowledged
+        // them. A new Device Key never inherits the old instance's reservation.
+        for schedule in MeshNetworkManager.instance.schedules {
+            let previous = schedule.copy()
+            schedule.nodeAddresses = schedule.nodeAddresses.map { $0 == oldNode.primaryUnicastAddress ? self.primaryUnicastAddress : $0 }
+            schedule.needDeleteNodeAddresses.removeAll { $0 == oldNode.primaryUnicastAddress }
+            schedule.nodeSlots?.removeAll { $0.identity == oldNode.timedSchedulerIdentity }
+            if schedule.nodeAddresses != previous.nodeAddresses || schedule.needDeleteNodeAddresses != previous.needDeleteNodeAddresses || schedule.nodeSlots != previous.nodeSlots {
+                if !schedule.save() {
+                    schedule.nodeAddresses = previous.nodeAddresses
+                    schedule.needDeleteNodeAddresses = previous.needDeleteNodeAddresses
+                    schedule.nodeSlots = previous.nodeSlots
                 }
             }
         }
-        // Dongle
+
         if self.deviceType == .dongle, let dongle = MeshNetworkManager.instance.dongles.first(where: { $0.bindNodeAddress == oldNode.primaryUnicastAddress }) {
             dongle.bindNodeAddress = self.primaryUnicastAddress
             dongle.save()
@@ -3030,8 +3037,7 @@ extension Node {
         var schedulerActions: [Int: SchedulerRegistryEntry] = [:]
         schedulerSetupModels.forEach { model in
             allSchedulerModelEntrys[model]?.forEach { index, entry in
-                let schedule = MeshNetworkManager.instance.schedules
-                    .first(where: { $0.id == index })
+                let schedule = self.timedSchedule(at: index)
                 let scheduleAction = schedule?.action
                 let ownerAction = scheduleAction == .noAction
                     ? entry.action
@@ -3242,19 +3248,19 @@ extension Node {
                     
                     // 对应日程删除设备/组
                     if shouldFinalizeScheduleDeletion,
-                       let schedule = MeshNetworkManager.instance.schedules.first(where: {$0.id == actionMessage.index}) {
+                       let schedule = self.timedSchedule(at: Int(actionMessage.index)) {
 
                         // 设备已加入组，并且组内没有设备缓存对应日程数据，则直接让日程删除该组缓存
                         var isSaveSchedule = false
                         // 判断组是否因为此设备而无法从日程中删除，设备删除后组也从日程中删除
-                        if let group = schedule.needDeleteGroups.first(where: { $0.nodes.contains(self) }), !group.nodes.contains(where: { $0.schedulerActions[schedule.id] != nil }) {
+                        if let group = schedule.needDeleteGroups.first(where: { $0.nodes.contains(self) }), !group.nodes.contains(where: { schedule.hasObservedEntry(on: $0) }) {
                             schedule.needDeleteGroupAddresses.removeAll(where: { $0 == group.address.address })
                             group.info.bindSchedules.removeAll(where: { $0.id == schedule.id })
                             
                             isSaveSchedule = true
                         }
                         // 判断场景是否因为此设备无法从日程中删除，设备删除后场景也从日程中删除
-                        if let scene = schedule.needDeleteScenes.first(where: { $0.info.groups.contains(where: { $0.nodes.contains(self) }) }), !scene.info.groups.contains(where: { $0.nodes.contains(where: { $0.schedulerActions[schedule.id] != nil }) }) {
+                        if let scene = schedule.needDeleteScenes.first(where: { $0.info.groups.contains(where: { $0.nodes.contains(self) }) }), !scene.info.groups.contains(where: { $0.nodes.contains(where: { schedule.hasObservedEntry(on: $0) }) }) {
                             schedule.needDeleteSceneNumbers.removeAll(where: { $0 == scene.number })
                             isSaveSchedule = true
                         }
@@ -3266,6 +3272,7 @@ extension Node {
                         if isSaveSchedule {
                             schedule.save()
                         }
+                        schedule.releaseClearedBinding(on: self)
 //                    }
                     
                 }

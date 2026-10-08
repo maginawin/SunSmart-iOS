@@ -1931,11 +1931,7 @@ class DeviceRestoreViewController: UIViewController {
             let effectiveSuccess = handle.isSuccessful
                 || responseTracker.hasSuccessfulResponse(for: handle)
                 || recoveredByReliableOperationState
-            node.updateData(
-                message: handle.message,
-                isSuccess: effectiveSuccess,
-                model: handle.model
-            )
+            node.applyMessageHandle(handle, isSuccess: effectiveSuccess)
             node.clearSyncStateCache()
         }
     }
@@ -2389,10 +2385,7 @@ class DeviceRestoreViewController: UIViewController {
             if let address = messageHandle.model?.parentElement?.unicastAddress ?? messageHandle.address, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
                 self?.recordBatteryPowerSwitchTargetSubscriptionSuccessIfNeeded(messageHandle, node: node)
                 DispatchQueue.global().async {
-                    node.updateData(
-                        message: messageHandle.message,
-                        model: messageHandle.model
-                    )
+                    node.applyMessageHandle(messageHandle)
                 }
             }
         } appendMessageFailedBack: { [weak self] messageHandle in

@@ -319,6 +319,7 @@ extension SpaceData {
 
     /// Configuration copies must preserve authority and cloud baselines as well as UI values.
     func applyConfigurationState(from other: SpaceData) {
+        timedSchemaVersion = other.timedSchemaVersion
         name = other.name; imageId = other.imageId; create = other.create; lastUpdate = other.lastUpdate
         isFavourite = other.isFavourite; permission = other.permission; sourceType = other.sourceType
         meshUUID = other.meshUUID; meshNetworkId = other.meshNetworkId

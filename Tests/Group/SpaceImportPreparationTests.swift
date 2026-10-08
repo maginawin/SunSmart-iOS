@@ -9,7 +9,8 @@ struct SpaceTriggerZone {
 }
 struct ConfigurationMeshReadSnapshot {}
 enum DevicePermanentDeletionContext {
-    static func resume(space: SpaceData) {}
+    static var onResume: (() -> Void)?
+    static func resume(space: SpaceData) { onResume?() }
     static var failCloudRemoval = false
     static func cloudRemovalInstances(space: SpaceData, expected: [SpaceCloudNodeRemovalPolicy.Instance]) -> [SpaceCloudNodeRemovalPolicy.Instance]? {
         let local = SpaceCloudNodeRemovalPolicy.instances(space.payload) ?? []
@@ -56,6 +57,127 @@ extension SpaceData {
     }
 }
 extension SpaceRecoveryReceiptTests {
+    @MainActor static func testLegacyTimedBaselineBackfill() async throws {
+        typealias S = SpaceConfigurationSafety
+        typealias P = ProximityLightingImportPreflight
+        defer { P.storedSpace = nil; S.failStateWrite = false; DevicePermanentDeletionContext.onResume = nil }
+        for failure in ["none", "write", "identity", "topology", "pendingCleanup"] {
+            let space = SpaceData()
+            P.storedSpace = space
+            space.lastUploadCloudTimestamp = space.lastUpdate
+            let remote = space.payload
+            S.verifyUpgradeBaseline(space, local: remote, remote: remote)
+            precondition(S.testMigrated(space))
+            // Real old on-disk receipts omit the new optional field while
+            // retaining the previously written generic migration marker.
+            var old = try S.recoveryState(space)
+            old.timedConfigurationBaseline = nil
+            try S.testSaveState(old, space: space)
+            precondition(!S.needsUpgradeBaseline(space) && S.needsTimedUpgradeBaseline(space))
+            var candidate = remote
+            if failure == "write" { S.failStateWrite = true }
+            if failure == "identity" { candidate["appKey"] = ["key": "changed"] }
+            if failure == "topology" { candidate["groups"] = [["address": "C001"]] }
+            if failure == "pendingCleanup" {
+                space.lastUpdate += 1
+                space.nodes = [["uuid": "locally-added", "unicastAddress": "0001"]]
+                precondition(S.updateDeletionJournal(space) { journal in
+                    journal.entries.append(.init(id: UUID(), nodeUUID: "removed", primaryAddress: 2,
+                        elementAddresses: [2], macAddress: nil, productId: nil,
+                        stage: .cleaned, completedTimestamp: space.lastUpdate))
+                })
+                DevicePermanentDeletionContext.onResume = {
+                    precondition(!S.needsTimedUpgradeBaseline(space), "backfill must precede resumed cleanup reservations")
+                }
+            }
+            _ = await space.update(spaceJsonData: candidate)
+            DevicePermanentDeletionContext.onResume = nil
+            S.failStateWrite = false
+            if ["write", "identity", "topology"].contains(failure) {
+                precondition(S.needsTimedUpgradeBaseline(space), "failed backfill must not authorize migration")
+                _ = await space.update(spaceJsonData: remote)
+            }
+            precondition(!S.needsTimedUpgradeBaseline(space))
+            let saved = try S.recoveryState(space)
+            precondition(saved.timedConfigurationBaseline == TimedSchedulerPayloadPolicy.canonical(remote))
+            space.timedSchemaVersion = 2
+            space.lastUpdate += 1
+            let reentry = await space.update(spaceJsonData: remote)
+            precondition(reentry == .preserved("localTimedMigrationPendingUpload"))
+        }
+        let local = SpaceData()
+        precondition(!S.needsTimedUpgradeBaseline(local), "never-uploaded Spaces do not need a cloud baseline")
+        print("PASS: old receipts with migration marker backfill Timed baseline before migration; identity/topology/write failure retry and v1 reentry")
+    }
+
+    @MainActor static func testUnuploadedTimedMigration() async throws {
+        typealias S = SpaceConfigurationSafety
+        typealias P = ProximityLightingImportPreflight
+        defer { P.storedSpace = nil }
+        for submission in ["none", "prepared", "accepted"] {
+            let space = SpaceData()
+            P.storedSpace = space
+            space.lastUploadCloudTimestamp = space.lastUpdate
+            var baseline = space.payload
+            baseline["role"] = "owner"
+            var state = try S.recoveryState(space)
+            state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(baseline)
+            state.timedConfigurationBaseline = TimedSchedulerPayloadPolicy.canonical(baseline)
+            state.schedulerModelStatesBaseline = SchedulerModelSnapshot.spaceData(baseline)
+            try S.testSaveState(state, space: space)
+            // First local edit upgrades the schema before any cloud acknowledgement.
+            space.timedSchemaVersion = 2
+            space.lastUpdate += 1
+            if submission != "none" {
+                var v2 = space.payload
+                v2["spaceData"] = ["timedSchemaVersion": 2]
+                let receipt = S.prepareSubmission(space, payload: v2)!
+                if submission == "accepted" { precondition(S.markSubmissionAccepted(receipt, space: space)) }
+            }
+            let before = try S.recoveryState(space)
+            let calls = P.calls
+            for _ in 0..<2 {
+                let result = await space.update(spaceJsonData: baseline)
+                precondition(result == .preserved("localTimedMigrationPendingUpload"))
+                precondition(space.timedSchemaVersion == 2 && space.lastUpdate == 51 && space.needUploadCloud)
+                let after = try S.recoveryState(space)
+                precondition(after.submission == before.submission && after.timedConfigurationBaseline == before.timedConfigurationBaseline)
+            }
+            precondition(P.calls == calls, "confirmed legacy GET must never start the replacing importer")
+
+            for kind in ["newer", "older", "differentTimed", "differentTopology", "differentKeys", "initialize"] {
+                var changed = baseline
+                switch kind {
+                case "newer": changed["updateTimestamp"] = 52
+                case "older": changed["updateTimestamp"] = 49
+                case "differentTimed":
+                    changed["schedules"] = [["id": 0, "name": "Unexpected", "enabled": true,
+                        "selectTarget": 1, "action": 1, "fadeTime": 0, "hour": 8, "minute": 0, "dayOfWeek": 1]]
+                case "differentTopology": changed["groups"] = [["address": "C001"]]
+                case "differentKeys": changed["appKey"] = ["key": "changed"]
+                default: break
+                }
+                let result = await space.update(spaceJsonData: changed, initialize: kind == "initialize")
+                precondition(result == .rejected("timedSchemaDowngrade"), "must reject actual downgrade: \(kind)")
+            }
+            var visitor = baseline; visitor["role"] = "visitor"
+            let revoked = await space.update(spaceJsonData: visitor)
+            precondition(revoked == .rejected("timedSchemaDowngrade"), "baseline exception cannot bypass authority import")
+        }
+        // A failed first toggle can migrate slots without changing the timestamp.
+        let rolledBack = SpaceData()
+        P.storedSpace = rolledBack
+        rolledBack.lastUploadCloudTimestamp = rolledBack.lastUpdate
+        var state = try S.recoveryState(rolledBack)
+        state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(rolledBack.payload)
+        state.timedConfigurationBaseline = TimedSchedulerPayloadPolicy.canonical(rolledBack.payload)
+        try S.testSaveState(state, space: rolledBack)
+        rolledBack.timedSchemaVersion = 2
+        let result = await rolledBack.update(spaceJsonData: rolledBack.payload)
+        precondition(result == .preserved("localTimedMigrationPendingUpload"))
+        print("PASS: unuploaded v2 migration preserves confirmed v1 GET across pending receipts/reentry; true downgrade and authority changes remain rejected")
+    }
+
     @MainActor static func testEmptyZoneImportGate() async throws {
         typealias S = SpaceConfigurationSafety
         typealias P = ProximityLightingImportPreflight
@@ -93,6 +215,21 @@ extension SpaceRecoveryReceiptTests {
         typealias P = ProximityLightingImportPreflight
         defer { P.onPrepare = nil; P.onExport = nil; P.storedSpace = nil }
 
+        let invalid = SpaceData()
+        P.storedSpace = invalid
+        let identity = try S.recoveryState(invalid)
+        var badPayload = invalid.payload
+        badPayload["role"] = "visitor"
+        badPayload["schedules"] = [["id": 300, "nodeSlots": []]]
+        let invalidResult = await invalid.update(spaceJsonData: badPayload)
+        precondition(invalidResult == .rejected("invalidTimedPayload"))
+        let afterInvalid = try S.recoveryState(invalid)
+        precondition(invalid.permission == .owner && afterInvalid.generation == identity.generation,
+                     "invalid schedules must reject before metadata, authority or database replacement")
+        invalid.timedSchemaVersion = 2
+        let downgrade = await invalid.update(spaceJsonData: invalid.payload)
+        precondition(downgrade == .rejected("timedSchemaDowngrade"))
+
         // Fresh visitor recovery starts writable despite the model's visitor role.
         // Existing owner/editor spaces also change generation on downgrade.
         for initialRole in [Permission.visitor, .owner, .editor] {
@@ -102,11 +239,11 @@ extension SpaceRecoveryReceiptTests {
             P.storedSpace = initialize ? nil : space
             let before = try S.recoveryState(space)
             precondition(before.authority == .writable)
-            let result = await space.update(spaceJsonData: ["uuid": space.id, "role": "visitor"], initialize: initialize)
+            let result = await space.update(spaceJsonData: space.payload.merging(["role": "visitor"], uniquingKeysWith: { _, new in new }), initialize: initialize)
             precondition(result == .prepared, "visitor import must survive its own authority transition")
             let after = try S.recoveryState(space)
             precondition(after.authority == .readOnly && after.generation != before.generation)
-            let repeated = await space.update(spaceJsonData: ["uuid": space.id, "role": "visitor"], initialize: initialize)
+            let repeated = await space.update(spaceJsonData: space.payload.merging(["role": "visitor"], uniquingKeysWith: { _, new in new }), initialize: initialize)
             precondition(repeated == .prepared, "unchanged visitor authority must also prepare")
         }
 

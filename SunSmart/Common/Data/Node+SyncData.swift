@@ -534,6 +534,12 @@ extension Node {
             if deleteScenes.count > 0 {
                 syncDatas.append(.deleteScenes(scenes: deleteScenes))
             }
+            let sceneSchedules = scene?.info.bindSchedules
+                ?? MeshNetworkManager.instance.schedules.filter { $0.scene != nil }
+            let syncSchedules = sceneSchedules.filter { $0.needsSync(on: self) }
+            if !syncSchedules.isEmpty {
+                syncDatas.append(.syncSchedules(schedules: syncSchedules))
+            }
             
         case .schedules(let schedule):
             

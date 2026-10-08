@@ -259,7 +259,7 @@ enum DeviceOperationType {
             case .scene(let sceneId, _):
                 return !node.sceneExecuteDatas.contains(where: { $0.sceneNumber == sceneId })
             case .schedule(let schedule):
-                return node.schedulerActions[schedule.id] == nil || !node.schedulerActions[schedule.id]!.isValid
+                return schedule.deletionIsSynchronized(on: node)
             case .missingGroupSubscriptions:
                 return MissingGroupSubscriptionCleanup.addresses(for: node).isEmpty
             case .group(let group):
@@ -353,7 +353,7 @@ enum DeviceOperationType {
                 }
                 return true
             case .schedule(let schedule):
-                return node.schedulerActions[schedule.id] != nil && node.schedulerActions[schedule.id]! == schedule.schedulerEntry
+                return schedule.slot(on: node) != nil && !schedule.needsSync(on: node)
             case .missingGroupSubscriptions:
                 return MissingGroupSubscriptionCleanup.addresses(for: node).isEmpty
             case .group(let group):

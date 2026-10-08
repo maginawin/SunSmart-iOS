@@ -48,12 +48,13 @@ struct GroupServer {
                 DispatchQueue.main.async {
                     progress?(index + 1, nodes.count)
                 }
+                guard TimedSchedulerBindings.reserveGroup(group, node: node) else {
+                    DispatchQueue.main.async { failedNodes.append(node); failed?(node) }
+                    return
+                }
                 let messageHandles = group.getNodeAddMessageHandles(node: node)
                 MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, progressBack: nil) { sendMessageHandle, responseMessage in
-                    node.updateData(
-                        message: sendMessageHandle.message,
-                        model: sendMessageHandle.model
-                    )
+                    node.applyMessageHandle(sendMessageHandle)
                 } failedBack: { messageHandles in
                     #if DEBUG
                     print("node send message failed \(messageHandles.message)")
@@ -106,12 +107,15 @@ struct GroupServer {
                 DispatchQueue.main.async {
                     progress?(index + 1, nodes.count)
                 }
-                let messageHandles = group.getNodeExitMessageHandles(node: node)
+                guard let messageHandles = group.getNodeExitMessageHandles(node: node) else {
+                    DispatchQueue.main.async {
+                        failedNodes.append(node)
+                        failed?(node)
+                    }
+                    return
+                }
                 MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, progressBack: nil) { sendMessageHandle, responseMessage in
-                    node.updateData(
-                        message: sendMessageHandle.message,
-                        model: sendMessageHandle.model
-                    )
+                    node.applyMessageHandle(sendMessageHandle)
                 } failedBack: { messageHandle in
                     #if DEBUG
                     print("node send message failed \(messageHandle.message)")
@@ -286,10 +290,7 @@ struct GroupServer {
                     messageHandles: handles,
                     progressBack: nil
                 ) { sendMessageHandle, responseMessage in
-                    data.node.updateData(
-                        message: sendMessageHandle.message,
-                        model: sendMessageHandle.model
-                    )
+                    data.node.applyMessageHandle(sendMessageHandle)
                 } failedBack: { messageHandle in
                     #if DEBUG
                     print("node send message failed \(messageHandle.message)")
@@ -399,6 +400,7 @@ extension Group {
     /// - Parameter node: 节点
     /// - Returns: 消息处理list
     func getNodeAddMessageHandles(node: Node) -> [MeshMessageHandle] {
+        guard TimedSchedulerBindings.reserveGroup(self, node: node) else { return [] }
         
         var messages: [MeshMessageHandle] = []
         
@@ -442,12 +444,20 @@ extension Group {
     /// 根据节点获取从组移出需要的消息处理list
     /// - Parameter node: 节点
     /// - Returns: 消息处理list
-    func getNodeExitMessageHandles(node: Node) -> [MeshMessageHandle] {
+    func getNodeExitMessageHandles(node: Node) -> [MeshMessageHandle]? {
         
 //        var messages: [MeshMessageHandle] = []
         // 设备中组关联的场景
        
         node.groupState = .exitFailure
+        // Even an already-empty device slot may have an assigned reservation.
+        // Persist removals before filtering the physical cleanup tasks.
+        let removedSchedules = MeshNetworkManager.instance.schedules.filter {
+            $0.slot(on: node) != nil && !$0.targets(node: node, contextGroup: node.group)
+        }
+        guard removedSchedules.allSatisfy({ TimedSchedulerBindings.reserveForDeletion(schedule: $0, node: node) }) else {
+            return nil
+        }
         let syncDatas = node.getSyncData(type: .group(node.group))
         let messages = syncDatas.reversed().flatMap({ $0.getMessageHandles(node: node) })
         

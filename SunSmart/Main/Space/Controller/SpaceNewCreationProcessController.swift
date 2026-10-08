@@ -90,10 +90,7 @@ class SpaceNewCreationProcessController: UIViewController {
             }
             present(NavigationViewController(rootViewController: vc), animated: true)
         case .schedule:
-            guard MeshNetworkManager.instance.schedules.count < 16 else {
-                XWHUDManager.showTipHUD("schedules_overrun_message".localizedString, isLineFeed: true)
-                return
-            }
+
             space.isConfiguring = true
             let vc = ScheduleAddViewController(space: space)
             if isIPad {

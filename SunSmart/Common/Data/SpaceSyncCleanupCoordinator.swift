@@ -317,8 +317,7 @@ enum SpaceSyncCleanupCoordinator {
                         scene.map { number in group.info.sceneExecuteDatas.contains { $0.sceneNumber == number } } ?? false
                     } ?? false
                     let targeted = activeNodes.contains(node.primaryUnicastAddress) || targetsGroup || targetsScene
-                    let observed = node.schedulerActions[schedule.id]?.isValid == true
-                        || node.allSchedulerModelEntrys.values.contains { $0[schedule.id]?.isValid == true }
+                    let observed = schedule.hasObservedEntry(on: node)
                     if !targeted && observed { pendingNodes.append(node.primaryUnicastAddress) }
                 }
             }

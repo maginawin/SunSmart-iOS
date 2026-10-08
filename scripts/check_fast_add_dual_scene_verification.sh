@@ -66,10 +66,15 @@ if rg -n 'getNeedSyncGroup|legacyCompatible' "$planner" >/dev/null; then
   fail "Fast Add planner must not use the Group page compatibility result"
 fi
 
-rg -n -F 'for path in proximityLightingPath?.paths ?? []' "$node_sync" >/dev/null \
-  || fail "empty Path must continue to produce an empty path iteration"
-rg -n -F 'for zone in proximityLightingPath?.zones ?? []' "$node_sync" >/dev/null \
-  || fail "empty Path must continue to produce an empty zone iteration"
+# Topology now resolves through the shared planner; exercise its empty inputs.
+policy_binary="${TMPDIR:-/tmp}/FastAddProximityLightingTopologyPolicyTests"
+swiftc -parse-as-library SunSmart/Main/Group/Model/ProximityLightingTopologyPolicy.swift \
+  Tests/Group/ProximityLightingTopologyPolicyTests.swift -o "$policy_binary"
+"$policy_binary"
+rg -n -F 'ProximityLightingTopologyPlanner.makePlan(for: self, contextGroup: group)' "$node_sync" >/dev/null \
+  || fail "Fast Add must resolve topology through the shared planner"
+rg -n -F 'guard plan.isComplete else { return nil }' "$node_sync" >/dev/null \
+  || fail "Incomplete topology must not create configuration messages"
 
 classic="SunSmart/Main/Device/Controller/DeviceAddClassicModeController.swift"
 professional="SunSmart/Main/Device/Controller/DeviceAddProfessionalModeController.swift"
@@ -79,7 +84,7 @@ for controller in "$classic" "$professional"; do
     || fail "$controller must resolve the shared Fast Add plan in the success callback"
   rg -n -F 'plan.recordSuccessfulMessageHandle(messageHandle)' "$controller" >/dev/null \
     || fail "$controller must record the checkpoint after updating Node"
-  rg -n -U '(?s:node\.updateData\(.{0,500}?message:[[:space:]]*messageHandle\.message.{0,500}?\)[[:space:]]+plan\.recordSuccessfulMessageHandle\(messageHandle\))' "$controller" >/dev/null \
+  rg -n -U 'node\.applyMessageHandle\(messageHandle\)[[:space:]]+plan\.recordSuccessfulMessageHandle\(messageHandle\)' "$controller" >/dev/null \
     || fail "$controller must update Node before evaluating the task checkpoint"
   rg -n -F 'self.recordFastAddGroupSyncFailure(plan)' "$controller" >/dev/null \
     || fail "$controller must preserve real message failure handling"

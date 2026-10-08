@@ -236,6 +236,7 @@ class SpaceData: Copyable {
     var deviceBlinkMode: DeviceBlinkMode = .none
     /// space级触发区域数据
     var triggerZones: [SpaceTriggerZone] = []
+    var timedSchemaVersion = 1
     /// A malformed stored blob is not an explicit empty configuration.
     var triggerZonesLoadFailed = false
     

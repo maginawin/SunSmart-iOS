@@ -533,6 +533,7 @@ extension SpaceData {
         static let controlType = Expression<String>("controlType")
         static let deviceBlinkMode = Expression<Int>("deviceBlinkMode")
         static let triggerZones = Expression<Data?>("triggerZones")
+        static let timedSchemaVersion = Expression<Int>("timedSchemaVersion")
     }
     
     /// 初始化空间表
@@ -576,6 +577,7 @@ extension SpaceData {
             builder.column(ExpressionKey.controlType, defaultValue: SpaceContentDisplayDefaults.controlType.rawValue)
             builder.column(ExpressionKey.deviceBlinkMode, defaultValue: DeviceBlinkMode.breathing.rawValue)
             builder.column(ExpressionKey.triggerZones)
+            builder.column(ExpressionKey.timedSchemaVersion, defaultValue: 1)
         }))
         
         // 获取表内存在的属性
@@ -609,6 +611,9 @@ extension SpaceData {
             // 是否存在”deviceBlinkMode“属性
             if !columns.contains(where: { $0.name == "deviceBlinkMode" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(SpaceData.spacesTable.addColumn(ExpressionKey.deviceBlinkMode, defaultValue: DeviceBlinkMode.breathing.rawValue))
+            }
+            if !columns.contains(where: { $0.name == "timedSchemaVersion" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(SpaceData.spacesTable.addColumn(ExpressionKey.timedSchemaVersion, defaultValue: 1))
             }
             // 是否存在”triggerZones“属性
             if !columns.contains(where: { $0.name == "triggerZones" }) {
@@ -678,6 +683,7 @@ extension SpaceData {
                 space.showCCTQuickButtons = row[ExpressionKey.showCCTQuickButtons]
                 space.controlType = SpaceControlType(rawValue: row[ExpressionKey.controlType]) ?? SpaceContentDisplayDefaults.controlType
                 space.deviceBlinkMode = DeviceBlinkMode(rawValue: row[ExpressionKey.deviceBlinkMode]) ?? .breathing
+                space.timedSchemaVersion = row[ExpressionKey.timedSchemaVersion]
                 if let triggerZonesData = row[ExpressionKey.triggerZones] {
                     if let zones = try? jsonDecoder.decode([SpaceTriggerZone].self, from: triggerZonesData) {
                         space.triggerZones = zones
@@ -739,6 +745,7 @@ extension SpaceData {
                 newSpace.showCCTQuickButtons = row[ExpressionKey.showCCTQuickButtons]
                 newSpace.controlType = SpaceControlType(rawValue: row[ExpressionKey.controlType]) ?? SpaceContentDisplayDefaults.controlType
                 newSpace.deviceBlinkMode = DeviceBlinkMode(rawValue: row[ExpressionKey.deviceBlinkMode]) ?? .breathing
+                newSpace.timedSchemaVersion = row[ExpressionKey.timedSchemaVersion]
                 if let triggerZonesData = row[ExpressionKey.triggerZones] {
                     if let zones = try? jsonDecoder.decode([SpaceTriggerZone].self, from: triggerZonesData) {
                         newSpace.triggerZones = zones
@@ -790,6 +797,10 @@ extension SpaceData {
     /// 缓存当前空间数据
     @discardableResult func save() -> Bool {
         guard !triggerZonesLoadFailed, SunSmartDataManager.shared.db != nil else { return false }
+        // An older in-memory Space object must never downgrade a migrated row.
+        let storedSchema = SpaceData.load(siteId: siteId, spaceId: id).first?.timedSchemaVersion ?? 1
+        timedSchemaVersion = max(timedSchemaVersion, storedSchema)
+
         _ = Keychain.saveSpacePassword(self.authorizationPassword, siteId: self.siteId, spaceId: self.id)
         
         var editorData: Data?
@@ -841,6 +852,7 @@ extension SpaceData {
             ExpressionKey.showCCTQuickButtons <- self.showCCTQuickButtons,
             ExpressionKey.controlType <- self.controlType.rawValue,
             ExpressionKey.deviceBlinkMode <- self.deviceBlinkMode.rawValue,
+            ExpressionKey.timedSchemaVersion <- timedSchemaVersion,
             ExpressionKey.triggerZones <- triggerZonesData
         ])
         do {
@@ -1304,6 +1316,7 @@ extension Schedule {
         static let sceneAddress = Expression<Int?>("sceneAddress")
         static let sceneDeleteAddresses = Expression<Data?>("sceneDeleteAddresses")
         static let profiles = Expression<Data?>("profiles")
+        static let nodeSlots = Expression<Data?>("nodeSlots")
     }
 
     /// 初始化组扩展信息表
@@ -1330,6 +1343,7 @@ extension Schedule {
             builder.column(ExpressionKey.sceneAddress)
             builder.column(ExpressionKey.sceneDeleteAddresses)
             builder.column(ExpressionKey.profiles)
+            builder.column(ExpressionKey.nodeSlots)
             builder.unique(ExpressionKey.meshUUID, ExpressionKey.subNetworkKey, ExpressionKey.scheduleId)
         }))
         
@@ -1337,6 +1351,9 @@ extension Schedule {
         if let columns = try? SunSmartDataManager.shared.db?.schema.columnDefinitions(table: schedulesTableName) {
             // 插入字段
             // 是否存在”profiles“属性
+            if !columns.contains(where: { $0.name == "nodeSlots" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(Schedule.schedulesTable.addColumn(ExpressionKey.nodeSlots))
+            }
             if !columns.contains(where: { $0.name == "profiles" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(Schedule.schedulesTable.addColumn(ExpressionKey.profiles))
             }
@@ -1429,6 +1446,15 @@ extension Schedule {
                 }
                 
                 let schedule = Schedule(id: row[ExpressionKey.scheduleId], name: row[ExpressionKey.name], enabled: row[ExpressionKey.enabled], nodeAddresses: nodeAddresses, groupAddresses: groupAddresses, sceneNumber: sceneNumber, profiles: profiles, selectTargetType: .init(rawValue: row[ExpressionKey.selectTarget]) ?? .groups, action: .init(rawValue: UInt8(row[ExpressionKey.action])) ?? .noAction, fadeTime: row[ExpressionKey.fadeTime], weekDays: selectWeekDays, hour: row[ExpressionKey.hour], minute: row[ExpressionKey.minute])
+                if let data = row[ExpressionKey.nodeSlots] {
+                    if let slots = try? jsonDecoder.decode([TimedSchedulerNodeSlot].self, from: data),
+                       slots.allSatisfy(\.isValid), Set(slots.map(\.identity)).count == slots.count {
+                        schedule.nodeSlots = slots
+                    } else {
+                        schedule.nodeSlots = []
+                        schedule.nodeSlotsLoadFailed = true
+                    }
+                }
                 schedule.needDeleteNodeAddresses = nodeDeleteAddresses
                 schedule.needDeleteGroupAddresses = groupDeleteAddresses
                 schedule.needDeleteSceneNumbers = sceneDeleteNumbers
@@ -1444,6 +1470,7 @@ extension Schedule {
     /// - Parameter meshNetworkKey: 子网网络key
     /// - Returns: 是否成功
     @discardableResult static func deleteAll(meshUUID: String, meshNetworkId: String) -> Bool {
+        guard SunSmartDataManager.shared.db != nil else { return false }
         
         let filter = Schedule.schedulesTable.filter(ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == meshNetworkId)
         do {
@@ -1464,7 +1491,8 @@ extension Schedule {
     ///   - scheduleId: 日程id
     /// - Returns: 是否成功
     @discardableResult func deleteData(meshUUID: String? = nil, meshNetworkId: String? = nil) -> Bool {
-        guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
+        guard SunSmartDataManager.shared.db != nil,
+              let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
         let subNetworkKey = meshNetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         
         let filter = Schedule.schedulesTable.filter(ExpressionKey.meshUUID == uuid && ExpressionKey.subNetworkKey == subNetworkKey && ExpressionKey.scheduleId == self.id)
@@ -1489,7 +1517,8 @@ extension Schedule {
     /// - Returns: 是否成功
     @discardableResult func save(meshUUID: String? = nil, meshNetworkId: String? = nil) -> Bool {
         
-        guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
+        guard SunSmartDataManager.shared.db != nil,
+              let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
         let subNetworkKey = meshNetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         
         let deviceAddressesData = try? jsonEncoder.encode(self.nodeAddresses.map { String(format: "%04X", $0) })
@@ -1508,6 +1537,9 @@ extension Schedule {
             profilesData = try? jsonEncoder.encode(self.profiles)
         }
         
+        guard !nodeSlotsLoadFailed else { return false }
+        let nodeSlotsData = nodeSlots.flatMap { try? jsonEncoder.encode($0) }
+        guard nodeSlots == nil || nodeSlotsData != nil else { return false }
         let insertOrUpdate = Schedule.schedulesTable.insert(or: .replace, [
             ExpressionKey.meshUUID <- uuid,
             ExpressionKey.subNetworkKey <- subNetworkKey,
@@ -1527,6 +1559,7 @@ extension Schedule {
             ExpressionKey.groupDeleteAddresses <- groupDeleteAddressesData,
             ExpressionKey.sceneAddress <- sceneNumber,
             ExpressionKey.sceneDeleteAddresses <- sceneDeleteNumbersData,
+            ExpressionKey.nodeSlots <- nodeSlotsData,
             ExpressionKey.profiles <- profilesData
         ])
         do {
@@ -1565,7 +1598,7 @@ extension Schedule {
         }
         
         // 获取未被使用的schedule索引
-        for index in 1...16 {
+        for index in 1...(scheduleIndexs.count + 1) {
             if !scheduleIndexs.contains(index) {
                 result = defaultName + "\(index)"
                 break
@@ -1580,7 +1613,8 @@ extension Schedule {
     /// - Parameter meshNetworkKey: 子网网络key
     /// - Returns: 是否重名
     static func isTautonym(scheduleName: String, meshUUID: String? = nil, meshNetworkId: String? = nil) -> Bool {
-        guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
+        guard SunSmartDataManager.shared.db != nil,
+              let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
         let subNetworkKey = meshNetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         
         let filter = Schedule.schedulesTable.filter(ExpressionKey.meshUUID == uuid && ExpressionKey.subNetworkKey == subNetworkKey && ExpressionKey.name == scheduleName)

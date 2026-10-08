@@ -196,8 +196,8 @@ class ScheduleAddViewController: UIViewController {
     @objc private func saveBtnAction() {
         
         guard let id = MeshNetworkManager.instance.getNextAvailableScheduleId() else {
-            // 已有16个日程
-            XWHUDManager.showTipHUD("schedules_overrun_message".localizedString, isLineFeed: true)
+            // Business identity exhausted.
+            XWHUDManager.showTipHUD("save_failure".localizedString, isLineFeed: true)
             return
         }
         // 检验数据完整性
@@ -254,14 +254,21 @@ class ScheduleAddViewController: UIViewController {
         
        
         let schedule = Schedule(id: id, name: name, enabled: isEnabled, nodeAddresses: nodes.map({ $0.primaryUnicastAddress }), groupAddresses: groups.map({ $0.address.address }), sceneNumber: scene?.number, selectTargetType: selectTargetType, action: action, fadeTime: fadeTime, weekDays: weekDays, hour: scheduleAddView.hour, minute: scheduleAddView.minute)
-        if schedule.save() {
-//            groups.forEach({ $0.info.bindSchedules.append(schedule) })
-            MeshNetworkManager.instance.schedules.append(schedule)
-            space.scheheduleCount = MeshNetworkManager.instance.schedules.count
-            space.save()
-            addFineshed = true
+        schedule.nodeSlots = []
+        guard resolveSchedulerState(nodes: schedule.existNodes, retry: { [weak self] in self?.saveBtnAction() }) else { return }
+        do {
+            try TimedSchedulerBindings.commit(TimedSchedulerBindings.prepare(
+                schedules: MeshNetworkManager.instance.schedules + [schedule]))
+        } catch {
+            TimedSchedulerBindings.showFailure(error)
+            return
         }
-        
+        MeshNetworkManager.instance.schedules.append(schedule)
+        space.timedSchemaVersion = 2
+        space.scheheduleCount = MeshNetworkManager.instance.schedules.count
+        space.save()
+        addFineshed = true
+
         groups.forEach({
             $0.info.bindSchedules.append(schedule)
         })
@@ -353,7 +360,8 @@ class ScheduleAddViewController: UIViewController {
     
     /// 完成（编辑）
     @objc private func doneBtnAction() {
-        guard let schedule = self.schedule else { return }
+        guard let original = self.schedule else { return }
+        let schedule = original.copy()
         
         // 检验数据完整性
         guard verify() else {
@@ -395,35 +403,6 @@ class ScheduleAddViewController: UIViewController {
             return
         }
 
-        let unknownNodes = ScheduleServer
-            .nodesRequiringAuthoritativeSchedulerRead(schedule.existNodes)
-        guard unknownNodes.isEmpty else {
-            doneBtn.isEnabled = false
-            XWHUDManager.showCustomHUD(
-                withMessage: "syncing_data".localizedString,
-                isWindow: true
-            )
-            ScheduleServer.readUnknownSchedulerState(
-                nodes: unknownNodes
-            ) { [weak self] resolved in
-                DispatchQueue.main.async {
-                    guard let self = self else {
-                        return
-                    }
-                    XWHUDManager.hide()
-                    self.doneBtn.isEnabled = true
-                    if resolved {
-                        self.doneBtnAction()
-                    } else {
-                        XWHUDManager.showErrorTipHUD(
-                            "sync_failed".localizedString
-                        )
-                    }
-                }
-            }
-            return
-        }
-        
         if schedule.name != name {
             schedule.name = name
         }
@@ -461,17 +440,9 @@ class ScheduleAddViewController: UIViewController {
             schedule.needDeleteSceneNumbers.removeAll(where: { $0 == scene?.number })
 //            schedule.needDeleteScenes.removeAll(where: { $0 == scene })
             if let lastScene = schedule.scene { // 上一个场景
-                lastScene.info.groups.forEach({ group in
-                    if !groups.contains(group) {
-                        group.info.bindSchedules.removeAll(where: { $0.id == schedule.id })
-                    }
-                })
                 schedule.needDeleteSceneNumbers.append(lastScene.number)
 //                schedule.needDeleteScenes.append(lastScene)
             }
-            scene?.info.groups.forEach({ group in
-                group.info.bindSchedules.append(schedule)
-            })
             schedule.sceneNumber = scene?.number
         }
         
@@ -479,7 +450,27 @@ class ScheduleAddViewController: UIViewController {
         schedule.hour = hour
         schedule.minute = minute
         
-        schedule.save()
+        let affectedNodes = original.existNodes + nodes + groups.flatMap(\.nodes) + (scene?.info.groups.flatMap(\.nodes) ?? [])
+        guard resolveSchedulerState(nodes: affectedNodes, retry: { [weak self] in self?.doneBtnAction() }) else { return }
+        var candidates = MeshNetworkManager.instance.schedules
+        guard let index = candidates.firstIndex(where: { $0.id == original.id }) else { return }
+        candidates[index] = schedule
+        do {
+            try TimedSchedulerBindings.commit(TimedSchedulerBindings.prepare(schedules: candidates))
+        } catch {
+            TimedSchedulerBindings.showFailure(error)
+            return
+        }
+        MeshNetworkManager.instance.schedules = candidates
+        self.schedule = schedule
+        space.timedSchemaVersion = 2
+        for group in MeshNetworkManager.instance.groups {
+            group.info.bindSchedules.removeAll { $0.id == schedule.id }
+            if schedule.groups.contains(group) || schedule.scene?.info.groups.contains(group) == true
+                || schedule.needDeleteGroups.contains(group) || schedule.needDeleteScenes.contains(where: { $0.info.groups.contains(group) }) {
+                group.info.bindSchedules.append(schedule)
+            }
+        }
         schedule.existNodes.forEach { node in
             node.clearSyncStateCache()
         }
@@ -500,6 +491,26 @@ class ScheduleAddViewController: UIViewController {
         
     }
     
+    /// Read all Models before reserving a previously unassigned device slot.
+    private func resolveSchedulerState(nodes: [Node], retry: @escaping () -> Void) -> Bool {
+        let unknown = ScheduleServer.nodesRequiringAuthoritativeSchedulerRead(nodes)
+        guard !unknown.isEmpty else { return true }
+        saveBtn.isEnabled = false
+        doneBtn.isEnabled = false
+        XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: true)
+        ScheduleServer.readUnknownSchedulerState(nodes: unknown) { [weak self] resolved in
+            DispatchQueue.main.async {
+                guard let self else { return }
+                XWHUDManager.hide()
+                self.saveBtn.isEnabled = true
+                self.doneBtn.isEnabled = true
+                if resolved { retry() }
+                else { XWHUDManager.showErrorTipHUD("sync_failed".localizedString) }
+            }
+        }
+        return false
+    }
+
     /// 跳转到同步设备页面
     private func pushToSyncDevices(schedule: Schedule, delete: Bool = false) {
         

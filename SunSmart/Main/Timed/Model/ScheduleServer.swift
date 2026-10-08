@@ -56,11 +56,12 @@ struct ScheduleServer {
         setNodes = setNodes.filter { schedule.needsSync(on: $0) }
         
         let meshUUID = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString
+        let networkID = MeshNetworkManager.instance.currentNetworkKey.networkId.hex
 
         saveSchedule(schedule: schedule, setNodes: setNodes) { _ in
             
 //            schedule.enabled = enabled
-            schedule.save()
+            schedule.save(meshUUID: meshUUID, meshNetworkId: networkID)
             success?(schedule)
             
         } failed: { _ in
@@ -69,10 +70,15 @@ struct ScheduleServer {
                 
                 schedule.enabled = enabled
                 if meshUUID != nil {
-                    schedule.save()
+                    schedule.save(meshUUID: meshUUID, meshNetworkId: networkID)
                 }
             }else {
                 schedule.enabled = previousEnabled
+                // First-use slot reservation may already have saved the attempted
+                // value. Roll back the business field while retaining the slots.
+                if meshUUID != nil {
+                    schedule.save(meshUUID: meshUUID, meshNetworkId: networkID)
+                }
             }
             failed?(schedule)
         }
@@ -107,6 +113,8 @@ struct ScheduleServer {
 //      日程删除 => (action=noAction)
 //      日程关闭 => (month=空 && action != noAction)
         // 更新缓存，删除本地设备数据
+        guard TimedSchedulerBindings.reserveForDeletion(schedule: schedule) else { failed?(schedule); return }
+        let previous = schedule.copy()
         schedule.action = .noAction
         
         schedule.needDeleteNodeAddresses.append(contentsOf: schedule.nodes.map({ $0.primaryUnicastAddress }))
@@ -119,9 +127,24 @@ struct ScheduleServer {
             schedule.needDeleteSceneNumbers.append(scene.number)
             schedule.sceneNumber = nil
         }
-        schedule.save()
-        
-        
+        schedule.nodeSlots = schedule.nodeSlots?.map { binding in
+            var pending = binding
+            pending.state = .pendingRemoval
+            return pending
+        }
+        guard schedule.save() else {
+            schedule.action = previous.action
+            schedule.nodeAddresses = previous.nodeAddresses
+            schedule.groupAddresses = previous.groupAddresses
+            schedule.sceneNumber = previous.sceneNumber
+            schedule.nodeSlots = previous.nodeSlots
+            schedule.needDeleteNodeAddresses = previous.needDeleteNodeAddresses
+            schedule.needDeleteGroupAddresses = previous.needDeleteGroupAddresses
+            schedule.needDeleteSceneNumbers = previous.needDeleteSceneNumbers
+            failed?(schedule)
+            return
+        }
+
 //        var setNodes: [Node] = []
 //        
 //        setNodes.append(contentsOf: schedule.nodes)
@@ -146,7 +169,7 @@ struct ScheduleServer {
         
         saveSchedule(schedule: schedule) { _ in
 //            if let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString {
-            schedule.deleteData()
+            guard schedule.deleteData() else { failed?(schedule); return }
             MeshNetworkManager.instance.schedules.removeAll(where: { $0.id == schedule.id })
 //            }
             success?(schedule)
@@ -299,11 +322,14 @@ struct ScheduleServer {
             return
         }
         guard !messageHandles.isEmpty else {
+            let synchronized = batch.delete
+                ? schedule.deletionIsSynchronized(on: batch.node)
+                : schedule.slot(on: batch.node) != nil && !schedule.needsSync(on: batch.node, contextGroup: batch.contextGroup)
             runScheduleDeviceBatches(
                 batches,
                 schedule: schedule,
                 index: index + 1,
-                hadFailure: hadFailure,
+                hadFailure: hadFailure || !synchronized,
                 completion: completion
             )
             return
@@ -312,10 +338,7 @@ struct ScheduleServer {
         MeshProxyMessageCommand.shared.addMessage(messageHandles: messageHandles, progressBack: nil) { messageHandle, _ in
             if let address = messageHandle.address ?? messageHandle.model?.parentElement?.unicastAddress, 
                 let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-                node.updateData(
-                    message: messageHandle.message,
-                    model: messageHandle.model
-                )
+                node.applyMessageHandle(messageHandle)
             }
             
         } failedBack: { messageHandle in
@@ -323,11 +346,14 @@ struct ScheduleServer {
             print("node send message failed \(messageHandle.message)")
             #endif
         } finishedBack: { resultMessageHandles in
+            let synchronized = batch.delete
+                ? schedule.deletionIsSynchronized(on: batch.node)
+                : schedule.slot(on: batch.node) != nil && !schedule.needsSync(on: batch.node, contextGroup: batch.contextGroup)
             runScheduleDeviceBatches(
                 batches,
                 schedule: schedule,
                 index: index + 1,
-                hadFailure: hadFailure || resultMessageHandles.contains(where: { !$0.isSuccessful }),
+                hadFailure: hadFailure || !synchronized || resultMessageHandles.contains(where: { !$0.isSuccessful }),
                 completion: completion
             )
         }
@@ -338,8 +364,12 @@ struct ScheduleServer {
         batch: ScheduleDeviceBatch
     ) -> [MeshMessageHandle]? {
         if batch.delete {
+            guard TimedSchedulerBindings.reserveForDeletion(schedule: schedule, node: batch.node) else { return nil }
+            guard schedule.slot(on: batch.node) != nil || schedule.deletionIsSynchronized(on: batch.node) else { return nil }
             return schedule.getMessageHandles(node: batch.node, delete: true)
         }
+
+        guard TimedSchedulerBindings.reserveForSending(schedule: schedule, node: batch.node, contextGroup: batch.contextGroup) else { return nil }
 
         var messageHandles: [MeshMessageHandle] = []
         let timeSyncPlan = TimedScheduleTimeSyncPolicy.makePlan(

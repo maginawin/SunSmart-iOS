@@ -5,11 +5,7 @@ extension SyncExecutionSession {
     func applyResult(_ resultMessageHandles: [MeshMessageHandle], model: SyncCellModel, messageHandles: [MeshMessageHandle]) -> Bool {
         resultMessageHandles.forEach { handle in
             if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
-                node.updateData(
-                    message: handle.message,
-                    isSuccess: handle.isSuccessful,
-                    model: handle.model
-                )
+                node.applyMessageHandle(handle, isSuccess: handle.isSuccessful)
                 // 清空同步缓存状态
                 node.clearSyncStateCache()
             }

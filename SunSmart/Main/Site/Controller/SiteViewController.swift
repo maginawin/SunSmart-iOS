@@ -2342,7 +2342,8 @@ self.updateAddressData()
                 return
             }
             let name = space.name
-            guard let data = try? JSONSerialization.data(withJSONObject: spaceJsonDict) else {
+            guard let document = TimedSchedulerPayloadPolicy.backupEnvelope(spaceJsonDict),
+                  let data = try? JSONSerialization.data(withJSONObject: document) else {
                 XWHUDManager.showErrorTipHUD(
                     "proximity_lighting_export_invalid".localizedString
                 )
@@ -3752,7 +3753,8 @@ extension SiteViewController: UIDocumentPickerDelegate {
         guard let url = urls.first else { return }
         do {
             let data = try Data(contentsOf: url)
-            if var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            if let document = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               var json = TimedSchedulerPayloadPolicy.backupPayload(document) {
                 json.updateValue("\(Int64(Date().timeIntervalSince1970))", forKey: "updateTimestamp")
                 
                 Task {
@@ -3770,6 +3772,8 @@ extension SiteViewController: UIDocumentPickerDelegate {
                     XWHUDManager.showSuccessTipHUD("done!".localizedString)
                     self.loadSiteRequest()
                 }
+            } else {
+                XWHUDManager.showErrorTipHUD("failed".localizedString)
             }
             
         } catch { // 失败提示

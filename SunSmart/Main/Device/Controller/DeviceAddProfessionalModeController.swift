@@ -1516,17 +1516,11 @@ class DeviceAddProfessionalModeController: UIViewController {
             // 发送扩展消息成功更新缓存数据
             if let address = messageHandle.model?.parentElement?.unicastAddress ?? messageHandle.address, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
                 if let plan = self?.fastAddGroupSyncPlan(containing: messageHandle) {
-                    node.updateData(
-                        message: messageHandle.message,
-                        model: messageHandle.model
-                    )
+                    node.applyMessageHandle(messageHandle)
                     plan.recordSuccessfulMessageHandle(messageHandle)
                 } else {
                     DispatchQueue.global().async {
-                        node.updateData(
-                            message: messageHandle.message,
-                            model: messageHandle.model
-                        )
+                        node.applyMessageHandle(messageHandle)
                     }
                 }
             }

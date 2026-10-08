@@ -32,7 +32,7 @@ struct DeviceGroupDeferredSyncTask {
         switch operationType {
         case .configuration(let node, let type):
             if case .schedule(let schedule) = type {
-                return !schedule.needsSync(
+                return schedule.slot(on: node) != nil && !schedule.needsSync(
                     on: node,
                     contextGroup: contextGroup
                 )
@@ -97,6 +97,14 @@ enum DeviceGroupFastAddSyncPlanner {
         effectiveMemberCount: Int? = nil,
         profileSyncContext: GroupProfileSyncContext? = nil
     ) -> DeviceGroupFastAddSyncPlan? {
+        guard TimedSchedulerBindings.canAddDevice(to: group, node: node) else {
+            return DeviceGroupFastAddSyncPlan(
+                nodeAddress: node.primaryUnicastAddress, group: group,
+                appendMessageHandles: [], verificationOperations: [],
+                taskCheckpointTracker: FastAddTaskCheckpointTracker(checkpoints: []),
+                hasPlanningFailure: true
+            )
+        }
         switch node.deviceType {
         case .light:
             let syncDatas = node.getSyncData(
@@ -427,9 +435,18 @@ private extension DeviceGroupDeferredSyncPlanner {
         group: Group,
         completion: @escaping (Bool) -> Void
     ) {
+        if case .configuration(_, .schedule) = task.operationType,
+           !ScheduleServer.nodesRequiringAuthoritativeSchedulerRead([node]).isEmpty {
+            ScheduleServer.readUnknownSchedulerState(nodes: [node]) { resolved in
+                guard resolved else { completion(false); return }
+                runTaskAttempt(task, attempt: attempt, maxRetryCount: maxRetryCount,
+                               node: node, group: group, completion: completion)
+            }
+            return
+        }
         let messageHandles = task.makeMessageHandles(contextGroup: group)
         guard !messageHandles.isEmpty else {
-            completion(!task.operationType.requiresSiteTimeSetHandle)
+            completion(!task.operationType.requiresSiteTimeSetHandle && task.isSuccessful(contextGroup: group))
             return
         }
 
@@ -447,11 +464,7 @@ private extension DeviceGroupDeferredSyncPlanner {
             resultMessageHandles.forEach { handle in
                 let address = handle.address ?? handle.model?.parentElement?.unicastAddress ?? node.primaryUnicastAddress
                 let targetNode = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) ?? node
-                targetNode.updateData(
-                    message: handle.message,
-                    isSuccess: handle.isSuccessful,
-                    model: handle.model
-                )
+                targetNode.applyMessageHandle(handle, isSuccess: handle.isSuccessful)
                 targetNode.clearSyncStateCache()
             }
 
@@ -536,7 +549,7 @@ private extension DeviceGroupFastAddSyncPlanner {
                 timeSyncHandleAvailable = !messageHandles.isEmpty
             }
             guard !messageHandles.isEmpty else {
-                if task.operationType.requiresSiteTimeSetHandle {
+                if task.operationType.requiresSiteTimeSetHandle || !task.isSuccessful(contextGroup: group) {
                     hadFailure = true
                 }
                 return

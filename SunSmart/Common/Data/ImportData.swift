@@ -1760,9 +1760,32 @@ extension SpaceData {
         guard (try? SpaceConfigurationSafety.recoveryState(self).phase) == .active else {
             return .rejected("spaceRemovalPending")
         }
+        // Validate before metadata reconciliation or any persistent replacement.
+        guard let incomingTimedVersion = TimedSchedulerPayloadPolicy.schema(spaceJsonData),
+              TimedSchedulerPayloadPolicy.canonical(spaceJsonData) != nil,
+              let incomingSchedules = spaceJsonData["schedules"] as? [[String: Any]],
+              let incomingData = try? JSONSerialization.data(withJSONObject: incomingSchedules),
+              (try? jsonDecoder.decode([Schedule].self, from: incomingData)) != nil else {
+            return .rejected("invalidTimedPayload")
+        }
+        let storedTimedVersion = SpaceData.load(siteId: siteId, spaceId: id).first?.timedSchemaVersion ?? timedSchemaVersion
+        let preservesTimedMigration = storedTimedVersion > incomingTimedVersion
+        guard !preservesTimedMigration || (!initialize
+            && SpaceConfigurationSafety.isConfirmedTimedBaseline(self, remote: spaceJsonData)) else {
+            return .rejected("timedSchemaDowngrade")
+        }
         applyRemoteSpaceMetadata(spaceJsonData)
         if !initialize { save() }
+        SpaceConfigurationSafety.backfillTimedUpgradeBaseline(self, remote: spaceJsonData)
         DevicePermanentDeletionContext.resume(space: self)
+        if preservesTimedMigration {
+            // Metadata can revoke authority. Never let a baseline exception
+            // bypass the required authoritative import after that transition.
+            guard !SpaceConfigurationSafety.requiresAuthorityImport(self) else {
+                return .rejected("timedSchemaDowngrade")
+            }
+            return .preserved("localTimedMigrationPendingUpload")
+        }
         if !initialize, !SpaceConfigurationSafety.reconcileCloudMembership(self, remote: spaceJsonData) {
             SpaceConfigurationSafety.recordSyncFailure(self, error: .configurationUploadUnconfirmed, stage: "cloudMembership")
             return .preserved("cloudMembershipNeedsReview")
@@ -1795,7 +1818,8 @@ extension SpaceData {
         else { return .rejected("staleImportPreparation") }
         trace.mark("remotePreflightPrepared")
         let baselineSnapshot = ConfigurationMeshReadSnapshot()
-        if !resumingImport, SpaceConfigurationSafety.needsUpgradeBaseline(self),
+        if !resumingImport,
+           SpaceConfigurationSafety.needsUpgradeBaseline(self) || SpaceConfigurationSafety.needsTimedUpgradeBaseline(self),
            let local = await export(purpose: .localBackup, readSnapshot: baselineSnapshot) {
             trace.mark("upgradeBaselineExported")
             SpaceConfigurationSafety.verifyUpgradeBaseline(self, local: local, remote: spaceJsonData)
@@ -1850,6 +1874,13 @@ extension SpaceData {
             if let issue = SpaceConfigurationIntegrityPolicy.profilesIssue(in: spaceJsonData) {
                 SpaceConfigurationSafety.block(self, reason: "invalidRemoteProfile:" + issue)
                 continuation.resume(returning: hasUsableLocalSnapshot ? .skipped : .rejected(issue))
+                return
+            }
+            guard let remoteTimedConfiguration = TimedSchedulerPayloadPolicy.canonical(spaceJsonData),
+                  let timedVersion = TimedSchedulerPayloadPolicy.schema(spaceJsonData),
+                  let timedData = try? JSONSerialization.data(withJSONObject: scheduleDicts),
+                  let schedules = try? jsonDecoder.decode([Schedule].self, from: timedData) else {
+                continuation.resume(returning: .rejected("invalidTimedPayload"))
                 return
             }
             guard let remoteSchedulerModelStates = SchedulerModelSnapshot.spaceData(spaceJsonData) else {
@@ -1936,7 +1967,8 @@ extension SpaceData {
             let lastUpdate = json["updateTimestamp"].int64Value
             let modelStatesDiffer = SchedulerModelSnapshot.remoteChanged(remoteSchedulerModelStates,
                 since: context.schedulerModelStatesBaseline)
-            let sameTimestampSummaryDiffers = lastUpdate == self.lastUpdate && (summaryDiffers || modelStatesDiffer)
+            let timedDiffers = context.timedConfigurationBaseline.map { $0 != remoteTimedConfiguration } ?? (timedVersion == 2)
+            let sameTimestampSummaryDiffers = lastUpdate == self.lastUpdate && (summaryDiffers || modelStatesDiffer || timedDiffers)
             let serverSummaryDiffersNote = localNeedsUpload ? "serverSummaryDiffersButLocalNeedsUpload" : "serverSummaryDiffers"
             let shouldApplyServerData = resumingImport || SpaceConfigurationSafety.requiresAuthorityImport(self)
                 || SpaceConfigurationSafety.isBlocked(self) || lastUpdate > self.lastUpdate || initialize || (sameTimestampSummaryDiffers && !localNeedsUpload)
@@ -1962,10 +1994,6 @@ extension SpaceData {
                 return
             }
             
-            var schedules: [Schedule] = []
-            if let data = try? JSONSerialization.data(withJSONObject: scheduleDicts), let list = try? jsonDecoder.decode([Schedule].self, from: data) {
-                schedules = list
-            }
             let groups = groupDicts.compactMap { groupDict in
                 do {
                     let data = try JSONSerialization.data(withJSONObject: groupDict)
@@ -2526,15 +2554,20 @@ extension SpaceData {
             }
             
             // 日程
-            Schedule.deleteAll(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId)
+            guard Schedule.deleteAll(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId) else {
+                throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+            }
+            for schedule in schedules {
+                guard schedule.save(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId) else {
+                    throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+                }
+            }
+            self.timedSchemaVersion = timedVersion
             if meshUUID == MeshNetworkManager.instance.meshNetwork?.uuid.uuidString,
                MeshNetworkManager.instance.currentNetworkKey.networkId.hex == self.meshNetworkId {
                 MeshNetworkManager.instance.schedules = schedules
             }
-            schedules.forEach({
-                $0.save(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId)
-            })
-            
+
             // 组
             // TODO: 需判断是否业务组
             while network.groups.count > 0 {
@@ -2712,6 +2745,17 @@ extension SpaceData {
             printSpaceCountProbe(phase: "applied", json: json, space: self, initialize: initialize, note: sameTimestampSummaryDiffers ? serverSummaryDiffersNote : nil)
 #endif
             trace.mark("beforeTransactionReadback")
+            let persistedSchedules = Schedule.load(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId)
+            guard let persistedTimedData = try? JSONEncoder().encode(persistedSchedules),
+                  let persistedTimed = try? JSONSerialization.jsonObject(with: persistedTimedData) else {
+                throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+            }
+            var timedReadback = spaceJsonData
+            timedReadback["schedules"] = persistedTimed
+            guard TimedSchedulerPayloadPolicy.canonical(timedReadback) == remoteTimedConfiguration else {
+                throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+            }
+
             guard self.save(),
                   let persistedNetwork = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId),
                   Set(persistedNetwork.groups.map { $0.address.address }) == Set(groups.map { $0.address.address }),

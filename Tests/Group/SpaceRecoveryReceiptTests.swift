@@ -1,3 +1,7 @@
+// The full Schedule codec has its own production-code fixture. This harness
+// isolates upload receipt and import preparation state transitions.
+let jsonDecoder = JSONDecoder()
+struct Schedule: Decodable {}
 import Foundation
 import CryptoKit
 
@@ -9,6 +13,8 @@ struct UserData {
 extension String { var localizedString: String { self } }
 // NETWORK_ERROR_TYPE
 final class SpaceData {
+    var timedSchemaVersion = 1
+
     enum State { case normal, waitDeleted }
     enum GatewayStatus { case online, offline, notBound }
     let id: String
@@ -105,6 +111,7 @@ final class NetworkRequest {
         }
         try await testLegacyUpgradeRetry()
         try await testLegacyUpgradeRecovery()
+        try await testLegacyTimedBaselineBackfill()
         try await testEmptyZoneImportGate()
         precondition(NetworkApiError(code: -2002) == .configurationUploadUnconfirmed)
         precondition(NetworkApiError(code: -2003) == .configurationExportInvalid)
@@ -274,6 +281,7 @@ final class NetworkRequest {
         try await testSiteHandoffReadback()
         try await testCloudMembershipRemoval()
         try await testImportPreparation()
+        try await testUnuploadedTimedMigration()
         try await testParseRejectionRecovery()
         try testReferenceCleanupReceipts()
         try testProximityAllImportRecovery()
@@ -641,7 +649,7 @@ final class NetworkRequest {
         let space = SpaceData("scene-target-readback")
         var submitted = space.payload
         submitted["scenes"] = [["number": "0006", "name": "All off"]]
-        submitted["schedules"] = [["id": 0, "selectTarget": 2, "sceneAddress": "0006"]]
+        submitted["schedules"] = [["name": "Schedule 1", "enabled": true, "action": 2, "hour": 8, "minute": 0, "dayOfWeek": 127, "fadeTime": 0, "id": 0, "selectTarget": 2, "sceneAddress": "0006"]]
         let context = S.prepareSubmission(space, payload: submitted)!
         precondition(context.submission?.scheduleTargets != nil)
         var legacy = try JSONSerialization.jsonObject(with: JSONEncoder().encode(context)) as! [String: Any]
@@ -655,7 +663,7 @@ final class NetworkRequest {
         precondition(S.markSubmissionAccepted(context, space: space))
 
         var missingTarget = submitted
-        missingTarget["schedules"] = [["id": 0, "selectTarget": 2, "sceneAddress": NSNull()]]
+        missingTarget["schedules"] = [["name": "Schedule 1", "enabled": true, "action": 2, "hour": 8, "minute": 0, "dayOfWeek": 127, "fadeTime": 0, "id": 0, "selectTarget": 2, "sceneAddress": NSNull()]]
         NetworkRequest.shared.result = .success(["data": missingTarget])
         let directMismatch = await S.verifyUploadedConfiguration(space, payload: submitted)
         precondition(!directMismatch, "Direct readback must detect a lost nonempty scene target")

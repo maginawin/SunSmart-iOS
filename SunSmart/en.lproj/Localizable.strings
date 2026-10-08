@@ -2341,3 +2341,6 @@
 "batch_delete_failed_message" = "Some devices could not be deleted. Keep them, or force delete their local records? Devices may still need a manual factory reset.";
 "batch_delete_completed" = "Local device records deleted. Broadcast and group commands do not confirm that every device has left the network.";
 "batch_delete_kept" = "Devices without a confirmed result were kept. You can retry or force delete their local records later.";
+
+"timed_device_capacity_exceeded" = "%@ has no available schedule slots (maximum 16 per device). Disabled schedules and pending deletions also use slots.";
+"timed_device_capacity_unknown" = "Read the schedule data from %@ before adding schedules. Connect the device and try again.";

@@ -411,6 +411,7 @@ enum SpaceConfigurationSafety {
             var state = try recoveryState(space)
             state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(remote)
             state.nodeIdentitiesBaseline = actualNodes
+            state.timedConfigurationBaseline = TimedSchedulerPayloadPolicy.canonical(remote)
             state.schedulerModelStatesBaseline = SchedulerModelSnapshot.spaceData(remote)
             try saveState(state, space: space)
             let previousError = space.syncCloudError
@@ -479,6 +480,7 @@ enum SpaceConfigurationSafety {
             var state = try recoveryState(space)
             state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(remote)
             state.nodeIdentitiesBaseline = SpaceCloudNodeRemovalPolicy.instances(remote)
+            state.timedConfigurationBaseline = TimedSchedulerPayloadPolicy.canonical(remote)
             state.schedulerModelStatesBaseline = SchedulerModelSnapshot.spaceData(remote)
             try saveState(state, space: space)
             UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
@@ -557,6 +559,53 @@ enum SpaceConfigurationSafety {
             }
             return true
         } catch { return false }
+    }
+
+    /// A local Timed migration can precede its cloud upload. Only the exact
+    /// confirmed legacy baseline may be ignored; it must never be imported.
+    static func isConfirmedTimedBaseline(_ space: SpaceData, remote: [String: Any]) -> Bool {
+        guard remote["uuid"] as? String == space.id,
+              let timestamp = SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"]),
+              timestamp == space.lastUploadCloudTimestamp, timestamp <= space.lastUpdate,
+              let state = try? recoveryState(space), state.preservesUpload,
+              state.requiresRemoteImport != true, !hasPendingImport(space),
+              let timed = state.timedConfigurationBaseline,
+              timed == TimedSchedulerPayloadPolicy.canonical(remote),
+              SpaceConfigurationIntegrityPolicy.configurationsMatch(
+                state.authorizationBaseline, SpaceConfigurationIntegrityPolicy.configurationData(remote)),
+              let localNetwork = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
+              let localKeys = SpaceKeyIntegrity.pair(localNetwork, networkID: space.meshNetworkId),
+              let remoteKeys = SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId),
+              localKeys.fingerprint == remoteKeys.fingerprint else { return false }
+        if let models = state.schedulerModelStatesBaseline {
+            guard models == SchedulerModelSnapshot.spaceData(remote) else { return false }
+        }
+        return true
+    }
+
+    /// Backfill old receipts before a pending local cleanup skips import. Local
+    /// topology may already differ, so compare against its confirmed receipt.
+    static func backfillTimedUpgradeBaseline(_ space: SpaceData, remote: [String: Any]) {
+        guard needsTimedUpgradeBaseline(space), remote["uuid"] as? String == space.id,
+              let timestamp = SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"]),
+              timestamp == space.lastUploadCloudTimestamp, timestamp <= space.lastUpdate,
+              var state = try? recoveryState(space), state.preservesUpload,
+              state.requiresRemoteImport != true, !hasPendingImport(space),
+              SpaceConfigurationIntegrityPolicy.configurationsMatch(
+                state.authorizationBaseline, SpaceConfigurationIntegrityPolicy.configurationData(remote)),
+              let timed = TimedSchedulerPayloadPolicy.canonical(remote),
+              let localNetwork = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
+              let localKeys = SpaceKeyIntegrity.pair(localNetwork, networkID: space.meshNetworkId),
+              let remoteKeys = SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId),
+              localKeys.fingerprint == remoteKeys.fingerprint else { return }
+        if let models = state.schedulerModelStatesBaseline {
+            guard models == SchedulerModelSnapshot.spaceData(remote) else { return }
+        }
+        if let nodes = state.nodeIdentitiesBaseline {
+            guard nodes == SpaceCloudNodeRemovalPolicy.instances(remote) else { return }
+        }
+        state.timedConfigurationBaseline = timed
+        try? saveState(state, space: space)
     }
 
     /// A GET must not resurrect devices while their explicit deletion or local
@@ -769,7 +818,10 @@ enum SpaceConfigurationSafety {
             let modelsMatch = upgrading || (SchedulerModelSnapshot.spaceData(payload).map {
                 SchedulerModelSnapshot.spaceData(remote) == $0
             } ?? false)
-            guard schedulesMatch, modelsMatch else { return .success(false) }
+            let timedMatch = upgrading || (TimedSchedulerPayloadPolicy.canonical(payload).map {
+                TimedSchedulerPayloadPolicy.canonical(remote) == $0
+            } ?? false)
+            guard schedulesMatch, modelsMatch, timedMatch else { return .success(false) }
             space.applyRemoteSpaceMetadata(remote)
             guard space.save(), isCurrent(context, space: space),
                   !upgrading || canAutomaticallyUpload(space) else { return .failure(uploadUnconfirmed) }
@@ -819,6 +871,7 @@ enum SpaceConfigurationSafety {
                   payload["uuid"] as? String == space.id, payload["nodes"] is [[String: Any]],
                   let configuration = SpaceConfigurationIntegrityPolicy.configurationData(payload),
                   let scheduleTargets = SpaceConfigurationIntegrityPolicy.scheduleTargetsData(payload),
+                  let timedConfiguration = TimedSchedulerPayloadPolicy.canonical(payload),
                   let schedulerModelStates = SchedulerModelSnapshot.spaceData(payload),
                   let keys = SpaceKeyIntegrity.pair(payload, networkID: space.meshNetworkId),
                   let current = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
@@ -827,7 +880,7 @@ enum SpaceConfigurationSafety {
                   keys.fingerprint == local.fingerprint else { return nil }
             state.submission = .init(id: UUID(), timestamp: timestamp, configuration: configuration,
                                      keyFingerprint: keys.fingerprint, scheduleTargets: scheduleTargets,
-                                     schedulerModelStates: schedulerModelStates,
+                                     timedConfiguration: timedConfiguration, schedulerModelStates: schedulerModelStates,
                                      nodeIdentities: SpaceCloudNodeRemovalPolicy.instances(payload))
             state.siteCreationTimestamp = siteCreationTimestamp
             try saveState(state, space: space)
@@ -911,6 +964,9 @@ enum SpaceConfigurationSafety {
             // device compares the changed local topology to the pre-add cloud copy.
             UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
             state.authorizationBaseline = readbackConfiguration(submission.configuration, timestamp: submission.timestamp, space: space)
+            state.timedConfigurationBaseline = submission.timedConfiguration.flatMap {
+                readbackTimed($0, timestamp: submission.timestamp, space: space)
+            }
             state.schedulerModelStatesBaseline = submission.schedulerModelStates.flatMap {
                 readbackModels($0, timestamp: submission.timestamp, space: space)
             }
@@ -999,6 +1055,11 @@ enum SpaceConfigurationSafety {
                     let schedulesMatch = submission.scheduleTargets.map {
                         SpaceConfigurationIntegrityPolicy.scheduleTargetsData(remote) == $0
                     } ?? true
+                    let timedMatch = submission.timedConfiguration.map {
+                        readbackTimed($0, timestamp: submission.timestamp, space: space).map {
+                            TimedSchedulerPayloadPolicy.canonical(remote) == $0
+                        } ?? false
+                    } ?? true
                     let modelsMatch = submission.schedulerModelStates.map {
                         readbackModels($0, timestamp: submission.timestamp, space: space).map {
                             SchedulerModelSnapshot.spaceData(remote) == $0
@@ -1010,7 +1071,7 @@ enum SpaceConfigurationSafety {
                        let localKeys = SpaceKeyIntegrity.pair(localNetwork, networkID: space.meshNetworkId),
                        localKeys.fingerprint == expectedKeyFingerprint,
                        SpaceKeyIntegrity.presentServerKeysMatchLocal(remote, local: localKeys),
-                       SpaceConfigurationIntegrityPolicy.configurationsMatch(actual, expected), schedulesMatch, modelsMatch {
+                       SpaceConfigurationIntegrityPolicy.configurationsMatch(actual, expected), schedulesMatch, modelsMatch, timedMatch {
                         // The submitted business configuration arrived, but one Key did not.
                         // Keep the Space dirty and send a new complete snapshot.
                         context = try recoveryState(space)
@@ -1020,7 +1081,7 @@ enum SpaceConfigurationSafety {
                         return .success(())
                     }
                     if remoteKeyFingerprint == expectedKeyFingerprint,
-                       SpaceConfigurationIntegrityPolicy.configurationsMatch(actual, expected), schedulesMatch, modelsMatch {
+                       SpaceConfigurationIntegrityPolicy.configurationsMatch(actual, expected), schedulesMatch, modelsMatch, timedMatch {
                         context = try recoveryState(space)
                         guard context.submission?.id == submission.id else { return .failure(uploadUnconfirmed) }
                         context.submission?.phase = .verified
@@ -1081,6 +1142,12 @@ enum SpaceConfigurationSafety {
         return SpaceCloudNodeRemovalPolicy.projectConfiguration(data, removing: removed)
     }
 
+    private static func readbackTimed(_ data: Data, timestamp: Int64, space: SpaceData) -> Data? {
+        let removed = readbackRemovals(timestamp: timestamp, space: space)
+        return TimedSchedulerPayloadPolicy.removingNodes(from: data, uuids: Set(removed.map(\.uuid)),
+            addresses: Set(removed.flatMap { $0.elementAddresses.union([$0.address]) }.map { String(format: "%04X", $0) }))
+    }
+
     private static func readbackModels(_ data: Data, timestamp: Int64, space: SpaceData) -> Data? {
         SpaceCloudNodeRemovalPolicy.projectModels(data, removing: readbackRemovals(timestamp: timestamp, space: space))
     }
@@ -1134,6 +1201,11 @@ enum SpaceConfigurationSafety {
         if let modelBaseline {
             guard SpaceCloudNodeRemovalPolicy.projectModels(modelBaseline, removing: removed) == remoteModels else { return false }
         }
+        if let timed = submission?.timedConfiguration ?? state.timedConfigurationBaseline {
+            guard TimedSchedulerPayloadPolicy.removingNodes(from: timed,
+                uuids: Set(removed.map(\.uuid)), addresses: Set(removed.flatMap { $0.elementAddresses.union([$0.address]) }.map { String(format: "%04X", $0) }))
+                == TimedSchedulerPayloadPolicy.canonical(remote) else { return false }
+        }
         if let targets = submission?.scheduleTargets {
             guard SpaceConfigurationIntegrityPolicy.scheduleTargetsData(remote) == targets else { return false }
         }
@@ -1150,6 +1222,7 @@ enum SpaceConfigurationSafety {
                 var current = try recoveryState(space)
                 guard current.matches(state), current.submission == nil else { return false }
                 current.authorizationBaseline = expected
+                current.timedConfigurationBaseline = TimedSchedulerPayloadPolicy.canonical(remote)
                 current.schedulerModelStatesBaseline = remoteModels
                 current.nodeIdentitiesBaseline = remoteNodes
                 try saveState(current, space: space)
@@ -1174,6 +1247,7 @@ enum SpaceConfigurationSafety {
               let configuration = SpaceConfigurationIntegrityPolicy.configurationData(payload) else { throw SafetyError.invalidCheckpoint }
         state.submission = .init(id: UUID(), timestamp: timestamp, configuration: configuration, phase: .accepted,
                                  scheduleTargets: SpaceConfigurationIntegrityPolicy.scheduleTargetsData(payload),
+                                 timedConfiguration: TimedSchedulerPayloadPolicy.canonical(payload),
                                  schedulerModelStates: schedulerModelStates, permitsCloudRemoval: false)
         try saveState(state, space: space)
     }
@@ -1285,6 +1359,7 @@ enum SpaceConfigurationSafety {
                 state.submission = nil
                 state.authorizationBaseline = nil
                 state.nodeIdentitiesBaseline = nil
+                state.timedConfigurationBaseline = nil
                 state.schedulerModelStatesBaseline = nil
                 state.requiresRemoteImport = true
             }
@@ -1336,6 +1411,13 @@ enum SpaceConfigurationSafety {
         space.uploadCloud && !UserDefaults.standard.bool(forKey: "spaceConfigurationMigrated." + key(space))
     }
 
+    /// Older recovery receipts predate the Timed baseline field. The generic
+    /// migration marker cannot authorize the first Timed schema migration.
+    static func needsTimedUpgradeBaseline(_ space: SpaceData) -> Bool {
+        space.uploadCloud && space.timedSchemaVersion < 2
+            && (try? recoveryState(space).timedConfigurationBaseline) == nil
+    }
+
     static func verifyUpgradeBaseline(_ space: SpaceData, local: [String: Any], remote: [String: Any]) {
         var started = ProcessInfo.processInfo.systemUptime
         func mark(_ phase: String) {
@@ -1345,7 +1427,11 @@ enum SpaceConfigurationSafety {
             #endif
             started = now
         }
-        guard !isBlocked(space), let expected = SpaceConfigurationIntegrityPolicy.upgradeConfigurationData(local),
+        guard !isBlocked(space), remote["uuid"] as? String == space.id,
+              let localKeys = SpaceKeyIntegrity.pair(local, networkID: space.meshNetworkId),
+              let remoteKeys = SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId),
+              localKeys.fingerprint == remoteKeys.fingerprint,
+              let expected = SpaceConfigurationIntegrityPolicy.upgradeConfigurationData(local),
               expected == SpaceConfigurationIntegrityPolicy.upgradeConfigurationData(remote) else {
             mark("comparisonRejected")
             return
@@ -1358,6 +1444,7 @@ enum SpaceConfigurationSafety {
         if var state = try? recoveryState(space) {
             state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(remote)
             state.nodeIdentitiesBaseline = SpaceCloudNodeRemovalPolicy.instances(remote)
+            state.timedConfigurationBaseline = TimedSchedulerPayloadPolicy.canonical(remote)
             state.schedulerModelStatesBaseline = SchedulerModelSnapshot.spaceData(remote)
             do {
                 try saveState(state, space: space)
@@ -1478,6 +1565,7 @@ enum SpaceConfigurationSafety {
                 let payload = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
                 let original = payload.flatMap { originalReferenceCleanupImport(space, candidate: $0) }
                 state.authorizationBaseline = (original ?? payload).flatMap(SpaceConfigurationIntegrityPolicy.configurationData)
+                state.timedConfigurationBaseline = payload.flatMap(TimedSchedulerPayloadPolicy.canonical)
                 state.schedulerModelStatesBaseline = payload.flatMap(SchedulerModelSnapshot.spaceData)
                 state.nodeIdentitiesBaseline = (original ?? payload).flatMap(SpaceCloudNodeRemovalPolicy.instances)
                 if original != nil, space.permission != .visitor {
@@ -1602,6 +1690,7 @@ enum SpaceConfigurationSafety {
             state.requiresRemoteImport = false
             state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(remote)
             state.nodeIdentitiesBaseline = SpaceCloudNodeRemovalPolicy.instances(remote)
+            state.timedConfigurationBaseline = TimedSchedulerPayloadPolicy.canonical(remote)
             state.schedulerModelStatesBaseline = SchedulerModelSnapshot.spaceData(remote)
             try saveState(state, space: space)
         } catch { return false }
