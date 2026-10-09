@@ -58,6 +58,7 @@ enum ProfilePersistenceTests {
         GroupInfo.initDatabase()
         Profile.initDatabase()
         try testDefaultsAndCloudRoundtrip(url)
+        try testMissingUnusedTaskLevelRoundtrip(url)
         let captured = try Connection(url.path, readonly: true)
         SunSmartDataManager.shared.db = try Connection(.inMemory)
         let scoped = GroupInfo.load(meshUUID: mesh, address: 0xC006, subnetworkId: subnet,
@@ -328,6 +329,35 @@ enum ProfilePersistenceTests {
             precondition(imported.lightControlData == profile.lightControlData)
         }
         print("PASS: eight real defaults and create-style copies -> SQLite reopen -> cloud export/import -> SQLite -> export")
+    }
+
+    static func testMissingUnusedTaskLevelRoundtrip(_ url: URL) throws {
+        for type in [1, 2, 3, 4, 7, 8] {
+            let profile = Profile.defaultGroupProfile(type: Profile.ProfileType(rawValue: type)!)
+            let info = GroupInfo(address: Address(0xC200 + type), profile: profile)
+            let expected = payload(info)
+            var missing = expected
+            missing.removeValue(forKey: "taskLevel")
+            missing["scenes"] = (expected["scenes"] as! [[String: Any]]).map { scene in
+                var result = scene; result.removeValue(forKey: "taskLevel"); return result
+            }
+            let wire = try JSONSerialization.data(withJSONObject: missing)
+            let decoded = try JSONSerialization.jsonObject(with: wire) as! [String: Any]
+            precondition(SpaceConfigurationIntegrityPolicy.profileIssue(decoded) == nil)
+            let imported = importProfile(decoded)!
+            precondition(imported.lightControlData.taskLevel == 100)
+            precondition(imported.scenes.allSatisfy { $0.lightControlData.taskLevel == 100 })
+            precondition(imported.lightData == profile.lightData,
+                         "Filling unused fields must preserve effective lighting parameters")
+            let restored = GroupInfo(address: info.address, profile: imported)
+            precondition(save(restored))
+            SunSmartDataManager.shared.db = try Connection(url.path)
+            let reloaded = load(restored.address)!
+            precondition(!reloaded.profileLoadFailed)
+            precondition(NSDictionary(dictionary: expected).isEqual(to: payload(reloaded)),
+                         "Import, SQLite reopen and export must materialize the same complete profile")
+        }
+        print("PASS: missing unused taskLevel -> production cloud import -> SQLite reopen -> complete export")
     }
 
     static func testProximityAllImport(_ url: URL) throws {

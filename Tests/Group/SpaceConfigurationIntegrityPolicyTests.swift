@@ -81,7 +81,92 @@ struct SpaceConfigurationIntegrityPolicyTests {
         testProximityAllCompatibility()
         testUpgradeOnlyDefaults()
         testEmptyZoneUpgradeCompatibility()
+        testUnusedTaskLevelDefaults()
         print("PASS: complete profile switches, incomplete payloads, photocell references, readback and submission generation")
+    }
+
+    static func testUnusedTaskLevelDefaults() {
+        typealias P = SpaceConfigurationIntegrityPolicy
+        // Match a Web Photocell save: General, Night and Day all omit taskLevel.
+        let scenes: [[String: Any]] = ["FF00", "FF01", "FF02"].map { number in
+            ["number": number, "name": number, "occupancyLevel": 100, "vacantLevel": 50,
+             "standbyLevel": 0, "timeT1": 2, "timeT2": 30, "timeT3": 2, "timeT4": 60, "timeT5": 2]
+        }
+        var profile: [String: Any] = ["id": "web-profile", "type": 8,
+            "highEndTrim": 100, "lowEndTrim": 0, "occupancyLevel": 100, "vacantLevel": 50,
+            "standbyLevel": 0, "timeT1": 2, "timeT2": 30, "timeT3": 2, "timeT4": 60, "timeT5": 2,
+            "manualOverrideTimeout": 60, "powerUpState": 0, "proximityLightingNumber": 2,
+            "scenes": scenes, "day": ["id": 1, "startsBelowLux": 70, "sceneNumber": "FF02"],
+            "night": ["id": 0, "startsBelowLux": 30, "sceneNumber": "FF01"]]
+        func payload(_ profile: [String: Any]) -> [String: Any] {
+            ["groups": [["address": "C002", "profile": profile]], "spaceData": ["triggerZones": []]]
+        }
+        func populated(_ profile: [String: Any], value: Any) -> [String: Any] {
+            var result = profile
+            result["taskLevel"] = value
+            result["scenes"] = scenes.map { scene in
+                var result = scene; result["taskLevel"] = value; return result
+            }
+            return result
+        }
+        for type in [1, 2, 3, 4, 7, 8] {
+            profile["type"] = type
+            let missing = payload(profile)
+            precondition(P.profilesIssue(in: missing) == nil)
+            let canonical = P.configurationData(missing)!
+            precondition(canonical == P.configurationData(payload(populated(profile, value: 100))),
+                         "Missing unused values and explicit defaults must confirm the same upload")
+            precondition(P.upgradeConfigurationData(missing) == P.upgradeConfigurationData(payload(populated(profile, value: 100))))
+            // Old authorization/submission records are already configuration projections.
+            var old = try! JSONSerialization.jsonObject(with: canonical) as! [String: Any]
+            var groups = old["groups"] as! [[String: Any]]
+            var oldProfile = groups[0]["profile"] as! [String: Any]
+            oldProfile.removeValue(forKey: "taskLevel")
+            oldProfile["scenes"] = scenes
+            groups[0]["profile"] = oldProfile; old["groups"] = groups
+            let oldData = try! JSONSerialization.data(withJSONObject: old)
+            precondition(P.configurationsMatch(oldData, canonical) && P.configurationsMatch(canonical, oldData))
+            for value in [0, 37, 100] {
+                let explicit = populated(profile, value: value)
+                precondition(P.profileIssue(explicit) == nil)
+                let data = P.configurationData(payload(explicit))!
+                let object = try! JSONSerialization.jsonObject(with: data) as! [String: Any]
+                let actual = (object["groups"] as! [[String: Any]])[0]["profile"] as! [String: Any]
+                precondition(P.integer(actual["taskLevel"]) == Int64(value))
+                precondition((actual["scenes"] as! [[String: Any]]).allSatisfy { P.integer($0["taskLevel"]) == Int64(value) })
+                precondition(P.configurationsMatch(oldData, data) == (value == 100),
+                             "A missing field must never equal an explicit nondefault value")
+            }
+            for invalid in [NSNull(), "100", true, -1, 0.5, 65536] as [Any] {
+                var badRoot = profile; badRoot["taskLevel"] = invalid
+                precondition(P.profileIssue(badRoot) == "invalidProfileField:taskLevel")
+                precondition(P.configurationData(payload(badRoot)) == nil)
+                var badScene = profile; var invalidScenes = scenes
+                invalidScenes[1]["taskLevel"] = invalid; badScene["scenes"] = invalidScenes
+                precondition(P.profileIssue(badScene) != nil)
+                precondition(P.configurationData(payload(badScene)) == nil)
+            }
+            if type != 1 && type != 2 {
+                precondition(P.profileIssue(populated(profile, value: 101)) != nil)
+            }
+        }
+        for type in [5, 6] {
+            profile["type"] = type
+            precondition(P.profileIssue(profile) == "invalidProfileField:taskLevel",
+                         "An active target must not be silently invented")
+            var legacy = profile; legacy["taskLevel"] = 37
+            precondition(P.profileIssue(legacy) == nil,
+                         "Keep existing non-Photocell scene compatibility unchanged")
+            precondition(P.configurationData(payload(legacy)) != P.configurationData(payload(populated(profile, value: 37))),
+                         "Active scene values must not be hidden by comparison normalization")
+        }
+        profile["type"] = 8
+        for field in ["occupancyLevel", "vacantLevel", "standbyLevel", "timeT2"] {
+            var invalid = profile; var partialScenes = scenes
+            partialScenes[1].removeValue(forKey: field); invalid["scenes"] = partialScenes
+            precondition(P.profileIssue(invalid) != nil, "Only unused taskLevel is optional")
+        }
+        print("PASS: unused taskLevel defaults, explicit values, invalid fields, active targets and old baseline equivalence")
     }
 
     static func testSceneScheduleTargets() {

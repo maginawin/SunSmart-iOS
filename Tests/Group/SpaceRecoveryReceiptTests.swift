@@ -113,6 +113,7 @@ final class NetworkRequest {
         try await testLegacyUpgradeRecovery()
         try await testLegacyTimedBaselineBackfill()
         try await testEmptyZoneImportGate()
+        try await testUnusedTaskLevelReadback()
         precondition(NetworkApiError(code: -2002) == .configurationUploadUnconfirmed)
         precondition(NetworkApiError(code: -2003) == .configurationExportInvalid)
         precondition(NetworkApiError.configurationUploadUnconfirmed.localizedDescription == "configuration_upload_unconfirmed")
@@ -642,6 +643,67 @@ final class NetworkRequest {
         if case .failure = await S.resumeUpload(second) { preconditionFailure("second Space must confirm independently") }
         precondition(!S.hasPendingUpload(second))
         print("PASS: accepted uploads verify Key and configuration, preserve receipts on mismatch, and keep newer edits")
+    }
+
+    @MainActor static func testUnusedTaskLevelReadback() async throws {
+        typealias S = SpaceConfigurationSafety
+        let space = SpaceData("unused-task-level-readback")
+        var submitted = space.payload
+        let scenes: [[String: Any]] = ["FF00", "FF01", "FF02"].map { number in
+            ["number": number, "name": number, "occupancyLevel": 100, "vacantLevel": 50,
+             "standbyLevel": 0, "taskLevel": 100, "timeT1": 2, "timeT2": 30,
+             "timeT3": 2, "timeT4": 60, "timeT5": 2]
+        }
+        let profile: [String: Any] = ["id": "web-photocell", "type": 8,
+            "highEndTrim": 100, "lowEndTrim": 0, "occupancyLevel": 100, "vacantLevel": 50,
+            "standbyLevel": 0, "taskLevel": 100, "timeT1": 2, "timeT2": 30, "timeT3": 2,
+            "timeT4": 60, "timeT5": 2, "manualOverrideTimeout": 60, "powerUpState": 0,
+            "proximityLightingNumber": 2, "scenes": scenes,
+            "day": ["id": 1, "startsBelowLux": 70, "sceneNumber": "FF02"],
+            "night": ["id": 0, "startsBelowLux": 30, "sceneNumber": "FF01"]]
+        submitted["groups"] = [["address": "C002", "profile": profile]]
+        let context = S.prepareSubmission(space, payload: submitted)!
+        precondition(S.markSubmissionAccepted(context, space: space))
+        var missing = profile; missing.removeValue(forKey: "taskLevel")
+        missing["scenes"] = scenes.map { scene in
+            var result = scene; result.removeValue(forKey: "taskLevel"); return result
+        }
+        var remote = submitted
+        var invalid = missing; invalid["taskLevel"] = NSNull()
+        remote["groups"] = [["address": "C002", "profile": invalid]]
+        NetworkRequest.shared.result = .success(["data": remote])
+        if case .success = await S.resumeUpload(space) {
+            preconditionFailure("An explicit malformed taskLevel must retain the pending receipt")
+        }
+        precondition(S.hasPendingUpload(space))
+        remote["groups"] = [["address": "C002", "profile": missing]]
+        NetworkRequest.shared.result = .success(["data": remote])
+        let matches = await S.verifyUploadedConfiguration(space, payload: submitted)
+        precondition(matches, "Missing unused defaults must confirm direct upload readback")
+        if case .failure = await S.resumeUpload(space) {
+            preconditionFailure("A complete retry with missing unused defaults must finish the receipt")
+        }
+        precondition(!S.hasPendingUpload(space) && !S.isBlocked(space))
+        print("PASS: malformed taskLevel retains receipt; missing unused defaults confirm direct readback and retry")
+
+        let blocked = SpaceData("unused-task-level-import")
+        var importedPayload = blocked.payload
+        importedPayload["groups"] = [["address": "C002", "profile": missing]]
+        S.block(blocked, reason: "invalidRemoteProfile:C002:invalidProfileField:taskLevel")
+        precondition(S.isBlocked(blocked) && !S.hasPendingImport(blocked))
+        precondition(SpaceConfigurationIntegrityPolicy.profilesIssue(in: importedPayload) == nil)
+        let revision = blocked.lastUpdate
+        precondition(S.beginImport(blocked, payload: importedPayload))
+        precondition(S.hasPendingImport(blocked))
+        precondition(S.finishImport(blocked))
+        precondition(!S.isBlocked(blocked) && !S.hasPendingImport(blocked))
+        precondition(blocked.lastUpdate == revision && !S.preservesLocalChanges(blocked),
+                     "Default compatibility must not create a local repair upload")
+        let baseline = try S.recoveryState(blocked).authorizationBaseline
+        importedPayload["groups"] = [["address": "C002", "profile": profile]]
+        precondition(SpaceConfigurationIntegrityPolicy.configurationsMatch(
+            baseline, SpaceConfigurationIntegrityPolicy.configurationData(importedPayload)))
+        print("PASS: existing taskLevel block clears after import finalization without a repair upload")
     }
 
     @MainActor static func testSceneTargetReadback() async throws {

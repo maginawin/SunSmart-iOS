@@ -303,12 +303,30 @@ enum SpaceConfigurationIntegrityPolicy {
         return value > 20 ? .max : UInt8(value)
     }
 
+    /// These profiles use occupancy/vacant/standby stages, not taskLevel.
+    /// Match the importer defaults without hiding explicit malformed values or
+    /// changing the active target of Daylight (5) and Manual Control (6).
+    private static func normalizedTaskLevels(_ profile: [String: Any]) -> [String: Any] {
+        guard let type = integer(profile["type"]), [1, 2, 3, 4, 7, 8].contains(type) else { return profile }
+        var result = profile
+        if result["taskLevel"] == nil { result["taskLevel"] = 100 }
+        if let scenes = result["scenes"] as? [[String: Any]] {
+            result["scenes"] = scenes.map { scene in
+                var normalized = scene
+                if normalized["taskLevel"] == nil { normalized["taskLevel"] = 100 }
+                return normalized
+            }
+        }
+        return result
+    }
+
     static func profileIssue(_ profile: [String: Any]?) -> String? {
-        guard let profile,
+        guard var profile,
               let id = profile["id"] as? String, !id.isEmpty,
               let type = integer(profile["type"]), (1...8).contains(type) else {
             return "missingOrInvalidProfileIdentity"
         }
+        profile = normalizedTaskLevels(profile)
         if let field = levelIssue(type: type, values: profile,
                                   requiredFields: ["highEndTrim", "lowEndTrim", "occupancyLevel", "vacantLevel", "taskLevel"]) {
             return "invalidProfileField:\(field)"
@@ -528,8 +546,8 @@ enum SpaceConfigurationIntegrityPolicy {
         return onlyEmptySlots ? [] : zones
     }
 
-    // Normalize equivalent Group address and ALL representations in both new
-    // configurations and persisted baselines. Invalid values stay distinct.
+    // Normalize equivalent Group address, ALL and unused taskLevel defaults in
+    // both new configurations and persisted baselines. Invalid values stay distinct.
     private static func serializeConfiguration(_ configuration: [String: Any]) -> Data? {
         var result = configuration
         if let memberships = result["memberships"] as? [[String: Any]] {
@@ -544,12 +562,12 @@ enum SpaceConfigurationIntegrityPolicy {
         if let groups = result["groups"] as? [[String: Any]] {
             result["groups"] = groups.map { group in
                 var normalized = group
-                guard var profile = group["profile"] as? [String: Any],
-                      let type = integer(profile["type"]), type == 7 || type == 8,
-                      let relay = normalizedProximityLightingNumber(profile["proximityLightingNumber"]) else {
-                    return group
+                guard let original = group["profile"] as? [String: Any] else { return group }
+                var profile = normalizedTaskLevels(original)
+                if let type = integer(profile["type"]), type == 7 || type == 8,
+                   let relay = normalizedProximityLightingNumber(profile["proximityLightingNumber"]) {
+                    profile["proximityLightingNumber"] = relay
                 }
-                profile["proximityLightingNumber"] = relay
                 normalized["profile"] = profile
                 return normalized
             }
