@@ -396,8 +396,6 @@
 		08B54DD230402CCB0017ED49 /* GroupFilterSelectView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BA43602DC0724C00018392 /* GroupFilterSelectView.swift */; };
 		08B54DD330402CCB0017ED49 /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */; };
 		08B54DD430402CCB0017ED49 /* TimedSchedulerOwnerPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D73D2F0000010025FFF7 /* TimedSchedulerOwnerPolicy.swift */; };
-		22FD32D7488C45AC98D5DD65 /* TimedSchedulerBindings.swift in Sources */ = {isa = PBXBuildFile; fileRef = E444A690981547E68AF6F650 /* TimedSchedulerBindings.swift */; };
-		4FB814DE206D445899D888C2 /* TimedSchedulerSlotPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EE667B2BE974F93B9265533 /* TimedSchedulerSlotPolicy.swift */; };
 		08B54DD530402CCB0017ED49 /* SceneMembersViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898F7032B3AB698008B4124 /* SceneMembersViewCell.swift */; };
 		08B54DD630402CCB0017ED49 /* ScheduleServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C898D1CF2B59134A00B2033B /* ScheduleServer.swift */; };
 		08B54DD730402CCB0017ED49 /* SpaceMoreViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AC50972C4E2FF1003CE437 /* SpaceMoreViewController.swift */; };
@@ -719,6 +717,7 @@
 		092609120000000000300005 /* DebugCloudJSONRecords.swift in Sources */ = {isa = PBXBuildFile; fileRef = 092609120000000000000003 /* DebugCloudJSONRecords.swift */; };
 		09FC399282C8488A9F8624C3 /* SyncExecutionSession+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571D8E4D3FAC4613841C496A /* SyncExecutionSession+Operations.swift */; };
 		0AE584301CE7E067813F3BBB /* SpaceProtectionReadSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F30B7015EA95EB1973F9EC1 /* SpaceProtectionReadSnapshot.swift */; };
+		0B04F150D910451EB0A25B5C /* TimedSchedulerSlotPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EE667B2BE974F93B9265533 /* TimedSchedulerSlotPolicy.swift */; };
 		0B533BD5B2EF5D3B89AC5157 /* ../TriggerZone/SiteTriggerZoneItemCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D54D3601C9A5C49B74362BF /* ../TriggerZone/SiteTriggerZoneItemCell.swift */; };
 		0B813AF4DF11FD1927EB577D /* SpaceProtectionReadSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F30B7015EA95EB1973F9EC1 /* SpaceProtectionReadSnapshot.swift */; };
 		0C36C97F8A95474C9D655F09 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
@@ -743,6 +742,7 @@
 		210444DCC3A9482FA4681C9C /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
 		21188D8724074062B2F0D8FF /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
 		215FA569CEC942FAB1753704 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
+		22FD32D7488C45AC98D5DD65 /* TimedSchedulerBindings.swift in Sources */ = {isa = PBXBuildFile; fileRef = E444A690981547E68AF6F650 /* TimedSchedulerBindings.swift */; };
 		239F0495185E5EA5AF4BF2E9 /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 496535143AA555DFA8D9869D /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift */; };
 		242F3EE12D9F4F3FB59EE400 /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B123BF6F756412589B5D1FA /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift */; };
 		24F67C240565CE5F6A28CBD1 /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
@@ -790,9 +790,11 @@
 		443305C1158AA8B6AD1DE42E /* NodeSyncStatusRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E7E0653BE57CBB8AC8AE68 /* NodeSyncStatusRefresh.swift */; };
 		4474AD0F1EB7690DD33D34D2 /* NodeSyncTopologyStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7B5C927EB09075DE812CA1 /* NodeSyncTopologyStorage.swift */; };
 		4495574E4E3B406BAF410B21 /* ../TriggerZone/SiteTriggerZoneContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04DF0E02938F412FBC885F03 /* ../TriggerZone/SiteTriggerZoneContentView.swift */; };
+		48FC38B375AE40F7BD4747F6 /* TimedSchedulerBindings.swift in Sources */ = {isa = PBXBuildFile; fileRef = E444A690981547E68AF6F650 /* TimedSchedulerBindings.swift */; };
 		4AB3F84613304D6A828720B8 /* SyncSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */; };
 		4C35D17657761715AFA2E01C /* NodeSyncStatusRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E7E0653BE57CBB8AC8AE68 /* NodeSyncStatusRefresh.swift */; };
 		4D4A0F032EE24DA7965F1B78 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
+		4FB814DE206D445899D888C2 /* TimedSchedulerSlotPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EE667B2BE974F93B9265533 /* TimedSchedulerSlotPolicy.swift */; };
 		4FECD17C41B4A88BE54743F1 /* GatewayDeletionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFACA4781FD19C0A7E602416 /* GatewayDeletionCoordinator.swift */; };
 		50F2FD76381B4A75B7CEF70F /* SyncExecutionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F3C5FD3C314692BB69EFBB /* SyncExecutionSession.swift */; };
 		51FBDA12D0505A6CD2413768 /* NodeSyncTopologySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4CE0208AB4FEC2A28B419B /* NodeSyncTopologySnapshot.swift */; };
@@ -819,6 +821,7 @@
 		6256223098F74C39BA434977 /* ../TriggerZone/SiteTriggerZoneContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04DF0E02938F412FBC885F03 /* ../TriggerZone/SiteTriggerZoneContentView.swift */; };
 		641FEC57DE5645609932974D /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
 		65266F139B8248DB8CDE19F0 /* SyncGatewayTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */; };
+		6697FC49CBDF468E86F7C8E5 /* TimedSchedulerBindings.swift in Sources */ = {isa = PBXBuildFile; fileRef = E444A690981547E68AF6F650 /* TimedSchedulerBindings.swift */; };
 		67C0DB5D726D4866BCC1C8F7 /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
 		6839561B2FD044F1B23BE3E3 /* Node+SyncIdentify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */; };
 		6CBB1188A15047E2A3B5471C /* ../TriggerZone/SiteTriggerZoneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 154BFB1972C74A5A861900C9 /* ../TriggerZone/SiteTriggerZoneViewController.swift */; };
@@ -837,6 +840,7 @@
 		7497BF094A6CDCCCCA82D087 /* NodeSyncTopologyStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7B5C927EB09075DE812CA1 /* NodeSyncTopologyStorage.swift */; };
 		750EDAF90B844BD48C5D7A5F /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
 		7551F3FAE22945E884C3C118 /* SyncDeviceTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C06007AE3FEB4B96850CEF9F /* SyncDeviceTaskBuilder.swift */; };
+		75BF531544204685B5B2F1AB /* TimedSchedulerSlotPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EE667B2BE974F93B9265533 /* TimedSchedulerSlotPolicy.swift */; };
 		7741D97284E54E13A0F938CF /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B123BF6F756412589B5D1FA /* ../TriggerZone/SiteTriggerZoneCandidatePreview.swift */; };
 		77F543AA180E44E8995A3A29 /* SyncTaskPlanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */; };
 		781B24A7A85741D6AD49CE42 /* SyncCommandStopGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */; };
@@ -1223,6 +1227,7 @@
 		92D1370D35A9433085BD3045 /* SyncRetryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */; };
 		966495B2063B4A23B018AD7D /* SyncExecutionSession+Daylight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */; };
 		9789F25FEAD9419098225926 /* SyncExecutionSession+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571D8E4D3FAC4613841C496A /* SyncExecutionSession+Operations.swift */; };
+		97B381807426404F97D490F1 /* TimedSchedulerSlotPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EE667B2BE974F93B9265533 /* TimedSchedulerSlotPolicy.swift */; };
 		98136492B8AE4DAB816CE640 /* SyncRetryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */; };
 		98B74FAE2E2C42E5AF404B98 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
 		98D5A8CD172E9F14EB9FFD69 /* SpaceSchedulerReadCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E72DEB715702E5821C506F /* SpaceSchedulerReadCoordinator.swift */; };
@@ -1239,6 +1244,7 @@
 		9F7E88B8DB044143BC44E151 /* SyncOperationResultPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */; };
 		A04C3EF76BE36D0D84A3EF6A /* NodeSyncReadContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 822E40AF256280460760DAE3 /* NodeSyncReadContext.swift */; };
 		A087E90DCA604B35895C75C7 /* SyncExecutionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */; };
+		A211346AD4AB4F6190222FC2 /* TimedSchedulerBindings.swift in Sources */ = {isa = PBXBuildFile; fileRef = E444A690981547E68AF6F650 /* TimedSchedulerBindings.swift */; };
 		A441748F6325404B80CE11FD /* ../TriggerZone/SiteTriggerZoneStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 663B9D0F54C24D039BAA03E8 /* ../TriggerZone/SiteTriggerZoneStore.swift */; };
 		A5C6B8EDA6DA4CE89D59A1D9 /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
 		A61490AEE0C848BCB3E19FED /* SyncDongleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */; };
@@ -2223,6 +2229,7 @@
 		C88DE4432C072C8C005A38C1 /* SharePermissionSelectionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88DE4422C072C8C005A38C1 /* SharePermissionSelectionController.swift */; };
 		C88DE4452C0828B5005A38C1 /* BatchImportResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88DE4442C0828B5005A38C1 /* BatchImportResultView.swift */; };
 		C88DE4492C085A5D005A38C1 /* BatchImportResultHelpController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C88DE4482C085A5D005A38C1 /* BatchImportResultHelpController.swift */; };
+		C8958AE04C4B4632A5ADA67F /* TimedSchedulerSlotPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EE667B2BE974F93B9265533 /* TimedSchedulerSlotPolicy.swift */; };
 		C896B9A82A930BA800217512 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = C896B9A72A930BA800217512 /* AppDelegate.swift */; };
 		C896B9B12A930BAA00217512 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C896B9B02A930BAA00217512 /* Assets.xcassets */; };
 		C896B9B42A930BAA00217512 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C896B9B22A930BAA00217512 /* LaunchScreen.storyboard */; };
@@ -2416,17 +2423,9 @@
 		C8A8D73B2EF3AEE80025FFF7 /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */; };
 		C8A8D73C2EF3AEE80025FFF7 /* Scheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */; };
 		C8A8D73E2F0000010025FFF7 /* TimedSchedulerOwnerPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D73D2F0000010025FFF7 /* TimedSchedulerOwnerPolicy.swift */; };
-		DCF6FADCF11045CC916445B9 /* TimedSchedulerBindings.swift in Sources */ = {isa = PBXBuildFile; fileRef = E444A690981547E68AF6F650 /* TimedSchedulerBindings.swift */; };
-		97B381807426404F97D490F1 /* TimedSchedulerSlotPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EE667B2BE974F93B9265533 /* TimedSchedulerSlotPolicy.swift */; };
 		C8A8D73F2F0000010025FFF7 /* TimedSchedulerOwnerPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D73D2F0000010025FFF7 /* TimedSchedulerOwnerPolicy.swift */; };
-		6697FC49CBDF468E86F7C8E5 /* TimedSchedulerBindings.swift in Sources */ = {isa = PBXBuildFile; fileRef = E444A690981547E68AF6F650 /* TimedSchedulerBindings.swift */; };
-		75BF531544204685B5B2F1AB /* TimedSchedulerSlotPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EE667B2BE974F93B9265533 /* TimedSchedulerSlotPolicy.swift */; };
 		C8A8D7402F0000010025FFF7 /* TimedSchedulerOwnerPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D73D2F0000010025FFF7 /* TimedSchedulerOwnerPolicy.swift */; };
-		A211346AD4AB4F6190222FC2 /* TimedSchedulerBindings.swift in Sources */ = {isa = PBXBuildFile; fileRef = E444A690981547E68AF6F650 /* TimedSchedulerBindings.swift */; };
-		C8958AE04C4B4632A5ADA67F /* TimedSchedulerSlotPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EE667B2BE974F93B9265533 /* TimedSchedulerSlotPolicy.swift */; };
 		C8A8D7412F0000010025FFF7 /* TimedSchedulerOwnerPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D73D2F0000010025FFF7 /* TimedSchedulerOwnerPolicy.swift */; };
-		48FC38B375AE40F7BD4747F6 /* TimedSchedulerBindings.swift in Sources */ = {isa = PBXBuildFile; fileRef = E444A690981547E68AF6F650 /* TimedSchedulerBindings.swift */; };
-		0B04F150D910451EB0A25B5C /* TimedSchedulerSlotPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EE667B2BE974F93B9265533 /* TimedSchedulerSlotPolicy.swift */; };
 		C8A8D7442EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7432EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift */; };
 		C8A8D7452EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7432EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift */; };
 		C8A8D7462EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A8D7432EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift */; };
@@ -3478,6 +3477,7 @@
 		DBBE181D0D4E49BA9A6E9548 /* SyncExecutionSession+EmergencyFire.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */; };
 		DBDFE837C4004A2F8104A1C3 /* SyncOperationResultPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */; };
 		DC176B45FDD04BF2B211C2D1 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
+		DCF6FADCF11045CC916445B9 /* TimedSchedulerBindings.swift in Sources */ = {isa = PBXBuildFile; fileRef = E444A690981547E68AF6F650 /* TimedSchedulerBindings.swift */; };
 		DD35E8D02A124C34BD491809 /* SyncExecutionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */; };
 		DD3BFE0E498A4A25A4038BC1 /* SyncExecutionSession+Tasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */; };
 		DD59B7AC9CDB45BDA0B7E6A6 /* ../TriggerZone/SiteTriggerZoneStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 663B9D0F54C24D039BAA03E8 /* ../TriggerZone/SiteTriggerZoneStore.swift */; };
@@ -3815,6 +3815,7 @@
 		092609120000000000000001 /* DebugCloudJSONFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugCloudJSONFile.swift; sourceTree = "<group>"; };
 		092609120000000000000002 /* DebugCloudJSONExporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugCloudJSONExporter.swift; sourceTree = "<group>"; };
 		092609120000000000000003 /* DebugCloudJSONRecords.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugCloudJSONRecords.swift; sourceTree = "<group>"; };
+		0EE667B2BE974F93B9265533 /* TimedSchedulerSlotPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimedSchedulerSlotPolicy.swift; sourceTree = "<group>"; };
 		0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorViewModel.swift; sourceTree = "<group>"; };
 		154BFB1972C74A5A861900C9 /* ../TriggerZone/SiteTriggerZoneViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneViewController.swift; sourceTree = "<group>"; };
 		15FF8143AF8FD80AB9279AE9 /* Pods_Common_Lumineux.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_Common_Lumineux.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -4264,8 +4265,6 @@
 		C8A85CE42E0A4886007F9B81 /* DeviceAddTargetSelectView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceAddTargetSelectView.swift; sourceTree = "<group>"; };
 		C8A8D7382EF3AEE80025FFF7 /* Scheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Scheduler.swift; sourceTree = "<group>"; };
 		C8A8D73D2F0000010025FFF7 /* TimedSchedulerOwnerPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimedSchedulerOwnerPolicy.swift; sourceTree = "<group>"; };
-		E444A690981547E68AF6F650 /* TimedSchedulerBindings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimedSchedulerBindings.swift; sourceTree = "<group>"; };
-		0EE667B2BE974F93B9265533 /* TimedSchedulerSlotPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimedSchedulerSlotPolicy.swift; sourceTree = "<group>"; };
 		C8A8D7432EF5599B0025FFF7 /* ProfileDayNightLuxViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileDayNightLuxViewController.swift; sourceTree = "<group>"; };
 		C8A900012F80000100000001 /* WiFiSSIDProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WiFiSSIDProvider.swift; sourceTree = "<group>"; };
 		C8A900022F80000100000002 /* SunSmart.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SunSmart.entitlements; sourceTree = "<group>"; };
@@ -4558,6 +4557,7 @@
 		DB94D08D018A81456AF735FC /* Pods-Common-SLG Sync Plus.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SLG Sync Plus.release.xcconfig"; path = "Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus.release.xcconfig"; sourceTree = "<group>"; };
 		DEFCD502EAD0464D20FC18F3 /* Pods-Common-SylSmart.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SylSmart.release.xcconfig"; path = "Target Support Files/Pods-Common-SylSmart/Pods-Common-SylSmart.release.xcconfig"; sourceTree = "<group>"; };
 		E08E6FB7E3FFE82A5A620CAF /* Pods-Common-SunSmart.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SunSmart.release.xcconfig"; path = "Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart.release.xcconfig"; sourceTree = "<group>"; };
+		E444A690981547E68AF6F650 /* TimedSchedulerBindings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimedSchedulerBindings.swift; sourceTree = "<group>"; };
 		E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorDelegates.swift; sourceTree = "<group>"; };
 		E51C037D44D1F333E8E14E98 /* Pods-Common-SLG Sync Plus.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SLG Sync Plus.debug.xcconfig"; path = "Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus.debug.xcconfig"; sourceTree = "<group>"; };
 		F0E8F30D155A131BDBDC78EE /* SpacePageSyncRead.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpacePageSyncRead.swift; sourceTree = "<group>"; };
@@ -11152,7 +11152,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.13;
+				MARKETING_VERSION = 1.2.14;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lumineux.lumismart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -11178,7 +11178,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.13;
+				MARKETING_VERSION = 1.2.14;
 				PRODUCT_BUNDLE_IDENTIFIER = com.lumineux.lumismart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
@@ -11202,7 +11202,7 @@
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
-				MARKETING_VERSION = 1.2.13;
+				MARKETING_VERSION = 1.2.14;
 			};
 			name = Debug;
 		};
@@ -11223,7 +11223,7 @@
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
-				MARKETING_VERSION = 1.2.13;
+				MARKETING_VERSION = 1.2.14;
 			};
 			name = Release;
 		};
@@ -11244,7 +11244,7 @@
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
-				MARKETING_VERSION = 1.2.13;
+				MARKETING_VERSION = 1.2.14;
 			};
 			name = Debug;
 		};
@@ -11265,7 +11265,7 @@
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				INFOPLIST_KEY_UIUserInterfaceStyle = Light;
-				MARKETING_VERSION = 1.2.13;
+				MARKETING_VERSION = 1.2.14;
 			};
 			name = Release;
 		};
@@ -11402,7 +11402,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.13;
+				MARKETING_VERSION = 1.2.14;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Debug;
@@ -11424,7 +11424,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.13;
+				MARKETING_VERSION = 1.2.14;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart;
 			};
 			name = Release;
@@ -11448,7 +11448,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.13;
+				MARKETING_VERSION = 1.2.14;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Debug;
@@ -11472,7 +11472,7 @@
 				INFOPLIST_KEY_UIMainStoryboardFile = "";
 				INFOPLIST_KEY_UIRequiresFullScreen = YES;
 				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
-				MARKETING_VERSION = 1.2.13;
+				MARKETING_VERSION = 1.2.14;
 				PROVISIONING_PROFILE_SPECIFIER = "";
 			};
 			name = Release;
