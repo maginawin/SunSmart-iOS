@@ -56,9 +56,9 @@ class SunSmartDataManager {
     export_end = exported.index('groupDict.updateValue(profileDict, forKey: "profile")', export_start)
     export = "func exportProfile(_ group: HarnessGroup) -> [String: Any] {\n" + exported[export_start:export_end] + "\nreturn profileDict\n}\n"
     imported = read("SunSmart/Common/Data/ImportData.swift")
-    parse = block(imported, 'if let id = profileJson["id"].string, let type = Profile.ProfileType')
-    parse = parse.replace("group.info.profile = profile", "return profile")
-    import_profile = 'func importProfile(_ profileDict: [String: Any]) -> Profile? {\nlet profileJson = JSON(profileDict)\n' + parse + '\nreturn nil\n}\n'
+    import_profile = "extension Profile {\n" + block(imported, 'static func fromCloud(') + "\n}\n"
+    import_profile += 'func importProfile(_ profileDict: [String: Any]) -> Profile? { Profile.fromCloud(profileDict) }\n'
+    import_profile += 'extension SpaceData {\n@MainActor\n' + block(imported, 'func applyNewerCloudProfiles(') + '\n}\n'
     template = block(read("SunSmart/Main/Profile/Model/Profile.swift"), "class ProfileLightSensorTemplate {")
     coordinator = read("SunSmart/Common/Data/SpaceSyncCleanupCoordinator.swift")
     cleanup_start = coordinator.index("changes.append(contentsOf: try ProfileLightSensorTemplate.referenceCleanupChanges(")
@@ -70,7 +70,8 @@ class SunSmartDataManager {
     (output / "Production.swift").write_text("\n".join([header, model, manager, group_info,
         block(database, "extension GroupInfo {"), block(database, "extension Profile {"),
         template, block(database, "extension ProfileLightSensorTemplate {"),
-        compatibility, export, import_profile, cleanup]))
+        compatibility, export, import_profile, cleanup,
+        block(read("SunSmart/Common/Data/SpaceProtectionReadSnapshot.swift"), "enum SpaceProtectionReadGeneration")]))
     subprocess.run(["swiftc", "-D", "DEBUG", "-parse-as-library", "-I", folder,
                     "-L", folder, "-lSQLite", str(output / "Production.swift"),
                     str(ROOT / "Pods/SwiftyJSON/Source/SwiftyJSON/SwiftyJSON.swift"),

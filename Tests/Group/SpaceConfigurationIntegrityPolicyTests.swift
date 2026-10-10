@@ -82,7 +82,54 @@ struct SpaceConfigurationIntegrityPolicyTests {
         testUpgradeOnlyDefaults()
         testEmptyZoneUpgradeCompatibility()
         testUnusedTaskLevelDefaults()
+        testProfileConflictComparison()
         print("PASS: complete profile switches, incomplete payloads, photocell references, readback and submission generation")
+    }
+
+    static func testProfileConflictComparison() {
+        typealias P = SpaceConfigurationIntegrityPolicy
+        let profile: [String: Any] = ["id": "profile", "type": 1,
+            "highEndTrim": 100, "lowEndTrim": 1, "occupancyLevel": 734, "vacantLevel": 100,
+            "taskLevel": 100, "timeT1": 2, "timeT2": 10, "timeT3": 2, "timeT4": 0, "timeT5": 2,
+            "manualOverrideTimeout": 60, "powerUpState": 255,
+            "scenes": [["number": "FF00", "name": "General Scene", "occupancyLevel": 734,
+                        "vacantLevel": 100, "taskLevel": 100, "timeT4": 0]]]
+        let payload: [String: Any] = ["groups": [["address": "C003", "profile": profile]],
+                                      "nodes": [], "spaceData": ["triggerZones": []]]
+        let expected = P.configurationData(payload)!
+        var web = profile
+        var scenes = web["scenes"] as! [[String: Any]]
+        for key in ["adjustSpeed", "highEndTrim", "lowEndTrim", "manualOverrideTimeout",
+                    "powerUpState", "relativeSensitivity", "type", "typeSwitchedFrom"] { scenes[0][key] = 1 }
+        scenes[0]["id"] = "profile"
+        web["scenes"] = scenes
+        var remote = payload
+        remote["groups"] = [["address": "C003", "profile": web]]
+        precondition(P.configurationsMatch(expected, P.configurationData(remote)))
+        // Existing receipts must normalize in both directions too.
+        var old = try! JSONSerialization.jsonObject(with: expected) as! [String: Any]
+        old["groups"] = [["address": "C003", "profile": web]]
+        let oldData = try! JSONSerialization.data(withJSONObject: old)
+        precondition(P.configurationsMatch(oldData, expected) && P.configurationsMatch(expected, oldData))
+        web["occupancyLevel"] = 414
+        remote["groups"] = [["address": "C003", "profile": web]]
+        precondition(!P.configurationsMatch(expected, P.configurationData(remote)))
+        precondition(P.configurationsMatchExceptProfiles(expected, P.configurationData(remote)))
+        precondition(P.sharedProfilesMatch(expected, P.configurationData(remote)!) == false)
+        remote["groups"] = [["address": "C004", "profile": web]]
+        precondition(!P.configurationsMatchExceptProfiles(expected, P.configurationData(remote)))
+        remote["groups"] = [["address": "C003", "profile": web, "proximityLightingPath": ["paths": [1]]]]
+        precondition(!P.configurationsMatchExceptProfiles(expected, P.configurationData(remote)))
+        web["occupancyLevel"] = "414"
+        remote["groups"] = [["address": "C003", "profile": web]]
+        precondition(P.configurationData(remote) == nil)
+        precondition(!P.configurationsMatchExceptProfiles(expected, nil))
+        // Unknown scene fields remain significant, rather than dropping arbitrary future data.
+        scenes[0]["futureBusinessField"] = 7
+        web = profile; web["scenes"] = scenes
+        remote["groups"] = [["address": "C003", "profile": web]]
+        precondition(!P.configurationsMatch(expected, P.configurationData(remote)))
+        print("PASS: Web scene metadata compatibility, legacy receipts and Profile-only conflict boundary")
     }
 
     static func testUnusedTaskLevelDefaults() {

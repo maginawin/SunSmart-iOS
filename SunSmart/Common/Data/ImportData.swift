@@ -1786,8 +1786,11 @@ extension SpaceData {
             }
             return .preserved("localTimedMigrationPendingUpload")
         }
+        if !initialize, !(await SpaceConfigurationSafety.reconcileCloudProfiles(self, remote: spaceJsonData)) {
+            return .preserved("cloudProfileNeedsReview")
+        }
         if !initialize, !SpaceConfigurationSafety.reconcileCloudMembership(self, remote: spaceJsonData) {
-            SpaceConfigurationSafety.recordSyncFailure(self, error: .configurationUploadUnconfirmed, stage: "cloudMembership")
+            SpaceConfigurationSafety.recordSyncFailure(self, error: syncCloudError ?? .configurationUploadUnconfirmed, stage: "cloudMembership")
             return .preserved("cloudMembershipNeedsReview")
         }
         if SpaceConfigurationSafety.preservesLocalChanges(self) {
@@ -2006,113 +2009,9 @@ extension SpaceData {
                     }
                     group.info = GroupInfo(address: group.address.address, imageId: groupJson["imageId"].int ?? 1, imageText: groupJson["imageText"].string)
                     // profile
-                    if let profileDict = groupJson["profile"].dictionaryObject {
-                        let profileJson = JSON(profileDict)
-                        if let id = profileJson["id"].string, let type = Profile.ProfileType(rawValue: profileJson["type"].intValue) {
-
-                            let importedAutoMinLevel = type.daylightType
-                                ? Profile.LightControlData.normalizedAutoMinLevel(profileJson["autoMinLevel"].int)
-                                : profileJson["autoMinLevel"].int ?? 0
-
-                            let lightControlData = Profile.LightControlData(highEndTrim: profileJson["highEndTrim"].int ?? 100, lowEndTrim: profileJson["lowEndTrim"].int ?? 0, occupancyLevel: profileJson["occupancyLevel"].int ?? 100, vacantLevel: profileJson["vacantLevel"].int ?? 50, standbyLevel: profileJson["standbyLevel"].int ?? 0, taskLevel: profileJson["taskLevel"].int ?? 100, autoMinLevel: importedAutoMinLevel, t1: profileJson["timeT1"].int ?? 0, t2: profileJson["timeT2"].int ?? 0, t3: profileJson["timeT3"].int ?? 0, t4: profileJson["timeT4"].int ?? 0, t5: profileJson["timeT5"].int ?? 0)
-
-                            var scenes: [Profile.LightControlScene] = []
-                            if let sceneJsons = profileJson["scenes"].array {
-                               scenes = sceneJsons.compactMap { sceneJson in
-                                   if let sceneNumberHex = sceneJson["number"].string, let sceneNumber = SceneNumber(hex: sceneNumberHex), let name = sceneJson["name"].string {
-                                        let sceneLightControlData = Profile.LightControlData(highEndTrim: lightControlData.highEndTrim, lowEndTrim: lightControlData.lowEndTrim)
-
-                                        if let occupancyLevel = sceneJson["occupancyLevel"].int {
-                                            sceneLightControlData.occupancyLevel = occupancyLevel
-                                        }
-                                        if let vacantLevel = sceneJson["vacantLevel"].int {
-                                            sceneLightControlData.vacantLevel = vacantLevel
-                                        }
-                                        if let standbyLevel = sceneJson["standbyLevel"].int {
-                                            sceneLightControlData.standbyLevel = standbyLevel
-                                        }
-                                        if let taskLevel = sceneJson["taskLevel"].int {
-                                            sceneLightControlData.taskLevel = taskLevel
-                                        }
-                                        if type.daylightType {
-                                            sceneLightControlData.autoMinLevel = Profile.LightControlData.normalizedAutoMinLevel(sceneJson["autoMinLevel"].int)
-                                        }else if let autoMinLevel = sceneJson["autoMinLevel"].int {
-                                            sceneLightControlData.autoMinLevel = autoMinLevel
-                                        }
-                                        if let timeT1 = sceneJson["timeT1"].int {
-                                            sceneLightControlData.t1 = timeT1
-                                        }
-                                        if let timeT2 = sceneJson["timeT2"].int {
-                                            sceneLightControlData.t2 = timeT2
-                                        }
-                                        if let timeT3 = sceneJson["timeT3"].int {
-                                            sceneLightControlData.t3 = timeT3
-                                        }
-                                        if let timeT4 = sceneJson["timeT4"].int {
-                                            sceneLightControlData.t4 = timeT4
-                                        }
-                                        if let timeT5 = sceneJson["timeT5"].int {
-                                            sceneLightControlData.t5 = timeT5
-                                        }
-                                        return Profile.LightControlScene(sceneNumber: sceneNumber, name: name, lightControlData: sceneLightControlData)
-                                    }
-                                   return nil
-                                }
-                            }
-
-                            var dayData: Profile.TriggerConditionData?
-                            var nightData: Profile.TriggerConditionData?
-                            if type == .proximityLightingWithPhotocell {
-                                if let dayDict = profileJson["day"].dictionary {
-                                    if let id = dayDict["id"]?.uInt8, let startsBelowLux = dayDict["startsBelowLux"]?.uInt16, let sceneNumberHex = dayDict["sceneNumber"]?.string, let sceneNumber = SceneNumber(hex: sceneNumberHex), let scene = scenes.first(where: { $0.sceneNumber == sceneNumber }) {
-
-                                        let useCalibrationValues = dayDict["useCalibrationValues"]?.bool ?? false
-                                        var executeType: Profile.TriggerConditionData.ExecuteType = .adjustWhenOccupied
-                                        if let executeTypeRawValue = dayDict["executeType"]?.int {
-                                            executeType = .init(rawValue: executeTypeRawValue) ?? .adjustWhenOccupied
-                                        }
-                                        let fixedStandbyLevel = dayDict["fixedStandbyLevel"]?.int ?? 0
-                                        dayData = Profile.TriggerConditionData(id: id, startsBelowLux: startsBelowLux, useCalibrationValues: useCalibrationValues, executeType: executeType, sceneData: scene, fixedStandbyLevel: fixedStandbyLevel)
-                                    }
-                                }
-                                if let nightDict = profileJson["night"].dictionary {
-                                    if let id = nightDict["id"]?.uInt8, let startsBelowLux = nightDict["startsBelowLux"]?.uInt16, let sceneNumberHex = nightDict["sceneNumber"]?.string, let sceneNumber = SceneNumber(hex: sceneNumberHex), let scene = scenes.first(where: { $0.sceneNumber == sceneNumber }) {
-
-                                        let useCalibrationValues = nightDict["useCalibrationValues"]?.bool ?? false
-                                        var executeType: Profile.TriggerConditionData.ExecuteType = .adjustWhenOccupied
-                                        if let executeTypeRawValue = nightDict["executeType"]?.int {
-                                            executeType = .init(rawValue: executeTypeRawValue) ?? .adjustWhenOccupied
-                                        }
-                                        let fixedStandbyLevel = nightDict["fixedStandbyLevel"]?.int ?? 30
-                                        nightData = Profile.TriggerConditionData(id: id, startsBelowLux: startsBelowLux, useCalibrationValues: useCalibrationValues, executeType: executeType, sceneData: scene, fixedStandbyLevel: fixedStandbyLevel)
-                                    }
-                                }
-                            }
-
-
-                            let profile = Profile(id: id, type: type, lightControlData: lightControlData, powerUpState: Profile.PowerUpState(rawValue: profileJson["powerUpState"].uInt8 ?? 0), manualOverrideTimeout: profileJson["manualOverrideTimeout"].uInt32 ?? 600, nightData: nightData, dayData: dayData, scenes: scenes)
-                            if let rawCalibrationMode = profileJson["calibrationMode"].string {
-                                profile.calibrationMode = Profile.DaylightCalibrationMode(rawValue: rawCalibrationMode) ?? Profile.DaylightCalibrationMode.none
-                            }else {
-                                profile.calibrationMode = nil
-                            }
-                            profile.targetNightBrightness = Profile.normalizedTargetNightBrightness(
-                                profileJson["targetNightBrightness"].int
-                            )
-                            if let powerOnCct = profileJson["powerOnCct"].uInt16 {
-                                profile.powerUpCct = powerOnCct
-                            }
-                            profile.adjustSpeed = profileJson["adjustSpeed"].int ?? 50
-
-                            if let proximityLightingNumber = SpaceConfigurationIntegrityPolicy.normalizedProximityLightingNumber(profileDict["proximityLightingNumber"]) {
-                                profile.proximityLightingNumber = proximityLightingNumber
-                            }
-                            if let relativeSensitivity = profileJson["relativeSensitivity"].uInt8 {
-                                profile.sensitivity = relativeSensitivity
-                            }
-
-                            group.info.profile = profile
-                        }
+                    if let profileDict = groupJson["profile"].dictionaryObject,
+                       let profile = Profile.fromCloud(profileDict) {
+                        group.info.profile = profile
                     }
                     // 选择的光照传感器
                     if let sensorAddressHex = groupJson["daylightSensorAddress"].string,
@@ -3185,4 +3084,177 @@ extension GatewayModel {
         return changed
     }
     
+}
+
+// Keep cloud Profile decoding identical for full imports and conflict resolution.
+extension Profile {
+    static func fromCloud(_ profileDict: [String: Any]) -> Profile? {
+        let profileJson = JSON(profileDict)
+        if let id = profileJson["id"].string, let type = Profile.ProfileType(rawValue: profileJson["type"].intValue) {
+
+            let importedAutoMinLevel = type.daylightType
+                ? Profile.LightControlData.normalizedAutoMinLevel(profileJson["autoMinLevel"].int)
+                : profileJson["autoMinLevel"].int ?? 0
+
+            let lightControlData = Profile.LightControlData(highEndTrim: profileJson["highEndTrim"].int ?? 100, lowEndTrim: profileJson["lowEndTrim"].int ?? 0, occupancyLevel: profileJson["occupancyLevel"].int ?? 100, vacantLevel: profileJson["vacantLevel"].int ?? 50, standbyLevel: profileJson["standbyLevel"].int ?? 0, taskLevel: profileJson["taskLevel"].int ?? 100, autoMinLevel: importedAutoMinLevel, t1: profileJson["timeT1"].int ?? 0, t2: profileJson["timeT2"].int ?? 0, t3: profileJson["timeT3"].int ?? 0, t4: profileJson["timeT4"].int ?? 0, t5: profileJson["timeT5"].int ?? 0)
+
+            var scenes: [Profile.LightControlScene] = []
+            if let sceneJsons = profileJson["scenes"].array {
+               scenes = sceneJsons.compactMap { sceneJson in
+                   if let sceneNumberHex = sceneJson["number"].string, let sceneNumber = SceneNumber(hex: sceneNumberHex), let name = sceneJson["name"].string {
+                        let sceneLightControlData = Profile.LightControlData(highEndTrim: lightControlData.highEndTrim, lowEndTrim: lightControlData.lowEndTrim)
+
+                        if let occupancyLevel = sceneJson["occupancyLevel"].int {
+                            sceneLightControlData.occupancyLevel = occupancyLevel
+                        }
+                        if let vacantLevel = sceneJson["vacantLevel"].int {
+                            sceneLightControlData.vacantLevel = vacantLevel
+                        }
+                        if let standbyLevel = sceneJson["standbyLevel"].int {
+                            sceneLightControlData.standbyLevel = standbyLevel
+                        }
+                        if let taskLevel = sceneJson["taskLevel"].int {
+                            sceneLightControlData.taskLevel = taskLevel
+                        }
+                        if type.daylightType {
+                            sceneLightControlData.autoMinLevel = Profile.LightControlData.normalizedAutoMinLevel(sceneJson["autoMinLevel"].int)
+                        }else if let autoMinLevel = sceneJson["autoMinLevel"].int {
+                            sceneLightControlData.autoMinLevel = autoMinLevel
+                        }
+                        if let timeT1 = sceneJson["timeT1"].int {
+                            sceneLightControlData.t1 = timeT1
+                        }
+                        if let timeT2 = sceneJson["timeT2"].int {
+                            sceneLightControlData.t2 = timeT2
+                        }
+                        if let timeT3 = sceneJson["timeT3"].int {
+                            sceneLightControlData.t3 = timeT3
+                        }
+                        if let timeT4 = sceneJson["timeT4"].int {
+                            sceneLightControlData.t4 = timeT4
+                        }
+                        if let timeT5 = sceneJson["timeT5"].int {
+                            sceneLightControlData.t5 = timeT5
+                        }
+                        return Profile.LightControlScene(sceneNumber: sceneNumber, name: name, lightControlData: sceneLightControlData)
+                    }
+                   return nil
+                }
+            }
+
+            var dayData: Profile.TriggerConditionData?
+            var nightData: Profile.TriggerConditionData?
+            if type == .proximityLightingWithPhotocell {
+                if let dayDict = profileJson["day"].dictionary {
+                    if let id = dayDict["id"]?.uInt8, let startsBelowLux = dayDict["startsBelowLux"]?.uInt16, let sceneNumberHex = dayDict["sceneNumber"]?.string, let sceneNumber = SceneNumber(hex: sceneNumberHex), let scene = scenes.first(where: { $0.sceneNumber == sceneNumber }) {
+
+                        let useCalibrationValues = dayDict["useCalibrationValues"]?.bool ?? false
+                        var executeType: Profile.TriggerConditionData.ExecuteType = .adjustWhenOccupied
+                        if let executeTypeRawValue = dayDict["executeType"]?.int {
+                            executeType = .init(rawValue: executeTypeRawValue) ?? .adjustWhenOccupied
+                        }
+                        let fixedStandbyLevel = dayDict["fixedStandbyLevel"]?.int ?? 0
+                        dayData = Profile.TriggerConditionData(id: id, startsBelowLux: startsBelowLux, useCalibrationValues: useCalibrationValues, executeType: executeType, sceneData: scene, fixedStandbyLevel: fixedStandbyLevel)
+                    }
+                }
+                if let nightDict = profileJson["night"].dictionary {
+                    if let id = nightDict["id"]?.uInt8, let startsBelowLux = nightDict["startsBelowLux"]?.uInt16, let sceneNumberHex = nightDict["sceneNumber"]?.string, let sceneNumber = SceneNumber(hex: sceneNumberHex), let scene = scenes.first(where: { $0.sceneNumber == sceneNumber }) {
+
+                        let useCalibrationValues = nightDict["useCalibrationValues"]?.bool ?? false
+                        var executeType: Profile.TriggerConditionData.ExecuteType = .adjustWhenOccupied
+                        if let executeTypeRawValue = nightDict["executeType"]?.int {
+                            executeType = .init(rawValue: executeTypeRawValue) ?? .adjustWhenOccupied
+                        }
+                        let fixedStandbyLevel = nightDict["fixedStandbyLevel"]?.int ?? 30
+                        nightData = Profile.TriggerConditionData(id: id, startsBelowLux: startsBelowLux, useCalibrationValues: useCalibrationValues, executeType: executeType, sceneData: scene, fixedStandbyLevel: fixedStandbyLevel)
+                    }
+                }
+            }
+
+
+            let profile = Profile(id: id, type: type, lightControlData: lightControlData, powerUpState: Profile.PowerUpState(rawValue: profileJson["powerUpState"].uInt8 ?? 0), manualOverrideTimeout: profileJson["manualOverrideTimeout"].uInt32 ?? 600, nightData: nightData, dayData: dayData, scenes: scenes)
+            if let rawCalibrationMode = profileJson["calibrationMode"].string {
+                profile.calibrationMode = Profile.DaylightCalibrationMode(rawValue: rawCalibrationMode) ?? Profile.DaylightCalibrationMode.none
+            }else {
+                profile.calibrationMode = nil
+            }
+            profile.targetNightBrightness = Profile.normalizedTargetNightBrightness(
+                profileJson["targetNightBrightness"].int
+            )
+            if let powerOnCct = profileJson["powerOnCct"].uInt16 {
+                profile.powerUpCct = powerOnCct
+            }
+            profile.adjustSpeed = profileJson["adjustSpeed"].int ?? 50
+
+            if let proximityLightingNumber = SpaceConfigurationIntegrityPolicy.normalizedProximityLightingNumber(profileDict["proximityLightingNumber"]) {
+                profile.proximityLightingNumber = proximityLightingNumber
+            }
+            if let relativeSensitivity = profileJson["relativeSensitivity"].uInt8 {
+                profile.sensitivity = relativeSensitivity
+            }
+
+            return profile
+        }
+        return nil
+    }
+}
+
+extension SpaceData {
+    /// A cloud Profile wins by Space revision, without replacing nodes or other edits.
+    /// Use detached DB objects so a failed transaction cannot mutate visible groups.
+    @MainActor
+    func applyNewerCloudProfiles(_ remote: [String: Any], expectedRevision: Int64) -> Bool {
+        guard lastUpdate == expectedRevision,
+              SpaceData.load(siteId: siteId, spaceId: id).first?.lastUpdate == expectedRevision,
+              let timestamp = SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"]),
+              timestamp > expectedRevision, timestamp < Int64.max,
+              let groups = remote["groups"] as? [[String: Any]],
+              let network = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: meshNetworkId),
+              let remoteNodes = SpaceCloudNodeRemovalPolicy.instances(remote) else { return false }
+        var replacements: [GroupInfo] = []
+        for group in groups where !(group["isVirtual"] as? Bool ?? false) {
+            guard let rawAddress = group["address"] as? String,
+                  let address = UInt16(rawAddress, radix: 16) else { return false }
+            // Do not resurrect a group deleted locally after the confirmed baseline.
+            guard network.groups.contains(where: { !$0.isVirtual && $0.address.address == address }) else { continue }
+            guard let info = GroupInfo.load(meshUUID: meshUUID, address: address, subnetworkId: meshNetworkId),
+                  !info.profileLoadFailed, !info.topologyLoadFailed,
+                  let dictionary = group["profile"] as? [String: Any],
+                  SpaceConfigurationIntegrityPolicy.profileIssue(dictionary) == nil,
+                  let profile = Profile.fromCloud(dictionary) else { return false }
+            profile.name = info.profile.name
+            info.profile = profile
+            if let raw = group["daylightSensorAddress"], !(raw is NSNull) {
+                guard let address = SchedulerModelSnapshot.address(raw),
+                      remoteNodes.contains(where: { $0.address == address }),
+                      network.nodes.contains(where: { $0.primaryUnicastAddress == address }) else { return false }
+                info.ambientLightSensorNodeAddress = address
+            } else {
+                info.ambientLightSensorNodeAddress = nil
+            }
+            replacements.append(info)
+        }
+        SpaceProtectionReadGeneration.beginMutation()
+        defer { SpaceProtectionReadGeneration.endMutation() }
+        let previous = lastUpdate
+        let saved = SunSmartDataManager.shared.configurationTransaction {
+            for info in replacements {
+                guard info.save(meshUUID: meshUUID, subnetworkId: meshNetworkId) else {
+                    throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+                }
+            }
+            // This is a merged local snapshot, not confirmation that cloud holds it.
+            lastUpdate = timestamp + 1
+            guard save() else { throw SpaceConfigurationSafety.SafetyError.persistenceFailed }
+        }
+        guard saved else { lastUpdate = previous; return false }
+        let manager = MeshNetworkManager.instance
+        if manager.meshNetwork?.uuid.uuidString == meshUUID {
+            for group in manager.meshNetwork?.groups ?? [] where group.subNetworkId == meshNetworkId {
+                if let info = replacements.first(where: { $0.address == group.address.address }) { group.info = info }
+            }
+            manager.realNodes.filter { $0.subNetworkId == meshNetworkId }.forEach { $0.clearSyncStateCache() }
+        }
+        return true
+    }
 }

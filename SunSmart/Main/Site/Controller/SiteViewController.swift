@@ -2841,7 +2841,7 @@ self.updateAddressData()
     }
     
     /// 进入space
-    private func intoSpace(space: SpaceData) {
+    private func intoSpace(space: SpaceData, reviewingConfiguration: Bool = false) {
         
         guard self.view.window != nil else {
             return
@@ -2858,6 +2858,7 @@ self.updateAddressData()
         MenuPopView.hide()
         
         let spaceVc = SpaceViewController(space: space)
+        spaceVc.opensConfigurationReview = reviewingConfiguration
         spaceVc.site = site
         spaceVc.deleteSpaceCallback = {[weak self] in
             guard let self = self else { return  }
@@ -3645,6 +3646,13 @@ extension SiteViewController: SpacesViewCellDelegate {
             return
         }
         
+        if SpaceConfigurationSafety.requiresConfigurationReview(space),
+           SpaceMembershipCoordinator.allowsConfiguration(space),
+           !space.requiresPasswordVerification, !space.disableEditorPermission {
+            intoSpace(space: space, reviewingConfiguration: true)
+            return
+        }
+
         guard let error = space.showSyncCloudError else {
             return
         }

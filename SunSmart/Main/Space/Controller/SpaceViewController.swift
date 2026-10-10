@@ -372,10 +372,17 @@ class SpaceViewController: WMPageController {
         
     }
     
+    var opensConfigurationReview = false
+
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
         updateSyncState()
+        if opensConfigurationReview, SpaceConfigurationSafety.requiresConfigurationReview(space) {
+            opensConfigurationReview = false
+            showConfigurationRecovery()
+            return
+        }
         if NetworkRequest.shared.networkable, SpaceConfigurationSafety.canAutomaticallyUpload(space),
            (space.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(space)),
            (!SpaceConfigurationSafety.isBlocked(space) || SpaceConfigurationSafety.hasPendingUpload(space)),

@@ -33,8 +33,10 @@ final class SpaceData {
     var needUploadCloud: Bool { lastUpdate > (lastUploadCloudTimestamp ?? 0) && permission != .visitor }
     var nodes: [[String: Any]] = []
     var triggerZones: [SpaceTriggerZone] = [], triggerZonesLoadFailed = false
+    var groups: [[String: Any]] = []
+    var profileMergeFails = false
     var payload: [String: Any] {
-        ["uuid": id, "groups": [], "scenes": [], "schedules": [], "nodes": nodes, "updateTimestamp": lastUpdate,
+        ["uuid": id, "groups": groups, "scenes": [], "schedules": [], "nodes": nodes, "updateTimestamp": lastUpdate,
          "netKey": ["key": id], "appKey": ["key": "app"]]
     }
     init(_ id: String = UUID().uuidString) { self.id = id }
@@ -43,9 +45,21 @@ final class SpaceData {
     @discardableResult func delete() -> Bool {
         SpaceConfigurationSafety.beginRemoval(self) && SpaceConfigurationSafety.archiveDeletedSpace(self)
     }
-    enum Purpose { case cloudSync, localBackup }
+    enum Purpose { case cloudSync, localBackup, cleanupInspection }
     @MainActor func export(purpose: Purpose) async -> [String: Any]? {
-        await SpaceConfigurationSafety.prepareUpload(self, payload: payload) ? payload : nil
+        if case .cleanupInspection = purpose {
+            await Task.yield()
+            ProximityLightingImportPreflight.onExport?()
+            return payload
+        }
+        return await SpaceConfigurationSafety.prepareUpload(self, payload: payload) ? payload : nil
+    }
+    @MainActor func applyNewerCloudProfiles(_ remote: [String: Any], expectedRevision: Int64) -> Bool {
+        guard !profileMergeFails, lastUpdate == expectedRevision,
+              let timestamp = SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"]) else { return false }
+        groups = remote["groups"] as! [[String: Any]]
+        lastUpdate = timestamp + 1
+        return true
     }
     // METADATA_METHOD
     // IMPORT_PREPARATION_METHOD
@@ -109,6 +123,7 @@ final class NetworkRequest {
             try? FileManager.default.removeItem(at: SpaceConfigurationSafety.testRoot)
             SpaceConfigurationSafety.testDefaults.removePersistentDomain(forName: SpaceConfigurationSafety.suite)
         }
+        try await testProfileConflictResolution()
         try await testLegacyUpgradeRetry()
         try await testLegacyUpgradeRecovery()
         try await testLegacyTimedBaselineBackfill()
@@ -1223,5 +1238,84 @@ extension SpaceRecoveryReceiptTests {
     static func trySnapshotCount(_ data: Data?) -> Int {
         guard let data else { return -1 }
         return (try? JSONDecoder().decode([SchedulerModelSnapshot].self, from: data).count) ?? -1
+    }
+}
+
+extension SpaceRecoveryReceiptTests {
+    @MainActor static func testProfileConflictResolution() async throws {
+        typealias S = SpaceConfigurationSafety
+        typealias P = SpaceConfigurationIntegrityPolicy
+        defer { ProximityLightingImportPreflight.storedSpace = nil; ProximityLightingImportPreflight.onExport = nil; S.failStateWrite = false }
+        for mode in ["local", "cloud", "sameTime", "nonProfile", "accepted", "prepared", "mergeFailure", "receiptFailure", "cloudReceiptFailure", "localChanged", "cancelled", "staleRead", "invalid", "network", "revoked"] {
+            let space = SpaceData()
+            ProximityLightingImportPreflight.storedSpace = space
+            space.lastUploadCloudTimestamp = 40
+            space.nodes = [try membershipNode(1)]
+            var profile: [String: Any] = ["id": "profile", "type": 1, "highEndTrim": 100,
+                "lowEndTrim": 1, "occupancyLevel": 734, "vacantLevel": 100, "taskLevel": 100,
+                "timeT1": 2, "timeT2": 10, "timeT3": 2, "timeT4": 0, "timeT5": 2,
+                "manualOverrideTimeout": 60, "powerUpState": 255]
+            space.groups = [["address": "C003", "profile": profile]]
+            var state = try S.recoveryState(space)
+            state.authorizationBaseline = P.configurationData(space.payload)
+            state.nodeIdentitiesBaseline = SpaceCloudNodeRemovalPolicy.instances(space.payload)
+            state.schedulerModelStatesBaseline = SchedulerModelSnapshot.spaceData(space.payload)
+            state.timedConfigurationBaseline = TimedSchedulerPayloadPolicy.canonical(space.payload)
+            try S.testSaveState(state, space: space)
+            if mode == "accepted" || mode == "prepared" {
+                let context = S.prepareSubmission(space, payload: space.payload)!
+                if mode == "accepted" { precondition(S.markSubmissionAccepted(context, space: space)) }
+            }
+            var remote = space.payload
+            profile["occupancyLevel"] = 414
+            remote["groups"] = [["address": "C003", "profile": profile]]
+            remote["updateTimestamp"] = ["cloud", "mergeFailure", "cloudReceiptFailure"].contains(mode) ? 55 : mode == "sameTime" ? 50 : mode == "staleRead" ? 39 : 45
+            if mode == "nonProfile" { remote["triggerZones"] = [["items": [["groupAddress": 49155, "deviceAddress": 1]]]] }
+            if mode == "invalid" { remote["nodes"] = NSNull() }
+            if mode == "revoked" { remote["role"] = "visitor" }
+            NetworkRequest.shared.result = mode == "network" ? .failure(.noNetwork) : .success(["data": remote])
+            let calls = NetworkRequest.shared.calls
+            space.profileMergeFails = mode == "mergeFailure"
+            S.failStateWrite = ["receiptFailure", "cloudReceiptFailure"].contains(mode)
+            ProximityLightingImportPreflight.onExport = mode == "localChanged" ? { space.lastUpdate += 1 } : nil
+            let result: Swift.Result<Void, NetworkApiError>
+            if mode == "cancelled" {
+                let task = Task { @MainActor in await S.resumeUpload(space) }
+                task.cancel()
+                result = await task.value
+            } else {
+                result = await S.resumeUpload(space)
+            }
+            ProximityLightingImportPreflight.onExport = nil
+            S.failStateWrite = false
+            if ["local", "cloud", "accepted", "prepared"].contains(mode) {
+                if case .failure = result { preconditionFailure("Profile conflict must resolve: " + mode) }
+                let savedProfile = space.groups[0]["profile"] as! [String: Any]
+                precondition(P.integer(savedProfile["occupancyLevel"]) == (mode == "cloud" ? 414 : 734))
+                precondition(space.lastUploadCloudTimestamp == 40 && space.needUploadCloud,
+                             "Choosing a Profile never confirms an unuploaded merged snapshot")
+                precondition(!S.hasPendingUpload(space))
+                // Persisted rebase must survive a retry before the next upload.
+                if case .failure = await S.resumeUpload(space) { preconditionFailure("resolved Profile must remain retryable") }
+                let context = S.prepareSubmission(space, payload: space.payload)!
+                precondition(S.markSubmissionAccepted(context, space: space))
+                NetworkRequest.shared.result = .success(["data": space.payload])
+                if case .failure = await S.resumeUpload(space) { preconditionFailure("merged version must confirm normally") }
+                precondition(!space.needUploadCloud && !S.hasPendingUpload(space))
+            } else {
+                if case .success = result { preconditionFailure("invalid/conflicting input must not resolve: " + mode) }
+                precondition(P.integer((space.groups[0]["profile"] as! [String: Any])["occupancyLevel"]) == (mode == "cloudReceiptFailure" ? 414 : 734))
+                precondition(space.lastUploadCloudTimestamp == 40)
+                if ["receiptFailure", "cloudReceiptFailure", "mergeFailure"].contains(mode) {
+                    space.profileMergeFails = false
+                    if case .failure = await S.resumeUpload(space) { preconditionFailure("failed persistence must retry safely") }
+                    precondition(space.needUploadCloud && space.lastUploadCloudTimestamp == 40)
+                }
+                if ["sameTime", "nonProfile"].contains(mode) { precondition(S.isBlocked(space)) }
+                else { precondition(!S.isBlocked(space), "transient failures must not create review blocks") }
+                precondition(NetworkRequest.shared.calls == calls + (["receiptFailure", "cloudReceiptFailure", "mergeFailure"].contains(mode) ? 2 : 1))
+            }
+        }
+        print("PASS: Profile latest-Space-version resolution, equal-time review, protected topology, receipt replacement, retries and failures")
     }
 }

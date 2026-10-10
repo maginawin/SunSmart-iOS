@@ -23,9 +23,27 @@ class DeviceSwitchData { var bindGroupAddresses: [Address] = []; var unbindGroup
 class Node {
     var primaryUnicastAddress: Address = 1
     var sensorCalibrated = false
+    var subNetworkId = "test-subnet"
+    func clearSyncStateCache() {}
     func contains(elementWithAddress address: Address) -> Bool { address == primaryUnicastAddress }
 }
-struct HarnessNetwork { let uuid = UUID() }
+final class HarnessNetwork {
+    let uuid = UUID()
+    var groups: [HarnessGroup] = []
+    var nodes: [Node] = []
+    static var loaded: HarnessNetwork?
+    static func load(meshUUID: String, subnetworkId: String) -> HarnessNetwork? { loaded }
+}
+typealias MeshNetwork = HarnessNetwork
+struct HarnessAddress { var address: UInt16 }
+final class SpaceData {
+    var lastUpdate: Int64 = 50
+    let siteId = "site", id = "space", meshUUID = "test-mesh", meshNetworkId = "test-subnet"
+    var savesSucceed = true
+    static var stored: SpaceData?
+    static func load(siteId: String, spaceId: String) -> [SpaceData] { stored.map { [$0] } ?? [] }
+    func save() -> Bool { savesSucceed }
+}
 struct HarnessKey { let networkId = Data([1]) }
 class MeshNetworkManager {
     static let instance = MeshNetworkManager()
@@ -38,7 +56,13 @@ enum NodeSyncReadContext {
     static var current: Context? { nil }
     struct Context { func node(elementAddress: Address) -> Node? { nil } }
 }
-struct HarnessGroup { var info: GroupInfo }
+final class HarnessGroup {
+    var info: GroupInfo
+    var isVirtual = false
+    var subNetworkId = "test-subnet"
+    var address: HarnessAddress { .init(address: info.address) }
+    init(info: GroupInfo) { self.info = info }
+}
 struct HarnessSpace { let meshUUID = "test-mesh", meshNetworkId = "test-subnet" }
 enum SpaceConfigurationSafety {
     enum SafetyError: Error { case persistenceFailed }
@@ -49,7 +73,7 @@ enum ProfilePersistenceTests {
     static let mesh = "test-mesh"
     static let subnet = "test-subnet"
 
-    static func main() throws {
+    @MainActor static func main() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -59,6 +83,7 @@ enum ProfilePersistenceTests {
         Profile.initDatabase()
         try testDefaultsAndCloudRoundtrip(url)
         try testMissingUnusedTaskLevelRoundtrip(url)
+        try testCloudProfileMergePersistence(url)
         let captured = try Connection(url.path, readonly: true)
         SunSmartDataManager.shared.db = try Connection(.inMemory)
         let scoped = GroupInfo.load(meshUUID: mesh, address: 0xC006, subnetworkId: subnet,
@@ -543,5 +568,52 @@ enum ProfilePersistenceTests {
             precondition(imported.lightControlData.autoMinLevel == expected)
         }
         print("PASS: secondary scene units/invalid blob protection and legacy Auto min 0/30/255/100 normalization")
+    }
+}
+
+extension ProfilePersistenceTests {
+    @MainActor static func testCloudProfileMergePersistence(_ url: URL) throws {
+        let address: UInt16 = 0xC010
+        let info = GroupInfo(address: address, imageId: 7, imageText: "keep-local")
+        info.profile.lightControlData.occupancyLevel = 734
+        info.profile.lightControlData.vacantLevel = 100
+        precondition(save(info))
+        var cloud = payload(info)
+        cloud["occupancyLevel"] = 414
+        cloud["vacantLevel"] = 106
+        cloud["adjustSpeed"] = 82
+        cloud["calibrationMode"] = "sensorCal"
+        var scenes = cloud["scenes"] as! [[String: Any]]
+        scenes[0]["occupancyLevel"] = 414; scenes[0]["vacantLevel"] = 106
+        scenes[0]["typeSwitchedFrom"] = 1
+        cloud["scenes"] = scenes
+        let network = HarnessNetwork()
+        network.groups = [HarnessGroup(info: info)]
+        let node = Node(); node.primaryUnicastAddress = 1; network.nodes = [node]
+        HarnessNetwork.loaded = network
+        defer { HarnessNetwork.loaded = nil; SpaceData.stored = nil }
+        let remote: [String: Any] = ["updateTimestamp": 55,
+            "groups": [["address": "C010", "profile": cloud, "daylightSensorAddress": "0001"]],
+            "nodes": [["uuid": "AAAAAAAA-0000-0000-0000-000000000001", "unicastAddress": "0001",
+                       "deviceKey": String(repeating: "A1", count: 16),
+                       "elements": [["index": 0, "models": []]]]]]
+        let space = SpaceData(); SpaceData.stored = space
+        space.savesSucceed = false
+        precondition(!space.applyNewerCloudProfiles(remote, expectedRevision: 50))
+        precondition(space.lastUpdate == 50 && load(address)?.profile.lightControlData.occupancyLevel == 734,
+                     "Space-row failure must roll back already-written Profile and GroupInfo rows")
+        space.savesSucceed = true
+        precondition(space.applyNewerCloudProfiles(remote, expectedRevision: 50))
+        // Close and reopen the real SQLite connection, rather than reading in-memory objects.
+        SunSmartDataManager.shared.db = try Connection(url.path)
+        let saved = load(address)!
+        precondition(saved.profile.lightControlData.occupancyLevel == 414 && saved.profile.adjustSpeed == 82)
+        precondition(saved.profile.calibrationMode == .sensorCal && saved.ambientLightSensorNodeAddress == 1)
+        precondition(saved.imageId == 7 && saved.imageText == "keep-local")
+        precondition(space.lastUpdate == 56)
+        precondition(!space.applyNewerCloudProfiles(remote, expectedRevision: 50), "A late snapshot cannot overwrite a newer local revision")
+        var older = remote; older["updateTimestamp"] = 54
+        precondition(!space.applyNewerCloudProfiles(older, expectedRevision: 56))
+        print("PASS: cloud Profile merge uses production decoder and SQLite transaction, preserves Group data, rolls back and rejects stale revisions")
     }
 }

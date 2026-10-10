@@ -568,6 +568,13 @@ enum SpaceConfigurationIntegrityPolicy {
                    let relay = normalizedProximityLightingNumber(profile["proximityLightingNumber"]) {
                     profile["proximityLightingNumber"] = relay
                 }
+                // These are Profile-level duplicates emitted inside Web scenes.
+                // The App importer never consumes them as scene properties.
+                let sceneMetadata: Set<String> = ["adjustSpeed", "highEndTrim", "id", "lowEndTrim",
+                    "manualOverrideTimeout", "powerUpState", "relativeSensitivity", "type", "typeSwitchedFrom"]
+                if let scenes = profile["scenes"] as? [[String: Any]] {
+                    profile["scenes"] = scenes.map { $0.filter { !sceneMetadata.contains($0.key) } }
+                }
                 normalized["profile"] = profile
                 return normalized
             }
@@ -594,6 +601,51 @@ enum SpaceConfigurationIntegrityPolicy {
     }
 
     /// Diagnose exactly the configuration used for comparison, never the raw payload.
+    /// Used only after identity, schedules and Model snapshots have been checked.
+    /// Keep Group membership and topology; only whole Profile values may win by time.
+    static func configurationsMatchExceptProfiles(_ lhs: Data?, _ rhs: Data?) -> Bool {
+        func stripped(_ data: Data?) -> Data? {
+            guard let data, let normalized = normalizedConfigurationData(data),
+                  var object = (try? JSONSerialization.jsonObject(with: normalized)) as? [String: Any],
+                  let groups = object["groups"] as? [[String: Any]] else { return nil }
+            var addresses = Set<String>()
+            var result: [[String: Any]] = []
+            for var group in groups {
+                guard let address = group["address"] as? String, !address.isEmpty,
+                      addresses.insert(address).inserted,
+                      let profile = group["profile"] as? [String: Any], profileIssue(profile) == nil else { return nil }
+                group.removeValue(forKey: "profile")
+                result.append(group)
+            }
+            object["groups"] = result
+            return try? JSONSerialization.data(withJSONObject: object, options: .sortedKeys)
+        }
+        guard let left = stripped(lhs), let right = stripped(rhs) else { return false }
+        return left == right
+    }
+
+    static func sharedProfilesMatch(_ lhs: Data, _ rhs: Data) -> Bool? {
+        func profiles(_ data: Data) -> [String: Data]? {
+            guard let normalized = normalizedConfigurationData(data),
+                  let object = (try? JSONSerialization.jsonObject(with: normalized)) as? [String: Any],
+                  let groups = object["groups"] as? [[String: Any]] else { return nil }
+            var result: [String: Data] = [:]
+            for group in groups {
+                guard let address = group["address"] as? String, result[address] == nil,
+                      let profile = group["profile"] as? [String: Any], profileIssue(profile) == nil,
+                      let data = try? JSONSerialization.data(withJSONObject: profile, options: .sortedKeys) else { return nil }
+                result[address] = data
+            }
+            return result
+        }
+        guard let left = profiles(lhs), let right = profiles(rhs) else { return nil }
+        return left.allSatisfy { address, profile in right[address].map { $0 == profile } ?? true }
+    }
+
+    static func configurationFingerprint(_ data: Data?) -> String? {
+        data.flatMap(normalizedConfigurationData).map(diagnosticHash)
+    }
+
     static func readbackDiagnostic(submitted: [String: Any], remote: [String: Any]) -> String {
         guard let configuration = configurationData(submitted) else { return "submittedConfiguration=invalid" }
         return "submittedTimestamp=\(integer(submitted["updateTimestamp"]).map(String.init) ?? "missing") "

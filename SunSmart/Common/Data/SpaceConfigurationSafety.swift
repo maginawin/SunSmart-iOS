@@ -345,12 +345,17 @@ enum SpaceConfigurationSafety {
     }
 
     @discardableResult
-    static func recordSyncFailure(_ space: SpaceData, error: NetworkApiError, stage: String) -> Bool {
+    static func recordSyncFailure(_ space: SpaceData, error: NetworkApiError, stage: String,
+                                  remoteTimestamp: Int64? = nil) -> Bool {
         // The cloud operation persists its final error. Do not save a possibly
         // stale Space object merely to report a failed preparation/export.
         space.syncCloudError = error
         #if DEBUG
         let reason = UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space)) ?? "none"
+        var diagnostic: [String: Any] = ["stage": stage, "error": error.code, "localTimestamp": space.lastUpdate,
+            "recordedAt": Int64(Date().timeIntervalSince1970)]
+        diagnostic["remoteTimestamp"] = remoteTimestamp
+        UserDefaults.standard.set(diagnostic, forKey: "spaceConfigurationLastSyncDiagnostic." + key(space))
         print("[SpaceConfigurationSync] stage=\(stage) error=\(error.code) reason=\(reason)")
         #endif
         return false
@@ -1007,7 +1012,11 @@ enum SpaceConfigurationSafety {
                     case .success(let response):
                         guard let remote = response["data"] as? [String: Any], remote["uuid"] as? String == space.id else { return .failure(uploadUnconfirmed) }
                         space.applyRemoteSpaceMetadata(remote)
-                        guard space.save(), reconcileCloudMembership(space, remote: remote) else { return .failure(uploadUnconfirmed) }
+                        guard space.save(), canAutomaticallyUpload(space) else { return .failure(authorityError(space)) }
+                        guard await reconcileCloudProfiles(space, remote: remote),
+                              reconcileCloudMembership(space, remote: remote) else {
+                            return .failure(space.syncCloudError ?? uploadUnconfirmed)
+                        }
                     }
                 }
                 return .success(())
@@ -1049,7 +1058,14 @@ enum SpaceConfigurationSafety {
                     guard space.save(), isCurrent(context, space: space), canAutomaticallyUpload(space) else {
                         return .failure(authorityError(space))
                     }
-                    guard reconcileCloudMembership(space, remote: remote), isCurrent(context, space: space) else { return .failure(uploadUnconfirmed) }
+                    guard await reconcileCloudProfiles(space, remote: remote), isCurrent(context, space: space) else {
+                        return .failure(space.syncCloudError ?? uploadUnconfirmed)
+                    }
+                    if (try? recoveryState(space).submission) == nil { return .success(()) }
+                    guard reconcileCloudMembership(space, remote: remote), isCurrent(context, space: space) else {
+                        recordSyncFailure(space, error: uploadUnconfirmed, stage: "readbackMembership")
+                        return .failure(uploadUnconfirmed)
+                    }
                     let expected = readbackConfiguration(submission.configuration, timestamp: submission.timestamp, space: space)
                     let actual = readbackRemoteConfiguration(configuration, timestamp: submission.timestamp, space: space)
                     let schedulesMatch = submission.scheduleTargets.map {
@@ -1152,6 +1168,100 @@ enum SpaceConfigurationSafety {
         SpaceCloudNodeRemovalPolicy.projectModels(data, removing: readbackRemovals(timestamp: timestamp, space: space))
     }
 
+    /// Resolve only Profile differences. Space timestamps are the agreed version
+    /// contract; membership, topology, schedules and network identity remain strict.
+    @MainActor
+    static func reconcileCloudProfiles(_ space: SpaceData, remote: [String: Any]) async -> Bool {
+        typealias P = SpaceConfigurationIntegrityPolicy
+        guard canAutomaticallyUpload(space), !hasPendingImport(space),
+              let context = try? recoveryState(space),
+              context.submission != nil || space.needUploadCloud || preservesLocalChanges(space),
+              let reference = context.submission?.configuration ?? context.authorizationBaseline,
+              let identities = context.submission?.nodeIdentities ?? (context.submission == nil ? context.nodeIdentitiesBaseline : nil),
+              let timed = context.submission?.timedConfiguration ?? (context.submission == nil ? context.timedConfigurationBaseline : nil),
+              let models = context.submission?.schedulerModelStates ?? (context.submission == nil ? context.schedulerModelStatesBaseline : nil)
+        else { return true }
+        if let reason = UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space)),
+           !["uploadReadbackConflict", "uploadReadbackUnconfirmed", "profileTimestampConflict", "cloudConfigurationConflict"].contains(reason) {
+            return true
+        }
+        // Leave unrelated readback retries and removal handling on their original path.
+        if let actual = P.configurationData(remote),
+           P.sharedProfilesMatch(reference, actual) == true,
+           context.submission != nil { return true }
+        if let groups = remote["groups"] as? [[String: Any]], groups.isEmpty { return true }
+        func failure(_ stage: String, review: Bool = false) -> Bool {
+            if review { block(space, reason: stage) }
+            return recordSyncFailure(space, error: review ? .configurationReviewRequired : uploadUnconfirmed,
+                                     stage: stage, remoteTimestamp: P.integer(remote["updateTimestamp"]))
+        }
+        guard remote["uuid"] as? String == space.id,
+              let remoteTimestamp = P.integer(remote["updateTimestamp"]), remoteTimestamp >= 0, remoteTimestamp < Int64.max,
+              let actual = P.configurationData(remote),
+              let remoteNodes = SpaceCloudNodeRemovalPolicy.instances(remote),
+              let network = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
+              let keys = SpaceKeyIntegrity.pair(network, networkID: space.meshNetworkId),
+              let remoteKeys = SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId),
+              keys.fingerprint == remoteKeys.fingerprint,
+              context.submission?.keyFingerprint == nil || context.submission?.keyFingerprint == keys.fingerprint
+        else { return failure("profilePreflightInvalid") }
+        // A stale read is not proof of a business conflict or permission to roll back.
+        guard remoteTimestamp >= (space.lastUploadCloudTimestamp ?? 0) else { return failure("profileCloudVersionBehind") }
+        // Actual additions/removals are owned by the existing membership lifecycle.
+        guard let removed = SpaceCloudNodeRemovalPolicy.removed(from: identities, remote: remoteNodes), removed.isEmpty else { return true }
+        let referenceMatches = P.configurationsMatch(reference, actual)
+        let profilesOnly = P.configurationsMatchExceptProfiles(reference, actual)
+        guard profilesOnly, TimedSchedulerPayloadPolicy.canonical(remote) == timed,
+              SchedulerModelSnapshot.spaceData(remote) == models,
+              context.submission?.scheduleTargets.map({ P.scheduleTargetsData(remote) == $0 }) ?? true else {
+            return failure("cloudConfigurationConflict", review: true)
+        }
+        // Ordinary local-newer edits with an unchanged cloud baseline need no merge.
+        if referenceMatches, context.submission == nil, remoteTimestamp < space.lastUpdate { return true }
+        if referenceMatches, context.submission != nil { return true }
+        let revision = space.lastUpdate
+        guard let local = await space.export(purpose: .cleanupInspection),
+              !_Concurrency.Task<Never, Never>.isCancelled, isCurrent(context, space: space),
+              (try? recoveryState(space)) == context, space.lastUpdate == revision,
+              SpaceData.load(siteId: space.siteId, spaceId: space.id).first?.lastUpdate == revision,
+              P.integer(local["updateTimestamp"]) == revision,
+              let localConfiguration = P.configurationData(local),
+              let profilesMatch = P.sharedProfilesMatch(localConfiguration, actual) else {
+            return failure("profileLocalSnapshotUnavailable")
+        }
+        if revision == remoteTimestamp, !profilesMatch { return failure("profileTimestampConflict", review: true) }
+        guard revision >= 0, revision < Int64.max else { return failure("profileLocalVersionInvalid") }
+        if remoteTimestamp > revision {
+            guard space.applyNewerCloudProfiles(remote, expectedRevision: revision) else {
+                return failure("profileMergePersistence")
+            }
+        }
+        // Rebase the cloud reference, not the confirmation timestamp. The next
+        // complete upload must still be accepted and read back before becoming clean.
+        do {
+            var state = try recoveryState(space)
+            guard state == context else { return failure("profileMergeSuperseded") }
+            state.authorizationBaseline = actual
+            state.nodeIdentitiesBaseline = remoteNodes
+            state.timedConfigurationBaseline = timed
+            state.schedulerModelStatesBaseline = models
+            state.submission = nil
+            try saveState(state, space: space)
+            UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
+            let blockedKey = "spaceConfigurationBlocked." + key(space)
+            let reason = UserDefaults.standard.string(forKey: blockedKey) ?? ""
+            if ["uploadReadbackConflict", "uploadReadbackUnconfirmed", "profileTimestampConflict", "cloudConfigurationConflict"].contains(reason) {
+                UserDefaults.standard.removeObject(forKey: blockedKey)
+            }
+            space.syncCloudError = nil
+            #if DEBUG
+            print("[SpaceProfileResolution] space=\(space.id) local=\(revision) remote=\(remoteTimestamp) "
+                + "winner=\(remoteTimestamp > revision ? "cloud" : "local") pendingReplaced=\(context.submission != nil)")
+            #endif
+            return true
+        } catch { return failure("profileMergeReceiptPersistence") }
+    }
+
     /// Reconcile the current Space's authoritative membership before a pending
     /// submission or local edit prevents ordinary import. No destination lookup.
     @MainActor
@@ -1181,7 +1291,10 @@ enum SpaceConfigurationSafety {
               localKeys.fingerprint == remoteKeys.fingerprint,
               submission?.keyFingerprint == nil || submission?.keyFingerprint == remoteKeys.fingerprint else { return false }
         guard let missing = SpaceCloudNodeRemovalPolicy.removed(from: source, remote: remoteNodes) else {
-            return submission == nil && !space.needUploadCloud // Ordinary authoritative import may apply additions.
+            if submission == nil && !space.needUploadCloud { return true }
+            block(space, reason: "cloudMembershipConflict")
+            return recordSyncFailure(space, error: .configurationReviewRequired, stage: "cloudMembershipConflict",
+                                     remoteTimestamp: remoteTimestamp)
         }
         if missing.isEmpty, submission != nil { return true } // Keep ordinary readback retries for unchanged membership.
         if !missing.isEmpty {
@@ -1195,8 +1308,12 @@ enum SpaceConfigurationSafety {
         let removed = completed + resolved
         guard
               let expected = SpaceCloudNodeRemovalPolicy.projectConfiguration(configuration, removing: removed),
-              let actual = SpaceCloudNodeRemovalPolicy.projectConfiguration(remoteConfiguration, removing: removed),
-              SpaceConfigurationIntegrityPolicy.configurationsMatch(expected, actual) else { return false }
+              let actual = SpaceCloudNodeRemovalPolicy.projectConfiguration(remoteConfiguration, removing: removed) else { return false }
+        guard SpaceConfigurationIntegrityPolicy.configurationsMatch(expected, actual) else {
+            block(space, reason: "cloudConfigurationConflict")
+            return recordSyncFailure(space, error: .configurationReviewRequired, stage: "cloudConfigurationConflict",
+                                     remoteTimestamp: remoteTimestamp)
+        }
         let modelBaseline = submission?.schedulerModelStates ?? state.schedulerModelStatesBaseline
         if let modelBaseline {
             guard SpaceCloudNodeRemovalPolicy.projectModels(modelBaseline, removing: removed) == remoteModels else { return false }
@@ -1485,6 +1602,14 @@ enum SpaceConfigurationSafety {
         do {
             let state = try SpaceRecoveryState.read(from: stateURL(space), identity: identity(space))
             result["recoveryPhase"] = state?.phase.rawValue
+            result["pendingUpload"] = state?.submission != nil
+            result["submissionPhase"] = state?.submission?.phase.rawValue
+            result["submittedTimestamp"] = state?.submission?.timestamp
+            result["lastConfirmedTimestamp"] = space.lastUploadCloudTimestamp
+            result["localTimestamp"] = space.lastUpdate
+            result["baselineSHA256"] = SpaceConfigurationIntegrityPolicy.configurationFingerprint(state?.authorizationBaseline)
+            result["submissionSHA256"] = SpaceConfigurationIntegrityPolicy.configurationFingerprint(state?.submission?.configuration)
+            result["lastSyncDiagnostic"] = UserDefaults.standard.dictionary(forKey: "spaceConfigurationLastSyncDiagnostic." + key(space))
             let folder = state.map { storedDirectory(space, state: $0) }
                 ?? recoveryRoot.appendingPathComponent(key(space))
             result["pendingImport"] = FileManager.default.fileExists(atPath: folder.appendingPathComponent("pending-import.json").path)
