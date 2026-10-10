@@ -11069,7 +11069,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = T552326F7U;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
-				INFOPLIST_KEY_CFBundleDisplayName = LumiSmart;
+				INFOPLIST_KEY_CFBundleDisplayName = "Lumineux LS";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera to scan a device QR code.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Lumineux uses location permission to display the currently connected Wi-Fi network name.";
@@ -11094,7 +11094,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = T552326F7U;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
-				INFOPLIST_KEY_CFBundleDisplayName = LumiSmart;
+				INFOPLIST_KEY_CFBundleDisplayName = "Lumineux LS";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera to scan a device QR code.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Lumineux uses location permission to display the currently connected Wi-Fi network name.";
