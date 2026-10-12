@@ -383,7 +383,8 @@ class SpaceViewController: WMPageController {
             showConfigurationRecovery()
             return
         }
-        if NetworkRequest.shared.networkable, SpaceConfigurationSafety.canAutomaticallyUpload(space),
+        if NetworkRequest.shared.networkable,
+           SpaceConfigurationSafety.canAutomaticallyUpload(space) || SpaceConfigurationSafety.canResumePendingUpload(space),
            (space.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(space)),
            (!SpaceConfigurationSafety.isBlocked(space) || SpaceConfigurationSafety.hasPendingUpload(space)),
            CloudSynchronizationManager.shared.getSpaceCurrentSyncState(space) == nil {
@@ -784,7 +785,10 @@ class SpaceViewController: WMPageController {
 
     private func reconcileLegacyProximityLightingTopology() {
         Task { @MainActor [weak self] in
-            guard let self else { return }
+            guard let self, !self.hasStoppedPresenceTracking,
+                  !SpaceConfigurationSafety.hasPendingUpload(self.space) else { return }
+            // The sync operation performs deferred cleanup after readback, before
+            // it reports success or submits any cleanup changes.
             if await SpaceSyncCleanupCoordinator.prepare(self.space) {
                 self.reloadData()
                 self.updateSyncState()

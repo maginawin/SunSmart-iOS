@@ -15,7 +15,7 @@ extension String { var localizedString: String { self } }
 final class SpaceData {
     var timedSchemaVersion = 1
 
-    enum State { case normal, waitDeleted }
+    enum State: Int { case normal = 1, waitDeleted }
     enum GatewayStatus { case online, offline, notBound }
     let id: String
     var meshUUID: String { "mesh-" + id }
@@ -29,6 +29,7 @@ final class SpaceData {
     var gatewayStatus = GatewayStatus.notBound
     var lastUpdate: Int64 = 50, lastUploadCloudTimestamp: Int64?, syncCloudError: NetworkApiError?
     var savesSucceed = true
+    var onSave: (() -> Void)?
     var uploadCloud: Bool { lastUploadCloudTimestamp != nil }
     var needUploadCloud: Bool { lastUpdate > (lastUploadCloudTimestamp ?? 0) && permission != .visitor }
     var nodes: [[String: Any]] = []
@@ -41,7 +42,7 @@ final class SpaceData {
     }
     init(_ id: String = UUID().uuidString) { self.id = id }
     func markLocalChangePendingCloudSync() { lastUpdate += 1 }
-    @discardableResult func save() -> Bool { savesSucceed }
+    @discardableResult func save() -> Bool { onSave?(); return savesSucceed }
     @discardableResult func delete() -> Bool {
         SpaceConfigurationSafety.beginRemoval(self) && SpaceConfigurationSafety.archiveDeletedSpace(self)
     }
@@ -127,6 +128,8 @@ final class NetworkRequest {
         try await testLegacyUpgradeRetry()
         try await testLegacyUpgradeRecovery()
         try await testLegacyTimedBaselineBackfill()
+        try await testFirstUploadMembershipRecovery()
+        try await testLegacyUninitializedReceiptRecovery()
         try await testEmptyZoneImportGate()
         try await testUnusedTaskLevelReadback()
         precondition(NetworkApiError(code: -2002) == .configurationUploadUnconfirmed)
@@ -1317,5 +1320,279 @@ extension SpaceRecoveryReceiptTests {
             }
         }
         print("PASS: Profile latest-Space-version resolution, equal-time review, protected topology, receipt replacement, retries and failures")
+    }
+}
+
+extension SpaceRecoveryReceiptTests {
+    @MainActor static func testFirstUploadMembershipRecovery() async throws {
+        typealias S = SpaceConfigurationSafety
+        typealias M = SpaceMembershipCoordinator
+        let request = NetworkRequest.shared
+        defer {
+            S.failMembershipWrite = false; S.failStateWrite = false
+            request.onRequest = nil; ProximityLightingImportPreflight.onExport = nil
+        }
+        func remote(_ space: SpaceData) -> [String: Any] {
+            var payload = space.payload
+            payload["role"] = "owner"
+            payload["owner"] = ["userId": UserData.currentUserId, "username": "fixture"]
+            return payload
+        }
+        func historical(_ name: String, nodes: [[String: Any]] = []) throws -> SpaceData {
+            let space = SpaceData("first-upload-" + name)
+            space.nodes = nodes
+            let receipt = S.prepareSubmission(space, payload: space.payload)!
+            precondition(S.markSubmissionAccepted(receipt, space: space))
+            var membership = try M.store.read(M.scope(space))!
+            membership.initialized = false // Already persisted by the previous App version.
+            try M.store.write(membership)
+            precondition(!S.canAutomaticallyUpload(space) && S.canResumePendingUpload(space))
+            return space
+        }
+        func expectFailure(_ result: Result<Void, NetworkApiError>, _ error: NetworkApiError? = nil) {
+            guard case .failure(let actual) = result else { preconditionFailure("must retain protection") }
+            if let error { precondition(actual == error, "unexpected error: \(actual)") }
+        }
+        func initialized(_ space: SpaceData) throws -> Bool { try M.store.read(M.scope(space))?.initialized == true }
+
+        // New local exports stay initialized while a GET preserves the pending upload.
+        let fresh = SpaceData("first-upload-new")
+        let receipt = S.prepareSubmission(fresh, payload: fresh.payload)!
+        try expectMembership(initialized(fresh))
+        precondition(S.markSubmissionAccepted(receipt, space: fresh))
+        for _ in 0..<2 {
+            let record = try M.preparedRecord(fresh, networkID: fresh.meshNetworkId)
+            let outcome = await fresh.update(spaceJsonData: remote(fresh))
+            precondition(record.initialized && outcome == .preserved("localDeletionOrRecoveryPendingUpload"))
+        }
+        request.result = .success(["data": remote(fresh)])
+        if case .failure = await S.resumeUpload(fresh) { preconditionFailure("new upload must finish") }
+        precondition(!S.hasPendingUpload(fresh) && fresh.lastUploadCloudTimestamp == 50)
+
+        // Reopen an old accepted receipt using a new model object, with empty and nonempty data.
+        for nodes in [[], [try membershipNode(1)]] {
+            let old = try historical(nodes.isEmpty ? "empty" : "nonempty", nodes: nodes)
+            let reopened = SpaceData(old.id); reopened.nodes = nodes
+            request.result = .success(["data": remote(reopened)])
+            if case .failure = await S.resumeUpload(reopened) { preconditionFailure("matching historical receipt must recover") }
+            try expectMembership(initialized(reopened))
+            precondition(!S.hasPendingUpload(reopened) && reopened.lastUploadCloudTimestamp == 50
+                && S.canAutomaticallyUpload(reopened) && S.canCleanSyncReferences(reopened))
+        }
+
+        // No receipt cannot authorize a true import placeholder, even if its role is owner.
+        for role in [Permission.owner, .editor, .visitor] {
+            let placeholder = SpaceData("first-upload-placeholder-\(role)"); placeholder.permission = role
+            _ = try M.preparedRecord(placeholder, networkID: placeholder.meshNetworkId)
+            precondition(!S.canAutomaticallyUpload(placeholder) && !S.canResumePendingUpload(placeholder))
+            precondition(S.prepareSubmission(placeholder, payload: placeholder.payload) == nil)
+            try expectMembership(!initialized(placeholder))
+        }
+
+        // Mismatched remote data, missing Keys, local data loss and stale joins never initialize.
+        for variant in ["remote-key", "remote-config", "local-missing", "network", "owner", "role", "leave", "rejoin", "account", "region", "import", "password", "cancel"] {
+            let space = try historical(variant, nodes: [try membershipNode(1)])
+            let payload = remote(space)
+            var server = payload
+            switch variant {
+            case "remote-key": server.removeValue(forKey: "netKey")
+            case "remote-config": server["nodes"] = [[String: Any]]()
+            case "local-missing": space.nodes = []
+            case "network":
+                var record = try M.store.read(M.scope(space))!; record.networkID = "different"
+                try M.store.write(record)
+            case "owner": server["owner"] = ["userId": "different-account"]
+            case "role": server["role"] = "visitor"
+            case "leave":
+                var record = try M.store.read(M.scope(space))!; record.phase = .queued
+                try M.store.write(record)
+            case "rejoin": request.onRequest = { precondition(M.authorizeJoin(space)) }
+            case "account": request.onRequest = { UserData.currentUserId = "another-account" }
+            case "region": request.onRequest = { UserData.currentServerRegion = "another-region" }
+            case "import": precondition(S.beginImport(space, payload: payload))
+            case "password": space.requiresPasswordVerification = true
+            default: break
+            }
+            request.result = .success(["data": server])
+            if variant == "cancel" {
+                let task = Task { @MainActor in await S.resumeUpload(space) }
+                task.cancel(); expectFailure(await task.value)
+            } else {
+                expectFailure(await S.resumeUpload(space), variant == "role" ? .noSpacePermission : nil)
+            }
+            UserData.currentUserId = "test-account"; UserData.currentServerRegion = "test-region"
+            try expectMembership(!initialized(space))
+            // Actual authority revocation retains the old receipt in the existing archive.
+            if variant != "role" { precondition(S.hasPendingUpload(space)) }
+        }
+
+        // Failed metadata/confirmation writes are not reported as server permission errors.
+        for variant in ["metadata", "membership", "receipt"] {
+            let space = try historical("persist-" + variant)
+            request.result = .success(["data": remote(space)])
+            if variant == "metadata" { space.savesSucceed = false }
+            if variant == "membership" { S.failMembershipWrite = true }
+            if variant == "receipt" {
+                space.onSave = { if space.lastUploadCloudTimestamp != nil { S.failStateWrite = true } }
+            }
+            expectFailure(await S.resumeUpload(space), .configurationUploadUnconfirmed)
+            precondition(S.hasPendingUpload(space))
+            S.failMembershipWrite = false; S.failStateWrite = false; space.onSave = nil
+            let reopened = SpaceData(space.id)
+            reopened.lastUploadCloudTimestamp = space.lastUploadCloudTimestamp
+            request.result = .success(["data": remote(reopened)])
+            if case .failure = await S.resumeUpload(reopened) { preconditionFailure("persistent receipt must retry after reopening") }
+            try expectMembership(initialized(reopened))
+            precondition(!S.hasPendingUpload(reopened) && reopened.lastUploadCloudTimestamp == 50)
+        }
+        let offline = try historical("offline")
+        request.result = .failure(.noNetwork)
+        expectFailure(await S.resumeUpload(offline), .noNetwork)
+        try expectMembership(!initialized(offline))
+        precondition(S.hasPendingUpload(offline))
+        request.result = .success(["data": remote(offline)])
+        if case .failure = await S.resumeUpload(offline) { preconditionFailure("offline retry must recover") }
+        print("PASS: first-upload membership, historical empty/nonempty receipt recovery, strict identity/data/authority/lifecycle gates and persistence retries")
+    }
+}
+
+private func expectMembership(_ value: @autoclosure () throws -> Bool) rethrows {
+    let result = try value(); precondition(result)
+}
+
+extension SpaceRecoveryReceiptTests {
+    @MainActor static func testLegacyUninitializedReceiptRecovery() async throws {
+        typealias S = SpaceConfigurationSafety
+        typealias M = SpaceMembershipCoordinator
+        let request = NetworkRequest.shared
+        defer { S.failStateWrite = false; request.onRequest = nil }
+        func seed(_ name: String, missing: Set<String>, markerOnly: Bool = false,
+                  populated: Bool = false, verified: Bool = false) throws -> SpaceData {
+            let space = SpaceData("legacy-uninitialized-" + name)
+            if populated {
+                space.nodes = try [1, 2].map(membershipNode).map { node in
+                    var node = node; node.removeValue(forKey: "custProps"); return node
+                }
+            }
+            let payload = space.payload
+            precondition(S.recordSnapshot(space, payload: payload))
+            _ = try M.preparedRecord(space, networkID: space.meshNetworkId)
+            if markerOnly { S.block(space, reason: "uploadReadbackUnconfirmed") }
+            else {
+                // Write the historical shape directly; do not regenerate it with
+                // prepareSubmission, which initializes membership and fills fields.
+                var state = try S.recoveryState(space)
+                state.submission = .init(id: UUID(), timestamp: space.lastUpdate,
+                    configuration: SpaceConfigurationIntegrityPolicy.configurationData(payload)!,
+                    phase: verified ? .verified : .accepted,
+                    keyFingerprint: missing.contains("keys") ? nil : SpaceKeyIntegrity.pair(payload, networkID: space.meshNetworkId)?.fingerprint,
+                    scheduleTargets: missing.contains("targets") ? nil : SpaceConfigurationIntegrityPolicy.scheduleTargetsData(payload),
+                    timedConfiguration: missing.contains("timed") ? nil : TimedSchedulerPayloadPolicy.canonical(payload),
+                    schedulerModelStates: missing.contains("models") ? nil : SchedulerModelSnapshot.spaceData(payload),
+                    nodeIdentities: missing.contains("nodes") ? nil : SpaceCloudNodeRemovalPolicy.instances(payload))
+                try S.testSaveState(state, space: space)
+            }
+            return space
+        }
+        func remote(_ space: SpaceData) -> [String: Any] {
+            var payload = space.payload
+            payload["role"] = "owner"; payload["owner"] = ["userId": UserData.currentUserId]
+            return payload
+        }
+        func diagnostic(_ space: SpaceData) -> [String: Any] {
+            S.debugSnapshotStatus(space)["lastReadbackDiagnostic"] as? [String: Any] ?? [:]
+        }
+        let all: Set<String> = ["keys", "targets", "timed", "models", "nodes"]
+        for populated in [false, true] {
+            for field in ["keys", "targets", "timed", "models", "nodes", "all", "marker", "verified"] {
+                let space = try seed("\(populated)-\(field)", missing: field == "all" || field == "verified" ? all : [field],
+                                     markerOnly: field == "marker", populated: populated, verified: field == "verified")
+                precondition(!S.canAutomaticallyUpload(space) && S.canResumePendingUpload(space))
+                let status = S.debugSnapshotStatus(space)
+                precondition(status["pendingUpload"] as? Bool == true && status["membershipNetworkMatches"] as? Bool == true)
+                precondition(status["hasCompleteExportSnapshot"] as? Bool == true && status["recoveryAuthority"] as? String == "writable")
+                if field == "marker" { precondition(status["legacyUploadMarker"] as? Bool == true) }
+                if field == "all" {
+                    let fields = status["submissionFields"] as! [String: Bool]
+                    precondition(fields.count == 5 && fields.values.allSatisfy { !$0 })
+                }
+                let receiptID = try S.recoveryState(space).submission?.id
+                var server = remote(space)
+                server["nodes"] = space.nodes.reversed().map { $0 }
+                request.result = .success(["data": server])
+                request.onRequest = {
+                    let receipt = try! S.recoveryState(space).submission!
+                    if let receiptID { precondition(receipt.id == receiptID) }
+                    precondition(receipt.phase == .accepted && receipt.permitsCloudRemoval == false)
+                    precondition(receipt.keyFingerprint != nil && receipt.nodeIdentities != nil)
+                    precondition((try! M.store.read(M.scope(space)))?.initialized == false)
+                }
+                let calls = request.calls, uploads = request.uploads
+                if case .failure = await S.resumeUpload(space) { preconditionFailure("legacy recovery must succeed: \(field)") }
+                precondition(request.calls == calls + 1 && request.uploads == uploads)
+                precondition(!S.hasPendingUpload(space) && S.canCleanSyncReferences(space) && S.canAutomaticallyUpload(space))
+                precondition(space.lastUploadCloudTimestamp == 50 && diagnostic(space)["stage"] as? String == "confirmed")
+            }
+        }
+
+        for variant in ["missing-snapshot", "snapshot-space", "snapshot-version", "snapshot-configuration", "snapshot-key",
+                        "existing-fingerprint", "existing-targets", "membership-network", "recovery-authority", "remote-import",
+                        "snapshot-save", "remote-owner", "remote-device-key", "local-device-key", "local-missing", "offline"] {
+            let space = try seed(variant, missing: ["nodes"], populated: true)
+            var snapshot = space.payload
+            var server = remote(space)
+            switch variant {
+            case "missing-snapshot":
+                try FileManager.default.removeItem(at: S.testDirectory(space).appendingPathComponent("last-complete-export.json"))
+            case "snapshot-space": snapshot["uuid"] = "different"
+            case "snapshot-version": snapshot["updateTimestamp"] = 49
+            case "snapshot-configuration": snapshot["nodes"] = [[String: Any]]()
+            case "snapshot-key": snapshot["netKey"] = ["key": "different"]
+            case "existing-fingerprint", "existing-targets", "recovery-authority", "remote-import":
+                var state = try S.recoveryState(space)
+                if variant == "existing-fingerprint" { state.submission?.keyFingerprint = "different" }
+                if variant == "existing-targets" { state.submission?.scheduleTargets = Data("different".utf8) }
+                if variant == "recovery-authority" { state.authority = .waitingForAuthorization }
+                if variant == "remote-import" { state.requiresRemoteImport = true }
+                try S.testSaveState(state, space: space)
+            case "membership-network":
+                var membership = try M.store.read(M.scope(space))!; membership.networkID = "different"
+                try M.store.write(membership)
+            case "snapshot-save": S.failStateWrite = true
+            case "remote-owner": server["owner"] = ["userId": "different"]
+            case "remote-device-key":
+                var nodes = space.nodes; nodes[0]["deviceKey"] = String(repeating: "B2", count: 16); server["nodes"] = nodes
+            case "local-device-key": space.nodes[0]["deviceKey"] = String(repeating: "B2", count: 16)
+            case "local-missing": space.nodes = []
+            default: break
+            }
+            if variant.hasPrefix("snapshot-") && variant != "snapshot-save" {
+                precondition(S.recordSnapshot(space, payload: snapshot))
+            }
+            request.result = variant == "offline" ? .failure(.noNetwork) : .success(["data": server])
+            let calls = request.calls
+            if case .success = await S.resumeUpload(space) { preconditionFailure("must preserve protection: \(variant)") }
+            S.failStateWrite = false
+            precondition(S.hasPendingUpload(space) && space.lastUploadCloudTimestamp == nil)
+            try expectMembership(M.store.read(M.scope(space))?.initialized == false)
+            let result = diagnostic(space)
+            precondition(result["reason"] is String && result["error"] is Int)
+            if !["remote-owner", "remote-device-key", "local-device-key", "local-missing", "offline"].contains(variant) {
+                precondition(request.calls == calls, "invalid local evidence must fail before GET")
+            }
+            if variant == "remote-device-key" { precondition(result["reason"] as? String == "remoteNodeIdentitiesMismatch") }
+            if variant == "local-device-key" { precondition(result["reason"] as? String == "localNodeIdentitiesMismatch") }
+            // A cleanup failure must not replace the more specific readback result.
+            S.recordSyncFailure(space, error: .configurationUnavailable, stage: "cleanupPreparation")
+            precondition(diagnostic(space)["attemptId"] as? String == result["attemptId"] as? String)
+            precondition(diagnostic(space)["reason"] as? String == result["reason"] as? String)
+            if variant == "snapshot-save" || variant == "offline" {
+                let reopened = SpaceData(space.id); reopened.nodes = space.nodes
+                request.result = .success(["data": remote(reopened)])
+                if case .failure = await S.resumeUpload(reopened) { preconditionFailure("migration/readback must retry after reopen") }
+                precondition(S.canAutomaticallyUpload(reopened) && !S.hasPendingUpload(reopened))
+            }
+        }
+        print("PASS: production legacy marker/partial receipt recovery, empty/nonempty identity, exact snapshots, failure/reopen and independent diagnostics")
     }
 }

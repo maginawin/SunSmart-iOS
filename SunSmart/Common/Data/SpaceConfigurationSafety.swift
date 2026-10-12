@@ -862,6 +862,95 @@ enum SpaceConfigurationSafety {
         return state.authority == .writable && state.unbindRequested != true && state.requiresRemoteImport != true
     }
 
+    /// Readback is not a new write authorization. Old first-upload receipts can
+    /// outlive a GET that created an uninitialized membership record.
+    static func canResumePendingUpload(_ space: SpaceData) -> Bool {
+        pendingUploadResumeIssue(space) == nil
+    }
+
+    /// Eligibility schedules an attempt; receipt migration and exact identity
+    /// checks happen inside resumeUpload before any readback can be confirmed.
+    private static func pendingUploadResumeIssue(_ space: SpaceData) -> String? {
+        guard space.state == .normal else { return "spaceState" }
+        guard space.permission != .visitor, !space.disableEditorPermission else { return "permission" }
+        guard !space.requiresPasswordVerification else { return "password" }
+        guard !SpaceMembershipCoordinator.isLeaving(space) else { return "membershipLeavingOrUnreadable" }
+        guard !hasPendingImport(space) else { return "pendingImport" }
+        guard let state = try? recoveryState(space) else { return "recoveryUnreadable" }
+        guard state.phase == .active else { return "recoveryPhase" }
+        guard state.authority == .writable else { return "recoveryAuthority" }
+        guard state.unbindRequested != true else { return "unbindRequested" }
+        guard state.requiresRemoteImport != true else { return "requiresRemoteImport" }
+        guard hasPendingUpload(space) else { return "noPendingUpload" }
+        if SpaceMembershipCoordinator.allowsConfiguration(space) { return nil }
+        guard space.permission == .owner else { return "uninitializedNonOwner" }
+        guard let membership = try? SpaceMembershipCoordinator.store.read(SpaceMembershipCoordinator.scope(space)),
+              membership.phase == .joined else { return "membershipMissingOrNotJoined" }
+        guard membership.networkID == space.meshNetworkId else { return "membershipNetworkMismatch" }
+        return nil
+    }
+
+    private struct PendingUploadValidationError: Error {
+        let reason: String
+    }
+
+    private static func sameNodeIdentities(_ lhs: [SpaceCloudNodeRemovalPolicy.Instance]?,
+                                           _ rhs: [SpaceCloudNodeRemovalPolicy.Instance]?) -> Bool {
+        guard let lhs, let rhs else { return false }
+        return lhs.sorted { $0.uuid < $1.uuid } == rhs.sorted { $0.uuid < $1.uuid }
+    }
+
+    private static func pendingInitializationIssue(_ space: SpaceData,
+                                                   submission: SpaceRecoveryState.Submission) -> String? {
+        guard submission.scheduleTargets != nil else { return "missingScheduleTargets" }
+        guard submission.timedConfiguration != nil else { return "missingTimedConfiguration" }
+        guard submission.schedulerModelStates != nil else { return "missingSchedulerModels" }
+        guard submission.nodeIdentities != nil else { return "missingNodeIdentities" }
+        guard let fingerprint = submission.keyFingerprint else { return "missingKeyFingerprint" }
+        guard let network = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
+              let keys = SpaceKeyIntegrity.pair(network, networkID: space.meshNetworkId) else { return "localKeysUnavailable" }
+        guard keys.fingerprint == fingerprint else { return "receiptLocalKeyMismatch" }
+        return nil
+    }
+
+    /// Kept separately from cleanup diagnostics. An older suspended attempt may
+    /// not replace a newer attempt's result, and no key material is recorded.
+    private static func recordReadbackDiagnostic(_ space: SpaceData, attempt: UUID, stage: String,
+                                                 reason: String? = nil, error: NetworkApiError? = nil) {
+        #if DEBUG
+        let storageKey = "spaceConfigurationLastReadbackDiagnostic." + key(space)
+        let previous = UserDefaults.standard.dictionary(forKey: storageKey)
+        guard stage == "started" || previous?["attemptId"] as? String == attempt.uuidString else { return }
+        var diagnostic: [String: Any] = ["attemptId": attempt.uuidString, "stage": stage,
+            "localTimestamp": space.lastUpdate, "recordedAt": Int64(Date().timeIntervalSince1970)]
+        diagnostic["reason"] = reason
+        diagnostic["error"] = error?.code
+        UserDefaults.standard.set(diagnostic, forKey: storageKey)
+        print("[SpaceConfigurationReadback] attempt=\(attempt.uuidString) stage=\(stage) reason=\(reason ?? "none") error=\(error?.code ?? 0)")
+        #endif
+    }
+
+    @MainActor
+    private static func validatePendingInitialization(_ space: SpaceData,
+                                                      submission: SpaceRecoveryState.Submission) async -> String? {
+        let revision = space.lastUpdate
+        guard let local = await space.export(purpose: .cleanupInspection) else { return "localExportUnavailable" }
+        guard !_Concurrency.Task<Never, Never>.isCancelled else { return "cancelled" }
+        if let issue = pendingUploadResumeIssue(space) { return issue }
+        guard space.lastUpdate == revision,
+              SpaceConfigurationIntegrityPolicy.integer(local["updateTimestamp"]) == revision else { return "localRevisionChanged" }
+        guard local["uuid"] as? String == space.id else { return "localSpaceMismatch" }
+        guard let keys = SpaceKeyIntegrity.pair(local, networkID: space.meshNetworkId),
+              keys.fingerprint == submission.keyFingerprint else { return "localKeyMismatch" }
+        guard SpaceConfigurationIntegrityPolicy.configurationsMatch(
+            SpaceConfigurationIntegrityPolicy.configurationData(local), submission.configuration) else { return "localConfigurationMismatch" }
+        guard SpaceConfigurationIntegrityPolicy.scheduleTargetsData(local) == submission.scheduleTargets else { return "localScheduleTargetsMismatch" }
+        guard TimedSchedulerPayloadPolicy.canonical(local) == submission.timedConfiguration else { return "localTimedMismatch" }
+        guard SchedulerModelSnapshot.spaceData(local) == submission.schedulerModelStates else { return "localSchedulerModelsMismatch" }
+        guard sameNodeIdentities(SpaceCloudNodeRemovalPolicy.instances(local), submission.nodeIdentities) else { return "localNodeIdentitiesMismatch" }
+        return nil
+    }
+
     static func requiresAuthorityImport(_ space: SpaceData) -> Bool {
         (try? recoveryState(space).requiresRemoteImport) == true
     }
@@ -871,7 +960,8 @@ enum SpaceConfigurationSafety {
         lock.lock(); defer { lock.unlock() }
         do {
             var state = try recoveryState(space)
-            guard state.phase == .active, state.authority == .writable, state.submission == nil,
+            guard canAutomaticallyUpload(space), !hasPendingImport(space),
+                  state.phase == .active, state.authority == .writable, state.submission == nil,
                   let timestamp = SpaceConfigurationIntegrityPolicy.integer(payload["updateTimestamp"]),
                   payload["uuid"] as? String == space.id, payload["nodes"] is [[String: Any]],
                   let configuration = SpaceConfigurationIntegrityPolicy.configurationData(payload),
@@ -883,6 +973,9 @@ enum SpaceConfigurationSafety {
                   let local = SpaceKeyIntegrity.pair(current, networkID: space.meshNetworkId,
                                                      applicationIndex: keys.application.index),
                   keys.fingerprint == local.fingerprint else { return nil }
+            // Full local configuration already exists before the first POST.
+            // A concurrent ordinary GET must not turn it into an import placeholder.
+            try SpaceMembershipCoordinator.confirmConfiguration(space)
             state.submission = .init(id: UUID(), timestamp: timestamp, configuration: configuration,
                                      keyFingerprint: keys.fingerprint, scheduleTargets: scheduleTargets,
                                      timedConfiguration: timedConfiguration, schedulerModelStates: schedulerModelStates,
@@ -965,6 +1058,7 @@ enum SpaceConfigurationSafety {
                 space.syncCloudError = previousError
                 return false
             }
+            try SpaceMembershipCoordinator.confirmConfiguration(space)
             // Establish the baseline on FIRST upload too; otherwise adding the next
             // device compares the changed local topology to the pre-add cloud copy.
             UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
@@ -992,37 +1086,81 @@ enum SpaceConfigurationSafety {
         } catch { return false }
     }
 
-    /// Accepted uploads only need local completion. Read back unknown outcomes.
+    /// Verify accepted/unknown outcomes before completing local state.
     @MainActor
     static func resumeUpload(_ space: SpaceData) async -> Swift.Result<Void, NetworkApiError> {
+        let attempt = UUID()
+        let diagnosticIdentity = identity(space)
+        func report(_ stage: String, _ reason: String? = nil, error: NetworkApiError? = nil) {
+            guard diagnosticIdentity == identity(space) else { return }
+            recordReadbackDiagnostic(space, attempt: attempt, stage: stage, reason: reason, error: error)
+        }
+        func failure(_ error: NetworkApiError, _ stage: String, _ reason: String) -> Swift.Result<Void, NetworkApiError> {
+            report(stage, reason, error: error)
+            return .failure(error)
+        }
+        report("started")
         do {
+            if hasPendingUpload(space), let issue = pendingUploadResumeIssue(space) {
+                return failure(authorityError(space), "eligibility", issue)
+            }
             try migratePendingUpload(space)
             var context = try recoveryState(space)
-            guard context.phase == .active else { return .failure(uploadUnconfirmed) }
-            guard context.authority == .writable else { return .failure(authorityError(space)) }
+            let membershipContext = SpaceMembershipResponseContext.capture(account: UserData.currentUserId,
+                region: String(describing: UserData.currentServerRegion))
+            func current() -> Bool {
+                isCurrent(context, space: space) && SpaceMembershipResponseContext.matches(membershipContext,
+                    account: UserData.currentUserId, region: String(describing: UserData.currentServerRegion))
+            }
+            guard context.phase == .active else { return failure(uploadUnconfirmed, "eligibility", "recoveryPhase") }
+            guard context.authority == .writable else { return failure(authorityError(space), "eligibility", "recoveryAuthority") }
             guard let submission = context.submission else {
                 // An offline local edit must not resurrect nodes removed remotely
                 // since our last confirmed version. Read only this Space.
                 if space.needUploadCloud, context.nodeIdentitiesBaseline != nil || context.schedulerModelStatesBaseline != nil {
+                    report("baselineRequest")
                     let response = await NetworkRequest.shared.request(.spaceInfo(siteId: space.siteId,
                         spaceId: space.id, password: space.authorizationPassword))
-                    guard !_Concurrency.Task<Never, Never>.isCancelled, isCurrent(context, space: space) else { return .failure(uploadUnconfirmed) }
+                    guard !_Concurrency.Task<Never, Never>.isCancelled, current() else {
+                        return failure(uploadUnconfirmed, "baselineResponse", "cancelledOrContextChanged")
+                    }
                     switch response {
-                    case .failure(let error): handleAuthorityError(error, space: space); return .failure(error)
+                    case .failure(let error):
+                        handleAuthorityError(error, space: space)
+                        return failure(error, "baselineRequest", "requestFailed")
                     case .success(let response):
-                        guard let remote = response["data"] as? [String: Any], remote["uuid"] as? String == space.id else { return .failure(uploadUnconfirmed) }
+                        guard let remote = response["data"] as? [String: Any], remote["uuid"] as? String == space.id else {
+                            return failure(uploadUnconfirmed, "baselineResponse", "invalidRemoteSpace")
+                        }
                         space.applyRemoteSpaceMetadata(remote)
-                        guard space.save(), canAutomaticallyUpload(space) else { return .failure(authorityError(space)) }
+                        guard space.save() else { return failure(uploadUnconfirmed, "persistence", "remoteMetadata") }
+                        guard canAutomaticallyUpload(space) else { return failure(authorityError(space), "baselineAuthority", "writeUnavailable") }
                         guard await reconcileCloudProfiles(space, remote: remote),
                               reconcileCloudMembership(space, remote: remote) else {
-                            return .failure(space.syncCloudError ?? uploadUnconfirmed)
+                            return failure(space.syncCloudError ?? uploadUnconfirmed, "baselineReconciliation", "profilesOrMembership")
                         }
                     }
                 }
+                report("noPendingReceipt")
                 return .success(())
             }
+            if let issue = pendingUploadResumeIssue(space) {
+                return failure(authorityError(space), "eligibility", issue)
+            }
+            let needsInitialization = !SpaceMembershipCoordinator.allowsConfiguration(space)
+            if needsInitialization, let issue = pendingInitializationIssue(space, submission: submission) {
+                return failure(.configurationUnavailable, "initializationReceipt", issue)
+            }
             if submission.phase == .verified {
-                return finishSubmission(context, space: space) ? .success(()) : .failure(uploadUnconfirmed)
+                if needsInitialization {
+                    if let issue = await validatePendingInitialization(space, submission: submission) {
+                        return failure(.configurationUnavailable, "localValidation", issue)
+                    }
+                    guard current() else { return failure(uploadUnconfirmed, "localValidation", "contextChanged") }
+                }
+                guard finishSubmission(context, space: space) else { return failure(uploadUnconfirmed, "persistence", "finishSubmission") }
+                report("confirmed")
+                return .success(())
             }
             let expectedKeyFingerprint: String?
             if let fingerprint = submission.keyFingerprint {
@@ -1032,15 +1170,17 @@ enum SpaceConfigurationSafety {
             } else {
                 expectedKeyFingerprint = nil
             }
-            guard let expectedKeyFingerprint else { return .failure(uploadUnconfirmed) }
+            guard let expectedKeyFingerprint else { return failure(uploadUnconfirmed, "initializationReceipt", "localKeysUnavailable") }
+            var mismatchReason = "remoteConfigurationMismatch"
             for attempt in 0..<3 {
-                guard !_Concurrency.Task<Never, Never>.isCancelled, isCurrent(context, space: space) else {
-                    return .failure(uploadUnconfirmed)
+                guard !_Concurrency.Task<Never, Never>.isCancelled, current() else {
+                    return failure(uploadUnconfirmed, "request", "cancelledOrContextChanged")
                 }
+                report("request")
                 let response = await NetworkRequest.shared.request(.spaceInfo(siteId: space.siteId,
                     spaceId: space.id, password: space.authorizationPassword))
-                guard !_Concurrency.Task<Never, Never>.isCancelled, isCurrent(context, space: space) else {
-                    return .failure(uploadUnconfirmed)
+                guard !_Concurrency.Task<Never, Never>.isCancelled, current() else {
+                    return failure(uploadUnconfirmed, "response", "cancelledOrContextChanged")
                 }
                 switch response {
                 case .failure(let error):
@@ -1048,23 +1188,34 @@ enum SpaceConfigurationSafety {
                     #if DEBUG
                     print("[SpaceConfigurationReadback] space=\(space.id) submitted=\(submission.timestamp) result=unavailable code=\(error.code)")
                     #endif
-                    return .failure(error)
+                    return failure(error, "request", "requestFailed")
                 case .success(let response):
                     guard let remote = response["data"] as? [String: Any], remote["uuid"] as? String == space.id,
                           let configuration = SpaceConfigurationIntegrityPolicy.configurationData(remote),
-                          remote["nodes"] is [[String: Any]] else { return .failure(uploadUnconfirmed) }
+                          remote["nodes"] is [[String: Any]] else { return failure(uploadUnconfirmed, "response", "invalidRemoteConfiguration") }
                     let remoteKeyFingerprint = SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId)?.fingerprint
                     space.applyRemoteSpaceMetadata(remote)
-                    guard space.save(), isCurrent(context, space: space), canAutomaticallyUpload(space) else {
-                        return .failure(authorityError(space))
+                    guard space.save() else { return failure(uploadUnconfirmed, "persistence", "remoteMetadata") }
+                    guard current() else { return failure(authorityError(space), "remoteAuthority", "contextChanged") }
+                    if let issue = pendingUploadResumeIssue(space) {
+                        return failure(authorityError(space), "remoteAuthority", issue)
                     }
-                    guard await reconcileCloudProfiles(space, remote: remote), isCurrent(context, space: space) else {
-                        return .failure(space.syncCloudError ?? uploadUnconfirmed)
+                    if needsInitialization {
+                        guard remote["role"] as? String == "owner",
+                              (remote["owner"] as? [String: Any])?["userId"] as? String == UserData.currentUserId else {
+                            return failure(.noSpacePermission, "remoteAuthority", "ownerMismatch")
+                        }
                     }
-                    if (try? recoveryState(space).submission) == nil { return .success(()) }
-                    guard reconcileCloudMembership(space, remote: remote), isCurrent(context, space: space) else {
+                    guard await reconcileCloudProfiles(space, remote: remote), current() else {
+                        return failure(space.syncCloudError ?? uploadUnconfirmed, "profileReconciliation", "failedOrContextChanged")
+                    }
+                    if (try? recoveryState(space).submission) == nil {
+                        report("replacementUploadRequired", "profilesReconciled")
+                        return .success(())
+                    }
+                    guard reconcileCloudMembership(space, remote: remote), current() else {
                         recordSyncFailure(space, error: uploadUnconfirmed, stage: "readbackMembership")
-                        return .failure(uploadUnconfirmed)
+                        return failure(uploadUnconfirmed, "membershipReconciliation", "failedOrContextChanged")
                     }
                     let expected = readbackConfiguration(submission.configuration, timestamp: submission.timestamp, space: space)
                     let actual = readbackRemoteConfiguration(configuration, timestamp: submission.timestamp, space: space)
@@ -1081,7 +1232,9 @@ enum SpaceConfigurationSafety {
                             SchedulerModelSnapshot.spaceData(remote) == $0
                         } ?? false
                     } ?? true
-                    if remoteKeyFingerprint != expectedKeyFingerprint,
+                    let identitiesMatch = !needsInitialization
+                        || sameNodeIdentities(SpaceCloudNodeRemovalPolicy.instances(remote), submission.nodeIdentities)
+                    if !needsInitialization, remoteKeyFingerprint != expectedKeyFingerprint,
                        space.permission == .owner, remote["role"] as? String == "owner",
                        let localNetwork = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
                        let localKeys = SpaceKeyIntegrity.pair(localNetwork, networkID: space.meshNetworkId),
@@ -1091,19 +1244,38 @@ enum SpaceConfigurationSafety {
                         // The submitted business configuration arrived, but one Key did not.
                         // Keep the Space dirty and send a new complete snapshot.
                         context = try recoveryState(space)
-                        guard context.submission?.id == submission.id else { return .failure(uploadUnconfirmed) }
+                        guard context.submission?.id == submission.id else { return failure(uploadUnconfirmed, "persistence", "receiptChanged") }
                         context.submission = nil
                         try saveState(context, space: space)
+                        report("replacementUploadRequired", "missingRemoteKey")
                         return .success(())
                     }
                     if remoteKeyFingerprint == expectedKeyFingerprint,
-                       SpaceConfigurationIntegrityPolicy.configurationsMatch(actual, expected), schedulesMatch, modelsMatch, timedMatch {
+                       SpaceConfigurationIntegrityPolicy.configurationsMatch(actual, expected), schedulesMatch, modelsMatch, timedMatch,
+                       identitiesMatch {
+                        if needsInitialization {
+                            // Check the live local snapshot after the GET, before
+                            // initializing a historical receipt's membership.
+                            if let issue = await validatePendingInitialization(space, submission: submission) {
+                                return failure(.configurationUnavailable, "localValidation", issue)
+                            }
+                            guard current() else { return failure(uploadUnconfirmed, "localValidation", "contextChanged") }
+                        }
                         context = try recoveryState(space)
-                        guard context.submission?.id == submission.id else { return .failure(uploadUnconfirmed) }
+                        guard context.submission?.id == submission.id else { return failure(uploadUnconfirmed, "persistence", "receiptChanged") }
                         context.submission?.phase = .verified
                         try saveState(context, space: space)
-                        return finishSubmission(context, space: space) ? .success(()) : .failure(uploadUnconfirmed)
+                        guard finishSubmission(context, space: space) else { return failure(uploadUnconfirmed, "persistence", "finishSubmission") }
+                        report("confirmed")
+                        return .success(())
                     }
+                    if remoteKeyFingerprint != expectedKeyFingerprint { mismatchReason = "remoteKeyMismatch" }
+                    else if !SpaceConfigurationIntegrityPolicy.configurationsMatch(actual, expected) { mismatchReason = "remoteConfigurationMismatch" }
+                    else if !schedulesMatch { mismatchReason = "remoteScheduleTargetsMismatch" }
+                    else if !timedMatch { mismatchReason = "remoteTimedMismatch" }
+                    else if !modelsMatch { mismatchReason = "remoteSchedulerModelsMismatch" }
+                    else { mismatchReason = "remoteNodeIdentitiesMismatch" }
+                    report("remoteValidation", mismatchReason)
                     #if DEBUG
                     print("[SpaceConfigurationReadback] source=resume site=\(space.siteId) space=\(space.id) "
                         + "submissionId=\(submission.id.uuidString) phase=\(submission.phase.rawValue) "
@@ -1121,14 +1293,19 @@ enum SpaceConfigurationSafety {
                        }) {
                         context.submission = nil
                         try saveState(context, space: space)
+                        report("replacementUploadRequired", "unsentSubmission")
                         return .success(())
                     }
                 }
                 if attempt < 2 { try await _Concurrency.Task<Never, Never>.sleep(nanoseconds: 500_000_000) }
             }
             block(space, reason: "uploadReadbackConflict")
-            return .failure(uploadUnconfirmed)
-        } catch { return .failure(uploadUnconfirmed) }
+            return failure(uploadUnconfirmed, "remoteValidation", mismatchReason)
+        } catch let error as PendingUploadValidationError {
+            return failure(.configurationUnavailable, "legacyReceipt", error.reason)
+        } catch {
+            return failure(uploadUnconfirmed, "recovery", "storageOrCancellation")
+        }
     }
 
     /// A completed, version-scoped removal supersedes only its old instances.
@@ -1354,18 +1531,66 @@ enum SpaceConfigurationSafety {
     private static func migratePendingUpload(_ space: SpaceData) throws {
         lock.lock(); defer { lock.unlock() }
         var state = try recoveryState(space)
-        guard state.phase == .active, state.submission == nil,
-              UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space)) == "uploadReadbackUnconfirmed" else { return }
-        let url = try directory(space).appendingPathComponent("last-complete-export.json")
-        guard let payload = try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any],
-              payload["uuid"] as? String == space.id, payload["nodes"] is [[String: Any]],
+        guard state.phase == .active else { return }
+        let needsInitialization = !SpaceMembershipCoordinator.allowsConfiguration(space)
+        let missingFields = state.submission.map {
+            $0.keyFingerprint == nil || $0.nodeIdentities == nil || $0.scheduleTargets == nil
+                || $0.timedConfiguration == nil || $0.schedulerModelStates == nil
+        } ?? false
+        let hasLegacyMarker = state.submission == nil
+            && UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space)) == "uploadReadbackUnconfirmed"
+        guard hasLegacyMarker || (needsInitialization && missingFields) else { return }
+
+        // A missing field is not an empty configuration. Only the saved export
+        // of this exact submitted generation can supply historical evidence.
+        let url = storedDirectory(space, state: state).appendingPathComponent("last-complete-export.json")
+        guard let data = try? Data(contentsOf: url),
+              let payload = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+            throw PendingUploadValidationError(reason: "legacySnapshotUnavailable")
+        }
+        guard payload["uuid"] as? String == space.id,
               let timestamp = SpaceConfigurationIntegrityPolicy.integer(payload["updateTimestamp"]),
-              let schedulerModelStates = SchedulerModelSnapshot.spaceData(payload),
-              let configuration = SpaceConfigurationIntegrityPolicy.configurationData(payload) else { throw SafetyError.invalidCheckpoint }
-        state.submission = .init(id: UUID(), timestamp: timestamp, configuration: configuration, phase: .accepted,
-                                 scheduleTargets: SpaceConfigurationIntegrityPolicy.scheduleTargetsData(payload),
-                                 timedConfiguration: TimedSchedulerPayloadPolicy.canonical(payload),
-                                 schedulerModelStates: schedulerModelStates, permitsCloudRemoval: false)
+              let configuration = SpaceConfigurationIntegrityPolicy.configurationData(payload),
+              payload["nodes"] is [[String: Any]],
+              let models = SchedulerModelSnapshot.spaceData(payload) else {
+            throw PendingUploadValidationError(reason: "legacySnapshotInvalid")
+        }
+        let keys = SpaceKeyIntegrity.pair(payload, networkID: space.meshNetworkId)
+        let targets = SpaceConfigurationIntegrityPolicy.scheduleTargetsData(payload)
+        let timed = TimedSchedulerPayloadPolicy.canonical(payload)
+        let identities = SpaceCloudNodeRemovalPolicy.instances(payload)
+        var submission = state.submission ?? .init(id: UUID(), timestamp: timestamp,
+            configuration: configuration, phase: .accepted, keyFingerprint: keys?.fingerprint,
+            scheduleTargets: targets, timedConfiguration: timed, schedulerModelStates: models,
+            nodeIdentities: identities, permitsCloudRemoval: false)
+        if needsInitialization {
+            guard submission.timestamp == timestamp,
+                  SpaceConfigurationIntegrityPolicy.configurationsMatch(configuration, submission.configuration) else {
+                throw PendingUploadValidationError(reason: "legacySnapshotGenerationMismatch")
+            }
+            guard let keys, let targets, let timed, let identities,
+                  let network = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
+                  let localKeys = SpaceKeyIntegrity.pair(network, networkID: space.meshNetworkId),
+                  localKeys.fingerprint == keys.fingerprint else {
+                throw PendingUploadValidationError(reason: "legacySnapshotIdentityOrFieldsInvalid")
+            }
+            guard submission.keyFingerprint.map({ $0 == keys.fingerprint }) ?? true,
+                  submission.scheduleTargets.map({ $0 == targets }) ?? true,
+                  submission.timedConfiguration.map({ $0 == timed }) ?? true,
+                  submission.schedulerModelStates.map({ $0 == models }) ?? true,
+                  submission.nodeIdentities.map({ sameNodeIdentities($0, identities) }) ?? true else {
+                throw PendingUploadValidationError(reason: "legacySnapshotReceiptMismatch")
+            }
+            submission.keyFingerprint = keys.fingerprint
+            submission.scheduleTargets = targets
+            submission.timedConfiguration = timed
+            submission.schedulerModelStates = models
+            submission.nodeIdentities = identities
+            // Newly reconstructed fields have not been verified by the old GET.
+            submission.phase = .accepted
+            submission.permitsCloudRemoval = false
+        }
+        state.submission = submission
         try saveState(state, space: space)
     }
 
@@ -1407,7 +1632,13 @@ enum SpaceConfigurationSafety {
     }
 
     static func authorityError(_ space: SpaceData) -> NetworkApiError {
-        space.requiresPasswordVerification ? .spacePasswordOverdue : .noSpacePermission
+        if space.requiresPasswordVerification { return .spacePasswordOverdue }
+        if space.permission == .visitor || space.disableEditorPermission { return .noSpacePermission }
+        if let state = try? recoveryState(space) {
+            if state.authority == .readOnly || state.authority == .revoked { return .noSpacePermission }
+            if state.authority == .waitingForAuthorization { return .userUnauthorized }
+        }
+        return .configurationUnavailable
     }
 
     static func handleAuthorityError(_ error: NetworkApiError, space: SpaceData) {
@@ -1597,12 +1828,18 @@ enum SpaceConfigurationSafety {
         if let membership = try? SpaceMembershipCoordinator.store.read(SpaceMembershipCoordinator.scope(space)) {
             result["membershipPhase"] = membership.phase.rawValue
             result["configurationInitialized"] = membership.initialized
+            result["membershipNetworkMatches"] = membership.networkID == space.meshNetworkId
         }
         result["blockedReason"] = UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space))
         do {
             let state = try SpaceRecoveryState.read(from: stateURL(space), identity: identity(space))
             result["recoveryPhase"] = state?.phase.rawValue
-            result["pendingUpload"] = state?.submission != nil
+            result["recoveryAuthority"] = state?.authority.rawValue
+            result["requiresRemoteImport"] = state?.requiresRemoteImport == true
+            result["unbindRequested"] = state?.unbindRequested == true
+            let legacyMarker = result["blockedReason"] as? String == "uploadReadbackUnconfirmed"
+            result["legacyUploadMarker"] = legacyMarker
+            result["pendingUpload"] = state?.submission != nil || legacyMarker
             result["submissionPhase"] = state?.submission?.phase.rawValue
             result["submittedTimestamp"] = state?.submission?.timestamp
             result["lastConfirmedTimestamp"] = space.lastUploadCloudTimestamp
@@ -1610,8 +1847,24 @@ enum SpaceConfigurationSafety {
             result["baselineSHA256"] = SpaceConfigurationIntegrityPolicy.configurationFingerprint(state?.authorizationBaseline)
             result["submissionSHA256"] = SpaceConfigurationIntegrityPolicy.configurationFingerprint(state?.submission?.configuration)
             result["lastSyncDiagnostic"] = UserDefaults.standard.dictionary(forKey: "spaceConfigurationLastSyncDiagnostic." + key(space))
+            result["lastReadbackDiagnostic"] = UserDefaults.standard.dictionary(forKey: "spaceConfigurationLastReadbackDiagnostic." + key(space))
+            if let submission = state?.submission {
+                result["submissionFields"] = [
+                    "keyFingerprint": submission.keyFingerprint != nil,
+                    "nodeIdentities": submission.nodeIdentities != nil,
+                    "scheduleTargets": submission.scheduleTargets != nil,
+                    "timedConfiguration": submission.timedConfiguration != nil,
+                    "schedulerModelStates": submission.schedulerModelStates != nil
+                ]
+                if let network = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
+                   let keys = SpaceKeyIntegrity.pair(network, networkID: space.meshNetworkId),
+                   let fingerprint = submission.keyFingerprint {
+                    result["submissionLocalKeysMatch"] = keys.fingerprint == fingerprint
+                }
+            }
             let folder = state.map { storedDirectory(space, state: $0) }
                 ?? recoveryRoot.appendingPathComponent(key(space))
+            result["hasCompleteExportSnapshot"] = FileManager.default.fileExists(atPath: folder.appendingPathComponent("last-complete-export.json").path)
             result["pendingImport"] = FileManager.default.fileExists(atPath: folder.appendingPathComponent("pending-import.json").path)
             result["pendingDeletionCleanup"] = deletionCleanupPending(at: folder.appendingPathComponent("device-deletions.json"))
         } catch {

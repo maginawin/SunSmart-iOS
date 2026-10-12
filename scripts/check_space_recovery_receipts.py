@@ -31,6 +31,7 @@ methods += """
     static let testDefaults = UserDefaults(suiteName: suite)!
     static var failArchiveMove = false
     static var failStateWrite = false
+    static var failMembershipWrite = false
     static func testMoveItem(at source: URL, to destination: URL) throws {
         if failArchiveMove { throw CocoaError(.fileWriteNoPermission) }
         try FileManager.default.moveItem(at: source, to: destination)
@@ -85,13 +86,18 @@ with tempfile.TemporaryDirectory(prefix='space-receipt-tests-') as temp:
     temp = Path(temp)
     harness = temp / 'Harness.swift'
     harness.write_text(test + '\n' + methods)
+    membership_store = temp / 'SpaceMembershipStore.swift'
+    membership_store.write_text(read('SunSmart/Common/Data/SpaceMembershipStore.swift').replace(
+        '    func write(_ record: SpaceMembershipRecord) throws {',
+        '    func write(_ record: SpaceMembershipRecord) throws {\n'
+        '        if SpaceConfigurationSafety.failMembershipWrite { throw CocoaError(.fileWriteNoPermission) }'))
     binary = temp / 'Tests'
-    subprocess.run(['swiftc', '-parse-as-library',
+    subprocess.run(['swiftc', '-parse-as-library', '-D', 'DEBUG',
         str(root / 'Pods/SwiftyJSON/Source/SwiftyJSON/SwiftyJSON.swift'),
         str(root / 'SunSmart/Common/Data/AppPerformance.swift'),
         str(root / 'SunSmart/Common/Data/SpaceProtectionReadSnapshot.swift'),
         str(root / 'SunSmart/Common/Data/DeviceScheduleAddressCleanup.swift'),
-        str(root / 'SunSmart/Common/Data/SpaceMembershipStore.swift'),
+        str(membership_store),
         str(root / 'SunSmart/Common/Data/SiteGatewayAssociationConsistencyPolicy.swift'),
         str(root / 'SunSmart/Common/Data/SiteTimeZoneValue.swift'),
         str(root / 'SunSmart/Main/Site/Model/SitePropsEditPolicy.swift'),
@@ -103,7 +109,7 @@ with tempfile.TemporaryDirectory(prefix='space-receipt-tests-') as temp:
         str(harness), '-o', str(binary)], check=True)
     result = subprocess.run([str(binary)], capture_output=True, text=True)
     if result.returncode:
-        print(result.stdout + result.stderr)
+        print('\n'.join(result.stdout.splitlines()[-50:]) + '\n' + result.stderr)
         match = re.search(r'Harness.swift:(\d+):', result.stderr)
         if match:
             line = int(match.group(1))
@@ -111,4 +117,4 @@ with tempfile.TemporaryDirectory(prefix='space-receipt-tests-') as temp:
             for index in range(max(0, line - 4), min(len(lines), line + 3)):
                 print(f'{index + 1}: {lines[index]}')
         raise SystemExit(result.returncode)
-    print(result.stdout, end='')
+    print('\n'.join(line for line in result.stdout.splitlines() if line.startswith('PASS:')))

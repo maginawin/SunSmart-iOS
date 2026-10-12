@@ -4,7 +4,7 @@ import SQLite
 // Real production coordinator, Zone classifier, JSON state and SQLite store.
 // Only Mesh/Space repair and network transport are replaced by controlled inputs.
 enum ServerRegion: Int { case first, second }
-enum NetworkApiError: Equatable { case noNetwork }
+enum NetworkApiError: Error, Equatable { case noNetwork }
 enum UserData { static var currentUserId = "account", currentServerRegion = ServerRegion.first }
 final class SunSmartDataManager {
     static let shared = SunSmartDataManager()
@@ -17,6 +17,7 @@ final class SiteData {
     var state = State.normal
     var spaces: [SpaceData] = []
     var canManageSiteTriggerZones = true, uploadCloud = true
+    var needUploadCloud = false
     var lastUpdate: Int64 = 0
     var siteExtensionData = SiteExtensionData()
     init(_ id: String = "site", region: ServerRegion = .first) {
@@ -28,6 +29,7 @@ final class SiteData {
         copy.state = source.state; copy.spaces = SpaceData.load(siteId: source.id)
         copy.canManageSiteTriggerZones = source.canManageSiteTriggerZones
         copy.lastUpdate = source.lastUpdate; copy.uploadCloud = source.uploadCloud
+        copy.needUploadCloud = source.needUploadCloud
         copy.siteExtensionData = source.siteExtensionData
         return copy
     }
@@ -36,6 +38,7 @@ final class SiteData {
     func export(spaceIds: [String]) async -> [String: Any]? {
         CleanupFixture.exportedMembers = (try? SiteTriggerZoneStore.load(self).data.zones?.first?.displayMembers.count) ?? -1
         CleanupFixture.exportedRevisions = spaces.filter { spaceIds.contains($0.id) }.map(\.revision)
+        CleanupFixture.onSiteExport?()
         return ["members": CleanupFixture.exportedMembers]
     }
 }
@@ -44,6 +47,7 @@ final class SpaceData {
     let id: String, siteId: String, meshUUID: String
     var canEditing = true, blocked = false, needUploadCloud = true, pendingUpload = false, synchronizing = false
     var revision = 0
+    var initialized = true
     var syncCloudError: NetworkApiError?
     init(_ id: String, site: String = "site") { self.id = id; siteId = site; meshUUID = site }
     static func load(siteId: String) -> [SpaceData] {
@@ -52,12 +56,14 @@ final class SpaceData {
             copy.canEditing = source.canEditing; copy.blocked = source.blocked
             copy.needUploadCloud = source.needUploadCloud; copy.pendingUpload = source.pendingUpload
             copy.synchronizing = source.synchronizing; copy.revision = source.revision
+            copy.initialized = source.initialized
             return copy
         }
     }
     enum Purpose { case cloudSync }
     @MainActor func export(purpose: Purpose) async -> [String: Any]? {
         CleanupFixture.spaceExports += 1
+        guard !pendingUpload else { return nil }
         return ["id": id]
     }
 }
@@ -110,9 +116,18 @@ enum SpaceConfigurationSafety {
     static func recoveryState(_ space: SpaceData) throws -> Recovery { .init() }
     static func resumeLocalRemovals() {}
     static func resumeUnbind(_ space: SpaceData) async -> Bool { true }
-    static func canAutomaticallyUpload(_ space: SpaceData) -> Bool { !space.blocked }
+    static func canAutomaticallyUpload(_ space: SpaceData) -> Bool { !space.blocked && space.initialized }
+    static func canResumePendingUpload(_ space: SpaceData) -> Bool { !space.blocked && space.pendingUpload }
     static func hasPendingUpload(_ space: SpaceData) -> Bool { space.pendingUpload }
     static func isBlocked(_ space: SpaceData) -> Bool { space.blocked }
+    @MainActor static func resumeUpload(_ space: SpaceData) async -> Swift.Result<Void, NetworkApiError> {
+        CleanupFixture.events.append("readback")
+        if space.blocked { return .failure(.noNetwork) }
+        if space.pendingUpload {
+            space.pendingUpload = false; space.needUploadCloud = false; space.initialized = true
+        }
+        return .success(())
+    }
 }
 final class NetworkRequest { static let shared = NetworkRequest(); var networkable = true }
 enum SiteDeviceOwnershipReconciler { static func reconcile(siteId: String) {} }
@@ -124,10 +139,14 @@ final class CloudSynchronizationManager {
     let recoveryGate = PendingSynchronizationRecoveryGate()
     enum Level { case promptly }
     var uploads = 0
+    var uploadedIDs: [String] = []
     func getSpaceCurrentSyncState(_ space: SpaceData) -> Int? {
         SpaceData.stored.first { $0.id == space.id }?.synchronizing == true ? 1 : nil
     }
-    func addSynchronizationHandle(operation: SyncOperation, level: Level) { uploads += 1 }
+    func addSynchronizationHandle(operation: SyncOperation, level: Level) {
+        uploads += 1
+        if case .syncSite(_, let spaces) = operation { uploadedIDs += spaces.map(\.id) }
+    }
 }
 enum NetowrkReqeustApi {
     case siteUpload(siteData: [String: Any])
@@ -136,17 +155,36 @@ enum NetowrkReqeustApi {
 }
 enum MeshAPI { static func getTheUsedDeviceAddresses(meshUUID: String) -> [UInt16] { [] } }
 
+@MainActor final class SyncPreparationFixture {
+    enum State { case waiting, successful }
+    let configurationSpaces: [SpaceData]
+    let operation: SyncOperation
+    var state = State.waiting
+    var failed = false, requestReady = false
+    var handleCallback: ((SyncPreparationFixture, State) -> Void)?
+    init(space: SpaceData) { configurationSpaces = [space]; operation = .syncSpace(space: space) }
+    init(operation: SyncOperation, spaces: [SpaceData]) {
+        self.operation = operation; configurationSpaces = spaces
+    }
+    func finishConfigurationFailure(_ error: NetworkApiError) { failed = true }
+    func finishInvalidatedConfiguration() { failed = true }
+    func finishExportFailure() { failed = true }
+}
+
 @MainActor
 enum CleanupFixture {
+    static var events: [String] = []
     static var prepared: [String] = []
     static var failures = Set<String>()
     static var suspended: CheckedContinuation<Void, Never>?
     static var pauseSpace: String?
     static var onPrepare: ((SpaceData) -> Void)?
+    static var onSiteExport: (() -> Void)?
     static var exportedMembers = -1, exportedRevisions: [Int] = []
     static var spaceExports = 0
     static var synchronizations = 0, membersAtSynchronization = -1
     static func perform(_ space: SpaceData) async -> Bool {
+        events.append("cleanup")
         prepared.append(space.id)
         if pauseSpace == space.id {
             pauseSpace = nil
@@ -196,9 +234,11 @@ enum SiteZoneCleanupBatchTests {
         var zone = SiteTriggerZone(); zone.fields["members"] = .array(members)
         try SiteTriggerZoneStore.update(site) { $0.data.replaceZones([zone]) }
         CleanupFixture.prepared = []; CleanupFixture.failures = []; CleanupFixture.onPrepare = nil
+        CleanupFixture.onSiteExport = nil
         CleanupFixture.suspended = nil; CleanupFixture.pauseSpace = nil
         CleanupFixture.exportedMembers = -1; CleanupFixture.exportedRevisions = []
         CleanupFixture.synchronizations = 0; CleanupFixture.membersAtSynchronization = -1
+        CleanupFixture.events = []
         NetworkRequest.shared.networkable = true
         return site
     }
@@ -212,7 +252,105 @@ enum SiteZoneCleanupBatchTests {
         try await testOverlap()
         try await testCancellationAndScope()
         try await testRecovery()
+        try await testPendingReadbackBeforeCleanup()
+        try await testSitePendingAfterReadback()
         print("PASS: production batch/three entries, SQLite restart, read counts, conservative cleanup, failure/cancellation, scope and overlapping ownership")
+    }
+
+    static func testSitePendingAfterReadback() async throws {
+        for add in [false, true] {
+            for variant in ["clean", "zone-cleanup", "pending-empty-zone", "site-edit", "zone-read-failed", "site-missing"] {
+                let site = try reset(count: 1, references: variant == "zone-cleanup" ? 1 : 0)
+                let space = site.spaces[0]
+                space.pendingUpload = true; space.initialized = false
+                if variant == "pending-empty-zone" {
+                    try SiteTriggerZoneStore.update(site) { state in
+                        var data = state.data
+                        data.replaceZones([])
+                        state.commit(data, now: 1, siteTimestamp: site.lastUpdate)
+                    }
+                }
+                if variant == "site-edit" {
+                    // The queued Site instance is stale; completion must reload it.
+                    let current = SiteData.load(siteId: site.id)!
+                    current.needUploadCloud = true
+                    SiteData.stored[site.id] = current
+                }
+                if variant == "zone-read-failed" {
+                    CleanupFixture.onSiteExport = { SunSmartDataManager.shared.db = nil }
+                }
+                if variant == "site-missing" {
+                    CleanupFixture.onSiteExport = { SiteData.stored[site.id] = nil }
+                }
+                let operation: SyncOperation = add ? .addSpaces(site: site, spaces: [space])
+                    : .syncSite(site: site, syncSpaces: [space])
+                let sync = SyncPreparationFixture(operation: operation, spaces: [space])
+                await sync.run()
+                require(!space.pendingUpload && !space.needUploadCloud,
+                        "Readback confirms the old Space generation without new Space edits")
+                require(CleanupFixture.events == ["readback", "cleanup"],
+                        "Site upload prepares cleanup after receipt confirmation")
+                switch variant {
+                case "clean":
+                    require(sync.state == .successful && !sync.requestReady && !sync.failed,
+                            "Clean Site and Zone finish without a redundant POST")
+                case "zone-read-failed", "site-missing":
+                    require(sync.failed && !sync.requestReady && sync.state != .successful,
+                            "Unavailable durable state cannot report successful completion")
+                default:
+                    require(sync.requestReady && sync.state != .successful && !sync.failed,
+                            "\(add ? "addSpaces" : "syncSite") \(variant) must keep its prepared upload")
+                }
+                if variant == "zone-cleanup" || variant == "pending-empty-zone" {
+                    let state = try SiteTriggerZoneStore.load(site)
+                    require(state.pending != nil && state.pending?.target == state.data
+                        && SiteData.load(siteId: site.id)?.needUploadCloud == false,
+                            "Zone-only changes remain durable independently of the Site timestamp")
+                    if variant == "zone-cleanup" {
+                        require(CleanupFixture.exportedMembers == 1,
+                                "Prepared Site payload retains the valid member and removes the obsolete member")
+                    }
+                }
+            }
+        }
+        print("PASS: syncSite/addSpaces readback completion respects cleaned or existing Zone pending, Site edits, no-op and storage failures")
+    }
+
+    static func testPendingReadbackBeforeCleanup() async throws {
+        for variant in ["clean", "new-edit", "readback-failed", "cleanup-failed", "cancel", "new-pending"] {
+            let site = try reset(count: 1, references: 0)
+            let space = site.spaces[0]
+            space.pendingUpload = true; space.initialized = false; space.syncCloudError = .noNetwork
+            require(!(await SpaceSyncCleanupCoordinator.prepare(space)), "Entry defers pending cleanup")
+            require(CleanupFixture.prepared.isEmpty && space.syncCloudError == .noNetwork && request(site) == nil,
+                    "Deferred cleanup preserves diagnosis and does not mutate Site requests")
+            if variant == "readback-failed" { space.blocked = true }
+            if variant == "cleanup-failed" { CleanupFixture.failures = [space.id] }
+            CleanupFixture.onPrepare = { current in
+                if variant == "new-edit" { current.needUploadCloud = true }
+            }
+            let sync = SyncPreparationFixture(space: space)
+            if variant == "cancel" || variant == "new-pending" {
+                CleanupFixture.pauseSpace = space.id
+                let task = Task { @MainActor in await sync.run() }
+                await wait { CleanupFixture.suspended != nil }
+                if variant == "cancel" { task.cancel() }
+                else { space.pendingUpload = true }
+                let continuation = CleanupFixture.suspended!; CleanupFixture.suspended = nil; continuation.resume()
+                await task.value
+            } else { await sync.run() }
+            if variant == "clean" {
+                require(sync.state == .successful && !sync.requestReady && !sync.failed,
+                        "Confirmed clean generation finishes without a redundant POST")
+                require(CleanupFixture.events == ["readback", "cleanup"], "Confirmation must precede deferred cleanup")
+            } else if variant == "new-edit" {
+                require(sync.requestReady && sync.state == .waiting, "Cleanup edits require a fresh upload")
+            } else {
+                require(!sync.requestReady && sync.state != .successful, "Failure/cancellation cannot report success")
+            }
+            if variant == "readback-failed" { require(CleanupFixture.prepared.isEmpty, "Failed readback never cleans") }
+        }
+        print("PASS: deferred entry cleanup, production readback-before-cleanup, no-op completion, cleanup edits and failures/cancellation")
     }
     static func testCountsAndExports() async throws {
         for count in [1, 100] {
@@ -412,6 +550,15 @@ enum SiteZoneCleanupBatchTests {
         await wait { CleanupFixture.synchronizations == 1 }
         require(CleanupFixture.prepared.isEmpty && (request(idle)) == nil && idleManager.uploads == 0,
                 "Foreground recovers Site-only pending cleanup")
+        _ = try reset(count: 3, references: 0)
+        SpaceData.stored.forEach { $0.needUploadCloud = false; $0.initialized = false }
+        SpaceData.stored[0].pendingUpload = true
+        SpaceData.stored[1].pendingUpload = true; SpaceData.stored[1].blocked = true
+        let pendingManager = CloudSynchronizationManager()
+        pendingManager.resumePendingSynchronizations()
+        await wait { pendingManager.uploads == 1 }
+        require(pendingManager.uploadedIDs == ["space-0"] && CleanupFixture.prepared.isEmpty,
+                "Uninitialized pending readbacks are queued before cleanup; unauthorized receipts and placeholders are excluded")
         let skipped = try reset(count: 1, references: 1)
         var checks = 0
         _ = await SpaceSyncCleanupCoordinator.prepareBatch(site: skipped, spaces: skipped.spaces,

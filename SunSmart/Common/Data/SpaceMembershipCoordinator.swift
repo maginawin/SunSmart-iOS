@@ -83,6 +83,22 @@ enum SpaceMembershipCoordinator {
         return record
     }
 
+    /// Only call after validating a complete local export or a verified upload.
+    /// A failed write leaves the submission available for a later retry.
+    static func confirmConfiguration(_ space: SpaceData) throws {
+        let previous = try store.read(scope(space))
+        var record = previous ?? SpaceMembershipRecord(scope: scope(space))
+        guard record.phase == .joined,
+              record.networkID == nil || record.networkID == space.meshNetworkId else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        record.networkID = space.meshNetworkId
+        record.initialized = true
+        if let previous {
+            if record != previous { try store.replace(record, expected: previous) }
+        } else { try store.write(record) }
+    }
+
     static var savedCopiesDirectory: URL {
         let context = SpaceMembershipRecord.Scope(account: UserData.currentUserId,
             region: String(describing: UserData.currentServerRegion), siteID: "", spaceID: "")

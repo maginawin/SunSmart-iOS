@@ -36,7 +36,10 @@ enum SpaceSyncCleanupCoordinator {
 
     @discardableResult
     static func prepare(_ space: SpaceData) async -> Bool {
-        guard let site = SiteData.load(siteId: space.siteId) else { return false }
+        // Confirmation owns this generation. Do not turn deferred entry cleanup
+        // into a new configuration error or a Site cleanup mutation.
+        guard !SpaceConfigurationSafety.hasPendingUpload(space),
+              let site = SiteData.load(siteId: space.siteId) else { return false }
         let scope = Scope(site)
         guard scope.isCurrent, !_Concurrency.Task<Never, Never>.isCancelled,
               markCleanup(scope) else { return false }
@@ -128,7 +131,7 @@ enum SpaceSyncCleanupCoordinator {
     }
 
     private static func prepareSpace(_ space: SpaceData, scope: Scope) async -> Bool {
-        guard scope.isCurrent else { return false }
+        guard scope.isCurrent, !SpaceConfigurationSafety.hasPendingUpload(space) else { return false }
         let key = WorkKey(scope: scope, spaceID: space.id)
         if let task = active[key] {
             let result = await task.value
@@ -149,12 +152,12 @@ enum SpaceSyncCleanupCoordinator {
     private static func perform(_ space: SpaceData, scope: Scope) async -> Bool {
         let performance = AppPerformance.begin("SpaceCleanup")
         defer { performance.end() }
-        guard scope.isCurrent else { return false }
+        guard scope.isCurrent, !SpaceConfigurationSafety.hasPendingUpload(space) else { return false }
         space.syncCloudError = nil
         var completed = false
         defer {
             if !completed, scope.isCurrent, !_Concurrency.Task<Never, Never>.isCancelled,
-               space.syncCloudError == nil {
+               space.syncCloudError == nil, !SpaceConfigurationSafety.hasPendingUpload(space) {
                 SpaceConfigurationSafety.recordSyncFailure(space,
                     error: SpaceConfigurationSafety.configurationSyncError(space), stage: "cleanupPreparation")
             }

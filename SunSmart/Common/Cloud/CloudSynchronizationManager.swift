@@ -403,8 +403,8 @@ class CloudSynchronizationManager {
                     site: site, spaces: site.spaces, requiringSuccessfulPreparation: false, shouldContinue: isCurrent,
                     shouldPrepare: { space in
                         self.getSpaceCurrentSyncState(space) == nil
-                            && (space.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(space)
-                                || SpaceConfigurationSafety.isBlocked(space))
+                            && !SpaceConfigurationSafety.hasPendingUpload(space)
+                            && (space.needUploadCloud || SpaceConfigurationSafety.isBlocked(space))
                     }
                 )
                 guard isCurrent() else { return }
@@ -417,7 +417,8 @@ class CloudSynchronizationManager {
                 guard let site = SiteData.load(siteId: siteId), site.state == .normal else { continue }
                 site.spaces = SpaceData.load(siteId: site.id)
                 let spaces = site.spaces.filter { space in
-                    SpaceConfigurationSafety.canAutomaticallyUpload(space)
+                    (SpaceConfigurationSafety.canAutomaticallyUpload(space)
+                        || SpaceConfigurationSafety.canResumePendingUpload(space))
                         && (space.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(space))
                         && (!SpaceConfigurationSafety.isBlocked(space) || SpaceConfigurationSafety.hasPendingUpload(space))
                         && getSpaceCurrentSyncState(space) == nil
@@ -1070,10 +1071,29 @@ class CloudSynchronizationHandle: NSObject {
                 }
             }
             guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
+            // Entry cleanup waits while a receipt is pending. Prepare the normal
+            // upload boundary after confirmation, even when no POST is needed.
+            // Any cleanup edits must be included before deciding this sync is done.
+            guard let api = await self.operation.getNetworkApi() else {
+                guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
+                guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
+                self.finishExportFailure()
+                return
+            }
+            guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
+            guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
             if hadPending && !self.configurationSpaces.contains(where: { $0.needUploadCloud }) {
                 let sitePending: Bool
                 switch self.operation {
-                case .syncSite(let site, _), .addSpaces(let site, _): sitePending = site.needUploadCloud
+                case .syncSite(let site, _), .addSpaces(let site, _):
+                    guard let current = SiteData.load(siteId: site.id),
+                          let zones = try? SiteTriggerZoneStore.load(current) else {
+                        self.finishExportFailure()
+                        return
+                    }
+                    // Zone cleanup persists its own pending generation without
+                    // advancing the Site timestamp. Keep its prepared upload.
+                    sitePending = current.needUploadCloud || zones.pending != nil
                 default: sitePending = false
                 }
                 if !sitePending {
@@ -1081,12 +1101,6 @@ class CloudSynchronizationHandle: NSObject {
                     self.handleCallback?(self, self.state)
                     return
                 }
-            }
-            guard let api = await self.operation.getNetworkApi() else {
-                guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
-                guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
-                self.finishExportFailure()
-                return
             }
             #if DEBUG
             print("""
