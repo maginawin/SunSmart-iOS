@@ -18,6 +18,7 @@ final class EmerFireStepperCell: UITableViewCell {
         static let thumbSize = SCRXFrom(24)
         static let trackHeight = SCRYFrom(2)
         static let cardHeight = SCRYFrom(140)
+        static let cardHeightWithNote = SCRYFrom(172)
     }
 
     var valueDidChange: ((Int) -> Void)?
@@ -28,6 +29,8 @@ final class EmerFireStepperCell: UITableViewCell {
     private var cardPosition: EmerFireCardPosition = .single
     private var topConstraint: Constraint?
     private var bottomConstraint: Constraint?
+    private var cardHeightConstraint: Constraint?
+    private var fieldTitleTopConstraint: Constraint?
 
     private lazy var cardView: UIView = {
         let view = UIView()
@@ -44,8 +47,10 @@ final class EmerFireStepperCell: UITableViewCell {
         return view
     }()
 
-    private lazy var headerContainerView: UIView = {
-        let view = UIView()
+    private lazy var headerContainerView: UIStackView = {
+        let view = UIStackView(arrangedSubviews: [titleLabel, noteLabel])
+        view.axis = .vertical
+        view.spacing = SCRYFrom(8)
         view.backgroundColor = .clear
         return view
     }()
@@ -59,6 +64,16 @@ final class EmerFireStepperCell: UITableViewCell {
     private lazy var titleLabel: UILabel = {
         let label = UILabel(text: nil, textColor: Title_Color, fontSize: 14, fontWeight: .light)
         label.numberOfLines = 0
+        return label
+    }()
+
+    private lazy var noteLabel: UILabel = {
+        let label = UILabel(text: nil, textColor: RGB(100, 116, 139), fontSize: 12, fontWeight: .light)
+        label.numberOfLines = 0
+        label.lineBreakMode = .byWordWrapping
+        label.isHidden = true
+        label.setContentCompressionResistancePriority(.required, for: .vertical)
+        label.setContentHuggingPriority(.required, for: .vertical)
         return label
     }()
 
@@ -152,8 +167,13 @@ final class EmerFireStepperCell: UITableViewCell {
         updateTrackProgress()
     }
 
-    func configure(title: String, fieldTitle: String? = nil, value: Int, range: ClosedRange<Int>, suffix: String, cardPosition: EmerFireCardPosition = .single) {
+    func configure(title: String, fieldTitle: String? = nil, value: Int, range: ClosedRange<Int>, suffix: String, cardPosition: EmerFireCardPosition = .single, note: String? = nil) {
         titleLabel.text = title
+        let hasNote = !(note?.isEmpty ?? true)
+        noteLabel.text = note
+        noteLabel.isHidden = !hasNote
+        cardHeightConstraint?.update(offset: hasNote ? Layout.cardHeightWithNote : Layout.cardHeight)
+        fieldTitleTopConstraint?.update(offset: SCRYFrom(hasNote ? 16 : 24))
         fieldTitleLabel.text = fieldTitle ?? " "
         currentValue = value
         currentRange = range
@@ -211,22 +231,13 @@ final class EmerFireStepperCell: UITableViewCell {
             topConstraint = make.top.equalToSuperview().offset(Layout.verticalInset).constraint
             make.left.right.equalToSuperview().inset(Layout.horizontalInset)
             bottomConstraint = make.bottom.equalToSuperview().offset(-Layout.verticalInset).constraint
-            make.height.greaterThanOrEqualTo(Layout.cardHeight)
+            cardHeightConstraint = make.height.greaterThanOrEqualTo(Layout.cardHeight).constraint
         }
 
         cardView.addSubview(headerContainerView)
         headerContainerView.snp.makeConstraints { make in
             make.top.equalToSuperview().offset(SCRYFrom(16))
-            make.left.right.equalToSuperview()
-        }
-
-        headerContainerView.addSubview(titleLabel)
-
-        titleLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
-            make.top.equalToSuperview()
-            make.bottom.equalToSuperview()
-            make.right.equalTo(SCRXFrom(-16))
+            make.left.right.equalToSuperview().inset(SCRXFrom(16))
         }
 
         cardView.addSubview(fieldTitleLabel)
@@ -234,7 +245,7 @@ final class EmerFireStepperCell: UITableViewCell {
         fieldTitleLabel.snp.makeConstraints { make in
             make.left.equalToSuperview().offset(SCRXFrom(16))
             make.right.lessThanOrEqualTo(valueLabel.snp.left).offset(-SCRXFrom(12))
-            make.top.equalTo(headerContainerView.snp.bottom).offset(SCRYFrom(24))
+            fieldTitleTopConstraint = make.top.equalTo(headerContainerView.snp.bottom).offset(SCRYFrom(24)).constraint
         }
 
         valueLabel.snp.makeConstraints { make in

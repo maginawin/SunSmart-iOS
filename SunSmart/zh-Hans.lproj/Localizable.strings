@@ -1877,10 +1877,12 @@
 "efc_event_ends_title" = "当紧急事件结束时：";
 "efc_event_ends_tip" = "所有紧急事件结束后才会开始执行。";
 "efc_emergency_mode" = "应急模式";
+"efc_eol_resistor_note" = "注意：需要安装 EOL 终端电阻。";
 "efc_working_mode_power_loss_only" = "仅断电";
 "efc_working_mode_fire_alarm_only" = "仅火警";
 "efc_working_mode_power_loss_and_fire_alarm" = "断电和火警";
 "efc_power_loss_emergency" = "断电应急";
+"efc_brightness_trim_note" = "注意：实际亮度将受组的高/低功率限制设置约束。";
 "efc_repeatedly_send_emergency_control_every" = "每隔以下时间重复发送应急控制";
 "efc_send_count_5_second_interval" = "发送次数（每 5 秒间隔）：";
 "efc_restore_auto" = "恢复自动控制";

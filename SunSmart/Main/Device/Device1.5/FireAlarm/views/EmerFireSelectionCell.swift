@@ -26,6 +26,13 @@ final class EmerFireSelectionCell: UITableViewCell {
         return view
     }()
 
+    private lazy var contentStackView: UIStackView = {
+        let stackView = UIStackView(arrangedSubviews: [titleLabel, valueContainerView, noteLabel])
+        stackView.axis = .vertical
+        stackView.spacing = SCRYFrom(8)
+        return stackView
+    }()
+
     private lazy var separatorView: UIView = {
         let view = UIView()
         view.backgroundColor = UIColor(red: 228 / 255.0, green: 229 / 255.0, blue: 235 / 255.0, alpha: 1)
@@ -61,6 +68,16 @@ final class EmerFireSelectionCell: UITableViewCell {
         return label
     }()
 
+    private lazy var noteLabel: UILabel = {
+        let label = UILabel(text: nil, textColor: RGB(255, 144, 0), fontSize: 12, fontWeight: .regular)
+        label.numberOfLines = 0
+        label.lineBreakMode = .byWordWrapping
+        label.isHidden = true
+        label.setContentCompressionResistancePriority(.required, for: .vertical)
+        label.setContentHuggingPriority(.required, for: .vertical)
+        return label
+    }()
+
     private lazy var arrowView: UIImageView = {
         let imageView = UIImageView(image: UIImage(named: "arrow_right"))
         imageView.contentMode = .scaleAspectFit
@@ -80,12 +97,22 @@ final class EmerFireSelectionCell: UITableViewCell {
         super.layoutSubviews()
         titleLabel.preferredMaxLayoutWidth = max(cardView.bounds.width - SCRXFrom(32), 0)
         valueLabel.preferredMaxLayoutWidth = max(valueContainerView.bounds.width - SCRXFrom(39), 0)
+        noteLabel.preferredMaxLayoutWidth = max(cardView.bounds.width, 0)
         applyCardStyle()
     }
 
-    func configure(title: String, value: String, cardPosition: EmerFireCardPosition = .single) {
+    func configure(title: String, value: String, cardPosition: EmerFireCardPosition = .single, note: String? = nil) {
         titleLabel.text = title
         valueLabel.text = value
+        noteLabel.isHidden = note?.isEmpty ?? true
+        if let note, !note.isEmpty {
+            let paragraphStyle = NSMutableParagraphStyle()
+            paragraphStyle.minimumLineHeight = SCRYFrom(22)
+            paragraphStyle.maximumLineHeight = SCRYFrom(22)
+            noteLabel.attributedText = NSAttributedString(string: note, attributes: [.paragraphStyle: paragraphStyle])
+        } else {
+            noteLabel.attributedText = nil
+        }
         self.cardPosition = cardPosition
         topConstraint?.update(offset: cardPosition.topInset)
         bottomConstraint?.update(offset: -cardPosition.bottomInset)
@@ -104,17 +131,14 @@ final class EmerFireSelectionCell: UITableViewCell {
             bottomConstraint = make.bottom.equalToSuperview().offset(-Layout.verticalInset).constraint
         }
 
-        cardView.addSubview(titleLabel)
-        titleLabel.snp.makeConstraints { make in
+        cardView.addSubview(contentStackView)
+        contentStackView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
             make.top.equalToSuperview()
+            make.bottom.equalToSuperview().offset(-SCRYFrom(8))
         }
 
-        cardView.addSubview(valueContainerView)
         valueContainerView.snp.makeConstraints { make in
-            make.left.right.equalToSuperview()
-            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(8))
-            make.bottom.equalToSuperview().offset(-SCRYFrom(8))
             make.height.equalTo(SCRYFrom(40))
         }
 

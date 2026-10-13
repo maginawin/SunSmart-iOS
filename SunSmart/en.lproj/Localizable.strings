@@ -1861,10 +1861,12 @@
 "efc_event_ends_title" = "When The Emergency Event Ends:";
 "efc_event_ends_tip" = "Execution will only begin after all emergency events have ceased.";
 "efc_emergency_mode" = "Emergency Mode";
+"efc_eol_resistor_note" = "Note: An EOL resistor is required.";
 "efc_working_mode_power_loss_only" = "Power Loss Only";
 "efc_working_mode_fire_alarm_only" = "Fire Alarm Only";
 "efc_working_mode_power_loss_and_fire_alarm" = "Power Loss & Fire Alarm";
 "efc_power_loss_emergency" = "Power Loss Emergency";
+"efc_brightness_trim_note" = "Note: The actual brightness will be capped by the group's High/Low End Trim settings.";
 "efc_repeatedly_send_emergency_control_every" = "Repeatedly Send Emergency Control Every";
 "efc_send_count_5_second_interval" = "Send Count (5-second interval):";
 "efc_restore_auto" = "Restore AUTO";

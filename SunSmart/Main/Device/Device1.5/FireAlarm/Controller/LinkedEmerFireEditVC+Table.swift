@@ -84,7 +84,12 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
             return cell
         case .emergencyMode:
             let cell: EmerFireSelectionCell = tableView.dequeueReusableCell(for: indexPath)
-            cell.configure(title: "efc_emergency_mode".localizedString, value: state.workingModeText(), cardPosition: cardPosition(for: row))
+            cell.configure(
+                title: "efc_emergency_mode".localizedString,
+                value: state.workingModeText(),
+                cardPosition: cardPosition(for: row),
+                note: state.workingMode.showsFireAlarmEmergencyControls ? "efc_eol_resistor_note".localizedString : nil
+            )
             return cell
         case .eventOccursHeader:
             let cell: EmerFireInfoCell = tableView.dequeueReusableCell(for: indexPath)
@@ -141,7 +146,15 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
              .restoreSendCount:
             let cell: EmerFireStepperCell = tableView.dequeueReusableCell(for: indexPath)
             let config = state.stepperConfiguration(for: row)
-            cell.configure(title: config.title, fieldTitle: config.fieldTitle, value: config.value, range: config.range, suffix: config.suffix, cardPosition: cardPosition(for: row))
+            cell.configure(
+                title: config.title,
+                fieldTitle: config.fieldTitle,
+                value: config.value,
+                range: config.range,
+                suffix: config.suffix,
+                cardPosition: cardPosition(for: row),
+                note: brightnessTrimNote(for: row)
+            )
             cell.valueDidChange = { [weak self] value in
                 guard let self else { return }
                 self.state.setStepperValue(for: row, value: value)
@@ -210,7 +223,7 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
         case .associatedGroups:
             return SCRYFrom(72)
         case .emergencyMode:
-            return SCRYFrom(72)
+            return SCRYFrom(state.workingMode.showsFireAlarmEmergencyControls ? 102 : 72)
         case .eventOccursHeader, .eventEndsHeader:
             return SCRYFrom(64)
         case .restoreAction:
@@ -218,8 +231,9 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
         case .restoreTiming:
             return SCRYFrom(276)
         case .powerLossBrightness,
-             .fireAlarmBrightness,
-             .triggerInterval,
+             .fireAlarmBrightness:
+            return SCRYFrom(brightnessTrimNote(for: row) == nil ? 156 : 188)
+        case .triggerInterval,
              .restoreBrightness,
              .restoreResuming,
              .restoreSendCount:
@@ -237,6 +251,14 @@ extension LinkedEmerFireEditVC: UITableViewDataSource, UITableViewDelegate {
 
     private func cardPosition(for row: LinkedEmerFireEditRow) -> EmerFireCardPosition {
         .single
+    }
+
+    private func brightnessTrimNote(for row: LinkedEmerFireEditRow) -> String? {
+        guard row == .fireAlarmBrightness ||
+                (row == .powerLossBrightness && state.workingMode == .powerLossOnly) else {
+            return nil
+        }
+        return "efc_brightness_trim_note".localizedString
     }
 
     private var restoreActionOptions: [LinkedEmerFireRestoreActionOption] {
