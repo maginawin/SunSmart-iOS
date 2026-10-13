@@ -97,9 +97,31 @@ import CryptoKit
 import CoreFoundation
 
 enum TimedSchedulerPayloadPolicy {
+    /// Old clients preserve logical IDs above 15 but drop the schema and every
+    /// node binding when writing a Space. Keep the desired schedules, defaulting
+    /// only the lost bindings to unassigned. Never infer physical slots from IDs.
+    static func fillingMissingBindings(_ payload: [String: Any]) -> [String: Any] {
+        guard declaredSchema(payload) == 1,
+              payload["spaceData"] == nil || payload["spaceData"] is [String: Any],
+              let schedules = payload["schedules"] as? [[String: Any]],
+              schedules.contains(where: { integer($0["id"]).map { $0 >= 16 } == true }),
+              schedules.allSatisfy({ $0["nodeSlots"] == nil }) else { return payload }
+        var result = payload
+        var spaceData = payload["spaceData"] as? [String: Any] ?? [:]
+        spaceData["timedSchemaVersion"] = 2
+        result["spaceData"] = spaceData
+        result["schedules"] = schedules.map { schedule -> [String: Any] in
+            var schedule = schedule
+            schedule["nodeSlots"] = [[String: Any]]()
+            return schedule
+        }
+        return result
+    }
+
     /// Keep v2 file sharing out of the legacy importer's editable root shape.
     /// Cloud requests continue to use the unwrapped Space API payload.
     static func backupEnvelope(_ payload: [String: Any]) -> [String: Any]? {
+        let payload = fillingMissingBindings(payload)
         guard let version = schema(payload), canonical(payload) != nil else { return nil }
         if version == 1 { return payload }
         return ["format": "sunSmartSpace", "formatVersion": 2, "space": payload]
@@ -113,8 +135,8 @@ enum TimedSchedulerPayloadPolicy {
                   schema(payload) == 2, canonical(payload) != nil else { return nil }
             return payload
         }
-        guard schema(document) == 1, canonical(document) != nil else { return nil }
-        return document
+        guard declaredSchema(document) == 1, canonical(document) != nil else { return nil }
+        return fillingMissingBindings(document)
     }
 
     static func integer(_ value: Any?) -> Int? {
@@ -125,6 +147,10 @@ enum TimedSchedulerPayloadPolicy {
     }
 
     static func schema(_ payload: [String: Any]) -> Int? {
+        declaredSchema(fillingMissingBindings(payload))
+    }
+
+    private static func declaredSchema(_ payload: [String: Any]) -> Int? {
         let data = payload["spaceData"] as? [String: Any] ?? [:]
         guard let raw = data["timedSchemaVersion"] else { return 1 }
         guard let version = integer(raw), (1...2).contains(version) else { return nil }
@@ -144,6 +170,7 @@ enum TimedSchedulerPayloadPolicy {
 
     /// nil means invalid, never an empty configuration. Array order is immaterial.
     static func canonical(_ payload: [String: Any]) -> Data? {
+        let payload = fillingMissingBindings(payload)
         guard let version = schema(payload), let schedules = payload["schedules"] as? [[String: Any]],
               let nodes = payload["nodes"] as? [[String: Any]] else { return nil }
         let identities = Set(nodes.compactMap(identity))
@@ -229,10 +256,10 @@ enum TimedSchedulerPayloadPolicy {
                         let value = raw["identity"] as? [String: Any]
                         return value?["nodeUUID"] as? String == identity.nodeUUID
                     }
-                    // Retain both desired entries and outstanding removals. A
-                    // target without a reservation cannot be imported as v2.
+                    // Missing bindings are unassigned desired schedules. The
+                    // existing sync planner reserves a slot before sending.
+                    // Still count targets and pending removals for capacity.
                     if isTarget {
-                        guard binding != nil else { return nil }
                         required.insert(id)
                     }
                     if binding != nil { required.insert(id) }

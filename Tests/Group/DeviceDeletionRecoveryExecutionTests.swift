@@ -3,6 +3,7 @@ import Foundation
 // Unrelated storage/UI boundaries. The deletion context, journal model and
 // topology commit/repair policy are compiled from their production sources.
 final class Schedule {
+    var nodeSlots: [TimedSchedulerNodeSlot]? = nil
     var nodeAddresses: [Address] = [], needDeleteNodeAddresses: [Address] = []
     static var stored: [String: [Schedule]] = [:]
     static func load(meshUUID: String, meshNetworkId: String) -> [Schedule] { stored[meshUUID + meshNetworkId] ?? [] }

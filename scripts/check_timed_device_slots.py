@@ -3,6 +3,7 @@
 from pathlib import Path
 import subprocess
 import tempfile
+import sys
 
 root = Path(__file__).resolve().parents[1]
 source = (root / 'SunSmart/Common/Data/MeshNetwork+SunSmart.swift').read_text()
@@ -31,4 +32,5 @@ with tempfile.TemporaryDirectory(prefix='timed-payload-') as directory:
     binary = Path(directory) / 'Tests'
     subprocess.run(['swiftc', '-parse-as-library', str(policy),
                     str(root / 'Tests/Timed/TimedPayloadTests.swift'), '-o', str(binary)], check=True)
-    subprocess.run([str(binary)], check=True)
+    snapshot = sys.argv[sys.argv.index('--snapshot') + 1:][:1] if '--snapshot' in sys.argv else []
+    subprocess.run([str(binary), *snapshot], check=True)
