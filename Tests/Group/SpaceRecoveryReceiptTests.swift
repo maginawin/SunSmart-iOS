@@ -10,7 +10,15 @@ struct UserData {
     let name: String; let uuid: String
     static var currentUserId = "test-account", currentServerRegion = "test-region"
 }
-extension String { var localizedString: String { self } }
+extension String {
+    var localizedString: String {
+        switch self {
+        case "configuration_baseline_devices": return "Local: %d; cloud: %d"
+        case "configuration_baseline_local_only", "configuration_baseline_cloud_only", "configuration_baseline_proxy": return "%@"
+        default: return self
+        }
+    }
+}
 // NETWORK_ERROR_TYPE
 final class SpaceData {
     var timedSchemaVersion = 1
@@ -36,9 +44,11 @@ final class SpaceData {
     var triggerZones: [SpaceTriggerZone] = [], triggerZonesLoadFailed = false
     var groups: [[String: Any]] = []
     var profileMergeFails = false
+    var exportValues: [String: Any] = [:]
     var payload: [String: Any] {
-        ["uuid": id, "groups": groups, "scenes": [], "schedules": [], "nodes": nodes, "updateTimestamp": lastUpdate,
+        let result: [String: Any] = ["uuid": id, "groups": groups, "scenes": [], "schedules": [], "nodes": nodes, "updateTimestamp": lastUpdate,
          "netKey": ["key": id], "appKey": ["key": "app"]]
+        return result.merging(exportValues) { _, value in value }
     }
     init(_ id: String = UUID().uuidString) { self.id = id }
     func markLocalChangePendingCloudSync() { lastUpdate += 1 }
@@ -55,6 +65,11 @@ final class SpaceData {
         }
         return await SpaceConfigurationSafety.prepareUpload(self, payload: payload) ? payload : nil
     }
+    @MainActor func export(allowsProtectedInspection: Bool) async -> [String: Any]? {
+        await Task.yield()
+        ProximityLightingImportPreflight.onExport?()
+        return payload
+    }
     @MainActor func applyNewerCloudProfiles(_ remote: [String: Any], expectedRevision: Int64) -> Bool {
         guard !profileMergeFails, lastUpdate == expectedRevision,
               let timestamp = SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"]) else { return false }
@@ -64,6 +79,12 @@ final class SpaceData {
     }
     // METADATA_METHOD
     // IMPORT_PREPARATION_METHOD
+}
+final class SunSmartDataManager {
+    static let shared = SunSmartDataManager()
+    func configurationTransaction(_ changes: () throws -> Void) -> Bool {
+        do { try changes(); return true } catch { return false }
+    }
 }
 final class MeshNetworkManager {
     static let instance = MeshNetworkManager()
@@ -109,11 +130,15 @@ final class NetworkRequest {
     var networkable = true
     var result: Swift.Result<[String: Any], NetworkApiError> = .failure(.noNetwork)
     var calls = 0, uploads = 0
+    var lastSpaceUpload: [String: Any]?
     var responses: [Swift.Result<[String: Any], NetworkApiError>] = []
     var onRequest: (() -> Void)?
     func request(_ api: API) async -> Swift.Result<[String: Any], NetworkApiError> {
         calls += 1
-        if case .spaceUpload = api { uploads += 1 }
+        if case .spaceUpload(_, _, let payload) = api {
+            uploads += 1
+            lastSpaceUpload = payload
+        }
         let action = onRequest; onRequest = nil; action?()
         return responses.isEmpty ? result : responses.removeFirst()
     }
@@ -302,6 +327,7 @@ final class NetworkRequest {
         try await testImportPreparation()
         try await testUnuploadedTimedMigration()
         try await testParseRejectionRecovery()
+        try await testOlderCloudBaseline()
         try testReferenceCleanupReceipts()
         try testProximityAllImportRecovery()
         try testProtectionGenerationWriters()
@@ -1109,7 +1135,9 @@ final class NetworkRequest {
 
             // The shared production upload path can now export and confirm the
             // newer two-node payload; it must not mark that version done early.
-            request.responses = [.success([:]), .success(["data": space.payload])]
+            // Even receipts without identity/Model fields now check the current
+            // cloud version before a new upload; an equal version remains valid.
+            request.responses = [.success(["data": oldRemote]), .success([:]), .success(["data": space.payload])]
             if case .failure = await S.uploadBeforeUnbind(space) { preconditionFailure("newer edit must remain uploadable") }
             precondition(request.responses.isEmpty && request.uploads == uploads + 1)
             precondition(space.lastUploadCloudTimestamp == 60 && !space.needUploadCloud)

@@ -1574,22 +1574,36 @@ class SpaceViewController: WMPageController {
             guard let self else { return }
             DevicePermanentDeletionContext.resume(space: self.space)
             let local = await self.space.export(allowsProtectedInspection: true)
+            let needsBaselineReview = SpaceConfigurationSafety.needsOlderCloudBaselineReview(self.space)
+            let baselineReview: SpaceConfigurationSafety.CloudBaselineReview?
+            if needsBaselineReview, let local {
+                baselineReview = await SpaceConfigurationSafety.cloudBaselineReview(self.space, local: local)
+            } else { baselineReview = nil }
+            if needsBaselineReview, local != nil, baselineReview == nil {
+                XWHUDManager.showErrorTipHUD("space_recovery_unavailable".localizedString)
+                return
+            }
+            let message = "configuration_review_message".localizedString
+                + (baselineReview.map { "\n\n" + $0.message } ?? "")
             let alert = UIAlertController(title: "synchronization_failure".localizedString,
-                message: "configuration_review_message".localizedString, preferredStyle: .alert)
+                message: message, preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "alert_item_cancel".localizedString, style: .cancel))
             alert.addAction(UIAlertAction(title: "configuration_reload_cloud".localizedString, style: .default) { [weak self] _ in
-                self?.reloadConfigurationFromCloud()
+                self?.reloadConfigurationFromCloud(review: baselineReview)
             })
             if !self.space.disableEditorPermission, !self.space.requiresPasswordVerification,
                self.space.permission == .owner || self.space.permission == .editor {
-                if let local {
+                if let local, !needsBaselineReview || baselineReview != nil {
                     alert.addAction(UIAlertAction(title: "configuration_use_local".localizedString, style: .default) { [weak self] _ in
-                        self?.confirmConfigurationRecovery(message: "configuration_use_local_confirm".localizedString) { [weak self] in
+                        let confirmation = "configuration_use_local_confirm".localizedString
+                            + (baselineReview.map { "\n\n" + $0.message } ?? "")
+                        self?.confirmConfigurationRecovery(message: confirmation) { [weak self] in
                             guard let self else { return false }
-                            return await SpaceConfigurationSafety.authorizeLocalRecovery(self.space, reviewed: local)
+                            return await SpaceConfigurationSafety.authorizeLocalRecovery(self.space, reviewed: local,
+                                reviewedRemote: baselineReview?.remote)
                         }
                     })
-                } else {
+                } else if local == nil {
                     alert.addAction(UIAlertAction(title: "configuration_repair_local".localizedString, style: .default) { [weak self] _ in
                         Task { @MainActor [weak self] in
                             guard let self else { return }
@@ -1635,13 +1649,25 @@ class SpaceViewController: WMPageController {
         present(alert, animated: true)
     }
 
-    private func reloadConfigurationFromCloud() {
+    private func reloadConfigurationFromCloud(review: SpaceConfigurationSafety.CloudBaselineReview? = nil) {
         Task { @MainActor [weak self] in
             guard let self else { return }
+            let membership = SpaceMembershipResponseContext.capture(account: UserData.currentUserId,
+                region: String(describing: UserData.currentServerRegion))
             XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: true)
             let result = await NetworkRequest.shared.request(.spaceInfo(siteId: self.space.siteId,
                 spaceId: self.space.id, password: self.space.authorizationPassword))
+            guard !Task.isCancelled, SpaceMembershipResponseContext.matches(membership,
+                account: UserData.currentUserId, region: String(describing: UserData.currentServerRegion)) else {
+                XWHUDManager.hide()
+                return
+            }
             if case .success(let response) = result, let remote = response["data"] as? [String: Any] {
+                if let review, !(await SpaceConfigurationSafety.prepareReviewedCloudImport(self.space, review: review, remote: remote)) {
+                    XWHUDManager.hide()
+                    XWHUDManager.showErrorTipHUD("configuration_repair_unavailable".localizedString)
+                    return
+                }
                 let outcome = await self.space.restoreConfiguration(spaceJsonData: remote,
                     authoritativeGET: true)
                 XWHUDManager.hide()

@@ -175,6 +175,10 @@ struct SpaceRecoveryState: Codable, Equatable {
     var timedConfigurationBaseline: Data? = nil
     var schedulerModelStatesBaseline: Data? = nil
     var nodeIdentitiesBaseline: [SpaceCloudNodeRemovalPolicy.Instance]? = nil
+    /// Repeated identical old reads may require review; a single stale read stays retryable.
+    var olderCloudBaselineFailure: String? = nil
+    /// A user-reviewed complete replacement, valid only for this local generation.
+    var localReplacementVersion: Int64? = nil
     var unbindRequested: Bool?
     var requiresRemoteImport: Bool?
     var siteCreationTimestamp: Int64?

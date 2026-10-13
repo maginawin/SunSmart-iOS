@@ -55,7 +55,7 @@ struct SpaceProtectionReadSnapshotTests {
         let clean = request.read()
         require(!clean.isBlocked && clean.phase == .active && clean.authority == .writable, "clean state not preserved")
         require(clean.recoveryGeneration == state.generation, "recovery generation not retained")
-        for marker in ["pending-import.json", "pending-reference-cleanup.json"] {
+        for marker in ["pending-import.json", "reviewed-cloud-import.json", "pending-reference-cleanup.json"] {
             let file = directory.appendingPathComponent(marker)
             try mutation { try Data("pending".utf8).write(to: file, options: .atomic) }
             require(!clean.isCurrent && request.read().isBlocked, "marker change reused permitted snapshot")
@@ -140,8 +140,8 @@ struct SpaceProtectionReadSnapshotTests {
         }
         let snapshot = readOnWorker()
         for _ in 0..<5_000 { require(!snapshot.isBlocked && snapshot.isCurrent, "stable snapshot changed") }
-        require(reads == 2 && probes == 2 && mainReads == 0,
-                "5000 checks must use one worker read (2 files, 2 probes), no main file I/O")
+        require(reads == 2 && probes == 3 && mainReads == 0,
+                "5000 checks must use one worker read (2 files, 3 probes), no main file I/O")
         AppPerformance.observe(nil)
         var oldWall: [Double] = [], newWall: [Double] = [], oldCPU: [Double] = [], newCPU: [Double] = []
         // 15 fresh snapshots, with OS file cache warm. This does not represent
@@ -156,6 +156,6 @@ struct SpaceProtectionReadSnapshotTests {
             newWall.append(ProcessInfo.processInfo.systemUptime - start); newCPU.append(cpu() - cpuStart)
         }
         func median(_ values: [Double]) -> Double { values.sorted()[values.count / 2] }
-        report = String(format: "PASS: real protection files, corruption/permissions/identity/pending/mutation; 5000 checks = 2 reads + 2 probes, main reads=0; 15 x 2000 checks median wall %.4f -> %.4f s, CPU %.4f -> %.4f s", median(oldWall), median(newWall), median(oldCPU), median(newCPU))
+        report = String(format: "PASS: real protection files, corruption/permissions/identity/pending/mutation; 5000 checks = 2 reads + 3 probes, main reads=0; 15 x 2000 checks median wall %.4f -> %.4f s, CPU %.4f -> %.4f s", median(oldWall), median(newWall), median(oldCPU), median(newCPU))
     }
 }

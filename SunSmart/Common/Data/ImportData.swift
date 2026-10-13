@@ -1745,6 +1745,22 @@ extension SpaceData {
         SpaceConfigurationSafety.reconcileAuthority(self, remote: payload)
     }
 
+    /// Reviewed import intent must pass the same decoding gates as the importer
+    /// before it becomes durable. Decode fresh objects without mutating local data.
+    static func canDecodeConfigurationImport(_ payload: [String: Any]) -> Bool {
+        guard let groups = payload["groups"] as? [[String: Any]],
+              let schedules = payload["schedules"] as? [[String: Any]],
+              let nodes = payload["nodes"] as? [[String: Any]],
+              let groupData = try? JSONSerialization.data(withJSONObject: groups),
+              (try? jsonDecoder.decode([Group].self, from: groupData)) != nil,
+              let scheduleData = try? JSONSerialization.data(withJSONObject: schedules),
+              (try? jsonDecoder.decode([Schedule].self, from: scheduleData)) != nil else { return false }
+        return nodes.allSatisfy { dictionary in
+            guard let node = try? CloudNodeImport.decode(dictionary) else { return false }
+            return node.restoreSchedulerModelSnapshot(nodeData: dictionary)
+        }
+    }
+
     /// 更新空间内基本数据+设备、组、场景、日程
     /// - Parameter spaceJsonData: 空间数据
     /// - Parameter initialize: 是否初始化数据（本地无记录）
@@ -1770,8 +1786,17 @@ extension SpaceData {
         }
         let storedTimedVersion = SpaceData.load(siteId: siteId, spaceId: id).first?.timedSchemaVersion ?? timedSchemaVersion
         let preservesTimedMigration = storedTimedVersion > incomingTimedVersion
-        guard !preservesTimedMigration || (!initialize
-            && SpaceConfigurationSafety.isConfirmedTimedBaseline(self, remote: spaceJsonData)) else {
+        if preservesTimedMigration, initialize
+            || !SpaceConfigurationSafety.isConfirmedTimedBaseline(self, remote: spaceJsonData) {
+            // An equivalent older baseline is evidence for a new upload only;
+            // it must not downgrade the already migrated local Timed schema.
+            if !initialize {
+                applyRemoteSpaceMetadata(spaceJsonData)
+                guard save() else { return .rejected("remoteMetadataPersistence") }
+                if case .preserveLocal = await SpaceConfigurationSafety.reconcileOlderCloudBaseline(self, remote: spaceJsonData) {
+                    return .preserved("unchangedOlderCloudBaseline")
+                }
+            }
             return .rejected("timedSchemaDowngrade")
         }
         applyRemoteSpaceMetadata(spaceJsonData)
@@ -1785,6 +1810,13 @@ extension SpaceData {
                 return .rejected("timedSchemaDowngrade")
             }
             return .preserved("localTimedMigrationPendingUpload")
+        }
+        if !initialize {
+            switch await SpaceConfigurationSafety.reconcileOlderCloudBaseline(self, remote: spaceJsonData) {
+            case .preserveLocal: return .preserved("unchangedOlderCloudBaseline")
+            case .failed: return .preserved("cloudBaselineNeedsReview")
+            case .notApplicable: break
+            }
         }
         if !initialize, !(await SpaceConfigurationSafety.reconcileCloudProfiles(self, remote: spaceJsonData)) {
             return .preserved("cloudProfileNeedsReview")
@@ -1801,6 +1833,9 @@ extension SpaceData {
         }
         let resumingImport = SpaceConfigurationSafety.hasPendingImport(self)
         let stagedSpaceJsonData = SpaceConfigurationSafety.pendingImport(self)
+        guard !resumingImport || stagedSpaceJsonData != nil else {
+            return .rejected("unreadablePendingImport")
+        }
         let originalSpaceJsonData = stagedSpaceJsonData.flatMap {
             SpaceConfigurationSafety.originalReferenceCleanupImport(self, candidate: $0)
         } ?? stagedSpaceJsonData ?? spaceJsonData

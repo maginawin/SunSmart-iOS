@@ -18,11 +18,16 @@ def section(text, start, end):
 
 imports = (root / 'SunSmart/Common/Data/ImportData.swift').read_text()
 node = (sdk / 'Mesh Model/Node.swift').read_text()
+group = (sdk / 'Mesh Model/Group.swift').read_text()
 hex_source = (sdk / 'Type Extensions/Int+Hex.swift').read_text()
 test = (root / 'Tests/Group/CloudNodeImportTests.swift').read_text()
 test = test.replace('// SDK_OPTIONAL_FIELDS', section(node,
     '        if let companyIdentifierAsString = try container.decodeIfPresent',
     '        self.features = try container.decodeIfPresent'))
+test = test.replace('// SDK_GROUP_DECODER', section(group,
+    '    private enum CodingKeys:', '\n}\n\nextension Group:'))
+test = test.replace('// IMPORT_DECODE_PREFLIGHT', section(imports,
+    '    static func canDecodeConfigurationImport(', '    /// 更新空间内基本数据'))
 test = test.replace('// IMPORT_STAGING_GATE', section(imports,
     '            guard groups.count == groupDicts.count else {', '            var appliedOutcome:'))
 recovery = (root / 'SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift').read_text()

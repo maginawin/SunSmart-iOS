@@ -74,6 +74,7 @@ struct SpaceProtectionReadRequest {
             }
             let folder = root.appendingPathComponent(directory, isDirectory: true)
             result.pendingImport = try exists(folder.appendingPathComponent("pending-import.json"))
+                || exists(folder.appendingPathComponent("reviewed-cloud-import.json"))
             result.pendingReferences = try exists(folder.appendingPathComponent("pending-reference-cleanup.json"))
             if let data = try readIfPresent(folder.appendingPathComponent("device-deletions.json")) {
                 let journal = try JSONDecoder().decode(SpaceDeletionJournal.self, from: data)

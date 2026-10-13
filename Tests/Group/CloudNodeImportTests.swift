@@ -20,7 +20,30 @@ final class Node: Decodable {
         nodeData["testSchedulerValid"] as? Bool != false
     }
 }
+// Execute the SDK Group decoder; address storage is a value-only test boundary.
+struct MeshAddress {
+    let address: UInt16
+    init?(hex: String) {
+        guard let value = UInt16(hex, radix: 16) else { return nil }
+        address = value
+    }
+}
+extension UInt16 {
+    var isUnassigned: Bool { self == 0 }
+    var isGroup: Bool { self >= 0xC000 }
+    var isVirtual: Bool { (0x8000..<0xC000).contains(self) }
+    var isSpecialGroup: Bool { self >= 0xFEFD }
+}
+final class Group: Decodable {
+    let groupName: String, groupAddress: String, parentAddress: String
+    let address: MeshAddress
+    // SDK_GROUP_DECODER
+}
 enum Outcome: Equatable { case applied, rejected(String) }
+struct Schedule: Decodable { let name: String }
+enum SpaceData {
+    // IMPORT_DECODE_PREFLIGHT
+}
 struct Cleanup { var didChange: Bool }
 enum SpaceConfigurationSafety {
     static var preserves = true, stages = true
@@ -71,6 +94,26 @@ enum RecoveryMessage {
         for key in ["cid", "pid", "crpl"] {
             var payload = original; payload[key] = ""
             require(rejected(payload), "unrelated optional fields keep their SDK contract")
+        }
+        let validGroup: [String: Any] = ["name": "Group", "address": "C001", "parentAddress": "0000"]
+        let validPayload: [String: Any] = ["groups": [validGroup], "schedules": [], "nodes": [original]]
+        require(SpaceData.canDecodeConfigurationImport(validPayload), "valid legacy payload passes reviewed import decoding")
+        require(SpaceData.canDecodeConfigurationImport(["groups": [], "schedules": [], "nodes": []]), "empty configuration remains valid")
+        for virtual in [false, true] {
+            for field in ["name", "parentAddress"] {
+                var group = validGroup; group[field] = 1; group["isVirtual"] = virtual
+                var payload = validPayload; payload["groups"] = [group]
+                require(!SpaceData.canDecodeConfigurationImport(payload), "all groups must decode before reviewed intent persists")
+            }
+        }
+        for failure in ["node", "scheduler", "schedule"] {
+            var payload = validPayload
+            var node = original
+            if failure == "node" { node["vid"] = "ZZZZ" }
+            if failure == "scheduler" { node["testSchedulerValid"] = false }
+            if failure == "schedule" { payload["schedules"] = [["name": 1]] }
+            payload["nodes"] = [node]
+            require(!SpaceData.canDecodeConfigurationImport(payload), "reviewed import must reject undecodable \(failure)")
         }
         let harness = ImportHarness()
         let accepted = await harness.stage([original])

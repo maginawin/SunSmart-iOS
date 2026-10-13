@@ -158,7 +158,13 @@ extension SpaceRecoveryReceiptTests {
                 default: break
                 }
                 let result = await space.update(spaceJsonData: changed, initialize: kind == "initialize")
-                precondition(result == .rejected("timedSchemaDowngrade"), "must reject actual downgrade: \(kind)")
+                if kind == "older", submission == "none" {
+                    precondition(result == .preserved("unchangedOlderCloudBaseline"))
+                    precondition(space.timedSchemaVersion == 2 && space.lastUpdate == 51,
+                                 "an equivalent old baseline cannot import or downgrade local Timed data")
+                } else {
+                    precondition(result == .rejected("timedSchemaDowngrade"), "must reject actual downgrade: \(kind)")
+                }
             }
             var visitor = baseline; visitor["role"] = "visitor"
             let revoked = await space.update(spaceJsonData: visitor)

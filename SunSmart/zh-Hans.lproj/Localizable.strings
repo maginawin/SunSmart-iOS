@@ -2188,6 +2188,10 @@
 "configuration_reload_cloud" = "重新加载云端数据";
 "configuration_use_local" = "使用本机数据";
 "configuration_review_message" = "此空间需要核对后才能同步。可以重新加载云端数据；如果本机保存的完整配置正确，也可使用本机数据恢复。导入未完成或本机数据无效时无法执行本地恢复。";
+"configuration_baseline_devices" = "本机：%d 台设备；云端：%d 台设备。";
+"configuration_baseline_local_only" = "仅本机存在：%@";
+"configuration_baseline_cloud_only" = "仅云端存在：%@";
+"configuration_baseline_proxy" = "开关代理变化（云端 → 本机）：%@";
 "configuration_use_local_confirm" = "使用本机保存的数据替换云端的整个空间？请先核对配置文件、路径和触发区域。其他手机的修改可能被替换，双方数据会先备份到本机。继续前请升级所有具有编辑权限的手机。";
 
 // Space deletion recovery

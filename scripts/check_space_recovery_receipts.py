@@ -24,6 +24,7 @@ methods = methods[:methods.index('    static func syncReadRequest(')] if '    st
 methods += section(safety, '    static func needsUpgradeBaseline(', '    /// Preserve both side stores')
 methods += section(safety, '    static func beginImport(', '    @MainActor\n    static func prepareUpload(')
 methods += section(safety, '    @MainActor\n    static func prepareUpload(', '    /// Called only after the user explicitly chooses')
+methods += section(safety, '    /// Called only after the user explicitly chooses', '    struct ReferenceRepairReview')
 methods = methods.replace('UserDefaults.standard', 'testDefaults')
 methods += """
     static let testRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -47,6 +48,18 @@ imports = read('SunSmart/Common/Data/ImportData.swift')
 metadata = section(imports,
     '    func applyRemoteSpaceMetadata(', '    /// 更新空间内基本数据')
 test = read('Tests/Group/SpaceRecoveryReceiptTests.swift').replace('// METADATA_METHOD', metadata)
+# Share the SDK Group decoder and optional Node field decoder with the import
+# fixture. Mesh object loading and scheduler restoration remain explicit doubles.
+sdk = root / '.local-sdk/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision'
+codecs = section(read('Tests/Group/CloudNodeImportTests.swift'), '// Only optional identifier', 'enum Outcome:')
+codecs = codecs.replace('// SDK_OPTIONAL_FIELDS', section((sdk / 'Mesh Model/Node.swift').read_text(),
+    '        if let companyIdentifierAsString = try container.decodeIfPresent',
+    '        self.features = try container.decodeIfPresent'))
+codecs = codecs.replace('// SDK_GROUP_DECODER', section((sdk / 'Mesh Model/Group.swift').read_text(),
+    '    private enum CodingKeys:', '\n}\n\nextension Group:'))
+test += '\n' + codecs + '\n' + section((sdk / 'Type Extensions/Int+Hex.swift').read_text(),
+    'internal extension UInt16 {', 'internal extension Int16 {')
+test += '\n' + section(imports, 'enum CloudNodeImport {', '\n/// Stage timings')
 # Execute the production update prefix through both async freshness guards,
 # followed by its actual legacy Zone gate (without the unrelated Mesh importer).
 # Mesh preparation/export and App database reads are controlled test boundaries.
@@ -59,6 +72,7 @@ test = test.replace('// IMPORT_PREPARATION_METHOD', '@MainActor\n' + preparation
     + '        _ = proximityPreflight\n' + zone_gate + '        return .prepared\n    }\n')
 test += '\n' + section(imports, 'final class SiteImportTrace', '\nstruct SpaceImportOutcome')
 test += '\n' + read('Tests/Group/SpaceImportPreparationTests.swift')
+test += '\n' + read('Tests/Group/OlderCloudBaselineTests.swift')
 membership = section(read('SunSmart/Common/Data/SpaceMembershipCoordinator.swift'),
     'enum SpaceMembershipCoordinator {', '    static var savedCopiesDirectory:') + '}\n'
 membership = membership.replace('URL(fileURLWithPath: NSHomeDirectory())\n        .appendingPathComponent("Library/Application Support/SpaceMembership")',
