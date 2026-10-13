@@ -19,6 +19,13 @@ with tempfile.TemporaryDirectory(prefix='timed-sqlite-') as directory:
     target_source = (root / 'SunSmart/Common/Data/MeshNetwork+SunSmart.swift').read_text()
     target_start = target_source.index('    func targets(node: Node, contextGroup: Group? = nil) -> Bool {')
     target_end = target_source.index('\n    }', target_start) + len('\n    }')
+    delete_start = target_source.index('    func needsDelete(from node: Node, contextGroup: Group? = nil) -> Bool {')
+    delete_end = target_source.index('\n    }', delete_start) + len('\n    }')
+    schedule = (root / 'SunSmart/Main/Timed/Model/Scheduler.swift').read_text()
+    codec_start = schedule.index('    private enum CodingKeys:', schedule.index('// MARK: - Codable'))
+    codec = schedule[codec_start:schedule.index('    /// 复制日程', codec_start)]
+    weekdays_start = schedule.index('    static func getWeekDays(')
+    weekdays = schedule[weekdays_start:schedule.index('    static func == (lhs: Schedule,', weekdays_start)]
     server = (root / 'SunSmart/Main/Timed/Model/ScheduleServer.swift').read_text()
     toggle_start = server.index('    static func setEnabledState(')
     toggle_end = server.index('\n    }', toggle_start) + len('\n    }')
@@ -35,6 +42,9 @@ with tempfile.TemporaryDirectory(prefix='timed-sqlite-') as directory:
     node_scene_end = node_sync.index('        case .schedules(let schedule):', node_scene_start)
     harness.write_text((root / 'Tests/Timed/TimedSlotPersistenceTests.swift').read_text()
                        .replace('    // ACTUAL_TARGETS', target_source[target_start:target_end])
+                       .replace('    // ACTUAL_NEEDS_DELETE', target_source[delete_start:delete_end])
+                       .replace('    // ACTUAL_CODEC', codec)
+                       .replace('    // ACTUAL_WEEKDAYS', weekdays)
                        .replace('    // ACTUAL_TOGGLE', server[toggle_start:toggle_end])
                        .replace('    // ACTUAL_GROUP_EXIT', group[exit_start:exit_end])
                        .replace('    // ACTUAL_SCENE_READER', target_source[scene_start:scene_end])
@@ -48,5 +58,6 @@ with tempfile.TemporaryDirectory(prefix='timed-sqlite-') as directory:
     subprocess.run(['swiftc', '-parse-as-library', '-I', str(directory), '-L', str(directory),
                     '-lSQLite', '-Xlinker', '-rpath', '-Xlinker', str(directory),
                     str(root / 'SunSmart/Main/Timed/Model/TimedSchedulerSlotPolicy.swift'),
+                    str(root / 'SunSmart/Main/Timed/Model/TimedSchedulerOwnerPolicy.swift'),
                     str(runtime), str(harness), '-o', str(binary)], check=True)
     subprocess.run([str(binary), str(directory / 'app.sqlite')], check=True)

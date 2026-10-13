@@ -36,9 +36,11 @@ enum DevicePermanentDeletionContext {
     static var onPrepare: (() -> Void)?
     static var onExport: (() -> Void)?
     static var storedSpace: SpaceData?
+    static var lastPayload: [String: Any]?
     static var calls = 0
     static func prepare(spaceJsonData: [String: Any], initialize: Bool) async -> Bool {
         calls += 1
+        lastPayload = spaceJsonData
         await Task.yield()
         onPrepare?()
         return true
@@ -57,6 +59,49 @@ extension SpaceData {
     }
 }
 extension SpaceRecoveryReceiptTests {
+    @MainActor static func testDefaultedTimedImport() async throws {
+        typealias S = SpaceConfigurationSafety
+        typealias P = ProximityLightingImportPreflight
+        defer { P.storedSpace = nil; P.lastPayload = nil }
+        for role in ["owner", "editor"] {
+            for resume in [false, true] {
+                let space = SpaceData()
+                space.lastUploadCloudTimestamp = space.lastUpdate
+                space.timedSchemaVersion = 2
+                P.storedSpace = space
+                var remote = space.payload
+                remote["role"] = role
+                remote["schedules"] = (0..<17).map { id -> [String: Any] in
+                    ["id": id, "name": "Retained \(id)", "enabled": true, "selectTarget": 1,
+                     "action": 1, "fadeTime": 0, "hour": 8, "minute": 0, "dayOfWeek": 127]
+                }
+                if resume { precondition(S.beginImport(space, payload: remote)) }
+                for _ in 0..<2 {
+                    let outcome = await space.update(spaceJsonData: remote, initialize: !resume)
+                    precondition(outcome == .prepared, "old-writer loss must not block owner/editor or retry")
+                    let working = P.lastPayload!
+                    let rows = working["schedules"] as! [[String: Any]]
+                    precondition(rows.count == 17 && rows.allSatisfy { ($0["nodeSlots"] as? [Any])?.isEmpty == true })
+                    precondition(TimedSchedulerPayloadPolicy.schema(working) == 2)
+                    precondition(TimedSchedulerPayloadPolicy.canonical(working) == TimedSchedulerPayloadPolicy.canonical(remote))
+                }
+                let working = P.lastPayload!
+                precondition(S.beginImport(space, payload: working))
+                precondition(S.finishImport(space))
+                precondition(!S.isBlocked(space) && !S.hasPendingImport(space))
+                let baseline = try S.recoveryState(space)
+                precondition(baseline.timedConfigurationBaseline == TimedSchedulerPayloadPolicy.canonical(remote))
+                let submission = S.prepareSubmission(space, payload: working)!
+                precondition(S.markSubmissionAccepted(submission, space: space))
+                NetworkRequest.shared.result = .success(["data": remote])
+                let confirmation = await S.resumeUpload(space)
+                if case .failure = confirmation { preconditionFailure("raw old-writer GET must confirm equivalent defaulted Timed data") }
+                precondition(!S.hasPendingUpload(space))
+            }
+        }
+        print("PASS: defaulted Timed owner/editor import preparation, pending retry, baseline and upload readback")
+    }
+
     @MainActor static func testLegacyTimedBaselineBackfill() async throws {
         typealias S = SpaceConfigurationSafety
         typealias P = ProximityLightingImportPreflight

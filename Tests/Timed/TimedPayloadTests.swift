@@ -22,7 +22,7 @@ import Foundation
     static func main() {
         let old = payload([schedule(0), schedule(15)], version: 1)
         precondition(TimedSchedulerPayloadPolicy.canonical(old) != nil)
-        precondition(TimedSchedulerPayloadPolicy.canonical(payload([schedule(16)], version: 1)) == nil)
+        precondition(TimedSchedulerPayloadPolicy.canonical(payload([schedule(16)], version: 1)) != nil)
         let fresh = payload([schedule(300, slot: 0), schedule(500, slot: 1)])
         let canonical = TimedSchedulerPayloadPolicy.canonical(fresh)!
         precondition(TimedSchedulerPayloadPolicy.canonical(payload([schedule(500, slot: 1), schedule(300, slot: 0)])) == canonical)
@@ -68,6 +68,68 @@ import Foundation
         precondition(TimedSchedulerPayloadPolicy.backupPayload(old) != nil)
         var futureBackup = backup; futureBackup["formatVersion"] = 3
         precondition(TimedSchedulerPayloadPolicy.backupPayload(futureBackup) == nil)
+        // Reproduce an old client's full write: logical IDs survive, while
+        // the schema and all per-node bindings are omitted.
+        var damaged = twoDevices
+        damaged["spaceData"] = ["proximityLightingSchemaVersion": 1, "triggerZones": []]
+        damaged["schedules"] = Array(records.prefix(17)).map { item -> [String: Any] in
+            var item = item; item.removeValue(forKey: "nodeSlots"); return item
+        }
+        let repaired = TimedSchedulerPayloadPolicy.fillingMissingBindings(damaged)
+        let retained = repaired["schedules"] as! [[String: Any]]
+        precondition(retained.count == 17 && retained.allSatisfy { ($0["nodeSlots"] as? [Any])?.isEmpty == true })
+        var withoutDefaults = repaired
+        withoutDefaults["spaceData"] = damaged["spaceData"]
+        withoutDefaults["schedules"] = retained.map { item -> [String: Any] in
+            var item = item; item.removeValue(forKey: "nodeSlots"); return item
+        }
+        precondition(json(withoutDefaults) == json(damaged), "defaults must retain every original field")
+        let repairedEvidence = TimedSchedulerPayloadPolicy.canonical(repaired)!
+        precondition(TimedSchedulerPayloadPolicy.schema(damaged) == 2)
+        precondition(TimedSchedulerPayloadPolicy.canonical(damaged) == repairedEvidence,
+                     "raw GET, normalized import and exported defaults use identical receipt evidence")
+        precondition(json(TimedSchedulerPayloadPolicy.fillingMissingBindings(repaired)) == json(repaired))
+        precondition(json(TimedSchedulerPayloadPolicy.fillingMissingBindings(old)) == json(old))
+        precondition(json(TimedSchedulerPayloadPolicy.fillingMissingBindings(fresh)) == json(fresh))
+        precondition(TimedSchedulerPayloadPolicy.canonical(payload([])) != repairedEvidence)
+        let repairedBackup = TimedSchedulerPayloadPolicy.backupEnvelope(damaged)!
+        precondition(TimedSchedulerPayloadPolicy.canonical(TimedSchedulerPayloadPolicy.backupPayload(repairedBackup)!) == repairedEvidence)
+        precondition(TimedSchedulerPayloadPolicy.canonical(TimedSchedulerPayloadPolicy.backupPayload(damaged)!) == repairedEvidence)
+        for field in ["hour", "id", "nodeSlots"] {
+            var invalid = damaged, rows = damaged["schedules"] as! [[String: Any]]
+            rows[0][field] = field == "nodeSlots" ? NSNull() : -1
+            invalid["schedules"] = rows
+            precondition(TimedSchedulerPayloadPolicy.canonical(invalid) == nil)
+        }
+        for version: Any in [NSNull(), 3] {
+            var invalid = damaged; invalid["spaceData"] = ["timedSchemaVersion": version]
+            precondition(TimedSchedulerPayloadPolicy.canonical(invalid) == nil)
+        }
+        var duplicate = damaged, duplicateRows = retained
+        duplicateRows[16]["id"] = 0; duplicate["schedules"] = duplicateRows
+        duplicate["spaceData"] = ["timedSchemaVersion": 2]
+        precondition(TimedSchedulerPayloadPolicy.canonical(duplicate) == nil)
+        var overCapacity = repaired
+        overCapacity["schedules"] = retained.map { item -> [String: Any] in
+            var item = item; item["deviceAddresses"] = ["0001"]; return item
+        }
+        precondition(TimedSchedulerPayloadPolicy.canonical(overCapacity) == nil)
+        if CommandLine.arguments.count > 1 {
+            let data = try! Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))
+            let response = try! JSONSerialization.jsonObject(with: data) as! [String: Any]
+            let source = response["data"] as! [String: Any]
+            let result = TimedSchedulerPayloadPolicy.fillingMissingBindings(source)
+            let rows = result["schedules"] as! [[String: Any]]
+            precondition(rows.count == 17 && rows.allSatisfy { ($0["nodeSlots"] as? [Any])?.isEmpty == true })
+            precondition(TimedSchedulerPayloadPolicy.canonical(result) != nil)
+            precondition(TimedSchedulerPayloadPolicy.canonical(source) == TimedSchedulerPayloadPolicy.canonical(result))
+            precondition(json(result["nodes"]!) == json(source["nodes"]!))
+            print("PASS: private snapshot retains all 17 schedules and physical snapshots with unassigned defaults")
+        }
+        print("PASS: legacy-writer reproduction, default filling, stable round trip and malformed data rejection")
         print("PASS: complete Timed payload validation and canonical cloud comparison")
+    }
+    static func json(_ value: Any) -> Data {
+        try! JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])
     }
 }

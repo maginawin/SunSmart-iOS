@@ -39,6 +39,8 @@ with tempfile.TemporaryDirectory(prefix='cloud-node-import-') as directory:
     harness = directory / 'Harness.swift'
     harness.write_text('\n'.join(parts))
     binary = directory / 'Tests'
-    subprocess.run(['swiftc', '-D', 'DEBUG', '-parse-as-library', str(harness), '-o', str(binary)], check=True)
+    subprocess.run(['swiftc', '-D', 'DEBUG', '-parse-as-library',
+                    str(root / 'SunSmart/Main/Timed/Model/TimedSchedulerSlotPolicy.swift'),
+                    str(harness), '-o', str(binary)], check=True)
     args = sys.argv[sys.argv.index('--snapshot') + 1:][:1] if '--snapshot' in sys.argv else []
     subprocess.run([str(binary), *args], check=True)

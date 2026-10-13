@@ -6,6 +6,7 @@ import struct SQLite.Expression
 typealias Address = UInt16
 typealias SceneNumber = UInt16
 extension UInt16 {
+    init?(hex: String) { self.init(hex, radix: 16) }
     var hex: String { String(format: "%04X", self) }
     var isUnicast: Bool { (1..<0x8000).contains(self) }
     var isGroup: Bool { (0xC000..<0xFF00).contains(self) }
@@ -29,13 +30,13 @@ final class MeshNetworkManager {
 }
 // Object/network ownership is the isolated boundary; every table operation below
 // is the production Database.swift extension, including migrations and failures.
-final class Schedule {
+final class Schedule: Codable {
     enum TargetType: Int { case groups, devices, scene, profile }
     enum Action: UInt8 { case off = 0, on = 1, scene = 2, noAction = 15 }
     typealias ScheduleProfile = Int
     var id: Int, name: String, enabled: Bool
-    var nodeAddresses: [Address], groupAddresses: [Address], sceneNumber: SceneNumber?
-    var profiles: [ScheduleProfile], selectTargetType: TargetType, action: Action
+    var nodeAddresses: [Address] = [], groupAddresses: [Address] = [], sceneNumber: SceneNumber?
+    var profiles: [ScheduleProfile] = [], selectTargetType: TargetType, action: Action
     var fadeTime: Int, weekDays: [WeekDay], hour: Int, minute: Int
     var needDeleteNodeAddresses: [Address] = [], needDeleteGroupAddresses: [Address] = [], needDeleteSceneNumbers: [SceneNumber] = []
     var nodeSlots: [TimedSchedulerNodeSlot]?, nodeSlotsLoadFailed = false
@@ -47,6 +48,9 @@ final class Schedule {
         !node.schedulerSetupModels.isEmpty && targets(node: node, contextGroup: contextGroup) && node.appliedEnabled != enabled
     }
     // ACTUAL_TARGETS
+    // ACTUAL_NEEDS_DELETE
+    // ACTUAL_CODEC
+    // ACTUAL_WEEKDAYS
 
     init(id: Int, name: String, enabled: Bool, nodeAddresses: [Address] = [], groupAddresses: [Address] = [],
          sceneNumber: SceneNumber? = nil, profiles: [ScheduleProfile] = [], selectTargetType: TargetType = .devices,
@@ -170,6 +174,7 @@ enum ScheduleServer {
         var db = try Connection(path)
         SunSmartDataManager.shared.db = db
         Schedule.initDatabase()
+        try defaultedBindingsSurviveReload()
         for id in 0..<16 {
             precondition(Schedule(id: id, name: "Schedule \(id + 1)", enabled: false).save(meshUUID: "mesh", meshNetworkId: "one"))
         }
@@ -214,6 +219,53 @@ enum ScheduleServer {
         SunSmartDataManager.shared.db = nil
         precondition(!item.save(meshUUID: "mesh", meshNetworkId: "one"), "missing database cannot confirm a saved reservation")
         print("PASS: production Schedule SQLite migration, 17th logical record, restart, pending cleanup, corruption and rollback")
+    }
+    static func defaultedBindingsSurviveReload() throws {
+        let manager = MeshNetworkManager.instance
+        let a = Node(1), b = Node(5)
+        let originals = (0..<17).map { id in
+            Schedule(id: id, name: "Kept \(id)", enabled: true, nodeAddresses: [id < 16 ? 1 : 5])
+        }
+        // Production old-format encoding omits nil bindings. The import adapter
+        // must supply defaults before the production decoder sees logical ID 16.
+        let rows = try JSONSerialization.jsonObject(with: jsonEncoder.encode(originals))
+        let source: [String: Any] = ["schedules": rows]
+        let normalized = TimedSchedulerPayloadPolicy.fillingMissingBindings(source)
+        let data = try JSONSerialization.data(withJSONObject: normalized["schedules"]!)
+        let decoded = try jsonDecoder.decode([Schedule].self, from: data)
+        precondition(decoded.count == 17 && decoded.allSatisfy { $0.nodeSlots == [] })
+        precondition(decoded.last?.id == 16 && decoded.last?.name == "Kept 16" && decoded.last?.nodeAddresses == [5])
+        for schedule in decoded {
+            precondition(schedule.save(meshUUID: "defaulted", meshNetworkId: "one"))
+        }
+        let reloaded = Schedule.load(meshUUID: "defaulted", meshNetworkId: "one").sorted { $0.id < $1.id }
+        precondition(reloaded.count == 17 && reloaded.allSatisfy { $0.nodeSlots == [] && !$0.nodeSlotsLoadFailed })
+        let roundTrip = try jsonDecoder.decode([Schedule].self, from: jsonEncoder.encode(reloaded))
+        precondition(roundTrip.map(\.id) == Array(0..<17) && roundTrip.allSatisfy { $0.nodeSlots == [] })
+        manager.realNodes = [a, b]; manager.schedules = reloaded
+        for node in [a, b] {
+            node.allSchedulerModelEntrys[node.schedulerSetupModels[0]] = [0: Entry()]
+            node.schedulerActions = [0: Entry()]
+        }
+        precondition(reloaded.allSatisfy { $0.slot(on: a) == nil && $0.slot(on: b) == nil })
+        precondition(reloaded.allSatisfy { !$0.needsDelete(from: a) && !$0.needsDelete(from: b) },
+                     "unassigned defaults must never identify another schedule's physical slot for deletion")
+        a.allSchedulerModelEntrys[a.schedulerSetupModels[0]] = Dictionary(uniqueKeysWithValues: (0..<16).map { ($0, Entry()) })
+        do {
+            _ = try TimedSchedulerBindings.prepare(schedules: reloaded)
+            preconditionFailure("unknown occupied slots cannot be overwritten")
+        } catch TimedSchedulerBindings.Failure.deviceCapacity { }
+        precondition(reloaded.allSatisfy { $0.nodeSlots == [] }, "failed planning must not mutate defaulted schedules")
+        for node in [a, b] {
+            node.allSchedulerModelEntrys[node.schedulerSetupModels[0]] = [:]
+            node.schedulerActions = [:]
+        }
+        let plan = try TimedSchedulerBindings.prepare(schedules: reloaded)
+        try TimedSchedulerBindings.commit(plan)
+        precondition(reloaded[0].slot(on: a) == 0 && reloaded[0].slot(on: b) == nil)
+        precondition(reloaded[16].slot(on: b) == 0 && reloaded[16].slot(on: a) == nil)
+        manager.realNodes = []; manager.schedules = []
+        print("PASS: defaulted 17 schedules decode, persist and reload; deletion ignores unknown slots; capacity failure/retry allocates per device")
     }
     static func groupExitReleasesOnlyClearedNode(db: Connection) throws {
         let manager = MeshNetworkManager.instance

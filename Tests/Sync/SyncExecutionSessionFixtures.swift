@@ -1,3 +1,10 @@
+// Slot identity validation is exercised by TimedSlotPersistenceTests; this
+// fixture isolates the Session's protection/generation and callback ordering.
+extension Node {
+    func applyMessageHandle(_ handle: MeshMessageHandle, isSuccess: Bool = true) {
+        updateData(message: handle.message, isSuccess: isSuccess, model: handle.model)
+    }
+}
 // Session 主体、任务选择、回写、重试和兼容模型来自生产；以下只替代 SDK/业务边界。
 struct TestVendorModel { var parentElement: TestElement? }
 struct TestElement { var unicastAddress: Address }

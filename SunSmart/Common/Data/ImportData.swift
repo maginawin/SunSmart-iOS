@@ -1748,6 +1748,7 @@ extension SpaceData {
     /// Reviewed import intent must pass the same decoding gates as the importer
     /// before it becomes durable. Decode fresh objects without mutating local data.
     static func canDecodeConfigurationImport(_ payload: [String: Any]) -> Bool {
+        let payload = TimedSchedulerPayloadPolicy.fillingMissingBindings(payload)
         guard let groups = payload["groups"] as? [[String: Any]],
               let schedules = payload["schedules"] as? [[String: Any]],
               let nodes = payload["nodes"] as? [[String: Any]],
@@ -1776,10 +1777,13 @@ extension SpaceData {
         guard (try? SpaceConfigurationSafety.recoveryState(self).phase) == .active else {
             return .rejected("spaceRemovalPending")
         }
+        // Default legacy-writer field loss before decoding, using the same
+        // representation as cloud comparison and persisted import readback.
+        let incomingTimedPayload = TimedSchedulerPayloadPolicy.fillingMissingBindings(spaceJsonData)
         // Validate before metadata reconciliation or any persistent replacement.
-        guard let incomingTimedVersion = TimedSchedulerPayloadPolicy.schema(spaceJsonData),
-              TimedSchedulerPayloadPolicy.canonical(spaceJsonData) != nil,
-              let incomingSchedules = spaceJsonData["schedules"] as? [[String: Any]],
+        guard let incomingTimedVersion = TimedSchedulerPayloadPolicy.schema(incomingTimedPayload),
+              TimedSchedulerPayloadPolicy.canonical(incomingTimedPayload) != nil,
+              let incomingSchedules = incomingTimedPayload["schedules"] as? [[String: Any]],
               let incomingData = try? JSONSerialization.data(withJSONObject: incomingSchedules),
               (try? jsonDecoder.decode([Schedule].self, from: incomingData)) != nil else {
             return .rejected("invalidTimedPayload")
@@ -1836,9 +1840,9 @@ extension SpaceData {
         guard !resumingImport || stagedSpaceJsonData != nil else {
             return .rejected("unreadablePendingImport")
         }
-        let originalSpaceJsonData = stagedSpaceJsonData.flatMap {
+        let originalSpaceJsonData = TimedSchedulerPayloadPolicy.fillingMissingBindings(stagedSpaceJsonData.flatMap {
             SpaceConfigurationSafety.originalReferenceCleanupImport(self, candidate: $0)
-        } ?? stagedSpaceJsonData ?? spaceJsonData
+        } ?? stagedSpaceJsonData ?? spaceJsonData)
         let referenceCleanup = try? SpaceSyncCleanupPolicy.normalize(originalSpaceJsonData)
         let spaceJsonData = referenceCleanup?.payload ?? originalSpaceJsonData
         trace.mark("metadataPrepared")

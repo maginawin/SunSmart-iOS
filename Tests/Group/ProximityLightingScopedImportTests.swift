@@ -182,6 +182,7 @@ final class SpaceData {
     @discardableResult func save() -> Bool { true }
 }
 enum SpaceConfigurationSafety {
+    static func reviewedCloudImport(_ space: SpaceData) -> Int? { nil }
     static func canAutomaticallyUpload(_ space: SpaceData) -> Bool { !pendingImport }
     enum SafetyError: Error { case persistenceFailed }
     static var blocked = false
