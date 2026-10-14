@@ -320,6 +320,7 @@ final class NetworkRequest {
         try await testDirectUploadConfirmation()
         try await testSceneTargetReadback()
         try await testEmptySceneTargetReadback()
+        try await testEmptySceneSchedulesAddedDuringUpload()
         try await testEmptyZoneReadback()
         try await testSchedulerModelReadback()
         try await testEmptyGroupAddressRecovery()
@@ -783,6 +784,43 @@ final class NetworkRequest {
         if case .failure = await S.resumeUpload(space) { preconditionFailure("Correct readback must finish the receipt") }
         precondition(!S.hasPendingUpload(space) && !S.isBlocked(space))
         print("PASS: scene target readback mismatch retains receipt and succeeds on retry")
+    }
+
+    @MainActor static func testEmptySceneSchedulesAddedDuringUpload() async throws {
+        typealias S = SpaceConfigurationSafety
+        let request = NetworkRequest.shared, space = SpaceData("empty-scene-concurrent-adds")
+        space.timedSchemaVersion = 2
+        let schedules: [[String: Any]] = (0..<17).map { id in
+            ["id": id, "name": "Empty \(id)", "enabled": true, "selectTarget": 2,
+             "sceneAddress": "0006", "action": 2, "hour": 8, "minute": id,
+             "dayOfWeek": 127, "fadeTime": 0, "nodeSlots": [[String: Any]]()]
+        }
+        space.exportValues = ["spaceData": ["timedSchemaVersion": 2],
+                              "scenes": [["number": "0006", "name": "Empty scene"]],
+                              "schedules": Array(schedules.prefix(1))]
+        let firstPayload = space.payload
+        let first = S.prepareSubmission(space, payload: firstPayload)!
+        precondition(S.markSubmissionAccepted(first, space: space))
+        space.exportValues["schedules"] = schedules
+        space.lastUpdate += 16
+        request.result = .failure(.noNetwork)
+        if case .success = await S.resumeUpload(space) { preconditionFailure("offline readback must retain receipt") }
+        precondition(S.hasPendingUpload(space) && space.needUploadCloud)
+        // Reload the durable receipt as on re-entry, then confirm only its one
+        // submitted schedule. This must not acknowledge the other sixteen.
+        let reloaded = try S.recoveryState(space)
+        precondition(reloaded.submission?.id == first.submission?.id)
+        request.result = .success(["data": firstPayload])
+        if case .failure = await S.resumeUpload(space) { preconditionFailure("first snapshot should confirm") }
+        precondition(space.lastUploadCloudTimestamp == 50 && space.lastUpdate == 66 && space.needUploadCloud)
+        precondition((space.payload["schedules"] as? [[String: Any]])?.count == 17)
+        let fullPayload = space.payload
+        let full = S.prepareSubmission(space, payload: fullPayload)!
+        precondition(S.markSubmissionAccepted(full, space: space))
+        request.result = .success(["data": fullPayload])
+        if case .failure = await S.resumeUpload(space) { preconditionFailure("all seventeen should confirm on retry") }
+        precondition(space.lastUploadCloudTimestamp == 66 && !space.needUploadCloud && !S.hasPendingUpload(space))
+        print("PASS: empty Scene 1-to-17 additions survive failed readback and persisted receipt reload; old confirmation keeps newer edits pending, full retry confirms")
     }
 
     @MainActor static func testEmptySceneTargetReadback() async throws {

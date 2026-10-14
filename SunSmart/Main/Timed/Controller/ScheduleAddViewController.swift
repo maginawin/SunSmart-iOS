@@ -280,6 +280,7 @@ class ScheduleAddViewController: UIViewController {
         if needSync { // 是否需要同步
             pushToSyncDevices(schedule: schedule)
         }else {
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             XWHUDManager.showSuccessTipHUD("done".localizedString)
             DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5, execute: {
                 XWHUDManager.hide()
@@ -295,9 +296,15 @@ class ScheduleAddViewController: UIViewController {
         
         guard let schedule = self.schedule else { return }
         guard schedule.existNodes.count > 0 else {
-//            Schedule.deleteData(meshUUID: self.space.meshUUID, meshNetworkKey: space.meshNetworkKey, scheduleId: schedule.id)
-            schedule.deleteData()
+            guard schedule.deleteData() else {
+                XWHUDManager.showErrorTipHUD("schedule_delete_failed".localizedString)
+                return
+            }
             MeshNetworkManager.instance.schedules.removeAll(where: { $0.id == schedule.id })
+            for group in MeshNetworkManager.instance.groups {
+                group.info.bindSchedules.removeAll { $0.id == schedule.id }
+            }
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             NotificationCenter.default.post(name: .init(schedulesRefreshNotificationName), object: nil)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
@@ -479,13 +486,12 @@ class ScheduleAddViewController: UIViewController {
         if !schedule.getNeedSyncDatas().isEmpty() {
             pushToSyncDevices(schedule: schedule)
         }else { // 无需同步，仅编辑名称参数不影响设备配置
+            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             XWHUDManager.showSuccessTipHUD("done".localizedString)
             DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5, execute: {
                 XWHUDManager.hide()
                 self.back()
                 NotificationCenter.default.post(name: .init(schedulesRefreshNotificationName), object: nil)
-                // 通知space数据修改
-                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             })
         }
         

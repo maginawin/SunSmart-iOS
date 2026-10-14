@@ -216,9 +216,64 @@ enum ScheduleServer {
         try enabledFailurePersistsRollback(db: db)
         unknownDeviceCapacityIsDeferred()
         sceneRemovalIsNotAnActiveTarget()
+        try emptyTargetsSurviveReload(db: db, path: path)
         SunSmartDataManager.shared.db = nil
         precondition(!item.save(meshUUID: "mesh", meshNetworkId: "one"), "missing database cannot confirm a saved reservation")
         print("PASS: production Schedule SQLite migration, 17th logical record, restart, pending cleanup, corruption and rollback")
+    }
+    static func emptyTargetsSurviveReload(db originalDB: Connection, path originalPath: String) throws {
+        let manager = MeshNetworkManager.instance
+        let mesh = manager.meshNetwork!.uuid.uuidString, network = manager.currentNetworkKey.networkId.hex
+        // Earlier fixtures inject savepoint failures. Use an independent database
+        // so this normal reopen test does not inherit their transaction state.
+        let path = originalPath + ".empty-targets"
+        let db = try Connection(path)
+        SunSmartDataManager.shared.db = db
+        Schedule.initDatabase()
+        defer { SunSmartDataManager.shared.db = originalDB; manager.realNodes = []; manager.schedules = [] }
+        for kind in [Schedule.TargetType.groups, .scene] {
+            precondition(Schedule.deleteAll(meshUUID: mesh, meshNetworkId: network))
+            manager.realNodes = []; manager.schedules = []
+            let group = Group(), scene = Scene()
+            for id in 0..<17 {
+                let schedule = Schedule(id: id, name: "Empty \(id)", enabled: true,
+                    groupAddresses: kind == .groups ? [group.address.address] : [],
+                    sceneNumber: kind == .scene ? scene.number : nil, selectTargetType: kind)
+                schedule.groups = kind == .groups ? [group] : []
+                schedule.scene = kind == .scene ? scene : nil
+                schedule.nodeSlots = []
+                let candidates = manager.schedules + [schedule]
+                try TimedSchedulerBindings.commit(TimedSchedulerBindings.prepare(schedules: candidates))
+                manager.schedules = candidates
+            }
+            SunSmartDataManager.shared.db = try Connection(path)
+            let reloaded = Schedule.load(meshUUID: mesh, meshNetworkId: network).sorted { $0.id < $1.id }
+            precondition(reloaded.map(\.id) == Array(0..<17) && reloaded.allSatisfy { $0.nodeSlots == [] },
+                         "empty targets must survive a new SQLite connection with all IDs and empty bindings")
+            let decoded = try jsonDecoder.decode([Schedule].self, from: jsonEncoder.encode(reloaded))
+            precondition(decoded.count == 17 && decoded.allSatisfy { $0.nodeSlots == [] })
+            precondition(decoded.map(\.groupAddresses) == reloaded.map(\.groupAddresses))
+            precondition(decoded.map(\.sceneNumber) == reloaded.map(\.sceneNumber))
+            SunSmartDataManager.shared.db = db
+            // A legitimate empty configuration must still reject an overloaded
+            // device when Group membership or Scene targets are added later.
+            let node = Node(1)
+            manager.realNodes = [node]; group.nodes = [node]; node.group = group
+            do {
+                _ = try kind == .groups
+                    ? TimedSchedulerBindings.prepareTopology(group: group, members: [node], addingMembers: [node])
+                    : TimedSchedulerBindings.prepareTopology(scene: scene, sceneGroups: [group])
+                preconditionFailure("17 empty-target schedules cannot all be assigned to one device")
+            } catch TimedSchedulerBindings.Failure.deviceCapacity { }
+            precondition(manager.schedules.allSatisfy { $0.nodeSlots == [] })
+            try db.execute("PRAGMA query_only = ON")
+            precondition(!reloaded[0].deleteData(meshUUID: mesh, meshNetworkId: network))
+            precondition(Schedule.load(meshUUID: mesh, meshNetworkId: network).count == 17)
+            try db.execute("PRAGMA query_only = OFF")
+            precondition(reloaded[0].deleteData(meshUUID: mesh, meshNetworkId: network))
+            precondition(Schedule.load(meshUUID: mesh, meshNetworkId: network).count == 16)
+            print("PASS: empty target \(kind) keeps 17 records through reservation, SQLite reopen and Codable; later device capacity and failed deletion remain protected")
+        }
     }
     static func defaultedBindingsSurviveReload() throws {
         let manager = MeshNetworkManager.instance
