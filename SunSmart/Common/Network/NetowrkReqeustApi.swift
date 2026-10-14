@@ -566,7 +566,8 @@ extension NetowrkReqeustApi: TargetType {
             }
             return parameters
         case .devicesConfig:
-            return nil
+            // 北美接口要求显式 JSON 正文；空参数通过 JSONEncoding 编码为 {}。
+            return [:]
         case .simulateFault(let payload):
             return payload.parameters
         case .gatewayList(let siteId):

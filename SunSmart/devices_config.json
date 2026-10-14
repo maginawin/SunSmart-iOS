@@ -332,7 +332,7 @@
         "elementCount": 3,
         "iconCategory": "Standalone Sensor",
         "deviceCategory": "Lighting",
-        "modelName": "SR-SS9030B-PIR-V",
+        "modelName": "SR-BL9030B-PIR-HBV/LBV",
         "sensitivityRangeMin": 13565,
         "sensitivityRangeMax": 56229
     },
@@ -365,7 +365,7 @@
         "elementCount": 3,
         "iconCategory": "Lighting",
         "deviceCategory": "Lighting",
-        "modelName": "SR-BL9036T-MW-WPV",
+        "modelName": "SR-BL9036T-MW-PCBA",
         "sensitivityRangeMin": 7880,
         "sensitivityRangeMax": 63634
     },
@@ -376,7 +376,7 @@
         "elementCount": 3,
         "iconCategory": "Emergency",
         "deviceCategory": "Lighting",
-        "modelName": "SR-BL9036T-MW-WPV-EL"
+        "modelName": "SR-BL9036T-MW-PCBA-EL"
     },
     {
         "companyId": "0A78",
@@ -738,7 +738,7 @@
     {
         "companyId": "0A78",
         "productId": "2031",
-        "categoryName": "PIR Sensor Lighting",
+        "categoryName": "ZLLC PIR Sensor",
         "elementCount": 3,
         "iconCategory": "Standalone Sensor",
         "deviceCategory": "Lighting",
@@ -753,7 +753,7 @@
         "elementCount": 3,
         "iconCategory": "Standalone Sensor",
         "deviceCategory": "Lighting",
-        "modelName": "SR-SS9030B-PIR-V"
+        "modelName": "SR-BL9030B-PIR-HBV/LBV"
     },
     {
         "companyId": "0A78",
@@ -784,7 +784,7 @@
         "elementCount": 3,
         "iconCategory": "Lighting",
         "deviceCategory": "Lighting",
-        "modelName": "SR-BL9036T-MW-WPV/DT1",
+        "modelName": "SR-BL9036T-MW-PCBA",
         "sensitivityRangeMin": 0,
         "sensitivityRangeMax": 65535
     },
@@ -795,7 +795,18 @@
         "elementCount": 3,
         "iconCategory": "Emergency",
         "deviceCategory": "Lighting",
-        "modelName": "SR-BL9036T-MW-WPV-EL/DT1",
+        "modelName": "SR-BL9036T-MW-PCBA-EL",
+        "sensitivityRangeMin": 0,
+        "sensitivityRangeMax": 65535
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2057",
+        "categoryName": "MW Sensor Lighting",
+        "elementCount": 3,
+        "iconCategory": "MWSensorLighting",
+        "deviceCategory": "Lighting",
+        "modelName": "SR-BL9036T-MW-PCBASTP",
         "sensitivityRangeMin": 0,
         "sensitivityRangeMax": 65535
     },
@@ -806,7 +817,7 @@
         "elementCount": 2,
         "iconCategory": "Powerpack",
         "deviceCategory": "Lighting",
-        "modelName": "SR-BL2421-SSVT(SS)"
+        "modelName": "SR-BL2421-SVVT(SS)"
     },
     {
         "companyId": "0A78",
@@ -837,12 +848,30 @@
     },
     {
         "companyId": "0A78",
+        "productId": "2304",
+        "categoryName": "Driver Lighting",
+        "elementCount": 2,
+        "iconCategory": "Lighting",
+        "deviceCategory": "Lighting",
+        "modelName": "SRP-BL9105N-XXCCXX"
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2305",
+        "categoryName": "Driver Lighting",
+        "elementCount": 2,
+        "iconCategory": "Lighting",
+        "deviceCategory": "Lighting",
+        "modelName": "SRP-BL9105N-XXCCTXX"
+    },
+    {
+        "companyId": "0A78",
         "productId": "2312",
         "categoryName": "Driver Lighting",
         "elementCount": 2,
         "iconCategory": "Lighting",
         "deviceCategory": "Lighting",
-        "modelName": "SRP-BL9105N"
+        "modelName": "SRP-BL9105N-XXCCXX"
     },
     {
         "companyId": "0A78",
@@ -851,25 +880,7 @@
         "elementCount": 2,
         "iconCategory": "Lighting",
         "deviceCategory": "Lighting",
-        "modelName": "SRP-BL9105N"
-    },
-    {
-        "companyId": "0A78",
-        "productId": "2321",
-        "categoryName": "CCT Up&Down Lighting",
-        "elementCount": 3,
-        "iconCategory": "BidirectionalController",
-        "deviceCategory": "Lighting",
-        "modelName": "SRPL-BL9105N-XXCCXXE"
-    },
-    {
-        "companyId": "0A78",
-        "productId": "2322",
-        "categoryName": "Driver Lighting",
-        "elementCount": 3,
-        "iconCategory": "Lighting",
-        "deviceCategory": "Lighting",
-        "modelName": "SRPL-BL9105N-XXCCTXXE"
+        "modelName": "SRPL-BL9105N"
     },
     {
         "companyId": "0A78",
@@ -1018,20 +1029,11 @@
     {
         "companyId": "0A78",
         "productId": "2491",
-        "categoryName": "Controller Lighting",
+        "categoryName": "CCT Up&Down Lighting",
         "elementCount": 3,
         "iconCategory": "BidirectionalController",
         "deviceCategory": "Lighting",
-        "modelName": "SR-BL2421_SSV_2CH"
-    },
-    {
-        "companyId": "0A78",
-        "productId": "24A1",
-        "categoryName": "Controller Lighting",
-        "elementCount": 2,
-        "iconCategory": "Lighting",
-        "deviceCategory": "Lighting",
-        "modelName": "SR-BL9035J-V"
+        "modelName": "SR-nRF54L15-M1"
     },
     {
         "companyId": "0A78",
@@ -1099,7 +1101,7 @@
     {
         "companyId": "0A78",
         "productId": "2802",
-        "categoryName": "Dimmer",
+        "categoryName": "Relay",
         "elementCount": 2,
         "iconCategory": "Dimmer",
         "deviceCategory": "Lighting",
@@ -1183,7 +1185,7 @@
         "elementCount": 3,
         "iconCategory": "EmergencyController",
         "deviceCategory": "EmergencyController",
-        "modelName": "SR-BL2421-DryCon924"
+        "modelName": "SR-BL2421-DCE"
     },
     {
         "companyId": "0A78",
@@ -1192,7 +1194,36 @@
         "elementCount": 2,
         "iconCategory": "ZLLControllerSensor",
         "deviceCategory": "Lighting",
-        "modelName": "SR-BL2421-SSVT—AUXRJ45"
+        "modelName": "SR-BL2421-SVVT-AUXRJ45"
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2311",
+        "categoryName": "MW Sensor Lighting",
+        "elementCount": 3,
+        "iconCategory": "Lighting",
+        "deviceCategory": "Lighting",
+        "modelName": "SR-BL9034L-24G-V",
+        "sensitivityRangeMin": 13762,
+        "sensitivityRangeMax": 39452
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2602",
+        "categoryName": "ETC USB Dongle",
+        "elementCount": 2,
+        "iconCategory": "Dongle",
+        "deviceCategory": "Dongle",
+        "modelName": "SR-BL2100ETC-NodeX"
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2721",
+        "categoryName": "Gateway",
+        "elementCount": 2,
+        "iconCategory": "Gateway",
+        "deviceCategory": "Gateway",
+        "modelName": "SR-BL-AB-XX"
     },
     {
         "companyId": "0A78",
@@ -1232,30 +1263,23 @@
     },
     {
         "companyId": "0A78",
-        "productId": "2304",
-        "categoryName": "Driver Lighting",
-        "elementCount": 2,
+        "productId": "2042",
+        "categoryName": "PIR Sensor Lighting",
+        "elementCount": 3,
         "iconCategory": "Lighting",
         "deviceCategory": "Lighting",
-        "modelName": "SRP-BL9105N"
+        "modelName": "SR-BL9036A-PIR-20AV"
     },
     {
         "companyId": "0A78",
-        "productId": "2305",
-        "categoryName": "Driver Lighting",
-        "elementCount": 2,
+        "productId": "2071",
+        "categoryName": "MW Sensor Lighting",
+        "elementCount": 3,
         "iconCategory": "Lighting",
         "deviceCategory": "Lighting",
-        "modelName": "SRP-BL9105N"
-    },
-    {
-        "companyId": "0A78",
-        "productId": "2711",
-        "categoryName": "Gateway",
-        "elementCount": 2,
-        "iconCategory": "Gateway",
-        "deviceCategory": "Gateway",
-        "modelName": "SR-BL9036T-GW-WP4G"
+        "modelName": "SR-BL9033A-MW-V",
+        "sensitivityRangeMin": 0,
+        "sensitivityRangeMax": 65535
     },
     {
         "companyId": "0A78",
@@ -1267,12 +1291,163 @@
         "modelName": "SR-BL9036T-PCBA"
     },
     {
-        "companyId" : "0A78",
-        "productId" : "2721",
-        "categoryName" : "Gateway",
-        "elementCount" : 2,
-        "iconCategory" : "Gateway",
-        "deviceCategory" : "Gateway",
-        "modelName" : "SR-BL-AB-XX"
+        "companyId": "0A78",
+        "productId": "2002",
+        "categoryName": "PIR Sensor Lighting",
+        "elementCount": 3,
+        "iconCategory": "Lighting",
+        "deviceCategory": "Lighting",
+        "modelName": "SR-BL9032C-PIR-V"
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2703",
+        "categoryName": "Gateway",
+        "elementCount": 2,
+        "iconCategory": "Gateway",
+        "deviceCategory": "Gateway",
+        "modelName": "SR-BL9036T-GW-WP4G"
+    },
+    {
+        "companyId": "0A78",
+        "productId": "F001",
+        "categoryName": "PIR Sensor Lighting",
+        "elementCount": 3,
+        "iconCategory": "Lighting",
+        "deviceCategory": "Lighting",
+        "modelName": "SR-BL9035A-PIR-V"
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2492",
+        "categoryName": "CCT Controller Lighting",
+        "elementCount": 3,
+        "iconCategory": "Lighting",
+        "deviceCategory": "Lighting",
+        "modelName": "SR-nRF54L15-M3"
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2043",
+        "categoryName": "Ultrasonic & PIR Sensor",
+        "elementCount": 3,
+        "iconCategory": "Lighting",
+        "deviceCategory": "Lighting",
+        "modelName": "SR-BL9035B-UPS-16A"
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2044",
+        "categoryName": "Ultrasonic & PIR Sensor",
+        "elementCount": 3,
+        "iconCategory": "Lighting",
+        "deviceCategory": "Lighting",
+        "modelName": "SR-BL9035B-UPS-VCT"
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2503",
+        "categoryName": "PIR Sensor Lighting",
+        "elementCount": 3,
+        "iconCategory": "Lighting",
+        "deviceCategory": "Lighting",
+        "modelName": "SunSmart DemoBorad NRF-EVK-PA"
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2053",
+        "categoryName": "PIR Sensor Lighting",
+        "elementCount": 3,
+        "iconCategory": "Lighting",
+        "deviceCategory": "Lighting",
+        "modelName": "SR-BL9036T-PIR-WPVPA",
+        "sensitivityRangeMin": 0,
+        "sensitivityRangeMax": 65535
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2058",
+        "categoryName": "MW Sensor Lighting",
+        "elementCount": 3,
+        "iconCategory": "Lighting",
+        "deviceCategory": "Lighting",
+        "modelName": "SR-BL9036T-MW-PCBAPA",
+        "sensitivityRangeMin": 0,
+        "sensitivityRangeMax": 65535
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2059",
+        "categoryName": "MW Sensor Lighting",
+        "elementCount": 3,
+        "iconCategory": "Lighting",
+        "deviceCategory": "Lighting",
+        "modelName": "SR-BL9036T-MW-PCBAPA",
+        "sensitivityRangeMin": 0,
+        "sensitivityRangeMax": 65535
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2321",
+        "categoryName": "Driver Lighting",
+        "elementCount": 3,
+        "iconCategory": "BidirectionalController",
+        "deviceCategory": "Lighting",
+        "modelName": "SRPL-BL9105N-XXCCXXE"
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2322",
+        "categoryName": "Driver Lighting",
+        "elementCount": 3,
+        "iconCategory": "Lighting",
+        "deviceCategory": "Lighting",
+        "modelName": "SRPL-BL9105N-XXCCTXXE"
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2B01",
+        "categoryName": "Test Module",
+        "elementCount": 2,
+        "iconCategory": "TestModule",
+        "deviceCategory": "TestModule",
+        "modelName": "Test Module"
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2722",
+        "categoryName": "Gateway",
+        "elementCount": 2,
+        "iconCategory": "Gateway",
+        "deviceCategory": "Gateway",
+        "modelName": "SR-BL-4GAB(XX)"
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2723",
+        "categoryName": "Gateway",
+        "elementCount": 2,
+        "iconCategory": "Gateway",
+        "deviceCategory": "Gateway",
+        "modelName": "SR-BL-AB(XX)"
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2134",
+        "categoryName": "0-10V Load Controller",
+        "elementCount": 3,
+        "iconCategory": "ZLLControllerSensor",
+        "deviceCategory": "Lighting",
+        "modelName": "SR-BL2421-Mini"
+    },
+    {
+        "companyId": "0A78",
+        "productId": "2711",
+        "categoryName": "Gateway",
+        "elementCount": 2,
+        "iconCategory": "Gateway",
+        "deviceCategory": "Gateway",
+        "modelName": "SR-BL9036T-GW-WP4G"
     }
 ]
+
