@@ -29,6 +29,9 @@ final class ELControllerFunctionTestHelper {
     }
 
     func startPageSession() {
+        // UIKit calls viewWillAppear again when an interactive dismissal is cancelled.
+        guard !isActive else { return }
+
         isActive = true
         resetFunctionTestUI()
         applyStoredRxTxState()

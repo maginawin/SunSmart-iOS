@@ -144,11 +144,17 @@ class DeviceLightViewController: UIViewController {
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
 
-        elControllerFunctionTestHelper?.stopPageSession()
         if setProxyAttemptID != nil {
             setProxyAttemptID = nil
             XWHUDManager.hideInView(with: view)
         }
+    }
+
+    override func viewDidDisappear(_ animated: Bool) {
+        super.viewDidDisappear(animated)
+
+        // A cancelled swipe-to-dismiss must keep the current EL test session alive.
+        elControllerFunctionTestHelper?.stopPageSession()
     }
     
     deinit {
