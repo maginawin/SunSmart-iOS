@@ -23,6 +23,7 @@ class TimedViewController: UIViewController {
     private var refreshData = true
     private var renderedRevision: SpacePageRevision?
     private var isPageVisible = false
+    private var syncDisplay: TimedListSyncDisplayState?
     var schedulerCacheRead: (() -> Void)?
     
     let space: SpaceData
@@ -71,6 +72,11 @@ class TimedViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         isPageVisible = true
+        if syncDisplay?.isCurrentScope != true {
+            syncDisplay?.cancelReads()
+            syncDisplay = TimedListSyncDisplayState()
+            refreshData = true
+        }
         if refreshData || renderedRevision?.isCurrent != true {
             updateUI()
         }
@@ -88,6 +94,8 @@ class TimedViewController: UIViewController {
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         isPageVisible = false
+        syncDisplay?.cancelReads()
+        refreshData = true
     }
 
     override func viewDidLayoutSubviews() {
@@ -138,11 +146,12 @@ class TimedViewController: UIViewController {
     
     /// 设置日程启用/禁用
     private func setScheduleEnabled(schedule: Schedule, enabled: Bool) {
-        
+        guard let display = syncDisplay, display.isCurrentScope else { return }
         guard schedule.existNodes.count > 0 else {
+            guard let operation = display.beginOperation() else { return }
             schedule.enabled = enabled
             schedule.save()
-            self.reloadCollectionItem(schedule: schedule)
+            finishScheduleOperation(operation, display: display, schedule: schedule)
             NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
             return
         }
@@ -150,38 +159,74 @@ class TimedViewController: UIViewController {
             XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
             return
         }
+        guard let operation = display.beginOperation() else { return }
         
         XWHUDManager.showCustomHUD(withMessage: "processing".localizedString, isWindow: true)
         ScheduleServer.setEnabledState(schedule: schedule, enabled: enabled) {[weak self] _ in
+            guard display.isCurrentOperation(operation) else { return }
             XWHUDManager.hide()
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
-            self?.reloadCollectionItem(schedule: schedule)
+            if let self, self.syncDisplay === display {
+                self.finishScheduleOperation(operation, display: display, schedule: schedule)
+            } else {
+                display.finishOperation(operation)
+            }
             // 通知space数据修改
             NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
         } failed: {[weak self] _ in
+            guard display.isCurrentOperation(operation) else { return }
             XWHUDManager.hide()
+            guard let self, self.syncDisplay === display else {
+                display.finishOperation(operation)
+                return
+            }
             XWHUDManager.showErrorTipHUD("failed".localizedString + "!")
-            self?.reloadCollectionItem(schedule: schedule)
+            guard self.isPageVisible, self.viewIfLoaded?.window != nil,
+                  self.presentedViewController == nil else {
+                self.finishScheduleOperation(operation, display: display, schedule: schedule)
+                return
+            }
+            self.reloadCollectionItem(schedule: schedule)
             
             let vc = SyncDevicesViewController(type: .schedule(schedule))
             vc.syncSuccessCallback = {[weak self] _ in
+                guard let self, self.syncDisplay === display, display.isCurrentOperation(operation) else { return }
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                guard let self = self else {
-                    return
-                }
                 schedule.enabled = enabled
                 schedule.save()
-                self.reloadCollectionItem(schedule: schedule)
+                self.finishScheduleOperation(operation, display: display, schedule: schedule)
                 self.dismiss(animated: true)
             }
             vc.backActionCallback = {[weak self] _ in
-                self?.dismiss(animated: true)
-                self?.reloadCollectionItem(schedule: schedule)
+                guard let self, self.syncDisplay === display, display.isCurrentOperation(operation) else { return }
+                self.finishScheduleOperation(operation, display: display, schedule: schedule)
+                self.dismiss(animated: true)
             }
             if isIPad {
                 vc.preferredContentSize = iPadPreferredContentSize
             }
-            self?.present(NavigationViewController(rootViewController: vc), animated: true)
+            self.present(NavigationViewController(rootViewController: vc), animated: true)
+        }
+    }
+
+    private func finishScheduleOperation(_ operation: UUID, display: TimedListSyncDisplayState, schedule: Schedule) {
+        guard syncDisplay === display, display.finishOperation(operation) else { return }
+        reloadCollectionItem(schedule: schedule)
+        guard isPageVisible, viewIfLoaded?.window != nil else { return }
+        // Other visible rows may have deferred a cloud/cache notification.
+        for case let cell as SchedulesViewCell in scheduleCollectionView.visibleCells {
+            if let schedule = cell.schedule { refreshSyncIndicator(schedule: schedule, cell: cell) }
+        }
+    }
+
+    private func refreshSyncIndicator(schedule: Schedule, cell: SchedulesViewCell) {
+        cell.updateSyncIndicator(needsSync: syncDisplay?.displayedValue(for: schedule))
+        guard isPageVisible else { return }
+        syncDisplay?.refresh(schedule: schedule) { [weak self] needsSync in
+            guard let self, self.isPageVisible, self.viewIfLoaded?.window != nil else { return }
+            for case let cell as SchedulesViewCell in self.scheduleCollectionView.visibleCells where cell.schedule === schedule {
+                cell.updateSyncIndicator(needsSync: needsSync)
+            }
         }
     }
     
@@ -196,6 +241,7 @@ class TimedViewController: UIViewController {
         defer { refreshData = false; renderedRevision = SpacePageRevision() }
   
         schedules = MeshNetworkManager.instance.schedules
+        syncDisplay?.retain(schedules: schedules)
         footerView.countBtn.setTitle("\(schedules.count)", for: .normal)
         
         footerView.addBtn.isEnabled = space.scheduleOperates.contains(.add)
@@ -373,6 +419,7 @@ extension TimedViewController: UICollectionViewDataSource, UICollectionViewDeleg
         }
         let schedule = schedules[indexPath.item]
         cell.schedule = schedule
+        refreshSyncIndicator(schedule: schedule, cell: cell)
         cell.enabledActionCallback = {[weak self] enabled in
             guard let self = self else {
                 return
@@ -384,6 +431,12 @@ extension TimedViewController: UICollectionViewDataSource, UICollectionViewDeleg
             self.setScheduleEnabled(schedule: schedule, enabled: enabled)
         }
         return cell
+    }
+
+    func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+        guard let cell = cell as? SchedulesViewCell, let schedule = cell.schedule else { return }
+        // Prefetched Cells may finish their read before becoming visible.
+        refreshSyncIndicator(schedule: schedule, cell: cell)
     }
     
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {

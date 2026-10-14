@@ -119,6 +119,104 @@ extension NodeSyncStatusRefresh {
     }
 }
 
+/// The Timed page owns settled presentation across Cell reuse. A displayed
+/// value may outlive its read revision, but is never used to plan Mesh work.
+final class TimedListSyncDisplayState {
+    private final class Entry {
+        let schedule: Schedule
+        var value: Bool?
+        var revision: SpacePageRevision?
+        var reading = false
+        var ticket = UUID()
+
+        init(_ schedule: Schedule) { self.schedule = schedule }
+
+        func cancel() {
+            ticket = UUID()
+            reading = false
+            revision = nil
+            NodeSyncStatusRefresh.cancel(owner: self)
+        }
+
+        deinit { NodeSyncStatusRefresh.cancel(owner: self) }
+    }
+
+    private let network = MeshNetworkManager.instance.meshNetwork
+    private let networkID = MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+    private let account = UserData.currentUserId
+    private let region = String(describing: UserData.currentServerRegion)
+    private var entries: [Int: Entry] = [:]
+    private var operation: UUID?
+
+    var isCurrentScope: Bool {
+        network != nil && network === MeshNetworkManager.instance.meshNetwork
+            && networkID == MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+            && account == UserData.currentUserId
+            && region == String(describing: UserData.currentServerRegion)
+    }
+
+    func displayedValue(for schedule: Schedule) -> Bool? {
+        guard isCurrentScope, let entry = entries[schedule.id], entry.schedule === schedule else { return nil }
+        return entry.value
+    }
+
+    func retain(schedules: [Schedule]) {
+        let objects = Set(schedules.map(ObjectIdentifier.init))
+        entries = entries.filter { objects.contains(ObjectIdentifier($0.value.schedule)) }
+    }
+
+    func refresh(schedule: Schedule, didUpdate: @escaping (Bool) -> Void) {
+        guard isCurrentScope, operation == nil else { return }
+        let entry: Entry
+        if let existing = entries[schedule.id], existing.schedule === schedule {
+            entry = existing
+        } else {
+            entries[schedule.id]?.cancel()
+            entry = Entry(schedule)
+            entries[schedule.id] = entry
+        }
+        guard !entry.reading, entry.revision?.isCurrent != true else { return }
+        entry.reading = true
+        entry.ticket = UUID()
+        let ticket = entry.ticket
+        NodeSyncStatusRefresh.request(schedule: schedule, owner: entry) { [weak self, weak entry] value in
+            guard let self, let entry, self.isCurrentScope, self.operation == nil,
+                  self.entries[schedule.id] === entry, entry.ticket == ticket else { return }
+            entry.reading = false
+            entry.value = value
+            entry.revision = SpacePageRevision()
+            didUpdate(value)
+        }
+    }
+
+    func beginOperation() -> UUID? {
+        guard isCurrentScope, operation == nil else { return nil }
+        cancelReads()
+        let ticket = UUID()
+        operation = ticket
+        return ticket
+    }
+
+    func isCurrentOperation(_ ticket: UUID) -> Bool {
+        isCurrentScope && operation == ticket
+    }
+
+    @discardableResult
+    func finishOperation(_ ticket: UUID) -> Bool {
+        guard isCurrentOperation(ticket) else { return false }
+        operation = nil
+        cancelReads()
+        // Shared reads made elsewhere while enabled was provisional must not
+        // become this page's final result, including after a full rollback.
+        NodeSyncStatusGeneration.invalidate()
+        return true
+    }
+
+    func cancelReads() {
+        entries.values.forEach { $0.cancel() }
+    }
+}
+
 struct ScheduleTargetSyncSnapshot {
     let nodes: Set<ObjectIdentifier>
     let groups: Set<ObjectIdentifier>
