@@ -33,4 +33,6 @@ with tempfile.TemporaryDirectory(prefix='timed-payload-') as directory:
     subprocess.run(['swiftc', '-parse-as-library', str(policy),
                     str(root / 'Tests/Timed/TimedPayloadTests.swift'), '-o', str(binary)], check=True)
     snapshot = sys.argv[sys.argv.index('--snapshot') + 1:][:1] if '--snapshot' in sys.argv else []
+    if '--stale-snapshot' in sys.argv:
+        snapshot = ['--stale-snapshot', sys.argv[sys.argv.index('--stale-snapshot') + 1]]
     subprocess.run([str(binary), *snapshot], check=True)

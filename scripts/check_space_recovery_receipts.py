@@ -69,7 +69,7 @@ zone_gate = section(imports, '            if !resumingImport, SpaceConfiguration
                     '            let proximityImportDisposition =')
 zone_gate = zone_gate.replace('continuation.resume(returning: .skipped)\n                return', 'return .skipped')
 test = test.replace('// IMPORT_PREPARATION_METHOD', '@MainActor\n' + preparation
-    + '        _ = proximityPreflight\n' + zone_gate + '        return .prepared\n    }\n')
+    + '        _ = proximityPreflight\n        _ = timedReferencesChanged\n' + zone_gate + '        return .prepared\n    }\n')
 test += '\n' + section(imports, 'final class SiteImportTrace', '\nstruct SpaceImportOutcome')
 test += '\n' + read('Tests/Group/SpaceImportPreparationTests.swift')
 test += '\n' + read('Tests/Group/OlderCloudBaselineTests.swift')

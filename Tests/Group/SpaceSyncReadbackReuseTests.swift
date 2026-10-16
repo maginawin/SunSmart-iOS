@@ -3,7 +3,7 @@ enum NetworkApiError { case configurationUnavailable, configurationExportInvalid
 
 enum Fixture {
     static var revision: Int? = 1, dirty = false, baselineWrite = false, resumeWrite = false
-    static var failReadback = false, pendingDeletion = false, current = true
+    static var failReadback = false, pendingDeletion = false, pendingUpload = false, current = true
     static var exports = 0, commits = 0, finishes = 0, validations = 0
     static var extensionDirty = false, failExtensionWrite = false, failExtensionReadback = false, ignoreExtensionWrite = false
     static var failureStage: String?
@@ -18,7 +18,7 @@ enum Fixture {
     }
     static func reset() {
         revision = 1; dirty = false; baselineWrite = false; resumeWrite = false; failReadback = false
-        pendingDeletion = false; current = true; exports = 0; commits = 0; finishes = 0; validations = 0
+        pendingDeletion = false; pendingUpload = false; current = true; exports = 0; commits = 0; finishes = 0; validations = 0
         extensionDirty = false; failExtensionWrite = false; failExtensionReadback = false; ignoreExtensionWrite = false
         failureStage = nil
     }
@@ -88,6 +88,7 @@ enum ProximityLightingLifecycleCoordinator {
     }
 }
 enum SpaceConfigurationSafety {
+    static func hasPendingUpload(_ space: SpaceData) -> Bool { Fixture.pendingUpload }
     static func configurationSyncError(_ space: SpaceData) -> NetworkApiError { .configurationUnavailable }
     @discardableResult
     static func recordSyncFailure(_ space: SpaceData, error: NetworkApiError, stage: String) -> Bool {
@@ -120,6 +121,10 @@ struct ProximityLightingImportSyncRequest { let spaceId: String, meshUUID: Strin
         var success = await SpaceSyncCleanupCoordinator.run(space, scope: .init())
         precondition(success && Fixture.exports == 2 && Fixture.finishes == 1 && Fixture.validations == 2,
                      "unchanged read must validate the reloaded persisted Space")
+        Fixture.reset(); Fixture.pendingUpload = true; Fixture.extensionDirty = true
+        success = await SpaceSyncCleanupCoordinator.run(space, scope: .init())
+        precondition(!success && Fixture.exports == 0 && Fixture.commits == 0 && Fixture.finishes == 0,
+                     "a pending upload receipt must finish before automatic reference repair")
         Fixture.reset(); Fixture.dirty = true
         success = await SpaceSyncCleanupCoordinator.run(space, scope: .init())
         precondition(success && Fixture.exports == 2 && Fixture.commits == 1 && Fixture.finishes == 1,

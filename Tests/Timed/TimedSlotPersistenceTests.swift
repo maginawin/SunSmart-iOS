@@ -174,6 +174,7 @@ enum ScheduleServer {
         var db = try Connection(path)
         SunSmartDataManager.shared.db = db
         Schedule.initDatabase()
+        try staleBindingsSurviveRepairAndRestart(db: db, path: path)
         try defaultedBindingsSurviveReload()
         for id in 0..<16 {
             precondition(Schedule(id: id, name: "Schedule \(id + 1)", enabled: false).save(meshUUID: "mesh", meshNetworkId: "one"))
@@ -221,6 +222,56 @@ enum ScheduleServer {
         precondition(!item.save(meshUUID: "mesh", meshNetworkId: "one"), "missing database cannot confirm a saved reservation")
         print("PASS: production Schedule SQLite migration, 17th logical record, restart, pending cleanup, corruption and rollback")
     }
+    static func staleBindingsSurviveRepairAndRestart(db originalDB: Connection, path: String) throws {
+        let file = path + ".stale-bindings"
+        let db = try Connection(file)
+        SunSmartDataManager.shared.db = db
+        Schedule.initDatabase()
+        defer { SunSmartDataManager.shared.db = originalDB }
+        let old = Node(1), current = Node(5)
+        let oldIdentity = old.timedSchedulerIdentity!, currentIdentity = current.timedSchedulerIdentity!
+        for id in 0..<16 {
+            let schedule = Schedule(id: id, name: "Retained \(id)", enabled: true, nodeAddresses: [1, 5])
+            schedule.needDeleteNodeAddresses = [1]
+            schedule.nodeSlots = [.init(identity: oldIdentity, slot: id, state: .assigned),
+                                  .init(identity: currentIdentity, slot: id, state: .assigned)]
+            precondition(schedule.save(meshUUID: "repair", meshNetworkId: "one"))
+        }
+        let stored = Schedule.load(meshUUID: "repair", meshNetworkId: "one").sorted { $0.id < $1.id }
+        let nodes: [[String: Any]] = [
+            ["uuid": currentIdentity.nodeUUID, "unicastAddress": "0005", "deviceKey": current.deviceKey!.hex],
+            ["uuid": oldIdentity.nodeUUID, "unicastAddress": "0009", "deviceKey": String(repeating: "2", count: 32)]
+        ]
+        let payload: [String: Any] = ["spaceData": ["timedSchemaVersion": 2], "nodes": nodes,
+            "schedules": try JSONSerialization.jsonObject(with: jsonEncoder.encode(stored))]
+        let repaired = TimedSchedulerPayloadPolicy.repairingStaleBindings(payload)!
+        let schedules = try jsonDecoder.decode([Schedule].self, from: JSONSerialization.data(withJSONObject: repaired["schedules"]!))
+        try db.execute("CREATE TRIGGER fail_stale_repair BEFORE INSERT ON schedules WHEN NEW.scheduleIndex = 8 BEGIN SELECT RAISE(ABORT, 'fixture failure'); END")
+        func persist() throws {
+            try db.transaction {
+                for schedule in schedules {
+                    guard schedule.save(meshUUID: "repair", meshNetworkId: "one") else { throw Failure.rollback }
+                }
+            }
+        }
+        do { try persist(); preconditionFailure("write failure must abort all repairs") } catch Failure.rollback {}
+        let failed = Schedule.load(meshUUID: "repair", meshNetworkId: "one")
+        precondition(failed.count == 16 && failed.allSatisfy { $0.nodeSlots?.count == 2 && $0.nodeAddresses == [1, 5] })
+        try db.execute("DROP TRIGGER fail_stale_repair")
+        try persist()
+        SunSmartDataManager.shared.db = try Connection(file)
+        let reopened = Schedule.load(meshUUID: "repair", meshNetworkId: "one").sorted { $0.id < $1.id }
+        precondition(reopened.map(\.id) == Array(0..<16))
+        precondition(reopened.allSatisfy { $0.nodeSlots?.count == 1 && $0.nodeSlots?.first?.identity == currentIdentity
+            && $0.nodeAddresses == [5] && $0.needDeleteNodeAddresses.isEmpty && $0.enabled })
+        precondition(reopened.map(\.name) == stored.map(\.name))
+        var readback = payload
+        readback["schedules"] = try JSONSerialization.jsonObject(with: jsonEncoder.encode(reopened))
+        precondition(TimedSchedulerPayloadPolicy.canonical(readback) == TimedSchedulerPayloadPolicy.canonical(payload))
+        precondition(TimedSchedulerPayloadPolicy.canonical(readback) != nil)
+        print("PASS: stale-instance repair keeps 16 schedules/current bindings; SQLite failure rolls back, retry and reopen retain the repair")
+    }
+
     static func emptyTargetsSurviveReload(db originalDB: Connection, path originalPath: String) throws {
         let manager = MeshNetworkManager.instance
         let mesh = manager.meshNetwork!.uuid.uuidString, network = manager.currentNetworkKey.networkId.hex

@@ -1048,13 +1048,24 @@ extension SpaceData {
             spaceJsonData.updateValue(emergencyFireControllerDicts, forKey: "emergencyFireControllers")
             spaceJsonData.updateValue(sceneDicts, forKey: "scenes")
             spaceJsonData.updateValue(scheheduleDicts, forKey: "schedules")
-            guard TimedSchedulerPayloadPolicy.canonical(spaceJsonData) != nil else {
+            // A failed Node encoder is not evidence that its provisioning
+            // instance was removed. Repair only against a complete snapshot.
+            guard nodeDicts.count == allNodes.count else {
+                purpose.reportInspectionIssue("nodes: encodingIncomplete")
+                if reportsSyncFailure {
+                    SpaceConfigurationSafety.recordSyncFailure(self, error: .configurationExportInvalid, stage: "exportNodes")
+                }
+                return nil
+            }
+            guard let repairedTimedPayload = TimedSchedulerPayloadPolicy.repairingStaleBindings(spaceJsonData),
+                  TimedSchedulerPayloadPolicy.canonical(repairedTimedPayload) != nil else {
                 purpose.reportInspectionIssue("invalidTimedPayload")
                 if reportsSyncFailure {
                     SpaceConfigurationSafety.recordSyncFailure(self, error: .configurationExportInvalid, stage: "exportTimed")
                 }
                 return nil
             }
+            spaceJsonData = repairedTimedPayload
             guard !schedulerSnapshotInvalid else {
                 if reportsSyncFailure {
                     SpaceConfigurationSafety.recordSyncFailure(self, error: .configurationExportInvalid,

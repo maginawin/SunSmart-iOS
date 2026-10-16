@@ -118,10 +118,58 @@ enum TimedSchedulerPayloadPolicy {
         return result
     }
 
+    /// A reservation belongs to one provisioning instance. Keep the schedule,
+    /// but drop references to instances absent from this complete node snapshot.
+    /// Invalid identities/slots are still errors, not evidence of a deletion.
+    static func repairingStaleBindings(_ payload: [String: Any]) -> [String: Any]? {
+        let payload = fillingMissingBindings(payload)
+        guard declaredSchema(payload) == 2 else { return payload }
+        guard let nodes = payload["nodes"] as? [[String: Any]],
+              let schedules = payload["schedules"] as? [[String: Any]] else { return nil }
+        let identities = nodes.compactMap(identity)
+        guard identities.count == nodes.count,
+              Set(identities.map(\.nodeUUID)).count == nodes.count,
+              Set(identities.map(\.unicastAddress)).count == nodes.count else { return nil }
+        let current = Set(identities)
+        var occupied: [TimedSchedulerNodeIdentity: Set<Int>] = [:]
+        var repaired: [[String: Any]] = []
+        for schedule in schedules {
+            guard let raw = schedule["nodeSlots"] as? [[String: Any]],
+                  let data = try? JSONSerialization.data(withJSONObject: raw),
+                  let bindings = try? JSONDecoder().decode([TimedSchedulerNodeSlot].self, from: data),
+                  Set(bindings.map(\.identity)).count == bindings.count else { return nil }
+            for binding in bindings {
+                guard binding.isValid,
+                      occupied[binding.identity, default: []].insert(binding.slot).inserted else { return nil }
+            }
+            let stale = bindings.filter { !current.contains($0.identity) }
+            guard !stale.isEmpty else { repaired.append(schedule); continue }
+            let retained = bindings.filter { current.contains($0.identity) }
+            // An explicitly bound current instance may reuse an old address.
+            // Its target remains valid; an old address-only target must not be
+            // inherited by a different instance merely because it is reused.
+            let removedAddresses = Set(stale.map { $0.identity.unicastAddress.uppercased() })
+                .subtracting(retained.map { $0.identity.unicastAddress.uppercased() })
+            var item = schedule
+            item["nodeSlots"] = zip(raw, bindings).compactMap { object, binding in
+                current.contains(binding.identity) ? object : nil
+            }
+            for field in ["deviceAddresses", "needDeleteNodeAddresses"] {
+                guard let rawAddresses = schedule[field] else { continue }
+                guard let addresses = rawAddresses as? [String] else { return nil }
+                item[field] = addresses.filter { !removedAddresses.contains($0.uppercased()) }
+            }
+            repaired.append(item)
+        }
+        var result = payload
+        result["schedules"] = repaired
+        return result
+    }
+
     /// Keep v2 file sharing out of the legacy importer's editable root shape.
     /// Cloud requests continue to use the unwrapped Space API payload.
     static func backupEnvelope(_ payload: [String: Any]) -> [String: Any]? {
-        let payload = fillingMissingBindings(payload)
+        guard let payload = repairingStaleBindings(payload) else { return nil }
         guard let version = schema(payload), canonical(payload) != nil else { return nil }
         if version == 1 { return payload }
         return ["format": "sunSmartSpace", "formatVersion": 2, "space": payload]
@@ -131,7 +179,8 @@ enum TimedSchedulerPayloadPolicy {
         if document["format"] != nil {
             guard document["format"] as? String == "sunSmartSpace",
                   integer(document["formatVersion"]) == 2,
-                  let payload = document["space"] as? [String: Any],
+                  let source = document["space"] as? [String: Any],
+                  let payload = repairingStaleBindings(source),
                   schema(payload) == 2, canonical(payload) != nil else { return nil }
             return payload
         }
@@ -170,7 +219,7 @@ enum TimedSchedulerPayloadPolicy {
 
     /// nil means invalid, never an empty configuration. Array order is immaterial.
     static func canonical(_ payload: [String: Any]) -> Data? {
-        let payload = fillingMissingBindings(payload)
+        guard let payload = repairingStaleBindings(payload) else { return nil }
         guard let version = schema(payload), let schedules = payload["schedules"] as? [[String: Any]],
               let nodes = payload["nodes"] as? [[String: Any]] else { return nil }
         let identities = Set(nodes.compactMap(identity))

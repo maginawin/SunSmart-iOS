@@ -154,6 +154,8 @@ final class NetworkRequest {
         try await testLegacyUpgradeRecovery()
         try await testLegacyTimedBaselineBackfill()
         try await testDefaultedTimedImport()
+        try await testStaleTimedImport()
+        try await testStaleTimedCloudRemoval()
         try await testFirstUploadMembershipRecovery()
         try await testLegacyUninitializedReceiptRecovery()
         try await testEmptyZoneImportGate()

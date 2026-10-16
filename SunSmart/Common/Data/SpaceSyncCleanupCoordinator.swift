@@ -297,8 +297,17 @@ enum SpaceSyncCleanupCoordinator {
             }
         }
         let sceneNumbers = Set(network.scenes.map(\.number))
+        guard let timedPayload = TimedSchedulerPayloadPolicy.repairingStaleBindings(cleaned.payload),
+              let timedRows = timedPayload["schedules"] as? [[String: Any]],
+              let timedData = try? JSONSerialization.data(withJSONObject: timedRows),
+              let timedSchedules = try? JSONDecoder().decode([Schedule].self, from: timedData),
+              Set(timedSchedules.map(\.id)).count == timedSchedules.count else {
+            throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+        }
+        let timedByID = Dictionary(uniqueKeysWithValues: timedSchedules.map { ($0.id, $0) })
         for schedule in Schedule.load(meshUUID: space.meshUUID, meshNetworkId: space.meshNetworkId) {
-            let activeNodes = schedule.nodeAddresses.filter { addresses.contains($0) }
+            guard let timed = timedByID[schedule.id] else { throw SpaceConfigurationSafety.SafetyError.persistenceFailed }
+            let activeNodes = timed.nodeAddresses.filter { addresses.contains($0) }
             let activeGroups = schedule.groupAddresses.filter { groupAddresses.contains($0) }
             let pendingGroups = schedule.needDeleteGroupAddresses.filter { groupAddresses.contains($0) }
             let profiles = schedule.profiles.filter { item in
@@ -309,7 +318,7 @@ enum SpaceSyncCleanupCoordinator {
             }
             let scene = schedule.sceneNumber.flatMap { sceneNumbers.contains($0) ? $0 : nil }
             let pendingScenes = schedule.needDeleteSceneNumbers.filter { sceneNumbers.contains($0) }
-            var pendingNodes = schedule.needDeleteNodeAddresses.filter { addresses.contains($0) }
+            var pendingNodes = timed.needDeleteNodeAddresses.filter { addresses.contains($0) }
             let removedTarget = activeGroups != schedule.groupAddresses || pendingGroups != schedule.needDeleteGroupAddresses
                 || profiles != schedule.profiles || scene != schedule.sceneNumber || pendingScenes != schedule.needDeleteSceneNumbers
             if removedTarget {
@@ -324,8 +333,10 @@ enum SpaceSyncCleanupCoordinator {
                     if !targeted && observed { pendingNodes.append(node.primaryUnicastAddress) }
                 }
             }
-            guard activeNodes != schedule.nodeAddresses || pendingNodes != schedule.needDeleteNodeAddresses || removedTarget else { continue }
+            guard activeNodes != schedule.nodeAddresses || pendingNodes != schedule.needDeleteNodeAddresses
+                    || timed.nodeSlots != schedule.nodeSlots || removedTarget else { continue }
             changes.append {
+                schedule.nodeSlots = timed.nodeSlots
                 schedule.nodeAddresses = activeNodes; schedule.needDeleteNodeAddresses = pendingNodes
                 schedule.groupAddresses = activeGroups; schedule.needDeleteGroupAddresses = pendingGroups
                 schedule.profiles = profiles; schedule.sceneNumber = scene; schedule.needDeleteSceneNumbers = pendingScenes

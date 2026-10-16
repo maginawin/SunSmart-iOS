@@ -34,8 +34,9 @@ import Foundation
         precondition(TimedSchedulerPayloadPolicy.canonical(payload([changed, schedule(500, slot: 1)])) != canonical)
         changed["minute"] = 70
         precondition(TimedSchedulerPayloadPolicy.canonical(payload([changed])) == nil)
-        var corruptIdentity = fresh; corruptIdentity["nodes"] = [["uuid": uuid, "unicastAddress": "0001", "deviceKey": String(repeating: "2", count: 32)]]
-        precondition(TimedSchedulerPayloadPolicy.canonical(corruptIdentity) == nil)
+        var reprovisioned = fresh; reprovisioned["nodes"] = [["uuid": uuid, "unicastAddress": "0001", "deviceKey": String(repeating: "2", count: 32)]]
+        precondition(TimedSchedulerPayloadPolicy.canonical(reprovisioned) != nil)
+        staleInstanceRepair()
         var pending = schedule(300, slot: 0); pending["needDeleteNodeAddresses"] = ["0001"]
         precondition(TimedSchedulerPayloadPolicy.canonical(payload([pending, schedule(500, slot: 1)])) != canonical)
         precondition(TimedSchedulerPayloadPolicy.canonical(payload([])) != nil)
@@ -114,7 +115,21 @@ import Foundation
             var item = item; item["deviceAddresses"] = ["0001"]; return item
         }
         precondition(TimedSchedulerPayloadPolicy.canonical(overCapacity) == nil)
-        if CommandLine.arguments.count > 1 {
+        if CommandLine.arguments.count > 2, CommandLine.arguments[1] == "--stale-snapshot" {
+            let data = try! Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[2]))
+            let response = try! JSONSerialization.jsonObject(with: data) as! [String: Any]
+            let source = response["data"] as! [String: Any]
+            let result = TimedSchedulerPayloadPolicy.repairingStaleBindings(source)!
+            let before = source["schedules"] as! [[String: Any]], after = result["schedules"] as! [[String: Any]]
+            let removed = zip(before, after).reduce(0) { $0 + ($1.0["nodeSlots"] as! [Any]).count - ($1.1["nodeSlots"] as! [Any]).count }
+            precondition(before.count == after.count && removed > 0)
+            precondition(TimedSchedulerPayloadPolicy.canonical(source) == TimedSchedulerPayloadPolicy.canonical(result))
+            precondition(TimedSchedulerPayloadPolicy.canonical(result) != nil)
+            var originalWithoutSchedules = source, repairedWithoutSchedules = result
+            originalWithoutSchedules.removeValue(forKey: "schedules"); repairedWithoutSchedules.removeValue(forKey: "schedules")
+            precondition(json(originalWithoutSchedules) == json(repairedWithoutSchedules))
+            print("PASS: private snapshot retains \(after.count) schedules and all non-schedule data; removes \(removed) obsolete bindings")
+        } else if CommandLine.arguments.count > 1 {
             let data = try! Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))
             let response = try! JSONSerialization.jsonObject(with: data) as! [String: Any]
             let source = response["data"] as! [String: Any]
@@ -128,6 +143,62 @@ import Foundation
         }
         print("PASS: legacy-writer reproduction, default filling, stable round trip and malformed data rejection")
         print("PASS: complete Timed payload validation and canonical cloud comparison")
+    }
+
+    static func staleInstanceRepair() {
+        let original = payload((0..<16).map { schedule($0, slot: $0) })
+        for replacement in [
+            [[String: Any]](),
+            [["uuid": uuid, "unicastAddress": "0005", "deviceKey": String(repeating: "2", count: 32)]],
+            [["uuid": uuid, "unicastAddress": "0001", "deviceKey": String(repeating: "2", count: 32)]],
+            [["uuid": "22222222-2222-2222-2222-222222222222", "unicastAddress": "0001", "deviceKey": key]]
+        ] {
+            var stale = original; stale["nodes"] = replacement
+            let repaired = TimedSchedulerPayloadPolicy.repairingStaleBindings(stale)!
+            let schedules = repaired["schedules"] as! [[String: Any]]
+            precondition(schedules.count == 16)
+            precondition(schedules.allSatisfy { ($0["nodeSlots"] as! [Any]).isEmpty && ($0["deviceAddresses"] as! [String]).isEmpty })
+            for (old, new) in zip(original["schedules"] as! [[String: Any]], schedules) {
+                var expected = old; expected["nodeSlots"] = [Any](); expected["deviceAddresses"] = [String]()
+                precondition(json(expected) == json(new), "only obsolete device references may change")
+            }
+            precondition(TimedSchedulerPayloadPolicy.canonical(stale) == TimedSchedulerPayloadPolicy.canonical(repaired))
+            precondition(TimedSchedulerPayloadPolicy.canonical(repaired) != nil)
+            precondition(json(TimedSchedulerPayloadPolicy.repairingStaleBindings(repaired)!) == json(repaired))
+            let backup = TimedSchedulerPayloadPolicy.backupEnvelope(stale)!
+            precondition(json(TimedSchedulerPayloadPolicy.backupPayload(backup)!) == json(repaired))
+        }
+        let current = ["uuid": "22222222-2222-2222-2222-222222222222", "unicastAddress": "0001", "deviceKey": key]
+        let newBinding = TimedSchedulerNodeSlot(identity: TimedSchedulerPayloadPolicy.identity(node: current)!, slot: 0, state: .assigned)
+        var mixed = schedule(0, slot: 0)
+        var bindings = mixed["nodeSlots"] as! [[String: Any]]
+        bindings[0]["state"] = "pendingRemoval"
+        bindings.append(try! JSONSerialization.jsonObject(with: JSONEncoder().encode(newBinding)) as! [String: Any])
+        mixed["nodeSlots"] = bindings; mixed["needDeleteNodeAddresses"] = ["0001"]
+        mixed["groupAddresses"] = ["C001"]; mixed["sceneAddress"] = "0001"
+        var input = payload([mixed]); input["nodes"] = [current]
+        let repaired = TimedSchedulerPayloadPolicy.repairingStaleBindings(input)!
+        let retained = (repaired["schedules"] as! [[String: Any]])[0]
+        precondition((retained["nodeSlots"] as! [Any]).count == 1)
+        for field in ["deviceAddresses", "needDeleteNodeAddresses", "groupAddresses", "sceneAddress"] {
+            precondition(json(["value":retained[field]!]) == json(["value":mixed[field]!]), "a current explicit binding survives address reuse")
+        }
+        input["nodes"] = [[String: Any]]()
+        let empty = (TimedSchedulerPayloadPolicy.repairingStaleBindings(input)!["schedules"] as! [[String: Any]])[0]
+        precondition((empty["needDeleteNodeAddresses"] as! [Any]).isEmpty)
+        precondition(empty["sceneAddress"] as? String == "0001" && empty["groupAddresses"] as? [String] == ["C001"])
+        var invalid = original; invalid["nodes"] = [["uuid":uuid,"unicastAddress":"0001","deviceKey":"invalid"]]
+        precondition(TimedSchedulerPayloadPolicy.canonical(invalid) == nil, "malformed current identities are not deletion proof")
+        invalid = original; invalid["nodes"] = (original["nodes"] as! [[String: Any]]) + (original["nodes"] as! [[String: Any]])
+        precondition(TimedSchedulerPayloadPolicy.canonical(invalid) == nil)
+        for field in ["slot", "generation", "state"] {
+            var bad = bindings[0]; bad[field] = field == "slot" ? 16 : "invalid"
+            var s = mixed; s["nodeSlots"] = [bad]
+            var p = payload([s]); p["nodes"] = [[String: Any]]()
+            precondition(TimedSchedulerPayloadPolicy.canonical(p) == nil, "corrupt stale bindings must still fail")
+        }
+        precondition(json(TimedSchedulerPayloadPolicy.repairingStaleBindings(original)!) == json(original))
+        print("PASS: absent/reprovisioned nodes, reused addresses, pending removal, empty targets, backup round trip, idempotence and invalid identities")
     }
     static func json(_ value: Any) -> Data {
         try! JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])

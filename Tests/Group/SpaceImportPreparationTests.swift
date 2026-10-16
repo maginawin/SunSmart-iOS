@@ -59,6 +59,94 @@ extension SpaceData {
     }
 }
 extension SpaceRecoveryReceiptTests {
+    static func staleTimedSchedules(node: [String: Any]) throws -> [[String: Any]] {
+        let identity = TimedSchedulerPayloadPolicy.identity(node: node)!
+        return try (0..<16).map { id in
+            let slot = TimedSchedulerNodeSlot(identity: identity, slot: id, state: .assigned)
+            return ["id": id, "name": "Retained \(id)", "enabled": true, "selectTarget": 1,
+                "action": 1, "fadeTime": 0, "hour": 8, "minute": 0, "dayOfWeek": 127,
+                "deviceAddresses": [identity.unicastAddress],
+                "nodeSlots": [try JSONSerialization.jsonObject(with: JSONEncoder().encode(slot))]]
+        }
+    }
+
+    @MainActor static func testStaleTimedImport() async throws {
+        typealias S = SpaceConfigurationSafety
+        typealias P = ProximityLightingImportPreflight
+        defer { P.storedSpace = nil; P.lastPayload = nil }
+        for role in ["owner", "editor", "visitor"] {
+            for resume in [false, true] {
+                let space = SpaceData()
+                space.lastUploadCloudTimestamp = space.lastUpdate; space.timedSchemaVersion = 2
+                P.storedSpace = space
+                var remote = space.payload
+                remote["role"] = role; remote["spaceData"] = ["timedSchemaVersion": 2]
+                remote["schedules"] = try staleTimedSchedules(node: membershipNode(1))
+                if resume { precondition(S.beginImport(space, payload: remote)) }
+                for _ in 0..<2 {
+                    let outcome = await space.update(spaceJsonData: remote, initialize: !resume)
+                    precondition(outcome == .prepared, "stale reservations must not block entry or interrupted-import retry")
+                    let working = P.lastPayload!, rows = working["schedules"] as! [[String: Any]]
+                    precondition(rows.count == 16 && rows.allSatisfy {
+                        ($0["nodeSlots"] as? [Any])?.isEmpty == true && ($0["deviceAddresses"] as? [Any])?.isEmpty == true
+                    })
+                }
+                var working = P.lastPayload!
+                precondition(S.preserveRemoteReferenceCleanup(space, payload: remote, candidate: working))
+                precondition(S.beginImport(space, payload: working))
+                let before = space.lastUpdate
+                precondition(S.finishImport(space))
+                precondition(!S.isBlocked(space) && !S.hasPendingImport(space))
+                precondition(space.lastUpdate == before + (role == "visitor" ? 0 : 1))
+                let restored = try S.recoveryState(space)
+                precondition(restored.timedConfigurationBaseline == TimedSchedulerPayloadPolicy.canonical(remote))
+                if role == "visitor" { continue }
+                working["updateTimestamp"] = space.lastUpdate
+                let submission = S.prepareSubmission(space, payload: working)!
+                precondition(S.markSubmissionAccepted(submission, space: space))
+                remote["updateTimestamp"] = space.lastUpdate
+                NetworkRequest.shared.result = .success(["data": remote])
+                if case .failure = await S.resumeUpload(space) { preconditionFailure("equivalent stale remote references must not prevent readback") }
+                precondition(!S.hasPendingUpload(space))
+            }
+        }
+        print("PASS: stale Timed entry for owner/editor/visitor, interrupted replay, repair upload intent and canonical readback")
+    }
+
+    @MainActor static func testStaleTimedCloudRemoval() async throws {
+        typealias S = SpaceConfigurationSafety
+        for accepted in [false, true] {
+            let space = SpaceData()
+            let old = try membershipNode(1)
+            space.nodes = [old]; space.lastUploadCloudTimestamp = accepted ? 49 : 50
+            space.exportValues = ["spaceData": ["timedSchemaVersion": 2], "schedules": try staleTimedSchedules(node: old)]
+            var remote = space.payload
+            if accepted {
+                let receipt = S.prepareSubmission(space, payload: remote)!
+                precondition(S.markSubmissionAccepted(receipt, space: space))
+            } else {
+                var state = try S.recoveryState(space)
+                state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(remote)
+                state.nodeIdentitiesBaseline = SpaceCloudNodeRemovalPolicy.instances(remote)
+                state.timedConfigurationBaseline = TimedSchedulerPayloadPolicy.canonical(remote)
+                state.schedulerModelStatesBaseline = SchedulerModelSnapshot.spaceData(remote)
+                try S.testSaveState(state, space: space)
+            }
+            remote["nodes"] = [[String: Any]]() // Server removed the old node, but retained its slots.
+            var replacement = old
+            replacement["unicastAddress"] = "0009"; replacement["deviceKey"] = String(repeating: "B2", count: 16)
+            replacement.removeValue(forKey: "custProps")
+            space.nodes = [replacement]; space.lastUpdate = 55
+            NetworkRequest.shared.result = .success(["data": remote])
+            if case .failure = await S.resumeUpload(space) { preconditionFailure("old-instance cloud removal must reconcile stale slots") }
+            precondition(space.nodes.count == 1 && space.nodes[0]["unicastAddress"] as? String == "0009")
+            precondition(space.nodes[0]["deviceKey"] as? String == replacement["deviceKey"] as? String)
+            precondition(space.needUploadCloud && !S.hasPendingUpload(space))
+            precondition(space.lastUploadCloudTimestamp == 50)
+        }
+        print("PASS: old cloud node removal with stale Timed bindings preserves a same-UUID newly provisioned local instance")
+    }
+
     @MainActor static func testDefaultedTimedImport() async throws {
         typealias S = SpaceConfigurationSafety
         typealias P = ProximityLightingImportPreflight
