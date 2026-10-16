@@ -20,18 +20,21 @@ enum SunricherProductCapabilityPolicy {
         0x2491,
         0x2492
     ]
-    private static let externalLightSensorCapableLuminaireProductIdentifiers: Set<UInt16> = [
-        0x2121,
-        0x2122,
-        0x2132,
-        0x2134,
-        0x2133,
-        0x2321,
-        0x2322,
-        0x2491,
-        0x2492,
-        0x2493,
-        0x2494
+    // 按 Company ID / Product ID 维护；Calibration 和 Profile 灵敏度提示共用此能力。
+    private static let externalLightSensorCapableLuminaireProducts: [UInt16: Set<UInt16>] = [
+        0x0A78: [
+            0x2121,
+            0x2122,
+            0x2132,
+            0x2133,
+            0x2134,
+            0x2321,
+            0x2322,
+            0x2491,
+            0x2492,
+            0x2493,
+            0x2494
+        ]
     ]
     private static let unsupportedMotionSensitivityProductIdentifiers: Set<UInt16> = [
         0x2121,
@@ -74,11 +77,10 @@ enum SunricherProductCapabilityPolicy {
         companyIdentifier: UInt16?,
         productIdentifier: UInt16?
     ) -> Bool {
-        supports(
-            companyIdentifier: companyIdentifier,
-            productIdentifier: productIdentifier,
-            productIdentifiers: externalLightSensorCapableLuminaireProductIdentifiers
-        )
+        guard let companyIdentifier, let productIdentifier else {
+            return false
+        }
+        return externalLightSensorCapableLuminaireProducts[companyIdentifier]?.contains(productIdentifier) == true
     }
 
     static func isMotionSensitivityUnsupported(

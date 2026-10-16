@@ -1908,20 +1908,36 @@ extension LightSensorCalibrationViewController: LightSensorCalibrationSelectView
 //        }
     }
     
-    private func showExternalLightSensorConnectionAlert(for sensor: Node, in view: LightSensorCalibrationSelectView, confirmHandler: @escaping () -> Void) {
-        SRAlertView(
+    private func showExternalLightSensorConnectionAlert(confirmHandler: @escaping () -> Void) {
+        let message = "external_light_sensor_capable_luminaire_calibration_message".localizedString
+        let messageFont = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light)
+        let paragraphStyle = NSMutableParagraphStyle()
+        paragraphStyle.alignment = .center
+        paragraphStyle.lineBreakMode = .byWordWrapping
+        paragraphStyle.minimumLineHeight = SCRYFrom(22)
+        paragraphStyle.maximumLineHeight = SCRYFrom(22)
+        let alert = SRAlertView(
             title: "external_light_sensor_capable_luminaire_calibration_title".localizedString,
-            message: "external_light_sensor_capable_luminaire_calibration_message".localizedString,
+            titleColor: TextBlack_Color,
+            titleFont: UIFont.systemFont(ofSize: SCRYFrom(18), weight: .regular),
+            message: message,
+            messageAttStr: NSAttributedString(string: message, attributes: [
+                .font: messageFont,
+                .foregroundColor: Title_Color,
+                .paragraphStyle: paragraphStyle
+            ]),
+            messageFont: messageFont,
             actions: [
-                SRAlertAction(title: "external_light_sensor_capable_luminaire_calibration_cancel".localizedString, style: .cancel, actionHandler: { [weak view] _ in
-                    sensor.selectState = .switchOff
-                    view?.reloadSensorCell(sensor: sensor)
-                }),
-                SRAlertAction(title: "external_light_sensor_capable_luminaire_calibration_confirm".localizedString, actionHandler: { _ in
+                SRAlertAction(title: "external_light_sensor_capable_luminaire_calibration_cancel".localizedString, titleFont: messageFont, style: .cancel),
+                SRAlertAction(title: "external_light_sensor_capable_luminaire_calibration_confirm".localizedString, titleFont: messageFont, performsActionAfterDismiss: true, actionHandler: { _ in
                     confirmHandler()
                 })
             ]
-        ).show()
+        )
+        alert.messageLabel.snp.updateConstraints { make in
+            make.top.equalTo(alert.titleLabel.snp.bottom).offset(SCRYFrom(16))
+        }
+        alert.show()
     }
 
     private func enableDaylightSensor(_ selectSensor: Node, lastSelectSensor: Node?, in view: LightSensorCalibrationSelectView) {
@@ -2025,10 +2041,41 @@ extension LightSensorCalibrationViewController: LightSensorCalibrationSelectView
     func view(_ view: LightSensorCalibrationSelectView, didSelectDaylightSensor selectSensor: Node, lastSelectSensor: Node?) {
 
         view.endEditing(true)
-        if group.ambientLightSensorNodes.contains(where: { $0.selectState == .loading }) {
+        guard canSelectDaylightSensor(selectSensor, in: view) else { return }
+
+        guard selectSensor.isExternalLightSensorCapableLuminaire else {
+            continueSelectingDaylightSensor(selectSensor, lastSelectSensor: lastSelectSensor, in: view)
             return
         }
 
+        let requestedMode = calibrationModeView.selectedMode
+        let previousSelection = self.selectSensor
+        showExternalLightSensorConnectionAlert { [weak self, weak view] in
+            guard let self, let view,
+                  self.calibrationModeView.selectedMode == requestedMode,
+                  self.selectSensor === previousSelection else { return }
+            self.continueSelectingDaylightSensor(selectSensor, lastSelectSensor: lastSelectSensor, in: view)
+        }
+    }
+
+    private func canSelectDaylightSensor(_ sensor: Node, in view: LightSensorCalibrationSelectView) -> Bool {
+        return isViewVisible
+            && view === sensorSelectView
+            && !isDaylightCalibrationInProgress
+            && luxPollingSuspensionReasons.isEmpty
+            && sensor.selectState == .switchOff
+            && group.ambientLightSensorNodes.contains(where: { $0 === sensor && $0.ambientLightSensorModel != nil })
+            && !group.ambientLightSensorNodes.contains(where: { $0.selectState == .loading })
+    }
+
+    private func continueSelectingDaylightSensor(_ selectSensor: Node, lastSelectSensor: Node?, in view: LightSensorCalibrationSelectView) {
+        // 弹窗关闭后重新核对页面和选择状态，避免延迟确认覆盖新的选择。
+        guard canSelectDaylightSensor(selectSensor, in: view),
+              group.ambientLightSensorNodes.first(where: { $0.selectState == .switchOn }) === lastSelectSensor else {
+            return
+        }
+
+        // Night / Sensor 只更新草稿，Publication 和校准状态仍在 Apply 后提交。
         if calibrationModeView.selectedMode != .plane {
             pendingUseSensorReadingAddress = nil
             lastSelectSensor?.selectState = .switchOff
@@ -2043,15 +2090,7 @@ extension LightSensorCalibrationViewController: LightSensorCalibrationSelectView
             return
         }
         
-        guard selectSensor.isExternalLightSensorCapableLuminaire else {
-            enableDaylightSensor(selectSensor, lastSelectSensor: lastSelectSensor, in: view)
-            return
-        }
-
-        showExternalLightSensorConnectionAlert(for: selectSensor, in: view) { [weak self, weak view] in
-            guard let self, let view else { return }
-            self.enableDaylightSensor(selectSensor, lastSelectSensor: lastSelectSensor, in: view)
-        }
+        enableDaylightSensor(selectSensor, lastSelectSensor: lastSelectSensor, in: view)
     }
     
     /// 取消选择传感器回调

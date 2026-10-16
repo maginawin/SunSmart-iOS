@@ -1,7 +1,8 @@
 """Run extracted controller methods with UI stubs and a recording MeshAPI.
 
 Checks mode browsing, sensor selection/activation, explicit dimming and calibration lifecycle.
-Includes publication TTL repair and transaction rollback with immediate callbacks.
+Includes deferred external-sensor confirmation, publication TTL repair and transaction rollback.
+The alert presenter and Plane selection dispatch are stubbed; activation methods run separately.
 Does not exercise UIKit, BLE, SDK sampling or real asynchronous callback timing.
 Run: python3 Tests/Group/CalibrationModeControlBehaviorTests.py
 """
@@ -14,9 +15,12 @@ repo = Path(__file__).resolve().parents[2]
 source = (repo / 'SunSmart/Main/Group/Controller/LightSensorCalibrationViewController.swift').read_text()
 policy_source = (repo / 'SunSmart/Common/Data/Node+SyncData.swift').read_text()
 
-def method(name, optional=False):
+def method(name, optional=False, parameter_label=None):
     import re
-    match = re.search(r'    (?:private |override )?func ' + name + r'\(', source)
+    matches = re.finditer(r'    (?:private |override )?func ' + name + r'\(', source)
+    match = next((candidate for candidate in matches
+                  if parameter_label is None or parameter_label in
+                  source[candidate.end():source.index('{', candidate.end())]), None)
     if match is None:
         if optional:
             return ''
@@ -39,6 +43,8 @@ methods = ['updateCalibrationModeUI', 'recalibrateNight', 'recalibrateSensor',
 swift = r'''
 import Foundation
 extension String { var localizedString: String { self } }
+let spaceDataChangedNotificaitonName = "spaceDataChanged"
+enum SpaceChangeDataType { case device }
 enum LightSensorCalibrationMode: CaseIterable { case night, sensor, plane }
 enum ProfileType: CaseIterable { case daylight, occupancy_daylight, vacancy_daylight }
 final class Profile {
@@ -70,6 +76,7 @@ final class Node: Equatable {
     let primaryUnicastAddress: Int
     var selectState = SelectState.switchOff
     var ambientLightSensorModel: Model? = Model()
+    var isExternalLightSensorCapableLuminaire = false
     init(_ address: Int) { primaryUnicastAddress = address; Self.registry[address] = self }
     static func == (lhs: Node, rhs: Node) -> Bool { lhs === rhs }
     func getNodeSyncProfiles() -> [Int] { [] }
@@ -142,12 +149,14 @@ final class View {
     var allowedRange = 1...100
     var dimLevel = 50
     var targetValue: Int?
+    func endEditing(_ force: Bool) {}
     func reloadSensorCell(sensor: Node) {}
     func setTitle(_ title: String, for state: State) {}
     func setTargetValue(_ value: Int) { targetValue = value }
     func update(targetLux: Int, targetBrightness: Int, showsTargetBrightness: Bool,
                 pendingDeviceCount: Int, profileType: ProfileType) {}
 }
+typealias LightSensorCalibrationSelectView = View
 struct Transition { static let `default` = Transition() }
 struct LightLCLightOnOffSetUnacknowledged {
     let isOn: Bool
@@ -174,13 +183,32 @@ final class Harness: Base {
     var calibrationModeView = View()
     var sensorSelectView = View()
     var selectSensor: Node?
+    var pendingUseSensorReadingAddress: Address?
+    var externalSensorAlertCount = 0
+    var pendingSensorConfirmation: (() -> Void)?
+    func showExternalLightSensorConnectionAlert(confirmHandler: @escaping () -> Void) {
+        externalSensorAlertCount += 1
+        pendingSensorConfirmation = confirmHandler
+    }
+    func confirmExternalSensorAlert() {
+        let confirmation = pendingSensorConfirmation
+        pendingSensorConfirmation = nil
+        confirmation?()
+    }
+    func enableDaylightSensor(_ sensor: Node, lastSelectSensor: Node?, in view: View) {
+        MeshAPI.commands.append("activate:\(sensor.primaryUnicastAddress)")
+        lastSelectSensor?.selectState = .switchOff
+        sensor.selectState = .switchOn
+        selectSensor = sensor
+    }
     var deviceBlinkMode = 0
     var disableSucceeds = true
-    enum Suspension { case configuration }
+    enum Suspension: Hashable { case calibration, configuration, sensorSwitching }
+    var luxPollingSuspensionReasons: Set<Suspension> = []
     func setLuxPollingSuspended(_ suspended: Bool, for reason: Suspension) {}
     func updateGroupLightSensor() {}
     func configuring(lightNodes: [Node], completion: (Bool) -> Void) { completion(true) }
-    func sensorDisable(sensor: Node, lightConfig: Bool, result: (Bool) -> Void) {
+    func sensorDisable(sensor: Node, lightConfig: Bool = true, result: (Bool) -> Void) {
         MeshAPI.commands.append("disable:\(sensor.primaryUnicastAddress)")
         if disableSucceeds {
             sensor.ambientLightSensorModel?.publish = nil
@@ -212,6 +240,10 @@ swift += '\n'.join(method(name) for name in methods)
 swift += '\n' + method('updateSensorManualControlState', True)
 swift += '\n' + method('resumeIncompleteSensorDraftIfNeeded', True)
 swift += '\n' + method('restorePersistedSensorSelectionForPlane', True)
+swift += '\n' + method('view', parameter_label='didSelectDaylightSensor')
+swift += '\n' + method('view', parameter_label='didDeselectDaylightSensor')
+swift += '\n' + method('canSelectDaylightSensor')
+swift += '\n' + method('continueSelectingDaylightSensor')
 swift += r'''
 }
 '''
@@ -231,6 +263,121 @@ func expect(_ commands: [String], _ label: String) {
         exit(1)
     }
     MeshAPI.commands = []
+}
+func selectionFixture(_ mode: LightSensorCalibrationMode, external: Bool = true) -> (Harness, Node, Node) {
+    let h = Harness(), previous = Node(60), candidate = Node(61)
+    h.group.nodes = [previous, candidate]
+    h.group.info.ambientLightSensorNode = previous
+    h.selectSensor = previous
+    previous.selectState = .switchOn
+    candidate.isExternalLightSensorCapableLuminaire = external
+    h.isViewVisible = true
+    h.calibrationModeView.selectedMode = mode
+    h.pendingUseSensorReadingAddress = previous.primaryUnicastAddress
+    return (h, previous, candidate)
+}
+for mode in LightSensorCalibrationMode.allCases {
+    let (h, previous, candidate) = selectionFixture(mode)
+    h.view(h.sensorSelectView, didSelectDaylightSensor: candidate, lastSelectSensor: previous)
+    require(h.externalSensorAlertCount == 1, "external sensor prompts before selection in \(mode)")
+    require(h.selectSensor === previous && previous.selectState == .switchOn && candidate.selectState == .switchOff,
+            "waiting confirmation preserves both switches")
+    require(h.pendingUseSensorReadingAddress == previous.primaryUnicastAddress, "waiting retains reading request")
+    expect([], "waiting does not activate or send commands")
+    h.pendingSensorConfirmation = nil // CANCEL dismisses the presenter without invoking confirmation.
+    require(h.selectSensor === previous && candidate.selectState == .switchOff, "cancel preserves original selection")
+    require(h.group.info.ambientLightSensorNode === previous, "cancel preserves persisted sensor")
+    expect([], "cancel does not configure")
+    h.view(h.sensorSelectView, didSelectDaylightSensor: candidate, lastSelectSensor: previous)
+    require(h.externalSensorAlertCount == 2, "retry after cancel prompts again")
+    h.confirmExternalSensorAlert()
+    require(h.selectSensor === candidate && previous.selectState == .switchOff && candidate.selectState == .switchOn,
+            "confirm switches selected sensor")
+    require(h.group.info.ambientLightSensorNode === previous, "selection dispatch does not replace persisted sensor")
+    expect(mode == .plane ? ["activate:61"] : [], "only Plane dispatches activation before Apply")
+    h.confirmExternalSensorAlert()
+    expect([], "dismissed confirmation cannot be submitted twice")
+    h.view(h.sensorSelectView, didSelectDaylightSensor: candidate, lastSelectSensor: candidate)
+    require(h.externalSensorAlertCount == 2, "already selected sensor does not prompt again")
+    expect([], "already selected sensor is not reactivated")
+    for nextMode in LightSensorCalibrationMode.allCases { h.select(nextMode) }
+    require(h.externalSensorAlertCount == 2, "mode changes retain selection without another reminder")
+    expect([], "mode changes after confirmation send no commands")
+    h.select(mode)
+    h.view(h.sensorSelectView, didDeselectDaylightSensor: candidate)
+    require(h.externalSensorAlertCount == 2 && h.selectSensor == nil && candidate.selectState == .switchOff,
+            "deselect clears selection without a reminder")
+    expect([], "unpublished draft deselection sends no commands")
+    h.view(h.sensorSelectView, didSelectDaylightSensor: candidate, lastSelectSensor: nil)
+    require(h.externalSensorAlertCount == 3, "reselect after disabling prompts again")
+    h.confirmExternalSensorAlert()
+    require(h.selectSensor === candidate, "selection without a previous sensor succeeds")
+    expect(mode == .plane ? ["activate:61"] : [], "reselect keeps mode-specific dispatch")
+
+    let (ordinary, oldSensor, normalSensor) = selectionFixture(mode, external: false)
+    ordinary.view(ordinary.sensorSelectView, didSelectDaylightSensor: normalSensor, lastSelectSensor: oldSensor)
+    require(ordinary.externalSensorAlertCount == 0 && ordinary.selectSensor === normalSensor,
+            "ordinary sensor selects without confirmation")
+    expect(mode == .plane ? ["activate:61"] : [], "ordinary selection keeps mode-specific dispatch")
+
+    let (retry, retryPrevious, retryCandidate) = selectionFixture(mode)
+    retry.daylightConfigurationPending = true
+    retry.view(retry.sensorSelectView, didSelectDaylightSensor: retryCandidate, lastSelectSensor: retryPrevious)
+    require(retry.externalSensorAlertCount == 1, "pending configuration alone must not block later selection")
+    retry.confirmExternalSensorAlert()
+    require(retry.selectSensor === retryCandidate, "recovery selection remains available when operations are idle")
+    expect(mode == .plane ? ["activate:61"] : [], "recovery selection keeps dispatch")
+
+    // A failed Plane activation may retain the previous Node reference after both switches turn off.
+    for external in [false, true] {
+        let (recovery, inactivePrevious, nextSensor) = selectionFixture(mode, external: external)
+        inactivePrevious.selectState = .switchOff
+        recovery.view(recovery.sensorSelectView, didSelectDaylightSensor: nextSensor, lastSelectSensor: nil)
+        if external { recovery.confirmExternalSensorAlert() }
+        require(recovery.selectSensor === nextSensor, "inactive previous reference must not block retry")
+        expect(mode == .plane ? ["activate:61"] : [], "retry after failed activation keeps dispatch")
+    }
+}
+let invalidSelectionStates = ["hidden", "removed", "missingModel", "replacedNode", "loading",
+                              "calibrating", "configuration", "sensorSwitching", "pollingCalibration"]
+func invalidateSelection(_ reason: String, _ h: Harness, _ candidate: Node) {
+    switch reason {
+    case "hidden": h.isViewVisible = false
+    case "removed": h.group.nodes.removeAll { $0 === candidate }
+    case "missingModel": candidate.ambientLightSensorModel = nil
+    case "replacedNode": h.group.nodes = [Node(candidate.primaryUnicastAddress)]
+    case "loading": h.group.nodes.first?.selectState = .loading
+    case "calibrating": h.isDaylightCalibrationInProgress = true
+    case "configuration": h.luxPollingSuspensionReasons.insert(.configuration)
+    case "sensorSwitching": h.luxPollingSuspensionReasons.insert(.sensorSwitching)
+    case "pollingCalibration": h.luxPollingSuspensionReasons.insert(.calibration)
+    case "modeChanged": h.select(h.calibrationModeView.selectedMode == .plane ? .night : .plane)
+    case "selectionChanged": h.selectSensor = nil
+    case "alreadySelected": candidate.selectState = .switchOn
+    default: fatalError(reason)
+    }
+}
+for mode in LightSensorCalibrationMode.allCases {
+    for reason in invalidSelectionStates {
+        let (h, previous, candidate) = selectionFixture(mode)
+        invalidateSelection(reason, h, candidate)
+        h.view(h.sensorSelectView, didSelectDaylightSensor: candidate, lastSelectSensor: previous)
+        require(h.externalSensorAlertCount == 0 && h.selectSensor === previous,
+                "invalid initial selection is ignored: \(mode) \(reason)")
+        expect([], "invalid selection sends no commands")
+    }
+    for reason in invalidSelectionStates + ["modeChanged", "selectionChanged", "alreadySelected"] {
+        let (h, previous, candidate) = selectionFixture(mode)
+        h.view(h.sensorSelectView, didSelectDaylightSensor: candidate, lastSelectSensor: previous)
+        invalidateSelection(reason, h, candidate)
+        let selectedBefore = h.selectSensor
+        let oldState = previous.selectState, candidateState = candidate.selectState
+        h.confirmExternalSensorAlert()
+        require(h.selectSensor === selectedBefore && previous.selectState == oldState && candidate.selectState == candidateState,
+                "stale confirmation cannot mutate selection: \(mode) \(reason)")
+        require(h.group.info.ambientLightSensorNode === previous, "stale confirmation preserves stored sensor")
+        expect([], "stale confirmation cannot activate")
+    }
 }
 for type in ProfileType.allCases {
     for persistedAddress: Int? in [nil, 24] {

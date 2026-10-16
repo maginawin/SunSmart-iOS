@@ -30,7 +30,7 @@ struct UpDownLightProductSupportContractTests {
 
         precondition(matches.count == 1, "Expected exactly one 0x0A78/0x2321 device config")
         let record = matches[0]
-        precondition(record["categoryName"] as? String == "CCT Up&Down Lighting")
+        precondition(record["categoryName"] as? String == "Driver Lighting")
         precondition(record["elementCount"] as? Int == 3)
         precondition(record["iconCategory"] as? String == "BidirectionalController")
         precondition(record["deviceCategory"] as? String == "Lighting")
@@ -47,6 +47,17 @@ struct UpDownLightProductSupportContractTests {
         precondition(cctDriverRecord["iconCategory"] as? String == "Lighting")
         precondition(cctDriverRecord["deviceCategory"] as? String == "Lighting")
         precondition(cctDriverRecord["modelName"] as? String == "SRPL-BL9105N-XXCCTXXE")
+
+        let miniMatches = records.filter {
+            $0["companyId"] as? String == "0A78" && $0["productId"] as? String == "2134"
+        }
+        precondition(miniMatches.count == 1, "Expected exactly one 0x0A78/0x2134 device config")
+        let mini = miniMatches[0]
+        precondition(mini["categoryName"] as? String == "0-10V Load Controller")
+        precondition(mini["elementCount"] as? Int == 3)
+        precondition(mini["iconCategory"] as? String == "ZLLControllerSensor")
+        precondition(mini["deviceCategory"] as? String == "Lighting")
+        precondition(mini["modelName"] as? String == "SR-BL2421-Mini")
     }
 
     private static func testUpDownRatioCapability() {
@@ -66,7 +77,7 @@ struct UpDownLightProductSupportContractTests {
 
     private static func testExternalLightSensorCapability() {
         let supportedProducts: [UInt16] = [
-            0x2121, 0x2122, 0x2132, 0x2133, 0x2321, 0x2322,
+            0x2121, 0x2122, 0x2132, 0x2133, 0x2134, 0x2321, 0x2322,
             0x2491, 0x2492, 0x2493, 0x2494
         ]
         for productIdentifier in supportedProducts {
@@ -87,6 +98,7 @@ struct UpDownLightProductSupportContractTests {
         precondition(!SunricherProductCapabilityPolicy.isMotionSensitivityUnsupported(companyIdentifier: 0x1234, productIdentifier: 0x2321))
         precondition(SunricherProductCapabilityPolicy.isMotionSensitivityUnsupported(companyIdentifier: 0x0A78, productIdentifier: 0x2131))
         precondition(SunricherProductCapabilityPolicy.isMotionSensitivityUnsupported(companyIdentifier: 0x0A78, productIdentifier: 0x2132))
+        precondition(SunricherProductCapabilityPolicy.isMotionSensitivityUnsupported(companyIdentifier: 0x0A78, productIdentifier: 0x2134))
         precondition(SunricherProductCapabilityPolicy.isMotionSensitivityUnsupported(companyIdentifier: 0x0A78, productIdentifier: 0x2322))
         precondition(!SunricherProductCapabilityPolicy.isMotionSensitivityUnsupported(companyIdentifier: 0x1234, productIdentifier: 0x2322))
         precondition(!SunricherProductCapabilityPolicy.isMotionSensitivityUnsupported(companyIdentifier: nil, productIdentifier: 0x2322))

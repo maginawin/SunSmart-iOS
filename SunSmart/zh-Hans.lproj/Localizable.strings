@@ -1606,10 +1606,10 @@
 "calibration_about_avoid_if" = "不适用于：";
 "expanded" = "已展开";
 "collapsed" = "已收起";
-"external_light_sensor_capable_luminaire_calibration_title" = "Notification";
-"external_light_sensor_capable_luminaire_calibration_message" = "This device has the ability to connect to an external light sensor. Before calibration, please ensure that the sensor is connected.";
-"external_light_sensor_capable_luminaire_calibration_cancel" = "CANCEL";
-"external_light_sensor_capable_luminaire_calibration_confirm" = "CONFIRM";
+"external_light_sensor_capable_luminaire_calibration_title" = "通知";
+"external_light_sensor_capable_luminaire_calibration_message" = "此设备支持连接外部光照传感器。校准前，请确保已连接传感器。";
+"external_light_sensor_capable_luminaire_calibration_cancel" = "取消";
+"external_light_sensor_capable_luminaire_calibration_confirm" = "确认";
 "apply_night_calibration" = "应用夜间校准";
 "apply_sensor_calibration" = "应用传感器校准";
 "apply_plane_calibration" = "应用平面校准";
