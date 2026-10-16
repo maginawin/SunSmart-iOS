@@ -48,6 +48,16 @@ Workflow 使用 `SunSmart.xcworkspace` 和需要构建的品牌 Scheme；SunSmar
 
 该脚本须保留可执行权限并提交到 Cloud 构建的分支。修改依赖后，先在本地运行 `pod install` 并同步提交 `Podfile` 与 `Podfile.lock`。云端日志应先显示 post-clone 脚本安装依赖成功，再开始 Xcode 构建。
 
+## 更新正式 NordicSigMeshSDK
+
+更新 `SunSmart.xcworkspace` 使用的 SDK 到远端 `release` 分支最新提交：
+
+```bash
+scripts/update_nordic_sdk_workspace.sh
+```
+
+脚本需要 `git`、`python3` 和 SDK 远端仓库访问权限。它读取共享 `Package.resolved` 中的仓库地址，查询最新 SHA 并更新对应的 `state.revision`；已是最新版本时不写入文件，查询失败时保留原文件。脚本不执行构建或 Git 提交；更新后可通过 `SunSmart.xcworkspace` 解析依赖和构建。
+
 ## 使用本地 NordicSigMeshSDK
 
 需要同时开发 App 和 `NordicSigMeshSDK` 时，运行：
