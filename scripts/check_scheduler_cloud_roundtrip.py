@@ -42,7 +42,7 @@ with tempfile.TemporaryDirectory(prefix='scheduler-cloud-roundtrip-') as temp:
     assembled.write_text(harness + '\n' + adapter + '\n' + wire + '\n' + data_extensions)
     binary = temp / 'Tests'
     subprocess.run(['swiftc', '-parse-as-library',
-                    str(root / 'SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),
+                    str(root / 'SunSmart/Common/Data/HDBConfiguration.swift'), str(root / 'SunSmart/Common/Data/HDBLightingZonePolicy.swift'), str(root / 'SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),
                     str(source / 'nRFMeshProvision/Mesh Model/StepResolution.swift'),
                     str(source / 'nRFMeshProvision/Mesh Model/TransitionTime.swift'),
                     str(source / 'MeshLib/Node/SchedulerModelCachePersistence.swift'),

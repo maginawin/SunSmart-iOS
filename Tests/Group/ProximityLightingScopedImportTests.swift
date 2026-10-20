@@ -114,6 +114,7 @@ final class Node: Decodable {
     var proximityLightingRelayCount: UInt8? = 2
     var proximityLightingNeighborAddresses: [Address] = []
     var sunricherVendorModel: Model? { elements.flatMap(\.models).first { $0.isVendor } }
+    var configurationGroup: Group? { group }
     var group: Group? { elements.flatMap(\.models).flatMap(\.subscriptions).first }
     required init(from decoder: Decoder) throws {
         Self.decodeCount += 1
@@ -164,6 +165,8 @@ final class MeshNetworkManager {
     var groups: [Group] { meshNetwork?.groups ?? [] }
 }
 final class SpaceData {
+    var hdb: HDBConfiguration?
+    var hdbGroupAddresses: Set<UInt16> { Set(hdb?.lightingZones.map(\.groupAddress) ?? []) }
     enum State { case normal }
     var state = State.normal
     let id = UUID().uuidString, meshUUID: String, meshNetworkId: String
@@ -295,6 +298,28 @@ enum NodeSyncData: Equatable {
         try testDeviceDeletionRecovery()
         try testSiteDeviceOwnership()
         try testRestoreKeepsPeerSyncPending()
+        var multiHDB = payload()
+        var groupsWithHDB = multiHDB["groups"] as! [[String: Any]]
+        groupsWithHDB += ["C001", "C002"].map { ["address": $0, "name": "HDB", "profile": ["type": 1]] }
+        multiHDB["groups"] = groupsWithHDB
+        var spaceExtension = multiHDB["spaceData"] as! [String: Any]
+        spaceExtension["hdb"] = try HDBLightingZonePolicy.json(HDBConfiguration(lightingZones: [.init(zoneId: 1, name: "One", groupAddress: 0xC001), .init(zoneId: 2, name: "Two", groupAddress: 0xC002)]))
+        multiHDB["spaceData"] = spaceExtension
+        multiHDB["nodes"] = (multiHDB["nodes"] as! [[String: Any]]).map { original in
+            var node = original
+            node["elements"] = [["models": [["modelId": "0A780001", "subscribe": ["C001", "C000", "C002"]]]]]
+            return node
+        }
+        let multiPreflight = preflight(multiHDB)
+        require(multiPreflight?.hasValidationIssues == false && multiPreflight?.reconciliation?.snapshot.groups.count == 1, "real import preflight excludes HDB subscriptions from ordinary membership")
+        let hdbFixture = try fixture()
+        let hdbGroup = Group(0xC001)
+        hdbGroup.network = hdbFixture.network; hdbGroup.subNetworkId = hdbFixture.space.meshNetworkId
+        hdbFixture.network.groups.append(hdbGroup)
+        hdbFixture.space.hdb = HDBConfiguration(lightingZones: [.init(zoneId: 1, name: "HDB", groupAddress: 0xC001)])
+        require(ProximityLightingTopologyPlanner.makePlan(space: hdbFixture.space).isComplete, "HDB directory must not invalidate ordinary direct topology planner")
+        let hdbPreparation = ProximityLightingLifecycleCoordinator.begin(space: hdbFixture.space).prepare()
+        require(hdbPreparation.isValid && hdbPreparation.sourceSnapshot.groups.count == 1, "lifecycle filters only HDB groups")
         let target = try fixture(), other = try fixture(networkId: "BB"), sameSite = try fixture(networkId: "CC", uuid: target.network.uuid)
         let expected = preflight(payload())!.reconciliation!.snapshot
         require(target.nodes.map(\.uuid) == other.nodes.map(\.uuid), "fixture must reuse L1/L2 identities across Sites")

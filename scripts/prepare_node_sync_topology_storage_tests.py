@@ -15,6 +15,8 @@ def source():
     planner = read('SunSmart/Main/Group/Model/GroupProximityLightingData.swift')
     site = read('SunSmart/Main/Site/TriggerZone/SiteTriggerZoneTopologyReader.swift')
     parts = [
+        read('SunSmart/Common/Data/SiteExtensionData.swift'),
+        read('SunSmart/Common/Data/SiteExtensionState.swift'),
         read('SunSmart/Main/Site/TriggerZone/SiteTriggerZoneData.swift'),
         read('SunSmart/Main/Group/Model/ProximityLightingTopologyPolicy.swift'),
         block(read('SunSmart/Main/Site/TriggerZone/SiteTriggerZoneTopologyPolicy.swift'), 'enum SiteTriggerZoneTopologyPolicy'),

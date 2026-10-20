@@ -8,6 +8,17 @@
             "triggerZone": {
                 "builds": ["debug"],
                 "roles": ["owner", "editor"]
+            },
+            "space": {
+                "hdbConfiguration": {
+                    "builds": ["release", "debug"],
+                    "roles": ["owner", "editor"]
+                }
+            },
+            "isHdbSite": {
+                "builds": ["release", "debug"],
+                "roles": ["owner", "editor"],
+                "targets": ["SunSmart"]
             }
         }
     }

@@ -37,7 +37,7 @@ with tempfile.TemporaryDirectory(prefix='lights-deletion-context-') as folder:
     harness.write_text('import Foundation\n' + preparation + fixture)
     binary = folder / 'tests'
     subprocess.run(['swiftc', '-parse-as-library',
-        str(root / 'SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),
+        str(root / 'SunSmart/Common/Data/HDBConfiguration.swift'), str(root / 'SunSmart/Common/Data/HDBLightingZonePolicy.swift'), str(root / 'SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),
         str(root / 'SunSmart/Common/Data/DeviceScheduleAddressCleanup.swift'),
         str(harness), '-o', str(binary)], check=True)
     subprocess.run([str(binary), str(folder / 'storage')], check=True)

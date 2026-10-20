@@ -103,7 +103,7 @@ struct GroupInfo {
         .init(identity: .init(spaceID: "A", nodeUUID: idA), groupAddress: 0xC001, primaryAddress: 1, deviceAddress: 1),
         .init(identity: .init(spaceID: "B", nodeUUID: idB), groupAddress: 0xC002, primaryAddress: 10, deviceAddress: 11)
     ])
-    var state = SiteTriggerZoneState()
+    var state = SiteExtensionState()
     state.data.fields = ["schemaVersion": .integer(2), "triggerZones": .array([.object(zone.fields)])]
     state.serverData = state.data
     try app.run("INSERT INTO site_extensions VALUES (?,?,?)", meshID, 0, Blob(bytes: Array(try JSONEncoder().encode(state))))

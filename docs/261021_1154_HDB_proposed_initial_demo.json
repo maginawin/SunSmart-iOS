@@ -1,0 +1,464 @@
+{
+  "broadcast": {
+    "lightingConfiguration": null
+  },
+  "devices": [
+    {
+      "lightingConfiguration": {
+        "brightIntensity": {
+          "status": "synced",
+          "value": 80
+        },
+        "dimIntensity": {
+          "status": "synced",
+          "value": 20
+        },
+        "failsafeDelay": {
+          "status": "synced",
+          "value": 5
+        },
+        "holdTime": {
+          "status": "synced",
+          "value": 30
+        },
+        "lightingControl": {
+          "status": "synced",
+          "value": "Auto"
+        },
+        "rampDownTime": {
+          "status": "synced",
+          "value": 2
+        },
+        "rampUpTime": {
+          "status": "synced",
+          "value": 1
+        }
+      },
+      "lightingZones": [],
+      "lightingZonesStatus": "synced",
+      "mac": null,
+      "nodeAddress": 256,
+      "nodeUuid": "11111111-1111-4111-8111-111111111111",
+      "sensorGroupId": 49216
+    },
+    {
+      "lightingConfiguration": {
+        "brightIntensity": {
+          "status": "synced",
+          "value": 80
+        },
+        "dimIntensity": {
+          "status": "synced",
+          "value": 20
+        },
+        "failsafeDelay": {
+          "status": "synced",
+          "value": 5
+        },
+        "holdTime": {
+          "status": "pending",
+          "value": 30
+        },
+        "lightingControl": {
+          "status": "pending",
+          "value": "Auto"
+        },
+        "rampDownTime": {
+          "status": "pending",
+          "value": 2
+        },
+        "rampUpTime": {
+          "status": "synced",
+          "value": 1
+        }
+      },
+      "lightingZones": [],
+      "lightingZonesStatus": "pending",
+      "mac": null,
+      "nodeAddress": 512,
+      "nodeUuid": "22222222-2222-4222-8222-222222222222",
+      "sensorGroupId": null
+    }
+  ],
+  "lightingZones": [
+    {
+      "groupAddress": 49153,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 1",
+      "zoneId": 1
+    },
+    {
+      "groupAddress": 49154,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 2",
+      "zoneId": 2
+    },
+    {
+      "groupAddress": 49155,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 3",
+      "zoneId": 3
+    },
+    {
+      "groupAddress": 49156,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 4",
+      "zoneId": 4
+    },
+    {
+      "groupAddress": 49157,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 5",
+      "zoneId": 5
+    },
+    {
+      "groupAddress": 49158,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 6",
+      "zoneId": 6
+    },
+    {
+      "groupAddress": 49159,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 7",
+      "zoneId": 7
+    },
+    {
+      "groupAddress": 49160,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 8",
+      "zoneId": 8
+    },
+    {
+      "groupAddress": 49161,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 9",
+      "zoneId": 9
+    },
+    {
+      "groupAddress": 49162,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 10",
+      "zoneId": 10
+    },
+    {
+      "groupAddress": 49163,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 11",
+      "zoneId": 11
+    },
+    {
+      "groupAddress": 49164,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 12",
+      "zoneId": 12
+    },
+    {
+      "groupAddress": 49165,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 13",
+      "zoneId": 13
+    },
+    {
+      "groupAddress": 49166,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 14",
+      "zoneId": 14
+    },
+    {
+      "groupAddress": 49167,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 15",
+      "zoneId": 15
+    },
+    {
+      "groupAddress": 49168,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 16",
+      "zoneId": 16
+    },
+    {
+      "groupAddress": 49169,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 17",
+      "zoneId": 17
+    },
+    {
+      "groupAddress": 49170,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 18",
+      "zoneId": 18
+    },
+    {
+      "groupAddress": 49171,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 19",
+      "zoneId": 19
+    },
+    {
+      "groupAddress": 49172,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 20",
+      "zoneId": 20
+    },
+    {
+      "groupAddress": 49173,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 21",
+      "zoneId": 21
+    },
+    {
+      "groupAddress": 49174,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 22",
+      "zoneId": 22
+    },
+    {
+      "groupAddress": 49175,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 23",
+      "zoneId": 23
+    },
+    {
+      "groupAddress": 49176,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 24",
+      "zoneId": 24
+    },
+    {
+      "groupAddress": 49177,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 25",
+      "zoneId": 25
+    },
+    {
+      "groupAddress": 49178,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 26",
+      "zoneId": 26
+    },
+    {
+      "groupAddress": 49179,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 27",
+      "zoneId": 27
+    },
+    {
+      "groupAddress": 49180,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 28",
+      "zoneId": 28
+    },
+    {
+      "groupAddress": 49181,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 29",
+      "zoneId": 29
+    },
+    {
+      "groupAddress": 49182,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 30",
+      "zoneId": 30
+    },
+    {
+      "groupAddress": 49183,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 31",
+      "zoneId": 31
+    },
+    {
+      "groupAddress": 49184,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 32",
+      "zoneId": 32
+    },
+    {
+      "groupAddress": 49185,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 33",
+      "zoneId": 33
+    },
+    {
+      "groupAddress": 49186,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 34",
+      "zoneId": 34
+    },
+    {
+      "groupAddress": 49187,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 35",
+      "zoneId": 35
+    },
+    {
+      "groupAddress": 49188,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 36",
+      "zoneId": 36
+    },
+    {
+      "groupAddress": 49189,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 37",
+      "zoneId": 37
+    },
+    {
+      "groupAddress": 49190,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 38",
+      "zoneId": 38
+    },
+    {
+      "groupAddress": 49191,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 39",
+      "zoneId": 39
+    },
+    {
+      "groupAddress": 49192,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 40",
+      "zoneId": 40
+    },
+    {
+      "groupAddress": 49193,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 41",
+      "zoneId": 41
+    },
+    {
+      "groupAddress": 49194,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 42",
+      "zoneId": 42
+    },
+    {
+      "groupAddress": 49195,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 43",
+      "zoneId": 43
+    },
+    {
+      "groupAddress": 49196,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 44",
+      "zoneId": 44
+    },
+    {
+      "groupAddress": 49197,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 45",
+      "zoneId": 45
+    },
+    {
+      "groupAddress": 49198,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 46",
+      "zoneId": 46
+    },
+    {
+      "groupAddress": 49199,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 47",
+      "zoneId": 47
+    },
+    {
+      "groupAddress": 49200,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 48",
+      "zoneId": 48
+    },
+    {
+      "groupAddress": 49201,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 49",
+      "zoneId": 49
+    },
+    {
+      "groupAddress": 49202,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 50",
+      "zoneId": 50
+    },
+    {
+      "groupAddress": 49203,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 51",
+      "zoneId": 51
+    },
+    {
+      "groupAddress": 49204,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 52",
+      "zoneId": 52
+    },
+    {
+      "groupAddress": 49205,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 53",
+      "zoneId": 53
+    },
+    {
+      "groupAddress": 49206,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 54",
+      "zoneId": 54
+    },
+    {
+      "groupAddress": 49207,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 55",
+      "zoneId": 55
+    },
+    {
+      "groupAddress": 49208,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 56",
+      "zoneId": 56
+    },
+    {
+      "groupAddress": 49209,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 57",
+      "zoneId": 57
+    },
+    {
+      "groupAddress": 49210,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 58",
+      "zoneId": 58
+    },
+    {
+      "groupAddress": 49211,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 59",
+      "zoneId": 59
+    },
+    {
+      "groupAddress": 49212,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 60",
+      "zoneId": 60
+    },
+    {
+      "groupAddress": 49213,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 61",
+      "zoneId": 61
+    },
+    {
+      "groupAddress": 49214,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 62",
+      "zoneId": 62
+    },
+    {
+      "groupAddress": 49215,
+      "lightingConfiguration": null,
+      "name": "Lighting Zone 63",
+      "zoneId": 63
+    }
+  ],
+  "schemaVersion": 1
+}

@@ -219,7 +219,7 @@ extension SiteData {
         }
 //        _ = try? SunSmartDataManager.shared.db?.run(SiteData.sitesTable.addColumn(ExpressionKey.localAddress))
         
-        try? SiteTriggerZoneStore.createTable()
+        try? SiteExtensionStore.createTable()
         SpaceData.initDatabase()
     }
     
@@ -311,7 +311,7 @@ extension SiteData {
         do {
             try database.savepoint("delete_site_" + UUID().uuidString) {
                 try database.run(filter.delete())
-                try SiteTriggerZoneStore.delete(self)
+                try SiteExtensionStore.delete(self)
             }
         }
         catch {
@@ -474,7 +474,7 @@ extension SiteData {
         do {
             try database.savepoint("save_site_" + UUID().uuidString) {
                 try database.run(insetOrUpdate)
-                try SiteTriggerZoneStore.bootstrap(self)
+                try SiteExtensionStore.bootstrap(self)
             }
         } catch {
             #if DEBUG
@@ -533,6 +533,7 @@ extension SpaceData {
         static let controlType = Expression<String>("controlType")
         static let deviceBlinkMode = Expression<Int>("deviceBlinkMode")
         static let triggerZones = Expression<Data?>("triggerZones")
+        static let hdb = Expression<Data?>("hdb")
         static let timedSchemaVersion = Expression<Int>("timedSchemaVersion")
     }
     
@@ -577,6 +578,7 @@ extension SpaceData {
             builder.column(ExpressionKey.controlType, defaultValue: SpaceContentDisplayDefaults.controlType.rawValue)
             builder.column(ExpressionKey.deviceBlinkMode, defaultValue: DeviceBlinkMode.breathing.rawValue)
             builder.column(ExpressionKey.triggerZones)
+            builder.column(ExpressionKey.hdb)
             builder.column(ExpressionKey.timedSchemaVersion, defaultValue: 1)
         }))
         
@@ -614,6 +616,9 @@ extension SpaceData {
             }
             if !columns.contains(where: { $0.name == "timedSchemaVersion" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(SpaceData.spacesTable.addColumn(ExpressionKey.timedSchemaVersion, defaultValue: 1))
+            }
+            if !columns.contains(where: { $0.name == "hdb" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(SpaceData.spacesTable.addColumn(ExpressionKey.hdb))
             }
             // 是否存在”triggerZones“属性
             if !columns.contains(where: { $0.name == "triggerZones" }) {
@@ -684,6 +689,17 @@ extension SpaceData {
                 space.controlType = SpaceControlType(rawValue: row[ExpressionKey.controlType]) ?? SpaceContentDisplayDefaults.controlType
                 space.deviceBlinkMode = DeviceBlinkMode(rawValue: row[ExpressionKey.deviceBlinkMode]) ?? .breathing
                 space.timedSchemaVersion = row[ExpressionKey.timedSchemaVersion]
+                if let data = row[ExpressionKey.hdb] {
+                    do {
+                        let config = try jsonDecoder.decode(HDBConfiguration.self, from: data)
+                        try HDBLightingZonePolicy.validate(config)
+                        space.hdb = config
+                        space.hdbPersistenceBaseline = config
+                    } catch {
+                        space.hdbLoadFailed = true
+                        SpaceConfigurationSafety.block(space, reason: "invalidStoredHDB")
+                    }
+                }
                 if let triggerZonesData = row[ExpressionKey.triggerZones] {
                     if let zones = try? jsonDecoder.decode([SpaceTriggerZone].self, from: triggerZonesData) {
                         space.triggerZones = zones
@@ -746,6 +762,17 @@ extension SpaceData {
                 newSpace.controlType = SpaceControlType(rawValue: row[ExpressionKey.controlType]) ?? SpaceContentDisplayDefaults.controlType
                 newSpace.deviceBlinkMode = DeviceBlinkMode(rawValue: row[ExpressionKey.deviceBlinkMode]) ?? .breathing
                 newSpace.timedSchemaVersion = row[ExpressionKey.timedSchemaVersion]
+                if let data = row[ExpressionKey.hdb] {
+                    do {
+                        let config = try jsonDecoder.decode(HDBConfiguration.self, from: data)
+                        try HDBLightingZonePolicy.validate(config)
+                        newSpace.hdb = config
+                        newSpace.hdbPersistenceBaseline = config
+                    } catch {
+                        newSpace.hdbLoadFailed = true
+                        SpaceConfigurationSafety.block(newSpace, reason: "invalidStoredHDB")
+                    }
+                }
                 if let triggerZonesData = row[ExpressionKey.triggerZones] {
                     if let zones = try? jsonDecoder.decode([SpaceTriggerZone].self, from: triggerZonesData) {
                         newSpace.triggerZones = zones
@@ -795,10 +822,27 @@ extension SpaceData {
     }
 
     /// 缓存当前空间数据
-    @discardableResult func save() -> Bool {
-        guard !triggerZonesLoadFailed, SunSmartDataManager.shared.db != nil else { return false }
+    @discardableResult func save(importingConfiguration: Bool = false) -> Bool {
+        guard !triggerZonesLoadFailed, !hdbLoadFailed, SunSmartDataManager.shared.db != nil else { return false }
+        let storedSpace = SpaceData.load(siteId: siteId, spaceId: id).first
+        // Only the validated configuration import transaction may replace a corrupt
+        // row or deliberately restore an older revision (including legacy nil HDB).
+        if !importingConfiguration {
+            guard storedSpace?.hdbLoadFailed != true else { return false }
+            do {
+                hdb = try HDBLightingZonePolicy.configurationForSave(current: hdb, baseline: hdbPersistenceBaseline,
+                    persisted: storedSpace?.hdb, rowExists: storedSpace != nil)
+            } catch { return false }
+            // A stale metadata save must not acknowledge a newer HDB revision.
+            if let storedSpace = storedSpace { lastUpdate = max(lastUpdate, storedSpace.lastUpdate) }
+        }
+        let hdbData: Data?
+        do {
+            if let hdb = hdb { try HDBLightingZonePolicy.validate(hdb) }
+            hdbData = try hdb.map { try jsonEncoder.encode($0) }
+        } catch { return false }
         // An older in-memory Space object must never downgrade a migrated row.
-        let storedSchema = SpaceData.load(siteId: siteId, spaceId: id).first?.timedSchemaVersion ?? 1
+        let storedSchema = storedSpace?.timedSchemaVersion ?? 1
         timedSchemaVersion = max(timedSchemaVersion, storedSchema)
 
         _ = Keychain.saveSpacePassword(self.authorizationPassword, siteId: self.siteId, spaceId: self.id)
@@ -853,10 +897,12 @@ extension SpaceData {
             ExpressionKey.controlType <- self.controlType.rawValue,
             ExpressionKey.deviceBlinkMode <- self.deviceBlinkMode.rawValue,
             ExpressionKey.timedSchemaVersion <- timedSchemaVersion,
+            ExpressionKey.hdb <- hdbData,
             ExpressionKey.triggerZones <- triggerZonesData
         ])
         do {
             try SunSmartDataManager.shared.db?.run(interOrUpdate)
+            hdbPersistenceBaseline = hdb
             
             // 更新editor、visitor用户数据
 //            UserData.delete(spaceId: self.id)
@@ -909,6 +955,7 @@ extension SpaceData {
     func cloneData() -> SpaceData {
         let space = self.copy()
         space.id = UUID().uuidString
+        space.hdb = nil; space.hdbPersistenceBaseline = nil; space.hdbLoadFailed = false
         space.name = SpaceData.getNextCloneSpaceName(siteId: space.siteId, spaceName: space.name)
         let time = Int64(Date().timeIntervalSince1970)
         space.create = time
@@ -3637,6 +3684,7 @@ extension Node.PreConfiguration {
         static let occupancyEnable = Expression<Bool>("occupancyEnable")
         static let displayLux = Expression<Bool>("displayLux")
         static let upRatio = Expression<Int?>("upRatio")
+        static let hdbInitializationSignature = Expression<String?>("hdbInitializationSignature")
     }
     
     /// 初始化Node业务数据扩展表
@@ -3654,6 +3702,7 @@ extension Node.PreConfiguration {
 //            builder.column(ExpressionKey.occupancyEnable)
             builder.column(ExpressionKey.displayLux)
             builder.column(ExpressionKey.upRatio)
+            builder.column(ExpressionKey.hdbInitializationSignature)
             builder.unique(ExpressionKey.meshUUID, ExpressionKey.nodeAddress)
         }))
         
@@ -3679,6 +3728,9 @@ extension Node.PreConfiguration {
             // 是否存在”displayLux“属性
             if !columns.contains(where: { $0.name == "displayLux" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(Node.PreConfiguration.nodePreConfigurationTable.addColumn(ExpressionKey.displayLux, defaultValue: false))
+            }
+            if !columns.contains(where: { $0.name == "hdbInitializationSignature" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(Node.PreConfiguration.nodePreConfigurationTable.addColumn(ExpressionKey.hdbInitializationSignature))
             }
             // 是否存在”upRatio“属性
             if !columns.contains(where: { $0.name == "upRatio" }) {
@@ -3719,6 +3771,7 @@ extension Node.PreConfiguration {
         preConfiguration.resetDaylightCalibration = row[ExpressionKey.resetDaylightCalibration]
         preConfiguration.displayLux = row[ExpressionKey.displayLux]
         preConfiguration.upRatio = row[ExpressionKey.upRatio]
+        preConfiguration.hdbInitializationSignature = row[ExpressionKey.hdbInitializationSignature]
         return preConfiguration
     }
     
@@ -3744,7 +3797,8 @@ extension Node.PreConfiguration {
             ExpressionKey.nightProfileLightData <- nightLightData,
             ExpressionKey.resetDaylightCalibration <- self.resetDaylightCalibration,
             ExpressionKey.displayLux <- self.displayLux,
-            ExpressionKey.upRatio <- self.upRatio.map { max(0, min(100, $0)) }
+            ExpressionKey.upRatio <- self.upRatio.map { max(0, min(100, $0)) },
+            ExpressionKey.hdbInitializationSignature <- self.hdbInitializationSignature
         ])
         do {
             try SunSmartDataManager.shared.db?.run(insertOrUpdate)

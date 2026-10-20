@@ -1,7 +1,7 @@
 import Foundation
 
 private final class Harness {
-    struct Send { let handles: [MeshMessageHandle]; let finish: (([MeshMessageHandle]) -> Void)? }
+    struct Send { let handles: [MeshMessageHandle]; let success: ((MeshMessageHandle, Int) -> Void)?; let finish: (([MeshMessageHandle]) -> Void)? }
     let environment = SyncExecutionEnvironment()
     let lane = SyncSessionTransportLane()
     var queued: [() -> Void] = []
@@ -13,9 +13,9 @@ private final class Harness {
     var cancelledAuthorizations = 0
     init() {
         environment.delay = { [unowned self] delay, action in delays.append(delay); queued.append(action) }
-        environment.send = { [unowned self] handles, _, _, _, finished in
+        environment.send = { [unowned self] handles, _, success, _, finished in
             if handles.isEmpty { queued.append { finished?([]) } }
-            else { sends.append(Send(handles: handles, finish: finished)) }
+            else { sends.append(Send(handles: handles, success: success, finish: finished)) }
         }
         environment.stop = { [unowned self] finished in stopCount += 1; stopFinished = finished }
         environment.authorize = { [unowned self] _, _, finished in
@@ -55,6 +55,11 @@ enum SyncExecutionSessionTests {
         changedConfigurationInvalidatesOldCallbacks()
         changedConfigurationBeforeStart()
         unavailableConfigurationNeedsReviewWithoutSending()
+        hdbCleanupSettlesAfterLastTask()
+        hdbCannotPassWithoutHandles()
+        hdbCacheSettlesOnEveryExit()
+        hdbInFlightAcknowledgementDuringStop()
+        closeWaitingSessionSettlesCaller()
         normalAndDuplicateCompletion()
         stopBeforePlanDeliveryAndManualRetry()
         stopBeforeRetryAndLateCompletion()
@@ -63,6 +68,91 @@ enum SyncExecutionSessionTests {
         authorizationBeforeDynamicMessages()
         automaticRetryBudget()
         print("PASS: production Session scheduling, writeback ordering, late completion, stop/retry, Profile/PIR compensation and authorization cancellation")
+    }
+    static func hdbCacheSettlesOnEveryExit() {
+        for exit in 0..<3 {
+            let h = Harness(), payload = HDBDeviceSyncTask()
+            payload.isLightingZoneOperation = true
+            let (session, _, _, _) = h.make(.hdb(payload))
+            session.start(); h.flush()
+            let send = h.sends[0]
+            send.success?(send.handles[0], 0)
+            precondition(payload.hasPendingZoneCacheSave && session.pendingHDBZoneCacheTasks.count == 1)
+            // An earlier task's failed save must not be forgotten when another task starts.
+            let earlier = HDBDeviceSyncTask(); earlier.hasPendingZoneCacheSave = true
+            session.pendingHDBZoneCacheTasks[ObjectIdentifier(earlier)] = earlier
+            if exit == 0 { session.stop() }
+            else if exit == 1 { session.close() }
+            else {
+                h.environment.configurationIsCurrent = { false }
+                send.finish?(send.handles)
+            }
+            h.flush()
+            precondition(payload.cacheFlushes == 0, "flush only after transport stops")
+            h.stopFinished?(); h.flush()
+            precondition(payload.cacheFlushes == 1 && earlier.cacheFlushes == 1)
+            precondition(payload.persistCalls == 0 && !payload.hasPendingZoneCacheSave)
+            send.success?(send.handles[0], 0); send.finish?(send.handles); h.flush()
+            precondition(!payload.hasPendingZoneCacheSave, "late callbacks cannot dirty a stopped attempt")
+            session.close(); h.flush()
+        }
+    }
+    static func hdbInFlightAcknowledgementDuringStop() {
+        for close in [false, true] {
+            let h = Harness(), payload = HDBDeviceSyncTask()
+            payload.isLightingZoneOperation = true
+            let (session, _, _, _) = h.make(.hdb(payload))
+            session.start(); h.flush()
+            let send = h.sends[0]
+            if close { session.close() } else { session.stop() }
+            h.flush()
+            precondition(!payload.hasPendingZoneCacheSave)
+            send.success?(send.handles[0], 0)
+            precondition(payload.hasPendingZoneCacheSave && payload.cacheOnlyAcknowledgements == 1)
+            precondition(payload.persistCalls == 0)
+            h.stopFinished?(); h.flush()
+            precondition(payload.cacheFlushes == 1 && !payload.hasPendingZoneCacheSave)
+            send.success?(send.handles[0], 0); send.finish?(send.handles); h.flush()
+            precondition(!payload.hasPendingZoneCacheSave && payload.cacheOnlyAcknowledgements == 1)
+            session.close(); h.flush()
+        }
+    }
+    static func closeWaitingSessionSettlesCaller() {
+        let h = Harness()
+        let owner = SyncSessionCoordinator(lane: h.lane)
+        owner.start { _ in }
+        let (session, _, _, _) = h.make()
+        var stopped = 0
+        session.onStopped = { stopped += 1 }
+        session.start(); h.flush(); session.close(); h.flush()
+        precondition(stopped == 0 && h.sends.isEmpty)
+        owner.close { $0() }; h.flush()
+        precondition(stopped == 1, "cancel while waiting must return after compensation, without issuing transport STOP")
+    }
+    static func hdbCleanupSettlesAfterLastTask() {
+        let h = Harness(), cleanup = HDBDeviceSyncTask()
+        let (session, device, _, node) = h.make(.hdb(cleanup))
+        let followup = SyncDeviceStepTaskModel(name: "followup", operationType: .configuration(node: node, type: .pirEnabled(true)))
+        let step = SyncDeviceStepModel(type: "followup", state: .none, tasks: [followup])
+        step.relevanceStepModels = device.steps
+        device.steps.append(step); step.parentDeviceModel = device; followup.parentStepModel = step
+        var released = false, completed = 0
+        cleanup.finalize = { released = true; return true }
+        h.environment.configurationIsCurrent = { !released }
+        session.onCompleted = { state in precondition(state == .syncSuccess); completed += 1 }
+        session.start(); h.flush(); h.finish(0); h.flush()
+        precondition(!released && h.sends.count == 2, "cleanup must not invalidate the following task scope")
+        h.finish(1); h.flush()
+        precondition(released && cleanup.finalizations == 1 && completed == 1, "release only after the complete batch settles")
+        session.close(); h.flush()
+    }
+    static func hdbCannotPassWithoutHandles() {
+        let h = Harness(), task = HDBDeviceSyncTask()
+        let (session, _, _, node) = h.make(.hdb(task))
+        node.testHandles = []
+        session.start(); h.flush()
+        precondition(session.syncState == .syncFailure && task.persistCalls == 0)
+        session.close(); h.flush()
     }
     static func changedConfigurationBeforeStart() {
         let h = Harness(); let (session, _, _, node) = h.make()

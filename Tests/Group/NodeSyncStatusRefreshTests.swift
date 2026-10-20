@@ -64,6 +64,7 @@ final class Model {
     func isSubscribed(to address: MeshAddress) -> Bool { lookup?(address.address) ?? strings.contains(address.address.hex) }
 }
 final class Node: Equatable {
+    var configurationGroup: Group? { group }
     enum GroupState { case inGroup, exitFailure }
     let uuid = UUID(), primaryUnicastAddress: Address
     weak var network: MeshNetwork?
@@ -127,6 +128,8 @@ final class MeshNetworkManager {
     var realNodes: [Node] { meshNetwork?.nodes.filter { !$0.isProvisioner && !$0.isConfigComplete } ?? [] }
 }
 final class SpaceData {
+    var hdb: HDBConfiguration?
+    var hdbGroupAddresses: Set<UInt16> { Set(hdb?.lightingZones.map(\.groupAddress) ?? []) }
     var meshUUID: String, meshNetworkId = "net", triggerZones: [SpaceTriggerZone] = []
     var triggerZonesLoadFailed = false
     init(_ network: MeshNetwork) { meshUUID = network.uuid.uuidString }
@@ -502,6 +505,17 @@ struct NodeSyncStatusRefreshTests {
         let subscriptionReads = Model.subscriptionReads
         let memo = NodeSyncReadContext(network: network, networkID: "net", nodes: network.nodes,
                                        protection: SpaceConfigurationSafety.testSnapshot(network))
+        var someReads = 0, nilReads = 0, valueReads = 0
+        let expectedObject = NSObject()
+        for _ in 0..<2 {
+            let object: NSObject? = memo.memoized("optional.some") { someReads += 1; return expectedObject }
+            let missing: NSObject? = memo.memoized("optional.none") { nilReads += 1; return nil }
+            let value = memo.memoized("nonOptional") { valueReads += 1; return 42 }
+            require(object === expectedObject, "cold Optional lookup skipped its read")
+            require(missing == nil && value == 42, "memoized values changed")
+        }
+        require(someReads == 1 && nilReads == 1 && valueReads == 1,
+                "present, absent and non-Optional reads must each be cached once")
         var implicitChecks = 0, explicitChecks = 0
         for _ in 0..<2 {
             require(!memo.groupNeedsSync(for: network.nodes[0], group: nil) { implicitChecks += 1; return false }, "nil group changed")

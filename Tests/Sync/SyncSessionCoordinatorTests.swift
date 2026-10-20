@@ -2,7 +2,23 @@ import Foundation
 
 @main
 enum SyncSessionCoordinatorTests {
+    static func closingCompletionAcrossPhases() {
+        for phase in 0..<3 {
+            let lane = SyncSessionTransportLane(), blocker = SyncSessionCoordinator(lane: lane)
+            let owner = SyncSessionCoordinator(lane: lane)
+            var settle: (() -> Void)?, closed = 0, completed = 0
+            if phase == 0 { blocker.start { _ in } }
+            owner.start { _ in }
+            if phase == 2 { owner.finish(owner.identifier, settle: { settle = $0 }, finished: { completed += 1 }) }
+            owner.close(didClose: { closed += 1 }, idleCleanup: { settle = $0 }, settle: { settle = $0 })
+            precondition(closed == 0)
+            if phase == 0 { blocker.close { $0() } }
+            settle?(); settle?()
+            precondition(closed == 1 && completed == 0, "waiting/running/settling close must settle its caller exactly once")
+        }
+    }
     static func main() {
+        closingCompletionAcrossPhases()
         let lane = SyncSessionTransportLane()
         let first = SyncSessionCoordinator(lane: lane)
         let second = SyncSessionCoordinator(lane: lane)

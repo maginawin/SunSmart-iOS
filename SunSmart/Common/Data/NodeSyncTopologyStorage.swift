@@ -93,7 +93,7 @@ enum NodeSyncTopologyStorage {
             }
             guard let row = try app.pluck(Table("site_extensions").filter(
                 Expression<String>("siteId") == live.meshUUID && Expression<Int>("region") == region)) else { return .localOnly }
-            let state = try JSONDecoder().decode(SiteTriggerZoneState.self, from: row[Expression<Data>("payload")])
+            let state = try JSONDecoder().decode(SiteExtensionState.self, from: row[Expression<Data>("payload")])
             let members = (state.data.zones ?? []).flatMap(\.displayMembers)
             let previous = (state.deviceSyncChanges ?? []).flatMap { change -> [SiteTriggerZoneDisplayMember] in
                 guard case .array(let values) = change.previousMembers else { return [] }
@@ -185,6 +185,11 @@ enum NodeSyncTopologyStorage {
         private static func persistedSnapshot(app: Connection, mesh: Connection, meshUUID: String,
                                               space: Space, keys: KeyEvidence, provisioners: Set<UUID>) throws -> NodeSyncTopologySnapshot {
             let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
+            let spaceRow = try app.pluck(Table("spaces").filter(Expression<String>("subNetworkKey") == space.networkID))
+            let hdbData = spaceRow?[Expression<Data?>("hdb")]
+            let hdb = try hdbData.map { try decoder.decode(HDBConfiguration.self, from: $0) }
+            if let hdb = hdb { try HDBLightingZonePolicy.validate(hdb) }
+            let hdbAddresses = hdb?.allGroupAddresses ?? []
             var sdkGroups: [Group] = []
             var groups: [NodeSyncTopologySnapshot.GroupValue] = []
             for row in try mesh.prepare(Table("groups").filter(Expression<String>("meshUUID") == meshUUID
@@ -193,7 +198,7 @@ enum NodeSyncTopologyStorage {
                 let group = try Group(name: row[Expression<String>("name")], address: MeshAddress(address))
                 group.isVirtual = row[Expression<Bool>("isVirtual")]
                 sdkGroups.append(group)
-                guard !group.isVirtual else { continue }
+                guard !group.isVirtual, !hdbAddresses.contains(address) else { continue }
                 guard let info = GroupInfo.load(meshUUID: meshUUID, address: address, subnetworkId: space.networkID,
                     database: app, includeTemplates: false), !info.profileLoadFailed, !info.topologyLoadFailed else { throw ReadFailure.invalid }
                 groups.append(.init(address: address,
@@ -215,7 +220,7 @@ enum NodeSyncTopologyStorage {
                     for model in element.models {
                         for group in sdkGroups where model.isSubscribed(to: group.address) {
                             subscriptions.insert(group.address.address)
-                            if membership == nil && NodeSyncTopologyCapture.isMembershipGroup(group) { membership = group.address.address }
+                            if membership == nil && !hdbAddresses.contains(group.address.address) && NodeSyncTopologyCapture.isMembershipGroup(group) { membership = group.address.address }
                         }
                         if vendorAddress == nil, model.modelId == .vensorServerModelId {
                             guard let address = UInt16(exactly: Int(primary) + offset) else { throw ReadFailure.invalid }

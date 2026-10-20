@@ -136,6 +136,7 @@ enum ProximityLightingLifecycleCoordinator {
         network: MeshNetwork? = nil
     ) -> ProximityLightingLifecycleTransaction {
         let network = network ?? groups.first?.network ?? nodes.first?.network
+        let groups = groups.filter { !space.hdbGroupAddresses.contains($0.address.address) }
         let sourceSnapshot = makeSnapshot(space: space, groups: groups, nodes: nodes)
         let oldResult = Reconciler.normalize(sourceSnapshot)
         return .init(

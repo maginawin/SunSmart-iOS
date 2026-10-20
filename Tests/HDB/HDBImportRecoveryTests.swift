@@ -1,0 +1,183 @@
+import Foundation
+
+let jsonEncoder = JSONEncoder(), jsonDecoder = JSONDecoder()
+final class SunSmartDataManager {
+    static let shared = SunSmartDataManager()
+    var db: Bool? = true
+}
+struct Schedule: Codable {}
+struct SiteImportTrace { init(_ name: String) {}; func mark(_ stage: String) {} }
+enum ImportOutcome {
+    case rejected(String), preserved(String)
+    case prepared([String: Any], HDBConfiguration?)
+}
+enum SyncError { case configurationUploadUnconfirmed }
+final class SpaceData {
+    static var persisted: SpaceData?
+    var id = "space", siteId = "site"
+    var hdb: HDBConfiguration?, hdbPersistenceBaseline: HDBConfiguration?
+    var hdbLoadFailed = false, triggerZonesLoadFailed = false
+    var lastUpdate: Int64 = 110, lastUploadCloudTimestamp: Int64? = 110
+    var timedSchemaVersion = 1
+    var syncCloudError: SyncError?
+    static func load(siteId: String, spaceId: String) -> [SpaceData] { persisted.map { [$0.copy()] } ?? [] }
+    func copy() -> SpaceData {
+        let result = SpaceData()
+        result.hdb = hdb; result.hdbPersistenceBaseline = hdbPersistenceBaseline
+        result.hdbLoadFailed = hdbLoadFailed; result.triggerZonesLoadFailed = triggerZonesLoadFailed
+        result.lastUpdate = lastUpdate; result.lastUploadCloudTimestamp = lastUploadCloudTimestamp
+        result.timedSchemaVersion = timedSchemaVersion
+        return result
+    }
+    func applyRemoteSpaceMetadata(_ payload: [String: Any]) {}
+    // PRODUCTION_SAVE
+    func prepareImport(spaceJsonData: [String: Any], initialize: Bool = false) async -> ImportOutcome {
+        // PRODUCTION_IMPORT_PREPARATION
+        _ = timedReferencesChanged
+        return .prepared(spaceJsonData, incomingHDB)
+    }
+}
+enum TimedSchedulerPayloadPolicy {
+    static func repairingStaleBindings(_ payload: [String: Any]) -> [String: Any]? { payload }
+    static func fillingMissingBindings(_ payload: [String: Any]) -> [String: Any] { payload }
+    static func schema(_ payload: [String: Any]) -> Int? { 1 }
+    static func canonical(_ payload: [String: Any]) -> Data? { Data() }
+}
+enum SpaceSyncCleanupPolicy {
+    struct Result { var payload: [String: Any] }
+    static func normalize(_ payload: [String: Any]) throws -> Result { .init(payload: payload) }
+}
+enum DevicePermanentDeletionContext { static func resume(space: SpaceData) {} }
+enum SpaceConfigurationSafety {
+    enum Phase { case active }
+    struct State { var phase = Phase.active }
+    enum Reconciliation { case preserveLocal, failed, notApplicable }
+    static var pending: [String: Any]?, reviewed: [String: Any]?
+    static var unreadable = false
+    static func recoveryState(_ space: SpaceData) throws -> State { State() }
+    static func hasPendingImport(_ space: SpaceData) -> Bool { unreadable || pending != nil || reviewed != nil }
+    static func pendingImport(_ space: SpaceData) -> [String: Any]? { pending ?? reviewed }
+    static func originalReferenceCleanupImport(_ space: SpaceData, candidate: [String: Any]) -> [String: Any]? { nil }
+    static func isConfirmedTimedBaseline(_ space: SpaceData, remote: [String: Any]) -> Bool { false }
+    static func backfillTimedUpgradeBaseline(_ space: SpaceData, remote: [String: Any]) {}
+    static func requiresAuthorityImport(_ space: SpaceData) -> Bool { false }
+    static func reconcileOlderCloudBaseline(_ space: SpaceData, remote: [String: Any]) async -> Reconciliation { .notApplicable }
+    static func reconcileCloudProfiles(_ space: SpaceData, remote: [String: Any]) async -> Bool { true }
+    static func reconcileCloudMembership(_ space: SpaceData, remote: [String: Any]) -> Bool { true }
+    static func recordSyncFailure(_ space: SpaceData, error: SyncError, stage: String) {}
+    static func preservesLocalChanges(_ space: SpaceData) -> Bool { false }
+}
+
+@main enum HDBImportRecoveryTests {
+    static let nodeID = UUID()
+    static func configuration(_ name: String, status: HDBSyncStatus = .pending) -> HDBConfiguration {
+        var config = HDBConfiguration(lightingZones: [.init(zoneId: 1, name: name, groupAddress: 0xC000)],
+            devices: [.init(nodeUuid: nodeID, nodeAddress: 1, mac: "AA:BB:CC:DD:EE:FF",
+                lightingZones: [.init(zoneId: 1)])])
+        config.devices[0].lightingZonesStatus = status
+        config.devices[0].lightingConfiguration?.mark(fields: ["brightIntensity"], status: status)
+        return config
+    }
+    static func payload(_ config: HDBConfiguration?, timestamp: Int64) throws -> [String: Any] {
+        var result: [String: Any] = ["uuid": "space", "updateTimestamp": timestamp, "schedules": [[String: Any]](),
+            "groups": [["address": "C000", "isVirtual": false]],
+            "nodes": [["uuid": nodeID.uuidString, "unicastAddress": "0001"]]]
+        if let config = config { result["spaceData"] = ["hdb": try HDBLightingZonePolicy.json(config)] }
+        return result
+    }
+    static func main() async throws {
+        let legacyHDB: [String: Any] = ["schemaVersion": 1, "devices": [[String: Any]](),
+            "lightingZones": (1...63).map {
+                ["zoneId": $0, "name": "Zone \($0)", "groupAddress": 0xC000 + $0] as [String: Any]
+            }]
+        let legacyLocal = SpaceData()
+        legacyLocal.hdb = try jsonDecoder.decode(HDBConfiguration.self,
+            from: JSONSerialization.data(withJSONObject: legacyHDB))
+        try HDBLightingZonePolicy.validate(legacyLocal.hdb!)
+        legacyLocal.hdbPersistenceBaseline = legacyLocal.hdb
+        SpaceData.persisted = legacyLocal.copy()
+        let candidate = legacyLocal.copy()
+        precondition(candidate.save(), "legacy HDB must pass the pre-import ordinary save")
+        let legacyPayload: [String: Any] = ["uuid": "space", "updateTimestamp": 110,
+            "spaceData": ["hdb": legacyHDB], "schedules": [[String: Any]](),
+            "groups": (1...63).map { ["address": String(format: "%04X", 0xC000 + $0), "isVirtual": false] as [String: Any] },
+            "nodes": (0..<4).map { ["uuid": UUID().uuidString, "unicastAddress": String(format: "%04X", 2 + $0 * 3)] }]
+        guard case .prepared(let selectedLegacyPayload, let selectedLegacyHDB) = await candidate.prepareImport(spaceJsonData: legacyPayload),
+              selectedLegacyHDB == legacyLocal.hdb else { fatalError("legacy cloud HDB recovery failed") }
+        precondition(selectedLegacyPayload["nodes"] as? [[String: String]] == legacyPayload["nodes"] as? [[String: String]])
+        candidate.hdb = selectedLegacyHDB
+        precondition(candidate.save(importingConfiguration: true))
+        let reloadedLegacy = SpaceData.load(siteId: "site", spaceId: "space").first!
+        precondition(!reloadedLegacy.hdbLoadFailed && reloadedLegacy.hdb == legacyLocal.hdb)
+        precondition(reloadedLegacy.save(), "reloaded legacy import must remain ordinarily saveable")
+        print("PASS: legacy HDB pre-import save/reload preserves 63 Zones; cloud preparation preserves the 4-node payload")
+
+        let old = configuration("Local"), cloud = configuration("Cloud", status: .synced)
+        // Restoration must adopt the selected revision both with and without HDB.
+        for localConfig in [old, nil] {
+            let local = SpaceData()
+            local.hdb = localConfig; local.hdbPersistenceBaseline = localConfig
+            SpaceData.persisted = local.copy()
+            let imported = local.copy()
+            imported.hdb = localConfig == nil ? nil : cloud
+            imported.lastUpdate = 90; imported.lastUploadCloudTimestamp = 90
+            precondition(imported.save(importingConfiguration: true))
+            precondition(SpaceData.persisted!.lastUpdate == 90 && SpaceData.persisted!.lastUploadCloudTimestamp == 90)
+            // A subsequent ordinary topology save must not revive revision 110.
+            precondition(imported.save() && SpaceData.persisted!.lastUpdate == 90)
+            imported.lastUpdate = 95; imported.lastUploadCloudTimestamp = 95
+            precondition(imported.save(importingConfiguration: true) && SpaceData.persisted!.lastUpdate == 95)
+        }
+        let corrupt = SpaceData()
+        corrupt.hdbLoadFailed = true; SpaceData.persisted = corrupt.copy()
+        let recovery = corrupt.copy()
+        recovery.hdbLoadFailed = false; recovery.hdb = cloud
+        recovery.lastUpdate = 90; recovery.lastUploadCloudTimestamp = 90
+        precondition(!recovery.save(), "ordinary objects cannot erase corrupt HDB")
+        recovery.hdb!.lightingZones[0].groupAddress = 1
+        precondition(!recovery.save(importingConfiguration: true), "import still validates HDB")
+        precondition(SpaceData.persisted!.hdbLoadFailed)
+        recovery.hdb = cloud
+        precondition(recovery.save(importingConfiguration: true))
+        precondition(!SpaceData.persisted!.hdbLoadFailed && SpaceData.persisted!.hdb == cloud)
+        SpaceData.persisted = corrupt.copy()
+        recovery.hdb = nil
+        precondition(recovery.save(importingConfiguration: true) && SpaceData.persisted!.hdb == nil,
+                     "a valid legacy snapshot can clear corrupt HDB")
+        let stale = SpaceData()
+        stale.hdb = old; stale.hdbPersistenceBaseline = old; stale.lastUpdate = 80
+        let latest = SpaceData()
+        latest.hdb = cloud; latest.hdbPersistenceBaseline = cloud
+        SpaceData.persisted = latest.copy()
+        precondition(stale.save())
+        precondition(stale.hdb == cloud && stale.lastUpdate == 110)
+        stale.hdb = old
+        SpaceData.persisted!.hdb = nil
+        precondition(!stale.save(), "conflicting stale edits remain rejected")
+        print("PASS: production save guards restore older revisions, recover corrupt HDB, validate imports and protect stale saves")
+
+        let space = SpaceData(); SpaceData.persisted = space.copy()
+        let request = try payload(configuration("Request", status: .synced), timestamp: 120)
+        let selected = try payload(configuration("Selected"), timestamp: 90)
+        for reviewed in [false, true] {
+            SpaceConfigurationSafety.pending = reviewed ? nil : selected
+            SpaceConfigurationSafety.reviewed = reviewed ? selected : nil
+            guard case .prepared(let actual, let config) = await space.prepareImport(spaceJsonData: request) else { fatalError("valid staged import rejected") }
+            precondition(actual["updateTimestamp"] as? Int64 == 90 && config == configuration("Selected"),
+                         "HDB and topology must come from the same staged snapshot")
+        }
+        SpaceConfigurationSafety.reviewed = nil
+        var invalid = selected
+        invalid["nodes"] = [["uuid": UUID().uuidString, "unicastAddress": "0001"]]
+        SpaceConfigurationSafety.pending = invalid
+        guard case .rejected("invalidHDBPayload") = await space.prepareImport(spaceJsonData: request) else { fatalError("invalid staged references accepted") }
+        SpaceConfigurationSafety.pending = try payload(nil, timestamp: 90)
+        guard case .prepared(_, nil) = await space.prepareImport(spaceJsonData: request) else { fatalError("legacy snapshot mixed with request HDB") }
+        SpaceConfigurationSafety.pending = nil
+        guard case .prepared(_, let config) = await space.prepareImport(spaceJsonData: request),
+              config == configuration("Request", status: .synced) else { fatalError("normal import changed") }
+        SpaceConfigurationSafety.unreadable = true
+        guard case .rejected("unreadablePendingImport") = await space.prepareImport(spaceJsonData: request) else { fatalError("unreadable staging bypassed") }
+        print("PASS: production import preparation uses pending/reviewed HDB, validates selected references and preserves legacy nil")
+    }
+}

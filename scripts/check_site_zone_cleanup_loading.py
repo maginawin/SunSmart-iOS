@@ -14,6 +14,8 @@ with tempfile.TemporaryDirectory(prefix='site-zone-cleanup-loading-') as directo
     production.write_text('import Foundation\nenum SiteTriggerZoneTopologyReader {\n' + source[start:end] + '\n}\n')
     binary = output / 'tests'
     subprocess.run(['swiftc', '-parse-as-library', str(production),
+                    str(root / 'SunSmart/Common/Data/SiteExtensionData.swift'),
+                    str(root / 'SunSmart/Common/Data/SiteExtensionState.swift'),
                     str(root / 'SunSmart/Main/Site/TriggerZone/SiteTriggerZoneData.swift'),
                     str(root / 'Tests/Site/SiteZoneCleanupLoadingTests.swift'), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)

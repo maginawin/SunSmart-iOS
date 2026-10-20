@@ -310,6 +310,7 @@ final class DevicePermanentDeletionContext {
             groups: savedNetwork.groups.filter { !$0.isVirtual },
             nodes: ProximityLightingTopologyContext.realNodes(in: savedNetwork), network: savedNetwork).prepare()
         guard readback.isValid, readback.normalized.repairs.isEmpty,
+              !(savedSpace.hdb?.devices.contains { device in removed.contains { UUID(uuidString: $0.nodeUUID) == device.nodeUuid } } ?? false),
               savedNetwork.scenes.allSatisfy({ addresses.isDisjoint(with: $0.addresses) }),
               Schedule.load(meshUUID: space.meshUUID, meshNetworkId: space.meshNetworkId).allSatisfy({
                   addresses.isDisjoint(with: $0.nodeAddresses) && addresses.isDisjoint(with: $0.needDeleteNodeAddresses)
@@ -323,6 +324,7 @@ final class DevicePermanentDeletionContext {
             SpaceConfigurationSafety.block(space, reason: "deletionCleanupPending")
             return nil
         }
+        _ = try? HDBConfigurationStore.finishSensorGroupCleanup(space: space)
         network.nodes.forEach { $0.clearSyncStateCache() }
         let manager = MeshNetworkManager.instance
         if manager.meshNetwork === network, manager.currentNetworkKey.networkId.hex == space.meshNetworkId {
@@ -460,6 +462,21 @@ final class DevicePermanentDeletionContext {
     private static func cleanExtensions(entries: [SpaceDeletionJournal.Entry], space: SpaceData, network: MeshNetwork) throws {
         let addresses = Set(entries.flatMap { $0.elementAddresses }).union(entries.map(\.primaryAddress))
         let primaryAddresses = Set(entries.map(\.primaryAddress))
+        if var config = space.hdb {
+            guard SpaceConfigurationSafety.updateDeletionJournal(space, { journal in
+                for index in journal.entries.indices where entries.contains(where: { $0.id == journal.entries[index].id }) {
+                    let uuid = UUID(uuidString: journal.entries[index].nodeUUID)
+                    let address = config.devices.first { $0.nodeUuid == uuid }?.sensorGroupId
+                        ?? network.groups.first { $0.isVirtual && $0.subNetworkId == space.meshNetworkId && uuid.map(HDBConfigurationStore.sensorGroupName) == $0.name }?.address.address
+                    if let address { journal.entries[index].sensorGroupId = address }
+                }
+            }) else { throw SpaceConfigurationSafety.SafetyError.persistenceFailed }
+            for entry in entries {
+                guard let uuid = UUID(uuidString: entry.nodeUUID) else { continue }
+                config.devices.removeAll { $0.nodeUuid == uuid }
+            }
+            space.hdb = config
+        }
         for scene in network.scenes where !addresses.isDisjoint(with: scene.addresses) {
             for address in addresses {
                 while scene.addresses.contains(address) { scene.remove(address: address) }
@@ -513,7 +530,7 @@ final class DevicePermanentDeletionContext {
     }
 
     static func showCompletion(space: SpaceData) {
-        if SpaceConfigurationSafety.hasPendingDeletionCleanup(space) {
+        if SpaceConfigurationSafety.hasPendingDeletionCleanup(space) || ((try? HDBConfigurationStore.pendingSensorGroupAddresses(space: space).isEmpty) == false) {
             XWHUDManager.showErrorTipHUD("configuration_deletion_cleanup_pending".localizedString)
         } else {
             XWHUDManager.showSuccessTipHUD("done!".localizedString)

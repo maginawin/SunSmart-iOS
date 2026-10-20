@@ -25,6 +25,10 @@ final class SyncExecutionSession {
     private var cancelAuthorization: (() -> Void)?
     private var pendingPreparations: [() -> Void] = []
     private var restoreOperation: DeviceOperationType?
+    // Keep failed saves as well as the active task until stop/close has settled.
+    private var hdbZoneCachePersistenceFailed = false
+    var pendingHDBZoneCacheTasks: [ObjectIdentifier: HDBDeviceSyncTask] = [:]
+    private var hdbZoneAcknowledgementAttempt: UUID?
 
     var onPlanInvalidated: (() -> Void)?
     private var invalidatingPlan = false
@@ -33,6 +37,8 @@ final class SyncExecutionSession {
     var onProgress: (() -> Void)?
     var onReload: (() -> Void)?
     var onCompleted: ((SyncState) -> Void)?
+    var onSettled: ((SyncState) -> Void)?
+    var onStopped: (() -> Void)?
     var onError: ((String) -> Void)?
     var onBatteryActivationRequired: (() -> Void)?
     var onRetryExhausted: (() -> Void)?
@@ -66,6 +72,7 @@ final class SyncExecutionSession {
             }
             preparations.forEach { $0() }
             syncState = .inSync
+            hdbZoneCachePersistenceFailed = false
             batteryPowerSwitchOwnConfigurationFailed = false
             batteryPowerSwitchKeyConfigurationCompleted = false
             daylightConditionRecallRecoveryKeys.removeAll()
@@ -123,6 +130,16 @@ final class SyncExecutionSession {
         var handles = operationType(for: model)?.messageHandles ?? []
         handles = prepareDaylightHandles(for: model, handles: handles)
         handles = batteryPowerSwitchMessageHandles(for: model, defaultHandles: handles)
+        if case .configuration(_, .hdbUnavailable) = operationType(for: model) {
+            finishOperation(model, successful: false)
+            advance(identifier)
+            return
+        }
+        if case .configuration(_, .hdb) = operationType(for: model), handles.isEmpty {
+            finishOperation(model, successful: false)
+            advance(identifier)
+            return
+        }
         model.state = .inSettings
         onTaskStarted?(model, identifier)
         if completeGatewayServerAuthorizationTaskIfNeeded(for: model, syncRunIdentifier: identifier) { return }
@@ -157,15 +174,24 @@ final class SyncExecutionSession {
         guard isActiveSyncRun(identifier) else { return }
         guard validatePlan(identifier) else { return }
         let completionGate = SyncAttemptCompletionGate()
+        let acknowledgementAttempt = UUID()
+        if case .configuration(_, .hdb(let task)) = operationType(for: model), task.isLightingZoneOperation {
+            hdbZoneAcknowledgementAttempt = acknowledgementAttempt
+        }
         environment.addMessage(messageHandles: handles, ackMessageTimeout: ackTimeout(for: model), successfulBack: { [self] handle, status in
-            guard isActiveSyncRun(identifier), !completionGate.isCompleted, validatePlan(identifier) else { return }
-            received(handle: handle, statusMessage: status, model: model, messageHandles: handles)
+            guard !completionGate.isCompleted else { return }
+            if isActiveSyncRun(identifier), validatePlan(identifier) {
+                received(handle: handle, statusMessage: status, model: model, messageHandles: handles)
+            } else if coordinator.isSettling, hdbZoneAcknowledgementAttempt == acknowledgementAttempt {
+                received(handle: handle, statusMessage: status, model: model, messageHandles: handles, cacheOnly: true)
+            }
         }, failedBack: { [self] handle in
             guard isActiveSyncRun(identifier), !completionGate.isCompleted, validatePlan(identifier) else { return }
             failed(handle: handle)
         }) { [self] resultMessageHandles in
             precondition(Thread.isMainThread)
             guard isActiveSyncRun(identifier), completionGate.claim(), validatePlan(identifier) else { return }
+            if hdbZoneAcknowledgementAttempt == acknowledgementAttempt { hdbZoneAcknowledgementAttempt = nil }
             let successful = applyResult(resultMessageHandles, model: model, messageHandles: handles)
             let retry = emergencyFireDeleteCleanupRetryPolicy(for: model)
             let maxAttempts = retry?.maxAttempts ?? 1
@@ -201,7 +227,10 @@ final class SyncExecutionSession {
         // Old desired Profile values must not be replayed as compensation.
         restoreOperation = nil
         coordinator.finish(identifier, settle: { [self] done in
-            environment.stop { [self] in restoreSensorsAndUnlock(done, currentTargets: true) }
+            environment.stop { [self] in
+                hdbZoneAcknowledgementAttempt = nil
+                restoreSensorsAndUnlock(done, currentTargets: true)
+            }
         }) { [self] in
             profileSensorProtectionContext = nil
             currentTask = nil
@@ -247,7 +276,7 @@ final class SyncExecutionSession {
         cancelAuthorization?()
         cancelAuthorization = nil
         pendingPreparations.removeAll()
-        coordinator.close(idleCleanup: { [self] finished in compensate(finished) }) { [self] finished in stopAndCompensate(finished) }
+        coordinator.close(didClose: { [self] in onStopped?() }, idleCleanup: { [self] finished in compensate(finished) }) { [self] finished in stopAndCompensate(finished) }
         currentTask = nil
     }
 
@@ -266,7 +295,8 @@ final class SyncExecutionSession {
         environment.delay(0) { [self] in
             environment.stop { [self] in
                 guard gate.claim() else { return }
-                compensate(finished)
+                hdbZoneAcknowledgementAttempt = nil
+                compensate { [self] in finished(); if !coordinator.closed { onStopped?() } }
             }
         }
     }
@@ -293,6 +323,13 @@ final class SyncExecutionSession {
     }
 
     private func restoreSensorsAndUnlock(_ finished: @escaping () -> Void, currentTargets: Bool = false) {
+        for task in pendingHDBZoneCacheTasks.values {
+            if !task.flushAcknowledgedZoneCache() {
+                hdbZoneCachePersistenceFailed = true
+                syncState = .syncFailure
+            }
+        }
+        pendingHDBZoneCacheTasks.removeAll()
         let handles = (currentTargets ? profileSensorProtectionContext?.remainingCurrentTargetStateMessageHandles()
             : profileSensorProtectionContext?.remainingTargetStateMessageHandles()) ?? []
         let gate = SyncAttemptCompletionGate()
@@ -342,13 +379,18 @@ final class SyncExecutionSession {
 
     private func finishRun(_ identifier: UUID, publishesCompletion: Bool = true, forcedState: SyncState? = nil) {
         coordinator.finish(identifier, settle: { [self] done in compensate(done) }) { [self] in
+            for model in sections.flatMap({ $0.allModels }) {
+                if case .configuration(_, .hdb(let task)) = operationType(for: model), model.state == .successful,
+                   !task.finishCleanup() { model.state = .failed }
+            }
             markPendingGatewayRecoveryTasksSkipped()
             sections.flatMap { $0.allModels }.forEach { $0.isFineshed = true }
-            syncState = forcedState ?? (sections.contains { $0.allModels.contains { $0.state == .failed } } ? .syncFailure : .syncSuccess)
+            syncState = hdbZoneCachePersistenceFailed ? .syncFailure : forcedState ?? (sections.contains { $0.allModels.contains { $0.state == .failed } } ? .syncFailure : .syncSuccess)
             if syncState == .syncFailure { persistEmergencyFireDeleteCleanupFailureIfNeeded() }
             finishEmergencyFireControllerSyncIfNeeded(success: syncState == .syncSuccess)
             finishEmergencyFireControllerAssociationSyncIfNeeded()
             onReload?()
+            onSettled?(syncState)
             guard publishesCompletion else { return }
             NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
             onCompleted?(syncState)

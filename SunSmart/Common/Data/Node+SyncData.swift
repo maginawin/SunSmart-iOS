@@ -117,10 +117,7 @@ extension Group {
     
     func sensorServerPublicationRetransmit(effectiveMemberCount: Int? = nil) -> Publish.Retransmit {
         let memberCount = effectiveMemberCount ?? NodeSyncReadContext.current?.members(of: self).count ?? nodes.count
-        guard memberCount <= 3 else {
-            return Publish.Retransmit(1, timesWithInterval: 0.1)
-        }
-        return Publish.Retransmit(2, timesWithInterval: 0.1)
+        return SensorPublicationPolicy.retransmit(memberCount: memberCount)
     }
     
 }
@@ -133,6 +130,10 @@ enum SensorPublicationSyncMode {
 enum SensorPublicationPolicy {
     /// 标准 Model Publication 使用源设备的 Default TTL，不复制 App 的发送 TTL。
     static let ttl: UInt8 = 0xFF
+
+    static func retransmit(memberCount: Int) -> Publish.Retransmit {
+        Publish.Retransmit(memberCount <= 3 ? 2 : 1, timesWithInterval: 0.1)
+    }
 }
 
 extension Model {
@@ -409,6 +410,8 @@ extension Node {
         var displayLux: Bool = false
         /// Up/Down Ratio 中 up 的比例，本地永久存储，不参与云同步。
         var upRatio: Int?
+        /// HDB initialization identity; a pending: prefix preserves retry progress, no task plan or credentials.
+        var hdbInitializationSignature: String?
     }
     
     /// 设备预配置数据
@@ -759,6 +762,10 @@ extension Node {
     
     /// 获取节点是否要同步
     func getNeedSync() -> Bool {
+        getStandardNeedSync() || HDBDeviceSyncService.needsSync(node: self)
+    }
+
+    func getStandardNeedSync() -> Bool {
         if !MissingGroupSubscriptionCleanup.addresses(for: self).isEmpty { return true }
         if syncReadGroup == nil {
             let switches = getNodeNeedDeleteSwitchs()
@@ -886,7 +893,8 @@ extension Node {
         
         var syncProfile: [ProfileType] = []
         
-        guard let group = group ?? self.syncReadGroup else {
+        let ownsHDBLighting = (try? HDBDeviceSyncContext.resolve(node: self)) != nil
+        guard !ownsHDBLighting, let group = group ?? self.syncReadGroup else {
             if self.deviceType != .dongle && self.deviceType != .gateway {
                 if powerUpState != .restore {
                     syncProfile.append(.powerOnState(state: .restore))
@@ -895,7 +903,7 @@ extension Node {
                     syncProfile.append(.manualOverrideTimeout(enabled: true, second: .max))
                 }
             }
-            syncProfile.append(contentsOf: getMissingGroupCleanupProfiles())
+            if !ownsHDBLighting { syncProfile.append(contentsOf: getMissingGroupCleanupProfiles()) }
             return syncProfile
         }
         

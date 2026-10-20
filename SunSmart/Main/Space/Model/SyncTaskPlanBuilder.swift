@@ -127,15 +127,38 @@ final class SyncTaskPlanBuilder {
             switchBuilder.appendBatteryPowerSwitchItems(to: configurationSection, removeSection: removeSection, switchData: switchData)
 
         case .devices(let nodes):
-
             nodes.forEach { node in
                 let result = self.getSyncDeviceModel(group: nil, node: node)
-                if let configurationDevice = result.configturationDevice {
-                    configurationSection.devices.append(configurationDevice)
+                var device = result.configturationDevice
+                do {
+                    if let context = try HDBDeviceSyncContext.resolve(node: node, allowNonLights: true) {
+                        let steps = try HDBDeviceSyncService.makeSteps(context: context)
+                        if !steps.isEmpty {
+                            let target = device ?? SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+                            let dependencies = target.steps + (result.removeDevice?.steps ?? [])
+                            steps.first?.relevanceStepModels = dependencies
+                            target.steps += steps
+                            target.steps.forEach { $0.parentDeviceModel = target }
+                            target.imageName = node.iconName
+                            device = target
+                        }
+                    }
+                } catch {
+                    let failed = device ?? SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+                    let task = SyncDeviceStepTaskModel(name: "configuration_sync_unavailable".localizedString, operationType: .configuration(node: node, type: .hdbUnavailable))
+                    let waitingForInitialization = !node.isKeybindComplete
+                    task.state = waitingForInitialization ? .none : .failed
+                    let step = SyncDeviceStepModel(type: "hdb_preparation".localizedString, state: waitingForInitialization ? .none : .failed, tasks: [task])
+                    task.parentStepModel = step
+                    failed.steps.append(step); step.parentDeviceModel = failed
+                    device = failed
+                    if !waitingForInitialization {
+                        failureMessages.append("configuration_sync_unavailable".localizedString)
+                        syncState = .syncFailure
+                    }
                 }
-                if let removeDevice = result.removeDevice {
-                    removeSection.devices.append(removeDevice)
-                }
+                if let device { configurationSection.devices.append(device) }
+                if let remove = result.removeDevice { removeSection.devices.append(remove) }
             }
         case .gatewayRecovery(let node, let gateway, let trigger):
             switch SyncGatewayTaskBuilder().makeRecoveryDevice(

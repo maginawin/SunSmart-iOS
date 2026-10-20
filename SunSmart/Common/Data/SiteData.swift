@@ -87,6 +87,13 @@ class SiteData: Copyable {
     
     /// Site-owned metadata; durable state is stored independently of legacy Site saves.
     var siteExtensionData = SiteExtensionData()
+
+    /// Menu reads fail closed; mutation callers use the throwing read below.
+    var isHdbSite: Bool { (try? loadIsHdbSite()) ?? false }
+
+    func loadIsHdbSite() throws -> Bool {
+        try SiteExtensionStore.load(self).data.isHdbSite
+    }
     /// Latest server presence for gateways without a visible associated Space.
     var gatewayPresence = SiteGatewayLastOnlineSnapshot(gateways: nil)
 
@@ -267,7 +274,7 @@ class SiteData: Copyable {
     func copy() -> Self {
         
         let site = SiteData(region: self.region, id: self.id, meshUUID: self.meshUUID, meshNetworkId: self.meshNetworkId, name: self.name, imageId: self.imageId, type: self.type, permission: self.permission, create: self.create, lastUpdate: self.lastUpdate, isFavourite: self.isFavourite, sourceType: self.sourceType)
-        site.siteExtensionData = (try? SiteTriggerZoneStore.load(self).data) ?? self.siteExtensionData
+        site.siteExtensionData = (try? SiteExtensionStore.load(self).data) ?? self.siteExtensionData
         site.timezone = self.timezone
         site.gatewayPresence = self.gatewayPresence
         site.pendingSitePropsMask = self.pendingSitePropsMask

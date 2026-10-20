@@ -281,7 +281,7 @@ final class SiteTriggerZoneViewController: UIViewController {
         }
     }
 
-    private func retainedChangesAreProvenSourceOnly(_ state: SiteTriggerZoneState) -> Bool {
+    private func retainedChangesAreProvenSourceOnly(_ state: SiteExtensionState) -> Bool {
         guard state.pending == nil, !state.conflict, !state.hasAmbiguousRemote,
               state.rejectedRemote == nil, state.serverData == state.data,
               let zones = state.serverData?.zones else { return false }
@@ -762,7 +762,7 @@ final class SiteTriggerZoneViewController: UIViewController {
         print("[SiteZoneSync][passive-trigger] phase=stopped site=\(coordinator.site.id)")
     }
 
-    private func logDeviceSyncPreview(zoneID: UUID, state: SiteTriggerZoneState?,
+    private func logDeviceSyncPreview(zoneID: UUID, state: SiteExtensionState?,
                                       cloudConfirmed: Bool, origin: String,
                                       planResult: Result<SiteTriggerZoneSyncPlanningPolicy.Plan,
                                                          SiteTriggerZoneTopologyReader.ReadError>? = nil) {
@@ -1238,7 +1238,7 @@ final class SiteTriggerZoneViewController: UIViewController {
                                           message: message, preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: "ok".localizedString, style: .default) { [weak self] _ in
                 guard let self else { return }
-                _ = try? SiteTriggerZoneStore.update(self.coordinator.site) {
+                _ = try? SiteExtensionStore.update(self.coordinator.site) {
                     $0.acknowledgeArchivedReview()
                 }
                 self.failure = nil

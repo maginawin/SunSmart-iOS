@@ -6,9 +6,17 @@ extension String { var localizedString: String { self } }
 @main
 struct FeatureVisibilityTests {
     static func data(feature: FeatureVisibility.Feature, builds: [String], roles: [String]) throws -> Data {
-        try JSONSerialization.data(withJSONObject: ["sites": ["site": [feature.rawValue.components(separatedBy: ".").last!: [
+        try JSONSerialization.data(withJSONObject: nested(feature, rule: [
             "builds": builds, "roles": roles
-        ]]]])
+        ]))
+    }
+
+    static func nested(_ feature: FeatureVisibility.Feature, rule: Any) -> [String: Any] {
+        var value = rule
+        for key in feature.rawValue.components(separatedBy: ".").reversed() {
+            value = [key: value]
+        }
+        return value as! [String: Any]
     }
 
     static func check(_ condition: @autoclosure () -> Bool, _ message: String) {
@@ -16,6 +24,10 @@ struct FeatureVisibilityTests {
     }
 
     static func main() throws {
+        // A target restriction must never be silently ignored.
+        let noTargets = Data(#"{"sites":{"site":{"triggerZone":{"builds":["debug"],"roles":["owner"],"targets":[]}}}}"#.utf8)
+        check(!FeatureVisibility(build: .debug, loadData: { noTargets }).isVisible(.siteTriggerZone, permission: .owner),
+              "Empty targets must hide the feature")
         let builds = [["debug"], ["debug", "release"], ["release"]]
         let roles = [["owner"], ["owner", "editor"], ["owner", "editor", "visitor"]]
         let permissions: [Permission] = [.owner, .editor, .visitor]
@@ -69,7 +81,8 @@ struct FeatureVisibilityTests {
         ]
         for feature in FeatureVisibility.Feature.allCases {
             for rule in invalidRules {
-                let bytes = Data("{\"sites\":{\"site\":{\"\(feature.rawValue.components(separatedBy: ".").last!)\":\(rule)}}}".utf8)
+                let ruleObject = try JSONSerialization.jsonObject(with: Data(rule.utf8), options: .fragmentsAllowed)
+                let bytes = try JSONSerialization.data(withJSONObject: nested(feature, rule: ruleObject))
                 for build in FeatureVisibility.BuildMode.allCases {
                     let visibility = FeatureVisibility(build: build) { bytes }
                     check(!visibility.isVisible(feature, permission: .owner), "Invalid rule allowed owner: \(rule)")
@@ -95,12 +108,11 @@ struct FeatureVisibilityTests {
 
         for brokenFeature in FeatureVisibility.Feature.allCases {
             let goodFeature: FeatureVisibility.Feature = brokenFeature == .siteExportJson ? .siteTriggerZone : .siteExportJson
-            let goodKey = goodFeature.rawValue.components(separatedBy: ".").last!
-            let badKey = brokenFeature.rawValue.components(separatedBy: ".").last!
-            let bytes = try JSONSerialization.data(withJSONObject: ["sites": ["site": [
-                goodKey: ["builds": ["debug"], "roles": ["owner", "editor"]],
-                badKey: ["builds": ["invalid"], "roles": ["owner"]]
-            ]]])
+            let good = nested(goodFeature, rule: ["builds": ["debug"], "roles": ["owner", "editor"]])
+            let bad = nested(brokenFeature, rule: ["builds": ["invalid"], "roles": ["owner"]])
+            let goodSite = (good["sites"] as! [String: Any])["site"] as! [String: Any]
+            let badSite = (bad["sites"] as! [String: Any])["site"] as! [String: Any]
+            let bytes = try JSONSerialization.data(withJSONObject: ["sites": ["site": goodSite.merging(badSite) { _, new in new }]])
             let visibility = FeatureVisibility(build: .debug) { bytes }
             check(visibility.isVisible(goodFeature, permission: .editor), "Sibling feature must remain visible")
             check(!visibility.isVisible(brokenFeature, permission: .owner), "Broken feature must hide")
@@ -119,6 +131,71 @@ struct FeatureVisibilityTests {
               "Checked-in Debug export rule must allow visitor")
         check(!FeatureVisibility(build: .release, loadData: { bundled }).isVisible(.siteExportJson, permission: .visitor),
               "Checked-in Release export rule must remain hidden")
-        print("PASS: \(cases) matrix cases, 54 current-build cases, invalid input, isolation, roles, cache and bundle configuration (\(FeatureVisibility.BuildMode.current.rawValue))")
+
+        for target in FeatureVisibility.Target.allCases {
+            for build in FeatureVisibility.BuildMode.allCases {
+                let visibility = FeatureVisibility(build: build, target: target) { bundled }
+                for permission in permissions {
+                    check(visibility.isVisible(.spaceHDBConfiguration, permission: permission) ==
+                          (permission != .visitor), "HDB target/build/role mismatch")
+                    check(visibility.isVisible(.siteExportJson, permission: permission) == (build == .debug),
+                          "Omitted targets must retain all-brand export behavior")
+                    check(visibility.isVisible(.siteTriggerZone, permission: permission) ==
+                          (build == .debug && permission != .visitor), "Existing Site Trigger Zone behavior changed")
+                }
+            }
+        }
+        let targetCases: [(configured: [String]?, visible: Set<FeatureVisibility.Target>)] = [
+            (nil, [.sunSmart, .archipelago, .slgSyncPlus, .sylSmart, .lumineux]),
+            (["SunSmart"], [.sunSmart]),
+            (["Archipelago", "SLG Sync Plus"], [.archipelago, .slgSyncPlus]),
+            ([], [])
+        ]
+        for testCase in targetCases {
+            var rule: [String: Any] = ["builds": ["debug", "release"], "roles": ["owner"]]
+            if let targets = testCase.configured { rule["targets"] = targets }
+            let bytes = try JSONSerialization.data(withJSONObject: nested(.spaceHDBConfiguration, rule: rule))
+            for target in FeatureVisibility.Target.allCases {
+                for build in FeatureVisibility.BuildMode.allCases {
+                    let visibility = FeatureVisibility(build: build, target: target) { bytes }
+                    check(visibility.isVisible(.spaceHDBConfiguration, permission: .owner) == testCase.visible.contains(target),
+                          "Omitted targets must allow all; specified targets must allow only listed brands")
+                }
+            }
+        }
+        for targets: Any in [NSNull(), "SunSmart", ["sunSmart"], ["Unknown"], ["SunSmart", "Unknown"], [1], []] {
+            let bytes = try JSONSerialization.data(withJSONObject: ["sites": ["site": [
+                "triggerZone": ["builds": ["debug"], "roles": ["owner"], "targets": targets],
+                "exportJson": ["builds": ["debug"], "roles": ["owner"]]
+            ]]])
+            let visibility = FeatureVisibility(build: .debug, target: .sunSmart) { bytes }
+            check(!visibility.isVisible(.siteTriggerZone, permission: .owner), "Invalid/empty targets must hide")
+            check(visibility.isVisible(.siteExportJson, permission: .owner), "Invalid targets affected sibling rule")
+        }
+        // Creation is gated only by the package environment, regardless of placeholder roles.
+        for roles in [[], ["visitor"], ["owner", "editor"]] {
+            for builds in [[], ["debug"], ["release"], ["debug", "release"]] {
+                let bytes = try JSONSerialization.data(withJSONObject: nested(.siteTypeSelection, rule: [
+                    "builds": builds, "roles": roles, "targets": ["SunSmart"]
+                ]))
+                for target in FeatureVisibility.Target.allCases {
+                    for build in FeatureVisibility.BuildMode.allCases {
+                        let visibility = FeatureVisibility(build: build, target: target) { bytes }
+                        check(visibility.canSelectSiteType == (target == .sunSmart && builds.contains(build.rawValue)),
+                              "Site creation must ignore placeholder roles")
+                    }
+                }
+            }
+        }
+        check(!FeatureVisibility { Data("{}".utf8) }.canSelectSiteType, "Missing creation rule must disable selection")
+        for target in FeatureVisibility.Target.allCases {
+            check(FeatureVisibility(target: target) { bundled }.canSelectSiteType == (target == .sunSmart),
+                  "Only configured brands can choose a new Site type")
+        }
+        let currentTarget = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "SunSmart"
+        check(FeatureVisibility.Target.current.rawValue == currentTarget, "Target compilation flag ignored")
+        check(checkedInVisibility.isVisible(.spaceHDBConfiguration, permission: .owner) == true,
+              "Default target must follow the actual compilation flag")
+        print("PASS: \(cases) matrix cases, current build/target, invalid input, isolation, roles, cache and bundle configuration (\(FeatureVisibility.BuildMode.current.rawValue), \(currentTarget))")
     }
 }

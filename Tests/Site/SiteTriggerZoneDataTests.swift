@@ -30,7 +30,7 @@ struct SiteTriggerZoneDataTests {
         precondition(cleaned.zones?.first?.zoneId == zone.zoneId && cleaned.zones?.first?.fields["futureZone"] == zone.fields["futureZone"])
         precondition(cleaned.fields["futureSetting"] == data.fields["futureSetting"])
         precondition(SiteTriggerZoneReferenceCleanup.clean(cleaned, classify: classify) == cleaned)
-        var state = SiteTriggerZoneState()
+        var state = SiteExtensionState()
         state.receive(data, timestamp: 10)
         state.commit(cleaned, now: 20, siteTimestamp: 10)
         precondition(state.pending != nil && state.serverData == data, "Cleanup does not fabricate a cloud receipt")
@@ -74,7 +74,7 @@ struct SiteTriggerZoneDataTests {
                 preconditionFailure("Invalid extension must throw a catchable Swift error")
             } catch { /* Unsupported remote data must never raise an Objective-C exception. */ }
         }
-        var startup = SiteTriggerZoneState()
+        var startup = SiteExtensionState()
         startup.receive(data, timestamp: 10)
         startup.receive(emptyText, timestamp: 11)
         check(startup.data.zones == data.zones, "Stringified empty object does not erase existing zones")
@@ -82,7 +82,7 @@ struct SiteTriggerZoneDataTests {
         let startupPending = startup.pending
         startup.receive(emptyText, timestamp: 30)
         check(startup.pending == startupPending, "Startup stringified empty object cannot acknowledge pending edits")
-        var state = SiteTriggerZoneState()
+        var state = SiteExtensionState()
         state.receive(SiteExtensionData(), timestamp: 10)
         state.commit(data, now: 20, siteTimestamp: 10)
         check(state.pending != nil, "Local changes are durable pending work")
@@ -98,7 +98,7 @@ struct SiteTriggerZoneDataTests {
         let second = state.pending!
         state.receive(second.target, timestamp: second.timestamp)
         check(state.pending == nil && state.data == secondData, "Exact readback acknowledges the current draft")
-        var serverClock = SiteTriggerZoneState()
+        var serverClock = SiteExtensionState()
         serverClock.receive(SiteExtensionData(), timestamp: 100)
         serverClock.commit(data, now: 10_000, siteTimestamp: 100)
         serverClock.submitted = serverClock.pending
@@ -139,7 +139,7 @@ struct SiteTriggerZoneDataTests {
         let beforeOldResponse = state
         state.receive(SiteExtensionData(), timestamp: 1)
         check(state == beforeOldResponse, "Old responses cannot resurrect deleted or replaced data")
-        var ambiguous = SiteTriggerZoneState()
+        var ambiguous = SiteExtensionState()
         ambiguous.receive(data, timestamp: 100)
         ambiguous.receive(secondData, timestamp: 100)
         check(ambiguous.hasAmbiguousRemote && ambiguous.data == data
@@ -214,7 +214,7 @@ struct SiteTriggerZoneDataTests {
         incidentServer.replaceZones([legacyZone, SiteTriggerZone()])
         var incidentLocal = SiteExtensionData()
         incidentLocal.replaceZones([zones[0], zones[1], zones[2]])
-        var incidentState = SiteTriggerZoneState()
+        var incidentState = SiteExtensionState()
         incidentState.receive(incidentLocal, timestamp: 100)
         incidentState.commit(data, now: 101, siteTimestamp: 100)
         incidentState.receive(incidentServer, timestamp: 102)
@@ -241,12 +241,12 @@ struct SiteTriggerZoneDataTests {
         let parsedFullUpdate = try SiteExtensionData.parse(fullUpdate.jsonObject())
         check(parsedFullUpdate == fullUpdate,
               "The complete extensionData request payload roundtrips")
-        let props = try SiteTriggerZoneUpdatePayload.props(extensionData: fullUpdate)
+        let props = try SiteExtensionUpdatePayload.props(extensionData: fullUpdate)
         check(props.keys.sorted() == ["extensionData"],
               "Site Trigger Zone updates let the server assign updateTimestamp")
         let parsedProps = try SiteExtensionData.parse(props["extensionData"]!)
         check(parsedProps == fullUpdate, "The update request contains the complete extension object")
-        var receipt = SiteTriggerZoneState()
+        var receipt = SiteExtensionState()
         receipt.receive(serverExtension, timestamp: 100)
         receipt.commit(fullUpdate, now: 10_000, siteTimestamp: 100)
         receipt.submitted = receipt.pending
@@ -262,7 +262,7 @@ struct SiteTriggerZoneDataTests {
               "Returning to the original members clears the outstanding device change")
         var deletedZoneTarget = fullUpdate
         deletedZoneTarget.replaceZones([otherZone])
-        var deletedZoneReceipt = SiteTriggerZoneState()
+        var deletedZoneReceipt = SiteExtensionState()
         deletedZoneReceipt.receive(fullUpdate, timestamp: 100)
         deletedZoneReceipt.commit(deletedZoneTarget, now: 101, siteTimestamp: 100)
         deletedZoneReceipt.receive(deletedZoneTarget, timestamp: 102)
@@ -275,7 +275,7 @@ struct SiteTriggerZoneDataTests {
         localOther.fields["localOnly"] = .bool(true)
         var localTwoZoneEdit = fullUpdate
         localTwoZoneEdit.replaceZones([editable, localOther])
-        var rowReceipt = SiteTriggerZoneState()
+        var rowReceipt = SiteExtensionState()
         rowReceipt.receive(serverExtension, timestamp: 100)
         rowReceipt.commit(localTwoZoneEdit, now: 10_000, siteTimestamp: 100)
         rowReceipt.submitted = .init(operationId: UUID(), timestamp: 10_001,
@@ -306,7 +306,7 @@ struct SiteTriggerZoneDataTests {
         coveredServer.replaceZones([coveredFirst, zones[1]])
         var coveredTarget = coveredServer
         coveredTarget.replaceZones([coveredFirst, coveredSecond, zones[2], zones[3]])
-        var coveredState = SiteTriggerZoneState()
+        var coveredState = SiteExtensionState()
         coveredState.receive(coveredBase, timestamp: 100)
         coveredState.commit(coveredTarget, now: 101, siteTimestamp: 100)
         coveredState.receive(coveredServer, timestamp: 102)
@@ -322,7 +322,7 @@ struct SiteTriggerZoneDataTests {
         var incompatibleFirst = zones[0]
         incompatibleFirst.replaceMembers([])
         incompatibleTarget.replaceZones([incompatibleFirst, coveredSecond, zones[2], zones[3]])
-        var incompatibleState = SiteTriggerZoneState()
+        var incompatibleState = SiteExtensionState()
         incompatibleState.receive(coveredBase, timestamp: 100)
         incompatibleState.commit(incompatibleTarget, now: 101, siteTimestamp: 100)
         incompatibleState.receive(coveredServer, timestamp: 102)
@@ -345,18 +345,18 @@ struct SiteTriggerZoneDataTests {
         ])
         check(SiteTriggerZoneMember(value: invalidAddress) == nil,
               "A normalized device address before the node primary cannot be persisted")
-        var syncState = SiteTriggerZoneState()
+        var syncState = SiteExtensionState()
         let cleanupGeneration = UUID()
         syncState.referenceCleanupRequests = ["account": cleanupGeneration]
         syncState.deviceSyncChanges = [.init(zoneID: editable.zoneId, previousMembers: .array([]),
                                              targetMembers: editable.fields["members"]!)]
-        let restoredSyncState = try JSONDecoder().decode(SiteTriggerZoneState.self,
+        let restoredSyncState = try JSONDecoder().decode(SiteExtensionState.self,
             from: JSONEncoder().encode(syncState))
         check(restoredSyncState == syncState,
             "Device cleanup evidence survives restart after cloud confirmation")
         var legacyObject = try JSONSerialization.jsonObject(with: JSONEncoder().encode(syncState)) as! [String: Any]
         legacyObject.removeValue(forKey: "referenceCleanupRequests")
-        let legacyState = try JSONDecoder().decode(SiteTriggerZoneState.self,
+        let legacyState = try JSONDecoder().decode(SiteExtensionState.self,
             from: JSONSerialization.data(withJSONObject: legacyObject))
         check(legacyState.referenceCleanupRequests == nil, "Old local states decode without cleanup requests")
         syncState.receive(syncState.data, timestamp: 100)
@@ -364,7 +364,7 @@ struct SiteTriggerZoneDataTests {
               "Remote reception cannot acknowledge local reference cleanup")
         let cloudObject = try JSONSerialization.jsonObject(with: JSONEncoder().encode(syncState.data)) as! [String: Any]
         check(cloudObject["referenceCleanupRequests"] == nil, "Local cleanup requests never enter cloud extension data")
-        let restored = try JSONDecoder().decode(SiteTriggerZoneState.self, from: JSONEncoder().encode(state))
+        let restored = try JSONDecoder().decode(SiteExtensionState.self, from: JSONEncoder().encode(state))
         check(restored == state, "Restart restores the full sync state")
         print("PASS: Site Trigger Zone identity, 100-zone limit, compatibility, pending, conflict and restart checks")
     }

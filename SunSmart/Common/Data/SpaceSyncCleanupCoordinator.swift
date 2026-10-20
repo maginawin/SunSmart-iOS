@@ -103,7 +103,7 @@ enum SpaceSyncCleanupCoordinator {
     private static func markCleanup(_ scope: Scope) -> Bool {
         guard scope.isCurrent, let site = SiteData.load(siteId: scope.siteID), site.state == .normal else { return false }
         do {
-            try SiteTriggerZoneStore.update(site) { state in
+            try SiteExtensionStore.update(site) { state in
                 var requests = state.referenceCleanupRequests ?? [:]
                 requests[scope.account] = UUID()
                 state.referenceCleanupRequests = requests
@@ -115,10 +115,10 @@ enum SpaceSyncCleanupCoordinator {
     private static func finish(_ scope: Scope) -> SiteData? {
         guard scope.isCurrent, let site = SiteData.load(siteId: scope.siteID), site.state == .normal else { return nil }
         do {
-            if let generation = try SiteTriggerZoneStore.load(site).referenceCleanupRequests?[scope.account] {
+            if let generation = try SiteExtensionStore.load(site).referenceCleanupRequests?[scope.account] {
                 let result = try SiteTriggerZoneCoordinator(site: site).finishReferenceCleanup()
                 if case .completed = result, owners[scope] == nil, scope.isCurrent {
-                    try SiteTriggerZoneStore.update(site) { state in
+                    try SiteExtensionStore.update(site) { state in
                         guard state.referenceCleanupRequests?[scope.account] == generation else { return }
                         state.referenceCleanupRequests?.removeValue(forKey: scope.account)
                         if state.referenceCleanupRequests?.isEmpty == true { state.referenceCleanupRequests = nil }
@@ -199,7 +199,7 @@ enum SpaceSyncCleanupCoordinator {
                 networkId: space.meshNetworkId, validAddresses: Set(network.groups.map { $0.address.address })) { changes.append(cleanup) }
         } catch { return false }
         let countChanged = space.deviceCount != nodes.count || space.luminairesCount != nodes.filter { $0.deviceType == .light }.count
-        let didChange = cleaned.didChange || !changes.isEmpty || countChanged
+        var didChange = cleaned.didChange || !changes.isEmpty || countChanged
         if didChange {
             guard SpaceConfigurationSafety.beginSyncReferenceCleanup(space, payload: original),
                   ProximityLightingLifecycleCoordinator.commit(preparation,
@@ -213,6 +213,10 @@ enum SpaceSyncCleanupCoordinator {
         }
         // A deletion can now finish without absorbing unrelated historical repairs.
         DevicePermanentDeletionContext.resume(space: space)
+        if (try? SiteData.load(siteId: space.siteId)?.loadIsHdbSite()) == true {
+            do { didChange = try HDBConfigurationStore.finishSensorGroupCleanup(space: space) || didChange }
+            catch { return false }
+        }
         guard !SpaceConfigurationSafety.hasPendingDeletionCleanup(space),
               let reloaded = SpaceData.load(siteId: space.siteId, spaceId: space.id).first else { return false }
         // The caller may be an old Space object with the same second-level
@@ -323,7 +327,7 @@ enum SpaceSyncCleanupCoordinator {
                 || profiles != schedule.profiles || scene != schedule.sceneNumber || pendingScenes != schedule.needDeleteSceneNumbers
             if removedTarget {
                 for node in nodes where !pendingNodes.contains(node.primaryUnicastAddress) {
-                    let currentGroup = node.groupState == .exitFailure ? nil : node.group
+                    let currentGroup = node.groupState == .exitFailure ? nil : node.configurationGroup
                     let targetsGroup = currentGroup.map { activeGroups.contains($0.address.address) } ?? false
                     let targetsScene = currentGroup.map { group in
                         scene.map { number in group.info.sceneExecuteDatas.contains { $0.sceneNumber == number } } ?? false
@@ -370,7 +374,7 @@ enum SpaceSyncCleanupCoordinator {
             let groups = item.bindGroupAddresses.filter { groupAddresses.contains($0) }
             let removedGroups = item.bindGroupAddresses.filter { !groupAddresses.contains($0) }
             let hasCleanup = nodes.contains { node in
-                let stillTargeted = node.group.map { groups.contains($0.address.address) && node.groupState != .exitFailure } ?? false
+                let stillTargeted = node.configurationGroup.map { groups.contains($0.address.address) && node.groupState != .exitFailure } ?? false
                 guard !stillTargeted else { return false }
                 let switchAddresses = Set([item.linkGroupAddress, item.subLinkGroupAddress].compactMap { $0 })
                 let subscriptions = MissingGroupSubscriptionCleanup.subscriptionAddresses(for: node)

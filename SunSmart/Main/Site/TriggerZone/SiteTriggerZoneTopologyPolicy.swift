@@ -124,7 +124,7 @@ enum SiteTriggerZoneTopologyPolicy {
         }
     }
 
-    static func confirmedZones(from state: SiteTriggerZoneState) -> [SiteTriggerZone]? {
+    static func confirmedZones(from state: SiteExtensionState) -> [SiteTriggerZone]? {
         guard state.pending == nil, !state.conflict, !state.hasAmbiguousRemote,
               state.rejectedRemote == nil,
               let serverData = state.serverData, serverData == state.data,

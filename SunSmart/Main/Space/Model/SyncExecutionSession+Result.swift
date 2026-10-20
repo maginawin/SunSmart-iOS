@@ -3,6 +3,9 @@ import NordicSigMeshSDK
 
 extension SyncExecutionSession {
     func applyResult(_ resultMessageHandles: [MeshMessageHandle], model: SyncCellModel, messageHandles: [MeshMessageHandle]) -> Bool {
+        if case .configuration(_, .hdb(let task)) = operationType(for: model) {
+            return task.persist(result: resultMessageHandles)
+        }
         resultMessageHandles.forEach { handle in
             if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
                 node.applyMessageHandle(handle, isSuccess: handle.isSuccessful)

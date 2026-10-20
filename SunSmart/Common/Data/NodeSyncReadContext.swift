@@ -41,7 +41,9 @@ final class NodeSyncReadContext {
     private var memoizedValues: [String: Any] = [:]
 
     func memoized<Value>(_ key: String, read: () -> Value) -> Value {
-        if let value = memoizedValues[key] as? Value { return value }
+        // A missing Any? can cast to Optional.none when Value is Optional.
+        // Check the dictionary entry first so a cold lookup still calls read().
+        if let stored = memoizedValues[key], let value = stored as? Value { return value }
         let value = read()
         memoizedValues[key] = value
         return value
@@ -190,7 +192,7 @@ final class NodeSyncReadContext {
 
 extension Node {
     var syncReadGroup: Group? {
-        guard let context = NodeSyncReadContext.current else { return group }
+        guard let context = NodeSyncReadContext.current else { return configurationGroup }
         return context.group(for: self)
     }
 }

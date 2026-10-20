@@ -337,6 +337,8 @@ enum DeviceOperationType {
             }
         case .configuration(let node, let type):
             switch type {
+            case .hdb(let task): return task.isSuccessful
+            case .hdbUnavailable: return false
             case .timeSynchronization:
                 return true
             case .scene(let sceneId, let sceneData):
@@ -500,6 +502,7 @@ enum DeviceOperationType {
         case .delete(let node, let type): // 删除操作
             
             switch type {
+            case .hdb, .hdbUnavailable: return []
             case .missingGroupSubscriptions:
                 messageHandles.append(contentsOf: MissingGroupSubscriptionCleanup.handles(for: node))
             case .group(let group):
@@ -588,6 +591,8 @@ enum DeviceOperationType {
         case .configuration(let node, let type): // 添加/配置操作
             
             switch type {
+            case .hdb(let task): return task.makeHandles()
+            case .hdbUnavailable: return []
             case .timeSynchronization:
                 if let timeModel = node.timeModel,
                    let handle = SiteTimeSetMessageFactory.makeHandle(
@@ -777,6 +782,8 @@ enum DeviceOperationType {
 
 /// 事件类型
 enum ActionType {
+    case hdb(HDBDeviceSyncTask)
+    case hdbUnavailable
     /// Timed 日程同步的单一前置校时
     case timeSynchronization
     /// 场景

@@ -138,6 +138,7 @@ class DeviceAddProfessionalModeController: UIViewController {
     /// 其它网关数据
     private var otherGateways: [GatewayModel] = []
     
+    private let hdbCompletion = HDBDeviceAddCompletion()
     let space: SpaceData
     
     /// 外部传入指定添加该到group
@@ -936,6 +937,7 @@ class DeviceAddProfessionalModeController: UIViewController {
     }
     
     deinit {
+        hdbCompletion.cancel()
         systemVolumeObservation = nil
     }
     
@@ -1179,7 +1181,7 @@ class DeviceAddProfessionalModeController: UIViewController {
             // 添加设备中
 //            if scanDevices.contains(where: { $0.addState == .wait || $0.addState == .adding || $0.addState == .addConnecting }) {
 //                state = .adding
-//            }else if scanDevices.contains(where: { $0.addState == .success || $0.addState == .failed }) { // 操作完成（add）
+//            }else if scanDevices.contains(where: { $0.addState == .success || $0.addState == .failed || $0.addState == .syncFailed }) { // 操作完成（add）
 //                state = .addFineshed
 //            }else if state != .scanning {
 //                state = .none
@@ -1301,6 +1303,15 @@ class DeviceAddProfessionalModeController: UIViewController {
     
     /// 添加设备
     private func addDevice(_ device: ProvisioningDevice) {
+        let provisioningMAC: String?
+        do { provisioningMAC = try HDBDeviceAddCompletion.provisioningMAC(device.macAddress, siteId: space.siteId) }
+        catch {
+            device.addState = .failed
+            reloadDeviceState(device)
+            updateUIState()
+            XWHUDManager.showErrorTipHUD(HDBUIError.message(error))
+            return
+        }
         
         // 设备identify中添加不需要再闪烁
 //        if device.addState == .identifyConnecting || device.addState == .identifyWait || device.addState == .failed || device.addState == .identifying {
@@ -1336,7 +1347,7 @@ class DeviceAddProfessionalModeController: UIViewController {
             // 配网完成
             
             node.rssi = addDevice.rssi.intValue
-            if let macAddress = addDevice.macAddress {
+            if let macAddress = provisioningMAC ?? addDevice.macAddress {
                 node.macAddress = macAddress
             }else {
                 // 没有MAC，自动生成一个随机数
@@ -1518,6 +1529,8 @@ class DeviceAddProfessionalModeController: UIViewController {
                 if let plan = self?.fastAddGroupSyncPlan(containing: messageHandle) {
                     node.applyMessageHandle(messageHandle)
                     plan.recordSuccessfulMessageHandle(messageHandle)
+                } else if (try? HDBDeviceSyncContext.resolve(node: node)) != nil {
+                    node.applyMessageHandle(messageHandle)
                 } else {
                     DispatchQueue.global().async {
                         node.applyMessageHandle(messageHandle)
@@ -1586,6 +1599,10 @@ class DeviceAddProfessionalModeController: UIViewController {
                 }
             }
             addDevice.addState = groupSyncFailed ? .syncFailed : .success
+            if !groupSyncFailed, let node = self.addSuccessNodes.first(where: { $0.primaryUnicastAddress == addDevice.address }),
+               (try? HDBDeviceSyncContext.resolve(space: self.space, node: node)) != nil {
+                addDevice.addState = .adding
+            }
             self.reloadDeviceState(addDevice)
             self.updateUIState()
         } addFail: {[weak self] addDevice, error in
@@ -1619,28 +1636,48 @@ class DeviceAddProfessionalModeController: UIViewController {
 
             UpDownLightDefaultCctStepsReader.readAfterProvisioning(devices: successList) { [weak self] in
                 guard let self = self else { return }
-                self.deviceAddCallback?(self.addSuccessNodes)
-                self.deviceStateCallback?(false)
+                let failed = Set(self.addSuccessNodes.filter { node in
+                    successList.first { $0.address == node.primaryUnicastAddress }?.addState == .syncFailed
+                }.map(\.uuid))
+                self.hdbCompletion.didChange = { [weak self] in
+                    guard let self else { return }
+                    self.candidateView.isPreparingDevice = self.hdbCompletion.isRunning
+                    self.updateUIState()
+                }
+                self.candidateView.cancelPreparation = { [weak self] in self?.hdbCompletion.cancel() }
+                self.hdbCompletion.run(space: self.space, nodes: self.addSuccessNodes, standardIncomplete: failed) { [weak self] pending in
+                    guard let self else { return }
+                    for device in successList {
+                        guard let node = self.addSuccessNodes.first(where: { $0.primaryUnicastAddress == device.address }),
+                              device.addState == .adding || pending.contains(node.uuid) || (try? HDBDeviceSyncContext.resolve(space: self.space, node: node)) != nil else { continue }
+                        device.addState = pending.contains(node.uuid) ? .syncFailed : .success
+                        self.reloadDeviceState(device)
+                    }
+                    self.updateUIState()
 
-                self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
-                self.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count //MeshNetworkManager.instance.lightNodes.count
-                self.space.switchesCount = MeshNetworkManager.instance.switchs.count
-                self.space.save()
-                // 通知space数据修改
-                //                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
-                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
-                NotificationCenter.default.post(name: .init(devicesAddNotificationName), object: nil)
-                if self.addSuccessNodes.contains(where: { [.dongle, .gateway, .emergencyController, .unknown].contains($0.deviceType) }) {
-                    NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
+                    self.deviceAddCallback?(self.addSuccessNodes)
+                    self.deviceStateCallback?(false)
+
+                    self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
+                    self.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count //MeshNetworkManager.instance.lightNodes.count
+                    self.space.switchesCount = MeshNetworkManager.instance.switchs.count
+                    self.space.save()
+                    // 通知space数据修改
+                    //                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
+                    NotificationCenter.default.post(name: .init(devicesAddNotificationName), object: nil)
+                    if self.addSuccessNodes.contains(where: { [.dongle, .gateway, .emergencyController, .unknown].contains($0.deviceType) }) {
+                        NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)
+                    }
+                    if self.addSuccessNodes.contains(where: { $0.deviceType == .emergencyController }) {
+                        NotificationCenter.default.post(name: .deviceEmerFireDataDidChange, object: nil)
+                    }
+                    if self.addSuccessNodes.contains(where: { $0.isPowerSwitch }) {
+                        NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+                    }
+                    self.resetFastAddGroupSyncBatch()
+                    self.finishBatteryPowerSwitchInitialBatteryReadsAndDisconnect()
                 }
-                if self.addSuccessNodes.contains(where: { $0.deviceType == .emergencyController }) {
-                    NotificationCenter.default.post(name: .deviceEmerFireDataDidChange, object: nil)
-                }
-                if self.addSuccessNodes.contains(where: { $0.isPowerSwitch }) {
-                    NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
-                }
-                self.resetFastAddGroupSyncBatch()
-                self.finishBatteryPowerSwitchInitialBatteryReadsAndDisconnect()
             }
         }
         

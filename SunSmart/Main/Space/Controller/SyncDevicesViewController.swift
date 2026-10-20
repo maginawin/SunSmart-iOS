@@ -71,6 +71,7 @@ class SyncDevicesViewController: UIViewController {
     private var syncRunIdentifier: UUID { executionSession.identifier }
     private var hasLeftSyncPage = false
     private let syncDisplayContext = SyncDevicesDisplayContext()
+    private var hdbAwaitingInitialization: [Node] = []
 
     
     private var deviceBlinkMode: DeviceBlinkMode {
@@ -132,6 +133,11 @@ class SyncDevicesViewController: UIViewController {
             guard !self.hasLeftSyncPage else { return }
             self.type = self.currentSyncType()
             self.executionSession.type = self.type
+            self.hdbAwaitingInitialization = []
+            if case .devices(let nodes) = self.type {
+                self.hdbAwaitingInitialization = nodes.filter { !$0.isKeybindComplete && (try? HDBDeviceSyncContext.resolve(node: $0)) != nil }
+                HDBDeviceSyncService.prepareIntents(nodes: nodes)
+            }
             let isCurrent = SpaceSyncTaskScope.capture()
             self.executionSession.environment.configurationIsCurrent = isCurrent
             if resume { self.syncState = .inSync }
@@ -261,6 +267,12 @@ class SyncDevicesViewController: UIViewController {
             executionSession.stop()
             syncDisplayContext.invalidateRun()
         }else if syncState == .syncFailure {
+            if case .devices(let nodes) = type,
+               nodes.contains(where: { (try? HDBDeviceSyncContext.resolve(node: $0)) != nil }) {
+                rebuildTaskPlan(resume: true)
+                return
+            }
+
 
 //            let failedModels = sections.filter({ $0.allModels.contains(where: { $0 is SyncDevicesModel && ($0.state == .failed || $0.state == .repeatedFailure) }) })
 
@@ -389,6 +401,11 @@ class SyncDevicesViewController: UIViewController {
         }
         executionSession.onCompleted = { [weak self] state in
             guard let self, !self.hasLeftSyncPage else { return }
+            if self.hdbAwaitingInitialization.contains(where: { $0.isKeybindComplete }) {
+                self.hdbAwaitingInitialization = []
+                DispatchQueue.main.async { [weak self] in self?.rebuildTaskPlan(resume: true) }
+                return
+            }
             if state == .syncSuccess {
                 self.syncSuccessCallback?(self.type)
                 SyncDevicesProgressView.current()?.hide()

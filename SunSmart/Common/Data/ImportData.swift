@@ -253,13 +253,14 @@ private struct ProximityLightingImportPreflight {
             triggerZones = initialize ? [] : nil
         }
 
+        guard let hdbAddresses = try? HDBLightingZonePolicy.groupAddresses(in: spaceJsonData) else { return nil }
         var decodedGroups: [(dictionary: [String: Any], group: Group)] = []
         for groupDict in groupDicts where !JSON(groupDict)["isVirtual"].boolValue {
             guard let data = try? JSONSerialization.data(withJSONObject: groupDict),
                   let group = try? jsonDecoder.decode(Group.self, from: data) else {
                 return nil
             }
-            decodedGroups.append((groupDict, group))
+            if !hdbAddresses.contains(group.address.address) { decodedGroups.append((groupDict, group)) }
         }
         let importedGroupAddresses = Set(
             decodedGroups.map { $0.group.address.address }
@@ -600,7 +601,7 @@ extension SiteData {
         let lastUpdate = json["updateTimestamp"].int64Value
         // Process extension fields independently of the legacy Site timestamp gate.
         do {
-            try SiteTriggerZoneStore.receive(self, object: siteJsonData, timestamp: lastUpdate)
+            try SiteExtensionStore.receive(self, object: siteJsonData, timestamp: lastUpdate)
         } catch {
             // Preserve the durable extension if a partial/invalid response cannot be applied.
             self.syncCloudError = .configurationExportInvalid
@@ -1774,6 +1775,7 @@ extension SpaceData {
         let trace = SiteImportTrace("space:" + id)
         defer { trace.mark("end") }
         guard spaceJsonData["uuid"] as? String == id else { return .rejected("spaceIdentityMismatch") }
+
         guard (try? SpaceConfigurationSafety.recoveryState(self).phase) == .active else {
             return .rejected("spaceRemovalPending")
         }
@@ -1849,6 +1851,13 @@ extension SpaceData {
         let timedReferencesChanged = !NSDictionary(dictionary: originalSpaceJsonData).isEqual(to: repairedTimedPayload)
         let referenceCleanup = try? SpaceSyncCleanupPolicy.normalize(repairedTimedPayload)
         let spaceJsonData = referenceCleanup?.payload ?? repairedTimedPayload
+        // Nodes, groups, HDB and the recovery receipt must all describe the selected
+        // staged snapshot, even if the request that triggered this retry is newer.
+        let incomingHDB: HDBConfiguration?
+        do {
+            incomingHDB = try HDBLightingZonePolicy.decode(payload: spaceJsonData)
+            if let incomingHDB = incomingHDB { try HDBLightingZonePolicy.validateReferences(incomingHDB, payload: spaceJsonData) }
+        } catch { return .rejected("invalidHDBPayload") }
         trace.mark("metadataPrepared")
         // Metadata may legitimately change the authority generation for this import.
         // Capture the context after synchronous preparation, before the first await.
@@ -2192,6 +2201,8 @@ extension SpaceData {
             if let value = json["deviceBlinkMode"].int, let mode = DeviceBlinkMode(rawValue: value) {
                 self.deviceBlinkMode = mode
             }
+            self.hdb = incomingHDB
+            self.hdbLoadFailed = false
             if let triggerZones = proximityPreflight.triggerZones {
                 self.triggerZones = triggerZones
                 self.triggerZonesLoadFailed = false
@@ -2224,7 +2235,8 @@ extension SpaceData {
 //                        node = localNode
 //                    }
                     node.subNetworkId = self.meshNetworkId
-                    node.macAddress = nodeJson["macAddress"].string
+                    node.macAddress = HDBLightingZonePolicy.importedNodeMAC(nodeJson["macAddress"].string,
+                        nodeUuid: node.uuid, nodeAddress: node.primaryUnicastAddress, in: incomingHDB)
                     if let sensorTypes = nodeJson["sensorTypes"].arrayObject as? [String] {
                         let propertys = sensorTypes.map({ DeviceProperty(UInt16(hex: $0) ?? 0) })
                         for index in 0..<propertys.count {
@@ -2468,6 +2480,8 @@ extension SpaceData {
                 }
                 try? network.add(node: $0)
             })
+
+            if let incomingHDB { try HDBConfigurationStore.validateModels(incomingHDB, nodes: nodes) }
             
             while network.scenes.count > 0 {
                 network.forceRemove(scene: network.scenes.first!.number)
@@ -2657,6 +2671,11 @@ extension SpaceData {
             self.sceneCount = scenes.count
             self.scheheduleCount = schedules.count
             self.switchesCount = switches.count
+            // Persist the authoritative version inside this savepoint before the
+            // topology coordinator performs any ordinary metadata saves.
+            guard self.save(importingConfiguration: true) else {
+                throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+            }
             let proximityPreparation = ProximityLightingLifecycleCoordinator.begin(
                 space: self,
                 groups: groups.filter { !$0.isVirtual },
@@ -2699,6 +2718,10 @@ extension SpaceData {
             }
 
             guard self.save(),
+                  let persistedSpace = SpaceData.load(siteId: self.siteId, spaceId: self.id).first,
+                  !persistedSpace.hdbLoadFailed, persistedSpace.hdb == incomingHDB,
+                  persistedSpace.lastUpdate == lastUpdate,
+                  persistedSpace.lastUploadCloudTimestamp == lastUpdate,
                   let persistedNetwork = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId),
                   Set(persistedNetwork.groups.map { $0.address.address }) == Set(groups.map { $0.address.address }),
                   zip(nodes, nodeDicts).allSatisfy({ imported, dictionary in

@@ -33,7 +33,7 @@ private struct SpaceSnapshotExportIntegritySnapshot: Equatable {
                       node.groupState == .inGroup else {
                     return nil
                 }
-                guard let group = node.group,
+                guard let group = node.configurationGroup,
                       exportedGroupAddresses.contains(group.address.address.hex) else {
                     return .init(
                         nodeAddress: node.primaryUnicastAddress.hex,
@@ -89,7 +89,7 @@ private struct SpaceSnapshotExportIntegritySnapshot: Equatable {
     }
 
     private static func declaredGroupAddress(for node: Node) -> String? {
-        if let group = node.group {
+        if let group = node.configurationGroup {
             return group.address.address.hex
         }
         guard let data = try? jsonEncoder.encode(node),
@@ -340,7 +340,7 @@ extension SiteData {
         }
         
         // Read the durable extension, not a possibly stale Site instance.
-        guard let extensionState = try? SiteTriggerZoneStore.load(self),
+        guard let extensionState = try? SiteExtensionStore.load(self),
               let extensionObject = try? extensionState.data.jsonObject() else {
             purpose.reportInspectionIssue("site.extensionData: loadOrEncodingFailed")
             return nil
@@ -553,6 +553,13 @@ extension SpaceData {
             spaceJsonData.updateValue(self.controlType.rawValue, forKey: "controlType")
             spaceJsonData.updateValue(self.deviceBlinkMode.rawValue, forKey: "deviceBlinkMode")
             var spaceExtensionData: [String: Any] = [:]
+            guard !self.hdbLoadFailed else { return nil }
+            if let hdb = self.hdb {
+                do { try HDBConfigurationStore.validateModels(hdb, nodes: meshNetwork.nodes) }
+                catch { return nil }
+                guard let object = try? HDBLightingZonePolicy.json(hdb) else { return nil }
+                spaceExtensionData["hdb"] = object
+            }
             spaceExtensionData.updateValue(1, forKey: "proximityLightingSchemaVersion")
             let timedVersion = max(self.timedSchemaVersion,
                 SpaceData.load(siteId: self.siteId, spaceId: self.id).first?.timedSchemaVersion ?? 1)
@@ -617,8 +624,10 @@ extension SpaceData {
                     nodeDict.updateValue(node.macAddress ?? "", forKey: "macAddress")
                     let types = node.sensorModels.compactMap({ node.sensorModelTypes[$0]?.id.hex })
                     nodeDict.updateValue(types, forKey: "sensorTypes")
-                    nodeDict.updateValue(node.groupState.rawValue, forKey: "groupState")
-                    if let group = node.group {
+                    let ordinaryGroup = node.configurationGroup(excluding: self.hdbGroupAddresses)
+                    let ordinaryState = !self.hdbGroupAddresses.isEmpty && ordinaryGroup == nil && node.groupState != .exitFailure ? Node.GroupState.none : node.groupState
+                    nodeDict.updateValue(ordinaryState.rawValue, forKey: "groupState")
+                    if let group = ordinaryGroup {
                         nodeDict.updateValue(group.address.address.hex, forKey: "groupAddress")
                     }
                     nodeDict.updateValue(node.versionSEQ, forKey: "versionSEQ")

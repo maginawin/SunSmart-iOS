@@ -27,6 +27,7 @@ enum ProfileType {
     case occupancyMode(enabled: Bool), manualControl(enabled: Bool), lightAutoAdujustEnabled(enabled: Bool)
 }
 final class Node {
+    var syncReadGroup: Group? { group }
     enum GroupState { case none, inGroup, exitFailure }
     var group: Group?
     var groupState = GroupState.exitFailure

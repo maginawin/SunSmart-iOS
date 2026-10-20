@@ -44,7 +44,7 @@ final class SitePropsEditCoordinator {
             client.didReceiveProps = { [weak site] props, timestamp in
                 guard let site, region == UserData.currentServerRegion,
                       site.state == .normal else { return }
-                try SiteTriggerZoneStore.receive(site, object: props, timestamp: timestamp)
+                try SiteExtensionStore.receive(site, object: props, timestamp: timestamp)
             }
         }
     }

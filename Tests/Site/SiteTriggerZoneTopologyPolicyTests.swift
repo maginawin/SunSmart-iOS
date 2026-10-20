@@ -250,7 +250,7 @@ struct SiteTriggerZoneTopologyPolicyTests {
     }
 
     private static func testOnlyConfirmedCloudDataCanBeProjected() {
-        var state = SiteTriggerZoneState()
+        var state = SiteExtensionState()
         state.serverData = state.data
         require(Policy.confirmedZones(from: state)?.isEmpty == true,
                 "Confirmed empty cloud state should be readable")

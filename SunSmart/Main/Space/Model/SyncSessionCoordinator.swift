@@ -43,6 +43,7 @@ final class SyncSessionCoordinator {
     private var phase = Phase.idle
     private var pendingStart: ((UUID) -> Void)?
     private var completion: (() -> Void)?
+    private var closeCompletion: (() -> Void)?
     private(set) var closed = false
 
     init(lane: SyncSessionTransportLane = .shared) { self.lane = lane }
@@ -111,12 +112,18 @@ final class SyncSessionCoordinator {
     private func releaseAndDrain() {
         phase = .idle
         lane.release(owner)
+        if closed {
+            let callback = closeCompletion
+            closeCompletion = nil
+            callback?()
+        }
         drain()
     }
 
-    func close(idleCleanup: ((@escaping () -> Void) -> Void)? = nil, settle: (@escaping () -> Void) -> Void) {
+    func close(didClose: (() -> Void)? = nil, idleCleanup: ((@escaping () -> Void) -> Void)? = nil, settle: (@escaping () -> Void) -> Void) {
         precondition(Thread.isMainThread)
         guard !closed else { return }
+        closeCompletion = didClose
         let needsIdleCleanup = phase == .idle || phase == .waiting
         closed = true
         stop(settle: settle)
@@ -131,6 +138,8 @@ final class SyncSessionCoordinator {
                     releaseAndDrain()
                 }
             }
+        } else if needsIdleCleanup {
+            releaseAndDrain()
         }
     }
 }

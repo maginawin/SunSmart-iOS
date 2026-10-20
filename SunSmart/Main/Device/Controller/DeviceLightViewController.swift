@@ -647,11 +647,11 @@ class DeviceLightViewController: UIViewController {
         }
 
         let syncDatas = lifecycleResult?.syncDatas ?? []
-        guard MeshLibManager.manager.isMeshNetworkConnected, !syncDatas.isEmpty else {
+        guard MeshLibManager.manager.isMeshNetworkConnected, let syncType = HDBDeviceSyncService.deletionSyncType(datas: syncDatas) else {
             finish()
             return
         }
-        let vc = SyncDevicesViewController(type: .spaceTriggerZones(datas: syncDatas))
+        let vc = SyncDevicesViewController(type: syncType)
         vc.syncSuccessCallback = { _ in finish() }
         vc.backActionCallback = { _ in finish() }
         navigationController?.pushViewController(vc, animated: true)
@@ -665,6 +665,10 @@ class DeviceLightViewController: UIViewController {
             return
         }
         
+        if (try? HDBDeviceSyncContext.resolve(node: node)) != nil {
+            syncDevice()
+            return
+        }
         XWHUDManager.showCustomHUD(withMessage: "repairing".localizedString, isWindow: true)
         MeshAPI.startKeyBind(node: node, startKeyBind: nil) {[weak self] node in
             XWHUDManager.hide()

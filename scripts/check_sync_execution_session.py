@@ -11,6 +11,11 @@ def main():
     model = (ROOT / 'SunSmart/Main/Space/Model/SyncDevicesCellModel.swift').read_text()
     fixtures = (ROOT / 'Tests/Sync/SyncTaskBuilderFixtures.swift').read_text()
     # Build fixtures already exercise the production compatibility models.
+    fixtures += """
+extension HDBDeviceSyncTask {
+    func persist(result: [MeshMessageHandle]) -> Bool { persistCalls += 1; return result.allSatisfy { $0.isSuccessful } }
+}
+"""
     fixtures = fixtures.replace('case profileToggleTriggerConditionLuxDelete, occupancyLevel', 'case profileToggleTriggerConditionLuxDelete, occupancyLevel, lightControlRestore')
     fixtures = fixtures.replace('struct PJEightKeySwitchData { let name: String }', 'struct PJEightKeySwitchData { let name: String; var requiresActivationBeforeOwnConfiguration = false }')
     fixtures = fixtures.replace('case collectionSchedule(index:', 'case profileSensorProtectionDisable, profileSensorTargetEnable, batteryPowerSwitchKeyConfig\n    case collectionSchedule(index:')
@@ -38,6 +43,10 @@ def main():
     source += region(model, 'enum SyncDevicesState', 'struct SunricherVendorSetUnacknowledged')
     source += region(model, 'class SyncDevicesSectionModel', '/// 当前同步轮次的显示上下文')
     source += (ROOT / 'Tests/Sync/SyncExecutionSessionFixtures.swift').read_text()
+    ack_source = (ROOT / 'SunSmart/Main/Space/Model/SyncExecutionSession+Acknowledgement.swift').read_text()
+    hdb_ack = region(ack_source, '        if case .configuration(_, .hdb(let task))', '        if let operation =')
+    source = source.replace('func received(handle: MeshMessageHandle, statusMessage: Int, model: SyncCellModel, messageHandles: [MeshMessageHandle]) {}',
+        'func received(handle: MeshMessageHandle, statusMessage: Int, model: SyncCellModel, messageHandles: [MeshMessageHandle], cacheOnly: Bool = false) {\n' + hdb_ack + '\n}')
     for name in ['SyncExecutionSession', 'SyncExecutionSession+Tasks', 'SyncExecutionSession+Result', 'SyncRetryPolicy']:
         source += (ROOT / f'SunSmart/Main/Space/Model/{name}.swift').read_text().replace('import NordicSigMeshSDK', '')
     controller = (ROOT / 'SunSmart/Main/Space/Controller/SyncDevicesViewController.swift').read_text()

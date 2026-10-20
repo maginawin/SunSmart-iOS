@@ -82,8 +82,10 @@ with tempfile.TemporaryDirectory(prefix='site-zone-cleanup-batch-') as directory
     source.write_text(production)
     binary = output / 'tests'
     subprocess.run(['swiftc', '-parse-as-library', '-I', directory, '-L', directory, '-lSQLite',
+                    str(root / 'SunSmart/Common/Data/SiteExtensionData.swift'),
+                    str(root / 'SunSmart/Common/Data/SiteExtensionState.swift'),
                     str(source), str(root / 'SunSmart/Main/Site/TriggerZone/SiteTriggerZoneData.swift'),
-                    str(root / 'SunSmart/Main/Site/TriggerZone/SiteTriggerZoneStore.swift'),
+                    str(root / 'SunSmart/Common/Data/SiteExtensionStore.swift'),
                     str(root / 'Tests/Site/SiteZoneCleanupBatchTests.swift'),
                     '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)

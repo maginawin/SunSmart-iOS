@@ -18,6 +18,7 @@ struct BatteryPowerSwitchTargetSubscriptionSnapshot: Hashable {
 public enum DataError: Error {
     /// 空间已超出最大范围
     case exceededMaxSpaces
+    case persistenceFailed
     
 }
 
@@ -45,19 +46,30 @@ extension SiteData {
     /// 添加场所
     /// - Parameter name: 场所名称
     /// - Returns: 场所
-    static func add(name: String) -> SiteData {
+    static func add(name: String, isHdbSite: Bool = false) throws -> SiteData {
+        guard let database = SunSmartDataManager.shared.db else { throw DataError.persistenceFailed }
         let time = Int64(Date().timeIntervalSince1970)
         
         let id = UUID().uuidString
         let meshNetworkManager = MeshNetworkManager.createMeshNetwork(meshUUID: id, meshNetworkName: name, localAddress: Address.minUnicastAddress)
 //        MeshLibManager.manager.createMeshNetwork(meshUUID: id, meshNetworkName: name, connected: false)
         let site = SiteData(region: UserData.currentServerRegion, id: id, meshUUID: id, meshNetworkId: meshNetworkManager.mainNetworkKey.networkId.hex, name: name, imageId: 1, type: .office, permission: .owner, create: time,isFavourite: false, sourceType: .create)
+        site.siteExtensionData.isHdbSite = isHdbSite
         site.timezone = SiteTimeZoneCatalog.phoneDefaultValue().storageValue
         site.pendingSitePropsMask = [.timezone]
         site.pendingSitePropsTimestamp = site.lastUpdate
         site.localAddress = Address.minUnicastAddress
 //        site.meshManager = meshManager
-        site.save()
+        do {
+            // The SQLite wrapper rolls back failed savepoints without releasing them.
+            // End the complete creation transaction so a later retry can commit durably.
+            try database.transaction {
+                guard site.save() else { throw DataError.persistenceFailed }
+            }
+        } catch {
+            _ = MeshNetworkManager.removeMeshNetwork(meshUUID: id)
+            throw error
+        }
         return site
     }
     
@@ -67,49 +79,32 @@ extension SiteData {
     ///   - id: 空间id
     ///   - imageId: 空间图片id
     /// - Returns: 空间
-    func addSpace(name: String, id: String = UUID().uuidString, imageId: Int = 1) -> SpaceData? {
-        
+    func addSpace(name: String, id: String = UUID().uuidString, imageId: Int = 1) throws -> SpaceData? {
+        precondition(Thread.isMainThread)
+        let initializeHDB = try loadIsHdbSite()
+            && FeatureVisibility.shared.isVisible(.spaceHDBConfiguration, permission: .owner)
+        let addresses = initializeHDB
+            ? Array(HDBConfigurationStore.availableLightingZoneAddresses(meshUUID: meshUUID).prefix(63)) : []
+        // Check before allocating a subnet; no partial Space is uploaded on shortage.
+        guard !initializeHDB || addresses.count == 63 else { throw HDBConfigurationError.addressUnavailable }
         let time = Int64(Date().timeIntervalSince1970)
-        
         guard let subnetworkData = MeshNetworkManager.addSubnetwork(meshUUID: meshUUID, networkKeyName: name, applicationKeyName: name) else {
             return nil
         }
-//        self.meshManager = manager
-        
         let space = SpaceData(name: name, id: id, siteId: self.id, imageId: imageId, create: time, isFavourite: false, permission: .owner, sourceType: .create, meshUUID: self.meshUUID, meshNetworkId: subnetworkData.networkKey.networkId.hex)
-//        space.meshManager = self.meshManager
-        addSpace(space)
-        return space
-    }
-     
-    /// 场所添加空间
-    /// - Parameter space: 空间数据
-    private func addSpace(_ space: SpaceData) {
-        // 没有对应mesh网络时创建一个网络
-//        if MeshNetworkManager.loadMeshNetwork(meshUUID: space.meshUUID) == nil {
-//            /// 测试数据
-//            var meshManager = MeshLibManager.manager.createMeshNetwork(meshUUID: space.meshUUID, meshNetworkName: space.name, connected: false)
-//            if meshManager.realNodes.isEmpty {
-//                let meshData = testMeshJsonDataString.data(using: .utf8)!
-//                do {
-//                    if var meshDict = try JSONSerialization.jsonObject(with: meshData) as? [String: Any] {
-//                        meshDict.updateValue(space.meshUUID, forKey: "meshUUID")
-//                        let setData = try JSONSerialization.data(withJSONObject: meshDict)
-//                        _ = try meshManager.import(from: setData)
-//                        _ = meshManager.save()
-//                    }
-//                } catch {
-//                    
-//                }
-//            }
-//        }
-        // 生成editor密码
-//        space.editorPassword = String.generateRandomNumberString()
-        space.save()
+        do {
+            if initializeHDB { try HDBConfigurationStore.initializeLightingZones(space: space, addresses: addresses) }
+            guard space.save() else { throw HDBConfigurationError.persistenceFailed }
+        } catch {
+            // Reuse normal subnet/Group cleanup and its existing interrupted-removal recovery.
+            _ = space.delete()
+            throw error
+        }
         spaces.append(space)
         lastUpdate = Int64(Date().timeIntervalSince1970)
+        return space
     }
-    
+
     /// 克隆场所数据
     /// - Parameter save: 是否本地缓存
     func clone(_ save: Bool = false) -> SiteData {
@@ -373,7 +368,7 @@ extension SiteData {
                         }
                         
                         // 每解绑一个space，其APP都回收这个space未使用的组地址给服务器  1个空间32个组地址
-                        recycleGroupAddresCount += 32 - usedGroupAddresses.count
+                        recycleGroupAddresCount += max(0, 32 - usedGroupAddresses.count)
                         
                         // 每解绑一个space，其APP都回收这个space未使用的场景地址给服务器  1个空间16个场景
                         recycleSceneAddresCount += 16 - usedSceneAddresses.count
@@ -1963,7 +1958,7 @@ extension Node {
     private static let emergencySignControllerCompanyIdentifier: UInt16 = 0x0A78
     private static let emergencySignControllerProductIdentifiers: Set<UInt16> = [0x24C1]
     private static let wifiGatewayCompanyIdentifier: UInt16 = 0x0A78
-    private static let wifiGatewayProductIdentifiers: Set<UInt16> = [0x2721]
+    private static let wifiGatewayProductIdentifiers: Set<UInt16> = [0x2721, 0x2723]
 
     static func isEmergencySignController(companyIdentifier: UInt16?, productIdentifier: UInt16?) -> Bool {
         guard companyIdentifier == emergencySignControllerCompanyIdentifier,
@@ -2678,7 +2673,7 @@ extension Node {
     func updateResoreData(oldNode: Node, resoreGroup: Group? = nil) {
         
         var addToGroup: Group?
-        if let group = resoreGroup ?? oldNode.group, oldNode.groupState != .exitFailure {
+        if let group = resoreGroup ?? oldNode.configurationGroup, oldNode.groupState != .exitFailure {
             addToGroup = group
         }
         

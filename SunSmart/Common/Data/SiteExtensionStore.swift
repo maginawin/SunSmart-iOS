@@ -1,8 +1,9 @@
 import Foundation
 import SQLite
+import NordicSigMeshSDK
 
-/// A separate table prevents legacy Site insert-or-replace saves from overwriting zones.
-enum SiteTriggerZoneStore {
+/// Persist the complete Site extensionData and sync state independently of legacy Site saves.
+enum SiteExtensionStore {
     private static let table = Table("site_extensions")
     private static let siteID = Expression<String>("siteId")
     private static let regionID = Expression<Int>("region")
@@ -20,26 +21,34 @@ enum SiteTriggerZoneStore {
         })
     }
 
-    static func load(_ site: SiteData) throws -> SiteTriggerZoneState {
+    static func load(_ site: SiteData) throws -> SiteExtensionState {
         guard let db = SunSmartDataManager.shared.db else { throw StoreError.databaseUnavailable }
         if let row = try db.pluck(table.filter(siteID == site.id && regionID == site.region.rawValue)) {
-            return try JSONDecoder().decode(SiteTriggerZoneState.self, from: row[payload])
+            return try JSONDecoder().decode(SiteExtensionState.self, from: row[payload])
         }
-        var state = SiteTriggerZoneState()
+        var state = SiteExtensionState()
         state.data = site.siteExtensionData
         return state
     }
 
     @discardableResult
-    static func update(_ site: SiteData, _ mutation: (inout SiteTriggerZoneState) throws -> Void) throws -> SiteTriggerZoneState {
+    static func update(_ site: SiteData, _ mutation: (inout SiteExtensionState) throws -> Void) throws -> SiteExtensionState {
         guard let db = SunSmartDataManager.shared.db else { throw StoreError.databaseUnavailable }
-        var state = SiteTriggerZoneState()
+        var state = SiteExtensionState()
+        var previousHDBType = false
         try db.savepoint("site_extension_" + UUID().uuidString) {
             state = try load(site)
+            previousHDBType = state.data.isHdbSite
             try mutation(&state)
             let encoded = try JSONEncoder().encode(state)
             try db.run(table.insert(or: .replace, siteID <- site.id,
                                    regionID <- site.region.rawValue, payload <- encoded))
+        }
+        if previousHDBType != state.data.isHdbSite {
+            NodeSyncStatusGeneration.invalidate()
+            if let network = MeshNetworkManager.instance.meshNetwork, network.uuid.uuidString == site.id {
+                network.nodes.forEach { $0.clearSyncStateCache() }
+            }
         }
         site.siteExtensionData = state.data
         return state

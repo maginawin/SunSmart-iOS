@@ -160,7 +160,7 @@ enum SiteTriggerZoneTopologyReader {
     static func localTargetSnapshot(for node: Node) -> LocalTargetSnapshot {
         guard let network = node.network,
               let site = SiteData.load(siteId: network.uuid.uuidString) else { return .localOnly }
-        guard let state = try? SiteTriggerZoneStore.load(site) else { return .unavailable }
+        guard let state = try? SiteExtensionStore.load(site) else { return .unavailable }
         let allMembers = (state.data.zones ?? []).flatMap(\.displayMembers)
         let previousMembers = (state.deviceSyncChanges ?? []).flatMap { change -> [SiteTriggerZoneDisplayMember] in
             guard case .array(let values) = change.previousMembers else { return [] }
@@ -173,12 +173,12 @@ enum SiteTriggerZoneTopologyReader {
         return .site(spaceID: space.id, plan: plan)
     }
 
-    static func makePlan(site: SiteData, state: SiteTriggerZoneState)
+    static func makePlan(site: SiteData, state: SiteExtensionState)
         -> Result<SiteTriggerZoneTopologyPolicy.Plan, ReadError> {
         read(site: site, state: state).map(\.topology)
     }
 
-    static func makeRecoveryPlan(site: SiteData, state: SiteTriggerZoneState)
+    static func makeRecoveryPlan(site: SiteData, state: SiteExtensionState)
         -> Result<SiteTriggerZoneSyncPlanningPolicy.Plan, ReadError> {
         read(site: site, state: state).map { snapshot in
             let plan = SiteTriggerZoneSyncPlanningPolicy.makeRecoveryPlan(
@@ -196,7 +196,7 @@ enum SiteTriggerZoneTopologyReader {
 
     /// Tentative old/new Site diff. It retains every Space and relationship;
     /// device evidence, explicit TTL and execution receipts remain separate.
-    static func makeDifferencePlan(site: SiteData, state: SiteTriggerZoneState,
+    static func makeDifferencePlan(site: SiteData, state: SiteExtensionState,
                                    selectedZoneID: UUID)
         -> Result<SiteTriggerZoneSyncPlanningPolicy.Plan, ReadError> {
         read(site: site, state: state).flatMap { snapshot in
@@ -248,7 +248,7 @@ enum SiteTriggerZoneTopologyReader {
         }
     }
 
-    private static func read(site: SiteData, state: SiteTriggerZoneState)
+    private static func read(site: SiteData, state: SiteExtensionState)
         -> Result<Snapshot, ReadError> {
         guard state.pending == nil, !state.conflict, !state.hasAmbiguousRemote,
               state.rejectedRemote == nil,

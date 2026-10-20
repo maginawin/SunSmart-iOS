@@ -46,7 +46,7 @@ enum SpaceConfigurationSafety {
     static func hasPendingUpload(_ space: SpaceData) -> Bool { space.pendingUpload }
     static func isBlocked(_ space: SpaceData) -> Bool { space.blocked }
 }
-enum SiteTriggerZoneStore {
+enum SiteExtensionStore {
     struct State { var pending: Int? }
     static func load(_ site: SiteData) throws -> State { .init() }
 }

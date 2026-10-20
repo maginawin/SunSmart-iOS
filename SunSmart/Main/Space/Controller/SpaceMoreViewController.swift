@@ -23,6 +23,8 @@ class SpaceMoreViewController: UIViewController {
                 return ("space_energy_data", "energy_data".localizedString)
             case .triggerZone:
                 return ("trigger_zone", "trigger_zone".localizedString)
+            case .hdbConfiguration:
+                return ("device_parameter", "hdb_configuration".localizedString)
             case .contentDisplay:
                 return ("content_display", "content_display".localizedString)
             }
@@ -38,6 +40,7 @@ class SpaceMoreViewController: UIViewController {
         case energyData
         /// 触发区域
         case triggerZone
+        case hdbConfiguration
         /// 内容显示
         case contentDisplay
     }
@@ -53,6 +56,12 @@ class SpaceMoreViewController: UIViewController {
 
     private var canShowContentDisplay: Bool {
         space.deviceOperates.contains(.edit)
+    }
+
+    private var canShowHDBConfiguration: Bool {
+        site.isHdbSite
+            && FeatureVisibility.shared.isVisible(.spaceHDBConfiguration, permission: space.permission)
+            && space.groupOperates.contains(.edit)
     }
 
     init(site: SiteData, space: SpaceData) {
@@ -88,6 +97,10 @@ class SpaceMoreViewController: UIViewController {
 
         if space.groupOperates.contains(.edit) {
             currentOptions.append(.triggerZone)
+        }
+
+        if canShowHDBConfiguration {
+            currentOptions.append(.hdbConfiguration)
         }
 
         return currentOptions
@@ -232,6 +245,19 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
                 vc.preferredContentSize = iPadPreferredContentSize
             }
             present(NavigationViewController(rootViewController: vc), animated: true)
+        case .hdbConfiguration:
+            guard canShowHDBConfiguration else {
+                showEditingUnavailable()
+                reloadOptions()
+                return
+            }
+            let vc = HDBConfigurationViewController(site: site, space: space)
+            if isIPad {
+                vc.preferredContentSize = iPadPreferredContentSize
+            }
+            let navigationController = NavigationViewController(rootViewController: vc)
+            navigationController.isModalInPresentation = true
+            present(navigationController, animated: true)
         case .contentDisplay:
             guard self.space.deviceOperates.contains(.edit) else {
                 showEditingUnavailable()

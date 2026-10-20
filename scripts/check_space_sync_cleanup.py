@@ -14,7 +14,7 @@ if args.snapshot is not None and not args.snapshot.is_file():
 ROOT = Path(__file__).resolve().parents[1]
 with tempfile.TemporaryDirectory(prefix="space-sync-cleanup-") as directory:
     binary = str(Path(directory) / "tests")
-    files = ["SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift",
+    files = ["SunSmart/Common/Data/HDBConfiguration.swift", "SunSmart/Common/Data/HDBLightingZonePolicy.swift", "SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift",
              "SunSmart/Main/Group/Model/ProximityLightingTopologyPolicy.swift",
              "SunSmart/Main/Group/Model/ProximityLightingTopologyReconciler.swift",
              "SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift",

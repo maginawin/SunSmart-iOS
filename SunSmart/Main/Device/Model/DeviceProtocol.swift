@@ -195,11 +195,11 @@ extension DeviceProtocol where Self: UIViewController {
         completion: @escaping () -> Void
     ) {
         let datas = ProximityLightingLifecycleCoordinator.mergedSyncDatas(from: results)
-        guard MeshLibManager.manager.isMeshNetworkConnected, !datas.isEmpty else {
+        guard MeshLibManager.manager.isMeshNetworkConnected, let syncType = HDBDeviceSyncService.deletionSyncType(datas: datas) else {
             completion()
             return
         }
-        let vc = SyncDevicesViewController(type: .spaceTriggerZones(datas: datas))
+        let vc = SyncDevicesViewController(type: syncType)
         var didFinish = false
         let finish = { [weak vc] in
             guard !didFinish else { return }

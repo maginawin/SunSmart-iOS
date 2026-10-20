@@ -41,6 +41,20 @@ struct SyncRetryPolicy {
     }
 
     func prepareTaskForResync(_ task: SyncDeviceStepTaskModel) {
+        if isLightingZoneTask(task), let device = task.parentStepModel?.parentDeviceModel {
+            // A Zone result belongs to the entire device plan, never to an individual stage.
+            device.steps.flatMap(\.tasks).filter(isLightingZoneTask).forEach(resetTask)
+        } else {
+            resetTask(task)
+        }
+    }
+
+    private func isLightingZoneTask(_ task: SyncDeviceStepTaskModel) -> Bool {
+        guard case .configuration(_, .hdb(let operation)) = task.operationType else { return false }
+        return operation.isLightingZoneOperation
+    }
+
+    private func resetTask(_ task: SyncDeviceStepTaskModel) {
         task.isFineshed = false
         task.failedCount = 0
         task.resetSkippedState()

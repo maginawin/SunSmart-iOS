@@ -147,6 +147,8 @@ class DeviceAddCandidateDeviceListView: UIView {
     }
     
     weak var delegate: DeviceAddCandidateDeviceListViewDelegate?
+    var isPreparingDevice = false { didSet { updateUIState() } }
+    var cancelPreparation: (() -> Void)?
     
     /// 是否光感添加模式
     var lightSeningMode: Bool = false {
@@ -344,6 +346,7 @@ class DeviceAddCandidateDeviceListView: UIView {
     
     /// 停止添加（取消正在排队的设备）
     @objc private func stopAddBtnClick() {
+        if isPreparingDevice { cancelPreparation?(); return }
         
         let waitDevices = candidateDevices.filter({ $0.addState == .wait })
         
@@ -411,7 +414,7 @@ class DeviceAddCandidateDeviceListView: UIView {
             addResultView.isHidden = true
             footerView.isHidden = false
             
-            if candidateDevices.contains(where: { $0.addState == .addConnecting || $0.addState == .adding || $0.addState == .success || $0.addState == .failed }) {
+            if candidateDevices.contains(where: { $0.addState == .addConnecting || $0.addState == .adding || $0.addState == .success || $0.addState == .failed || $0.addState == .syncFailed }) {
                 addResultView.isHidden = false
                 
                 if candidateDevices.contains(where: { $0.addState == .addConnecting || $0.addState == .adding }) {
@@ -426,13 +429,13 @@ class DeviceAddCandidateDeviceListView: UIView {
                     scanBtn.isEnabled = false
                     pauseBtn.isEnabled = false
                     addResultView.closeBtn.isHidden = true
-                    addResultView.stopAddBtn.isHidden = !showDevices.contains(where: { $0.addState == .wait})
+                    addResultView.stopAddBtn.isHidden = !isPreparingDevice && !showDevices.contains(where: { $0.addState == .wait})
                 }else {
                     addResultView.closeBtn.isHidden = false
                     addResultView.stopAddBtn.isHidden = true
                 }
                 let successCount = candidateDevices.filter({ $0.addState == .success }).count
-                let failedCount = candidateDevices.filter({ $0.addState == .failed }).count
+                let failedCount = candidateDevices.filter({ $0.addState == .failed || $0.addState == .syncFailed }).count
                 addResultView.successCountLabel.text = "\("successfully".localizedString) : \(successCount)"
                 addResultView.failedCountLabel.text = "\(failedCount)"
                 if addResultView.superview != nil {

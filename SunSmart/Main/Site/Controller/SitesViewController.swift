@@ -60,6 +60,7 @@ class SitesViewController: UIViewController {
     private var favouritesRefreshControl: UIRefreshControl!
 
     private var addSiteBtn: UIButton!
+    private weak var siteTypeAlert: SiteTypeSelectionAlertView?
     
     private var allSites: [SiteData] = []
     private var favouriteSites: [SiteData] = []
@@ -640,23 +641,44 @@ class SitesViewController: UIViewController {
     
     /// 添加场所
     @objc private func addSite() {
-        
-        
-//        // 创建一个场所
-        let site = SiteData.add(name: SiteData.getNextSiteName())
-        allSites.append(site)
+        guard siteTypeAlert == nil, navigationController?.topViewController === self else { return }
+        guard FeatureVisibility.shared.canSelectSiteType else {
+            if let site = createSite(isHdbSite: false) { showCreatedSite(site) }
+            return
+        }
+        let account = UserData.currentUserId
+        let region = UserData.currentServerRegion
+        let alert = SiteTypeSelectionAlertView.make { [weak self] alert, isHdbSite in
+            guard let self, account == UserData.currentUserId, region == UserData.currentServerRegion,
+                  self.navigationController?.topViewController === self else {
+                alert.dismiss()
+                return
+            }
+            guard let site = self.createSite(isHdbSite: isHdbSite) else { return }
+            alert.isUserInteractionEnabled = false
+            alert.dismiss { [weak self] in self?.showCreatedSite(site) }
+        }
+        siteTypeAlert = alert
+        alert.show()
+    }
+
+    private func createSite(isHdbSite: Bool) -> SiteData? {
+        do { return try SiteData.add(name: SiteData.getNextSiteName(), isHdbSite: isHdbSite) }
+        catch {
+            XWHUDManager.showErrorTipHUD("failed".localizedString)
+            return nil
+        }
+    }
+
+    private func showCreatedSite(_ site: SiteData) {
+        if !allSites.contains(where: { $0.id == site.id && $0.region == site.region }) {
+            allSites.append(site)
+        }
         setupSectionsData()
-//        let insertPath = IndexPath(row: allSites.count - 1, section: 0)
-//        allSitesTableView.insertRows(at: [insertPath], with: .none)
-//        allSitesTableView.scrollToRow(at: insertPath, at: .bottom, animated: true)
         allSitesCollectionView.reloadData()
         updateEmptyView()
-        
-//        
-//        // 跳转到场所页面
         let vc = SiteViewController(site: site, addSite: true)
         navigationController?.pushViewController(vc, animated: true)
-        
         CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: site), level: .normal)
     }
     
@@ -1523,5 +1545,103 @@ extension SitesViewController: CloudSynchronizationManagerDelegate {
     /// 同步数据操作取消回调
     func cloudSyncManager(_ manager: CloudSynchronizationManager, cancelSyncHandle handle: CloudSynchronizationHandle) {
         updateSyncState()
+    }
+}
+
+/// Creation-only choice. Selection stays local until Continue successfully saves the Site.
+private final class SiteTypeSelectionAlertView: SRAlertView {
+    private var selectedHdb = false
+    private var choices: [UIButton] = []
+
+    static func make(onContinue: @escaping (SiteTypeSelectionAlertView, Bool) -> Void) -> SiteTypeSelectionAlertView {
+        weak var current: SiteTypeSelectionAlertView?
+        let alert = SiteTypeSelectionAlertView(
+            title: "site_type_selection".localizedString,
+            tapBackgroundHide: false,
+            actions: [
+                SRAlertAction(title: "alert_item_cancel".localizedString),
+                SRAlertAction(title: "alert_item_continue".localizedString, closeAlert: false) { _ in
+                    guard let alert = current else { return }
+                    onContinue(alert, alert.selectedHdb)
+                }
+            ])
+        current = alert
+        alert.accessibilityIdentifier = "site-type-selection"
+        alert.firstBtn.accessibilityIdentifier = "site-type-cancel"
+        alert.secondBtn.accessibilityIdentifier = "site-type-continue"
+        alert.setupChoices()
+        return alert
+    }
+
+    override func show() {
+        frame = UIApplication.shared.keyWindow().bounds
+        super.show()
+        snp.remakeConstraints { make in make.edges.equalToSuperview() }
+    }
+
+    private func setupChoices() {
+        contentView.snp.remakeConstraints { make in
+            make.center.equalTo(safeAreaLayoutGuide)
+            make.width.equalTo(340).priority(999)
+            make.width.lessThanOrEqualTo(340)
+            make.width.lessThanOrEqualTo(safeAreaLayoutGuide).offset(-32)
+        }
+        titleLabel.snp.remakeConstraints { make in
+            make.top.equalTo(24)
+            make.left.right.equalToSuperview().inset(24)
+        }
+        messageLabel.isHidden = true
+        // Hidden views still participate in Auto Layout; do not let the empty message shrink this alert.
+        messageLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        let stack = UIStackView()
+        stack.axis = .vertical
+        stack.spacing = 8
+        contentView.addSubview(stack)
+        stack.snp.makeConstraints { make in
+            make.top.equalTo(titleLabel.snp.bottom).offset(16)
+            make.left.right.equalToSuperview().inset(20)
+        }
+        for (index, key) in ["site_type_standard", "site_type_hdb"].enumerated() {
+            let button = UIButton(type: .system)
+            button.setTitle(key.localizedString, for: .normal)
+            button.titleLabel?.font = FONTS(16)
+            button.titleLabel?.numberOfLines = 0
+            button.contentHorizontalAlignment = .left
+            var configuration = UIButton.Configuration.plain()
+            configuration.contentInsets = NSDirectionalEdgeInsets(top: 12, leading: 12, bottom: 12, trailing: 12)
+            configuration.imagePadding = 8
+            configuration.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
+                var attributes = attributes
+                attributes.font = FONTS(16)
+                return attributes
+            }
+            button.configuration = configuration
+            button.layer.cornerRadius = 8
+            button.accessibilityIdentifier = index == 0 ? "site-type-standard" : "site-type-hdb"
+            button.addAction(UIAction { [weak self] _ in
+                self?.selectedHdb = index == 1
+                self?.updateSelection()
+            }, for: .touchUpInside)
+            stack.addArrangedSubview(button)
+            button.snp.makeConstraints { make in make.height.greaterThanOrEqualTo(48) }
+            choices.append(button)
+        }
+        hLineView.snp.remakeConstraints { make in
+            make.top.equalTo(stack.snp.bottom).offset(16)
+            make.left.right.equalToSuperview()
+            make.height.equalTo(0.5)
+        }
+        updateSelection()
+    }
+
+    private func updateSelection() {
+        for (index, button) in choices.enumerated() {
+            let selected = (index == 1) == selectedHdb
+            button.setImage(UIImage(systemName: selected ? "checkmark.circle.fill" : "circle"), for: .normal)
+            button.tintColor = selected ? Bar_Color : AssistText_Color
+            button.setTitleColor(Title_Color, for: .normal)
+            button.backgroundColor = selected ? Bar_Color.withAlphaComponent(0.1) : .clear
+            button.accessibilityTraits = selected ? [.button, .selected] : [.button]
+        }
     }
 }

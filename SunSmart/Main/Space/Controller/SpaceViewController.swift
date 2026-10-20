@@ -116,7 +116,7 @@ extension SpaceData {
         }
     }
 
-    private func refreshSummaryCountsFromSpaceMesh() {
+    func refreshSummaryCountsFromSpaceMesh() {
         guard let network = ProximityLightingTopologyContext.network(for: self) else { return }
         let nodes = ProximityLightingTopologyContext.realNodes(in: network)
         deviceCount = nodes.count

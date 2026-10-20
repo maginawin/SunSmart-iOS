@@ -9,6 +9,7 @@ enum SyncExecutionPolicyTests {
     static func main() {
         testSuccessMatrix()
         testRetryDependencies()
+        testHDBWholeDeviceRetry()
         testResultCollection()
         print("PASS: production success matrix, retry prerequisites and result scope")
     }
@@ -62,6 +63,33 @@ enum SyncExecutionPolicyTests {
         require(!device.isSelected && !device.isFineshed && !step.isFineshed, "retry resets parent lifecycle")
         require(handle.respondAddresss.isEmpty && handle.notRespondAddresss.isEmpty, "retry clears stale SDK response addresses")
         DeviceOperationType.allowsMessageFactory = false
+    }
+
+    static func testHDBWholeDeviceRetry() {
+        for entry in 0..<3 {
+            let node = Node(), device = SyncDevicesModel(name: "HDB", address: 1)
+            let unrelated = task(node, .pirEnabled(true))
+            let zones = (0..<4).map { _ -> SyncDeviceStepTaskModel in
+                let payload = HDBDeviceSyncTask(); payload.isLightingZoneOperation = true
+                return task(node, .hdb(payload))
+            }
+            device.steps = ([unrelated] + zones).map { task in
+                let step = SyncDeviceStepModel(type: "stage", state: .none, tasks: [task])
+                step.parentDeviceModel = device; task.parentStepModel = step
+                task.state = .successful; task.isFineshed = true
+                return step
+            }
+            zones[3].state = .failed
+            DeviceOperationType.allowsMessageFactory = true
+            switch entry {
+            case 0: SyncRetryPolicy().prepareTaskForResync(zones[3])
+            case 1: SyncRetryPolicy().prepareStepForResync(device.steps[4])
+            default: SyncRetryPolicy().prepareDeviceForResync(device)
+            }
+            require(zones.allSatisfy { $0.state == .none && !$0.isFineshed }, "every Zone retry must restart FEFD/Sensor/reset/add, including successful stages")
+            require(unrelated.state == .successful, "Zone retry must preserve unrelated successful initialization/configuration")
+            DeviceOperationType.allowsMessageFactory = false
+        }
     }
 
     static func testResultCollection() {

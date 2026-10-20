@@ -74,7 +74,22 @@ menu = controller[controller.index('    @objc private func moreClick()'):control
 assert 'if let item = makeSiteTriggerZoneMenuItem()' in menu
 assert 'SiteTriggerZoneViewController(' not in menu, 'Site menu bypasses shared entry guard'
 space_controller = Path('SunSmart/Main/Space/Controller/SpaceMoreViewController.swift').read_text()
-assert 'FeatureVisibility' not in space_controller, 'Site feature must not gate the Space menu'
+# Execute the production menu ordering and permission checks without UIKit.
+space_harness = '''import Foundation
+final class SpaceMoreMenuHarness {
+    let site = SiteData()
+    let space = SpaceData()
+    let visibility: FeatureVisibility
+    var isMeshTestOptionEnabled = false
+    init(visibility: FeatureVisibility) { self.visibility = visibility }
+    func items() -> [Options] { makeOptions() }
+'''
+for start, end in [('    enum Options {', '    let site: SiteData'),
+                   ('    private var canShowContentDisplay:', '    init(site:'),
+                   ('    private func makeOptions()', '    private func reloadOptions()')]:
+    block = space_controller[space_controller.index(start):space_controller.index(end)]
+    space_harness += block.replace('FeatureVisibility.shared', 'visibility')
+(Path(sys.argv[1]) / 'SpaceMoreMenuHarness.swift').write_text(space_harness + '\n}\n')
 project = json.loads(subprocess.check_output(['plutil', '-convert', 'json', '-o', '-', 'SunSmart.xcodeproj/project.pbxproj']))
 objects = project['objects']
 targets = [v for v in objects.values() if v.get('isa') == 'PBXNativeTarget']
@@ -92,12 +107,18 @@ PY
 for mode in debug release; do
     flags=(-Onone)
     if [[ "$mode" == debug ]]; then flags+=(-D DEBUG); fi
-    swiftc -parse-as-library "${flags[@]}" \
-        "$test_dir/Permission.swift" \
-        SunSmart/Common/Config/FeatureVisibility.swift \
-        Tests/Config/FeatureVisibilityTests.swift \
-        -o "$test_dir/FeatureVisibilityTests-$mode"
-    "$test_dir/FeatureVisibilityTests-$mode" SunSmart/debug_features.json
+    for target in SunSmart Archipelago SLGSync SylSmart Lumineux; do
+        target_flags=("${flags[@]}")
+        target_name="$target"
+        if [[ "$target" != SunSmart ]]; then target_flags+=(-D "$target"); fi
+        if [[ "$target" == SLGSync ]]; then target_name='SLG Sync Plus'; fi
+        swiftc -parse-as-library "${target_flags[@]}" \
+            "$test_dir/Permission.swift" \
+            SunSmart/Common/Config/FeatureVisibility.swift \
+            Tests/Config/FeatureVisibilityTests.swift \
+            -o "$test_dir/FeatureVisibilityTests-$mode-$target"
+        "$test_dir/FeatureVisibilityTests-$mode-$target" SunSmart/debug_features.json "$target_name"
+    done
     swiftc -parse-as-library "${flags[@]}" \
         "$test_dir/Permission.swift" \
         SunSmart/Common/Config/FeatureVisibility.swift \
@@ -112,6 +133,13 @@ for mode in debug release; do
         Tests/Config/ExportJSONMenuTests.swift \
         -o "$test_dir/ExportJSONMenuTests-$mode"
     "$test_dir/ExportJSONMenuTests-$mode" SunSmart/debug_features.json
+    swiftc -parse-as-library "${flags[@]}" \
+        "$test_dir/Permission.swift" \
+        SunSmart/Common/Config/FeatureVisibility.swift \
+        "$test_dir/SpaceMoreMenuHarness.swift" \
+        Tests/Config/SpaceMoreMenuTests.swift \
+        -o "$test_dir/SpaceMoreMenuTests-$mode"
+    "$test_dir/SpaceMoreMenuTests-$mode" SunSmart/debug_features.json
 done
 
 plutil -lint SunSmart.xcodeproj/project.pbxproj

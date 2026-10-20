@@ -87,6 +87,13 @@ enum SpaceCloudNodeRemovalPolicy {
         func removed(_ value: Any?) -> Bool {
             SpaceConfigurationIntegrityPolicy.integer(value).flatMap(UInt16.init(exactly:)).map(addresses.contains) == true
         }
+        do {
+            if var hdb = try HDBLightingZonePolicy.decode(payload: object) {
+                let removed = hdb.devices.filter { device in instances.contains { UUID(uuidString: $0.uuid) == device.nodeUuid && $0.address == device.nodeAddress } }.map(\.nodeUuid)
+                hdb.devices.removeAll { removed.contains($0.nodeUuid) }
+                object["hdb"] = try HDBLightingZonePolicy.canonical(hdb)
+            }
+        } catch { return nil }
         if let members = object["memberships"] as? [[String: Any]] {
             object["memberships"] = members.filter { member in !instances.contains { $0.matches(member) } }
         }
@@ -492,6 +499,11 @@ enum SpaceConfigurationIntegrityPolicy {
             }.sorted { ($0["unicastAddress"] as? String ?? "") < ($1["unicastAddress"] as? String ?? "") }
         }
         if let zones = extensionData["triggerZones"] { result["triggerZones"] = zones }
+        do {
+            if let hdb = try HDBLightingZonePolicy.decode(payload: payload) {
+                result["hdb"] = try HDBLightingZonePolicy.canonical(hdb)
+            }
+        } catch { return nil }
         return serializeConfiguration(result)
     }
 

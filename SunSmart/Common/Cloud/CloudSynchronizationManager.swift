@@ -409,7 +409,7 @@ class CloudSynchronizationManager {
                 )
                 guard isCurrent() else { return }
                 guard let site = preparedSite else { continue }
-                if (try? SiteTriggerZoneStore.load(site).pending) != nil, site.canManageSiteTriggerZones {
+                if (try? SiteExtensionStore.load(site).pending) != nil, site.canManageSiteTriggerZones {
                     _ = await SiteTriggerZoneCoordinator(site: site).synchronize()
                     guard isCurrent() else { return }
                 }
@@ -1087,7 +1087,7 @@ class CloudSynchronizationHandle: NSObject {
                 switch self.operation {
                 case .syncSite(let site, _), .addSpaces(let site, _):
                     guard let current = SiteData.load(siteId: site.id),
-                          let zones = try? SiteTriggerZoneStore.load(current) else {
+                          let zones = try? SiteExtensionStore.load(current) else {
                         self.finishExportFailure()
                         return
                     }

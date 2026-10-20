@@ -96,9 +96,11 @@ final class NodeSyncTopologyCapture {
                      keys: NodeSyncTopologyStorage.keyEvidence(network: network, networkID: networkID))
     }
 
+    private lazy var hdbAddresses = SpaceData.load(subNetworkId: networkID)?.hdbGroupAddresses ?? []
+
     private func captureGroupUnit() {
         let group = sourceGroups[groupIndex]
-        guard !group.isVirtual else { groupIndex += 1; return }
+        guard !group.isVirtual, !hdbAddresses.contains(group.address.address) else { groupIndex += 1; return }
         guard group.network === network, group.subNetworkId == networkID else {
             available = false; groupIndex += 1; return
         }
@@ -146,7 +148,7 @@ final class NodeSyncTopologyCapture {
                 interval.end()
                 for group in subscribed {
                     subscriptions.insert(group.address.address)
-                    if membership == nil && Self.isMembershipGroup(group) { membership = group }
+                    if membership == nil && !hdbAddresses.contains(group.address.address) && Self.isMembershipGroup(group) { membership = group }
                 }
                 modelIndex += 1
             } else { elementIndex += 1; modelIndex = 0 }

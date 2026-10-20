@@ -415,6 +415,7 @@ class DeviceRestoreViewController: UIViewController {
 
     
     deinit {
+        hdbCompletion.cancel()
 //        if state == .scanning {
 //            stopScan()
 //        }else {
@@ -586,11 +587,11 @@ class DeviceRestoreViewController: UIViewController {
             let nextRestoreNodes = pendingRestoreNodes(from: nodes)
             nextRestoreNodes.forEach { node in
                 let data = DeviceRestoreData(node: node)
-                if let section = sections.first(where: { $0.group == node.group }) {
+                if let section = sections.first(where: { $0.group == node.configurationGroup }) {
                     section.restoreDatas.append(data)
                 }else {
-                    let section = DeviceRestoreSection(group: node.group, restoreDatas: [data])
-                    if node.group == nil {
+                    let section = DeviceRestoreSection(group: node.configurationGroup, restoreDatas: [data])
+                    if node.configurationGroup == nil {
                         sections.insert(section, at: 0)
                     }else {
                         sections.append(section)
@@ -667,7 +668,7 @@ class DeviceRestoreViewController: UIViewController {
             // 是否刷新设备数据（找到同一个设备beacon包）
 //            var refreshDevice: Bool = false
             
-            if let sectionIndex = self.sections.firstIndex(where: { $0.group == node.group }) {
+            if let sectionIndex = self.sections.firstIndex(where: { $0.group == node.configurationGroup }) {
                 let section = self.sections[sectionIndex]
                 if let data = section.restoreDatas.first(where: { $0.node.primaryUnicastAddress == node.primaryUnicastAddress }) {
                     data.unprovisionedDevice = unprovisionedDevice
@@ -678,8 +679,8 @@ class DeviceRestoreViewController: UIViewController {
                 setSection = section
             }else {
                 let data = DeviceRestoreData(node: node, unprovisionedDevice: unprovisionedDevice)
-                let section = DeviceRestoreSection(group: node.group, restoreDatas: [data])
-                if node.group == nil {
+                let section = DeviceRestoreSection(group: node.configurationGroup, restoreDatas: [data])
+                if node.configurationGroup == nil {
                     self.sections.insert(section, at: 0)
                 }else {
                     self.sections.append(section)
@@ -2201,6 +2202,15 @@ class DeviceRestoreViewController: UIViewController {
         guard let unprovisionedDevice = deviceData.unprovisionedDevice else {
             return
         }
+        let provisioningMAC: String?
+        do { provisioningMAC = try HDBDeviceAddCompletion.provisioningMAC(unprovisionedDevice.macAddress, siteId: site.id) }
+        catch {
+            unprovisionedDevice.addState = .failed
+            reloadDeviceState(unprovisionedDevice)
+            updateUIState()
+            XWHUDManager.showErrorTipHUD(HDBUIError.message(error))
+            return
+        }
         
         // 设备identify中添加不需要再闪烁
 //        if unprovisionedDevice.addState == .identifyConnecting || unprovisionedDevice.addState == .identifyWait || unprovisionedDevice.addState == .failed || unprovisionedDevice.addState == .identifying {
@@ -2236,8 +2246,9 @@ class DeviceRestoreViewController: UIViewController {
         } provisionCompleteCallback: {[weak self] addDevice, node in
             guard let self = self else { return }
             
+            node.macAddress = provisioningMAC ?? addDevice.macAddress
             var oldNode = deviceData.node
-            var addToGroup = oldNode.group
+            var addToGroup = oldNode.configurationGroup
             if oldNode.groupState == .exitFailure {
                 addToGroup = nil
             }
@@ -2270,6 +2281,20 @@ class DeviceRestoreViewController: UIViewController {
                     newNode: node,
                     restoredGroup: addToGroup
                    ) {
+                    do {
+                        guard oldNode.uuid == node.uuid else { throw HDBConfigurationError.unavailable }
+                        if try HDBConfigurationStore.load(space: restoreSpace).devices.contains(where: { $0.nodeUuid == node.uuid }) {
+                            try HDBConfigurationStore.restoreDevice(space: restoreSpace, nodeUuid: node.uuid,
+                                nodeAddress: node.primaryUnicastAddress, mac: provisioningMAC,
+                                modelConfiguration: HDBConfigurationStore.deviceConfiguration(node: node))
+                        }
+                    } catch {
+                        // Leave the saved intent intact. HDB Retry checks the current
+                        // identity and retries address migration before sending.
+                        #if DEBUG
+                        print("[HDB] device restore reference migration failed: \(error)")
+                        #endif
+                    }
                     // 迁移目标拓扑并持久化；其它节点的差异保留为待同步。
                     // Fast Add 只连接本节点，跨节点命令必须由普通 Proxy 同步发送。
                     _ = restoreSpace.migrateProximityLightingReferences(
@@ -2290,7 +2315,7 @@ class DeviceRestoreViewController: UIViewController {
             }
             
             var oldNode = deviceData.node
-            var addToGroup = oldNode.group
+            var addToGroup = oldNode.configurationGroup
 //            if oldNode.groupState == .exitFailure {
 //                addToGroup = nil
 //            }
@@ -2384,8 +2409,10 @@ class DeviceRestoreViewController: UIViewController {
             // 发送扩展消息成功更新缓存数据
             if let address = messageHandle.model?.parentElement?.unicastAddress ?? messageHandle.address, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
                 self?.recordBatteryPowerSwitchTargetSubscriptionSuccessIfNeeded(messageHandle, node: node)
-                DispatchQueue.global().async {
+                if (try? HDBDeviceSyncContext.resolve(node: node)) != nil {
                     node.applyMessageHandle(messageHandle)
+                } else {
+                    DispatchQueue.global().async { node.applyMessageHandle(messageHandle) }
                 }
             }
         } appendMessageFailedBack: { [weak self] messageHandle in
@@ -2406,7 +2433,7 @@ class DeviceRestoreViewController: UIViewController {
 //                    repalceNode.deleteExtension()
 //                }
                 node.rssi = addDevice.rssi.intValue
-                node.macAddress = addDevice.macAddress
+                node.macAddress = provisioningMAC ?? addDevice.macAddress
                 node.name = deviceData.node.name
                 if let section = self.showSections.first(where: { $0.restoreDatas.contains(where: { $0.unprovisionedDevice == addDevice }) }), let data = section.restoreDatas.first(where: { $0.unprovisionedDevice == addDevice }) {
                     node.name = data.node.name
@@ -2436,6 +2463,9 @@ class DeviceRestoreViewController: UIViewController {
                     addDevice.addState = .adding
                 } else if shouldMarkRestoredNodeSyncFailed(node, phase: .deviceSuccess) {
                     addDevice.addState = .syncFailed
+                }
+                if addDevice.addState == .success, (try? HDBDeviceSyncContext.resolve(space: self.space, node: node)) != nil {
+                    addDevice.addState = .adding
                 }
                 if self.emergencyFireRestoreContextsByAddress[node.primaryUnicastAddress]?.state != .identityFailed,
                    !self.restoreNodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) {
@@ -2481,16 +2511,30 @@ class DeviceRestoreViewController: UIViewController {
                     guard let self else { return }
                     let entries = self.emergencyFireRestoreSyncEntries(devices: successList)
                     self.runEmergencyFireRestoreSyncQueue(entries: entries) { [weak self] result in
-                        self?.finishDeviceRestoreAdd(
-                            successList: successList,
-                            failList: failList,
-                            syncResult: result
-                        )
+                        guard let self else { return }
+                        guard let space = self.space else {
+                            self.finishDeviceRestoreAdd(successList: successList, failList: failList, syncResult: result)
+                            return
+                        }
+                        let failed = Set(self.restoreNodes.filter { self.shouldMarkRestoredNodeSyncFailed($0, phase: .batchFinish) }.map(\.uuid))
+                        self.hdbCompletion.didChange = { [weak self] in self?.updateUIState() }
+                        self.hdbCompletion.run(space: space, nodes: self.restoreNodes, standardIncomplete: failed) { [weak self] pending in
+                            guard let self else { return }
+                            for device in successList {
+                                if let node = self.restoreNodes.first(where: { $0.primaryUnicastAddress == device.address }),
+                                   device.addState == .adding || pending.contains(node.uuid) {
+                                    device.addState = pending.contains(node.uuid) ? .syncFailed : .success
+                                }
+                            }
+                            self.finishDeviceRestoreAdd(successList: successList, failList: failList, syncResult: result)
+                        }
                     }
                 }
             }
         }
     }
+
+    private let hdbCompletion = HDBDeviceAddCompletion()
 
     private func finishDeviceRestoreAdd(
         successList: [ProvisioningDevice],
@@ -2505,7 +2549,7 @@ class DeviceRestoreViewController: UIViewController {
             if isRegisteredEmergencyController(node) {
                 return emergencyFireRestoreController(for: node)?.isSynced != true
             }
-            return shouldMarkRestoredNodeSyncFailed(node, phase: .batchFinish)
+            return shouldMarkRestoredNodeSyncFailed(node, phase: .batchFinish) || HDBDeviceSyncService.needsSync(node: node)
         }
         if needSyncNodes.count > 0 {
             needSyncNodes.forEach({ node in
@@ -2518,9 +2562,9 @@ class DeviceRestoreViewController: UIViewController {
                     }
                 }
             })
-            tableView.reloadData()
-            updateUIState()
         }
+        tableView.reloadData()
+        updateUIState()
 
         NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
 
@@ -2769,6 +2813,7 @@ class DeviceRestoreViewController: UIViewController {
             return
         }
         
+        if hdbCompletion.isRunning { hdbCompletion.cancel(); return }
         MeshAPI.cancelFastAddAwaitOperations()
 
         let waitDevices = showDevices.filter({ $0.addState == .wait })
@@ -3047,7 +3092,7 @@ class DeviceRestoreViewController: UIViewController {
                 addResultView.isHidden = false
                 tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: addResultView.height + footerView.height + SCRYFrom(8), right: 0)
                 addResultView.closeBtn.isHidden = true
-                addResultView.stopAddBtn.isHidden = !showDevices.contains(where: { $0.addState == .wait})
+                addResultView.stopAddBtn.isHidden = !hdbCompletion.isRunning && !showDevices.contains(where: { $0.addState == .wait})
                 // 添加中设置屏幕常亮
                 UIApplication.shared.isIdleTimerDisabled = true
             }else {

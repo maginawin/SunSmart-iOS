@@ -263,7 +263,7 @@ enum ProximityLightingTopologyContext {
     static func isAvailable(space: SpaceData, network: MeshNetwork?, groups: [Group], nodes: [Node]) -> Bool {
         guard let network, network.uuid.uuidString == space.meshUUID,
               !space.triggerZonesLoadFailed,
-              Set(groups.map { $0.address.address }) == Set(network.groups.filter { !$0.isVirtual }.map { $0.address.address }),
+              Set(groups.map { $0.address.address }) == Set(network.groups.filter { !$0.isVirtual && !space.hdbGroupAddresses.contains($0.address.address) }.map { $0.address.address }),
               Set(nodes.map { $0.primaryUnicastAddress }) == Set(realNodes(in: network).map { $0.primaryUnicastAddress }) else { return false }
         return groups.allSatisfy {
             $0.network?.uuid == network.uuid && $0.subNetworkId == space.meshNetworkId
@@ -295,7 +295,7 @@ enum ProximityLightingTopologyPlanner {
         additionalGroupMembers: [Address: Set<Address>] = [:]
     ) -> Plan {
         guard let network = ProximityLightingTopologyContext.network(for: space) else { return .unavailable }
-        let groups = network.groups.filter { !$0.isVirtual && $0.subNetworkId == space.meshNetworkId }
+        let groups = network.groups.filter { !$0.isVirtual && $0.subNetworkId == space.meshNetworkId && !space.hdbGroupAddresses.contains($0.address.address) }
         let nodes = ProximityLightingTopologyContext.realNodes(in: network)
         guard ProximityLightingTopologyContext.isAvailable(space: space, network: network, groups: groups, nodes: nodes) else {
             return .unavailable
@@ -340,7 +340,7 @@ enum ProximityLightingTopologyPlanner {
         if let plan = NodeSyncReadContext.current?.plan(for: node, contextGroup: contextGroup) {
             return plan
         }
-        let group = contextGroup ?? node.group
+        let group = contextGroup ?? node.configurationGroup
         if let group, group.network?.uuid != node.network?.uuid || group.subNetworkId != node.subNetworkId {
             return .unavailable
         }

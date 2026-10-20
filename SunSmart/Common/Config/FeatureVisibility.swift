@@ -5,6 +5,8 @@ final class FeatureVisibility {
     enum Feature: String, CaseIterable {
         case siteExportJson = "sites.site.exportJson"
         case siteTriggerZone = "sites.site.triggerZone"
+        case siteTypeSelection = "sites.site.isHdbSite"
+        case spaceHDBConfiguration = "sites.site.space.hdbConfiguration"
     }
 
     enum BuildMode: String, Decodable, CaseIterable {
@@ -20,12 +22,36 @@ final class FeatureVisibility {
         }
     }
 
+    enum Target: String, Decodable, CaseIterable {
+        case sunSmart = "SunSmart"
+        case archipelago = "Archipelago"
+        case slgSyncPlus = "SLG Sync Plus"
+        case sylSmart = "SylSmart"
+        case lumineux = "Lumineux"
+
+        static var current: Target {
+            #if Archipelago
+            return .archipelago
+            #elseif SLGSync
+            return .slgSyncPlus
+            #elseif SylSmart
+            return .sylSmart
+            #elseif Lumineux
+            return .lumineux
+            #else
+            return .sunSmart
+            #endif
+        }
+    }
+
     struct Rule: Decodable {
         let builds: Set<BuildMode>
         let roles: Set<String>
+        /// 未指定时兼容旧规则；指定空数组时隐藏所有品牌的入口。
+        let targets: Set<Target>?
 
         private enum CodingKeys: String, CodingKey {
-            case builds, roles
+            case builds, roles, targets
         }
 
         init(from decoder: Decoder) throws {
@@ -38,11 +64,17 @@ final class FeatureVisibility {
                 )
             }
             roles = Set(values)
+            targets = container.contains(.targets)
+                ? Set(try container.decode([Target].self, forKey: .targets)) : nil
         }
 
-        func isVisible(build: BuildMode, permission: Permission?) -> Bool {
+        func isVisible(build: BuildMode, permission: Permission?, target: Target = .current) -> Bool {
             guard let permission = permission else { return false }
-            return builds.contains(build) && roles.contains(permission.dataString)
+            return matchesEnvironment(build: build, target: target) && roles.contains(permission.dataString)
+        }
+
+        func matchesEnvironment(build: BuildMode, target: Target) -> Bool {
+            builds.contains(build) && (targets?.contains(target) ?? true)
         }
     }
 
@@ -89,15 +121,17 @@ final class FeatureVisibility {
 
     private let configuration: Configuration
     private let build: BuildMode
+    private let target: Target
 
-    /// 构建模式与配置保持不变；每次判断都使用调用方传入的当前资源角色。
-    init(build: BuildMode = .current, loadData: () throws -> Data = {
+    /// 构建模式、品牌与配置保持不变；每次判断都使用调用方传入的当前资源角色。
+    init(build: BuildMode = .current, target: Target = .current, loadData: () throws -> Data = {
         guard let url = Bundle.main.url(forResource: "debug_features", withExtension: "json") else {
             throw CocoaError(.fileNoSuchFile)
         }
         return try Data(contentsOf: url)
     }) {
         self.build = build
+        self.target = target
         do {
             configuration = try JSONDecoder().decode(Configuration.self, from: loadData())
             #if DEBUG
@@ -116,6 +150,11 @@ final class FeatureVisibility {
     }
 
     func isVisible(_ feature: Feature, permission: Permission?) -> Bool {
-        configuration.rules[feature.rawValue]?.isVisible(build: build, permission: permission) ?? false
+        configuration.rules[feature.rawValue]?.isVisible(build: build, permission: permission, target: target) ?? false
+    }
+
+    /// Site creation has no resource role yet. Roles are reserved for future type editing.
+    var canSelectSiteType: Bool {
+        configuration.rules[Feature.siteTypeSelection.rawValue]?.matchesEnvironment(build: build, target: target) ?? false
     }
 }

@@ -56,6 +56,7 @@ struct SpaceDeletionJournal: Codable {
         var replacement: SiteDeviceOwnershipPolicy.Instance?
         var cloudRemoval: CloudRemoval? = nil
         var leaveReceipt: LeaveReceipt? = nil
+        var sensorGroupId: UInt16? = nil
 
         func permitsLeaveRecovery(now: TimeInterval, createdTimestamp: Int64, address: UInt16) -> Bool {
             guard let receipt = leaveReceipt else { return false }
@@ -71,7 +72,7 @@ struct SpaceDeletionJournal: Codable {
 
     mutating func confirmUpload(timestamp: Int64) {
         entries.removeAll { entry in
-            entry.stage == .cleaned && entry.completedTimestamp.map { $0 <= timestamp } == true
+            entry.stage == .cleaned && entry.sensorGroupId == nil && entry.completedTimestamp.map { $0 <= timestamp } == true
         }
     }
 

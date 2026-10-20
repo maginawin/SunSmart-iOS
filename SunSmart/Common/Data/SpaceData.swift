@@ -206,7 +206,7 @@ class SpaceData: Copyable {
     
     /// 是否数据空的空间
     var isEmpty: Bool {
-        return deviceCount == 0 && luminairesCount == 0 && groupCount == 0 && sceneCount == 0 && scheheduleCount == 0 && switchesCount == 0
+        return (hdb?.lightingZones.isEmpty ?? true) && deviceCount == 0 && luminairesCount == 0 && groupCount == 0 && sceneCount == 0 && scheheduleCount == 0 && switchesCount == 0
     }
     /// 是否引导配置中
     var isConfiguring: Bool = false
@@ -239,6 +239,11 @@ class SpaceData: Copyable {
     var timedSchemaVersion = 1
     /// A malformed stored blob is not an explicit empty configuration.
     var triggerZonesLoadFailed = false
+    var hdb: HDBConfiguration?
+    var hdbLoadFailed = false
+    var hdbGroupAddresses: Set<UInt16> { hdb?.allGroupAddresses ?? [] }
+    /// Last successfully loaded/saved value, used to avoid stale whole-row overwrites.
+    var hdbPersistenceBaseline: HDBConfiguration?
     
     /// 关联的网关id
     var relevanceGatewayId: String?

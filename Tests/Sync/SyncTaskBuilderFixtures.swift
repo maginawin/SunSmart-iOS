@@ -88,6 +88,7 @@ final class Node: Equatable {
     }
 }
 enum ActionType {
+    case hdb(HDBDeviceSyncTask), hdbUnavailable
     case missingGroupSubscriptions
     case collectionSchedule(index: Int, entry: SchedulerRegistryEntry)
     case group(group: Group), profile(type: ProfileType), pirEnabled(Bool)
@@ -138,4 +139,27 @@ enum SyncDevicesViewController {
 enum MissingGroupSubscriptionCleanup {
     static func addresses(for node: Node) -> Set<Address> { node.orphanAddresses }
     static func finish(for node: Node) -> Bool { node.orphanAddresses.isEmpty }
+}
+
+// HDB payload is a boundary here; real task classification is covered by HDB task tests.
+final class HDBDeviceSyncTask {
+    var isLightingZoneOperation = false
+    var hasPendingZoneCacheSave = false
+    var cacheOnlyAcknowledgements = 0
+    func receive(handle: MeshMessageHandle, response: Int, cacheOnly: Bool = false) {
+        if cacheOnly { cacheOnlyAcknowledgements += 1 }
+        hasPendingZoneCacheSave = isLightingZoneOperation
+    }
+    var cacheFlushes = 0
+    var flushCache: () -> Bool = { true }
+    func flushAcknowledgedZoneCache() -> Bool {
+        guard hasPendingZoneCacheSave else { return true }
+        cacheFlushes += 1
+        guard flushCache() else { return false }
+        hasPendingZoneCacheSave = false
+        return true
+    }
+    var persistCalls = 0, finalizations = 0
+    var finalize: () -> Bool = { true }
+    func finishCleanup() -> Bool { finalizations += 1; return finalize() }
 }

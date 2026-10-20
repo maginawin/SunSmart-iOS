@@ -35,7 +35,7 @@ parts = [source('SunSmart/Common/Data/AppPerformance.swift'), source('SunSmart/C
          section(adapter, start, '\nextension SpaceData'),
          source('SunSmart/Common/Data/DeviceScheduleAddressCleanup.swift'),
          source('SunSmart/Main/Timed/Model/TimedSchedulerSlotPolicy.swift'),
-         source('SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),
+         source('SunSmart/Common/Data/HDBConfiguration.swift'), source('SunSmart/Common/Data/HDBLightingZonePolicy.swift'), source('SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),
          source('SunSmart/Common/Data/DevicePermanentDeletionCleanup.swift').replace('import NordicSigMeshSDK', ''),
          source('SunSmart/Common/Data/SiteDeviceOwnershipReconciler.swift').replace('import NordicSigMeshSDK', ''),
          source('SunSmart/Main/Group/Model/ProximityLightingLifecycleCoordinator.swift').replace('import NordicSigMeshSDK', ''),

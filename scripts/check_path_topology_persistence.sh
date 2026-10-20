@@ -38,7 +38,7 @@ swiftc -parse-as-library "$review_regression_source" -o "$review_regression_bina
 configuration_policy="$repo_root/SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift"
 configuration_test="$repo_root/Tests/Group/SpaceConfigurationIntegrityPolicyTests.swift"
 configuration_binary="${TMPDIR:-/tmp}/SpaceConfigurationIntegrityPolicyTests"
-swiftc -parse-as-library "$configuration_policy" "$configuration_test" -o "$configuration_binary"
+swiftc -parse-as-library "$repo_root/SunSmart/Common/Data/HDBConfiguration.swift" "$repo_root/SunSmart/Common/Data/HDBLightingZonePolicy.swift" "$configuration_policy" "$configuration_test" -o "$configuration_binary"
 "$configuration_binary"
 
 python3 "$repo_root/scripts/check_proximity_scoped_import.py"

@@ -1758,8 +1758,15 @@ self.updateAddressData()
         vc.doneCallback = {[weak self] (name, imageId) in
             guard let self = self else { return true  }
             
-            guard let space = self.site.addSpace(name: name, imageId: imageId + 1) else {
-                XWHUDManager.showErrorTipHUD("\("failed".localizedString)!")
+            let space: SpaceData
+            do {
+                guard let created = try self.site.addSpace(name: name, imageId: imageId + 1) else {
+                    XWHUDManager.showErrorTipHUD("failed".localizedString)
+                    return false
+                }
+                space = created
+            } catch {
+                XWHUDManager.showErrorTipHUD(HDBUIError.message(error))
                 return false
             }
             // site已上传服务器

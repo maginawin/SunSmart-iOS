@@ -43,13 +43,15 @@ enum SpaceSyncCleanupPolicy {
               SpaceConfigurationIntegrityPolicy.profilesIssue(in: input) == nil else {
             throw Invalid.structure("incompleteSpace")
         }
+        let hdbAddresses = try HDBLightingZonePolicy.groupAddresses(in: input)
+        if let hdb = try HDBLightingZonePolicy.decode(payload: input) { try HDBLightingZonePolicy.validateReferences(hdb, payload: input) }
         var allGroups = Set<UInt16>()
         var realGroups = Set<UInt16>()
         for group in groups {
             guard let address = address(group["address"]), allGroups.insert(address).inserted else {
                 throw Invalid.structure("groupIdentity")
             }
-            if !(group["isVirtual"] as? Bool ?? false) { realGroups.insert(address) }
+            if !(group["isVirtual"] as? Bool ?? false), !hdbAddresses.contains(address) { realGroups.insert(address) }
         }
         var identities = Set<String>(), occupiedAddresses = Set<UInt16>()
         var members: [UInt16: Set<UInt16>] = [:]
@@ -93,7 +95,8 @@ enum SpaceSyncCleanupPolicy {
             if !stale.isEmpty { orphanSubscriptions[uuid] = stale }
             if let raw = node["groupAddress"], !(raw is String)
                 || ((raw as? String) != "" && address(raw) == nil) { throw Invalid.structure("declaredGroup") }
-            let declared = address(node["groupAddress"])
+            let rawDeclared = address(node["groupAddress"])
+            let declared = rawDeclared.flatMap { hdbAddresses.contains($0) ? nil : $0 }
             if let declared, declared != 0, allGroups.contains(declared), !existing.contains(declared), state != 2 {
                 throw Invalid.structure("inconsistentExistingMembership")
             }
@@ -118,6 +121,7 @@ enum SpaceSyncCleanupPolicy {
         for index in groups.indices where !(groups[index]["isVirtual"] as? Bool ?? false) {
             let group = groups[index]
             let groupAddress = address(group["address"])!
+            if hdbAddresses.contains(groupAddress) { continue }
             var profile = group["profile"] as! [String: Any]
             let type = SpaceConfigurationIntegrityPolicy.integer(profile["type"])!
             let eligible = type == 7 || type == 8

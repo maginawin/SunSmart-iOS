@@ -36,7 +36,7 @@ final class SiteData {
     static func loadAll() -> [SiteData] { stored.values.filter { $0.region == UserData.currentServerRegion } }
     @MainActor
     func export(spaceIds: [String]) async -> [String: Any]? {
-        CleanupFixture.exportedMembers = (try? SiteTriggerZoneStore.load(self).data.zones?.first?.displayMembers.count) ?? -1
+        CleanupFixture.exportedMembers = (try? SiteExtensionStore.load(self).data.zones?.first?.displayMembers.count) ?? -1
         CleanupFixture.exportedRevisions = spaces.filter { spaceIds.contains($0.id) }.map(\.revision)
         CleanupFixture.onSiteExport?()
         return ["members": CleanupFixture.exportedMembers]
@@ -214,7 +214,7 @@ enum SiteZoneCleanupBatchTests {
     static func reset(count: Int = 4, references: Int = 3) throws -> SiteData {
         UserData.currentUserId = "account"; UserData.currentServerRegion = .first
         SunSmartDataManager.shared.db = try Connection(.inMemory)
-        try SiteTriggerZoneStore.createTable()
+        try SiteExtensionStore.createTable()
         let site = SiteData()
         SiteData.stored = [site.id: site]
         SpaceData.stored = (0..<count).map { SpaceData("space-\($0)") }
@@ -232,7 +232,7 @@ enum SiteZoneCleanupBatchTests {
             }
         }
         var zone = SiteTriggerZone(); zone.fields["members"] = .array(members)
-        try SiteTriggerZoneStore.update(site) { $0.data.replaceZones([zone]) }
+        try SiteExtensionStore.update(site) { $0.data.replaceZones([zone]) }
         CleanupFixture.prepared = []; CleanupFixture.failures = []; CleanupFixture.onPrepare = nil
         CleanupFixture.onSiteExport = nil
         CleanupFixture.suspended = nil; CleanupFixture.pauseSpace = nil
@@ -243,7 +243,7 @@ enum SiteZoneCleanupBatchTests {
         return site
     }
     static func request(_ site: SiteData, account: String = "account") -> UUID? {
-        try! SiteTriggerZoneStore.load(site).referenceCleanupRequests?[account]
+        try! SiteExtensionStore.load(site).referenceCleanupRequests?[account]
     }
     static func main() async throws {
         try await testCountsAndExports()
@@ -264,7 +264,7 @@ enum SiteZoneCleanupBatchTests {
                 let space = site.spaces[0]
                 space.pendingUpload = true; space.initialized = false
                 if variant == "pending-empty-zone" {
-                    try SiteTriggerZoneStore.update(site) { state in
+                    try SiteExtensionStore.update(site) { state in
                         var data = state.data
                         data.replaceZones([])
                         state.commit(data, now: 1, siteTimestamp: site.lastUpdate)
@@ -302,7 +302,7 @@ enum SiteZoneCleanupBatchTests {
                             "\(add ? "addSpaces" : "syncSite") \(variant) must keep its prepared upload")
                 }
                 if variant == "zone-cleanup" || variant == "pending-empty-zone" {
-                    let state = try SiteTriggerZoneStore.load(site)
+                    let state = try SiteExtensionStore.load(site)
                     require(state.pending != nil && state.pending?.target == state.data
                         && SiteData.load(siteId: site.id)?.needUploadCloud == false,
                             "Zone-only changes remain durable independently of the Site timestamp")
@@ -383,7 +383,7 @@ enum SiteZoneCleanupBatchTests {
         SpaceData.stored[2].blocked = true
         CleanupFixture.failures = ["space-0"]
         _ = await SpaceSyncCleanupCoordinator.prepareBatch(site: unavailable, spaces: unavailable.spaces)
-        let data = try SiteTriggerZoneStore.load(unavailable).data
+        let data = try SiteExtensionStore.load(unavailable).data
         require(data.zones!.first!.displayMembers.count == 5, "Partial failures preserve unknown/blocked members and still clean readable obsolete references")
         require(ProximityLightingTopologyContext.loads == ["space-0": 1, "space-1": 1], "Failed Mesh read is cached and blocked Space is not loaded")
         let readsBeforeRemote = ProximityLightingTopologyContext.loads["space-0"]!
@@ -432,14 +432,14 @@ enum SiteZoneCleanupBatchTests {
     static func testPersistenceAndFailures() async throws {
         let site = try reset()
         let generation = UUID()
-        try SiteTriggerZoneStore.update(site) { $0.referenceCleanupRequests = ["account": generation, "other": UUID()] }
+        try SiteExtensionStore.update(site) { $0.referenceCleanupRequests = ["account": generation, "other": UUID()] }
         // Reopen an actual SQLite file to model an empty process-local owner map.
         let url = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString + ".sqlite")
         defer { try? FileManager.default.removeItem(at: url) }
-        let saved = try SiteTriggerZoneStore.load(site)
+        let saved = try SiteExtensionStore.load(site)
         SunSmartDataManager.shared.db = try Connection(url.path)
-        try SiteTriggerZoneStore.createTable()
-        try SiteTriggerZoneStore.update(site) { $0 = saved }
+        try SiteExtensionStore.createTable()
+        try SiteExtensionStore.update(site) { $0 = saved }
         SunSmartDataManager.shared.db = nil
         SunSmartDataManager.shared.db = try Connection(url.path)
         require(request(site) == generation, "Cleanup generation survives database reopen")
@@ -448,7 +448,7 @@ enum SiteZoneCleanupBatchTests {
         require(request(site, account: "other") != nil, "Cleanup keeps another account's request")
         for protection in 0..<4 {
             let site = try reset()
-            try SiteTriggerZoneStore.update(site) { state in
+            try SiteExtensionStore.update(site) { state in
                 state.referenceCleanupRequests = ["account": generation]
                 if protection == 0 { state.conflict = true }
                 if protection == 1 { state.ambiguousRemote = true }
@@ -544,7 +544,7 @@ enum SiteZoneCleanupBatchTests {
         require(CleanupFixture.membersAtSynchronization == 80, "Zone pending sync sees cleanup before upload scheduling")
         let idle = try reset()
         SpaceData.stored.forEach { $0.needUploadCloud = false }
-        try SiteTriggerZoneStore.update(idle) { $0.referenceCleanupRequests = ["account": UUID()] }
+        try SiteExtensionStore.update(idle) { $0.referenceCleanupRequests = ["account": UUID()] }
         let idleManager = CloudSynchronizationManager()
         idleManager.resumePendingSynchronizations()
         await wait { CleanupFixture.synchronizations == 1 }

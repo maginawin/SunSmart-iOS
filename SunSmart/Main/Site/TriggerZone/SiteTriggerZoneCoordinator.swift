@@ -31,7 +31,7 @@ final class SiteTriggerZoneCoordinator {
             && SiteData.load(siteId: site.id)?.state == .normal
     }
 
-    func state() throws -> SiteTriggerZoneState { try SiteTriggerZoneStore.load(site) }
+    func state() throws -> SiteExtensionState { try SiteExtensionStore.load(site) }
 
     func add(count: Int) throws {
         try mutate { data in
@@ -55,7 +55,7 @@ final class SiteTriggerZoneCoordinator {
     func saveMembers(zoneID: UUID, members: [SiteTriggerZoneMember]) throws {
         guard isCurrent, let current = SiteData.load(siteId: site.id),
               current.canManageSiteTriggerZones else { throw Failure.permission }
-        try SiteTriggerZoneStore.update(site) { state in
+        try SiteExtensionStore.update(site) { state in
             guard !state.conflict else { throw Failure.conflict }
             guard !state.hasAmbiguousRemote else { throw Failure.ambiguousRemote }
             guard state.rejectedRemote == nil,
@@ -104,7 +104,7 @@ final class SiteTriggerZoneCoordinator {
             return .completed(changed: false)
         }
         var result = ReferenceCleanupResult.deferred
-        try SiteTriggerZoneStore.update(site) { state in
+        try SiteExtensionStore.update(site) { state in
             guard !state.conflict, !state.hasAmbiguousRemote, state.rejectedRemote == nil,
                   state.submitted == nil else { return }
             let cleaned = SiteTriggerZoneReferenceCleanup.clean(state.data, classify: classify)
@@ -120,7 +120,7 @@ final class SiteTriggerZoneCoordinator {
     private func mutate(_ mutation: (inout SiteExtensionData) throws -> Void) throws {
         guard isCurrent, let current = SiteData.load(siteId: site.id),
               current.canManageSiteTriggerZones else { throw Failure.permission }
-        try SiteTriggerZoneStore.update(site) { state in
+        try SiteExtensionStore.update(site) { state in
             guard !state.conflict else { throw Failure.conflict }
             guard !state.hasAmbiguousRemote else { throw Failure.ambiguousRemote }
             guard state.rejectedRemote == nil, state.data.supportsMemberEditing else { throw Failure.unsupported }
@@ -133,7 +133,7 @@ final class SiteTriggerZoneCoordinator {
     /// Only an explicit user choice may discard a local draft after a conflict.
     func useServerVersion() throws {
         guard isCurrent else { throw Failure.permission }
-        try SiteTriggerZoneStore.update(site) { $0.discardPending() }
+        try SiteExtensionStore.update(site) { $0.discardPending() }
     }
 
     func synchronize(zoneID: UUID? = nil) async -> Result<Void, Failure> {
@@ -198,7 +198,7 @@ final class SiteTriggerZoneCoordinator {
             while true {
                 let requestedPendingID = try state().pending?.operationId
                 let remote = try await retrieve()
-                try SiteTriggerZoneStore.receive(site, object: remote.object, timestamp: remote.timestamp)
+                try SiteExtensionStore.receive(site, object: remote.object, timestamp: remote.timestamp)
                 var current = try state()
                 #if DEBUG
                 let currentCloudFingerprint = current.serverData.flatMap {
@@ -235,7 +235,7 @@ final class SiteTriggerZoneCoordinator {
                 // A draft made before the first GET must not overwrite another editor's zones.
                 if pending.base == nil, let server = current.serverData,
                    server != SiteExtensionData(), server != pending.target {
-                    try SiteTriggerZoneStore.update(site) { $0.conflict = true }
+                    try SiteExtensionStore.update(site) { $0.conflict = true }
                     return .failure(.conflict)
                 }
                 if let zoneID {
@@ -256,8 +256,8 @@ final class SiteTriggerZoneCoordinator {
                 }
                 guard await validateCurrentMembers(changedMembers) else { return .failure(.invalidMember) }
                 guard isCurrent else { return .failure(.permission) }
-                try SiteTriggerZoneStore.update(site) { $0.submitted = pending }
-                let props = try SiteTriggerZoneUpdatePayload.props(extensionData: pending.target)
+                try SiteExtensionStore.update(site) { $0.submitted = pending }
+                let props = try SiteExtensionUpdatePayload.props(extensionData: pending.target)
                 let result = await NetworkRequest.shared.request(.sitePropsUpdate(siteId: site.id, props: props))
                 guard isCurrent else { return .failure(.permission) }
                 guard case .success = result else { return .failure(.network) }
@@ -266,7 +266,7 @@ final class SiteTriggerZoneCoordinator {
                 #endif
                 // The legacy update response can contain only a timestamp; always verify via GET.
                 let verified = try await retrieve()
-                try SiteTriggerZoneStore.receive(site, object: verified.object, timestamp: verified.timestamp)
+                try SiteExtensionStore.receive(site, object: verified.object, timestamp: verified.timestamp)
                 current = try state()
                 #if DEBUG
                 let verifiedCloudFingerprint = current.serverData.flatMap {

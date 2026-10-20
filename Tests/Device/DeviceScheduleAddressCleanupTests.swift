@@ -28,6 +28,16 @@ struct DeviceScheduleAddressCleanupTests {
         try expect(entry.permitsLeaveRecovery(now: 103, createdTimestamp: 55, address: 1), "Complete receipt permits local recovery.")
         try expect(!entry.permitsLeaveRecovery(now: 104, createdTimestamp: 56, address: 1), "Reused provisioning instance is protected.")
         try expect(!entry.permitsLeaveRecovery(now: 104, createdTimestamp: 55, address: 2), "Same UUID at a new address is not the recorded instance.")
+        var pendingGroup = decoded
+        pendingGroup.entries[0].stage = .cleaned
+        pendingGroup.entries[0].completedTimestamp = 10
+        pendingGroup.entries[0].sensorGroupId = 0xC001
+        try expect(!pendingGroup.needsCleanup, "Peer cleanup must not block ordinary Sync Device.")
+        pendingGroup.confirmUpload(timestamp: 20)
+        try expect(pendingGroup.entries.count == 1, "Cloud ACK must retain pending sensor cleanup.")
+        pendingGroup.entries[0].sensorGroupId = nil
+        pendingGroup.confirmUpload(timestamp: 20)
+        try expect(pendingGroup.entries.isEmpty, "Released address permits journal retirement.")
         print("DeviceScheduleAddressCleanupTests passed")
     }
 

@@ -2,7 +2,13 @@ import Foundation
 import NordicSigMeshSDK
 
 extension SyncExecutionSession {
-    func received(handle: MeshMessageHandle, statusMessage: StaticMeshMessage, model: SyncCellModel, messageHandles: [MeshMessageHandle]) {
+    func received(handle: MeshMessageHandle, statusMessage: StaticMeshMessage, model: SyncCellModel, messageHandles: [MeshMessageHandle], cacheOnly: Bool = false) {
+        if case .configuration(_, .hdb(let task)) = operationType(for: model) {
+            task.receive(handle: handle, response: statusMessage, cacheOnly: cacheOnly)
+            if task.hasPendingZoneCacheSave { pendingHDBZoneCacheTasks[ObjectIdentifier(task)] = task }
+            return
+        }
+        guard !cacheOnly else { return }
         if let operation = operationType(for: model),
            case .delete(let node, .missingGroupSubscriptions) = operation {
             _ = MissingGroupSubscriptionCleanup.acknowledge(handle, status: statusMessage, for: node)

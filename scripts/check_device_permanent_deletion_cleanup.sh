@@ -6,6 +6,8 @@ repo_root="${0:A:h:h}"
 test_binary="/tmp/DeviceScheduleAddressCleanupTests"
 
 swiftc -parse-as-library \
+  "${repo_root}/SunSmart/Common/Data/HDBConfiguration.swift" \
+  "${repo_root}/SunSmart/Common/Data/HDBLightingZonePolicy.swift" \
   "${repo_root}/SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift" \
   "${repo_root}/SunSmart/Common/Data/DeviceScheduleAddressCleanup.swift" \
   "${repo_root}/Tests/Device/DeviceScheduleAddressCleanupTests.swift" \

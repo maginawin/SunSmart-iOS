@@ -1103,11 +1103,11 @@ class DeviceLightsViewController: UIViewController {
         completion: @escaping () -> Void
     ) {
         let datas = ProximityLightingLifecycleCoordinator.mergedSyncDatas(from: results)
-        guard MeshLibManager.manager.isMeshNetworkConnected, !datas.isEmpty else {
+        guard MeshLibManager.manager.isMeshNetworkConnected, let syncType = HDBDeviceSyncService.deletionSyncType(datas: datas) else {
             completion()
             return
         }
-        let vc = SyncDevicesViewController(type: .spaceTriggerZones(datas: datas))
+        let vc = SyncDevicesViewController(type: syncType)
         var didFinish = false
         let finish = { [weak vc] in
             guard !didFinish else { return }
@@ -1131,6 +1131,13 @@ class DeviceLightsViewController: UIViewController {
         // 是否连接网络
         guard MeshLibManager.manager.isMeshNetworkConnected else {
             XWHUDManager.showTipHUD("device_repair_offline".localizedString, isLineFeed: true)
+            return
+        }
+        if nodes.contains(where: { (try? HDBDeviceSyncContext.resolve(node: $0)) != nil }) {
+            let vc = SyncDevicesViewController(type: .devices(nodes))
+            vc.syncSuccessCallback = { [weak self] _ in self?.navigationController?.popViewController(animated: true); self?.updateUI() }
+            vc.backActionCallback = { [weak self] _ in self?.navigationController?.popViewController(animated: true); self?.updateUI() }
+            navigationController?.pushViewController(vc, animated: true)
             return
         }
         // 多设备配置
