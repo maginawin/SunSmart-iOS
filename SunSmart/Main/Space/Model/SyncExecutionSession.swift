@@ -38,6 +38,8 @@ final class SyncExecutionSession {
     var onReload: (() -> Void)?
     var onCompleted: ((SyncState) -> Void)?
     var onSettled: ((SyncState) -> Void)?
+    /// Embedded device-add sessions persist normally; their owner submits the complete batch.
+    var publishesCloudChange = true
     var onStopped: (() -> Void)?
     var onError: ((String) -> Void)?
     var onBatteryActivationRequired: (() -> Void)?
@@ -392,7 +394,9 @@ final class SyncExecutionSession {
             onReload?()
             onSettled?(syncState)
             guard publishesCompletion else { return }
-            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+            if publishesCloudChange {
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+            }
             onCompleted?(syncState)
             if syncState == .syncFailure, automationRestore, !coordinator.closed {
                 if retryCount > 0 {

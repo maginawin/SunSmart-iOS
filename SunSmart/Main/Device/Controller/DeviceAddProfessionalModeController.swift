@@ -139,6 +139,7 @@ class DeviceAddProfessionalModeController: UIViewController {
     private var otherGateways: [GatewayModel] = []
     
     private let hdbCompletion = HDBDeviceAddCompletion()
+    private let hdbAddBatch = HDBDeviceAddBatch()
     let space: SpaceData
     
     /// 外部传入指定添加该到group
@@ -860,6 +861,12 @@ class DeviceAddProfessionalModeController: UIViewController {
         candidateView.lockedCategorySelectionTip = forbiddenSelectionTip
         candidateView.lockedCategoryIndex = lockedCategoryIndexForCurrentTarget
         candidateView.candidateDevices = displayedCandidateDevices
+        candidateView.isPreparingDevice = hdbCompletion.isRunning || hdbAddBatch.isWaiting
+        candidateView.cancelPreparation = { [weak self] in
+            guard let self else { return }
+            if self.hdbAddBatch.isWaiting { self.hdbAddBatch.cancelWaiting() }
+            else { self.hdbAddBatch.cancelQueuedStarts(); self.hdbCompletion.cancel() }
+        }
         candidateView.state = state
         candidateView.isRefresh = isRefresh
     }
@@ -937,7 +944,7 @@ class DeviceAddProfessionalModeController: UIViewController {
     }
     
     deinit {
-        hdbCompletion.cancel()
+        hdbAddBatch.close(completion: hdbCompletion)
         systemVolumeObservation = nil
     }
     
@@ -1313,6 +1320,28 @@ class DeviceAddProfessionalModeController: UIViewController {
             return
         }
         
+        if provisioningMAC != nil {
+            deviceStateCallback?(true)
+            hdbAddBatch.enqueue(space: space) { [weak self] allowed in
+                guard let self else { return }
+                guard allowed else {
+                    device.addState = .failed
+                    device.selectedState = .selected
+                    self.reloadDeviceState(device)
+                    self.updateUIState()
+                    self.deviceStateCallback?(self.hdbAddBatch.isActive || self.hdbCompletion.isRunning)
+                    return
+                }
+                self.startAddDevice(device, provisioningMAC: provisioningMAC)
+            }
+            updateUIState()
+        } else {
+            startAddDevice(device, provisioningMAC: provisioningMAC)
+        }
+    }
+
+    private func startAddDevice(_ device: ProvisioningDevice, provisioningMAC: String?) {
+        let batchIdentifier = hdbAddBatch.identifier
         // 设备identify中添加不需要再闪烁
 //        if device.addState == .identifyConnecting || device.addState == .identifyWait || device.addState == .failed || device.addState == .identifying {
 //            if device.addState == .identifying {
@@ -1342,8 +1371,9 @@ class DeviceAddProfessionalModeController: UIViewController {
             addDevice.addState = .adding
             self?.reloadDeviceState(addDevice)
             self?.updateUIState()
-        } provisionCompleteCallback: {[weak self] addDevice, node in
-            guard let self = self else { return }
+        } provisionCompleteCallback: {[weak self, hdbAddBatch] addDevice, node in
+            hdbAddBatch.recordProvisioned(node, batch: batchIdentifier)
+            guard let self, hdbAddBatch.acceptsCallbacks(from: batchIdentifier) else { return }
             // 配网完成
             
             node.rssi = addDevice.rssi.intValue
@@ -1594,7 +1624,9 @@ class DeviceAddProfessionalModeController: UIViewController {
 //                if let name = self?.space.getNextNodeName() {
 //                    node.name = name
 //                }
-                if !self.addSuccessNodes.contains(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) {
+                if let index = self.addSuccessNodes.firstIndex(where: { $0.primaryUnicastAddress == node.primaryUnicastAddress }) {
+                    self.addSuccessNodes[index] = node
+                } else {
                     self.addSuccessNodes.append(node)
                 }
             }
@@ -1631,12 +1663,19 @@ class DeviceAddProfessionalModeController: UIViewController {
                 self.applyDeviceAddressesRequest(applyAddressCount: applyAddressCount)
             }
             
-        } addFinish: {[weak self] successList, failList in
-            guard let self = self else { return }
+        } addFinish: {[weak self, hdbAddBatch] successList, failList in
+            guard let self, hdbAddBatch.acceptsCallbacks(from: batchIdentifier) else {
+                hdbAddBatch.finishIfCurrent(batchIdentifier); return
+            }
+            self.hdbAddBatch.beginPreparation()
 
-            UpDownLightDefaultCctStepsReader.readAfterProvisioning(devices: successList) { [weak self] in
-                guard let self = self else { return }
-                let failed = Set(self.addSuccessNodes.filter { node in
+            UpDownLightDefaultCctStepsReader.readAfterProvisioning(devices: successList) { [weak self, hdbAddBatch] in
+                guard let self, hdbAddBatch.acceptsCallbacks(from: batchIdentifier) else {
+                    hdbAddBatch.finishIfCurrent(batchIdentifier); return
+                }
+                let batchNodes = self.hdbAddBatch.nodes(addresses: Set(successList.map(\.address)),
+                    currentNodes: MeshNetworkManager.instance.realNodes)
+                let failed = Set(batchNodes.filter { node in
                     successList.first { $0.address == node.primaryUnicastAddress }?.addState == .syncFailed
                 }.map(\.uuid))
                 self.hdbCompletion.didChange = { [weak self] in
@@ -1644,11 +1683,12 @@ class DeviceAddProfessionalModeController: UIViewController {
                     self.candidateView.isPreparingDevice = self.hdbCompletion.isRunning
                     self.updateUIState()
                 }
-                self.candidateView.cancelPreparation = { [weak self] in self?.hdbCompletion.cancel() }
-                self.hdbCompletion.run(space: self.space, nodes: self.addSuccessNodes, standardIncomplete: failed) { [weak self] pending in
+                let batchesCloudSync = self.hdbAddBatch.isActive
+                self.hdbCompletion.run(space: self.space, nodes: batchNodes, standardIncomplete: failed) { [weak self, hdbAddBatch] pending in
+                    defer { hdbAddBatch.finishIfCurrent(batchIdentifier) }
                     guard let self else { return }
                     for device in successList {
-                        guard let node = self.addSuccessNodes.first(where: { $0.primaryUnicastAddress == device.address }),
+                        guard let node = batchNodes.first(where: { $0.primaryUnicastAddress == device.address }),
                               device.addState == .adding || pending.contains(node.uuid) || (try? HDBDeviceSyncContext.resolve(space: self.space, node: node)) != nil else { continue }
                         device.addState = pending.contains(node.uuid) ? .syncFailed : .success
                         self.reloadDeviceState(device)
@@ -1658,13 +1698,15 @@ class DeviceAddProfessionalModeController: UIViewController {
                     self.deviceAddCallback?(self.addSuccessNodes)
                     self.deviceStateCallback?(false)
 
-                    self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
-                    self.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count //MeshNetworkManager.instance.lightNodes.count
-                    self.space.switchesCount = MeshNetworkManager.instance.switchs.count
-                    self.space.save()
-                    // 通知space数据修改
-                    //                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
-                    NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
+                    if !batchesCloudSync {
+                        self.space.deviceCount = MeshNetworkManager.instance.realNodes.count
+                        self.space.luminairesCount = MeshNetworkManager.instance.realNodes.filter({ $0.deviceType == .light }).count //MeshNetworkManager.instance.lightNodes.count
+                        self.space.switchesCount = MeshNetworkManager.instance.switchs.count
+                        self.space.save()
+                        // 通知space数据修改
+                        //                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
+                        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.network(type: .address))
+                    }
                     NotificationCenter.default.post(name: .init(devicesAddNotificationName), object: nil)
                     if self.addSuccessNodes.contains(where: { [.dongle, .gateway, .emergencyController, .unknown].contains($0.deviceType) }) {
                         NotificationCenter.default.post(name: .init(deviceOthersRefreshNotificationName), object: nil)

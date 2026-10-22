@@ -149,7 +149,7 @@ extension SpaceData {
     }
 }
 
-fileprivate extension SiteData {
+extension SiteData {
     func markSiteUploadNeededForSpaceAddressChange() {
         let now = Int64(Date().timeIntervalSince1970)
         lastUpdate = max(now, lastUpdate + 1, (lastUploadCloudTimestamp ?? 0) + 1)

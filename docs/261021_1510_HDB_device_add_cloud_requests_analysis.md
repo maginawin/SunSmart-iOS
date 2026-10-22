@@ -1,8 +1,184 @@
 # HDB 添加一个设备时的云请求分析
 
-日期：2026-10-21。范围：日志与当前 App 源码分析，未修改业务代码。
+首次分析：2026-10-21；最近实施：2026-10-22。已按确认方案修改 App，并完成受控回归及 SunSmart generic iOS Debug 构建；2026-10-22 新现场日志进一步确认本次双设备成功路径达到批次同步目标。最新现场分析与实施结果见下文。后续保留实施前复核、计划和原始日志分析，历史请求数不能替代新版本现场验收。
 
-## 结论
+## 2026-10-22 现场双设备日志验收
+
+### 结论
+
+**本次“连续点选两台设备、同批成功完成”的现场路径修复成功：共 4 次实际 HTTPS，其中设备配置同步只有 3 次，全部发生在整批 HDB 任务完成之后；另 1 次为独立 Space 心跳。** 未发现逐设备/逐 ACK 上传、添加期间反复读取配置、重复最终上传或回读重试。最终不仅 HTTP 200，而且有 `SpaceConfigurationReadback stage=confirmed` 和 `CloudSync Success`。
+
+证据文件：[adding devices.txt](</Users/maginawin/Desktop/adding devices.txt>)，2137 行，261099 字节，SHA-256 `03971089a383552459abb52cd63df16bef4292228a7a20b795ca480ae672d3fe`。分析时 App HEAD 为 `69c6ed90`，工作树仍含本任务未提交修复；日志有新增 AddBatch 标记，与修复行为一致，但没有 App 构建 revision，不能单凭日志独立证明具体安装产物。此轮仅分析日志和代码、更新本文，没有修改业务代码或重新构建。
+
+### 全部 HTTPS 请求
+
+所有请求使用 **POST**，共同 HTTPS 前缀为 `https://www.mericher.com/srv2`。按 `[HTTP][Request]` 计数，再由 Response 和 task 11～14 的 Metrics 交叉验证。每个 task 的零字节与非零字节 Metrics 是同一请求的观测，不能重复计数；`CloudSync Request` 也不是第五个 HTTP。
+
+| 序号 / task | 请求行 / 响应行 | target / 路径（省略共同前缀） | 所处流程与作用 | 结果与判断 |
+| --- | --- | --- | --- | --- |
+| 1 / 11 | 141 / 155 | `heartbeat`，`/sitespace/user/hb` | 第 3 行批次开始后，仍在标准 Mesh Model AppKey 绑定阶段；周围有 `ConfigModelAppStatus` 与后续绑定消息。上报当前用户在 Site/Space 中的在线状态及角色，错误返回可触发权限处理 | HTTP 200；响应体 2 字节，businessCode 未提供。它没有读取/上传设备配置，是独立心跳，符合本次保留非配置请求的范围 |
+| 2 / 12 | 2033 / 2045 | `spaceInfo`，`/sitespace/get/spaceprops` | 第 2030 行批次结束后；2032 行明确为 `baselineRequest`。最终上传前读取当前远端基线，校验权限、成员/配置变化，避免用旧本地快照覆盖远端变化 | HTTP 200；2055 行 `noPendingReceipt`，说明当前不是旧提交回读重试。保留这一次前读 |
+| 3 / 13 | 2073 / 2085 | `siteUpload`，`/sitespace/sync/siteprops` | 前读完成并完成本地清理/导出后，统一上传 Site 和当前 Space。2069 行 `operation=syncSite syncSpaceCount=1`，这里只有一个 Space，不能误读成只上传一台设备 | HTTP 200，businessCode=200，businessMessage=success；唯一配置上传，包含本批最终 Space 快照及 Site 地址资源 |
+| 4 / 14 | 2097 / 2109 | `spaceInfo`，`/sitespace/get/spaceprops` | 上传响应成功后，2096 行为 `stage=request`，用于验证刚提交的快照确实进入云端 | HTTP 200；2119 行 `confirmed`，2120 行 `CloudSync Success`。保留这一次回读，与前读目的不同 |
+
+没有 `spaceUpload`、第二次 `siteUpload`、地址申请或首次 Site 创建请求。两次 `spaceInfo` 分别属于上传前与上传后，不是重复进入 Add Device 页面读取。原始 HTTP 日志没有逐请求开始/结束时间戳，因此此处按行序与阶段标记定位，不把数据版本号当作 HTTP 时间计算。
+
+代码对照：`SpaceViewController.startHeartbeatTimer` 每 30 秒调度心跳并首次立即 fire；`heartbeatRequest` 处理权限撤销、未授权、密码失效等返回。日志只证明观察到了 1 次心跳，不能辨别它究竟是首次 fire 还是该周期 timer 触发，更不能据这一条推断需要取消心跳。`SpaceConfigurationSafety.resumeUpload` 的 `baselineRequest` / `noPendingReceipt` / `confirmed` 与本次三个同步请求一一对应。
+
+### 添加与同步的完整顺序
+
+1. **第 1～6 行：点选两台设备。** 第 2、6 行各有一次添加按钮操作；第 3 行只登记一次 `AddBatch begin`。随后两台设备均报告 3 个 Elements，并在第 17、27 行报告配网成功。后续主地址为 `0x0008` 和 `0x000B`。
+2. **第 28～1357 行：标准 Mesh 配置。** 在 Model 绑定、订阅及标准默认配置期间，唯一 HTTPS 为 task 11 心跳。没有 Space 基线读取或配置上传。
+3. **第 1358～2027 行：HDB 准备和配置。** `summary-saved` 后 `start count=2 incomplete=0`。每台都有 4 个 subscription、1 个 publication、1 个 initialization 任务的 `persisted`；初始化各为 `handles=12 ack=12`，每台合计 17 个成功 ACK，两台共 12 个 HDB 任务、34 个 ACK。这里只统计 HDB DeviceTask，不把前面的标准配置/SDK 重复打印也算进去。所有落盘日志 `reason=none`，过程中没有配置 HTTPS。
+4. **第 2028～2030 行：唯一整批收尾。** `settled-success count=2 incomplete=0` → `finished count=2 incomplete=0` → `AddBatch finish nodes=2 queued=0`。这时两台都结束，才进入云同步。
+5. **第 2031～2123 行：唯一同步轮次。** baseline 前读 → 本地检查/导出 → Site＋Space 上传 → 回读 confirmed → CloudSync Success；没有第二轮提交或重试。
+6. **第 2124～2137 行：设备状态读取。** `LightCTLGet` / `LightCTLStatus` 是 Bluetooth Mesh 消息，用于获取灯状态，属于 BLE 通讯，不是 HTTPS；日志中没有随后追加云上传。日志尾部很短，不能据此宣称长时间停留或退出页面均已验收。
+
+### 附带日志及成本
+
+| 项目 | 本次证据 | 对结论的影响 |
+| --- | --- | --- |
+| 本地导出 3 次 | 2056～2067 行，共 3 组 `export begin/end`，均 `main=true`；各约 22 ms，合计约 67.08 ms | 这些是本地工作，不是 3 次额外网络请求。与 cleanup 的导出前检查、持久状态复核及最终请求导出相符；现有日志未标调用栈，不能逐次作运行调用点断言。可另评估 CPU/I/O 合并，本轮不因此判为网络修复失败，也不能据这份日志断言出现了可感知卡顿 |
+| 响应传输量 | 4 次 task 非零 Metrics 的 `receivedBytes` 合计 17309；两次 Space 读取合计 17242；Space 解码后合计 124544 字节 | Metrics 观测值，不是包含所有链路开销的精确抓包总量。`siteUpload` 请求 body 为 12574 字节并声明 gzip |
+| Mesh 查询超时 | 1396 行 `start currentActiveDistribution, timeout: 3.0`，1607 行 `currentActiveDistribution timeout` | 是 Mesh 固件分发状态查询，没有对应 HTTPS。后续 HDB 任务落盘与云回读都成功，未阻断本次目标；日志不足以证明该查询超时的底层原因，此轮未扩大修复范围 |
+| 本地 Model 未绑定警告 | 如 2024～2025、2137 行 `Local ... not bound to key` | SDK AccessLayer 在向手机本地 Model 分派收到的消息时打印；不是直接证明远端设备 AppKey 绑定失败。本次远端 HDB ACK 和终态成功需独立依据 DeviceTask / Add 标记判断 |
+| AVAudioSession 提示 | 第 4、7 行提示在主线程调用可能影响响应 | 与音频会话调用有关，不是 HTTPS 失败或配置重复同步；日志没有 UI 耗时证据，不据此判定卡顿根因 |
+
+### 验收判断与剩余边界
+
+本次已由现场日志确认：**双设备共用一个批次、添加中途不读写远端配置、多次本地 ACK 保存不会放大 HTTP、统一一次上传且回读确认成功。** 这是本次请求数量优化的成功证据，不能再仅称为“受控测试目标”。
+
+仍未由本日志覆盖：同页面完成后再添加下一批、在 HDB 收尾期间追加设备、部分失败/全失败、取消/页面销毁、断网恢复、账号或权限变化、历史待确认提交及首次 Site 恢复、长时间停留/退出后是否无重复同步。也没有足够信息把现场记录归到两个添加模式各自的完整验收。原来的自动化回归可证明相应受控行为，不能替代这些场景的现场测试。
+
+历史日志是单台设备的 18 次配置 HTTP，本日志是双台同批的 3 次配置 HTTP＋1 次心跳；可以确认请求已按批次收敛，但场景和采样窗口不同，不据此直接给出端到端提速比例。
+
+## 2026-10-22 实施结果
+
+### 已实现行为
+
+- Classic / Professional 共用 `HDBDeviceAddBatch`。第一台 HDB 设备实际配网前登记账户、区域、Site、Space、Mesh 身份；节点入网后及时持久化 Space 摘要及 Site 地址版本。标准配置和 HDB 的每次本地保存继续执行，批次只推迟云调度。
+- HDB 配置只处理本次 FastAdd 成功列表对应的当前节点，并核对本批实际配网 UUID；页面累计结果仍保留。相同地址出现新节点时替换累计列表中的旧实例，避免把旧 UUID 用作本次结果。旧批 Session 的迟到回调由 run identifier 拦截。
+- 在 CCT/HDB 收尾时新选中的设备等待当前配置完成再开始配网，并继续使用同一云同步批次。真正空闲后再选设备则开启下一批，不把整个 Add Device 页面当作永久远端缓存。
+- 共享云管理器合并当前 Space 的 `syncSpace` 和同 Site 的 `syncSite` / `addSpaces` 等待请求，保留调用者回调及混合请求中的其他 Space。无关 Site、独立其他 Space、Gateway 维持原调度；恢复入口的 cleanup 和最终候选均跳过活跃添加 Space。
+- 原来已在途的同 scope 同步先收尾，之后才放行配网。历史 pending 使用现有完整上传恢复流程，包括首次 Site 创建的回执及地址资源恢复；没有历史 pending 时，登记批次不发请求。等待中的既有请求并入本批最终快照；已发出的最终 POST 后产生新修改则排入下一代，保留旧提交确认语义。
+- 添加内嵌 Session 的 `publishesCloudChange=false`，仅关闭其 `.device` 云通知；普通 Sync 默认仍通知。HDB 添加完成由批次直接提交一次包含当前 Space 的 Site 同步，两个页面不再重复发送地址云通知，原 UI 刷新通知保留。
+- 成功、部分失败、无成功但已入网、停止及页面销毁都使用同一收尾边界。Session 自持有至停止/补偿完成，FastAdd 停止回调也持有批次，云收尾不依赖页面的弱引用。无本地变化不制造空上传；断网仍保留 dirty 供现有恢复处理；旧账户、网络身份或批次回调不更新新上下文。
+
+没有新增业务源文件、SDK API、依赖或品牌条件分支；批次对象放在已有五品牌共享的 `HDBDeviceAddCompletion.swift` 中。没有修改 SDK、固件或服务器，也没有提交 Git。
+
+### 验证结果及边界
+
+| 验证 | 结果 / 能证明的范围 |
+| --- | --- |
+| `check_device_add_cloud_batch.py` | 通过。执行生产 AddBatch、CloudSynchronizationManager、CloudSynchronizationHandle 及上传流程；1 台 / 10 台各重复保存时，中途 0 HTTP，整批正常收尾均为前读 1＋POST 1＋回读 1，所有成功回调保留。覆盖混合 Space、独立 scope、已有 timer、空操作、停止后收尾、断网恢复、等待在途提交、HDB 尾部追加、下一版本、历史 pending、首次 Site 地址恢复、权限拒绝及账户隔离 |
+| `check_hdb_integration.py --add-completion` | 通过。真实 AddCompletion 的本批节点选择、旧批迟到回调、无页面引用时的收尾持有、标准配置失败跳过、持久化失败及取消 |
+| `check_hdb_integration.py --add-execution` | 通过。真实 Store / Service / 订阅、发布、初始化 ACK 持久化及完成顺序；保留摘要先保存、外部版本变化拒绝旧 ACK 等断言 |
+| `check_sync_execution_session.py` | 通过。真实 Session / Coordinator 的完成、停止补偿、重试与通道所有权；新增调用方负责云通知的用例，同时验证普通 Session 仍发一次通知 |
+| `check_site_zone_cleanup_batch.py .local-sdk/nordic-sig-mesh-sdk` | 通过。现有 cleanup / 三入口 / SQLite / 失败取消与重启恢复；该夹具的批次标记为边界替身，活跃批次跳过逻辑由新增云批次夹具执行 |
+| `check_space_recovery_receipts.py` | 通过。真实回执、安全校验、历史兼容、未知结果、权限、版本和持久化恢复逻辑 |
+| `git diff --check` | 通过 |
+| SunSmart generic iOS Debug | 最终增量构建退出码 0；同次 Xcode 构建记录为 0 errors / 15 warnings，App 可执行文件更新于 2026-10-22 19:40:07 +08:00。初轮为 0 errors / 75 warnings，后续因补齐历史首次 Site 恢复边界进行了必要增量构建 |
+
+新增云批次夹具的数据库、导出、网络及回执读接口为受控边界，实际 HTTP 发送器也为替身；它执行真实调度和 POST 流程，不是用“管理器替身收到一次调用”代替验证。它没有在同一进程内执行真实 BLE、SQLite 和完整回执服务，这些分别由现有 HDB、SQLite、回执回归覆盖。因此 **3 次是正常条件下的受控验证结果，不是新真机网络日志的实测值**。首次 Site 创建、历史提交恢复、地址申请、冲突及失败重试仍可能增加请求。
+
+运行中批次测试二进制曾有一次 SIGSEGV 退出且没有诊断堆栈；相同代码随后单次重跑、连续 5 次执行及后续最终版本执行均通过，未能复现，未把原因归到 App 或环境中的任一方。初轮构建控制台出现过 `command failed with exit code 0`，已用同次退出码、0 errors 的 Xcode 构建记录和更新产物交叉核对；最终增量构建正常退出，没有据此清缓存或修改无关代码。
+
+构建入口为 `SunSmartLocal.xcworkspace` / `SunSmart` / Debug / iphoneos / generic iOS / `CODE_SIGNING_ALLOWED=NO`，稳定 DerivedData 为 `SunSmart-feat-HDB-261020`。本地 SDK realpath 为 `/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk-worktrees/one-dev`，HEAD `8c5af55f5887e588e71f053ab44e2f6aa53a86a0`，沿用开始前既有 Node 配置及配置回读未提交差异，本任务未修改。没有新增 SDK 发布依赖；构建不代表远端 release 已含本机既有差异。共享逻辑无品牌分支、资源或 target 归属变更，以 SunSmart 代表验证，未重复其他四品牌构建。
+
+### 最短人工验收
+
+在既有 HDB Site、同一 Space、网络正常且没有旧 pending 的条件下，分别在 Classic / Professional 添加 1 台、多台，再测部分失败/停止：
+
+1. 从 `[HDB][AddBatch] stage=begin` 到本批所有配置结束，确认没有由本批保存启动的 Space 读取或上传；开始前已有请求及必要地址申请分开计数。
+2. `[HDB][AddBatch] stage=finish` 后按 `[HTTP][Request]` 统计，正常为前读、Site＋Space 上传、确认回读各一次。确认成功设备可用，失败设备保持待修复，摘要与地址资源正确。
+3. 同页再次添加一批，上一批设备不重发 HDB 配置、不重新 pending；在 HDB 收尾时追加设备，应等前一轮完成后继续，本次连续任务最终只统一同步一次。停留结果页/无变化退出不额外上传。
+4. 添加中断网后结束，再恢复网络，确认本地修改仍在且可恢复同步。以上为实施当时的待验收项；最新双设备成功路径已由本文顶部现场日志验证，其余场景与 UI 手感仍待验收。
+
+## 2026-10-22 实施前代码复核与修复计划（历史记录）
+
+### 当前结论
+
+**以下是实施前快照：当时频繁云同步问题仍存在，尚未实现批次合并。** 当前 App HEAD 为 `69c6ed900b44cbaecddb3ba4897846e4152b8ae0`，分支 `feat/HDB-261020`；复核开始时工作树干净。相对初次分析，`CloudSynchronizationManager.swift` 和 `NetworkRequest.swift` 没有变化；HDB 的近期修复调整了模型、订阅及准备规则，但没有移除中间云同步或完成时的双重通知。
+
+另外确认一项与连续批次直接相关的问题：两个添加页面把页面累计的 `addSuccessNodes` 传入本轮 HDB 准备，使上一批已经完成的设备再次按“刚配网完成”处理，产生不必要的配置重发和云同步。该问题应与批次边界一起修复。
+
+原日志的 **18 次 HTTP 只是 2026-10-21 样本值**，不能表述为当前版本依然固定 18 次。本轮没有新真机 HTTP 日志；当前受控复现统计的是云同步排队次数。
+
+### 当前证据
+
+| 问题 | 当前源码证据 | 结论 |
+| --- | --- | --- |
+| 每次 HDB 保存立即同步 | `HDBConfigurationStore.update` 本地保存后仍执行 `enqueueSpaceSync(..., .promptly)`；`HDBDeviceSyncTask.persist` 的订阅/发布准备任务仍调用 Store，即使 HDB 配置字段无变化 | 仍存在；必要的本地持久化与即时云请求耦合 |
+| 添加完成重复同步 | `SyncExecutionSession.finishRun` 先回调 `onSettled`，随后仍发送 `.device`；Classic/Professional 完成闭包各自发送 `.network(.address)` | 仍存在；最终产生 `.syncSpace` 与 `.syncSite(..., [space])` 两种操作 |
+| 替换任务未合并实际 HTTP | 相同类型任务仍采取 cancel 后立即 start；`syncSite` 与 `syncSpace` 不相等；普通 async `NetworkRequest.request` 仍未转发 Task 取消 | 仍存在；取消不等于尚未发送，也不能收回已发出的 HTTP |
+| 自动恢复缺少添加批次边界 | `resumePendingSynchronizations` 依据 dirty/pending/currentHandle 判断，前置 cleanup 和最终上传选择均不知道添加是否仍进行中 | 修复时必须覆盖，否则跳过中间上传后可能由恢复入口重新触发 |
+| 连续批次重新处理旧设备 | 两个添加页面仅向 `addSuccessNodes` 追加，没有按批清空/过滤；每轮都把整个数组传给 `hdbCompletion.run`；后者对所有 eligible 节点调用 `prepareIntent(..., subscriptionsWereReset: true)` | 新确认关联问题；旧节点再次进入 `restoreDevice`，把已同步配置字段改回 pending |
+
+复用现有 `scripts/check_hdb_integration.py --add-execution` 的生产 Store、Service、AddCompletion 与 ACK 持久化代码，仅在临时生成的夹具中增加计数。该设备夹具包含 LC 及三个 Sensor 订阅、Presence 发布、初始化六个任务：
+
+| 受控场景 | BLE 配置开始前排队次数 | HDB 完成协调器结束时累计次数 |
+| --- | ---: | ---: |
+| 首次添加 1 台 | 4 | 10 |
+| 同一批首次添加 10 台同类设备 | 31 | 91 |
+
+在这个特定夹具中，准备阶段为 1 次批次摘要保存＋每台 3 次意图保存，执行结果为每台 6 次保存，合计 `1 + 9 × 设备数`。传感器/Model 结构不同，任务数会变化，不能推广为所有硬件的固定公式。
+
+上述统计**不包含真实 Session 完成通知和两个页面收尾的额外触发，也不是 HTTP 数量**：云管理器、传输及数据库为受控边界，真实请求会受到任务替换和响应交错影响。原有执行夹具也已跑到末尾通过，确认该计数路径可以完成初始化并保持可用。
+
+额外受控复现：将已完成、`needsSync=false` 的同一节点再次交给 AddCompletion，未重新配网，立即新增 **2 次云同步排队、3 个配置步骤，`needsSync` 变为 true**。结合当前页面确实传入累计节点数组，说明下一批会重新处理上一批设备；这不是为了修复真实重新配网所必需的操作。
+
+本机映射 SDK 为 `.local-sdk/nordic-sig-mesh-sdk` → `/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk-worktrees/one-dev`，SDK HEAD `8c5af55f5887e588e71f053ab44e2f6aa53a86a0`，有既存未提交修改，本任务未改动 SDK。夹具按脚本使用该映射 SDK 当前的 `isKeybindComplete` getter，不能将结果当成远端 release SDK 或真实 BLE 验收。
+
+只读检查 SDK 的 FastAdd 确认：正在添加时继续收到设备会追加队列；新一轮会清空上一轮 success/fail 列表；完成时先 reset 再调用批次完成回调。因此 App 可复用当前回调承接本轮节点，不需要新增 SDK API。仍须用 App 自身的待处理设备、标准配置及 HDB 收尾状态共同判断终态，不能仅以页面存活或某个节点完成作为边界。
+
+### 本次实施范围与选择
+
+实施仅限 App：HDB 添加流程、共享云调度的受影响 scope、相关回归。保留现有协议、MAC/Model 元数据规则、ACK 校验、版本保护、恢复默认配置与本地持久化机制。
+
+比较三种做法：
+
+- **全局移除 Store 自动上传**：会改变 Lighting Zone、Lighting Configuration、Restore、独立 Sync 等全部使用方，不采用。
+- **把 `.promptly` 改为固定延迟**：长批次仍会中途上传，也不解决双收尾和旧节点重配，不采用。
+- **为 HDB 添加建立受限批次，在共享云调度入口合并请求**：保留现有业务保存及恢复机制，覆盖直接调度和通知入口，作为本次方案。沿用 `SpaceSyncCleanupCoordinator` 的准备流程，但它目前只合并 cleanup，无法替代上传前 `resumeUpload` 与最终提交的批次调度。
+
+### 修复步骤
+
+1. **先修正本批设备归属。** 两个添加页面区分“页面累计结果”与“本轮实际配网节点”。保留前者给原有回调/页面展示，HDB 准备只接收本批节点；基于 FastAdd 本轮结果及配网回调记录核对 UUID、当前节点实例和地址，不能只清空累计数组破坏原有回调语义。仅对本轮真实配网节点传递 `subscriptionsWereReset: true`。标准配置失败的已入网节点仍记录到最终云快照，但不冒充 HDB 初始化完成。
+2. **建立一个共享的添加批次对象。** 由添加流程持有，两个模式复用。第一台实际开始配网前登记当前账户、区域、Site、Space、网络身份和批次 token；后续追加设备加入同批，HDB 收尾期间不释放。任务未结束时的本地节点、配置和 ACK 保存继续进行；一旦节点或地址资源持久变化，及时保留 Space/Site 的待上传标记，确保在 HDB 阶段前崩溃也可恢复。
+3. **在共享云调度处暂停本批新上传，合并待同步意图。** `CloudSynchronizationManager` 在启动 timer/异步准备和发出请求前识别活跃批次。当前 Space 的 `.syncSpace` 与携带当前 Site 地址快照的 `.syncSite` 合并等待，不逐次执行 baseline、export、POST，也不每次取消重建一个已运行任务。保留 wait 状态、调用者回调及请求的 Space 集合，最终 `.syncSite(..., syncSpaces:)` 包含当前 Space；混合多个 Space 的既有请求不得丢失其他 Space。无关 Site、独立其他 Space 上传和网关操作保持原行为；同 Site 的整站请求若共享地址快照，可延后并保留完整意图。
+4. **让恢复和已有任务遵守相同边界。** 前台/网络恢复的 `shouldPrepare` 和最终候选过滤都跳过活跃批次，避免先做 cleanup 改版本、再到上传入口才被拦截。开始时已排队未执行的同 scope 工作并入等待；已有在途提交不能当成未发送丢弃，也不能仅靠 cancel 宣称停止。若旧提交/回读仍可能改变配置，先让既有提交按原恢复契约收敛，再启动本批会修改配置的流程。此类历史请求另计，不强行满足 3 次目标。
+5. **统一完成通知与唯一提交。** 给内嵌 HDB 执行会话明确的“云提交由调用方负责”模式，仅抑制其自动 `.device` 云通知，保留执行状态和普通 Sync 默认行为。批次在所有配网、标准配置、HDB 任务及取消清理收尾后，刷新持久化快照/摘要和 Site 地址版本，直接通过现有云管理器提交一次 `.syncSite(site, syncSpaces: [space])`；已有合并请求包含其他 Space 时保留它们。两个添加页面保留 UI 刷新通知，云提交不再依赖两个平行通知，也不能依赖已释放页面的 `weak self` 才执行。
+6. **保证所有终态和版本连续性。** 成功、部分失败、全部失败但已分配地址/创建节点、取消、计划失效、页面销毁只允许终结一次；完全未改变持久数据时不制造空上传。断网保持 dirty，恢复后重试；重启不持久遗留“暂停”开关。仅延后调度，不提前创建上传 submission、不设置配置 blocked，避免阻断自己的 HDB 保存。账号/区域/网络身份变化后旧 token 不得操作新上下文；晚 ACK 不增加第二次提交。在途上传后新加入的操作进入下一版本，旧回读只能确认其提交版本。
+
+正常路径继续复用 `resumeUpload`：**整批结束前不重复读取；最终上传前读取一次 → Site＋Space 上传一次 → 回读确认一次**。不新增入页读取，不以页面未退出作为快照永久有效的依据。当前新增的默认恢复分支也不绕过；历史待确认、旧格式恢复、远端变化及重试需要多少请求，仍由既有保护语义决定。
+
+### 预计涉及的 App 文件
+
+| 文件/模块 | 必要职责 |
+| --- | --- |
+| [DeviceAddClassicModeController.swift](../SunSmart/Main/Device/Controller/DeviceAddClassicModeController.swift)、[DeviceAddProfessionalModeController.swift](../SunSmart/Main/Device/Controller/DeviceAddProfessionalModeController.swift) | 本批节点、配网生命周期、取消及唯一终态接入 |
+| [DeviceAddViewController.swift](../SunSmart/Main/Device/Controller/DeviceAddViewController.swift) 及一个小型共享批次对象 | 共享批次所有权、追加/切换限制、页面释放后仍可完成收尾 |
+| [HDBDeviceAddCompletion.swift](../SunSmart/Main/Device/Model/HDBDeviceAddCompletion.swift)、[SyncExecutionSession.swift](../SunSmart/Main/Space/Model/SyncExecutionSession.swift) | HDB 收尾边界、调用方负责最终云提交；普通 Sync 保持默认通知 |
+| [CloudSynchronizationManager.swift](../SunSmart/Common/Cloud/CloudSynchronizationManager.swift) | 按 scope 合并等待、请求启动前检查、恢复入口排除、终态提交 |
+| [SpaceViewController.swift](../SunSmart/Main/Space/Controller/SpaceViewController.swift) 中 SpaceData 本地变化/调度扩展 | 本地 dirty 与 Site 地址变化持久化、最新快照提交，保留其他使用方语义 |
+| 现有 HDB 添加、Sync 生命周期、云恢复夹具及新增批次行为夹具 | 验证请求次数、真实完成通知和失败/恢复行为，不以源码字符串匹配代替执行 |
+
+`HDBConfigurationStore` 的保存与默认自动同步保留；如果实施需要抽取“标记待上传/排队”小接口，应保持非批次调用默认行为不变。模型、协议和 SDK 公共 API 不需为此修改。共享源文件覆盖五品牌；新增文件需核对五品牌 target 归属。
+
+普通 async HTTP 取消传播是另一个已确认的通用改进点。本次优先消除请求启动源头，并补齐调度入口的取消/token 检查；**不顺带重写所有网络请求的取消语义**。如果另行实施该优化，需单独覆盖“取消前未发送、已发送但结果未知、POST 已接受”的回执保存与 continuation 单次完成，不能把取消当成服务器未执行。
+
+### 验收与执行顺序
+
+1. 先把当前三类行为复现固化到夹具：单台/10 台反复排队、双重完成通知、下一批包含旧节点导致重新 pending。保留现有准备、取消、持久化失败和严格 ACK 用例。
+2. 修复本批归属并加入批次调度/唯一收尾；使用真实 App 协调和 Session 完成逻辑，网络边界受控，断言单 Space 正常路径只有一个提交轮次：前读 1、POST 1、后读 1。不得只断言云管理器替身被调用一次来代替 HTTP 路径验证。
+3. 覆盖批次内追加、多批不退页面、空操作、部分失败、标准失败但已入网、取消/页面销毁、前后台与网络恢复、重启 dirty 恢复、旧提交未确认、账号/Space 切换、其他 Space 与混合 Site 请求、迟到回调、新版本在途变更、远端权限或成员变化。
+4. 证明非添加路径不回归：普通 Site 添加、独立 Sync、HDB Zone/Lighting Configuration 编辑与 Restore 仍按原有权限和自动同步机制工作。旧设备在下一批不重新变成 pending、不新增 BLE 配置任务。
+5. 必要回归包括 `check_hdb_integration.py --add-completion/--add-execution`、`check_sync_execution_session.py`；云恢复改动选用 `check_site_zone_cleanup_batch.py`、`check_space_recovery_receipts.py` 相关用例并补充实际调度行为。通过后构建一次 `SunSmartLocal.xcworkspace` 的 SunSmart generic iOS Debug；新增源文件归属带来跨品牌编译风险时稳定后覆盖受影响品牌，SDK 本机差异另列发布依赖，不将本地编译等同远端依赖就绪。
+6. 人工以同一 Space 单台、多台、部分失败/停止各获取新日志；同等条件下确认中间无本批配置上传、结束一个最终提交轮次、结果页停留及无变更退出不重复请求、重进 pending 可继续修复。只有现场日志能确认最终 HTTP 数与设备行为。
+
+本轮已执行：现有 AddCompletion 回归、AddExecution 回归（临时加入计数后跑完），以及 10 台和旧节点重复准备的受控探针；均完成。探针仅在临时目录生成 Swift，没有修改仓库测试或业务代码，已清理本轮 Python 导入产生的缓存。未执行 App 构建、真实 BLE 或云端联调。以上为实施前验证；后续实施与新验证见本文顶部。
+
+## 2026-10-21 初次日志分析结论（历史记录）
 
 这段日志记录了 **18 次实际 HTTP 请求：13 次 Space 读取、4 次 Space 上传、1 次 Site 上传**。13 次读取中，8 次为上传前基线读取，5 次为上传后的回读确认。不是 18 次独立、必需的添加设备业务操作，也不是 HTTP 失败重试造成的数量膨胀。
 
@@ -186,4 +362,4 @@ HDB 的 `onSettled` 进入 [HDBDeviceAddCompletion.swift](../SunSmart/Main/Devic
 
 补充验证应覆盖：同批 10 台只产生一次云提交、运行中追加设备、连续两批不退出页面、部分失败与停止、在途上传后新增设备，以及另一端在页面停留期间修改/删除设备时最终读取仍能发现变化。当前没有多设备现场日志，以上为代码支持的方案与待验证边界。
 
-本轮仅完成日志计数、当前源码链路核对及方案记录；未运行回归、未构建、未操作真机、未请求实际服务器。
+2026-10-21 初次分析仅完成日志计数、源码链路核对及方案记录，未运行回归、未构建、未操作真机、未请求实际服务器。2026-10-22 的当前代码复核及受控验证见文首。

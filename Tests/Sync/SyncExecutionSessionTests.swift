@@ -60,6 +60,7 @@ enum SyncExecutionSessionTests {
         hdbCacheSettlesOnEveryExit()
         hdbInFlightAcknowledgementDuringStop()
         closeWaitingSessionSettlesCaller()
+        callerOwnsCloudCompletion()
         normalAndDuplicateCompletion()
         stopBeforePlanDeliveryAndManualRetry()
         stopBeforeRetryAndLateCompletion()
@@ -68,6 +69,21 @@ enum SyncExecutionSessionTests {
         authorizationBeforeDynamicMessages()
         automaticRetryBudget()
         print("PASS: production Session scheduling, writeback ordering, late completion, stop/retry, Profile/PIR compensation and authorization cancellation")
+    }
+    static func callerOwnsCloudCompletion() {
+        for publishes in [false, true] {
+            let h = Harness()
+            let (session, _, _, _) = h.make()
+            session.publishesCloudChange = publishes
+            var notifications = 0, settled = 0, completed = 0
+            let observer = NotificationCenter.default.addObserver(forName: .init(spaceDataChangedNotificaitonName), object: nil, queue: nil) { _ in notifications += 1 }
+            session.onSettled = { _ in settled += 1 }
+            session.onCompleted = { _ in completed += 1 }
+            session.start(); h.flush(); h.finish(0); h.flush()
+            precondition(settled == 1 && completed == 1)
+            precondition(notifications == (publishes ? 1 : 0))
+            NotificationCenter.default.removeObserver(observer)
+        }
     }
     static func hdbCacheSettlesOnEveryExit() {
         for exit in 0..<3 {

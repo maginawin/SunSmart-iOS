@@ -59,6 +59,7 @@ extension Node {
 }
 enum TestSyncState { case inSync, syncSuccess, syncFailure }
 final class SyncExecutionSession {
+    var publishesCloudChange = true
     final class Environment { var configurationIsCurrent: () -> Bool = { true } }
     static var started: [SyncExecutionSession] = []
     let environment = Environment()

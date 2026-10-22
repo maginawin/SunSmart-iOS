@@ -21,6 +21,8 @@ sdk_getter = sdk_source[getter_start:sdk_source.index("    /// 是否完成基�
 
 def source(path):
     text = (ROOT / path).read_text()
+    if path.endswith("HDBDeviceAddCompletion.swift"):
+        text = text.split("/// Owns provisioning-to-HDB completion")[0]
     if path.endswith("HDBTestBoundaries.swift"):
         controller = (ROOT / "SunSmart/Main/Space/Controller/SpaceViewController.swift").read_text()
         start = controller.index("    func refreshSummaryCountsFromSpaceMesh()")

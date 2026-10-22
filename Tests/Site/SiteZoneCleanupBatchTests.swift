@@ -147,6 +147,8 @@ enum SpaceMembershipCoordinator {
     static func isLeaving(_ space: SpaceData) -> Bool { false }
 }
 final class CloudSynchronizationManager {
+    func isAddingDevices(to space: SpaceData) -> Bool { false }
+    func drainDeviceAddSynchronizations() {}
     let recoveryGate = PendingSynchronizationRecoveryGate()
     enum Level { case promptly }
     var uploads = 0

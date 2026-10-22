@@ -319,6 +319,7 @@ final class PendingSynchronizationRecoveryGate {
         let region: String
     }
     private var active: (token: UUID, scope: Scope)?
+    var isActive: Bool { active != nil }
 
     func begin(scope: Scope) -> UUID? {
         guard active?.scope != scope else { return nil }
@@ -334,6 +335,74 @@ final class PendingSynchronizationRecoveryGate {
     }
 }
 
+/// An in-memory scheduling boundary, never a recovery/submission record.
+/// A fresh launch therefore resumes durable dirty data through the ordinary recovery path.
+struct DeviceAddCloudScope {
+    let account = UserData.currentUserId
+    let region = String(describing: UserData.currentServerRegion)
+    let siteId: String
+    let spaceId: String
+    let meshUUID: String
+    let networkId: String
+
+    init(space: SpaceData) {
+        siteId = space.siteId; spaceId = space.id
+        meshUUID = space.meshUUID; networkId = space.meshNetworkId
+    }
+
+    var currentSpace: SpaceData? {
+        guard account == UserData.currentUserId,
+              region == String(describing: UserData.currentServerRegion),
+              let space = SpaceData.load(siteId: siteId, spaceId: spaceId).first,
+              space.meshUUID == meshUUID, space.meshNetworkId == networkId else { return nil }
+        return space
+    }
+
+    func contains(_ operation: SyncOperation) -> Bool {
+        switch operation {
+        case .syncSite(let site, _), .addSpaces(let site, _):
+            return site.id == siteId && site.meshUUID == meshUUID
+        case .syncSpace(let space):
+            return space.siteId == siteId && space.id == spaceId
+                && space.meshUUID == meshUUID && space.meshNetworkId == networkId
+        case .syncGateway: return false
+        }
+    }
+}
+
+private final class DeviceAddCloudAdmission {
+    let scope: DeviceAddCloudScope
+    var ready: ((Bool) -> Void)?
+    var preparing = false
+    init(scope: DeviceAddCloudScope, ready: @escaping (Bool) -> Void) {
+        self.scope = scope; self.ready = ready
+    }
+}
+
+private extension SyncOperation {
+    var configurationSiteMeshUUID: String? {
+        switch self {
+        case .syncSite(let site, _), .addSpaces(let site, _): return site.meshUUID
+        case .syncSpace(let space): return space.meshUUID
+        case .syncGateway: return nil
+        }
+    }
+    var configurationSiteId: String? {
+        switch self {
+        case .syncSite(let site, _), .addSpaces(let site, _): return site.id
+        case .syncSpace(let space): return space.siteId
+        case .syncGateway: return nil
+        }
+    }
+    var spacesForDeviceAdd: [SpaceData] {
+        switch self {
+        case .syncSite(_, let spaces), .addSpaces(_, let spaces): return spaces
+        case .syncSpace(let space): return [space]
+        case .syncGateway: return []
+        }
+    }
+}
+
 class CloudSynchronizationManager {
     
     static let shared = CloudSynchronizationManager()
@@ -346,6 +415,100 @@ class CloudSynchronizationManager {
     private var networkObservation: NSKeyValueObservation?
     private var foregroundObservation: NSObjectProtocol?
     private let recoveryGate = PendingSynchronizationRecoveryGate()
+    private var deviceAddAdmissions: [UUID: DeviceAddCloudAdmission] = [:]
+
+    func beginDeviceAdd(scope: DeviceAddCloudScope, ready: @escaping (Bool) -> Void) -> UUID {
+        precondition(Thread.isMainThread)
+        let token = UUID()
+        deviceAddAdmissions[token] = DeviceAddCloudAdmission(scope: scope, ready: ready)
+        for handle in syncHandles where handle.state.rawValue == CloudSynchronizationState.wait.rawValue
+            && !handle.isDeviceAddAdmission && handle.isCurrentDeviceAddContext && scope.contains(handle.operation) {
+            handle.deferForDeviceAdd()
+        }
+        coalesceDeviceAddWaits(siteId: scope.siteId)
+        DispatchQueue.main.async { self.drainDeviceAddSynchronizations() }
+        return token
+    }
+
+    func endDeviceAdd(token: UUID) {
+        precondition(Thread.isMainThread)
+        deviceAddAdmissions.removeValue(forKey: token)
+        drainDeviceAddSynchronizations()
+    }
+
+    func isAddingDevices(to space: SpaceData) -> Bool {
+        deviceAddAdmissions.values.contains { $0.scope.currentSpace != nil && $0.scope.contains(.syncSpace(space: space)) }
+    }
+
+    private func shouldDeferForDeviceAdd(_ operation: SyncOperation, excluding handle: CloudSynchronizationHandle? = nil) -> Bool {
+        if deviceAddAdmissions.values.contains(where: { $0.scope.currentSpace != nil && $0.scope.contains(operation) }) { return true }
+        // An already sent final upload is allowed to settle. Later edits form another generation.
+        return syncHandles.contains { other in
+            other !== handle && !other.isCoalesced && other.isCurrentDeviceAddContext
+                && ((other.serializesDeviceAdd && other.state.rawValue <= CloudSynchronizationState.inProgress.rawValue)
+                    || (handle?.serializesDeviceAdd == true && other.state.rawValue == CloudSynchronizationState.inProgress.rawValue))
+                && other.operation.configurationSiteId == operation.configurationSiteId
+                && operation.configurationSiteId != nil
+        }
+    }
+
+    private func coalesceDeviceAddWaits(siteId: String) {
+        let handles = syncHandles.filter { $0.isDeferredForDeviceAdd && !$0.isCoalesced
+            && $0.state.rawValue == CloudSynchronizationState.wait.rawValue
+            && $0.isCurrentDeviceAddContext && $0.operation.configurationSiteId == siteId }
+        guard let first = handles.first, let site = SiteData.load(siteId: siteId) else { return }
+        var spaces = first.operation.spacesForDeviceAdd
+        for handle in handles.dropFirst() {
+            for space in handle.operation.spacesForDeviceAdd where !spaces.contains(where: { $0.id == space.id }) { spaces.append(space) }
+            handle.isCoalesced = true
+            first.appendCallback { [handle] _, state in handle.receiveCoalescedState(state) }
+        }
+        first.operation = .syncSite(site: site, syncSpaces: spaces)
+    }
+
+    private func drainDeviceAddSynchronizations() {
+        precondition(Thread.isMainThread)
+        for (token, admission) in deviceAddAdmissions where admission.ready != nil && !admission.preparing {
+            guard !recoveryGate.isActive,
+                  !syncHandles.contains(where: { $0.isCurrentDeviceAddContext && admission.scope.contains($0.operation)
+                      && ($0.state.rawValue == CloudSynchronizationState.inProgress.rawValue
+                          || ($0.isDeviceAddAdmission && $0.state.rawValue == CloudSynchronizationState.wait.rawValue)) }) else { continue }
+            admission.preparing = true
+            _Concurrency.Task { @MainActor in
+                var allowed = admission.scope.currentSpace != nil
+                if let space = admission.scope.currentSpace, SpaceConfigurationSafety.hasPendingUpload(space) {
+                    // Reuse the entire recovery flow, including first-Site acceptance
+                    // and assigned address resources, before provisioning mutates it.
+                    if let site = SiteData.load(siteId: space.siteId) {
+                        allowed = await withCheckedContinuation { continuation in
+                            var completed = false
+                            self.enqueueSynchronization(operation: .syncSite(site: site, syncSpaces: [space]), level: .promptly,
+                                result: { state in
+                                    guard !completed, state.rawValue >= CloudSynchronizationState.successful.rawValue else { return }
+                                    completed = true
+                                    continuation.resume(returning: state.rawValue == CloudSynchronizationState.successful.rawValue)
+                                }, isDeviceAddAdmission: true)
+                        }
+                    } else { allowed = false }
+                }
+                guard self.deviceAddAdmissions[token] === admission else { return }
+                if let space = admission.scope.currentSpace {
+                    allowed = allowed && space.canEditing && SpaceMembershipCoordinator.allowsConfiguration(space)
+                        && !SpaceConfigurationSafety.isBlocked(space)
+                } else { allowed = false }
+                let ready = admission.ready; admission.ready = nil
+                ready?(allowed)
+            }
+        }
+        for handle in syncHandles where handle.isDeferredForDeviceAdd && !handle.isCoalesced {
+            guard case .wait = handle.state else { continue }
+            guard !shouldDeferForDeviceAdd(handle.operation, excluding: handle) else { continue }
+            guard handle.isCurrentDeviceAddContext, handle.reloadDeviceAddSnapshot() else { handle.cancel(); continue }
+            handle.level = .promptly
+            handle.isDeferredForDeviceAdd = false
+            handle.start()
+        }
+    }
 
     private init() {
         networkObservation = NetworkRequest.shared.observe(\.networkable, options: [.new]) { [weak self] _, _ in
@@ -366,7 +529,7 @@ class CloudSynchronizationManager {
             region: String(describing: UserData.currentServerRegion))
         guard let token = recoveryGate.begin(scope: scope) else { return }
         _Concurrency.Task { @MainActor in
-            defer { recoveryGate.finish(token: token) }
+            defer { recoveryGate.finish(token: token); drainDeviceAddSynchronizations() }
             func isCurrent() -> Bool {
                 recoveryGate.isCurrent(token: token)
                     && NetworkRequest.shared.networkable
@@ -402,7 +565,7 @@ class CloudSynchronizationManager {
                 let preparedSite = await SpaceSyncCleanupCoordinator.prepareBatch(
                     site: site, spaces: site.spaces, requiringSuccessfulPreparation: false, shouldContinue: isCurrent,
                     shouldPrepare: { space in
-                        self.getSpaceCurrentSyncState(space) == nil
+                        !self.isAddingDevices(to: space) && self.getSpaceCurrentSyncState(space) == nil
                             && !SpaceConfigurationSafety.hasPendingUpload(space)
                             && (space.needUploadCloud || SpaceConfigurationSafety.isBlocked(space))
                     }
@@ -417,7 +580,7 @@ class CloudSynchronizationManager {
                 guard let site = SiteData.load(siteId: siteId), site.state == .normal else { continue }
                 site.spaces = SpaceData.load(siteId: site.id)
                 let spaces = site.spaces.filter { space in
-                    (SpaceConfigurationSafety.canAutomaticallyUpload(space)
+                    !isAddingDevices(to: space) && (SpaceConfigurationSafety.canAutomaticallyUpload(space)
                         || SpaceConfigurationSafety.canResumePendingUpload(space))
                         && (space.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(space))
                         && (!SpaceConfigurationSafety.isBlocked(space) || SpaceConfigurationSafety.hasPendingUpload(space))
@@ -439,10 +602,34 @@ class CloudSynchronizationManager {
         level: SyncLevel,
         result stateCallback: ((CloudSynchronizationState) -> Void)? = nil
     ) -> CloudSynchronizationHandle {
-        
+        enqueueSynchronization(operation: operation, level: level, result: stateCallback)
+    }
+
+    @discardableResult
+    private func enqueueSynchronization(operation: SyncOperation, level: SyncLevel,
+        result stateCallback: ((CloudSynchronizationState) -> Void)?, isDeviceAddAdmission: Bool = false) -> CloudSynchronizationHandle {
+        guard Thread.isMainThread else {
+            return DispatchQueue.main.sync { self.enqueueSynchronization(operation: operation, level: level,
+                result: stateCallback, isDeviceAddAdmission: isDeviceAddAdmission) }
+        }
+        // Keep a single waiting handle and every caller's completion during a batch.
+        let deferred = !isDeviceAddAdmission && shouldDeferForDeviceAdd(operation)
+        if deferred, let pending = syncHandles.first(where: { $0.serializesDeviceAdd && !$0.isCoalesced && !$0.isDeviceAddAdmission
+            && $0.state.rawValue == CloudSynchronizationState.wait.rawValue
+            && $0.isCurrentDeviceAddContext && $0.operation.configurationSiteId == operation.configurationSiteId }),
+           let siteId = operation.configurationSiteId, let site = SiteData.load(siteId: siteId) {
+            var spaces = pending.operation.spacesForDeviceAdd
+            for space in operation.spacesForDeviceAdd {
+                if let index = spaces.firstIndex(where: { $0.id == space.id }) { spaces[index] = space }
+                else { spaces.append(space) }
+            }
+            pending.operation = .syncSite(site: site, syncSpaces: spaces)
+            if let stateCallback { pending.appendCallback { _, state in stateCallback(state) } }
+            return pending
+        }
         var addOperation = operation
         // 发现同一个同步操作
-        if let lastHandleIndex = syncHandles.firstIndex(where: { $0.operation == operation }) {
+        if !deferred && !isDeviceAddAdmission, let lastHandleIndex = syncHandles.firstIndex(where: { $0.operation == operation && !$0.isCoalesced }) {
             let lastHandle = syncHandles[lastHandleIndex]
             // 判断同一个site添加space则合并添加的spaces
             if case .addSpaces(let site, let spaces) = operation {
@@ -488,7 +675,22 @@ class CloudSynchronizationManager {
                     self.syncHandles.removeAll(where: { $0 == resultHandle })
                 }
             }
+            if state.rawValue >= CloudSynchronizationState.successful.rawValue {
+                DispatchQueue.main.async { self.drainDeviceAddSynchronizations() }
+            }
         })
+        handle.isDeviceAddAdmission = isDeviceAddAdmission
+        if isDeviceAddAdmission { handle.serializesDeviceAdd = true }
+        handle.mayStart = { [weak self, weak handle] in
+            guard let self, let handle else { return false }
+            if handle.isDeviceAddAdmission { return true }
+            if self.shouldDeferForDeviceAdd(handle.operation, excluding: handle) {
+                handle.deferForDeviceAdd()
+                return false
+            }
+            return true
+        }
+        if deferred { handle.deferForDeviceAdd() }
 //        DispatchQueue.global().async {
             self.mutex.sync {
                 self.syncHandles.append(handle)
@@ -589,10 +791,8 @@ class CloudSynchronizationManager {
     ///   - handle: 同步操作
     ///   - level: 等级
     func setSynchronizationHandleLevel(handle: CloudSynchronizationHandle, level: SyncLevel) {
+        guard case .wait = handle.state else { return }
         handle.level = level
-        handle.cancel()
-        // 重新开始
-        handle.start()
     }
     
     /// 根据sites数据获取当前同步状态
@@ -759,11 +959,59 @@ class CloudSynchronizationHandle: NSObject {
     typealias AsyncTask = _Concurrency.Task
     
     /// 操作类型
-    let operation: SyncOperation
+    fileprivate(set) var operation: SyncOperation
+    fileprivate var mayStart: (() -> Bool)?
+    fileprivate var isDeferredForDeviceAdd = false
+    fileprivate var isCoalesced = false
+    fileprivate var serializesDeviceAdd = false
+    fileprivate var isDeviceAddAdmission = false
+    private let account = UserData.currentUserId
+    private let region = String(describing: UserData.currentServerRegion)
+    private let siteMeshUUID: String?
+    private var deviceAddScopes: [DeviceAddCloudScope] = []
+
+    fileprivate var isCurrentDeviceAddContext: Bool {
+        guard account == UserData.currentUserId, region == String(describing: UserData.currentServerRegion),
+              deviceAddScopes.allSatisfy({ $0.currentSpace != nil }) else { return false }
+        if let siteId = operation.configurationSiteId, let siteMeshUUID {
+            return SiteData.load(siteId: siteId)?.meshUUID == siteMeshUUID
+        }
+        return true
+    }
+
+    fileprivate func deferForDeviceAdd() {
+        stopTimewait()
+        isDeferredForDeviceAdd = true
+        serializesDeviceAdd = true
+    }
+
+    fileprivate func appendCallback(_ callback: @escaping SyncHandleCallback) {
+        let previous = handleCallback
+        handleCallback = { handle, state in previous?(handle, state); callback(handle, state) }
+    }
+
+    fileprivate func receiveCoalescedState(_ state: CloudSynchronizationState) {
+        guard self.state.rawValue != CloudSynchronizationState.cancel.rawValue else { return }
+        self.state = state
+        handleCallback?(self, state)
+    }
+
+    fileprivate func reloadDeviceAddSnapshot() -> Bool {
+        guard let siteId = operation.configurationSiteId, let site = SiteData.load(siteId: siteId) else { return false }
+        let oldSpaces = operation.spacesForDeviceAdd
+        let spaces = oldSpaces.compactMap { old -> SpaceData? in
+            guard let latest = SpaceData.load(siteId: siteId, spaceId: old.id).first,
+                  latest.meshUUID == old.meshUUID, latest.meshNetworkId == old.meshNetworkId else { return nil }
+            return latest
+        }
+        guard spaces.count == oldSpaces.count else { return false }
+        operation = .syncSite(site: site, syncSpaces: spaces)
+        return true
+    }
     /// 等级
     var level: SyncLevel {
         didSet {
-            guard case .wait = state else {
+            guard case .wait = state, !isDeferredForDeviceAdd, !isCoalesced else {
                 return
             }
             startTimewait()
@@ -782,8 +1030,6 @@ class CloudSynchronizationHandle: NSObject {
     private var handleCallback: SyncHandleCallback?
     
     private var waitTimer: DispatchSourceTimer?
-    // 异步队列
-    private let asyncQueue = DispatchQueue(label: "com.example.asyncQueue", attributes: .concurrent)
     
     /// 初始化数据同步云端操作
     /// - Parameters:
@@ -792,8 +1038,10 @@ class CloudSynchronizationHandle: NSObject {
     ///   - callback: 状态回调
     init(operation: SyncOperation, level: SyncLevel, result: SyncHandleCallback?) {
         self.operation = operation
+        self.siteMeshUUID = operation.configurationSiteMeshUUID
         self.level = level
         self.handleCallback = result
+        self.deviceAddScopes = operation.spacesForDeviceAdd.map(DeviceAddCloudScope.init)
     }
     
     deinit {
@@ -802,6 +1050,8 @@ class CloudSynchronizationHandle: NSObject {
     
     /// 开始
     func start() {
+        precondition(Thread.isMainThread)
+        guard case .wait = state, !isCoalesced, mayStart?() != false else { return }
 //        state = .wait
 //        state = .inProgress
 //        handleCallback?(self, state)
@@ -859,7 +1109,9 @@ class CloudSynchronizationHandle: NSObject {
             stopTimewait()
         }
         // 创建定时器
-        let timer = DispatchSource.makeTimerSource(queue: asyncQueue)
+        // Admission, timer firing and mutations share the main queue. A queued timer
+        // cannot cross a batch registration between its gate check and request start.
+        let timer = DispatchSource.makeTimerSource(queue: .main)
         timer.schedule(deadline: .now() + level.interval, repeating: .infinity)
         timer.setEventHandler { [weak self] in
             self?.syncOperation()
@@ -965,6 +1217,9 @@ class CloudSynchronizationHandle: NSObject {
 
     /// 开始同步到服务器
     func syncOperation() {
+        precondition(Thread.isMainThread)
+        guard case .wait = state, !isCoalesced, mayStart?() != false else { return }
+        guard isCurrentDeviceAddContext else { finishInvalidatedConfiguration(); return }
         if waitTimer != nil {
             stopTimewait()
         }
@@ -1034,6 +1289,9 @@ class CloudSynchronizationHandle: NSObject {
         }
         configurationUploadTask?.cancel()
         configurationUploadTask = AsyncTask { @MainActor in
+            guard self.isCurrentDeviceAddContext, !_Concurrency.Task<Never, Never>.isCancelled else {
+                self.finishInvalidatedConfiguration(); return
+            }
             let account = UserData.currentUserId
             let region = UserData.currentServerRegion
             let lifecycle = Dictionary(self.configurationSpaces.compactMap { space -> (String, SpaceRecoveryState)? in
