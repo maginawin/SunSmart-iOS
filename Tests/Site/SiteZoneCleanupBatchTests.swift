@@ -79,10 +79,21 @@ final class Node {
     let uuid = UUID(), primaryUnicastAddress: UInt16 = 16
     var groupState = State.normal, group: Group?
     var elements = [0, 1]
+    var cacheInvalidations = 0
+    func clearSyncStateCache() { cacheInvalidations += 1 }
 }
 final class MeshNetwork {
+    var uuid = UUID()
     var nodes: [Node] = [], groups: [Group] = []
     var valid = true, destructive = false
+}
+enum NodeSyncStatusGeneration {
+    static var invalidations = 0
+    static func invalidate() { invalidations += 1 }
+}
+final class MeshNetworkManager {
+    static let instance = MeshNetworkManager()
+    var meshNetwork: MeshNetwork?
 }
 enum ProximityLightingTopologyContext {
     static var networks: [String: MeshNetwork] = [:], loads: [String: Int] = [:]
@@ -212,6 +223,8 @@ enum SiteZoneCleanupBatchTests {
     }
     static func settle() async { try? await Task.sleep(nanoseconds: 20_000_000) }
     static func reset(count: Int = 4, references: Int = 3) throws -> SiteData {
+        NodeSyncStatusGeneration.invalidations = 0
+        MeshNetworkManager.instance.meshNetwork = nil
         UserData.currentUserId = "account"; UserData.currentServerRegion = .first
         SunSmartDataManager.shared.db = try Connection(.inMemory)
         try SiteExtensionStore.createTable()
@@ -246,6 +259,7 @@ enum SiteZoneCleanupBatchTests {
         try! SiteExtensionStore.load(site).referenceCleanupRequests?[account]
     }
     static func main() async throws {
+        try testStoreCacheInvalidation()
         try await testCountsAndExports()
         try await testPreparationFailureGatesUpload()
         try await testPersistenceAndFailures()
@@ -255,6 +269,36 @@ enum SiteZoneCleanupBatchTests {
         try await testPendingReadbackBeforeCleanup()
         try await testSitePendingAfterReadback()
         print("PASS: production batch/three entries, SQLite restart, read counts, conservative cleanup, failure/cancellation, scope and overlapping ownership")
+    }
+
+    static func testStoreCacheInvalidation() throws {
+        _ = try reset(count: 0, references: 0)
+        let network = MeshNetwork(), node = Node()
+        network.nodes = [node]
+        MeshNetworkManager.instance.meshNetwork = network
+        let site = SiteData(network.uuid.uuidString)
+        try SiteExtensionStore.update(site) { $0.data.replaceZones([]) }
+        require(NodeSyncStatusGeneration.invalidations == 0 && node.cacheInvalidations == 0,
+                "ordinary Zone writes do not invalidate HDB type caches")
+        try SiteExtensionStore.update(site) { $0.data.isHdbSite = true }
+        require(NodeSyncStatusGeneration.invalidations == 1 && node.cacheInvalidations == 1,
+                "a persisted HDB type change invalidates the matching active network")
+        let db = SunSmartDataManager.shared.db!
+        try db.run("CREATE TRIGGER fail_type BEFORE INSERT ON site_extensions BEGIN SELECT RAISE(ABORT, 'test failure'); END")
+        do {
+            try SiteExtensionStore.update(site) { $0.data.isHdbSite = false }
+            preconditionFailure("failed persistence was accepted")
+        } catch {}
+        let persisted = try SiteExtensionStore.load(site)
+        require(persisted.data.isHdbSite && site.siteExtensionData.isHdbSite
+                && NodeSyncStatusGeneration.invalidations == 1 && node.cacheInvalidations == 1,
+                "rollback preserves stored and in-memory type without premature cache invalidation")
+        try db.run("DROP TRIGGER fail_type")
+        let otherSite = SiteData(UUID().uuidString)
+        try SiteExtensionStore.update(otherSite) { $0.data.isHdbSite = true }
+        require(NodeSyncStatusGeneration.invalidations == 2 && node.cacheInvalidations == 1,
+                "another Site change must not clear the active network's node cache")
+        print("PASS: real Site Store type changes, cache scope and SQLite rollback")
     }
 
     static func testSitePendingAfterReadback() async throws {
@@ -358,6 +402,7 @@ enum SiteZoneCleanupBatchTests {
             let site = try reset(count: count, references: references)
             let current = await SpaceSyncCleanupCoordinator.prepareBatch(site: site, spaces: site.spaces)
             require(current != nil && CleanupFixture.prepared.count == count, "Batch prepares each Space")
+            require(NodeSyncStatusGeneration.invalidations == 0, "ordinary batch cleanup does not change the HDB type generation")
             require(ProximityLightingTopologyContext.loads.count == references
                 && ProximityLightingTopologyContext.loads.values.allSatisfy { $0 == 1 }, "One classifier inventory per referenced Space")
             require(request(site) == nil, "Completed batch clears recovery")

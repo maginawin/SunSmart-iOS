@@ -1,4 +1,6 @@
-# HDB Lighting Zones：App 与服务器技术契约及实施核对
+# 已归档：HDB Lighting Zones 早期 App/服务器技术摘要
+
+> 2026-10-22 归档：全文为历史快照，不再作为当前字段、执行顺序或验收结果的依据。当前对接请使用 [HDB 数据契约](261022_1116_HDB_device_model_arrays_plan.md)、[有效 JSON 示例](261021_1806_HDB_unicast_example.json) 和 [网关命令清单](261022_0945_HDB_site_configuration_commands.md)。下文的“当前”均指记录当时；其中可空 MAC、旧 Zone/Broadcast 配置和旧阶段顺序已失效，JSON 不能用于当前导入。
 
 更新：2026-10-21 16:12（Asia/Singapore）；补充 §4.2 Model/element 订阅表与多实例 Generic OnOff 的区别。
 

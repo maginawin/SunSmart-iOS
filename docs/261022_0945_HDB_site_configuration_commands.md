@@ -1,5 +1,7 @@
 # HDB 网关配置任务
 
+当前字段、必填规则和完整示例见 [HDB 数据契约](261022_1116_HDB_device_model_arrays_plan.md)。Zone Set 使用设备记录中的三个 Model 清单；下文筛选范围用于核对清单，不要求网关重新推导 SDK 的关联模型。
+
 Element 按设备 Composition 选择；“所有 Elements”包含 Primary Element，同类 Model 的全部实例均需处理。Vendor Model：Company ID=`0x0A78`，Model ID=`0x0001`。
 
 Config 命令发送到设备 Primary Address，参数指定目标 Element Address 和 Model ID；灯光控制命令按下文指定地址发送。配置任务等待成功 ACK 后继续，失败停止当前设备任务。
@@ -54,29 +56,25 @@ Config 命令发送到设备 Primary Address，参数指定目标 Element Addres
 
 执行顺序：**Delete All → Broadcast → Sensor Group → Add Zones**。全部 Delete All 成功后才能开始 Add；重试从 Delete All 重新执行。
 
-Zone Models 为所有 Elements 下的以下全部实例（设备须具备这五类）：
+开始 Delete All 前，核对设备身份、权限、AppKey/Model 绑定、任务占用，以及 `zoneModels`、`broadcastModels`、`sensorGroupModels` 与 Composition 的一致性。目标 Zone 必须存在且不超过 8 个；`broadcastId` 必须为 65277；`sensorGroupId` 非空时必须是有效、无冲突的 Sensor Group 地址且接收清单非空。任一项失败，不发送 Delete All。
 
-- Generic OnOff Server `0x1000`。
-  - 只需要 Primary element 中的 Generic OnOff Server 
+Zone Models 即 `zoneModels`，设备须具备以下五类；在所列范围内收录全部实例：
 
-- Light Lightness Server `0x1300`。
-  - 所有 Elements
-
-- Light LC Server `0x130F`。
-  - 所有 Elements
-
-- Light LC Setup Server `0x1310`。
-  - 所有 Elements
-
-- Vendor Model `0x0A78 / 0x0001`。
-  - 只需要 Primary element 中的 Vendor Model 
-
+| Model | Element 范围 |
+| --- | --- |
+| Generic OnOff Server `0x1000` | 仅 Primary |
+| Light Lightness Server `0x1300` | 所有 Elements，包括 Primary |
+| Light LC Server `0x130F` | 所有 Elements，包括 Primary |
+| Light LC Setup Server `0x1310` | 所有 Elements，包括 Primary |
+| Vendor `0x0A78 / 0x0001` | 仅 Primary |
 
 ### 2.1 Delete All
 
-- 对全部 Zone Models 发送 `ConfigModelSubscriptionDeleteAll`。
+- 遍历 `zoneModels`，对每项指定的 Element/Model 发送 `ConfigModelSubscriptionDeleteAll`。全部成功后继续。
 
 ### 2.2 Broadcast：订阅 `0xFEFD`
+
+`broadcastModels=[]`：跳过本节。否则遍历 `broadcastModels`，向每项指定的 Element/Model 发送 `ConfigModelSubscriptionAdd(broadcastId)`，即 Add(65277)，全部成功后继续。清单由 App 按以下范围生成：
 
 - 遍历所有包含 `0x130F` 的非 Primary Elements。
   - 向其中的 `0x130F` 发送 `ConfigModelSubscriptionAdd(0xFEFD)`。
@@ -96,21 +94,23 @@ Zone Models 为所有 Elements 下的以下全部实例（设备须具备这五�
 - **色温不受影响示例**：该 Element 只有 `0x1306` 和 `0x1002`，没有连接到 Zone Models 的扩展关系，本轮 Delete All 不影响它。
 - **跨 Element**：当前 SDK 将 `0x130F` 关联到前面最近一个包含 `0x1300` 的 Element 中的该 Model，但标准订阅表仍按 Element 分开；不能由扩展关系推导跨 Element 的订阅表也共享。
 
-**HDB 实现区别**：App 在 Delete All 成功后，额外清除整条扩展链的本地订阅缓存，包括其他 Elements；源码注释将此归因于 HDB 固件行为。这不是上述标准共享规则，本次未以设备读回验证。网关复现当前 App 任务时，按整条链计算恢复目标；判断固件是否确实跨 Element 清除，须以设备读回为准。
+**HDB 实现区别**：App 在 Delete All 成功后，额外清除整条扩展链的本地订阅缓存，包括其他 Elements；源码注释将此归因于 HDB 固件行为。这不是上述标准共享规则，本次未以设备读回验证。App 已将本轮恢复目标写入 `broadcastModels`，网关直接执行该清单；判断固件是否确实跨 Element 清除，须以设备读回为准。
 
 ### 2.3 订阅 `sensorGroupId`
 
-- 设备有 Sensor Server：必须已有 `sensorGroupId`。
-  - 遍历所有包含 `0x130F` 的 Elements，包括 Primary Element。
-  - 向其中的 `0x130F` 发送 `ConfigModelSubscriptionAdd(sensorGroupId)`。
-  - 同一 Element 内如果有 `0x1000`、`0x1310`，也分别发送该订阅命令。
-- 没有 Sensor Server：跳过本节。
+`sensorGroupId=null`：跳过本节。即使设备存在 Sensor Server，或 `sensorGroupModels` 非空，也不在 Zone Set 中分配地址或拒绝该合法空值。
+
+地址非空：遍历 `sensorGroupModels`，向每项指定的 Element/Model 发送 `ConfigModelSubscriptionAdd(sensorGroupId)`，全部成功后继续。该清单包含所有 LC 所在 Elements（包括 Primary）的 `0x130F`，以及同 Element 实际存在的 `0x1000`、`0x1310`，不含 Sensor Server `0x1100`。
+
+添加设备时的地址分配、Sensor Server 订阅和 Presence publication 仍按 §1 Preparation 执行，其就绪检查与本节空地址语义分别处理。
 
 ### 2.4 Add Zones
 
 - 按所选 `zoneId` 查询实际 `groupAddress`。
-- 对每个 `groupAddress`，向全部 Zone Models 发送 `ConfigModelSubscriptionAdd(groupAddress)`。
+- 对每个 `groupAddress`，遍历 `zoneModels`，向每项指定的 Element/Model 发送 `ConfigModelSubscriptionAdd(groupAddress)`。
 - 每台设备最多选择 8 个 Zone；选择为空时，仅执行前面的 Delete All 和保留地址恢复。
+
+全部实际需要的阶段收到成功 ACK 并完成保存后，才将 `lightingZonesStatus` 记为 synced。失败、超时、取消或保存失败保持 pending；重试从 Delete All 开始，旧任务迟到的 ACK 不得确认新任务。
 
 ## 3. Auto / Force On / Force Off
 

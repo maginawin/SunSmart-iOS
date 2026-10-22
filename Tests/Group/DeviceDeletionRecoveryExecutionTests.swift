@@ -34,6 +34,27 @@ enum XWHUDManager {
 }
 
 extension ScopedImportTests {
+    static func testHDBCleanupBoundary() throws {
+        defer { HDBConfigurationStore.reset() }
+        let outcomes: [Result<Bool, Error>] = [.success(false), .success(true), .failure(HDBConfigurationError.persistenceFailed)]
+        for (index, outcome) in outcomes.enumerated() {
+            HDBConfigurationStore.reset()
+            HDBConfigurationStore.finishResult = outcome
+            HDBConfigurationStore.pendingResult = .success([0xC040])
+            let current = try fixture(networkId: "HDB-CLEANUP-\(index)")
+            activate(current)
+            let context = DevicePermanentDeletionContext(node: current.nodes[0], space: current.space)
+            current.network.remove(node: current.nodes[0])
+            require(context.commit() != nil, "ordinary deletion finishes independently of deferred Sensor reclamation")
+            require(HDBConfigurationStore.finishCalls == [current.space.id], "deletion delegates Sensor cleanup to the target Space")
+            DevicePermanentDeletionContext.showCompletion(space: current.space)
+            require(XWHUDManager.lastMessage == "configuration_deletion_cleanup_pending", "remaining Sensor references must keep completion pending")
+            HDBConfigurationStore.pendingResult = .success([])
+            DevicePermanentDeletionContext.showCompletion(space: current.space)
+            require(XWHUDManager.lastMessage == "done!", "completion follows the refreshed pending-address result")
+        }
+    }
+
     @MainActor
     static func testBatchDeletionCleanup() async throws {
         // Same batch size as the incident, with one surviving PA member. This

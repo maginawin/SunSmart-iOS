@@ -1,5 +1,7 @@
 # HDB 初始化、配置结构与统一同步
 
+> 本文保留历史阶段的设计和验证记录。当前数据结构、Model 范围与四阶段顺序见 [HDB 数据契约](261022_1116_HDB_device_model_arrays_plan.md)，命令见 [网关清单](261022_0945_HDB_site_configuration_commands.md)；下文旧结构和“已落地”均只描述记录当时。
+
 更新时间：2026-10-21。用户已确认本方案，App 实施、相关回归与 SunSmart 编译已完成。真机、服务器往返和其他品牌构建不在本轮已通过范围内。
 
 工作树：`feat-HDB-261020`，分支 `feat/HDB-261020`，基线 `d04d226e`。保留未提交改动，不提交、推送或操作真机。仅修改 App；SDK、固件、服务器未修改。
@@ -31,11 +33,13 @@ HDB Configuration 不再展示独立 Preparation 任务。需要恢复时进入�
 
 删除 HDB 中的 `sensorGroups`、`devices[].preparation`、根级 `lightingConfiguration`；删除配置的 `values/results` 两层和 `basis/revision/source`。不增加旧 HDB 格式兼容或迁移。
 
-最新示例由生产 Codable 和 HDB 校验器验证；旧快照保留用于历史对照：
+以下样本仅用于历史对照，均不符合当前契约，不能用于当前导入：
 
-- [改动前配置快照](261021_1154_HDB_current_demo.json)：保留旧成员结构，不再适用于当前 schema。
-- [已确认的配置示例](261021_1154_HDB_proposed_demo.json)：保留先前文件名，内容与当前结构一致。
-- [初始化完成及部分完成示例](261021_1154_HDB_proposed_initial_demo.json)：Zone 和 broadcast 均为 `null`，设备保留默认值和逐字段完成状态。
+- [改动前配置快照](archive/hdb/261021_1154_HDB_current_demo.json)：旧成员结构。
+- [旧方案配置示例](archive/hdb/261021_1154_HDB_proposed_demo.json)：历史已确认结构，已被替代。
+- [旧初始化及部分完成示例](archive/hdb/261021_1154_HDB_proposed_initial_demo.json)：保留历史 Zone/Broadcast 作用域及设备字段状态。
+
+当前有效样本为 [完整 HDB 对象示例](261021_1806_HDB_unicast_example.json)，由当前生产 Codable 和 Policy 回归校验。
 
 文件根对象就是 `spaceData.hdb`，不包含外层 Mesh `groups/nodes/keys`，不能当作完整 Site 备份导入。全部为合成数据，不包含真实设备或密钥。示例 Zone 地址为 0xC001～0xC03F，Sensor 地址为 49216（0xC040）；无 Sensor 的设备为 `null`。
 

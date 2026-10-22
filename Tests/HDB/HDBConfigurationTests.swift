@@ -132,7 +132,7 @@ import Foundation
         }
         let models = [target(10, 0x1000), target(10, 0x1300), target(10, 0x0A780001),
                       target(11, 0x1000), target(11, 0x1300), target(11, 0x130F), target(11, 0x1310), target(11, 0x0A780001),
-                      target(12, 0x1000), target(12, 0x1310), target(12, 0x1234130F)]
+                      target(12, 0x1000), target(12, 0x1310), target(12, 0x1234130F), target(12, 0x1100)]
         let zones = try HDBLightingZonePolicy.requiredZoneTargets(from: models, primaryAddress: 10)
         precondition(Set(zones) == Set([models[0], models[1], models[2], models[4], models[5], models[6], models[9]]))
         precondition(try! HDBLightingZonePolicy.requiredTargets(from: models).contains(models[7]), "Preparation retains secondary Vendor")
@@ -148,12 +148,25 @@ import Foundation
         device.broadcastModels = sensors.map(HDBModelReference.init)
         let root = HDBConfiguration(devices: [device])
         let ops = try HDBLightingZonePolicy.operations(for: device, in: root, targets: models, broadcastTargets: sensors)
-        precondition(ops.map(\.stage) == [.reset, .broadcast], "nil sensorGroupId skips Sensor even with a nonempty model list")
+        precondition(ops.map(\.stage) == [.reset, .broadcast], "nil sensorGroupId skips Sensor even with a Sensor Server and nonempty receiver list")
         precondition(ops[1].subscriptions.allSatisfy { $0.address == 65277 } && ops[1].isLast)
+        var withZone = root
+        withZone.lightingZones = [.init(zoneId: 1, name: "One", groupAddress: 0xC001)]
+        withZone.devices[0].lightingZones = [.init(zoneId: 1)]
+        let zoneOps = try HDBLightingZonePolicy.operations(for: withZone.devices[0], in: withZone, targets: models, broadcastTargets: sensors)
+        precondition(zoneOps.map(\.stage) == [.reset, .broadcast, .add], "Sensor Server without an address must not block selected Zones")
+        precondition(zoneOps.last!.subscriptions.allSatisfy { $0.address == 0xC001 } && zoneOps.last!.isLast)
         var withSensor = root; withSensor.devices[0].sensorGroupId = 0xC040
         let sensorOps = try HDBLightingZonePolicy.operations(for: withSensor.devices[0], in: withSensor, targets: models, broadcastTargets: sensors)
         precondition(sensorOps.map(\.stage) == [.reset, .broadcast, .sensor])
         precondition(sensorOps.last!.subscriptions.allSatisfy { $0.address == 0xC040 })
+        for address: UInt16 in [0, 0xBFFF, 0xFEFD, 0xFFFF] {
+            var invalid = root; invalid.devices[0].sensorGroupId = address
+            do {
+                _ = try HDBLightingZonePolicy.operations(for: invalid.devices[0], in: invalid, targets: models, broadcastTargets: sensors)
+                preconditionFailure("invalid Sensor address accepted before Reset")
+            } catch HDBConfigurationError.invalidData {}
+        }
         let raw = try JSONSerialization.jsonObject(with: JSONEncoder().encode(device)) as! [String: Any]
         let wire = raw["zoneModels"] as! [[String: Any]]
         precondition(wire.contains { $0["modelId"] as? UInt32 == 175636481 })

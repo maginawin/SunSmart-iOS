@@ -1,6 +1,8 @@
-# HDB 设备 Model 数组与 Zone 配置方案
+# HDB 数据契约与设备 Model 数组配置
 
 日期：2026-10-22。状态：已按确认方案完成 App 实现、相关离线回归与 SunSmart Debug generic iOS 构建；真实设备及外部联调待验收。
+
+本文是当前 HDB 数据对接入口；完整 JSON 见 [有效示例](261021_1806_HDB_unicast_example.json)，配置命令和参数见 [网关执行清单](261022_0945_HDB_site_configuration_commands.md)。早期摘要和旧 demo 已归档，不适用于当前格式。
 
 ## 1. 结论与范围
 
@@ -15,6 +17,47 @@
 - Preparation 的其他固定参数、Sensor Server 订阅与 publication 不属于本次 Set Lighting Zones 四阶段，继续各自执行。
 
 ## 2. JSON 契约
+
+### 完整对象与必填字段
+
+HDB 对象位于单份 Space payload 的 `spaceData.hdb`。Site 上传时该 Space 位于 `site.spaces[]`，单 Space 上传时位于请求的 `spaces[]`；不要把业务层级 `site.space.spaceData.hdb` 当成固定 HTTP 字段路径。
+
+除 `devices[].lightingConfiguration` 可省略或为 null 外，下表字段均须存在；数组没有条目时写 `[]`。整个 `hdb` 缺失表示未提供 HDB 配置；已有 `hdb` 却为 null、损坏或缺必填字段时拒绝读取，不能当空配置保存。
+
+| 字段 | 类型与约束 |
+| --- | --- |
+| `schemaVersion` | 整数 `1`；不是 Space 更新时间，也不能据此识别历史 HDB 结构 |
+| `lightingZones` | Space 目录数组；新建 HDB Space 预建 63 个，目录与设备选择分别存储 |
+| `lightingZones[].zoneId` | 整数 1–63，Space 内唯一 |
+| `lightingZones[].name` | 非空字符串 |
+| `lightingZones[].groupAddress` | 唯一的整数地址；读取允许 `0xC000...0xFEFC`，新分配使用 `0xC001...0xFEFC`；不按 zoneId 推算地址 |
+| `devices` | 设备数组；UUID 和主单播地址分别唯一 |
+| `devices[].nodeUuid` | UUID 字符串，与同快照 Node 身份一致 |
+| `devices[].nodeAddress` | 整数 1–32767，设备 Primary Address |
+| `devices[].mac` | 非空、大写、冒号分隔的六字节 MAC，例如 `AA:BB:CC:DD:EE:FF`；null、缺字段、非规范字符串均拒绝 |
+| `devices[].lightingZones` | 0–8 个 `{ "zoneId": 整数 }`，不重复且引用本 Space 目录；是完整目标列表 |
+| `devices[].lightingZonesStatus` | `pending` 或 `synced`；包括空目标在内的整设备 Zone 任务状态 |
+| `devices[].sensorGroupId` | 整数 `0xC001...0xFEFC` 或显式 null；非空时设备间不重复、不与 Zone 地址冲突；分配还须使用全 Site 地址池 |
+| `devices[].zoneModels` | 必填数组；条目为整数 `elementAddress` 和 `modelId`，筛选规则见下文 |
+| `devices[].sensorGroupModels` | 必填数组；由 Composition 生成，与地址是否已分配无关 |
+| `devices[].broadcastModels` | 必填数组；本次 Reset 后必须恢复 Broadcast 的目标 |
+| `devices[].broadcastId` | 必填整数 `65277`（`0xFEFD`），即使恢复清单为空也保留 |
+| `devices[].lightingConfiguration` | 单设备字段配置对象或 null；当前导出保留该键；各参数为 `{ "status": "pending或synced", "value": 值 }` |
+
+Lighting Configuration 只存于设备：不再输出根级 `broadcast`、根级 `lightingConfiguration` 或 `lightingZones[].lightingConfiguration`，不保留这些旧作用域的读写或迁移。解码器忽略未知键不表示会保存这些旧字段；服务端不得依赖旧字段往返保真。
+
+| Lighting Configuration 字段 | value 类型、范围和新设备默认值 |
+| --- | --- |
+| `lightingControl` | 字符串 `Auto` / `Force_On` / `Force_Off`；默认 `Auto` |
+| `failsafeDelay` | 整数 0–250；默认 5；当前仅保存业务值，不生成设备计时消息 |
+| `dimIntensity` / `brightIntensity` | 整数百分比 0–50 / 50–100；默认 20 / 80 |
+| `rampUpTime` / `rampDownTime` | 整数秒 1–3；默认 1 / 2 |
+| `holdTime` | 整数秒 10–3600；默认 30 |
+| `installDate` | 严格 `dd-MM-yyyy` 字符串；默认未设置；仅保存业务值，不发送设备命令 |
+
+`lightingZonesStatus=synced` 要求本轮全部必要 ACK 和最终保存成功。失败、取消、中断或最终保存失败保持 pending，供整轮重试。Lighting Configuration 中设备下发字段由相应 ACK 确认，`failsafeDelay`、`installDate` 保存即完成；这些状态均不代表云上传成功、设备实时状态或真实运行验收。
+
+### Model 清单通用规则
 
 新增 `spaceData.hdb.devices[].zoneModels`、`spaceData.hdb.devices[].sensorGroupModels`、`spaceData.hdb.devices[].broadcastModels`，以及同级的 `broadcastId`。三个数组每项只包含整数 `elementAddress`、`modelId`，表示命令目标，不表示设备当前订阅结果。
 
@@ -82,36 +125,67 @@ broadcastId 固定为 65277（0xFEFD）。broadcastModels 表示 **本次 Zone D
 
 当前 HDB Reset 的本地缓存处理包含跨 Element 扩展链。目标生成复用现有机制并覆盖相关回归，不把缓存联动等同于固件已验证行为。Web/网关直接执行 App 提供的清单，不需要重新推导 SDK 的 relatedModels。
 
-### 示例片段
+### 完整 HDB 对象示例
 
-设备 Primary=256，包含 OnOff、Lightness、Vendor；Element=257 包含 OnOff、LC、LC Setup：
+以下合成设备 Primary=256，包含 OnOff、Lightness、Vendor；Element=257 包含 OnOff、LC、LC Setup，Element=258 可包含 Sensor Server。地址尚未分配，`sensorGroupId=null`，Zone Set 跳过 Sensor 阶段。目录为便于阅读仅列一个 Zone。
 
+<!-- hdb-complete-example -->
 ```json
 {
-  "nodeAddress": 256,
-  "zoneModels": [
-    { "elementAddress": 256, "modelId": 4096 },
-    { "elementAddress": 256, "modelId": 4864 },
-    { "elementAddress": 256, "modelId": 175636481 },
-    { "elementAddress": 257, "modelId": 4879 },
-    { "elementAddress": 257, "modelId": 4880 }
+  "schemaVersion": 1,
+  "lightingZones": [
+    { "zoneId": 1, "name": "Zone 1", "groupAddress": 49153 }
   ],
-  "sensorGroupModels": [
-    { "elementAddress": 257, "modelId": 4096 },
-    { "elementAddress": 257, "modelId": 4879 },
-    { "elementAddress": 257, "modelId": 4880 }
-  ],
-  "sensorGroupId": 49216,
-  "broadcastModels": [
-    { "elementAddress": 257, "modelId": 4096 },
-    { "elementAddress": 257, "modelId": 4879 },
-    { "elementAddress": 257, "modelId": 4880 }
-  ],
-  "broadcastId": 65277
+  "devices": [
+    {
+      "nodeUuid": "11111111-1111-4111-8111-111111111111",
+      "nodeAddress": 256,
+      "mac": "AA:BB:CC:DD:EE:FF",
+      "lightingZones": [{ "zoneId": 1 }],
+      "lightingZonesStatus": "pending",
+      "sensorGroupId": null,
+      "zoneModels": [
+        { "elementAddress": 256, "modelId": 4096 },
+        { "elementAddress": 256, "modelId": 4864 },
+        { "elementAddress": 256, "modelId": 175636481 },
+        { "elementAddress": 257, "modelId": 4879 },
+        { "elementAddress": 257, "modelId": 4880 }
+      ],
+      "sensorGroupModels": [
+        { "elementAddress": 257, "modelId": 4096 },
+        { "elementAddress": 257, "modelId": 4879 },
+        { "elementAddress": 257, "modelId": 4880 }
+      ],
+      "broadcastModels": [
+        { "elementAddress": 257, "modelId": 4096 },
+        { "elementAddress": 257, "modelId": 4879 },
+        { "elementAddress": 257, "modelId": 4880 }
+      ],
+      "broadcastId": 65277,
+      "lightingConfiguration": null
+    }
+  ]
 }
 ```
 
-这是 devices 单项的相关字段片段，省略其他已有必填字段。
+该对象可作为 `spaceData.hdb` 的值，不是完整 Space 导入包。带 63 个 Zone 和逐字段配置的样本见 [完整示例文件](261021_1806_HDB_unicast_example.json)；两个示例均纳入 `check_hdb_configuration.py` 的生产解码、校验及往返验证。
+
+### Space 快照与 HTTP 对接
+
+完整 Space 必须带同版本的 `spaceData.hdb`、`groups`、`nodes` 和正常 Mesh 数据。Zone 地址引用非 virtual Group；非空 Sensor 地址引用 `isVirtual=true` 的 Group。此标记是 App/SDK 的用途分类，Sensor 地址本身仍是普通组地址，不是 Label UUID。Node UUID、Primary Address、Model 清单必须相符；读取到有效 Node MAC 时还须与 HDB MAC 一致。HDB 内地址/Model 是整数，SDK `groups[].address`、`nodes[].unicastAddress`、Model 标识使用其原十六进制字符串格式，不能混换。
+
+以下为区域 baseURL 后的现有 App 接口，方法均为 **POST**：
+
+| 用途 | 路径 | 请求结构 |
+| --- | --- | --- |
+| 上传 Site 与 Spaces | `/sitespace/sync/siteprops` | `site`（其中 `spaces[]` 为 Space payload）、`user`；新 Site 另带 `devicesInSetle` |
+| 上传单 Space | `/sitespace/sync/spaceprops` | `siteId`、`spaceId`、`spaces: [SpacePayload]`、`userId` |
+| 读取基线及上传后回读 | `/sitespace/get/spaceprops` | `siteId`、`spaceId`、`passwd`、`userId`；响应 `data` 为 Space payload |
+| 申请地址 | `/sitespace/address/claim` | `siteId`、`addrType`、`number`、`userId`；App 消费返回的 `provisioner` 地址资源 |
+
+保存和回读须保留全部目标、显式 null、空数组、三个 Model 清单、固定 broadcastId 和设备/字段状态，不能过滤 pending 或由服务器改写为 synced。App 保存后按既有机制排队同步，导出提交快照，回读比较后只确认该提交版本；期间新增本地修改仍待上传。HTTP 200 或 Mesh ACK 均不能单独替代该回读确认。
+
+当前未承诺未知字段经旧 App 解码/编码后仍保留，也不提供旧 HDB 结构迁移。服务端地址分配并发保证、跨客户端写入一致性及完整字段往返须由服务端团队联调确认；本契约不表示外部实现已完成。
 
 ## 3. Set Lighting Zones：完整执行约定
 

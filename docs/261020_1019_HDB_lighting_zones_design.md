@@ -1,5 +1,7 @@
 # HDB Configuration：Lighting Zones 设计与实施记录
 
+> 历史设计与验证记录，保留当时结论。2026-10-22 起的数据契约和四阶段执行规则以 [当前契约](261022_1116_HDB_device_model_arrays_plan.md) 为准，命令见 [执行清单](261022_0945_HDB_site_configuration_commands.md)；下文旧成员格式、作用域、顺序和“当前”描述不作为最新对接依据。
+
 - 更新：2026-10-21 15:57；已按用户要求补充第 4 节并实施 FEFD → Sensor → Lighting Zones 的共享计划修复，避免覆盖 FEFD 后被 SDK `isKeybindComplete` 阻断。当前契约见第 4/21 节，根因见第 20 节，本轮验证见第 21.6 节。相关自动回归及 SunSmart generic iOS Debug 构建通过；真机与云端运行验收待用户执行。
 - 本轮基线：`feat/HDB-261020`，HEAD `215fe00662d52d7c41d2693e20c999d82914d16b`。除已更新的第 4 节外，第 1–20 节保留历史设计、实施、验证与故障记录；第 19 节 Sensor 优先方案由第 4/21 节 FEFD 优先规则补充修正。未提交或推送。
 - 本地 SDK：`/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk-worktrees/one-dev`，HEAD `8c5af55f5887e588e71f053ab44e2f6aa53a86a0`，调查时无未提交修改；`.local-sdk/nordic-sig-mesh-sdk` 正确指向该目录。
@@ -870,7 +872,7 @@ Archipelago 初次 quiet 构建退出码为 0，但输出含“command failed wi
 - Store 先持久化纯目标列表及 pending；新设备和 Restore 的空目标也进入同步。Codable、完整快照、导入导出和云回执比较包含设备级状态；旧 schema 不迁移。
 - `SyncRetryPolicy` 的任务/步骤/设备重试联动整台设备所有 Zone 阶段；自动重试沿用同一入口。无关成功初始化和参数保持。删除单 Zone retry 和旧 deleting/removal 分支。
 - 页面只展示目标成员及设备整体状态，设备空目标也显示状态；正式 Multicast 仅检查当前目标成员，不新增 Space 级阻断。详情测试帮助与中英文文案同步更新。
-- 最新合成示例为 [完整配置](261021_1154_HDB_proposed_demo.json) 和 [初始化及部分完成](261021_1154_HDB_proposed_initial_demo.json)。`current_demo` 保留为改动前快照，不属于当前 schema 测试输入。
+- 本阶段历史样本为 [旧完整配置](archive/hdb/261021_1154_HDB_proposed_demo.json) 和 [旧初始化及部分完成](archive/hdb/261021_1154_HDB_proposed_initial_demo.json)，均已归档且不符合当前格式。当前有效输入为 [最新 HDB 示例](261021_1806_HDB_unicast_example.json)。
 
 | 验证 | 本轮结果与覆盖边界 |
 | --- | --- |

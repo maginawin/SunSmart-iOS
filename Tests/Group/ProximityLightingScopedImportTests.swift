@@ -166,7 +166,7 @@ final class MeshNetworkManager {
 }
 final class SpaceData {
     var hdb: HDBConfiguration?
-    var hdbGroupAddresses: Set<UInt16> { Set(hdb?.lightingZones.map(\.groupAddress) ?? []) }
+    var hdbGroupAddresses: Set<UInt16> { hdb?.allGroupAddresses ?? [] }
     enum State { case normal }
     var state = State.normal
     let id = UUID().uuidString, meshUUID: String, meshNetworkId: String
@@ -183,6 +183,22 @@ final class SpaceData {
     }
     func markLocalChangePendingCloudSync() { dirtyCount += 1; lastUpdate += 1 }
     @discardableResult func save() -> Bool { true }
+}
+// Sensor address reclamation has its own production Store integration suite.
+// This boundary observes deletion's delegation and controls the completion UI.
+enum HDBConfigurationStore {
+    static var pendingResult: Result<Set<UInt16>, Error> = .success([])
+    static var finishResult: Result<Bool, Error> = .success(false)
+    static var finishCalls: [String] = []
+    static func reset() {
+        pendingResult = .success([]); finishResult = .success(false); finishCalls = []
+    }
+    // SENSOR_GROUP_NAME
+    static func pendingSensorGroupAddresses(space: SpaceData) throws -> Set<UInt16> { try pendingResult.get() }
+    static func finishSensorGroupCleanup(space: SpaceData) throws -> Bool {
+        finishCalls.append(space.id)
+        return try finishResult.get()
+    }
 }
 enum SpaceConfigurationSafety {
     static func reviewedCloudImport(_ space: SpaceData) -> Int? { nil }
@@ -296,6 +312,7 @@ enum NodeSyncData: Equatable {
     }
     static func main() async throws {
         try testDeviceDeletionRecovery()
+        try testHDBCleanupBoundary()
         try testSiteDeviceOwnership()
         try testRestoreKeepsPeerSyncPending()
         var multiHDB = payload()
@@ -317,9 +334,17 @@ enum NodeSyncData: Equatable {
         hdbGroup.network = hdbFixture.network; hdbGroup.subNetworkId = hdbFixture.space.meshNetworkId
         hdbFixture.network.groups.append(hdbGroup)
         hdbFixture.space.hdb = HDBConfiguration(lightingZones: [.init(zoneId: 1, name: "HDB", groupAddress: 0xC001)])
+        var sensorDevice = HDBDeviceConfiguration(nodeUuid: UUID(), nodeAddress: 2, mac: "AA:BB:CC:DD:EE:FF")
+        sensorDevice.sensorGroupId = 0xC040
+        hdbFixture.space.hdb!.devices = [sensorDevice]
+        let sensorGroup = Group(0xC040)
+        sensorGroup.isVirtual = true; sensorGroup.network = hdbFixture.network
+        sensorGroup.subNetworkId = hdbFixture.space.meshNetworkId
+        hdbFixture.network.groups.append(sensorGroup)
+        require(hdbFixture.space.hdbGroupAddresses == [0xC001, 0xC040], "fixture uses production Zone and Sensor address exclusion")
         require(ProximityLightingTopologyPlanner.makePlan(space: hdbFixture.space).isComplete, "HDB directory must not invalidate ordinary direct topology planner")
         let hdbPreparation = ProximityLightingLifecycleCoordinator.begin(space: hdbFixture.space).prepare()
-        require(hdbPreparation.isValid && hdbPreparation.sourceSnapshot.groups.count == 1, "lifecycle filters only HDB groups")
+        require(hdbPreparation.isValid && hdbPreparation.sourceSnapshot.groups.count == 1, "lifecycle excludes HDB Zone and Sensor groups while preserving the ordinary group")
         let target = try fixture(), other = try fixture(networkId: "BB"), sameSite = try fixture(networkId: "CC", uuid: target.network.uuid)
         let expected = preflight(payload())!.reconciliation!.snapshot
         require(target.nodes.map(\.uuid) == other.nodes.map(\.uuid), "fixture must reuse L1/L2 identities across Sites")

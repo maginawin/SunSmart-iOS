@@ -22,6 +22,9 @@ space_controller = source('SunSmart/Main/Space/Controller/SpaceViewController.sw
 repair_presentation = section(space_controller, '    private func presentProximityLightingRepairSyncIfNeeded()', '\n    // MARK: - Request')
 repair_recomputation = section(repair_presentation, '        let preparation =', '        guard !datas.isEmpty else { return }')
 test_source = (root / 'Tests/Group/ProximityLightingScopedImportTests.swift').read_text()
+test_source = test_source.replace('// SENSOR_GROUP_NAME', section(
+    source('SunSmart/Common/Data/HDBConfigurationStore+Mesh.swift'),
+    '    static func sensorGroupName(', '\n\n'))
 safety = source('SunSmart/Common/Data/SpaceConfigurationSafety.swift')
 receipt_methods = section(safety, '    static func preservesLocalChanges(', '\n    /// Called only after successful local Space removal.')
 if 'static func hasPendingReferenceCleanup(' in safety:

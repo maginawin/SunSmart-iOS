@@ -87,7 +87,7 @@ struct ProximityLightingReviewRegressionContractTests {
 
         let protocolCallbacks = section(
             in: deviceProtocol,
-            from: "let vc = SyncDevicesViewController(type: .spaceTriggerZones(datas: datas))",
+            from: "let vc = SyncDevicesViewController(type:",
             to: "navigationController?.pushViewController(vc, animated: true)"
         )
         requireCallbackClosesBeforeCompletion(protocolCallbacks, owner: "Protocol-based deletion")
@@ -99,7 +99,7 @@ struct ProximityLightingReviewRegressionContractTests {
         )
         let batchCallbacks = section(
             in: batchSync,
-            from: "let vc = SyncDevicesViewController(type: .spaceTriggerZones(datas: datas))",
+            from: "let vc = SyncDevicesViewController(type:",
             to: "navigationController?.pushViewController(vc, animated: true)"
         )
         requireCallbackClosesBeforeCompletion(batchCallbacks, owner: "Batch deletion")
