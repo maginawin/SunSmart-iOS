@@ -10,4 +10,4 @@ with tempfile.TemporaryDirectory(prefix="hdb-tests-") as directory:
     cache.mkdir(parents=True, exist_ok=True)
     sources = ["SunSmart/Common/Data/HDBConfiguration.swift", "SunSmart/Common/Data/HDBLightingZonePolicy.swift", "SunSmart/Common/Data/HDBConfigurationStore.swift", "SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift", "Tests/HDB/HDBTestBoundaries.swift", "Tests/HDB/HDBPersistenceTests.swift"]
     subprocess.run(["swiftc", "-module-cache-path", str(cache), "-parse-as-library", *[str(ROOT / path) for path in sources], "-o", binary], check=True)
-    subprocess.run([binary], check=True)
+    subprocess.run([binary, str(Path(directory) / "hdb.sqlite")], check=True)

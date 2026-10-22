@@ -42,21 +42,13 @@ import Foundation
         }
         let json = try object(device), fields = json["lightingConfiguration"] as! [String: Any]
         let control = fields["lightingControl"] as! [String: Any]
-        guard let mappings = control["mapValues"] as? [String: [String: Any]] else {
-            fatalError("Lighting Control must export all three command mappings")
+        precondition(Set(control.keys) == ["status", "value", "Auto", "Force_On", "Force_Off"])
+        for (key, address) in [("Auto", "000B"), ("Force_On", "000A"), ("Force_Off", "000A")] {
+            precondition(control[key] as? String == address)
         }
-        precondition(Set(mappings.keys) == ["Auto", "Force_On", "Force_Off"])
-        for (key, address, model, value): (String, Int, Int, Any) in [
-            ("Auto", 11, 4879, true), ("Force_On", 10, 4864, 65535), ("Force_Off", 10, 4096, false)
-        ] {
-            let item = mappings[key]!
-            precondition(item["elementAddress"] as? Int == address && item["modelId"] as? Int == model)
-            precondition(NSDictionary(dictionary: item["value"].map { ["v": $0] }!) == NSDictionary(dictionary: ["v": value]))
-            precondition(Set(item.keys) == ["elementAddress", "modelId", "value"])
-        }
-        for (field, property) in [("dimIntensity", 47), ("brightIntensity", 46), ("rampUpTime", 55), ("rampDownTime", 54), ("holdTime", 60)] {
+        for (field, property) in [("dimIntensity", "002F"), ("brightIntensity", "002E"), ("rampUpTime", "0037"), ("rampDownTime", "0036"), ("holdTime", "003C")] {
             let item = fields[field] as! [String: Any]
-            precondition(item["elementAddress"] as? Int == 11 && item["modelId"] as? Int == 4880 && item["property"] as? Int == property)
+            precondition(item["elementAddress"] as? String == "000B" && item["modelId"] as? String == "1310" && item["property"] as? String == property)
         }
         for field in ["failsafeDelay", "installDate"] {
             precondition(Set((fields[field] as! [String: Any]).keys) == ["status", "value"])
@@ -74,24 +66,43 @@ import Foundation
         for key in ["elementAddress", "modelId", "property"] {
             try rejected { fields in var item = fields["brightIntensity"] as! [String: Any]; item.removeValue(forKey: key); fields["brightIntensity"] = item }
         }
-        for value: Any in [13, 0, -1, 32768, "000B", true, NSNull()] {
+        for value: Any in [11, 13, 0, -1, 32768, "000D", "0000", "8000", "0x0B", "00B", true, NSNull()] {
             try rejected { fields in var item = fields["brightIntensity"] as! [String: Any]; item["elementAddress"] = value; fields["brightIntensity"] = item }
         }
-        for (key, value): (String, Any) in [("modelId", 4879), ("property", 47), ("property", true), ("modelId", "1310")] {
+        for (key, value): (String, Any) in [("modelId", 4880), ("property", 46), ("property", true), ("modelId", "130F"), ("property", "002F"), ("property", "02E")] {
             try rejected { fields in var item = fields["brightIntensity"] as! [String: Any]; item[key] = value; fields["brightIntensity"] = item }
         }
-        try rejected { fields in var item = control; item.removeValue(forKey: "mapValues"); fields["lightingControl"] = item }
         for name in ["Auto", "Force_On", "Force_Off"] {
-            try rejected { fields in var item = control, map = mappings; map.removeValue(forKey: name); item["mapValues"] = map; fields["lightingControl"] = item }
+            try rejected { fields in var item = control; item.removeValue(forKey: name); fields["lightingControl"] = item }
+            for value: Any in [11, true, "000D", "0000", "8000", "0x0B", "B", NSNull(), ["elementAddress": "000B", "modelId": "130F", "value": true]] {
+                try rejected { fields in var item = control; item[name] = value; fields["lightingControl"] = item }
+            }
         }
-        for (name, value): (String, Any) in [("Auto", 1), ("Auto", false), ("Force_On", true), ("Force_On", 1), ("Force_Off", 0)] {
-            try rejected { fields in var item = control, map = mappings; map[name]!["value"] = value; item["mapValues"] = map; fields["lightingControl"] = item }
+        for key in ["mapValues", "Extra", "elementAddress", "modelId", "property", "models"] {
+            try rejected { fields in var item = control; item[key] = [:]; fields["lightingControl"] = item }
         }
-        try rejected { fields in var item = control, map = mappings; map["Extra"] = map["Auto"]; item["mapValues"] = map; fields["lightingControl"] = item }
+        // Lowercase wire addresses and Property IDs normalize without changing state.
+        var lowerFields = fields, lowerControl = control
+        lowerControl["Auto"] = "000b"; lowerControl["Force_On"] = "000a"; lowerControl["Force_Off"] = "000a"
+        lowerFields["lightingControl"] = lowerControl
+        var lowerBright = fields["brightIntensity"] as! [String: Any]
+        lowerBright["elementAddress"] = "000b"; lowerBright["property"] = "002e"
+        lowerFields["brightIntensity"] = lowerBright
+        var lowerPayload = json; lowerPayload["lightingConfiguration"] = lowerFields
+        let lowerDecoded = try JSONDecoder().decode(HDBDeviceConfiguration.self, from: JSONSerialization.data(withJSONObject: lowerPayload))
+        precondition(lowerDecoded == normalized)
         try rejected { fields in var item = fields["failsafeDelay"] as! [String: Any]; item["modelId"] = 4880; fields["failsafeDelay"] = item }
         device.zoneModels = []
         let empty = try object(device)["lightingConfiguration"] as! [String: Any]
         precondition((empty["brightIntensity"] as! [String: Any])["elementAddress"] is NSNull)
+        let emptyControl = empty["lightingControl"] as! [String: Any]
+        precondition(["Auto", "Force_On", "Force_Off"].allSatisfy { emptyControl[$0] is NSNull })
+        for key in ["Auto", "Force_On", "Force_Off"] {
+            var incomplete = emptyControl; incomplete.removeValue(forKey: key)
+            var incompleteFields = empty; incompleteFields["lightingControl"] = incomplete
+            var incompleteDevice = try object(device); incompleteDevice["lightingConfiguration"] = incompleteFields
+            do { _ = try JSONDecoder().decode(HDBDeviceConfiguration.self, from: JSONSerialization.data(withJSONObject: incompleteDevice)); fatalError("missing null target accepted") } catch {}
+        }
         let emptyRoundtrip = try JSONDecoder().decode(HDBDeviceConfiguration.self, from: JSONEncoder().encode(device))
         precondition(emptyRoundtrip == device)
         var nullableFields = fields; nullableFields["brightIntensity"] = NSNull()

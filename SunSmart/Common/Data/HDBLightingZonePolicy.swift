@@ -12,7 +12,7 @@ enum HDBLightingZonePolicy {
         guard Set(sensorAddresses).count == sensorAddresses.count,
               sensorAddresses.allSatisfy({ (0xC001..<0xFEFD).contains(Int($0)) }),
               Set(sensorAddresses).isDisjoint(with: zones.map(\.groupAddress)) else { throw HDBConfigurationError.invalidData }
-        guard configuration.schemaVersion == 1,
+        guard configuration.schemaVersion == 2,
               Set(zones.map(\.zoneId)).count == zones.count,
               Set(zones.map(\.groupAddress)).count == zones.count,
               zones.allSatisfy({ (1...63).contains($0.zoneId) && (0xC000..<0xFEFD).contains(Int($0.groupAddress)) && !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }),

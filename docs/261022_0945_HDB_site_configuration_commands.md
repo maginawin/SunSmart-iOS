@@ -106,15 +106,15 @@ Zone Models 即 `zoneModels`，设备须具备以下五类；在所列范围内�
 
 ### 2.4 Add Zones
 
-- 按所选 `zoneId` 查询实际 `groupAddress`。
-- 对每个 `groupAddress`，遍历 `zoneModels`，向每项指定的 Element/Model 发送 `ConfigModelSubscriptionAdd(groupAddress)`。
+- 按所选 `zoneId` 查询 `hdb.lightingZones[].groupId`，将 4 位十六进制字符串解析为实际组地址。
+- 对每个解析后的组地址，遍历 `zoneModels`，向每项指定的 Element/Model 发送 `ConfigModelSubscriptionAdd(groupAddress)`。
 - 每台设备最多选择 8 个 Zone；选择为空时，仅执行前面的 Delete All 和保留地址恢复。
 
 全部实际需要的阶段收到成功 ACK 并完成保存后，才将 `lightingZonesStatus` 记为 synced。失败、超时、取消或保存失败保持 pending；重试从 Delete All 开始，旧任务迟到的 ACK 不得确认新任务。
 
 ## 3. Auto / Force On / Force Off
 
-### Lighting Zone：发送到 Zone 的 groupAddress
+### Lighting Zone：发送到 Zone 的 groupId 对应组地址
 
 | 操作 | 命令 | 接收 Model |
 | --- | --- | --- |
@@ -135,7 +135,9 @@ Zone Models 即 `zoneModels`，设备须具备以下五类；在所列范围内�
 
 ## 4. Lighting Configuration 字段描述
 
-设备 `lightingConfiguration` 的五个 Property 字段提供单个 `elementAddress/modelId/property`；`lightingControl.mapValues` 提供 Auto、Force_On、Force_Off 各自的单个 `elementAddress/modelId/value`。只选择当前 lightingControl.value 对应的一项执行。完整结构见 [Lighting Configuration 契约](261022_1358_HDB_lighting_configuration_metadata_plan.md)。
+`spaceData.hdb.schemaVersion=2`。设备 `lightingConfiguration` 的五个 Property 字段提供单个 `elementAddress/modelId/property`，均为 4 位十六进制字符串。`lightingControl` 直接保存 `Auto`、`Force_On`、`Force_Off` 的目标地址字符串；用 `lightingControl[lightingControl.value]` 取当前选项地址，按上表生成固定命令与值，不再读取 mapValues。status/value 保持实际业务状态。
+
+设备 nodeAddress、sensorGroupId、broadcastId 也为 4 位十六进制字符串；三个 Model 清单的 elementAddress 为 4 位、SIG modelId 为 4 位、Vendor modelId 为 8 位。字符串无 0x 前缀、输出大写；解析后再按 Mesh 字段编码。devices[].mac 无分隔符，devices[].lightingZones 是 zoneId 数字数组。顶层 hdb.lightingZones 保留名称及 4 位十六进制字符串 groupId；先按 zoneId 查目录并解析 groupId 得到实际组地址，不读取旧 groupAddress。
 
 “第一个”按 Composition Element index 从小到大选择，包括 Primary。五个 Property 必须发到第一个 LC 所在 Element 的 LC Setup，缺少该 Setup 时失败，不回退到其他 Element。地址显式 null 表示无目标，不得下发或记为发送成功；应存在目标却填 null 属于非法数据。
 

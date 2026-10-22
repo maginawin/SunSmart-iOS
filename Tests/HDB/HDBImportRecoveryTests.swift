@@ -87,30 +87,39 @@ enum SpaceConfigurationSafety {
     }
     static func main() async throws {
         let legacyHDB: [String: Any] = ["schemaVersion": 1, "devices": [[String: Any]](),
-            "lightingZones": (1...63).map {
-                ["zoneId": $0, "name": "Zone \($0)", "groupAddress": 0xC000 + $0] as [String: Any]
-            }]
-        let legacyLocal = SpaceData()
-        legacyLocal.hdb = try jsonDecoder.decode(HDBConfiguration.self,
-            from: JSONSerialization.data(withJSONObject: legacyHDB))
-        try HDBLightingZonePolicy.validate(legacyLocal.hdb!)
-        legacyLocal.hdbPersistenceBaseline = legacyLocal.hdb
-        SpaceData.persisted = legacyLocal.copy()
-        let candidate = legacyLocal.copy()
-        precondition(candidate.save(), "legacy HDB must pass the pre-import ordinary save")
+            "lightingZones": [["zoneId": 1, "name": "Old", "groupAddress": 0xC000]]]
+        do { _ = try jsonDecoder.decode(HDBConfiguration.self, from: JSONSerialization.data(withJSONObject: legacyHDB)); fatalError("old stored HDB must not load as v2") }
+        catch HDBConfigurationError.invalidData {}
+        let existing = SpaceData()
+        existing.hdb = configuration("Keep"); existing.hdbPersistenceBaseline = existing.hdb
+        SpaceData.persisted = existing.copy()
         let legacyPayload: [String: Any] = ["uuid": "space", "updateTimestamp": 110,
-            "spaceData": ["hdb": legacyHDB], "schedules": [[String: Any]](),
-            "groups": (1...63).map { ["address": String(format: "%04X", 0xC000 + $0), "isVirtual": false] as [String: Any] },
-            "nodes": (0..<4).map { ["uuid": UUID().uuidString, "unicastAddress": String(format: "%04X", 2 + $0 * 3)] }]
-        guard case .prepared(let selectedLegacyPayload, let selectedLegacyHDB) = await candidate.prepareImport(spaceJsonData: legacyPayload),
-              selectedLegacyHDB == legacyLocal.hdb else { fatalError("legacy cloud HDB recovery failed") }
-        precondition(selectedLegacyPayload["nodes"] as? [[String: String]] == legacyPayload["nodes"] as? [[String: String]])
-        candidate.hdb = selectedLegacyHDB
+            "spaceData": ["hdb": legacyHDB], "schedules": [[String: Any]](), "groups": [], "nodes": []]
+        guard case .rejected("invalidHDBPayload") = await existing.prepareImport(spaceJsonData: legacyPayload) else {
+            fatalError("legacy import must be rejected without replacing current configuration")
+        }
+        precondition(existing.hdb == SpaceData.persisted!.hdb && existing.hdb?.lightingZones.first?.name == "Keep")
+        print("PASS: legacy HDB decoding/import rejected without clearing existing configuration")
+
+        // Retain the 63-Zone, multi-node recovery coverage using the current format.
+        let directory = HDBConfiguration(lightingZones: (1...63).map {
+            .init(zoneId: $0, name: "Zone \($0)", groupAddress: UInt16(0xC000 + $0))
+        })
+        let candidate = SpaceData()
+        candidate.hdb = directory; candidate.hdbPersistenceBaseline = directory
+        SpaceData.persisted = candidate.copy()
+        precondition(candidate.save())
+        var currentPayload = try payload(directory, timestamp: 110)
+        currentPayload["groups"] = directory.lightingZones.map { ["address": String(format: "%04X", $0.groupAddress), "isVirtual": false] as [String: Any] }
+        currentPayload["nodes"] = (0..<4).map { ["uuid": UUID().uuidString, "unicastAddress": String(format: "%04X", 2 + $0 * 3)] }
+        guard case .prepared(let selectedPayload, let selectedHDB) = await candidate.prepareImport(spaceJsonData: currentPayload),
+              selectedHDB == directory else { fatalError("current HDB cloud recovery failed") }
+        precondition(selectedPayload["nodes"] as? [[String: String]] == currentPayload["nodes"] as? [[String: String]])
+        candidate.hdb = selectedHDB
         precondition(candidate.save(importingConfiguration: true))
-        let reloadedLegacy = SpaceData.load(siteId: "site", spaceId: "space").first!
-        precondition(!reloadedLegacy.hdbLoadFailed && reloadedLegacy.hdb == legacyLocal.hdb)
-        precondition(reloadedLegacy.save(), "reloaded legacy import must remain ordinarily saveable")
-        print("PASS: legacy HDB pre-import save/reload preserves 63 Zones; cloud preparation preserves the 4-node payload")
+        let reloaded = SpaceData.load(siteId: "site", spaceId: "space").first!
+        precondition(reloaded.hdb == directory && !reloaded.hdbLoadFailed && reloaded.save())
+        print("PASS: v2 HDB pre-import save/reload preserves 63 Zones and the selected 4-node payload")
 
         let old = configuration("Local"), cloud = configuration("Cloud", status: .synced)
         // Restoration must adopt the selected revision both with and without HDB.

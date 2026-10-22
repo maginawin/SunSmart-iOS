@@ -4,8 +4,12 @@ import Foundation
     static func main() throws {
         try schemaAndMACValidation()
         try modelArrayContract()
+        try wireFormatValidation()
+        try groupIdWireFormat()
         for path in CommandLine.arguments.dropFirst() {
-            let config = try JSONDecoder().decode(HDBConfiguration.self, from: Data(contentsOf: URL(fileURLWithPath: path)))
+            let raw = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: path))) as! [String: Any]
+            let object = (raw["spaceData"] as? [String: Any])?["hdb"] ?? raw
+            let config = try JSONDecoder().decode(HDBConfiguration.self, from: JSONSerialization.data(withJSONObject: object))
             try HDBLightingZonePolicy.validate(config)
             let encoded = try JSONEncoder().encode(config)
             let roundTrip = try JSONDecoder().decode(HDBConfiguration.self, from: encoded)
@@ -13,7 +17,7 @@ import Foundation
             precondition(config.devices.allSatisfy { [.pending, .synced].contains($0.lightingZonesStatus) })
             let json = try JSONSerialization.jsonObject(with: encoded) as! [String: Any]
             for device in json["devices"] as! [[String: Any]] {
-                precondition((device["lightingZones"] as! [[String: Any]]).allSatisfy { Set($0.keys) == ["zoneId"] })
+                precondition(device["lightingZones"] is [Int])
             }
         }
         let uuid = UUID()
@@ -36,7 +40,7 @@ import Foundation
         let data = try JSONEncoder().encode(failed)
         let json = try JSONSerialization.jsonObject(with: data) as! [String: Any]
         let jsonDevice = (json["devices"] as! [[String: Any]])[0]
-        precondition(jsonDevice["mac"] as? String == "AA:BB:CC:DD:EE:FF" && jsonDevice["nodeAddress"] as? Int == 1)
+        precondition(jsonDevice["mac"] as? String == "AABBCCDDEEFF" && jsonDevice["nodeAddress"] as? String == "0001")
         let decoded = try JSONDecoder().decode(HDBConfiguration.self, from: data)
         precondition(decoded == failed)
         precondition(HDBLightingZonePolicy.get(uuid, in: failed) == failed.devices[0])
@@ -169,21 +173,21 @@ import Foundation
         }
         let raw = try JSONSerialization.jsonObject(with: JSONEncoder().encode(device)) as! [String: Any]
         let wire = raw["zoneModels"] as! [[String: Any]]
-        precondition(wire.contains { $0["modelId"] as? UInt32 == 175636481 })
-        precondition(wire.allSatisfy { Set($0.keys) == ["elementAddress", "modelId"] && $0["modelId"] is NSNumber })
+        precondition(wire.contains { $0["modelId"] as? String == "0A780001" })
+        precondition(wire.allSatisfy { Set($0.keys) == ["elementAddress", "modelId"] && $0["modelId"] is String && $0["elementAddress"] is String })
         for key in ["zoneModels", "sensorGroupModels", "broadcastModels", "broadcastId"] {
             for value: Any? in [nil, NSNull(), "invalid"] {
                 var bad = raw; bad[key] = value
                 do { _ = try JSONDecoder().decode(HDBDeviceConfiguration.self, from: JSONSerialization.data(withJSONObject: bad)); fatalError("missing or invalid new field accepted") } catch {}
             }
         }
-        for id in [0, 65276, 65535] {
+        for id: Any in [0, 65277, "0000", "FEFC", "FFFF"] {
             var bad = raw; bad["broadcastId"] = id
             do { _ = try JSONDecoder().decode(HDBDeviceConfiguration.self, from: JSONSerialization.data(withJSONObject: bad)); fatalError("non-FEFD broadcast accepted") } catch {}
         }
         for entry: [String: Any] in [["elementAddress": -1, "modelId": 4096], ["elementAddress": 10, "modelId": "1000"], ["elementAddress": 10, "modelId": 4294967296 as UInt64]] {
             var bad = raw; bad["zoneModels"] = [entry]
-            do { _ = try JSONDecoder().decode(HDBDeviceConfiguration.self, from: JSONSerialization.data(withJSONObject: bad)); fatalError("invalid numeric reference accepted") } catch {}
+            do { _ = try JSONDecoder().decode(HDBDeviceConfiguration.self, from: JSONSerialization.data(withJSONObject: bad)); fatalError("invalid hexadecimal reference accepted") } catch {}
         }
         var reordered = raw; reordered["zoneModels"] = Array(wire.reversed()) + wire
         let normalized = try JSONDecoder().decode(HDBDeviceConfiguration.self, from: JSONSerialization.data(withJSONObject: reordered))
@@ -204,7 +208,7 @@ import Foundation
         do { try HDBLightingZonePolicy.validateReferences(changed, payload: payload); fatalError("foreign element accepted") } catch HDBConfigurationError.invalidData {}
         changed = root; changed.devices[0].sensorGroupModels.append(HDBModelReference(models[8]))
         do { try HDBLightingZonePolicy.validateReferences(changed, payload: payload); fatalError("OnOff without same-element LC accepted") } catch HDBConfigurationError.invalidData {}
-        print("PASS: numeric model lists, primary-only Zone targets, same-element Sensor targets, FEFD and strict new payload contract")
+        print("PASS: hexadecimal model lists, primary-only Zone targets, same-element Sensor targets, FEFD and strict new payload contract")
     }
 
     static func schemaAndMACValidation() throws {
@@ -215,7 +219,7 @@ import Foundation
         }, devices: [device])
         let json = try HDBLightingZonePolicy.json(config)
         precondition(json["broadcast"] == nil)
-        precondition((json["lightingZones"] as! [[String: Any]]).allSatisfy { Set($0.keys) == ["zoneId", "name", "groupAddress"] })
+        precondition((json["lightingZones"] as! [[String: Any]]).allSatisfy { Set($0.keys) == ["zoneId", "name", "groupId"] })
         for raw in ["aabbccddeeff", "aa-bb-cc-dd-ee-ff", "AA:BB:CC:DD:EE:FF"] {
             let mac = try HDBDeviceConfiguration.normalizedMAC(raw)
             precondition(mac == device.mac)
@@ -224,7 +228,7 @@ import Foundation
             do { _ = try HDBDeviceConfiguration.normalizedMAC(raw); fatalError("invalid MAC accepted") }
             catch HDBConfigurationError.invalidMAC {}
         }
-        for raw: Any? in [nil, NSNull(), "", "invalid", "aabbccddeeff", 12] {
+        for raw: Any? in [nil, NSNull(), "", "invalid", "AA:BB:CC:DD:EE:FF", "AA-BB-CC-DD-EE-FF", "AABBCCDDEEFF\n", 12] {
             var bad = json
             var entry = (bad["devices"] as! [[String: Any]])[0]
             entry["mac"] = raw
@@ -248,7 +252,7 @@ import Foundation
         precondition(HDBLightingZonePolicy.importedNodeMAC("", nodeUuid: id, nodeAddress: 1, in: nil) == "")
         let ordinary = try HDBLightingZonePolicy.decode(payload: ["spaceData": [:], "nodes": [["uuid": id.uuidString]]])
         precondition(ordinary == nil, "ordinary data without HDB or MAC must remain compatible")
-        let empty = try HDBLightingZonePolicy.decode(payload: ["hdb": ["schemaVersion": 1, "lightingZones": [], "devices": []]])
+        let empty = try HDBLightingZonePolicy.decode(payload: ["hdb": ["schemaVersion": 2, "lightingZones": [], "devices": []]])
         precondition(empty == HDBConfiguration())
         for key in ["schemaVersion", "lightingZones", "devices"] {
             var bad = json; bad.removeValue(forKey: key)
@@ -256,5 +260,85 @@ import Foundation
             catch {}
         }
         print("PASS: device-only schema, strict MAC, normalization, matching references and ordinary/empty data")
+    }
+
+    static func wireFormatValidation() throws {
+        var device = HDBDeviceConfiguration(nodeUuid: UUID(), nodeAddress: 11, mac: "AA:BB:CC:DD:EE:FF", lightingZones: [.init(zoneId: 1)])
+        device.sensorGroupId = 0xC040
+        device.zoneModels = [HDBModelReference(.init(elementAddress: 11, modelIdentifier: 1, companyIdentifier: 0x0A78))]
+        let config = HDBConfiguration(lightingZones: [.init(zoneId: 1, name: "One", groupAddress: 0xC001)], devices: [device])
+        let raw = try HDBLightingZonePolicy.json(config)
+        let entry = (raw["devices"] as! [[String: Any]])[0]
+        precondition(raw["schemaVersion"] as? Int == 2 && entry["lightingZones"] as? [Int] == [1])
+        precondition(entry["sensorGroupId"] as? String == "C040" && entry["broadcastId"] as? String == "FEFD")
+        func rejected(_ mutate: (inout [String: Any]) -> Void) throws {
+            var edited = entry; mutate(&edited)
+            var payload = raw; payload["devices"] = [edited]
+            do { _ = try HDBLightingZonePolicy.decode(payload: ["hdb": payload]); fatalError("invalid v2 accepted") } catch {}
+        }
+        for value: Any in [11, true, "B", "00B", "0000B", "0x0B", " 00B", "000B\n", "00ＧB", "GGGG", "0000", "8000", "FFFF", NSNull()] {
+            try rejected { $0["nodeAddress"] = value }
+        }
+        for value: Any in [49216, true, "C40", "0xC040", "C0400", "GGGG", "0000", "C001", "FEFD", "FFFF"] {
+            try rejected { $0["sensorGroupId"] = value }
+        }
+        try rejected { $0.removeValue(forKey: "sensorGroupId") }
+        for value: Any in [[["zoneId": 1]], ["1"], [true], [1.5], [1, 1], [0], [2], Array(1...9), NSNull()] {
+            try rejected { $0["lightingZones"] = value }
+        }
+        for value: Any in [4096, true, "100", "01000", "0x1000", "00001000", "0A7800010", "GGGG", NSNull()] {
+            try rejected { $0["zoneModels"] = [["elementAddress": "000B", "modelId": value]] }
+        }
+        for key in ["zoneModels", "sensorGroupModels", "broadcastModels"] {
+            for address: Any in [11, true, "B", "000B0", "0x0B", "ZZZZ", "0000", "8000", NSNull()] {
+                try rejected { $0[key] = [["elementAddress": address, "modelId": "130F"]] }
+            }
+        }
+        var lower = entry
+        lower["nodeAddress"] = "000b"; lower["mac"] = "aabbccddeeff"
+        lower["sensorGroupId"] = "c040"; lower["broadcastId"] = "fefd"
+        lower["zoneModels"] = [["elementAddress": "000b", "modelId": "0a780001"]]
+        var lowerRoot = raw; lowerRoot["devices"] = [lower]
+        let decoded = try HDBLightingZonePolicy.decode(payload: ["hdb": lowerRoot])!
+        precondition(decoded == config && decoded.devices[0].mac == "AA:BB:CC:DD:EE:FF")
+        let reencoded = try HDBLightingZonePolicy.json(decoded)
+        precondition(NSDictionary(dictionary: reencoded) == NSDictionary(dictionary: raw))
+        for version: Any in [1, 0, 3, true, "2", NSNull()] {
+            let old: [String: Any] = ["schemaVersion": version, "devices": [], "lightingZones": []]
+            do { _ = try JSONDecoder().decode(HDBConfiguration.self, from: JSONSerialization.data(withJSONObject: old)); fatalError("old or invalid version accepted") } catch {}
+        }
+        // Format changes must not alter the bytes used by preparation signatures.
+        let internalTarget = HDBModelTarget(elementAddress: 11, modelIdentifier: 1, companyIdentifier: 0x0A78)
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        let targetJSON = String(decoding: try encoder.encode(internalTarget), as: UTF8.self)
+        precondition(targetJSON == "{\"elementAddress\":11,\"modelId\":\"0A780001\"}")
+        print("PASS: v2 numeric semantics, strict hex/MAC/member fields, lowercase normalization, legacy rejection and unchanged internal target encoding")
+    }
+
+    static func groupIdWireFormat() throws {
+        func decode(_ zone: [String: Any]) throws -> HDBConfiguration {
+            try HDBLightingZonePolicy.decode(payload: ["hdb": ["schemaVersion": 2, "devices": [], "lightingZones": [zone]]])!
+        }
+        for text in ["C000", "C001", "FEFC", "c00a"] {
+            let config = try decode(["zoneId": 1, "name": "One", "groupId": text])
+            let address = UInt16(text, radix: 16)!
+            precondition(config.lightingZones[0].groupAddress == address && config.allGroupAddresses == [address])
+            let encoded = try HDBLightingZonePolicy.json(config)
+            let zone = (encoded["lightingZones"] as! [[String: Any]])[0]
+            precondition(Set(zone.keys) == ["zoneId", "name", "groupId"] && zone["groupId"] as? String == text.uppercased())
+            try HDBLightingZonePolicy.validateReferences(config, payload: ["groups": [["address": text.uppercased()]], "nodes": []])
+            do { try HDBLightingZonePolicy.validateReferences(config, payload: ["groups": [], "nodes": []]); fatalError("missing Group reference accepted") } catch HDBConfigurationError.invalidData {}
+        }
+        for value: Any? in [nil, NSNull(), 49153, true, "", "C01", "0xC001", "0C001", "C001\n", "ZZZZ", "0000", "BFFF", "FEFD", "FFFF"] {
+            var zone: [String: Any] = ["zoneId": 1, "name": "One"]
+            zone["groupId"] = value
+            do { _ = try decode(zone); fatalError("invalid groupId accepted") } catch {}
+        }
+        for includeNew in [false, true] {
+            var zone: [String: Any] = ["zoneId": 1, "name": "One", "groupAddress": 49153]
+            if includeNew { zone["groupId"] = "C001" }
+            do { _ = try decode(zone); fatalError("legacy or mixed groupAddress accepted") } catch HDBConfigurationError.invalidData {}
+        }
+        print("PASS: groupId hex round trip, existing address ranges/references, legacy/mixed keys and malformed input rejection")
     }
 }

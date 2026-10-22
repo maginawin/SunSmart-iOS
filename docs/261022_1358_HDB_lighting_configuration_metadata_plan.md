@@ -2,14 +2,16 @@
 
 日期：2026-10-22。状态：用户确认后已完成 App 实施，未提交。单目标规则与严格新格式、不迁移策略均已落地；真机与外部联调待人工验收。
 
+格式已更新为 [HDB JSON v2](261022_1626_HDB_json_format_plan.md)，以下目标规则保持，编码采用新字符串与扁平地址。
+
 ## 1. 需求结论与最新决定
 
 在 `spaceData.hdb.devices[].lightingConfiguration` 中描述页面 Set 的目标、Property 和控制选项。每条命令只选一个目标，因此采用用户原始结构，不增加 models 数组：
 
-- lightingControl 保留 status/value；mapValues 的 Auto、Force_On、Force_Off 各为一个 elementAddress/modelId/value 对象。
+- lightingControl 保留 status/value；Auto、Force_On、Force_Off 直接保存各自目标地址的 4 位十六进制字符串或显式 null，移除 mapValues。
 - 五个 LC Property 字段保留 status/value，增加单个 elementAddress/modelId/property。
 - failsafeDelay、installDate 继续只有 status/value，不发送命令。
-- 不迁移旧格式，保留 schemaVersion=1；缺少新契约字段的旧 HDB 数据不自动补齐或升级，项目重新创建。该策略已由用户确认，不再作为待确认项。
+- 不迁移旧格式，schemaVersion=2，拒绝版本 1；缺少新契约字段的旧 HDB 数据不自动补齐或升级，项目重新创建。该策略已由用户确认，不再作为待确认项。
 - 业务值仍是百分比或秒，不另存 rawValue。默认值保持 Dim=20%、Bright=80%、Ramp Up=1 秒、Ramp Down=2 秒、Hold=30 秒、Failsafe=5；原示例 Dim=5、Hold=10 是合法配置值。
 
 这里描述设备级配置，没有新增 Site/Space 级独立的 hdb.lightingConfiguration。
@@ -48,23 +50,23 @@
 | holdTime | 同上 | 4880 / 0x1310 | LightLCPropertySet，property=60 / 0x003C |
 | rampUpTime | 同上 | 4880 / 0x1310 | LightLCPropertySet，property=55 / 0x0037 |
 
-- 全部是单播、有 ACK，目的地址就是该字段/选项的 elementAddress。LC、Lightness、OnOff 的 elementAddress 不必相同，不使用 Zone groupAddress。
+- 全部是单播、有 ACK，目的地址就是该字段/选项的 elementAddress。LC、Lightness、OnOff 的 elementAddress 不必相同，不使用 Zone groupId 对应的组地址。
 - 第一个 LC 所在 Element 缺少 0x1310 时，该 Property Set 报错且不发送；不改选第二个 LC，也不改选其他 Element 的 LC Setup。
 - Auto 明确为 Light LC Light OnOff Set，不是 Light LC Mode Set。三个控制命令省略 Transition Time/Delay，TID 由发送层维护。
-- mapValues 同时描述三个选项，但 Set 只选择 lightingControl.value 对应的一项，不遍历发送三个选项。
+- Auto、Force_On、Force_Off 同时描述三个选项的地址，但 Set 只选择 lightingControl.value 对应的一项，不遍历发送三个选项。
 - Intensity Set 保持 Dim→Bright，Soft Dimming 保持 Ramp Up→Ramp Down。JSON 字段顺序不定义执行顺序。
 
 值的约定：
 
 - brightIntensity/dimIntensity.value 保留百分比，沿用 `UInt32(Double(value) / 100 * 65535)` 向零截断，再编码为 2 字节 Perceived Lightness；80→52428，5→3276。
 - rampUpTime/rampDownTime/holdTime.value 保留秒，发送 value×1000，以 3 字节 Time Millisecond 24 编码；2→2000，10→10000。
-- mapValues.Auto.value=true、Force_Off.value=false 为 Boolean；Force_On.value=65535 为整数，不使用字符串或混用 Boolean 与数字。
+- Auto 固定发送 true、Force_Off 固定发送 false、Force_On 固定发送 65535；这些命令参数由执行方生成，不再放入 lightingControl JSON。
 
 编号和消息语义已交叉核对 [SIG Assigned Numbers](https://www.bluetooth.com/wp-content/uploads/Files/Specification/HTML/Assigned_Numbers/out/en/index-en.html)、[Device Properties](https://btprodspecificationrefs.blob.core.windows.net/device-properties/Device_Properties.pdf) 以及 [Mesh Model 1.1](https://www.bluetooth.com/wp-content/uploads/Files/Specification/HTML/MMDL_v1.1/out/en/index-en.html)。仅首个实例的选择是本次 App 业务约定，不是标准要求其他实例自动同步。
 
 ## 4. JSON 示例
 
-设备 Primary=1234，首个 Lightness 在 1234，首个 LC 及同 Element 的 LC Setup 在 1235。即使后续 Elements 还有同类 Model，也只描述以下目标。
+设备 Primary 十进制地址=1234（04D2），首个 Lightness 在 04D2，首个 LC 及同 Element 的 LC Setup 在 04D3。即使后续 Elements 还有同类 Model，也只描述以下目标。
 
 ```json
 {
@@ -72,32 +74,48 @@
     "lightingControl": {
       "status": "synced",
       "value": "Auto",
-      "mapValues": {
-        "Auto": { "elementAddress": 1235, "modelId": 4879, "value": true },
-        "Force_On": { "elementAddress": 1234, "modelId": 4864, "value": 65535 },
-        "Force_Off": { "elementAddress": 1234, "modelId": 4096, "value": false }
-      }
+      "Auto": "04D3",
+      "Force_On": "04D2",
+      "Force_Off": "04D2"
     },
     "rampDownTime": {
-      "status": "synced", "value": 2,
-      "elementAddress": 1235, "modelId": 4880, "property": 54
+      "status": "synced",
+      "value": 2,
+      "elementAddress": "04D3",
+      "modelId": "1310",
+      "property": "0036"
     },
     "brightIntensity": {
-      "status": "synced", "value": 80,
-      "elementAddress": 1235, "modelId": 4880, "property": 46
+      "status": "synced",
+      "value": 80,
+      "elementAddress": "04D3",
+      "modelId": "1310",
+      "property": "002E"
     },
     "dimIntensity": {
-      "status": "synced", "value": 5,
-      "elementAddress": 1235, "modelId": 4880, "property": 47
+      "status": "synced",
+      "value": 5,
+      "elementAddress": "04D3",
+      "modelId": "1310",
+      "property": "002F"
     },
     "holdTime": {
-      "status": "synced", "value": 10,
-      "elementAddress": 1235, "modelId": 4880, "property": 60
+      "status": "synced",
+      "value": 10,
+      "elementAddress": "04D3",
+      "modelId": "1310",
+      "property": "003C"
     },
-    "failsafeDelay": { "status": "synced", "value": 5 },
+    "failsafeDelay": {
+      "status": "synced",
+      "value": 5
+    },
     "rampUpTime": {
-      "status": "synced", "value": 1,
-      "elementAddress": 1235, "modelId": 4880, "property": 55
+      "status": "synced",
+      "value": 1,
+      "elementAddress": "04D3",
+      "modelId": "1310",
+      "property": "0037"
     }
   }
 }
@@ -122,10 +140,10 @@ installDate 未设置时不创建，设置后仍为 status/value，例如 value=
 
 - 在 HDBConfiguration.swift 的设备上下文编解码中派生命令描述，复用上述策略的常量及目标；不在内存另维护可独立修改的命令清单。
 - SQLite hdb JSON、Space 导入/导出/分享/上传及 canonical 统一走同一编解码。解码必须先校验完整描述，再保留业务值/status；不能忽略错误或缺失描述后自动再生，让云端错误回读通过。
-- lightingConfiguration=null、未设置的业务字段保持现有合法语义，不凭空创建值。字段存在时，相应的 modelId/property/mapValues 等描述必须完整；mapValues 必须恰好包含三个已知选项。
-- 对尚无匹配目标的配置，elementAddress 显式为 null，表示不可下发；该键仍必填。正常可配置设备必须解析为有效单播整数地址。若目标本应存在却写 null，或地址不是本规则选中的首个目标，拒绝该输入。这样保留无模型/空配置的存储能力，不伪造地址，不把旧格式缺字段当作合法 null。
+- lightingConfiguration=null、未设置的业务字段保持现有合法语义，不凭空创建值。字段存在时，相应的 Property 字段的 elementAddress/modelId/property 必须完整；lightingControl 必须恰好包含 status、value、Auto、Force_On、Force_Off。
+- 对尚无匹配目标的配置，elementAddress 显式为 null，表示不可下发；该键仍必填。正常可配置设备的十六进制字符串必须解析为有效单播地址。若目标本应存在却写 null，或地址不是本规则选中的首个目标，拒绝该输入。这样保留无模型/空配置的存储能力，不伪造地址，不把旧格式缺字段当作合法 null。
 - 缺少首个 LC、同 Element Setup、首个 Lightness 或 Primary OnOff 时，相应 Set 在发包前报错；不因合法保存了 null 目标就把无命令当作成功。failsafeDelay/installDate 不需要这些目标，仍可离线保存。
-- 地址、modelId、property 使用 JSON 数字，Boolean 控制值保持 Boolean；完整 Space 导入/导出对照 Composition、设备身份和 zoneModels 验证。failsafeDelay/installDate 不输出也不接受已知命令描述字段。
+- 地址、modelId、property 使用 4 位十六进制字符串，固定控制命令值由执行方生成；完整 Space 导入/导出对照 Composition、设备身份和 zoneModels 验证。failsafeDelay/installDate 不输出也不接受已知命令描述字段。
 - 保留现有设备创建、restoreDevice/copyModels、merge/mark、数据库失败与导入回滚机制。设备地址/Composition 改变后，描述从最新保存的设备数据重新生成；导出只读取和校验快照，不修改数据库。
 - 当前值、目标、身份或任务版本改变时旧回执不得确认新状态。保存 pending 成功后发送，当前实际目标 ACK 后更新字段；失败、取消、保存失败保持 pending，普通重连不自动重放 Force_On/Force_Off。
 
@@ -143,7 +161,7 @@ installDate 未设置时不创建，设置后仍为 status/value，例如 value=
 ## 6. 验证与交付边界
 
 - 多实例与乱序列表只选同一个首目标；LC、Lightness 位于不同 Elements；Primary Off；首个 LC 缺 Setup 但后续有 Setup 时不得 fallback；Vendor 相同低位 ID 不参与匹配。
-- 三个 mapValues 和五个 Property 精确匹配；单地址输出；合法 null、缺省字段；缺字段拒绝、不迁移；Boolean/整数、越界、错误目标、错误映射及云端丢字段拒绝。
+- 三个控制地址和五个 Property 精确匹配；单地址输出；合法 null、缺省字段；缺字段拒绝、不迁移；Boolean/整数、越界、错误目标、错误映射及云端丢字段拒绝。
 - JSON 往返、持久化重载、设备恢复/地址改变、merge/mark、导入回滚与 canonical；正常导出只读。
 - JSON 目标与页面 Set、Get、初始化中的参数/Auto、普通恢复一致；实际命令数量、值换算与目标正确；固定 Preparation 和三类订阅清单保持原范围。
 - 失败/取消/重试/迟到回执/保存失败；Failsafe/Install Date 离线保存不修改其他 pending；初始化 Mode ACK 屏障保留。
@@ -156,7 +174,7 @@ installDate 未设置时不创建，设置后仍为 status/value，例如 value=
 
 已完成：
 
-- 设备上下文编码生成三个 mapValues 和五个 Property 描述；解码先严格核对地址、Model、Property 与值类型，再进入保存、导入或 canonical 比较。无目标用显式 null，旧格式缺字段拒绝，不迁移。
+- 设备上下文编码生成三个控制地址和五个 Property 描述；解码先严格核对地址、Model、Property 与值类型，再进入保存、导入或 canonical 比较。无目标用显式 null，旧格式缺字段拒绝，不迁移。
 - 页面 Set/Get、初始化五参数和最后 Auto、普通参数恢复共享首目标规则；固定 Preparation 与订阅范围保持不变。
 - 同步任务捕获模型快照，同时检查当前 Composition 与已保存模型。新增回归先复现“Composition 已变化但旧目标 ACK 仍写入 synced”，修复后旧回执被拒绝，字段保持 pending。
 - 更新完整 JSON 示例、Site 命令文档和设备模型清单契约。
@@ -187,7 +205,7 @@ xcodebuild -workspace SunSmartLocal.xcworkspace -scheme SunSmart -configuration 
 
 1. 新建 HDB 项目并加入多 Element 灯，导出核对首 LC、同 Element Setup、首 Lightness 与 Primary Off 地址。
 2. 逐项 Set/Get，核对实际访问目标；中断一次参数下发后重试，重启后确认值、pending/synced 和描述一致。
-3. 网关/Web/服务器完成完整字段往返，特别确认 mapValues 与各 Property 描述不被丢弃；旧格式导入应拒绝。
+3. 网关/Web/服务器完成完整字段往返，特别确认 Auto/Force_On/Force_Off 地址与各 Property 描述不被丢弃；旧格式导入应拒绝。
 
 ## 8. 当前交接状态
 

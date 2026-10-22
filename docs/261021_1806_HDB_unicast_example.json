@@ -1,38 +1,22 @@
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "devices": [
     {
       "nodeUuid": "11111111-1111-4111-8111-111111111111",
-      "nodeAddress": 256,
-      "mac": "AA:BB:CC:DD:EE:01",
+      "nodeAddress": "0100",
+      "mac": "AABBCCDDEE01",
       "lightingZones": [
-        {
-          "zoneId": 1
-        }
+        1
       ],
       "lightingZonesStatus": "synced",
-      "sensorGroupId": 49216,
+      "sensorGroupId": "C040",
       "lightingConfiguration": {
         "lightingControl": {
           "status": "synced",
           "value": "Auto",
-          "mapValues": {
-            "Auto": {
-              "elementAddress": 257,
-              "modelId": 4879,
-              "value": true
-            },
-            "Force_On": {
-              "elementAddress": 256,
-              "modelId": 4864,
-              "value": 65535
-            },
-            "Force_Off": {
-              "elementAddress": 256,
-              "modelId": 4096,
-              "value": false
-            }
-          }
+          "Auto": "0101",
+          "Force_On": "0100",
+          "Force_Off": "0100"
         },
         "failsafeDelay": {
           "status": "synced",
@@ -41,37 +25,37 @@
         "dimIntensity": {
           "status": "synced",
           "value": 20,
-          "elementAddress": 257,
-          "modelId": 4880,
-          "property": 47
+          "elementAddress": "0101",
+          "modelId": "1310",
+          "property": "002F"
         },
         "brightIntensity": {
           "status": "synced",
           "value": 80,
-          "elementAddress": 257,
-          "modelId": 4880,
-          "property": 46
+          "elementAddress": "0101",
+          "modelId": "1310",
+          "property": "002E"
         },
         "rampUpTime": {
           "status": "synced",
           "value": 1,
-          "elementAddress": 257,
-          "modelId": 4880,
-          "property": 55
+          "elementAddress": "0101",
+          "modelId": "1310",
+          "property": "0037"
         },
         "rampDownTime": {
           "status": "synced",
           "value": 2,
-          "elementAddress": 257,
-          "modelId": 4880,
-          "property": 54
+          "elementAddress": "0101",
+          "modelId": "1310",
+          "property": "0036"
         },
         "holdTime": {
           "status": "synced",
           "value": 30,
-          "elementAddress": 257,
-          "modelId": 4880,
-          "property": 60
+          "elementAddress": "0101",
+          "modelId": "1310",
+          "property": "003C"
         },
         "installDate": {
           "status": "synced",
@@ -80,67 +64,63 @@
       },
       "zoneModels": [
         {
-          "elementAddress": 256,
-          "modelId": 4096
+          "elementAddress": "0100",
+          "modelId": "1000"
         },
         {
-          "elementAddress": 256,
-          "modelId": 4864
+          "elementAddress": "0100",
+          "modelId": "1300"
         },
         {
-          "elementAddress": 256,
-          "modelId": 175636481
+          "elementAddress": "0100",
+          "modelId": "0A780001"
         },
         {
-          "elementAddress": 257,
-          "modelId": 4879
+          "elementAddress": "0101",
+          "modelId": "130F"
         },
         {
-          "elementAddress": 257,
-          "modelId": 4880
+          "elementAddress": "0101",
+          "modelId": "1310"
         }
       ],
       "sensorGroupModels": [
         {
-          "elementAddress": 257,
-          "modelId": 4096
+          "elementAddress": "0101",
+          "modelId": "1000"
         },
         {
-          "elementAddress": 257,
-          "modelId": 4879
+          "elementAddress": "0101",
+          "modelId": "130F"
         },
         {
-          "elementAddress": 257,
-          "modelId": 4880
+          "elementAddress": "0101",
+          "modelId": "1310"
         }
       ],
       "broadcastModels": [
         {
-          "elementAddress": 257,
-          "modelId": 4096
+          "elementAddress": "0101",
+          "modelId": "1000"
         },
         {
-          "elementAddress": 257,
-          "modelId": 4879
+          "elementAddress": "0101",
+          "modelId": "130F"
         },
         {
-          "elementAddress": 257,
-          "modelId": 4880
+          "elementAddress": "0101",
+          "modelId": "1310"
         }
       ],
-      "broadcastId": 65277
+      "broadcastId": "FEFD"
     },
     {
       "nodeUuid": "22222222-2222-4222-8222-222222222222",
-      "nodeAddress": 512,
-      "mac": "AA:BB:CC:DD:EE:02",
+      "nodeAddress": "0200",
+      "mac": "AABBCCDDEE02",
       "lightingZones": [
-        {
-          "zoneId": 1
-        },
-        {
-          "zoneId": 2
-        }
+        1,
+        2
       ],
       "lightingZonesStatus": "pending",
       "sensorGroupId": null,
@@ -148,23 +128,9 @@
         "lightingControl": {
           "status": "synced",
           "value": "Auto",
-          "mapValues": {
-            "Auto": {
-              "elementAddress": 513,
-              "modelId": 4879,
-              "value": true
-            },
-            "Force_On": {
-              "elementAddress": 512,
-              "modelId": 4864,
-              "value": 65535
-            },
-            "Force_Off": {
-              "elementAddress": 512,
-              "modelId": 4096,
-              "value": false
-            }
-          }
+          "Auto": "0201",
+          "Force_On": "0200",
+          "Force_Off": "0200"
         },
         "failsafeDelay": {
           "status": "synced",
@@ -173,37 +139,37 @@
         "dimIntensity": {
           "status": "synced",
           "value": 30,
-          "elementAddress": 513,
-          "modelId": 4880,
-          "property": 47
+          "elementAddress": "0201",
+          "modelId": "1310",
+          "property": "002F"
         },
         "brightIntensity": {
           "status": "pending",
           "value": 90,
-          "elementAddress": 513,
-          "modelId": 4880,
-          "property": 46
+          "elementAddress": "0201",
+          "modelId": "1310",
+          "property": "002E"
         },
         "rampUpTime": {
           "status": "synced",
           "value": 1,
-          "elementAddress": 513,
-          "modelId": 4880,
-          "property": 55
+          "elementAddress": "0201",
+          "modelId": "1310",
+          "property": "0037"
         },
         "rampDownTime": {
           "status": "synced",
           "value": 2,
-          "elementAddress": 513,
-          "modelId": 4880,
-          "property": 54
+          "elementAddress": "0201",
+          "modelId": "1310",
+          "property": "0036"
         },
         "holdTime": {
           "status": "synced",
           "value": 30,
-          "elementAddress": 513,
-          "modelId": 4880,
-          "property": 60
+          "elementAddress": "0201",
+          "modelId": "1310",
+          "property": "003C"
         },
         "installDate": {
           "status": "synced",
@@ -212,372 +178,372 @@
       },
       "zoneModels": [
         {
-          "elementAddress": 512,
-          "modelId": 4096
+          "elementAddress": "0200",
+          "modelId": "1000"
         },
         {
-          "elementAddress": 512,
-          "modelId": 4864
+          "elementAddress": "0200",
+          "modelId": "1300"
         },
         {
-          "elementAddress": 512,
-          "modelId": 175636481
+          "elementAddress": "0200",
+          "modelId": "0A780001"
         },
         {
-          "elementAddress": 513,
-          "modelId": 4879
+          "elementAddress": "0201",
+          "modelId": "130F"
         },
         {
-          "elementAddress": 513,
-          "modelId": 4880
+          "elementAddress": "0201",
+          "modelId": "1310"
         }
       ],
       "sensorGroupModels": [
         {
-          "elementAddress": 513,
-          "modelId": 4096
+          "elementAddress": "0201",
+          "modelId": "1000"
         },
         {
-          "elementAddress": 513,
-          "modelId": 4879
+          "elementAddress": "0201",
+          "modelId": "130F"
         },
         {
-          "elementAddress": 513,
-          "modelId": 4880
+          "elementAddress": "0201",
+          "modelId": "1310"
         }
       ],
       "broadcastModels": [
         {
-          "elementAddress": 513,
-          "modelId": 4096
+          "elementAddress": "0201",
+          "modelId": "1000"
         },
         {
-          "elementAddress": 513,
-          "modelId": 4879
+          "elementAddress": "0201",
+          "modelId": "130F"
         },
         {
-          "elementAddress": 513,
-          "modelId": 4880
+          "elementAddress": "0201",
+          "modelId": "1310"
         }
       ],
-      "broadcastId": 65277
+      "broadcastId": "FEFD"
     }
   ],
   "lightingZones": [
     {
       "zoneId": 1,
       "name": "Lighting Zone 1",
-      "groupAddress": 49153
+      "groupId": "C001"
     },
     {
       "zoneId": 2,
       "name": "Lighting Zone 2",
-      "groupAddress": 49154
+      "groupId": "C002"
     },
     {
       "zoneId": 3,
       "name": "Lighting Zone 3",
-      "groupAddress": 49155
+      "groupId": "C003"
     },
     {
       "zoneId": 4,
       "name": "Lighting Zone 4",
-      "groupAddress": 49156
+      "groupId": "C004"
     },
     {
       "zoneId": 5,
       "name": "Lighting Zone 5",
-      "groupAddress": 49157
+      "groupId": "C005"
     },
     {
       "zoneId": 6,
       "name": "Lighting Zone 6",
-      "groupAddress": 49158
+      "groupId": "C006"
     },
     {
       "zoneId": 7,
       "name": "Lighting Zone 7",
-      "groupAddress": 49159
+      "groupId": "C007"
     },
     {
       "zoneId": 8,
       "name": "Lighting Zone 8",
-      "groupAddress": 49160
+      "groupId": "C008"
     },
     {
       "zoneId": 9,
       "name": "Lighting Zone 9",
-      "groupAddress": 49161
+      "groupId": "C009"
     },
     {
       "zoneId": 10,
       "name": "Lighting Zone 10",
-      "groupAddress": 49162
+      "groupId": "C00A"
     },
     {
       "zoneId": 11,
       "name": "Lighting Zone 11",
-      "groupAddress": 49163
+      "groupId": "C00B"
     },
     {
       "zoneId": 12,
       "name": "Lighting Zone 12",
-      "groupAddress": 49164
+      "groupId": "C00C"
     },
     {
       "zoneId": 13,
       "name": "Lighting Zone 13",
-      "groupAddress": 49165
+      "groupId": "C00D"
     },
     {
       "zoneId": 14,
       "name": "Lighting Zone 14",
-      "groupAddress": 49166
+      "groupId": "C00E"
     },
     {
       "zoneId": 15,
       "name": "Lighting Zone 15",
-      "groupAddress": 49167
+      "groupId": "C00F"
     },
     {
       "zoneId": 16,
       "name": "Lighting Zone 16",
-      "groupAddress": 49168
+      "groupId": "C010"
     },
     {
       "zoneId": 17,
       "name": "Lighting Zone 17",
-      "groupAddress": 49169
+      "groupId": "C011"
     },
     {
       "zoneId": 18,
       "name": "Lighting Zone 18",
-      "groupAddress": 49170
+      "groupId": "C012"
     },
     {
       "zoneId": 19,
       "name": "Lighting Zone 19",
-      "groupAddress": 49171
+      "groupId": "C013"
     },
     {
       "zoneId": 20,
       "name": "Lighting Zone 20",
-      "groupAddress": 49172
+      "groupId": "C014"
     },
     {
       "zoneId": 21,
       "name": "Lighting Zone 21",
-      "groupAddress": 49173
+      "groupId": "C015"
     },
     {
       "zoneId": 22,
       "name": "Lighting Zone 22",
-      "groupAddress": 49174
+      "groupId": "C016"
     },
     {
       "zoneId": 23,
       "name": "Lighting Zone 23",
-      "groupAddress": 49175
+      "groupId": "C017"
     },
     {
       "zoneId": 24,
       "name": "Lighting Zone 24",
-      "groupAddress": 49176
+      "groupId": "C018"
     },
     {
       "zoneId": 25,
       "name": "Lighting Zone 25",
-      "groupAddress": 49177
+      "groupId": "C019"
     },
     {
       "zoneId": 26,
       "name": "Lighting Zone 26",
-      "groupAddress": 49178
+      "groupId": "C01A"
     },
     {
       "zoneId": 27,
       "name": "Lighting Zone 27",
-      "groupAddress": 49179
+      "groupId": "C01B"
     },
     {
       "zoneId": 28,
       "name": "Lighting Zone 28",
-      "groupAddress": 49180
+      "groupId": "C01C"
     },
     {
       "zoneId": 29,
       "name": "Lighting Zone 29",
-      "groupAddress": 49181
+      "groupId": "C01D"
     },
     {
       "zoneId": 30,
       "name": "Lighting Zone 30",
-      "groupAddress": 49182
+      "groupId": "C01E"
     },
     {
       "zoneId": 31,
       "name": "Lighting Zone 31",
-      "groupAddress": 49183
+      "groupId": "C01F"
     },
     {
       "zoneId": 32,
       "name": "Lighting Zone 32",
-      "groupAddress": 49184
+      "groupId": "C020"
     },
     {
       "zoneId": 33,
       "name": "Lighting Zone 33",
-      "groupAddress": 49185
+      "groupId": "C021"
     },
     {
       "zoneId": 34,
       "name": "Lighting Zone 34",
-      "groupAddress": 49186
+      "groupId": "C022"
     },
     {
       "zoneId": 35,
       "name": "Lighting Zone 35",
-      "groupAddress": 49187
+      "groupId": "C023"
     },
     {
       "zoneId": 36,
       "name": "Lighting Zone 36",
-      "groupAddress": 49188
+      "groupId": "C024"
     },
     {
       "zoneId": 37,
       "name": "Lighting Zone 37",
-      "groupAddress": 49189
+      "groupId": "C025"
     },
     {
       "zoneId": 38,
       "name": "Lighting Zone 38",
-      "groupAddress": 49190
+      "groupId": "C026"
     },
     {
       "zoneId": 39,
       "name": "Lighting Zone 39",
-      "groupAddress": 49191
+      "groupId": "C027"
     },
     {
       "zoneId": 40,
       "name": "Lighting Zone 40",
-      "groupAddress": 49192
+      "groupId": "C028"
     },
     {
       "zoneId": 41,
       "name": "Lighting Zone 41",
-      "groupAddress": 49193
+      "groupId": "C029"
     },
     {
       "zoneId": 42,
       "name": "Lighting Zone 42",
-      "groupAddress": 49194
+      "groupId": "C02A"
     },
     {
       "zoneId": 43,
       "name": "Lighting Zone 43",
-      "groupAddress": 49195
+      "groupId": "C02B"
     },
     {
       "zoneId": 44,
       "name": "Lighting Zone 44",
-      "groupAddress": 49196
+      "groupId": "C02C"
     },
     {
       "zoneId": 45,
       "name": "Lighting Zone 45",
-      "groupAddress": 49197
+      "groupId": "C02D"
     },
     {
       "zoneId": 46,
       "name": "Lighting Zone 46",
-      "groupAddress": 49198
+      "groupId": "C02E"
     },
     {
       "zoneId": 47,
       "name": "Lighting Zone 47",
-      "groupAddress": 49199
+      "groupId": "C02F"
     },
     {
       "zoneId": 48,
       "name": "Lighting Zone 48",
-      "groupAddress": 49200
+      "groupId": "C030"
     },
     {
       "zoneId": 49,
       "name": "Lighting Zone 49",
-      "groupAddress": 49201
+      "groupId": "C031"
     },
     {
       "zoneId": 50,
       "name": "Lighting Zone 50",
-      "groupAddress": 49202
+      "groupId": "C032"
     },
     {
       "zoneId": 51,
       "name": "Lighting Zone 51",
-      "groupAddress": 49203
+      "groupId": "C033"
     },
     {
       "zoneId": 52,
       "name": "Lighting Zone 52",
-      "groupAddress": 49204
+      "groupId": "C034"
     },
     {
       "zoneId": 53,
       "name": "Lighting Zone 53",
-      "groupAddress": 49205
+      "groupId": "C035"
     },
     {
       "zoneId": 54,
       "name": "Lighting Zone 54",
-      "groupAddress": 49206
+      "groupId": "C036"
     },
     {
       "zoneId": 55,
       "name": "Lighting Zone 55",
-      "groupAddress": 49207
+      "groupId": "C037"
     },
     {
       "zoneId": 56,
       "name": "Lighting Zone 56",
-      "groupAddress": 49208
+      "groupId": "C038"
     },
     {
       "zoneId": 57,
       "name": "Lighting Zone 57",
-      "groupAddress": 49209
+      "groupId": "C039"
     },
     {
       "zoneId": 58,
       "name": "Lighting Zone 58",
-      "groupAddress": 49210
+      "groupId": "C03A"
     },
     {
       "zoneId": 59,
       "name": "Lighting Zone 59",
-      "groupAddress": 49211
+      "groupId": "C03B"
     },
     {
       "zoneId": 60,
       "name": "Lighting Zone 60",
-      "groupAddress": 49212
+      "groupId": "C03C"
     },
     {
       "zoneId": 61,
       "name": "Lighting Zone 61",
-      "groupAddress": 49213
+      "groupId": "C03D"
     },
     {
       "zoneId": 62,
       "name": "Lighting Zone 62",
-      "groupAddress": 49214
+      "groupId": "C03E"
     },
     {
       "zoneId": 63,
       "name": "Lighting Zone 63",
-      "groupAddress": 49215
+      "groupId": "C03F"
     }
   ]
 }

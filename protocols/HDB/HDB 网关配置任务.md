@@ -106,15 +106,15 @@ Zone Models 即 `zoneModels`，设备须具备以下五类；在所列范围内�
 
 ### 2.4 Add Zones
 
-- 按所选 `zoneId` 查询实际 `groupAddress`。
-- 对每个 `groupAddress`，遍历 `zoneModels`，向每项指定的 Element/Model 发送 `ConfigModelSubscriptionAdd(groupAddress)`。
+- 按所选 `zoneId` 查询 `hdb.lightingZones[].groupId`，将 4 位十六进制字符串解析为实际组地址。
+- 对每个解析后的组地址，遍历 `zoneModels`，向每项指定的 Element/Model 发送 `ConfigModelSubscriptionAdd(groupAddress)`。
 - 每台设备最多选择 8 个 Zone；选择为空时，仅执行前面的 Delete All 和保留地址恢复。
 
 全部实际需要的阶段收到成功 ACK 并完成保存后，才将 `lightingZonesStatus` 记为 synced。失败、超时、取消或保存失败保持 pending；重试从 Delete All 开始，旧任务迟到的 ACK 不得确认新任务。
 
 ## 3. Auto / Force On / Force Off
 
-### Lighting Zone：发送到 Zone 的 groupAddress
+### Lighting Zone：发送到 Zone 的 groupId 对应组地址
 
 | 操作 | 命令 | 接收 Model |
 | --- | --- | --- |
@@ -135,7 +135,9 @@ Zone Models 即 `zoneModels`，设备须具备以下五类；在所列范围内�
 
 ## 4. Lighting Configuration 字段描述
 
-设备 `lightingConfiguration` 的五个 Property 字段提供单个 `elementAddress/modelId/property`；`lightingControl.mapValues` 提供 Auto、Force_On、Force_Off 各自的单个 `elementAddress/modelId/value`。只选择当前 lightingControl.value 对应的一项执行。完整结构见 [Lighting Configuration 契约](261022_1358_HDB_lighting_configuration_metadata_plan.md)。
+`spaceData.hdb.schemaVersion=2`。设备 `lightingConfiguration` 的五个 Property 字段提供单个 `elementAddress/modelId/property`，均为 4 位十六进制字符串。`lightingControl` 直接保存 `Auto`、`Force_On`、`Force_Off` 的目标地址字符串；用 `lightingControl[lightingControl.value]` 取当前选项地址，按上表生成固定命令与值，不再读取 mapValues。status/value 保持实际业务状态。
+
+设备 nodeAddress、sensorGroupId、broadcastId 也为 4 位十六进制字符串；三个 Model 清单的 elementAddress 为 4 位、SIG modelId 为 4 位、Vendor modelId 为 8 位。字符串无 0x 前缀、输出大写；解析后再按 Mesh 字段编码。devices[].mac 无分隔符，devices[].lightingZones 是 zoneId 数字数组。顶层 hdb.lightingZones 保留名称及 4 位十六进制字符串 groupId；先按 zoneId 查目录并解析 groupId 得到实际组地址，不读取旧 groupAddress。
 
 “第一个”按 Composition Element index 从小到大选择，包括 Primary。五个 Property 必须发到第一个 LC 所在 Element 的 LC Setup，缺少该 Setup 时失败，不回退到其他 Element。地址显式 null 表示无目标，不得下发或记为发送成功；应存在目标却填 null 属于非法数据。
 
@@ -155,18 +157,18 @@ SDK 支持以下操作，但没有接受任意 `elementAddress/modelId/property/
 
 | 输入 | 有 ACK 的 Nordic API | Set / Status Opcode | 参数 |
 | --- | --- | --- | --- |
-| modelId=4880 / 0x1310，五个 Property | `bt_mesh_light_ctrl_cli_prop_set(cli, ctx, property, val, rsp)` | 0x62 / 0x64 | Property ID + 按属性格式编码的值 |
-| Auto：modelId=4879 / 0x130F | `bt_mesh_light_ctrl_cli_light_onoff_set(cli, ctx, set, rsp)` | 0x829A / 0x829C | `set.on_off=true` |
-| Force_On：modelId=4864 / 0x1300 | `bt_mesh_lightness_cli_light_set(cli, ctx, set, rsp)` | 0x824C / 0x824E（Actual） | `set.lvl=65535` |
-| Force_Off：modelId=4096 / 0x1000 | `bt_mesh_onoff_cli_set(cli, ctx, set, rsp)` | 0x8202 / 0x8204 | `set.on_off=false` |
+| modelId="1310"，五个 Property | `bt_mesh_light_ctrl_cli_prop_set(cli, ctx, property, val, rsp)` | 0x62 / 0x64 | Property ID + 按属性格式编码的值 |
+| Auto：固定 Model 0x130F | `bt_mesh_light_ctrl_cli_light_onoff_set(cli, ctx, set, rsp)` | 0x829A / 0x829C | `set.on_off=true` |
+| Force_On：固定 Model 0x1300 | `bt_mesh_lightness_cli_light_set(cli, ctx, set, rsp)` | 0x824C / 0x824E（Actual） | `set.lvl=65535` |
+| Force_Off：固定 Model 0x1000 | `bt_mesh_onoff_cli_set(cli, ctx, set, rsp)` | 0x8202 / 0x8204 | `set.on_off=false` |
 
 接口来源：[LC Client](https://github.com/nrfconnect/sdk-nrf/blob/v3.2.4/include/bluetooth/mesh/light_ctrl_cli.h)、[Lightness Client](https://github.com/nrfconnect/sdk-nrf/blob/v3.2.4/include/bluetooth/mesh/lightness_cli.h)、[OnOff Client](https://github.com/nrfconnect/sdk-nrf/blob/v3.2.4/include/bluetooth/mesh/gen_onoff_cli.h)。LC Setup Server 的 Property 也由 LC Client API 发送，不需要一个独立的“LC Setup Client”。
 
 执行前与发送时：
 
-1. `lightingControl` 先用外层 `value` 选择 `mapValues[value]`，再取该对象中的地址、Model 和命令值；不得把字符串 Auto 或整个映射表直接发送。
+1. `lightingControl` 用外层 `value` 选择同对象的 `Auto` / `Force_On` / `Force_Off` 地址字符串，以十六进制解析为 UInt16。Model 和命令值按上表固定生成；不得把字符串 Auto 或地址文本直接作为 Mesh 参数发送。
 2. `ctx.addr=elementAddress`，该地址是远端灯具的 Element 单播地址，不是 Element index，也不能一律替换为 Primary Address。地址为 null 时拒绝发送。无需再扫描并向其他实例发送。
-3. `ctx.app_idx` 使用此 Space 的 AppKey index，`ctx.net_idx` 使用其所属 NetKey index，设置适用 TTL。发送端需持有这些密钥，且本地发送 Model 与远端目标 Model 已绑定对应 AppKey。JSON 四项描述之外，这些来自现有 Mesh 网络上下文，不需要逐字段重复保存。
+3. `ctx.app_idx` 使用此 Space 的 AppKey index，`ctx.net_idx` 使用其所属 NetKey index，设置适用 TTL。发送端需持有这些密钥，且本地发送 Model 与远端目标 Model 已绑定对应 AppKey。JSON 配置之外，这些来自现有 Mesh 网络上下文，不需要逐字段重复保存。
 4. `cli` 是网关本地已初始化、加入 Composition 并绑定 AppKey 的 Client 实例；不能用远端 `modelId` 强转一个 Client 指针。`modelId` 在本适配中用于选消息，通常不作为这四种消息的 payload 字段；Property Set 的 payload 才包含 Property ID。
 5. 三种控制 Set 的 `transition=NULL`，省略 Transition Time/Delay，与 App 一致。Lightness Client 必须采用 Actual 表示；启用 `CONFIG_BT_MESH_LIGHTNESS_LINEAR` 会改变该 API 所用 Opcode。
 6. 使用有 ACK 接口，不能替换为 `_set_unack`。`rsp=NULL` 表示非阻塞，不代表不请求 ACK；此时返回 0 只表示发送调用成功，必须在对应 status handler 中完成任务。非空 rsp 会等待响应，应放在允许阻塞且不阻塞接收回调的执行上下文。
@@ -216,7 +218,7 @@ Property ID 与数值均按小端写入；不要将两字节 Opcode 当小端整
 
 建议固件团队复用现有队列与发送通道，增加 HDB 字段映射、校验和 Force On 打包，不必为了此需求替换整个网关发送架构。若选用 SDK Client 路线，当前网关已有 EnOcean LC/OnOff Client，但其异步 handlers 为 NULL，不能直接复用后把发送返回值当作完成；需协调使用权、回调和队列。当前网关 Composition 没有 Lightness Client，应补对应实例、Kconfig 与 AppKey 绑定，或保留底层通道；不要求修改 JSON 来携带本地 Client Model 清单。
 
-在已核对的网关 MQTT 路径中，没有直接消费本次 `lightingConfiguration/mapValues` 的入口。因此“SDK 支持”与“当前工程已经能接收这份 JSON”需要区分：前者已从 SDK 与收包实现确认，后者仍需适配。
+在已核对的网关 MQTT 路径中，没有直接消费本次 `lightingConfiguration` 新格式 的入口。因此“SDK 支持”与“当前工程已经能接收这份 JSON”需要区分：前者已从 SDK 与收包实现确认，后者仍需适配。
 
 ### 5.4 ACK 与现有相关缺口
 

@@ -85,9 +85,9 @@ import Foundation
         try HDBConfigurationStore.validateModels(restored, nodes: network.nodes)
         let exported = try JSONSerialization.jsonObject(with: JSONEncoder().encode(restored.devices[0])) as! [String: Any]
         let lighting = exported["lightingConfiguration"] as! [String: Any]
-        let maps = (lighting["lightingControl"] as! [String: Any])["mapValues"] as! [String: [String: Any]]
-        check(maps["Auto"]?["elementAddress"] as? Int == 11 && maps["Force_On"]?["elementAddress"] as? Int == 11)
-        check((lighting["brightIntensity"] as! [String: Any])["elementAddress"] as? Int == 11,
+        let maps = lighting["lightingControl"] as! [String: Any]
+        check(maps["Auto"] as? String == "000B" && maps["Force_On"] as? String == "000B")
+        check((lighting["brightIntensity"] as! [String: Any])["elementAddress"] as? String == "000B",
               "Restored command metadata must follow the new Composition addresses")
     }
 

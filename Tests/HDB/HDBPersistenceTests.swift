@@ -1,4 +1,5 @@
 import Foundation
+import SQLite3
 
 @main enum HDBPersistenceTests {
     static func main() throws {
@@ -12,6 +13,7 @@ import Foundation
         let cleared = try HDBLightingZonePolicy.configurationForSave(current: config, baseline: config, persisted: nil, rowExists: true)
         precondition(cleared == nil)
         do { _ = try HDBLightingZonePolicy.configurationForSave(current: nil, baseline: config, persisted: HDBConfiguration(), rowExists: true); fatalError("stale conflicting clear accepted") } catch {}
+        try sqliteRoundTrip(config, path: CommandLine.arguments[1])
         let object = try HDBLightingZonePolicy.json(config)
         let payload: [String: Any] = ["groups": [["address": "C000", "isVirtual": false]], "nodes": [["uuid": id.uuidString, "unicastAddress": "0001", "elements": [["index": 0, "models": models.map { ["modelId": String(format: $0.companyIdentifier == nil ? "%04X" : "%08X", $0.modelId)] }]]]], "spaceData": ["hdb": object]]
         let decoded = try HDBLightingZonePolicy.decode(payload: payload)
@@ -45,6 +47,34 @@ import Foundation
             "spaceData": ["hdb": try HDBLightingZonePolicy.json(reloaded)]]
         precondition(SpaceConfigurationIntegrityPolicy.configurationsMatch(
             SpaceConfigurationIntegrityPolicy.configurationData(reexported), receipt))
+        for zone: [String: Any] in [
+            ["zoneId": 1, "name": "One", "groupAddress": 49152],
+            ["zoneId": 1, "name": "One", "groupId": 49152],
+            ["zoneId": 1, "name": "One"]
+        ] {
+            var malformed = object; malformed["lightingZones"] = [zone]
+            precondition(SpaceConfigurationIntegrityPolicy.configurationData(["groups": [], "nodes": [], "spaceData": ["hdb": malformed]]) == nil,
+                         "readback must not accept old or missing groupId")
+        }
+        var moved = config; moved.lightingZones[0].groupAddress = 0xC002
+        let movedReceipt = SpaceConfigurationIntegrityPolicy.configurationData(["groups": [], "nodes": [], "spaceData": ["hdb": try HDBLightingZonePolicy.json(moved)]])
+        precondition(!SpaceConfigurationIntegrityPolicy.configurationsMatch(receipt, movedReceipt), "groupId changes must remain visible to cloud comparison")
+        // Persisted v1 baselines must not be promoted or accepted as new receipts.
+        let oldHDB: [String: Any] = ["schemaVersion": 1, "devices": [], "lightingZones": []]
+        let oldRemote: [String: Any] = ["groups": [], "nodes": [], "spaceData": ["hdb": oldHDB]]
+        precondition(SpaceConfigurationIntegrityPolicy.configurationData(oldRemote) == nil)
+        let oldBaseline = try JSONSerialization.data(withJSONObject: ["groups": [], "memberships": [], "hdb": oldHDB])
+        let emptyV2 = SpaceConfigurationIntegrityPolicy.configurationData(["groups": [], "nodes": [], "spaceData": ["hdb": try HDBLightingZonePolicy.json(HDBConfiguration())]])
+        precondition(!SpaceConfigurationIntegrityPolicy.configurationsMatch(oldBaseline, emptyV2))
+        precondition(!SpaceConfigurationIntegrityPolicy.configurationsMatch(oldBaseline, receipt))
+        // Compact MACs decode back to the same identity and remain strict against Node mismatches.
+        let imported = try HDBLightingZonePolicy.decode(payload: payload)!
+        precondition(imported.devices[0].mac == device.mac)
+        try HDBLightingZonePolicy.validateReferences(imported, payload: payload)
+        var changedControl = config
+        changedControl.devices[0].lightingConfiguration!.lightingControl = .init(status: .synced, value: .forceOff)
+        let changedControlPayload: [String: Any] = ["groups": [], "nodes": [], "spaceData": ["hdb": try HDBLightingZonePolicy.json(changedControl)]]
+        precondition(!SpaceConfigurationIntegrityPolicy.configurationsMatch(receipt, SpaceConfigurationIntegrityPolicy.configurationData(changedControlPayload)))
         var changed = config
         changed.devices[0].lightingZonesStatus = .synced
         let newer: [String: Any] = ["groups": [[String: Any]](), "nodes": [[String: Any]](), "spaceData": ["hdb": try HDBLightingZonePolicy.json(changed)]]
@@ -55,10 +85,10 @@ import Foundation
             "spaceData": ["hdb": try HDBLightingZonePolicy.json(changed)]]
         precondition(receipt != SpaceConfigurationIntegrityPolicy.configurationData(valueChanged),
                      "cloud comparison must retain field values")
-        for key in ["mapValues", "elementAddress", "modelId", "property"] {
+        for key in ["Auto", "Force_On", "Force_Off", "elementAddress", "modelId", "property"] {
             var changedObject = object, records = object["devices"] as! [[String: Any]]
             var fields = records[0]["lightingConfiguration"] as! [String: Any]
-            let name = key == "mapValues" ? "lightingControl" : "brightIntensity"
+            let name = ["Auto", "Force_On", "Force_Off"].contains(key) ? "lightingControl" : "brightIntensity"
             var field = fields[name] as! [String: Any]; field.removeValue(forKey: key)
             fields[name] = field; records[0]["lightingConfiguration"] = fields; changedObject["devices"] = records
             let missingDescription: [String: Any] = ["groups": [[String: Any]](), "nodes": [[String: Any]](), "spaceData": ["hdb": changedObject]]
@@ -84,5 +114,74 @@ import Foundation
         SpaceData.persisted!.canEditing = false
         do { try HDBConfigurationStore.update(space: stale) { $0.devices = [] }; fatalError("visitor edit accepted") } catch {}
         print("PASS: HDB payload round trip, missing field rejection and UUID/address reference checks")
+    }
+
+    /// Real SQLite BLOB durability with production HDB codecs/policy. The minimal
+    /// spaces table isolates this column; unrelated App tables/imports are not exercised.
+    static func sqliteRoundTrip(_ config: HDBConfiguration, path: String) throws {
+        var db: OpaquePointer?
+        precondition(sqlite3_open(path, &db) == SQLITE_OK)
+        defer { sqlite3_close(db) }
+        func sql(_ text: String) { precondition(sqlite3_exec(db, text, nil, nil, nil) == SQLITE_OK) }
+        func write(_ data: Data) {
+            var statement: OpaquePointer?
+            precondition(sqlite3_prepare_v2(db, "INSERT OR REPLACE INTO spaces (id,hdb) VALUES (1,?)", -1, &statement, nil) == SQLITE_OK)
+            data.withUnsafeBytes { buffer in
+                defer { sqlite3_finalize(statement) }
+                precondition(sqlite3_bind_blob(statement, 1, buffer.baseAddress, Int32(buffer.count), nil) == SQLITE_OK)
+                precondition(sqlite3_step(statement) == SQLITE_DONE)
+            }
+        }
+        func read() -> Data {
+            var statement: OpaquePointer?
+            precondition(sqlite3_prepare_v2(db, "SELECT hdb FROM spaces WHERE id=1", -1, &statement, nil) == SQLITE_OK)
+            defer { sqlite3_finalize(statement) }
+            precondition(sqlite3_step(statement) == SQLITE_ROW)
+            return Data(bytes: sqlite3_column_blob(statement, 0)!, count: Int(sqlite3_column_bytes(statement, 0)))
+        }
+        func decode(_ data: Data) throws -> HDBConfiguration {
+            let value = try JSONDecoder().decode(HDBConfiguration.self, from: data)
+            try HDBLightingZonePolicy.validate(value)
+            return value
+        }
+        sql("CREATE TABLE spaces (id INTEGER PRIMARY KEY, hdb BLOB)")
+        let saved = try JSONEncoder().encode(config)
+        write(saved)
+        precondition(sqlite3_close(db) == SQLITE_OK)
+        db = nil
+        precondition(sqlite3_open(path, &db) == SQLITE_OK)
+        let reopened = try decode(read())
+        precondition(reopened == config)
+        let json = try JSONSerialization.jsonObject(with: read()) as! [String: Any]
+        let zone = (json["lightingZones"] as! [[String: Any]])[0]
+        precondition(zone["groupId"] as? String == "C000" && zone["groupAddress"] == nil)
+        let device = (json["devices"] as! [[String: Any]])[0]
+        precondition(json["schemaVersion"] as? Int == 2 && device["nodeAddress"] as? String == "0001")
+        precondition(device["mac"] as? String == "AABBCCDDEEFF" && device["lightingZones"] as? [Int] == [1])
+        // Invalid import fails validation before this fixture commits, preserving the last record.
+        sql("BEGIN IMMEDIATE")
+        var bad = json; var entries = json["devices"] as! [[String: Any]]
+        entries[0]["nodeAddress"] = 1; bad["devices"] = entries
+        write(try JSONSerialization.data(withJSONObject: bad))
+        do { _ = try decode(read()); fatalError("numeric v1 field accepted from SQLite") }
+        catch { sql("ROLLBACK") }
+        precondition(read() == saved)
+        // Updating desired state survives another connection restart.
+        var updated = config
+        updated.devices[0].lightingZones = []
+        updated.devices[0].lightingConfiguration!.lightingControl = .init(status: .synced, value: .forceOff)
+        write(try JSONEncoder().encode(updated))
+        precondition(sqlite3_close(db) == SQLITE_OK)
+        db = nil
+        precondition(sqlite3_open(path, &db) == SQLITE_OK)
+        let restored = try decode(read())
+        precondition(restored == updated)
+        // Reject the old format without modifying its stored bytes.
+        let legacy = Data("{\"schemaVersion\":1,\"devices\":[],\"lightingZones\":[]}".utf8)
+        write(legacy)
+        do { _ = try decode(read()); fatalError("legacy HDB accepted from SQLite") }
+        catch HDBConfigurationError.invalidData {}
+        precondition(read() == legacy)
+        print("PASS: real SQLite HDB BLOB reopen, state/empty Zone persistence, rollback and non-destructive legacy rejection")
     }
 }

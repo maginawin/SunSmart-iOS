@@ -6,7 +6,8 @@ import tempfile
 import re
 ROOT = Path(__file__).resolve().parents[1]
 # Only current, complete HDB objects belong here. Historical demos are archived.
-CURRENT_EXAMPLES = [ROOT / "docs/261021_1806_HDB_unicast_example.json"]
+CURRENT_EXAMPLES = [ROOT / "docs/261021_1806_HDB_unicast_example.json",
+                    ROOT / "docs/261022_1626_HDB_json_v2_demo.json"]
 CONTRACT = ROOT / "docs/261022_1116_HDB_device_model_arrays_plan.md"
 with tempfile.TemporaryDirectory(prefix="hdb-tests-") as directory:
     binary = str(Path(directory) / "tests")

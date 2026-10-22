@@ -160,7 +160,7 @@ final class NetworkRequest {
         try await testLegacyUninitializedReceiptRecovery()
         try await testEmptyZoneImportGate()
         try await testUnusedTaskLevelReadback()
-        try testLegacyHDBImportFinalization()
+        try testHDBV2ImportFinalization()
         precondition(NetworkApiError(code: -2002) == .configurationUploadUnconfirmed)
         precondition(NetworkApiError(code: -2003) == .configurationExportInvalid)
         precondition(NetworkApiError.configurationUploadUnconfirmed.localizedDescription == "configuration_upload_unconfirmed")
@@ -755,11 +755,11 @@ final class NetworkRequest {
         print("PASS: existing taskLevel block clears after import finalization without a repair upload")
     }
 
-    @MainActor static func testLegacyHDBImportFinalization() throws {
+    @MainActor static func testHDBV2ImportFinalization() throws {
         typealias S = SpaceConfigurationSafety
-        let space = SpaceData("legacy-hdb-broadcast-import")
+        let space = SpaceData("hdb-v2-import")
         var payload = space.payload
-        payload["spaceData"] = ["hdb": ["schemaVersion": 1,
+        payload["spaceData"] = ["hdb": ["schemaVersion": 2,
             "lightingZones": [[String: Any]](), "devices": [[String: Any]]()]]
         let config = try HDBLightingZonePolicy.decode(payload: payload)!
         S.block(space, reason: "invalidStoredHDB")
@@ -771,8 +771,8 @@ final class NetworkRequest {
         payload["spaceData"] = ["hdb": try HDBLightingZonePolicy.json(config)]
         precondition(SpaceConfigurationIntegrityPolicy.configurationsMatch(
             baseline, SpaceConfigurationIntegrityPolicy.configurationData(payload)))
-        precondition(!S.preservesLocalChanges(space), "compatibility recovery must not create pending local edits")
-        print("PASS: legacy HDB import clears invalidStoredHDB and records a comparable normalized baseline")
+        precondition(!S.preservesLocalChanges(space), "valid v2 recovery must not create pending local edits")
+        print("PASS: v2 HDB import clears invalidStoredHDB and records a comparable baseline")
     }
 
     @MainActor static func testSceneTargetReadback() async throws {
