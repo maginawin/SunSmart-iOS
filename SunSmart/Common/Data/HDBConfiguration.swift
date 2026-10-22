@@ -62,7 +62,10 @@ struct HDBDeviceConfiguration: Codable, Equatable {
         broadcastModels = HDBModelReference.normalized(try c.decode([HDBModelReference].self, forKey: .broadcastModels))
         broadcastId = try c.decode(UInt16.self, forKey: .broadcastId)
         guard broadcastId == 0xFEFD else { throw HDBConfigurationError.invalidData }
-        lightingConfiguration = try c.decodeIfPresent(HDBLightingConfiguration.self, forKey: .lightingConfiguration)
+        if c.contains(.lightingConfiguration), try !c.decodeNil(forKey: .lightingConfiguration) {
+            lightingConfiguration = try HDBLightingConfiguration.decode(from: c.superDecoder(forKey: .lightingConfiguration),
+                models: zoneModels.map(\.target), primaryAddress: nodeAddress)
+        } else { lightingConfiguration = nil }
     }
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
@@ -75,7 +78,10 @@ struct HDBDeviceConfiguration: Codable, Equatable {
         try c.encode(HDBModelReference.normalized(sensorGroupModels), forKey: .sensorGroupModels)
         try c.encode(HDBModelReference.normalized(broadcastModels), forKey: .broadcastModels)
         try c.encode(broadcastId, forKey: .broadcastId)
-        try c.encode(lightingConfiguration, forKey: .lightingConfiguration)
+        if let lightingConfiguration {
+            try lightingConfiguration.encode(to: c.superEncoder(forKey: .lightingConfiguration),
+                models: zoneModels.map(\.target), primaryAddress: nodeAddress)
+        } else { try c.encodeNil(forKey: .lightingConfiguration) }
     }
 
     mutating func copyModels(from device: Self) {
@@ -297,7 +303,72 @@ enum HDBLightingCommand: String, Codable, CaseIterable {
     var titleKey: String { "hdb_lighting_" + rawValue }
 }
 
-enum HDBLightingControl: String, Codable, CaseIterable { case auto = "Auto", forceOn = "Force_On", forceOff = "Force_Off" }
+enum HDBLightingControl: String, Codable, CaseIterable {
+    case auto = "Auto", forceOn = "Force_On", forceOff = "Force_Off"
+    var write: HDBLightingWrite {
+        switch self { case .auto: return .auto; case .forceOn: return .lightness(65535); case .forceOff: return .off }
+    }
+}
+
+
+/// Shared field/property/value rules for JSON descriptors and actual Mesh writes.
+enum HDBLightingProperty: String, CaseIterable {
+    case dimIntensity, brightIntensity, rampUpTime, rampDownTime, holdTime
+    var identifier: UInt16 {
+        switch self {
+        case .dimIntensity: return 0x002F
+        case .brightIntensity: return 0x002E
+        case .rampUpTime: return 0x0037
+        case .rampDownTime: return 0x0036
+        case .holdTime: return 0x003C
+        }
+    }
+    func value(in values: HDBLightingValues) -> Int? {
+        switch self {
+        case .dimIntensity: return values.dimIntensity
+        case .brightIntensity: return values.brightIntensity
+        case .rampUpTime: return values.rampUpTime
+        case .rampDownTime: return values.rampDownTime
+        case .holdTime: return values.holdTime
+        }
+    }
+    func rawValue(for value: Int) -> UInt32 {
+        switch self {
+        case .dimIntensity, .brightIntensity: return UInt32(Double(value) / 100 * 65535)
+        default: return UInt32(value * 1000)
+        }
+    }
+}
+
+enum HDBLightingWrite: Equatable {
+    case auto, off, lightness(UInt16), property(UInt16, UInt32)
+    var fieldName: String {
+        switch self {
+        case .auto, .off, .lightness: return "lightingControl"
+        case .property(let id, _):
+            return HDBLightingProperty.allCases.first { $0.identifier == id }?.rawValue ?? ""
+        }
+    }
+    var modelIdentifier: UInt16 {
+        switch self { case .auto: return 0x130F; case .off: return 0x1000; case .lightness: return 0x1300; case .property: return 0x1310 }
+    }
+    /// Property writes belong to the first LC's element, even when an earlier
+    /// or later element independently exposes a Setup Server.
+    func target(in models: [HDBModelTarget], primaryAddress: UInt16) -> HDBModelTarget? {
+        let sig = models.filter {
+            $0.companyIdentifier == nil && (1...0x7FFF).contains(Int($0.elementAddress))
+                && $0.elementAddress >= primaryAddress
+        }
+        if case .property = self {
+            guard let lc = sig.filter({ $0.modelIdentifier == 0x130F }).min(by: { $0.elementAddress < $1.elementAddress }) else { return nil }
+            return sig.first { $0.modelIdentifier == modelIdentifier && $0.elementAddress == lc.elementAddress }
+        }
+        return sig.filter {
+            $0.modelIdentifier == modelIdentifier && (self != .off || $0.elementAddress == primaryAddress)
+        }.min { $0.elementAddress < $1.elementAddress }
+    }
+
+}
 
 struct HDBLightingValues: Codable, Equatable {
     var lightingControl: HDBLightingControl?
@@ -434,5 +505,107 @@ struct HDBLightingConfiguration: Codable, Equatable {
     func status(for command: HDBLightingCommand) -> HDBSyncStatus? {
         let states = values.selected(command).fieldNames.compactMap { status(field: $0) }
         return states.isEmpty ? nil : (states.contains(.pending) ? .pending : .synced)
+    }
+}
+
+
+/// Command metadata is derived from the enclosing device snapshot. Decoding
+/// validates it before discarding the redundant representation; comparison must
+/// never repair missing or altered cloud fields into a successful receipt.
+extension HDBLightingConfiguration {
+    private struct FieldKey: CodingKey {
+        let stringValue: String
+        var intValue: Int? { nil }
+        init(_ value: String) { stringValue = value }
+        init?(stringValue: String) { self.init(stringValue) }
+        init?(intValue: Int) { return nil }
+    }
+    private enum MetadataKey: String, CodingKey, CaseIterable {
+        case elementAddress, modelId, property, mapValues, models, value
+    }
+
+    func encode(to encoder: Encoder, models: [HDBModelTarget], primaryAddress: UInt16) throws {
+        try values.validate()
+        var fields = encoder.container(keyedBy: FieldKey.self)
+        for name in values.fieldNames {
+            let field = fields.superEncoder(forKey: FieldKey(name))
+            // Business values and derived metadata share one field container.
+            switch name {
+            case "lightingControl": try lightingControl.encode(to: field)
+            case "failsafeDelay": try failsafeDelay.encode(to: field)
+            case "installDate": try installDate.encode(to: field)
+            default:
+                let property = HDBLightingProperty(rawValue: name)!
+                try HDBLightingField(status: status(field: name)!, value: property.value(in: values)!).encode(to: field)
+            }
+            var metadata = field.container(keyedBy: MetadataKey.self)
+            if name == "lightingControl" {
+                var mappings = metadata.nestedContainer(keyedBy: FieldKey.self, forKey: .mapValues)
+                for control in HDBLightingControl.allCases {
+                    try Self.encode(control.write, to: mappings.superEncoder(forKey: FieldKey(control.rawValue)),
+                                    models: models, primaryAddress: primaryAddress)
+                }
+            } else if let property = HDBLightingProperty(rawValue: name) {
+                try Self.encode(.property(property.identifier, 0), to: field, models: models, primaryAddress: primaryAddress)
+            }
+        }
+    }
+
+    private static func encode(_ write: HDBLightingWrite, to encoder: Encoder, models: [HDBModelTarget], primaryAddress: UInt16) throws {
+        var c = encoder.container(keyedBy: MetadataKey.self)
+        try c.encode(write.target(in: models, primaryAddress: primaryAddress)?.elementAddress, forKey: .elementAddress)
+        try c.encode(write.modelIdentifier, forKey: .modelId)
+        switch write {
+        case .auto: try c.encode(true, forKey: .value)
+        case .off: try c.encode(false, forKey: .value)
+        case .lightness(let value): try c.encode(value, forKey: .value)
+        case .property(let id, _): try c.encode(id, forKey: .property)
+        }
+    }
+
+    static func decode(from decoder: Decoder, models: [HDBModelTarget], primaryAddress: UInt16) throws -> Self {
+        let result = try Self(from: decoder)
+        try result.values.validate()
+        let fields = try decoder.container(keyedBy: FieldKey.self)
+        for name in result.values.fieldNames {
+            let field = try fields.superDecoder(forKey: FieldKey(name))
+            let metadata = try field.container(keyedBy: MetadataKey.self)
+            if name == "lightingControl" {
+                try reject([.elementAddress, .modelId, .property, .models], in: metadata)
+                let mappings = try metadata.nestedContainer(keyedBy: FieldKey.self, forKey: .mapValues)
+                guard Set(mappings.allKeys.map(\.stringValue)) == Set(HDBLightingControl.allCases.map(\.rawValue)) else { throw HDBConfigurationError.invalidData }
+                for control in HDBLightingControl.allCases {
+                    let entry = try mappings.superDecoder(forKey: FieldKey(control.rawValue))
+                    let keys = try entry.container(keyedBy: FieldKey.self)
+                    guard Set(keys.allKeys.map(\.stringValue)) == ["elementAddress", "modelId", "value"] else { throw HDBConfigurationError.invalidData }
+                    try validate(control.write, from: entry, models: models, primaryAddress: primaryAddress)
+                }
+            } else if let property = HDBLightingProperty(rawValue: name) {
+                try reject([.mapValues, .models], in: metadata)
+                try validate(.property(property.identifier, 0), from: field, models: models, primaryAddress: primaryAddress)
+            } else {
+                try reject(MetadataKey.allCases.filter { $0 != .value }, in: metadata)
+            }
+        }
+        return result
+    }
+
+    private static func reject(_ keys: [MetadataKey], in container: KeyedDecodingContainer<MetadataKey>) throws {
+        guard !keys.contains(where: container.contains) else { throw HDBConfigurationError.invalidData }
+    }
+
+    private static func validate(_ write: HDBLightingWrite, from decoder: Decoder, models: [HDBModelTarget], primaryAddress: UInt16) throws {
+        let c = try decoder.container(keyedBy: MetadataKey.self)
+        guard c.contains(.elementAddress),
+              try c.decodeIfPresent(UInt16.self, forKey: .elementAddress) == write.target(in: models, primaryAddress: primaryAddress)?.elementAddress,
+              try c.decode(UInt16.self, forKey: .modelId) == write.modelIdentifier else { throw HDBConfigurationError.invalidData }
+        let matches: Bool
+        switch write {
+        case .auto: matches = try c.decode(Bool.self, forKey: .value)
+        case .off: matches = try !c.decode(Bool.self, forKey: .value)
+        case .lightness(let value): matches = try c.decode(UInt16.self, forKey: .value) == value
+        case .property(let id, _): matches = try c.decode(UInt16.self, forKey: .property) == id
+        }
+        guard matches else { throw HDBConfigurationError.invalidData }
     }
 }

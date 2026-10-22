@@ -13,6 +13,14 @@ import Foundation
         let values = HDBLightingValues.defaults
         let intensity = try HDBLightingConfigurationPolicy.writes(.intensity, values: values)
         precondition(intensity == [.property(0x002F, 13107), .property(0x002E, 52428)])
+        for (percent, expected): (Int, UInt32) in [(0, 0), (5, 3276), (50, 32767)] {
+            try check(HDBLightingConfigurationPolicy.writes(.intensity, values: .init(dimIntensity: percent)) == [.property(47, expected)])
+        }
+        try check(HDBLightingConfigurationPolicy.writes(.intensity, values: .init(brightIntensity: 100)) == [.property(46, 65535)])
+        try check(HDBLightingConfigurationPolicy.writes(.softDimming, values: .init(rampUpTime: 1, rampDownTime: 3)) == [.property(55, 1000), .property(54, 3000)])
+        for (seconds, expected): (Int, UInt32) in [(10, 10000), (3600, 3600000)] {
+            try check(HDBLightingConfigurationPolicy.writes(.timeDelay, values: .init(holdTime: seconds)) == [.property(60, expected)])
+        }
         try check(try HDBLightingConfigurationPolicy.writes(.override, values: .init(lightingControl: .auto)) == [.auto])
         try check(try HDBLightingConfigurationPolicy.writes(.override, values: .init(lightingControl: .forceOff)) == [.off])
         try check(try HDBLightingConfigurationPolicy.writes(.override, values: .init(lightingControl: .forceOn)) == [.lightness(65535)])
@@ -33,7 +41,19 @@ import Foundation
         let multiLightness = HDBLightingRecipient(nodeUuid: id, nodeAddress: 1,
             targets: dualOnOff.targets + [.init(elementAddress: 2, modelIdentifier: 0x1300, companyIdentifier: nil)])
         let forceOn = try HDBLightingConfigurationPolicy.route([.lightness(65535)], recipient: multiLightness)
-        precondition(forceOn.map(\.address) == [1, 2], "Force On must retain secondary delivery")
+        precondition(forceOn.map(\.address) == [1], "Force On must select only the first Lightness element")
+        let multiLC = HDBLightingRecipient(nodeUuid: id, nodeAddress: 1, targets: [
+            .init(elementAddress: 4, modelIdentifier: 0x130F, companyIdentifier: nil),
+            .init(elementAddress: 4, modelIdentifier: 0x1310, companyIdentifier: nil),
+            .init(elementAddress: 1, modelIdentifier: 0x1310, companyIdentifier: nil)
+        ] + targets.reversed())
+        try check(HDBLightingConfigurationPolicy.route([.auto] + intensity, recipient: multiLC).map(\.address) == [2, 2, 2])
+        let missingSetup = HDBLightingRecipient(nodeUuid: id, nodeAddress: 1,
+            targets: multiLC.targets.filter { !($0.elementAddress == 2 && $0.modelIdentifier == 0x1310) })
+        do {
+            _ = try HDBLightingConfigurationPolicy.route(intensity, recipient: missingSetup)
+            fatalError("Property must not fall back from the first LC to a different Setup element")
+        } catch HDBConfigurationError.unsupportedModels {}
         var device = HDBDeviceConfiguration(nodeUuid: id, nodeAddress: 1, mac: "AA:BB:CC:DD:EE:FF", lightingZones: [.init(zoneId: 1)])
         device.zoneModels = HDBLightingZonePolicy.zoneTargets(from: targets, primaryAddress: 1).map(HDBModelReference.init)
         device.sensorGroupModels = HDBLightingZonePolicy.sensorGroupTargets(from: targets).map(HDBModelReference.init)

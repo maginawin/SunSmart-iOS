@@ -184,15 +184,20 @@ final class HDBLightingConfigurationService {
         expectedRevision = try HDBConfigurationStore.revision(space: space)
         var requests: [(Node, HDBModelTarget, AcknowledgedMeshMessage)] = []
         for node in nodes {
-            for target in targets(node) where target.companyIdentifier == nil {
-                if command == .override {
-                    if target.modelIdentifier == 0x130F {
-                        requests.append((node, target, LightLCModeGet()))
-                        requests.append((node, target, LightLCLightOnOffGet()))
-                    } else if target.modelIdentifier == 0x1300 { requests.append((node, target, LightLightnessGet())) }
-                } else if target.modelIdentifier == 0x1310 {
-                    let defaults = try HDBLightingConfigurationPolicy.writes(command, values: .defaults)
-                    for write in defaults { if case .property(let id, _) = write { requests.append((node, target, LightLCPropertyGet(DeviceProperty(id)))) } }
+            let recipient = HDBLightingRecipient(nodeUuid: node.uuid, nodeAddress: node.primaryUnicastAddress, targets: targets(node))
+            func target(_ write: HDBLightingWrite) throws -> HDBModelTarget {
+                try HDBLightingConfigurationPolicy.targets(for: write, recipient: recipient)[0]
+            }
+            if command == .override {
+                let lc = try target(.auto)
+                requests.append((node, lc, LightLCModeGet()))
+                requests.append((node, lc, LightLCLightOnOffGet()))
+                requests.append((node, try target(.lightness(65535)), LightLightnessGet()))
+            } else {
+                for write in try HDBLightingConfigurationPolicy.writes(command, values: .defaults) {
+                    if case .property(let id, _) = write {
+                        requests.append((node, try target(write), LightLCPropertyGet(DeviceProperty(id))))
+                    }
                 }
             }
         }

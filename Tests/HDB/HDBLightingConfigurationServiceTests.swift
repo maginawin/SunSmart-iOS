@@ -6,7 +6,7 @@ import Foundation
         let space = SpaceData(), network = MeshNetwork(), node = Node(), other = Node(address: 10)
         let secondaryOnOff = Model(0x1000); secondaryOnOff.boundApplicationKeys = []
         let secondary = Element(); secondary.unicastAddress = 2
-        secondary.models = [secondaryOnOff, Model(0x1310)]
+        secondary.models = [secondaryOnOff, Model(0x1310), Model(0x130F), Model(0x1300)]
         secondary.models.forEach { $0.parentElement = secondary }
         node.elements.append(secondary)
         network.nodes = [node, other]; network.nodes.forEach { $0.network = network }
@@ -47,14 +47,11 @@ import Foundation
         try check(HDBConfigurationStore.load(space: space).devices[0].lightingConfiguration?.dimIntensity?.status == .pending)
         reply()
         pump { MeshNetworkManager.preparationReply != nil }
-        precondition(addresses == [1, 2])
-        try check(HDBConfigurationStore.load(space: space).devices[0].lightingConfiguration?.dimIntensity?.status == .pending)
-        reply()
-        pump { MeshNetworkManager.preparationReply != nil }
+        precondition(addresses == [1, 1])
         try check(HDBConfigurationStore.load(space: space).devices[0].lightingConfiguration?.dimIntensity?.status == .synced)
         try check(HDBConfigurationStore.load(space: space).devices[0].lightingConfiguration?.brightIntensity?.status == .pending)
-        reply(); pump { MeshNetworkManager.preparationReply != nil }; reply(); pump { !service.isRunning }
-        precondition(addresses == [1, 2, 1, 2], "only selected device elements receive acknowledged writes")
+        reply(); pump { !service.isRunning }
+        precondition(addresses == [1, 1], "each property must use only the first LC element")
         try check(HDBConfigurationStore.load(space: space).devices[0].lightingConfiguration?.brightIntensity?.status == .synced)
         try check(HDBConfigurationStore.load(space: space).devices[1] == otherBefore)
         precondition(errors.isEmpty)
@@ -87,8 +84,7 @@ import Foundation
         pump { MeshNetworkManager.preparationReply != nil }; reply(failure: true); pump { !service.isRunning }
         try check(HDBConfigurationStore.load(space: space).devices[0].lightingConfiguration?.holdTime?.status == .pending)
         try service.set(nodeUuid: node.uuid, command: .timeDelay, values: .init(holdTime: 90))
-        pump { MeshNetworkManager.preparationReply != nil }; reply(); pump { MeshNetworkManager.preparationReply != nil }
-        reply(); pump { !service.isRunning }
+        pump { MeshNetworkManager.preparationReply != nil }; reply(); pump { !service.isRunning }
         try check(HDBConfigurationStore.load(space: space).devices[0].lightingConfiguration?.holdTime?.status == .synced)
 
         try service.set(nodeUuid: node.uuid, command: .timeDelay, values: .init(holdTime: 120))
@@ -115,13 +111,12 @@ import Foundation
         addresses = []
         var readback: String?
         try service.get(nodeUuid: node.uuid, command: .timeDelay) { readback = $0 }
-        pump { MeshNetworkManager.preparationReply != nil }; reply()
         pump { MeshNetworkManager.preparationReply != nil }; reply(failure: true)
         pump { !service.isRunning }
         let observed = try JSONSerialization.jsonObject(with: Data(readback!.utf8)) as! [String: Any]
-        precondition(addresses == [1, 2] && observed["incomplete"] as? Bool == true)
+        precondition(addresses == [1] && observed["incomplete"] as? Bool == true)
         try check(HDBConfigurationStore.load(space: space) == beforeMissing)
-        print("PASS: unicast multi-element ACKs, empty/pending Zone allowed, isolation, offline metadata, binding failure, cancel, retry, stale/mismatched ACK and missing target/MAC")
+        print("PASS: single-target Set/Get ACKs, empty/pending Zone allowed, isolation, offline metadata, binding failure, cancel, retry, stale/mismatched ACK and missing target/MAC")
     }
     static func reply(failure: Bool = false, mismatch: Bool = false) {
         let pending = MeshNetworkManager.preparationReply!

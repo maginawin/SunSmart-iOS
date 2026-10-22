@@ -35,7 +35,7 @@ Config 命令发送到设备 Primary Address，参数指定目标 Element Addres
 
 ### 1.3 灯光参数
 
-向所有 Elements 下的 Light LC Setup Server `0x1310` 发送 `LightLCPropertySet`，值取设备 Lighting Configuration；新设备默认如下：
+向第一个包含 SIG Light LC Server `0x130F` 的 Element 中的 Light LC Setup Server `0x1310` 发送 `LightLCPropertySet`，值取设备 Lighting Configuration；新设备默认如下：
 
 | 参数 | Property ID | 默认写入值 |
 | --- | --- | --- |
@@ -50,7 +50,7 @@ Config 命令发送到设备 Primary Address，参数指定目标 Element Addres
 ### 1.4 启用 LC 与 Auto
 
 - 向所有 Elements 下的 `0x130F` 发送 `LightLCModeSet(true)`。
-- 全部完成后，向所有 Elements 下的 `0x130F` 发送 `LightLCLightOnOffSet(true)`，省略 Transition Time 和 Delay。
+- 全部完成后，仅向第一个包含 `0x130F` 的 Element 发送 `LightLCLightOnOffSet(true)`，省略 Transition Time 和 Delay。
 
 ## 2. 设置 Lighting Zones
 
@@ -126,8 +126,19 @@ Zone Models 即 `zoneModels`，设备须具备以下五类；在所列范围内�
 
 | 操作 | 命令 | 目标 |
 | --- | --- | --- |
-| Auto | `LightLCLightOnOffSet(true)` | 所有 Elements 下的 `0x130F` |
-| Force On | `LightLightnessSet(65535)` | 所有 Elements 下的 `0x1300` |
+| Auto | `LightLCLightOnOffSet(true)` | 第一个包含 `0x130F` 的 Element |
+| Force On | `LightLightnessSet(65535)` | 第一个包含 `0x1300` 的 Element |
 | Force Off | `GenericOnOffSet(false)` | Primary Element 下的 `0x1000` |
 
 以上控制命令均省略 Transition Time 和 Delay。
+
+
+## 4. Lighting Configuration 字段描述
+
+设备 `lightingConfiguration` 的五个 Property 字段提供单个 `elementAddress/modelId/property`；`lightingControl.mapValues` 提供 Auto、Force_On、Force_Off 各自的单个 `elementAddress/modelId/value`。只选择当前 lightingControl.value 对应的一项执行。完整结构见 [Lighting Configuration 契约](261022_1358_HDB_lighting_configuration_metadata_plan.md)。
+
+“第一个”按 Composition Element index 从小到大选择，包括 Primary。五个 Property 必须发到第一个 LC 所在 Element 的 LC Setup，缺少该 Setup 时失败，不回退到其他 Element。地址显式 null 表示无目标，不得下发或记为发送成功；应存在目标却填 null 属于非法数据。
+
+参数 Set 均逐条等待 ACK：Intensity 为 Dim→Bright，Soft Dimming 为 Ramp Up→Ramp Down；值按 §1.3 换算。failsafeDelay、installDate 仅保存配置，不发送命令。固定 Preparation 的 Vendor/Mode/Occupancy/Prolong 与 Zone/Sensor/Broadcast 订阅仍保持原有全部目标范围。
+
+描述由 App 按已保存的设备模型清单生成；保存和回读必须保留全部新字段，不兼容缺字段的旧 HDB 数据，也不自动迁移。外部执行方按本节及字段描述执行，不能沿用先前 Lighting Configuration 的全实例下发规则。

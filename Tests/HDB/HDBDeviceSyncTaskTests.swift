@@ -73,7 +73,46 @@ import Foundation
         check(!HDBDeviceSyncService.needsSync(node: node))
     }
 
+    static func testMultiLCInitializationBarrier() throws {
+        let (_, node, context) = try fixture()
+        let secondLC = Model(0x130F); secondLC.parentElement = node.elements[1]
+        secondLC.subscriptions = [Group(0xFEFD)]
+        node.elements[1].models.append(secondLC)
+        try HDBDeviceSyncService.prepareIntent(context: context)
+        let task = try initialization(context), handles = task.makeHandles()
+        let modes = handles.filter { $0.message is LightLCModeSet }
+        let lighting = handles.filter { ($0.message as? LightingTestMessage)?.write != nil }
+        check(modes.map(\.address) == [1, 2], "Fixed Mode initialization must retain every LC instance")
+        check(lighting.count == 6 && lighting.allSatisfy { $0.address == 1 }, "Five parameters and final Auto must use only the first LC")
+        acknowledge(task, handles, omit: { $0.message is LightLCModeSet && $0.address == 2 })
+        check(!task.persist(result: handles))
+        try check(HDBConfigurationStore.load(space: context.space).devices[0].lightingConfiguration?.lightingControl?.status == .pending,
+                  "First LC Auto ACK cannot hide a missing second LC Mode ACK")
+        let retry = try initialization(context), retryHandles = retry.makeHandles()
+        check(retryHandles.filter { $0.message is LightLCModeSet }.count == 2)
+        check(retryHandles.compactMap { ($0.message as? LightingTestMessage)?.write } == [.auto])
+        acknowledge(retry, retryHandles); check(retry.persist(result: retryHandles))
+    }
+
+    static func testChangedLightingTargetRejectsReceipt() throws {
+        let (space, node, context) = try fixture()
+        try seedPrepared(space: space, node: node)
+        try HDBConfigurationStore.update(space: space) { $0.devices[0].lightingConfiguration?.merge(.init(holdTime: 120), status: .pending) }
+        let saved = try HDBConfigurationStore.load(space: space).devices[0].lightingConfiguration!
+        let task = HDBDeviceSyncTask(context: context, operation: .configuration(.timeDelay, saved))
+        let handles = task.makeHandles()
+        check(handles.count == 1 && handles[0].address == 1)
+        // Composition changes before its new metadata has been saved.
+        node.elements[0].models.removeAll { $0.modelIdentifier == 0x130F }
+        let lc = Model(0x130F); lc.parentElement = node.elements[1]; node.elements[1].models.append(lc)
+        acknowledge(task, handles)
+        check(!task.persist(result: handles), "Old target ACK must not confirm a newly selected LC element")
+        try check(HDBConfigurationStore.load(space: space).devices[0].lightingConfiguration?.holdTime?.status == .pending)
+    }
+
     static func main() throws {
+        try testMultiLCInitializationBarrier()
+        try testChangedLightingTargetRejectsReceipt()
         try testPresencePublicationElement()
         try testZoneStages()
         let (space, node, context) = try fixture()
@@ -83,8 +122,11 @@ import Foundation
         let modeIndex = handles.firstIndex { $0.message is LightLCModeSet }!
         let autoIndex = handles.firstIndex { ($0.message as? LightingTestMessage)?.write == .auto }!
         check(modeIndex < autoIndex && handles[..<modeIndex].contains { ($0.message as? LightingTestMessage)?.write?.fieldName == "holdTime" })
-        // One of two LC Setup instances times out: only that field stays pending.
-        acknowledge(initial, handles, omit: { ($0.message as? LightingTestMessage)?.write?.fieldName == "brightIntensity" && $0.address == 2 })
+        // Multiple Setup instances still yield one write for each lighting field.
+        let parameterWrites = handles.filter { ($0.message as? LightingTestMessage)?.write?.fieldName != "lightingControl" && ($0.message as? LightingTestMessage)?.write != nil }
+        check(parameterWrites.count == 5 && parameterWrites.allSatisfy { $0.address == 1 })
+        // The selected Bright write times out: only that field stays pending.
+        acknowledge(initial, handles, omit: { ($0.message as? LightingTestMessage)?.write?.fieldName == "brightIntensity" && $0.address == 1 })
         check(!initial.persist(result: handles))
         var saved = try HDBConfigurationStore.load(space: space).devices[0].lightingConfiguration!
         check(saved.brightIntensity?.status == .pending && saved.brightIntensity?.value == 90)
@@ -93,7 +135,7 @@ import Foundation
         // A retry preserves the user's value and sends no already-ACKed parameter.
         let retry = try initialization(context), retryHandles = retry.makeHandles()
         let retriedFields = retryHandles.compactMap { ($0.message as? LightingTestMessage)?.write?.fieldName }
-        check(retriedFields == ["brightIntensity", "brightIntensity", "lightingControl"])
+        check(retriedFields == ["brightIntensity", "lightingControl"])
         acknowledge(retry, retryHandles)
         check(retry.persist(result: retryHandles))
         check(HDBDeviceSyncService.needsSync(node: node), "empty target is pending until DeleteAll succeeds")
@@ -133,7 +175,7 @@ import Foundation
         check(HDBDeviceSyncService.restorationCommands(config.devices[0]) == [.timeDelay])
         let parameters = HDBDeviceSyncTask(context: restored, operation: .configuration(.timeDelay, config.devices[0].lightingConfiguration!))
         let parameterHandles = parameters.makeHandles()
-        check(parameterHandles.allSatisfy { ($0.message as? LightingTestMessage)?.write == .property(0x003C, 120000) })
+        check(parameterHandles.count == 1 && parameterHandles.allSatisfy { ($0.message as? LightingTestMessage)?.write == .property(0x003C, 120000) })
         // A value changed away and back is still a newer intent: ignore old callbacks.
         try HDBConfigurationStore.update(space: space) { $0.devices[0].lightingConfiguration?.merge(.init(holdTime: 130), status: .pending) }
         try HDBConfigurationStore.update(space: space) { $0.devices[0].lightingConfiguration?.merge(.init(holdTime: 120), status: .pending) }

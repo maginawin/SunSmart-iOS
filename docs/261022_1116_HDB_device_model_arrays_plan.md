@@ -170,6 +170,12 @@ broadcastId 固定为 65277（0xFEFD）。broadcastModels 表示 **本次 Zone D
 
 该对象可作为 `spaceData.hdb` 的值，不是完整 Space 导入包。带 63 个 Zone 和逐字段配置的样本见 [完整示例文件](261021_1806_HDB_unicast_example.json)；两个示例均纳入 `check_hdb_configuration.py` 的生产解码、校验及往返验证。
 
+### Lighting Configuration 命令描述
+
+设备级 `lightingConfiguration` 采用 [单目标命令描述契约](261022_1358_HDB_lighting_configuration_metadata_plan.md)：普通参数增加 `elementAddress/modelId/property`，lightingControl 增加三选项 mapValues；不增加 models 数组。目标为首个 LC 的同 Element Setup、首个 LC、首个 Lightness 或 Primary OnOff，具体随命令确定；三类订阅清单仍保留原本所有目标。
+
+新描述存在于数据库和上传快照，导入及云端比较严格验证完整性与目标一致性，不接受旧格式缺字段。elementAddress 显式 null 仅表示设备无对应目标，不能执行 Set；字段缺失不能当成 null。failsafeDelay/installDate 不增加命令描述。下文完整 Space 与 HTTP 保存/回读约定也包括这些字段。
+
 ### Space 快照与 HTTP 对接
 
 完整 Space 必须带同版本的 `spaceData.hdb`、`groups`、`nodes` 和正常 Mesh 数据。Zone 地址引用非 virtual Group；非空 Sensor 地址引用 `isVirtual=true` 的 Group。此标记是 App/SDK 的用途分类，Sensor 地址本身仍是普通组地址，不是 Label UUID。Node UUID、Primary Address、Model 清单必须相符；读取到有效 Node MAC 时还须与 HDB MAC 一致。HDB 内地址/Model 是整数，SDK `groups[].address`、`nodes[].unicastAddress`、Model 标识使用其原十六进制字符串格式，不能混换。

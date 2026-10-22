@@ -212,6 +212,7 @@ final class HDBDeviceSyncTask {
     }
     let context: HDBDeviceSyncContext
     let operation: Operation
+    private let lightingModels: [HDBModelTarget]
     private var handles: [MeshMessageHandle] = []
     private var acknowledged = Set<ObjectIdentifier>()
     private var rejected = false
@@ -220,7 +221,14 @@ final class HDBDeviceSyncTask {
     private(set) var hasPendingZoneCacheSave = false
     private(set) var isSuccessful = false
 
-    init(context: HDBDeviceSyncContext, operation: Operation) { self.context = context; self.operation = operation }
+    init(context: HDBDeviceSyncContext, operation: Operation) {
+        self.context = context; self.operation = operation
+        lightingModels = HDBLightingZonePolicy.zoneTargets(from: context.targets, primaryAddress: context.node.primaryUnicastAddress)
+    }
+    private func lightingModelsAreCurrent(_ device: HDBDeviceConfiguration) -> Bool {
+        Set(device.zoneModels.map(\.target)) == Set(lightingModels)
+            && HDBLightingZonePolicy.zoneTargets(from: context.targets, primaryAddress: context.node.primaryUnicastAddress) == lightingModels
+    }
     var isLightingZoneOperation: Bool {
         if case .zone = operation { return true }
         return false
@@ -254,14 +262,16 @@ final class HDBDeviceSyncTask {
         case .initialization(let plan, let saved):
             let identityIsReady = (try? HDBDeviceSyncService.hasInitializationIntent(context: context, plan: plan)) == true
                 || (isSuccessful && (try? HDBDeviceSyncService.hasInitializationReceipt(context: context, plan: plan)) == true)
-            current = identityIsReady && (try? context.plan(in: config)) == plan && device.lightingConfiguration?.values == saved.values
+            current = identityIsReady && lightingModelsAreCurrent(device)
+                && (try? context.plan(in: config)) == plan && device.lightingConfiguration?.values == saved.values
         case .zone(let operation):
             current = HDBLightingZonePolicy.matches(operation.plan, in: config)
                 && (try? HDBLightingZonePolicy.requiredZoneTargets(from: context.targets, primaryAddress: context.node.primaryUnicastAddress)) == operation.targets
                 && (try? context.zoneSensorTargets(in: config)) == operation.plan.sensorTargets
                 && (try? context.zoneBroadcastTargets()) == operation.plan.broadcastTargets
         case .configuration(let command, let saved):
-            current = device.lightingConfiguration?.values.selected(command) == saved.values.selected(command)
+            current = lightingModelsAreCurrent(device)
+                && device.lightingConfiguration?.values.selected(command) == saved.values.selected(command)
 
         }
         if !current { trace("invalid", reason: "intent-changed") }

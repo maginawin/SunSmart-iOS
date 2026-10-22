@@ -55,6 +55,16 @@ import Foundation
             "spaceData": ["hdb": try HDBLightingZonePolicy.json(changed)]]
         precondition(receipt != SpaceConfigurationIntegrityPolicy.configurationData(valueChanged),
                      "cloud comparison must retain field values")
+        for key in ["mapValues", "elementAddress", "modelId", "property"] {
+            var changedObject = object, records = object["devices"] as! [[String: Any]]
+            var fields = records[0]["lightingConfiguration"] as! [String: Any]
+            let name = key == "mapValues" ? "lightingControl" : "brightIntensity"
+            var field = fields[name] as! [String: Any]; field.removeValue(forKey: key)
+            fields[name] = field; records[0]["lightingConfiguration"] = fields; changedObject["devices"] = records
+            let missingDescription: [String: Any] = ["groups": [[String: Any]](), "nodes": [[String: Any]](), "spaceData": ["hdb": changedObject]]
+            precondition(SpaceConfigurationIntegrityPolicy.configurationData(missingDescription) == nil,
+                         "Cloud readback must not regenerate a missing command description")
+        }
         let projection = SpaceCloudNodeRemovalPolicy.projectConfiguration(receipt!, removing: [.init(uuid: id.uuidString, address: 1, keyFingerprint: "")])!
         let projected = try JSONSerialization.jsonObject(with: projection) as! [String: Any]
         let projectedHDB = try HDBLightingZonePolicy.decode(payload: projected)

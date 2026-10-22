@@ -15,7 +15,24 @@
       "lightingConfiguration": {
         "lightingControl": {
           "status": "synced",
-          "value": "Auto"
+          "value": "Auto",
+          "mapValues": {
+            "Auto": {
+              "elementAddress": 257,
+              "modelId": 4879,
+              "value": true
+            },
+            "Force_On": {
+              "elementAddress": 256,
+              "modelId": 4864,
+              "value": 65535
+            },
+            "Force_Off": {
+              "elementAddress": 256,
+              "modelId": 4096,
+              "value": false
+            }
+          }
         },
         "failsafeDelay": {
           "status": "synced",
@@ -23,23 +40,38 @@
         },
         "dimIntensity": {
           "status": "synced",
-          "value": 20
+          "value": 20,
+          "elementAddress": 257,
+          "modelId": 4880,
+          "property": 47
         },
         "brightIntensity": {
           "status": "synced",
-          "value": 80
+          "value": 80,
+          "elementAddress": 257,
+          "modelId": 4880,
+          "property": 46
         },
         "rampUpTime": {
           "status": "synced",
-          "value": 1
+          "value": 1,
+          "elementAddress": 257,
+          "modelId": 4880,
+          "property": 55
         },
         "rampDownTime": {
           "status": "synced",
-          "value": 2
+          "value": 2,
+          "elementAddress": 257,
+          "modelId": 4880,
+          "property": 54
         },
         "holdTime": {
           "status": "synced",
-          "value": 30
+          "value": 30,
+          "elementAddress": 257,
+          "modelId": 4880,
+          "property": 60
         },
         "installDate": {
           "status": "synced",
@@ -115,7 +147,24 @@
       "lightingConfiguration": {
         "lightingControl": {
           "status": "synced",
-          "value": "Auto"
+          "value": "Auto",
+          "mapValues": {
+            "Auto": {
+              "elementAddress": 513,
+              "modelId": 4879,
+              "value": true
+            },
+            "Force_On": {
+              "elementAddress": 512,
+              "modelId": 4864,
+              "value": 65535
+            },
+            "Force_Off": {
+              "elementAddress": 512,
+              "modelId": 4096,
+              "value": false
+            }
+          }
         },
         "failsafeDelay": {
           "status": "synced",
@@ -123,23 +172,38 @@
         },
         "dimIntensity": {
           "status": "synced",
-          "value": 30
+          "value": 30,
+          "elementAddress": 513,
+          "modelId": 4880,
+          "property": 47
         },
         "brightIntensity": {
           "status": "pending",
-          "value": 90
+          "value": 90,
+          "elementAddress": 513,
+          "modelId": 4880,
+          "property": 46
         },
         "rampUpTime": {
           "status": "synced",
-          "value": 1
+          "value": 1,
+          "elementAddress": 513,
+          "modelId": 4880,
+          "property": 55
         },
         "rampDownTime": {
           "status": "synced",
-          "value": 2
+          "value": 2,
+          "elementAddress": 513,
+          "modelId": 4880,
+          "property": 54
         },
         "holdTime": {
           "status": "synced",
-          "value": 30
+          "value": 30,
+          "elementAddress": 513,
+          "modelId": 4880,
+          "property": 60
         },
         "installDate": {
           "status": "synced",
