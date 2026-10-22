@@ -1089,6 +1089,7 @@ enum SpaceConfigurationSafety {
             }
             state.submission = nil
             state.localReplacementVersion = nil
+            state.defaultRecoverySource = nil
             state.olderCloudBaselineFailure = nil
             try saveState(state, space: space)
             return true
@@ -1148,6 +1149,23 @@ enum SpaceConfigurationSafety {
                         space.applyRemoteSpaceMetadata(remote)
                         guard space.save() else { return failure(uploadUnconfirmed, "persistence", "remoteMetadata") }
                         guard canAutomaticallyUpload(space) else { return failure(authorityError(space), "baselineAuthority", "writeUnavailable") }
+                        if context.defaultRecoverySource != nil {
+                            if defaultRecoverySourceData(remote) == context.defaultRecoverySource {
+                                // The user selected this server snapshot. Its repaired
+                                // HDB may not decode until POST, so ordinary baseline
+                                // comparison cannot authorize that first replacement.
+                                report("defaultRecoveryReady")
+                                return .success(())
+                            }
+                            // A changed cloud snapshot, including empty/replaced Nodes,
+                            // supersedes the repair waiting on this phone.
+                            let outcome = await space.restoreConfiguration(spaceJsonData: remote,
+                                authoritativeGET: true, fixWithDefaults: true)
+                            guard outcome.status == .applied else {
+                                return failure(uploadUnconfirmed, "defaultRecoveryRefresh", "importFailed")
+                            }
+                            return .success(())
+                        }
                         switch await reconcileOlderCloudBaseline(space, remote: remote) {
                         case .preserveLocal: break
                         case .failed(let reason):
@@ -1211,7 +1229,16 @@ enum SpaceConfigurationSafety {
                     #endif
                     return failure(error, "request", "requestFailed")
                 case .success(let response):
-                    guard let remote = response["data"] as? [String: Any], remote["uuid"] as? String == space.id,
+                    guard let remote = response["data"] as? [String: Any], remote["uuid"] as? String == space.id else {
+                        return failure(uploadUnconfirmed, "response", "invalidRemoteSpace")
+                    }
+                    if defaultRecoveryNodesChanged(space, remote: remote) {
+                        let outcome = await space.restoreConfiguration(spaceJsonData: remote,
+                            authoritativeGET: true, fixWithDefaults: true)
+                        return outcome.status == .applied ? .success(())
+                            : failure(uploadUnconfirmed, "defaultRecoveryRefresh", "importFailed")
+                    }
+                    guard
                           let configuration = SpaceConfigurationIntegrityPolicy.configurationData(remote),
                           remote["nodes"] is [[String: Any]] else { return failure(uploadUnconfirmed, "response", "invalidRemoteConfiguration") }
                     let remoteKeyFingerprint = SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId)?.fingerprint
@@ -1446,13 +1473,126 @@ enum SpaceConfigurationSafety {
         return .init(local: local, remote: remote, message: lines.joined(separator: "\n\n"))
     }
 
-    private static func reviewedCloudImport(_ space: SpaceData) -> (timestamp: Int64, payload: [String: Any])? {
+    private static func reviewedCloudImport(_ space: SpaceData) -> (timestamp: Int64, payload: [String: Any], defaultSource: Data?, needsUpload: Bool)? {
         guard let url = try? directory(space).appendingPathComponent("reviewed-cloud-import.json"),
               let data = try? Data(contentsOf: url),
               let receipt = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               let timestamp = SpaceConfigurationIntegrityPolicy.integer(receipt["localTimestamp"]),
               let payload = receipt["payload"] as? [String: Any], payload["uuid"] as? String == space.id else { return nil }
-        return (timestamp, payload)
+        return (timestamp, payload, (receipt["defaultSource"] as? String).flatMap { Data(base64Encoded: $0) },
+                receipt["needsUpload"] as? Bool ?? false)
+    }
+
+    static func hasReviewedCloudImport(_ space: SpaceData) -> Bool { reviewedCloudImport(space) != nil }
+
+    private static func defaultRecoverySourceData(_ payload: [String: Any]) -> Data? {
+        let fields: Set<String> = ["uuid", "updateTimestamp", "netKey", "appKey", "nodes", "groups", "scenes",
+            "schedules", "switches", "emergencyFireControllers", "spaceData", "spaceName", "imageId",
+            "controlType", "deviceBlinkMode", "displayDeviceNamePrefix", "showCCTQuickButtons"]
+        return try? JSONSerialization.data(withJSONObject: payload.filter { fields.contains($0.key) }, options: .sortedKeys)
+    }
+
+    /// The repaired configuration is already committed to both databases. An
+    /// unchanged pre-repair GET is an upload baseline, not another import or
+    /// Profile conflict. This decision survives leaving the page and restarting.
+    @MainActor
+    static func preserveDefaultConfiguration(_ space: SpaceData, remote: [String: Any]) -> SpaceImportOutcome? {
+        guard canAutomaticallyUpload(space), !hasPendingImport(space),
+              !hasPendingDeletionCleanup(space), !hasPendingReferenceCleanup(space),
+              var state = try? recoveryState(space), let source = state.defaultRecoverySource,
+              let version = state.localReplacementVersion,
+              defaultRecoverySourceData(remote) == source else { return nil }
+        let blockedKey = "spaceConfigurationBlocked." + key(space)
+        let reason = UserDefaults.standard.string(forKey: blockedKey)
+        // Only conflicts caused by comparing this known old cloud copy may be
+        // retired. Storage, topology, authority and unrelated blocks still apply.
+        guard reason == nil || ["cloudBaselineNeedsReview", "cloudConfigurationConflict",
+            "cloudMembershipConflict", "profileTimestampConflict", "uploadReadbackConflict",
+            "uploadReadbackUnconfirmed"].contains(reason!) else { return nil }
+        guard let stored = SpaceData.load(siteId: space.siteId, spaceId: space.id).first,
+              stored.lastUpdate >= version, !stored.hdbLoadFailed, !stored.triggerZonesLoadFailed,
+              !space.hdbLoadFailed, !space.triggerZonesLoadFailed else {
+            return .rejected("configurationPersistenceFailed")
+        }
+        SpaceProtectionReadGeneration.beginMutation()
+        defer { SpaceProtectionReadGeneration.endMutation() }
+        space.syncCloudError = nil
+        guard space.save() else { return .rejected("configurationPersistenceFailed") }
+        if state.olderCloudBaselineFailure != nil {
+            state.olderCloudBaselineFailure = nil
+            do { try saveState(state, space: space) }
+            catch { return .rejected("configurationFinalizationFailed") }
+        }
+        if reason != nil { UserDefaults.standard.removeObject(forKey: blockedKey) }
+        return .preserved("localDefaultRecoveryPendingUpload")
+    }
+
+    static func shouldRefreshDefaultRecovery(_ space: SpaceData, remote: [String: Any]) -> Bool {
+        guard !hasPendingImport(space), let state = try? recoveryState(space),
+              let source = state.defaultRecoverySource else { return false }
+        if state.submission != nil { return defaultRecoveryNodesChanged(space, remote: remote) }
+        return defaultRecoverySourceData(remote) != source
+    }
+
+    private static func defaultRecoveryNodesChanged(_ space: SpaceData, remote: [String: Any]) -> Bool {
+        guard let data = try? recoveryState(space).defaultRecoverySource,
+              let source = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let before = SpaceCloudNodeRemovalPolicy.instances(source),
+              let after = SpaceCloudNodeRemovalPolicy.instances(remote) else { return false }
+        return !sameNodeIdentities(before, after)
+    }
+
+    /// Explicitly choose the latest cloud configuration even when the local HDB
+    /// cannot be exported. The checkpoint preserves the old databases, not authority.
+    @MainActor
+    static func prepareDefaultConfigurationImport(_ space: SpaceData, remote: [String: Any]) -> Bool {
+        var stage = "authorityAndIdentity"
+        var prepared = false
+        defer {
+            if !prepared { recordSyncFailure(space, error: .configurationUnavailable, stage: "defaultRecovery." + stage) }
+        }
+        guard SpaceMembershipCoordinator.accepts(remote), remote["uuid"] as? String == space.id,
+              canAutomaticallyUpload(space), !hasPendingImport(space), !hasPendingDeletionCleanup(space),
+              let timestamp = SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"]),
+              timestamp >= 0, timestamp < Int64.max, space.lastUpdate < Int64.max,
+              let source = defaultRecoverySourceData(remote),
+              let remoteKeys = SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId),
+              let network = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
+              remoteKeys.fingerprint == SpaceKeyIntegrity.pair(network, networkID: space.meshNetworkId)?.fingerprint else { return false }
+        do {
+            var selected = remote
+            selected.removeValue(forKey: SpaceMembershipResponseContext.payloadKey)
+            stage = "hdb"
+            selected = try HDBLightingZonePolicy.repairingDefaults(in: selected, deviceConfiguration: { dictionary, mac in
+                let node = try CloudNodeImport.decode(dictionary)
+                node.macAddress = mac
+                return try HDBConfigurationStore.deviceConfiguration(node: node)
+            }) {
+                String(format: "hdb_default_zone_name".localizedString, $0)
+            }
+            stage = "timedAndReferences"
+            guard let timed = TimedSchedulerPayloadPolicy.repairingStaleBindings(selected) else { return false }
+            selected = try SpaceSyncCleanupPolicy.normalize(timed).payload
+            stage = "decode"
+            guard SpaceData.canDecodeConfigurationImport(selected),
+                  SpaceConfigurationIntegrityPolicy.configurationData(selected) != nil,
+                  let version = TimedSchedulerPayloadPolicy.schema(selected), version >= space.timedSchemaVersion else { return false }
+            stage = "checkpoint"
+            guard checkpoint(space, refresh: true) else { return false }
+            stage = "staging"
+            let changed = defaultRecoverySourceData(selected) != source
+            let receipt: [String: Any] = ["localTimestamp": space.lastUpdate, "payload": selected,
+                "defaultSource": source.base64EncodedString(), "needsUpload": changed]
+            try JSONSerialization.data(withJSONObject: receipt, options: .sortedKeys).write(
+                to: directory(space).appendingPathComponent("reviewed-cloud-import.json"),
+                options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            var state = try recoveryState(space)
+            state.generation = UUID() // Late callbacks from the discarded local upload cannot finish it.
+            state.submission = nil
+            try saveState(state, space: space)
+            prepared = true
+            return true
+        } catch { return false }
     }
 
     /// Persist the reviewed choice atomically. Ordinary import/restart then uses
@@ -2032,6 +2172,7 @@ enum SpaceConfigurationSafety {
                 state.nodeIdentitiesBaseline = nil
                 state.olderCloudBaselineFailure = nil
                 state.localReplacementVersion = nil
+                state.defaultRecoverySource = nil
                 state.timedConfigurationBaseline = nil
                 state.schedulerModelStatesBaseline = nil
                 state.requiresRemoteImport = true
@@ -2280,18 +2421,31 @@ enum SpaceConfigurationSafety {
                 state.nodeIdentitiesBaseline = (original ?? payload).flatMap(SpaceCloudNodeRemovalPolicy.instances)
                 state.olderCloudBaselineFailure = nil
                 state.localReplacementVersion = nil
+                let reviewed = reviewedCloudImport(space)
+                if let reviewed, let source = reviewed.defaultSource {
+                    // The selected server Nodes are now installed. This phone's old
+                    // submission is superseded, never merged back into that snapshot.
+                    state.submission = nil
+                    state.defaultRecoverySource = reviewed.needsUpload ? source : nil
+                    if reviewed.needsUpload {
+                        space.lastUpdate = max(space.lastUpdate, reviewed.timestamp)
+                        space.markLocalChangePendingCloudSync()
+                        guard space.save() else { return false }
+                        state.localReplacementVersion = space.lastUpdate
+                    }
+                }
                 if original != nil, space.permission != .visitor {
                     space.markLocalChangePendingCloudSync()
                     guard space.save() else { return false }
                 }
                 state.requiresRemoteImport = false
                 try saveState(state, space: space)
-                if let reviewed = reviewedCloudImport(space) {
+                if let reviewed {
                     // The user discarded these local edits; this is import
                     // completion, not confirmation of a cloud upload.
                     guard confirmLocalChanges(space, payload: ["updateTimestamp": reviewed.timestamp, "nodes": [[String: Any]]()]) else { return false }
                 }
-                if original != nil, space.permission != .visitor {
+                if (original != nil || reviewed?.needsUpload == true), space.permission != .visitor {
                     // Cleanup created a new upload intent. The discarded local
                     // version may be later than this imported cloud generation.
                     UserDefaults.standard.set(space.lastUpdate, forKey: "spaceConfigurationLocalRecoveryPending." + key(space))

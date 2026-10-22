@@ -57,6 +57,7 @@ final class ImportHarness {
                referenceCleanup: Cleanup? = nil) async -> Outcome {
         let originalSpaceJsonData: [String: Any] = ["nodes": nodeDicts]
         let spaceJsonData = originalSpaceJsonData
+        let timedReferencesChanged = false
         return await withCheckedContinuation { continuation in
             // IMPORT_STAGING_GATE
             continuation.resume(returning: .applied)

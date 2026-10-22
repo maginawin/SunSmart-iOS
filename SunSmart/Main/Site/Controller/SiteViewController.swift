@@ -2490,7 +2490,13 @@ self.updateAddressData()
                 self.navigationController?.popToViewController(self, animated: false)
                 DispatchQueue.main.async { self.intoSpace(space: latest) }
             }
-        }, leave: space.permission == .owner ? nil : { [weak self] in self?.unbindSpace(space) })
+        }, leave: space.permission == .owner ? nil : { [weak self] in self?.unbindSpace(space) },
+           defaultRepairCompleted: { [weak self] repaired in
+            guard let self else { return }
+            self.reloadSpaceData(repaired)
+            self.navigationController?.popToViewController(self, animated: false)
+            DispatchQueue.main.async { self.intoSpace(space: repaired) }
+        })
         navigationController?.pushViewController(controller, animated: true)
     }
 
@@ -2892,7 +2898,13 @@ self.updateAddressData()
     
     /// 刷新space
     private func reloadSpaceData(_ space: SpaceData) {
-        
+        // Recovery may return a newly loaded instance. Keep every list's existing
+        // object current as well; viewWillAppear deliberately retains unchanged
+        // Site instances and otherwise reopens the pre-repair configuration.
+        for cached in site.spaces + allSpaces + favouriteSpaces
+            where cached.id == space.id && cached.siteId == space.siteId && cached !== space {
+            cached.applyConfigurationState(from: space)
+        }
         // 刷新数据
         var index: Int?
         var currentCollectionView: UICollectionView?

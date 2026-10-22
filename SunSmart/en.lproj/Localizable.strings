@@ -2311,6 +2311,10 @@
 "space_leave_keep_copy" = "Keep a Copy and Leave";
 "space_recovery_retry" = "Retry";
 "space_recovery_storage_failed" = "The configuration could not be saved on this phone. Your previous saved data has been kept. Retry recovery.";
+"space_recovery_fix_defaults" = "Fix with default configuration";
+"space_recovery_fix_defaults_confirm" = "Use the latest cloud configuration and repair invalid HDB settings with app defaults? Devices follow the cloud list, including an empty list. Devices saved only on this phone will be removed from this Space. A backup will be kept. Changed lighting values will be applied during device synchronization.";
+"space_recovery_default_unavailable" = "This configuration could not be repaired automatically. Your saved data has been kept. Retry recovery.";
+"space_recovery_hdb_invalid" = "This Space contains invalid HDB settings. Retry recovery or fix them with the default configuration.";
 "space_recovery_data_failed" = "The cloud configuration could not be read. Your previous saved data has been kept. Retry with the latest cloud data.";
 "space_recovery_finalize_failed" = "The configuration was saved, but recovery could not be completed. Retry recovery before making changes.";
 "space_recovery_identity_failed" = "This Space’s network identity could not be verified. Retry with the latest cloud data.";

@@ -183,5 +183,39 @@ import SQLite3
         catch HDBConfigurationError.invalidData {}
         precondition(read() == legacy)
         print("PASS: real SQLite HDB BLOB reopen, state/empty Zone persistence, rollback and non-destructive legacy rejection")
+        var mixed = json
+        mixed["lightingZones"] = [["zoneId": 1, "name": "One", "groupAddress": 49152]]
+        let corrupt = try JSONSerialization.data(withJSONObject: mixed)
+        write(corrupt)
+        let cloud: [String: Any] = ["nodes": [[String: Any]](),
+            "groups": [["address": "C000", "isVirtual": false]], "spaceData": ["hdb": mixed]]
+        let repaired = try HDBLightingZonePolicy.repairingDefaults(in: cloud) { "Zone \($0)" }
+        let recovered = try HDBLightingZonePolicy.decode(payload: repaired)!
+        let recoveredData = try JSONEncoder().encode(recovered)
+        sql("BEGIN IMMEDIATE"); write(recoveredData); sql("ROLLBACK")
+        precondition(read() == corrupt, "failed repair must retain the original invalid BLOB")
+        sql("BEGIN IMMEDIATE"); write(recoveredData); sql("COMMIT")
+        precondition(sqlite3_close(db) == SQLITE_OK); db = nil
+        precondition(sqlite3_open(path, &db) == SQLITE_OK)
+        let afterRestart = try decode(read())
+        precondition(afterRestart == recovered && afterRestart.devices.isEmpty && afterRestart.lightingZones.count == 1)
+        print("PASS: default repair of mixed v2 BLOB rolls back safely and reopens with cloud-empty devices")
+        let oldCloud = RecoveryMeshFactory.legacyPayload()
+        let oldData = try JSONSerialization.data(withJSONObject: (oldCloud["spaceData"] as! [String: Any])["hdb"]!)
+        write(oldData)
+        let currentCloud = try HDBLightingZonePolicy.repairingDefaults(in: oldCloud,
+            deviceConfiguration: RecoveryMeshFactory.resolve) { "Zone \($0)" }
+        let currentConfig = try HDBLightingZonePolicy.decode(payload: currentCloud)!
+        let currentData = try JSONEncoder().encode(currentConfig)
+        sql("BEGIN IMMEDIATE"); write(currentData); sql("ROLLBACK")
+        precondition(read() == oldData)
+        sql("BEGIN IMMEDIATE"); write(currentData); sql("COMMIT")
+        precondition(sqlite3_close(db) == SQLITE_OK); db = nil
+        precondition(sqlite3_open(path, &db) == SQLITE_OK)
+        let currentReopened = try decode(read())
+        precondition(currentReopened == currentConfig && currentReopened.devices.count == 1
+            && currentReopened.lightingZones.count == 63)
+        try HDBLightingZonePolicy.validateReferences(currentReopened, payload: currentCloud)
+        print("PASS: explicit v1 recovery preserves original bytes on rollback; v2 device/models/defaults survive SQLite reopen")
     }
 }

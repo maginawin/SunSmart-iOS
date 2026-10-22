@@ -1779,6 +1779,7 @@ extension SpaceData {
         guard (try? SpaceConfigurationSafety.recoveryState(self).phase) == .active else {
             return .rejected("spaceRemovalPending")
         }
+        let reviewedCloudImport = SpaceConfigurationSafety.hasReviewedCloudImport(self)
         // Default legacy-writer field loss before decoding, using the same
         // representation as cloud comparison and persisted import readback.
         // Validate before metadata reconciliation or any persistent replacement.
@@ -1806,6 +1807,9 @@ extension SpaceData {
             return .rejected("timedSchemaDowngrade")
         }
         applyRemoteSpaceMetadata(spaceJsonData)
+        if !initialize, let outcome = SpaceConfigurationSafety.preserveDefaultConfiguration(self, remote: spaceJsonData) {
+            return outcome
+        }
         if !initialize { save() }
         SpaceConfigurationSafety.backfillTimedUpgradeBaseline(self, remote: spaceJsonData)
         DevicePermanentDeletionContext.resume(space: self)
@@ -1817,17 +1821,17 @@ extension SpaceData {
             }
             return .preserved("localTimedMigrationPendingUpload")
         }
-        if !initialize {
+        if !initialize, !reviewedCloudImport {
             switch await SpaceConfigurationSafety.reconcileOlderCloudBaseline(self, remote: spaceJsonData) {
             case .preserveLocal: return .preserved("unchangedOlderCloudBaseline")
             case .failed: return .preserved("cloudBaselineNeedsReview")
             case .notApplicable: break
             }
         }
-        if !initialize, !(await SpaceConfigurationSafety.reconcileCloudProfiles(self, remote: spaceJsonData)) {
+        if !initialize, !reviewedCloudImport, !(await SpaceConfigurationSafety.reconcileCloudProfiles(self, remote: spaceJsonData)) {
             return .preserved("cloudProfileNeedsReview")
         }
-        if !initialize, !SpaceConfigurationSafety.reconcileCloudMembership(self, remote: spaceJsonData) {
+        if !initialize, !reviewedCloudImport, !SpaceConfigurationSafety.reconcileCloudMembership(self, remote: spaceJsonData) {
             SpaceConfigurationSafety.recordSyncFailure(self, error: syncCloudError ?? .configurationUploadUnconfirmed, stage: "cloudMembership")
             return .preserved("cloudMembershipNeedsReview")
         }
@@ -2724,6 +2728,7 @@ extension SpaceData {
                   persistedSpace.lastUploadCloudTimestamp == lastUpdate,
                   let persistedNetwork = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: self.meshNetworkId),
                   Set(persistedNetwork.groups.map { $0.address.address }) == Set(groups.map { $0.address.address }),
+                  Set(persistedNetwork.nodes.filter { !$0.isLocalProvisioner }.map(\.uuid)) == Set(nodes.map(\.uuid)),
                   zip(nodes, nodeDicts).allSatisfy({ imported, dictionary in
                       guard let persisted = persistedNetwork.node(withAddress: imported.primaryUnicastAddress) else { return false }
                       return persisted.matchesSchedulerModelSnapshot(nodeData: dictionary)

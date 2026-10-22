@@ -6,16 +6,25 @@ final class SpaceRecoveryViewController: UIViewController {
     private let message = UILabel()
     private let retry: () -> Void
     private let leave: (() -> Void)?
+    private let space: SpaceData
+    private let defaultRepairCompleted: ((SpaceData) -> Void)?
+    private var defaultRepairButton: UIButton?
+    private static var repairsInProgress = Set<String>()
     private var reason: String
     private let scope: SpaceMembershipRecord.Scope
-    init(space: SpaceData, reason: String, retry: @escaping () -> Void, leave: (() -> Void)?) {
+    init(space: SpaceData, reason: String, retry: @escaping () -> Void, leave: (() -> Void)?,
+         defaultRepairCompleted: ((SpaceData) -> Void)? = nil) {
         spaceID = space.id; self.reason = reason; self.retry = retry; self.leave = leave
+        self.space = space; self.defaultRepairCompleted = defaultRepairCompleted
         scope = SpaceMembershipCoordinator.scope(space)
         super.init(nibName: nil, bundle: nil)
         title = space.name
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
-    func update(reason: String) { self.reason = reason; message.text = Self.message(reason) }
+    func update(reason: String) {
+        self.reason = reason; message.text = Self.message(reason)
+        defaultRepairButton?.isHidden = !Self.canRepairDefaults(space)
+    }
 
     static func message(_ reason: String) -> String {
         switch reason {
@@ -28,6 +37,8 @@ final class SpaceRecoveryViewController: UIViewController {
         case "networkIdentityMismatch", "invalidNetworkIdentity": return "space_recovery_identity_failed".localizedString
         case "staleMembershipResponse", "staleImportPreparation": return "space_recovery_changed".localizedString
         case "networkUnavailable": return "space_recovery_network_failed".localizedString
+        case "invalidHDBPayload": return "space_recovery_hdb_invalid".localizedString
+        case "configurationDefaultRepairUnavailable": return "space_recovery_default_unavailable".localizedString
         default: return "space_recovery_unavailable".localizedString
         }
     }
@@ -44,6 +55,13 @@ final class SpaceRecoveryViewController: UIViewController {
         message.adjustsFontForContentSizeCategory = true; message.text = Self.message(reason)
         stack.addArrangedSubview(message)
         addButton("space_recovery_retry", action: #selector(retryAction), to: stack)
+        let fix = UIButton(type: .system)
+        fix.setTitle("space_recovery_fix_defaults".localizedString, for: .normal)
+        fix.titleLabel?.numberOfLines = 0
+        fix.heightAnchor.constraint(greaterThanOrEqualToConstant: 44).isActive = true
+        fix.addTarget(self, action: #selector(defaultRepairAction), for: .touchUpInside)
+        fix.isHidden = !Self.canRepairDefaults(space)
+        stack.addArrangedSubview(fix); defaultRepairButton = fix
         if leave != nil { addButton("space_leave_action", action: #selector(leaveAction), to: stack) }
         addButton("space_saved_copies", action: #selector(copiesAction), to: stack)
         NSLayoutConstraint.activate([
@@ -75,8 +93,75 @@ final class SpaceRecoveryViewController: UIViewController {
         stack.addArrangedSubview(button)
     }
     @objc private func retryAction() { retry() }
+    @objc private func defaultRepairAction() {
+        Self.offerDefaultRepair(space, from: self) { [weak self] repaired in
+            self?.defaultRepairCompleted?(repaired)
+        }
+    }
     @objc private func leaveAction() { leave?() }
     @objc private func copiesAction() { navigationController?.pushViewController(SpaceSavedCopiesViewController(), animated: true) }
+
+    static func canRepairDefaults(_ space: SpaceData) -> Bool {
+        guard let latest = SpaceData.load(siteId: space.siteId, spaceId: space.id).first,
+              SpaceConfigurationSafety.canAutomaticallyUpload(latest),
+              !SpaceMembershipCoordinator.isLeaving(latest),
+              !SpaceConfigurationSafety.hasPendingImport(latest),
+              !SpaceConfigurationSafety.hasPendingDeletionCleanup(latest) else { return false }
+        return latest.hdbLoadFailed || latest.hdb != nil
+            || (try? SiteData.load(siteId: latest.siteId)?.loadIsHdbSite()) == true
+    }
+
+    static func offerDefaultRepair(_ space: SpaceData, from presenter: UIViewController,
+                                   completed: @escaping (SpaceData) -> Void) {
+        guard presenter.presentedViewController == nil, canRepairDefaults(space) else { return }
+        let scope = SpaceMembershipCoordinator.scope(space)
+        let alert = UIAlertController(title: "space_recovery_fix_defaults".localizedString,
+            message: "space_recovery_fix_defaults_confirm".localizedString, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "cancel".localizedString, style: .cancel))
+        alert.addAction(UIAlertAction(title: "space_recovery_fix_defaults".localizedString, style: .destructive) { [weak presenter] _ in
+            guard let presenter else { return }
+            Task { @MainActor in
+                guard scope.account == UserData.currentUserId,
+                      scope.region == String(describing: UserData.currentServerRegion) else { return }
+                let operation = "\(scope.account)|\(scope.region)|\(scope.siteID)|\(scope.spaceID)"
+                guard repairsInProgress.insert(operation).inserted else { return }
+                defer { repairsInProgress.remove(operation) }
+                guard let latest = SpaceData.load(siteId: space.siteId, spaceId: space.id).first,
+                      canRepairDefaults(latest) else { return }
+                XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: true)
+                let response = await NetworkRequest.shared.request(.spaceInfo(siteId: latest.siteId,
+                    spaceId: latest.id, password: latest.authorizationPassword))
+                guard !Task.isCancelled, scope.account == UserData.currentUserId,
+                      scope.region == String(describing: UserData.currentServerRegion),
+                      presenter.viewIfLoaded?.window != nil else { XWHUDManager.hide(); return }
+                switch response {
+                case .failure(let error):
+                    XWHUDManager.hide()
+                    SpaceConfigurationSafety.handleAuthorityError(error, space: latest)
+                    XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                case .success(let response):
+                    guard let remote = response["data"] as? [String: Any] else {
+                        XWHUDManager.hide()
+                        XWHUDManager.showErrorTipHUD("space_recovery_default_unavailable".localizedString); return
+                    }
+                    let outcome = await latest.restoreConfiguration(spaceJsonData: remote,
+                        authoritativeGET: true, fixWithDefaults: true)
+                    XWHUDManager.hide()
+                    guard scope.account == UserData.currentUserId,
+                          scope.region == String(describing: UserData.currentServerRegion),
+                          presenter.viewIfLoaded?.window != nil else { return }
+                    guard outcome.status == .applied, !SpaceConfigurationSafety.isBlocked(latest) else {
+                        XWHUDManager.showErrorTipHUD(message(outcome.rejectionReason ?? "configurationDefaultRepairUnavailable")); return
+                    }
+                    if latest.needUploadCloud {
+                        CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSpace(space: latest), level: .promptly)
+                    }
+                    completed(latest)
+                }
+            }
+        })
+        presenter.present(alert, animated: true)
+    }
 }
 
 final class SpaceSavedCopiesViewController: UITableViewController {

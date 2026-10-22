@@ -2327,6 +2327,10 @@
 "space_leave_keep_copy" = "保留副本并退出";
 "space_recovery_retry" = "重试";
 "space_recovery_storage_failed" = "无法在此手机保存配置，之前保存的数据已保留。请重试恢复。";
+"space_recovery_fix_defaults" = "使用默认配置修复";
+"space_recovery_fix_defaults_confirm" = "是否使用最新云端配置，并用 App 默认值修复异常的 HDB 属性？设备以云端列表为准，包括空列表；仅保存在此手机上的设备会从此 Space 移除。修复前会保留备份，修改后的灯光参数将在设备同步时应用。";
+"space_recovery_default_unavailable" = "无法自动修复此配置，之前保存的数据已保留。请重试恢复。";
+"space_recovery_hdb_invalid" = "此 Space 的 HDB 配置无效。请重试恢复，或使用默认配置修复。";
 "space_recovery_data_failed" = "无法读取云端配置，之前保存的数据已保留。请重新获取最新云端数据并重试。";
 "space_recovery_finalize_failed" = "配置已保存，但恢复尚未完成。请重试恢复后再修改配置。";
 "space_recovery_identity_failed" = "无法确认此空间的网络身份。请重新获取最新云端数据并重试。";

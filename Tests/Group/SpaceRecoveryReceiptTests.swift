@@ -22,6 +22,7 @@ extension String {
 // NETWORK_ERROR_TYPE
 final class SpaceData {
     var timedSchemaVersion = 1
+    var hdbLoadFailed = false
 
     enum State: Int { case normal = 1, waitDeleted }
     enum GatewayStatus { case online, offline, notBound }
@@ -37,6 +38,27 @@ final class SpaceData {
     var gatewayStatus = GatewayStatus.notBound
     var lastUpdate: Int64 = 50, lastUploadCloudTimestamp: Int64?, syncCloudError: NetworkApiError?
     var savesSucceed = true
+    var defaultRestoreCalls = 0
+    struct RestoreOutcome {
+        enum Status { case applied, rejected }
+        var status: Status
+    }
+    // Full SDK/database import is exercised separately. This boundary executes
+    // the real repair staging and finalization when a newer GET supersedes it.
+    @MainActor func restoreConfiguration(spaceJsonData: [String: Any], authoritativeGET: Bool,
+                                        fixWithDefaults: Bool) async -> RestoreOutcome {
+        defaultRestoreCalls += 1
+        guard authoritativeGET, fixWithDefaults,
+              SpaceConfigurationSafety.prepareDefaultConfigurationImport(self, remote: spaceJsonData),
+              let selected = SpaceConfigurationSafety.pendingImport(self),
+              SpaceConfigurationSafety.beginImport(self, payload: selected) else { return .init(status: .rejected) }
+        nodes = selected["nodes"] as! [[String: Any]]
+        groups = selected["groups"] as! [[String: Any]]
+        exportValues = ["spaceData": selected["spaceData"] as Any]
+        lastUpdate = SpaceConfigurationIntegrityPolicy.integer(selected["updateTimestamp"])!
+        lastUploadCloudTimestamp = lastUpdate
+        return .init(status: SpaceConfigurationSafety.finishImport(self) ? .applied : .rejected)
+    }
     var onSave: (() -> Void)?
     var uploadCloud: Bool { lastUploadCloudTimestamp != nil }
     var needUploadCloud: Bool { lastUpdate > (lastUploadCloudTimestamp ?? 0) && permission != .visitor }
@@ -161,6 +183,7 @@ final class NetworkRequest {
         try await testEmptyZoneImportGate()
         try await testUnusedTaskLevelReadback()
         try testHDBV2ImportFinalization()
+        try await testDefaultConfigurationRecovery()
         precondition(NetworkApiError(code: -2002) == .configurationUploadUnconfirmed)
         precondition(NetworkApiError(code: -2003) == .configurationExportInvalid)
         precondition(NetworkApiError.configurationUploadUnconfirmed.localizedDescription == "configuration_upload_unconfirmed")

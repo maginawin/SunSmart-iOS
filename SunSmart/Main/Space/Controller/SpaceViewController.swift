@@ -1591,6 +1591,17 @@ class SpaceViewController: WMPageController {
             alert.addAction(UIAlertAction(title: "configuration_reload_cloud".localizedString, style: .default) { [weak self] _ in
                 self?.reloadConfigurationFromCloud(review: baselineReview)
             })
+            if SpaceRecoveryViewController.canRepairDefaults(self.space) {
+                alert.addAction(UIAlertAction(title: "space_recovery_fix_defaults".localizedString, style: .default) { [weak self] _ in
+                    guard let self else { return }
+                    SpaceRecoveryViewController.offerDefaultRepair(self.space, from: self) { [weak self] repaired in
+                        guard let self else { return }
+                        self.space.applyConfigurationState(from: repaired)
+                        self.title = self.space.name
+                        self.setNetworkConnected()
+                    }
+                })
+            }
             if !self.space.disableEditorPermission, !self.space.requiresPasswordVerification,
                self.space.permission == .owner || self.space.permission == .editor {
                 if let local, !needsBaselineReview || baselineReview != nil {

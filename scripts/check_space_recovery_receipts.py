@@ -4,6 +4,9 @@ from pathlib import Path
 import subprocess
 import tempfile
 import re
+import sys
+sys.dont_write_bytecode = True
+from hdb_recovery_test_source import recovery_mesh_source
 
 root = Path(__file__).resolve().parents[1]
 def read(path): return (root / path).read_text()
@@ -13,6 +16,13 @@ safety = read('SunSmart/Common/Data/SpaceConfigurationSafety.swift')
 methods = section(safety, 'enum SpaceConfigurationSafety {', '    static func configurationAvailable(')
 methods = methods.replace('URL(fileURLWithPath: NSHomeDirectory())\n            .appendingPathComponent("Library/Application Support/SpaceConfigurationRecovery")', 'testRoot')
 methods = methods.replace('UserDefaults.standard', 'testDefaults')
+# SDK Node decoding is already a boundary in this harness. Use the same
+# composition object boundary as the fixture probe, retaining the real App
+# device factory and mapped SDK Model extension rules.
+methods = methods.replace('''                let node = try CloudNodeImport.decode(dictionary)
+                node.macAddress = mac
+                return try HDBConfigurationStore.deviceConfiguration(node: node)''',
+    '                return try RecoveryMeshFactory.resolve(dictionary, mac)')
 methods = methods.replace('FileManager.default.moveItem(at: root, to: archive)', 'testMoveItem(at: root, to: archive)')
 methods = methods.replace('        try state.write(to: stateURL(space))',
     '        if failStateWrite { throw CocoaError(.fileWriteNoPermission) }\n        try state.write(to: stateURL(space))')
@@ -37,7 +47,8 @@ methods += """
         if failArchiveMove { throw CocoaError(.fileWriteNoPermission) }
         try FileManager.default.moveItem(at: source, to: destination)
     }
-    static func checkpoint(_ space: SpaceData, refresh: Bool = false) -> Bool { true }
+    static var failCheckpoint = false
+    static func checkpoint(_ space: SpaceData, refresh: Bool = false) -> Bool { !failCheckpoint }
     enum SafetyError: Error { case invalidCheckpoint, persistenceFailed }
     static func testDirectory(_ space: SpaceData) throws -> URL { try directory(space) }
     static func testSaveState(_ state: SpaceRecoveryState, space: SpaceData) throws { try saveState(state, space: space) }
@@ -73,6 +84,8 @@ test = test.replace('// IMPORT_PREPARATION_METHOD', '@MainActor\n' + preparation
 test += '\n' + section(imports, 'final class SiteImportTrace', '\nstruct SpaceImportOutcome')
 test += '\n' + read('Tests/Group/SpaceImportPreparationTests.swift')
 test += '\n' + read('Tests/Group/OlderCloudBaselineTests.swift')
+test += '\n' + read('Tests/Group/SpaceDefaultRecoveryReceiptTests.swift')
+test += '\n' + recovery_mesh_source(root)
 membership = section(read('SunSmart/Common/Data/SpaceMembershipCoordinator.swift'),
     'enum SpaceMembershipCoordinator {', '    static var savedCopiesDirectory:') + '}\n'
 membership = membership.replace('URL(fileURLWithPath: NSHomeDirectory())\n        .appendingPathComponent("Library/Application Support/SpaceMembership")',
@@ -121,7 +134,7 @@ with tempfile.TemporaryDirectory(prefix='space-receipt-tests-') as temp:
         str(root / 'SunSmart/Main/Group/Model/ProximityLightingTopologyPolicy.swift'),
         str(root / 'SunSmart/Main/Group/Model/ProximityLightingTopologyReconciler.swift'),
         str(harness), '-o', str(binary)], check=True)
-    result = subprocess.run([str(binary)], capture_output=True, text=True)
+    result = subprocess.run([str(binary), *sys.argv[1:]], capture_output=True, text=True)
     if result.returncode:
         print('\n'.join(result.stdout.splitlines()[-50:]) + '\n' + result.stderr)
         match = re.search(r'Harness.swift:(\d+):', result.stderr)

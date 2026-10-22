@@ -266,7 +266,7 @@ extension SpaceData {
     /// Resolve identity once, before any configuration journal or Mesh lookup.
     @MainActor
     func restoreConfiguration(spaceJsonData payload: [String: Any], initialize: Bool = false,
-                              authoritativeGET: Bool = false) async -> SpaceImportOutcome {
+                              authoritativeGET: Bool = false, fixWithDefaults: Bool = false) async -> SpaceImportOutcome {
         guard SpaceMembershipCoordinator.accepts(payload), payload["uuid"] as? String == id else {
             return .rejected("staleMembershipResponse")
         }
@@ -296,9 +296,22 @@ extension SpaceData {
                 return .rejected("networkKeyConflictOrPersistenceFailed")
             }
             guard SpaceConfigurationSafety.activateImport(candidate) else { return .rejected("spaceRemovalPending") }
+            let defaultRecovery = fixWithDefaults || (authoritativeGET
+                && SpaceConfigurationSafety.shouldRefreshDefaultRecovery(candidate, remote: payload))
+            if defaultRecovery {
+                guard authoritativeGET else { return .rejected("configurationDefaultRepairUnavailable") }
+                candidate.applyRemoteSpaceMetadata(payload)
+                guard SpaceConfigurationSafety.prepareDefaultConfigurationImport(candidate, remote: payload) else {
+                    return .rejected("configurationDefaultRepairUnavailable")
+                }
+            }
             // Persist a canonical but explicitly uninitialized row before asynchronous work.
-            // A crash resumes under the same identity; upload remains disabled.
-            guard candidate.save() else { return .rejected("configurationPersistenceFailed") }
+            // Existing corrupt rows already have this identity. Their ordinary save
+            // must not veto the validated import transaction that repairs them.
+            if !membership.initialized || !(candidate.hdbLoadFailed || candidate.triggerZonesLoadFailed
+                || SpaceConfigurationSafety.hasReviewedCloudImport(candidate)) {
+                guard candidate.save() else { return .rejected("configurationPersistenceFailed") }
+            }
             var cleanPayload = payload
             cleanPayload.removeValue(forKey: SpaceMembershipResponseContext.payloadKey)
             let outcome = await candidate.update(spaceJsonData: cleanPayload, initialize: initialize || uninitialized)

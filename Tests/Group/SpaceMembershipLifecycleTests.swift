@@ -42,6 +42,7 @@ final class SpaceData {
     var authorizationPassword: String?
     var lastUploadCloudTimestamp: Int64?
     var saveSucceeds = true, deleteSucceeds = true, applySucceeds = true
+    var hdbLoadFailed = false, triggerZonesLoadFailed = false
     var updateCalls = 0, deleteCalls = 0
     var onUpdate: (() -> Void)?
     static var rows: [String: SpaceData] = [:]
@@ -50,6 +51,7 @@ final class SpaceData {
         let result = SpaceData(id); result.applyConfigurationState(from: self)
         result.saveSucceeds = saveSucceeds; result.deleteSucceeds = deleteSucceeds
         result.applySucceeds = applySucceeds; result.onUpdate = onUpdate
+        result.hdbLoadFailed = hdbLoadFailed; result.triggerZonesLoadFailed = triggerZonesLoadFailed
         return result
     }
     func applyConfigurationState(from value: SpaceData) {
@@ -57,6 +59,7 @@ final class SpaceData {
         permission = value.permission; updateCalls = value.updateCalls
     }
     func save() -> Bool { if saveSucceeds { Self.rows[id] = self }; return saveSucceeds }
+    func applyRemoteSpaceMetadata(_ payload: [String: Any]) {}
     func delete() -> Bool { deleteCalls += 1; if deleteSucceeds { Self.rows[id] = nil }; return deleteSucceeds }
     static func load(siteId: String, spaceId: String? = nil) -> [SpaceData] {
         if let spaceId { return rows[spaceId].map { [$0] } ?? [] }
@@ -84,6 +87,13 @@ enum SpaceConfigurationSafety {
         phases[space.meshNetworkId] = .init(phase: .active); return true
     }
     static func isBlocked(_ space: SpaceData) -> Bool { false }
+    static var reviewed = false, defaultPreparationSucceeds = true
+    static func hasReviewedCloudImport(_ space: SpaceData) -> Bool { reviewed }
+    static func shouldRefreshDefaultRecovery(_ space: SpaceData, remote: [String: Any]) -> Bool { false }
+    static func prepareDefaultConfigurationImport(_ space: SpaceData, remote: [String: Any]) -> Bool {
+        if defaultPreparationSucceeds { reviewed = true }
+        return defaultPreparationSucceeds
+    }
     static func beginUnbind(_ space: SpaceData) -> Bool { true }
 }
 final class SiteData {
@@ -178,6 +188,23 @@ final class CloudSynchronizationManager {
         let unsaved = SpaceData("unsaved"); unsaved.saveSucceeds = false
         let unsavedResult = await unsaved.restoreConfiguration(spaceJsonData: payload(unsaved))
         precondition(unsavedResult.status == .rejected)
+
+        // An initialized corrupt row must reach validated import; an unsaved new
+        // membership must still establish its identity before any asynchronous work.
+        first.hdbLoadFailed = true; first.saveSucceeds = false
+        let repaired = await first.restoreConfiguration(spaceJsonData: payload(first), authoritativeGET: true)
+        precondition(repaired.status == .applied, "corrupt local HDB must not veto cloud import")
+        first.hdbLoadFailed = false; first.triggerZonesLoadFailed = true
+        let zonesRepaired = await first.restoreConfiguration(spaceJsonData: payload(first), authoritativeGET: true)
+        precondition(zonesRepaired.status == .applied)
+        first.triggerZonesLoadFailed = false; first.saveSucceeds = true
+        SpaceConfigurationSafety.defaultPreparationSucceeds = false
+        let preparationFailed = await first.restoreConfiguration(spaceJsonData: payload(first), authoritativeGET: true, fixWithDefaults: true)
+        precondition(preparationFailed.rejectionReason == "configurationDefaultRepairUnavailable")
+        SpaceConfigurationSafety.defaultPreparationSucceeds = true
+        let notAuthoritative = await first.restoreConfiguration(spaceJsonData: payload(first), fixWithDefaults: true)
+        precondition(notAuthoritative.rejectionReason == "configurationDefaultRepairUnavailable")
+        print("PASS: corrupt HDB/Trigger Zone rows reach cloud recovery; new identity and repair-staging failures remain protected")
 
         let request = NetworkRequest.shared
         MeshNetwork.loadAvailable = false

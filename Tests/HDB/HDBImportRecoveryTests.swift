@@ -23,11 +23,14 @@ final class SpaceData {
     static func load(siteId: String, spaceId: String) -> [SpaceData] { persisted.map { [$0.copy()] } ?? [] }
     func copy() -> SpaceData {
         let result = SpaceData()
-        result.hdb = hdb; result.hdbPersistenceBaseline = hdbPersistenceBaseline
-        result.hdbLoadFailed = hdbLoadFailed; result.triggerZonesLoadFailed = triggerZonesLoadFailed
-        result.lastUpdate = lastUpdate; result.lastUploadCloudTimestamp = lastUploadCloudTimestamp
-        result.timedSchemaVersion = timedSchemaVersion
+        result.applyConfigurationState(from: self)
         return result
+    }
+    func applyConfigurationState(from other: SpaceData) {
+        hdb = other.hdb; hdbPersistenceBaseline = other.hdbPersistenceBaseline
+        hdbLoadFailed = other.hdbLoadFailed; triggerZonesLoadFailed = other.triggerZonesLoadFailed
+        lastUpdate = other.lastUpdate; lastUploadCloudTimestamp = other.lastUploadCloudTimestamp
+        timedSchemaVersion = other.timedSchemaVersion
     }
     func applyRemoteSpaceMetadata(_ payload: [String: Any]) {}
     // PRODUCTION_SAVE
@@ -56,6 +59,8 @@ enum SpaceConfigurationSafety {
     static var unreadable = false
     static func recoveryState(_ space: SpaceData) throws -> State { State() }
     static func hasPendingImport(_ space: SpaceData) -> Bool { unreadable || pending != nil || reviewed != nil }
+    static func hasReviewedCloudImport(_ space: SpaceData) -> Bool { reviewed != nil }
+    static func preserveDefaultConfiguration(_ space: SpaceData, remote: [String: Any]) -> ImportOutcome? { nil }
     static func pendingImport(_ space: SpaceData) -> [String: Any]? { pending ?? reviewed }
     static func originalReferenceCleanupImport(_ space: SpaceData, candidate: [String: Any]) -> [String: Any]? { nil }
     static func isConfirmedTimedBaseline(_ space: SpaceData, remote: [String: Any]) -> Bool { false }
@@ -66,6 +71,15 @@ enum SpaceConfigurationSafety {
     static func reconcileCloudMembership(_ space: SpaceData, remote: [String: Any]) -> Bool { true }
     static func recordSyncFailure(_ space: SpaceData, error: SyncError, stage: String) {}
     static func preservesLocalChanges(_ space: SpaceData) -> Bool { false }
+}
+
+final class RecoverySpaceLists {
+    struct Site { var spaces: [SpaceData] }
+    var site = Site(spaces: [])
+    var allSpaces: [SpaceData] = [], favouriteSpaces: [SpaceData] = []
+    func reloadSpaceData(_ space: SpaceData) {
+        // PRODUCTION_LIST_REFRESH
+    }
 }
 
 @main enum HDBImportRecoveryTests {
@@ -188,5 +202,21 @@ enum SpaceConfigurationSafety {
         SpaceConfigurationSafety.unreadable = true
         guard case .rejected("unreadablePendingImport") = await space.prepareImport(spaceJsonData: request) else { fatalError("unreadable staging bypassed") }
         print("PASS: production import preparation uses pending/reviewed HDB, validates selected references and preserves legacy nil")
+        let lists = RecoverySpaceLists()
+        let oldSite = SpaceData(), oldAll = SpaceData(), oldFavourite = SpaceData(), unrelated = SpaceData()
+        unrelated.siteId = "other-site"
+        for old in [oldSite, oldAll, oldFavourite, unrelated] { old.hdbLoadFailed = true }
+        lists.site.spaces = [oldSite, unrelated]; lists.allSpaces = [oldAll]; lists.favouriteSpaces = [oldFavourite]
+        let committed = SpaceData(); committed.hdb = configuration("Committed")
+        committed.hdbPersistenceBaseline = committed.hdb; committed.lastUpdate = 200
+        SpaceData.persisted = committed.copy()
+        precondition(!oldSite.save(), "pre-repair page instance still reproduces the save error")
+        lists.reloadSpaceData(committed)
+        for reopened in [oldSite, oldAll, oldFavourite] {
+            precondition(!reopened.hdbLoadFailed && reopened.hdb == committed.hdb && reopened.lastUpdate == 200)
+            precondition(reopened.save(), "reentering through every retained list instance must use the committed database configuration")
+        }
+        precondition(unrelated.hdbLoadFailed)
+        print("PASS: production Site list refresh replaces stale repair state in Site/All/Favourites before reentry; other Sites untouched")
     }
 }

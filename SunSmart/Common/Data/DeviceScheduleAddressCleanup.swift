@@ -180,6 +180,9 @@ struct SpaceRecoveryState: Codable, Equatable {
     var olderCloudBaselineFailure: String? = nil
     /// A user-reviewed complete replacement, valid only for this local generation.
     var localReplacementVersion: Int64? = nil
+    /// The exact cloud business snapshot explicitly selected for default repair.
+    /// Used only before POST; upload confirmation still compares the unmodified GET.
+    var defaultRecoverySource: Data? = nil
     var unbindRequested: Bool?
     var requiresRemoteImport: Bool?
     var siteCreationTimestamp: Int64?

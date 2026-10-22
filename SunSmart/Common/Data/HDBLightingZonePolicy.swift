@@ -280,3 +280,159 @@ extension HDBLightingZonePolicy {
         return current
     }
 }
+
+extension HDBLightingZonePolicy {
+    /// Explicit recovery only. Nodes and Groups come exclusively from the selected
+    /// cloud snapshot; this must never merge devices from the phone into that copy.
+    static func repairingDefaults(in payload: [String: Any],
+                                  deviceConfiguration: (([String: Any], String) throws -> HDBDeviceConfiguration)? = nil,
+                                  zoneName: (Int) -> String) throws -> [String: Any] {
+        guard let nodes = payload["nodes"] as? [[String: Any]],
+              let groups = payload["groups"] as? [[String: Any]] else { throw HDBConfigurationError.invalidData }
+        guard var extensionData = payload["spaceData"] as? [String: Any] else {
+            if payload["spaceData"] != nil { throw HDBConfigurationError.invalidData }
+            return payload
+        }
+        guard let raw = extensionData["hdb"] else { return payload }
+        guard let object = raw as? [String: Any], let version = object["schemaVersion"] as? Int,
+              [1, 2].contains(version),
+              let zones = object["lightingZones"] as? [[String: Any]],
+              let devices = object["devices"] as? [[String: Any]] else { throw HDBConfigurationError.invalidData }
+        let groupAddresses = Set(groups.filter { !($0["isVirtual"] as? Bool ?? false) }
+            .compactMap { ($0["address"] as? String).flatMap { UInt16($0, radix: 16) } })
+        let nodeIdentities = try nodes.map { node -> (UUID, UInt16) in
+            guard let id = (node["uuid"] as? String).flatMap(UUID.init(uuidString:)),
+                  let address = (node["unicastAddress"] as? String).flatMap({ UInt16($0, radix: 16) }),
+                  (1...0x7FFF).contains(Int(address)) else { throw HDBConfigurationError.invalidData }
+            return (id, address)
+        }
+        guard Set(nodeIdentities.map { $0.0 }).count == nodes.count,
+              Set(nodeIdentities.map { $0.1 }).count == nodes.count else { throw HDBConfigurationError.invalidData }
+        var configuration = HDBConfiguration()
+        for zone in zones {
+            guard let id = zone["zoneId"] as? Int, (1...63).contains(id) else { throw HDBConfigurationError.invalidZones }
+            let address: UInt16
+            if let value = recoveryAddress(zone["groupId"]) {
+                address = value
+                if let old = recoveryAddress(zone["groupAddress"]), old != value { throw HDBConfigurationError.invalidZones }
+            } else if zone["groupId"] == nil, let value = recoveryAddress(zone["groupAddress"]) { address = value }
+            else { throw HDBConfigurationError.invalidZones }
+            // A removed cloud Group cannot remain a target in the recovered HDB.
+            guard groupAddresses.contains(address) else { continue }
+            let name = (zone["name"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            configuration.lightingZones.append(.init(zoneId: id,
+                name: name?.isEmpty == false ? name! : zoneName(id), groupAddress: address))
+        }
+        let zoneIDs = Set(configuration.lightingZones.map(\.zoneId))
+        let sensorGroupAddresses = Set(groups.filter { $0["isVirtual"] as? Bool == true }
+            .compactMap { recoveryAddress($0["address"]) })
+        for rawDevice in devices {
+            guard let id = (rawDevice["nodeUuid"] as? String).flatMap(UUID.init(uuidString:)) else { throw HDBConfigurationError.invalidData }
+            guard let identity = nodeIdentities.first(where: { $0.0 == id }) else { continue }
+            let node = nodes.first { ($0["uuid"] as? String).flatMap(UUID.init(uuidString:)) == id }!
+            configuration.devices.append(try repairedDevice(rawDevice, node: node, identity: identity,
+                version: version, zoneIDs: zoneIDs, sensorGroupAddresses: sensorGroupAddresses,
+                deviceConfiguration: deviceConfiguration))
+        }
+        try validateReferences(configuration, payload: payload)
+        extensionData["hdb"] = try json(configuration)
+        var result = payload
+        result["spaceData"] = extensionData
+        result["deviceCount"] = nodes.count
+        return result
+    }
+
+    /// Both known schemas share identity, membership, defaults and status handling.
+    private static func repairedDevice(_ rawDevice: [String: Any], node: [String: Any],
+                                       identity: (UUID, UInt16), version: Int, zoneIDs: Set<Int>,
+                                       sensorGroupAddresses: Set<UInt16>,
+                                       deviceConfiguration: (([String: Any], String) throws -> HDBDeviceConfiguration)?) throws -> HDBDeviceConfiguration {
+        var deviceObject = rawDevice
+        let selected = recoveryZoneIDs(rawDevice["lightingZones"]).filter { zoneIDs.contains($0) }
+        let normalizedZones = Array(Set(selected)).sorted()
+        guard normalizedZones.count <= 8 else { throw HDBConfigurationError.invalidZones }
+        deviceObject["lightingZones"] = normalizedZones
+        if normalizedZones != rawDevice["lightingZones"] as? [Int]
+            || (rawDevice["lightingZonesStatus"] as? String).flatMap(HDBSyncStatus.init(rawValue:)) == nil {
+            deviceObject["lightingZonesStatus"] = HDBSyncStatus.pending.rawValue
+        }
+        // The current cloud Node supplies identity and Composition. Reuse the
+        // normal device factory so recovery and subsequent import/export agree,
+        // including SDK Model extension rules for broadcast receivers.
+        deviceObject["lightingConfiguration"] = NSNull()
+        var device: HDBDeviceConfiguration
+        var modelsChanged = false
+        if let deviceConfiguration {
+            let mac: String
+            if let cloudMAC = try? HDBDeviceConfiguration.normalizedMAC(node["macAddress"] as? String) { mac = cloudMAC }
+            else { mac = try HDBDeviceConfiguration.normalizedMAC(rawDevice["mac"] as? String) }
+            device = try deviceConfiguration(node, mac)
+            guard device.nodeUuid == identity.0, device.nodeAddress == identity.1 else { throw HDBConfigurationError.invalidData }
+            let previous = try? JSONDecoder().decode(HDBDeviceConfiguration.self,
+                from: JSONSerialization.data(withJSONObject: deviceObject))
+            modelsChanged = previous == nil || previous?.nodeAddress != device.nodeAddress
+                || previous?.hasSameModels(as: device) != true
+            device.lightingZones = normalizedZones.map { .init(zoneId: $0) }
+            device.lightingZonesStatus = (deviceObject["lightingZonesStatus"] as? String)
+                .flatMap(HDBSyncStatus.init(rawValue:)) ?? .pending
+            let sensor = recoveryAddress(rawDevice["sensorGroupId"])
+            device.sensorGroupId = sensor.flatMap { address in
+                sensorGroupAddresses.contains(address) ? address : nil
+            }
+            if modelsChanged || device.sensorGroupId != sensor { device.lightingZonesStatus = .pending }
+        } else {
+            // Value-only callers cannot reconstruct legacy Composition metadata.
+            guard version == 2, recoveryAddress(rawDevice["nodeAddress"]) == identity.1 else { throw HDBConfigurationError.invalidData }
+            device = try JSONDecoder().decode(HDBDeviceConfiguration.self,
+                from: JSONSerialization.data(withJSONObject: deviceObject))
+        }
+        device.lightingConfiguration = version == 1 ? .defaults : nil
+        if let lighting = rawDevice["lightingConfiguration"], !(lighting is NSNull) {
+            device.lightingConfiguration = try repairedLighting(lighting)
+        }
+        if modelsChanged {
+            device.lightingConfiguration?.mark(fields: ["lightingControl", "dimIntensity", "brightIntensity",
+                "rampUpTime", "rampDownTime", "holdTime"], status: .pending)
+        }
+        return device
+    }
+
+    private static func recoveryZoneIDs(_ raw: Any?) -> [Int] {
+        guard let members = raw as? [Any] else { return [] }
+        return members.compactMap { member in
+            if let id = member as? Int { return id }
+            return (member as? [String: Any])?["zoneId"] as? Int
+        }
+    }
+
+    /// Compatibility belongs only to explicit recovery, never the normal decoder.
+    private static func recoveryAddress(_ raw: Any?) -> UInt16? {
+        if let text = raw as? String, text.count == 4,
+           text.allSatisfy({ "0123456789abcdefABCDEF".contains($0) }) { return UInt16(text, radix: 16) }
+        if let value = raw as? Int, !(raw is Bool) { return UInt16(exactly: value) }
+        return nil
+    }
+
+    private static func repairedLighting(_ raw: Any) throws -> HDBLightingConfiguration {
+        guard let fields = raw as? [String: Any] else { return .defaults }
+        let defaults = try JSONSerialization.jsonObject(with: JSONEncoder().encode(HDBLightingConfiguration.defaults)) as! [String: Any]
+        var repaired: [String: Any] = [:]
+        for key in ["lightingControl", "failsafeDelay", "dimIntensity", "brightIntensity", "rampUpTime", "rampDownTime", "holdTime", "installDate"] {
+            guard let field = fields[key], !(field is NSNull) else { continue }
+            var candidate = field as? [String: Any] ?? [:]
+            if (candidate["status"] as? String).flatMap(HDBSyncStatus.init(rawValue:)) == nil {
+                candidate["status"] = HDBSyncStatus.pending.rawValue
+            }
+            do {
+                let decoded = try JSONDecoder().decode(HDBLightingConfiguration.self,
+                    from: JSONSerialization.data(withJSONObject: [key: candidate]))
+                try decoded.values.validate()
+                repaired[key] = candidate
+            } catch {
+                repaired[key] = defaults[key]
+            }
+        }
+        return try JSONDecoder().decode(HDBLightingConfiguration.self,
+            from: JSONSerialization.data(withJSONObject: repaired))
+    }
+}
