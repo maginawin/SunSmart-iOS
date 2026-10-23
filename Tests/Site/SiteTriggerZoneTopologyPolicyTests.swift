@@ -579,6 +579,16 @@ struct SiteTriggerZoneTopologyPolicyTests {
         require(fingerprint?.count == 64
                 && fingerprint == Tasks.cloudFingerprint(siteID: "site", data: reordered),
                 "Cloud content identity must not depend on JSON dictionary insertion order")
+        reordered.fields["isHdbSite"] = .bool(true)
+        require(fingerprint == Tasks.cloudFingerprint(siteID: "site", data: reordered),
+                "The retired Bool must not change the new-format cloud identity")
+        reordered.siteType = .standard
+        require(first == reordered && fingerprint != Tasks.cloudFingerprint(siteID: "site", data: reordered),
+                "Equivalent Standard behavior may have distinct null/string wire representations")
+        reordered.siteType = .hdb
+        require(first != reordered && fingerprint != Tasks.cloudFingerprint(siteID: "site", data: reordered),
+                "Explicit HDB must change both semantic and wire identity")
+        reordered.siteType = nil
         reordered.fields["future"] = .object(["a": .string("changed"), "z": .integer(3)])
         require(fingerprint != Tasks.cloudFingerprint(siteID: "site", data: reordered),
                 "An extensionData change must be visible in the cloud fingerprint")

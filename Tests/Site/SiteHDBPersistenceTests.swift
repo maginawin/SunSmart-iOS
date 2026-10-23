@@ -26,7 +26,7 @@ final class SpaceData {
     func cloneData() -> SpaceData { SpaceData() }
     @discardableResult func save() -> Bool { true }
 }
-enum NodeSyncStatusGeneration { static func invalidate() {} }
+enum NodeSyncStatusGeneration { static var invalidations = 0; static func invalidate() { invalidations += 1 } }
 final class TestNode { func clearSyncStateCache() {} }
 final class TestNetwork { var uuid = UUID(); var nodes: [TestNode] = [] }
 final class MeshNetworkManager {
@@ -82,13 +82,15 @@ final class SiteData {
         try db.execute("DROP TRIGGER fail_extension")
         let standard = try SiteData.add(name: "Standard")
         precondition(!standard.isHdbSite)
-        let hdb = try SiteData.add(name: "HDB", isHdbSite: true)
+        let standardObject = try SiteExtensionStore.load(standard).data.jsonObject()
+        precondition(standardObject["siteType"] as? String == "Standard" && standardObject["isHdbSite"] == nil)
+        let hdb = try SiteData.add(name: "HDB", siteType: .hdb)
         precondition(hdb.isHdbSite && !standard.isHdbSite, "Chosen type must be durable from the first save")
         var metadata = SiteExtensionData()
         metadata.fields["description"] = .string("Lobby")
         metadata.fields["postalCode"] = .string("018983")
         metadata.fields["latitude"] = .string("0")
-        let formSite = try SiteData.add(name: "Form", isHdbSite: true, imageId: 28,
+        let formSite = try SiteData.add(name: "Form", siteType: .hdb, imageId: 28,
                                         timezone: nil, extensionData: metadata)
         precondition(formSite.timezone == nil && formSite.pendingSitePropsMask.isEmpty)
         precondition(formSite.pendingSitePropsTimestamp == nil)
@@ -98,7 +100,7 @@ final class SiteData {
         try db.execute("CREATE TRIGGER fail_extension BEFORE INSERT ON site_extensions BEGIN SELECT RAISE(FAIL, 'fixture'); END;")
         let beforeFailure = MeshNetworkManager.allocated
         rejected = false
-        do { _ = try SiteData.add(name: "Failed form", isHdbSite: true, imageId: 28,
+        do { _ = try SiteData.add(name: "Failed form", siteType: .hdb, imageId: 28,
                                   timezone: nil, extensionData: metadata) } catch { rejected = true }
         precondition(rejected && MeshNetworkManager.allocated == beforeFailure)
         let failedRows = try db.scalar("SELECT count(*) FROM sites WHERE name = 'Failed form'") as! Int64
@@ -127,8 +129,9 @@ final class SiteData {
         precondition(copy.isHdbSite && clone.save() && clone.isHdbSite)
         try SiteExtensionStore.receive(reloaded, object: ["extensionData": "{}"], timestamp: 1)
         precondition(reloaded.isHdbSite)
-        try SiteExtensionStore.receive(reloaded, object: ["extensionData": ["isHdbSite": NSNull()]], timestamp: 2)
+        try SiteExtensionStore.receive(reloaded, object: ["extensionData": ["siteType": NSNull()]], timestamp: 2)
         precondition(!reloaded.isHdbSite && clone.isHdbSite)
+        try legacySnapshots(path: path)
         UserData.currentServerRegion = .second
         precondition(SiteData.load(siteId: standard.id) == nil, "Site extension must remain region scoped")
         UserData.currentServerRegion = .first
@@ -137,5 +140,57 @@ final class SiteData {
         do { _ = try reloaded.loadIsHdbSite(); fatalError("Database failure must not become a Standard mutation") }
         catch SiteExtensionStore.StoreError.databaseUnavailable {}
         print("PASS: real SQLite Site save rollback, restart, durable type reads, copy/clone, partial import and region scope")
+    }
+
+    static func legacySnapshots(path: String) throws {
+        let legacy = try SiteData.add(name: "Legacy true")
+        var base = try SiteExtensionData().jsonObject()
+        base.removeValue(forKey: "siteType")
+        base["isHdbSite"] = true
+        base["future"] = ["keep": 7]
+        var target = base
+        target["triggerZones"] = try SiteExtensionData().replacingZone(SiteTriggerZone())!.jsonObject()["triggerZones"]
+        let operation = UUID()
+        let pending: [String: Any] = ["operationId": operation.uuidString, "timestamp": 11, "base": base, "target": target]
+        let oldPayload: [String: Any] = ["data": target, "serverData": base, "serverTimestamp": 10,
+                                         "pending": pending, "submitted": pending, "archivedPendings": [pending],
+                                         "archivedReviewNeeded": true, "conflict": false]
+        let bytes = try JSONSerialization.data(withJSONObject: oldPayload)
+        try SunSmartDataManager.shared.db!.run(Table("site_extensions").filter(Expression<String>("siteId") == legacy.id)
+            .update(Expression<Data>("payload") <- bytes))
+        SunSmartDataManager.shared.db = try Connection(path)
+        let restored = SiteData.load(siteId: legacy.id)!
+        let state = try SiteExtensionStore.load(restored)
+        precondition(!restored.isHdbSite && state.pending?.operationId == operation && state.needsArchivedReview)
+        let snapshots = [state.data, state.serverData, state.pending?.base, state.pending?.target,
+                         state.submitted?.base, state.submitted?.target,
+                         state.archivedPendings?.first?.base, state.archivedPendings?.first?.target].compactMap { $0 }
+        precondition(snapshots.count == 8)
+        for snapshot in snapshots {
+            let object = try snapshot.jsonObject()
+            precondition(!snapshot.isHdbSite && object["siteType"] is NSNull && object["isHdbSite"] == nil)
+            precondition(snapshot.fields["future"] == .object(["keep": .integer(7)]))
+        }
+        let clone = restored.cloneData()
+        precondition(!restored.copy().isHdbSite && clone.save() && !clone.isHdbSite)
+        try SiteExtensionStore.update(restored) { _ in }
+        let row = try SunSmartDataManager.shared.db!.pluck(Table("site_extensions").filter(Expression<String>("siteId") == restored.id))!
+        let rewritten = row[Expression<Data>("payload")]
+        precondition(!String(decoding: rewritten, as: UTF8.self).contains("isHdbSite"))
+        let afterWrite = try JSONDecoder().decode(SiteExtensionState.self, from: rewritten)
+        precondition(afterWrite.pending?.operationId == operation && afterWrite.submitted?.operationId == operation)
+        // An old-format receipt still confirms the pending Zone change without enabling HDB.
+        try SiteExtensionStore.receive(restored, object: ["extensionData": target], timestamp: 12)
+        let confirmed = try SiteExtensionStore.load(restored)
+        precondition(confirmed.pending == nil && !confirmed.data.isHdbSite && confirmed.data.zones?.count == 1)
+
+        let before = NodeSyncStatusGeneration.invalidations
+        try SiteExtensionStore.update(restored) { $0.data.siteType = .standard }
+        precondition(NodeSyncStatusGeneration.invalidations == before, "null/Standard must not invalidate HDB status")
+        try SiteExtensionStore.update(restored) { $0.data.siteType = .hdb }
+        precondition(NodeSyncStatusGeneration.invalidations == before + 1 && restored.isHdbSite)
+        try SiteExtensionStore.update(restored) { $0.data.siteType = nil }
+        precondition(NodeSyncStatusGeneration.invalidations == before + 2 && !restored.isHdbSite)
+        print("PASS: legacy true SQLite snapshots, pending identities, lossless Zones, new-key-only rewrite and effective-type cache invalidation")
     }
 }

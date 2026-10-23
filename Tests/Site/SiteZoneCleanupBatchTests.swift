@@ -282,13 +282,13 @@ enum SiteZoneCleanupBatchTests {
         try SiteExtensionStore.update(site) { $0.data.replaceZones([]) }
         require(NodeSyncStatusGeneration.invalidations == 0 && node.cacheInvalidations == 0,
                 "ordinary Zone writes do not invalidate HDB type caches")
-        try SiteExtensionStore.update(site) { $0.data.isHdbSite = true }
+        try SiteExtensionStore.update(site) { $0.data.siteType = .hdb }
         require(NodeSyncStatusGeneration.invalidations == 1 && node.cacheInvalidations == 1,
                 "a persisted HDB type change invalidates the matching active network")
         let db = SunSmartDataManager.shared.db!
         try db.run("CREATE TRIGGER fail_type BEFORE INSERT ON site_extensions BEGIN SELECT RAISE(ABORT, 'test failure'); END")
         do {
-            try SiteExtensionStore.update(site) { $0.data.isHdbSite = false }
+            try SiteExtensionStore.update(site) { $0.data.siteType = .standard }
             preconditionFailure("failed persistence was accepted")
         } catch {}
         let persisted = try SiteExtensionStore.load(site)
@@ -297,7 +297,7 @@ enum SiteZoneCleanupBatchTests {
                 "rollback preserves stored and in-memory type without premature cache invalidation")
         try db.run("DROP TRIGGER fail_type")
         let otherSite = SiteData(UUID().uuidString)
-        try SiteExtensionStore.update(otherSite) { $0.data.isHdbSite = true }
+        try SiteExtensionStore.update(otherSite) { $0.data.siteType = .hdb }
         require(NodeSyncStatusGeneration.invalidations == 2 && node.cacheInvalidations == 1,
                 "another Site change must not clear the active network's node cache")
         print("PASS: real Site Store type changes, cache scope and SQLite rollback")

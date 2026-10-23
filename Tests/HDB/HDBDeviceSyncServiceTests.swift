@@ -60,14 +60,17 @@ import Foundation
         network.nodes.removeAll { $0 === node }
         SpaceConfigurationSafety.journal.entries = [.init(nodeUUID: node.uuid.uuidString)]
         try HDBConfigurationStore.removeDevice(space: space, nodeUuid: node.uuid)
+        SiteData.hdbEnabled = false // Legacy true now resolves to Standard; referenced addresses stay reserved.
         try HDBConfigurationStore.finishSensorGroupCleanup(space: space)
         precondition(SpaceConfigurationSafety.journal.entries[0].sensorGroupId == address && !HDBConfigurationStore.availableLightingZoneAddresses(meshUUID: space.meshUUID).contains(address))
+        SiteData.hdbEnabled = true
         guard case .devices(let peers) = HDBDeviceSyncService.deletionSyncType(datas: []) else { fatalError("cleanup missing from ordinary Sync") }
         precondition(peers.map(\.uuid) == [peer.uuid])
         let receiver = try HDBDeviceSyncContext.resolve(node: peer, allowNonLights: true)!
         try check(HDBDeviceSyncService.cleanupOperations(context: receiver, config: space.hdb!).count == 1)
         peer.elements[0].models[0].subscriptions = []
         network.nodes = [] // Last-node deletion must still permit local address reclamation.
+        SiteData.hdbEnabled = false // Safe local cleanup does not re-enable any HDB device configuration.
         Group.failAddress = address
         do { try HDBConfigurationStore.finishSensorGroupCleanup(space: space); fatalError("failed delete ignored") } catch {}
         precondition(SpaceConfigurationSafety.journal.entries[0].sensorGroupId == address)
@@ -76,6 +79,10 @@ import Foundation
         try HDBConfigurationStore.finishSensorGroupCleanup(space: space)
         precondition(SpaceConfigurationSafety.journal.entries[0].sensorGroupId == nil && network.groups.isEmpty)
         precondition(HDBConfigurationStore.availableLightingZoneAddresses(meshUUID: space.meshUUID).first == address)
+        let noRecordWrites = SpaceData.saveCount
+        SpaceConfigurationSafety.journal = .init()
+        try check(!HDBConfigurationStore.finishSensorGroupCleanup(space: space))
+        precondition(SpaceData.saveCount == noRecordWrites, "No journal entry must not initialize or save HDB data")
         // Interrupted Group registration resumes the same reservation.
         let (second, secondNetwork, secondNode) = fixture()
         let secondContext = try HDBDeviceSyncContext.resolve(node: secondNode)!

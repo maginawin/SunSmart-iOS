@@ -49,11 +49,11 @@ struct SiteExtensionState: Codable, Equatable {
                (pending.target.fields[key] ?? .null) != (pending.base?.fields[key] ?? .null) { return }
             remote.fields[key] = (serverData ?? data).fields[key]
         }
-        if remote.fields["isHdbSite"] == nil {
+        if remote.fields["siteType"] == nil {
             // An omitted field cannot confirm a newly submitted type, but must retain
             // the known type when an existing Site receives a partial props response.
             if let pending, pending.target.isHdbSite != (pending.base?.isHdbSite ?? false) { return }
-            remote.isHdbSite = (serverData ?? data).isHdbSite
+            remote.siteType = (serverData ?? data).siteType
         }
         if remote.fields["triggerZones"] == nil {
             remote.fields["triggerZones"] = (serverData ?? data).fields["triggerZones"]

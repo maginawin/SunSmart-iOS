@@ -472,9 +472,9 @@ final class SiteCreateViewController: UIViewController {
         guard contextIsCurrent, allowsSiteType, FeatureVisibility.shared.canSelectSiteType,
               typeAlert == nil, !isCommitting else { return }
         view.endEditing(true)
-        let alert = SiteTypeSelectionAlertView.make(selectedHdb: draft.isHdbSite) { [weak self] selected in
+        let alert = SiteTypeSelectionAlertView.make(selectedType: draft.siteType) { [weak self] selected in
             guard let self, self.contextIsCurrent else { return }
-            self.draft.isHdbSite = selected
+            self.draft.siteType = selected
             self.updateType()
         }
         typeAlert = alert
@@ -482,7 +482,7 @@ final class SiteCreateViewController: UIViewController {
     }
 
     private func updateType() {
-        typeRow.valueLabel.text = (draft.isHdbSite ? "site_type_hdb" : "site_type_standard").localizedString
+        typeRow.valueLabel.text = (draft.siteType == .hdb ? "site_type_hdb" : "site_type_standard").localizedString
         typeRow.accessibilityValue = typeRow.valueLabel.text
     }
 
@@ -499,11 +499,11 @@ final class SiteCreateViewController: UIViewController {
         guard validateName() else { return }
         draft.text[.description] = descriptionView.text
         for (field, input) in textFields { draft.text[field] = input.text ?? "" }
-        if !FeatureVisibility.shared.canSelectSiteType { draft.isHdbSite = false }
+        if !FeatureVisibility.shared.canSelectSiteType { draft.siteType = .standard }
         isCommitting = true
         createButton.isEnabled = false
         do {
-            let site = try SiteData.add(name: draft.siteName, isHdbSite: draft.isHdbSite, imageId: draft.imageId,
+            let site = try SiteData.add(name: draft.siteName, siteType: draft.siteType, imageId: draft.imageId,
                                         timezone: draft.timezone?.storageValue, extensionData: draft.extensionData)
             let completion = onCreated
             navigationController?.dismiss(animated: true) { completion(site) }

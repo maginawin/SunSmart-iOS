@@ -5,7 +5,7 @@ final class FeatureVisibility {
     enum Feature: String, CaseIterable {
         case siteExportJson = "sites.site.exportJson"
         case siteTriggerZone = "sites.site.triggerZone"
-        case siteTypeSelection = "sites.site.isHdbSite"
+        case siteTypeSelection = "sites.site.siteType"
         case spaceHDBConfiguration = "sites.site.space.hdbConfiguration"
     }
 

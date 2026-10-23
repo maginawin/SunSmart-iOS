@@ -195,7 +195,7 @@ struct FeatureVisibilityTests {
         check(!FeatureVisibility { Data("{}".utf8) }.canSelectSiteType, "Missing creation rule must disable selection")
         let rawConfiguration = try JSONSerialization.jsonObject(with: bundled) as! [String: Any]
         let siteRules = (rawConfiguration["sites"] as! [String: Any])["site"] as! [String: Any]
-        let typeRule = siteRules["isHdbSite"] as! [String: Any]
+        let typeRule = siteRules["siteType"] as! [String: Any]
         let allowedTargets = typeRule["targets"] as? [String]
         let allowedBuilds = typeRule["builds"] as! [String]
         let allowedRoles = typeRule["roles"] as! [String]

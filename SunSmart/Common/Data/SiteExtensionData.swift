@@ -33,25 +33,42 @@ enum SiteJSONValue: Codable, Equatable, Sendable {
 /// Complete Site extensionData shared by Site type, Trigger Zones and cloud payloads.
 struct SiteExtensionData: Codable, Equatable {
     enum ParseError: Error { case invalidObject }
+    enum ProjectType: String, Codable {
+        case standard = "Standard"
+        case hdb = "HDB"
+    }
 
     static let metadataKeys = ["countryRegion", "city", "description", "streetAddress", "postalCode", "latitude", "longitude"]
 
     var fields: [String: SiteJSONValue]
 
-    init() { fields = ["schemaVersion": .integer(1), "triggerZones": .array([]), "isHdbSite": .bool(false)] }
+    init() { fields = ["schemaVersion": .integer(1), "triggerZones": .array([]), "siteType": .null] }
 
-    /// Keep missing-field evidence while parsing partial responses. Only a JSON Bool enables HDB.
-    var isHdbSite: Bool {
-        get { fields["isHdbSite"] == .bool(true) }
-        set { fields["isHdbSite"] = .bool(newValue) }
+    /// Missing/null/invalid values are legacy Standard Sites, never an inferred HDB type.
+    /// Parsing preserves field presence until partial responses have been merged.
+    var siteType: ProjectType? {
+        get {
+            guard case .string(let value) = fields["siteType"] else { return nil }
+            return ProjectType(rawValue: value)
+        }
+        set { fields["siteType"] = newValue.map { .string($0.rawValue) } ?? .null }
     }
 
-    private var normalizedFields: [String: SiteJSONValue] {
+    var isHdbSite: Bool { siteType == .hdb }
+
+    private var encodedFields: [String: SiteJSONValue] {
         var result = fields
-        result["isHdbSite"] = .bool(isHdbSite)
+        result.removeValue(forKey: "isHdbSite")
+        result["siteType"] = siteType.map { .string($0.rawValue) } ?? .null
         for key in Self.metadataKeys where result[key] == nil {
             result[key] = .null
         }
+        return result
+    }
+
+    private var normalizedFields: [String: SiteJSONValue] {
+        var result = encodedFields
+        result["siteType"] = .string((siteType ?? .standard).rawValue)
         return result
     }
 
@@ -61,12 +78,13 @@ struct SiteExtensionData: Codable, Equatable {
 
     init(from decoder: Decoder) throws {
         fields = try decoder.singleValueContainer().decode([String: SiteJSONValue].self)
+        fields.removeValue(forKey: "isHdbSite")
         if fields["schemaVersion"] == nil { fields["schemaVersion"] = .integer(1) }
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.singleValueContainer()
-        try container.encode(normalizedFields)
+        try container.encode(encodedFields)
     }
 
     var zones: [SiteTriggerZone]? {

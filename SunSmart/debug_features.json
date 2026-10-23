@@ -15,7 +15,7 @@
                     "roles": ["owner", "editor"]
                 }
             },
-            "isHdbSite": {
+            "siteType": {
                 "builds": ["release", "debug"],
                 "roles": ["owner", "editor"],
                 "targets": ["HSmart"]

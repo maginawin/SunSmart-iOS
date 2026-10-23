@@ -29,7 +29,7 @@ struct SiteCreationDraft {
     var siteName: String
     var timezone: SiteTimeZoneValue?
     var imageId = 1
-    var isHdbSite = false
+    var siteType: SiteExtensionData.ProjectType = .standard
     var text: [SiteCreationTextField: String] = [:]
 
     func isNameValid(isDuplicate: Bool) -> Bool {
@@ -40,7 +40,7 @@ struct SiteCreationDraft {
 
     var extensionData: SiteExtensionData {
         var data = SiteExtensionData()
-        data.isHdbSite = isHdbSite
+        data.siteType = siteType
         for key in SiteExtensionData.metadataKeys { data.fields[key] = .null }
         for field in SiteCreationTextField.allCases {
             data.fields[field.rawValue] = field.normalized(text[field] ?? "").map(SiteJSONValue.string) ?? .null

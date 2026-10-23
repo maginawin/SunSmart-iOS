@@ -14,6 +14,9 @@ import Foundation
         }
         precondition(SiteCreationTextField.description.normalized(" A\nB ") == "A\nB")
         var draft = SiteCreationDraft(siteName: "Site 2", timezone: nil)
+        precondition(draft.siteType == .standard)
+        let initialObject = try draft.extensionData.jsonObject()
+        precondition(initialObject["siteType"] as? String == "Standard")
         precondition(draft.isNameValid(isDuplicate: false))
         precondition(!draft.isNameValid(isDuplicate: true))
         for name in ["", "   ", String(repeating: "x", count: 33)] {
@@ -25,13 +28,13 @@ import Foundation
         draft.text[.postalCode] = " 018983 "
         draft.text[.latitude] = " -1.2801 "
         draft.text[.longitude] = " 0 "
-        draft.isHdbSite = true
+        draft.siteType = .hdb
         let object = try draft.extensionData.jsonObject()
         precondition(object["postalCode"] as? String == "018983")
         precondition(object["latitude"] as? String == "-1.2801")
         precondition(object["longitude"] as? String == "0")
         precondition(object["description"] is NSNull && object["city"] is NSNull && object["countryRegion"] is NSNull)
-        precondition(object["isHdbSite"] as? Bool == true)
+        precondition(object["siteType"] as? String == "HDB" && object["isHdbSite"] == nil)
         precondition(draft.timezone == nil && draft.imageId == 1)
 
         let catalog = try SiteTimeZoneCatalog(data: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))

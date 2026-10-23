@@ -213,10 +213,10 @@ enum SpaceSyncCleanupCoordinator {
         }
         // A deletion can now finish without absorbing unrelated historical repairs.
         DevicePermanentDeletionContext.resume(space: space)
-        if (try? SiteData.load(siteId: space.siteId)?.loadIsHdbSite()) == true {
-            do { didChange = try HDBConfigurationStore.finishSensorGroupCleanup(space: space) || didChange }
-            catch { return false }
-        }
+        // Completed deletion records still need their safe address release after a
+        // legacy Site resolves to Standard. The store skips when no such record exists.
+        do { didChange = try HDBConfigurationStore.finishSensorGroupCleanup(space: space) || didChange }
+        catch { return false }
         guard !SpaceConfigurationSafety.hasPendingDeletionCleanup(space),
               let reloaded = SpaceData.load(siteId: space.siteId, spaceId: space.id).first else { return false }
         // The caller may be an old Space object with the same second-level

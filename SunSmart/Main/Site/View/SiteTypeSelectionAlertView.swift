@@ -2,10 +2,10 @@ import UIKit
 
 /// A transient single choice. Only Done copies the selected value back to the creation form.
 final class SiteTypeSelectionAlertView: SRAlertView {
-    private var selectedHdb = false
+    private var selectedType: SiteExtensionData.ProjectType = .standard
     private var choices: [UIButton] = []
 
-    static func make(selectedHdb: Bool, onDone: @escaping (Bool) -> Void) -> SiteTypeSelectionAlertView {
+    static func make(selectedType: SiteExtensionData.ProjectType, onDone: @escaping (SiteExtensionData.ProjectType) -> Void) -> SiteTypeSelectionAlertView {
         weak var current: SiteTypeSelectionAlertView?
         let alert = SiteTypeSelectionAlertView(
             title: "site_type_selection".localizedString,
@@ -14,14 +14,14 @@ final class SiteTypeSelectionAlertView: SRAlertView {
                 SRAlertAction(title: "alert_item_cancel".localizedString),
                 SRAlertAction(title: "done".localizedString) { _ in
                     guard let alert = current else { return }
-                    onDone(alert.selectedHdb)
+                    onDone(alert.selectedType)
                 }
             ])
         current = alert
         alert.accessibilityIdentifier = "site-type-selection"
         alert.firstBtn.accessibilityIdentifier = "site-type-cancel"
         alert.secondBtn.accessibilityIdentifier = "site-type-done"
-        alert.selectedHdb = selectedHdb
+        alert.selectedType = selectedType
         alert.setupChoices()
         return alert
     }
@@ -72,7 +72,7 @@ final class SiteTypeSelectionAlertView: SRAlertView {
             button.layer.cornerRadius = 8
             button.accessibilityIdentifier = index == 0 ? "site-type-standard" : "site-type-hdb"
             button.addAction(UIAction { [weak self] _ in
-                self?.selectedHdb = index == 1
+                self?.selectedType = index == 1 ? .hdb : .standard
                 self?.updateSelection()
             }, for: .touchUpInside)
             stack.addArrangedSubview(button)
@@ -89,7 +89,7 @@ final class SiteTypeSelectionAlertView: SRAlertView {
 
     private func updateSelection() {
         for (index, button) in choices.enumerated() {
-            let selected = (index == 1) == selectedHdb
+            let selected = (index == 1 ? SiteExtensionData.ProjectType.hdb : .standard) == selectedType
             button.setImage(UIImage(systemName: selected ? "checkmark.circle.fill" : "circle"), for: .normal)
             button.tintColor = selected ? Bar_Color : AssistText_Color
             button.setTitleColor(Title_Color, for: .normal)

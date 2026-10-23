@@ -7,6 +7,8 @@ enum Fixture {
     static var exports = 0, commits = 0, finishes = 0, validations = 0
     static var extensionDirty = false, failExtensionWrite = false, failExtensionReadback = false, ignoreExtensionWrite = false
     static var failureStage: String?
+    static var sensorCleanupPending = false, failSensorCleanup = false, finishedChanged = false
+    static var sensorCleanupCalls = 0
     enum Failure: Error { case persistence }
     static func extensionChanges() throws -> [() throws -> Void] {
         if failExtensionReadback && exports == 2 { throw Failure.persistence }
@@ -21,6 +23,7 @@ enum Fixture {
         pendingDeletion = false; pendingUpload = false; current = true; exports = 0; commits = 0; finishes = 0; validations = 0
         extensionDirty = false; failExtensionWrite = false; failExtensionReadback = false; ignoreExtensionWrite = false
         failureStage = nil
+        sensorCleanupPending = false; failSensorCleanup = false; finishedChanged = false; sensorCleanupCalls = 0
     }
 }
 struct Context {}
@@ -104,11 +107,22 @@ enum SpaceConfigurationSafety {
     static func isCurrent(_ context: Context, space: SpaceData) -> Bool { Fixture.current }
     static func beginSyncReferenceCleanup(_ space: SpaceData, payload: [String: Any]) -> Bool { true }
     static func hasPendingDeletionCleanup(_ space: SpaceData) -> Bool { Fixture.pendingDeletion }
-    static func finishSyncReferenceCleanup(_ space: SpaceData, changed: Bool) -> Bool { Fixture.finishes += 1; return true }
+    static func finishSyncReferenceCleanup(_ space: SpaceData, changed: Bool) -> Bool { Fixture.finishes += 1; Fixture.finishedChanged = changed; return true }
     static func isBlocked(_ space: SpaceData) -> Bool { false }
 }
 enum DevicePermanentDeletionContext {
     static func resume(space: SpaceData) { if Fixture.resumeWrite { Fixture.revision = Fixture.revision.map { $0 + 1 } } }
+}
+// The coordinator must call journal-driven cleanup independently of the Site's type.
+// Actual journal/address/reference behavior is exercised by HDBDeviceSyncServiceTests.
+enum HDBConfigurationStore {
+    static func finishSensorGroupCleanup(space: SpaceData) throws -> Bool {
+        Fixture.sensorCleanupCalls += 1
+        if Fixture.failSensorCleanup { throw Fixture.Failure.persistence }
+        guard Fixture.sensorCleanupPending else { return false }
+        Fixture.sensorCleanupPending = false
+        return true
+    }
 }
 enum SpaceConfigurationIntegrityPolicy { static func integer(_ value: Any?) -> Int? { value as? Int } }
 let proximityLightingImportSyncNotificationName = "test"
@@ -121,6 +135,16 @@ struct ProximityLightingImportSyncRequest { let spaceId: String, meshUUID: Strin
         var success = await SpaceSyncCleanupCoordinator.run(space, scope: .init())
         precondition(success && Fixture.exports == 2 && Fixture.finishes == 1 && Fixture.validations == 2,
                      "unchanged read must validate the reloaded persisted Space")
+        precondition(Fixture.sensorCleanupCalls == 1 && !Fixture.finishedChanged,
+                     "No deletion record must not dirty an ordinary Space")
+        Fixture.reset(); Fixture.sensorCleanupPending = true; Fixture.failSensorCleanup = true
+        success = await SpaceSyncCleanupCoordinator.run(space, scope: .init())
+        precondition(!success && Fixture.sensorCleanupPending && Fixture.finishes == 0,
+                     "A failed legacy sensor cleanup must stay retryable")
+        Fixture.failSensorCleanup = false
+        success = await SpaceSyncCleanupCoordinator.run(space, scope: .init())
+        precondition(success && !Fixture.sensorCleanupPending && Fixture.finishedChanged,
+                     "An existing sensor deletion must finish without requiring an HDB Site")
         Fixture.reset(); Fixture.pendingUpload = true; Fixture.extensionDirty = true
         success = await SpaceSyncCleanupCoordinator.run(space, scope: .init())
         precondition(!success && Fixture.exports == 0 && Fixture.commits == 0 && Fixture.finishes == 0,

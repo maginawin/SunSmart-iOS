@@ -4,7 +4,10 @@ import Foundation
 // edit capabilities; membership, recovery and OTA policy are tested separately.
 extension String { var localizedString: String { self } }
 enum MeshOperate { case edit }
-final class SiteData { var isHdbSite = false }
+final class SiteData {
+    var extensionData = SiteExtensionData()
+    var isHdbSite: Bool { extensionData.isHdbSite }
+}
 final class SpaceData {
     var permission: Permission = .owner
     var groupOperates: [MeshOperate] = [.edit]
@@ -19,8 +22,10 @@ struct SpaceMoreMenuTests {
             .split(separator: "\n").map(String.init)
         for target in targetNames {
             let menu = SpaceMoreMenuHarness(visibility: FeatureVisibility(target: target) { bundled })
-            for isHdbSite in [false, true] {
-                menu.site.isHdbSite = isHdbSite
+            for raw in [#"{}"#, #"{"siteType":null}"#, #"{"siteType":"Standard"}"#,
+                        #"{"isHdbSite":true}"#, #"{"siteType":"HDB"}"#] {
+                menu.site.extensionData = try SiteExtensionData.parse(raw)
+                let isHdbSite = raw == #"{"siteType":"HDB"}"#
                 for role in [Permission.owner, .editor, .visitor] {
                     menu.space.permission = role
                     let items = menu.items()

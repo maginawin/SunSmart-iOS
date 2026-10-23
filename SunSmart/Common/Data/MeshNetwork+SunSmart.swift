@@ -46,7 +46,7 @@ extension SiteData {
     /// 添加场所
     /// - Parameter name: 场所名称
     /// - Returns: 场所
-    static func add(name: String, isHdbSite: Bool = false, imageId: Int = 1,
+    static func add(name: String, siteType: SiteExtensionData.ProjectType = .standard, imageId: Int = 1,
                     timezone: String? = SiteTimeZoneCatalog.phoneDefaultValue().storageValue,
                     extensionData: SiteExtensionData? = nil) throws -> SiteData {
         guard let database = SunSmartDataManager.shared.db else { throw DataError.persistenceFailed }
@@ -57,7 +57,7 @@ extension SiteData {
 //        MeshLibManager.manager.createMeshNetwork(meshUUID: id, meshNetworkName: name, connected: false)
         let site = SiteData(region: UserData.currentServerRegion, id: id, meshUUID: id, meshNetworkId: meshNetworkManager.mainNetworkKey.networkId.hex, name: name, imageId: imageId, type: .office, permission: .owner, create: time,isFavourite: false, sourceType: .create)
         site.siteExtensionData = extensionData ?? SiteExtensionData()
-        site.siteExtensionData.isHdbSite = isHdbSite
+        site.siteExtensionData.siteType = siteType
         site.timezone = timezone
         if site.timezone != nil {
             site.pendingSitePropsMask = [.timezone]

@@ -146,6 +146,8 @@ PYINFO
         "$test_dir/Permission.swift" \
         SunSmart/Common/Config/FeatureVisibility.swift \
         "$test_dir/SpaceMoreMenuHarness.swift" \
+        SunSmart/Common/Data/SiteExtensionData.swift \
+        SunSmart/Main/Site/TriggerZone/SiteTriggerZoneData.swift \
         Tests/Config/SpaceMoreMenuTests.swift \
         -o "$test_dir/SpaceMoreMenuTests-$mode"
     "$test_dir/SpaceMoreMenuTests-$mode" SunSmart/debug_features.json "$test_dir/targets.txt"
