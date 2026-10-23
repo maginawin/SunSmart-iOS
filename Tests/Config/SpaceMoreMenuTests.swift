@@ -15,7 +15,9 @@ final class SpaceData {
 struct SpaceMoreMenuTests {
     static func main() throws {
         let bundled = try Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))
-        for target in FeatureVisibility.Target.allCases {
+        let targetNames = try String(contentsOfFile: CommandLine.arguments[2], encoding: .utf8)
+            .split(separator: "\n").map(String.init)
+        for target in targetNames {
             let menu = SpaceMoreMenuHarness(visibility: FeatureVisibility(target: target) { bundled })
             for isHdbSite in [false, true] {
                 menu.site.isHdbSite = isHdbSite
@@ -41,6 +43,6 @@ struct SpaceMoreMenuTests {
                              "Restored editing capability must restore HDB for an HDB Site")
             }
         }
-        print("PASS: production Space More ordering, five brands, roles and capability refresh (\(FeatureVisibility.BuildMode.current.rawValue))")
+        print("PASS: production Space More ordering, configured and future targets, roles and capability refresh (\(FeatureVisibility.BuildMode.current.rawValue))")
     }
 }

@@ -4713,7 +4713,7 @@
 		04DF0E02938F412FBC885F03 /* ../TriggerZone/SiteTriggerZoneContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneContentView.swift; sourceTree = "<group>"; };
 		084EF310302AB496008CB48A /* all_utc_timezones.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = all_utc_timezones.json; sourceTree = "<group>"; };
 		08AACC55308B0FB700DC2934 /* HSmart.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HSmart.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		08AACC56308B0FB800DC2934 /* SunSmart copy2-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "SunSmart copy2-Info.plist"; path = "/Users/maginawin/Developer/iOS/YKH/sun-smart-worktrees/feat-HDB-261020/SunSmart copy2-Info.plist"; sourceTree = "<absolute>"; };
+		08AACC56308B0FB800DC2934 /* HSmart-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; name = "HSmart-Info.plist"; path = "HSmart-Info.plist"; sourceTree = "<group>"; };
 		08B54F0C30402CCB0017ED49 /* Lumineux.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lumineux.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		08B54F0D30402CCB0017ED49 /* Lumineux/Lumineux-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Lumineux/Lumineux-Info.plist"; sourceTree = SOURCE_ROOT; };
 		08B54F1030402CCB0017ED49 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
@@ -6457,7 +6457,7 @@
 				4EFDC03D8D0C5DDD54D9D8A8 /* Frameworks */,
 				08B54F2130402CCB0017ED49 /* Lumineux */,
 				303DF47C3047F03C00D49480 /* Recovered References */,
-				08AACC56308B0FB800DC2934 /* SunSmart copy2-Info.plist */,
+				08AACC56308B0FB800DC2934 /* HSmart-Info.plist */,
 			);
 			sourceTree = "<group>";
 		};
@@ -13116,7 +13116,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SunSmart/SunSmart.entitlements;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
-				INFOPLIST_FILE = "SunSmart copy2-Info.plist";
+				INFOPLIST_FILE = "HSmart-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = HSmart;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
@@ -13131,7 +13131,6 @@
 				MARKETING_VERSION = 1.2.16;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart.hsmart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) HSmart";
 			};
 			name = Debug;
 		};
@@ -13141,7 +13140,7 @@
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = SunSmart/SunSmart.entitlements;
 				DEVELOPMENT_TEAM = JTD3WYUC58;
-				INFOPLIST_FILE = "SunSmart copy2-Info.plist";
+				INFOPLIST_FILE = "HSmart-Info.plist";
 				INFOPLIST_KEY_CFBundleDisplayName = HSmart;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth";
@@ -13156,7 +13155,6 @@
 				MARKETING_VERSION = 1.2.16;
 				PRODUCT_BUNDLE_IDENTIFIER = com.azoula.sunsmart.hsmart;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "$(inherited) HSmart";
 			};
 			name = Release;
 		};

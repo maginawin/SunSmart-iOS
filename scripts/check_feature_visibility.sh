@@ -93,38 +93,41 @@ for start, end in [('    enum Options {', '    let site: SiteData'),
 project = json.loads(subprocess.check_output(['plutil', '-convert', 'json', '-o', '-', 'SunSmart.xcodeproj/project.pbxproj']))
 objects = project['objects']
 targets = [v for v in objects.values() if v.get('isa') == 'PBXNativeTarget']
-expected = {'SunSmart', 'HSmart', 'Archipelago', 'SLG Sync Plus', 'SylSmart', 'Lumineux'}
-assert {v['name'] for v in targets} == expected
+target_names = [target['name'] for target in targets] + ['Future Brand']
+(Path(sys.argv[1]) / 'targets.txt').write_text('\n'.join(target_names) + '\n')
 for target in targets:
-    configurations = objects[target['buildConfigurationList']]['buildConfigurations']
-    for configuration in configurations:
-        flags = objects[configuration]['buildSettings'].get('SWIFT_ACTIVE_COMPILATION_CONDITIONS', '').split()
-        assert ('HSmart' in flags) == (target['name'] == 'HSmart'), (target['name'], flags)
-        if target['name'] == 'HSmart':
-            assert '$(inherited)' in flags, 'HSmart must preserve inherited build flags'
     for phase_kind, path in [('PBXSourcesBuildPhase', 'FeatureVisibility.swift'), ('PBXResourcesBuildPhase', 'debug_features.json')]:
         refs = [objects[objects[file]['fileRef']].get('path')
                 for phase in target['buildPhases'] if objects[phase]['isa'] == phase_kind
                 for file in objects[phase]['files']]
         assert refs.count(path) == 1, (target['name'], path, refs.count(path))
-print('PASS: all six targets include visibility source/configuration; HSmart has its own compilation flag')
+print('PASS: all project targets include visibility source/configuration')
 PY
 
 for mode in debug release; do
     flags=(-Onone)
     if [[ "$mode" == debug ]]; then flags+=(-D DEBUG); fi
-    for target in SunSmart HSmart Archipelago SLGSync SylSmart Lumineux; do
-        target_flags=("${flags[@]}")
-        target_name="$target"
-        if [[ "$target" != SunSmart ]]; then target_flags+=(-D "$target"); fi
-        if [[ "$target" == SLGSync ]]; then target_name='SLG Sync Plus'; fi
-        swiftc -parse-as-library "${target_flags[@]}" \
-            "$test_dir/Permission.swift" \
-            SunSmart/Common/Config/FeatureVisibility.swift \
-            Tests/Config/FeatureVisibilityTests.swift \
-            -o "$test_dir/FeatureVisibilityTests-$mode-$target"
-        "$test_dir/FeatureVisibilityTests-$mode-$target" SunSmart/debug_features.json "$target_name"
-    done
+    app_contents="$test_dir/VisibilityTests-$mode.app/Contents"
+    mkdir -p "$app_contents/MacOS"
+    swiftc -parse-as-library "${flags[@]}" \
+        "$test_dir/Permission.swift" \
+        SunSmart/Common/Config/FeatureVisibility.swift \
+        Tests/Config/FeatureVisibilityTests.swift \
+        -o "$app_contents/MacOS/VisibilityTests"
+    while IFS= read -r target_name; do
+        python3 - "$app_contents/Info.plist" "$target_name" <<'PYINFO'
+import plistlib
+import sys
+from pathlib import Path
+Path(sys.argv[1]).write_bytes(plistlib.dumps({
+    'CFBundleExecutable': 'VisibilityTests',
+    'CFBundleIdentifier': 'tests.feature-visibility',
+    'CFBundlePackageType': 'APPL',
+    'FeatureVisibilityTarget': sys.argv[2]
+}))
+PYINFO
+        "$app_contents/MacOS/VisibilityTests" SunSmart/debug_features.json "$target_name" "$test_dir/targets.txt"
+    done < "$test_dir/targets.txt"
     swiftc -parse-as-library "${flags[@]}" \
         "$test_dir/Permission.swift" \
         SunSmart/Common/Config/FeatureVisibility.swift \
@@ -145,7 +148,7 @@ for mode in debug release; do
         "$test_dir/SpaceMoreMenuHarness.swift" \
         Tests/Config/SpaceMoreMenuTests.swift \
         -o "$test_dir/SpaceMoreMenuTests-$mode"
-    "$test_dir/SpaceMoreMenuTests-$mode" SunSmart/debug_features.json
+    "$test_dir/SpaceMoreMenuTests-$mode" SunSmart/debug_features.json "$test_dir/targets.txt"
 done
 
 plutil -lint SunSmart.xcodeproj/project.pbxproj

@@ -22,36 +22,16 @@ final class FeatureVisibility {
         }
     }
 
-    enum Target: String, Decodable, CaseIterable {
-        case sunSmart = "SunSmart"
-        case hSmart = "HSmart"
-        case archipelago = "Archipelago"
-        case slgSyncPlus = "SLG Sync Plus"
-        case sylSmart = "SylSmart"
-        case lumineux = "Lumineux"
-
-        static var current: Target {
-            #if HSmart
-            return .hSmart
-            #elseif Archipelago
-            return .archipelago
-            #elseif SLGSync
-            return .slgSyncPlus
-            #elseif SylSmart
-            return .sylSmart
-            #elseif Lumineux
-            return .lumineux
-            #else
-            return .sunSmart
-            #endif
-        }
+    /// 构建时由 TARGET_NAME 写入包信息，不维护品牌白名单。
+    static var currentTarget: String? {
+        Bundle.main.object(forInfoDictionaryKey: "FeatureVisibilityTarget") as? String
     }
 
     struct Rule: Decodable {
         let builds: Set<BuildMode>
         let roles: Set<String>
         /// 未指定时兼容旧规则；指定空数组时隐藏所有品牌的入口。
-        let targets: Set<Target>?
+        let targets: Set<String>?
 
         private enum CodingKeys: String, CodingKey {
             case builds, roles, targets
@@ -68,16 +48,19 @@ final class FeatureVisibility {
             }
             roles = Set(values)
             targets = container.contains(.targets)
-                ? Set(try container.decode([Target].self, forKey: .targets)) : nil
+                ? Set(try container.decode([String].self, forKey: .targets)) : nil
         }
 
-        func isVisible(build: BuildMode, permission: Permission?, target: Target = .current) -> Bool {
+        func isVisible(build: BuildMode, permission: Permission?, target: String? = FeatureVisibility.currentTarget) -> Bool {
             guard let permission = permission else { return false }
             return matchesEnvironment(build: build, target: target) && roles.contains(permission.dataString)
         }
 
-        func matchesEnvironment(build: BuildMode, target: Target) -> Bool {
-            builds.contains(build) && (targets?.contains(target) ?? true)
+        func matchesEnvironment(build: BuildMode, target: String?) -> Bool {
+            guard builds.contains(build) else { return false }
+            guard let targets = targets else { return true }
+            guard let target = target else { return false }
+            return targets.contains(target)
         }
     }
 
@@ -124,10 +107,10 @@ final class FeatureVisibility {
 
     private let configuration: Configuration
     private let build: BuildMode
-    private let target: Target
+    private let target: String?
 
     /// 构建模式、品牌与配置保持不变；每次判断都使用调用方传入的当前资源角色。
-    init(build: BuildMode = .current, target: Target = .current, loadData: () throws -> Data = {
+    init(build: BuildMode = .current, target: String? = FeatureVisibility.currentTarget, loadData: () throws -> Data = {
         guard let url = Bundle.main.url(forResource: "debug_features", withExtension: "json") else {
             throw CocoaError(.fileNoSuchFile)
         }
