@@ -136,8 +136,8 @@
     "englishCountry": "Morocco",
     "chineseCityRegion": "卡萨布兰卡",
     "chineseCountry": "摩洛哥",
-    "utcOffset": "+01:00",
-    "abbr": "WET"
+    "utcOffset": "+00:00",
+    "abbr": "+00"
   },
   {
     "region": "Africa",
@@ -206,8 +206,8 @@
     "englishCountry": "Western Sahara",
     "chineseCityRegion": "阿尤恩",
     "chineseCountry": "西撒哈拉",
-    "utcOffset": "+01:00",
-    "abbr": "WET"
+    "utcOffset": "+00:00",
+    "abbr": "+00"
   },
   {
     "region": "Africa",
@@ -706,8 +706,18 @@
     "englishCountry": "Paraguay",
     "chineseCityRegion": "亚松森",
     "chineseCountry": "巴拉圭",
-    "utcOffset": "-04:00",
-    "abbr": "PYT"
+    "utcOffset": "-03:00",
+    "abbr": "-03"
+  },
+  {
+    "region": "America",
+    "ianaId": "America/Atikokan",
+    "englishCityRegion": "Atikokan",
+    "englishCountry": "Canada",
+    "chineseCityRegion": "阿蒂科肯",
+    "chineseCountry": "加拿大",
+    "utcOffset": "-05:00",
+    "abbr": "EST"
   },
   {
     "region": "America",
@@ -758,6 +768,16 @@
     "chineseCountry": "伯利兹",
     "utcOffset": "-06:00",
     "abbr": "CST"
+  },
+  {
+    "region": "America",
+    "ianaId": "America/Blanc-Sablon",
+    "englishCityRegion": "Blanc-Sablon",
+    "englishCountry": "Canada",
+    "chineseCityRegion": "布朗萨布隆",
+    "chineseCountry": "加拿大",
+    "utcOffset": "-04:00",
+    "abbr": "AST"
   },
   {
     "region": "America",
@@ -841,6 +861,16 @@
   },
   {
     "region": "America",
+    "ianaId": "America/Cayman",
+    "englishCityRegion": "Cayman Islands",
+    "englishCountry": "Cayman Islands",
+    "chineseCityRegion": "开曼群岛",
+    "chineseCountry": "开曼群岛",
+    "utcOffset": "-05:00",
+    "abbr": "EST"
+  },
+  {
+    "region": "America",
     "ianaId": "America/Chicago",
     "englishCityRegion": "Chicago",
     "englishCountry": "United States (Central)",
@@ -861,6 +891,16 @@
   },
   {
     "region": "America",
+    "ianaId": "America/Ciudad_Juarez",
+    "englishCityRegion": "Ciudad Juárez",
+    "englishCountry": "Mexico",
+    "chineseCityRegion": "华雷斯城",
+    "chineseCountry": "墨西哥",
+    "utcOffset": "-07:00",
+    "abbr": "MST"
+  },
+  {
+    "region": "America",
     "ianaId": "America/Costa_Rica",
     "englishCityRegion": "Costa Rica",
     "englishCountry": "Costa Rica",
@@ -868,6 +908,26 @@
     "chineseCountry": "哥斯达黎加",
     "utcOffset": "-06:00",
     "abbr": "CST"
+  },
+  {
+    "region": "America",
+    "ianaId": "America/Coyhaique",
+    "englishCityRegion": "Coyhaique",
+    "englishCountry": "Chile",
+    "chineseCityRegion": "科伊艾克",
+    "chineseCountry": "智利",
+    "utcOffset": "-03:00",
+    "abbr": "-03"
+  },
+  {
+    "region": "America",
+    "ianaId": "America/Creston",
+    "englishCityRegion": "Creston",
+    "englishCountry": "Canada",
+    "chineseCityRegion": "克雷斯顿",
+    "chineseCountry": "加拿大",
+    "utcOffset": "-07:00",
+    "abbr": "MST"
   },
   {
     "region": "America",
@@ -1016,6 +1076,36 @@
     "englishCountry": "Canada (Labrador)",
     "chineseCityRegion": "古斯贝",
     "chineseCountry": "加拿大(拉布拉多)",
+    "utcOffset": "-04:00",
+    "abbr": "AST"
+  },
+  {
+    "region": "America",
+    "ianaId": "America/Grand_Turk",
+    "englishCityRegion": "Grand Turk",
+    "englishCountry": "Turks and Caicos Islands",
+    "chineseCityRegion": "大特克岛",
+    "chineseCountry": "特克斯和凯科斯群岛",
+    "utcOffset": "-05:00",
+    "abbr": "EST"
+  },
+  {
+    "region": "America",
+    "ianaId": "America/Grenada",
+    "englishCityRegion": "Grenada",
+    "englishCountry": "Grenada",
+    "chineseCityRegion": "格林纳达",
+    "chineseCountry": "格林纳达",
+    "utcOffset": "-04:00",
+    "abbr": "AST"
+  },
+  {
+    "region": "America",
+    "ianaId": "America/Guadeloupe",
+    "englishCityRegion": "Guadeloupe",
+    "englishCountry": "Guadeloupe",
+    "chineseCityRegion": "瓜德罗普",
+    "chineseCountry": "瓜德罗普",
     "utcOffset": "-04:00",
     "abbr": "AST"
   },
@@ -1221,6 +1311,16 @@
   },
   {
     "region": "America",
+    "ianaId": "America/Kralendijk",
+    "englishCityRegion": "Kralendijk",
+    "englishCountry": "Bonaire, Sint Eustatius and Saba",
+    "chineseCityRegion": "克拉伦代克",
+    "chineseCountry": "博奈尔、圣尤斯特歇斯和萨巴",
+    "utcOffset": "-04:00",
+    "abbr": "AST"
+  },
+  {
+    "region": "America",
     "ianaId": "America/La_Paz",
     "englishCityRegion": "La Paz",
     "englishCountry": "Bolivia",
@@ -1251,6 +1351,16 @@
   },
   {
     "region": "America",
+    "ianaId": "America/Lower_Princes",
+    "englishCityRegion": "Lower Prince’s Quarter",
+    "englishCountry": "Sint Maarten",
+    "chineseCityRegion": "下太子区",
+    "chineseCountry": "荷属圣马丁",
+    "utcOffset": "-04:00",
+    "abbr": "AST"
+  },
+  {
+    "region": "America",
     "ianaId": "America/Maceio",
     "englishCityRegion": "Maceio",
     "englishCountry": "Brazil (Alagoas)",
@@ -1278,6 +1388,16 @@
     "chineseCountry": "巴西(亚马孙)",
     "utcOffset": "-04:00",
     "abbr": "AMT"
+  },
+  {
+    "region": "America",
+    "ianaId": "America/Marigot",
+    "englishCityRegion": "Marigot",
+    "englishCountry": "Saint Martin",
+    "chineseCityRegion": "马里戈",
+    "chineseCountry": "法属圣马丁",
+    "utcOffset": "-04:00",
+    "abbr": "AST"
   },
   {
     "region": "America",
@@ -1388,6 +1508,16 @@
     "chineseCountry": "乌拉圭",
     "utcOffset": "-03:00",
     "abbr": "UYT"
+  },
+  {
+    "region": "America",
+    "ianaId": "America/Montserrat",
+    "englishCityRegion": "Montserrat",
+    "englishCountry": "Montserrat",
+    "chineseCityRegion": "蒙特塞拉特",
+    "chineseCountry": "蒙特塞拉特",
+    "utcOffset": "-04:00",
+    "abbr": "AST"
   },
   {
     "region": "America",
@@ -1701,6 +1831,16 @@
   },
   {
     "region": "America",
+    "ianaId": "America/St_Barthelemy",
+    "englishCityRegion": "Saint Barthélemy",
+    "englishCountry": "Saint Barthélemy",
+    "chineseCityRegion": "圣巴泰勒米",
+    "chineseCountry": "圣巴泰勒米",
+    "utcOffset": "-04:00",
+    "abbr": "AST"
+  },
+  {
+    "region": "America",
     "ianaId": "America/St_Johns",
     "englishCityRegion": "St Johns",
     "englishCountry": "Canada (Newfoundland)",
@@ -1870,6 +2010,16 @@
     "abbr": "MST"
   },
   {
+    "region": "Arctic",
+    "ianaId": "Arctic/Longyearbyen",
+    "englishCityRegion": "Longyearbyen",
+    "englishCountry": "Svalbard and Jan Mayen",
+    "chineseCityRegion": "朗伊尔城",
+    "chineseCountry": "斯瓦尔巴和扬马延",
+    "utcOffset": "+01:00",
+    "abbr": "CET"
+  },
+  {
     "region": "Asia",
     "ianaId": "Asia/Aden",
     "englishCityRegion": "Aden",
@@ -1886,8 +2036,8 @@
     "englishCountry": "Kazakhstan",
     "chineseCityRegion": "阿拉木图",
     "chineseCountry": "哈萨克斯坦",
-    "utcOffset": "+06:00",
-    "abbr": "ALMT"
+    "utcOffset": "+05:00",
+    "abbr": "+05"
   },
   {
     "region": "Asia",
@@ -2456,8 +2606,8 @@
     "englishCountry": "Kazakhstan",
     "chineseCityRegion": "科斯塔奈",
     "chineseCountry": "哈萨克斯坦",
-    "utcOffset": "+06:00",
-    "abbr": "ALMT"
+    "utcOffset": "+05:00",
+    "abbr": "+05"
   },
   {
     "region": "Asia",
@@ -2678,6 +2828,16 @@
     "chineseCountry": "缅甸",
     "utcOffset": "+06:30",
     "abbr": "MMT"
+  },
+  {
+    "region": "Asia",
+    "ianaId": "Asia/Yekaterinburg",
+    "englishCityRegion": "Yekaterinburg",
+    "englishCountry": "Russia",
+    "chineseCityRegion": "叶卡捷琳堡",
+    "chineseCountry": "俄罗斯",
+    "utcOffset": "+05:00",
+    "abbr": "+05"
   },
   {
     "region": "Asia",

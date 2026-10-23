@@ -44,6 +44,33 @@ import Foundation
         precondition(withZone.fields["future"] == legacy.fields["future"])
         let roundtrip = try JSONDecoder().decode(SiteExtensionData.self, from: JSONEncoder().encode(withZone))
         precondition(roundtrip == withZone)
+        for (key, values) in [("countryRegion", ["CN", "ZZ", "Legacy country"]),
+                              ("city", ["geonames:1796236", "geonames:99999999", "Legacy city"])] {
+            for value in values {
+                var country = SiteExtensionData()
+                country.fields[key] = .string(value)
+                var countryState = SiteExtensionState()
+                countryState.receive(country, timestamp: 1)
+                countryState.receive(SiteExtensionData(), timestamp: 2)
+                precondition(countryState.data.fields[key] == .string(value), "Omitted fields preserve known or unknown location values")
+                let updatedZone = countryState.data.replacingZone(SiteTriggerZone())!
+                precondition(updatedZone.fields[key] == .string(value))
+                let encoded = try updatedZone.jsonObject()
+                let decoded = try SiteExtensionData.parse(encoded)
+                precondition(decoded.fields[key] == .string(value))
+                var target = countryState.data
+                target.fields[key] = .string(key == "city" ? "geonames:1880252" : "US")
+                countryState.commit(target, now: 3, siteTimestamp: 2)
+                countryState.receive(SiteExtensionData(), timestamp: 4)
+                precondition(countryState.pending != nil && countryState.data.fields[key] == .string(key == "city" ? "geonames:1880252" : "US"))
+                countryState.receive(target, timestamp: 5)
+                precondition(countryState.pending == nil)
+                var clearedCountry = target
+                clearedCountry.fields[key] = .null
+                countryState.receive(clearedCountry, timestamp: 6)
+                precondition(countryState.data.fields[key] == .null, "UI restrictions must not suppress explicit remote null")
+            }
+        }
         print("PASS: Site metadata null defaults, partial response preservation, explicit clear, pending confirmation and Zone roundtrip")
     }
 }

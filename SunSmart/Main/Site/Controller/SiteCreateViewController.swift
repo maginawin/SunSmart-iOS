@@ -14,6 +14,26 @@ final class SiteCreateViewController: UIViewController {
     private let nameTip = UILabel()
     private let timeZoneRow = SiteCreationSelectionRow()
     private let typeRow = SiteCreationSelectionRow()
+    private let timeZoneCatalog: SiteTimeZoneCatalog?
+    private lazy var countryCatalog = try? CountryRegionCatalog.bundled()
+    private let cityLoader = CityCatalogLoader()
+    private var activeCityCatalog: CityCatalog?
+    private var language: String { Bundle.main.preferredLocalizations.first ?? "en" }
+    private lazy var countryField = SiteLocationSearchField(
+        iconName: "site_create_search", titleKey: "site_create_country", searchKey: "site_create_country_search_placeholder",
+        accessibilityPrefix: "site-create-country", selectedID: draft.countryRegionCode,
+        selectedTitle: countryCatalog?.displayName(forStoredCode: draft.countryRegionCode, language: language), context: "countries")
+    private lazy var cityField = SiteLocationSearchField(
+        iconName: "site_create_location", titleKey: "site_create_city", searchKey: "site_create_city_search_placeholder",
+        accessibilityPrefix: "site-create-city", context: draft.countryRegionCode ?? "")
+    private lazy var locationOutsideTap: UITapGestureRecognizer = {
+        let gesture = UITapGestureRecognizer(target: self, action: #selector(cancelLocationSearchFromOutside))
+        gesture.cancelsTouchesInView = false
+        gesture.delaysTouchesBegan = false
+        gesture.delaysTouchesEnded = false
+        gesture.delegate = self
+        return gesture
+    }()
     private let localTimeLabel = UILabel()
     private let descriptionView = UITextView()
     private let descriptionPlaceholder = UILabel()
@@ -29,7 +49,9 @@ final class SiteCreateViewController: UIViewController {
     private var isCommitting = false
 
     init(onCreated: @escaping (SiteData) -> Void) {
-        let timezone = (try? SiteTimeZoneCatalog.bundled())?.value(matchingIdentifier: TimeZone.current.identifier)
+        let catalog = try? SiteTimeZoneCatalog.bundled()
+        timeZoneCatalog = catalog
+        let timezone = catalog?.value(matchingIdentifier: TimeZone.current.identifier)
         draft = SiteCreationDraft(siteName: SiteData.getNextSiteName(), timezone: timezone)
         self.onCreated = onCreated
         super.init(nibName: nil, bundle: nil)
@@ -56,7 +78,7 @@ final class SiteCreateViewController: UIViewController {
         updateTimeZone()
         updateType()
         validateName()
-        NotificationCenter.default.addObserver(self, selector: #selector(stopClock), name: UIApplication.didEnterBackgroundNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(pauseForBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(resumeClock), name: UIApplication.didBecomeActiveNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(revealEditingField), name: UIResponder.keyboardDidChangeFrameNotification, object: nil)
     }
@@ -64,12 +86,15 @@ final class SiteCreateViewController: UIViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         guard contextIsCurrent else { close(); return }
+        (navigationController?.view ?? view).addGestureRecognizer(locationOutsideTap)
         resumeClock()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         stopClock()
+        cancelLocationSearch(animated: false)
+        locationOutsideTap.view?.removeGestureRecognizer(locationOutsideTap)
         typeAlert?.dismiss(animation: false)
     }
 
@@ -104,7 +129,7 @@ final class SiteCreateViewController: UIViewController {
         createButton.addTarget(self, action: #selector(create), for: .touchUpInside)
         footer.addSubview(createButton)
         createButton.snp.makeConstraints { make in make.edges.equalToSuperview() }
-        scrollView.keyboardDismissMode = .interactive
+        scrollView.keyboardDismissMode = .onDrag
         scrollView.alwaysBounceVertical = true
         view.addSubview(scrollView)
         scrollView.snp.makeConstraints { make in
@@ -135,12 +160,9 @@ final class SiteCreateViewController: UIViewController {
         nameSection.addArrangedSubview(nameTip)
         form.addArrangedSubview(nameSection)
 
-        let country = SiteCreationSelectionRow(iconName: "site_create_search")
-        configureLocation(country, title: "site_create_country")
-        form.addArrangedSubview(section("site_create_country", required: true, content: country))
-        let city = SiteCreationSelectionRow(iconName: "site_create_location", showsArrow: false)
-        configureLocation(city, title: "site_create_city")
-        form.addArrangedSubview(section("site_create_city", required: true, helper: "site_create_city_help", content: city))
+        setupLocationFields()
+        form.addArrangedSubview(section("site_create_country", required: true, content: countryField))
+        form.addArrangedSubview(section("site_create_city", required: true, helper: "site_create_city_help", content: cityField))
 
         timeZoneRow.accessibilityLabel = "site_time_zone_title".localizedString
         timeZoneRow.addTarget(self, action: #selector(selectTimeZone), for: .touchUpInside)
@@ -191,12 +213,91 @@ final class SiteCreateViewController: UIViewController {
         label.numberOfLines = 0
     }
 
-    private func configureLocation(_ row: SiteCreationSelectionRow, title: String) {
-        row.valueLabel.text = "site_time_zone_not_configured".localizedString
-        row.valueLabel.textColor = RGB(148, 163, 184)
-        row.accessibilityLabel = title.localizedString
-        row.accessibilityValue = row.valueLabel.text
-        // Intentionally clickable with no action until the location pickers are available.
+    private func setupLocationFields() {
+        for field in [countryField, cityField] {
+            field.animationLayoutView = view
+            field.onLayoutChanged = { [weak self] in self?.scrollEditingFieldIntoView(animated: false) }
+            field.canAcceptResults = { [weak self] in self?.canInteractWithLocation == true }
+        }
+        countryField.prepareForInteraction = { [weak self] in
+            guard let self, self.canInteractWithLocation else { return false }
+            self.cityField.cancelSearch()
+            self.view.endEditing(true)
+            guard self.countryCatalog != nil else {
+                XWHUDManager.showErrorTipHUD("site_create_location_load_failed".localizedString)
+                return false
+            }
+            return true
+        }
+        countryField.loadOptions = { [weak self] query, completion in
+            guard let self, let catalog = self.countryCatalog else {
+                completion(.failure(CountryRegionCatalog.CatalogError.resourceMissing)); return
+            }
+            completion(.success(.init(options: catalog.entries(matching: query).map {
+                .init(id: $0.code, title: $0.displayName(language: self.language), detail: nil)
+            }, emptyText: "site_create_country_empty".localizedString)))
+        }
+        countryField.onSelect = { [weak self] option in
+            guard let self, self.canInteractWithLocation, let entry = self.countryCatalog?.entry(code: option.id) else { return false }
+            let changed = self.draft.countryRegionCode != entry.code
+            self.draft.selectCountry(entry)
+            if changed {
+                self.activeCityCatalog = nil
+                self.cityField.replaceSelection(id: nil, title: nil, context: entry.code)
+                self.updateLocationValues()
+            }
+            return true
+        }
+        cityField.prepareForInteraction = { [weak self] in
+            guard let self, self.canInteractWithLocation else { return false }
+            self.countryField.cancelSearch()
+            self.view.endEditing(true)
+            guard self.draft.countryRegionCode != nil else {
+                XWHUDManager.showErrorTipHUD("site_create_city_country_required".localizedString)
+                return false
+            }
+            return true
+        }
+        cityField.loadOptions = { [weak self] query, completion in
+            guard let self, let countryCode = self.draft.countryRegionCode else { return }
+            self.cityLoader.search(countryCode: countryCode, query: query) { [weak self] result in
+                guard let self, self.canInteractWithLocation, self.cityField.isExpanded,
+                      self.draft.countryRegionCode == countryCode else { return }
+                switch result {
+                case .success(let (catalog, entries)):
+                    self.activeCityCatalog = catalog
+                    let countryName = self.countryCatalog?.displayName(forStoredCode: countryCode, language: self.language) ?? countryCode
+                    completion(.success(.init(options: entries.map {
+                        .init(id: $0.id, title: catalog.displayTitle(for: $0, language: self.language), detail: countryName)
+                    }, emptyText: (catalog.entries.isEmpty ? "site_create_city_unavailable" : "site_create_city_empty").localizedString)))
+                case .failure(let error): completion(.failure(error))
+                }
+            }
+        }
+        cityField.onSelect = { [weak self] option in
+            guard let self, self.canInteractWithLocation,
+                  self.activeCityCatalog?.countryCode == self.draft.countryRegionCode,
+                  let entry = self.activeCityCatalog?.entry(id: option.id) else { return false }
+            guard self.draft.selectCity(entry, timezone: self.timeZoneCatalog?.value(matchingIdentifier: entry.timezoneIdentifier)) else {
+                XWHUDManager.showErrorTipHUD("site_create_location_load_failed".localizedString)
+                return false
+            }
+            self.updateLocationValues()
+            return true
+        }
+        cityField.onCancel = { [weak self] in self?.cityLoader.cancel() }
+    }
+
+    private func updateLocationValues() {
+        // CREATE collects these actual controls; never leave stale pre-selection coordinates there.
+        for field in [SiteCreationTextField.latitude, .longitude] { textFields[field]?.text = draft.text[field] }
+        updateTimeZone()
+        if draft.timezone == nil { stopClock() } else { resumeClock() }
+    }
+
+    private func cancelLocationSearch(animated: Bool = true) {
+        countryField.cancelSearch(animated: animated)
+        cityField.cancelSearch(animated: animated)
     }
 
     private func configureInput(_ field: UITextField, placeholder: String?) {
@@ -330,35 +431,9 @@ final class SiteCreateViewController: UIViewController {
         block.axis = .vertical
         block.spacing = SCRYFrom(12)
         let actionContainer = UIView()
-        let action = UIButton(type: .custom)
-        action.layer.borderColor = RGB(104, 100, 179).cgColor
-        action.layer.borderWidth = 0.5
-        action.layer.cornerRadius = SCRYFrom(14)
-        action.accessibilityLabel = "site_create_current_location".localizedString
-        let row = UIStackView()
-        row.alignment = .center
-        row.spacing = SCRXFrom(6)
-        row.isUserInteractionEnabled = false
-        let icon = UIImageView(image: UIImage(named: "site_create_current_location"))
-        row.addArrangedSubview(icon)
-        icon.snp.makeConstraints { make in make.width.height.equalTo(SCRYFrom(12)) }
-        let label = UILabel()
-        label.font = UIFont.systemFont(ofSize: SCRYFrom(12), weight: .medium)
-        label.text = "site_create_current_location".localizedString
-        label.textColor = RGB(104, 100, 179)
-        label.numberOfLines = 0
-        row.addArrangedSubview(label)
-        let badge = UILabel()
-        badge.font = UIFont.systemFont(ofSize: SCRYFrom(10), weight: .semibold)
-        badge.text = "  " + "site_create_most_accurate".localizedString + "  "
-        badge.textColor = label.textColor
-        badge.backgroundColor = RGB(104, 100, 179).withAlphaComponent(0.1)
-        badge.layer.cornerRadius = SCRYFrom(9)
-        badge.clipsToBounds = true
-        badge.setContentCompressionResistancePriority(.required, for: .horizontal)
-        row.addArrangedSubview(badge)
-        action.addSubview(row)
-        row.snp.makeConstraints { make in make.edges.equalToSuperview().inset(UIEdgeInsets(top: SCRYFrom(4), left: SCRXFrom(12), bottom: SCRYFrom(4), right: SCRXFrom(12))) }
+        let action = SiteCreationLocationButton(type: .custom)
+        action.accessibilityIdentifier = "site-create-current-location"
+        action.addTarget(self, action: #selector(toggleCurrentLocation(_:)), for: .touchUpInside)
         actionContainer.addSubview(action)
         action.snp.makeConstraints { make in
             make.top.bottom.centerX.equalToSuperview()
@@ -382,7 +457,7 @@ final class SiteCreateViewController: UIViewController {
         icons.isScrollEnabled = false
         icons.dataSource = self
         icons.delegate = self
-        icons.register(ImageCollectionViewCell.self, forCellWithReuseIdentifier: "icon")
+        icons.register(SiteCreationIconCell.self, forCellWithReuseIdentifier: "icon")
         icons.snp.makeConstraints { make in
             make.height.equalTo(icons.snp.width).multipliedBy(7.0 / 4.0).offset(SCRXFrom(12))
         }
@@ -411,16 +486,27 @@ final class SiteCreateViewController: UIViewController {
         guard input.markedTextRange == nil, let field = textFields.first(where: { $0.value === input })?.key else { return }
         let value = field.limitingInput(input.text ?? "")
         if value != input.text { input.text = value }
-        draft.text[field] = value
+        draft.editText(field, value: value)
     }
 
     @objc private func revealEditingField() {
+        scrollEditingFieldIntoView(animated: !UIAccessibility.isReduceMotionEnabled)
+    }
+
+    private func scrollEditingFieldIntoView(animated: Bool) {
         guard viewIfLoaded?.window != nil, navigationController?.topViewController === self else { return }
+        if let field = [countryField, cityField].first(where: { $0.isExpanded }) {
+            view.layoutIfNeeded()
+            let options = field.convert(field.bounds, to: scrollView).insetBy(dx: 0, dy: -8)
+            let input = field.searchField.convert(field.searchField.bounds, to: scrollView).insetBy(dx: 0, dy: -8)
+            scrollView.scrollRectToVisible(options.height <= scrollView.bounds.height ? options : input, animated: animated)
+            return
+        }
         let inputs: [UIView] = [nameField, descriptionView] + textFields.values.map { $0 as UIView }
         guard let input = inputs.first(where: \.isFirstResponder) else { return }
         // keyboardLayoutGuide resizes the viewport; then move the active field into that viewport.
         view.layoutIfNeeded()
-        scrollView.scrollRectToVisible(input.convert(input.bounds, to: scrollView).insetBy(dx: 0, dy: -20), animated: true)
+        scrollView.scrollRectToVisible(input.convert(input.bounds, to: scrollView).insetBy(dx: 0, dy: -20), animated: animated)
     }
 
     @objc private func toggleHelp() {
@@ -429,12 +515,19 @@ final class SiteCreateViewController: UIViewController {
         helpButton.accessibilityValue = (helpBody.isHidden ? "site_create_collapsed" : "site_create_expanded").localizedString
     }
 
+    @objc private func toggleCurrentLocation(_ sender: UIButton) {
+        guard contextIsCurrent, !isCommitting else { return }
+        sender.isSelected.toggle()
+    }
+
     @objc private func selectTimeZone() {
         guard contextIsCurrent, !isCommitting else { return }
+        cancelLocationSearch()
         view.endEditing(true)
         guard let controller = SiteTimeZoneSelectionViewController(onSelect: { [weak self] value in
-            self?.draft.timezone = value
-            self?.updateTimeZone()
+            guard let self, self.contextIsCurrent, !self.isCommitting else { return }
+            self.draft.selectManualTimezone(value)
+            self.updateTimeZone()
         }) else {
             XWHUDManager.showErrorTipHUD("failed".localizedString)
             return
@@ -458,6 +551,18 @@ final class SiteCreateViewController: UIViewController {
 
     @objc private func stopClock() { localTimeTimer?.invalidate(); localTimeTimer = nil }
 
+    @objc private func pauseForBackground() {
+        stopClock()
+        cancelLocationSearch(animated: false)
+    }
+
+    private var canInteractWithLocation: Bool {
+        contextIsCurrent && !isCommitting && viewIfLoaded?.window != nil
+            && navigationController?.topViewController === self
+    }
+
+    @objc private func cancelLocationSearchFromOutside() { cancelLocationSearch() }
+
     @objc private func resumeClock() {
         guard contextIsCurrent else { if viewIfLoaded?.window != nil { close() }; return }
         guard navigationController?.topViewController === self, viewIfLoaded?.window != nil,
@@ -471,6 +576,7 @@ final class SiteCreateViewController: UIViewController {
     @objc private func selectType() {
         guard contextIsCurrent, allowsSiteType, FeatureVisibility.shared.canSelectSiteType,
               typeAlert == nil, !isCommitting else { return }
+        cancelLocationSearch()
         view.endEditing(true)
         let alert = SiteTypeSelectionAlertView.make(selectedType: draft.siteType) { [weak self] selected in
             guard let self, self.contextIsCurrent else { return }
@@ -488,6 +594,7 @@ final class SiteCreateViewController: UIViewController {
 
     @objc private func close() {
         guard !isCommitting else { return }
+        cancelLocationSearch(animated: false)
         typeAlert?.dismiss(animation: false)
         view.endEditing(true)
         navigationController?.dismiss(animated: true)
@@ -495,6 +602,7 @@ final class SiteCreateViewController: UIViewController {
 
     @objc private func create() {
         guard contextIsCurrent, !isCommitting else { return }
+        cancelLocationSearch(animated: false)
         view.endEditing(true)
         guard validateName() else { return }
         draft.text[.description] = descriptionView.text
@@ -515,14 +623,100 @@ final class SiteCreateViewController: UIViewController {
     }
 }
 
+private final class SiteCreationLocationButton: UIButton {
+    private let row = UIStackView()
+    private let icon = UIImageView(image: UIImage(named: "site_create_current_location"))
+    private let currentLocationButton = UIButton(type: .custom)
+    private let accuracyButton = UIButton(type: .custom)
+    private let selectionColor = RGB(104, 100, 179)
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = .clear
+        layer.borderColor = selectionColor.cgColor
+        isAccessibilityElement = false
+        row.alignment = .center
+        row.spacing = SCRXFrom(6)
+        row.addArrangedSubview(icon)
+        icon.snp.makeConstraints { make in make.width.height.equalTo(SCRYFrom(12)) }
+        for (button, key, identifier) in [
+            (currentLocationButton, "site_create_current_location", "site-create-location-option-current"),
+            (accuracyButton, "site_create_most_accurate", "site-create-location-option-accurate")
+        ] {
+            let text = key.localizedString
+            let title = NSAttributedString(string: text, attributes: [
+                .font: UIFont.systemFont(ofSize: SCRYFrom(12), weight: .medium),
+                .foregroundColor: selectionColor
+            ])
+            for state: UIControl.State in [.normal, .selected, .highlighted, [.selected, .highlighted]] {
+                button.setAttributedTitle(title, for: state)
+            }
+            button.accessibilityLabel = text
+            button.accessibilityIdentifier = identifier
+            button.titleLabel?.textAlignment = .center
+            button.contentEdgeInsets = UIEdgeInsets(top: SCRYFrom(2), left: SCRXFrom(6), bottom: SCRYFrom(2), right: SCRXFrom(6))
+            button.layer.cornerRadius = SCRYFrom(12)
+            button.addTarget(self, action: #selector(selectOption(_:)), for: .touchUpInside)
+            row.addArrangedSubview(button)
+            // Keep text metrics and padding identical in every selection and press state.
+            let titleWidth = ceil(title.size().width)
+            button.snp.makeConstraints { make in
+                make.width.equalTo(titleWidth + SCRXFrom(12))
+                make.height.equalTo(SCRYFrom(24))
+            }
+        }
+        addSubview(row)
+        row.snp.makeConstraints { make in
+            make.left.right.equalToSuperview().inset(SCRXFrom(12 + 2.0 / 3.0))
+            make.top.bottom.equalToSuperview().inset(SCRYFrom(4 + 2.0 / 3.0))
+        }
+        updateSelection()
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override var isSelected: Bool {
+        didSet { updateSelection() }
+    }
+
+    private func updateSelection() {
+        // The two labels are mutually exclusive options; only the selected label has a badge.
+        for (button, selected) in [(currentLocationButton, isSelected), (accuracyButton, !isSelected)] {
+            button.isSelected = selected
+            button.backgroundColor = selected ? selectionColor.withAlphaComponent(0.1) : .clear
+            if selected {
+                button.accessibilityTraits.insert(.selected)
+            } else {
+                button.accessibilityTraits.remove(.selected)
+            }
+        }
+    }
+
+    @objc private func selectOption(_ sender: UIButton) {
+        isSelected = sender === currentLocationButton
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        // Keep the outline on whole physical pixels and the capsule round at any content height.
+        let scale = max(traitCollection.displayScale, 1)
+        layer.borderWidth = (2.0 / 3.0 * scale).rounded() / scale
+        layer.cornerRadius = bounds.height / 2
+    }
+}
+
 extension SiteCreateViewController: UITextFieldDelegate, UITextViewDelegate {
     func textFieldShouldReturn(_ textField: UITextField) -> Bool { textField.resignFirstResponder(); return true }
 
     func textFieldDidBeginEditing(_ textField: UITextField) {
+        cancelLocationSearch()
         revealEditingField()
     }
 
-    func textViewDidBeginEditing(_ textView: UITextView) { revealEditingField() }
+    func textViewDidBeginEditing(_ textView: UITextView) {
+        cancelLocationSearch()
+        revealEditingField()
+    }
 
     func textViewDidChange(_ textView: UITextView) {
         descriptionPlaceholder.isHidden = !textView.text.isEmpty
@@ -540,13 +734,61 @@ extension SiteCreateViewController: UITextFieldDelegate, UITextViewDelegate {
     }
 }
 
+extension SiteCreateViewController: UIGestureRecognizerDelegate {
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
+        guard gestureRecognizer === locationOutsideTap, countryField.isExpanded || cityField.isExpanded else { return false }
+        // Switching fields is handled before focus changes. An outside-tap callback must not
+        // close the newly opened second field later in the same touch sequence.
+        return touch.view?.isDescendant(of: countryField) != true && touch.view?.isDescendant(of: cityField) != true
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                           shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        gestureRecognizer === locationOutsideTap || otherGestureRecognizer === locationOutsideTap
+    }
+}
+
+private final class SiteCreationIconCell: ImageCollectionViewCell {
+    private let selectionOutline = UIView()
+
+    var showsSelection = false {
+        didSet { selectionOutline.isHidden = !showsSelection }
+    }
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        selectionOutline.isUserInteractionEnabled = false
+        selectionOutline.isHidden = true
+        selectionOutline.layer.borderColor = Bar_Color.cgColor
+        // Keep the outline above the image and inside the cell's clipping boundary.
+        contentView.addSubview(selectionOutline)
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let scale = max(traitCollection.displayScale, 1)
+        let inset = 1 / scale
+        let outlineBounds = contentView.bounds.insetBy(dx: inset, dy: inset)
+        selectionOutline.frame = CGRect(
+            x: ceil(outlineBounds.minX * scale) / scale,
+            y: ceil(outlineBounds.minY * scale) / scale,
+            width: max(0, floor(outlineBounds.width * scale) / scale),
+            height: max(0, floor(outlineBounds.height * scale) / scale)
+        )
+        selectionOutline.layer.cornerRadius = max(0, layer.cornerRadius - inset)
+        selectionOutline.layer.borderWidth = ceil(0.5 * scale) / scale
+    }
+}
+
 extension SiteCreateViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int { 28 }
 
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "icon", for: indexPath) as! ImageCollectionViewCell
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "icon", for: indexPath) as! SiteCreationIconCell
         cell.imageView.image = UIImage(named: "site_\(indexPath.item + 1)")
-        cell.layer.borderWidth = draft.imageId == indexPath.item + 1 ? 0.5 : 0
+        cell.showsSelection = draft.imageId == indexPath.item + 1
         return cell
     }
 
@@ -554,11 +796,13 @@ extension SiteCreateViewController: UICollectionViewDataSource, UICollectionView
         guard draft.imageId != indexPath.item + 1 else { return }
         let previous = IndexPath(item: draft.imageId - 1, section: 0)
         draft.imageId = indexPath.item + 1
-        collectionView.reloadItems(at: [previous, indexPath])
+        UIView.performWithoutAnimation {
+            collectionView.reloadItems(at: [previous, indexPath])
+        }
     }
 
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        let width = floor((collectionView.bounds.width - flowLayout.minimumInteritemSpacing * 3) / 4)
+        let width = floor((collectionView.bounds.width - flowLayout.minimumInteritemSpacing * 3) / 4 * 100) / 100
         return CGSize(width: width, height: width)
     }
 }

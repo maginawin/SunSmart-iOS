@@ -2526,7 +2526,15 @@
 "site_create_action" = "CREATE";
 "site_create_project_name" = "Project Name";
 "site_create_country" = "Country / Region";
+"site_create_country_search_placeholder" = "Search country / region";
+"site_create_country_empty" = "No countries or regions found.";
 "site_create_city" = "City";
+"site_create_city_search_placeholder" = "Search city";
+"site_create_city_country_required" = "Please select Country / Region first.";
+"site_create_city_empty" = "No cities found.";
+"site_create_city_unavailable" = "No cities are available for this country / region.";
+"site_create_location_loading" = "Loading…";
+"site_create_location_load_failed" = "Unable to load locations. Please try again.";
 "site_create_city_help" = "Selecting a city auto-fills timezone and coordinates";
 "site_create_timezone_help" = "Auto-filled when a city is selected; you can still adjust manually";
 "site_create_description" = "Description";

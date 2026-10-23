@@ -19,16 +19,22 @@ struct SiteTimeZoneCatalogTests {
         testNormalizesPhoneUTCToEtcUTC(catalog)
         try testFallbackPreservesIdentifierAndRemovesDaylightSavingOffset()
         try testRejectsMalformedCatalogRows()
+        for (identifier, offset) in ["Africa/Casablanca": "+00:00", "Africa/El_Aaiun": "+00:00",
+            "America/Asuncion": "-03:00", "Asia/Almaty": "+05:00", "Asia/Qostanay": "+05:00",
+            "Africa/Windhoek": "+02:00", "America/Coyhaique": "-03:00", "Asia/Yekaterinburg": "+05:00",
+            "America/Ciudad_Juarez": "-07:00", "Arctic/Longyearbyen": "+01:00"] {
+            require(catalog.value(matchingIdentifier: identifier)?.storageValue == "\(identifier) (UTC\(offset))", "Reviewed city timezone must be shared by automatic and manual selection")
+        }
         print("SiteTimeZoneCatalogTests passed")
     }
 
     private static func testInjectsUTCAndPreservesBundledOrder(
         _ catalog: SiteTimeZoneCatalog
     ) {
-        require(catalog.allSections.count == 9, "Expected UTC plus 8 bundled regions")
+        require(catalog.allSections.count == 10, "Expected UTC plus 9 bundled regions")
         require(
-            catalog.allSections.reduce(0) { $0 + $1.entries.count } == 398,
-            "Expected UTC plus 397 bundled entries"
+            catalog.allSections.reduce(0) { $0 + $1.entries.count } == 414,
+            "Expected UTC plus 413 bundled entries"
         )
         require(catalog.allSections.first?.region == "UTC", "UTC must be the first group")
         require(
@@ -55,7 +61,7 @@ struct SiteTimeZoneCatalogTests {
 
         require(sections.count == 1, "Expected only the Asia group")
         require(sections.first?.region == "Asia", "Expected case-insensitive region match")
-        require(sections.first?.entries.count == 82, "Region match must return all Asia rows")
+        require(sections.first?.entries.count == 83, "Region match must return all Asia rows")
     }
 
     private static func testSearchMatchesIanaAndBothOffsetFormats(
@@ -83,7 +89,7 @@ struct SiteTimeZoneCatalogTests {
         _ catalog: SiteTimeZoneCatalog
     ) {
         require(
-            catalog.sections(matching: "   ").count == 9,
+            catalog.sections(matching: "   ").count == 10,
             "Trimmed empty search must restore the full catalog"
         )
         require(

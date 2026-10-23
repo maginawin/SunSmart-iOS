@@ -87,9 +87,12 @@ final class SiteData {
         let hdb = try SiteData.add(name: "HDB", siteType: .hdb)
         precondition(hdb.isHdbSite && !standard.isHdbSite, "Chosen type must be durable from the first save")
         var metadata = SiteExtensionData()
+        metadata.fields["countryRegion"] = .string("CN")
+        metadata.fields["city"] = .string("geonames:1796236")
         metadata.fields["description"] = .string("Lobby")
         metadata.fields["postalCode"] = .string("018983")
         metadata.fields["latitude"] = .string("0")
+        metadata.fields["longitude"] = .string("121.45806")
         let formSite = try SiteData.add(name: "Form", siteType: .hdb, imageId: 28,
                                         timezone: nil, extensionData: metadata)
         precondition(formSite.timezone == nil && formSite.pendingSitePropsMask.isEmpty)
@@ -106,13 +109,25 @@ final class SiteData {
         let failedRows = try db.scalar("SELECT count(*) FROM sites WHERE name = 'Failed form'") as! Int64
         precondition(failedRows == 0)
         try db.execute("DROP TRIGGER fail_extension")
+        let retry = try SiteData.add(name: "Retried country form", timezone: nil, extensionData: metadata)
+        let retriedMetadata = try SiteExtensionStore.load(retry).data
+        precondition(retriedMetadata.fields["countryRegion"] == .string("CN"))
+        precondition(retriedMetadata.fields["city"] == .string("geonames:1796236"))
         SunSmartDataManager.shared.db = try Connection(path)
         let restoredForm = SiteData.load(siteId: formSite.id)!
         precondition(restoredForm.imageId == 28 && restoredForm.timezone == nil && restoredForm.isHdbSite)
         let restoredMetadata = try SiteExtensionStore.load(restoredForm).data
+        precondition(restoredMetadata.fields["countryRegion"] == .string("CN"))
         precondition(restoredMetadata.fields["description"] == .string("Lobby"))
         precondition(restoredMetadata.fields["postalCode"] == .string("018983"))
         precondition(restoredMetadata.fields["latitude"] == .string("0"))
+        precondition(restoredMetadata.fields["city"] == .string("geonames:1796236"))
+        precondition(restoredMetadata.fields["longitude"] == .string("121.45806"))
+        let restoredConfigured = SiteData.load(siteId: configured.id)!
+        precondition(restoredConfigured.timezone == "Asia/Shanghai (UTC+08:00)")
+        let configuredMetadata = try SiteExtensionStore.load(restoredConfigured).data
+        precondition(configuredMetadata.fields["city"] == .string("geonames:1796236"))
+        precondition(restoredConfigured.copy().siteExtensionData == configuredMetadata)
         precondition(restoredForm.save())
         let afterSave = try SiteExtensionStore.load(restoredForm).data
         precondition(afterSave == restoredMetadata)

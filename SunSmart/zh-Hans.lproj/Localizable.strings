@@ -2542,7 +2542,15 @@
 "site_create_action" = "创建";
 "site_create_project_name" = "项目名称";
 "site_create_country" = "国家 / 地区";
+"site_create_country_search_placeholder" = "搜索国家 / 地区";
+"site_create_country_empty" = "未找到国家或地区。";
 "site_create_city" = "城市";
+"site_create_city_search_placeholder" = "搜索城市";
+"site_create_city_country_required" = "请先选择国家 / 地区。";
+"site_create_city_empty" = "未找到城市。";
+"site_create_city_unavailable" = "该国家 / 地区暂无可选城市。";
+"site_create_location_loading" = "正在加载…";
+"site_create_location_load_failed" = "无法加载地点，请重试。";
 "site_create_city_help" = "选择城市后自动填写时区和经纬度";
 "site_create_timezone_help" = "选择城市后自动填写，仍可手动调整";
 "site_create_description" = "描述";
