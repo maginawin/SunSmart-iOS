@@ -2520,3 +2520,36 @@
 "hdb_diag_presence" = "Presence";
 "hdb_diag_ambient" = "Ambient Light";
 "hdb_diag_energy" = "Energy";
+
+// Create Site
+"site_create_title" = "Create Site";
+"site_create_action" = "CREATE";
+"site_create_project_name" = "Project Name";
+"site_create_country" = "Country / Region";
+"site_create_city" = "City";
+"site_create_city_help" = "Selecting a city auto-fills timezone and coordinates";
+"site_create_timezone_help" = "Auto-filled when a city is selected; you can still adjust manually";
+"site_create_description" = "Description";
+"site_create_description_placeholder" = "Brief description (optional)";
+"site_create_location_help" = "Why location matters";
+"site_create_location_explanation_1" = "Location data is used to calculate local sunrise and sunset times for your project, which affects scheduling and lighting automation.";
+"site_create_location_explanation_2" = "• Street address and postal code give an approximate position for these calculations.";
+"site_create_location_explanation_3" = "• Entering exact latitude and longitude gives the most precise sunrise/sunset data.";
+"site_create_location_explanation_4" = "All fields are optional — you can update them anytime.";
+"site_create_location_emphasis_1" = "local sunrise and sunset times";
+"site_create_location_emphasis_2" = "approximate";
+"site_create_location_emphasis_3" = "latitude and longitude";
+"site_create_street" = "Street Address";
+"site_create_street_placeholder" = "e.g., 1 Marina Boulevard";
+"site_create_postal" = "Postal Code";
+"site_create_postal_placeholder" = "e.g., 018983";
+"site_create_current_location" = "Use current location";
+"site_create_most_accurate" = "Most accurate";
+"site_create_latitude" = "Latitude";
+"site_create_longitude" = "Longitude";
+"site_create_decimal" = "Decimal";
+"site_create_latitude_placeholder" = "e.g., 1.2801";
+"site_create_longitude_placeholder" = "e.g., 103.8501";
+"site_create_unknown" = "Unknown";
+"site_create_collapsed" = "Collapsed";
+"site_create_expanded" = "Expanded";

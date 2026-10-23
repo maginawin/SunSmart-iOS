@@ -120,6 +120,11 @@ struct SiteTimeZoneCatalog {
         return Self.fallbackValue(for: phoneTimeZone, at: date)
     }
 
+    /// Create Site displays Unknown instead of inventing an offset for an unmatched identifier.
+    func value(matchingIdentifier identifier: String) -> SiteTimeZoneValue? {
+        allSections.lazy.flatMap(\.entries).first { $0.ianaId == identifier }?.value
+    }
+
     static func bundled() throws -> SiteTimeZoneCatalog {
         guard let url = Bundle.main.url(
             forResource: "all_utc_timezones",

@@ -46,18 +46,23 @@ extension SiteData {
     /// 添加场所
     /// - Parameter name: 场所名称
     /// - Returns: 场所
-    static func add(name: String, isHdbSite: Bool = false) throws -> SiteData {
+    static func add(name: String, isHdbSite: Bool = false, imageId: Int = 1,
+                    timezone: String? = SiteTimeZoneCatalog.phoneDefaultValue().storageValue,
+                    extensionData: SiteExtensionData? = nil) throws -> SiteData {
         guard let database = SunSmartDataManager.shared.db else { throw DataError.persistenceFailed }
         let time = Int64(Date().timeIntervalSince1970)
         
         let id = UUID().uuidString
         let meshNetworkManager = MeshNetworkManager.createMeshNetwork(meshUUID: id, meshNetworkName: name, localAddress: Address.minUnicastAddress)
 //        MeshLibManager.manager.createMeshNetwork(meshUUID: id, meshNetworkName: name, connected: false)
-        let site = SiteData(region: UserData.currentServerRegion, id: id, meshUUID: id, meshNetworkId: meshNetworkManager.mainNetworkKey.networkId.hex, name: name, imageId: 1, type: .office, permission: .owner, create: time,isFavourite: false, sourceType: .create)
+        let site = SiteData(region: UserData.currentServerRegion, id: id, meshUUID: id, meshNetworkId: meshNetworkManager.mainNetworkKey.networkId.hex, name: name, imageId: imageId, type: .office, permission: .owner, create: time,isFavourite: false, sourceType: .create)
+        site.siteExtensionData = extensionData ?? SiteExtensionData()
         site.siteExtensionData.isHdbSite = isHdbSite
-        site.timezone = SiteTimeZoneCatalog.phoneDefaultValue().storageValue
-        site.pendingSitePropsMask = [.timezone]
-        site.pendingSitePropsTimestamp = site.lastUpdate
+        site.timezone = timezone
+        if site.timezone != nil {
+            site.pendingSitePropsMask = [.timezone]
+            site.pendingSitePropsTimestamp = site.lastUpdate
+        }
         site.localAddress = Address.minUnicastAddress
 //        site.meshManager = meshManager
         do {

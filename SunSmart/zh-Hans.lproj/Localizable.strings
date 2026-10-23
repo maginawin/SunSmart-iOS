@@ -2536,3 +2536,36 @@
 "hdb_diag_presence" = "人体感应";
 "hdb_diag_ambient" = "环境光";
 "hdb_diag_energy" = "能耗";
+
+// Create Site
+"site_create_title" = "创建项目";
+"site_create_action" = "创建";
+"site_create_project_name" = "项目名称";
+"site_create_country" = "国家 / 地区";
+"site_create_city" = "城市";
+"site_create_city_help" = "选择城市后自动填写时区和经纬度";
+"site_create_timezone_help" = "选择城市后自动填写，仍可手动调整";
+"site_create_description" = "描述";
+"site_create_description_placeholder" = "简短描述（可选）";
+"site_create_location_help" = "为什么需要位置信息";
+"site_create_location_explanation_1" = "位置信息用于计算项目所在地的日出和日落时间，影响定时任务和照明自动化。";
+"site_create_location_explanation_2" = "• 街道地址和邮政编码为这些计算提供大致位置。";
+"site_create_location_explanation_3" = "• 输入准确的经纬度可获得更精确的日出和日落数据。";
+"site_create_location_explanation_4" = "所有字段均为可选项，可随时更新。";
+"site_create_location_emphasis_1" = "日出和日落时间";
+"site_create_location_emphasis_2" = "大致位置";
+"site_create_location_emphasis_3" = "经纬度";
+"site_create_street" = "街道地址";
+"site_create_street_placeholder" = "例如：滨海大道 1 号";
+"site_create_postal" = "邮政编码";
+"site_create_postal_placeholder" = "例如：018983";
+"site_create_current_location" = "使用当前位置";
+"site_create_most_accurate" = "最准确";
+"site_create_latitude" = "纬度";
+"site_create_longitude" = "经度";
+"site_create_decimal" = "十进制";
+"site_create_latitude_placeholder" = "例如：1.2801";
+"site_create_longitude_placeholder" = "例如：103.8501";
+"site_create_unknown" = "未知";
+"site_create_collapsed" = "已收起";
+"site_create_expanded" = "已展开";

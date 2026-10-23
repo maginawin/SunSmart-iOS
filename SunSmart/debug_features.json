@@ -18,7 +18,7 @@
             "isHdbSite": {
                 "builds": ["release", "debug"],
                 "roles": ["owner", "editor"],
-                "targets": ["SunSmart"]
+                "targets": ["HSmart"]
             }
         }
     }

@@ -24,13 +24,16 @@ final class FeatureVisibility {
 
     enum Target: String, Decodable, CaseIterable {
         case sunSmart = "SunSmart"
+        case hSmart = "HSmart"
         case archipelago = "Archipelago"
         case slgSyncPlus = "SLG Sync Plus"
         case sylSmart = "SylSmart"
         case lumineux = "Lumineux"
 
         static var current: Target {
-            #if Archipelago
+            #if HSmart
+            return .hSmart
+            #elseif Archipelago
             return .archipelago
             #elseif SLGSync
             return .slgSyncPlus

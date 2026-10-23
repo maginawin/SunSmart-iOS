@@ -146,8 +146,9 @@ struct FeatureVisibilityTests {
             }
         }
         let targetCases: [(configured: [String]?, visible: Set<FeatureVisibility.Target>)] = [
-            (nil, [.sunSmart, .archipelago, .slgSyncPlus, .sylSmart, .lumineux]),
+            (nil, Set(FeatureVisibility.Target.allCases)),
             (["SunSmart"], [.sunSmart]),
+            (["HSmart"], [.hSmart]),
             (["Archipelago", "SLG Sync Plus"], [.archipelago, .slgSyncPlus]),
             ([], [])
         ]
@@ -189,8 +190,16 @@ struct FeatureVisibilityTests {
         }
         check(!FeatureVisibility { Data("{}".utf8) }.canSelectSiteType, "Missing creation rule must disable selection")
         for target in FeatureVisibility.Target.allCases {
-            check(FeatureVisibility(target: target) { bundled }.canSelectSiteType == (target == .sunSmart),
-                  "Only configured brands can choose a new Site type")
+            for build in FeatureVisibility.BuildMode.allCases {
+                let visibility = FeatureVisibility(build: build, target: target) { bundled }
+                check(visibility.canSelectSiteType == (target == .hSmart),
+                      "Only HSmart can choose a new Site type in Debug and Release")
+                for permission in permissions {
+                    check(visibility.isVisible(.siteTypeSelection, permission: permission) ==
+                          (target == .hSmart && permission != .visitor),
+                          "Site type target/build/role mismatch")
+                }
+            }
         }
         let currentTarget = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : "SunSmart"
         check(FeatureVisibility.Target.current.rawValue == currentTarget, "Target compilation flag ignored")

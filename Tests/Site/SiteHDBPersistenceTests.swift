@@ -84,7 +84,40 @@ final class SiteData {
         precondition(!standard.isHdbSite)
         let hdb = try SiteData.add(name: "HDB", isHdbSite: true)
         precondition(hdb.isHdbSite && !standard.isHdbSite, "Chosen type must be durable from the first save")
+        var metadata = SiteExtensionData()
+        metadata.fields["description"] = .string("Lobby")
+        metadata.fields["postalCode"] = .string("018983")
+        metadata.fields["latitude"] = .string("0")
+        let formSite = try SiteData.add(name: "Form", isHdbSite: true, imageId: 28,
+                                        timezone: nil, extensionData: metadata)
+        precondition(formSite.timezone == nil && formSite.pendingSitePropsMask.isEmpty)
+        precondition(formSite.pendingSitePropsTimestamp == nil)
+        let configured = try SiteData.add(name: "Configured", imageId: 3,
+                                          timezone: "Asia/Shanghai (UTC+08:00)", extensionData: metadata)
+        precondition(configured.pendingSitePropsMask.contains(.timezone))
+        try db.execute("CREATE TRIGGER fail_extension BEFORE INSERT ON site_extensions BEGIN SELECT RAISE(FAIL, 'fixture'); END;")
+        let beforeFailure = MeshNetworkManager.allocated
+        rejected = false
+        do { _ = try SiteData.add(name: "Failed form", isHdbSite: true, imageId: 28,
+                                  timezone: nil, extensionData: metadata) } catch { rejected = true }
+        precondition(rejected && MeshNetworkManager.allocated == beforeFailure)
+        let failedRows = try db.scalar("SELECT count(*) FROM sites WHERE name = 'Failed form'") as! Int64
+        precondition(failedRows == 0)
+        try db.execute("DROP TRIGGER fail_extension")
         SunSmartDataManager.shared.db = try Connection(path)
+        let restoredForm = SiteData.load(siteId: formSite.id)!
+        precondition(restoredForm.imageId == 28 && restoredForm.timezone == nil && restoredForm.isHdbSite)
+        let restoredMetadata = try SiteExtensionStore.load(restoredForm).data
+        precondition(restoredMetadata.fields["description"] == .string("Lobby"))
+        precondition(restoredMetadata.fields["postalCode"] == .string("018983"))
+        precondition(restoredMetadata.fields["latitude"] == .string("0"))
+        precondition(restoredForm.save())
+        let afterSave = try SiteExtensionStore.load(restoredForm).data
+        precondition(afterSave == restoredMetadata)
+        let formClone = restoredForm.cloneData()
+        precondition(formClone.save())
+        let clonedMetadata = try SiteExtensionStore.load(formClone).data
+        precondition(clonedMetadata == restoredMetadata)
         let reloaded = SiteData.load(siteId: hdb.id)!
         precondition(!reloaded.siteExtensionData.isHdbSite && reloaded.isHdbSite,
                      "Durable type must win over a reloaded Site object's default extension")

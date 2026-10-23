@@ -93,21 +93,27 @@ for start, end in [('    enum Options {', '    let site: SiteData'),
 project = json.loads(subprocess.check_output(['plutil', '-convert', 'json', '-o', '-', 'SunSmart.xcodeproj/project.pbxproj']))
 objects = project['objects']
 targets = [v for v in objects.values() if v.get('isa') == 'PBXNativeTarget']
-expected = {'SunSmart', 'Archipelago', 'SLG Sync Plus', 'SylSmart', 'Lumineux'}
+expected = {'SunSmart', 'HSmart', 'Archipelago', 'SLG Sync Plus', 'SylSmart', 'Lumineux'}
 assert {v['name'] for v in targets} == expected
 for target in targets:
+    configurations = objects[target['buildConfigurationList']]['buildConfigurations']
+    for configuration in configurations:
+        flags = objects[configuration]['buildSettings'].get('SWIFT_ACTIVE_COMPILATION_CONDITIONS', '').split()
+        assert ('HSmart' in flags) == (target['name'] == 'HSmart'), (target['name'], flags)
+        if target['name'] == 'HSmart':
+            assert '$(inherited)' in flags, 'HSmart must preserve inherited build flags'
     for phase_kind, path in [('PBXSourcesBuildPhase', 'FeatureVisibility.swift'), ('PBXResourcesBuildPhase', 'debug_features.json')]:
         refs = [objects[objects[file]['fileRef']].get('path')
                 for phase in target['buildPhases'] if objects[phase]['isa'] == phase_kind
                 for file in objects[phase]['files']]
         assert refs.count(path) == 1, (target['name'], path, refs.count(path))
-print('PASS: all five targets include one visibility source and one configuration resource')
+print('PASS: all six targets include visibility source/configuration; HSmart has its own compilation flag')
 PY
 
 for mode in debug release; do
     flags=(-Onone)
     if [[ "$mode" == debug ]]; then flags+=(-D DEBUG); fi
-    for target in SunSmart Archipelago SLGSync SylSmart Lumineux; do
+    for target in SunSmart HSmart Archipelago SLGSync SylSmart Lumineux; do
         target_flags=("${flags[@]}")
         target_name="$target"
         if [[ "$target" != SunSmart ]]; then target_flags+=(-D "$target"); fi

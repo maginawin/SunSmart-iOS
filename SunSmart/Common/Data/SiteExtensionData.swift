@@ -34,6 +34,8 @@ enum SiteJSONValue: Codable, Equatable, Sendable {
 struct SiteExtensionData: Codable, Equatable {
     enum ParseError: Error { case invalidObject }
 
+    static let metadataKeys = ["countryRegion", "city", "description", "streetAddress", "postalCode", "latitude", "longitude"]
+
     var fields: [String: SiteJSONValue]
 
     init() { fields = ["schemaVersion": .integer(1), "triggerZones": .array([]), "isHdbSite": .bool(false)] }
@@ -47,6 +49,9 @@ struct SiteExtensionData: Codable, Equatable {
     private var normalizedFields: [String: SiteJSONValue] {
         var result = fields
         result["isHdbSite"] = .bool(isHdbSite)
+        for key in Self.metadataKeys where result[key] == nil {
+            result[key] = .null
+        }
         return result
     }
 
