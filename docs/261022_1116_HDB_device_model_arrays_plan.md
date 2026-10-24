@@ -1,6 +1,6 @@
 # HDB 数据契约与设备 Model 数组配置
 
-日期：2026-10-22。状态：已按确认方案完成 App 实现、相关离线回归与 SunSmart Debug generic iOS 构建；真实设备及外部联调待验收。
+日期：2026-10-24。当前新增本机 Sensor publication；本次实施与验证记录见 [单播方案](261024_1136_HDB_sensor_local_unicast_analysis.md)，真实设备及外部联调待验收。
 
 2026-10-22 格式已按 [v2 方案](261022_1626_HDB_json_format_plan.md) 更新；本次验证结果记录在该方案中。
 
@@ -8,15 +8,15 @@
 
 ## 1. 结论与范围
 
-最新方案采用：**Delete All → Broadcast → Sensor Group（有地址才执行）→ Add Zones**。新增 devices[].broadcastModels 与固定 devices[].broadcastId="FEFD"（数值 65277），保留 App 既有 Broadcast 恢复任务。
+最新方案采用：**Delete All → Broadcast → Add Zones**。新增 devices[].broadcastModels 与固定 devices[].broadcastId="FEFD"（数值 65277），保留 App 既有 Broadcast 恢复任务。
 
 本方案适用于重新创建的 HDB 项目。按用户最新要求，不处理旧设备、不提供旧数据迁移或旧字段缺失兼容；项目删除/重建由用户安排，本任务不自动删除项目。普通 Site 的既有行为保持。
 
 必要边界：
 
 - 普通初始化、SDK 配置完成判断以及全部 Auto/色温的现有 Broadcast 机制保留；撤销上一版取消 FEFD、增加 SDK 按 Node 策略和改为单播控制的计划。
-- 三个数组分别表达 Zone、Broadcast 恢复、Sensor Group 接收的显式命令目标，不能互相代替。
-- Preparation 的其他固定参数、Sensor Server 订阅与 publication 不属于本次 Set Lighting Zones 四阶段，继续各自执行。
+- 三个数组分别表达 Zone、Broadcast 恢复目标及保留给其他功能的 Sensor Group 接收模型清单，不能互相代替。本次 preparation/Zone Set 不向 Sensor Group 添加订阅。
+- Preparation 的固定参数与本机 Sensor publication 单独执行；Zone Set 执行 Delete All、Broadcast、Add Zones 三阶段，不包含 Sensor Group 订阅。
 
 ## 2. JSON 契约
 
@@ -24,7 +24,7 @@
 
 HDB 对象位于单份 Space payload 的 `spaceData.hdb`。Site 上传时该 Space 位于 `site.spaces[]`，单 Space 上传时位于请求的 `spaces[]`；不要把业务层级 `site.space.spaceData.hdb` 当成固定 HTTP 字段路径。
 
-除 `devices[].lightingConfiguration` 可省略或为 null 外，下表字段均须存在；数组没有条目时写 `[]`。整个 `hdb` 缺失表示未提供 HDB 配置；已有 `hdb` 却为 null、损坏或缺必填字段时拒绝读取，不能当空配置保存。
+除 `devices[].lightingConfiguration` 可省略或为 null 外，下表字段均须存在；模型清单无条目时写 `[]`，`sensorPublication` 始终保留单条，合法空值写在其 `elementAddress` 中。整个 `hdb` 缺失表示未提供 HDB 配置；已有 `hdb` 却为 null、损坏或缺必填字段时拒绝读取，不能当空配置保存。
 
 | 字段 | 类型与约束 |
 | --- | --- |
@@ -41,7 +41,8 @@ HDB 对象位于单份 Space payload 的 `spaceData.hdb`。Site 上传时该 Spa
 | `devices[].lightingZonesStatus` | `pending` 或 `synced`；包括空目标在内的整设备 Zone 任务状态 |
 | `devices[].sensorGroupId` | 4 位十六进制字符串 `C001`–`FEFC` 或显式 null；非空时设备间不重复、不与 Zone 地址冲突；分配还须使用全 Site 地址池 |
 | `devices[].zoneModels` | 必填数组；条目为十六进制字符串 `elementAddress` 和 `modelId`，筛选规则见下文 |
-| `devices[].sensorGroupModels` | 必填数组；由 Composition 生成，与地址是否已分配无关 |
+| `devices[].sensorGroupModels` | 必填数组；由 Composition 生成，与地址是否已分配无关；完整保留供其他功能使用，不触发本次 Sensor Group 订阅 |
+| `devices[].sensorPublication` | 必填单条数组；`modelId` 固定字符串 `1100`，`elementAddress` 为本机唯一 LC 的 4 位十六进制单播目的地址；无组或无 LC 时显式 null |
 | `devices[].broadcastModels` | 必填数组；本次 Reset 后必须恢复 Broadcast 的目标 |
 | `devices[].broadcastId` | 必填字符串 `FEFD`（数值 65277），即使恢复清单为空也保留 |
 | `devices[].lightingConfiguration` | 单设备字段配置对象或 null；当前导出保留该键；各参数为 `{ "status": "pending或synced", "value": 值 }` |
@@ -61,7 +62,7 @@ Lighting Configuration 只存于设备：不再输出根级 `broadcast`、根级
 
 ### Model 清单通用规则
 
-新增 `spaceData.hdb.devices[].zoneModels`、`spaceData.hdb.devices[].sensorGroupModels`、`spaceData.hdb.devices[].broadcastModels`，以及同级的 `broadcastId`。三个数组每项只包含十六进制字符串 `elementAddress`、`modelId`，表示命令目标，不表示设备当前订阅结果。
+新增 `spaceData.hdb.devices[].zoneModels`、`spaceData.hdb.devices[].sensorGroupModels`、`spaceData.hdb.devices[].broadcastModels`，以及同级的 `broadcastId`。三个模型清单每项只包含十六进制字符串 `elementAddress`、`modelId`，表示真实模型实例，不表示设备当前订阅结果。`sensorPublication` 是不同语义的发布配置：modelId 表示发布方类型，elementAddress 表示接收方 LC 地址；发布方 Element 仍按唯一 Presence 属性解析。
 
 | 字段/Model | 数值或规则 |
 | --- | --- |
@@ -79,7 +80,7 @@ SIG modelId 使用 4 位、Vendor 使用 8 位；无 0x 前缀，统一大写输
 
 - 三个数组均为新格式必填字段；没有目标时写 `[]`。缺字段、null、错误类型、负数、越界或错误模型引用均报错。此规则取代上一版“缺字段视为空数组”的旧数据兼容要求。
 - `broadcastId` 必填且只能是字符串 `FEFD`，不允许 null 或其他地址；即使 broadcastModels=[] 也保留 broadcastId。它是固定共用地址，不参与 Lighting Zone/Sensor Group 地址分配，也不受 Sensor Group 地址唯一性约束。
-- `sensorGroupId` 使用 4 位十六进制字符串或显式 null；null 表示本次 Zone 操作跳过 Sensor Group。0、空字符串不表示合法空值。
+- `sensorGroupId` 使用 4 位十六进制字符串或显式 null；null 表示尚无组地址，此时 sensorPublication.elementAddress 也为 null。本次 Zone 操作均不订阅 Sensor Group。0、空字符串不表示合法空值。
 - sensorGroupModels 按 Composition 生成，不受 sensorGroupId 是否已分配影响。因此允许非空清单与 sensorGroupId=null 同时存在。
 - 按 `(elementAddress, modelId)` 去重、排序；配置比较对数组顺序规范化，不忽略字段或同步结果。
 - 条目必须属于当前设备，符合筛选规则；开始破坏性命令前，存储清单必须与本次 Composition 计算结果一致。
@@ -129,7 +130,7 @@ broadcastId 固定为 65277（0xFEFD）。broadcastModels 表示 **本次 Zone D
 
 ### 完整 HDB 对象示例
 
-以下合成设备 Primary=256，包含 OnOff、Lightness、Vendor；Element=257 包含 OnOff、LC、LC Setup，Element=258 可包含 Sensor Server。地址尚未分配，`sensorGroupId=null`，Zone Set 跳过 Sensor 阶段。目录为便于阅读仅列一个 Zone。
+以下合成设备 Primary=256，包含 OnOff、Lightness、Vendor；Element=257 包含 OnOff、LC、LC Setup，Element=258 可包含 Sensor Server。地址尚未分配，`sensorGroupId=null`，sensorPublication.elementAddress=null；Zone Set 不执行 Sensor Group 订阅。目录为便于阅读仅列一个 Zone。
 
 <!-- hdb-complete-example -->
 ```json
@@ -152,6 +153,12 @@ broadcastId 固定为 65277（0xFEFD）。broadcastModels 表示 **本次 Zone D
       ],
       "lightingZonesStatus": "pending",
       "sensorGroupId": null,
+      "sensorPublication": [
+        {
+          "modelId": "1100",
+          "elementAddress": null
+        }
+      ],
       "zoneModels": [
         {
           "elementAddress": "0100",
@@ -241,7 +248,7 @@ broadcastId 固定为 65277（0xFEFD）。broadcastModels 表示 **本次 Zone D
 - 核对 HDB Site/Space、设备身份、编辑权限、AppKey/Model 绑定及任务占用。
 - 从该设备 Composition 一次性生成三个数组；核对 Primary、五类能力和所有模型引用。
 - 目标 zoneId 去重且最多 8 个，全部能在 `hdb.lightingZones` 找到；实际地址字段名是 `groupId`，按十六进制解析得到 Mesh 组地址。
-- sensorGroupId 非空时验证其为该设备的有效 Sensor Group 地址，不与 Lighting Zone 冲突；sensorGroupModels 必须非空。无效地址/有地址无目标必须在 Delete All 前报错，避免先清空再发现计划不可执行。
+- sensorGroupId 非空时验证其为该设备的有效 Sensor Group 地址，不与 Lighting Zone 冲突；sensorGroupModels 按 Composition 保留完整清单。本次不要求存在 Sensor Group 订阅；地址及模型清单仍须合法。
 - 验证 broadcastId="FEFD"，并核对 broadcastModels 完整覆盖本次 Reset 所需恢复目标。
 - 保存三个清单及 broadcastId、目标 Zone 选择和 `lightingZonesStatus=pending` 后才开始发送；保存失败不发送。捕获不可变执行计划，后续以同一计划校验身份、配置变化和 ACK。
 
@@ -255,30 +262,26 @@ broadcastId 固定为 65277（0xFEFD）。broadcastModels 表示 **本次 Zone D
 
 broadcastModels=[]：跳过本节。
 
-否则遍历全部 broadcastModels，逐项发送 `ConfigModelSubscriptionAdd(broadcastId)`，即 Add(65277)。所有项均成功后才进入 Sensor Group 阶段。
+否则遍历全部 broadcastModels，逐项发送 `ConfigModelSubscriptionAdd(broadcastId)`，即 Add(65277)。所有项均成功后才进入 Add Zones 阶段。
 
 不能在 Delete All 尚未全部成功时开始恢复；后续 Reset 可能再次清除已添加的 Broadcast 地址。
 
-### 3.4 Sensor Group
+### 3.4 保留 Sensor Group 元数据
 
-sensorGroupId=null：跳过本节，不因设备存在 Sensor Server 在本次 Zone 任务中自动插入分配或其他命令。
-
-sensorGroupId 非空：遍历全部 sensorGroupModels，逐项发送 `ConfigModelSubscriptionAdd(sensorGroupId)`，全部成功后继续。
-
-设备添加 Preparation 仍负责原有 Sensor Group 分配与 publication；其是否准备完成是独立生命周期条件，不改写本节的空地址语义，也不重新引入 sensorGroupModels 为空必须等价于 sensorGroupId=null 的旧约束。
+保留 sensorGroupId 的分配与 sensorGroupModels 清单，供其他功能使用。本次 Zone Set 不下发 Sensor Group 订阅，无论字段是否非空。Preparation 按 sensorPublication 将 Presence 发布到本机 LC，且不添加 Sensor Group 订阅。
 
 ### 3.5 Add Zones
 
 遍历选中的 zoneId，读取其 `hdb.lightingZones[].groupId` 并按十六进制解析；对每个地址遍历全部 zoneModels，逐项发送 `ConfigModelSubscriptionAdd(groupAddress)`。
 
-目标 Zone 为空时跳过本节；前面已执行的 Delete All、Broadcast 和必要的 Sensor Group 订阅仍有效。
+目标 Zone 为空时跳过本节；前面已执行的 Delete All 和 Broadcast 仍有效。
 
 ### 3.6 目的地址、结果与重试
 
 - 上述配置命令统一发送到设备 Primary Address（nodeAddress），参数填入每项的 elementAddress 和 Model 标识。Vendor 使用带 Company ID 的格式。
 - 只在所有实际需要执行的命令均成功后写 `lightingZonesStatus=synced`。
 - 目标 Zone 为空且 sensorGroupId=null：仍须完成 Delete All 和必要的 Broadcast；仅当 broadcastModels 也为空时，Delete All 全部成功即完成。
-- 部分成功、失败、取消、断连或持久化失败保留 pending；重试完整执行 Delete All → 可选 Broadcast → 可选 Sensor → 可选 Zones。
+- 部分成功、失败、取消、断连或持久化失败保留 pending；重试完整执行 Delete All → 可选 Broadcast → 可选 Zones。
 - 不因个别 Add 成功提前标记整台设备完成；迟到 ACK 不得确认新一轮任务。已接受的设备回执缓存沿现有机制保存。
 - 保留现有绑定、权限、身份与任务生命周期保护。Reset 后到 Broadcast 恢复完成期间，仅对本轮承诺恢复的接收目标使用现有临时就绪豁免；其他缺绑定、缺 publication 等错误仍阻断任务。
 
@@ -289,7 +292,7 @@ sensorGroupId 非空：遍历全部 sensorGroupModels，逐项发送 `ConfigMode
 3. 新设备创建、已授权配置保存、设备重入网/Composition 更新时保存相应清单；变化在操作前完成，不能在 Delete All 过程中改写本次计划。删除设备时随设备条目删除，不做旧项目补齐或批量迁移。
 4. 导入严格验证新字段、Composition 引用及事务读回；导出输出已经生成并核验的三个数组及 broadcastId。只读导出不修改数据库、不自动分配组、不发送 BLE。新格式不完整时报告问题，不临时合成兼容数据掩盖写入缺陷。
 5. canonical 比较包含排序后的三个数组、broadcastId 和现有状态，保证本地保存、导出、云端回执使用同一快照；不增加旧字段兼容归一化。
-6. Zone 页 Set/Retry 与普通设备同步统一使用相同四阶段生成器；保留 broadcastTargets/broadcast stage，并将持久化 broadcastModels 映射到同一执行目标。生成、保存、导出、任务捕获和 ACK 校验共用同一结果；broadcastId 固定校验后作为恢复地址，不能出现 JSON 与发送参数分离。sensorTargets 由 sensorGroupModels 得出，是否发送仅由 sensorGroupId 决定。
+6. Zone 页 Set/Retry 与普通设备同步统一使用相同三阶段生成器；保留 broadcastTargets/broadcast stage，并将持久化 broadcastModels 映射到同一执行目标。生成、保存、导出、任务捕获和 ACK 校验共用同一结果；broadcastId 固定校验后作为恢复地址，不能出现 JSON 与发送参数分离。sensorTargets 仍由 sensorGroupModels 得出用于元数据核对，本次不生成 Sensor Group 订阅阶段。
 7. 更新仓库 JSON 示例与本任务文档中的接口约定。桌面示例不在本轮修改。Web/网关/服务端由对应团队同步解析和保存新字段，不由本任务修改其代码或部署。
 
 ## 5. 保留 Broadcast 后的改动边界
@@ -304,14 +307,14 @@ sensorGroupId 非空：遍历全部 sensorGroupModels，逐项发送 `ConfigMode
 
 - 编解码：新格式往返、显式空数组、缺字段拒绝、8 位 Vendor、重复/乱序、越界、错误设备/Model 引用；持久化重载、导入回滚及上传回执一致。
 - 精确目标：Primary 与多个子 Element；Zone 排除子 Element OnOff/Vendor；Sensor 仅收录 LC 所在 Element 的指定 Models；三数组不要求包含关系；Broadcast 覆盖非 Primary LC、受影响/不受影响 CTL Temperature、同 Element 共享模型及直接 0x1306 fallback。
-- 四阶段：有/无 Broadcast 目标、有/无 sensorGroupId、有/无目标 Zone，多个 Zone 与多实例；顺序及参数与三个数组完全一致；broadcastId 非 65277 在 Reset 前拒绝。
-- 生命周期：前置失败不得先 Delete All；每阶段部分 ACK、超时、取消、断连、存储失败及重试；Reset 暂时清掉 FEFD 后 Broadcast 恢复仍可执行；恢复完成后后续 Sensor/Add 正常，失败可重试，不能永久卡在未就绪。
-- 回归 Preparation：全部 Vendor 固定初始化、Sensor Server 订阅、Presence publication 和灯光参数行为保持。
+- 三阶段：有/无 Broadcast 目标、有/无 sensorGroupId、有/无目标 Zone，多个 Zone 与多实例；顺序及参数与三个数组完全一致；broadcastId 非 65277 在 Reset 前拒绝。
+- 生命周期：前置失败不得先 Delete All；每阶段部分 ACK、超时、取消、断连、存储失败及重试；Reset 暂时清掉 FEFD 后 Broadcast 恢复仍可执行；恢复完成后后续 Zone Add 正常，失败可重试，不能永久卡在未就绪。
+- 回归 Preparation：全部 Vendor 固定初始化和灯光参数行为保持；Sensor Group 订阅取消，Presence publication 使用本机 LC 目的地址。
 - HDB/普通 Site 切换、离线读取及设备添加回调；现有 SDK 初始化要求保持，临时恢复豁免不降低其他配置要求。
 - HDB 全部 Auto/色温保留原控制路径，设备验收确认 Broadcast 恢复后可响应；诊断正确区分 Zone、Broadcast 和 Sensor 预期。
 - 优先扩展现有 HDB configuration、persistence、import recovery、device preparation、subelement、diagnostics 和相关控制回归；复用现有 SDK 就绪检查夹具验证临时恢复路径。
 - 完成后用 SunSmartLocal.xcworkspace 构建 SunSmart Debug generic iOS，无签名、无 Simulator。共享逻辑无品牌分支且无资源/依赖配置变化时以代表 target 验证；如实施引入跨品牌配置/API 风险再扩大构建范围，不默认增加 Release。
-- 真实验收由用户操作：新建 HDB 项目，添加多 Element 设备，核对导出的三个数组与 broadcastId；Set/清空/Retry 后读回订阅并检查 FEFD 恢复；确认后续同步、诊断及全部控制。Web/网关按相同 JSON 和四阶段联调。离线测试与构建不能替代设备/外部联调。
+- 真实验收由用户操作：新建 HDB 项目，添加多 Element 设备，核对导出的三个数组与 broadcastId；Set/清空/Retry 后读回订阅并检查 FEFD 恢复；确认后续同步、诊断及全部控制。Web/网关按相同 JSON 和三阶段联调。离线测试与构建不能替代设备/外部联调。
 
 ## 7. 实施交付与验证结果
 
@@ -319,7 +322,7 @@ sensorGroupId 非空：遍历全部 sensorGroupModels，逐项发送 `ConfigMode
 
 - 新设备、Composition 更新、设备恢复及 Zone Set/Retry 保存三个 Model 清单（JSON 使用十六进制字符串）；空数组显式输出，缺字段或错误 broadcastId 拒绝导入。
 - 导入及导出核对 Composition 与清单一致性；导出不修复数据。保存失败不开始发送；执行计划包含三个清单及 broadcastId，过期回执不能确认已变化的配置。
-- Zone Reset/Add 使用新的 Primary 限制；Broadcast 与 Sensor 使用各自清单，按四阶段屏障执行。Preparation 保留全部 Vendor 初始化，普通 Broadcast 初始化与控制入口保持。
+- Zone Reset/Add 使用新的 Primary 限制；Broadcast 使用其清单，Sensor 清单仅保留元数据；按三阶段屏障执行。Preparation 保留全部 Vendor 初始化，普通 Broadcast 初始化与控制入口保持。
 - 诊断考虑共享订阅表，区分本轮需恢复的 FEFD 与普通初始化已有的 FEFD。仓库示例已更新：`docs/261021_1806_HDB_unicast_example.json`；未改桌面原文件。
 
 本轮验证：
@@ -333,7 +336,7 @@ sensorGroupId 非空：遍历全部 sensorGroupModels，逐项发送 `ConfigMode
 最短人工验收：
 
 1. 新建 HDB 项目，添加多 Element 设备；导出后核对三数组、Primary 限制和 broadcastId="FEFD"，再用新格式导入并确认数据保留。
-2. 设置多个 Zone，再清空 Zone；读回订阅，确认 Zone 变化、Sensor Group 与 FEFD 恢复，并验证全部 Auto/色温控制。
-3. 配置中断后重试，确认完整执行四阶段、完成状态正确且诊断无错误预期。Web/网关团队用同一 JSON 核对目标与命令次序。
+2. 设置多个 Zone，再清空 Zone；读回订阅，确认 Zone 变化、FEFD 恢复且不补回 Sensor Group，并验证全部 Auto/色温控制。
+3. 配置中断后重试，确认完整执行三阶段、完成状态正确且诊断无错误预期。Web/网关团队用同一 JSON 核对目标与命令次序。
 
 交付基线：分支 feat/HDB-261020，HEAD=9964b7cd；本轮改动未提交。保留既有 AGENTS.md 与 `docs/261022_0945_HDB_site_configuration_commands.md` 改动。构建使用 `.local-sdk/nordic-sig-mesh-sdk` 映射到 one-dev（HEAD=8c5af55，含原有未提交差异）；本轮未修改该 SDK，未更改正式远端依赖。真实设备由用户验收，Web/网关/服务端配套由对应团队实施。

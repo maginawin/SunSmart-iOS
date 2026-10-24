@@ -24,8 +24,9 @@ import Foundation
         try pendingDevicesRemainVisibleInsideReadContext()
         try sensorPropertySelection()
         try resetAndPendingZoneIntents()
-        try zoneReadinessRequiresSensorSubscriptions()
+        try zoneReadinessDoesNotRequireSensorSubscriptions()
         try publicationTimingRepair()
+        try noLCMetadata()
         let (space, network, node) = fixture()
         let context = try HDBDeviceSyncContext.resolve(space: space, node: node)!
         precondition(HDBDeviceSyncService.needsSync(node: node))
@@ -38,7 +39,7 @@ import Foundation
         precondition(node.group == nil && node.configurationGroup == nil)
         node.elements[0].models[0].subscriptions = []
         let plan = try context.plan(in: allocated)
-        precondition(plan.publicationTargets.count == 1 && plan.subscriptionTargets.count == 2)
+        precondition(plan.publicationTargets.count == 1 && plan.publicationAddress != nil)
         try check(HDBDeviceSyncService.makeSteps(context: context).count == HDBDeviceSyncService.pendingLinks(context: context, plan: plan).count + 1 + context.zoneOperations(in: allocated).count)
         try seedPrepared(space: space, node: node)
         precondition(!HDBDeviceSyncService.needsSync(node: node))
@@ -122,7 +123,7 @@ import Foundation
         precondition(reclaimedSpace.hdb!.devices[0].sensorGroupId == reclaimedAddress)
         try check(HDBConfigurationStore.pendingSensorGroupAddresses(space: reclaimedSpace).isEmpty)
         try HDBConfigurationStore.finishSensorGroupCleanup(space: reclaimedSpace)
-        precondition(reclaimedNetwork.groups.count == 1 && newSensor.publish?.publicationAddress.address == reclaimedAddress)
+        precondition(reclaimedNetwork.groups.count == 1 && newSensor.publish?.publicationAddress.address == reclaimedSpace.hdb!.devices[0].sensorPublication.first?.elementAddress)
         precondition(SpaceConfigurationSafety.journal.entries[0].sensorGroupId == nil)
         // Address exhaustion remains recoverable and does not invent a destination.
         let (empty, _, noAddress) = fixture(); MeshAPI.allocation = []
@@ -144,14 +145,14 @@ import Foundation
         try HDBDeviceSyncService.prepareIntent(context: dualContext)
         let dualPlan = try dualContext.plan(in: HDBConfigurationStore.load(space: dualSpace))
         precondition(dualPlan.publicationTargets.count == 1 && dualPlan.publicationTargets[0].elementAddress == 1 && dualPlan.sensorGroupId != nil)
-        precondition(dualPlan.subscriptionTargets.count == 3)
+        precondition(dualPlan.publicationAddress != nil)
         let (luxSpace, _, luxNode) = fixture()
         luxNode.presenceDetectedSensorModel = nil
         luxNode.sensorModelTypes[luxNode.ambientLightSensorModel!] = .init(id: 0x004E)
         let luxContext = try HDBDeviceSyncContext.resolve(space: luxSpace, node: luxNode)!
         try HDBDeviceSyncService.prepareIntent(context: luxContext)
         let luxPlan = try luxContext.plan(in: HDBConfigurationStore.load(space: luxSpace))
-        precondition(luxPlan.publicationTargets.isEmpty && luxPlan.sensorGroupId != nil && luxPlan.subscriptionTargets.count == 2)
+        precondition(luxPlan.publicationTargets.isEmpty && luxPlan.sensorGroupId != nil && luxPlan.publicationAddress != nil)
         print("PASS: actual HDB context/planner/store: Site isolation, empty Zone, sensor dedup, identity invalidation, allocation retry/exhaustion, restore, receiver cleanup and address reuse")
     }
 
@@ -166,10 +167,8 @@ import Foundation
             let config = try HDBConfigurationStore.load(space: space)
             let plan = try context.plan(in: config)
             precondition(plan.sensorGroupId != nil && network.groups.count == 1)
-            precondition(plan.publicationTargets.isEmpty && plan.subscriptionTargets.count == 2)
-            precondition(HDBDeviceSyncService.pendingLinks(context: context, plan: plan).allSatisfy {
-                if case .subscription = $0 { return true }; return false
-            })
+            precondition(plan.publicationTargets.isEmpty && plan.publicationAddress != nil)
+            precondition(HDBDeviceSyncService.pendingLinks(context: context, plan: plan).isEmpty)
             try seedPrepared(space: space, node: node)
             try check(HDBDeviceSyncService.isPrepared(context: context, config: HDBConfigurationStore.load(space: space)))
             precondition(!HDBDeviceSyncService.needsSync(node: node), "unknown properties must not add an HDB pending publication")
@@ -246,7 +245,7 @@ import Foundation
         }
     }
 
-    static func zoneReadinessRequiresSensorSubscriptions() throws {
+    static func zoneReadinessDoesNotRequireSensorSubscriptions() throws {
         let (space, _, node) = fixture()
         try seedPrepared(space: space, node: node)
         let context = try HDBDeviceSyncContext.resolve(node: node)!
@@ -254,13 +253,36 @@ import Foundation
         let sensor = node.presenceDetectedSensorModel!
         let subscriptions = sensor.subscriptions
         sensor.subscriptions = []
-        try check(!HDBDeviceSyncService.isPrepared(context: context, config: config))
-        try check(!HDBDeviceSyncService.canSetZones(context: context, config: config))
+        try check(HDBDeviceSyncService.isPrepared(context: context, config: config))
+        try check(HDBDeviceSyncService.canSetZones(context: context, config: config))
         sensor.subscriptions = subscriptions
         let lc = node.elements.flatMap(\.models).first { $0.modelIdentifier == 0x130F }!
         lc.subscriptions = []
-        try check(!HDBDeviceSyncService.isPrepared(context: context, config: config))
+        try check(HDBDeviceSyncService.isPrepared(context: context, config: config))
         try check(HDBDeviceSyncService.canSetZones(context: context, config: config))
+    }
+
+    static func noLCMetadata() throws {
+        let (space, network, node) = fixture()
+        node.elements.forEach { $0.models.removeAll { [0x130F, 0x1310].contains($0.modelIdentifier) } }
+        let context = try HDBDeviceSyncContext.resolve(node: node)!
+        try HDBDeviceSyncService.prepareIntent(context: context)
+        let config = try HDBConfigurationStore.load(space: space)
+        let device = config.devices[0]
+        precondition(device.sensorGroupId != nil && network.groups.count == 1)
+        precondition(device.sensorGroupModels.isEmpty && device.sensorPublication == [.init(elementAddress: nil)])
+        try HDBConfigurationStore.validateModels(config, nodes: [node])
+        let roundtrip = try JSONDecoder().decode(HDBConfiguration.self, from: JSONEncoder().encode(config))
+        precondition(roundtrip == config)
+        let plan = try context.plan(in: config)
+        precondition(plan.publicationAddress == nil && plan.publicationTargets.isEmpty)
+        precondition(HDBDeviceSyncService.pendingLinks(context: context, plan: plan).isEmpty)
+        let signature = node.preConfiguration.hdbInitializationSignature
+        try HDBDeviceSyncService.prepareIntent(context: context)
+        precondition(network.groups.count == 1 && node.preConfiguration.hdbInitializationSignature == signature)
+        // A legal null publication does not invent support for unrelated LC initialization.
+        do { _ = try HDBDeviceSyncService.makeSteps(context: context); preconditionFailure("Unsupported full lighting initialization accepted") }
+        catch HDBConfigurationError.unsupportedModels { }
     }
 
     static func publicationTimingRepair() throws {

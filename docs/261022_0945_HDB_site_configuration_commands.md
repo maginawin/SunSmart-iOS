@@ -10,17 +10,17 @@ Config 命令发送到设备 Primary Address，参数指定目标 Element Addres
 
 按以下顺序执行。
 
-### 1.1 Sensor Group
+### 1.1 Sensor Group 保留与本机 publication
 
-- 设备任一 Element 存在 Sensor Server `0x1100`：为设备分配唯一 `sensorGroupId`，已有则复用。地址范围 `0xC001...0xFEFC`，不得与其他 Sensor Group、Lighting Zone 重复。
-  - 订阅 `sensorGroupId`：发送 `ConfigModelSubscriptionAdd`。
-    - 所有 Elements 下的 Light LC Server `0x130F`。
-    - 所有 Elements 下的 Sensor Server `0x1100`。
-  - 发布到 `sensorGroupId`：发送 `ConfigModelPublicationSet`。
-    - 目标：Presence Detected（Property ID=`0x004D`）所在 Element 的 Sensor Server `0x1100`。
-    - 条件：全部 Sensor Server 类型已知且非 0，并且仅有一个 Presence Sensor；类型未齐或无 Presence 时跳过 publication，类型已齐但存在多个 Presence 时报错。
-    - 参数：Address=`sensorGroupId`，AppKey=当前 Space AppKey，Credentials Flag=`0`，TTL=`0xFF`，Period=`0`，Retransmit Count=`2`、Interval=`100 ms`。
-- 没有 Sensor Server：跳过本节。
+- 设备任一 Element 存在 Sensor Server `0x1100`：为设备分配唯一 `sensorGroupId`，已有则复用。地址范围 `0xC001...0xFEFC`，不得与其他 Sensor Group、Lighting Zone 重复。保留 `sensorGroupModels`，按 Composition 生成，供其他功能使用；本任务不下发 Sensor Group 订阅。
+- 读取 `sensorPublication` 的单条配置：`modelId=1100`；`elementAddress` 是本机 LC Server `0x130F` 所在 Element 的目的地址，**不是发布方 Sensor 的 Element 地址**。无组地址或无 LC 时该字段为 null，跳过 publication；多个 LC 无法唯一确定时报错。
+- 目的地址非空时，定位 Presence Detected（Property ID=`0x004D`）所在 Element 的 Sensor Server `0x1100`。要求全部 Sensor Server 类型已知且非 0，并且仅有一个 Presence Sensor；类型未齐或无 Presence 时跳过 publication，多个 Presence 时报错。
+- 核对发布方 Sensor 和接收方 LC 都绑定当前 Space AppKey，然后向节点 Primary Address 发送 `ConfigModelPublicationSet`，等待匹配的成功 ACK：
+  - 参数 ElementAddress=Presence Sensor 所在 Element；ModelIdentifier=`0x1100`。
+  - PublishAddress=`sensorPublication.elementAddress`；AppKey=当前 Space AppKey，Credentials Flag=`0`，TTL=`0xFF`，Period=`0`，Retransmit Count=`2`、Interval=`100 ms`。
+  - 例如 Primary/Presence=`0008`、LC=`000A`：配置命令发往 `0008`，参数 ElementAddress=`0008`、PublishAddress=`000A`；运行时 Sensor Status 从 `0008` 发布到 `000A`。
+
+publication 的 null 是合法跳过，不代表后续依赖 LC 的固定参数、灯光参数和 Auto 已具备执行条件；执行完整灯控初始化前仍须核对其所需模型。
 
 ### 1.2 固定参数
 
@@ -54,9 +54,9 @@ Config 命令发送到设备 Primary Address，参数指定目标 Element Addres
 
 ## 2. 设置 Lighting Zones
 
-执行顺序：**Delete All → Broadcast → Sensor Group → Add Zones**。全部 Delete All 成功后才能开始 Add；重试从 Delete All 重新执行。
+执行顺序：**Delete All → Broadcast → Add Zones**。全部 Delete All 成功后才能开始 Add；重试从 Delete All 重新执行。
 
-开始 Delete All 前，核对设备身份、权限、AppKey/Model 绑定、任务占用，以及 `zoneModels`、`broadcastModels`、`sensorGroupModels` 与 Composition 的一致性。目标 Zone 必须存在且不超过 8 个；`broadcastId` 必须为 65277；`sensorGroupId` 非空时必须是有效、无冲突的 Sensor Group 地址且接收清单非空。任一项失败，不发送 Delete All。
+开始 Delete All 前，核对设备身份、权限、AppKey/Model 绑定、任务占用，以及 `zoneModels`、`broadcastModels`、`sensorGroupModels` 与 Composition 的一致性。目标 Zone 必须存在且不超过 8 个；`broadcastId` 必须为 65277；`sensorGroupId` 非空时必须是有效、无冲突的 Sensor Group 地址；该地址及模型清单非空不要求本任务订阅。任一项失败，不发送 Delete All。
 
 Zone Models 即 `zoneModels`，设备须具备以下五类；在所列范围内收录全部实例：
 
@@ -96,15 +96,9 @@ Zone Models 即 `zoneModels`，设备须具备以下五类；在所列范围内�
 
 **HDB 实现区别**：App 在 Delete All 成功后，额外清除整条扩展链的本地订阅缓存，包括其他 Elements；源码注释将此归因于 HDB 固件行为。这不是上述标准共享规则，本次未以设备读回验证。App 已将本轮恢复目标写入 `broadcastModels`，网关直接执行该清单；判断固件是否确实跨 Element 清除，须以设备读回为准。
 
-### 2.3 订阅 `sensorGroupId`
+`sensorGroupId` 与 `sensorGroupModels` 仍需保存和传递，但本次 Zone Set 不订阅该组。不得因为清单非空而补回 Sensor Group。添加设备时的地址分配和本机 Presence publication 按 §1.1 执行。
 
-`sensorGroupId=null`：跳过本节。即使设备存在 Sensor Server，或 `sensorGroupModels` 非空，也不在 Zone Set 中分配地址或拒绝该合法空值。
-
-地址非空：遍历 `sensorGroupModels`，向每项指定的 Element/Model 发送 `ConfigModelSubscriptionAdd(sensorGroupId)`，全部成功后继续。该清单包含所有 LC 所在 Elements（包括 Primary）的 `0x130F`，以及同 Element 实际存在的 `0x1000`、`0x1310`，不含 Sensor Server `0x1100`。
-
-添加设备时的地址分配、Sensor Server 订阅和 Presence publication 仍按 §1 Preparation 执行，其就绪检查与本节空地址语义分别处理。
-
-### 2.4 Add Zones
+### 2.3 Add Zones
 
 - 按所选 `zoneId` 查询 `hdb.lightingZones[].groupId`，将 4 位十六进制字符串解析为实际组地址。
 - 对每个解析后的组地址，遍历 `zoneModels`，向每项指定的 Element/Model 发送 `ConfigModelSubscriptionAdd(groupAddress)`。

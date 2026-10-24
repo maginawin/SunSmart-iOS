@@ -34,11 +34,7 @@ func seedPrepared(space: SpaceData, node: Node, zonesSynced: Bool = true) throws
     try HDBDeviceSyncService.prepareIntent(context: context)
     let plan = try context.plan(in: HDBConfigurationStore.load(space: space))
     node.preConfiguration.hdbInitializationSignature = try HDBDeviceSyncService.signature(context: context, plan: plan)
-    if let address = plan.sensorGroupId {
-        let group = context.network.group(withAddress: address)!
-        for target in plan.subscriptionTargets {
-            try HDBLightingMessages.model(target, node: node, key: context.key!).subscriptions.append(group)
-        }
+    if let address = plan.publicationAddress {
         for target in plan.publicationTargets {
             try HDBLightingMessages.model(target, node: node, key: context.key!).publish = TestPublish(
                 publicationAddress: MeshAddress(address), index: plan.appKeyIndex,

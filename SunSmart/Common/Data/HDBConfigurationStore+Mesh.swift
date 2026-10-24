@@ -51,6 +51,7 @@ extension HDBConfigurationStore {
         for device in configuration.devices {
             guard let node = nodes.first(where: { $0.uuid == device.nodeUuid && $0.primaryUnicastAddress == device.nodeAddress }),
                   device.hasSameModels(as: try deviceConfiguration(node: node)) else { throw HDBConfigurationError.invalidData }
+            try device.validateSensorPublication(models: modelTargets(node: node))
         }
     }
 
@@ -97,6 +98,7 @@ extension HDBConfigurationStore {
         try update(space: space) { current in
             guard let index = current.devices.firstIndex(where: { $0.nodeUuid == nodeUuid }) else { throw HDBConfigurationError.unavailable }
             current.devices[index].sensorGroupId = group.address.address
+            try current.devices[index].refreshSensorPublication()
         }
         return group.address.address
     }

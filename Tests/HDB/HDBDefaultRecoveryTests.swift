@@ -90,6 +90,7 @@ import Foundation
         let device = config.devices[0]
         precondition(config.schemaVersion == 2 && config.lightingZones.count == 63 && config.devices.count == 1)
         precondition(device.nodeAddress == 11 && device.mac == "AA:BB:CC:DD:EE:FF" && device.sensorGroupId == 0xC07F)
+        precondition(device.sensorPublication == [.init(elementAddress: 13)])
         precondition(device.zoneModels.count == 5 && device.sensorGroupModels.count == 3 && device.broadcastModels.count == 3)
         precondition(device.broadcastModels.allSatisfy { $0.elementAddress == 13 }, "standalone CTL must not gain a broadcast target")
         precondition(device.lightingZones.isEmpty && device.lightingZonesStatus == .pending)
@@ -114,6 +115,7 @@ import Foundation
         damagedV2["groups"] = (damagedV2["groups"] as! [[String: Any]]).filter { $0["isVirtual"] as? Bool != true }
         let noSensor = try HDBLightingZonePolicy.decode(payload: repair(damagedV2))!.devices[0]
         precondition(noSensor.sensorGroupId == nil && noSensor.lightingZonesStatus == .pending)
+        precondition(noSensor.sensorPublication == [.init(elementAddress: nil)])
         print("PASS: v2 damaged MAC/models reuse the legacy repair path; removed cloud Sensor Group is not resurrected")
 
         var extensionData = payload["spaceData"] as! [String: Any]
@@ -131,6 +133,18 @@ import Foundation
         let moved = try HDBLightingZonePolicy.decode(payload: repair(payload))!.devices[0]
         precondition(moved.nodeAddress == 32 && moved.mac == "11:22:33:44:55:66")
         precondition(moved.sensorGroupModels.allSatisfy { $0.elementAddress == 34 })
+        precondition(moved.sensorPublication == [.init(elementAddress: 34)] && moved.sensorGroupId == 0xC07F)
+        var noLCSource = payload
+        var noLCNodes = nodes
+        var elements = noLCNodes[0]["elements"] as! [[String: Any]]
+        for index in elements.indices {
+            elements[index]["models"] = (elements[index]["models"] as! [[String: Any]]).filter {
+                !["130F", "1310"].contains($0["modelId"] as? String ?? "")
+            }
+        }
+        noLCNodes[0]["elements"] = elements; noLCSource["nodes"] = noLCNodes
+        let noLC = try HDBLightingZonePolicy.decode(payload: repair(noLCSource))!.devices[0]
+        precondition(noLC.sensorPublication == [.init(elementAddress: nil)] && noLC.sensorGroupId == 0xC07F)
         nodes[0].removeValue(forKey: "macAddress"); payload["nodes"] = nodes; rejected(payload)
         payload["nodes"] = [[String: Any]]()
         let empty = try HDBLightingZonePolicy.decode(payload: repair(payload))!

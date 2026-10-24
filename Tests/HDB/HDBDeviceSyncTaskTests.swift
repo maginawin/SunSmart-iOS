@@ -1,8 +1,8 @@
 import Foundation
 
 @main enum HDBDeviceSyncTaskTests {
-    static func check(_ condition: @autoclosure () throws -> Bool, _ message: String = "condition failed") rethrows {
-        let value = try condition(); precondition(value, message)
+    static func check(_ condition: @autoclosure () throws -> Bool, _ message: String = "condition failed", file: StaticString = #file, line: UInt = #line) rethrows {
+        let value = try condition(); precondition(value, message, file: file, line: line)
     }
     static func fixture() throws -> (SpaceData, Node, HDBDeviceSyncContext) {
         SiteData.hdbEnabled = true; SpaceData.failSave = false
@@ -231,53 +231,23 @@ import Foundation
             try HDBDeviceSyncService.prepareIntent(context: context)
             let plan = try context.plan(in: HDBConfigurationStore.load(space: space))
             check(plan.publicationTargets.count == 1 && plan.publicationTargets[0].elementAddress == presenceAddress)
-            let sensorTargets = plan.subscriptionTargets.filter { $0.modelIdentifier == 0x1100 }
-            check(sensorTargets.map(\.elementAddress) == [1, 2, 3])
-            for (index, sensorTarget) in sensorTargets.enumerated() {
-                let subscription = HDBDeviceSyncTask(context: context, operation: .preparation(plan, .subscription(sensorTarget)))
-                let subscriptionHandles = subscription.makeHandles()
-                check(subscriptionHandles.count == 1 && subscriptionHandles[0].address == node.primaryUnicastAddress)
-                check(subscriptionHandles[0].message is ConfigModelSubscriptionAdd)
-                let encoded = ConfigModelSubscriptionStatus(subscriptionHandles[0].message, success: true)
-                check(encoded.elementAddress == sensorTarget.elementAddress && encoded.address == plan.sensorGroupId
-                      && encoded.modelIdentifier == 0x1100 && encoded.companyIdentifier == nil)
-                if index == 1 {
-                    // Partial preparation must retain the failed element for ordinary Sync.
-                    check(!subscription.persist(result: subscriptionHandles))
-                } else if index == 2 {
-                    // A transport success or another element's ACK cannot satisfy this target.
-                    subscriptionHandles[0].isSuccessful = true
-                    var wrongElement = subscriptionHandles[0].message.parameters
-                    wrongElement[0] = 1
-                    subscription.receive(handle: subscriptionHandles[0], response: ConfigModelSubscriptionStatus(
-                        ConfigModelSubscriptionAdd(parameters: wrongElement)!, success: true))
-                    check(!subscription.persist(result: subscriptionHandles))
-                } else {
-                    acknowledge(subscription, subscriptionHandles)
-                    check(subscription.persist(result: subscriptionHandles))
-                }
-            }
-            let pendingSensors = HDBDeviceSyncService.pendingLinks(context: context, plan: plan).compactMap { step -> HDBModelTarget? in
-                if case .subscription(let target) = step, target.modelIdentifier == 0x1100 { return target }
-                return nil
-            }
-            check(pendingSensors.map(\.elementAddress) == [2, 3])
-            for sensorTarget in pendingSensors {
-                let retry = HDBDeviceSyncTask(context: context, operation: .preparation(plan, .subscription(sensorTarget)))
-                let retryHandles = retry.makeHandles()
-                acknowledge(retry, retryHandles)
-                check(retry.persist(result: retryHandles))
-            }
             check(node.elements.allSatisfy { element in
-                element.models.first { $0.modelIdentifier == 0x1100 }!.subscriptions.map { $0.address.address } == [plan.sensorGroupId!]
+                element.models.first { $0.modelIdentifier == 0x1100 }!.subscriptions.isEmpty
             })
+            check(HDBDeviceSyncService.pendingLinks(context: context, plan: plan) == [.publication(plan.publicationTargets[0])])
             let target = plan.publicationTargets[0]
+            let receiver = node.elements.flatMap(\.models).first { $0.modelIdentifier == 0x130F }!
+            let receiverKeys = receiver.boundApplicationKeys
+            receiver.boundApplicationKeys = [.init(index: 7)]
+            let unbound = HDBDeviceSyncTask(context: context, operation: .preparation(plan, .publication(target)))
+            check(unbound.makeHandles().isEmpty, "Local delivery still requires the LC to bind the Space AppKey")
+            receiver.boundApplicationKeys = receiverKeys
             let task = HDBDeviceSyncTask(context: context, operation: .preparation(plan, .publication(target)))
             let handles = task.makeHandles()
             check(handles.count == 1 && handles[0].address == node.primaryUnicastAddress)
             let request = handles[0].message as! ConfigModelPublicationSet
             check(request.model.parentElement?.unicastAddress == presenceAddress)
-            check(request.publication.publicationAddress.address == plan.sensorGroupId)
+            check(request.publication.publicationAddress.address == 1 && plan.publicationAddress == 1)
             check(request.publication.period == .disabled && request.publication.retransmit.count == 2
                   && request.publication.retransmit.interval == 100 && request.publication.ttl == 0xFF)
             // An ACK for another Sensor element must not complete this task.
@@ -285,6 +255,17 @@ import Foundation
             handles[0].isSuccessful = true
             task.receive(handle: handles[0], response: ConfigModelPublicationStatus(ConfigModelPublicationSet(request.publication, to: other)!, success: true))
             check(!task.persist(result: handles) && request.model.publish == nil)
+
+            let wrongDestination = HDBDeviceSyncTask(context: context, operation: .preparation(plan, .publication(target)))
+            let wrongDestinationHandles = wrongDestination.makeHandles()
+            let groupPublication = Publish(to: MeshAddress(plan.sensorGroupId!), using: context.key!,
+                usingFriendshipMaterial: false, ttl: 0xFF, period: .disabled,
+                retransmit: HDBDeviceSyncService.sensorPublicationRetransmit)
+            wrongDestinationHandles[0].isSuccessful = true
+            wrongDestination.receive(handle: wrongDestinationHandles[0], response: ConfigModelPublicationStatus(
+                ConfigModelPublicationSet(groupPublication, to: request.model)!, success: true))
+            check(!wrongDestination.persist(result: wrongDestinationHandles) && request.model.publish == nil,
+                  "An ACK for the former group destination must not confirm local unicast")
 
             let wrongTiming = HDBDeviceSyncTask(context: context, operation: .preparation(plan, .publication(target)))
             let wrongTimingHandles = wrongTiming.makeHandles()
@@ -301,7 +282,7 @@ import Foundation
             retryHandles[0].isSuccessful = true
             retry.receive(handle: retryHandles[0], response: ConfigModelPublicationStatus(retryHandles[0].message as! ConfigModelPublicationSet, success: true))
             check(retry.persist(result: retryHandles))
-            check(request.model.publish?.publicationAddress.address == plan.sensorGroupId)
+            check(request.model.publish?.publicationAddress.address == plan.publicationAddress)
             check(request.model.publish?.retransmit.count == 2 && request.model.publish?.retransmit.interval == 100)
             check(!HDBDeviceSyncService.pendingLinks(context: context, plan: plan).contains(.publication(target)))
             check(node.sensorModelTypes.keys.filter { $0 !== request.model }.allSatisfy { $0.publish == nil })

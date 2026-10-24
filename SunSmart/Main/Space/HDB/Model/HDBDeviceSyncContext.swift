@@ -85,10 +85,12 @@ final class HDBDeviceSyncContext {
 
     func plan(in config: HDBConfiguration) throws -> HDBDevicePreparationPlan {
         guard let key else { throw HDBConfigurationError.applicationKeyUnavailable }
+        guard let device = config.devices.first(where: { $0.nodeUuid == node.uuid }) else { throw HDBConfigurationError.unavailable }
         return try HDBDevicePreparationPolicy.plan(nodeUuid: node.uuid, nodeAddress: node.primaryUnicastAddress,
             appKeyIndex: key.index, targets: targets,
-            sensorGroupId: config.devices.first { $0.nodeUuid == node.uuid }?.sensorGroupId,
-            publicationTargets: try publicationTargets)
+            sensorGroupId: device.sensorGroupId,
+            publicationTargets: device.sensorPublication.first?.elementAddress == nil ? [] : try publicationTargets,
+            sensorPublication: device.sensorPublication)
     }
 
     func zoneSensorTargets(in config: HDBConfiguration) throws -> [HDBModelTarget] {

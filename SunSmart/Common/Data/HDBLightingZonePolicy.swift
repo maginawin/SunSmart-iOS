@@ -37,6 +37,7 @@ enum HDBLightingZonePolicy {
         var updated = configuration.devices.first { $0.nodeUuid == device.nodeUuid } ?? device
         updated.nodeAddress = device.nodeAddress; updated.mac = device.mac
         updated.copyModels(from: device)
+        try updated.refreshSensorPublication()
         updated.lightingZones = requested.sorted().map { HDBZoneMembership(zoneId: $0) }
         updated.lightingZonesStatus = .pending
         next.devices.removeAll { $0.nodeUuid == device.nodeUuid }
@@ -69,6 +70,7 @@ enum HDBLightingZonePolicy {
     }
 
     static func validateModels(_ device: HDBDeviceConfiguration) throws {
+        try device.validateSensorPublication(models: device.zoneModels.map(\.target))
         let all = device.zoneModels + device.sensorGroupModels + device.broadcastModels
         guard device.broadcastId == 0xFEFD,
               all.allSatisfy({ $0.elementAddress >= device.nodeAddress && (1...0x7FFF).contains(Int($0.elementAddress)) }),
@@ -101,7 +103,6 @@ enum HDBLightingZonePolicy {
         let targets = try requiredZoneTargets(from: targets, primaryAddress: device.nodeAddress)
         guard Set(sensorTargets).isSubset(of: available), Set(broadcastTargets).isSubset(of: available),
               Set(sensorTargets) == Set(sensorGroupTargets(from: Array(available))),
-              device.sensorGroupId == nil || !sensorTargets.isEmpty,
               Set(device.zoneModels.map(\.target)) == Set(targets),
               Set(device.sensorGroupModels.map(\.target)) == Set(sensorTargets),
               Set(device.broadcastModels.map(\.target)) == Set(broadcastTargets) else { throw HDBConfigurationError.invalidData }
@@ -123,9 +124,8 @@ enum HDBLightingZonePolicy {
         if !broadcasts.isEmpty {
             stages.append((.broadcast, broadcasts.map { .init(target: $0, command: .add, address: device.broadcastId) }))
         }
-        if let address = device.sensorGroupId {
-            stages.append((.sensor, sensors.map { .init(target: $0, command: .add, address: address) }))
-        }
+        // Sensor Group metadata remains reserved for other features. This local
+        // Sensor -> LC path does not restore any Sensor Group subscriptions.
         var additions: [HDBZoneSubscription] = []
         for zone in zones {
             additions += targets.map {
@@ -206,8 +206,9 @@ extension HDBLightingZonePolicy {
                 throw HDBConfigurationError.invalidMAC
             }
             let references = device.zoneModels + device.sensorGroupModels + device.broadcastModels
-            if !references.isEmpty {
+            if !references.isEmpty || device.sensorGroupId != nil {
                 let models = try compositionTargets(node: node, primaryAddress: device.nodeAddress)
+                try device.validateSensorPublication(models: models)
                 guard Set(references.map(\.target)).isSubset(of: Set(models)),
                       Set(device.zoneModels.map(\.target)) == Set(zoneTargets(from: models, primaryAddress: device.nodeAddress)),
                       Set(device.sensorGroupModels.map(\.target)) == Set(sensorGroupTargets(from: models)) else {
@@ -379,6 +380,7 @@ extension HDBLightingZonePolicy {
             device.sensorGroupId = sensor.flatMap { address in
                 sensorGroupAddresses.contains(address) ? address : nil
             }
+            try device.refreshSensorPublication()
             if modelsChanged || device.sensorGroupId != sensor { device.lightingZonesStatus = .pending }
         } else {
             // Value-only callers cannot reconstruct legacy Composition metadata.

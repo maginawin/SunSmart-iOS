@@ -10,7 +10,6 @@ enum HDBDeviceSyncService {
     /// Only the post-provisioning caller can confirm that an empty Zone target is already satisfied.
     static func prepareIntent(context: HDBDeviceSyncContext, subscriptionsWereReset: Bool = false) throws {
         guard context.isCurrent() else { throw HDBConfigurationError.unavailable }
-        _ = try HDBLightingZonePolicy.requiredTargets(from: context.targets)
         let node = context.node, space = context.space
         var metadata = try HDBConfigurationStore.deviceConfiguration(node: node)
         if subscriptionsWereReset { metadata.lightingZonesStatus = .synced }
@@ -83,10 +82,8 @@ enum HDBDeviceSyncService {
                 $0.modelIdentifier == target.modelIdentifier && $0.companyIdentifier == target.companyIdentifier
             }
         }
-        guard let address = plan.sensorGroupId else { return [] }
-        return plan.subscriptionTargets.filter { target in
-            model(target)?.subscriptions.contains { $0.address.address == address } != true
-        }.map(HDBPreparationStepID.subscription) + plan.publicationTargets.filter { target in
+        guard let address = plan.publicationAddress else { return [] }
+        return plan.publicationTargets.filter { target in
             guard let publish = model(target)?.publish else { return true }
             return publish.publicationAddress.address != address || publish.index != plan.appKeyIndex
                 || publish.ttl != SensorPublicationPolicy.ttl || publish.period != .disabled
@@ -103,16 +100,12 @@ enum HDBDeviceSyncService {
         return try hasInitializationReceipt(context: context, plan: plan) && pendingLinks(context: context, plan: plan).isEmpty
     }
 
-    /// Zone rebuilding repairs its LC receivers, but never owns Sensor Server subscriptions.
+    /// Zone rebuilding does not configure the local Sensor publication.
     static func canSetZones(context: HDBDeviceSyncContext, config: HDBConfiguration) throws -> Bool {
         let plan = try context.plan(in: config)
         guard config.devices.contains(where: { $0.nodeUuid == context.node.uuid && $0.nodeAddress == context.node.primaryUnicastAddress }),
               try hasInitializationReceipt(context: context, plan: plan) else { return false }
-        let repairableTargets = Set(try context.zoneSensorTargets(in: config))
-        return pendingLinks(context: context, plan: plan).allSatisfy { step in
-            if case .subscription(let target) = step { return repairableTargets.contains(target) }
-            return false
-        }
+        return pendingLinks(context: context, plan: plan).isEmpty
     }
 
     static func needsSync(node: Node) -> Bool {
@@ -168,6 +161,9 @@ enum HDBDeviceSyncService {
         let config = try HDBConfigurationStore.load(space: context.space)
         let cleanup = try cleanupOperations(context: context, config: config)
         if context.node.deviceType != .light { return steps(cleanup) }
+        // Full initialization and Zone execution still require the lighting models.
+        // This check must not prevent saving valid no-LC publication metadata.
+        _ = try HDBLightingZonePolicy.requiredTargets(from: context.targets)
         guard let device = config.devices.first(where: { $0.nodeUuid == context.node.uuid }) else { throw HDBConfigurationError.unavailable }
         let plan = try context.plan(in: config)
         guard !context.hasSensor || device.sensorGroupId != nil else { throw HDBConfigurationError.addressUnavailable }
@@ -235,7 +231,6 @@ final class HDBDeviceSyncTask {
     }
     var title: String {
         switch operation {
-        case .preparation(_, .subscription): return "hdb_sensor_subscription".localizedString
         case .preparation(_, .publication): return "hdb_sensor_publication".localizedString
         case .initialization: return "hdb_preparation".localizedString
         case .cleanup: return "hdb_sensor_cleanup".localizedString
@@ -305,13 +300,13 @@ final class HDBDeviceSyncTask {
                 }
             case .preparation(let plan, let step):
                 switch step {
-                case .subscription(let target):
-                    guard let address = plan.sensorGroupId else { throw HDBConfigurationError.addressUnavailable }
-                    _ = try bound(target)
-                    handles = [try Self.subscription(target, address: address, node: context.node.primaryUnicastAddress, add: true)]
                 case .publication(let target):
-                    guard let address = plan.sensorGroupId,
-                          let message = ConfigModelPublicationSet(Publish(to: MeshAddress(address), using: key,
+                    guard let address = plan.publicationAddress, plan.publicationTargets.contains(target) else {
+                        throw HDBConfigurationError.invalidData
+                    }
+                    // Local unicast removes subscriptions, not receiver AppKey requirements.
+                    _ = try bound(.init(elementAddress: address, modelIdentifier: 0x130F, companyIdentifier: nil))
+                    guard let message = ConfigModelPublicationSet(Publish(to: MeshAddress(address), using: key,
                             usingFriendshipMaterial: false, ttl: SensorPublicationPolicy.ttl, period: .disabled,
                             retransmit: HDBDeviceSyncService.sensorPublicationRetransmit), to: try bound(target)) else { throw HDBConfigurationError.invalidData }
                     handles = [MeshMessageHandle(message: message, address: context.node.primaryUnicastAddress)]
@@ -492,7 +487,6 @@ final class HDBDeviceSyncTask {
         #if DEBUG
         let kind: String
         switch operation {
-        case .preparation(_, .subscription): kind = "subscription"
         case .preparation(_, .publication): kind = "publication"
         case .initialization: kind = "initialization"
         case .zone: kind = "zone"

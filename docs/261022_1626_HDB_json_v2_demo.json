@@ -37,6 +37,12 @@
           ],
           "lightingZonesStatus": "synced",
           "sensorGroupId": "C040",
+          "sensorPublication": [
+            {
+              "modelId": "1100",
+              "elementAddress": "000D"
+            }
+          ],
           "zoneModels": [
             {
               "elementAddress": "000B",

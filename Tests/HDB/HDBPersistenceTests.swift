@@ -21,6 +21,7 @@ import SQLite3
         try HDBLightingZonePolicy.validateReferences(config, payload: payload)
         var sensorConfig = config
         sensorConfig.devices[0].sensorGroupId = 0xC040
+        try sensorConfig.devices[0].refreshSensorPublication()
         var sensorPayload = payload
         sensorPayload["groups"] = [["address": "C000", "isVirtual": false], ["address": "C040", "isVirtual": true]]
         try HDBLightingZonePolicy.validateReferences(sensorConfig, payload: sensorPayload)

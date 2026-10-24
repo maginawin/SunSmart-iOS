@@ -10,11 +10,11 @@ import Foundation
         for model in [lc, setup, onoff] { model.relatedModels = [lc, setup, onoff].filter { $0 !== model } }
         for (index, element) in node.elements.enumerated() {
             for model in element.models {
-                model.subscribe = model.modelIdentifier == 0x1100 ? ["C080"] : index == 2 ? ["C001", "C080", "FEFD"] : ["C001"]
+                model.subscribe = model.modelIdentifier == 0x1100 ? [] : index == 2 ? ["C001", "FEFD"] : ["C001"]
                 if model.modelIdentifier == 0x1100 { node.sensorModelTypes[model] = .init(id: [0x004D, 0x004E, 0x0072][index]) }
             }
         }
-        e0.models.last!.publish = Publish(to: "C080", withKeyIndex: 1, friendshipCredentialsFlag: 0,
+        e0.models.last!.publish = Publish(to: "000A", withKeyIndex: 1, friendshipCredentialsFlag: 0,
             ttl: 255, period: .disabled, retransmit: HDBDeviceSyncService.sensorPublicationRetransmit)
         return node
     }
@@ -31,6 +31,7 @@ import Foundation
         device.sensorGroupModels = HDBLightingZonePolicy.sensorGroupTargets(from: targets).map(HDBModelReference.init)
         device.broadcastModels = HDBConfigurationStore.broadcastTargets(node: current).map(HDBModelReference.init)
         device.sensorGroupId = 0xC080
+        try! device.refreshSensorPublication()
         HDBConfigurationStore.config = .init(lightingZones: [.init(zoneId: 1, name: "One", groupAddress: 0xC001)], devices: [device])
         let service = HDBDeviceDiagnosticsService(site: SiteData(), space: SpaceData.persisted, nodeUuid: current.uuid)
         service.send = { request, address in
@@ -54,9 +55,9 @@ import Foundation
         precondition(service.rows.count == 9)
         precondition(service.rows.allSatisfy { $0.subscriptions.state == .matches && $0.publication.state == .matches })
         let lc = service.rows.first { $0.snapshot.target.modelId == 0x130F }!
-        precondition(lc.snapshot.expectedSubscriptions == [0xC001, 0xC080, 0xFEFD])
+        precondition(lc.snapshot.expectedSubscriptions == [0xC001, 0xFEFD])
         precondition(lc.detail(.subscriptions).contains("hdb_diag_requirements_met"))
-        precondition(service.rows.filter { $0.snapshot.target.modelId == 0x1100 }.allSatisfy { $0.snapshot.expectedSubscriptions == [0xC080] })
+        precondition(service.rows.filter { $0.snapshot.target.modelId == 0x1100 }.allSatisfy { $0.snapshot.expectedSubscriptions == [] })
         precondition(service.rows.filter { $0.snapshot.expectedPublication != nil }.map { $0.snapshot.target.elementAddress } == [8])
         precondition(Node.saves == 0 && HDBConfigurationStore.config == initial)
         let report = try service.report()
@@ -82,8 +83,8 @@ import Foundation
             precondition(changed.differences(from: publication).count == 1)
         }
         // Both sides can agree on a broken HDB link.
-        current.elements[2].models[0].subscribe = ["C001", "FEFD"]
-        saved.elements[2].models[0].subscribe = ["C001", "FEFD"]
+        current.elements[2].models[0].subscribe = ["C001"]
+        saved.elements[2].models[0].subscribe = ["C001"]
         try service.read([.subscriptions]); pump { !service.isRunning }
         let broken = service.rows.first { $0.snapshot.target.modelId == 0x130F }!
         precondition(broken.subscriptions.state == .matches && broken.detail(.subscriptions).contains("hdb_diag_requirements_missing"))
@@ -143,7 +144,7 @@ import Foundation
         let (empty, emptyNode, _) = fixture()
         HDBConfigurationStore.config.devices[0].lightingZones = []
         try empty.read([.subscriptions]); pump { !empty.isRunning }
-        precondition(empty.rows.first { $0.snapshot.target.modelId == 0x130F }!.snapshot.expectedSubscriptions == [0xC080, 0xFEFD])
+        precondition(empty.rows.first { $0.snapshot.target.modelId == 0x130F }!.snapshot.expectedSubscriptions == [0xFEFD])
         // Multiple known Presence models are reported without hiding their raw publications.
         emptyNode.sensorModelTypes[emptyNode.elements[1].models[0]] = .init(id: 0x004D)
         try empty.read([.publication]); pump { !empty.isRunning }
@@ -188,6 +189,7 @@ import Foundation
             node.sensorModelTypes = [:]
         }
         HDBConfigurationStore.config.devices[0].sensorGroupId = nil
+        try! HDBConfigurationStore.config.devices[0].refreshSensorPublication()
         try noSensor.read([.subscriptions]); pump { !noSensor.isRunning }
         precondition(noSensor.rows.count == 6 && noSensor.rows.allSatisfy { $0.snapshot.target.modelId != 0x1100 })
         precondition(noSensor.rows.first { $0.snapshot.target.modelId == 0x130F }!.snapshot.expectedSubscriptions == [0xC001, 0xFEFD])

@@ -19,6 +19,7 @@ enum HDBConfigurationStore {
             }
             config.devices[index].nodeAddress = nodeAddress
             config.devices[index].mac = mac
+            try config.devices[index].refreshSensorPublication()
             config.devices[index].lightingConfiguration?.mark(fields: ["dimIntensity", "brightIntensity", "rampUpTime", "rampDownTime", "holdTime"], status: .pending)
             config.devices[index].lightingConfiguration?.merge(.init(lightingControl: .auto), status: .pending)
             if !config.devices[index].lightingZones.isEmpty || (modelsChanged && !subscriptionsWereReset) {

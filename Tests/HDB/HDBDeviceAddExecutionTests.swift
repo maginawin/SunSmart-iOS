@@ -39,8 +39,8 @@ import Foundation
         var results: [Set<UUID>] = []
         completion.run(space: space, nodes: [node], standardIncomplete: []) { results.append($0) }
         let session = SyncExecutionSession.started.last!
-        precondition(results.isEmpty && session.sections.count == 6,
-                     "LC plus three Sensor subscriptions, Presence publication and initialization must precede completion")
+        precondition(results.isEmpty && session.sections.count == 2,
+                     "Presence publication and initialization must precede completion without Sensor Group subscriptions")
         precondition(space.hdb!.devices[0].lightingZonesStatus == .synced)
         var completedSteps = Set<ObjectIdentifier>()
         for (index, step) in session.sections.enumerated() {
@@ -50,7 +50,7 @@ import Foundation
             let handles = task.makeHandles()
             precondition(!handles.isEmpty)
             precondition(handles.allSatisfy {
-                $0.message is ConfigModelSubscriptionAdd || $0.message is ConfigModelPublicationSet
+                $0.message is ConfigModelPublicationSet
                     || $0.message is LightLCModeSet || $0.message is PreparationMessage || $0.message is LightingTestMessage
             }, "adding a device must only write preparation values, without subscription resets or readbacks")
             if index == 0 {
@@ -69,11 +69,11 @@ import Foundation
         session.onSettled?(.syncSuccess)
         precondition(results == [Set<UUID>()] && !completion.isRunning)
         precondition(!HDBDeviceSyncService.needsSync(node: node))
-        precondition(node.presenceDetectedSensorModel?.publish?.publicationAddress.address == space.hdb?.devices[0].sensorGroupId)
+        precondition(node.presenceDetectedSensorModel?.publish?.publicationAddress.address == space.hdb?.devices[0].sensorPublication.first?.elementAddress)
         precondition(node.ambientLightSensorModel?.publish == nil, "HDB add must not configure Ambient publication")
         let sensors = node.elements.flatMap(\.models).filter { $0.modelIdentifier == 0x1100 && $0.companyIdentifier == nil }
-        let sensorGroupId = space.hdb!.devices[0].sensorGroupId!
-        precondition(sensors.count == 3 && sensors.allSatisfy { $0.subscriptions.map { $0.address.address } == [sensorGroupId] })
+        precondition(space.hdb!.devices[0].sensorGroupId != nil && !space.hdb!.devices[0].sensorGroupModels.isEmpty)
+        precondition(sensors.count == 3 && sensors.allSatisfy { $0.subscriptions.isEmpty })
         precondition(sensors.filter { $0 !== node.presenceDetectedSensorModel }.allSatisfy { $0.publish == nil })
         precondition(CloudSynchronizationManager.shared.snapshots.allSatisfy { $0.deviceCount == 1 && $0.luminairesCount == 1 },
                      "every HDB upload must carry current counts, including the first intent")
@@ -85,25 +85,17 @@ import Foundation
         NodeSyncReadContext.current = nil
         let zoneService = HDBLightingZoneService(site: SiteData(), space: space)
         _ = try HDBConfigurationStore.createZone(space: space, zoneId: 1, name: "One")
-        let previousSubscriptions = sensors[1].subscriptions
-        sensors[1].subscriptions = []
-        do {
-            try zoneService.setLightingZones(nodeUuid: node.uuid, zoneIds: [1])
-            preconditionFailure("Zone Apply must not bypass an incomplete Sensor subscription")
-        } catch HDBLightingError.notPrepared {}
-        precondition(SyncExecutionEnvironment.batches.isEmpty && space.hdb!.devices[0].lightingZones.isEmpty)
-        sensors[1].subscriptions = previousSubscriptions
         try zoneService.setLightingZones(nodeUuid: node.uuid, zoneIds: [1])
         finishZones()
         let device = try zoneService.getLightingZones(nodeUuid: node.uuid)
         precondition(device.lightingZones.map(\.zoneId) == [1] && device.lightingZonesStatus == .synced)
-        precondition(sensors.allSatisfy { $0.subscriptions.map { $0.address.address } == [sensorGroupId] })
+        precondition(sensors.allSatisfy { $0.subscriptions.isEmpty })
         try zoneService.setLightingZones(nodeUuid: node.uuid, zoneIds: [])
         precondition(!SyncExecutionEnvironment.batches.isEmpty, "a user-requested clear must still rebuild subscriptions")
         finishZones()
         let cleared = try zoneService.getLightingZones(nodeUuid: node.uuid)
         precondition(cleared.lightingZones.isEmpty && cleared.lightingZonesStatus == .synced)
-        precondition(sensors.allSatisfy { $0.subscriptions.map { $0.address.address } == [sensorGroupId] })
+        precondition(sensors.allSatisfy { $0.subscriptions.isEmpty })
         precondition(node.isKeybindComplete && !HDBDeviceSyncService.needsSync(node: node))
 
         // A genuine external revision change must still invalidate the same ACK,

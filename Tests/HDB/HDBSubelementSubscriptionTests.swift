@@ -53,9 +53,7 @@ import Foundation
                 precondition(operations.first?.stage == .reset)
                 precondition(operations[0].subscriptions.count == 5)
                 precondition(operations[0].subscriptions.allSatisfy { $0.command == .deleteAll && $0.address == 0 })
-                if sensor {
-                    precondition(operations[2].stage == .sensor && operations[2].subscriptions.allSatisfy { $0.command == .add })
-                }
+                precondition(!operations.contains { $0.stage == .sensor })
                 for operation in operations {
                     let task = HDBDeviceSyncTask(context: context, operation: .zone(operation))
                     let handles = task.makeHandles()
@@ -63,13 +61,12 @@ import Foundation
                     precondition(task.persist(result: handles))
                 }
                 var expected = Set<UInt16>([0xFEFD])
-                if let address = config.devices[0].sensorGroupId { expected.insert(address) }
                 expected.formUnion(config.lightingZones.prefix(zoneCount).map(\.groupAddress))
                 precondition(node.elements[2].models.allSatisfy { Set($0.subscriptions.map { $0.address.address }) == expected })
                 precondition(node.elements[1].models[0].subscriptions.map { $0.address.address } == [0xFEFD])
                 let sensorServers = node.elements.flatMap(\.models).filter { $0.modelIdentifier == 0x1100 && $0.companyIdentifier == nil }
                 precondition(sensorServers.allSatisfy {
-                    $0.subscriptions.map { $0.address.address } == [config.devices[0].sensorGroupId!]
+                    $0.subscriptions.isEmpty
                 }, "Zone writes must preserve every Sensor Server's private group subscription")
                 precondition(!HDBDeviceSyncService.needsSync(node: node))
             }
@@ -178,7 +175,7 @@ import Foundation
                 }
                 actual.checkCache()
                 let config = try HDBConfigurationStore.load(space: space)
-                let wanted = Set([UInt16(0xFEFD), config.devices[0].sensorGroupId!] + config.lightingZones.prefix(zones).map(\.groupAddress))
+                let wanted = Set([UInt16(0xFEFD)] + config.lightingZones.prefix(zones).map(\.groupAddress))
                 precondition(node.elements[2].models.allSatisfy { actual.values[$0] == wanted })
                 precondition(node.isKeybindComplete && config.devices[0].lightingZonesStatus == .synced)
                 cases += 1
@@ -300,11 +297,13 @@ import Foundation
         precondition(protected.count == 5 && !protected.contains { $0.elementAddress == 2 })
         precondition(protected.contains { $0.elementAddress == 3 && $0.modelIdentifier == 0x1000 })
         let metadata = try HDBConfigurationStore.deviceConfiguration(node: node)
-        try HDBConfigurationStore.update(space: space) { $0.devices[0].copyModels(from: metadata) }
+        try HDBConfigurationStore.update(space: space) {
+            $0.devices[0].sensorGroupId = nil
+            $0.devices[0].copyModels(from: metadata)
+            try $0.devices[0].refreshSensorPublication()
+        }
         let operations = try context.zoneOperations(in: HDBConfigurationStore.load(space: space))
-        let sensorStage = operations.first { $0.stage == .sensor }!
-        precondition(sensorStage.subscriptions.contains { $0.target.elementAddress == 2 && $0.command == .add })
-        precondition(sensorStage.subscriptions.filter { $0.target.elementAddress == 4 }.allSatisfy { $0.command == .add })
+        precondition(!operations.contains { $0.stage == .sensor })
         // Real binding failures must remain blocked; FEFD preservation is no bypass.
         for keys: [ApplicationKey] in [[], [.init(index: 7)]] {
             primaryLC.boundApplicationKeys = keys
@@ -351,7 +350,7 @@ import Foundation
 
     static func testDirectApplyFailureAndReopen() throws {
         // Fail each destructive/protected phase and the final Zone Add in turn.
-        for scenario in 0..<8 {
+        for scenario in 0..<6 {
             let failStage = scenario / 2, failIndex = scenario % 2
             let (space, node, _) = try fixture()
             _ = try HDBConfigurationStore.createZone(space: space, zoneId: 1, name: "One")
@@ -372,7 +371,7 @@ import Foundation
             if (1..<3).contains(failStage) && failIndex == 0 {
                 let sensor = pending.sensorGroupId!
                 precondition(node.elements[2].models.allSatisfy { !$0.subscriptions.contains { $0.address.address == sensor } },
-                             "failed first Sensor Add leaves Sensor temporarily absent, but retry must remain possible")
+                             "reserved Sensor Group stays unsubscribed through failure and retry")
             }
             let reopened = HDBLightingZoneService(site: SiteData(), space: space.copy())
             try reopened.retry(nodeUuid: node.uuid)
@@ -384,7 +383,7 @@ import Foundation
             let saved = try reopened.getLightingZones(nodeUuid: node.uuid)
             precondition(saved.lightingZonesStatus == .synced && !HDBDeviceSyncService.needsSync(node: node))
             let zone = try HDBConfigurationStore.load(space: space).lightingZones[0].groupAddress
-            precondition(node.elements[2].models.allSatisfy { Set($0.subscriptions.map { $0.address.address }) == [0xFEFD, saved.sensorGroupId!, zone] })
+            precondition(node.elements[2].models.allSatisfy { Set($0.subscriptions.map { $0.address.address }) == [0xFEFD, zone] })
         }
     }
 

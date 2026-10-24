@@ -193,6 +193,7 @@ final class HDBDeviceDiagnosticsService {
                 && Set($0.broadcastModels.map(\.target)) == broadcastTargets && $0.broadcastId == 0xFEFD
         } ?? false
         let publicationTargets = try? context.publicationTargets
+        let publicationValid = device.map { (try? $0.validateSensorPublication(models: context.targets)) != nil } ?? false
         let sensorModels = context.node.elements.flatMap(\.models).filter { $0.companyIdentifier == nil && $0.modelIdentifier == 0x1100 }
         let propertiesKnown = sensorModels.allSatisfy { (context.node.sensorModelTypes[$0]?.id ?? 0) != 0 }
         let zones = device?.lightingZones.compactMap { member in config.lightingZones.first { $0.zoneId == member.zoneId }?.groupAddress }
@@ -211,13 +212,12 @@ final class HDBDeviceDiagnosticsService {
                 var expected: [UInt16]?
                 var subIssue: String?
                 if target.modelId == 0x1100 {
-                    expected = device?.sensorGroupId.map { [$0] }
+                    expected = []
                 } else if let zones, zones.count == device?.lightingZones.count, targetsValid {
                     let shared = Set(([model] + model.relatedModels.filter { $0.parentElement === element }).map {
                         HDBModelTarget(elementAddress: element.unicastAddress, modelIdentifier: $0.modelIdentifier, companyIdentifier: $0.companyIdentifier)
                     })
                     expected = shared.isDisjoint(with: zoneTargets) ? [] : zones
-                    if !shared.isDisjoint(with: sensorTargets), let address = device?.sensorGroupId { expected?.append(address) }
                     // Ordinary initialization also owns FEFD on unaffected receivers.
                     let initializedBroadcast = element.unicastAddress != context.node.primaryUnicastAddress
                         && shared.contains { [0x1306, 0x130F].contains($0.modelId) }
@@ -230,12 +230,13 @@ final class HDBDeviceDiagnosticsService {
                     if !propertiesKnown { pubIssue = "hdb_diag_sensor_unknown" }
                     else if publicationTargets == nil { pubIssue = "hdb_diag_sensor_ambiguous" }
                     else if publicationTargets?.contains(target) == true {
-                        if let address = device?.sensorGroupId, let key = context.key {
+                        if publicationValid, let address = device?.sensorPublication.first?.elementAddress, let key = context.key {
                             expectedPublish = Self.publication(Publish(to: MeshAddress(address), using: key,
                                 usingFriendshipMaterial: false, ttl: SensorPublicationPolicy.ttl, period: .disabled,
                                 retransmit: HDBDeviceSyncService.sensorPublicationRetransmit))
                             pubIssue = nil
-                        } else { pubIssue = "hdb_diag_expectation_unavailable" }
+                        } else if publicationValid && device?.sensorPublication.first?.elementAddress == nil { pubIssue = "hdb_diag_unmanaged_publication" }
+                        else { pubIssue = "hdb_diag_expectation_unavailable" }
                     }
                 }
                 result.append(.init(target: target, elementIndex: Int(element.index), sensorProperty: context.node.sensorModelTypes[model]?.id,

@@ -10,6 +10,12 @@
       ],
       "lightingZonesStatus": "synced",
       "sensorGroupId": "C040",
+      "sensorPublication": [
+        {
+          "modelId": "1100",
+          "elementAddress": "0101"
+        }
+      ],
       "lightingConfiguration": {
         "lightingControl": {
           "status": "synced",
@@ -124,6 +130,12 @@
       ],
       "lightingZonesStatus": "pending",
       "sensorGroupId": null,
+      "sensorPublication": [
+        {
+          "modelId": "1100",
+          "elementAddress": null
+        }
+      ],
       "lightingConfiguration": {
         "lightingControl": {
           "status": "synced",

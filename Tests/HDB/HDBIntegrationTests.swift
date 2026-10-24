@@ -35,7 +35,7 @@ import Foundation
     static func main() throws {
         try testModelMetadataLifecycle()
         try testWholeDeviceReplay()
-        try testSensorFirstAndSharedLists()
+        try testReservedSensorGroupAndSharedLists()
         try testEmptyTargetAndPersistence()
         try testInvalidatedReceipts()
         try testPreparationAndAllocation()
@@ -43,6 +43,8 @@ import Foundation
     }
     static func testModelMetadataLifecycle() throws {
         let (space, network, node, _) = try fixture(sensor: true)
+        // Move the sole LC to the secondary element instead of introducing an ambiguous second LC.
+        node.elements[0].models.removeAll { [0x130F, 0x1310].contains($0.modelIdentifier) }
         let secondary = node.elements[1]
         let vendor = Model(1, company: 0x0A78), lc = Model(0x130F), setup = Model(0x1310)
         secondary.models += [vendor, lc, setup]
@@ -79,15 +81,15 @@ import Foundation
         let restoredContext = try HDBDeviceSyncContext.resolve(space: space, node: node)!
         try HDBDeviceSyncService.prepareIntent(context: restoredContext)
         let restored = try HDBConfigurationStore.load(space: space)
-        check(restored.devices[0].nodeAddress == 11)
+        check(restored.devices[0].nodeAddress == 11 && restored.devices[0].sensorPublication == [.init(elementAddress: 12)])
         check((restored.devices[0].zoneModels + restored.devices[0].sensorGroupModels + restored.devices[0].broadcastModels).allSatisfy { $0.elementAddress >= 11 })
         check(!HDBLightingZonePolicy.matches(oldPlan, in: restored))
         try HDBConfigurationStore.validateModels(restored, nodes: network.nodes)
         let exported = try JSONSerialization.jsonObject(with: JSONEncoder().encode(restored.devices[0])) as! [String: Any]
         let lighting = exported["lightingConfiguration"] as! [String: Any]
         let maps = lighting["lightingControl"] as! [String: Any]
-        check(maps["Auto"] as? String == "000B" && maps["Force_On"] as? String == "000B")
-        check((lighting["brightIntensity"] as! [String: Any])["elementAddress"] as? String == "000B",
+        check(maps["Auto"] as? String == "000C" && maps["Force_On"] as? String == "000B")
+        check((lighting["brightIntensity"] as! [String: Any])["elementAddress"] as? String == "000C",
               "Restored command metadata must follow the new Composition addresses")
     }
 
@@ -131,7 +133,7 @@ import Foundation
         try reopened.retry(nodeUuid: node.uuid); finishAll(reopened)
         check(node.elements.flatMap(\.models).allSatisfy { $0.subscriptions.map { $0.address.address } == [0xC002] })
     }
-    static func testSensorFirstAndSharedLists() throws {
+    static func testReservedSensorGroupAndSharedLists() throws {
         for empty in [false, true] {
             let (space, _, node, service) = try fixture(sensor: true)
             let sensorAddress = space.hdb!.devices[0].sensorGroupId!
@@ -145,23 +147,18 @@ import Foundation
             try check(service.getLightingZones(nodeUuid: node.uuid).lightingZonesStatus == .pending)
             try service.retry(nodeUuid: node.uuid)
             SyncExecutionEnvironment.finishFirst()
-            let sensor = SyncExecutionEnvironment.batches[0].handles
-            check(sensor.count == 3 && sensor.allSatisfy {
-                $0.message is ConfigModelSubscriptionAdd && ConfigModelSubscriptionStatus($0.message, success: true).address == sensorAddress
-            })
-            SyncExecutionEnvironment.finishFirst()
-            check(shared.allSatisfy { $0.subscriptions.map { $0.address.address } == [sensorAddress] })
+            check(shared.allSatisfy { $0.subscriptions.isEmpty })
             if !empty {
                 check(SyncExecutionEnvironment.batches[0].handles.count == 10, "every Zone is added to every target")
                 SyncExecutionEnvironment.finishFirst(failIndex: 4)
-                check(shared.allSatisfy { $0.subscriptions.contains { $0.address.address == sensorAddress } })
+                check(shared.allSatisfy { !$0.subscriptions.contains { $0.address.address == sensorAddress } })
                 try service.retry(nodeUuid: node.uuid); finishAll(service)
             }
             try check(service.getLightingZones(nodeUuid: node.uuid).lightingZonesStatus == .synced)
-            let expected: Set<UInt16> = empty ? [sensorAddress] : [sensorAddress, 0xC001, 0xC002]
+            let expected: Set<UInt16> = empty ? [] : [0xC001, 0xC002]
             check(shared.allSatisfy { Set($0.subscriptions.map { $0.address.address }) == expected })
             check(node.elements[1].models[0].subscriptions.isEmpty, "secondary OnOff without LC is never a Zone target")
-            check(node.presenceDetectedSensorModel!.publish?.publicationAddress.address == sensorAddress)
+            check(node.presenceDetectedSensorModel!.publish?.publicationAddress.address == 1)
             check(!HDBDeviceSyncService.needsSync(node: node))
         }
     }
@@ -240,7 +237,7 @@ import Foundation
         let zone = try HDBConfigurationStore.createZone(space: space, zoneId: 3, name: "Three")
         check(zone.groupAddress == 0xC004)
         let (sensorSpace, _, sensorNode, sensorService) = try fixture(sensor: true)
-        try HDBConfigurationStore.update(space: sensorSpace) { $0.devices[0].sensorGroupId = nil }
+        try HDBConfigurationStore.update(space: sensorSpace) { $0.devices[0].sensorGroupId = nil; try $0.devices[0].refreshSensorPublication() }
         try sensorService.setLightingZones(nodeUuid: sensorNode.uuid, zoneIds: [])
         check(SyncExecutionEnvironment.batches.count == 1)
         check(SyncExecutionEnvironment.batches[0].handles.allSatisfy { $0.message is ConfigModelSubscriptionDeleteAll })

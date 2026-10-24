@@ -6,6 +6,7 @@ import Foundation
         try modelArrayContract()
         try wireFormatValidation()
         try groupIdWireFormat()
+        try sensorPublicationContract()
         for path in CommandLine.arguments.dropFirst() {
             let raw = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: path))) as! [String: Any]
             let object = (raw["spaceData"] as? [String: Any])?["hdb"] ?? raw
@@ -66,24 +67,25 @@ import Foundation
         precondition(clearOperations[0].subscriptions.first!.parameters.count == 4)
         var sensorConfig = cleared
         sensorConfig.devices[0].sensorGroupId = 0xC020
+        try sensorConfig.devices[0].refreshSensorPublication()
         let sensors = targets.filter { [0x130F, 0x1310, 0x1000].contains($0.modelIdentifier) && $0.elementAddress == 1 }
         let sensorClear = try HDBLightingZonePolicy.operations(for: sensorConfig.devices[0], in: sensorConfig, targets: targets, sensorTargets: sensors)
-        precondition(sensorClear.map(\.stage) == [.reset, .sensor])
+        precondition(sensorClear.map(\.stage) == [.reset])
         precondition(sensorClear[0].subscriptions.count == 5 && sensorClear[0].subscriptions.allSatisfy { $0.command == .deleteAll })
-        precondition(sensorClear[1].subscriptions.count == 3 && sensorClear[1].subscriptions.allSatisfy { $0.command == .add && $0.address == 0xC020 })
+        precondition(sensorClear.flatMap(\.subscriptions).allSatisfy { $0.address != 0xC020 })
         sensorConfig = try HDBLightingZonePolicy.replacingZones([2, 1], for: sensorConfig.devices[0], in: sensorConfig)
         let sensorSet = try HDBLightingZonePolicy.operations(for: sensorConfig.devices[0], in: sensorConfig, targets: targets, sensorTargets: sensors)
-        precondition(sensorSet.map(\.stage) == [.reset, .sensor, .add])
+        precondition(sensorSet.map(\.stage) == [.reset, .add])
         precondition(sensorSet[0].subscriptions.allSatisfy { $0.command == .deleteAll })
-        precondition(sensorSet[2].subscriptions.map(\.address) == Array(repeating: 0xC001, count: 5) + Array(repeating: 0xC002, count: 5))
+        precondition(sensorSet[1].subscriptions.map(\.address) == Array(repeating: 0xC001, count: 5) + Array(repeating: 0xC002, count: 5))
         try HDBLightingZonePolicy.complete(sensorSet[0], in: &sensorConfig)
         precondition(sensorConfig.devices[0].lightingZonesStatus == .pending)
-        try HDBLightingZonePolicy.complete(sensorSet[2], in: &sensorConfig)
+        try HDBLightingZonePolicy.complete(sensorSet[1], in: &sensorConfig)
         precondition(sensorConfig.devices[0].lightingZonesStatus == .synced)
         let completed = try HDBLightingZonePolicy.operations(for: sensorConfig.devices[0], in: sensorConfig, targets: targets, sensorTargets: sensors)
         precondition(completed.isEmpty)
         sensorConfig.devices[0].lightingZones = []
-        precondition(!HDBLightingZonePolicy.matches(sensorSet[2].plan, in: sensorConfig))
+        precondition(!HDBLightingZonePolicy.matches(sensorSet[1].plan, in: sensorConfig))
         let desired = targets.map { HDBPreparationTarget(model: $0) }
         let encodedTargets = try JSONSerialization.jsonObject(with: JSONEncoder().encode(desired)) as! [[String: Any]]
         precondition(encodedTargets.count == 6)
@@ -130,6 +132,58 @@ import Foundation
         print("PASS: HDB JSON, full target replay and empty target recovery, limits, all model instances and local Get")
     }
 
+    static func sensorPublicationContract() throws {
+        var device = HDBDeviceConfiguration(nodeUuid: UUID(), nodeAddress: 8, mac: "AA:BB:CC:DD:EE:FF")
+        let lc = HDBModelTarget(elementAddress: 10, modelIdentifier: 0x130F, companyIdentifier: nil)
+        device.zoneModels = [.init(lc)]
+        device.sensorGroupModels = [.init(lc)]
+        try device.refreshSensorPublication()
+        precondition(device.sensorPublication == [.init(elementAddress: nil)])
+        device.sensorGroupId = 0xC080
+        try device.refreshSensorPublication()
+        precondition(device.sensorPublication == [.init(elementAddress: 10)])
+        let encoded = try JSONEncoder().encode(device)
+        let json = try JSONSerialization.jsonObject(with: encoded) as! [String: Any]
+        let publication = (json["sensorPublication"] as! [[String: Any]])[0]
+        precondition(publication["modelId"] as? String == "1100" && publication["elementAddress"] as? String == "000A")
+        let decoded = try JSONDecoder().decode(HDBDeviceConfiguration.self, from: encoded)
+        precondition(decoded == device && decoded.sensorGroupModels == device.sensorGroupModels)
+        func rejected(_ value: Any?) throws {
+            var payload = json
+            payload["sensorPublication"] = value
+            do {
+                _ = try JSONDecoder().decode(HDBDeviceConfiguration.self, from: JSONSerialization.data(withJSONObject: payload))
+                preconditionFailure("Invalid publication contract accepted")
+            } catch is DecodingError {} catch HDBConfigurationError.invalidData {}
+        }
+        for value: Any? in [nil, NSNull(), [], [publication, publication],
+                            [["modelId": "1100"]], [["elementAddress": "000A"]],
+                            [["modelId": "130F", "elementAddress": "000A"]]] { try rejected(value) }
+        for address: Any in [NSNull(), "0008", "000B", "C080", "0000", "8000", 10, true, "A", "0x000A"] {
+            try rejected([["modelId": "1100", "elementAddress": address]])
+        }
+        var lower = json
+        lower["sensorPublication"] = [["modelId": "1100", "elementAddress": "000a"]]
+        let normalized = try JSONDecoder().decode(HDBDeviceConfiguration.self, from: JSONSerialization.data(withJSONObject: lower))
+        precondition(normalized == device)
+        // The receiver need not host a Sensor Server. No LC is a valid null,
+        // even while the reserved group remains assigned for other features.
+        device.zoneModels = []; device.sensorGroupModels = []
+        try device.refreshSensorPublication()
+        let noLC = try JSONDecoder().decode(HDBDeviceConfiguration.self, from: JSONEncoder().encode(device))
+        precondition(noLC.sensorGroupId == 0xC080 && noLC.sensorPublication == [.init(elementAddress: nil)])
+        device.sensorGroupId = nil
+        try device.refreshSensorPublication()
+        let noGroupOrLC = try JSONDecoder().decode(HDBDeviceConfiguration.self, from: JSONEncoder().encode(device))
+        precondition(noGroupOrLC.sensorPublication == [.init(elementAddress: nil)])
+        // A changed composition produces a new local destination; the group is retained.
+        device.zoneModels = [.init(.init(elementAddress: 12, modelIdentifier: 0x130F, companyIdentifier: nil))]
+        device.sensorGroupId = 0xC080
+        try device.refreshSensorPublication()
+        precondition(device.sensorPublication == [.init(elementAddress: 12)])
+        print("PASS: sensorPublication strict JSON, local LC destination, nullable group/LC and retained metadata")
+    }
+
     static func modelArrayContract() throws {
         func target(_ address: UInt16, _ id: UInt32) -> HDBModelTarget {
             .init(elementAddress: address, modelIdentifier: UInt16(id & 0xFFFF), companyIdentifier: id > 0xFFFF ? UInt16(id >> 16) : nil)
@@ -161,9 +215,10 @@ import Foundation
         precondition(zoneOps.map(\.stage) == [.reset, .broadcast, .add], "Sensor Server without an address must not block selected Zones")
         precondition(zoneOps.last!.subscriptions.allSatisfy { $0.address == 0xC001 } && zoneOps.last!.isLast)
         var withSensor = root; withSensor.devices[0].sensorGroupId = 0xC040
+        try withSensor.devices[0].refreshSensorPublication()
         let sensorOps = try HDBLightingZonePolicy.operations(for: withSensor.devices[0], in: withSensor, targets: models, broadcastTargets: sensors)
-        precondition(sensorOps.map(\.stage) == [.reset, .broadcast, .sensor])
-        precondition(sensorOps.last!.subscriptions.allSatisfy { $0.address == 0xC040 })
+        precondition(sensorOps.map(\.stage) == [.reset, .broadcast])
+        precondition(sensorOps.flatMap(\.subscriptions).allSatisfy { $0.address != 0xC040 })
         for address: UInt16 in [0, 0xBFFF, 0xFEFD, 0xFFFF] {
             var invalid = root; invalid.devices[0].sensorGroupId = address
             do {
@@ -265,6 +320,7 @@ import Foundation
     static func wireFormatValidation() throws {
         var device = HDBDeviceConfiguration(nodeUuid: UUID(), nodeAddress: 11, mac: "AA:BB:CC:DD:EE:FF", lightingZones: [.init(zoneId: 1)])
         device.sensorGroupId = 0xC040
+        try device.refreshSensorPublication()
         device.zoneModels = [HDBModelReference(.init(elementAddress: 11, modelIdentifier: 1, companyIdentifier: 0x0A78))]
         let config = HDBConfiguration(lightingZones: [.init(zoneId: 1, name: "One", groupAddress: 0xC001)], devices: [device])
         let raw = try HDBLightingZonePolicy.json(config)

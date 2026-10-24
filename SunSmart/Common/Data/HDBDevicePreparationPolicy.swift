@@ -17,20 +17,20 @@ enum HDBDevicePreparationPolicy {
 
     static func plan(nodeUuid: UUID, nodeAddress: UInt16, appKeyIndex: UInt16,
                      targets: [HDBModelTarget], sensorGroupId: UInt16?,
-                     publicationTargets: [HDBModelTarget]) throws -> HDBDevicePreparationPlan {
-        let base = try HDBLightingZonePolicy.requiredTargets(from: targets)
-        let sensorServers = Array(Set(targets.filter {
-            $0.companyIdentifier == nil && $0.modelIdentifier == 0x1100
-        })).sorted { $0.elementAddress < $1.elementAddress }
-        let hasSensor = !sensorServers.isEmpty
-        if (hasSensor || !publicationTargets.isEmpty) && sensorGroupId == nil { throw HDBConfigurationError.addressUnavailable }
+                     publicationTargets: [HDBModelTarget],
+                     sensorPublication: [HDBSensorPublication]) throws -> HDBDevicePreparationPlan {
+        // Metadata and a skipped publication remain valid without full LC capability.
+        // The initialization/Zone executor checks its own complete model requirements.
+        let base = Set(targets.filter(HDBLightingZonePolicy.isZoneTarget)).sorted(by: HDBLightingZonePolicy.targetOrder)
         if let address = sensorGroupId, !(0xC001..<0xFEFD).contains(Int(address)) { throw HDBConfigurationError.invalidData }
+        guard sensorPublication == [try .expected(sensorGroupId: sensorGroupId, models: targets)] else {
+            throw HDBConfigurationError.invalidData
+        }
+        let address = sensorPublication.first?.elementAddress
         let sensors = Array(Set(publicationTargets)).sorted { $0.elementAddress < $1.elementAddress }
-        guard sensors.allSatisfy({ $0.modelId == 0x1100 }) else { throw HDBConfigurationError.unsupportedModels }
+        guard sensors.allSatisfy({ $0.modelId == 0x1100 && targets.contains($0) }) else { throw HDBConfigurationError.unsupportedModels }
         return .init(nodeUuid: nodeUuid, nodeAddress: nodeAddress, appKeyIndex: appKeyIndex,
             baseTargets: base.map { .init(model: $0) }, sensorGroupId: sensorGroupId,
-            publicationTargets: sensors,
-            subscriptionTargets: hasSensor && sensorGroupId != nil
-                ? base.filter { $0.modelId == 0x130F } + sensorServers : [])
+            publicationAddress: address, publicationTargets: address == nil ? [] : sensors)
     }
 }
