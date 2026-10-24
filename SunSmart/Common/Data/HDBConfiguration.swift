@@ -68,7 +68,7 @@ struct HDBDeviceConfiguration: Codable, Equatable {
     var lightingZones: [HDBZoneMembership] = []
     var lightingZonesStatus: HDBSyncStatus = .pending
     var sensorGroupId: UInt16?
-    var sensorPublication: [HDBSensorPublication] = [.init(elementAddress: nil)]
+    var sensorPublication: [HDBSensorPublication] = []
     var zoneModels: [HDBModelReference] = []
     var sensorGroupModels: [HDBModelReference] = []
     var broadcastModels: [HDBModelReference] = []
@@ -137,54 +137,82 @@ struct HDBDeviceConfiguration: Codable, Equatable {
     mutating func copyModels(from device: Self) {
         zoneModels = device.zoneModels; sensorGroupModels = device.sensorGroupModels
         broadcastModels = device.broadcastModels; broadcastId = device.broadcastId
+        sensorPublication = device.sensorPublication
     }
 
     func hasSameModels(as device: Self) -> Bool {
         Set(zoneModels) == Set(device.zoneModels) && Set(sensorGroupModels) == Set(device.sensorGroupModels)
             && Set(broadcastModels) == Set(device.broadcastModels) && broadcastId == device.broadcastId
+            && sensorPublication.map(\.target) == device.sensorPublication.map(\.target)
     }
 
-    mutating func refreshSensorPublication() throws {
-        sensorPublication = [try .expected(sensorGroupId: sensorGroupId, models: zoneModels.map(\.target))]
+    mutating func refreshSensorPublication(publicationTargets: [HDBModelTarget]? = nil) throws {
+        sensorPublication = try HDBSensorPublication.expected(sensorGroupId: sensorGroupId,
+            models: zoneModels.map(\.target), publicationTargets: publicationTargets ?? sensorPublication.map(\.target))
     }
 
-    func validateSensorPublication(models: [HDBModelTarget]) throws {
-        guard sensorPublication == [try .expected(sensorGroupId: sensorGroupId, models: models)] else {
+    func validateSensorPublication(models: [HDBModelTarget], publicationTargets: [HDBModelTarget]? = nil) throws {
+        let publishers = publicationTargets ?? sensorPublication.map(\.target)
+        guard sensorPublication.allSatisfy({ $0.elementAddress >= nodeAddress }),
+              publicationTargets == nil || publishers.allSatisfy({ models.contains($0) }),
+              sensorPublication == (try HDBSensorPublication.expected(sensorGroupId: sensorGroupId,
+                models: models, publicationTargets: publishers)) else {
             throw HDBConfigurationError.invalidData
         }
     }
 }
 
-/// The model ID identifies the publisher type; the address identifies its local LC receiver.
-/// This is deliberately not an Element/Model reference to the publishing Sensor instance.
+/// Element/Model identifies the publisher; publishAddress identifies its local LC receiver.
 struct HDBSensorPublication: Codable, Equatable {
-    let elementAddress: UInt16?
+    let elementAddress: UInt16
+    let publishAddress: UInt16?
     var modelId: UInt16 { 0x1100 }
+    var target: HDBModelTarget { .init(elementAddress: elementAddress, modelIdentifier: modelId, companyIdentifier: nil) }
 
-    init(elementAddress: UInt16?) { self.elementAddress = elementAddress }
-
-    static func expected(sensorGroupId: UInt16?, models: [HDBModelTarget]) throws -> Self {
-        guard sensorGroupId != nil else { return .init(elementAddress: nil) }
-        let receivers = Set(models.filter { $0.modelId == 0x130F }.map(\.elementAddress))
-        guard receivers.count <= 1 else { throw HDBConfigurationError.unsupportedModels }
-        return .init(elementAddress: receivers.first)
+    init(elementAddress: UInt16, publishAddress: UInt16?) {
+        self.elementAddress = elementAddress; self.publishAddress = publishAddress
     }
 
-    private enum CodingKeys: String, CodingKey { case modelId, elementAddress }
+    /// Preserve the existing all-properties-known, unique Presence selection rule.
+    static func publicationTargets(models: [HDBModelTarget], propertyIDs: [UInt16]) throws -> [HDBModelTarget] {
+        let sensors = models.filter { $0.modelId == 0x1100 }
+        guard propertyIDs.count == sensors.count, propertyIDs.allSatisfy({ $0 != 0 }) else { return [] }
+        let presence = zip(sensors, propertyIDs).filter { $0.1 == 0x004D }.map { $0.0 }
+        guard presence.count <= 1 else { throw HDBConfigurationError.unsupportedModels }
+        return presence
+    }
+
+    static func expected(sensorGroupId: UInt16?, models: [HDBModelTarget],
+                         publicationTargets: [HDBModelTarget]) throws -> [Self] {
+        let publishers = Array(Set(publicationTargets))
+        guard publishers.count <= 1,
+              publishers.allSatisfy({ $0.modelId == 0x1100 && (1...0x7FFF).contains(Int($0.elementAddress)) }) else {
+            throw HDBConfigurationError.unsupportedModels
+        }
+        guard let publisher = publishers.first else { return [] }
+        let receivers = sensorGroupId == nil ? Set<UInt16>() : Set(models.filter { $0.modelId == 0x130F }.map(\.elementAddress))
+        guard receivers.count <= 1 else { throw HDBConfigurationError.unsupportedModels }
+        return [.init(elementAddress: publisher.elementAddress, publishAddress: receivers.first)]
+    }
+
+    private enum CodingKeys: String, CodingKey { case modelId, elementAddress, publishAddress }
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        guard try c.decode(String.self, forKey: .modelId) == "1100", c.contains(.elementAddress) else {
+        guard try c.decode(String.self, forKey: .modelId) == "1100", c.contains(.publishAddress) else {
             throw HDBConfigurationError.invalidData
         }
-        elementAddress = try c.decodeIfPresent(HDBHexUInt16.self, forKey: .elementAddress)?.value
-        if let address = elementAddress, !(1...0x7FFF).contains(Int(address)) {
+        elementAddress = try c.decode(HDBHexUInt16.self, forKey: .elementAddress).value
+        publishAddress = try c.decodeIfPresent(HDBHexUInt16.self, forKey: .publishAddress)?.value
+        guard (1...0x7FFF).contains(Int(elementAddress)),
+              publishAddress.map({ (1...0x7FFF).contains(Int($0)) }) ?? true else {
             throw HDBConfigurationError.invalidData
         }
     }
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode("1100", forKey: .modelId)
-        try c.encode(elementAddress.map(HDBHexUInt16.init), forKey: .elementAddress)
+        try c.encode(HDBHexUInt16(elementAddress), forKey: .elementAddress)
+        try c.encode(publishAddress.map(HDBHexUInt16.init), forKey: .publishAddress)
     }
 }
 
@@ -529,7 +557,7 @@ struct HDBLightingValues: Codable, Equatable {
     }
     func validate() throws {
         for (value, range) in [(failsafeDelay, 0...250), (dimIntensity, 0...50), (brightIntensity, 50...100),
-                               (rampUpTime, 1...3), (rampDownTime, 1...3), (holdTime, 10...3600)] {
+                               (rampUpTime, 1...3), (rampDownTime, 1...3), (holdTime, 5...3600)] {
             if let value = value, !range.contains(value) { throw HDBConfigurationError.invalidData }
         }
         if let date = installDate {

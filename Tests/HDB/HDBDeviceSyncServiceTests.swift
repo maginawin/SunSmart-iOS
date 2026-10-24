@@ -123,7 +123,7 @@ import Foundation
         precondition(reclaimedSpace.hdb!.devices[0].sensorGroupId == reclaimedAddress)
         try check(HDBConfigurationStore.pendingSensorGroupAddresses(space: reclaimedSpace).isEmpty)
         try HDBConfigurationStore.finishSensorGroupCleanup(space: reclaimedSpace)
-        precondition(reclaimedNetwork.groups.count == 1 && newSensor.publish?.publicationAddress.address == reclaimedSpace.hdb!.devices[0].sensorPublication.first?.elementAddress)
+        precondition(reclaimedNetwork.groups.count == 1 && newSensor.publish?.publicationAddress.address == reclaimedSpace.hdb!.devices[0].sensorPublication.first?.publishAddress)
         precondition(SpaceConfigurationSafety.journal.entries[0].sensorGroupId == nil)
         // Address exhaustion remains recoverable and does not invent a destination.
         let (empty, _, noAddress) = fixture(); MeshAPI.allocation = []
@@ -152,7 +152,7 @@ import Foundation
         let luxContext = try HDBDeviceSyncContext.resolve(space: luxSpace, node: luxNode)!
         try HDBDeviceSyncService.prepareIntent(context: luxContext)
         let luxPlan = try luxContext.plan(in: HDBConfigurationStore.load(space: luxSpace))
-        precondition(luxPlan.publicationTargets.isEmpty && luxPlan.sensorGroupId != nil && luxPlan.publicationAddress != nil)
+        precondition(luxPlan.publicationTargets.isEmpty && luxPlan.sensorGroupId != nil && luxPlan.publicationAddress == nil)
         print("PASS: actual HDB context/planner/store: Site isolation, empty Zone, sensor dedup, identity invalidation, allocation retry/exhaustion, restore, receiver cleanup and address reuse")
     }
 
@@ -167,7 +167,7 @@ import Foundation
             let config = try HDBConfigurationStore.load(space: space)
             let plan = try context.plan(in: config)
             precondition(plan.sensorGroupId != nil && network.groups.count == 1)
-            precondition(plan.publicationTargets.isEmpty && plan.publicationAddress != nil)
+            precondition(plan.publicationTargets.isEmpty && plan.publicationAddress == nil)
             precondition(HDBDeviceSyncService.pendingLinks(context: context, plan: plan).isEmpty)
             try seedPrepared(space: space, node: node)
             try check(HDBDeviceSyncService.isPrepared(context: context, config: HDBConfigurationStore.load(space: space)))
@@ -191,6 +191,13 @@ import Foundation
         // Fresh property evidence selects its element, not a stale cached Presence model.
         node.sensorModelTypes[presence] = .init(id: 0x004E)
         node.sensorModelTypes[unknown] = .init(id: 0x004D)
+        do {
+            _ = try context.plan(in: HDBConfigurationStore.load(space: space))
+            preconditionFailure("Changed publisher evidence must invalidate the saved source")
+        } catch HDBConfigurationError.invalidData {}
+        precondition(HDBDeviceSyncService.needsSync(node: node))
+        try HDBDeviceSyncService.prepareIntent(context: context)
+        try check(HDBConfigurationStore.load(space: space).devices[0].sensorPublication == [.init(elementAddress: 2, publishAddress: 1)])
         let selected = try context.plan(in: HDBConfigurationStore.load(space: space))
         precondition(selected.publicationTargets.count == 1 && selected.publicationTargets[0].elementAddress == 2)
         node.sensorModelTypes[presence] = .init(id: 0x004D)
@@ -270,7 +277,7 @@ import Foundation
         let config = try HDBConfigurationStore.load(space: space)
         let device = config.devices[0]
         precondition(device.sensorGroupId != nil && network.groups.count == 1)
-        precondition(device.sensorGroupModels.isEmpty && device.sensorPublication == [.init(elementAddress: nil)])
+        precondition(device.sensorGroupModels.isEmpty && device.sensorPublication == [.init(elementAddress: node.primaryUnicastAddress, publishAddress: nil)])
         try HDBConfigurationStore.validateModels(config, nodes: [node])
         let roundtrip = try JSONDecoder().decode(HDBConfiguration.self, from: JSONEncoder().encode(config))
         precondition(roundtrip == config)

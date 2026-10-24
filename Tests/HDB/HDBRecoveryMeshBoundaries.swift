@@ -36,6 +36,8 @@ final class RecoveryMeshNode {
     let primaryUnicastAddress: UInt16
     let elements: [RecoveryMeshElement]
     var macAddress: String?
+    struct SensorProperty { let id: UInt16 }
+    var sensorModelTypes: [RecoveryMeshModel: SensorProperty] = [:]
     init(_ raw: [String: Any], mac: String) throws {
         guard let uuid = (raw["uuid"] as? String).flatMap(UUID.init(uuidString:)),
               let primary = (raw["unicastAddress"] as? String).flatMap({ UInt16($0, radix: 16) }) else {
@@ -59,10 +61,10 @@ enum RecoveryMeshFactory {
     /// absent model arrays, a separate CTL element and LC on element index 2.
     static func legacyPayload() -> [String: Any] {
         let uuid = "10000000-0000-0000-0000-00000000000B"
-        let modelIDs = [["1000", "1002", "1006", "1300", "0A780001"],
-                        ["1002", "1306"], ["1000", "130F", "1310"]]
+        let modelIDs = [["1000", "1002", "1006", "1300", "0A780001", "1100"],
+                        ["1002", "1306", "1100"], ["1000", "130F", "1310"]]
         let node: [String: Any] = ["uuid": uuid, "unicastAddress": "000B", "macAddress": "AABBCCDDEEFF",
-            "groupState": 0, "deviceKey": String(repeating: "A1", count: 16), "schedules": [],
+            "sensorTypes": ["004D", "004E"], "groupState": 0, "deviceKey": String(repeating: "A1", count: 16), "schedules": [],
             "elements": modelIDs.enumerated().map { ["index": $0.offset, "models": $0.element.map { ["modelId": $0, "subscribe": []] as [String: Any] }] }]
         let profile: [String: Any] = ["id": "synthetic-profile", "type": 1, "highEndTrim": 100,
             "lowEndTrim": 0, "occupancyLevel": 500, "vacantLevel": 100, "standbyLevel": 0,
@@ -85,7 +87,7 @@ enum RecoveryMeshFactory {
         return ["nodes": [node], "groups": groups, "spaceData": ["hdb": hdb], "deviceCount": 1]
     }
     static func resolve(_ raw: [String: Any], _ mac: String) throws -> HDBDeviceConfiguration {
-        try deviceConfiguration(node: RecoveryMeshNode(raw, mac: mac))
+        try deviceConfiguration(node: RecoveryMeshNode(raw, mac: mac), sensorTypes: raw["sensorTypes"] as? [String] ?? [])
     }
     // APP_DEVICE_FACTORY
 }

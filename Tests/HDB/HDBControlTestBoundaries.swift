@@ -65,3 +65,11 @@ struct LightCTLTemperatureSetUnacknowledged: ControlMessage { let temperature: U
 struct AttentionSet: ControlMessage { let attention: UInt8; init(attentionTimer: UInt8) { attention = attentionTimer } }
 struct AttentionSetUnacknowledged: ControlMessage { let attention: UInt8; init(attentionTimer: UInt8) { attention = attentionTimer } }
 struct SunricherVendorSet: ControlMessage {}
+
+// Radio boundary only. check_hdb_zone_control.py replaces this type with the
+// mapped SDK's Sensor Status construction, marshalling and Bool encoding.
+struct SensorStatus: ControlMessage {
+    enum Property { case presenceDetected }
+    enum Value { case bool(Bool) }
+    init(_ value: (property: Property, value: Value)) {}
+}

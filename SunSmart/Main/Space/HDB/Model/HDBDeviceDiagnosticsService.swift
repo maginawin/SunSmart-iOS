@@ -193,7 +193,10 @@ final class HDBDeviceDiagnosticsService {
                 && Set($0.broadcastModels.map(\.target)) == broadcastTargets && $0.broadcastId == 0xFEFD
         } ?? false
         let publicationTargets = try? context.publicationTargets
-        let publicationValid = device.map { (try? $0.validateSensorPublication(models: context.targets)) != nil } ?? false
+        let publicationValid = device.map { device in
+            guard let publicationTargets else { return false }
+            return (try? device.validateSensorPublication(models: context.targets, publicationTargets: publicationTargets)) != nil
+        } ?? false
         let sensorModels = context.node.elements.flatMap(\.models).filter { $0.companyIdentifier == nil && $0.modelIdentifier == 0x1100 }
         let propertiesKnown = sensorModels.allSatisfy { (context.node.sensorModelTypes[$0]?.id ?? 0) != 0 }
         let zones = device?.lightingZones.compactMap { member in config.lightingZones.first { $0.zoneId == member.zoneId }?.groupAddress }
@@ -230,12 +233,12 @@ final class HDBDeviceDiagnosticsService {
                     if !propertiesKnown { pubIssue = "hdb_diag_sensor_unknown" }
                     else if publicationTargets == nil { pubIssue = "hdb_diag_sensor_ambiguous" }
                     else if publicationTargets?.contains(target) == true {
-                        if publicationValid, let address = device?.sensorPublication.first?.elementAddress, let key = context.key {
+                        if publicationValid, let address = device?.sensorPublication.first(where: { $0.target == target })?.publishAddress, let key = context.key {
                             expectedPublish = Self.publication(Publish(to: MeshAddress(address), using: key,
                                 usingFriendshipMaterial: false, ttl: SensorPublicationPolicy.ttl, period: .disabled,
                                 retransmit: HDBDeviceSyncService.sensorPublicationRetransmit))
                             pubIssue = nil
-                        } else if publicationValid && device?.sensorPublication.first?.elementAddress == nil { pubIssue = "hdb_diag_unmanaged_publication" }
+                        } else if publicationValid && device?.sensorPublication.first(where: { $0.target == target })?.publishAddress == nil { pubIssue = "hdb_diag_unmanaged_publication" }
                         else { pubIssue = "hdb_diag_expectation_unavailable" }
                     }
                 }

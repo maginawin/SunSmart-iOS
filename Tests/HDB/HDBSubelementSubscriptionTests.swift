@@ -261,7 +261,10 @@ import Foundation
         let chain = [node.elements[0].models[0]] + node.elements[0].models[0].relatedModels + [temperature]
         for model in Set(chain) { model.relatedModels = Array(Set(chain).subtracting([model])) }
         let metadata = try HDBConfigurationStore.deviceConfiguration(node: node)
-        try HDBConfigurationStore.update(space: space) { $0.devices[0].copyModels(from: metadata) }
+        try HDBConfigurationStore.update(space: space) {
+            $0.devices[0].copyModels(from: metadata)
+            try $0.devices[0].refreshSensorPublication()
+        }
         _ = try HDBConfigurationStore.createZone(space: space, zoneId: 1, name: "One")
         try HDBConfigurationStore.update(space: space) { $0.devices[0].lightingZones = [.init(zoneId: 1)] }
         let operations = try context.zoneOperations(in: HDBConfigurationStore.load(space: space))

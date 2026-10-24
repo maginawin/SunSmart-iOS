@@ -42,6 +42,7 @@ import Foundation
         precondition(results.isEmpty && session.sections.count == 2,
                      "Presence publication and initialization must precede completion without Sensor Group subscriptions")
         precondition(space.hdb!.devices[0].lightingZonesStatus == .synced)
+        precondition(space.hdb!.devices[0].sensorPublication == [.init(elementAddress: 2, publishAddress: 4)])
         var completedSteps = Set<ObjectIdentifier>()
         for (index, step) in session.sections.enumerated() {
             precondition(step.relevanceStepModels.allSatisfy { completedSteps.contains(ObjectIdentifier($0)) })
@@ -54,6 +55,9 @@ import Foundation
                     || $0.message is LightLCModeSet || $0.message is PreparationMessage || $0.message is LightingTestMessage
             }, "adding a device must only write preparation values, without subscription resets or readbacks")
             if index == 0 {
+                let request = handles[0].message as! ConfigModelPublicationSet
+                precondition(handles[0].address == 2 && request.model.parentElement?.unicastAddress == 2)
+                precondition(request.model.modelIdentifier == 0x1100 && request.publication.publicationAddress.address == 4)
                 // Release an upload's local cleanup while the first ACK is in flight.
                 // Real cleanup advances the Space revision when its summary is stale.
                 let upload = CloudSynchronizationManager.shared.snapshots.last!
@@ -69,7 +73,7 @@ import Foundation
         session.onSettled?(.syncSuccess)
         precondition(results == [Set<UUID>()] && !completion.isRunning)
         precondition(!HDBDeviceSyncService.needsSync(node: node))
-        precondition(node.presenceDetectedSensorModel?.publish?.publicationAddress.address == space.hdb?.devices[0].sensorPublication.first?.elementAddress)
+        precondition(node.presenceDetectedSensorModel?.publish?.publicationAddress.address == space.hdb?.devices[0].sensorPublication.first?.publishAddress)
         precondition(node.ambientLightSensorModel?.publish == nil, "HDB add must not configure Ambient publication")
         let sensors = node.elements.flatMap(\.models).filter { $0.modelIdentifier == 0x1100 && $0.companyIdentifier == nil }
         precondition(space.hdb!.devices[0].sensorGroupId != nil && !space.hdb!.devices[0].sensorGroupModels.isEmpty)

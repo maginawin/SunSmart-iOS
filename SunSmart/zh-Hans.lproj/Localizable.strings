@@ -2422,6 +2422,9 @@
 "hdb_control_partial" = "成员列表显示目标配置，实际响应设备可能不同；如有异常，请对设备重新应用全部照明区域。";
 "hdb_control_requested" = "已请求：%@ · 尚未确认设备执行结果。";
 "hdb_control_not_requested" = "尚未发送测试请求。";
+"hdb_publish_occupancy" = "发布有人状态";
+"hdb_publish_vacancy" = "发布无人状态";
+"hdb_trigger_help" = "向此区域发布有人或无人事件。无人状态可能需等待已配置的保持和渐变时间，设备实际状态尚未确认。";
 "hdb_control_disconnected" = "请连接此空间的 Mesh 网络后测试控制。";
 "hdb_delete_zone" = "删除区域";
 "hdb_delete_zone_help" = "是否在所有成员退订完成后删除该区域？已分配的组地址仍会占用。如需复用地址，请保留区域，仅移除其成员。";
@@ -2459,7 +2462,7 @@
 "hdb_hint_BrightIntensity" = "50–100%。留空则不设置此属性。";
 "hdb_hint_RampUpTime" = "1–3 秒。留空则不设置此属性。";
 "hdb_hint_RampDownTime" = "1–3 秒。留空则不设置此属性。";
-"hdb_hint_HoldTime" = "10–3600 秒。留空则不设置此属性。";
+"hdb_hint_HoldTime" = "5–3600 秒。留空则不设置此属性。";
 "hdb_hint_InstallDate" = "dd-MM-yyyy";
 "hdb_set" = "设置";
 "hdb_control_Auto" = "自动";

@@ -134,54 +134,89 @@ import Foundation
 
     static func sensorPublicationContract() throws {
         var device = HDBDeviceConfiguration(nodeUuid: UUID(), nodeAddress: 8, mac: "AA:BB:CC:DD:EE:FF")
+        let sensor = HDBModelTarget(elementAddress: 8, modelIdentifier: 0x1100, companyIdentifier: nil)
+        let ambient = HDBModelTarget(elementAddress: 9, modelIdentifier: 0x1100, companyIdentifier: nil)
         let lc = HDBModelTarget(elementAddress: 10, modelIdentifier: 0x130F, companyIdentifier: nil)
-        device.zoneModels = [.init(lc)]
-        device.sensorGroupModels = [.init(lc)]
+        let models = [sensor, ambient, lc]
+        device.zoneModels = [.init(lc)]; device.sensorGroupModels = [.init(lc)]
         try device.refreshSensorPublication()
-        precondition(device.sensorPublication == [.init(elementAddress: nil)])
+        precondition(device.sensorPublication.isEmpty)
+        try device.refreshSensorPublication(publicationTargets: [sensor])
+        precondition(device.sensorPublication == [.init(elementAddress: 8, publishAddress: nil)])
         device.sensorGroupId = 0xC080
         try device.refreshSensorPublication()
-        precondition(device.sensorPublication == [.init(elementAddress: 10)])
+        precondition(device.sensorPublication == [.init(elementAddress: 8, publishAddress: 10)])
         let encoded = try JSONEncoder().encode(device)
         let json = try JSONSerialization.jsonObject(with: encoded) as! [String: Any]
         let publication = (json["sensorPublication"] as! [[String: Any]])[0]
-        precondition(publication["modelId"] as? String == "1100" && publication["elementAddress"] as? String == "000A")
+        precondition(publication["modelId"] as? String == "1100" && publication["elementAddress"] as? String == "0008")
+        precondition(publication["publishAddress"] as? String == "000A")
         let decoded = try JSONDecoder().decode(HDBDeviceConfiguration.self, from: encoded)
-        precondition(decoded == device && decoded.sensorGroupModels == device.sensorGroupModels)
+        precondition(decoded == device)
         func rejected(_ value: Any?) throws {
-            var payload = json
-            payload["sensorPublication"] = value
+            var payload = json; payload["sensorPublication"] = value
             do {
                 _ = try JSONDecoder().decode(HDBDeviceConfiguration.self, from: JSONSerialization.data(withJSONObject: payload))
                 preconditionFailure("Invalid publication contract accepted")
             } catch is DecodingError {} catch HDBConfigurationError.invalidData {}
         }
-        for value: Any? in [nil, NSNull(), [], [publication, publication],
-                            [["modelId": "1100"]], [["elementAddress": "000A"]],
-                            [["modelId": "130F", "elementAddress": "000A"]]] { try rejected(value) }
+        for value: Any? in [nil, NSNull(), [publication, publication],
+                            [["modelId": "1100", "elementAddress": "000A"]],
+                            [["modelId": "1100", "publishAddress": "000A"]],
+                            [["modelId": "130F", "elementAddress": "0008", "publishAddress": "000A"]]] { try rejected(value) }
         for address: Any in [NSNull(), "0008", "000B", "C080", "0000", "8000", 10, true, "A", "0x000A"] {
-            try rejected([["modelId": "1100", "elementAddress": address]])
+            try rejected([["modelId": "1100", "elementAddress": "0008", "publishAddress": address]])
+        }
+        for address: Any in [NSNull(), "0007", "C080", "0000", "8000", 8, true, "8", "0x0008"] {
+            try rejected([["modelId": "1100", "elementAddress": address, "publishAddress": "000A"]])
         }
         var lower = json
-        lower["sensorPublication"] = [["modelId": "1100", "elementAddress": "000a"]]
+        lower["sensorPublication"] = [["modelId": "1100", "elementAddress": "0008", "publishAddress": "000a"]]
         let normalized = try JSONDecoder().decode(HDBDeviceConfiguration.self, from: JSONSerialization.data(withJSONObject: lower))
         precondition(normalized == device)
-        // The receiver need not host a Sensor Server. No LC is a valid null,
-        // even while the reserved group remains assigned for other features.
+        try device.validateSensorPublication(models: models, publicationTargets: [sensor])
+        for wrongSource in [ambient, lc, .init(elementAddress: 20, modelIdentifier: 0x1100, companyIdentifier: nil)] {
+            var wrong = device
+            wrong.sensorPublication = [.init(elementAddress: wrongSource.elementAddress, publishAddress: 10)]
+            do {
+                try wrong.validateSensorPublication(models: models, publicationTargets: [sensor])
+                preconditionFailure("Wrong publisher accepted")
+            } catch HDBConfigurationError.invalidData {}
+        }
+        let payload: [String: Any] = ["groups": [["address": "C080", "isVirtual": true]],
+            "nodes": [["uuid": device.nodeUuid.uuidString, "unicastAddress": "0008", "sensorTypes": ["004D", "004E"],
+                "elements": models.enumerated().map { ["index": $0.offset, "models": [["modelId": String(format: "%04X", $0.element.modelId)]]] }]]]
+        try HDBLightingZonePolicy.validateReferences(.init(devices: [device]), payload: payload)
+        for source in [UInt16(9), 10, 20] {
+            var wrong = device; wrong.sensorPublication = [.init(elementAddress: source, publishAddress: 10)]
+            do {
+                try HDBLightingZonePolicy.validateReferences(.init(devices: [wrong]), payload: payload)
+                preconditionFailure("Imported wrong publisher accepted")
+            } catch HDBConfigurationError.invalidData {}
+        }
+        for ids: [UInt16] in [[], [0x004D], [0x004D, 0], [0x004E, 0x0072]] {
+            let selected = try HDBSensorPublication.publicationTargets(models: models, propertyIDs: ids)
+            precondition(selected.isEmpty)
+        }
+        do {
+            _ = try HDBSensorPublication.publicationTargets(models: models, propertyIDs: [0x004D, 0x004D])
+            preconditionFailure("Multiple Presence publishers accepted")
+        } catch HDBConfigurationError.unsupportedModels {}
         device.zoneModels = []; device.sensorGroupModels = []
         try device.refreshSensorPublication()
         let noLC = try JSONDecoder().decode(HDBDeviceConfiguration.self, from: JSONEncoder().encode(device))
-        precondition(noLC.sensorGroupId == 0xC080 && noLC.sensorPublication == [.init(elementAddress: nil)])
+        precondition(noLC.sensorGroupId == 0xC080 && noLC.sensorPublication == [.init(elementAddress: 8, publishAddress: nil)])
         device.sensorGroupId = nil
         try device.refreshSensorPublication()
-        let noGroupOrLC = try JSONDecoder().decode(HDBDeviceConfiguration.self, from: JSONEncoder().encode(device))
-        precondition(noGroupOrLC.sensorPublication == [.init(elementAddress: nil)])
-        // A changed composition produces a new local destination; the group is retained.
+        precondition(device.sensorPublication == [.init(elementAddress: 8, publishAddress: nil)])
         device.zoneModels = [.init(.init(elementAddress: 12, modelIdentifier: 0x130F, companyIdentifier: nil))]
         device.sensorGroupId = 0xC080
         try device.refreshSensorPublication()
-        precondition(device.sensorPublication == [.init(elementAddress: 12)])
-        print("PASS: sensorPublication strict JSON, local LC destination, nullable group/LC and retained metadata")
+        precondition(device.sensorPublication == [.init(elementAddress: 8, publishAddress: 12)])
+        try device.refreshSensorPublication(publicationTargets: [])
+        let empty = try JSONDecoder().decode(HDBDeviceConfiguration.self, from: JSONEncoder().encode(device))
+        precondition(empty.sensorPublication.isEmpty)
+        print("PASS: explicit publisher/destination JSON, empty/nullable publication, strict source and receiver validation")
     }
 
     static func modelArrayContract() throws {

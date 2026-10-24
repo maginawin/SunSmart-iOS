@@ -14,6 +14,7 @@ final class HDBLightingZoneDetailViewController: UITableViewController {
     private var controlIssue: String?
     private var requested: String?
     private var requestedControlKey: String?
+    private var requestedPresence: Bool?
     private var controlButtons: [String: UIButton] = [:]
     private var requestedBrightness = 100
     private var pageActive = false
@@ -22,6 +23,7 @@ final class HDBLightingZoneDetailViewController: UITableViewController {
     private var emergencyObserver: NSObjectProtocol?
     private let brightnessPanel = DeviceLightControlPanelView()
     private let requestLabel = UILabel()
+    private let triggerRequestLabel = UILabel()
 
     init(site: SiteData, space: SpaceData, zone: HDBLightingZone) {
         self.site = site; self.space = space; self.zone = zone
@@ -122,14 +124,15 @@ final class HDBLightingZoneDetailViewController: UITableViewController {
         tableView.reloadData()
     }
 
-    override func numberOfSections(in tableView: UITableView) -> Int { 3 }
+    override func numberOfSections(in tableView: UITableView) -> Int { 4 }
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        switch section { case 0: return 1; case 1: return 3; case 2: return members.count; default: return 0 }
+        switch section { case 0: return 1; case 1: return 3; case 2: return 2; case 3: return members.count; default: return 0 }
     }
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
         switch section {
         case 1: return "hdb_test_controls".localizedString
-        case 2: return "\("hdb_members".localizedString) (\(members.count))"
+        case 2: return "trigger_zone".localizedString
+        case 3: return "\("hdb_members".localizedString) (\(members.count))"
         default: return nil
         }
     }
@@ -139,7 +142,11 @@ final class HDBLightingZoneDetailViewController: UITableViewController {
             var parts = ["hdb_control_help".localizedString, "hdb_control_partial".localizedString]
             if let controlIssue { parts.append(controlIssue) }
             return parts.joined(separator: "\n")
-        case 2: return members.isEmpty ? "hdb_empty_zone_help".localizedString : nil
+        case 2:
+            var parts = ["hdb_trigger_help".localizedString]
+            if let controlIssue { parts.append(controlIssue) }
+            return parts.joined(separator: "\n")
+        case 3: return members.isEmpty ? "hdb_empty_zone_help".localizedString : nil
         default: return nil
         }
     }
@@ -155,30 +162,7 @@ final class HDBLightingZoneDetailViewController: UITableViewController {
                 buttons.axis = .horizontal; buttons.distribution = .fillEqually; buttons.spacing = 12
                 controlButtons.removeAll()
                 for (key, selector) in [("restore_auto", #selector(autoAction(_:))), ("on", #selector(onAction(_:))), ("off", #selector(offAction(_:)))] {
-                    let button = UIButton(type: .system)
-                    var configuration = UIButton.Configuration.plain()
-                    configuration.title = key.localizedString
-                    configuration.cornerStyle = .fixed
-                    configuration.background.cornerRadius = 8
-                    configuration.contentInsets = .init(top: 12, leading: 8, bottom: 12, trailing: 8)
-                    configuration.baseForegroundColor = Bar_Color
-                    configuration.background.backgroundColor = Bar_Color.withAlphaComponent(0.12)
-                    button.configuration = configuration
-                    button.configurationUpdateHandler = { button in
-                        guard var configuration = button.configuration else { return }
-                        if !button.isEnabled {
-                            configuration.baseForegroundColor = .tertiaryLabel
-                            configuration.background.backgroundColor = .tertiarySystemFill
-                        } else {
-                            let emphasized = button.isHighlighted || button.isSelected
-                            configuration.baseForegroundColor = emphasized ? .white : Bar_Color
-                            configuration.background.backgroundColor = emphasized
-                                ? Bar_Color : Bar_Color.withAlphaComponent(0.12)
-                        }
-                        button.configuration = configuration
-                    }
-                    button.addTarget(self, action: selector, for: .touchUpInside)
-                    button.isEnabled = controlIssue == nil
+                    let button = makeControlButton(key: key, action: selector)
                     button.isSelected = requestedControlKey == key
                     button.accessibilityValue = button.isSelected ? requestLabel.text : nil
                     controlButtons[key] = button
@@ -199,7 +183,21 @@ final class HDBLightingZoneDetailViewController: UITableViewController {
                 requestLabel.numberOfLines = 0; requestLabel.font = .preferredFont(forTextStyle: .callout)
                 embed(requestLabel, in: cell, minimumHeight: 22)
             }
-        } else {
+        } else if indexPath.section == 2 {
+            if indexPath.row == 0 {
+                let buttons = UIStackView()
+                buttons.axis = .horizontal; buttons.distribution = .fillEqually; buttons.spacing = 12
+                for (key, selector) in [("hdb_publish_occupancy", #selector(publishOccupancy(_:))),
+                                        ("hdb_publish_vacancy", #selector(publishVacancy(_:)))] {
+                    buttons.addArrangedSubview(makeControlButton(key: key, action: selector))
+                }
+                embed(buttons, in: cell, minimumHeight: 44)
+            } else {
+                triggerRequestLabel.numberOfLines = 0
+                triggerRequestLabel.font = .preferredFont(forTextStyle: .callout)
+                embed(triggerRequestLabel, in: cell, minimumHeight: 22)
+            }
+        } else if indexPath.section == 3 {
             let device = members[indexPath.row]
             let network = MeshNetworkManager.instance.meshNetwork
             let node = network?.uuid.uuidString == space.meshUUID
@@ -210,6 +208,36 @@ final class HDBLightingZoneDetailViewController: UITableViewController {
             cell.accessoryType = .disclosureIndicator; cell.selectionStyle = .default
         }
         return cell
+    }
+    private func makeControlButton(key: String, action: Selector) -> UIButton {
+        let button = UIButton(type: .system)
+        var configuration = UIButton.Configuration.plain()
+        configuration.title = key.localizedString
+        configuration.titleAlignment = .center
+        configuration.titleLineBreakMode = .byWordWrapping
+        configuration.cornerStyle = .fixed
+        configuration.background.cornerRadius = 8
+        configuration.contentInsets = .init(top: 12, leading: 8, bottom: 12, trailing: 8)
+        configuration.baseForegroundColor = Bar_Color
+        configuration.background.backgroundColor = Bar_Color.withAlphaComponent(0.12)
+        button.configuration = configuration
+        button.titleLabel?.numberOfLines = 0
+        button.configurationUpdateHandler = { button in
+            guard var configuration = button.configuration else { return }
+            if !button.isEnabled {
+                configuration.baseForegroundColor = .tertiaryLabel
+                configuration.background.backgroundColor = .tertiarySystemFill
+            } else {
+                let emphasized = button.isHighlighted || button.isSelected
+                configuration.baseForegroundColor = emphasized ? .white : Bar_Color
+                configuration.background.backgroundColor = emphasized
+                    ? Bar_Color : Bar_Color.withAlphaComponent(0.12)
+            }
+            button.configuration = configuration
+        }
+        button.addTarget(self, action: action, for: .touchUpInside)
+        button.isEnabled = controlIssue == nil
+        return button
     }
     private func embed(_ content: UIView, in cell: UITableViewCell, minimumHeight: CGFloat) {
         content.removeFromSuperview()
@@ -225,7 +253,7 @@ final class HDBLightingZoneDetailViewController: UITableViewController {
     }
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         tableView.deselectRow(at: indexPath, animated: true)
-        guard indexPath.section >= 2, !service.isRunning else { return }
+        guard pageActive, indexPath.section == 3, members.indices.contains(indexPath.row), !service.isRunning else { return }
         let device = members[indexPath.row]
         navigationController?.pushViewController(HDBLightingZoneDeviceViewController(site: site, space: space, nodeUuid: device.nodeUuid), animated: true)
     }
@@ -233,6 +261,21 @@ final class HDBLightingZoneDetailViewController: UITableViewController {
     @objc private func autoAction(_ sender: UIButton) { send(.auto, source: sender) }
     @objc private func onAction(_ sender: UIButton) { send(.on, source: sender) }
     @objc private func offAction(_ sender: UIButton) { send(.off, source: sender) }
+    @objc private func publishOccupancy(_ sender: UIButton) { publishPresence(true, source: sender) }
+    @objc private func publishVacancy(_ sender: UIButton) { publishPresence(false, source: sender) }
+    private func publishPresence(_ detected: Bool, source: UIButton) {
+        guard pageActive else { return }
+        do {
+            try service.publishPresence(zoneId: zoneId, groupAddress: groupAddress, detected: detected)
+            requestedPresence = detected
+            updateRequestLabel()
+            showRequestFeedback(source)
+            // The requested message can wrap to a different height than the empty label.
+            tableView.beginUpdates(); tableView.endUpdates()
+        } catch {
+            show(error); reload()
+        }
+    }
     private func send(_ action: HDBZoneControlAction, source: UIButton? = nil) {
         guard pageActive else { return }
         do {
@@ -246,24 +289,30 @@ final class HDBLightingZoneDetailViewController: UITableViewController {
                 requestedBrightness = value; requested = "\("brightness".localizedString) \(value)%"
             }
             updateRequestLabel()
-            if let source {
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
-                let feedback = CABasicAnimation(keyPath: UIAccessibility.isReduceMotionEnabled ? "opacity" : "transform.scale")
-                feedback.fromValue = UIAccessibility.isReduceMotionEnabled ? 0.55 : 0.9
-                feedback.toValue = 1
-                feedback.duration = 0.3
-                feedback.timingFunction = CAMediaTimingFunction(name: .easeOut)
-                source.layer.add(feedback, forKey: "hdbControlRequest")
-            }
+            if let source { showRequestFeedback(source) }
         } catch {
             brightnessEdited = false
             show(error); reload()
         }
     }
+    private func showRequestFeedback(_ source: UIButton) {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        let feedback = CABasicAnimation(keyPath: UIAccessibility.isReduceMotionEnabled ? "opacity" : "transform.scale")
+        feedback.fromValue = UIAccessibility.isReduceMotionEnabled ? 0.55 : 0.9
+        feedback.toValue = 1
+        feedback.duration = 0.3
+        feedback.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        source.layer.add(feedback, forKey: "hdbControlRequest")
+    }
     private func updateRequestLabel() {
         requestLabel.text = requested.map { String(format: "hdb_control_requested".localizedString, $0) }
             ?? "hdb_control_not_requested".localizedString
         requestLabel.textColor = requested == nil ? .secondaryLabel : Bar_Color
+        triggerRequestLabel.text = requestedPresence.map {
+            let key = $0 ? "hdb_publish_occupancy" : "hdb_publish_vacancy"
+            return String(format: "hdb_control_requested".localizedString, key.localizedString)
+        } ?? "hdb_control_not_requested".localizedString
+        triggerRequestLabel.textColor = requestedPresence == nil ? .secondaryLabel : Bar_Color
         for (key, button) in controlButtons {
             button.isSelected = requestedControlKey == key
             button.accessibilityValue = button.isSelected ? requestLabel.text : nil

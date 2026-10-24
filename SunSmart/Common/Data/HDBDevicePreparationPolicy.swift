@@ -23,11 +23,12 @@ enum HDBDevicePreparationPolicy {
         // The initialization/Zone executor checks its own complete model requirements.
         let base = Set(targets.filter(HDBLightingZonePolicy.isZoneTarget)).sorted(by: HDBLightingZonePolicy.targetOrder)
         if let address = sensorGroupId, !(0xC001..<0xFEFD).contains(Int(address)) { throw HDBConfigurationError.invalidData }
-        guard sensorPublication == [try .expected(sensorGroupId: sensorGroupId, models: targets)] else {
+        guard sensorPublication == (try HDBSensorPublication.expected(sensorGroupId: sensorGroupId,
+            models: targets, publicationTargets: publicationTargets)) else {
             throw HDBConfigurationError.invalidData
         }
-        let address = sensorPublication.first?.elementAddress
-        let sensors = Array(Set(publicationTargets)).sorted { $0.elementAddress < $1.elementAddress }
+        let address = sensorPublication.first?.publishAddress
+        let sensors = sensorPublication.map(\.target)
         guard sensors.allSatisfy({ $0.modelId == 0x1100 && targets.contains($0) }) else { throw HDBConfigurationError.unsupportedModels }
         return .init(nodeUuid: nodeUuid, nodeAddress: nodeAddress, appKeyIndex: appKeyIndex,
             baseTargets: base.map { .init(model: $0) }, sensorGroupId: sensorGroupId,

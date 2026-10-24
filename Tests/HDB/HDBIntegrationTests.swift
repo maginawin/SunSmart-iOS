@@ -81,7 +81,7 @@ import Foundation
         let restoredContext = try HDBDeviceSyncContext.resolve(space: space, node: node)!
         try HDBDeviceSyncService.prepareIntent(context: restoredContext)
         let restored = try HDBConfigurationStore.load(space: space)
-        check(restored.devices[0].nodeAddress == 11 && restored.devices[0].sensorPublication == [.init(elementAddress: 12)])
+        check(restored.devices[0].nodeAddress == 11 && restored.devices[0].sensorPublication == [.init(elementAddress: 11, publishAddress: 12)])
         check((restored.devices[0].zoneModels + restored.devices[0].sensorGroupModels + restored.devices[0].broadcastModels).allSatisfy { $0.elementAddress >= 11 })
         check(!HDBLightingZonePolicy.matches(oldPlan, in: restored))
         try HDBConfigurationStore.validateModels(restored, nodes: network.nodes)

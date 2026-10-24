@@ -66,18 +66,7 @@ final class HDBDeviceSyncContext {
     }
     var publicationTargets: [HDBModelTarget] {
         get throws {
-            let sensors = node.elements.flatMap { element in
-                element.models.filter { $0.companyIdentifier == nil && $0.modelIdentifier == 0x1100 }
-                    .map { (element: element, model: $0) }
-            }
-            // Unknown properties do not create a publication task or an HDB readiness requirement.
-            guard sensors.allSatisfy({ (node.sensorModelTypes[$0.model]?.id ?? 0) != 0 }) else { return [] }
-            let presence = sensors.filter { node.sensorModelTypes[$0.model]?.id == 0x004D }
-            guard presence.count <= 1 else { throw HDBConfigurationError.unsupportedModels }
-            return presence.map {
-                HDBModelTarget(elementAddress: $0.element.unicastAddress,
-                    modelIdentifier: $0.model.modelIdentifier, companyIdentifier: nil)
-            }
+            try HDBConfigurationStore.publicationTargets(node: node)
         }
     }
     var hasSensor: Bool { targets.contains { $0.modelId == 0x1100 } }
@@ -89,7 +78,7 @@ final class HDBDeviceSyncContext {
         return try HDBDevicePreparationPolicy.plan(nodeUuid: node.uuid, nodeAddress: node.primaryUnicastAddress,
             appKeyIndex: key.index, targets: targets,
             sensorGroupId: device.sensorGroupId,
-            publicationTargets: device.sensorPublication.first?.elementAddress == nil ? [] : try publicationTargets,
+            publicationTargets: try publicationTargets,
             sensorPublication: device.sensorPublication)
     }
 

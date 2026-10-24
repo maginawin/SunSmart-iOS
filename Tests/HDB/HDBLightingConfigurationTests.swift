@@ -18,8 +18,15 @@ import Foundation
         }
         try check(HDBLightingConfigurationPolicy.writes(.intensity, values: .init(brightIntensity: 100)) == [.property(46, 65535)])
         try check(HDBLightingConfigurationPolicy.writes(.softDimming, values: .init(rampUpTime: 1, rampDownTime: 3)) == [.property(55, 1000), .property(54, 3000)])
-        for (seconds, expected): (Int, UInt32) in [(10, 10000), (3600, 3600000)] {
+        for (seconds, expected): (Int, UInt32) in [(5, 5000), (9, 9000), (10, 10000), (3600, 3600000)] {
             try check(HDBLightingConfigurationPolicy.writes(.timeDelay, values: .init(holdTime: seconds)) == [.property(60, expected)])
+        }
+        try HDBLightingValues().validate()
+        for seconds in [4, 3601] {
+            do {
+                _ = try HDBLightingConfigurationPolicy.writes(.timeDelay, values: .init(holdTime: seconds))
+                fatalError("out-of-range Hold Time accepted")
+            } catch HDBConfigurationError.invalidData {}
         }
         try check(try HDBLightingConfigurationPolicy.writes(.override, values: .init(lightingControl: .auto)) == [.auto])
         try check(try HDBLightingConfigurationPolicy.writes(.override, values: .init(lightingControl: .forceOff)) == [.off])
@@ -81,8 +88,11 @@ import Foundation
         precondition(config.devices[0].lightingConfiguration?.brightIntensity?.value == 100 && config.devices[0].lightingConfiguration?.brightIntensity?.status == .pending)
         precondition(config.devices[1] == otherBefore && config.lightingZones == zonesBefore)
         precondition(config.devices[0].lightingConfiguration?.values.holdTime == 120)
+        try HDBLightingConfigurationPolicy.record(nodeUuid: id, command: .timeDelay, values: .init(holdTime: 5), status: .pending, in: &config)
         let roundtrip = try JSONDecoder().decode(HDBConfiguration.self, from: JSONEncoder().encode(config))
         precondition(roundtrip == config)
+        try HDBLightingZonePolicy.validate(roundtrip)
+        precondition(roundtrip.devices[0].lightingConfiguration?.values.holdTime == 5)
         for invalid in [HDBLightingValues(dimIntensity: 51), .init(failsafeDelay: -1), .init(installDate: "31-02-2026")] {
             do { try invalid.validate(); fatalError("invalid values accepted") } catch HDBConfigurationError.invalidData {}
         }

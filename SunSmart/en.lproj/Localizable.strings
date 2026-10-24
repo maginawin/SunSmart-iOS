@@ -2406,6 +2406,9 @@
 "hdb_control_partial" = "Members show the target configuration. Actual responding devices may differ; apply Lighting Zones again if needed.";
 "hdb_control_requested" = "Requested: %@ · Device results are not confirmed.";
 "hdb_control_not_requested" = "No test request yet.";
+"hdb_publish_occupancy" = "Publish Occupancy";
+"hdb_publish_vacancy" = "Publish Vacancy";
+"hdb_trigger_help" = "Publish a presence or absence event to this zone. Vacancy may follow the configured hold and fade times. Device state is not confirmed.";
 "hdb_control_disconnected" = "Connect to this Space's Mesh network to test controls.";
 "hdb_delete_zone" = "Delete Zone";
 "hdb_delete_zone_help" = "Remove this zone after all members are unsubscribed? Its Group address will remain consumed. To reuse the address, keep the zone and remove only its members.";
@@ -2443,7 +2446,7 @@
 "hdb_hint_BrightIntensity" = "50–100%. Leave blank to omit this field.";
 "hdb_hint_RampUpTime" = "1–3 seconds. Leave blank to omit this field.";
 "hdb_hint_RampDownTime" = "1–3 seconds. Leave blank to omit this field.";
-"hdb_hint_HoldTime" = "10–3600 seconds. Leave blank to omit this field.";
+"hdb_hint_HoldTime" = "5–3600 seconds. Leave blank to omit this field.";
 "hdb_hint_InstallDate" = "dd-MM-yyyy";
 "hdb_set" = "Set";
 "hdb_control_Auto" = "Auto";

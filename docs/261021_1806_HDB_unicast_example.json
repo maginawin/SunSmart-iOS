@@ -13,7 +13,8 @@
       "sensorPublication": [
         {
           "modelId": "1100",
-          "elementAddress": "0101"
+          "elementAddress": "0100",
+          "publishAddress": "0101"
         }
       ],
       "lightingConfiguration": {
@@ -133,7 +134,8 @@
       "sensorPublication": [
         {
           "modelId": "1100",
-          "elementAddress": null
+          "elementAddress": "0200",
+          "publishAddress": null
         }
       ],
       "lightingConfiguration": {

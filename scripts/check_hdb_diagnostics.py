@@ -24,7 +24,7 @@ files = [
 text = source(SDK) + '\n' + '\n'.join((ROOT / f).read_text().replace('import NordicSigMeshSDK', '') for f in files)
 mesh_store = (ROOT / 'SunSmart/Common/Data/HDBConfigurationStore+Mesh.swift').read_text()
 text += '\nextension HDBConfigurationStore {\n' + '\n'.join(block(mesh_store, marker) for marker in [
-    '    static func modelTargets(', '    static func broadcastTargets('
+    '    static func modelTargets(', '    static func broadcastTargets(', '    static func publicationTargets('
 ]) + '\n}\n'
 text = text.replace('// Inject SensorPublicationPolicy here.', block((ROOT / 'SunSmart/Common/Data/Node+SyncData.swift').read_text(), 'enum SensorPublicationPolicy {'))
 text = text.replace('// Inject production sensorPublicationRetransmit here.', block((ROOT / 'SunSmart/Main/Space/HDB/Model/HDBDeviceSyncService.swift').read_text(), '    static var sensorPublicationRetransmit:'))

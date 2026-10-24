@@ -40,7 +40,8 @@
           "sensorPublication": [
             {
               "modelId": "1100",
-              "elementAddress": "000D"
+              "elementAddress": "000B",
+              "publishAddress": "000D"
             }
           ],
           "zoneModels": [

@@ -1,6 +1,6 @@
 # HDB 数据契约与设备 Model 数组配置
 
-日期：2026-10-24。当前新增本机 Sensor publication；本次实施与验证记录见 [单播方案](261024_1136_HDB_sensor_local_unicast_analysis.md)，真实设备及外部联调待验收。
+日期：2026-10-24。当前 Sensor publication 显式记录发布方与发布目的地址；本次实施与验证记录见 [单播方案](261024_1136_HDB_sensor_local_unicast_analysis.md)，真实设备及外部联调待验收。
 
 2026-10-22 格式已按 [v2 方案](261022_1626_HDB_json_format_plan.md) 更新；本次验证结果记录在该方案中。
 
@@ -24,7 +24,7 @@
 
 HDB 对象位于单份 Space payload 的 `spaceData.hdb`。Site 上传时该 Space 位于 `site.spaces[]`，单 Space 上传时位于请求的 `spaces[]`；不要把业务层级 `site.space.spaceData.hdb` 当成固定 HTTP 字段路径。
 
-除 `devices[].lightingConfiguration` 可省略或为 null 外，下表字段均须存在；模型清单无条目时写 `[]`，`sensorPublication` 始终保留单条，合法空值写在其 `elementAddress` 中。整个 `hdb` 缺失表示未提供 HDB 配置；已有 `hdb` 却为 null、损坏或缺必填字段时拒绝读取，不能当空配置保存。
+除 `devices[].lightingConfiguration` 可省略或为 null 外，下表字段均须存在；模型清单无条目时写 `[]`，`sensorPublication` 无已识别发布方时为 `[]`，否则保留一条，目的地址的合法空值写在 `publishAddress` 中。整个 `hdb` 缺失表示未提供 HDB 配置；已有 `hdb` 却为 null、损坏或缺必填字段时拒绝读取，不能当空配置保存。
 
 | 字段 | 类型与约束 |
 | --- | --- |
@@ -42,7 +42,7 @@ HDB 对象位于单份 Space payload 的 `spaceData.hdb`。Site 上传时该 Spa
 | `devices[].sensorGroupId` | 4 位十六进制字符串 `C001`–`FEFC` 或显式 null；非空时设备间不重复、不与 Zone 地址冲突；分配还须使用全 Site 地址池 |
 | `devices[].zoneModels` | 必填数组；条目为十六进制字符串 `elementAddress` 和 `modelId`，筛选规则见下文 |
 | `devices[].sensorGroupModels` | 必填数组；由 Composition 生成，与地址是否已分配无关；完整保留供其他功能使用，不触发本次 Sensor Group 订阅 |
-| `devices[].sensorPublication` | 必填单条数组；`modelId` 固定字符串 `1100`，`elementAddress` 为本机唯一 LC 的 4 位十六进制单播目的地址；无组或无 LC 时显式 null |
+| `devices[].sensorPublication` | 必填数组，当前最多一条；`modelId=1100`、`elementAddress` 定位唯一 Presence 发布方；`publishAddress` 为本机唯一 LC 的 4 位十六进制单播目的地址，无组或无 LC 时为 null；无已识别发布方时为 `[]` |
 | `devices[].broadcastModels` | 必填数组；本次 Reset 后必须恢复 Broadcast 的目标 |
 | `devices[].broadcastId` | 必填字符串 `FEFD`（数值 65277），即使恢复清单为空也保留 |
 | `devices[].lightingConfiguration` | 单设备字段配置对象或 null；当前导出保留该键；各参数为 `{ "status": "pending或synced", "value": 值 }` |
@@ -62,7 +62,7 @@ Lighting Configuration 只存于设备：不再输出根级 `broadcast`、根级
 
 ### Model 清单通用规则
 
-新增 `spaceData.hdb.devices[].zoneModels`、`spaceData.hdb.devices[].sensorGroupModels`、`spaceData.hdb.devices[].broadcastModels`，以及同级的 `broadcastId`。三个模型清单每项只包含十六进制字符串 `elementAddress`、`modelId`，表示真实模型实例，不表示设备当前订阅结果。`sensorPublication` 是不同语义的发布配置：modelId 表示发布方类型，elementAddress 表示接收方 LC 地址；发布方 Element 仍按唯一 Presence 属性解析。
+新增 `spaceData.hdb.devices[].zoneModels`、`spaceData.hdb.devices[].sensorGroupModels`、`spaceData.hdb.devices[].broadcastModels`，以及同级的 `broadcastId`。三个模型清单每项只包含十六进制字符串 `elementAddress`、`modelId`，表示真实模型实例，不表示设备当前订阅结果。`sensorPublication` 的 `modelId + elementAddress` 同样定位真实模型实例，表示发布方；独立的 `publishAddress` 表示接收方 LC 地址。生成时按全部 Sensor 属性识别结果选取唯一 Presence（004D），导入和发送时校验该引用。
 
 | 字段/Model | 数值或规则 |
 | --- | --- |
@@ -80,7 +80,7 @@ SIG modelId 使用 4 位、Vendor 使用 8 位；无 0x 前缀，统一大写输
 
 - 三个数组均为新格式必填字段；没有目标时写 `[]`。缺字段、null、错误类型、负数、越界或错误模型引用均报错。此规则取代上一版“缺字段视为空数组”的旧数据兼容要求。
 - `broadcastId` 必填且只能是字符串 `FEFD`，不允许 null 或其他地址；即使 broadcastModels=[] 也保留 broadcastId。它是固定共用地址，不参与 Lighting Zone/Sensor Group 地址分配，也不受 Sensor Group 地址唯一性约束。
-- `sensorGroupId` 使用 4 位十六进制字符串或显式 null；null 表示尚无组地址，此时 sensorPublication.elementAddress 也为 null。本次 Zone 操作均不订阅 Sensor Group。0、空字符串不表示合法空值。
+- `sensorGroupId` 使用 4 位十六进制字符串或显式 null；null 表示尚无组地址，此时 sensorPublication.publishAddress 也为 null。本次 Zone 操作均不订阅 Sensor Group。0、空字符串不表示合法空值。
 - sensorGroupModels 按 Composition 生成，不受 sensorGroupId 是否已分配影响。因此允许非空清单与 sensorGroupId=null 同时存在。
 - 按 `(elementAddress, modelId)` 去重、排序；配置比较对数组顺序规范化，不忽略字段或同步结果。
 - 条目必须属于当前设备，符合筛选规则；开始破坏性命令前，存储清单必须与本次 Composition 计算结果一致。
@@ -130,7 +130,7 @@ broadcastId 固定为 65277（0xFEFD）。broadcastModels 表示 **本次 Zone D
 
 ### 完整 HDB 对象示例
 
-以下合成设备 Primary=256，包含 OnOff、Lightness、Vendor；Element=257 包含 OnOff、LC、LC Setup，Element=258 可包含 Sensor Server。地址尚未分配，`sensorGroupId=null`，sensorPublication.elementAddress=null；Zone Set 不执行 Sensor Group 订阅。目录为便于阅读仅列一个 Zone。
+以下合成设备 Primary=256，包含 OnOff、Lightness、Vendor；Element=257 包含 OnOff、LC、LC Setup，Element=258 包含已识别的 Presence Sensor Server。地址尚未分配，`sensorGroupId=null`，sensorPublication.publishAddress=null；Zone Set 不执行 Sensor Group 订阅。目录为便于阅读仅列一个 Zone。
 
 <!-- hdb-complete-example -->
 ```json
@@ -156,7 +156,8 @@ broadcastId 固定为 65277（0xFEFD）。broadcastModels 表示 **本次 Zone D
       "sensorPublication": [
         {
           "modelId": "1100",
-          "elementAddress": null
+          "elementAddress": "0102",
+          "publishAddress": null
         }
       ],
       "zoneModels": [

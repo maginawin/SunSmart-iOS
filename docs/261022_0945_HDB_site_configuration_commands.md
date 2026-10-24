@@ -10,17 +10,18 @@ Config 命令发送到设备 Primary Address，参数指定目标 Element Addres
 
 按以下顺序执行。
 
-### 1.1 Sensor Group 保留与本机 publication
+### 1.1 Sensor publication
 
-- 设备任一 Element 存在 Sensor Server `0x1100`：为设备分配唯一 `sensorGroupId`，已有则复用。地址范围 `0xC001...0xFEFC`，不得与其他 Sensor Group、Lighting Zone 重复。保留 `sensorGroupModels`，按 Composition 生成，供其他功能使用；本任务不下发 Sensor Group 订阅。
-- 读取 `sensorPublication` 的单条配置：`modelId=1100`；`elementAddress` 是本机 LC Server `0x130F` 所在 Element 的目的地址，**不是发布方 Sensor 的 Element 地址**。无组地址或无 LC 时该字段为 null，跳过 publication；多个 LC 无法唯一确定时报错。
-- 目的地址非空时，定位 Presence Detected（Property ID=`0x004D`）所在 Element 的 Sensor Server `0x1100`。要求全部 Sensor Server 类型已知且非 0，并且仅有一个 Presence Sensor；类型未齐或无 Presence 时跳过 publication，多个 Presence 时报错。
-- 核对发布方 Sensor 和接收方 LC 都绑定当前 Space AppKey，然后向节点 Primary Address 发送 `ConfigModelPublicationSet`，等待匹配的成功 ACK：
-  - 参数 ElementAddress=Presence Sensor 所在 Element；ModelIdentifier=`0x1100`。
-  - PublishAddress=`sensorPublication.elementAddress`；AppKey=当前 Space AppKey，Credentials Flag=`0`，TTL=`0xFF`，Period=`0`，Retransmit Count=`2`、Interval=`100 ms`。
-  - 例如 Primary/Presence=`0008`、LC=`000A`：配置命令发往 `0008`，参数 ElementAddress=`0008`、PublishAddress=`000A`；运行时 Sensor Status 从 `0008` 发布到 `000A`。
-
-publication 的 null 是合法跳过，不代表后续依赖 LC 的固定参数、灯光参数和 Auto 已具备执行条件；执行完整灯控初始化前仍须核对其所需模型。
+- 设备任一 Element 存在 Sensor Server `0x1100`：分配或复用设备唯一 `sensorGroupId`，范围 `0xC001...0xFEFC`，不得与其他 Sensor Group、Lighting Zone 重复。保留 `sensorGroupModels` 元数据，本步骤不添加 Sensor Group 订阅。
+- 全部 Sensor Server 类型已知且非 0，并且仅有一个 Presence Detected（Property ID=`0x004D`）时，生成一条 `sensorPublication`：`modelId="1100"`，`elementAddress` 为该 Presence Sensor 所在 Element，`publishAddress` 为本机唯一 LC Server `0x130F` 所在 Element。
+- 类型未齐或没有 Presence 时，数组为 `[]`；多个 Presence 时报错。有发布方但无组或无 LC 时，保留发布方信息，`publishAddress=null`；有组且多个 LC 时不默认选第一个，报不支持。
+- 数组为空或 `publishAddress=null`：跳过 publication 配置；null 不表示下发禁用命令。
+- 非空目标：向设备 Primary Address 发送 `ConfigModelPublicationSet`，参数如下，等待成功 ACK 后继续：
+  - Element Address=`sensorPublication[].elementAddress`。
+  - Model ID=`sensorPublication[].modelId`（当前为 `0x1100`）。
+  - Publish Address=`sensorPublication[].publishAddress`（本机 LC 单播地址）。
+  - AppKey=当前 Space AppKey，Credentials Flag=`0`，TTL=`0xFF`，Period=`0`，Retransmit Count=`2`、Interval=`100 ms`。
+- 下发前校验发布方与本机 LC 均绑定该 AppKey。当前字段只接受新结构；不兼容旧字段语义。
 
 ### 1.2 固定参数
 

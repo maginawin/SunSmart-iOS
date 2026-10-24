@@ -70,7 +70,7 @@ import Foundation
         try check(HDBConfigurationStore.load(space: space) == beforeFailure)
         primary.boundApplicationKeys = [ApplicationKey()]
 
-        try service.set(nodeUuid: node.uuid, command: .timeDelay, values: .init(holdTime: 60))
+        try service.set(nodeUuid: node.uuid, command: .timeDelay, values: .init(holdTime: 5))
         pump { MeshNetworkManager.preparationReply != nil }
         service.cancel()
         do { try service.set(nodeUuid: node.uuid, command: .override, values: .init(failsafeDelay: 20)); fatalError("reentry during cancel") }
@@ -80,12 +80,14 @@ import Foundation
         try service.set(nodeUuid: node.uuid, command: .override, values: .init(failsafeDelay: 20))
         try check(HDBConfigurationStore.load(space: space).devices[0].lightingConfiguration?.holdTime?.status == .pending)
 
-        try service.set(nodeUuid: node.uuid, command: .timeDelay, values: .init(holdTime: 90))
+        try service.set(nodeUuid: node.uuid, command: .timeDelay, values: .init(holdTime: 5))
         pump { MeshNetworkManager.preparationReply != nil }; reply(failure: true); pump { !service.isRunning }
         try check(HDBConfigurationStore.load(space: space).devices[0].lightingConfiguration?.holdTime?.status == .pending)
-        try service.set(nodeUuid: node.uuid, command: .timeDelay, values: .init(holdTime: 90))
+        try check(HDBConfigurationStore.load(space: space).devices[0].lightingConfiguration?.holdTime?.value == 5)
+        try service.set(nodeUuid: node.uuid, command: .timeDelay, values: .init(holdTime: 5))
         pump { MeshNetworkManager.preparationReply != nil }; reply(); pump { !service.isRunning }
         try check(HDBConfigurationStore.load(space: space).devices[0].lightingConfiguration?.holdTime?.status == .synced)
+        try check(HDBConfigurationStore.load(space: space).devices[0].lightingConfiguration?.holdTime?.value == 5)
 
         try service.set(nodeUuid: node.uuid, command: .timeDelay, values: .init(holdTime: 120))
         pump { MeshNetworkManager.preparationReply != nil }

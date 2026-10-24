@@ -31,7 +31,7 @@ import Foundation
         device.sensorGroupModels = HDBLightingZonePolicy.sensorGroupTargets(from: targets).map(HDBModelReference.init)
         device.broadcastModels = HDBConfigurationStore.broadcastTargets(node: current).map(HDBModelReference.init)
         device.sensorGroupId = 0xC080
-        try! device.refreshSensorPublication()
+        try! device.refreshSensorPublication(publicationTargets: HDBConfigurationStore.publicationTargets(node: current))
         HDBConfigurationStore.config = .init(lightingZones: [.init(zoneId: 1, name: "One", groupAddress: 0xC001)], devices: [device])
         let service = HDBDeviceDiagnosticsService(site: SiteData(), space: SpaceData.persisted, nodeUuid: current.uuid)
         service.send = { request, address in
@@ -189,7 +189,7 @@ import Foundation
             node.sensorModelTypes = [:]
         }
         HDBConfigurationStore.config.devices[0].sensorGroupId = nil
-        try! HDBConfigurationStore.config.devices[0].refreshSensorPublication()
+        try! HDBConfigurationStore.config.devices[0].refreshSensorPublication(publicationTargets: [])
         try noSensor.read([.subscriptions]); pump { !noSensor.isRunning }
         precondition(noSensor.rows.count == 6 && noSensor.rows.allSatisfy { $0.snapshot.target.modelId != 0x1100 })
         precondition(noSensor.rows.first { $0.snapshot.target.modelId == 0x130F }!.snapshot.expectedSubscriptions == [0xC001, 0xFEFD])

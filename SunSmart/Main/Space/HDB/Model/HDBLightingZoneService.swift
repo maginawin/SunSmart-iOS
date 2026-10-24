@@ -51,6 +51,14 @@ final class HDBLightingZoneService {
         }
     }
 
+    /// Simulates a sensor event; submission does not confirm a member's LC state.
+    func publishPresence(zoneId: Int, groupAddress: UInt16, detected: Bool) throws {
+        precondition(Thread.isMainThread)
+        try validateControl(zoneId: zoneId, groupAddress: groupAddress)
+        let message = SensorStatus((property: .presenceDetected, value: .bool(detected)))
+        MeshAPI.sendMessage(message: message, address: groupAddress)
+    }
+
     func validateControl(zoneId: Int, groupAddress: UInt16) throws {
         guard !isRunning, !MeshProxyMessageCommand.shared.isBusy else { throw HDBConfigurationError.busy }
         let network = try editableNetwork()

@@ -206,9 +206,11 @@ extension HDBLightingZonePolicy {
                 throw HDBConfigurationError.invalidMAC
             }
             let references = device.zoneModels + device.sensorGroupModels + device.broadcastModels
-            if !references.isEmpty || device.sensorGroupId != nil {
+            if node["elements"] != nil || !references.isEmpty || device.sensorGroupId != nil || !device.sensorPublication.isEmpty {
                 let models = try compositionTargets(node: node, primaryAddress: device.nodeAddress)
-                try device.validateSensorPublication(models: models)
+                let publishers = try HDBSensorPublication.publicationTargets(models: models,
+                    propertyIDs: (node["sensorTypes"] as? [String] ?? []).map { UInt16($0, radix: 16) ?? 0 })
+                try device.validateSensorPublication(models: models, publicationTargets: publishers)
                 guard Set(references.map(\.target)).isSubset(of: Set(models)),
                       Set(device.zoneModels.map(\.target)) == Set(zoneTargets(from: models, primaryAddress: device.nodeAddress)),
                       Set(device.sensorGroupModels.map(\.target)) == Set(sensorGroupTargets(from: models)) else {

@@ -2,14 +2,24 @@ import Foundation
 import NordicSigMeshSDK
 
 extension HDBConfigurationStore {
-    static func deviceConfiguration(node: Node) throws -> HDBDeviceConfiguration {
+    static func deviceConfiguration(node: Node, sensorTypes: [String]? = nil) throws -> HDBDeviceConfiguration {
         var device = HDBDeviceConfiguration(nodeUuid: node.uuid, nodeAddress: node.primaryUnicastAddress,
               mac: try HDBDeviceConfiguration.normalizedMAC(node.macAddress))
         let targets = modelTargets(node: node)
         device.zoneModels = HDBLightingZonePolicy.zoneTargets(from: targets, primaryAddress: node.primaryUnicastAddress).map(HDBModelReference.init)
         device.sensorGroupModels = HDBLightingZonePolicy.sensorGroupTargets(from: targets).map(HDBModelReference.init)
         device.broadcastModels = broadcastTargets(node: node).map(HDBModelReference.init)
+        let publishers = try sensorTypes.map {
+            try HDBSensorPublication.publicationTargets(models: targets, propertyIDs: $0.map { UInt16($0, radix: 16) ?? 0 })
+        } ?? publicationTargets(node: node)
+        try device.refreshSensorPublication(publicationTargets: publishers)
         return device
+    }
+
+    static func publicationTargets(node: Node) throws -> [HDBModelTarget] {
+        let sensors = node.elements.flatMap(\.models).filter { $0.companyIdentifier == nil && $0.modelIdentifier == 0x1100 }
+        return try HDBSensorPublication.publicationTargets(models: modelTargets(node: node),
+            propertyIDs: sensors.map { node.sensorModelTypes[$0]?.id ?? 0 })
     }
 
     static func modelTargets(node: Node) -> [HDBModelTarget] {
@@ -51,7 +61,7 @@ extension HDBConfigurationStore {
         for device in configuration.devices {
             guard let node = nodes.first(where: { $0.uuid == device.nodeUuid && $0.primaryUnicastAddress == device.nodeAddress }),
                   device.hasSameModels(as: try deviceConfiguration(node: node)) else { throw HDBConfigurationError.invalidData }
-            try device.validateSensorPublication(models: modelTargets(node: node))
+            try device.validateSensorPublication(models: modelTargets(node: node), publicationTargets: publicationTargets(node: node))
         }
     }
 

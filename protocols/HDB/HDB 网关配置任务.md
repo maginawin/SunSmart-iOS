@@ -1,6 +1,6 @@
 # HDB 网关配置任务
 
-当前字段、必填规则和完整示例见 [HDB 数据契约](261022_1116_HDB_device_model_arrays_plan.md)。Zone Set 使用设备记录中的三个 Model 清单；下文筛选范围用于核对清单，不要求网关重新推导 SDK 的关联模型。
+当前字段、必填规则和完整示例见 [HDB 数据契约](../../docs/261022_1116_HDB_device_model_arrays_plan.md)。Zone Set 使用设备记录中的三个 Model 清单；下文筛选范围用于核对清单，不要求网关重新推导 SDK 的关联模型。
 
 Element 按设备 Composition 选择；“所有 Elements”包含 Primary Element，同类 Model 的全部实例均需处理。Vendor Model：Company ID=`0x0A78`，Model ID=`0x0001`。
 
@@ -10,17 +10,18 @@ Config 命令发送到设备 Primary Address，参数指定目标 Element Addres
 
 按以下顺序执行。
 
-### 1.1 Sensor Group
+### 1.1 Sensor publication
 
-- 设备任一 Element 存在 Sensor Server `0x1100`：为设备分配唯一 `sensorGroupId`，已有则复用。地址范围 `0xC001...0xFEFC`，不得与其他 Sensor Group、Lighting Zone 重复。
-  - 订阅 `sensorGroupId`：发送 `ConfigModelSubscriptionAdd`。
-    - 所有 Elements 下的 Light LC Server `0x130F`。
-    - 所有 Elements 下的 Sensor Server `0x1100`。
-  - 发布到 `sensorGroupId`：发送 `ConfigModelPublicationSet`。
-    - 目标：Presence Detected（Property ID=`0x004D`）所在 Element 的 Sensor Server `0x1100`。
-    - 条件：全部 Sensor Server 类型已知且非 0，并且仅有一个 Presence Sensor；类型未齐或无 Presence 时跳过 publication，类型已齐但存在多个 Presence 时报错。
-    - 参数：Address=`sensorGroupId`，AppKey=当前 Space AppKey，Credentials Flag=`0`，TTL=`0xFF`，Period=`0`，Retransmit Count=`2`、Interval=`100 ms`。
-- 没有 Sensor Server：跳过本节。
+- 设备任一 Element 存在 Sensor Server `0x1100`：分配或复用设备唯一 `sensorGroupId`，范围 `0xC001...0xFEFC`，不得与其他 Sensor Group、Lighting Zone 重复。保留 `sensorGroupModels` 元数据，本步骤不添加 Sensor Group 订阅。
+- 全部 Sensor Server 类型已知且非 0，并且仅有一个 Presence Detected（Property ID=`0x004D`）时，生成一条 `sensorPublication`：`modelId="1100"`，`elementAddress` 为该 Presence Sensor 所在 Element，`publishAddress` 为本机唯一 LC Server `0x130F` 所在 Element。
+- 类型未齐或没有 Presence 时，数组为 `[]`；多个 Presence 时报错。有发布方但无组或无 LC 时，保留发布方信息，`publishAddress=null`；有组且多个 LC 时不默认选第一个，报不支持。
+- 数组为空或 `publishAddress=null`：跳过 publication 配置；null 不表示下发禁用命令。
+- 非空目标：向设备 Primary Address 发送 `ConfigModelPublicationSet`，参数如下，等待成功 ACK 后继续：
+  - Element Address=`sensorPublication[].elementAddress`。
+  - Model ID=`sensorPublication[].modelId`（当前为 `0x1100`）。
+  - Publish Address=`sensorPublication[].publishAddress`（本机 LC 单播地址）。
+  - AppKey=当前 Space AppKey，Credentials Flag=`0`，TTL=`0xFF`，Period=`0`，Retransmit Count=`2`、Interval=`100 ms`。
+- 下发前校验发布方与本机 LC 均绑定该 AppKey。当前字段只接受新结构；不兼容旧字段语义。
 
 ### 1.2 固定参数
 
@@ -54,9 +55,9 @@ Config 命令发送到设备 Primary Address，参数指定目标 Element Addres
 
 ## 2. 设置 Lighting Zones
 
-执行顺序：**Delete All → Broadcast → Sensor Group → Add Zones**。全部 Delete All 成功后才能开始 Add；重试从 Delete All 重新执行。
+执行顺序：**Delete All → Broadcast → Add Zones**。全部 Delete All 成功后才能开始 Add；重试从 Delete All 重新执行。
 
-开始 Delete All 前，核对设备身份、权限、AppKey/Model 绑定、任务占用，以及 `zoneModels`、`broadcastModels`、`sensorGroupModels` 与 Composition 的一致性。目标 Zone 必须存在且不超过 8 个；`broadcastId` 必须为 65277；`sensorGroupId` 非空时必须是有效、无冲突的 Sensor Group 地址且接收清单非空。任一项失败，不发送 Delete All。
+开始 Delete All 前，核对设备身份、权限、AppKey/Model 绑定、任务占用，以及 `zoneModels`、`broadcastModels`、`sensorGroupModels` 与 Composition 的一致性。目标 Zone 必须存在且不超过 8 个；`broadcastId` 必须为 65277；`sensorGroupId` 非空时必须是有效、无冲突的 Sensor Group 地址。任一项失败，不发送 Delete All。
 
 Zone Models 即 `zoneModels`，设备须具备以下五类；在所列范围内收录全部实例：
 
@@ -96,13 +97,9 @@ Zone Models 即 `zoneModels`，设备须具备以下五类；在所列范围内�
 
 **HDB 实现区别**：App 在 Delete All 成功后，额外清除整条扩展链的本地订阅缓存，包括其他 Elements；源码注释将此归因于 HDB 固件行为。这不是上述标准共享规则，本次未以设备读回验证。App 已将本轮恢复目标写入 `broadcastModels`，网关直接执行该清单；判断固件是否确实跨 Element 清除，须以设备读回为准。
 
-### 2.3 订阅 `sensorGroupId`
+### 2.3 保留 Sensor Group 元数据
 
-`sensorGroupId=null`：跳过本节。即使设备存在 Sensor Server，或 `sensorGroupModels` 非空，也不在 Zone Set 中分配地址或拒绝该合法空值。
-
-地址非空：遍历 `sensorGroupModels`，向每项指定的 Element/Model 发送 `ConfigModelSubscriptionAdd(sensorGroupId)`，全部成功后继续。该清单包含所有 LC 所在 Elements（包括 Primary）的 `0x130F`，以及同 Element 实际存在的 `0x1000`、`0x1310`，不含 Sensor Server `0x1100`。
-
-添加设备时的地址分配、Sensor Server 订阅和 Presence publication 仍按 §1 Preparation 执行，其就绪检查与本节空地址语义分别处理。
+保留 `sensorGroupId` 与 `sensorGroupModels`，无论是否非空，本步骤均不向 Sensor Group 添加订阅。添加设备时的地址分配与本机 Presence publication 按 §1.1 执行。
 
 ### 2.4 Add Zones
 

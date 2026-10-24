@@ -6,22 +6,25 @@ import SQLite3
         let id = UUID()
         var device = HDBDeviceConfiguration(nodeUuid: id, nodeAddress: 1, mac: "AA:BB:CC:DD:EE:FF", lightingZones: [.init(zoneId: 1)])
         let models = [UInt16(0x1000), 0x1300, 0x130F, 0x1310].map { HDBModelTarget(elementAddress: 1, modelIdentifier: $0, companyIdentifier: nil) }
-            + [HDBModelTarget(elementAddress: 1, modelIdentifier: 1, companyIdentifier: 0x0A78)]
+            + [HDBModelTarget(elementAddress: 1, modelIdentifier: 1, companyIdentifier: 0x0A78),
+               HDBModelTarget(elementAddress: 1, modelIdentifier: 0x1100, companyIdentifier: nil)]
         device.zoneModels = HDBLightingZonePolicy.zoneTargets(from: models, primaryAddress: 1).map(HDBModelReference.init)
         device.sensorGroupModels = HDBLightingZonePolicy.sensorGroupTargets(from: models).map(HDBModelReference.init)
+        try device.refreshSensorPublication(publicationTargets: [models.last!])
         let config = HDBConfiguration(lightingZones: [.init(zoneId: 1, name: "One", groupAddress: 0xC000)], devices: [device])
         let cleared = try HDBLightingZonePolicy.configurationForSave(current: config, baseline: config, persisted: nil, rowExists: true)
         precondition(cleared == nil)
         do { _ = try HDBLightingZonePolicy.configurationForSave(current: nil, baseline: config, persisted: HDBConfiguration(), rowExists: true); fatalError("stale conflicting clear accepted") } catch {}
         try sqliteRoundTrip(config, path: CommandLine.arguments[1])
         let object = try HDBLightingZonePolicy.json(config)
-        let payload: [String: Any] = ["groups": [["address": "C000", "isVirtual": false]], "nodes": [["uuid": id.uuidString, "unicastAddress": "0001", "elements": [["index": 0, "models": models.map { ["modelId": String(format: $0.companyIdentifier == nil ? "%04X" : "%08X", $0.modelId)] }]]]], "spaceData": ["hdb": object]]
+        let payload: [String: Any] = ["groups": [["address": "C000", "isVirtual": false]], "nodes": [["uuid": id.uuidString, "unicastAddress": "0001", "sensorTypes": ["004D"], "elements": [["index": 0, "models": models.map { ["modelId": String(format: $0.companyIdentifier == nil ? "%04X" : "%08X", $0.modelId)] }]]]], "spaceData": ["hdb": object]]
         let decoded = try HDBLightingZonePolicy.decode(payload: payload)
         precondition(decoded == config)
         try HDBLightingZonePolicy.validateReferences(config, payload: payload)
         var sensorConfig = config
         sensorConfig.devices[0].sensorGroupId = 0xC040
         try sensorConfig.devices[0].refreshSensorPublication()
+        try sqliteRoundTrip(sensorConfig, path: CommandLine.arguments[1] + "-publication")
         var sensorPayload = payload
         sensorPayload["groups"] = [["address": "C000", "isVirtual": false], ["address": "C040", "isVirtual": true]]
         try HDBLightingZonePolicy.validateReferences(sensorConfig, payload: sensorPayload)

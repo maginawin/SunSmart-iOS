@@ -16,7 +16,7 @@ enum HDBDevicePreparationTests {
         let sensor = HDBModelTarget(elementAddress: 12, modelIdentifier: 0x1100, companyIdentifier: nil)
         let plan = try HDBDevicePreparationPolicy.plan(nodeUuid: id, nodeAddress: 10,
             appKeyIndex: 1, targets: models + [sensor], sensorGroupId: 0xC080,
-            publicationTargets: [sensor, sensor], sensorPublication: [.init(elementAddress: 10)])
+            publicationTargets: [sensor, sensor], sensorPublication: [.init(elementAddress: 12, publishAddress: 10)])
         precondition(plan.publicationTargets == [sensor])
         precondition(plan.publicationAddress == 10)
         let primarySensor = HDBModelTarget(elementAddress: 10, modelIdentifier: 0x1100, companyIdentifier: nil)
@@ -24,7 +24,7 @@ enum HDBDevicePreparationTests {
         let vendorSensor = HDBModelTarget(elementAddress: 10, modelIdentifier: 0x1100, companyIdentifier: 0x0A78)
         let multiSensor = try HDBDevicePreparationPolicy.plan(nodeUuid: id, nodeAddress: 10,
             appKeyIndex: 1, targets: models + [sensor, primarySensor, middleSensor, sensor, vendorSensor],
-            sensorGroupId: 0xC080, publicationTargets: [primarySensor], sensorPublication: [.init(elementAddress: 10)])
+            sensorGroupId: 0xC080, publicationTargets: [primarySensor], sensorPublication: [.init(elementAddress: 10, publishAddress: 10)])
         precondition(multiSensor.publicationAddress == 10)
         precondition(multiSensor.publicationTargets == [primarySensor])
         let signature = try HDBDevicePreparationPolicy.signature(plan, deviceKey: Data([1]), createdTimestamp: 1)
@@ -38,31 +38,31 @@ enum HDBDevicePreparationTests {
         ]
         precondition(variants.allSatisfy { $0 != signature })
         let noSensor = try HDBDevicePreparationPolicy.plan(nodeUuid: id, nodeAddress: 10,
-            appKeyIndex: 1, targets: models, sensorGroupId: nil, publicationTargets: [], sensorPublication: [.init(elementAddress: nil)])
+            appKeyIndex: 1, targets: models, sensorGroupId: nil, publicationTargets: [], sensorPublication: [])
         precondition(noSensor.publicationAddress == nil && noSensor.publicationTargets.isEmpty)
         precondition(noSensor.baseTargets.filter { $0.value != nil }.count == 3)
         let unidentifiedSensor = try HDBDevicePreparationPolicy.plan(nodeUuid: id, nodeAddress: 10,
-            appKeyIndex: 1, targets: models + [sensor], sensorGroupId: 0xC080, publicationTargets: [], sensorPublication: [.init(elementAddress: 10)])
-        precondition(unidentifiedSensor.publicationTargets.isEmpty && unidentifiedSensor.publicationAddress == 10)
+            appKeyIndex: 1, targets: models + [sensor], sensorGroupId: 0xC080, publicationTargets: [], sensorPublication: [])
+        precondition(unidentifiedSensor.publicationTargets.isEmpty && unidentifiedSensor.publicationAddress == nil)
         let unallocated = try HDBDevicePreparationPolicy.plan(nodeUuid: id, nodeAddress: 10,
             appKeyIndex: 1, targets: models + [sensor], sensorGroupId: nil,
-            publicationTargets: [sensor], sensorPublication: [.init(elementAddress: nil)])
+            publicationTargets: [sensor], sensorPublication: [.init(elementAddress: 12, publishAddress: nil)])
         precondition(unallocated.publicationTargets.isEmpty && unallocated.publicationAddress == nil)
         let noLC = try HDBDevicePreparationPolicy.plan(nodeUuid: id, nodeAddress: 10,
             appKeyIndex: 1, targets: [sensor], sensorGroupId: 0xC080,
-            publicationTargets: [sensor], sensorPublication: [.init(elementAddress: nil)])
+            publicationTargets: [sensor], sensorPublication: [.init(elementAddress: 12, publishAddress: nil)])
         precondition(noLC.publicationTargets.isEmpty && noLC.sensorGroupId == 0xC080)
         for destination: UInt16 in [12, 0xC080, 0x1234] {
             do {
                 _ = try HDBDevicePreparationPolicy.plan(nodeUuid: id, nodeAddress: 10,
                     appKeyIndex: 1, targets: models + [sensor], sensorGroupId: 0xC080,
-                    publicationTargets: [sensor], sensorPublication: [.init(elementAddress: destination)])
+                    publicationTargets: [sensor], sensorPublication: [.init(elementAddress: 12, publishAddress: destination)])
                 preconditionFailure("Wrong LC destination accepted")
             } catch HDBConfigurationError.invalidData { }
         }
         let secondLC = HDBModelTarget(elementAddress: 14, modelIdentifier: 0x130F, companyIdentifier: nil)
         do {
-            _ = try HDBSensorPublication.expected(sensorGroupId: 0xC080, models: models + [secondLC])
+            _ = try HDBSensorPublication.expected(sensorGroupId: 0xC080, models: models + [secondLC], publicationTargets: [sensor])
             preconditionFailure("Ambiguous LC silently selected")
         } catch HDBConfigurationError.unsupportedModels { }
         var config = HDBConfiguration()

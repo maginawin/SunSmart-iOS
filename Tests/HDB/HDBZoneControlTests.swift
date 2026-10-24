@@ -30,19 +30,42 @@ import Foundation
         precondition((ControlRadio.messages[1].message as! GenericOnOffSetUnacknowledged).isOn)
         precondition(!(ControlRadio.messages[2].message as! GenericOnOffSetUnacknowledged).isOn)
         precondition(ControlRadio.messages.suffix(4).map { ($0.message as! LightLightnessSetUnacknowledged).lightness } == [0, 655, 32767, 65535])
+        for detected in [true, false, false, true] {
+            let count = ControlRadio.messages.count
+            try service.publishPresence(zoneId: 7, groupAddress: zone.groupAddress, detected: detected)
+            precondition(ControlRadio.messages.count == count + 1, "One click submits one event")
+            let sent = ControlRadio.messages.last!
+            let message = sent.message as! SensorStatus
+            precondition(sent.address == zone.groupAddress && sent.address != 7)
+            precondition(SensorStatus.opCode == 0x52 && message.values.count == 1)
+            precondition(message.values[0].property.id == 0x004D)
+            precondition(message.values[0].value == .bool(detected))
+            precondition(message.parameters == Data([0xA0, 0x09, detected ? 1 : 0]),
+                         "Use the SDK Sensor Status MPID and one-byte Presence value")
+        }
         let afterControl = try HDBConfigurationStore.load(space: space)
         precondition(afterControl == original)
         precondition(CloudSynchronizationManager.shared.submissions == uploads)
         precondition(SyncExecutionEnvironment.batches.isEmpty && SyncExecutionEnvironment.stops == 0)
 
-        func reject(_ action: HDBZoneControlAction = .on, id: Int = 7, address: UInt16? = nil) throws {
+        func reject(_ action: HDBZoneControlAction = .on, id: Int = 7, address: UInt16? = nil,
+                    includingPresence: Bool = true) throws {
             let count = ControlRadio.messages.count
             do {
                 try service.control(zoneId: id, groupAddress: address ?? zone.groupAddress, action: action)
                 fatalError("invalid control accepted")
             } catch { precondition(ControlRadio.messages.count == count) }
+            if includingPresence {
+                for detected in [true, false] {
+                    do {
+                        try service.publishPresence(zoneId: id, groupAddress: address ?? zone.groupAddress, detected: detected)
+                        fatalError("invalid presence publication accepted")
+                    } catch { precondition(ControlRadio.messages.count == count) }
+                }
+            }
         }
-        try reject(.brightness(-1)); try reject(.brightness(101))
+        try reject(.brightness(-1), includingPresence: false)
+        try reject(.brightness(101), includingPresence: false)
         try reject(address: other.groupAddress)
         try reject(id: 8, address: other.groupAddress) // Empty zone.
         MeshLibManager.manager.isMeshNetworkConnected = false
@@ -68,9 +91,12 @@ import Foundation
         // Only current targets are known; no Space-wide block for other pending devices.
         try HDBConfigurationStore.update(space: space) { $0.devices[0].lightingZonesStatus = .pending }
         try service.control(zoneId: 7, groupAddress: zone.groupAddress, action: .off)
+        for detected in [true, false] {
+            try service.publishPresence(zoneId: 7, groupAddress: zone.groupAddress, detected: detected)
+        }
         try HDBConfigurationStore.update(space: space) { $0.devices[0].lightingZones = [] }
         try reject()
         precondition(SyncExecutionEnvironment.stops == 0)
-        print("PASS: group controls preserve intent and enforce scope, connection and emergency checks")
+        print("PASS: group controls and SDK Presence encoding; no intent/upload changes; pending members allowed; scope, connection and emergency guards")
     }
 }

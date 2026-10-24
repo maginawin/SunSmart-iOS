@@ -1566,7 +1566,7 @@ enum SpaceConfigurationSafety {
             selected = try HDBLightingZonePolicy.repairingDefaults(in: selected, deviceConfiguration: { dictionary, mac in
                 let node = try CloudNodeImport.decode(dictionary)
                 node.macAddress = mac
-                return try HDBConfigurationStore.deviceConfiguration(node: node)
+                return try HDBConfigurationStore.deviceConfiguration(node: node, sensorTypes: dictionary["sensorTypes"] as? [String] ?? [])
             }) {
                 String(format: "hdb_default_zone_name".localizedString, $0)
             }
