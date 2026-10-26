@@ -309,7 +309,9 @@ class SharePermissionSelectionController: UIViewController {
                         siteData.updateValue(exclusions, forKey: "exclusions")
                     }
                     Task {
-                        guard let receivedSiteID = siteData["uuid"] as? String,
+                        guard SpaceMembershipResponseContext.matches(joinContext, account: UserData.currentUserId,
+                            region: String(describing: UserData.currentServerRegion)),
+                              let receivedSiteID = siteData["uuid"] as? String,
                               receivedSiteID == receivingSite.id,
                               SpaceMembershipCoordinator.canReceiveSite(receivedSiteID) else {
                             XWHUDManager.hide(); return
@@ -319,9 +321,13 @@ class SharePermissionSelectionController: UIViewController {
                         if let siteId = siteData["uuid"] as? String, let localSite = SiteData.load(siteId: siteId), localSite.permission != .owner {
                             // 判断是否存在这个site，如果有则主动回收自己之前拥有的地址
                             var recycleData = await localSite.getRecycleAddressData(unbindSpaces: localSite.spaces)
+                            guard SpaceMembershipResponseContext.matches(joinContext, account: UserData.currentUserId,
+                                region: String(describing: UserData.currentServerRegion)) else { XWHUDManager.hide(); return }
                             recycleData.provisionerData = nil
                             if !recycleData.isEmpty {
                                 let result = await self.recycleAddressReqeust(site: localSite, recycleData: recycleData)
+                                guard SpaceMembershipResponseContext.matches(joinContext, account: UserData.currentUserId,
+                                    region: String(describing: UserData.currentServerRegion)) else { XWHUDManager.hide(); return }
                                 localSite.delete()
                                 if !result {
                                     recycleAddressData = recycleData
@@ -358,22 +364,26 @@ class SharePermissionSelectionController: UIViewController {
 //                            }
                         }
                         
-                        guard account == UserData.currentUserId, region == String(describing: UserData.currentServerRegion),
+                        guard SpaceMembershipResponseContext.matches(joinContext, account: UserData.currentUserId,
+                            region: String(describing: UserData.currentServerRegion)),
                               SpaceMembershipCoordinator.authorizeSiteReceipt(receivedSiteID) else {
                             XWHUDManager.hide()
                             XWHUDManager.showErrorTipHUD("space_recovery_storage_failed".localizedString); return
                         }
                         let context = SpaceMembershipResponseContext.capture(account: account, region: region)
                         siteData = SpaceMembershipResponseContext.annotate(["data": siteData], context: context)["data"] as? [String: Any] ?? siteData
-                        guard let site = await SiteData.import(siteJsonData: siteData, changeAddress: true) else {
+                        guard let site = await SiteData.import(siteJsonData: siteData, changeAddress: true,
+                                                              receivingOwnership: true) else {
                             XWHUDManager.hide()
                             XWHUDManager.showErrorTipHUD("space_recovery_storage_failed".localizedString)
                             return
                         }
+                        guard SpaceMembershipResponseContext.matches(context, account: UserData.currentUserId,
+                            region: String(describing: UserData.currentServerRegion)) else { XWHUDManager.hide(); return }
                         site.state = .normal
                         site.permission = .owner
                         site.recycleAddressData = recycleAddressData
-                        guard site.save() else {
+                        guard site.save(clearTransferCredentials: true) else {
                             XWHUDManager.hide()
                             XWHUDManager.showErrorTipHUD("space_recovery_storage_failed".localizedString)
                             return

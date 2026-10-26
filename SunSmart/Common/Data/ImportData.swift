@@ -503,8 +503,10 @@ extension SiteData {
     ///   - changeAddress: 当第一次导入site时是否需要修改手机地址，分以下两种情况：
     ///      1：第一次加入site/space，服务器生成site数据并分配新的手机地址，则不需要再修改地址；
     ///      2：卸载app后由于没有缓存数据，之前使用的手机地址对应SEQ序列号未知，所以把旧的地址放到地址回收池内回收，并分配新的手机地址
+    ///   - receivingOwnership: 接收所有权成功后，即使本地状态及版本未变也恢复地址并校验原网络。
     /// - Returns: site
-    static func `import`(siteJsonData: [String: Any], changeAddress: Bool = false) async -> SiteData? {
+    static func `import`(siteJsonData: [String: Any], changeAddress: Bool = false,
+                         receivingOwnership: Bool = false) async -> SiteData? {
         guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return nil }
         
         let json = JSON(siteJsonData)
@@ -514,6 +516,9 @@ extension SiteData {
         }
         var isChangeAddress = changeAddress
         var site = SiteData.load(siteId: uuid)
+        // A successful receipt must restore the ownership/address lifecycle even
+        // when the unrefreshed local Site still says normal and has the same version.
+        let returningSite = site != nil && (site?.state == .waitDeleted || receivingOwnership)
         var initialize = false
         if site == nil {
             var permission: Permission = .visitor
@@ -532,11 +537,10 @@ extension SiteData {
             
             site = SiteData(region: UserData.currentServerRegion, id: uuid, meshUUID: uuid, meshNetworkId: netKey.networkId.hex, name: name, type: .init(rawValue: json["type"].intValue) ?? .office, permission: permission, create: json["createTimestamp"].int64Value, lastUpdate: json["updateTimestamp"].int64Value, isFavourite: false, sourceType: .create)
             initialize = true
-        }else if site?.state == .waitDeleted { // 转回只需重新分配地址，不能重建原网络
+        }else if returningSite { // 转回只需重新分配地址，不能重建原网络
             initialize = true
             isChangeAddress = true
         }
-        let returningSite = site?.state == .waitDeleted
         let preservedKeys: ([NetworkKey], [ApplicationKey])?
         if returningSite, let site,
            let existing = MeshNetwork.load(meshUUID: site.meshUUID, allData: false) {
@@ -585,6 +589,33 @@ extension SiteData {
     @discardableResult
     func update(siteJsonData: [String: Any], changeAddress: Bool = false, initialize: Bool = false) async -> Bool {
         guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return false }
+        // Validate all standard fields before accepting any part of this payload.
+        guard let standardPatch = try? SiteStandardProperties.Patch(siteJsonData) else { return false }
+        let previousProperties = standardProperties
+        let previousBaseProperties = (name: self.name, imageId: imageId, timezone: timezone,
+                                      sourceType: sourceType, create: create)
+        let previousTimestamp = self.lastUpdate
+        let previousUploadTimestamp = lastUploadCloudTimestamp
+        let hadPendingProps = !pendingSitePropsMask.isEmpty
+        var completedImport = false
+        var appliedSiteVersion = false
+        var preparedSiteTimestamp: Int64?
+        defer {
+            if !completedImport && appliedSiteVersion {
+                // Leave the version retryable after a failed import/save. Do not
+                // undo a newer version that arrived while importing Spaces.
+                let incoming = JSON(siteJsonData)["updateTimestamp"].int64Value
+                if self.lastUpdate == (preparedSiteTimestamp ?? incoming) {
+                    self.name = previousBaseProperties.name
+                    self.imageId = previousBaseProperties.imageId
+                    self.timezone = previousBaseProperties.timezone
+                    self.sourceType = previousBaseProperties.sourceType
+                    self.create = previousBaseProperties.create
+                    self.lastUpdate = previousTimestamp
+                    if self.lastUploadCloudTimestamp == incoming { self.lastUploadCloudTimestamp = previousUploadTimestamp }
+                }
+            }
+        }
         let gatewayImportScope = GatewayOrphanGuard.Scope.current(siteID: id)
         GatewayOrphanGuard.beginImport(gatewayImportScope)
         var gatewayImportActive = true
@@ -656,11 +687,9 @@ extension SiteData {
             self.lastUpdate = lastUpdate
             //        if self.lastUploadCloudTimestamp == nil {
             self.lastUploadCloudTimestamp = self.lastUpdate
+            appliedSiteVersion = true
             //        }
-            // 转让site id
-            if let shareId = json["shareId"].string {
-                self.transferCode = shareId
-            }
+            // 转让site id仅由明确的转移请求维护，普通 Site 快照不能恢复已失效的转移码。
             
             // 本地手机节点地址
             if self.localAddress == nil, let addressHex = json["provisioner"]["address"].string, let address = Address(hex: addressHex) {
@@ -901,6 +930,7 @@ extension SiteData {
         
         
         // 修改供应者地址资源
+        preparedSiteTimestamp = self.lastUpdate
         if let provisionerData = json["provisioner"].dictionaryObject {
             self.setProvisioner(meshNetwork: meshNetwork, provisionerData: provisionerData)
         }
@@ -1322,7 +1352,16 @@ extension SiteData {
         
         
         //        print("导入数据：site update spaces success \(Date().timeIntervalSince1970)")
-        guard self.save(), meshNetwork != nil else { return false }
+        guard meshNetwork != nil else { return false }
+        // The ordinary Site gate is strictly newer; metadata must also accept a
+        // same-version complete response after a partial props/list response.
+        var acceptedStandardPatch = SiteStandardProperties.Patch()
+        if standardProperties == previousProperties, self.lastUpdate == preparedSiteTimestamp,
+           initialize || (lastUpdate >= previousTimestamp && !hadPendingProps) {
+            acceptedStandardPatch = standardPatch
+        }
+        guard self.save(standardPropertiesPatch: acceptedStandardPatch) else { return false }
+        completedImport = true
         GatewayOrphanGuard.endImport(gatewayImportScope)
         gatewayImportActive = false
         // Only a completed detail import may reconcile orphan records.

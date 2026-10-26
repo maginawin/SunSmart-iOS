@@ -43,12 +43,6 @@ struct SiteExtensionState: Codable, Equatable {
     mutating func receive(_ remote: SiteExtensionData, timestamp: Int64) {
         guard timestamp >= serverTimestamp else { return }
         var remote = remote
-        for key in SiteExtensionData.metadataKeys where remote.fields[key] == nil {
-            // Omitted props are not an explicit clear or a receipt for a new local value.
-            if let pending,
-               (pending.target.fields[key] ?? .null) != (pending.base?.fields[key] ?? .null) { return }
-            remote.fields[key] = (serverData ?? data).fields[key]
-        }
         if remote.fields["siteType"] == nil {
             // An omitted field cannot confirm a newly submitted type, but must retain
             // the known type when an existing Site receives a partial props response.

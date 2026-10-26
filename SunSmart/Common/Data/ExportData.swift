@@ -252,6 +252,10 @@ extension SiteData {
     
     /// 导出site数据
     func export(spaceIds: [String]? = nil, purpose: SpaceSnapshotExportPurpose = .cloudSync) async -> [String: Any]?  {
+        guard standardProperties.isValid else {
+            purpose.reportInspectionIssue("site.coordinates: invalidValue")
+            return nil
+        }
         
 //        return await withTaskCancellationHandler {
             let exportedSiteData: [String: Any]? = await withCheckedContinuation { continuation in
@@ -268,6 +272,7 @@ extension SiteData {
                 siteJsonData.updateValue(self.name, forKey: "siteName")
                 siteJsonData.updateValue(self.id, forKey: "uuid")
                 siteJsonData.updateValue(self.imageId, forKey: "imageId")
+                siteJsonData.merge(self.standardProperties.jsonObject) { _, new in new }
                 if let timezone = self.timezone,
                    let timezoneValue = SiteTimeZoneValue(storageValue: timezone) {
                     siteJsonData.updateValue(timezoneValue.storageValue, forKey: "timezone")

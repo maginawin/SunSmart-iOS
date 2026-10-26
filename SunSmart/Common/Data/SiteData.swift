@@ -113,6 +113,28 @@ class SiteData: Copyable {
     var name: String = ""
     /// 图标id
     var imageId: Int = 0
+    var latitude: Double?
+    var longitude: Double?
+    var countryRegion: String?
+    var postalCode: String?
+    /// GeoNames ID as a decimal string, without a namespace prefix.
+    var city: String?
+    var address: String?
+    var siteDescription: String?
+
+    var standardProperties: SiteStandardProperties {
+        get { .init(latitude: latitude, longitude: longitude, countryRegion: countryRegion,
+                    postalCode: postalCode, city: city, address: address, siteDescription: siteDescription) }
+        set {
+            latitude = newValue.latitude
+            longitude = newValue.longitude
+            countryRegion = newValue.countryRegion
+            postalCode = newValue.postalCode
+            city = newValue.city
+            address = newValue.address
+            siteDescription = newValue.siteDescription
+        }
+    }
     private var normalizedTimezone: String?
     /// 场所时区，使用 `IANA (UTC±HH:mm)` 完整格式保存
     var timezone: String? {
@@ -276,6 +298,7 @@ class SiteData: Copyable {
         let site = SiteData(region: self.region, id: self.id, meshUUID: self.meshUUID, meshNetworkId: self.meshNetworkId, name: self.name, imageId: self.imageId, type: self.type, permission: self.permission, create: self.create, lastUpdate: self.lastUpdate, isFavourite: self.isFavourite, sourceType: self.sourceType)
         site.siteExtensionData = (try? SiteExtensionStore.load(self).data) ?? self.siteExtensionData
         site.timezone = self.timezone
+        site.standardProperties = self.standardProperties
         site.gatewayPresence = self.gatewayPresence
         site.pendingSitePropsMask = self.pendingSitePropsMask
         site.pendingSitePropsTimestamp = self.pendingSitePropsTimestamp

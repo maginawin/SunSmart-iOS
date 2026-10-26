@@ -26,6 +26,7 @@ enum SiteCreationTextField: String, CaseIterable {
 
 /// Transient form values. Constructing or changing a draft never creates a Site or Mesh.
 struct SiteCreationDraft {
+    struct InvalidCoordinate: Error { let field: SiteCreationTextField }
     enum ValueSource { case initial, city, manual }
     var siteName: String
     private(set) var timezone: SiteTimeZoneValue?
@@ -90,12 +91,26 @@ struct SiteCreationDraft {
     var extensionData: SiteExtensionData {
         var data = SiteExtensionData()
         data.siteType = siteType
-        for key in SiteExtensionData.metadataKeys { data.fields[key] = .null }
-        data.fields["countryRegion"] = countryRegionCode.map(SiteJSONValue.string) ?? .null
-        data.fields["city"] = city.map { .string($0.id) } ?? .null
-        for field in SiteCreationTextField.allCases {
-            data.fields[field.rawValue] = field.normalized(text[field] ?? "").map(SiteJSONValue.string) ?? .null
-        }
         return data
+    }
+
+    func standardProperties() throws -> SiteStandardProperties {
+        func coordinate(_ field: SiteCreationTextField, range: ClosedRange<Double>) throws -> Double? {
+            let raw = (text[field] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !raw.isEmpty else { return nil }
+            guard let value = Double(raw), value.isFinite, range.contains(value) else {
+                throw InvalidCoordinate(field: field)
+            }
+            return value
+        }
+        return try SiteStandardProperties(
+            latitude: coordinate(.latitude, range: -90...90),
+            longitude: coordinate(.longitude, range: -180...180),
+            countryRegion: countryRegionCode,
+            postalCode: SiteCreationTextField.postalCode.normalized(text[.postalCode] ?? ""),
+            city: city.map { String($0.record.id) },
+            address: SiteCreationTextField.streetAddress.normalized(text[.streetAddress] ?? ""),
+            siteDescription: SiteCreationTextField.description.normalized(text[.description] ?? "")
+        )
     }
 }

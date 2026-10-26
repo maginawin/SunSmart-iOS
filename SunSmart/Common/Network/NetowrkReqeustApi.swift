@@ -384,13 +384,14 @@ extension NetowrkReqeustApi: TargetType {
         case .siteInfo(let siteId):
             return ["siteId": siteId, "userId": UserData.currentUserId]
         case .sitePropsRetrieve(let siteId):
-            let props: [String: Any] = [
+            var props: [String: Any] = [
                 "extensionData": NSNull(),
                 "timezone": NSNull(),
                 "imageId": NSNull(),
                 "siteName": NSNull(),
                 "updateTimestamp": NSNull()
             ]
+            for key in SiteStandardProperties.keys { props[key] = NSNull() }
             return ["userId": UserData.currentUserId, "siteId": siteId, "props": props]
         case .sitePropsUpdate(let siteId, let props):
             return ["userId": UserData.currentUserId, "siteId": siteId, "props": props]

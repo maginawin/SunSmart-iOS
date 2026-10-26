@@ -608,11 +608,25 @@ final class SiteCreateViewController: UIViewController {
         draft.text[.description] = descriptionView.text
         for (field, input) in textFields { draft.text[field] = input.text ?? "" }
         if !FeatureVisibility.shared.canSelectSiteType { draft.siteType = .standard }
+        let properties: SiteStandardProperties
+        do {
+            properties = try draft.standardProperties()
+        } catch let error as SiteCreationDraft.InvalidCoordinate {
+            textFields[error.field]?.becomeFirstResponder()
+            scrollEditingFieldIntoView(animated: !UIAccessibility.isReduceMotionEnabled)
+            let key = error.field == .latitude ? "site_create_invalid_latitude" : "site_create_invalid_longitude"
+            XWHUDManager.showErrorTipHUD(key.localizedString)
+            return
+        } catch {
+            XWHUDManager.showErrorTipHUD("failed".localizedString)
+            return
+        }
         isCommitting = true
         createButton.isEnabled = false
         do {
             let site = try SiteData.add(name: draft.siteName, siteType: draft.siteType, imageId: draft.imageId,
-                                        timezone: draft.timezone?.storageValue, extensionData: draft.extensionData)
+                                        timezone: draft.timezone?.storageValue, extensionData: draft.extensionData,
+                                        standardProperties: properties)
             let completion = onCreated
             navigationController?.dismiss(animated: true) { completion(site) }
         } catch {

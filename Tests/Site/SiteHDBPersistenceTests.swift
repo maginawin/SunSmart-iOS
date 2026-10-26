@@ -9,8 +9,11 @@ enum ServerRegion: Int { case first = 1, second = 2 }
 enum UserData { static var currentServerRegion = ServerRegion.first }
 enum Permission: Int { case owner = 1, editor, visitor }
 enum DataSourceType: Int { case create = 1, clone, share }
-struct SitePropsFieldMask: OptionSet { let rawValue: Int; static let timezone = Self(rawValue: 1) }
-struct NetworkApiError { let code: Int; init(code: Int) { self.code = code } }
+struct NetworkApiError: Error {
+    let code: Int
+    init(code: Int) { self.code = code }
+    static let unknown = NetworkApiError(code: -1)
+}
 struct RecycleAddressData: Codable {}
 let jsonEncoder = JSONEncoder(), jsonDecoder = JSONDecoder()
 enum SiteTimeZoneCatalog {
@@ -44,6 +47,8 @@ final class SiteData {
     enum SiteType: Int { case office = 1 }
     enum State: Int { case normal = 1 }
     var siteExtensionData = SiteExtensionData()
+    var latitude: Double?, longitude: Double?
+    var countryRegion: String?, postalCode: String?, city: String?, address: String?, siteDescription: String?
     var gatewayPresence = false
     let region: ServerRegion
     var id: String, meshUUID: String, meshNetworkId: String, name: String
@@ -66,11 +71,16 @@ final class SiteData {
 }
 
 @main enum SiteHDBPersistenceTests {
-    static func main() throws {
+    @MainActor static func main() async throws {
         let path = CommandLine.arguments[1]
         SunSmartDataManager.shared.db = try Connection(path)
         SiteData.initDatabase()
         let db = SunSmartDataManager.shared.db!
+        // Deleting test Sites leaves the legacy table in place: verify add-column upgrade.
+        for column in SiteStandardProperties.keys { try db.execute("ALTER TABLE sites DROP COLUMN \"\(column)\";") }
+        SiteData.initDatabase()
+        let columns = try db.schema.columnDefinitions(table: "sites")
+        precondition(Set(SiteStandardProperties.keys).isSubset(of: Set(columns.map(\.name))))
         // Force failure inside the production Site + extension transaction.
         try db.execute("CREATE TRIGGER fail_extension BEFORE INSERT ON site_extensions BEGIN SELECT RAISE(FAIL, 'fixture'); END;")
         var rejected = false
@@ -86,55 +96,53 @@ final class SiteData {
         precondition(standardObject["siteType"] as? String == "Standard" && standardObject["isHdbSite"] == nil)
         let hdb = try SiteData.add(name: "HDB", siteType: .hdb)
         precondition(hdb.isHdbSite && !standard.isHdbSite, "Chosen type must be durable from the first save")
-        var metadata = SiteExtensionData()
-        metadata.fields["countryRegion"] = .string("CN")
-        metadata.fields["city"] = .string("geonames:1796236")
-        metadata.fields["description"] = .string("Lobby")
-        metadata.fields["postalCode"] = .string("018983")
-        metadata.fields["latitude"] = .string("0")
-        metadata.fields["longitude"] = .string("121.45806")
+        let metadata = SiteStandardProperties(latitude: 0, longitude: -121.458061234,
+            countryRegion: "SG", postalCode: "018983", city: "795565", address: "Street", siteDescription: "Lobby")
         let formSite = try SiteData.add(name: "Form", siteType: .hdb, imageId: 28,
-                                        timezone: nil, extensionData: metadata)
+                                        timezone: nil, standardProperties: metadata)
         precondition(formSite.timezone == nil && formSite.pendingSitePropsMask.isEmpty)
         precondition(formSite.pendingSitePropsTimestamp == nil)
         let configured = try SiteData.add(name: "Configured", imageId: 3,
-                                          timezone: "Asia/Shanghai (UTC+08:00)", extensionData: metadata)
+                                          timezone: "Asia/Shanghai (UTC+08:00)", standardProperties: metadata)
         precondition(configured.pendingSitePropsMask.contains(.timezone))
         try db.execute("CREATE TRIGGER fail_extension BEFORE INSERT ON site_extensions BEGIN SELECT RAISE(FAIL, 'fixture'); END;")
         let beforeFailure = MeshNetworkManager.allocated
         rejected = false
         do { _ = try SiteData.add(name: "Failed form", siteType: .hdb, imageId: 28,
-                                  timezone: nil, extensionData: metadata) } catch { rejected = true }
+                                  timezone: nil, standardProperties: metadata) } catch { rejected = true }
         precondition(rejected && MeshNetworkManager.allocated == beforeFailure)
         let failedRows = try db.scalar("SELECT count(*) FROM sites WHERE name = 'Failed form'") as! Int64
         precondition(failedRows == 0)
         try db.execute("DROP TRIGGER fail_extension")
-        let retry = try SiteData.add(name: "Retried country form", timezone: nil, extensionData: metadata)
-        let retriedMetadata = try SiteExtensionStore.load(retry).data
-        precondition(retriedMetadata.fields["countryRegion"] == .string("CN"))
-        precondition(retriedMetadata.fields["city"] == .string("geonames:1796236"))
+        let retry = try SiteData.add(name: "Retried country form", timezone: nil, standardProperties: metadata)
+        precondition(SiteData.load(siteId: retry.id)!.standardProperties == metadata)
         SunSmartDataManager.shared.db = try Connection(path)
         let restoredForm = SiteData.load(siteId: formSite.id)!
         precondition(restoredForm.imageId == 28 && restoredForm.timezone == nil && restoredForm.isHdbSite)
-        let restoredMetadata = try SiteExtensionStore.load(restoredForm).data
-        precondition(restoredMetadata.fields["countryRegion"] == .string("CN"))
-        precondition(restoredMetadata.fields["description"] == .string("Lobby"))
-        precondition(restoredMetadata.fields["postalCode"] == .string("018983"))
-        precondition(restoredMetadata.fields["latitude"] == .string("0"))
-        precondition(restoredMetadata.fields["city"] == .string("geonames:1796236"))
-        precondition(restoredMetadata.fields["longitude"] == .string("121.45806"))
+        precondition(restoredForm.standardProperties == metadata)
+        let restoredExtension = try SiteExtensionStore.load(restoredForm).data
+        let extensionObject = try restoredExtension.jsonObject()
+        precondition(SiteStandardProperties.keys.allSatisfy { extensionObject[$0] == nil })
         let restoredConfigured = SiteData.load(siteId: configured.id)!
         precondition(restoredConfigured.timezone == "Asia/Shanghai (UTC+08:00)")
-        let configuredMetadata = try SiteExtensionStore.load(restoredConfigured).data
-        precondition(configuredMetadata.fields["city"] == .string("geonames:1796236"))
-        precondition(restoredConfigured.copy().siteExtensionData == configuredMetadata)
+        precondition(restoredConfigured.copy().standardProperties == metadata)
         precondition(restoredForm.save())
-        let afterSave = try SiteExtensionStore.load(restoredForm).data
-        precondition(afterSave == restoredMetadata)
+        precondition(SiteData.load(siteId: restoredForm.id)!.standardProperties == metadata)
         let formClone = restoredForm.cloneData()
-        precondition(formClone.save())
-        let clonedMetadata = try SiteExtensionStore.load(formClone).data
-        precondition(clonedMetadata == restoredMetadata)
+        precondition(formClone.standardProperties == metadata && formClone.save())
+        precondition(SiteData.load(siteId: formClone.id)!.standardProperties == metadata)
+        precondition(SiteData.loadAll().first(where: { $0.id == formClone.id })!.standardProperties == metadata)
+        let numericType = try db.scalar("SELECT typeof(longitude) FROM sites WHERE name = 'Form'") as! String
+        precondition(numericType == "real")
+        let nilValue = SiteData.load(siteId: standard.id)!.standardProperties
+        precondition(nilValue == SiteStandardProperties())
+        var cleared = metadata
+        cleared.latitude = nil
+        restoredForm.standardProperties = cleared
+        let clearLatitude = try SiteStandardProperties.Patch(["latitude": NSNull()])
+        precondition(restoredForm.save(standardPropertiesPatch: clearLatitude))
+        precondition(SiteData.load(siteId: restoredForm.id)!.latitude == nil)
+        precondition(SiteData.load(siteId: restoredForm.id)!.longitude == metadata.longitude)
         let reloaded = SiteData.load(siteId: hdb.id)!
         precondition(!reloaded.siteExtensionData.isHdbSite && reloaded.isHdbSite,
                      "Durable type must win over a reloaded Site object's default extension")
@@ -147,6 +155,7 @@ final class SiteData {
         try SiteExtensionStore.receive(reloaded, object: ["extensionData": ["siteType": NSNull()]], timestamp: 2)
         precondition(!reloaded.isHdbSite && clone.isHdbSite)
         try legacySnapshots(path: path)
+        try await SiteStandardPropsPersistenceTests.run(path: path)
         UserData.currentServerRegion = .second
         precondition(SiteData.load(siteId: standard.id) == nil, "Site extension must remain region scoped")
         UserData.currentServerRegion = .first

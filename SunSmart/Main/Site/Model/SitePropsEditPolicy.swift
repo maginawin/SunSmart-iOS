@@ -1,5 +1,88 @@
 import Foundation
 
+/// Standard Site properties shared by creation, full sync and partial props reads.
+struct SiteStandardProperties: Equatable {
+    var latitude: Double?
+    var longitude: Double?
+    var countryRegion: String?
+    var postalCode: String?
+    var city: String?
+    var address: String?
+    var siteDescription: String?
+
+    static let keys = ["latitude", "longitude", "countryRegion", "postalCode", "city", "address", "description"]
+    private static let textFields: [(String, WritableKeyPath<Self, String?>)] = [
+        ("countryRegion", \.countryRegion), ("postalCode", \.postalCode),
+        ("city", \.city), ("address", \.address), ("description", \.siteDescription)
+    ]
+
+    var isValid: Bool {
+        (latitude.map { $0.isFinite && (-90...90).contains($0) } ?? true)
+            && (longitude.map { $0.isFinite && (-180...180).contains($0) } ?? true)
+    }
+
+    var jsonObject: [String: Any] {
+        var result: [String: Any] = ["latitude": latitude as Any? ?? NSNull(),
+                                     "longitude": longitude as Any? ?? NSNull()]
+        for (key, path) in Self.textFields { result[key] = self[keyPath: path] as Any? ?? NSNull() }
+        return result
+    }
+
+    /// Presence is separate from value: omitted fields preserve, explicit null clears.
+    struct Patch: Equatable {
+        enum ParseError: Error { case invalidField(String) }
+        private var values = SiteStandardProperties()
+        private var provided: Set<String> = []
+
+        init() {}
+
+        init(_ object: [String: Any]) throws {
+            for (key, path) in SiteStandardProperties.textFields {
+                guard let raw = object[key] else { continue }
+                provided.insert(key)
+                if raw is NSNull { continue }
+                guard let text = raw as? String else { throw ParseError.invalidField(key) }
+                values[keyPath: path] = text
+            }
+            for key in ["latitude", "longitude"] {
+                guard let raw = object[key] else { continue }
+                provided.insert(key)
+                if raw is NSNull { continue }
+                let value: Double
+                if let number = raw as? NSNumber,
+                   CFGetTypeID(number) != CFBooleanGetTypeID() {
+                    value = number.doubleValue
+                } else if let text = raw as? String,
+                          let number = Double(text.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                    // Legacy Site responses encode coordinates as numeric strings.
+                    value = number
+                } else {
+                    throw ParseError.invalidField(key)
+                }
+                let range: ClosedRange<Double> = key == "latitude" ? -90...90 : -180...180
+                guard value.isFinite, range.contains(value) else { throw ParseError.invalidField(key) }
+                if key == "latitude" { values.latitude = value } else { values.longitude = value }
+            }
+        }
+
+        func applying(to current: SiteStandardProperties) -> SiteStandardProperties {
+            var result = current
+            for (key, path) in SiteStandardProperties.textFields where provided.contains(key) {
+                result[keyPath: path] = values[keyPath: path]
+            }
+            if provided.contains("latitude") { result.latitude = values.latitude }
+            if provided.contains("longitude") { result.longitude = values.longitude }
+            return result
+        }
+
+        func merging(to current: SiteStandardProperties, localTimestamp: Int64,
+                     remoteTimestamp: Int64, hasPendingChanges: Bool) -> SiteStandardProperties {
+            guard remoteTimestamp >= localTimestamp, !hasPendingChanges else { return current }
+            return applying(to: current)
+        }
+    }
+}
+
 struct SitePropsFieldMask: OptionSet, Equatable {
     let rawValue: Int
 
@@ -24,6 +107,7 @@ struct SitePropsLocalState: Equatable {
     let lastUpdate: Int64
     let lastUploadCloudTimestamp: Int64?
     let pending: SitePropsPendingState
+    var standardProperties = SiteStandardProperties()
 }
 
 struct SitePropsRemoteSnapshot: Equatable {
@@ -32,6 +116,7 @@ struct SitePropsRemoteSnapshot: Equatable {
     let timezone: SiteTimeZoneValue?
     let providedFields: SitePropsFieldMask
     let timestamp: Int64
+    var standardProperties = SiteStandardProperties.Patch()
 }
 
 struct SitePropsUpdateSnapshot: Equatable {
@@ -119,7 +204,8 @@ enum SitePropsEditPolicy {
                 values: local.values,
                 lastUpdate: local.lastUpdate,
                 lastUploadCloudTimestamp: local.lastUploadCloudTimestamp,
-                pending: SitePropsPendingState(fields: [], timestamp: nil)
+                pending: SitePropsPendingState(fields: [], timestamp: nil),
+                standardProperties: local.standardProperties
             )
         }
 
@@ -152,7 +238,8 @@ enum SitePropsEditPolicy {
             ),
             lastUpdate: remote.timestamp,
             lastUploadCloudTimestamp: remote.timestamp,
-            pending: mergeBase.pending
+            pending: mergeBase.pending,
+            standardProperties: remote.standardProperties.applying(to: mergeBase.standardProperties)
         )
         return SitePropsRetrieveMergeResult(
             state: merged,
@@ -204,7 +291,8 @@ enum SitePropsEditPolicy {
             pending: SitePropsPendingState(
                 fields: remainingFields,
                 timestamp: remainingFields.isEmpty ? nil : current.pending.timestamp
-            )
+            ),
+            standardProperties: current.standardProperties
         )
     }
 
@@ -230,7 +318,8 @@ enum SitePropsEditPolicy {
             pending: SitePropsPendingState(
                 fields: remainingFields,
                 timestamp: remainingFields.isEmpty ? nil : current.pending.timestamp
-            )
+            ),
+            standardProperties: current.standardProperties
         )
     }
 

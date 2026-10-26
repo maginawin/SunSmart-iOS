@@ -5,6 +5,7 @@ struct SiteEntryTimeZoneSyncCoordinatorTests {
 
     @MainActor
     static func main() async {
+        await requireStandardPropertiesSurviveTimeZoneFlows()
         await requireSingleConsumption()
         await requireGatewayOnlyWaitsWithoutMutatingStore()
         requireVisitorRemotePersistsSilently()
@@ -17,6 +18,23 @@ struct SiteEntryTimeZoneSyncCoordinatorTests {
         await requireLocalUploadSuccessClearsOnlyTimezonePending()
         await requireLocalUploadFailureKeepsPending()
         print("SiteEntryTimeZoneSyncCoordinatorTests passed")
+    }
+
+    @MainActor
+    private static func requireStandardPropertiesSurviveTimeZoneFlows() async {
+        let properties = SiteStandardProperties(latitude: 0, longitude: -72.5, city: "795565", address: "Street")
+        for decision in [SiteEntryTimeZoneDecision.useRemote(timezone: utc, remoteTimestamp: 101, gateway: .inSync),
+                         localDecision(timestamp: 101),
+                         .useVisitorRemote(state: localState(timezone: utc, lastUpdate: 101))] {
+            var initial = localState(timezone: singapore)
+            initial.standardProperties = properties
+            let store = FakeStore(state: initial)
+            let coordinator = makeCoordinator(store: store, minimum: 0, timeout: 500_000_000)
+            if case .useVisitorRemote = decision {
+                require(coordinator.applySilent(decision), "Visitor state must save")
+            } else { _ = await coordinator.run(decision) }
+            require(store.state.standardProperties == properties, "Time-zone writes must preserve imported standard fields")
+        }
     }
 
     @MainActor
@@ -142,6 +160,8 @@ struct SiteEntryTimeZoneSyncCoordinatorTests {
     @MainActor
     private static func requireTimeoutWinsRaceAndLateSuccessKeepsPending() async {
         let store = FakeStore(state: localState(timezone: singapore))
+        store.state.standardProperties = .init(latitude: 0, city: "795565")
+        let properties = store.state.standardProperties
         store.suspendSubmit = true
         let coordinator = makeCoordinator(store: store, minimum: 10_000_000, timeout: 50_000_000)
         let decision = localDecision(timestamp: 101)
@@ -153,6 +173,7 @@ struct SiteEntryTimeZoneSyncCoordinatorTests {
         store.resumeSuspendedSubmit(success: true)
         try? await Task.sleep(nanoseconds: 20_000_000)
         require(store.state.pending.fields.contains(.timezone), "Late success must not clear timezone pending")
+        require(store.state.standardProperties == properties, "Late success recovery must preserve standard fields")
     }
 
     @MainActor

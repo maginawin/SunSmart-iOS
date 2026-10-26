@@ -31,7 +31,7 @@ class SharingSettingViewController: UIViewController {
     /// 类型
     let type: SharingType
     /// 二维码uuid
-    private let codeUUID: String
+    private var codeUUID: String
     /// 功能项
     private var options: [Options] = []
     /// 是否展示密码
@@ -230,8 +230,11 @@ class SharingSettingViewController: UIViewController {
             guard let self = self else { return }
             switch self.type {
             case .transferSite(let site):
-                site.transferPassword = password
-                site.save()
+                self.codeUUID = site.transferCode ?? ""
+                self.uuidLabel.text = self.codeUUID
+                self.qrcodeImageView.image = LBXScanWrapper.createCode(codeType: "CIQRCodeGenerator",
+                    codeString: self.codeUUID, size: CGSize(width: SCRYFrom(160), height: SCRYFrom(160)),
+                    qrColor: Bar_Color, bkColor: .white)
                 NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: nil)
             case .space(let site, let space):
                 if permisson == .editor {

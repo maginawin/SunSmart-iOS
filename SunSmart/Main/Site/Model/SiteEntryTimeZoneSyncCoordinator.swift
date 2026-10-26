@@ -86,9 +86,12 @@ final class SiteEntryTimeZoneSyncCoordinator {
     func applySilent(
         _ decision: SiteEntryTimeZoneDecision
     ) -> Bool {
-        guard case let .useVisitorRemote(state) = decision else {
+        guard case var .useVisitorRemote(state) = decision else {
             return false
         }
+        // The detail import has already applied its standard properties. The
+        // earlier time-zone decision must not restore an older metadata snapshot.
+        state.standardProperties = store.currentState().standardProperties
         return store.persistState(state)
     }
 
@@ -192,7 +195,8 @@ final class SiteEntryTimeZoneSyncCoordinator {
                 pending: SitePropsPendingState(
                     fields: remainingFields,
                     timestamp: remainingFields.isEmpty ? nil : current.pending.timestamp
-                )
+                ),
+                standardProperties: current.standardProperties
             )
             let result: SiteEntryTimeZoneSiteResult = store.persistState(state)
                 ? .updatedFromServer
@@ -219,7 +223,8 @@ final class SiteEntryTimeZoneSyncCoordinator {
                 pending: SitePropsPendingState(
                     fields: current.pending.fields.union(.timezone),
                     timestamp: snapshot.timestamp
-                )
+                ),
+                standardProperties: current.standardProperties
             )
             guard store.persistState(state) else {
                 return SiteEntryTimeZoneResult(
@@ -317,7 +322,8 @@ final class SiteEntryTimeZoneSyncCoordinator {
             pending: SitePropsPendingState(
                 fields: current.pending.fields.union(.timezone),
                 timestamp: snapshot.timestamp
-            )
+            ),
+            standardProperties: current.standardProperties
         )
         _ = store.persistState(restored)
     }

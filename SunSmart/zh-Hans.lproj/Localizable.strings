@@ -2573,6 +2573,8 @@
 "site_create_current_location" = "使用当前位置";
 "site_create_most_accurate" = "最准确";
 "site_create_latitude" = "纬度";
+"site_create_invalid_latitude" = "请输入 -90 到 90 之间的有效纬度。";
+"site_create_invalid_longitude" = "请输入 -180 到 180 之间的有效经度。";
 "site_create_longitude" = "经度";
 "site_create_decimal" = "十进制";
 "site_create_latitude_placeholder" = "例如：1.2801";

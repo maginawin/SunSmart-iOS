@@ -8,6 +8,7 @@
 import UIKit
 
 class ShareChangePasswordController: UIViewController {
+    private var updatingTransferPassword = false
 
     /// 操作类型
     enum OperationType {
@@ -108,16 +109,26 @@ class ShareChangePasswordController: UIViewController {
             return
         }
         
+        guard !updatingTransferPassword else { return }
+        updatingTransferPassword = true
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
-        NetworkRequest.shared.request(.transferSite(siteId: site.id, password: password)) {[weak self] result in
+        // The parent QR page must receive the new token even if this page was
+        // popped while the server request was running.
+        let onPasswordSet = passwordSetCallback
+        Task { [weak self] in
+            let result = await SiteTransferCoordinator.shared.prepare(site: site, password: password)
             XWHUDManager.hide()
-            guard let self = self else { return }
+            self?.updatingTransferPassword = false
             switch result {
-            case .success(_):
-                XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
-                self.passwordSetCallback?(.owner, password)
+            case .success(let updatedSite):
+                onPasswordSet?(.owner, updatedSite.transferPassword)
+                if self?.viewIfLoaded?.window != nil {
+                    XWHUDManager.showSuccessTipHUD("successfully".localizedString + " !")
+                }
             case .failure(let error):
-                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                if self?.viewIfLoaded?.window != nil, let message = error.message {
+                    XWHUDManager.showErrorTipHUD(message)
+                }
             }
         }
     }

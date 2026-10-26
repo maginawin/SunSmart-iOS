@@ -54,7 +54,7 @@ import Foundation
             var draft = SiteCreationDraft(siteName: "Country test", timezone: nil)
             if let initial { draft.selectCountry(catalog.entry(code: initial)!) }
             var state = SiteLocationSearchState(selectedID: draft.countryRegionCode, context: "countries")
-            let original = draft.extensionData
+            let original = try draft.standardProperties()
             precondition(draft.isNameValid(isDuplicate: false), "Country remains optional")
             for query in ["China", "CN", "US", "United States", "任意国家", ""] {
                 state.beginSearch()
@@ -66,8 +66,9 @@ import Foundation
                 state.dismiss() // Shared outside/down-arrow/Return/focus/CREATE cancellation.
                 state.dismiss() // A later didEndEditing callback must be harmless.
                 precondition(state.selectedID == initial && !state.isExpanded && state.query.isEmpty)
-                precondition(draft.extensionData == original)
-                let stored = try draft.extensionData.jsonObject()["countryRegion"]
+                let unchanged = try draft.standardProperties()
+                precondition(unchanged == original)
+                let stored = try draft.standardProperties().jsonObject["countryRegion"]
                 if let initial { precondition(stored as? String == initial) }
                 else { precondition(stored is NSNull) }
             }
@@ -82,16 +83,18 @@ import Foundation
             state.select(id: selected.code)
             state.dismiss() // Selection must survive subsequent focus callbacks.
             precondition(state.selectedID == "US" && draft.countryRegionCode == "US")
-            let selectedObject = try draft.extensionData.jsonObject()
+            let selectedObject = try draft.standardProperties().jsonObject
             precondition(selectedObject["countryRegion"] as? String == "US")
-            let confirmedData = draft.extensionData
+            let confirmedData = try draft.standardProperties()
             state.beginSearch()
             state.updateQuery("China", isComposing: false)
             state.dismiss()
-            precondition(state.selectedID == "US" && draft.extensionData == confirmedData)
+            let dismissed = try draft.standardProperties()
+            precondition(state.selectedID == "US" && dismissed == confirmedData)
             for language in ["en", "zh-Hans", "fr"] {
                 precondition(catalog.displayName(forStoredCode: draft.countryRegionCode, language: language) != nil)
-                precondition(draft.extensionData == confirmedData, "Language changes cannot alter persistence")
+                let localized = try draft.standardProperties()
+                precondition(localized == confirmedData, "Language changes cannot alter persistence")
             }
             state.select(id: "CN")
             precondition(state.selectedID == "US", "Closed lists cannot accept stale selection events")

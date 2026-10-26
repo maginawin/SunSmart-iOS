@@ -152,6 +152,13 @@ extension SiteData {
         static let name = Expression<String>("name")
         static let imageId = Expression<Int>("imageId")
         static let timezone = Expression<String?>("timezone")
+        static let latitude = Expression<Double?>("latitude")
+        static let longitude = Expression<Double?>("longitude")
+        static let countryRegion = Expression<String?>("countryRegion")
+        static let postalCode = Expression<String?>("postalCode")
+        static let city = Expression<String?>("city")
+        static let address = Expression<String?>("address")
+        static let siteDescription = Expression<String?>("description")
         static let pendingSitePropsMask = Expression<Int>("pendingSitePropsMask")
         static let pendingSitePropsTimestamp = Expression<Int64?>("pendingSitePropsTimestamp")
         static let type = Expression<Int>("type")
@@ -180,6 +187,13 @@ extension SiteData {
             builder.column(ExpressionKey.name)
             builder.column(ExpressionKey.imageId)
             builder.column(ExpressionKey.timezone)
+            builder.column(ExpressionKey.latitude)
+            builder.column(ExpressionKey.longitude)
+            builder.column(ExpressionKey.countryRegion)
+            builder.column(ExpressionKey.postalCode)
+            builder.column(ExpressionKey.city)
+            builder.column(ExpressionKey.address)
+            builder.column(ExpressionKey.siteDescription)
             builder.column(ExpressionKey.pendingSitePropsMask, defaultValue: 0)
             builder.column(ExpressionKey.pendingSitePropsTimestamp)
             builder.column(ExpressionKey.type)
@@ -210,6 +224,15 @@ extension SiteData {
             if !columns.contains(where: { $0.name == "timezone" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(SiteData.sitesTable.addColumn(ExpressionKey.timezone))
             }
+            for (name, column) in [("latitude", ExpressionKey.latitude), ("longitude", ExpressionKey.longitude)]
+                where !columns.contains(where: { $0.name == name }) {
+                _ = try? SunSmartDataManager.shared.db?.run(SiteData.sitesTable.addColumn(column))
+            }
+            for (name, column) in [("countryRegion", ExpressionKey.countryRegion), ("postalCode", ExpressionKey.postalCode),
+                                   ("city", ExpressionKey.city), ("address", ExpressionKey.address), ("description", ExpressionKey.siteDescription)]
+                where !columns.contains(where: { $0.name == name }) {
+                _ = try? SunSmartDataManager.shared.db?.run(SiteData.sitesTable.addColumn(column))
+            }
             if !columns.contains(where: { $0.name == "pendingSitePropsMask" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(SiteData.sitesTable.addColumn(ExpressionKey.pendingSitePropsMask, defaultValue: 0))
             }
@@ -235,6 +258,9 @@ extension SiteData {
             for row in rows {
                 let site = SiteData(region: ServerRegion(rawValue: row[ExpressionKey.regionType]) ?? UserData.currentServerRegion,id: row[ExpressionKey.uuid], meshUUID: row[ExpressionKey.uuid], meshNetworkId: row[ExpressionKey.meshNetworkId], name: row[ExpressionKey.name], imageId: row[ExpressionKey.imageId], type: .init(rawValue: row[ExpressionKey.type]) ?? .office, permission: .init(rawValue: row[ExpressionKey.permission]) ?? .owner, create: row[ExpressionKey.createTimestamp], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], isFavourite: row[ExpressionKey.favourite], sourceType: .init(rawValue: row[ExpressionKey.source]) ?? .create)
                 site.timezone = row[ExpressionKey.timezone]
+                site.standardProperties = .init(latitude: row[ExpressionKey.latitude], longitude: row[ExpressionKey.longitude],
+                    countryRegion: row[ExpressionKey.countryRegion], postalCode: row[ExpressionKey.postalCode],
+                    city: row[ExpressionKey.city], address: row[ExpressionKey.address], siteDescription: row[ExpressionKey.siteDescription])
                 site.pendingSitePropsMask = .init(rawValue: row[ExpressionKey.pendingSitePropsMask])
                 site.pendingSitePropsTimestamp = row[ExpressionKey.pendingSitePropsTimestamp]
                 site.lastUploadCloudTimestamp = row[ExpressionKey.lastUploadCloudTimestamp]
@@ -277,6 +303,9 @@ extension SiteData {
             for row in rows {
                 site = SiteData(region: ServerRegion(rawValue: row[ExpressionKey.regionType]) ?? UserData.currentServerRegion, id: row[ExpressionKey.uuid], meshUUID: row[ExpressionKey.uuid], meshNetworkId: row[ExpressionKey.meshNetworkId], name: row[ExpressionKey.name], imageId: row[ExpressionKey.imageId], type: .init(rawValue: row[ExpressionKey.type]) ?? .office, permission: .init(rawValue: row[ExpressionKey.permission]) ?? .owner, create: row[ExpressionKey.createTimestamp], lastUpdate: row[ExpressionKey.lastUpdateTimestamp], isFavourite: row[ExpressionKey.favourite], sourceType: .init(rawValue: row[ExpressionKey.source]) ?? .create)
                 site?.timezone = row[ExpressionKey.timezone]
+                site?.standardProperties = .init(latitude: row[ExpressionKey.latitude], longitude: row[ExpressionKey.longitude],
+                    countryRegion: row[ExpressionKey.countryRegion], postalCode: row[ExpressionKey.postalCode],
+                    city: row[ExpressionKey.city], address: row[ExpressionKey.address], siteDescription: row[ExpressionKey.siteDescription])
                 site?.pendingSitePropsMask = .init(rawValue: row[ExpressionKey.pendingSitePropsMask])
                 site?.pendingSitePropsTimestamp = row[ExpressionKey.pendingSitePropsTimestamp]
                 site?.lastUploadCloudTimestamp = row[ExpressionKey.lastUploadCloudTimestamp]
@@ -438,7 +467,10 @@ extension SiteData {
     
     /// 缓存当前场所数据
     /// allData：是否保存所有数据（true：场所基本信息+保存spaces数据，false：场所基本信息）
-    @discardableResult func save(allData: Bool = false) -> Bool {
+    /// Existing standard properties are database-owned; only an explicit patch may change them.
+    @discardableResult func save(allData: Bool = false,
+                                 standardPropertiesPatch: SiteStandardProperties.Patch = .init(),
+                                 clearTransferCredentials: Bool = false) -> Bool {
         
         guard let database = SunSmartDataManager.shared.db else { return false }
         let table = SiteData.sitesTable
@@ -447,7 +479,7 @@ extension SiteData {
             recycleAddressData = try? jsonEncoder.encode(self.recycleAddressData!)
         }
         
-        let insetOrUpdate = table.insert(or: .replace, [
+        let setters: [Setter] = [
             ExpressionKey.uuid <- self.id,
             ExpressionKey.meshNetworkId <- self.meshNetworkId,
             ExpressionKey.name <- self.name,
@@ -466,25 +498,69 @@ extension SiteData {
             ExpressionKey.syncCloudError <- self.syncCloudError?.code,
             ExpressionKey.state <- self.state.rawValue,
             ExpressionKey.spaceCount <- self.spaceCount,
-            ExpressionKey.transferCode <- self.transferCode,
-            ExpressionKey.transferPassword <- self.transferPassword,
             ExpressionKey.localAddress <- self.localAddress != nil ? Int(self.localAddress!) : nil,
             ExpressionKey.recycleAddressData <- recycleAddressData
-        ])
-        do {
-            try database.savepoint("save_site_" + UUID().uuidString) {
-                try database.run(insetOrUpdate)
-                try SiteExtensionStore.bootstrap(self)
+        ]
+        var savedProperties = standardProperties
+        var savedTransferCode = transferCode
+        var savedTransferPassword = transferPassword
+        guard SunSmartDataManager.shared.configurationTransaction({
+            // Sync tasks and editors can hold different Site instances. Read and
+            // merge on the serialized connection, including explicit null clears.
+            if let row = try database.pluck(table.filter(ExpressionKey.uuid == self.id
+                && ExpressionKey.regionType == self.region.rawValue)) {
+                savedProperties = .init(latitude: row[ExpressionKey.latitude], longitude: row[ExpressionKey.longitude],
+                    countryRegion: row[ExpressionKey.countryRegion], postalCode: row[ExpressionKey.postalCode],
+                    city: row[ExpressionKey.city], address: row[ExpressionKey.address], siteDescription: row[ExpressionKey.siteDescription])
+                // An old editor or sync receipt must not resurrect a consumed transfer.
+                savedTransferCode = row[ExpressionKey.transferCode]
+                savedTransferPassword = row[ExpressionKey.transferPassword]
             }
-        } catch {
-            #if DEBUG
-            print(error)
-            #endif
-            return false
-        }
+            if clearTransferCredentials {
+                savedTransferCode = nil
+                savedTransferPassword = nil
+            }
+            savedProperties = standardPropertiesPatch.applying(to: savedProperties)
+            try database.run(table.insert(or: .replace, setters + [
+                ExpressionKey.transferCode <- savedTransferCode,
+                ExpressionKey.transferPassword <- savedTransferPassword,
+                ExpressionKey.latitude <- savedProperties.latitude,
+                ExpressionKey.longitude <- savedProperties.longitude,
+                ExpressionKey.countryRegion <- savedProperties.countryRegion,
+                ExpressionKey.postalCode <- savedProperties.postalCode,
+                ExpressionKey.city <- savedProperties.city,
+                ExpressionKey.address <- savedProperties.address,
+                ExpressionKey.siteDescription <- savedProperties.siteDescription
+            ]))
+            try SiteExtensionStore.bootstrap(self)
+        }) else { return false }
+        standardProperties = savedProperties
+        transferCode = savedTransferCode
+        transferPassword = savedTransferPassword
         if allData {
             self.spaces.forEach({ $0.save() })
         }
+        return true
+    }
+
+    /// Update only the task cache; never save stale Site metadata from a request callback.
+    @discardableResult func replaceTransferCredentials(_ credentials: SiteTransferCredentials,
+                                                       expected: SiteTransferCredentials) -> Bool {
+        guard let database = SunSmartDataManager.shared.db else { return false }
+        let target = SiteData.sitesTable.filter(ExpressionKey.uuid == id && ExpressionKey.regionType == region.rawValue)
+        guard SunSmartDataManager.shared.configurationTransaction({
+            guard let row = try database.pluck(target), row[ExpressionKey.createTimestamp] == self.create,
+                  row[ExpressionKey.permission] == Permission.owner.rawValue,
+                  row[ExpressionKey.state] == State.normal.rawValue,
+                  row[ExpressionKey.transferCode] == expected.code,
+                  row[ExpressionKey.transferPassword] == expected.password else { throw CocoaError(.userCancelled) }
+            guard try database.run(target.update(ExpressionKey.transferCode <- credentials.code,
+                                                 ExpressionKey.transferPassword <- credentials.password)) == 1 else {
+                throw CocoaError(.fileWriteUnknown)
+            }
+        }) else { return false }
+        transferCode = credentials.code
+        transferPassword = credentials.password
         return true
     }
        

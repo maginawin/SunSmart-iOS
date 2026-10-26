@@ -38,8 +38,6 @@ struct SiteExtensionData: Codable, Equatable {
         case hdb = "HDB"
     }
 
-    static let metadataKeys = ["countryRegion", "city", "description", "streetAddress", "postalCode", "latitude", "longitude"]
-
     var fields: [String: SiteJSONValue]
 
     init() { fields = ["schemaVersion": .integer(1), "triggerZones": .array([]), "siteType": .null] }
@@ -60,9 +58,6 @@ struct SiteExtensionData: Codable, Equatable {
         var result = fields
         result.removeValue(forKey: "isHdbSite")
         result["siteType"] = siteType.map { .string($0.rawValue) } ?? .null
-        for key in Self.metadataKeys where result[key] == nil {
-            result[key] = .null
-        }
         return result
     }
 

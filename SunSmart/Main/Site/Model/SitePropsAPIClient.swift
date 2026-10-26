@@ -32,7 +32,8 @@ final class SitePropsAPIClient: SitePropsAPIClientProtocol {
                 let siteName = props["siteName"] as? String,
                 let imageId = intValue(props["imageId"]),
                 let timestamp = int64Value(props["updateTimestamp"]),
-                let timezoneResult = timezoneValue(in: props)
+                let timezoneResult = timezoneValue(in: props),
+                let standardProperties = try? SiteStandardProperties.Patch(props)
             else {
                 return .failure(.unknown)
             }
@@ -48,7 +49,8 @@ final class SitePropsAPIClient: SitePropsAPIClientProtocol {
                 imageId: imageId,
                 timezone: timezoneResult.value,
                 providedFields: providedFields,
-                timestamp: timestamp
+                timestamp: timestamp,
+                standardProperties: standardProperties
             ))
 
         case .failure(let error):
@@ -93,7 +95,8 @@ final class SitePropsAPIClient: SitePropsAPIClientProtocol {
 
     func parseUpdateResponse(_ data: [String: Any]) -> SitePropsRemoteSnapshot? {
         guard let timestamp = int64Value(data["updateTimestamp"]),
-              let timezoneResult = timezoneValue(in: data) else {
+              let timezoneResult = timezoneValue(in: data),
+              let standardProperties = try? SiteStandardProperties.Patch(data) else {
             return nil
         }
 
@@ -120,7 +123,8 @@ final class SitePropsAPIClient: SitePropsAPIClientProtocol {
             imageId: imageId,
             timezone: timezoneResult.value,
             providedFields: providedFields,
-            timestamp: timestamp
+            timestamp: timestamp,
+            standardProperties: standardProperties
         )
     }
 

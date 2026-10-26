@@ -97,7 +97,7 @@ struct SitePropsAPIContractTests {
                 coordinator.contains("SitePropsEditPolicy.makeUpdateSnapshot") &&
                     coordinator.contains("site.pendingSitePropsMask = state.pending.fields") &&
                     coordinator.contains("site.pendingSitePropsTimestamp = state.pending.timestamp") &&
-                    coordinator.contains("guard site.save() else"),
+                    coordinator.contains("guard site.save(standardPropertiesPatch: standardPropertiesPatch) else"),
                 "Coordinator persist must save values/version/pending before submit"
             )
             require(

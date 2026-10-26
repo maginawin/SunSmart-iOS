@@ -2557,6 +2557,8 @@
 "site_create_current_location" = "Use current location";
 "site_create_most_accurate" = "Most accurate";
 "site_create_latitude" = "Latitude";
+"site_create_invalid_latitude" = "Enter a valid latitude between -90 and 90.";
+"site_create_invalid_longitude" = "Enter a valid longitude between -180 and 180.";
 "site_create_longitude" = "Longitude";
 "site_create_decimal" = "Decimal";
 "site_create_latitude_placeholder" = "e.g., 1.2801";

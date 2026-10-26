@@ -2,6 +2,8 @@
 
 日期：2026-10-23。范围：App 端 Create Site 页面及元数据；已按确认方案实施，自动化验证完成，真机 UI 与云端回读待验收。
 
+2026-10-26 新需求：根据用户提供的 siteprops 接口字段，将创建页元数据从 `extensionData` 调整到 Site 标准字段，经纬度改为 number。第 13 节方案已获用户确认，city 按后续调整保存纯数字 GeoNames ID 字符串；当前已按方案实施，结果见第 14 节。第 13 节存储规则替代前文对应规则，前述验证结果不覆盖本次变更。
+
 2026-10-23 后续需求：Country / Region 的列表、搜索与代码存储已按用户确认方案实施，见第 9 节；验证结果见 9.7。最新输入行规则见 9.9，替代此前关于右侧箭头和无键盘浏览入口的描述。第 1～8 节是前一阶段记录，其中 Country 仅占位的行为已被第 9 节替换；此前验证结果不作为本次新增功能的验证结果。
 
 2026-10-23 City 后续需求：用户已确认第 10 节需求与第 11 节开发方案，并已授权实施。City 功能及相关自动化验证已完成，结果与待人工验收项见第 12 节；早期阶段的验证不替代本次结果。
@@ -611,3 +613,158 @@ UTC offset 按 JSON 及现有 Site 固定偏移语义处理；本期不引入新
 第二轮改为明确的宽度与高度计算：在配置 cell、测量行高和宽度变化时，先按列表可用宽度测量国家列（上限 45%），再将剩余宽度设置为城市的多行排版宽度；用两列 `sizeThatFits` 所需高度的较大值作为文字区域高度，并让两个 UILabel 填满该高度。短文本由 UILabel 自身垂直居中。复用时重新计算，空 detail 的 Country 行恢复整列宽度，204 pt 面板不变。这一改动处理标签尺寸与行高的依赖，不再仅依赖 StackView 对多行 intrinsic size 的推算。实际换行与滚动复用仍需真机确认。
 
 第二轮 SunSmart Debug / generic iOS 构建已通过（`BUILD SUCCEEDED`），`scripts/check_site_creation.sh` 及 `git diff --check` 通过。这些检查不证明 UIKit 最终文字绘制已通过；保留“重新搜索 Shenzhen，两个完整名称均换行可见，滚动后仍正确”的人工验收项。
+
+## 13. Site 标准属性与经纬度数值化方案（2026-10-26，已确认）
+
+### 13.1 结论与范围
+
+将本次创建页的地址、国家、城市、邮编和坐标改存 Site 标准字段是可行的。接口同样支持 `description`，建议此次一起迁出，避免保留一个重复定义的标准属性。用户明确不需要兼容旧 `extensionData` 中的这些字段，因此不做旧字段迁移、回退读取或双写；用户自行删除测试项目，App 不执行批量删除。
+
+“标准字段已存在”指用户提供的服务端契约。当前 App 的 `SiteData` 和 `sites` 表还没有这些属性，需要补齐本地模型、持久化、创建、导入导出和属性回读。只修改创建页请求，会在数据库重载后丢失数据。
+
+本次仅开发 App。新字段仍只在 Create Site 输入，Edit Site 新增表单和这些字段的增量编辑留待后续需求。本次会调整共享读取／持久化，使现有编辑、同步和克隆能保留新字段。无需修改 Mesh SDK、固件、服务器或其运行配置。
+
+分析基线：工作树 `feat-HDB-261020`，分支 `feat/HDB-261020`，HEAD `2984cd47`；开始分析时无未提交改动。本轮仅更新本文档，没有运行 App 构建、真机或接口请求。
+
+### 13.2 当前接口用途与完整数据链
+
+| 操作 | 当前入口和接口 | 本次处理 |
+| --- | --- | --- |
+| CREATE | `SiteCreateViewController` → `SiteCreationDraft` → `SiteData.add`，先完成本地创建 | 将标准字段在第一次保存前赋值；扩展数据仅承担原有扩展职责 |
+| 首次上传 | `SyncOperation.syncSite` → `siteAdd` → `/sitespace/sync/siteprops` | 新属性位于请求 `site` 对象，与 `siteName`、`timezone` 同级；坐标是 JSON number |
+| 普通上传／批量新增 Space | `siteUpload` → 同一个 `/sitespace/sync/siteprops` | 复用同一 Site 导出，完整保留标准属性 |
+| Site 列表、详情、分享加入 | 服务端 Site 对象 → `SiteData.import/update` | 从 Site 顶层读取并持久化新字段 |
+| Edit Site 现有名称、图标、时区 | `SitePropsEditCoordinator` → `SitePropsAPIClient` → `/sitespace/update/siteprops` | 接口现在已经使用；本次不新增这些元数据的编辑控件或编辑提交入口 |
+| 属性读取 | `/sitespace/retrieve/siteprops` → `SitePropsAPIClient` 和既有合并策略 | 请求并解析新字段，与其版本一起合并保存 |
+| Trigger Zone 保存 | `SiteTriggerZoneCoordinator` → `/sitespace/update/siteprops` | 已在使用该接口上传 `props.extensionData`，继续保留其行为 |
+
+因此，“后续扩展 Edit Site 才通过 update 修改这些新增字段”是对的；“当前尚未使用 update 接口”不对。创建后不需要额外追加一次 update：首次 sync 应一次提交完整标准属性。
+
+已核对的重要依赖：
+
+- `SpaceSyncCleanupCoordinator.prepareBatch` 在上传前重新从数据库加载 Site，标准字段必须真实落库，不能仅留在创建页或内存对象。
+- `SiteData.copy()` 被克隆和调试导出复用，新增字段必须一起复制；`cloneData()` 的身份、时间戳和既有时区规则继续沿用。
+- `SitePropsEditPolicy.mergeRetrieve` 会推进 `lastUpdate`，而完整 Site 导入按版本判断是否覆盖。新字段必须随属性回读一起保存，并覆盖“部分回读后再收到同版本完整对象”的补全场景，避免只推进版本而遗漏数据。
+- `SiteExtensionData.metadataKeys` 目前还负责补 null 和比较规范化；`SiteExtensionState.receive` 有相应缺字段合并逻辑。迁出时需要同步移除这七项的专用处理，保留 `siteType`、Trigger Zone、未知扩展字段及原有冲突／回执逻辑。
+
+### 13.3 字段映射与建议规则
+
+下表的标准字段名用于 sync 请求的 `site` 对象，以及后续 update 请求的 `props` 对象。
+
+| 创建页／原扩展字段 | 标准字段 | App 持久类型 | 规则 |
+| --- | --- | --- | --- |
+| `latitude` | `latitude` | `Double?` | JSON number/null，建议有效范围 -90～90 |
+| `longitude` | `longitude` | `Double?` | JSON number/null，建议有效范围 -180～180 |
+| `countryRegion` | `countryRegion` | `String?` | 沿用已确认国家代码，如 `CN`、`SG`，不改成本地化名称 |
+| `postalCode` | `postalCode` | `String?` | 保留前导零，例如 `018983` |
+| `city` | `city` | `String?` | 按用户本次调整，保存 GeoNames ID 的纯数字字符串，例如 `"795565"`，未选择为 null |
+| `streetAddress` | `address` | `String?` | 按用户明确映射，仅写 `address`，不再额外写同级 `streetAddress` |
+| `description` | `description` | `String?` | 建议一并迁出；App 属性可命名为 `siteDescription`，JSON 仍为 `description` |
+
+接口示例同时列出 `address` 和 `streetAddress`，本次按用户指定采用 `address`，不从示例自行改变映射。示例中的 `type`、`imageId` 类型不用于推翻现有项目契约；现有 `site.type`、整数图标 ID、时区格式保持原规则，Standard/HDB 继续是 `extensionData.siteType`。
+
+`city` 的本地标准属性和接口值统一使用纯数字字符串，不带 `geonames:` 前缀，也不改成 JSON number 或城市名称。当前目录的原始 `record.id` 已是整数，创建时直接转换为字符串即可；目录内部检索／选中标识可继续沿用现有格式，需要按持久值查目录时在边界转换。城市名称继续按语言显示，无需改写城市资源或兼容旧 extensionData。
+
+经纬度建议行为：
+
+1. 输入框和编辑中的草稿保留文本，允许输入负号、小数点等中间状态；在 CREATE 前解析为 `Double?`，落库使用可空 REAL，上传使用 number。
+2. 空／全空白转换为 nil，对外发送 null；`0` 是合法数字，不等同于未配置。允许只填一项，不新增成对必填要求。
+3. 非空但无法解析、非有限数值（NaN／Infinity）或越界时阻止创建，定位到对应输入框并显示国际化提示，保留草稿。不能默认为 0，也不能静默清空或钳制到边界。
+4. 保留现有国家／城市切换和手动覆盖规则。切换国家清除的自动坐标在提交时成为 null；手动坐标继续保留并接受相同校验。
+5. 不额外固定小数位数、不先转 Int；数值化会自然消除无意义的尾随零。城市目录本身已有 Double 坐标和范围校验，无需重新生成资源。
+
+本方案已确认，替代早期“坐标按任意 string/null 保存且不做数值范围校验”的规则。
+
+### 13.4 最小完整实施步骤
+
+1. **模型与 SQLite**：在 `SiteData` 增加上述可空标准属性；在现有 `sites` 表增加可空列，并补齐 create/load/loadAll/save/copy。沿用现有保存事务和失败恢复，不新建元数据表。即使所有测试项目都删除，SQLite 表仍可能存在，因此保留必要的 add-column 结构升级；不从旧扩展 JSON 搬运任何值。
+2. **创建入口**：调整草稿输出，标准属性与扩展数据分别生成；`SiteData.add` 在首次事务保存前接收标准属性。坐标校验发生在 Mesh/Site 创建之前。取消不落库，保存失败继续使用原回滚与重试路径。其他 `SiteData.add` 使用方默认获得 nil 属性。
+3. **导出与导入**：在现有 Site 导出中加入顶层属性，复用到 siteAdd、siteUpload、clone 和调试导出。完整导入与属性回读共享字段转换规则，先校验再应用，避免错误响应造成部分字段更新。
+4. **属性回读与合并**：扩展 retrieve 的请求字段、远端快照和现有合并／持久化流程。缺字段保留当前值，显式 null 清空对应可空字段，合法 number 包含整数和小数，拒绝把 Bool 当数字。过期响应不覆盖新值，保存失败恢复内存状态且不推进确认版本。处理部分响应与完整响应同版本时的字段补全，不整体放宽版本门禁；旧响应和仍待上传的本地修改仍受保护。
+5. **减少扩展字段职责**：停止生成七项元数据、补 null 和相关专用合并处理；保留整个 `site_extensions` 表以及 HDB／Trigger Zone 状态机、未知字段保留机制。不增加旧字段回退、双写或一次性数据清理。
+6. **必要回归与提示**：更新创建、国家／城市选择、SQLite、导入导出与 Site props 行为测试。若增加坐标提示，复用已有提示组件；无合适 Key 时补 English／简体中文并核对六品牌资源归属。
+
+复用选择：现有 `SiteData`、SQLite 表、Site 导出及属性合并机制均是相关入口的共享边界，直接补齐它们即可。只在 HTTP payload 临时转换无法保证重载和复制；新增独立存储服务则会引入第二份标准属性来源，本次无此必要。
+
+本次不提前扩展新字段的 Edit Site dirty mask／编辑 UI／增量提交功能。现有 update 修改名称、图标、时区，以及 Trigger Zone 保存，均应保留本次标准字段，不因未提供而清空它们。上传失败／取消继续依赖原有 Site 待上传状态，重试从已保存的标准属性重建相同含义的请求。
+
+### 13.5 验证边界
+
+优先扩展现有测试，不新增临时 Xcode 工程：
+
+- `scripts/check_site_creation.sh`：空值、0、负值、小数、合法边界、非法文本／非有限数／越界；未配置字段允许创建；国家切换、城市自动填写及手动覆盖不退化。检查输出坐标是真正的 JSON number，扩展对象不再自动带出七项字段。
+- `scripts/check_site_hdb_persistence.py`：在临时真实 SQLite 上运行生产创建／保存／加载／copy／clone；覆盖 REAL/null、邮编前导零、旧空表加列、事务失败回滚后重试、重新打开数据库仍保留属性。SDK 网络分配仍由夹具替代。
+- Site props 和导入导出行为：sync 的 site 层级及 update 的 props 层级；city 以纯数字字符串往返且仍能关联目录记录；正常回读、缺字段、显式 null、坐标整数／小数、坐标 Bool／字符串错误类型、过期响应、同版本补全、保存失败；编辑既有属性或 Trigger Zone 后不丢标准属性。现有 API contract 文本检查只作为补充，不能替代行为夹具。
+- `scripts/check_site_hdb_type.sh`、`scripts/check_site_trigger_zones.sh` 及直接受影响的同步准备／上传回执用例：确认清理 metadataKeys 不改变 Site Type、区域保存和回执规则；只运行与实际改动有关的回归。
+- 实施完成后先核对本地 workspace 和 SDK realpath，运行 SunSmart Debug / generic iOS 构建。当前实际共享品牌还包括 HSmart，共六个 target；若新增文件／资源归属存在跨品牌编译风险，合入前覆盖全部受影响品牌，否则共享逻辑以代表 target 构建验证。
+
+人工最短验收：创建含国家／城市／地址／描述／邮编、负数和 0 坐标的 Site → 首次同步 → 重启重载 → 修改既有 Site 名称／图标，再保存一个 Trigger Zone → 重新拉取，核对标准属性保留且坐标为 number。另验证全空元数据创建、非法坐标纠正后创建、首次上传失败后重试。由于本次不增加 Edit Site 字段展示，数据核对需结合现有 DEBUG 导出或服务端回读，不能仅凭页面存在认定持久化成功。
+
+本轮分析未执行上述测试、构建、真机或服务器联调；前文通过结果仅属于此前实现。
+
+### 13.6 服务端与跨端配套边界
+
+用户已说明 update 和 sync 将支持这些字段，App 可据此实施。仍需后端团队在发布／联调时验证：
+
+- `/sitespace/sync/siteprops` 的 `site` 和 `/sitespace/update/siteprops` 的 `props` 均接受同一字段名及 number/null 坐标；`address` 按本次街道地址映射处理。
+- Site 列表、详情 `/sitespace/get/siteprops`、分享返回和 `/sitespace/retrieve/siteprops` 能返回标准属性。仅接受上传但不回传，无法满足重装／其他客户端恢复。
+- 属性更新只影响请求提供的字段；只改名称／图标／时区或 extensionData 时不得清空其他标准属性。明确 null 与缺字段语义，并保证版本与回读内容一致。
+- 确认 `countryRegion` 接受当前大写 ISO2，`city` 接受 GeoNames ID 的纯数字字符串（如 `"795565"`）或 null；示例中的小写国家代码和城市名称不足以证明这些取值约定。
+
+以上属于接口契约和外部验收，相关代码／配置／部署由后端及其他客户端团队负责。本次不会修改它们，也不以 HTTP 成功、App 构建或离线测试宣称服务端已完整支持。
+
+### 13.7 已确认的实施范围
+
+建议按七项字段整体迁出（包含 `description`）、街道写 `address`、坐标 `Double?/number/null` 并校验范围、不兼容旧扩展数据、暂不扩展 Edit Site 新字段编辑的范围实施。
+
+用户已调整城市取值：`city` 保存 `"795565"` 这样的 GeoNames ID 纯数字字符串，未选择为 null，不带 `geonames:` 前缀。国家继续按方案使用大写 ISO2。用户随后确认整体实施范围，包括 description 一并迁出、坐标校验和上述 city 取值约定。
+
+
+## 14. 标准属性实施与验收（2026-10-26）
+
+### 14.1 已实施
+
+- 创建页七项元数据移到 Site 标准属性；本地 SQLite 增加可空列并执行必要的表结构升级。经纬度为 Double／JSON number，city 为如 `"795565"` 的字符串，街道写 `address`，描述写 `description`；空值保持 null，邮编保留前导零。
+- 输入期间保留草稿文本，CREATE 前验证坐标可解析、有限且位于合法范围；允许空值、0、负数及单项填写。无效输入定位到对应输入框并显示中英文提示，尚未创建 Site 或 Mesh。原国家／城市选择、自动填充与手动覆盖规则保留。
+- 新字段覆盖创建首次保存、数据库单条／列表加载、copy／clone、同步导出、完整导入、props 读取与现有编辑保存。新字段的 Edit Site 控件和增量写入未扩展，创建仍通过 sync 一次提交。
+- 属性合并区分缺字段和显式 null。支持同版本完整响应补全；晚到响应和未完成的本地属性修改受保护。完整导入自身的资源处理可能提高 Site 时间戳，因此分别检查导入前版本与异步等待后的版本，避免自身提高版本后拒收本次属性；保存失败恢复属性与相应版本。
+- 取消 extensionData 对七项字段的自动生成、补 null 和专用合并；保留 Site Type、Trigger Zone、未知字段及原有冲突处理。不读取或搬运旧扩展字段，不执行测试项目删除。
+- 沿用现有文件和资源归属，没有新增 App 源文件或改写工程配置。开始实施时 `project.pbxproj` 已有 49 行增加／49 行删除，本次保留；没有修改 SDK、后端或固件，也未提交、推送或合并。
+
+### 14.2 验证记录
+
+已通过：
+
+- `check_site_creation.sh`：标准属性类型／空值、坐标边界及非法输入、草稿保持、国家／城市切换、纯数字 city ID 与目录关联，以及原有目录完整性和异步搜索回归。
+- `check_site_hdb_persistence.py .local-sdk/nordic-sig-mesh-sdk`：真实临时 SQLite 的旧空表加列、首次创建、失败回滚后重试、重新打开数据库、load/loadAll、copy／clone、REAL 与 null 保存；Site Type 和既有 HDB 持久化回归同时通过。
+- 新增 `check_site_props.sh`：现有 props policy／API parser 测试；生产 APIClient 和 EditCoordinator 的回读、缺字段／null、非法类型、保存失败回滚、编辑期间字段保留、请求失败重试、晚到 ACK；现有 Site 进入时区 policy／coordinator 测试及元数据保留用例。
+- 上述脚本还提取实际 Site 导入的标准字段预检、基础属性版本更新和保存代码，使用明确的 Mesh／Space 边界夹具覆盖同版本补全、导入自身版本增长、等待期间新版本、非法响应和保存失败。该夹具不执行完整 Mesh／Space 导入，不替代服务器或设备联调。
+- `check_site_hdb_type.sh`、`check_site_trigger_zones.sh`：Site Type、创建完成入口、Trigger Zone 解析、回执、候选和拓扑相关回归通过。
+- `check_site_zone_cleanup_batch.py .local-sdk/nordic-sig-mesh-sdk`：真实 SQLite 与同步准备／回读／清理入口回归通过，覆盖失败阻断导出后重试、取消、重启和并发清理归属。
+- 六个 target 均包含现有 Site 共享源码及相同 English／简体中文资源；project／strings 语法检查和 `git diff --check` 通过。
+
+独立记录的既有检查问题：
+
+1. `check_site_sync_gateways.sh` 在首个布局用例退出：测试期望网关项最小 112 pt，现有实现为 100 pt。实现与测试文件均与 HEAD 完全相同。本次未修改布局；脚本后续用例不计为通过，相关时区测试已由 `check_site_props.sh` 单独执行。
+2. `check_space_recovery_receipts.py` 的综合夹具缺少 `Node.macAddress` 与 `HDBConfigurationStore`，编译失败。改用 HEAD 版本的相关夹具和提取源码复现相同错误。本次未扩展其 HDB 测试边界，不将该综合脚本列为通过；本次 props 重试／ACK 与版本保护由针对性行为夹具验证。
+
+本地 SDK realpath 为 `/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk-worktrees/one-dev`，revision `e7c1a7f`，本次未修改。构建入口为 `SunSmartLocal.xcworkspace`，稳定 DerivedData 为 `SunSmart-feat-HDB-261020-Codex`；最终 SunSmart Debug / generic iOS / `CODE_SIGNING_ALLOWED=NO` 构建退出 0，输出 `BUILD SUCCEEDED`。本次为共享逻辑与既有共享 strings 内容修改，已核对六品牌归属，使用代表 target 构建；未运行其他品牌构建、Release、Simulator 或真机。
+
+### 14.3 待人工与外部验收
+
+按 13.5 的最短路径核对创建、非法坐标纠正、首次同步失败重试、重启重载，以及现有编辑／Trigger Zone 保存后字段保留。确认 sync、retrieve、详情和分享回读支持 number/null 坐标、纯数字字符串 city 与 address 映射。App 代码／隔离测试不证明后端字段保留或实际 UIKit 表现；本次未连接服务器测试，也未安装／运行真机。
+
+### 14.4 旧同步实例覆盖标准属性修复（2026-10-26）
+
+评审问题已用真实 SQLite 和生产 `confirmSiteUpload()` 复现：详情导入通过另一实例补充 city 等字段后，同步任务仍保存其旧 Site，导致最新元数据被覆盖。`prepareBatch()` 为导出返回新实例，并不会替换回执持有的实例。
+
+`SiteData.save()` 现在默认保留数据库最新的七项标准属性；仅创建新记录时采用实例初值，导入和 props 接收入口则显式传入已通过版本策略的字段补丁。读取、按字段合并、写入及扩展初始化共用现有 `configurationTransaction`，失败回滚并释放保存点；成功后回填实例属性。缺字段保留数据库值，显式 null 清空，普通回执或编辑名称不会复活旧值。创建、克隆和首次导入仍可完整写入元数据。已丢失的本地字段可在服务器仍保留数据时通过正常详情／props 回读重新补全，不从旧 extensionData 猜测恢复。
+
+本轮验证：
+
+- 扩展 `check_site_hdb_persistence.py`，新增 `SiteStandardPropsPersistenceTests.swift`：执行生产导入的元数据／版本／保存片段、完整 EditCoordinator 和生产上传回执，覆盖分离实例、同版本导入、props 回读、Site Add／addSpaces 回执、旧编辑实例保存、缺字段／null、保存失败、重复失败后重试及重新打开数据库。同步准备的新实例交接由真实数据库 load 重放，Mesh／Space 导入和网络传输为夹具边界，未将其称为完整 App 同步验收。
+- `check_site_props.sh`、`check_site_creation.sh`、`check_site_zone_cleanup_batch.py`、Site props API contract 及上述 SQLite 回归通过；`git diff --check` 通过。
+- `check_space_recovery_receipts.py` 仍遇到 14.2 已记录的夹具缺少 `Node.macAddress`／`HDBConfigurationStore` 编译错误，未计为通过，未扩大到无关夹具修复。
+- 使用同一 `SunSmartLocal.xcworkspace`、SDK `one-dev` revision `e7c1a7f`（干净且未修改）和稳定 DerivedData，SunSmart Debug / generic iOS / 禁用签名构建退出 0，输出 `BUILD SUCCEEDED`。本轮共享逻辑没有品牌条件分支或资源归属变化，使用代表 target；未执行真机或服务器联调。
+
+最短人工验收：对已有城市／坐标的 Site 完成详情或 props 回读，再执行同步／重试，重启后确认字段仍一致；服务端显式清空某字段后重复同步，确认旧值不会恢复。

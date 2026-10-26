@@ -53,7 +53,54 @@ struct SitePropsAPIResponseParserTests {
             "Fractional imageId must remain invalid"
         )
 
+        testCoordinateFormats(client: client)
         print("SitePropsAPIResponseParserTests passed")
+    }
+
+    private static func testCoordinateFormats(client: SitePropsAPIClient) {
+        // Real JSON types, including the coordinate strings returned by Site receipt.
+        let fixtures = [
+            #"{"latitude":"22.545540","longitude":"114.068300"}"#,
+            #"{"latitude":22.545540,"longitude":114.068300}"#,
+            #"{"latitude":"22.545540","longitude":114.068300}"#,
+            #"{"latitude":22.545540,"longitude":" 114.068300 "}"#
+        ]
+        for fixture in fixtures {
+            var data = try! JSONSerialization.jsonObject(with: Data(fixture.utf8)) as! [String: Any]
+            data["updateTimestamp"] = 1
+            guard let snapshot = client.parseUpdateResponse(data) else {
+                fatalError("Numeric and string coordinates must parse")
+            }
+            let properties = snapshot.standardProperties.applying(to: .init())
+            require(properties.latitude == 22.54554 && properties.longitude == 114.0683,
+                    "Coordinate formats must normalize to the same Double values")
+            let encoded = try! JSONSerialization.data(withJSONObject: properties.jsonObject)
+            let exported = try! JSONSerialization.jsonObject(with: encoded) as! [String: Any]
+            require(exported["latitude"] is NSNumber && exported["longitude"] is NSNumber,
+                    "Normalized coordinates must export as JSON numbers")
+        }
+
+        for (key, bound) in [("latitude", 90.0), ("longitude", 180.0)] {
+            let endpoints: [Any] = [bound, -bound, String(bound), String(-bound)]
+            for value in endpoints {
+                require(client.parseUpdateResponse(["updateTimestamp": 1, key: value]) != nil,
+                        "Coordinate endpoints must remain valid in both formats")
+            }
+            let invalid: [Any] = [true, false, "", " \n", "invalid", "true", "NaN", "Infinity", "1e9999",
+                                  Double.nan, Double.infinity, bound + 1, -(bound + 1),
+                                  String(bound + 1), String(-(bound + 1)), [1], ["value": 1]]
+            for value in invalid {
+                require(client.parseUpdateResponse(["updateTimestamp": 1, key: value]) == nil,
+                        "Malformed, boolean, non-finite and out-of-range coordinates must be rejected")
+            }
+        }
+        let original = SiteStandardProperties(latitude: 22.54554, longitude: 114.0683)
+        let omitted = client.parseUpdateResponse(["updateTimestamp": 1])!
+        require(omitted.standardProperties.applying(to: original) == original,
+                "Omitted coordinates must preserve the existing values")
+        let cleared = client.parseUpdateResponse(["updateTimestamp": 1, "latitude": NSNull(), "longitude": NSNull()])!
+        let result = cleared.standardProperties.applying(to: original)
+        require(result.latitude == nil && result.longitude == nil, "Explicit null must still clear coordinates")
     }
 
     private static func updateData(

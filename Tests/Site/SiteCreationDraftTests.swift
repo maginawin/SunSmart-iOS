@@ -29,18 +29,46 @@ import Foundation
         draft.text[.latitude] = " -1.2801 "
         draft.text[.longitude] = " 0 "
         draft.siteType = .hdb
-        let object = try draft.extensionData.jsonObject()
+        let object = try draft.standardProperties().jsonObject
         precondition(object["postalCode"] as? String == "018983")
-        precondition(object["latitude"] as? String == "-1.2801")
-        precondition(object["longitude"] as? String == "0")
+        precondition(object["latitude"] as? Double == -1.2801)
+        precondition(object["longitude"] as? Double == 0)
         precondition(object["description"] is NSNull && object["city"] is NSNull && object["countryRegion"] is NSNull)
-        precondition(object["siteType"] as? String == "HDB" && object["isHdbSite"] == nil)
+        let extensionObject = try draft.extensionData.jsonObject()
+        precondition(extensionObject["siteType"] as? String == "HDB" && extensionObject["latitude"] == nil)
         precondition(draft.timezone == nil && draft.imageId == 1)
+
+        draft.text[.streetAddress] = "  1 Marina Boulevard "
+        draft.text[.description] = " Lobby "
+        let mapped = try draft.standardProperties().jsonObject
+        precondition(mapped["address"] as? String == "1 Marina Boulevard" && mapped["streetAddress"] == nil)
+        precondition(mapped["description"] as? String == "Lobby")
+        for field in [SiteCreationTextField.latitude, .longitude] {
+            let limit = field == .latitude ? 90.0 : 180.0
+            for input in ["", "  ", "0", "-0", "-1.2345", String(limit), String(-limit)] {
+                draft.text[field] = input
+                _ = try draft.standardProperties()
+            }
+            for input in ["abc", "-", "1,2", "nan", "inf", "-Infinity", "1e999", String(limit + 0.00001), String(-limit - 0.00001)] {
+                draft.text[field] = input
+                do {
+                    _ = try draft.standardProperties()
+                    preconditionFailure("Invalid coordinate must not be silently cleared: \(input)")
+                } catch let error as SiteCreationDraft.InvalidCoordinate { precondition(error.field == field) }
+                precondition(draft.text[field] == input, "Validation must preserve the draft")
+            }
+            draft.text[field] = ""
+        }
+        let cleared = try draft.standardProperties()
+        precondition(cleared.latitude == nil && cleared.longitude == nil)
+        draft.text[.longitude] = "0"
+        let single = try draft.standardProperties()
+        precondition(single.latitude == nil && single.longitude == 0)
 
         let catalog = try SiteTimeZoneCatalog(data: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
         precondition(catalog.value(matchingIdentifier: "Asia/Shanghai")?.storageValue == "Asia/Shanghai (UTC+08:00)")
         precondition(catalog.value(matchingIdentifier: "missing/zone") == nil)
         precondition(catalog.value(matchingIdentifier: "GMT+1234") == nil, "Creation must not invent a fallback")
-        print("PASS: creation draft normalization, Unicode limits, name validation, string coordinates and strict time zone lookup")
+        print("PASS: creation draft normalization, Unicode limits, name validation, numeric coordinates and validation and strict time zone lookup")
     }
 }

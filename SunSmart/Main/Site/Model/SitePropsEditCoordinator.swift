@@ -65,7 +65,8 @@ final class SitePropsEditCoordinator {
             return makeDraft(from: merge.state)
         }
 
-        guard persistState(merge.state) else {
+        let patch = remote.timestamp >= local.lastUpdate ? remote.standardProperties : .init()
+        guard persistState(merge.state, standardPropertiesPatch: patch) else {
             return makeDraft(from: local)
         }
         return makeDraft(from: merge.state)
@@ -103,7 +104,8 @@ final class SitePropsEditCoordinator {
             pending: SitePropsPendingState(
                 fields: snapshot.fields,
                 timestamp: snapshot.timestamp
-            )
+            ),
+            standardProperties: local.standardProperties
         )
         return SitePropsCommitPlan(
             targetState: targetState,
@@ -140,15 +142,21 @@ final class SitePropsEditCoordinator {
         }
 
         let local = currentState()
-        let updated = SitePropsEditPolicy.localStateAfterSuccessfulUpdate(
+        var updated = SitePropsEditPolicy.localStateAfterSuccessfulUpdate(
             current: local,
             request: snapshot
         )
+        var acceptedStandardPatch = SiteStandardProperties.Patch()
+        // A late ACK must not overwrite fields from a newer local/remote version.
+        if updated.lastUpdate == response.timestamp, updated.pending.fields.isEmpty {
+            acceptedStandardPatch = response.standardProperties
+            updated.standardProperties = response.standardProperties.applying(to: updated.standardProperties)
+        }
         guard updated != local else {
             return true
         }
 
-        guard persistState(updated) else {
+        guard persistState(updated, standardPropertiesPatch: acceptedStandardPatch) else {
             return false
         }
         return true
@@ -166,15 +174,21 @@ final class SitePropsEditCoordinator {
             pending: SitePropsPendingState(
                 fields: site.pendingSitePropsMask,
                 timestamp: site.pendingSitePropsTimestamp
-            )
+            ),
+            standardProperties: site.standardProperties
         )
     }
 
     @discardableResult
     func persistState(_ state: SitePropsLocalState) -> Bool {
+        persistState(state, standardPropertiesPatch: .init())
+    }
+
+    private func persistState(_ state: SitePropsLocalState,
+                              standardPropertiesPatch: SiteStandardProperties.Patch) -> Bool {
         let local = currentState()
         apply(state)
-        guard site.save() else {
+        guard site.save(standardPropertiesPatch: standardPropertiesPatch) else {
             apply(local)
             return false
         }
@@ -189,6 +203,7 @@ final class SitePropsEditCoordinator {
         site.name = state.values.siteName
         site.imageId = state.values.imageId
         site.timezone = state.values.timezone?.storageValue
+        site.standardProperties = state.standardProperties
         site.lastUpdate = state.lastUpdate
         site.lastUploadCloudTimestamp = state.lastUploadCloudTimestamp
         site.pendingSitePropsMask = state.pending.fields

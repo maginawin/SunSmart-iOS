@@ -13,6 +13,7 @@ import NordicSigMeshSDK
 let SitesDataRefreshNotifiacationName = "SitesRefreshNotifiacation"
 
 class SitesViewController: UIViewController {
+    private var preparingSiteTransfer = false
     
     enum SectionType {
         
@@ -417,9 +418,11 @@ class SitesViewController: UIViewController {
                 }
                 // 判断是否是自己分享的内容
                 switch type {
-                case .site(let site, _, _):
+                case .site(let site, let owner, _):
                     // 自己的site转让且未转让出去，跳转到site页面
-                    if let mySite = self.allSites.first(where: { $0.id == site.id && $0.permission == .owner && $0.state == .normal }) {
+                    if let mySite = self.allSites.first(where: { $0.id == site.id
+                        && SiteTransferImportPolicy.canOpenOwnedSite(local: $0, ownerID: owner.uuid,
+                                                                     currentUserID: UserData.currentUserId) }) {
                         self.dismissScannerIfNeeded(animated: false) { [weak self] in
                             let vc = SiteViewController(site: mySite)
                             self?.navigationController?.pushViewController(vc, animated: true)
@@ -854,6 +857,7 @@ class SitesViewController: UIViewController {
     
     /// 转让Site
     private func transferSite(site: SiteData) {
+        guard !preparingSiteTransfer else { return }
         
         guard NetworkRequest.shared.networkable else {
             XWHUDManager.showTipHUD("phone_no_network".localizedString, isLineFeed: true)
@@ -883,56 +887,22 @@ class SitesViewController: UIViewController {
             return
         }
         
+        preparingSiteTransfer = true
         XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
-        
-        var networkApi: NetowrkReqeustApi!
-        // 有site转让code则读取之前的数据
-        if let transferCode = site.transferCode {
-            networkApi = .shareInfo(shareId: transferCode)
-        }else { // 第一次转让site则新建一个记录
-            if site.transferPassword == nil || site.transferPassword?.isEmpty ?? true {
-                site.transferPassword = String.generateRandomNumberString()
-                site.save()
-            }
-            networkApi = .transferSite(siteId: site.id, password: site.transferPassword!)
-        }
-        
-        NetworkRequest.shared.request(networkApi) {[weak self] result in
-            
-            guard let self = self else {
-                XWHUDManager.hide()
-                return
-            }
-            
+        let selectedSite = site
+        Task { [weak self] in
+            let result = await SiteTransferCoordinator.shared.prepare(site: selectedSite)
+            XWHUDManager.hide()
+            guard let self else { return }
+            self.preparingSiteTransfer = false
+            guard self.viewIfLoaded?.window != nil else { return }
             switch result {
-            case .success(let response):
-                guard let code = JSON(response)["data"]["token"].string else {
-                    XWHUDManager.hide()
-                    XWHUDManager.showErrorTipHUD(NetworkApiError.unknown.localizedDescription)
-                    return
-                }
-                if let password = JSON(response)["data"]["transPasswd"].string {
-                    if site.transferPassword != password {
-                        site.transferPassword = password
-                        site.save()
-                    }
-                }
-                
-                // 转让码
-                if site.transferCode != code {
-                    site.transferCode = code
-                    site.save()
-                }
-                let vc = SharingSettingViewController(type: .transferSite(site: site))
-                if isIPad {
-                    vc.preferredContentSize = iPadPreferredContentSize
-                }
-                self.present(NavigationViewController(rootViewController: vc), animated: true) {
-                    XWHUDManager.hide()
-                }
+            case .success(let preparedSite):
+                let vc = SharingSettingViewController(type: .transferSite(site: preparedSite))
+                if isIPad { vc.preferredContentSize = iPadPreferredContentSize }
+                self.present(NavigationViewController(rootViewController: vc), animated: true)
             case .failure(let error):
-                XWHUDManager.hide()
-                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+                if let message = error.message { XWHUDManager.showErrorTipHUD(message) }
             }
         }
     }

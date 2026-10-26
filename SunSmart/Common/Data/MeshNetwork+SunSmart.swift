@@ -48,8 +48,9 @@ extension SiteData {
     /// - Returns: 场所
     static func add(name: String, siteType: SiteExtensionData.ProjectType = .standard, imageId: Int = 1,
                     timezone: String? = SiteTimeZoneCatalog.phoneDefaultValue().storageValue,
-                    extensionData: SiteExtensionData? = nil) throws -> SiteData {
-        guard let database = SunSmartDataManager.shared.db else { throw DataError.persistenceFailed }
+                    extensionData: SiteExtensionData? = nil,
+                    standardProperties: SiteStandardProperties = .init()) throws -> SiteData {
+        guard standardProperties.isValid, let database = SunSmartDataManager.shared.db else { throw DataError.persistenceFailed }
         let time = Int64(Date().timeIntervalSince1970)
         
         let id = UUID().uuidString
@@ -59,6 +60,7 @@ extension SiteData {
         site.siteExtensionData = extensionData ?? SiteExtensionData()
         site.siteExtensionData.siteType = siteType
         site.timezone = timezone
+        site.standardProperties = standardProperties
         if site.timezone != nil {
             site.pendingSitePropsMask = [.timezone]
             site.pendingSitePropsTimestamp = site.lastUpdate
