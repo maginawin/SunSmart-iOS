@@ -143,6 +143,7 @@ class DeviceLightViewController: UIViewController {
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        controlPanelView.cancelPendingInteraction()
 
         if setProxyAttemptID != nil {
             setProxyAttemptID = nil
@@ -777,6 +778,7 @@ class DeviceLightViewController: UIViewController {
         guard !node.isEmergencySignController else {
             return
         }
+        controlPanelView.cancelPendingInteraction()
         node.isOn = !node.isOn
         if node.isOn {
             let restoredLightness = node.trunOffLightness ?? node.lightnessRange.upperBound

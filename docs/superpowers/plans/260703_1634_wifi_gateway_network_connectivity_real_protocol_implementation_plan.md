@@ -1,5 +1,7 @@
 # WiFi Gateway Network Connectivity Real Protocol Implementation Plan
 
+> 2026-10-27 协议更新：密码长度现为 `0~63` UTF-8 字节，下文旧版密码最小长度要求已被替代。实现与验证见 [本次更新](../../261027_1141_wifi_gateway_password_length.md)。
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use `superpowers:executing-plans` for Inline Execution. Steps use checkbox (`- [ ]`) syntax for tracking. Project preference selects Inline Execution by default; do not dispatch subagents unless the user explicitly asks.
 
 **Goal:** Replace the WiFi Gateway Network Connectivity simulation with real `43 0D / 43 0E / 43 12` vendor protocol reads, writes, polling, local password caching, and explicit SSID clearing.

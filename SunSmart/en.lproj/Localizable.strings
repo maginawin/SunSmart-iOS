@@ -2034,7 +2034,7 @@
 "wifi_gateway_ssid_empty" = "Select a Wi-Fi network first.";
 "wifi_gateway_ssid_length_error" = "Wi-Fi name must be 1–32 UTF-8 bytes.";
 "wifi_gateway_ssid_character_error" = "Wi-Fi name must not contain control characters.";
-"wifi_gateway_password_length_error" = "Leave the password empty for an open Wi-Fi network, or enter 8–63 UTF-8 bytes.";
+"wifi_gateway_password_length_error" = "Enter a password of up to 63 UTF-8 bytes, or leave it empty for an open Wi-Fi network.";
 "wifi_gateway_password_character_error" = "Password must not contain control characters.";
 "wifi_gateway_configuration_unconfirmed" = "Unable to confirm Wi-Fi configuration.";
 "wifi_gateway_clear_unconfirmed" = "Unable to confirm Wi-Fi credential removal.";

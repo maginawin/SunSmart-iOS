@@ -109,6 +109,13 @@ final class DeviceLightControlPanelView: UIView {
         configure(configuration)
     }
 
+    func cancelPendingInteraction() {
+        simpleBrightnessSlider.slider.cancelPendingInteraction()
+        simpleCCTSlider.slider.cancelPendingInteraction()
+        detailedBrightnessView.cancelPendingInteraction()
+        detailedCCTView.cancelPendingInteraction()
+    }
+
     func setCCTValue(_ value: Int) {
         guard var configuration else { return }
         let clamped = max(configuration.cctRange.lowerBound, min(configuration.cctRange.upperBound, value))
@@ -303,6 +310,11 @@ private final class DetailedControlSliderView: UIView {
 
     var slider: CustomDeviceSlider {
         sliderView.slider
+    }
+
+    func cancelPendingInteraction() {
+        slider.cancelPendingInteraction()
+        setSliderOverlayActive(false)
     }
 
     init(functionType: DeviceSliderFunctionView.FunctionType) {

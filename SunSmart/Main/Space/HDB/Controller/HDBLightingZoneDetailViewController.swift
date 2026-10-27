@@ -80,6 +80,7 @@ final class HDBLightingZoneDetailViewController: UITableViewController {
     }
     override func viewWillDisappear(_ animated: Bool) {
         pageActive = false; brightnessEdited = false
+        brightnessPanel.cancelPendingInteraction()
         // cancel() only stops this service's configuration executor, never the test control queue.
         service.cancel()
         super.viewWillDisappear(animated)
@@ -278,6 +279,13 @@ final class HDBLightingZoneDetailViewController: UITableViewController {
     }
     private func send(_ action: HDBZoneControlAction, source: UIButton? = nil) {
         guard pageActive else { return }
+        switch action {
+        case .on, .off, .auto:
+            brightnessPanel.cancelPendingInteraction()
+            brightnessEdited = false
+        case .brightness:
+            break
+        }
         do {
             try service.control(zoneId: zoneId, groupAddress: groupAddress, action: action)
             switch action {

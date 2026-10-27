@@ -96,7 +96,7 @@ class CustomDeviceSlider: UISlider {
     }
     
     /// 是否正在滑动中
-    var isSliding: Bool = false
+    private(set) var isSliding: Bool = false
     
     weak var delegate: CustomDeviceSliderDelegate?
     /// 步进值
@@ -106,6 +106,9 @@ class CustomDeviceSlider: UISlider {
     private var valueChangedTimer: Timer?
     /// 上一次发送的值
     private var lastSendValue: Float?
+    /// 只由本轮用户输入更新，避免把界面刷新后的 value 当成调光指令。
+    private var interactionValue: Float?
+    private var pendingValue: Float?
     
     private var trackRect: CGRect?
     
@@ -127,6 +130,7 @@ class CustomDeviceSlider: UISlider {
     }()
     
     var lastBounds: CGRect?
+
     
     /// 重写value属性，设置步进后只返回对应步进倍数值
     override var value: Float {
@@ -159,10 +163,7 @@ class CustomDeviceSlider: UISlider {
     override init(frame: CGRect) {
         super.init(frame: frame)
         
-        addTarget(self, action: #selector(sliderTouchDown), for: .touchDown)
         addTarget(self, action: #selector(sliderValueChanged), for: .valueChanged)
-//        addTarget(self, action: #selector(sliderEndValueChange), for: .touchUpInside)
-//        addTarget(self, action: #selector(sliderEndValueChange), for: .touchDragExit)
     }
     
     required init?(coder: NSCoder) {
@@ -179,11 +180,53 @@ class CustomDeviceSlider: UISlider {
     
     /// 更新限制滑动UI
     private func updateLimitUI() {
-        
-        guard let range = limitRange, let trackRect = self.trackRect, let trackView = subviews.first, let thumbImageView = trackView.subviews.first(where: { $0.isKind(of: UIImageView.classForCoder()) }) else { return }
-        
+        // 清除旧范围；取消限制、布局未就绪或系统更换图标容器时也不能残留灰段。
         maxLineView.removeFromSuperview()
         minLineView.removeFromSuperview()
+
+        guard let range = limitRange, let trackRect = self.trackRect,
+              !trackRect.isEmpty, maximumValue > minimumValue else { return }
+
+        if #available(iOS 27.0, *) {
+            guard let image = currentThumbImage ?? thumbImage(for: state) ?? thumbImage(for: .normal) else { return }
+            let imageViews = allSubviews.compactMap { $0 as? UIImageView }.filter { !$0.isHidden }
+            // 图标可能直接挂在 Slider 上，也可能嵌套；不依赖 UIKit 的固定层级。
+            let thumbImageView = imageViews.first { $0.image?.isEqual(image) == true } ?? imageViews.first { view in
+                guard view.image?.size == image.size, let thumbRect = lastBounds else { return false }
+                let frame = view.convert(view.bounds, to: self)
+                return abs(frame.midX - thumbRect.midX) < 1 && abs(frame.midY - thumbRect.midY) < 1
+            }
+            guard let thumbImageView else { return }
+
+            // 灰段与图标分支同级并位于其下方；避开只能容纳图标的狭窄容器。
+            var thumbBranch: UIView = thumbImageView
+            while let parent = thumbBranch.superview, parent !== self,
+                  !parent.bounds.contains(convert(trackRect, to: parent)) {
+                thumbBranch = parent
+            }
+            guard let container = thumbBranch.superview else { return }
+            let rect = convert(trackRect, to: container)
+            let valueRange = maximumValue - minimumValue
+            let lowProgress = CGFloat(min(max((Float(range.lowerBound) - minimumValue) / valueRange, 0), 1))
+            let highProgress = CGFloat(min(max((maximumValue - Float(range.upperBound)) / valueRange, 0), 1))
+            let isRTL = effectiveUserInterfaceLayoutDirection == .rightToLeft
+            if lowProgress > 0 {
+                let width = rect.width * lowProgress
+                minLineView.frame = CGRect(x: isRTL ? rect.maxX - width : rect.minX,
+                                           y: rect.minY, width: width, height: rect.height)
+                container.insertSubview(minLineView, belowSubview: thumbBranch)
+            }
+            if highProgress > 0 {
+                let width = rect.width * highProgress
+                maxLineView.frame = CGRect(x: isRTL ? rect.minX : rect.maxX - width,
+                                           y: rect.minY, width: width, height: rect.height)
+                container.insertSubview(maxLineView, belowSubview: thumbBranch)
+            }
+            return
+        }
+
+        guard let trackView = subviews.first,
+              let thumbImageView = trackView.subviews.first(where: { $0.isKind(of: UIImageView.classForCoder()) }) else { return }
         
         if Int(maximumValue) > range.upperBound {
             let overrunValue = Int(maximumValue) - range.upperBound
@@ -233,29 +276,44 @@ class CustomDeviceSlider: UISlider {
     
     /// 是否可以滑动编辑数值
     override func beginTracking(_ touch: UITouch, with event: UIEvent?) -> Bool {
-        return self.delegate?.slider(self, canEditChanged: self.value) ?? true
+        guard delegate?.slider(self, canEditChanged: value) ?? true else { return false }
+        beginInteraction()
+        return true
     }
     
     @objc private func sliderValueChanged() {
-        isSliding = true
+        // UIKit 可能在 touchesEnded 之后继续派发 valueChanged，不能重启已结束的会话。
+        guard isSliding else { return }
+        let userValue = value
+        interactionValue = userValue
+        pendingValue = userValue
         if throttle { // 是否需要限流
             startTimer()
         }
-        
-        self.delegate?.slider(self, valueChanged: self.value, ended: false)
+        delegate?.slider(self, valueChanged: userValue, ended: false)
     }
-    
-    @objc private func sliderTouchDown() {
+
+    private func beginInteraction() {
+        cancelPendingInteraction()
         isSliding = true
+        interactionValue = value
     }
-    
-    @objc private func sliderEndValueChange() {
+
+    /// 新的控制命令或页面退出接管时，丢弃旧手势，不提交其最终值。
+    func cancelPendingInteraction() {
         isSliding = false
-        if throttle { // 是否需要限流
-            stopTimer()
-        }
-        self.delegate?.slider(self, valueChanged: self.value, ended: true)
-        self.delegate?.slider(self, throttleValueChanged: self.value, ended: true)
+        stopTimer()
+        interactionValue = nil
+        pendingValue = nil
+        lastSendValue = nil
+    }
+
+    private func sliderEndValueChange() {
+        guard isSliding, let finalValue = interactionValue else { return }
+        cancelPendingInteraction()
+        // 第一个回调可能刷新界面；第二个回调仍必须使用同一份用户输入。
+        delegate?.slider(self, valueChanged: finalValue, ended: true)
+        delegate?.slider(self, throttleValueChanged: finalValue, ended: true)
     }
     
     // MARK: - Timer
@@ -264,11 +322,13 @@ class CustomDeviceSlider: UISlider {
         
         if valueChangedTimer == nil {
             
-            valueChangedTimer = Timer(timeInterval: interval, repeats: true) {[weak self] _ in
-                guard let self = self else { return  }
-                if self.lastSendValue != self.value {
-                    self.lastSendValue = self.value
-                    self.delegate?.slider(self, throttleValueChanged: self.value, ended: false)
+            valueChangedTimer = Timer(timeInterval: interval, repeats: true) {[weak self] timer in
+                guard let self, self.isSliding, self.valueChangedTimer === timer,
+                      let userValue = self.pendingValue else { return }
+                self.pendingValue = nil
+                if self.lastSendValue != userValue {
+                    self.lastSendValue = userValue
+                    self.delegate?.slider(self, throttleValueChanged: userValue, ended: false)
                 }
             }
             RunLoop.current.add(valueChangedTimer!, forMode: .common)
@@ -288,6 +348,29 @@ class CustomDeviceSlider: UISlider {
         if let range = limitRange {
             resultValue = Float(max(range.lowerBound, min(Int(resultValue), range.upperBound)))
         }
+
+        // iOS 27 可能在已设置自定义图标时仍返回 nil，需回退到已配置的状态图片。
+        if #available(iOS 27.0, *),
+           let image = currentThumbImage ?? thumbImage(for: state) ?? thumbImage(for: .normal) {
+            // UIKit 传入的轨道可能带有拖动伸缩；使用 bounds 与自定义轨道保持一致。
+            // 保留原有两端各 5pt 的中心内缩，使图片覆盖轨道端点。
+            let valueRange = maximumValue - minimumValue
+            var progress = valueRange > 0 ? CGFloat((resultValue - minimumValue) / valueRange) : 0
+            progress = min(max(progress, 0), 1)
+            if effectiveUserInterfaceLayoutDirection == .rightToLeft {
+                progress = 1 - progress
+            }
+            let edgeInset = min(5, bounds.width * 0.5)
+            let centerX = bounds.minX + edgeInset + (bounds.width - edgeInset * 2) * progress
+            let returnRect = CGRect(
+                x: centerX - image.size.width * 0.5,
+                y: bounds.midY - image.size.height * 0.5,
+                width: image.size.width,
+                height: image.size.height
+            )
+            lastBounds = returnRect
+            return returnRect
+        }
         
         // 滑块图片宽度
         let thumbW = (self.currentThumbImage?.size.width ?? 0) - 10
@@ -301,10 +384,16 @@ class CustomDeviceSlider: UISlider {
     override func trackRect(forBounds bounds: CGRect) -> CGRect {
         var rect = super.trackRect(forBounds: bounds)
         rect.size.height = 2
+
+        if #available(iOS 27.0, *),
+           (currentThumbImage ?? thumbImage(for: state) ?? thumbImage(for: .normal)) != nil {
+            rect = CGRect(x: bounds.minX, y: bounds.midY - 1, width: bounds.width, height: 2)
+        }
         
         trackRect = rect
         return rect
     }
+
     
     override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesEnded(touches, with: event)
@@ -313,9 +402,52 @@ class CustomDeviceSlider: UISlider {
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
         super.touchesCancelled(touches, with: event)
+        finishCancelledInteraction()
+    }
+
+    override func cancelTracking(with event: UIEvent?) {
+        super.cancelTracking(with: event)
+        finishCancelledInteraction()
+    }
+
+    private func finishCancelledInteraction() {
         if sendsFinalValueOnTouchCancel {
             sliderEndValueChange()
+        } else {
+            cancelPendingInteraction()
         }
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if window == nil {
+            cancelPendingInteraction()
+        }
+    }
+
+    // VoiceOver 调节不经过触摸跟踪，也需要独立且完整的一次用户输入。
+    override func accessibilityIncrement() {
+        performAccessibilityAdjustment { super.accessibilityIncrement() }
+    }
+
+    override func accessibilityDecrement() {
+        performAccessibilityAdjustment { super.accessibilityDecrement() }
+    }
+
+    private func performAccessibilityAdjustment(_ adjustment: () -> Void) {
+        guard isEnabled, delegate?.slider(self, canEditChanged: value) ?? true else { return }
+        beginInteraction()
+        interactionValue = nil
+        adjustment()
+        // 原生 valueChanged 已记录输入时，不把其 delegate 的界面刷新再次当成输入。
+        if isSliding, interactionValue == nil {
+            sliderValueChanged()
+        }
+        sliderEndValueChange()
+    }
+
+    deinit {
+        valueChangedTimer?.invalidate()
     }
     
     

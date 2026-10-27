@@ -438,6 +438,7 @@ class GroupViewController: UIViewController {
     
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        controlPanelView.cancelPendingInteraction()
         isSyncPageVisible = false
         for case let cell as DevicesViewCell in collectionView.visibleCells {
             cell.cancelGroupSyncStatus()
@@ -1019,6 +1020,7 @@ class GroupViewController: UIViewController {
         guard !showEmergencyControlBlockedIfNeeded() else {
             return
         }
+        controlPanelView.cancelPendingInteraction()
         sender.isSelected = !sender.isSelected
         
         LightGroupControlCommandSender.setGroupOnOff(address: group.address.address, isOn: sender.isSelected)

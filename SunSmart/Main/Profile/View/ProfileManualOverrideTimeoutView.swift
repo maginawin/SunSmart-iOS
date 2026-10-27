@@ -39,16 +39,9 @@ class ProfileManualOverrideTimeoutView: UIView {
     var valueLabel: UILabel!
     /// 滑条
     var slider: CustomDeviceSlider!
-    /// 秒，未启用传-1
+    /// 秒，UInt32.max 表示无限长。显示与编辑均以此整数值为准。
     var second: UInt32 = 600 {
         didSet {
-            if let value = timeoutDatas.firstIndex(where: { $0.second == second }) {
-                slider.value = Float(value)
-//                valueLabel.text = timeoutDatas[Int(slider.value)].name
-            }else {
-                slider.value = 10
-            }
-//            updateValue()
             updateUI()
         }
     }
@@ -58,6 +51,7 @@ class ProfileManualOverrideTimeoutView: UIView {
     weak var delegate: ProfileManualOverrideTimeoutViewDelegate?
     /// 超时时间数据
     private var timeoutDatas: [(name: String, second: UInt32)] = []
+    private var hasSliderChanges = false
     
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -67,6 +61,7 @@ class ProfileManualOverrideTimeoutView: UIView {
         
         setData()
         setupUI()
+        updateUI()
     }
     
     private func setData() {
@@ -95,15 +90,9 @@ class ProfileManualOverrideTimeoutView: UIView {
             return
         }
         
-        slider.value = min(slider.value + 1, slider.maximumValue)
-        let second = timeoutDatas[Int(slider.value)].second
-        delegate?.view(self, timeoutValueChanged: second)
-        if slider.value == slider.maximumValue {
-            updateUI()
-        }else {
-            updateValue()
-        }
-        
+        guard second != .max,
+              let next = timeoutDatas.first(where: { $0.second > second }) else { return }
+        selectTimeout(next.second)
     }
     
     @objc private func minusBtnClick() {
@@ -113,23 +102,19 @@ class ProfileManualOverrideTimeoutView: UIView {
             return
         }
         
-        slider.value = max(slider.value - 1, slider.minimumValue)
-        updateValue()
-        let second = timeoutDatas[Int(slider.value)].second
-        delegate?.view(self, timeoutValueChanged: second)
+        guard second != .max,
+              let previous = timeoutDatas.last(where: { $0.second < second }) else { return }
+        selectTimeout(previous.second)
     }
     
     @objc private func enableSwitchValueChanged(sender: UISwitch) {
         
-        if sender.isOn {
-            slider.value = 10
-        }else {
-            slider.value = slider.maximumValue
+        guard editable else {
+            updateUI()
+            delegate?.timeoutViewDisableEditAction(view: self)
+            return
         }
-        let second = timeoutDatas[Int(slider.value)].second
-        delegate?.view(self, timeoutValueChanged: second)
-        
-        updateUI()
+        selectTimeout(sender.isOn ? 600 : .max)
     }
     
     @objc private func enableSwitchBtnAction() {
@@ -141,33 +126,40 @@ class ProfileManualOverrideTimeoutView: UIView {
         }
     }
     
+    /// 非预设值只借用最近的有限档位定位滑块，不改写原始秒数。
+    private var displayIndex: Int {
+        if second == .max { return timeoutDatas.count - 1 }
+        return timeoutDatas.indices.dropLast().min {
+            abs(Int64(timeoutDatas[$0].second) - Int64(second))
+                < abs(Int64(timeoutDatas[$1].second) - Int64(second))
+        } ?? 0
+    }
+
+    private func selectTimeout(_ value: UInt32) {
+        let changed = second != value
+        second = value
+        if changed {
+            delegate?.view(self, timeoutValueChanged: value)
+        }
+    }
+
     private func updateUI() {
-        
-        enableSwitch.isOn = slider.value != slider.maximumValue
-        
-        if enableSwitch.isOn {
-            slider.isEnabled = true
-            addBtn.isEnabled = true
-            minusBtn.isEnabled = true
-        }else {
-            slider.isEnabled = false
-            addBtn.isEnabled = false
-            minusBtn.isEnabled = false
+        let enabled = second != .max
+        enableSwitch.isOn = enabled
+        // 手势尚未结束时允许从 Infinite 拖回有限值；取消也走结束回调。
+        slider.isEnabled = enabled || slider.isSliding
+        addBtn.isEnabled = enabled
+        minusBtn.isEnabled = enabled
+        if !slider.isSliding {
+            slider.value = Float(displayIndex)
         }
         updateValue()
-//        contentView.snp.updateConstraints { make in
-//            make.height.equalTo(enableSwitch.isOn ? SCRYFrom(89) : 0)
-//        }
-//        self.contentView.isHidden = !self.enableSwitch.isOn
-//        UIView.animate(withDuration: 0.3) {
-//            self.contentView.isHidden = !self.enableSwitch.isOn
-//            self.layoutIfNeeded()
-//        }
     }
     
     private func updateValue() {
         
-        valueLabel.text = timeoutDatas[Int(slider.value)].name
+        valueLabel.text = timeoutDatas.first(where: { $0.second == second })?.name
+            ?? "\(second) \("sec".localizedString)"
     }
 
     private func setupUI() {
@@ -220,8 +212,11 @@ class ProfileManualOverrideTimeoutView: UIView {
         }
         
         valueLabel = UILabel(text: "10 min", textColor: TextBlack_Color, fontWeight: .light)
+        valueLabel.adjustsFontSizeToFitWidth = true
+        valueLabel.minimumScaleFactor = 0.75
         contentView.addSubview(valueLabel)
         valueLabel.snp.makeConstraints { make in
+            make.left.greaterThanOrEqualTo(timeoutLabel.snp.right).offset(SCRXFrom(8))
             make.right.equalTo(SCRXFrom(-16))
             make.centerY.equalTo(timeoutLabel)
         }
@@ -248,8 +243,9 @@ class ProfileManualOverrideTimeoutView: UIView {
         slider.layer.cornerRadius = 2
         slider.minimumValue = 0
         slider.maximumValue = Float(timeoutDatas.count - 1)
+        slider.step = 1
         slider.value = 10
-        slider.throttle = true
+        slider.sendsFinalValueOnTouchCancel = true
         slider.delegate = self
         contentView.addSubview(slider)
         slider.snp.makeConstraints { make in
@@ -268,16 +264,20 @@ extension ProfileManualOverrideTimeoutView: CustomDeviceSliderDelegate {
     ///   - slider: 滑动条
     ///   - value: 数值
     func slider(_ slider: CustomDeviceSlider, valueChanged value: Float, ended: Bool) {
-        guard slider.isEnabled else {
+        guard editable else {
+            updateUI()
+            delegate?.timeoutViewDisableEditAction(view: self)
             return
         }
-        if slider.value == slider.maximumValue && ended {
+        // 只有 touch-down 后被取消/松手时，不将历史非预设值改成滑块定位值。
+        if ended && !hasSliderChanges {
             updateUI()
-        }else {
-            updateValue()
+            return
         }
-        let second = timeoutDatas[Int(slider.value)].second
-        delegate?.view(self, timeoutValueChanged: UInt32(second))
+        hasSliderChanges = !ended
+        guard slider.isEnabled, value.isFinite else { return }
+        let index = Int(min(Float(timeoutDatas.count - 1), max(0, value.rounded())))
+        selectTimeout(timeoutDatas[index].second)
     }
     
     
@@ -287,6 +287,7 @@ extension ProfileManualOverrideTimeoutView: CustomDeviceSliderDelegate {
     ///   - value: 数值
     /// - Returns: 是否可以滑动
     func slider(_ slider: CustomDeviceSlider, canEditChanged value: Float) -> Bool {
+        hasSliderChanges = false
         if !editable {
             delegate?.timeoutViewDisableEditAction(view: self)
         }

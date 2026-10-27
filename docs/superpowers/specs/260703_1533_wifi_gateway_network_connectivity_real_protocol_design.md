@@ -91,7 +91,7 @@ App 层使用 SDK 已提供的 typed vendor API：
 1. 校验 SSID 和 Password。
 2. SSID 必须非空，并满足 SDK 的 SSID 长度和字符要求。
 3. Password 为空时视为无密码 Wi-Fi。
-4. Password 非空时必须满足 SDK 的密码长度和字符要求；其中长度至少 8 字符，最多 63 字符。
+4. Password 非空时必须满足 SDK 的密码长度和字符要求；其中长度按 UTF-8 字节计算，允许 `0...63` 字节。
 5. 校验通过后发送 `wifiGatewayCredentialsSet`。
 6. `wifiGatewayCredentialsSet` 返回 `.accepted` 后进入 Connecting 状态。
 7. Connecting 状态下禁用 `Change Wi-Fi`、`Refresh`、Password 输入、密码显隐切换和按钮重复点击。
@@ -205,7 +205,7 @@ SSID clear 使用展示框右侧的图标按钮，不新增可见按钮文字。
 - 连接成功。
 - 连接失败。
 - SSID 不能为空。
-- Password 长度不合法时提示：`Leave the password empty for an open Wi-Fi network, or enter 8-63 characters.`；zh-CN：`无密码 Wi-Fi 可留空；如填写密码，请输入 8-63 个字符。`
+- Password 长度不合法时提示：`Enter a password of up to 63 UTF-8 bytes, or leave it empty for an open Wi-Fi network.`；zh-CN：`密码最多为 63 个 UTF-8 字节；无密码 Wi-Fi 可留空。`
 - Password 字符不合法时提示：`Password can only contain letters, numbers, symbols, and spaces. Double quotes and backslashes are not supported.`；zh-CN：`密码只能包含英文字母、数字、符号和空格，不支持双引号或反斜杠。`
 
 所有新增用户可见文案必须同步 English 和 zh-CN。已有通用成功、失败文案可复用，只有语义不足时才新增 key。
@@ -236,8 +236,8 @@ SSID clear 使用展示框右侧的图标按钮，不新增可见按钮文字。
 - Gateway online，网关已配置且 status 为 `.connected`：展示网关 SSID/password，按钮为 `Disconnect`。
 - Gateway online，网关已配置但 status 非 `.connected`：展示网关 SSID/password，按钮为 `Connect to Wi-Fi`。
 - 空密码 SSID 可以点击 Connect。
-- 非空密码少于 8 字符不能点击 Connect。
-- 非空密码超过 63 字符不能点击 Connect。
+- 1～7 UTF-8 字节的合法密码可以点击 Connect。
+- 密码超过 63 UTF-8 字节不能点击 Connect。
 - 密码包含非可打印 ASCII 字符、双引号或反斜杠时，显示具体字符不支持提示。
 - 连接成功后再次选择同 SSID 自动填充缓存密码。
 - Connected 状态下可以点击 Change Wi-Fi；如果网关已配置 SSID/password 且 status 为 `.connected`，返回后仍展示网关配置，不展示手机新 SSID。

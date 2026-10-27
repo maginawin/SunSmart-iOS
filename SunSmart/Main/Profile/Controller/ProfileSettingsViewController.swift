@@ -260,7 +260,10 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
             return ProfileSensorProtectionContext(group: group, previousProfile: previousProfile, savedProfile: selectProfile)
         }
         selectProfile.powerUpCct = min(effectiveCctRange.upperBound, max(effectiveCctRange.lowerBound, selectProfile.powerUpCct))
-        
+
+        #if DEBUG
+        print("[ProfileTimeout] event=save type=\(selectProfile.type.rawValue) seconds=\(selectProfile.manualOverrideTimeout)")
+        #endif
         let lifecycleResult = saveActionCallback?(selectProfile)
         if group != nil, saveActionCallback != nil, lifecycleResult == nil {
             XWHUDManager.showTipHUD(
@@ -553,6 +556,9 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
         }
         self.sphasesView.profile = self.selectProfile
         self.timeoutView.second = self.selectProfile.manualOverrideTimeout
+        #if DEBUG
+        print("[ProfileTimeout] event=bind type=\(selectProfile.type.rawValue) groupSeconds=\(group?.info.profile.manualOverrideTimeout.description ?? "none") draftSeconds=\(selectProfile.manualOverrideTimeout) viewSeconds=\(timeoutView.second) sliderID=\(ObjectIdentifier(timeoutView.slider)) sliderIndex=\(timeoutView.slider.value) label=\(timeoutView.valueLabel.text ?? "")")
+        #endif
         
         let data = self.selectProfile.lightControlData
         self.powerUpBehaviorView.lightnessSliderView.slider.limitRange = data.lowEndTrim...data.highEndTrim
@@ -672,6 +678,10 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
         
        
         adjustSpeedView.isHidden = !showLightAdjustSpeed
+        if !showLightAdjustSpeed {
+            // 隐藏的速率卡片不能继续约束内容底部，否则会与灵敏度卡片冲突。
+            adjustSpeedView.snp.removeConstraints()
+        }
         timeoutView.isHidden = !showTimeout
         sensitivityView.isHidden = !showSensitivity
         sensitivityView.showLackSensitivityNotice = showSensitivity && (group?.nodes.contains { $0.isExternalLightSensorCapableLuminaire } == true)
@@ -700,7 +710,7 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
             sensitivityView.snp.remakeConstraints { make in
                 make.left.right.equalTo(powerUpBehaviorView)
                 make.top.equalTo(powerUpBehaviorView.snp.bottom).offset(contentMargin)
-                make.height.equalTo(SCRYFrom(130))
+                make.height.greaterThanOrEqualTo(SCRYFrom(130))
                 if !showLightAdjustSpeed {
                     make.bottom.equalTo(-contentMargin)
                 }
@@ -833,7 +843,7 @@ class ProfileSettingsViewController: UIViewController, KeyboardScrollable {
         sensitivityView.snp.makeConstraints { make in
             make.left.right.equalTo(powerUpBehaviorView)
             make.top.equalTo(powerUpBehaviorView.snp.bottom).offset(contentMargin)
-            make.height.equalTo(SCRYFrom(130))
+            make.height.greaterThanOrEqualTo(SCRYFrom(130))
         }
         
         adjustSpeedView = LightSensorCalibrationAdjustSpeedView()
@@ -1134,9 +1144,7 @@ extension ProfileSettingsViewController: ProfileManualOverrideTimeoutViewDelegat
     ///   - view: view
     ///   - second: 秒 max：不启用 >0：启用
     func view(_ view: ProfileManualOverrideTimeoutView, timeoutValueChanged second: UInt32) {
-        
         selectProfile.manualOverrideTimeout = second
-        
     }
 }
 

@@ -82,6 +82,7 @@ enum ProfilePersistenceTests {
         GroupInfo.initDatabase()
         Profile.initDatabase()
         try testDefaultsAndCloudRoundtrip(url)
+        try testManualOverrideTimeoutRoundtrip(url)
         try testMissingUnusedTaskLevelRoundtrip(url)
         try testCloudProfileMergePersistence(url)
         let captured = try Connection(url.path, readonly: true)
@@ -354,6 +355,41 @@ enum ProfilePersistenceTests {
             precondition(imported.lightControlData == profile.lightControlData)
         }
         print("PASS: eight real defaults and create-style copies -> SQLite reopen -> cloud export/import -> SQLite -> export")
+    }
+
+    static func testManualOverrideTimeoutRoundtrip(_ url: URL) throws {
+        let seconds: [UInt32] = [0, 5, 60, 90, 3600, 3660, .max]
+        for (index, type) in Profile.ProfileType.defaultGroupProfileTypes.enumerated() {
+            for second in seconds {
+                let original = Profile.defaultGroupProfile(type: type)
+                original.manualOverrideTimeout = second
+                let draft = original.copy()
+                precondition(draft.manualOverrideTimeout == second && draft == original)
+                draft.powerUpCct = 4000
+                precondition(original.powerUpCct == 4500 && original.manualOverrideTimeout == second,
+                             "Editing a detached Profile must not change the original Timeout")
+
+                let info = GroupInfo(address: Address(0xCB00 + index))
+                info.profile.updateData(profile: draft)
+                precondition(save(info))
+                SunSmartDataManager.shared.db = try Connection(url.path)
+                let restored = load(info.address)!
+                precondition(!restored.profileLoadFailed && restored.profile.manualOverrideTimeout == second)
+                precondition(restored.profile.powerUpCct == 4000)
+                let exported = payload(restored)
+                precondition(SpaceConfigurationIntegrityPolicy.profileIssue(exported) == nil)
+                let wire = try JSONSerialization.data(withJSONObject: exported)
+                let decoded = try JSONSerialization.jsonObject(with: wire) as! [String: Any]
+                let imported = importProfile(decoded)!
+                precondition(imported.manualOverrideTimeout == second)
+                restored.profile = imported
+                precondition(save(restored))
+                SunSmartDataManager.shared.db = try Connection(url.path)
+                precondition(load(info.address)!.profile.manualOverrideTimeout == second)
+                precondition(NSDictionary(dictionary: exported).isEqual(to: payload(load(info.address)!)))
+            }
+        }
+        print("PASS: Timeout 56 cases across eight Profile types; detached edits, SQLite reopen and cloud roundtrip preserve preset/custom/infinite seconds")
     }
 
     static func testMissingUnusedTaskLevelRoundtrip(_ url: URL) throws {

@@ -80,7 +80,7 @@ WiFi Gateway 的设备身份为 `CID 0x0A78, PID 0x2721`。本次只规划 SDK �
 编码规则：
 
 - SSID 使用 UTF-8 字节，长度必须为 `1...31`。
-- Password 使用 UTF-8 字节，长度必须为 `0` 或 `8...63`。
+- Password 使用 UTF-8 字节，长度必须为 `0...63`。
 - SSID 和 password 字节必须在 `0x20...0x7E`，且排除 `0x22` 和 `0x5C`。
 - `password == nil` 或空字符串都表示开放 Wi-Fi，编码为 `password_len = 0`，不携带 password 字段。
 - 非法输入不静默截断。SDK 应提供明确的 validation failure 机制，避免发出设备必然返回参数错误的 payload。
@@ -192,7 +192,7 @@ Payload：
 
 - `status = 0x00` 时必须携带 SSID/password 结构，payload 长度必须与声明长度精确匹配。
 - `ssid_len` 必须为 `1...31`。
-- `password_len` 必须为 `0` 或 `8...63`。
+- `password_len` 必须为 `0...63`。
 - `password_len = 0` 表示开放 Wi-Fi，不携带 password 字段。
 - SSID/password 是明文原始字符串，不加密、不脱敏、不持久化。
 - `status = 0x01` 和 `status = 0x02` 的 payload 必须精确为 3 字节。
@@ -228,7 +228,7 @@ WiFi Gateway 新协议的业务判断以 `status.parameters` 中的 typed enum �
 - 设置普通 Wi-Fi：`43 0D <ssid_len> <ssid> <password_len> <password>`。
 - 设置开放 Wi-Fi：`password_len = 0` 且不携带 password。
 - SSID 长度 `0`、`32` 失败。
-- Password 长度 `1...7`、`64` 失败。
+- Password 长度 `0...63` UTF-8 字节成功（含 `1...7`）；`64` 字节失败。
 - 非法字符：非可打印 ASCII、`0x22`、`0x5C` 失败。
 - 查询连接状态：`43 0E`。
 - 查询 RSSI：`43 0F`。

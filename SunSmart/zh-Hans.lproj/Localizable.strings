@@ -2050,7 +2050,7 @@
 "wifi_gateway_ssid_empty" = "请先选择 Wi-Fi 网络。";
 "wifi_gateway_ssid_length_error" = "Wi-Fi 名称必须为 1–32 个 UTF-8 字节。";
 "wifi_gateway_ssid_character_error" = "Wi-Fi 名称不能包含控制字符。";
-"wifi_gateway_password_length_error" = "无密码 Wi-Fi 可留空；如填写密码，请输入 8–63 个 UTF-8 字节。";
+"wifi_gateway_password_length_error" = "密码最多为 63 个 UTF-8 字节；无密码 Wi-Fi 可留空。";
 "wifi_gateway_password_character_error" = "密码不能包含控制字符。";
 "wifi_gateway_configuration_unconfirmed" = "无法确认 Wi-Fi 配置结果。";
 "wifi_gateway_clear_unconfirmed" = "无法确认 Wi-Fi 凭据清除结果。";

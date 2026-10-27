@@ -77,20 +77,12 @@ class ProfileSensitivityView: UIView {
         titleLabel = UILabel(text: "relative_sensitivity".localizedString, textColor: TextBlack_Color, fontSize: 16, fontWeight: .light)
         titleLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
         titleLabel.setContentHuggingPriority(.required, for: .horizontal)
-        addSubview(titleLabel)
-        titleLabel.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(16))
-            make.top.equalTo(SCRYFrom(16))
-        }
+        titleLabel.setContentCompressionResistancePriority(.required, for: .vertical)
         
         helpBtn = UIButton(normalImageName: "help", target: self, action: #selector(helpBtnAction))
         helpBtn.setContentCompressionResistancePriority(.required, for: .horizontal)
         helpBtn.setContentHuggingPriority(.required, for: .horizontal)
-        addSubview(helpBtn)
-        helpBtn.snp.makeConstraints { make in
-            make.left.equalTo(titleLabel.snp.right).offset(SCRXFrom(8))
-            make.centerY.equalTo(titleLabel)
-        }
+        helpBtn.setContentCompressionResistancePriority(.required, for: .vertical)
         
         lackSensitivityLabel = UILabel(text: "profile_some_devices_lack_sensitivity".localizedString, textColor: RGB(255, 167, 44), fontSize: 12, fontWeight: .regular, fit: false)
         lackSensitivityLabel.textAlignment = .right
@@ -98,11 +90,24 @@ class ProfileSensitivityView: UIView {
         lackSensitivityLabel.isHidden = true
         lackSensitivityLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         lackSensitivityLabel.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        addSubview(lackSensitivityLabel)
-        lackSensitivityLabel.snp.makeConstraints { make in
-            make.left.greaterThanOrEqualTo(helpBtn.snp.right).offset(SCRXFrom(8))
+        lackSensitivityLabel.setContentCompressionResistancePriority(.required, for: .vertical)
+
+        // 提示换行时撑高标题行；隐藏时由 stack 自动移除其占位。
+        let spacer = UIView()
+        let headerView = UIStackView(arrangedSubviews: [titleLabel, helpBtn, spacer, lackSensitivityLabel])
+        headerView.axis = .horizontal
+        headerView.alignment = .center
+        headerView.spacing = SCRXFrom(8)
+        headerView.setCustomSpacing(0, after: spacer)
+        addSubview(headerView)
+        spacer.snp.makeConstraints { make in
+            make.width.greaterThanOrEqualTo(0)
+            make.height.equalTo(0)
+        }
+        headerView.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(16))
             make.right.equalTo(SCRXFrom(-16))
-            make.centerY.equalTo(titleLabel)
+            make.top.equalTo(SCRYFrom(16))
         }
         
         sensitivitySlider = PowerUpLightSliderView()
@@ -118,7 +123,7 @@ class ProfileSensitivityView: UIView {
         addSubview(sensitivitySlider)
         sensitivitySlider.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
-//            make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(16))
+            make.top.equalTo(headerView.snp.bottom).offset(SCRYFrom(8))
             make.bottom.equalTo(SCRYFrom(-16))
             make.height.equalTo(SCRYFrom(76))
         }
