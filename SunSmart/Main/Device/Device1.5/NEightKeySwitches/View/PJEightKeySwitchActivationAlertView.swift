@@ -101,6 +101,8 @@ final class PJEightKeySwitchActivationAlertView: UIView {
     }
 
     private var containerHeightConstraint: Constraint?
+    private var contentHeightConstraint: Constraint?
+    private var fitsHeightToMessage = false
 
     let backgroundView: UIView = {
         let view = UIView()
@@ -268,6 +270,24 @@ final class PJEightKeySwitchActivationAlertView: UIView {
         layoutIfNeeded()
     }
 
+    func fitHeightToMessage() {
+        guard !fitsHeightToMessage else { return }
+        fitsHeightToMessage = true
+        contentHeightConstraint?.deactivate()
+        contentSectionView.snp.makeConstraints { make in
+            make.height.greaterThanOrEqualTo(Constants.contentHeight)
+            make.height.equalTo(Constants.contentHeight).priority(.low)
+        }
+        statusContainerView.snp.makeConstraints { make in
+            make.bottom.lessThanOrEqualTo(contentSectionView.snp.bottom).offset(-SCRYFrom(24))
+        }
+        containerHeightConstraint?.deactivate()
+        containerView.snp.makeConstraints { make in
+            containerHeightConstraint = make.height.equalTo(contentSectionView.snp.height).constraint
+        }
+        updateContainerHeight()
+    }
+
     func applyWaitingLayout() {
         buttonMiddleLineView.isHidden = true
         retryButton.isHidden = true
@@ -304,7 +324,7 @@ final class PJEightKeySwitchActivationAlertView: UIView {
         containerView.addSubview(contentSectionView)
         contentSectionView.snp.makeConstraints { make in
             make.top.left.right.equalToSuperview()
-            make.height.equalTo(Constants.contentHeight)
+            contentHeightConstraint = make.height.equalTo(Constants.contentHeight).constraint
         }
 
         containerView.addSubview(buttonSectionView)
@@ -392,6 +412,7 @@ final class PJEightKeySwitchActivationAlertView: UIView {
         let targetHeight = safeAreaInsets.bottom > 0
             ? Constants.fullContainerHeight
             : Constants.fullContainerHeight - Constants.bottomSafeAreaCompensation
-        containerHeightConstraint?.update(offset: targetHeight)
+        let heightOffset = fitsHeightToMessage ? targetHeight - Constants.contentHeight : targetHeight
+        containerHeightConstraint?.update(offset: heightOffset)
     }
 }

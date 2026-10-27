@@ -22,9 +22,11 @@ final class PJEightKeySwitchRefreshAlertController: UIViewController {
 
     private var countdownTimer: Timer?
     private var remainingSeconds = 60
+    private let panelType: PJEightKeySwitchPanelDefinition.PanelType
     private let contentView = PJEightKeySwitchActivationAlertView()
 
-    init() {
+    init(panelType: PJEightKeySwitchPanelDefinition.PanelType) {
+        self.panelType = panelType
         super.init(nibName: nil, bundle: nil)
         modalPresentationStyle = .overFullScreen
         modalTransitionStyle = .crossDissolve
@@ -85,7 +87,9 @@ final class PJEightKeySwitchRefreshAlertController: UIViewController {
             make.edges.equalToSuperview()
         }
         contentView.titleLabel.text = "neightkeyswitches_refresh_device".localizedString
-        contentView.updateMessage("neightkeyswitches_refresh_message".localizedString)
+        let message = "neightkeyswitches_refresh_message".localizedString
+        contentView.updateMessage("\(message)\n(\(panelType.activationInstruction))")
+        contentView.fitHeightToMessage()
         contentView.cancelButton.addTarget(self, action: #selector(cancelButtonAction), for: .touchUpInside)
         contentView.retryButton.addTarget(self, action: #selector(retryButtonAction), for: .touchUpInside)
     }
@@ -171,6 +175,7 @@ final class PJEightKeySwitchBatteryRefreshFlow {
 
     private weak var presenter: UIViewController?
     private let node: Node
+    private let panelType: PJEightKeySwitchPanelDefinition.PanelType
     private let reader: PJEightKeySwitchBatteryReading
     private let onBatteryLevel: (UInt8) -> Bool
     private let onFinished: () -> Void
@@ -184,12 +189,14 @@ final class PJEightKeySwitchBatteryRefreshFlow {
     init(
         presenter: UIViewController,
         node: Node,
+        panelType: PJEightKeySwitchPanelDefinition.PanelType,
         reader: PJEightKeySwitchBatteryReading = MeshBatteryPowerSwitchBatteryReader(),
         onBatteryLevel: @escaping (UInt8) -> Bool,
         onFinished: @escaping () -> Void
     ) {
         self.presenter = presenter
         self.node = node
+        self.panelType = panelType
         self.reader = reader
         self.onBatteryLevel = onBatteryLevel
         self.onFinished = onFinished
@@ -201,7 +208,7 @@ final class PJEightKeySwitchBatteryRefreshFlow {
     }
 
     func start() {
-        let controller = PJEightKeySwitchRefreshAlertController()
+        let controller = PJEightKeySwitchRefreshAlertController(panelType: panelType)
         controller.cancelAction = { [weak self] in
             self?.cancel()
         }

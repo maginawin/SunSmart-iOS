@@ -276,7 +276,11 @@ class BleFirmwareUpdateViewController: UIViewController {
     private var updateResultView: DeviceAddResultView!
     
     /// 是否正在刷新设备信号
-    private var refreshing: Bool = false
+    private var refreshing: Bool { scanSession.isActive }
+    private var scanSession = BleFirmwareScanSession()
+    private var scanDeadlineWorkItem: DispatchWorkItem?
+    private var batteryActivationTimer: Timer?
+    private var bluetoothObservation: NSKeyValueObservation?
     private var rssiSortTimer: Timer?
     /// 升级状态
     private var updateState: UpdateState = .none
@@ -341,6 +345,7 @@ class BleFirmwareUpdateViewController: UIViewController {
         helpBtn.addGestureRecognizer(testTap)
 //    #endif
         setupUI()
+        NotificationCenter.default.addObserver(self, selector: #selector(applicationDidEnterBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
         self.isModalInPresentation = true
 //        setupData()
         
@@ -357,6 +362,31 @@ class BleFirmwareUpdateViewController: UIViewController {
         
         if collectionView.firstShowFlashScrollIndicators {
             collectionView.flashScrollIndicatorsIfNeeded()
+        }
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        if scanSession.mode == .batteryActivation || isBeingDismissed || navigationController?.isBeingDismissed == true {
+            stopRefreshRSSI()
+        }
+    }
+
+    deinit {
+        scanDeadlineWorkItem?.cancel()
+        batteryActivationTimer?.invalidate()
+        rssiSortTimer?.invalidate()
+        bluetoothObservation?.invalidate()
+        NotificationCenter.default.removeObserver(self)
+        if let id = scanSession.sessionID {
+            scanSession.end(sessionID: id)
+            MeshLibManager.manager.stopRefreshNodesRSSI()
+        }
+    }
+
+    @objc private func applicationDidEnterBackground() {
+        if scanSession.mode == .batteryActivation {
+            stopRefreshRSSI()
         }
     }
     
@@ -422,18 +452,34 @@ class BleFirmwareUpdateViewController: UIViewController {
         
     }
     
-    /// 刷新信号值
+    /// 保留进入页面和下拉刷新的普通扫描规则。
     @objc private func refreshRSSI() {
-        guard nodes.count > 0 else {
+        refreshControl.endRefreshing()
+        guard !refreshing, updateState != .updating else { return }
+        startRSSIScan(mode: .automatic)
+    }
+
+    private func refreshBatteryActivation() {
+        guard space != nil, nodes.contains(where: { $0.isBatteryPowerSwitch }),
+              scanSession.mode != .batteryActivation else { return }
+        guard updateState != .updating else {
+            XWHUDManager.showTipHUD("firmware_update_disable_operated".localizedString, isLineFeed: true)
+            return
+        }
+        stopRefreshRSSI()
+        guard MeshLibManager.manager.bluetoothState == .poweredOn || MeshLibManager.manager.bluetoothState == .unknown else {
+            navigationController?.pushViewController(BluetoothRequiredViewController(), animated: true)
+            return
+        }
+        startRSSIScan(mode: .batteryActivation)
+    }
+
+    private func startRSSIScan(mode: BleFirmwareScanSession.Mode) {
+        guard !nodes.isEmpty else {
             finishScanDiagnostics()
             showEmptyUI()
             return
         }
-        self.refreshControl.endRefreshing()
-        if self.refreshing || self.updateState == .updating {
-            return
-        }
-
         #if DEBUG
         if scanDebugLogger == nil {
             scanDebugLogger = GatewayFirmwareScanDebugLogger(
@@ -441,129 +487,178 @@ class BleFirmwareUpdateViewController: UIViewController {
             )
         }
         #endif
-        
-        nodes.forEach({
-            $0.rssi = nil
-            $0.peripheral = nil
-        })
-        self.setupData(loadServerData: true)
-        
-        
-//        XWHUDManager.showCustomHUD(withMessage: nil, view: view)
-//        // 每多50个设备刷新信号时间加多1s
-//        let time = ceil(Double(MeshNetworkManager.instance.realNodes.count - 100) / 50.0)
-        DispatchQueue.main.async {
-            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
-            self.perform(#selector(self.refreshNodesRSSIFinish), with: nil, afterDelay: 10)
+
+        let id = scanSession.begin(
+            mode: mode,
+            targetAddresses: Set(nodes.map(\.primaryUnicastAddress)),
+            at: ProcessInfo.processInfo.systemUptime
+        )
+        if mode == .automatic {
+            nodes.forEach {
+                $0.rssi = nil
+                $0.peripheral = nil
+            }
+            setupData(loadServerData: true)
+        } else {
+            // Battery activation must be rediscovered; preserve ordinary devices and their selection.
+            nodes.filter { $0.isBatteryPowerSwitch }.forEach {
+                $0.rssi = nil
+                $0.peripheral = nil
+                $0.enableUpgrade = false
+                $0.selectedState = .disabled
+            }
+            devicesRssiSort()
+            startBatteryActivationTimer(sessionID: id)
+            bluetoothObservation = MeshLibManager.manager.observe(\.bluetoothState, options: [.new]) { [weak self] _, change in
+                guard let state = change.newValue, state != .poweredOn, state != .unknown else { return }
+                DispatchQueue.main.async {
+                    self?.finishRSSIScan(sessionID: id)
+                }
+            }
         }
-        self.refreshing = true
-        self.updateUI()
-//        self.scanAnimationView.isHidden = false
-//        self.scanAnimationView.layer.addRotationAnimation(duration: 1.2, repeatCount: 999, animationKey: "loading")
-        
+        scheduleScanDeadline(sessionID: id)
+        updateUI()
+
         MeshLibManager.manager.refreshNodesRSSI(
-            withWaitFor: 99999,
+            withWaitFor: mode == .batteryActivation ? 30 : 99999,
             debugLogSessionID: scanDebugLogger?.sessionID,
-            allowedNetworkKeyIndexesByNodeAddress:
-                allowedNetworkKeyIndexesByNodeAddress,
-            nodeScan: {[weak self] data in
-            
-            guard let self = self else { return }
-            let node = nodes.first(where: {
-                $0.primaryUnicastAddress == data.node.primaryUnicastAddress
-            })
-            let matchReason = GatewayFirmwareScanDiagnosticPolicy.pageMatchReason(
-                isExpectedAddress: node != nil
-            )
-            scanDebugLogger?.record(
-                stage: "page_match",
-                result: node == nil ? "rejected" : "accepted",
-                reason: matchReason,
-                deviceKey: debugDeviceKey(data.node),
-                cid: data.node.companyIdentifier,
-                pid: data.node.productIdentifier,
-                address: data.node.primaryUnicastAddress,
-                rssi: data.node.rssi,
-                peripheralIdentifier: data.peripheral.identifier
-            )
-            guard let node else { return }
-            
-            if node.peripheral == nil {
-                DispatchQueue.main.async {
-                    NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
-                    self.perform(#selector(self.refreshNodesRSSIFinish), with: nil, afterDelay: 10)
-                }
+            allowedNetworkKeyIndexesByNodeAddress: allowedNetworkKeyIndexesByNodeAddress,
+            nodeScan: { [weak self] data in
+                self?.receiveRSSISample(data, sessionID: id)
+            },
+            finished: { [weak self] _ in
+                // SDK completion may be synchronous during stop; ownership is invalidated first.
+                self?.finishRSSIScan(sessionID: id, stopScanner: false)
             }
-            
-            node.peripheral = data.peripheral
-            let enableUpgrade = FirmwareVersionUpdatePolicy.bleBatchAware.eligibility(
-                currentVersion: node.firmwareVersion,
-                targetVersion: node.targetFirmwareData?.version
-            ) == .allowed
-            if enableUpgrade, let rssi = node.rssi {
-                node.enableUpgrade = rssi >= -80
-                if node.selectedState == .disabled {
-                    node.selectedState = .unselected
-                }
-            }else {
-                node.enableUpgrade = false
-                node.selectedState = .disabled
-            }
-            recordEligibility(node: node, scanFinished: false)
-                
-            // 查找完所有设备后停止搜索
-            if !nodes.contains(where: { $0.rssi == nil || $0.peripheral == nil }) {
-                DispatchQueue.main.async {
-                    NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
-                    self.refreshNodesRSSIFinish()
-                }
-                devicesRssiSort()
-            }else {
-                if self.rssiSortTimer == nil {
-                    self.startRssiSortTimer()
-                }
-            }
-          
-            
-        }, finished: nil)
-        
-        
-//        MeshLibManager.manager.refreshNodesRSSI(withWaitFor: 6 + time) {[weak self] nodes in
-//            guard let self = self else { return }
-//            nodes.forEach { data in
-//                let node = MeshNetworkManager.instance.realNodes.first(where: { $0.primaryUnicastAddress == data.node.primaryUnicastAddress })
-//                node?.peripheral = data.peripheral
-//            }
-//            self.refreshControl.endRefreshing()
-//            self.setupData(loadServerData: true)
-//            
-//            XWHUDManager.hideInView(with: self.view)
-//        }
+        )
     }
-    
-    /// 停止扫描
-    private func stopRefreshRSSI() {
-        
-        refreshing = false
-        MeshLibManager.manager.stopRefreshNodesRSSI()
-        DispatchQueue.main.async {
-            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
+
+    private func receiveRSSISample(_ data: MeshNodePeripheralData, sessionID: UUID) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in
+                self?.receiveRSSISample(data, sessionID: sessionID)
+            }
+            return
         }
+        let now = ProcessInfo.processInfo.systemUptime
+        guard scanSession.accepts(sessionID: sessionID, at: now) else {
+            if scanSession.sessionID == sessionID {
+                finishRSSIScan(sessionID: sessionID)
+            }
+            return
+        }
+        let node = nodes.first { $0.primaryUnicastAddress == data.node.primaryUnicastAddress }
+        scanDebugLogger?.record(
+            stage: "page_match",
+            result: node == nil ? "rejected" : "accepted",
+            reason: GatewayFirmwareScanDiagnosticPolicy.pageMatchReason(isExpectedAddress: node != nil),
+            deviceKey: debugDeviceKey(data.node),
+            cid: data.node.companyIdentifier,
+            pid: data.node.productIdentifier,
+            address: data.node.primaryUnicastAddress,
+            rssi: data.node.rssi,
+            peripheralIdentifier: data.peripheral.identifier
+        )
+        guard let node,
+              let discovery = scanSession.receive(address: node.primaryUnicastAddress, sessionID: sessionID, at: now) else { return }
+
+        node.peripheral = data.peripheral
+        let enableUpgrade = FirmwareVersionUpdatePolicy.bleBatchAware.eligibility(
+            currentVersion: node.firmwareVersion,
+            targetVersion: node.targetFirmwareData?.version
+        ) == .allowed
+        if enableUpgrade, let rssi = node.rssi {
+            node.enableUpgrade = rssi >= -80
+            if node.selectedState == .disabled {
+                node.selectedState = .unselected
+            }
+        } else {
+            node.enableUpgrade = false
+            node.selectedState = .disabled
+        }
+        recordEligibility(node: node, scanFinished: false)
+        if discovery.foundAllTargets {
+            finishRSSIScan(sessionID: sessionID)
+        } else {
+            if scanSession.mode == .automatic && discovery.isFirstDiscovery {
+                scheduleScanDeadline(sessionID: sessionID)
+            }
+            if rssiSortTimer == nil {
+                startRssiSortTimer()
+            }
+        }
+    }
+
+    private func scheduleScanDeadline(sessionID: UUID) {
+        scanDeadlineWorkItem?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, self.scanSession.sessionID == sessionID else { return }
+            // A cancelled older task may already be enqueued after an automatic renewal.
+            if ProcessInfo.processInfo.systemUptime < self.scanSession.deadline {
+                self.scheduleScanDeadline(sessionID: sessionID)
+            } else {
+                self.finishRSSIScan(sessionID: sessionID)
+            }
+        }
+        scanDeadlineWorkItem = work
+        let delay = max(0, scanSession.deadline - ProcessInfo.processInfo.systemUptime)
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay, execute: work)
+    }
+
+    private func startBatteryActivationTimer(sessionID: UUID) {
+        batteryActivationTimer?.invalidate()
+        let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in
+            guard let self, self.scanSession.sessionID == sessionID else { return }
+            if self.scanSession.remainingSeconds(at: ProcessInfo.processInfo.systemUptime) == 0 {
+                self.finishRSSIScan(sessionID: sessionID)
+            } else {
+                self.updateBatteryActivationControls()
+            }
+        }
+        batteryActivationTimer = timer
+        RunLoop.main.add(timer, forMode: .common)
+    }
+
+    private func stopRefreshRSSI() {
+        guard let id = scanSession.sessionID else { return }
+        finishRSSIScan(sessionID: id)
+    }
+
+    private func finishRSSIScan(sessionID: UUID, stopScanner: Bool = true) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in
+                self?.finishRSSIScan(sessionID: sessionID, stopScanner: stopScanner)
+            }
+            return
+        }
+        guard scanSession.end(sessionID: sessionID) else { return }
+        scanDeadlineWorkItem?.cancel()
+        scanDeadlineWorkItem = nil
+        batteryActivationTimer?.invalidate()
+        batteryActivationTimer = nil
+        bluetoothObservation?.invalidate()
+        bluetoothObservation = nil
         rssiSortTimer?.invalidate()
         rssiSortTimer = nil
+        if stopScanner {
+            MeshLibManager.manager.stopRefreshNodesRSSI()
+        }
         devicesRssiSort()
         finishScanDiagnostics()
-     
     }
-    
-    /// 刷新信号结束
-    @objc private func refreshNodesRSSIFinish() {
-        MeshLibManager.manager.stopRefreshNodesRSSI()
-        refreshing = false
-        updateUI()
-        finishScanDiagnostics()
-//        scanAnimationView.layer.removeAnimation(forKey: "loading")
-//        scanAnimationView.isHidden = true
+
+    private func updateBatteryActivationControls() {
+        collectionView.visibleCells.compactMap { $0 as? BleFirmwareTypeUpdateViewCell }.forEach {
+            configureBatteryActivationControl($0)
+        }
+    }
+
+    private func configureBatteryActivationControl(_ cell: BleFirmwareTypeUpdateViewCell) {
+        cell.configureBatteryActivation(
+            isAvailable: space != nil,
+            remainingSeconds: scanSession.remainingSeconds(at: ProcessInfo.processInfo.systemUptime),
+            canRefresh: updateState != .updating
+        )
     }
 
     private func recordEligibility(node: Node, scanFinished: Bool) {
@@ -936,6 +1031,7 @@ class BleFirmwareUpdateViewController: UIViewController {
             updateResultView.failedCountLabel.text = "\(failNodes.count)"
         }
         updateSelectAllState()
+        updateBatteryActivationControls()
     }
     
     private func setupUI() {
@@ -1144,14 +1240,8 @@ class BleFirmwareUpdateViewController: UIViewController {
     }
     
     private func dismiss() {
-        
+        stopRefreshRSSI()
         self.dismiss(animated: true)
-        
-        if refreshing {
-            NSObject.cancelPreviousPerformRequests(withTarget: self, selector: #selector(self.refreshNodesRSSIFinish), object: nil)
-            MeshLibManager.manager.stopRefreshNodesRSSI()
-        }
-        
     }
 
     /// 帮助
@@ -1389,6 +1479,7 @@ extension BleFirmwareUpdateViewController: UICollectionViewDataSource, UICollect
             return self.displayResolver.displayName(for: node, displayDeviceNamePrefix: displayDeviceNamePrefix)
         }
         cell.firmwareTypeData = firmwareTypeDatas[indexPath.row]
+        configureBatteryActivationControl(cell)
         cell.delegate = self
 //        cell.isShow = showData[indexPath.item] ?? false
         return cell
@@ -1423,16 +1514,27 @@ extension BleFirmwareUpdateViewController: UICollectionViewDataSource, UICollect
 }
 
 extension BleFirmwareUpdateViewController: BleFirmwareTypeUpdateViewCellDelegate {
+
+    func cellDidRequestBatteryActivationRefresh(_ cell: BleFirmwareTypeUpdateViewCell) {
+        guard cell.firmwareTypeData?.isBatteryPowerSwitchType == true else { return }
+        refreshBatteryActivation()
+    }
+
+    func cellDidCancelBatteryActivation(_ cell: BleFirmwareTypeUpdateViewCell) {
+        guard scanSession.mode == .batteryActivation else { return }
+        stopRefreshRSSI()
+    }
+
+    func cell(_ cell: BleFirmwareTypeUpdateViewCell, performSelectionChange change: () -> Void) {
+        if !scanSession.performSelectionChange(change) {
+            XWHUDManager.showTipHUD("device_search_disable_select".localizedString, isLineFeed: true)
+        }
+    }
     
     /// 选择设备更新回调
     func cell(_ cell: BleFirmwareTypeUpdateViewCell, selectDevicesDidChange selectDevices: [NordicSigMeshSDK.Node]) {
         
-        if refreshing {
-            XWHUDManager.showTipHUD("device_search_disable_select".localizedString, isLineFeed: true)
-            selectDevices.forEach({ $0.selectedState = .unselected })
-            cell.deviceTableView.reloadData()
-            return
-        }
+        guard !refreshing else { return }
         
 //        self.selectNodes = self.firmwareTypeDatas.flatMap({ $0.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade && $0.selectedState == .selected }) })
         updateSelectNodes()

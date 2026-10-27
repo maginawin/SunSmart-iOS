@@ -10,6 +10,10 @@ import NordicSigMeshSDK
 import SnapKit
 
 protocol BleFirmwareTypeUpdateViewCellDelegate: AnyObject {
+
+    func cellDidRequestBatteryActivationRefresh(_ cell: BleFirmwareTypeUpdateViewCell)
+    func cellDidCancelBatteryActivation(_ cell: BleFirmwareTypeUpdateViewCell)
+    func cell(_ cell: BleFirmwareTypeUpdateViewCell, performSelectionChange change: () -> Void)
     
     /// 展开/收起设备列表
     func cell(_ cell: BleFirmwareTypeUpdateViewCell, didShowDevices show: Bool)
@@ -65,6 +69,17 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
     private var batteryPowerSwitchOTAHintButton: UIButton!
     private var batteryPowerSwitchOTAHintHeightConstraint: Constraint?
     private var batteryPowerSwitchOTAHintBottomSpacingConstraint: Constraint?
+    private var batteryActivationControlView: UIView!
+    private var batteryRefreshButton: UIButton!
+    private var batteryWaitingView: UIView!
+    private var batteryWaitingLabel: UILabel!
+    private let batteryWaitingSpinner = PJEightKeySwitchWaitingSpinnerView()
+    private var batteryCancelButton: UIButton!
+    private var batteryActivationTopConstraint: Constraint?
+    private var batteryActivationHeightConstraint: Constraint?
+    private var allowsBatteryActivationRefresh = false
+    private var batteryActivationRemainingSeconds: Int?
+    private var canRefreshBatteryActivation = true
     private var sizingContentWidth: CGFloat = 0
     
     /// 设备列表
@@ -123,6 +138,57 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
     
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        batteryWaitingSpinner.stopAnimating()
+        allowsBatteryActivationRefresh = false
+        batteryActivationRemainingSeconds = nil
+        canRefreshBatteryActivation = true
+        delegate = nil
+        displayNameProvider = nil
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        updateBatteryActivationAppearance()
+    }
+
+    func configureBatteryActivation(isAvailable: Bool, remainingSeconds: Int?, canRefresh: Bool) {
+        allowsBatteryActivationRefresh = isAvailable
+        batteryActivationRemainingSeconds = remainingSeconds
+        canRefreshBatteryActivation = canRefresh
+        updateBatteryPowerSwitchOTAHintLayout()
+    }
+
+    private func updateBatteryActivationAppearance() {
+        guard batteryWaitingView != nil else { return }
+        let isWaiting = batteryActivationRemainingSeconds != nil
+        batteryRefreshButton.isHidden = isWaiting
+        batteryRefreshButton.isEnabled = canRefreshBatteryActivation
+        batteryRefreshButton.alpha = canRefreshBatteryActivation ? 1 : 0.5
+        batteryWaitingView.isHidden = !isWaiting
+        if let seconds = batteryActivationRemainingSeconds {
+            batteryWaitingLabel.text = String(format: "neightkeyswitches_activation_waiting_format".localizedString, seconds)
+        }
+        if isWaiting, !batteryActivationControlView.isHidden, window != nil {
+            batteryWaitingSpinner.startAnimating()
+        } else {
+            batteryWaitingSpinner.stopAnimating()
+        }
+    }
+
+    @objc private func batteryRefreshAction() {
+        guard allowsBatteryActivationRefresh, canRefreshBatteryActivation,
+              firmwareTypeData?.isBatteryPowerSwitchType == true,
+              batteryActivationRemainingSeconds == nil else { return }
+        delegate?.cellDidRequestBatteryActivationRefresh(self)
+    }
+
+    @objc private func batteryCancelAction() {
+        guard batteryActivationRemainingSeconds != nil else { return }
+        delegate?.cellDidCancelBatteryActivation(self)
     }
     
     override func preferredLayoutAttributesFitting(_ layoutAttributes: UICollectionViewLayoutAttributes) -> UICollectionViewLayoutAttributes {
@@ -202,7 +268,12 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
         batteryPowerSwitchOTAHintLabel.preferredMaxLayoutWidth = batteryPowerSwitchOTAHintTextWidth
         batteryPowerSwitchOTAHintButton.setImage(UIImage(named: firmwareTypeData.isBatteryPowerSwitchOTAHintExpanded ? "arrow_fold_up" : "arrow_fold_down"), for: .normal)
         batteryPowerSwitchOTAHintHeightConstraint?.update(offset: showsBatteryPowerSwitchOTAHint ? batteryPowerSwitchOTAHintHeight : 0)
+        let showsActivationControl = showsBatteryPowerSwitchOTAHint && allowsBatteryActivationRefresh
+        batteryActivationControlView.isHidden = !showsActivationControl
+        batteryActivationTopConstraint?.update(offset: showsActivationControl ? SCRYFrom(8) : 0)
+        batteryActivationHeightConstraint?.update(offset: showsActivationControl ? SCRYFrom(32) : 0)
         batteryPowerSwitchOTAHintBottomSpacingConstraint?.update(offset: showsBatteryPowerSwitchOTAHint ? SCRYFrom(8) : 0)
+        updateBatteryActivationAppearance()
     }
     
     func reload() {
@@ -487,6 +558,65 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
             make.top.equalTo(SCRYFrom(10))
             make.width.height.equalTo(SCRYFrom(30))
         }
+
+        batteryActivationControlView = UIView()
+        batteryActivationControlView.backgroundColor = .white
+        batteryActivationControlView.layer.cornerRadius = SCRYFrom(15)
+        batteryActivationControlView.layer.borderWidth = 1
+        batteryActivationControlView.layer.borderColor = Bar_Color.withAlphaComponent(0.5).cgColor
+        batteryActivationControlView.isHidden = true
+        contentView.addSubview(batteryActivationControlView)
+        batteryActivationControlView.snp.makeConstraints { make in
+            make.left.right.equalTo(batteryPowerSwitchOTAHintContainerView)
+            batteryActivationTopConstraint = make.top.equalTo(batteryPowerSwitchOTAHintContainerView.snp.bottom).constraint
+            batteryActivationHeightConstraint = make.height.equalTo(0).constraint
+        }
+
+        batteryRefreshButton = UIButton(title: "refresh".localizedString.uppercased(), titleSize: 14, titleColor: Bar_Color, target: self, action: #selector(batteryRefreshAction))
+        batteryActivationControlView.addSubview(batteryRefreshButton)
+        batteryRefreshButton.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+
+        batteryWaitingView = UIView()
+        batteryWaitingView.isHidden = true
+        batteryActivationControlView.addSubview(batteryWaitingView)
+        batteryWaitingView.snp.makeConstraints { make in
+            make.edges.equalToSuperview()
+        }
+        batteryWaitingView.addSubview(batteryWaitingSpinner)
+        batteryWaitingSpinner.snp.makeConstraints { make in
+            make.left.equalTo(SCRXFrom(20))
+            make.centerY.equalToSuperview()
+            make.width.height.equalTo(SCRYFrom(16))
+        }
+
+        batteryCancelButton = UIButton(type: .custom)
+        batteryCancelButton.setAttributedTitle(NSAttributedString(string: "cancel".localizedString, attributes: [
+            .font: UIFont.systemFont(ofSize: FontFit(12), weight: .medium),
+            .foregroundColor: Bar_Color,
+            .underlineStyle: NSUnderlineStyle.single.rawValue
+        ]), for: .normal)
+        batteryCancelButton.addTarget(self, action: #selector(batteryCancelAction), for: .touchUpInside)
+        batteryWaitingView.addSubview(batteryCancelButton)
+        batteryCancelButton.snp.makeConstraints { make in
+            make.right.equalTo(SCRXFrom(-16))
+            make.top.bottom.equalToSuperview()
+            make.width.greaterThanOrEqualTo(SCRXFrom(44))
+        }
+        batteryCancelButton.setContentCompressionResistancePriority(.required, for: .horizontal)
+        batteryCancelButton.setContentHuggingPriority(.required, for: .horizontal)
+
+        batteryWaitingLabel = UILabel(text: "", textColor: RGB(100, 116, 139), fontSize: 12, fontWeight: .light)
+        batteryWaitingLabel.numberOfLines = 1
+        batteryWaitingLabel.adjustsFontSizeToFitWidth = false
+        batteryWaitingLabel.lineBreakMode = .byTruncatingMiddle
+        batteryWaitingView.addSubview(batteryWaitingLabel)
+        batteryWaitingLabel.snp.makeConstraints { make in
+            make.left.equalTo(batteryWaitingSpinner.snp.right).offset(SCRXFrom(8))
+            make.right.equalTo(batteryCancelButton.snp.left).offset(SCRXFrom(-4))
+            make.centerY.equalToSuperview()
+        }
         
         deviceTableView = UITableView(frame: .zero, style: .grouped)
         deviceTableView.backgroundColor = Background_Color
@@ -500,7 +630,7 @@ class BleFirmwareTypeUpdateViewCell: UICollectionViewCell {
         contentView.addSubview(deviceTableView)
         deviceTableView.snp.makeConstraints { make in
             make.left.right.equalToSuperview()
-            batteryPowerSwitchOTAHintBottomSpacingConstraint = make.top.equalTo(batteryPowerSwitchOTAHintContainerView.snp.bottom).offset(0).constraint
+            batteryPowerSwitchOTAHintBottomSpacingConstraint = make.top.equalTo(batteryActivationControlView.snp.bottom).offset(0).constraint
             make.height.equalTo(0).priority(.low)
         }
         
@@ -550,23 +680,25 @@ extension BleFirmwareTypeUpdateViewCell: UITableViewDataSource, UITableViewDeleg
         headerView.selectAllBtn.isEnabled = canSelectNodes.count > 0
         headerView.selectAllCallback = {[weak self] allSelect in
             guard let self = self else { return }
-            let canSelectNodes = self.firmwareTypeData.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade })
+            self.delegate?.cell(self, performSelectionChange: {
+                let canSelectNodes = self.firmwareTypeData.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade })
             
-            if allSelect {
-                canSelectNodes.forEach({ $0.selectedState = .selected })
-            }else {
-                canSelectNodes.forEach({ $0.selectedState = .unselected })
-            }
+                if allSelect {
+                    canSelectNodes.forEach({ $0.selectedState = .selected })
+                }else {
+                    canSelectNodes.forEach({ $0.selectedState = .unselected })
+                }
             
-            // 未选中全部设备
-            if canSelectNodes.contains(where: { $0.selectedState == .unselected }) || canSelectNodes.isEmpty {
-                headerView.selectAllBtn.isSelected = false
-            }else { // 已选择全部设备
-                headerView.selectAllBtn.isSelected = true
-            }
+                // 未选中全部设备
+                if canSelectNodes.contains(where: { $0.selectedState == .unselected }) || canSelectNodes.isEmpty {
+                    headerView.selectAllBtn.isSelected = false
+                }else { // 已选择全部设备
+                    headerView.selectAllBtn.isSelected = true
+                }
             
-            tableView.reloadData()
-            self.delegate?.cell(self, selectDevicesDidChange: canSelectNodes.filter({ $0.selectedState == .selected }))
+                tableView.reloadData()
+                self.delegate?.cell(self, selectDevicesDidChange: canSelectNodes.filter({ $0.selectedState == .selected }))
+            })
         }
         self.headerView = headerView
         return headerView
@@ -600,20 +732,22 @@ extension BleFirmwareTypeUpdateViewCell: UITableViewDataSource, UITableViewDeleg
         }
         
         if canUpgrade {
-            if node.selectedState == .selected {
-                node.selectedState = .unselected
-            }else {
-                node.selectedState = .selected
-            }
-            let canSelectNodes = firmwareTypeData.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade })
-            // 未选中全部设备
-            if canSelectNodes.contains(where: { $0.selectedState == .unselected }) {
-                headerView?.selectAllBtn.isSelected = false
-            }else { // 已选择全部设备
-                headerView?.selectAllBtn.isSelected = true
-            }
-            tableView.reloadRows(at: [indexPath], with: .none)
-            delegate?.cell(self, selectDevicesDidChange: canSelectNodes.filter({ $0.selectedState == .selected }))
+            delegate?.cell(self, performSelectionChange: {
+                if node.selectedState == .selected {
+                    node.selectedState = .unselected
+                }else {
+                    node.selectedState = .selected
+                }
+                let canSelectNodes = firmwareTypeData.nodes.filter({ $0.updateState.rawValue == Node.UpdateState.none.rawValue && $0.enableUpgrade })
+                // 未选中全部设备
+                if canSelectNodes.contains(where: { $0.selectedState == .unselected }) {
+                    headerView?.selectAllBtn.isSelected = false
+                }else { // 已选择全部设备
+                    headerView?.selectAllBtn.isSelected = true
+                }
+                tableView.reloadRows(at: [indexPath], with: .none)
+                delegate?.cell(self, selectDevicesDidChange: canSelectNodes.filter({ $0.selectedState == .selected }))
+            })
         }else if !node.enableUpgrade, let rssi = node.rssi, rssi < -80 { // 信号太差不能选择
             XWHUDManager.showTipHUD("signal_below_message".localizedString, isLineFeed: true)
         }

@@ -307,6 +307,7 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
         let flow = PJEightKeySwitchBatteryRefreshFlow(
             presenter: self,
             node: node,
+            panelType: viewModel.switchData.eightKeyPanelType,
             onBatteryLevel: { [weak self] level in
                 guard let self else { return false }
                 guard self.viewModel.saveBatteryLevel(level) else {
