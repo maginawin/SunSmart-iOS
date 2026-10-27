@@ -13278,7 +13278,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = T552326F7U;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
-				INFOPLIST_KEY_CFBundleDisplayName = "Lumineux LS";
+				INFOPLIST_KEY_CFBundleDisplayName = LumiSmart;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera to scan a device QR code.";
@@ -13304,7 +13304,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = T552326F7U;
 				ENABLE_USER_SCRIPT_SANDBOXING = NO;
-				INFOPLIST_KEY_CFBundleDisplayName = "Lumineux LS";
+				INFOPLIST_KEY_CFBundleDisplayName = LumiSmart;
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "Connect devices via Bluetooth.";
 				INFOPLIST_KEY_NSCameraUsageDescription = "We need to access your camera to scan a device QR code.";
