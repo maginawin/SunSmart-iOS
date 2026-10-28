@@ -774,8 +774,8 @@ final class LumineuxRuntimeTests: XCTestCase {
         XCTAssertFalse(logo.hasAmbiguousLayout)
         snapshot(window, "Launch")
         let expected = [
-            "Privacy Policy": "90d85bfa42fd93d8b514bc81fc3afd1359734416568c817d382bfd6131ddcd76",
-            "User Agreement": "8a9806f280875132f487cd74f02b7ef59cc937ef86dff516072ed166dc74821f"
+            "Privacy Policy": "5c16bf9bdf5bb1cd1e4d546c02491c8a70e4af1b421344ddffec95da89a82758",
+            "User Agreement": "507d4f3ffc74adab1a1409323f4236d3588f8a64f2a713bcbe7ac92a9bfce489"
         ]
         for (name, digest) in expected {
             let url = try XCTUnwrap(Bundle.main.url(forResource: name, withExtension: "html"))
