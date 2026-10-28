@@ -17,6 +17,7 @@
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "08AAC93B308B0FB700DC2934"
                BuildableName = "HSmart.app"
+               BlueprintName = "HSmart"
                ReferencedContainer = "container:SunSmart.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -46,6 +47,7 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "08AAC93B308B0FB700DC2934"
             BuildableName = "HSmart.app"
+            BlueprintName = "HSmart"
             ReferencedContainer = "container:SunSmart.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -62,6 +64,7 @@
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "08AAC93B308B0FB700DC2934"
             BuildableName = "HSmart.app"
+            BlueprintName = "HSmart"
             ReferencedContainer = "container:SunSmart.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
