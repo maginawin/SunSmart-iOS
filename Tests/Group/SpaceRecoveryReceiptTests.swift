@@ -361,6 +361,9 @@ final class NetworkRequest {
            let data = raw.data(using: .utf8) {
             try await testLocalMembershipSample(JSONDecoder().decode([String].self, from: data))
         }
+        if let raw = ProcessInfo.processInfo.environment["SUNSMART_OWNER_REMOVAL_SAMPLES"], let data = raw.data(using: .utf8) {
+            try await testOwnerRemovalSample(JSONDecoder().decode([String].self, from: data))
+        }
         try await testImportPreparation()
         try await testUnuploadedTimedMigration()
         try await testParseRejectionRecovery()
@@ -1475,7 +1478,7 @@ extension SpaceRecoveryReceiptTests {
             S.failStateWrite = false; S.failCheckpoint = false
             DevicePermanentDeletionContext.failCloudRemoval = false
         }
-        for mode in ["clean", "dirty", "localEdit", "timed", "timedMigration", "acceptedTimed", "successive", "preferred", "legacySnapshot", "accepted", "acceptedPreferred", "all", "reordered",
+        for mode in ["clean", "dirty", "localEdit", "timed", "timedMigration", "acceptedTimed", "successive", "preferred", "legacySnapshot", "accepted", "acceptedPreferred", "all", "reordered", "serverFields", "blocked", "newer", "stale", "calibrationChanged", "timezoneChanged", "keyAlias",
                      "nodeName", "groupName", "scene", "key", "unknownNode", "missingBaseline", "newInstance",
                      "writeFailure", "cleanupFailure", "checkpointFailure", "cancelled", "visitor", "visitorGroup", "visitorNode", "unknownPost", "superseded", "persistedSuperseded"] {
             let space = SpaceData("same-version-" + mode)
@@ -1498,6 +1501,7 @@ extension SpaceRecoveryReceiptTests {
             state.removalSnapshot = SpaceCloudNodeRemovalPolicy.Snapshot.make(baseline)
             if ["preferred", "acceptedPreferred"].contains(mode) { state.prefersLocalMembership = true; state.localReplacementVersion = 50 }
             if ["legacySnapshot", "missingBaseline", "superseded", "persistedSuperseded"].contains(mode) { state.removalSnapshot = nil }
+            if mode == "blocked" { state.prefersLocalMembership = true; state.removalSnapshot?.comparisonVersion = nil; S.block(space, reason: "cloudConfigurationConflict") }
             if mode == "legacySnapshot" { precondition(S.recordSnapshot(space, payload: baseline)) }
             try S.testSaveState(state, space: space)
             if ["accepted", "acceptedPreferred", "acceptedTimed", "unknownPost"].contains(mode) {
@@ -1507,6 +1511,24 @@ extension SpaceRecoveryReceiptTests {
             var remote = baseline
             remote["nodes"] = mode == "all" ? [] : Array(space.nodes.prefix(2))
             remote["deviceCount"] = 3
+            if mode == "newer" { remote["updateTimestamp"] = 55 }
+            if mode == "stale" { remote["updateTimestamp"] = 49 }
+            if mode == "serverFields" || mode == "blocked" {
+                remote["nodes"] = (remote["nodes"] as! [[String: Any]]).map { original in
+                    var node = original
+                    node["props"] = ["online": true]; node["spaceId"] = space.id
+                    node["timestamp"] = 999; node["ttl"] = 0
+                    node["lightControlLuxTriggerConditions"] = [Any]()
+                    node["absoluteCctRangeMin"] = 0; node["gatewayInfo"] = [String: Any]()
+                    return node
+                }
+            }
+            if mode == "keyAlias" { remote["appKey"] = ["key": "app", "index": 1]; remote["appKeyIndex"] = 2 }
+            if mode == "calibrationChanged" || mode == "timezoneChanged" {
+                var nodes = remote["nodes"] as! [[String: Any]]
+                nodes[0][mode == "calibrationChanged" ? "absoluteCctRangeMin" : "timezoneOffset"] = 100
+                remote["nodes"] = nodes
+            }
             if mode == "reordered" { remote["nodes"] = Array((remote["nodes"] as! [[String: Any]]).reversed()) }
             if mode == "nodeName" || mode == "visitorNode" { var nodes = remote["nodes"] as! [[String: Any]]; nodes[0]["name"] = "Changed"; remote["nodes"] = nodes }
             if mode == "groupName" || mode == "visitorGroup" { var groups = space.groups; groups[0]["name"] = "Changed"; remote["groups"] = groups }
@@ -1546,7 +1568,7 @@ extension SpaceRecoveryReceiptTests {
             } else { outcome = await S.reconcileSameVersionNodeRemoval(space, remote: remote) }
             S.failStateWrite = false; S.failCheckpoint = false; DevicePermanentDeletionContext.failCloudRemoval = false
             ProximityLightingImportPreflight.onExport = nil
-            let allowed = ["clean", "dirty", "localEdit", "timed", "timedMigration", "acceptedTimed", "successive", "preferred", "legacySnapshot", "accepted", "acceptedPreferred", "all", "reordered"].contains(mode)
+            let allowed = ["clean", "dirty", "localEdit", "timed", "timedMigration", "acceptedTimed", "successive", "preferred", "legacySnapshot", "accepted", "acceptedPreferred", "all", "reordered", "serverFields", "blocked", "newer", "missingBaseline"].contains(mode)
             if case .preserveLocal = outcome { precondition(allowed, mode) }
             else { precondition(!allowed, "must remove: " + mode + " outcome=" + String(describing: outcome)) }
             if !allowed {
@@ -1570,7 +1592,8 @@ extension SpaceRecoveryReceiptTests {
                 }
                 continue
             }
-            precondition(space.nodes.count == (mode == "all" ? 0 : mode == "dirty" ? 3 : 2))
+            precondition(space.nodes.count == (mode == "all" ? 0 : ["dirty", "missingBaseline"].contains(mode) ? 3 : 2))
+            precondition(!S.isBlocked(space), "successful removal must restore configuration access: " + mode)
             precondition(space.needUploadCloud && space.lastUploadCloudTimestamp == 50)
             precondition(try! S.recoveryState(space).prefersLocalMembership != true)
             if mode == "successive" {
@@ -1589,6 +1612,54 @@ extension SpaceRecoveryReceiptTests {
             if mode == "dirty" { precondition(space.nodes.contains { ($0["uuid"] as? String) == (try! membershipNode(9))["uuid"] as? String }) }
         }
         print("PASS: same-version strict subset, complete-field comparison, offline addition, old preference/receipt migration, retries and unknown POST protection")
+    }
+
+    @MainActor static func testOwnerRemovalSample(_ paths: [String]) async throws {
+        func read(_ path: String) throws -> [String: Any] {
+            try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: path))) as! [String: Any]
+        }
+        var remote = try read(paths[0])["data"] as! [String: Any]
+        let inspection = try read(paths[1])
+        let local = (inspection["spaces"] as! [[String: Any]])[0]
+        typealias S = SpaceConfigurationSafety
+        let space = SpaceData(local["uuid"] as! String)
+        space.nodes = local["nodes"] as! [[String: Any]]; space.groups = local["groups"] as! [[String: Any]]
+        space.lastUpdate = SpaceConfigurationIntegrityPolicy.integer(local["updateTimestamp"])!
+        space.lastUploadCloudTimestamp = space.lastUpdate
+        space.exportValues = local.filter { !["uuid", "nodes", "groups", "updateTimestamp", "netKey", "appKey"].contains($0.key) }
+        remote["netKey"] = ["key": space.id]; remote["appKey"] = ["key": "app"]
+        let baseline = space.payload
+        var state = try S.recoveryState(space)
+        state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(baseline)
+        state.nodeIdentitiesBaseline = SpaceCloudNodeRemovalPolicy.instances(baseline)
+        state.schedulerModelStatesBaseline = SchedulerModelSnapshot.spaceData(baseline)
+        state.timedConfigurationBaseline = TimedSchedulerPayloadPolicy.canonical(baseline)
+        state.removalSnapshot = SpaceCloudNodeRemovalPolicy.Snapshot.make(baseline)
+        state.removalSnapshot?.comparisonVersion = nil // persisted pre-fix hash format
+        state.prefersLocalMembership = true
+        try S.testSaveState(state, space: space)
+        precondition(S.recordSnapshot(space, payload: baseline))
+        S.block(space, reason: "cloudConfigurationConflict")
+        ProximityLightingImportPreflight.storedSpace = space
+        defer { ProximityLightingImportPreflight.storedSpace = nil }
+        precondition(space.nodes.count == 262 && (remote["nodes"] as! [Any]).count == 206)
+        NetworkRequest.shared.result = .failure(.noNetwork)
+        let offline = await S.recoverCloudMembershipIfNeeded(space)
+        precondition(!offline, "offline GET must not remove nodes")
+        precondition(space.nodes.count == 262 && S.isBlocked(space))
+        NetworkRequest.shared.result = .success(["data": remote])
+        let recovered = await S.recoverCloudMembershipIfNeeded(space)
+        let scope = "\(UserData.currentUserId)|\(UserData.currentServerRegion)|\(space.meshUUID)|\(space.meshNetworkId)"
+        let key = SHA256.hash(data: Data(scope.utf8)).map { String(format: "%02x", $0) }.joined()
+        let diagnostic = S.testDefaults.dictionary(forKey: "spaceConfigurationLastReadbackDiagnostic." + key)
+        precondition(recovered, "entry recovery failed: " + String(describing: diagnostic))
+        precondition(space.nodes.count == 206 && !S.isBlocked(space))
+        precondition(try! S.deletionJournal(space).entries.count == 56)
+        precondition(try! S.recoveryState(space).prefersLocalMembership != true)
+        NetworkRequest.shared.result = .success(["data": remote])
+        if case .failure = await S.resumeUpload(space) { preconditionFailure("sample cleanup must remain uploadable") }
+        precondition(space.nodes.count == 206 && !S.isBlocked(space) && space.needUploadCloud)
+        print("PASS: owner field sample 262 -> 206, stale deviceCount, legacy conflict/preference, persisted cleanup and upload preparation (SDK/database are fixture boundaries)")
     }
 
     @MainActor static func testLocalMembershipSample(_ paths: [String]) async throws {

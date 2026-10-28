@@ -146,6 +146,13 @@ with tempfile.TemporaryDirectory(prefix='space-receipt-tests-') as temp:
             raise SystemExit("--local-membership-sample requires old cloud, current cloud, and inspection JSON files")
         environment["SUNSMART_LOCAL_MEMBERSHIP_SAMPLES"] = json.dumps(paths)
         arguments = arguments[:index] + arguments[index + 4:]
+    if "--owner-removal-sample" in arguments:
+        index = arguments.index("--owner-removal-sample")
+        paths = arguments[index + 1:index + 3]
+        if len(paths) != 2 or not all(Path(path).is_file() for path in paths):
+            raise SystemExit("--owner-removal-sample requires server and inspection JSON files")
+        environment["SUNSMART_OWNER_REMOVAL_SAMPLES"] = json.dumps(paths)
+        arguments = arguments[:index] + arguments[index + 3:]
     result = subprocess.run([str(binary), *arguments], capture_output=True, text=True, env=environment)
     if result.returncode:
         print('\n'.join(result.stdout.splitlines()[-50:]) + '\n' + result.stderr)

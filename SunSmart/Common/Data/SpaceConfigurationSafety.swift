@@ -362,6 +362,22 @@ enum SpaceConfigurationSafety {
         return false
     }
 
+    /// Entry cleanup must be able to resolve an old membership conflict before
+    /// its ordinary protection gate. Reuse the same GET/readback as uploads.
+    @MainActor
+    static func recoverCloudMembershipIfNeeded(_ space: SpaceData) async -> Bool {
+        let reason = UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space))
+        guard reason == "cloudConfigurationConflict" || reason == "cloudBaselineNeedsReview" else { return true }
+        guard canAutomaticallyUpload(space), !hasPendingImport(space), !hasPendingUpload(space),
+              !_Concurrency.Task<Never, Never>.isCancelled else { return false }
+        if case .failure(let error) = await resumeUpload(space) {
+            space.syncCloudError = error
+            return false
+        }
+        return !isBlocked(space) && canAutomaticallyUpload(space)
+            && !_Concurrency.Task<Never, Never>.isCancelled
+    }
+
     /// Recheck only known legacy comparison/empty-Zone blocks. Never use this path to
     /// clear an import, deletion, changed configuration, or a different cause.
     @MainActor
@@ -1141,7 +1157,7 @@ enum SpaceConfigurationSafety {
             guard let submission = context.submission else {
                 // An offline local edit must not resurrect nodes removed remotely
                 // since our last confirmed version. Read only this Space.
-                if space.needUploadCloud, space.lastUploadCloudTimestamp != nil
+                if space.needUploadCloud || requiresConfigurationReview(space), space.lastUploadCloudTimestamp != nil
                     || context.nodeIdentitiesBaseline != nil || context.schedulerModelStatesBaseline != nil {
                     report("baselineRequest")
                     let response = await NetworkRequest.shared.request(.spaceInfo(siteId: space.siteId,
@@ -1938,7 +1954,7 @@ enum SpaceConfigurationSafety {
         } catch { return failure("profileMergeReceiptPersistence") }
     }
 
-    /// Accept an unchanged cloud revision that has only lost old Nodes. The
+    /// Accept cloud membership removals even when its revision/count was not updated. The
     /// comparison uses a confirmed snapshot, never unsent local additions.
     @MainActor
     static func reconcileSameVersionNodeRemoval(_ space: SpaceData, remote: [String: Any]) async -> OlderCloudBaselineResult {
@@ -1951,10 +1967,13 @@ enum SpaceConfigurationSafety {
               let state = try? recoveryState(space), state.phase == .active,
               remote["uuid"] as? String == space.id,
               let timestamp = state.submission?.timestamp ?? space.lastUploadCloudTimestamp,
-              P.integer(remote["updateTimestamp"]) == timestamp,
+              let remoteTimestamp = P.integer(remote["updateTimestamp"]),
+              remoteTimestamp >= timestamp, remoteTimestamp < Int64.max,
               let remoteNodes = SpaceCloudNodeRemovalPolicy.instances(remote) else { return .notApplicable }
-        let source = state.submission?.nodeIdentities ?? state.nodeIdentitiesBaseline
         var snapshot = state.submission?.removalSnapshot ?? (state.submission == nil ? state.removalSnapshot : nil)
+        let source = state.submission?.nodeIdentities
+            ?? (state.submission == nil ? state.nodeIdentitiesBaseline : nil) ?? snapshot?.identities
+        if snapshot?.comparisonVersion != 2 { snapshot = nil }
         if source == nil && snapshot == nil { return .notApplicable }
         if let source, remoteNodes.count >= source.count { return .notApplicable }
         func failure(_ reason: String) -> OlderCloudBaselineResult {
@@ -1998,12 +2017,29 @@ enum SpaceConfigurationSafety {
                 snapshot = Snapshot.make(local)
             }
         }
-        guard let snapshot, snapshot.timestamp == timestamp, snapshot.spaceID == space.id else {
-            return failure("completeBaselineUnavailable")
-        }
-        guard remoteNodes.count < snapshot.identities.count else { return .notApplicable }
-        guard let incoming = Snapshot.make(remote), let missing = snapshot.removals(in: incoming), !missing.isEmpty else {
-            return failure("notOnlyNodeRemoval")
+        guard let identities = source ?? snapshot?.identities else { return failure("completeBaselineUnavailable") }
+        guard remoteNodes.count < identities.count else { return .notApplicable }
+        guard let missing = SpaceCloudNodeRemovalPolicy.removed(from: identities, remote: remoteNodes),
+              !missing.isEmpty, let incoming = Snapshot.make(remote) else { return failure("notOnlyNodeRemoval") }
+        // Old receipts may retain only identities plus logical configuration.
+        // Raw full-node hashes from older Apps are not membership evidence.
+        if let snapshot, snapshot.removals(in: incoming) == nil { return failure("notOnlyNodeRemoval") }
+        if snapshot == nil {
+            guard let baseline = state.submission?.configuration ?? state.authorizationBaseline,
+                  let expected = SpaceCloudNodeRemovalPolicy.projectConfiguration(baseline, removing: missing),
+                  let actual = P.configurationData(remote).flatMap({ SpaceCloudNodeRemovalPolicy.projectConfiguration($0, removing: missing) }),
+                  P.configurationsMatch(expected, actual),
+                  let timed = state.submission?.timedConfiguration ?? state.timedConfigurationBaseline,
+                  let expectedTimed = TimedSchedulerPayloadPolicy.removingNodes(from: timed,
+                    uuids: Set(missing.map(\.uuid)),
+                    addresses: Set(missing.flatMap { $0.elementAddresses }.map { String(format: "%04X", $0) })),
+                  let actualTimed = TimedSchedulerPayloadPolicy.canonical(remote).flatMap({
+                    TimedSchedulerPayloadPolicy.removingNodes(from: $0, uuids: Set(missing.map(\.uuid)),
+                        addresses: Set(missing.flatMap { $0.elementAddresses }.map { String(format: "%04X", $0) }))
+                  }), expectedTimed == actualTimed,
+                  let models = state.submission?.schedulerModelStates ?? state.schedulerModelStatesBaseline,
+                  SpaceCloudNodeRemovalPolicy.projectModels(models, removing: missing) == SchedulerModelSnapshot.spaceData(remote)
+            else { return failure("notOnlyNodeRemoval") }
         }
         let removed = missing + readbackRemovals(timestamp: timestamp, space: space).filter { old in
             !missing.contains { $0.uuid == old.uuid && $0.address == old.address }
@@ -2039,7 +2075,7 @@ enum SpaceConfigurationSafety {
             updated.localReplacementVersion = nil
             try saveState(updated, space: space)
             guard DevicePermanentDeletionContext.removeCloudInstances(space: space, instances: resolved,
-                baselineTimestamp: timestamp, remoteTimestamp: timestamp, submissionID: state.submission?.id) else {
+                baselineTimestamp: timestamp, remoteTimestamp: remoteTimestamp, submissionID: state.submission?.id) else {
                 return failure("cleanupPersistence")
             }
             var current = try recoveryState(space)
@@ -2054,11 +2090,13 @@ enum SpaceConfigurationSafety {
             try saveState(current, space: space)
             let blockedKey = "spaceConfigurationBlocked." + key(space)
             if ["cloudBaselineNeedsReview", "cloudConfigurationConflict"].contains(UserDefaults.standard.string(forKey: blockedKey) ?? "") {
+                SpaceProtectionReadGeneration.beginMutation()
                 UserDefaults.standard.removeObject(forKey: blockedKey)
+                SpaceProtectionReadGeneration.endMutation()
             }
             space.syncCloudError = nil
             #if DEBUG
-            print("[SpaceCloudMembership] space=\(space.id) sameVersionRemoval=\(missing.count) remote=\(timestamp)")
+            print("[SpaceCloudMembership] space=\(space.id) sameVersionRemoval=\(missing.count) remote=\(remoteTimestamp)")
             #endif
             return .preserveLocal
         } catch { return failure("receiptPersistence") }

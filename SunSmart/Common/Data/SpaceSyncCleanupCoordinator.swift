@@ -167,7 +167,8 @@ enum SpaceSyncCleanupCoordinator {
                   current.lastUpdate == space.lastUpdate else { return nil }
             return await current.export(allowsProtectedInspection: true)
         }) else { return false }
-        guard scope.isCurrent, SpaceConfigurationSafety.canCleanSyncReferences(space),
+        guard scope.isCurrent, await SpaceConfigurationSafety.recoverCloudMembershipIfNeeded(space),
+              scope.isCurrent, SpaceConfigurationSafety.canCleanSyncReferences(space),
               let context = try? SpaceConfigurationSafety.recoveryState(space),
               let original = await space.export(purpose: .cleanupInspection),
               scope.isCurrent else { return false }

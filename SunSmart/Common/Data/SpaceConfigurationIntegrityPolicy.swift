@@ -5,12 +5,13 @@ import CryptoKit
 /// A complete GET is authoritative for membership in an already accepted version
 /// of this Space. It says nothing about unsent local provisioning instances.
 enum SpaceCloudNodeRemovalPolicy {
-    /// Hash every exported business field, including fields omitted by the
-    /// logical configuration projection. No keys or node credentials are stored.
+    /// Compare exported business configuration independently of server observations.
+    /// Only hashes and provisioned identities are persisted.
     struct Snapshot: Codable, Equatable {
         let spaceID: String
         let timestamp: Int64
         let properties: String
+        var comparisonVersion: Int? = nil
         var nodes: [String: String]
         var identities: [Instance]
 
@@ -23,28 +24,61 @@ enum SpaceCloudNodeRemovalPolicy {
                   payload["schedules"] is [[String: Any]] else { return nil }
             // SpaceData.export's complete business schema. GET-only authority,
             // gateway status and request-context fields are handled separately.
-            let fields: Set<String> = ["uuid", "spaceName", "imageId", "source", "createTimestamp", "updateTimestamp",
+            let fields: Set<String> = ["uuid", "spaceName", "imageId", "source", "createTimestamp",
                 "displayDeviceNamePrefix", "showCCTQuickButtons", "controlType", "deviceBlinkMode", "spaceData",
-                "netKey", "appKey", "appKeyIndex", "groups", "scenes", "schedules", "switches",
+                "netKey", "appKey", "groups", "scenes", "schedules", "switches",
                 "emergencyFireControllers", "triggerZones", "hdb"]
             func fingerprint(_ object: [String: Any]) -> String? {
                 guard let data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]) else { return nil }
                 return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
             }
+            // appKeyIndex duplicates appKey.index and is absent from older GETs.
+            // Keep validating an explicit inconsistent alias instead of hiding it.
+            if let alias = SpaceConfigurationIntegrityPolicy.integer(payload["appKeyIndex"]),
+               let index = SpaceConfigurationIntegrityPolicy.integer((payload["appKey"] as? [String: Any])?["index"]),
+               alias != index { return nil }
             guard let properties = fingerprint(payload.filter { fields.contains($0.key) }) else { return nil }
             var hashes: [String: String] = [:]
             for (node, identity) in zip(nodes, identities) {
-                guard let hash = fingerprint(node) else { return nil }
+                guard let hash = fingerprint(comparisonNode(node)) else { return nil }
                 hashes[identity.uuid] = hash
             }
-            return .init(spaceID: id, timestamp: timestamp, properties: properties, nodes: hashes, identities: identities)
+            return .init(spaceID: id, timestamp: timestamp, properties: properties, comparisonVersion: 2, nodes: hashes, identities: identities)
+        }
+
+        /// Membership is authoritative independently of GET-only telemetry and
+        /// device clock observations. Keep actual exported configuration changes
+        /// available to the ordinary conflict handling.
+        private static func comparisonNode(_ node: [String: Any]) -> [String: Any] {
+            let observations: Set<String> = ["props", "spaceId", "timestamp",
+                "lastEnergyReport", "lastEnergyValue", "lastRatedValue", "lastCo2Value", "lastRco2Value"]
+            var value = node.filter { !observations.contains($0.key) }
+            let zeroDefaults = ["ttl", "daylightCalibrationValue", "calibrationCollectRatedPower",
+                "calibrationCollectAdcDatumPower", "absoluteCctRangeMin", "absoluteCctRangeMax"]
+            for key in zeroDefaults where SpaceConfigurationIntegrityPolicy.integer(value[key]) == 0 {
+                value.removeValue(forKey: key)
+            }
+            for key in ["distributionFirmwareID", "changeControlPage"] where value[key] as? String == "" {
+                value.removeValue(forKey: key)
+            }
+            for key in ["enOceanProxySwitchKeys", "lightControlLuxTriggerConditions"] where (value[key] as? [Any])?.isEmpty == true {
+                value.removeValue(forKey: key)
+            }
+            for key in ["daylightCalibrationData", "gatewayInfo", "gatewayPreconfigured"] where (value[key] as? [String: Any])?.isEmpty == true {
+                value.removeValue(forKey: key)
+            }
+            if value["pwmFrequency"] is NSNull { value.removeValue(forKey: "pwmFrequency") }
+            return value
         }
 
         func removals(in remote: Snapshot) -> [Instance]? {
-            guard spaceID == remote.spaceID, timestamp == remote.timestamp, properties == remote.properties,
+            guard spaceID == remote.spaceID, timestamp <= remote.timestamp,
+                  comparisonVersion == 2, remote.comparisonVersion == 2,
+                  properties == remote.properties,
                   remote.nodes.allSatisfy({ nodes[$0.key] == $0.value }) else { return nil }
             return SpaceCloudNodeRemovalPolicy.removed(from: identities, remote: remote.identities)
         }
+
     }
 
     struct Instance: Codable, Equatable {
