@@ -163,6 +163,7 @@ struct SpaceRecoveryState: Codable, Equatable {
         var nodeIdentities: [SpaceCloudNodeRemovalPolicy.Instance]? = nil
         /// Explicitly false for migrated unknown-outcome receipts.
         var permitsCloudRemoval: Bool? = nil
+        var removalSnapshot: SpaceCloudNodeRemovalPolicy.Snapshot? = nil
     }
     let identity: Identity
     var generation = UUID()
@@ -176,10 +177,14 @@ struct SpaceRecoveryState: Codable, Equatable {
     var timedConfigurationBaseline: Data? = nil
     var schedulerModelStatesBaseline: Data? = nil
     var nodeIdentitiesBaseline: [SpaceCloudNodeRemovalPolicy.Instance]? = nil
+    var removalSnapshot: SpaceCloudNodeRemovalPolicy.Snapshot? = nil
     /// Repeated identical old reads may require review; a single stale read stays retryable.
     var olderCloudBaselineFailure: String? = nil
     /// A user-reviewed complete replacement, valid only for this local generation.
     var localReplacementVersion: Int64? = nil
+    /// Keep this phone authoritative when the server returns incomplete Nodes.
+    /// Retained after upload; explicit cloud recovery or authority reset clears it.
+    var prefersLocalMembership: Bool? = nil
     /// The exact cloud business snapshot explicitly selected for default repair.
     /// Used only before POST; upload confirmation still compares the unmodified GET.
     var defaultRecoverySource: Data? = nil

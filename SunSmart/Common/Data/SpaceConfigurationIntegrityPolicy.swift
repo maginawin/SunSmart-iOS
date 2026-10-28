@@ -5,6 +5,48 @@ import CryptoKit
 /// A complete GET is authoritative for membership in an already accepted version
 /// of this Space. It says nothing about unsent local provisioning instances.
 enum SpaceCloudNodeRemovalPolicy {
+    /// Hash every exported business field, including fields omitted by the
+    /// logical configuration projection. No keys or node credentials are stored.
+    struct Snapshot: Codable, Equatable {
+        let spaceID: String
+        let timestamp: Int64
+        let properties: String
+        var nodes: [String: String]
+        var identities: [Instance]
+
+        static func make(_ payload: [String: Any]) -> Snapshot? {
+            guard let id = payload["uuid"] as? String,
+                  let timestamp = SpaceConfigurationIntegrityPolicy.integer(payload["updateTimestamp"]),
+                  timestamp >= 0, timestamp < Int64.max,
+                  let identities = instances(payload), let nodes = payload["nodes"] as? [[String: Any]],
+                  payload["groups"] is [[String: Any]], payload["scenes"] is [[String: Any]],
+                  payload["schedules"] is [[String: Any]] else { return nil }
+            // SpaceData.export's complete business schema. GET-only authority,
+            // gateway status and request-context fields are handled separately.
+            let fields: Set<String> = ["uuid", "spaceName", "imageId", "source", "createTimestamp", "updateTimestamp",
+                "displayDeviceNamePrefix", "showCCTQuickButtons", "controlType", "deviceBlinkMode", "spaceData",
+                "netKey", "appKey", "appKeyIndex", "groups", "scenes", "schedules", "switches",
+                "emergencyFireControllers", "triggerZones", "hdb"]
+            func fingerprint(_ object: [String: Any]) -> String? {
+                guard let data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]) else { return nil }
+                return SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+            }
+            guard let properties = fingerprint(payload.filter { fields.contains($0.key) }) else { return nil }
+            var hashes: [String: String] = [:]
+            for (node, identity) in zip(nodes, identities) {
+                guard let hash = fingerprint(node) else { return nil }
+                hashes[identity.uuid] = hash
+            }
+            return .init(spaceID: id, timestamp: timestamp, properties: properties, nodes: hashes, identities: identities)
+        }
+
+        func removals(in remote: Snapshot) -> [Instance]? {
+            guard spaceID == remote.spaceID, timestamp == remote.timestamp, properties == remote.properties,
+                  remote.nodes.allSatisfy({ nodes[$0.key] == $0.value }) else { return nil }
+            return SpaceCloudNodeRemovalPolicy.removed(from: identities, remote: remote.identities)
+        }
+    }
+
     struct Instance: Codable, Equatable {
         let uuid: String
         let address: UInt16

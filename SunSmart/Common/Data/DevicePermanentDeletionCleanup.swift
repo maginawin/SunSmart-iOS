@@ -392,6 +392,9 @@ final class DevicePermanentDeletionContext {
         guard let network = ProximityLightingTopologyContext.network(for: space) else { return nil }
         var result: [SpaceCloudNodeRemovalPolicy.Instance] = []
         for var identity in expected {
+            guard !network.nodes.contains(where: {
+                $0.uuid.uuidString.uppercased() == identity.uuid && $0.primaryUnicastAddress != identity.address
+            }) else { return nil }
             if let node = network.nodes.first(where: { $0.uuid.uuidString.uppercased() == identity.uuid
                 && $0.primaryUnicastAddress == identity.address }) {
                 guard let key = node.deviceKey, key.count == 16,

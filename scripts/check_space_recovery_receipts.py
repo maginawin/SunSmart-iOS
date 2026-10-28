@@ -5,6 +5,8 @@ import subprocess
 import tempfile
 import re
 import sys
+import os
+import json
 sys.dont_write_bytecode = True
 from hdb_recovery_test_source import recovery_mesh_source
 
@@ -21,7 +23,7 @@ methods = methods.replace('UserDefaults.standard', 'testDefaults')
 # device factory and mapped SDK Model extension rules.
 methods = methods.replace('''                let node = try CloudNodeImport.decode(dictionary)
                 node.macAddress = mac
-                return try HDBConfigurationStore.deviceConfiguration(node: node)''',
+                return try HDBConfigurationStore.deviceConfiguration(node: node, sensorTypes: dictionary["sensorTypes"] as? [String] ?? [])''',
     '                return try RecoveryMeshFactory.resolve(dictionary, mac)')
 methods = methods.replace('FileManager.default.moveItem(at: root, to: archive)', 'testMoveItem(at: root, to: archive)')
 methods = methods.replace('        try state.write(to: stateURL(space))',
@@ -36,6 +38,7 @@ methods += section(safety, '    static func beginImport(', '    @MainActor\n    
 methods += section(safety, '    @MainActor\n    static func prepareUpload(', '    /// Called only after the user explicitly chooses')
 methods += section(safety, '    /// Called only after the user explicitly chooses', '    struct ReferenceRepairReview')
 methods = methods.replace('UserDefaults.standard', 'testDefaults')
+methods += section(safety, '    private static func saveRecoveryPayload(', '    @MainActor\n    static func applyReferenceRepair(')
 methods += """
     static let testRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     static let suite = "SpaceRecovery-" + UUID().uuidString
@@ -134,7 +137,16 @@ with tempfile.TemporaryDirectory(prefix='space-receipt-tests-') as temp:
         str(root / 'SunSmart/Main/Group/Model/ProximityLightingTopologyPolicy.swift'),
         str(root / 'SunSmart/Main/Group/Model/ProximityLightingTopologyReconciler.swift'),
         str(harness), '-o', str(binary)], check=True)
-    result = subprocess.run([str(binary), *sys.argv[1:]], capture_output=True, text=True)
+    arguments = sys.argv[1:]
+    environment = os.environ.copy()
+    if "--local-membership-sample" in arguments:
+        index = arguments.index("--local-membership-sample")
+        paths = arguments[index + 1:index + 4]
+        if len(paths) != 3 or not all(Path(path).is_file() for path in paths):
+            raise SystemExit("--local-membership-sample requires old cloud, current cloud, and inspection JSON files")
+        environment["SUNSMART_LOCAL_MEMBERSHIP_SAMPLES"] = json.dumps(paths)
+        arguments = arguments[:index] + arguments[index + 4:]
+    result = subprocess.run([str(binary), *arguments], capture_output=True, text=True, env=environment)
     if result.returncode:
         print('\n'.join(result.stdout.splitlines()[-50:]) + '\n' + result.stderr)
         match = re.search(r'Harness.swift:(\d+):', result.stderr)

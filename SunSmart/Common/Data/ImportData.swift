@@ -1839,6 +1839,13 @@ extension SpaceData {
             if !initialize {
                 applyRemoteSpaceMetadata(spaceJsonData)
                 guard save() else { return .rejected("remoteMetadataPersistence") }
+                if !reviewedCloudImport {
+                    switch await SpaceConfigurationSafety.reconcileSameVersionNodeRemoval(self, remote: spaceJsonData) {
+                    case .preserveLocal: return .preserved("sameVersionNodeRemoval")
+                    case .failed: return .preserved("sameVersionNodeRemovalNeedsReview")
+                    case .notApplicable: break
+                    }
+                }
                 if case .preserveLocal = await SpaceConfigurationSafety.reconcileOlderCloudBaseline(self, remote: spaceJsonData) {
                     return .preserved("unchangedOlderCloudBaseline")
                 }
@@ -1850,6 +1857,18 @@ extension SpaceData {
             return outcome
         }
         if !initialize { save() }
+        if !initialize, !reviewedCloudImport {
+            switch await SpaceConfigurationSafety.reconcileSameVersionNodeRemoval(self, remote: spaceJsonData) {
+            case .preserveLocal: return .preserved("sameVersionNodeRemoval")
+            case .failed: return .preserved("sameVersionNodeRemovalNeedsReview")
+            case .notApplicable: break
+            }
+            switch await SpaceConfigurationSafety.preserveLocalMembershipIfNeeded(self, remote: spaceJsonData) {
+            case .preserveLocal: return .preserved("localMembershipPreferred")
+            case .failed: return .preserved("localMembershipConflict")
+            case .notApplicable: break
+            }
+        }
         SpaceConfigurationSafety.backfillTimedUpgradeBaseline(self, remote: spaceJsonData)
         DevicePermanentDeletionContext.resume(space: self)
         if preservesTimedMigration {
@@ -1871,7 +1890,6 @@ extension SpaceData {
             return .preserved("cloudProfileNeedsReview")
         }
         if !initialize, !reviewedCloudImport, !SpaceConfigurationSafety.reconcileCloudMembership(self, remote: spaceJsonData) {
-            SpaceConfigurationSafety.recordSyncFailure(self, error: syncCloudError ?? .configurationUploadUnconfirmed, stage: "cloudMembership")
             return .preserved("cloudMembershipNeedsReview")
         }
         if SpaceConfigurationSafety.preservesLocalChanges(self) {

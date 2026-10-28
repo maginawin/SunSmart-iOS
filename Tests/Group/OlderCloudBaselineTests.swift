@@ -269,7 +269,7 @@ extension SpaceRecoveryReceiptTests {
     @MainActor static func testReviewedLocalInstanceReplacement() async throws {
         typealias S = SpaceConfigurationSafety
         let request = NetworkRequest.shared
-        for mode in ["deviceKey", "address", "expiredAuthorization"] {
+        for mode in ["deviceKey", "address", "laterLocalEdit"] {
             let (space, remote) = try olderCloudFixture()
             if mode == "address" { space.nodes[0]["unicastAddress"] = "0030" }
             else { space.nodes[0]["deviceKey"] = String(repeating: "B2", count: 16) }
@@ -289,22 +289,18 @@ extension SpaceRecoveryReceiptTests {
             reopened.lastUpdate = approvedVersion; reopened.lastUploadCloudTimestamp = space.lastUploadCloudTimestamp
             reopened.nodes = space.nodes; reopened.groups = space.groups
             ProximityLightingImportPreflight.storedSpace = reopened
-            if mode == "expiredAuthorization" {
+            if mode == "laterLocalEdit" {
                 reopened.lastUpdate += 1
-                if case .success = await S.resumeUpload(reopened) {
-                    preconditionFailure("review authorization cannot cover a later local version")
-                }
-                continue
             }
             request.responses = [.success(["data": remote]), .success([:]), .success(["data": reopened.payload])]
             if case .failure = await S.uploadBeforeUnbind(reopened) {
                 preconditionFailure("reviewed replacement must upload and confirm after reopening: " + mode)
             }
-            precondition(request.responses.isEmpty && reopened.lastUploadCloudTimestamp == approvedVersion)
+            precondition(request.responses.isEmpty && reopened.lastUploadCloudTimestamp == reopened.lastUpdate)
             let state = try S.recoveryState(reopened)
-            precondition(state.localReplacementVersion == nil && !S.hasPendingUpload(reopened))
+            precondition(state.localReplacementVersion == nil && state.prefersLocalMembership == true && !S.hasPendingUpload(reopened))
         }
-        print("PASS: reviewed same-UUID Device Key/address replacement uploads after reopening; automatic and expired authorization remain blocked")
+        print("PASS: reviewed same-UUID Device Key/address replacement uploads after reopening and later edits; unreviewed replacement stays blocked")
     }
 
     @MainActor static func testReviewedImportDecodeRejection() async throws {

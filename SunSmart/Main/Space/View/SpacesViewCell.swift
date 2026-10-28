@@ -45,6 +45,7 @@ class SpacesViewCell: UICollectionViewCell {
     private var lockImageView: UIImageView!
     /// 同步失败标识
     var syncFailedImageBtn: UIButton!
+    private let cloudSyncActivity = UIActivityIndicatorView(style: .medium)
     
     weak var delegate: SpacesViewCellDelegate?
     /// 点击更多回调
@@ -124,12 +125,25 @@ class SpacesViewCell: UICollectionViewCell {
                 break
             }
             
-            if space.showSyncCloudError != nil && space.permission != .visitor {
-//                syncFailedImageBtn.isHidden = false
-                nameLabel.textColor = Message_Color
-                stackSubViews.append(syncFailedImageBtn)
+            syncFailedImageBtn.isHidden = false
+            cloudSyncActivity.stopAnimating()
+            let syncState = CloudSynchronizationManager.shared.getSpaceCurrentSyncState(space)?.state
+            let syncing: Bool
+            switch syncState {
+            case .wait?, .inProgress?: syncing = true
+            default: syncing = false
             }
-            
+            if space.permission != .visitor {
+                if syncing {
+                    cloudSyncActivity.accessibilityLabel = "syncing_data".localizedString
+                    cloudSyncActivity.startAnimating()
+                    stackSubViews.append(cloudSyncActivity)
+                } else if space.showSyncCloudError != nil {
+                    nameLabel.textColor = Message_Color
+                    stackSubViews.append(syncFailedImageBtn)
+                }
+            }
+
             stackSubViews.reversed().forEach({
                 $0.setContentCompressionResistancePriority(.required, for: .horizontal)
                 $0.setContentHuggingPriority(.required, for: .horizontal)

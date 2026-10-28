@@ -47,6 +47,16 @@ enum SyncOperation {
     /// 同步网关
     case syncGateway(gateway: GatewayModel, node: Node)
     
+    func includesConfiguration(of space: SpaceData) -> Bool {
+        switch self {
+        case .syncSpace(let target):
+            return target.siteId == space.siteId && target.id == space.id
+        case .syncSite(let site, let spaces), .addSpaces(let site, let spaces):
+            return site.id == space.siteId && spaces.contains { $0.siteId == space.siteId && $0.id == space.id }
+        case .syncGateway: return false
+        }
+    }
+
     /// 判断操作是否相等
     static func == (lhs: SyncOperation, rhs: SyncOperation) -> Bool {
         
@@ -889,18 +899,7 @@ class CloudSynchronizationManager {
     /// - Returns: 当前同步操作
     func getSpaceCurrentSyncState(_ space: SpaceData) -> CloudSynchronizationHandle? {
         
-        let handle = syncHandles.first(where: { handle in
-            switch handle.operation {
-            case .syncSite(_, let syncSpaces):
-                return syncSpaces.contains(where: { $0.id == space.id })
-            case .syncSpace(let syncSpace):
-                return space.id == syncSpace.id
-            case .addSpaces(_, let spaces):
-                return spaces.contains(where: { $0.id == space.id })
-            default:
-                return false
-            }
-        })
+        let handle = syncHandles.first { $0.operation.includesConfiguration(of: space) }
         return handle
     }
     

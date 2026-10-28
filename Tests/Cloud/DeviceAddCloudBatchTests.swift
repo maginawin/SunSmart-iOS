@@ -201,6 +201,16 @@ final class HDBDeviceAddCompletion {
     @MainActor static func run() async {
         let manager = CloudSynchronizationManager.shared
         let a = fixture(), b = fixture("b"), c = fixture("c", site: "other")
+        let sameIdOtherSite = SpaceData(a.id, site: "other")
+        precondition(SyncOperation.syncSpace(space: a).includesConfiguration(of: a))
+        precondition(!SyncOperation.syncSpace(space: a).includesConfiguration(of: sameIdOtherSite))
+        precondition(!SyncOperation.syncSpace(space: b).includesConfiguration(of: a))
+        precondition(SyncOperation.syncSite(site: SiteData.rows[a.siteId]!, syncSpaces: [a, b]).includesConfiguration(of: a))
+        precondition(!SyncOperation.syncSite(site: SiteData.rows[a.siteId]!, syncSpaces: [b]).includesConfiguration(of: a))
+        precondition(!SyncOperation.syncSite(site: SiteData.rows[a.siteId]!).includesConfiguration(of: a))
+        precondition(SyncOperation.addSpaces(site: SiteData.rows[a.siteId]!, spaces: [a]).includesConfiguration(of: a))
+        precondition(!SyncOperation.addSpaces(site: SiteData.rows[a.siteId]!, spaces: [a]).includesConfiguration(of: sameIdOtherSite))
+        print("PASS: configuration callbacks include only the exact Site/Space, including batch and metadata-only operations")
         for count in [1, 10] {
             resetRequests()
             let batch = HDBDeviceAddBatch(); var started = 0, callbacks = 0

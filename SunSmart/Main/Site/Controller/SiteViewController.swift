@@ -3646,7 +3646,6 @@ extension SiteViewController: SpacesViewCellDelegate {
             return
         }
         SRAlertView(title: "synchronization_failure".localizedString, message: error.localizedDescription, actions: [.cancelAction, SRAlertAction(title: "SYNC".localizedString, actionHandler: {[weak self] _ in
-            cell.syncFailedImageBtn.isHidden = true
             guard let self = self else { return }
             // site已上传服务器
             if self.site.uploadCloud {
@@ -3673,7 +3672,7 @@ extension SiteViewController: CloudSynchronizationManagerDelegate {
         switch handle.operation {
         case .syncSpace(let space):
             reloadSpaceData(space)
-        case .addSpaces(let site, let spaces):
+        case .syncSite(let site, let spaces), .addSpaces(let site, let spaces):
             guard site.id == self.site.id else {
                 return
             }
@@ -3740,6 +3739,15 @@ extension SiteViewController: CloudSynchronizationManagerDelegate {
     /// 同步数据操作取消回调
     func cloudSyncManager(_ manager: CloudSynchronizationManager, cancelSyncHandle handle: CloudSynchronizationHandle) {
         updateSyncState()
+        switch handle.operation {
+        case .syncSpace(let space):
+            reloadSpaceData(space)
+        case .syncSite(let site, let spaces), .addSpaces(let site, let spaces):
+            guard site.id == self.site.id else { return }
+            spaces.forEach { self.reloadSpaceData($0) }
+        default:
+            break
+        }
     }
 }
 

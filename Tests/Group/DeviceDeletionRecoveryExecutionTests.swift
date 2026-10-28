@@ -399,6 +399,10 @@ extension ScopedImportTests {
         let cloudIdentity = SpaceCloudNodeRemovalPolicy.Instance(uuid: cloud.nodes[0].uuid.uppercased(), address: 2,
             keyFingerprint: try SchedulerModelSnapshot.keyFingerprint(["deviceKey": cloud.nodes[0].deviceKey!.hex]))
         let resolved = DevicePermanentDeletionContext.cloudRemovalInstances(space: cloud.space, expected: [cloudIdentity])!
+        let previousAddress = SpaceCloudNodeRemovalPolicy.Instance(uuid: cloudIdentity.uuid, address: 1,
+            keyFingerprint: cloudIdentity.keyFingerprint, elementAddresses: [1])
+        require(DevicePermanentDeletionContext.cloudRemovalInstances(space: cloud.space, expected: [previousAddress]) == nil,
+                "an old address must not authorize UUID-scoped cleanup of a rejoined instance")
         cloud.nodes[0].deletionFails = true
         require(!DevicePermanentDeletionContext.removeCloudInstances(space: cloud.space, instances: resolved,
             baselineTimestamp: 10, remoteTimestamp: 40, submissionID: nil), "failed removal keeps its durable cloud intent")
@@ -429,8 +433,8 @@ extension ScopedImportTests {
         newNode.network = reprovisioned.network; newNode.subNetworkId = reprovisioned.space.meshNetworkId
         reprovisioned.network.nodes = [newNode, reprovisioned.nodes[1]]
         activate(reprovisioned)
-        require(DevicePermanentDeletionContext.removeCloudInstances(space: reprovisioned.space, instances: [oldIdentity],
-            baselineTimestamp: 10, remoteTimestamp: 40, submissionID: nil), "old absent instance can finish its reference cleanup")
+        require(!DevicePermanentDeletionContext.removeCloudInstances(space: reprovisioned.space, instances: [oldIdentity],
+            baselineTimestamp: 10, remoteTimestamp: 40, submissionID: nil), "old absent instance must not clean UUID-scoped references of a new instance")
         require(reprovisioned.network.nodes.contains { $0 === newNode }, "same UUID at a new provisioning address must survive")
 
         // Real durable model: round trip, scope isolation and corrupted data.

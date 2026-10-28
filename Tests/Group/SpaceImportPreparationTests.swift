@@ -14,15 +14,26 @@ enum DevicePermanentDeletionContext {
     static var failCloudRemoval = false
     static func cloudRemovalInstances(space: SpaceData, expected: [SpaceCloudNodeRemovalPolicy.Instance]) -> [SpaceCloudNodeRemovalPolicy.Instance]? {
         let local = SpaceCloudNodeRemovalPolicy.instances(space.payload) ?? []
+        guard expected.allSatisfy({ old in
+            local.allSatisfy { node in
+                (node.uuid != old.uuid && node.elementAddresses.isDisjoint(with: old.elementAddresses)) || node.matches(old)
+            }
+        }) else { return nil }
         return expected.map { old in local.first(where: { old.matches($0) }) ?? old }
     }
     static func removeCloudInstances(space: SpaceData, instances: [SpaceCloudNodeRemovalPolicy.Instance],
                                      baselineTimestamp: Int64, remoteTimestamp: Int64, submissionID: UUID?) -> Bool {
         guard !failCloudRemoval else { return false }
+        let existing = (try? SpaceConfigurationSafety.deletionJournal(space))?.entries ?? []
+        let pending = instances.filter { old in !existing.contains { $0.stage == .cleaned && $0.cloudRemoval?.instance == old } }
+        if pending.isEmpty { return true }
         space.nodes.removeAll { node in instances.contains { $0.matches(node) } }
+        if let repaired = TimedSchedulerPayloadPolicy.repairingStaleBindings(space.payload), space.exportValues["schedules"] != nil {
+            space.exportValues["schedules"] = repaired["schedules"]
+        }
         space.lastUpdate = max(space.lastUpdate, remoteTimestamp) + 1
         return SpaceConfigurationSafety.updateDeletionJournal(space) { journal in
-            for identity in instances {
+            for identity in pending {
                 journal.entries.append(.init(id: UUID(), nodeUUID: identity.uuid, primaryAddress: identity.address,
                     elementAddresses: identity.elementAddresses, macAddress: nil, productId: nil,
                     stage: .cleaned, completedTimestamp: space.lastUpdate,
@@ -127,6 +138,7 @@ extension SpaceRecoveryReceiptTests {
             } else {
                 var state = try S.recoveryState(space)
                 state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(remote)
+                state.removalSnapshot = SpaceCloudNodeRemovalPolicy.Snapshot.make(remote)
                 state.nodeIdentitiesBaseline = SpaceCloudNodeRemovalPolicy.instances(remote)
                 state.timedConfigurationBaseline = TimedSchedulerPayloadPolicy.canonical(remote)
                 state.schedulerModelStatesBaseline = SchedulerModelSnapshot.spaceData(remote)
@@ -138,13 +150,13 @@ extension SpaceRecoveryReceiptTests {
             replacement.removeValue(forKey: "custProps")
             space.nodes = [replacement]; space.lastUpdate = 55
             NetworkRequest.shared.result = .success(["data": remote])
-            if case .failure = await S.resumeUpload(space) { preconditionFailure("old-instance cloud removal must reconcile stale slots") }
+            if case .success = await S.resumeUpload(space) { preconditionFailure("old deletion must not clean UUID-scoped references of a new local instance") }
             precondition(space.nodes.count == 1 && space.nodes[0]["unicastAddress"] as? String == "0009")
             precondition(space.nodes[0]["deviceKey"] as? String == replacement["deviceKey"] as? String)
-            precondition(space.needUploadCloud && !S.hasPendingUpload(space))
-            precondition(space.lastUploadCloudTimestamp == 50)
+            precondition(space.needUploadCloud && S.hasPendingUpload(space) == accepted)
+            precondition(space.lastUploadCloudTimestamp == (accepted ? 49 : 50))
         }
-        print("PASS: old cloud node removal with stale Timed bindings preserves a same-UUID newly provisioned local instance")
+        print("PASS: old cloud deletion cannot clean references belonging to a same-UUID newly provisioned local instance")
     }
 
     @MainActor static func testDefaultedTimedImport() async throws {

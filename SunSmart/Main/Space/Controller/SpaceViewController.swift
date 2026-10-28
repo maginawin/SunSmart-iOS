@@ -1711,9 +1711,10 @@ class SpaceViewController: WMPageController {
         
     }
     /// 展示同步space数据失败页面
-    private func showSyncSpaceFailedAlert() {
+    private func showSyncSpaceFailedAlert(error: NetworkApiError) {
+        exitSyncSpace = false
         
-        SRAlertView(title: "notification".localizedString, message: "space_sync_failed_message".localizedString, actions: [SRAlertAction(title: "confirm".localizedString, actionHandler: {[weak self] _ in
+        SRAlertView(title: "notification".localizedString, message: error.localizedDescription + "\n\n" + "space_sync_failed_message".localizedString, actions: [SRAlertAction(title: "confirm".localizedString, actionHandler: {[weak self] _ in
             self?.navigationController?.popViewController(animated: true)
         })]).show()
     }
@@ -1826,6 +1827,7 @@ extension SpaceViewController: CloudSynchronizationManagerDelegate {
     ///   - manager: 同步管理
     ///   - handle: 同步数据操作
     func cloudSyncManager(_ manager: CloudSynchronizationManager, didStartSync handle: CloudSynchronizationHandle) {
+        guard handle.operation.includesConfiguration(of: space) else { return }
         updateSyncState()
     }
     
@@ -1834,6 +1836,7 @@ extension SpaceViewController: CloudSynchronizationManagerDelegate {
     ///   - manager: 同步管理
     ///   - handle: 同步数据操作
     func cloudSyncManager(_ manager: CloudSynchronizationManager, didSyncFinished handle: CloudSynchronizationHandle) {
+        guard handle.operation.includesConfiguration(of: space) else { return }
         if let saved = SpaceData.load(siteId: space.siteId, spaceId: space.id).first {
             space.lastUploadCloudTimestamp = saved.lastUploadCloudTimestamp
             space.syncCloudError = saved.syncCloudError
@@ -1842,7 +1845,11 @@ extension SpaceViewController: CloudSynchronizationManagerDelegate {
         NotificationCenter.default.post(name: .init(spacePermissionChangedNotificaitonName), object: space)
         if exitSyncSpace {
             XWHUDManager.hide()
-            navigationController?.popViewController(animated: true)
+            if space.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(space) {
+                showSyncSpaceFailedAlert(error: .configurationUploadUnconfirmed)
+            } else {
+                navigationController?.popViewController(animated: true)
+            }
         }
     }
     
@@ -1851,16 +1858,22 @@ extension SpaceViewController: CloudSynchronizationManagerDelegate {
     ///   - manager: 同步管理
     ///   - handle: 同步数据操作
     func cloudSyncManager(_ manager: CloudSynchronizationManager, didSyncFailure handle: CloudSynchronizationHandle, error: NetworkApiError) {
+        guard handle.operation.includesConfiguration(of: space) else { return }
         updateSyncState()
         if exitSyncSpace { // 提示数据同步失败
             XWHUDManager.hide()
-            showSyncSpaceFailedAlert()
+            showSyncSpaceFailedAlert(error: error)
         }
     }
     
     /// 同步数据操作取消回调
     func cloudSyncManager(_ manager: CloudSynchronizationManager, cancelSyncHandle handle: CloudSynchronizationHandle) {
+        guard handle.operation.includesConfiguration(of: space) else { return }
         updateSyncState()
+        if exitSyncSpace {
+            exitSyncSpace = false
+            XWHUDManager.hide()
+        }
     }
 }
 
