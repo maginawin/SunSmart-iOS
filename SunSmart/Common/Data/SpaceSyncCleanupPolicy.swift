@@ -278,3 +278,125 @@ enum SpaceSyncCleanupPolicy {
         return try? JSONSerialization.data(withJSONObject: result, options: [.sortedKeys])
     }
 }
+
+/// Pure candidate construction; authority, checkpoints and commit belong to the
+/// existing recovery coordinator. No radio state is inferred from record removal.
+enum SpaceRecoveryPayloadPolicy {
+    static func repair(_ input: [String: Any]) throws -> [String: Any] {
+        guard let timed = TimedSchedulerPayloadPolicy.repairingStaleBindings(input) else {
+            throw SpaceSyncCleanupPolicy.Invalid.structure("timed")
+        }
+        let cleaned = try SpaceSyncCleanupPolicy.normalize(timed)
+        var result = cleaned.payload
+        guard let nodes = result["nodes"] as? [[String: Any]],
+              let groups = result["groups"] as? [[String: Any]] else {
+            throw SpaceSyncCleanupPolicy.Invalid.structure("recoveryCollections")
+        }
+        let addresses = Set(nodes.compactMap { $0["unicastAddress"] as? String }.map { $0.uppercased() })
+        let groupAddresses = Set(groups.compactMap { $0["address"] as? String }.map { $0.uppercased() })
+        let elementAddresses = Set(cleaned.devices.flatMap(\.elementAddresses).map { String(format: "%04X", $0) })
+        let sceneNumbers = Set((result["scenes"] as? [[String: Any]] ?? []).compactMap { ($0["number"] as? String)?.uppercased() })
+        result["schedules"] = (result["schedules"] as? [[String: Any]] ?? []).map { original in
+            var item = original
+            for field in ["deviceAddresses", "needDeleteNodeAddresses"] {
+                if let values = item[field] as? [String] { item[field] = values.filter { elementAddresses.contains($0.uppercased()) } }
+            }
+            for field in ["groupAddresses", "needDeleteGroupAddresses"] {
+                if let values = item[field] as? [String] { item[field] = values.filter { groupAddresses.contains($0.uppercased()) } }
+            }
+            if let values = item["needDeleteSceneNumbers"] as? [String] { item["needDeleteSceneNumbers"] = values.filter { sceneNumbers.contains($0.uppercased()) } }
+            if let scene = item["sceneAddress"] as? String, !sceneNumbers.contains(scene.uppercased()) { item.removeValue(forKey: "sceneAddress") }
+            if let profiles = item["profiles"] as? [[String: Any]] {
+                item["profiles"] = profiles.filter { profile in
+                    guard let address = profile["groupAddress"] as? String,
+                          let number = profile["profileSceneNumber"] as? String,
+                          let group = groups.first(where: { ($0["address"] as? String)?.uppercased() == address.uppercased() }),
+                          let configuration = group["profile"] as? [String: Any],
+                          let scenes = configuration["scenes"] as? [[String: Any]] else { return false }
+                    return scenes.contains { ($0["number"] as? String)?.uppercased() == number.uppercased() }
+                }
+            }
+            return item
+        }
+        if result["switches"] == nil { result["switches"] = [[String: Any]]() }
+        if result["emergencyFireControllers"] == nil { result["emergencyFireControllers"] = [[String: Any]]() }
+        if let raw = result["switches"] {
+            guard let switches = raw as? [[String: Any]] else { throw SpaceSyncCleanupPolicy.Invalid.structure("switches") }
+            result["switches"] = switches.map { original in
+                var item = original
+                for key in ["proxyNodeAddress", "deleteProxyNodeAddress"] {
+                    if let address = item[key] as? String, !addresses.contains(address.uppercased()) {
+                        item.removeValue(forKey: key)
+                    }
+                }
+                for key in ["bindGroupAddresses", "unbindGroupAddresses"] {
+                    if let values = item[key] as? [String] {
+                        item[key] = values.filter { groupAddresses.contains($0.uppercased()) }
+                    }
+                }
+                return item
+            }
+        }
+        result["groups"] = groups.map { original in
+            var group = original
+            if let address = group["daylightSensorAddress"] as? String, !addresses.contains(address.uppercased()) {
+                group.removeValue(forKey: "daylightSensorAddress")
+            }
+            return group
+        }
+        if let raw = result["emergencyFireControllers"] {
+            guard let controllers = raw as? [[String: Any]] else { throw SpaceSyncCleanupPolicy.Invalid.structure("emergencyFireControllers") }
+            result["emergencyFireControllers"] = controllers.map { original in
+                var item = original
+                if let address = item["bindNodeAddress"] as? String, !addresses.contains(address.uppercased()) {
+                    item.removeValue(forKey: "bindNodeAddress")
+                    item["isSynced"] = false
+                    item["controllerSelfSyncPending"] = true
+                }
+                return item
+            }
+        }
+        result["deviceCount"] = nodes.count
+        return result
+    }
+
+    static func removing(_ uuids: Set<String>, from input: [String: Any]) throws -> [String: Any] {
+        guard let nodes = input["nodes"] as? [[String: Any]],
+              SpaceCloudNodeRemovalPolicy.instances(input) != nil else {
+            throw SpaceSyncCleanupPolicy.Invalid.structure("recoveryNodeIdentity")
+        }
+        let selected = Set(uuids.map { $0.uppercased() })
+        guard selected.isSubset(of: Set(nodes.compactMap { ($0["uuid"] as? String)?.uppercased() })) else {
+            throw SpaceSyncCleanupPolicy.Invalid.structure("recoverySelectionChanged")
+        }
+        var result = input
+        result["nodes"] = nodes.filter { !selected.contains(($0["uuid"] as? String ?? "").uppercased()) }
+        if var hdb = try HDBLightingZonePolicy.decode(payload: input) {
+            let retiredSensorGroups = Set(hdb.devices.filter { selected.contains($0.nodeUuid.uuidString.uppercased()) }.compactMap(\.sensorGroupId))
+            result["groups"] = (input["groups"] as? [[String: Any]] ?? []).filter { group in
+                guard group["isVirtual"] as? Bool == true, let address = SpaceSyncCleanupPolicy.address(group["address"]) else { return true }
+                return !retiredSensorGroups.contains(address)
+            }
+            hdb.devices.removeAll { selected.contains($0.nodeUuid.uuidString.uppercased()) }
+            var data = input["spaceData"] as? [String: Any] ?? [:]
+            data["hdb"] = try HDBLightingZonePolicy.json(hdb)
+            result["spaceData"] = data
+        }
+        return try repair(result)
+    }
+
+    static func clearing(_ input: [String: Any], hdb: Bool) throws -> [String: Any] {
+        var result = input
+        for field in ["nodes", "groups", "scenes", "schedules", "switches", "emergencyFireControllers"] {
+            result[field] = [[String: Any]]()
+        }
+        var data: [String: Any] = ["timedSchemaVersion": 2, "proximityLightingSchemaVersion": 1,
+                                    "triggerZones": [[String: Any]]()]
+        if hdb { data["hdb"] = try HDBLightingZonePolicy.json(HDBConfiguration()) }
+        result["spaceData"] = data
+        result.removeValue(forKey: "triggerZones")
+        result.removeValue(forKey: "hdb")
+        result["deviceCount"] = 0
+        return try repair(result)
+    }
+}

@@ -242,13 +242,18 @@ extension SpaceRecoveryReceiptTests {
                 precondition(S.needsTimedUpgradeBaseline(space), "failed backfill must not authorize migration")
                 _ = await space.update(spaceJsonData: remote)
             }
+            if S.hasReviewedCloudImport(space) {
+                // Equal-time server recovery now repairs the failed legacy baseline.
+                let completed = await space.restoreConfiguration(spaceJsonData: remote, authoritativeGET: true)
+                precondition(completed.status == .applied)
+            }
             precondition(!S.needsTimedUpgradeBaseline(space))
             let saved = try S.recoveryState(space)
             precondition(saved.timedConfigurationBaseline == TimedSchedulerPayloadPolicy.canonical(remote))
             space.timedSchemaVersion = 2
             space.lastUpdate += 1
             let reentry = await space.update(spaceJsonData: remote)
-            precondition(reentry == .preserved("localTimedMigrationPendingUpload"))
+            precondition(reentry == .preserved("localTimedMigrationPendingUpload") || reentry == .preserved("localDefaultRecoveryPendingUpload"))
         }
         let local = SpaceData()
         precondition(!S.needsTimedUpgradeBaseline(local), "never-uploaded Spaces do not need a cloud baseline")
@@ -325,7 +330,7 @@ extension SpaceRecoveryReceiptTests {
         try S.testSaveState(state, space: rolledBack)
         rolledBack.timedSchemaVersion = 2
         let result = await rolledBack.update(spaceJsonData: rolledBack.payload)
-        precondition(result == .preserved("localTimedMigrationPendingUpload"))
+        precondition(result == .prepared && S.hasReviewedCloudImport(rolledBack), "Equal timestamps trust server even when a local migration forgot to advance its revision")
         print("PASS: unuploaded v2 migration preserves confirmed v1 GET across pending receipts/reentry; true downgrade and authority changes remain rejected")
     }
 
@@ -342,8 +347,12 @@ extension SpaceRecoveryReceiptTests {
             remote["spaceData"] = [String: Any]()
             for _ in 0..<2 {
                 let outcome = await space.update(spaceJsonData: remote)
+                if S.hasReviewedCloudImport(space) {
+                    let completed = await space.restoreConfiguration(spaceJsonData: remote, authoritativeGET: true)
+                    precondition(completed.status == .applied)
+                }
                 precondition(outcome == .prepared && !S.isBlocked(space),
-                             "Repeated legacy GETs must not block empty Zone slots")
+                             "Repeated legacy GETs must not block empty Zone slots: \(outcome)")
                 precondition(space.triggerZones.count == count && space.triggerZones.allSatisfy { $0.items.isEmpty })
             }
         }
@@ -356,9 +365,9 @@ extension SpaceRecoveryReceiptTests {
             var remote = space.payload
             remote["spaceData"] = [String: Any]()
             let outcome = await space.update(spaceJsonData: remote)
-            precondition(outcome == .skipped && S.isBlocked(space), "Members or unreadable local zones must stay protected")
+            precondition(outcome == .prepared && S.hasReviewedCloudImport(space), "Equal-time server snapshot must replace damaged or divergent local zones through checkpointed import")
         }
-        print("PASS: production import Zone gate accepts repeated legacy reads with empty slots and protects members/unreadable storage")
+        print("PASS: legacy empty slots remain importable; equal-time server recovery supersedes divergent or unreadable local zones")
     }
 
     @MainActor static func testImportPreparation() async throws {
@@ -400,6 +409,9 @@ extension SpaceRecoveryReceiptTests {
 
         let owner = SpaceData()
         owner.lastUploadCloudTimestamp = 50
+        var ownerBaseline = try S.recoveryState(owner)
+        ownerBaseline.removalSnapshot = SpaceCloudNodeRemovalPolicy.Snapshot.make(owner.payload)
+        try S.testSaveState(ownerBaseline, space: owner)
         P.storedSpace = SpaceData(owner.id)
         var exported = false
         P.onExport = { exported = true }
@@ -413,6 +425,9 @@ extension SpaceRecoveryReceiptTests {
                 let space = SpaceData()
                 let stored = SpaceData(space.id)
                 space.lastUploadCloudTimestamp = 50
+                var baseline = try S.recoveryState(space)
+                baseline.removalSnapshot = SpaceCloudNodeRemovalPolicy.Snapshot.make(space.payload)
+                try S.testSaveState(baseline, space: space)
                 P.storedSpace = stored
                 let mutate: () -> Void = {
                     switch change {

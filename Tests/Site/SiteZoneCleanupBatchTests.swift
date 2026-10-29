@@ -47,6 +47,7 @@ final class SpaceData {
     let id: String, siteId: String, meshUUID: String
     var canEditing = true, blocked = false, needUploadCloud = true, pendingUpload = false, synchronizing = false
     var revision = 0
+    var generation = UUID()
     var initialized = true
     var syncCloudError: NetworkApiError?
     init(_ id: String, site: String = "site") { self.id = id; siteId = site; meshUUID = site }
@@ -56,6 +57,7 @@ final class SpaceData {
             copy.canEditing = source.canEditing; copy.blocked = source.blocked
             copy.needUploadCloud = source.needUploadCloud; copy.pendingUpload = source.pendingUpload
             copy.synchronizing = source.synchronizing; copy.revision = source.revision
+            copy.generation = source.generation
             copy.initialized = source.initialized
             return copy
         }
@@ -122,9 +124,10 @@ enum ProximityLightingLifecycleCoordinator {
     static func preview(_ preparation: Preparation) -> Preview? { .init() }
     static func isEligible(_ type: Int) -> Bool { type == 1 }
 }
+struct SpaceRecoveryState { var unbindRequested = false; var generation: UUID }
 enum SpaceConfigurationSafety {
-    struct Recovery { var unbindRequested = false }
-    static func recoveryState(_ space: SpaceData) throws -> Recovery { .init() }
+    static func recoveryState(_ space: SpaceData) throws -> SpaceRecoveryState { .init(generation: space.generation) }
+    static func isCurrent(_ state: SpaceRecoveryState, space: SpaceData) -> Bool { state.generation == space.generation }
     static func resumeLocalRemovals() {}
     static func resumeUnbind(_ space: SpaceData) async -> Bool { true }
     static func canAutomaticallyUpload(_ space: SpaceData) -> Bool { !space.blocked && space.initialized }
@@ -137,16 +140,19 @@ enum SpaceConfigurationSafety {
         if space.pendingUpload {
             space.pendingUpload = false; space.needUploadCloud = false; space.initialized = true
         }
+        CleanupFixture.onReadback?(space)
         return .success(())
     }
 }
 final class NetworkRequest { static let shared = NetworkRequest(); var networkable = true }
 enum SiteDeviceOwnershipReconciler { static func reconcile(siteId: String) {} }
 enum SpaceMembershipCoordinator {
+    static func confirmedSpaceDeletion(siteID: String, spaceID: String) -> Bool { false }
     static func resumeLeaves() async {}
     static func isLeaving(_ space: SpaceData) -> Bool { false }
 }
 final class CloudSynchronizationManager {
+    static let shared = CloudSynchronizationManager()
     func isAddingDevices(to space: SpaceData) -> Bool { false }
     func drainDeviceAddSynchronizations() {}
     let recoveryGate = PendingSynchronizationRecoveryGate()
@@ -159,6 +165,7 @@ final class CloudSynchronizationManager {
     func addSynchronizationHandle(operation: SyncOperation, level: Level) {
         uploads += 1
         if case .syncSite(_, let spaces) = operation { uploadedIDs += spaces.map(\.id) }
+        if case .syncSpace(let space) = operation { uploadedIDs.append(space.id) }
     }
 }
 enum NetowrkReqeustApi {
@@ -192,6 +199,7 @@ enum CleanupFixture {
     static var suspended: CheckedContinuation<Void, Never>?
     static var pauseSpace: String?
     static var onPrepare: ((SpaceData) -> Void)?
+    static var onReadback: ((SpaceData) -> Void)?
     static var onSiteExport: (() -> Void)?
     static var exportedMembers = -1, exportedRevisions: [Int] = []
     static var spaceExports = 0
@@ -249,6 +257,9 @@ enum SiteZoneCleanupBatchTests {
         var zone = SiteTriggerZone(); zone.fields["members"] = .array(members)
         try SiteExtensionStore.update(site) { $0.data.replaceZones([zone]) }
         CleanupFixture.prepared = []; CleanupFixture.failures = []; CleanupFixture.onPrepare = nil
+        CleanupFixture.onReadback = nil
+        CloudSynchronizationManager.shared.uploads = 0
+        CloudSynchronizationManager.shared.uploadedIDs = []
         CleanupFixture.onSiteExport = nil
         CleanupFixture.suspended = nil; CleanupFixture.pauseSpace = nil
         CleanupFixture.exportedMembers = -1; CleanupFixture.exportedRevisions = []
@@ -270,7 +281,32 @@ enum SiteZoneCleanupBatchTests {
         try await testRecovery()
         try await testPendingReadbackBeforeCleanup()
         try await testSitePendingAfterReadback()
+        try await testRecoveryGenerationRequeue()
         print("PASS: production batch/three entries, SQLite restart, read counts, conservative cleanup, failure/cancellation, scope and overlapping ownership")
+    }
+
+    static func testRecoveryGenerationRequeue() async throws {
+        for pending in [false, true] {
+            for variant in ["repair", "clean", "blocked", "account", "region"] {
+                let site = try reset(count: 1, references: 0)
+                let space = site.spaces[0]
+                space.pendingUpload = pending
+                CleanupFixture.onReadback = { target in
+                    target.generation = UUID()
+                    target.needUploadCloud = variant != "clean"
+                    target.blocked = variant == "blocked"
+                    if variant == "account" { UserData.currentUserId = "other" }
+                    if variant == "region" { UserData.currentServerRegion = .second }
+                }
+                let sync = SyncPreparationFixture(space: space)
+                await sync.run()
+                require(sync.failed && !sync.requestReady, "Superseded recovery cannot submit the old configuration")
+                let queued = CloudSynchronizationManager.shared.uploadedIDs
+                require(queued == (variant == "repair" ? [space.id] : []),
+                        "Only a writable pending repair in the original account/region must be requeued")
+            }
+        }
+        print("PASS: production lifecycle invalidation requeues recovered generation before upload and after pending readback; clean, blocked and changed-scope work stays excluded")
     }
 
     static func testStoreCacheInvalidation() throws {
@@ -638,4 +674,11 @@ enum SiteZoneCleanupBatchTests {
                 "A Site storage failure does not skip another Site's recoverable work")
         _ = site
     }
+}
+
+final class GatewayModel {
+    struct Association { let spaceId: String }
+    var associatedSpaces: [Association] = []
+    static func load(siteId: String) -> [GatewayModel] { [] }
+    func save() -> Bool { true }
 }

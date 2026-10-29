@@ -2,6 +2,8 @@ import Foundation
 import NordicSigMeshSDK
 import CryptoKit
 
+let spaceConfigurationDidRecoverNotification = Notification.Name("spaceConfigurationDidRecover")
+
 enum SpaceMembershipCoordinator {
     static let store = SpaceMembershipStore(root: URL(fileURLWithPath: NSHomeDirectory())
         .appendingPathComponent("Library/Application Support/SpaceMembership"))
@@ -51,6 +53,13 @@ enum SpaceMembershipCoordinator {
         guard let context = payload[SpaceMembershipResponseContext.payloadKey] as? [String: String] else { return true }
         return SpaceMembershipResponseContext.matches(context, account: UserData.currentUserId,
             region: String(describing: UserData.currentServerRegion))
+    }
+
+    static func confirmedSpaceDeletion(siteID: String, spaceID: String) -> Bool {
+        let scope = SpaceMembershipRecord.Scope(account: UserData.currentUserId,
+            region: String(describing: UserData.currentServerRegion), siteID: siteID, spaceID: spaceID)
+        guard let record = try? store.read(scope) else { return false }
+        return record.deletesSpace == true && (record.phase == .confirmed || record.phase == .left)
     }
 
     static func canReceiveSite(_ siteID: String) -> Bool {
@@ -135,15 +144,16 @@ enum SpaceMembershipCoordinator {
         return url
     }
 
-    @MainActor static func queueLeave(_ space: SpaceData, site: SiteData, savedCopy: URL? = nil) async throws {
-        guard space.permission != .owner else { throw CocoaError(.userCancelled) }
+    @MainActor static func queueLeave(_ space: SpaceData, site: SiteData, savedCopy: URL? = nil, deletesSpace: Bool = false) async throws {
+        guard deletesSpace ? space.permission == .owner : space.permission != .owner else { throw CocoaError(.userCancelled) }
         var record = try store.read(scope(space)) ?? SpaceMembershipRecord(scope: scope(space))
         guard record.phase == .joined else { return }
         record.networkID = record.networkID ?? (space.meshNetworkId.isEmpty ? nil : space.meshNetworkId)
         record.savedCopy = savedCopy?.lastPathComponent
+        record.deletesSpace = deletesSpace ? true : nil
         // Never infer unused addresses from an incomplete configuration.
         var recycle: [String: Any] = ["device": [Int](), "group": [Int](), "scene": [Int]()]
-        if site.spaces.count == 1, allowsConfiguration(space), !SpaceConfigurationSafety.isBlocked(space) {
+        if !deletesSpace, site.spaces.count == 1, allowsConfiguration(space), !SpaceConfigurationSafety.isBlocked(space) {
             let data = await site.getRecycleAddressData(unbindSpaces: [space], prepareOnly: true)
             recycle = ["device": data.deviceAddresses, "group": data.groupAddresses, "scene": data.sceneAddresses]
             if let provisioner = data.provisionerData { recycle["provisioner"] = provisioner }
@@ -184,8 +194,13 @@ enum SpaceMembershipCoordinator {
                 guard site.save() else { throw CocoaError(.fileWriteUnknown) }
             }
         }
+        if record.deletesSpace == true {
+            guard SpaceSyncCleanupCoordinator.finishSpaceRemoval(siteID: record.scope.siteID,
+                spaceID: record.scope.spaceID) else { throw CocoaError(.fileWriteUnknown) }
+        }
         var completed = record; completed.phase = .left
         try store.replace(completed, expected: record)
+        SpaceMembershipResponseContext.invalidate()
         NotificationCenter.default.post(name: .init(SitesDataRefreshNotifiacationName), object: nil)
     }
 
@@ -197,7 +212,7 @@ enum SpaceMembershipCoordinator {
             if record.phase == .left { return nil }
             if record.phase == .confirmed { try finishLeave(record); return nil }
             guard NetworkRequest.shared.networkable else { return .noNetwork }
-            if record.phase == .requesting || record.phase == .unknown {
+            if record.deletesSpace == true || record.phase == .requesting || record.phase == .unknown {
                 let space = SpaceData.load(siteId: scope.siteID, spaceId: scope.spaceID).first
                 let probe = await NetworkRequest.shared.request(.spaceInfo(siteId: scope.siteID, spaceId: scope.spaceID,
                     password: space?.authorizationPassword))
@@ -205,11 +220,12 @@ enum SpaceMembershipCoordinator {
                 switch probe {
                 case .success(let response):
                     guard let remote = response["data"] as? [String: Any], remote["uuid"] as? String == scope.spaceID,
-                          let role = remote["role"] as? String, role == "editor" || role == "visitor" else {
+                          let role = remote["role"] as? String,
+                          (record.deletesSpace == true ? role == "owner" : role == "editor" || role == "visitor") else {
                         return .configurationUploadUnconfirmed
                     }
                 case .failure(let error):
-                    if error == .noSpacePermission || error == .noSitePermission || error == .resourceNotFound {
+                    if error == .resourceNotFound || (record.deletesSpace != true && (error == .noSpacePermission || error == .noSitePermission)) {
                         var confirmed = record; confirmed.phase = .confirmed
                         try store.replace(confirmed, expected: record)
                         try finishLeave(confirmed)
@@ -217,7 +233,7 @@ enum SpaceMembershipCoordinator {
                     }
                     // Configuration passwords do not authorize membership removal.
                     // Retry the independent leave request without interpreting this as success.
-                    if error != .incorrectPassword && error != .spacePasswordOverdue { return error }
+                    if record.deletesSpace == true || (error != .incorrectPassword && error != .spacePasswordOverdue) { return error }
                 }
             }
             // Retrying targets the same membership: rejoin is blocked until confirmed.
@@ -228,17 +244,34 @@ enum SpaceMembershipCoordinator {
                 guard let iv = item["ivIndex"] as? Int, let addresses = item["addresses"] as? [Int] else { return nil }
                 return (iv, addresses)
             }
-            let result = await NetworkRequest.shared.request(.unbindSpaces(siteId: scope.siteID, spaceIds: [scope.spaceID],
+            let api: NetowrkReqeustApi = record.deletesSpace == true
+                ? .spaceDelete(siteId: scope.siteID, spaceId: scope.spaceID)
+                : .unbindSpaces(siteId: scope.siteID, spaceIds: [scope.spaceID],
                 recycleDeviceAddresses: recycle["device"] as? [Int] ?? [],
                 recycleGroupAddresses: recycle["group"] as? [Int] ?? [],
                 recycleSceneAddresses: recycle["scene"] as? [Int] ?? [],
-                exclusions: exclusions, provisionerData: recycle["provisioner"] as? [String: Any]))
+                exclusions: exclusions, provisionerData: recycle["provisioner"] as? [String: Any])
+            let result = await NetworkRequest.shared.request(api)
             guard current(record) else { return .configurationUploadUnconfirmed }
             var next = record
             switch result {
-            case .success: next.phase = .confirmed
+            case .success:
+                if record.deletesSpace == true {
+                    // POST acceptance alone does not establish deletion. Persist
+                    // the uncertain outcome before an independent authoritative GET.
+                    next.phase = .unknown
+                    try store.replace(next, expected: record)
+                    let verification = await NetworkRequest.shared.request(.spaceInfo(siteId: scope.siteID,
+                        spaceId: scope.spaceID, password: nil))
+                    guard current(next) else { return .configurationUploadUnconfirmed }
+                    guard case .failure(let error) = verification, error == .resourceNotFound else {
+                        return .configurationUploadUnconfirmed
+                    }
+                    record = next
+                }
+                next.phase = .confirmed
             case .failure(let error):
-                if error == .noSpacePermission || error == .noSitePermission || error == .resourceNotFound {
+                if error == .resourceNotFound || (record.deletesSpace != true && (error == .noSpacePermission || error == .noSitePermission)) {
                     next.phase = .confirmed
                 } else {
                     next.phase = .unknown
@@ -271,6 +304,9 @@ extension SpaceData {
             return .rejected("staleMembershipResponse")
         }
         guard !SpaceMembershipCoordinator.isLeaving(self) else { return .rejected("spaceLeaving") }
+        guard fixWithDefaults || SpaceConfigurationSafety.canResumeReviewedRecovery(self, remote: payload) else {
+            return .rejected("recoverySourceChanged")
+        }
         guard let remoteNetwork = SpaceKeyIntegrity.decodeNetwork(payload),
               let remoteKeys = SpaceKeyIntegrity.pair(payload, networkID: remoteNetwork.networkId.hex) else {
             if authoritativeGET, await repairMissingServerKeys(payload) {
@@ -325,6 +361,10 @@ extension SpaceData {
                     try SpaceMembershipCoordinator.store.replace(completed, expected: membership)
                 }
                 applyConfigurationState(from: candidate)
+                if outcome.status == .applied {
+                    SpaceSyncCleanupCoordinator.finishRecoveryReferences(self)
+                    NotificationCenter.default.post(name: spaceConfigurationDidRecoverNotification, object: self)
+                }
             }
             return outcome
         } catch { return .rejected("configurationPersistenceFailed") }

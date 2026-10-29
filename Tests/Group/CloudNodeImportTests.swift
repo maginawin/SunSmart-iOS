@@ -52,6 +52,7 @@ enum SpaceConfigurationSafety {
     static func beginImport(_ space: ImportHarness, payload: [String: Any]) -> Bool { stageCount += 1; return stages }
 }
 final class ImportHarness {
+    var reviewedCloudImport = false
     let id = "fixture-space"
     func stage(_ nodeDicts: [[String: Any]], groups: [Int] = [1], groupDicts: [Int] = [1],
                referenceCleanup: Cleanup? = nil) async -> Outcome {
@@ -139,6 +140,16 @@ enum RecoveryMessage {
         SpaceConfigurationSafety.stages = true
         let retried = await harness.stage([original])
         require(retried == .applied, "unchanged original payload can retry after storage recovery")
+        harness.reviewedCloudImport = true
+        SpaceSyncCleanupCoordinator.permitsCleanup = false
+        SpaceConfigurationSafety.stageCount = 0
+        let cleanupUnavailable = await harness.stage([original])
+        require(cleanupUnavailable == .rejected("configurationStagingFailed") && SpaceConfigurationSafety.stageCount == 0,
+            "Reviewed recovery must persist Site cleanup intent before replacing configuration")
+        SpaceSyncCleanupCoordinator.permitsCleanup = true
+        let cleanupRetried = await harness.stage([original])
+        require(cleanupRetried == .applied && SpaceConfigurationSafety.stageCount == 1,
+            "Reviewed recovery resumes after durable cleanup storage becomes available")
         for reason in ["configurationNodeDecodeFailed", "configurationGroupDecodeFailed", "configurationSchedulerRestoreFailed"] {
             require(RecoveryMessage.message(reason) == "space_recovery_data_failed", "decode errors cannot become disk failures")
         }
@@ -157,4 +168,9 @@ enum RecoveryMessage {
         }
         print("Cloud Node import compatibility, error classification and retry tests passed")
     }
+}
+
+enum SpaceSyncCleanupCoordinator {
+    static var permitsCleanup = true
+    static func requestReferenceCleanup(_ value: ImportHarness) -> Bool { permitsCleanup }
 }

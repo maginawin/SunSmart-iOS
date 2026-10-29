@@ -16,6 +16,7 @@ struct SpaceMembershipRecord: Codable, Equatable {
     var networkID: String?
     var initialized = false
     var savedCopy: String?
+    var deletesSpace: Bool? // nil preserves legacy Editor/Visitor leave semantics.
     var recyclePayload: Data?
     var isLeaving: Bool { phase != .joined }
 }

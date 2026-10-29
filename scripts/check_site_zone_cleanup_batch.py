@@ -58,17 +58,15 @@ production += '        }\n    }\n}\n'
 
 # Execute the actual sync preparation/fast-completion branch. Readback is a
 # controlled seam here; its real receipt/identity logic has its own suite.
-sync_start = cloud.index('            for space in self.configurationSpaces {',
+sync_start = cloud.index('            for space in self.configurationSpaces {\n                if case .failure',
                          cloud.index('        configurationUploadTask = AsyncTask'))
 sync_end = cloud.index('            #if DEBUG\n            print("""\n            [CloudSync][Request]', sync_start)
 production += '''extension SyncPreparationFixture {
     func run() async {
-        let account = UserData.currentUserId, region = UserData.currentServerRegion
-        func isCurrentOperation() -> Bool {
-            account == UserData.currentUserId && region == UserData.currentServerRegion
-        }
-        let hadPending = configurationSpaces.contains { SpaceConfigurationSafety.hasPendingUpload($0) }
 '''
+configuration_start = cloud.index('        configurationUploadTask = AsyncTask')
+production += section(cloud[configuration_start:], '            let account = UserData.currentUserId',
+                      '            if case .syncSite(let site, _)')
 production += cloud[sync_start:sync_end]
 production += '        _ = api\n        requestReady = true\n    }\n}\n'
 

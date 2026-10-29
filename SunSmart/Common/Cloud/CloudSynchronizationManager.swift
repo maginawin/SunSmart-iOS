@@ -1302,7 +1302,19 @@ class CloudSynchronizationHandle: NSObject {
                     lifecycle[space.id].map { SpaceConfigurationSafety.isCurrent($0, space: space) } == true
                 }
             }
-            guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
+            func finishSupersededOperation() {
+                self.finishInvalidatedConfiguration()
+                guard account == UserData.currentUserId, region == UserData.currentServerRegion else { return }
+                for space in self.configurationSpaces {
+                    guard let previous = lifecycle[space.id],
+                          let latest = try? SpaceConfigurationSafety.recoveryState(space),
+                          latest.generation != previous.generation,
+                          SpaceConfigurationSafety.canAutomaticallyUpload(space),
+                          !SpaceConfigurationSafety.isBlocked(space), space.needUploadCloud else { continue }
+                    CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSpace(space: space), level: .promptly)
+                }
+            }
+            guard isCurrentOperation() else { finishSupersededOperation(); return }
             let hadPending = self.configurationSpaces.contains { SpaceConfigurationSafety.hasPendingUpload($0) }
             if case .syncSite(let site, _) = self.operation, !site.uploadCloud,
                let createdTimestamp = lifecycle.values.compactMap(\.siteCreationTimestamp).max() {
@@ -1322,7 +1334,7 @@ class CloudSynchronizationHandle: NSObject {
             for space in self.configurationSpaces {
                 if case .failure(let error) = await SpaceConfigurationSafety.resumeUpload(space) {
                     guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
-                    guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
+                    guard isCurrentOperation() else { finishSupersededOperation(); return }
                     self.finishConfigurationFailure(error)
                     return
                 }
@@ -1333,12 +1345,12 @@ class CloudSynchronizationHandle: NSObject {
             // Any cleanup edits must be included before deciding this sync is done.
             guard let api = await self.operation.getNetworkApi() else {
                 guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
-                guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
+                guard isCurrentOperation() else { finishSupersededOperation(); return }
                 self.finishExportFailure()
                 return
             }
             guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
-            guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
+            guard isCurrentOperation() else { finishSupersededOperation(); return }
             if hadPending && !self.configurationSpaces.contains(where: { $0.needUploadCloud }) {
                 let sitePending: Bool
                 switch self.operation {
@@ -1369,7 +1381,7 @@ class CloudSynchronizationHandle: NSObject {
             """)
             #endif
             guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
-            guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
+            guard isCurrentOperation() else { finishSupersededOperation(); return }
             let submissions = api.configurationSpacePayloads
             let creationTimestamp: Int64?
             if case .siteAdd = api { creationTimestamp = api.configurationSiteTimestamp } else { creationTimestamp = nil }
@@ -1388,7 +1400,7 @@ class CloudSynchronizationHandle: NSObject {
             }
             let requestResult = await NetworkRequest.shared.request(api)
             var result = requestResult
-            guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
+            guard isCurrentOperation() else { finishSupersededOperation(); return }
             var confirmedConfigurationIds = Set<String>()
             switch result {
             case .success:
@@ -1434,7 +1446,7 @@ class CloudSynchronizationHandle: NSObject {
             let completedConfigurationIds = confirmedConfigurationIds
             await MainActor.run {
                 guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
-                guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
+                guard isCurrentOperation() else { finishSupersededOperation(); return }
                 switch completionResult {
                 case .success:
                     #if DEBUG

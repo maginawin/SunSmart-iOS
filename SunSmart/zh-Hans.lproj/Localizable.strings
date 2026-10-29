@@ -2582,3 +2582,24 @@
 "site_create_unknown" = "未知";
 "site_create_collapsed" = "已收起";
 "site_create_expanded" = "已展开";
+
+// Space configuration repair
+"space_repair_title" = "修复空间";
+"space_repair_review" = "查看并修复";
+"space_repair_explanation" = "你的 Owner/Editor 权限仍然有效。可核对服务器数据或清除不需要的记录来修复空间。";
+"space_repair_counts" = "本机：%d 个设备。服务器：%d 个设备（声明计数：%lld）。";
+"space_repair_server_priority" = "配置时间戳相同，以服务器数据为准；本机数据不能覆盖此版本。";
+"space_repair_references" = "清理无效引用";
+"space_repair_remove_selected" = "移除所选设备";
+"space_repair_clear" = "清空空间内容";
+"space_repair_delete" = "永久删除空间";
+"space_repair_select_devices" = "请先从服务器设备列表中选择设备。";
+"space_repair_confirm" = "确认对已核对的空间数据执行此操作？替换或清空数据可能丢弃本地修改，执行前会保存备份。清除记录不会复位实体设备；再次添加前请手工复位。";
+"space_repair_pending_upload" = "本机修复完成，等待服务器确认。";
+"space_repair_delete_pending" = "空间删除尚未确认。请在网络或服务器问题解决后重试。";
+
+"space_repair_differences" = "仅在本机：%@。\n仅在服务器：%@。";
+"space_repair_clear_confirm" = "清空此 Space 中的全部设备、组、场景、日程、开关、区域及控制器配置？保留 Space 和访问权限，操作前保存备份。实体设备不会恢复出厂设置，重新添加前需手工复位。";
+"space_repair_delete_confirm" = "为所有成员永久删除此 Space 及其内容？操作前保存备份，实体设备不会复位。此操作需要服务器确认。";
+"space_repair_references_confirm" = "清理选定配置中可确认已失效的引用并重算设备数量。同时间戳采用服务器数据；设备成员不一致时需先选择数据来源。操作前保存备份。";
+"space_repair_server_devices" = "服务器设备";

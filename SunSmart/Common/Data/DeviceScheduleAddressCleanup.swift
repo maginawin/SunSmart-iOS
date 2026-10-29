@@ -188,6 +188,8 @@ struct SpaceRecoveryState: Codable, Equatable {
     /// The exact cloud business snapshot explicitly selected for default repair.
     /// Used only before POST; upload confirmation still compares the unmodified GET.
     var defaultRecoverySource: Data? = nil
+    /// Explicit conflict recovery must be reviewed again if its cloud source changes.
+    var recoveryRequiresReview: Bool? = nil
     var unbindRequested: Bool?
     var requiresRemoteImport: Bool?
     var siteCreationTimestamp: Int64?

@@ -13,6 +13,8 @@ class SpaceMoreViewController: UIViewController {
         
         var data: (icon: String, title: String) {
             switch self {
+            case .repair:
+                return ("device_parameter", "space_repair_title".localizedString)
             case .ble:
                 return ("ota_ble", "ota_ble_title".localizedString)
             case .mesh:
@@ -32,6 +34,7 @@ class SpaceMoreViewController: UIViewController {
         
         /// ble直连
         case ble
+        case repair
         /// mesh分发
         case mesh
         /// 设备参数
@@ -103,6 +106,7 @@ class SpaceMoreViewController: UIViewController {
             currentOptions.append(.hdbConfiguration)
         }
 
+        if SpaceRepairViewController.canOpen(space) { currentOptions.append(.repair) }
         return currentOptions
     }
 
@@ -194,6 +198,8 @@ extension SpaceMoreViewController: UICollectionViewDataSource, UICollectionViewD
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         switch options[indexPath.item] {
+        case .repair:
+            navigationController?.pushViewController(SpaceRepairViewController(space: space), animated: true)
         case .ble:
             guard self.space.bleOTAOperates.contains(.edit) else {
                 showEditingUnavailable()

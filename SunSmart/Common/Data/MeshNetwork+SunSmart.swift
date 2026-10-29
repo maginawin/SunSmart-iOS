@@ -477,6 +477,15 @@ extension SpaceData {
     @discardableResult func delete() -> Bool {
         guard SunSmartDataManager.shared.db != nil, SpaceConfigurationSafety.beginRemoval(self) else { return false }
         CloudSynchronizationManager.shared.cancelSynchronizationHandle(space: self)
+        if let existing = MeshNetwork.load(meshUUID: meshUUID, subnetworkId: meshNetworkId) {
+            // removeSubnetwork saves the loaded Site instance when available.
+            // Update that cache too, so its save cannot replace the new exclusions.
+            let current = MeshNetworkManager.instance.meshNetwork
+            let exclusionNetwork = current?.uuid.uuidString == meshUUID ? current! : existing
+            for address in existing.nodes.filter({ !$0.isLocalProvisioner }).flatMap({ $0.elements.map(\.unicastAddress) }) {
+                exclusionNetwork.insetExclusionAddress(ivIndex: exclusionNetwork.currentIVIndex, address: address)
+            }
+        }
         if let network = MeshNetwork.load(meshUUID: meshUUID, allData: false),
            network.networkKeys.contains(where: { $0.networkId.hex == meshNetworkId }) {
             guard MeshNetworkManager.removeSubnetwork(meshUUID: meshUUID, networkId: meshNetworkId) else { return false }
@@ -489,7 +498,8 @@ extension SpaceData {
               SceneInfo.delete(meshUUID: meshUUID, networkId: meshNetworkId),
               Schedule.deleteAll(meshUUID: meshUUID, meshNetworkId: meshNetworkId),
               Profile.deleteProfiles(meshUUID: meshUUID, meshNetworkId: meshNetworkId),
-              DeviceSwitchData.deleteSwitchs(meshUUID: meshUUID, networkId: meshNetworkId) else { return false }
+              DeviceSwitchData.deleteSwitchs(meshUUID: meshUUID, networkId: meshNetworkId),
+              DeviceEmerFireData.deleteAll(meshUUID: meshUUID, networkId: meshNetworkId) else { return false }
         return deleteData()
     }
 

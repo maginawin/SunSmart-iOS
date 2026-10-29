@@ -2566,3 +2566,24 @@
 "site_create_unknown" = "Unknown";
 "site_create_collapsed" = "Collapsed";
 "site_create_expanded" = "Expanded";
+
+// Space configuration repair
+"space_repair_title" = "Repair Space";
+"space_repair_review" = "Review & Repair";
+"space_repair_explanation" = "Your Owner/Editor access is still active. Review server data or remove unwanted records to repair this Space.";
+"space_repair_counts" = "This phone: %d devices. Server: %d devices (reported count: %lld).";
+"space_repair_server_priority" = "The configuration timestamps match. Server data takes precedence; this phone cannot overwrite that version.";
+"space_repair_references" = "Repair Invalid References";
+"space_repair_remove_selected" = "Remove Selected Devices";
+"space_repair_clear" = "Clear Space Contents";
+"space_repair_delete" = "Delete Space Permanently";
+"space_repair_select_devices" = "Select devices from the server list first.";
+"space_repair_confirm" = "Apply this action to the reviewed Space data? Replacing or clearing data may discard local edits. A backup will be saved first. Removing records does not reset physical devices; manually reset them before adding them again.";
+"space_repair_pending_upload" = "Local repair completed. Waiting for server confirmation.";
+"space_repair_delete_pending" = "Space deletion is not confirmed. Retry after the network or server issue is resolved.";
+
+"space_repair_differences" = "Only on this phone: %@.\nOnly on the server: %@.";
+"space_repair_clear_confirm" = "Clear all devices, groups, scenes, schedules, switches, zones and controller settings in this Space? The Space and its access will remain. A backup is saved first. Physical devices are not reset; reset them manually before adding them again.";
+"space_repair_delete_confirm" = "Permanently delete this Space and its contents for all members? A backup is saved first. Physical devices are not reset. This action requires server confirmation.";
+"space_repair_references_confirm" = "Repair proven missing references and device counts in the chosen configuration. Equal timestamps use server data. Local and server device differences require choosing a source first. A backup is saved before changes.";
+"space_repair_server_devices" = "Server Devices";

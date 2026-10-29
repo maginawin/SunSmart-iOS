@@ -79,7 +79,7 @@ test += '\n' + section(imports, 'enum CloudNodeImport {', '\n/// Stage timings')
 # Mesh preparation/export and App database reads are controlled test boundaries.
 preparation = section(imports, '    func update(\n        spaceJsonData:',
     '        return await withCheckedContinuation { continuation in')
-zone_gate = section(imports, '            if !resumingImport, SpaceConfigurationIntegrityPolicy.legacySpaceZoneDeletionNeedsReview(',
+zone_gate = section(imports, '            if !resumingImport, !reviewedCloudImport, SpaceConfigurationIntegrityPolicy.legacySpaceZoneDeletionNeedsReview(',
                     '            let proximityImportDisposition =')
 zone_gate = zone_gate.replace('continuation.resume(returning: .skipped)\n                return', 'return .skipped')
 test = test.replace('// IMPORT_PREPARATION_METHOD', '@MainActor\n' + preparation
