@@ -433,20 +433,63 @@ final class SpaceDebugUARTViewController: UIViewController {
     }
 
     @objc private func shareButtonTapped() {
+        guard viewIfLoaded?.window != nil,
+              presentedViewController == nil,
+              !isBeingDismissed, !isMovingFromParent,
+              navigationController?.isBeingDismissed != true,
+              transitionCoordinator == nil else {
+            #if DEBUG
+            print("[UART Share] presentation skipped: page unavailable or presentation/transition active")
+            #endif
+            return
+        }
         view.endEditing(true)
+        #if DEBUG
+        let exportStartedAt = CFAbsoluteTimeGetCurrent()
+        #endif
         let context = makeExportContext()
         let cachedMessages = SpaceDebugUARTManager.shared.cachedMessages(for: uartKey)
 
         do {
             let fileURL = try SpaceDebugUARTLogExporter.makeFileURL(context: context, messages: cachedMessages)
+            #if DEBUG
+            let fileSize = (try? fileURL.resourceValues(forKeys: [.fileSizeKey]))?.fileSize ?? 0
+            let exportMilliseconds = Int((CFAbsoluteTimeGetCurrent() - exportStartedAt) * 1_000)
+            print("[UART Share] export ready: messages=\(cachedMessages.count), bytes=\(fileSize), elapsedMs=\(exportMilliseconds)")
+            #endif
             let controller = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
-            if let popoverController = controller.popoverPresentationController {
-                popoverController.barButtonItem = navigationItem.rightBarButtonItem
+            if traitCollection.userInterfaceIdiom == .pad,
+               let popoverController = controller.popoverPresentationController {
+                // A view anchor avoids the bar-button morph transition on newer iPadOS versions.
+                view.layoutIfNeeded()
+                let visibleFrame = view.safeAreaLayoutGuide.layoutFrame
                 popoverController.sourceView = view
-                popoverController.sourceRect = CGRect(x: view.bounds.midX, y: view.bounds.midY, width: 0, height: 0)
+                popoverController.sourceRect = CGRect(x: visibleFrame.midX, y: visibleFrame.midY, width: 1, height: 1)
+                popoverController.permittedArrowDirections = []
             }
-            present(controller, animated: true)
+            controller.completionWithItemsHandler = { [weak self] _, completed, _, error in
+                #if DEBUG
+                print("[UART Share] activity ended: completed=\(completed), errorCode=\((error as NSError?)?.code ?? 0)")
+                #endif
+                guard error != nil else { return }
+                DispatchQueue.main.async { [weak self] in
+                    guard let self, self.viewIfLoaded?.window != nil,
+                          !self.isBeingDismissed, !self.isMovingFromParent else { return }
+                    XWHUDManager.showErrorTipHUD("debug_uart_export_failed_message".localizedString)
+                }
+            }
+            #if DEBUG
+            print("[UART Share] presenting: iPad=\(traitCollection.userInterfaceIdiom == .pad)")
+            #endif
+            present(controller, animated: true) {
+                #if DEBUG
+                print("[UART Share] presentation completed")
+                #endif
+            }
         } catch {
+            #if DEBUG
+            print("[UART Share] export failed: errorCode=\((error as NSError).code)")
+            #endif
             XWHUDManager.showErrorTipHUD("debug_uart_export_failed_message".localizedString)
         }
     }
