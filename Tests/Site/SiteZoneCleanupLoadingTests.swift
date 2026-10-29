@@ -106,15 +106,6 @@ enum SiteZoneCleanupLoadingTests {
         network.destructive = true
         let unsafe = SiteTriggerZoneTopologyReader.cleanupClassifier(site: site)
         precondition(unsafe(member("space-0")) == .unknown, "Unsafe topology must not authorize deletion")
-        SpaceMembershipCoordinator.deleted = ["space-0"]
-        let deleted = SiteTriggerZoneTopologyReader.cleanupClassifier(site: site)
-        precondition(deleted(member("space-0")) == .obsolete, "Confirmed Space deletion does not require its old Mesh")
-        precondition(deleted(member("space-1")) == .unknown, "Unrelated unavailable Space stays protected")
         print("PASS: lazy Zone inventories, zero reads for empty/malformed Zones, one read per referenced Space, failed-read caching and conservative cleanup")
     }
-}
-
-enum SpaceMembershipCoordinator {
-    static var deleted = Set<String>()
-    static func confirmedSpaceDeletion(siteID: String, spaceID: String) -> Bool { deleted.contains(spaceID) }
 }

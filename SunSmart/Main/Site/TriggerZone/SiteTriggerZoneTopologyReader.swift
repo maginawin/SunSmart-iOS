@@ -112,10 +112,6 @@ enum SiteTriggerZoneTopologyReader {
             return loaded
         }
         return { value in
-            if let display = SiteTriggerZoneDisplayMember(value: value),
-               SpaceMembershipCoordinator.confirmedSpaceDeletion(siteID: site.id, spaceID: display.identity.spaceID) {
-                return .obsolete
-            }
             guard let display = SiteTriggerZoneDisplayMember(value: value),
                   let primary = display.primaryAddress, case .object(let fields) = value,
                   case .integer(let rawGroup) = fields["groupAddress"],

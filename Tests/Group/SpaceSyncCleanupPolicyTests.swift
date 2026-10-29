@@ -194,52 +194,7 @@ enum SpaceSyncCleanupPolicyTests {
         print("PASS: external snapshot devices=\(cleaned.devices.count) relayAliases=\(aliasCount) proximityMutations=\(tasks); all other fields retained")
     }
 
-    static func testRecoveryPayloads() throws {
-        var value = payload()
-        value["nodes"] = (value["nodes"] as! [[String: Any]]).map { original in
-            var item = original; item["deviceKey"] = String(repeating: "A1", count: 16)
-            var elements = item["elements"] as! [[String: Any]]; elements[0]["index"] = 0
-            item["elements"] = elements; return item
-        }
-        value["switches"] = [["id": "keep", "proxyNodeAddress": "0020", "bindGroupAddresses": ["C001", "C009"]]]
-        value["emergencyFireControllers"] = [["id": "fire", "bindNodeAddress": "0020"]]
-        value["deviceCount"] = 3
-        let removed = try SpaceRecoveryPayloadPolicy.removing([second], from: value)
-        precondition((removed["nodes"] as! [Any]).count == 1 && removed["deviceCount"] as? Int == 1)
-        let switches = removed["switches"] as! [[String: Any]]
-        precondition(switches.count == 1 && switches[0]["proxyNodeAddress"] == nil)
-        precondition(switches[0]["bindGroupAddresses"] as? [String] == ["C001"])
-        precondition((removed["emergencyFireControllers"] as! [[String: Any]])[0]["bindNodeAddress"] == nil)
-        let topology = try SpaceSyncCleanupPolicy.normalize(removed)
-        precondition(topology.topology.snapshot.spaceZones[0].members.count == 1)
-        let again = try SpaceRecoveryPayloadPolicy.repair(removed)
-        let identical = try jsonData(again) == jsonData(removed)
-        precondition(identical, "Recovery must converge")
-        var scheduled = value
-        var scheduledGroups = scheduled["groups"] as! [[String: Any]]
-        scheduledGroups[0]["profile"] = profile(8)
-        scheduled["groups"] = scheduledGroups
-        scheduled["schedules"] = [["id": 0, "profiles": [
-            ["groupAddress": "C001", "profileSceneNumber": "FF01"],
-            ["groupAddress": "C001", "profileSceneNumber": "FF02"],
-            ["groupAddress": "C009", "profileSceneNumber": "FF01"]]]]
-        let repairedSchedule = try SpaceRecoveryPayloadPolicy.repair(scheduled)["schedules"] as! [[String: Any]]
-        let targets = repairedSchedule[0]["profiles"] as! [[String: Any]]
-        precondition(targets.count == 1 && targets[0]["profileSceneNumber"] as? String == "FF01",
-                     "Keep valid profile targets and remove missing groups/scenes")
-        var damaged = value; damaged["groups"] = "broken"; damaged["schedules"] = "broken"
-        for hdb in [false, true] {
-            let cleared = try SpaceRecoveryPayloadPolicy.clearing(damaged, hdb: hdb)
-            precondition((cleared["nodes"] as! [Any]).isEmpty && (cleared["groups"] as! [Any]).isEmpty)
-            let configuration = try HDBLightingZonePolicy.decode(payload: cleared)
-            precondition(hdb ? configuration?.devices.isEmpty == true : configuration == nil)
-        }
-        do { _ = try SpaceRecoveryPayloadPolicy.removing(["unknown"], from: value); preconditionFailure("Changed selection must reject") } catch {}
-        print("PASS: selected removal cleans topology/proxies/controller bindings/counts; damaged clear works for Standard/HDB and remains idempotent")
-    }
-
     static func main() throws {
-        try testRecoveryPayloads()
         let valid = try SpaceSyncCleanupPolicy.normalize(payload())
         precondition(!valid.didChange, "A valid, possibly offline device remains in the topology")
         var missing = payload()

@@ -18,7 +18,6 @@ with tempfile.TemporaryDirectory(prefix="space-sync-cleanup-") as directory:
              "SunSmart/Main/Group/Model/ProximityLightingTopologyPolicy.swift",
              "SunSmart/Main/Group/Model/ProximityLightingTopologyReconciler.swift",
              "SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift",
-             "SunSmart/Main/Timed/Model/TimedSchedulerSlotPolicy.swift",
              "Tests/Group/SpaceSyncCleanupPolicyTests.swift"]
     subprocess.run(["swiftc", "-parse-as-library", *[str(ROOT / file) for file in files], "-o", binary], check=True)
     command = [binary]

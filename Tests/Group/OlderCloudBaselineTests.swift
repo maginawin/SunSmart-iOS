@@ -194,7 +194,9 @@ extension SpaceRecoveryReceiptTests {
                              "ordinary GET must leave the stale-baseline exemption and arbitrate Profiles")
             } else {
                 let result = await S.resumeUpload(space)
-                if case .failure = result { preconditionFailure("recovered version must resume: " + mode) }
+                if mode == "sameTime" {
+                    if case .success = result { preconditionFailure("equal-version Profile differences require review") }
+                } else if case .failure = result { preconditionFailure("recovered version must resume: " + mode) }
             }
             precondition(!S.needsOlderCloudBaselineReview(space))
             if mode == "missingFailure" {
@@ -203,14 +205,8 @@ extension SpaceRecoveryReceiptTests {
             }
             let state = try S.recoveryState(space)
             precondition(state.olderCloudBaselineFailure == nil && state.submission == nil)
-            if mode == "sameTime" {
-                precondition(space.lastUploadCloudTimestamp == 110 && !S.isBlocked(space))
-                precondition(P.integer((space.groups[0]["profile"] as! [String: Any])["occupancyLevel"]) == 734,
-                             "Equal-version server Profile replaces the local draft")
-                continue
-            }
             precondition(space.lastUploadCloudTimestamp == 100 && request.uploads == uploads)
-            if mode == "unrelatedBlock" {
+            if mode == "sameTime" || mode == "unrelatedBlock" {
                 precondition(S.isBlocked(space) && space.lastUpdate == 110)
                 precondition(S.debugSnapshotStatus(space)["blockedReason"] as? String
                     == (mode == "sameTime" ? "profileTimestampConflict" : "incompleteImportedTopology"))
@@ -236,7 +232,7 @@ extension SpaceRecoveryReceiptTests {
             precondition(request.responses.isEmpty && request.uploads == uploads + 1)
             precondition(reopened.lastUploadCloudTimestamp == reopened.lastUpdate && !reopened.needUploadCloud && !S.hasPendingUpload(reopened))
         }
-        print("PASS: recovered cloud versions leave stale-review state; upload/import arbitrate Profiles, apply equal-version server data and preserve unrelated blocks and retry failed persistence")
+        print("PASS: recovered cloud versions leave stale-review state; upload/import arbitrate Profiles, preserve equal-version/unrelated blocks and retry failed persistence")
     }
 
     @MainActor static func testOlderCloudAuthorityRecovery() async throws {

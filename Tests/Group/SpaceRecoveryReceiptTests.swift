@@ -46,15 +46,15 @@ final class SpaceData {
     // Full SDK/database import is exercised separately. This boundary executes
     // the real repair staging and finalization when a newer GET supersedes it.
     @MainActor func restoreConfiguration(spaceJsonData: [String: Any], authoritativeGET: Bool,
-                                        fixWithDefaults: Bool = false) async -> RestoreOutcome {
+                                        fixWithDefaults: Bool) async -> RestoreOutcome {
         defaultRestoreCalls += 1
-        guard authoritativeGET,
-              (SpaceConfigurationSafety.hasReviewedCloudImport(self) || (fixWithDefaults && SpaceConfigurationSafety.prepareDefaultConfigurationImport(self, remote: spaceJsonData))),
+        guard authoritativeGET, fixWithDefaults,
+              SpaceConfigurationSafety.prepareDefaultConfigurationImport(self, remote: spaceJsonData),
               let selected = SpaceConfigurationSafety.pendingImport(self),
               SpaceConfigurationSafety.beginImport(self, payload: selected) else { return .init(status: .rejected) }
         nodes = selected["nodes"] as! [[String: Any]]
         groups = selected["groups"] as! [[String: Any]]
-        exportValues = selected.filter { ["spaceData", "switches", "emergencyFireControllers", "scenes", "schedules", "deviceCount"].contains($0.key) }
+        exportValues = ["spaceData": selected["spaceData"] as Any]
         lastUpdate = SpaceConfigurationIntegrityPolicy.integer(selected["updateTimestamp"])!
         lastUploadCloudTimestamp = lastUpdate
         return .init(status: SpaceConfigurationSafety.finishImport(self) ? .applied : .rejected)
@@ -171,13 +171,6 @@ final class NetworkRequest {
 }
 @main struct SpaceRecoveryReceiptTests {
     @MainActor static func main() async throws {
-        if let raw = ProcessInfo.processInfo.environment["SUNSMART_EQUAL_REPAIR_SAMPLES"], let data = raw.data(using: .utf8) {
-            defer { try? FileManager.default.removeItem(at: SpaceConfigurationSafety.testRoot) }
-            try await testEqualVersionFieldSample(JSONDecoder().decode([String].self, from: data))
-            return
-        }
-        try await testLegacyReviewedRecoverySource()
-        try await testEqualVersionRecovery()
         try await testLocalMembershipCompatibility()
         defer {
             try? FileManager.default.removeItem(at: SpaceConfigurationSafety.testRoot)
@@ -975,7 +968,7 @@ final class NetworkRequest {
             NetworkRequest.shared.result = .success(["data": stripped])
             let calls = NetworkRequest.shared.calls
             if case .success = await S.resumeUpload(space) { preconditionFailure("Missing snapshots cannot confirm") }
-            precondition(NetworkRequest.shared.calls == calls + 1 && S.hasPendingUpload(space),
+            precondition(NetworkRequest.shared.calls == calls + 3 && S.hasPendingUpload(space),
                          "role=\(permission) calls=\(NetworkRequest.shared.calls - calls) pending=\(S.hasPendingUpload(space))")
             let strippedMatches = await S.verifyUploadedConfiguration(space, payload: submitted)
             precondition(!strippedMatches)
@@ -1562,10 +1555,6 @@ extension SpaceRecoveryReceiptTests {
                     ProximityLightingImportPreflight.storedSpace = edited
                 }
             }
-            // This regression exercises cloud removals against a newer local revision.
-            // Equal revisions now have a separate server-authoritative recovery test.
-            if ["superseded", "persistedSuperseded"].contains(mode) { remote["updateTimestamp"] = 55 }
-            else { space.lastUpdate = max(space.lastUpdate, 51) }
             let count = space.nodes.count
             let outcome: S.OlderCloudBaselineResult
             if mode == "cancelled" {

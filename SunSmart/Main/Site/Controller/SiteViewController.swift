@@ -1836,9 +1836,9 @@ self.updateAddressData()
         
         SRAlertView(title: "notification".localizedString, message: "alert_delete_message".localizedString, actions: [.cancelAction, SRAlertAction(title: "alert_item_delete".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             guard let self = self else { return }
-            // 云端 Space 的删除统一进入可恢复、可确认的流程。
-            if space.uploadCloud || space.deviceCount > 0 {
-                self.navigationController?.pushViewController(SpaceRepairViewController(space: space), animated: true)
+            // 存在设备则不能删除
+            if space.deviceCount > 0 {
+                XWHUDManager.showErrorTipHUD("site_delete_fail".localizedString)
             }else { // 场所下空间未存在设备
                 // 是否有同步操作正在进行,进行中则取消任务
                 CloudSynchronizationManager.shared.cancelSynchronizationHandle(space: space)

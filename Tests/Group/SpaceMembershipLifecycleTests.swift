@@ -89,7 +89,6 @@ enum SpaceConfigurationSafety {
     static func isBlocked(_ space: SpaceData) -> Bool { false }
     static var reviewed = false, defaultPreparationSucceeds = true
     static func hasReviewedCloudImport(_ space: SpaceData) -> Bool { reviewed }
-    static func canResumeReviewedRecovery(_ space: SpaceData, remote: [String: Any]) -> Bool { true }
     static func shouldRefreshDefaultRecovery(_ space: SpaceData, remote: [String: Any]) -> Bool { false }
     static func prepareDefaultConfigurationImport(_ space: SpaceData, remote: [String: Any]) -> Bool {
         if defaultPreparationSucceeds { reviewed = true }
@@ -124,20 +123,16 @@ final class MeshNetwork {
     func remove(node: Int) {}
     func save() -> Bool { true }
 }
-typealias NetowrkReqeustApi = API
-enum API { case spaceDelete(siteId: String, spaceId: String)
-    case spaceInfo(siteId: String, spaceId: String, password: String?)
+enum API { case spaceInfo(siteId: String, spaceId: String, password: String?)
     case unbindSpaces(siteId: String, spaceIds: [String], recycleDeviceAddresses: [Int], recycleGroupAddresses: [Int], recycleSceneAddresses: [Int], exclusions: [(Int, [Int])]?, provisionerData: [String: Any]?) }
 final class NetworkRequest {
     static let shared = NetworkRequest()
     var networkable = true, calls = 0
     var result: Result<[String: Any], NetworkApiError> = .success([:])
-    var responses: [Result<[String: Any], NetworkApiError>] = []
     var probeError: NetworkApiError?
     var onRequest: (() -> Void)?
     func request(_ api: API) async -> Result<[String: Any], NetworkApiError> {
         calls += 1; await Task.yield(); onRequest?()
-        if !responses.isEmpty { return responses.removeFirst() }
         if case .spaceInfo = api, let probeError { return .failure(probeError) }
         return result
     }
@@ -256,52 +251,6 @@ final class CloudSynchronizationManager {
         _ = await SpaceMembershipCoordinator.resumeLeave(SpaceMembershipCoordinator.scope(accountChange))
         precondition(accountChange.deleteCalls == 0)
         UserData.currentUserId = "account"; request.onRequest = nil
-        try await testOwnerDeletion()
         print("PASS: production membership identity, retired rejoin, persistence, upload barrier, stale response, offline/unknown/confirmed leave, cleanup retry and account isolation")
-    }
-}
-
-enum SpaceSyncCleanupCoordinator {
-    static func finishSpaceRemoval(siteID: String, spaceID: String) -> Bool { true }
-    static func finishRecoveryReferences(_ space: SpaceData) {}
-}
-
-let spaceConfigurationDidRecoverNotification = Notification.Name("spaceConfigurationDidRecover")
-
-
-extension SpaceMembershipLifecycleTests {
-    @MainActor static func testOwnerDeletion() async throws {
-        let owner = SpaceData("owner-delete"); owner.permission = .owner
-        owner.meshNetworkId = "canonical"; owner.lastUploadCloudTimestamp = 10
-        _ = owner.save()
-        let site = SiteData([owner]); SiteData.sites[owner.siteId] = site
-        let request = NetworkRequest.shared
-        let scope = SpaceMembershipCoordinator.scope(owner)
-        request.networkable = false
-        try await SpaceMembershipCoordinator.queueLeave(owner, site: site, deletesSpace: true)
-        precondition(site.plans == 0, "Permanent deletion never recycles unreset device addresses")
-        let offline = await SpaceMembershipCoordinator.resumeLeave(scope)
-        precondition(offline == .noNetwork && owner.deleteCalls == 0)
-        request.networkable = true
-        let exists: Result<[String: Any], NetworkApiError> = .success(["data": ["uuid": owner.id, "role": "owner"]])
-        request.responses = [exists, .success([:]), exists]
-        let unconfirmed = await SpaceMembershipCoordinator.resumeLeave(scope)
-        precondition(unconfirmed == .configurationUploadUnconfirmed && owner.deleteCalls == 0)
-        precondition(try SpaceMembershipCoordinator.store.read(scope)?.phase == .unknown)
-        request.responses = [.failure(.noSpacePermission)]
-        let denied = await SpaceMembershipCoordinator.resumeLeave(scope)
-        precondition(denied == .noSpacePermission && owner.deleteCalls == 0, "Revocation is not proof of deletion")
-        request.responses = [.failure(.resourceNotFound)]
-        owner.deleteSucceeds = false
-        _ = await SpaceMembershipCoordinator.resumeLeave(scope)
-        precondition(try SpaceMembershipCoordinator.store.read(scope)?.phase == .confirmed)
-        let calls = request.calls
-        owner.deleteSucceeds = true
-        let completed = await SpaceMembershipCoordinator.resumeLeave(scope)
-        precondition(completed == nil && calls == request.calls)
-        precondition(try SpaceMembershipCoordinator.store.read(scope)?.phase == .left)
-        let editor = SpaceData("editor-delete")
-        do { try await SpaceMembershipCoordinator.queueLeave(editor, site: site, deletesSpace: true); preconditionFailure("Editor cannot delete Space") } catch {}
-        print("PASS: Owner permanent deletion survives offline/HTTP acceptance/uncertain readback/revocation/restart cleanup; Editor denied")
     }
 }

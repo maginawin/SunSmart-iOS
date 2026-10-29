@@ -373,24 +373,11 @@ class SpaceViewController: WMPageController {
     }
     
     var opensConfigurationReview = false
-    private var offeredConfigurationRepair = false
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         
         updateSyncState()
-        if !opensConfigurationReview, !offeredConfigurationRepair,
-           SpaceRepairViewController.canOpen(space), SpaceConfigurationSafety.requiresConfigurationReview(space),
-           presentedViewController == nil {
-            offeredConfigurationRepair = true
-            let alert = UIAlertController(title: "space_repair_title".localizedString,
-                message: "space_repair_explanation".localizedString, preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: "cancel".localizedString, style: .cancel))
-            alert.addAction(UIAlertAction(title: "space_repair_review".localizedString, style: .default) { [weak self] _ in
-                self?.showConfigurationRecovery()
-            })
-            present(alert, animated: true)
-        }
         if opensConfigurationReview, SpaceConfigurationSafety.requiresConfigurationReview(space) {
             opensConfigurationReview = false
             showConfigurationRecovery()
@@ -623,18 +610,6 @@ class SpaceViewController: WMPageController {
         }
         
         
-        NotificationCenter.default.addObserver(forName: spaceConfigurationDidRecoverNotification, object: nil, queue: .main) { [weak self] notification in
-            guard let self, let updated = notification.object as? SpaceData,
-                  updated.id == self.space.id, updated.meshUUID == self.space.meshUUID,
-                  updated.meshNetworkId == self.space.meshNetworkId else { return }
-            self.space.applyConfigurationState(from: updated)
-            guard self.loadNetworkData, !self.hasStoppedPresenceTracking else { return }
-            MeshNetworkManager.instance.loadExtensionData { [weak self] loaded in
-                guard let self, loaded, !self.hasStoppedPresenceTracking else { return }
-                self.reloadData()
-                self.updateSyncState()
-            }
-        }
         // 空间内数据更新通知
         NotificationCenter.default.addObserver(forName: deviceDeletionCleanupCompletedNotification, object: nil, queue: .main) { [weak self] notification in
             guard let self, let updated = notification.object as? SpaceData,
@@ -1416,8 +1391,8 @@ class SpaceViewController: WMPageController {
                 XWHUDManager.hide()
                 guard let self = self else { return }
                 // 空间内存在设备
-                if self.space.uploadCloud || self.space.deviceCount > 0 {
-                    self.showConfigurationRecovery()
+                if self.space.deviceCount > 0 {
+                    XWHUDManager.showErrorTipHUD("site_delete_fail".localizedString)
                 }else { // 空间未存在设备，删除成功
                     
                     // 是否有同步操作正在进行,进行中则取消任务
@@ -1595,10 +1570,136 @@ class SpaceViewController: WMPageController {
     }
 
     private func showConfigurationRecovery() {
-        guard presentedViewController == nil else { return }
-        navigationController?.pushViewController(SpaceRepairViewController(space: space), animated: true)
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            DevicePermanentDeletionContext.resume(space: self.space)
+            let local = await self.space.export(allowsProtectedInspection: true)
+            let needsBaselineReview = SpaceConfigurationSafety.needsOlderCloudBaselineReview(self.space)
+            let baselineReview: SpaceConfigurationSafety.CloudBaselineReview?
+            if needsBaselineReview, let local {
+                baselineReview = await SpaceConfigurationSafety.cloudBaselineReview(self.space, local: local)
+            } else { baselineReview = nil }
+            if needsBaselineReview, local != nil, baselineReview == nil {
+                XWHUDManager.showErrorTipHUD("space_recovery_unavailable".localizedString)
+                return
+            }
+            let message = "configuration_review_message".localizedString
+                + (baselineReview.map { "\n\n" + $0.message } ?? "")
+            let alert = UIAlertController(title: "synchronization_failure".localizedString,
+                message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "alert_item_cancel".localizedString, style: .cancel))
+            alert.addAction(UIAlertAction(title: "configuration_reload_cloud".localizedString, style: .default) { [weak self] _ in
+                self?.reloadConfigurationFromCloud(review: baselineReview)
+            })
+            if SpaceRecoveryViewController.canRepairDefaults(self.space) {
+                alert.addAction(UIAlertAction(title: "space_recovery_fix_defaults".localizedString, style: .default) { [weak self] _ in
+                    guard let self else { return }
+                    SpaceRecoveryViewController.offerDefaultRepair(self.space, from: self) { [weak self] repaired in
+                        guard let self else { return }
+                        self.space.applyConfigurationState(from: repaired)
+                        self.title = self.space.name
+                        self.setNetworkConnected()
+                    }
+                })
+            }
+            if !self.space.disableEditorPermission, !self.space.requiresPasswordVerification,
+               self.space.permission == .owner || self.space.permission == .editor {
+                if let local, !needsBaselineReview || baselineReview != nil {
+                    alert.addAction(UIAlertAction(title: "configuration_use_local".localizedString, style: .default) { [weak self] _ in
+                        let confirmation = "configuration_use_local_confirm".localizedString
+                            + (baselineReview.map { "\n\n" + $0.message } ?? "")
+                        self?.confirmConfigurationRecovery(message: confirmation) { [weak self] in
+                            guard let self else { return false }
+                            return await SpaceConfigurationSafety.authorizeLocalRecovery(self.space, reviewed: local,
+                                reviewedRemote: baselineReview?.remote)
+                        }
+                    })
+                } else if local == nil {
+                    alert.addAction(UIAlertAction(title: "configuration_repair_local".localizedString, style: .default) { [weak self] _ in
+                        Task { @MainActor [weak self] in
+                            guard let self else { return }
+                            XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: true)
+                            let review = await SpaceConfigurationSafety.referenceRepairReview(self.space)
+                            XWHUDManager.hide()
+                            guard let review else {
+                                XWHUDManager.showErrorTipHUD("configuration_repair_unavailable".localizedString)
+                                return
+                            }
+                            self.confirmConfigurationRecovery(message: review.message) { [weak self] in
+                                guard let self else { return false }
+                                return await SpaceConfigurationSafety.applyReferenceRepair(self.space, review: review)
+                            }
+                        }
+                    })
+                }
+            }
+            guard self.presentedViewController == nil, self.viewIfLoaded?.window != nil else { return }
+            self.present(alert, animated: true)
+        }
     }
 
+    private func confirmConfigurationRecovery(message: String, apply: @escaping @MainActor () async -> Bool) {
+        let alert = UIAlertController(title: "configuration_use_local".localizedString,
+            message: message, preferredStyle: .alert)
+        alert.addAction(UIAlertAction(title: "alert_item_cancel".localizedString, style: .cancel))
+        alert.addAction(UIAlertAction(title: "confirm".localizedString, style: .destructive) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self else { return }
+                XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: true)
+                let accepted = await apply()
+                XWHUDManager.hide()
+                if accepted {
+                    self.reloadData()
+                    self.syncSpace(level: .promptly)
+                    self.presentProximityLightingRepairSyncIfNeeded()
+                } else {
+                    XWHUDManager.showErrorTipHUD("configuration_repair_unavailable".localizedString)
+                }
+            }
+        })
+        present(alert, animated: true)
+    }
+
+    private func reloadConfigurationFromCloud(review: SpaceConfigurationSafety.CloudBaselineReview? = nil) {
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            let membership = SpaceMembershipResponseContext.capture(account: UserData.currentUserId,
+                region: String(describing: UserData.currentServerRegion))
+            XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: true)
+            let result = await NetworkRequest.shared.request(.spaceInfo(siteId: self.space.siteId,
+                spaceId: self.space.id, password: self.space.authorizationPassword))
+            guard !Task.isCancelled, SpaceMembershipResponseContext.matches(membership,
+                account: UserData.currentUserId, region: String(describing: UserData.currentServerRegion)) else {
+                XWHUDManager.hide()
+                return
+            }
+            if case .success(let response) = result, let remote = response["data"] as? [String: Any] {
+                if let review, !(await SpaceConfigurationSafety.prepareReviewedCloudImport(self.space, review: review, remote: remote)) {
+                    XWHUDManager.hide()
+                    XWHUDManager.showErrorTipHUD("configuration_repair_unavailable".localizedString)
+                    return
+                }
+                let outcome = await self.space.restoreConfiguration(spaceJsonData: remote,
+                    authoritativeGET: true)
+                XWHUDManager.hide()
+                if outcome.rejectionReason == "serverKeyRepairQueued" { return }
+                if outcome.status != .rejected, !SpaceConfigurationSafety.isBlocked(self.space) {
+                    _ = CloudSynchronizationManager.shared.cancelSynchronizationHandle(operation: .syncSpace(space: self.space))
+                    self.space.syncCloudError = nil
+                    self.space.save()
+                    self.title = self.space.name
+                    self.setNetworkConnected()
+                    self.showNavigationBarSuccessful()
+                    return
+                }
+            } else {
+                if case .failure(let error) = result { SpaceConfigurationSafety.handleAuthorityError(error, space: self.space) }
+                XWHUDManager.hide()
+            }
+            XWHUDManager.showErrorTipHUD("space_recovery_unavailable".localizedString)
+        }
+    }
+    
     /// 退出页面立即同步space数据
     private func promptlySyncSpace() {
         

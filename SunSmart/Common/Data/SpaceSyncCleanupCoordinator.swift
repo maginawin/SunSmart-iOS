@@ -34,26 +34,6 @@ enum SpaceSyncCleanupCoordinator {
     // cannot erase the durable request for that batch's future mutations.
     private static var owners: [Scope: Set<UUID>] = [:]
 
-    static func requestReferenceCleanup(_ space: SpaceData) -> Bool {
-        guard let site = SiteData.load(siteId: space.siteId) else { return false }
-        return markCleanup(Scope(site))
-    }
-
-    static func finishRecoveryReferences(_ space: SpaceData) {
-        guard let site = SiteData.load(siteId: space.siteId) else { return }
-        _ = finish(Scope(site)) // A deferred Site operation retains its durable request.
-    }
-
-    static func finishSpaceRemoval(siteID: String, spaceID: String) -> Bool {
-        guard let site = SiteData.load(siteId: siteID) else { return true }
-        guard markCleanup(Scope(site)) else { return false }
-        for gateway in GatewayModel.load(siteId: siteID) where gateway.associatedSpaces.contains(where: { $0.spaceId == spaceID }) {
-            gateway.associatedSpaces.removeAll { $0.spaceId == spaceID }
-            guard gateway.save() else { return false }
-        }
-        return finish(Scope(site)) != nil
-    }
-
     @discardableResult
     static func prepare(_ space: SpaceData) async -> Bool {
         // Confirmation owns this generation. Do not turn deferred entry cleanup
@@ -517,12 +497,8 @@ enum SpaceSyncTaskScope {
             return try? encoder.encode(space.triggerZones)
         }
         let spaceZones = zones()
-        guard let space = SpaceData.load(siteId: network.uuid.uuidString).first(where: { $0.meshNetworkId == networkID }),
-              let lifecycle = try? SpaceConfigurationSafety.recoveryState(space) else { return { false } }
         return {
             guard account == UserData.currentUserId, region == UserData.currentServerRegion,
-                  SpaceConfigurationSafety.isCurrent(lifecycle, space: space),
-                  !SpaceConfigurationSafety.hasPendingImport(space), !SpaceMembershipCoordinator.isLeaving(space),
                   manager.meshNetwork === network, manager.currentNetworkKey.networkId.hex == networkID,
                   network.nodes.count == nodes.count, network.groups.count == groups.count,
                   nodes.allSatisfy({ old in network.nodes.contains { $0 === old } }),
