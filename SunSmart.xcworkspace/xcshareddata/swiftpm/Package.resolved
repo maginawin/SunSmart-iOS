@@ -7,7 +7,7 @@
       "location" : "git@github.com:maginawin/nordic-sig-mesh-sdk.git",
       "state" : {
         "branch" : "release",
-        "revision" : "999896766761365d7f01f73839895857c21788d8"
+        "revision" : "ccdf101b95c6b475b0511f1d601ccbfd8ffe4673"
       }
     }
   ],

@@ -11,7 +11,19 @@ private final class Harness {
     var stopCount = 0
     var authorization: ((String?) -> Void)?
     var cancelledAuthorizations = 0
+    var sceneUnknown = true
+    var sceneReads: [(nodes: [Node], completion: (Bool) -> Void)] = []
+    var sceneValidations: [(node: Node, number: UInt16)] = []
+    var sceneValidationError: Error?
+    var sceneFailures = 0
     init() {
+        SceneCapacity.unknownNodesHandler = { [unowned self] in sceneUnknown ? $0 : [] }
+        SceneCapacity.readHandler = { [unowned self] in sceneReads.append(($0, $1)) }
+        SceneCapacity.validateHandler = { [unowned self] node, number in
+            sceneValidations.append((node, number))
+            if let error = sceneValidationError { throw error }
+        }
+        SceneCapacity.failureHandler = { [unowned self] _ in sceneFailures += 1 }
         environment.delay = { [unowned self] delay, action in delays.append(delay); queued.append(action) }
         environment.send = { [unowned self] handles, _, success, _, finished in
             if handles.isEmpty { queued.append { finished?([]) } }
@@ -52,6 +64,12 @@ private final class Harness {
 enum SyncExecutionSessionTests {
     static func main() {
         DeviceOperationType.allowsMessageFactory = true
+        sceneReadSuccess()
+        sceneReadFailureAndRetry()
+        sceneStoreValidationFailure()
+        sceneReadAfterCancellation()
+        sceneReadFromPreviousRun()
+        print("PASS: production Session scene capacity read success/failure, validation, retry and late callback isolation")
         changedConfigurationInvalidatesOldCallbacks()
         changedConfigurationBeforeStart()
         unavailableConfigurationNeedsReviewWithoutSending()
@@ -69,6 +87,109 @@ enum SyncExecutionSessionTests {
         authorizationBeforeDynamicMessages()
         automaticRetryBudget()
         print("PASS: production Session scheduling, writeback ordering, late completion, stop/retry, Profile/PIR compensation and authorization cancellation")
+    }
+    static func sceneReadSuccess() {
+        let h = Harness()
+        let (session, _, task, node) = h.make(.scene(sceneId: 42, executeData: nil))
+        var completed = 0
+        session.onCompleted = { _ in completed += 1 }
+        session.start(); h.flush()
+        precondition(h.sceneReads.count == 1 && h.sceneReads[0].nodes.count == 1 && h.sceneReads[0].nodes[0] === node)
+        precondition(h.sends.isEmpty && h.sceneValidations.isEmpty && task.state == .wait && completed == 0,
+                     "unknown capacity must wait for its read before validating or storing")
+        h.sceneUnknown = false
+        h.sceneReads[0].completion(true); h.flush()
+        precondition(h.sceneReads.count == 1 && h.sceneValidations.count == 1)
+        precondition(h.sceneValidations[0].node === node && h.sceneValidations[0].number == 42)
+        precondition(h.sends.count == 1 && task.state == .inSettings && node.updates == 0 && completed == 0,
+                     "read success must validate the same target and scene; Store still needs its own completion")
+        h.finish(0); h.flush()
+        precondition(task.state == .successful && node.updates == 1 && completed == 1 && session.syncState == .syncSuccess)
+        session.close(); h.flush()
+    }
+    static func sceneReadFailureAndRetry() {
+        let h = Harness()
+        let (session, device, task, node) = h.make(.scene(sceneId: 42, executeData: nil))
+        var states: [SyncDevicesViewController.SyncState] = []
+        session.onCompleted = { states.append($0) }
+        session.start(); h.flush()
+        h.sceneReads[0].completion(false); h.flush()
+        precondition(task.state == .failed && task.failedCount == 1 && session.syncState == .syncFailure)
+        precondition(h.sends.isEmpty && h.sceneValidations.isEmpty && node.updates == 0 && states == [.syncFailure],
+                     "read failure must settle as failure without sending Store or writing back")
+        session.prepareDeviceForResync(device)
+        session.start(); h.flush()
+        precondition(h.sceneReads.count == 2 && h.sends.isEmpty, "manual retry must read unknown capacity again")
+        h.sceneUnknown = false
+        h.sceneReads[1].completion(true); h.flush()
+        precondition(h.sends.count == 1)
+        h.finish(0); h.flush()
+        precondition(task.state == .successful && states == [.syncFailure, .syncSuccess])
+        session.close(); h.flush()
+    }
+    static func sceneStoreValidationFailure() {
+        enum Full: Error { case capacity }
+        let h = Harness()
+        let (session, _, task, node) = h.make(.scene(sceneId: 42, executeData: nil))
+        session.start(); h.flush()
+        h.sceneUnknown = false
+        h.sceneValidationError = Full.capacity
+        h.sceneReads[0].completion(true); h.flush()
+        precondition(h.sceneValidations.count == 1 && h.sceneFailures == 1 && h.sends.isEmpty && node.updates == 0,
+                     "successful read does not permit Store when capacity validation rejects it")
+        precondition(task.state == .failed && session.syncState == .syncFailure)
+        session.close(); h.flush()
+    }
+    static func sceneReadAfterCancellation() {
+        for close in [false, true] {
+            for resolved in [false, true] {
+                let h = Harness()
+                let (session, _, task, node) = h.make(.scene(sceneId: 42, executeData: nil))
+                var completed = 0, progress = 0
+                session.onCompleted = { _ in completed += 1 }
+                session.onProgress = { progress += 1 }
+                session.start(); h.flush()
+                let read = h.sceneReads[0].completion
+                if close { session.close() } else { session.stop() }
+                h.flush()
+                let state = task.state, failures = task.failedCount, previousProgress = progress
+                // Deliver both while STOP is settling and after transport release.
+                h.sceneUnknown = !resolved
+                read(resolved); h.flush()
+                h.stopFinished?(); h.flush()
+                read(resolved); h.flush()
+                precondition(h.sends.isEmpty && h.sceneValidations.isEmpty && node.updates == 0 && completed == 0)
+                precondition(task.state == state && task.failedCount == failures && progress == previousProgress,
+                             "late read success/failure cannot mutate a cancelled task or publish completion")
+                session.close(); h.flush()
+            }
+        }
+    }
+    static func sceneReadFromPreviousRun() {
+        for resolved in [false, true] {
+            let h = Harness()
+            let (session, device, task, node) = h.make(.scene(sceneId: 42, executeData: nil))
+            var completed = 0
+            session.onCompleted = { _ in completed += 1 }
+            session.start(); h.flush()
+            let oldRead = h.sceneReads[0].completion
+            session.stop(); h.flush()
+            h.stopFinished?(); h.flush()
+            session.prepareDeviceForResync(device)
+            session.start(); h.flush()
+            precondition(h.sceneReads.count == 2)
+            let failures = task.failedCount
+            oldRead(resolved); h.flush()
+            precondition(task.state == .wait && task.failedCount == failures && h.sceneReads.count == 2)
+            precondition(h.sends.isEmpty && h.sceneValidations.isEmpty && node.updates == 0 && completed == 0,
+                         "previous generation's read must not advance or fail the new run")
+            h.sceneUnknown = false
+            h.sceneReads[1].completion(true); h.flush()
+            precondition(h.sends.count == 1)
+            h.finish(0); h.flush()
+            precondition(task.state == .successful && completed == 1)
+            session.close(); h.flush()
+        }
     }
     static func callerOwnsCloudCompletion() {
         for publishes in [false, true] {

@@ -6,6 +6,18 @@ extension Node {
     }
 }
 // Session 主体、任务选择、回写、重试和兼容模型来自生产；以下只替代 SDK/业务边界。
+// 这里只验证 Session 对容量读取结果的调度；真实 Register/容量规则由场景专项测试覆盖。
+enum SceneCapacity {
+    static var unknownNodesHandler: ([Node]) -> [Node] = { _ in fatalError("install scene capacity") }
+    static var readHandler: ([Node], @escaping (Bool) -> Void) -> Void = { _, _ in fatalError("install scene read") }
+    static var validateHandler: (Node, UInt16) throws -> Void = { _, _ in fatalError("install scene validation") }
+    static var failureHandler: (Error) -> Void = { _ in fatalError("install scene failure") }
+
+    static func unknownNodes(_ nodes: [Node]) -> [Node] { unknownNodesHandler(nodes) }
+    static func readUnknownState(nodes: [Node], completion: @escaping (Bool) -> Void) { readHandler(nodes, completion) }
+    static func validateStore(node: Node, number: UInt16) throws { try validateHandler(node, number) }
+    static func showFailure(_ error: Error) { failureHandler(error) }
+}
 struct TestVendorModel { var parentElement: TestElement? }
 struct TestElement { var unicastAddress: Address }
 enum DeviceBlinkMode { case none, fast, breathing }
