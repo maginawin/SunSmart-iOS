@@ -257,7 +257,7 @@ enum DeviceOperationType {
         case .delete(let node, let type):
             switch type {
             case .scene(let sceneId, _):
-                return !node.sceneExecuteDatas.contains(where: { $0.sceneNumber == sceneId })
+                return !node.needsSceneRemoval(sceneId)
             case .schedule(let schedule):
                 return schedule.deletionIsSynchronized(on: node)
             case .missingGroupSubscriptions:
@@ -514,7 +514,7 @@ enum DeviceOperationType {
                 })
                 
             case .scene(let sceneId, _):
-                if let scene = node.scenes.first(where: { $0.number == sceneId }) {
+                if let scene = MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneId }) {
                     messageHandles.append(contentsOf: scene.getDeleteMessageHandles(node: node))
                 }
             case .schedule(let schedule):

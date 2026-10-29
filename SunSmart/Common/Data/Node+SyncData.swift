@@ -1555,7 +1555,7 @@ extension Node {
         guard SceneDeleteCapability.isSupported(sceneSetupModel: self.sceneSetupModel) else {
             return []
         }
-        var scenes = self.scenes
+        var scenes = MeshNetworkManager.instance.scenes
         if scene != nil {
             scenes = [scene!]
         }
@@ -1564,7 +1564,8 @@ extension Node {
         }
         
         return scenes.filter({ scene in
-            groupState == .exitFailure && group.info.sceneExecuteDatas.contains(where: { $0.sceneNumber == scene.number }) ||  group.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number })?.state == .waitDelete
+            guard needsSceneRemoval(scene.number) else { return false }
+            return groupState == .exitFailure && group.info.sceneExecuteDatas.contains(where: { $0.sceneNumber == scene.number }) ||  group.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number })?.state == .waitDelete
         })
     }
     

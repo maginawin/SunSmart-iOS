@@ -14,6 +14,15 @@ extension UInt16 {
 }
 extension String { var localizedString: String { self } }
 let jsonEncoder = JSONEncoder(), jsonDecoder = JSONDecoder()
+// Scene validation has a separate production-projection suite in
+// check_scene_topology.py. This fixture isolates Scheduler/SQLite semantics.
+enum SceneCapacity {
+    struct Failure: Error {}
+    static func showFailure(_ error: Error) {}
+    static func validateTopology(group: Group? = nil, members: [Node] = [], addingMembers: [Node] = [],
+                                 scene: Scene? = nil, sceneGroups: [Group] = []) throws {}
+    static func canAddDevice(to group: Group, node: Node) -> Bool { true }
+}
 enum WeekDay: UInt8 { case Monday = 1, Tuesday = 2, Wednesday = 4, Thursday = 8, Friday = 16, Saturday = 32, Sunday = 64 }
 final class SunSmartDataManager {
     static let shared = SunSmartDataManager()
@@ -61,7 +70,8 @@ final class Schedule: Codable {
         self.weekDays = weekDays; self.hour = hour; self.minute = minute
     }
 }
-final class Model: NSObject {}
+final class Element { var observedSceneRegister: Set<UInt16>? = [] }
+final class Model: NSObject { let parentElement: Element? = Element() }
 struct Entry { var isValid = true }
 final class Node: NSObject {
     enum GroupState { case inGroup, exitFailure }
@@ -77,6 +87,7 @@ final class Node: NSObject {
     var allSchedulerModelEntrys: [Model: [Int: Entry]] = [:]
     var schedulerActions: [Int: Entry] = [:]
     var sceneSetupModel: Model? = Model()
+    // ACTUAL_SCENE_REMOVAL
     var sceneExecuteDatas: [SceneExecuteData] = []
     var iconName = "fixture"
     var appliedMessages = 0

@@ -39,6 +39,23 @@ struct GroupServer {
             return
         }
         
+        let candidateMembers = group.nodes.filter { !nodes.contains($0) } + nodes
+        let sceneReadNodes = SceneCapacity.nodesRequiringRead(group: group, members: candidateMembers, addingMembers: nodes)
+        if !sceneReadNodes.isEmpty {
+            SceneCapacity.readUnknownState(nodes: sceneReadNodes) { resolved in
+                guard resolved else { nodes.forEach { failed?($0) }; finshed?([], nodes); return }
+                groupAddNodes(group: group, nodes: nodes, progress: progress,
+                              successful: successful, failed: failed, finshed: finshed)
+            }
+            return
+        }
+        do {
+            try SceneCapacity.validateTopology(group: group,
+                members: group.nodes.filter { !nodes.contains($0) } + nodes, addingMembers: nodes)
+        } catch {
+            SceneCapacity.showFailure(error)
+            nodes.forEach { failed?($0) }; finshed?([], nodes); return
+        }
         DispatchQueue.global().async {
             let semaphore = DispatchSemaphore(value: 0)
             var successNodes: [Node] = []

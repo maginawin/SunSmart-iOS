@@ -40,7 +40,10 @@ with tempfile.TemporaryDirectory(prefix='timed-sqlite-') as directory:
     node_sync = (root / 'SunSmart/Common/Data/Node+SyncData.swift').read_text()
     node_scene_start = node_sync.index('        case .scenes(let scene):')
     node_scene_end = node_sync.index('        case .schedules(let schedule):', node_scene_start)
+    capacity = (root / 'SunSmart/Common/Data/SceneCapacity.swift').read_text()
+    removal = capacity[capacity.index('    func needsSceneRemoval('):capacity.index('\n}')]
     harness.write_text((root / 'Tests/Timed/TimedSlotPersistenceTests.swift').read_text()
+                       .replace('    // ACTUAL_SCENE_REMOVAL', removal)
                        .replace('    // ACTUAL_TARGETS', target_source[target_start:target_end])
                        .replace('    // ACTUAL_NEEDS_DELETE', target_source[delete_start:delete_end])
                        .replace('    // ACTUAL_CODEC', codec)
@@ -59,5 +62,6 @@ with tempfile.TemporaryDirectory(prefix='timed-sqlite-') as directory:
                     '-lSQLite', '-Xlinker', '-rpath', '-Xlinker', str(directory),
                     str(root / 'SunSmart/Main/Timed/Model/TimedSchedulerSlotPolicy.swift'),
                     str(root / 'SunSmart/Main/Timed/Model/TimedSchedulerOwnerPolicy.swift'),
+                    str(root / 'SunSmart/Common/Data/SceneDeleteCapability.swift'),
                     str(runtime), str(harness), '-o', str(binary)], check=True)
     subprocess.run([str(binary), str(directory / 'app.sqlite')], check=True)

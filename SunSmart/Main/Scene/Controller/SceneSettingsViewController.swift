@@ -293,6 +293,20 @@ class SceneSettingsViewController: UIViewController {
 
     private func prepareTimedSceneMembership(_ groups: [Group], retry: @escaping () -> Void) -> Bool {
         let nodes = (groups + scene.info.groups).flatMap(\.nodes)
+        let sceneReadNodes = SceneCapacity.nodesRequiringRead(scene: scene, sceneGroups: groups)
+        if !sceneReadNodes.isEmpty {
+            navigationItem.rightBarButtonItem?.isEnabled = false
+            XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: false)
+            SceneCapacity.readUnknownState(nodes: sceneReadNodes) { [weak self] resolved in
+                XWHUDManager.hide()
+                guard let self else { return }
+                self.navigationItem.rightBarButtonItem?.isEnabled = true
+                guard self.viewIfLoaded?.window != nil else { return }
+                if resolved { retry() }
+                else { XWHUDManager.showErrorTipHUD("sync_failed".localizedString) }
+            }
+            return false
+        }
         let unknown = ScheduleServer.nodesRequiringAuthoritativeSchedulerRead(nodes)
         if !unknown.isEmpty {
             navigationItem.rightBarButtonItem?.isEnabled = false

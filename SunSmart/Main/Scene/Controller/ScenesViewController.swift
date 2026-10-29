@@ -250,7 +250,7 @@ class ScenesViewController: UIViewController {
             footerView.isHidden = false
         }
         footerView.sortBtn.isHidden = true
-        footerView.countBtn.setTitle("\(scenes.count)/16", for: .normal)
+        footerView.countBtn.setTitle("\(scenes.count)", for: .normal)
         
         footerView.editBtn.isEnabled = space.sceneOperates.contains(.edit)
         footerView.addBtn.isEnabled = space.sceneOperates.contains(.add)
@@ -495,10 +495,7 @@ extension ScenesViewController: SpaceFunctionFooterViewDelegate {
     /// 点击添加回调
     func functionDidClickAdd(view: SpaceFunctionFooterView) {
         
-        guard scenes.count < 16 else {
-            SRAlertView(title: "notification".localizedString, message: "scenes_overrun_message".localizedString, actions: [SRAlertAction(title: "GOT_IT".localizedString)]).show()
-            return
-        }
+
         
         let vc = SceneAddViewController(space: space)
         vc.createSceneCallback = {[weak self] _ in

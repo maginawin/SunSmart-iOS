@@ -358,31 +358,24 @@ extension SiteData {
                     }
                     // 回收组地址数量
                     var recycleGroupAddresCount = 0
-                    // 回收场景地址数量
-                    var recycleSceneAddresCount = 0
                     
                     spaces.filter({ $0.permission == .editor }).forEach { space in
                         
                         var usedGroupAddresses = Group.loadAddresses(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId)
                         
-                        var usedSceneAddresses = Scene.loadAddresses(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId)
-                        
                         if let localProvisioner = plannedProvisioner {
                             // 该用户已使用的组地址
                             usedGroupAddresses = usedGroupAddresses.filter({ localProvisioner.allocatedGroupRange.contains($0) })
-                            // 该用户已使用的场景地址
-                            usedSceneAddresses = usedSceneAddresses.filter({ localProvisioner.allocatedSceneRange.contains($0) })
                         }
                         
                         // 每解绑一个space，其APP都回收这个space未使用的组地址给服务器  1个空间32个组地址
                         recycleGroupAddresCount += max(0, 32 - usedGroupAddresses.count)
-                        
-                        // 每解绑一个space，其APP都回收这个space未使用的场景地址给服务器  1个空间16个场景
-                        recycleSceneAddresCount += 16 - usedSceneAddresses.count
                     }
                     
                     recycleGroupAddresses = availableGroupAddresses.suffix(recycleGroupAddresCount)
-                    recycleSceneAddresses = availableSceneAddresses.suffix(recycleSceneAddresCount)
+                    // Scene addresses are shared across the Site. Retain the pool
+                    // while another editable Space remains, regardless of its count.
+                    recycleSceneAddresses = []
                 }
             }
             //        exclusionAddresses.map({ data in RecycleAddressData.ExclusionAddressData(ivIndex: data.$0, addresses: data.$1) })
@@ -690,7 +683,7 @@ extension MeshNetworkManager {
     func getNextSceneName(_ defaultName: String = "scene_defalut_name".localizedString) -> String {
         // 已存在的场景名称
         let existNames = scenes.map({ $0.name })
-        for index in 1...16 {
+        for index in 1...(existNames.count + 1) {
             let name = defaultName + "\(index)"
             if !existNames.contains(name) {
                 return name
@@ -1291,7 +1284,7 @@ extension Group {
             return (needSyncNodes, needDeleteNodes)
         }
         if sceneData.state == .waitDelete { // 待删除
-            needDeleteNodes = nodes.filter({ $0.sceneSetupModel != nil && $0.sceneExecuteDatas.contains(where: { $0.sceneNumber == scene.number }) })
+            needDeleteNodes = nodes.filter { $0.needsSceneRemoval(scene.number) }
         }else { // 同步
             needSyncNodes = nodes.filter({ node in
                 guard node.sceneSetupModel != nil, node.groupState != .exitFailure else {
@@ -3197,7 +3190,7 @@ extension Node {
                 // 组对应场景数据是否待删除
                 if let scene = MeshNetworkManager.instance.scenes.first(where: {$0.number == sceneId}), let group = self.group, let groupSceneData = group.info.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId }), groupSceneData.state == .waitDelete {
                     // 组内设备已删除对应场景缓存
-                    if !group.nodes.contains(where: { node in node.sceneExecuteDatas.contains(where: { $0.sceneNumber == sceneId }) }) {
+                    if !group.nodes.contains(where: { $0.needsSceneRemoval(sceneId) }) {
                         group.info.sceneExecuteDatas.removeAll(where: { $0.sceneNumber == sceneId })
                         // 设备加入组，组加入场景，场景加入日程 Node->Group->Scene->Schedule
                         // 场景加入日程后关联场景的组也加入日程，场景移出组后吧组间接关联的日程删除

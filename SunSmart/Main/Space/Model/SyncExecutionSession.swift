@@ -129,6 +129,23 @@ final class SyncExecutionSession {
             finishRun(identifier, publishesCompletion: false, forcedState: .syncFailure)
             return
         }
+        if case .configuration(let node, .scene(let number, _)) = operationType(for: model) {
+            if !SceneCapacity.unknownNodes([node]).isEmpty {
+                SceneCapacity.readUnknownState(nodes: [node]) { [self] resolved in
+                    guard isActiveSyncRun(identifier), validatePlan(identifier) else { return }
+                    if !resolved { finishOperation(model, successful: false) }
+                    advance(identifier)
+                }
+                return
+            }
+            do { try SceneCapacity.validateStore(node: node, number: number) }
+            catch {
+                SceneCapacity.showFailure(error)
+                finishOperation(model, successful: false)
+                advance(identifier)
+                return
+            }
+        }
         var handles = operationType(for: model)?.messageHandles ?? []
         handles = prepareDaylightHandles(for: model, handles: handles)
         handles = batteryPowerSwitchMessageHandles(for: model, defaultHandles: handles)

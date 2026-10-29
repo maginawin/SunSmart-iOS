@@ -2566,3 +2566,9 @@
 "site_create_unknown" = "Unknown";
 "site_create_collapsed" = "Collapsed";
 "site_create_expanded" = "Expanded";
+
+// Per-device scene capacity
+"scene_capacity_exceeded" = "Cannot add these scenes. The following devices have no free scene capacity (maximum 16, including removals not yet synced):\n%@\nRemove an existing scene from these devices and sync the removal, or choose another group.";
+"scene_capacity_unknown" = "Scene capacity is unknown for:\n%@\nConnect these devices and retry to read their scene data.";
+"scene_delete_referenced" = "This scene is still referenced by:\n%@\nRemove or change these references and sync the devices before deleting the scene.";
+"scene_address_unavailable" = "No ordinary scene IDs are available. Connect to the server to request more scene IDs, then try again.";

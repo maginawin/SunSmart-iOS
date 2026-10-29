@@ -125,7 +125,10 @@ private final class GroupMembersViewController: UIViewController {
     // PRODUCTION_MEMBERS_DISPLAY
 }
 private let groupDataUpdateNotificationName = "test-group-update"
+// The real page cancels its slider on disappearance; this fixture isolates sync UI.
+private final class ControlPanelSink { func cancelPendingInteraction() {} }
 private final class GroupViewController: UIViewController {
+    let controlPanelView = ControlPanelSink()
     var isSyncPageVisible = true
     let collectionView = UICollectionView()
     var group: Group

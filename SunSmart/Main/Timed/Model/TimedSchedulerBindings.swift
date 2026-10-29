@@ -125,6 +125,7 @@ enum TimedSchedulerBindings {
     }
 
     static func showFailure(_ error: Error) {
+        if error is SceneCapacity.Failure { SceneCapacity.showFailure(error); return }
         let message: String
         switch error {
         case Failure.deviceCapacity(let name):
@@ -139,6 +140,8 @@ enum TimedSchedulerBindings {
     /// Use prospective membership, including removals, before a topology edit.
     static func prepareTopology(group: Group? = nil, members: [Node] = [], addingMembers: [Node] = [],
                                 scene: Scene? = nil, sceneGroups: [Group] = []) throws -> Plan {
+        try SceneCapacity.validateTopology(group: group, members: members, addingMembers: addingMembers,
+                                           scene: scene, sceneGroups: sceneGroups)
         let manager = MeshNetworkManager.instance
         var targets: [Int: Set<Address>] = [:]
         for schedule in manager.schedules {
@@ -159,6 +162,7 @@ enum TimedSchedulerBindings {
     }
 
     static func canAddDevice(to group: Group, node: Node? = nil) -> Bool {
+        if let node, !SceneCapacity.canAddDevice(to: group, node: node) { return false }
         // Composition is required before applying a Scheduler capacity limit.
         guard let node, !node.schedulerSetupModels.isEmpty else { return true }
         let schedules = MeshNetworkManager.instance.schedules.filter {
@@ -173,6 +177,8 @@ enum TimedSchedulerBindings {
 
     static func reserveGroup(_ group: Group, node: Node) -> Bool {
         do {
+            try SceneCapacity.validateTopology(group: group,
+                members: group.nodes.filter { $0 !== node } + [node], addingMembers: [node])
             try commit(prepare(schedules: MeshNetworkManager.instance.schedules,
                                contextGroups: [node.primaryUnicastAddress: group]))
             return true

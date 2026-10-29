@@ -7,6 +7,7 @@
 
 import UIKit
 import NordicSigMeshSDK
+import SwiftyJSON
 
 private final class SceneAddPagingScrollView: UIScrollView, UIGestureRecognizerDelegate {
     override init(frame: CGRect) {
@@ -30,6 +31,8 @@ private final class SceneAddPagingScrollView: UIScrollView, UIGestureRecognizerD
 }
 
 class SceneAddViewController: UIViewController {
+    private var preparingScene = false
+    private var requestedSceneAddresses = false
 
     /// 创建方式
     enum CreateMode {
@@ -310,26 +313,53 @@ class SceneAddViewController: UIViewController {
             return
         }
         
-        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
-        MeshAPI.addOrEditScene(name: sceneName) {[weak self] scene in
-            XWHUDManager.hide()
-            guard let self = self else { return }
-            
-            let selectGroups = groups.filter({ $0.isSelected })
-            selectGroups.forEach({
-                if let data = $0.executeSceneData {
-                    let lightness = data.isOn ? Node.getLightness(lightness100: data.lightness) : 0
-                    let executeData = SceneExecuteData(sceneNumber: scene.number, isOn: data.isOn, lightness: lightness, cct: $0.clampEffectiveCct(UInt16(data.cct)))
-                    $0.info.sceneExecuteDatas.append(executeData)
-                    $0.info.save()
-                    $0.updateGroupSyncState()
-//                    SceneExecuteData.save(meshUUID: self.space.meshUUID, networkKey: self.space.meshNetworkKey, address: $0.address.address, sceneId: Int(scene.number), sceneData: data)
-//                    $0.info.bindSceneDatas.updateValue(data, forKey: scene.number)
+        guard !preparingScene, let network = MeshNetworkManager.instance.meshNetwork,
+              network.uuid.uuidString == space.meshUUID,
+              MeshNetworkManager.instance.currentNetworkKey.networkId.hex == space.meshNetworkId else { return }
+        guard let number = network.customNextAvailableScene() else {
+            requestSceneAddresses()
+            return
+        }
+        let selectGroups = groups.filter { $0.isSelected && $0.executeSceneData != nil }
+        let nodes = selectGroups.flatMap(\.nodes)
+        if !SceneCapacity.unknownNodes(nodes).isEmpty {
+            preparingScene = true
+            XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: false)
+            SceneCapacity.readUnknownState(nodes: nodes) { [weak self] resolved in
+                XWHUDManager.hide()
+                guard let self else { return }
+                self.preparingScene = false
+                guard self.viewIfLoaded?.window != nil else { return }
+                if resolved { self.addSceneHandle() }
+                else { XWHUDManager.showErrorTipHUD("sync_failed".localizedString) }
+            }
+            return
+        }
+        let scene = Scene(number, name: sceneName)
+        scene.subNetworkId = space.meshNetworkId
+        scene.info = SceneInfo(sceneId: number, imageId: imageId)
+        let snapshots = selectGroups.map { $0.info.sceneExecuteDatas }
+        do {
+            let plan = try TimedSchedulerBindings.prepareTopology(scene: scene, sceneGroups: selectGroups)
+            try TimedSchedulerBindings.commit(plan) {
+                network.add(scene: scene)
+                guard scene.save(), scene.info.save() else { throw TimedSchedulerBindings.Failure.persistence }
+                for group in selectGroups {
+                    guard let data = group.executeSceneData else { continue }
+                    group.info.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: number, isOn: data.isOn,
+                        lightness: data.isOn ? Node.getLightness(lightness100: data.lightness) : 0,
+                        cct: group.clampEffectiveCct(UInt16(data.cct))))
+                    guard group.info.save() else { throw TimedSchedulerBindings.Failure.persistence }
                 }
-            })
-            scene.info = SceneInfo(sceneId: scene.number, imageId: self.imageId)
-            scene.info.save()
-            
+            }
+        } catch {
+            network.forceRemove(scene: number)
+            for (group, snapshot) in zip(selectGroups, snapshots) { group.info.sceneExecuteDatas = snapshot }
+            TimedSchedulerBindings.showFailure(error)
+            return
+        }
+        requestedSceneAddresses = false
+        selectGroups.forEach { $0.updateGroupSyncState() }
             NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
             // 通知space数据修改
             NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
@@ -352,13 +382,41 @@ class SceneAddViewController: UIViewController {
                 self.pushToSyncDeviceVc(scene: scene)
             }
         
-        } addFail: { _, _ in
-            XWHUDManager.hide()
-            XWHUDManager.showErrorTipHUD("failed".localizedString)
-        }
-        
     }
-    
+
+    private func requestSceneAddresses() {
+        guard !preparingScene, !requestedSceneAddresses else {
+            XWHUDManager.showErrorTipHUD("scene_address_unavailable".localizedString); return
+        }
+        preparingScene = true
+        requestedSceneAddresses = true
+        XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: false)
+        NetworkRequest.shared.request(.applyAddress(siteId: space.siteId, type: .scene, number: 16)) { [weak self] result in
+            XWHUDManager.hide()
+            guard let self else { return }
+            self.preparingScene = false
+            guard self.viewIfLoaded?.window != nil,
+                  MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == self.space.meshUUID,
+                  MeshNetworkManager.instance.currentNetworkKey.networkId.hex == self.space.meshNetworkId else { return }
+            switch result {
+            case .success(let response):
+                guard let site = SiteData.load(siteId: self.space.siteId),
+                      let data = JSON(response)["data"]["provisioner"].dictionaryObject,
+                      SceneCapacity.validSceneAllocation(data) else {
+                    XWHUDManager.showErrorTipHUD("scene_address_unavailable".localizedString); return
+                }
+                site.setProvisioner(provisionerData: data)
+                guard MeshNetworkManager.instance.meshNetwork?.save() == true else {
+                    XWHUDManager.showErrorTipHUD("save_failure".localizedString); return
+                }
+                self.addSceneHandle()
+            case .failure(let error):
+                self.requestedSceneAddresses = false
+                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+            }
+        }
+    }
+
     private func pushToSyncDeviceVc(scene: Scene) {
         
         if !scene.info.groups.contains(where: { $0.getNeedSyncDataNodes(scene: scene).syncNodes.count > 0 }) {

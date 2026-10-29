@@ -2582,3 +2582,9 @@
 "site_create_unknown" = "未知";
 "site_create_collapsed" = "已收起";
 "site_create_expanded" = "已展开";
+
+// Per-device scene capacity
+"scene_capacity_exceeded" = "无法添加这些场景。以下设备的场景容量已满（最多16个，尚未同步的删除仍占用容量）：\n%@\n请先从这些设备移除已有场景并完成删除同步，或选择其他组。";
+"scene_capacity_unknown" = "尚未读取以下设备的场景容量：\n%@\n请连接这些设备后重试，以读取实际场景数据。";
+"scene_delete_referenced" = "以下配置仍引用此场景：\n%@\n请先修改或移除这些引用并完成设备同步，再删除场景。";
+"scene_address_unavailable" = "没有可用的普通场景编号。请连接服务器申请更多场景编号后重试。";

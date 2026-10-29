@@ -79,10 +79,7 @@ class SpaceNewCreationProcessController: UIViewController {
         
         switch options {
         case .scene:
-            guard MeshNetworkManager.instance.scenes.count < 16 else {
-                XWHUDManager.showTipHUD("scenes_overrun_message".localizedString, isLineFeed: true)
-                return
-            }
+
             space.isConfiguring = true
             let vc = SceneAddViewController(space: space)
             if isIPad {

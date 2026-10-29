@@ -270,6 +270,23 @@ class GroupMembersViewController: UIViewController {
         addNodes: [Node],
         proxyRemovalPlans: [GroupMemberProxyRemovalPlan]
     ) {
+        let candidates = group.nodes.filter { !exitNodes.contains($0) && !addNodes.contains($0) } + addNodes
+        let sceneReadNodes = SceneCapacity.nodesRequiringRead(group: group, members: candidates, addingMembers: addNodes)
+        if !sceneReadNodes.isEmpty {
+            isResolvingUnknownSchedulerState = true
+            navigationItem.rightBarButtonItem?.isEnabled = false
+            XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: false)
+            SceneCapacity.readUnknownState(nodes: sceneReadNodes) { [weak self] resolved in
+                XWHUDManager.hide()
+                guard let self else { return }
+                self.isResolvingUnknownSchedulerState = false
+                self.navigationItem.rightBarButtonItem?.isEnabled = true
+                guard self.viewIfLoaded?.window != nil else { return }
+                guard resolved else { XWHUDManager.showErrorTipHUD("sync_failed".localizedString); return }
+                self.saveAction()
+            }
+            return
+        }
         let unknownNodes = ScheduleServer.nodesRequiringAuthoritativeSchedulerRead(exitNodes + addNodes)
         guard !unknownNodes.isEmpty else {
             performSave(
