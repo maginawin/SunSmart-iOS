@@ -463,10 +463,13 @@ extension SpaceData {
                 })
                 group.info.bindSchedules = bindSchedules
             })
-            guard meshNetwork.groups.filter({ !$0.isVirtual }).allSatisfy({ !$0.info.profileLoadFailed && !$0.info.topologyLoadFailed }) else {
+            guard meshNetwork.groups.filter({ !$0.isVirtual }).allSatisfy({ !$0.info.profileLoadFailed && !$0.info.topologyLoadFailed && !$0.info.sceneParametersLoadFailed }) else {
                 for group in meshNetwork.groups where !group.isVirtual {
                     if group.info.profileLoadFailed {
                         purpose.reportInspectionIssue("groups[\(group.address.address.hex)].profile: storedConfigurationLoadFailed")
+                    }
+                    if group.info.sceneParametersLoadFailed {
+                        purpose.reportInspectionIssue("groups[\(group.address.address.hex)].scenesDatas: storedJSONDecodeFailed")
                     }
                     if group.info.topologyLoadFailed {
                         purpose.reportInspectionIssue("groups[\(group.address.address.hex)].proximityLightingPath: storedJSONDecodeFailed")
@@ -837,7 +840,7 @@ extension SpaceData {
             // 虚拟组
             let virtualGroups = meshNetwork.groups.filter({ $0.address.address.isGroup && !$0.address.address.isSpecialGroup && $0.isVirtual })
             
-            realGroups.forEach { group in
+            for group in realGroups {
                 if let data = try? jsonEncoder.encode(group), var groupDict = try? JSONSerialization.jsonObject(with: data) as? [String : Any] {
                     groupDict.updateValue(group.info.imageId, forKey: "imageId")
                     groupDict.updateValue(group.isVirtual, forKey: "isVirtual")
@@ -925,9 +928,10 @@ extension SpaceData {
                     if let sensorNode = group.info.ambientLightSensorNode {
                         groupDict.updateValue(sensorNode.primaryUnicastAddress.hex, forKey: "daylightSensorAddress")
                     }
-                    if let scenesDatas = try? jsonEncoder.encode(group.info.sceneExecuteDatas), let scenesDicts = try? JSONSerialization.jsonObject(with: scenesDatas) as? [[String : Any]] {
-                        groupDict.updateValue(scenesDicts, forKey: "scenesDatas")
-                    }
+                    guard let scenesDatas = try? jsonEncoder.encode(group.info.sceneExecuteDatas),
+                          let scenesDicts = try? JSONSerialization.jsonObject(with: scenesDatas) as? [[String: Any]],
+                          (try? SceneConfigurationPayload.groupParameters(scenesDicts)) != nil else { return nil }
+                    groupDict.updateValue(scenesDicts, forKey: "scenesDatas")
                     
                     // 临近照明
                     if (purpose.isReadOnlyInspection || ProximityLightingLifecycleCoordinator.isEligible(group.info.profile.type)),
@@ -1012,9 +1016,16 @@ extension SpaceData {
                 return dict
             }
 
-            // 场景
-            meshNetwork.scenes.filter { !DeviceEmerFireData.reservedSceneNumbers.contains($0.number) }.forEach { scene in
-                sceneDicts.append(["number": scene.number.hex, "name": scene.name, "imageId": scene.info.imageId])
+            // App rows own committed intent, including SDK projection failures and tombstones.
+            do {
+                let records = try SceneConfigurationStore.exportRecords(
+                    scope: .init(meshUUID: meshUUID, networkID: self.meshNetworkId), scenes: meshNetwork.scenes)
+                sceneDicts = try SceneConfigurationPayload.metadata(records: records)
+                spaceExtensionData["sceneConfigurations"] = try SceneConfigurationPayload.encode(records: records)
+                spaceJsonData["spaceData"] = spaceExtensionData
+            } catch {
+                purpose.reportInspectionIssue("scenes: invalidCommittedConfiguration")
+                return nil
             }
 
             let emergencyFireControllerDicts = DeviceEmerFireData

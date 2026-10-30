@@ -4,6 +4,7 @@ import Foundation
 // UIKit lifecycle names and view attachment are boundary inputs. The script
 // inserts each picker's production observer, refresh and cancellation bodies;
 // snapshot reads run through the production reader without Scheduler updates.
+private let sceneDataUpdateNotificationName = "sceneDataUpdate"
 private enum UIApplication {
     static let didBecomeActiveNotification = Notification.Name("UIApplicationDidBecomeActiveNotification")
 }
@@ -94,7 +95,11 @@ extension NodeSyncStatusRefreshTests {
         picker!.attached = true
         let adding = Picker(schedule: nil)
         adding.present(); activate()
-        require(adding.appearanceUpdates == 0, "new-schedule picker requested sync status")
+        if type == ScheduleScenesForegroundProbe.self {
+            require(adding.appearanceUpdates > 0, "new-schedule Scene picker must display Scene's own pending state")
+        } else {
+            require(adding.appearanceUpdates == 0, "new-schedule picker requested sync status")
+        }
 
         // Close while a read is queued; a separate owner drains the batch so
         // this assertion does not rely on an arbitrary sleep.

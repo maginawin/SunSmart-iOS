@@ -11,7 +11,7 @@ with tempfile.TemporaryDirectory(prefix="hdb-tests-") as directory:
     binary = str(Path(directory) / "tests")
     cache = Path.home() / "Library/Developer/Xcode/ModuleCache.noindex/HDBTests"
     cache.mkdir(parents=True, exist_ok=True)
-    sources = ["SunSmart/Common/Data/HDBConfiguration.swift", "SunSmart/Common/Data/HDBLightingZonePolicy.swift", "SunSmart/Common/Data/HDBConfigurationStore.swift", "SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift", "Tests/HDB/HDBTestBoundaries.swift", "Tests/HDB/HDBPersistenceTests.swift"]
+    sources = ["SunSmart/Common/Data/HDBConfiguration.swift", "SunSmart/Common/Data/HDBLightingZonePolicy.swift", "SunSmart/Common/Data/HDBConfigurationStore.swift", "SunSmart/Main/Timed/Model/TimedSchedulerSlotPolicy.swift", "SunSmart/Main/Scene/Model/SceneConfiguration.swift", "SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift", "Tests/HDB/HDBTestBoundaries.swift", "Tests/HDB/HDBPersistenceTests.swift"]
     mesh = Path(directory) / "RecoveryMesh.swift"
     mesh.write_text(recovery_mesh_source(ROOT))
     subprocess.run(["swiftc", "-module-cache-path", str(cache), "-parse-as-library", *[str(ROOT / path) for path in sources], str(mesh), "-o", binary], check=True)

@@ -16,31 +16,39 @@ extension Scene {
     ///   - data: 场景执行数据
     /// - Returns: 消息list
     func getSyncMessageHandles(node: Node, data: SceneExecuteData) -> [MeshMessageHandle] {
-        var messageHandles: [MeshMessageHandle] = []
-        // 设备是否支持场景model及亮度model
-        if let sceneSetupModel = node.sceneSetupModel {
-            // 设备是否支持色温model
-            let targetData = data.deviceTarget(for: node)
-            let lightness = targetData.lightness
-            if !targetData.isOn, let onoffModel = node.onoffModel {
-                messageHandles.append(MeshMessageHandle(message: GenericOnOffSet(false), model: onoffModel))
-            }else if let ctlModel = node.ctlModel, node.effectiveSupportCct {
-                messageHandles.append(MeshMessageHandle(message: LightCTLSet(lightness: lightness, temperature: targetData.cct, deltaUV: 0, transitionTime: .immediate, delay: 0), model: ctlModel))
-            }else if let lightnessModel = node.lightnessModel { // 不支持色温则只设置亮度
-                messageHandles.append(MeshMessageHandle(message: LightLightnessSet(lightness: lightness, transitionTime: .immediate, delay: 0), model: lightnessModel))
-            }else if let onoffModel = node.onoffModel { // 不支持亮度
-                messageHandles.append(MeshMessageHandle(message: GenericOnOffSet(lightness > 0), model: onoffModel))
-            }
-            // 保存场景
-            if messageHandles.count > 0 {
-                messageHandles.append(MeshMessageHandle(message: SceneStore(self.number), model: sceneSetupModel))
-            }
-//            if let vendorModel = node.sunricherVendorModel, node.lightLCModel != nil {
-//                // 保存场景前开启灯光控制
-//                messageHandles.insert(MeshMessageHandle(message: SunricherVendorSet(function: .lightControlEnabled(enabled: true)), model: vendorModel), at: 0)
-//            }
+        guard let model = node.sceneSetupModel, number > 0,
+              SceneCommandBuilder.reserveGroupOperation(scene: self, node: node, action: .write) else {
+            #if DEBUG
+            print("[SceneSync] stage=commandRejected scene=\(number) address=\(node.primaryUnicastAddress) reason=setupModelOrReservation setupModel=\(node.sceneSetupModel != nil)")
+            #endif
+            return []
         }
-        return messageHandles
+        let context: SceneMessageContext
+        do { context = try SceneMessageContext(scene: self, node: node, action: .write) }
+        catch {
+            #if DEBUG
+            print("[SceneSync] stage=commandRejected scene=\(number) address=\(node.primaryUnicastAddress) reason=context errorType=\(Swift.type(of: error)) targetFailure=\(String(describing: error as? SceneTargetResolver.Failure)) storeFailure=\(String(describing: error as? SceneConfigurationStore.Failure))")
+            #endif
+            return []
+        }
+        guard let target = context.target else {
+            #if DEBUG
+            print("[SceneSync] stage=commandRejected scene=\(number) address=\(node.primaryUnicastAddress) reason=missingTarget")
+            #endif
+            return []
+        }
+        var handles = SceneCommandBuilder.parameterHandles(node: node, target: target)
+        guard !handles.isEmpty else {
+            #if DEBUG
+            print("[SceneSync] stage=commandRejected scene=\(number) address=\(node.primaryUnicastAddress) reason=noParameterHandles")
+            #endif
+            return []
+        }
+        let store = MeshMessageHandle(message: SceneStore(number), model: model)
+        store.continuous = false
+        handles.append(store)
+        handles.forEach { $0.sceneContext = context }
+        return handles
     }
     
     /// 获取场景删除消息数据
@@ -51,7 +59,19 @@ extension Scene {
     func getDeleteMessageHandles(node: Node) -> [MeshMessageHandle] {
         guard let sceneSetupModel = node.sceneSetupModel else { return [] }
         // 删除场景
-        return [MeshMessageHandle(message: SceneDelete(self.number), model: sceneSetupModel)]
+        guard number > 0, SceneCommandBuilder.reserveGroupOperation(scene: self, node: node, action: .remove), let context = try? SceneMessageContext(scene: self, node: node, action: .remove) else {
+            #if DEBUG
+            print("[SceneSync] stage=commandRejected scene=\(number) address=\(node.primaryUnicastAddress) reason=deleteReservationOrContext")
+            #endif
+            return []
+        }
+        let models = info.configuration?.isDeleting == true
+            ? node.elements.compactMap { $0.model(withSigModelId: .sceneSetupServerModelId) } : [sceneSetupModel]
+        return models.map { model in
+            let handle = MeshMessageHandle(message: SceneDelete(number), model: model)
+            handle.sceneContext = context
+            return handle
+        }
     }
     
 }

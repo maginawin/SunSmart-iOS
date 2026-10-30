@@ -62,8 +62,33 @@ private final class Harness {
 
 @main
 enum SyncExecutionSessionTests {
+    static func unresolvedSceneCannotFinishSuccessfully() {
+        for pending in [true, false] {
+            let h = Harness()
+            let (session, _, _, _) = h.make()
+            session.type = .scene(Scene(name: "Missing old member", number: 42, testNeedsSync: pending))
+            session.sections = []
+            var completion: SyncDevicesViewController.SyncState?
+            session.onCompleted = { completion = $0 }
+            session.start(); h.flush()
+            precondition(completion == (pending ? .syncFailure : .syncSuccess),
+                         "zero executable tasks must not hide unresolved scene intent")
+            precondition(h.sends.isEmpty, "unresolved identity must never invent a destination")
+        }
+        print("PASS: zero-task Scene retains unresolved pending; genuinely empty Scene completes")
+    }
+
     static func main() {
         DeviceOperationType.allowsMessageFactory = true
+        unresolvedSceneCannotFinishSuccessfully()
+        emptySceneDeleteFails()
+        parameterOnlyUsesProductionSession()
+        emptySceneCommandsFail()
+        sceneIdentityLifecycle()
+        restoreSceneUsesSharedSession()
+        formalInvalidationSettlesOnce()
+        sceneExecutionGuards()
+        parametersMustFinishBeforeStore()
         sceneReadSuccess()
         sceneReadFailureAndRetry()
         sceneStoreValidationFailure()
@@ -87,6 +112,172 @@ enum SyncExecutionSessionTests {
         authorizationBeforeDynamicMessages()
         automaticRetryBudget()
         print("PASS: production Session scheduling, writeback ordering, late completion, stop/retry, Profile/PIR compensation and authorization cancellation")
+    }
+    static func emptySceneDeleteFails() {
+        let h = Harness()
+        let (session, device, _, node) = h.make()
+        device.steps = []; device.operationType = .delete(node: node, type: .scene(sceneId: 42, executeData: nil))
+        node.testHandles = []; node.applied = true
+        session.start(); h.flush()
+        precondition(device.state == .failed, "lost Delete capability cannot become empty-command success")
+    }
+    static func sceneIdentityLifecycle() {
+        for change in ["none", "case", "key"] {
+            let h = Harness(); h.sceneUnknown = false
+            let (session, _, task, node) = h.make(.scene(sceneId: 42, executeData: nil))
+            let parameter = MeshMessageHandle(), store = MeshMessageHandle(); store.message = SceneStore(42)
+            let context = SceneMessageContext(identity: node.timedSchedulerIdentity)
+            precondition(node.timedSchedulerIdentity != context.identity, "fixture must model production lowercase versus persisted uppercase")
+            parameter.sceneContext = context; store.sceneContext = context; node.testHandles = [parameter, store]
+            session.start(); h.flush()
+            precondition(h.sends.count == 1 && h.sends[0].handles.first === parameter, "normalized owner must pass initial send")
+            if change == "case" { node.fingerprint = node.fingerprint.uppercased() }
+            if change == "key" { node.fingerprint = String(repeating: "cd", count: 32) }
+            let before = SceneAcknowledgementProbe.accepted
+            session.received(handle: parameter, statusMessage: 0, model: task, messageHandles: [parameter, store])
+            precondition(SceneAcknowledgementProbe.accepted == before + (change == "key" ? 0 : 1), "ACK must accept equivalent case and reject different key")
+            h.finish(0); h.flush()
+            if change == "key" {
+                precondition(h.sends.count == 1 && node.updates == 0 && h.stopCount == 1)
+                h.stopFinished?(); h.flush()
+            } else {
+                precondition(h.sends.count == 2 && h.sends[1].handles.first === store)
+                h.finish(1); h.flush()
+                precondition(task.state == .successful && node.applied && node.updates > 0, "Store results must reach the current owner")
+            }
+        }
+        print("PASS production Session identity: lowercase send, ACK, parameter-to-Store, result writeback, case equivalence and changed-key rejection")
+    }
+    static func parameterOnlyUsesProductionSession() {
+        let h = Harness()
+        let (session, device, _, node) = h.make()
+        device.steps = []; device.operationType = nil
+        let parameter = MeshMessageHandle()
+        session.parameterOnlyOperations[ObjectIdentifier(device)] = { [parameter] }
+        session.publishesCloudChange = false
+        session.start(); h.flush()
+        precondition(h.sceneReads.isEmpty && h.sends.count == 1 && h.sends[0].handles.count == 1)
+        h.finish(0); h.flush()
+        precondition(device.state == .successful && node.updates == 0,
+            "parameter-only result uses real Session without formal persistence")
+        print("PASS production parameter-only Session selection and result isolation")
+    }
+    static func emptySceneCommandsFail() {
+        let h = Harness(); h.sceneUnknown = false
+        let (session, _, task, node) = h.make(.scene(sceneId: 42, executeData: nil))
+        node.testHandles = []
+        session.start(); h.flush()
+        precondition(task.state == .failed, "lost capability cannot succeed with empty commands")
+    }
+    static func restoreSceneUsesSharedSession() {
+        for mode in 0..<5 {
+            let h = Harness(); h.sceneUnknown = false
+            let (_, _, _, node) = h.make(.scene(sceneId: 42, executeData: nil))
+            let parameter = MeshMessageHandle(), store = MeshMessageHandle(); store.message = SceneStore(42)
+            let context = SceneMessageContext(identity: node.timedSchedulerIdentity)
+            parameter.sceneContext = context; store.sceneContext = context; node.testHandles = [parameter, store]
+            SceneCommandBuilder.current = true
+            let restore = RestoreSceneBoundary(environment: h.environment)
+            var results: [Bool] = []
+            restore.runDeferredSceneTask(.configuration(node: node, type: .scene(sceneId: 42, executeData: nil)), node: node) { results.append($0) }
+            h.flush(); precondition(h.sends.count == 1 && h.sends[0].handles.first === parameter)
+            if mode == 0 { h.finish(0); h.flush(); h.finish(1); h.flush() }
+            if mode == 1 { node.sceneBlocked = true; h.finish(0); h.flush() }
+            if mode == 2 { node.sceneAuthorized = false; h.finish(0); h.flush() }
+            if mode == 3 { restore.stop() }
+            if mode == 4 { restore.dismiss() }
+            h.flush()
+            if mode != 0 {
+                precondition(results.isEmpty && h.stopCount == 1, "Restore must await Session stop before advancing or finishing")
+                h.stopFinished?(); h.flush()
+            }
+            precondition(results == (mode == 4 ? [] : [mode == 0]))
+            precondition(restore.deferredSceneSession == nil)
+            if mode != 0 { precondition(h.sends.count == 1 && node.updates == 0) }
+            h.finish(0); h.flush()
+            precondition(results == (mode == 4 ? [] : [mode == 0]), "Restore late callback repeated completion")
+        }
+        print("PASS Restore production Scene adapter + Session: parameter/Store order, EFC/authority, stop-before-advance, dismissal and late callback ownership")
+    }
+    static func formalInvalidationSettlesOnce() {
+        for exits in [false, true] {
+            let h = Harness(); h.sceneUnknown = false
+            let (_, device, _, node) = h.make(.scene(sceneId: 42, executeData: nil))
+            let parameter = MeshMessageHandle(), store = MeshMessageHandle(); store.message = SceneStore(42)
+            node.testHandles = [parameter, store]
+            SceneCommandBuilder.current = true
+            SyncSceneScheduleTaskBuilder.devices = [device]
+            let owner = FormalSaveBoundary(environment: h.environment)
+            var terminals: [Bool] = []
+            owner.onFormalCompletion = { terminals.append($0) }
+            owner.startFormal(Scene(name: "Formal", number: 42)); h.flush()
+            precondition(h.sends.count == 1)
+            SceneCommandBuilder.current = false
+            h.finish(0); h.flush()
+            precondition(terminals.isEmpty && h.stopCount == 1, "formal terminal must await real Session stop/compensation")
+            if exits { owner.cancel() }
+            h.stopFinished?(); h.flush()
+            precondition(terminals == (exits ? [] : [false]) && owner.committedNumber == 42)
+            h.finish(0); h.flush()
+            precondition(terminals == (exits ? [] : [false]), "old parameter callback must not repeat terminal or enqueue Store")
+            owner.cancel(); h.flush()
+        }
+        SceneCommandBuilder.current = true
+        print("PASS production Coordinator startFormal/cancel + Session delayed transport: stop then pending terminal once; exit suppresses old callbacks")
+    }
+    static func sceneExecutionGuards() {
+        for authority in [false, true] {
+            for boundary in 0..<3 {
+                let h = Harness(); h.sceneUnknown = false
+                let (session, device, task, node) = h.make(.scene(sceneId: 42, executeData: nil))
+                let parameter = MeshMessageHandle(), store = MeshMessageHandle(); store.message = SceneStore(42)
+                let context = SceneMessageContext(identity: node.timedSchedulerIdentity)
+                parameter.sceneContext = context; store.sceneContext = context; node.testHandles = [parameter, store]
+                var invalidated = 0
+                session.onPlanInvalidated = { invalidated += 1 }
+                if boundary == 0 { if authority { node.sceneAuthorized = false } else { node.sceneBlocked = true } }
+                session.start(); h.flush()
+                if boundary > 0 {
+                    if boundary == 2 { h.finish(0); h.flush() }
+                    if authority { node.sceneAuthorized = false } else { node.sceneBlocked = true }
+                    h.finish(boundary - 1); h.flush()
+                }
+                precondition(h.sends.count == boundary && node.updates == 0,
+                    "Scene restriction must block initial send, parameter-to-Store and Store result")
+                precondition(h.stopCount == 1 && invalidated == 0, "terminal must await stop")
+                h.stopFinished?(); h.flush()
+                precondition(invalidated == 1)
+                if boundary > 0 { h.finish(boundary - 1); h.flush() }
+                precondition(invalidated == 1 && node.updates == 0, "old callback must not clear intent")
+                node.sceneAuthorized = true; node.sceneBlocked = false
+                task.state = .none; device.state = .none
+                session.start(); h.flush()
+                precondition(h.sends.last!.handles.first === parameter, "same intent retry must resend parameters")
+                session.close(); h.stopFinished?(); h.flush()
+            }
+        }
+        print("PASS Scene production Session guards: initial send, parameter ACK to Store, Store result, stop gate, stale callback and retry")
+    }
+    static func parametersMustFinishBeforeStore() {
+        for success in [false, true] {
+            let h = Harness(); h.sceneUnknown = false
+            let (session, _, task, node) = h.make(.scene(sceneId: 42, executeData: nil))
+            let parameter = MeshMessageHandle()
+            let store = MeshMessageHandle(); store.message = SceneStore(42)
+            node.testHandles = [parameter, store]
+            session.start(); h.flush()
+            precondition(h.sends.count == 1 && h.sends[0].handles.count == 1 && h.sends[0].handles[0] === parameter,
+                "parameters must be acknowledged before Store is queued")
+            h.finish(0, success: success); h.flush()
+            if success {
+                precondition(h.sends.count == 2 && h.sends[1].handles[0] === store)
+                h.finish(1, success: false); h.flush()
+                precondition(task.state == .failed, "Store failure must remain failed")
+            } else {
+                precondition(h.sends.count == 1 && task.state == .failed, "parameter failure must not Store")
+            }
+        }
+        print("PASS parameter failure/Store failure ordering")
     }
     static func sceneReadSuccess() {
         let h = Harness()
@@ -401,7 +592,7 @@ enum SyncExecutionSessionTests {
         h.stopFinished?(); h.flush()
         precondition(h.sends.count == 2 && h.delays.contains(0.5), "STOP restores the current task's Profile after the original delay")
         h.finish(1); h.flush()
-        precondition(h.sends.count == 3 && h.sends[2].handles[0].message == 9, "PIR target follows Profile restore")
+        precondition(h.sends.count == 3 && h.sends[2].handles[0].message as? Int == 9, "PIR target follows Profile restore")
         h.finish(2); h.flush()
         precondition(h.sends.count == 4, "retry waits until both compensation stages complete")
         session.close(); h.flush(); h.stopFinished?(); h.flush()
@@ -432,7 +623,7 @@ enum SyncExecutionSessionTests {
         let fresh = MeshMessageHandle(); fresh.message = 42
         node.testHandles = [fresh]
         h.authorization?(nil); h.flush()
-        precondition(h.sends.count == 1 && h.sends[0].handles[0].message == 42,
+        precondition(h.sends.count == 1 && h.sends[0].handles[0].message as? Int == 42,
             "message factory reads the newly authorized information at execution time")
         h.finish(0); h.flush()
         precondition(information.state == .successful, "dynamic message finishes normally")

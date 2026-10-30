@@ -13,6 +13,7 @@ class ScenesViewCell: GroupsViewCell {
     /// 场景执行动画view
     private var animationView: SceneExecuteAnimationView!
     private var sceneRequestID = UUID()
+    private var displayedNeedsSync = false
     
     /// 是否执行中
     var isExecuting: Bool {
@@ -21,16 +22,19 @@ class ScenesViewCell: GroupsViewCell {
     
     var scene: Scene! {
         didSet {
+            if oldValue !== scene { displayedNeedsSync = false }
             let imageIndex = max(min(scene.info.imageId, sceneImageNames.count) - 1, 0)
-            self.imageView.image = UIImage(named: sceneImageNames[imageIndex])
+            self.imageView.image = UIImage(named: displayedNeedsSync ? "sync_failed_big" : sceneImageNames[imageIndex])
             self.nameLabel.text = scene.name
             
             sceneRequestID = UUID()
             let requestID = sceneRequestID
-            // Pending and unavailable status must not look authoritatively synced.
-            imageView.image = UIImage(named: "sync_failed_big")
-            NodeSyncStatusRefresh.request(scene: scene, owner: self) { [weak self] needsSync in
-                guard let self, self.sceneRequestID == requestID else { return }
+            // A read in progress is not a sync failure. Only a completed snapshot
+            // changes the warning; retain an existing warning while rechecking.
+            NodeSyncStatusRefresh.requestSceneGroups(scene: scene, owner: self) { [weak self] snapshot in
+                guard let self, self.sceneRequestID == requestID, let snapshot else { return }
+                let needsSync = snapshot.needsAnySync
+                self.displayedNeedsSync = needsSync
                 self.imageView.image = UIImage(named: needsSync ? "sync_failed_big" : sceneImageNames[imageIndex])
             }
         }

@@ -3,8 +3,32 @@ import NordicSigMeshSDK
 
 extension SyncExecutionSession {
     func applyResult(_ resultMessageHandles: [MeshMessageHandle], model: SyncCellModel, messageHandles: [MeshMessageHandle]) -> Bool {
+        if parameterOnlyOperations[ObjectIdentifier(model)] != nil {
+            return !messageHandles.isEmpty && resultMessageHandles.count == messageHandles.count
+                && resultMessageHandles.allSatisfy { $0.isSuccessful }
+        }
         if case .configuration(_, .hdb(let task)) = operationType(for: model) {
             return task.persist(result: resultMessageHandles)
+        }
+        if messageHandles.contains(where: { $0.sceneContext != nil }) {
+            guard !messageHandles.isEmpty, resultMessageHandles.count == messageHandles.count,
+                  resultMessageHandles.allSatisfy({ $0.isSuccessful }) else { return false }
+            return resultMessageHandles.enumerated().allSatisfy { index, handle in
+                guard let context = handle.sceneContext,
+                      let node = MeshNetworkManager.instance.realNodes.first(where: {
+                          $0.sceneConfigurationIdentity == context.identity
+                      }) else { return false }
+                // A whole-Scene Delete may address multiple Elements. Validate
+                // each captured context, but commit the Node's operation once,
+                // after every Element result is known. Earlier handles must not
+                // consume the generation needed by the final handle.
+                if handle.message is SceneDelete,
+                   resultMessageHandles.dropFirst(index + 1).contains(where: {
+                       $0.message is SceneDelete && $0.sceneContext?.number == context.number
+                           && $0.sceneContext?.identity == context.identity
+                   }) { return context.matches(node: node) }
+                return node.applyMessageHandle(handle, isSuccess: true)
+            }
         }
         resultMessageHandles.forEach { handle in
             if let address = handle.address ?? handle.model?.parentElement?.unicastAddress, let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {

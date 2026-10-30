@@ -106,7 +106,7 @@ class ToastStatusView: UIView {
         messageLabel.numberOfLines = 0
         messageLabel.lineBreakMode = .byWordWrapping
         messageLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-//        messageLabel.textAlignment = .center
+        messageLabel.textAlignment = .left
 
         stackView.axis = .horizontal
         stackView.spacing = SCRXFrom(10)
@@ -124,11 +124,9 @@ class ToastStatusView: UIView {
         blurView.contentView.addSubview(stackView)
 
         stackView.snp.makeConstraints { make in
-//            make.leading.trailing.equalToSuperview().inset(16)
-            make.width.lessThanOrEqualToSuperview().offset(-32)
+            make.leading.trailing.equalToSuperview().inset(16)
             make.top.equalToSuperview().offset(12)
             make.bottom.equalToSuperview().offset(-12)
-            make.centerX.equalToSuperview()
         }
     }
 
@@ -172,7 +170,7 @@ class ToastStatusView: UIView {
         messageLabel.text = message
         messageLabel.font = font
         messageLabel.textColor = .white
-        messageLabel.textAlignment = .center
+        messageLabel.textAlignment = .left
         messageLabel.numberOfLines = 0
         messageLabel.lineBreakMode = .byWordWrapping
         messageLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
@@ -188,9 +186,7 @@ class ToastStatusView: UIView {
             make.size.equalTo(30)
         }
         stackView.snp.makeConstraints { make in
-            make.centerX.equalToSuperview()
-            make.leading.greaterThanOrEqualToSuperview().offset(22)
-            make.trailing.lessThanOrEqualToSuperview().offset(-22)
+            make.leading.trailing.equalToSuperview().inset(22)
             make.top.equalToSuperview().offset(7)
             make.bottom.equalToSuperview().offset(-7)
         }
@@ -198,6 +194,7 @@ class ToastStatusView: UIView {
 
     // MARK: - Show
 
+    @discardableResult
     static func show(
         in superview: UIView,
         message: String,
@@ -205,7 +202,7 @@ class ToastStatusView: UIView {
         appearance: Appearance = .standard,
         position: Position = .bottom,
         duration: TimeInterval = 1.5
-    ) {
+    ) -> ToastStatusView {
         let toast = ToastStatusView(
             message: message,
             type: type,
@@ -258,5 +255,6 @@ class ToastStatusView: UIView {
                 toast.removeFromSuperview()
             })
         }
+        return toast
     }
 }

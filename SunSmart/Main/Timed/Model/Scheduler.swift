@@ -184,13 +184,12 @@ class Schedule: Codable, Copyable {
             nodes.append(contentsOf: $0.nodes.filter({ !nodes.contains($0) }))
         })
         
-        scene?.info.groups.forEach({
-            nodes.append(contentsOf: $0.nodes.filter({ !nodes.contains($0) }))
-        })
-        needDeleteScenes.forEach { scene in
-            scene.info.groups.forEach({
-                nodes.append(contentsOf: $0.nodes.filter({ !nodes.contains($0) }))
-            })
+        for targetScene in (scene.map { [$0] } ?? []) + needDeleteScenes {
+            if let snapshot = try? SceneTargetResolver.resolve(scene: targetScene) {
+                for target in snapshot.targets + snapshot.cleanupTargets where !nodes.contains(target.node) {
+                    nodes.append(target.node)
+                }
+            }
         }
         if let nodeSlots {
             nodes.append(contentsOf: MeshNetworkManager.instance.realNodes.filter { node in

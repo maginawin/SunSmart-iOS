@@ -77,12 +77,12 @@ struct SiteUpdateToastUIContractTests {
                 standard.contains("messageLabel.lineBreakMode = .byWordWrapping") &&
                 standard.contains("make.top.equalToSuperview().offset(12)") &&
                 standard.contains("make.bottom.equalToSuperview().offset(-12)") &&
-                standard.contains("make.centerX.equalToSuperview()") &&
+                standard.contains("make.leading.trailing.equalToSuperview().inset(16)") &&
                 !standard.contains("messageLabel.numberOfLines = 2") &&
                 !standard.contains("byTruncatingTail") &&
                 !standard.contains("baselineOffset") &&
                 !standard.contains("CGAffineTransform"),
-            "Standard Toast must wrap all text and derive its height from centered content with 12pt vertical insets"
+            "Standard Toast must wrap all text with fixed horizontal insets and vertically centered content"
         )
         require(
             siteUpdate.contains("messageLabel.text = message") &&
@@ -90,8 +90,7 @@ struct SiteUpdateToastUIContractTests {
                 siteUpdate.contains("messageLabel.numberOfLines = 0") &&
                 siteUpdate.contains("messageLabel.lineBreakMode = .byWordWrapping") &&
                 siteUpdate.contains("stackView.alignment = .center") &&
-                siteUpdate.contains("make.leading.greaterThanOrEqualToSuperview().offset(22)") &&
-                siteUpdate.contains("make.trailing.lessThanOrEqualToSuperview().offset(-22)") &&
+                siteUpdate.contains("make.leading.trailing.equalToSuperview().inset(22)") &&
                 siteUpdate.contains("make.top.equalToSuperview().offset(7)") &&
                 siteUpdate.contains("make.bottom.equalToSuperview().offset(-7)") &&
                 !siteUpdate.contains("messageLabel.numberOfLines = 1") &&
@@ -102,7 +101,7 @@ struct SiteUpdateToastUIContractTests {
                 !siteUpdate.contains("messageLabel.attributedText") &&
                 !siteUpdate.contains("baselineOffset") &&
                 !siteUpdate.contains("CGAffineTransform"),
-            "Site Update Toast must wrap all text and derive its height from centered content with preserved insets"
+            "Site Update Toast must wrap all text with fixed horizontal insets and vertically centered content"
         )
         require(
             show.contains("make.height.greaterThanOrEqualTo(44)") &&

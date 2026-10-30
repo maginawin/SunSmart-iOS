@@ -9,6 +9,9 @@ import subprocess
 import sys
 import tempfile
 
+sys.dont_write_bytecode = True
+from scene_group_codec_source import scene_group_codec_source
+
 root = Path(__file__).resolve().parents[1]
 sdk = root / '.local-sdk/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision'
 
@@ -27,12 +30,12 @@ test = test.replace('// SDK_OPTIONAL_FIELDS', section(node,
 test = test.replace('// SDK_GROUP_DECODER', section(group,
     '    private enum CodingKeys:', '\n}\n\nextension Group:'))
 test = test.replace('// IMPORT_DECODE_PREFLIGHT', section(imports,
-    '    static func canDecodeConfigurationImport(', '    /// 更新空间内基本数据'))
+    '    static func sceneConfigurationImportFailure(', '    /// 更新空间内基本数据'))
 test = test.replace('// IMPORT_STAGING_GATE', section(imports,
     '            guard groups.count == groupDicts.count else {', '            var appliedOutcome:'))
 recovery = (root / 'SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift').read_text()
 test = test.replace('// RECOVERY_MESSAGE', section(recovery, '    static func message(', '    override func viewDidLoad()'))
-parts = [test, section(hex_source, 'internal extension UInt16 {', 'internal extension Int16 {'),
+parts = [scene_group_codec_source(root), test, section(hex_source, 'internal extension UInt16 {', 'internal extension Int16 {'),
          section(imports, 'enum CloudNodeImport {', '\n/// Stage timings')]
 with tempfile.TemporaryDirectory(prefix='cloud-node-import-') as directory:
     directory = Path(directory)
@@ -41,6 +44,7 @@ with tempfile.TemporaryDirectory(prefix='cloud-node-import-') as directory:
     binary = directory / 'Tests'
     subprocess.run(['swiftc', '-D', 'DEBUG', '-parse-as-library',
                     str(root / 'SunSmart/Main/Timed/Model/TimedSchedulerSlotPolicy.swift'),
+                    str(root / 'SunSmart/Main/Scene/Model/SceneConfiguration.swift'),
                     str(harness), '-o', str(binary)], check=True)
     args = sys.argv[sys.argv.index('--snapshot') + 1:][:1] if '--snapshot' in sys.argv else []
     subprocess.run([str(binary), *args], check=True)

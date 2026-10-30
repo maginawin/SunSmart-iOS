@@ -1,817 +1,897 @@
-//
-//  SceneSettingsViewController.swift
-//  SunSmart
-//
-//  Created by 袁科鸿 on 2023/12/26.
-//
-
 import UIKit
 import NordicSigMeshSDK
+import SwiftyJSON
 
-class SceneSettingsViewController: UIViewController {
-
-    /// 模式
-    enum Mode {
-        /// 设置
-        case settings
-        /// 成员（创建场景后添加组）
-        case members
-    }
-    
-    private var collectionView: UICollectionView!
-    private var flowLayout: AlignCenterFlowLayout!
-    
-    private var bottomView: UIView!
-    private var syncBtn: UIButton!
-    private var previewBtn: UIButton!
-    private var groups: [Group] = []
-    private var isPageVisible = false
-    private var refreshData = true
-    private var renderedRevision: SpacePageRevision?
-    private let syncDisplay = SceneGroupDisplayState()
-    private var appearances: [ObjectIdentifier: SceneGroupAppearance] = [:]
-    
+/// Both scene types share draft ownership; DONE hands durable intent to the Sync page.
+class SceneSettingsViewController: UIViewController, CustomSegmentedControlDelegate, UICollectionViewDataSource, UICollectionViewDelegateFlowLayout, UITextFieldDelegate {
+    enum Mode { case settings, members, deviceSelection }
     let space: SpaceData
-    let scene: Scene
-    
+    let scene: Scene?
     let mode: Mode
-//    /// 场景更新回调
-    var sceneUpdateCallback: ((Scene)->Void)?
-//    /// 场景删除回调
-//    var sceneDeleteCallback: ((Scene)->Void)?
-    /// 选择的组
-//    private var selectGroups: [Group] = []
-    
-    /// 列数
-//    private var columnNum: Int = isIPad ? 4 : 3
-    private var rowNum: Int = isIPad ? 5 : 3
-    /// collectionview边距
-    private var collectionViewInsets: UIEdgeInsets = isIPad ? UIEdgeInsets(top: 0, left: SCRXFrom(30), bottom: 0, right: SCRXFrom(30)) : UIEdgeInsets(top: 0, left: SCRXFrom(15), bottom: 0, right: SCRXFrom(15))
-    
-    /// item间距
-    private var itemMargin: CGFloat = isIPad ? SCRXFrom(20) : SCRXFrom(13)
-    
+    var sceneUpdateCallback: ((Scene) -> Void)?
+    var beginSaveOnAppearance = false
+    var beginPreviewOnAppearance = false
+    var finishesCreation = false
+    var enablesGroupLiveControl = false
+    private var selection: SceneDraftSelection?
+    private let coordinator = SceneSaveCoordinator()
+    private var initialError: Error?
+    private var devicesView: SceneDevicesSelectionView!
+    private var segmented: CustomSegmentedControl!
+    private let groupLayout = UICollectionViewFlowLayout()
+    private lazy var groupsTable = UICollectionView(frame: .zero, collectionViewLayout: groupLayout)
+    private let groupSearch = DeviceNameFilterSearchView.makeInlineSearchField(placeholder: "scene_search_groups".localizedString)
+    private let groupFilter = DeviceNameFilterSession()
+    private var groups: [Group] = []
+    private var devicePreview = SceneDevicePreviewState()
+    private var previewComparison: SceneTargetSnapshot.Comparison?
+    private var previewOnline = Set<TimedSchedulerNodeIdentity>()
+    private var previewReport: SceneSaveCoordinator.Report?
+    private var previewToast: ToastStatusView?
+    private var selectionLayout: Bool?
+    private let emptyDevicesView = UIScrollView()
+    private let emptyGroupsView = UIScrollView()
+    private var busy = false
+    private var active = false
+    private var lifecycle = UUID() {
+        didSet { requestedAddresses = nil }
+    }
+    private var requestedAddresses: UUID?
+    private var syncPagePresented = false
+    private var picker: SceneExecuteDataPickerView?
+    private var groupPreview: MeshGroupControlSession?
+    private var groupPreviewGeneration = UUID()
+    private var deviceLiveGeneration = UUID()
+    private var lastLightnessSample: UInt16?
+    private var lastTemperatureSample: UInt16?
+    private var relayLiveControl: SceneRelayLiveControl?
+    private var onDeviceLiveControl: (() -> Void)?
+    private var connectionObservation: NSKeyValueObservation?
+    private var alert: SRAlertView?
+    private var observers: [NSObjectProtocol] = []
+
     init(space: SpaceData, scene: Scene, mode: Mode = .settings) {
-        self.space = space
-        self.scene = scene
-        self.mode = mode
+        self.space = space; self.scene = scene; self.mode = mode
+        super.init(nibName: nil, bundle: nil)
+        do { selection = SceneDraftSelection(draft: try SceneConfigurationStore().editingDraft(for: scene)) } catch { initialError = error }
+    }
+    init(space: SpaceData, draft: SceneDraft) {
+        self.space = space; self.scene = nil; mode = .members
+        selection = SceneDraftSelection(draft: draft)
         super.init(nibName: nil, bundle: nil)
     }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder:) has not been implemented")
+    private init(space: SpaceData, selection: SceneDraftSelection) {
+        self.space = space; scene = nil; mode = .deviceSelection
+        self.selection = selection
+        super.init(nibName: nil, bundle: nil)
     }
-    
-    override func viewDidLoad() {
-        super.viewDidLoad()
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+    deinit { observers.forEach(NotificationCenter.default.removeObserver) }
 
-        view.backgroundColor = Background_Color
-        
-        navigationController?.setNavigationBarBackgroundColor(color: .clear)
-        setupUI()
-        
-        
-        groups = MeshNetworkManager.instance.groups
-        let sceneGroups = scene.info.groups
-        groups.forEach({
-            if sceneGroups.contains($0) {
-                $0.isSelected = true
-                if let data = $0.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
-                    $0.executeSceneData = .init(data: data)
-                }
-//                    .first(where: { $0.key == scene.number })
-            }else {
-                $0.isSelected = false
-                $0.executeSceneData = nil
-            }
-        })
-        
-        if mode == .members {
-            title = "settings".localizedString
-            navigationItem.leftBarButtonItem = UIBarButtonItem().withoutSharedBackground()
-            navigationController?.interactivePopGestureRecognizer?.isEnabled = false
-            navigationItem.rightBarButtonItem = UIBarButtonItem(title: "done".localizedString, color: RGB(0, 0, 0, 0.85), font: UIFont.systemFont(ofSize: 16, weight: .light), target: self, sel: #selector(doneAction))
-            bottomView.isHidden = true
-        }else {
-            
-            title = "settings".localizedString
-            navigationItem.rightBarButtonItem = UIBarButtonItem(title: "save".localizedString, color: RGB(0, 0, 0, 0.85), font: UIFont.systemFont(ofSize: 16, weight: .light), target: self, sel: #selector(saveAction))
-//            selectGroups = scene.info.groups
-            scene.info.groups.forEach({
-//                if let group = space.groups.first(where: { $0.add })
-                $0.isSelected = true
-                if let sceneData = $0.info.sceneExecuteDatas.first(where: { scene.number == $0.sceneNumber }) {
-                    $0.executeSceneData = .init(data: sceneData)
-                }
-            })
+    override func viewDidLoad() {
+        super.viewDidLoad(); title = "settings".localizedString; view.backgroundColor = Background_Color
+        isModalInPresentation = true
+        configureNavigationButtons()
+        guard let selection else {
+            navigationItem.rightBarButtonItem?.title = "retry".localizedString
+            return
         }
-        
-        addNotificationObserver()
-        
+        setupEditor(selection)
     }
-    
+    private func configureNavigationButtons() {
+        navigationItem.leftBarButtonItem = UIBarButtonItem(image: UIImage(named: "close")?.withRenderingMode(.alwaysOriginal), style: .plain, target: self, action: #selector(closeAction)).withoutSharedBackground()
+        navigationItem.rightBarButtonItem = UIBarButtonItem(title: (selection == nil ? "retry" : "done").localizedString, color: .black.withAlphaComponent(0.85), target: self, sel: #selector(doneAction))
+        navigationController?.setNavigationBarBackgroundColor(color: Background_Color)
+    }
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        isPageVisible = true
-        if refreshData || renderedRevision?.isCurrent != true {
-            updateUI()
-        } else {
-            refreshVisibleAppearance()
-        }
-        refreshSyncStatus()
+        // Our navigation controller installs a back arrow during push. Both editor
+        // modes use this same close/DONE configuration, including on return.
+        configureNavigationButtons()
+        if selection != nil { reload() }
     }
-
+    private func setupEditor(_ selection: SceneDraftSelection) {
+        navigationItem.rightBarButtonItem?.title = "done".localizedString
+        segmented = CustomSegmentedControl(frame: .zero, titles: ["groups".localizedString, "Devices".localizedString])
+        segmented.delegate = self
+        view.addSubview(segmented)
+        segmented.snp.makeConstraints { make in make.top.equalTo(view.safeAreaLayoutGuide).offset(14); make.left.right.equalToSuperview().inset(16); make.height.equalTo(SCRYFrom(44)) }
+        devicesView = SceneDevicesSelectionView(selection: selection, editorStyle: true); view.addSubview(devicesView)
+        devicesView.snp.makeConstraints { make in
+            make.top.equalTo(segmented.snp.bottom).offset(12); make.left.right.equalToSuperview()
+            make.bottom.equalTo(view.keyboardLayoutGuide.snp.top)
+        }
+        devicesView.selecting = mode == .deviceSelection
+        devicesView.onPreview = { [weak self] in self?.previewAction() }
+        devicesView.onEditSelection = { [weak self] in self?.selectDevices() }
+        devicesView.onPreviewDetails = { [weak self] in
+            guard let self, let report = self.previewReport else { return }
+            self.showPreviewResults(report)
+        }
+        devicesView.onChange = { [weak self] in self?.draftChanged() }
+        devicesView.onSettings = { [weak self] target in self?.editDevices(target) }
+        devicesView.onRemoveCategory = { [weak self] identities in self?.removeCategory(identities) }
+        devicesView.onIdentify = { [weak self] node in self?.identify(node) }
+        setupEmptySelectionView(emptyDevicesView, titleKey: "no_device_selected", messageKey: "scene_empty_devices_message", buttonKey: "scene_select_devices", action: #selector(selectDevices))
+        setupEmptySelectionView(emptyGroupsView, titleKey: "no_groups", messageKey: "scene_not_groups_message", buttonKey: "create_group", action: #selector(createGroup))
+        groupSearch.delegate = self
+        groupSearch.addTarget(self, action: #selector(groupSearchChanged), for: .editingChanged)
+        view.addSubview(groupSearch)
+        groupSearch.snp.makeConstraints { make in make.top.equalTo(segmented.snp.bottom).offset(16); make.left.right.equalToSuperview().inset(16); make.height.equalTo(44) }
+        groupsTable.dataSource = self; groupsTable.delegate = self; groupsTable.backgroundColor = .clear
+        groupLayout.minimumInteritemSpacing = 10; groupLayout.minimumLineSpacing = 16
+        groupsTable.contentInset = UIEdgeInsets(top: 16, left: 0, bottom: 16, right: 0)
+        groupsTable.keyboardDismissMode = .onDrag
+        groupsTable.register(SceneMembersViewCell.self, forCellWithReuseIdentifier: "group")
+        view.addSubview(groupsTable)
+        groupsTable.snp.makeConstraints { make in make.top.equalTo(groupSearch.snp.bottom).offset(8); make.left.right.equalToSuperview().inset(16); make.bottom.equalTo(view.keyboardLayoutGuide.snp.top) }
+        coordinator.onReport = { [weak self] report in self?.received(report) }
+        coordinator.onFailure = { [weak self] error in self?.failed(error) }
+        observers.append(NotificationCenter.default.addObserver(forName: UIApplication.willResignActiveNotification, object: nil, queue: .main) { [weak self] _ in self?.suspend() })
+        observers.append(NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            guard let self, self.viewIfLoaded?.window != nil, self.navigationController?.topViewController === self else { return }; self.active = true; self.reload()
+        })
+        observeDeviceChanges()
+        reload()
+    }
+    private func setupEmptySelectionView(_ scrollView: UIScrollView, titleKey: String, messageKey: String, buttonKey: String, action: Selector) {
+        view.addSubview(scrollView)
+        scrollView.snp.makeConstraints { make in
+            make.top.equalTo(segmented.snp.bottom); make.left.right.equalToSuperview()
+            make.bottom.equalTo(view.keyboardLayoutGuide.snp.top)
+        }
+        let illustration = UIImageView(image: UIImage(named: "data_empty"))
+        illustration.contentMode = .scaleAspectFit
+        let title = UILabel(text: titleKey.localizedString, textColor: RGB(100, 116, 139), fontSize: 15)
+        title.textAlignment = .center; title.numberOfLines = 0
+        let message = UILabel(text: messageKey.localizedString, textColor: RGB(148, 163, 184), fontSize: 15, fontWeight: .light)
+        message.textAlignment = .center; message.numberOfLines = 0
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.alignment = .center; paragraph.minimumLineHeight = 22; paragraph.maximumLineHeight = 22
+        message.attributedText = NSAttributedString(string: messageKey.localizedString, attributes: [.paragraphStyle: paragraph])
+        let button = UIButton(title: buttonKey.localizedString, titleSize: 16, titleWeight: .light, titleColor: .white, target: self, action: action)
+        button.backgroundColor = Bar_Color; button.layer.cornerRadius = 10
+        button.layer.shadowColor = UIColor.black.cgColor; button.layer.shadowOpacity = 0.1
+        button.layer.shadowOffset = CGSize(width: 0, height: 2); button.layer.shadowRadius = 5
+        let stack = UIStackView(arrangedSubviews: [illustration, title, message, button])
+        stack.axis = .vertical; stack.alignment = .center
+        stack.setCustomSpacing(2, after: illustration)
+        stack.setCustomSpacing(16, after: title)
+        stack.setCustomSpacing(40, after: message)
+        scrollView.addSubview(stack)
+        stack.snp.makeConstraints { make in
+            make.top.equalTo(scrollView.contentLayoutGuide).offset(54)
+            make.left.right.equalTo(scrollView.contentLayoutGuide).inset(20)
+            make.width.equalTo(scrollView.frameLayoutGuide).offset(-40)
+            make.bottom.equalTo(scrollView.contentLayoutGuide).offset(-24)
+        }
+        illustration.snp.makeConstraints { make in make.width.equalTo(240); make.height.equalTo(194) }
+        title.snp.makeConstraints { make in make.width.equalToSuperview(); make.height.greaterThanOrEqualTo(20) }
+        message.snp.makeConstraints { make in make.width.equalToSuperview() }
+        button.snp.makeConstraints { make in make.width.equalTo(216); make.height.equalTo(44) }
+    }
+    private func observeDeviceChanges() {
+        connectionObservation = MeshLibManager.manager.observe(\.isMeshNetworkConnected, options: [.new]) { [weak self] _, change in
+            guard change.newValue == false else { return }
+            DispatchQueue.main.async {
+                self?.interruptGroupPreview()
+                self?.interruptDeviceLiveControl()
+                self?.interruptDevicePreview()
+            }
+        }
+        for name in [UIApplication.willResignActiveNotification,
+                     Notification.Name(emergencyFireControllerManualControlStateDidChangeNotificationName),
+                     Notification.Name(spacePermissionChangedNotificaitonName)] {
+            observers.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                self?.interruptGroupPreview()
+                self?.interruptDeviceLiveControl()
+                self?.interruptDevicePreview()
+            })
+        }
+        for name in [devicesUpdateNotificationName, deviceStateUpdateNotificationName, groupsRefreshNotificationName, groupDataUpdateNotificationName, spacePermissionChangedNotificaitonName] {
+            observers.append(NotificationCenter.default.addObserver(forName: .init(name), object: nil, queue: .main) { [weak self] _ in
+                guard let self, self.active else { return }
+                self.reload()
+            })
+        }
+    }
+    override func viewDidAppear(_ animated: Bool) {
+        super.viewDidAppear(animated); active = true
+        if selection != nil { reload() }
+        navigationController?.interactivePopGestureRecognizer?.isEnabled = false
+        if let initialError { failed(initialError) }
+        if beginSaveOnAppearance { beginSaveOnAppearance = false; doneAction() }
+        else if beginPreviewOnAppearance { beginPreviewOnAppearance = false; previewAction() }
+    }
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        isPageVisible = false
-        syncDisplay.cancel()
+        if mode == .deviceSelection && isMovingFromParent { selection?.filter.reset() }
+        suspend()
+        navigationController?.interactivePopGestureRecognizer?.isEnabled = true
     }
-    
-    override func viewDidAppear(_ animated: Bool) {
-        super.viewDidAppear(animated)
-        
-        if collectionView.firstShowFlashScrollIndicators {
-            collectionView.flashScrollIndicatorsIfNeeded()
-        }
+    private func suspend() {
+        interruptDevicePreview()
+        clearPreviewToast()
+        stopGroupPreview()
+        stopDeviceLiveControl()
+        active = false; lifecycle = UUID(); selection?.invalidateParameterEdit()
+        picker?.cancel(); picker = nil; alert?.removeFromSuperview(); alert = nil
+        coordinator.cancel(); setBusy(false); XWHUDManager.hide()
     }
-    
-    deinit {
-        if self.mode == .members && self.space.isConfiguring { // 未创建场景退出页面，停止引导配置流程
-            self.space.isConfiguring = false
-        }
+    private func accepts(_ token: UUID, revision: UUID) -> Bool {
+        active && lifecycle == token && selection?.draft.revision == revision && viewIfLoaded?.window != nil
     }
-    
-    /// 添加组/编辑通知监听
-    private func addNotificationObserver() {
-        NotificationCenter.default.addObserver(forName: .init(groupsRefreshNotificationName), object: nil, queue: .main) {[weak self] _ in
-            self?.refreshVisibleUI()
-        }
-        NotificationCenter.default.addObserver(forName: .init(sceneDataUpdateNotificationName), object: nil, queue: .main) { [weak self] notification in
-            guard let self else { return }
-            if let changed = notification.object as? Scene, changed !== self.scene { return }
-            self.refreshVisibleUI()
-        }
-        NotificationCenter.default.addObserver(forName: .init(groupDataUpdateNotificationName), object: nil, queue: .main) { [weak self] _ in
-            guard let self else { return }
-            guard self.isPageVisible else { self.refreshData = true; return }
-            if self.renderedRevision?.isCurrent != true { self.updateUI() }
-            else { self.refreshVisibleAppearance(); self.refreshSyncStatus() }
-        }
-        NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
-            self?.refreshVisibleUI()
-        }
+    private func setBusy(_ value: Bool) {
+        busy = value
+        navigationItem.rightBarButtonItem?.isEnabled = !value
+        let editable = !value && coordinator.committedNumber == nil
+        segmented?.isUserInteractionEnabled = editable; devicesView?.editingEnabled = editable
+        groupsTable.isUserInteractionEnabled = editable; groupSearch.isUserInteractionEnabled = editable
+        emptyDevicesView.isUserInteractionEnabled = editable
+        emptyGroupsView.isUserInteractionEnabled = editable
     }
-
-    private func refreshVisibleUI() {
-        refreshData = true
-        guard isPageVisible, isViewLoaded else { return }
-        updateUI()
-    }
-
-    private func updateUI() {
-        groups = MeshNetworkManager.instance.groups
-        appearances = NodeSyncStatusRefresh.sceneGroupAppearances(groups)
-        renderedRevision = SpacePageRevision()
-        refreshData = false
-        collectionView.reloadData()
-        updateEmptyUI()
-        updateSyncButton()
-        refreshSyncStatus()
-    }
-
-    private func refreshSyncStatus() {
-        guard isPageVisible else { return }
-        syncDisplay.refresh(scene: scene) { [weak self] in
-            guard let self, self.isPageVisible else { return }
-            self.updateSyncButton()
-            self.refreshVisibleAppearance()
-        }
-    }
-
-    private func updateSyncButton() {
-        if mode == .settings {
-            syncBtn.isHidden = syncDisplay.currentSnapshot?.needsSync.isEmpty == true
-        }
-    }
-
-    private func refreshVisibleAppearance() {
-        appearances = NodeSyncStatusRefresh.sceneGroupAppearances(groups)
-        updateSyncButton()
-        for indexPath in collectionView.indexPathsForVisibleItems where indexPath.item < groups.count {
-            if let cell = collectionView.cellForItem(at: indexPath) as? SceneMembersViewCell {
-                configure(cell, group: groups[indexPath.item])
+    private func reload() {
+        guard let selection else { return }
+        refreshDevicePreviewContext()
+        let deviceMode = selection.draft.kind == .devices
+        let selectingDevices = deviceMode && devicesView.selecting
+        title = (selectingDevices ? "scene_select_devices" : "settings").localizedString
+        segmented.isHidden = selectingDevices
+        if selectionLayout != selectingDevices {
+            selectionLayout = selectingDevices
+            devicesView.snp.remakeConstraints { make in
+                if selectingDevices { make.top.equalTo(view.safeAreaLayoutGuide) }
+                else { make.top.equalTo(segmented.snp.bottom).offset(12) }
+                make.left.right.equalToSuperview(); make.bottom.equalTo(view.keyboardLayoutGuide.snp.top)
             }
         }
+        let selectedIndex = deviceMode ? 1 : 0
+        if segmented.selectedIndex != selectedIndex { segmented.selectedIndex = selectedIndex }
+        let showsEmptyDevices = deviceMode && !devicesView.selecting && selection.draft.deviceMembers.isEmpty
+        let showsEmptyGroups = !deviceMode && MeshNetworkManager.instance.groups.isEmpty
+        devicesView.isHidden = !deviceMode || showsEmptyDevices
+        emptyDevicesView.isHidden = !showsEmptyDevices
+        emptyGroupsView.isHidden = !showsEmptyGroups
+        groupSearch.isHidden = deviceMode || showsEmptyGroups; groupsTable.isHidden = deviceMode || showsEmptyGroups
+        groups = groupFilter.filtered(MeshNetworkManager.instance.groups, names: { [$0.name] })
+        groupsTable.reloadData(); devicesView.reload(); setBusy(busy)
+        if !deviceMode && !MeshNetworkManager.instance.groups.isEmpty && groups.isEmpty {
+            let label = UILabel(); label.text = "scene_no_search_results".localizedString; label.textAlignment = .center
+            groupsTable.backgroundView = label
+        } else { groupsTable.backgroundView = nil }
     }
-
-    private func configure(_ cell: SceneMembersViewCell, group: Group) {
-        let belongsToScene = group.info.sceneExecuteDatas.contains { $0.sceneNumber == scene.number }
-        let needsSync = belongsToScene && (syncDisplay.currentSnapshot?.needsSync.contains(ObjectIdentifier(group)) ?? true)
-        cell.updateData(group: group, sceneData: group.executeSceneData,
-                        appearance: appearances[ObjectIdentifier(group)], needsSync: needsSync)
-        cell.selectBtn.isSelected = group.isSelected
-        cell.progressView.isHidden = !group.isSelected
+    private func draftChanged() {
+        lifecycle = UUID(); coordinator.cancel()
+        reload()
     }
-    
-    private func addSuccessHandle() {
-        
-        NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
-        
-//        let spaceVc = UIViewController.getVisibleVc()?.presentingViewController
-        if self.space.isConfiguring { // && spaceVc?.isKind(of: SpaceViewController.classForCoder()) ?? false // 在引导配置流程中 
-            dismiss(animated: false)
-            // 跳转到连续创建页面
-            let vc = SpaceNewCreationProcessController(space: space, options: .scene)
-            NotificationCenter.default.post(name: .init(spaceModalViewControllerNotificaitonName), object: NavigationViewController(rootViewController: vc))
-//            spaceVc?.present(NavigationViewController(rootViewController: vc), animated: true)
-        }else {
-            dismiss(animated: true)
-        }
-        
+    func segmentedControl(_ segmentedControl: CustomSegmentedControl, shouldSelesctedItem index: Int) -> Bool {
+        sceneKindChanged(index)
+        // Only accepted draft changes update the tab, using the same animation as Site.
+        return false
     }
-    
-    /// 完成（添加成员模式）
-    @objc private func doneAction() {
-        
-        // 获取已选择的组
-        let selectGroups = MeshNetworkManager.instance.groups.filter({ $0.isSelected && $0.executeSceneData != nil })
-        // 有设备的组
-        let existNodeGroups = selectGroups.filter({ $0.nodes.count > 0 })
-        // 网络未连接
-        if existNodeGroups.count > 0 && !MeshLibManager.manager.isMeshNetworkConnected {
-            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-            return
+    func segmentedControl(_ segmentedControl: CustomSegmentedControl, didSelectedItem index: Int) {}
+    private func sceneKindChanged(_ index: Int) {
+        guard let selection else { return }
+        guard !busy, coordinator.committedNumber == nil else { return }
+        let kind: SceneKind = index == 0 ? .groups : .devices
+        var probe = selection.draft
+        do { try probe.switchKind(to: kind) } catch { tip("scene_mode_locked"); return }
+        if selection.draft.deviceMembers.isEmpty && selection.draft.groupParameters.isEmpty {
+            changeKind(kind); return
         }
-        
-        guard prepareTimedSceneMembership(selectGroups, retry: { [weak self] in self?.doneAction() }) else { return }
-
-        guard persistTimedSceneMembership(selectGroups, applying: {
-            try selectGroups.forEach({
-                let executeSceneData = $0.executeSceneData!
-                let isOn = executeSceneData.isOn
-                let lightness = isOn ? Node.getLightness(lightness100: executeSceneData.lightness) : 0
-                let cct = $0.clampEffectiveCct(UInt16(executeSceneData.cct))
-                if let data = $0.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
-                    data.state = .normal
-                    data.isOn = isOn
-                    data.lightness = lightness
-                    data.cct = cct
-                }else {
-                    $0.info.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: scene.number, isOn: isOn, lightness: lightness, cct: cct))
-                }
-                guard $0.info.save() else { throw TimedSchedulerBindings.Failure.persistence }
-                $0.updateGroupSyncState()
-    //            scene.info.groups.sort(by: { $0.address.address < $1.address.address })
-            })
-
-        }) else { return }
-
-        if existNodeGroups.isEmpty { // 都是空组
-//            scene.info.groups = selectGroups
-//            dismiss(animated: true)
-            addSuccessHandle()
-
-        }else { // 去同步
-
-            let vc = SyncDevicesViewController(type: .scene(scene))
-            vc.syncSuccessCallback = {[weak self] _ in
-                XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                guard let self = self else { return }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
-//                    self.dismiss(animated: true)
-                    self?.addSuccessHandle()
-                }
-            }
-            vc.backActionCallback = {[weak self] _ in
-//                self?.dismiss(animated: true)
-                self?.addSuccessHandle()
-            }
-            navigationController?.pushViewController(vc, animated: true)
-        }
-
+        showAlert(title: "notification", message: "scene_switch_mode_message", cancel: "cancel", confirm: "ok") { [weak self] in self?.changeKind(kind) }
     }
-
-    private func prepareTimedSceneMembership(_ groups: [Group], retry: @escaping () -> Void) -> Bool {
-        let nodes = (groups + scene.info.groups).flatMap(\.nodes)
-        let sceneReadNodes = SceneCapacity.nodesRequiringRead(scene: scene, sceneGroups: groups)
-        if !sceneReadNodes.isEmpty {
-            navigationItem.rightBarButtonItem?.isEnabled = false
-            XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: false)
-            SceneCapacity.readUnknownState(nodes: sceneReadNodes) { [weak self] resolved in
-                XWHUDManager.hide()
-                guard let self else { return }
-                self.navigationItem.rightBarButtonItem?.isEnabled = true
-                guard self.viewIfLoaded?.window != nil else { return }
-                if resolved { retry() }
-                else { XWHUDManager.showErrorTipHUD("sync_failed".localizedString) }
-            }
-            return false
-        }
-        let unknown = ScheduleServer.nodesRequiringAuthoritativeSchedulerRead(nodes)
-        if !unknown.isEmpty {
-            navigationItem.rightBarButtonItem?.isEnabled = false
-            XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: false)
-            ScheduleServer.readUnknownSchedulerState(nodes: unknown) { [weak self] resolved in
-                DispatchQueue.main.async {
-                    XWHUDManager.hide()
-                    guard let self else { return }
-                    self.navigationItem.rightBarButtonItem?.isEnabled = true
-                    if resolved { retry() }
-                    else { XWHUDManager.showErrorTipHUD("sync_failed".localizedString) }
-                }
-            }
-            return false
-        }
-        do {
-            _ = try TimedSchedulerBindings.prepareTopology(scene: scene, sceneGroups: groups)
-            return true
-        } catch {
-            TimedSchedulerBindings.showFailure(error)
-            return false
+    private func changeKind(_ kind: SceneKind) {
+        stopGroupPreview()
+        stopDeviceLiveControl()
+        do { try selection?.switchKind(to: kind, confirmed: true); devicesView.selecting = false; draftChanged() } catch { failed(error) }
+    }
+    @objc private func selectDevices() {
+        guard !busy else { return }
+        if devicesView.selecting && selection?.canFinishDeviceSelection != true { tip("scene_no_devices_hint"); return }
+        showDeviceSelection(!devicesView.selecting)
+    }
+    private func showDeviceSelection(_ selecting: Bool) {
+        guard let selection, let navigationController,
+              navigationController.topViewController === self,
+              navigationController.transitionCoordinator == nil else { return }
+        view.endEditing(true)
+        lifecycle = UUID(); selection.invalidateParameterEdit()
+        stopGroupPreview(); stopDeviceLiveControl()
+        picker?.cancel(); picker = nil; alert?.removeFromSuperview(); alert = nil
+        clearPreviewToast()
+        if selecting {
+            guard mode != .deviceSelection else { return }
+            let page = SceneSettingsViewController(space: space, selection: selection)
+            page.onDeviceLiveControl = { [weak self] in self?.invalidatePreviewAfterLiveControl() }
+            navigationController.pushViewController(page, animated: true)
+        } else {
+            guard mode == .deviceSelection else { return }
+            selection.filter.reset()
+            navigationController.popViewController(animated: true)
         }
     }
-
-    private func persistTimedSceneMembership(_ groups: [Group], applying changes: () throws -> Void) -> Bool {
-        let previousSchema = space.timedSchemaVersion
-        let affected = MeshNetworkManager.instance.groups
-        do {
-            let snapshots = try affected.map { try JSONEncoder().encode($0.info.sceneExecuteDatas) }
-            do {
-                let plan = try TimedSchedulerBindings.prepareTopology(scene: scene, sceneGroups: groups)
-                try TimedSchedulerBindings.commit(plan, applying: changes)
-                return true
-            } catch {
-                space.timedSchemaVersion = previousSchema
-                for (group, snapshot) in zip(affected, snapshots) {
-                    if let data = try? JSONDecoder().decode([SceneExecuteData].self, from: snapshot) {
-                        group.info.sceneExecuteDatas = data
-                    }
-                    group.updateGroupSyncState()
-                }
-                throw error
-            }
-        } catch {
-            TimedSchedulerBindings.showFailure(error)
-            return false
-        }
+    @objc private func groupSearchChanged() { groupFilter.submit(groupSearch.text ?? ""); reload() }
+    func textFieldShouldReturn(_ textField: UITextField) -> Bool { textField.resignFirstResponder(); return true }
+    @objc private func createGroup() {
+        guard !busy else { return }
+        view.endEditing(true)
+        navigationController?.pushViewController(GroupAddViewController(space: space), animated: true)
     }
-
-    /// 保存（设置模式）
-    @objc private func saveAction() {
-
-        // 获取已选择的组
-        let selectGroups = MeshNetworkManager.instance.groups.filter({ $0.isSelected && $0.executeSceneData != nil })
-        // 有设备的组
-//        let existNodeGroups = selectGroups.filter({ $0.nodes.count > 0 })
-
-        // 获取新增的组
-        let addGroups = selectGroups.filter({ !scene.info.groups.contains($0) })
-//        scene.info.groups.filter({ selectGroups.contains($0) })
-        // 删除的组
-        let deleteGroups = scene.info.groups.filter({ !selectGroups.contains($0) })
-
-        // 修改数据的组
-        let updateGroups = selectGroups.filter({ group in
-
-            guard let oldData = group.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) else {
-                return true
-            }
-            if scene.info.groups.contains(group), let newData = group.executeSceneData {
-                return oldData.state == .waitDelete || newData.isOn != oldData.isOn || newData.lightness != Node.getLightness100(lightness: oldData.lightness) || newData.cct != oldData.cct
-            }
-            return false
-        })
-        // 组是否存在设备
-        let existNodes = addGroups.contains(where: { $0.nodes.count > 0 }) || deleteGroups.contains(where: { $0.nodes.count > 0 }) || updateGroups.contains(where: { $0.nodes.count > 0 })
-            || selectGroups.contains(where: { !$0.getNeedSyncDataNodes(scene: scene).syncNodes.isEmpty })
-
-        guard MeshLibManager.manager.isMeshNetworkConnected || !existNodes else {
-            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-            return
-        }
-
-        guard prepareTimedSceneMembership(selectGroups, retry: { [weak self] in self?.saveAction() }) else { return }
-
-        // 需要同步的节点
-        var syncNodes: [Node] = []
-
-        guard persistTimedSceneMembership(selectGroups, applying: {
-            try addGroups.forEach({
-    //            scene.info.groups.append($0)
-    //            scene.info.groups.sort(by: { $0.address.address < $1.address.address })
-                let isOn = $0.executeSceneData!.isOn
-                let lightness = isOn ? Node.getLightness(lightness100: $0.executeSceneData!.lightness) : 0
-                let cct = $0.clampEffectiveCct(UInt16($0.executeSceneData!.cct))
-                $0.info.sceneExecuteDatas.append(SceneExecuteData(sceneNumber: scene.number, isOn: isOn, lightness: lightness, cct: cct))
-                guard $0.info.save() else { throw TimedSchedulerBindings.Failure.persistence }
-                syncNodes.append(contentsOf: $0.getNeedSyncDataNodes(scene: scene).syncNodes)
-                $0.updateGroupSyncState()
-            })
-
-            try updateGroups.forEach({
-                if let data = $0.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
-                    data.state = .normal
-                    data.isOn = $0.executeSceneData!.isOn
-                    data.lightness = data.isOn ? Node.getLightness(lightness100: $0.executeSceneData!.lightness) : 0
-                    data.cct = $0.clampEffectiveCct(UInt16($0.executeSceneData!.cct))
-                    guard $0.info.save() else { throw TimedSchedulerBindings.Failure.persistence }
-                    $0.updateGroupSyncState()
-                }
-                syncNodes.append(contentsOf: $0.getNeedSyncDataNodes(scene: scene).syncNodes)
-            })
-
-            try deleteGroups.forEach({
-                var deleteNodes: [Node] = []
-                // 同步过场景则去同步删除设备场景
-                if let sceneData = $0.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number }) {
-                    sceneData.state = .waitDelete
-                    // 判断组内是否有设备同步过该场景
-                    deleteNodes = $0.getNeedSyncDataNodes(scene: scene).deleteNodes
-                    if deleteNodes.isEmpty {
-                        $0.info.sceneExecuteDatas.removeAll(where: { $0.sceneNumber == sceneData.sceneNumber })
-                    }
-                    guard $0.info.save() else { throw TimedSchedulerBindings.Failure.persistence }
-                    $0.updateGroupSyncState()
-                }
-                // 未同步则直接删除组场景
-    //            if deleteNodes.isEmpty {
-    //                if let index = scene.info.groups.firstIndex(of: $0) {
-    //                    scene.info.groups.remove(at: index)
-    //                }
-    //                SceneExecuteData.deleteData(meshUUID: space.meshUUID, address: $0.address.address, sceneId: Int(scene.number))
-    //            }
-                syncNodes.append(contentsOf: deleteNodes)
-
-            })
-
-        }) else { return }
-
-        // A restored group can already have identical Scene data while its
-        // schedules were cleared before a failed SceneDelete. Include retries
-        // even when the user saves again without changing Scene parameters.
-        syncNodes.append(contentsOf: selectGroups.flatMap { $0.getNeedSyncDataNodes(scene: scene).syncNodes })
-
-        // 未编辑
-        if addGroups.isEmpty && deleteGroups.isEmpty && updateGroups.isEmpty && syncNodes.isEmpty {
-            navigationController?.popViewController(animated: true)
-            return
-        }
-
-        if syncNodes.isEmpty { // 都是空组/无设备操作
-//            scene.info.groups = selectGroups
-            XWHUDManager.showSuccessTipHUD("done!".localizedString)
-            NotificationCenter.default.post(name: .init(sceneDataUpdateNotificationName), object: scene)
-            // 通知space数据修改
-            NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
-                self?.navigationController?.popViewController(animated: true)
-            }
-        }else {
-
-            let vc = SyncDevicesViewController(type: .scene(scene))
-            vc.syncSuccessCallback = {[weak self] _ in
-                XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                guard let self = self else { return }
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                    NotificationCenter.default.post(name: .init(sceneDataUpdateNotificationName), object: self.scene)
-                    self.navigationController?.popToRootViewController(animated: true)
-                }
-            }
-            vc.backActionCallback = {[weak self] _ in
-//                self?.dismiss(animated: true)
-                guard let self = self else { return }
-                NotificationCenter.default.post(name: .init(sceneDataUpdateNotificationName), object: self.scene)
-                self.navigationController?.popToRootViewController(animated: true)
-            }
-            navigationController?.pushViewController(vc, animated: true)
-        }
+    func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
+        groups.count
     }
-
-    @objc private func collectionLongPressAction(sender: UIGestureRecognizer) {
-        
-        guard sender.state == .began else {
-            return
-        }
-        let point = sender.location(in: collectionView)
-        if let indexPath = collectionView.indexPathForItem(at: point), indexPath.item < groups.count {
-            
-            let group = groups[indexPath.item]
-//            let data = group.info.bindSceneDatas.first(where: { $0.sceneId == scene.number })?.data
-            updateGroupSceneExecuteData(group: group)
-        }
-        
-    }
-    
-    /// 同步
-    @objc private func syncBtnAction() {
-
-        guard MeshLibManager.manager.isMeshNetworkConnected else {
-            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-            return
-        }
-        
-        let vc = SyncDevicesViewController(type: .scene(scene), reSync: true)
-        vc.syncSuccessCallback = {[weak self] _ in
-            XWHUDManager.showSuccessTipHUD("done!".localizedString)
-            guard let self = self else { return }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                NotificationCenter.default.post(name: .init(sceneDataUpdateNotificationName), object: self.scene)
-                self.dismiss(animated: true)
-            }
-        }
-        vc.backActionCallback = {[weak self] _ in
-            guard let self = self else { return }
-            NotificationCenter.default.post(name: .init(sceneDataUpdateNotificationName), object: self.scene)
-            self.dismiss(animated: true)
-        }
-        navigationController?.pushViewController(vc, animated: true)
-        
-    }
-    
-    @objc private func previewBtnTouchDown(sender: UIButton) {
-//        sender.isHighlighted = true
-        sender.setImage(UIImage(named: "scene_preview")?.withTintColor(RGB(155, 155, 155)), for: .normal)
-        sender.setTitleColor(RGB(155, 155, 155), for: .normal)
-    }
-    
-    @objc private func previewBtnTouchEnd(sender: UIButton) {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
-            sender.setImage(UIImage(named: "scene_preview"), for: .normal)
-            sender.setTitleColor(TextBlack_Color, for: .normal)
-        }
-    }
-    
-    /// 预览
-    @objc private func previewBtnAction(sender: UIButton) {
-      
-        previewBtnTouchEnd(sender: sender)
-        guard MeshLibManager.manager.isMeshNetworkConnected else {
-            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-            return
-        }
-        
-        // 有设备的组
-        let controlGroups = MeshNetworkManager.instance.groups.filter({ $0.isSelected && $0.nodes.count > 0 })
-        guard !showEmergencyControlBlockedIfNeeded(groups: controlGroups) else {
-            return
-        }
-        controlGroups.forEach({
-            if let data = $0.executeSceneData {
-                previewSceneData(data, for: $0)
-            }
-        })
-        
-    }
-    
-    private func previewSceneData(_ data: ExecuteSceneData, for group: Group) {
-        guard group.nodes.count > 0 else { return }
-        guard data.isOn else {
-            MeshAPI.setGroupOnOffState(address: group.address.address, isOn: false)
-            return
-        }
-        // 判断组内是否有色温灯
-        let effectiveCctCount = group.nodes.filter({ $0.effectiveSupportCct }).count
-        if effectiveCctCount > 0 {
-            MeshAPI.setGroupCTLState(address: group.address.address, lightness: Node.getLightness(lightness100: data.lightness), temperature: group.clampEffectiveCct(UInt16(data.cct)))
-        }
-        // 判断组内是否有仅支持调光灯
-        if effectiveCctCount < group.lightnessNodes.count {
-            MeshAPI.setGroupLightnessState(address: group.address.address, lightness: Node.getLightness(lightness100: data.lightness))
-        }
-    }
-    
-    /// 创建组
-    private func addGroup() {
-        
-        let vc = GroupAddViewController(space: space)
-        navigationController?.pushViewController(vc, animated: true)
-    }
-    
-    /// 更新组的场景参数
-    private func updateGroupSceneExecuteData(group: Group) {
-        
-        let data = group.executeSceneData
-//        group.info.bindSceneDatas.first(where: { $0.sceneId == scene.number })?.data
-        let groupLightData = group.info.profile.lightControlData
-        let isOn = data?.isOn ?? true
-        let initialLightness = isOn ? (data?.lightness ?? 100) : 0
-        SceneExecuteDataPickerView.show(lightness: initialLightness, isOn: isOn, cct: data?.cct ?? 4500, lightnessLimitRange: 0...groupLightData.highEndTrim, cctRange: group.effectiveCctRange, showCct: group.effectiveSupportCct, showDelete: false) {[weak self] isOn, lightness, cct in
-            guard let self = self else { return }
-            let cct = Int(group.clampEffectiveCct(UInt16(cct)))
-            if let sceneData = data { // 修改
-                sceneData.isOn = isOn
-                sceneData.lightness = isOn ? lightness : 0
-                sceneData.cct = cct
-            }else { // 新增
-                group.executeSceneData = ExecuteSceneData(isOn: isOn, lightness: lightness, cct: cct)
-//                SceneExecuteData(lightness: lightness, cct: cct)
-//                group.info.bindSceneDatas.append((self.scene.number, SceneExecuteData(lightness: lightness, cct: cct)))
-            }
-            group.isSelected = true
-//            if !self.selectGroups.contains(group) {
-//                self.selectGroups.append(group)
-//            }
-            if let index = self.groups.firstIndex(of: group) {
-                CATransaction.setDisableActions(true)
-                self.collectionView.reloadItems(at: [IndexPath(item: index, section: 0)])
-                CATransaction.commit()
-            }else {
-                self.collectionView.reloadData()
-            }
-        }
-        
-    }
-    
-    private func updateEmptyUI() {
-        
-        if groups.isEmpty {
-            view.showEmptyDataView(title: "no_groups".localizedString, tipText: "scene_not_groups_message".localizedString, buttonText: "create_group".localizedString, buttomWidth: SCRXFrom(216), position: .center, bottomMargin: SCRYFit(50), btnClickBack: {[weak self] in
-                self?.addGroup()
-            })
-            
-            if let emptyView = view.emptyView {
-                emptyView.tipLabel.font = UIFont.systemFont(ofSize: SCRYFrom(15), weight: .light)
-                emptyView.tipLabel.snp.updateConstraints { make in
-                    make.top.equalTo(emptyView.titleLabel.snp.bottom).offset(SCRYFrom(16))
-                }
-                
-                emptyView.button.titleLabel?.font = UIFont.systemFont(ofSize: SCRYFrom(16), weight: .light)
-                emptyView.button.snp.updateConstraints { make in
-                    make.top.equalTo(emptyView.titleLabel.snp.bottom).offset(SCRYFrom(78))
-                }
-            }
-            bottomView.isHidden = true
-            
-        }else {
-            view.hideEmptyDataView()
-            if mode == .settings {
-                bottomView.isHidden = false
-            }
-        }
-        
-    }
-    
-    private func setupUI() {
-        
-        bottomView = UIView()
-        bottomView.backgroundColor = .white
-        view.addSubview(bottomView)
-        bottomView.snp.makeConstraints { make in
-            make.left.right.bottom.equalToSuperview()
-            make.height.equalTo((isIPad ? 0 : kSafeAreaBottomHeight) + SCRYFrom(44))
-        }
-        
-        syncBtn = UIButton(title: "sync".localizedString, titleSize: 14, titleWeight: .light, titleColor: RGB(30, 35, 41), normalImageName: "scene_sync", target: self, action: #selector(syncBtnAction))
-        syncBtn.setImagePosition(position: .left, spacing: SCRXFrom(4))
-        bottomView.addSubview(syncBtn)
-        syncBtn.snp.makeConstraints { make in
-            make.left.equalTo(SCRXFrom(20))
-            make.top.equalTo(SCRYFrom(5))
-        }
-        
-        previewBtn = UIButton(title: "preview".localizedString, titleSize: 14, titleWeight: .light, titleColor: RGB(30, 35, 41), normalImageName: "scene_preview", target: self, action: #selector(previewBtnAction))
-        previewBtn.addTarget(self, action: #selector(previewBtnTouchDown), for: .touchDown)
-        previewBtn.addTarget(self, action: #selector(previewBtnTouchEnd), for: .touchCancel)
-        previewBtn.addTarget(self, action: #selector(previewBtnTouchEnd), for: .touchUpOutside)
-        previewBtn.setImagePosition(position: .left, spacing: SCRXFrom(4))
-        bottomView.addSubview(previewBtn)
-        previewBtn.snp.makeConstraints { make in
-            make.right.equalTo(SCRXFrom(-20))
-            make.top.equalTo(SCRYFrom(5))
-        }
-        
-        flowLayout = AlignCenterFlowLayout()
-        flowLayout.minimumLineSpacing = itemMargin
-        flowLayout.minimumInteritemSpacing = itemMargin
-        flowLayout.itemRowCount = rowNum
-//        flowLayout.itmeColCount = columnNum
-//        flowLayout.sectionInset = UIEdgeInsets(top: 0, left: SCRXFrom(12), bottom: 0, right: SCRXFrom(12))
-        
-        collectionView = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
-        collectionView.contentInset = collectionViewInsets
-        collectionView.register(SceneMembersViewCell.classForCoder(), forCellWithReuseIdentifier: "cell")
-        collectionView.backgroundColor = .clear
-        collectionView.dataSource = self
-        collectionView.delegate = self
-        let longPress = UILongPressGestureRecognizer(target: self, action: #selector(collectionLongPressAction))
-        longPress.minimumPressDuration = 0.5
-        collectionView.addGestureRecognizer(longPress)
-        view.addSubview(collectionView)
-        collectionView.snp.makeConstraints { make in
-            make.left.right.equalToSuperview()
-            make.top.equalTo(view.safeAreaLayoutGuide)
-            make.bottom.equalTo(bottomView.snp.top)
-        }
-        
-     
-        
-    }
-
-
-}
-
-extension SceneSettingsViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
-   
-    public func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-        return groups.count
-    }
-    
-    public func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
-        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "cell", for: indexPath) as! SceneMembersViewCell
-        let group = groups[indexPath.item]
-        configure(cell, group: group)
-        
-        cell.selectActionCallBack = {[weak self] isSelected in
-            guard let self = self else { return }
-            group.isSelected = isSelected
-            if isSelected {
-//                self.selectGroups.append(group)
-                self.updateGroupSceneExecuteData(group: group)
-//                cell.progressView.isHidden = false
-            }else {
-//                self.selectGroups.removeAll(where: { $0.address.address == group.address.address })
-                group.executeSceneData = nil
-                cell.progressView.isHidden = true
-            }
+    func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
+        let group = groups[indexPath.item], parameters = selection?.draft.groupParameters[groups[indexPath.item].address.address]
+        let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "group", for: indexPath) as! SceneMembersViewCell
+        let display = parameters.map { ExecuteSceneData(isOn: $0.isOn, lightness: Node.getLightness100(lightness: $0.lightness), cct: Int($0.cct)) }
+        cell.updateData(group: group, sceneData: display)
+        // The card represents expected settings, never the current lamp state.
+        cell.bgView.backgroundColor = parameters?.isOn == false ? RGB(226, 226, 226) : .white
+        cell.nameLabel.textColor = Title_Color; cell.nameLabel.maxFontSize = 12
+        cell.selectBtn.isSelected = parameters != nil; cell.progressView.isHidden = parameters == nil
+        cell.selectActionCallBack = { [weak self] selected in
+            guard let self, let selection = self.selection else { return }
+            if !selected {
+                var values = selection.draft.groupParameters; values.removeValue(forKey: group.address.address)
+                do { try selection.setGroupParameters(values); self.draftChanged() } catch { self.failed(error) }
+            } else { self.editGroup(group) }
         }
         return cell
     }
-    
-    public func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
-        
-        var itemW = (collectionView.frame.size.width - flowLayout.minimumLineSpacing * CGFloat(rowNum - 1) - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / CGFloat(rowNum)
-        itemW = CGFloat(floorf(Float(itemW) * 100) / 100)
-        return CGSizeMake(itemW, itemW + SCRYFrom(16))
-    }
-    
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-           
-        let group = groups[indexPath.item]
-        if group.nodes.isEmpty { // 空组
-            XWHUDManager.showTipHUD("group_empty".localizedString, isLineFeed: true)
-            return
-        }
-        if !MeshLibManager.manager.isMeshNetworkConnected { // 网络未连接
-            XWHUDManager.showTipHUD("network_no_connnection".localizedString, isLineFeed: true)
-            return
-        }
-        if !group.nodes.contains(where: { $0.state }) { // 组内设备全部离线
-            XWHUDManager.showTipHUD("group_all_devices_offline".localizedString, isLineFeed: true)
-            return
-        }
-        guard !showEmergencyControlBlockedIfNeeded(group: group) else {
-            return
-        }
-        
-        group.isOn = !group.isOn
-        appearances = NodeSyncStatusRefresh.sceneGroupAppearances(groups)
-        CATransaction.setDisableActions(true)
-        collectionView.reloadItems(at: [indexPath])
-        CATransaction.commit()
-        if group.nodes.count > 0 {
-            MeshAPI.setGroupOnOffState(address: group.address.address, isOn: group.isOn)
-        }
-        
+        guard groups.indices.contains(indexPath.item) else { return }
+        editGroup(groups[indexPath.item])
     }
-    
+    func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        let columns: CGFloat = isIPad ? 5 : 4
+        let width = floor((collectionView.bounds.width - (columns - 1) * 10) / columns)
+        return CGSize(width: width, height: width + 16)
+    }
+    private func editGroup(_ group: Group) {
+        guard !busy, let selection else { return }
+        stopGroupPreview()
+        stopDeviceLiveControl()
+        picker?.cancel()
+        let previewGeneration = groupPreviewGeneration
+        let liveControl: ((SceneExecuteDataPickerView.LiveEvent) -> Void)? = enablesGroupLiveControl ? { [weak self] event in
+            guard let self, self.groupPreviewGeneration == previewGeneration else { return }
+            self.handleGroupLiveControl(event, group: group)
+        } : nil
+        let current = selection.draft.groupParameters[group.address.address] ?? selection.draft.sourceGroupParameters[group.address.address]
+        let initialBrightness = current.map { Node.getLightness100(lightness: $0.lightness) } ?? 100
+        let revision = selection.draft.revision, token = lifecycle
+        picker = SceneExecuteDataPickerView.show(lightness: current.map { Node.getLightness100(lightness: $0.lightness) } ?? 100,
+            isOn: current?.isOn ?? true, cct: Int(current?.cct ?? 4500), lightnessLimitRange: 0...group.info.profile.lightControlData.highEndTrim,
+            cctRange: group.effectiveCctRange, showCct: group.effectiveSupportCct, showDelete: false, liveControl: liveControl) { [weak self] on, brightness, cct in
+                guard let self, self.accepts(token, revision: revision), self.coordinator.committedNumber == nil else { return }
+                var values = selection.draft.groupParameters
+                let rawBrightness = current.flatMap { value in
+                    value.isOn == on && brightness == initialBrightness ? value.lightness : nil
+                } ?? (on ? Node.getLightness(lightness100: brightness) : 0)
+                values[group.address.address] = .init(isOn: on, lightness: rawBrightness, cct: group.clampEffectiveCct(UInt16(cct)))
+                do { try selection.setGroupParameters(values); self.draftChanged() } catch { self.failed(error) }
+            }
+    }
+
+    private func cancelGroupPreview() {
+        groupPreview?.cancel(); groupPreview = nil
+    }
+
+    private func interruptGroupPreview() {
+        guard enablesGroupLiveControl else { return }
+        picker?.cancelLiveInteraction()
+        cancelGroupPreview()
+    }
+
+    private func stopGroupPreview() {
+        interruptGroupPreview()
+        groupPreviewGeneration = UUID()
+    }
+
+    private func canControlGroup(_ group: Group) -> Bool {
+        guard active, !busy, coordinator.committedNumber == nil,
+              UIApplication.shared.applicationState == .active,
+              let selection, selection.draft.kind == .groups,
+              MeshNetworkManager.instance.groups.contains(where: { $0 === group }),
+              (try? SceneConfigurationStore.validateAccess(selection.draft.scope)) != nil,
+              !EmergencyFireControllerSceneEventManager.isManualControlBlocked(for: group) else { return false }
+        return MeshLibManager.manager.isMeshNetworkConnected
+    }
+
+    private func handleGroupLiveControl(_ event: SceneExecuteDataPickerView.LiveEvent, group: Group) {
+        if case .cancel = event { cancelGroupPreview(); return }
+        guard canControlGroup(group) else {
+            cancelGroupPreview()
+            return
+        }
+        if groupPreview == nil {
+            let generation = groupPreviewGeneration
+            let session = MeshGroupControlSession(address: group.address.address) { [weak self] in
+                guard let self, self.groupPreviewGeneration == generation else { return false }
+                return self.canControlGroup(group)
+            }
+            groupPreview = session
+        }
+        guard let session = groupPreview else { return }
+        switch event {
+        case .off:
+            LightGroupControlCommandSender.setGroupOff(session: session)
+        case .lightness(let value, let ended):
+            let brightness = max(0, min(group.info.profile.lightControlData.highEndTrim, value))
+            LightGroupControlCommandSender.setGroupLightness(session: session,
+                lightness: Node.getLightness(lightness100: brightness), ended: ended)
+        case .temperature(let value, let ended):
+            guard group.effectiveSupportCct else { return }
+            LightGroupControlCommandSender.setGroupColorTemperature(session: session,
+                temperature: group.clampEffectiveCct(UInt16(clamping: value)), ended: ended)
+        case .cancel: return
+        }
+    }
+    private func removeCategory(_ identities: [TimedSchedulerNodeIdentity]) {
+        guard !busy, let selection, !identities.isEmpty else { return }
+        let token = lifecycle, revision = selection.draft.revision
+        let popup = SRAlertView(title: "scene_remove_members".localizedString,
+            message: String(format: "scene_remove_members_message".localizedString, identities.count), tapBackgroundHide: false,
+            actions: [.cancelAction, .init(title: "remove".localizedString.uppercased(), titleColor: Error_Red_Color, style: .destructive, actionHandler: { [weak self] _ in
+                guard let self, self.accepts(token, revision: revision) else { return }
+                do { try selection.removeMembers(Set(identities), confirmed: true); self.draftChanged() } catch { self.failed(error) }
+            })])
+        alert = popup; popup.show()
+    }
+    private func editDevices(_ target: SceneDeviceSettingsTarget) {
+        let identities = target.identities
+        guard !busy, active, let selection, !identities.isEmpty else { return }
+        stopDeviceLiveControl()
+        picker?.cancel(); picker = nil; alert?.removeFromSuperview(); alert = nil
+        let selected = selection.draft.deviceMembers.filter { identities.contains($0.identity) }
+        guard let first = selected.first else { return }
+        let nodes = selected.compactMap { devicesView.node(for: $0.identity) }
+        let token = selection.beginParameterEdit(), life = lifecycle, revision = selection.draft.revision
+        let liveControl = makeDeviceLiveControl(target)
+        let apply: (Bool, Int, Int) -> Void = { [weak self] on, brightness, cct in
+            guard let self, self.accepts(life, revision: revision), self.coordinator.committedNumber == nil else { return }
+            let parameters = SceneParameters(isOn: on, lightness: Node.getLightness(lightness100: brightness), cct: UInt16(cct))
+            do {
+                try selection.finishParameterEdit(token, parameters: parameters, identities: Set(identities), apply: true) { identity, value in
+                    var preservingUnits = value
+                    if let old = selected.first(where: { $0.identity == identity })?.parameters,
+                       old.isOn == on, Node.getLightness100(lightness: old.lightness) == brightness {
+                        preservingUnits.lightness = old.lightness
+                    }
+                    return self.devicesView.node(for: identity).map { preservingUnits.resolved(for: $0) } ?? preservingUnits
+                }
+                self.draftChanged()
+            } catch { self.failed(error) }
+        }
+        if nodes.allSatisfy({ $0.lightnessModel == nil }), !nodes.isEmpty {
+            let control = CustomSegmentedControl(frame: .zero, titles: ["ON".localizedString, "OFF".localizedString])
+            let popup = SRAlertView(title: nodes.count == 1 ? nodes[0].name : "settings".localizedString,
+                message: "scene_relay_hint".localizedString, tapBackgroundHide: false, contentMinHeight: 230,
+                actions: [.init(title: "cancel".localizedString, style: .cancel, actionHandler: { [weak self] _ in selection.invalidateParameterEdit(); self?.stopDeviceLiveControl() }),
+                          .init(title: "apply".localizedString, actionHandler: { [weak self] _ in apply(control.selectedIndex == 0, 100, Int(first.parameters.cct)); self?.stopDeviceLiveControl() })])
+            popup.contentView.addSubview(control)
+            control.snp.makeConstraints { make in make.top.equalTo(popup.titleLabel.snp.bottom).offset(16); make.left.right.equalToSuperview().inset(24); make.height.equalTo(36) }
+            popup.messageLabel.snp.remakeConstraints { make in make.top.equalTo(control.snp.bottom).offset(16); make.left.right.equalToSuperview().inset(24); make.bottom.lessThanOrEqualTo(popup.hLineView.snp.top).offset(-16) }
+            control.selectedIndex = first.parameters.isOn ? 0 : 1
+            if let liveControl {
+                let delegate = SceneRelayLiveControl { isOn in
+                    // Relay ON uses its OnOff model; it has no Lightness model.
+                    liveControl(isOn ? .lightness(100, ended: true) : .off)
+                }
+                relayLiveControl = delegate; control.delegate = delegate
+            }
+            alert = popup; popup.show()
+        } else {
+            let single = nodes.count == 1 ? nodes.first : nil
+            let maxBrightness = single.map { Node.getLightness100(lightness: $0.lightnessRange.upperBound) } ?? 100
+            let ranges = nodes.filter(\.effectiveSupportCct).map(\.effectiveCctRange)
+            let range = ranges.reduce(NodeAbsoluteCctRange.defaultRange) { min($0.lowerBound, $1.lowerBound)...max($0.upperBound, $1.upperBound) }
+            picker = SceneExecuteDataPickerView.show(lightness: Node.getLightness100(lightness: first.parameters.lightness), isOn: first.parameters.isOn,
+                cct: Int(first.parameters.cct), lightnessLimitRange: 0...maxBrightness,
+                cctRange: single?.effectiveCctRange ?? range, showCct: nodes.contains(where: \.effectiveSupportCct), showDelete: false, liveControl: liveControl, picker: apply)
+        }
+    }
+    private func makeDeviceLiveControl(_ target: SceneDeviceSettingsTarget) -> ((SceneExecuteDataPickerView.LiveEvent) -> Void)? {
+        guard let identity = target.liveIdentity, let node = devicesView.node(for: identity),
+              let selection else { return nil }
+        let generation = deviceLiveGeneration, life = lifecycle, revision = selection.draft.revision
+        return { [weak self, weak node] event in
+            guard let self, let node, self.deviceLiveGeneration == generation,
+                  self.accepts(life, revision: revision) else { return }
+            self.handleDeviceLiveControl(event, node: node, identity: identity)
+        }
+    }
+    private func interruptDeviceLiveControl() {
+        picker?.cancelLiveInteraction()
+        lastLightnessSample = nil; lastTemperatureSample = nil
+    }
+    private func stopDeviceLiveControl() {
+        interruptDeviceLiveControl()
+        deviceLiveGeneration = UUID(); relayLiveControl = nil
+    }
+    private func invalidatePreviewAfterLiveControl() {
+        devicePreview.invalidate(); previewComparison = nil; previewOnline = []
+        previewReport = nil; clearPreviewToast()
+        devicesView?.previewPhase = devicePreview.phase
+    }
+    private func canControlDevice(_ node: Node, identity: TimedSchedulerNodeIdentity) -> Bool {
+        guard active, !busy, coordinator.committedNumber == nil,
+              UIApplication.shared.applicationState == .active,
+              navigationController?.topViewController === self,
+              let selection, selection.draft.kind == .devices, selection.isSelected(identity),
+              devicesView.node(for: identity) === node, node.state,
+              (try? SceneConfigurationStore.validateAccess(selection.draft.scope)) != nil,
+              !EmergencyFireControllerSceneEventManager.isManualControlBlocked(for: node) else { return false }
+        return MeshLibManager.manager.isMeshNetworkConnected
+    }
+    private func handleDeviceLiveControl(_ event: SceneExecuteDataPickerView.LiveEvent, node: Node, identity: TimedSchedulerNodeIdentity) {
+        if case .cancel = event {
+            lastLightnessSample = nil; lastTemperatureSample = nil
+            return
+        }
+        guard canControlDevice(node, identity: identity) else {
+            lastLightnessSample = nil; lastTemperatureSample = nil
+            return
+        }
+        let message: UnacknowledgedMeshMessage
+        let model: Model?
+        switch event {
+        case .off:
+            lastLightnessSample = nil; lastTemperatureSample = nil
+            message = GenericOnOffSetUnacknowledged(false); model = node.onoffModel
+        case .lightness(let value, let ended):
+            if node.lightnessModel == nil {
+                message = GenericOnOffSetUnacknowledged(value > 0); model = node.onoffModel
+            } else {
+                let raw = Node.getLightness(lightness100: max(0, min(100, value)))
+                let brightness = raw == 0 ? 0 : max(node.lightnessRange.lowerBound, min(node.lightnessRange.upperBound, raw))
+                let duplicateFinal = ended && lastLightnessSample == brightness
+                lastLightnessSample = ended ? nil : brightness
+                guard !duplicateFinal else { return }
+                message = LightLightnessSetUnacknowledged(lightness: brightness); model = node.lightnessModel
+            }
+        case .temperature(let value, let ended):
+            guard node.effectiveSupportCct else { return }
+            let temperature = node.clampEffectiveCct(UInt16(clamping: value))
+            let duplicateFinal = ended && lastTemperatureSample == temperature
+            lastTemperatureSample = ended ? nil : temperature
+            guard !duplicateFinal else { return }
+            message = LightCTLTemperatureSetUnacknowledged(temperature: temperature, deltaUV: 0); model = node.temperatureModel
+        case .cancel: return
+        }
+        guard let model else {
+            lastLightnessSample = nil; lastTemperatureSample = nil
+            return
+        }
+        do {
+            // One unacknowledged command to this model's Element. No shared FIFO,
+            // application retry or member traversal; issued packets cannot be recalled.
+            try MeshNetworkManager.instance.send(message, to: model, completion: nil)
+            invalidatePreviewAfterLiveControl(); onDeviceLiveControl?()
+        } catch {
+            lastLightnessSample = nil; lastTemperatureSample = nil
+            #if DEBUG
+            print("[Scene] Device live control send failed: \(type(of: error))")
+            #endif
+        }
+    }
+    private func identify(_ node: Node) {
+        guard !busy, active, let selection else { return }
+        do { try SceneConfigurationStore.validateAccess(selection.draft.scope) } catch { failed(error); return }
+        guard let identity = node.sceneConfigurationIdentity, devicesView.node(for: identity) === node else { return }
+        guard node.state, MeshLibManager.manager.isMeshNetworkConnected else { tip("device_notconnect_message"); return }
+        guard !EmergencyFireControllerSceneEventManager.isManualControlBlocked(for: node) else { tip("Uncontrollable in emergency situations"); return }
+        if node.isSupportVendorIdentify {
+            guard let model = node.sunricherVendorModel else { return }
+            LightGroupControlCommandSender.sendVendorIdentify(SunricherVendorSet(function: .identify(mode: .breathe(count: 1, period: 1500))), model: model)
+        } else { LightGroupControlCommandSender.identify(address: node.primaryUnicastAddress) }
+    }
+    private func clearPreviewToast() {
+        previewToast?.removeFromSuperview(); previewToast = nil
+    }
+    private func beginDevicePreview() {
+        guard let selection, !devicePreview.isRunning else { return }
+        lifecycle = UUID()
+        clearPreviewToast(); previewReport = nil
+        devicePreview.begin(revision: selection.draft.revision)
+        devicesView.previewPhase = devicePreview.phase
+    }
+    private func interruptDevicePreview() {
+        guard devicePreview.isRunning else { return }
+        lifecycle = UUID(); coordinator.cancel(); devicePreview.interrupt()
+        previewReport = nil; clearPreviewToast()
+        devicesView?.previewPhase = devicePreview.phase
+        setBusy(false)
+    }
+    private func refreshDevicePreviewContext() {
+        guard let selection else { return }
+        let wasRunning = devicePreview.isRunning
+        let changed = devicePreview.update(revision: selection.draft.revision)
+        var targetsChanged = false
+        if !changed, let comparison = previewComparison {
+            if let snapshot = try? SceneTargetResolver.resolve(draft: selection.draft) {
+                targetsChanged = snapshot.comparison != comparison
+                if devicePreview.phase == .applied {
+                    targetsChanged = targetsChanged || previewOnline != Set(snapshot.targets.filter { $0.node.state }.map(\.identity))
+                }
+            } else { targetsChanged = true }
+        }
+        if changed || targetsChanged {
+            if wasRunning {
+                lifecycle = UUID(); coordinator.cancel(); setBusy(false)
+            }
+            devicePreview.invalidate(); previewComparison = nil; previewOnline = []
+            previewReport = nil; clearPreviewToast()
+        }
+        devicesView.previewPhase = devicePreview.phase
+    }
+    @objc private func previewAction() {
+        guard devicesView?.selecting != true else { return }
+        startSend(saving: false)
+    }
+    @objc private func doneAction() {
+        guard !busy, !syncPagePresented else { return }
+        guard let selection else {
+            guard let scene else { return }
+            do {
+                let restored = SceneDraftSelection(draft: try SceneConfigurationStore().editingDraft(for: scene))
+                self.selection = restored; initialError = nil
+                setupEditor(restored)
+            } catch { failed(error) }
+            return
+        }
+        if coordinator.committedNumber != nil { commit(revision: selection.draft.revision); return }
+        if devicesView.selecting { selectDevices(); return }
+        do {
+            if let unchanged = try SceneConfigurationStore().sceneIfUnchanged(draft: selection.draft) {
+                stopGroupPreview()
+                stopDeviceLiveControl()
+                if unchanged.needSync || unchanged.info.configuration?.pendingOperations.isEmpty == false {
+                    openSyncPage(unchanged)
+                } else {
+                    syncPagePresented = true
+                    leave()
+                }
+                return
+            }
+            let snapshot = try SceneTargetResolver.resolve(draft: selection.draft)
+            guard selection.draft.number != nil || snapshot.hasConfiguredMembers else { tip("scene_select_members"); return }
+            startSend(saving: true)
+        } catch { failed(error) }
+    }
+    private func startSend(saving: Bool) {
+        guard !busy, active, let selection, coordinator.committedNumber == nil else { return }
+        stopGroupPreview()
+        stopDeviceLiveControl()
+        let devicePreviewing = !saving && selection.draft.kind == .devices
+        if devicePreviewing { beginDevicePreview() }
+        do {
+            let snapshot = try SceneTargetResolver.resolve(draft: selection.draft)
+            try SceneConfigurationStore.validateAccess(selection.draft.scope)
+            if devicePreviewing {
+                guard !snapshot.targets.isEmpty else { interruptDevicePreview(); tip("scene_select_members"); return }
+                previewComparison = snapshot.comparison
+                previewOnline = Set(snapshot.targets.filter { $0.node.state }.map(\.identity))
+            }
+            let unknown = SceneCapacity.nodesRequiringRead(sceneSnapshot: snapshot)
+            let schedulers = try TimedSchedulerBindings.nodesRequiringTopologyRead(sceneSnapshot: snapshot)
+            if !unknown.isEmpty || !schedulers.isEmpty {
+                setBusy(true); let token = lifecycle, revision = selection.draft.revision
+                if !devicePreviewing { XWHUDManager.showCustomHUD(withMessage: "syncing_data".localizedString, isWindow: false) }
+                let completion: (Bool) -> Void = { [weak self] success in
+                    DispatchQueue.main.async {
+                        guard let self, self.accepts(token, revision: revision) else { return }
+                        self.setBusy(false); XWHUDManager.hide()
+                        if success { self.startSend(saving: saving) }
+                        else { self.interruptDevicePreview(); self.tip("sync_failed") }
+                    }
+                }
+                if !unknown.isEmpty { SceneCapacity.readUnknownState(nodes: unknown, completion: completion) }
+                else { ScheduleServer.readUnknownSchedulerState(nodes: schedulers, completion: completion) }
+                return
+            }
+            _ = try TimedSchedulerBindings.prepareTopology(sceneSnapshot: snapshot)
+            setBusy(true)
+            if saving {
+                commit(revision: selection.draft.revision)
+            } else {
+                if devicePreviewing {
+                    devicePreview.sending(); devicesView.previewPhase = devicePreview.phase
+                } else if !snapshot.targets.isEmpty { XWHUDManager.showCustomHUD(withMessage: "scene_sending".localizedString, isWindow: false) }
+                try coordinator.send(draft: selection.draft, purpose: .preview)
+            }
+        } catch { failed(error) }
+    }
+    private func received(_ report: SceneSaveCoordinator.Report) {
+        guard active, report.revision == selection?.draft.revision else { return }
+        if selection?.draft.kind == .devices {
+            guard let attempt = devicePreview.attempt else { return }
+            let successful = report.results.values.filter { if case .successful = $0 { return true }; return false }.count
+            let offline = report.results.values.filter { if case .offline = $0 { return true }; return false }.count
+            let failed = report.results.count - successful - offline
+            guard devicePreview.complete(attempt: attempt, revision: report.revision, successful: successful, failed: failed, offline: offline) else { return }
+            previewReport = report
+            setBusy(false); XWHUDManager.hide(); devicesView.previewPhase = devicePreview.phase
+            clearPreviewToast()
+            let success = devicePreview.phase == .applied
+            let message = success ? "scene_preview_applied".localizedString
+                : String(format: "scene_preview_result".localizedString, successful, failed, offline)
+            previewToast = ToastStatusView.show(in: view, message: message, type: success ? .success : .failure,
+                appearance: .siteUpdate, duration: 3)
+            return
+        }
+        setBusy(false); XWHUDManager.hide()
+        showPreviewResults(report)
+    }
+    private func showPreviewResults(_ report: SceneSaveCoordinator.Report) {
+        let successful = report.results.values.filter { if case .successful = $0 { return true }; return false }.count
+        let pending = report.results.count - successful
+        var lines = [String(format: "scene_send_result".localizedString, successful, pending)]
+        if let snapshot = try? selection.map({ try SceneTargetResolver.resolve(draft: $0.draft) }) {
+            for target in snapshot.targets {
+                let result = report.results[target.identity]
+                let status: String
+                switch result {
+                case .successful?: status = "done!".localizedString
+                case .offline?: status = "scene_offline_pending".localizedString
+                default: status = "scene_failed_pending".localizedString
+                }
+                lines.append("\(target.node.name ?? target.node.primaryUnicastAddress.hex): \(SceneDevicesSelectionView.summary(target.parameters, node: target.node)) — \(status)")
+            }
+        }
+        let popup = SRAlertView(title: "preview".localizedString,
+            message: lines.joined(separator: "\n"), tapBackgroundHide: false, actionDirection: .vertical,
+            actions: [.init(title: "ok".localizedString)])
+        let resultsScroll = UIScrollView()
+        popup.contentView.addSubview(resultsScroll)
+        popup.messageLabel.removeFromSuperview(); resultsScroll.addSubview(popup.messageLabel)
+        resultsScroll.snp.makeConstraints { make in
+            make.top.equalTo(popup.titleLabel.snp.bottom).offset(20); make.left.right.equalToSuperview().inset(24)
+            make.height.equalTo(min(360, max(120, view.bounds.height * 0.4)))
+        }
+        popup.messageLabel.snp.remakeConstraints { make in
+            make.edges.equalTo(resultsScroll.contentLayoutGuide); make.width.equalTo(resultsScroll.frameLayoutGuide)
+        }
+        popup.hLineView.snp.remakeConstraints { make in
+            make.top.equalTo(resultsScroll.snp.bottom).offset(20); make.left.right.equalToSuperview(); make.height.equalTo(0.5)
+        }
+        alert = popup; popup.show()
+    }
+    private func commit(revision: UUID, requestAddressIfNeeded: Bool = true) {
+        guard active, !syncPagePresented, let selection, selection.draft.revision == revision else { return }
+        do {
+            setBusy(true)
+            switch try coordinator.saveForSync(draft: selection.draft) {
+            case .ready(let saved):
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
+                openSyncPage(saved)
+            case .projectionPending:
+                setBusy(false); tip("scene_projection_pending")
+                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
+            }
+        } catch SceneConfigurationStore.Failure.noNumber {
+            if requestAddressIfNeeded { requestAddresses(revision: revision) }
+            else { failed(SceneConfigurationStore.Failure.noNumber) }
+        }
+        catch { failed(error) }
+    }
+    private func requestAddresses(revision: UUID) {
+        guard requestedAddresses == nil else { return }
+        let request = UUID()
+        requestedAddresses = request; setBusy(true); let token = lifecycle
+        NetworkRequest.shared.request(.applyAddress(siteId: space.siteId, type: .scene, number: 16)) { [weak self] result in
+            DispatchQueue.main.async {
+                guard let self, self.requestedAddresses == request,
+                      self.accepts(token, revision: revision), let selection = self.selection else { return }
+                self.requestedAddresses = nil; self.setBusy(false)
+                do {
+                    try SceneConfigurationStore.validateAccess(selection.draft.scope)
+                    switch result {
+                    case .success(let response):
+                        guard let site = SiteData.load(siteId: self.space.siteId),
+                              let data = JSON(response)["data"]["provisioner"].dictionaryObject,
+                              SceneCapacity.validSceneAllocation(data) else { throw SceneConfigurationStore.Failure.noNumber }
+                        site.setProvisioner(provisionerData: data)
+                        guard MeshNetworkManager.instance.meshNetwork?.save() == true else { throw SceneConfigurationStore.Failure.persistence }
+                        self.commit(revision: revision, requestAddressIfNeeded: false)
+                    case .failure(let error): throw error
+                    }
+                } catch { self.failed(error) }
+            }
+        }
+    }
+    private func openSyncPage(_ saved: Scene) {
+        guard !syncPagePresented, let navigationController else { setBusy(false); return }
+        syncPagePresented = true
+        XWHUDManager.hide()
+        sceneUpdateCallback?(saved)
+        NotificationCenter.default.post(name: .init(sceneDataUpdateNotificationName), object: saved)
+        NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
+        let sync = SyncDevicesViewController(type: .scene(saved))
+        // Keep this editor in the stack until exit, but never return to its
+        // committed draft. The Sync page independently owns stop/retry/pending.
+        let returnController = navigationController.viewControllers.last(where: { $0 !== self })
+        var didFinish = false
+        let finish = { [weak self, weak returnController] in
+            guard let self, !didFinish else { return }
+            didFinish = true
+            if self.scene == nil || self.finishesCreation { self.finishCreation() }
+            else if let returnController {
+                self.navigationController?.popToViewController(returnController, animated: true)
+            }
+        }
+        sync.syncSuccessCallback = { _ in finish() }
+        sync.backActionCallback = { _ in finish() }
+        navigationController.pushViewController(sync, animated: true)
+    }
+    private func failed(_ error: Error) {
+        guard active else { return }
+        interruptDevicePreview()
+        setBusy(false); XWHUDManager.hide()
+        if selection == nil, scene?.info.projectionPending == true { tip("scene_projection_pending"); return }
+        if let failure = error as? SceneConfigurationStore.Failure {
+            switch failure {
+            case .staleDraft: tip("scene_draft_stale")
+            case .noNumber: tip("scene_address_unavailable")
+            default: tip("save_failure")
+            }
+        } else { TimedSchedulerBindings.showFailure(error) }
+    }
+    private func tip(_ key: String) { XWHUDManager.showTipHUD(key.localizedString, isLineFeed: true) }
+    private func showAlert(title: String, message: String, cancel: String, confirm: String, confirmStyle: SRAlertAction.SRAlertActionStyle = .default, action: @escaping () -> Void) {
+        guard let selection else { return }; let token = lifecycle, revision = selection.draft.revision
+        let popup = SRAlertView(title: title.localizedString, message: message.localizedString, tapBackgroundHide: false,
+            actions: [.init(title: cancel.localizedString, style: .cancel), .init(title: confirm.localizedString, style: confirmStyle, actionHandler: { [weak self] _ in
+                guard let self, self.accepts(token, revision: revision) else { return }; action()
+            })])
+        alert = popup; popup.show()
+    }
+    @objc private func closeAction() {
+        if devicesView?.selecting == true { showDeviceSelection(false); return }
+        interruptDevicePreview()
+        if selection?.hasUnsavedChanges != true || coordinator.committedNumber != nil { leave(); return }
+        if busy { lifecycle = UUID(); coordinator.cancel(); setBusy(false); XWHUDManager.hide() }
+        showAlert(title: "scene_discard_title", message: "scene_discard_message", cancel: "scene_keep_editing", confirm: "scene_discard", confirmStyle: .destructive) { [weak self] in self?.leave() }
+    }
+    private func leave() {
+        suspend()
+        if finishesCreation { finishCreation() }
+        else if navigationController?.viewControllers.first === self { dismiss(animated: true) }
+        else { navigationController?.popViewController(animated: true) }
+    }
+    private func finishCreation() {
+        if space.isConfiguring {
+            dismiss(animated: false)
+            let next = SpaceNewCreationProcessController(space: space, options: .scene)
+            NotificationCenter.default.post(name: .init(spaceModalViewControllerNotificaitonName), object: NavigationViewController(rootViewController: next))
+        } else { dismiss(animated: true) }
+    }
 }
 
-private extension SceneSettingsViewController {
-    func showEmergencyControlBlockedIfNeeded(group: Group) -> Bool {
-        showEmergencyControlBlockedIfNeeded(groups: [group])
-    }
-
-    func showEmergencyControlBlockedIfNeeded(groups: [Group]) -> Bool {
-        guard EmergencyFireControllerSceneEventManager.isManualControlBlocked(for: groups) else {
-            return false
-        }
-        XWHUDManager.showTipHUD("Uncontrollable in emergency situations".localizedString, isLineFeed: true)
-        return true
-    }
+private final class SceneRelayLiveControl: CustomSegmentedControlDelegate {
+    private let changed: (Bool) -> Void
+    init(changed: @escaping (Bool) -> Void) { self.changed = changed }
+    func segmentedControl(_ segmentedControl: CustomSegmentedControl, shouldSelesctedItem index: Int) -> Bool { true }
+    func segmentedControl(_ segmentedControl: CustomSegmentedControl, didSelectedItem index: Int) { changed(index == 0) }
 }
 
-private extension Group {
-    
-    static var executeSceneDataKey: UInt8 = 0
-    
-    static var isSelectedKey: UInt8 = 0
-    
-    /// 赋值的场景数据
-    var executeSceneData: ExecuteSceneData? {
-        get {
-            objc_getAssociatedObject(self, &Group.executeSceneDataKey) as? ExecuteSceneData
-        }set {
-            objc_setAssociatedObject(self, &Group.executeSceneDataKey, newValue, .OBJC_ASSOCIATION_RETAIN)
-        }
+private extension LightGroupControlCommandSender {
+    @discardableResult
+    static func setGroupOff(session: MeshGroupControlSession) -> Bool {
+        session.send(GenericOnOffSetUnacknowledged(false), channel: .lightness,
+                     isFinal: true, replacingAll: true)
     }
-    
-    /// 是否选中
-    var isSelected: Bool {
-        get {
-            objc_getAssociatedObject(self, &Group.isSelectedKey) as? Bool ?? false
-        }set {
-            objc_setAssociatedObject(self, &Group.isSelectedKey, newValue, .OBJC_ASSOCIATION_RETAIN)
-        }
+
+    @discardableResult
+    static func setGroupLightness(session: MeshGroupControlSession, lightness: UInt16, ended: Bool) -> Bool {
+        session.send(LightLightnessSetUnacknowledged(lightness: lightness), channel: .lightness, isFinal: ended)
     }
-    
+
+    @discardableResult
+    static func setGroupColorTemperature(session: MeshGroupControlSession, temperature: UInt16, ended: Bool) -> Bool {
+        session.send(LightCTLTemperatureSetUnacknowledged(temperature: temperature, deltaUV: 0),
+                     channel: .temperature, isFinal: ended)
+    }
+
 }

@@ -118,16 +118,49 @@ class SunSmartDataManager {
     func configurationTransaction(_ body: () throws -> Void) -> Bool {
         guard let db else { return false }
         do {
+            var bodyStarted = false
+            do {
+                // The SDK serializes BEGIN/body/COMMIT and rolls back a failed
+                // final COMMIT before releasing its connection queue.
+                try db.transaction {
+                    bodyStarted = true
+                    try body()
+                }
+                return true
+            } catch {
+                // Only a rejected nested BEGIN permits fallback. Never replay a
+                // body that ran, or reinterpret a disk/statement/commit failure.
+                var nestedBegin = false
+                if !bodyStarted, let sqliteError = error as? SQLite.Result {
+                    switch sqliteError {
+                    case let .error(message, code, statement), let .extendedError(message, code, statement):
+                        nestedBegin = code == 1 && message == "cannot start a transaction within a transaction"
+                            && (statement == nil || statement?.description == "BEGIN DEFERRED TRANSACTION")
+                    }
+                }
+                guard nestedBegin else { throw error }
+            }
+            // App callers nest from SDK transaction/savepoint closures, so this
+            // fallback and its cleanup remain inside the outer serialized block.
             let name = "configuration_" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
             var failure: Error?
-            try db.savepoint(name) {
-                do { try body() }
-                catch {
-                    // ROLLBACK TO leaves the savepoint open. Let the SDK release it
-                    // normally, on the same serialized connection, before reporting failure.
-                    try db.run("ROLLBACK TO SAVEPOINT \(name)")
-                    failure = error
+            do {
+                try db.savepoint(name) {
+                    do { try body() }
+                    catch {
+                        try db.run("ROLLBACK TO SAVEPOINT \(name)")
+                        failure = error
+                    }
                 }
+            } catch {
+                // A failed RELEASE may leave our rolled-back savepoint open.
+                // Release only after confirming rollback of our own scope; never
+                // roll back or commit the caller's enclosing transaction.
+                do {
+                    try db.run("ROLLBACK TO SAVEPOINT \(name)")
+                    try db.run("RELEASE SAVEPOINT \(name)")
+                } catch {}
+                throw error
             }
             if let failure { throw failure }
             return true
@@ -1177,7 +1210,11 @@ extension GroupInfo {
             for row in rows {
                 let info = GroupInfo(address: Address(row[ExpressionKey.groupAddress]), imageId: row[ExpressionKey.imageId], imageText: row[ExpressionKey.imageText])
                 if let data = row[ExpressionKey.scenesData] {
-                    info.sceneExecuteDatas = (try? jsonDecoder.decode([SceneExecuteData].self, from: data)) ?? []
+                    do {
+                        let raw = try JSONSerialization.jsonObject(with: data)
+                        _ = try SceneConfigurationPayload.groupParameters(raw)
+                        info.sceneExecuteDatas = try jsonDecoder.decode([SceneExecuteData].self, from: data)
+                    } catch { info.sceneParametersLoadFailed = true }
                 }
                 // 组绑定的光照传感器
                 if let daylightSensorAddress = row[ExpressionKey.daylightSensorAddress] {
@@ -1266,7 +1303,7 @@ extension GroupInfo {
         
         guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
         let networkId = subnetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
-        guard !profileLoadFailed, !topologyLoadFailed, let db = SunSmartDataManager.shared.db else { return false }
+        guard !profileLoadFailed, !topologyLoadFailed, !sceneParametersLoadFailed, let db = SunSmartDataManager.shared.db else { return false }
        
         let scenesData = try? jsonEncoder.encode(self.sceneExecuteDatas)
         
@@ -1307,6 +1344,8 @@ extension GroupInfo {
 }
 
 extension SceneInfo {
+
+    enum PersistenceFailure: Error { case unavailable, corruptConfiguration, invalidNumber }
     
     private static let sceneInfosTable = Table("sceneInfos")
     
@@ -1316,19 +1355,51 @@ extension SceneInfo {
         static let subNetworkKey = Expression<String>("subNetworkKey")
         static let number = Expression<Int>("number")
         static let imageId = Expression<Int>("imageId")
+        static let configuration = Expression<Data?>("configuration")
+        static let configurationType = Expression<String>(literal: "typeof(configuration)")
     }
     
     /// 初始化组扩展信息表
-    static func initDatabase() {
-        
-        _ = try? SunSmartDataManager.shared.db?.run(SceneInfo.sceneInfosTable.create(temporary: false, ifNotExists: true, withoutRowid: false, block: { builder in
+    @discardableResult static func initDatabase() -> Bool {
+        do { try prepareDatabase(); return true } catch { return false }
+    }
+
+    private static func prepareDatabase() throws {
+        guard let db = SunSmartDataManager.shared.db else { throw PersistenceFailure.unavailable }
+        try db.run(SceneInfo.sceneInfosTable.create(temporary: false, ifNotExists: true, withoutRowid: false, block: { builder in
             builder.column(ExpressionKey.id, primaryKey: true)
             builder.column(ExpressionKey.meshUUID)
             builder.column(ExpressionKey.subNetworkKey)
             builder.column(ExpressionKey.number)
             builder.column(ExpressionKey.imageId)
+            builder.column(ExpressionKey.configuration)
             builder.unique(ExpressionKey.meshUUID, ExpressionKey.number)
         }))
+        let columns = try db.schema.columnDefinitions(table: "sceneInfos")
+        if !columns.contains(where: { $0.name == "configuration" }) {
+            try db.run(sceneInfosTable.addColumn(ExpressionKey.configuration))
+        }
+    }
+
+    private static func decodeRow(_ row: Row) throws -> SceneInfo {
+        guard let number = SceneNumber(exactly: row[ExpressionKey.number]), number > 0 else {
+            throw PersistenceFailure.invalidNumber
+        }
+        let info = SceneInfo(sceneId: number, imageId: row[ExpressionKey.imageId])
+        info.loadConfiguration(row[ExpressionKey.configuration], isPresent: row[ExpressionKey.configurationType] != "null")
+        if number.isSpecialScene && info.configurationData != nil { throw PersistenceFailure.invalidNumber }
+        return info
+    }
+
+    /// Recovery and allocation must inspect App rows, even without SDK projections.
+    /// nil subnetworkId deliberately includes every Space in this Mesh.
+    static func loadAll(meshUUID: String, subnetworkId: String? = nil) throws -> [SceneInfo] {
+        try prepareDatabase()
+        guard let db = SunSmartDataManager.shared.db else { throw PersistenceFailure.unavailable }
+        var query = sceneInfosTable.select(sceneInfosTable[*], ExpressionKey.configurationType).filter(ExpressionKey.meshUUID == meshUUID
+            && ExpressionKey.number > 0 && ExpressionKey.number < 0xFF00)
+        if let subnetworkId { query = query.filter(ExpressionKey.subNetworkKey == subnetworkId) }
+        return try db.prepare(query.order(ExpressionKey.number)).map { try decodeRow($0) }
     }
     
     /// 根据网络id和场景id获取对应场景信息
@@ -1337,15 +1408,14 @@ extension SceneInfo {
     /// - Returns: 场景数据
     static func load(meshUUID: String, sceneId: SceneNumber) -> SceneInfo? {
         
-        let filter = SceneInfo.sceneInfosTable.filter(ExpressionKey.meshUUID == meshUUID && ExpressionKey.number == Int(sceneId))
-        var sceneInfo: SceneInfo?
-        if let rows = try? SunSmartDataManager.shared.db?.prepare(filter) {
-            for row in rows {
-                sceneInfo = SceneInfo(sceneId: SceneNumber(row[ExpressionKey.number]), imageId: row[ExpressionKey.imageId])
-                break
-            }
-        }
-        return sceneInfo
+        let filter = SceneInfo.sceneInfosTable.select(sceneInfosTable[*], ExpressionKey.configurationType)
+            .filter(ExpressionKey.meshUUID == meshUUID && ExpressionKey.number == Int(sceneId))
+        do {
+            try prepareDatabase()
+            guard let db = SunSmartDataManager.shared.db else { throw PersistenceFailure.unavailable }
+            guard let row = try db.pluck(filter) else { return nil }
+            return try decodeRow(row)
+        } catch { return .unavailable(sceneId: sceneId) }
     }
     
     /// 删除对应场景扩展数据
@@ -1357,7 +1427,8 @@ extension SceneInfo {
         
         let filter = SceneInfo.sceneInfosTable.filter(ExpressionKey.meshUUID == meshUUID && ExpressionKey.number == Int(sceneId))
         do {
-            try SunSmartDataManager.shared.db?.run(filter.delete())
+            guard let db = SunSmartDataManager.shared.db else { throw PersistenceFailure.unavailable }
+            try db.run(filter.delete())
         } catch {
             #if DEBUG
             print(error)
@@ -1376,7 +1447,8 @@ extension SceneInfo {
         
         let filter = SceneInfo.sceneInfosTable.filter(ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == networkId)
         do {
-            try SunSmartDataManager.shared.db?.run(filter.delete())
+            guard let db = SunSmartDataManager.shared.db else { throw PersistenceFailure.unavailable }
+            try db.run(filter.delete())
         } catch {
             #if DEBUG
             print(error)
@@ -1391,17 +1463,8 @@ extension SceneInfo {
     ///   - meshUUID: 所属网络id
     /// - Returns: 是否成功
     @discardableResult func save(meshUUID: String? = nil, subnetworkId: String? = nil) -> Bool {
-        
-        guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
-        let networkId = subnetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
-        let insertOrUpdate = SceneInfo.sceneInfosTable.insert(or: .replace, [
-            ExpressionKey.meshUUID <- uuid,
-            ExpressionKey.subNetworkKey <- networkId,
-            ExpressionKey.number <- Int(self.sceneId),
-            ExpressionKey.imageId <- self.imageId
-        ])
         do {
-            try SunSmartDataManager.shared.db?.run(insertOrUpdate)
+            try saveConfiguration(meshUUID: meshUUID, subnetworkId: subnetworkId)
         } catch {
             #if DEBUG
             print(error)
@@ -1409,6 +1472,24 @@ extension SceneInfo {
             return false
         }
         return true
+    }
+
+    /// Throwing variant composes with the existing App savepoint in T04.
+    func saveConfiguration(meshUUID: String? = nil, subnetworkId: String? = nil) throws {
+        guard !configurationLoadFailed else { throw PersistenceFailure.corruptConfiguration }
+        guard sceneId > 0, configuration == nil || !sceneId.isSpecialScene else { throw PersistenceFailure.invalidNumber }
+        guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString,
+              let db = SunSmartDataManager.shared.db else { throw PersistenceFailure.unavailable }
+        try Self.prepareDatabase()
+        let data = try configuration?.encoded()
+        let networkId = subnetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+        try db.run(Self.sceneInfosTable.insert(or: .replace, [
+            ExpressionKey.meshUUID <- uuid,
+            ExpressionKey.subNetworkKey <- networkId,
+            ExpressionKey.number <- Int(sceneId),
+            ExpressionKey.imageId <- imageId,
+            ExpressionKey.configuration <- data
+        ]))
     }
     
 }

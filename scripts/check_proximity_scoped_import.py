@@ -4,6 +4,9 @@ from pathlib import Path
 import subprocess
 import tempfile
 import sys
+import sys
+sys.dont_write_bytecode = True
+from scene_group_codec_source import block
 
 root = Path(__file__).resolve().parents[1]
 baseline = '--baseline' in sys.argv
@@ -22,6 +25,7 @@ space_controller = source('SunSmart/Main/Space/Controller/SpaceViewController.sw
 repair_presentation = section(space_controller, '    private func presentProximityLightingRepairSyncIfNeeded()', '\n    // MARK: - Request')
 repair_recomputation = section(repair_presentation, '        let preparation =', '        guard !datas.isEmpty else { return }')
 test_source = (root / 'Tests/Group/ProximityLightingScopedImportTests.swift').read_text()
+test_source = test_source.replace('// ACTUAL_SCENE_CLOUD_CLEANUP', block((root / 'SunSmart/Main/Scene/Model/SceneConfigurationStore.swift').read_text(), '    static func removeConfirmedIdentities('))
 test_source = test_source.replace('// SENSOR_GROUP_NAME', section(
     source('SunSmart/Common/Data/HDBConfigurationStore+Mesh.swift'),
     '    static func sensorGroupName(', '\n\n'))
@@ -38,7 +42,7 @@ parts = [source('SunSmart/Common/Data/AppPerformance.swift'), source('SunSmart/C
          section(adapter, start, '\nextension SpaceData'),
          source('SunSmart/Common/Data/DeviceScheduleAddressCleanup.swift'),
          source('SunSmart/Main/Timed/Model/TimedSchedulerSlotPolicy.swift'),
-         source('SunSmart/Common/Data/HDBConfiguration.swift'), source('SunSmart/Common/Data/HDBLightingZonePolicy.swift'), source('SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),
+         source('SunSmart/Common/Data/HDBConfiguration.swift'), source('SunSmart/Common/Data/HDBLightingZonePolicy.swift'), source('SunSmart/Main/Scene/Model/SceneConfiguration.swift'), source('SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),
          source('SunSmart/Common/Data/DevicePermanentDeletionCleanup.swift').replace('import NordicSigMeshSDK', ''),
          source('SunSmart/Common/Data/SiteDeviceOwnershipReconciler.swift').replace('import NordicSigMeshSDK', ''),
          source('SunSmart/Main/Group/Model/ProximityLightingLifecycleCoordinator.swift').replace('import NordicSigMeshSDK', ''),

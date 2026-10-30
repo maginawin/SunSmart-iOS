@@ -125,11 +125,53 @@ class SyncDevicesViewController: UIViewController {
         rebuildTaskPlan(resume: syncState == .inSync)
     }
 
-    private func rebuildTaskPlan(resume: Bool) {
+    private func rebuildTaskPlan(resume: Bool, confirmSceneRestore: Bool = true) {
+        #if DEBUG
+        if case .scene(let scene) = type {
+            print("[SceneSync] stage=prepare scene=\(scene.number) resume=\(resume) restoreCheck=\(confirmSceneRestore)")
+        }
+        #endif
+        if confirmSceneRestore {
+            let nodes: [Node]?
+            let sceneNumber: SceneNumber?
+            switch type {
+            case .devices(let targets): nodes = targets.compactMap(currentNode); sceneNumber = nil
+            case .scene(let scene): nodes = nil; sceneNumber = scene.number
+            case .group(let group, _, _): nodes = group.nodes; sceneNumber = nil
+            default: nodes = nil; sceneNumber = nil
+            }
+            SceneRestoreConfirmation.presentIfNeeded(nodes: nodes, sceneNumber: sceneNumber) { [weak self] accepted in
+                guard let self, !self.hasLeftSyncPage else { return }
+                #if DEBUG
+                if case .scene(let scene) = self.type {
+                    print("[SceneSync] stage=restoreDecision scene=\(scene.number) accepted=\(accepted) requestedResume=\(resume)")
+                }
+                #endif
+                self.rebuildTaskPlan(resume: accepted && resume, confirmSceneRestore: false)
+            }
+            return
+        }
+        if !resume { syncState = .syncFailure }
         XWHUDManager.showCustomHUD(withMessage: nil, view: view)
         Task { @MainActor [weak self] in
             guard let self, !self.hasLeftSyncPage else { return }
-            _ = await SpaceSyncCleanupCoordinator.prepareCurrentSpace()
+            let cleanupReady = await SpaceSyncCleanupCoordinator.prepareCurrentSpace()
+            #if DEBUG
+            if case .scene(let scene) = self.type {
+                print("[SceneSync] stage=cleanupPrepared scene=\(scene.number) ready=\(cleanupReady)")
+            }
+            #endif
+            _ = cleanupReady
+            do { try SceneConfigurationStore().prepareDeletionRetries() }
+            catch {
+                #if DEBUG
+                print("[SceneSync] stage=deletionPreparationFailed errorType=\(Swift.type(of: error)) storeFailure=\(String(describing: error as? SceneConfigurationStore.Failure))")
+                #endif
+                XWHUDManager.hide()
+                XWHUDManager.showErrorTipHUD("scene_delete_failed".localizedString)
+                self.syncState = .syncFailure
+                return
+            }
             guard !self.hasLeftSyncPage else { return }
             self.type = self.currentSyncType()
             self.executionSession.type = self.type
@@ -151,7 +193,12 @@ class SyncDevicesViewController: UIViewController {
                 }, imageExists: { UIImage(named: $0) != nil })
             // Own the mutable Mesh snapshot on the same queue as its callbacks.
             let result = builder.build()
-            guard isCurrent() else { self.rebuildTaskPlan(resume: resume); return }
+            guard isCurrent() else {
+                #if DEBUG
+                print("[SceneSync] stage=planStaleBeforeInstall")
+                #endif
+                self.rebuildTaskPlan(resume: resume); return
+            }
             self.installTaskPlan(result)
         }
     }
@@ -189,6 +236,16 @@ class SyncDevicesViewController: UIViewController {
     private func installTaskPlan(_ result: SyncTaskPlanResult) {
         precondition(Thread.isMainThread)
         guard !self.hasLeftSyncPage else { return }
+        #if DEBUG
+        if case .scene(let scene) = type {
+            let models = result.sections.flatMap { $0.allModels }
+            let devices = models.compactMap { $0 as? SyncDevicesModel }
+            print("[SceneSync] stage=install scene=\(scene.number) currentState=\(syncState) plannedState=\(result.initialState) devices=\(devices.count) taskRows=\(models.filter { $0 is SyncDeviceStepTaskModel }.count) pending=\(scene.info.configuration?.pendingOperations.count ?? 0)")
+            for device in devices {
+                print("[SceneSync] stage=plannedDevice scene=\(scene.number) address=\(device.address) steps=\(device.steps.count) state=\(device.state)")
+            }
+        }
+        #endif
         self.sections = result.sections
         // 构建期间可能已 STOP；迟到的快照不能恢复自动同步。
         if self.syncState == .inSync {
@@ -332,6 +389,12 @@ class SyncDevicesViewController: UIViewController {
 
         let devices = self.sections.flatMap({ $0.groups.flatMap({ $0.deviceModels }) + $0.devices })
         progressLabel.text = "\(devices.filter({ $0.state == .successful }).count)/\(devices.count)"
+        var hasUnresolvedSceneWork = false
+        if syncState == .syncFailure, case .scene(let scene) = type, scene.needSync,
+           devices.allSatisfy({ $0.state == .successful }) {
+            hasUnresolvedSceneWork = true
+            progressLabel.text = "scene_saved_pending_sync".localizedString
+        }
 
         if syncState == .inSync {
             navigationItem.rightBarButtonItem?.title = "stop".localizedString
@@ -347,7 +410,7 @@ class SyncDevicesViewController: UIViewController {
         }else if syncState == .syncFailure{
             navigationItem.rightBarButtonItem?.title = "re_sync".localizedString
             bottomView.isHidden = false
-            selectAllBtn.isHidden = false
+            selectAllBtn.isHidden = hasUnresolvedSceneWork
             backBtn.isHidden = false
             var failedModels: [SyncDevicesModel] = []
 

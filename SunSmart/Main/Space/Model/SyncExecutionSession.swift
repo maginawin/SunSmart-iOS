@@ -10,6 +10,8 @@ final class SyncExecutionSession {
     let coordinator: SyncSessionCoordinator
     let environment: SyncExecutionEnvironment
     var sections: [SyncDevicesSectionModel] = []
+    /// Draft sends use this same lane/cancel/retry lifecycle, but never update formal configuration.
+    var parameterOnlyOperations: [ObjectIdentifier: () -> [MeshMessageHandle]] = [:]
     var syncState: SyncState
     var profileSensorProtectionContext: ProfileSensorProtectionContext?
     var proximityLightingTaskModels: [SyncDeviceStepTaskModel] = []
@@ -60,13 +62,26 @@ final class SyncExecutionSession {
         pendingPreparations.append(action)
     }
 
+    #if DEBUG
+    private func traceSceneSync(_ stage: String, detail: String = "") {
+        guard case .scene(let scene) = type else { return }
+        print("[SceneSync] run=\(identifier) scene=\(scene.number) stage=\(stage) \(detail)")
+    }
+    #endif
+
     func start() {
         precondition(Thread.isMainThread)
+        #if DEBUG
+        traceSceneSync("startRequested", detail: "sections=\(sections.count)")
+        #endif
         let preparations = pendingPreparations
         pendingPreparations.removeAll()
         coordinator.start { [self] identifier in
             guard validatePlan(identifier) else { return }
             guard environment.configurationAvailable() else {
+                #if DEBUG
+                traceSceneSync("startRejected", detail: "reason=configurationUnavailable")
+                #endif
                 syncState = .syncFailure
                 onError?("configuration_sync_unavailable".localizedString)
                 finishRun(identifier, publishesCompletion: false, forcedState: .syncFailure)
@@ -108,12 +123,22 @@ final class SyncExecutionSession {
         guard isActiveSyncRun(identifier) else { return }
         guard validatePlan(identifier) else { return }
         guard let model = getNextHandleModel() else {
+            #if DEBUG
+            traceSceneSync("noNextTask")
+            #endif
             currentTask = nil
             finishRun(identifier)
             return
         }
         currentTask = model
+        #if DEBUG
+        let device = (model as? SyncDevicesModel) ?? (model as? SyncDeviceStepTaskModel)?.parentStepModel?.parentDeviceModel
+        traceSceneSync("taskSelected", detail: "address=\(device?.address ?? 0) state=\(model.state)")
+        #endif
         guard environment.configurationAvailable() else {
+            #if DEBUG
+            traceSceneSync("taskRejected", detail: "reason=configurationUnavailable")
+            #endif
             model.state = .failed
             finishRun(identifier, publishesCompletion: false, forcedState: .syncFailure)
             return
@@ -124,6 +149,9 @@ final class SyncExecutionSession {
             return
         }
         guard environment.bluetoothAvailable() else {
+            #if DEBUG
+            traceSceneSync("taskRejected", detail: "reason=bluetoothUnavailable")
+            #endif
             if gatewayRecoveryNode != nil { markPendingGatewayRecoveryTasksSkipped() }
             else { sections.flatMap { $0.allModels }.forEach { $0.state = .failed } }
             finishRun(identifier, publishesCompletion: false, forcedState: .syncFailure)
@@ -131,8 +159,14 @@ final class SyncExecutionSession {
         }
         if case .configuration(let node, .scene(let number, _)) = operationType(for: model) {
             if !SceneCapacity.unknownNodes([node]).isEmpty {
+                #if DEBUG
+                traceSceneSync("registerRead", detail: "address=\(node.primaryUnicastAddress)")
+                #endif
                 SceneCapacity.readUnknownState(nodes: [node]) { [self] resolved in
                     guard isActiveSyncRun(identifier), validatePlan(identifier) else { return }
+                    #if DEBUG
+                    traceSceneSync("registerReadResult", detail: "address=\(node.primaryUnicastAddress) resolved=\(resolved)")
+                    #endif
                     if !resolved { finishOperation(model, successful: false) }
                     advance(identifier)
                 }
@@ -140,15 +174,21 @@ final class SyncExecutionSession {
             }
             do { try SceneCapacity.validateStore(node: node, number: number) }
             catch {
+                #if DEBUG
+                traceSceneSync("taskRejected", detail: "reason=capacityValidation errorType=\(Swift.type(of: error))")
+                #endif
                 SceneCapacity.showFailure(error)
                 finishOperation(model, successful: false)
                 advance(identifier)
                 return
             }
         }
-        var handles = operationType(for: model)?.messageHandles ?? []
+        var handles = parameterOnlyOperations[ObjectIdentifier(model)]?() ?? operationType(for: model)?.messageHandles ?? []
         handles = prepareDaylightHandles(for: model, handles: handles)
         handles = batteryPowerSwitchMessageHandles(for: model, defaultHandles: handles)
+        #if DEBUG
+        traceSceneSync("commandsBuilt", detail: "count=\(handles.count)")
+        #endif
         if case .configuration(_, .hdbUnavailable) = operationType(for: model) {
             finishOperation(model, successful: false)
             advance(identifier)
@@ -158,6 +198,19 @@ final class SyncExecutionSession {
             finishOperation(model, successful: false)
             advance(identifier)
             return
+        }
+        if handles.isEmpty {
+            switch operationType(for: model) {
+            case .configuration(_, .scene), .delete(_, .scene):
+                #if DEBUG
+                traceSceneSync("taskRejected", detail: "reason=emptySceneHandles")
+                #endif
+                finishOperation(model, successful: false); advance(identifier); return
+            default: break
+            }
+        }
+        if parameterOnlyOperations[ObjectIdentifier(model)] != nil, handles.isEmpty {
+            finishOperation(model, successful: false); advance(identifier); return
         }
         model.state = .inSettings
         onTaskStarted?(model, identifier)
@@ -191,27 +244,59 @@ final class SyncExecutionSession {
 
     private func send(_ model: SyncCellModel, handles: [MeshMessageHandle], identifier: UUID, attempt: Int) {
         guard isActiveSyncRun(identifier) else { return }
-        guard validatePlan(identifier) else { return }
+        guard validatePlan(identifier, handles: handles) else { return }
+        #if DEBUG
+        traceSceneSync("sendPrepared", detail: "count=\(handles.count) hasStore=\(handles.contains { $0.message is SceneStore }) attempt=\(attempt)")
+        #endif
+        // A failed parameter batch must never enqueue Store against the lamp's old state.
+        if let storeIndex = handles.firstIndex(where: { $0.message is SceneStore }), storeIndex > 0 {
+            let parameters = Array(handles[..<storeIndex])
+            let gate = SyncAttemptCompletionGate()
+            #if DEBUG
+            traceSceneSync("submitParameters", detail: "count=\(parameters.count)")
+            #endif
+            environment.addMessage(messageHandles: parameters, ackMessageTimeout: ackTimeout(for: model),
+                successfulBack: { [self] handle, status in
+                    guard isActiveSyncRun(identifier), !gate.isCompleted, validatePlan(identifier, handles: handles) else { return }
+                    received(handle: handle, statusMessage: status, model: model, messageHandles: handles)
+                }, finishedBack: { [self] result in
+                    guard isActiveSyncRun(identifier), gate.claim(), validatePlan(identifier, handles: handles) else { return }
+                    #if DEBUG
+                    traceSceneSync("parameterResult", detail: "expected=\(parameters.count) returned=\(result.count) successful=\(result.filter { $0.isSuccessful }.count)")
+                    #endif
+                    guard result.count == parameters.count, result.allSatisfy({ $0.isSuccessful }) else {
+                        finishOperation(model, successful: false); advance(identifier); return
+                    }
+                    send(model, handles: Array(handles[storeIndex...]), identifier: identifier, attempt: attempt)
+                })
+            return
+        }
         let completionGate = SyncAttemptCompletionGate()
         let acknowledgementAttempt = UUID()
         if case .configuration(_, .hdb(let task)) = operationType(for: model), task.isLightingZoneOperation {
             hdbZoneAcknowledgementAttempt = acknowledgementAttempt
         }
+        #if DEBUG
+        traceSceneSync("submitCommands", detail: "count=\(handles.count) hasStore=\(handles.contains { $0.message is SceneStore })")
+        #endif
         environment.addMessage(messageHandles: handles, ackMessageTimeout: ackTimeout(for: model), successfulBack: { [self] handle, status in
             guard !completionGate.isCompleted else { return }
-            if isActiveSyncRun(identifier), validatePlan(identifier) {
+            if isActiveSyncRun(identifier), validatePlan(identifier, handles: handles) {
                 received(handle: handle, statusMessage: status, model: model, messageHandles: handles)
             } else if coordinator.isSettling, hdbZoneAcknowledgementAttempt == acknowledgementAttempt {
                 received(handle: handle, statusMessage: status, model: model, messageHandles: handles, cacheOnly: true)
             }
         }, failedBack: { [self] handle in
-            guard isActiveSyncRun(identifier), !completionGate.isCompleted, validatePlan(identifier) else { return }
+            guard isActiveSyncRun(identifier), !completionGate.isCompleted, validatePlan(identifier, handles: handles) else { return }
             failed(handle: handle)
         }) { [self] resultMessageHandles in
             precondition(Thread.isMainThread)
-            guard isActiveSyncRun(identifier), completionGate.claim(), validatePlan(identifier) else { return }
+            guard isActiveSyncRun(identifier), completionGate.claim(), validatePlan(identifier, handles: handles) else { return }
             if hdbZoneAcknowledgementAttempt == acknowledgementAttempt { hdbZoneAcknowledgementAttempt = nil }
             let successful = applyResult(resultMessageHandles, model: model, messageHandles: handles)
+            #if DEBUG
+            traceSceneSync("batchResult", detail: "returned=\(resultMessageHandles.count) acknowledged=\(resultMessageHandles.filter { $0.isSuccessful }.count) applied=\(successful)")
+            #endif
             let retry = emergencyFireDeleteCleanupRetryPolicy(for: model)
             let maxAttempts = retry?.maxAttempts ?? 1
             let shouldRetry = !successful && attempt < maxAttempts && retry != nil
@@ -236,9 +321,17 @@ final class SyncExecutionSession {
         }
     }
 
-    private func validatePlan(_ identifier: UUID) -> Bool {
+    private func validatePlan(_ identifier: UUID, handles: [MeshMessageHandle] = []) -> Bool {
         guard !invalidatingPlan else { return false }
-        guard !environment.configurationIsCurrent() else { return true }
+        let sceneContextsAreCurrent = handles.allSatisfy { handle in
+            guard let context = handle.sceneContext else { return true }
+            guard let node = MeshNetworkManager.instance.realNodes.first(where: { $0.sceneConfigurationIdentity == context.identity }) else { return false }
+            return context.matches(node: node)
+        }
+        guard !environment.configurationIsCurrent() || !sceneContextsAreCurrent else { return true }
+        #if DEBUG
+        traceSceneSync("planInvalidated", detail: "sceneContextsCurrent=\(sceneContextsAreCurrent)")
+        #endif
         invalidatingPlan = true
         pendingPreparations.removeAll()
         cancelAuthorization?()
@@ -405,6 +498,17 @@ final class SyncExecutionSession {
             markPendingGatewayRecoveryTasksSkipped()
             sections.flatMap { $0.allModels }.forEach { $0.isFineshed = true }
             syncState = hdbZoneCachePersistenceFailed ? .syncFailure : forcedState ?? (sections.contains { $0.allModels.contains { $0.state == .failed } } ? .syncFailure : .syncSuccess)
+            // Missing identities cannot produce executable models. Their durable
+            // scene intent must still prevent a false zero-task success.
+            if syncState == .syncSuccess, case .scene(let scene) = type, scene.needSync {
+                #if DEBUG
+                traceSceneSync("completionRejected", detail: "reason=sceneStillPending")
+                #endif
+                syncState = .syncFailure
+            }
+            #if DEBUG
+            traceSceneSync("finished", detail: "state=\(syncState) forced=\(String(describing: forcedState)) failedModels=\(sections.flatMap { $0.allModels }.filter { $0.state == .failed }.count)")
+            #endif
             if syncState == .syncFailure { persistEmergencyFireDeleteCleanupFailureIfNeeded() }
             finishEmergencyFireControllerSyncIfNeeded(success: syncState == .syncSuccess)
             finishEmergencyFireControllerAssociationSyncIfNeeded()

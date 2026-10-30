@@ -75,7 +75,7 @@ class SunSmartDataManager {
     subprocess.run(["swiftc", "-D", "DEBUG", "-parse-as-library", "-I", folder,
                     "-L", folder, "-lSQLite", str(output / "Production.swift"),
                     str(ROOT / "Pods/SwiftyJSON/Source/SwiftyJSON/SwiftyJSON.swift"),
-                    str(ROOT / "SunSmart/Common/Data/HDBConfiguration.swift"), str(ROOT / "SunSmart/Common/Data/HDBLightingZonePolicy.swift"), str(ROOT / "SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift"),
+                    str(ROOT / "SunSmart/Common/Data/HDBConfiguration.swift"), str(ROOT / "SunSmart/Common/Data/HDBLightingZonePolicy.swift"), str(ROOT / "SunSmart/Main/Timed/Model/TimedSchedulerSlotPolicy.swift"), str(ROOT / "SunSmart/Main/Scene/Model/SceneConfiguration.swift"), str(ROOT / "SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift"),
                     str(ROOT / "Tests/Group/ProfilePersistenceTests.swift"),
                     "-o", str(output / "tests")], check=True)
     result = subprocess.run([str(output / "tests")], capture_output=True, text=True)

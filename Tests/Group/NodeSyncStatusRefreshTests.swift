@@ -2,8 +2,10 @@ import Foundation
 import Darwin
 
 typealias Address = UInt16
+typealias SceneNumber = UInt16
 extension UInt16 {
     var hex: String { String(format: "%04X", self) }
+    var isSpecialScene: Bool { self >= 0xFF00 }
     var isGroup: Bool { self >= 0xC000 }
     var isSpecialGroup: Bool { self >= 0xFF00 }
     static let meshOTAGroupAddress: UInt16 = 0xFF01
@@ -25,6 +27,7 @@ final class GroupProximityLightingPathData {
     var paths: [Path] = []; var zones: [Zone] = []
 }
 final class GroupInfo {
+    var sceneExecuteDatas: [SceneExecuteData] = []
     var bindSchedules: [Schedule] = []
     var imageText: String?, imageId = 1
     var profile = Profile(), proximityLightingPath: GroupProximityLightingPathData? = nil
@@ -76,6 +79,13 @@ final class Node: Equatable {
     var elControllerLightsIconName: String { "device_normal" }
     var unsyncIconName: String { "device_unsynced" }
     var effectiveSupportCct = false
+    var lightnessRange: ClosedRange<UInt16> = 0...65535
+    var sceneSetupModel: Model? { sunricherVendorModel }
+    var onoffModel: Model? { sunricherVendorModel }
+    var lightnessModel: Model? { sunricherVendorModel }
+    var timedSchedulerIdentity: TimedSchedulerNodeIdentity? {
+        .init(nodeUUID: uuid.uuidString, unicastAddress: primaryUnicastAddress.hex, deviceKeyFingerprint: String(repeating: "A", count: 64))
+    }
     var effectiveCctRange: ClosedRange<UInt16> = 2700...6500
     var sceneChecks = 0
     static var onSceneCheck: ((Node) -> Void)?
@@ -125,6 +135,7 @@ final class MeshNetworkManager {
     static let instance = MeshNetworkManager()
     var meshNetwork: MeshNetwork?, currentNetworkKey = Key()
     var scenes: [Scene] = [], schedules: [Schedule] = []
+    var groups: [Group] { meshNetwork?.groups ?? [] }
     var realNodes: [Node] { meshNetwork?.nodes.filter { !$0.isProvisioner && !$0.isConfigComplete } ?? [] }
 }
 final class SpaceData {
@@ -209,8 +220,26 @@ enum NodeSyncTopologyStorage {
 }
 
 final class Scene {
-    struct Info { var groups: [Group] = [] }
-    var info = Info(), unsynced = Set<Address>()
+    final class Info {
+        let number: UInt16
+        var imageId = 0, projectionPending = false, configurationLoadFailed = false
+        var configuration: SceneConfiguration?
+        var groups: [Group] = [] {
+            didSet {
+                for group in groups where !group.info.sceneExecuteDatas.contains(where: { $0.sceneNumber == number }) {
+                    group.info.sceneExecuteDatas.append(.init(sceneNumber: number, isOn: true, lightness: 65535, cct: 4500))
+                }
+            }
+        }
+        init(_ number: UInt16) { self.number = number }
+    }
+    static var nextNumber: UInt16 = 1
+    let number: UInt16
+    let info: Info
+    var name = "Scene", subNetworkId = "net"
+    weak var network = MeshNetworkManager.instance.meshNetwork
+    init() { number = Self.nextNumber; Self.nextNumber += 1; info = Info(number) }
+    var unsynced = Set<Address>()
     var comparisons: [Address: (cached: SceneExecuteData, target: SceneExecuteData)] = [:]
 }
 extension Group: Hashable { func hash(into hasher: inout Hasher) { hasher.combine(ObjectIdentifier(self)) } }
@@ -474,6 +503,7 @@ struct NodeSyncStatusRefreshTests {
         await spaceRuntimeCacheTests()
         await timedSyncReadTests()
         await sceneGroupSyncReadTests()
+        await deviceSceneSyncReadTests()
         await groupDeviceSyncReadTests()
         #if os(macOS)
         await timedPickerForegroundTests()

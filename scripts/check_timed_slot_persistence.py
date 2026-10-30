@@ -3,6 +3,9 @@
 from pathlib import Path
 import subprocess
 import tempfile
+import sys
+sys.dont_write_bytecode = True
+from check_scene_configuration import function
 
 root = Path(__file__).resolve().parents[1]
 sdk = (root / '.local-sdk/nordic-sig-mesh-sdk').resolve()
@@ -43,25 +46,30 @@ with tempfile.TemporaryDirectory(prefix='timed-sqlite-') as directory:
     capacity = (root / 'SunSmart/Common/Data/SceneCapacity.swift').read_text()
     removal = capacity[capacity.index('    func needsSceneRemoval('):capacity.index('\n}')]
     harness.write_text((root / 'Tests/Timed/TimedSlotPersistenceTests.swift').read_text()
+                       .replace('    // ACTUAL_CONFIGURATION_TRANSACTION', function(database, '    @discardableResult\n    func configurationTransaction('))
                        .replace('    // ACTUAL_SCENE_REMOVAL', removal)
                        .replace('    // ACTUAL_TARGETS', target_source[target_start:target_end])
                        .replace('    // ACTUAL_NEEDS_DELETE', target_source[delete_start:delete_end])
                        .replace('    // ACTUAL_CODEC', codec)
                        .replace('    // ACTUAL_WEEKDAYS', weekdays)
+                       .replace('    // ACTUAL_EXIST_NODES', function(schedule, '    var existNodes:'))
                        .replace('    // ACTUAL_TOGGLE', server[toggle_start:toggle_end])
                        .replace('    // ACTUAL_GROUP_EXIT', group[exit_start:exit_end])
                        .replace('    // ACTUAL_SCENE_READER', target_source[scene_start:scene_end])
                        + '\n' + (root / 'Tests/Timed/TimedSceneRecoveryTests.swift').read_text()
-                       .replace('    // ACTUAL_SCENE_TASKS', builder[builder_start:builder_end])
+                       .replace('    // ACTUAL_SCENE_TASKS', builder[builder_start:builder_end].replace('node.getNodeSyncSceneDatas(scene: scene).first?.data', 'node.sceneBuilderData(scene: scene)'))
                        .replace('        // ACTUAL_SCENE_DISPLAY', node_sync[node_scene_start:node_scene_end])
                        + '\n' + database[start:end])
     runtime = directory / 'Bindings.swift'
     runtime.write_text((root / 'SunSmart/Main/Timed/Model/TimedSchedulerBindings.swift').read_text().replace('import NordicSigMeshSDK', ''))
+    resolver = directory / 'SceneResolver.swift'
+    resolver.write_text((root / 'SunSmart/Main/Scene/Model/SceneTargetResolver.swift').read_text().replace('import NordicSigMeshSDK', ''))
     binary = directory / 'Tests'
     subprocess.run(['swiftc', '-parse-as-library', '-I', str(directory), '-L', str(directory),
                     '-lSQLite', '-Xlinker', '-rpath', '-Xlinker', str(directory),
                     str(root / 'SunSmart/Main/Timed/Model/TimedSchedulerSlotPolicy.swift'),
                     str(root / 'SunSmart/Main/Timed/Model/TimedSchedulerOwnerPolicy.swift'),
                     str(root / 'SunSmart/Common/Data/SceneDeleteCapability.swift'),
+                    str(root / 'SunSmart/Main/Scene/Model/SceneConfiguration.swift'), str(resolver),
                     str(runtime), str(harness), '-o', str(binary)], check=True)
     subprocess.run([str(binary), str(directory / 'app.sqlite')], check=True)

@@ -21,6 +21,10 @@ extension String {
 }
 // NETWORK_ERROR_TYPE
 final class SpaceData {
+    static var sceneAuthoritySpace: SpaceData?
+    static func load(subNetworkId: String) -> SpaceData? { sceneAuthoritySpace }
+    var meshOTADistribution = false
+    // SCENE_AUTHORITY_PROPERTIES
     var timedSchemaVersion = 1
     var hdbLoadFailed = false
 
@@ -115,7 +119,12 @@ final class SunSmartDataManager {
 final class MeshNetworkManager {
     static let instance = MeshNetworkManager()
     struct Node { var network: Network?; var subNetworkId: String?; func clearSyncStateCache() {} }
-    struct Network { let uuid: UUID }
+    struct Identifier { let uuidString: String }
+    struct Network { let uuid: Identifier }
+    struct NetworkID { var hex = "network" }
+    struct Key { var networkId = NetworkID() }
+    var currentNetworkKey = Key()
+    var meshNetwork: Network?
     var realNodes: [Node] = []
 }
 final class MeshNetwork {
@@ -172,6 +181,7 @@ final class NetworkRequest {
 @main struct SpaceRecoveryReceiptTests {
     @MainActor static func main() async throws {
         try await testLocalMembershipCompatibility()
+        try await testSceneReceipts()
         defer {
             try? FileManager.default.removeItem(at: SpaceConfigurationSafety.testRoot)
             SpaceConfigurationSafety.testDefaults.removePersistentDomain(forName: SpaceConfigurationSafety.suite)
@@ -1478,7 +1488,7 @@ extension SpaceRecoveryReceiptTests {
             S.failStateWrite = false; S.failCheckpoint = false
             DevicePermanentDeletionContext.failCloudRemoval = false
         }
-        for mode in ["clean", "dirty", "localEdit", "timed", "timedMigration", "acceptedTimed", "successive", "preferred", "legacySnapshot", "accepted", "acceptedPreferred", "all", "reordered", "serverFields", "blocked", "newer", "stale", "calibrationChanged", "timezoneChanged", "keyAlias",
+        for mode in ["clean", "dirty", "localEdit", "timed", "timedMigration", "acceptedTimed", "successive", "preferred", "legacySnapshot", "legacySceneSchema", "accepted", "acceptedPreferred", "all", "reordered", "serverFields", "blocked", "newer", "stale", "calibrationChanged", "timezoneChanged", "keyAlias",
                      "nodeName", "groupName", "scene", "key", "unknownNode", "missingBaseline", "newInstance",
                      "writeFailure", "cleanupFailure", "checkpointFailure", "cancelled", "visitor", "visitorGroup", "visitorNode", "unknownPost", "superseded", "persistedSuperseded"] {
             let space = SpaceData("same-version-" + mode)
@@ -1503,6 +1513,14 @@ extension SpaceRecoveryReceiptTests {
             if ["legacySnapshot", "missingBaseline", "superseded", "persistedSuperseded"].contains(mode) { state.removalSnapshot = nil }
             if mode == "blocked" { state.prefersLocalMembership = true; state.removalSnapshot?.comparisonVersion = nil; S.block(space, reason: "cloudConfigurationConflict") }
             if mode == "legacySnapshot" { precondition(S.recordSnapshot(space, payload: baseline)) }
+            if mode == "legacySceneSchema" {
+                state.removalSnapshot?.comparisonVersion = 2
+                var legacy = try JSONSerialization.jsonObject(with: state.authorizationBaseline!) as! [String: Any]
+                legacy.removeValue(forKey: "sceneComparisonVersion"); legacy.removeValue(forKey: "scenes")
+                legacy["groups"] = (legacy["groups"] as! [[String: Any]]).map { $0.filter { $0.key != "scenesDatas" } }
+                state.authorizationBaseline = try JSONSerialization.data(withJSONObject: legacy)
+                space.exportValues["spaceData"] = ["sceneConfigurations": []]
+            }
             try S.testSaveState(state, space: space)
             if ["accepted", "acceptedPreferred", "acceptedTimed", "unknownPost"].contains(mode) {
                 let receipt = S.prepareSubmission(space, payload: baseline)!
@@ -1568,7 +1586,7 @@ extension SpaceRecoveryReceiptTests {
             } else { outcome = await S.reconcileSameVersionNodeRemoval(space, remote: remote) }
             S.failStateWrite = false; S.failCheckpoint = false; DevicePermanentDeletionContext.failCloudRemoval = false
             ProximityLightingImportPreflight.onExport = nil
-            let allowed = ["clean", "dirty", "localEdit", "timed", "timedMigration", "acceptedTimed", "successive", "preferred", "legacySnapshot", "accepted", "acceptedPreferred", "all", "reordered", "serverFields", "blocked", "newer", "missingBaseline"].contains(mode)
+            let allowed = ["clean", "dirty", "localEdit", "timed", "timedMigration", "acceptedTimed", "successive", "preferred", "legacySnapshot", "legacySceneSchema", "accepted", "acceptedPreferred", "all", "reordered", "serverFields", "blocked", "newer", "missingBaseline"].contains(mode)
             if case .preserveLocal = outcome { precondition(allowed, mode) }
             else { precondition(!allowed, "must remove: " + mode + " outcome=" + String(describing: outcome)) }
             if !allowed {
@@ -2086,4 +2104,116 @@ extension SpaceRecoveryReceiptTests {
         }
         print("PASS: production legacy marker/partial receipt recovery, empty/nonempty identity, exact snapshots, failure/reopen and independent diagnostics")
     }
+}
+
+
+extension SpaceRecoveryReceiptTests {
+    @MainActor static func testSceneReceipts() async throws {
+        typealias S = SpaceConfigurationSafety
+        typealias P = SpaceConfigurationIntegrityPolicy
+        let space = SpaceData("scene-receipt")
+        let config = SceneConfiguration(kind: .devices, name: "Pending", pendingOperations: [
+            .init(identity: .init(nodeUUID: "11111111-1111-1111-1111-111111111111", unicastAddress: "0001",
+                deviceKeyFingerprint: String(repeating: "A", count: 64)), action: .remove)])
+        var row = try JSONSerialization.jsonObject(with: config.encoded()) as! [String: Any]; row["number"] = "0007"
+        space.exportValues = ["scenes": [["number": "0007", "name": "Pending", "imageId": 3]], "spaceData": ["sceneConfigurations": [row]]]
+        let payload = space.payload
+        space.permission = .editor
+        space.lastUploadCloudTimestamp = 49
+        let receipt = S.prepareSubmission(space, payload: payload)!
+        precondition(S.markSubmissionAccepted(receipt, space: space))
+        for alteration in 0..<3 {
+            var remote = payload; var changed = row
+            if alteration == 0 { remote["spaceData"] = [:] as [String: Any] }
+            if alteration == 1 { changed["pendingOperations"] = []; remote["spaceData"] = ["sceneConfigurations": [changed]] }
+            if alteration == 2 { changed["revision"] = UUID().uuidString; remote["spaceData"] = ["sceneConfigurations": [changed]] }
+            NetworkRequest.shared.result = .success(["data": remote])
+            let matches = await S.verifyUploadedConfiguration(space, payload: payload)
+            precondition(!matches, "dropped fields/intent cannot acknowledge upload")
+            if case .success = await S.resumeUpload(space) { preconditionFailure("lost scene data confirmed the persisted receipt") }
+            precondition(S.hasPendingUpload(space))
+        }
+        NetworkRequest.shared.result = .success(["data": payload])
+        let matches = await S.verifyUploadedConfiguration(space, payload: payload); precondition(matches)
+        if case .failure = await S.resumeUpload(space) { preconditionFailure("matching scene retry must confirm") }
+        precondition(!S.hasPendingUpload(space))
+        space.permission = .visitor
+        precondition(S.prepareSubmission(space, payload: payload) == nil)
+        let corruptImport = SpaceData("corrupt-scene-import")
+        var bad = corruptImport.payload
+        bad["spaceName"] = "must not apply"
+        bad["groups"] = [["address": "C001", "scenesDatas": [["sceneNumber": 7, "isOn": true, "lightness": 123, "cct": 4567, "state": 1,
+            "lightControlData": ["mode": "invalid", "manualControlState": 0]]]]]
+        let rejected = await corruptImport.update(spaceJsonData: bad, initialize: true)
+        precondition(rejected == .rejected("invalidGroupScenePayload") && corruptImport.name.isEmpty && !S.hasPendingImport(corruptImport))
+        for event in ["visitor", "password"] {
+            let protected = SpaceData("bad-scene-authority-" + event)
+            protected.permission = .editor; protected.lastUploadCloudTimestamp = 49
+            var invalid = protected.payload
+            invalid["spaceData"] = ["sceneConfigurations": "broken"]
+            invalid["role"] = event == "visitor" ? "visitor" : "editor"
+            if event == "password" {
+                invalid["userEvents"] = ["EditorPasswdChanged"]
+                invalid["spaceData"] = nil
+                invalid["groups"] = bad["groups"]
+            }
+            let outcome = await protected.update(spaceJsonData: invalid)
+            precondition(outcome == .rejected(event == "visitor" ? "invalidScenePayload" : "invalidGroupScenePayload"))
+            precondition(event == "visitor" ? protected.permission == .visitor : protected.requiresPasswordVerification,
+                         "invalid scene must not suppress authoritative revocation")
+            precondition(!S.canAutomaticallyUpload(protected) && protected.name.isEmpty)
+            SpaceData.sceneAuthoritySpace = protected; SpaceViewController.sceneAuthoritySpace = protected
+            MeshNetworkManager.instance.meshNetwork = .init(uuid: .init(uuidString: protected.meshUUID))
+            let sceneScope = SceneScope(meshUUID: protected.meshUUID, networkID: protected.meshNetworkId)
+            do { try SceneConfigurationStore.validateAccess(sceneScope); preconditionFailure("Scene accepted real malformed-response revocation") } catch {}
+            protected.requiresPasswordVerification = false; protected.permission = .editor
+            var authorityState = try S.recoveryState(protected)
+            authorityState.authority = .waitingForAuthorization
+            try S.testSaveState(authorityState, space: protected)
+            do { try SceneConfigurationStore.validateAccess(sceneScope); preconditionFailure("Scene accepted persisted waiting authority") } catch {}
+            authorityState.authority = .writable
+            try S.testSaveState(authorityState, space: protected)
+            try SceneConfigurationStore.validateAccess(sceneScope)
+            protected.disableEditorPermission = true
+            do { try SceneConfigurationStore.validateAccess(sceneScope); preconditionFailure("Scene accepted active session restriction") } catch {}
+            protected.disableEditorPermission = false
+            SpaceData.sceneAuthoritySpace = nil; SpaceViewController.sceneAuthoritySpace = nil
+
+            precondition(!SpaceData.canDecodeConfigurationImport(invalid))
+            let readback = SpaceData("bad-scene-readback-" + event)
+            readback.permission = .editor; readback.lastUploadCloudTimestamp = 49
+            let pending = S.prepareSubmission(readback, payload: readback.payload)!
+            precondition(S.markSubmissionAccepted(pending, space: readback))
+            invalid["uuid"] = readback.id; invalid["netKey"] = ["key": readback.id]
+            NetworkRequest.shared.result = .success(["data": invalid])
+            if case .success = await S.resumeUpload(readback) { preconditionFailure("revoked readback succeeded") }
+            precondition(event == "visitor" ? readback.permission == .visitor : readback.requiresPasswordVerification)
+        }
+        // Simulate a receipt actually written by the old comparison format.
+        let legacySpace = SpaceData("scene-legacy-receipt")
+        var oldPayload = legacySpace.payload
+        oldPayload["scenes"] = [["number": "0007", "name": "Old", "imageId": 4]]
+        legacySpace.exportValues = ["scenes": oldPayload["scenes"]!]
+        let prepared = await S.prepareUpload(legacySpace, payload: oldPayload); precondition(prepared)
+        var old = try JSONSerialization.jsonObject(with: P.configurationData(oldPayload)!) as! [String: Any]
+        old.removeValue(forKey: "sceneComparisonVersion"); old.removeValue(forKey: "scenes")
+        old["groups"] = (old["groups"] as! [[String: Any]]).map { $0.filter { $0.key != "scenesDatas" } }
+        var state = try S.recoveryState(legacySpace)
+        state.authorizationBaseline = try JSONSerialization.data(withJSONObject: old, options: .sortedKeys)
+        legacySpace.lastUploadCloudTimestamp = legacySpace.lastUpdate
+        try S.testSaveState(state, space: legacySpace)
+        let upgraded = try S.recoveryState(legacySpace)
+        precondition(P.configurationsMatch(upgraded.authorizationBaseline, P.configurationData(oldPayload)), "old receipt must upgrade from its exact saved snapshot")
+        print("PASS: Scene receipts reject lost fields/tasks and upgrade historical baselines")
+    }
+}
+
+enum SpaceViewController {
+    static var sceneAuthoritySpace: SpaceData?
+    static func currentSpace() -> SpaceData? { sceneAuthoritySpace }
+}
+enum MeshOperate { case add, edit, delete, control }
+enum SceneConfigurationStore {
+    enum Failure: Error { case unavailable }
+    // SCENE_WRITE_ACCESS
 }

@@ -318,6 +318,13 @@ extension SpaceData {
             guard SpaceMembershipCoordinator.current(membership), SpaceMembershipCoordinator.accepts(payload) else {
                 return .rejected("staleMembershipResponse")
             }
+            // update may reject corrupt business data after persisting a valid revocation.
+            // Mirror only those restrictions back to the live Space object.
+            if outcome.status == .rejected,
+               ["invalidScenePayload", "invalidGroupScenePayload", "remoteMetadataPersistence"].contains(outcome.rejectionReason ?? ""),
+               !applyRemoteSpaceAuthorityRestrictions(cleanPayload) {
+                return .rejected("remoteMetadataPersistence")
+            }
             if outcome.status != .rejected {
                 if outcome.status == .applied {
                     var completed = membership

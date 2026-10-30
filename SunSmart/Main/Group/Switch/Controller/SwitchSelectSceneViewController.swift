@@ -11,6 +11,30 @@ import NordicSigMeshSDK
 class SwitchSelectSceneViewController: UIViewController {
 
     private var sceneTableView: UITableView!
+    private var sceneDisplays: [ObjectIdentifier: SceneGroupDisplayState] = [:]
+    private var isVisible = false
+    private var observations: [NSObjectProtocol] = []
+
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated); isVisible = true; refreshSceneStatus()
+    }
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated); isVisible = false
+        sceneDisplays.values.forEach { $0.cancel() }
+    }
+    private func refreshSceneStatus() {
+        guard isVisible else { return }
+        for scene in scenes {
+            let key = ObjectIdentifier(scene)
+            let display = sceneDisplays[key] ?? SceneGroupDisplayState()
+            sceneDisplays[key] = display
+            display.refresh(scene: scene) { [weak self] in
+                guard let self, self.isVisible else { return }; self.sceneTableView.reloadData()
+            }
+        }
+        sceneTableView.reloadData()
+    }
+    deinit { observations.forEach(NotificationCenter.default.removeObserver) }
     
     /// 选择的A场景
 //    var sceneA: Scene?
@@ -46,7 +70,9 @@ class SwitchSelectSceneViewController: UIViewController {
         view.backgroundColor = Background_Color
         
         setupUI()
-        
+        for name in [Notification.Name(sceneDataUpdateNotificationName), .init(scenesRefreshNotificationName), UIApplication.didBecomeActiveNotification] {
+            observations.append(NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in self?.refreshSceneStatus() })
+        }
         updateEmptyUI()
     }
     
@@ -89,7 +115,7 @@ class SwitchSelectSceneViewController: UIViewController {
         sceneTableView.separatorStyle = .none
         sceneTableView.backgroundColor = .clear
         sceneTableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "cell")
-        sceneTableView.rowHeight = SCRYFrom(44)
+        sceneTableView.rowHeight = SCRYFrom(60)
         sceneTableView.dataSource = self
         sceneTableView.delegate = self
         view.addSubview(sceneTableView)
@@ -145,7 +171,8 @@ extension SwitchSelectSceneViewController: UITableViewDataSource, UITableViewDel
         let cell = tableView.dequeueReusableCell(withIdentifier: "cell", for: indexPath) as! CustomTableViewCell
         let scene = scenes[indexPath.row]
         cell.cellStyle = .icon
-        cell.titleLabel.text = scene.name
+        let pending = sceneDisplays[ObjectIdentifier(scene)]?.currentSnapshot?.needsAnySync != false
+        cell.titleLabel.text = scene.name + (pending ? "\n" + "scene_pending_sync".localizedString : "")
         cell.titleLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14), weight: .light)
         let isSelect = sceneData.scene == scene
 //        if tableView == sceneATableView {
@@ -160,7 +187,7 @@ extension SwitchSelectSceneViewController: UITableViewDataSource, UITableViewDel
             cell.iconImageView.image = selectImage?.withTintColor(RGB(216, 216, 216))
         }
         cell.iconX = tableView.width - 30 - SCRXFrom(8)
-        cell.titleLabel.numberOfLines = 1
+        cell.titleLabel.numberOfLines = 2
         cell.titleLabel.lineBreakMode = .byTruncatingTail
         cell.titleLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         cell.iconImageView.setContentCompressionResistancePriority(.required, for: .horizontal)
@@ -183,6 +210,9 @@ extension SwitchSelectSceneViewController: UITableViewDataSource, UITableViewDel
         if scene == sceneData.scene {
             sceneData.scene = nil
         }else {
+            guard SceneCommandBuilder.isSelectable(scene: scene) else {
+                XWHUDManager.showTipHUD("scene_unavailable".localizedString, isLineFeed: true); return
+            }
             sceneData.scene = scene
         }
         

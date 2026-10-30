@@ -97,9 +97,9 @@ enum RecoveryMessage {
             require(rejected(payload), "unrelated optional fields keep their SDK contract")
         }
         let validGroup: [String: Any] = ["name": "Group", "address": "C001", "parentAddress": "0000"]
-        let validPayload: [String: Any] = ["groups": [validGroup], "schedules": [], "nodes": [original]]
+        let validPayload: [String: Any] = ["groups": [validGroup], "scenes": [], "schedules": [], "nodes": [original]]
         require(SpaceData.canDecodeConfigurationImport(validPayload), "valid legacy payload passes reviewed import decoding")
-        require(SpaceData.canDecodeConfigurationImport(["groups": [], "schedules": [], "nodes": []]), "empty configuration remains valid")
+        require(SpaceData.canDecodeConfigurationImport(["groups": [], "scenes": [], "schedules": [], "nodes": []]), "empty configuration remains valid")
         for virtual in [false, true] {
             for field in ["name", "parentAddress"] {
                 var group = validGroup; group[field] = 1; group["isVirtual"] = virtual

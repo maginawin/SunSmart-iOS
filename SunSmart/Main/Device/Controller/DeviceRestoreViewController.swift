@@ -376,6 +376,7 @@ class DeviceRestoreViewController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        SceneRestoreConfirmation.presentIfNeeded { [weak self] _ in self?.updateUIState() }
     }
 
     private var authoritativeSuccessfulRestoreNodes: [Node] {
@@ -415,6 +416,7 @@ class DeviceRestoreViewController: UIViewController {
 
     
     deinit {
+        deferredSceneSession?.close()
         hdbCompletion.cancel()
 //        if state == .scanning {
 //            stopScan()
@@ -447,6 +449,9 @@ class DeviceRestoreViewController: UIViewController {
     }
     
     private func dismiss() {
+        deferredSceneGeneration = UUID()
+        deferredSceneCancelled = true
+        deferredSceneSession?.close()
         if automationRestore {
             navigationController?.hideAutomaticHud()
         }
@@ -1494,6 +1499,8 @@ class DeviceRestoreViewController: UIViewController {
         successList: [ProvisioningDevice],
         completion: @escaping () -> Void
     ) {
+        deferredSceneGeneration = UUID()
+        deferredSceneCancelled = false
         let deferredDevices = successList.filter {
             !(deferredRestoreSyncDatasByAddress[$0.address]?.isEmpty ?? true)
         }
@@ -1570,6 +1577,7 @@ class DeviceRestoreViewController: UIViewController {
         retryCount: Int = 0,
         completion: @escaping (Bool) -> Void
     ) {
+        guard !deferredSceneCancelled else { completion(true); return }
         guard index < tasks.count else {
             completion(hadFailedTask)
             return
@@ -1587,6 +1595,17 @@ class DeviceRestoreViewController: UIViewController {
                 completion: completion
             )
             return
+        }
+
+        switch task.operationType {
+        case .configuration(_, .scene), .delete(_, .scene):
+            runDeferredSceneTask(task.operationType, node: node) { [weak self] successful in
+                self?.runDeferredRestoreTasks(tasks, index: index + 1, node: node,
+                    hadFailedTask: hadFailedTask || !successful, timeSyncSucceeded: timeSyncSucceeded,
+                    completion: completion)
+            }
+            return
+        default: break
         }
 
         let messageHandles = makeDeferredRestoreMessageHandles(task: task, node: node)
@@ -1625,6 +1644,41 @@ class DeviceRestoreViewController: UIViewController {
                 completion: completion
             )
         }
+    }
+
+    /// Scene Restore uses the same parameter -> Store, authorization and stop
+    /// gates as ordinary Sync. The next legacy task starts only after lane release.
+    private func runDeferredSceneTask(_ operation: DeviceOperationType, node: Node, completion: @escaping (Bool) -> Void) {
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in self?.runDeferredSceneTask(operation, node: node, completion: completion) }
+            return
+        }
+        guard !deferredSceneCancelled, deferredSceneSession == nil else { completion(false); return }
+        let environment = SyncExecutionEnvironment()
+        environment.configurationIsCurrent = SceneCommandBuilder.captureConfigurations()
+        let run = SyncExecutionSession(type: .devices([node]), reSync: false, environment: environment)
+        run.publishesCloudChange = false
+        let model = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+        model.operationType = operation
+        let section = SyncDevicesSectionModel(title: "")
+        section.devices = [model]; run.sections = [section]
+        let generation = deferredSceneGeneration
+        var successful = false
+        run.onStopped = { [weak self, weak run] in
+            guard let run else { return }
+            run.onStopped = nil; run.onSettled = nil; run.onPlanInvalidated = nil
+            guard let self, self.deferredSceneSession === run else { return }
+            self.deferredSceneSession = nil
+            guard self.deferredSceneGeneration == generation else { return }
+            completion(successful && !self.deferredSceneCancelled)
+        }
+        run.onSettled = { [weak run] state in
+            successful = state == .syncSuccess && model.state == .successful
+            run?.close()
+        }
+        run.onPlanInvalidated = { [weak run] in run?.close() }
+        deferredSceneSession = run
+        run.start()
     }
 
     private func runDeferredRestoreMessageHandles(
@@ -2235,6 +2289,15 @@ class DeviceRestoreViewController: UIViewController {
         }
         updateUIState()
         
+        let sceneRestoreReceiptID: UUID?
+        do { sceneRestoreReceiptID = try SceneConfigurationStore().prepareRestore(oldNode: deviceData.node) }
+        catch {
+            unprovisionedDevice.addState = .failed
+            reloadDeviceState(unprovisionedDevice); updateUIState()
+            XWHUDManager.showErrorTipHUD("scene_restore_pending".localizedString)
+            return
+        }
+
         MeshAPI.startFastAddDevices(devices: [unprovisionedDevice]) { [weak self] addDevice in
             addDevice.addState = .addConnecting
             self?.reloadDeviceState(addDevice)
@@ -2247,6 +2310,10 @@ class DeviceRestoreViewController: UIViewController {
             guard let self = self else { return }
             
             node.macAddress = provisioningMAC ?? addDevice.macAddress
+            if let sceneRestoreReceiptID {
+                do { try SceneConfigurationStore().verifyRestore(receiptID: sceneRestoreReceiptID, newNode: node) }
+                catch { XWHUDManager.showErrorTipHUD("scene_restore_pending".localizedString) }
+            }
             var oldNode = deviceData.node
             var addToGroup = oldNode.configurationGroup
             if oldNode.groupState == .exitFailure {
@@ -2535,6 +2602,9 @@ class DeviceRestoreViewController: UIViewController {
     }
 
     private let hdbCompletion = HDBDeviceAddCompletion()
+    private var deferredSceneSession: SyncExecutionSession?
+    private var deferredSceneGeneration = UUID()
+    private var deferredSceneCancelled = false
 
     private func finishDeviceRestoreAdd(
         successList: [ProvisioningDevice],
@@ -2814,6 +2884,8 @@ class DeviceRestoreViewController: UIViewController {
         }
         
         if hdbCompletion.isRunning { hdbCompletion.cancel(); return }
+        deferredSceneCancelled = true
+        deferredSceneSession?.close()
         MeshAPI.cancelFastAddAwaitOperations()
 
         let waitDevices = showDevices.filter({ $0.addState == .wait })

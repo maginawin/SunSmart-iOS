@@ -38,6 +38,7 @@ struct SpaceImportOutcome: Equatable {
 final class SpaceData {
     let id: String
     var siteId = "site", meshNetworkId = "", meshUUID = "mesh"
+    var requiresPasswordVerification = false, vistorPasswordEnable = false
     var permission = Permission.editor
     var authorizationPassword: String?
     var lastUploadCloudTimestamp: Int64?
@@ -70,6 +71,7 @@ final class SpaceData {
         precondition(meshNetworkId == "canonical", "identity must be fixed before production importer starts")
         updateCalls += 1
         await Task.yield(); onUpdate?()
+        if spaceJsonData["sceneConfigurationsInvalid"] as? Bool == true { return .rejected("invalidScenePayload") }
         guard applySucceeds else { return .rejected("configurationPersistenceFailed") }
         lastUploadCloudTimestamp = 42
         return .init(status: .applied, rejectionReason: nil)
@@ -86,6 +88,7 @@ enum SpaceConfigurationSafety {
         guard phases[space.meshNetworkId]?.phase != .removing else { return false }
         phases[space.meshNetworkId] = .init(phase: .active); return true
     }
+    static func reconcileAuthority(_ space: SpaceData, remote: [String: Any]) {}
     static func isBlocked(_ space: SpaceData) -> Bool { false }
     static var reviewed = false, defaultPreparationSucceeds = true
     static func hasReviewedCloudImport(_ space: SpaceData) -> Bool { reviewed }
@@ -185,6 +188,11 @@ final class CloudSynchronizationManager {
         precondition(failure.status == .rejected && failed.meshNetworkId.isEmpty)
         precondition(!SpaceMembershipCoordinator.allowsConfiguration(failed))
         precondition(SpaceData.rows[failed.id]?.meshNetworkId == "canonical", "crash must resume in canonical scope")
+        let revoked = SpaceData("revoked"); revoked.meshNetworkId = "canonical"; revoked.lastUploadCloudTimestamp = 42
+        var invalid = payload(revoked); invalid["sceneConfigurationsInvalid"] = true; invalid["role"] = "visitor"
+        let refused = await revoked.restoreConfiguration(spaceJsonData: invalid, authoritativeGET: true)
+        precondition(refused.status == .rejected && revoked.permission == .visitor)
+        precondition(SpaceData.rows[revoked.id]?.permission == .visitor)
         let unsaved = SpaceData("unsaved"); unsaved.saveSucceeds = false
         let unsavedResult = await unsaved.restoreConfiguration(spaceJsonData: payload(unsaved))
         precondition(unsavedResult.status == .rejected)

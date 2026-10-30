@@ -5,14 +5,17 @@ enum SceneTaskType {
     case scene(sceneId: UInt16, executeData: SceneExecuteData?)
     case schedule(schedule: Schedule)
 }
+typealias DeviceOperationType = SceneTaskOperation
 enum SceneTaskOperation {
     case configuration(node: Node, type: SceneTaskType)
     case delete(node: Node, type: SceneTaskType)
 }
-final class SyncDevicesSectionModel { var groups: [SyncDevicesGroupModel] = [] }
+final class SyncDevicesSectionModel { var devices: [SyncDevicesModel] = []; var groups: [SyncDevicesGroupModel] = [] }
 final class SyncDevicesGroupModel {
     let devices: [SyncDevicesModel]
-    init(groupName: String?, groupAddress: Address, deviceModels: [SyncDevicesModel]) { devices = deviceModels }
+    var deviceModels: [SyncDevicesModel] { devices }
+    let address: Address
+    init(groupName: String?, groupAddress: Address, deviceModels: [SyncDevicesModel]) { devices = deviceModels; address = groupAddress }
 }
 final class SyncDevicesModel {
     var imageName = "", steps: [SyncDeviceStepModel] = []
@@ -37,6 +40,10 @@ struct SyncSceneScheduleTaskBuilder {
 extension Node {
     enum SceneDisplayType { case scenes(Scene?) }
     func getNodeSyncSceneDatas(scene: Scene?) -> [SceneExecuteData] { [] }
+    func sceneBuilderData(scene: Scene) -> SceneExecuteData? {
+        guard let group, group.getNeedSyncDataNodes(scene: scene).syncNodes.contains(self) else { return nil }
+        return group.info.sceneExecuteDatas.first { $0.sceneNumber == scene.number }
+    }
     func getNodeNeedDeleteSceneDatas(scene: Scene?) -> [Scene] { [] }
     func sceneDisplayData(_ type: SceneDisplayType) -> [NodeSyncData] {
         var syncDatas: [NodeSyncData] = []

@@ -4,89 +4,57 @@ import NordicSigMeshSDK
 struct SyncSceneScheduleTaskBuilder {
     func appendScene(to configurationSection: SyncDevicesSectionModel, removal removeSection: SyncDevicesSectionModel, scene: Scene) {
 
-        // 场景内需要同步的组
-        scene.info.groups.forEach { group in
-
-            if let groupSceneData = group.info.sceneExecuteDatas.first(where: { scene.number == $0.sceneNumber }) {
-                let resut = group.getNeedSyncDataNodes(scene: scene)
-                // 需要同步的设备
-                let syncNodes = resut.syncNodes
-                let syncSceneDeviceModels = syncNodes.map({ node in
-                    let model = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
-                    model.imageName = node.iconName
-                    // 场景绑定日程
-                    let schedules = scene.info.bindSchedules.filter { $0.needsSync(on: node, contextGroup: group) }
-                    if !schedules.isEmpty {
-
-                        let addSceneTask = SyncDeviceStepTaskModel(name: scene.name, operationType: .configuration(node: node, type: .scene(sceneId: scene.number, executeData: groupSceneData)))
-                        let addSceneStep = SyncDeviceStepModel(type: "scene".localizedString, state: .none, tasks: [addSceneTask])
-                        addSceneStep.parentDeviceModel = model
-                        addSceneStep.showProgress = false
-                        addSceneTask.parentStepModel = addSceneStep
-
-                        let addScheduleTasks = schedules.map({ schedule in
-                             SyncDeviceStepTaskModel(name: schedule.name, operationType: .configuration(node: node, type: .schedule(schedule: schedule)))
-                        })
-                        let addScheduleStep = SyncDeviceStepModel(type: "schedule".localizedString, state: .none, tasks: addScheduleTasks)
-                        addScheduleStep.parentDeviceModel = model
-                        addScheduleStep.showProgress = false
-                        addScheduleStep.relevanceStepModels = [addSceneStep]
-                        addScheduleTasks.forEach({ $0.parentStepModel = addScheduleStep })
-                        model.steps = [addSceneStep, addScheduleStep]
-                    }else {
-                        model.operationType = .configuration(node: node, type: .scene(sceneId: scene.number, executeData: groupSceneData))
-                    }
-                    return model
-                })
-                if syncSceneDeviceModels.count > 0 {
-                    let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: syncSceneDeviceModels)
-                    configurationSection.groups.append(groupModel)
-
-                    syncSceneDeviceModels.forEach({
-                        $0.parentGroupModel = groupModel
-                    })
-                }
-
-                // 需要删除的设备
-                let deleteNodes = resut.deleteNodes
-                let deleteSceneDeviceModels = deleteNodes.map({ node in
-                    let model = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
-                    model.imageName = node.iconName
-                    if scene.info.bindSchedules.count > 0 {
-
-                        let deleteScheduleTasks = scene.info.bindSchedules.map({ schedule in
-                             SyncDeviceStepTaskModel(name: schedule.name, operationType: .delete(node: node, type: .schedule(schedule: schedule)))
-                        })
-                        let deleteScheduleStep = SyncDeviceStepModel(type: "schedule".localizedString, state: .none, tasks: deleteScheduleTasks)
-                        deleteScheduleStep.parentDeviceModel = model
-                        deleteScheduleStep.showProgress = false
-                        deleteScheduleTasks.forEach({ $0.parentStepModel = deleteScheduleStep })
-
-                        let deleteSceneTask = SyncDeviceStepTaskModel(name: scene.name, operationType: .delete(node: node, type: .scene(sceneId: scene.number, executeData: groupSceneData)))
-                        let deleteSceneStep = SyncDeviceStepModel(type: "scene".localizedString, state: .none, tasks: [deleteSceneTask])
-                        deleteSceneStep.parentDeviceModel = model
-                        deleteSceneStep.showProgress = false
-                        deleteSceneStep.relevanceStepModels = [deleteScheduleStep]
-                        deleteSceneTask.parentStepModel = deleteSceneStep
-
-                        model.steps = [deleteScheduleStep, deleteSceneStep]
-
-                    }else {
-                        model.operationType = .delete(node: node, type: .scene(sceneId: scene.number, executeData: nil))
-                    }
-                    return model
-                })
-                if deleteSceneDeviceModels.count > 0 {
-                    let groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: deleteSceneDeviceModels)
-                    removeSection.groups.append(groupModel)
-
-                    deleteSceneDeviceModels.forEach({
-                        $0.parentGroupModel = groupModel
-                    })
-                }
+        // Node entry points consume the same resolver for scene, device and recovery sync.
+        for node in MeshNetworkManager.instance.realNodes {
+            if let data = node.getNodeSyncSceneDatas(scene: scene).first?.data {
+                let model = makeSceneDevice(node: node, scene: scene, data: data, removing: false)
+                append(model, node: node, to: configurationSection)
+            }
+            if !node.getNodeNeedDeleteSceneDatas(scene: scene).isEmpty {
+                let model = makeSceneDevice(node: node, scene: scene, data: nil, removing: true)
+                append(model, node: node, to: removeSection)
             }
         }
+    }
 
+    private func append(_ model: SyncDevicesModel, node: Node, to section: SyncDevicesSectionModel) {
+        guard let group = node.group else { section.devices.append(model); return }
+        let groupModel: SyncDevicesGroupModel
+        if let index = section.groups.firstIndex(where: { $0.address == group.address.address }) {
+            let devices = section.groups[index].deviceModels + [model]
+            groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: devices)
+            section.groups[index] = groupModel
+            devices.forEach { $0.parentGroupModel = groupModel }
+        } else {
+            groupModel = SyncDevicesGroupModel(groupName: group.name, groupAddress: group.address.address, deviceModels: [model])
+            section.groups.append(groupModel)
+        }
+        model.parentGroupModel = groupModel
+    }
+
+    private func makeSceneDevice(node: Node, scene: Scene, data: SceneExecuteData?, removing: Bool) -> SyncDevicesModel {
+        let model = SyncDevicesModel(name: node.name ?? "", address: node.primaryUnicastAddress)
+        model.imageName = node.iconName
+        let operation: DeviceOperationType = removing
+            ? .delete(node: node, type: .scene(sceneId: scene.number, executeData: nil))
+            : .configuration(node: node, type: .scene(sceneId: scene.number, executeData: data))
+        let schedules = scene.info.bindSchedules.filter { removing || $0.needsSync(on: node, contextGroup: node.group) }
+        guard !schedules.isEmpty else { model.operationType = operation; return model }
+        let task = SyncDeviceStepTaskModel(name: scene.name, operationType: operation)
+        let sceneStep = SyncDeviceStepModel(type: "scene".localizedString, state: .none, tasks: [task])
+        let tasks = schedules.map { schedule in
+            SyncDeviceStepTaskModel(name: schedule.name, operationType: removing
+                ? .delete(node: node, type: .schedule(schedule: schedule))
+                : .configuration(node: node, type: .schedule(schedule: schedule)))
+        }
+        let scheduleStep = SyncDeviceStepModel(type: "schedule".localizedString, state: .none, tasks: tasks)
+        for step in [sceneStep, scheduleStep] {
+            step.parentDeviceModel = model; step.showProgress = false
+            step.tasks.forEach { $0.parentStepModel = step }
+        }
+        if removing { sceneStep.relevanceStepModels = [scheduleStep]; model.steps = [scheduleStep, sceneStep] }
+        else { scheduleStep.relevanceStepModels = [sceneStep]; model.steps = [sceneStep, scheduleStep] }
+        return model
     }
 
     func appendSchedule(to configurationSection: SyncDevicesSectionModel, removal removeSection: SyncDevicesSectionModel, schedule: Schedule) {

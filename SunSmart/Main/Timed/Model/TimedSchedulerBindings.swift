@@ -24,15 +24,46 @@ extension Node {
     }
 
     /// Preserve captured task ownership before updating App state from a reply.
-    func applyMessageHandle(_ handle: MeshMessageHandle, isSuccess: Bool = true) {
-        if let context = handle.timedSchedulerContext, !context.matches(node: self) { return }
+    @discardableResult
+    func applyMessageHandle(_ handle: MeshMessageHandle, isSuccess: Bool = true) -> Bool {
+        if let context = handle.timedSchedulerContext, !context.matches(node: self) { return false }
+        if let context = handle.sceneContext {
+            guard context.matches(node: self) else { return false }
+            if handle.message is SceneStore || handle.message is SceneDelete {
+                guard context.removesGroupRelationship else { return context.apply(node: self, successful: isSuccess) }
+                guard let scene = MeshNetworkManager.instance.scenes.first(where: { $0.number == context.number }) else { return false }
+                let previousCache = sceneExecuteDatas, previousConfiguration = scene.info.configuration
+                let affectedGroup = group
+                let previousRelations = affectedGroup?.info.sceneExecuteDatas
+                let previousSchedules = affectedGroup?.info.bindSchedules
+                enum PersistenceFailure: Error { case groupSceneRemoval }
+                let saved = SunSmartDataManager.shared.configurationTransaction {
+                    guard context.apply(node: self, successful: isSuccess, beforePersist: {
+                        self.completeGroupSceneRemoval(sceneId: context.number)
+                    }) else { throw PersistenceFailure.groupSceneRemoval }
+                }
+                guard saved else {
+                    sceneExecuteDatas = previousCache
+                    scene.info.configuration = previousConfiguration
+                    if let previousRelations { affectedGroup?.info.sceneExecuteDatas = previousRelations }
+                    if let previousSchedules { affectedGroup?.info.bindSchedules = previousSchedules }
+                    clearSyncStateCache()
+                    // The SDK cache may already be committed. The rolled-back
+                    // waitDelete relation remains a retryable cleanup intent.
+                    return false
+                }
+                return true
+            }
+        }
         updateData(message: handle.message, isSuccess: isSuccess, model: handle.model)
+        return isSuccess
     }
 }
 
 extension Schedule {
     var activeSceneGroups: [Group] {
-        guard let scene else { return [] }
+        guard let scene, !scene.info.configurationLoadFailed,
+              scene.info.configuration?.kind != .devices else { return [] }
         return scene.info.groups.filter { group in
             group.info.sceneExecuteDatas.contains { $0.sceneNumber == scene.number && $0.state != .waitDelete }
         }
@@ -139,15 +170,34 @@ enum TimedSchedulerBindings {
 
     /// Use prospective membership, including removals, before a topology edit.
     static func prepareTopology(group: Group? = nil, members: [Node] = [], addingMembers: [Node] = [],
-                                scene: Scene? = nil, sceneGroups: [Group] = []) throws -> Plan {
+                                scene: Scene? = nil, sceneGroups: [Group] = [],
+                                sceneSnapshot: SceneTargetSnapshot? = nil) throws -> Plan {
         try SceneCapacity.validateTopology(group: group, members: members, addingMembers: addingMembers,
-                                           scene: scene, sceneGroups: sceneGroups)
+                                           scene: scene, sceneGroups: sceneGroups, sceneSnapshot: sceneSnapshot)
+        let targets = try topologyTargets(group: group, members: members, addingMembers: addingMembers,
+                                          scene: scene, sceneGroups: sceneGroups, sceneSnapshot: sceneSnapshot)
+        return try prepare(schedules: MeshNetworkManager.instance.schedules, targetOverrides: targets)
+    }
+
+    static func topologyTargets(group: Group? = nil, members: [Node] = [], addingMembers: [Node] = [],
+                                scene: Scene? = nil, sceneGroups: [Group] = [],
+                                sceneSnapshot: SceneTargetSnapshot? = nil) throws -> [Int: Set<Address>] {
         let manager = MeshNetworkManager.instance
         var targets: [Int: Set<Address>] = [:]
         for schedule in manager.schedules {
-            let groups = schedule.groups + (schedule.scene == scene && scene != nil
-                ? sceneGroups : schedule.activeSceneGroups)
+            let usesSnapshot = sceneSnapshot != nil && sceneSnapshot?.number == schedule.scene?.number
+            let groups = schedule.groups + (usesSnapshot ? [] : (schedule.scene == scene && scene != nil
+                ? sceneGroups : schedule.activeSceneGroups))
             var addresses = Set(schedule.nodeAddresses)
+            if let targetScene = schedule.scene {
+                let snapshot: SceneTargetSnapshot
+                if let sceneSnapshot, sceneSnapshot.number == targetScene.number {
+                    snapshot = sceneSnapshot
+                } else { snapshot = try SceneTargetResolver.resolve(scene: targetScene) }
+                if usesSnapshot || snapshot.comparison.kind == .devices {
+                    addresses.formUnion(snapshot.targets.map { $0.node.primaryUnicastAddress })
+                }
+            }
             for target in groups {
                 let nodes = target == group ? members : target.nodes
                 // Failed unsubscription can leave exiting nodes in Group.nodes.
@@ -158,7 +208,22 @@ enum TimedSchedulerBindings {
             }
             targets[schedule.id] = addresses
         }
-        return try prepare(schedules: manager.schedules, targetOverrides: targets)
+        return targets
+    }
+
+    /// A read is needed only for a genuinely new reservation. Existing ownership
+    /// and removals remain editable when all Models or the Mesh are offline.
+    static func nodesRequiringTopologyRead(sceneSnapshot: SceneTargetSnapshot) throws -> [Node] {
+        let manager = MeshNetworkManager.instance
+        let targets = try topologyTargets(sceneSnapshot: sceneSnapshot)
+        return manager.realNodes.filter { node in
+            guard !node.schedulerSetupModels.isEmpty, node.observedTimedSlots == nil else { return false }
+            return manager.schedules.contains { schedule in
+                guard targets[schedule.id]?.contains(node.primaryUnicastAddress) == true else { return false }
+                if schedule.nodeSlots == nil { return !schedule.targets(node: node) }
+                return schedule.nodeSlots?.contains { $0.identity == node.timedSchedulerIdentity && $0.isValid } != true
+            }
+        }
     }
 
     static func canAddDevice(to group: Group, node: Node? = nil) -> Bool {

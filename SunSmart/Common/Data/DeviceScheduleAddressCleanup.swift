@@ -57,6 +57,9 @@ struct SpaceDeletionJournal: Codable {
         var cloudRemoval: CloudRemoval? = nil
         var leaveReceipt: LeaveReceipt? = nil
         var sensorGroupId: UInt16? = nil
+        /// Original provisioning identity, captured before reset/local removal.
+        /// Optional for journals created before identity-scoped Scene cleanup.
+        var deviceKeyFingerprint: String? = nil
 
         func permitsLeaveRecovery(now: TimeInterval, createdTimestamp: Int64, address: UInt16) -> Bool {
             guard let receipt = leaveReceipt else { return false }
@@ -152,7 +155,7 @@ struct SpaceRecoveryState: Codable, Equatable {
         enum Phase: String, Codable { case prepared, accepted, verified }
         let id: UUID
         let timestamp: Int64
-        let configuration: Data
+        var configuration: Data
         var phase: Phase = .prepared
         var keyFingerprint: String?
         /// Absent on receipts written before scene-target readback was added.
@@ -192,6 +195,9 @@ struct SpaceRecoveryState: Codable, Equatable {
     var requiresRemoteImport: Bool?
     var siteCreationTimestamp: Int64?
     var pendingArchives: [String]?
+    /// Typed SceneRestoreReceipt payload. Separate from permanent-deletion
+    /// entries: a prepared Restore must never authorize removal of a Node.
+    var sceneRestoreReceipts: Data? = nil
 
     var preservesUpload: Bool {
         phase == .active && authority != .readOnly && authority != .revoked

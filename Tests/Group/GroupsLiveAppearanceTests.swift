@@ -31,6 +31,7 @@ private final class UICollectionView {
 }
 private class UIViewController {
     func viewWillAppear(_ animated: Bool) {}
+    func viewDidAppear(_ animated: Bool) {}
     func viewWillDisappear(_ animated: Bool) {}
     func viewDidLayoutSubviews() {}
 }
@@ -67,10 +68,23 @@ private class ScenePageProbe: UIViewController {
 private final class SceneViewController: ScenePageProbe {
     let collectionView = SceneLayoutCollection(), flowLayout = SceneFlowLayout()
     let rowNum = 6, columnNum = 4
+    var deviceMode = false
     // PRODUCTION_SCENE_APPEAR
     // PRODUCTION_SCENE_LAYOUT
 }
-private final class SceneSettingsViewController: ScenePageProbe {
+private final class SceneSettingsViewController: UIViewController {
+    final class Gesture { var isEnabled = true }
+    final class Navigation { let interactivePopGestureRecognizer: Gesture? = Gesture() }
+    let navigationController: Navigation? = Navigation()
+    var active = false, reloads = 0
+    var selection: Int? = 1
+    var initialError: Error?
+    var beginSaveOnAppearance = false, beginPreviewOnAppearance = false
+    func reload() { reloads += 1 }
+    func failed(_ error: Error) {}
+    func doneAction() {}
+    func previewAction() {}
+    func suspend() { active = false }
     // PRODUCTION_SCENE_SETTINGS_APPEAR
 }
 
@@ -78,7 +92,7 @@ extension NodeSyncStatusRefreshTests {
     static func scenePresentationLayoutTests() {
         _ = fixture(1)
         let page = SceneViewController(), settings = SceneSettingsViewController()
-        page.viewWillAppear(false); settings.viewWillAppear(false)
+        page.viewWillAppear(false); settings.viewDidAppear(false)
         require(page.reloads == 1 && settings.reloads == 1, "first Scene presentation did not prepare data")
         for _ in 0..<20 { page.viewDidLayoutSubviews() }
         require(page.reloads == 1 && page.collectionView.snp.height.updates == 1,
@@ -89,13 +103,13 @@ extension NodeSyncStatusRefreshTests {
         require(page.collectionView.snp.height.updates == 2 && page.collectionView.snp.height.value < height
                 && page.reloads == 1, "resizing did not update layout independently of data")
         page.viewWillDisappear(false); settings.viewWillDisappear(false)
-        require(!page.isPageVisible && !settings.isPageVisible, "hidden Scene page remained active")
-        page.viewWillAppear(false); settings.viewWillAppear(false)
-        require(page.reloads == 1 && settings.reloads == 1 && page.appearanceRefreshes == 1
-                && settings.appearanceRefreshes == 1, "unchanged reentry did not preserve data and refresh live appearance")
+        require(!page.isPageVisible && !settings.active, "hidden Scene page remained active")
+        page.viewWillAppear(false); settings.viewDidAppear(false)
+        require(page.reloads == 1 && settings.reloads == 2 && page.appearanceRefreshes == 1
+                && settings.active, "unchanged reentry did not preserve data and refresh live appearance")
         NodeSyncStatusGeneration.invalidate()
-        page.viewWillAppear(false); settings.viewWillAppear(false)
-        require(page.reloads == 2 && settings.reloads == 2, "configuration change did not refresh Scene pages")
+        page.viewWillAppear(false); settings.viewDidAppear(false)
+        require(page.reloads == 2 && settings.reloads == 3, "configuration change did not refresh Scene pages")
         print("PASS: Scene initial display, repeated layout, resize, hidden/reentry and version refresh bodies")
     }
 }

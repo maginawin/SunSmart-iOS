@@ -9,6 +9,10 @@ extension SyncExecutionSession {
             return
         }
         guard !cacheOnly else { return }
+        if let context = handle.sceneContext {
+            guard let node = MeshNetworkManager.instance.realNodes.first(where: { $0.sceneConfigurationIdentity == context.identity }),
+                  context.matches(node: node) else { return }
+        }
         if let operation = operationType(for: model),
            case .delete(let node, .missingGroupSubscriptions) = operation {
             _ = MissingGroupSubscriptionCleanup.acknowledge(handle, status: statusMessage, for: node)

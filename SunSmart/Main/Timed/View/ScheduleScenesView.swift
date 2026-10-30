@@ -36,20 +36,26 @@ class ScheduleScenesView: UIView {
     
     private var isShowing = false
     private let syncDisplay = ScheduleTargetDisplayState()
+    private var sceneDisplays: [ObjectIdentifier: SceneGroupDisplayState] = [:]
     private var syncStatusObservations: [NSObjectProtocol] = []
 
     private func refreshSyncStatus() {
-        guard isShowing, superview != nil, let schedule else { return }
-        syncDisplay.refresh(schedule: schedule) { [weak self] in
-            guard let self, self.isShowing, self.superview != nil else { return }
-            self.refreshVisibleSyncStatus()
+        guard isShowing, superview != nil else { return }
+        if let schedule {
+            syncDisplay.refresh(schedule: schedule) { [weak self] in self?.refreshVisibleSyncStatus() }
+        }
+        for scene in scenes {
+            let key = ObjectIdentifier(scene)
+            let display = sceneDisplays[key] ?? SceneGroupDisplayState()
+            sceneDisplays[key] = display
+            display.refresh(scene: scene) { [weak self] in self?.refreshVisibleSyncStatus() }
         }
         refreshVisibleSyncStatus()
     }
 
     private func observeSyncStatusChanges() {
         // Activation follows the shared reader's will-enter-foreground invalidation.
-        for name in [SpaceSchedulerReadCoordinator.didUpdate, UIApplication.didBecomeActiveNotification] {
+        for name in [SpaceSchedulerReadCoordinator.didUpdate, UIApplication.didBecomeActiveNotification, .init(sceneDataUpdateNotificationName)] {
             syncStatusObservations.append(NotificationCenter.default.addObserver(
                 forName: name, object: nil, queue: .main
             ) { [weak self] _ in self?.refreshSyncStatus() })
@@ -79,9 +85,13 @@ class ScheduleScenesView: UIView {
         for indexPath in collectionView.indexPathsForVisibleItems {
             guard indexPath.item < scenes.count,
                   let cell = collectionView.cellForItem(at: indexPath) as? ScheduleGroupsViewCell else { continue }
-            cell.failedImageView.isHidden = schedule == nil ||
-                syncDisplay.currentSnapshot?.scenes.contains(ObjectIdentifier(scenes[indexPath.item])) == false
+            cell.failedImageView.isHidden = !sceneNeedsSync(scenes[indexPath.item])
         }
+    }
+
+    private func sceneNeedsSync(_ scene: Scene) -> Bool {
+        sceneDisplays[ObjectIdentifier(scene)]?.currentSnapshot?.needsAnySync != false
+            || (schedule != nil && syncDisplay.currentSnapshot?.scenes.contains(ObjectIdentifier(scene)) != false)
     }
 
     func show() {
@@ -110,6 +120,7 @@ class ScheduleScenesView: UIView {
     private func hide() {
         isShowing = false
         syncDisplay.cancel()
+        sceneDisplays.values.forEach { $0.cancel() }
         UIView.animate(withDuration: 0.3) {
             self.shadeView.alpha = 0
             self.contentView.y = self.height
@@ -130,6 +141,9 @@ class ScheduleScenesView: UIView {
     
     /// 确认
     @objc private func confirmBtnAction() {
+        guard selectScene.map({ SceneCommandBuilder.isSelectable(scene: $0) }) ?? true else {
+            XWHUDManager.showTipHUD("scene_unavailable".localizedString, isLineFeed: true); return
+        }
         hide()
         selectCallback?(selectScene)
     }
@@ -234,8 +248,7 @@ extension ScheduleScenesView: UICollectionViewDataSource, UICollectionViewDelega
         cell.nameLabel.text = scene.name
         cell.selectedImageView.image = UIImage(named: selectScene == scene ? "schedule_target_select" : "schedule_target_select_un")
         cell.onoffBtn.isHidden = true
-        cell.failedImageView.isHidden = schedule == nil ||
-            syncDisplay.currentSnapshot?.scenes.contains(ObjectIdentifier(scene)) == false
+        cell.failedImageView.isHidden = !sceneNeedsSync(scene)
         return cell
     }
     
@@ -246,6 +259,9 @@ extension ScheduleScenesView: UICollectionViewDataSource, UICollectionViewDelega
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         let scene = scenes[indexPath.item]
+        guard SceneCommandBuilder.isSelectable(scene: scene) else {
+            XWHUDManager.showTipHUD("scene_unavailable".localizedString, isLineFeed: true); return
+        }
         selectScene = scene
         collectionView.reloadData()
     }

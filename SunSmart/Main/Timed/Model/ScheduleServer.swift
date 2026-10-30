@@ -30,26 +30,7 @@ struct ScheduleServer {
     ///   - failed: 失败回调
     static func setEnabledState(schedule: Schedule, enabled: Bool, success: ScheduleOperateSuccessCallback?, failed: ScheduleOperateFailedCallback?) {
         
-        var setNodes: [Node] = []
-        
-        setNodes.append(contentsOf: schedule.nodes)
-        setNodes.append(contentsOf: schedule.needDeleteNodes.filter({ !setNodes.contains($0) }))
-        
-        schedule.groups.forEach({
-            setNodes.append(contentsOf: $0.nodes.filter({ !setNodes.contains($0) }))
-        })
-        schedule.needDeleteGroups.forEach({
-            setNodes.append(contentsOf: $0.nodes.filter({ !setNodes.contains($0) }))
-        })
-        
-        schedule.scene?.info.groups.forEach({
-            setNodes.append(contentsOf: $0.nodes.filter({ !setNodes.contains($0) }))
-        })
-        schedule.needDeleteScenes.forEach { scene in
-            scene.info.groups.forEach({
-                setNodes.append(contentsOf: $0.nodes.filter({ !setNodes.contains($0) }))
-            })
-        }
+        var setNodes = schedule.existNodes
         
         let previousEnabled = schedule.enabled
         schedule.enabled = enabled
@@ -194,6 +175,10 @@ struct ScheduleServer {
             result.append(node)
         }
         return result
+    }
+
+    static func nodesRequiringSceneSchedulerRead(_ snapshot: SceneTargetSnapshot) throws -> [Node] {
+        try TimedSchedulerBindings.nodesRequiringTopologyRead(sceneSnapshot: snapshot)
     }
 
     static func readUnknownSchedulerState(

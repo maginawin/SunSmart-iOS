@@ -16,7 +16,12 @@ class CustomSegmentedControl: UIView {
     
     weak var delegate: CustomSegmentedControlDelegate?
     
-    var cornerRadius: CGFloat = SCRYFrom(8)
+    var cornerRadius: CGFloat = SCRYFrom(8) {
+        didSet {
+            layer.cornerRadius = cornerRadius
+            selectBgView?.layer.cornerRadius = cornerRadius
+        }
+    }
     
     var selectedIndex: Int = 0 {
         willSet {

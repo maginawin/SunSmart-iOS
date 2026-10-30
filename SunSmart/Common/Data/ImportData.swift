@@ -1785,10 +1785,46 @@ extension SpaceData {
         SpaceConfigurationSafety.reconcileAuthority(self, remote: payload)
     }
 
+    /// A malformed configuration cannot retain authority revoked by the same response.
+    /// Apply restrictions only: rejected imports never grant a new role or replace data.
+    @discardableResult
+    func applyRemoteSpaceAuthorityRestrictions(_ payload: [String: Any]) -> Bool {
+        guard payload["uuid"] as? String == id else { return false }
+        let role = payload["role"] as? String
+        let events = payload["userEvents"] as? [String] ?? []
+        var changed = false
+        if let role, role != "owner", role != "editor", permission != .visitor {
+            permission = .visitor; changed = true
+        } else if role == "editor", permission == .owner {
+            permission = .editor; changed = true
+        }
+        if (permission == .editor && events.contains("EditorPasswdChanged"))
+            || (permission == .visitor && events.contains("VisitorPasswdChanged")
+                && (payload["visitProtected"] as? Bool ?? vistorPasswordEnable)) {
+            requiresPasswordVerification = true; changed = true
+        }
+        guard changed else { return true }
+        SpaceConfigurationSafety.reconcileAuthority(self, remote: payload)
+        return save()
+    }
+
+    static func sceneConfigurationImportFailure(_ payload: [String: Any]) -> String? {
+        guard (try? SceneConfigurationPayload.records(payload: payload)) != nil else { return "invalidScenePayload" }
+        do {
+            for group in payload["groups"] as? [[String: Any]] ?? [] {
+                if let raw = group["scenesDatas"] {
+                    _ = try jsonDecoder.decode([SceneExecuteData].self, from: JSONSerialization.data(withJSONObject: raw))
+                }
+            }
+        } catch { return "invalidGroupScenePayload" }
+        return nil
+    }
+
     /// Reviewed import intent must pass the same decoding gates as the importer
     /// before it becomes durable. Decode fresh objects without mutating local data.
     static func canDecodeConfigurationImport(_ payload: [String: Any]) -> Bool {
-        guard let payload = TimedSchedulerPayloadPolicy.repairingStaleBindings(payload) else { return false }
+        guard sceneConfigurationImportFailure(payload) == nil,
+              let payload = TimedSchedulerPayloadPolicy.repairingStaleBindings(payload) else { return false }
         guard let groups = payload["groups"] as? [[String: Any]],
               let schedules = payload["schedules"] as? [[String: Any]],
               let nodes = payload["nodes"] as? [[String: Any]],
@@ -1817,6 +1853,11 @@ extension SpaceData {
 
         guard (try? SpaceConfigurationSafety.recoveryState(self).phase) == .active else {
             return .rejected("spaceRemovalPending")
+        }
+        // Validate complete intent before replacing any local business configuration.
+        if let failure = Self.sceneConfigurationImportFailure(spaceJsonData) {
+            guard applyRemoteSpaceAuthorityRestrictions(spaceJsonData) else { return .rejected("remoteMetadataPersistence") }
+            return .rejected(failure)
         }
         let reviewedCloudImport = SpaceConfigurationSafety.hasReviewedCloudImport(self)
         // Default legacy-writer field loss before decoding, using the same
@@ -1992,6 +2033,10 @@ extension SpaceData {
                 continuation.resume(returning: hasUsableLocalSnapshot ? .skipped : .rejected(issue))
                 return
             }
+            guard let incomingSceneRecords = try? SceneConfigurationPayload.records(payload: spaceJsonData) else {
+                continuation.resume(returning: .rejected("invalidScenePayload"))
+                return
+            }
             guard let remoteTimedConfiguration = TimedSchedulerPayloadPolicy.canonical(spaceJsonData),
                   let timedVersion = TimedSchedulerPayloadPolicy.schema(spaceJsonData),
                   let timedData = try? JSONSerialization.data(withJSONObject: scheduleDicts),
@@ -2134,8 +2179,7 @@ extension SpaceData {
                     // scenes data
                     if let sceneDicts = groupJson["scenesDatas"].arrayObject,
                        let data = try? JSONSerialization.data(withJSONObject: sceneDicts) {
-                        let sceneExecuteDatas = try? jsonDecoder.decode([SceneExecuteData].self, from: data)
-                        group.info.sceneExecuteDatas = sceneExecuteDatas ?? []
+                        group.info.sceneExecuteDatas = try jsonDecoder.decode([SceneExecuteData].self, from: data)
                     }
 
                     // schedules
@@ -2547,14 +2591,17 @@ extension SpaceData {
             while network.scenes.count > 0 {
                 network.forceRemove(scene: network.scenes.first!.number)
             }
-            SceneInfo.delete(meshUUID: meshUUID, networkId: self.meshNetworkId)
-            // 场景
+            try SceneConfigurationStore.importRecords(incomingSceneRecords,
+                scope: .init(meshUUID: meshUUID, networkID: self.meshNetworkId))
+            // Deleting records remain App tombstones and reserve their original number.
             let scenes: [Scene] = sceneDicts.compactMap { sceneDict in
                 let sceneJson = JSON(sceneDict)
                 if let sceneNumberHex = sceneJson["number"].string, let sceneNumber = SceneNumber(hex: sceneNumberHex), let name = sceneJson["name"].string {
                     guard !DeviceEmerFireData.reservedSceneNumbers.contains(sceneNumber) else {
                         return nil
                     }
+                    guard let record = incomingSceneRecords.first(where: { $0.number == sceneNumber }),
+                          record.configuration?.isDeleting != true else { return nil }
                     let scene = Scene(sceneNumber, name: name)
                     scene.subNetworkId = self.meshNetworkId
                     let existNodes = nodes.filter({ $0.sceneExecuteDatas.contains(where: { $0.sceneNumber == sceneNumber }) })
@@ -2563,8 +2610,7 @@ extension SpaceData {
                     })
                     network.add(scene: scene)
                     scene.info = .init(sceneId: sceneNumber, imageId: sceneJson["imageId"].int ?? 0)
-                    scene.info.save(meshUUID: meshUUID, subnetworkId: self.meshNetworkId)
-                    
+                    scene.info.configuration = record.configuration
                     return scene
                 }
                 return nil
@@ -2767,6 +2813,24 @@ extension SpaceData {
             printSpaceCountProbe(phase: "applied", json: json, space: self, initialize: initialize, note: sameTimestampSummaryDiffers ? serverSummaryDiffersNote : nil)
 #endif
             trace.mark("beforeTransactionReadback")
+            let importedSceneRows = try SceneConfigurationStore.exportRecords(
+                scope: .init(meshUUID: meshUUID, networkID: self.meshNetworkId), scenes: scenes)
+            guard try SceneConfigurationPayload.canonical(SceneConfigurationPayload.encode(records: importedSceneRows))
+                    == SceneConfigurationPayload.canonical(SceneConfigurationPayload.encode(records: incomingSceneRecords)),
+                  try SceneConfigurationPayload.metadata(records: importedSceneRows).map({ NSDictionary(dictionary: $0) })
+                    == SceneConfigurationPayload.metadata(records: incomingSceneRecords).map({ NSDictionary(dictionary: $0) }) else {
+                throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+            }
+            for group in groups where !group.isVirtual {
+                guard let stored = GroupInfo.load(meshUUID: meshUUID, address: group.address.address, subnetworkId: self.meshNetworkId),
+                      !stored.sceneParametersLoadFailed else { throw SpaceConfigurationSafety.SafetyError.persistenceFailed }
+                let expected = try JSONSerialization.jsonObject(with: JSONEncoder().encode(group.info.sceneExecuteDatas))
+                let actual = try JSONSerialization.jsonObject(with: JSONEncoder().encode(stored.sceneExecuteDatas))
+                guard try JSONSerialization.data(withJSONObject: SceneConfigurationPayload.groupParameters(expected), options: .sortedKeys)
+                    == JSONSerialization.data(withJSONObject: SceneConfigurationPayload.groupParameters(actual), options: .sortedKeys) else {
+                    throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+                }
+            }
             let persistedSchedules = Schedule.load(meshUUID: meshUUID, meshNetworkId: self.meshNetworkId)
             guard let persistedTimedData = try? JSONEncoder().encode(persistedSchedules),
                   let persistedTimed = try? JSONSerialization.jsonObject(with: persistedTimedData) else {

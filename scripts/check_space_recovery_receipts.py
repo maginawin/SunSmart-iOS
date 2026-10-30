@@ -9,6 +9,8 @@ import os
 import json
 sys.dont_write_bytecode = True
 from hdb_recovery_test_source import recovery_mesh_source
+from scene_group_codec_source import scene_group_codec_source
+from check_scene_configuration import function
 
 root = Path(__file__).resolve().parents[1]
 def read(path): return (root / path).read_text()
@@ -40,6 +42,10 @@ methods += section(safety, '    /// Called only after the user explicitly choose
 methods = methods.replace('UserDefaults.standard', 'testDefaults')
 methods += section(safety, '    private static func saveRecoveryPayload(', '    @MainActor\n    static func applyReferenceRepair(')
 methods += """
+    static var currentConfigurationAvailable: Bool {
+        guard let space = SpaceData.sceneAuthoritySpace else { return false }
+        return !isBlocked(space)
+    }
     static let testRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     static let suite = "SpaceRecovery-" + UUID().uuidString
     static let testDefaults = UserDefaults(suiteName: suite)!
@@ -62,6 +68,10 @@ imports = read('SunSmart/Common/Data/ImportData.swift')
 metadata = section(imports,
     '    func applyRemoteSpaceMetadata(', '    /// 更新空间内基本数据')
 test = read('Tests/Group/SpaceRecoveryReceiptTests.swift').replace('// METADATA_METHOD', metadata)
+space_source = read('SunSmart/Common/Data/SpaceData.swift')
+test = test.replace('// SCENE_AUTHORITY_PROPERTIES', '\n'.join(function(space_source, m) for m in ['    var canEditing:', '    var sceneOperates:']))
+test = test.replace('// SCENE_WRITE_ACCESS', function(read('SunSmart/Main/Scene/Model/SceneConfigurationStore.swift'), '    static func validateAccess('))
+
 # Share the SDK Group decoder and optional Node field decoder with the import
 # fixture. Mesh object loading and scheduler restoration remain explicit doubles.
 sdk = root / '.local-sdk/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/nRFMeshProvision'
@@ -89,6 +99,7 @@ test += '\n' + read('Tests/Group/SpaceImportPreparationTests.swift')
 test += '\n' + read('Tests/Group/OlderCloudBaselineTests.swift')
 test += '\n' + read('Tests/Group/SpaceDefaultRecoveryReceiptTests.swift')
 test += '\n' + recovery_mesh_source(root)
+test += '\n' + scene_group_codec_source(root)
 membership = section(read('SunSmart/Common/Data/SpaceMembershipCoordinator.swift'),
     'enum SpaceMembershipCoordinator {', '    static var savedCopiesDirectory:') + '}\n'
 membership = membership.replace('URL(fileURLWithPath: NSHomeDirectory())\n        .appendingPathComponent("Library/Application Support/SpaceMembership")',
@@ -131,7 +142,7 @@ with tempfile.TemporaryDirectory(prefix='space-receipt-tests-') as temp:
         str(root / 'SunSmart/Common/Data/SiteGatewayAssociationConsistencyPolicy.swift'),
         str(root / 'SunSmart/Common/Data/SiteTimeZoneValue.swift'),
         str(root / 'SunSmart/Main/Site/Model/SitePropsEditPolicy.swift'),
-        str(root / 'SunSmart/Common/Data/HDBConfiguration.swift'), str(root / 'SunSmart/Common/Data/HDBLightingZonePolicy.swift'), str(root / 'SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),
+        str(root / 'SunSmart/Common/Data/HDBConfiguration.swift'), str(root / 'SunSmart/Common/Data/HDBLightingZonePolicy.swift'), str(root / 'SunSmart/Main/Scene/Model/SceneConfiguration.swift'), str(root / 'SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),
         str(root / 'SunSmart/Main/Timed/Model/TimedSchedulerSlotPolicy.swift'),
         str(root / 'SunSmart/Common/Data/SpaceSyncCleanupPolicy.swift'),
         str(root / 'SunSmart/Main/Group/Model/ProximityLightingTopologyPolicy.swift'),

@@ -392,12 +392,23 @@ extension ScopedImportTests {
         // Space, a local provisioning callback, or a physical Reset.
         let cloud = try fixture(networkId: "CLOUD-REMOVAL")
         activate(cloud)
+        // Real cloud-removal instances have validated UUIDs; retain that boundary.
+        cloud.nodes[0].uuid = "11111111-1111-1111-1111-111111111111"
         let secondary = Element(3); secondary.parentNode = cloud.nodes[0]; cloud.nodes[0].elements.append(secondary)
         let cloudSchedule = Schedule(); cloudSchedule.nodeAddresses = [2, 3, 5]
         cloudSchedule.needDeleteNodeAddresses = [2, 3, 5]
         Schedule.stored[cloud.space.meshUUID + cloud.space.meshNetworkId] = [cloudSchedule]
         let cloudIdentity = SpaceCloudNodeRemovalPolicy.Instance(uuid: cloud.nodes[0].uuid.uppercased(), address: 2,
             keyFingerprint: try SchedulerModelSnapshot.keyFingerprint(["deviceKey": cloud.nodes[0].deviceKey!.hex]))
+        let oldSceneIdentity = TimedSchedulerNodeIdentity(nodeUUID: cloudIdentity.uuid, unicastAddress: "0002", deviceKeyFingerprint: cloudIdentity.keyFingerprint)
+        let replacementSceneIdentity = TimedSchedulerNodeIdentity(nodeUUID: cloudIdentity.uuid, unicastAddress: "0002", deviceKeyFingerprint: String(repeating: "B", count: 64))
+        let oldScene = SceneInfo(sceneId: 7), replacementScene = SceneInfo(sceneId: 8)
+        for (info, identity) in [(oldScene, oldSceneIdentity), (replacementScene, replacementSceneIdentity)] {
+            info.configuration = .init(kind: .devices, name: "Cloud cleanup", deviceMembers: [
+                .init(identity: identity, parameters: .init(isOn: true, lightness: 1234, cct: 4500))],
+                pendingOperations: [.init(identity: identity, action: .write)])
+        }
+        SceneInfo.rows[cloud.space.meshUUID + cloud.space.meshNetworkId] = [oldScene, replacementScene]
         let resolved = DevicePermanentDeletionContext.cloudRemovalInstances(space: cloud.space, expected: [cloudIdentity])!
         let previousAddress = SpaceCloudNodeRemovalPolicy.Instance(uuid: cloudIdentity.uuid, address: 1,
             keyFingerprint: cloudIdentity.keyFingerprint, elementAddresses: [1])
@@ -410,6 +421,10 @@ extension ScopedImportTests {
         cloud.nodes[0].deletionFails = false
         require(DevicePermanentDeletionContext.removeCloudInstances(space: cloud.space, instances: resolved,
             baselineTimestamp: 10, remoteTimestamp: 40, submissionID: nil), "retry completes without looking up destination")
+        require(oldScene.configuration?.deviceMembers.isEmpty == true && oldScene.configuration?.pendingOperations.isEmpty == true,
+                "cloud cleanup removes committed App intent for the proven old identity")
+        require(replacementScene.configuration?.deviceMembers.first?.identity == replacementSceneIdentity,
+                "cloud cleanup retains different provisioning identity at the same address")
         require(cloud.network.nodes.count == 1 && cloud.space.deviceCount == 1 && cloud.space.lastUpdate > 40, "counts and cleanup version cover cloud version")
         require(cloudSchedule.nodeAddresses == [5] && cloudSchedule.needDeleteNodeAddresses == [5], "clear active and pending old references")
         require(cloud.group.info.proximityLightingPath!.paths[0].items[0].address == nil, "clear only old Sequence slot")

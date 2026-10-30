@@ -30,7 +30,7 @@ def production():
     settings = read('SunSmart/Main/Scene/Controller/SceneSettingsViewController.swift')
     appearance = appearance.replace('// PRODUCTION_SCENE_APPEAR', section(scene, '    override func viewWillAppear', '    override func viewDidAppear'))
     appearance = appearance.replace('// PRODUCTION_SCENE_LAYOUT', section(scene, '    override func viewDidLayoutSubviews', '    /// 添加通知监听'))
-    appearance = appearance.replace('// PRODUCTION_SCENE_SETTINGS_APPEAR', section(settings, '    override func viewWillAppear', '    override func viewDidAppear'))
+    appearance = appearance.replace('// PRODUCTION_SCENE_SETTINGS_APPEAR', section(settings, '    override func viewDidAppear', '    private func suspend()'))
     scene_tests = read('Tests/Scene/SceneGroupSyncReadTests.swift').replace('// PRODUCTION_SCENE_COMPARISON',
         section(read('SunSmart/Common/Data/MeshNetwork+SunSmart.swift'), '    /// 当前场景数据应用到指定设备时的目标值', '//    convenience init(lightness:'))
     device_cell = read('SunSmart/Main/Device/View/DevicesViewCell.swift')
@@ -53,6 +53,7 @@ def production():
         picker_probes.append(f'''
 private final class Schedule{kind}ForegroundProbe: PickerForegroundProbe {{
     let schedule: Schedule?
+    let scenes: [Scene] = MeshNetworkManager.instance.scenes
     var superview: NSObject?
     var attached: Bool {{
         get {{ superview != nil }}
@@ -80,7 +81,7 @@ private final class Schedule{kind}ForegroundProbe: PickerForegroundProbe {{
         '// PRODUCTION_PICKER_PROBES', '\n'.join(picker_probes))
     pieces = [read('SunSmart/Common/Data/AppPerformance.swift'),
         read('SunSmart/Common/Data/DeviceScheduleAddressCleanup.swift'),
-        read('SunSmart/Common/Data/HDBConfiguration.swift'), read('SunSmart/Common/Data/HDBLightingZonePolicy.swift'), read('SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),
+        read('SunSmart/Common/Data/HDBConfiguration.swift'), read('SunSmart/Common/Data/HDBLightingZonePolicy.swift'), read('SunSmart/Main/Timed/Model/TimedSchedulerSlotPolicy.swift'), read('SunSmart/Main/Scene/Model/SceneConfiguration.swift'), read('SunSmart/Main/Scene/Model/SceneTargetResolver.swift'), read('SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),
         read('SunSmart/Common/Data/SpaceProtectionReadSnapshot.swift'), policy, section(adapter, 'enum ProximityLightingTopologyContext', '\nextension SpaceData'),
         read('SunSmart/Common/Data/NodeSyncTopologySnapshot.swift'),
         read('SunSmart/Common/Data/NodeSyncReadContext.swift'), read('SunSmart/Common/Data/NodeSyncStatusRefresh.swift'),

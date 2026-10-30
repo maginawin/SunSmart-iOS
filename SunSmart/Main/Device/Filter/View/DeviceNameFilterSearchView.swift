@@ -10,7 +10,7 @@ import UIKit
 final class DeviceNameFilterSearchView: UIControl, UITextFieldDelegate {
     private let cardView = UIView()
     private let searchBackgroundView = UIView()
-    private let textField = UITextField()
+    private let textField = DeviceNameFilterSearchView.makeSearchField(placeholder: "device_filter_search_by_name".localizedString)
     private var onSubmit: ((String) -> Void)?
 
     static func show(initialText: String, onSubmit: @escaping (String) -> Void) {
@@ -79,7 +79,36 @@ final class DeviceNameFilterSearchView: UIControl, UITextFieldDelegate {
         }
 
         textField.text = initialText
-        textField.placeholder = "device_filter_search_by_name".localizedString
+        textField.delegate = self
+        searchBackgroundView.addSubview(textField)
+        textField.snp.makeConstraints { make in
+            make.left.top.bottom.equalToSuperview()
+            make.right.equalTo(cancelButton.snp.left).offset(SCRXFrom(-12))
+        }
+    }
+
+    /// Share the Lights name-search input while keeping each screen's submission behavior.
+    static func makeInlineSearchField(placeholder: String) -> UITextField {
+        let field = makeSearchField(placeholder: placeholder)
+        field.backgroundColor = .white
+        field.layer.cornerRadius = SCRYFrom(10)
+        field.layer.borderWidth = 0.5
+        field.layer.borderColor = RGB(220, 220, 220).cgColor
+        field.clipsToBounds = true
+        // Figma's 24pt icon slot contains this existing 13.5pt gray vector.
+        let iconContainer = UIView(frame: CGRect(x: 0, y: 0, width: 40.5, height: 44))
+        let icon = UIImageView(image: UIImage(named: "site_create_search")?.withRenderingMode(.alwaysOriginal))
+        icon.contentMode = .scaleAspectFit
+        icon.frame = CGRect(x: 13.75, y: 15.25, width: 13.5, height: 13.5)
+        iconContainer.addSubview(icon)
+        field.leftView = iconContainer
+        return field
+    }
+
+    private static func makeSearchField(placeholder: String) -> UITextField {
+        let textField = UITextField()
+        textField.attributedPlaceholder = NSAttributedString(string: placeholder, attributes: [.foregroundColor: RGB(148, 163, 184)])
+        textField.accessibilityLabel = placeholder
         textField.font = FONTS(14)
         textField.textColor = TextBlack_Color
         textField.tintColor = Bar_Color
@@ -91,17 +120,12 @@ final class DeviceNameFilterSearchView: UIControl, UITextFieldDelegate {
         textField.returnKeyType = .search
         textField.autocorrectionType = .no
         textField.autocapitalizationType = .none
-        textField.delegate = self
         textField.leftViewMode = .always
         textField.leftView = makeSearchIconView()
-        searchBackgroundView.addSubview(textField)
-        textField.snp.makeConstraints { make in
-            make.left.top.bottom.equalToSuperview()
-            make.right.equalTo(cancelButton.snp.left).offset(SCRXFrom(-12))
-        }
+        return textField
     }
 
-    private func makeSearchIconView() -> UIView {
+    private static func makeSearchIconView() -> UIView {
         let container = UIView(frame: CGRect(x: 0, y: 0, width: SCRXFrom(40), height: SCRYFrom(41)))
         let imageView = UIImageView(image: UIImage(named: "search_icon"))
         imageView.contentMode = .scaleAspectFit

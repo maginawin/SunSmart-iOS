@@ -640,7 +640,18 @@ extension MeshNetworkManager {
             self.dongles = DeviceDongleData.load(meshUUID: uuid, meshNetworkId: subNetworkId)
 
             DispatchQueue.main.async {
-                result?(true)
+                guard self.meshNetwork?.uuid.uuidString == uuid,
+                      self.currentNetworkKey.networkId.hex == subNetworkId else { result?(false); return }
+                do {
+                    let store = SceneConfigurationStore()
+                    _ = try store.resumeVerifiedRestores()
+                    try store.restoreSceneProjections()
+                    result?(true)
+                } catch {
+                    // Leave App intent available for the next load; a transient SDK
+                    // projection failure is not a permanent configuration-protection block.
+                    result?(false)
+                }
             }
         }
         
@@ -1284,7 +1295,9 @@ extension Group {
             return (needSyncNodes, needDeleteNodes)
         }
         if sceneData.state == .waitDelete { // 待删除
-            needDeleteNodes = nodes.filter { $0.needsSceneRemoval(scene.number) }
+            // waitDelete is durable relationship cleanup intent, including a
+            // retry after the SDK cache was saved but App persistence failed.
+            needDeleteNodes = nodes.filter { $0.sceneSetupModel != nil }
         }else { // 同步
             needSyncNodes = nodes.filter({ node in
                 guard node.sceneSetupModel != nil, node.groupState != .exitFailure else {
@@ -1344,7 +1357,11 @@ extension Scene {
     
     /// 场景是否需要同步
     var needSync: Bool {
-        info.groups.contains(where: { group in group.nodes.contains(where: { $0.getSyncData(type: .scenes(scene: self)).count > 0 })  })
+        if info.configurationLoadFailed || info.projectionPending { return true }
+        if let snapshot = try? SceneTargetResolver.resolve(scene: self), !snapshot.unresolved.isEmpty { return true }
+        return MeshNetworkManager.instance.realNodes.contains {
+            !$0.getNodeSyncSceneDatas(scene: self).isEmpty || !$0.getNodeNeedDeleteSceneDatas(scene: self).isEmpty
+        }
     }
     
     /// 获取需要同步数据的组
@@ -1406,6 +1423,27 @@ extension Scene {
 }
 
 class SceneInfo {
+
+    /// nil is an old group scene; a failed explicit block is never an empty scene.
+    var projectionPending = false
+    var configuration: SceneConfiguration?
+    private(set) var configurationLoadFailed = false
+    private(set) var configurationData: Data?
+
+    func loadConfiguration(_ data: Data?, isPresent: Bool = false) {
+        configurationData = data
+        configuration = nil
+        configurationLoadFailed = false
+        guard let data else { configurationLoadFailed = isPresent; return }
+        do { configuration = try SceneConfiguration.decode(data) }
+        catch { configurationLoadFailed = true }
+    }
+
+    static func unavailable(sceneId: SceneNumber) -> SceneInfo {
+        let info = SceneInfo(sceneId: sceneId)
+        info.configurationLoadFailed = true
+        return info
+    }
     
     /// 场景id
     let sceneId: SceneNumber
@@ -1433,6 +1471,8 @@ class SceneInfo {
 }
 
 class GroupInfo {
+
+    var sceneParametersLoadFailed = false
 
     /// A default UI placeholder must never become an authoritative profile.
     var profileLoadFailed = false
@@ -1570,6 +1610,10 @@ extension Schedule {
         if nodeAddresses.contains(node.primaryUnicastAddress) {
             return true
         }
+        if let scene, scene.info.configuration?.kind == .devices {
+            let identity = node.timedSchedulerIdentity.flatMap { try? SceneConfiguration.identity($0) }
+            return (try? SceneTargetResolver.resolve(scene: scene).targets.contains { $0.identity == identity }) == true
+        }
         
         guard node.groupState != .exitFailure else { return false }
         let targetGroups = groups + activeSceneGroups
@@ -1701,6 +1745,13 @@ extension Schedule {
                 for node in nodes where addresses.contains(node.primaryUnicastAddress) {
                     targetIDs.insert(ObjectIdentifier(node))
                     checks.append(.sync(node, nil))
+                }
+            case .scene where schedule.scene?.info.configuration?.kind == .devices:
+                if let scene = schedule.scene, let snapshot = try? SceneTargetResolver.resolve(scene: scene) {
+                    for target in snapshot.targets {
+                        targetIDs.insert(ObjectIdentifier(target.node))
+                        checks.append(.sync(target.node, nil))
+                    }
                 }
             case .groups, .scene:
                 let groups = schedule.selectTargetType == .groups ? schedule.groups : schedule.activeSceneGroups
@@ -2944,6 +2995,45 @@ extension Node {
         }
     }
     
+    /// Finish a Group -> Scene removal only after every member is confirmed.
+    /// Metadata promotion preserves this relationship; revision presence is not
+    /// a mode flag. Context-backed callers have already validated task ownership.
+    @discardableResult
+    func completeGroupSceneRemoval(sceneId: SceneNumber) -> Bool {
+        guard !sceneId.isSpecialScene,
+              let scene = MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneId }),
+              !scene.info.configurationLoadFailed, !scene.info.projectionPending,
+              scene.info.configuration?.kind != .devices,
+              let group, group.info.sceneExecuteDatas.contains(where: { $0.sceneNumber == sceneId && $0.state == .waitDelete }) else { return true }
+        let pending = scene.info.configuration?.pendingOperations ?? []
+        guard !group.nodes.contains(where: { node in
+            // A pending old identity must not disappear merely because the
+            // current composition or key no longer identifies that target.
+            if pending.contains(where: { $0.identity.unicastAddress == node.primaryUnicastAddress.hex }) { return true }
+            guard node.sceneSetupModel != nil else {
+                return node.sceneExecuteDatas.contains { $0.sceneNumber == sceneId }
+            }
+            guard let identity = node.timedSchedulerIdentity,
+                  (try? SceneConfiguration.identity(identity)) != nil,
+                  node.network?.uuid == scene.network?.uuid,
+                  node.subNetworkId == scene.subNetworkId else { return true }
+            return node.needsSceneRemoval(sceneId)
+        }) else { return true }
+        let previousRelations = group.info.sceneExecuteDatas, previousSchedules = group.info.bindSchedules
+        group.info.sceneExecuteDatas.removeAll { $0.sceneNumber == sceneId }
+        // Remove only the schedules inherited through this Scene relationship.
+        group.info.bindSchedules.removeAll { groupSchedule in
+            scene.info.bindSchedules.contains { $0.id == groupSchedule.id }
+        }
+        guard group.info.save() else {
+            group.info.sceneExecuteDatas = previousRelations
+            group.info.bindSchedules = previousSchedules
+            return false
+        }
+        group.updateGroupSyncState()
+        return true
+    }
+
     /// Mesh 确认解绑成功后，提交对应 Switch 的本地 Proxy 清理。
     func commitSuccessfulEnOceanSwitchUnbind(enOceanMacAddress: String) {
         guard let uuid = self.network?.uuid.uuidString ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else {
@@ -3143,6 +3233,8 @@ extension Node {
             
         case is SceneStore:
             let sceneId = (message as! SceneStore).scene
+            // Explicit configurations require the captured handle context; never infer from live lamp state.
+            if MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneId })?.info.configuration != nil { return }
             if !sceneId.isSpecialScene {
                 var cct = temperature
                 var lightness = self.lightness
@@ -3181,24 +3273,14 @@ extension Node {
             break
         case is SceneDelete:
             let sceneId = (message as! SceneDelete).scene
+            if MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneId })?.info.configuration != nil { return }
             if !sceneId.isSpecialScene {
                 //            self.sceneDatas.removeValue(forKey: sceneId)
                 delete(sceneId: sceneId)
                 //            if let uuid = meshUUID {
                 //                SceneExecuteData.deleteData(meshUUID: uuid, address: primaryUnicastAddress, sceneId: Int(sceneId))
                 
-                // 组对应场景数据是否待删除
-                if let scene = MeshNetworkManager.instance.scenes.first(where: {$0.number == sceneId}), let group = self.group, let groupSceneData = group.info.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneId }), groupSceneData.state == .waitDelete {
-                    // 组内设备已删除对应场景缓存
-                    if !group.nodes.contains(where: { $0.needsSceneRemoval(sceneId) }) {
-                        group.info.sceneExecuteDatas.removeAll(where: { $0.sceneNumber == sceneId })
-                        // 设备加入组，组加入场景，场景加入日程 Node->Group->Scene->Schedule
-                        // 场景加入日程后关联场景的组也加入日程，场景移出组后吧组间接关联的日程删除
-                        group.info.bindSchedules.removeAll(where: { groupSchedule in scene.info.bindSchedules.contains(where: { $0.id == groupSchedule.id }) })
-                        group.info.save()
-                        group.updateGroupSyncState()
-                    }
-                }
+                completeGroupSceneRemoval(sceneId: sceneId)
             }
 //            }
            
@@ -3330,18 +3412,7 @@ extension Node {
             
         case is SceneRecall, is SceneRecallUnacknowledged: // 场景激活
             if let sceneNumber = (message as? SceneRecall)?.scene ?? (message as? SceneRecallUnacknowledged)?.scene, let scene = MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneNumber }) {
-                scene.info.groups.forEach({
-                    if let sceneData = $0.info.sceneExecuteDatas.first(where: { $0.sceneNumber == sceneNumber }) {
-                        let lightness = sceneData.lightness
-                        $0.nodes.forEach({ node in
-                            node.isOn = lightness > 0
-                            node.lightness = lightness
-                            if node.effectiveSupportCct {
-                                node.temperature = node.clampEffectiveCct(UInt16(sceneData.cct))
-                            }
-                        })
-                    }
-                })
+                if isSuccess { SceneCommandBuilder.applyRecallFeedback(scene: scene, node: self) }
             }
         case is GenericDefaultTransitionTimeSet:
             let transitionTimeMessage = message as! GenericDefaultTransitionTimeSet

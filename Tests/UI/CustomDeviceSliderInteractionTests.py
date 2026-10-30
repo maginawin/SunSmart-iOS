@@ -55,12 +55,23 @@ final class Timer {
     static var all: [Timer] = []
     let callback: (Timer) -> Void
     var valid = true
+    let interval: TimeInterval
+    var nextFire: TimeInterval
+    static var now: TimeInterval = 0
     init(timeInterval: TimeInterval, repeats: Bool, block: @escaping (Timer) -> Void) {
+        interval = timeInterval; nextFire = Self.now + timeInterval
         callback = block; Self.all.append(self)
     }
     func invalidate() { valid = false }
     func fire() { if valid { callback(self) } }
     static func tick() { for timer in all { timer.fire() } }
+    static func advance(to time: TimeInterval) {
+        now = time
+        for timer in all where timer.valid && timer.nextFire <= now {
+            timer.nextFire = now + timer.interval
+            timer.fire()
+        }
+    }
 }
 final class RunLoop {
     enum Mode { case common }
@@ -354,6 +365,131 @@ for action: HDBZoneControlAction in [.on, .off, .auto] {
     s.begin(); s.input(31); s.end()
     expect(p.service.actions.last == .brightness(31), "HDB permits next legitimate drag")
 }
+
+'''
+# Scene parameter-sheet ownership uses the actual production callbacks.
+picker = read("SunSmart/Main/Scene/View/SceneExecuteDataPickerView.swift")
+swift += r'''
+class SceneSliderView: CustomDeviceSliderDelegate {
+    let slider = CustomDeviceSlider()
+    var type = SceneSliderType()
+    var valueChangedCallback: ((Int) -> Void)?
+    var throttleValueChangedCallback: ((Int, Bool) -> Void)?
+    func updateValue() {}
+    var value: Int { get { Int(slider.value) } set { slider.value = Float(newValue) } }
+}
+struct SceneSliderType { var data = SceneSliderData() }
+struct SceneSliderData { var step = 1 }
+class SceneLabel { var text: String? }
+class ScenePicker {
+    var lightnessSliderView: SceneSliderView! = SceneSliderView()
+    var cctSliderView: SceneSliderView! = SceneSliderView()
+    var lightnessLabel = SceneLabel(), cctLabel = SceneLabel()
+    var selectedCct: Int { cctSliderView.value }
+    var liveControl: ((LiveEvent) -> Void)?
+    var lightnessNeedsFinal = false, cctNeedsFinal = false
+    var isOn = true
+    var maximumLightness = 80
+    var pickerCallback: ((Bool, Int, Int) -> Void)?
+    var deleteCallback: (() -> Void)?
+    func updateOffButtonState() {}
+    func dismiss() { cancelSliderGesture() }
+'''
+swift += block(picker, "    enum LiveEvent") + "\n"
+swift += "\n".join(block(picker, marker) for marker in ["func cancelSliderGesture", "func setLightnessValue", "func offBtnAction", "func cancel()", "func cancelLiveInteraction", "func finishLiveInteraction", "func emitLightness", "func emitTemperature"])
+swift += "\nfunc bindLiveControls() {\n"
+for prefix in ["lightness", "cct"]:
+    swift += block(picker, prefix + "SliderView.valueChangedCallback =") + "\n"
+    swift += block(picker, prefix + "SliderView.throttleValueChangedCallback =") + "\n"
+    swift += prefix + "SliderView.slider.delegate = " + prefix + "SliderView\n"
+    swift += next(line.strip() for line in picker.splitlines() if prefix + "SliderView.slider.interval =" in line) + "\n"
+swift += "}\n"
+function_view = read("SunSmart/Main/Device/View/DeviceSliderFunctionView.swift")
+# Add the real +/- and delegate handlers to the boundary slider view.
+slider_methods = "\n".join(block(function_view, marker) for marker in ["func addBtnClick", "func minusBtnClick", "func slider(_ slider: CustomDeviceSlider, valueChanged", "func slider(_ slider: CustomDeviceSlider, throttleValueChanged"])
+swift = swift.replace("class SceneSliderView: CustomDeviceSliderDelegate {", "class SceneSliderView: CustomDeviceSliderDelegate {\n" + slider_methods)
+
+swift += r'''
+}
+do {
+    let p = ScenePicker(), r = Recorder(), s = p.lightnessSliderView.slider
+    s.delegate = r; s.begin(); s.input(53)
+    p.offBtnAction(); s.end(); Timer.tick()
+    expect(s.value == 0 && r.finals.isEmpty && !p.isOn, "Scene OFF supersedes active slider")
+    p.offBtnAction()
+    expect(s.value == 80 && p.isOn, "Scene ON restores allowed maximum")
+    s.begin(); s.input(30); p.cancelSliderGesture(); p.lightnessSliderView.value = 31
+    s.end(); Timer.tick()
+    expect(s.value == 31 && r.finals.isEmpty, "Scene +/- takeover rejects old gesture")
+    var committed = 0; p.pickerCallback = { _, _, _ in committed += 1 }
+    s.begin(); s.input(25); p.cancel(); s.end(); Timer.tick(); p.pickerCallback?(true, 25, 4500)
+    expect(committed == 0 && r.finals.isEmpty, "Scene abandoned sheet drops callback and drag")
+}
+
+
+do {
+    let p = ScenePicker(); var values: [Int] = []
+    p.liveControl = { if case .lightness(let value, _) = $0 { values.append(value) } }
+    p.bindLiveControls(); let slider = p.lightnessSliderView.slider
+    Timer.now = 0; slider.begin(); slider.input(10)
+    Timer.advance(to: 0.100); slider.input(20)
+    Timer.advance(to: 0.199); expect(values.isEmpty, "live sampling waits 200ms")
+    Timer.advance(to: 0.200); expect(values == [20], "200ms tick samples latest input")
+    slider.input(30); Timer.advance(to: 0.399); slider.end(); Timer.advance(to: 0.400)
+    expect(values == [20, 30], "end before next tick suppresses pending timed sample")
+}
+
+do {
+    let p = ScenePicker()
+    var sent: [String] = []
+    p.liveControl = { event in
+        switch event {
+        case .lightness(let value, let ended): sent.append("L\(value):\(ended)")
+        case .temperature(let value, let ended): sent.append("T\(value):\(ended)")
+        case .off: sent.append("OFF")
+        case .cancel: sent.append("CANCEL")
+        }
+    }
+    p.bindLiveControls()
+    let light = p.lightnessSliderView!, cct = p.cctSliderView!
+    light.slider.maximumValue = 100; cct.slider.maximumValue = 6500
+    light.slider.begin(); light.slider.input(35); light.slider.end()
+    expect(sent == ["L35:true"], "short live drag emits final only")
+    p.finishLiveInteraction()
+    expect(sent.count == 1, "close does not repeat a completed end")
+    light.slider.begin(); light.slider.input(40); Timer.tick(); Timer.tick()
+    expect(sent.last == "L40:false" && sent.count == 2, "stationary finger does not repeat sample")
+    light.slider.input(43); light.slider.end(); Timer.tick()
+    expect(sent.last == "L43:true" && sent.count == 3, "end wins over pending sample")
+    light.slider.begin(); light.slider.input(50); cct.slider.begin(); cct.slider.input(3200)
+    p.offBtnAction(); light.slider.end(); cct.slider.end(); Timer.tick()
+    expect(sent.last == "OFF" && sent.count == 4 && light.value == 0, "OFF cancels both gestures")
+    cct.slider.begin(); cct.slider.input(3500)
+    p.offBtnAction(); cct.slider.end(); Timer.tick()
+    expect(Array(sent.suffix(2)) == ["CANCEL", "L80:true"] && light.value == 80 && p.isOn && sent.count == 6, "live OFF toggles to allowed maximum and cancels old control")
+    p.finishLiveInteraction()
+    expect(sent.count == 6, "closing after maximum restore does not repeat or flush cancelled CCT")
+    p.offBtnAction()
+    expect(sent.last == "OFF" && light.value == 0 && !p.isOn && sent.count == 7, "next click toggles back to OFF")
+    p.cancelSliderGesture(); light.addBtnClick()
+    expect(sent.last == "L1:true", "plus submits one final and turns brightness positive")
+    p.cancelSliderGesture(); light.minusBtnClick()
+    expect(sent.last == "L0:true", "minus submits one final")
+    cct.type.data.step = 100; cct.value = 4500
+    p.cancelSliderGesture(); cct.addBtnClick()
+    expect(sent.last == "T4600:true", "CCT plus submits final")
+    p.cancelSliderGesture(); cct.minusBtnClick()
+    expect(sent.last == "T4500:true", "CCT minus submits final")
+    light.slider.begin(); light.slider.input(61); p.cancelSliderGesture(); light.addBtnClick()
+    light.slider.end(); Timer.tick()
+    expect(sent.last == "L62:true", "plus takeover rejects stale release")
+    cct.slider.begin(); cct.slider.input(5100); p.finishLiveInteraction()
+    expect(sent.last == "T5100:true", "close flushes unsubmitted input")
+    let before = sent.count; p.finishLiveInteraction(); expect(sent.count == before, "close final is idempotent")
+    light.slider.begin(); light.slider.input(75); p.cancelLiveInteraction(); light.slider.end(); Timer.tick()
+    expect(sent.last == "CANCEL" && sent.count == before + 1, "interruption cancels without final")
+}
+
 print("CustomDeviceSliderInteractionTests passed: \(checks) checks")
 '''
 

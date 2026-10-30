@@ -21,10 +21,12 @@ def declaration(source, marker):
     return source[start:end]
 
 
-controller = (ROOT / 'SunSmart/Main/Scene/Controller/SceneAddViewController.swift').read_text()
+controller = (ROOT / 'SunSmart/Main/Scene/Controller/SceneSettingsViewController.swift').read_text()
 capacity = (ROOT / 'SunSmart/Common/Data/SceneCapacity.swift').read_text()
 fixture = (ROOT / 'Tests/Scene/SceneAddressRequestTests.swift').read_text()
-fixture = fixture.replace('// PRODUCTION_REQUEST', declaration(controller, '    private func requestSceneAddresses()'))
+fixture = fixture.replace('// PRODUCTION_LIFECYCLE', declaration(controller, '    private var lifecycle').replace('private ', ''))
+fixture = fixture.replace('// PRODUCTION_COMMIT', declaration(controller, '    private func commit(revision:'))
+fixture = fixture.replace('// PRODUCTION_REQUEST', declaration(controller, '    private func requestAddresses(revision:'))
 fixture = fixture.replace('// PRODUCTION_VALIDATION', declaration(capacity, '    static func validSceneAllocation('))
 with tempfile.TemporaryDirectory(prefix='scene-address-request-') as directory:
     source = Path(directory) / 'Tests.swift'

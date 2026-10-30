@@ -497,6 +497,7 @@ enum SpaceSyncTaskScope {
             return try? encoder.encode(space.triggerZones)
         }
         let spaceZones = zones()
+        let scenesAreCurrent = SceneCommandBuilder.captureConfigurations()
         return {
             guard account == UserData.currentUserId, region == UserData.currentServerRegion,
                   manager.meshNetwork === network, manager.currentNetworkKey.networkId.hex == networkID,
@@ -508,7 +509,7 @@ enum SpaceSyncTaskScope {
                           && (try? encoder.encode(group.info.profile.nightData)) == (try? encoder.encode(profile.nightData))
                   }),
                   zip(groups, paths).allSatisfy({ group, path in (try? encoder.encode(group.info.proximityLightingPath)) == path }),
-                  zones() == spaceZones else { return false }
+                  zones() == spaceZones, scenesAreCurrent() else { return false }
             return true
         }
     }

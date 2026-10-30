@@ -2588,3 +2588,69 @@
 "scene_capacity_unknown" = "尚未读取以下设备的场景容量：\n%@\n请连接这些设备后重试，以读取实际场景数据。";
 "scene_delete_referenced" = "以下配置仍引用此场景：\n%@\n请先修改或移除这些引用并完成设备同步，再删除场景。";
 "scene_address_unavailable" = "没有可用的普通场景编号。请连接服务器申请更多场景编号后重试。";
+
+"scene_search_devices_groups" = "搜索设备和分类";
+"scene_search_groups" = "搜索组";
+"scene_expand_collapse_all" = "展开或折叠全部";
+"scene_select_filtered_hint" = "全选仅操作当前搜索结果中的合格设备。";
+"scene_selected_count" = "已选 %d 台";
+"scene_no_search_results" = "没有匹配的结果";
+"scene_no_devices_hint" = "尚未选择设备。新设备场景至少需要一台设备，仅可新增在线设备。";
+"scene_select_devices" = "选择设备";
+"scene_empty_devices_message" = "设备场景无法预先创建，至少需要一台设备，且只能添加在线设备。";
+"scene_mode_locked" = "此场景包含已保存成员或待清理任务，不能切换类型。";
+"scene_switch_mode_message" = "切换场景类型并放弃当前选择及设置？";
+"scene_relay_hint" = "继电器设备仅支持开关控制。";
+"scene_select_members" = "请至少选择一个组或设备，可预配置空组。";
+"scene_send_title" = "发送场景设置";
+"scene_send_message" = "先将设置应用到所选设备，再检查实际灯光后保存。";
+"scene_send" = "发送";
+"scene_sending" = "正在发送设置…";
+"scene_send_result" = "已应用 %d 台；待同步 %d 台";
+"scene_confirm_title" = "保存前检查灯光";
+"scene_pending_sync" = "待同步";
+"scene_adjust_again" = "继续调整";
+"scene_confirm_save" = "确认并保存";
+"scene_saved_pending_sync" = "已保存，部分设备待同步。";
+"scene_projection_pending" = "已保存到本地，场景记录待恢复。点击完成可重试，无需重新创建。";
+"scene_draft_stale" = "场景或目标已变化，草稿已保留。请重新加载场景或再次发送后保存。";
+"scene_discard_title" = "放弃设置？";
+"scene_discard_message" = "是否放弃此草稿？预览已改变的灯光不会恢复。";
+"scene_keep_editing" = "继续编辑";
+"scene_discard" = "放弃";
+"ON" = "开";
+"OFF" = "关";
+"apply" = "应用";
+"scene_offline_pending" = "离线 · 待同步";
+"scene_failed_pending" = "失败 · 待同步";
+"scene_preview_recommended" = "建议预览：先应用此草稿，检查每台设备后再保存。";
+"scene_remove_members" = "移除场景成员？";
+"scene_remove_members_message" = "%d 台已选设备将从此场景中移除。组和设备不会被删除。";
+
+/* Device Scene list and details */
+"scene_device_summary" = "设备场景 · %d 台设备";
+"scene_device_summary_one" = "设备场景 · %d 台设备";
+"scene_member_count_one" = "%d 台设备";
+"scene_member_count_many" = "%d 台设备";
+"scene_details_unavailable" = "场景详情暂不可用，请重新打开场景或重试同步。";
+"scene_cleanup_count" = "%d 台设备待清理";
+"scene_saved_parameters" = "已保存的参数";
+"scene_unavailable" = "此场景暂不可用，请先完成恢复或清理。";
+"scene_no_members" = "暂无成员";
+
+"scene_restore_confirm_message" = "%@ 上次恢复时中断。请确认这是您当时选择恢复的同一台实体设备。继续将恢复已保存的场景设置并重试待清理任务；取消会保留现有设置。";
+"scene_restore_pending" = "场景恢复待处理。请重新打开设备恢复或同步设备页面，确认中断的恢复后重试。";
+
+/* Device scene selection and preview */
+"scene_selected_devices_title" = "已选设备（%d）";
+"scene_category_selected_count" = "已选 %d/%d 台";
+"scene_preview_recommended_title" = "建议预览";
+"scene_preview_recommended_message" = "请先应用此草稿，检查每台设备是否达到预期状态。保存前，您需要点击“完成”发送所有设置。";
+"scene_preview_applying" = "正在应用预览";
+"scene_preview_preparing" = "正在读取所选设备的数据以准备预览…";
+"scene_preview_sending" = "正在向所有已选设备发送当前草稿…";
+"scene_preview_applied" = "预览已应用。请检查所有实际设备。";
+"scene_preview_incomplete" = "预览未完成";
+"scene_preview_result" = "已应用 %d 台，失败 %d 台，离线 %d 台。请检查设备后重试预览。";
+"scene_preview_interrupted" = "预览未完成。请检查连接和设备后重试。";
+"scene_preview_details" = "查看详情";

@@ -1,8 +1,9 @@
 // Slot identity validation is exercised by TimedSlotPersistenceTests; this
 // fixture isolates the Session's protection/generation and callback ordering.
 extension Node {
-    func applyMessageHandle(_ handle: MeshMessageHandle, isSuccess: Bool = true) {
+    @discardableResult func applyMessageHandle(_ handle: MeshMessageHandle, isSuccess: Bool = true) -> Bool {
         updateData(message: handle.message, isSuccess: isSuccess, model: handle.model)
+        return isSuccess
     }
 }
 // Session 主体、任务选择、回写、重试和兼容模型来自生产；以下只替代 SDK/业务边界。
@@ -43,7 +44,7 @@ extension SyncDevicesViewController {
     enum SyncState { case inSync, syncFailure, syncSuccess }
     enum EmergencyFireSyncContext { case placeholder }
     enum SyncType {
-        case devices([Node])
+        case scene(Scene), devices([Node])
         case batteryPowerSwitch(PJEightKeySwitchData)
         case gatewayRecovery(Node, GatewayModel, GatewayRecoveryTrigger)
         case gatewayServerRecovery(Node, GatewayModel)

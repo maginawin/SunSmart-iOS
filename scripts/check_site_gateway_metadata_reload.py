@@ -48,7 +48,7 @@ production += section(imports,
     '                for space in self.spaces where changed.contains(space.id)')
 production += '    }\n}\nextension SpaceData {\n'
 production += section(imports, '    func applyRemoteSpaceMetadata(',
-                      '    /// 更新空间内基本数据+设备、组、场景、日程')
+                      '    /// A malformed configuration' if '    /// A malformed configuration' in imports else '    /// Reviewed import intent')
 production += '}\nextension SiteController {\n    func reappear() {\n'
 production += section(controller,
     '        let ownershipChanges = SiteDeviceOwnershipReconciler.reconcile(siteId: site.id)',

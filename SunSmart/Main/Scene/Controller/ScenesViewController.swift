@@ -443,38 +443,24 @@ extension ScenesViewController: UICollectionViewDataSource, UICollectionViewDele
             return
         }
         let scene = scenes[indexPath.item]
-        if scene.nodes.count > 0 && !MeshLibManager.manager.isMeshNetworkConnected {
-            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-            return
-        }
-        guard !showEmergencyControlBlockedIfNeeded(groups: scene.info.groups) else {
-            return
-        }
-        
-        if let cell = collectionView.cellForItem(at: indexPath) as? ScenesViewCell, !cell.isExecuting {
-            // 执行场景
-            
-            MeshAPI.startScene(sceneNumber: scene.number)
-            
-            scene.info.groups.forEach { group in
-                if let data = group.info.sceneExecuteDatas.first(where: { scene.number == $0.sceneNumber }) {
-                    group.lightness = data.lightness
-                    group.cct = Int(group.clampEffectiveCct(data.cct))
-                    group.isOn = data.lightness > 0
-                }
-                
-                group.nodes.forEach({
-                    if let sceneData = $0.sceneExecuteDatas.first(where: { scene.number == $0.sceneNumber }) {
-                        $0.lightness = sceneData.lightness
-                        $0.isOn = $0.lightness > 0
-                        if $0.effectiveSupportCct {
-                            $0.temperature = $0.clampEffectiveCct(UInt16(sceneData.cct))
-                        }
-                    }
-                })
+        guard !isEdit, space.sceneOperates.contains(.control) else { return }
+        guard let cell = collectionView.cellForItem(at: indexPath) as? ScenesViewCell, !cell.isExecuting else { return }
+        do {
+            let handles = try SceneCommandBuilder.recallHandles(scene: scene)
+            if !handles.isEmpty && !MeshLibManager.manager.isMeshNetworkConnected {
+                XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+                return
             }
-            
+            for handle in handles {
+                if let model = handle.model { MeshAPI.sendMessage(message: handle.message, model: model) }
+                else if let address = handle.address { MeshAPI.sendMessage(message: handle.message, address: address) }
+            }
+            SceneCommandBuilder.applyRecallFeedback(scene: scene)
             cell.showExecuteAnimation()
+        } catch SceneCommandBuilder.RecallFailure.emergency {
+            XWHUDManager.showTipHUD("Uncontrollable in emergency situations".localizedString, isLineFeed: true)
+        } catch {
+            XWHUDManager.showTipHUD("scene_unavailable".localizedString, isLineFeed: true)
         }
     }
     

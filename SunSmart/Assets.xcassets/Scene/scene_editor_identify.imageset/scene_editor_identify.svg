@@ -1,0 +1,12 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="15" height="14.1765" viewBox="0 0 15 14.1765" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Identify Device Symbol">
+<g id="Icon Artwork">
+<path id="Identify Device Outline" d="M3.41687 7.26612C3.37147 7.1502 3.37147 7.02627 3.41687 6.91035C3.93628 5.58498 5.56793 4.61765 7.50037 4.61765C9.43306 4.61765 11.0647 5.58498 11.5841 6.91035C11.6294 7.02628 11.6294 7.15019 11.5841 7.26612C11.0647 8.59149 9.43306 9.55882 7.50037 9.55882C5.56793 9.55882 3.93628 8.59149 3.41687 7.26612Z" stroke-linecap="round" stroke-linejoin="round" stroke="#142E4F"/>
+<path id="Identify Device Dot" d="M6.14063 7.13836C6.14063 7.49833 6.28363 7.84356 6.53817 8.09811C6.79272 8.35265 7.13795 8.49565 7.49792 8.49565C7.8579 8.49565 8.20313 8.35265 8.45767 8.09811C8.71221 7.84356 8.85521 7.49833 8.85521 7.13836C8.85521 6.77838 8.71221 6.43315 8.45767 6.17861C8.20313 5.92407 7.8579 5.78107 7.49792 5.78107C7.13795 5.78107 6.79272 5.92407 6.53817 6.17861C6.28363 6.43315 6.14063 6.77838 6.14063 7.13836Z" stroke-linecap="round" stroke-linejoin="round" stroke="#142E4F"/>
+</g>
+<path id="Icon Path / 01" d="M3.79412 0.5H3.5C1.84314 0.5 0.5 1.84315 0.5 3.5V3.79412" stroke-linecap="round" stroke-linejoin="round" stroke="#142E4F"/>
+<path id="Icon Path / 02" d="M3.63725 13.6765H3.5C1.84315 13.6765 0.5 12.3333 0.5 10.6765L0.5 10.3824" stroke-linecap="round" stroke-linejoin="round" stroke="#142E4F"/>
+<path id="Icon Path / 03" d="M14.5 3.63725L14.5 3.5C14.5 1.84315 13.1569 0.5 11.5 0.5L11.2059 0.5" stroke-linecap="round" stroke-linejoin="round" stroke="#142E4F"/>
+<path id="Icon Path / 04" d="M14.5 10.3824L14.5 10.6765C14.5 12.3333 13.1569 13.6765 11.5 13.6765L11.2059 13.6765" stroke-linecap="round" stroke-linejoin="round" stroke="#142E4F"/>
+</g>
+</svg>

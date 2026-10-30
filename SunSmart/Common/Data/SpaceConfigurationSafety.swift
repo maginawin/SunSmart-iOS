@@ -185,10 +185,38 @@ enum SpaceConfigurationSafety {
 
     static func recoveryState(_ space: SpaceData) throws -> SpaceRecoveryState {
         lock.lock(); defer { lock.unlock() }
-        if let state = try SpaceRecoveryState.read(from: stateURL(space), identity: identity(space)) { return state }
+        if var state = try SpaceRecoveryState.read(from: stateURL(space), identity: identity(space)) {
+            let previous = state
+            upgradeSceneComparison(&state, space: space)
+            if state != previous { try saveState(state, space: space) }
+            return state
+        }
         let state = SpaceRecoveryState(identity: identity(space))
         try saveState(state, space: space)
         return state
+    }
+
+    private static func upgradeSceneComparison(_ state: inout SpaceRecoveryState, space: SpaceData) {
+        guard state.phase == .active,
+              SpaceConfigurationIntegrityPolicy.needsSceneComparisonUpgrade(state.authorizationBaseline)
+                || SpaceConfigurationIntegrityPolicy.needsSceneComparisonUpgrade(state.submission?.configuration),
+              let data = try? Data(contentsOf: storedDirectory(space, state: state).appendingPathComponent("last-complete-export.json")),
+              let snapshot = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              snapshot["uuid"] as? String == space.id,
+              let timestamp = SpaceConfigurationIntegrityPolicy.integer(snapshot["updateTimestamp"]),
+              let network = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
+              let local = SpaceKeyIntegrity.pair(network, networkID: space.meshNetworkId),
+              SpaceKeyIntegrity.pair(snapshot, networkID: space.meshNetworkId)?.fingerprint == local.fingerprint else { return }
+        if timestamp == space.lastUploadCloudTimestamp, let old = state.authorizationBaseline,
+           let upgraded = SpaceConfigurationIntegrityPolicy.upgradingSceneComparison(old, snapshot: snapshot) {
+            state.authorizationBaseline = upgraded
+        }
+        if var submission = state.submission, submission.timestamp == timestamp,
+           submission.keyFingerprint.map({ $0 == local.fingerprint }) ?? true,
+           let upgraded = SpaceConfigurationIntegrityPolicy.upgradingSceneComparison(submission.configuration, snapshot: snapshot) {
+            submission.configuration = upgraded
+            state.submission = submission
+        }
     }
 
     private static func saveState(_ state: SpaceRecoveryState, space: SpaceData) throws {
@@ -211,6 +239,14 @@ enum SpaceConfigurationSafety {
         guard !SpaceMembershipCoordinator.isLeaving(space),
               context.identity == identity(space), let state = try? recoveryState(space) else { return false }
         return state.matches(context)
+    }
+
+    static func saveSceneRestoreReceipts(_ data: Data, context: SpaceRecoveryState, space: SpaceData) throws {
+        lock.lock(); defer { lock.unlock() }
+        guard isCurrent(context, space: space) else { throw SafetyError.invalidCheckpoint }
+        var state = try recoveryState(space)
+        state.sceneRestoreReceipts = data
+        try saveState(state, space: space)
     }
 
     private static func storedDirectory(_ space: SpaceData, state: SpaceRecoveryState) -> URL {
@@ -1270,6 +1306,11 @@ enum SpaceConfigurationSafety {
                     guard let remote = response["data"] as? [String: Any], remote["uuid"] as? String == space.id else {
                         return failure(uploadUnconfirmed, "response", "invalidRemoteSpace")
                     }
+                    if SpaceData.sceneConfigurationImportFailure(remote) != nil {
+                        guard space.applyRemoteSpaceAuthorityRestrictions(remote), current() else {
+                            return failure(authorityError(space), "remoteAuthority", "restrictionOrContextChanged")
+                        }
+                    }
                     if defaultRecoveryNodesChanged(space, remote: remote) {
                         let outcome = await space.restoreConfiguration(spaceJsonData: remote,
                             authoritativeGET: true, fixWithDefaults: true)
@@ -1973,7 +2014,7 @@ enum SpaceConfigurationSafety {
         var snapshot = state.submission?.removalSnapshot ?? (state.submission == nil ? state.removalSnapshot : nil)
         let source = state.submission?.nodeIdentities
             ?? (state.submission == nil ? state.nodeIdentitiesBaseline : nil) ?? snapshot?.identities
-        if snapshot?.comparisonVersion != 2 { snapshot = nil }
+        if snapshot?.comparisonVersion != 3 { snapshot = nil }
         if source == nil && snapshot == nil { return .notApplicable }
         if let source, remoteNodes.count >= source.count { return .notApplicable }
         func failure(_ reason: String) -> OlderCloudBaselineResult {
@@ -2013,7 +2054,16 @@ enum SpaceConfigurationSafety {
                 space.applyConfigurationState(from: persisted)
                 return failure("superseded")
             }
-            if let local, source == nil || sameNodeIdentities(SpaceCloudNodeRemovalPolicy.instances(local), source) {
+            if var local, source == nil || sameNodeIdentities(SpaceCloudNodeRemovalPolicy.instances(local), source) {
+                // A pre-scene receipt never submitted the new empty extension. Normalize
+                // only this legacy fallback, never a new POST or its GET readback.
+                if P.needsSceneComparisonUpgrade(state.authorizationBaseline),
+                   (remote["spaceData"] as? [String: Any])?["sceneConfigurations"] == nil,
+                   var extensionData = local["spaceData"] as? [String: Any],
+                   (extensionData["sceneConfigurations"] as? [Any])?.isEmpty == true {
+                    extensionData.removeValue(forKey: "sceneConfigurations")
+                    local["spaceData"] = extensionData.isEmpty && remote["spaceData"] == nil ? nil : extensionData
+                }
                 snapshot = Snapshot.make(local)
             }
         }

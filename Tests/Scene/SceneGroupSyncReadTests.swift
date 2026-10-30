@@ -1,7 +1,7 @@
 import Foundation
 
-final class SceneExecuteData {
-    enum State { case normal, waitDelete }
+final class SceneExecuteData: Codable {
+    enum State: String, Codable { case normal, waitDelete }
     let sceneNumber: UInt16
     var isOn: Bool
     var lightness: UInt16, cct: UInt16
@@ -202,5 +202,52 @@ extension NodeSyncStatusRefreshTests {
                 && appearance[ObjectIdentifier(group)]?.cctRange == 3000...5000, "appearance froze live fields")
         require(Model.subscriptionReads == reads, "appearance reread membership per card")
         print("PASS: Scene 17 groups/490 nodes, shared reads, per-Scene group status, OFF, empty/corrupt/invalidation/cancel/reuse, live appearance")
+    }
+}
+
+extension NodeSyncStatusRefreshTests {
+    static func deviceSceneSyncReadTests() async {
+        let network = fixture(4), owner = NSObject(), second = NSObject()
+        network.groups[0].info.profile.type = .ordinary
+        let a = network.nodes[0], b = network.nodes[1], u = network.nodes[2], x = network.nodes[3]
+        u.sunricherVendorModel?.subscribe = []
+        let scene = Scene()
+        let members = [a, b, u].map { SceneDeviceMember(identity: $0.timedSchedulerIdentity!, parameters: .init(isOn: true, lightness: 2000, cct: 0)) }
+        let missing = TimedSchedulerNodeIdentity(nodeUUID: UUID().uuidString, unicastAddress: "0099", deviceKeyFingerprint: String(repeating: "B", count: 64))
+        scene.info.configuration = .init(kind: .devices, name: "Direct", deviceMembers: members,
+            pendingOperations: [.init(identity: b.timedSchedulerIdentity!, action: .write), .init(identity: missing, action: .remove)])
+        MeshNetworkManager.instance.scenes = [scene]
+        NodeSyncStatusRefresh.beginSession(owner: owner)
+        defer { NodeSyncStatusRefresh.endSession(owner: owner) }
+        var completed = 0
+        NodeSyncStatusRefresh.requestSceneGroups(scene: scene, owner: owner) { snapshot in
+            require(snapshot?.groups.isEmpty == true && snapshot?.needsAnySync == true, "direct Scene status collapsed to empty groups")
+            require(snapshot?.pendingDevices.contains(b.timedSchedulerIdentity!) == true && snapshot?.pendingCleanup.contains(missing) == true,
+                    "pending writes and unresolved cleanup must both remain visible")
+            completed += 1
+        }
+        NodeSyncStatusRefresh.request(scene: scene, owner: second) { pending in
+            require(pending, "list failed to display device Scene pending"); completed += 1
+        }
+        await drain { completed == 2 }
+        require(a.sceneChecks == 1 && b.sceneChecks == 1 && u.sceneChecks == 1 && x.sceneChecks == 0,
+                "direct Scene status must share A/B/U reads and exclude same-group X")
+        scene.info.configuration!.pendingOperations = []
+        NodeSyncStatusGeneration.invalidate(); completed = 0
+        NodeSyncStatusRefresh.request(scene: scene, owner: second) { pending in
+            require(!pending, "cleared device Scene tasks retained warning"); completed += 1
+        }
+        await drain { completed == 1 }
+        let schedule = Schedule(); schedule.selectTargetType = .scene; schedule.scene = scene
+        schedule.syncRead = { node, _ in node === b }
+        MeshNetworkManager.instance.schedules = [schedule]
+        let data = schedule.getNeedSyncDatas()
+        require(data.syncNodes == [b] && data.syncGroups.isEmpty, "device Scene Scheduler planner omitted direct member B or expanded its display group")
+        var scheduleDone = false
+        let scheduleDisplay = ScheduleTargetDisplayState()
+        scheduleDisplay.refresh(schedule: schedule) { scheduleDone = true }
+        await drain { scheduleDone }
+        require(scheduleDisplay.currentSnapshot?.scenes == [ObjectIdentifier(scene)], "device Scene Scheduler picker lost its direct-member pending warning")
+        print("PASS: device Scene shared A/B/U status excludes X, pending writes/unknown cleanup, Scheduler planner and clearing")
     }
 }

@@ -1,36 +1,5 @@
 import Foundation
-typealias SceneNumber = UInt16
-extension UInt16 { var hex: String { String(format: "%04X", self) } }
-final class Element { var observedSceneRegister: Set<UInt16>? }
-final class Model { let parentElement: Element? = Element() }
-final class Node: NSObject {
-    enum State { case normal, exitFailure }
-    let uuid = UUID()
-    let name: String? = "Lamp"
-    let primaryUnicastAddress: UInt16
-    var groupState: State = .normal
-    var sceneSetupModel: Model? = Model()
-    init(_ address: UInt16) { primaryUnicastAddress = address }
-}
-final class Scene: NSObject {
-    let number: UInt16
-    init(_ number: UInt16) { self.number = number }
-}
-struct DataItem {
-    enum State { case normal, waitDelete }
-    let sceneNumber: UInt16
-    var state: State = .normal
-}
-final class Info { var sceneExecuteDatas: [DataItem] = [] }
-final class Group: NSObject {
-    var nodes: [Node] = []
-    let info = Info()
-}
-final class MeshNetworkManager {
-    static let instance = MeshNetworkManager()
-    var realNodes: [Node] = []
-    var groups: [Group] = []
-}
+typealias DataItem = SceneExecuteData
 
 @main struct SceneTopologyTests {
     static func main() throws {
@@ -89,6 +58,18 @@ final class MeshNetworkManager {
         precondition(SceneCapacity.validSceneAllocation(allocation))
         allocation["allocatedSceneRange"] = [0xFF00]
         precondition(!SceneCapacity.validSceneAllocation(allocation))
+        let tombstone = Scene(40)
+        tombstone.info.configuration = .init(kind: .groups, name: "Deleting", pendingOperations: [.init(identity: a.timedSchedulerIdentity!, action: .remove)], isDeleting: true)
+        let oldRelation = DataItem(sceneNumber: 40); oldRelation.state = .waitDelete
+        ga.info.sceneExecuteDatas.append(oldRelation)
+        // A device that joins the old display group after deletion was committed
+        // must not silently become a new cleanup target.
+        c.sceneSetupModel = Model(); c.group = ga
+        let frozen = try SceneTargetResolver.resolve(scene: tombstone)
+        precondition(frozen.targets.isEmpty && frozen.cleanupTargets.map(\.identity) == [a.timedSchedulerIdentity!])
+        tombstone.info.configuration!.pendingOperations = []
+        let completed = try SceneTargetResolver.resolve(scene: tombstone)
+        precondition(completed.targets.isEmpty && completed.cleanupTargets.isEmpty)
         print("SceneTopologyTests passed: real topology projection, atomic preflight, empty/unknown, exit recovery")
     }
 }

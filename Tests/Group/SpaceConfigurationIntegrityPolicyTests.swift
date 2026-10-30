@@ -108,6 +108,9 @@ struct SpaceConfigurationIntegrityPolicyTests {
         precondition(P.configurationsMatch(expected, P.configurationData(remote)))
         // Existing receipts must normalize in both directions too.
         var old = try! JSONSerialization.jsonObject(with: expected) as! [String: Any]
+        // Historical receipts predate both the marker and top-level Scene comparison.
+        old.removeValue(forKey: "sceneComparisonVersion")
+        old.removeValue(forKey: "scenes")
         old["groups"] = [["address": "C003", "profile": web]]
         let oldData = try! JSONSerialization.data(withJSONObject: old)
         precondition(P.configurationsMatch(oldData, expected) && P.configurationsMatch(expected, oldData))

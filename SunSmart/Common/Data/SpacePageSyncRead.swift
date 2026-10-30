@@ -40,8 +40,13 @@ final class SpacePageSyncRead {
     private var cursor = 0
 
     init(scene: Scene, context: NodeSyncReadContext) {
-        checks = scene.info.groups.flatMap { group in
-            context.members(of: group).map { .scene($0, scene) }
+        if scene.info.configuration?.kind == .devices {
+            if let snapshot = try? SceneTargetResolver.resolve(scene: scene) {
+                checks = (snapshot.targets + snapshot.cleanupTargets).map { .scene($0.node, scene) }
+            }
+        } else {
+            // Group exits still require Scene cleanup even though they are no longer write targets.
+            checks = scene.info.groups.flatMap { context.members(of: $0).map { .scene($0, scene) } }
         }
     }
 
@@ -51,8 +56,12 @@ final class SpacePageSyncRead {
         case .devices:
             let addresses = Set(schedule.nodeAddresses)
             targets = context.nodes.filter { addresses.contains($0.primaryUnicastAddress) }.map { ($0, nil) }
-        case .groups, .scene:
-            let groups = schedule.selectTargetType == .groups ? schedule.groups : schedule.scene?.info.groups ?? []
+        case .scene:
+            if let scene = schedule.scene, let snapshot = try? SceneTargetResolver.resolve(scene: scene) {
+                targets = snapshot.targets.map { ($0.node, context.group(for: $0.node)) }
+            }
+        case .groups:
+            let groups = schedule.groups
             for group in groups {
                 targets += context.members(of: group)
                     .filter { schedule.targets(node: $0, contextGroup: group) }.map { ($0, group) }
@@ -89,7 +98,7 @@ final class SpacePageSyncRead {
 extension NodeSyncStatusRefresh {
     static func request(scene: Scene, owner: AnyObject, completion: @escaping (Bool) -> Void) {
         requestSceneGroups(scene: scene, owner: owner) { snapshot in
-            completion(snapshot?.needsSync.isEmpty != true)
+            completion(snapshot?.needsAnySync != false)
         }
     }
 
@@ -236,8 +245,11 @@ struct ScheduleTargetSyncSnapshot {
         }
         self.groups = groups
         var scenes = Set(schedule.needDeleteScenes.map(ObjectIdentifier.init))
-        if let scene = schedule.scene, scene.info.groups.contains(where: { groups.contains(ObjectIdentifier($0)) }) {
-            scenes.insert(ObjectIdentifier(scene))
+        if let scene = schedule.scene {
+            let targetIDs = Set((try? SceneTargetResolver.resolve(scene: scene).targets.map { ObjectIdentifier($0.node) }) ?? [])
+            if !targetIDs.isDisjoint(with: nodes) || scene.info.groups.contains(where: { groups.contains(ObjectIdentifier($0)) }) {
+                scenes.insert(ObjectIdentifier(scene))
+            }
         }
         self.scenes = scenes
     }
@@ -300,6 +312,10 @@ private extension NodeSyncReadContext {
 struct SceneGroupSyncSnapshot {
     let groups: [Group]
     let needsSync: Set<ObjectIdentifier>
+    var pendingDevices: Set<TimedSchedulerNodeIdentity> = []
+    var pendingCleanup: Set<TimedSchedulerNodeIdentity> = []
+    var configurationPending = false
+    var needsAnySync: Bool { configurationPending || !needsSync.isEmpty || !pendingDevices.isEmpty || !pendingCleanup.isEmpty }
     private let revision = SpacePageRevision()
     var isCurrent: Bool { revision.isCurrent }
 }
@@ -357,6 +373,11 @@ private extension NodeSyncReadContext {
 final class SceneGroupSyncRead {
     private let scene: Scene
     private let groups: [(group: Group, nodes: [Node])]
+    private var directTargets: [SceneTargetSnapshot.Target] = []
+    private var directIndex = 0
+    private var pendingDevices = Set<TimedSchedulerNodeIdentity>()
+    private var pendingCleanup = Set<TimedSchedulerNodeIdentity>()
+    private var configurationPending = false
     private var groupIndex = 0
     private var nodeIndex = 0
     private var needsSync = Set<ObjectIdentifier>()
@@ -365,10 +386,16 @@ final class SceneGroupSyncRead {
     init(scene: Scene, context: NodeSyncReadContext) {
         self.scene = scene
         groups = scene.info.groups.map { ($0, context.members(of: $0)) }
+        let snapshot = try? SceneTargetResolver.resolve(scene: scene)
+        configurationPending = scene.info.configurationLoadFailed || scene.info.projectionPending
+            || scene.info.configuration?.isDeleting == true || snapshot == nil || snapshot?.unresolved.isEmpty == false
+        pendingDevices = Set(scene.info.configuration?.pendingOperations.filter { $0.action == .write }.map(\.identity) ?? [])
+        pendingCleanup = Set(scene.info.configuration?.pendingOperations.filter { $0.action == .remove }.map(\.identity) ?? [])
+        if snapshot?.comparison.kind == .devices { directTargets = (snapshot?.targets ?? []) + (snapshot?.cleanupTargets ?? []) }
     }
 
     func advance(until deadline: TimeInterval) -> Bool? {
-        if let result { return !result.needsSync.isEmpty }
+        if let result { return result.needsAnySync }
         guard let context = NodeSyncReadContext.current, context.isProtectionAvailable else { return true }
         while groupIndex < groups.count {
             let entry = groups[groupIndex]
@@ -385,7 +412,16 @@ final class SceneGroupSyncRead {
             if nodeIndex == entry.nodes.count { groupIndex += 1; nodeIndex = 0 }
             if ProcessInfo.processInfo.systemUptime >= deadline { return nil }
         }
-        result = SceneGroupSyncSnapshot(groups: groups.map(\.group), needsSync: needsSync)
-        return !needsSync.isEmpty
+        while directIndex < directTargets.count {
+            let target = directTargets[directIndex]
+            guard context.configurationAvailable(for: target.node, group: context.group(for: target.node)) == true else { return true }
+            AppPerformance.event("SyncPageNodeCheck")
+            if !target.node.getSyncData(type: .scenes(scene: scene)).isEmpty { pendingDevices.insert(target.identity) }
+            directIndex += 1
+            if ProcessInfo.processInfo.systemUptime >= deadline { return nil }
+        }
+        result = SceneGroupSyncSnapshot(groups: groups.map(\.group), needsSync: needsSync,
+            pendingDevices: pendingDevices, pendingCleanup: pendingCleanup, configurationPending: configurationPending)
+        return result?.needsAnySync
     }
 }

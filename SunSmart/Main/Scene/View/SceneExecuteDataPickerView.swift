@@ -12,6 +12,15 @@ class SceneExecuteDataPickerView: UIView {
     
     typealias DataPickerCallback = ((Bool, Int, Int)->Void)
     typealias DeleteCallback = (()->Void)
+    enum LiveEvent {
+        case lightness(Int, ended: Bool)
+        case temperature(Int, ended: Bool)
+        case off
+        case cancel
+    }
+    private var liveControl: ((LiveEvent) -> Void)?
+    private var lightnessNeedsFinal = false
+    private var cctNeedsFinal = false
     
     private var shadeView: UIView!
     private var contentView: UIView!
@@ -40,7 +49,8 @@ class SceneExecuteDataPickerView: UIView {
         lightnessLimitRange?.upperBound ?? 100
     }
     
-    static func show(lightness: Int = 100, isOn: Bool? = nil, cct: Int = 4500, lightnessLimitRange: ClosedRange<Int>? = nil, cctRange: ClosedRange<UInt16> = NodeAbsoluteCctRange.defaultRange, showCct: Bool = true, showDelete: Bool = true, picker: DataPickerCallback?, delete: DeleteCallback? = nil) {
+    @discardableResult
+    static func show(lightness: Int = 100, isOn: Bool? = nil, cct: Int = 4500, lightnessLimitRange: ClosedRange<Int>? = nil, cctRange: ClosedRange<UInt16> = NodeAbsoluteCctRange.defaultRange, showCct: Bool = true, showDelete: Bool = true, liveControl: ((LiveEvent) -> Void)? = nil, picker: DataPickerCallback?, delete: DeleteCallback? = nil) -> SceneExecuteDataPickerView {
         
         let pickerView = SceneExecuteDataPickerView(frame: UIScreen.main.bounds)
         pickerView.showDelete = showDelete
@@ -51,13 +61,33 @@ class SceneExecuteDataPickerView: UIView {
         pickerView.lightnessLimitRange = lightnessLimitRange
         pickerView.pickerCallback = picker
         pickerView.deleteCallback = delete
+        pickerView.liveControl = liveControl
         pickerView.cct = cct
         pickerView.setupUI()
+        pickerView.installGestureTakeover()
         pickerView.tag = 100
         UIApplication.shared.keyWindow().addSubview(pickerView)
         pickerView.showAnimation()
+        return pickerView
     }
     
+    private func installGestureTakeover() {
+        for view in [lightnessSliderView, cctSliderView].compactMap({ $0 }) {
+            view.addBtn.addTarget(self, action: #selector(cancelSliderGesture), for: .touchDown)
+            view.minusBtn.addTarget(self, action: #selector(cancelSliderGesture), for: .touchDown)
+            if liveControl != nil {
+                view.slider.addTarget(self, action: #selector(cancelLiveInteraction), for: .touchCancel)
+            }
+        }
+    }
+    @objc private func cancelSliderGesture() {
+        lightnessSliderView?.slider.cancelPendingInteraction()
+        cctSliderView?.slider.cancelPendingInteraction()
+        // A button taking ownership must also discard the other slider's final
+        // value, otherwise dismissing the sheet would send that old value later.
+        lightnessNeedsFinal = false; cctNeedsFinal = false
+    }
+
     private func showAnimation() {
         
         shadeView.alpha = 0
@@ -74,7 +104,43 @@ class SceneExecuteDataPickerView: UIView {
 
     }
     
+    func cancel() {
+        cancelLiveInteraction()
+        pickerCallback = nil; deleteCallback = nil
+        dismiss()
+    }
+
+    /// Disconnect, background and ownership changes discard the old gesture
+    /// without closing the draft editor or replaying it after reconnection.
+    @objc func cancelLiveInteraction() {
+        cancelSliderGesture()
+        lightnessNeedsFinal = false; cctNeedsFinal = false
+        liveControl?(.cancel)
+    }
+
+    private func finishLiveInteraction() {
+        let finishLightness = lightnessNeedsFinal, finishCct = cctNeedsFinal
+        cancelSliderGesture()
+        if finishLightness { emitLightness(lightnessSliderView.value, ended: true) }
+        if finishCct { emitTemperature(selectedCct, ended: true) }
+    }
+
+    private func emitLightness(_ value: Int, ended: Bool) {
+        if ended { lightnessNeedsFinal = false }
+        liveControl?(.lightness(value, ended: ended))
+    }
+
+    private func emitTemperature(_ value: Int, ended: Bool) {
+        if ended { cctNeedsFinal = false }
+        liveControl?(.temperature(value, ended: ended))
+    }
+
     private func dismiss() {
+        lightnessSliderView?.slider.cancelPendingInteraction()
+        cctSliderView?.slider.cancelPendingInteraction()
+        pickerCallback = nil; deleteCallback = nil
+        liveControl = nil
+        isUserInteractionEnabled = false
         
         UIView.animate(withDuration: 0.3) {
             self.shadeView.alpha = 0
@@ -106,6 +172,7 @@ class SceneExecuteDataPickerView: UIView {
     }
     
     private func setLightnessValue(_ value: Int) {
+        lightnessSliderView.slider.cancelPendingInteraction()
         lightnessSliderView.value = value
         lightnessLabel.text = "\(lightnessSliderView.value)%"
         isOn = lightnessSliderView.value > 0
@@ -113,6 +180,21 @@ class SceneExecuteDataPickerView: UIView {
     }
     
     @objc private func offBtnAction() {
+        if liveControl != nil {
+            cancelSliderGesture()
+            lightnessNeedsFinal = false; cctNeedsFinal = false
+            if isOn {
+                setLightnessValue(0)
+                liveControl?(.off)
+            } else {
+                setLightnessValue(maximumLightness)
+                // Restore brightness as a new control, superseding OFF and
+                // either slider's pending samples or late retries.
+                liveControl?(.cancel)
+                emitLightness(lightnessSliderView.value, ended: true)
+            }
+            return
+        }
         if isOn {
             setLightnessValue(0)
         } else {
@@ -121,11 +203,13 @@ class SceneExecuteDataPickerView: UIView {
     }
     
     @objc private func deleteBtnAction() {
+        cancelLiveInteraction()
         deleteCallback?()
         dismiss()
     }
     
     @objc private func confirmBtnAction() {
+        finishLiveInteraction()
         
         let lightness = lightnessSliderView.value
         let cct = selectedCct
@@ -135,6 +219,7 @@ class SceneExecuteDataPickerView: UIView {
     }
     
     @objc private func shadeViewAction() {
+        finishLiveInteraction()
         
 //        if !showConfirm { // 没有确认按键，关闭则确认修改
             let lightness = lightnessSliderView.value
@@ -255,9 +340,16 @@ class SceneExecuteDataPickerView: UIView {
         lightnessSliderView.lineView.isHidden = true
         lightnessSliderView.titleLabel.isHidden = true
         lightnessSliderView.valueChangedCallback = {[weak self] value in
+            self?.lightnessNeedsFinal = true
             self?.lightnessLabel.text = "\(value)%"
             self?.isOn = value > 0
             self?.updateOffButtonState()
+        }
+        if liveControl != nil {
+            lightnessSliderView.slider.interval = 0.2
+            lightnessSliderView.throttleValueChangedCallback = { [weak self] value, ended in
+                self?.emitLightness(value, ended: ended)
+            }
         }
         contentView.addSubview(lightnessSliderView)
         lightnessSliderView.snp.makeConstraints { make in
@@ -301,7 +393,14 @@ class SceneExecuteDataPickerView: UIView {
         cctSliderView.minusBtn.setImage(UIImage(named: "scene_data_value_minus"), for: .normal)
         cctSliderView.addBtn.setImage(UIImage(named: "scene_data_value_add"), for: .normal)
         cctSliderView.valueChangedCallback = {[weak self] value in
+            self?.cctNeedsFinal = true
             self?.cctLabel.text = "\(value)K"
+        }
+        if liveControl != nil {
+            cctSliderView.slider.interval = 0.2
+            cctSliderView.throttleValueChangedCallback = { [weak self] value, ended in
+                self?.emitTemperature(value, ended: ended)
+            }
         }
         contentView.addSubview(cctSliderView)
         cctSliderView.snp.makeConstraints { make in

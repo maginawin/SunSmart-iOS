@@ -2572,3 +2572,69 @@
 "scene_capacity_unknown" = "Scene capacity is unknown for:\n%@\nConnect these devices and retry to read their scene data.";
 "scene_delete_referenced" = "This scene is still referenced by:\n%@\nRemove or change these references and sync the devices before deleting the scene.";
 "scene_address_unavailable" = "No ordinary scene IDs are available. Connect to the server to request more scene IDs, then try again.";
+
+"scene_search_devices_groups" = "Search devices & groups";
+"scene_search_groups" = "Search groups";
+"scene_expand_collapse_all" = "Expand or collapse all";
+"scene_select_filtered_hint" = "Select all applies to eligible devices in the current search results.";
+"scene_selected_count" = "%d selected";
+"scene_no_search_results" = "No matching results";
+"scene_no_devices_hint" = "No device selected. At least one device is required for a new device scene. Only online devices can be added.";
+"scene_select_devices" = "Select devices";
+"scene_empty_devices_message" = "Device-based scenes cannot be created in advance. At least one device is required, and only online devices can be added.";
+"scene_mode_locked" = "This scene has saved members or pending cleanup. Its type cannot be changed.";
+"scene_switch_mode_message" = "Switch scene type and discard the current selection and settings?";
+"scene_relay_hint" = "Relay devices support on/off control only.";
+"scene_select_members" = "Select at least one group or device. Empty groups can be configured in advance.";
+"scene_send_title" = "Send scene settings";
+"scene_send_message" = "Apply these settings to the selected devices, then check the lights before saving.";
+"scene_send" = "SEND";
+"scene_sending" = "Sending settings…";
+"scene_send_result" = "%d applied; %d pending sync";
+"scene_confirm_title" = "Check lights before saving";
+"scene_pending_sync" = "Pending sync";
+"scene_adjust_again" = "ADJUST AGAIN";
+"scene_confirm_save" = "CONFIRM & SAVE";
+"scene_saved_pending_sync" = "Saved. Some devices are pending sync.";
+"scene_projection_pending" = "Saved locally. The scene record needs recovery. Tap DONE to retry; do not create it again.";
+"scene_draft_stale" = "The scene or its targets changed. Your draft is retained. Reload the scene or send again before saving.";
+"scene_discard_title" = "Discard settings?";
+"scene_discard_message" = "Discard this draft? Lights changed by preview will not be restored.";
+"scene_keep_editing" = "KEEP EDITING";
+"scene_discard" = "DISCARD";
+"ON" = "ON";
+"OFF" = "OFF";
+"apply" = "APPLY";
+"scene_offline_pending" = "Offline · pending sync";
+"scene_failed_pending" = "Failed · pending sync";
+"scene_preview_recommended" = "Preview recommended. Apply this draft to check each device before saving.";
+"scene_remove_members" = "Remove scene members?";
+"scene_remove_members_message" = "%d selected devices will be removed from this scene. The group and devices will not be deleted.";
+
+/* Device Scene list and details */
+"scene_device_summary" = "Device scene · %d devices";
+"scene_device_summary_one" = "Device scene · %d device";
+"scene_member_count_one" = "%d device";
+"scene_member_count_many" = "%d devices";
+"scene_details_unavailable" = "Scene details are unavailable. Please reopen the scene or try syncing again.";
+"scene_cleanup_count" = "%d devices pending cleanup";
+"scene_saved_parameters" = "Saved parameters";
+"scene_unavailable" = "This scene is unavailable. Finish recovery or cleanup first.";
+"scene_no_members" = "No members";
+
+"scene_restore_confirm_message" = "A previous restore of %@ was interrupted. Is this the same physical device you chose to restore? Continue to restore its saved scene settings and retry any pending cleanup. Cancel keeps the existing settings.";
+"scene_restore_pending" = "Scene recovery is pending. Reopen Restore or Sync Devices to review the interrupted restore, then retry.";
+
+/* Device scene selection and preview */
+"scene_selected_devices_title" = "Selected devices (%d)";
+"scene_category_selected_count" = "%d/%d selected";
+"scene_preview_recommended_title" = "Preview recommended";
+"scene_preview_recommended_message" = "Apply this draft first to check that every device reaches the expected state. You need to use DONE to send all settings before saving.";
+"scene_preview_applying" = "Applying preview";
+"scene_preview_preparing" = "Preparing the selected devices for preview…";
+"scene_preview_sending" = "Sending the current draft to all selected devices…";
+"scene_preview_applied" = "Preview applied. Check all physical devices.";
+"scene_preview_incomplete" = "Preview incomplete";
+"scene_preview_result" = "%d applied · %d failed · %d offline. Check the devices and retry preview.";
+"scene_preview_interrupted" = "Preview was not completed. Check the connection and devices, then try again.";
+"scene_preview_details" = "View details";

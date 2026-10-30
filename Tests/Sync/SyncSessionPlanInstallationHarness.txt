@@ -1,4 +1,5 @@
     let executionSession: SyncExecutionSession
+    var type: SyncExecutionSession.SyncType { executionSession.type }
     var hasLeftSyncPage = false
     var sections: [SyncDevicesSectionModel] {
         get { executionSession.sections }

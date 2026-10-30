@@ -11,6 +11,7 @@ extension UInt16 {
     var isUnicast: Bool { (1..<0x8000).contains(self) }
     var isGroup: Bool { (0xC000..<0xFF00).contains(self) }
     var isValidSceneNumber: Bool { self > 0 }
+    var isSpecialScene: Bool { self >= 0xFF00 }
 }
 extension String { var localizedString: String { self } }
 let jsonEncoder = JSONEncoder(), jsonDecoder = JSONDecoder()
@@ -20,13 +21,14 @@ enum SceneCapacity {
     struct Failure: Error {}
     static func showFailure(_ error: Error) {}
     static func validateTopology(group: Group? = nil, members: [Node] = [], addingMembers: [Node] = [],
-                                 scene: Scene? = nil, sceneGroups: [Group] = []) throws {}
+                                 scene: Scene? = nil, sceneGroups: [Group] = [], sceneSnapshot: SceneTargetSnapshot? = nil) throws {}
     static func canAddDevice(to group: Group, node: Node) -> Bool { true }
 }
 enum WeekDay: UInt8 { case Monday = 1, Tuesday = 2, Wednesday = 4, Thursday = 8, Friday = 16, Saturday = 32, Sunday = 64 }
 final class SunSmartDataManager {
     static let shared = SunSmartDataManager()
     var db: Connection?
+    // ACTUAL_CONFIGURATION_TRANSACTION
 }
 final class MeshNetworkManager {
     static let instance = MeshNetworkManager()
@@ -35,7 +37,9 @@ final class MeshNetworkManager {
     var meshNetwork: Network? = Network()
     let currentNetworkKey = Key()
     var schedules: [Schedule] = []
+    var scenes: [Scene] = []
     var realNodes: [Node] = []
+    var groups: [Group] = []
 }
 // Object/network ownership is the isolated boundary; every table operation below
 // is the production Database.swift extension, including migrations and failures.
@@ -60,6 +64,7 @@ final class Schedule: Codable {
     // ACTUAL_NEEDS_DELETE
     // ACTUAL_CODEC
     // ACTUAL_WEEKDAYS
+    // ACTUAL_EXIST_NODES
 
     init(id: Int, name: String, enabled: Bool, nodeAddresses: [Address] = [], groupAddresses: [Address] = [],
          sceneNumber: SceneNumber? = nil, profiles: [ScheduleProfile] = [], selectTargetType: TargetType = .devices,
@@ -87,6 +92,13 @@ final class Node: NSObject {
     var allSchedulerModelEntrys: [Model: [Int: Entry]] = [:]
     var schedulerActions: [Int: Entry] = [:]
     var sceneSetupModel: Model? = Model()
+    var onoffModel: Model? = Model()
+    var lightnessModel: Model? = Model()
+    var state = true
+    var lightnessRange: ClosedRange<UInt16> = 0...65535
+    var effectiveCctRange: ClosedRange<UInt16> = 2700...6500
+    var effectiveSupportCct = true
+    func clampEffectiveCct(_ value: UInt16) -> UInt16 { min(effectiveCctRange.upperBound, max(effectiveCctRange.lowerBound, value)) }
     // ACTUAL_SCENE_REMOVAL
     var sceneExecuteDatas: [SceneExecuteData] = []
     var iconName = "fixture"
@@ -100,7 +112,9 @@ final class Node: NSObject {
         super.init()
         schedulerSetupModels.forEach { allSchedulerModelEntrys[$0] = [:] }
     }
-    func updateData(message: Int, isSuccess: Bool, model: Model?) { if isSuccess { appliedMessages += 1 } }
+    func clearSyncStateCache() {}
+    func completeGroupSceneRemoval(sceneId: UInt16) -> Bool { true } // Scene lifecycle is exercised by the Scene suite.
+    func updateData(message: Any, isSuccess: Bool, model: Model?) { if isSuccess { appliedMessages += 1 } }
 }
 extension Data { var hex: String { map { String(format: "%02X", $0) }.joined() } }
 enum SchedulerModelSnapshot {
@@ -112,7 +126,7 @@ final class Group: NSObject {
     struct GroupAddress: Equatable { var address: Address = 0xC001 }
     var address = GroupAddress(), name: String? = nil
     var nodes: [Node] = []
-    final class Info { var sceneExecuteDatas: [SceneExecuteData] = [] }
+    final class Info { var sceneExecuteDatas: [SceneExecuteData] = []; var bindSchedules: [Schedule] = [] }
     let info = Info()
     // ACTUAL_GROUP_EXIT
     // ACTUAL_SCENE_READER
@@ -124,11 +138,21 @@ enum NodeSyncData {
     case deleteScenes(scenes: [Scene])
     func getMessageHandles(node: Node) -> [MeshMessageHandle] { [MeshMessageHandle()] }
 }
-final class SceneExecuteData {
-    enum State { case normal, waitDelete }
-    let sceneNumber: UInt16 = 6
+final class SceneExecuteData: Codable {
+    enum State: String, Codable { case normal, waitDelete }
+    let sceneNumber: UInt16
     var state = State.normal
     var value = 1
+    var isOn = true
+    var lightness: UInt16 = 65535
+    var cct: UInt16 = 4500
+    init(sceneNumber: UInt16 = 6, isOn: Bool = true, lightness: UInt16 = 65535, cct: UInt16 = 4500) {
+        self.sceneNumber = sceneNumber; self.isOn = isOn; self.lightness = lightness; self.cct = cct
+    }
+    func deviceTarget(for node: Node) -> SceneExecuteData {
+        .init(sceneNumber: sceneNumber, isOn: isOn, lightness: isOn ? lightness : 0,
+              cct: node.effectiveSupportCct ? node.clampEffectiveCct(cct) : cct)
+    }
     func isSynced(with other: SceneExecuteData, for node: Node) -> Bool { value == other.value }
 }
 enum NodeSyncReadContext {
@@ -138,10 +162,17 @@ enum NodeSyncReadContext {
 final class Scene: NSObject {
     let number: UInt16 = 6
     let name = "Scene"
-    final class Info { var groups: [Group] = []; var bindSchedules: [Schedule] = [] }
+    var network = MeshNetworkManager.instance.meshNetwork
+    var subNetworkId = MeshNetworkManager.instance.currentNetworkKey.networkId.hex
+    final class Info {
+        var groups: [Group] = []; var bindSchedules: [Schedule] = []
+        var configuration: SceneConfiguration?
+        var configurationLoadFailed = false
+        var imageId = 0
+    }
     let info = Info()
 }
-final class MeshMessageHandle: NSObject { var message = 0; var model: Model?; var continuous = true }
+final class MeshMessageHandle: NSObject { var sceneContext: SceneMessageContext?; var message: Any = 0; var model: Model?; var continuous = true }
 final class MeshProxyMessageCommand { static let shared = MeshProxyMessageCommand(); var isBusy = false }
 enum XWHUDManager { static func showTipHUD(_ message: String, isLineFeed: Bool) {} }
 final class SpaceData {
@@ -643,4 +674,17 @@ enum ScheduleServer {
         print("PASS: actual composition gates the per-device Scheduler capacity check")
     }
 
+}
+
+// Scene ownership is exercised by the Scene suite; this fixture keeps its Scheduler assertions.
+struct SceneStore {}
+struct SceneDelete {}
+struct SceneMessageContext {
+    enum Action { case write, remove }
+    var action: Action = .write
+    var number: UInt16 = 0
+    var removesGroupRelationship = false
+    var revision: UUID? = nil
+    func matches(node: Node) -> Bool { false }
+    func apply(node: Node, successful: Bool, beforePersist: (() -> Bool)? = nil) -> Bool { false }
 }

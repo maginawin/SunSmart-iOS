@@ -93,7 +93,7 @@ final class Node: Decodable {
     static var decodeCount = 0
     enum GroupState: Int { case none = 0, inGroup = 1, exitFailure = 2 }
     let primaryUnicastAddress: Address
-    let uuid: String
+    var uuid: String
     var elements: [Element] = []
     var groupState = GroupState.inGroup
     var subNetworkId: String?
@@ -149,6 +149,8 @@ final class MeshNetwork {
     func remove(node: Node) { nodes.removeAll { $0 === node }; node.network = nil }
 }
 final class Scene {
+    var number: UInt16 = 7
+    var info = SceneInfo(sceneId: 7)
     var addresses: [Address]
     init(_ addresses: [Address]) { self.addresses = addresses }
     func remove(address: Address) { addresses.removeAll { $0 == address } }
@@ -570,4 +572,23 @@ enum NodeSyncData: Equatable {
 
 enum SiteTriggerZoneTopologyReader {
     static func mergedLocalTarget(for node: Node, local: ProximityLightingTopologyPolicy.Target) -> ProximityLightingTopologyPolicy.Target? { local }
+}
+
+
+// Scene rows are a storage boundary here; the mutation method below is extracted
+// from production. Its SQLite failure/rollback behavior runs in roundtrip-storage.
+final class SceneInfo {
+    let sceneId: UInt16
+    var configuration: SceneConfiguration?
+    var configurationLoadFailed = false
+    static var rows: [String: [SceneInfo]] = [:]
+    init(sceneId: UInt16) { self.sceneId = sceneId }
+    static func loadAll(meshUUID: String, subnetworkId: String) throws -> [SceneInfo] { rows[meshUUID + subnetworkId] ?? [] }
+    static func load(meshUUID: String, sceneId: UInt16) -> SceneInfo? { nil }
+    static func unavailable(sceneId: UInt16) -> SceneInfo { let info = SceneInfo(sceneId: sceneId); info.configurationLoadFailed = true; return info }
+    func saveConfiguration(meshUUID: String, subnetworkId: String) throws {}
+}
+enum SceneConfigurationStore {
+    enum Failure: Error { case persistence }
+    // ACTUAL_SCENE_CLOUD_CLEANUP
 }

@@ -37,13 +37,30 @@ enum SpaceCloudNodeRemovalPolicy {
             if let alias = SpaceConfigurationIntegrityPolicy.integer(payload["appKeyIndex"]),
                let index = SpaceConfigurationIntegrityPolicy.integer((payload["appKey"] as? [String: Any])?["index"]),
                alias != index { return nil }
-            guard let properties = fingerprint(payload.filter { fields.contains($0.key) }) else { return nil }
+            var propertiesPayload = payload.filter { fields.contains($0.key) }
+            do {
+                let records = try SceneConfigurationPayload.records(payload: payload)
+                propertiesPayload["scenes"] = try SceneConfigurationPayload.metadata(records: records)
+                if var extensionData = propertiesPayload["spaceData"] as? [String: Any],
+                   let raw = extensionData["sceneConfigurations"] {
+                    extensionData["sceneConfigurations"] = try JSONSerialization.jsonObject(with: SceneConfigurationPayload.canonical(raw))
+                    propertiesPayload["spaceData"] = extensionData
+                }
+                if let groups = propertiesPayload["groups"] as? [[String: Any]] {
+                    propertiesPayload["groups"] = try groups.map { original -> [String: Any] in
+                        var group = original
+                        group["scenesDatas"] = try SceneConfigurationPayload.groupParameters(group["scenesDatas"])
+                        return group
+                    }.sorted { ($0["address"] as? String ?? "") < ($1["address"] as? String ?? "") }
+                }
+            } catch { return nil }
+            guard let properties = fingerprint(propertiesPayload) else { return nil }
             var hashes: [String: String] = [:]
             for (node, identity) in zip(nodes, identities) {
                 guard let hash = fingerprint(comparisonNode(node)) else { return nil }
                 hashes[identity.uuid] = hash
             }
-            return .init(spaceID: id, timestamp: timestamp, properties: properties, comparisonVersion: 2, nodes: hashes, identities: identities)
+            return .init(spaceID: id, timestamp: timestamp, properties: properties, comparisonVersion: 3, nodes: hashes, identities: identities)
         }
 
         /// Membership is authoritative independently of GET-only telemetry and
@@ -73,7 +90,7 @@ enum SpaceCloudNodeRemovalPolicy {
 
         func removals(in remote: Snapshot) -> [Instance]? {
             guard spaceID == remote.spaceID, timestamp <= remote.timestamp,
-                  comparisonVersion == 2, remote.comparisonVersion == 2,
+                  comparisonVersion == 3, remote.comparisonVersion == 3,
                   properties == remote.properties,
                   remote.nodes.allSatisfy({ nodes[$0.key] == $0.value }) else { return nil }
             return SpaceCloudNodeRemovalPolicy.removed(from: identities, remote: remote.identities)
@@ -170,6 +187,23 @@ enum SpaceCloudNodeRemovalPolicy {
                 object["hdb"] = try HDBLightingZonePolicy.canonical(hdb)
             }
         } catch { return nil }
+        if let raw = object["sceneConfigurations"] {
+            do {
+                var configs = try SceneConfigurationPayload.decode(raw)
+                func matches(_ identity: TimedSchedulerNodeIdentity) -> Bool {
+                    instances.contains { $0.uuid.uppercased() == identity.nodeUUID.uppercased()
+                        && $0.address == UInt16(identity.unicastAddress, radix: 16)
+                        && $0.keyFingerprint.uppercased() == identity.deviceKeyFingerprint.uppercased() }
+                }
+                for id in Array(configs.keys) {
+                    configs[id]!.deviceMembers.removeAll { matches($0.identity) }
+                    configs[id]!.pendingOperations.removeAll { matches($0.identity) }
+                }
+                object["sceneConfigurations"] = try SceneConfigurationPayload.encode(records: configs.map {
+                    .init(number: $0.key, name: $0.value.name, imageId: 0, configuration: $0.value)
+                })
+            } catch { return nil }
+        }
         if let members = object["memberships"] as? [[String: Any]] {
             object["memberships"] = members.filter { member in !instances.contains { $0.matches(member) } }
         }
@@ -542,7 +576,8 @@ enum SpaceConfigurationIntegrityPolicy {
     /// and may legitimately differ after a different phone talks to the Mesh.
     static func configurationData(_ payload: [String: Any]) -> Data? {
         guard profilesIssue(in: payload) == nil,
-              let groups = payload["groups"] as? [[String: Any]] else { return nil }
+              let groups = payload["groups"] as? [[String: Any]],
+              let sceneRecords = try? SceneConfigurationPayload.records(payload: payload.merging(["scenes": payload["scenes"] ?? []]) { _, value in value }) else { return nil }
         let profileKeys: Set<String> = ["id", "type", "highEndTrim", "lowEndTrim", "occupancyLevel",
             "vacantLevel", "standbyLevel", "taskLevel", "autoMinLevel", "timeT1", "timeT2", "timeT3",
             "timeT4", "timeT5", "manualOverrideTimeout", "powerUpState", "powerOnCct", "adjustSpeed",
@@ -561,10 +596,17 @@ enum SpaceConfigurationIntegrityPolicy {
                 "profile": profile
             ]
             if let path = group["proximityLightingPath"] { result["proximityLightingPath"] = path }
+            result["scenesDatas"] = try? SceneConfigurationPayload.groupParameters(group["scenesDatas"])
             return result
         }.sorted { String(describing: $0["address"]!) < String(describing: $1["address"]!) }
         let extensionData = payload["spaceData"] as? [String: Any] ?? payload
-        var result: [String: Any] = ["groups": configurationGroups]
+        var result: [String: Any] = ["groups": configurationGroups, "sceneComparisonVersion": 1]
+        result["scenes"] = try? SceneConfigurationPayload.metadata(records: sceneRecords)
+        if let raw = extensionData["sceneConfigurations"] {
+            guard let canonical = try? SceneConfigurationPayload.canonical(raw),
+                  let object = try? JSONSerialization.jsonObject(with: canonical) else { return nil }
+            result["sceneConfigurations"] = object
+        }
         if let nodes = payload["nodes"] as? [[String: Any]] {
             result["memberships"] = nodes.map { node -> [String: Any] in
                 var membership: [String: Any] = [:]
@@ -600,7 +642,31 @@ enum SpaceConfigurationIntegrityPolicy {
             return group
         }
         configuration["triggerZones"] = zones
+        // Only upgrade baselines normalize a declared empty extension to legacy absence.
+        if (configuration["sceneConfigurations"] as? [Any])?.isEmpty == true {
+            configuration.removeValue(forKey: "sceneConfigurations")
+        }
         return serializeConfiguration(configuration)
+    }
+
+    static func needsSceneComparisonUpgrade(_ data: Data?) -> Bool {
+        guard let data, let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else { return false }
+        return object["sceneComparisonVersion"] == nil && object["sceneConfigurations"] == nil
+    }
+
+    /// Upgrade only a historical comparison using its saved complete generation.
+    /// Never use this projection for a new POST receipt or a remote GET comparison.
+    static func upgradingSceneComparison(_ legacy: Data, snapshot: [String: Any]) -> Data? {
+        guard let old = (try? JSONSerialization.jsonObject(with: legacy)) as? [String: Any],
+              old["sceneComparisonVersion"] == nil, old["sceneConfigurations"] == nil,
+              let upgraded = configurationData(snapshot),
+              var comparable = (try? JSONSerialization.jsonObject(with: upgraded)) as? [String: Any] else { return nil }
+        comparable.removeValue(forKey: "sceneComparisonVersion")
+        comparable.removeValue(forKey: "sceneConfigurations")
+        comparable.removeValue(forKey: "scenes")
+        comparable["groups"] = (comparable["groups"] as? [[String: Any]])?.map { $0.filter { $0.key != "scenesDatas" } }
+        guard let previous = serializeConfiguration(comparable), configurationsMatch(previous, legacy) else { return nil }
+        return upgraded
     }
 
     static func hasOnlyEmptySpaceZones(_ payload: [String: Any]) -> Bool {
@@ -638,6 +704,20 @@ enum SpaceConfigurationIntegrityPolicy {
     // both new configurations and persisted baselines. Invalid values stay distinct.
     private static func serializeConfiguration(_ configuration: [String: Any]) -> Data? {
         var result = configuration
+        // Old comparison receipts omitted all Scene fields. They can compare
+        // directly only with a genuinely empty legacy Scene section. Nonempty
+        // scenes require the exact-generation saved snapshot upgrade above.
+        if result["sceneComparisonVersion"] == nil {
+            result["sceneComparisonVersion"] = 1
+            if result["scenes"] == nil { result["scenes"] = [[String: Any]]() }
+            if let groups = result["groups"] as? [[String: Any]] {
+                result["groups"] = groups.map { group -> [String: Any] in
+                    var group = group
+                    if group["scenesDatas"] == nil { group["scenesDatas"] = [[String: Any]]() }
+                    return group
+                }
+            }
+        }
         if let memberships = result["memberships"] as? [[String: Any]] {
             result["memberships"] = memberships.map { membership in
                 var normalized = membership

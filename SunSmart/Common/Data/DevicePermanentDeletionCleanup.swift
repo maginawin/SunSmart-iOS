@@ -28,7 +28,8 @@ final class DevicePermanentDeletionContext {
         entry = .init(id: UUID(), nodeUUID: node.uuid.uuidString,
                       primaryAddress: node.primaryUnicastAddress,
                       elementAddresses: ProximityLightingLifecycleCoordinator.topologyAddresses(for: node),
-                      macAddress: node.macAddress, productId: node.productIdentifier)
+                      macAddress: node.macAddress, productId: node.productIdentifier,
+                      deviceKeyFingerprint: node.timedSchedulerIdentity?.deviceKeyFingerprint)
         recoveryContext = space.flatMap { try? SpaceConfigurationSafety.recoveryState($0) }
         prepare()
     }
@@ -325,6 +326,9 @@ final class DevicePermanentDeletionContext {
             return nil
         }
         _ = try? HDBConfigurationStore.finishSensorGroupCleanup(space: space)
+        for scene in network.scenes {
+            scene.info = SceneInfo.load(meshUUID: space.meshUUID, sceneId: scene.number) ?? .unavailable(sceneId: scene.number)
+        }
         network.nodes.forEach { $0.clearSyncStateCache() }
         let manager = MeshNetworkManager.instance
         if manager.meshNetwork === network, manager.currentNetworkKey.networkId.hex == space.meshNetworkId {
@@ -368,6 +372,7 @@ final class DevicePermanentDeletionContext {
             primaryAddress: node.primaryUnicastAddress,
             elementAddresses: ProximityLightingLifecycleCoordinator.topologyAddresses(for: node),
             macAddress: node.macAddress, productId: node.productIdentifier)
+        intent.deviceKeyFingerprint = node.timedSchedulerIdentity?.deviceKeyFingerprint
         intent.replacement = replacement
         guard SpaceConfigurationSafety.updateDeletionJournal(space, { journal in
             journal.entries.removeAll { $0.id == intent.id }
@@ -465,6 +470,26 @@ final class DevicePermanentDeletionContext {
     private static func cleanExtensions(entries: [SpaceDeletionJournal.Entry], space: SpaceData, network: MeshNetwork) throws {
         let addresses = Set(entries.flatMap { $0.elementAddresses }).union(entries.map(\.primaryAddress))
         let primaryAddresses = Set(entries.map(\.primaryAddress))
+        let confirmedIdentities = entries.compactMap { entry -> TimedSchedulerNodeIdentity? in
+            guard let fingerprint = entry.deviceKeyFingerprint ?? entry.cloudRemoval?.instance.keyFingerprint else { return nil }
+            return .init(nodeUUID: entry.nodeUUID, unicastAddress: entry.primaryAddress.hex,
+                         deviceKeyFingerprint: fingerprint)
+        }
+        // Old journals without a key fingerprint cannot authorize an address-only
+        // cleanup. Keep the durable deletion journal pending if Scene intent may
+        // still belong to that instance.
+        for info in try SceneInfo.loadAll(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId) {
+            guard !info.configurationLoadFailed else { throw SpaceConfigurationSafety.SafetyError.persistenceFailed }
+            let identities = (info.configuration?.deviceMembers.map(\.identity) ?? [])
+                + (info.configuration?.pendingOperations.map(\.identity) ?? [])
+            guard !entries.contains(where: { entry in
+                entry.deviceKeyFingerprint == nil && entry.cloudRemoval == nil
+                    && identities.contains { $0.nodeUUID.uppercased() == entry.nodeUUID.uppercased()
+                        && $0.unicastAddress == entry.primaryAddress.hex }
+            }) else { throw SpaceConfigurationSafety.SafetyError.persistenceFailed }
+        }
+        try SceneConfigurationStore.removeConfirmedIdentities(confirmedIdentities,
+            scope: .init(meshUUID: space.meshUUID, networkID: space.meshNetworkId))
         if var config = space.hdb {
             guard SpaceConfigurationSafety.updateDeletionJournal(space, { journal in
                 for index in journal.entries.indices where entries.contains(where: { $0.id == journal.entries[index].id }) {

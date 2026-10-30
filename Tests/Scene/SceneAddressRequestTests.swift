@@ -9,6 +9,32 @@ struct JSON {
     subscript(_ key: String) -> JSON { JSON((value as? [String: Any])?[key] as Any) }
     var dictionaryObject: [String: Any]? { value as? [String: Any] }
 }
+enum DispatchQueue {
+    struct Queue { func async(_ action: () -> Void) { action() } }; static let main = Queue()
+}
+struct SceneScope { let meshUUID: String; let networkID: String }
+enum SceneConfigurationStore {
+    enum Failure: Error { case noNumber, persistence, staleDraft }
+    static func validateAccess(_ scope: SceneScope) throws {
+        guard scope.meshUUID == MeshNetworkManager.instance.meshNetwork?.uuid.uuidString,
+              scope.networkID == MeshNetworkManager.instance.currentNetworkKey.networkId else { throw Failure.staleDraft }
+    }
+}
+enum SpaceChangeDataType { case common }
+let spaceDataChangedNotificaitonName = "fixture-space"
+let sceneDataUpdateNotificationName = "fixture-scene"
+final class AllocatedScene {}
+final class AllocationCoordinator {
+    enum CommitResult { case ready(AllocatedScene), projectionPending(Int) }
+    var allocationAvailable = true
+    var expectedRevision: UUID?
+    var creations = 0
+    func saveForSync(draft: SceneAddressRequestHarness.Draft) throws -> CommitResult {
+        precondition(draft.revision == expectedRevision)
+        guard allocationAvailable else { throw SceneConfigurationStore.Failure.noNumber }
+        creations += 1; return .ready(AllocatedScene())
+    }
+}
 enum XWHUDManager {
     static var errors: [String] = []
     static func showErrorTipHUD(_ message: String) { errors.append(message) }
@@ -61,12 +87,31 @@ final class SceneAddressRequestHarness {
     final class View { var window: NSObject? = NSObject() }
     let space = Space()
     var viewIfLoaded: View? = View()
-    private var preparingScene = false
-    private var requestedSceneAddresses = false
-    var creationAttempts = 0
-    func addSceneHandle() { creationAttempts += 1 }
+    struct Draft { var revision = UUID(); let scope: SceneScope }
+    struct Selection { let draft: Draft }
+    var selection: Selection?
+    // PRODUCTION_LIFECYCLE
+    var active = true
+    private var requestedAddresses: UUID?
+    private var busy = false
+    var syncPagePresented = false
+    func openSyncPage(_ scene: AllocatedScene) { syncPagePresented = true }
+    let coordinator = AllocationCoordinator()
+    init() {
+        selection = .init(draft: .init(scope: .init(meshUUID: space.meshUUID, networkID: space.meshNetworkId)))
+        coordinator.expectedRevision = selection!.draft.revision
+    }
+    func accepts(_ token: UUID, revision: UUID) -> Bool { active && lifecycle == token && selection?.draft.revision == revision && viewIfLoaded?.window != nil }
+    func setBusy(_ value: Bool) { busy = value }
+    func failed(_ error: Error) { setBusy(false); XWHUDManager.errors.append(String(describing: error)) }
+    func tip(_ key: String) { XWHUDManager.errors.append(key) }
+    var allocationAvailable: Bool { get { coordinator.allocationAvailable } set { coordinator.allocationAvailable = newValue } }
+    var creationAttempts: Int { coordinator.creations }
+    // PRODUCTION_COMMIT
+    func abandonPendingWork() { active = false; lifecycle = UUID(); busy = false }
+    func continueEditing() { active = true }
     // Simulate the exhausted-pool branch on every user tap, without allocating.
-    func tapCreateWithExhaustedPool() { requestSceneAddresses() }
+    func tapCreateWithExhaustedPool() { if !busy { requestAddresses(revision: selection!.draft.revision) } }
     // PRODUCTION_REQUEST
 }
 
@@ -120,6 +165,35 @@ final class SceneAddressRequestHarness {
         transport.complete(.success(valid))
         expect(page.creationAttempts == 0 && SiteData.site.updates == 0,
                "A response for a previous Space cannot change the current allocation")
+        page = fixture()
+        let revision = page.selection!.draft.revision
+        page.tapCreateWithExhaustedPool()
+        page.active = false; page.lifecycle = UUID()
+        transport.complete(.success(valid))
+        expect(page.creationAttempts == 0 && SiteData.site.updates == 0 && page.selection?.draft.revision == revision,
+               "Background/abandoned page does not apply allocation or replace the draft")
+        page = fixture(); page.tapCreateWithExhaustedPool()
+        page.abandonPendingWork(); transport.complete(.success(valid)); page.continueEditing()
+        page.tapCreateWithExhaustedPool(); transport.complete(.success(valid))
+        expect(transport.count == 2 && page.creationAttempts == 1, "old response before foreground retry also releases the draft")
+        for path in ["background", "close then keep editing"] {
+            page = fixture(); page.tapCreateWithExhaustedPool()
+            let oldResponse = transport.pending
+            page.abandonPendingWork(); page.continueEditing()
+            page.tapCreateWithExhaustedPool()
+            expect(transport.count == 2, "\(path) releases abandoned allocation ownership")
+            oldResponse?(.success(valid))
+            page.tapCreateWithExhaustedPool()
+            expect(transport.count == 2 && SiteData.site.updates == 0, "old response cannot release or apply over new request")
+            transport.complete(.success(valid))
+            expect(page.creationAttempts == 1, "new allocation resumes the same draft after \(path)")
+        }
+        page = fixture(); page.allocationAvailable = false; page.tapCreateWithExhaustedPool()
+        transport.complete(.success(valid))
+        expect(transport.count == 1 && page.creationAttempts == 0, "valid exhausted allocation does not recursively request or create")
+        // A valid interval can contain only reserved numbers. The next user attempt must not be locked.
+        page.tapCreateWithExhaustedPool()
+        expect(transport.count == 2, "valid response followed by exhausted allocation permits a later retry")
         if failures > 0 { exit(1) }
     }
 }

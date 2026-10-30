@@ -51,7 +51,7 @@ extension SyncExecutionSession {
         for section in sections {
             let devices = section.allModels.filter({ $0.isKind(of: SyncDevicesModel.classForCoder()) }) as! [SyncDevicesModel]
             for device in devices {
-                if device.operationType != nil && device.steps.isEmpty && (device.state == .none || device.state == .wait) {
+                if (device.operationType != nil || parameterOnlyOperations[ObjectIdentifier(device)] != nil) && device.steps.isEmpty && (device.state == .none || device.state == .wait) {
                     return device
                 }
                 for step in device.steps {

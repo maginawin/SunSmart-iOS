@@ -28,7 +28,7 @@ if __name__ == '__main__':
         subprocess.run(['swiftc', '-O', '-D', 'DEBUG', '-D', 'SUNSMART_PERFORMANCE', '-parse-as-library',
             str(ROOT / 'SunSmart/Common/Data/AppPerformance.swift'),
             str(ROOT / 'SunSmart/Common/Data/DeviceScheduleAddressCleanup.swift'),
-            str(ROOT / 'SunSmart/Common/Data/HDBConfiguration.swift'), str(ROOT / 'SunSmart/Common/Data/HDBLightingZonePolicy.swift'), str(ROOT / 'SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),
+            str(ROOT / 'SunSmart/Common/Data/HDBConfiguration.swift'), str(ROOT / 'SunSmart/Common/Data/HDBLightingZonePolicy.swift'), str(ROOT / 'SunSmart/Main/Timed/Model/TimedSchedulerSlotPolicy.swift'), str(ROOT / 'SunSmart/Main/Scene/Model/SceneConfiguration.swift'), str(ROOT / 'SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift'),
             str(ROOT / 'SunSmart/Common/Data/SpaceProtectionReadSnapshot.swift'),
             str(source), '-o', str(binary)], check=True)
         subprocess.run([str(binary)], check=True)

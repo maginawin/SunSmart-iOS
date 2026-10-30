@@ -65,6 +65,7 @@ class SwitchSelectScenePageController: WMPageController {
     
     var sceneDatas: [SwitchSceneData]!
     let titleStyle: TitleStyle
+    var editable = true
     
     init(scenes: [Scene], sceneDatas: [SwitchSceneData] = [.init(type: .sceneA), .init(type: .sceneB)], titleStyle: TitleStyle = .lettered) {
         self.scenes = scenes
@@ -124,6 +125,7 @@ extension SwitchSelectScenePageController {
         let sceneData = sceneDatas[index]
         
         let vc = SwitchSelectSceneViewController(scenes: scenes, sceneData: sceneData)
+        vc.editable = editable
         vc.sceneSelectCallback = {[weak self] data in
             guard let self = self else { return }
             self.sceneDatas[index].scene = data?.scene

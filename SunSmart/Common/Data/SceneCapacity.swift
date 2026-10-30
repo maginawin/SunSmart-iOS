@@ -46,30 +46,44 @@ enum SceneCapacity {
 
     static func intendedScenes(on node: Node, group editedGroup: Group? = nil,
                                members: [Node] = [], addingMembers: [Node] = [],
-                               scene: Scene? = nil, sceneGroups: [Group] = []) -> Set<SceneNumber> {
+                               scene: Scene? = nil, sceneGroups: [Group] = [],
+                               sceneSnapshot: SceneTargetSnapshot? = nil) -> Set<SceneNumber> {
         let manager = MeshNetworkManager.instance
         var result = Set<SceneNumber>()
         for group in manager.groups {
             let nodes = group == editedGroup ? members : group.nodes
-            guard nodes.contains(node), node.groupState != .exitFailure ||
-                    (group == editedGroup && addingMembers.contains(node)) else { continue }
-            for data in group.info.sceneExecuteDatas where data.state == .normal {
-                if data.sceneNumber != scene?.number { result.insert(data.sceneNumber) }
+            guard nodes.contains(node) else { continue }
+            let active = node.groupState != .exitFailure || (group == editedGroup && addingMembers.contains(node))
+            for data in group.info.sceneExecuteDatas {
+                if data.state == .waitDelete || (active && data.state == .normal && data.sceneNumber != scene?.number) {
+                    result.insert(data.sceneNumber)
+                }
             }
-            if let scene, sceneGroups.contains(group) { result.insert(scene.number) }
+            if active, let scene, sceneGroups.contains(group) { result.insert(scene.number) }
+        }
+        // Fixed device membership and cleanup reservations do not follow Group.nodes.
+        for stored in manager.scenes where stored.info.configuration != nil {
+            if let snapshot = try? SceneTargetResolver.resolve(scene: stored),
+               snapshot.reservesScene(on: node) { result.insert(stored.number) }
+        }
+        if let sceneSnapshot, sceneSnapshot.reservesScene(on: node) {
+            // Zero is only a preflight placeholder before T04 allocates a legal ID.
+            result.insert(sceneSnapshot.number ?? 0)
         }
         return result
     }
 
     static func validateTopology(group: Group? = nil, members: [Node] = [], addingMembers: [Node] = [],
-                                 scene: Scene? = nil, sceneGroups: [Group] = []) throws {
+                                 scene: Scene? = nil, sceneGroups: [Group] = [],
+                                 sceneSnapshot: SceneTargetSnapshot? = nil) throws {
+        try validateConfigurations(sceneSnapshot: sceneSnapshot)
         let nodes = MeshNetworkManager.instance.realNodes + members
         var visited = Set<UUID>()
         var full: [String] = [], unknown: [String] = []
         for node in nodes where visited.insert(node.uuid).inserted && node.sceneSetupModel != nil {
             let previous = intendedScenes(on: node)
             let desired = intendedScenes(on: node, group: group, members: members, addingMembers: addingMembers,
-                                         scene: scene, sceneGroups: sceneGroups)
+                                         scene: scene, sceneGroups: sceneGroups, sceneSnapshot: sceneSnapshot)
             do {
                 try SceneCapacityPolicy.validate(previous: previous, desired: desired,
                     observed: node.sceneSetupModel?.parentElement?.observedSceneRegister)
@@ -101,10 +115,11 @@ enum SceneCapacity {
     }
 
     static func nodesRequiringRead(group: Group? = nil, members: [Node] = [], addingMembers: [Node] = [],
-                                   scene: Scene? = nil, sceneGroups: [Group] = []) -> [Node] {
+                                   scene: Scene? = nil, sceneGroups: [Group] = [],
+                                   sceneSnapshot: SceneTargetSnapshot? = nil) -> [Node] {
         unknownNodes(MeshNetworkManager.instance.realNodes + members).filter { node in
             let desired = intendedScenes(on: node, group: group, members: members, addingMembers: addingMembers,
-                                         scene: scene, sceneGroups: sceneGroups)
+                                         scene: scene, sceneGroups: sceneGroups, sceneSnapshot: sceneSnapshot)
             return !desired.subtracting(intendedScenes(on: node)).isEmpty
         }
     }
@@ -147,6 +162,7 @@ enum SceneCapacity {
     }
 
     static func validateStore(node: Node, number: SceneNumber) throws {
+        try validateConfigurations()
         guard let element = node.sceneSetupModel?.parentElement else { return }
         if element.observedSceneRegister?.contains(number) == true { return }
         let desired = intendedScenes(on: node).union([number])
@@ -156,7 +172,26 @@ enum SceneCapacity {
             try SceneCapacityPolicy.validate(previous: element.observedSceneRegister ?? [], desired: desired,
                                              observed: element.observedSceneRegister)
         } catch {
+            #if DEBUG
+            print("[SceneSync] stage=capacityRejected scene=\(number) address=\(node.primaryUnicastAddress) unknown=\(error as? SceneCapacityPolicy.Failure == .unknown)")
+            #endif
             throw Failure(devices: [label(node)], unknown: error as? SceneCapacityPolicy.Failure == .unknown)
+        }
+    }
+
+    static func validateConfigurations(sceneSnapshot: SceneTargetSnapshot? = nil) throws {
+        let manager = MeshNetworkManager.instance
+        for scene in manager.scenes where scene.info.configuration != nil || scene.info.configurationLoadFailed {
+            _ = try SceneTargetResolver.resolve(scene: scene)
+        }
+        if let snapshot = sceneSnapshot {
+            guard snapshot.scope.meshUUID == manager.meshNetwork?.uuid.uuidString,
+                  snapshot.scope.networkID == manager.currentNetworkKey.networkId.hex,
+                  !snapshot.unresolved.contains(where: { $0.action == .write }),
+                  snapshot.targets.allSatisfy({ target in
+                      manager.realNodes.contains { $0 === target.node }
+                          && target.node.timedSchedulerIdentity.flatMap { try? SceneConfiguration.identity($0) } == target.identity
+                  }) else { throw SceneTargetResolver.Failure.invalidConfiguration }
         }
     }
 }

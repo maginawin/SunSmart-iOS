@@ -8,6 +8,17 @@
 import UIKit
 import NordicSigMeshSDK
 
+/// Presentation follows saved intent, not online/resolvable Mesh targets.
+enum SceneDetailLayout {
+    case groups, devices, emptyDevices, unavailable
+
+    static func resolve(configuration: SceneConfiguration?, loadFailed: Bool, draftAvailable: Bool) -> Self {
+        guard !loadFailed else { return .unavailable }
+        guard configuration?.kind == .devices else { return .groups }
+        guard draftAvailable else { return .unavailable }
+        return configuration?.deviceMembers.isEmpty == true ? .emptyDevices : .devices
+    }
+}
 
 class SceneViewController: UIViewController {
 
@@ -20,6 +31,10 @@ class SceneViewController: UIViewController {
     private var renderedRevision: SpacePageRevision?
     private var isPageVisible = false
     private var groups: [Group] = []
+    private var devicesView: SceneDevicesSelectionView?
+    private var detailLayout: SceneDetailLayout = .groups
+    private var deviceMode: Bool { detailLayout == .devices }
+    private let detailStatusLabel = UILabel()
     private let syncDisplay = SceneGroupDisplayState()
     private var appearances: [ObjectIdentifier: SceneGroupAppearance] = [:]
     
@@ -96,6 +111,7 @@ class SceneViewController: UIViewController {
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         
+        guard !deviceMode else { return }
         var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.minimumInteritemSpacing * CGFloat(rowNum - 1) - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / CGFloat(rowNum)
         guard itemW > 0 else { return }
         itemW = CGFloat(floorf(Float(itemW) * 100) / 100.0)
@@ -130,6 +146,9 @@ class SceneViewController: UIViewController {
             if self.renderedRevision?.isCurrent != true { self.updateUI() }
             else { self.refreshVisibleAppearance(); self.refreshSyncStatus() }
         }
+        for name in [devicesUpdateNotificationName, deviceStateUpdateNotificationName, spacePermissionChangedNotificaitonName] {
+            NotificationCenter.default.addObserver(forName: .init(name), object: nil, queue: .main) { [weak self] _ in self?.refreshVisibleUI() }
+        }
         NotificationCenter.default.addObserver(forName: UIApplication.didBecomeActiveNotification, object: nil, queue: .main) { [weak self] _ in
             self?.refreshVisibleUI()
         }
@@ -138,8 +157,30 @@ class SceneViewController: UIViewController {
     
     
     private func updateUI() {
-        groups = scene.info.groups
+        let draft = scene.info.configuration?.kind == .devices ? try? SceneDraft(scene: scene) : nil
+        detailLayout = SceneDetailLayout.resolve(configuration: scene.info.configuration,
+            loadFailed: scene.info.configurationLoadFailed, draftAvailable: draft != nil)
+        groups = detailLayout == .groups ? scene.info.groups : []
         titleLabel.text = scene.name
+        titleLabel.isHidden = deviceMode
+        navigationItem.title = deviceMode ? scene.name : nil
+        navigationItem.rightBarButtonItem?.isEnabled = space.sceneOperates.contains(.edit)
+        collectionView.isHidden = deviceMode; pageControl.isHidden = deviceMode
+        if deviceMode, let draft {
+            if let devicesView {
+                devicesView.updateSavedConfiguration(draft, snapshot: syncDisplay.currentSnapshot)
+            } else {
+                let details = SceneDevicesSelectionView(selection: SceneDraftSelection(draft: draft), displayingSavedConfiguration: true)
+                details.syncSnapshot = syncDisplay.currentSnapshot
+                view.addSubview(details)
+                details.snp.makeConstraints { make in make.top.equalTo(view.safeAreaLayoutGuide).offset(12); make.left.right.bottom.equalTo(view.safeAreaLayoutGuide) }
+                devicesView = details
+            }
+        } else {
+            devicesView?.removeFromSuperview(); devicesView = nil
+        }
+        updateDetailStatus()
+        view.setNeedsLayout()
         appearances = NodeSyncStatusRefresh.sceneGroupAppearances(groups)
         refreshData = false
         renderedRevision = SpacePageRevision()
@@ -164,6 +205,8 @@ class SceneViewController: UIViewController {
     }
 
     private func refreshVisibleAppearance() {
+        devicesView?.syncSnapshot = syncDisplay.currentSnapshot
+        updateDetailStatus()
         appearances = NodeSyncStatusRefresh.sceneGroupAppearances(groups)
         for indexPath in collectionView.indexPathsForVisibleItems where indexPath.item < groups.count {
             if let cell = collectionView.cellForItem(at: indexPath) as? SceneGroupsViewCell {
@@ -172,9 +215,16 @@ class SceneViewController: UIViewController {
         }
     }
 
+    private func updateDetailStatus() {
+        detailStatusLabel.text = detailLayout == .emptyDevices
+            ? SceneDevicesSelectionView.savedStatus(configuration: scene.info.configuration, snapshot: syncDisplay.currentSnapshot) : nil
+        detailStatusLabel.isHidden = detailStatusLabel.text == nil
+    }
+
     private func configure(_ cell: SceneGroupsViewCell, group: Group) {
         let data = group.info.sceneExecuteDatas.first { $0.sceneNumber == scene.number }
-        let needsSync = syncDisplay.currentSnapshot?.needsSync.contains(ObjectIdentifier(group)) ?? true
+        // An invalidated or in-flight read is not evidence of pending sync work.
+        let needsSync = syncDisplay.currentSnapshot?.needsSync.contains(ObjectIdentifier(group)) == true
         cell.updateData(group: group, sceneData: data.map { .init(data: $0) },
                         appearance: appearances[ObjectIdentifier(group)], needsSync: needsSync)
     }
@@ -184,6 +234,8 @@ class SceneViewController: UIViewController {
     }
     
     @objc private func moreClick() {
+        guard space.sceneOperates.contains(.edit) else { return }
+        if scene.info.configuration?.isDeleting == true { deleteScene(); return }
         
 //        let margin: CGFloat = SCRXFrom(15.5)
 ////        isIphoneX ? 18 : 15
@@ -213,8 +265,10 @@ class SceneViewController: UIViewController {
     
     /// 编辑场景
     private func editScene() {
-        
-       
+        guard space.sceneOperates.contains(.edit), scene.info.configuration?.isDeleting != true else { return }
+        let original: SceneDraft
+        do { original = try SceneConfigurationStore().editingDraft(for: scene) }
+        catch { XWHUDManager.showErrorTipHUD("save_failure".localizedString); return }
         let vc = InfoEditViewController(name: scene.name, imageNames: sceneImageNames, selectImageIndex: max(scene.info.imageId - 1, 0), columnNum: 4)
         vc.title = "edit_scene".localizedString
         vc.itemRound = true
@@ -226,11 +280,21 @@ class SceneViewController: UIViewController {
         }
         vc.doneCallback = {[weak self] (name, imageId) in
             guard let self = self else { return true }
-            self.scene.name = name
-            self.scene.info.imageId = imageId + 1
-            self.scene.save()
-            self.scene.info.save()
+            do {
+                guard self.space.sceneOperates.contains(.edit), self.scene.info.configuration?.isDeleting != true else { return false }
+                var draft = original
+                draft.setMetadata(name: name, imageId: imageId + 1)
+                let result = try SceneConfigurationStore().commitMetadata(draft: draft, expectedRevision: draft.revision)
+                guard case .ready = result else {
+                    XWHUDManager.showErrorTipHUD("save_failure".localizedString)
+                    return false
+                }
+            } catch {
+                XWHUDManager.showErrorTipHUD("save_failure".localizedString)
+                return false
+            }
             self.titleLabel.text = name
+            self.navigationItem.title = self.deviceMode ? name : nil
 //            self.sceneUpdateCallback?(self.scene)
             NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
             // 通知space数据修改
@@ -249,11 +313,6 @@ class SceneViewController: UIViewController {
         
         SRAlertView(title: "notification".localizedString, message: "scene_delete_message".localizedString, contentPadding: SCRXFrom(25), actions: [.cancelAction, SRAlertAction(title: "DELETE".localizedString, style: .destructive, actionHandler: {[weak self] _ in
             guard let self = self else { return }
-            if !MeshLibManager.manager.isMeshNetworkConnected && self.scene.info.groups.contains(where: { $0.nodes.count > 0 }) { // 未连接mesh网络
-                XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-                return
-            }
-            
             XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
             // 测试数据
 //            scene.nodes.forEach({
@@ -292,13 +351,14 @@ class SceneViewController: UIViewController {
         
         let vc = SyncDevicesViewController(type: .scene(scene))
         vc.syncSuccessCallback = {[weak self] _ in
-            XWHUDManager.showSuccessTipHUD("done!".localizedString)
             guard let self = self else { return }
-            SceneServer.deleteScene(scene: self.scene, success: nil, failed: nil)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            SceneServer.deleteScene(scene: self.scene, success: { [weak self] _ in
+                XWHUDManager.showSuccessTipHUD("done!".localizedString)
                 NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
-                self.close()
-            }
+                self?.close()
+            }, failed: { _ in
+                XWHUDManager.showErrorTipHUD("scene_delete_failed".localizedString)
+            })
         }
         vc.backActionCallback = {[weak self] _ in
 //                self?.dismiss(animated: true)
@@ -312,8 +372,9 @@ class SceneViewController: UIViewController {
     
     /// 设置
     private func settings() {
-        
+        guard space.sceneOperates.contains(.edit), scene.info.configuration?.isDeleting != true else { return }
         let vc = SceneSettingsViewController(space: space, scene: scene)
+        vc.enablesGroupLiveControl = true
         
 //        let vc = GroupMembersViewController(space: space, group: group)
         navigationController?.pushViewController(vc, animated: true)
@@ -321,7 +382,7 @@ class SceneViewController: UIViewController {
     
     @objc private func collectionLongPressAction(sender: UIGestureRecognizer) {
         
-        guard sender.state == .began else {
+        guard !deviceMode, sender.state == .began else {
             return
         }
         let point = sender.location(in: collectionView)
@@ -343,8 +404,10 @@ class SceneViewController: UIViewController {
 
     private func updateEmptyUI() {
         
-        if groups.isEmpty {
-            collectionView.showEmptyDataView(title: "No Members!", position: .center, bottomMargin: 3.5)
+        if detailLayout == .unavailable {
+            collectionView.showEmptyDataView(title: "scene_details_unavailable".localizedString, position: .center, bottomMargin: 3.5)
+        } else if groups.isEmpty {
+            collectionView.showEmptyDataView(title: "scene_no_members".localizedString, position: .center, bottomMargin: 3.5)
         }else {
             collectionView.hideEmptyDataView()
         }
@@ -403,6 +466,15 @@ class SceneViewController: UIViewController {
 //            make.width.equalTo(SCRXFrom(40))
 //            make.height.equalTo(4)
         }
+        detailStatusLabel.font = .systemFont(ofSize: 12, weight: .light)
+        detailStatusLabel.textColor = RGB(148, 163, 184)
+        detailStatusLabel.textAlignment = .center
+        detailStatusLabel.numberOfLines = 0
+        view.addSubview(detailStatusLabel)
+        detailStatusLabel.snp.makeConstraints { make in
+            make.top.equalTo(collectionView.snp.bottom).offset(12)
+            make.left.right.equalTo(collectionView)
+        }
     }
 
 }
@@ -422,6 +494,7 @@ extension SceneViewController: UICollectionViewDataSource, UICollectionViewDeleg
     
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
         
+        guard !deviceMode, space.sceneOperates.contains(.control), indexPath.item < groups.count else { return }
         let group = groups[indexPath.item]
         if group.nodes.isEmpty { // 空组
             XWHUDManager.showTipHUD("group_empty".localizedString, isLineFeed: true)

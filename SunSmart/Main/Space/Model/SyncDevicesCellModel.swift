@@ -611,6 +611,10 @@ enum DeviceOperationType {
                 
                 if let scene = MeshNetworkManager.instance.scenes.first(where: { $0.number == sceneId }), let data = executeData {
                     messageHandles.append(contentsOf: scene.getSyncMessageHandles(node: node, data: data))
+                } else {
+                    #if DEBUG
+                    print("[SceneSync] stage=commandRejected scene=\(sceneId) address=\(node.primaryUnicastAddress) reason=sceneOrExecuteDataMissing hasData=\(executeData != nil)")
+                    #endif
                 }
             case .schedule(let schedule):
                 messageHandles.append(

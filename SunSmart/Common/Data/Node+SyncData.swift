@@ -697,7 +697,7 @@ extension Node {
 
     private func computeNeedSyncGroup(group: Group?) -> Bool {
         guard SpaceConfigurationSafety.configurationAvailable(for: self, group: group) else { return true }
-        if !MissingGroupSubscriptionCleanup.addresses(for: self).isEmpty { return true }
+        if !MissingGroupSubscriptionCleanup.addresses(for: self).isEmpty || !getNodeSyncSceneDatas().isEmpty { return true }
         
         // 设备退出组失败
         if self.syncReadGroup != nil && groupState == GroupState.exitFailure {
@@ -766,7 +766,7 @@ extension Node {
     }
 
     func getStandardNeedSync() -> Bool {
-        if !MissingGroupSubscriptionCleanup.addresses(for: self).isEmpty { return true }
+        if !getNodeSyncSceneDatas().isEmpty || !MissingGroupSubscriptionCleanup.addresses(for: self).isEmpty { return true }
         if syncReadGroup == nil {
             let switches = getNodeNeedDeleteSwitchs()
             if switches.delteSwitchProxy != nil || !switches.unlinkSwitchs.isEmpty
@@ -1521,52 +1521,47 @@ extension Node {
     ///   - scene: 场景（传入则只获取该场景是否有同步，不传入则获取所有场景是否有同步）
     func getNodeSyncSceneDatas(group: Group? = nil, scene: Scene? = nil) -> [(scene: Scene, data: SceneExecuteData)] {
         
-        guard let group = group ?? self.syncReadGroup, self.sceneSetupModel != nil else {
-            return []
+        guard sceneSetupModel != nil else { return [] }
+        return (scene.map { [$0] } ?? MeshNetworkManager.instance.scenes).compactMap { scene in
+            guard let snapshot = try? SceneTargetResolver.resolve(scene: scene),
+                  let context = try? SceneMessageContext(scene: scene, node: self, action: .write),
+                  let target = context.target else { return nil }
+            if snapshot.comparison.kind == .groups, let group,
+               !group.nodes.contains(self) { return nil }
+            let pending = scene.info.configuration?.pendingOperations.contains {
+                $0.identity == context.identity && $0.action == .write
+            } == true
+            let cached = sceneExecuteDatas.first { $0.sceneNumber == scene.number }
+            let timedPending = scene.info.bindSchedules.contains { $0.needsSync(on: self, contextGroup: self.group) }
+            if pending || cached?.isSynced(with: target, for: self) != true || timedPending { return (scene, target) }
+            return nil
         }
-        var syncSceneData: [(scene: Scene, data: SceneExecuteData)] = []
-        
-        var scenes = group.info.sceneExecuteDatas
-        if scene != nil {
-             scenes = scenes.filter({ $0.sceneNumber == scene!.number })
-        }
-        
-        scenes.forEach { data in
-            if let scene = MeshNetworkManager.instance.scenes.first(where: { $0.number == data.sceneNumber }) {
-                let sceneData = self.sceneExecuteDatas.first(where: { $0.sceneNumber == data.sceneNumber })
-                if data.state == .normal {
-                    guard let sceneData = sceneData else {
-                        syncSceneData.append((scene, data))
-                        return
-                    }
-                    if !sceneData.isSynced(with: data, for: self) {
-                        syncSceneData.append((scene, data))
-                    }
-                }
-            }
-        }
-        return syncSceneData
     }
     
     /// 获取需要删除的场景list
     ///   - scene: 场景（传入则只获取该场景是否有同步，不传入则获取所有场景是否有同步）
     func getNodeNeedDeleteSceneDatas(scene: Scene? = nil) -> [Scene] {
         
-        guard SceneDeleteCapability.isSupported(sceneSetupModel: self.sceneSetupModel) else {
-            return []
-        }
-        var scenes = MeshNetworkManager.instance.scenes
-        if scene != nil {
-            scenes = [scene!]
-        }
-        guard let group = self.syncReadGroup else {
-            return groupState == .exitFailure ? scenes.filter { self.scenes.contains($0) } : []
-        }
-        
-        return scenes.filter({ scene in
+        guard SceneDeleteCapability.isSupported(sceneSetupModel: sceneSetupModel) else { return [] }
+        return (scene.map { [$0] } ?? MeshNetworkManager.instance.scenes).filter { scene in
+            guard !scene.info.configurationLoadFailed else { return false }
+            if let configuration = scene.info.configuration {
+                if configuration.pendingOperations.contains(where: {
+                    $0.identity == sceneConfigurationIdentity && $0.action == .remove
+                }) { return true }
+                if configuration.kind == .devices || configuration.isDeleting { return false }
+            }
+            // Keep the relationship task until its App write commits. A retry
+            // still obtains a real idempotent Delete confirmation; empty cache
+            // alone does not prove that all group members have been cleared.
+            if syncReadGroup?.info.sceneExecuteDatas.contains(where: { $0.sceneNumber == scene.number && $0.state == .waitDelete }) == true { return true }
             guard needsSceneRemoval(scene.number) else { return false }
-            return groupState == .exitFailure && group.info.sceneExecuteDatas.contains(where: { $0.sceneNumber == scene.number }) ||  group.info.sceneExecuteDatas.first(where: { $0.sceneNumber == scene.number })?.state == .waitDelete
-        })
+            guard let group = syncReadGroup else {
+                return groupState == .exitFailure && scenes.contains(scene)
+            }
+            return groupState == .exitFailure && group.info.sceneExecuteDatas.contains { $0.sceneNumber == scene.number }
+                || group.info.sceneExecuteDatas.contains { $0.sceneNumber == scene.number && $0.state == .waitDelete }
+        }
     }
     
     /// 获取需要同步的日程list

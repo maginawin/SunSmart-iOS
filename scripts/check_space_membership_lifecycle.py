@@ -22,7 +22,9 @@ with tempfile.TemporaryDirectory(prefix='space-membership-') as directory:
                                       'URL(fileURLWithPath: ' + '"' + str(temp / 'records') + '"' + ')')
     restore = section('    @MainActor\n    func restoreConfiguration(',
                       '    @MainActor\n    private func repairMissingServerKeys(')
-    test = (root / 'Tests/Group/SpaceMembershipLifecycleTests.swift').read_text().replace('// RESTORE_METHOD', restore)
+    imports = (root / 'SunSmart/Common/Data/ImportData.swift').read_text()
+    restriction = imports[imports.index('    @discardableResult\n    func applyRemoteSpaceAuthorityRestrictions('):imports.index('    static func sceneConfigurationImportFailure(')]
+    test = (root / 'Tests/Group/SpaceMembershipLifecycleTests.swift').read_text().replace('// RESTORE_METHOD', restore + restriction)
     # Swift precondition uses a synchronous nonthrowing autoclosure.
     test = test.replace('precondition(try ', 'try expect(')
     helpers = '''
