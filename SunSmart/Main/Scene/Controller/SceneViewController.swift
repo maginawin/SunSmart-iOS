@@ -110,6 +110,8 @@ class SceneViewController: UIViewController {
     
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        // EmptyDataView uses a frame and may be created before the first layout.
+        defer { collectionView.emptyView?.frame = collectionView.bounds }
         
         guard !deviceMode else { return }
         var itemW = (collectionView.width - collectionView.contentInset.left - collectionView.contentInset.right - flowLayout.minimumInteritemSpacing * CGFloat(rowNum - 1) - flowLayout.sectionInset.left - flowLayout.sectionInset.right) / CGFloat(rowNum)
@@ -403,13 +405,32 @@ class SceneViewController: UIViewController {
     }
 
     private func updateEmptyUI() {
-        
+        guard !deviceMode else {
+            collectionView.hideEmptyDataView()
+            return
+        }
         if detailLayout == .unavailable {
             collectionView.showEmptyDataView(title: "scene_details_unavailable".localizedString, position: .center, bottomMargin: 3.5)
         } else if groups.isEmpty {
-            collectionView.showEmptyDataView(title: "scene_no_members".localizedString, position: .center, bottomMargin: 3.5)
+            let canEdit = space.sceneOperates.contains(.edit) && scene.info.configuration?.isDeleting != true
+            collectionView.showEmptyDataView(title: "scene_no_members".localizedString,
+                buttonText: canEdit ? "settings".localizedString : nil, position: .center, bottomMargin: 3.5) { [weak self] in
+                self?.settings()
+            }
+            if canEdit, let emptyView = collectionView.emptyView {
+                emptyView.button.backgroundColor = .clear
+                emptyView.button.titleLabel?.font = FONTS(16)
+                emptyView.button.setTitleColor(Bar_Color, for: .normal)
+                emptyView.button.snp.updateConstraints { make in
+                    make.top.equalTo(emptyView.titleLabel.snp.bottom).offset(SCRYFrom(24))
+                }
+            }
         }else {
             collectionView.hideEmptyDataView()
+        }
+        if collectionView.emptyView != nil {
+            collectionView.setContentOffset(.zero, animated: false)
+            collectionView.emptyView?.frame = collectionView.bounds
         }
         
     }
