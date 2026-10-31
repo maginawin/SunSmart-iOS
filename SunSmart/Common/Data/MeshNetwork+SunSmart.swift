@@ -3336,12 +3336,6 @@ extension Node {
                             
                             isSaveSchedule = true
                         }
-                        // 判断场景是否因为此设备无法从日程中删除，设备删除后场景也从日程中删除
-                        if let scene = schedule.needDeleteScenes.first(where: { $0.info.groups.contains(where: { $0.nodes.contains(self) }) }), !scene.info.groups.contains(where: { $0.nodes.contains(where: { schedule.hasObservedEntry(on: $0) }) }) {
-                            schedule.needDeleteSceneNumbers.removeAll(where: { $0 == scene.number })
-                            isSaveSchedule = true
-                        }
-                        
                         if schedule.needDeleteNodes.contains(self) {
                             schedule.needDeleteNodeAddresses.removeAll(where: { $0 == self.primaryUnicastAddress })
                             isSaveSchedule = true
@@ -3349,12 +3343,15 @@ extension Node {
                         if isSaveSchedule {
                             schedule.save()
                         }
+                        schedule.reconcilePendingSceneReferences()
                         schedule.releaseClearedBinding(on: self)
 //                    }
                     
                 }
                 
             }
+            // Both a clear and an overwrite can release an old Scene reference.
+            self.timedSchedule(at: index)?.reconcilePendingSceneReferences()
         case is LightLCLightOnOffSet, is LightLCLightOnOffSetUnacknowledged, is GenericOnOffSetUnacknowledged: // 点击Auto / Off
             
             guard let switchData = MeshNetworkManager.instance.switchs.first(where: { $0.proxyNodeAddress == self.primaryUnicastAddress }), let linkGroup = switchData.linkGroup else { return }

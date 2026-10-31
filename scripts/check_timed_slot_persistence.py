@@ -60,6 +60,19 @@ with tempfile.TemporaryDirectory(prefix='timed-sqlite-') as directory:
                        .replace('    // ACTUAL_SCENE_TASKS', builder[builder_start:builder_end].replace('node.getNodeSyncSceneDatas(scene: scene).first?.data', 'node.sceneBuilderData(scene: scene)'))
                        .replace('        // ACTUAL_SCENE_DISPLAY', node_sync[node_scene_start:node_scene_end])
                        + '\n' + database[start:end])
+    update = function(target_source, '    func updateData(message: MeshMessage,')
+    ack = update[update.index('        case is SchedulerActionSet:'):update.index('        case is LightLCLightOnOffSet,')]
+    harness.write_text(harness.read_text().replace('// ACTUAL_SCHEDULER_ACK', ack))
+    controller = (root / 'SunSmart/Main/Timed/Controller/ScheduleAddViewController.swift').read_text()
+    create = function(controller, '    @objc private func saveBtnAction()')
+    edit = function(controller, '    @objc private func doneBtnAction()')
+    # Execute production decision + connection gate + authoritative pre-read.
+    # UIKit navigation and asynchronous transport are recording boundaries.
+    create = create[create.index('        let needSync ='):create.index('        do {')]
+    edit = edit[edit.index('        let affectedNodes ='):edit.index('        var candidates =')]
+    harness.write_text(harness.read_text() + '\n' + (root / 'Tests/Timed/TimedDeviceSceneEntryTests.swift').read_text()
+                       .replace('// ACTUAL_CREATE_DECISION', create)
+                       .replace('// ACTUAL_EDIT_PREREAD', edit))
     runtime = directory / 'Bindings.swift'
     runtime.write_text((root / 'SunSmart/Main/Timed/Model/TimedSchedulerBindings.swift').read_text().replace('import NordicSigMeshSDK', ''))
     resolver = directory / 'SceneResolver.swift'

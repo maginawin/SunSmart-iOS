@@ -55,6 +55,23 @@ struct SceneTargetSnapshot {
     }
     var hasConfiguredMembers: Bool { !comparison.members.isEmpty || !comparison.groupParameters.isEmpty }
 
+    /// Read desired values without authorizing transport. Blocked writes still
+    /// contribute to differences; SceneMessageContext guards sending and ACKs.
+    func writeData(scene: Scene, node: Node) -> SceneExecuteData? {
+        guard let identity = node.sceneConfigurationIdentity,
+              let resolved = targets.first(where: { $0.identity == identity }) else { return nil }
+        if comparison.kind == .groups {
+            return scene.info.groups.compactMap { group -> SceneExecuteData? in
+                guard group.nodes.contains(node) else { return nil }
+                return group.info.sceneExecuteDatas.first {
+                    $0.sceneNumber == scene.number && $0.state == .normal
+                }?.deviceTarget(for: node)
+            }.first
+        }
+        return SceneExecuteData(sceneNumber: scene.number, isOn: resolved.parameters.isOn,
+            lightness: resolved.parameters.lightness, cct: resolved.parameters.cct)
+    }
+
     func reservesScene(on node: Node) -> Bool {
         guard let raw = node.timedSchedulerIdentity, let identity = try? SceneConfiguration.identity(raw) else { return false }
         return targets.contains { $0.identity == identity } || cleanupTargets.contains { $0.identity == identity }

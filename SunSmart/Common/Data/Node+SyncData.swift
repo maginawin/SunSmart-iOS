@@ -1524,12 +1524,12 @@ extension Node {
         guard sceneSetupModel != nil else { return [] }
         return (scene.map { [$0] } ?? MeshNetworkManager.instance.scenes).compactMap { scene in
             guard let snapshot = try? SceneTargetResolver.resolve(scene: scene),
-                  let context = try? SceneMessageContext(scene: scene, node: self, action: .write),
-                  let target = context.target else { return nil }
+                  let identity = sceneConfigurationIdentity,
+                  let target = snapshot.writeData(scene: scene, node: self) else { return nil }
             if snapshot.comparison.kind == .groups, let group,
                !group.nodes.contains(self) { return nil }
             let pending = scene.info.configuration?.pendingOperations.contains {
-                $0.identity == context.identity && $0.action == .write
+                $0.identity == identity && $0.action == .write
             } == true
             let cached = sceneExecuteDatas.first { $0.sceneNumber == scene.number }
             let timedPending = scene.info.bindSchedules.contains { $0.needsSync(on: self, contextGroup: self.group) }

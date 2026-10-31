@@ -77,7 +77,8 @@ final class Schedule: Codable {
 }
 final class Element { var observedSceneRegister: Set<UInt16>? = [] }
 final class Model: NSObject { let parentElement: Element? = Element() }
-struct Entry { var isValid = true }
+struct Entry { var isValid = true; var sceneNumber: UInt16 = 0 }
+struct SchedulerActionSet { let index: UInt8; let entry: Entry }
 final class Node: NSObject {
     enum GroupState { case inGroup, exitFailure }
     var groupState = GroupState.inGroup
@@ -114,7 +115,21 @@ final class Node: NSObject {
     }
     func clearSyncStateCache() {}
     func completeGroupSceneRemoval(sceneId: UInt16) -> Bool { true } // Scene lifecycle is exercised by the Scene suite.
-    func updateData(message: Any, isSuccess: Bool, model: Model?) { if isSuccess { appliedMessages += 1 } }
+    var scheduleIds: [Int] = []
+    @discardableResult func savePropertys() -> Bool { true }
+    func rebuildTimedSchedulerActions() {
+        schedulerActions = allSchedulerModelEntrys.values.reduce(into: [:]) { result, entries in
+            result.merge(entries) { _, new in new }
+        }
+    }
+    func updateData(message: Any, isSuccess: Bool, model: Model?) {
+        guard isSuccess else { return }
+        appliedMessages += 1
+        switch message {
+        // ACTUAL_SCHEDULER_ACK
+        default: break
+        }
+    }
 }
 extension Data { var hex: String { map { String(format: "%02X", $0) }.joined() } }
 enum SchedulerModelSnapshot {
@@ -160,7 +175,8 @@ enum NodeSyncReadContext {
     func contains(_ node: Node, in group: Group) -> Bool { group.nodes.contains(node) }
 }
 final class Scene: NSObject {
-    let number: UInt16 = 6
+    let number: UInt16
+    init(_ number: UInt16 = 6) { self.number = number }
     let name = "Scene"
     var network = MeshNetworkManager.instance.meshNetwork
     var subNetworkId = MeshNetworkManager.instance.currentNetworkKey.networkId.hex
@@ -216,6 +232,7 @@ enum ScheduleServer {
         var db = try Connection(path)
         SunSmartDataManager.shared.db = db
         Schedule.initDatabase()
+        try deviceSceneReferences()
         try staleBindingsSurviveRepairAndRestart(db: db, path: path)
         try defaultedBindingsSurviveReload()
         for id in 0..<16 {

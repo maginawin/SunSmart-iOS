@@ -22,6 +22,13 @@ import Foundation
         precondition(!context.matches(node: node) && !context.apply(node: node, successful: true), "EFC must reject direct Store result without clearing pending")
         precondition(scene.info.configuration!.pendingOperations.count == 1)
         precondition(scene.getSyncMessageHandles(node: node, data: .init(sceneNumber: 1)).isEmpty, "EFC must block ordinary Sync factory")
+        precondition(node.getNodeSyncSceneDatas(scene: scene).count == 1,
+            "EFC keeps the pending write visible to all sync entry points")
+        precondition(scene.needSync && node.getStandardNeedSync(), "EFC must not turn pending work into success")
+        let blockedWrites = SyncDevicesSectionModel(), blockedRemovals = SyncDevicesSectionModel()
+        SyncSceneScheduleTaskBuilder().appendScene(to: blockedWrites, removal: blockedRemovals, scene: scene)
+        precondition(blockedWrites.devices.count == 1, "blocked write remains a visible task")
+        precondition(scene.info.configuration!.pendingOperations.count == 1)
         let writeConfiguration = scene.info.configuration!
         scene.info.configuration!.deviceMembers = []
         scene.info.configuration!.pendingOperations = [.init(identity: identity, action: .remove)]
@@ -29,6 +36,8 @@ import Foundation
         scene.info.configuration = writeConfiguration
         EmergencyFireControllerSceneEventManager.blocked = []
         precondition(context.matches(node: node), "unblocked same intent can retry")
+        precondition(scene.getSyncMessageHandles(node: node, data: .init(sceneNumber: 1)).count == 2,
+            "lifting EFC permits the original parameters and Store task")
         scene.info.configuration!.revision = UUID()
         guard !context.matches(node: node) else { print("FAIL stale Store accepted new revision"); exit(1) }
         print("PASS revision ownership")
@@ -116,6 +125,12 @@ import Foundation
         precondition(fullContext.target?.hue == 456 && fullContext.target?.saturation == 789 && fullContext.target?.lightControlData == 12,
             "legacy group auxiliary fields survive production deviceTarget")
         precondition(!deleteHandles[0].sceneContext!.matches(node: node))
+        EmergencyFireControllerSceneEventManager.blocked = [ObjectIdentifier(node)]
+        let groupDifference = node.getNodeSyncSceneDatas(scene: groupScene)
+        precondition(groupDifference.count == 1 && groupDifference[0].data.hue == 456
+            && groupDifference[0].data.lightControlData == 12, "blocked group diff preserves auxiliary fields")
+        precondition(groupScene.needSync && groupScene.getSyncMessageHandles(node: node, data: full).isEmpty)
+        EmergencyFireControllerSceneEventManager.blocked = []
         // Missing old identities remain pending even though no physical task can be built.
         scene.info.configuration!.deviceMembers = []
         scene.info.configuration!.pendingOperations = [.init(identity: second.timedSchedulerIdentity!, action: .remove)]

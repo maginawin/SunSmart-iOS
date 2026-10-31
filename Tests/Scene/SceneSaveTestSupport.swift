@@ -96,6 +96,9 @@ extension TimedSchedulerBindings {
 }
 
 extension Schedule {
+    // Timed reference reconciliation is covered with production SQLite and
+    // Scheduler observations by check_timed_slot_persistence.py.
+    func reconcilePendingSceneReferences() {}
     func save(meshUUID: String, meshNetworkId: String) -> Bool {
         do {
             let db = SunSmartDataManager.shared.db!

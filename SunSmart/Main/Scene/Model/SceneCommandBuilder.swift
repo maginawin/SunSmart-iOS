@@ -177,19 +177,10 @@ struct SceneMessageContext {
         comparison = snapshot.taskComparison; self.action = action
         operation = scene.info.configuration?.pendingOperations.first { $0.identity == identity }
         if action == .write {
-            guard let resolved = snapshot.targets.first(where: { $0.identity == identity }) else {
+            guard let data = snapshot.writeData(scene: scene, node: node) else {
                 throw SceneTargetResolver.Failure.invalidConfiguration
             }
-            if snapshot.comparison.kind == .groups {
-                guard let data = scene.info.groups.compactMap({ group -> SceneExecuteData? in
-                    guard group.nodes.contains(node) else { return nil }
-                    return group.info.sceneExecuteDatas.first { $0.sceneNumber == scene.number && $0.state == .normal }
-                }).first else { throw SceneTargetResolver.Failure.invalidConfiguration }
-                target = data.deviceTarget(for: node)
-            } else {
-                target = SceneExecuteData(sceneNumber: number, isOn: resolved.parameters.isOn,
-                    lightness: resolved.parameters.lightness, cct: resolved.parameters.cct)
-            }
+            target = data
         } else { target = nil }
         let groupExit = snapshot.comparison.kind == .groups && node.groupState == .exitFailure
             && node.group?.info.sceneExecuteDatas.contains(where: { $0.sceneNumber == scene.number }) == true

@@ -82,7 +82,16 @@ struct SceneServer {
     }
 
     static func referenceNames(scene: Scene) -> [String] {
-        SceneConfigurationStore.deletionReferenceNames(number: scene.number)
+        // Retry/re-entry also repairs references left by older App versions,
+        // using confirmed Scheduler state without bypassing the deletion guard.
+        if !MeshProxyMessageCommand.shared.isBusy,
+           let snapshot = try? SceneTargetResolver.resolve(scene: scene),
+           (try? SceneConfigurationStore.validateAccess(snapshot.scope)) != nil {
+            for schedule in MeshNetworkManager.instance.schedules where schedule.needDeleteSceneNumbers.contains(scene.number) {
+                schedule.reconcilePendingSceneReferences()
+            }
+        }
+        return SceneConfigurationStore.deletionReferenceNames(number: scene.number)
     }
 }
 

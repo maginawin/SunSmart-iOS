@@ -217,8 +217,6 @@ class ScheduleAddViewController: UIViewController {
         var groups: [Group] = []
         var scene: Scene?
         var selectTargetType: Schedule.TargetType = .groups
-        // 是否需要同步
-        var needSync = false
         
         let target = scheduleAddView.selectTarget!
         
@@ -226,28 +224,15 @@ class ScheduleAddViewController: UIViewController {
         switch target {
         case .devices(let selectNodes):
             nodes = selectNodes
-            needSync = selectNodes.count > 0
             selectTargetType = .devices
         case .groups(let selectGroups):
             groups = selectGroups
-            needSync = selectGroups.contains(where: { $0.nodes.count > 0 })
             selectTargetType = .groups
         case .scene(let selectScene):
             scene = selectScene
-            if selectScene != nil {
-                needSync = selectScene!.info.groups.contains(where: { $0.nodes.count > 0 })
-            }
             selectTargetType = .scene
         }
         
-        
-        // 日程是否有设备
-        let isExitNodes = nodes.count > 0 || groups.contains(where: { $0.nodes.count > 0 }) || (scene?.info.groups.contains(where: { $0.nodes.count > 0 }) ?? false)
-        
-        guard MeshLibManager.manager.isMeshNetworkConnected || !isExitNodes else {
-            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-            return
-        }
         
         let weekDays = Schedule.getWeekDays(weekValue: scheduleAddView.weekValue)
 //        let create = "\(Date().timeIntervalSince1970 * 1000)"
@@ -255,6 +240,11 @@ class ScheduleAddViewController: UIViewController {
        
         let schedule = Schedule(id: id, name: name, enabled: isEnabled, nodeAddresses: nodes.map({ $0.primaryUnicastAddress }), groupAddresses: groups.map({ $0.address.address }), sceneNumber: scene?.number, selectTargetType: selectTargetType, action: action, fadeTime: fadeTime, weekDays: weekDays, hour: scheduleAddView.hour, minute: scheduleAddView.minute)
         schedule.nodeSlots = []
+        let needSync = !schedule.existNodes.isEmpty
+        guard MeshLibManager.manager.isMeshNetworkConnected || !needSync else {
+            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+            return
+        }
         guard resolveSchedulerState(nodes: schedule.existNodes, retry: { [weak self] in self?.saveBtnAction() }) else { return }
         do {
             try TimedSchedulerBindings.commit(TimedSchedulerBindings.prepare(
@@ -402,14 +392,6 @@ class ScheduleAddViewController: UIViewController {
             }
         }
         
-        // 日程是否有设备
-        let isExitNodes = schedule.existNodes.count > 0 || nodes.count > 0 || groups.contains(where: { $0.nodes.count > 0 }) || (scene?.info.groups.contains(where: { $0.nodes.count > 0 }) ?? false)
-        
-        guard MeshLibManager.manager.isMeshNetworkConnected || !isExitNodes else {
-            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-            return
-        }
-
         if schedule.name != name {
             schedule.name = name
         }
@@ -457,7 +439,11 @@ class ScheduleAddViewController: UIViewController {
         schedule.hour = hour
         schedule.minute = minute
         
-        let affectedNodes = original.existNodes + nodes + groups.flatMap(\.nodes) + (scene?.info.groups.flatMap(\.nodes) ?? [])
+        let affectedNodes = original.existNodes + schedule.existNodes
+        guard MeshLibManager.manager.isMeshNetworkConnected || affectedNodes.isEmpty else {
+            XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
+            return
+        }
         guard resolveSchedulerState(nodes: affectedNodes, retry: { [weak self] in self?.doneBtnAction() }) else { return }
         var candidates = MeshNetworkManager.instance.schedules
         guard let index = candidates.firstIndex(where: { $0.id == original.id }) else { return }

@@ -89,6 +89,32 @@ extension Schedule {
         return node.observedTimedSlots.map { !$0.contains(slot) } ?? false
     }
 
+    /// Release only references whose old Scene is absent from every observed
+    /// Scheduler Model. Unknown/missing identities remain retryable; overlapping
+    /// targets may keep their slot after it has been rewritten for the new Scene.
+    func reconcilePendingSceneReferences() {
+        guard !nodeSlotsLoadFailed else { return }
+        let cleared = needDeleteScenes.filter { oldScene in
+            guard oldScene.number != sceneNumber,
+                  let snapshot = try? SceneTargetResolver.resolve(scene: oldScene),
+                  snapshot.unresolved.isEmpty else { return false }
+            return (snapshot.targets + snapshot.cleanupTargets).allSatisfy { target in
+                let node = target.node
+                guard let slot = slot(on: node) else { return nodeSlots != nil }
+                guard !node.schedulerSetupModels.isEmpty else { return false }
+                return node.schedulerSetupModels.allSatisfy { model in
+                    guard let entries = node.allSchedulerModelEntrys[model] else { return false }
+                    guard let entry = entries[slot], entry.isValid else { return true }
+                    return entry.sceneNumber != oldScene.number
+                }
+            }
+        }.map(\.number)
+        guard !cleared.isEmpty else { return }
+        let previous = needDeleteSceneNumbers
+        needDeleteSceneNumbers.removeAll { cleared.contains($0) }
+        if !save() { needDeleteSceneNumbers = previous }
+    }
+
     func releaseClearedBinding(on node: Node) {
         guard !MeshProxyMessageCommand.shared.isBusy,
               let identity = node.timedSchedulerIdentity, let slot = slot(on: node),
