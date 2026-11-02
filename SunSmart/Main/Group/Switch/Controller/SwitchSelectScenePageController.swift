@@ -68,7 +68,7 @@ class SwitchSelectScenePageController: WMPageController {
     var editable = true
     
     init(scenes: [Scene], sceneDatas: [SwitchSceneData] = [.init(type: .sceneA), .init(type: .sceneB)], titleStyle: TitleStyle = .lettered) {
-        self.scenes = scenes
+        self.scenes = Scene.sortedForDisplay(scenes)
         self.titleStyle = titleStyle
 //        self.sceneA = sceneA
 //        self.sceneB = sceneB

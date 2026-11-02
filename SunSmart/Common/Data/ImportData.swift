@@ -2627,6 +2627,7 @@ extension SpaceData {
                     })
                     network.add(scene: scene)
                     scene.info = .init(sceneId: sceneNumber, imageId: sceneJson["imageId"].int ?? 0)
+                    scene.info.displayOrder = record.displayOrder
                     scene.info.configuration = record.configuration
                     return scene
                 }
@@ -2835,7 +2836,8 @@ extension SpaceData {
             guard try SceneConfigurationPayload.canonical(SceneConfigurationPayload.encode(records: importedSceneRows))
                     == SceneConfigurationPayload.canonical(SceneConfigurationPayload.encode(records: incomingSceneRecords)),
                   try SceneConfigurationPayload.metadata(records: importedSceneRows).map({ NSDictionary(dictionary: $0) })
-                    == SceneConfigurationPayload.metadata(records: incomingSceneRecords).map({ NSDictionary(dictionary: $0) }) else {
+                    == SceneConfigurationPayload.metadata(records: incomingSceneRecords).map({ NSDictionary(dictionary: $0) }),
+                  SceneDisplayOrder.payload(records: importedSceneRows) == SceneDisplayOrder.payload(records: incomingSceneRecords) else {
                 throw SpaceConfigurationSafety.SafetyError.persistenceFailed
             }
             for group in groups where !group.isVirtual {

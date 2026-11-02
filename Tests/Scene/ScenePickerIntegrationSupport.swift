@@ -25,12 +25,17 @@ enum MeshAPI {
     static func sendMessage(message: Any, address: UInt16) { sent.append(.init(message: message, address: address)) }
 }
 final class ScenesControllerProbe {
-    let scenes: [Scene]
+    var scenes: [Scene] = []
     let space = SpaceData()
     var isEdit = false
-    init(_ scenes: [Scene]) { self.scenes = scenes }
+    init(_ scenes: [Scene]) {
+        MeshNetworkManager.instance.scenes = scenes
+        self.scenes = visibleScenes
+    }
+    // PRODUCTION_VISIBLE_SCENES
     // PRODUCTION_LIST_RECALL
 }
+enum DeviceEmerFireData { static let reservedSceneNumbers: Set<UInt16> = [0xFFF0] }
 final class UITableView { func reloadData() {} }
 enum XWHUDManager { static func showTipHUD(_ text: String, isLineFeed: Bool) {} }
 struct SpacePageRevision { var isCurrent: Bool { true } }
@@ -39,19 +44,48 @@ final class SceneGroupDisplayState { var currentSnapshot: SceneGroupSyncSnapshot
 struct ScheduleTargetSyncSnapshot { var scenes: Set<ObjectIdentifier> = [] }
 final class ScheduleTargetDisplayState { var currentSnapshot: ScheduleTargetSyncSnapshot? }
 
-final class ScheduleScenePickerProbe {
+struct UIScreen { static let main = UIScreen(); let bounds = CGRect() }
+class PickerViewBoundary { init(frame: CGRect) {} }
+final class ScheduleScenePickerProbe: PickerViewBoundary {
+    typealias SceneSelectFinishedCallback = (Scene?) -> Void
     let scenes: [Scene]
     var selectScene: Scene?
     var schedule: Schedule?
     let syncDisplay = ScheduleTargetDisplayState()
     var sceneDisplays: [ObjectIdentifier: SceneGroupDisplayState] = [:]
     let collectionView = UICollectionView()
-    init(_ scenes: [Scene]) { self.scenes = scenes }
+    let selectCallback: SceneSelectFinishedCallback?
+    func setupUI() {}
+    func observeSyncStatusChanges() {}
+    convenience init(_ scenes: [Scene]) { self.init(scenes: scenes, selectScene: nil, selectBack: nil) }
+    // PRODUCTION_SCHEDULE_INIT
     // PRODUCTION_SCHEDULE_PENDING
     // PRODUCTION_SCHEDULE_SELECT
 }
 
-struct SwitchSceneData { var scene: Scene? }
+struct SwitchSceneData {
+    enum SceneType { case sceneA, sceneB, sceneC, sceneD }
+    var type: SceneType = .sceneA
+    var scene: Scene?
+}
+let Bar_Color = 1, SubText_Color = 2
+func SCRXFrom(_ value: Double) -> Double { value }
+func SCRYFrom(_ value: Double) -> Double { value }
+class SwitchPageBoundary {
+    enum Style { case line, center }
+    var menuViewStyle = Style.line, menuViewLayoutMode = Style.center
+    var progressHeight = 0.0, progressWidth = 0.0, progressViewBottomSpace = 0.0
+    var titleSizeNormal = 0, titleSizeSelected = 0, progressColor = 0, titleColorNormal = 0, titleColorSelected = 0
+    var menuItemWidth = 0.0, itemMargin = 0.0
+    init(nibName: String?, bundle: Any?) {}
+}
+final class SwitchScenePageProbe: SwitchPageBoundary {
+    enum TitleStyle { case lettered, numbered }
+    let scenes: [Scene]
+    let titleStyle: TitleStyle
+    var sceneDatas: [SwitchSceneData]!
+    // PRODUCTION_SWITCH_PAGE_INIT
+}
 final class SwitchScenePickerProbe {
     var editable = true
     let scenes: [Scene]

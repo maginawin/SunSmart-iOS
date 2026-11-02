@@ -114,6 +114,63 @@ func check(_ value: Bool) { precondition(value); storageAssertions += 1 }
             print("FAIL storage: explicitNonBlobConfigurationMustNotBecomeLegacy"); exit(1)
         }
         storageAssertions += 1
+        try displayOrderStorage(path: path + ".display-order")
         print("storage: \(storageAssertions) assertions passed, 0 failed (real SQLite)")
     }
+}
+
+private func displayOrderStorage(path: String) throws {
+    SunSmartDataManager.shared.db = try Connection(path)
+    var db: Connection { SunSmartDataManager.shared.db! }
+    // Actual old schema has no display column. Loading must remain a read of
+    // valid legacy data; the fallback must not manufacture device configuration.
+    try db.run("CREATE TABLE sceneInfos (id INTEGER PRIMARY KEY, meshUUID TEXT NOT NULL, subNetworkKey TEXT NOT NULL, number INTEGER NOT NULL, imageId INTEGER NOT NULL, configuration BLOB, UNIQUE(meshUUID, number))")
+    try db.run("INSERT INTO sceneInfos(meshUUID,subNetworkKey,number,imageId) VALUES ('order-mesh','space-A',7,3), ('order-mesh','space-B',8,4), ('other-mesh','space-A',7,5)")
+    check(SceneInfo.initDatabase() && SceneInfo.initDatabase())
+    SunSmartDataManager.shared.db = try Connection(path)
+    let legacy = SceneInfo.load(meshUUID: "order-mesh", sceneId: 7)!
+    check(legacy.displayOrder == nil && legacy.configuration == nil && !legacy.configurationLoadFailed)
+    check(SceneDisplayOrder.key(number: 7, order: legacy.displayOrder) == 7)
+    check((try db.scalar("SELECT displayOrder IS NULL FROM sceneInfos WHERE meshUUID = 'order-mesh' AND number = 7") as? Int64) == 1)
+
+    legacy.displayOrder = 50
+    check(legacy.save(meshUUID: "order-mesh", subnetworkId: "space-A"))
+    let otherSpace = SceneInfo.load(meshUUID: "order-mesh", sceneId: 8)!
+    otherSpace.displayOrder = 2
+    check(otherSpace.save(meshUUID: "order-mesh", subnetworkId: "space-B"))
+    let replaced = SceneInfo.load(meshUUID: "order-mesh", sceneId: 7)!
+    replaced.imageId = 9
+    check(replaced.save(meshUUID: "order-mesh", subnetworkId: "space-A"))
+    SunSmartDataManager.shared.db = try Connection(path)
+    let reopened = SceneInfo.load(meshUUID: "order-mesh", sceneId: 7)!
+    check(reopened.displayOrder == 50 && reopened.imageId == 9)
+    check(try SceneInfo.loadAll(meshUUID: "order-mesh", subnetworkId: "space-A").map(\.displayOrder) == [50])
+    check(try SceneInfo.loadAll(meshUUID: "order-mesh", subnetworkId: "space-B").map(\.displayOrder) == [2])
+    check(SceneInfo.load(meshUUID: "other-mesh", sceneId: 7)?.displayOrder == nil)
+
+    // SQLite affinity still permits real/text/blob values. Bad display metadata
+    // must fall back without converting a legal scene into corrupt configuration.
+    for raw in ["NULL", "0", "-1", "1.5", "'broken'", "X'0102'", "9223372036854775807"] {
+        try db.run("UPDATE sceneInfos SET displayOrder = \(raw) WHERE meshUUID = 'order-mesh' AND number = 7")
+        let loaded = SceneInfo.load(meshUUID: "order-mesh", sceneId: 7)!
+        check(loaded.displayOrder == nil && !loaded.configurationLoadFailed)
+        check(SceneDisplayOrder.key(number: loaded.sceneId, order: loaded.displayOrder) == 7)
+        check(try SceneInfo.loadAll(meshUUID: "order-mesh", subnetworkId: "space-A").first?.displayOrder == nil)
+    }
+    reopened.displayOrder = 50
+    check(reopened.save(meshUUID: "order-mesh", subnetworkId: "space-A"))
+    try db.run("CREATE TRIGGER reject_order BEFORE INSERT ON sceneInfos WHEN NEW.number = 7 BEGIN SELECT RAISE(ABORT, 'injected order write'); END")
+    reopened.displayOrder = 70
+    check(!reopened.save(meshUUID: "order-mesh", subnetworkId: "space-A"))
+    check(SceneInfo.load(meshUUID: "order-mesh", sceneId: 7)?.displayOrder == 50)
+    try db.run("DROP TRIGGER reject_order")
+    do {
+        try db.savepoint {
+            try reopened.saveConfiguration(meshUUID: "order-mesh", subnetworkId: "space-A")
+            throw NSError(domain: "display-order-rollback", code: 1)
+        }
+    } catch { }
+    check(SceneInfo.load(meshUUID: "order-mesh", sceneId: 7)?.displayOrder == 50)
+    check(SceneInfo.load(meshUUID: "order-mesh", sceneId: 8)?.displayOrder == 2)
+    print("PASS display order storage: legacy migration, read-only fallback, SQLite types, REPLACE, Space isolation and rollback")
 }

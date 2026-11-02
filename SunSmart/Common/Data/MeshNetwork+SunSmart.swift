@@ -1339,6 +1339,13 @@ extension Group {
 }
 
 extension Scene {
+
+    static func sortedForDisplay(_ scenes: [Scene]) -> [Scene] {
+        scenes.sorted {
+            SceneDisplayOrder.precedes(number: $0.number, order: $0.info.displayOrder,
+                                       otherNumber: $1.number, otherOrder: $1.info.displayOrder)
+        }
+    }
     
     private static var infoKey: UInt8 = 0
     /// 扩展信息
@@ -1423,6 +1430,9 @@ extension Scene {
 }
 
 class SceneInfo {
+
+    /// nil denotes a legacy scene, displayed by its original Mesh number.
+    var displayOrder: Int64?
 
     /// nil is an old group scene; a failed explicit block is never an empty scene.
     var projectionPending = false

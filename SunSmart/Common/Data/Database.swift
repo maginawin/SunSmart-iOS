@@ -1375,6 +1375,8 @@ extension SceneInfo {
         static let imageId = Expression<Int>("imageId")
         static let configuration = Expression<Data?>("configuration")
         static let configurationType = Expression<String>(literal: "typeof(configuration)")
+        static let displayOrder = Expression<Int64?>("displayOrder")
+        static let validDisplayOrder = Expression<Int64?>(literal: "CASE WHEN typeof(displayOrder) = 'integer' AND displayOrder > 0 AND displayOrder < 9223372036854775807 THEN displayOrder ELSE NULL END")
     }
     
     /// 初始化组扩展信息表
@@ -1391,11 +1393,15 @@ extension SceneInfo {
             builder.column(ExpressionKey.number)
             builder.column(ExpressionKey.imageId)
             builder.column(ExpressionKey.configuration)
+            builder.column(ExpressionKey.displayOrder)
             builder.unique(ExpressionKey.meshUUID, ExpressionKey.number)
         }))
         let columns = try db.schema.columnDefinitions(table: "sceneInfos")
         if !columns.contains(where: { $0.name == "configuration" }) {
             try db.run(sceneInfosTable.addColumn(ExpressionKey.configuration))
+        }
+        if !columns.contains(where: { $0.name == "displayOrder" }) {
+            try db.run(sceneInfosTable.addColumn(ExpressionKey.displayOrder))
         }
     }
 
@@ -1404,6 +1410,7 @@ extension SceneInfo {
             throw PersistenceFailure.invalidNumber
         }
         let info = SceneInfo(sceneId: number, imageId: row[ExpressionKey.imageId])
+        info.displayOrder = row[ExpressionKey.validDisplayOrder]
         info.loadConfiguration(row[ExpressionKey.configuration], isPresent: row[ExpressionKey.configurationType] != "null")
         if number.isSpecialScene && info.configurationData != nil { throw PersistenceFailure.invalidNumber }
         return info
@@ -1414,7 +1421,7 @@ extension SceneInfo {
     static func loadAll(meshUUID: String, subnetworkId: String? = nil) throws -> [SceneInfo] {
         try prepareDatabase()
         guard let db = SunSmartDataManager.shared.db else { throw PersistenceFailure.unavailable }
-        var query = sceneInfosTable.select(sceneInfosTable[*], ExpressionKey.configurationType).filter(ExpressionKey.meshUUID == meshUUID
+        var query = sceneInfosTable.select(sceneInfosTable[*], ExpressionKey.configurationType, ExpressionKey.validDisplayOrder).filter(ExpressionKey.meshUUID == meshUUID
             && ExpressionKey.number > 0 && ExpressionKey.number < 0xFF00)
         if let subnetworkId { query = query.filter(ExpressionKey.subNetworkKey == subnetworkId) }
         return try db.prepare(query.order(ExpressionKey.number)).map { try decodeRow($0) }
@@ -1426,7 +1433,7 @@ extension SceneInfo {
     /// - Returns: 场景数据
     static func load(meshUUID: String, sceneId: SceneNumber) -> SceneInfo? {
         
-        let filter = SceneInfo.sceneInfosTable.select(sceneInfosTable[*], ExpressionKey.configurationType)
+        let filter = SceneInfo.sceneInfosTable.select(sceneInfosTable[*], ExpressionKey.configurationType, ExpressionKey.validDisplayOrder)
             .filter(ExpressionKey.meshUUID == meshUUID && ExpressionKey.number == Int(sceneId))
         do {
             try prepareDatabase()
@@ -1506,6 +1513,7 @@ extension SceneInfo {
             ExpressionKey.subNetworkKey <- networkId,
             ExpressionKey.number <- Int(sceneId),
             ExpressionKey.imageId <- imageId,
+            ExpressionKey.displayOrder <- SceneDisplayOrder.valid(displayOrder),
             ExpressionKey.configuration <- data
         ]))
     }

@@ -151,5 +151,74 @@ extension SpaceRecoveryReceiptTests {
             precondition(!S.hasPendingUpload(legacy) && !S.hasPendingImport(legacy))
             print("PASS: legacy/sample staging, reentry/restart while upload pending, failure/authority gates and strict readback; Zones=\(configuration.lightingZones.count), devices=\(configuration.devices.count)")
         }
+        try await testSceneOrderDefaultRecovery()
+    }
+
+    @MainActor static func testSceneOrderDefaultRecovery() async throws {
+        typealias S = SpaceConfigurationSafety
+        let request = NetworkRequest.shared
+        defer {
+            request.responses = []
+            ProximityLightingImportPreflight.storedSpace = nil
+        }
+        for mode in ["missingOrder", "changedOrder", "changedConfiguration", "changedNodes", "invalidSource"] {
+            let space = SpaceData("default-scene-order-" + mode)
+            space.lastUpdate = 100; space.lastUploadCloudTimestamp = 100
+            space.nodes = [try membershipNode(9)]
+            try SpaceMembershipCoordinator.confirmConfiguration(space)
+            var original = space.payload
+            original["updateTimestamp"] = 90
+            original["nodes"] = [[String: Any]]()
+            let removed = HDBDeviceConfiguration(nodeUuid: UUID(), nodeAddress: 1, mac: "AA:BB:CC:DD:EE:FF")
+            original["spaceData"] = ["hdb": try HDBLightingZonePolicy.json(.init(devices: [removed]))]
+            S.block(space, reason: "invalidStoredHDB")
+            ProximityLightingImportPreflight.storedSpace = space
+            let restored = await space.restoreConfiguration(spaceJsonData: original, authoritativeGET: true,
+                fixWithDefaults: true)
+            precondition(restored.status == .applied)
+
+            // Recreate an on-disk receipt written before display-field normalization.
+            var oldSource = original
+            var extensionData = oldSource["spaceData"] as! [String: Any]
+            extensionData["sceneDisplayOrder"] = ["0002", "0001"]
+            oldSource["spaceData"] = extensionData
+            var state = try S.recoveryState(space)
+            let oldSourceData = try JSONSerialization.data(withJSONObject: oldSource, options: .sortedKeys)
+            state.defaultRecoverySource = mode == "invalidSource" ? Data("invalid JSON".utf8)
+                : oldSourceData
+            try S.testSaveState(state, space: space)
+
+            let reopened = SpaceData(space.id)
+            reopened.lastUpdate = space.lastUpdate; reopened.lastUploadCloudTimestamp = space.lastUploadCloudTimestamp
+            reopened.nodes = space.nodes; reopened.groups = space.groups; reopened.exportValues = space.exportValues
+            ProximityLightingImportPreflight.storedSpace = reopened
+            var remote = original
+            if mode == "changedOrder" {
+                var extensionData = remote["spaceData"] as! [String: Any]
+                extensionData["sceneDisplayOrder"] = ["0001", "0002"]
+                remote["spaceData"] = extensionData
+            }
+            if mode == "changedConfiguration" { remote["spaceName"] = "Changed" }
+            if mode == "changedNodes" { remote["nodes"] = [try membershipNode(1)] }
+            if ["missingOrder", "changedOrder"].contains(mode) {
+                precondition(!S.shouldRefreshDefaultRecovery(reopened, remote: remote))
+                precondition(S.preserveDefaultConfiguration(reopened, remote: remote) == .preserved("localDefaultRecoveryPendingUpload"))
+                let reentered = await reopened.update(spaceJsonData: remote)
+                precondition(reentered == .preserved("localDefaultRecoveryPendingUpload"))
+                request.result = .success(["data": remote])
+                if case .failure = await S.resumeUpload(reopened) { preconditionFailure("display-only difference blocked recovery upload: \(mode)") }
+                precondition(reopened.defaultRestoreCalls == 0 && reopened.nodes.isEmpty && !S.isBlocked(reopened))
+            } else {
+                precondition(S.shouldRefreshDefaultRecovery(reopened, remote: remote))
+                precondition(S.preserveDefaultConfiguration(reopened, remote: remote) == nil)
+                if mode == "changedNodes" {
+                    let receipt = S.prepareSubmission(reopened, payload: reopened.payload)!
+                    precondition(S.markSubmissionAccepted(receipt, space: reopened))
+                    precondition(S.shouldRefreshDefaultRecovery(reopened, remote: remote),
+                        "accepted submissions must still notice actual node identity changes")
+                }
+            }
+        }
+        print("PASS: persisted pre-normalization default sources tolerate display-only changes after restart; real changes and corrupt receipts remain distinct")
     }
 }

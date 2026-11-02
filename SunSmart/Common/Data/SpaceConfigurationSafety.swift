@@ -1374,7 +1374,7 @@ enum SpaceConfigurationSafety {
                         guard space.save() else { return failure(uploadUnconfirmed, "persistence", "remoteMetadata") }
                         guard canAutomaticallyUpload(space) else { return failure(authorityError(space), "baselineAuthority", "writeUnavailable") }
                         if context.defaultRecoverySource != nil {
-                            if defaultRecoverySourceData(remote) == context.defaultRecoverySource {
+                            if defaultRecoverySourceMatches(remote, source: context.defaultRecoverySource) {
                                 // The user selected this server snapshot. Its repaired
                                 // HDB may not decode until POST, so ordinary baseline
                                 // comparison cannot authorize that first replacement.
@@ -1673,8 +1673,8 @@ enum SpaceConfigurationSafety {
               let models = SchedulerModelSnapshot.spaceData(lhs), models == SchedulerModelSnapshot.spaceData(rhs) else { return false }
         let fields: Set<String> = ["spaceName", "imageId", "controlType", "deviceBlinkMode", "displayDeviceNamePrefix",
             "showCCTQuickButtons", "scenes", "switches", "emergencyFireControllers", "spaceData"]
-        guard let left = try? JSONSerialization.data(withJSONObject: lhs.filter { fields.contains($0.key) }, options: .sortedKeys),
-              let right = try? JSONSerialization.data(withJSONObject: rhs.filter { fields.contains($0.key) }, options: .sortedKeys) else { return false }
+        guard let left = try? JSONSerialization.data(withJSONObject: SceneDisplayOrder.excludingFromComparison(lhs).filter { fields.contains($0.key) }, options: .sortedKeys),
+              let right = try? JSONSerialization.data(withJSONObject: SceneDisplayOrder.excludingFromComparison(rhs).filter { fields.contains($0.key) }, options: .sortedKeys) else { return false }
         return left == right
     }
 
@@ -1741,7 +1741,15 @@ enum SpaceConfigurationSafety {
         let fields: Set<String> = ["uuid", "updateTimestamp", "netKey", "appKey", "nodes", "groups", "scenes",
             "schedules", "switches", "emergencyFireControllers", "spaceData", "spaceName", "imageId",
             "controlType", "deviceBlinkMode", "displayDeviceNamePrefix", "showCCTQuickButtons"]
-        return try? JSONSerialization.data(withJSONObject: payload.filter { fields.contains($0.key) }, options: .sortedKeys)
+        return try? JSONSerialization.data(withJSONObject: SceneDisplayOrder.excludingFromComparison(payload).filter { fields.contains($0.key) }, options: .sortedKeys)
+    }
+
+    private static func defaultRecoverySourceMatches(_ payload: [String: Any], source: Data?) -> Bool {
+        guard let source,
+              let oldPayload = (try? JSONSerialization.jsonObject(with: source)) as? [String: Any],
+              let expected = defaultRecoverySourceData(oldPayload),
+              let actual = defaultRecoverySourceData(payload) else { return false }
+        return actual == expected
     }
 
     /// The repaired configuration is already committed to both databases. An
@@ -1753,7 +1761,7 @@ enum SpaceConfigurationSafety {
               !hasPendingDeletionCleanup(space), !hasPendingReferenceCleanup(space),
               var state = try? recoveryState(space), let source = state.defaultRecoverySource,
               let version = state.localReplacementVersion,
-              defaultRecoverySourceData(remote) == source else { return nil }
+              defaultRecoverySourceMatches(remote, source: source) else { return nil }
         let blockedKey = "spaceConfigurationBlocked." + key(space)
         let reason = UserDefaults.standard.string(forKey: blockedKey)
         // Only conflicts caused by comparing this known old cloud copy may be
@@ -1783,7 +1791,7 @@ enum SpaceConfigurationSafety {
         guard !hasPendingImport(space), let state = try? recoveryState(space),
               let source = state.defaultRecoverySource else { return false }
         if state.submission != nil { return defaultRecoveryNodesChanged(space, remote: remote) }
-        return defaultRecoverySourceData(remote) != source
+        return !defaultRecoverySourceMatches(remote, source: source)
     }
 
     private static func defaultRecoveryNodesChanged(_ space: SpaceData, remote: [String: Any]) -> Bool {
@@ -1832,7 +1840,7 @@ enum SpaceConfigurationSafety {
             stage = "checkpoint"
             guard checkpoint(space, refresh: true) else { return false }
             stage = "staging"
-            let changed = defaultRecoverySourceData(selected) != source
+            let changed = !defaultRecoverySourceMatches(selected, source: source)
             let receipt: [String: Any] = ["localTimestamp": space.lastUpdate, "payload": selected,
                 "defaultSource": source.base64EncodedString(), "needsUpload": changed]
             try JSONSerialization.data(withJSONObject: receipt, options: .sortedKeys).write(
@@ -2175,7 +2183,7 @@ enum SpaceConfigurationSafety {
         var snapshot = state.submission?.removalSnapshot ?? (state.submission == nil ? state.removalSnapshot : nil)
         let source = state.submission?.nodeIdentities
             ?? (state.submission == nil ? state.nodeIdentitiesBaseline : nil) ?? snapshot?.identities
-        if snapshot?.comparisonVersion != 3 { snapshot = nil }
+        if snapshot?.comparisonVersion != Snapshot.currentComparisonVersion { snapshot = nil }
         if source == nil && snapshot == nil { return .notApplicable }
         if let source, remoteNodes.count >= source.count { return .notApplicable }
         func failure(_ reason: String) -> OlderCloudBaselineResult {

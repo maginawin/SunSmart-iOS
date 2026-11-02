@@ -183,6 +183,7 @@ final class NetworkRequest {
     @MainActor static func main() async throws {
         try await testNewerCloudImports()
         try await testLocalMembershipCompatibility()
+        try await testSceneOrderSnapshotCompatibility()
         try await testSceneReceipts()
         defer {
             try? FileManager.default.removeItem(at: SpaceConfigurationSafety.testRoot)
@@ -1632,6 +1633,65 @@ extension SpaceRecoveryReceiptTests {
             if mode == "dirty" { precondition(space.nodes.contains { ($0["uuid"] as? String) == (try! membershipNode(9))["uuid"] as? String }) }
         }
         print("PASS: same-version strict subset, complete-field comparison, offline addition, old preference/receipt migration, retries and unknown POST protection")
+    }
+
+    @MainActor static func testSceneOrderSnapshotCompatibility() async throws {
+        typealias S = SpaceConfigurationSafety
+        typealias Snapshot = SpaceCloudNodeRemovalPolicy.Snapshot
+        defer { ProximityLightingImportPreflight.storedSpace = nil }
+        for mode in ["missingOrder", "changedOrder", "missingProof", "wrongTimestamp", "wrongIdentity", "changedConfiguration"] {
+            let space = SpaceData("scene-order-v3-" + mode)
+            space.nodes = try (1...3).map(membershipNode)
+            space.lastUploadCloudTimestamp = 50
+            space.exportValues = ["scenes": [
+                ["number": "0001", "name": "First", "imageId": 1],
+                ["number": "0002", "name": "Second", "imageId": 2]],
+                "spaceData": ["sceneDisplayOrder": ["0002", "0001"]]]
+            let baseline = space.payload
+            let current = Snapshot.make(baseline)!
+            // The v3 client included unknown spaceData fields in its properties hash.
+            let fields: Set<String> = ["uuid", "groups", "scenes", "schedules", "spaceData", "netKey", "appKey"]
+            let oldProperties = SHA256.hash(data: try JSONSerialization.data(
+                withJSONObject: baseline.filter { fields.contains($0.key) }, options: .sortedKeys))
+                .map { String(format: "%02x", $0) }.joined()
+            precondition(oldProperties != current.properties)
+            var state = try S.recoveryState(space)
+            state.nodeIdentitiesBaseline = current.identities
+            state.removalSnapshot = Snapshot(spaceID: current.spaceID, timestamp: current.timestamp,
+                properties: oldProperties, comparisonVersion: 3, nodes: current.nodes, identities: current.identities)
+            // No logical comparison fallback: success requires the saved full snapshot.
+            try S.testSaveState(state, space: space)
+            if mode != "missingProof" {
+                var saved = baseline
+                if mode == "wrongTimestamp" { saved["updateTimestamp"] = 49 }
+                if mode == "wrongIdentity" { saved["nodes"] = [try membershipNode(99)] }
+                precondition(S.recordSnapshot(space, payload: saved))
+            }
+            space.lastUpdate = 60 // Unsent local work cannot substitute for the old baseline.
+            ProximityLightingImportPreflight.storedSpace = space
+            var remote = baseline
+            remote["nodes"] = Array(space.nodes.prefix(2))
+            remote["spaceData"] = mode == "missingOrder" ? [String: Any]()
+                : ["sceneDisplayOrder": ["0001", "0002"]]
+            if mode == "changedConfiguration" {
+                var scenes = remote["scenes"] as! [[String: Any]]
+                scenes[0]["name"] = "Changed"
+                remote["scenes"] = scenes
+            }
+            let outcome = await S.reconcileSameVersionNodeRemoval(space, remote: remote)
+            if ["missingOrder", "changedOrder"].contains(mode) {
+                guard case .preserveLocal = outcome else { preconditionFailure("v3 proof must rebuild: \(mode), \(outcome)") }
+                let rebuilt = try S.recoveryState(space).removalSnapshot!
+                precondition(rebuilt.comparisonVersion == Snapshot.currentComparisonVersion
+                    && rebuilt.properties == Snapshot.make(remote)!.properties)
+                precondition(space.nodes.count == 2 && !S.isBlocked(space))
+            } else {
+                guard case .failed = outcome else { preconditionFailure("untrusted or changed baseline accepted: \(mode)") }
+                precondition(space.nodes.count == 3 && S.requiresConfigurationReview(space))
+                precondition(try! S.deletionJournal(space).entries.isEmpty)
+            }
+        }
+        print("PASS: v3 display-field hashes rebuild from exact saved proof; missing/stale/foreign proof and actual configuration changes preserve nodes")
     }
 
     @MainActor static func testOwnerRemovalSample(_ paths: [String]) async throws {

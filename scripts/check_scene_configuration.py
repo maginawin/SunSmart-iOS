@@ -32,6 +32,7 @@ def target_sources(tmp):
     harness = harness.replace(function(harness, '    func deviceTarget(for node:'), function(mesh, '    func deviceTarget(for node:'))
     harness += '\nextension SceneExecuteData {\n' + function(mesh, '    func isSynced(with groupSceneData:') + '\n}\n'
     harness = harness.replace('// ACTUAL_SCENE_INFO', section('SunSmart/Common/Data/MeshNetwork+SunSmart.swift', 'class SceneInfo {', '\nclass GroupInfo {'))
+    harness += '\nextension Scene {\n' + function(mesh, '    static func sortedForDisplay(') + '\n}\n'
     harness = harness.replace('// ACTUAL_ACTIVE_SCENE_GROUPS', function(timed, '    var activeSceneGroups:'))
     harness = harness.replace('// ACTUAL_SCHEDULE_TARGETS', function(mesh, '    func targets(node:'))
     harness = harness.replace('// ACTUAL_EXIST_NODES', function((ROOT / 'SunSmart/Main/Timed/Model/Scheduler.swift').read_text(), '    var existNodes:'))
@@ -99,6 +100,22 @@ def run(suite):
                                       .replace('// PRODUCTION_SELECT_DEVICES', select_method)
                                       .replace('// PRODUCTION_EDITOR_HEADER', header_method))
             sources += [ROOT / 'SunSmart/Main/Device/Filter/Model/DeviceNameFilterSession.swift', ROOT / 'SunSmart/Main/Scene/Model/SceneDraftSelection.swift', selection_tests]
+            editing = (ROOT / 'Tests/Scene/SceneDeviceParameterEditingTests.swift').read_text()
+            editing = editing.replace('// PRODUCTION_EDIT_DEVICES', '\n'.join(function(selection_source, marker).replace('private func', 'func') for marker in [
+                '    private func editDevices(', '    private func accepts(']))
+            sdk_node = (ROOT / '.local-sdk/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Node/Node+Propertys.swift').read_text()
+            editing = editing.replace('// SDK_CONTROL_PAGE', function(sdk_node, 'public enum NodeChangeControlPage:'))
+            editing = editing.replace('// SDK_NODE_PROPERTIES', '\n'.join(function(sdk_node, marker) for marker in [
+                '    var isSingleWhiteDefaultCctProduct:', '    var defaultChangeControlPage:',
+                '    var effectiveChangeControlPage:', '    var effectiveSupportCct:', '    var singleDeviceDisplaySupportCct:',
+                '    func clampEffectiveCct(', '    static func getLightness(', '    static func getLightness100(']))
+            resolver = (ROOT / 'SunSmart/Main/Scene/Model/SceneTargetResolver.swift').read_text()
+            editing = editing.replace('// PRODUCTION_RESOLVE', function(resolver, '    func resolved(for node:'))
+            picker = (ROOT / 'SunSmart/Main/Scene/View/SceneExecuteDataPickerView.swift').read_text()
+            editing = editing.replace('// PRODUCTION_PICKER', '\n'.join(function(picker, marker).replace('private var', 'var').replace('@objc private func', 'func') for marker in [
+                '    private var selectedCct:', '    private var selectedIsOn:', '    @objc private func shadeViewAction()']))
+            editing_tests = tmp / 'ParameterEditingTests.swift'; editing_tests.write_text(editing)
+            sources += [editing_tests]
         elif suite == 'model':
             sources += [ROOT / 'Tests/Scene/SceneConfigurationTests.swift']
         elif suite in ['sync', 'integration']:
@@ -106,6 +123,9 @@ def run(suite):
             if suite == 'integration':
                 picker = tmp / 'Pickers.swift'
                 text = (ROOT / 'Tests/Scene/ScenePickerIntegrationSupport.swift').read_text()
+                text = text.replace('// PRODUCTION_VISIBLE_SCENES', function((ROOT / 'SunSmart/Main/Scene/Controller/ScenesViewController.swift').read_text(), '    private var visibleScenes:').replace('private var', 'var'))
+                text = text.replace('// PRODUCTION_SCHEDULE_INIT', function((ROOT / 'SunSmart/Main/Timed/View/ScheduleScenesView.swift').read_text(), '    init(scenes:'))
+                text = text.replace('// PRODUCTION_SWITCH_PAGE_INIT', function((ROOT / 'SunSmart/Main/Group/Switch/Controller/SwitchSelectScenePageController.swift').read_text(), '    init(scenes:'))
                 text = text.replace('// PRODUCTION_SCENE_SNAPSHOT', section('SunSmart/Common/Data/SpacePageSyncRead.swift', 'struct SceneGroupSyncSnapshot {', '\nstruct SceneGroupAppearance'))
                 text = text.replace('// PRODUCTION_SCHEDULE_PENDING', function((ROOT / 'SunSmart/Main/Timed/View/ScheduleScenesView.swift').read_text(), '    private func sceneNeedsSync(').replace('private func', 'func'))
                 text = text.replace('// PRODUCTION_SCHEDULE_SELECT', function((ROOT / 'SunSmart/Main/Timed/View/ScheduleScenesView.swift').read_text(), '    func collectionView(_ collectionView: UICollectionView, didSelectItemAt'))

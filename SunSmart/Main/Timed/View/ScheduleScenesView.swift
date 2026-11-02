@@ -63,7 +63,7 @@ class ScheduleScenesView: UIView {
     }
 
     init(scenes: [Scene], selectScene: Scene?, schedule: Schedule? = nil, selectBack: SceneSelectFinishedCallback?) {
-        self.scenes = scenes
+        self.scenes = Scene.sortedForDisplay(scenes)
         self.selectScene = selectScene
         self.schedule = schedule
         self.selectCallback = selectBack

@@ -227,6 +227,52 @@ struct SceneDraft: Equatable {
     }
 }
 
+/// Display metadata is independent of Mesh identity and synchronization intent.
+enum SceneDisplayOrder {
+    static let payloadKey = "sceneDisplayOrder"
+
+    static func valid(_ value: Int64?) -> Int64? {
+        guard let value, value > 0, value < Int64.max else { return nil }
+        return value
+    }
+
+    static func key(number: UInt16, order: Int64?) -> Int64 {
+        valid(order) ?? Int64(number)
+    }
+
+    static func precedes(number: UInt16, order: Int64?, otherNumber: UInt16, otherOrder: Int64?) -> Bool {
+        (key(number: number, order: order), number) < (key(number: otherNumber, order: otherOrder), otherNumber)
+    }
+
+    static func payload(records: [SceneConfigurationPayload.Record]) -> [String] {
+        records.sorted {
+            precedes(number: $0.number, order: $0.displayOrder, otherNumber: $1.number, otherOrder: $1.displayOrder)
+        }.map { String(format: "%04X", $0.number) }
+    }
+
+    /// A partial or old display list cannot weaken validation of the actual scenes.
+    static func imported(_ raw: Any?, numbers: Set<UInt16>) -> [UInt16: Int64] {
+        var seen = Set<UInt16>()
+        let listed = (raw as? [Any] ?? []).compactMap { value -> UInt16? in
+            guard let number = try? SceneConfigurationPayload.number(value),
+                  numbers.contains(number), seen.insert(number).inserted else { return nil }
+            return number
+        }
+        let ordered = listed + numbers.subtracting(seen).sorted()
+        return Dictionary(uniqueKeysWithValues: ordered.enumerated().map { ($0.element, Int64($0.offset + 1)) })
+    }
+
+    /// Compare configuration without display metadata; keep the original payload intact.
+    static func excludingFromComparison(_ payload: [String: Any]) -> [String: Any] {
+        var result = payload
+        if var extensionData = result["spaceData"] as? [String: Any] {
+            extensionData.removeValue(forKey: payloadKey)
+            result["spaceData"] = extensionData
+        }
+        return result
+    }
+}
+
 /// The external representation uses the same strict configuration codec as App rows.
 /// Metadata is carried alongside intent; SDK presence is deliberately not required.
 enum SceneConfigurationPayload {
@@ -236,6 +282,7 @@ enum SceneConfigurationPayload {
         let name: String
         let imageId: Int
         let configuration: SceneConfiguration?
+        var displayOrder: Int64? = nil
     }
 
     static func number(_ raw: Any?) throws -> UInt16 {
@@ -292,7 +339,7 @@ enum SceneConfigurationPayload {
         let configs = try decode(extensionData["sceneConfigurations"])
         guard let rows = payload["scenes"] as? [[String: Any]] else { throw Failure.invalidPayload }
         var seen = Set<UInt16>()
-        let records = try rows.map { row -> Record in
+        var records = try rows.map { row -> Record in
             let id = try number(row["number"])
             guard seen.insert(id).inserted else { throw Failure.duplicateNumber }
             guard let name = row["name"] as? String,
@@ -301,6 +348,8 @@ enum SceneConfigurationPayload {
             return Record(number: id, name: name, imageId: integer(row["imageId"]) ?? 0, configuration: configs[id])
         }
         guard Set(configs.keys).isSubset(of: seen) else { throw Failure.metadataMismatch }
+        let displayOrders = SceneDisplayOrder.imported(extensionData[SceneDisplayOrder.payloadKey], numbers: seen)
+        for index in records.indices { records[index].displayOrder = displayOrders[records[index].number] }
         guard let groups = payload["groups"] as? [[String: Any]] else { throw Failure.invalidPayload }
         for group in groups {
             for row in try groupParameters(group["scenesDatas"]) {

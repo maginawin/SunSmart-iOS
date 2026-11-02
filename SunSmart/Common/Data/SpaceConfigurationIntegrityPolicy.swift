@@ -8,6 +8,7 @@ enum SpaceCloudNodeRemovalPolicy {
     /// Compare exported business configuration independently of server observations.
     /// Only hashes and provisioned identities are persisted.
     struct Snapshot: Codable, Equatable {
+        static let currentComparisonVersion = 4
         let spaceID: String
         let timestamp: Int64
         let properties: String
@@ -37,7 +38,7 @@ enum SpaceCloudNodeRemovalPolicy {
             if let alias = SpaceConfigurationIntegrityPolicy.integer(payload["appKeyIndex"]),
                let index = SpaceConfigurationIntegrityPolicy.integer((payload["appKey"] as? [String: Any])?["index"]),
                alias != index { return nil }
-            var propertiesPayload = payload.filter { fields.contains($0.key) }
+            var propertiesPayload = SceneDisplayOrder.excludingFromComparison(payload).filter { fields.contains($0.key) }
             do {
                 let records = try SceneConfigurationPayload.records(payload: payload)
                 propertiesPayload["scenes"] = try SceneConfigurationPayload.metadata(records: records)
@@ -60,7 +61,7 @@ enum SpaceCloudNodeRemovalPolicy {
                 guard let hash = fingerprint(comparisonNode(node)) else { return nil }
                 hashes[identity.uuid] = hash
             }
-            return .init(spaceID: id, timestamp: timestamp, properties: properties, comparisonVersion: 3, nodes: hashes, identities: identities)
+            return .init(spaceID: id, timestamp: timestamp, properties: properties, comparisonVersion: currentComparisonVersion, nodes: hashes, identities: identities)
         }
 
         /// Membership is authoritative independently of GET-only telemetry and
@@ -90,7 +91,7 @@ enum SpaceCloudNodeRemovalPolicy {
 
         func removals(in remote: Snapshot) -> [Instance]? {
             guard spaceID == remote.spaceID, timestamp <= remote.timestamp,
-                  comparisonVersion == 3, remote.comparisonVersion == 3,
+                  comparisonVersion == Self.currentComparisonVersion, remote.comparisonVersion == Self.currentComparisonVersion,
                   properties == remote.properties,
                   remote.nodes.allSatisfy({ nodes[$0.key] == $0.value }) else { return nil }
             return SpaceCloudNodeRemovalPolicy.removed(from: identities, remote: remote.identities)

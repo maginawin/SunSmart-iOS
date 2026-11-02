@@ -33,14 +33,14 @@ final class SceneConfigurationStore {
         var records: [UInt16: SceneConfigurationPayload.Record] = [:]
         for scene in scenes where !scene.number.isSpecialScene {
             guard scene.number > 0, records[scene.number] == nil else { throw Failure.persistence }
-            records[scene.number] = .init(number: scene.number, name: scene.name, imageId: scene.info.imageId, configuration: nil)
+            records[scene.number] = .init(number: scene.number, name: scene.name, imageId: scene.info.imageId, configuration: nil, displayOrder: scene.info.displayOrder)
         }
         for info in infos {
             guard !info.configurationLoadFailed else { throw Failure.persistence }
             if let config = info.configuration {
-                records[info.sceneId] = .init(number: info.sceneId, name: config.name, imageId: info.imageId, configuration: config)
+                records[info.sceneId] = .init(number: info.sceneId, name: config.name, imageId: info.imageId, configuration: config, displayOrder: info.displayOrder)
             } else if let legacy = records[info.sceneId] {
-                records[info.sceneId] = .init(number: info.sceneId, name: legacy.name, imageId: info.imageId, configuration: nil)
+                records[info.sceneId] = .init(number: info.sceneId, name: legacy.name, imageId: info.imageId, configuration: nil, displayOrder: info.displayOrder)
             } else { throw Failure.persistence } // A nameless legacy orphan is not an empty configuration.
         }
         let result = records.values.sorted { $0.number < $1.number }
@@ -60,6 +60,7 @@ final class SceneConfigurationStore {
               SceneInfo.delete(meshUUID: scope.meshUUID, networkId: scope.networkID) else { throw Failure.persistence }
         for record in records {
             let info = SceneInfo(sceneId: record.number, imageId: record.imageId)
+            info.displayOrder = record.displayOrder
             info.configuration = record.configuration
             try info.saveConfiguration(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)
         }
@@ -392,6 +393,7 @@ final class SceneConfigurationStore {
                 try validateSource(draft)
                 let number = try draft.number ?? nextAvailableNumber()
                 let oldScene = manager.scenes.first { $0.number == number }
+                let appInfos = try SceneInfo.loadAll(meshUUID: draft.scope.meshUUID, subnetworkId: draft.scope.networkID)
                 let oldSnapshot = try oldScene.map { try SceneTargetResolver.resolve(scene: $0) }
                 let targets = Set(snapshot.targets.map(\.identity))
                 let currentOperations = Dictionary(uniqueKeysWithValues: (oldScene?.info.configuration?.pendingOperations ?? []).map { ($0.identity, $0) })
@@ -429,6 +431,11 @@ final class SceneConfigurationStore {
                     })
                 configuration = try configuration.normalized()
                 let value = SceneInfo(sceneId: number, imageId: draft.imageId)
+                if draft.number == nil {
+                    value.displayOrder = try nextDisplayOrder(scope: draft.scope, infos: appInfos)
+                } else {
+                    value.displayOrder = (appInfos.first { $0.sceneId == number } ?? oldScene?.info)?.displayOrder
+                }
                 value.configuration = configuration
                 try TimedSchedulerBindings.commit(plan) {
                     for group in manager.groups {
@@ -509,6 +516,9 @@ final class SceneConfigurationStore {
             revision: snapshot.revision ?? draft.revision)
         configuration.name = draft.name
         let info = SceneInfo(sceneId: number, imageId: draft.imageId)
+        let currentInfo = try SceneInfo.loadAll(meshUUID: draft.scope.meshUUID, subnetworkId: draft.scope.networkID)
+            .first { $0.sceneId == number } ?? scene.info
+        info.displayOrder = currentInfo.displayOrder
         info.configuration = configuration
         try info.saveConfiguration(meshUUID: draft.scope.meshUUID, subnetworkId: draft.scope.networkID)
         return project(info, scope: draft.scope)
@@ -523,6 +533,21 @@ final class SceneConfigurationStore {
         guard let number = SceneRegisterPolicy.nextOrdinaryNumber(used: used,
             ranges: provisioner.allocatedSceneRange.map { $0.firstScene...$0.lastScene }) else { throw Failure.noNumber }
         return number
+    }
+
+    private func nextDisplayOrder(scope: SceneScope, infos: [SceneInfo]) throws -> Int64 {
+        var orders: [SceneNumber: Int64] = [:]
+        for scene in MeshNetworkManager.instance.scenes where !scene.number.isSpecialScene && scene.subNetworkId == scope.networkID {
+            orders[scene.number] = SceneDisplayOrder.key(number: scene.number, order: scene.info.displayOrder)
+        }
+        // Committed rows include projection failures and pending deletion, and own
+        // the latest value even when the SDK object still has an older projection.
+        for info in infos {
+            orders[info.sceneId] = SceneDisplayOrder.key(number: info.sceneId, order: info.displayOrder)
+        }
+        let maximum = orders.values.max() ?? 0
+        guard maximum < Int64.max - 1 else { throw Failure.persistence }
+        return maximum + 1
     }
 
     /// Settings re-entry repairs durable projection before creating an editable revision.

@@ -57,6 +57,22 @@ import Foundation
         snapshotPayload["spaceData"] = ["sceneConfigurations": reversed]
         precondition(snapshot.properties == SpaceCloudNodeRemovalPolicy.Snapshot.make(snapshotPayload)!.properties,
             "member ordering must not conflict in cloud removal snapshots")
+        let configurationBeforeOrder = P.configurationData(snapshotPayload)
+        var withOrder = snapshotPayload["spaceData"] as! [String: Any]
+        for order in [["0007"], [], ["0007", "0007", "FFFF"]] {
+            withOrder[SceneDisplayOrder.payloadKey] = order
+            snapshotPayload["spaceData"] = withOrder
+            let orderedSnapshot = SpaceCloudNodeRemovalPolicy.Snapshot.make(snapshotPayload)!
+            precondition(orderedSnapshot.comparisonVersion == 4 && snapshot.properties == orderedSnapshot.properties)
+            precondition(P.configurationData(snapshotPayload) == configurationBeforeOrder,
+                         "display metadata must not change device configuration or removal evidence")
+        }
+        var oldHash = snapshot; oldHash.comparisonVersion = 3
+        precondition(oldHash.removals(in: snapshot) == nil, "legacy full-space hash requires trusted v4 rebuild")
+        withOrder["anotherExtension"] = "must remain significant"
+        snapshotPayload["spaceData"] = withOrder
+        precondition(SpaceCloudNodeRemovalPolicy.Snapshot.make(snapshotPayload)!.properties != snapshot.properties,
+                     "only scene display metadata may be excluded")
         let identity = config.deviceMembers[0].identity
         let replacement = SpaceCloudNodeRemovalPolicy.Instance(uuid: identity.nodeUUID, address: 1, keyFingerprint: String(repeating: "B", count: 64))
         precondition(SpaceCloudNodeRemovalPolicy.projectConfiguration(expected, removing: [replacement]) == expected)

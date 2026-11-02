@@ -70,8 +70,39 @@ import Foundation
         precondition(!SceneCommandBuilder.isSelectable(scene: scene))
         do { _ = try SceneCommandBuilder.recallHandles(scene: scene); fatalError("deleting scene recalled") } catch {}
         try groupFeedback()
+        try displayOrderAcrossEntries()
         print("PASS Scene integration: direct Recall, per-device feedback, pending, emergency, metadata and lifecycle")
     }
+}
+
+func displayOrderAcrossEntries() throws {
+    let manager = MeshNetworkManager.instance
+    let node = Node(101)
+    manager.realNodes = [node]; manager.groups = []; manager.schedules = []
+    let early = Scene(9), later = Scene(1), legacy = Scene(4), tied = Scene(5)
+    early.info.displayOrder = 2; later.info.displayOrder = 8; tied.info.displayOrder = 4
+    let member = SceneDeviceMember(identity: node.timedSchedulerIdentity!, parameters: .init(isOn: true, lightness: 1000, cct: 4000))
+    for scene in [early, later, legacy, tied] {
+        scene.info.configuration = .init(kind: .devices, name: scene.name, deviceMembers: [member])
+    }
+    for input in [[later, tied, early, legacy], [legacy, early, later, tied]] {
+        let list = ScenesControllerProbe(input)
+        let schedule = ScheduleScenePickerProbe(input.reversed())
+        let page = SwitchScenePageProbe(scenes: input)
+        let picker = SwitchScenePickerProbe(page.scenes)
+        for scenes in [list.scenes, schedule.scenes, page.scenes] {
+            precondition(scenes.map(\.number) == [9, 4, 5, 1], "all production display entry points must use order, legacy fallback and number tie-break")
+        }
+        schedule.collectionView(schedule.collectionView, didSelectItemAt: IndexPath(index: 0))
+        picker.tableView(UITableView(), didSelectRowAt: IndexPath(index: 0))
+        precondition(schedule.selectScene === early && picker.sceneData.scene === early)
+        MeshAPI.sent = []
+        list.collectionView(UICollectionView(), didSelectItemAt: IndexPath(index: 0))
+        precondition(MeshAPI.sent.count == 1 && (MeshAPI.sent[0].message as? SceneRecallUnacknowledged)?.scene == 9,
+                     "sorted position must still recall the original Mesh number")
+        early.name = "Renamed Scene 1"
+    }
+    print("PASS display order: actual list getter/picker initializers, rename/reload, legacy/ties and selected/Recall identity")
 }
 
 func groupFeedback() throws {

@@ -1021,6 +1021,7 @@ extension SpaceData {
                 let records = try SceneConfigurationStore.exportRecords(
                     scope: .init(meshUUID: meshUUID, networkID: self.meshNetworkId), scenes: meshNetwork.scenes)
                 sceneDicts = try SceneConfigurationPayload.metadata(records: records)
+                spaceExtensionData[SceneDisplayOrder.payloadKey] = SceneDisplayOrder.payload(records: records)
                 spaceExtensionData["sceneConfigurations"] = try SceneConfigurationPayload.encode(records: records)
                 spaceJsonData["spaceData"] = spaceExtensionData
             } catch {
