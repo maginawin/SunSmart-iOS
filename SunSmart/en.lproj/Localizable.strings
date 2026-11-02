@@ -2525,6 +2525,7 @@
 "hdb_diag_energy" = "Energy";
 
 // Create Site
+"site_edit_title" = "Edit site";
 "site_create_title" = "Create Site";
 "site_create_action" = "CREATE";
 "site_create_project_name" = "Project Name";
@@ -2559,6 +2560,8 @@
 "site_create_latitude" = "Latitude";
 "site_create_invalid_latitude" = "Enter a valid latitude between -90 and 90.";
 "site_create_invalid_longitude" = "Enter a valid longitude between -180 and 180.";
+"site_create_latitude_range" = "Range: -90 to 90";
+"site_create_longitude_range" = "Range: -180 to 180";
 "site_create_longitude" = "Longitude";
 "site_create_decimal" = "Decimal";
 "site_create_latitude_placeholder" = "e.g., 1.2801";
@@ -2638,3 +2641,17 @@
 "scene_preview_result" = "%d applied · %d failed · %d offline. Check the devices and retry preview.";
 "scene_preview_interrupted" = "Preview was not completed. Check the connection and devices, then try again.";
 "scene_preview_details" = "View details";
+
+/* Create Site current location */
+"site_create_location_permission_title" = "Allow \"%@\" to use\nyour location?";
+"site_create_location_permission_message" = "Your precise location is used to auto-fill site coordinates and calculate accurate sunrise/sunset schedules.";
+"site_create_location_allow" = "Allow";
+"site_create_location_dont_allow" = "Don't Allow";
+"site_create_location_denied_action" = "Location access denied";
+"site_create_location_denied" = "Location access denied.";
+"site_create_location_detected" = "Location detected.";
+"site_create_location_locating" = "Locating…";
+"site_create_location_failed" = "Unable to get your location. Please try again.";
+"site_create_location_services_disabled" = "Location Services are off. Turn them on in Settings > Privacy & Security > Location Services.";
+"site_create_location_restricted" = "Location access is restricted on this device. You can enter coordinates manually.";
+"site_create_location_settings_failed" = "Unable to open Settings. Please open Settings manually.";

@@ -33,12 +33,12 @@ with tempfile.TemporaryDirectory(prefix="site-hdb-persistence-") as directory:
     output = Path(directory)
     sqlite = sorted((SDK / "Sources/SQLite").rglob("*.swift"))
     assert sqlite, "Pass the local SDK checkout containing Sources/SQLite"
-    subprocess.run(["swiftc", "-emit-module", "-emit-library", "-module-name", "SQLite",
+    subprocess.run(["swiftc", "-module-cache-path", str(output / "module-cache"), "-emit-module", "-emit-library", "-module-name", "SQLite",
                     *map(str, sqlite), "-o", str(output / "libSQLite.dylib"),
                     "-emit-module-path", str(output / "SQLite.swiftmodule")], check=True)
     methods = [block(database, marker) for marker in [
         "struct ExpressionKey {", "static func initDatabase()", "static func loadAll()",
-        "static func load(siteId: String)", "@discardableResult func save(allData:",
+        "static func load(siteId: String)", "func persistedPropsState()", "static func isTautonym(", "@discardableResult func save(allData:",
         "@discardableResult func replaceTransferCredentials(",
         "func cloneData() -> SiteData", "static func getNextCloneSiteName("]]
     methods += [block(model, marker) for marker in ["var isHdbSite: Bool", "func loadIsHdbSite()", "func copy() -> Self {", "var standardProperties: SiteStandardProperties {"]]
@@ -66,7 +66,7 @@ with tempfile.TemporaryDirectory(prefix="site-hdb-persistence-") as directory:
     (output / "Production.swift").write_text(production)
     store = (output / "SiteExtensionStore.swift")
     store.write_text((ROOT / "SunSmart/Common/Data/SiteExtensionStore.swift").read_text().replace("import NordicSigMeshSDK", ""))
-    subprocess.run(["swiftc", "-parse-as-library", "-I", directory, "-L", directory, "-lSQLite",
+    subprocess.run(["swiftc", "-module-cache-path", str(output / "module-cache"), "-parse-as-library", "-I", directory, "-L", directory, "-lSQLite",
                     str(output / "Production.swift"),
                     str(ROOT / "SunSmart/Common/Data/SiteExtensionData.swift"),
                     str(ROOT / "SunSmart/Common/Data/SiteTimeZoneValue.swift"),
@@ -87,7 +87,7 @@ with tempfile.TemporaryDirectory(prefix="site-hdb-persistence-") as directory:
     node_source = "import Foundation\nimport SQLite\nfinal class Node {\n" + block(node_model, "class PreConfiguration: Codable {") + "\n}\n"
     node_source += block(database, "extension Node.PreConfiguration {")
     (output / "NodePersistence.swift").write_text(node_source)
-    subprocess.run(["swiftc", "-parse-as-library", "-I", directory, "-L", directory, "-lSQLite",
+    subprocess.run(["swiftc", "-module-cache-path", str(output / "module-cache"), "-parse-as-library", "-I", directory, "-L", directory, "-lSQLite",
                     str(output / "NodePersistence.swift"),
                     str(ROOT / "Tests/HDB/HDBInitializationPersistenceTests.swift"),
                     "-o", str(output / "node-tests")], check=True)

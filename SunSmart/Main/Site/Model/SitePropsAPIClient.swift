@@ -73,6 +73,7 @@ final class SitePropsAPIClient: SitePropsAPIClientProtocol {
             props["timezone"] = timezone.storageValue
         }
 
+        props.merge(snapshot.standardProperties.patch(for: snapshot.fields).jsonObject) { _, new in new }
         let result = await networkRequest.request(
             .sitePropsUpdate(siteId: snapshot.siteId, props: props)
         )

@@ -38,6 +38,7 @@ extension SiteData {
 
 @MainActor enum SiteStandardPropsPersistenceTests {
     static func run(path: String) async throws {
+        try await editedMetadataPersistence(path: path)
         try transferCacheLifetime(path: path)
         try coordinateStringImport(path: path)
         let site = try SiteData.add(name: "Interleaved", timezone: nil)
@@ -73,6 +74,56 @@ extension SiteData {
         try await propsReadbackAndReceipts(siteID: site.id, path: path)
         try failedImportAndRetry(siteID: site.id, path: path)
         print("PASS: SQLite detail import -> fresh export -> stale upload receipt -> restart, partial fields and explicit null")
+    }
+
+    static func editedMetadataPersistence(path: String) async throws {
+        let original = SiteStandardProperties(latitude: 0, longitude: -1.25, countryRegion: "SG", postalCode: "00123",
+                                              city: "795565", address: "Street", siteDescription: "Lobby")
+        let site = try SiteData.add(name: "Editable", timezone: nil, standardProperties: original)
+        let other = try SiteData.add(name: "Other project", timezone: nil)
+        precondition(!SiteData.isTautonym(siteName: site.name, excludingSiteID: site.id))
+        precondition(SiteData.isTautonym(siteName: other.name, excludingSiteID: site.id))
+        precondition(SiteData.isTautonym(siteName: site.name), "CREATE still rejects an existing name")
+        let coordinator = SitePropsEditCoordinator(site: site)
+        var draft = await coordinator.prepareDraft(online: false)
+        draft.standardProperties.address = nil
+        draft.standardProperties.postalCode = "00001"
+        draft.standardProperties.latitude = -2.5
+        // A second Site instance changes another field while this form remains open.
+        let fresh = SiteData.load(siteId: site.id)!
+        fresh.lastUpdate += 1
+        fresh.standardProperties.city = "new city"
+        precondition(fresh.save(standardPropertiesPatch: fresh.standardProperties.patch(for: .city)))
+        let plan = coordinator.makeCommitPlan(draft: draft, online: false, now: fresh.lastUpdate + 1)
+        let db = SunSmartDataManager.shared.db!
+        try db.execute("CREATE TRIGGER fail_edit BEFORE INSERT ON sites BEGIN SELECT RAISE(FAIL, 'fixture'); END;")
+        guard case .failure = coordinator.persist(plan) else { preconditionFailure() }
+        precondition(site.address == "Street" && site.city == "new city" && site.pendingSitePropsMask.isEmpty)
+        try db.execute("DROP TRIGGER fail_edit")
+        guard case .success = coordinator.persist(plan) else { preconditionFailure() }
+        SunSmartDataManager.shared.db = try Connection(path)
+        let restarted = SiteData.load(siteId: site.id)!
+        precondition(restarted.address == nil && restarted.postalCode == "00001" && restarted.latitude == -2.5)
+        precondition(restarted.longitude == -1.25 && restarted.city == "new city" && restarted.siteDescription == "Lobby")
+        precondition(restarted.pendingSitePropsMask == [.address, .postalCode, .latitude])
+        let retryCoordinator = SitePropsEditCoordinator(site: restarted)
+        let retryDraft = await retryCoordinator.prepareDraft(online: false)
+        let retry = retryCoordinator.makeCommitPlan(draft: retryDraft, online: true, now: restarted.lastUpdate + 1)
+        let snapshot = retry.updateSnapshot!
+        precondition(snapshot.timestamp == plan.targetState.lastUpdate && !retry.hasNewChanges)
+        // A newer editor saves before the old ACK returns through its stale Site object.
+        var later = retryDraft
+        later.standardProperties.postalCode = "00002"
+        let laterPlan = retryCoordinator.makeCommitPlan(draft: later, online: false, now: restarted.lastUpdate + 1)
+        guard case .success = retryCoordinator.persist(laterPlan) else { preconditionFailure() }
+        NetworkRequest.shared.result = .success(["data": ["updateTimestamp": snapshot.timestamp,
+            "address": NSNull(), "postalCode": "00001", "latitude": "-2.5"]])
+        _ = await coordinator.submit(snapshot)
+        SunSmartDataManager.shared.db = try Connection(path)
+        let preserved = SiteData.load(siteId: site.id)!
+        precondition(preserved.postalCode == "00002" && preserved.pendingSitePropsTimestamp == laterPlan.targetState.lastUpdate)
+        precondition(preserved.pendingSitePropsMask == [.address, .postalCode, .latitude])
+        print("PASS: SQLite edit clears, duplicate identity, disjoint updates, rollback, restart retry and stale-instance ACK")
     }
 
     static func transferCacheLifetime(path: String) throws {

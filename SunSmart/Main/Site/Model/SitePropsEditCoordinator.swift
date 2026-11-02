@@ -10,6 +10,8 @@ import Foundation
 struct SitePropsEditDraft: Equatable {
     let original: SitePropsValues
     var values: SitePropsValues
+    var originalStandardProperties = SiteStandardProperties()
+    var standardProperties = SiteStandardProperties()
 }
 
 struct SitePropsCommitPlan: Equatable {
@@ -17,6 +19,7 @@ struct SitePropsCommitPlan: Equatable {
     let updateSnapshot: SitePropsUpdateSnapshot?
     let hasNewChanges: Bool
     let includesTimezone: Bool
+    var standardPropertiesPatch = SiteStandardProperties.Patch()
 
     var hasPendingFields: Bool {
         return !targetState.pending.fields.isEmpty
@@ -31,6 +34,7 @@ enum SitePropsLocalSaveError: Error {
 final class SitePropsEditCoordinator {
 
     let site: SiteData
+    private let account = UserData.currentUserId
     private let apiClient: SitePropsAPIClientProtocol
 
     init(
@@ -41,8 +45,9 @@ final class SitePropsEditCoordinator {
         self.apiClient = apiClient
         if let client = apiClient as? SitePropsAPIClient {
             let region = site.region
+            let account = self.account
             client.didReceiveProps = { [weak site] props, timestamp in
-                guard let site, region == UserData.currentServerRegion,
+                guard let site, account == UserData.currentUserId, region == UserData.currentServerRegion,
                       site.state == .normal else { return }
                 try SiteExtensionStore.receive(site, object: props, timestamp: timestamp)
             }
@@ -59,6 +64,7 @@ final class SitePropsEditCoordinator {
             return makeDraft(from: currentState())
         }
 
+        guard contextIsCurrent else { return makeDraft(from: currentState()) }
         let local = currentState()
         let merge = SitePropsEditPolicy.mergeRetrieve(local: local, remote: remote)
         guard merge.shouldPersist else {
@@ -81,13 +87,15 @@ final class SitePropsEditCoordinator {
         let changedFields = SitePropsEditPolicy.changedFields(
             from: draft.original,
             to: draft.values
-        )
+        ).union(draft.standardProperties.changedFields(from: draft.originalStandardProperties))
         guard let snapshot = SitePropsEditPolicy.makeUpdateSnapshot(
             siteId: site.id,
             local: local,
             original: draft.original,
             draft: draft.values,
-            now: now
+            now: now,
+            originalStandardProperties: draft.originalStandardProperties,
+            standardProperties: draft.standardProperties
         ) else {
             return SitePropsCommitPlan(
                 targetState: local,
@@ -98,20 +106,21 @@ final class SitePropsEditCoordinator {
         }
 
         let targetState = SitePropsLocalState(
-            values: draft.values,
+            values: snapshot.values,
             lastUpdate: snapshot.timestamp,
             lastUploadCloudTimestamp: local.lastUploadCloudTimestamp,
             pending: SitePropsPendingState(
                 fields: snapshot.fields,
                 timestamp: snapshot.timestamp
             ),
-            standardProperties: local.standardProperties
+            standardProperties: snapshot.standardProperties
         )
         return SitePropsCommitPlan(
             targetState: targetState,
             updateSnapshot: online ? snapshot : nil,
             hasNewChanges: !changedFields.isEmpty,
-            includesTimezone: snapshot.fields.contains(.timezone)
+            includesTimezone: snapshot.fields.contains(.timezone),
+            standardPropertiesPatch: snapshot.standardProperties.patch(for: changedFields)
         )
     }
 
@@ -123,15 +132,20 @@ final class SitePropsEditCoordinator {
             return .success(plan.updateSnapshot)
         }
 
-        guard persistState(plan.targetState) else {
+        guard persistState(plan.targetState, standardPropertiesPatch: plan.standardPropertiesPatch) else {
             return .failure(.databaseWriteFailed)
         }
         return .success(plan.updateSnapshot)
     }
 
+    private var contextIsCurrent: Bool {
+        account == UserData.currentUserId && site.region == UserData.currentServerRegion && site.state == .normal
+    }
+
     func submit(_ snapshot: SitePropsUpdateSnapshot) async -> Bool {
+        guard contextIsCurrent else { return false }
         let result = await apiClient.update(snapshot: snapshot)
-        guard
+        guard contextIsCurrent,
             case .success(let response) = result,
             SitePropsEditPolicy.updateResponseMatches(
                 request: snapshot,
@@ -142,6 +156,8 @@ final class SitePropsEditCoordinator {
         }
 
         let local = currentState()
+        // An obsolete save cannot authorize gateway synchronization for its old time zone.
+        guard local.lastUpdate == snapshot.timestamp else { return false }
         var updated = SitePropsEditPolicy.localStateAfterSuccessfulUpdate(
             current: local,
             request: snapshot
@@ -163,6 +179,9 @@ final class SitePropsEditCoordinator {
     }
 
     func currentState() -> SitePropsLocalState {
+        if let persisted = site.persistedPropsState(), persisted.lastUpdate >= site.lastUpdate {
+            apply(persisted)
+        }
         return SitePropsLocalState(
             values: SitePropsValues(
                 siteName: site.name,
@@ -196,7 +215,9 @@ final class SitePropsEditCoordinator {
     }
 
     private func makeDraft(from state: SitePropsLocalState) -> SitePropsEditDraft {
-        return SitePropsEditDraft(original: state.values, values: state.values)
+        return SitePropsEditDraft(original: state.values, values: state.values,
+                                  originalStandardProperties: state.standardProperties,
+                                  standardProperties: state.standardProperties)
     }
 
     private func apply(_ state: SitePropsLocalState) {

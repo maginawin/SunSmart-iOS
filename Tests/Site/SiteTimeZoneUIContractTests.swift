@@ -72,123 +72,30 @@ struct SiteTimeZoneUIContractTests {
         )
         if arguments.count >= 4 {
             let edit = try String(contentsOfFile: arguments[1], encoding: .utf8)
-            let editTimeZoneSection = substring(
-                in: edit,
-                from: "private func setupTimeZoneSection()",
-                through: "private func setupSiteIconSection()"
-            )
-            let timeZoneContainerConstraints = substring(
-                in: editTimeZoneSection,
-                from: "timeZoneContainer.snp.makeConstraints",
-                through: "timeZoneNameLabel.font"
-            )
-            require(
-                appearsInOrder(
-                    [
-                        "timeZoneContainer.addSubview(timeZoneNameLabel)",
-                        "timeZoneContainer.addSubview(timeZoneOffsetLabel)",
-                        "timeZoneNameLabel.snp.makeConstraints"
-                    ],
-                    in: edit
-                ),
-                "Edit Site timezone siblings must share a superview before activating their cross-view constraint"
-            )
-            require(
-                editTimeZoneSection.contains("contentView.addSubview(localTimeLabel)") &&
-                    !editTimeZoneSection.contains("timeZoneContainer.addSubview(localTimeLabel)") &&
-                    !edit.contains("timeZoneSeparator"),
-                "Edit Site Local time must use the transparent content area outside the Time Zone row"
-            )
-            require(
-                timeZoneContainerConstraints.contains("make.height.equalTo(SCRYFrom(44))") &&
-                    !timeZoneContainerConstraints.contains("SCRYFrom(80)") &&
-                    appearsInOrder(
-                        [
-                            "timeZoneContainer.addSubview(timeZoneButton)",
-                            "contentView.addSubview(localTimeLabel)",
-                            "localTimeLabel.snp.makeConstraints"
-                        ],
-                        in: editTimeZoneSection
-                    ),
-                "Edit Site Time Zone row must stay 44pt with Local time laid out below it"
-            )
-            require(
-                edit.contains("init(") &&
-                    edit.contains("site: SiteData") &&
-                    edit.contains("draft: SitePropsEditDraft") &&
-                    edit.contains("coordinator: SitePropsEditCoordinator") &&
-                    edit.contains("finishEditingHandler: @escaping FinishEditingHandler") &&
-                    edit.contains("title = site.name"),
-                "Dedicated Edit Site must receive prepared draft/coordinator and keep the Site name title"
-            )
-            require(
-                appearsInOrder(
-                    ["nameLabel", "timeZoneTitleLabel", "siteIconTitleLabel", "collectionView"],
-                    in: edit
-                ),
-                "Edit Site content order must be Name, Time Zone, then Site Icon and icons"
-            )
-            require(
-                edit.contains("\"site_time_zone_not_configured\".localizedString") &&
-                    edit.contains("localTimeLabel.isHidden = true") &&
-                    edit.contains("timeZoneValue.ianaId") &&
-                    edit.contains("timeZoneValue.displayOffset"),
-                "Timezone row must distinguish unconfigured and configured states"
-            )
-            require(
-                edit.contains("SiteTimeZoneSelectionViewController") &&
-                    edit.contains("draft.values.timezone = value") &&
-                    edit.contains("updateTimeZoneDisplay()"),
-                "Timezone selection must update only the edit draft and display"
-            )
-            require(
-                edit.contains("private var modalDismissalStateBeforeTimeZone: Bool?") &&
-                    edit.contains("restoreModalStackDismissalAfterTimeZoneIfNeeded()") &&
-                    edit.contains("navigationController.isModalInPresentation = true") &&
-                    edit.contains("navigationController?.isModalInPresentation = previousState") &&
-                    edit.contains("modalDismissalStateBeforeTimeZone = nil") &&
-                    !edit.contains("navigationController?.isModalInPresentation = false"),
-                "Timezone flow must restore the modal stack's previous dismissal state after protecting it"
-            )
-            require(
-                appearsInOrder(
-                    [
-                        "preventModalStackDismissalForTimeZone()",
-                        "pushViewController(controller, animated: true)"
-                    ],
-                    in: edit
-                ),
-                "Timezone flow must protect the modal stack before pushing the selection page"
-            )
-            require(
-                edit.contains("withTimeInterval: 0.5") &&
-                    edit.contains("formattedLocalDate(at: Date())") &&
-                    edit.contains("override func viewDidAppear") &&
-                    edit.contains("override func viewWillDisappear") &&
-                    edit.contains("UIApplication.didEnterBackgroundNotification") &&
-                    edit.contains("UIApplication.willEnterForegroundNotification") &&
-                    edit.contains("deinit"),
-                "Local time must refresh from a fresh Date with complete visible/foreground lifecycle"
-            )
-            require(
-                occurrences(of: "action: #selector(doneBtnClick)", in: edit) >= 2 &&
-                    edit.contains("pendingSitePropsMask.contains(.timezone)") &&
-                    !edit.contains("pendingSitePropsMask.isEmpty") &&
-                    !edit.contains("needUploadCloud"),
-                "Not synced must share the Done action but only reflect timezone pending"
-            )
-            require(
-                edit.contains("\"site_icon\".localizedString") &&
-                    edit.contains("(1...28).map { \"site_\\($0)\" }") &&
-                    edit.contains("make.top.equalTo(localTimeLabel.snp.bottom)"),
-                "Site Icon title must appear above the existing 28 Site icon assets"
-            )
-            require(
-                edit.contains("make.height.equalTo(collectionView.snp.width)") &&
-                    !edit.contains("make.height.equalTo(1)") &&
-                    !edit.contains("updateCollectionHeightIfNeeded"),
-                "Site Icon grid height must resolve from its width even when timezone is not configured"
-            )
+            let directory = URL(fileURLWithPath: arguments[1]).deletingLastPathComponent()
+            let form = try String(contentsOf: directory.appendingPathComponent("SiteCreateViewController.swift"), encoding: .utf8)
+            require(edit.contains("SiteEditViewController: SiteFormViewController") &&
+                    edit.contains("draft: SitePropsEditDraft") && edit.contains("coordinator: SitePropsEditCoordinator"),
+                    "Edit must consume the prepared draft through the shared form")
+            require(form.contains("\"site_edit_title\"") && form.contains("\"done\"") && !edit.contains("title = site.name"),
+                    "Edit must have a fixed localized title and DONE action")
+            require(form.contains("timeSection.addArrangedSubview(localTimeLabel)") &&
+                    form.contains("formDraft.timezone?.ianaId") && form.contains("formDraft.timezone?.displayOffset"),
+                    "Shared time zone row retains its local time display")
+            require(form.contains("formDraft.selectManualTimezone(value)") && form.contains("SiteTimeZoneSelectionViewController"),
+                    "Time zone selection modifies the shared draft")
+            require(form.contains("navigationController.isModalInPresentation = true") &&
+                    form.contains("navigationController?.isModalInPresentation = previous") &&
+                    form.contains("modalDismissalStateBeforeTimeZone = nil"),
+                    "Time zone navigation must restore the previous modal dismissal policy")
+            require(form.contains("formattedLocalDate(at: Date())") && form.contains("override func viewDidAppear") &&
+                    form.contains("override func viewWillDisappear") && form.contains("UIApplication.didEnterBackgroundNotification") &&
+                    form.contains("UIApplication.didBecomeActiveNotification"), "Shared clock retains its visible/active lifecycle")
+            require(occurrences(of: "action: #selector(submit)", in: form) == 2 &&
+                    form.contains("pendingSitePropsMask.contains(.timezone)") && form.contains("notSyncedButton.isEnabled = createButton.isEnabled"),
+                    "Pending timezone and DONE must share validation and submission")
+            require(form.contains("SiteFormDraft.canSubmit") && form.contains("editingSite == nil ? .button : .staticText"),
+                    "Shared validation and read-only Site type must be used by Edit")
         }
 
         require(
@@ -524,7 +431,7 @@ struct SiteTimeZoneUIContractTests {
                 "Online timezone commits must stream the shared Edit coordinator into the unified view"
             )
             require(
-                timeZoneCommit.contains("guard draft.values.timezone != nil else") &&
+                timeZoneCommit.contains("guard snapshot.values.timezone != nil else") &&
                     timeZoneCommit.contains("guard let snapshot else") &&
                     timeZoneCommit.contains("site: .savedSuccessfully") &&
                     timeZoneCommit.contains("gateways: .notStarted") &&
@@ -593,6 +500,7 @@ struct SiteTimeZoneUIContractTests {
         let timezoneJSON = try Data(contentsOf: URL(fileURLWithPath: arguments[4]))
 
         let keys = [
+            "site_edit_title",
             "site_time_zone_title",
             "site_time_zone_search_placeholder",
             "site_time_zone_empty",
@@ -638,6 +546,9 @@ struct SiteTimeZoneUIContractTests {
             through: "/* End PBXSourcesBuildPhase section */"
         )
         let newSourceFiles = [
+            "SiteCreateViewController.swift",
+            "SiteEditViewController.swift",
+            "SiteCreationDraft.swift",
             "SiteTimeZoneValue.swift",
             "SiteTimeZoneCatalog.swift",
             "SitePropsEditPolicy.swift",
@@ -653,8 +564,8 @@ struct SiteTimeZoneUIContractTests {
         ]
         for filename in newSourceFiles {
             require(
-                occurrences(of: "\(filename) in Sources", in: sourcePhase) == 4,
-                "\(filename) must belong to all four Sources phases"
+                occurrences(of: "\(filename) in Sources", in: sourcePhase) == 6,
+                "\(filename) must belong to all six Sources phases"
             )
         }
         let resourcePhase = substring(
@@ -663,8 +574,8 @@ struct SiteTimeZoneUIContractTests {
             through: "/* End PBXResourcesBuildPhase section */"
         )
         require(
-            occurrences(of: "all_utc_timezones.json in Resources", in: resourcePhase) == 4,
-            "Timezone JSON must belong to all four Resources phases"
+            occurrences(of: "all_utc_timezones.json in Resources", in: resourcePhase) == 6,
+            "Timezone JSON must belong to all six Resources phases"
         )
         let timezoneObject = try JSONSerialization.jsonObject(with: timezoneJSON)
         require(

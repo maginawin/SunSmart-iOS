@@ -28,6 +28,20 @@ struct SiteStandardProperties: Equatable {
         return result
     }
 
+    func changedFields(from original: Self) -> SitePropsFieldMask {
+        var fields: SitePropsFieldMask = []
+        if latitude != original.latitude { fields.insert(.latitude) }
+        if longitude != original.longitude { fields.insert(.longitude) }
+        for (key, path) in Self.textFields where self[keyPath: path] != original[keyPath: path] {
+            fields.formUnion(SitePropsFieldMask.standardFields[key]!)
+        }
+        return fields
+    }
+
+    func patch(for fields: SitePropsFieldMask) -> Patch {
+        Patch(values: self, fields: fields)
+    }
+
     /// Presence is separate from value: omitted fields preserve, explicit null clears.
     struct Patch: Equatable {
         enum ParseError: Error { case invalidField(String) }
@@ -35,6 +49,18 @@ struct SiteStandardProperties: Equatable {
         private var provided: Set<String> = []
 
         init() {}
+
+        fileprivate init(values: SiteStandardProperties, fields: SitePropsFieldMask) {
+            self.values = values
+            provided = Set(SitePropsFieldMask.standardFields.compactMap { fields.contains($0.value) ? $0.key : nil })
+        }
+
+        var jsonObject: [String: Any] { values.jsonObject.filter { provided.contains($0.key) } }
+
+        func confirms(_ expected: SiteStandardProperties, fields: SitePropsFieldMask) -> Bool {
+            let required = Set(SitePropsFieldMask.standardFields.compactMap { fields.contains($0.value) ? $0.key : nil })
+            return required.isSubset(of: provided) && values.changedFields(from: expected).intersection(fields).isEmpty
+        }
 
         init(_ object: [String: Any]) throws {
             for (key, path) in SiteStandardProperties.textFields {
@@ -89,6 +115,18 @@ struct SitePropsFieldMask: OptionSet, Equatable {
     static let siteName = SitePropsFieldMask(rawValue: 1 << 0)
     static let imageId = SitePropsFieldMask(rawValue: 1 << 1)
     static let timezone = SitePropsFieldMask(rawValue: 1 << 2)
+    static let latitude = SitePropsFieldMask(rawValue: 1 << 3)
+    static let longitude = SitePropsFieldMask(rawValue: 1 << 4)
+    static let countryRegion = SitePropsFieldMask(rawValue: 1 << 5)
+    static let postalCode = SitePropsFieldMask(rawValue: 1 << 6)
+    static let city = SitePropsFieldMask(rawValue: 1 << 7)
+    static let address = SitePropsFieldMask(rawValue: 1 << 8)
+    static let siteDescription = SitePropsFieldMask(rawValue: 1 << 9)
+
+    static let standardFields: [String: Self] = [
+        "latitude": .latitude, "longitude": .longitude, "countryRegion": .countryRegion,
+        "postalCode": .postalCode, "city": .city, "address": .address, "description": .siteDescription
+    ]
 }
 
 struct SitePropsValues: Equatable {
@@ -124,6 +162,7 @@ struct SitePropsUpdateSnapshot: Equatable {
     let fields: SitePropsFieldMask
     let values: SitePropsValues
     let timestamp: Int64
+    var standardProperties = SiteStandardProperties()
 }
 
 struct SiteInitialTimeZoneSubmission: Equatable {
@@ -164,9 +203,14 @@ enum SitePropsEditPolicy {
         local: SitePropsLocalState,
         original: SitePropsValues,
         draft: SitePropsValues,
-        now: Int64
+        now: Int64,
+        originalStandardProperties: SiteStandardProperties? = nil,
+        standardProperties: SiteStandardProperties? = nil
     ) -> SitePropsUpdateSnapshot? {
-        let changed = changedFields(from: original, to: draft)
+        let editedProperties = standardProperties ?? local.standardProperties
+        let changed = changedFields(from: original, to: draft).union(
+            editedProperties.changedFields(from: originalStandardProperties ?? local.standardProperties)
+        )
         let fields = local.pending.fields.union(changed)
         guard !fields.isEmpty else { return nil }
 
@@ -177,11 +221,17 @@ enum SitePropsEditPolicy {
             timestamp = nextTimestamp(now: now, current: local.lastUpdate)
         }
 
+        // Untouched draft fields must not restore an older value from when the form opened.
+        var values = local.values
+        if changed.contains(.siteName) { values.siteName = draft.siteName }
+        if changed.contains(.imageId) { values.imageId = draft.imageId }
+        if changed.contains(.timezone) { values.timezone = draft.timezone }
         return SitePropsUpdateSnapshot(
             siteId: siteId,
             fields: fields,
-            values: draft,
-            timestamp: timestamp
+            values: values,
+            timestamp: timestamp,
+            standardProperties: editedProperties.patch(for: changed).applying(to: local.standardProperties)
         )
     }
 
@@ -271,7 +321,7 @@ enum SitePropsEditPolicy {
                 response.timezone == request.values.timezone
             else { return false }
         }
-        return true
+        return response.standardProperties.confirms(request.standardProperties, fields: request.fields)
     }
 
     static func localStateAfterSuccessfulUpdate(
@@ -280,14 +330,17 @@ enum SitePropsEditPolicy {
     ) -> SitePropsLocalState {
         guard
             current.pending.timestamp == request.timestamp,
-            localValuesMatchRequest(current.values, request: request)
+            localValuesMatchRequest(current.values, request: request),
+            current.standardProperties.changedFields(from: request.standardProperties).intersection(request.fields).isEmpty
         else { return current }
 
         let remainingFields = current.pending.fields.subtracting(request.fields)
         return SitePropsLocalState(
             values: current.values,
             lastUpdate: current.lastUpdate,
-            lastUploadCloudTimestamp: request.timestamp,
+            lastUploadCloudTimestamp: remainingFields.isEmpty
+                ? max(current.lastUploadCloudTimestamp ?? request.timestamp, request.timestamp)
+                : current.lastUploadCloudTimestamp,
             pending: SitePropsPendingState(
                 fields: remainingFields,
                 timestamp: remainingFields.isEmpty ? nil : current.pending.timestamp
@@ -346,7 +399,7 @@ enum SitePropsEditPolicy {
                 remote.timezone == local.values.timezone
             else { return false }
         }
-        return true
+        return remote.standardProperties.confirms(local.standardProperties, fields: fields)
     }
 
     private static func localValuesMatchRequest(

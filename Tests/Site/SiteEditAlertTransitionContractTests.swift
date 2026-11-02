@@ -84,7 +84,7 @@ struct SiteEditAlertTransitionContractTests {
         let source = try String(contentsOfFile: path, encoding: .utf8)
         let online = substring(
             in: source,
-            from: "private func showTimeZoneConfirmation()",
+            from: "private func showTimeZoneConfirmation(timezone: SiteTimeZoneValue?)",
             through: "private func showOfflineTimeZoneAlert()"
         )
         let offline = substring(

@@ -6,7 +6,7 @@ typealias Address = UInt16
 extension UInt16 { static let minUnicastAddress: UInt16 = 1 }
 extension String { var hex: String { self } }
 enum ServerRegion: Int { case first = 1, second = 2 }
-enum UserData { static var currentServerRegion = ServerRegion.first }
+enum UserData { static var currentUserId = "account"; static var currentServerRegion = ServerRegion.first }
 enum Permission: Int { case owner = 1, editor, visitor }
 enum DataSourceType: Int { case create = 1, clone, share }
 struct NetworkApiError: Error {

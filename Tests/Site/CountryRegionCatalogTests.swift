@@ -51,7 +51,7 @@ import Foundation
         // Use production field state and draft serialization together. Query/close events
         // must never become a selected code, including an exact name/code and empty input.
         for initial in [nil, "CN"] as [String?] {
-            var draft = SiteCreationDraft(siteName: "Country test", timezone: nil)
+            var draft = SiteFormDraft(siteName: "Country test", timezone: nil)
             if let initial { draft.selectCountry(catalog.entry(code: initial)!) }
             var state = SiteLocationSearchState(selectedID: draft.countryRegionCode, context: "countries")
             let original = try draft.standardProperties()

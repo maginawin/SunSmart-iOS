@@ -1649,6 +1649,8 @@ self.updateAddressData()
     /// 编辑场所
     private func editSite() {
         let coordinator = SitePropsEditCoordinator(site: site)
+        let account = UserData.currentUserId
+        let region = UserData.currentServerRegion
         let online = NetworkRequest.shared.networkable
         if online {
             XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
@@ -1658,7 +1660,7 @@ self.updateAddressData()
             if online {
                 XWHUDManager.hide()
             }
-            guard let self = self else { return }
+            guard let self, account == UserData.currentUserId, region == UserData.currentServerRegion else { return }
 
             let vc = SiteEditViewController(
                 site: self.site,

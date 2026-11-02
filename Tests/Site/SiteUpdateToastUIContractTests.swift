@@ -222,10 +222,11 @@ struct SiteUpdateToastUIContractTests {
             through: "/* End PBXResourcesBuildPhase section */"
         )
         require(
-            occurrences(of: "ToastStatusView.swift in Sources", in: sourcePhase) == 4 &&
-                occurrences(of: "Localizable.strings in Resources", in: resourcePhase) == 4 &&
-                occurrences(of: "/* Assets.xcassets in Resources */", in: resourcePhase) == 4,
-            "Shared Toast, localization, and assets must remain available to all four targets"
+            occurrences(of: "ToastStatusView.swift in Sources", in: sourcePhase) == 6 &&
+                occurrences(of: "Localizable.strings in Resources", in: resourcePhase) == 6 &&
+                occurrences(of: "/* Assets.xcassets in Resources */", in: resourcePhase) == 5 &&
+                occurrences(of: "/* LumineuxAssets/Assets-Lumineux-Merged.xcassets in Resources */", in: resourcePhase) == 1,
+            "Shared Toast, localization, and assets must remain available to all six targets"
         )
     }
 

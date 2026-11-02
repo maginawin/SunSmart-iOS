@@ -488,9 +488,10 @@ extension SiteData {
     /// 判断场所名称是否重名
     /// - Parameter siteName: 场所名称
     /// - Returns: 是否重名
-    static func isTautonym(siteName: String) -> Bool {
-        
-        let filter = SiteData.sitesTable.filter(ExpressionKey.regionType == UserData.currentServerRegion.rawValue && ExpressionKey.name == siteName)
+    static func isTautonym(siteName: String, excludingSiteID: String? = nil) -> Bool {
+        var predicate = ExpressionKey.regionType == UserData.currentServerRegion.rawValue && ExpressionKey.name == siteName
+        if let excludingSiteID { predicate = predicate && ExpressionKey.uuid != excludingSiteID }
+        let filter = SiteData.sitesTable.filter(predicate)
         let reuslt = try? SunSmartDataManager.shared.db?.prepareRowIterator(filter)
         if reuslt?.next() != nil {
             return true
@@ -498,6 +499,23 @@ extension SiteData {
         return false
     }
     
+    /// Read only Site props, without loading Spaces, before an editor commit or asynchronous receipt.
+    func persistedPropsState() -> SitePropsLocalState? {
+        guard region == UserData.currentServerRegion, let database = SunSmartDataManager.shared.db,
+              let row = try? database.pluck(Self.sitesTable.filter(ExpressionKey.uuid == id
+                && ExpressionKey.regionType == region.rawValue)) else { return nil }
+        return SitePropsLocalState(
+            values: .init(siteName: row[ExpressionKey.name], imageId: row[ExpressionKey.imageId],
+                          timezone: row[ExpressionKey.timezone].flatMap(SiteTimeZoneValue.init(storageValue:))),
+            lastUpdate: row[ExpressionKey.lastUpdateTimestamp],
+            lastUploadCloudTimestamp: row[ExpressionKey.lastUploadCloudTimestamp],
+            pending: .init(fields: .init(rawValue: row[ExpressionKey.pendingSitePropsMask]),
+                           timestamp: row[ExpressionKey.pendingSitePropsTimestamp]),
+            standardProperties: .init(latitude: row[ExpressionKey.latitude], longitude: row[ExpressionKey.longitude],
+                countryRegion: row[ExpressionKey.countryRegion], postalCode: row[ExpressionKey.postalCode],
+                city: row[ExpressionKey.city], address: row[ExpressionKey.address], siteDescription: row[ExpressionKey.siteDescription]))
+    }
+
     /// 缓存当前场所数据
     /// allData：是否保存所有数据（true：场所基本信息+保存spaces数据，false：场所基本信息）
     /// Existing standard properties are database-owned; only an explicit patch may change them.

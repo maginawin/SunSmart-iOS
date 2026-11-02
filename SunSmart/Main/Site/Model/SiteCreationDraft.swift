@@ -25,8 +25,11 @@ enum SiteCreationTextField: String, CaseIterable {
 }
 
 /// Transient form values. Constructing or changing a draft never creates a Site or Mesh.
-struct SiteCreationDraft {
+struct SiteFormDraft {
     struct InvalidCoordinate: Error { let field: SiteCreationTextField }
+    enum CoordinateValidation: Equatable {
+        case empty, valid(Double), invalidNumber, outOfRange
+    }
     enum ValueSource { case initial, city, manual }
     var siteName: String
     private(set) var timezone: SiteTimeZoneValue?
@@ -34,6 +37,9 @@ struct SiteCreationDraft {
     private(set) var timezoneSource: ValueSource = .initial
     private(set) var coordinateSources: [SiteCreationTextField: ValueSource] = [:]
     private(set) var city: CityCatalog.Entry?
+    private(set) var cityID: String?
+    private var originalProperties: SiteStandardProperties?
+    private var originalText: [SiteCreationTextField: String] = [:]
     var imageId = 1
     var siteType: SiteExtensionData.ProjectType = .standard
     var text: [SiteCreationTextField: String] = [:]
@@ -45,10 +51,34 @@ struct SiteCreationDraft {
         initialTimezone = timezone
     }
 
+    init(values: SitePropsValues, properties: SiteStandardProperties, siteType: SiteExtensionData.ProjectType) {
+        self.init(siteName: values.siteName, timezone: values.timezone)
+        imageId = values.imageId
+        self.siteType = siteType
+        countryRegionCode = properties.countryRegion
+        cityID = properties.city
+        text = [.description: properties.siteDescription ?? "", .streetAddress: properties.address ?? "",
+                .postalCode: properties.postalCode ?? "", .latitude: properties.latitude.map { String($0) } ?? "",
+                .longitude: properties.longitude.map { String($0) } ?? ""]
+        originalProperties = properties
+        originalText = text
+    }
+
+    /// Catalog hydration resolves a label only; it must never reapply city defaults.
+    mutating func resolveStoredCity(_ entry: CityCatalog.Entry) {
+        guard countryRegionCode == entry.countryCode, cityID == String(entry.record.id) else { return }
+        city = entry
+    }
+
+    static func canSubmit(isNameValid: Bool, showsCoordinateError: Bool, isCommitting: Bool) -> Bool {
+        isNameValid && !showsCoordinateError && !isCommitting
+    }
+
     mutating func selectCountry(_ entry: CountryRegionCatalog.Entry) {
         guard countryRegionCode != entry.code else { return }
         countryRegionCode = entry.code
         city = nil
+        cityID = nil
         for field in [SiteCreationTextField.latitude, .longitude] where coordinateSources[field] == .city {
             text[field] = nil
             coordinateSources[field] = .initial
@@ -62,8 +92,9 @@ struct SiteCreationDraft {
               let timezone, timezone.ianaId == entry.timezoneIdentifier,
               entry.record.latitude.isFinite, entry.record.longitude.isFinite,
               (-90...90).contains(entry.record.latitude), (-180...180).contains(entry.record.longitude) else { return false }
-        guard city?.id != entry.id else { return true }
+        guard cityID != String(entry.record.id) else { return true }
         city = entry
+        cityID = String(entry.record.id)
         self.timezone = timezone
         timezoneSource = .city
         text[.latitude] = entry.latitudeText
@@ -82,6 +113,22 @@ struct SiteCreationDraft {
         if field == .latitude || field == .longitude { coordinateSources[field] = .manual }
     }
 
+    /// GPS is an explicit form edit, so a later country change must not clear it as city-derived data.
+    @discardableResult
+    mutating func applyCurrentLocation(latitude: Double, longitude: Double) -> Bool {
+        guard latitude.isFinite, longitude.isFinite,
+              (-90...90).contains(latitude), (-180...180).contains(longitude) else { return false }
+        func format(_ value: Double) -> String {
+            let rounded = (value * 1_000_000).rounded() / 1_000_000
+            if rounded == 0 { return "0" }
+            return String(format: "%.6f", locale: Locale(identifier: "en_US_POSIX"), rounded)
+                .replacingOccurrences(of: #"\.?0+$"#, with: "", options: .regularExpression)
+        }
+        editText(.latitude, value: format(latitude))
+        editText(.longitude, value: format(longitude))
+        return true
+    }
+
     func isNameValid(isDuplicate: Bool) -> Bool {
         // Match Edit Site's existing ordinary-space and Character-count semantics.
         !siteName.isEmpty && siteName.contains(where: { $0 != " " })
@@ -94,23 +141,36 @@ struct SiteCreationDraft {
         return data
     }
 
+    /// Shared by per-field feedback and CREATE; validation never changes the draft text or its source.
+    func coordinateValidation(for field: SiteCreationTextField) -> CoordinateValidation {
+        precondition(field == .latitude || field == .longitude)
+        let raw = (text[field] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else { return .empty }
+        guard let value = Double(raw), value.isFinite else { return .invalidNumber }
+        let range: ClosedRange<Double> = field == .latitude ? -90...90 : -180...180
+        return range.contains(value) ? .valid(value) : .outOfRange
+    }
+
     func standardProperties() throws -> SiteStandardProperties {
-        func coordinate(_ field: SiteCreationTextField, range: ClosedRange<Double>) throws -> Double? {
-            let raw = (text[field] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !raw.isEmpty else { return nil }
-            guard let value = Double(raw), value.isFinite, range.contains(value) else {
-                throw InvalidCoordinate(field: field)
+        func coordinate(_ field: SiteCreationTextField) throws -> Double? {
+            switch coordinateValidation(for: field) {
+            case .empty: return nil
+            case .valid(let value): return value
+            case .invalidNumber, .outOfRange: throw InvalidCoordinate(field: field)
             }
-            return value
+        }
+        func preservedText(_ field: SiteCreationTextField, original: String?) -> String? {
+            if originalProperties != nil, (text[field] ?? "") == (originalText[field] ?? "") { return original }
+            return field.normalized(text[field] ?? "")
         }
         return try SiteStandardProperties(
-            latitude: coordinate(.latitude, range: -90...90),
-            longitude: coordinate(.longitude, range: -180...180),
+            latitude: coordinate(.latitude),
+            longitude: coordinate(.longitude),
             countryRegion: countryRegionCode,
-            postalCode: SiteCreationTextField.postalCode.normalized(text[.postalCode] ?? ""),
-            city: city.map { String($0.record.id) },
-            address: SiteCreationTextField.streetAddress.normalized(text[.streetAddress] ?? ""),
-            siteDescription: SiteCreationTextField.description.normalized(text[.description] ?? "")
+            postalCode: preservedText(.postalCode, original: originalProperties?.postalCode),
+            city: cityID,
+            address: preservedText(.streetAddress, original: originalProperties?.address),
+            siteDescription: preservedText(.description, original: originalProperties?.siteDescription)
         )
     }
 }

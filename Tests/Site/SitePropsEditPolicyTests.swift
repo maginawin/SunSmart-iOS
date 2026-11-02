@@ -5,6 +5,7 @@ struct SitePropsEditPolicyTests {
 
     static func main() {
         testChangedFieldsDetectsEachPropertyAndIanaChanges()
+        testMetadataPendingIsolation()
         testTimestampIsStrictlyMonotonic()
         testNoChangesAndNoPendingProducesNoUpdate()
         testNewChangesUnionWithPendingAndAdvanceTimestamp()
@@ -62,6 +63,30 @@ struct SitePropsEditPolicyTests {
             ) == [.timezone],
             "Same offset with a different IANA identifier must be a timezone change"
         )
+    }
+
+    private static func testMetadataPendingIsolation() {
+        let value = values(name: "Site", imageId: 1, timezone: singapore)
+        let properties = SiteStandardProperties(address: "Pending address")
+        let local = SitePropsLocalState(values: value, lastUpdate: 100, lastUploadCloudTimestamp: 90,
+            pending: .init(fields: [.timezone, .address], timestamp: 100), standardProperties: properties)
+        let timezone = SitePropsUpdateSnapshot(siteId: "id", fields: .timezone, values: value, timestamp: 100)
+        let result = SitePropsEditPolicy.localStateAfterSuccessfulUpdate(current: local, request: timezone)
+        require(result.pending.fields == .address && result.pending.timestamp == 100, "Timezone ACK keeps metadata pending")
+        require(result.standardProperties == properties && result.lastUploadCloudTimestamp == 90,
+                "Partial ACK cannot mark the whole Site version uploaded")
+        let remote = SitePropsRemoteSnapshot(siteName: "Site", imageId: 1, timezone: singapore,
+            providedFields: [.siteName, .imageId, .timezone], timestamp: 100)
+        require(SitePropsEditPolicy.mergeRetrieve(local: local, remote: remote).state == local,
+                "Retrieve without pending metadata cannot clear it")
+        var confirmed = remote
+        confirmed.standardProperties = properties.patch(for: .address)
+        require(SitePropsEditPolicy.mergeRetrieve(local: local, remote: confirmed).state.pending.fields.isEmpty,
+                "Matching metadata and timezone can confirm pending")
+        let initial = SitePropsEditPolicy.localStateAfterSuccessfulInitialSiteUpload(current: local,
+            submission: .init(timezone: singapore, timestamp: 100))
+        require(initial.pending.fields == .address && initial.standardProperties == properties,
+                "Initial timezone receipt preserves metadata pending")
     }
 
     private static func testTimestampIsStrictlyMonotonic() {

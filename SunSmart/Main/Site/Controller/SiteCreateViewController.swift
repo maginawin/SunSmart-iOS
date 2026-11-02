@@ -1,8 +1,13 @@
 import UIKit
 
-final class SiteCreateViewController: UIViewController {
-    private var draft: SiteCreationDraft
-    private let onCreated: (SiteData) -> Void
+/// Common Create/Edit form; subclasses own persistence and navigation after submission.
+class SiteFormViewController: UIViewController {
+    private(set) var formDraft: SiteFormDraft
+    let editingSite: SiteData?
+    private let notSyncedButton = UIButton(type: .system)
+    private var modalDismissalStateBeforeTimeZone: Bool?
+    private let cityDisplayLoader = CityCatalogLoader()
+    private var cityDisplayGeneration = 0
     private let account = UserData.currentUserId
     private let region = UserData.currentServerRegion
     private let allowsSiteType = FeatureVisibility.shared.canSelectSiteType
@@ -13,7 +18,7 @@ final class SiteCreateViewController: UIViewController {
     private let nameField = UITextField()
     private let nameTip = UILabel()
     private let timeZoneRow = SiteCreationSelectionRow()
-    private let typeRow = SiteCreationSelectionRow()
+    private lazy var typeRow = SiteCreationSelectionRow(showsArrow: editingSite == nil)
     private let timeZoneCatalog: SiteTimeZoneCatalog?
     private lazy var countryCatalog = try? CountryRegionCatalog.bundled()
     private let cityLoader = CityCatalogLoader()
@@ -21,11 +26,12 @@ final class SiteCreateViewController: UIViewController {
     private var language: String { Bundle.main.preferredLocalizations.first ?? "en" }
     private lazy var countryField = SiteLocationSearchField(
         iconName: "site_create_search", titleKey: "site_create_country", searchKey: "site_create_country_search_placeholder",
-        accessibilityPrefix: "site-create-country", selectedID: draft.countryRegionCode,
-        selectedTitle: countryCatalog?.displayName(forStoredCode: draft.countryRegionCode, language: language), context: "countries")
+        accessibilityPrefix: "site-create-country", selectedID: formDraft.countryRegionCode,
+        selectedTitle: countryCatalog?.displayName(forStoredCode: formDraft.countryRegionCode, language: language), context: "countries")
     private lazy var cityField = SiteLocationSearchField(
         iconName: "site_create_location", titleKey: "site_create_city", searchKey: "site_create_city_search_placeholder",
-        accessibilityPrefix: "site-create-city", context: draft.countryRegionCode ?? "")
+        accessibilityPrefix: "site-create-city", selectedID: formDraft.cityID.map { "geonames:" + $0 },
+        selectedTitle: formDraft.cityID, context: formDraft.countryRegionCode ?? "")
     private lazy var locationOutsideTap: UITapGestureRecognizer = {
         let gesture = UITapGestureRecognizer(target: self, action: #selector(cancelLocationSearchFromOutside))
         gesture.cancelsTouchesInView = false
@@ -39,6 +45,8 @@ final class SiteCreateViewController: UIViewController {
     private let descriptionPlaceholder = UILabel()
     private let descriptionCounter = UILabel()
     private var textFields: [SiteCreationTextField: UITextField] = [:]
+    private var coordinateTips: [SiteCreationTextField: UILabel] = [:]
+    private var coordinateInputs: [SiteCreationTextField: SiteCreationCoordinateInputView] = [:]
     private let helpBody = UIStackView()
     private let helpArrow = UIImageView(image: UIImage(named: "site_create_disclosure"))
     private let helpButton = UIButton(type: .custom)
@@ -46,15 +54,64 @@ final class SiteCreateViewController: UIViewController {
     private lazy var icons = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
     private var localTimeTimer: Timer?
     private weak var typeAlert: SiteTypeSelectionAlertView?
-    private var isCommitting = false
+    private var isNameValid = false
+    var isCommitting = false {
+        didSet {
+            guard isViewLoaded else { return }
+            updateCreateButtonState()
+            form.isUserInteractionEnabled = !isCommitting
+        }
+    }
+    private let currentLocationButton = SiteCreationLocationButton(type: .custom)
+    private weak var locationPermissionAlert: SiteLocationPermissionAlertView?
+    private lazy var currentLocationRequest: SiteCurrentLocationRequest = {
+        let request = SiteCurrentLocationRequest(
+            makeProvider: { SiteCurrentLocationProvider() },
+            contextIsValid: { [weak self] in self?.canInteractWithLocation == true },
+            isActive: { UIApplication.shared.applicationState == .active },
+            openSettings: { completion in
+                guard let url = URL(string: UIApplication.openSettingsURLString) else { completion(false); return }
+                UIApplication.shared.open(url, options: [:]) { opened in
+                    DispatchQueue.main.async { completion(opened) }
+                }
+            })
+        request.stateChanged = { [weak self] phase in
+            self?.currentLocationButton.isEnabled = phase == .idle
+            self?.currentLocationButton.isLoading = phase == .checkingAccess || phase == .locating
+        }
+        request.showPrompt = { [weak self] prompt, completion in
+            guard let self, self.canInteractWithLocation else { completion(false); return }
+            let alert = SiteLocationPermissionAlertView.make(prompt: prompt, onDecision: completion)
+            self.locationPermissionAlert = alert
+            alert.show()
+        }
+        request.completed = { [weak self] result in
+            guard let self, self.canInteractWithLocation else { return }
+            switch result {
+            case .success(let sample):
+                guard self.formDraft.applyCurrentLocation(latitude: sample.latitude, longitude: sample.longitude) else { return }
+                self.updateCoordinateInputs()
+                ToastStatusView.show(
+                    in: self.view,
+                    message: "site_create_location_detected".localizedString,
+                    type: .success,
+                    appearance: .siteUpdate
+                )
+            case .failure(let failure): XWHUDManager.showErrorTipHUD(failure.rawValue.localizedString)
+            }
+        }
+        return request
+    }()
 
-    init(onCreated: @escaping (SiteData) -> Void) {
-        let catalog = try? SiteTimeZoneCatalog.bundled()
-        timeZoneCatalog = catalog
-        let timezone = catalog?.value(matchingIdentifier: TimeZone.current.identifier)
-        draft = SiteCreationDraft(siteName: SiteData.getNextSiteName(), timezone: timezone)
-        self.onCreated = onCreated
+    init(formDraft: SiteFormDraft, editingSite: SiteData? = nil) {
+        self.formDraft = formDraft
+        self.editingSite = editingSite
+        timeZoneCatalog = try? SiteTimeZoneCatalog.bundled()
         super.init(nibName: nil, bundle: nil)
+    }
+
+    func submitForm(properties: SiteStandardProperties) {
+        preconditionFailure("Create/Edit must supply their own submit action")
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
@@ -66,7 +123,7 @@ final class SiteCreateViewController: UIViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        title = "site_create_title".localizedString
+        title = (editingSite == nil ? "site_create_title" : "site_edit_title").localizedString
         view.backgroundColor = RGB(248, 250, 252)
         navigationController?.setNavigationBarBackgroundColor(color: .clear)
         navigationItem.rightBarButtonItem = UIBarButtonItem(
@@ -79,7 +136,7 @@ final class SiteCreateViewController: UIViewController {
         updateType()
         validateName()
         NotificationCenter.default.addObserver(self, selector: #selector(pauseForBackground), name: UIApplication.didEnterBackgroundNotification, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(resumeClock), name: UIApplication.didBecomeActiveNotification, object: nil)
+        NotificationCenter.default.addObserver(self, selector: #selector(resumeAfterActivation), name: UIApplication.didBecomeActiveNotification, object: nil)
         NotificationCenter.default.addObserver(self, selector: #selector(revealEditingField), name: UIResponder.keyboardDidChangeFrameNotification, object: nil)
     }
 
@@ -87,19 +144,28 @@ final class SiteCreateViewController: UIViewController {
         super.viewDidAppear(animated)
         guard contextIsCurrent else { close(); return }
         (navigationController?.view ?? view).addGestureRecognizer(locationOutsideTap)
+        if let previous = modalDismissalStateBeforeTimeZone {
+            navigationController?.isModalInPresentation = previous
+            modalDismissalStateBeforeTimeZone = nil
+        }
+        resolveStoredCityDisplay()
         resumeClock()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         stopClock()
+        cityDisplayGeneration += 1
+        cityDisplayLoader.cancel()
+        cancelCurrentLocation()
         cancelLocationSearch(animated: false)
         locationOutsideTap.view?.removeGestureRecognizer(locationOutsideTap)
         typeAlert?.dismiss(animation: false)
     }
 
-    private var contextIsCurrent: Bool {
+    var contextIsCurrent: Bool {
         account == UserData.currentUserId && region == UserData.currentServerRegion
+            && (editingSite.map { $0.region == region && $0.state == .normal && $0.permissionOperates.contains(.edit) } ?? true)
     }
 
     private func setupLayout() {
@@ -121,12 +187,12 @@ final class SiteCreateViewController: UIViewController {
         line.backgroundColor = Line_Color
         footer.addSubview(line)
         line.snp.makeConstraints { make in make.left.right.top.equalToSuperview(); make.height.equalTo(0.5) }
-        createButton.setTitle("site_create_action".localizedString, for: .normal)
+        createButton.setTitle((editingSite == nil ? "site_create_action" : "done").localizedString, for: .normal)
         createButton.setTitleColor(Title_Color, for: .normal)
         createButton.setTitleColor(RGB(139, 139, 139), for: .disabled)
         createButton.titleLabel?.font = UIFont.systemFont(ofSize: SCRYFrom(16), weight: .light)
-        createButton.accessibilityIdentifier = "site-create-submit"
-        createButton.addTarget(self, action: #selector(create), for: .touchUpInside)
+        createButton.accessibilityIdentifier = editingSite == nil ? "site-create-submit" : "site-edit-submit"
+        createButton.addTarget(self, action: #selector(submit), for: .touchUpInside)
         footer.addSubview(createButton)
         createButton.snp.makeConstraints { make in make.edges.equalToSuperview() }
         scrollView.keyboardDismissMode = .onDrag
@@ -150,7 +216,7 @@ final class SiteCreateViewController: UIViewController {
 
     private func setupFields() {
         configureInput(nameField, placeholder: nil)
-        nameField.text = draft.siteName
+        nameField.text = formDraft.siteName
         nameField.accessibilityIdentifier = "site-create-name"
         nameField.addTarget(self, action: #selector(nameChanged), for: .editingChanged)
         let nameSection = section("site_create_project_name", required: true, content: nameField)
@@ -169,10 +235,22 @@ final class SiteCreateViewController: UIViewController {
         let timeSection = section("site_time_zone_title", required: true, helper: "site_create_timezone_help", content: timeZoneRow)
         styleHelper(localTimeLabel)
         timeSection.addArrangedSubview(localTimeLabel)
+        if let site = editingSite {
+            notSyncedButton.setTitle("site_not_synced_to_server".localizedString, for: .normal)
+            notSyncedButton.setTitleColor(RGB(255, 72, 49), for: .normal)
+            notSyncedButton.titleLabel?.font = UIFont.systemFont(ofSize: SCRYFrom(12), weight: .light)
+            notSyncedButton.contentHorizontalAlignment = .left
+            notSyncedButton.isHidden = !site.pendingSitePropsMask.contains(.timezone)
+            notSyncedButton.addTarget(self, action: #selector(submit), for: .touchUpInside)
+            notSyncedButton.snp.makeConstraints { $0.height.greaterThanOrEqualTo(SCRYFrom(44)) }
+            timeSection.addArrangedSubview(notSyncedButton)
+        }
         form.addArrangedSubview(timeSection)
         if allowsSiteType {
             typeRow.accessibilityLabel = "site_type_selection".localizedString
             typeRow.accessibilityIdentifier = "site-create-type"
+            typeRow.isUserInteractionEnabled = editingSite == nil
+            typeRow.accessibilityTraits = editingSite == nil ? .button : .staticText
             typeRow.addTarget(self, action: #selector(selectType), for: .touchUpInside)
             form.addArrangedSubview(section("site_type_selection", content: typeRow))
         }
@@ -239,8 +317,9 @@ final class SiteCreateViewController: UIViewController {
         }
         countryField.onSelect = { [weak self] option in
             guard let self, self.canInteractWithLocation, let entry = self.countryCatalog?.entry(code: option.id) else { return false }
-            let changed = self.draft.countryRegionCode != entry.code
-            self.draft.selectCountry(entry)
+            let changed = self.formDraft.countryRegionCode != entry.code
+            if changed { self.cancelCurrentLocation() }
+            self.formDraft.selectCountry(entry)
             if changed {
                 self.activeCityCatalog = nil
                 self.cityField.replaceSelection(id: nil, title: nil, context: entry.code)
@@ -252,17 +331,17 @@ final class SiteCreateViewController: UIViewController {
             guard let self, self.canInteractWithLocation else { return false }
             self.countryField.cancelSearch()
             self.view.endEditing(true)
-            guard self.draft.countryRegionCode != nil else {
+            guard self.formDraft.countryRegionCode != nil else {
                 XWHUDManager.showErrorTipHUD("site_create_city_country_required".localizedString)
                 return false
             }
             return true
         }
         cityField.loadOptions = { [weak self] query, completion in
-            guard let self, let countryCode = self.draft.countryRegionCode else { return }
+            guard let self, let countryCode = self.formDraft.countryRegionCode else { return }
             self.cityLoader.search(countryCode: countryCode, query: query) { [weak self] result in
                 guard let self, self.canInteractWithLocation, self.cityField.isExpanded,
-                      self.draft.countryRegionCode == countryCode else { return }
+                      self.formDraft.countryRegionCode == countryCode else { return }
                 switch result {
                 case .success(let (catalog, entries)):
                     self.activeCityCatalog = catalog
@@ -276,9 +355,10 @@ final class SiteCreateViewController: UIViewController {
         }
         cityField.onSelect = { [weak self] option in
             guard let self, self.canInteractWithLocation,
-                  self.activeCityCatalog?.countryCode == self.draft.countryRegionCode,
+                  self.activeCityCatalog?.countryCode == self.formDraft.countryRegionCode,
                   let entry = self.activeCityCatalog?.entry(id: option.id) else { return false }
-            guard self.draft.selectCity(entry, timezone: self.timeZoneCatalog?.value(matchingIdentifier: entry.timezoneIdentifier)) else {
+            if self.formDraft.city?.id != entry.id { self.cancelCurrentLocation() }
+            guard self.formDraft.selectCity(entry, timezone: self.timeZoneCatalog?.value(matchingIdentifier: entry.timezoneIdentifier)) else {
                 XWHUDManager.showErrorTipHUD("site_create_location_load_failed".localizedString)
                 return false
             }
@@ -289,10 +369,17 @@ final class SiteCreateViewController: UIViewController {
     }
 
     private func updateLocationValues() {
-        // CREATE collects these actual controls; never leave stale pre-selection coordinates there.
-        for field in [SiteCreationTextField.latitude, .longitude] { textFields[field]?.text = draft.text[field] }
+        updateCoordinateInputs()
         updateTimeZone()
-        if draft.timezone == nil { stopClock() } else { resumeClock() }
+        if formDraft.timezone == nil { stopClock() } else { resumeClock() }
+    }
+
+    private func updateCoordinateInputs() {
+        // A city/GPS replacement clears stale errors; a preserved manual value keeps its validation.
+        for field in [SiteCreationTextField.latitude, .longitude] {
+            textFields[field]?.text = formDraft.text[field]
+            validateCoordinate(field)
+        }
     }
 
     private func cancelLocationSearch(animated: Bool = true) {
@@ -322,6 +409,7 @@ final class SiteCreateViewController: UIViewController {
     private func addTextField(_ field: SiteCreationTextField, title: String, placeholder: String, to stack: UIStackView? = nil) -> UITextField {
         let input = UITextField()
         configureInput(input, placeholder: placeholder)
+        input.text = formDraft.text[field]
         input.accessibilityIdentifier = "site-create-" + field.rawValue
         input.accessibilityLabel = title.localizedString
         input.addTarget(self, action: #selector(textChanged(_:)), for: .editingChanged)
@@ -331,8 +419,53 @@ final class SiteCreateViewController: UIViewController {
         }
         textFields[field] = input
         let helper = field == .latitude || field == .longitude ? "site_create_decimal" : nil
-        (stack ?? form).addArrangedSubview(section(title, helper: helper, content: input))
+        let content: UIView
+        if helper != nil {
+            let container = SiteCreationCoordinateInputView(input: input)
+            coordinateInputs[field] = container
+            content = container
+        } else {
+            content = input
+        }
+        let inputSection = section(title, helper: helper, content: content)
+        if helper != nil {
+            let tip = UILabel()
+            tip.font = UIFont.systemFont(ofSize: SCRYFrom(11))
+            tip.textColor = Error_Red_Color
+            tip.numberOfLines = 0
+            tip.isHidden = true
+            tip.accessibilityIdentifier = "site-create-" + field.rawValue + "-error"
+            coordinateTips[field] = tip
+            inputSection.setCustomSpacing(SCRYFrom(4), after: content)
+            inputSection.addArrangedSubview(tip)
+        }
+        (stack ?? form).addArrangedSubview(inputSection)
         return input
+    }
+
+    private func validateCoordinate(_ field: SiteCreationTextField) {
+        let key: String?
+        switch formDraft.coordinateValidation(for: field) {
+        case .empty, .valid: key = nil
+        case .invalidNumber, .outOfRange:
+            key = field == .latitude ? "site_create_latitude_range" : "site_create_longitude_range"
+        }
+        setCoordinateError(field, key: key)
+    }
+
+    private func setCoordinateError(_ field: SiteCreationTextField, key: String?) {
+        guard let tip = coordinateTips[field], let input = coordinateInputs[field] else { return }
+        if let key {
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.minimumLineHeight = SCRYFrom(16)
+            paragraph.maximumLineHeight = SCRYFrom(16)
+            tip.attributedText = NSAttributedString(string: key.localizedString, attributes: [.paragraphStyle: paragraph])
+        } else {
+            tip.attributedText = nil
+        }
+        tip.isHidden = key == nil
+        input.showsError = key != nil
+        updateCreateButtonState()
     }
 
     private func setupDescription() {
@@ -345,10 +478,12 @@ final class SiteCreateViewController: UIViewController {
         descriptionView.textContainerInset = UIEdgeInsets(top: SCRYFrom(12), left: SCRXFrom(12), bottom: SCRYFrom(12), right: SCRXFrom(12))
         descriptionView.textContainer.lineFragmentPadding = 0
         descriptionView.isScrollEnabled = true
+        descriptionView.text = formDraft.text[.description] ?? ""
         descriptionView.delegate = self
         descriptionView.accessibilityLabel = "site_create_description".localizedString
         descriptionView.accessibilityIdentifier = "site-create-description"
         descriptionView.snp.makeConstraints { make in make.height.equalTo(SCRYFrom(85)) }
+        descriptionPlaceholder.isHidden = !descriptionView.text.isEmpty
         descriptionPlaceholder.text = "site_create_description_placeholder".localizedString
         descriptionPlaceholder.font = descriptionView.font
         descriptionPlaceholder.textColor = RGB(148, 163, 184)
@@ -362,7 +497,7 @@ final class SiteCreateViewController: UIViewController {
         let block = section("site_create_description", content: descriptionView)
         styleHelper(descriptionCounter)
         descriptionCounter.textAlignment = .right
-        descriptionCounter.text = "0/300"
+        descriptionCounter.text = "\(SiteCreationTextField.description.normalized(descriptionView.text)?.count ?? 0)/300"
         block.addArrangedSubview(descriptionCounter)
         form.addArrangedSubview(block)
     }
@@ -431,9 +566,9 @@ final class SiteCreateViewController: UIViewController {
         block.axis = .vertical
         block.spacing = SCRYFrom(12)
         let actionContainer = UIView()
-        let action = SiteCreationLocationButton(type: .custom)
+        let action = currentLocationButton
         action.accessibilityIdentifier = "site-create-current-location"
-        action.addTarget(self, action: #selector(toggleCurrentLocation(_:)), for: .touchUpInside)
+        action.addTarget(self, action: #selector(requestCurrentLocation), for: .touchUpInside)
         actionContainer.addSubview(action)
         action.snp.makeConstraints { make in
             make.top.bottom.centerX.equalToSuperview()
@@ -444,6 +579,7 @@ final class SiteCreateViewController: UIViewController {
         let coordinates = UIStackView()
         coordinates.spacing = SCRXFrom(12)
         coordinates.distribution = .fillEqually
+        coordinates.alignment = .top
         addTextField(.latitude, title: "site_create_latitude", placeholder: "site_create_latitude_placeholder", to: coordinates)
         addTextField(.longitude, title: "site_create_longitude", placeholder: "site_create_longitude_placeholder", to: coordinates)
         block.addArrangedSubview(coordinates)
@@ -473,20 +609,29 @@ final class SiteCreateViewController: UIViewController {
 
     @discardableResult
     private func validateName(showLengthTip: Bool = false) -> Bool {
-        draft.siteName = nameField.text ?? ""
-        let duplicate = SiteData.isTautonym(siteName: draft.siteName)
-        let valid = draft.isNameValid(isDuplicate: duplicate)
+        formDraft.siteName = nameField.text ?? ""
+        let duplicate = SiteData.isTautonym(siteName: formDraft.siteName, excludingSiteID: editingSite?.id)
+        let valid = formDraft.isNameValid(isDuplicate: duplicate)
         nameTip.text = showLengthTip ? "text_length_exceeded".localizedString : (duplicate ? "name_already_exists".localizedString : nil)
         nameTip.isHidden = nameTip.text == nil
-        createButton.isEnabled = valid && !isCommitting
+        isNameValid = valid
+        updateCreateButtonState()
         return valid
+    }
+
+    private func updateCreateButtonState() {
+        let showsCoordinateError = coordinateTips.values.contains { !$0.isHidden }
+        createButton.isEnabled = SiteFormDraft.canSubmit(isNameValid: isNameValid,
+            showsCoordinateError: showsCoordinateError, isCommitting: isCommitting)
+        notSyncedButton.isEnabled = createButton.isEnabled
     }
 
     @objc private func textChanged(_ input: UITextField) {
         guard input.markedTextRange == nil, let field = textFields.first(where: { $0.value === input })?.key else { return }
         let value = field.limitingInput(input.text ?? "")
         if value != input.text { input.text = value }
-        draft.editText(field, value: value)
+        formDraft.editText(field, value: value)
+        setCoordinateError(field, key: nil)
     }
 
     @objc private func revealEditingField() {
@@ -506,7 +651,12 @@ final class SiteCreateViewController: UIViewController {
         guard let input = inputs.first(where: \.isFirstResponder) else { return }
         // keyboardLayoutGuide resizes the viewport; then move the active field into that viewport.
         view.layoutIfNeeded()
-        scrollView.scrollRectToVisible(input.convert(input.bounds, to: scrollView).insetBy(dx: 0, dy: -20), animated: animated)
+        var rect = input.convert(input.bounds, to: scrollView)
+        if let field = textFields.first(where: { $0.value === input })?.key,
+           let tip = coordinateTips[field], !tip.isHidden {
+            rect = rect.union(tip.convert(tip.bounds, to: scrollView))
+        }
+        scrollView.scrollRectToVisible(rect.insetBy(dx: 0, dy: -20), animated: animated)
     }
 
     @objc private func toggleHelp() {
@@ -515,9 +665,21 @@ final class SiteCreateViewController: UIViewController {
         helpButton.accessibilityValue = (helpBody.isHidden ? "site_create_collapsed" : "site_create_expanded").localizedString
     }
 
-    @objc private func toggleCurrentLocation(_ sender: UIButton) {
-        guard contextIsCurrent, !isCommitting else { return }
-        sender.isSelected.toggle()
+    @objc private func requestCurrentLocation() {
+        guard canInteractWithLocation else { return }
+        cancelLocationSearch()
+        view.endEditing(true)
+        currentLocationRequest.start()
+    }
+
+    private func cancelCurrentLocation() {
+        currentLocationRequest.cancel()
+        locationPermissionAlert?.dismiss(animation: false)
+    }
+
+    @objc private func resumeAfterActivation() {
+        currentLocationRequest.didBecomeActive()
+        resumeClock()
     }
 
     @objc private func selectTimeZone() {
@@ -526,32 +688,38 @@ final class SiteCreateViewController: UIViewController {
         view.endEditing(true)
         guard let controller = SiteTimeZoneSelectionViewController(onSelect: { [weak self] value in
             guard let self, self.contextIsCurrent, !self.isCommitting else { return }
-            self.draft.selectManualTimezone(value)
+            self.formDraft.selectManualTimezone(value)
             self.updateTimeZone()
         }) else {
             XWHUDManager.showErrorTipHUD("failed".localizedString)
             return
         }
+        if editingSite != nil, let navigationController {
+            modalDismissalStateBeforeTimeZone = navigationController.isModalInPresentation
+            navigationController.isModalInPresentation = true
+        }
         navigationController?.pushViewController(controller, animated: true)
     }
 
     private func updateTimeZone() {
-        timeZoneRow.valueLabel.text = draft.timezone?.ianaId ?? "site_create_unknown".localizedString
-        timeZoneRow.detailLabel.text = draft.timezone?.displayOffset
-        timeZoneRow.detailLabel.isHidden = draft.timezone == nil
-        timeZoneRow.accessibilityValue = draft.timezone?.storageValue ?? timeZoneRow.valueLabel.text
-        localTimeLabel.isHidden = draft.timezone == nil
+        timeZoneRow.valueLabel.text = formDraft.timezone?.ianaId ?? "site_create_unknown".localizedString
+        timeZoneRow.detailLabel.text = formDraft.timezone?.displayOffset
+        timeZoneRow.detailLabel.isHidden = formDraft.timezone == nil
+        timeZoneRow.accessibilityValue = formDraft.timezone?.storageValue ?? timeZoneRow.valueLabel.text
+        localTimeLabel.isHidden = formDraft.timezone == nil
         refreshClock()
     }
 
     private func refreshClock() {
-        guard let timezone = draft.timezone else { return }
+        guard let timezone = formDraft.timezone else { return }
         localTimeLabel.text = String(format: "site_local_time_format".localizedString, timezone.formattedLocalDate(at: Date())) + " · " + timezone.displayOffset
     }
 
     @objc private func stopClock() { localTimeTimer?.invalidate(); localTimeTimer = nil }
 
     @objc private func pauseForBackground() {
+        currentLocationRequest.didEnterBackground()
+        locationPermissionAlert?.dismiss(animation: false)
         stopClock()
         cancelLocationSearch(animated: false)
     }
@@ -566,7 +734,7 @@ final class SiteCreateViewController: UIViewController {
     @objc private func resumeClock() {
         guard contextIsCurrent else { if viewIfLoaded?.window != nil { close() }; return }
         guard navigationController?.topViewController === self, viewIfLoaded?.window != nil,
-              draft.timezone != nil, localTimeTimer == nil else { return }
+              formDraft.timezone != nil, localTimeTimer == nil else { return }
         refreshClock()
         let timer = Timer(timeInterval: 1, repeats: true) { [weak self] _ in self?.refreshClock() }
         RunLoop.main.add(timer, forMode: .common)
@@ -574,13 +742,13 @@ final class SiteCreateViewController: UIViewController {
     }
 
     @objc private func selectType() {
-        guard contextIsCurrent, allowsSiteType, FeatureVisibility.shared.canSelectSiteType,
+        guard editingSite == nil, contextIsCurrent, allowsSiteType, FeatureVisibility.shared.canSelectSiteType,
               typeAlert == nil, !isCommitting else { return }
         cancelLocationSearch()
         view.endEditing(true)
-        let alert = SiteTypeSelectionAlertView.make(selectedType: draft.siteType) { [weak self] selected in
+        let alert = SiteTypeSelectionAlertView.make(selectedType: formDraft.siteType) { [weak self] selected in
             guard let self, self.contextIsCurrent else { return }
-            self.draft.siteType = selected
+            self.formDraft.siteType = selected
             self.updateType()
         }
         typeAlert = alert
@@ -588,143 +756,229 @@ final class SiteCreateViewController: UIViewController {
     }
 
     private func updateType() {
-        typeRow.valueLabel.text = (draft.siteType == .hdb ? "site_type_hdb" : "site_type_standard").localizedString
+        typeRow.valueLabel.text = (formDraft.siteType == .hdb ? "site_type_hdb" : "site_type_standard").localizedString
         typeRow.accessibilityValue = typeRow.valueLabel.text
     }
 
-    @objc private func close() {
+    @objc func close() {
         guard !isCommitting else { return }
+        cancelCurrentLocation()
         cancelLocationSearch(animated: false)
         typeAlert?.dismiss(animation: false)
         view.endEditing(true)
-        navigationController?.dismiss(animated: true)
+        if navigationController?.presentingViewController != nil {
+            navigationController?.dismiss(animated: true)
+        } else {
+            navigationController?.popViewController(animated: true)
+        }
     }
 
-    @objc private func create() {
+    @objc private func submit() {
         guard contextIsCurrent, !isCommitting else { return }
+        cancelCurrentLocation()
         cancelLocationSearch(animated: false)
         view.endEditing(true)
         guard validateName() else { return }
-        draft.text[.description] = descriptionView.text
-        for (field, input) in textFields { draft.text[field] = input.text ?? "" }
-        if !FeatureVisibility.shared.canSelectSiteType { draft.siteType = .standard }
+        formDraft.text[.description] = descriptionView.text
+        for (field, input) in textFields { formDraft.text[field] = input.text ?? "" }
+        if editingSite == nil, !FeatureVisibility.shared.canSelectSiteType { formDraft.siteType = .standard }
         let properties: SiteStandardProperties
         do {
-            properties = try draft.standardProperties()
-        } catch let error as SiteCreationDraft.InvalidCoordinate {
+            properties = try formDraft.standardProperties()
+        } catch let error as SiteFormDraft.InvalidCoordinate {
             textFields[error.field]?.becomeFirstResponder()
+            // Focusing hides old feedback; restore both errors after focus for this submit attempt.
+            for field in [SiteCreationTextField.latitude, .longitude] { validateCoordinate(field) }
             scrollEditingFieldIntoView(animated: !UIAccessibility.isReduceMotionEnabled)
-            let key = error.field == .latitude ? "site_create_invalid_latitude" : "site_create_invalid_longitude"
-            XWHUDManager.showErrorTipHUD(key.localizedString)
             return
         } catch {
             XWHUDManager.showErrorTipHUD("failed".localizedString)
             return
         }
-        isCommitting = true
-        createButton.isEnabled = false
-        do {
-            let site = try SiteData.add(name: draft.siteName, siteType: draft.siteType, imageId: draft.imageId,
-                                        timezone: draft.timezone?.storageValue, extensionData: draft.extensionData,
-                                        standardProperties: properties)
-            let completion = onCreated
-            navigationController?.dismiss(animated: true) { completion(site) }
-        } catch {
-            isCommitting = false
-            validateName()
-            XWHUDManager.showErrorTipHUD("failed".localizedString)
+        submitForm(properties: properties)
+    }
+
+    private func resolveStoredCityDisplay() {
+        guard let country = formDraft.countryRegionCode, let cityID = formDraft.cityID,
+              formDraft.city == nil else { return }
+        cityDisplayGeneration += 1
+        let generation = cityDisplayGeneration
+        cityDisplayLoader.search(countryCode: country, query: "") { [weak self] result in
+            guard let self, self.canInteractWithLocation, self.cityDisplayGeneration == generation,
+                  self.formDraft.countryRegionCode == country, self.formDraft.cityID == cityID,
+                  !self.cityField.isExpanded,
+                  case .success(let (catalog, _)) = result,
+                  let entry = catalog.entry(id: "geonames:" + cityID) else { return }
+            self.formDraft.resolveStoredCity(entry)
+            self.cityField.replaceSelection(id: entry.id,
+                title: catalog.displayTitle(for: entry, language: self.language), context: country)
         }
     }
+
 }
 
-private final class SiteCreationLocationButton: UIButton {
-    private let row = UIStackView()
-    private let icon = UIImageView(image: UIImage(named: "site_create_current_location"))
-    private let currentLocationButton = UIButton(type: .custom)
-    private let accuracyButton = UIButton(type: .custom)
-    private let selectionColor = RGB(104, 100, 179)
+private final class SiteCreationCoordinateInputView: UIView {
+    private let outline = CAShapeLayer()
+    var showsError = false {
+        didSet { outline.isHidden = !showsError }
+    }
 
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        backgroundColor = .clear
-        layer.borderColor = selectionColor.cgColor
-        isAccessibilityElement = false
-        row.alignment = .center
-        row.spacing = SCRXFrom(6)
-        row.addArrangedSubview(icon)
-        icon.snp.makeConstraints { make in make.width.height.equalTo(SCRYFrom(12)) }
-        for (button, key, identifier) in [
-            (currentLocationButton, "site_create_current_location", "site-create-location-option-current"),
-            (accuracyButton, "site_create_most_accurate", "site-create-location-option-accurate")
-        ] {
-            let text = key.localizedString
-            let title = NSAttributedString(string: text, attributes: [
-                .font: UIFont.systemFont(ofSize: SCRYFrom(12), weight: .medium),
-                .foregroundColor: selectionColor
-            ])
-            for state: UIControl.State in [.normal, .selected, .highlighted, [.selected, .highlighted]] {
-                button.setAttributedTitle(title, for: state)
-            }
-            button.accessibilityLabel = text
-            button.accessibilityIdentifier = identifier
-            button.titleLabel?.textAlignment = .center
-            button.contentEdgeInsets = UIEdgeInsets(top: SCRYFrom(2), left: SCRXFrom(6), bottom: SCRYFrom(2), right: SCRXFrom(6))
-            button.layer.cornerRadius = SCRYFrom(12)
-            button.addTarget(self, action: #selector(selectOption(_:)), for: .touchUpInside)
-            row.addArrangedSubview(button)
-            // Keep text metrics and padding identical in every selection and press state.
-            let titleWidth = ceil(title.size().width)
-            button.snp.makeConstraints { make in
-                make.width.equalTo(titleWidth + SCRXFrom(12))
-                make.height.equalTo(SCRYFrom(24))
-            }
-        }
-        addSubview(row)
-        row.snp.makeConstraints { make in
-            make.left.right.equalToSuperview().inset(SCRXFrom(12 + 2.0 / 3.0))
-            make.top.bottom.equalToSuperview().inset(SCRYFrom(4 + 2.0 / 3.0))
-        }
-        updateSelection()
+    init(input: UITextField) {
+        super.init(frame: .zero)
+        backgroundColor = .white
+        layer.cornerRadius = SCRYFrom(10)
+        input.borderStyle = .none
+        input.backgroundColor = .clear
+        input.layer.cornerRadius = 0
+        addSubview(input)
+        input.snp.makeConstraints { make in make.edges.equalToSuperview() }
+        outline.fillColor = UIColor.clear.cgColor
+        outline.strokeColor = Error_Red_Color.cgColor
+        outline.isHidden = true
+        layer.addSublayer(outline)
     }
 
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
-    override var isSelected: Bool {
-        didSet { updateSelection() }
-    }
-
-    private func updateSelection() {
-        // The two labels are mutually exclusive options; only the selected label has a badge.
-        for (button, selected) in [(currentLocationButton, isSelected), (accuracyButton, !isSelected)] {
-            button.isSelected = selected
-            button.backgroundColor = selected ? selectionColor.withAlphaComponent(0.1) : .clear
-            if selected {
-                button.accessibilityTraits.insert(.selected)
-            } else {
-                button.accessibilityTraits.remove(.selected)
-            }
-        }
-    }
-
-    @objc private func selectOption(_ sender: UIButton) {
-        isSelected = sender === currentLocationButton
-    }
-
     override func layoutSubviews() {
         super.layoutSubviews()
-        // Keep the outline on whole physical pixels and the capsule round at any content height.
         let scale = max(traitCollection.displayScale, 1)
-        layer.borderWidth = (2.0 / 3.0 * scale).rounded() / scale
-        layer.cornerRadius = bounds.height / 2
+        let width = max(1, (0.5 * scale).rounded()) / scale
+        let inset = width / 2
+        // Keep the entire stroke inside the container and use a whole number of physical pixels.
+        CATransaction.begin()
+        CATransaction.setDisableActions(true)
+        outline.contentsScale = scale
+        outline.frame = bounds
+        outline.lineWidth = width
+        outline.path = UIBezierPath(
+            roundedRect: bounds.insetBy(dx: inset, dy: inset),
+            cornerRadius: max(0, layer.cornerRadius - inset)
+        ).cgPath
+        CATransaction.commit()
     }
 }
 
-extension SiteCreateViewController: UITextFieldDelegate, UITextViewDelegate {
+private final class SiteCreationLocationButton: UIButton {
+    private let capsule = UIView()
+    private let icon = UIImageView(image: UIImage(named: "site_create_current_location"))
+    private let spinner = UIActivityIndicatorView(style: .medium)
+    private let selectionColor = RGB(104, 100, 179)
+    var isLoading = false {
+        didSet {
+            icon.isHidden = isLoading
+            if isLoading { spinner.startAnimating() } else { spinner.stopAnimating() }
+            accessibilityValue = isLoading ? "site_create_location_locating".localizedString : nil
+        }
+    }
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        isAccessibilityElement = true
+        accessibilityTraits = .button
+        accessibilityLabel = "site_create_current_location".localizedString
+        capsule.isUserInteractionEnabled = false
+        capsule.layer.borderColor = selectionColor.cgColor
+        addSubview(capsule)
+        capsule.snp.makeConstraints { make in
+            make.left.right.centerY.equalToSuperview()
+            make.top.greaterThanOrEqualToSuperview()
+            make.bottom.lessThanOrEqualToSuperview()
+        }
+        snp.makeConstraints { make in
+            make.height.greaterThanOrEqualTo(44)
+            make.height.equalTo(44).priority(.low)
+        }
+        let row = UIStackView()
+        let iconSize = SCRYFrom(12)
+        let iconSpacing = SCRXFrom(6)
+        let titleSpacing = SCRXFrom(10)
+        let capsuleInsets = UIEdgeInsets(top: SCRYFrom(4 + 2.0 / 3.0), left: SCRXFrom(12 + 2.0 / 3.0), bottom: SCRYFrom(4 + 2.0 / 3.0), right: SCRXFrom(12 + 2.0 / 3.0))
+        let tagInsets = UIEdgeInsets(top: SCRYFrom(2), left: SCRXFrom(6), bottom: SCRYFrom(2), right: SCRXFrom(6))
+        row.alignment = .center
+        row.spacing = iconSpacing
+        capsule.addSubview(row)
+        let iconSlot = UIView()
+        iconSlot.addSubview(icon)
+        icon.snp.makeConstraints { make in make.edges.equalToSuperview() }
+        spinner.color = selectionColor
+        spinner.transform = CGAffineTransform(scaleX: 0.6, y: 0.6)
+        iconSlot.addSubview(spinner)
+        spinner.snp.makeConstraints { make in make.center.equalToSuperview() }
+        iconSlot.snp.makeConstraints { make in make.width.height.equalTo(iconSize) }
+        row.addArrangedSubview(iconSlot)
+        let title = UILabel()
+        title.text = "site_create_current_location".localizedString
+        title.font = .systemFont(ofSize: SCRYFrom(12), weight: .medium)
+        title.textColor = selectionColor
+        title.numberOfLines = 0
+        title.lineBreakMode = .byWordWrapping
+        title.setContentCompressionResistancePriority(.required, for: .vertical)
+        row.addArrangedSubview(title)
+        row.setCustomSpacing(titleSpacing, after: title)
+        let tag = UIView()
+        tag.backgroundColor = selectionColor.withAlphaComponent(0.1)
+        tag.layer.cornerRadius = SCRYFrom(4)
+        let accuracy = UILabel()
+        accuracy.text = "site_create_most_accurate".localizedString
+        accuracy.font = .systemFont(ofSize: SCRYFrom(10), weight: .semibold)
+        accuracy.textColor = selectionColor
+        accuracy.numberOfLines = 1
+        accuracy.setContentHuggingPriority(.required, for: .horizontal)
+        accuracy.setContentCompressionResistancePriority(.required, for: .horizontal)
+        for (label, lineHeight) in [(title, CGFloat(16)), (accuracy, CGFloat(13.333))] {
+            let paragraph = NSMutableParagraphStyle()
+            paragraph.alignment = .center
+            paragraph.minimumLineHeight = SCRYFrom(lineHeight)
+            label.attributedText = NSAttributedString(string: label.text ?? "", attributes: [
+                .font: label.font!, .foregroundColor: selectionColor, .paragraphStyle: paragraph,
+                .kern: label === accuracy ? SCRXFrom(0.1172) : 0
+            ])
+        }
+        tag.addSubview(accuracy)
+        accuracy.snp.makeConstraints { make in
+            make.edges.equalToSuperview().inset(tagInsets)
+        }
+        row.addArrangedSubview(tag)
+        row.snp.makeConstraints { make in
+            make.edges.equalToSuperview().inset(capsuleInsets)
+        }
+        // Prefer the complete single-line content width; the container bounds take precedence.
+        let contentWidth = iconSize + iconSpacing + ceil(title.intrinsicContentSize.width)
+            + titleSpacing + ceil(accuracy.intrinsicContentSize.width)
+            + tagInsets.left + tagInsets.right + capsuleInsets.left + capsuleInsets.right
+        snp.makeConstraints { make in
+            make.width.equalTo(contentWidth).priority(999)
+        }
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        let scale = max(traitCollection.displayScale, 1)
+        capsule.layer.borderWidth = (2.0 / 3.0 * scale).rounded() / scale
+        capsule.layer.cornerRadius = capsule.bounds.height / 2
+    }
+}
+
+extension SiteFormViewController: UITextFieldDelegate, UITextViewDelegate {
     func textFieldShouldReturn(_ textField: UITextField) -> Bool { textField.resignFirstResponder(); return true }
 
     func textFieldDidBeginEditing(_ textField: UITextField) {
+        if let field = textFields.first(where: { $0.value === textField })?.key, coordinateTips[field] != nil {
+            cancelCurrentLocation()
+            setCoordinateError(field, key: nil)
+        }
         cancelLocationSearch()
         revealEditingField()
+    }
+
+    func textFieldDidEndEditing(_ textField: UITextField) {
+        guard let field = textFields.first(where: { $0.value === textField })?.key, coordinateTips[field] != nil else { return }
+        // Merely focusing/defocusing a city-derived coordinate must not mark it as a manual edit.
+        formDraft.text[field] = textField.text ?? ""
+        validateCoordinate(field)
     }
 
     func textViewDidBeginEditing(_ textView: UITextView) {
@@ -742,13 +996,13 @@ extension SiteCreateViewController: UITextFieldDelegate, UITextViewDelegate {
             textView.text = limited
             textView.selectedRange = NSRange(location: min(selection.location, (limited as NSString).length), length: 0)
         }
-        draft.text[.description] = limited
+        formDraft.text[.description] = limited
         descriptionCounter.text = "\(field.normalized(limited)?.count ?? 0)/300"
         descriptionPlaceholder.isHidden = !limited.isEmpty
     }
 }
 
-extension SiteCreateViewController: UIGestureRecognizerDelegate {
+extension SiteFormViewController: UIGestureRecognizerDelegate {
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
         guard gestureRecognizer === locationOutsideTap, countryField.isExpanded || cityField.isExpanded else { return false }
         // Switching fields is handled before focus changes. An outside-tap callback must not
@@ -796,27 +1050,53 @@ private final class SiteCreationIconCell: ImageCollectionViewCell {
     }
 }
 
-extension SiteCreateViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
+extension SiteFormViewController: UICollectionViewDataSource, UICollectionViewDelegateFlowLayout {
     func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int { 28 }
 
     func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: "icon", for: indexPath) as! SiteCreationIconCell
         cell.imageView.image = UIImage(named: "site_\(indexPath.item + 1)")
-        cell.showsSelection = draft.imageId == indexPath.item + 1
+        cell.showsSelection = formDraft.imageId == indexPath.item + 1
         return cell
     }
 
     func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
-        guard draft.imageId != indexPath.item + 1 else { return }
-        let previous = IndexPath(item: draft.imageId - 1, section: 0)
-        draft.imageId = indexPath.item + 1
+        guard formDraft.imageId != indexPath.item + 1 else { return }
+        let previous = IndexPath(item: formDraft.imageId - 1, section: 0)
+        formDraft.imageId = indexPath.item + 1
         UIView.performWithoutAnimation {
-            collectionView.reloadItems(at: [previous, indexPath])
+            collectionView.reloadItems(at: (0..<28).contains(previous.item) ? [previous, indexPath] : [indexPath])
         }
     }
 
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         let width = floor((collectionView.bounds.width - flowLayout.minimumInteritemSpacing * 3) / 4 * 100) / 100
         return CGSize(width: width, height: width)
+    }
+}
+
+final class SiteCreateViewController: SiteFormViewController {
+    private let onCreated: (SiteData) -> Void
+
+    init(onCreated: @escaping (SiteData) -> Void) {
+        self.onCreated = onCreated
+        let timezone = (try? SiteTimeZoneCatalog.bundled())?.value(matchingIdentifier: TimeZone.current.identifier)
+        super.init(formDraft: SiteFormDraft(siteName: SiteData.getNextSiteName(), timezone: timezone))
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    override func submitForm(properties: SiteStandardProperties) {
+        isCommitting = true
+        do {
+            let site = try SiteData.add(name: formDraft.siteName, siteType: formDraft.siteType, imageId: formDraft.imageId,
+                                        timezone: formDraft.timezone?.storageValue, extensionData: formDraft.extensionData,
+                                        standardProperties: properties)
+            let completion = onCreated
+            navigationController?.dismiss(animated: true) { completion(site) }
+        } catch {
+            isCommitting = false
+            XWHUDManager.showErrorTipHUD("failed".localizedString)
+        }
     }
 }
