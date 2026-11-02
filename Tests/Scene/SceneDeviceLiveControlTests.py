@@ -37,6 +37,8 @@ struct LightLightnessSetUnacknowledged: UnacknowledgedMeshMessage { let lightnes
 struct LightCTLTemperatureSetUnacknowledged: UnacknowledgedMeshMessage { let temperature: UInt16; let deltaUV: Int }
 final class Node {
     var state = true, effectiveSupportCct = true
+    var showsCct = true
+    var singleDeviceDisplaySupportCct: Bool { effectiveSupportCct && showsCct }
     var lightnessRange: ClosedRange<UInt16> = 100...50000
     var lightnessModel: Model? = Model(0x100), temperatureModel: Model? = Model(0x101), onoffModel: Model? = Model(0x100)
     static func getLightness(lightness100: Int) -> UInt16 { UInt16(lightness100 * 655) }
@@ -157,6 +159,21 @@ expect(manager.sent.count == 4, "cancel sends no restore command")
 control(.lightness(100, ended: true))
 expect(manager.sent.count == 5 && manager.sent.last!.message is LightLightnessSetUnacknowledged, "restore sends brightness only, without an extra ON")
 expect(page.selection!.draft.revision == revision && page.coordinator.committedNumber == nil, "live commands never persist or modify draft revision")
+let beforeHidden = manager.sent.count
+node.showsCct = false
+control(.temperature(4000, ended: false)); control(.temperature(4000, ended: true))
+expect(manager.sent.count == beforeHidden, "Single White rejects temperature samples and final events")
+control(.lightness(60, ended: true)); control(.off)
+expect(manager.sent.count == beforeHidden + 2, "Single White still allows brightness and OFF")
+node.showsCct = true
+control(.temperature(4000, ended: false))
+expect(manager.sent.count == beforeHidden + 3, "Tunable White allows temperature again")
+node.showsCct = false
+control(.temperature(4000, ended: true))
+expect(manager.sent.count == beforeHidden + 3 && page.lastTemperatureSample == nil, "preference change rejects late temperature and clears deduplication")
+node.showsCct = true
+control(.temperature(4000, ended: true))
+expect(manager.sent.count == beforeHidden + 4, "new final sample is not suppressed after display capability returns")
 func rejects(_ message: String, change: () -> Void, restore: () -> Void) {
     let before = manager.sent.count
     change(); control(.off); expect(manager.sent.count == before, message); restore()

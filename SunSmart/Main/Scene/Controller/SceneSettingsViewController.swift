@@ -447,6 +447,8 @@ class SceneSettingsViewController: UIViewController, CustomSegmentedControlDeleg
         let selected = selection.draft.deviceMembers.filter { identities.contains($0.identity) }
         guard let first = selected.first else { return }
         let nodes = selected.compactMap { devicesView.node(for: $0.identity) }
+        let cctMembers = selected.filter { devicesView.node(for: $0.identity)?.singleDeviceDisplaySupportCct == true }
+        let cctIdentities = Set(cctMembers.map(\.identity))
         let token = selection.beginParameterEdit(), life = lifecycle, revision = selection.draft.revision
         let liveControl = makeDeviceLiveControl(target)
         let apply: (Bool, Int, Int) -> Void = { [weak self] on, brightness, cct in
@@ -454,12 +456,19 @@ class SceneSettingsViewController: UIViewController, CustomSegmentedControlDeleg
             let parameters = SceneParameters(isOn: on, lightness: Node.getLightness(lightness100: brightness), cct: UInt16(cct))
             do {
                 try selection.finishParameterEdit(token, parameters: parameters, identities: Set(identities), apply: true) { identity, value in
+                    guard let old = selected.first(where: { $0.identity == identity })?.parameters else { return value }
                     var preservingUnits = value
-                    if let old = selected.first(where: { $0.identity == identity })?.parameters,
-                       old.isOn == on, Node.getLightness100(lightness: old.lightness) == brightness {
+                    if old.isOn == on, Node.getLightness100(lightness: old.lightness) == brightness {
                         preservingUnits.lightness = old.lightness
                     }
-                    return self.devicesView.node(for: identity).map { preservingUnits.resolved(for: $0) } ?? preservingUnits
+                    let node = self.devicesView.node(for: identity)
+                    var resolved = node.map { preservingUnits.resolved(for: $0) } ?? preservingUnits
+                    // A hidden field must retain this member's value, including when
+                    // the display preference changes while the sheet is open.
+                    if !cctIdentities.contains(identity) || node?.singleDeviceDisplaySupportCct != true {
+                        resolved.cct = old.cct
+                    }
+                    return resolved
                 }
                 self.draftChanged()
             } catch { self.failed(error) }
@@ -485,11 +494,11 @@ class SceneSettingsViewController: UIViewController, CustomSegmentedControlDeleg
         } else {
             let single = nodes.count == 1 ? nodes.first : nil
             let maxBrightness = single.map { Node.getLightness100(lightness: $0.lightnessRange.upperBound) } ?? 100
-            let ranges = nodes.filter(\.effectiveSupportCct).map(\.effectiveCctRange)
+            let ranges = nodes.filter(\.singleDeviceDisplaySupportCct).map(\.effectiveCctRange)
             let range = ranges.reduce(NodeAbsoluteCctRange.defaultRange) { min($0.lowerBound, $1.lowerBound)...max($0.upperBound, $1.upperBound) }
             picker = SceneExecuteDataPickerView.show(lightness: Node.getLightness100(lightness: first.parameters.lightness), isOn: first.parameters.isOn,
-                cct: Int(first.parameters.cct), lightnessLimitRange: 0...maxBrightness,
-                cctRange: single?.effectiveCctRange ?? range, showCct: nodes.contains(where: \.effectiveSupportCct), showDelete: false, liveControl: liveControl, picker: apply)
+                cct: Int(cctMembers.first?.parameters.cct ?? first.parameters.cct), lightnessLimitRange: 0...maxBrightness,
+                cctRange: single?.effectiveCctRange ?? range, showCct: !cctMembers.isEmpty, showDelete: false, liveControl: liveControl, picker: apply)
         }
     }
     private func makeDeviceLiveControl(_ target: SceneDeviceSettingsTarget) -> ((SceneExecuteDataPickerView.LiveEvent) -> Void)? {
@@ -552,7 +561,10 @@ class SceneSettingsViewController: UIViewController, CustomSegmentedControlDeleg
                 message = LightLightnessSetUnacknowledged(lightness: brightness); model = node.lightnessModel
             }
         case .temperature(let value, let ended):
-            guard node.effectiveSupportCct else { return }
+            guard node.singleDeviceDisplaySupportCct else {
+                lastTemperatureSample = nil
+                return
+            }
             let temperature = node.clampEffectiveCct(UInt16(clamping: value))
             let duplicateFinal = ended && lastTemperatureSample == temperature
             lastTemperatureSample = ended ? nil : temperature

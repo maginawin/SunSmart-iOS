@@ -212,6 +212,7 @@ import Foundation
         let busyPage = SceneSelectionEntryHarness(selection: newEmpty)
         busyPage.busy = true; let busyLifecycle = busyPage.lifecycle; busyPage.closeAction()
         check("dirtyBusyCloseCancelsBeforeConfirmation", busyPage.alerts == 1 && !busyPage.busy && busyPage.lifecycle != busyLifecycle && busyPage.coordinator.cancellations == 1)
+        try runSceneDeviceParameterEditingTests()
         print("selection: \(passed) passed")
     }
 }
