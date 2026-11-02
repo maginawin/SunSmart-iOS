@@ -7,7 +7,10 @@ import Foundation
             siteDescription: "Lobby")
         let bytes = try JSONSerialization.data(withJSONObject: properties.jsonObject)
         let object = try JSONSerialization.jsonObject(with: bytes) as! [String: Any]
-        precondition(object["latitude"] as? Double == 0 && !(object["latitude"] is String))
+        precondition(object["latitude"] as? String == "0.0")
+        precondition(object["longitude"] as? String == "-72.123456789")
+        let empty = SiteStandardProperties().jsonObject
+        precondition(empty["latitude"] is NSNull && empty["longitude"] is NSNull)
         precondition(object["city"] as? String == "795565" && object["postalCode"] as? String == "018983")
         precondition(object["address"] as? String == properties.address && object["streetAddress"] == nil)
         let roundtrip = try SiteStandardProperties.Patch(object).applying(to: .init())
@@ -21,7 +24,7 @@ import Foundation
         precondition(partial.merging(to: properties, localTimestamp: 10, remoteTimestamp: 9, hasPendingChanges: false) == properties)
         precondition(partial.merging(to: properties, localTimestamp: 10, remoteTimestamp: 11, hasPendingChanges: true) == properties)
         precondition(partial.merging(to: properties, localTimestamp: 10, remoteTimestamp: 10, hasPendingChanges: false) == merged)
-        for object: [String: Any] in [["latitude": true], ["longitude": false], ["latitude": "0"],
+        for object: [String: Any] in [["latitude": true], ["longitude": false], ["latitude": "invalid"],
             ["longitude": Double.nan], ["latitude": Double.infinity], ["latitude": 91],
             ["longitude": -181], ["city": 795565], ["address": []]] {
             do { _ = try SiteStandardProperties.Patch(object); preconditionFailure("Invalid types/ranges must fail") }

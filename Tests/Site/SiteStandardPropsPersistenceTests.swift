@@ -119,8 +119,8 @@ extension SiteData {
                      "String coordinates must be durable numeric values after reopening SQLite")
         let exportedData = try JSONSerialization.data(withJSONObject: reloaded.standardProperties.jsonObject)
         let exported = try JSONSerialization.jsonObject(with: exportedData) as! [String: Any]
-        precondition(exported["latitude"] is NSNumber && exported["longitude"] is NSNumber)
-        print("PASS: string-coordinate Site import -> SQLite reopen -> numeric JSON export")
+        precondition(exported["latitude"] as? String == "22.54554" && exported["longitude"] as? String == "114.0683")
+        print("PASS: string-coordinate Site import -> SQLite reopen -> string JSON export")
     }
 
     static func propsReadbackAndReceipts(siteID: String, path: String) async throws {

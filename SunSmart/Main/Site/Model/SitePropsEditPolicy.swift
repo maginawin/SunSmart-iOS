@@ -22,8 +22,8 @@ struct SiteStandardProperties: Equatable {
     }
 
     var jsonObject: [String: Any] {
-        var result: [String: Any] = ["latitude": latitude as Any? ?? NSNull(),
-                                     "longitude": longitude as Any? ?? NSNull()]
+        var result: [String: Any] = ["latitude": latitude.map { String($0) } as Any? ?? NSNull(),
+                                     "longitude": longitude.map { String($0) } as Any? ?? NSNull()]
         for (key, path) in Self.textFields { result[key] = self[keyPath: path] as Any? ?? NSNull() }
         return result
     }
@@ -54,7 +54,7 @@ struct SiteStandardProperties: Equatable {
                     value = number.doubleValue
                 } else if let text = raw as? String,
                           let number = Double(text.trimmingCharacters(in: .whitespacesAndNewlines)) {
-                    // Legacy Site responses encode coordinates as numeric strings.
+                    // Accept numeric strings as well as older numeric Site responses.
                     value = number
                 } else {
                     throw ParseError.invalidField(key)

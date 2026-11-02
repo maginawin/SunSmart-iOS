@@ -101,8 +101,8 @@ import CryptoKit
         precondition(draft.selectCity(two, timezone: newYork) && draft.text[.latitude] == "")
         precondition(draft.selectCity(one, timezone: chicago), "A different city replaces prior manual values")
         let saved = try draft.standardProperties().jsonObject
-        precondition(saved["city"] as? String == "1" && saved["latitude"] as? Double == 39.7817)
-        precondition(saved["longitude"] as? Double == -89.6501 && saved["countryRegion"] as? String == "US")
+        precondition(saved["city"] as? String == "1" && saved["latitude"] as? String == "39.7817")
+        precondition(saved["longitude"] as? String == "-89.6501" && saved["countryRegion"] as? String == "US")
         precondition(catalog.entry(id: "geonames:" + (saved["city"] as! String))?.record.id == one.record.id)
         draft.selectCountry(countries.entry(code: "CN")!)
         precondition(draft.city == nil && draft.timezone == initial && draft.text[.latitude] == nil && draft.text[.longitude] == nil)

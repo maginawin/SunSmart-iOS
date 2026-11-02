@@ -76,8 +76,8 @@ struct SitePropsAPIResponseParserTests {
                     "Coordinate formats must normalize to the same Double values")
             let encoded = try! JSONSerialization.data(withJSONObject: properties.jsonObject)
             let exported = try! JSONSerialization.jsonObject(with: encoded) as! [String: Any]
-            require(exported["latitude"] is NSNumber && exported["longitude"] is NSNumber,
-                    "Normalized coordinates must export as JSON numbers")
+            require(exported["latitude"] as? String == "22.54554" && exported["longitude"] as? String == "114.0683",
+                    "Normalized coordinates must export as JSON strings")
         }
 
         for (key, bound) in [("latitude", 90.0), ("longitude", 180.0)] {

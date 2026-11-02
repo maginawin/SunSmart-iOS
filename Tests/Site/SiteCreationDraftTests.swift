@@ -31,8 +31,8 @@ import Foundation
         draft.siteType = .hdb
         let object = try draft.standardProperties().jsonObject
         precondition(object["postalCode"] as? String == "018983")
-        precondition(object["latitude"] as? Double == -1.2801)
-        precondition(object["longitude"] as? Double == 0)
+        precondition(object["latitude"] as? String == "-1.2801")
+        precondition(object["longitude"] as? String == "0.0")
         precondition(object["description"] is NSNull && object["city"] is NSNull && object["countryRegion"] is NSNull)
         let extensionObject = try draft.extensionData.jsonObject()
         precondition(extensionObject["siteType"] as? String == "HDB" && extensionObject["latitude"] == nil)
