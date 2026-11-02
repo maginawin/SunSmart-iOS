@@ -1542,6 +1542,13 @@ self.updateAddressData()
         return gatewayModels
     }
     
+    private func shouldShowGatewayList() -> Bool {
+        !showGatewayModels.isEmpty || site.permission == .owner ||
+            site.spaces.contains {
+                $0.canEditGatewayAssociation && $0.gatewayStatus == .notBound
+            }
+    }
+
     private func shouldShowGatewayStatus(
         for spaces: [SpaceData],
         in collectionView: UICollectionView
@@ -3013,6 +3020,7 @@ self.updateAddressData()
             gatewayListHeight: SCRYFrom(48),
             gatewayStatusHeight: SCRYFrom(48),
             reviewSyncHeight: SCRYFrom(64),
+            showsGatewayList: shouldShowGatewayList(),
             showsGatewayStatus: shouldShowGatewayStatus(for: spaces, in: collectionView),
             showsReviewSync: showsReviewSync
         )
@@ -3449,19 +3457,12 @@ extension SiteViewController: UICollectionViewDataSource, UICollectionViewDelega
         let showGatewayStatus = shouldShowGatewayStatus(for: spaces, in: collectionView)
         
         if showGatewayModels.count > 0 {
-            headerView.showGatewayListView = true
             let items = makeGatewayListItems(showGatewayModels)
             headerView.gatewayListView.updateItems(items, selectedIndex: selectIndex, scrollState: gatewayScrollState)
         }else {
             headerView.gatewayListView.updateItems([], selectedIndex: 0, scrollState: gatewayScrollState)
-            if self.site.permission == .owner || self.allSpaces.contains(where: {
-                $0.canEditing && $0.deviceOperates.contains(.edit) && $0.gatewayStatus == .notBound
-            }) { // 显示添加网关UI
-                headerView.showGatewayListView = true
-            }else {
-                headerView.showGatewayListView = false
-            }
         }
+        headerView.showGatewayListView = shouldShowGatewayList()
         headerView.showGatewayStatusView = showGatewayStatus
         headerView.timeZoneReviewState = timeZoneReviewState
         headerView.onReviewSync = { [weak self] in

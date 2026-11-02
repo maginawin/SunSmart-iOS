@@ -29,10 +29,11 @@ enum SiteGatewayHeaderLayoutPolicy {
         gatewayListHeight: CGFloat,
         gatewayStatusHeight: CGFloat,
         reviewSyncHeight: CGFloat,
+        showsGatewayList: Bool,
         showsGatewayStatus: Bool,
         showsReviewSync: Bool
     ) -> CGFloat {
-        gatewayListHeight +
+        (showsGatewayList ? gatewayListHeight : 0) +
             (showsGatewayStatus ? gatewayStatusHeight : 0) +
             (showsReviewSync ? reviewSyncHeight : 0)
     }

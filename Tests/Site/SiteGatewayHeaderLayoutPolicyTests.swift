@@ -12,6 +12,12 @@ struct SiteGatewayHeaderLayoutPolicyTests {
         require(height(status: true, review: true) == 160)
         require(height(status: false, review: true) == 112)
         testEmptyStateFrameIgnoresVerticalBoundsOffset()
+        testHiddenGatewayListDoesNotReserveSpace()
+        testGatewayListVisibilityChangesUpdateEmptyState()
+        if CommandLine.arguments.contains("--header-only") {
+            print("SiteGatewayHeaderLayoutPolicyTests (header only) passed")
+            return
+        }
         testGatewayWidthsAndOverflow()
         testGatewaySelectionVisibility()
         testGatewayScrollRestoration()
@@ -126,6 +132,51 @@ struct SiteGatewayHeaderLayoutPolicyTests {
         require(frame.size.height == bounds.size.height)
     }
 
+    private static func testHiddenGatewayListDoesNotReserveSpace() {
+        let scenarios: [(list: Bool, status: Bool, review: Bool, expected: CGFloat)] = [
+            (false, false, false, 0),
+            (false, true, false, 48),
+            (false, false, true, 64),
+            (false, true, true, 112),
+            (true, false, false, 48),
+            (true, true, false, 96),
+            (true, false, true, 112),
+            (true, true, true, 160)
+        ]
+        for scenario in scenarios {
+            require(
+                height(list: scenario.list, status: scenario.status, review: scenario.review) == scenario.expected,
+                "Only visible header rows and their normal spacing may precede Space items"
+            )
+        }
+    }
+
+    private static func testGatewayListVisibilityChangesUpdateEmptyState() {
+        var bounds = CGRect()
+        bounds.origin.x = -16
+        bounds.origin.y = -72
+        bounds.size.width = 390
+        bounds.size.height = 700
+        // Both pages retain Overview statistics for a non-Owner with Spaces,
+        // including Favourites with no items. Losing/restoring edit access hides/shows the list.
+        let status = showsStatus(selected: nil, visible: [], hasSiteSpaces: true, isOwner: false)
+        let transitions: [(list: Bool, expected: CGFloat)] = [
+            (true, 96), (false, 48), (false, 48), (true, 96)
+        ]
+        for review in [false, true] {
+            for transition in transitions {
+                let headerHeight = height(list: transition.list, status: status, review: review)
+                let frame = SiteGatewayHeaderLayoutPolicy.emptyStateFrame(
+                    collectionBounds: bounds,
+                    headerHeight: headerHeight
+                )
+                require(headerHeight == transition.expected + (review ? 64 : 0))
+                require(frame.origin.y == headerHeight, "Empty Favourites must follow the current visible header")
+                require(frame.size.width == bounds.size.width && frame.size.height == bounds.size.height)
+            }
+        }
+    }
+
     private static func testGatewayWidthsAndOverflow() {
         let empty = SiteGatewayListLayout(availableWidth: 303, gatewayCount: 0)
         require(empty.itemWidth == 0 && empty.contentWidth == 0)
@@ -211,6 +262,7 @@ struct SiteGatewayHeaderLayoutPolicyTests {
     }
 
     private static func height(
+        list: Bool = true,
         status: Bool,
         review: Bool
     ) -> CGFloat {
@@ -218,6 +270,7 @@ struct SiteGatewayHeaderLayoutPolicyTests {
             gatewayListHeight: 48,
             gatewayStatusHeight: 48,
             reviewSyncHeight: 64,
+            showsGatewayList: list,
             showsGatewayStatus: status,
             showsReviewSync: review
         )
