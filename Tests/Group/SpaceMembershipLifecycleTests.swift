@@ -41,6 +41,7 @@ final class SpaceData {
     var requiresPasswordVerification = false, vistorPasswordEnable = false
     var permission = Permission.editor
     var authorizationPassword: String?
+    var lastUpdate: Int64 = 0
     var lastUploadCloudTimestamp: Int64?
     var saveSucceeds = true, deleteSucceeds = true, applySucceeds = true
     var hdbLoadFailed = false, triggerZonesLoadFailed = false
@@ -92,6 +93,10 @@ enum SpaceConfigurationSafety {
     static func isBlocked(_ space: SpaceData) -> Bool { false }
     static var reviewed = false, defaultPreparationSucceeds = true
     static func hasReviewedCloudImport(_ space: SpaceData) -> Bool { reviewed }
+    static func prefersNewerCloud(_ space: SpaceData, remote: [String: Any]) -> Bool { false }
+    static func hasNewerCloudImport(_ space: SpaceData) -> Bool { false }
+    static func waitForCloudWrite(_ space: SpaceData) async -> Bool { false }
+    static func handleAuthorityError(_ error: NetworkApiError, space: SpaceData) {}
     static func shouldRefreshDefaultRecovery(_ space: SpaceData, remote: [String: Any]) -> Bool { false }
     static func prepareDefaultConfigurationImport(_ space: SpaceData, remote: [String: Any]) -> Bool {
         if defaultPreparationSucceeds { reviewed = true }

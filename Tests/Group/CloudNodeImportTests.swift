@@ -49,6 +49,7 @@ enum SpaceConfigurationSafety {
     static var preserves = true, stages = true
     static var stageCount = 0
     static func preserveRemoteReferenceCleanup(_ space: ImportHarness, payload: [String: Any], candidate: [String: Any]) -> Bool { preserves }
+    static func beginNewerCloudImport(_ space: ImportHarness, payload: [String: Any]) -> Bool { stages }
     static func beginImport(_ space: ImportHarness, payload: [String: Any]) -> Bool { stageCount += 1; return stages }
 }
 final class ImportHarness {
@@ -58,6 +59,7 @@ final class ImportHarness {
         let originalSpaceJsonData: [String: Any] = ["nodes": nodeDicts]
         let spaceJsonData = originalSpaceJsonData
         let timedReferencesChanged = false
+        let newerCloudImport = false
         return await withCheckedContinuation { continuation in
             // IMPORT_STAGING_GATE
             continuation.resume(returning: .applied)

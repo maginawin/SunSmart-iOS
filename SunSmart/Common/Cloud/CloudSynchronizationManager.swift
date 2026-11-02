@@ -1157,9 +1157,56 @@ class CloudSynchronizationHandle: NSObject {
         }
     }
 
-    private func finishInvalidatedConfiguration() {
-        state = .cancel
+    private func finishInvalidatedConfiguration(lifecycle: [String: SpaceRecoveryState]? = nil) {
+        // A cloud import may supersede one Space while a batch is suspended.
+        // Rebuild remaining work from disk; never reuse the captured POST payload.
+        let cloudReplaced = lifecycle.map { captured in
+            configurationSpaces.contains { space in
+                guard let previous = captured[space.id],
+                      let current = try? SpaceConfigurationSafety.recoveryState(space) else { return false }
+                return current.generation != previous.generation && current.cloudImport != nil
+                    && current.identity == previous.identity && current.phase == .active
+            }
+        } ?? false
+        let importIncomplete = cloudReplaced && configurationSpaces.contains { SpaceConfigurationSafety.hasPendingImport($0) }
+        state = importIncomplete ? .failure(error: .configurationUnavailable) : .cancel
         handleCallback?(self, state)
+        if cloudReplaced { requeuePendingConfiguration() }
+    }
+
+    private func requeuePendingConfiguration() {
+        guard isCurrentDeviceAddContext else { return }
+        let pending = configurationSpaces.compactMap { old -> SpaceData? in
+            guard let latest = SpaceData.load(siteId: old.siteId, spaceId: old.id).first,
+                  latest.meshUUID == old.meshUUID, latest.meshNetworkId == old.meshNetworkId,
+                  !SpaceConfigurationSafety.hasPendingImport(latest), !SpaceConfigurationSafety.isBlocked(latest),
+                  latest.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(latest) else { return nil }
+            return latest
+        }
+        switch operation {
+        case .syncSite(let site, _), .addSpaces(let site, _):
+            guard let latest = SiteData.load(siteId: site.id),
+                  !pending.isEmpty || latest.needUploadCloud else { return }
+            CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSite(site: latest, syncSpaces: pending), level: .normal)
+        case .syncSpace:
+            for space in pending {
+                CloudSynchronizationManager.shared.addSynchronizationHandle(operation: .syncSpace(space: space), level: .normal)
+            }
+        default: break
+        }
+    }
+
+    /// A successful import is a new lifecycle, not acknowledgement of the old POST.
+    @MainActor
+    private func adoptedCloudImport(_ space: SpaceData, previous: SpaceRecoveryState) -> SpaceRecoveryState? {
+        guard let current = try? SpaceConfigurationSafety.recoveryState(space),
+              current.identity == previous.identity, current.phase == .active,
+              current.cloudImport?.supersededGeneration == previous.generation,
+              !SpaceConfigurationSafety.hasPendingImport(space), !SpaceConfigurationSafety.isBlocked(space),
+              let latest = SpaceData.load(siteId: space.siteId, spaceId: space.id).first,
+              latest.lastUploadCloudTimestamp == current.cloudImport?.timestamp else { return nil }
+        space.applyConfigurationState(from: latest)
+        return current
     }
     
     private var configurationSpaces: [SpaceData] {
@@ -1293,7 +1340,7 @@ class CloudSynchronizationHandle: NSObject {
             }
             let account = UserData.currentUserId
             let region = UserData.currentServerRegion
-            let lifecycle = Dictionary(self.configurationSpaces.compactMap { space -> (String, SpaceRecoveryState)? in
+            var lifecycle = Dictionary(self.configurationSpaces.compactMap { space -> (String, SpaceRecoveryState)? in
                 guard let context = try? SpaceConfigurationSafety.recoveryState(space) else { return nil }
                 return (space.id, context)
             }, uniquingKeysWith: { first, _ in first })
@@ -1302,7 +1349,8 @@ class CloudSynchronizationHandle: NSObject {
                     lifecycle[space.id].map { SpaceConfigurationSafety.isCurrent($0, space: space) } == true
                 }
             }
-            guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
+            guard isCurrentOperation() else { self.finishInvalidatedConfiguration(lifecycle: lifecycle); return }
+            var importedCloud = false
             let hadPending = self.configurationSpaces.contains { SpaceConfigurationSafety.hasPendingUpload($0) }
             if case .syncSite(let site, _) = self.operation, !site.uploadCloud,
                let createdTimestamp = lifecycle.values.compactMap(\.siteCreationTimestamp).max() {
@@ -1322,9 +1370,13 @@ class CloudSynchronizationHandle: NSObject {
             for space in self.configurationSpaces {
                 if case .failure(let error) = await SpaceConfigurationSafety.resumeUpload(space) {
                     guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
-                    guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
+                    guard isCurrentOperation() else { self.finishInvalidatedConfiguration(lifecycle: lifecycle); return }
                     self.finishConfigurationFailure(error)
                     return
+                }
+                if let previous = lifecycle[space.id], let current = self.adoptedCloudImport(space, previous: previous) {
+                    lifecycle[space.id] = current
+                    importedCloud = true
                 }
             }
             guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
@@ -1333,13 +1385,13 @@ class CloudSynchronizationHandle: NSObject {
             // Any cleanup edits must be included before deciding this sync is done.
             guard let api = await self.operation.getNetworkApi() else {
                 guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
-                guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
+                guard isCurrentOperation() else { self.finishInvalidatedConfiguration(lifecycle: lifecycle); return }
                 self.finishExportFailure()
                 return
             }
             guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
-            guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
-            if hadPending && !self.configurationSpaces.contains(where: { $0.needUploadCloud }) {
+            guard isCurrentOperation() else { self.finishInvalidatedConfiguration(lifecycle: lifecycle); return }
+            if (hadPending || importedCloud) && !self.configurationSpaces.contains(where: { $0.needUploadCloud }) {
                 let sitePending: Bool
                 switch self.operation {
                 case .syncSite(let site, _), .addSpaces(let site, _):
@@ -1369,7 +1421,7 @@ class CloudSynchronizationHandle: NSObject {
             """)
             #endif
             guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
-            guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
+            guard isCurrentOperation() else { self.finishInvalidatedConfiguration(lifecycle: lifecycle); return }
             let submissions = api.configurationSpacePayloads
             let creationTimestamp: Int64?
             if case .siteAdd = api { creationTimestamp = api.configurationSiteTimestamp } else { creationTimestamp = nil }
@@ -1386,9 +1438,11 @@ class CloudSynchronizationHandle: NSObject {
                 }
                 contexts[id] = context
             }
+            let write = SpaceConfigurationSafety.beginCloudWrite(self.configurationSpaces)
             let requestResult = await NetworkRequest.shared.request(api)
+            SpaceConfigurationSafety.finishCloudWrite(write)
             var result = requestResult
-            guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
+            guard isCurrentOperation() else { self.finishInvalidatedConfiguration(lifecycle: lifecycle); return }
             var confirmedConfigurationIds = Set<String>()
             switch result {
             case .success:
@@ -1420,6 +1474,10 @@ class CloudSynchronizationHandle: NSObject {
                         continue
                     }
                     if case .success = await SpaceConfigurationSafety.resumeUpload(space) {
+                        if let previous = lifecycle[space.id], let current = self.adoptedCloudImport(space, previous: previous) {
+                            lifecycle[space.id] = current
+                            importedCloud = true
+                        }
                         if case .success = await SpaceConfigurationSafety.finishCloudRemovalUpload(space) {
                             confirmedConfigurationIds.insert(id)
                         } else {
@@ -1432,9 +1490,10 @@ class CloudSynchronizationHandle: NSObject {
             }
             let completionResult = result
             let completedConfigurationIds = confirmedConfigurationIds
+            let shouldContinueImportedConfiguration = importedCloud
             await MainActor.run {
                 guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
-                guard isCurrentOperation() else { self.finishInvalidatedConfiguration(); return }
+                guard isCurrentOperation() else { self.finishInvalidatedConfiguration(lifecycle: lifecycle); return }
                 switch completionResult {
                 case .success:
                     #if DEBUG
@@ -1485,6 +1544,10 @@ class CloudSynchronizationHandle: NSObject {
                     
                 }
                 self.handleCallback?(self, self.state)
+                // finishImport can create a fresh version for normalized references.
+                // The old handle must be removed before enqueueing its successor,
+                // and its submitted payload must never acknowledge that new intent.
+                if shouldContinueImportedConfiguration { self.requeuePendingConfiguration() }
             }
         }
     }

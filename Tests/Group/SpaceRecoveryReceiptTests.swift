@@ -51,6 +51,7 @@ final class SpaceData {
     // the real repair staging and finalization when a newer GET supersedes it.
     @MainActor func restoreConfiguration(spaceJsonData: [String: Any], authoritativeGET: Bool,
                                         fixWithDefaults: Bool) async -> RestoreOutcome {
+        if !fixWithDefaults { return await restoreNewerCloudFixture(spaceJsonData) }
         defaultRestoreCalls += 1
         guard authoritativeGET, fixWithDefaults,
               SpaceConfigurationSafety.prepareDefaultConfigurationImport(self, remote: spaceJsonData),
@@ -180,6 +181,7 @@ final class NetworkRequest {
 }
 @main struct SpaceRecoveryReceiptTests {
     @MainActor static func main() async throws {
+        try await testNewerCloudImports()
         try await testLocalMembershipCompatibility()
         try await testSceneReceipts()
         defer {
@@ -1767,7 +1769,7 @@ extension SpaceRecoveryReceiptTests {
                 "lowEndTrim": 1, "occupancyLevel": 734, "vacantLevel": 100, "taskLevel": 100,
                 "timeT1": 2, "timeT2": 10, "timeT3": 2, "timeT4": 0, "timeT5": 2,
                 "manualOverrideTimeout": 60, "powerUpState": 255]
-            space.groups = [["address": "C003", "profile": profile]]
+            space.groups = [["address": "C003", "name": "Room", "parentAddress": "0000", "profile": profile]]
             var state = try S.recoveryState(space)
             state.authorizationBaseline = P.configurationData(space.payload)
             state.nodeIdentitiesBaseline = SpaceCloudNodeRemovalPolicy.instances(space.payload)
@@ -1780,7 +1782,7 @@ extension SpaceRecoveryReceiptTests {
             }
             var remote = space.payload
             profile["occupancyLevel"] = 414
-            remote["groups"] = [["address": "C003", "profile": profile]]
+            remote["groups"] = [["address": "C003", "name": "Room", "parentAddress": "0000", "profile": profile]]
             remote["updateTimestamp"] = ["cloud", "mergeFailure", "cloudReceiptFailure"].contains(mode) ? 55 : mode == "sameTime" ? 50 : mode == "staleRead" ? 39 : 45
             if mode == "nonProfile" { remote["triggerZones"] = [["items": [["groupAddress": 49155, "deviceAddress": 1]]]] }
             if mode == "invalid" { remote["nodes"] = NSNull() }
@@ -1800,7 +1802,17 @@ extension SpaceRecoveryReceiptTests {
             }
             ProximityLightingImportPreflight.onExport = nil
             S.failStateWrite = false
-            if ["local", "cloud", "accepted", "prepared"].contains(mode) {
+            if ["cloud", "mergeFailure", "cloudReceiptFailure"].contains(mode) {
+                if mode == "cloudReceiptFailure" {
+                    guard case .failure = result else { preconditionFailure("failed staging must preserve local") }
+                    precondition(P.integer((space.groups[0]["profile"] as! [String: Any])["occupancyLevel"]) == 734)
+                    if case .failure = await S.resumeUpload(space) { preconditionFailure("newer cloud retry") }
+                } else if case .failure = result { preconditionFailure("newer cloud must replace the full configuration") }
+                precondition(P.integer((space.groups[0]["profile"] as! [String: Any])["occupancyLevel"]) == 414)
+                precondition(space.lastUploadCloudTimestamp == 55 && !space.needUploadCloud && !S.hasPendingUpload(space))
+                continue
+            }
+            if ["local", "accepted", "prepared"].contains(mode) {
                 if case .failure = result { preconditionFailure("Profile conflict must resolve: " + mode) }
                 let savedProfile = space.groups[0]["profile"] as! [String: Any]
                 precondition(P.integer(savedProfile["occupancyLevel"]) == (mode == "cloud" ? 414 : 734))

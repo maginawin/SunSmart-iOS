@@ -101,6 +101,10 @@ final class Node: Decodable {
     var isLocalProvisioner = false, isProvisioner = false, isConfigComplete = false
     var macAddress: String?
     var deviceKey: Data? = Data(repeating: 0xA1, count: 16)
+    var timedSchedulerIdentity: TimedSchedulerNodeIdentity? {
+        TimedSchedulerPayloadPolicy.identity(node: ["uuid": uuid, "unicastAddress": primaryUnicastAddress.hex,
+                                                   "deviceKey": deviceKey?.hex as Any])
+    }
     var createdTimestamp: Int64 = 1
     func restoreCreatedTimestamp(_ value: Int64) { createdTimestamp = value }
     func save() -> Bool { true }
@@ -477,6 +481,38 @@ enum NodeSyncData: Equatable {
             require(local.space.triggerZones.isEmpty, "Schema 1 explicit clearing must still apply")
         }
         print("PASS: actual legacy preflight/Zone assignment/lifecycle preserve five empty slots; initialization and schema 1 clear remain valid")
+        // Execute the production selected-snapshot preflight and assignment,
+        // followed by the real topology transaction with removed remote targets.
+        for removeGroup in [false, true] {
+            for legacyExtension: [String: Any] in [[:], ["triggerZones": [[String: Any]]()]] {
+                let local = try fixture(networkId: "REPLACED-ZONES")
+                require(!local.space.triggerZones.isEmpty, "fixture must start with local Zone members")
+                var remote = payload(); remote["spaceData"] = legacyExtension
+                remote["nodes"] = [[String: Any]]()
+                var groups = remote["groups"] as! [[String: Any]]
+                groups[0].removeValue(forKey: "proximityLightingPath")
+                remote["groups"] = removeGroup ? [] : groups
+                let parsed = await SpaceData.prepareSelectedSnapshot(remote, authoritativeCloudImport: true)
+                require(!parsed.hasValidationIssues && parsed.triggerZones?.isEmpty == true,
+                        "selected legacy snapshot must resolve omitted/empty zones before generation changes")
+                local.space.triggerZonesLoadFailed = true
+                local.space.applyImportedZoneFields(parsed, initialize: false)
+                local.network.nodes = []; local.network.groups = removeGroup ? [] : [local.group]
+                local.group.info.proximityLightingPath = nil
+                let prepared = ProximityLightingLifecycleCoordinator.begin(space: local.space,
+                    groups: local.network.groups, nodes: [], network: local.network).prepare()
+                require(prepared.isValid && !prepared.normalized.hasDestructiveRepairs
+                        && prepared.normalized.snapshot == parsed.reconciliation?.snapshot,
+                        "installed snapshot must match preflight without dangling local Zone references")
+                require(ProximityLightingLifecycleCoordinator.commit(prepared, isImportApplication: true) != nil
+                        && local.space.triggerZones.isEmpty && !local.space.triggerZonesLoadFailed,
+                        "legacy replacement must commit and clear unreadable local Zone state")
+            }
+        }
+        let explicitZones = await SpaceData.prepareSelectedSnapshot(payload(), authoritativeCloudImport: true)
+        require(explicitZones.triggerZones == preflight(payload())?.triggerZones,
+                "explicit valid remote zones must survive authoritative replacement")
+        print("PASS: selected legacy snapshots removing nodes/groups commit without retaining local Zone members")
         var missing = payload(); missing["spaceData"] = ["proximityLightingSchemaVersion": 1]
         require(preflight(missing) == nil, "schema 1 must not silently accept missing zones")
         missing["spaceData"] = ["proximityLightingSchemaVersion": 2, "triggerZones": []]

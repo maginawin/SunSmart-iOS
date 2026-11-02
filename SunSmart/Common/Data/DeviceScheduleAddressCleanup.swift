@@ -144,6 +144,10 @@ enum SiteDeviceOwnershipPolicy {
 
 /// Local recovery bookkeeping. No credentials or Mesh transport state are stored here.
 struct SpaceRecoveryState: Codable, Equatable {
+    struct CloudImport: Codable, Equatable {
+        let timestamp: Int64
+        let supersededGeneration: UUID
+    }
     struct Identity: Codable, Equatable {
         let account: String
         let region: String
@@ -198,6 +202,9 @@ struct SpaceRecoveryState: Codable, Equatable {
     /// Typed SceneRestoreReceipt payload. Separate from permanent-deletion
     /// entries: a prepared Restore must never authorize removal of a Node.
     var sceneRestoreReceipts: Data? = nil
+    /// A newer server snapshot superseded this phone's previous work. Kept after
+    /// import completion so an old upload callback can recognize the handoff.
+    var cloudImport: CloudImport? = nil
 
     var preservesUpload: Bool {
         phase == .active && authority != .readOnly && authority != .revoked

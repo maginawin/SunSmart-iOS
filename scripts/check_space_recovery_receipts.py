@@ -28,6 +28,8 @@ methods = methods.replace('''                let node = try CloudNodeImport.deco
                 return try HDBConfigurationStore.deviceConfiguration(node: node, sensorTypes: dictionary["sensorTypes"] as? [String] ?? [])''',
     '                return try RecoveryMeshFactory.resolve(dictionary, mac)')
 methods = methods.replace('FileManager.default.moveItem(at: root, to: archive)', 'testMoveItem(at: root, to: archive)')
+methods = methods.replace('try? manager.removeItem(at: root.appendingPathComponent(name))',
+    'try? testPruneItem(at: root.appendingPathComponent(name))')
 methods = methods.replace('        try state.write(to: stateURL(space))',
     '        if failStateWrite { throw CocoaError(.fileWriteNoPermission) }\n        try state.write(to: stateURL(space))')
 # App database discovery is an integration boundary, not a substitute state machine.
@@ -50,11 +52,16 @@ methods += """
     static let suite = "SpaceRecovery-" + UUID().uuidString
     static let testDefaults = UserDefaults(suiteName: suite)!
     static var failArchiveMove = false
+    static var failArchivePrune = false
     static var failStateWrite = false
     static var failMembershipWrite = false
     static func testMoveItem(at source: URL, to destination: URL) throws {
         if failArchiveMove { throw CocoaError(.fileWriteNoPermission) }
         try FileManager.default.moveItem(at: source, to: destination)
+    }
+    static func testPruneItem(at url: URL) throws {
+        if failArchivePrune { throw CocoaError(.fileWriteNoPermission) }
+        try FileManager.default.removeItem(at: url)
     }
     static var failCheckpoint = false
     static func checkpoint(_ space: SpaceData, refresh: Bool = false) -> Bool { !failCheckpoint }
@@ -89,13 +96,14 @@ test += '\n' + section(imports, 'enum CloudNodeImport {', '\n/// Stage timings')
 # Mesh preparation/export and App database reads are controlled test boundaries.
 preparation = section(imports, '    func update(\n        spaceJsonData:',
     '        return await withCheckedContinuation { continuation in')
-zone_gate = section(imports, '            if !resumingImport, SpaceConfigurationIntegrityPolicy.legacySpaceZoneDeletionNeedsReview(',
-                    '            let proximityImportDisposition =')
+zone_gate = section(imports, '            if !resumingImport, !authoritativeCloudImport, SpaceConfigurationIntegrityPolicy.legacySpaceZoneDeletionNeedsReview(',
+                    '            guard !authoritativeCloudImport || !proximityPreflight.hasValidationIssues else {')
 zone_gate = zone_gate.replace('continuation.resume(returning: .skipped)\n                return', 'return .skipped')
 test = test.replace('// IMPORT_PREPARATION_METHOD', '@MainActor\n' + preparation
     + '        _ = proximityPreflight\n        _ = timedReferencesChanged\n' + zone_gate + '        return .prepared\n    }\n')
 test += '\n' + section(imports, 'final class SiteImportTrace', '\nstruct SpaceImportOutcome')
 test += '\n' + read('Tests/Group/SpaceImportPreparationTests.swift')
+test += '\n' + read('Tests/Group/NewerCloudImportTests.swift')
 test += '\n' + read('Tests/Group/OlderCloudBaselineTests.swift')
 test += '\n' + read('Tests/Group/SpaceDefaultRecoveryReceiptTests.swift')
 test += '\n' + recovery_mesh_source(root)

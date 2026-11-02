@@ -33,6 +33,8 @@ final class SpaceData {
         timedSchemaVersion = other.timedSchemaVersion
     }
     func applyRemoteSpaceMetadata(_ payload: [String: Any]) {}
+    static func sceneConfigurationImportFailure(_ payload: [String: Any]) -> String? { nil }
+    func applyRemoteSpaceAuthorityRestrictions(_ payload: [String: Any]) -> Bool { true }
     // PRODUCTION_SAVE
     func prepareImport(spaceJsonData: [String: Any], initialize: Bool = false) async -> ImportOutcome {
         // PRODUCTION_IMPORT_PREPARATION
@@ -52,6 +54,8 @@ enum SpaceSyncCleanupPolicy {
 }
 enum DevicePermanentDeletionContext { static func resume(space: SpaceData) {} }
 enum SpaceConfigurationSafety {
+    static func prefersNewerCloud(_ space: SpaceData, remote: [String: Any]) -> Bool { false }
+    static func hasNewerCloudImport(_ space: SpaceData) -> Bool { false }
     enum Phase { case active }
     struct State { var phase = Phase.active }
     enum Reconciliation { case preserveLocal, failed, notApplicable }
@@ -66,6 +70,8 @@ enum SpaceConfigurationSafety {
     static func isConfirmedTimedBaseline(_ space: SpaceData, remote: [String: Any]) -> Bool { false }
     static func backfillTimedUpgradeBaseline(_ space: SpaceData, remote: [String: Any]) {}
     static func requiresAuthorityImport(_ space: SpaceData) -> Bool { false }
+    static func reconcileSameVersionNodeRemoval(_ space: SpaceData, remote: [String: Any]) async -> Reconciliation { .notApplicable }
+    static func preserveLocalMembershipIfNeeded(_ space: SpaceData, remote: [String: Any]) async -> Reconciliation { .notApplicable }
     static func reconcileOlderCloudBaseline(_ space: SpaceData, remote: [String: Any]) async -> Reconciliation { .notApplicable }
     static func reconcileCloudProfiles(_ space: SpaceData, remote: [String: Any]) async -> Bool { true }
     static func reconcileCloudMembership(_ space: SpaceData, remote: [String: Any]) -> Bool { true }

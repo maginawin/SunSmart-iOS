@@ -48,6 +48,10 @@ parts = [source('SunSmart/Common/Data/AppPerformance.swift'), source('SunSmart/C
          source('SunSmart/Main/Group/Model/ProximityLightingLifecycleCoordinator.swift').replace('import NordicSigMeshSDK', ''),
          section(source('SunSmart/Common/Data/ImportData.swift'), 'private struct ProximityLightingImportPreflight', '\n#if DEBUG'),
          'extension SpaceData {\n'
+         '    fileprivate static func prepareSelectedSnapshot(_ spaceJsonData: [String: Any], initialize: Bool = false, authoritativeCloudImport: Bool) async -> ProximityLightingImportPreflight {\n'
+         + section(source('SunSmart/Common/Data/ImportData.swift'),
+                   '        let proximityPreflight = await ProximityLightingImportPreflight.prepare(', '        guard !Task.isCancelled, SpaceConfigurationSafety.isCurrent(context, space: self),')
+         + '        return proximityPreflight\n    }\n'
          '    fileprivate func applyImportedZoneFields(_ proximityPreflight: ProximityLightingImportPreflight, initialize: Bool) {\n'
          + section(source('SunSmart/Common/Data/ImportData.swift'),
                    '            if let triggerZones = proximityPreflight.triggerZones {', '            //            }')

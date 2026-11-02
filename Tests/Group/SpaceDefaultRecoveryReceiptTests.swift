@@ -67,12 +67,14 @@ extension SpaceRecoveryReceiptTests {
                 let receipt = S.prepareSubmission(changed, payload: changed.payload)!
                 precondition(S.markSubmissionAccepted(receipt, space: changed))
             }
-            var newer = original
+            // A valid newer server snapshot replaces the old repair intent.
+            // Malformed HDB still requires the explicit default-repair path.
+            var newer = changed.payload
             newer["nodes"] = [try membershipNode(1)]
             newer["updateTimestamp"] = 120
             request.result = .success(["data": newer])
             if case .failure = await S.resumeUpload(changed) { preconditionFailure("changed cloud Nodes must replace waiting repair") }
-            precondition(changed.defaultRestoreCalls == 2 && changed.nodes.count == 1)
+            precondition(changed.defaultRestoreCalls == 1 && changed.nodes.count == 1)
             precondition(changed.nodes.first?["uuid"] as? String == (newer["nodes"] as! [[String: Any]])[0]["uuid"] as? String)
             precondition(!S.hasPendingImport(changed) && !S.hasPendingUpload(changed))
         }

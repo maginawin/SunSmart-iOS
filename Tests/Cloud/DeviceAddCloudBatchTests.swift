@@ -18,6 +18,10 @@ enum MeshAPI { static var addresses: [UInt16] = []
 }
 enum SpaceChangeDataType { case network(type: Kind); enum Kind { case address } }
 final class SpaceData {
+    var recovery = SpaceRecoveryState()
+    func applyConfigurationState(from other: SpaceData) {
+        lastUpdate = other.lastUpdate; lastUploadCloudTimestamp = other.lastUploadCloudTimestamp
+    }
     static var rows: [String: SpaceData] = [:]
     let id: String, siteId: String
     var meshUUID: String, meshNetworkId = "network", canEditing = true
@@ -94,12 +98,27 @@ final class NetworkRequest {
     var posts: Int { requests.filter { if case .siteUpload = $0 { return true }; if case .spaceUpload = $0 { return true }; return false }.count }
     var reads: Int { requests.filter { if case .spaceInfo = $0 { return true }; return false }.count }
 }
-struct SpaceRecoveryState { var siteCreationTimestamp: Int64?; var unbindRequested = false }
+struct SpaceRecoveryState {
+    enum Phase { case active }
+    struct CloudImport { let timestamp: Int64; let supersededGeneration: UUID }
+    var siteCreationTimestamp: Int64?; var unbindRequested = false
+    var generation = UUID(), identity = "fixture"
+    var phase = Phase.active
+    var cloudImport: CloudImport?
+}
 enum SpaceConfigurationSafety {
     static let uploadUnconfirmed = NetworkApiError.unknown
     static var refuseRead = false
-    static func recoveryState(_ space: SpaceData) throws -> SpaceRecoveryState { .init(siteCreationTimestamp: space.siteCreationTimestamp) }
-    static func isCurrent(_ state: SpaceRecoveryState, space: SpaceData) -> Bool { true }
+    static var replaceOnResume: [String: Int64] = [:]
+    static var normalizeAfterReplacement = Set<String>()
+    static func recoveryState(_ space: SpaceData) throws -> SpaceRecoveryState {
+        space.recovery.siteCreationTimestamp = space.siteCreationTimestamp
+        return space.recovery
+    }
+    static func isCurrent(_ state: SpaceRecoveryState, space: SpaceData) -> Bool { state.generation == space.recovery.generation }
+    static func hasPendingImport(_ space: SpaceData) -> Bool { false }
+    static func beginCloudWrite(_ spaces: [SpaceData]) -> [String] { spaces.map(\.id) }
+    static func finishCloudWrite(_ keys: [String]) {}
     static func hasPendingUpload(_ space: SpaceData) -> Bool { space.pending != nil }
     static func canAutomaticallyUpload(_ space: SpaceData) -> Bool { space.member && space.canEditing }
     static func canResumePendingUpload(_ space: SpaceData) -> Bool { hasPendingUpload(space) }
@@ -109,11 +128,18 @@ enum SpaceConfigurationSafety {
     static func resumeUpload(_ space: SpaceData) async -> Result<Void, NetworkApiError> {
         let response = await NetworkRequest.shared.request(.spaceInfo(siteId: space.siteId, spaceId: space.id))
         guard case .success = response, !refuseRead else { return .failure(.unknown) }
+        if let timestamp = replaceOnResume.removeValue(forKey: space.id) {
+            space.recovery.cloudImport = .init(timestamp: timestamp, supersededGeneration: space.recovery.generation)
+            space.recovery.generation = UUID()
+            space.lastUpdate = timestamp; space.lastUploadCloudTimestamp = timestamp; space.pending = nil
+            if normalizeAfterReplacement.remove(space.id) != nil { space.markLocalChangePendingCloudSync() }
+            return .success(())
+        }
         if let submitted = space.pending { space.lastUploadCloudTimestamp = submitted; space.pending = nil }
         return .success(())
     }
     static func prepareSubmission(_ space: SpaceData, payload: [String: Any], siteCreationTimestamp: Int64?) -> SpaceRecoveryState? {
-        space.pending = payload["updateTimestamp"] as? Int64; return .init()
+        space.pending = payload["updateTimestamp"] as? Int64; return space.recovery
     }
     static func discardUnsentSubmission(_ context: SpaceRecoveryState, space: SpaceData) { space.pending = nil }
     static func markSubmissionAccepted(_ context: SpaceRecoveryState, space: SpaceData) -> Bool { true }
@@ -211,6 +237,64 @@ final class HDBDeviceAddCompletion {
         precondition(SyncOperation.addSpaces(site: SiteData.rows[a.siteId]!, spaces: [a]).includesConfiguration(of: a))
         precondition(!SyncOperation.addSpaces(site: SiteData.rows[a.siteId]!, spaces: [a]).includesConfiguration(of: sameIdOtherSite))
         print("PASS: configuration callbacks include only the exact Site/Space, including batch and metadata-only operations")
+        // A higher cloud snapshot changes generation during resumeUpload.
+        // The production handle must adopt it and continue unrelated batch work.
+        resetRequests()
+        a.markLocalChangePendingCloudSync()
+        SpaceConfigurationSafety.replaceOnResume[a.id] = a.lastUpdate + 10
+        var imported = false
+        manager.addSynchronizationHandle(operation: .syncSpace(space: a), level: .promptly) {
+            if case .successful = $0 { imported = true }
+        }
+        await ticks(60)
+        precondition(imported && NetworkRequest.shared.posts == 0 && !a.needUploadCloud)
+        resetRequests()
+        a.markLocalChangePendingCloudSync(); b.markLocalChangePendingCloudSync()
+        SpaceConfigurationSafety.replaceOnResume[a.id] = a.lastUpdate + 10
+        manager.addSynchronizationHandle(operation: .syncSite(site: SiteData.rows[a.siteId]!, syncSpaces: [a, b]), level: .promptly)
+        await ticks(60)
+        precondition(NetworkRequest.shared.posts == 1 && !a.needUploadCloud && !b.needUploadCloud)
+        precondition(a.lastUploadCloudTimestamp == a.lastUpdate && b.lastUploadCloudTimestamp == b.lastUpdate)
+        print("PASS: newer cloud lifecycle completes without stale POST and retains pending batch peers")
+        for batch in [false, true] {
+            resetRequests()
+            a.markLocalChangePendingCloudSync()
+            if batch { b.markLocalChangePendingCloudSync() }
+            NetworkRequest.shared.holdNextPost = true
+            let operation: SyncOperation = batch
+                ? .syncSite(site: SiteData.rows[a.siteId]!, syncSpaces: [a, b]) : .syncSpace(space: a)
+            var completed = false
+            manager.addSynchronizationHandle(operation: operation, level: .promptly) {
+                if case .successful = $0 { completed = true }
+            }
+            await ticks(60)
+            precondition(NetworkRequest.shared.held != nil && NetworkRequest.shared.posts == 1)
+            let serverVersion = a.lastUpdate + 10
+            SpaceConfigurationSafety.replaceOnResume[a.id] = serverVersion
+            SpaceConfigurationSafety.normalizeAfterReplacement.insert(a.id)
+            NetworkRequest.shared.held?.resume(returning: .success([:])); NetworkRequest.shared.held = nil
+            await ticks(60)
+            precondition(completed && a.needUploadCloud && a.lastUploadCloudTimestamp == serverVersion)
+            // Follow-up uses the ordinary queue's five-second delay, with no
+            // foreground/manual recovery call to hide a dropped handle.
+            try! await Task.sleep(nanoseconds: 5_200_000_000)
+            await ticks(60)
+            precondition(NetworkRequest.shared.posts == 2 && !a.needUploadCloud && a.lastUpdate == serverVersion + 1,
+                         "POST readback normalization must automatically upload its new generation")
+            let lastPost = NetworkRequest.shared.requests.last { api in
+                if case .spaceUpload = api { return true }; if case .siteUpload = api { return true }; return false
+            }!
+            let submitted: [[String: Any]]
+            switch lastPost {
+            case .spaceUpload(_, _, let payload): submitted = [payload]
+            case .siteUpload(let payload): submitted = payload["spaces"] as! [[String: Any]]
+            default: preconditionFailure("expected configuration POST")
+            }
+            precondition(submitted.count == 1 && submitted.first?["uuid"] as? String == a.id
+                         && submitted.first?["updateTimestamp"] as? Int64 == serverVersion + 1)
+            precondition(!batch || !b.needUploadCloud, "confirmed batch peers must stay confirmed")
+        }
+        print("PASS: POST readback normalization uploads again automatically for Space and Site batches")
         for count in [1, 10] {
             resetRequests()
             let batch = HDBDeviceAddBatch(); var started = 0, callbacks = 0

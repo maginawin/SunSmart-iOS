@@ -48,10 +48,12 @@ enum DevicePermanentDeletionContext {
     static var onExport: (() -> Void)?
     static var storedSpace: SpaceData?
     static var lastPayload: [String: Any]?
+    static var lastInitialize = false
     static var calls = 0
     static func prepare(spaceJsonData: [String: Any], initialize: Bool) async -> Bool {
         calls += 1
         lastPayload = spaceJsonData
+        lastInitialize = initialize
         await Task.yield()
         onPrepare?()
         return true
@@ -303,7 +305,9 @@ extension SpaceRecoveryReceiptTests {
                 default: break
                 }
                 let result = await space.update(spaceJsonData: changed, initialize: kind == "initialize")
-                if kind == "older", submission == "none" {
+                if kind == "newer" {
+                    precondition(result == .prepared, "higher cloud version owns even a supported legacy Timed schema")
+                } else if kind == "older", submission == "none" {
                     precondition(result == .preserved("unchangedOlderCloudBaseline"))
                     precondition(space.timedSchemaVersion == 2 && space.lastUpdate == 51,
                                  "an equivalent old baseline cannot import or downgrade local Timed data")
@@ -326,7 +330,7 @@ extension SpaceRecoveryReceiptTests {
         rolledBack.timedSchemaVersion = 2
         let result = await rolledBack.update(spaceJsonData: rolledBack.payload)
         precondition(result == .preserved("localTimedMigrationPendingUpload"))
-        print("PASS: unuploaded v2 migration preserves confirmed v1 GET across pending receipts/reentry; true downgrade and authority changes remain rejected")
+        print("PASS: unuploaded v2 migration preserves confirmed v1 GET across pending receipts/reentry; equal/older downgrade and authority changes remain rejected")
     }
 
     @MainActor static func testEmptyZoneImportGate() async throws {

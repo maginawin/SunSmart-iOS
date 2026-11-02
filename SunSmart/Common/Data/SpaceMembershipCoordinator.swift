@@ -271,6 +271,23 @@ extension SpaceData {
             return .rejected("staleMembershipResponse")
         }
         guard !SpaceMembershipCoordinator.isLeaving(self) else { return .rejected("spaceLeaving") }
+        let responseContext = SpaceMembershipResponseContext.capture(account: UserData.currentUserId,
+            region: String(describing: UserData.currentServerRegion))
+        if await SpaceConfigurationSafety.waitForCloudWrite(self) {
+            guard !Task.isCancelled, SpaceMembershipCoordinator.accepts(payload),
+                  SpaceMembershipResponseContext.matches(responseContext, account: UserData.currentUserId,
+                    region: String(describing: UserData.currentServerRegion)),
+                  !SpaceMembershipCoordinator.isLeaving(self) else { return .rejected("staleMembershipResponse") }
+            let response = await NetworkRequest.shared.request(.spaceInfo(siteId: siteId, spaceId: id, password: authorizationPassword))
+            guard !Task.isCancelled, SpaceMembershipResponseContext.matches(responseContext, account: UserData.currentUserId,
+                region: String(describing: UserData.currentServerRegion)) else { return .rejected("staleMembershipResponse") }
+            guard case .success(let result) = response, let fresh = result["data"] as? [String: Any] else {
+                if case .failure(let error) = response { SpaceConfigurationSafety.handleAuthorityError(error, space: self) }
+                return .rejected("networkUnavailable")
+            }
+            return await restoreConfiguration(spaceJsonData: fresh, initialize: initialize,
+                authoritativeGET: true, fixWithDefaults: fixWithDefaults)
+        }
         guard let remoteNetwork = SpaceKeyIntegrity.decodeNetwork(payload),
               let remoteKeys = SpaceKeyIntegrity.pair(payload, networkID: remoteNetwork.networkId.hex) else {
             if authoritativeGET, await repairMissingServerKeys(payload) {
@@ -281,7 +298,8 @@ extension SpaceData {
         let canonicalID = remoteKeys.network.networkId.hex
         let uninitialized = lastUploadCloudTimestamp == nil && (permission != .owner || initialize)
         guard meshNetworkId == canonicalID || uninitialized else { return .rejected("networkIdentityMismatch") }
-        let candidate = copy()
+        let persisted = SpaceData.load(siteId: siteId, spaceId: id).first
+        let candidate = (persisted?.lastUpdate ?? 0) > lastUpdate ? persisted!.copy() : copy()
         candidate.meshNetworkId = canonicalID
         do {
             let membership = try SpaceMembershipCoordinator.preparedRecord(candidate, networkID: canonicalID)
@@ -297,6 +315,8 @@ extension SpaceData {
             }
             guard SpaceConfigurationSafety.activateImport(candidate) else { return .rejected("spaceRemovalPending") }
             let defaultRecovery = fixWithDefaults || (authoritativeGET
+                && !SpaceConfigurationSafety.prefersNewerCloud(candidate, remote: payload)
+                && !SpaceConfigurationSafety.hasNewerCloudImport(candidate)
                 && SpaceConfigurationSafety.shouldRefreshDefaultRecovery(candidate, remote: payload))
             if defaultRecovery {
                 guard authoritativeGET else { return .rejected("configurationDefaultRepairUnavailable") }

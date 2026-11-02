@@ -241,6 +241,97 @@ enum SpaceConfigurationSafety {
         return state.matches(context)
     }
 
+    /// Compare with current local intent, not just the last upload acknowledgement.
+    @MainActor
+    static func prefersNewerCloud(_ space: SpaceData, remote: [String: Any]) -> Bool {
+        guard remote["uuid"] as? String == space.id, SpaceMembershipCoordinator.accepts(remote),
+              !SpaceMembershipCoordinator.isLeaving(space),
+              let version = SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"]),
+              version >= 0, version < Int64.max,
+              let state = try? recoveryState(space), state.phase == .active, state.unbindRequested != true else { return false }
+        let persisted = SpaceData.load(siteId: space.siteId, spaceId: space.id).first
+        let pendingVersion = pendingImport(space).flatMap { SpaceConfigurationIntegrityPolicy.integer($0["updateTimestamp"]) } ?? 0
+        let current = max(space.lastUpdate, persisted?.lastUpdate ?? 0,
+                          space.lastUploadCloudTimestamp ?? 0, persisted?.lastUploadCloudTimestamp ?? 0,
+                          state.submission?.timestamp ?? 0, pendingVersion)
+        return version > current
+    }
+
+    static func hasNewerCloudImport(_ space: SpaceData) -> Bool {
+        guard let selected = try? recoveryState(space).cloudImport,
+              let payload = pendingImport(space) else { return false }
+        return SpaceConfigurationIntegrityPolicy.integer(payload["updateTimestamp"]) == selected.timestamp
+    }
+
+    /// Called only after complete import preflight. Write the selected snapshot
+    /// before atomically changing generation/directory; old journals remain in
+    /// their checkpoint directory and can never replay into the new snapshot.
+    @MainActor
+    static func beginNewerCloudImport(_ space: SpaceData, payload: [String: Any]) -> Bool {
+        guard prefersNewerCloud(space, remote: payload), !hasCloudWrite(space),
+              !space.requiresPasswordVerification, !space.disableEditorPermission,
+              let state = try? recoveryState(space), state.authority == .writable || state.authority == .readOnly,
+              let network = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
+              let localKeys = SpaceKeyIntegrity.pair(network, networkID: space.meshNetworkId),
+              SpaceKeyIntegrity.pair(payload, networkID: space.meshNetworkId)?.fingerprint == localKeys.fingerprint,
+              checkpoint(space, refresh: true) else { return false }
+        do {
+            let oldDirectory = storedDirectory(space, state: state)
+            try state.write(to: oldDirectory.appendingPathComponent("recovery-state.json"))
+            var next = SpaceRecoveryState(identity: state.identity)
+            next.authority = state.authority
+            next.siteCreationTimestamp = state.siteCreationTimestamp
+            next.directoryName = key(space) + "-" + next.generation.uuidString
+            next.cloudImport = .init(timestamp: SpaceConfigurationIntegrityPolicy.integer(payload["updateTimestamp"])!,
+                                     supersededGeneration: state.generation)
+            next.pendingArchives = (state.pendingArchives ?? []) + [oldDirectory.lastPathComponent]
+            let selected = storedDirectory(space, state: next)
+            try FileManager.default.createDirectory(at: selected, withIntermediateDirectories: true)
+            try JSONSerialization.data(withJSONObject: payload, options: .sortedKeys).write(
+                to: selected.appendingPathComponent("pending-import.json"),
+                options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+            try saveState(next, space: space)
+            clearActiveMarkers(space)
+            block(space, reason: "importInProgress")
+            retryArchiveMoves(space)
+            return true
+        } catch { return false }
+    }
+
+    // Serialize a received snapshot with this phone's actual HTTP write, not
+    // the whole sync handle (whose readback may itself import the newer data).
+    @MainActor private static var cloudWrites: [String: Int] = [:]
+    @MainActor private static var cloudWriteWaiters: [String: [CheckedContinuation<Void, Never>]] = [:]
+
+    @MainActor static func hasCloudWrite(_ space: SpaceData) -> Bool { cloudWrites[key(space), default: 0] > 0 }
+
+    @MainActor static func beginCloudWrite(_ spaces: [SpaceData]) -> [String] {
+        let keys = Array(Set(spaces.map { key($0) }))
+        for key in keys { cloudWrites[key, default: 0] += 1 }
+        return keys
+    }
+
+    @MainActor static func finishCloudWrite(_ keys: [String]) {
+        for key in keys {
+            cloudWrites[key, default: 0] -= 1
+            if cloudWrites[key, default: 0] <= 0 {
+                cloudWrites.removeValue(forKey: key)
+                let waiters = cloudWriteWaiters.removeValue(forKey: key) ?? []
+                waiters.forEach { $0.resume() }
+            }
+        }
+    }
+
+    @MainActor static func waitForCloudWrite(_ space: SpaceData) async -> Bool {
+        let key = key(space)
+        var waited = false
+        while cloudWrites[key, default: 0] > 0 {
+            waited = true
+            await withCheckedContinuation { cloudWriteWaiters[key, default: []].append($0) }
+        }
+        return waited
+    }
+
     static func saveSceneRestoreReceipts(_ data: Data, context: SpaceRecoveryState, space: SpaceData) throws {
         lock.lock(); defer { lock.unlock() }
         guard isCurrent(context, space: space) else { throw SafetyError.invalidCheckpoint }
@@ -402,6 +493,10 @@ enum SpaceConfigurationSafety {
     /// its ordinary protection gate. Reuse the same GET/readback as uploads.
     @MainActor
     static func recoverCloudMembershipIfNeeded(_ space: SpaceData) async -> Bool {
+        if hasNewerCloudImport(space) {
+            if case .success = await resumeUpload(space) { return !isBlocked(space) }
+            return false
+        }
         let reason = UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space))
         guard reason == "cloudConfigurationConflict" || reason == "cloudBaselineNeedsReview" else { return true }
         guard canAutomaticallyUpload(space), !hasPendingImport(space), !hasPendingUpload(space),
@@ -750,6 +845,58 @@ enum SpaceConfigurationSafety {
             }
         }
         try? saveState(state, space: space)
+        pruneArchivedCheckpoints(space)
+    }
+
+    /// Keep database backups for the latest two retired generations. Journals and
+    /// diagnostic payloads remain available; current or incomplete recovery is
+    /// never pruned. Retrying archive moves also retries best-effort cleanup.
+    private static func pruneArchivedCheckpoints(_ space: SpaceData) {
+        guard let state = try? recoveryState(space), state.phase == .active,
+              state.requiresRemoteImport != true, (state.pendingArchives ?? []).isEmpty,
+              !hasPendingImport(space), !isBlocked(space) else { return }
+        let manager = FileManager.default
+        let properties: Set<URLResourceKey> = [.isDirectoryKey, .isSymbolicLinkKey]
+        func isDirectory(_ url: URL) -> Bool {
+            guard let values = try? url.resourceValues(forKeys: properties) else { return false }
+            return values.isDirectory == true && values.isSymbolicLink != true
+        }
+        func checkpointDirectories(_ archive: URL) -> [URL] {
+            [archive] + ((try? manager.contentsOfDirectory(at: archive,
+                includingPropertiesForKeys: Array(properties))) ?? []).filter {
+                    $0.lastPathComponent.hasPrefix("checkpoint-") && isDirectory($0)
+                }
+        }
+        let databaseFiles = ["sunsmart.sqlite3", "mesh.sqlite3"].flatMap { name in
+            [name, name + "-wal", name + "-shm", name + "-journal"]
+        }
+        let prefix = "archived-" + key(space) + "-"
+        let archives = ((try? manager.contentsOfDirectory(at: recoveryRoot,
+            includingPropertiesForKeys: Array(properties))) ?? []).filter {
+                $0.lastPathComponent.hasPrefix(prefix) && isDirectory($0)
+                    && checkpointDirectories($0).contains { root in
+                        databaseFiles.contains { manager.fileExists(atPath: root.appendingPathComponent($0).path) }
+                    }
+            }
+        func archivedDate(_ archive: URL) -> Date {
+            // The archived state is written just before retiring the generation;
+            // unlike directory mtime it does not change during partial cleanup.
+            let stateFile = archive.appendingPathComponent("recovery-state.json")
+            return (try? stateFile.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantPast
+        }
+        let newestFirst = archives.sorted {
+            let lhs = archivedDate($0), rhs = archivedDate($1)
+            return lhs == rhs ? $0.lastPathComponent > $1.lastPathComponent : lhs > rhs
+        }
+        for obsolete in newestFirst.dropFirst(2) {
+            for root in checkpointDirectories(obsolete) {
+                // Only known backup artifacts are disposable. In particular the
+                // generation's recovery-state and deletion receipts stay intact.
+                for name in databaseFiles + ["checkpoint-ready", "latest-checkpoint"] {
+                    try? manager.removeItem(at: root.appendingPathComponent(name))
+                }
+            }
+        }
     }
 
     private static func clearActiveMarkers(_ space: SpaceData) {
@@ -1162,6 +1309,16 @@ enum SpaceConfigurationSafety {
 
     /// Verify accepted/unknown outcomes before completing local state.
     @MainActor
+    private static func importNewerCloudIfNeeded(_ space: SpaceData, remote: [String: Any]) async -> Swift.Result<Void, NetworkApiError>? {
+        guard prefersNewerCloud(space, remote: remote) || hasNewerCloudImport(space) else { return nil }
+        let outcome = await space.restoreConfiguration(spaceJsonData: remote, authoritativeGET: true, fixWithDefaults: false)
+        guard outcome.status == .applied, !hasPendingImport(space), !isBlocked(space) else {
+            return .failure(space.syncCloudError ?? uploadUnconfirmed)
+        }
+        return .success(())
+    }
+
+    @MainActor
     static func resumeUpload(_ space: SpaceData) async -> Swift.Result<Void, NetworkApiError> {
         let attempt = UUID()
         let diagnosticIdentity = identity(space)
@@ -1177,6 +1334,8 @@ enum SpaceConfigurationSafety {
         }
         report("started")
         do {
+            if hasNewerCloudImport(space), let selected = pendingImport(space),
+               let result = await importNewerCloudIfNeeded(space, remote: selected) { return result }
             if hasPendingUpload(space), let issue = pendingUploadResumeIssue(space) {
                 return failure(authorityError(space), "eligibility", issue)
             }
@@ -1210,6 +1369,7 @@ enum SpaceConfigurationSafety {
                             return failure(uploadUnconfirmed, "baselineResponse", "invalidRemoteSpace")
                         }
                         diagnosticRemoteTimestamp = SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"])
+                        if let result = await importNewerCloudIfNeeded(space, remote: remote) { return result }
                         space.applyRemoteSpaceMetadata(remote)
                         guard space.save() else { return failure(uploadUnconfirmed, "persistence", "remoteMetadata") }
                         guard canAutomaticallyUpload(space) else { return failure(authorityError(space), "baselineAuthority", "writeUnavailable") }
@@ -1306,6 +1466,7 @@ enum SpaceConfigurationSafety {
                     guard let remote = response["data"] as? [String: Any], remote["uuid"] as? String == space.id else {
                         return failure(uploadUnconfirmed, "response", "invalidRemoteSpace")
                     }
+                    if let result = await importNewerCloudIfNeeded(space, remote: remote) { return result }
                     if SpaceData.sceneConfigurationImportFailure(remote) != nil {
                         guard space.applyRemoteSpaceAuthorityRestrictions(remote), current() else {
                             return failure(authorityError(space), "remoteAuthority", "restrictionOrContextChanged")
@@ -2444,7 +2605,9 @@ enum SpaceConfigurationSafety {
         guard space.needUploadCloud else { return .success(()) }
         guard canAutomaticallyUpload(space), let payload = await space.export(purpose: .cloudSync),
               let context = prepareSubmission(space, payload: payload) else { return .failure(uploadUnconfirmed) }
+        let write = beginCloudWrite([space])
         let response = await NetworkRequest.shared.request(.spaceUpload(siteId: space.siteId, spaceId: space.id, spaceData: payload))
+        finishCloudWrite(write)
         guard isCurrent(context, space: space) else { return .failure(uploadUnconfirmed) }
         switch response {
         case .failure(let error):
@@ -2819,6 +2982,12 @@ enum SpaceConfigurationSafety {
                 }
                 state.requiresRemoteImport = false
                 try saveState(state, space: space)
+                if let selected = state.cloudImport,
+                   payload.flatMap({ SpaceConfigurationIntegrityPolicy.integer($0["updateTimestamp"]) }) == selected.timestamp {
+                    // A crash may occur after the new state file is durable but
+                    // before beginNewerCloudImport clears the old defaults marker.
+                    UserDefaults.standard.removeObject(forKey: "spaceConfigurationLocalRecoveryPending." + key(space))
+                }
                 if let reviewed {
                     // The user discarded these local edits; this is import
                     // completion, not confirmation of a cloud upload.
@@ -2837,6 +3006,10 @@ enum SpaceConfigurationSafety {
                     to: directory(space).appendingPathComponent("unvalidated-import.json"),
                     options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
             }
+            if validatedTopology {
+                space.syncCloudError = nil
+                guard space.save() else { return false }
+            }
             if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
             let cleanup = try directory(space).appendingPathComponent("pending-import-reference-cleanup.json")
             if FileManager.default.fileExists(atPath: cleanup.path) { try FileManager.default.removeItem(at: cleanup) }
@@ -2847,6 +3020,7 @@ enum SpaceConfigurationSafety {
             if validatedTopology {
                 UserDefaults.standard.removeObject(forKey: "spaceConfigurationBlocked." + key(space))
                 UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
+                retryArchiveMoves(space)
             } else {
                 block(space, reason: "incompleteImportedTopology")
             }

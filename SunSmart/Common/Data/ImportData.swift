@@ -1851,19 +1851,25 @@ extension SpaceData {
         defer { trace.mark("end") }
         guard spaceJsonData["uuid"] as? String == id else { return .rejected("spaceIdentityMismatch") }
 
+        let remoteMetadata = spaceJsonData
+        let incomingSpaceJsonData = SpaceConfigurationSafety.hasNewerCloudImport(self)
+            && !SpaceConfigurationSafety.prefersNewerCloud(self, remote: remoteMetadata)
+            ? (SpaceConfigurationSafety.pendingImport(self) ?? remoteMetadata) : remoteMetadata
         guard (try? SpaceConfigurationSafety.recoveryState(self).phase) == .active else {
             return .rejected("spaceRemovalPending")
         }
         // Validate complete intent before replacing any local business configuration.
-        if let failure = Self.sceneConfigurationImportFailure(spaceJsonData) {
-            guard applyRemoteSpaceAuthorityRestrictions(spaceJsonData) else { return .rejected("remoteMetadataPersistence") }
+        if let failure = Self.sceneConfigurationImportFailure(incomingSpaceJsonData) {
+            guard applyRemoteSpaceAuthorityRestrictions(remoteMetadata) else { return .rejected("remoteMetadataPersistence") }
             return .rejected(failure)
         }
-        let reviewedCloudImport = SpaceConfigurationSafety.hasReviewedCloudImport(self)
+        let newerCloudImport = !initialize && SpaceConfigurationSafety.prefersNewerCloud(self, remote: incomingSpaceJsonData)
+        let authoritativeCloudImport = newerCloudImport || SpaceConfigurationSafety.hasNewerCloudImport(self)
+        let reviewedCloudImport = SpaceConfigurationSafety.hasReviewedCloudImport(self) || authoritativeCloudImport
         // Default legacy-writer field loss before decoding, using the same
         // representation as cloud comparison and persisted import readback.
         // Validate before metadata reconciliation or any persistent replacement.
-        guard let incomingTimedPayload = TimedSchedulerPayloadPolicy.repairingStaleBindings(spaceJsonData),
+        guard let incomingTimedPayload = TimedSchedulerPayloadPolicy.repairingStaleBindings(incomingSpaceJsonData),
               let incomingTimedVersion = TimedSchedulerPayloadPolicy.schema(incomingTimedPayload),
               TimedSchedulerPayloadPolicy.canonical(incomingTimedPayload) != nil,
               let incomingSchedules = incomingTimedPayload["schedules"] as? [[String: Any]],
@@ -1872,46 +1878,46 @@ extension SpaceData {
             return .rejected("invalidTimedPayload")
         }
         let storedTimedVersion = SpaceData.load(siteId: siteId, spaceId: id).first?.timedSchemaVersion ?? timedSchemaVersion
-        let preservesTimedMigration = storedTimedVersion > incomingTimedVersion
+        let preservesTimedMigration = !authoritativeCloudImport && storedTimedVersion > incomingTimedVersion
         if preservesTimedMigration, initialize
-            || !SpaceConfigurationSafety.isConfirmedTimedBaseline(self, remote: spaceJsonData) {
+            || !SpaceConfigurationSafety.isConfirmedTimedBaseline(self, remote: incomingSpaceJsonData) {
             // An equivalent older baseline is evidence for a new upload only;
             // it must not downgrade the already migrated local Timed schema.
             if !initialize {
-                applyRemoteSpaceMetadata(spaceJsonData)
+                applyRemoteSpaceMetadata(remoteMetadata)
                 guard save() else { return .rejected("remoteMetadataPersistence") }
                 if !reviewedCloudImport {
-                    switch await SpaceConfigurationSafety.reconcileSameVersionNodeRemoval(self, remote: spaceJsonData) {
+                    switch await SpaceConfigurationSafety.reconcileSameVersionNodeRemoval(self, remote: incomingSpaceJsonData) {
                     case .preserveLocal: return .preserved("sameVersionNodeRemoval")
                     case .failed: return .preserved("sameVersionNodeRemovalNeedsReview")
                     case .notApplicable: break
                     }
                 }
-                if case .preserveLocal = await SpaceConfigurationSafety.reconcileOlderCloudBaseline(self, remote: spaceJsonData) {
+                if case .preserveLocal = await SpaceConfigurationSafety.reconcileOlderCloudBaseline(self, remote: incomingSpaceJsonData) {
                     return .preserved("unchangedOlderCloudBaseline")
                 }
             }
             return .rejected("timedSchemaDowngrade")
         }
-        applyRemoteSpaceMetadata(spaceJsonData)
-        if !initialize, let outcome = SpaceConfigurationSafety.preserveDefaultConfiguration(self, remote: spaceJsonData) {
+        applyRemoteSpaceMetadata(remoteMetadata)
+        if !initialize, !authoritativeCloudImport, let outcome = SpaceConfigurationSafety.preserveDefaultConfiguration(self, remote: incomingSpaceJsonData) {
             return outcome
         }
         if !initialize { save() }
         if !initialize, !reviewedCloudImport {
-            switch await SpaceConfigurationSafety.reconcileSameVersionNodeRemoval(self, remote: spaceJsonData) {
+            switch await SpaceConfigurationSafety.reconcileSameVersionNodeRemoval(self, remote: incomingSpaceJsonData) {
             case .preserveLocal: return .preserved("sameVersionNodeRemoval")
             case .failed: return .preserved("sameVersionNodeRemovalNeedsReview")
             case .notApplicable: break
             }
-            switch await SpaceConfigurationSafety.preserveLocalMembershipIfNeeded(self, remote: spaceJsonData) {
+            switch await SpaceConfigurationSafety.preserveLocalMembershipIfNeeded(self, remote: incomingSpaceJsonData) {
             case .preserveLocal: return .preserved("localMembershipPreferred")
             case .failed: return .preserved("localMembershipConflict")
             case .notApplicable: break
             }
         }
-        SpaceConfigurationSafety.backfillTimedUpgradeBaseline(self, remote: spaceJsonData)
-        DevicePermanentDeletionContext.resume(space: self)
+        SpaceConfigurationSafety.backfillTimedUpgradeBaseline(self, remote: incomingSpaceJsonData)
+        if !authoritativeCloudImport { DevicePermanentDeletionContext.resume(space: self) }
         if preservesTimedMigration {
             // Metadata can revoke authority. Never let a baseline exception
             // bypass the required authoritative import after that transition.
@@ -1921,32 +1927,32 @@ extension SpaceData {
             return .preserved("localTimedMigrationPendingUpload")
         }
         if !initialize, !reviewedCloudImport {
-            switch await SpaceConfigurationSafety.reconcileOlderCloudBaseline(self, remote: spaceJsonData) {
+            switch await SpaceConfigurationSafety.reconcileOlderCloudBaseline(self, remote: incomingSpaceJsonData) {
             case .preserveLocal: return .preserved("unchangedOlderCloudBaseline")
             case .failed: return .preserved("cloudBaselineNeedsReview")
             case .notApplicable: break
             }
         }
-        if !initialize, !reviewedCloudImport, !(await SpaceConfigurationSafety.reconcileCloudProfiles(self, remote: spaceJsonData)) {
+        if !initialize, !reviewedCloudImport, !(await SpaceConfigurationSafety.reconcileCloudProfiles(self, remote: incomingSpaceJsonData)) {
             return .preserved("cloudProfileNeedsReview")
         }
-        if !initialize, !reviewedCloudImport, !SpaceConfigurationSafety.reconcileCloudMembership(self, remote: spaceJsonData) {
+        if !initialize, !reviewedCloudImport, !SpaceConfigurationSafety.reconcileCloudMembership(self, remote: incomingSpaceJsonData) {
             return .preserved("cloudMembershipNeedsReview")
         }
-        if SpaceConfigurationSafety.preservesLocalChanges(self) {
+        if !authoritativeCloudImport && SpaceConfigurationSafety.preservesLocalChanges(self) {
             #if DEBUG
             print("[SpaceConfigurationSafety] preserved pending local deletion/recovery space=\(id)")
             #endif
             return .preserved("localDeletionOrRecoveryPendingUpload")
         }
-        let resumingImport = SpaceConfigurationSafety.hasPendingImport(self)
-        let stagedSpaceJsonData = SpaceConfigurationSafety.pendingImport(self)
+        let resumingImport = !newerCloudImport && SpaceConfigurationSafety.hasPendingImport(self)
+        let stagedSpaceJsonData = newerCloudImport ? nil : SpaceConfigurationSafety.pendingImport(self)
         guard !resumingImport || stagedSpaceJsonData != nil else {
             return .rejected("unreadablePendingImport")
         }
         let originalSpaceJsonData = TimedSchedulerPayloadPolicy.fillingMissingBindings(stagedSpaceJsonData.flatMap {
             SpaceConfigurationSafety.originalReferenceCleanupImport(self, candidate: $0)
-        } ?? stagedSpaceJsonData ?? spaceJsonData)
+        } ?? stagedSpaceJsonData ?? incomingSpaceJsonData)
         guard let repairedTimedPayload = TimedSchedulerPayloadPolicy.repairingStaleBindings(originalSpaceJsonData) else {
             return .rejected("invalidTimedPayload")
         }
@@ -1967,8 +1973,11 @@ extension SpaceData {
             return .rejected("spaceRemovalPending")
         }
         let capturedLastUpdate = lastUpdate
+        // A selected newer snapshot replaces local business configuration. Use
+        // initial-import semantics for legacy omitted/empty Zone fields, including
+        // pending-import retries, so preflight and transaction see the same zones.
         let proximityPreflight = await ProximityLightingImportPreflight.prepare(
-            spaceJsonData: spaceJsonData, initialize: initialize)
+            spaceJsonData: spaceJsonData, initialize: initialize || authoritativeCloudImport)
         guard !Task.isCancelled, SpaceConfigurationSafety.isCurrent(context, space: self),
               lastUpdate == capturedLastUpdate,
               initialize || SpaceData.load(siteId: siteId, spaceId: id).first?.lastUpdate == capturedLastUpdate
@@ -1988,7 +1997,7 @@ extension SpaceData {
             return .rejected("staleImportPreparation")
         }
         return await withCheckedContinuation { continuation in
-            if SpaceConfigurationSafety.preservesLocalChanges(self) {
+            if !authoritativeCloudImport && SpaceConfigurationSafety.preservesLocalChanges(self) {
                 continuation.resume(returning: .preserved("localDeletionOrRecoveryPendingUpload"))
                 return
             }
@@ -2049,11 +2058,15 @@ extension SpaceData {
                 continuation.resume(returning: .rejected("invalidRemoteSchedulerModelStates"))
                 return
             }
-            if !resumingImport, SpaceConfigurationIntegrityPolicy.legacySpaceZoneDeletionNeedsReview(
+            if !resumingImport, !authoritativeCloudImport, SpaceConfigurationIntegrityPolicy.legacySpaceZoneDeletionNeedsReview(
                 spaceJsonData, hasLocalZoneMembers: self.triggerZonesLoadFailed
                     || self.triggerZones.contains(where: { !$0.items.isEmpty })) {
                 SpaceConfigurationSafety.block(self, reason: "legacySpaceZoneDeletionNeedsReview")
                 continuation.resume(returning: .skipped)
+                return
+            }
+            guard !authoritativeCloudImport || !proximityPreflight.hasValidationIssues else {
+                continuation.resume(returning: .rejected("invalidRemoteTopology"))
                 return
             }
             let proximityImportDisposition = ProximityLightingImportValidationPolicy.resolve(
@@ -2256,6 +2269,10 @@ extension SpaceData {
                     continuation.resume(returning: .rejected("configurationSchedulerRestoreFailed"))
                     return
                 }
+            }
+            if newerCloudImport, !SpaceConfigurationSafety.beginNewerCloudImport(self, payload: originalSpaceJsonData) {
+                continuation.resume(returning: .rejected("newerCloudImportPreparationFailed"))
+                return
             }
             guard !(timedReferencesChanged || referenceCleanup?.didChange == true)
                     || SpaceConfigurationSafety.preserveRemoteReferenceCleanup(self, payload: originalSpaceJsonData, candidate: spaceJsonData) else {

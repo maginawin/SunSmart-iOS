@@ -190,8 +190,9 @@ extension SpaceRecoveryReceiptTests {
             }
             if mode == "import" {
                 let result = await space.update(spaceJsonData: recovered)
-                precondition(result == .preserved("localDeletionOrRecoveryPendingUpload"),
-                             "ordinary GET must leave the stale-baseline exemption and arbitrate Profiles")
+                precondition(result == .prepared, "newer cloud must reach full import")
+                let imported = await space.restoreNewerCloudFixture(recovered)
+                precondition(imported.status == .applied)
             } else {
                 let result = await S.resumeUpload(space)
                 if mode == "sameTime" {
@@ -205,6 +206,12 @@ extension SpaceRecoveryReceiptTests {
             }
             let state = try S.recoveryState(space)
             precondition(state.olderCloudBaselineFailure == nil && state.submission == nil)
+            if P.integer(recovered["updateTimestamp"])! > 110 {
+                precondition(space.lastUpdate == 120 && space.lastUploadCloudTimestamp == 120 && !space.needUploadCloud)
+                precondition(space.nodes.count == 3 && !S.isBlocked(space) && request.uploads == uploads)
+                precondition(P.integer((space.groups[0]["profile"] as! [String: Any])["occupancyLevel"]) == (mode == "newProfile" ? 414 : 734))
+                continue
+            }
             precondition(space.lastUploadCloudTimestamp == 100 && request.uploads == uploads)
             if mode == "sameTime" || mode == "unrelatedBlock" {
                 precondition(S.isBlocked(space) && space.lastUpdate == 110)
