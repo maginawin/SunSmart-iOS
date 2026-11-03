@@ -154,6 +154,10 @@ final class NodeSyncReadContext {
         capture.memberships[ObjectIdentifier(node)]
     }
 
+    func sceneGroup(for node: Node) -> Group? {
+        capture.sceneMemberships[ObjectIdentifier(node)]
+    }
+
     func members(of group: Group) -> [Node] {
         capture.groupNodes[group.address.address] ?? []
     }

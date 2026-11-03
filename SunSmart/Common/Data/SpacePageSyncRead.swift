@@ -41,7 +41,7 @@ final class SpacePageSyncRead {
 
     init(scene: Scene, context: NodeSyncReadContext) {
         if scene.info.configuration?.kind == .devices {
-            if let snapshot = try? SceneTargetResolver.resolve(scene: scene) {
+            if let snapshot = try? SceneTargetResolver.resolveForSyncRead(scene: scene) {
                 checks = (snapshot.targets + snapshot.cleanupTargets).map { .scene($0.node, scene) }
             }
         } else {
@@ -57,7 +57,7 @@ final class SpacePageSyncRead {
             let addresses = Set(schedule.nodeAddresses)
             targets = context.nodes.filter { addresses.contains($0.primaryUnicastAddress) }.map { ($0, nil) }
         case .scene:
-            if let scene = schedule.scene, let snapshot = try? SceneTargetResolver.resolve(scene: scene) {
+            if let scene = schedule.scene, let snapshot = try? SceneTargetResolver.resolveForSyncRead(scene: scene) {
                 targets = snapshot.targets.map { ($0.node, context.group(for: $0.node)) }
             }
         case .groups:
@@ -246,7 +246,7 @@ struct ScheduleTargetSyncSnapshot {
         self.groups = groups
         var scenes = Set(schedule.needDeleteScenes.map(ObjectIdentifier.init))
         if let scene = schedule.scene {
-            let targetIDs = Set((try? SceneTargetResolver.resolve(scene: scene).targets.map { ObjectIdentifier($0.node) }) ?? [])
+            let targetIDs = Set((try? SceneTargetResolver.resolveForSyncRead(scene: scene).targets.map { ObjectIdentifier($0.node) }) ?? [])
             if !targetIDs.isDisjoint(with: nodes) || scene.info.groups.contains(where: { groups.contains(ObjectIdentifier($0)) }) {
                 scenes.insert(ObjectIdentifier(scene))
             }
@@ -386,7 +386,7 @@ final class SceneGroupSyncRead {
     init(scene: Scene, context: NodeSyncReadContext) {
         self.scene = scene
         groups = scene.info.groups.map { ($0, context.members(of: $0)) }
-        let snapshot = try? SceneTargetResolver.resolve(scene: scene)
+        let snapshot = try? SceneTargetResolver.resolveForSyncRead(scene: scene)
         configurationPending = scene.info.configurationLoadFailed || scene.info.projectionPending
             || scene.info.configuration?.isDeleting == true || snapshot == nil || snapshot?.unresolved.isEmpty == false
         pendingDevices = Set(scene.info.configuration?.pendingOperations.filter { $0.action == .write }.map(\.identity) ?? [])

@@ -60,9 +60,13 @@ final class NodeSyncTopologyCapture {
     private var nodeIndex = 0, elementIndex = 0, modelIndex = 0
     private var subscriptions = Set<Address>()
     private var membership: Group?
+    private var sceneMembership: Group?
     private var devices: [NodeSyncTopologySnapshot.Device] = []
     private var available = true
     private(set) var memberships: [ObjectIdentifier: Group] = [:]
+    // Match SDK Node.group for Scene reads, including HDB subscriptions that
+    // the ordinary configuration topology intentionally excludes.
+    private(set) var sceneMemberships: [ObjectIdentifier: Group] = [:]
     private(set) var groupNodes: [Address: [Node]] = [:]
     private(set) var elementNodes: [Address: Node] = [:]
     private(set) var nodes: [Node] = []
@@ -148,6 +152,7 @@ final class NodeSyncTopologyCapture {
                 interval.end()
                 for group in subscribed {
                     subscriptions.insert(group.address.address)
+                    if sceneMembership == nil && Self.isMembershipGroup(group) { sceneMembership = group }
                     if membership == nil && !hdbAddresses.contains(group.address.address) && Self.isMembershipGroup(group) { membership = group }
                 }
                 modelIndex += 1
@@ -165,7 +170,8 @@ final class NodeSyncTopologyCapture {
             memberships[ObjectIdentifier(node)] = membership
             groupNodes[membership.address.address, default: []].append(node)
         }
-        subscriptions = []; membership = nil; elementIndex = 0; modelIndex = 0; nodeIndex += 1
+        sceneMemberships[ObjectIdentifier(node)] = sceneMembership
+        subscriptions = []; membership = nil; sceneMembership = nil; elementIndex = 0; modelIndex = 0; nodeIndex += 1
     }
 
     static func isMembershipGroup(_ group: Group) -> Bool {

@@ -84,6 +84,7 @@ with tempfile.TemporaryDirectory(prefix='timed-sqlite-') as directory:
                     str(root / 'SunSmart/Main/Timed/Model/TimedSchedulerSlotPolicy.swift'),
                     str(root / 'SunSmart/Main/Timed/Model/TimedSchedulerOwnerPolicy.swift'),
                     str(root / 'SunSmart/Common/Data/SceneDeleteCapability.swift'),
+                    str(root / 'SunSmart/Common/Data/AppPerformance.swift'),
                     str(root / 'SunSmart/Main/Scene/Model/SceneConfiguration.swift'), str(resolver),
                     str(runtime), str(harness), '-o', str(binary)], check=True)
     subprocess.run([str(binary), str(directory / 'app.sqlite')], check=True)

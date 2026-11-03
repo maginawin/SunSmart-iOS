@@ -19,7 +19,7 @@ final class Model {
 final class Network { let uuid = UUID() }
 final class Node: NSObject {
     enum GroupState { case normal, exitFailure }
-    let uuid: UUID
+    var uuid: UUID
     let primaryUnicastAddress: Address
     var addressAliases = Set<UInt16>()
     var name: String? = "Lamp"
@@ -48,7 +48,9 @@ final class Node: NSObject {
     var effectiveCctRange: ClosedRange<UInt16> = 2700...6500
     var fingerprint = String(repeating: "A", count: 64)
     var hasIdentity = true
+    static var identityReads = 0
     var timedSchedulerIdentity: TimedSchedulerNodeIdentity? {
+        Self.identityReads += 1
         guard hasIdentity else { return nil }
         return .init(nodeUUID: uuid.uuidString, unicastAddress: primaryUnicastAddress.hex, deviceKeyFingerprint: fingerprint)
     }
@@ -126,9 +128,15 @@ final class Schedule {
     // ACTUAL_SCHEDULE_TARGETS
     // ACTUAL_EXIST_NODES
 }
-enum NodeSyncReadContext {
-    static let current: Context? = nil
-    struct Context { func contains(_ node: Node, in group: Group) -> Bool { group.nodes.contains(node) } }
+final class NodeSyncReadContext {
+    static var current: NodeSyncReadContext?
+    private var values: [String: Any] = [:]
+    func memoized<Value>(_ key: String, read: () -> Value) -> Value {
+        if let stored = values[key], let value = stored as? Value { return value }
+        let value = read(); values[key] = value; return value
+    }
+    func contains(_ node: Node, in group: Group) -> Bool { group.nodes.contains(node) }
+    func sceneGroup(for node: Node) -> Group? { node.group }
 }
 final class MeshNetworkManager {
     static let instance = MeshNetworkManager()

@@ -83,8 +83,13 @@ final class Node: Equatable {
     var sceneSetupModel: Model? { sunricherVendorModel }
     var onoffModel: Model? { sunricherVendorModel }
     var lightnessModel: Model? { sunricherVendorModel }
+    var fingerprint = String(repeating: "A", count: 64)
+    static var identityReads = 0
+    static var onIdentityRead: (() -> Void)?
     var timedSchedulerIdentity: TimedSchedulerNodeIdentity? {
-        .init(nodeUUID: uuid.uuidString, unicastAddress: primaryUnicastAddress.hex, deviceKeyFingerprint: String(repeating: "A", count: 64))
+        Self.identityReads += 1
+        Self.onIdentityRead?()
+        return .init(nodeUUID: uuid.uuidString, unicastAddress: primaryUnicastAddress.hex, deviceKeyFingerprint: fingerprint)
     }
     var effectiveCctRange: ClosedRange<UInt16> = 2700...6500
     var sceneChecks = 0

@@ -30,6 +30,7 @@ private final class UICollectionView {
     var visibleCells: [UICollectionViewCell] = []
 }
 private class UIViewController {
+    var isMovingFromParent = false
     func viewWillAppear(_ animated: Bool) {}
     func viewDidAppear(_ animated: Bool) {}
     func viewWillDisappear(_ animated: Bool) {}
@@ -47,6 +48,9 @@ private final class SceneConstraints {
     func updateConstraints(_ body: (SceneConstraints) -> Void) { body(self) }
 }
 private final class SceneLayoutCollection {
+    final class EmptyView { var frame = CGRect.zero }
+    var emptyView: EmptyView?
+    var bounds = CGRect.zero
     var width: CGFloat = 800
     var contentInset = SceneInsets()
     let snp = SceneConstraints()
@@ -73,11 +77,17 @@ private final class SceneViewController: ScenePageProbe {
     // PRODUCTION_SCENE_LAYOUT
 }
 private final class SceneSettingsViewController: UIViewController {
+    enum Mode { case deviceSelection, editing }
+    var mode = Mode.editing
+    final class Selection {
+        final class Filter { func reset() {} }
+        let filter = Filter()
+    }
     final class Gesture { var isEnabled = true }
     final class Navigation { let interactivePopGestureRecognizer: Gesture? = Gesture() }
     let navigationController: Navigation? = Navigation()
     var active = false, reloads = 0
-    var selection: Int? = 1
+    var selection: Selection? = Selection()
     var initialError: Error?
     var beginSaveOnAppearance = false, beginPreviewOnAppearance = false
     func reload() { reloads += 1 }

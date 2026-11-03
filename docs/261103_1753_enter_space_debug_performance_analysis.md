@@ -1,6 +1,6 @@
-# 进入 Space 后 Debug 卡顿与高 CPU：原因及待确认修复方案
+# 进入 Space 后 Debug 卡顿与高 CPU：分析与修复记录
 
-日期：2026-11-03。状态：只读分析完成，待用户确认实施。
+日期：2026-11-03。状态：用户确认后已完成 App 修复、相关回归及 SunSmart Debug generic iOS 构建；真机性能待用户验收。第 1～10 节保留分析阶段依据，第 11 节记录实际实施与验证。
 
 ## 结论
 
@@ -40,7 +40,7 @@ Trace 的 `SunSmart.debug.dylib` UUID 为 `6FEB7E60-5077-3D49-988F-55C9B26FE4C8`
 
 `/Users/maginawin/Library/Developer/Xcode/DerivedData/SunSmartLocal-cwtgvqjfdilojfcjnqfddkugnteg/Build/Products/Debug-iphoneos/SunSmart.app/SunSmart.debug.dylib`
 
-产物修改时间为 17:42:40；DerivedData 的 WorkspacePath 指向当前工作树 `SunSmartLocal.xcworkspace`。使用该二进制和 `atos` 核实了刷新器、Scene 同步判定、目标扫描及身份生成的位置。当前 HEAD 为 `f63d8dff4353cae66b31777ca96c06f9ed3a6f11`；匹配 UUID 不代表工作区全部未提交内容与录制二进制完全相同。
+产物修改时间为 17:42:40；DerivedData 的 WorkspacePath 指向当前工作树 `SunSmartLocal.xcworkspace`。使用该二进制和 `atos` 核实了刷新器、Scene 同步判定、目标扫描及身份生成的位置。分析时 HEAD 为 `f63d8dff4353cae66b31777ca96c06f9ed3a6f11`；匹配 UUID 不代表工作区全部未提交内容与录制二进制完全相同。
 
 当前已有 Space 完整性、恢复、Scene 数据、文案和测试的未提交改动；本轮未修改这些文件。分析期间 `SceneConfigurationRoundTripTests.swift` 也出现外部改动，未触碰。
 
@@ -217,3 +217,126 @@ CPU 改善和真实交互验收必须分别观察。关闭诊断后，即使后�
 分析中间产物位于 `/tmp/enter-space-*.xml`、`/tmp/enter-space-samples.pkl`、`/tmp/enter-space-summary.json`、`/tmp/analyze_enter_space.py`、`/tmp/probe_scene_resolution_counts.py`；原始 log/trace 为依据。Thermal 表导出返回 Missing features，未据此判断温度状态。
 
 待确认：按 A+B+C 实施 App 修复，并执行上述自动化与构建；真实设备与最终体验由用户验收。
+
+## 9. 补充：何时引入，检查是否必要
+
+以下根据本工作树可达 Git 历史的 `log -S`、`blame` 和具体提交差异核对；日期区分 author date 与 commit date，避免把整理后的提交误称为当天首次开发。
+
+| 时间 | 提交 | 引入或修改内容 |
+| --- | --- | --- |
+| 2025-04-03 | `588da2b6` | 当前 `getNodeSyncSceneDatas` 方法出现；对比本设备缓存与所在 Group 的 Scene 配置，并供同步任务生成使用 |
+| 2025-04-20 | `b7cdf4fc` | 增加 `getNeedSyncGroup` / `getNeedSync`，将 Scene 写入、删除差异接入设备和 Group 同步状态判定 |
+| 作者日期 2026-09-15；提交日期 09-16 | `e32ef78f` | 将进入 Space 后原有的后台逐节点缓存刷新，改为共享 `NodeSyncStatusRefresh.warmUp`，配套会话复用、主线程分片；预热本身此前已经存在 |
+| 作者日期 2026-10-30；提交日期 10-31 13:53 | `c1a7bd2a`，`feat: device scene` | 将 Scene 判定从“本设备所属组的配置比较”改成“遍历空间 Scene，调用全量目标解析器”；新增 `SceneTargetResolver` 的逐目标全设备身份扫描；同时在 Group 和设备状态判定开头增加 Scene 检查，保留原有 Group 检查 |
+| 2026-10-31 14:25 | `31d79f6e` | 将差异读取中的 `SceneMessageContext` 替换为 `snapshot.writeData`，分离读取与发送授权；保留上述全量解析与重复入口 |
+
+因此，这次采到的昂贵算法和额外重复入口可追溯到 `c1a7bd2a`，而非 11 月 3 日的 Scene/Timed 删除修复。此结论是提交差异归因；没有把历史版本重新装机做性能二分，不能声称已测出各历史版本的运行耗时。
+
+### 必须保留的业务能力
+
+- 比较 App 期望的 Scene 配置与本地记录的设备 Scene 数据，发现未写入、参数变化、pending write/remove 和未完成清理。
+- 让设备/Group/Scene 同步提示及同步按钮反映这些差异，并在用户执行同步时生成对应任务。
+- 新的 Device Scene 可以包含未加入 Group 的设备。沿用旧版“没有 Group 就不检查”的条件，会漏掉这类设备的 Scene 差异。
+
+这条 Scene 状态检查是本地差异计算，本身不向每台设备发送 Scene 读写命令；其结果也不等于已经重新读取并确认了真实设备状态。
+
+### 可以调整或删除的计算方式
+
+- 同一有效版本反复计算完整 Scene、逐目标重算所有设备身份，以及同一设备各入口重复求同一结果，没有业务必要，应索引化并共享结果。
+- 进入 Space 立即预热所有设备是缓存策略，不是协议要求。可以延后或按页面需求计算，但设备页仍需判定是否显示同步按钮；仅移除 `warmUp` 不能消除其自身 `request(nodes:)` 引发的热点，可能把卡顿推迟到其他页面。
+- 不建议直接删掉所有 Scene 判定或简单回退到仅 Group 的旧版实现。建议先保持现有提示语义，合并计算并修正分片，再根据优化后 trace 决定是否还有必要调整预热时机。
+
+本补充只更新分析文档，实施仍待用户确认。
+
+## 10. 补充：能否依据本地数据库和云同步任务，省去设备 Scene 回读
+
+可以用持久化的期望配置、设备下发结果和待办记录判断日常的 Scene 同步展示状态。普通进入 Space、列表展示不需要为此主动遍历设备回读 Scene。但云端同步任务成功与设备配置成功必须分开，不能把“上传完成”直接当作“设备已经存入该 Scene”。
+
+本补充核对时工作树 HEAD 已由其他操作更新为 `7405226d`，上述 Scene 差异计算、回读与回执链仍存在；本轮没有实施生产修改。
+
+### 当前代码已经使用了哪些本地/云数据
+
+| 数据 | 用途及边界 |
+| --- | --- |
+| `SceneConfiguration`、Group 的 `sceneExecuteDatas` | App 期望的 Scene 成员、参数、版本及待办操作；保存或上传成功只说明期望已保存 |
+| Node 的 `sceneExecuteDatas` | App 已记录的设备 Scene 参数；参与本地差异比较 |
+| `pendingOperations` | 写入或删除仍未完成的持久意图；不能仅用“当前内存任务列表为空”判断已同步 |
+| 有效 Mesh 回执及本地持久化结果 | 同一设备身份、同一配置下，相关命令完整成功后更新缓存、清除对应待办；超时、旧回执、部分失败或持久化失败不能直接标记成功 |
+| 云端 `scenesDatas` / `sceneConfigurations` | 已有导入导出会传递节点 Scene 数据与 Scene 配置，可用于恢复及跨客户端共享；云 HTTP 成功本身不是设备回执 |
+
+具体依据：
+
+- [Node+SyncData.swift](../SunSmart/Common/Data/Node+SyncData.swift) 的 `getNodeSyncSceneDatas` 实际读取上述对象，比较 `pendingOperations`、Node 缓存及关联 Timed 差异，没有发送 Scene Get 命令。
+- [SyncExecutionSession+Result.swift](../SunSmart/Main/Space/Model/SyncExecutionSession+Result.swift) 要求 Scene 任务相关结果齐全且成功，再调用回执应用逻辑。
+- [SceneCommandBuilder.swift](../SunSmart/Main/Scene/Model/SceneCommandBuilder.swift) 的 `SceneMessageContext` 校验设备身份、scope、revision、配置与待办归属，保存 Node 缓存和 Scene 配置；失败保留/恢复待办。
+- [ExportData.swift](../SunSmart/Common/Data/ExportData.swift) 导出节点 `scenesDatas` 以及 Scene 配置；[ImportData.swift](../SunSmart/Common/Data/ImportData.swift) 恢复这些记录。导入的历史已知值不能解释为本次连接重新确认的设备状态。
+
+### 本次卡顿不来自主动 Scene 回读
+
+本次日志中 `SceneGet`、`SceneRegisterGet`、`SceneRegisterStatus`、`SceneStore`、`SceneDelete` 均无记录；结合实际调用链，当前进入 Space 的热点是本地重复目标解析及身份计算。
+
+因此，“普通状态直接依据数据库/缓存判定”与既有业务方向一致；性能修复需要解决其反复计算方式，而不是删除本次没有发生的设备读取。
+
+### 当前按需回读解决的是另一件事：实际容量
+
+[SceneCapacity.swift](../SunSmart/Common/Data/SceneCapacity.swift) 的 `readUnknownState` 才发送 `SceneRegisterGet`。调用入口包括：
+
+- 编辑 Scene、调整 Group 成员时，为新增占用检查未知设备的容量。
+- 实际执行 Scene 写入任务时，若该设备的 Register 尚未知，先读后验证。
+
+当前 SDK 的 `SceneRegisterStatus` 含操作状态、当前 Scene 编号及已存 Scene 编号列表，没有每个 Scene 的完整亮度/CCT 参数；这类回读不能代替所有参数一致性判定。`observedSceneRegister` 是连接范围内的观测，当前 SDK 断开最后一个代理时会清空，云端导入不会把它补成新连接的现场观测。
+
+本地配置无法单独证明设备现在的实际占用。例如操作已在设备执行但 App 尚未保存结果、其他控制端修改设备，或旧记录缺失时，任务记录与真实 Register 可能不同。普通 UI 可以保留待同步/未知结果，不需要为刷新列表立即回读；真正写入且容量未知时，保留现有按需校验。删除则使用实际 Delete 结果确认完成，不把云端删除成功当作设备清理完成。
+
+### 对本次方案的约束
+
+1. 普通进入 Space 和显示同步状态继续走本地数据；不新增批量 Scene 回读。
+2. 同一有效版本只构建一次身份、成员和 Scene 差异结果；配置修改、成员变化、有效 ACK、导入及恢复事件使相关结果失效。
+3. “已同步”来自匹配当前设备/配置的有效已知结果，不能仅由云任务成功、pending 数量为零或设备在线推导。旧数据缺失时保留不确定性。
+4. 复用已有持久字段和 ACK 应用机制，不为本次性能修复新增服务器接口或独立任务数据库。新增 Scene 容量预检等按需回读保持原有边界。
+
+结论：可以让日常展示依赖本地/云中保存的设备执行结果；不能只依赖本地与云同步成功就取消所有设备证据。当前主要工作仍是把已有的本地判定做成可复用、可失效、受预算约束的计算。
+
+## 11. 已实施及验证（2026-11-03）
+
+用户已授权“按修复建议实施”。基于 `feat/device-scene-261028`、HEAD `7405226d29e5ea972af9a96d9bb3d132fac7c4b5` 实施，修改保留在工作区，未提交或推送。
+
+### 实际修改
+
+1. **一次建立身份索引。** `SceneTargetResolver` 对每台设备计算一次完整身份，按身份查目标；仍拒绝重复身份，保留换密钥、跨 Space、设备能力、离线新增及清理判定。保存、预览、下发和 ACK 所用 `resolve` 每次重新建立索引，不使用展示缓存。
+2. **同一版本共享 Scene 结果。** `NodeSyncReadContext.memoized` 持有 Scene 准备结果，包括明确的解析失败。设备、Group、Scene 和 Timed 的只读查询复用解析结果；按设备、可选 Group、可选 Scene 分别缓存差异，包含无差异结果。
+3. **准备过程按设备身份和 Scene 目标分片。** 接入已有 4 ms 主线程预算，未准备完不发布同步状态；准备消耗完预算时先让出主线程。版本失效后重新准备，保留原有保护、取消、退出和过期结果拦截。
+4. **复用订阅采集。** 拓扑捕获时顺带记录与 SDK `Node.group` 一致的 Scene 成员关系，Scene 索引不再重新扫描订阅。保留普通拓扑排除 HDB、Scene 使用原始 Group 关系的既有差异。
+5. **补充观测和回归。** 通过现有 `SUNSMART_PERFORMANCE` 开关增加 `SyncSceneIdentityIndex`、`SyncSceneResolve` 事件，不增加逐设备文本日志。新增生产解析器/差异计算的计数回归，以及真实刷新器的缓存生命周期回归。
+
+继续依据已有本地配置、设备结果缓存和持久待办判断日常同步状态，没有新增进入 Space 的设备 Scene 回读。原有容量未知时的按需读取、设备成功回执归属和持久化规则保持不变；无数据库格式、云接口或 SDK 修改。
+
+### 自动化证据
+
+| 检查 | 结果及覆盖 |
+| --- | --- |
+| `check_scene_sync_read_performance.py` | 53 / 500 台、各 3 个 Scene：一次刷新分别计算 53 / 500 次身份，3 次 Scene 解析；连续 5 轮 nil/显式 Group 查询不增加这些次数。覆盖 Group HSL/LC 字段、差异分键、新上下文、重复身份、解析失败、目标分片续跑，以及展示缓存存在时执行仍使用新身份 |
+| `check_node_sync_status_refresh.py` | 通过。新增配置 revision、身份准备过程中 generation 变化、取消/重进、退出 Space、HDB 原始成员语义和不重扫订阅回归；既有设备/Group/Scene/Timed、500 台多读者及保护竞态回归通过 |
+| `check_scene_configuration.py --suite all` | 10 个既有 suite 通过，涵盖模型、真实 SQLite、目标、任务/ACK、保存/回滚、导入导出、选择与集成逻辑 |
+| `check_scene_topology.py` | 通过：真实拓扑投影、原子预检、空/未知状态和退出恢复 |
+| `check_scene_deletion_cascade.py` | 204 项通过，覆盖生产删除引用及回执链 |
+| `check_timed_slot_persistence.py` | 通过：Scene 关联目标、未知容量、SQLite 重启、清理/恢复、失败回滚及迟到回执边界 |
+| `git diff --check` | 通过 |
+
+部分旧夹具未跟进当前 HEAD 的 UI 属性及 Scene 删除引用入口，本轮只补齐测试边界：Group UI 夹具属性、手工只读上下文的 Scene 准备、Timed 的无引用级联边界。生产 UI 没有因此改动；实际删除引用由独立生产级联回归覆盖。SQLite 编译的默认 Clang 缓存路径受沙箱限制，改用 `/tmp/sunsmart-scene-clang-module-cache` 后完成相关脚本，没有调整生产代码绕过环境问题。
+
+计数回归使用 SDK/DB 夹具，不包含真机 SHA256/字符串格式化、BLE、UIKit 或系统诊断成本。共享刷新脚本的毫秒计时也不能当作新手机 trace；新增的元数据规范化、工作列表构建和最终排序仍以单 Scene 为单位，因此 4 ms 是协作预算，不是已证明的每片硬上限。
+
+### 构建与依赖
+
+`SunSmartLocal.xcworkspace` / `SunSmart` / Debug / `iphoneos27.1` / `generic/platform=iOS` / `CODE_SIGNING_ALLOWED=NO`：**BUILD SUCCEEDED**（18:21）。DerivedData 为 `SunSmart-feat-device-scene-261028-checks`，未使用 Simulator 或安装真机。
+
+本地 SDK 映射为 `/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk-worktrees/one-dev`，HEAD `dbcf6f1a7014320331f3cccdc0a46edc1a0baa88`。既有 `MeshProxyMessageCommand.swift`、`SchedulerActionStatus.swift` 及独立 Scheduler 测试改动未触碰；本次不依赖新增 SDK API。共享逻辑影响五个品牌，本次无品牌条件分支、资源或依赖配置变化，采用 SunSmart 代表构建。
+
+### 待用户真机验收
+
+1. 保持原 53 台设备 Space 和原 Debug 启动/诊断设置，重录进入后的同等时长 trace；比较可交互时间、主线程/总 CPU 和 Hangs。若启用 `SUNSMART_PERFORMANCE`，同时查看 `SyncMainStep` 和两项新增 Scene 事件。
+2. 进入设备、Groups、Scene、Timed 页面，退出重进；修改一个 Scene 参数、执行同步并再进入，确认提示随差异和成功回执更新。检查快速退出或切换 Space 后没有旧结果回写。
+3. 保持 App 版本不变，再单独切换相关 Xcode 运行诊断做 A/B，以区分业务优化与 `libRPAC` 回溯成本。
+
+当前未产生修复后真机 trace，尚不能量化实际 CPU 降幅或宣称卡顿已通过真机验收；真实云往返、Mesh 执行和最终 UI 体验仍由用户验收。

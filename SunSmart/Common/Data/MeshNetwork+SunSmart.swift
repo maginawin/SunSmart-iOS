@@ -1367,7 +1367,7 @@ extension Scene {
     /// 场景是否需要同步
     var needSync: Bool {
         if info.configurationLoadFailed || info.projectionPending || SceneDeletionCascade.hasPending(info) { return true }
-        if let snapshot = try? SceneTargetResolver.resolve(scene: self), !snapshot.unresolved.isEmpty { return true }
+        if let snapshot = try? SceneTargetResolver.resolveForSyncRead(scene: self), !snapshot.unresolved.isEmpty { return true }
         return MeshNetworkManager.instance.realNodes.contains {
             !$0.getNodeSyncSceneDatas(scene: self).isEmpty || !$0.getNodeNeedDeleteSceneDatas(scene: self).isEmpty
         }
@@ -1624,8 +1624,8 @@ extension Schedule {
             return true
         }
         if let scene, scene.info.configuration?.kind == .devices {
-            let identity = node.timedSchedulerIdentity.flatMap { try? SceneConfiguration.identity($0) }
-            return (try? SceneTargetResolver.resolve(scene: scene).targets.contains { $0.identity == identity }) == true
+            guard let identity = node.sceneSyncReadIdentity else { return false }
+            return (try? SceneTargetResolver.resolveForSyncRead(scene: scene).targetsByIdentity[identity]) != nil
         }
         
         guard node.groupState != .exitFailure else { return false }
@@ -1761,7 +1761,7 @@ extension Schedule {
                     checks.append(.sync(node, nil))
                 }
             case .scene where schedule.scene?.info.configuration?.kind == .devices:
-                if let scene = schedule.scene, let snapshot = try? SceneTargetResolver.resolve(scene: scene) {
+                if let scene = schedule.scene, let snapshot = try? SceneTargetResolver.resolveForSyncRead(scene: scene) {
                     for target in snapshot.targets {
                         targetIDs.insert(ObjectIdentifier(target.node))
                         checks.append(.sync(target.node, nil))

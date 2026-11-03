@@ -194,7 +194,7 @@ class Schedule: Codable, Copyable {
         })
         
         for targetScene in (scene.map { [$0] } ?? []) + needDeleteScenes {
-            if let snapshot = try? SceneTargetResolver.resolve(scene: targetScene) {
+            if let snapshot = try? SceneTargetResolver.resolveForSyncRead(scene: targetScene) {
                 for target in snapshot.targets + snapshot.cleanupTargets where !nodes.contains(target.node) {
                     nodes.append(target.node)
                 }

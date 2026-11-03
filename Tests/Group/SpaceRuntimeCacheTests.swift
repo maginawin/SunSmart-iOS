@@ -6,6 +6,7 @@ private final class TestSpaceOwner {
 
 extension NodeSyncStatusRefreshTests {
     static func spaceRuntimeCacheTests() async {
+        await sceneReadCacheLifecycleTests()
         var network = fixture(8)
         let space = NSObject(), cell = NSObject(), object = NSObject()
         NodeSyncStatusRefresh.beginSession(owner: space)
@@ -67,6 +68,8 @@ extension NodeSyncStatusRefreshTests {
                                           protection: SpaceConfigurationSafety.testSnapshot(network))
         await prepare(context)
         let scene = Scene(); scene.info.groups = [network.groups[1], network.groups[2]]
+        MeshNetworkManager.instance.scenes = [scene]
+        require(context.sceneReads.advance(until: .infinity), "Scene inputs were not prepared for direct page reads")
         for mode in Schedule.TargetType.allCases {
             for seed in 0..<80 {
                 let schedule = Schedule(); schedule.selectTargetType = mode
@@ -112,6 +115,90 @@ extension NodeSyncStatusRefreshTests {
         #if DEBUG
         print("PASS: Space cache hit/invalidation/exit/cross-network, 320 schedule plans, 13 scenes, sensor/controller reuse, BLE queue lifecycle")
         #endif
+    }
+
+    static func sceneReadCacheLifecycleTests() async {
+        let manager = MeshNetworkManager.instance, previousScenes = MeshNetworkManager.instance.scenes
+        let network = fixture(53), space = NSObject(), page = NSObject()
+        let scene = Scene(); scene.info.groups = network.groups
+        manager.scenes = [scene]
+        NodeSyncStatusRefresh.beginSession(owner: space)
+        defer {
+            Node.onIdentityRead = nil
+            manager.scenes = previousScenes
+            NodeSyncStatusRefresh.endSession(owner: space)
+        }
+        var completed = 0, parsed = 0
+        var expectedFingerprint = String(repeating: "A", count: 64)
+        func request() {
+            NodeSyncStatusRefresh.requestRead(object: scene, owner: page, makeRead: { context in
+                parsed += 1
+                return { _ in
+                    let snapshot = try? context.sceneReads.snapshot(scene)
+                    require(snapshot?.targets.count == network.nodes.count, "Scene preparation published partial targets")
+                    require(snapshot?.targets.first(where: { $0.node === network.nodes[0] })?.identity.deviceKeyFingerprint == expectedFingerprint,
+                            "Scene preparation reused an old identity generation")
+                    return false
+                }
+            }, completion: { _ in completed += 1 })
+        }
+        Node.identityReads = 0
+        request(); await drain { completed == 1 }
+        request(); await drain { completed == 2 }
+        require(Node.identityReads == 53 && parsed == 1, "unchanged Space repeated Scene preparation")
+        ConfigurationSnapshotRevision.value = 1
+        request(); await drain { completed == 3 }
+        require(Node.identityReads == 106 && parsed == 2, "saved configuration retained Scene cache")
+
+        // Let an invalidation run between identity slices. The pending request
+        // must restart and publish only the new generation's complete snapshot.
+        NodeSyncStatusGeneration.invalidate()
+        Node.identityReads = 0
+        Node.onIdentityRead = {
+            Node.onIdentityRead = nil
+            DispatchQueue.main.async {
+                expectedFingerprint = String(repeating: "B", count: 64)
+                network.nodes[0].fingerprint = expectedFingerprint
+                NodeSyncStatusGeneration.invalidate()
+            }
+            Thread.sleep(forTimeInterval: 0.006)
+        }
+        request(); await drain { completed == 4 }
+        require(Node.identityReads == 54 && parsed == 3, "invalidated Scene preparation did not restart once")
+
+        // Cancellation must stop further slices; reentry can resume an unchanged
+        // Space-owned partial preparation, without publishing to the old owner.
+        NodeSyncStatusGeneration.invalidate()
+        Node.identityReads = 0
+        var cancelled = false
+        Node.onIdentityRead = {
+            Node.onIdentityRead = nil
+            DispatchQueue.main.async { NodeSyncStatusRefresh.cancel(owner: page); cancelled = true }
+            Thread.sleep(forTimeInterval: 0.006)
+        }
+        request(); await drain { cancelled }
+        try? await Task.sleep(nanoseconds: 20_000_000)
+        require(completed == 4 && Node.identityReads == 1, "cancelled Scene preparation kept running or published")
+        request(); await drain { completed == 5 }
+        require(Node.identityReads == 53 && parsed == 4, "Scene preparation could not resume after page reentry")
+        NodeSyncStatusRefresh.endSession(owner: space)
+        NodeSyncStatusRefresh.beginSession(owner: space)
+        request(); await drain { completed == 6 }
+        require(Node.identityReads == 106 && parsed == 5, "Space exit retained Scene preparation")
+        // Scene membership preserves the SDK's raw Group semantics even when
+        // an HDB subscription is excluded from normal configuration membership.
+        SpaceData.current?.hdb = .init(lightingZones: [.init(zoneId: 1, name: "HDB", groupAddress: 0xC001)])
+        let hdbContext = NodeSyncReadContext(network: network, networkID: "net", nodes: network.nodes,
+                                            protection: SpaceConfigurationSafety.testSnapshot(network))
+        await prepare(hdbContext)
+        require(hdbContext.group(for: network.nodes[0]) == nil, "HDB entered normal topology membership")
+        let subscriptionReads = Model.subscriptionReads
+        require(hdbContext.sceneReads.advance(until: .infinity), "HDB Scene preparation incomplete")
+        require(Model.subscriptionReads == subscriptionReads, "Scene identities rescanned subscriptions")
+        let hdbTargets = try? hdbContext.sceneReads.snapshot(scene).comparison
+        let liveTargets = try? SceneTargetResolver.resolve(scene: scene).comparison
+        require(hdbTargets == liveTargets && hdbTargets?.targets.count == 53, "cached Scene membership changed HDB semantics")
+        print("PASS: Scene preparation reuse, saved revision, device generation during slices, cancellation/resume, Space exit and HDB membership")
     }
 
     static func groupOnOffReadTests() async {

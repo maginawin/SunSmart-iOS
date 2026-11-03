@@ -49,7 +49,7 @@ def target_sources(tmp):
     support = tmp / 'Support.swift'; support.write_text(harness)
     resolver = tmp / 'Resolver.swift'
     resolver.write_text((ROOT / 'SunSmart/Main/Scene/Model/SceneTargetResolver.swift').read_text().replace('import NordicSigMeshSDK', ''))
-    return [support, resolver, ROOT / 'SunSmart/Common/Data/SceneCapacityPolicy.swift']
+    return [support, resolver, ROOT / 'SunSmart/Common/Data/SceneCapacityPolicy.swift', ROOT / 'SunSmart/Common/Data/AppPerformance.swift']
 
 def scene_authority_support(harness):
     space = (ROOT / 'SunSmart/Common/Data/SpaceData.swift').read_text()

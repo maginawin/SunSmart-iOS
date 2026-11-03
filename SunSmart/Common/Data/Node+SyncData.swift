@@ -1521,21 +1521,25 @@ extension Node {
     ///   - scene: 场景（传入则只获取该场景是否有同步，不传入则获取所有场景是否有同步）
     func getNodeSyncSceneDatas(group: Group? = nil, scene: Scene? = nil) -> [(scene: Scene, data: SceneExecuteData)] {
         
-        guard sceneSetupModel != nil else { return [] }
-        return (scene.map { [$0] } ?? MeshNetworkManager.instance.scenes).compactMap { scene in
-            guard let snapshot = try? SceneTargetResolver.resolve(scene: scene),
-                  let identity = sceneConfigurationIdentity,
-                  let target = snapshot.writeData(scene: scene, node: self) else { return nil }
-            if snapshot.comparison.kind == .groups, let group,
-               !group.nodes.contains(self) { return nil }
-            let pending = scene.info.configuration?.pendingOperations.contains {
-                $0.identity == identity && $0.action == .write
-            } == true
-            let cached = sceneExecuteDatas.first { $0.sceneNumber == scene.number }
-            let timedPending = scene.info.bindSchedules.contains { $0.needsSync(on: self, contextGroup: self.group) }
-            if pending || cached?.isSynced(with: target, for: self) != true || timedPending { return (scene, target) }
-            return nil
+        func read() -> [(scene: Scene, data: SceneExecuteData)] {
+            guard sceneSetupModel != nil else { return [] }
+            return (scene.map { [$0] } ?? MeshNetworkManager.instance.scenes).compactMap { scene in
+                guard let snapshot = try? SceneTargetResolver.resolveForSyncRead(scene: scene),
+                      let identity = sceneSyncReadIdentity,
+                      let target = snapshot.writeData(scene: scene, node: self, identity: identity) else { return nil }
+                if snapshot.comparison.kind == .groups, let group,
+                   !(NodeSyncReadContext.current?.sceneReads.contains(self, in: group) ?? group.nodes.contains(self)) { return nil }
+                let pending = scene.info.configuration?.pendingOperations.contains {
+                    $0.identity == identity && $0.action == .write
+                } == true
+                let cached = sceneExecuteDatas.first { $0.sceneNumber == scene.number }
+                let timedPending = scene.info.bindSchedules.contains { $0.needsSync(on: self, contextGroup: self.group) }
+                if pending || cached?.isSynced(with: target, for: self) != true || timedPending { return (scene, target) }
+                return nil
+            }
         }
+        guard let context = NodeSyncReadContext.current else { return read() }
+        return context.sceneReads.difference(node: self, group: group, scene: scene, read: read)
     }
     
     /// 获取需要删除的场景list
@@ -1547,7 +1551,7 @@ extension Node {
             guard !scene.info.configurationLoadFailed else { return false }
             if let configuration = scene.info.configuration {
                 if configuration.pendingOperations.contains(where: {
-                    $0.identity == sceneConfigurationIdentity && $0.action == .remove
+                    $0.identity == sceneSyncReadIdentity && $0.action == .remove
                 }) { return true }
                 if configuration.kind == .devices || configuration.isDeleting { return false }
             }

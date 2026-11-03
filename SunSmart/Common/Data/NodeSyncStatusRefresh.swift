@@ -232,6 +232,11 @@ enum NodeSyncStatusRefresh {
             return
         }
         guard context.inputsAvailable else { finishUnavailable(); return }
+        // Scene identities and targets are prepared below whole-Scene granularity.
+        // A node check must not lazily rebuild the entire Space inside its slice.
+        guard context.sceneReads.advance(until: start + 0.004) else { schedule(); return }
+        guard context.isCurrent else { reset(); schedule(); return }
+        guard ProcessInfo.processInfo.systemUptime < start + 0.004 else { schedule(); return }
         var waitingForInputs = false
         var completed: [(ObjectIdentifier, Request, Bool?)] = []
         var exhaustedBudget = false

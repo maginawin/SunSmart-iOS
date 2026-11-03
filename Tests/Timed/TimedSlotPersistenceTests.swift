@@ -172,9 +172,11 @@ final class SceneExecuteData: Codable {
     }
     func isSynced(with other: SceneExecuteData, for node: Node) -> Bool { value == other.value }
 }
-enum NodeSyncReadContext {
+final class NodeSyncReadContext {
     static var current: NodeSyncReadContext? { nil }
     func contains(_ node: Node, in group: Group) -> Bool { group.nodes.contains(node) }
+    func sceneGroup(for node: Node) -> Group? { node.group }
+    func memoized<Value>(_ key: String, read: () -> Value) -> Value { read() }
 }
 final class Scene: NSObject {
     let number: UInt16
@@ -189,6 +191,24 @@ final class Scene: NSObject {
         var imageId = 0
     }
     let info = Info()
+}
+// This suite has no durable cascade references. Production reference discovery,
+// task dependencies and admission gates run in check_scene_deletion_cascade.py.
+enum SceneDeletionCascade {
+    private static func requireEmptyReferences() {
+        precondition(MeshNetworkManager.instance.scenes.allSatisfy {
+            $0.info.configuration?.deletionReferences?.pending.isEmpty != false
+        }, "Reference cleanup must use the production cascade suite")
+    }
+    static func appendTasks(scene: Scene, to section: SyncDevicesSectionModel) -> [SyncDeviceStepModel] {
+        requireEmptyReferences(); return []
+    }
+    static func permitsReferences(_ numbers: [UInt16], meshUUID: String, networkID: String) -> Bool {
+        requireEmptyReferences(); return true
+    }
+    static func owns(scheduleID: Int, meshUUID: String, networkID: String) -> Bool {
+        requireEmptyReferences(); return false
+    }
 }
 final class MeshMessageHandle: NSObject { var sceneContext: SceneMessageContext?; var message: Any = 0; var model: Model?; var continuous = true }
 final class MeshProxyMessageCommand { static let shared = MeshProxyMessageCommand(); var isBusy = false }
