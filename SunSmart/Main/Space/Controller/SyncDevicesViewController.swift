@@ -70,6 +70,11 @@ class SyncDevicesViewController: UIViewController {
     private let executionSession: SyncExecutionSession
     private var syncRunIdentifier: UUID { executionSession.identifier }
     private var hasLeftSyncPage = false
+    private let preparationScopeIsCurrent: () -> Bool
+    private var preparationID = UUID()
+    private var preparationTask: _Concurrency.Task<Void, Never>?
+    private var isPreparingTaskPlan = false
+    private var needsTaskPreparation = true
     private let syncDisplayContext = SyncDevicesDisplayContext()
     private var hdbAwaitingInitialization: [Node] = []
 
@@ -84,6 +89,7 @@ class SyncDevicesViewController: UIViewController {
     init(type: SyncType, reSync: Bool = false) {
         
         self.type = type
+        self.preparationScopeIsCurrent = SpaceSyncAccess.captureIdentity()
         self.executionSession = SyncExecutionSession(type: type, reSync: reSync)
         super.init(nibName: nil, bundle: nil)
         
@@ -113,6 +119,10 @@ class SyncDevicesViewController: UIViewController {
         
         setupUI()
         bindExecutionSession()
+        executionSession.environment.configurationAvailable = { [weak self] in
+            guard let self else { return false }
+            return self.preparationScopeIsCurrent() && SpaceSyncAccess.error() == nil
+        }
         
         deviceBlinkMode = SpaceViewController.currentDeviceBlinkMode
         
@@ -125,82 +135,132 @@ class SyncDevicesViewController: UIViewController {
         rebuildTaskPlan(resume: syncState == .inSync)
     }
 
-    private func rebuildTaskPlan(resume: Bool, confirmSceneRestore: Bool = true) {
-        #if DEBUG
-        if case .scene(let scene) = type {
-            print("[SceneSync] stage=prepare scene=\(scene.number) resume=\(resume) restoreCheck=\(confirmSceneRestore)")
-        }
-        #endif
-        if confirmSceneRestore {
-            let nodes: [Node]?
-            let sceneNumber: SceneNumber?
-            switch type {
-            case .devices(let targets): nodes = targets.compactMap(currentNode); sceneNumber = nil
-            case .scene(let scene): nodes = nil; sceneNumber = scene.number
-            case .group(let group, _, _): nodes = group.nodes; sceneNumber = nil
-            default: nodes = nil; sceneNumber = nil
-            }
-            SceneRestoreConfirmation.presentIfNeeded(nodes: nodes, sceneNumber: sceneNumber) { [weak self] accepted in
-                guard let self, !self.hasLeftSyncPage else { return }
-                #if DEBUG
-                if case .scene(let scene) = self.type {
-                    print("[SceneSync] stage=restoreDecision scene=\(scene.number) accepted=\(accepted) requestedResume=\(resume)")
-                }
-                #endif
-                self.rebuildTaskPlan(resume: accepted && resume, confirmSceneRestore: false)
-            }
-            return
-        }
-        if !resume { syncState = .syncFailure }
+    private func rebuildTaskPlan(resume: Bool) {
+        guard !hasLeftSyncPage else { return }
+        preparationTask?.cancel()
+        preparationID = UUID()
+        let identifier = preparationID
+        isPreparingTaskPlan = true
+        needsTaskPreparation = true
+        syncState = resume ? .inSync : .syncFailure
         XWHUDManager.showCustomHUD(withMessage: nil, view: view)
-        Task { @MainActor [weak self] in
-            guard let self, !self.hasLeftSyncPage else { return }
-            let cleanupReady = await SpaceSyncCleanupCoordinator.prepareCurrentSpace()
-            #if DEBUG
-            if case .scene(let scene) = self.type {
-                print("[SceneSync] stage=cleanupPrepared scene=\(scene.number) ready=\(cleanupReady)")
-            }
-            #endif
-            _ = cleanupReady
-            do { try SceneConfigurationStore().prepareDeletionRetries() }
-            catch {
-                #if DEBUG
-                print("[SceneSync] stage=deletionPreparationFailed errorType=\(Swift.type(of: error)) storeFailure=\(String(describing: error as? SceneConfigurationStore.Failure))")
-                #endif
-                XWHUDManager.hide()
-                XWHUDManager.showErrorTipHUD("scene_delete_failed".localizedString)
-                self.syncState = .syncFailure
-                return
-            }
-            guard !self.hasLeftSyncPage else { return }
-            self.type = self.currentSyncType()
-            self.executionSession.type = self.type
-            self.hdbAwaitingInitialization = []
-            if case .devices(let nodes) = self.type {
-                self.hdbAwaitingInitialization = nodes.filter { !$0.isKeybindComplete && (try? HDBDeviceSyncContext.resolve(node: $0)) != nil }
-                HDBDeviceSyncService.prepareIntents(nodes: nodes)
-            }
-            let isCurrent = SpaceSyncTaskScope.capture()
-            self.executionSession.environment.configurationIsCurrent = isCurrent
-            if resume { self.syncState = .inSync }
-            let builder = SyncTaskPlanBuilder(
-                type: self.type, initialState: self.syncState,
-                profileSensorProtectionContext: self.profileSensorProtectionContext,
-                groupProfileSyncContext: self.groupProfileSyncContext,
-                supplementaryProximityLightingSyncDatas: self.supplementaryProximityLightingSyncDatas.compactMap { item in
-                    guard let node = self.currentNode(item.node), let data = node.getNodeSyncProximityLighting() else { return nil }
-                    return (node, data)
-                }, imageExists: { UIImage(named: $0) != nil })
-            // Own the mutable Mesh snapshot on the same queue as its callbacks.
-            let result = builder.build()
-            guard isCurrent() else {
-                #if DEBUG
-                print("[SceneSync] stage=planStaleBeforeInstall")
-                #endif
-                self.rebuildTaskPlan(resume: resume); return
-            }
-            self.installTaskPlan(result)
+        updateSyncStateUI()
+        guard preparationScopeIsCurrent() else {
+            failTaskPreparation(NetworkApiError.configurationUnavailable.localizedDescription); return
         }
+        // Cleanup may repair a protected configuration, but it must never
+        // acquire write authority for a Visitor or an unverified Editor.
+        if let error = SpaceSyncAccess.error(checkingConfiguration: false) {
+            #if DEBUG
+            print("[SyncPreparation] stage=accessRejected code=\(error.code)")
+            #endif
+            self.failTaskPreparation(error.localizedDescription); return
+        }
+        let recoveryIsCurrent = SpaceSyncAccess.captureRecovery()
+        let nodes: [Node]?
+        let sceneNumber: SceneNumber?
+        switch self.type {
+        case .devices(let targets): nodes = targets.compactMap(self.currentNode); sceneNumber = nil
+        case .scene(let scene): nodes = nil; sceneNumber = scene.number
+        case .group(let group, _, _): nodes = group.nodes; sceneNumber = nil
+        default: nodes = nil; sceneNumber = nil
+        }
+        let isCurrent = { [weak self] in
+            guard let self, self.acceptsPreparation(identifier) else { return false }
+            guard self.preparationScopeIsCurrent(), recoveryIsCurrent() else {
+                self.failTaskPreparation(NetworkApiError.configurationUnavailable.localizedDescription)
+                return false
+            }
+            return true
+        }
+        XWHUDManager.hideInView(with: view)
+        SceneRestoreConfirmation.prepareIfNeeded(nodes: nodes, sceneNumber: sceneNumber,
+                                                 isCurrent: isCurrent) { [weak self] result in
+            guard let self, isCurrent() else { return }
+            switch result {
+            case .ready:
+                self.preparationTask = Task { @MainActor [weak self] in
+                    guard let self, isCurrent() else { return }
+                    XWHUDManager.showCustomHUD(withMessage: nil, view: self.view)
+                    let cleanupError = await SpaceSyncCleanupCoordinator.prepareForDeviceSync()
+                    guard isCurrent() else { return }
+                    if let error = cleanupError {
+                        self.failTaskPreparation(error.localizedDescription); return
+                    }
+                    self.buildPreparedTaskPlan(resume: resume)
+                }
+            case .cancelled: self.failTaskPreparation(nil)
+            case .failed(let error):
+                #if DEBUG
+                print("[SyncPreparation] stage=restoreFailed errorType=\(Swift.type(of: error))")
+                #endif
+                self.failTaskPreparation(SpaceSyncAccess.error()?.localizedDescription
+                    ?? "scene_restore_pending".localizedString)
+            }
+        }
+    }
+
+    private func acceptsPreparation(_ identifier: UUID) -> Bool {
+        !hasLeftSyncPage && isPreparingTaskPlan && preparationID == identifier
+    }
+
+    private func cancelTaskPreparation() {
+        preparationID = UUID()
+        preparationTask?.cancel()
+        preparationTask = nil
+        isPreparingTaskPlan = false
+    }
+
+    private func failTaskPreparation(_ message: String?) {
+        cancelTaskPreparation()
+        needsTaskPreparation = true
+        syncState = .syncFailure
+        XWHUDManager.hideInView(with: view)
+        tableView.reloadData()
+        updateSyncStateUI()
+        if let message { XWHUDManager.showErrorTipHUD(message) }
+    }
+
+    private func buildPreparedTaskPlan(resume: Bool) {
+        if let error = SpaceSyncAccess.error() {
+            failTaskPreparation(error.localizedDescription); return
+        }
+        do { try SceneConfigurationStore().prepareDeletionRetries() }
+        catch {
+            #if DEBUG
+            print("[SyncPreparation] stage=deletionPreparationFailed errorType=\(Swift.type(of: error))")
+            #endif
+            let message = error is SceneConfigurationStore.DeletionRetryFailure
+                ? "scene_delete_failed".localizedString : NetworkApiError.configurationUnavailable.localizedDescription
+            failTaskPreparation(message); return
+        }
+        self.type = self.currentSyncType()
+        self.executionSession.type = self.type
+        self.hdbAwaitingInitialization = []
+        if case .devices(let nodes) = self.type {
+            self.hdbAwaitingInitialization = nodes.filter { !$0.isKeybindComplete && (try? HDBDeviceSyncContext.resolve(node: $0)) != nil }
+            HDBDeviceSyncService.prepareIntents(nodes: nodes)
+        }
+        let isCurrent = SpaceSyncTaskScope.capture()
+        self.executionSession.environment.configurationIsCurrent = isCurrent
+        if resume { self.syncState = .inSync }
+        let builder = SyncTaskPlanBuilder(
+            type: self.type, initialState: self.syncState,
+            profileSensorProtectionContext: self.profileSensorProtectionContext,
+            groupProfileSyncContext: self.groupProfileSyncContext,
+            supplementaryProximityLightingSyncDatas: self.supplementaryProximityLightingSyncDatas.compactMap { item in
+                guard let node = self.currentNode(item.node), let data = node.getNodeSyncProximityLighting() else { return nil }
+                return (node, data)
+            }, imageExists: { UIImage(named: $0) != nil })
+        // Own the mutable Mesh snapshot on the same queue as its callbacks.
+        let result = builder.build()
+        guard isCurrent() else {
+            #if DEBUG
+            print("[SceneSync] stage=planStaleBeforeInstall")
+            #endif
+            self.rebuildTaskPlan(resume: resume); return
+        }
+        self.installTaskPlan(result)
     }
 
     private func currentNode(_ original: Node) -> Node? {
@@ -246,6 +306,8 @@ class SyncDevicesViewController: UIViewController {
             }
         }
         #endif
+        isPreparingTaskPlan = false
+        needsTaskPreparation = false
         self.sections = result.sections
         // 构建期间可能已 STOP；迟到的快照不能恢复自动同步。
         if self.syncState == .inSync {
@@ -285,6 +347,7 @@ class SyncDevicesViewController: UIViewController {
         navigationController?.interactivePopGestureRecognizer?.isEnabled = true
         if isMovingFromParent || isBeingDismissed || navigationController?.isBeingDismissed == true {
             hasLeftSyncPage = true
+            cancelTaskPreparation()
             executionSession.close()
             syncDisplayContext.invalidateRun()
         }
@@ -293,6 +356,7 @@ class SyncDevicesViewController: UIViewController {
     @objc private func backAction() {
         guard !hasLeftSyncPage else { return }
         hasLeftSyncPage = true
+        cancelTaskPreparation()
         executionSession.close()
         syncDisplayContext.invalidateRun()
 
@@ -320,6 +384,14 @@ class SyncDevicesViewController: UIViewController {
     }
 
     @objc private func rightItemAction() {
+        if isPreparingTaskPlan {
+            failTaskPreparation(nil)
+            return
+        }
+        if syncState == .syncFailure && needsTaskPreparation {
+            rebuildTaskPlan(resume: true)
+            return
+        }
         if syncState == .inSync { // stop
             executionSession.stop()
             syncDisplayContext.invalidateRun()
@@ -396,7 +468,7 @@ class SyncDevicesViewController: UIViewController {
             progressLabel.text = "scene_saved_pending_sync".localizedString
         }
 
-        if syncState == .inSync {
+        if syncState == .inSync || isPreparingTaskPlan {
             navigationItem.rightBarButtonItem?.title = "stop".localizedString
             navigationItem.rightBarButtonItem?.isEnabled = true
             bottomView.isHidden = false
@@ -410,7 +482,7 @@ class SyncDevicesViewController: UIViewController {
         }else if syncState == .syncFailure{
             navigationItem.rightBarButtonItem?.title = "re_sync".localizedString
             bottomView.isHidden = false
-            selectAllBtn.isHidden = hasUnresolvedSceneWork
+            selectAllBtn.isHidden = hasUnresolvedSceneWork || needsTaskPreparation
             backBtn.isHidden = false
             var failedModels: [SyncDevicesModel] = []
 
@@ -431,7 +503,7 @@ class SyncDevicesViewController: UIViewController {
                 bottomView.layoutIfNeeded()
             }
             tableView.contentInset = UIEdgeInsets(top: 0, left: 0, bottom: bottomView.height, right: 0)
-            navigationItem.rightBarButtonItem?.isEnabled = selectModels.count > 0
+            navigationItem.rightBarButtonItem?.isEnabled = needsTaskPreparation || selectModels.count > 0
         }
 
     }

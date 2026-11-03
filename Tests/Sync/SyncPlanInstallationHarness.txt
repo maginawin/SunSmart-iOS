@@ -8,3 +8,5 @@
     let tableView = TestTable()
     func startSync() { starts += 1 }
     func updateSyncStateUI() { stateUpdates += 1 }
+    var isPreparingTaskPlan = true
+    var needsTaskPreparation = true

@@ -411,7 +411,7 @@ class DeviceLightsViewController: UIViewController {
         
         footerView.addBtn.isEnabled = space.deviceOperates.contains(.add)
         footerView.editBtn.isEnabled = space.deviceOperates.contains(.edit) && !visibleDevices.isEmpty
-        footerView.syncBtn.isEnabled = space.deviceOperates.contains(.edit)
+        footerView.syncBtn.isEnabled = SpaceSyncAccess.error(expectedSpace: space) == nil
         
 //        if !space.deviceOperates.contains(.add) {
 //            footerView.addBtn.isEnabled = false
@@ -1419,6 +1419,10 @@ extension DeviceLightsViewController: SpaceFunctionFooterViewDelegate {
     
     /// 点击同步
     func functionDidClickSync(view: SpaceFunctionFooterView) {
+        if let error = SpaceSyncAccess.error(expectedSpace: space) {
+            XWHUDManager.showErrorTipHUD(error.localizedDescription)
+            return
+        }
 //        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: true)
         let syncDevices = devices.filter({ $0.needSync })
         let vc = SyncDevicesViewController(type: .devices(syncDevices))

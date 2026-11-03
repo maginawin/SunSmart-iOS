@@ -248,6 +248,11 @@ final class CloudSynchronizationManager {
         precondition(try store.read(SpaceMembershipCoordinator.scope(second))?.phase == .joined)
         precondition(SpaceMembershipCoordinator.authorizeJoin(second))
         precondition(!SpaceMembershipCoordinator.allowsConfiguration(second), "rejoin needs a new complete import")
+        second.permission = .editor
+        let rejoined = await second.restoreConfiguration(spaceJsonData: payload(second), initialize: true)
+        precondition(rejoined.status == .applied && SpaceMembershipCoordinator.allowsConfiguration(second),
+                     "Editor rejoin must become configurable only after full import")
+        precondition(try store.read(SpaceMembershipCoordinator.scope(second))?.initialized == true)
 
         let changedPassword = SpaceData("changed-password"); _ = changedPassword.save()
         try await SpaceMembershipCoordinator.queueLeave(changedPassword, site: site)
@@ -264,6 +269,22 @@ final class CloudSynchronizationManager {
         _ = await SpaceMembershipCoordinator.resumeLeave(SpaceMembershipCoordinator.scope(accountChange))
         precondition(accountChange.deleteCalls == 0)
         UserData.currentUserId = "account"; request.onRequest = nil
+        let visitor = SpaceData("visitor-editor")
+        visitor.permission = .visitor
+        let visitorImport = await visitor.restoreConfiguration(spaceJsonData: payload(visitor), initialize: true)
+        precondition(visitorImport.status == .applied && SpaceMembershipCoordinator.allowsConfiguration(visitor))
+        let visitorMembership = try store.read(SpaceMembershipCoordinator.scope(visitor))!
+        site.spaces.append(visitor)
+        request.result = .success([:])
+        try await SpaceMembershipCoordinator.queueLeave(visitor, site: site)
+        _ = await SpaceMembershipCoordinator.resumeLeave(SpaceMembershipCoordinator.scope(visitor))
+        precondition(try store.read(SpaceMembershipCoordinator.scope(visitor))?.phase == .left)
+        let editor = SpaceData(visitor.id)
+        precondition(SpaceMembershipCoordinator.authorizeJoin(editor))
+        precondition(!SpaceMembershipCoordinator.allowsConfiguration(editor))
+        let editorImport = await editor.restoreConfiguration(spaceJsonData: payload(editor), initialize: true)
+        precondition(editorImport.status == .applied && SpaceMembershipCoordinator.allowsConfiguration(editor))
+        precondition(try store.read(SpaceMembershipCoordinator.scope(editor))?.generation != visitorMembership.generation)
         print("PASS: production membership identity, retired rejoin, persistence, upload barrier, stale response, offline/unknown/confirmed leave, cleanup retry and account isolation")
     }
 }

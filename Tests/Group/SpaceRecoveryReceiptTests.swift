@@ -296,6 +296,23 @@ final class NetworkRequest {
         SpaceConfigurationSafety.handleAuthorityError(.noSpacePermission, space: e)
         precondition(e.state == .waitDeleted && !SpaceConfigurationSafety.preservesLocalChanges(e))
 
+        // Reuse real authority metadata, persistent retirement/activation and
+        // import finalization; SDK/App-row hydration is this suite's boundary.
+        let rejoined = SpaceData("visitor-editor-rejoin")
+        rejoined.applyRemoteSpaceMetadata(["uuid": rejoined.id, "role": "visitor"])
+        let visitorState = try SpaceConfigurationSafety.recoveryState(rejoined)
+        precondition(visitorState.authority == .readOnly)
+        precondition(rejoined.delete())
+        precondition(SpaceConfigurationSafety.activateImport(rejoined))
+        rejoined.applyRemoteSpaceMetadata(["uuid": rejoined.id, "role": "editor"])
+        precondition(rejoined.permission == .editor && !rejoined.requiresPasswordVerification)
+        precondition(SpaceConfigurationSafety.beginImport(rejoined, payload: rejoined.payload))
+        precondition(SpaceConfigurationSafety.finishImport(rejoined))
+        let editorState = try SpaceConfigurationSafety.recoveryState(rejoined)
+        precondition(editorState.phase == .active && editorState.authority == .writable)
+        precondition(editorState.generation != visitorState.generation && !SpaceConfigurationSafety.isCurrent(visitorState, space: rejoined))
+        precondition(!SpaceConfigurationSafety.isBlocked(rejoined))
+
         let f = SpaceData("F")
         addReceipt(f)
         let old = try SpaceConfigurationSafety.recoveryState(f)

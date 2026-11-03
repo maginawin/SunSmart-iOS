@@ -275,6 +275,20 @@ enum SpaceSyncCleanupCoordinator {
         return await prepare(space)
     }
 
+    /// A queued upload defers reference cleanup without forbidding device sync.
+    /// Other failed preparations retain their actual configuration/authority error.
+    static func prepareForDeviceSync() async -> NetworkApiError? {
+        guard let space = SpaceViewController.currentSpace(),
+              let persisted = SpaceData.load(subNetworkId: space.meshNetworkId),
+              persisted.id == space.id, persisted.meshUUID == space.meshUUID else { return .configurationUnavailable }
+        let ready = await prepare(persisted)
+        if let error = SpaceSyncAccess.error(expectedSpace: space) { return error }
+        if !ready && !SpaceConfigurationSafety.hasPendingUpload(persisted) {
+            return persisted.syncCloudError ?? .configurationUnavailable
+        }
+        return nil
+    }
+
     /// Every closure describes a real change. Empty targets are retained as user
     /// objects; observed device state is not fabricated to match the new target.
     private static func extensionChanges(space: SpaceData, network: MeshNetwork,
@@ -479,6 +493,61 @@ enum MissingGroupSubscriptionCleanup {
 
 /// Captures desired configuration and provisioning instances, not observed Mesh
 /// values. A response from an old plan cannot acknowledge a changed Profile.
+/// Shared by the device-sync entry and execution boundary. Scene edit authority
+/// remains independently checked by the Scene store before any Scene mutation.
+enum SpaceSyncAccess {
+    static func error(expectedSpace: SpaceData? = nil, checkingConfiguration: Bool = true) -> NetworkApiError? {
+        guard Thread.isMainThread else { return .configurationUnavailable }
+        let manager = MeshNetworkManager.instance
+        guard let mesh = manager.meshNetwork,
+              let active = SpaceViewController.currentSpace(),
+              active.meshUUID == mesh.uuid.uuidString,
+              active.meshNetworkId == manager.currentNetworkKey.networkId.hex,
+              let stored = SpaceData.load(subNetworkId: active.meshNetworkId),
+              stored.id == active.id, stored.meshUUID == active.meshUUID,
+              expectedSpace.map({ $0.id == active.id && $0.meshUUID == active.meshUUID
+                  && $0.meshNetworkId == active.meshNetworkId }) ?? true else { return .configurationUnavailable }
+        for space in [stored, active] {
+            guard !SpaceMembershipCoordinator.isLeaving(space),
+                  SpaceMembershipCoordinator.allowsConfiguration(space) else { return .configurationUnavailable }
+            if space.requiresPasswordVerification { return .spacePasswordOverdue }
+            guard space.state == .normal, space.permission != .visitor,
+                  !space.disableEditorPermission, !space.meshOTADistribution else { return .noSpacePermission }
+            guard let recovery = try? SpaceConfigurationSafety.recoveryState(space),
+                  recovery.phase == .active, recovery.unbindRequested != true else { return .configurationUnavailable }
+            guard recovery.authority == .writable else {
+                return recovery.authority == .waitingForAuthorization ? .userUnauthorized : .noSpacePermission
+            }
+            if checkingConfiguration && (recovery.requiresRemoteImport == true || SpaceConfigurationSafety.isBlocked(space)) {
+                return SpaceConfigurationSafety.configurationSyncError(space)
+            }
+        }
+        if checkingConfiguration && !SpaceConfigurationSafety.currentConfigurationAvailable { return .configurationUnavailable }
+        return nil
+    }
+
+    /// Bind this page to its original account and Space, while allowing a valid
+    /// same-Space import to replace the in-memory Mesh objects before a retry.
+    static func captureIdentity() -> () -> Bool {
+        guard let space = SpaceViewController.currentSpace() else { return { false } }
+        let account = UserData.currentUserId, region = UserData.currentServerRegion
+        let id = space.id, meshUUID = space.meshUUID, networkID = space.meshNetworkId
+        return {
+            guard account == UserData.currentUserId, region == UserData.currentServerRegion,
+                  let current = SpaceViewController.currentSpace() else { return false }
+            return current.id == id && current.meshUUID == meshUUID && current.meshNetworkId == networkID
+                && MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == meshUUID
+                && MeshNetworkManager.instance.currentNetworkKey.networkId.hex == networkID
+        }
+    }
+
+    static func captureRecovery() -> () -> Bool {
+        guard let space = SpaceViewController.currentSpace(),
+              let state = try? SpaceConfigurationSafety.recoveryState(space) else { return { false } }
+        return { SpaceConfigurationSafety.isCurrent(state, space: space) }
+    }
+}
+
 enum SpaceSyncTaskScope {
     static func capture() -> () -> Bool {
         let manager = MeshNetworkManager.instance

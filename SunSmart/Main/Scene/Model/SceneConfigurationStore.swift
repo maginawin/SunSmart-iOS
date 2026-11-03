@@ -299,16 +299,20 @@ final class SceneConfigurationStore {
     }
 
     func pendingRestoreConfirmations(nodes: [Node]? = nil, sceneNumber: SceneNumber? = nil) throws -> [RestoreConfirmation] {
+        guard Thread.isMainThread else { throw Failure.unavailable }
         let manager = MeshNetworkManager.instance
         guard let network = manager.meshNetwork else { return [] }
         let scope = SceneScope(meshUUID: network.uuid.uuidString, networkID: manager.currentNetworkKey.networkId.hex)
-        try Self.validateAccess(scope)
         guard let space = SpaceData.load(subNetworkId: scope.networkID) else { throw Failure.unavailable }
         let state = try SpaceConfigurationSafety.recoveryState(space)
+        let receipts = try restoreReceipts(state.sceneRestoreReceipts).filter {
+            $0.scope == scope && $0.recoveryGeneration == state.generation && $0.stage != .applied
+        }
+        guard !receipts.isEmpty else { return [] }
+        try Self.validateAccess(scope)
         let infos = try SceneInfo.loadAll(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)
             .filter { sceneNumber == nil || $0.sceneId == sceneNumber }
         guard !infos.contains(where: \.configurationLoadFailed) else { throw Failure.persistence }
-        let receipts = try restoreReceipts(state.sceneRestoreReceipts)
         // A verified receipt can remain unresolved (for example the new Node
         // identity changed again). It is not equivalent to no pending work.
         guard !receipts.contains(where: {
@@ -593,21 +597,31 @@ final class SceneConfigurationStore {
     /// Explicit Sync Devices retry may recover an SDK orphan for cleanup only.
     /// Attach its tombstone before exposing the projection; never allocate a new
     /// number, regenerate operations, or make it selectable for Recall/Store.
+    struct DeletionRetryFailure: Error { let underlying: Error }
+
     func prepareDeletionRetries() throws {
+        guard Thread.isMainThread else { throw Failure.unavailable }
         let manager = MeshNetworkManager.instance
         guard let mesh = manager.meshNetwork else { throw Failure.unavailable }
         let scope = SceneScope(meshUUID: mesh.uuid.uuidString, networkID: manager.currentNetworkKey.networkId.hex)
+        let infos = try SceneInfo.loadAll(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)
+        guard !infos.contains(where: \.configurationLoadFailed) else { throw Failure.persistence }
+        let deleting = infos.filter { $0.configuration?.isDeleting == true }
+        guard !deleting.isEmpty else { return }
         try Self.validateAccess(scope)
-        for info in try SceneInfo.loadAll(meshUUID: scope.meshUUID, subnetworkId: scope.networkID) {
-            guard !info.configurationLoadFailed else { throw Failure.persistence }
-            guard let configuration = info.configuration, configuration.isDeleting else { continue }
-            if configuration.pendingOperations.isEmpty {
-                if !Self.deletionReferenceNames(number: info.sceneId).isEmpty { continue }
-                try finishDeletion(info: info, scope: scope)
-                continue
+        do {
+            for info in deleting {
+                guard let configuration = info.configuration else { continue }
+                if configuration.pendingOperations.isEmpty {
+                    if !Self.deletionReferenceNames(number: info.sceneId).isEmpty { continue }
+                    try finishDeletion(info: info, scope: scope)
+                    continue
+                }
+                if let existing = mesh.scenes.first(where: { $0.number == info.sceneId }), !existing.info.projectionPending { continue }
+                if case .projectionPending = project(info, scope: scope, deletionRetry: true) { throw Failure.persistence }
             }
-            if let existing = mesh.scenes.first(where: { $0.number == info.sceneId }), !existing.info.projectionPending { continue }
-            if case .projectionPending = project(info, scope: scope, deletionRetry: true) { throw Failure.persistence }
+        } catch {
+            throw DeletionRetryFailure(underlying: error)
         }
     }
 

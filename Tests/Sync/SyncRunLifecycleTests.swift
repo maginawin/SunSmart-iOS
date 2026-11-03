@@ -35,6 +35,8 @@ enum SyncRunLifecycleTests {
         precondition(XWHUDManager.errors.isEmpty && XWHUDManager.hides == 0, "late build must not publish HUD on another page")
         let installed = InstallationHarness()
         installed.installTaskPlan(output)
+        precondition(!installed.isPreparingTaskPlan && !installed.needsTaskPreparation,
+                     "installed plans must use row retry rather than repeat preparation")
         precondition(installed.sections.count == 1 && installed.proximityLightingTaskModels.count == 1
             && installed.starts == 1 && installed.tableView.reloads == 1, "valid result installs and starts once")
         let manual = InstallationHarness()

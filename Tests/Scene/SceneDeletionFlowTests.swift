@@ -99,6 +99,7 @@ final class SyncExecutionSession {
     }
     static func persisted(_ number: UInt16 = 1) throws -> SceneInfo? { try SceneInfo.loadAll(meshUUID: scope.meshUUID).first { $0.sceneId == number } }
     static func main() throws {
+        try syncPreparationBoundaries()
         try incrementalSceneSave()
         var (scene, a, b, x, group) = try fixture()
         // Classification is display-only: even a stale observed X is not a target.
@@ -229,6 +230,85 @@ final class SyncExecutionSession {
         try legacySecondaryAddress()
         try referencedTombstone()
         print("PASS whole deletion: A/B not X, durable offline/restart/unknown, references, residual groups, stale/failing ACK, stop gate, transaction rollback, SDK/App interrupted finalization")
+    }
+
+    static func syncPreparationBoundaries() throws {
+        SpaceData.value = SpaceData()
+        _ = try fixture()
+        let backgroundFinished = DispatchSemaphore(value: 0)
+        DispatchQueue.global().async {
+            do { try store.prepareDeletionRetries(); fatalError("background deletion preparation accepted") } catch {}
+            do { _ = try store.pendingRestoreConfirmations(); fatalError("background Restore inspection accepted") } catch {}
+            backgroundFinished.signal()
+        }
+        backgroundFinished.wait()
+        check(SceneInfo.delete(meshUUID: scope.meshUUID, networkId: scope.networkID))
+        manager.scenes = []
+        SpaceData.value.permission = .visitor
+        SpaceConfigurationSafety.recovery.authority = .readOnly
+        // No Scene work is not a Scene-specific authority failure. The generic
+        // sync entry separately enforces write access before reaching this point.
+        try store.prepareDeletionRetries()
+        var ready = false
+        SceneRestoreConfirmation.prepareIfNeeded { if case .ready = $0 { ready = true } }
+        check(ready && manager.scenes.isEmpty)
+        SpaceData.value.permission = .editor
+        SpaceConfigurationSafety.recovery.authority = .writable
+        let corrupt = SceneInfo(sceneId: 1, imageId: 0)
+        corrupt.configuration = .init(kind: .devices, name: "Ordinary")
+        try corrupt.saveConfiguration(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)
+        try SunSmartDataManager.shared.db!.run("UPDATE sceneInfos SET configuration = ?", Blob(bytes: [1, 2, 3]))
+        do { try store.prepareDeletionRetries(); fatalError("corrupt ordinary Scene accepted") }
+        catch { check(!(error is SceneConfigurationStore.DeletionRetryFailure), "bad data is not deletion failure") }
+
+        for deleting in [false, true] {
+            let (scene, node, _, _, _) = try fixture()
+            SpaceData.value.permission = .owner
+            if deleting { try store.prepareDeletion(scene: scene) }
+            else {
+                scene.info.configuration!.pendingOperations = scene.info.configuration!.deviceMembers.map {
+                    .init(identity: $0.identity, action: .write)
+                }
+                try scene.info.saveConfiguration(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)
+            }
+            let expected = try scene.info.configuration!.normalized()
+            let records = try SceneConfigurationStore.exportRecords(scope: scope, scenes: manager.scenes)
+            manager.scenes = []; Scene.diskNumbers = []
+            SpaceData.value.permission = .visitor; SpaceConfigurationSafety.recovery.authority = .readOnly
+            try SceneConfigurationStore.importRecords(records, scope: scope)
+            try store.restoreSceneProjections()
+            check(try persisted()?.configuration == expected)
+            // A successful Editor import preserves pending work; it cannot
+            // turn an earlier Visitor import into completed device execution.
+            SpaceData.value.permission = .editor; SpaceConfigurationSafety.recovery.authority = .writable
+            try SceneConfigurationStore.importRecords(records, scope: scope)
+            try store.restoreSceneProjections()
+            if deleting {
+                Scene.sdkSaveFails = true
+                do { try store.prepareDeletionRetries(); fatalError("SDK deletion projection failure ignored") }
+                catch { check(error is SceneConfigurationStore.DeletionRetryFailure) }
+                Scene.sdkSaveFails = false
+            }
+            try store.prepareDeletionRetries()
+            check(manager.scenes.first?.info.configuration == expected && (try! persisted()?.configuration) == expected)
+            check(deleting ? !node.getNodeNeedDeleteSceneDatas().isEmpty : !node.getNodeSyncSceneDatas().isEmpty)
+        }
+
+        let (_, node, _, _, _) = try fixture()
+        _ = try store.prepareRestore(oldNode: node)
+        let receipt = SpaceConfigurationSafety.recovery.sceneRestoreReceipts
+        node.fingerprint = String(repeating: "b", count: 64)
+        var cancelled = false, current = true, completed = false
+        SceneRestoreConfirmation.prepareIfNeeded { if case .cancelled = $0 { cancelled = true } }
+        SRAlertView.shown[0].invoke()
+        check(cancelled && SpaceConfigurationSafety.recovery.sceneRestoreReceipts == receipt)
+        SceneRestoreConfirmation.prepareIfNeeded(isCurrent: { current }) { _ in completed = true }
+        current = false
+        SRAlertView.shown[1].invoke()
+        check(!completed && SpaceConfigurationSafety.recovery.sceneRestoreReceipts == receipt,
+              "late Restore confirmation after STOP/leave must not migrate identity")
+        SpaceData.value = SpaceData()
+        print("PASS sync preparation: no-op, corrupt data classification, imported write/remove intent, deletion-only error, Restore cancellation and stale confirmation")
     }
     static func incrementalSceneSave() throws {
         for mode in ["confirmed", "offlineConfirmed", "pending", "missingCache", "staleCache", "added", "readded", "ackWhileEditing", "scheduleConfirmed", "schedulePending"] {

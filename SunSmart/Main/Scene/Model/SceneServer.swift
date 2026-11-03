@@ -98,7 +98,29 @@ struct SceneServer {
 /// Human review is restricted to an interrupted, explicitly prepared Restore.
 /// No receipt means ordinary provisioning can never offer identity inheritance.
 enum SceneRestoreConfirmation {
+    enum Result {
+        case ready, cancelled
+        case failed(Error)
+    }
+
     static func presentIfNeeded(nodes: [Node]? = nil, sceneNumber: SceneNumber? = nil, completion: @escaping (Bool) -> Void) {
+        prepareIfNeeded(nodes: nodes, sceneNumber: sceneNumber) { result in
+            switch result {
+            case .ready: completion(true)
+            case .cancelled: completion(false)
+            case .failed:
+                XWHUDManager.showErrorTipHUD("scene_restore_pending".localizedString)
+                completion(false)
+            }
+        }
+    }
+
+    /// The sync page owns error presentation and its preparation lifetime.
+    /// Leaving/STOP must also prevent a late alert action from migrating identity.
+    static func prepareIfNeeded(nodes: [Node]? = nil, sceneNumber: SceneNumber? = nil,
+                                isCurrent: @escaping () -> Bool = { true },
+                                completion: @escaping (Result) -> Void) {
+        guard isCurrent() else { return }
         let store = SceneConfigurationStore()
         do {
             // Both Restore and Sync re-entry must finish durable verified work
@@ -108,27 +130,28 @@ enum SceneRestoreConfirmation {
                 #if DEBUG
                 print("[SceneSync] stage=restoreReady scene=\(sceneNumber ?? 0)")
                 #endif
-                completion(true); return
+                completion(.ready); return
             }
             let message = String(format: "scene_restore_confirm_message".localizedString, candidate.node.name ?? candidate.node.primaryUnicastAddress.hex)
             SRAlertView(message: message, actions: [
                 SRAlertAction(title: "cancel".localizedString, actionHandler: { _ in
+                    guard isCurrent() else { return }
                     #if DEBUG
                     print("[SceneSync] stage=restoreCancelled scene=\(sceneNumber ?? 0)")
                     #endif
-                    completion(false)
+                    completion(.cancelled)
                 }),
                 SRAlertAction(title: "alert_item_continue".localizedString, actionHandler: { _ in
+                    guard isCurrent() else { return }
                     do {
                         guard !MeshProxyMessageCommand.shared.isBusy else { throw SceneConfigurationStore.Failure.unavailable }
                         try store.verifyRestore(receiptID: candidate.receipt.id, newNode: candidate.node, expectedIdentity: candidate.identity)
-                        presentIfNeeded(nodes: nodes, sceneNumber: sceneNumber, completion: completion)
+                        prepareIfNeeded(nodes: nodes, sceneNumber: sceneNumber, isCurrent: isCurrent, completion: completion)
                     } catch {
                         #if DEBUG
                         print("[SceneSync] stage=restoreVerificationFailed errorType=\(Swift.type(of: error)) storeFailure=\(String(describing: error as? SceneConfigurationStore.Failure))")
                         #endif
-                        XWHUDManager.showErrorTipHUD("scene_restore_pending".localizedString)
-                        completion(false)
+                        completion(.failed(error))
                     }
                 })
             ]).show()
@@ -136,8 +159,7 @@ enum SceneRestoreConfirmation {
             #if DEBUG
             print("[SceneSync] stage=restorePreparationFailed errorType=\(Swift.type(of: error)) storeFailure=\(String(describing: error as? SceneConfigurationStore.Failure))")
             #endif
-            XWHUDManager.showErrorTipHUD("scene_restore_pending".localizedString)
-            completion(false)
+            completion(.failed(error))
         }
     }
 }

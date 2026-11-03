@@ -1,6 +1,8 @@
     let executionSession: SyncExecutionSession
     var type: SyncExecutionSession.SyncType { executionSession.type }
     var hasLeftSyncPage = false
+    var isPreparingTaskPlan = true
+    var needsTaskPreparation = true
     var sections: [SyncDevicesSectionModel] {
         get { executionSession.sections }
         set { executionSession.sections = newValue }

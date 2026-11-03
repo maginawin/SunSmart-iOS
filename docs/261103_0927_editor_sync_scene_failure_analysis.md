@@ -1,6 +1,6 @@
 # Visitor 重新以 Editor 导入后，设备同步误报删除场景失败
 
-日期：2026-11-03。分支：`feat/device-scene-261028`。分析基于当前代码，结束时 HEAD 为 `f645cf33`。本轮只分析和运行临时诊断夹具，没有修改业务代码、正式测试或 SDK。
+日期：2026-11-03。分支：`feat/device-scene-261028`。初次分析时 HEAD 为 `f645cf33`；用户确认后，基于干净的 `402b29e3` 完成下述 App 修复和回归，尚未提交。前面的现象及调用链为修复前记录，当前实现与验证结果见文末。未修改 SDK。
 
 ## 结论与证据边界
 
@@ -88,7 +88,7 @@ Scene 的执行校验额外要求 `canEditing`、持久化及活动 Space 一致
 
 上述正常链路没有仅因“曾是 Visitor”就拒绝 Editor 的规则。缺少现场日志时，优先验证权限恢复/页面与存储状态不一致；同时保留 cleanup 后配置被阻断、活动 Space 获取失败、Scene 持久化异常等候选原因。当前代码已有对应 DEBUG 日志，不需要先修改服务器或固件。
 
-## 建议修复方案：待实施
+## 已确认的修复方案
 
 ### 必须解决的 App 问题
 
@@ -124,4 +124,39 @@ Scene 的执行校验额外要求 `canEditing`、持久化及活动 Space 一致
 
 人工最短验收：重放前述两账号步骤；确认 Visitor 图标可见但不可执行，正常 Editor 能进入并同步；真正未授权时显示对应提示；恢复后无需清空或重新创建空间即可重试；返回、重进和重启后待同步状态一致。
 
-本轮未构建 App、未运行真机、未调用线上服务。隔离夹具验证不代表真实分享/解绑/云端往返、UIKit 体验或设备执行已经验收。
+初次分析未构建 App、未运行真机、未调用线上服务。隔离夹具验证不代表真实分享/解绑/云端往返、UIKit 体验或设备执行已经验收。
+
+## 实施结果与验证记录
+
+### 已完成的 App 修改
+
+- 新增小范围的共享 `SpaceSyncAccess` 判断，供 Lights 底部同步按钮、点击复核及同步页执行边界使用；同时检查活动/持久化 Space、membership、密码、编辑限制和恢复状态。没有修改其他业务操作权限数组，也没有将合法 Editor 强制改为可写。
+- Scene 恢复检查返回 ready/cancelled/failed，通用同步页统一处理结果。没有未完成 Restore receipt 时直接结束该检查；取消不弹错误，失败只提示一次，后续删除准备不再覆盖原错误。保留原有 Restore 页的 Bool 回调接口。
+- Scene 删除准备仍读取并验证当前 Space 的 Scene 记录；零删除意图是正常返回，损坏数据继续阻断并提示配置异常。只有实际删除清理/投影操作的失败才包装为删除准备错误。两处准备函数保留主线程约束。
+- 同步页记录准备轮次、是否需要重新准备及异步任务。准备失败时停止加载、显示返回及 RE-SYNC；重试重做准备。计划已经安装后的普通失败行继续沿用原重试，不重新创建 Scene 操作。准备中 STOP、离页及旧确认弹窗回调不能推进新轮次或迁移设备身份。
+- 保留“先处理已确认 Restore，再清理 Space 引用”的顺序，防止旧设备身份反过来阻断自己的恢复。cleanup 返回真实错误时中止；仅因已存在待确认上传而延后清理，且权限/配置仍有效时，允许设备同步。
+- 同一页面绑定原账号、Space 与子网；单轮准备还检查 recovery generation，不能将等待期间的新导入当成旧计划继续执行。成功同步及原有 ACK、revision/generation 和 Scene 编号保留机制保持原路径。
+
+生产改动集中于 `SpaceSyncCleanupCoordinator.swift`、`DeviceLightsViewController.swift`、`SyncDevicesViewController.swift`、`SceneConfigurationStore.swift`、`SceneServer.swift`。复用已有中英文错误文案，无新资源、target 配置、依赖或 SDK API。五品牌共享这些逻辑，没有品牌条件差异，本轮使用 SunSmart 代表构建。
+
+本次回归没有证明正常重新导入链路会残留只读权限，因此未修改 `authorizeJoin`、导入或 `reconcileAuthority` 的业务规则。没有日志的原视频仍需人工重放；本次已修复可独立证实的误报、权限入口不一致和准备失败后无法重试问题。
+
+### 自动验证
+
+| 检查 | 结果与范围 |
+| --- | --- |
+| `check_sync_preparation.py` | 通过。执行生产共享权限判断、cleanup 结果处理，以及控制器准备/失败/重试/UI 状态方法；覆盖普通设备、Group、Scene、Profile、Timed 入口，单次错误、取消、准备重试、既有失败行重试、STOP/离页/切换 Space/代次变化后的迟到结果。UIKit、Mesh、持久化与网络为明确的测试边界 |
+| `check_scene_deletion_flow.py` | 通过。真实临时 SQLite 与生产 Scene store/恢复确认/命令路径；新增零任务、损坏数据错误分类、待写入/删除 Scene 的 Visitor 接收及 Editor 重导入、实际删除投影失败、取消与迟到确认、主线程约束；原删除、恢复回执、ACK 和编号回归继续通过 |
+| `check_sync_run_lifecycle.py` | 通过。生产任务安装状态、STOP、离页与等待释放 |
+| `check_sync_execution_session.py` | 通过。生产 Session/Coordinator 的命令、失败、重试、取消、回执及跨页面通道所有权 |
+| `check_scene_configuration.py --suite save` | 通过。Scene 保存、权限、投影、事务、删除回执与 coordinator 回归 |
+| `check_space_membership_lifecycle.py` | 通过。生产 membership 文件与加入/解绑/重新导入编排，增加 Visitor 导入→解绑完成→新 Editor 加入→完整导入后允许配置；HTTP、App 数据库和实际 Mesh hydration 为替身 |
+| `check_space_recovery_receipts.py` | 通过。生产权限 metadata、恢复状态文件、退役/重新激活与导入完成，增加 Visitor 旧恢复代次隔离、Editor writable 恢复；同时保留原配置/云端回执回归 |
+| SunSmart Debug / generic iOS | 2026-11-03 最终代码增量编译通过，`CODE_SIGNING_ALLOWED=NO`；未运行 App |
+| 差异检查 | `git diff --check` 通过；本地 SDK 工作树无改动 |
+
+构建使用 `SunSmartLocal.xcworkspace`，SDK realpath 为 `/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk-worktrees/one-dev`，revision 为 `dbcf6f1`，DerivedData 为 `SunSmart-feat-device-scene-261028-cli`。沙箱内 Xcode workspace 读取失败，经核对映射有效并使用构建权限后成功；未切换正式入口或修改依赖。
+
+上述 membership、recovery 和 Scene 导入分别执行生产子链路，并非真实账号/云端/完整 App 数据库的端到端测试。未执行真机安装、BLE/Mesh、线上分享与解绑验收。人工最短步骤仍为前述两账号重放：正常 Editor 点击可继续同步；权限未恢复时不可越权执行；准备失败后恢复条件再 RE-SYNC 可继续；取消或离页后旧回调不继续。
+
+后续若原问题仍出现，可优先查看 DEBUG 中的 `[SyncPreparation] stage=accessRejected code=...`、`stage=restoreFailed` 或 `stage=deletionPreparationFailed`，再沿对应失败阶段诊断；不记录密码、网络密钥或设备完整密钥。
