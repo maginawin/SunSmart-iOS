@@ -98,7 +98,7 @@ final class SiteTransferCoordinator {
                 guard let data = response["data"] as? [String: Any],
                       data["type"] as? String == "ownertrans",
                       data["token"] as? String == code,
-                      let credentials = Self.credentials(data, siteID: scope.siteID, ownerID: scope.account,
+                      let credentials = Self.credentials(data, siteID: scope.siteID,
                                                          passwordKey: "transPasswd", fallbackPassword: nil) else {
                     return .failure(.network(.unknown))
                 }
@@ -118,7 +118,8 @@ final class SiteTransferCoordinator {
         switch result {
         case .success(let response):
             guard let data = response["data"] as? [String: Any],
-                  let credentials = Self.credentials(data, siteID: scope.siteID, ownerID: scope.account,
+                  let owner = data["owner"] as? [String: Any], owner["userId"] as? String == scope.account,
+                  let credentials = Self.credentials(data, siteID: scope.siteID,
                                                      passwordKey: "passwd", fallbackPassword: password) else {
                 return .failure(.network(.unknown))
             }
@@ -128,10 +129,9 @@ final class SiteTransferCoordinator {
         }
     }
 
-    private static func credentials(_ data: [String: Any], siteID: String, ownerID: String,
+    private static func credentials(_ data: [String: Any], siteID: String,
                                     passwordKey: String, fallbackPassword: String?) -> SiteTransferCredentials? {
         guard data["siteId"] as? String == siteID,
-              let owner = data["owner"] as? [String: Any], owner["userId"] as? String == ownerID,
               let code = data["token"] as? String, !code.isEmpty,
               let password = data[passwordKey] as? String ?? fallbackPassword else { return nil }
         return .init(code: code, password: password)

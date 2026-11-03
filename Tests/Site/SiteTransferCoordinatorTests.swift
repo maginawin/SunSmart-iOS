@@ -151,8 +151,38 @@ final class SiteData {
         precondition(SiteData.writes == 0)
 
         site = fixture(); calls = []
-        coordinator = SiteTransferCoordinator { api in calls.append(api); return .success(response(code: "old", lookup: true, owner: "other")) }
-        guard case .failure(.network(.unknown)) = await coordinator.prepare(site: site) else { fatalError("Wrong owner") }
+        coordinator = SiteTransferCoordinator { api in
+            calls.append(api)
+            var payload = response(code: "old", lookup: true, owner: "other")
+            var data = payload["data"] as! [String: Any]
+            data["status"] = "C"
+            payload["data"] = data
+            return .success(payload)
+        }
+        guard case .success(let reused) = await coordinator.prepare(site: site) else { fatalError("Reuse lookup with different owner") }
+        precondition(calls == [.shareInfo(shareId: "old")] && SiteData.writes == 1)
+        precondition(reused.transferCode == "old" && reused.transferPassword == "server-password")
+        precondition(SiteData.stored?.transferPassword == "server-password")
+
+        for field in ["siteId", "token", "type", "transPasswd"] {
+            site = fixture(); calls = []
+            coordinator = SiteTransferCoordinator { api in
+                calls.append(api)
+                var payload = response(code: "old", lookup: true, owner: "other")
+                var data = payload["data"] as! [String: Any]
+                if field == "transPasswd" { data.removeValue(forKey: field) }
+                else { data[field] = "mismatched" }
+                payload["data"] = data
+                return .success(payload)
+            }
+            guard case .failure(.network(.unknown)) = await coordinator.prepare(site: site) else { fatalError("Invalid lookup \(field)") }
+            precondition(calls == [.shareInfo(shareId: "old")] && SiteData.writes == 0)
+            precondition(SiteData.stored?.transferCode == "old" && SiteData.stored?.transferPassword == "old-password")
+        }
+
+        site = fixture(code: nil); calls = []
+        coordinator = SiteTransferCoordinator { api in calls.append(api); return .success(response(owner: "other")) }
+        guard case .failure(.network(.unknown)) = await coordinator.prepare(site: site) else { fatalError("Wrong create owner") }
         precondition(calls.count == 1 && SiteData.writes == 0)
 
         site = fixture(); calls = []
