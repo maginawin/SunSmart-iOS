@@ -8,7 +8,7 @@ enum SpaceCloudNodeRemovalPolicy {
     /// Compare exported business configuration independently of server observations.
     /// Only hashes and provisioned identities are persisted.
     struct Snapshot: Codable, Equatable {
-        static let currentComparisonVersion = 4
+        static let currentComparisonVersion = 5
         let spaceID: String
         let timestamp: Int64
         let properties: String
@@ -42,10 +42,9 @@ enum SpaceCloudNodeRemovalPolicy {
             do {
                 let records = try SceneConfigurationPayload.records(payload: payload)
                 propertiesPayload["scenes"] = try SceneConfigurationPayload.metadata(records: records)
-                if var extensionData = propertiesPayload["spaceData"] as? [String: Any],
-                   let raw = extensionData["sceneConfigurations"] {
-                    extensionData["sceneConfigurations"] = try JSONSerialization.jsonObject(with: SceneConfigurationPayload.canonical(raw))
-                    propertiesPayload["spaceData"] = extensionData
+                if var extensionData = propertiesPayload["spaceData"] as? [String: Any] {
+                    extensionData["sceneConfigurations"] = try SceneConfigurationPayload.comparisonRows(extensionData["sceneConfigurations"])
+                    propertiesPayload["spaceData"] = extensionData.isEmpty ? nil : extensionData
                 }
                 if let groups = propertiesPayload["groups"] as? [[String: Any]] {
                     propertiesPayload["groups"] = try groups.map { original -> [String: Any] in
@@ -72,28 +71,37 @@ enum SpaceCloudNodeRemovalPolicy {
                 "lastEnergyReport", "lastEnergyValue", "lastRatedValue", "lastCo2Value", "lastRco2Value"]
             var value = node.filter { !observations.contains($0.key) }
             let zeroDefaults = ["ttl", "daylightCalibrationValue", "calibrationCollectRatedPower",
-                "calibrationCollectAdcDatumPower", "absoluteCctRangeMin", "absoluteCctRangeMax"]
+                "calibrationCollectAdcDatumPower", "absoluteCctRangeMin", "absoluteCctRangeMax", "calibrationRatedPower"]
             for key in zeroDefaults where SpaceConfigurationIntegrityPolicy.integer(value[key]) == 0 {
                 value.removeValue(forKey: key)
             }
-            for key in ["distributionFirmwareID", "changeControlPage"] where value[key] as? String == "" {
+            for key in ["distributionFirmwareID", "changeControlPage", "groupAddress", "enOceanMacAddress"] where value[key] as? String == "" {
                 value.removeValue(forKey: key)
             }
-            for key in ["enOceanProxySwitchKeys", "lightControlLuxTriggerConditions"] where (value[key] as? [Any])?.isEmpty == true {
+            for key in ["enOceanProxySwitchKeys", "enOceanKeyScenes", "lightControlLuxTriggerConditions", "lightControlSceneExecuteDatas"] where (value[key] as? [Any])?.isEmpty == true {
                 value.removeValue(forKey: key)
             }
-            for key in ["daylightCalibrationData", "gatewayInfo", "gatewayPreconfigured"] where (value[key] as? [String: Any])?.isEmpty == true {
+            for key in ["daylightCalibrationData", "gatewayInfo", "gatewayPreconfigured", "custProps"] where (value[key] as? [String: Any])?.isEmpty == true {
                 value.removeValue(forKey: key)
             }
             if value["pwmFrequency"] is NSNull { value.removeValue(forKey: "pwmFrequency") }
+            if value["pirEnabled"] is NSNull { value.removeValue(forKey: "pirEnabled") }
+            // Missing power-up, beacon, clock and sensor values mean unknown,
+            // not zero/false. Do not normalize those actual configuration values.
             return value
         }
 
-        func removals(in remote: Snapshot) -> [Instance]? {
+        func removalMismatch(in remote: Snapshot) -> String? {
             guard spaceID == remote.spaceID, timestamp <= remote.timestamp,
-                  comparisonVersion == Self.currentComparisonVersion, remote.comparisonVersion == Self.currentComparisonVersion,
-                  properties == remote.properties,
-                  remote.nodes.allSatisfy({ nodes[$0.key] == $0.value }) else { return nil }
+                  comparisonVersion == Self.currentComparisonVersion,
+                  remote.comparisonVersion == Self.currentComparisonVersion else { return "snapshotIdentityOrVersion" }
+            guard properties == remote.properties else { return "spacePropertiesChanged" }
+            guard remote.nodes.allSatisfy({ nodes[$0.key] == $0.value }) else { return "nodeConfigurationChanged" }
+            return SpaceCloudNodeRemovalPolicy.removed(from: identities, remote: remote.identities) == nil ? "nodeIdentityChanged" : nil
+        }
+
+        func removals(in remote: Snapshot) -> [Instance]? {
+            guard removalMismatch(in: remote) == nil else { return nil }
             return SpaceCloudNodeRemovalPolicy.removed(from: identities, remote: remote.identities)
         }
 
@@ -626,8 +634,8 @@ enum SpaceConfigurationIntegrityPolicy {
         return serializeConfiguration(result)
     }
 
-    /// Compatibility is only for establishing an upgrade baseline. Submission
-    /// receipts continue to use configurationData and require explicit fields.
+    /// Profile/Zone compatibility is only for establishing an upgrade baseline.
+    /// Ordinary receipts still require all nonempty Scene intent.
     static func upgradeConfigurationData(_ payload: [String: Any]) -> Data? {
         guard let zones = spaceZonesForUpgradeComparison(payload),
               let data = configurationData(payload),
@@ -643,10 +651,6 @@ enum SpaceConfigurationIntegrityPolicy {
             return group
         }
         configuration["triggerZones"] = zones
-        // Only upgrade baselines normalize a declared empty extension to legacy absence.
-        if (configuration["sceneConfigurations"] as? [Any])?.isEmpty == true {
-            configuration.removeValue(forKey: "sceneConfigurations")
-        }
         return serializeConfiguration(configuration)
     }
 
@@ -705,6 +709,9 @@ enum SpaceConfigurationIntegrityPolicy {
     // both new configurations and persisted baselines. Invalid values stay distinct.
     private static func serializeConfiguration(_ configuration: [String: Any]) -> Data? {
         var result = configuration
+        do {
+            result["sceneConfigurations"] = try SceneConfigurationPayload.comparisonRows(result["sceneConfigurations"])
+        } catch { return nil }
         // Old comparison receipts omitted all Scene fields. They can compare
         // directly only with a genuinely empty legacy Scene section. Nonempty
         // scenes require the exact-generation saved snapshot upgrade above.

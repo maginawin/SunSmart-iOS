@@ -181,6 +181,10 @@ final class NetworkRequest {
 }
 @main struct SpaceRecoveryReceiptTests {
     @MainActor static func main() async throws {
+        try await testSpaceSyncConflict()
+        if let raw = ProcessInfo.processInfo.environment["SUNSMART_SYNC_CONFLICT_SAMPLES"], let data = raw.data(using: .utf8) {
+            try await testSpaceSyncConflictFieldSample(JSONDecoder().decode([String].self, from: data))
+        }
         try await testNewerCloudImports()
         try await testLocalMembershipCompatibility()
         try await testSceneOrderSnapshotCompatibility()
@@ -1533,7 +1537,7 @@ extension SpaceRecoveryReceiptTests {
             if ["preferred", "acceptedPreferred"].contains(mode) { state.prefersLocalMembership = true; state.localReplacementVersion = 50 }
             if ["legacySnapshot", "missingBaseline", "superseded", "persistedSuperseded"].contains(mode) { state.removalSnapshot = nil }
             if mode == "blocked" { state.prefersLocalMembership = true; state.removalSnapshot?.comparisonVersion = nil; S.block(space, reason: "cloudConfigurationConflict") }
-            if mode == "legacySnapshot" { precondition(S.recordSnapshot(space, payload: baseline)) }
+            if ["legacySnapshot", "blocked", "legacySceneSchema"].contains(mode) { precondition(S.recordSnapshot(space, payload: baseline)) }
             if mode == "legacySceneSchema" {
                 state.removalSnapshot?.comparisonVersion = 2
                 var legacy = try JSONSerialization.jsonObject(with: state.authorizationBaseline!) as! [String: Any]

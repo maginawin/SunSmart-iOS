@@ -1630,7 +1630,7 @@ class SpaceViewController: WMPageController {
             guard let self else { return }
             DevicePermanentDeletionContext.resume(space: self.space)
             let local = await self.space.export(allowsProtectedInspection: true)
-            let needsBaselineReview = SpaceConfigurationSafety.needsOlderCloudBaselineReview(self.space)
+            let needsBaselineReview = SpaceConfigurationSafety.needsCloudSnapshotReview(self.space)
             let baselineReview: SpaceConfigurationSafety.CloudBaselineReview?
             if needsBaselineReview, let local {
                 baselineReview = await SpaceConfigurationSafety.cloudBaselineReview(self.space, local: local)

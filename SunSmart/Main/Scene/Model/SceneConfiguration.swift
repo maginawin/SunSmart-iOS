@@ -389,10 +389,17 @@ enum SceneConfigurationPayload {
     }
 
     static func canonical(_ value: Any?) throws -> Data {
+        try JSONSerialization.data(withJSONObject: comparisonRows(value) ?? [], options: .sortedKeys)
+    }
+
+    /// Missing and an explicitly empty extension both decode to no Scene intent.
+    /// Keep every nonempty record, including tombstones and pending operations.
+    static func comparisonRows(_ value: Any?) throws -> [[String: Any]]? {
         let configs = try decode(value)
-        return try JSONSerialization.data(withJSONObject: encode(records: configs.map {
+        let rows = try encode(records: configs.map {
             Record(number: $0.key, name: $0.value.name, imageId: 0, configuration: $0.value)
-        }), options: .sortedKeys)
+        })
+        return rows.isEmpty ? nil : rows
     }
 
     static func records(payload: [String: Any]) throws -> [Record] {

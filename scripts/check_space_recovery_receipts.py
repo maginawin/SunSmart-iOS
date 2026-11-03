@@ -105,6 +105,7 @@ test += '\n' + section(imports, 'final class SiteImportTrace', '\nstruct SpaceIm
 test += '\n' + read('Tests/Group/SpaceImportPreparationTests.swift')
 test += '\n' + read('Tests/Group/NewerCloudImportTests.swift')
 test += '\n' + read('Tests/Group/OlderCloudBaselineTests.swift')
+test += '\n' + read('Tests/Group/SpaceSyncConflictTests.swift')
 test += '\n' + read('Tests/Group/SpaceDefaultRecoveryReceiptTests.swift')
 test += '\n' + recovery_mesh_source(root)
 test += '\n' + scene_group_codec_source(root)
@@ -158,6 +159,13 @@ with tempfile.TemporaryDirectory(prefix='space-receipt-tests-') as temp:
         str(harness), '-o', str(binary)], check=True)
     arguments = sys.argv[1:]
     environment = os.environ.copy()
+    if "--sync-conflict-sample" in arguments:
+        index = arguments.index("--sync-conflict-sample")
+        paths = arguments[index + 1:index + 3]
+        if len(paths) != 2 or not all(Path(path).is_file() for path in paths):
+            raise SystemExit("--sync-conflict-sample requires server and inspection JSON files")
+        environment["SUNSMART_SYNC_CONFLICT_SAMPLES"] = json.dumps(paths)
+        arguments = arguments[:index] + arguments[index + 3:]
     if "--local-membership-sample" in arguments:
         index = arguments.index("--local-membership-sample")
         paths = arguments[index + 1:index + 4]

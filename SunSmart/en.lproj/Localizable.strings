@@ -2181,6 +2181,7 @@
 "configuration_baseline_devices" = "This phone: %d devices. Cloud: %d devices.";
 "configuration_baseline_local_only" = "Only on this phone: %@";
 "configuration_baseline_cloud_only" = "Only in the cloud: %@";
+"configuration_cloud_reload_review" = "Reloading from the cloud replaces this phone's complete Space configuration, including device parameters and pending changes. Devices listed only on this phone will be removed locally. A local backup is kept before importing.";
 "configuration_baseline_proxy" = "Switch proxy changes (cloud → this phone): %@";
 "configuration_use_local_confirm" = "Replace the cloud copy of this entire Space with this phone's saved data? Review the profiles, paths and trigger zones first. Other phones' changes may be replaced. Both copies will be backed up on this phone. Upgrade all editing phones before continuing.";
 

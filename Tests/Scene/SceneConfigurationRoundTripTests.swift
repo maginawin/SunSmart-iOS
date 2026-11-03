@@ -64,12 +64,13 @@ import Foundation
             withOrder[SceneDisplayOrder.payloadKey] = order
             snapshotPayload["spaceData"] = withOrder
             let orderedSnapshot = SpaceCloudNodeRemovalPolicy.Snapshot.make(snapshotPayload)!
-            precondition(orderedSnapshot.comparisonVersion == 4 && snapshot.properties == orderedSnapshot.properties)
+            precondition(orderedSnapshot.comparisonVersion == SpaceCloudNodeRemovalPolicy.Snapshot.currentComparisonVersion
+                         && snapshot.properties == orderedSnapshot.properties)
             precondition(P.configurationData(snapshotPayload) == configurationBeforeOrder,
                          "display metadata must not change device configuration or removal evidence")
         }
         var oldHash = snapshot; oldHash.comparisonVersion = 3
-        precondition(oldHash.removals(in: snapshot) == nil, "legacy full-space hash requires trusted v4 rebuild")
+        precondition(oldHash.removals(in: snapshot) == nil, "legacy full-space hash requires trusted rebuild")
         withOrder["anotherExtension"] = "must remain significant"
         snapshotPayload["spaceData"] = withOrder
         precondition(SpaceCloudNodeRemovalPolicy.Snapshot.make(snapshotPayload)!.properties != snapshot.properties,

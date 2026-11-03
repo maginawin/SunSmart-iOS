@@ -1,6 +1,6 @@
-# 空间 1 同步冲突、添加设备受限的原因与修复方案
+# 空间 1 同步冲突、添加设备受限的原因与修复记录
 
-日期：2026-11-03（UTC+08:00）。本轮仅分析、离线复现和规划，未修改业务代码。
+日期：2026-11-03（UTC+08:00）。用户已确认实施 App 修复；下文根因与历史定位记录修复前行为，末节记录实施及验证。未操作现场 App、真机或云端数据。
 
 ## 结论
 
@@ -145,10 +145,54 @@
 
 服务端联调需要核对：`spaceData.sceneConfigurations` 非空时必须完整保存并回读；节点完整删除结果与字段默认/缺失语义应稳定。现有证据仅显示本次空扩展未返回，不能据此断言服务端会丢弃非空 Scene。非空场景的真实往返必须作为发布验证，不能用放宽 App 比较掩盖服务端数据丢失。
 
-## 当前工作状态
+## 已实施修复
 
-- 分支：`feat/device-scene-261028`；分析基准 HEAD：`fa78db909112ac1f2051b79b55e0655a201abc14`。
-- 本地 SDK 映射到 `nordic-sig-mesh-sdk-worktrees/one-dev`，HEAD `dbcf6f1`。分析期间 SDK 与 Scene 删除/同步文件存在其他任务未提交修改，均未改动；本任务调查的核心比较和恢复文件无未提交差异。
-- 已完成：三份证据对照、共享 UI 权限链追踪、提交差异定位、当前生产比较函数、accepted 回读及同版本导入准备被拦截的离线复现。文档已检查空白格式及敏感值，无完整密钥记录。
-- 未执行：业务修复、完整 App 构建、设备运行、真实云端写入/回读。临时夹具的 SDK、数据库和网络均有边界替身；不能当作完整导入成功的证据。
-- 后续：确认上述方案后实施。优先补复现与同版本恢复，再修改比较逻辑及历史状态迁移，最后做对应回归和人工验收。
+- 统一 Scene codec、逻辑回执和完整删除快照的空扩展比较：合法 `[]` 与缺字段等价；非空 Scene、pending operation、tombstone 及格式错误继续严格校验。
+- 完整比较版本从 v4 升为 v5。新增的节点归一化仅包含空 `groupAddress`、`enOceanMacAddress`，空 `enOceanKeyScenes`、`lightControlSceneExecuteDatas`，空 `custProps`，`pirEnabled=null`，以及导入忽略的 `calibrationRatedPower=0`。非零校准值、有效 CTL 范围及未知/0/false 配置差异继续阻断自动覆盖。
+- 旧完整哈希必须用保存的同 Space、同版本、同节点身份快照重建，并核对网络身份及已有配置、Timed、Scheduler 证据。旧完整哈希缺少合格快照时进入审核，不降级为较弱的逻辑投影；原有无完整哈希的历史兼容路径保留。
+- 将 `cloudConfigurationConflict` 接入已有审核恢复 UI：展示本地/云端数量及独有设备，新增中英文完整云端替换提示。复核双方配置、权限、生命周期及活动上传后，保存数据库检查点和本地配置备份，再持久化用户选择并切换 generation。
+- 用户选择采用云端后，旧 submission 保留到导入完成；晚到上传回调不能确认旧版本。失败/重启通过原有 pending import 流程恢复。完成后清理旧 submission、本地优先状态及已放弃版本的删除记录，恢复共享编辑/添加权限。
+- 审核暂存使用独立的 `before-reviewed-cloud-local.json`，不会覆盖原 accepted 回执对应的 `last-complete-export.json`。后者仅在选定导入完成时更新。撤权按既有机制归档旧代证据并切换目录。
+- 诊断细分 Space 属性、节点配置、身份、无效快照和逻辑/Timed/Scheduler 冲突；DEBUG 检查导出新增比较版本、快照可用性、节点数及截短摘要，不记录完整密钥。
+
+源码范围：共享配置比较与恢复、Scene codec、Space 恢复入口和 English/简体中文文案。没有绕过 `deviceOperates` / `canEditing`，没有服务端、固件或 SDK 修改。共享品牌使用相同代码及本地化资源组，本次以 SunSmart 为代表构建。
+
+## 实施验证
+
+新增 `Tests/Group/SpaceSyncConflictTests.swift`，由已有 `check_space_recovery_receipts.py` 编译运行生产策略与恢复函数：
+
+- 空 Scene 兼容、合法空字段、非零参数/0/false/有效范围差异保护；v4 保存快照迁移及缺失、错误版本、网络身份、配置证据拒绝。
+- 7→6、accepted、相同版本、本地优先、无关 cleaned 删除记录；显式云端选择后可编辑，再新增设备并完成新一轮回读。
+- 用户取消、活动写请求、预览后本地/云端变化、撤权、状态落盘失败、完成落盘失败重试、重启、晚到回调；审核失败保留原代快照。
+
+已运行：
+
+| 检查 | 结果与边界 |
+| --- | --- |
+| Space recovery receipts | 最终代码全套通过，含本次新增恢复及旧快照迁移回归 |
+| Space membership lifecycle | 通过，使用生产成员生命周期边界 |
+| Space protection snapshot | 通过 |
+| Space sync cleanup | 通过 |
+| Scene model | 28 passed，0 failed |
+| Scene roundtrip | 通过，包括 payload、实际 App SQLite 往返和 SDK Group codec；更新了旧版本号硬编码断言 |
+| SunSmart Debug generic iOS | 最终代码构建通过（17:57，iPhoneOS 27.1 SDK） |
+| English/简体中文 strings | `plutil -lint` 通过 |
+| 差异格式 | `git diff --check` 通过 |
+
+本次新夹具模拟 Mesh/SQLite 替换和网络响应，验证的是生产恢复状态机及导入准备，不是完整 App 与现场云端/设备联调。实现期间原 `/Users/maginawin/Desktop/server data.txt` 已不在原路径，不能重放完整原始三文件样本；没有拿桌面上其他 Space 的响应替代。可选原样本运行入口已保留，但不计为通过。
+
+Scene roundtrip 首次 SQLite 编译受到沙盒默认 Clang 缓存目录限制，指定现有可写 ModuleCache 后通过；未清理共享缓存或修改依赖。构建使用 `SunSmartLocal.xcworkspace`、SunSmart、Debug、iphoneos、generic/platform=iOS、`CODE_SIGNING_ALLOWED=NO`。
+
+## 最短人工验收
+
+1. 用本分支构建进入“空间 1”，点击同步失败提示，选择“重新加载云端数据”。核对预览为本地 7 / 云端 6，独有设备包含 L1（49C9），并阅读完整云端配置替换提示。
+2. 导入完成后确认剩余 6 个节点，L1 不出现，同步提示消失，各设备类别的添加入口恢复。检查 L5 色温范围、其他节点功率/传感参数等云端与本地曾有差异的配置；本修复不会擅自把它们判为等价。
+3. 退出重进并再次同步；新增一个测试设备，完成上传回读后重进。确认新设备保留、L1 不复活、同步状态持续正常。
+4. 对含非空 Device Scene 的 Space 做真实云端往返，确认 Scene 成员、参数与待执行任务不丢失。此项是服务端契约验收，App 离线测试不能代替。
+
+## 工作树与交接
+
+- 分支 `feat/device-scene-261028`；分析基准 `fa78db909112ac1f2051b79b55e0655a201abc14`，实施基准 `f63d8dff4353cae66b31777ca96c06f9ed3a6f11`。实施开始时 App 工作树干净；变更尚未提交。
+- 本地 SDK 映射为 `nordic-sig-mesh-sdk-worktrees/one-dev`，HEAD `dbcf6f1`。其中 MeshProxyMessageCommand、SchedulerActionStatus 及 Scheduler readback 测试/脚本的其他任务修改均保留，本次未写 SDK。
+- 实施期间出现的 `docs/261103_1753_enter_space_debug_performance_analysis.md` 属于其他任务，未修改。
+- 尚未运行真机交互、真实云端写入/回读及现场恢复；需按上述步骤人工验收。没有提交、推送、部署或修改外部运行配置。
