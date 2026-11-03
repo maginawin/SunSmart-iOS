@@ -42,7 +42,81 @@ import Foundation
         scene.info.configuration = persisted.first { $0.sceneId == scene.number }!.configuration
     }
 
+    // Simulate independent device responses, not just ACK flags or pre-existing cache.
+    static func completeRead(_ read: SceneDeletionTask, node: Node) -> Bool {
+        let deviceEntries = node.allSchedulerModelEntrys
+        let registers = read.messageHandles
+        for handle in registers {
+            let mask = (deviceEntries[handle.model] ?? [:]).keys.reduce(UInt16(0)) { $0 | (UInt16(1) << $1) }
+            read.receive(handle: handle, status: SchedulerStatus(schedules: mask))
+        }
+        guard read.apply(results: registers, expected: registers) else { return false }
+        let details = read.followUpMessageHandles
+        guard !details.isEmpty else { return true }
+        for handle in details {
+            let index = (handle.message as! SchedulerActionGet).index
+            read.receive(handle: handle, status: SchedulerActionStatus(index: index,
+                entry: deviceEntries[handle.model]?[Int(index)] ?? .init()))
+        }
+        return read.apply(results: details, expected: details)
+    }
+
+    static func selectiveSchedulerReadBoundaries() throws {
+        for mode in ["one", "empty", "missingBitmap", "missingDetail", "wrongIndex", "becameEmpty", "stopDetails", "lateBitmap", "staleDetail"] {
+            let (scene, node, _) = fixture()
+            let reference = SceneReferenceRemoval(kind: .scheduler, identity: node.timedSchedulerIdentity, address: 1, name: "Read", slots: [0])
+            try markDeleting(scene, references: .init(pending: [reference]))
+            let old: [Int: SchedulerRegistryEntry] = [7: .init(action: .sceneRecall, sceneNumber: 9)]
+            node.schedulerActions = old
+            node.schedulerSetupModels.forEach { node.allSchedulerModelEntrys[$0] = old }
+            let read = SceneDeletionTask(scene: scene, reference: reference, node: node, phase: .read)
+            let registers = read.messageHandles
+            check(registers.count == 2 && registers.allSatisfy { $0.message is SchedulerGet }, "two Models start with two bitmap reads")
+            read.receive(handle: registers[0], status: SchedulerStatus(schedules: mode == "empty" ? 0 : 1))
+            if mode != "missingBitmap" { read.receive(handle: registers[1], status: SchedulerStatus(schedules: 0)) }
+            let accepted = read.apply(results: registers, expected: registers)
+            if mode == "missingBitmap" {
+                check(!accepted && node.observedTimedSlots == nil && pending(scene) == [reference], "ACK flags cannot replace a missing bitmap")
+                continue
+            }
+            check(accepted && pending(scene) == [reference], "bitmap phase never consumes deletion dependency")
+            let details = read.followUpMessageHandles
+            if mode == "empty" {
+                check(details.isEmpty && node.observedTimedSlots == [] && node.schedulerActions.isEmpty, "zero bitmaps authoritatively clear stale caches without detail reads")
+            } else {
+                check(details.count == 1 && details[0].model === node.schedulerSetupModels[0]
+                    && (details[0].message as? SchedulerActionGet)?.index == 0, "only occupied slot on its owning Element is queried")
+                if mode == "stopDetails" {
+                    read.invalidateIncompleteSchedulerRead()
+                    read.receive(handle: details[0], status: SchedulerActionStatus(index: 0, entry: .init(action: .sceneRecall, sceneNumber: 1)))
+                    check(!read.apply(results: details, expected: details) && node.observedTimedSlots == nil && node.schedulerActions == old, "STOP rejects late detail and retains unknown capacity")
+                    read.resetForRetry()
+                    check(read.messageHandles.count == 2 && read.messageHandles.allSatisfy { $0.message is SchedulerGet }, "retry starts with fresh occupancy")
+                    continue
+                }
+                if mode == "lateBitmap" { read.receive(handle: registers[0], status: SchedulerStatus(schedules: 0)) }
+                if mode == "staleDetail" { scene.info.configuration?.revision = UUID() }
+                if mode != "missingDetail" {
+                    read.receive(handle: details[0], status: SchedulerActionStatus(index: mode == "wrongIndex" ? 1 : 0,
+                        entry: mode == "becameEmpty" ? .init() : .init(action: .sceneRecall, sceneNumber: 1)))
+                }
+                let complete = read.apply(results: details, expected: details)
+                if ["missingDetail", "wrongIndex", "staleDetail"].contains(mode) {
+                    check(!complete && node.observedTimedSlots == nil && node.schedulerActions == old, "incomplete or stale detail cannot establish a trusted cache")
+                    continue
+                }
+                check(complete && read.followUpMessageHandles.isEmpty, "valid details finish the same read task")
+            }
+            let apply = SceneDeletionTask(scene: scene, reference: reference, node: node, phase: .apply)
+            let writes = apply.messageHandles
+            let expectedWrites = ["empty", "becameEmpty"].contains(mode) ? 0 : 1
+            check(writes.count == expectedWrites && apply.apply(results: writes, expected: writes), "cleanup writes only observed matching entry")
+            if mode == "one" { check(registers.count + details.count + writes.count + 2 == 6, "single occupied slot requires six commands including two Scene Deletes") }
+        }
+    }
+
     static func main() throws {
+        try selectiveSchedulerReadBoundaries()
         try preparationIsAtomicAndSelective()
         try productionFingerprintSurvivesNormalizedCascade()
         try productionFingerprintReadFailureInvalidatesCache()
@@ -113,7 +187,7 @@ import Foundation
             if reference.kind == .scheduler {
                 let read = SceneDeletionTask(scene: scene, reference: reference, node: node, phase: .read)
                 let handles = read.messageHandles
-                check(handles.count == 32 && read.apply(results: handles, expected: handles),
+                check(handles.count == 2 && completeRead(read, node: node),
                       "canonical persisted identity accepts full Scheduler read receipts")
             }
             let task = SceneDeletionTask(scene: scene, reference: reference, node: node, phase: .apply)
@@ -141,7 +215,7 @@ import Foundation
             node.allSchedulerModelEntrys = [:]; node.schedulerActions = originalActions
             let read = SceneDeletionTask(scene: scene, reference: persisted, node: node, phase: .read)
             let handles = read.messageHandles
-            check(handles.count == 32, "normalized identity starts authoritative Scheduler read before \(termination)")
+            check(handles.count == 2, "normalized identity starts authoritative Scheduler read before \(termination)")
             node.schedulerSetupModels.forEach { node.allSchedulerModelEntrys[$0] = [:] }
             node.schedulerActions = [:]; node.savePropertys()
             switch termination {
@@ -331,9 +405,9 @@ import Foundation
         let reference = SceneReferenceRemoval(kind: .scheduler, identity: node.timedSchedulerIdentity, address: 1, name: "Read")
         try markDeleting(scene, references: .init(pending: [reference]))
         let read = SceneDeletionTask(scene: scene, reference: reference, node: node, phase: .read)
-        let handles = read.messageHandles
+        _ = read.messageHandles
         node.allSchedulerModelEntrys[node.schedulerSetupModels[0]] = [0: .init(action: .sceneRecall, sceneNumber: 9)]
-        check(read.apply(results: handles, expected: handles), "full read accepts complete observation")
+        check(completeRead(read, node: node), "full read accepts complete observation")
         read.invalidateIncompleteSchedulerRead(); read.resetForRetry()
         check(node.observedTimedSlots == [0], "stop or reset after completed read preserves trusted cache")
         let plan = try TimedSchedulerSlotPolicy.plan(identity: node.timedSchedulerIdentity!,
@@ -402,8 +476,8 @@ import Foundation
         try markDeleting(scene, references: .init(scheduleIDs: [10], pending: [reference]))
         let read = SceneDeletionTask(scene: scene, reference: reference, node: lamp, phase: .read)
         let reads = read.messageHandles
-        check(reads.count == 32 && reads.allSatisfy { $0.message is SchedulerActionGet }, "read every slot on all scheduler models")
-        check(read.apply(results: reads, expected: reads) && pending(scene).count == 1, "read does not settle cleanup receipt")
+        check(reads.count == 2 && reads.allSatisfy { $0.message is SchedulerGet }, "read occupancy on all scheduler models")
+        check(completeRead(read, node: lamp) && pending(scene).count == 1, "read does not settle cleanup receipt")
         let task = SceneDeletionTask(scene: scene, reference: reference, node: lamp, phase: .apply)
         let writes = task.messageHandles
         check(writes.count == 4, "clear matching entries plus captured deleting slots only")
@@ -518,10 +592,10 @@ import Foundation
         check(!read.apply(results: originalReads, expected: originalReads), "failed scheduler read retains dependency")
         read.resetForRetry()
         let retryReads = read.messageHandles
-        check(retryReads.count == 32 && zip(originalReads, retryReads).allSatisfy { $0 !== $1 },
+        check(retryReads.count == 2 && zip(originalReads, retryReads).allSatisfy { $0 !== $1 },
               "retry regenerates all scheduler reads instead of reusing failed handle state")
         node.schedulerSetupModels.forEach { node.allSchedulerModelEntrys[$0] = [:] }
-        check(read.apply(results: retryReads, expected: retryReads) && pending(scene) == [reference],
+        check(completeRead(read, node: node) && pending(scene) == [reference],
               "successful repeated read still waits for cleanup phase")
         let apply = SceneDeletionTask(scene: scene, reference: reference, node: node, phase: .apply)
         node.allSchedulerModelEntrys[node.schedulerSetupModels[0]] = nil
@@ -698,7 +772,7 @@ import Foundation
               "registered residual outside members retains Scheduler dependency even with unknown cache")
         try markDeleting(scene, references: preparation.references)
         let task = SceneDeletionTask(scene: scene, reference: reference!, node: node, phase: .read)
-        check(task.messageHandles.count == 32, "residual device reads every slot before physical Scene removal")
+        check(task.messageHandles.count == 2, "residual device reads every slot before physical Scene removal")
     }
 
     static func kineticWithoutGroupPreservesUnknownCleanup() throws {

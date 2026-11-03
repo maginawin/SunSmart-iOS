@@ -363,6 +363,10 @@ final class SyncExecutionSession {
             #if DEBUG
             traceSceneSync("batchResult", detail: "returned=\(resultMessageHandles.count) acknowledged=\(resultMessageHandles.filter { $0.isSuccessful }.count) applied=\(successful)")
             #endif
+            if successful, let task = sceneDeletionTask(for: model), !task.followUpMessageHandles.isEmpty {
+                send(model, handles: task.followUpMessageHandles, identifier: identifier, attempt: attempt)
+                return
+            }
             let retry = emergencyFireDeleteCleanupRetryPolicy(for: model)
             let maxAttempts = retry?.maxAttempts ?? 1
             let shouldRetry = !successful && attempt < maxAttempts && retry != nil

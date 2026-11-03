@@ -333,6 +333,11 @@ final class SceneDeletionTask {
     private var appliedPower: PJEightKeySwitchData?
     private var plannedHandles: [MeshMessageHandle] = []
     private var schedulerActionsBeforeRead: [Int: SchedulerRegistryEntry]?
+    private var schedulerBitmaps: [Model: UInt16] = [:]
+    private var schedulerEntries: [Model: [Int: SchedulerRegistryEntry]] = [:]
+    private var receivedSchedulerHandles = Set<ObjectIdentifier>()
+    private var readingSchedulerDetails = false
+    private(set) var followUpMessageHandles: [MeshMessageHandle] = []
     private(set) var allowsEmpty = false
 
     init(scene: Scene, reference: SceneReferenceRemoval, node: Node, phase: Phase) {
@@ -346,6 +351,8 @@ final class SceneDeletionTask {
         invalidateIncompleteSchedulerRead()
         prepared = false; snapshot = nil
         plannedHandles = []; appliedPower = nil; allowsEmpty = false
+        schedulerBitmaps = [:]; schedulerEntries = [:]; receivedSchedulerHandles = []
+        readingSchedulerDetails = false; followUpMessageHandles = []
     }
 
     /// The SDK writes each reply immediately. A partial read is not a known register.
@@ -353,6 +360,7 @@ final class SceneDeletionTask {
     func invalidateIncompleteSchedulerRead() {
         guard let actions = schedulerActionsBeforeRead else { return }
         schedulerActionsBeforeRead = nil
+        followUpMessageHandles = []
         guard node.sceneConfigurationIdentity == reference.identity else { return }
         var entries = node.allSchedulerModelEntrys
         node.schedulerSetupModels.forEach { entries.removeValue(forKey: $0) }
@@ -447,10 +455,10 @@ final class SceneDeletionTask {
         case .scheduler:
             guard !node.schedulerSetupModels.isEmpty else { throw SceneDeletionCascade.Failure.invalidTargets }
             if phase == .read {
-                // Read every slot on each Model; unknown state must not be treated as an empty register.
+                // First discover occupied slots on every Model; details stay in this same serial task.
                 schedulerActionsBeforeRead = node.schedulerActions
-                return node.schedulerSetupModels.flatMap { model in
-                    (0..<16).map { MeshMessageHandle(message: SchedulerActionGet(index: UInt8($0)), model: model) }
+                return node.schedulerSetupModels.map { model in
+                    MeshMessageHandle(message: SchedulerGet(), model: model)
                 }
             }
             let schedules = Schedule.load(meshUUID: scope.meshUUID, meshNetworkId: scope.networkID)
@@ -529,6 +537,59 @@ final class SceneDeletionTask {
         }
     }
 
+    func receive(handle: MeshMessageHandle, status: StaticMeshMessage) {
+        guard reference.kind == .scheduler, phase == .read, isCurrent,
+              schedulerActionsBeforeRead != nil,
+              plannedHandles.contains(where: { $0 === handle }),
+              let model = node.schedulerSetupModels.first(where: { $0 === handle.model }) else { return }
+        if !readingSchedulerDetails, handle.message is SchedulerGet, let response = status as? SchedulerStatus {
+            schedulerBitmaps[model] = response.schedules
+            schedulerEntries[model] = [:]
+        } else if readingSchedulerDetails, let request = handle.message as? SchedulerActionGet,
+                  let response = status as? SchedulerActionStatus, response.index == request.index {
+            // A slot may become empty between bitmap and detail reads.
+            if response.entry.isValid { schedulerEntries[model, default: [:]][Int(response.index)] = response.entry }
+            else { schedulerEntries[model]?.removeValue(forKey: Int(response.index)) }
+        } else { return }
+        receivedSchedulerHandles.insert(ObjectIdentifier(handle))
+    }
+
+    private func applySchedulerRead(expected: [MeshMessageHandle]) -> Bool {
+        guard schedulerActionsBeforeRead != nil,
+              expected.count == plannedHandles.count,
+              zip(expected, plannedHandles).allSatisfy({ $0 === $1 }),
+              expected.allSatisfy({ receivedSchedulerHandles.contains(ObjectIdentifier($0)) }),
+              node.schedulerSetupModels.allSatisfy({ schedulerBitmaps[$0] != nil }) else {
+            invalidateIncompleteSchedulerRead()
+            return false
+        }
+        followUpMessageHandles = []
+        if !readingSchedulerDetails {
+            readingSchedulerDetails = true
+            let details = node.schedulerSetupModels.flatMap { model in
+                (0..<16).compactMap { index -> MeshMessageHandle? in
+                    guard schedulerBitmaps[model]! & (UInt16(1) << index) != 0 else { return nil }
+                    return MeshMessageHandle(message: SchedulerActionGet(index: UInt8(index)), model: model)
+                }
+            }
+            if !details.isEmpty {
+                plannedHandles = details
+                receivedSchedulerHandles = []
+                followUpMessageHandles = details
+                return true
+            }
+        }
+        // Publish only this complete read, including authoritative empty Models.
+        var entries = node.allSchedulerModelEntrys
+        node.schedulerSetupModels.forEach { entries[$0] = schedulerEntries[$0] ?? [:] }
+        node.allSchedulerModelEntrys = entries
+        node.rebuildSchedulerActions()
+        node.savePropertys()
+        node.clearSyncStateCache()
+        schedulerActionsBeforeRead = nil
+        return true
+    }
+
     func apply(results: [MeshMessageHandle], expected: [MeshMessageHandle]) -> Bool {
         guard isCurrent, results.count == expected.count, results.allSatisfy(\.isSuccessful),
               !expected.isEmpty || allowsEmpty else {
@@ -536,8 +597,7 @@ final class SceneDeletionTask {
             return false
         }
         if phase == .read {
-            schedulerActionsBeforeRead = nil
-            return true
+            return applySchedulerRead(expected: expected)
         }
         for handle in results { _ = node.applyMessageHandle(handle, isSuccess: true) }
         let previous = scene.info.configuration

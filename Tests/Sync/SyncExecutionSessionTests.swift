@@ -80,6 +80,7 @@ enum SyncExecutionSessionTests {
 
     static func main() {
         DeviceOperationType.allowsMessageFactory = true
+        sceneReadFollowUpBatches()
         sceneCleanupTaskResultBoundaries()
         sceneCleanupActivationIsolation()
         sceneCleanupActivationCancellation()
@@ -199,6 +200,37 @@ enum SyncExecutionSessionTests {
             }
         }
         print("PASS Scene subset retry: visible blocked Group, group/step/task retry, external read/apply ordering and unrelated isolation")
+    }
+
+    static func sceneReadFollowUpBatches() {
+        for mode in ["success", "detailFailure", "stop", "invalidated"] {
+            let h = Harness(), read = SceneDeletionTask()
+            read.nextReadHandles = [MeshMessageHandle()]
+            let (session, _, task, _) = h.make(.sceneReferenceCleanup(read))
+            session.start(); h.flush()
+            h.sends[0].success?(h.sends[0].handles[0], 1)
+            precondition(read.receivedReadbacks == 1, "production acknowledgement forwards typed readbacks to cleanup")
+            h.finish(0); h.flush()
+            precondition(h.sends.count == 2 && task.state == .inSettings && read.applyCalls == 1,
+                         "bitmap success starts details without completing the task")
+            h.finish(0); h.flush()
+            precondition(h.sends.count == 2 && read.applyCalls == 1, "duplicate bitmap completion cannot restart details")
+            if mode == "stop" {
+                session.stop(); h.flush(); h.stopFinished?(); h.flush()
+                h.finish(1); h.flush()
+                precondition(read.applyCalls == 1 && read.readInvalidations > 0, "STOP drains and invalidates incomplete details")
+            } else if mode == "invalidated" {
+                read.isCurrent = false
+                h.finish(1); h.flush(); h.stopFinished?(); h.flush()
+                precondition(read.applyCalls == 1 && read.readInvalidations > 0, "changed configuration rejects detail completion")
+            } else {
+                h.finish(1, success: mode == "success"); h.flush()
+                precondition(read.applyCalls == 2 && task.state == (mode == "success" ? .successful : .failed),
+                             "only final detail batch resolves task state")
+            }
+            session.close(); h.flush(); h.stopFinished?(); h.flush()
+        }
+        print("PASS Scene bitmap/detail batches: typed receipts, final completion, failure, STOP, duplicate and stale callbacks")
     }
 
     static func sceneCleanupTaskResultBoundaries() {

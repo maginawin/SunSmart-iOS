@@ -1,6 +1,6 @@
 # Scene 删除引用限制与重复提示分析
 
-日期：2026-11-03。分析基线：`feat/device-scene-261028`，HEAD `b1bab004`；开始分析时工作树无未提交修改。第 1～4 节保留当时分析快照；用户已于本日批准按第 5 节方案实施，第 6 节记录首轮实现与验证；第 7 节记录随后真机失败日志的根因分析，第 8 节记录本轮修复与验证。
+日期：2026-11-03。分析基线：`feat/device-scene-261028`，HEAD `b1bab004`；开始分析时工作树无未提交修改。第 1～4 节保留当时分析快照；用户已于本日批准按第 5 节方案实施，第 6 节记录首轮实现与验证；第 7～8 节记录随后真机失败的身份匹配修复；第 9～10 节记录删除耗时分析及已批准的命令精简、SDK 短响应修复。
 
 ## 结论
 
@@ -294,3 +294,122 @@
 3. 同步中断后退出重进，确认继续待删除任务；所有确认完成前不能复用原编号。若仍失败，保留新增 SceneSync 原因及任务阶段日志定位。
 
 真实设备命令效果、页面体验及实际云端往返仍待人工验收，不由本轮编译和隔离回归替代。
+
+## 9. 单设备关联 Timed 的删除耗时与命令精简分析（2026-11-03）
+
+分析输入：`/Users/maginawin/Desktop/remove scnee in timed.txt`。本节只分析并规划，没有修改 App/SDK 代码、运行构建或操作设备。当前 App HEAD 为 `fa78db90`；分析开始时看到的上一轮暂存修改已包含在该提交中，本轮未执行提交。`SunSmartLocal.xcworkspace` 的 SDK 实际映射为 `nordic-sig-mesh-sdk-worktrees/one-dev`，HEAD `dbcf6f1`，SDK 工作树干净。
+
+### 9.1 结论与精确统计
+
+**Scene 31 本次删除共提交 35 条业务命令，加上 5 次重发，日志记录了 40 次 Access/Network 发送。主要额外开销是对两个 Scheduler Element 的全部 16 个槽逐个读取；建议改为占用位图查询后按需读取。按本次返回状态，正常无重发时预计为 6 条命令，比 35 条减少 29 条，约 83%。**
+
+统计分别使用 `send message:`、`Sending Access PDU`、`Resending Access PDU` 与 `Sending Network PDU` 交叉核对；同一命令的不同协议层日志不重复计数。40 次是此日志可见的 App/SDK 发送，不是包含设备回复、Mesh Relay 或无线底层重传的完整空口抓包统计。
+
+| 执行顺序 | 目的地址 | 命令及参数 | 初次发送 | 重发 |
+| --- | --- | --- | ---: | ---: |
+| 1 | `0x000E`（十进制 14） | `SchedulerActionGet(index: 0...15)`，opcode `0x8248` | 16 | 4 |
+| 2 | `0x0010`（十进制 16） | `SchedulerActionGet(index: 0...15)`，opcode `0x8248` | 16 | 1 |
+| 3 | `0x000E` | `SchedulerActionSet(index: 0, action: noAction, sceneNumber: 0)`，opcode `0x60` | 1 | 0 |
+| 4 | `0x000E` | `SceneDelete(scene: 31)`，opcode `0x829E` | 1 | 0 |
+| 5 | `0x0010` | `SceneDelete(scene: 31)`，opcode `0x829E` | 1 | 0 |
+| 合计 | | | **35** | **5** |
+
+- 重发分别为 `0x000E` 的 index 1、5、11、13，以及 `0x0010` 的 index 8；不是又执行了一遍删除业务。
+- 三批发送数依次为 `32 → 1 → 2`，对应读取、清理定时、删除场景；三批均有成功回执，末尾为 `finished state=syncSuccess failedModels=0`。
+- 32 次读取中，仅 `0x000E / index 0` 返回完整有效条目，执行 `sceneRecall(31)`；其余 31 次返回仅含 index 的短状态。
+- 两条 Scene Delete 均返回 Success。`0x000E` 返回空 Scene Register；`0x0010` 保留 `FF00/FF01/FF02`，不含 31。该日志支持本次命令完成，不证明之后定时触发、编号复用或云端往返均已验收。
+- `install devices=2` 是计划中的两行任务：引用清理行和 Scene 删除行，二者 `address=14`；不能解释为两个物理设备。发送到 14 和 16 的操作分别落在该节点的两个 Element。
+
+### 9.2 为什么一个设备仍然慢
+
+[SceneDeletionCascade](../SunSmart/Main/Scene/Model/SceneDeletionCascade.swift) 的 `.read` 阶段固定遍历 `node.schedulerSetupModels × (0..<16)`。虽然准备删除时已保存关联 Timed 的 `reference.slots`，当前读取阶段没有利用槽位或设备占用信息缩小范围；已知缓存为空也仍会执行全槽读取。相关测试还明确要求双 Model 生成 32 条 Action Get，因此这是既有策略，不是本次任务意外重复。
+
+这项保守策略用于发现旧场景残留：Scene 当前/历史成员、成员之外的已知残留节点，以及关联 Timed 的绑定都可能包含需要清理的 Scheduler。只按当前 Timed 的 index 盲清一个槽，会遗漏业务记录已经改变或丢失的旧 Recall，因此应优化查询方式，保留必要的目标覆盖。
+
+SDK 的 `MeshProxyMessageCommand` 在收到匹配回包后才推进下一条，失败时还需等待超时；本次 32 次往返占 35 条初始命令的约 91%。日志没有逐条时间戳，不能计算删除总耗时或把 5 次重发准确换算成秒。导出计时约为毫秒级，现有证据不足以认定云请求是本次主要瓶颈。
+
+两个 Scene Delete 地址不同，属于当前整场景删除对所有 Scene Setup Server Element 的覆盖，不是同地址重复。单凭删除后的 Register 不能证明 `0x0010` 在删除前一定不含 31。首轮保留这两条；额外查询 Register 再省一次 Delete 通常不减少往返。
+
+### 9.3 推荐命令流程：本例预计 6 条
+
+Bluetooth Mesh Model 规范 §5.2.3.2 / §5.3.5.2.2 规定，Scheduler Status 的位图表示哪些槽存在定义；§5.3.5.2.4 允许未定义槽的 Action Status 省略条目，仅返回补齐的 index。依据：[Bluetooth SIG Mesh Model 1.1](https://www.bluetooth.com/wp-content/uploads/Files/Specification/HTML/MMDL_v1.1/out/en/index-en.html)。
+
+1. 对本次清理节点中每个包含 Scheduler Setup Server（`0x1207`）的 Element，向其单播地址发送 `SchedulerGet`（`0x8249`），接收 `SchedulerStatus`（`0x824A`）。本例两条，目标 `0x000E`、`0x0010`。
+2. 仅对各 Element 回包位图中为 1 的槽，向同一 Element 发送 `SchedulerActionGet(index)`。若位图均为 0，跳过本节。本例预计只有 `0x000E / index 0`，一条。
+3. 所有位图及所列条目读取成功后，复用现有所有权判断：清理被删 Scene 或捕获的待删槽；若槽已归属其他有效 Timed，恢复当前 owner 应有配置，保留该 Timed。所有写操作继续使用带 ACK 的 `SchedulerActionSet`。本例一条，把 `0x000E / index 0` 设为 `noAction`。
+4. 引用清理回执完成后，对所有应清理的 Scene Setup Server Element 发送带 ACK 的 `SceneDelete(31)`。本例两条。
+5. 所有依赖及 Scene 删除成功后，再完成本地 Timed/Scene 清理与编号释放，沿用现有持久化和同步流程。
+
+本例合计 `2 + 1 + 1 + 2 = 6`。这是基于现有 Action Status 推导的目标值；原日志没有 Scheduler Get，仍需现场确认该设备两个 Element 的位图分别正确返回 `0x0001`、`0x0000`。实际存在更多定时时，需要读取所有占用槽来确认是否残留被删编号，数量按实际占用增加；两个 Model 全满时，查询为 34 条，位图策略主要改善稀疏配置。
+
+### 9.4 复用方式与关联影响
+
+SDK 的 `MeshScheduleServer.getSchedule(index: nil)` 已实现“每 Model 读位图 → 为该 Model 追加占用槽详情”的机制，`ScheduleServer` 和 `SpaceSchedulerReadCoordinator` 已使用它。Scene 删除目前另走固定全槽任务，没有复用这个策略。
+
+建议最小 App 改动是在既有 `SceneDeletionTask` 和 `SyncExecutionSession` 内拆分“位图 → 详情 → 清理”依赖阶段，通过现有成功回调收集本轮各 Element 的位图与条目；继续走同一串行发送通道。不要从已在运行的 Scene batch 直接启动另一个顶层 `MeshAPI.getSchedule` 调用：它也操作共享队列和 batch 回调，需要保留本轮任务归属、完成条件及 STOP 语义。
+
+需要同时满足：
+
+- 只有位图及位图要求的详情全部成功，才能建立完整、可信的本轮 Model 快照。不能仅凭 `allSchedulerModelEntrys[model] != nil` 判断完成；SDK 收到部分状态时就可能创建这个字典。
+- 位图为 0 是合法空配置，应允许零条详情读取并继续；位图缺失、解析失败或任一详情读取失败仍保留 pending，阻止最终 Scene 删除。
+- 取消、断连、重试及迟到回包不能把部分读取变成完整缓存；重新读取时清除本轮旧位图，保留既有身份、revision、所有权检查。写失败后的重试仍从新读取开始。
+- 默认不复用跨会话旧缓存免读。重新进入或重启后沿用现有待删除意图重新查询，无需为本次性能优化改变存储 schema；不新增固件/服务器接口。
+- 修改共享任务后，Scene 详情/列表、无界面删除入口、设备/Group 同步及恢复重试都受益。同步选择重试与依赖传播必须覆盖新增读取阶段，开关/EFC 清理语义保持现状。
+
+不建议本轮仅按已知 index 直接发送“一条禁用 + 两条删除”：其命令虽少，但缺少未知残留和当前 owner 的确认。先完成 6 条方案即可去掉本次绝大多数额外往返，后续确有更高性能需求再设计可信缓存免读条件。
+
+### 9.5 关联缺陷：空槽响应解析与 continuation
+
+日志中有 **31 条 `UnknownMessage(opCode: 0x00005F, parameters: 单字节 index)`，以及 31 次 `SWIFT TASK CONTINUATION MISUSE`**。这些短响应符合上述未定义槽协议；本地 SDK 的 `SchedulerActionStatus.init(parameters:)` 只接受 10 字节，因而不能解析该合法空槽状态。
+
+代码还解释了“上层继续成功、下层却告警”的可能路径：`MeshMessageHandle.matchesResponse` 对 Scheduler 当前只比较 opcode/来源等通用条件，因此 UnknownMessage 仍能让 batch 记为成功并推进；`NetworkManager.notifyAbout` 的单次请求回调只接收类型化 `MeshResponse`，短响应未走该分支，后续同地址请求可能覆盖尚未恢复的 continuation。这与日志告警时机和数量吻合，但没有另做异步竞态复现，不能将全部耗时归因于该路径。
+
+这是需单独跟踪的 SDK 兼容缺陷；位图读取会避开稳定空槽的 31 次请求，但不能宣称已修复 SDK。若本轮后续授权包含 SDK 关联修复，应覆盖短/完整状态解析、空槽缓存清除、index 与 Element 的精确匹配，以及正常/取消/迟到回包只完成一次。SDK 有改动时需记录 revision 和正式依赖发布待办。App 的命令精简可独立实施。
+
+### 9.6 验证边界
+
+本轮已核对日志计数、实际 App/SDK 调用链及权威协议；没有运行修改后的自动化或真机测试，因为尚未实施。
+
+后续必要验证：
+
+- 用两个 Scheduler Model、一个有效槽的行为夹具验证完整序列确为 6 条；双空位图允许继续；多占用槽、成员外残留及其他 Timed owner 配置保留。
+- 验证位图失败、详情失败、写失败、STOP、迟到回复、同地址换身份、只选 Group 重试、退出重进与持久化失败时，均不提前释放删除依赖或 Scene 编号。
+- 使用既有 Scene cascade / deletion flow、Sync execution / task builder 及 Timed slot 回归，新增断言针对实际回包驱动的命令序列；不再把固定 32 条读取视为正确性要求。生产代码完成后按项目规则构建 SunSmart Debug generic iOS 一次。
+- 人工在相同设备、相同关联 Timed、相同连接条件下前后对比：记录开始/结束时间、初始命令数和重发数，确认两个位图正确、删除完成、其他定时保留。性能验收以实际耗时为准，命令数减少 83% 不等于耗时一定减少 83%。
+
+## 10. 命令精简与空槽短响应修复结果（2026-11-03）
+
+用户已批准按第 9 节推荐流程优化和修复。本轮基于 App `fa78db90`、本地 SDK `one-dev / dbcf6f1`，修改均未提交；正式工程的远端依赖声明未改变，无固件、服务器或配置部署变更。
+
+### 最终行为
+
+- Scene Scheduler 清理改为每 Element 一条 `SchedulerGet`，只对位图中占用的槽读取详情。仍使用原来的“读取 → 清理”两个任务步骤；读取步骤在同一 Session 内发送位图和详情两个串行批次，位图成功不会提前完成任务或解除删除依赖。
+- 本轮单独收集各 Model 的位图和条目，以实际类型化回包为依据；缺失位图/详情、错误 index、旧批次回调或 revision 变化均不能认可完整读取。全部完成后建立本轮缓存，包含权威空 Model，避免直接使用之前缓存推定无残留。
+- 双空位图不生成 Action Get；占用槽在详情读取时变空也可正确继续。取消、失败和重试沿用既有未知缓存恢复，重试从新位图开始。Scene 删除、开关/EFC 依赖、持久删除意图及编号释放规则保持现有机制。
+- SDK 支持合法的 1 字节 `SchedulerActionStatus`，保留其短编码，映射为空条目以复用现有缓存清除；原 10 字节完整状态兼容。该短响应现在是正式 `MeshResponse`，可以完成原来等待的请求 continuation。
+- Scheduler 单播回执必须来自实际目标 Element，不能把另一个 Element 的来源替换成 Primary 地址；Action Get 校验 index，Action Set 校验 index 和完整回显参数。其他消息既有 Primary fallback 行为未改。
+
+对日志对应的两个 Scheduler Element、一个有效槽、两个 Scene Setup Element，目标发送序列为 **2 条位图 → 1 条详情 → 1 条定时清除 → 2 条 Scene Delete，共 6 条初始命令**。若有更多占用槽或无线重发，实际条数随之增加。
+
+### 验证结果
+
+| 范围 | 结果与证据边界 |
+| --- | --- |
+| `check_scene_deletion_cascade.py` | **204 通过、0 失败**。执行生产级联代码，新增位图/详情回包驱动覆盖：双空、单槽、缺回包、错误 index、槽变空、STOP/迟到、重试、配置变化；保留原所有权与身份回归。SDK/存储边界使用替身。 |
+| `check_sync_execution_session.py` | 通过。生产 Session 和生产回执分支验证位图后继续详情、详情完成后才结束任务，以及详情失败、STOP、重复完成、失效回调；原组/步骤/任务重试和恢复回归通过。 |
+| SDK `scripts/check_scheduler_readback.py` | **35 通过、0 失败**。运行生产 codec、Scheduler 回执匹配/路由、缓存更新及 NetworkManager 收包/取消方法；覆盖全部 16 个短状态、畸形长度/填充、现场完整状态、错误 Element/index/旧 Set 值、空缓存和 checked continuation 正常/取消各完成一次。无线及其他无关消息分支为边界替身。 |
+| 同一 SDK 测试替换为旧 codec | **7 通过、16 失败**，16 个合法空槽短状态均不能解析，证明新增回归能发现原缺陷。 |
+| `check_scene_deletion_flow.py` | 通过。真实 SQLite/生产删除生命周期，含持久化失败、退出重进、离线/重启、残留对象、迟到/失败 ACK、多 Element 回执及 SDK/App 收尾中断；引用级联由上述专项覆盖。 |
+| `check_sync_task_builders.py`、`check_timed_device_slots.py` | 通过。覆盖共享计划、重试依赖、Timed slot 所有权、旧数据和待删除绑定。 |
+| App / SDK `git diff --check` | 通过。 |
+| App 构建 | `SunSmartLocal.xcworkspace` / SunSmart / Debug / `iphoneos27.1` / generic iOS / 禁用签名，**BUILD SUCCEEDED**。DerivedData 使用 `SunSmart-feat-device-scene-261028-cli`。 |
+
+构建使用上述本地 SDK 未提交差异。改动为各品牌共用的逻辑和内部 SDK 实现，无新公开 API、品牌条件、资源或 target 变更，本轮选择 SunSmart 代表编译；没有运行 Simulator 或真机。日志已有 capture/metadata 等 warning，不作为本次命令效果证据。
+
+### SDK 发布依赖与最短人工验收
+
+SDK 未提交差异位于 `Sources/NordicSigMeshSDK/MeshLib/Manager/MeshProxyMessageCommand.swift`、`Sources/NordicSigMeshSDK/nRFMeshProvision/Mesh Messages/Time and Scenes/SchedulerActionStatus.swift`；另新增 `Tests/Standalone/SchedulerReadbackBoundaries.swift`、`Tests/Standalone/SchedulerReadbackTests.swift` 与 `scripts/check_scheduler_readback.py`。
+
+正式 App 发布前需将这套 SDK 修复提交、验证并发布到正式依赖的 `release` 分支，再记录实际 revision；目前不能把本地构建通过表述为远端 SDK 已具备修复。本轮没有执行提交、推送或发布。
+
+人工用当前本地 workspace 构建在原设备上删除同类 Scene：检查批次为 `2 → 1 → 1 → 2`、末尾同步成功，31 次空槽 UnknownMessage/continuation 告警不再出现；确认关联 Timed 消失，其他定时不变。再验证一次读取中断后退出重进能继续完成。记录前后总耗时及重发数；真实耗时改善、无线效果、最终 UI 和云端往返仍待人工验收。

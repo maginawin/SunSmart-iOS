@@ -129,11 +129,17 @@ final class SceneDeletionTask {
     var messageHandles: [MeshMessageHandle] { onBuild?(); return handles }
     var activationSwitch: PJEightKeySwitchData?
     var allowsEmpty = false
+    var followUpMessageHandles: [MeshMessageHandle] = []
+    var nextReadHandles: [MeshMessageHandle] = []
+    var receivedReadbacks = 0
+    func receive(handle: MeshMessageHandle, status: Int) { receivedReadbacks += 1 }
     var applySucceeds = true
     var invalidatesAfterApply = false
     private(set) var applyCalls = 0
     func apply(results: [MeshMessageHandle], expected: [MeshMessageHandle]) -> Bool {
         applyCalls += 1
+        followUpMessageHandles = nextReadHandles
+        nextReadHandles = []
         guard isCurrent, results.count == expected.count, results.allSatisfy(\.isSuccessful),
               !expected.isEmpty || allowsEmpty else { return false }
         if applySucceeds && invalidatesAfterApply { isCurrent = false }

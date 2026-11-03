@@ -15,6 +15,10 @@ struct SchedulerRegistryEntry: Equatable {
     var sceneNumber: UInt16 = 0
     var isValid: Bool { action != .noAction }
 }
+protocol StaticMeshMessage {}
+struct SchedulerGet {}
+struct SchedulerStatus: StaticMeshMessage { let schedules: UInt16 }
+struct SchedulerActionStatus: StaticMeshMessage { let index: UInt8; let entry: SchedulerRegistryEntry }
 struct SchedulerActionGet { let index: UInt8 }
 struct SchedulerActionSet { let index: UInt8; let entry: SchedulerRegistryEntry }
 struct SwitchKey: Equatable {
@@ -64,6 +68,13 @@ final class Node {
     var scheduleIds: [Int] = []
     var savedSchedulerEntries: [Model: [Int: SchedulerRegistryEntry]] = [:]
     var savedSchedulerActions: [Int: SchedulerRegistryEntry] = [:]
+    func rebuildSchedulerActions() {
+        schedulerActions = [:]
+        for model in schedulerSetupModels {
+            for (slot, entry) in allSchedulerModelEntrys[model] ?? [:] where entry.isValid { schedulerActions[slot] = entry }
+        }
+        scheduleIds = schedulerActions.keys.sorted()
+    }
     func savePropertys() {
         savedSchedulerEntries = allSchedulerModelEntrys
         savedSchedulerActions = schedulerActions
