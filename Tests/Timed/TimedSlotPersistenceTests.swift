@@ -237,6 +237,7 @@ enum ScheduleServer {
         try deviceSceneReferences()
         try staleBindingsSurviveRepairAndRestart(db: db, path: path)
         try defaultedBindingsSurviveReload()
+        try missingV2BindingsSurviveRestart(db: db, path: path)
         for id in 0..<16 {
             precondition(Schedule(id: id, name: "Schedule \(id + 1)", enabled: false).save(meshUUID: "mesh", meshNetworkId: "one"))
         }
@@ -444,6 +445,42 @@ enum ScheduleServer {
             precondition(Schedule.load(meshUUID: mesh, meshNetworkId: network).count == 16)
             print("PASS: empty target \(kind) keeps 17 records through reservation, SQLite reopen and Codable; later device capacity and failed deletion remain protected")
         }
+    }
+    static func missingV2BindingsSurviveRestart(db originalDB: Connection, path: String) throws {
+        let file = path + ".missing-v2-bindings"
+        SunSmartDataManager.shared.db = try Connection(file)
+        Schedule.initDatabase()
+        defer { SunSmartDataManager.shared.db = originalDB }
+        let node = Node(1), identity = node.timedSchedulerIdentity!
+        let originals = (0..<6).map { id in
+            Schedule(id: id, name: "Mixed \(id)", enabled: id >= 3, sceneNumber: 0x0661, selectTargetType: .scene, action: .scene)
+        }
+        for id in 0..<3 {
+            originals[id].nodeSlots = [.init(identity: identity, slot: id, state: .assigned)]
+        }
+        originals[5].nodeSlots = []
+        var rows = try JSONSerialization.jsonObject(with: jsonEncoder.encode(originals)) as! [[String: Any]]
+        rows[4]["nodeSlots"] = NSNull()
+        let source: [String: Any] = ["spaceData": ["timedSchemaVersion": 2], "schedules": rows,
+            "nodes": [["uuid": identity.nodeUUID, "unicastAddress": identity.unicastAddress, "deviceKey": node.deviceKey!.hex]]]
+        let normalized = TimedSchedulerPayloadPolicy.repairingStaleBindings(source)!
+        let schedules = try jsonDecoder.decode([Schedule].self, from: JSONSerialization.data(withJSONObject: normalized["schedules"]!))
+        for schedule in schedules { precondition(schedule.save(meshUUID: "mixed-v2", meshNetworkId: "one")) }
+        let unrelated = Schedule(id: 0, name: "Other Space", enabled: true)
+        unrelated.nodeSlots = []
+        precondition(unrelated.save(meshUUID: "mixed-v2", meshNetworkId: "two"))
+        SunSmartDataManager.shared.db = try Connection(file)
+        let reloaded = Schedule.load(meshUUID: "mixed-v2", meshNetworkId: "one").sorted { $0.id < $1.id }
+        precondition(reloaded.map(\.id) == Array(0..<6) && reloaded.map(\.enabled) == originals.map(\.enabled))
+        precondition(reloaded.prefix(3).map(\.nodeSlots) == originals.prefix(3).map(\.nodeSlots))
+        precondition(reloaded.suffix(3).allSatisfy { $0.nodeSlots == [] && $0.slot(on: node) == nil })
+        var exported = source
+        exported["schedules"] = try JSONSerialization.jsonObject(with: jsonEncoder.encode(reloaded))
+        precondition(TimedSchedulerPayloadPolicy.canonical(exported) == TimedSchedulerPayloadPolicy.canonical(source))
+        precondition(Schedule.deleteAll(meshUUID: "mixed-v2", meshNetworkId: "one"))
+        precondition(Schedule.load(meshUUID: "mixed-v2", meshNetworkId: "one").isEmpty)
+        precondition(Schedule.load(meshUUID: "mixed-v2", meshNetworkId: "two").count == 1)
+        print("PASS: mixed v2 missing/null/empty/assigned bindings survive SQLite restart, export and scoped Space cleanup")
     }
     static func defaultedBindingsSurviveReload() throws {
         let manager = MeshNetworkManager.instance

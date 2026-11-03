@@ -98,10 +98,23 @@ import CryptoKit
 import CoreFoundation
 
 enum TimedSchedulerPayloadPolicy {
+    /// In v2, omitted/null bindings mean unassigned, just like an explicit empty
+    /// array. Preserve existing bindings and let validation reject malformed ones.
     /// Old clients preserve logical IDs above 15 but drop the schema and every
     /// node binding when writing a Space. Keep the desired schedules, defaulting
     /// only the lost bindings to unassigned. Never infer physical slots from IDs.
     static func fillingMissingBindings(_ payload: [String: Any]) -> [String: Any] {
+        if declaredSchema(payload) == 2,
+           let schedules = payload["schedules"] as? [[String: Any]] {
+            var result = payload
+            result["schedules"] = schedules.map { schedule -> [String: Any] in
+                guard schedule["nodeSlots"] == nil || schedule["nodeSlots"] is NSNull else { return schedule }
+                var schedule = schedule
+                schedule["nodeSlots"] = [[String: Any]]()
+                return schedule
+            }
+            return result
+        }
         guard declaredSchema(payload) == 1,
               payload["spaceData"] == nil || payload["spaceData"] is [String: Any],
               let schedules = payload["schedules"] as? [[String: Any]],

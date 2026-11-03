@@ -53,6 +53,7 @@ import Foundation
 
     static func main() {
         legacyProfilePayload()
+        missingV2Bindings()
         let old = payload([schedule(0), schedule(15)], version: 1)
         precondition(TimedSchedulerPayloadPolicy.canonical(old) != nil)
         precondition(TimedSchedulerPayloadPolicy.canonical(payload([schedule(16)], version: 1)) != nil)
@@ -61,7 +62,7 @@ import Foundation
         precondition(TimedSchedulerPayloadPolicy.canonical(payload([schedule(500, slot: 1), schedule(300, slot: 0)])) == canonical)
         precondition(TimedSchedulerPayloadPolicy.canonical(payload([schedule(300, slot: 0), schedule(500, slot: 0)])) == nil)
         precondition(TimedSchedulerPayloadPolicy.canonical(payload([schedule(300, slot: 16)])) == nil)
-        precondition(TimedSchedulerPayloadPolicy.canonical(payload([schedule(0)])) == nil)
+        precondition(TimedSchedulerPayloadPolicy.canonical(payload([schedule(0)])) != nil)
         precondition(TimedSchedulerPayloadPolicy.canonical(payload([], version: 3)) == nil)
         var changed = schedule(300, slot: 0); changed["minute"] = 5
         precondition(TimedSchedulerPayloadPolicy.canonical(payload([changed, schedule(500, slot: 1)])) != canonical)
@@ -232,6 +233,58 @@ import Foundation
         }
         precondition(json(TimedSchedulerPayloadPolicy.repairingStaleBindings(original)!) == json(original))
         print("PASS: absent/reprovisioned nodes, reused addresses, pending removal, empty targets, backup round trip, idempotence and invalid identities")
+    }
+    static func missingV2Bindings() {
+        let assigned = schedule(0, slot: 0)
+        let missing = schedule(3)
+        var null = schedule(4); null["nodeSlots"] = NSNull()
+        var empty = schedule(5); empty["nodeSlots"] = [[String: Any]]()
+        let rows = [null, assigned, missing, empty]
+        let source = payload(rows)
+        let normalized = TimedSchedulerPayloadPolicy.fillingMissingBindings(source)
+        let restored = normalized["schedules"] as! [[String: Any]]
+        precondition(restored.map { $0["id"] as! Int } == [4, 0, 3, 5])
+        precondition(json(restored[1]) == json(assigned) && json(restored[3]) == json(empty))
+        for index in [0, 2] {
+            precondition((restored[index]["nodeSlots"] as? [Any])?.isEmpty == true)
+            var originalFields = restored[index]
+            originalFields["nodeSlots"] = rows[index]["nodeSlots"]
+            precondition(json(originalFields) == json(rows[index]), "defaulting must preserve all other fields")
+        }
+        let canonical = TimedSchedulerPayloadPolicy.canonical(source)!
+        precondition(canonical == TimedSchedulerPayloadPolicy.canonical(normalized))
+        precondition(json(TimedSchedulerPayloadPolicy.fillingMissingBindings(normalized)) == json(normalized))
+        let backup = TimedSchedulerPayloadPolicy.backupEnvelope(source)!
+        precondition(TimedSchedulerPayloadPolicy.canonical(TimedSchedulerPayloadPolicy.backupPayload(backup)!) == canonical)
+        for value: Any in [NSNull(), [[String: Any]]()] {
+            var stripped = normalized, strippedRows = restored
+            strippedRows[1]["nodeSlots"] = value; stripped["schedules"] = strippedRows
+            precondition(TimedSchedulerPayloadPolicy.canonical(stripped) != canonical,
+                         "lost assigned bindings cannot confirm the uploaded configuration")
+        }
+        for bad: Any in ["invalid", 0, false, ["slot": 0], [0], [["slot": 0]]] {
+            var row = missing; row["nodeSlots"] = bad
+            precondition(TimedSchedulerPayloadPolicy.canonical(payload([row])) == nil)
+        }
+        precondition(TimedSchedulerPayloadPolicy.canonical(payload([missing, missing])) == nil)
+        var invalid = missing; invalid["hour"] = 25
+        precondition(TimedSchedulerPayloadPolicy.canonical(payload([invalid])) == nil)
+        invalid = missing; invalid["selectTarget"] = 99
+        precondition(TimedSchedulerPayloadPolicy.canonical(payload([invalid])) == nil)
+        let legacy = payload([missing], version: 1)
+        precondition(json(TimedSchedulerPayloadPolicy.fillingMissingBindings(legacy)) == json(legacy))
+        precondition(TimedSchedulerPayloadPolicy.canonical(legacy) != nil)
+        precondition(TimedSchedulerPayloadPolicy.canonical(payload([null], version: 1)) == nil)
+        precondition(TimedSchedulerPayloadPolicy.canonical(payload([null, missing], version: 3)) == nil)
+        let occupied = schedule(1, slot: 1)
+        let identity = TimedSchedulerPayloadPolicy.identity(node: (source["nodes"] as! [[String: Any]])[0])!
+        let binding = try! JSONDecoder().decode([TimedSchedulerNodeSlot].self, from: json(occupied["nodeSlots"]!))[0]
+        let intents: [TimedSchedulerSlotPolicy.Intent] = [
+            .init(scheduleID: 1, targetsNode: true, legacy: false, binding: binding),
+            .init(scheduleID: 3, targetsNode: true, legacy: false, binding: nil)]
+        let plan = try! TimedSchedulerSlotPolicy.plan(identity: identity, intents: intents, observedSlots: [0, 1, 2, 3])
+        precondition(plan[1] == binding && plan[3]?.slot == 4, "unassigned records cannot infer slot=id or overwrite observed slots")
+        print("PASS: v2 missing/null bindings preserve mixed records, backup and receipt semantics, legacy rules and occupied slots")
     }
     static func json(_ value: Any) -> Data {
         try! JSONSerialization.data(withJSONObject: value, options: [.sortedKeys])

@@ -210,25 +210,39 @@ extension SpaceRecoveryReceiptTests {
         typealias S = SpaceConfigurationSafety
         typealias P = ProximityLightingImportPreflight
         defer { P.storedSpace = nil; P.lastPayload = nil }
-        for role in ["owner", "editor"] {
+        let cases = ["owner", "editor"].flatMap { role in [1, 2].map { (role, $0) } }
+        for (role, version) in cases {
             for resume in [false, true] {
                 let space = SpaceData()
                 space.lastUploadCloudTimestamp = space.lastUpdate
                 space.timedSchemaVersion = 2
+                if version == 2 { space.nodes = [try membershipNode(1)] }
                 P.storedSpace = space
                 var remote = space.payload
                 remote["role"] = role
+                remote["spaceData"] = ["timedSchemaVersion": version]
                 remote["schedules"] = (0..<17).map { id -> [String: Any] in
-                    ["id": id, "name": "Retained \(id)", "enabled": true, "selectTarget": 1,
+                    var row: [String: Any] = ["id": id, "name": "Retained \(id)", "enabled": true, "selectTarget": 1,
                      "action": 1, "fadeTime": 0, "hour": 8, "minute": 0, "dayOfWeek": 127]
+                    if version == 2, id % 3 == 1 { row["nodeSlots"] = NSNull() }
+                    if version == 2, id % 3 == 2 { row["nodeSlots"] = [[String: Any]]() }
+                    return row
+                }
+                if version == 2 {
+                    let binding = TimedSchedulerNodeSlot(identity: TimedSchedulerPayloadPolicy.identity(node: space.nodes[0])!, slot: 0, state: .assigned)
+                    var rows = remote["schedules"] as! [[String: Any]]
+                    rows[0]["nodeSlots"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode([binding]))
+                    remote["schedules"] = rows
                 }
                 if resume { precondition(S.beginImport(space, payload: remote)) }
                 for _ in 0..<2 {
                     let outcome = await space.update(spaceJsonData: remote, initialize: !resume)
-                    precondition(outcome == .prepared, "old-writer loss must not block owner/editor or retry")
+                    precondition(outcome == .prepared, "missing bindings must not block owner/editor or retry")
                     let working = P.lastPayload!
                     let rows = working["schedules"] as! [[String: Any]]
-                    precondition(rows.count == 17 && rows.allSatisfy { ($0["nodeSlots"] as? [Any])?.isEmpty == true })
+                    precondition(rows.count == 17 && rows.enumerated().allSatisfy { index, row in
+                        (row["nodeSlots"] as? [Any])?.count == (version == 2 && index == 0 ? 1 : 0)
+                    })
                     precondition(TimedSchedulerPayloadPolicy.schema(working) == 2)
                     precondition(TimedSchedulerPayloadPolicy.canonical(working) == TimedSchedulerPayloadPolicy.canonical(remote))
                 }
@@ -240,13 +254,23 @@ extension SpaceRecoveryReceiptTests {
                 precondition(baseline.timedConfigurationBaseline == TimedSchedulerPayloadPolicy.canonical(remote))
                 let submission = S.prepareSubmission(space, payload: working)!
                 precondition(S.markSubmissionAccepted(submission, space: space))
+                if version == 2 {
+                    for null in [false, true] {
+                        var stripped = remote, rows = remote["schedules"] as! [[String: Any]]
+                        rows[0]["nodeSlots"] = null ? NSNull() : nil
+                        stripped["schedules"] = rows
+                        NetworkRequest.shared.result = .success(["data": stripped])
+                        if case .success = await S.resumeUpload(space) { preconditionFailure("lost assigned bindings cannot confirm an upload") }
+                        precondition(S.hasPendingUpload(space))
+                    }
+                }
                 NetworkRequest.shared.result = .success(["data": remote])
                 let confirmation = await S.resumeUpload(space)
-                if case .failure = confirmation { preconditionFailure("raw old-writer GET must confirm equivalent defaulted Timed data") }
+                if case .failure = confirmation { preconditionFailure("raw GET must confirm equivalent defaulted Timed data") }
                 precondition(!S.hasPendingUpload(space))
             }
         }
-        print("PASS: defaulted Timed owner/editor import preparation, pending retry, baseline and upload readback")
+        print("PASS: legacy/v2 mixed Timed owner/editor import, pending retry, baseline, lost-binding rejection and upload readback")
     }
 
     @MainActor static func testLegacyTimedBaselineBackfill() async throws {
