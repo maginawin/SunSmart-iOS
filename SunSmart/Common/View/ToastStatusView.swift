@@ -81,13 +81,8 @@ class ToastStatusView: UIView {
     // MARK: - Setup UI
 
     private func setupStandardUI(message: String, type: ToastType) {
-//        backgroundColor = .black
         layer.cornerRadius = 13
         layer.masksToBounds = true
-//        layer.shadowColor = UIColor.black.cgColor
-//        layer.shadowOpacity = 0.12
-//        layer.shadowOffset = CGSize(width: 0, height: 4)
-//        layer.shadowRadius = 10
 
         isUserInteractionEnabled = false
         
@@ -97,8 +92,6 @@ class ToastStatusView: UIView {
         }
 
         iconView.image = type.icon
-//        iconView.tintColor = type.tintColor
-//        iconView.contentMode = .scaleAspectFit
 
         messageLabel.text = message
         messageLabel.font = .systemFont(ofSize: 13, weight: .medium)
@@ -214,17 +207,13 @@ class ToastStatusView: UIView {
 
         // SnapKit layout
         toast.snp.makeConstraints { make in
-//            make.centerX.equalToSuperview()
-//            make.width.lessThanOrEqualToSuperview().multipliedBy(0.85)
             make.height.greaterThanOrEqualTo(44)
-            switch appearance {
-            case .standard:
-                make.left.equalTo(SCRXFrom(20))
-                make.right.equalTo(SCRXFrom(-20))
-            case .siteUpdate:
+            if isIPad {
                 make.centerX.equalToSuperview()
                 make.width.equalToSuperview().offset(-32).priority(.high)
                 make.width.lessThanOrEqualTo(343)
+            } else {
+                make.leading.trailing.equalToSuperview().inset(16)
             }
 
             switch position {
