@@ -2677,3 +2677,9 @@
 "timed_profile_read_only" = "Profile 定时已保留，但当前 App 暂不支持编辑、启停或删除此类定时。";
 "timed_profile_target" = "Profile：%@（只读）";
 "timed_profile_topology_unavailable" = "此组被 Profile 定时引用，当前 App 暂不能安全修改其成员或删除此组。";
+
+"scene_delete_timers_impact" = "同时删除以下定时：\n%@";
+"scene_delete_actions_impact" = "清除以下设备中引用此场景的动作：\n%@";
+"scene_deletion_pending" = "待删除。请同步设备以完成场景及关联动作清理。";
+"scene_deletion_pending_short" = "待删除";
+"scene_reference_cleanup" = "清理场景动作";

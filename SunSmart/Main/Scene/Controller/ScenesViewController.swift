@@ -155,57 +155,36 @@ class ScenesViewController: UIViewController {
     }
     
     private func deleteScene(scene: Scene) {
-        
-        SRAlertView(title: "notification".localizedString, message: "scene_delete_message".localizedString, messageFont: FONTS(15), actions: [.cancelAction, SRAlertAction(title: "DELETE".localizedString, style: .destructive, actionHandler: {[weak self] _ in
-            guard let self = self else { return }
-            // 存在设备并且网络未连接
-            if scene.nodes.count > 0 && !MeshLibManager.manager.isMeshNetworkConnected {
-                XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-                return
-            }
-
-            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-            // 测试数据
-//            scene.nodes.forEach({
-//                scene.remove(node: $0)
-//            })
-//            scene.delete()
-            let existNode: Bool = scene.addresses.count > 0
-            SceneServer.deleteScene(scene: scene) {[weak self] _ in
-                XWHUDManager.hide()
-                XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                self?.updateUI()
-                // 通知space数据修改
-                let type: SpaceChangeDataType = existNode ? .device : .common
-                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: type)
-                
-            } failed: {[weak self] _ in
-                XWHUDManager.hide()
-                XWHUDManager.showErrorTipHUD("scene_delete_failed".localizedString)
-                // 跳转同步页面
-                if scene.needSyncGroups.count > 0 {
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
-                        self?.pushToSyncDevicesVc(scene: scene)
-                    }
-                }
-            }
-            
-        })]).show()
-        
+        let submit = { [weak self] in
+            guard let self else { return }
+            do {
+                let completed = try SceneServer.requestDeletion(scene: scene)
+                self.updateUI()
+                if completed { XWHUDManager.showSuccessTipHUD("done!".localizedString) }
+                else if MeshLibManager.manager.isMeshNetworkConnected { self.pushToSyncDevicesVc(scene: scene) }
+                else { XWHUDManager.showTipHUD("scene_deletion_pending".localizedString, isLineFeed: true) }
+            } catch { XWHUDManager.showErrorTipHUD("scene_delete_failed".localizedString) }
+        }
+        if scene.info.configuration?.isDeleting == true { submit(); return }
+        SRAlertView(title: "notification".localizedString, message: SceneDeletionCascade.confirmationMessage(scene: scene),
+                    messageFont: FONTS(15), actions: [.cancelAction,
+                    SRAlertAction(title: "DELETE".localizedString, style: .destructive, actionHandler: { _ in submit() })]).show()
     }
-    
+
     /// 跳到同步数据页面
     private func pushToSyncDevicesVc(scene: Scene) {
         
         let vc = SyncDevicesViewController(type: .scene(scene))
-        vc.syncSuccessCallback = {[weak self] _ in
-            XWHUDManager.showSuccessTipHUD("done!".localizedString)
-            guard let self = self else { return }
-            DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5) {
+        vc.syncSuccessCallback = { [weak self] _ in
+            guard let self else { return }
+            do {
+                guard try SceneServer.completePreparedDeletion(scene: scene) else {
+                    XWHUDManager.showTipHUD("scene_deletion_pending".localizedString, isLineFeed: true); return
+                }
+                self.updateUI()
                 self.dismiss(animated: true)
-            }
-            SceneServer.deleteScene(scene: scene, success: nil, failed: nil)
-            self.updateUI()
+                XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            } catch { XWHUDManager.showErrorTipHUD("scene_delete_failed".localizedString) }
         }
         vc.backActionCallback = {[weak self] _ in
 //                self?.dismiss(animated: true)

@@ -18,6 +18,7 @@ import Foundation
             print("FAIL: remote dropped committed scene configuration but upload comparison reported equal"); exit(1)
         }
         try payloadValidation(payload, row: row, config: config)
+        try deletionReferencesRoundTrip(config)
         try groupLoss()
     }
     static func payloadValidation(_ payload: [String: Any], row: [String: Any], config: SceneConfiguration) throws {
@@ -82,6 +83,58 @@ import Foundation
         let after = try SceneConfigurationPayload.decode(object["sceneConfigurations"])[7]!
         precondition(after.deviceMembers.isEmpty && after.pendingOperations.isEmpty && after.revision == config.revision)
         print("PASS: strict version/number/identity/mode/metadata validation, stable ordering and original provisioning removal")
+    }
+    static func deletionReferencesRoundTrip(_ original: SceneConfiguration) throws {
+        typealias P = SpaceConfigurationIntegrityPolicy
+        let identity = original.deviceMembers[0].identity
+        var config = original
+        config.schemaVersion = 2
+        config.isDeleting = true
+        config.pendingOperations = [.init(identity: identity, action: .remove)]
+        config.deletionReferences = .init(scheduleIDs: [3, 17], pending: [
+            .init(kind: .scheduler, identity: identity, address: 1, name: "Timed 3", slots: [0, 15]),
+            .init(kind: .powerSwitch, identity: identity, address: 1, objectID: "power-1", name: "Switch 1", keys: [0, 2]),
+            .init(kind: .emergency, identity: nil, address: 2, objectID: "efc-1", name: "Unavailable controller", keys: [1])
+        ])
+        let rows = try SceneConfigurationPayload.encode(records: [
+            .init(number: 7, name: config.name, imageId: 3, configuration: config)
+        ])
+        let payload: [String: Any] = ["groups": [], "nodes": [],
+            "scenes": [["number": "0007", "name": config.name, "imageId": 3]],
+            "spaceData": ["sceneConfigurations": rows]]
+        // JSON serialization models transfer/reload without retaining live objects.
+        let reloadedPayload = try JSONSerialization.jsonObject(with: JSONSerialization.data(withJSONObject: payload)) as! [String: Any]
+        let reloaded = try SceneConfigurationPayload.records(payload: reloadedPayload)
+        precondition(reloaded.count == 1 && reloaded[0].configuration == config,
+                     "cloud transfer must retain cleanup IDs, scheduled deletions and unresolved targets")
+        let expected = P.configurationData(payload)!
+        precondition(P.configurationsMatch(expected, P.configurationData(reloadedPayload)))
+
+        let referenceBlock = rows[0]["deletionReferences"] as! [String: Any]
+        for key in ["pending", "scheduleIDs"] {
+            var droppedBlock = referenceBlock; droppedBlock[key] = [] as [Any]
+            var droppedRow = rows[0]; droppedRow["deletionReferences"] = droppedBlock
+            var droppedPayload = payload; droppedPayload["spaceData"] = ["sceneConfigurations": [droppedRow]]
+            precondition(!P.configurationsMatch(expected, P.configurationData(droppedPayload)),
+                         "losing \(key) must never count as successful cloud readback")
+        }
+        for missingValue in [nil, NSNull() as Any?] {
+            var invalidRow = rows[0]; invalidRow["deletionReferences"] = missingValue
+            var invalidPayload = payload; invalidPayload["spaceData"] = ["sceneConfigurations": [invalidRow]]
+            precondition(P.configurationData(invalidPayload) == nil,
+                         "version two without dependencies is invalid, not completed")
+            do {
+                _ = try SceneConfigurationPayload.records(payload: invalidPayload)
+                fatalError("missing deletion dependencies were accepted")
+            } catch {}
+        }
+        var downgradedRow = rows[0]
+        downgradedRow["schemaVersion"] = 1
+        downgradedRow.removeValue(forKey: "deletionReferences")
+        var downgradedPayload = payload; downgradedPayload["spaceData"] = ["sceneConfigurations": [downgradedRow]]
+        precondition(!P.configurationsMatch(expected, P.configurationData(downgradedPayload)),
+                     "a legacy rewrite must not acknowledge deletion while dropping reference cleanup")
+        print("PASS: cascade cleanup survives payload transfer and missing dependencies cannot acknowledge cloud convergence")
     }
     static func groupLoss() throws {
         let missing: [String: Any] = ["groups": [], "nodes": [], "scenes": [["number": "0007", "name": "Offline", "imageId": 3]]]

@@ -17,13 +17,6 @@ struct SceneServer {
         let scope = SceneScope(meshUUID: network.uuid.uuidString, networkID: manager.currentNetworkKey.networkId.hex)
         let key = SceneScopeKey(mesh: scope.meshUUID, network: scope.networkID, number: scene.number)
         guard deletionSessions[key] == nil, !MeshProxyMessageCommand.shared.isBusy else { failed?(scene); return }
-        let references = referenceNames(scene: scene)
-        guard references.isEmpty else {
-            SRAlertView(message: String(format: "scene_delete_referenced".localizedString,
-                                        references.joined(separator: "\n")),
-                        actions: [SRAlertAction(title: "ok".localizedString, actionHandler: nil)]).show()
-            failed?(scene); return
-        }
         let store = SceneConfigurationStore()
         do {
             try SceneConfigurationStore.validateAccess(scope)
@@ -37,7 +30,7 @@ struct SceneServer {
                       info.configuration?.revision == scene.info.configuration?.revision else { throw SceneConfigurationStore.Failure.unavailable }
                 scene.info = info
             } else { try store.prepareDeletion(scene: scene) }
-            if scene.info.configuration?.pendingOperations.isEmpty == true {
+            if scene.info.configuration?.pendingOperations.isEmpty == true, !SceneDeletionCascade.hasPending(scene.info) {
                 try store.finishDeletion(info: scene.info, scope: scope)
                 notifyDeletion(); success?(scene); return
             }
@@ -55,7 +48,7 @@ struct SceneServer {
                 deletionSessions[key] = nil
                 run.onStopped = nil; run.onSettled = nil; run.onPlanInvalidated = nil
                 guard manager.meshNetwork === network, manager.currentNetworkKey.networkId.hex == scope.networkID,
-                      referenceNames(scene: scene).isEmpty else { failed?(scene); return }
+                      SceneDeletionCascade.canFinish(info: scene.info) else { failed?(scene); return }
                 do {
                     try SceneConfigurationStore.validateAccess(scope)
                     try store.finishDeletion(info: scene.info, scope: scope)
@@ -75,6 +68,30 @@ struct SceneServer {
             }
             run.start()
         } catch { failed?(scene) }
+    }
+
+    /// Admission is independent of transport. The sync page owns activation, progress and retry.
+    @discardableResult
+    static func requestDeletion(scene: Scene) throws -> Bool {
+        let store = SceneConfigurationStore()
+        try store.prepareDeletion(scene: scene)
+        let completed = try completePreparedDeletion(scene: scene)
+        notifyDeletion()
+        return completed
+    }
+
+    @discardableResult
+    static func completePreparedDeletion(scene: Scene) throws -> Bool {
+        let manager = MeshNetworkManager.instance
+        guard let network = manager.meshNetwork else { throw SceneConfigurationStore.Failure.unavailable }
+        let scope = SceneScope(meshUUID: network.uuid.uuidString, networkID: manager.currentNetworkKey.networkId.hex)
+        try SceneConfigurationStore.validateAccess(scope)
+        if try SceneConfigurationStore.deletionAlreadyCompleted(scene: scene, scope: scope) { return true }
+        guard scene.info.configuration?.isDeleting == true else { throw SceneConfigurationStore.Failure.invalidTargets }
+        guard scene.info.configuration?.pendingOperations.isEmpty == true, SceneDeletionCascade.canFinish(info: scene.info) else { return false }
+        try SceneConfigurationStore().finishDeletion(info: scene.info, scope: scope)
+        notifyDeletion()
+        return true
     }
 
     private static func notifyDeletion() {

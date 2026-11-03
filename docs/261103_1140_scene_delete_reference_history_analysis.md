@@ -1,6 +1,6 @@
 # Scene 删除引用限制与重复提示分析
 
-日期：2026-11-03。分析基线：`feat/device-scene-261028`，HEAD `b1bab004`；开始分析时工作树无未提交修改。本次仅分析，未修改业务代码。
+日期：2026-11-03。分析基线：`feat/device-scene-261028`，HEAD `b1bab004`；开始分析时工作树无未提交修改。第 1～4 节保留当时分析快照；用户已于本日批准按第 5 节方案实施，第 6 节记录最终实现与验证。
 
 ## 结论
 
@@ -88,7 +88,7 @@
 
 ## 5. 级联删除开发方案讨论（2026-11-03 追加）
 
-本节是后续开发方向，取代上一节仅修正提示的最小建议；尚未获准实施。
+本节为用户已批准的级联删除方案，取代上一节仅修正提示的最小建议。
 
 ### 已确认的产品选择
 
@@ -159,4 +159,56 @@
 
 复用 Scene deletion/configuration、Timed slot/delete、Switch 与 Sync 执行器相关现有测试，新增真正覆盖上述风险的用例。Swift 实施结束后按项目要求构建 SunSmart generic iOS Debug；共享资源/工程配置有跨品牌风险时补相应品牌。真实灯、Proxy、AC/Battery 开关验收由用户执行，自动化与构建不替代设备行为。
 
-本轮观察到 Timed/Group/Restore 等已有其他任务的未提交修改，包含 Profile Timed 保护。这里只读分析；未来实施应先对齐其最终状态，不能覆盖或绕过新增保护。当前阶段仅更新本文档，未开始生产代码实现。
+方案讨论时曾观察到其他 Timed/Group/Restore 修改；实施前已重新核对：分支 `feat/device-scene-261028`，HEAD `fa686441`，工作树干净。这些既有修改已经进入基线，本次保留 Profile Timed 保护。
+
+
+## 6. 实施结果（2026-11-03）
+
+### 最终行为
+
+- 列表和详情都只显示一次确认，分别列出将删除的 Timed 和将清除动作的设备。确认取消不写数据；已进入删除状态后重试不再重复确认。
+- 删除请求在一次 App SQLite 事务中保存 Scene 删除意图、直接引用 Timed 的删除状态、Switch/EFC 期望配置和持久任务。保存失败不发消息、不跳转同步页。
+- 有连接则进入一次同步页；离线、STOP、激活取消和失败保留 `Deletion pending`。任务及 Scene 编号在成功确认前一直保留。
+- 已改选其他 Scene/设备的 Timed 保留；清理旧 slot 时核对当前 owner、Model 和最新配置，必要时写回它的新期望值。
+- 动能开关仅重写受影响按键，保留长按和其他按键；Power Switch 复用 Key Config，按任务激活电池开关。旧 Proxy 或已解除 Group 时仅禁用已捕获的按钮，不把局部成功当作全部 TX/LED 等配置成功。
+- 条件性识别自定义 EFC 的精确 `.sceneRecall`，仅把对应 trigger action 改成 `.invalid`；默认亮度、固定 Profile/EFC 状态事件保持原语义。
+- Device / Group 同步可恢复同一删除意图。引用清理确认后执行 Scene 删除；所有回执和最终本地事务完成后，才移除 Scene/直接引用 Timed 并释放编号。SDK 已删而 App 最终事务失败时，数据库 tombstone 仍保护 Scene 编号和关联 Timed ID。
+
+### 清理顺序与恢复边界
+
+1. 对所有已知 Scene 成员、旧清理对象、已观察到的残留设备及关联 Timed 绑定，逐个 Scheduler Setup Model 回读 16 个 slot。
+2. 按回读值清理精确旧编号及直接删除 Timed 所属 slot；对合法新 owner 写入其当前期望值。按当前/旧 Proxy、Power 本体、EFC 绑定身份清理动作。
+3. 引用依赖全部确认后，复用现有 Scene 删除上下文清理灯端寄存器。
+4. 事务删除 Scene 扩展记录、组内对应场景配置及直接引用 Timed；保留改选后的 Timed 并移除其旧 Scene 清理记录。
+
+任务检查 Space、设备 UUID/地址/Key fingerprint、Scene revision 与当前业务配置（同时核对持久记录与内存对象）；SDK 普通重加同地址不会继承清理身份，只有现有显式 Restore receipt 可以迁移引用身份。配置改变、旧回执、部分 ACK、数据库失败均不能清掉依赖。重试先重新回读，避免使用上轮旧命令。普通设备/组任务排除已被专用删除计划接管的 SceneDelete，避免消费同一回执两次。
+
+旧 Switch/Group Switch 编辑入口和监测页现在必须保存成功才能更新 manager；单开关/Timed 同步准备、激活后的发送前以及 Power Add/Restore 共享命令生成均检查 Scene 引用。持久化导入边界与 live 下发边界分开，避免正常导入的保存顺序被过早拦截。
+
+身份缺失、未知旧 Proxy 按键配置等不能被空消息误判为完成，会保留 pending；这类历史异常需恢复原设备或完成现有明确的设备移除/Restore 流程。不能仅因设备离线或列表暂时为空就释放编号。
+
+### 格式与外部依赖
+
+新删除意图使用 `SceneConfiguration.schemaVersion = 2`；普通场景仍为 v1，新客户端兼容 v1。v2 必须带完整删除依赖，解码校验身份、地址、slot、按键范围与重复项。旧客户端会拒绝它不认识的版本，避免忽略依赖后提前删除。
+
+此次只修改 App；本地 SDK 来源为 `one-dev`，revision `dbcf6f1`，无 SDK 修改。不需要新增固件或服务器接口。云端仍须完整保留 Scene 扩展字段；本次离线编解码/SQLite 测试不能证明实际服务端、混用旧客户端或分享链路已经验收。
+
+### 自动化验证
+
+- Scene 原有 10 个 suite、删除生命周期（真实 Store/SQLite、SDK 边界替身）通过；旧“有引用必拒删”断言已由级联行为用例替代。
+- 新 cascade suite 84 项通过，模型 suite 28 项通过。cascade 编译整份真实 `SceneDeletionCascade` 与 codec，SDK/存储使用受控替身，覆盖准备回滚、精确消息、新 owner、Power/EFC、失败/重试、迟到回执、未知身份、成员外残留及最终清理。
+- 两个真实控制器的删除/同步收尾方法回归通过，覆盖一次确认、离线、不重复提交、失败不自动跳转及 pending 重试；UIKit/导航/服务为替身，不能代表真机布局验收。
+- 引用准入 29 项通过，覆盖 Switch/Group/Monitor 保存失败、待删除或已不存在的 Scene、Timed 待删除 ID、Power Add/Restore 下发阻断。
+- Sync 执行器与任务构建回归通过，包含多开关激活、取消、迟到回调、空消息和重试前置顺序。
+- Timed delete-result、device-slots 回归通过；`git diff --check` 通过。
+- SunSmart、Archipelago、SylSmart、SLG Sync Plus、Lumineux、HSmart 六个 scheme 的 generic iOS Debug 构建通过；最终变更后已串行完成增量复核。使用 `SunSmartLocal.xcworkspace`，禁用签名，未使用 Simulator 或真机。构建仍有项目既有资源重复/废弃 API 等警告，本次未扩大处理范围。
+
+### 最短人工验收
+
+1. Scene 1 关联两个 Timed（含禁用项）、一个动能开关和一个 AC/Battery 开关；另一按键绑定 Scene 2。删除 Scene 1，确认只出现一次，并列明影响。
+2. 同步成功后确认 Scene 1 和直接引用 Timed 消失；原按键不再召回 Scene 1，Scene 2 按键和长按仍工作。
+3. 让一个 Proxy/开关离线或取消激活，再退出/重启：保留待删除状态及任务；重新联网重试后完成。清理结束前不能复用原 Scene 编号。
+4. 将某个 Timed 先改成 Scene 2、留有 Scene 1 旧设备配置，再删 Scene 1：该 Timed 保留且最终执行 Scene 2。
+5. 上传/下载或分享包含待删除任务的数据，确认 pending 依赖完整保留；旧版本客户端拒绝不支持的配置。条件性 EFC 自定义场景动作另做设备验收。
+
+未自动连接或操作真机；无线命令效果、最终 UI 体验、实际云回读及新旧客户端混用仍待人工/联调验收。当前修改未提交。

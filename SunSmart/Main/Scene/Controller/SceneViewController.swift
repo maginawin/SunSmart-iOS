@@ -218,6 +218,10 @@ class SceneViewController: UIViewController {
     }
 
     private func updateDetailStatus() {
+        if scene.info.configuration?.isDeleting == true {
+            detailStatusLabel.text = "scene_deletion_pending".localizedString
+            detailStatusLabel.isHidden = false; return
+        }
         detailStatusLabel.text = detailLayout == .emptyDevices
             ? SceneDevicesSelectionView.savedStatus(configuration: scene.info.configuration, snapshot: syncDisplay.currentSnapshot) : nil
         detailStatusLabel.isHidden = detailStatusLabel.text == nil
@@ -312,66 +316,48 @@ class SceneViewController: UIViewController {
     
     /// 删除场景
     private func deleteScene() {
-        
-        SRAlertView(title: "notification".localizedString, message: "scene_delete_message".localizedString, contentPadding: SCRXFrom(25), actions: [.cancelAction, SRAlertAction(title: "DELETE".localizedString, style: .destructive, actionHandler: {[weak self] _ in
-            guard let self = self else { return }
-            XWHUDManager.showCustomHUD(withMessage: "deleting".localizedString, isWindow: true)
-            // 测试数据
-//            scene.nodes.forEach({
-//                self.scene.remove(node: $0)
-//            })
-//            scene.delete()
-            let existNode: Bool = self.scene.addresses.count > 0
-            SceneServer.deleteScene(scene: self.scene) {[weak self] _ in
-                XWHUDManager.hide()
-                guard let self = self else { return }
-                XWHUDManager.showSuccessTipHUD("done!".localizedString)
-//                self.groupDeleteCallback?(self.group)
-                NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
-                // 通知space数据修改
-                let type: SpaceChangeDataType = existNode ? .device : .common
-                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: type)
-                DispatchQueue.main.asyncAfter(wallDeadline: .now() + 1.5, execute: {[weak self] in
-                    self?.close()
-                })
-                
-            } failed: { _ in
-                // 跳转到同步数据页面
-                XWHUDManager.hide()
-                XWHUDManager.showErrorTipHUD("scene_delete_failed".localizedString)
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
-                    self?.pushToSyncDevicesVc()
+        let submit = { [weak self] in
+            guard let self else { return }
+            do {
+                if try SceneServer.requestDeletion(scene: self.scene) {
+                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
+                    NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
+                    self.close()
+                } else if MeshLibManager.manager.isMeshNetworkConnected {
+                    self.pushToSyncDevicesVc()
+                } else {
+                    XWHUDManager.showTipHUD("scene_deletion_pending".localizedString, isLineFeed: true)
+                    self.updateDetailStatus()
                 }
-            }
-            
-        })]).show()
-        
+            } catch { XWHUDManager.showErrorTipHUD("scene_delete_failed".localizedString) }
+        }
+        if scene.info.configuration?.isDeleting == true { submit(); return }
+        SRAlertView(title: "notification".localizedString, message: SceneDeletionCascade.confirmationMessage(scene: scene),
+                    contentPadding: SCRXFrom(25), actions: [.cancelAction,
+                    SRAlertAction(title: "DELETE".localizedString, style: .destructive, actionHandler: { _ in submit() })]).show()
     }
-    
-    /// 跳到同步数据页面
+
     private func pushToSyncDevicesVc() {
-        
         let vc = SyncDevicesViewController(type: .scene(scene))
-        vc.syncSuccessCallback = {[weak self] _ in
-            guard let self = self else { return }
-            SceneServer.deleteScene(scene: self.scene, success: { [weak self] _ in
+        vc.syncSuccessCallback = { [weak self] _ in
+            guard let self else { return }
+            do {
+                guard try SceneServer.completePreparedDeletion(scene: self.scene) else {
+                    XWHUDManager.showTipHUD("scene_deletion_pending".localizedString, isLineFeed: true); return
+                }
                 XWHUDManager.showSuccessTipHUD("done!".localizedString)
                 NotificationCenter.default.post(name: .init(scenesRefreshNotificationName), object: nil)
-                self?.close()
-            }, failed: { _ in
-                XWHUDManager.showErrorTipHUD("scene_delete_failed".localizedString)
-            })
+                self.close()
+            } catch { XWHUDManager.showErrorTipHUD("scene_delete_failed".localizedString) }
         }
-        vc.backActionCallback = {[weak self] _ in
-//                self?.dismiss(animated: true)
-            guard let self = self else { return }
+        vc.backActionCallback = { [weak self] _ in
+            guard let self else { return }
             NotificationCenter.default.post(name: .init(sceneDataUpdateNotificationName), object: self.scene)
             self.navigationController?.popViewController(animated: true)
         }
         navigationController?.pushViewController(vc, animated: true)
-        
     }
-    
+
     /// 设置
     private func settings() {
         guard space.sceneOperates.contains(.edit), scene.info.configuration?.isDeleting != true else { return }

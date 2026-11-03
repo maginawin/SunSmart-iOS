@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Production deletion intent, SQLite transactions, resolver and handle application.
-Only SDK transport/session/UI boundaries are deterministic; never operates a Space.
+SDK transport/session/UI and empty-reference cascade boundaries are deterministic.
+Reference cleanup runs production code in check_scene_deletion_cascade.py.
+Never operates a Space.
 """
 from pathlib import Path
 import subprocess
@@ -19,6 +21,7 @@ with tempfile.TemporaryDirectory(prefix='scene-deletion-') as directory:
         ROOT / 'SunSmart/Main/Scene/Model/SceneConfiguration.swift',
         ROOT / 'SunSmart/Common/Data/SceneDeleteCapability.swift',
         sdk / 'Sources/NordicSigMeshSDK/MeshLib/Scene/SceneRegisterPolicy.swift',
+        ROOT / 'Tests/Scene/SceneDeletionCascadeBoundarySupport.swift',
         ROOT / 'Tests/Scene/SceneDeletionFlowTests.swift']
     mesh = (ROOT / 'SunSmart/Common/Data/MeshNetwork+SunSmart.swift').read_text()
     binding = (ROOT / 'SunSmart/Main/Timed/Model/TimedSchedulerBindings.swift').read_text()
@@ -57,6 +60,6 @@ with tempfile.TemporaryDirectory(prefix='scene-deletion-') as directory:
     write('BuilderSupport.swift', builder_support)
     write('Builder.swift', 'import Foundation\n' + section('SunSmart/Main/Space/Model/SyncSceneScheduleTaskBuilder.swift', 'struct SyncSceneScheduleTaskBuilder {', '    func appendSchedule') + '\n}')
     binary = tmp / 'Tests'
-    subprocess.run(['swiftc', '-parse-as-library', '-I', str(tmp), '-L', str(tmp), '-lSQLite',
+    subprocess.run(['swiftc', '-parse-as-library', '-D', 'SCENE_CASCADE_STORE_BOUNDARY', '-D', 'SCENE_CASCADE_TASK_BOUNDARY', '-I', str(tmp), '-L', str(tmp), '-lSQLite',
         '-Xlinker', '-rpath', '-Xlinker', str(tmp), *map(str, sources), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)

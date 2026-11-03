@@ -154,7 +154,13 @@ enum BatteryPowerSwitchAddConfiguration {
         for switchData: PJEightKeySwitchData,
         node: Node
     ) -> [MeshMessageHandle] {
-        guard isSupportedAddNode(node),
+        guard SceneDeletionCascade.sceneNumbers(switchData).allSatisfy({ number in
+            MeshNetworkManager.instance.scenes.contains { $0.number == number && $0.info.configuration?.isDeleting != true }
+        }) else { return [] }
+        guard let network = MeshNetworkManager.instance.meshNetwork,
+              SceneDeletionCascade.permitsReferences(SceneDeletionCascade.sceneNumbers(switchData),
+                  meshUUID: network.uuid.uuidString, networkID: MeshNetworkManager.instance.currentNetworkKey.networkId.hex),
+              isSupportedAddNode(node),
               node.primaryUnicastAddress == switchData.proxyNodeAddress,
               let vendorModel = node.sunricherVendorModel else {
             return []
@@ -177,7 +183,13 @@ enum BatteryPowerSwitchAddConfiguration {
         for switchData: PJEightKeySwitchData,
         node: Node
     ) -> [MeshMessageHandle] {
-        guard isSupportedAddNode(node),
+        guard SceneDeletionCascade.sceneNumbers(switchData).allSatisfy({ number in
+            MeshNetworkManager.instance.scenes.contains { $0.number == number && $0.info.configuration?.isDeleting != true }
+        }) else { return [] }
+        guard let network = MeshNetworkManager.instance.meshNetwork,
+              SceneDeletionCascade.permitsReferences(SceneDeletionCascade.sceneNumbers(switchData),
+                  meshUUID: network.uuid.uuidString, networkID: MeshNetworkManager.instance.currentNetworkKey.networkId.hex),
+              isSupportedAddNode(node),
               node.primaryUnicastAddress == switchData.proxyNodeAddress,
               let vendorModel = node.sunricherVendorModel else {
             return []

@@ -25,7 +25,8 @@ class ScenesViewCell: GroupsViewCell {
             if oldValue !== scene { displayedNeedsSync = false }
             let imageIndex = max(min(scene.info.imageId, sceneImageNames.count) - 1, 0)
             self.imageView.image = UIImage(named: displayedNeedsSync ? "sync_failed_big" : sceneImageNames[imageIndex])
-            self.nameLabel.text = scene.name
+            self.nameLabel.text = scene.info.configuration?.isDeleting == true
+                ? scene.name + " · " + "scene_deletion_pending_short".localizedString : scene.name
             
             sceneRequestID = UUID()
             let requestID = sceneRequestID

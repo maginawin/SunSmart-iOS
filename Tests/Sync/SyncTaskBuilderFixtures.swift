@@ -89,6 +89,7 @@ final class Node: Equatable {
 }
 enum ActionType {
     case hdb(HDBDeviceSyncTask), hdbUnavailable
+    case sceneReferenceCleanup(SceneDeletionTask)
     case missingGroupSubscriptions
     case collectionSchedule(index: Int, entry: SchedulerRegistryEntry)
     case group(group: Group), profile(type: ProfileType), pirEnabled(Bool)
@@ -113,6 +114,25 @@ enum ActionType {
 final class MeshMessageHandle {
     var respondAddresss: [Address] = [1]
     var notRespondAddresss: [Address] = [2]
+}
+// Scene dependency persistence is exercised by Scene tests. This boundary lets
+// the production Session prove activation, ownership and result ordering.
+final class SceneDeletionTask {
+    func resetForRetry() {}
+    var isCurrent = true
+    var handles: [MeshMessageHandle] = [MeshMessageHandle()]
+    var onBuild: (() -> Void)?
+    var messageHandles: [MeshMessageHandle] { onBuild?(); return handles }
+    var activationSwitch: PJEightKeySwitchData?
+    var allowsEmpty = false
+    var applySucceeds = true
+    var invalidatesAfterApply = false
+    private(set) var applyCalls = 0
+    func apply(results: [MeshMessageHandle], expected: [MeshMessageHandle]) -> Bool {
+        applyCalls += 1
+        if applySucceeds && invalidatesAfterApply { isCurrent = false }
+        return applySucceeds
+    }
 }
 enum DeviceOperationType {
     static var allowsMessageFactory = false

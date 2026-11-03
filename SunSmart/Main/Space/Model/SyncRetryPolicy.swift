@@ -41,7 +41,15 @@ struct SyncRetryPolicy {
     }
 
     func prepareTaskForResync(_ task: SyncDeviceStepTaskModel) {
-        if isLightingZoneTask(task), let device = task.parentStepModel?.parentDeviceModel {
+        if case .configuration(_, .sceneReferenceCleanup) = task.operationType,
+           let device = task.parentStepModel?.parentDeviceModel {
+            // The read and write belong to one durable reference; retry rereads before making new commands.
+            for child in device.steps.flatMap(\.tasks) {
+                if case .configuration(_, .sceneReferenceCleanup(let operation)) = child.operationType {
+                    operation.resetForRetry(); resetTask(child)
+                }
+            }
+        } else if isLightingZoneTask(task), let device = task.parentStepModel?.parentDeviceModel {
             // A Zone result belongs to the entire device plan, never to an individual stage.
             device.steps.flatMap(\.tasks).filter(isLightingZoneTask).forEach(resetTask)
         } else {
@@ -59,7 +67,10 @@ struct SyncRetryPolicy {
         task.failedCount = 0
         task.resetSkippedState()
         task.state = .none
-        resetMessageHandlesForResync(task.operationType.messageHandles)
+        // Defer rebuilding cleanup writes until their fresh Scheduler read has completed.
+        if case .configuration(_, .sceneReferenceCleanup) = task.operationType {} else {
+            resetMessageHandlesForResync(task.operationType.messageHandles)
+        }
         task.parentStepModel?.isFineshed = false
         task.parentStepModel?.parentDeviceModel?.isFineshed = false
         task.parentStepModel?.parentDeviceModel?.isSelected = false

@@ -93,31 +93,35 @@ final class SceneConfigurationStore {
             + snapshot.unresolved.map(\.identity))
         identities.formUnion(scene.info.configuration?.deviceMembers.map(\.identity) ?? [])
         identities.formUnion(scene.info.configuration?.pendingOperations.map(\.identity) ?? [])
-        if snapshot.comparison.kind == .groups {
-            // Legacy Group scenes may have residual registered targets after an
-            // interrupted group exit. Device-mode display categories are never targets.
-            guard let network = manager.meshNetwork,
-                  scene.addresses.allSatisfy({ network.node(withAddress: $0) != nil }) else { throw Failure.invalidTargets }
-            let registeredNodes = scene.addresses.compactMap { network.node(withAddress: $0) }
-            for node in manager.realNodes where registeredNodes.contains(where: { $0 === node })
-                || node.sceneExecuteDatas.contains(where: { $0.sceneNumber == scene.number })
-                || node.elements.contains(where: { $0.observedSceneRegister?.contains(scene.number) == true }) {
-                guard let identity = node.timedSchedulerIdentity else { throw Failure.invalidTargets }
-                identities.insert(try SceneConfiguration.identity(identity))
-            }
+        guard let network = manager.meshNetwork,
+              scene.addresses.allSatisfy({ network.node(withAddress: $0) != nil }) else { throw Failure.invalidTargets }
+        let registeredNodes = scene.addresses.compactMap { network.node(withAddress: $0) }
+        // Both modes may retain registered targets outside their current members.
+        for node in manager.realNodes where registeredNodes.contains(where: { $0 === node })
+            || node.sceneExecuteDatas.contains(where: { $0.sceneNumber == scene.number })
+            || node.elements.contains(where: { $0.observedSceneRegister?.contains(scene.number) == true }) {
+            guard let identity = node.timedSchedulerIdentity else { throw Failure.invalidTargets }
+            identities.insert(try SceneConfiguration.identity(identity))
         }
+        let cleanupNodes = manager.realNodes.filter { node in
+            node.timedSchedulerIdentity.map { identities.contains($0) } == true
+        }
+        let cascade = try SceneDeletionCascade.prepare(scene: scene, snapshot: snapshot, additionalNodes: cleanupNodes)
         let previous = scene.info.configuration
         let groups = scene.info.groups
         let states = groups.map { $0.info.sceneExecuteDatas.first { $0.sceneNumber == scene.number }?.state }
         var configuration = previous ?? SceneConfiguration(kind: snapshot.comparison.kind, name: scene.name)
         configuration.revision = UUID()
         configuration.isDeleting = true
+        configuration.schemaVersion = 2
+        configuration.deletionReferences = cascade.references
         configuration.pendingOperations = identities.map { identity in
             previous?.pendingOperations.first { $0.identity == identity && $0.action == .remove }
                 ?? .init(identity: identity, action: .remove)
         }
         configuration = try configuration.normalized()
         let saved = SunSmartDataManager.shared.configurationTransaction {
+            try cascade.persist()
             scene.info.configuration = configuration
             try scene.info.saveConfiguration(meshUUID: snapshot.scope.meshUUID, subnetworkId: snapshot.scope.networkID)
             for group in groups {
@@ -132,6 +136,7 @@ final class SceneConfigurationStore {
             }
             throw Failure.persistence
         }
+        cascade.install()
         manager.realNodes.forEach { $0.clearSyncStateCache() }
     }
 
@@ -160,7 +165,7 @@ final class SceneConfigurationStore {
     func finishDeletion(info: SceneInfo, scope: SceneScope) throws {
         guard !info.configurationLoadFailed, let configuration = info.configuration,
               configuration.isDeleting, configuration.pendingOperations.isEmpty,
-              Self.deletionReferenceNames(number: info.sceneId).isEmpty,
+              SceneDeletionCascade.canFinish(info: info),
               let network = MeshNetworkManager.instance.meshNetwork,
               network.uuid.uuidString == scope.meshUUID,
               MeshNetworkManager.instance.currentNetworkKey.networkId.hex == scope.networkID else { throw Failure.invalidTargets }
@@ -173,6 +178,7 @@ final class SceneConfigurationStore {
         }
         let previous = groups.map { $0.info.sceneExecuteDatas }
         let saved = SunSmartDataManager.shared.configurationTransaction {
+            try SceneDeletionCascade.finalizeReferences(info: info, scope: scope)
             for group in groups {
                 group.info.sceneExecuteDatas.removeAll { $0.sceneNumber == info.sceneId }
                 guard group.info.save() else { throw Failure.persistence }
@@ -183,6 +189,7 @@ final class SceneConfigurationStore {
             for (group, data) in zip(groups, previous) { group.info.sceneExecuteDatas = data }
             throw Failure.persistence
         }
+        SceneDeletionCascade.refreshSchedules(scope: scope)
         Self.completedDeletions[.init(meshUUID: scope.meshUUID, networkID: scope.networkID, number: info.sceneId)] = configuration.revision
         groups.forEach { $0.updateGroupSyncState() }
     }
@@ -203,6 +210,7 @@ final class SceneConfigurationStore {
         guard infos.contains(where: { info in
             info.configuration?.deviceMembers.contains { $0.identity == identity } == true
                 || info.configuration?.pendingOperations.contains { $0.identity == identity } == true
+                || info.configuration?.deletionReferences?.pending.contains { $0.identity == identity } == true
         }) else { return nil }
         guard let space = SpaceData.load(subNetworkId: scope.networkID) else { throw Failure.unavailable }
         let state = try SpaceConfigurationSafety.recoveryState(space)
@@ -241,6 +249,7 @@ final class SceneConfigurationStore {
         guard !infos.contains(where: \.configurationLoadFailed), infos.contains(where: { info in
             info.configuration?.deviceMembers.contains { $0.identity == receipts[index].oldIdentity } == true
                 || info.configuration?.pendingOperations.contains { $0.identity == receipts[index].oldIdentity } == true
+                || info.configuration?.deletionReferences?.pending.contains { $0.identity == receipts[index].oldIdentity } == true
         }) else { throw Failure.invalidTargets }
         receipts[index].newIdentity = identity; receipts[index].stage = .verified
         try SpaceConfigurationSafety.saveSceneRestoreReceipts(JSONEncoder().encode(receipts), context: state, space: space)
@@ -326,6 +335,7 @@ final class SceneConfigurationStore {
                   infos.contains(where: { info in
                       info.configuration?.deviceMembers.contains { $0.identity == receipt.oldIdentity } == true
                         || info.configuration?.pendingOperations.contains { $0.identity == receipt.oldIdentity } == true
+                        || info.configuration?.deletionReferences?.pending.contains { $0.identity == receipt.oldIdentity } == true
                   }) else { return nil }
             return .init(receipt: receipt, node: node, identity: identity)
         }
@@ -575,11 +585,11 @@ final class SceneConfigurationStore {
         for info in try SceneInfo.loadAll(meshUUID: scope.meshUUID, subnetworkId: scope.networkID) {
             guard !info.configurationLoadFailed else { throw Failure.persistence }
             guard let configuration = info.configuration else { continue }
-            if configuration.isDeleting, configuration.pendingOperations.isEmpty {
+            if configuration.isDeleting, configuration.pendingOperations.isEmpty, !SceneDeletionCascade.hasPending(info) {
                 // Keep the Space usable so its Schedule/Switch cleanup can run.
                 // Only a known reference defers release; persistence/identity
                 // errors from finalization still fail the recovery attempt.
-                if !Self.deletionReferenceNames(number: info.sceneId).isEmpty { continue }
+                if !SceneDeletionCascade.canFinish(info: info) { continue }
                 do { try finishDeletion(info: info, scope: scope) }
                 catch { failed = true }
                 continue
@@ -612,8 +622,8 @@ final class SceneConfigurationStore {
         do {
             for info in deleting {
                 guard let configuration = info.configuration else { continue }
-                if configuration.pendingOperations.isEmpty {
-                    if !Self.deletionReferenceNames(number: info.sceneId).isEmpty { continue }
+                if configuration.pendingOperations.isEmpty, !SceneDeletionCascade.hasPending(info) {
+                    if !SceneDeletionCascade.canFinish(info: info) { continue }
                     try finishDeletion(info: info, scope: scope)
                     continue
                 }

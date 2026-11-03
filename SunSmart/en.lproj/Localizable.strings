@@ -2661,3 +2661,9 @@
 "timed_profile_read_only" = "Profile schedules are preserved, but this app cannot edit, switch, or delete them yet.";
 "timed_profile_target" = "Profile: %@ (read only)";
 "timed_profile_topology_unavailable" = "This Group is used by a Profile schedule. This app cannot safely change its membership or delete it yet.";
+
+"scene_delete_timers_impact" = "Timers to delete:\n%@";
+"scene_delete_actions_impact" = "Matching scene actions will be cleared on:\n%@";
+"scene_deletion_pending" = "Deletion pending. Sync devices to finish removing the scene and its actions.";
+"scene_deletion_pending_short" = "Deletion pending";
+"scene_reference_cleanup" = "Remove scene actions";

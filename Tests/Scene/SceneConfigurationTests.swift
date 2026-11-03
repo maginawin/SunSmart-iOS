@@ -42,8 +42,140 @@ import Foundation
                 && rejects { _ = try SceneConfiguration.decode(Data("null".utf8)) }
         }
         test("unknownVersionIsRejected") {
-            var bad = config; bad.schemaVersion = 2
+            var bad = config; bad.schemaVersion = 3
             return rejects { _ = try bad.encoded() }
+        }
+        test("versionOneDeletionWithoutReferenceBlockRemainsReadable") {
+            var legacy = config
+            legacy.isDeleting = true
+            legacy.pendingOperations = [.init(identity: a, action: .remove)]
+            let encoded = try legacy.encoded()
+            let object = try JSONSerialization.jsonObject(with: encoded) as! [String: Any]
+            let loaded = try SceneConfiguration.decode(encoded)
+            return object["deletionReferences"] == nil && loaded == legacy
+                && loaded.schemaVersion == 1 && loaded.deletionReferences == nil
+        }
+        let schedulerCleanup = SceneReferenceRemoval(kind: .scheduler, identity: a, address: 1,
+            name: "Old Timed", slots: [0, 15])
+        let unknownProxyCleanup = SceneReferenceRemoval(kind: .kinetic, identity: nil, address: 3,
+            objectID: "kinetic-1", name: "Offline Proxy", keys: [1, 2])
+        let references = SceneDeletionReferences(scheduleIDs: [4, 31], pending: [schedulerCleanup, unknownProxyCleanup])
+        let deleting = SceneConfiguration(schemaVersion: 2, kind: .devices, name: "Deleting",
+            deviceMembers: members, pendingOperations: [.init(identity: a, action: .remove)],
+            isDeleting: true, deletionReferences: references)
+        test("versionTwoRetainsCleanupOwnershipAndUnresolvedIdentity") {
+            let loaded = try SceneConfiguration.decode(deleting.encoded())
+            return loaded == deleting && loaded.deletionReferences?.scheduleIDs == [4, 31]
+                && loaded.deletionReferences?.pending.first?.id == schedulerCleanup.id
+                && loaded.deletionReferences?.pending.last?.identity == nil
+                && loaded.deletionReferences?.pending.last?.address == 3
+        }
+        test("versionTwoRequiresDeletionAndReferenceBlock") {
+            var missing = deleting; missing.deletionReferences = nil
+            var active = deleting; active.isDeleting = false
+            var downgraded = deleting; downgraded.schemaVersion = 1
+            return rejects { _ = try missing.encoded() }
+                && rejects { _ = try active.encoded() }
+                && rejects { _ = try downgraded.encoded() }
+        }
+        test("cleanupIdentityNormalizesOnRoundTrip") {
+            var lower = deleting
+            lower.deletionReferences?.pending[0].identity = .init(nodeUUID: a.nodeUUID.lowercased(),
+                unicastAddress: a.unicastAddress.lowercased(), deviceKeyFingerprint: a.deviceKeyFingerprint.uppercased())
+            let loaded = try SceneConfiguration.decode(lower.encoded())
+            return loaded.deletionReferences?.pending[0].identity == a
+        }
+        test("referenceOnlyRestoreMigratesIdentityWithoutAddingSceneWrite") {
+            let replacement = TimedSchedulerNodeIdentity(nodeUUID: a.nodeUUID, unicastAddress: "0010", deviceKeyFingerprint: b.deviceKeyFingerprint)
+            let original = SceneConfiguration(schemaVersion: 2, kind: .groups, name: "Reference-only",
+                isDeleting: true, deletionReferences: .init(scheduleIDs: [4], pending: [schedulerCleanup]))
+            let migrated = try original.restoringIdentity(from: a, to: replacement)
+            let removed = try original.removingConfirmedIdentities([a])
+            return migrated.deletionReferences?.pending.first?.identity == replacement
+                && migrated.deletionReferences?.pending.first?.address == 0x10
+                && migrated.pendingOperations.isEmpty && migrated.revision != original.revision
+                && removed.deletionReferences?.pending.isEmpty == true && removed.deletionReferences?.scheduleIDs == [4]
+        }
+        test("missingOrNullVersionTwoDependenciesCannotDecodeAsCompleted") {
+            let object = try JSONSerialization.jsonObject(with: deleting.encoded()) as! [String: Any]
+            return [nil, NSNull() as Any?].allSatisfy { value in
+                var missing = object; missing["deletionReferences"] = value
+                return rejects { _ = try SceneConfiguration.decode(JSONSerialization.data(withJSONObject: missing)) }
+            }
+        }
+        test("completedReferenceCleanupRetainsSchedulesUntilFinalization") {
+            var settled = deleting
+            settled.deletionReferences?.pending = []
+            let loaded = try SceneConfiguration.decode(settled.encoded())
+            return loaded.isDeleting && loaded.deletionReferences?.pending.isEmpty == true
+                && loaded.deletionReferences?.scheduleIDs == [4, 31]
+                && loaded.pendingOperations == settled.pendingOperations
+        }
+        test("invalidSchedulerSlotsCannotEnterCleanupQueue") {
+            return [[-1], [16], [2, 2]].allSatisfy { slots in
+                var invalid = deleting
+                invalid.deletionReferences?.pending[0].slots = slots
+                return rejects { _ = try invalid.encoded() }
+            }
+        }
+        test("cleanupAddressMustBeUnicastAndMatchKnownIdentity") {
+            return [UInt16(0), 0x8000, 0xFFFF, 2].allSatisfy { address in
+                var invalid = deleting
+                invalid.deletionReferences?.pending = [.init(kind: .scheduler, identity: a,
+                    address: address, name: "Invalid target", slots: [0])]
+                return rejects { _ = try invalid.encoded() }
+            }
+        }
+        test("incomingInvalidCleanupTargetsAreRejectedBeforeRecovery") {
+            let object = try JSONSerialization.jsonObject(with: deleting.encoded()) as! [String: Any]
+            let invalidFields: [(String, Any)] = [("slots", [-1]), ("slots", [16]),
+                ("slots", [1, 1]), ("address", 0), ("address", 0x8000), ("address", 2)]
+            return invalidFields.allSatisfy { field, value in
+                var corrupted = object
+                var block = corrupted["deletionReferences"] as! [String: Any]
+                var pending = block["pending"] as! [[String: Any]]
+                pending[0][field] = value
+                block["pending"] = pending
+                corrupted["deletionReferences"] = block
+                return rejects { _ = try SceneConfiguration.decode(JSONSerialization.data(withJSONObject: corrupted)) }
+            }
+        }
+        test("duplicateCleanupIDsAndScheduleIDsAreRejected") {
+            var duplicateTask = deleting
+            duplicateTask.deletionReferences?.pending.append(schedulerCleanup)
+            var duplicateSchedule = deleting
+            duplicateSchedule.deletionReferences?.scheduleIDs.append(4)
+            return rejects { _ = try duplicateTask.encoded() }
+                && rejects { _ = try duplicateSchedule.encoded() }
+        }
+        test("controllerCleanupRequiresBusinessObjectIdentity") {
+            return [SceneReferenceRemoval.Kind.kinetic, .powerSwitch, .emergency].allSatisfy { kind in
+                var invalid = deleting
+                invalid.deletionReferences?.pending = [.init(kind: kind, identity: b, address: 2,
+                    name: "Missing controller ID", keys: [1])]
+                return rejects { _ = try invalid.encoded() }
+            }
+        }
+        test("controllerCleanupRequiresDistinctKeysInKindRange") {
+            let invalidKeys: [(SceneReferenceRemoval.Kind, [Int])] = [
+                (.kinetic, []), (.kinetic, [0]), (.kinetic, [5]), (.kinetic, [1, 1]),
+                (.powerSwitch, []), (.powerSwitch, [-1]), (.powerSwitch, [4]), (.powerSwitch, [0, 0]),
+                (.emergency, []), (.emergency, [-1]), (.emergency, [2]), (.emergency, [1, 1])]
+            return invalidKeys.allSatisfy { kind, keys in
+                var invalid = deleting
+                invalid.deletionReferences?.pending = [.init(kind: kind, identity: b, address: 2,
+                    objectID: "controller", name: "Invalid keys", keys: keys)]
+                return rejects { _ = try invalid.encoded() }
+            }
+        }
+        test("cleanupKindsDoNotAcceptEachOthersPayload") {
+            var scheduler = deleting
+            scheduler.deletionReferences?.pending = [.init(kind: .scheduler, identity: a, address: 1,
+                name: "Scheduler", keys: [1], slots: [0])]
+            var controller = deleting
+            controller.deletionReferences?.pending = [.init(kind: .kinetic, identity: b, address: 2,
+                objectID: "switch", name: "Switch", keys: [1], slots: [0])]
+            return rejects { _ = try scheduler.encoded() } && rejects { _ = try controller.encoded() }
         }
         test("invalidIdentityAndConflictingOperationsAreRejected") {
             var bad = config

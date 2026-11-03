@@ -89,6 +89,7 @@ final class SyncExecutionSession {
         scene.info.configuration = .init(kind: devices ? .devices : .groups, name: scene.name, deviceMembers: devices ? members : [])
         if !devices { group.info.sceneExecuteDatas = [.init(sceneNumber: 1)]; x.group = nil }
         for node in [a, b, x] { node.sceneSetupModel!.parentElement!.observedSceneRegister = [1] }
+        if devices { x.sceneSetupModel!.parentElement!.observedSceneRegister = [] }
         for node in [a, b] { node.sceneExecuteDatas = [.init(sceneNumber: 1)] }
         scene.addresses = [1, 2]
         try scene.info.saveConfiguration(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)
@@ -102,14 +103,14 @@ final class SyncExecutionSession {
         try syncPreparationBoundaries()
         try incrementalSceneSave()
         var (scene, a, b, x, group) = try fixture()
-        // Classification is display-only: even a stale observed X is not a target.
+        // Classification is display-only: unrelated X has no stored Scene.
         delete(scene)
-        check(Set(SyncExecutionSession.sent.map { $0.0.primaryUnicastAddress }) == [1, 2])
+        check(Set(SyncExecutionSession.sent.map { $0.0.primaryUnicastAddress }) == [1, 2], "Scene removal targets: \(SyncExecutionSession.sent.map { $0.0.primaryUnicastAddress }); failures=\(failures); pending=\(scene.info.configuration!.pendingOperations.count); active=\(SyncExecutionSession.current != nil)")
         check(scene.info.configuration!.isDeleting)
         let original = scene.info.configuration!
         SyncExecutionSession.complete([1])
         check(failures == 1 && successes == 0 && scene.info.configuration!.pendingOperations.map(\.identity) == [b.timedSchedulerIdentity!])
-        check(x.sceneSetupModel!.parentElement!.observedSceneRegister == [1])
+        check(x.sceneSetupModel!.parentElement!.observedSceneRegister == [])
         // Process/re-entry reload keeps original generation. Offline / unknown is
         // durable cleanup, never a zero-target success or reusable number.
         scene.info = try persisted()!
@@ -159,15 +160,10 @@ final class SyncExecutionSession {
         SyncExecutionSession.pendingStop?(); SyncExecutionSession.deferStop = false
         check(manager.scenes.isEmpty)
 
-        // Reference and prepare-transaction failures must produce no physical tasks.
+        // Cascade references are covered by check_scene_deletion_cascade.py.
+        // A prepare-transaction failure must still produce no physical tasks.
         (scene, a, b, x, group) = try fixture(devices: false)
-        manager.schedules = [Schedule(4, scene: scene)]
-        delete(scene); check(!scene.info.configuration!.isDeleting && SyncExecutionSession.sent.isEmpty)
-        manager.schedules = []; FixtureReferences.switches = [.init(sceneANumber: 1)]
-        delete(scene); check(!scene.info.configuration!.isDeleting)
-        FixtureReferences.switches = []; FixtureReferences.observed[ObjectIdentifier(a)] = [0: [0: .init(sceneNumber: 1)]]
-        delete(scene); check(!scene.info.configuration!.isDeleting)
-        FixtureReferences.observed = [:]; GroupInfo.savingSucceeds = false
+        GroupInfo.savingSucceeds = false
         delete(scene)
         check(!scene.info.configuration!.isDeleting && group.info.sceneExecuteDatas[0].state == .normal)
         check((try! persisted())!.configuration!.isDeleting == false)
@@ -228,8 +224,20 @@ final class SyncExecutionSession {
         try verifiedRestoreReentryFailures()
         try multiElementCleanup()
         try legacySecondaryAddress()
-        try referencedTombstone()
-        print("PASS whole deletion: A/B not X, durable offline/restart/unknown, references, residual groups, stale/failing ACK, stop gate, transaction rollback, SDK/App interrupted finalization")
+        try observedDeviceResidual()
+        print("PASS whole deletion: A/B not X, durable offline/restart/unknown, residual groups, stale/failing ACK, stop gate, transaction rollback, SDK/App interrupted finalization; cascade references covered separately")
+    }
+
+    static func observedDeviceResidual() throws {
+        let (scene, _, _, x, _) = try fixture()
+        x.sceneSetupModel!.parentElement!.observedSceneRegister = [scene.number]
+        delete(scene)
+        check(Set(SyncExecutionSession.sent.map { $0.0.primaryUnicastAddress }) == [1, 2, 3],
+              "observed residue outside current device members must be cleared")
+        check(scene.info.configuration!.pendingOperations.contains { $0.identity == x.timedSchedulerIdentity! })
+        SyncExecutionSession.complete([1, 2, 3])
+        check(manager.scenes.isEmpty && (try! persisted()) == nil)
+        print("PASS device residual: observed Scene outside current members is retained until confirmed removal")
     }
 
     static func syncPreparationBoundaries() throws {
@@ -640,28 +648,6 @@ final class SyncExecutionSession {
         check(scene.info.configuration!.pendingOperations.contains { $0.identity == x.timedSchedulerIdentity! },
             "Legacy secondary Element address must resolve to its original Node even without cached/register data")
         print("PASS legacy secondary address: unresolved cache retains the registered Node cleanup identity")
-    }
-
-    static func referencedTombstone() throws {
-        let (scene, _, _, _, _) = try fixture()
-        try store.prepareDeletion(scene: scene)
-        scene.info.configuration!.pendingOperations = []
-        try scene.info.saveConfiguration(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)
-        manager.schedules = [Schedule(9, scene: scene)]
-        do { try store.finishDeletion(info: scene.info, scope: scope); fatalError("Referenced tombstone must retain its record and number") } catch {}
-        check(manager.scenes.count == 1 && (try! persisted()) != nil)
-        // A retained reference cannot prevent entering the very Sync page that
-        // clears Scheduler references. Neither load nor preparation releases it.
-        try store.restoreSceneProjections()
-        try store.prepareDeletionRetries()
-        check(manager.scenes.count == 1 && (try! persisted()) != nil)
-        manager.schedules = []
-        FixtureReferences.switches = [.init(sceneANumber: scene.number)]
-        do { try store.finishDeletion(info: scene.info, scope: scope); fatalError("Switch reference bypassed finalization guard") } catch {}
-        FixtureReferences.switches = []
-        try store.finishDeletion(info: scene.info, scope: scope)
-        check(manager.scenes.isEmpty && (try! persisted()) == nil)
-        print("PASS finalization references: interrupted/imported tombstone cannot bypass Schedule/Switch protection")
     }
 
 }

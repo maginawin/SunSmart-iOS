@@ -4,6 +4,7 @@ import NordicSigMeshSDK
 struct SyncSceneScheduleTaskBuilder {
     func appendScene(to configurationSection: SyncDevicesSectionModel, removal removeSection: SyncDevicesSectionModel, scene: Scene) {
 
+        let referenceSteps = SceneDeletionCascade.appendTasks(scene: scene, to: removeSection)
         // Node entry points consume the same resolver for scene, device and recovery sync.
         for node in MeshNetworkManager.instance.realNodes {
             if let data = node.getNodeSyncSceneDatas(scene: scene).first?.data {
@@ -12,6 +13,15 @@ struct SyncSceneScheduleTaskBuilder {
             }
             if !node.getNodeNeedDeleteSceneDatas(scene: scene).isEmpty {
                 let model = makeSceneDevice(node: node, scene: scene, data: nil, removing: true)
+                if !referenceSteps.isEmpty {
+                    if let operation = model.operationType {
+                        let task = SyncDeviceStepTaskModel(name: scene.name, operationType: operation)
+                        let step = SyncDeviceStepModel(type: "scene".localizedString, state: .none, tasks: [task])
+                        step.parentDeviceModel = model; task.parentStepModel = step
+                        model.operationType = nil; model.steps = [step]
+                    }
+                    model.steps.forEach { $0.relevanceStepModels.append(contentsOf: referenceSteps) }
+                }
                 append(model, node: node, to: removeSection)
             }
         }

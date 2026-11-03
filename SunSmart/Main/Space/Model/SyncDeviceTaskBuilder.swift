@@ -14,7 +14,8 @@ struct SyncDeviceTaskBuilder {
         node: Node,
         effectiveMemberCount: Int? = nil,
         profileSyncContext: GroupProfileSyncContext? = nil,
-        protectsProfileSensors: Bool = false
+        protectsProfileSensors: Bool = false,
+        excludedSceneDeletionNumbers: Set<UInt16> = []
     ) -> (configturationDevice: SyncDevicesModel?, removeDevice: SyncDevicesModel?) {
 
         /// 删除操作
@@ -156,7 +157,7 @@ struct SyncDeviceTaskBuilder {
 
             case .deleteScenes(let scenes):
 
-                let deleteSceneTasks = scenes.map({
+                let deleteSceneTasks = scenes.filter { !excludedSceneDeletionNumbers.contains($0.number) }.map({
                     return SyncDeviceStepTaskModel(name: $0.name, operationType: .delete(node: node, type: .scene(sceneId: $0.number, executeData: nil)))
                 })
                 if deleteSceneTasks.count > 0 {

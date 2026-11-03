@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""Run Scene production logic; SQLite/BLE/UIKit boundaries follow existing fixtures."""
+"""Run Scene production logic with SQLite/BLE/UIKit fixture boundaries.
+Reference cleanup uses an empty-reference boundary here; its production behavior
+is covered separately by check_scene_deletion_cascade.py.
+"""
 from pathlib import Path
 import argparse
 import subprocess
@@ -70,8 +73,10 @@ def run(suite):
             subprocess.run(['swiftc', '-emit-module', '-emit-library', '-module-name', 'SQLite',
                             *map(str, sorted((sdk / 'Sources/SQLite').rglob('*.swift'))),
                             '-o', str(tmp / 'libSQLite.dylib'), '-emit-module-path', str(tmp / 'SQLite.swiftmodule')], check=True)
-            flags = ['-I', str(tmp), '-L', str(tmp), '-lSQLite', '-Xlinker', '-rpath', '-Xlinker', str(tmp)]
+            flags += ['-I', str(tmp), '-L', str(tmp), '-lSQLite', '-Xlinker', '-rpath', '-Xlinker', str(tmp)]
             if suite in ['save', 'roundtrip-storage']:
+                flags += ['-D', 'SCENE_CASCADE_STORE_BOUNDARY']
+                sources += [ROOT / 'Tests/Scene/SceneDeletionCascadeBoundarySupport.swift']
                 sources += target_sources(tmp) + [ROOT / ('Tests/Scene/SceneSaveFlowTests.swift' if suite == 'save' else 'Tests/Scene/ScenePayloadPersistenceTests.swift')]
                 harness = (ROOT / 'Tests/Scene/SceneSaveTestSupport.swift').read_text()
                 harness = scene_authority_support(harness)
@@ -119,6 +124,8 @@ def run(suite):
         elif suite == 'model':
             sources += [ROOT / 'Tests/Scene/SceneConfigurationTests.swift']
         elif suite in ['sync', 'integration']:
+            flags += ['-D', 'SCENE_CASCADE_TASK_BOUNDARY']
+            sources += [ROOT / 'Tests/Scene/SceneDeletionCascadeBoundarySupport.swift']
             sources += target_sources(tmp) + [ROOT / 'Tests/Scene/SceneCommandTestSupport.swift', ROOT / ('Tests/Scene/SceneCommandTests.swift' if suite == 'sync' else 'Tests/Scene/SceneIntegrationTests.swift')]
             if suite == 'integration':
                 picker = tmp / 'Pickers.swift'

@@ -57,7 +57,7 @@ extension Scene {
     ///   - data: 场景执行数据
     /// - Returns: 消息list
     func getDeleteMessageHandles(node: Node) -> [MeshMessageHandle] {
-        guard let sceneSetupModel = node.sceneSetupModel else { return [] }
+        guard let sceneSetupModel = node.sceneSetupModel, !SceneDeletionCascade.hasPending(info) else { return [] }
         // 删除场景
         guard number > 0, SceneCommandBuilder.reserveGroupOperation(scene: self, node: node, action: .remove), let context = try? SceneMessageContext(scene: self, node: node, action: .remove) else {
             #if DEBUG

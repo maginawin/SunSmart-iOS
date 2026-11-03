@@ -107,6 +107,8 @@ final class Scene: NSObject {
     init(_ number: UInt16) { self.number = number; info = SceneInfo(sceneId: number) }
 }
 final class Schedule {
+    enum TargetType { case devices, groups, scene, profile }
+    var selectTargetType: TargetType = .devices
     var name = "Schedule"
     var testSyncNeededAddresses: Set<Address>?
     let id: Int
@@ -142,6 +144,12 @@ final class MeshProxyMessageCommand { static let shared = MeshProxyMessageComman
 // ACTUAL_SCENE_INFO
 // ACTUAL_SCENE_CAPACITY
 // ACTUAL_TIMED_BINDINGS
+
+extension TimedSchedulerBindings {
+    // These Scene fixtures contain no Profile configuration. Profile admission
+    // is exercised by the dedicated Timed/Profile regressions.
+    static func hasProtectedProfile(group: Group, node: Node? = nil) -> Bool { false }
+}
 
 enum EmergencyFireControllerSceneEventManager {
     static var blocked = Set<ObjectIdentifier>()

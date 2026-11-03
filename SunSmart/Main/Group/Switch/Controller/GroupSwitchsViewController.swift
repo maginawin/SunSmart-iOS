@@ -145,20 +145,11 @@ class GroupSwitchsViewController: UIViewController {
     }
     
     /// 副本按键同步到真实按键数据
-    private func syncRealSwitchData(copySwitch: DeviceSwitchData) {
-        let uuid = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString
-        
-        if let realSwitch = MeshNetworkManager.instance.switchs.first(where: { $0.id == copySwitch.id }) {
-            realSwitch.update(switchData: copySwitch)
-            if uuid != nil {
-//                let networkKey = MeshNetworkManager.instance.currentNetworkKey
-                realSwitch.save()
-//                if let proxy = realSwitch.proxyNode {
-//                    proxy.saveNodeInfo(meshUUID: uuid!, networkKey: networkKey)
-//                }
-            }
-        }
-        
+    private func syncRealSwitchData(copySwitch: DeviceSwitchData) -> Bool {
+        guard let realSwitch = MeshNetworkManager.instance.switchs.first(where: { $0.id == copySwitch.id }),
+              copySwitch.save() else { return false }
+        realSwitch.update(switchData: copySwitch)
+        return true
     }
     
     /// 删除虚拟开关
@@ -243,7 +234,10 @@ class GroupSwitchsViewController: UIViewController {
             switchData.subLinkGroupAddress = subLinkGroup?.address.address
 //            self.switchData?.save()
         }
-        syncRealSwitchData(copySwitch: switchData)
+        guard syncRealSwitchData(copySwitch: switchData) else {
+            XWHUDManager.showErrorTipHUD("failed".localizedString)
+            return
+        }
         
         // 判断是否需要对设备发送数据
         guard !switchData.getNeedSyncDatas().isEmpty() else {
@@ -860,7 +854,10 @@ extension GroupSwitchsViewController: GroupSwitchsHeaderViewDelegate {
          } inputDoneBack: {[weak self] text in
              guard let self = self else { return }
              groupSwitch.name = DeviceSwitchData.normalizedName(text)
-             self.syncRealSwitchData(copySwitch: groupSwitch)
+             guard self.syncRealSwitchData(copySwitch: groupSwitch) else {
+                 XWHUDManager.showErrorTipHUD("failed".localizedString)
+                 return
+             }
              self.reloadSwitchItem(switchData: groupSwitch)
              NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
          }.show()

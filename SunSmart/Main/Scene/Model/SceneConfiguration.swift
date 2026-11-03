@@ -27,6 +27,30 @@ struct ScenePendingOperation: Codable, Equatable {
     }
 }
 
+/// Durable work kept after business references have been detached. Contains no credentials.
+struct SceneReferenceRemoval: Codable, Equatable {
+    enum Kind: String, Codable { case scheduler, kinetic, powerSwitch, emergency }
+    let id: UUID
+    let kind: Kind
+    var identity: TimedSchedulerNodeIdentity?
+    var address: UInt16
+    let objectID: String
+    let name: String
+    var keys: [Int] = []
+    var slots: [Int] = []
+
+    init(kind: Kind, identity: TimedSchedulerNodeIdentity?, address: UInt16,
+         objectID: String = "", name: String, keys: [Int] = [], slots: [Int] = []) {
+        self.id = UUID(); self.kind = kind; self.identity = identity; self.address = address
+        self.objectID = objectID; self.name = name; self.keys = keys; self.slots = slots
+    }
+}
+
+struct SceneDeletionReferences: Codable, Equatable {
+    var scheduleIDs: [Int] = []
+    var pending: [SceneReferenceRemoval] = []
+}
+
 struct SceneScope: Codable, Equatable {
     let meshUUID: String
     let networkID: String
@@ -52,6 +76,7 @@ struct SceneConfiguration: Codable, Equatable {
     var deviceMembers: [SceneDeviceMember] = []
     var pendingOperations: [ScenePendingOperation] = []
     var isDeleting = false
+    var deletionReferences: SceneDeletionReferences? = nil
 
     static func decode(_ data: Data) throws -> SceneConfiguration {
         try JSONDecoder().decode(Self.self, from: data)
@@ -66,9 +91,38 @@ struct SceneConfiguration: Codable, Equatable {
     /// The codec is also the validation boundary for database and later import.
     /// Only an absent *outer* block is legacy data; fields inside a block are required.
     func normalized() throws -> SceneConfiguration {
-        guard schemaVersion == 1 else { throw Failure.invalidVersion }
+        guard schemaVersion == 1 || schemaVersion == 2 else { throw Failure.invalidVersion }
         guard kind != .groups || deviceMembers.isEmpty else { throw Failure.conflictingMode }
+        guard (schemaVersion == 1 && deletionReferences == nil)
+                || (schemaVersion == 2 && isDeleting && deletionReferences != nil) else { throw Failure.conflictingOperation }
+        if let references = deletionReferences {
+            guard Set(references.scheduleIDs).count == references.scheduleIDs.count,
+                  Set(references.pending.map(\.id)).count == references.pending.count else { throw Failure.conflictingOperation }
+            for item in references.pending {
+                guard (1...0x7FFF).contains(item.address), item.slots.allSatisfy({ (0..<16).contains($0) }),
+                      Set(item.slots).count == item.slots.count else { throw Failure.invalidIdentity }
+                if let identity = item.identity {
+                    let validated = try Self.identity(identity)
+                    guard UInt16(validated.unicastAddress, radix: 16) == item.address else { throw Failure.invalidIdentity }
+                }
+                guard Set(item.keys).count == item.keys.count else { throw Failure.conflictingOperation }
+                switch item.kind {
+                case .scheduler: guard item.keys.isEmpty else { throw Failure.invalidDraft }
+                case .kinetic: guard !item.keys.isEmpty, item.keys.allSatisfy({ (1...4).contains($0) }) else { throw Failure.invalidDraft }
+                case .powerSwitch: guard !item.keys.isEmpty, item.keys.allSatisfy({ (0..<4).contains($0) }) else { throw Failure.invalidDraft }
+                case .emergency: guard !item.keys.isEmpty, item.keys.allSatisfy({ (0...1).contains($0) }) else { throw Failure.invalidDraft }
+                }
+                if item.kind != .scheduler && (item.objectID.isEmpty || !item.slots.isEmpty) { throw Failure.invalidDraft }
+            }
+        }
         var result = self
+        if let references = deletionReferences {
+            result.deletionReferences?.pending = try references.pending.map { original in
+                var reference = original
+                reference.identity = try original.identity.map(Self.identity)
+                return reference
+            }
+        }
         result.deviceMembers = try deviceMembers.map {
             .init(identity: try Self.identity($0.identity), parameters: $0.parameters)
         }.sorted { Self.key($0.identity) < Self.key($1.identity) }
@@ -96,6 +150,7 @@ struct SceneConfiguration: Codable, Equatable {
         let removed = try Set(identities.map(Self.identity))
         result.deviceMembers.removeAll { removed.contains($0.identity) }
         result.pendingOperations.removeAll { removed.contains($0.identity) }
+        result.deletionReferences?.pending.removeAll { $0.identity.map { removed.contains($0) } == true }
         return result
     }
 
@@ -107,7 +162,8 @@ struct SceneConfiguration: Codable, Equatable {
         var result = try normalized()
         let member = result.deviceMembers.first { $0.identity == old }
         let operation = result.pendingOperations.first { $0.identity == old }
-        guard member != nil || operation != nil else { return result }
+        let referenceTarget = result.deletionReferences?.pending.contains { $0.identity == old } == true
+        guard member != nil || operation != nil || referenceTarget else { return result }
         guard old != new else { return result }
         guard !result.deviceMembers.contains(where: { $0.identity == new }),
               !result.pendingOperations.contains(where: { $0.identity == new }) else { throw Failure.duplicateIdentity }
@@ -115,7 +171,14 @@ struct SceneConfiguration: Codable, Equatable {
         result.pendingOperations.removeAll { $0.identity == old }
         if let member { result.deviceMembers.append(.init(identity: new, parameters: member.parameters)) }
         let action: ScenePendingOperation.Action = result.isDeleting || operation?.action == .remove ? .remove : .write
-        result.pendingOperations.append(.init(identity: new, action: action))
+        if member != nil || operation != nil { result.pendingOperations.append(.init(identity: new, action: action)) }
+        if let pending = result.deletionReferences?.pending {
+            result.deletionReferences?.pending = pending.map { original in
+                var item = original
+                if item.identity == old { item.identity = new; item.address = UInt16(new.unicastAddress, radix: 16)! }
+                return item
+            }
+        }
         result.revision = UUID()
         return try result.normalized()
     }
@@ -133,7 +196,7 @@ struct SceneConfiguration: Codable, Equatable {
 
 extension SceneConfiguration {
     private enum CodingKeys: String, CodingKey {
-        case schemaVersion, kind, name, revision, deviceMembers, pendingOperations, isDeleting
+        case schemaVersion, kind, name, revision, deviceMembers, pendingOperations, isDeleting, deletionReferences
     }
 
     init(from decoder: Decoder) throws {
@@ -145,6 +208,7 @@ extension SceneConfiguration {
         deviceMembers = try values.decode([SceneDeviceMember].self, forKey: .deviceMembers)
         pendingOperations = try values.decode([ScenePendingOperation].self, forKey: .pendingOperations)
         isDeleting = try values.decode(Bool.self, forKey: .isDeleting)
+        deletionReferences = try values.decodeIfPresent(SceneDeletionReferences.self, forKey: .deletionReferences)
         self = try normalized()
     }
 
@@ -158,6 +222,7 @@ extension SceneConfiguration {
         try values.encode(value.deviceMembers, forKey: .deviceMembers)
         try values.encode(value.pendingOperations, forKey: .pendingOperations)
         try values.encode(value.isDeleting, forKey: .isDeleting)
+        try values.encodeIfPresent(value.deletionReferences, forKey: .deletionReferences)
     }
 }
 

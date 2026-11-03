@@ -158,6 +158,12 @@ class DeviceSwitchViewController: UIViewController {
     }
     
     @objc private func saveBtnAction() {
+        let sceneNumbers = SceneDeletionCascade.sceneNumbers(setSwitchData)
+        guard sceneNumbers.allSatisfy({ number in MeshNetworkManager.instance.scenes.contains { $0.number == number && SceneCommandBuilder.isSelectable(scene: $0) } }),
+              SceneDeletionCascade.permitsReferences(sceneNumbers, meshUUID: space.meshUUID, networkID: space.meshNetworkId) else {
+            XWHUDManager.showErrorTipHUD("scene_deletion_pending".localizedString)
+            return
+        }
         setSwitchData.name = DeviceSwitchData.normalizedName(setSwitchData.name)
         // 是否创建开关
         var isCreate = false
@@ -208,28 +214,25 @@ class DeviceSwitchViewController: UIViewController {
                 
                 self.setSwitchData.linkGroupAddress = linkGroup.address.address
                 self.setSwitchData.subLinkGroupAddress = subLinkGroup?.address.address
-                self.switchData?.linkGroupAddress = linkGroup.address.address
-                self.switchData?.subLinkGroupAddress = subLinkGroup?.address.address
                 //            self.setSwitchData?.save()
             }
-            if isCreate {
-                MeshNetworkManager.instance.switchs.append(setSwitchData)
-                NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
-                setSwitchData.save()
-            }else {
+            if !isCreate {
                 let syncData = setSwitchData.getNeedSyncDatas()
-                // 判断哪些移出的组需要同步数据，不需要同步数据则直接更新缓存，需要同步的组在同步操作后做数据更新
-                let unbindGroupAddresses = syncData.deleteGroups.map({ $0.key.address.address })
-                setSwitchData.unbindGroupAddresses = unbindGroupAddresses
-                self.switchData?.update(switchData: setSwitchData)
-                setSwitchData.save()
+                setSwitchData.unbindGroupAddresses = syncData.deleteGroups.map { $0.key.address.address }
             }
-            
-           
-            
-            //        self.switchData?.unbindGroupAddresses = unbindGroupAddresses
-            //        self.switchData?.save()
-            
+            // Persist before publishing the edit or creating radio tasks; stale drafts may now be rejected.
+            guard setSwitchData.save() else {
+                XWHUDManager.showErrorTipHUD("failed".localizedString)
+                return
+            }
+            if let current = MeshNetworkManager.instance.switchs.first(where: { $0.id == setSwitchData.id }) {
+                current.update(switchData: setSwitchData)
+                self.switchData = current
+            } else {
+                MeshNetworkManager.instance.switchs.append(setSwitchData)
+            }
+            NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
+
             // 是否需要同步数据
             guard setSwitchData.needSyncData else {
                 

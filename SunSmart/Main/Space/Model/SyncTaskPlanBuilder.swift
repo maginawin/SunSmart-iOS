@@ -11,6 +11,7 @@ final class SyncTaskPlanBuilder {
     private let supplementaryProximityLightingSyncDatas: [(node: Node, syncData: NodeSyncData)]
     private var sections: [SyncDevicesSectionModel] = []
     private var failureMessages: [String] = []
+    private var excludedSceneDeletionNumbers: Set<UInt16> = []
     private let proximityBuilder = SyncProximityTaskBuilder()
     private let emergencyBuilder = SyncEmergencyFireTaskBuilder()
     private let switchBuilder: SyncSwitchTaskBuilder
@@ -35,6 +36,15 @@ final class SyncTaskPlanBuilder {
 
         let removeSection = SyncDevicesSectionModel(title: "remove".localizedString)
         let configurationSection = SyncDevicesSectionModel(title: "configuration".localizedString)
+
+        switch type {
+        case .devices, .group:
+            for scene in MeshNetworkManager.instance.scenes where scene.info.configuration?.isDeleting == true {
+                excludedSceneDeletionNumbers.insert(scene.number)
+                SyncSceneScheduleTaskBuilder().appendScene(to: configurationSection, removal: removeSection, scene: scene)
+            }
+        default: break
+        }
 
         switch self.type {
         case .group(let group, let inNodes, let outNodes):
@@ -265,7 +275,8 @@ final class SyncTaskPlanBuilder {
             node: node,
             effectiveMemberCount: effectiveMemberCount,
             profileSyncContext: profileSyncContext,
-            protectsProfileSensors: profileSensorProtectionContext != nil
+            protectsProfileSensors: profileSensorProtectionContext != nil,
+            excludedSceneDeletionNumbers: excludedSceneDeletionNumbers
         )
     }
 

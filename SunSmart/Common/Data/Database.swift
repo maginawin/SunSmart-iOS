@@ -1751,6 +1751,9 @@ extension Schedule {
               let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
         let subNetworkKey = meshNetworkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         
+        guard SceneDeletionCascade.permitsReferences(sceneNumber.map { [$0] } ?? [], meshUUID: uuid, networkID: subNetworkKey) else { return false }
+        if SceneDeletionCascade.owns(scheduleID: id, meshUUID: uuid, networkID: subNetworkKey), action != .noAction || sceneNumber != nil || !nodeAddresses.isEmpty || !groupAddresses.isEmpty { return false }
+
         let deviceAddressesData = try? jsonEncoder.encode(self.nodeAddresses.map { String(format: "%04X", $0) })
         let deviceDeleteAddressesData = try? jsonEncoder.encode(self.needDeleteNodeAddresses.map { String(format: "%04X", $0) })
         
@@ -3025,6 +3028,8 @@ extension DeviceSwitchData {
         guard let uuid = meshUUID ?? MeshNetworkManager.instance.meshNetwork?.uuid.uuidString else { return false }
         let subNetworkey = networkId ?? MeshNetworkManager.instance.currentNetworkKey.networkId.hex
         
+        guard SceneDeletionCascade.permitsReferences(SceneDeletionCascade.sceneNumbers(self), meshUUID: uuid, networkID: subNetworkey) else { return false }
+
         var proxyAddressesData: Data?
         if let proxyAddress = self.proxyNodeAddress {
             proxyAddressesData = try? jsonEncoder.encode([String(format: "%04X", proxyAddress)])

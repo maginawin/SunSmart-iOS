@@ -25,6 +25,7 @@ enum SyncTaskBuilderTests {
         testSectionOrdering()
         testDongleDeletion()
         #if !BASELINE_BUILD
+        testDedicatedSceneDeletionOwnership()
         testMissingGroupRetainsHardwareCleanup()
         testIndependentScenarioBuilders()
         testInjectedDependenciesAndFailures()
@@ -33,6 +34,36 @@ enum SyncTaskBuilderTests {
     }
 
     #if !BASELINE_BUILD
+    static func testDedicatedSceneDeletionOwnership() {
+        let node = Node(), group = Group()
+        let dedicated = Scene(name: "Cascade Scene", number: 1)
+        let ordinary = Scene(name: "Other waitDelete Scene", number: 2)
+        node.inputs = [.deleteScenes(scenes: [dedicated, ordinary]),
+                       .syncScenes(datas: [(dedicated, SceneExecuteData())])]
+        func numbers(_ model: SyncDevicesModel?) -> [UInt16] {
+            (model?.steps.flatMap { $0.tasks } ?? []).compactMap { task in
+                if case .scene(let number, _) = task.operationType.action { return number }
+                return nil
+            }
+        }
+        for context in [nil, group] as [Group?] {
+            let unchanged = SyncDeviceTaskBuilder().makeDeviceModels(group: context, node: node)
+            require(numbers(unchanged.removeDevice) == [1, 2], "default callers retain every pending Scene removal")
+            let owned = SyncDeviceTaskBuilder().makeDeviceModels(group: context, node: node,
+                excludedSceneDeletionNumbers: [1])
+            require(numbers(owned.removeDevice) == [2], "dedicated cleanup suppresses only its own SceneDelete")
+            require(numbers(owned.configturationDevice) == [1], "deletion ownership must not suppress Scene writes")
+            validateParents(owned.removeDevice!); validateParents(owned.configturationDevice!)
+            let unrelated = SyncDeviceTaskBuilder().makeDeviceModels(group: context, node: node,
+                excludedSceneDeletionNumbers: [99])
+            require(numbers(unrelated.removeDevice) == [1, 2], "unrelated owned numbers cannot suppress waitDelete Scenes")
+            let allOwned = SyncDeviceTaskBuilder().makeDeviceModels(group: context, node: node,
+                excludedSceneDeletionNumbers: [1, 2])
+            require(allOwned.removeDevice == nil, "fully delegated deletion must not leave an empty duplicate task")
+        }
+        print("PASS Scene deletion ownership: device/group exclusion, unrelated waitDelete, default callers and writes")
+    }
+
     static func testMissingGroupRetainsHardwareCleanup() {
         let node = Node()
         node.orphanAddresses = [0xC00D]

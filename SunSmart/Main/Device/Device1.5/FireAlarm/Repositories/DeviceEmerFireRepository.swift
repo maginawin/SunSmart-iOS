@@ -168,6 +168,12 @@ extension DeviceEmerFireData {
     func save(meshUUID: String? = nil, networkId: String? = nil) -> Bool {
         let meshUUID = meshUUID ?? self.meshUUID
         let networkId = networkId ?? self.meshNetworkId
+        let scenes: [SceneNumber] = [configuration.powerLossSettings.triggerActionPreset,
+                                    configuration.fireAlarmSettings.triggerActionPreset].compactMap { preset in
+            if case .sceneRecall(let number) = preset { return number }
+            return nil
+        }
+        guard SceneDeletionCascade.permitsReferences(scenes, meshUUID: meshUUID, networkID: networkId) else { return false }
         let insert = DeviceEmerFireData.table.insert(or: .replace, [
             ExpressionKey.meshUUID <- meshUUID,
             ExpressionKey.subNetworkKey <- networkId,

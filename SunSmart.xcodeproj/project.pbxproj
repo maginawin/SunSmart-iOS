@@ -7,6 +7,12 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		3D67AEBF650846D8A73B8686 /* SceneDeletionCascade.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4F557C8B39402CBAC56A64 /* SceneDeletionCascade.swift */; };
+		18A477FF2FEE4EC19023B5C0 /* SceneDeletionCascade.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4F557C8B39402CBAC56A64 /* SceneDeletionCascade.swift */; };
+		15E679DFC57A44B09D8EDE7C /* SceneDeletionCascade.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4F557C8B39402CBAC56A64 /* SceneDeletionCascade.swift */; };
+		E076D280751B42B599831673 /* SceneDeletionCascade.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4F557C8B39402CBAC56A64 /* SceneDeletionCascade.swift */; };
+		3DF971E879F4461D84D303C9 /* SceneDeletionCascade.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4F557C8B39402CBAC56A64 /* SceneDeletionCascade.swift */; };
+		C96D17365E6F4990903BA130 /* SceneDeletionCascade.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4F557C8B39402CBAC56A64 /* SceneDeletionCascade.swift */; };
 		0103BEF5A3F84EEB84317B31 /* EmerFireAlarmMonitorViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FB5C2C5870049F0AC8546FD /* EmerFireAlarmMonitorViewModel.swift */; };
 		01356081314B49C233E00F51 /* CityCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF4E0B625C32581DA3091BF /* CityCatalog.swift */; };
 		02594AE151C54F0E9B7DB63A /* SceneDevicesSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D1C662BCE8E47ECA77F098D /* SceneDevicesSelectionView.swift */; };
@@ -4843,6 +4849,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		7C4F557C8B39402CBAC56A64 /* SceneDeletionCascade.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDeletionCascade.swift; sourceTree = "<group>"; };
 		04DF0E02938F412FBC885F03 /* ../TriggerZone/SiteTriggerZoneContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneContentView.swift; sourceTree = "<group>"; };
 		084EF310302AB496008CB48A /* all_utc_timezones.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = all_utc_timezones.json; sourceTree = "<group>"; };
 		08AACC55308B0FB700DC2934 /* HSmart.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HSmart.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -7346,6 +7353,7 @@
 				CAA287A90CE04C66874F9DBD /* SceneConfigurationStore.swift */,
 				24D6F8D9D3304C5D8E83D815 /* SceneCommandBuilder.swift */,
 				82E1A63E85624C5E8C834A05 /* SceneConfiguration.swift */,
+				7C4F557C8B39402CBAC56A64 /* SceneDeletionCascade.swift */,
 			);
 			path = Model;
 			sourceTree = "<group>";
@@ -9343,6 +9351,7 @@
 				1BF283B2C07142709FCC8FD9 /* SceneConfigurationStore.swift in Sources */,
 				766F565EFF594B888230D844 /* SceneCommandBuilder.swift in Sources */,
 				050DC86FE3AF410D9C09D702 /* SceneConfiguration.swift in Sources */,
+				C96D17365E6F4990903BA130 /* SceneDeletionCascade.swift in Sources */,
 				08AACBC2308B0FB700DC2934 /* ProfileSensitivityView.swift in Sources */,
 				08AACBC3308B0FB700DC2934 /* SceneSettingsViewController.swift in Sources */,
 				08AACBC4308B0FB700DC2934 /* EmerFireAlarmMoniCell.swift in Sources */,
@@ -10124,6 +10133,7 @@
 				B0F08EBD7C2C452F9852C3E9 /* SceneConfigurationStore.swift in Sources */,
 				128B2D5A6F6341C38150C6A3 /* SceneCommandBuilder.swift in Sources */,
 				DD0BB977AB524A3BB64FAC4B /* SceneConfiguration.swift in Sources */,
+				3D67AEBF650846D8A73B8686 /* SceneDeletionCascade.swift in Sources */,
 				08B54EA430402CCB0017ED49 /* ProfileSensitivityView.swift in Sources */,
 				08B54EA530402CCB0017ED49 /* SceneSettingsViewController.swift in Sources */,
 				08B54EA630402CCB0017ED49 /* EmerFireAlarmMoniCell.swift in Sources */,
@@ -10896,6 +10906,7 @@
 				08F529C298E34BC880DCC3F0 /* SceneConfigurationStore.swift in Sources */,
 				C0E422896EF84ED5BA373AB0 /* SceneCommandBuilder.swift in Sources */,
 				A87F6C0D669549D1A9051F51 /* SceneConfiguration.swift in Sources */,
+				18A477FF2FEE4EC19023B5C0 /* SceneDeletionCascade.swift in Sources */,
 				C88554E12DE6B44C00C8B688 /* ProfileSensitivityView.swift in Sources */,
 				C88554E22DE6B44C00C8B688 /* SceneSettingsViewController.swift in Sources */,
 				C88554E32DE6B44C00C8B688 /* GroupSwitchsViewController.swift in Sources */,
@@ -11678,6 +11689,7 @@
 				A9653702EF584571B600EE5B /* SceneConfigurationStore.swift in Sources */,
 				8EB550CEE290473682521E18 /* SceneCommandBuilder.swift in Sources */,
 				6736ECD4C30742759540EC77 /* SceneConfiguration.swift in Sources */,
+				15E679DFC57A44B09D8EDE7C /* SceneDeletionCascade.swift in Sources */,
 				C886E13C2E30DE4900D0C3A6 /* ProfileSensitivityView.swift in Sources */,
 				C886E13D2E30DE4900D0C3A6 /* SceneSettingsViewController.swift in Sources */,
 				C886E13E2E30DE4900D0C3A6 /* GroupSwitchsViewController.swift in Sources */,
@@ -12468,6 +12480,7 @@
 				F40720EF70CA4697AE4C98C7 /* SceneConfigurationStore.swift in Sources */,
 				3A9053DCC9434752B56B505E /* SceneCommandBuilder.swift in Sources */,
 				470DC134216044F9A416519F /* SceneConfiguration.swift in Sources */,
+				3DF971E879F4461D84D303C9 /* SceneDeletionCascade.swift in Sources */,
 				C8B707082DCF349D0002133E /* ProfileSensitivityView.swift in Sources */,
 				C898F7022B3A810E008B4124 /* SceneSettingsViewController.swift in Sources */,
 				8C7788D22F970F99000887FE /* EmerFireAlarmMoniCell.swift in Sources */,
@@ -13241,6 +13254,7 @@
 				C5BFAF50E9B4440C86546676 /* SceneConfigurationStore.swift in Sources */,
 				FE88F53F36B34B2292ED9BA9 /* SceneCommandBuilder.swift in Sources */,
 				5FC3FB917BA448569E69ECAE /* SceneConfiguration.swift in Sources */,
+				E076D280751B42B599831673 /* SceneDeletionCascade.swift in Sources */,
 				C8BB67192ED3F056000C63EE /* ProfileSensitivityView.swift in Sources */,
 				C8BB671A2ED3F056000C63EE /* SceneSettingsViewController.swift in Sources */,
 				C8BB671B2ED3F056000C63EE /* GroupSwitchsViewController.swift in Sources */,

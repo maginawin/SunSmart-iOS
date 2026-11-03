@@ -1364,7 +1364,7 @@ extension Scene {
     
     /// 场景是否需要同步
     var needSync: Bool {
-        if info.configurationLoadFailed || info.projectionPending { return true }
+        if info.configurationLoadFailed || info.projectionPending || SceneDeletionCascade.hasPending(info) { return true }
         if let snapshot = try? SceneTargetResolver.resolve(scene: self), !snapshot.unresolved.isEmpty { return true }
         return MeshNetworkManager.instance.realNodes.contains {
             !$0.getNodeSyncSceneDatas(scene: self).isEmpty || !$0.getNodeNeedDeleteSceneDatas(scene: self).isEmpty

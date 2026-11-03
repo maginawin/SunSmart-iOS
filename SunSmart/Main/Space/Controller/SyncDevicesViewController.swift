@@ -67,6 +67,8 @@ class SyncDevicesViewController: UIViewController {
         set { executionSession.proximityLightingTaskModels = newValue }
     }
     private var batteryPowerSwitchActivationFlow: PJEightKeySwitchActivationFlow?
+    private var sceneDeletionActivationFlow: PJEightKeySwitchActivationFlow?
+    private var sceneDeletionActivationID: UUID?
     private let executionSession: SyncExecutionSession
     private var syncRunIdentifier: UUID { executionSession.identifier }
     private var hasLeftSyncPage = false
@@ -101,8 +103,9 @@ class SyncDevicesViewController: UIViewController {
     
     deinit {
         let session = executionSession
-        if Thread.isMainThread { session.close() }
-        else { DispatchQueue.main.async { session.close() } }
+        let activation = sceneDeletionActivationFlow
+        if Thread.isMainThread { activation?.cancel(); session.close() }
+        else { DispatchQueue.main.async { activation?.cancel(); session.close() } }
     }
 
     required init?(coder: NSCoder) {
@@ -232,6 +235,11 @@ class SyncDevicesViewController: UIViewController {
     }
 
     private func buildPreparedTaskPlan(resume: Bool) {
+        // Reject stale editors before retry recovery can finalize and release a tombstone.
+        guard permitsSceneReferences() else {
+            failTaskPreparation("scene_deletion_pending".localizedString)
+            return
+        }
         if let context = gatewayContext {
             if let error = context.prepare(for: type) {
                 failTaskPreparation(error); return
@@ -252,12 +260,19 @@ class SyncDevicesViewController: UIViewController {
         }
         self.type = self.currentSyncType()
         self.executionSession.type = self.type
+        guard permitsSceneReferences() else {
+            failTaskPreparation("scene_deletion_pending".localizedString)
+            return
+        }
         self.hdbAwaitingInitialization = []
         if gatewayContext == nil, case .devices(let nodes) = self.type {
             self.hdbAwaitingInitialization = nodes.filter { !$0.isKeybindComplete && (try? HDBDeviceSyncContext.resolve(node: $0)) != nil }
             HDBDeviceSyncService.prepareIntents(nodes: nodes)
         }
-        let isCurrent = gatewayContext?.capturePlan(for: type) ?? SpaceSyncTaskScope.capture()
+        let scopeIsCurrent = gatewayContext?.capturePlan(for: type) ?? SpaceSyncTaskScope.capture()
+        let isCurrent = { [weak self] in
+            scopeIsCurrent() && self?.permitsSceneReferences() == true
+        }
         self.executionSession.environment.configurationIsCurrent = isCurrent
         if resume { self.syncState = .inSync }
         let builder = SyncTaskPlanBuilder(
@@ -282,6 +297,34 @@ class SyncDevicesViewController: UIViewController {
             return
         }
         self.installTaskPlan(result)
+    }
+
+    /// Editors can outlive Scene deletion; check their proposed actions before planning and again before transport.
+    private func permitsSceneReferences() -> Bool {
+        let numbers: [SceneNumber]
+        let schedule: Schedule?
+        switch type {
+        case .enOceanSwitch(let data, let deleting):
+            if deleting { return true }
+            numbers = SceneDeletionCascade.sceneNumbers(data); schedule = nil
+        case .batteryPowerSwitch(let data):
+            numbers = SceneDeletionCascade.sceneNumbers(data); schedule = nil
+        case .schedule(let data):
+            numbers = data.sceneNumber.map { [$0] } ?? []; schedule = data
+        default: return true
+        }
+        let manager = MeshNetworkManager.instance
+        guard let network = manager.meshNetwork else { return false }
+        guard numbers.allSatisfy({ number in
+            manager.scenes.contains { $0.number == number && $0.info.configuration?.isDeleting != true }
+        }) else { return false }
+        let meshUUID = network.uuid.uuidString, networkID = manager.currentNetworkKey.networkId.hex
+        guard SceneDeletionCascade.permitsReferences(numbers, meshUUID: meshUUID, networkID: networkID) else { return false }
+        if let schedule, SceneDeletionCascade.owns(scheduleID: schedule.id, meshUUID: meshUUID, networkID: networkID) {
+            return schedule.action == .noAction && schedule.sceneNumber == nil
+                && schedule.nodeAddresses.isEmpty && schedule.groupAddresses.isEmpty
+        }
+        return true
     }
 
     private func currentNode(_ original: Node) -> Node? {
@@ -563,6 +606,24 @@ class SyncDevicesViewController: UIViewController {
                 return
             }
             if state == .syncSuccess {
+                switch self.type {
+                case .devices, .group:
+                    do {
+                        try SceneConfigurationStore().prepareDeletionRetries()
+                        if MeshNetworkManager.instance.scenes.contains(where: { $0.info.configuration?.isDeleting == true }) {
+                            self.syncState = .syncFailure
+                            self.updateSyncStateUI()
+                            XWHUDManager.showTipHUD("scene_deletion_pending".localizedString, isLineFeed: true)
+                            return
+                        }
+                    } catch {
+                        self.syncState = .syncFailure
+                        self.updateSyncStateUI()
+                        XWHUDManager.showErrorTipHUD("scene_delete_failed".localizedString)
+                        return
+                    }
+                default: break
+                }
                 self.syncSuccessCallback?(self.type)
                 SyncDevicesProgressView.current()?.hide()
             } else {
@@ -572,6 +633,13 @@ class SyncDevicesViewController: UIViewController {
         executionSession.onBatteryActivationRequired = { [weak self] in
             guard let self, !self.hasLeftSyncPage else { return }
             self.startBatteryPowerSwitchConfigurationResyncAfterActivation()
+        }
+        executionSession.onSceneDeletionActivation = { [weak self] switchData, completion in
+            guard let self, !self.hasLeftSyncPage else { completion(false); return }
+            self.startSceneDeletionActivation(switchData, completion: completion)
+        }
+        executionSession.onCancelSceneDeletionActivation = { [weak self] in
+            self?.cancelSceneDeletionActivation()
         }
         executionSession.onRetryExhausted = { [weak self] in
             guard let self, !self.hasLeftSyncPage else { return }
@@ -618,6 +686,33 @@ class SyncDevicesViewController: UIViewController {
     }
 
     private var batteryPowerSwitchDataForSync: PJEightKeySwitchData? { executionSession.batteryPowerSwitchDataForSync }
+
+    private func startSceneDeletionActivation(_ switchData: PJEightKeySwitchData,
+                                             completion: @escaping (Bool) -> Void) {
+        cancelSceneDeletionActivation()
+        let activationID = UUID()
+        let run = syncRunIdentifier
+        sceneDeletionActivationID = activationID
+        let finish: (Bool) -> Void = { [weak self] activated in
+            guard let self, self.sceneDeletionActivationID == activationID else { return }
+            self.sceneDeletionActivationID = nil
+            self.sceneDeletionActivationFlow = nil
+            guard !self.hasLeftSyncPage, self.executionSession.isActiveSyncRun(run) else { return }
+            completion(activated)
+        }
+        let flow = PJEightKeySwitchActivationFlow(presenter: self, switchData: switchData,
+                                                 onCancelled: { finish(false) },
+                                                 onDetectedCompleted: { finish(true) })
+        sceneDeletionActivationFlow = flow
+        flow.start()
+    }
+
+    private func cancelSceneDeletionActivation() {
+        sceneDeletionActivationID = nil
+        let flow = sceneDeletionActivationFlow
+        sceneDeletionActivationFlow = nil
+        flow?.cancel()
+    }
 
     private func resetBatteryPowerSwitchConfigurationForResync() {
         executionSession.enqueuePreparation { [executionSession] in executionSession.resetBatteryPowerSwitchConfigurationForResync() }

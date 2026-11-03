@@ -110,6 +110,7 @@ final class PJEightKeySwitchActivationFlow {
         case waiting
         case detected
         case noResponse
+        case completed
         case cancelled
     }
 
@@ -117,6 +118,8 @@ final class PJEightKeySwitchActivationFlow {
     private let switchData: PJEightKeySwitchData
     private let detector: PJEightKeySwitchActivationDetecting
     private let onDetectedCompleted: () -> Void
+    private let onCancelled: (() -> Void)?
+    private var completionDelivered = false
     private let titleText = "neightkeyswitches_save_after_activation".localizedString
     private var alertController: PJEightKeySwitchActivationAlertController?
     private var countdownTimer: Timer?
@@ -131,11 +134,13 @@ final class PJEightKeySwitchActivationFlow {
         presenter: UIViewController,
         switchData: PJEightKeySwitchData,
         detector: PJEightKeySwitchActivationDetecting = MeshBatteryPowerSwitchActivationDetector(),
+        onCancelled: (() -> Void)? = nil,
         onDetectedCompleted: @escaping () -> Void
     ) {
         self.presenter = presenter
         self.switchData = switchData
         self.detector = detector
+        self.onCancelled = onCancelled
         self.onDetectedCompleted = onDetectedCompleted
     }
 
@@ -157,6 +162,7 @@ final class PJEightKeySwitchActivationFlow {
     }
 
     private func startWaiting() {
+        guard !completionDelivered, state != .cancelled, state != .completed else { return }
         generation = UUID()
         state = .waiting
         remainingSeconds = 60
@@ -260,25 +266,36 @@ final class PJEightKeySwitchActivationFlow {
             } else {
                 startWaiting()
             }
+        case .completed:
+            return
         case .idle, .cancelled:
             cancel()
         }
     }
 
     private func completeDetected() {
-        guard case .detected = state else { return }
+        guard case .detected = state, !completionDelivered else { return }
+        state = .completed
+        let completedGeneration = generation
         alertController?.dismiss(animated: true) { [weak self] in
-            self?.onDetectedCompleted()
+            guard let self, self.generation == completedGeneration,
+                  self.state == .completed, !self.completionDelivered else { return }
+            self.completionDelivered = true
+            self.onDetectedCompleted()
         }
     }
 
-    private func cancel() {
+    func cancel() {
+        guard !completionDelivered else { return }
+        completionDelivered = true
         state = .cancelled
         generation = UUID()
         isProbePending = false
         stopTimers()
         autoProceedWorkItem?.cancel()
-        alertController?.dismiss(animated: true)
+        let cancelled = onCancelled
+        if let alertController { alertController.dismiss(animated: true, completion: cancelled) }
+        else { cancelled?() }
     }
 
     private func stopTimers() {

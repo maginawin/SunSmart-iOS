@@ -80,6 +80,10 @@ enum SyncExecutionSessionTests {
 
     static func main() {
         DeviceOperationType.allowsMessageFactory = true
+        sceneCleanupTaskResultBoundaries()
+        sceneCleanupActivationIsolation()
+        sceneCleanupActivationCancellation()
+        sceneCleanupRejectsStaleTasks()
         unresolvedSceneCannotFinishSuccessfully()
         emptySceneDeleteFails()
         parameterOnlyUsesProductionSession()
@@ -113,6 +117,111 @@ enum SyncExecutionSessionTests {
         authorizationBeforeDynamicMessages()
         automaticRetryBudget()
         print("PASS: production Session scheduling, writeback ordering, late completion, stop/retry, Profile/PIR compensation and authorization cancellation")
+    }
+
+    static func sceneCleanupTaskResultBoundaries() {
+        for allowed in [false, true] {
+            for persisted in [false, true] {
+                let h = Harness(), cleanup = SceneDeletionTask()
+                cleanup.handles = []; cleanup.allowsEmpty = allowed; cleanup.applySucceeds = persisted
+                let (session, _, task, node) = h.make(.sceneReferenceCleanup(cleanup))
+                session.start(); h.flush()
+                precondition(task.state == (allowed && persisted ? .successful : .failed))
+                precondition(cleanup.applyCalls == (allowed ? 1 : 0) && h.sends.isEmpty && node.updates == 0,
+                             "empty cleanup needs explicit permission and durable apply, never generic node success")
+            }
+        }
+        for result in ["success", "saveFailure", "partial", "failedAck"] {
+            let h = Harness(), cleanup = SceneDeletionTask()
+            cleanup.applySucceeds = result != "saveFailure"
+            let (session, _, task, node) = h.make(.sceneReferenceCleanup(cleanup))
+            session.start(); h.flush()
+            precondition(h.sends.count == 1)
+            if result == "partial" { h.sends[0].finish?([]) }
+            else { h.finish(0, success: result != "failedAck") }
+            h.flush()
+            precondition(task.state == (result == "success" ? .successful : .failed))
+            precondition(cleanup.applyCalls == (["success", "saveFailure"].contains(result) ? 1 : 0))
+            precondition(node.updates == 0, "custom cleanup owns persistence instead of generic cache mutation")
+        }
+        let h = Harness(), cleanup = SceneDeletionTask()
+        cleanup.activationSwitch = .init(name: "sleeping", requiresActivationBeforeOwnConfiguration: true)
+        let (session, _, task, _) = h.make(.sceneReferenceCleanup(cleanup))
+        session.start(); h.flush()
+        precondition(task.state == .failed && h.sends.isEmpty && cleanup.applyCalls == 0,
+                     "headless run cannot silently bypass required switch activation")
+        print("PASS Scene cleanup empty permission, full ACK, failed persistence and missing activation UI")
+    }
+
+    static func sceneCleanupActivationIsolation() {
+        for cancelFirst in [false, true] {
+            let h = Harness(), first = SceneDeletionTask(), second = SceneDeletionTask()
+            first.activationSwitch = .init(name: "A", requiresActivationBeforeOwnConfiguration: true)
+            second.activationSwitch = .init(name: "B", requiresActivationBeforeOwnConfiguration: true)
+            first.invalidatesAfterApply = true; second.invalidatesAfterApply = true
+            let (session, device, firstModel, node) = h.make(.sceneReferenceCleanup(first))
+            let secondModel = SyncDeviceStepTaskModel(name: "second", operationType: .configuration(node: node, type: .sceneReferenceCleanup(second)))
+            device.steps[0].tasks.append(secondModel); secondModel.parentStepModel = device.steps[0]
+            var activations: [(String, (Bool) -> Void)] = []
+            session.onSceneDeletionActivation = { activations.append(($0.name, $1)) }
+            session.start(); h.flush()
+            precondition(activations.map(\.0) == ["A"] && h.sends.isEmpty)
+            activations[0].1(!cancelFirst); h.flush()
+            if !cancelFirst { h.finish(0); h.flush() }
+            precondition(activations.map(\.0) == ["A", "B"], "A completing or failing must not consume B activation")
+            activations[0].1(true); h.flush()
+            precondition(h.sends.count == (cancelFirst ? 0 : 1), "duplicate A activation cannot send B")
+            activations[1].1(true); h.flush()
+            h.finish(h.sends.count - 1); h.flush()
+            precondition(firstModel.state == (cancelFirst ? .failed : .successful) && secondModel.state == .successful)
+            precondition(first.applyCalls == (cancelFirst ? 0 : 1) && second.applyCalls == 1)
+            precondition(h.delays.filter { $0 == 1 }.count == (cancelFirst ? 1 : 2))
+            precondition(h.delays.filter { $0 == 0.5 }.count == (cancelFirst ? 1 : 2))
+            precondition(h.stopCount == 0, "removing persisted completed dependency must not invalidate the following task")
+        }
+        print("PASS Scene cleanup multi-switch activation and failure isolation, completed intent removal")
+    }
+
+    static func sceneCleanupActivationCancellation() {
+        for close in [false, true] {
+            let h = Harness(), cleanup = SceneDeletionTask()
+            cleanup.activationSwitch = .init(name: "A", requiresActivationBeforeOwnConfiguration: true)
+            let (session, _, _, _) = h.make(.sceneReferenceCleanup(cleanup))
+            var activated: ((Bool) -> Void)?, cancellations = 0
+            session.onSceneDeletionActivation = { _, completion in activated = completion }
+            session.onCancelSceneDeletionActivation = { cancellations += 1; activated?(false) }
+            session.start(); h.flush()
+            precondition(activated != nil)
+            if close { session.close() } else { session.stop() }
+            h.flush(); activated?(true); h.flush()
+            precondition(cancellations == 1 && h.stopCount == 1 && h.sends.isEmpty && cleanup.applyCalls == 0)
+            h.stopFinished?(); h.flush(); activated?(true); h.flush()
+            precondition(h.sends.isEmpty && cleanup.applyCalls == 0, "late activation cannot revive a stopped run")
+        }
+        print("PASS Scene cleanup STOP/close cancels activation and isolates late activation callbacks")
+    }
+
+    static func sceneCleanupRejectsStaleTasks() {
+        for boundary in ["beforeBuild", "duringBuild", "activation", "reply"] {
+            let h = Harness(), cleanup = SceneDeletionTask()
+            let (session, _, _, _) = h.make(.sceneReferenceCleanup(cleanup))
+            var activated: ((Bool) -> Void)?, invalidations = 0
+            if boundary == "beforeBuild" { cleanup.isCurrent = false }
+            if boundary == "duringBuild" { cleanup.onBuild = { cleanup.isCurrent = false } }
+            if boundary == "activation" {
+                cleanup.activationSwitch = .init(name: "A", requiresActivationBeforeOwnConfiguration: true)
+                session.onSceneDeletionActivation = { _, completion in activated = completion }
+            }
+            session.onPlanInvalidated = { invalidations += 1 }
+            session.start(); h.flush()
+            if boundary == "activation" { cleanup.isCurrent = false; activated?(true); h.flush() }
+            if boundary == "reply" { cleanup.isCurrent = false; h.finish(0); h.flush() }
+            precondition(h.stopCount == 1 && cleanup.applyCalls == 0)
+            precondition(h.sends.count == (boundary == "reply" ? 1 : 0))
+            h.stopFinished?(); h.flush()
+            precondition(invalidations == 1, "stale cleanup must settle old transport then rebuild")
+        }
+        print("PASS Scene cleanup identity/ownership invalidation before build, activation and reply")
     }
     static func emptySceneDeleteFails() {
         let h = Harness()

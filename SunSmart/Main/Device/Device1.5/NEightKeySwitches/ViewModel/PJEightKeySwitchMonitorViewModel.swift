@@ -239,12 +239,11 @@ final class PJEightKeySwitchMonitorViewModel {
 
     @discardableResult
     func persist() -> Bool {
-        let baseSaved = switchData.save()
-        let metadataSaved = PJEightKeySwitchRepository.shared.save(switchData)
+        guard switchData.save(), PJEightKeySwitchRepository.shared.save(switchData) else { return false }
         if let index = MeshNetworkManager.instance.switchs.firstIndex(where: { $0.id == switchData.id }) {
             MeshNetworkManager.instance.switchs[index].update(switchData: switchData)
         }
-        return baseSaved && metadataSaved
+        return true
     }
 }
 

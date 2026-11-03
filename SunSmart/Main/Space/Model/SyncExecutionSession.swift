@@ -25,6 +25,7 @@ final class SyncExecutionSession {
     var daylightConditionRecallRecoveryKeys: Set<String> = []
     private(set) var currentTask: SyncCellModel?
     private var cancelAuthorization: (() -> Void)?
+    private var sceneDeletionActivationID: UUID?
     private var pendingPreparations: [() -> Void] = []
     private var restoreOperation: DeviceOperationType?
     // Keep failed saves as well as the active task until stop/close has settled.
@@ -45,6 +46,10 @@ final class SyncExecutionSession {
     var onStopped: (() -> Void)?
     var onError: ((String) -> Void)?
     var onBatteryActivationRequired: (() -> Void)?
+    /// Scene cleanup may update several switches. Activation belongs to the
+    /// current task, independent of the existing single-switch sync flow.
+    var onSceneDeletionActivation: ((PJEightKeySwitchData, @escaping (Bool) -> Void) -> Void)?
+    var onCancelSceneDeletionActivation: (() -> Void)?
     var onRetryExhausted: (() -> Void)?
     var identifier: UUID { coordinator.identifier }
 
@@ -157,6 +162,10 @@ final class SyncExecutionSession {
             finishRun(identifier, publishesCompletion: false, forcedState: .syncFailure)
             return
         }
+        if let task = sceneDeletionTask(for: model) {
+            executeSceneDeletionTask(task, model: model, identifier: identifier)
+            return
+        }
         if case .configuration(let node, .scene(let number, _)) = operationType(for: model) {
             if !SceneCapacity.unknownNodes([node]).isEmpty {
                 #if DEBUG
@@ -242,6 +251,62 @@ final class SyncExecutionSession {
         }
     }
 
+    func sceneDeletionTask(for model: SyncCellModel) -> SceneDeletionTask? {
+        switch operationType(for: model) {
+        case .configuration(_, .sceneReferenceCleanup(let task)),
+             .delete(_, .sceneReferenceCleanup(let task)):
+            return task
+        default:
+            return nil
+        }
+    }
+
+    private func executeSceneDeletionTask(_ task: SceneDeletionTask, model: SyncCellModel, identifier: UUID) {
+        model.state = .inSettings
+        guard validatePlan(identifier) else { return }
+        let handles = task.messageHandles
+        guard validatePlan(identifier) else { return }
+        onTaskStarted?(model, identifier)
+        if handles.isEmpty {
+            let successful = task.allowsEmpty && applyResult([], model: model, messageHandles: handles)
+            finishOperation(model, successful: successful)
+            advance(identifier)
+            return
+        }
+        guard let switchData = task.activationSwitch else {
+            send(model, handles: handles, identifier: identifier, attempt: 1)
+            return
+        }
+        guard let activate = onSceneDeletionActivation else {
+            // A headless deletion run cannot assume a sleeping switch was activated.
+            finishOperation(model, successful: false)
+            advance(identifier)
+            return
+        }
+        let activationID = UUID()
+        sceneDeletionActivationID = activationID
+        activate(switchData) { [weak self] activated in
+            guard let self, self.sceneDeletionActivationID == activationID,
+                  self.isActiveSyncRun(identifier) else { return }
+            self.sceneDeletionActivationID = nil
+            guard self.validatePlan(identifier) else { return }
+            guard activated else {
+                self.finishOperation(model, successful: false)
+                self.advance(identifier)
+                return
+            }
+            self.environment.delay(1) { [weak self] in
+                guard let self, self.isActiveSyncRun(identifier) else { return }
+                self.send(model, handles: handles, identifier: identifier, attempt: 1)
+            }
+        }
+    }
+
+    private func cancelSceneDeletionActivation() {
+        sceneDeletionActivationID = nil
+        onCancelSceneDeletionActivation?()
+    }
+
     private func send(_ model: SyncCellModel, handles: [MeshMessageHandle], identifier: UUID, attempt: Int) {
         guard isActiveSyncRun(identifier) else { return }
         guard validatePlan(identifier, handles: handles) else { return }
@@ -293,6 +358,7 @@ final class SyncExecutionSession {
             precondition(Thread.isMainThread)
             guard isActiveSyncRun(identifier), completionGate.claim(), validatePlan(identifier, handles: handles) else { return }
             if hdbZoneAcknowledgementAttempt == acknowledgementAttempt { hdbZoneAcknowledgementAttempt = nil }
+            let activatedSceneSwitch = sceneDeletionTask(for: model)?.activationSwitch != nil
             let successful = applyResult(resultMessageHandles, model: model, messageHandles: handles)
             #if DEBUG
             traceSceneSync("batchResult", detail: "returned=\(resultMessageHandles.count) acknowledged=\(resultMessageHandles.filter { $0.isSuccessful }.count) applied=\(successful)")
@@ -312,8 +378,9 @@ final class SyncExecutionSession {
                 return
             }
             finishOperation(model, successful: successful)
-            let delay: TimeInterval = successful && isBatteryPowerSwitchKeyConfigConfiguration(model)
-                && batteryPowerSwitchDataForSync?.requiresActivationBeforeOwnConfiguration == true ? 0.5 : 0
+            let delay: TimeInterval = successful && (activatedSceneSwitch
+                || (isBatteryPowerSwitchKeyConfigConfiguration(model)
+                    && batteryPowerSwitchDataForSync?.requiresActivationBeforeOwnConfiguration == true)) ? 0.5 : 0
             environment.delay(delay) { [self] in
                 guard isActiveSyncRun(identifier) else { return }
                 advance(identifier)
@@ -328,11 +395,16 @@ final class SyncExecutionSession {
             guard let node = MeshNetworkManager.instance.realNodes.first(where: { $0.sceneConfigurationIdentity == context.identity }) else { return false }
             return context.matches(node: node)
         }
-        guard !environment.configurationIsCurrent() || !sceneContextsAreCurrent else { return true }
+        let cleanupIsCurrent: Bool
+        if let currentTask, currentTask.state == .inSettings, let task = sceneDeletionTask(for: currentTask) {
+            cleanupIsCurrent = task.isCurrent
+        } else { cleanupIsCurrent = true }
+        guard !environment.configurationIsCurrent() || !sceneContextsAreCurrent || !cleanupIsCurrent else { return true }
         #if DEBUG
         traceSceneSync("planInvalidated", detail: "sceneContextsCurrent=\(sceneContextsAreCurrent)")
         #endif
         invalidatingPlan = true
+        cancelSceneDeletionActivation()
         pendingPreparations.removeAll()
         cancelAuthorization?()
         cancelAuthorization = nil
@@ -373,6 +445,7 @@ final class SyncExecutionSession {
 
     func stop() {
         precondition(Thread.isMainThread)
+        cancelSceneDeletionActivation()
         captureRestoreOperation()
         cancelAuthorization?()
         cancelAuthorization = nil
@@ -384,6 +457,7 @@ final class SyncExecutionSession {
     func close() {
         precondition(Thread.isMainThread)
         guard !coordinator.closed else { return }
+        cancelSceneDeletionActivation()
         captureRestoreOperation()
         cancelAuthorization?()
         cancelAuthorization = nil

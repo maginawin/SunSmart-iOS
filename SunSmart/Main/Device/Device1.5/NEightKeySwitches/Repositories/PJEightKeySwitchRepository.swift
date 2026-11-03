@@ -216,6 +216,23 @@ final class PJEightKeySwitchRepository {
         }
     }
 
+    /// A Scene cleanup confirms keys only; concurrent battery/TX/LED metadata must survive.
+    func confirmSceneKeyConfiguration(_ captured: PJEightKeySwitchData, meshUUID: String, networkId: String) -> Bool {
+        guard let db = SunSmartDataManager.shared.db else { return false }
+        let filter = Self.table.filter(ExpressionKey.meshUUID == meshUUID && ExpressionKey.subNetworkKey == networkId
+            && ExpressionKey.switchId == captured.id && ExpressionKey.desiredConfigVersion == captured.desiredConfigVersion
+            && ExpressionKey.desiredConfigHash == captured.desiredConfigHash)
+        do {
+            guard try db.run(filter.update(ExpressionKey.appliedConfigHash <- captured.desiredConfigHash)) == 1 else { return false }
+            if let base = DeviceSwitchData.load(meshUUID: meshUUID, meshNetworkId: networkId).first(where: { $0.id == captured.id }),
+               let latest = makeEightKeySwitch(from: base), !latest.needsBatteryPowerSwitchSync {
+                _ = try db.run(filter.update(ExpressionKey.syncState <- PJEightKeySwitchSyncState.synced.rawValue,
+                    ExpressionKey.lastSyncFailedReason <- nil, ExpressionKey.lastSyncedAt <- Int64(Date().timeIntervalSince1970)))
+            }
+            return true
+        } catch { return false }
+    }
+
     @discardableResult
     func saveBattery(
         level: UInt8,

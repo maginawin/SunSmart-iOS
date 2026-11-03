@@ -337,6 +337,7 @@ enum DeviceOperationType {
             }
         case .configuration(let node, let type):
             switch type {
+            case .sceneReferenceCleanup: return false
             case .hdb(let task): return task.isSuccessful
             case .hdbUnavailable: return false
             case .timeSynchronization:
@@ -497,12 +498,13 @@ enum DeviceOperationType {
     func makeMessageHandles(
         contextGroup: Group? = nil
     ) -> [MeshMessageHandle] {
+        if case .configuration(_, .sceneReferenceCleanup(let task)) = self { return task.messageHandles }
         var messageHandles: [MeshMessageHandle] = []
         switch self {
         case .delete(let node, let type): // 删除操作
             
             switch type {
-            case .hdb, .hdbUnavailable: return []
+            case .hdb, .hdbUnavailable, .sceneReferenceCleanup: return []
             case .missingGroupSubscriptions:
                 messageHandles.append(contentsOf: MissingGroupSubscriptionCleanup.handles(for: node))
             case .group(let group):
@@ -591,6 +593,7 @@ enum DeviceOperationType {
         case .configuration(let node, let type): // 添加/配置操作
             
             switch type {
+            case .sceneReferenceCleanup(let task): return task.messageHandles
             case .hdb(let task): return task.makeHandles()
             case .hdbUnavailable: return []
             case .timeSynchronization:
@@ -786,6 +789,7 @@ enum DeviceOperationType {
 
 /// 事件类型
 enum ActionType {
+    case sceneReferenceCleanup(SceneDeletionTask)
     case hdb(HDBDeviceSyncTask)
     case hdbUnavailable
     /// Timed 日程同步的单一前置校时
