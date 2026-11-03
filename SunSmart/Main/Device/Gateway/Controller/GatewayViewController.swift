@@ -923,7 +923,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             NotificationCenter.default.post(name: .init(siteGatewayDataChangedNotificaitonName), object: self.gateway)
             return
         }
-        let vc = SyncDevicesViewController(type: .devices([node]))
+        let vc = SyncDevicesViewController(type: .devices([node]),
+            gatewayContext: GatewaySyncContext(site: site, gateway: gatewayModel, node: node))
         vc.syncSuccessCallback = {[weak self] _ in
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             guard let self = self else { return }
@@ -1461,7 +1462,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             type: .gatewayServerRecovery(
                 node: node,
                 gateway: gatewayModel
-            )
+            ),
+            gatewayContext: GatewaySyncContext(site: site, gateway: gatewayModel, node: node)
         )
         controller.syncSuccessCallback = { [weak self] _ in
             guard let self else { return }
@@ -1491,7 +1493,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
                 gateway: gatewayModel,
                 trigger: trigger
             ),
-            reSync: !trigger.startsImmediately
+            reSync: !trigger.startsImmediately,
+            gatewayContext: GatewaySyncContext(site: site, gateway: gatewayModel, node: node)
         )
         vc.syncSuccessCallback = {[weak self] _ in
             guard let self = self else { return }

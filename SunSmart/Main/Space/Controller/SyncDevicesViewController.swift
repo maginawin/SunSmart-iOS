@@ -70,6 +70,7 @@ class SyncDevicesViewController: UIViewController {
     private let executionSession: SyncExecutionSession
     private var syncRunIdentifier: UUID { executionSession.identifier }
     private var hasLeftSyncPage = false
+    private let gatewayContext: GatewaySyncContext?
     private let preparationScopeIsCurrent: () -> Bool
     private var preparationID = UUID()
     private var preparationTask: _Concurrency.Task<Void, Never>?
@@ -86,10 +87,12 @@ class SyncDevicesViewController: UIViewController {
     
     var vcTitle: String?
     
-    init(type: SyncType, reSync: Bool = false) {
+    init(type: SyncType, reSync: Bool = false, gatewayContext: GatewaySyncContext? = nil) {
         
         self.type = type
-        self.preparationScopeIsCurrent = SpaceSyncAccess.captureIdentity()
+        self.gatewayContext = gatewayContext
+        self.preparationScopeIsCurrent = gatewayContext.map { context in { context.isCurrent() } }
+            ?? SpaceSyncAccess.captureIdentity()
         self.executionSession = SyncExecutionSession(type: type, reSync: reSync)
         super.init(nibName: nil, bundle: nil)
         
@@ -121,10 +124,13 @@ class SyncDevicesViewController: UIViewController {
         bindExecutionSession()
         executionSession.environment.configurationAvailable = { [weak self] in
             guard let self else { return false }
+            if let context = self.gatewayContext {
+                return context.accepts(self.type) && context.error() == nil
+            }
             return self.preparationScopeIsCurrent() && SpaceSyncAccess.error() == nil
         }
         
-        deviceBlinkMode = SpaceViewController.currentDeviceBlinkMode
+        deviceBlinkMode = gatewayContext == nil ? SpaceViewController.currentDeviceBlinkMode : .none
         
         executionSession.onPlanInvalidated = { [weak self] in
             guard let self, !self.hasLeftSyncPage else { return }
@@ -145,6 +151,10 @@ class SyncDevicesViewController: UIViewController {
         syncState = resume ? .inSync : .syncFailure
         XWHUDManager.showCustomHUD(withMessage: nil, view: view)
         updateSyncStateUI()
+        if gatewayContext != nil {
+            buildPreparedTaskPlan(resume: resume)
+            return
+        }
         guard preparationScopeIsCurrent() else {
             failTaskPreparation(NetworkApiError.configurationUnavailable.localizedDescription); return
         }
@@ -222,26 +232,32 @@ class SyncDevicesViewController: UIViewController {
     }
 
     private func buildPreparedTaskPlan(resume: Bool) {
-        if let error = SpaceSyncAccess.error() {
-            failTaskPreparation(error.localizedDescription); return
-        }
-        do { try SceneConfigurationStore().prepareDeletionRetries() }
-        catch {
-            #if DEBUG
-            print("[SyncPreparation] stage=deletionPreparationFailed errorType=\(Swift.type(of: error))")
-            #endif
-            let message = error is SceneConfigurationStore.DeletionRetryFailure
-                ? "scene_delete_failed".localizedString : NetworkApiError.configurationUnavailable.localizedDescription
-            failTaskPreparation(message); return
+        if let context = gatewayContext {
+            if let error = context.prepare(for: type) {
+                failTaskPreparation(error); return
+            }
+        } else {
+            if let error = SpaceSyncAccess.error() {
+                failTaskPreparation(error.localizedDescription); return
+            }
+            do { try SceneConfigurationStore().prepareDeletionRetries() }
+            catch {
+                #if DEBUG
+                print("[SyncPreparation] stage=deletionPreparationFailed errorType=\(Swift.type(of: error))")
+                #endif
+                let message = error is SceneConfigurationStore.DeletionRetryFailure
+                    ? "scene_delete_failed".localizedString : NetworkApiError.configurationUnavailable.localizedDescription
+                failTaskPreparation(message); return
+            }
         }
         self.type = self.currentSyncType()
         self.executionSession.type = self.type
         self.hdbAwaitingInitialization = []
-        if case .devices(let nodes) = self.type {
+        if gatewayContext == nil, case .devices(let nodes) = self.type {
             self.hdbAwaitingInitialization = nodes.filter { !$0.isKeybindComplete && (try? HDBDeviceSyncContext.resolve(node: $0)) != nil }
             HDBDeviceSyncService.prepareIntents(nodes: nodes)
         }
-        let isCurrent = SpaceSyncTaskScope.capture()
+        let isCurrent = gatewayContext?.capturePlan(for: type) ?? SpaceSyncTaskScope.capture()
         self.executionSession.environment.configurationIsCurrent = isCurrent
         if resume { self.syncState = .inSync }
         let builder = SyncTaskPlanBuilder(
@@ -258,7 +274,12 @@ class SyncDevicesViewController: UIViewController {
             #if DEBUG
             print("[SceneSync] stage=planStaleBeforeInstall")
             #endif
-            self.rebuildTaskPlan(resume: resume); return
+            if gatewayContext != nil {
+                failTaskPreparation("failed_to_retrieve_data".localizedString)
+            } else {
+                self.rebuildTaskPlan(resume: resume)
+            }
+            return
         }
         self.installTaskPlan(result)
     }
@@ -307,7 +328,7 @@ class SyncDevicesViewController: UIViewController {
         }
         #endif
         isPreparingTaskPlan = false
-        needsTaskPreparation = false
+        needsTaskPreparation = gatewayContext != nil && !result.failureMessages.isEmpty
         self.sections = result.sections
         // 构建期间可能已 STOP；迟到的快照不能恢复自动同步。
         if self.syncState == .inSync {

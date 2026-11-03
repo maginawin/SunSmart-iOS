@@ -18,6 +18,15 @@ with tempfile.TemporaryDirectory(prefix='sync-preparation-') as directory:
     subprocess.run(['swiftc', '-parse-as-library', str(path), '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)
 
+    gateway = (ROOT / 'SunSmart/Main/Device/Gateway/Model/GatewayModel.swift').read_text()
+    source = (ROOT / 'Tests/Sync/GatewaySyncContextTests.swift').read_text()
+    source = source.replace('// PRODUCTION_CONTEXT', function(gateway, 'final class GatewaySyncContext {'))
+    source = source.replace('// PRODUCTION_PERMISSION', function(gateway, '    func canConfigureGateway('))
+    path = tmp / 'Gateway.swift'; path.write_text(source)
+    binary = tmp / 'Gateway'
+    subprocess.run(['swiftc', '-parse-as-library', str(path), '-o', str(binary)], check=True)
+    subprocess.run([str(binary)], check=True)
+
     controller = (ROOT / 'SunSmart/Main/Space/Controller/SyncDevicesViewController.swift').read_text()
     methods = '\n'.join(function(controller, marker).replace('@objc ', '').replace('private func', 'func') for marker in [
         '    private func rebuildTaskPlan(', '    private func acceptsPreparation(', '    private func cancelTaskPreparation(',

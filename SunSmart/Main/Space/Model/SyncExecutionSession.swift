@@ -360,7 +360,7 @@ final class SyncExecutionSession {
         let gate = SyncAttemptCompletionGate()
         cancelAuthorization = environment.authorize(gateway, node) { [self] error in
             precondition(Thread.isMainThread)
-            guard isActiveSyncRun(syncRunIdentifier), gate.claim() else { return }
+            guard isActiveSyncRun(syncRunIdentifier), gate.claim(), validatePlan(syncRunIdentifier) else { return }
             cancelAuthorization = nil
             taskModel.failureMessage = error
             taskModel.state = error == nil ? .successful : .failed

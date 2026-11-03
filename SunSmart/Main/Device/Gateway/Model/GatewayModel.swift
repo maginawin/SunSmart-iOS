@@ -341,6 +341,127 @@ extension GatewayModel {
     }
 }
 
+/// Site gateway synchronization has no active Space. Keep its authority and
+/// provisioning identity separate from the Space configuration recovery flow.
+final class GatewaySyncContext {
+    let site: SiteData
+    let gateway: GatewayModel
+    let node: Node
+    private let account = UserData.currentUserId
+    private let region = UserData.currentServerRegion
+    private let network: MeshNetwork?
+    private let siteID: String
+    private let meshUUID: String
+    private let networkID: String
+    private let nodeUUID: UUID
+    private let address: Address
+    private let deviceKey: Data?
+
+    init(site: SiteData, gateway: GatewayModel, node: Node) {
+        self.site = site
+        self.gateway = gateway
+        self.node = node
+        network = MeshNetworkManager.instance.meshNetwork
+        siteID = site.id
+        meshUUID = site.meshUUID
+        networkID = site.meshNetworkId
+        nodeUUID = node.uuid
+        address = node.primaryUnicastAddress
+        deviceKey = node.deviceKey
+    }
+
+    func isCurrent() -> Bool {
+        let manager = MeshNetworkManager.instance
+        guard Thread.isMainThread, account == UserData.currentUserId, region == UserData.currentServerRegion,
+              site.region == region, site.id == siteID, site.meshUUID == meshUUID, site.meshNetworkId == networkID,
+              let network, manager.meshNetwork === network, network.uuid.uuidString == meshUUID,
+              manager.currentNetworkKey.isPrimary, manager.currentNetworkKey.networkId.hex == networkID,
+              node.network === network, network.nodes.contains(where: { $0 === node }),
+              node.deviceType == .gateway, node.uuid == nodeUUID, node.primaryUnicastAddress == address,
+              deviceKey != nil, node.deviceKey == deviceKey,
+              gateway.siteId == siteID, gateway.address == address,
+              node.macAddress?.trimmingCharacters(in: .whitespacesAndNewlines).uppercased()
+                == gateway.mac.trimmingCharacters(in: .whitespacesAndNewlines).uppercased(),
+              gateway.isCurrentPersistenceContext else { return false }
+        return true
+    }
+
+    func accepts(_ type: SyncDevicesViewController.SyncType) -> Bool {
+        switch type {
+        case .devices(let nodes): return nodes.count == 1 && nodes.first === node
+        case .gatewayRecovery(let target, let model, _), .gatewayServerRecovery(let target, let model):
+            return target === node && model === gateway
+        default: return false
+        }
+    }
+
+    func error() -> String? {
+        guard isCurrent(), let storedSite = SiteData.load(siteId: siteID),
+              storedSite.meshUUID == meshUUID, storedSite.meshNetworkId == networkID,
+              let storedGateway = GatewayModel.load(siteId: siteID, macAddress: gateway.mac).first,
+              storedGateway.address == address, storedGateway.isCurrentPersistenceContext,
+              !gateway.isServerDeletionInProgress, !gateway.serverDeletionPendingLocalReset,
+              !storedGateway.serverDeletionPendingLocalReset,
+              !GatewayDeletionContext.hasPendingDeletion(siteId: siteID, mac: gateway.mac) else {
+            return "failed_to_retrieve_data".localizedString
+        }
+        guard site.state == .normal, storedSite.state == .normal,
+              site.canConfigureGateway(gateway), storedSite.canConfigureGateway(storedGateway) else {
+            return "no_permission".localizedString
+        }
+        return nil
+    }
+
+    func prepare(for type: SyncDevicesViewController.SyncType) -> String? {
+        guard accepts(type) else { return "failed_to_retrieve_data".localizedString }
+        if let error = error() { return error }
+        guard let stored = GatewayModel.load(siteId: siteID, macAddress: gateway.mac).first else {
+            return "failed_to_retrieve_data".localizedString
+        }
+        gateway.update(gatewayModel: stored)
+        return error()
+    }
+
+    /// Observe desired configuration, not Node binding/readback state that this
+    /// very run will change. Authorization also writes MQTT information itself.
+    func capturePlan(for type: SyncDevicesViewController.SyncType) -> () -> Bool {
+        guard accepts(type), error() == nil, let network else { return { false } }
+        let desired = gateway.copy()
+        let includesMQTT: Bool
+        if case .devices = type { includesMQTT = true } else { includesMQTT = false }
+        func associations(_ model: GatewayModel) -> [String] {
+            model.associatedSpaces.map { "\($0.spaceId)|\($0.appKeyIndex)" }.sorted()
+        }
+        let desiredAssociations = associations(desired)
+        func matches(_ model: GatewayModel) -> Bool {
+            let mqttMatches: Bool
+            if let actual = model.mqttServerInfo, let expected = desired.mqttServerInfo {
+                mqttMatches = actual == expected
+            } else {
+                mqttMatches = model.mqttServerInfo == nil && desired.mqttServerInfo == nil
+            }
+            return model.activate == desired.activate && model.apn == desired.apn
+                && associations(model) == desiredAssociations
+                && (!includesMQTT || mqttMatches)
+        }
+        let keyIndexes = Set(gateway.associatedSpaces.map(\.appKeyIndex)
+            + node.networkKeys.map(\.index) + [MeshNetworkManager.instance.currentNetworkKey.index])
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = .sortedKeys
+        func keys() -> [Data]? {
+            guard let networkKeys = try? encoder.encode(network.networkKeys.filter { keyIndexes.contains($0.index) }.sorted { $0.index < $1.index }),
+                  let applicationKeys = try? encoder.encode(network.applicationKeys.filter { keyIndexes.contains($0.boundNetworkKeyIndex) }.sorted { $0.index < $1.index }) else { return nil }
+            return [networkKeys, applicationKeys]
+        }
+        guard let originalKeys = keys() else { return { false } }
+        return { [self] in
+            guard error() == nil, matches(gateway), keys() == originalKeys,
+                  let stored = GatewayModel.load(siteId: siteID, macAddress: gateway.mac).first else { return false }
+            return matches(stored)
+        }
+    }
+}
+
 extension SiteData {
     func canConfigureGateway(_ gateway: GatewayModel) -> Bool {
         if permission == .owner {

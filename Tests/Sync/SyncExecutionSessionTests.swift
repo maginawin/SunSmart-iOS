@@ -108,6 +108,7 @@ enum SyncExecutionSessionTests {
         stopBeforePlanDeliveryAndManualRetry()
         stopBeforeRetryAndLateCompletion()
         profileCompensationBeforeRetry()
+        authorizationScopeChanged()
         authorizationCancellation()
         authorizationBeforeDynamicMessages()
         automaticRetryBudget()
@@ -599,6 +600,19 @@ enum SyncExecutionSessionTests {
         // Finish the close compensation without authorizing another run.
         if h.sends.count > 4 { h.finish(4); h.flush() }
         if h.sends.count > 5 { h.finish(5); h.flush() }
+    }
+    static func authorizationScopeChanged() {
+        let h = Harness(); let (session, _, task, node) = h.make(.gatewayServerAuthorization(gateway: GatewayModel()))
+        node.testHandles = []
+        var current = true, invalidations = 0
+        h.environment.configurationIsCurrent = { current }
+        session.onPlanInvalidated = { invalidations += 1 }
+        session.start(); h.flush()
+        current = false; h.authorization?(nil); h.flush()
+        h.stopFinished?(); h.flush()
+        precondition(task.state != .successful && h.sends.isEmpty && invalidations == 1,
+                     "late authorization cannot acknowledge a revoked gateway plan")
+        session.close(); h.flush()
     }
     static func authorizationCancellation() {
         let h = Harness(); let (session, _, task, node) = h.make(.gatewayServerAuthorization(gateway: GatewayModel()))

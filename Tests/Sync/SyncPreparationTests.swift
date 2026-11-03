@@ -9,6 +9,7 @@ final class Node { var isKeybindComplete = true; func getNodeSyncProximityLighti
 final class Group { var nodes: [Node] = [] }
 struct Scene { var number: UInt16 = 1; var needSync = true }
 enum SyncType {
+    case gatewayRecovery, gatewayServerRecovery
     case devices([Node]), group(Group, [Node]? = nil, [Node]? = nil), scene(Scene), profile, schedule
 }
 enum SyncState { case inSync, syncFailure, syncSuccess }
@@ -78,7 +79,14 @@ struct SyncTaskPlanBuilder {
     }
     func build() -> Plan { Self.calls += 1; return .init(initialState: initialState) }
 }
+final class GatewaySyncContext {
+    var failure: String?, current = true
+    func prepare(for type: SyncType) -> String? { failure }
+    func capturePlan(for type: SyncType) -> () -> Bool { { self.current } }
+}
 @MainActor final class Page {
+    var gatewayContext: GatewaySyncContext?
+
     var hasLeftSyncPage = false, isPreparingTaskPlan = false, needsTaskPreparation = true
     var preparationID = UUID(), preparationTask: Task<Void, Never>?
     let preparationScopeIsCurrent = { SpaceSyncAccess.scopeCurrent }
@@ -123,6 +131,21 @@ struct SyncTaskPlanBuilder {
             reset(); let page = Page(); page.type = type
             page.rebuildTaskPlan(resume: true); await page.preparationTask?.value
             precondition(page.installs == 1 && page.starts == 1 && XWHUDManager.messages.isEmpty)
+        }
+        for type in [SyncType.gatewayRecovery, .gatewayServerRecovery, .devices([Node()])] {
+            reset(); let page = Page(); page.type = type; page.gatewayContext = GatewaySyncContext()
+            SpaceSyncAccess.scopeCurrent = false; SpaceSyncAccess.failure = .configurationUnavailable
+            SceneRestoreConfirmation.result = .failed(NetworkApiError.configurationUnavailable)
+            page.rebuildTaskPlan(resume: false)
+            precondition(page.installs == 1 && page.starts == 0 && XWHUDManager.messages.isEmpty)
+            precondition(SpaceSyncCleanupCoordinator.calls == 0 && SceneConfigurationStore.calls == 0)
+            page.rightItemAction(); precondition(page.starts == 1)
+            let denied = Page(); denied.gatewayContext = GatewaySyncContext()
+            denied.gatewayContext!.failure = "no_permission"
+            denied.rebuildTaskPlan(resume: true)
+            precondition(denied.installs == 0 && denied.needsTaskPreparation)
+            denied.gatewayContext!.failure = nil; denied.rightItemAction()
+            precondition(denied.installs == 1 && denied.starts == 1)
         }
         reset(); let permission = Page(); SpaceSyncAccess.failure = .noSpacePermission
         permission.rebuildTaskPlan(resume: true)
