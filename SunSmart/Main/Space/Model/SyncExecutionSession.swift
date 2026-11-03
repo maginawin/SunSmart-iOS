@@ -413,6 +413,7 @@ final class SyncExecutionSession {
         coordinator.finish(identifier, settle: { [self] done in
             environment.stop { [self] in
                 hdbZoneAcknowledgementAttempt = nil
+                invalidateIncompleteSceneSchedulerReads()
                 restoreSensorsAndUnlock(done, currentTargets: true)
             }
         }) { [self] in
@@ -482,8 +483,15 @@ final class SyncExecutionSession {
             environment.stop { [self] in
                 guard gate.claim() else { return }
                 hdbZoneAcknowledgementAttempt = nil
+                invalidateIncompleteSceneSchedulerReads()
                 compensate { [self] in finished(); if !coordinator.closed { onStopped?() } }
             }
+        }
+    }
+
+    private func invalidateIncompleteSceneSchedulerReads() {
+        for model in sections.flatMap({ $0.allModels }) {
+            sceneDeletionTask(for: model)?.invalidateIncompleteSchedulerRead()
         }
     }
 

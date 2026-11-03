@@ -125,7 +125,10 @@ class DeviceSwitchViewController: UIViewController {
         guard let switchData = self.switchData, !switchData.getNeedSyncDatas(deleteSwitch: true).isEmpty() else { // 判断动能开关是否需要删除数据
             
             // 未使用过直接删除缓存数据即可
-            MeshNetworkManager.instance.deleteSwitch(switchData: self.switchData!)
+            guard MeshNetworkManager.instance.deleteSwitch(switchData: self.switchData!) else {
+                XWHUDManager.showErrorTipHUD("save_failure".localizedString)
+                return
+            }
             // 空数据直接删除
             NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
             NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
@@ -331,7 +334,10 @@ class DeviceSwitchViewController: UIViewController {
         let vc = SyncDevicesViewController(type: .enOceanSwitch(switchData, deleteSwitch: true))
         vc.syncSuccessCallback = {[weak self] _ in
             guard let self = self else { return }
-            MeshNetworkManager.instance.deleteSwitch(switchData: switchData)
+            guard MeshNetworkManager.instance.deleteSwitch(switchData: switchData) else {
+                XWHUDManager.showErrorTipHUD("save_failure".localizedString)
+                return
+            }
             NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
             XWHUDManager.showSuccessTipHUD("done!".localizedString)
             DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) {[weak self] in

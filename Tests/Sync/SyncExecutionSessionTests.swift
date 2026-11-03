@@ -120,6 +120,25 @@ enum SyncExecutionSessionTests {
     }
 
     static func sceneCleanupTaskResultBoundaries() {
+        for termination in ["stop", "close", "invalidated"] {
+            let h = Harness(), cleanup = SceneDeletionTask()
+            let (session, _, _, _) = h.make(.sceneReferenceCleanup(cleanup))
+            session.start(); h.flush()
+            precondition(h.sends.count == 1)
+            switch termination {
+            case "stop": session.stop()
+            case "close": session.close()
+            default: cleanup.isCurrent = false; h.finish(0)
+            }
+            h.flush()
+            precondition(h.stopCount == 1 && cleanup.readInvalidations == 0,
+                         "retain read rollback until STOP drains SDK replies")
+            h.stopFinished?(); h.flush()
+            precondition(cleanup.readInvalidations == 1,
+                         "STOP, close and invalidation revoke incomplete Scene scheduler reads before releasing lane")
+            h.finish(0); h.flush()
+            precondition(cleanup.applyCalls == 0, "late result cannot trust or settle a cancelled read")
+        }
         for allowed in [false, true] {
             for persisted in [false, true] {
                 let h = Harness(), cleanup = SceneDeletionTask()
@@ -141,7 +160,7 @@ enum SyncExecutionSessionTests {
             else { h.finish(0, success: result != "failedAck") }
             h.flush()
             precondition(task.state == (result == "success" ? .successful : .failed))
-            precondition(cleanup.applyCalls == (["success", "saveFailure"].contains(result) ? 1 : 0))
+            precondition(cleanup.applyCalls == 1, "cleanup receives failures too so it can revoke partial SDK cache")
             precondition(node.updates == 0, "custom cleanup owns persistence instead of generic cache mutation")
         }
         let h = Harness(), cleanup = SceneDeletionTask()

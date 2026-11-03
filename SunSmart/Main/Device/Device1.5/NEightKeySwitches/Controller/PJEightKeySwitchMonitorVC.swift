@@ -610,7 +610,10 @@ final class PJEightKeySwitchMonitorVC: UIViewController {
     }
 
     private func deleteUnlinkedVirtualSwitch() {
-        MeshNetworkManager.instance.deleteSwitch(switchData: viewModel.switchData)
+        guard MeshNetworkManager.instance.deleteSwitch(switchData: viewModel.switchData) else {
+            XWHUDManager.showErrorTipHUD("save_failure".localizedString)
+            return
+        }
         NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
         NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.common)
         XWHUDManager.showSuccessTipHUD("done!".localizedString)

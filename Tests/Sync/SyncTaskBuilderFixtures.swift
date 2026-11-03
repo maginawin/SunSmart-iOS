@@ -119,6 +119,8 @@ final class MeshMessageHandle {
 // the production Session prove activation, ownership and result ordering.
 final class SceneDeletionTask {
     func resetForRetry() {}
+    var readInvalidations = 0
+    func invalidateIncompleteSchedulerRead() { readInvalidations += 1 }
     var isCurrent = true
     var handles: [MeshMessageHandle] = [MeshMessageHandle()]
     var onBuild: (() -> Void)?
@@ -130,6 +132,8 @@ final class SceneDeletionTask {
     private(set) var applyCalls = 0
     func apply(results: [MeshMessageHandle], expected: [MeshMessageHandle]) -> Bool {
         applyCalls += 1
+        guard isCurrent, results.count == expected.count, results.allSatisfy(\.isSuccessful),
+              !expected.isEmpty || allowsEmpty else { return false }
         if applySucceeds && invalidatesAfterApply { isCurrent = false }
         return applySucceeds
     }

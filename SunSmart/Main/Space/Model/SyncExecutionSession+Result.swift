@@ -4,10 +4,6 @@ import NordicSigMeshSDK
 extension SyncExecutionSession {
     func applyResult(_ resultMessageHandles: [MeshMessageHandle], model: SyncCellModel, messageHandles: [MeshMessageHandle]) -> Bool {
         if let task = sceneDeletionTask(for: model) {
-            guard task.isCurrent,
-                  !messageHandles.isEmpty || task.allowsEmpty,
-                  resultMessageHandles.count == messageHandles.count,
-                  resultMessageHandles.allSatisfy({ $0.isSuccessful }) else { return false }
             return task.apply(results: resultMessageHandles, expected: messageHandles)
         }
         if parameterOnlyOperations[ObjectIdentifier(model)] != nil {

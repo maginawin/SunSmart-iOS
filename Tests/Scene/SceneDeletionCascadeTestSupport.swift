@@ -60,6 +60,14 @@ final class Node {
     var timedSchedulerIdentity: TimedSchedulerNodeIdentity?
     var schedulerSetupModels: [Model] = []
     var allSchedulerModelEntrys: [Model: [Int: SchedulerRegistryEntry]] = [:]
+    var schedulerActions: [Int: SchedulerRegistryEntry] = [:]
+    var scheduleIds: [Int] = []
+    var savedSchedulerEntries: [Model: [Int: SchedulerRegistryEntry]] = [:]
+    var savedSchedulerActions: [Int: SchedulerRegistryEntry] = [:]
+    func savePropertys() {
+        savedSchedulerEntries = allSchedulerModelEntrys
+        savedSchedulerActions = schedulerActions
+    }
     var sunricherVendorModel: Model? = Model()
     var enOceanProxySwitchKeys: [SwitchKey] = []
     var enOceanMacAddress: String?
@@ -156,6 +164,10 @@ class DeviceSwitchData {
     func save(meshUUID: String, networkId: String) -> Bool {
         guard !FixtureStore.failSwitchSave else { return false }
         FixtureStore.switches[id] = copy(); return true
+    }
+    func delete(meshUUID: String, networkId: String) -> Bool {
+        guard !FixtureStore.failSwitchSave else { return false }
+        FixtureStore.switches[id] = nil; return true
     }
 }
 final class PJEightKeySwitchData: DeviceSwitchData {

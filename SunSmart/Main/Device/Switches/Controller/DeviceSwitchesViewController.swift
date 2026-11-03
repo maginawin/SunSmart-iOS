@@ -417,8 +417,12 @@ class DeviceSwitchesViewController: UIViewController {
         }
     }
     
-    private func deleteCache(switchData: DeviceSwitchData) {
-        MeshNetworkManager.instance.deleteSwitch(switchData: switchData)
+    @discardableResult
+    private func deleteCache(switchData: DeviceSwitchData) -> Bool {
+        guard MeshNetworkManager.instance.deleteSwitch(switchData: switchData) else {
+            XWHUDManager.showErrorTipHUD("save_failure".localizedString)
+            return false
+        }
         space.commitLocalChangeForCloudSync(changeType: .device)
         NotificationCenter.default.post(name: .init(switchsRefreshNotificationName), object: nil)
         
@@ -426,11 +430,11 @@ class DeviceSwitchesViewController: UIViewController {
             isEdit = false
         }
         updateUI()
-        
+        return true
     }
 
     private func completeConfirmedSwitchDelete(_ switchData: DeviceSwitchData, source: UIViewController?) {
-        deleteCache(switchData: switchData)
+        guard deleteCache(switchData: switchData) else { return }
 
         guard let source else {
             return
@@ -470,7 +474,7 @@ class DeviceSwitchesViewController: UIViewController {
                     SRAlertAction(title: "confirm".localizedString, style: .destructive, actionHandler: { [weak self] _ in
                         guard let self else { return }
                         if self.isUnlinkedVirtualBatteryPowerSwitch(switchData) {
-                            self.deleteCache(switchData: switchData)
+                            guard self.deleteCache(switchData: switchData) else { return }
                             XWHUDManager.showSuccessTipHUD("done!".localizedString)
                         } else {
                             self.deleteConfirmedSwitch(switchData)

@@ -225,6 +225,35 @@ enum SceneDeletionCascade {
         MeshNetworkManager.instance.schedules = Schedule.load(meshUUID: scope.meshUUID, meshNetworkId: scope.networkID)
     }
 
+    /// Called only by the final whole-switch deletion, after its unbinding flow.
+    /// Keep the business record and Scene receipts atomic so a failed save remains retryable.
+    static func deleteSwitchRecords(_ item: DeviceSwitchData, scope: SceneScope) -> Bool {
+        guard let infos = try? SceneInfo.loadAll(meshUUID: scope.meshUUID, subnetworkId: scope.networkID) else { return false }
+        var updated: [SceneInfo] = []
+        let saved = SunSmartDataManager.shared.configurationTransaction {
+            for info in infos {
+                guard !info.configurationLoadFailed else { throw Failure.persistence }
+                guard var configuration = info.configuration, configuration.isDeleting,
+                      var references = configuration.deletionReferences else { continue }
+                let previousCount = references.pending.count
+                references.pending.removeAll {
+                    ($0.kind == .kinetic || $0.kind == .powerSwitch) && $0.objectID == item.id
+                }
+                guard references.pending.count != previousCount else { continue }
+                configuration.deletionReferences = references
+                info.configuration = configuration
+                try info.saveConfiguration(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)
+                updated.append(info)
+            }
+            guard item.delete(meshUUID: scope.meshUUID, networkId: scope.networkID) else { throw Failure.persistence }
+        }
+        guard saved else { return false }
+        for info in updated {
+            MeshNetworkManager.instance.scenes.first { $0.number == info.sceneId }?.info.configuration = info.configuration
+        }
+        return true
+    }
+
     /// The old guard remains for legacy deletions. New tombstones use durable cleanup receipts instead of self-blocking references.
     static func canFinish(info: SceneInfo) -> Bool {
         guard let refs = info.configuration?.deletionReferences else {
@@ -281,6 +310,7 @@ final class SceneDeletionTask {
     private var prepared = false
     private var appliedPower: PJEightKeySwitchData?
     private var plannedHandles: [MeshMessageHandle] = []
+    private var schedulerActionsBeforeRead: [Int: SchedulerRegistryEntry]?
     private(set) var allowsEmpty = false
 
     init(scene: Scene, reference: SceneReferenceRemoval, node: Node, phase: Phase) {
@@ -291,8 +321,24 @@ final class SceneDeletionTask {
     }
 
     func resetForRetry() {
+        invalidateIncompleteSchedulerRead()
         prepared = false; snapshot = nil
         plannedHandles = []; appliedPower = nil; allowsEmpty = false
+    }
+
+    /// The SDK writes each reply immediately. A partial read is not a known register.
+    /// Cancellation calls this after transport STOP settles, including replies received while draining.
+    func invalidateIncompleteSchedulerRead() {
+        guard let actions = schedulerActionsBeforeRead else { return }
+        schedulerActionsBeforeRead = nil
+        guard node.timedSchedulerIdentity == reference.identity else { return }
+        var entries = node.allSchedulerModelEntrys
+        node.schedulerSetupModels.forEach { entries.removeValue(forKey: $0) }
+        node.allSchedulerModelEntrys = entries
+        node.schedulerActions = actions
+        node.scheduleIds = actions.keys.sorted()
+        node.savePropertys()
+        node.clearSyncStateCache()
     }
 
     private func storedSwitch() -> DeviceSwitchData? {
@@ -380,6 +426,7 @@ final class SceneDeletionTask {
             guard !node.schedulerSetupModels.isEmpty else { throw SceneDeletionCascade.Failure.invalidTargets }
             if phase == .read {
                 // Read every slot on each Model; unknown state must not be treated as an empty register.
+                schedulerActionsBeforeRead = node.schedulerActions
                 return node.schedulerSetupModels.flatMap { model in
                     (0..<16).map { MeshMessageHandle(message: SchedulerActionGet(index: UInt8($0)), model: model) }
                 }
@@ -462,8 +509,14 @@ final class SceneDeletionTask {
 
     func apply(results: [MeshMessageHandle], expected: [MeshMessageHandle]) -> Bool {
         guard isCurrent, results.count == expected.count, results.allSatisfy(\.isSuccessful),
-              !expected.isEmpty || allowsEmpty else { return false }
-        if phase == .read { return true }
+              !expected.isEmpty || allowsEmpty else {
+            invalidateIncompleteSchedulerRead()
+            return false
+        }
+        if phase == .read {
+            schedulerActionsBeforeRead = nil
+            return true
+        }
         for handle in results { _ = node.applyMessageHandle(handle, isSuccess: true) }
         let previous = scene.info.configuration
         let saved = SunSmartDataManager.shared.configurationTransaction {

@@ -948,8 +948,11 @@ extension MeshNetworkManager {
     }
     
     /// 删除动能开关
-    func deleteSwitch(switchData: DeviceSwitchData, resetDevice: Bool = true, removeNodeAndGroups: Bool = true) {
-        guard let meshUUID = self.meshNetwork?.uuid.uuidString else { return }
+    @discardableResult
+    func deleteSwitch(switchData: DeviceSwitchData, resetDevice: Bool = true, removeNodeAndGroups: Bool = true) -> Bool {
+        guard let meshUUID = self.meshNetwork?.uuid.uuidString else { return false }
+        guard SceneDeletionCascade.deleteSwitchRecords(switchData,
+            scope: .init(meshUUID: meshUUID, networkID: currentNetworkKey.networkId.hex)) else { return false }
         let realPowerSwitchNode = switchData.proxyNode?.isPowerSwitch == true
             ? switchData.proxyNode
             : nil
@@ -972,7 +975,6 @@ extension MeshNetworkManager {
                 }
         }
         PJEightKeySwitchRepository.shared.delete(for: switchData, meshUUID: meshUUID, networkId: self.currentNetworkKey.networkId.hex)
-        switchData.delete(meshUUID: meshUUID, networkId: self.currentNetworkKey.networkId.hex)
         self.switchs.removeAll(where: { $0.id == switchData.id })
         if removeNodeAndGroups { removeRealPowerSwitchNodeIfNeeded(realPowerSwitchNode) }
         
@@ -1001,7 +1003,7 @@ extension MeshNetworkManager {
             if removeNodeAndGroups { try? self.meshNetwork?.remove(group: group) }
         }
         notifyRealPowerSwitchDeletedIfNeeded(realPowerSwitchNode)
-        
+        return true
     }
 
     private func silentlyResetPowerSwitchIfNeeded(_ node: Node?) {

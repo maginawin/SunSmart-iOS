@@ -39,6 +39,8 @@ import Foundation
         try schedulerPlansPreserveCurrentOwner()
         try legacyAndOrphanSchedulerRecovery()
         try retriesRebuildSchedulerWork()
+        try incompleteSchedulerReadsStayUnknown()
+        try wholeSwitchDeletionSettlesReferencesAtomically()
         try changedSchedulerSlotRejectsLateReceipt()
         try kineticCleanupAndReceiptLifetime()
         try duplicateObservedKeysAreCanonical()
@@ -94,6 +96,100 @@ import Foundation
               "install publishes committed copies")
         check(manager.schedules.first { $0.id == 12 } === changed && manager.switchs.last === unrelated,
               "unrelated objects are preserved")
+    }
+
+    static func incompleteSchedulerReadsStayUnknown() throws {
+        for termination in ["failedAck", "partial", "stale", "cancel", "retry"] {
+            let (scene, node, _) = fixture()
+            node.allSchedulerModelEntrys = [:]
+            let oldActions: [Int: SchedulerRegistryEntry] = [0: .init(action: .sceneRecall, sceneNumber: 9)]
+            node.schedulerActions = oldActions
+            let reference = SceneReferenceRemoval(kind: .scheduler, identity: node.timedSchedulerIdentity, address: 1, name: "Read")
+            try markDeleting(scene, references: .init(pending: [reference]))
+            let read = SceneDeletionTask(scene: scene, reference: reference, node: node, phase: .read)
+            let handles = read.messageHandles
+            // SDK replies for empty slots create non-nil dictionaries before the missing slot times out.
+            node.schedulerSetupModels.forEach { node.allSchedulerModelEntrys[$0] = [:] }
+            node.schedulerActions = [:]; node.savePropertys()
+            switch termination {
+            case "cancel": read.invalidateIncompleteSchedulerRead()
+            case "retry": read.resetForRetry()
+            default:
+                if termination == "failedAck" { handles[0].isSuccessful = false }
+                if termination == "stale" { scene.info.configuration?.revision = UUID() }
+                let results = termination == "partial" ? Array(handles.dropFirst()) : handles
+                check(!read.apply(results: results, expected: handles), "incomplete or stale read rejects success")
+            }
+            check(node.observedTimedSlots == nil && node.savedSchedulerEntries.isEmpty,
+                  "\(termination) invalidates partial cache in memory and persistence")
+            check(node.schedulerActions == oldActions && node.savedSchedulerActions == oldActions && node.scheduleIds == [0],
+                  "\(termination) preserves pre-read legacy observations")
+            do {
+                _ = try TimedSchedulerSlotPolicy.plan(identity: node.timedSchedulerIdentity!,
+                    intents: [.init(scheduleID: 20, targetsNode: true, legacy: false, binding: nil)],
+                    observedSlots: node.observedTimedSlots)
+                check(false, "unknown slot 0 must not be allocated after \(termination)")
+            } catch { check(error as? TimedSchedulerSlotPolicy.Failure == .unknownCapacity, "incomplete read requires capacity recovery") }
+            check(pending(scene) == [reference], "incomplete read retains Scene dependency")
+        }
+        let (scene, node, _) = fixture()
+        let reference = SceneReferenceRemoval(kind: .scheduler, identity: node.timedSchedulerIdentity, address: 1, name: "Read")
+        try markDeleting(scene, references: .init(pending: [reference]))
+        let read = SceneDeletionTask(scene: scene, reference: reference, node: node, phase: .read)
+        let handles = read.messageHandles
+        node.allSchedulerModelEntrys[node.schedulerSetupModels[0]] = [0: .init(action: .sceneRecall, sceneNumber: 9)]
+        check(read.apply(results: handles, expected: handles), "full read accepts complete observation")
+        read.invalidateIncompleteSchedulerRead(); read.resetForRetry()
+        check(node.observedTimedSlots == [0], "stop or reset after completed read preserves trusted cache")
+        let plan = try TimedSchedulerSlotPolicy.plan(identity: node.timedSchedulerIdentity!,
+            intents: [.init(scheduleID: 20, targetsNode: true, legacy: false, binding: nil)], observedSlots: node.observedTimedSlots)
+        check(plan[20]?.slot == 1, "complete read preserves occupied slot and allows new Timed")
+    }
+
+    static func wholeSwitchDeletionSettlesReferencesAtomically() throws {
+        let (scene, _, proxy) = fixture()
+        let item = DeviceSwitchData(id: "deleted", name: "Switch")
+        item.proxyNodeAddress = 2
+        manager.switchs = [item]
+        let reference = SceneReferenceRemoval(kind: .kinetic, identity: proxy.timedSchedulerIdentity,
+            address: 2, objectID: item.id, name: item.name, keys: [4])
+        let other = SceneReferenceRemoval(kind: .kinetic, identity: proxy.timedSchedulerIdentity,
+            address: 2, objectID: "other", name: "Other", keys: [3])
+        let scheduler = SceneReferenceRemoval(kind: .scheduler, identity: proxy.timedSchedulerIdentity,
+            address: 2, objectID: item.id, name: "Scheduler")
+        try markDeleting(scene, references: .init(pending: [reference, other, scheduler]))
+        let secondScene = Scene(2)
+        manager.scenes.append(secondScene)
+        try markDeleting(secondScene, references: .init(pending: [reference]))
+        let stale = SceneDeletionTask(scene: secondScene, reference: reference, node: proxy, phase: .apply)
+        let handles = stale.messageHandles
+        for failure in ["scene", "switch"] {
+            FixtureStore.failSceneSave = failure == "scene"
+            FixtureStore.failSwitchSave = failure == "switch"
+            check(!SceneDeletionCascade.deleteSwitchRecords(item, scope: scope), "failed \(failure) save rejects whole switch deletion")
+            check(FixtureStore.switches[item.id] != nil && pending(scene).count == 3 && pending(secondScene) == [reference],
+                  "failed transaction preserves live objects and all dependencies")
+            let persisted = try SceneInfo.loadAll(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)
+            check(persisted.allSatisfy { $0.configuration?.deletionReferences?.pending.contains(reference) == true },
+                  "failed deletion remains recoverable after restart")
+        }
+        FixtureStore.failSceneSave = false; FixtureStore.failSwitchSave = false
+        check(SceneDeletionCascade.deleteSwitchRecords(item, scope: scope), "confirmed whole switch deletion commits")
+        manager.switchs.removeAll { $0.id == item.id }
+        check(FixtureStore.switches[item.id] == nil && pending(scene) == [other, scheduler] && pending(secondScene).isEmpty,
+              "settle this switch across Scenes while preserving unrelated dependencies")
+        check(SceneDeletionCascade.canFinish(info: secondScene.info), "Scene can finish after whole switch is removed")
+        check(!stale.apply(results: handles, expected: handles), "old cleanup callback cannot reapply after deletion")
+        let section = SyncDevicesSectionModel()
+        check(SceneDeletionCascade.appendTasks(scene: secondScene, to: section).isEmpty, "new global plan contains no orphan switch cleanup")
+        let reloaded = try SceneInfo.loadAll(meshUUID: scope.meshUUID, subnetworkId: scope.networkID).first { $0.sceneId == 2 }!
+        check(reloaded.configuration?.deletionReferences?.pending.isEmpty == true, "restart preserves settled receipt")
+
+        // Missing data without a confirmed whole-delete transaction must not fabricate an ACK.
+        try markDeleting(secondScene, references: .init(pending: [reference]))
+        let missing = SceneDeletionTask(scene: secondScene, reference: reference, node: proxy, phase: .apply)
+        check(missing.messageHandles.isEmpty && !missing.allowsEmpty && !missing.apply(results: [], expected: []),
+              "unconfirmed missing switch remains pending")
     }
 
     static func schedulerPlansPreserveCurrentOwner() throws {
@@ -229,6 +325,7 @@ import Foundation
         let retryReads = read.messageHandles
         check(retryReads.count == 32 && zip(originalReads, retryReads).allSatisfy { $0 !== $1 },
               "retry regenerates all scheduler reads instead of reusing failed handle state")
+        node.schedulerSetupModels.forEach { node.allSchedulerModelEntrys[$0] = [:] }
         check(read.apply(results: retryReads, expected: retryReads) && pending(scene) == [reference],
               "successful repeated read still waits for cleanup phase")
         let apply = SceneDeletionTask(scene: scene, reference: reference, node: node, phase: .apply)
