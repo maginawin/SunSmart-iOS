@@ -216,6 +216,10 @@ class SpaceViewController: WMPageController {
     private var hasStoppedPresenceTracking: Bool = false
     /// 是否已处理空间权限失效，避免失效心跳重复弹窗
     private var hasHandledPermissionLoss: Bool = false
+    /// 进入动画前收到的权限冲突，待当前 Space 可以展示时处理。
+    private var hasPendingTransferPermissionAlert = false
+    /// 只跟踪本页面的提示；被其他提示替换后，不留下永久的弹窗锁。
+    private weak var transferPermissionAlert: SRAlertView?
     /// mesh网络内用户查询定时器
     private var userAskTimer: Timer?
     /// 是否由当前 Space 页面接管 mesh 权限探测回调
@@ -376,6 +380,8 @@ class SpaceViewController: WMPageController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+
+        presentPendingTransferPermissionAlert()
         
         updateSyncState()
         if opensConfigurationReview, SpaceConfigurationSafety.requiresConfigurationReview(space) {
@@ -514,6 +520,8 @@ class SpaceViewController: WMPageController {
     // MARK: - Mesh Ask Timer
     /// mesh查询用户权限
     private func startUserAskTimer() {
+        guard canHandleSpacePresenceCallbacks else { return }
+        stopUserAskTimer()
         userAskTimer = LCWeakTimer.scheduledTimer(timeInterval: 5, aTarget: self, selector: #selector(userPermissionAskTimeout), userInfo: nil, repeats: false)
         RunLoop.current.add(userAskTimer!, forMode: .common)
     }
@@ -525,7 +533,23 @@ class SpaceViewController: WMPageController {
     
     /// 查询用户权限超时
     @objc private func userPermissionAskTimeout() {
+        guard canHandleSpacePresenceCallbacks else { return }
         self.meshPermissionValidation = true
+    }
+
+    private func checkMeshMemberPermissions() {
+        let manager = MeshNetworkManager.instance
+        guard canHandleSpacePresenceCallbacks,
+              manager.meshNetwork?.uuid.uuidString == space.meshUUID,
+              manager.currentNetworkKey.networkId.hex == space.meshNetworkId,
+              MeshLibManager.manager.isMeshNetworkConnected,
+              space.deviceOperates.contains(.edit), !space.disableEditorPermission,
+              !meshPermissionValidation,
+              space.permission == .owner || space.permission == .editor else { return }
+        MeshLibManager.manager.externalVendorMessageDelegate = self
+        isHandlingExternalVendorMessages = true
+        MeshAPI.sendMessage(message: ExternalVendorMessage(operation: .userPermission(.ask)), address: .localClientGroupAddress)
+        startUserAskTimer()
     }
     
     
@@ -555,16 +579,8 @@ class SpaceViewController: WMPageController {
         meshNetworkConnectedObservation = MeshLibManager.manager.observe(\.isMeshNetworkConnected, options: [.new], changeHandler: {[weak self] _, _ in
             guard let self = self else { return }
             DispatchQueue.main.async {
-                // 连接上mesh网络
-                if MeshLibManager.manager.isMeshNetworkConnected && self.space.deviceOperates.contains(.edit) && !self.space.disableEditorPermission {
-                    // 如果未完成mesh权限校验，有space编辑权限的用户进入空间连接网络后需判定是否有其他的编辑用户
-                    if !self.meshPermissionValidation && (self.space.permission == .owner || self.space.permission == .editor) {
-                        MeshLibManager.manager.externalVendorMessageDelegate = self
-                        self.isHandlingExternalVendorMessages = true
-                        MeshAPI.sendMessage(message: ExternalVendorMessage(operation: .userPermission(.ask)), address: .localClientGroupAddress)
-                        self.startUserAskTimer()
-                    }
-                }
+                // 在消费已排队的 KVO 回调时检查会话，避免退出后重新注册 delegate。
+                self.checkMeshMemberPermissions()
             }
         })
         
@@ -963,11 +979,12 @@ class SpaceViewController: WMPageController {
     
     /// 检查空间内成员请求，保证空间内只有一个编辑权限用户
     private func checkTheSpaceMembersRequest() {
-        guard space.deviceOperates.contains(.edit), !space.disableEditorPermission else {
+        guard !hasStoppedPresenceTracking, !hasHandledPermissionLoss,
+              space.deviceOperates.contains(.edit), !space.disableEditorPermission else {
             return
         }
         NetworkRequest.shared.request(.spaceActiveMembers(siteId: self.space.siteId, spaceId: self.space.id)) {[weak self] result in
-            guard let self = self else { return }
+            guard let self = self, self.canHandleSpacePresenceCallbacks else { return }
             switch result {
             case .success(let response):
                 if let users = JSON(response)["data"]["activeUsers"].arrayObject as? [[String: Any]] {
@@ -989,6 +1006,8 @@ class SpaceViewController: WMPageController {
                         // 提示是否关闭用户编辑权限
                         self.showTransferPermissionAlert()
                     }else {
+                        guard !self.hasPendingTransferPermissionAlert,
+                              self.transferPermissionAlert?.superview == nil else { return }
                         if space.deviceCount == 0 {
                             self.configurationFlowGuidance()
                         }
@@ -1000,6 +1019,8 @@ class SpaceViewController: WMPageController {
                 }
             case .failure(_):
                 self.cloudPermissionValidation = true
+                guard !self.hasPendingTransferPermissionAlert,
+                      self.transferPermissionAlert?.superview == nil else { return }
                 if space.deviceCount == 0 {
                     self.configurationFlowGuidance()
                 }
@@ -1038,6 +1059,12 @@ class SpaceViewController: WMPageController {
     }
     
     // MARK: - Heartbeat
+
+    /// 子页面或 modal 不结束 Space 会话；从导航栈移除后不再消费旧回调。
+    private var canHandleSpacePresenceCallbacks: Bool {
+        !hasStoppedPresenceTracking && !hasHandledPermissionLoss && space.state == .normal
+            && (navigationController?.viewControllers.contains(self) ?? false)
+    }
     
     /// 开始发送心跳
     private func startHeartbeatTimer() {
@@ -1074,6 +1101,9 @@ class SpaceViewController: WMPageController {
             return
         }
         hasStoppedPresenceTracking = true
+        hasPendingTransferPermissionAlert = false
+        transferPermissionAlert?.dismiss(animation: false)
+        transferPermissionAlert = nil
         stopEmergencyFireSceneMonitoring()
         stopHeartbeatTimer()
         stopUserAskTimer()
@@ -1094,7 +1124,7 @@ class SpaceViewController: WMPageController {
         }
         
         NetworkRequest.shared.request(.heartbeat(siteId: self.space.siteId, spaceId: self.space.id, permission: self.space.permission)) {[weak self] result in
-            guard let self else { return }
+            guard let self, self.canHandleSpacePresenceCallbacks else { return }
             switch result {
             case .success(_):
                 break
@@ -1112,10 +1142,11 @@ class SpaceViewController: WMPageController {
                         NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
                     }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
+                        guard let self, self.navigationController?.viewControllers.contains(self) == true else { return }
                         if let currentVc = UIViewController.getVisibleVc(), currentVc.presentingViewController != nil { // 退出modal页面
                             currentVc.dismiss(animated: false)
                         }
-                        self?.navigationController?.popToViewController(vcClass: SiteViewController.classForCoder())
+                        self.navigationController?.popToViewController(vcClass: SiteViewController.classForCoder())
                     }
                     // 返回到site列表 通知刷新site
                     NotificationCenter.default.post(name: .init(rawValue: SitesDataRefreshNotifiacationName), object: true)
@@ -1131,11 +1162,13 @@ class SpaceViewController: WMPageController {
                     self.space.requiresPasswordVerification = true
                     self.space.save()
                     SRAlertView(title: "notification".localizedString, message: "the_space_password_change_message".localizedString, actions: [SRAlertAction(title: "confirm".localizedString, actionHandler: {[weak self] _ in
+                        guard let self, self.canHandleSpacePresenceCallbacks else { return }
                         if let currentVc = UIViewController.getVisibleVc(), currentVc.presentingViewController != nil { // 退出modal页面
                             currentVc.dismiss(animated: false)
                         }
-                        self?.removeFromWindowSubviews()
-                        self?.navigationController?.popToViewController(vcClass: SiteViewController.classForCoder())
+                        self.stopSpacePresenceTracking(reason: .permissionLoss)
+                        self.removeFromWindowSubviews()
+                        self.navigationController?.popToViewController(vcClass: SiteViewController.classForCoder())
                     })]).show()
                 default:
                     break
@@ -1160,29 +1193,52 @@ class SpaceViewController: WMPageController {
         }
         
         SRAlertView(title: "notification".localizedString, message: "the_space_cleared_visitor_message".localizedString, actions: [SRAlertAction(title: "confirm".localizedString, actionHandler: {[weak self] _ in
-            if self?.space.permission == .owner {
+            guard let self, self.navigationController?.viewControllers.contains(self) == true else { return }
+            if self.space.permission == .owner {
                 NotificationCenter.default.post(name: .init(SiteStateChangeNotificationName), object: nil)
             }
             if let currentVc = UIViewController.getVisibleVc(), currentVc.presentingViewController != nil { // 退出modal页面
                 currentVc.dismiss(animated: false)
             }
-            self?.removeFromWindowSubviews()
-            self?.navigationController?.popToViewController(vcClass: SiteViewController.classForCoder())
+            self.removeFromWindowSubviews()
+            self.navigationController?.popToViewController(vcClass: SiteViewController.classForCoder())
         })]).show()
     }
     
     /// 切换权限提示
     private func showTransferPermissionAlert() {
-        
-        guard !space.disableEditorPermission else { return }
-        
-        SRAlertView(title: "notification".localizedString, message: "space_permission_transition_message".localizedString, actions: [SRAlertAction(title: "cancel".localizedString, style: .cancel, actionHandler: {[weak self] _ in
-            self?.navigationController?.popToViewController(vcClass: SiteViewController.classForCoder())
+        guard canHandleSpacePresenceCallbacks, !space.disableEditorPermission,
+              !space.requiresPasswordVerification else { return }
+        hasPendingTransferPermissionAlert = true
+        presentPendingTransferPermissionAlert()
+    }
+
+    private func presentPendingTransferPermissionAlert() {
+        guard hasPendingTransferPermissionAlert, canHandleSpacePresenceCallbacks,
+              !space.disableEditorPermission, !space.requiresPasswordVerification,
+              navigationController?.viewIfLoaded?.window != nil,
+              transferPermissionAlert?.superview == nil else { return }
+
+        weak var currentAlert: SRAlertView?
+        let alert = SRAlertView(title: "notification".localizedString, message: "space_permission_transition_message".localizedString, actions: [SRAlertAction(title: "cancel".localizedString, style: .cancel, closeAlert: false, actionHandler: {[weak self] _ in
+            guard let self, self.canHandleSpacePresenceCallbacks,
+                  let currentAlert, currentAlert.superview != nil,
+                  self.transferPermissionAlert === currentAlert else { return }
+            // 先失效并关闭自己的提示，再返回；迟到结果不能在导航动画期间重新弹窗。
+            self.stopSpacePresenceTracking(reason: .leavingSpaceFlow)
+            self.navigationController?.popToViewController(vcClass: SiteViewController.classForCoder())
         }), SRAlertAction(title: "confirm".localizedString, actionHandler: {[weak self] _ in
-            // 禁用编辑权限
-            self?.disableEditorPermission()
-        })]).show()
-        
+            guard let self, self.canHandleSpacePresenceCallbacks,
+                  let currentAlert, currentAlert.superview != nil,
+                  self.transferPermissionAlert === currentAlert else { return }
+            self.hasPendingTransferPermissionAlert = false
+            self.transferPermissionAlert = nil
+            self.disableEditorPermission()
+        })])
+        currentAlert = alert
+        transferPermissionAlert = alert
+        hasPendingTransferPermissionAlert = false
+        alert.show()
     }
     
     /// 关闭用户编辑权限
@@ -1888,8 +1944,19 @@ extension SpaceViewController: MeshExternalVendorMessageDelegate {
     func meshNetworkManager(_ manager: MeshNetworkManager,
                             didReceiveMessage message: ExternalVendorMessage,
                             sentFrom source: Address, to destination: Address) {
-        
-        guard source != manager.meshNetwork?.localProvisioner?.node?.primaryUnicastAddress, !self.meshPermissionValidation, let operation = message.unmarshal() else {
+
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async { [weak self] in
+                self?.meshNetworkManager(manager, didReceiveMessage: message, sentFrom: source, to: destination)
+            }
+            return
+        }
+        guard canHandleSpacePresenceCallbacks,
+              MeshLibManager.manager.externalVendorMessageDelegate === self,
+              manager.meshNetwork?.uuid.uuidString == space.meshUUID,
+              manager.currentNetworkKey.networkId.hex == space.meshNetworkId,
+              source != manager.meshNetwork?.localProvisioner?.node?.primaryUnicastAddress,
+              !self.meshPermissionValidation, let operation = message.unmarshal() else {
             return
         }
         

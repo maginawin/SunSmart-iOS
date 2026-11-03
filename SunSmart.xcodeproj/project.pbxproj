@@ -20,6 +20,7 @@
 		053FD281E651483703BF86B3 /* SpaceProtectionReadSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F30B7015EA95EB1973F9EC1 /* SpaceProtectionReadSnapshot.swift */; };
 		059D7E2827E3479CA850CC0A /* SyncDeviceTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C06007AE3FEB4B96850CEF9F /* SyncDeviceTaskBuilder.swift */; };
 		05E5219010EF68D75D36DF0E /* country_regions.json in Resources */ = {isa = PBXBuildFile; fileRef = 90AB8E958547A7C9F45C389B /* country_regions.json */; };
+		060E491CD4224EA69FA3272B /* SiteLocationPermissionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB376BCEC736411D9F75635E /* SiteLocationPermissionAlertView.swift */; };
 		0836DD01EB2F96B384CE66AD /* SpaceSchedulerReadCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E72DEB715702E5821C506F /* SpaceSchedulerReadCoordinator.swift */; };
 		084EF311302AB496008CB48A /* all_utc_timezones.json in Resources */ = {isa = PBXBuildFile; fileRef = 084EF310302AB496008CB48A /* all_utc_timezones.json */; };
 		084EF312302AB496008CB48A /* all_utc_timezones.json in Resources */ = {isa = PBXBuildFile; fileRef = 084EF310302AB496008CB48A /* all_utc_timezones.json */; };
@@ -779,11 +780,8 @@
 		08AACC2E308B0FB700DC2934 /* EmerFireAlarmStatusLegendHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7788E42F972B46000887FE /* EmerFireAlarmStatusLegendHeaderView.swift */; };
 		08AACC2F308B0FB700DC2934 /* SiteCreateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94A3897BFB3707743564609 /* SiteCreateViewController.swift */; };
 		08AACC30308B0FB700DC2934 /* SiteCreationDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89158615F2A314581CDBCB7D /* SiteCreationDraft.swift */; };
-		FC6E9C6627F84299A04BDA21 /* SiteCurrentLocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6B87775AF904657B4DB0C6D /* SiteCurrentLocationProvider.swift */; };
-		A7AB46A7A2B84D45986C6507 /* SiteCurrentLocationRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06012EF412A40ECB31B3126 /* SiteCurrentLocationRequest.swift */; };
 		08AACC31308B0FB700DC2934 /* SiteCreationSelectionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3417B5CF1BA5BB371279A1BF /* SiteCreationSelectionRow.swift */; };
 		08AACC32308B0FB700DC2934 /* SiteTypeSelectionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D7700FF7ECF232CFD8C21C /* SiteTypeSelectionAlertView.swift */; };
-		649790252B9F40E193E10892 /* SiteLocationPermissionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB376BCEC736411D9F75635E /* SiteLocationPermissionAlertView.swift */; };
 		08AACC34308B0FB700DC2934 /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
 		08AACC35308B0FB700DC2934 /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 08AAC93C308B0FB700DC2934 /* NordicSigMeshSDK */; };
 		08AACC36308B0FB700DC2934 /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
@@ -812,6 +810,7 @@
 		08AACC4E308B0FB700DC2934 /* XWHUDManager_right@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB8D2A930C3800217512 /* XWHUDManager_right@2x.png */; };
 		08AACC4F308B0FB700DC2934 /* XWHUDManager_tip@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C896BB932A930C3800217512 /* XWHUDManager_tip@2x.png */; };
 		08AACC50308B0FB700DC2934 /* XWHUDManager_successful@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = C8C1E5A62B6A1FA500F60E62 /* XWHUDManager_successful@3x.png */; };
+		08B48DE03099820D00B10945 /* Assets-HSmart.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 08B48DDF3099820D00B10945 /* Assets-HSmart.xcassets */; };
 		08B54C5E30402CCB0017ED49 /* SiteTimeZoneValue.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000100 /* SiteTimeZoneValue.swift */; };
 		08B54C5F30402CCB0017ED49 /* SiteTimeSetMessageFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608160000000000000200 /* SiteTimeSetMessageFactory.swift */; };
 		08B54C6030402CCB0017ED49 /* SiteTimeZoneCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2608110000000000000200 /* SiteTimeZoneCatalog.swift */; };
@@ -1520,6 +1519,7 @@
 		0C36C97F8A95474C9D655F09 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
 		0DB8A079E1CF87A9CDC7A8EB /* SunSmart/Main/Space/HDB/Controller/HDBLightingZoneDeviceViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AA2C1B7C7C74D2213313A6 /* SunSmart/Main/Space/HDB/Controller/HDBLightingZoneDeviceViewController.swift */; };
 		0DFC463F67CE976FDA6EA791 /* GatewayDeletionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27A6139D1DCF407070F1CC0 /* GatewayDeletionContext.swift */; };
+		0E2665E938504F41A7FE2F1C /* SiteCurrentLocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6B87775AF904657B4DB0C6D /* SiteCurrentLocationProvider.swift */; };
 		0E6B8FFDB84C40B2945B61AC /* SyncRetryPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */; };
 		0E77650C5A5C4CAB81E1554E /* SyncExecutionSession+Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */; };
 		0F8F29BD0FEBB1654278C6DE /* SiteCreateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94A3897BFB3707743564609 /* SiteCreateViewController.swift */; };
@@ -1553,7 +1553,6 @@
 		1FAE4DDDBDF446118B26374D /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
 		1FB9F449CFBA5C18E741CB69 /* SiteCreationSelectionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3417B5CF1BA5BB371279A1BF /* SiteCreationSelectionRow.swift */; };
 		202DC428470AB50942EE196E /* SiteTypeSelectionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D7700FF7ECF232CFD8C21C /* SiteTypeSelectionAlertView.swift */; };
-		37F502C9F6AB4341BA0E74B6 /* SiteLocationPermissionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB376BCEC736411D9F75635E /* SiteLocationPermissionAlertView.swift */; };
 		210444DCC3A9482FA4681C9C /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
 		2110DC5892EB61F718B4247E /* SunSmart/Main/Space/HDB/Model/HDBPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EF7A1E97AB7E4B256CFB995 /* SunSmart/Main/Space/HDB/Model/HDBPresentation.swift */; };
 		21188D8724074062B2F0D8FF /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
@@ -1567,7 +1566,6 @@
 		245C4F0ABC6DC3BAD39DE0A7 /* SiteLocationSearchState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49D13103E5957758DDEFC945 /* SiteLocationSearchState.swift */; };
 		24F67C240565CE5F6A28CBD1 /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
 		251C194348F9FDB74DB1463C /* SiteTypeSelectionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D7700FF7ECF232CFD8C21C /* SiteTypeSelectionAlertView.swift */; };
-		6643791F84824FDAB6EB70F2 /* SiteLocationPermissionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB376BCEC736411D9F75635E /* SiteLocationPermissionAlertView.swift */; };
 		2540F05968274821811E42BF /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
 		25B43867AEEF08875C4D7812 /* CityCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF4E0B625C32581DA3091BF /* CityCatalog.swift */; };
 		25E85457F7494782A2660C9D /* SyncCommandStopGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */; };
@@ -1586,8 +1584,6 @@
 		2907345B22D95406A6FA4EB1 /* ../TriggerZone/SiteTriggerZoneItemModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2128472FBA54D99C09F203 /* ../TriggerZone/SiteTriggerZoneItemModel.swift */; };
 		297EE68B722E4EDCAF2005C7 /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
 		29A0CEBE467DC0DDFA6C00F6 /* SiteCreationDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89158615F2A314581CDBCB7D /* SiteCreationDraft.swift */; };
-		B292739B21A9473F93D0DE7F /* SiteCurrentLocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6B87775AF904657B4DB0C6D /* SiteCurrentLocationProvider.swift */; };
-		DE52427589F342348D44BB7C /* SiteCurrentLocationRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06012EF412A40ECB31B3126 /* SiteCurrentLocationRequest.swift */; };
 		2A204A82B28558B2D02A194F /* CountryRegionCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 820E7CDC6CD3414FD493F278 /* CountryRegionCatalog.swift */; };
 		2A39145589BE44659DE8D3F0 /* SceneTargetResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D59696FF5174B218D41E988 /* SceneTargetResolver.swift */; };
 		2AB19399B4161D8589670A55 /* NodeSyncReadContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 822E40AF256280460760DAE3 /* NodeSyncReadContext.swift */; };
@@ -1603,6 +1599,7 @@
 		2F2F48BFC9705633B3411236 /* ../TriggerZone/SiteTriggerZoneItemCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D54D3601C9A5C49B74362BF /* ../TriggerZone/SiteTriggerZoneItemCell.swift */; };
 		2F6084017E4D41D6A05F45BA /* BleFirmwareScanSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3AD818AD8F2447FA1931D1C /* BleFirmwareScanSession.swift */; };
 		307B3B9B8A75463FB014C992 /* EmerFireAlarmMonitorRendering.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8AA0EDFE6C84FD4BF944A23 /* EmerFireAlarmMonitorRendering.swift */; };
+		30BC55120B7F4C31BC2789EE /* SiteCurrentLocationRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06012EF412A40ECB31B3126 /* SiteCurrentLocationRequest.swift */; };
 		319343FF15960D6211C525BF /* SunSmart/Main/Space/HDB/Model/HDBLightingMessages.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7732271D1CC39C9EF27B6E6 /* SunSmart/Main/Space/HDB/Model/HDBLightingMessages.swift */; };
 		31D4DE243B314B86896A178A /* SyncSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */; };
 		326C73F716044087AC89BE88 /* SceneDevicesSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D1C662BCE8E47ECA77F098D /* SceneDevicesSelectionView.swift */; };
@@ -1611,6 +1608,7 @@
 		32E1DEEED4FE40498C304D21 /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAFAFE40DD648E99ECF0CBF /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift */; };
 		3464D9C6D2D887FF33331C80 /* GatewayDeletionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27A6139D1DCF407070F1CC0 /* GatewayDeletionContext.swift */; };
 		37A056ABB0BB45CBA2B91EFF /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
+		37F502C9F6AB4341BA0E74B6 /* SiteLocationPermissionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB376BCEC736411D9F75635E /* SiteLocationPermissionAlertView.swift */; };
 		3877DE42A4EB7152C9122952 /* CityCatalog in Resources */ = {isa = PBXBuildFile; fileRef = DB9B207422FBA8E53A241FE2 /* CityCatalog */; };
 		38784D1D6ACF72C15017E22C /* SceneCapacityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16F7C698FF8AAA9861889A4A /* SceneCapacityPolicy.swift */; };
 		38E6E55826BE6DAF963095CE /* CityCatalog in Resources */ = {isa = PBXBuildFile; fileRef = DB9B207422FBA8E53A241FE2 /* CityCatalog */; };
@@ -1636,6 +1634,7 @@
 		416E0B12B9B549359B09E5F4 /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
 		41B45A9086CB08E993EB8410 /* SunSmart/Common/Data/HDBLightingConfigurationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99DC3341ACF85F2A3C5AFBB6 /* SunSmart/Common/Data/HDBLightingConfigurationPolicy.swift */; };
 		43BD1A8C8176D3047E9ACA08 /* SunSmart/Common/Data/HDBConfigurationStore+Mesh.swift in Sources */ = {isa = PBXBuildFile; fileRef = D868CBC4AA6F4DE32265BCD5 /* SunSmart/Common/Data/HDBConfigurationStore+Mesh.swift */; };
+		43CDA72F8A8940ADA88A1377 /* SiteCurrentLocationRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06012EF412A40ECB31B3126 /* SiteCurrentLocationRequest.swift */; };
 		442ED4DDE61A5015ACBDCF70 /* ../TriggerZone/SiteTriggerZoneItemModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2128472FBA54D99C09F203 /* ../TriggerZone/SiteTriggerZoneItemModel.swift */; };
 		443305C1158AA8B6AD1DE42E /* NodeSyncStatusRefresh.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65E7E0653BE57CBB8AC8AE68 /* NodeSyncStatusRefresh.swift */; };
 		4474AD0F1EB7690DD33D34D2 /* NodeSyncTopologyStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7B5C927EB09075DE812CA1 /* NodeSyncTopologyStorage.swift */; };
@@ -1664,8 +1663,6 @@
 		52CAF194BDA84FE696B20255 /* GroupPathSequenceBrowseConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABACB40755EC4EB7B9843EE2 /* GroupPathSequenceBrowseConfiguration.swift */; };
 		53314DFAE79344C9832532D9 /* SyncDongleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */; };
 		53A25C299F972B4F3FF50B8F /* SiteCreationDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89158615F2A314581CDBCB7D /* SiteCreationDraft.swift */; };
-		5FDE1B64CF6544609E2E8F28 /* SiteCurrentLocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6B87775AF904657B4DB0C6D /* SiteCurrentLocationProvider.swift */; };
-		DFF2CF3F6B4C45E1B1950337 /* SiteCurrentLocationRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06012EF412A40ECB31B3126 /* SiteCurrentLocationRequest.swift */; };
 		53DAD610D2BC41A38D24BF29 /* SyncExecutionSession+Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */; };
 		54C44318E03D6E68A29A6043 /* SunSmart/Main/Space/HDB/Controller/HDBLightingConfigurationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF78F3FCFC54B4704A9E8DE3 /* SunSmart/Main/Space/HDB/Controller/HDBLightingConfigurationViewController.swift */; };
 		5553D879729393D62714B6F0 /* country_regions.json in Resources */ = {isa = PBXBuildFile; fileRef = 90AB8E958547A7C9F45C389B /* country_regions.json */; };
@@ -1695,6 +1692,7 @@
 		5E95A84C510E4B66AC3125B8 /* Node+SyncIdentify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */; };
 		5EF447BE0F775B40B226FBA1 /* SiteExtensionData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DCB2B189CDF58FAAA9C9B90 /* SiteExtensionData.swift */; };
 		5FC3FB917BA448569E69ECAE /* SceneConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82E1A63E85624C5E8C834A05 /* SceneConfiguration.swift */; };
+		5FDE1B64CF6544609E2E8F28 /* SiteCurrentLocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6B87775AF904657B4DB0C6D /* SiteCurrentLocationProvider.swift */; };
 		5FE843C39AF92C236BF3E323 /* SunSmart/Main/Space/HDB/Model/HDBPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EF7A1E97AB7E4B256CFB995 /* SunSmart/Main/Space/HDB/Model/HDBPresentation.swift */; };
 		6059EDCC270D46CF80EE7EB1 /* BleFirmwareScanSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3AD818AD8F2447FA1931D1C /* BleFirmwareScanSession.swift */; };
 		60EA47F24E93483A9453A327 /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
@@ -1705,9 +1703,11 @@
 		64395649E0978B6B98D43E95 /* CountryRegionCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 820E7CDC6CD3414FD493F278 /* CountryRegionCatalog.swift */; };
 		647F10FEBFD6D5EC266C02CC /* SunSmart/Main/Space/HDB/Controller/HDBLightingZoneDeviceViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AA2C1B7C7C74D2213313A6 /* SunSmart/Main/Space/HDB/Controller/HDBLightingZoneDeviceViewController.swift */; };
 		64891B3C05A4F3D00B78E5B4 /* SiteLocationSearchState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49D13103E5957758DDEFC945 /* SiteLocationSearchState.swift */; };
+		649790252B9F40E193E10892 /* SiteLocationPermissionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB376BCEC736411D9F75635E /* SiteLocationPermissionAlertView.swift */; };
 		65266F139B8248DB8CDE19F0 /* SyncGatewayTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */; };
 		658DE6C94DDF9BBCF9509A22 /* SunSmart/Main/Space/HDB/Model/HDBDeviceSyncContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77C4D7C89387DCE12A0AB5E2 /* SunSmart/Main/Space/HDB/Model/HDBDeviceSyncContext.swift */; };
 		65F967659BF84D6CD18ACFD0 /* country_regions_LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 0B860D82B3FF287F4659044D /* country_regions_LICENSE.txt */; };
+		6643791F84824FDAB6EB70F2 /* SiteLocationPermissionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB376BCEC736411D9F75635E /* SiteLocationPermissionAlertView.swift */; };
 		6697FC49CBDF468E86F7C8E5 /* TimedSchedulerBindings.swift in Sources */ = {isa = PBXBuildFile; fileRef = E444A690981547E68AF6F650 /* TimedSchedulerBindings.swift */; };
 		6736ECD4C30742759540EC77 /* SceneConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82E1A63E85624C5E8C834A05 /* SceneConfiguration.swift */; };
 		67C0DB5D726D4866BCC1C8F7 /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
@@ -2157,8 +2157,6 @@
 		9573A57954CF494C8FB63201 /* BleFirmwareScanSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3AD818AD8F2447FA1931D1C /* BleFirmwareScanSession.swift */; };
 		966495B2063B4A23B018AD7D /* SyncExecutionSession+Daylight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */; };
 		96AE196277CDAEF94980FE19 /* SiteCreationDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89158615F2A314581CDBCB7D /* SiteCreationDraft.swift */; };
-		B613A7A6803E4A7F8176797B /* SiteCurrentLocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6B87775AF904657B4DB0C6D /* SiteCurrentLocationProvider.swift */; };
-		30BC55120B7F4C31BC2789EE /* SiteCurrentLocationRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06012EF412A40ECB31B3126 /* SiteCurrentLocationRequest.swift */; };
 		97311AB7371DBBAEDC7D52B2 /* SunSmart/Common/Data/HDBConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76624AB80AE325450BE5A1C8 /* SunSmart/Common/Data/HDBConfiguration.swift */; };
 		9789F25FEAD9419098225926 /* SyncExecutionSession+Operations.swift in Sources */ = {isa = PBXBuildFile; fileRef = 571D8E4D3FAC4613841C496A /* SyncExecutionSession+Operations.swift */; };
 		97B381807426404F97D490F1 /* TimedSchedulerSlotPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EE667B2BE974F93B9265533 /* TimedSchedulerSlotPolicy.swift */; };
@@ -2195,6 +2193,7 @@
 		A441748F6325404B80CE11FD /* SiteExtensionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 663B9D0F54C24D039BAA03E8 /* SiteExtensionStore.swift */; };
 		A5A8AEF3856042B7A71A14D5 /* SceneTargetResolver.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D59696FF5174B218D41E988 /* SceneTargetResolver.swift */; };
 		A5C6B8EDA6DA4CE89D59A1D9 /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
+		A5DFA0B885EA4809B8D40CF6 /* SiteLocationPermissionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB376BCEC736411D9F75635E /* SiteLocationPermissionAlertView.swift */; };
 		A61490AEE0C848BCB3E19FED /* SyncDongleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */; };
 		A65C394C66954587B2E23A12 /* SceneDevicesSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D1C662BCE8E47ECA77F098D /* SceneDevicesSelectionView.swift */; };
 		A65F2457435B4706B09FFC48 /* SyncParameterTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */; };
@@ -2203,6 +2202,7 @@
 		A723FA44F715450384AD4A0D /* SyncExecutionSession+Acknowledgement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */; };
 		A74BAAE36C924853BFC79B22 /* ../TriggerZone/SiteTriggerZoneData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6CE8AF636BB4FFE942CAA9F /* ../TriggerZone/SiteTriggerZoneData.swift */; };
 		A75EA23949994C45A8BD7D45 /* SyncDongleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */; };
+		A7AB46A7A2B84D45986C6507 /* SiteCurrentLocationRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06012EF412A40ECB31B3126 /* SiteCurrentLocationRequest.swift */; };
 		A8218588333A4EBD83B49026 /* ../TriggerZone/SiteTriggerZoneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 154BFB1972C74A5A861900C9 /* ../TriggerZone/SiteTriggerZoneViewController.swift */; };
 		A8226C58A7CC185A9BA18346 /* SunSmart/Main/Space/HDB/Controller/HDBLightingZoneDeviceViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9AA2C1B7C7C74D2213313A6 /* SunSmart/Main/Space/HDB/Controller/HDBLightingZoneDeviceViewController.swift */; };
 		A87F6C0D669549D1A9051F51 /* SceneConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82E1A63E85624C5E8C834A05 /* SceneConfiguration.swift */; };
@@ -2221,8 +2221,6 @@
 		AD0CA511ED5C51489C92B87E /* ../TriggerZone/SiteTriggerZoneItemHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 959B7F8E7C225295876C500A /* ../TriggerZone/SiteTriggerZoneItemHeaderView.swift */; };
 		AD36EB7BBB144B4B8DDD2C5F /* SyncSceneScheduleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */; };
 		ADDF5B56A4232B957DB2EA50 /* SiteCreationDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89158615F2A314581CDBCB7D /* SiteCreationDraft.swift */; };
-		CB02ED895EEB4435AD946407 /* SiteCurrentLocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6B87775AF904657B4DB0C6D /* SiteCurrentLocationProvider.swift */; };
-		C0BFE55D28974AFAB5A812D4 /* SiteCurrentLocationRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06012EF412A40ECB31B3126 /* SiteCurrentLocationRequest.swift */; };
 		AE487ED6F067C21D083482B8 /* SpacePageSyncRead.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E8F30D155A131BDBDC78EE /* SpacePageSyncRead.swift */; };
 		AF2DEFBFC82BF66392C869A2 /* SunSmart/Main/Space/HDB/Controller/HDBConfigurationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49006690349EF98AC9AAD262 /* SunSmart/Main/Space/HDB/Controller/HDBConfigurationViewController.swift */; };
 		AF52924DBCE80D0A9C3F9812 /* SunSmart/Main/Space/HDB/Controller/HDBConfigurationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49006690349EF98AC9AAD262 /* SunSmart/Main/Space/HDB/Controller/HDBConfigurationViewController.swift */; };
@@ -2233,6 +2231,7 @@
 		B1FE29DA65B2AFFE4061B0FE /* NodeSyncTopologySnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF4CE0208AB4FEC2A28B419B /* NodeSyncTopologySnapshot.swift */; };
 		B26E6DE8806457CA989A5C2B /* SiteExtensionData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DCB2B189CDF58FAAA9C9B90 /* SiteExtensionData.swift */; };
 		B27B8A12C92448E5A6D20353 /* EmerFireAlarmMonitorDelegates.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B67A9E7E2941BBBD518363 /* EmerFireAlarmMonitorDelegates.swift */; };
+		B292739B21A9473F93D0DE7F /* SiteCurrentLocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6B87775AF904657B4DB0C6D /* SiteCurrentLocationProvider.swift */; };
 		B2A767D653494BB7A9635C53 /* SunSmart/Main/Space/HDB/Controller/HDBLightingZoneDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D399954817D74A1EB236D8AD /* SunSmart/Main/Space/HDB/Controller/HDBLightingZoneDetailViewController.swift */; };
 		B3B8BFF9B96AF2E04BF8697B /* SceneCapacity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5517D0B3A977A33B3C0E1122 /* SceneCapacity.swift */; };
 		B45EE6EE745A436598F5915D /* SunSmart/Main/Space/HDB/Controller/HDBLightingZoneDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D399954817D74A1EB236D8AD /* SunSmart/Main/Space/HDB/Controller/HDBLightingZoneDetailViewController.swift */; };
@@ -2240,6 +2239,7 @@
 		B51BAADEE07742C4A1A8AD84 /* SyncGatewayTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */; };
 		B5D1B6BAABF4CE91144C6849 /* AppPerformance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402BBE20BB0B8974D93669FC /* AppPerformance.swift */; };
 		B60C695211BB45F89E8737D2 /* SceneSaveCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF736B2EFD0A4AC78737BADD /* SceneSaveCoordinator.swift */; };
+		B613A7A6803E4A7F8176797B /* SiteCurrentLocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6B87775AF904657B4DB0C6D /* SiteCurrentLocationProvider.swift */; };
 		B67403A80FA481000A466762 /* country_regions_LICENSE.txt in Resources */ = {isa = PBXBuildFile; fileRef = 0B860D82B3FF287F4659044D /* country_regions_LICENSE.txt */; };
 		B8691B28F4A63143C75346F7 /* country_regions.json in Resources */ = {isa = PBXBuildFile; fileRef = 90AB8E958547A7C9F45C389B /* country_regions.json */; };
 		B9057BD84EC14C61B9A96F8F /* BleFirmwareScanSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3AD818AD8F2447FA1931D1C /* BleFirmwareScanSession.swift */; };
@@ -2255,10 +2255,12 @@
 		BCB01FD24C3B52D4E436283A /* Pods_Common_SLG_Sync_Plus.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7CF816C3063D0EF30B936BA4 /* Pods_Common_SLG_Sync_Plus.framework */; };
 		BCC659A6265A483A8E580C5B /* SyncResultCollector.swift in Sources */ = {isa = PBXBuildFile; fileRef = C84CD8F47ADF45A7A066761B /* SyncResultCollector.swift */; };
 		BD05C62705B845D0BE49AE10 /* SyncExecutionSession+Acknowledgement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */; };
+		BDD8C51A53B24FB88CAB5447 /* SiteLocationPermissionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB376BCEC736411D9F75635E /* SiteLocationPermissionAlertView.swift */; };
 		BDE2BEDE14C7D8B100139931 /* SunSmart/Common/Data/HDBConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76624AB80AE325450BE5A1C8 /* SunSmart/Common/Data/HDBConfiguration.swift */; };
 		BE274B208A895E0084C0721A /* SiteExtensionState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B939E7D484853F4833AFD1E /* SiteExtensionState.swift */; };
 		BF0B6B9D5FC569925472B6E9 /* SunSmart/Common/Data/HDBLightingConfigurationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99DC3341ACF85F2A3C5AFBB6 /* SunSmart/Common/Data/HDBLightingConfigurationPolicy.swift */; };
 		BF7338014A1644FA82A4F19F /* SyncEmergencyFireTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */; };
+		C0BFE55D28974AFAB5A812D4 /* SiteCurrentLocationRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06012EF412A40ECB31B3126 /* SiteCurrentLocationRequest.swift */; };
 		C0E422896EF84ED5BA373AB0 /* SceneCommandBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 24D6F8D9D3304C5D8E83D815 /* SceneCommandBuilder.swift */; };
 		C13ADD72BA723B57B84D84DA /* SunSmart/Common/Data/HDBConfigurationStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 932A8D1F642CE3810CDECD70 /* SunSmart/Common/Data/HDBConfigurationStore.swift */; };
 		C27386BDCA456BEA44450216 /* SceneCapacityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16F7C698FF8AAA9861889A4A /* SceneCapacityPolicy.swift */; };
@@ -4429,6 +4431,7 @@
 		C92C2151CAE74AC6A7056274 /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAFAFE40DD648E99ECF0CBF /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift */; };
 		CA4AB051D62A499D9B62535E /* SyncExecutionSession+EmergencyFire.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB46076319CA48D4ABBF1868 /* SyncExecutionSession+EmergencyFire.swift */; };
 		CA6777583C8C4191A385E391 /* SceneDraftSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F8C63B3EC894135AF857C96 /* SceneDraftSelection.swift */; };
+		CB02ED895EEB4435AD946407 /* SiteCurrentLocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6B87775AF904657B4DB0C6D /* SiteCurrentLocationProvider.swift */; };
 		CB571E9F60B15400B27C0516 /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 496535143AA555DFA8D9869D /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift */; };
 		CC193792A1B641B087BEB6A6 /* SyncTaskPlanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */; };
 		CC62830B2CC84D939D36C8F7 /* SyncOperationResultPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58FD88DABAE74FC09561B1DC /* SyncOperationResultPolicy.swift */; };
@@ -4466,8 +4469,6 @@
 		D4DCF0231CC39BFE38F28B88 /* CityCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF4E0B625C32581DA3091BF /* CityCatalog.swift */; };
 		D52E820261BF4DF8A6E82A06 /* SyncExecutionSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F3C5FD3C314692BB69EFBB /* SyncExecutionSession.swift */; };
 		D698EE8D0331DA91F68F4390 /* SiteCreationDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89158615F2A314581CDBCB7D /* SiteCreationDraft.swift */; };
-		0E2665E938504F41A7FE2F1C /* SiteCurrentLocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6B87775AF904657B4DB0C6D /* SiteCurrentLocationProvider.swift */; };
-		43CDA72F8A8940ADA88A1377 /* SiteCurrentLocationRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06012EF412A40ECB31B3126 /* SiteCurrentLocationRequest.swift */; };
 		D6EEC7E98A3934F334F90D91 /* CountryRegionCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 820E7CDC6CD3414FD493F278 /* CountryRegionCatalog.swift */; };
 		D720371F425FA6AB25711316 /* SceneCapacity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5517D0B3A977A33B3C0E1122 /* SceneCapacity.swift */; };
 		D78290660D024B8E8015FE86 /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAFAFE40DD648E99ECF0CBF /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift */; };
@@ -4492,10 +4493,12 @@
 		DD3BFE0E498A4A25A4038BC1 /* SyncExecutionSession+Tasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */; };
 		DD59B7AC9CDB45BDA0B7E6A6 /* SiteExtensionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 663B9D0F54C24D039BAA03E8 /* SiteExtensionStore.swift */; };
 		DDB42AA753CE684509547F0D /* SunSmart/Main/Space/HDB/Model/HDBPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EF7A1E97AB7E4B256CFB995 /* SunSmart/Main/Space/HDB/Model/HDBPresentation.swift */; };
+		DE52427589F342348D44BB7C /* SiteCurrentLocationRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06012EF412A40ECB31B3126 /* SiteCurrentLocationRequest.swift */; };
 		DEB759AF3EF645F693A289DD /* SyncCommandStopGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */; };
 		DEDD37F7AB6742E6871AEC02 /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
 		DF2E645226CA54E8A4C220AC /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 496535143AA555DFA8D9869D /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift */; };
 		DF46FB4076F9E05E5D710126 /* SpacePageSyncRead.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0E8F30D155A131BDBDC78EE /* SpacePageSyncRead.swift */; };
+		DFF2CF3F6B4C45E1B1950337 /* SiteCurrentLocationRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = F06012EF412A40ECB31B3126 /* SiteCurrentLocationRequest.swift */; };
 		E1952CC7B7DE46808DE3C7AB /* SyncSceneScheduleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */; };
 		E2465571411A5AC46BF4555B /* SunSmart/Common/Data/HDBDevicePreparationPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43839BEF1791012240232AAF /* SunSmart/Common/Data/HDBDevicePreparationPolicy.swift */; };
 		E27B6D7C8FA265E11A17B5FC /* GatewayDeletionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27A6139D1DCF407070F1CC0 /* GatewayDeletionContext.swift */; };
@@ -4504,7 +4507,6 @@
 		E410DB268C7E4A8A9749F3D6 /* SyncExecutionSession+Acknowledgement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */; };
 		E4650E2CC7BD436F84FEE575 /* SiteExtensionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 663B9D0F54C24D039BAA03E8 /* SiteExtensionStore.swift */; };
 		E4B21C8D98FF2D33C1B7D065 /* SiteTypeSelectionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D7700FF7ECF232CFD8C21C /* SiteTypeSelectionAlertView.swift */; };
-		060E491CD4224EA69FA3272B /* SiteLocationPermissionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB376BCEC736411D9F75635E /* SiteLocationPermissionAlertView.swift */; };
 		E4EABB296C324CDB9BF69468 /* EmerFireAlarmMonitorState.swift in Sources */ = {isa = PBXBuildFile; fileRef = FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */; };
 		E548FC47B0469C56D6943EDD /* CityCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF4E0B625C32581DA3091BF /* CityCatalog.swift */; };
 		E58FCF0BD45145AD9E4E2B56 /* SiteTransferCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78C0D4608D214A4ABC186B6B /* SiteTransferCoordinator.swift */; };
@@ -4515,7 +4517,6 @@
 		E811BA2BBAFF54568ECDEF98 /* SiteExtensionData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DCB2B189CDF58FAAA9C9B90 /* SiteExtensionData.swift */; };
 		E83C8479CE1C6EA9FADC5601 /* CityCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DF4E0B625C32581DA3091BF /* CityCatalog.swift */; };
 		E86737E8EA190F876BCDBF12 /* SiteTypeSelectionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D7700FF7ECF232CFD8C21C /* SiteTypeSelectionAlertView.swift */; };
-		A5DFA0B885EA4809B8D40CF6 /* SiteLocationPermissionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB376BCEC736411D9F75635E /* SiteLocationPermissionAlertView.swift */; };
 		E87519D4D836C80EED1ACD6E /* SunSmart/Common/Data/HDBConfigurationStore+Mesh.swift in Sources */ = {isa = PBXBuildFile; fileRef = D868CBC4AA6F4DE32265BCD5 /* SunSmart/Common/Data/HDBConfigurationStore+Mesh.swift */; };
 		E8A9DA45E471BA9ADF1317D2 /* SunSmart/Main/Space/HDB/Model/HDBDeviceSyncContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77C4D7C89387DCE12A0AB5E2 /* SunSmart/Main/Space/HDB/Model/HDBDeviceSyncContext.swift */; };
 		E90B963C52EA40729CDB700C /* ../TriggerZone/SiteTriggerZoneCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 328092E397014E308EBF7514 /* ../TriggerZone/SiteTriggerZoneCoordinator.swift */; };
@@ -4822,7 +4823,6 @@
 		F7943FD7B04B46168C1265F2 /* SyncExecutionSession+Tasks.swift in Sources */ = {isa = PBXBuildFile; fileRef = B73E61DD6BE34338A12D9242 /* SyncExecutionSession+Tasks.swift */; };
 		F7D5E29923454120AF8BDCBC /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 392FAB0358444160BCBE29FC /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift */; };
 		F89C02326C75439DDC33AB71 /* SiteTypeSelectionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D7700FF7ECF232CFD8C21C /* SiteTypeSelectionAlertView.swift */; };
-		BDD8C51A53B24FB88CAB5447 /* SiteLocationPermissionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB376BCEC736411D9F75635E /* SiteLocationPermissionAlertView.swift */; };
 		F8B039C414E08A98492522FF /* AppPerformance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402BBE20BB0B8974D93669FC /* AppPerformance.swift */; };
 		F9375905BFA6459CB7FDFB38 /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
 		FA40A89D8A0D48BDBEA6EA36 /* SyncDongleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */; };
@@ -4831,6 +4831,7 @@
 		FB8AA5CFA8964AA5AB8A7888 /* SyncProximityTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2A42A65FF334B7EAF8DB93A /* SyncProximityTaskBuilder.swift */; };
 		FBE64B877BA941A086DD04D0 /* SyncParameterTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */; };
 		FC37248A4BA9471492C67995 /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
+		FC6E9C6627F84299A04BDA21 /* SiteCurrentLocationProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6B87775AF904657B4DB0C6D /* SiteCurrentLocationProvider.swift */; };
 		FC775CE662B47A3BBF4F1172 /* SunSmart/Main/Device/Model/HDBDeviceAddCompletion.swift in Sources */ = {isa = PBXBuildFile; fileRef = ADD81A915075553AD79F8928 /* SunSmart/Main/Device/Model/HDBDeviceAddCompletion.swift */; };
 		FDC40E80058A7403C1FD84A7 /* NodeSyncTopologyStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C7B5C927EB09075DE812CA1 /* NodeSyncTopologyStorage.swift */; };
 		FDEAAED5A5BADD33C196C1EC /* SunSmart/Main/Space/HDB/Model/HDBLightingConfigurationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A397886490A63CBDD5ED89B8 /* SunSmart/Main/Space/HDB/Model/HDBLightingConfigurationService.swift */; };
@@ -4846,6 +4847,7 @@
 		084EF310302AB496008CB48A /* all_utc_timezones.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = all_utc_timezones.json; sourceTree = "<group>"; };
 		08AACC55308B0FB700DC2934 /* HSmart.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HSmart.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		08AACC56308B0FB800DC2934 /* HSmart-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "HSmart-Info.plist"; sourceTree = "<group>"; };
+		08B48DDF3099820D00B10945 /* Assets-HSmart.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Assets-HSmart.xcassets"; sourceTree = "<group>"; };
 		08B54F0C30402CCB0017ED49 /* Lumineux.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Lumineux.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		08B54F0D30402CCB0017ED49 /* Lumineux/Lumineux-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "Lumineux/Lumineux-Info.plist"; sourceTree = SOURCE_ROOT; };
 		08B54F1030402CCB0017ED49 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
@@ -4897,7 +4899,6 @@
 		43839BEF1791012240232AAF /* SunSmart/Common/Data/HDBDevicePreparationPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Common/Data/HDBDevicePreparationPolicy.swift; sourceTree = SOURCE_ROOT; };
 		45931D652AFCE854D4A27862 /* Pods-Common-SunSmart.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SunSmart.debug.xcconfig"; path = "Target Support Files/Pods-Common-SunSmart/Pods-Common-SunSmart.debug.xcconfig"; sourceTree = "<group>"; };
 		46D7700FF7ECF232CFD8C21C /* SiteTypeSelectionAlertView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SiteTypeSelectionAlertView.swift; sourceTree = "<group>"; };
-		AB376BCEC736411D9F75635E /* SiteLocationPermissionAlertView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SiteLocationPermissionAlertView.swift; sourceTree = "<group>"; };
 		49006690349EF98AC9AAD262 /* SunSmart/Main/Space/HDB/Controller/HDBConfigurationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Main/Space/HDB/Controller/HDBConfigurationViewController.swift; sourceTree = SOURCE_ROOT; };
 		496535143AA555DFA8D9869D /* ../TriggerZone/SiteTriggerZonePreviewFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZonePreviewFixtures.swift; sourceTree = "<group>"; };
 		49D13103E5957758DDEFC945 /* SiteLocationSearchState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteLocationSearchState.swift; sourceTree = "<group>"; };
@@ -4925,8 +4926,6 @@
 		822E40AF256280460760DAE3 /* NodeSyncReadContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NodeSyncReadContext.swift; sourceTree = "<group>"; };
 		82E1A63E85624C5E8C834A05 /* SceneConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneConfiguration.swift; sourceTree = "<group>"; };
 		89158615F2A314581CDBCB7D /* SiteCreationDraft.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SiteCreationDraft.swift; sourceTree = "<group>"; };
-		D6B87775AF904657B4DB0C6D /* SiteCurrentLocationProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SiteCurrentLocationProvider.swift; sourceTree = "<group>"; };
-		F06012EF412A40ECB31B3126 /* SiteCurrentLocationRequest.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SiteCurrentLocationRequest.swift; sourceTree = "<group>"; };
 		8BAFAFE40DD648E99ECF0CBF /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift; sourceTree = "<group>"; };
 		8C1DA7392FAADAF20073F100 /* PJEightKeySwitchForcedAutoPopupController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJEightKeySwitchForcedAutoPopupController.swift; sourceTree = "<group>"; };
 		8C1DA74C2FAAF2A60073F100 /* PJDevicesEntrySource.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PJDevicesEntrySource.swift; sourceTree = "<group>"; };
@@ -5032,6 +5031,7 @@
 		A94A3897BFB3707743564609 /* SiteCreateViewController.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SiteCreateViewController.swift; sourceTree = "<group>"; };
 		A9AA2C1B7C7C74D2213313A6 /* SunSmart/Main/Space/HDB/Controller/HDBLightingZoneDeviceViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Main/Space/HDB/Controller/HDBLightingZoneDeviceViewController.swift; sourceTree = SOURCE_ROOT; };
 		A9C4A5A1E52B4F2A9100818C /* SyncDongleTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDongleTaskBuilder.swift; sourceTree = "<group>"; };
+		AB376BCEC736411D9F75635E /* SiteLocationPermissionAlertView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SiteLocationPermissionAlertView.swift; sourceTree = "<group>"; };
 		ABACB40755EC4EB7B9843EE2 /* GroupPathSequenceBrowseConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GroupPathSequenceBrowseConfiguration.swift; sourceTree = "<group>"; };
 		ADD81A915075553AD79F8928 /* SunSmart/Main/Device/Model/HDBDeviceAddCompletion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Main/Device/Model/HDBDeviceAddCompletion.swift; sourceTree = SOURCE_ROOT; };
 		B27A6139D1DCF407070F1CC0 /* GatewayDeletionContext.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayDeletionContext.swift; sourceTree = "<group>"; };
@@ -5638,6 +5638,7 @@
 		D26092820000000000000001 /* LightsBatchDeletionExecutor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightsBatchDeletionExecutor.swift; sourceTree = "<group>"; };
 		D26092830000000000000001 /* LightsBatchDeletionOperation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightsBatchDeletionOperation.swift; sourceTree = "<group>"; };
 		D399954817D74A1EB236D8AD /* SunSmart/Main/Space/HDB/Controller/HDBLightingZoneDetailViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Main/Space/HDB/Controller/HDBLightingZoneDetailViewController.swift; sourceTree = SOURCE_ROOT; };
+		D6B87775AF904657B4DB0C6D /* SiteCurrentLocationProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SiteCurrentLocationProvider.swift; sourceTree = "<group>"; };
 		D6CE8AF636BB4FFE942CAA9F /* ../TriggerZone/SiteTriggerZoneData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneData.swift; sourceTree = "<group>"; };
 		D742CB30B52D158FD851DB76 /* SunSmart/Main/Space/HDB/Model/HDBDeviceSyncService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Main/Space/HDB/Model/HDBDeviceSyncService.swift; sourceTree = SOURCE_ROOT; };
 		D868CBC4AA6F4DE32265BCD5 /* SunSmart/Common/Data/HDBConfigurationStore+Mesh.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SunSmart/Common/Data/HDBConfigurationStore+Mesh.swift"; sourceTree = SOURCE_ROOT; };
@@ -5654,6 +5655,7 @@
 		E51C037D44D1F333E8E14E98 /* Pods-Common-SLG Sync Plus.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-Common-SLG Sync Plus.debug.xcconfig"; path = "Target Support Files/Pods-Common-SLG Sync Plus/Pods-Common-SLG Sync Plus.debug.xcconfig"; sourceTree = "<group>"; };
 		E89B7B6C4B80FC8F8FB1F424 /* SunSmart/Main/Space/HDB/Model/HDBDeviceDiagnostics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Main/Space/HDB/Model/HDBDeviceDiagnostics.swift; sourceTree = SOURCE_ROOT; };
 		EF78F3FCFC54B4704A9E8DE3 /* SunSmart/Main/Space/HDB/Controller/HDBLightingConfigurationViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SunSmart/Main/Space/HDB/Controller/HDBLightingConfigurationViewController.swift; sourceTree = SOURCE_ROOT; };
+		F06012EF412A40ECB31B3126 /* SiteCurrentLocationRequest.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SiteCurrentLocationRequest.swift; sourceTree = "<group>"; };
 		F0E8F30D155A131BDBDC78EE /* SpacePageSyncRead.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpacePageSyncRead.swift; sourceTree = "<group>"; };
 		F10000000000000000000001 /* AppBase.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AppBase.xcconfig; sourceTree = "<group>"; };
 		F10000000000000000000002 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
@@ -6602,6 +6604,7 @@
 		C896B99B2A930BA800217512 = {
 			isa = PBXGroup;
 			children = (
+				08B48DDF3099820D00B10945 /* Assets-HSmart.xcassets */,
 				F1000000000000000000000E /* Config */,
 				C8BB67712ED3F0F6000C63EE /* SLGSync */,
 				C886E18A2E30DEFB00D0C3A6 /* SylSmart */,
@@ -8186,6 +8189,7 @@
 				08AACC38308B0FB700DC2934 /* Privacy Policy.html in Resources */,
 				08AACC39308B0FB700DC2934 /* XWHUDManager_right@3x.png in Resources */,
 				08AACC3A308B0FB700DC2934 /* User Agreement.html in Resources */,
+				08B48DE03099820D00B10945 /* Assets-HSmart.xcassets in Resources */,
 				08AACC3B308B0FB700DC2934 /* Localizable.strings in Resources */,
 				08AACC3C308B0FB700DC2934 /* InfoPlist.strings in Resources */,
 				08AACC3D308B0FB700DC2934 /* device_add.mp3 in Resources */,
