@@ -101,6 +101,15 @@ struct CityCatalog {
         }
     }
 
+    private init(emptyCountryCode: String) {
+        countryCode = emptyCountryCode
+        entries = []
+        byID = [:]
+        searchNames = []
+        englishTitles = [:]
+        chineseTitles = [:]
+    }
+
     static func load(countryCode: String, root: URL) throws -> Self {
         // Never turn a legacy/free-text country value into a file-system path.
         guard countryCode.utf8.count == 2, countryCode.utf8.allSatisfy({ (65...90).contains($0) }) else {
@@ -108,13 +117,17 @@ struct CityCatalog {
         }
         let manifestURL = root.appendingPathComponent("manifest.json")
         let file = root.appendingPathComponent("countries/\(countryCode).json")
-        guard FileManager.default.fileExists(atPath: manifestURL.path), FileManager.default.fileExists(atPath: file.path) else {
+        guard FileManager.default.fileExists(atPath: manifestURL.path) else {
             throw CatalogError.resourceMissing
         }
         let manifest = try JSONDecoder().decode(Manifest.self, from: Data(contentsOf: manifestURL))
-        guard manifest.schemaVersion == 1, let expected = manifest.countries[countryCode], expected.count >= 0 else {
+        guard manifest.schemaVersion == 1 else { throw CatalogError.invalidCatalog }
+        // Server countries can evolve independently of this bundled city snapshot.
+        guard let expected = manifest.countries[countryCode] else { return Self(emptyCountryCode: countryCode) }
+        guard expected.count >= 0 else {
             throw CatalogError.invalidCatalog
         }
+        guard FileManager.default.fileExists(atPath: file.path) else { throw CatalogError.resourceMissing }
         let data = try Data(contentsOf: file)
         guard data.count == expected.bytes,
               SHA256.hash(data: data).map({ String(format: "%02x", $0) }).joined() == expected.sha256 else {

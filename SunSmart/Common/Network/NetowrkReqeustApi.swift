@@ -36,6 +36,8 @@ enum NetowrkReqeustApi {
     
     /// 获取用户site list
     case sites
+    /// Public country directory; pin the region when each request starts.
+    case siteCountries(region: ServerRegion)
     /// 获取site信息
     case siteInfo(siteId: String)
     /// 获取 Edit Site 属性
@@ -156,6 +158,7 @@ extension NetowrkReqeustApi {
         switch self {
         case .sites: return "sites"
         case .siteInfo: return "siteInfo"
+        case .siteCountries: return "siteCountries"
         case .sitePropsRetrieve: return "sitePropsRetrieve"
         case .sitePropsUpdate: return "sitePropsUpdate"
         case .siteAdd: return "siteAdd"
@@ -267,6 +270,7 @@ private extension Data {
 extension NetowrkReqeustApi: TargetType {
     
     var baseURL: URL {
+        if case .siteCountries(let region) = self { return region.baseURL }
         return UserData.currentServerRegion.baseURL
 //        return URL(string: "https://www.mericher.com/srv2")!
     }
@@ -275,6 +279,8 @@ extension NetowrkReqeustApi: TargetType {
         switch self {
         case .sites:
             return "/sitespace/get/sitelist"
+        case .siteCountries:
+            return "/sitespace/common/countries"
         case .siteInfo:
             return "/sitespace/get/siteprops"
         case .sitePropsRetrieve:
@@ -381,6 +387,8 @@ extension NetowrkReqeustApi: TargetType {
         switch self {
         case .sites:
             return ["userId": UserData.currentUserId]
+        case .siteCountries:
+            return nil
         case .siteInfo(let siteId):
             return ["siteId": siteId, "userId": UserData.currentUserId]
         case .sitePropsRetrieve(let siteId):

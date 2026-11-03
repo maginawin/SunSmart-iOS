@@ -38,6 +38,12 @@ swiftc -module-cache-path "$test_dir/module-cache" -parse-as-library \
   -o "$test_dir/country"
 "$test_dir/country" "$repo_root"
 swiftc -module-cache-path "$test_dir/module-cache" -parse-as-library \
+  "$repo_root/SunSmart/Main/Site/Model/CountryRegionCatalog.swift" \
+  "$repo_root/SunSmart/Main/Site/Model/CountryRegionCatalogStore.swift" \
+  "$repo_root/Tests/Site/CountryRegionCatalogStoreTests.swift" \
+  -o "$test_dir/country-store"
+"$test_dir/country-store"
+swiftc -module-cache-path "$test_dir/module-cache" -parse-as-library \
   "$repo_root/SunSmart/Common/Data/SiteTimeZoneValue.swift" \
   "$repo_root/SunSmart/Main/Site/Model/SiteTimeZoneCatalog.swift" \
   "$repo_root/Tests/Site/SiteTimeZoneCatalogTests.swift" \
@@ -62,3 +68,5 @@ swiftc -module-cache-path "$test_dir/module-cache" -parse-as-library \
   "$repo_root/Tests/Site/SiteCurrentLocationRequestTests.swift" \
   -o "$test_dir/current-location"
 "$test_dir/current-location"
+
+python3 "$repo_root/Tests/Site/SiteCityGeneratorTests.py"

@@ -2,7 +2,7 @@
 """Build the bundled offline catalog from an explicitly supplied GeoNames snapshot.
 
 No downloads are performed. Keep the large source files outside the repository.
-Usage: python3 scripts/generate_site_city_catalog.py --source-dir /path/to/snapshot
+Usage: python3 scripts/generate_site_city_catalog.py --source-dir /path/to/snapshot --countries-response /path/to/countries.json
 """
 import argparse
 import collections
@@ -36,10 +36,34 @@ def write_json(path, value):
     path.write_text(json.dumps(value, ensure_ascii=False, separators=(",", ":")) + "\n", encoding="utf-8")
 
 
-def build(source, output, snapshot_date):
+def read_country_codes(path):
+    response = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(response, dict) or type(response.get("code")) is not int or response["code"] != 200:
+        raise ValueError("Expected a successful countries response")
+    rows = response.get("data")
+    if not isinstance(rows, list) or not rows:
+        raise ValueError("Expected a nonempty country list")
+    codes = set()
+    for row in rows:
+        if not isinstance(row, dict):
+            raise ValueError("Invalid country entry")
+        code, name, names = row.get("code"), row.get("name"), row.get("names_json")
+        if names is None:
+            names = {}
+        if (not isinstance(code, str) or len(code) != 2 or any(c < "A" or c > "Z" for c in code)
+                or code in codes or (name is not None and not isinstance(name, str))
+                or not isinstance(names, dict) or not all(isinstance(v, str) for v in names.values())):
+            raise ValueError("Invalid or duplicate country entry")
+        english = names.get("en", "").strip() or (name or "").strip()
+        if not english:
+            raise ValueError("Country needs an English display name")
+        codes.add(code)
+    return codes
+
+
+def build(source, output, snapshot_date, countries_response):
+    codes = read_country_codes(countries_response)
     hashes = {name: digest(source / name) for name in SOURCE_FILES}
-    countries = json.loads((ROOT / "SunSmart/country_regions.json").read_text())["countries"]
-    codes = {c["code"] for c in countries}
     timezones = {t["ianaId"] for t in json.loads((ROOT / "SunSmart/all_utc_timezones.json").read_text())}
     cities = {}
     by_country = {code: [] for code in sorted(codes)}
@@ -158,7 +182,8 @@ def build(source, output, snapshot_date):
     manifest = {"schemaVersion": 1, "snapshotDate": snapshot_date, "source": "https://download.geonames.org/export/dump/",
                 "license": "CC BY 4.0", "timeZoneSource": "IANA tzdata 2026e",
                 "nameOverridesSHA256": digest(overrides_path),
-                "referenceSHA256": {name: digest(ROOT / "SunSmart" / name) for name in ["country_regions.json", "all_utc_timezones.json"]},
+                "referenceSHA256": {"all_utc_timezones.json": digest(ROOT / "SunSmart/all_utc_timezones.json")},
+                "countriesResponseSHA256": digest(countries_response),
                 "sourceSHA256": hashes, "featureCodes": sorted(FEATURES), "nameConversion": "Apple ICU Traditional-Simplified",
                 "excluded": dict(sorted(excluded.items())), "unresolvedAdministrativeReferences": dict(sorted(unresolved.items())),
                 "countries": stats, "totalCities": len(cities), "chineseNames": sum(v["chineseCount"] for v in stats.values())}
@@ -182,7 +207,8 @@ def build(source, output, snapshot_date):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-dir", type=pathlib.Path, required=True)
+    parser.add_argument("--countries-response", type=pathlib.Path, required=True, help="Saved successful /sitespace/common/countries response")
     parser.add_argument("--output", type=pathlib.Path, default=ROOT / "SunSmart/CityCatalog")
     parser.add_argument("--snapshot-date", default="2026-10-23")
     args = parser.parse_args()
-    build(args.source_dir, args.output, args.snapshot_date)
+    build(args.source_dir, args.output, args.snapshot_date, args.countries_response)

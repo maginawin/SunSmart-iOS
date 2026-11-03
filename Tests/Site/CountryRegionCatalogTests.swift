@@ -3,8 +3,9 @@ import Foundation
 @main enum CountryRegionCatalogTests {
     static func main() throws {
         let root = URL(fileURLWithPath: CommandLine.arguments[1])
-        let data = try Data(contentsOf: root.appendingPathComponent("SunSmart/country_regions.json"))
-        let catalog = try CountryRegionCatalog(data: data)
+        let data = try Data(contentsOf: root.appendingPathComponent("Tests/Site/Fixtures/countries_response.json"))
+        let response = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+        let catalog = try CountryRegionCatalog(response: response)
         let snapshot = try String(contentsOf: root.appendingPathComponent("Tests/Site/Fixtures/country_region_iso_codes.txt"), encoding: .utf8)
         let expected = Set(snapshot.split(separator: "\n").filter { !$0.hasPrefix("#") }.flatMap { $0.split(separator: " ").map(String.init) })
         precondition(expected.count == 249 && Set(catalog.entries.map(\.code)) == expected)
@@ -45,8 +46,29 @@ import Foundation
             do { _ = try CountryRegionCatalog(data: Data(invalid.utf8)); preconditionFailure("Invalid catalog must fail") }
             catch {}
         }
-        do { _ = try CountryRegionCatalog.load(bundle: .main); preconditionFailure("Fixture bundle has no country resource") }
-        catch CountryRegionCatalog.CatalogError.resourceMissing {}
+        let fallback = try CountryRegionCatalog(response: ["code": 200, "data": [
+            ["code": "CN", "name": "China fallback", "names_json": ["en": "China", "zh-Hans": "中国"]],
+            ["code": "FR", "name": "France"],
+            ["code": "CA", "name": "Canada", "names_json": ["en": " ", "zh-Hans": ""]]
+        ]])
+        precondition(fallback.entry(code: "FR")?.displayName(language: "zh-Hans") == "France")
+        precondition(fallback.entry(code: "CA")?.displayName(language: "en") == "Canada")
+        precondition(fallback.entries(matching: "China fallback").map(\.code) == ["CN"])
+        let cached = try CountryRegionCatalog(data: fallback.cacheData(fetchedAt: Date(timeIntervalSince1970: 100)))
+        precondition(cached.entries == fallback.entries)
+        for invalid in [
+            ["code": 500, "data": [["code": "CN", "name": "China"]]],
+            ["code": 200, "data": []],
+            ["code": 200, "data": [["code": "CN", "name": "China"], ["code": "CN", "name": "China"]]],
+            ["code": 200, "data": [["code": "cn", "name": "China"]]],
+            ["code": 200, "data": [["code": "CN", "name": " "]]],
+            ["code": 200, "data": [["code": "CN", "name": "China", "names_json": "{}"]]],
+            ["code": true, "data": [["code": "CN", "name": "China"]]]
+        ] as [[String: Any]] {
+            do { _ = try CountryRegionCatalog(response: invalid); preconditionFailure("Invalid response must fail") }
+            catch {}
+        }
+
 
         // Use production field state and draft serialization together. Query/close events
         // must never become a selected code, including an exact name/code and empty input.
@@ -99,6 +121,22 @@ import Foundation
             state.select(id: "CN")
             precondition(state.selectedID == "US", "Closed lists cannot accept stale selection events")
         }
+        var refreshState = SiteLocationSearchState(selectedID: "US", context: "countries")
+        refreshState.beginSearch()
+        refreshState.updateQuery("Country", isComposing: false)
+        let oldTicket = refreshState.ticket
+        refreshState.invalidateResults()
+        precondition(!refreshState.accepts(oldTicket), "A replaced catalog must invalidate every old response/click ticket")
+        precondition(refreshState.query == "Country" && refreshState.selectedID == "US" && refreshState.isExpanded)
+        precondition(refreshState.accepts(refreshState.ticket))
+        var existing = SiteFormDraft(siteName: "Existing", timezone: nil)
+        existing.selectCountry(catalog.entry(code: "US")!)
+        let saved = try existing.standardProperties()
+        let replacement = try CountryRegionCatalog(response: ["code": 200, "data": [["code": "FR", "name": "France"]]])
+        precondition(replacement.entry(code: "US") == nil, "Deleted countries are not selection candidates")
+        precondition(replacement.displayName(forStoredCode: existing.countryRegionCode, language: "en") == "US")
+        let afterRefresh = try existing.standardProperties()
+        precondition(afterRefresh == saved, "Refreshing a label must not make Site fields dirty")
         print("PASS: 249-code catalog coverage, bilingual names/fallback, stable sorting, search, invalid resources, selection/cancel and draft persistence")
     }
 }

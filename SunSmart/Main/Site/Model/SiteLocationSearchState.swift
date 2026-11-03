@@ -24,6 +24,9 @@ struct SiteLocationSearchState {
 
     func accepts(_ ticket: Ticket) -> Bool { isExpanded && ticket == self.ticket }
 
+    /// A new directory invalidates old results without discarding the user's query or selection.
+    mutating func invalidateResults() { generation &+= 1 }
+
     mutating func select(id: String) {
         guard isExpanded else { return }
         selectedID = id

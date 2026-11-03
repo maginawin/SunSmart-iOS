@@ -4,9 +4,9 @@ import CryptoKit
 @main enum CityCatalogTests {
     static func main() throws {
         let repo = URL(fileURLWithPath: CommandLine.arguments[1])
-        let countries = try CountryRegionCatalog(data: Data(contentsOf: repo.appendingPathComponent("SunSmart/country_regions.json")))
+        let countries = try CountryRegionCatalog(response: ["code": 200, "data": [["code": "US", "name": "United States"], ["code": "CN", "name": "China"], ["code": "FR", "name": "France"]]])
         let zones = try SiteTimeZoneCatalog(data: Data(contentsOf: repo.appendingPathComponent("SunSmart/all_utc_timezones.json")))
-        try testBundledCatalog(repo, countries: countries, zones: zones)
+        try testBundledCatalog(repo, zones: zones)
         try testSearchAndValidation()
         try testDraft(countries: countries, zones: zones)
         try testLateResponsesAndCache()
@@ -65,7 +65,11 @@ import CryptoKit
         precondition(verified.entries.count == 3)
         try (contents + Data(" ".utf8)).write(to: root.appendingPathComponent("countries/US.json"))
         do { _ = try CityCatalog.load(countryCode: "US", root: root); preconditionFailure("Corruption must fail") } catch {}
-        for code in ["FR", "../US", "us"] {
+        let unavailable = try CityCatalog.load(countryCode: "FR", root: root)
+        precondition(unavailable.entries.isEmpty, "A server country without a bundled partition is a valid empty city result")
+        try FileManager.default.removeItem(at: root.appendingPathComponent("countries/US.json"))
+        do { _ = try CityCatalog.load(countryCode: "US", root: root); preconditionFailure("A declared but missing partition must fail") } catch {}
+        for code in ["../US", "us"] {
             do { _ = try CityCatalog.load(countryCode: code, root: root); preconditionFailure("Missing/invalid country must fail") } catch {}
         }
     }
@@ -210,18 +214,17 @@ import CryptoKit
         drain { failed }
     }
 
-    static func testBundledCatalog(_ repo: URL, countries: CountryRegionCatalog, zones: SiteTimeZoneCatalog) throws {
+    static func testBundledCatalog(_ repo: URL, zones: SiteTimeZoneCatalog) throws {
         let root = repo.appendingPathComponent("SunSmart/CityCatalog")
         let manifest = try JSONDecoder().decode(CityCatalog.Manifest.self, from: Data(contentsOf: root.appendingPathComponent("manifest.json")))
-        precondition(Set(manifest.countries.keys) == Set(countries.entries.map(\.code)))
         var ids: Set<String> = [], total = 0
-        for country in countries.entries {
-            let catalog = try CityCatalog.load(countryCode: country.code, root: root)
+        for countryCode in manifest.countries.keys.sorted() {
+            let catalog = try CityCatalog.load(countryCode: countryCode, root: root)
             total += catalog.entries.count
             for entry in catalog.entries {
                 precondition(ids.insert(entry.id).inserted, "City IDs must be globally unique")
                 precondition(zones.value(matchingIdentifier: entry.timezoneIdentifier) != nil, "Every selectable city needs a shared timezone")
-                precondition(entry.countryCode == country.code)
+                precondition(entry.countryCode == countryCode)
             }
         }
         precondition(total == 225061, "Pinned, reviewed snapshot changed; review the generation report")

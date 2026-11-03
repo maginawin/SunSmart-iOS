@@ -2549,6 +2549,7 @@
 "site_create_country" = "国家 / 地区";
 "site_create_country_search_placeholder" = "搜索国家 / 地区";
 "site_create_country_empty" = "未找到国家或地区。";
+"site_create_country_load_failed" = "无法加载国家列表，请点击国家输入框重试。";
 "site_create_city" = "城市";
 "site_create_city_search_placeholder" = "搜索城市";
 "site_create_city_country_required" = "请先选择国家 / 地区。";

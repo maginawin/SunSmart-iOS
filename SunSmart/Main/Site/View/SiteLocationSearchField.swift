@@ -5,11 +5,13 @@ final class SiteLocationSearchField: UIView {
     struct Option { let id: String; let title: String; let detail: String? }
     struct Page { let options: [Option]; let emptyText: String }
     var prepareForInteraction: (() -> Bool)?
+    var onActiveInputTap: (() -> Void)?
     var onSelect: ((Option) -> Bool)?
     var loadOptions: ((String, @escaping (Result<Page, Error>) -> Void) -> Void)?
     var canAcceptResults: (() -> Bool)?
     var onLayoutChanged: (() -> Void)?
     var onCancel: (() -> Void)?
+    var failureText: String?
     weak var animationLayoutView: UIView?
 
     let searchField = UITextField()
@@ -59,6 +61,18 @@ final class SiteLocationSearchField: UIView {
         onCancel?()
         updatePresentation(animated: false)
         searchField.resignFirstResponder()
+    }
+
+    func updateSelectedTitle(id: String?, title: String?) {
+        guard state.selectedID == id else { return }
+        selectedTitle = title
+        if !isExpanded { searchField.text = title }
+    }
+
+    func reloadOptions() {
+        guard isExpanded else { return }
+        state.invalidateResults()
+        updateResults()
     }
 
     private func setupLayout() {
@@ -150,7 +164,11 @@ final class SiteLocationSearchField: UIView {
     }
 
     @objc private func focusInput() {
-        if !searchField.isFirstResponder { searchField.becomeFirstResponder() }
+        if searchField.isFirstResponder {
+            onActiveInputTap?()
+        } else {
+            searchField.becomeFirstResponder()
+        }
     }
 
     @objc private func queryChanged() {
@@ -176,7 +194,7 @@ final class SiteLocationSearchField: UIView {
                 self.emptyLabel.text = page.emptyText
             case .failure:
                 self.results = []
-                self.emptyLabel.text = "site_create_location_load_failed".localizedString
+                self.emptyLabel.text = self.failureText ?? "site_create_location_load_failed".localizedString
             }
             self.tableView.reloadData()
             self.tableView.setContentOffset(.zero, animated: false)
@@ -219,9 +237,22 @@ final class SiteLocationSearchField: UIView {
 
 extension SiteLocationSearchField: UIGestureRecognizerDelegate {
     func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer, shouldReceive touch: UITouch) -> Bool {
-        // UITextField owns its text/clear touches. Only the icon and margins need forwarding;
-        // forwarding a rejected text-field tap as well would show the country-required tip twice.
-        touch.view?.isDescendant(of: searchField) != true
+        guard touch.view?.isDescendant(of: searchField) == true else { return true }
+        // The first text tap is handled by shouldBeginEditing. Observe subsequent taps only
+        // for fields opting into retry, while leaving the clear button to UITextField.
+        guard searchField.isFirstResponder, onActiveInputTap != nil else { return false }
+        var touchedView = touch.view
+        while let view = touchedView, view !== searchField {
+            if view is UIControl { return false }
+            touchedView = view.superview
+        }
+        return true
+    }
+
+    func gestureRecognizer(_ gestureRecognizer: UIGestureRecognizer,
+                           shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer) -> Bool {
+        // Observing an active input tap must not interfere with cursor/selection gestures.
+        onActiveInputTap != nil && searchField.isFirstResponder
     }
 }
 
