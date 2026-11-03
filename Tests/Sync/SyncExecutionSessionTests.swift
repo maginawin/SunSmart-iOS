@@ -84,6 +84,7 @@ enum SyncExecutionSessionTests {
         sceneCleanupActivationIsolation()
         sceneCleanupActivationCancellation()
         sceneCleanupRejectsStaleTasks()
+        sceneDeletionSubsetRetryRestoresPrerequisites()
         unresolvedSceneCannotFinishSuccessfully()
         emptySceneDeleteFails()
         parameterOnlyUsesProductionSession()
@@ -117,6 +118,87 @@ enum SyncExecutionSessionTests {
         authorizationBeforeDynamicMessages()
         automaticRetryBudget()
         print("PASS: production Session scheduling, writeback ordering, late completion, stop/retry, Profile/PIR compensation and authorization cancellation")
+    }
+
+    static func sceneDeletionSubsetRetryRestoresPrerequisites() {
+        for failedPhase in ["read", "apply"] {
+            for retryEntry in ["group", "step", "task"] {
+                let h = Harness()
+                let (session, lamp, _, node) = h.make()
+                let remove = SyncDeviceStepTaskModel(name: "SceneDelete", operationType: .delete(node: node, type: .scene(sceneId: 42, executeData: nil)))
+                let removalStep = lamp.steps[0]
+                removalStep.tasks = [remove]; remove.parentStepModel = removalStep
+                let externalNode = Node(); externalNode.primaryUnicastAddress = 2
+                MeshNetworkManager.instance.meshNetwork!.nodes.append(externalNode)
+                let read = SceneDeletionTask(), apply = SceneDeletionTask(), completed = SceneDeletionTask()
+                let unrelated = SceneDeletionTask()
+                func referenceDevice(_ operations: [SceneDeletionTask], name: String) -> SyncDevicesModel {
+                    let device = SyncDevicesModel(name: name, address: 2)
+                    for operation in operations {
+                        let task = SyncDeviceStepTaskModel(name: name, operationType: .configuration(node: externalNode, type: .sceneReferenceCleanup(operation)))
+                        let step = SyncDeviceStepModel(type: name, state: .none, tasks: [task])
+                        step.relevanceStepModels = device.steps
+                        step.parentDeviceModel = device; task.parentStepModel = step
+                        device.steps.append(step)
+                    }
+                    return device
+                }
+                let reference = referenceDevice([read, apply], name: "External Scheduler")
+                let alreadyCompleted = referenceDevice([completed], name: "Completed reference")
+                let independent = referenceDevice([unrelated], name: "Unrelated failed reference")
+                alreadyCompleted.steps[0].tasks[0].state = .successful
+                independent.steps[0].tasks[0].state = .failed
+                // Read is reached recursively through the apply prerequisite.
+                removalStep.relevanceStepModels = [reference.steps[1], alreadyCompleted.steps[0]]
+                let group = SyncDevicesGroupModel(groupName: "Selected lamps", groupAddress: 0xC001, deviceModels: [lamp])
+                lamp.parentGroupModel = group
+                let section = session.sections[0]
+                section.prefersDevicesBeforeGroups = true
+                section.devices = [reference, alreadyCompleted, independent]; section.groups = [group]
+
+                session.start(); h.flush()
+                precondition(h.sends.count == 1 && h.sends[0].handles[0] === read.handles[0])
+                h.finish(0, success: failedPhase != "read"); h.flush()
+                if failedPhase == "apply" {
+                    precondition(h.sends.count == 2 && h.sends[1].handles[0] === apply.handles[0])
+                    h.finish(1, success: false); h.flush()
+                }
+                precondition(remove.state == .failed && lamp.state == .failed && group.state == .failed,
+                             "a real failed external prerequisite must expose the blocked lamp Group as retryable")
+                precondition(node.updates == 0 && session.syncState == .syncFailure,
+                             "blocked SceneDelete must not send or consume its receipt")
+                switch retryEntry {
+                case "group":
+                    group.isSelected = true
+                    group.deviceModels.filter { $0.state == .failed }.forEach { $0.isSelected = true }
+                    let selected = session.selectedFailedDevicesForResync()
+                    precondition(selected.count == 1 && selected[0] === lamp,
+                                 "selecting the lamp Group must not require selecting external devices manually")
+                    selected.forEach { session.prepareDeviceForResync($0) }
+                case "step": session.prepareStepForResync(removalStep)
+                default: session.prepareTaskForResync(remove)
+                }
+                precondition(read.retryResets == 1 && apply.retryResets == 1,
+                             "retry must reset each external read/apply pair exactly once")
+                precondition(reference.steps.flatMap(\.tasks).allSatisfy { $0.state == .none } && remove.state == .none)
+                precondition(completed.retryResets == 0 && unrelated.retryResets == 0
+                    && alreadyCompleted.state == .successful && independent.state == .failed,
+                             "successful dependencies and unrelated failures must remain untouched")
+                let firstRetrySend = h.sends.count
+                session.start(); h.flush()
+                precondition(h.sends.count == firstRetrySend + 1 && h.sends.last!.handles[0] === read.handles[0],
+                             "subset retry must reread Scheduler before writing")
+                h.finish(firstRetrySend); h.flush()
+                precondition(h.sends.count == firstRetrySend + 2 && h.sends.last!.handles[0] === apply.handles[0])
+                h.finish(firstRetrySend + 1); h.flush()
+                precondition(h.sends.count == firstRetrySend + 3 && h.sends.last!.handles[0] === node.testHandles[0],
+                             "SceneDelete must wait for successful external cleanup")
+                h.finish(firstRetrySend + 2); h.flush()
+                precondition(remove.state == .successful && lamp.state == .successful && group.state == .successful)
+                precondition(unrelated.applyCalls == 0 && completed.applyCalls == 0 && independent.state == .failed)
+            }
+        }
+        print("PASS Scene subset retry: visible blocked Group, group/step/task retry, external read/apply ordering and unrelated isolation")
     }
 
     static func sceneCleanupTaskResultBoundaries() {

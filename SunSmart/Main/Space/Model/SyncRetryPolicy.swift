@@ -41,7 +41,18 @@ struct SyncRetryPolicy {
     }
 
     func prepareTaskForResync(_ task: SyncDeviceStepTaskModel) {
-        if case .configuration(_, .sceneReferenceCleanup) = task.operationType,
+        if case .delete(_, .scene) = task.operationType {
+            var preparedDevices = Set<ObjectIdentifier>()
+            if let step = task.parentStepModel {
+                for prerequisite in Self.sceneReferencePrerequisites(for: step)
+                    where prerequisite.state == .failed || prerequisite.state == .wait || prerequisite.state == .none {
+                    guard let device = prerequisite.parentStepModel?.parentDeviceModel,
+                          preparedDevices.insert(ObjectIdentifier(device)).inserted else { continue }
+                    prepareTaskForResync(prerequisite)
+                }
+            }
+            resetTask(task)
+        } else if case .configuration(_, .sceneReferenceCleanup) = task.operationType,
            let device = task.parentStepModel?.parentDeviceModel {
             // The read and write belong to one durable reference; retry rereads before making new commands.
             for child in device.steps.flatMap(\.tasks) {
@@ -55,6 +66,25 @@ struct SyncRetryPolicy {
         } else {
             resetTask(task)
         }
+    }
+
+    /// Scene removal may depend on cleanup devices outside its displayed Group.
+    /// Traverse only its recorded prerequisites; unrelated failed work stays untouched.
+    static func sceneReferencePrerequisites(for step: SyncDeviceStepModel) -> [SyncDeviceStepTaskModel] {
+        var visited = Set<ObjectIdentifier>()
+        var tasks: [SyncDeviceStepTaskModel] = []
+        func collect(_ current: SyncDeviceStepModel) {
+            for prerequisite in current.relevanceStepModels {
+                guard visited.insert(ObjectIdentifier(prerequisite)).inserted else { continue }
+                collect(prerequisite)
+                tasks += prerequisite.tasks.filter {
+                    if case .configuration(_, .sceneReferenceCleanup) = $0.operationType { return true }
+                    return false
+                }
+            }
+        }
+        collect(step)
+        return tasks
     }
 
     private func isLightingZoneTask(_ task: SyncDeviceStepTaskModel) -> Bool {

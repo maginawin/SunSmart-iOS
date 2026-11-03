@@ -19,6 +19,8 @@ enum SceneDeletionCascade {
                      "Reference cleanup must use the production cascade suite")
         return .init()
     }
+    // Legacy suites deliberately exclude Scheduler cleanup; the production recovery helper is covered by the cascade suite.
+    static func restoringSchedulerCoverage(_ configuration: SceneConfiguration, nodes: [Node]) throws -> SceneConfiguration { configuration }
     static func canFinish(info: SceneInfo) -> Bool {
         !hasPending(info) && SceneConfigurationStore.deletionReferenceNames(number: info.sceneId).isEmpty
     }

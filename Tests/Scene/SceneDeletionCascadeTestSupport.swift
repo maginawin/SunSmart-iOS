@@ -79,6 +79,13 @@ final class Node {
         timedSchedulerIdentity = .init(nodeUUID: String(format: "00000000-0000-0000-0000-%012X", address),
             unicastAddress: address.hex, deviceKeyFingerprint: String(repeating: "A", count: 64))
     }
+    /// Synthetic test key only. Hashing and Scene normalization use extracted production implementations.
+    func useProductionFingerprint(key: String = "00112233445566778899AABBCCDDEEFF", uuid: UUID? = nil) throws {
+        timedSchedulerIdentity = .init(
+            nodeUUID: uuid?.uuidString ?? String(format: "00000000-0000-0000-0000-%012X", primaryUnicastAddress),
+            unicastAddress: primaryUnicastAddress.hex,
+            deviceKeyFingerprint: try SchedulerModelSnapshot.keyFingerprint(["deviceKey": key]))
+    }
     func clearSyncStateCache() { cacheClears += 1 }
     func schedulerSetupModel(for owner: Int) -> Model? { schedulerSetupModels.indices.contains(owner) ? schedulerSetupModels[owner] : nil }
     func applyMessageHandle(_ handle: MeshMessageHandle, isSuccess: Bool) -> Bool {
@@ -282,16 +289,21 @@ enum SceneTargetResolver {
     }
 }
 enum SceneConfigurationStore {
-    enum Failure: Error { case persistence, invalidTargets }
+    enum Failure: Error { case persistence, invalidTargets, unavailable }
     static func deletionReferenceNames(number: UInt16) -> [String] {
         MeshNetworkManager.instance.schedules.filter { $0.sceneNumber == number }.map(\.name)
     }
+}
+final class MeshProxyMessageCommand {
+    static let shared = MeshProxyMessageCommand()
+    var isBusy = false
 }
 enum FixtureStore {
     static var schedules: [Int: Schedule] = [:], switches: [String: DeviceSwitchData] = [:]
     static var emergency: [String: DeviceEmerFireData] = [:], powerHashes: [String: String] = [:], scenes: [UInt16: Data] = [:]
     static var failSceneSave = false, failScheduleSave = false, failSwitchSave = false, failPowerSave = false, failEmergencySave = false
     static func reset() {
+        MeshProxyMessageCommand.shared.isBusy = false
         schedules = [:]; switches = [:]; emergency = [:]; powerHashes = [:]; scenes = [:]
         failSceneSave = false; failScheduleSave = false; failSwitchSave = false; failPowerSave = false; failEmergencySave = false
     }

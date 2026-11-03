@@ -1,6 +1,6 @@
 # Scene 删除引用限制与重复提示分析
 
-日期：2026-11-03。分析基线：`feat/device-scene-261028`，HEAD `b1bab004`；开始分析时工作树无未提交修改。第 1～4 节保留当时分析快照；用户已于本日批准按第 5 节方案实施，第 6 节记录最终实现与验证。
+日期：2026-11-03。分析基线：`feat/device-scene-261028`，HEAD `b1bab004`；开始分析时工作树无未提交修改。第 1～4 节保留当时分析快照；用户已于本日批准按第 5 节方案实施，第 6 节记录首轮实现与验证；第 7 节记录随后真机失败日志的根因分析，第 8 节记录本轮修复与验证。
 
 ## 结论
 
@@ -212,3 +212,85 @@
 5. 上传/下载或分享包含待删除任务的数据，确认 pending 依赖完整保留；旧版本客户端拒绝不支持的配置。条件性 EFC 自定义场景动作另做设备验收。
 
 未自动连接或操作真机；无线命令效果、最终 UI 体验、实际云回读及新旧客户端混用仍待人工/联调验收。当前修改未提交。
+
+
+## 7. 真机仍然删除失败：身份大小写不一致（2026-11-03）
+
+### 结论与本轮边界
+
+分析阶段基线：`feat/device-scene-261028`，HEAD `27c6c930`（之前为级联删除提交 `1f25188b`）；开始分析时工作树干净。当时没有修改业务代码或 SDK，没有运行 App 构建；先在临时目录用真实指纹算法、Scene codec 和级联生产代码复现缺陷，并验证临时候选比较方式。用户随后要求修复，落地结果见第 8 节。
+
+**Scene 删除依赖在持久化时规范为大写身份，新增级联任务却用运行时原始小写指纹做字符串精确比较。结果是 pending 仍在、可执行引用清理任务为零，Scene Delete 又被 pending 保护阻止，从而立即失败。** 这是首轮实现遗漏，和用户日志的执行形态一致。提供的响应截断了 Scene 配置本体，未能逐字段独立检查现场 Scene 28 的所有依赖；不把这份截断日志当作完整设备/云数据样本。
+
+### 日志证据
+
+- `scene=28 stage=taskSelected address=14`：选中 Scene 28 的任务，地址打印为十进制 14，即 `0x000E`。
+- 紧接着 `commandsBuilt count=0`、`taskRejected reason=emptySceneHandles`、`noNextTask`、`syncFailure`。这轮没有到达 `submitCommands`，因此不是 Scene Delete 已发出后设备拒绝/超时。
+- 随后 HTTP 上传、回读 `confirmed` 只证明配置上传/比较完成；回读中的 Group Scene 28 仍为 `state=2`，SDK 定义为 `waitDelete`，仍是待删除状态。
+- 末尾 `proximityLightingTrigger` 是来自 `0x0014` 的另一条主动业务消息，回复为 GenericOnOffStatus。其 Local Vendor Model 绑定提示出现在删除失败之后，不能解释前面生成零条命令。
+- `failedModels=2` 统计包含组、设备、步骤、任务等 UI 层级，不等于两台物理设备删除失败。没有引用步骤时，同一失败设备及其所属组就能占两项。
+- `startRequested` 与后续执行 run ID 不同，是 start 创建新轮次的现有行为，不足以证明并发或串台。
+
+### 代码完整因果链
+
+1. `SchedulerModelSnapshot.keyFingerprint` 在 `SpaceConfigurationIntegrityPolicy.swift` 中使用 `%02x` 输出小写 SHA256 字符串；`Node.timedSchedulerIdentity` 保留这个格式，供已有 Timed slot 绑定使用。
+2. `SceneConfiguration.identity` 则将 UUID、地址、指纹全部转成大写。`normalized()` 会把 `deletionReferences.pending.identity` 也规范化；`prepareDeletion` 在保存之前就调用了它，因此首次删除即可触发，不需要等云导入或重启。
+3. `SceneDeletionCascade.appendTasks` 以原始 `node.timedSchedulerIdentity == reference.identity` 查找节点，小写和大写不相等，直接 `continue`。依赖并没有被删除，但执行计划缺失了引用清理设备行。
+4. 普通 Scene 目标解析使用已有 `sceneConfigurationIdentity`，能正确找到相同节点。因此灯端 SceneDelete 任务仍会被创建；因为上一步引用任务为空，也没有可关联的前置 step。
+5. `Scene.getDeleteMessageHandles` 第一行检查 `!SceneDeletionCascade.hasPending(info)`。pending 没有被执行清掉，这里静默返回空数组，执行器按 `emptySceneHandles` 拒绝。这与本次日志中缺少 `deleteReservationOrContext` 诊断吻合。
+
+同一遗漏还存在于 `SceneDeletionTask.isCurrent`、`invalidateIncompleteSchedulerRead`，以及 `SceneConfigurationStore.prepareDeletion` 的 `cleanupNodes` 收集。最后一处会漏掉成员外已知残留设备的额外 Scheduler 回读范围；不能只改 UI 或删除一个保护条件。
+
+### 临时复现结果
+
+使用虚构输入生成指纹，不使用、不输出用户 Mesh 密钥。执行当前完整 `SceneDeletionCascade.swift` 和真实 `SceneConfiguration.swift`；Node、存储及 Sync 展示结构沿用现有测试替身。
+
+| 临时运行版本 | pending | 清理设备行 / 步骤 | 任务身份校验 | 一个 Scheduler Model 的回读命令 |
+| --- | --- | --- | --- | --- |
+| 当前生产代码 | 保留 | 0 / 0 | false | 0 |
+| 只规范任务查找的临时候选 | 保留 | 1 / 2 | false | 0 |
+| 查找及任务身份比较统一规范的临时候选 | 保留 | 1 / 2 | true | 16 |
+
+三组都分别验证了首次 normalized 之后和 encode/decode 重载之后，结果一致。没有执行无线发送或完整 App 删除收尾。
+
+### 为什么首轮测试没有发现
+
+`SceneDeletionCascadeTestSupport.Node` 默认指纹为大写重复 `A`；引用与运行时身份天然相同。同时实际 Store suite 与 cascade suite 各自隔离：前者使用无引用边界替身，后者的 `markDeleting` 没有像真实 `prepareDeletion` 那样先把内存 configuration 替换成 normalized 结果。已有模型测试验证了大小写规范化，但没有将该结果接到真实引用任务生成和身份守卫。因此首轮测试通过没有覆盖这条跨模块路径。
+
+### 建议修复范围
+
+- Scene 侧引用创建/聚合、节点查找、当前任务校验、取消/失败时回读缓存失效，以及额外 cleanupNodes 收集，统一复用已有 `node.sceneConfigurationIdentity` / `SceneConfiguration.identity`。
+- 保留共享 `timedSchedulerIdentity` 和现有 Timed slot 数据的原格式，不全局把 fingerprint 改成大写；UUID、地址、指纹三个字段仍需完整匹配，不降级为只比较地址。
+- 保留“引用未清理不得发送最终 SceneDelete/释放编号”的保护。现有正常 pending 记录本身不需要丢弃或重新建 Scene，修复后重新进入同步页重建计划即可尝试恢复；同时核对旧删除意图是否缺少成员外 Scheduler 依赖，不能用空任务直接补成成功。
+- 在静默跳过引用和生成空删除命令处补少量 DEBUG 原因与计数，例如 pending 数量、身份是否可解析、Scene Setup Model 是否存在；不打印密钥或完整指纹。
+- 必要回归：实际小写指纹 → 真实 normalized 保存 → 引用任务生成 → 回读/解除 → SceneDelete；SQLite 重载后相同链路；仅修 lookup 仍不够的守卫场景；同地址换 Key/换 UUID 仍拒绝；部分回读失败的缓存失效；只选组重试时不漏所需前置任务。
+
+以上为实施前的根因分析和修复范围。不得删除 pending 检查或清空数据库来绕过此问题。
+
+## 8. 身份匹配、存量任务恢复与失败重试修复（2026-11-03）
+
+本轮修改基于 `27c6c930`，已落入当前工作树，未提交；只修改 App 共享逻辑、相关回归与本文档。本地 SDK 仍为 `one-dev` / `dbcf6f1`，无 SDK 改动，无固件或服务器接口变更。
+
+### 行为变化
+
+- Scheduler、动能开关、Power Switch、EFC 的引用创建、聚合、查找、执行校验和回读失败缓存失效，统一使用已有 Scene 规范身份。保留 Timed slot 原始身份格式；仍完整比较 UUID、地址与 Key 指纹。
+- 对旧版已经保存的 v2 待删除记录，在重入同步准备或 Space 恢复时，补齐仍有物理 Scene 删除任务的设备所缺失的 Scheduler 回读依赖。补任务先事务落库再更新 live Scene；失败回滚，忙碌时不改计划。保留 Scene revision、已有任务 generation 和引用 ID，不变更存储 schema。
+- 只补仍有物理删除 pending、且当前节点完整身份一致的对象。物理删除已确认后不重新创建依赖；相同地址但 UUID/Key 改变的设备不继承旧任务。若引用清理已成功但物理删除尚未完成，重新进入时允许保守回读一次，不能将缺失记录直接判为成功。
+- 引用清理失败时，其阻塞的 SceneDelete 显示为失败，可从灯所在组选择重试；只选组、步骤或 SceneDelete 任务，也会恢复所需的外部引用前置任务，按“重新回读 → 清理 → SceneDelete”继续。已完成的引用和无关失败任务不随之重跑。
+- 引用未确认时仍不发送最终 SceneDelete、不释放编号。为找不到引用节点、缺少 Scene Setup Model、引用 pending 阻挡命令补充 DEBUG 原因日志，不记录密钥或完整指纹。
+
+### 验证结果与边界
+
+- 新增真实指纹算法 → Scene normalized → 编解码重载 → 任务创建/执行/回执链路。原级联代码运行同一回归为 **134 通过、21 失败**；修复后 cascade suite 为 **165 通过、0 失败**。包含四类引用、部分回读失败/取消/重试缓存失效、换 UUID/Key 拒绝、Timed 原始身份保留、存量补任务幂等及 Store 失败回滚。
+- `check_scene_deletion_flow.py` 通过：真实 Store/SQLite 的既有删除生命周期、离线重载、残留对象、迟到/失败 ACK、取消、事务回滚与 SDK/App 中断恢复。该套件明确隔离引用清理；新增 cascade 套件执行真实级联与 Store 补任务方法，但存储/SDK/UI 为替身，不能替代无线验收。
+- `check_sync_execution_session.py`、`check_sync_task_builders.py` 通过。新增六个实际 Session 调度场景（回读/清理失败 × 组/步骤/任务重试），验证前置顺序和无关任务隔离。
+- `check_timed_device_slots.py`、`git diff --check` 通过。
+- `SunSmartLocal.xcworkspace` / SunSmart / Debug / generic iOS / 禁用签名构建通过。生产修改为各品牌共用且无条件分支的逻辑，无资源、target 或 SDK 依赖改动，本轮选 SunSmart 代表编译。仍有项目既有捕获语义等 warning；未运行 Simulator、真机或实际云回读。
+
+### 最短现场复测
+
+1. 使用本轮新构建，退出当前同步页，再进入已有待删除 Scene 的同步页面。无需重建 Scene、清库或改编号。应生成对应引用清理任务，先完成它们，再执行 SceneDelete。
+2. 使一个引用设备离线导致失败，再恢复在线；只选择灯所在组重试，确认外部引用任务也被恢复，成功后 Scene 与直接引用它的 Timed 被删除，其他开关动作保留。
+3. 同步中断后退出重进，确认继续待删除任务；所有确认完成前不能复用原编号。若仍失败，保留新增 SceneSync 原因及任务阶段日志定位。
+
+真实设备命令效果、页面体验及实际云端往返仍待人工验收，不由本轮编译和隔离回归替代。

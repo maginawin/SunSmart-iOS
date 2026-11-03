@@ -55,6 +55,17 @@ extension SyncExecutionSession {
                     return device
                 }
                 for step in device.steps {
+                    let waitingSceneDeletes = step.tasks.filter { task in
+                        guard task.state == .none || task.state == .wait else { return false }
+                        if case .delete(_, .scene) = task.operationType { return true }
+                        return false
+                    }
+                    if !waitingSceneDeletes.isEmpty,
+                       SyncRetryPolicy.sceneReferencePrerequisites(for: step).contains(where: { $0.state == .failed }) {
+                        // No Delete was sent. Show the blocked Scene as retryable,
+                        // so selecting its Group can also retry external cleanup.
+                        waitingSceneDeletes.forEach { $0.state = .failed }
+                    }
                     if step.relevanceStepModels.contains(where: { $0.state == .failed }) {
                         continue
                     }

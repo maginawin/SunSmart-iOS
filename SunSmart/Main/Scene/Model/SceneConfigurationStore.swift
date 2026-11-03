@@ -86,8 +86,11 @@ final class SceneConfigurationStore {
     func prepareDeletion(scene: Scene) throws {
         let snapshot = try SceneTargetResolver.resolve(scene: scene)
         try Self.validateAccess(snapshot.scope)
-        if scene.info.configuration?.isDeleting == true { return }
         guard !MeshProxyMessageCommand.shared.isBusy else { throw Failure.unavailable }
+        if scene.info.configuration?.isDeleting == true {
+            try restoreDeletionSchedulerCoverage(info: scene.info, scope: snapshot.scope)
+            return
+        }
         let manager = MeshNetworkManager.instance
         var identities = Set(snapshot.targets.map(\.identity) + snapshot.cleanupTargets.map(\.identity)
             + snapshot.unresolved.map(\.identity))
@@ -104,7 +107,7 @@ final class SceneConfigurationStore {
             identities.insert(try SceneConfiguration.identity(identity))
         }
         let cleanupNodes = manager.realNodes.filter { node in
-            node.timedSchedulerIdentity.map { identities.contains($0) } == true
+            node.sceneConfigurationIdentity.map { identities.contains($0) } == true
         }
         let cascade = try SceneDeletionCascade.prepare(scene: scene, snapshot: snapshot, additionalNodes: cleanupNodes)
         let previous = scene.info.configuration
@@ -138,6 +141,22 @@ final class SceneConfigurationStore {
         }
         cascade.install()
         manager.realNodes.forEach { $0.clearSyncStateCache() }
+    }
+
+    private func restoreDeletionSchedulerCoverage(info: SceneInfo, scope: SceneScope) throws {
+        guard let previous = info.configuration, previous.isDeleting, previous.deletionReferences != nil else { return }
+        let updated = try SceneDeletionCascade.restoringSchedulerCoverage(previous, nodes: MeshNetworkManager.instance.realNodes)
+        guard updated != previous else { return }
+        guard !MeshProxyMessageCommand.shared.isBusy else { throw Failure.unavailable }
+        let saved = SunSmartDataManager.shared.configurationTransaction {
+            info.configuration = updated
+            try info.saveConfiguration(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)
+        }
+        guard saved else { info.configuration = previous; throw Failure.persistence }
+        MeshNetworkManager.instance.scenes.first { $0.number == info.sceneId }?.info.configuration = updated
+        #if DEBUG
+        print("[SceneSync] stage=deletionCoverageRecovered scene=\(info.sceneId) added=\((updated.deletionReferences?.pending.count ?? 0) - (previous.deletionReferences?.pending.count ?? 0))")
+        #endif
     }
 
     static func deletionReferenceNames(number: SceneNumber) -> [String] {
@@ -584,6 +603,7 @@ final class SceneConfigurationStore {
         var failed = false
         for info in try SceneInfo.loadAll(meshUUID: scope.meshUUID, subnetworkId: scope.networkID) {
             guard !info.configurationLoadFailed else { throw Failure.persistence }
+            try restoreDeletionSchedulerCoverage(info: info, scope: scope)
             guard let configuration = info.configuration else { continue }
             if configuration.isDeleting, configuration.pendingOperations.isEmpty, !SceneDeletionCascade.hasPending(info) {
                 // Keep the Space usable so its Schedule/Switch cleanup can run.
@@ -621,6 +641,7 @@ final class SceneConfigurationStore {
         try Self.validateAccess(scope)
         do {
             for info in deleting {
+                try restoreDeletionSchedulerCoverage(info: info, scope: scope)
                 guard let configuration = info.configuration else { continue }
                 if configuration.pendingOperations.isEmpty, !SceneDeletionCascade.hasPending(info) {
                     if !SceneDeletionCascade.canFinish(info: info) { continue }

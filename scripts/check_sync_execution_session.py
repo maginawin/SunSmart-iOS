@@ -42,7 +42,6 @@ extension HDBDeviceSyncTask {
     var address: Address? = 1
     var model: TestVendorModel? = nil
     var message: Any = 0
-    var isSuccessful = true
 ''').replace('model: Int?)', 'model: TestVendorModel?)').replace('updateData(message: Int', 'updateData(message: Any')
     fixtures += '''
 struct SceneMessageContext {

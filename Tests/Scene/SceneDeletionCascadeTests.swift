@@ -34,8 +34,23 @@ import Foundation
     }
     static func pending(_ scene: Scene) -> [SceneReferenceRemoval] { scene.info.configuration?.deletionReferences?.pending ?? [] }
 
+    static func normalizePersistAndReload(_ scene: Scene, references: SceneDeletionReferences) throws {
+        try markDeleting(scene, references: references)
+        scene.info.configuration = try scene.info.configuration?.normalized()
+        try scene.info.saveConfiguration(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)
+        let persisted = try SceneInfo.loadAll(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)
+        scene.info.configuration = persisted.first { $0.sceneId == scene.number }!.configuration
+    }
+
     static func main() throws {
         try preparationIsAtomicAndSelective()
+        try productionFingerprintSurvivesNormalizedCascade()
+        try productionFingerprintReadFailureInvalidatesCache()
+        try productionFingerprintRejectsReprovisionedIdentity()
+        #if SCENE_CASCADE_COVERAGE_RECOVERY
+        try missingSchedulerCoverageRecoversWithoutReplacingOwnership()
+        try coverageRecoveryPersistsBeforePublishing()
+        #endif
         try schedulerPlansPreserveCurrentOwner()
         try legacyAndOrphanSchedulerRecovery()
         try retriesRebuildSchedulerWork()
@@ -55,6 +70,186 @@ import Foundation
         print("cascade: \(passed) passed, \(failed) failed")
         if failed > 0 { exit(1) }
     }
+
+    static func productionFingerprintSurvivesNormalizedCascade() throws {
+        let (scene, lamp, _) = fixture()
+        let powerNode = Node(3), emergencyNode = Node(4)
+        manager.realNodes += [powerNode, emergencyNode]
+        for node in manager.realNodes { try node.useProductionFingerprint() }
+        let rawIdentity = lamp.timedSchedulerIdentity!
+        check(rawIdentity.deviceKeyFingerprint == rawIdentity.deviceKeyFingerprint.lowercased()
+            && rawIdentity.deviceKeyFingerprint != rawIdentity.deviceKeyFingerprint.uppercased(),
+              "production SHA256 key fingerprint supplies the real lowercase identity boundary")
+        check(lamp.sceneConfigurationIdentity == (try? SceneConfiguration.identity(rawIdentity))
+            && lamp.sceneConfigurationIdentity != rawIdentity,
+              "production Node Scene identity canonicalizes without changing raw Timed identity")
+        let timed = schedule(10, scene: 1, node: lamp, slot: 1)
+        manager.schedules = [timed]
+        lamp.allSchedulerModelEntrys[lamp.schedulerSetupModels[0]] = [1: .init(action: .sceneRecall, sceneNumber: 1)]
+        let kinetic = DeviceSwitchData(id: "lower-kinetic", name: "Kinetic")
+        kinetic.proxyNodeAddress = 2; kinetic.sceneANumber = 1
+        let power = PJEightKeySwitchData(id: "lower-power", name: "Power")
+        power.proxyNodeAddress = 3; power.sceneANumber = 1
+        manager.switchs = [kinetic, power]
+        let emergency = DeviceEmerFireData("lower-efc")
+        emergency.bindNodeAddress = 4; emergency.configuration.powerLossSettings.triggerActionPreset = .sceneRecall(1)
+        FixtureStore.emergency[emergency.id] = emergency
+        let preparation = try SceneDeletionCascade.prepare(scene: scene, snapshot: .init(scope: scope, targets: [.init(node: lamp)]))
+        check(preparation.schedules.first?.nodeSlots?.first?.identity == rawIdentity
+            && timed.nodeSlots?.first?.identity == rawIdentity,
+              "cascade preparation preserves raw Timed slot identity on source and deletion copy")
+        try preparation.persist(); preparation.install()
+        try normalizePersistAndReload(scene, references: preparation.references)
+        let persistedReferences = pending(scene)
+        check(persistedReferences.count == 4 && persistedReferences.allSatisfy { reference in
+            manager.realNodes.first { $0.primaryUnicastAddress == reference.address }?.sceneConfigurationIdentity == reference.identity
+        }, "all four persisted cleanup kinds carry the canonical Scene identity after reload")
+        let section = SyncDevicesSectionModel()
+        let steps = SceneDeletionCascade.appendTasks(scene: scene, to: section)
+        check(section.devices.count == 4 && steps.count == 5,
+              "normalized scheduler, kinetic, power and EFC references all produce executable tasks")
+        for reference in persistedReferences {
+            let node = manager.realNodes.first { $0.primaryUnicastAddress == reference.address }!
+            if reference.kind == .scheduler {
+                let read = SceneDeletionTask(scene: scene, reference: reference, node: node, phase: .read)
+                let handles = read.messageHandles
+                check(handles.count == 32 && read.apply(results: handles, expected: handles),
+                      "canonical persisted identity accepts full Scheduler read receipts")
+            }
+            let task = SceneDeletionTask(scene: scene, reference: reference, node: node, phase: .apply)
+            let handles = task.messageHandles
+            let expectedCount = reference.kind == .powerSwitch ? 4 : 1
+            check(handles.count == expectedCount && task.apply(results: handles, expected: handles),
+                  "canonical persisted \(reference.kind) reference generates work and accepts cleanup receipts")
+        }
+        check(pending(scene).isEmpty, "all normalized cleanup receipts settle after reload")
+        check(FixtureStore.schedules[10]?.nodeSlots?.first?.identity == rawIdentity
+            && manager.schedules[0].nodeSlots?.first?.identity == rawIdentity
+            && lamp.timedSchedulerIdentity == rawIdentity,
+              "Scene task normalization never rewrites persisted or live Timed slot ownership")
+    }
+
+    static func productionFingerprintReadFailureInvalidatesCache() throws {
+        for termination in ["failedAck", "partial", "cancel", "retry"] {
+            let (scene, node, _) = fixture()
+            try node.useProductionFingerprint()
+            let reference = SceneReferenceRemoval(kind: .scheduler, identity: node.timedSchedulerIdentity,
+                address: 1, name: "Lowercase read")
+            try normalizePersistAndReload(scene, references: .init(pending: [reference]))
+            let persisted = pending(scene)[0]
+            let originalActions: [Int: SchedulerRegistryEntry] = [7: .init(action: .sceneRecall, sceneNumber: 9)]
+            node.allSchedulerModelEntrys = [:]; node.schedulerActions = originalActions
+            let read = SceneDeletionTask(scene: scene, reference: persisted, node: node, phase: .read)
+            let handles = read.messageHandles
+            check(handles.count == 32, "normalized identity starts authoritative Scheduler read before \(termination)")
+            node.schedulerSetupModels.forEach { node.allSchedulerModelEntrys[$0] = [:] }
+            node.schedulerActions = [:]; node.savePropertys()
+            switch termination {
+            case "cancel": read.invalidateIncompleteSchedulerRead()
+            case "retry": read.resetForRetry()
+            default:
+                if termination == "failedAck" { handles.first?.isSuccessful = false }
+                let results = termination == "partial" ? Array(handles.dropFirst()) : handles
+                check(!read.apply(results: results, expected: handles), "incomplete normalized read cannot consume dependency")
+            }
+            check(node.observedTimedSlots == nil && node.savedSchedulerEntries.isEmpty,
+                  "canonical identity still invalidates partial read cache after \(termination)")
+            check(node.schedulerActions == originalActions && node.savedSchedulerActions == originalActions
+                && pending(scene) == [persisted], "failed normalized read preserves prior legacy state and durable dependency")
+        }
+    }
+
+    static func productionFingerprintRejectsReprovisionedIdentity() throws {
+        for mutation in ["uuid", "key"] {
+            let (scene, _, node) = fixture()
+            try node.useProductionFingerprint()
+            let oldIdentity = node.timedSchedulerIdentity!
+            let item = DeviceSwitchData(id: "lower-identity", name: "Switch")
+            item.proxyNodeAddress = 2
+            manager.switchs = [item]
+            let reference = SceneReferenceRemoval(kind: .kinetic, identity: oldIdentity,
+                address: 2, objectID: item.id, name: item.name, keys: [4])
+            try normalizePersistAndReload(scene, references: .init(pending: [reference]))
+            let persisted = pending(scene)[0]
+            let task = SceneDeletionTask(scene: scene, reference: persisted, node: node, phase: .apply)
+            let handles = task.messageHandles
+            check(handles.count == 1, "normalized old provisioning identity starts valid work before \(mutation) change")
+            if mutation == "uuid" { try node.useProductionFingerprint(uuid: UUID()) }
+            else { try node.useProductionFingerprint(key: "FFEEDDCCBBAA99887766554433221100") }
+            check(node.primaryUnicastAddress == persisted.address && node.sceneConfigurationIdentity != persisted.identity
+                && !task.isCurrent && task.messageHandles.isEmpty && !task.apply(results: handles, expected: handles),
+                  "same address with different \(mutation) still rejects old messages and receipts")
+            check(SceneDeletionCascade.appendTasks(scene: scene, to: SyncDevicesSectionModel()).isEmpty
+                && pending(scene) == [persisted], "reprovisioned \(mutation) cannot inherit canonical cleanup dependency")
+        }
+    }
+
+    #if SCENE_CASCADE_COVERAGE_RECOVERY
+    static func missingSchedulerCoverageRecoversWithoutReplacingOwnership() throws {
+        let (_, node, _) = fixture()
+        try node.useProductionFingerprint()
+        let original = SceneConfiguration(schemaVersion: 2, kind: .groups, name: "Deleting",
+            pendingOperations: [.init(identity: node.timedSchedulerIdentity!, action: .remove)],
+            isDeleting: true, deletionReferences: .init(scheduleIDs: [10]))
+        let recovered = try SceneDeletionCascade.restoringSchedulerCoverage(original, nodes: [node])
+        let reference = recovered.deletionReferences?.pending.first
+        check(recovered.deletionReferences?.pending.count == 1 && reference?.kind == .scheduler
+            && reference?.identity == node.sceneConfigurationIdentity && reference?.address == node.primaryUnicastAddress,
+              "missing Scheduler coverage recovers one canonical reference for physical pending removal")
+        check(recovered.revision == original.revision && recovered.pendingOperations[0].generation == original.pendingOperations[0].generation
+            && recovered.deletionReferences?.scheduleIDs == [10], "coverage recovery preserves Scene revision, generations and owned Timed IDs")
+        let repeated = try SceneDeletionCascade.restoringSchedulerCoverage(recovered, nodes: [node])
+        check(repeated == recovered && repeated.deletionReferences?.pending.first?.id == reference?.id,
+              "recovery is idempotent and preserves existing cleanup receipt ID")
+        var completed = recovered
+        completed.deletionReferences?.pending = []; completed.pendingOperations = []
+        let afterCompletion = try SceneDeletionCascade.restoringSchedulerCoverage(completed, nodes: [node])
+        check(afterCompletion == completed,
+              "confirmed physical Scene removal never recreates Scheduler cleanup")
+        try node.useProductionFingerprint(key: "FFEEDDCCBBAA99887766554433221100")
+        let unrelated = try SceneDeletionCascade.restoringSchedulerCoverage(original, nodes: [node])
+        check(unrelated.deletionReferences?.pending.isEmpty == true,
+              "same-address replacement key does not inherit missing cleanup coverage")
+    }
+
+    static func coverageRecoveryPersistsBeforePublishing() throws {
+        let (scene, node, _) = fixture()
+        try node.useProductionFingerprint()
+        try normalizePersistAndReload(scene, references: .init())
+        scene.info.configuration?.pendingOperations = [.init(identity: node.sceneConfigurationIdentity!, action: .remove)]
+        try scene.info.saveConfiguration(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)
+        let original = scene.info.configuration
+        let persistedInfo = try SceneInfo.loadAll(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)[0]
+        FixtureStore.failSceneSave = true
+        do {
+            try SceneConfigurationStore.restoreDeletionSchedulerCoverage(info: persistedInfo, scope: scope)
+            check(false, "failed coverage persistence must throw")
+        } catch {
+            check(error as? SceneConfigurationStore.Failure == .persistence, "coverage persistence failure is reported")
+        }
+        let failedDisk = try SceneInfo.loadAll(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)[0]
+        check(persistedInfo.configuration == original && scene.info.configuration == original && failedDisk.configuration == original,
+              "coverage save failure rolls back transient row and leaves live and persisted intent unchanged")
+        FixtureStore.failSceneSave = false; MeshProxyMessageCommand.shared.isBusy = true
+        do {
+            try SceneConfigurationStore.restoreDeletionSchedulerCoverage(info: persistedInfo, scope: scope)
+            check(false, "active transport must defer coverage migration")
+        } catch {
+            check(error as? SceneConfigurationStore.Failure == .unavailable && persistedInfo.configuration == original,
+                  "active transport rejection preserves deletion intent")
+        }
+        MeshProxyMessageCommand.shared.isBusy = false
+        try SceneConfigurationStore.restoreDeletionSchedulerCoverage(info: persistedInfo, scope: scope)
+        let saved = try SceneInfo.loadAll(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)[0]
+        check(saved.configuration?.deletionReferences?.pending.count == 1
+            && saved.configuration == persistedInfo.configuration && scene.info.configuration == saved.configuration,
+              "successful coverage persistence publishes identical committed dependencies to live Scene")
+        let referenceID = saved.configuration?.deletionReferences?.pending.first?.id
+        try SceneConfigurationStore.restoreDeletionSchedulerCoverage(info: persistedInfo, scope: scope)
+        check(persistedInfo.configuration?.deletionReferences?.pending.first?.id == referenceID,
+              "repeated Store recovery keeps the committed cleanup identity")
+    }
+    #endif
 
     static func preparationIsAtomicAndSelective() throws {
         let (scene, lamp, proxy) = fixture()

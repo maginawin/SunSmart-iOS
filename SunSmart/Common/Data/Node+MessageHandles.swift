@@ -57,7 +57,18 @@ extension Scene {
     ///   - data: 场景执行数据
     /// - Returns: 消息list
     func getDeleteMessageHandles(node: Node) -> [MeshMessageHandle] {
-        guard let sceneSetupModel = node.sceneSetupModel, !SceneDeletionCascade.hasPending(info) else { return [] }
+        guard let sceneSetupModel = node.sceneSetupModel else {
+            #if DEBUG
+            print("[SceneSync] stage=commandRejected scene=\(number) address=\(node.primaryUnicastAddress) reason=missingSceneSetupModel")
+            #endif
+            return []
+        }
+        guard !SceneDeletionCascade.hasPending(info) else {
+            #if DEBUG
+            print("[SceneSync] stage=commandDeferred scene=\(number) address=\(node.primaryUnicastAddress) reason=referencesPending count=\(info.configuration?.deletionReferences?.pending.count ?? 0)")
+            #endif
+            return []
+        }
         // 删除场景
         guard number > 0, SceneCommandBuilder.reserveGroupOperation(scene: self, node: node, action: .remove), let context = try? SceneMessageContext(scene: self, node: node, action: .remove) else {
             #if DEBUG

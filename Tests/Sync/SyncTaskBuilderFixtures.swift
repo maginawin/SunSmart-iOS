@@ -112,13 +112,15 @@ enum ActionType {
     case gatewayRecoveryVerification(gateway: GatewayModel)
 }
 final class MeshMessageHandle {
+    var isSuccessful = true
     var respondAddresss: [Address] = [1]
     var notRespondAddresss: [Address] = [2]
 }
 // Scene dependency persistence is exercised by Scene tests. This boundary lets
 // the production Session prove activation, ownership and result ordering.
 final class SceneDeletionTask {
-    func resetForRetry() {}
+    private(set) var retryResets = 0
+    func resetForRetry() { retryResets += 1 }
     var readInvalidations = 0
     func invalidateIncompleteSchedulerRead() { readInvalidations += 1 }
     var isCurrent = true

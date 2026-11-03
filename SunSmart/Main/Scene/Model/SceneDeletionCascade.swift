@@ -49,7 +49,7 @@ enum SceneDeletionCascade {
         var schedulerTargets: [TimedSchedulerNodeIdentity: Set<Int>] = [:]
         func capture(_ node: Node, slot: Int? = nil) throws {
             guard !node.schedulerSetupModels.isEmpty else { return }
-            guard let identity = node.timedSchedulerIdentity else { throw Failure.invalidTargets }
+            guard let identity = node.sceneConfigurationIdentity else { throw Failure.invalidTargets }
             if schedulerTargets[identity] == nil { schedulerTargets[identity] = [] }
             if let slot { schedulerTargets[identity, default: []].insert(slot) }
         }
@@ -61,6 +61,7 @@ enum SceneDeletionCascade {
             for node in old.existNodes { try capture(node, slot: deleting ? old.slot(on: node) : nil) }
             if deleting {
                 let copy = old.copy()
+                // Timed bindings retain their original identity format; only Scene references use canonical identity.
                 // Capture legacy slot ownership before clearing targets; no capacity allocation is needed for deletion.
                 if copy.nodeSlots == nil {
                     copy.nodeSlots = try old.existNodes.filter { !$0.schedulerSetupModels.isEmpty }.map { node in
@@ -69,7 +70,7 @@ enum SceneDeletionCascade {
                     }
                 }
                 for binding in copy.nodeSlots ?? [] {
-                    schedulerTargets[binding.identity, default: []].insert(binding.slot)
+                    schedulerTargets[try SceneConfiguration.identity(binding.identity), default: []].insert(binding.slot)
                 }
                 copy.action = .noAction
                 copy.needDeleteNodeAddresses = Array(Set(copy.needDeleteNodeAddresses + old.existNodes.map(\.primaryUnicastAddress)))
@@ -87,7 +88,7 @@ enum SceneDeletionCascade {
         }) { try capture(node) }
         for (identity, slots) in schedulerTargets {
             guard let address = Address(identity.unicastAddress, radix: 16) else { throw Failure.invalidTargets }
-            let node = manager.realNodes.first { $0.timedSchedulerIdentity == identity }
+            let node = manager.realNodes.first { $0.sceneConfigurationIdentity == identity }
             result.references.pending.append(.init(kind: .scheduler, identity: identity, address: address,
                 name: node?.name ?? identity.unicastAddress, slots: slots.sorted()))
         }
@@ -132,7 +133,7 @@ enum SceneDeletionCascade {
             for address in Set([old.proxyNodeAddress, old.deleteProxyNodeAddress].compactMap({ $0 }) + observedProxies) where !keyIndexes.isEmpty {
                 let node = manager.realNodes.first { $0.primaryUnicastAddress == address }
                 result.references.pending.append(.init(kind: power == nil ? .kinetic : .powerSwitch,
-                    identity: node?.timedSchedulerIdentity, address: address, objectID: old.id,
+                    identity: node?.sceneConfigurationIdentity, address: address, objectID: old.id,
                     name: old.name, keys: Array(Set(keyIndexes)).sorted()))
             }
             result.switches.append(copy)
@@ -148,7 +149,7 @@ enum SceneDeletionCascade {
             }
             guard !states.isEmpty else { continue }
             if let address = copy.bindNodeAddress {
-                result.references.pending.append(.init(kind: .emergency, identity: copy.bindNode?.timedSchedulerIdentity,
+                result.references.pending.append(.init(kind: .emergency, identity: copy.bindNode?.sceneConfigurationIdentity,
                     address: address, objectID: copy.id, name: copy.name, keys: states))
             }
             result.emergency.append(copy)
@@ -156,6 +157,22 @@ enum SceneDeletionCascade {
         result.references.scheduleIDs.sort()
         result.references.pending.sort { $0.address == $1.address ? $0.id.uuidString < $1.id.uuidString : $0.address < $1.address }
         return result
+    }
+
+    /// Older deletion intents could miss residual nodes when raw Timed identities were compared with Scene identities.
+    /// Only revisit identities still waiting for physical Scene removal; completed removals never acquire new work.
+    static func restoringSchedulerCoverage(_ configuration: SceneConfiguration, nodes: [Node]) throws -> SceneConfiguration {
+        var updated = try configuration.normalized()
+        guard updated.isDeleting, updated.deletionReferences != nil else { return updated }
+        let pendingRemovals = Set(updated.pendingOperations.filter { $0.action == .remove }.map(\.identity))
+        var captured = Set(updated.deletionReferences!.pending.filter { $0.kind == .scheduler }.compactMap(\.identity))
+        for node in nodes where !node.schedulerSetupModels.isEmpty {
+            guard let identity = node.sceneConfigurationIdentity,
+                  pendingRemovals.contains(identity), captured.insert(identity).inserted else { continue }
+            updated.deletionReferences?.pending.append(.init(kind: .scheduler, identity: identity,
+                address: node.primaryUnicastAddress, name: node.name ?? identity.unicastAddress))
+        }
+        return try updated.normalized()
     }
 
     static func appliedScenes(_ hash: String) -> [SceneNumber?] {
@@ -279,7 +296,12 @@ enum SceneDeletionCascade {
         var dependencies: [SyncDeviceStepModel] = []
         section.prefersDevicesBeforeGroups = true
         for reference in references.pending {
-            guard let node = MeshNetworkManager.instance.realNodes.first(where: { $0.timedSchedulerIdentity == reference.identity && reference.identity != nil }) else { continue }
+            guard let node = MeshNetworkManager.instance.realNodes.first(where: { $0.sceneConfigurationIdentity == reference.identity && reference.identity != nil }) else {
+                #if DEBUG
+                print("[SceneSync] stage=referenceUnresolved scene=\(scene.number) address=\(reference.address) kind=\(reference.kind.rawValue) hasIdentity=\(reference.identity != nil)")
+                #endif
+                continue
+            }
             let device = SyncDevicesModel(name: reference.name, address: reference.address)
             device.imageName = node.iconName
             var steps: [SyncDeviceStepModel] = []
@@ -331,7 +353,7 @@ final class SceneDeletionTask {
     func invalidateIncompleteSchedulerRead() {
         guard let actions = schedulerActionsBeforeRead else { return }
         schedulerActionsBeforeRead = nil
-        guard node.timedSchedulerIdentity == reference.identity else { return }
+        guard node.sceneConfigurationIdentity == reference.identity else { return }
         var entries = node.allSchedulerModelEntrys
         node.schedulerSetupModels.forEach { entries.removeValue(forKey: $0) }
         node.allSchedulerModelEntrys = entries
@@ -387,7 +409,7 @@ final class SceneDeletionTask {
     var isCurrent: Bool {
         let manager = MeshNetworkManager.instance
         guard manager.meshNetwork?.uuid.uuidString == scope.meshUUID, manager.currentNetworkKey.networkId.hex == scope.networkID,
-              manager.realNodes.contains(where: { $0 === node }), node.timedSchedulerIdentity == reference.identity,
+              manager.realNodes.contains(where: { $0 === node }), node.sceneConfigurationIdentity == reference.identity,
               scene.info.configuration?.revision == revision, scene.info.configuration?.isDeleting == true,
               scene.info.configuration?.deletionReferences?.pending.contains(reference) == true else { return false }
         return !prepared || desiredSnapshot() == snapshot
