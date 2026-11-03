@@ -45,6 +45,7 @@ enum TimedSchedulerSlotPolicy {
         let targetsNode: Bool
         let legacy: Bool
         let binding: TimedSchedulerNodeSlot?
+        var preservesBinding = false
     }
 
     static func plan(identity: TimedSchedulerNodeIdentity, intents: [Intent],
@@ -64,7 +65,7 @@ enum TimedSchedulerSlotPolicy {
                     throw Failure.invalidSchedule
                 }
                 // Unknown legacy Models may still contain an old orphan at id.
-                if intent.targetsNode || observedSlots == nil || observedSlots!.contains(intent.scheduleID) {
+                if intent.preservesBinding || intent.targetsNode || observedSlots == nil || observedSlots!.contains(intent.scheduleID) {
                     binding = .init(identity: identity, slot: intent.scheduleID, state: .assigned)
                 }
             }
@@ -72,7 +73,7 @@ enum TimedSchedulerSlotPolicy {
                 guard binding.isValid, binding.identity == identity else { throw Failure.invalidIdentity }
                 guard owners[binding.slot] == nil else { throw Failure.conflictingSlot }
                 owners[binding.slot] = intent.scheduleID
-                binding.state = intent.targetsNode ? .assigned : .pendingRemoval
+                if !intent.preservesBinding { binding.state = intent.targetsNode ? .assigned : .pendingRemoval }
                 result[intent.scheduleID] = binding
             }
         }
@@ -113,6 +114,12 @@ enum TimedSchedulerPayloadPolicy {
         result["schedules"] = schedules.map { schedule -> [String: Any] in
             var schedule = schedule
             schedule["nodeSlots"] = [[String: Any]]()
+            // Normalize the known legacy sentinel before promoting the payload
+            // to v2, whose native representation still requires null.
+            if let target = integer(schedule["selectTarget"]), [0, 1, 3].contains(target),
+               schedule["sceneAddress"] as? String == "" {
+                schedule["sceneAddress"] = NSNull()
+            }
             return schedule
         }
         return result
@@ -248,14 +255,27 @@ enum TimedSchedulerPayloadPolicy {
                 }) else { return nil }
                 item[key] = Array(Set(addresses.map { $0.uppercased() })).sorted()
             }
-            if let raw = schedule["sceneAddress"], !(raw is NSNull) {
+            // Legacy writers use an empty string for an unused Scene field on
+            // Group/Device/Profile schedules. The Schedule decoder stores nil.
+            // Do not extend this exception to an actual Scene target or v2.
+            if version == 1, target != 2, schedule["sceneAddress"] as? String == "" {
+                item["sceneAddress"] = NSNull()
+            } else if let raw = schedule["sceneAddress"], !(raw is NSNull) {
                 let value = (raw as? String).flatMap { UInt16($0, radix: 16) } ?? integer(raw).flatMap(UInt16.init(exactly:))
                 guard let value, value > 0 else { return nil }
                 item["sceneAddress"] = String(format: "%04X", value)
             } else { item["sceneAddress"] = NSNull() }
             guard let profiles = schedule["profiles"] as? [[String: Any]] ?? (schedule["profiles"] == nil ? [] : nil),
                   JSONSerialization.isValidJSONObject(profiles) else { return nil }
-            item["profiles"] = profiles.sorted { ($0["groupAddress"] as? String ?? "") < ($1["groupAddress"] as? String ?? "") }
+            item["profiles"] = profiles.map { profile -> [String: Any] in
+                var profile = profile
+                // Match the optional Codable fields without discarding unknown
+                // fields or meaningful metadata changes from the receipt.
+                for key in ["groupName", "type"] where profile[key] is NSNull {
+                    profile.removeValue(forKey: key)
+                }
+                return profile
+            }.sorted { ($0["groupAddress"] as? String ?? "") < ($1["groupAddress"] as? String ?? "") }
             if version == 1 {
                 guard id < 16, schedule["nodeSlots"] == nil else { return nil }
             } else {

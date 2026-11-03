@@ -51,6 +51,7 @@ with tempfile.TemporaryDirectory(prefix='timed-sqlite-') as directory:
                        .replace('    // ACTUAL_TARGETS', target_source[target_start:target_end])
                        .replace('    // ACTUAL_NEEDS_DELETE', target_source[delete_start:delete_end])
                        .replace('    // ACTUAL_CODEC', codec)
+                       .replace('    // ACTUAL_PROFILE_CODEC', function(schedule, '    struct ScheduleProfile:'))
                        .replace('    // ACTUAL_WEEKDAYS', weekdays)
                        .replace('    // ACTUAL_EXIST_NODES', function(schedule, '    var existNodes:'))
                        .replace('    // ACTUAL_TOGGLE', server[toggle_start:toggle_end])

@@ -17,7 +17,24 @@ struct TimedDeviceSlotTests {
         try preservesPendingAndRejectsUnknownCapacity()
         try migratesLegacyWithoutRenumbering()
         try rejectsConflictingBindings()
+        try preservesUnsupportedReservations()
         print("PASS: logical schedule identity is independent of the 4-bit device slot")
+    }
+
+    static func preservesUnsupportedReservations() throws {
+        for observations: Set<Int>? in [nil, [], [0]] {
+            let kept = TimedSchedulerSlotPolicy.Intent(scheduleID: 0, targetsNode: false, legacy: true, binding: nil, preservesBinding: true)
+            let plan = try TimedSchedulerSlotPolicy.plan(identity: first, intents: [kept], observedSlots: observations)
+            precondition(plan[0]?.slot == 0 && plan[0]?.state == .assigned)
+            if observations != nil {
+                let next = try TimedSchedulerSlotPolicy.plan(identity: first, intents: [kept, intent(300)], observedSlots: observations)
+                precondition(next[300]?.slot == 1, "read-only legacy slot must not be reused even when observed empty")
+            }
+        }
+        let binding = TimedSchedulerNodeSlot(identity: first, slot: 7, state: .pendingRemoval)
+        let kept = TimedSchedulerSlotPolicy.Intent(scheduleID: 0, targetsNode: false, legacy: false, binding: binding, preservesBinding: true)
+        let plan = try TimedSchedulerSlotPolicy.plan(identity: first, intents: [kept, intent(300)], observedSlots: [])
+        precondition(plan[0] == binding, "state and generation are opaque for unsupported targets")
     }
 
     static let first = TimedSchedulerNodeIdentity(

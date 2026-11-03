@@ -73,7 +73,12 @@ class SchedulesViewCell: UICollectionViewCell {
             case .noAction:
                 action = "action_none".localizedString
             }
-            actionLabel.text = "\("action".localizedString): " + action
+            if schedule.selectTargetType == .profile {
+                let targets = schedule.profiles.map { $0.groupName ?? $0.groupAddress.hex }.joined(separator: ", ")
+                actionLabel.text = String(format: "timed_profile_target".localizedString, targets)
+            } else {
+                actionLabel.text = "\("action".localizedString): " + action
+            }
             
             fadeTimeLabel.text = "\("fade_time".localizedString): " + "\(schedule.fadeTime)s"
             

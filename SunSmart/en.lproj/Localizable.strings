@@ -2322,7 +2322,7 @@
 "space_recovery_network_failed" = "Cloud data is unavailable right now. Retry when online.";
 "space_recovery_unavailable" = "This Space has not finished restoring. Retry recovery. Configuration changes are unavailable until a complete copy is ready.";
 "space_saved_copies" = "Saved Space Copies";
-"space_saved_copies_description" = "Copies kept on this phone are available here, including after leaving a Space. Some copies contain diagnostic records only. Restoring a copy requires current access to that Space.";
+"space_saved_copies_description" = "View or export copies kept on this phone, including after leaving a Space. Some copies contain diagnostic records only. This screen does not restore copies.";
 "space_leave_copy_failed" = "The copy could not be saved. Retry, or leave without keeping a copy. Unsynchronized changes may be lost if you continue.";
 "space_leave_without_copy" = "Leave Without a Copy";
 
@@ -2655,3 +2655,9 @@
 "site_create_location_services_disabled" = "Location Services are off. Turn them on in Settings > Privacy & Security > Location Services.";
 "site_create_location_restricted" = "Location access is restricted on this device. You can enter coordinates manually.";
 "site_create_location_settings_failed" = "Unable to open Settings. Please open Settings manually.";
+
+// Preserved Profile schedules
+"space_recovery_timed_invalid" = "The schedule data could not be restored. Update the app or correct the schedule data before retrying. Your saved configuration has been kept.";
+"timed_profile_read_only" = "Profile schedules are preserved, but this app cannot edit, switch, or delete them yet.";
+"timed_profile_target" = "Profile: %@ (read only)";
+"timed_profile_topology_unavailable" = "This Group is used by a Profile schedule. This app cannot safely change its membership or delete it yet.";

@@ -71,14 +71,19 @@ class Schedule: Codable, Copyable {
     struct ScheduleProfile: Codable, Equatable {
         let groupAddress: Address
         let profileSceneNumber: SceneNumber
+        let groupName: String?
+        let type: Int?
         
         private enum CodingKeys: String, CodingKey {
             case groupAddress
             case profileSceneNumber
+            case groupName
+            case type
         }
             
         static func == (lhs: ScheduleProfile, rhs: ScheduleProfile) -> Bool {
             return lhs.groupAddress == rhs.groupAddress && lhs.profileSceneNumber == rhs.profileSceneNumber
+                && lhs.groupName == rhs.groupName && lhs.type == rhs.type
         }
         
         init(from decoder: Decoder) throws {
@@ -105,12 +110,16 @@ class Schedule: Codable, Copyable {
                                                        debugDescription: "Invalid Scene number: \(sceneNumberHex).")
             }
             self.profileSceneNumber = sceneNumber
+            groupName = try container.decodeIfPresent(String.self, forKey: .groupName)
+            type = try container.decodeIfPresent(Int.self, forKey: .type)
         }
         
         func encode(to encoder: any Encoder) throws {
             var container = encoder.container(keyedBy: CodingKeys.self)
             try container.encode(self.groupAddress.hex, forKey: .groupAddress)
             try container.encode(self.profileSceneNumber.hex, forKey: .profileSceneNumber)
+            try container.encodeIfPresent(groupName, forKey: .groupName)
+            try container.encodeIfPresent(type, forKey: .type)
         }
     }
     

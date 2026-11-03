@@ -1617,6 +1617,7 @@ extension Schedule {
     /// 当前日程是否应该作用到指定节点。
     /// contextGroup 用于新增组成员时，节点刚进入组但 group.nodes 可能尚未稳定反映成员关系。
     func targets(node: Node, contextGroup: Group? = nil) -> Bool {
+        guard selectTargetType != .profile else { return false }
         if nodeAddresses.contains(node.primaryUnicastAddress) {
             return true
         }
@@ -1691,6 +1692,7 @@ extension Schedule {
     }
     
     func needsDelete(from node: Node, contextGroup: Group? = nil) -> Bool {
+        guard selectTargetType != .profile else { return false }
         guard let slot = slot(on: node) else { return false }
         let modelEntryStates: [Bool?] = node.schedulerSetupModels.map { model in
             guard let modelEntrys = node.allSchedulerModelEntrys[model] else {

@@ -4,6 +4,7 @@
 from pathlib import Path
 import subprocess
 import tempfile
+import sys
 
 root = Path(__file__).resolve().parents[1]
 schedule = (root / "SunSmart/Main/Timed/Model/Scheduler.swift").read_text()
@@ -14,12 +15,19 @@ start = schedule.index("    public required init(from decoder: Decoder) throws {
 end = schedule.index("\n    }", start) + len("\n    }")
 decoder = schedule[start:end]
 
+profile_start = schedule.index("    struct ScheduleProfile:")
+profile_end = schedule.index("\n    }", profile_start) + len("\n    }")
+profile = schedule[profile_start:profile_end]
+
 fixture = """
 import Foundation
 
 typealias Address = UInt16
 typealias SceneNumber = UInt16
 extension UInt16 {
+    var isGroup: Bool { self >= 0xC000 && self < 0xFF00 }
+    var isVirtual: Bool { self >= 0x8000 && self < 0xC000 }
+    var isSpecialGroup: Bool { self >= 0xFF00 }
     var hex: String { String(format: "%04X", self) }
     init?(hex: String) { self.init(hex, radix: 16) }
 }
@@ -27,7 +35,7 @@ struct Scene { let number: SceneNumber }
 
 final class Schedule: Codable {
     init() {}
-    typealias ScheduleProfile = Int
+PROFILE_CODEC
     enum TargetType: Int { case groups = 0, devices, scene, profile }
     enum Action: UInt8 { case off = 0, on = 1, scene = 2, noAction = 15 }
     enum CodingKeys: String, CodingKey {
@@ -47,8 +55,8 @@ final class Schedule: Codable {
     var weekDays: [Int] = []
     var nodeAddresses: [Address] = []
     var groupAddresses: [Address] = []
-    var sceneNumber: SceneNumber? = .init(hex: "0006")
-    var profiles: [Int] = []
+    var sceneNumber: SceneNumber?
+    var profiles: [ScheduleProfile] = []
     var nodeSlots: [TimedSchedulerNodeSlot]?
     var nodeSlotsLoadFailed = false
     var needDeleteNodeAddresses: [Address] = []
@@ -66,6 +74,7 @@ DECODER
 @main struct Run {
     static func main() throws {
         let schedule = Schedule()
+        schedule.sceneNumber = 6
         let encoded = try JSONEncoder().encode(schedule)
         let payload = try JSONSerialization.jsonObject(with: encoded) as! [String: Any]
         precondition(payload["sceneAddress"] as? String == "0006",
@@ -104,10 +113,45 @@ DECODER
             _ = try JSONDecoder().decode([Schedule].self, from: JSONSerialization.data(withJSONObject: [payload, corrupt]))
             preconditionFailure("one corrupt record must reject the entire decoded schedule array")
         } catch {}
+        var profileRow = payload
+        profileRow["selectTarget"] = 3
+        profileRow["sceneAddress"] = ""
+        profileRow["profiles"] = [["groupAddress": "C000", "profileSceneNumber": "FF00", "groupName": "Group 1", "type": 3]]
+        var remote: [String: Any] = ["nodes": [], "schedules": [profileRow], "spaceData": ["timedSchemaVersion": 1]]
+        let baseline = TimedSchedulerPayloadPolicy.canonical(remote)!
+        let profileSchedule = try JSONDecoder().decode(Schedule.self, from: JSONSerialization.data(withJSONObject: profileRow))
+        precondition(profileSchedule.sceneNumber == nil && profileSchedule.profiles.count == 1)
+        remote["schedules"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode([profileSchedule]))
+        precondition(TimedSchedulerPayloadPolicy.canonical(remote) == baseline, "Profile metadata survives production Codable")
+        profileRow["profiles"] = [["groupAddress": "C000", "profileSceneNumber": "FF00"]]
+        let oldProfile = try JSONDecoder().decode(Schedule.self, from: JSONSerialization.data(withJSONObject: profileRow))
+        precondition(oldProfile.profiles.first?.groupName == nil && oldProfile.profiles.first?.type == nil)
+        let oldProfileData = try JSONSerialization.jsonObject(with: JSONEncoder().encode(oldProfile)) as! [String: Any]
+        var oldEnvelope: [String: Any] = ["nodes": [], "schedules": [oldProfileData], "spaceData": ["timedSchemaVersion": 1]]
+        let oldCanonical = TimedSchedulerPayloadPolicy.canonical(oldEnvelope)!
+        profileRow["profiles"] = [["groupAddress": "C000", "profileSceneNumber": "FF00", "groupName": NSNull(), "type": NSNull()]]
+        oldEnvelope["schedules"] = [profileRow]
+        precondition(TimedSchedulerPayloadPolicy.canonical(oldEnvelope) == oldCanonical)
+        let nullProfile = try JSONDecoder().decode(Schedule.self, from: JSONSerialization.data(withJSONObject: profileRow))
+        oldEnvelope["schedules"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode([nullProfile]))
+        precondition(TimedSchedulerPayloadPolicy.canonical(oldEnvelope) == oldCanonical)
+        profileRow["profiles"] = [["groupAddress": "C000", "profileSceneNumber": "FF00", "type": 3]]
+        oldEnvelope["schedules"] = [profileRow]
+        precondition(TimedSchedulerPayloadPolicy.canonical(oldEnvelope) != oldCanonical)
+        if CommandLine.arguments.count == 2 {
+            let document = try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1]))) as! [String: Any]
+            let input = document["data"] as! [String: Any]
+            let inputSchedules = try JSONDecoder().decode([Schedule].self, from: JSONSerialization.data(withJSONObject: input["schedules"]!))
+            var result = input
+            result["schedules"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode(inputSchedules))
+            let expected = TimedSchedulerPayloadPolicy.canonical(input)
+            precondition(expected != nil && expected == TimedSchedulerPayloadPolicy.canonical(result))
+            print("PASS: private server sample production Codable and canonical round trip; schedules=", inputSchedules.count)
+        }
         print("PASS: production Schedule Codable preserves scene targets, logical IDs, slots and pending cleanup; corrupt arrays reject")
     }
 }
-""".replace("ENCODER", encoder).replace("DECODER", decoder)
+""".replace("PROFILE_CODEC", profile).replace("ENCODER", encoder).replace("DECODER", decoder)
 
 with tempfile.TemporaryDirectory(prefix="schedule-target-export-") as directory:
     source = Path(directory) / "ScheduleEncoder.swift"
@@ -116,4 +160,4 @@ with tempfile.TemporaryDirectory(prefix="schedule-target-export-") as directory:
     subprocess.run(["swiftc", "-parse-as-library",
                     str(root / "SunSmart/Main/Timed/Model/TimedSchedulerSlotPolicy.swift"),
                     str(source), "-o", str(binary)], check=True)
-    subprocess.run([str(binary)], check=True)
+    subprocess.run([str(binary), *sys.argv[1:]], check=True)

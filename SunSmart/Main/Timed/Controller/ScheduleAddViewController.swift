@@ -285,6 +285,11 @@ class ScheduleAddViewController: UIViewController {
     @objc private func deleteBtnAction() {
         
         guard let schedule = self.schedule else { return }
+        guard schedule.selectTargetType != .profile else {
+            XWHUDManager.showTipHUD("timed_profile_read_only".localizedString, isLineFeed: true)
+            return
+        }
+
         guard schedule.existNodes.count > 0 else {
             guard schedule.deleteData() else {
                 XWHUDManager.showErrorTipHUD("schedule_delete_failed".localizedString)
@@ -358,6 +363,11 @@ class ScheduleAddViewController: UIViewController {
     /// 完成（编辑）
     @objc private func doneBtnAction() {
         guard let original = self.schedule else { return }
+        guard original.selectTargetType != .profile else {
+            XWHUDManager.showTipHUD("timed_profile_read_only".localizedString, isLineFeed: true)
+            return
+        }
+
         let schedule = original.copy()
         
         // 检验数据完整性

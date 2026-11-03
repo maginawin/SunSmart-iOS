@@ -93,6 +93,7 @@ extension Schedule {
     /// Scheduler Model. Unknown/missing identities remain retryable; overlapping
     /// targets may keep their slot after it has been rewritten for the new Scene.
     func reconcilePendingSceneReferences() {
+        guard selectTargetType != .profile else { return }
         guard !nodeSlotsLoadFailed else { return }
         let cleared = needDeleteScenes.filter { oldScene in
             guard oldScene.number != sceneNumber,
@@ -116,6 +117,7 @@ extension Schedule {
     }
 
     func releaseClearedBinding(on node: Node) {
+        guard selectTargetType != .profile else { return }
         guard !MeshProxyMessageCommand.shared.isBusy,
               let identity = node.timedSchedulerIdentity, let slot = slot(on: node),
               deletionIsSynchronized(on: node),
@@ -127,12 +129,23 @@ extension Schedule {
 }
 
 enum TimedSchedulerBindings {
-    enum Failure: Error { case persistence, staleNetwork, invalidMapping, deviceCapacity(String), deviceUnknown(String) }
+    enum Failure: Error { case persistence, staleNetwork, invalidMapping, unsupportedProfile, deviceCapacity(String), deviceUnknown(String) }
     struct Plan {
         let meshUUID: String
         let networkID: String
         let schedules: [Schedule]
         let bindings: [Int: [TimedSchedulerNodeSlot]]
+    }
+
+    /// Profile targets are retained from cloud, but their topology cannot yet
+    /// be rewritten by this App. Unrelated Groups remain editable.
+    static func hasProtectedProfile(group: Group, node: Node? = nil) -> Bool {
+        let addresses = Set([group.address.address] + [node?.group?.address.address].compactMap { $0 })
+        return MeshNetworkManager.instance.schedules.contains { schedule in
+            schedule.selectTargetType == .profile && schedule.profiles.contains {
+                addresses.contains($0.groupAddress)
+            }
+        }
     }
 
     /// Preflight uses candidate schedules and prospective group membership. It
@@ -152,18 +165,19 @@ enum TimedSchedulerBindings {
             let intents = try schedules.map { schedule -> TimedSchedulerSlotPolicy.Intent in
                 let existing = (schedule.nodeSlots ?? []).filter { $0.identity == identity }
                 guard existing.count <= 1 else { throw Failure.invalidMapping }
-                let target = targetOverrides[schedule.id]?.contains(node.primaryUnicastAddress)
-                    ?? schedule.targets(node: node, contextGroup: contextGroups[node.primaryUnicastAddress])
+                let preservesBinding = schedule.selectTargetType == .profile
+                let target = !preservesBinding && (targetOverrides[schedule.id]?.contains(node.primaryUnicastAddress)
+                    ?? schedule.targets(node: node, contextGroup: contextGroups[node.primaryUnicastAddress]))
                 var binding = existing.first
                 // A prior failed deletion confirmed empty by a complete read can
                 // finish without sending another clear. Never reuse in-flight slots.
-                if !target, binding?.state == .pendingRemoval,
+                if !preservesBinding, !target, binding?.state == .pendingRemoval,
                    let slot = binding?.slot, observed?.contains(slot) == false,
                    !MeshProxyMessageCommand.shared.isBusy {
                     binding = nil
                 }
                 return .init(scheduleID: schedule.id, targetsNode: target,
-                             legacy: schedule.nodeSlots == nil, binding: binding)
+                             legacy: schedule.nodeSlots == nil, binding: binding, preservesBinding: preservesBinding)
             }
             let nodePlan: [Int: TimedSchedulerNodeSlot]
             do {
@@ -185,6 +199,8 @@ enum TimedSchedulerBindings {
         if error is SceneCapacity.Failure { SceneCapacity.showFailure(error); return }
         let message: String
         switch error {
+        case Failure.unsupportedProfile:
+            message = "timed_profile_topology_unavailable".localizedString
         case Failure.deviceCapacity(let name):
             message = String(format: "timed_device_capacity_exceeded".localizedString, name)
         case Failure.deviceUnknown(let name):
@@ -198,6 +214,10 @@ enum TimedSchedulerBindings {
     static func prepareTopology(group: Group? = nil, members: [Node] = [], addingMembers: [Node] = [],
                                 scene: Scene? = nil, sceneGroups: [Group] = [],
                                 sceneSnapshot: SceneTargetSnapshot? = nil) throws -> Plan {
+        if let group, hasProtectedProfile(group: group)
+            || addingMembers.contains(where: { hasProtectedProfile(group: group, node: $0) }) {
+            throw Failure.unsupportedProfile
+        }
         try SceneCapacity.validateTopology(group: group, members: members, addingMembers: addingMembers,
                                            scene: scene, sceneGroups: sceneGroups, sceneSnapshot: sceneSnapshot)
         let targets = try topologyTargets(group: group, members: members, addingMembers: addingMembers,
@@ -253,6 +273,10 @@ enum TimedSchedulerBindings {
     }
 
     static func canAddDevice(to group: Group, node: Node? = nil) -> Bool {
+        if hasProtectedProfile(group: group, node: node) {
+            showFailure(Failure.unsupportedProfile)
+            return false
+        }
         if let node, !SceneCapacity.canAddDevice(to: group, node: node) { return false }
         // Composition is required before applying a Scheduler capacity limit.
         guard let node, !node.schedulerSetupModels.isEmpty else { return true }
@@ -267,6 +291,7 @@ enum TimedSchedulerBindings {
     }
 
     static func reserveGroup(_ group: Group, node: Node) -> Bool {
+        guard !hasProtectedProfile(group: group, node: node) else { return false }
         do {
             try SceneCapacity.validateTopology(group: group,
                 members: group.nodes.filter { $0 !== node } + [node], addingMembers: [node])
@@ -313,6 +338,7 @@ enum TimedSchedulerBindings {
     }
 
     static func reserveForDeletion(schedule: Schedule, node: Node? = nil) -> Bool {
+        guard schedule.selectTargetType != .profile else { return false }
         guard !schedule.nodeSlotsLoadFailed else { return false }
         if schedule.nodeSlots == nil {
             do {
@@ -336,6 +362,7 @@ enum TimedSchedulerBindings {
     }
 
     static func reserveForSending(schedule: Schedule, node: Node, contextGroup: Group?) -> Bool {
+        guard schedule.selectTargetType != .profile else { return false }
         guard schedule.targets(node: node, contextGroup: contextGroup) else { return false }
         if let identity = node.timedSchedulerIdentity,
            schedule.nodeSlots?.contains(where: { $0.identity == identity && $0.state == .assigned }) == true {
@@ -374,7 +401,7 @@ final class TimedSchedulerMessageContext {
               node.timedSchedulerIdentity == binding.identity,
               MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == meshUUID,
               MeshNetworkManager.instance.currentNetworkKey.networkId.hex == networkID else { return false }
-        return MeshNetworkManager.instance.schedules.first { $0.id == scheduleID }?.nodeSlots?
+        return MeshNetworkManager.instance.schedules.first { $0.id == scheduleID && $0.selectTargetType != .profile }?.nodeSlots?
             .contains { $0.identity == binding.identity && $0.slot == binding.slot && $0.generation == binding.generation } == true
     }
 }

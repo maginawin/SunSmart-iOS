@@ -161,6 +161,51 @@ extension SpaceRecoveryReceiptTests {
         print("PASS: old cloud deletion cannot clean references belonging to a same-UUID newly provisioned local instance")
     }
 
+    @MainActor static func testProfileTimedImport() async throws {
+        typealias S = SpaceConfigurationSafety
+        typealias P = ProximityLightingImportPreflight
+        defer { P.storedSpace = nil; P.lastPayload = nil }
+        for role in ["owner", "editor", "visitor"] {
+            for resume in [false, true] {
+                let space = SpaceData()
+                space.lastUploadCloudTimestamp = space.lastUpdate
+                P.storedSpace = space
+                var remote = space.payload
+                remote["role"] = role; remote["spaceData"] = ["timedSchemaVersion": 1]
+                let rows: [[String: Any]] = (0..<2).map { id in
+                    ["id": id, "name": "Profile \(id)", "enabled": true, "selectTarget": 3,
+                     "action": 2, "fadeTime": 2, "hour": 14 + id, "minute": 28, "dayOfWeek": 127,
+                     "sceneAddress": "", "profiles": [["groupAddress": "C000", "profileSceneNumber": "FF00", "groupName": "Group 1", "type": 3]]]
+                }
+                remote["schedules"] = rows
+                if resume { precondition(S.beginImport(space, payload: remote)) }
+                for _ in 0..<2 {
+                    let outcome = await space.update(spaceJsonData: remote, initialize: !resume)
+                    precondition(outcome == .prepared, "Profile sentinel must pass initial and interrupted import preparation")
+                    precondition((P.lastPayload?["schedules"] as? [[String: Any]])?.count == 2)
+                }
+                precondition(S.beginImport(space, payload: remote))
+                let pending = S.pendingImport(space)!
+                precondition(TimedSchedulerPayloadPolicy.canonical(pending) == TimedSchedulerPayloadPolicy.canonical(remote))
+                precondition(S.finishImport(space))
+                precondition(!S.hasPendingImport(space))
+                if role != "visitor" {
+                    var submitted = remote
+                    submitted["schedules"] = rows.map { row -> [String: Any] in var row = row; row["sceneAddress"] = NSNull(); return row }
+                    let receipt = S.prepareSubmission(space, payload: submitted)!
+                    precondition(S.markSubmissionAccepted(receipt, space: space))
+                    NetworkRequest.shared.result = .failure(.noNetwork)
+                    if case .success = await S.resumeUpload(space) { preconditionFailure("offline readback") }
+                    precondition(S.hasPendingUpload(space))
+                    NetworkRequest.shared.result = .success(["data": remote])
+                    if case .failure = await S.resumeUpload(space) { preconditionFailure("legacy sentinel must confirm equivalent exported null") }
+                    precondition(!S.hasPendingUpload(space))
+                }
+            }
+        }
+        print("PASS: Profile owner/editor/visitor import preparation, interrupted retry, receipt persistence and legacy/null cloud confirmation")
+    }
+
     @MainActor static func testDefaultedTimedImport() async throws {
         typealias S = SpaceConfigurationSafety
         typealias P = ProximityLightingImportPreflight

@@ -10,6 +10,8 @@ extension UInt16 {
     var hex: String { String(format: "%04X", self) }
     var isUnicast: Bool { (1..<0x8000).contains(self) }
     var isGroup: Bool { (0xC000..<0xFF00).contains(self) }
+    var isVirtual: Bool { (0x8000..<0xC000).contains(self) }
+    var isSpecialGroup: Bool { self >= 0xFF00 }
     var isValidSceneNumber: Bool { self > 0 }
     var isSpecialScene: Bool { self >= 0xFF00 }
 }
@@ -46,7 +48,7 @@ final class MeshNetworkManager {
 final class Schedule: Codable {
     enum TargetType: Int { case groups, devices, scene, profile }
     enum Action: UInt8 { case off = 0, on = 1, scene = 2, noAction = 15 }
-    typealias ScheduleProfile = Int
+    // ACTUAL_PROFILE_CODEC
     var id: Int, name: String, enabled: Bool
     var nodeAddresses: [Address] = [], groupAddresses: [Address] = [], sceneNumber: SceneNumber?
     var profiles: [ScheduleProfile] = [], selectTargetType: TargetType, action: Action
@@ -277,10 +279,68 @@ enum ScheduleServer {
         unknownDeviceCapacityIsDeferred()
         sceneRemovalIsNotAnActiveTarget()
         try emptyTargetsSurviveReload(db: db, path: path)
+        try profileSchedulesSurviveRestore(path: path)
         SunSmartDataManager.shared.db = nil
         precondition(!item.save(meshUUID: "mesh", meshNetworkId: "one"), "missing database cannot confirm a saved reservation")
         print("PASS: production Schedule SQLite migration, 17th logical record, restart, pending cleanup, corruption and rollback")
     }
+    static func profileSchedulesSurviveRestore(path: String) throws {
+        let file = path + ".profiles"
+        SunSmartDataManager.shared.db = try Connection(file)
+        Schedule.initDatabase()
+        let rows: [[String: Any]] = (0..<2).map { id in
+            ["id": id, "name": "Profile \(id)", "enabled": true, "selectTarget": 3,
+             "sceneAddress": "", "profiles": [["groupAddress": "C001", "profileSceneNumber": "FF00", "groupName": "Group 1", "type": 3]],
+             "action": 2, "hour": 14 + id, "minute": 28, "dayOfWeek": 127, "fadeTime": 2]
+        }
+        let remote: [String: Any] = ["nodes": [], "schedules": rows, "spaceData": ["timedSchemaVersion": 1]]
+        let decoded = try JSONDecoder().decode([Schedule].self, from: JSONSerialization.data(withJSONObject: rows))
+        let manager = MeshNetworkManager.instance
+        let mesh = manager.meshNetwork!.uuid.uuidString, network = manager.currentNetworkKey.networkId.hex
+        for row in decoded { precondition(row.save(meshUUID: mesh, meshNetworkId: network)) }
+        SunSmartDataManager.shared.db = try Connection(file)
+        let restored = Schedule.load(meshUUID: mesh, meshNetworkId: network)
+        precondition(restored.count == 2 && restored.allSatisfy { $0.profiles.first?.groupName == "Group 1" && $0.profiles.first?.type == 3 })
+        var readback = remote
+        readback["schedules"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode(restored))
+        precondition(TimedSchedulerPayloadPolicy.canonical(readback) == TimedSchedulerPayloadPolicy.canonical(remote))
+        manager.schedules = restored
+        let node = Node(1), group = Group(), unrelated = Group()
+        unrelated.address.address = 0xC002
+        node.group = group; group.nodes = [node]; manager.realNodes = [node]; manager.groups = [group, unrelated]
+        let profile = restored.first!
+        node.schedulerSetupModels.forEach { node.allSchedulerModelEntrys[$0] = [profile.id: Entry()] }
+        precondition(!profile.targets(node: node) && !profile.needsDelete(from: node))
+        precondition(!TimedSchedulerBindings.reserveForSending(schedule: profile, node: node, contextGroup: group))
+        precondition(!TimedSchedulerBindings.reserveForDeletion(schedule: profile, node: node))
+        var failed = false
+        ScheduleServer.setEnabledState(schedule: profile, enabled: false, success: { _ in preconditionFailure("unsupported success") }, failed: { _ in failed = true })
+        precondition(failed && profile.enabled && node.appliedMessages == 0)
+        precondition(!TimedSchedulerBindings.canAddDevice(to: group, node: node))
+        precondition(group.getNodeExitMessageHandles(node: node) == nil && node.groupState == .inGroup)
+        do { _ = try TimedSchedulerBindings.prepareTopology(group: group); preconditionFailure("protected Group") }
+        catch TimedSchedulerBindings.Failure.unsupportedProfile {}
+        let ordinary = Schedule(id: 300, name: "Ordinary", enabled: true, nodeAddresses: [1]); ordinary.nodeSlots = []
+        manager.schedules.append(ordinary)
+        try TimedSchedulerBindings.commit(TimedSchedulerBindings.prepare(schedules: manager.schedules))
+        precondition(restored.allSatisfy { $0.slot(on: node) == $0.id && $0.nodeSlots?.first?.state == .assigned })
+        precondition(ordinary.slot(on: node) == 2)
+        let preserved = profile.nodeSlots!
+        profile.nodeSlots![0].state = .pendingRemoval
+        let pending = profile.nodeSlots!
+        node.schedulerSetupModels.forEach { node.allSchedulerModelEntrys[$0] = [:] }
+        profile.releaseClearedBinding(on: node)
+        precondition(profile.nodeSlots == pending)
+        let plan = try TimedSchedulerBindings.prepare(schedules: manager.schedules)
+        precondition(plan.bindings[profile.id] == pending)
+        profile.nodeSlots = preserved
+        node.group = unrelated
+        precondition(TimedSchedulerBindings.canAddDevice(to: unrelated, node: node))
+        precondition(unrelated.getNodeExitMessageHandles(node: node) != nil, "unrelated Group exit must not attempt to delete preserved Profile slots")
+        _ = try TimedSchedulerBindings.prepareTopology(group: unrelated)
+        print("PASS: Profile GET/Codable/SQLite restart, readback equality, read-only toggle, protected topology and reserved slots")
+    }
+
     static func staleBindingsSurviveRepairAndRestart(db originalDB: Connection, path: String) throws {
         let file = path + ".stale-bindings"
         let db = try Connection(file)
@@ -631,6 +691,10 @@ enum ScheduleServer {
         a.applyMessageHandle(handle)
         precondition(a.appliedMessages == 1, "a late reply cannot mutate a reused slot generation")
         handle.timedSchedulerContext = TimedSchedulerMessageContext(schedule: schedule, node: a)
+        schedule.selectTargetType = .profile
+        a.applyMessageHandle(handle)
+        precondition(a.appliedMessages == 1, "late reply must not mutate a cloud-replaced Profile schedule")
+        schedule.selectTargetType = .devices
         a.deviceKey = Data(repeating: 2, count: 16)
         a.applyMessageHandle(handle)
         precondition(a.appliedMessages == 1, "a replacement Device Key cannot receive an old reply")

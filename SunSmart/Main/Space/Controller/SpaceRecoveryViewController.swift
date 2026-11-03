@@ -37,6 +37,7 @@ final class SpaceRecoveryViewController: UIViewController {
         case "networkIdentityMismatch", "invalidNetworkIdentity": return "space_recovery_identity_failed".localizedString
         case "staleMembershipResponse", "staleImportPreparation": return "space_recovery_changed".localizedString
         case "networkUnavailable": return "space_recovery_network_failed".localizedString
+        case "invalidTimedPayload": return "space_recovery_timed_invalid".localizedString
         case "invalidHDBPayload": return "space_recovery_hdb_invalid".localizedString
         case "configurationDefaultRepairUnavailable": return "space_recovery_default_unavailable".localizedString
         default: return "space_recovery_unavailable".localizedString

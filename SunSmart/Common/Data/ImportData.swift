@@ -1838,6 +1838,45 @@ extension SpaceData {
         }
     }
 
+    #if DEBUG
+    /// Log structural locations only, never payload values or decoder descriptions.
+    private static func logTimedImportFailure(_ payload: [String: Any], stage: String) {
+        guard TimedSchedulerPayloadPolicy.schema(payload) != nil else {
+            print("[SpaceImport][Timed] stage=\(stage) field=spaceData.timedSchemaVersion"); return
+        }
+        guard let repaired = TimedSchedulerPayloadPolicy.repairingStaleBindings(payload) else {
+            print("[SpaceImport][Timed] stage=\(stage) field=schedules.nodeSlots"); return
+        }
+        guard let rows = repaired["schedules"] as? [[String: Any]] else {
+            print("[SpaceImport][Timed] stage=\(stage) field=schedules"); return
+        }
+        if TimedSchedulerPayloadPolicy.canonical(repaired) == nil {
+            for (index, row) in rows.enumerated() {
+                var single = repaired; single["schedules"] = [row]
+                if TimedSchedulerPayloadPolicy.canonical(single) == nil {
+                    print("[SpaceImport][Timed] stage=\(stage).canonical field=schedules[\(index)] id=\(TimedSchedulerPayloadPolicy.integer(row["id"]) ?? -1)")
+                    return
+                }
+            }
+            print("[SpaceImport][Timed] stage=\(stage).canonical field=schedules.crossRecordConstraints"); return
+        }
+        do {
+            _ = try jsonDecoder.decode([Schedule].self, from: JSONSerialization.data(withJSONObject: rows))
+        } catch {
+            let path: [CodingKey]
+            switch error {
+            case DecodingError.keyNotFound(let key, let context): path = context.codingPath + [key]
+            case DecodingError.typeMismatch(_, let context), DecodingError.valueNotFound(_, let context),
+                 DecodingError.dataCorrupted(let context): path = context.codingPath
+            default: path = []
+            }
+            let index = path.first?.intValue
+            let id = index.flatMap { rows.indices.contains($0) ? TimedSchedulerPayloadPolicy.integer(rows[$0]["id"]) : nil } ?? -1
+            print("[SpaceImport][Timed] stage=\(stage).decoder field=schedules.\(path.map(\.stringValue).joined(separator: ".")) id=\(id)")
+        }
+    }
+    #endif
+
     /// 更新空间内基本数据+设备、组、场景、日程
     /// - Parameter spaceJsonData: 空间数据
     /// - Parameter initialize: 是否初始化数据（本地无记录）
@@ -1875,6 +1914,9 @@ extension SpaceData {
               let incomingSchedules = incomingTimedPayload["schedules"] as? [[String: Any]],
               let incomingData = try? JSONSerialization.data(withJSONObject: incomingSchedules),
               (try? jsonDecoder.decode([Schedule].self, from: incomingData)) != nil else {
+            #if DEBUG
+            Self.logTimedImportFailure(incomingSpaceJsonData, stage: "preflight")
+            #endif
             return .rejected("invalidTimedPayload")
         }
         let storedTimedVersion = SpaceData.load(siteId: siteId, spaceId: id).first?.timedSchemaVersion ?? timedSchemaVersion
@@ -2050,6 +2092,9 @@ extension SpaceData {
                   let timedVersion = TimedSchedulerPayloadPolicy.schema(spaceJsonData),
                   let timedData = try? JSONSerialization.data(withJSONObject: scheduleDicts),
                   let schedules = try? jsonDecoder.decode([Schedule].self, from: timedData) else {
+                #if DEBUG
+                Self.logTimedImportFailure(spaceJsonData, stage: "stagedImport")
+                #endif
                 continuation.resume(returning: .rejected("invalidTimedPayload"))
                 return
             }
@@ -2858,6 +2903,9 @@ extension SpaceData {
             var timedReadback = spaceJsonData
             timedReadback["schedules"] = persistedTimed
             guard TimedSchedulerPayloadPolicy.canonical(timedReadback) == remoteTimedConfiguration else {
+                #if DEBUG
+                print("[SpaceImport][Timed] stage=readback field=schedules ids=\(persistedSchedules.map(\.id))")
+                #endif
                 throw SpaceConfigurationSafety.SafetyError.persistenceFailed
             }
 

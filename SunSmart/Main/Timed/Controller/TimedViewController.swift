@@ -146,6 +146,11 @@ class TimedViewController: UIViewController {
     
     /// 设置日程启用/禁用
     private func setScheduleEnabled(schedule: Schedule, enabled: Bool) {
+        guard schedule.selectTargetType != .profile else {
+            XWHUDManager.showTipHUD("timed_profile_read_only".localizedString, isLineFeed: true)
+            return
+        }
+
         guard let display = syncDisplay, display.isCurrentScope else { return }
         guard schedule.existNodes.count > 0 else {
             guard let operation = display.beginOperation() else { return }
@@ -462,6 +467,11 @@ extension TimedViewController: UICollectionViewDataSource, UICollectionViewDeleg
         }
         let schedule = schedules[indexPath.item]
         
+
+        guard schedule.selectTargetType != .profile else {
+            XWHUDManager.showTipHUD("timed_profile_read_only".localizedString, isLineFeed: true)
+            return
+        }
         let vc = ScheduleAddViewController(space: space, schedule: schedule)
         if isIPad {
             vc.preferredContentSize = iPadPreferredContentSize

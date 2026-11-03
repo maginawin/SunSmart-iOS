@@ -167,6 +167,11 @@ struct GroupServer {
     ///   - successful: 成功回调
     ///   - failed: 失败回调
     static func deleteGroup(group: Group, progress: GroupOperateProgressCallback?, successful: GroupOperateSuccessCallback?, failed: GroupOperateFailedCallback?) {
+        guard !TimedSchedulerBindings.hasProtectedProfile(group: group) else {
+            TimedSchedulerBindings.showFailure(TimedSchedulerBindings.Failure.unsupportedProfile)
+            failed?(group)
+            return
+        }
         guard let subnetworkId = group.subNetworkId,
               let space = SpaceData.load(subNetworkId: subnetworkId) else {
             failed?(group)
@@ -462,6 +467,7 @@ extension Group {
     /// - Parameter node: 节点
     /// - Returns: 消息处理list
     func getNodeExitMessageHandles(node: Node) -> [MeshMessageHandle]? {
+        guard !TimedSchedulerBindings.hasProtectedProfile(group: self, node: node) else { return nil }
         
 //        var messages: [MeshMessageHandle] = []
         // 设备中组关联的场景
@@ -470,7 +476,7 @@ extension Group {
         // Even an already-empty device slot may have an assigned reservation.
         // Persist removals before filtering the physical cleanup tasks.
         let removedSchedules = MeshNetworkManager.instance.schedules.filter {
-            $0.slot(on: node) != nil && !$0.targets(node: node, contextGroup: node.group)
+            $0.selectTargetType != .profile && $0.slot(on: node) != nil && !$0.targets(node: node, contextGroup: node.group)
         }
         guard removedSchedules.allSatisfy({ TimedSchedulerBindings.reserveForDeletion(schedule: $0, node: node) }) else {
             return nil

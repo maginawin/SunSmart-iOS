@@ -19,7 +19,40 @@ import Foundation
         ["spaceData": ["timedSchemaVersion": version], "schedules": schedules,
          "nodes": [["uuid": uuid, "unicastAddress": "0001", "deviceKey": key]], "groups": [], "scenes": []]
     }
+    static func legacyProfilePayload() {
+        var profile = schedule(0)
+        profile["selectTarget"] = 3; profile["sceneAddress"] = ""
+        let oldWriter = payload([profile, schedule(16)], version: 1)
+        let promoted = TimedSchedulerPayloadPolicy.fillingMissingBindings(oldWriter)
+        precondition(TimedSchedulerPayloadPolicy.schema(promoted) == 2)
+        precondition(TimedSchedulerPayloadPolicy.canonical(oldWriter) != nil)
+        precondition(TimedSchedulerPayloadPolicy.canonical(oldWriter) == TimedSchedulerPayloadPolicy.canonical(promoted))
+        for target in [0, 1, 3] {
+            var row = schedule(0)
+            row["selectTarget"] = target
+            row["sceneAddress"] = ""
+            row["profiles"] = [["groupAddress": "C000", "profileSceneNumber": "FF00", "groupName": "Group 1", "type": 3]]
+            let legacy = payload([row], version: 1)
+            guard let expected = TimedSchedulerPayloadPolicy.canonical(legacy) else { preconditionFailure("legacy unused Scene sentinel") }
+            row["sceneAddress"] = NSNull()
+            precondition(TimedSchedulerPayloadPolicy.canonical(payload([row], version: 1)) == expected)
+            row.removeValue(forKey: "sceneAddress")
+            precondition(TimedSchedulerPayloadPolicy.canonical(payload([row], version: 1)) == expected)
+            for bad: Any in ["", "no-scene", "0000", -1, true, "10000"] {
+                row["sceneAddress"] = bad
+                if bad as? String != "" { precondition(TimedSchedulerPayloadPolicy.canonical(payload([row], version: 1)) == nil) }
+                row["selectTarget"] = 2
+                precondition(TimedSchedulerPayloadPolicy.canonical(payload([row], version: 1)) == nil)
+                row["selectTarget"] = target
+            }
+            row["sceneAddress"] = ""
+            row["nodeSlots"] = [[String: Any]]()
+            precondition(TimedSchedulerPayloadPolicy.canonical(payload([row])) == nil, "do not relax v2")
+        }
+    }
+
     static func main() {
+        legacyProfilePayload()
         let old = payload([schedule(0), schedule(15)], version: 1)
         precondition(TimedSchedulerPayloadPolicy.canonical(old) != nil)
         precondition(TimedSchedulerPayloadPolicy.canonical(payload([schedule(16)], version: 1)) != nil)

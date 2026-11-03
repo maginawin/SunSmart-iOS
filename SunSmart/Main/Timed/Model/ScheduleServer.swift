@@ -29,6 +29,7 @@ struct ScheduleServer {
     ///   - success: 成功回调
     ///   - failed: 失败回调
     static func setEnabledState(schedule: Schedule, enabled: Bool, success: ScheduleOperateSuccessCallback?, failed: ScheduleOperateFailedCallback?) {
+        guard schedule.selectTargetType != .profile else { failed?(schedule); return }
         
         var setNodes = schedule.existNodes
         
@@ -73,6 +74,7 @@ struct ScheduleServer {
     ///   - success: 成功回调
     ///   - failed: 失败回调
     static func deleteSchedule(schedule: Schedule, success: ScheduleOperateSuccessCallback?, failed: ScheduleOperateFailedCallback?) {
+        guard schedule.selectTargetType != .profile else { failed?(schedule); return }
         let unknownNodes = nodesRequiringAuthoritativeSchedulerRead(
             schedule.existNodes
         )
@@ -217,6 +219,7 @@ struct ScheduleServer {
     ///   - success: 成功回调
     ///   - failed: 失败回调
     static func saveSchedule(schedule: Schedule, setNodes: [Node]? = nil, success: ScheduleOperateSuccessCallback?, failed: ScheduleOperateFailedCallback?) {
+        guard schedule.selectTargetType != .profile else { failed?(schedule); return }
         var deviceBatches: [ScheduleDeviceBatch] = []
         // 传入需要设置的设备
         if let setNodes = setNodes, setNodes.count > 0 {

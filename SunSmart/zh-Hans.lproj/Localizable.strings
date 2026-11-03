@@ -2338,7 +2338,7 @@
 "space_recovery_network_failed" = "暂时无法获取云端数据，请联网后重试。";
 "space_recovery_unavailable" = "此空间尚未完成恢复，请重试恢复。在完整配置就绪前，暂时无法修改配置。";
 "space_saved_copies" = "空间保留副本";
-"space_saved_copies_description" = "此处可查看本机保留的副本，退出空间后仍可访问。部分副本仅包含诊断记录。恢复副本需要重新取得该空间的当前权限。";
+"space_saved_copies_description" = "此处可查看或导出本机保留的副本，退出空间后仍可访问。部分副本仅包含诊断记录。本页面不执行副本恢复。";
 "space_leave_copy_failed" = "无法保存副本。你可以重试，或不保留副本并退出。继续退出可能丢失尚未同步的修改。";
 "space_leave_without_copy" = "不保留副本并退出";
 
@@ -2671,3 +2671,9 @@
 "site_create_location_services_disabled" = "定位服务已关闭。请前往“设置 > 隐私与安全性 > 定位服务”开启。";
 "site_create_location_restricted" = "此设备的定位访问受到限制，您可以手动输入经纬度。";
 "site_create_location_settings_failed" = "无法打开设置，请手动打开系统设置。";
+
+// Preserved Profile schedules
+"space_recovery_timed_invalid" = "无法恢复定时配置。请更新 App 或修正定时数据后重试，已有配置已保留。";
+"timed_profile_read_only" = "Profile 定时已保留，但当前 App 暂不支持编辑、启停或删除此类定时。";
+"timed_profile_target" = "Profile：%@（只读）";
+"timed_profile_topology_unavailable" = "此组被 Profile 定时引用，当前 App 暂不能安全修改其成员或删除此组。";
