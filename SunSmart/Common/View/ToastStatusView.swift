@@ -105,6 +105,7 @@ class ToastStatusView: UIView {
         messageLabel.textColor = .white
         messageLabel.numberOfLines = 0
         messageLabel.lineBreakMode = .byWordWrapping
+        messageLabel.lineBreakStrategy = []
         messageLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         messageLabel.textAlignment = .left
 
@@ -173,6 +174,7 @@ class ToastStatusView: UIView {
         messageLabel.textAlignment = .left
         messageLabel.numberOfLines = 0
         messageLabel.lineBreakMode = .byWordWrapping
+        messageLabel.lineBreakStrategy = []
         messageLabel.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
 
         stackView.axis = .horizontal
@@ -186,7 +188,7 @@ class ToastStatusView: UIView {
             make.size.equalTo(30)
         }
         stackView.snp.makeConstraints { make in
-            make.leading.trailing.equalToSuperview().inset(22)
+            make.leading.trailing.equalToSuperview().inset(12)
             make.top.equalToSuperview().offset(7)
             make.bottom.equalToSuperview().offset(-7)
         }

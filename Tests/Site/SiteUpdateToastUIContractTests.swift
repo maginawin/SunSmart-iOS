@@ -90,7 +90,7 @@ struct SiteUpdateToastUIContractTests {
                 siteUpdate.contains("messageLabel.numberOfLines = 0") &&
                 siteUpdate.contains("messageLabel.lineBreakMode = .byWordWrapping") &&
                 siteUpdate.contains("stackView.alignment = .center") &&
-                siteUpdate.contains("make.leading.trailing.equalToSuperview().inset(22)") &&
+                siteUpdate.contains("make.leading.trailing.equalToSuperview().inset(12)") &&
                 siteUpdate.contains("make.top.equalToSuperview().offset(7)") &&
                 siteUpdate.contains("make.bottom.equalToSuperview().offset(-7)") &&
                 !siteUpdate.contains("messageLabel.numberOfLines = 1") &&
