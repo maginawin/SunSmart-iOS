@@ -38,6 +38,10 @@ enum SpaceSyncAccess {
     static func error(checkingConfiguration: Bool = true) -> NetworkApiError? { failure }
     static func captureRecovery() -> () -> Bool { let captured = recovery; return { captured == recovery } }
 }
+enum GroupMemberPersistence {
+    static var succeeds = true
+    static func recoverCurrentSpace() -> Bool { succeeds }
+}
 enum SpaceSyncCleanupCoordinator {
     static var failure: NetworkApiError?, hold = false, calls = 0
     static var pending: CheckedContinuation<NetworkApiError?, Never>?
@@ -85,6 +89,10 @@ final class GatewaySyncContext {
     func capturePlan(for type: SyncType) -> () -> Bool { { self.current } }
 }
 @MainActor final class Page {
+    // Scene reference policy has its own deletion-cascade suite. This suite
+    // controls its decision to verify that the preparation gate honors denial.
+    var sceneReferencesAllowed = true
+    func permitsSceneReferences() -> Bool { sceneReferencesAllowed }
     var gatewayContext: GatewaySyncContext?
 
     var hasLeftSyncPage = false, isPreparingTaskPlan = false, needsTaskPreparation = true
@@ -120,6 +128,7 @@ final class GatewaySyncContext {
         SpaceSyncCleanupCoordinator.failure = nil; SpaceSyncCleanupCoordinator.hold = false; SpaceSyncCleanupCoordinator.calls = 0
         SceneRestoreConfirmation.result = .ready; SceneRestoreConfirmation.hold = false; SceneRestoreConfirmation.pending = nil
         SceneConfigurationStore.failure = nil; SceneConfigurationStore.calls = 0
+        GroupMemberPersistence.succeeds = true
         SyncTaskPlanBuilder.calls = 0; XWHUDManager.messages = []; XWHUDManager.visible = false
     }
     @MainActor static func waitForCleanup() async {
@@ -127,6 +136,15 @@ final class GatewaySyncContext {
         fatalError("preparation did not reach cleanup")
     }
     @MainActor static func main() async {
+        reset(); GroupMemberPersistence.succeeds = false
+        let memberRecovery = Page(); memberRecovery.rebuildTaskPlan(resume: false)
+        await memberRecovery.preparationTask?.value
+        precondition(memberRecovery.installs == 0 && SpaceSyncCleanupCoordinator.calls == 0)
+        reset()
+        let references = Page(); references.sceneReferencesAllowed = false
+        references.rebuildTaskPlan(resume: false); await references.preparationTask?.value
+        precondition(references.installs == 0 && XWHUDManager.messages == ["scene_deletion_pending"])
+        reset()
         for type in [SyncType.devices([Node()]), .group(Group()), .scene(Scene()), .profile, .schedule] {
             reset(); let page = Page(); page.type = type
             page.rebuildTaskPlan(resume: true); await page.preparationTask?.value

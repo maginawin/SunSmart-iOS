@@ -169,6 +169,9 @@ class SyncDevicesViewController: UIViewController {
             #endif
             self.failTaskPreparation(error.localizedDescription); return
         }
+        guard GroupMemberPersistence.recoverCurrentSpace() else {
+            failTaskPreparation(NetworkApiError.configurationUnavailable.localizedDescription); return
+        }
         let recoveryIsCurrent = SpaceSyncAccess.captureRecovery()
         let nodes: [Node]?
         let sceneNumber: SceneNumber?

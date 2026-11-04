@@ -418,6 +418,8 @@ final class SceneConfigurationStore {
         }
         let plan = try TimedSchedulerBindings.prepareTopology(sceneSnapshot: snapshot)
         let previousGroups = manager.groups.map { ($0, $0.info.sceneExecuteDatas) }
+        // The inner Timed savepoint can succeed before the outer COMMIT fails.
+        let previousSlots = plan.schedules.map { ($0, $0.nodeSlots) }
         var info: SceneInfo?
         var transactionError: Error?
         let saved = SunSmartDataManager.shared.configurationTransaction {
@@ -493,6 +495,7 @@ final class SceneConfigurationStore {
         }
         guard saved, let info else {
             previousGroups.forEach { $0.0.info.sceneExecuteDatas = $0.1 }
+            previousSlots.forEach { $0.0.nodeSlots = $0.1 }
             throw transactionError ?? Failure.persistence
         }
         return project(info, scope: draft.scope)

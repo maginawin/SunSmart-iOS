@@ -2,6 +2,7 @@ import Foundation
 enum NetworkApiError { case configurationUnavailable, configurationExportInvalid }
 
 enum Fixture {
+    static var memberRecoverySucceeds = true, memberRecoveryCalls = 0, cloudRecoverySucceeds = true
     static var revision: Int? = 1, dirty = false, baselineWrite = false, resumeWrite = false
     static var failReadback = false, pendingDeletion = false, pendingUpload = false, current = true
     static var exports = 0, commits = 0, finishes = 0, validations = 0
@@ -19,6 +20,7 @@ enum Fixture {
         }]
     }
     static func reset() {
+        memberRecoverySucceeds = true; memberRecoveryCalls = 0; cloudRecoverySucceeds = true
         revision = 1; dirty = false; baselineWrite = false; resumeWrite = false; failReadback = false
         pendingDeletion = false; pendingUpload = false; current = true; exports = 0; commits = 0; finishes = 0; validations = 0
         extensionDirty = false; failExtensionWrite = false; failExtensionReadback = false; ignoreExtensionWrite = false
@@ -90,7 +92,11 @@ enum ProximityLightingLifecycleCoordinator {
         Fixture.revision = Fixture.revision.map { $0 + 1 }; return true
     }
 }
+enum GroupMemberPersistence {
+    static func recover(_ space: SpaceData) -> Bool { Fixture.memberRecoveryCalls += 1; return Fixture.memberRecoverySucceeds }
+}
 enum SpaceConfigurationSafety {
+    static func recoverCloudMembershipIfNeeded(_ space: SpaceData) async -> Bool { Fixture.cloudRecoverySucceeds }
     static func hasPendingUpload(_ space: SpaceData) -> Bool { Fixture.pendingUpload }
     static func configurationSyncError(_ space: SpaceData) -> NetworkApiError { .configurationUnavailable }
     @discardableResult
@@ -137,6 +143,13 @@ struct ProximityLightingImportSyncRequest { let spaceId: String, meshUUID: Strin
                      "unchanged read must validate the reloaded persisted Space")
         precondition(Fixture.sensorCleanupCalls == 1 && !Fixture.finishedChanged,
                      "No deletion record must not dirty an ordinary Space")
+        Fixture.reset(); Fixture.memberRecoverySucceeds = false
+        success = await SpaceSyncCleanupCoordinator.run(space, scope: .init())
+        precondition(!success && Fixture.memberRecoveryCalls == 1 && Fixture.exports == 0 && Fixture.commits == 0,
+                     "Member recovery failure must stop before export or topology comparison")
+        Fixture.reset(); Fixture.cloudRecoverySucceeds = false
+        success = await SpaceSyncCleanupCoordinator.run(space, scope: .init())
+        precondition(!success && Fixture.exports == 0 && Fixture.commits == 0)
         Fixture.reset(); Fixture.sensorCleanupPending = true; Fixture.failSensorCleanup = true
         success = await SpaceSyncCleanupCoordinator.run(space, scope: .init())
         precondition(!success && Fixture.sensorCleanupPending && Fixture.finishes == 0,

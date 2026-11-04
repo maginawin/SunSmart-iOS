@@ -356,7 +356,8 @@ enum SpaceConfigurationSafety {
         return url
     }
 
-    static func isBlocked(meshUUID: String, networkId: String, excludingDeletionEntries: Set<UUID> = []) -> Bool {
+    static func isBlocked(meshUUID: String, networkId: String, excludingDeletionEntries: Set<UUID> = [], excludingGroupMemberSaveID: UUID? = nil) -> Bool {
+        if GroupMemberPersistence.hasPending(meshUUID: meshUUID, networkID: networkId, excluding: excludingGroupMemberSaveID) { return true }
         let identity = key(meshUUID: meshUUID, networkId: networkId)
         let stateURL = recoveryRoot.appendingPathComponent(identity + ".json")
         var directoryName = identity
@@ -375,8 +376,9 @@ enum SpaceConfigurationSafety {
                                       excludingEntries: excludingDeletionEntries)
     }
 
-    static func isBlocked(_ space: SpaceData, excludingDeletionEntries: Set<UUID> = []) -> Bool {
-        isBlocked(meshUUID: space.meshUUID, networkId: space.meshNetworkId, excludingDeletionEntries: excludingDeletionEntries)
+    static func isBlocked(_ space: SpaceData, excludingDeletionEntries: Set<UUID> = [], excludingGroupMemberSaveID: UUID? = nil) -> Bool {
+        isBlocked(meshUUID: space.meshUUID, networkId: space.meshNetworkId, excludingDeletionEntries: excludingDeletionEntries,
+                  excludingGroupMemberSaveID: excludingGroupMemberSaveID)
     }
 
     static func block(_ space: SpaceData, reason: String) {
