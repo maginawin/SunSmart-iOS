@@ -18,6 +18,7 @@ swiftc -parse-as-library \
 
 swiftc -parse-as-library \
   SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  Tests/Site/SiteDSTFixtures.swift \
   "$sdk_root/Sources/NordicSigMeshSDK/MeshLib/Message/MeshTimeConversion.swift" \
   SunSmart/Main/Device/Gateway/Model/GatewayDetailClockCoordinator.swift \
   Tests/Device/GatewayDetailClockCoreTests.swift \

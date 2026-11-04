@@ -29,6 +29,11 @@ enum SiteTimeZoneReviewState: Equatable {
         serverTimezone: SiteTimeZoneValue,
         gatewayCount: Int
     )
+    var displayOffset: String? {
+        guard case .review(let timezone, _) = self else { return nil }
+        return timezone.displayOffset
+    }
+
 }
 
 enum SiteEntryTimeZoneDecision: Equatable {
@@ -103,7 +108,7 @@ enum SiteEntryTimeZoneSyncPolicy {
         let scope = SiteGatewayAccessScope.resolve(remote: remote)
         let localTimezone = validated(local.timezone)
         let remoteTimezone = validated(remote.timezone)
-        func summary(targetOffsetMinutes: Int) -> SiteEntryGatewaySummary {
+        func summary(targetOffsetMinutes: Int?) -> SiteEntryGatewaySummary {
             gatewaySummary(
                 remote: remote,
                 targetOffsetMinutes: targetOffsetMinutes,
@@ -190,9 +195,9 @@ enum SiteEntryTimeZoneSyncPolicy {
         return state == current ? .noAction : .useVisitorRemote(state: state)
     }
 
-    private static func gatewaySummary(
+    static func gatewaySummary(
         remote: SiteEntryTimeZoneRemoteSnapshot,
-        targetOffsetMinutes: Int,
+        targetOffsetMinutes: Int?,
         localDirtyOffsetMinutesByGatewayID: [String: Int]
     ) -> SiteEntryGatewaySummary {
         let localTargets = localDirtyOffsetMinutesByGatewayID.reduce(
@@ -242,7 +247,7 @@ enum SiteEntryTimeZoneSyncPolicy {
     }
 
     private static func validated(_ value: SiteTimeZoneValue?) -> SiteTimeZoneValue? {
-        guard let value, TimeZone(identifier: value.ianaId) != nil else {
+        guard let value else {
             return nil
         }
         return value

@@ -2686,3 +2686,6 @@
 "scene_deletion_pending" = "待删除。请同步设备以完成场景及关联动作清理。";
 "scene_deletion_pending_short" = "待删除";
 "scene_reference_cleanup" = "清理场景动作";
+
+"site_time_zone_refresh_required" = "需要刷新";
+"site_time_zone_dst_suffix" = " (DST)";

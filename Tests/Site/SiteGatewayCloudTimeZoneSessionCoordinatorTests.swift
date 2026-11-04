@@ -10,13 +10,37 @@ struct SiteGatewayCloudTimeZoneSessionCoordinatorTests {
 
     @MainActor
     static func main() async {
+        SiteDSTFixtures.install()
         await testBuildsTargetsPublishesInitialStateAndConfirmsSuccessfulPush()
         await testNoPendingTargetsReturnsWithoutCallingAPI()
         await testFailureProducesReviewContext()
         await testCancelReturnsNil()
         await testSecondRunRejectsLateFirstRunCallbacks()
         await testVisitorHasNoTargetsAndDoesNotCallAPI()
+        await testOffsetExpiresBeforeSuccess()
         print("SiteGatewayCloudTimeZoneSessionCoordinatorTests passed")
+    }
+
+    @MainActor
+    private static func testOffsetExpiresBeforeSuccess() async {
+        let api = SessionFakeAPI(statusPlans: [.result(.success([snapshot("pending", .succeed)]))])
+        let timing = SessionFakeTiming()
+        let coordinator = makeCoordinator(api: api, timing: timing)
+        let input = SiteGatewayCloudTimeZoneSessionInput(siteID: "site", targetTimeZone: singapore,
+            remoteSnapshot: remote(role: .owner, gateways: [gateway("done", offsetMinutes: 480), gateway("pending", offsetMinutes: 0)]),
+            localSnapshotsByID: [:], confirmedOffsetMinutesByGatewayID: [:])
+        var updates: [SiteGatewayCloudTimeZoneBatchState] = []
+        let task = Task { @MainActor in await coordinator.run(input: input) { updates.append($0) } }
+        await waitUntil("Cloud request starts") { api.submitCalls.count == 1 && timing.sleepCount(nanoseconds: 3) == 1 }
+        SiteTimeZoneValue.snapshotProvider = { _, _ in nil }
+        timing.advance(by: 3)
+        let result = await task.value
+        require(result?.terminalState.items.allSatisfy { $0.status == .failed } == true,
+                "Crossing DST invalidates both old and just-acknowledged confirmations")
+        require(updates.last?.items.allSatisfy { $0.status == .failed } == true,
+                "UI must never publish obsolete success after the offset expires")
+        require(result?.confirmedOffsetMinutesByGatewayID.isEmpty == true, "Stale cloud Succeed must not create confirmation")
+        SiteDSTFixtures.install()
     }
 
     @MainActor

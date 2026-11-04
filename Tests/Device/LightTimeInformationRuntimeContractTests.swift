@@ -32,8 +32,8 @@ struct LightTimeInformationRuntimeContractTests {
             "Both entries must share local-client preparation, setup capability and Site timezone resolution"
         )
         require(
-            occurrences(of: "InformationClockRecovery.swift in Sources */", in: project) == 10,
-            "The shared recovery must be compiled by all five brands"
+            occurrences(of: "InformationClockRecovery.swift in Sources */", in: project) == 12,
+            "The shared recovery must be compiled by all six brands"
         )
 
         require(coordinator.contains("node.timeModel"), "Capability must come from the actual Time Server Model")

@@ -15,6 +15,9 @@ final class SiteTimeZoneSelectionCell: UITableViewCell {
     private let ianaIdLabel = UILabel()
     private let utcOffsetLabel = UILabel()
     private let separatorView = UIView()
+    private var entry: SiteTimeZoneCatalogEntry?
+    private var observation: UUID?
+    var onHeightChanged: (() -> Void)?
 
     override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
         super.init(style: style, reuseIdentifier: reuseIdentifier)
@@ -30,6 +33,8 @@ final class SiteTimeZoneSelectionCell: UITableViewCell {
         isFirst: Bool,
         isLast: Bool
     ) {
+        stopObserving()
+        self.entry = entry
         ianaIdLabel.text = entry.ianaId
         utcOffsetLabel.text = entry.value.displayOffset
         separatorView.isHidden = isLast
@@ -44,6 +49,22 @@ final class SiteTimeZoneSelectionCell: UITableViewCell {
         cardView.layer.cornerRadius = corners.isEmpty ? 0 : SCRYFrom(14)
         cardView.layer.maskedCorners = corners
     }
+
+    func startObserving() {
+        guard observation == nil, let entry else { return }
+        observation = SiteTimeZoneService.shared.observe(entry.value) { [weak self] in
+            guard let self, self.entry?.ianaId == entry.ianaId else { return }
+            let updated = entry.value.displayOffset
+            guard self.utcOffsetLabel.text != updated else { return }
+            self.utcOffsetLabel.text = updated
+            self.onHeightChanged?()
+        }
+    }
+    func stopObserving() {
+        SiteTimeZoneService.shared.removeObserver(observation); observation = nil
+    }
+    override func prepareForReuse() { super.prepareForReuse(); stopObserving(); entry = nil }
+    deinit { SiteTimeZoneService.shared.removeObserver(observation) }
 
     private func setupUI() {
         selectionStyle = .none
@@ -60,21 +81,28 @@ final class SiteTimeZoneSelectionCell: UITableViewCell {
 
         ianaIdLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14))
         ianaIdLabel.textColor = RGB(27, 20, 37)
-        ianaIdLabel.lineBreakMode = .byTruncatingTail
+        ianaIdLabel.lineBreakMode = .byWordWrapping
+        ianaIdLabel.numberOfLines = 2
         cardView.addSubview(ianaIdLabel)
         cardView.addSubview(utcOffsetLabel)
         ianaIdLabel.snp.makeConstraints { make in
             make.left.equalTo(SCRXFrom(16))
-            make.centerY.equalToSuperview()
-            make.right.lessThanOrEqualTo(utcOffsetLabel.snp.left).offset(SCRXFrom(-8))
+            make.top.equalTo(SCRYFrom(8))
+            make.bottom.equalTo(SCRYFrom(-8))
+            make.width.equalToSuperview().multipliedBy(0.38)
         }
 
+        utcOffsetLabel.numberOfLines = 0
+        utcOffsetLabel.textAlignment = .right
         utcOffsetLabel.font = UIFont.systemFont(ofSize: SCRYFrom(14))
         utcOffsetLabel.textColor = RGB(148, 163, 184)
         utcOffsetLabel.setContentCompressionResistancePriority(.required, for: .horizontal)
         utcOffsetLabel.snp.makeConstraints { make in
             make.right.equalTo(SCRXFrom(-16))
+            make.top.greaterThanOrEqualTo(SCRYFrom(8))
             make.centerY.equalToSuperview()
+            make.left.equalTo(ianaIdLabel.snp.right).offset(SCRXFrom(8))
+            make.bottom.lessThanOrEqualTo(SCRYFrom(-8))
         }
 
         separatorView.backgroundColor = RGB(193, 207, 226, 0.5)

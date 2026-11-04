@@ -4,6 +4,15 @@ import Foundation
 struct SyncGatewaysStateTests {
 
     static func main() {
+        SiteDSTFixtures.install()
+        var changing = SyncGatewaysState(targets: [.init(id: "dst", displayName: nil, remoteOrder: 0, initialOffsetMinutes: -300, isSyncable: true)])
+        changing.receiveAdvertisement(id: "dst", rssi: -40)
+        let attempt = changing.beginSync(id: "dst")!
+        changing.finishSync(id: "dst", attemptID: attempt, result: .success)
+        changing.reconcileConfirmedOffsets(["dst": -300], targetOffset: -300)
+        require(changing.item(id: "dst")?.device == .synced, "Unchanged offset keeps completed work")
+        changing.reconcileConfirmedOffsets(["dst": -300], targetOffset: -360)
+        require(changing.item(id: "dst")?.device == .pending, "DST change reopens the completed target")
         testSectionProjectionAndSingleSyncExclusion()
         testFailureRetryAndSignalTransitions()
         testSyncedRSSIAndCloudStateAreOrthogonal()

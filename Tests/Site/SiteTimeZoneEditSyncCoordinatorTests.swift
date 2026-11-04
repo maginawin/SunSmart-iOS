@@ -10,6 +10,7 @@ struct SiteTimeZoneEditSyncCoordinatorTests {
 
     @MainActor
     static func main() async {
+        SiteDSTFixtures.install()
         await testSnapshotWithoutTimeZoneFieldDoesNotStart()
         await testSubmitFailureKeepsSiteSavedAndFailsPendingGateways()
         await testEmptyLocalTargetsCompleteWithoutGatewayAPI()

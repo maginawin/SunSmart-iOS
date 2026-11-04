@@ -109,7 +109,7 @@ extension SiteData {
             SunSmartDataManager.shared.db = try Connection(path)
             let loaded = SiteData.load(siteId: site.id)!
             precondition(loaded.name == "List name")
-            precondition(loaded.timezone == "Asia/Singapore (UTC+08:00)" && loaded.city == "Singapore"
+            precondition(loaded.timezone == "Asia/Singapore" && loaded.city == "Singapore"
                 && loaded.address == "Street" && loaded.cityId == 123,
                 "List summaries must not clear missing timezone/standard properties after SQLite reload")
             precondition(loaded.imageId == 7 && loaded.create == oldCreate && loaded.sourceType == .share)
@@ -123,7 +123,7 @@ extension SiteData {
                 "updateTimestamp": loaded.lastUpdate, "timezone": NSNull(), "city": NSNull(), "imageId": 0]
             try SunSmartDataManager.shared.db!.execute("CREATE TRIGGER fail_list_import BEFORE INSERT ON sites BEGIN SELECT RAISE(FAIL, 'fixture'); END;")
             precondition(!loaded.importFixture(siteJsonData: clear, source: .listSummary))
-            precondition(loaded.name == "List name" && loaded.timezone == "Asia/Singapore (UTC+08:00)"
+            precondition(loaded.name == "List name" && loaded.timezone == "Asia/Singapore"
                 && loaded.city == "Singapore" && loaded.pendingSitePropsMask == [.timezone, .city, .address])
             try SunSmartDataManager.shared.db!.execute("DROP TRIGGER fail_list_import")
             precondition(loaded.importFixture(siteJsonData: clear, source: .listSummary))

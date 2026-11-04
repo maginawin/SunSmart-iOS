@@ -15,7 +15,7 @@ class SiteFormViewController: UIViewController {
     private let createButton = UIButton(type: .system)
     private let nameField = UITextField()
     private let nameTip = UILabel()
-    private let timeZoneRow = SiteCreationSelectionRow()
+    private let timeZoneRow = SiteCreationSelectionRow(allowsMultilineDetail: true)
     private lazy var typeRow = SiteCreationSelectionRow(showsArrow: editingSite == nil)
     private let timeZoneCatalog: SiteTimeZoneCatalog?
     private let countryCatalogStore = CountryRegionCatalogStore.shared
@@ -55,6 +55,8 @@ class SiteFormViewController: UIViewController {
     private let helpButton = UIButton(type: .custom)
     private let flowLayout = UICollectionViewFlowLayout()
     private lazy var icons = UICollectionView(frame: .zero, collectionViewLayout: flowLayout)
+    private var timeZoneObservation: UUID?
+    private var observedTimeZoneID: String?
     private var localTimeTimer: Timer?
     private weak var typeAlert: SiteTypeSelectionAlertView?
     private var isNameValid = false
@@ -121,6 +123,7 @@ class SiteFormViewController: UIViewController {
     required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
 
     deinit {
+        SiteTimeZoneService.shared.removeObserver(timeZoneObservation)
         if let observation = countryCatalogObservation { countryCatalogStore.removeObserver(observation) }
         if let observation = cityCatalogObservation { cityCatalogStore.removeObserver(observation) }
         localTimeTimer?.invalidate()
@@ -150,6 +153,7 @@ class SiteFormViewController: UIViewController {
 
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        updateTimeZone()
         guard contextIsCurrent else { close(); return }
         if countryCatalogObservation == nil {
             countryCatalogObservation = countryCatalogStore.observe { [weak self] in self?.countryCatalogDidChange() }
@@ -166,6 +170,8 @@ class SiteFormViewController: UIViewController {
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        SiteTimeZoneService.shared.removeObserver(timeZoneObservation)
+        timeZoneObservation = nil
         if let observation = countryCatalogObservation {
             countryCatalogStore.removeObserver(observation)
             countryCatalogObservation = nil
@@ -756,17 +762,28 @@ class SiteFormViewController: UIViewController {
     }
 
     private func updateTimeZone() {
+        let identifier = formDraft.timezone?.ianaId
+        if identifier != observedTimeZoneID || timeZoneObservation == nil {
+            SiteTimeZoneService.shared.removeObserver(timeZoneObservation)
+            observedTimeZoneID = identifier
+            timeZoneObservation = formDraft.timezone.map { value in
+                SiteTimeZoneService.shared.observe(value) { [weak self] in
+                    guard let self, self.contextIsCurrent, self.formDraft.timezone?.ianaId == value.ianaId else { return }
+                    self.updateTimeZone()
+                }
+            }
+        }
         timeZoneRow.valueLabel.text = formDraft.timezone?.ianaId ?? "site_create_unknown".localizedString
         timeZoneRow.detailLabel.text = formDraft.timezone?.displayOffset
         timeZoneRow.detailLabel.isHidden = formDraft.timezone == nil
-        timeZoneRow.accessibilityValue = formDraft.timezone?.storageValue ?? timeZoneRow.valueLabel.text
+        timeZoneRow.accessibilityValue = [timeZoneRow.valueLabel.text, timeZoneRow.detailLabel.text].compactMap { $0 }.joined(separator: ", ")
         localTimeLabel.isHidden = formDraft.timezone == nil
         refreshClock()
     }
 
     private func refreshClock() {
         guard let timezone = formDraft.timezone else { return }
-        localTimeLabel.text = String(format: "site_local_time_format".localizedString, timezone.formattedLocalDate(at: Date())) + " · " + timezone.displayOffset
+        localTimeLabel.text = String(format: "site_local_time_format".localizedString, timezone.formattedLocalDate(at: Date())) + " · " + (timezone.offsetMinutes.map(SiteTimeZoneValue.formatOffset) ?? timezone.displayOffset)
     }
 
     @objc private func stopClock() { localTimeTimer?.invalidate(); localTimeTimer = nil }

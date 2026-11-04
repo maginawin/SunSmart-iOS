@@ -31,7 +31,7 @@ struct SiteGatewayLocalTimeZoneCandidate: Equatable {
 
 enum SiteGatewayLocalTimeZoneTargetBuilder {
     static func build(
-        targetOffsetMinutes: Int,
+        targetOffsetMinutes: Int?,
         candidates: [SiteGatewayLocalTimeZoneCandidate]
     ) -> [SiteGatewayCloudTimeZoneTarget] {
         var seen = Set<String>()
@@ -54,7 +54,7 @@ enum SiteGatewayLocalTimeZoneTargetBuilder {
                 displayName: effectiveDisplayName,
                 remoteOrder: index,
                 effectiveOffsetMinutes: candidate.currentOffsetMinutes,
-                requiresSync: candidate.currentOffsetMinutes != targetOffsetMinutes
+                requiresSync: targetOffsetMinutes == nil || candidate.currentOffsetMinutes != targetOffsetMinutes
             )
         }
     }
@@ -94,7 +94,7 @@ enum SiteGatewayCloudTimeZoneConfirmationPolicy {
 enum SiteGatewayCloudTimeZoneTargetBuilder {
 
     static func build(
-        targetOffsetMinutes: Int,
+        targetOffsetMinutes: Int?,
         remote: SiteEntryTimeZoneRemoteSnapshot,
         localByGatewayID: [String: SiteGatewayCloudTimeZoneLocalSnapshot],
         confirmedOffsetMinutesByGatewayID: [String: Int] = [:]
@@ -155,7 +155,7 @@ enum SiteGatewayCloudTimeZoneTargetBuilder {
                 displayName: displayName,
                 remoteOrder: candidate.remoteOrder,
                 effectiveOffsetMinutes: effectiveOffset,
-                requiresSync: effectiveOffset != targetOffsetMinutes
+                requiresSync: targetOffsetMinutes == nil || effectiveOffset != targetOffsetMinutes
             )
         }
     }

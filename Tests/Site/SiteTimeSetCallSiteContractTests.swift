@@ -38,7 +38,7 @@ struct SiteTimeSetCallSiteContractTests {
         )
         require(
             combinedAppSources.contains("SiteTimeSetMessageFactory.makeHandle(")
-                && combinedAppSources.contains("SiteTimeSetMessageFactory.makeMessage(")
+                && combinedAppSources.contains("SiteTimeSetMessageFactory.broadcast(")
                 && combinedAppSources.contains("SiteTimeSetMessageFactory.resolve("),
             "All TimeSet variants must route through the shared factory"
         )
@@ -51,9 +51,9 @@ struct SiteTimeSetCallSiteContractTests {
         )
         require(
             factory.contains("SiteData.load(siteId: siteID)")
-                && factory.contains("phoneFallback(")
+                && factory.contains("snapshot.isUsable(at: date)")
                 && factory.contains("SiteTimeSetMessageFactory"),
-            "The factory must resolve local Site first and provide controlled phone fallback"
+            "The factory must require a usable server snapshot for the local Site"
         )
         require(
             !factory.contains("site.timezone =")

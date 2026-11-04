@@ -406,7 +406,7 @@ private final class StatusRowView: UIView {
         titleLabel.textColor = RGB(30, 35, 41)
         messageLabel.font = scaledFont(size: 12)
         for label in [titleLabel, messageLabel] {
-            label.numberOfLines = 1
+            label.numberOfLines = 0
             label.adjustsFontForContentSizeCategory = true
         }
         let stack = UIStackView(arrangedSubviews: [titleLabel, messageLabel])

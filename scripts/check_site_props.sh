@@ -3,7 +3,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 test_dir="$(mktemp -d)"
 trap 'rm -rf "$test_dir"' EXIT
-common=("$repo_root/SunSmart/Common/Data/SiteTimeZoneValue.swift" "$repo_root/SunSmart/Main/Site/Model/SitePropsEditPolicy.swift")
+common=("$repo_root/Tests/Site/SiteDSTFixtures.swift" "$repo_root/SunSmart/Common/Data/SiteTimeZoneValue.swift" "$repo_root/SunSmart/Main/Site/Model/SitePropsEditPolicy.swift")
 swiftc -parse-as-library "${common[@]}" "$repo_root/Tests/Site/SitePropsEditPolicyTests.swift" -o "$test_dir/policy"
 "$test_dir/policy"
 swiftc -parse-as-library "${common[@]}" "$repo_root/SunSmart/Main/Site/Model/SitePropsAPIClient.swift" \

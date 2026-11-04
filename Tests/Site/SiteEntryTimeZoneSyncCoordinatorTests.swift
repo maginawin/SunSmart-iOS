@@ -5,6 +5,7 @@ struct SiteEntryTimeZoneSyncCoordinatorTests {
 
     @MainActor
     static func main() async {
+        SiteDSTFixtures.install()
         await requireStandardPropertiesSurviveTimeZoneFlows()
         await requireSingleConsumption()
         await requireGatewayOnlyWaitsWithoutMutatingStore()

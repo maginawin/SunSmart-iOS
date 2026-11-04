@@ -79,7 +79,7 @@ import Foundation
         precondition(gpsProperties.longitude == -123.123457)
 
         let catalog = try SiteTimeZoneCatalog(data: Data(contentsOf: URL(fileURLWithPath: CommandLine.arguments[1])))
-        precondition(catalog.value(matchingIdentifier: "Asia/Shanghai")?.storageValue == "Asia/Shanghai (UTC+08:00)")
+        precondition(catalog.value(matchingIdentifier: "Asia/Shanghai")?.storageValue == "Asia/Shanghai")
         precondition(catalog.value(matchingIdentifier: "missing/zone") == nil)
         precondition(catalog.value(matchingIdentifier: "GMT+1234") == nil, "Creation must not invent a fallback")
         print("PASS: creation draft normalization, Unicode limits, name validation, coordinate feedback/submission consistency and strict time zone lookup")

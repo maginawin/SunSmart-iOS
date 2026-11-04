@@ -48,6 +48,12 @@ final class SiteTimeZoneSelectionViewController: UIViewController {
         updateEmptyState()
     }
 
+    override func viewWillAppear(_ animated: Bool) { super.viewWillAppear(animated); tableView.reloadData() }
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        tableView.visibleCells.compactMap { $0 as? SiteTimeZoneSelectionCell }.forEach { $0.stopObserving() }
+    }
+
     private func setupSearchField() {
         searchField.placeholder = "site_time_zone_search_placeholder".localizedString
         searchField.font = UIFont.systemFont(ofSize: SCRYFrom(14))
@@ -75,7 +81,8 @@ final class SiteTimeZoneSelectionViewController: UIViewController {
         tableView.separatorStyle = .none
         tableView.keyboardDismissMode = .onDrag
         tableView.showsVerticalScrollIndicator = true
-        tableView.rowHeight = SCRYFrom(44)
+        tableView.rowHeight = UITableView.automaticDimension
+        tableView.estimatedRowHeight = SCRYFrom(60)
         if #available(iOS 15.0, *) {
             tableView.sectionHeaderTopPadding = 0
         }
@@ -135,6 +142,10 @@ extension SiteTimeZoneSelectionViewController: UITableViewDataSource {
             for: indexPath
         ) as! SiteTimeZoneSelectionCell
         let entries = sections[indexPath.section].entries
+        cell.onHeightChanged = { [weak self] in
+            guard let self, self.viewIfLoaded?.window != nil else { return }
+            UIView.performWithoutAnimation { self.tableView.beginUpdates(); self.tableView.endUpdates() }
+        }
         cell.configure(
             entry: entries[indexPath.row],
             isFirst: indexPath.row == 0,
@@ -145,6 +156,13 @@ extension SiteTimeZoneSelectionViewController: UITableViewDataSource {
 }
 
 extension SiteTimeZoneSelectionViewController: UITableViewDelegate {
+    func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        (cell as? SiteTimeZoneSelectionCell)?.startObserving()
+    }
+    func tableView(_ tableView: UITableView, didEndDisplaying cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+        (cell as? SiteTimeZoneSelectionCell)?.stopObserving()
+    }
+
 
     func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         let entry = sections[indexPath.section].entries[indexPath.row]

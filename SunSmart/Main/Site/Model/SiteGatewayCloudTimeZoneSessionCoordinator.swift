@@ -10,6 +10,7 @@ import Foundation
 struct SiteGatewayCloudTimeZoneSessionInput: Equatable {
     let siteID: String
     let targetTimeZone: SiteTimeZoneValue
+    let targetOffsetMinutes: Int?
     let targets: [SiteGatewayCloudTimeZoneTarget]
     let confirmedOffsetMinutesByGatewayID: [String: Int]
 
@@ -21,6 +22,7 @@ struct SiteGatewayCloudTimeZoneSessionInput: Equatable {
     ) {
         self.siteID = siteID
         self.targetTimeZone = targetTimeZone
+        self.targetOffsetMinutes = targetTimeZone.offsetMinutes
         self.targets = targets
         self.confirmedOffsetMinutesByGatewayID =
             confirmedOffsetMinutesByGatewayID
@@ -85,8 +87,11 @@ final class SiteGatewayCloudTimeZoneSessionCoordinator {
         onUpdate(initialState)
         guard activeToken == token else { return nil }
 
-        let terminalState: SiteGatewayCloudTimeZoneBatchState
-        if initialState.requestMACs.isEmpty {
+        var terminalState: SiteGatewayCloudTimeZoneBatchState
+        if input.targetOffsetMinutes == nil {
+            terminalState = initialState
+            terminalState.failPushing()
+        } else if initialState.requestMACs.isEmpty {
             terminalState = initialState
         } else {
             guard let result = await syncCoordinator.run(
@@ -94,7 +99,7 @@ final class SiteGatewayCloudTimeZoneSessionCoordinator {
                 initialState: initialState,
                 onUpdate: { [weak self] state in
                     guard self?.activeToken == token else { return }
-                    onUpdate(state)
+                    onUpdate(self?.validated(state, input: input) ?? state)
                 }
             ), activeToken == token else {
                 return nil
@@ -102,6 +107,7 @@ final class SiteGatewayCloudTimeZoneSessionCoordinator {
             terminalState = result
         }
 
+        terminalState = validated(terminalState, input: input)
         return SiteGatewayCloudTimeZoneSessionResult(
             initialState: initialState,
             terminalState: terminalState,
@@ -117,6 +123,14 @@ final class SiteGatewayCloudTimeZoneSessionCoordinator {
         )
     }
 
+    private func validated(_ state: SiteGatewayCloudTimeZoneBatchState,
+                           input: SiteGatewayCloudTimeZoneSessionInput) -> SiteGatewayCloudTimeZoneBatchState {
+        guard input.targetTimeZone.offsetMinutes != input.targetOffsetMinutes else { return state }
+        var current = state
+        current.invalidate(ids: Set(state.items.map(\.id)))
+        return current
+    }
+
     func cancel() {
         activeToken = nil
         syncCoordinator.cancel()
@@ -127,6 +141,8 @@ final class SiteGatewayCloudTimeZoneSessionCoordinator {
         initialState: SiteGatewayCloudTimeZoneBatchState,
         terminalState: SiteGatewayCloudTimeZoneBatchState
     ) -> [String: Int] {
+        guard let targetOffset = input.targetOffsetMinutes,
+              input.targetTimeZone.offsetMinutes == targetOffset else { return input.confirmedOffsetMinutesByGatewayID }
         let initiallyPushingIDs = Set(
             initialState.items
                 .filter { $0.status == .pushing }
@@ -138,7 +154,7 @@ final class SiteGatewayCloudTimeZoneSessionCoordinator {
                   item.status == .synced else {
                 return
             }
-            confirmed[item.id] = input.targetTimeZone.offsetMinutes
+            confirmed[item.id] = targetOffset
         }
         return confirmed
     }

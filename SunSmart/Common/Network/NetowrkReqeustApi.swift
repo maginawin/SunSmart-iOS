@@ -39,6 +39,7 @@ enum NetowrkReqeustApi {
     /// Public country directory; pin the region when each request starts.
     case siteCountries(region: ServerRegion)
     case siteCities(countryCode: String, region: ServerRegion)
+    case siteDST(timezone: String, date: String, region: ServerRegion)
     /// 获取site信息
     case siteInfo(siteId: String)
     /// 获取 Edit Site 属性
@@ -161,6 +162,7 @@ extension NetowrkReqeustApi {
         case .siteInfo: return "siteInfo"
         case .siteCountries: return "siteCountries"
         case .siteCities: return "siteCities"
+        case .siteDST: return "siteDST"
         case .sitePropsRetrieve: return "sitePropsRetrieve"
         case .sitePropsUpdate: return "sitePropsUpdate"
         case .siteAdd: return "siteAdd"
@@ -274,6 +276,7 @@ extension NetowrkReqeustApi: TargetType {
     var baseURL: URL {
         if case .siteCountries(let region) = self { return region.baseURL }
         if case .siteCities(_, let region) = self { return region.baseURL }
+        if case .siteDST(_, _, let region) = self { return region.baseURL }
         return UserData.currentServerRegion.baseURL
 //        return URL(string: "https://www.mericher.com/srv2")!
     }
@@ -286,6 +289,8 @@ extension NetowrkReqeustApi: TargetType {
             return "/sitespace/common/countries"
         case .siteCities:
             return "/sitespace/common/cities"
+        case .siteDST:
+            return "/sitespace/schedule/dst/next-transition"
         case .siteInfo:
             return "/sitespace/get/siteprops"
         case .sitePropsRetrieve:
@@ -396,6 +401,8 @@ extension NetowrkReqeustApi: TargetType {
             return nil
         case .siteCities(let countryCode, _):
             return ["country_code": countryCode]
+        case .siteDST(let timezone, let date, _):
+            return ["timezone": timezone, "date": date]
         case .siteInfo(let siteId):
             return ["siteId": siteId, "userId": UserData.currentUserId]
         case .sitePropsRetrieve(let siteId):

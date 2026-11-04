@@ -3,27 +3,23 @@ import Foundation
 enum GatewayDetailTimeZoneSource: Equatable {
     case site
     case phoneFallback
+    case unavailable
 }
 
 struct GatewayDetailTargetTimeZone: Equatable {
     let identifier: String
-    let offsetMinutes: Int
+    let offsetMinutes: Int?
     let source: GatewayDetailTimeZoneSource
 
     var displayOffset: String {
-        let sign = offsetMinutes < 0 ? "-" : "+"
-        let magnitude = abs(offsetMinutes)
-        return String(format: "UTC%@%02d:%02d", sign, magnitude / 60, magnitude % 60)
+        offsetMinutes.map(SiteTimeZoneValue.formatOffset)
+            ?? NSLocalizedString("site_time_zone_refresh_required", value: "Refresh required", comment: "Unknown target offset")
     }
-
-    var isMeshEncodable: Bool {
-        let encodedOffset = offsetMinutes / 15 + 64
-        return offsetMinutes.isMultiple(of: 15)
-            && (0...Int(UInt8.max)).contains(encodedOffset)
-    }
-
-    var fixedTimeZone: TimeZone? {
-        TimeZone(secondsFromGMT: offsetMinutes * 60)
+    var isMeshEncodable: Bool { offsetMinutes.map(SiteTimeZoneValue.isMeshEncodable) ?? false }
+    var fixedTimeZone: TimeZone? { offsetMinutes.flatMap { TimeZone(secondsFromGMT: $0 * 60) } }
+    var isCurrent: Bool {
+        guard let offsetMinutes, let identity = SiteTimeZoneValue(storageValue: identifier) else { return false }
+        return identity.offsetMinutes == offsetMinutes
     }
 }
 
@@ -37,15 +33,15 @@ enum GatewayDetailTimeZoneResolver {
            let value = SiteTimeZoneValue(storageValue: storageValue) {
             return GatewayDetailTargetTimeZone(
                 identifier: value.ianaId,
-                offsetMinutes: value.offsetMinutes,
+                offsetMinutes: value.effectiveOffset(at: date),
                 source: .site
             )
         }
 
         return GatewayDetailTargetTimeZone(
-            identifier: phoneTimeZone.identifier,
-            offsetMinutes: phoneTimeZone.secondsFromGMT(for: date) / 60,
-            source: .phoneFallback
+            identifier: "",
+            offsetMinutes: nil,
+            source: .unavailable
         )
     }
 }
@@ -69,8 +65,8 @@ struct GatewayDetailClockState: Equatable {
 
     mutating func accept(
         sample: GatewayDetailClockSample,
-        offBySeconds: Int,
-        targetOffsetMinutes: Int,
+        offBySeconds: Int?,
+        targetOffsetMinutes: Int?,
         targetIsMeshEncodable: Bool = true
     ) {
         self.sample = sample
@@ -81,8 +77,8 @@ struct GatewayDetailClockState: Equatable {
 
     mutating func completeSync(
         sample: GatewayDetailClockSample,
-        offBySeconds: Int,
-        targetOffsetMinutes: Int,
+        offBySeconds: Int?,
+        targetOffsetMinutes: Int?,
         targetIsMeshEncodable: Bool = true
     ) {
         accept(
@@ -165,7 +161,8 @@ final class GatewayDetailClockFormatter {
         self.formatter = formatter
     }
 
-    func format(date: Date, offsetMinutes: Int) -> String {
+    func format(date: Date, offsetMinutes: Int?) -> String {
+        guard let offsetMinutes else { return "--" }
         formatter.timeZone = TimeZone(secondsFromGMT: offsetMinutes * 60)
         return formatter.string(from: date)
     }
@@ -186,10 +183,10 @@ enum GatewayDetailClockCore {
 
     static func offBySeconds(
         localDate: Date,
-        targetOffsetMinutes: Int,
+        targetOffsetMinutes: Int?,
         sample: GatewayDetailClockSample
     ) -> Int? {
-        guard isDisplayable(sample: sample), let gatewayDate = sample.utcDate else { return nil }
+        guard let targetOffsetMinutes, isDisplayable(sample: sample), let gatewayDate = sample.utcDate else { return nil }
         let localWallTime = localDate.timeIntervalSince1970
             + TimeInterval(targetOffsetMinutes * 60)
         let gatewayWallTime = gatewayDate.timeIntervalSince1970
@@ -212,7 +209,7 @@ enum GatewayDetailClockCore {
     }
 
     static func isVerifiedSync(
-        targetOffsetMinutes: Int,
+        targetOffsetMinutes: Int?,
         sampleOffsetMinutes: Int,
         offBySeconds: Int
     ) -> Bool {
@@ -231,8 +228,9 @@ enum GatewayDetailClockCore {
         return (2000...9999).contains(year)
     }
 
-    static func format(date: Date, offsetMinutes: Int) -> String {
-        GatewayDetailClockFormatter().format(
+    static func format(date: Date, offsetMinutes: Int?) -> String {
+        guard let offsetMinutes else { return "--" }
+        return GatewayDetailClockFormatter().format(
             date: date,
             offsetMinutes: offsetMinutes
         )
@@ -259,7 +257,7 @@ enum GatewayDetailClockCoordinatorError: Error {
 }
 
 final class GatewayDetailClockCoordinator {
-    typealias ReadCompletion = (Result<(GatewayDetailClockSample, Int), GatewayDetailClockCoordinatorError>) -> Void
+    typealias ReadCompletion = (Result<(GatewayDetailClockSample, Int?), GatewayDetailClockCoordinatorError>) -> Void
     typealias SyncCompletion = (Result<(GatewayDetailClockSample, Int), GatewayDetailClockCoordinatorError>) -> Void
 
     private struct NodeTimeBackup {
@@ -304,15 +302,11 @@ final class GatewayDetailClockCoordinator {
                 guard self.finishOperation(operationID) else { return }
                 switch result {
                 case .success(let sample):
-                    guard let offBy = GatewayDetailClockCore.offBySeconds(
+                    let offBy = GatewayDetailClockCore.offBySeconds(
                         localDate: Date(),
-                        targetOffsetMinutes: target.offsetMinutes,
+                        targetOffsetMinutes: SiteTimeZoneValue(storageValue: target.identifier)?.offsetMinutes,
                         sample: sample
-                    ) else {
-                        self.restore(backup)
-                        completion(.failure(.timeGetFailed))
-                        return
-                    }
+                    )
                     guard self.persist(sample: sample) else {
                         self.restore(backup)
                         completion(.failure(.localPersistenceFailed))
@@ -336,7 +330,7 @@ final class GatewayDetailClockCoordinator {
     ) -> Bool {
         dispatchPrecondition(condition: .onQueue(.main))
         guard isAttached, activeOperationID == nil else { return false }
-        guard target.isMeshEncodable, let fixedTimeZone = target.fixedTimeZone else {
+        guard target.isCurrent, target.isMeshEncodable else {
             completion(.failure(.targetOffsetUnencodable))
             return false
         }
@@ -374,7 +368,7 @@ final class GatewayDetailClockCoordinator {
             operationID: operationID
         ) { [self] bindingSucceeded in
             guard self.activeOperationID == operationID else { return }
-            guard bindingSucceeded, self.isCurrentProxyReady() else {
+            guard bindingSucceeded, target.isCurrent, self.isCurrentProxyReady() else {
                 self.failSync(
                     operationID: operationID,
                     backup: backup,
@@ -384,11 +378,16 @@ final class GatewayDetailClockCoordinator {
                 return
             }
 
-            let message = Node.setLocalTimeMessage(date: Date(), timeZone: fixedTimeZone)
-            MeshAPI.sendMessage(message: message, model: timeSetupModel, timeout: 10) { [self] response in
+            guard let resolution = SiteTimeSetMessageFactory.resolve(storageValue: target.identifier) else {
+                self.failSync(operationID: operationID, backup: backup, error: .targetOffsetUnencodable, completion: completion)
+                return
+            }
+            SiteTimeSetMessageFactory.sendPrepared(resolution: resolution, model: timeSetupModel, isCurrent: { [self] in
+                self.isAttached && self.activeOperationID == operationID && self.isCurrentProxyReady() && target.isCurrent
+            }, completion: { [self] response in
                 DispatchQueue.main.async {
                     guard self.activeOperationID == operationID else { return }
-                    guard let status = response as? TimeStatus,
+                    guard target.isCurrent, let status = response,
                           status.time.seconds > 0,
                           status.time.tzOffset.secondsFromGMT() / 60 == target.offsetMinutes,
                           self.isCurrentProxyReady() else {
@@ -408,7 +407,7 @@ final class GatewayDetailClockCoordinator {
                         completion: completion
                     )
                 }
-            }
+            })
         }
         return true
     }
@@ -437,6 +436,10 @@ final class GatewayDetailClockCoordinator {
         sendTimeGet(model: model) { [self] result in
             DispatchQueue.main.async {
                 guard self.activeOperationID == operationID else { return }
+                guard target.isCurrent else {
+                    self.failSync(operationID: operationID, backup: backup, error: .timeSetFailed, completion: completion)
+                    return
+                }
                 switch result {
                 case .success(let sample):
                     guard let offBy = GatewayDetailClockCore.offBySeconds(

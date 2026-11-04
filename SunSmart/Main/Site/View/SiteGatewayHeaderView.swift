@@ -113,6 +113,14 @@ class SiteGatewayHeaderView: UICollectionReusableView {
         updateLayout()
     }
 
+    private var measuredWidth: CGFloat = -1
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        guard measuredWidth != bounds.width else { return }
+        measuredWidth = bounds.width
+        updateLayout()
+    }
+
     private func updateLayout() {
         gatewayListView.snp.remakeConstraints { make in
             make.top.left.right.equalToSuperview()
@@ -144,7 +152,7 @@ class SiteGatewayHeaderView: UICollectionReusableView {
             } else {
                 isVisible = false
             }
-            make.height.equalTo(isVisible ? SCRYFrom(56) : 0)
+            make.height.equalTo(isVisible ? SiteTimeZoneReviewSyncView.preferredHeight(width: max(1, bounds.width), state: timeZoneReviewState) : 0)
         }
     }
     

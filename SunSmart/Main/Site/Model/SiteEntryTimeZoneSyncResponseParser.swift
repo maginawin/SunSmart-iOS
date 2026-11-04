@@ -110,8 +110,7 @@ enum SiteEntryTimeZoneSyncResponseParser {
     private static func validTimeZone(from rawValue: Any?) -> SiteTimeZoneValue? {
         guard
             let storageValue = rawValue as? String,
-            let value = SiteTimeZoneValue(storageValue: storageValue),
-            TimeZone(identifier: value.ianaId) != nil
+            let value = SiteTimeZoneValue(storageValue: storageValue)
         else {
             return nil
         }

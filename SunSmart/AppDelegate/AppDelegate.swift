@@ -50,6 +50,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         }
         #endif
         NetworkRequest.shared.networkListener()
+        _ = SiteTimeZoneService.shared
         
 //        UIApplication.shared.statusBarStyle = .default
         

@@ -15,6 +15,7 @@ swiftc -parse-as-library \
 
 swiftc -parse-as-library \
   SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  Tests/Site/SiteDSTFixtures.swift \
   SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
   SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
   SunSmart/Main/Site/Model/SiteGatewayAccessScope.swift \
@@ -34,6 +35,7 @@ swiftc -parse-as-library \
 
 swiftc -parse-as-library \
   SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  Tests/Site/SiteDSTFixtures.swift \
   SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
   SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
   SunSmart/Main/Site/Model/SiteGatewayAccessScope.swift \
@@ -45,6 +47,7 @@ swiftc -parse-as-library \
 
 swiftc -parse-as-library \
   SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  Tests/Site/SiteDSTFixtures.swift \
   SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
   SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
   SunSmart/Main/Site/Model/SiteGatewayAccessScope.swift \
@@ -83,6 +86,7 @@ swiftc -parse-as-library \
 
 swiftc -parse-as-library \
   SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  Tests/Site/SiteDSTFixtures.swift \
   SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
   SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
   SunSmart/Main/Site/Model/SiteGatewayAccessScope.swift \
@@ -93,6 +97,7 @@ swiftc -parse-as-library \
 
 swiftc -parse-as-library \
   SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  Tests/Site/SiteDSTFixtures.swift \
   SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
   SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
   SunSmart/Main/Site/Model/SiteGatewayAccessScope.swift \
@@ -110,6 +115,7 @@ swiftc -parse-as-library \
 
 swiftc -parse-as-library \
   SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  Tests/Site/SiteDSTFixtures.swift \
   SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
   SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
   SunSmart/Main/Site/Model/SiteGatewayAccessScope.swift \
@@ -121,6 +127,7 @@ swiftc -parse-as-library \
 
 swiftc -parse-as-library \
   SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  Tests/Site/SiteDSTFixtures.swift \
   SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
   SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
   SunSmart/Main/Site/Model/SiteGatewayAccessScope.swift \
@@ -134,6 +141,7 @@ swiftc -parse-as-library \
 
 swiftc -parse-as-library \
   SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  Tests/Site/SiteDSTFixtures.swift \
   SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
   SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
   SunSmart/Main/Site/Model/SiteGatewayAccessScope.swift \
@@ -147,6 +155,7 @@ swiftc -parse-as-library \
 
 swiftc -parse-as-library \
   SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  Tests/Site/SiteDSTFixtures.swift \
   SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
   SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
   SunSmart/Main/Site/Model/SiteGatewayAccessScope.swift \
@@ -159,6 +168,7 @@ swiftc -parse-as-library \
 
 swiftc -parse-as-library \
   SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  Tests/Site/SiteDSTFixtures.swift \
   SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
   SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
   SunSmart/Main/Site/Model/SiteGatewayAccessScope.swift \
@@ -171,6 +181,7 @@ swiftc -parse-as-library \
 
 swiftc -parse-as-library \
   SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  Tests/Site/SiteDSTFixtures.swift \
   SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
   SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
   SunSmart/Main/Site/Model/SiteGatewayAccessScope.swift \
@@ -184,6 +195,7 @@ swiftc -parse-as-library \
 
 swiftc -parse-as-library \
   SunSmart/Common/Data/SiteTimeZoneValue.swift \
+  Tests/Site/SiteDSTFixtures.swift \
   SunSmart/Main/Site/Model/SitePropsEditPolicy.swift \
   SunSmart/Main/Site/Model/SiteEntryTimeZoneSyncResponseParser.swift \
   SunSmart/Main/Site/Model/SiteGatewayAccessScope.swift \

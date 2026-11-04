@@ -66,6 +66,9 @@ with tempfile.TemporaryDirectory(prefix="site-hdb-persistence-") as directory:
     (output / "Production.swift").write_text(production)
     store = (output / "SiteExtensionStore.swift")
     store.write_text((ROOT / "SunSmart/Common/Data/SiteExtensionStore.swift").read_text().replace("import NordicSigMeshSDK", ""))
+    fixture = (ROOT / "Tests/Site/SiteHDBPersistenceTests.swift").read_text()
+    fixture = fixture.replace("var isFavourite: Bool, timezone: String?", "var isFavourite: Bool\nprivate var normalizedTimezone: String?\n" + block(model, "var timezone: String? {"))
+    (output / "SiteHDBPersistenceTests.swift").write_text(fixture)
     subprocess.run(["swiftc", "-module-cache-path", str(output / "module-cache"), "-parse-as-library", "-I", directory, "-L", directory, "-lSQLite",
                     str(output / "Production.swift"),
                     str(ROOT / "SunSmart/Common/Data/SiteExtensionData.swift"),
@@ -77,7 +80,7 @@ with tempfile.TemporaryDirectory(prefix="site-hdb-persistence-") as directory:
                     str(ROOT / "SunSmart/Common/Data/SiteExtensionState.swift"),
                     str(ROOT / "SunSmart/Main/Site/TriggerZone/SiteTriggerZoneData.swift"),
                     str(store),
-                    str(ROOT / "Tests/Site/SiteHDBPersistenceTests.swift"),
+                    str(output / "SiteHDBPersistenceTests.swift"),
                     str(ROOT / "Tests/Site/SiteStandardPropsPersistenceTests.swift"),
                     "-o", str(output / "tests")], check=True)
     subprocess.run([str(output / "tests"), str(output / "site.sqlite")], check=True)

@@ -180,6 +180,14 @@ struct SyncGatewaysState {
         }
     }
 
+    mutating func reconcileConfirmedOffsets(_ offsets: [String: Int], targetOffset: Int?) {
+        for index in items.indices where items[index].device == .synced {
+            if targetOffset == nil || offsets[items[index].id] != targetOffset {
+                items[index].device = .pending
+            }
+        }
+    }
+
     mutating func setCloudState(id: String, state: SyncGatewayCloudState) {
         guard let index = index(for: id) else { return }
         items[index].cloud = state

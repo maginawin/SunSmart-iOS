@@ -142,8 +142,8 @@ struct SiteEntryTimeZoneSyncContractTests {
         )
 
         require(
-            occurrences(of: "SiteEntryTimeZoneSyncOverlay.swift in Sources", in: project) == 8,
-            "The overlay must be included in all four brand targets"
+            occurrences(of: "SiteEntryTimeZoneSyncOverlay.swift in Sources", in: project) == 12,
+            "The overlay must be included in all six brand targets"
         )
         require(
             checkScript.contains("SiteEntryTimeZoneSyncOverlay.swift") &&

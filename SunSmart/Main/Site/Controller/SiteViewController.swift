@@ -111,6 +111,7 @@ class SiteViewController: UIViewController {
     }
     private var interactivePopGestureWasEnabled: Bool?
     private var timeZoneReviewState: SiteTimeZoneReviewState = .hidden
+    private var renderedTimeZoneReviewOffset: String?
     private var latestTimeZoneRemoteSnapshot: SiteEntryTimeZoneRemoteSnapshot?
     private var gatewayDetailPresentationSessionID: UUID?
     private weak var presentedGatewayNavigationController: NavigationViewController?
@@ -242,6 +243,8 @@ class SiteViewController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        observeSiteTimeZone()
+        if let id = dstObservedID { SiteTimeZoneService.shared.store.refresh(identifier: id) }
 
         hasCompletedInitialAppearance = true
         _ = presentPendingEntryTimeZoneSyncStatusIfPossible()
@@ -284,11 +287,14 @@ self.updateAddressData()
 
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
+        SiteTimeZoneService.shared.removeObserver(dstObservation)
+        dstObservation = nil
         guard entrySyncNavigationLocked else { return }
         cancelEntrySyncOverlay()
     }
     
     deinit {
+        SiteTimeZoneService.shared.removeObserver(dstObservation)
 //        NetworkRequest.shared.removeObserver(self, forKeyPath: "networkable")
         networkableObservation = nil
         entrySyncSessionToken = nil
@@ -915,7 +921,23 @@ self.updateAddressData()
         setTimeZoneReviewState(.hidden)
     }
 
+    private var dstObservation: UUID?
+    private var dstObservedID: String?
+    private func observeSiteTimeZone() {
+        let value = site.timezone.flatMap(SiteTimeZoneValue.init(storageValue:))
+        guard dstObservedID != value?.ianaId || dstObservation == nil else { return }
+        SiteTimeZoneService.shared.removeObserver(dstObservation)
+        dstObservedID = value?.ianaId
+        dstObservation = value.map { value in
+            SiteTimeZoneService.shared.observe(value) { [weak self] in
+                guard let self, self.site.timezone.flatMap(SiteTimeZoneValue.init(storageValue:)) == value else { return }
+                self.refreshCurrentGatewayTimeZoneReviewProjection()
+            }
+        }
+    }
+
     private func refreshCurrentGatewayTimeZoneReviewProjection() {
+        observeSiteTimeZone()
         guard let remote = latestTimeZoneRemoteSnapshot else {
             invalidateGatewayTimeZoneReview()
             return
@@ -935,6 +957,19 @@ self.updateAddressData()
             localDirtyOffsetMinutesByGatewayID:
                 localGatewayContext.dirtyOverridesByID.mapValues(\.offsetMinutes)
         )
+        guard entrySyncOverlay.superview != nil else { return }
+        let previous: SiteEntryTimeZoneResult
+        switch entrySyncOverlay.state {
+        case .checking: return
+        case .result(let result), .gatewaysNeedSync(let result): previous = result
+        }
+        guard previous.timezone == targetTimeZone else { return }
+        let summary = SiteEntryTimeZoneSyncPolicy.gatewaySummary(
+            remote: remote, targetOffsetMinutes: targetTimeZone.offsetMinutes,
+            localDirtyOffsetMinutesByGatewayID: effectiveGatewayOffsetOverrides(
+                localDirtyOffsetMinutesByGatewayID: localGatewayContext.dirtyOverridesByID.mapValues(\.offsetMinutes)))
+        entrySyncOverlay.showResult(.init(timezone: targetTimeZone, site: previous.site, gateway: summary))
+
     }
 
     private func effectiveGatewayOffsetOverrides(
@@ -979,7 +1014,9 @@ self.updateAddressData()
     }
 
     private func setTimeZoneReviewState(_ state: SiteTimeZoneReviewState) {
-        guard state != timeZoneReviewState else { return }
+        let displayOffset = state.displayOffset
+        guard state != timeZoneReviewState || renderedTimeZoneReviewOffset != displayOffset else { return }
+        renderedTimeZoneReviewOffset = displayOffset
         timeZoneReviewState = state
         guard isViewLoaded else { return }
         allSpacesCollectionView.collectionViewLayout.invalidateLayout()
@@ -3019,7 +3056,9 @@ self.updateAddressData()
         return SiteGatewayHeaderLayoutPolicy.height(
             gatewayListHeight: SCRYFrom(48),
             gatewayStatusHeight: SCRYFrom(48),
-            reviewSyncHeight: SCRYFrom(64),
+            reviewSyncHeight: SiteTimeZoneReviewSyncView.preferredHeight(
+                width: collectionView.bounds.width - collectionView.contentInset.left - collectionView.contentInset.right,
+                state: timeZoneReviewState) + SCRYFrom(8),
             showsGatewayList: shouldShowGatewayList(),
             showsGatewayStatus: shouldShowGatewayStatus(for: spaces, in: collectionView),
             showsReviewSync: showsReviewSync

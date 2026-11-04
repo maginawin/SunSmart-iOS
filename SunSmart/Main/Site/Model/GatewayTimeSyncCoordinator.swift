@@ -185,42 +185,43 @@ final class GatewayTimeSyncCoordinator {
                     )
                     return
                 }
-                guard let resolution = SiteTimeSetMessageFactory.resolve(
-                    storageValue: targetTimeZone.storageValue
-                ), core.markSent(attemptID: attemptID) else {
-                    settleTransportFailure(
-                        attemptID: attemptID,
-                        error: .invalidOrMissingTimeStatus
-                    )
-                    return
-                }
-
-                let message = Node.setLocalTimeMessage(
-                    date: Date(),
-                    timeZone: resolution.timeZone
-                )
-                MeshAPI.sendMessage(
-                    message: message,
-                    model: model,
-                    timeout: 10
-                ) { [self] response in
-                    let receivedAt = Date()
-                    DispatchQueue.main.async { [self] in
-                        guard runtimeAttempt?.id == attemptID else { return }
-                        guard let timeStatus = response as? TimeStatus else {
-                            settleTransportFailure(
-                                attemptID: attemptID,
-                                error: .invalidOrMissingTimeStatus
-                            )
-                            return
-                        }
-                        settle(
+                Task { @MainActor [self] in
+                    let snapshot = await SiteTimeZoneService.shared.prepare(targetTimeZone)
+                    guard self.runtimeAttempt?.id == attemptID else { return }
+                    guard snapshot != nil, let resolution = SiteTimeSetMessageFactory.resolve(
+                        storageValue: targetTimeZone.storageValue
+                    ), self.core.markSent(attemptID: attemptID) else {
+                        self.settleTransportFailure(
                             attemptID: attemptID,
-                            status: timeStatus,
-                            targetOffsetMinutes: resolution.offsetMinutes,
-                            receivedAt: receivedAt
+                            error: .invalidOrMissingTimeStatus
                         )
+                        return
                     }
+
+                    SiteTimeSetMessageFactory.sendPrepared(resolution: resolution, model: model, isCurrent: { [self] in
+                        runtimeAttempt?.id == attemptID && node.network === MeshNetworkManager.instance.meshNetwork
+                            && SiteData.load(siteId: node.network?.uuid.uuidString ?? "")?.timezone.flatMap(SiteTimeZoneValue.init(storageValue:)) == targetTimeZone
+                    }, completion: { [self] response in
+                        let receivedAt = Date()
+                        DispatchQueue.main.async { [self] in
+                            guard self.runtimeAttempt?.id == attemptID else { return }
+                            guard resolution.snapshot.isUsable(at: receivedAt),
+                                  targetTimeZone.effectiveOffset(at: receivedAt) == resolution.offsetMinutes,
+                                  let timeStatus = response else {
+                                self.settleTransportFailure(
+                                    attemptID: attemptID,
+                                    error: .invalidOrMissingTimeStatus
+                                )
+                                return
+                            }
+                            self.settle(
+                                attemptID: attemptID,
+                                status: timeStatus,
+                                targetOffsetMinutes: resolution.offsetMinutes,
+                                receivedAt: receivedAt
+                            )
+                        }
+                    })
                 }
             }
         }

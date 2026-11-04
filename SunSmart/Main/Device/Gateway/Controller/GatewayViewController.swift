@@ -242,6 +242,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         super.viewWillDisappear(animated)
 
         isViewVisible = false
+        SiteTimeZoneService.shared.removeObserver(gatewayDSTObservation)
+        gatewayDSTObservation = nil
         proxyConnectionSession?.pause()
         cancelGatewayClockAutoPromptRetry()
         stopSignalRefreshTimer()
@@ -260,6 +262,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         restoreModalStackDismissalIfNeeded()
+        observeGatewayTimeZone()
     }
 
 
@@ -428,6 +431,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
 
     deinit {
+        SiteTimeZoneService.shared.removeObserver(gatewayDSTObservation)
         gatewayClockCoordinator?.finishPage()
         cancelGatewayClockAutoPromptRetry()
         stopGatewayClockTimer()
@@ -1683,6 +1687,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         tableView = UITableView(frame: .zero, style: .grouped)
         tableView.separatorStyle = .none
         tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "infoCell")
+        tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "timeZoneCell")
         tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "associatedSpacesCell")
         tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "apnCell")
         tableView.register(GatewayNameViewCell.classForCoder(), forCellReuseIdentifier: "name")
@@ -1799,6 +1804,16 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         )
     }
 
+    private var gatewayDSTObservation: UUID?
+    private func observeGatewayTimeZone() {
+        SiteTimeZoneService.shared.removeObserver(gatewayDSTObservation)
+        gatewayDSTObservation = site.timezone.flatMap(SiteTimeZoneValue.init(storageValue:)).map { value in
+            SiteTimeZoneService.shared.observe(value) { [weak self] in
+                guard let self, self.viewIfLoaded?.window != nil else { return }
+                self.gatewayClockEnvironmentDidChange()
+            }
+        }
+    }
     private func registerGatewayClockNotifications() {
         let center = NotificationCenter.default
         let names: [Notification.Name] = [
@@ -1814,6 +1829,11 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 
     private func gatewayClockEnvironmentDidChange() {
         guard showsGatewayClockSections else { return }
+        guard !gatewayClockState.isSyncing else {
+            reloadSection(.timeZone)
+            return
+        }
+        if isGatewayClockReading { reloadSection(.timeZone); return }
         gatewayClockState = GatewayDetailClockState()
         reloadSection(.timeZone)
         reloadSection(.clock)
@@ -1832,6 +1852,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             self.isGatewayClockReading = false
             switch result {
             case .success(let value):
+                let target = self.currentGatewayClockTarget()
                 self.gatewayClockState.accept(
                     sample: value.0,
                     offBySeconds: value.1,
@@ -1866,7 +1887,22 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         }
     }
 
+    private var preparingGatewayDST = false
     private func synchronizeGatewayClock() {
+        guard !preparingGatewayDST else { return }
+        preparingGatewayDST = true
+        let identity = site.timezone.flatMap(SiteTimeZoneValue.init(storageValue:))
+        Task { @MainActor [weak self] in
+            let snapshot = await SiteTimeZoneService.shared.prepare(identity)
+            guard let self else { return }
+            self.preparingGatewayDST = false
+            guard self.viewIfLoaded?.window != nil, self.site.timezone.flatMap(SiteTimeZoneValue.init(storageValue:)) == identity else { return }
+            guard snapshot != nil else { XWHUDManager.showErrorTipHUD("site_time_zone_refresh_required".localizedString); return }
+            self.synchronizePreparedGatewayClock()
+        }
+    }
+
+    private func synchronizePreparedGatewayClock() {
         guard !isDeletingGateway, completedDeletionResetConfirmed == nil,
               showsGatewayClockSections, !gatewayClockState.isSyncing else { return }
         markCurrentGatewayClockSessionHandled()
@@ -2205,14 +2241,28 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
             }
             tableviewCell = nameCell
         case .timeZone:
-            let cell = tableView.dequeueReusableCell(withIdentifier: "infoCell", for: indexPath) as! CustomTableViewCell
+            let cell = tableView.dequeueReusableCell(withIdentifier: "timeZoneCell", for: indexPath) as! CustomTableViewCell
             let target = currentGatewayClockTarget(at: gatewayClockTickDate)
             cell.titleLabel.font = UIFont.systemFont(ofSize: 14)
             cell.titleLabel.text = target.identifier
             cell.contentLabel.font = UIFont.systemFont(ofSize: 14, weight: .light)
             cell.contentLabel.textColor = SubText_Color
-            cell.contentLabel.text = target.displayOffset
+            cell.contentLabel.text = site.timezone.flatMap(SiteTimeZoneValue.init(storageValue:))?.displayOffset ?? target.displayOffset
             cell.cellStyle = .none
+            cell.titleLabel.numberOfLines = 0
+            cell.contentLabel.numberOfLines = 0
+            cell.titleLabel.snp.remakeConstraints { make in
+                make.left.equalTo(SCRXFrom(16))
+                make.top.bottom.equalToSuperview().inset(SCRYFrom(10))
+                make.width.equalToSuperview().multipliedBy(0.38)
+            }
+            cell.contentLabel.snp.remakeConstraints { make in
+                make.left.equalTo(cell.titleLabel.snp.right).offset(SCRXFrom(8))
+                make.right.equalTo(SCRXFrom(-16))
+                make.centerY.equalToSuperview()
+                make.top.greaterThanOrEqualTo(SCRYFrom(10))
+                make.bottom.lessThanOrEqualTo(SCRYFrom(-10))
+            }
             cell.lineView.isHidden = true
             tableviewCell = cell
         case .clock:
@@ -2342,6 +2392,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
 
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         let sectionType = sections[indexPath.section]
+        if sectionType == .timeZone { return UITableView.automaticDimension }
         if sectionType == .serverInformation {
             return SCRYFrom(144)
         }

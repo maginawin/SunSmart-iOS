@@ -19,7 +19,7 @@ struct GatewayDetailClockRuntimeContractTests {
         require(coordinator.contains("node.timeModel"), "TimeGet must require Time Server")
         require(coordinator.contains("node.timeSetupModel"), "TimeSet must require Time Setup Server")
         require(coordinator.contains("ConfigModelAppBind"), "Missing Time Model bindings must be configured")
-        require(coordinator.contains("Node.setLocalTimeMessage"), "Clock sync must construct TimeSet with the target timezone")
+        require(coordinator.contains("SiteTimeSetMessageFactory.sendPrepared"), "Clock sync must construct TimeSet with the target timezone")
         require(coordinator.contains("TimeGet()"), "Clock sync must perform final TimeGet readback")
         require(coordinator.contains("isVerifiedSync"), "Final readback must enforce offset and tolerance")
         require(coordinator.contains("restore(backup)"), "Failures must restore the previous persisted sample")

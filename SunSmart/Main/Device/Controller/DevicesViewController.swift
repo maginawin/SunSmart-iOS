@@ -447,21 +447,33 @@ class DevicesViewController: WMPageController {
     
     /// 节点同步时间
     private func syncTimeNodes() {
-        guard MeshLibManager.manager.isMeshNetworkConnected else {
-            return
+        guard MeshLibManager.manager.isMeshNetworkConnected else { return }
+        let siteID = space.siteId
+        let network = MeshNetworkManager.instance.meshNetwork
+        Task { @MainActor [weak self] in
+            let snapshot = await SiteTimeZoneService.shared.prepare(siteID: siteID)
+            guard let self, self.viewIfLoaded?.window != nil,
+                  self.space.siteId == siteID,
+                  MeshNetworkManager.instance.meshNetwork === network,
+                  MeshLibManager.manager.isMeshNetworkConnected else { return }
+            guard snapshot != nil,
+                  let resolution = SiteTimeSetMessageFactory.resolve(siteID: siteID) else {
+                XWHUDManager.showErrorTipHUD("site_time_zone_refresh_required".localizedString)
+                return
+            }
+            let oldTimestamp = self.space.lastSyncDateTimestamp
+            let timestamp = CLongLong(Date().timeIntervalSince1970)
+            SiteTimeSetMessageFactory.broadcast(resolution: resolution, isCurrent: { [weak self] in
+                self?.viewIfLoaded?.window != nil && self?.space.siteId == siteID && MeshNetworkManager.instance.meshNetwork === network
+                    && MeshLibManager.manager.isMeshNetworkConnected
+            }, rejected: { [weak self] in
+                guard let self, self.space.lastSyncDateTimestamp == timestamp else { return }
+                self.space.lastSyncDateTimestamp = oldTimestamp
+                self.space.save()
+            })
+            self.space.lastSyncDateTimestamp = timestamp
+            self.space.save()
         }
-        guard let message = SiteTimeSetMessageFactory.makeMessage(
-            siteID: space.siteId
-        ) else {
-            #if DEBUG
-            print("[TimeSet] skip all-nodes sync: timezone is not Mesh encodable")
-            #endif
-            return
-        }
-        MeshAPI.sendMessage(message: message, address: .allNodes)
-        space.lastSyncDateTimestamp = CLongLong(Date().timeIntervalSince1970)
-        space.save()
-        
     }
 
     #if DEBUG
@@ -475,20 +487,24 @@ class DevicesViewController: WMPageController {
             print("[TimeSetDebug] no enabled schedule target node")
             return
         }
+        Task { @MainActor in
+        guard let siteID = node.network?.uuid.uuidString,
+              await SiteTimeZoneService.shared.prepare(siteID: siteID) != nil,
+              node.network === MeshNetworkManager.instance.meshNetwork,
+              MeshLibManager.manager.isMeshNetworkConnected else { return }
         guard let resolution = SiteTimeSetMessageFactory.resolve(node: node) else {
             print("[TimeSetDebug] timezone is not Mesh encodable")
             return
         }
 
         print("[TimeSetDebug] send TimeSet to node=\(node.name ?? "") address=\(String(format: "0x%04X", node.primaryUnicastAddress)) timeSetupModel=\(node.timeSetupModel != nil)")
-        MeshAPI.syncNodeTime(
-            address: node.primaryUnicastAddress,
-            timeZone: resolution.timeZone
-        ) { success in
-            DispatchQueue.main.async {
-                let address = String(format: "0x%04X", node.primaryUnicastAddress)
-                print("[TimeSetDebug] TimeSet result node=\(node.name ?? "") address=\(address) success=\(success)")
-            }
+        guard let model = node.timeSetupModel else { return }
+        SiteTimeSetMessageFactory.sendPrepared(resolution: resolution, model: model, isCurrent: {
+            node.network === MeshNetworkManager.instance.meshNetwork && MeshLibManager.manager.isMeshNetworkConnected
+        }, completion: { status in
+            let address = String(format: "0x%04X", node.primaryUnicastAddress)
+            print("[TimeSetDebug] TimeSet result node=\(node.name ?? "") address=\(address) success=\(status != nil)")
+        })
         }
     }
 

@@ -126,7 +126,7 @@ final class SiteData {
         let extensionObject = try restoredExtension.jsonObject()
         precondition(SiteStandardProperties.keys.allSatisfy { extensionObject[$0] == nil })
         let restoredConfigured = SiteData.load(siteId: configured.id)!
-        precondition(restoredConfigured.timezone == "Asia/Shanghai (UTC+08:00)")
+        precondition(restoredConfigured.timezone == "Asia/Shanghai")
         precondition(restoredConfigured.copy().standardProperties == metadata)
         precondition(restoredForm.save())
         precondition(SiteData.load(siteId: restoredForm.id)!.standardProperties == metadata)

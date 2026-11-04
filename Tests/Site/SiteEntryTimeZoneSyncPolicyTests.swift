@@ -4,6 +4,15 @@ import Foundation
 struct SiteEntryTimeZoneSyncPolicyTests {
 
     static func main() {
+        SiteDSTFixtures.install()
+        let sameIdentity = SiteTimeZoneReviewState.review(serverTimezone: singapore, gatewayCount: 1)
+        let oldDisplay = sameIdentity.displayOffset
+        SiteTimeZoneValue.snapshotProvider = { id, _ in
+            try? SiteTimeZoneSnapshot(identifier: id, response: ["code": 200, "data": ["is_dst": false,
+                "current_offset": "UTC+09:00", "next_switch": NSNull(), "switches_to": NSNull()]], requestedAt: Date(timeIntervalSince1970: 0))
+        }
+        require(oldDisplay != sameIdentity.displayOffset, "Review presentation must refresh when the same IANA gets a new offset")
+        SiteDSTFixtures.install()
         testResponseParser()
         testResponseParserDistinguishesJSONNumbersFromBooleans()
         testOwnerDecisionMatrix()
@@ -71,7 +80,7 @@ struct SiteEntryTimeZoneSyncPolicyTests {
             timezone: "Invalid/Zone (UTC+08:00)",
             timestamp: 102
         ))
-        require(invalidTimezone?.values.timezone == nil, "Unknown IANA identifiers must be rejected")
+        require(invalidTimezone?.values.timezone == invalid && invalid.offsetMinutes == nil, "Newer server IANA identifiers survive without authorizing an unknown offset")
 
         var missingTimestamp = remoteSiteData(role: "owner", timezone: "Etc/UTC (UTC+00:00)", timestamp: 103)
         missingTimestamp.removeValue(forKey: "updateTimestamp")
@@ -199,11 +208,11 @@ struct SiteEntryTimeZoneSyncPolicyTests {
             decide(role: .owner, local: nil, localTime: 100, remote: nil, remoteTime: 101) == .noAction,
             "Two invalid timezones must keep current behavior"
         )
-        requireRemote(
+        requireLocal(
             decide(role: .owner, local: invalid, localTime: 100, remote: utc, remoteTime: 1),
-            timezone: utc,
+            timezone: invalid,
             pending: 0,
-            "Unknown local IANA identifier must be invalid"
+            "Unknown local IANA identifier retains normal timestamp ownership"
         )
 
         requireGatewayOnly(
@@ -336,10 +345,10 @@ struct SiteEntryTimeZoneSyncPolicyTests {
             spaces: [space(.visitor, gatewayId: nil)],
             gateways: []
         )
-        require(
-            SiteEntryTimeZoneSyncPolicy.decide(local: local, remote: invalidRemote, now: 500) == .noAction,
-            "Visitor must not persist an invalid cloud timezone"
-        )
+        let unknownDecision = SiteEntryTimeZoneSyncPolicy.decide(local: local, remote: invalidRemote, now: 500)
+        guard case .useVisitorRemote(let preserved) = unknownDecision else { fatalError("Visitor must preserve server identity") }
+        require(preserved.values.timezone == invalid && preserved.values.timezone?.offsetMinutes == nil,
+                "Server IANA is preserved without authorizing an unknown offset")
     }
 
     private static func testLocalDecisionSnapshot() {

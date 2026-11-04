@@ -88,8 +88,19 @@ final class SyncGatewaysViewController: UIViewController {
         render(state)
     }
 
+    private var dstObservation: UUID?
+
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        if dstObservation == nil {
+            dstObservation = SiteTimeZoneService.shared.observe(context.targetTimeZone) { [weak self] in
+                guard let self, !self.isFinished else { return }
+                let offsets = self.context.targets.reduce(into: [String: Int]()) { values, target in
+                    values[target.descriptor.id] = target.node?.timezone.map { $0.secondsFromGMT() / 60 }
+                }
+                self.mutateState { $0.reconcileConfirmedOffsets(offsets, targetOffset: self.context.targetTimeZone.offsetMinutes) }
+            }
+        }
         nearbyHeaderView.startSearchingAnimation()
         guard !didStartScan else { return }
         didStartScan = true
@@ -98,6 +109,8 @@ final class SyncGatewaysViewController: UIViewController {
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
+        SiteTimeZoneService.shared.removeObserver(dstObservation)
+        dstObservation = nil
         guard !isFinished, isMovingFromParent else { return }
         if let transitionCoordinator, transitionCoordinator.isInteractive {
             transitionCoordinator.notifyWhenInteractionChanges { [weak self] context in
@@ -110,6 +123,7 @@ final class SyncGatewaysViewController: UIViewController {
     }
 
     deinit {
+        SiteTimeZoneService.shared.removeObserver(dstObservation)
         removeLifecycleObservers()
     }
 

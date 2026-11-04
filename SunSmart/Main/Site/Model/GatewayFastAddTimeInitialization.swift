@@ -15,7 +15,8 @@ import NordicSigMeshSDK
 
 struct GatewayFastAddTimeInitialization {
     let handle: MeshMessageHandle
-    let targetOffsetMinutes: Int
+    private let plan: SiteTimeSetMessagePlan
+    var targetOffsetMinutes: Int? { plan.targetOffsetMinutes }
 
     static func make(
         node: Node,
@@ -24,25 +25,19 @@ struct GatewayFastAddTimeInitialization {
         at date: Date = Date()
     ) -> GatewayFastAddTimeInitialization? {
         guard let model = node.timeSetupModel,
-              let resolution = SiteTimeSetMessageFactory.resolve(
-                  storageValue: siteTimeZoneStorageValue,
-                  phoneTimeZone: phoneTimeZone,
-                  at: date
-              ) else {
+              let storageValue = siteTimeZoneStorageValue,
+              let plan = SiteTimeSetMessageFactory.makePlan(model: model, storageValue: storageValue) else {
             return nil
         }
-        let plan = SiteTimeSetMessageFactory.makePlan(
-            model: model,
-            resolution: resolution
-        )
         return GatewayFastAddTimeInitialization(
             handle: plan.handle,
-            targetOffsetMinutes: plan.targetOffsetMinutes
+            plan: plan
         )
     }
 
     func acceptsCurrentNodeState(_ node: Node) -> Bool {
-        GatewayFastAddTimeInitializationPolicy.accepts(
+        guard let targetOffsetMinutes else { return false }
+        return GatewayFastAddTimeInitializationPolicy.accepts(
             seconds: node.timestamp,
             offsetMinutes: node.timezone.map { $0.secondsFromGMT() / 60 } ?? Int.min,
             targetOffsetMinutes: targetOffsetMinutes

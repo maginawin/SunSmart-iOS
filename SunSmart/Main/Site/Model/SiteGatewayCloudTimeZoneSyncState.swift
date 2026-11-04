@@ -100,6 +100,10 @@ struct SiteGatewayCloudTimeZoneBatchState: Equatable {
         }
     }
 
+    mutating func invalidate(ids: Set<String>) {
+        for index in items.indices where ids.contains(items[index].id) { items[index].status = .failed }
+    }
+
     mutating func failPushing() {
         for index in items.indices where items[index].status == .pushing {
             items[index].status = .failed
@@ -149,11 +153,12 @@ struct SiteGatewayTimeZoneReviewContext: Equatable {
         let authorizedFailedIDs = failedGatewayIDs.filter {
             scope.contains(normalizedGatewayID: $0)
         }
+        guard let targetOffset = targetTimeZone.offsetMinutes else { return self }
         let acknowledgedIDs = SiteGatewayCloudTimeZoneConfirmationPolicy
             .acknowledgedGatewayIDs(
                 confirmedOffsetMinutesByGatewayID: Dictionary(
                     uniqueKeysWithValues: authorizedFailedIDs.map {
-                        ($0, targetTimeZone.offsetMinutes)
+                        ($0, targetOffset)
                     }
                 ),
                 remote: remote.gateways
@@ -216,8 +221,6 @@ enum SiteGatewayTimeZoneReviewProjectionPolicy {
     ) -> SiteGatewayTimeZoneReviewProjection {
         guard let localTimeZone,
               let remoteTimeZone = remote.timezone,
-              TimeZone(identifier: localTimeZone.ianaId) != nil,
-              TimeZone(identifier: remoteTimeZone.ianaId) != nil,
               SiteGatewayAccessScope.resolve(remote: remote) != .visitor else {
             return .hidden
         }

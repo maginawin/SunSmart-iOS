@@ -39,11 +39,16 @@ protocol InformationClockTransport: AnyObject {
     var canRecover: Bool { get }
     func isBound(_ model: InformationClockModel) -> Bool
     func bind(_ model: InformationClockModel, completion: @escaping (Bool) -> Void)
+    func prepareTarget(completion: @escaping (Bool) -> Void)
     func targetOffset(at date: Date) -> Int?
     func setTime(date: Date, offset: Int, completion: @escaping (InformationClockResponse) -> Void)
     func getTime(completion: @escaping (InformationClockResponse) -> Void)
     func persist(_ sample: InformationClockSample) -> Bool
     func finish()
+}
+
+extension InformationClockTransport {
+    func prepareTarget(completion: @escaping (Bool) -> Void) { completion(true) }
 }
 
 /// One user request owns the complete read / recover / readback transaction.
@@ -88,7 +93,7 @@ final class InformationClockRecovery {
             guard accept(id) else { return }
             switch response {
             case .sample(let sample) where sample.isValid:
-                guard target.map({ sample.matches(offset: $0, date: now()) }) ?? true,
+                guard target.map({ transport.targetOffset(at: now()) == $0 && sample.matches(offset: $0, date: now()) }) ?? true,
                       transport.persist(sample) else { finish(nil); return }
                 finish(sample)
             case .noResponse:
@@ -107,7 +112,12 @@ final class InformationClockRecovery {
         print("[InformationClock] attempting one clock recovery")
         #endif
         stage = .binding
-        bindRemaining(InformationClockModel.allCases[...])
+        let id = nextCallback()
+        transport.prepareTarget { [self] ready in
+            guard accept(id) else { return }
+            guard ready else { finish(nil); return }
+            bindRemaining(InformationClockModel.allCases[...])
+        }
     }
 
     private func bindRemaining(_ models: ArraySlice<InformationClockModel>) {
@@ -137,7 +147,7 @@ final class InformationClockRecovery {
         transport.setTime(date: date, offset: offset) { [self] response in
             guard accept(id) else { return }
             guard case .sample(let sample) = response,
-                  sample.isValid, sample.offsetMinutes == offset else { finish(nil); return }
+                  sample.isValid, sample.offsetMinutes == offset, transport.targetOffset(at: now()) == offset else { finish(nil); return }
             read(target: offset)
         }
     }
@@ -303,6 +313,14 @@ final class InformationClockMeshTransport: InformationClockTransport {
             }
         } catch {
             if claimRequest(request) { completion(false) }
+        }
+    }
+
+    func prepareTarget(completion: @escaping (Bool) -> Void) {
+        guard let siteID = node.network?.uuid.uuidString else { completion(false); return }
+        Task { @MainActor [weak self] in
+            let snapshot = await SiteTimeZoneService.shared.prepare(siteID: siteID)
+            completion(self?.isCurrent == true && snapshot != nil)
         }
     }
 

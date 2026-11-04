@@ -2670,3 +2670,6 @@
 "scene_deletion_pending" = "Deletion pending. Sync devices to finish removing the scene and its actions.";
 "scene_deletion_pending_short" = "Deletion pending";
 "scene_reference_cleanup" = "Remove scene actions";
+
+"site_time_zone_refresh_required" = "Refresh required";
+"site_time_zone_dst_suffix" = " (DST)";

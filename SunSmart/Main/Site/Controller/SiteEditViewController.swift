@@ -207,6 +207,9 @@ final class SiteEditViewController: SiteFormViewController {
                 )
             }
         )
+        editSyncCoordinator.prepareTimeZone = { value in
+            await SiteTimeZoneService.shared.prepare(value) != nil
+        }
         finishEditing { [statusView, editSyncCoordinator, callback, siteDidChange] _ in
             statusView.update(state: .working(.savingSite))
             statusView.show()

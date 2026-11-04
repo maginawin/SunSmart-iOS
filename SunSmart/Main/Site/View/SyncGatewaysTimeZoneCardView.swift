@@ -64,11 +64,12 @@ final class SyncGatewaysTimeZoneCardView: UIView {
             make.height.greaterThanOrEqualTo(SCRYFrom(20))
         }
 
+        offsetLabel.numberOfLines = 0
         offsetLabel.font = UIFont.systemFont(ofSize: SCRYFrom(20), weight: .regular)
         offsetLabel.textColor = RGB(27, 20, 37)
         addSubview(offsetLabel)
         offsetLabel.snp.makeConstraints { make in
-            make.left.equalTo(titleLabel)
+            make.left.right.equalTo(titleLabel)
             make.top.equalTo(titleLabel.snp.bottom).offset(SCRYFrom(4))
             make.height.greaterThanOrEqualTo(SCRYFrom(32))
         }
@@ -79,8 +80,7 @@ final class SyncGatewaysTimeZoneCardView: UIView {
         addSubview(progressLabel)
         progressLabel.snp.makeConstraints { make in
             make.right.equalTo(titleLabel)
-            make.centerY.equalTo(offsetLabel)
-            make.left.greaterThanOrEqualTo(offsetLabel.snp.right).offset(SCRXFrom(12))
+            make.top.equalTo(offsetLabel.snp.bottom).offset(SCRYFrom(8))
         }
 
         progressTrackView.backgroundColor = RGB(229, 232, 240)
@@ -89,7 +89,7 @@ final class SyncGatewaysTimeZoneCardView: UIView {
         addSubview(progressTrackView)
         progressTrackView.snp.makeConstraints { make in
             make.left.right.equalTo(titleLabel)
-            make.top.equalTo(offsetLabel.snp.bottom).offset(SCRYFrom(16))
+            make.top.equalTo(progressLabel.snp.bottom).offset(SCRYFrom(12))
             make.height.equalTo(SCRYFrom(4))
             make.bottom.equalToSuperview().inset(SCRYFrom(16))
         }

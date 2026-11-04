@@ -11,6 +11,11 @@ private final class FakeClockTransport: InformationClockTransport {
     var setCallbacks: [(InformationClockResponse) -> Void] = []
     var bindCallbacks: [(Bool) -> Void] = []
     var sentDate: Date?
+    var delayedPreparation = false
+    var preparation: ((Bool) -> Void)?
+    func prepareTarget(completion: @escaping (Bool) -> Void) {
+        if delayedPreparation { preparation = completion } else { completion(true) }
+    }
     var saved: [InformationClockSample] = []
 
     func isBound(_ model: InformationClockModel) -> Bool { bound.contains(model) }
@@ -54,6 +59,23 @@ struct InformationClockRecoveryTests {
         bindingUsesFreshTime()
         leaseOwnership()
         cacheOwnership()
+        for detach in [false, true] {
+            let t = FakeClockTransport(); t.bound = []; t.delayedPreparation = true
+            let operation = make(t); operation.start()
+            require(t.calls.isEmpty, "Recovery waits for the DST prerequisite before binding")
+            if detach { operation.detach() }
+            t.preparation?(detach)
+            require(!t.calls.contains("set") && t.bindCallbacks.isEmpty, "Failed or cancelled refresh must not write to Mesh")
+        }
+        let t = FakeClockTransport(); let operation = make(t)
+        operation.start(); t.readCallbacks[0](.noResponse)
+        t.offset = nil
+        t.setCallbacks[0](.sample(sample))
+        require(t.saved.isEmpty && t.readCallbacks.count == 1, "A TimeSet ACK after next_switch cannot begin successful readback")
+        let r = FakeClockTransport(); let readback = make(r)
+        readback.start(); r.readCallbacks[0](.noResponse); r.setCallbacks[0](.sample(sample))
+        r.offset = nil; r.readCallbacks[1](.sample(sample))
+        require(r.saved.isEmpty, "A final readback after next_switch must not persist obsolete synchronization")
         print("InformationClockRecoveryTests passed")
     }
 

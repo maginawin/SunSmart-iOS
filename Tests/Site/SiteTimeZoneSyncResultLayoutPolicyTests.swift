@@ -4,6 +4,7 @@ import Foundation
 struct SiteTimeZoneSyncResultLayoutPolicyTests {
 
     static func main() {
+        SiteDSTFixtures.install()
         testCompactTerminalContentKeepsPreferredHeightWithoutScrolling()
         testOverflowingTerminalContentCapsCardAndKeepsFooterVisible()
         testOverflowingPushingContentUsesEntireCardAsViewport()

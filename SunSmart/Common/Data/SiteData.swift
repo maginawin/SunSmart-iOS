@@ -138,14 +138,15 @@ class SiteData: Copyable {
         }
     }
     private var normalizedTimezone: String?
-    /// 场所时区，使用 `IANA (UTC±HH:mm)` 完整格式保存
+    /// Stable IANA identity; legacy suffixes are normalized without creating a Site edit.
     var timezone: String? {
         get {
             return normalizedTimezone
         }
         set {
             let value = newValue?.trimmingCharacters(in: .whitespacesAndNewlines)
-            normalizedTimezone = value?.isEmpty == false ? value : nil
+            normalizedTimezone = value?.isEmpty == false
+                ? value.map { SiteTimeZoneValue(storageValue: $0)?.storageValue ?? $0 } : nil
         }
     }
     /// Edit Site 尚未同步到服务器的属性

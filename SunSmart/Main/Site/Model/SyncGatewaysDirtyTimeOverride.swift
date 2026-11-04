@@ -22,10 +22,11 @@ struct SyncGatewayDirtyTimeOverride: Equatable {
 
 enum SyncGatewaysDirtyTimeOverridePolicy {
     static func capture(
-        targetOffsetMinutes: Int,
+        targetOffsetMinutes: Int?,
         candidates: [SyncGatewayDirtyTimeCandidate]
     ) -> [String: SyncGatewayDirtyTimeOverride] {
-        candidates.reduce(into: [String: SyncGatewayDirtyTimeOverride]()) {
+        guard let targetOffsetMinutes else { return [:] }
+        return candidates.reduce(into: [String: SyncGatewayDirtyTimeOverride]()) {
             result, candidate in
             guard let id = normalized(candidate.id),
                   result[id] == nil,

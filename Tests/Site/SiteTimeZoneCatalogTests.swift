@@ -23,7 +23,7 @@ struct SiteTimeZoneCatalogTests {
             "America/Asuncion": "-03:00", "Asia/Almaty": "+05:00", "Asia/Qostanay": "+05:00",
             "Africa/Windhoek": "+02:00", "America/Coyhaique": "-03:00", "Asia/Yekaterinburg": "+05:00",
             "America/Ciudad_Juarez": "-07:00", "Arctic/Longyearbyen": "+01:00"] {
-            require(catalog.value(matchingIdentifier: identifier)?.storageValue == "\(identifier) (UTC\(offset))", "Reviewed city timezone must be shared by automatic and manual selection")
+            require(catalog.value(matchingIdentifier: identifier)?.storageValue == identifier && catalog.value(matchingIdentifier: identifier)?.displayOffset == "UTC\(offset)", "Reviewed city timezone must be shared by automatic and manual selection")
         }
         print("SiteTimeZoneCatalogTests passed")
     }
@@ -39,7 +39,7 @@ struct SiteTimeZoneCatalogTests {
         require(catalog.allSections.first?.region == "UTC", "UTC must be the first group")
         require(
             catalog.allSections.first?.entries.first?.value.storageValue
-                == "Etc/UTC (UTC+00:00)",
+                == "Etc/UTC",
             "Expected canonical UTC entry"
         )
         require(catalog.allSections[1].region == "Africa", "Expected original first region")
@@ -105,7 +105,7 @@ struct SiteTimeZoneCatalogTests {
         let value = catalog.defaultValue(for: phoneTimeZone, at: Date(timeIntervalSince1970: 0))
 
         require(
-            value.storageValue == "Asia/Singapore (UTC+08:00)",
+            value.storageValue == "Asia/Singapore",
             "Expected the bundled static offset for an exact identifier"
         )
     }
@@ -117,7 +117,7 @@ struct SiteTimeZoneCatalogTests {
         let value = catalog.defaultValue(for: phoneTimeZone, at: Date(timeIntervalSince1970: 0))
 
         require(
-            value.storageValue == "Etc/UTC (UTC+00:00)",
+            value.storageValue == "Etc/UTC",
             "Expected phone UTC to normalize to Etc/UTC"
         )
     }
@@ -138,7 +138,7 @@ struct SiteTimeZoneCatalogTests {
         let value = catalog.defaultValue(for: phoneTimeZone, at: summerDate)
 
         require(value.ianaId == "America/New_York", "Expected fallback to preserve identifier")
-        require(value.offsetMinutes == -300, "Expected standard -05:00 with DST removed")
+        require(value.displayOffset == "UTC-05:00" && value.offsetMinutes == nil, "Expected standard -05:00 with DST removed")
     }
 
     private static func testRejectsMalformedCatalogRows() throws {

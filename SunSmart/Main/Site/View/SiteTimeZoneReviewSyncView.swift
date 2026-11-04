@@ -31,23 +31,31 @@ final class SiteTimeZoneReviewSyncView: UIView {
         serverTimezone: SiteTimeZoneValue,
         gatewayCount: Int
     ) {
+        messageLabel.attributedText = Self.message(timezone: serverTimezone, gatewayCount: gatewayCount)
+    }
+
+    static func preferredHeight(width: CGFloat, state: SiteTimeZoneReviewState) -> CGFloat {
+        guard case .review(let timezone, let count) = state else { return 0 }
+        let text = message(timezone: timezone, gatewayCount: count)
+        let textWidth = max(1, width - SCRXFrom(151))
+        let size = text.boundingRect(with: CGSize(width: textWidth, height: .greatestFiniteMagnitude),
+                                     options: [.usesLineFragmentOrigin, .usesFontLeading], context: nil)
+        return max(SCRYFrom(56), ceil(size.height) + SCRYFrom(24))
+    }
+
+    private static func message(timezone: SiteTimeZoneValue, gatewayCount: Int) -> NSAttributedString {
         let format = gatewayCount == 1
             ? "site_time_zone_review_sync_single".localizedString
             : "site_time_zone_review_sync_multiple".localizedString
         let text = gatewayCount == 1
-            ? String(format: format, serverTimezone.displayOffset)
-            : String(
-                format: format,
-                serverTimezone.displayOffset,
-                gatewayCount
-            )
+            ? String(format: format, timezone.displayOffset)
+            : String(format: format, timezone.displayOffset, gatewayCount)
         let paragraph = NSMutableParagraphStyle()
         paragraph.minimumLineHeight = SCRYFrom(16)
         paragraph.maximumLineHeight = SCRYFrom(16)
-        messageLabel.attributedText = NSAttributedString(
-            string: text,
-            attributes: [.paragraphStyle: paragraph]
-        )
+        return NSAttributedString(string: text, attributes: [
+            .paragraphStyle: paragraph, .font: UIFont.systemFont(ofSize: SCRYFrom(12))
+        ])
     }
 
     private func setupUI() {
@@ -88,7 +96,7 @@ final class SiteTimeZoneReviewSyncView: UIView {
 
         messageLabel.font = UIFont.systemFont(ofSize: SCRYFrom(12))
         messageLabel.textColor = RGB(100, 116, 139)
-        messageLabel.numberOfLines = 2
+        messageLabel.numberOfLines = 0
         messageLabel.lineBreakMode = .byWordWrapping
         addSubview(messageLabel)
         messageLabel.snp.makeConstraints { make in

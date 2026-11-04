@@ -132,8 +132,8 @@ struct SyncGatewaysUIContractTests {
         ]
         for (fileName, idStem) in sourceMembership {
             require(
-                occurrences(of: "/* \(fileName) in Sources */", in: project) == 8,
-                "\(fileName) must belong to all four app targets"
+                occurrences(of: "/* \(fileName) in Sources */", in: project) == 12,
+                "\(fileName) must belong to all six app targets"
             )
             require(
                 project.contains(

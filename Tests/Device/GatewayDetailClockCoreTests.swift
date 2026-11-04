@@ -4,6 +4,7 @@ import Foundation
 struct GatewayDetailClockCoreTests {
 
     static func main() {
+        SiteDSTFixtures.install()
         testUsesStoredSiteTimeZone()
         testFallsBackToCurrentPhoneOffset()
         testKeepsUnencodableSiteOffsetVisible()
@@ -29,7 +30,7 @@ struct GatewayDetailClockCoreTests {
             at: Date(timeIntervalSince1970: 0)
         )
         require(target.identifier == "America/Anchorage", "Stored Site identifier must win")
-        require(target.offsetMinutes == -540, "Stored Site fixed offset must win")
+        require(target.offsetMinutes == -480, "Current server offset must override legacy suffix")
         require(target.source == .site, "Stored Site timezone must be identified")
         require(target.isMeshEncodable, "Quarter-hour Site offset must be encodable")
     }
@@ -41,9 +42,9 @@ struct GatewayDetailClockCoreTests {
             phoneTimeZone: phone,
             at: Date(timeIntervalSince1970: 1_786_653_600)
         )
-        require(target.identifier == "Asia/Singapore", "Missing Site timezone must show phone identifier")
-        require(target.offsetMinutes == 480, "Phone fallback must use the current effective offset")
-        require(target.source == .phoneFallback, "Missing Site timezone must be a non-persistent fallback")
+        require(target.identifier.isEmpty, "Missing Site identity must remain unavailable")
+        require(target.offsetMinutes == nil, "Phone offset must not authorize Site synchronization")
+        require(target.source == .unavailable, "Missing Site timezone must be a non-persistent fallback")
     }
 
     private static func testKeepsUnencodableSiteOffsetVisible() {

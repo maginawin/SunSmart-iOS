@@ -26,6 +26,7 @@ final class SiteTimeZoneEditSyncCoordinator {
     private let makeTargets: @MainActor (
         SiteTimeZoneValue
     ) -> [SiteGatewayCloudTimeZoneTarget]
+    var prepareTimeZone: ((SiteTimeZoneValue) async -> Bool)?
     private var activeToken: UUID?
 
     init(
@@ -69,10 +70,12 @@ final class SiteTimeZoneEditSyncCoordinator {
             guard activeToken == token else { return nil }
 
             let siteResult = SiteTimeZoneSyncSitePresentation.savedSuccessfully
+            let timeZoneReady = await prepareTimeZone?(targetTimeZone) ?? (targetTimeZone.offsetMinutes != nil)
+            guard activeToken == token else { return nil }
             let targets = makeTargets(targetTimeZone)
             guard activeToken == token else { return nil }
 
-            guard didSubmit else {
+            guard didSubmit, timeZoneReady else {
                 let result = failedGatewayResult(
                     targetTimeZone: targetTimeZone,
                     targets: targets

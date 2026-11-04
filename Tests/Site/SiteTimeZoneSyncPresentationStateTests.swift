@@ -4,6 +4,7 @@ import Foundation
 struct SiteTimeZoneSyncPresentationStateTests {
 
     static func main() {
+        SiteDSTFixtures.install()
         testCanDismissTracksOnlyThePresentationLifecycle()
         testSitePresentationUsesLocalSaveSemantics()
         print("SiteTimeZoneSyncPresentationStateTests passed")

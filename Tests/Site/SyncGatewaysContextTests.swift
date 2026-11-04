@@ -4,6 +4,7 @@ import Foundation
 struct SyncGatewaysContextTests {
 
     static func main() {
+        SiteDSTFixtures.install()
         testRuntimeDescriptorsPreserveSharedCandidateValuesAndAvailability()
         testExplicitFailedIDsFilterRuntimeDescriptorsExactly()
         print("SyncGatewaysContextTests passed")

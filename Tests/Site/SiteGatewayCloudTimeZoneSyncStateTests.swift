@@ -4,6 +4,7 @@ import Foundation
 struct SiteGatewayCloudTimeZoneSyncStateTests {
 
     static func main() {
+        SiteDSTFixtures.install()
         testInitializationSeparatesAlreadySyncedTargetsFromPushingTargets()
         testRequestMACsAndCountsExposeOnlyAuthorizedPendingRows()
         testApplyMatchesIDsCaseInsensitivelyAndIgnoresExtraMACs()
@@ -385,8 +386,8 @@ struct SiteGatewayCloudTimeZoneSyncStateTests {
                         gateways: []
                     ),
                     explicitContext: nil
-                ) == .hidden,
-            "Missing or invalid local and remote timezone values must fail closed"
+                ) != .hidden,
+            "Missing identity fails closed; syntactically valid server IANA remains reviewable"
         )
     }
 
@@ -407,7 +408,7 @@ struct SiteGatewayCloudTimeZoneSyncStateTests {
 
     private static func timeZone(offset: String = "+08:00") -> SiteTimeZoneValue {
         SiteTimeZoneValue(
-            ianaId: "Asia/Singapore",
+            ianaId: offset == "+08:00" ? "Asia/Singapore" : (offset == "+09:00" ? "Asia/Tokyo" : "Australia/Brisbane"),
             rawUTCOffset: offset
         )!
     }

@@ -29,7 +29,7 @@ struct SiteTimeZoneReviewSyncContractTests {
         require(reviewView.contains("RGB(100, 116, 139)"))
         require(reviewView.contains("RGB(151, 60, 0)"))
         require(reviewView.contains("make.height.equalTo(SCRYFrom(28))"))
-        require(reviewView.contains("numberOfLines = 2"))
+        require(reviewView.contains("numberOfLines = 0"))
         require(reviewView.contains("var onReviewSync: (() -> Void)?"))
 
         for key in [
@@ -81,7 +81,7 @@ struct SiteTimeZoneReviewSyncContractTests {
         require(
             appearsInOrder(
                 [
-                    "guard state != timeZoneReviewState else { return }",
+                    "guard state != timeZoneReviewState || renderedTimeZoneReviewOffset != displayOffset else { return }",
                     "timeZoneReviewState = state",
                     "favouritesCollectionView.reloadData()",
                     "updateEmptyView()"
@@ -424,8 +424,8 @@ struct SiteTimeZoneReviewSyncContractTests {
             occurrences(
                 of: "SiteTimeZoneReviewSyncView.swift in Sources",
                 in: project
-            ) == 8,
-            "Review view must belong to all four app targets"
+            ) == 12,
+            "Review view must belong to all six app targets"
         )
         for targetSuffix in 1...4 {
             require(
@@ -437,8 +437,8 @@ struct SiteTimeZoneReviewSyncContractTests {
             )
         }
         require(
-            occurrences(of: "SyncGatewaysViewController.swift in Sources", in: project) == 8,
-            "Sync gateways controller must belong to all four app targets"
+            occurrences(of: "SyncGatewaysViewController.swift in Sources", in: project) == 12,
+            "Sync gateways controller must belong to all six app targets"
         )
         for targetSuffix in 1...4 {
             require(
@@ -453,8 +453,8 @@ struct SiteTimeZoneReviewSyncContractTests {
             occurrences(
                 of: "SiteGatewayHeaderLayoutPolicy.swift in Sources",
                 in: project
-            ) == 8,
-            "Header layout policy must belong to all four app targets"
+            ) == 12,
+            "Header layout policy must belong to all six app targets"
         )
         for targetSuffix in 1...4 {
             require(
