@@ -1938,6 +1938,15 @@ extension SpaceData {
         let authoritativeCloudImport = newerCloudImport || SpaceConfigurationSafety.hasNewerCloudImport(self)
         let equalCloudImport = !initialize && SpaceConfigurationSafety.importsEqualCloudSnapshot(self, remote: incomingSpaceJsonData)
         let reviewedCloudImport = SpaceConfigurationSafety.hasReviewedCloudImport(self) || authoritativeCloudImport
+        // Re-enter once after reconciliation diagnoses a new business conflict.
+        // The shared selector then performs full preflight and durable cloud import.
+        func unresolvedConflict(_ reason: String) async -> SpaceImportOutcome {
+            if !initialize, !authoritativeCloudImport,
+               SpaceConfigurationSafety.prefersNewerCloud(self, remote: incomingSpaceJsonData) {
+                return await update(spaceJsonData: incomingSpaceJsonData)
+            }
+            return .preserved(reason)
+        }
         // Default legacy-writer field loss before decoding, using the same
         // representation as cloud comparison and persisted import readback.
         // Validate before metadata reconciliation or any persistent replacement.
@@ -1964,7 +1973,7 @@ extension SpaceData {
                 if !reviewedCloudImport {
                     switch await SpaceConfigurationSafety.reconcileSameVersionNodeRemoval(self, remote: incomingSpaceJsonData) {
                     case .preserveLocal: return .preserved("sameVersionNodeRemoval")
-                    case .failed: return .preserved("sameVersionNodeRemovalNeedsReview")
+                    case .failed: return await unresolvedConflict("sameVersionNodeRemovalNeedsReview")
                     case .notApplicable: break
                     }
                 }
@@ -1982,12 +1991,12 @@ extension SpaceData {
         if !initialize, !reviewedCloudImport {
             switch await SpaceConfigurationSafety.reconcileSameVersionNodeRemoval(self, remote: incomingSpaceJsonData) {
             case .preserveLocal: return .preserved("sameVersionNodeRemoval")
-            case .failed: return .preserved("sameVersionNodeRemovalNeedsReview")
+            case .failed: return await unresolvedConflict("sameVersionNodeRemovalNeedsReview")
             case .notApplicable: break
             }
             switch await SpaceConfigurationSafety.preserveLocalMembershipIfNeeded(self, remote: incomingSpaceJsonData) {
             case .preserveLocal: return .preserved("localMembershipPreferred")
-            case .failed: return .preserved("localMembershipConflict")
+            case .failed: return await unresolvedConflict("localMembershipConflict")
             case .notApplicable: break
             }
         }
@@ -2004,15 +2013,15 @@ extension SpaceData {
         if !initialize, !reviewedCloudImport {
             switch await SpaceConfigurationSafety.reconcileOlderCloudBaseline(self, remote: incomingSpaceJsonData) {
             case .preserveLocal: return .preserved("unchangedOlderCloudBaseline")
-            case .failed: return .preserved("cloudBaselineNeedsReview")
+            case .failed: return await unresolvedConflict("cloudBaselineNeedsReview")
             case .notApplicable: break
             }
         }
         if !initialize, !reviewedCloudImport, !(await SpaceConfigurationSafety.reconcileCloudProfiles(self, remote: incomingSpaceJsonData)) {
-            return .preserved("cloudProfileNeedsReview")
+            return await unresolvedConflict("cloudProfileNeedsReview")
         }
         if !initialize, !reviewedCloudImport, !SpaceConfigurationSafety.reconcileCloudMembership(self, remote: incomingSpaceJsonData) {
-            return .preserved("cloudMembershipNeedsReview")
+            return await unresolvedConflict("cloudMembershipNeedsReview")
         }
         if !authoritativeCloudImport && SpaceConfigurationSafety.preservesLocalChanges(self) {
             #if DEBUG

@@ -150,6 +150,8 @@ struct SpaceRecoveryState: Codable, Equatable {
         /// Same-version Web replacement must retain the selected cloud fields,
         /// including across a restart between selection and import completion.
         var replacesEqualVersion: Bool?
+        /// A diagnosed conflict selected cloud despite newer unconfirmed local edits.
+        var replacesConflictingVersion: Bool?
     }
     struct Identity: Codable, Equatable {
         let account: String

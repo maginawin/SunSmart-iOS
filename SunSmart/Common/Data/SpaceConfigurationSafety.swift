@@ -241,6 +241,13 @@ enum SpaceConfigurationSafety {
         return state.matches(context)
     }
 
+    /// Only diagnosed business conflicts supersede newer local work. A normal
+    /// pre-upload GET must still preserve edits against an unchanged baseline.
+    static func prefersCloudConflictRecovery(_ space: SpaceData) -> Bool {
+        let reason = UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space))
+        return ["uploadReadbackConflict", "cloudConfigurationConflict"].contains(reason ?? "")
+    }
+
     /// Web edits may retain the Space timestamp. Equal versions, as well as
     /// newer ones, select the complete cloud snapshot over local intent.
     @MainActor
@@ -257,7 +264,17 @@ enum SpaceConfigurationSafety {
         let current = max(localVersion, state.submission?.timestamp ?? 0, pendingVersion)
         // A staged import can be ahead of the installed local version. A GET
         // equal only to that staging version must resume the durable selection.
-        return version > current || (version == current && version == localVersion)
+        let conflictSelection: Bool
+        if prefersCloudConflictRecovery(space),
+           !defaultRecoverySourceMatches(remote, source: state.defaultRecoverySource),
+           let remoteNodes = SpaceCloudNodeRemovalPolicy.instances(remote),
+           let known = state.submission?.nodeIdentities ?? state.nodeIdentitiesBaseline {
+            conflictSelection = known.allSatisfy { old in
+                remoteNodes.filter { $0.uuid == old.uuid || !$0.elementAddresses.isDisjoint(with: old.elementAddresses) }
+                    .allSatisfy { old == $0 }
+            }
+        } else { conflictSelection = false }
+        return conflictSelection || version > current || (version == current && version == localVersion)
     }
 
     static func hasNewerCloudImport(_ space: SpaceData) -> Bool {
@@ -271,10 +288,11 @@ enum SpaceConfigurationSafety {
         if hasNewerCloudImport(space), let selected = pendingImport(space),
            NSDictionary(dictionary: CloudConfigurationDefaults.space(selected).filter { $0.key != SpaceMembershipResponseContext.payloadKey })
             .isEqual(to: CloudConfigurationDefaults.space(remote).filter { $0.key != SpaceMembershipResponseContext.payloadKey }) {
-            return (try? recoveryState(space).cloudImport?.replacesEqualVersion) == true
+            let selection = try? recoveryState(space).cloudImport
+            return selection?.replacesEqualVersion == true || selection?.replacesConflictingVersion == true
         }
-        return prefersNewerCloud(space, remote: remote)
-            && SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"]) == space.lastUpdate
+        return prefersNewerCloud(space, remote: remote) && (prefersCloudConflictRecovery(space)
+            || SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"]) == space.lastUpdate)
     }
 
     /// Called only after complete import preflight. Write the selected snapshot
@@ -305,7 +323,11 @@ enum SpaceConfigurationSafety {
             next.directoryName = key(space) + "-" + next.generation.uuidString
             next.cloudImport = .init(timestamp: SpaceConfigurationIntegrityPolicy.integer(payload["updateTimestamp"])!,
                                      supersededGeneration: state.generation,
-                                     replacesEqualVersion: importsEqualCloudSnapshot(space, remote: payload))
+                                     replacesEqualVersion: SpaceConfigurationIntegrityPolicy.integer(payload["updateTimestamp"]) == space.lastUpdate,
+                                     replacesConflictingVersion: prefersCloudConflictRecovery(space))
+            #if DEBUG
+            print("[SpaceCloudSelection] local=\(space.lastUpdate) submitted=\(state.submission?.timestamp ?? 0) remote=\(next.cloudImport!.timestamp) conflict=\(next.cloudImport?.replacesConflictingVersion == true) nodes=\((payload["nodes"] as? [Any])?.count ?? -1)")
+            #endif
             next.pendingArchives = (state.pendingArchives ?? []) + [oldDirectory.lastPathComponent]
             let selected = storedDirectory(space, state: next)
             try FileManager.default.createDirectory(at: selected, withIntermediateDirectories: true)
@@ -1416,12 +1438,16 @@ enum SpaceConfigurationSafety {
                         }
                         switch await reconcileSameVersionNodeRemoval(space, remote: remote) {
                         case .preserveLocal: return .success(())
-                        case .failed(let reason): return failure(space.syncCloudError ?? uploadUnconfirmed, "baselineReconciliation", reason)
+                        case .failed(let reason):
+                            if let result = await importNewerCloudIfNeeded(space, remote: remote) { return result }
+                            return failure(space.syncCloudError ?? uploadUnconfirmed, "baselineReconciliation", reason)
                         case .notApplicable: break
                         }
                         switch await preserveLocalMembershipIfNeeded(space, remote: remote) {
                         case .preserveLocal: return .success(())
-                        case .failed(let reason): return failure(space.syncCloudError ?? uploadUnconfirmed, "baselineReconciliation", reason)
+                        case .failed(let reason):
+                            if let result = await importNewerCloudIfNeeded(space, remote: remote) { return result }
+                            return failure(space.syncCloudError ?? uploadUnconfirmed, "baselineReconciliation", reason)
                         case .notApplicable: break
                         }
                         switch await reconcileOlderCloudBaseline(space, remote: remote) {
@@ -1430,9 +1456,11 @@ enum SpaceConfigurationSafety {
                             return failure(space.syncCloudError ?? uploadUnconfirmed, "baselineReconciliation", reason)
                         case .notApplicable:
                             guard await reconcileCloudProfiles(space, remote: remote) else {
+                                if let result = await importNewerCloudIfNeeded(space, remote: remote) { return result }
                                 return failure(space.syncCloudError ?? uploadUnconfirmed, "baselineReconciliation", "profiles")
                             }
                             guard reconcileCloudMembership(space, remote: remote) else {
+                                if let result = await importNewerCloudIfNeeded(space, remote: remote) { return result }
                                 return failure(space.syncCloudError ?? uploadUnconfirmed, "baselineReconciliation", "membership")
                             }
                         }
@@ -1469,6 +1497,7 @@ enum SpaceConfigurationSafety {
             }
             guard let expectedKeyFingerprint else { return failure(uploadUnconfirmed, "initializationReceipt", "localKeysUnavailable") }
             var mismatchReason = "remoteConfigurationMismatch"
+            var conflictingRemote: [String: Any]?
             for attempt in 0..<3 {
                 guard !_Concurrency.Task<Never, Never>.isCancelled, current() else {
                     return failure(uploadUnconfirmed, "request", "cancelledOrContextChanged")
@@ -1506,6 +1535,8 @@ enum SpaceConfigurationSafety {
                           let configuration = SpaceConfigurationIntegrityPolicy.configurationData(remote),
                           remote["nodes"] is [[String: Any]] else { return failure(uploadUnconfirmed, "response", "invalidRemoteConfiguration") }
                     let remoteKeyFingerprint = SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId)?.fingerprint
+                    conflictingRemote = remote
+                    diagnosticRemoteTimestamp = SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"])
                     space.applyRemoteSpaceMetadata(remote)
                     guard space.save() else { return failure(uploadUnconfirmed, "persistence", "remoteMetadata") }
                     guard current() else { return failure(authorityError(space), "remoteAuthority", "contextChanged") }
@@ -1521,7 +1552,9 @@ enum SpaceConfigurationSafety {
                     let sameVersionRemoval: Bool
                     switch await reconcileSameVersionNodeRemoval(space, remote: remote) {
                     case .preserveLocal: sameVersionRemoval = true
-                    case .failed(let reason): return failure(space.syncCloudError ?? uploadUnconfirmed, "membershipReconciliation", reason)
+                    case .failed(let reason):
+                        if let result = await importNewerCloudIfNeeded(space, remote: remote) { return result }
+                        return failure(space.syncCloudError ?? uploadUnconfirmed, "membershipReconciliation", reason)
                     case .notApplicable: sameVersionRemoval = false
                     }
                     context = try recoveryState(space)
@@ -1530,6 +1563,7 @@ enum SpaceConfigurationSafety {
                     }
                     let profilesReconciled = sameVersionRemoval ? true : await reconcileCloudProfiles(space, remote: remote)
                     guard profilesReconciled, current() else {
+                        if current(), let result = await importNewerCloudIfNeeded(space, remote: remote) { return result }
                         return failure(space.syncCloudError ?? uploadUnconfirmed, "profileReconciliation", "failedOrContextChanged")
                     }
                     if (try? recoveryState(space).submission) == nil {
@@ -1537,6 +1571,7 @@ enum SpaceConfigurationSafety {
                         return .success(())
                     }
                     guard sameVersionRemoval || reconcileCloudMembership(space, remote: remote), current() else {
+                        if current(), let result = await importNewerCloudIfNeeded(space, remote: remote) { return result }
                         return failure(space.syncCloudError ?? uploadUnconfirmed, "membershipReconciliation", "failedOrContextChanged")
                     }
                     let expected = readbackConfiguration(submission.configuration, timestamp: submission.timestamp, space: space)
@@ -1624,6 +1659,8 @@ enum SpaceConfigurationSafety {
                 if attempt < 2 { try await _Concurrency.Task<Never, Never>.sleep(nanoseconds: 500_000_000) }
             }
             block(space, reason: "uploadReadbackConflict")
+            if current(), let remote = conflictingRemote,
+               let result = await importNewerCloudIfNeeded(space, remote: remote) { return result }
             return failure(uploadUnconfirmed, "remoteValidation", mismatchReason)
         } catch let error as PendingUploadValidationError {
             return failure(.configurationUnavailable, "legacyReceipt", error.reason)
@@ -1686,7 +1723,7 @@ enum SpaceConfigurationSafety {
 
     static func needsCloudSnapshotReview(_ space: SpaceData) -> Bool {
         let reason = UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space))
-        return reason == "cloudBaselineNeedsReview" || reason == "cloudConfigurationConflict"
+        return reason == "cloudBaselineNeedsReview" || reason == "cloudConfigurationConflict" || reason == "uploadReadbackConflict"
     }
 
     /// Compare the editable configuration reviewed by the user, excluding device
@@ -2243,7 +2280,7 @@ enum SpaceConfigurationSafety {
                               stage: "sameVersionRemoval." + (detail ?? reason), remoteTimestamp: remoteTimestamp)
             return .failed(reason)
         }
-        if let submission = state.submission, submission.phase != .accepted { return failure("unacceptedSubmission") }
+        if let submission = state.submission, submission.phase != .accepted { return .notApplicable }
         if state.submission?.permitsCloudRemoval == false,
            state.prefersLocalMembership != true, state.localReplacementVersion == nil {
             return failure("unknownSubmissionOutcome")
@@ -2491,7 +2528,13 @@ enum SpaceConfigurationSafety {
               submission?.keyFingerprint == nil || submission?.keyFingerprint == remoteKeys.fingerprint else { return failure("networkIdentityMismatch") }
         guard let missing = SpaceCloudNodeRemovalPolicy.removed(from: source, remote: remoteNodes) else {
             if submission == nil && !space.needUploadCloud { return true }
-            block(space, reason: "cloudMembershipConflict")
+            // A mixed add/remove set is a business conflict. Reused identities
+            // or addresses remain protected and must not select cloud implicitly.
+            let compatible = source.allSatisfy { old in
+                remoteNodes.filter { $0.uuid == old.uuid || !$0.elementAddresses.isDisjoint(with: old.elementAddresses) }
+                    .allSatisfy { old == $0 }
+            }
+            block(space, reason: compatible ? "cloudConfigurationConflict" : "cloudMembershipConflict")
             return recordSyncFailure(space, error: .configurationReviewRequired, stage: "cloudMembershipConflict",
                                      remoteTimestamp: remoteTimestamp)
         }

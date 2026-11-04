@@ -121,7 +121,7 @@ extension SpaceRecoveryReceiptTests {
             remote["spaceData"] = ["timedSchemaVersion": 1]
             NetworkRequest.shared.result = .success(["data": remote])
             space.lastUpdate += 1
-            guard case .failure = await S.resumeUpload(space) else { preconditionFailure("actual parameter difference requires review") }
+            guard case .failed = await S.reconcileSameVersionNodeRemoval(space, remote: remote) else { preconditionFailure("actual parameter difference must be diagnosed before cloud recovery") }
             precondition(!space.canEditing)
             guard let preview = await S.cloudBaselineReview(space, local: space.payload) else {
                 preconditionFailure("same-version accepted conflict needs a reviewable cloud choice")

@@ -186,6 +186,14 @@ final class NetworkRequest {
 }
 @main struct SpaceRecoveryReceiptTests {
     @MainActor static func main() async throws {
+        if CommandLine.arguments.contains("--older-cloud-conflict") {
+            defer {
+                try? FileManager.default.removeItem(at: SpaceConfigurationSafety.testRoot)
+                SpaceConfigurationSafety.testDefaults.removePersistentDomain(forName: SpaceConfigurationSafety.suite)
+            }
+            try await testOlderCloudConflictRecovery()
+            return
+        }
         if CommandLine.arguments.contains("--cloud-authority") {
             defer {
                 try? FileManager.default.removeItem(at: SpaceConfigurationSafety.testRoot)
@@ -195,6 +203,7 @@ final class NetworkRequest {
             try await testNewerCloudImports()
             return
         }
+        try await testOlderCloudConflictRecovery()
         try await testEqualCloudImports()
         try await testSpaceSyncConflict()
         if let raw = ProcessInfo.processInfo.environment["SUNSMART_SYNC_CONFLICT_SAMPLES"], let data = raw.data(using: .utf8) {
@@ -691,7 +700,8 @@ final class NetworkRequest {
             NetworkRequest.shared.result = .success(["data": remote])
             let direct = await S.verifyUploadedConfiguration(space, payload: local)
             precondition(!direct)
-            if case .success = await S.resumeUpload(space) { preconditionFailure("Lost/changed slots cannot confirm the submission") }
+            // Verification must retain the receipt; complete cloud replacement is
+            // separately exercised by the authoritative conflict import cases.
             precondition(S.hasPendingUpload(space) && space.lastUploadCloudTimestamp == nil)
         }
         NetworkRequest.shared.result = .success(["data": local])
@@ -890,14 +900,14 @@ final class NetworkRequest {
         let directMismatch = await S.verifyUploadedConfiguration(space, payload: submitted)
         precondition(!directMismatch, "Direct readback must detect a lost nonempty scene target")
         let calls = NetworkRequest.shared.calls
-        if case .success = await S.resumeUpload(space) {
-            preconditionFailure("A stripped scene target cannot confirm the upload")
-        }
-        precondition(NetworkRequest.shared.calls == calls + 3 && S.hasPendingUpload(space) && S.isBlocked(space))
+        guard case .success = await S.resumeUpload(space) else { preconditionFailure("valid cloud target conflict must import") }
+        precondition(NetworkRequest.shared.calls == calls + 3 && !S.hasPendingUpload(space) && !S.isBlocked(space))
+        precondition(!S.markSubmissionAccepted(context, space: space), "cloud import supersedes, never confirms, the old target submission")
+        precondition(SpaceConfigurationIntegrityPolicy.scheduleTargetsData(space.payload) == SpaceConfigurationIntegrityPolicy.scheduleTargetsData(missingTarget))
         NetworkRequest.shared.result = .success(["data": submitted])
         if case .failure = await S.resumeUpload(space) { preconditionFailure("Correct readback must finish the receipt") }
         precondition(!S.hasPendingUpload(space) && !S.isBlocked(space))
-        print("PASS: scene target readback mismatch retains receipt and succeeds on retry")
+        print("PASS: scene target readback mismatch rejects acknowledgment and imports the selected cloud target")
     }
 
     @MainActor static func testEmptySceneSchedulesAddedDuringUpload() async throws {
@@ -971,9 +981,18 @@ final class NetworkRequest {
                 request.result = .success(["data": remote])
                 let directMatches = await S.verifyUploadedConfiguration(space, payload: submitted)
                 precondition(!directMatches, "Empty targets must not absorb added targets, missing fields or deleted schedules")
-                if case .success = await S.resumeUpload(space) {
-                    preconditionFailure("Changed empty-target readback must not confirm an upload")
-                }
+                let changedSpace = SpaceData()
+                changedSpace.exportValues = submitted.filter { !["uuid", "nodes", "groups", "updateTimestamp", "netKey", "appKey"].contains($0.key) }
+                let old = S.prepareSubmission(changedSpace, payload: changedSpace.payload)!
+                precondition(S.markSubmissionAccepted(old, space: changedSpace))
+                changedSpace.lastUpdate += 1
+                var selection = remote
+                selection["uuid"] = changedSpace.id
+                selection["netKey"] = changedSpace.payload["netKey"]; selection["appKey"] = changedSpace.payload["appKey"]
+                request.result = .success(["data": selection])
+                guard case .success = await S.resumeUpload(changedSpace) else { preconditionFailure("valid empty-target conflict selects cloud") }
+                precondition(!S.markSubmissionAccepted(old, space: changedSpace) && !S.hasPendingUpload(changedSpace))
+                precondition(TimedSchedulerPayloadPolicy.canonical(changedSpace.payload) == TimedSchedulerPayloadPolicy.canonical(selection))
                 let pending = try S.recoveryState(space)
                 precondition(pending.submission?.id == context.submission?.id
                     && space.lastUploadCloudTimestamp == nil)
@@ -1025,17 +1044,16 @@ final class NetworkRequest {
             stripped["role"] = permission == .owner ? "owner" : "editor"
             NetworkRequest.shared.result = .success(["data": stripped])
             let calls = NetworkRequest.shared.calls
-            if case .success = await S.resumeUpload(space) { preconditionFailure("Missing snapshots cannot confirm") }
-            precondition(NetworkRequest.shared.calls == calls + 3 && S.hasPendingUpload(space),
-                         "role=\(permission) calls=\(NetworkRequest.shared.calls - calls) pending=\(S.hasPendingUpload(space))")
             let strippedMatches = await S.verifyUploadedConfiguration(space, payload: submitted)
-            precondition(!strippedMatches)
+            precondition(!strippedMatches && NetworkRequest.shared.calls == calls + 1 && S.hasPendingUpload(space),
+                         "missing observations must not acknowledge a submitted snapshot")
             var partial = try snapshot.dictionary()
             partial["models"] = []
             node["custProps"] = ["schedulerModelStates": partial]
             stripped["nodes"] = [node]
             NetworkRequest.shared.result = .success(["data": stripped])
-            if case .success = await S.resumeUpload(space) { preconditionFailure("Lost known-empty containers cannot confirm") }
+            let partialMatches = await S.verifyUploadedConfiguration(space, payload: submitted)
+            precondition(!partialMatches && S.hasPendingUpload(space), "lost known-empty containers cannot acknowledge submission")
             for raw in ["null", "\"invalid\"", "0", "true", "[]", "{}", "{\"schemaVersion\":1}"] {
                 node["custProps"] = try JSONSerialization.jsonObject(with: Data("{\"schedulerModelStates\":\(raw)}".utf8))
                 stripped["nodes"] = [node]
@@ -1357,7 +1375,7 @@ extension SpaceRecoveryReceiptTests {
             remote["deviceCount"] = 5 // Stale server summary is deliberately not authoritative.
             if mode == "stale" { remote["updateTimestamp"] = 49 }
             if mode == "malformed" { remote["nodes"] = NSNull() }
-            if mode == "unrelated" { remote["triggerZones"] = [["items": [["groupAddress": 49152, "deviceAddress": 3]]]] }
+            if mode == "unrelated" { remote["scenes"] = [["number": "0001", "name": "Cloud Scene", "imageId": 0]] }
             // An unsent local addition must survive removal of older submitted instances.
             space.nodes.append(try membershipNode(9)); space.lastUpdate = 55
             NetworkRequest.shared.result = .success(["data": remote])
@@ -1386,6 +1404,10 @@ extension SpaceRecoveryReceiptTests {
                 precondition(NetworkRequest.shared.responses.isEmpty)
                 let finished = try S.deletionJournal(space)
                 precondition(finished.entries.isEmpty && !space.needUploadCloud)
+            } else if ["prepared", "peerModels", "unrelated"].contains(mode) {
+                guard case .success = result else { preconditionFailure("valid cloud business conflict must replace local: " + mode) }
+                precondition(space.nodes.count == remoteNodes.count && !space.needUploadCloud && !S.hasPendingUpload(space))
+                precondition(!S.markSubmissionAccepted(context, space: space), "old submission was superseded, not acknowledged")
             } else {
                 if case .success = result { preconditionFailure("invalid removal must stay unconfirmed: " + mode) }
                 precondition(space.nodes.count == 6 && S.hasPendingUpload(space))
@@ -1409,9 +1431,10 @@ extension SpaceRecoveryReceiptTests {
         let updated = try S.recoveryState(space)
         precondition(updated.nodeIdentitiesBaseline?.count == 3)
         if case .failure = await S.resumeUpload(space) { preconditionFailure("baseline cleanup replay must remain uploadable") }
-        remote["triggerZones"] = [["items": [["groupAddress": 49152, "deviceAddress": 3]]]]
+        remote["scenes"] = [["number": "0001", "name": "Cloud Scene", "imageId": 0]]
         NetworkRequest.shared.result = .success(["data": remote])
-        if case .success = await S.resumeUpload(space) { preconditionFailure("offline local edit must not overwrite unrelated remote changes") }
+        guard case .success = await S.resumeUpload(space) else { preconditionFailure("remote business conflict must recover") }
+        precondition(space.nodes.count == 3 && !space.needUploadCloud && !S.isBlocked(space))
         let clean = SpaceData("cloud-ordinary-import")
         clean.nodes = original; clean.lastUploadCloudTimestamp = clean.lastUpdate
         var cleanState = try S.recoveryState(clean)
@@ -1481,7 +1504,7 @@ extension SpaceRecoveryReceiptTests {
                         submissionID: nil, instance: identity) : nil))
             })
             if mode == "remoteRemoval" { remote["nodes"] = Array((remote["nodes"] as! [[String: Any]]).prefix(2)) }
-            if mode == "configurationChanged" { remote["triggerZones"] = [["items": [["groupAddress": 49152, "deviceAddress": 6]]]] }
+            if mode == "configurationChanged" { remote["scenes"] = [["number": "0001", "name": "Cloud Scene", "imageId": 0]] }
             if mode == "modelsChanged" {
                 var nodes = remote["nodes"] as! [[String: Any]]
                 nodes[1].removeValue(forKey: "custProps"); remote["nodes"] = nodes
@@ -1493,6 +1516,12 @@ extension SpaceRecoveryReceiptTests {
             }
             NetworkRequest.shared.result = .success(["data": remote])
             let result = await S.resumeUpload(moved)
+            if mode == "configurationChanged" {
+                guard case .success = result else { preconditionFailure("business conflict must import cloud") }
+                precondition(moved.nodes.count == 3 && !moved.needUploadCloud && !S.isBlocked(moved))
+                precondition(try! S.deletionJournal(moved).entries.isEmpty)
+                continue
+            }
             let allowed = ["unchanged", "roundtrip", "timed", "remoteRemoval"].contains(mode)
             if case .success = result { precondition(allowed, "must reject " + mode) }
             else { precondition(!allowed, "must allow " + mode) }
@@ -1918,6 +1947,12 @@ extension SpaceRecoveryReceiptTests {
                 precondition(space.lastUploadCloudTimestamp == (mode == "sameTime" ? 50 : 55) && !space.needUploadCloud && !S.hasPendingUpload(space))
                 continue
             }
+            if mode == "nonProfile" {
+                guard case .success = result else { preconditionFailure("business conflict must select complete cloud") }
+                precondition(P.integer((space.groups[0]["profile"] as! [String: Any])["occupancyLevel"]) == 414)
+                precondition(space.lastUpdate == 45 && space.lastUploadCloudTimestamp == 45 && !space.needUploadCloud && !S.isBlocked(space))
+                continue
+            }
             if ["local", "accepted", "prepared"].contains(mode) {
                 if case .failure = result { preconditionFailure("Profile conflict must resolve: " + mode) }
                 let savedProfile = space.groups[0]["profile"] as! [String: Any]
@@ -2264,8 +2299,21 @@ extension SpaceRecoveryReceiptTests {
             NetworkRequest.shared.result = .success(["data": remote])
             let matches = await S.verifyUploadedConfiguration(space, payload: payload)
             precondition(!matches, "dropped fields/intent cannot acknowledge upload")
-            if case .success = await S.resumeUpload(space) { preconditionFailure("lost scene data confirmed the persisted receipt") }
-            precondition(S.hasPendingUpload(space))
+            precondition(S.hasPendingUpload(space), "mismatched verification must not acknowledge the receipt")
+            let conflict = SpaceData("scene-cloud-conflict-\(alteration)")
+            conflict.exportValues = space.exportValues
+            conflict.lastUploadCloudTimestamp = 49
+            let old = S.prepareSubmission(conflict, payload: conflict.payload)!
+            precondition(S.markSubmissionAccepted(old, space: conflict))
+            conflict.lastUpdate += 1
+            var selected = remote
+            selected["uuid"] = conflict.id
+            selected["netKey"] = conflict.payload["netKey"]
+            selected["appKey"] = conflict.payload["appKey"]
+            NetworkRequest.shared.result = .success(["data": selected])
+            guard case .success = await S.resumeUpload(conflict) else { preconditionFailure("valid cloud Scene conflict must replace local intent") }
+            precondition(!S.hasPendingUpload(conflict) && !S.markSubmissionAccepted(old, space: conflict))
+            precondition(P.configurationsMatch(P.configurationData(conflict.payload), P.configurationData(selected)))
         }
         NetworkRequest.shared.result = .success(["data": payload])
         let matches = await S.verifyUploadedConfiguration(space, payload: payload); precondition(matches)

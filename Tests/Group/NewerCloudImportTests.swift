@@ -34,6 +34,86 @@ extension SpaceData {
 }
 
 extension SpaceRecoveryReceiptTests {
+    @MainActor static func testOlderCloudConflictRecovery() async throws {
+        typealias S = SpaceConfigurationSafety
+        typealias P = ProximityLightingImportPreflight
+        defer { P.storedSpace = nil; S.failStateWrite = false; S.failCheckpoint = false }
+        for mode in ["prepared", "accepted", "storedConflict", "direct", "directFresh", "restart", "empty", "cancelled", "receiptMatches", "baselineMatches", "badKey", "badDeviceKey", "badTimed", "checkpointFailure", "stateFailure"] {
+            let space = SpaceData()
+            space.nodes = try (1...3).map(membershipNode)
+            space.lastUpdate = 50; space.lastUploadCloudTimestamp = 50
+            P.storedSpace = space
+            let baseline = space.payload
+            var state = try S.recoveryState(space)
+            state.authorizationBaseline = SpaceConfigurationIntegrityPolicy.configurationData(baseline)
+            state.nodeIdentitiesBaseline = SpaceCloudNodeRemovalPolicy.instances(baseline)
+            state.removalSnapshot = SpaceCloudNodeRemovalPolicy.Snapshot.make(baseline)
+            state.timedConfigurationBaseline = TimedSchedulerPayloadPolicy.canonical(baseline)
+            state.schedulerModelStatesBaseline = SchedulerModelSnapshot.spaceData(baseline)
+            try S.testSaveState(state, space: space)
+            space.nodes.removeFirst(); space.lastUpdate = 60
+            let submitted = space.payload
+            let receipt = S.prepareSubmission(space, payload: submitted)!
+            if ["accepted", "directFresh"].contains(mode) { precondition(S.markSubmissionAccepted(receipt, space: space)) }
+            space.nodes.removeFirst(); space.lastUpdate = 70
+            precondition(S.updateDeletionJournal(space) { journal in
+                for (index, node) in (baseline["nodes"] as! [[String: Any]]).prefix(2).enumerated() {
+                    let old = SpaceCloudNodeRemovalPolicy.instances(["nodes": [node]])![0]
+                    journal.entries.append(.init(id: UUID(), nodeUUID: old.uuid, primaryAddress: old.address,
+                        elementAddresses: old.elementAddresses, macAddress: nil, productId: nil,
+                        stage: .cleaned, completedTimestamp: index == 0 ? 59 : 69))
+                }
+            })
+            var cloud = baseline
+            cloud["nodes"] = try [membershipNode(1), membershipNode(2)]
+            cloud["updateTimestamp"] = 60
+            if mode == "empty" { cloud["nodes"] = [[String: Any]]() }
+            if mode == "receiptMatches" { cloud = submitted }
+            if mode == "baselineMatches" { cloud = baseline }
+            if mode == "badKey" { cloud["netKey"] = ["key": "wrong"] }
+            if mode == "badDeviceKey" {
+                var nodes = cloud["nodes"] as! [[String: Any]]
+                nodes[1]["deviceKey"] = String(repeating: "EF", count: 16)
+                cloud["nodes"] = nodes
+            }
+            if mode == "badTimed" { cloud["spaceData"] = ["timedSchemaVersion": 99] }
+            if ["storedConflict", "direct", "restart"].contains(mode) { S.block(space, reason: "uploadReadbackConflict") }
+            if mode == "restart" {
+                precondition(S.beginNewerCloudImport(space, payload: cloud))
+                precondition(try! S.recoveryState(space).cloudImport?.replacesConflictingVersion == true)
+            }
+            S.failCheckpoint = mode == "checkpointFailure"
+            S.failStateWrite = mode == "stateFailure"
+            NetworkRequest.shared.result = .success(["data": cloud])
+            let result: Bool
+            if mode == "cancelled" {
+                let task = Task { @MainActor in await S.resumeUpload(space) }
+                task.cancel()
+                if case .success = await task.value { result = true } else { result = false }
+            } else if ["direct", "directFresh"].contains(mode) { result = await space.restoreNewerCloudFixture(cloud).status == .applied }
+            else { if case .success = await S.resumeUpload(space) { result = true } else { result = false } }
+            S.failCheckpoint = false; S.failStateWrite = false
+            if ["cancelled", "badKey", "badDeviceKey", "badTimed", "checkpointFailure", "stateFailure"].contains(mode) {
+                precondition(!result && space.nodes.count == 1 && S.hasPendingUpload(space), mode)
+            } else if ["receiptMatches", "baselineMatches"].contains(mode) {
+                precondition(result && space.nodes.count == 1 && space.lastUpdate == 70 && space.needUploadCloud, mode)
+            } else {
+                precondition(result, "older cloud conflict must finish recovery: " + mode)
+                precondition(space.nodes.count == (mode == "empty" ? 0 : 2) && space.lastUpdate == 60 && space.lastUploadCloudTimestamp == 60, mode)
+                precondition(!S.isBlocked(space) && !S.hasPendingUpload(space) && !space.needUploadCloud, mode)
+                precondition(!S.markSubmissionAccepted(receipt, space: space), "late receipt must stay invalid")
+                precondition(try! S.deletionJournal(space).entries.isEmpty)
+                precondition(space.canEditing)
+                space.nodes.append(try membershipNode(4)); space.lastUpdate = 71
+                precondition(S.prepareSubmission(space, payload: space.payload) != nil)
+                NetworkRequest.shared.result = .success(["data": space.payload])
+                guard case .success = await S.resumeUpload(space) else { preconditionFailure("new device upload after recovery") }
+                precondition(space.nodes.count == (mode == "empty" ? 1 : 3) && !S.hasPendingUpload(space) && !space.needUploadCloud)
+            }
+        }
+        print("PASS: older cloud conflicts recover while exact receipt and unchanged baseline preserve newer local deletion")
+    }
+
     @MainActor static func testEqualCloudImports() async throws {
         typealias S = SpaceConfigurationSafety
         typealias P = ProximityLightingImportPreflight

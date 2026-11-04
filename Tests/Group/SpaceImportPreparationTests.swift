@@ -265,7 +265,8 @@ extension SpaceRecoveryReceiptTests {
                         rows[0]["nodeSlots"] = null ? NSNull() : nil
                         stripped["schedules"] = rows
                         NetworkRequest.shared.result = .success(["data": stripped])
-                        if case .success = await S.resumeUpload(space) { preconditionFailure("lost assigned bindings cannot confirm an upload") }
+                        let matches = await S.verifyUploadedConfiguration(space, payload: working)
+                        precondition(!matches, "lost assigned bindings cannot acknowledge an upload; conflict recovery is a separate import")
                         precondition(S.hasPendingUpload(space))
                     }
                 }
