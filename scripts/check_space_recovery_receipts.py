@@ -109,6 +109,7 @@ test += '\n' + section(imports, 'final class SiteImportTrace', '\nstruct SpaceIm
 test += '\n' + read('Tests/Group/SpaceImportPreparationTests.swift')
 test += '\n' + read('Tests/Group/NewerCloudImportTests.swift')
 test += '\n' + read('Tests/Group/OlderCloudBaselineTests.swift')
+test += '\n' + read('Tests/Group/NewerLocalConfigurationTests.swift')
 test += '\n' + read('Tests/Group/SpaceSyncConflictTests.swift')
 test += '\n' + read('Tests/Group/SpaceDefaultRecoveryReceiptTests.swift')
 test += '\n' + recovery_mesh_source(root)

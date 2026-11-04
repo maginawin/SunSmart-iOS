@@ -241,8 +241,8 @@ enum SpaceConfigurationSafety {
         return state.matches(context)
     }
 
-    /// Only diagnosed business conflicts supersede newer local work. A normal
-    /// pre-upload GET must still preserve edits against an unchanged baseline.
+    /// A diagnosed conflict can select cloud data only after version arbitration
+    /// has established that it is not older than the current local version.
     static func prefersCloudConflictRecovery(_ space: SpaceData) -> Bool {
         let reason = UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space))
         return ["uploadReadbackConflict", "cloudConfigurationConflict"].contains(reason ?? "")
@@ -261,6 +261,7 @@ enum SpaceConfigurationSafety {
         let pendingVersion = pendingImport(space).flatMap { SpaceConfigurationIntegrityPolicy.integer($0["updateTimestamp"]) } ?? 0
         let localVersion = max(space.lastUpdate, persisted?.lastUpdate ?? 0,
                                space.lastUploadCloudTimestamp ?? 0, persisted?.lastUploadCloudTimestamp ?? 0)
+        guard version >= localVersion else { return false }
         let current = max(localVersion, state.submission?.timestamp ?? 0, pendingVersion)
         // A staged import can be ahead of the installed local version. A GET
         // equal only to that staging version must resume the durable selection.
@@ -1365,7 +1366,7 @@ enum SpaceConfigurationSafety {
     }
 
     @MainActor
-    static func resumeUpload(_ space: SpaceData) async -> Swift.Result<Void, NetworkApiError> {
+    static func resumeUpload(_ space: SpaceData, preparingUpload: Bool = false) async -> Swift.Result<Void, NetworkApiError> {
         let attempt = UUID()
         let diagnosticIdentity = identity(space)
         var diagnosticRemoteTimestamp: Int64?
@@ -1396,8 +1397,8 @@ enum SpaceConfigurationSafety {
             guard context.phase == .active else { return failure(uploadUnconfirmed, "eligibility", "recoveryPhase") }
             guard context.authority == .writable else { return failure(authorityError(space), "eligibility", "recoveryAuthority") }
             guard let submission = context.submission else {
-                // An offline local edit must not resurrect nodes removed remotely
-                // since our last confirmed version. Read only this Space.
+                // Compare this Space's current cloud version before preparing
+                // an upload; a newer local snapshot wins as a complete unit.
                 if space.needUploadCloud || requiresConfigurationReview(space), space.lastUploadCloudTimestamp != nil
                     || context.nodeIdentitiesBaseline != nil || context.schedulerModelStatesBaseline != nil {
                     report("baselineRequest")
@@ -1419,6 +1420,12 @@ enum SpaceConfigurationSafety {
                         space.applyRemoteSpaceMetadata(remote)
                         guard space.save() else { return failure(uploadUnconfirmed, "persistence", "remoteMetadata") }
                         guard canAutomaticallyUpload(space) else { return failure(authorityError(space), "baselineAuthority", "writeUnavailable") }
+                        switch await reconcileOlderCloudBaseline(space, remote: remote) {
+                        case .preserveLocal: report("newerLocalConfiguration"); return .success(())
+                        case .failed(let reason):
+                            return failure(space.syncCloudError ?? uploadUnconfirmed, "baselineReconciliation", reason)
+                        case .notApplicable: break
+                        }
                         if context.defaultRecoverySource != nil {
                             if defaultRecoverySourceMatches(remote, source: context.defaultRecoverySource) {
                                 // The user selected this server snapshot. Its repaired
@@ -1450,19 +1457,13 @@ enum SpaceConfigurationSafety {
                             return failure(space.syncCloudError ?? uploadUnconfirmed, "baselineReconciliation", reason)
                         case .notApplicable: break
                         }
-                        switch await reconcileOlderCloudBaseline(space, remote: remote) {
-                        case .preserveLocal: break
-                        case .failed(let reason):
-                            return failure(space.syncCloudError ?? uploadUnconfirmed, "baselineReconciliation", reason)
-                        case .notApplicable:
-                            guard await reconcileCloudProfiles(space, remote: remote) else {
-                                if let result = await importNewerCloudIfNeeded(space, remote: remote) { return result }
-                                return failure(space.syncCloudError ?? uploadUnconfirmed, "baselineReconciliation", "profiles")
-                            }
-                            guard reconcileCloudMembership(space, remote: remote) else {
-                                if let result = await importNewerCloudIfNeeded(space, remote: remote) { return result }
-                                return failure(space.syncCloudError ?? uploadUnconfirmed, "baselineReconciliation", "membership")
-                            }
+                        guard await reconcileCloudProfiles(space, remote: remote) else {
+                            if let result = await importNewerCloudIfNeeded(space, remote: remote) { return result }
+                            return failure(space.syncCloudError ?? uploadUnconfirmed, "baselineReconciliation", "profiles")
+                        }
+                        guard reconcileCloudMembership(space, remote: remote) else {
+                            if let result = await importNewerCloudIfNeeded(space, remote: remote) { return result }
+                            return failure(space.syncCloudError ?? uploadUnconfirmed, "baselineReconciliation", "membership")
                         }
                     }
                 }
@@ -1525,15 +1526,14 @@ enum SpaceConfigurationSafety {
                             return failure(authorityError(space), "remoteAuthority", "restrictionOrContextChanged")
                         }
                     }
-                    if defaultRecoveryNodesChanged(space, remote: remote) {
+                    let cloudIsOlder = SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"])
+                        .map { $0 >= 0 && $0 < space.lastUpdate } == true
+                    if !cloudIsOlder, defaultRecoveryNodesChanged(space, remote: remote) {
                         let outcome = await space.restoreConfiguration(spaceJsonData: remote,
                             authoritativeGET: true, fixWithDefaults: true)
                         return outcome.status == .applied ? .success(())
                             : failure(uploadUnconfirmed, "defaultRecoveryRefresh", "importFailed")
                     }
-                    guard
-                          let configuration = SpaceConfigurationIntegrityPolicy.configurationData(remote),
-                          remote["nodes"] is [[String: Any]] else { return failure(uploadUnconfirmed, "response", "invalidRemoteConfiguration") }
                     let remoteKeyFingerprint = SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId)?.fingerprint
                     conflictingRemote = remote
                     diagnosticRemoteTimestamp = SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"])
@@ -1549,19 +1549,33 @@ enum SpaceConfigurationSafety {
                             return failure(.noSpacePermission, "remoteAuthority", "ownerMismatch")
                         }
                     }
+                    if preparingUpload, !needsInitialization {
+                        switch await reconcileOlderCloudBaseline(space, remote: remote, replacingPendingUpload: true) {
+                        case .preserveLocal: report("replacementUploadRequired", "newerLocalConfiguration"); return .success(())
+                        case .failed(let reason):
+                            return failure(space.syncCloudError ?? uploadUnconfirmed, "baselineReconciliation", reason)
+                        case .notApplicable: break
+                        }
+                    }
+                    guard let configuration = SpaceConfigurationIntegrityPolicy.configurationData(remote),
+                          remote["nodes"] is [[String: Any]] else { return failure(uploadUnconfirmed, "response", "invalidRemoteConfiguration") }
                     let sameVersionRemoval: Bool
-                    switch await reconcileSameVersionNodeRemoval(space, remote: remote) {
-                    case .preserveLocal: sameVersionRemoval = true
-                    case .failed(let reason):
-                        if let result = await importNewerCloudIfNeeded(space, remote: remote) { return result }
-                        return failure(space.syncCloudError ?? uploadUnconfirmed, "membershipReconciliation", reason)
-                    case .notApplicable: sameVersionRemoval = false
+                    if cloudIsOlder {
+                        sameVersionRemoval = false
+                    } else {
+                        switch await reconcileSameVersionNodeRemoval(space, remote: remote) {
+                        case .preserveLocal: sameVersionRemoval = true
+                        case .failed(let reason):
+                            if let result = await importNewerCloudIfNeeded(space, remote: remote) { return result }
+                            return failure(space.syncCloudError ?? uploadUnconfirmed, "membershipReconciliation", reason)
+                        case .notApplicable: sameVersionRemoval = false
+                        }
                     }
                     context = try recoveryState(space)
                     guard current(), context.submission?.id == submission.id else {
                         return failure(uploadUnconfirmed, "membershipReconciliation", "contextChanged")
                     }
-                    let profilesReconciled = sameVersionRemoval ? true : await reconcileCloudProfiles(space, remote: remote)
+                    let profilesReconciled = (cloudIsOlder || sameVersionRemoval) ? true : await reconcileCloudProfiles(space, remote: remote)
                     guard profilesReconciled, current() else {
                         if current(), let result = await importNewerCloudIfNeeded(space, remote: remote) { return result }
                         return failure(space.syncCloudError ?? uploadUnconfirmed, "profileReconciliation", "failedOrContextChanged")
@@ -1570,7 +1584,7 @@ enum SpaceConfigurationSafety {
                         report("replacementUploadRequired", "profilesReconciled")
                         return .success(())
                     }
-                    guard sameVersionRemoval || reconcileCloudMembership(space, remote: remote), current() else {
+                    guard cloudIsOlder || sameVersionRemoval || reconcileCloudMembership(space, remote: remote), current() else {
                         if current(), let result = await importNewerCloudIfNeeded(space, remote: remote) { return result }
                         return failure(space.syncCloudError ?? uploadUnconfirmed, "membershipReconciliation", "failedOrContextChanged")
                     }
@@ -1975,36 +1989,18 @@ enum SpaceConfigurationSafety {
         }
     }
 
-    /// A legacy local acknowledgement can be newer than an unchanged cloud copy.
-    /// This authorizes only preparation of a NEW upload, never import, removal or
-    /// confirmation of an existing receipt. Both callers must preserve local data.
+    /// The complete newer local version wins over an older cloud snapshot.
+    /// This prepares an upload; it never confirms that the server saved it.
     @MainActor
-    static func reconcileOlderCloudBaseline(_ space: SpaceData, remote: [String: Any]) async -> OlderCloudBaselineResult {
+    static func reconcileOlderCloudBaseline(_ space: SpaceData, remote: [String: Any],
+                                           replacingPendingUpload: Bool = false) async -> OlderCloudBaselineResult {
         typealias P = SpaceConfigurationIntegrityPolicy
-        // Authority recovery must reach the full importer, which alone clears
-        // requiresRemoteImport. This upload-only check cannot authorize that path.
-        guard !requiresAuthorityImport(space), !hasPendingUpload(space), !hasPendingImport(space),
-              let confirmed = space.lastUploadCloudTimestamp,
+        guard remote["uuid"] as? String == space.id, SpaceMembershipCoordinator.accepts(remote),
               let remoteTimestamp = P.integer(remote["updateTimestamp"]), remoteTimestamp >= 0,
-              remoteTimestamp < Int64.max,
-              space.needUploadCloud || preservesLocalChanges(space) else { return .notApplicable }
-        guard let context = try? recoveryState(space) else { return .failed("baselineStorageUnavailable") }
-        if remoteTimestamp >= confirmed {
-            // A recovered cloud version must return to normal arbitration even
-            // when repeated stale reads previously required baseline review.
-            if context.olderCloudBaselineFailure != nil {
-                var state = context
-                state.olderCloudBaselineFailure = nil
-                do { try saveState(state, space: space) }
-                catch { return .failed("baselinePersistence") }
-            }
-            if needsOlderCloudBaselineReview(space) {
-                SpaceProtectionReadGeneration.beginMutation()
-                defer { SpaceProtectionReadGeneration.endMutation() }
-                UserDefaults.standard.removeObject(forKey: "spaceConfigurationBlocked." + key(space))
-            }
-            return .notApplicable
-        }
+              remoteTimestamp < space.lastUpdate, space.lastUpdate < Int64.max,
+              !hasPendingImport(space), !requiresAuthorityImport(space),
+              let context = try? recoveryState(space),
+              context.submission == nil || replacingPendingUpload else { return .notApplicable }
         let revision = space.lastUpdate
         let membership = SpaceMembershipResponseContext.capture(account: UserData.currentUserId,
             region: String(describing: UserData.currentServerRegion))
@@ -2013,142 +2009,70 @@ enum SpaceConfigurationSafety {
                 && SpaceMembershipResponseContext.matches(membership, account: UserData.currentUserId,
                     region: String(describing: UserData.currentServerRegion))
                 && (try? recoveryState(space)) == context && space.lastUpdate == revision
-                && space.lastUploadCloudTimestamp == confirmed
         }
-        var diagnostic: [String: Any] = ["remoteTimestamp": remoteTimestamp, "localTimestamp": revision,
-            "lastConfirmedTimestamp": confirmed]
-        func report(_ reason: String) {
-            #if DEBUG
-            guard identity(space) == context.identity else { return }
-            diagnostic["reason"] = reason
-            diagnostic["recordedAt"] = Int64(Date().timeIntervalSince1970)
-            UserDefaults.standard.set(diagnostic, forKey: "spaceConfigurationLastBaselineDiagnostic." + key(space))
-            print("[SpaceCloudBaseline] reason=\(reason) remote=\(remoteTimestamp) confirmed=\(confirmed) local=\(revision)")
-            #endif
-        }
-        func failure(_ reason: String, reviewable: Bool = false) -> OlderCloudBaselineResult {
-            guard current() else { return .failed("baselineContextChanged") }
-            var error = uploadUnconfirmed
-            if reviewable {
-                // Require a repeated observation of the same data and local generation.
-                // Keep only its hash; this is a retry marker, not cloud authority.
-                let value: [String: Any] = ["remoteTimestamp": remoteTimestamp, "reason": reason, "local": revision,
-                    "configuration": P.configurationData(remote)?.base64EncodedString() ?? "",
-                    "models": SchedulerModelSnapshot.spaceData(remote)?.base64EncodedString() ?? "",
-                    "timed": TimedSchedulerPayloadPolicy.canonical(remote)?.base64EncodedString() ?? "",
-                    "confirmed": confirmed, "baseline": context.authorizationBaseline?.base64EncodedString() ?? "",
-                    "baselineModels": context.schedulerModelStatesBaseline?.base64EncodedString() ?? "",
-                    "baselineTimed": context.timedConfigurationBaseline?.base64EncodedString() ?? ""]
-                if let data = try? JSONSerialization.data(withJSONObject: value, options: .sortedKeys) {
-                    let signature = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
-                    var state = context
-                    let repeated = state.olderCloudBaselineFailure == signature
-                    state.olderCloudBaselineFailure = signature
-                    do { try saveState(state, space: space) }
-                    catch { report("baselinePersistence"); return .failed("baselinePersistence") }
-                    if repeated {
-                        block(space, reason: "cloudBaselineNeedsReview")
-                        error = .configurationReviewRequired
-                    }
-                }
-            }
-            report(reason)
-            recordSyncFailure(space, error: error, stage: reason, remoteTimestamp: remoteTimestamp)
+        func failure(_ reason: String) -> OlderCloudBaselineResult {
+            guard current() else { return .failed("contextChanged") }
+            recordSyncFailure(space, error: uploadUnconfirmed, stage: "newerLocal." + reason,
+                              remoteTimestamp: remoteTimestamp)
             return .failed(reason)
         }
-        guard current(), canAutomaticallyUpload(space), !hasPendingImport(space),
-              !hasPendingDeletionCleanup(space), !hasPendingReferenceCleanup(space),
-              let journal = try? deletionJournal(space) else { return failure("baselineUnavailable") }
-        if let record = try? SpaceMembershipCoordinator.store.read(SpaceMembershipCoordinator.scope(space)),
-           record.networkID != space.meshNetworkId { return failure("baselineMembershipNetworkMismatch") }
         let blockedKey = "spaceConfigurationBlocked." + key(space)
-        if let reason = UserDefaults.standard.string(forKey: blockedKey), reason != "cloudBaselineNeedsReview" {
-            return failure("baselineProtectedConfiguration")
-        }
-        guard remote["uuid"] as? String == space.id,
-              remote["groups"] is [[String: Any]], remote["scenes"] is [[String: Any]],
-              remote["schedules"] is [[String: Any]],
-              let actual = P.configurationData(remote),
-              let remoteNodes = SpaceCloudNodeRemovalPolicy.instances(remote),
-              let remoteModels = SchedulerModelSnapshot.spaceData(remote),
-              let remoteTimed = TimedSchedulerPayloadPolicy.canonical(remote),
-              P.scheduleTargetIssue(in: remote) == nil,
-              (try? SpaceSyncCleanupPolicy.normalize(remote)) != nil else { return failure("baselineInvalidRemote") }
-        guard let network = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
-              let keys = SpaceKeyIntegrity.pair(network, networkID: space.meshNetworkId),
-              let remoteKeys = SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId),
-              keys.fingerprint == remoteKeys.fingerprint else { return failure("baselineNetworkKeyMismatch") }
-        guard let reference = context.authorizationBaseline else { return failure("baselineConfigurationMissing", reviewable: true) }
-        diagnostic["configurationMatches"] = P.configurationsMatch(reference, actual)
-        guard P.configurationsMatch(reference, actual) else { return failure("baselineConfigurationMismatch", reviewable: true) }
-
-        // A saved snapshot supplies missing evidence only if it is the confirmed
-        // generation with the same business configuration and network identity.
-        var snapshot: [String: Any]?
-        if let url = try? directory(space).appendingPathComponent("last-complete-export.json"),
-           let data = try? Data(contentsOf: url),
-           let saved = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-           saved["uuid"] as? String == space.id, P.integer(saved["updateTimestamp"]) == confirmed,
-           P.configurationsMatch(P.configurationData(saved), reference),
-           SpaceKeyIntegrity.pair(saved, networkID: space.meshNetworkId)?.fingerprint == keys.fingerprint {
-            snapshot = saved
-        }
-        let models = context.schedulerModelStatesBaseline ?? snapshot.flatMap(SchedulerModelSnapshot.spaceData)
-        let nodes = context.nodeIdentitiesBaseline ?? snapshot.flatMap(SpaceCloudNodeRemovalPolicy.instances)
-            ?? SpaceCloudNodeRemovalPolicy.legacyInstances(configuration: reference, models: models)
-        diagnostic["nodeIdentitiesMatch"] = sameNodeIdentities(nodes, remoteNodes)
-        diagnostic["schedulerModelsMatch"] = models == remoteModels
-        guard sameNodeIdentities(nodes, remoteNodes) else { return failure("baselineNodeIdentitiesMismatchOrMissing", reviewable: true) }
-        guard models == remoteModels else { return failure("baselineSchedulerModelsMismatchOrMissing", reviewable: true) }
-
-        guard let local = await space.export(purpose: .cleanupInspection), current(),
+        let reason = UserDefaults.standard.string(forKey: blockedKey)
+        let replaceableReasons: Set<String> = ["cloudBaselineNeedsReview", "cloudConfigurationConflict",
+            "cloudMembershipConflict", "profileTimestampConflict", "uploadReadbackConflict",
+            "uploadReadbackUnconfirmed", "upgradeBaselineNeedsImport", "legacySpaceZoneDeletionNeedsReview"]
+        guard current(), canAutomaticallyUpload(space), !hasCloudWrite(space),
+              !hasPendingDeletionCleanup(space), !hasPendingReferenceCleanup(space),
+              !GroupMemberPersistence.hasPending(meshUUID: space.meshUUID, networkID: space.meshNetworkId, excluding: nil),
+              reason.map(replaceableReasons.contains) ?? true else { return failure("unavailable") }
+        guard let local = await space.export(allowsProtectedInspection: true), current(),
+              canAutomaticallyUpload(space), !hasPendingImport(space), !hasCloudWrite(space),
+              !hasPendingDeletionCleanup(space), !hasPendingReferenceCleanup(space),
+              !GroupMemberPersistence.hasPending(meshUUID: space.meshUUID, networkID: space.meshNetworkId, excluding: nil),
+              UserDefaults.standard.string(forKey: blockedKey) == reason,
               SpaceData.load(siteId: space.siteId, spaceId: space.id).first?.lastUpdate == revision,
               local["uuid"] as? String == space.id, P.integer(local["updateTimestamp"]) == revision,
-              P.configurationData(local) != nil,
-              let localNodes = SpaceCloudNodeRemovalPolicy.instances(local),
-              let localTimed = TimedSchedulerPayloadPolicy.canonical(local),
-              SpaceKeyIntegrity.pair(local, networkID: space.meshNetworkId)?.fingerprint == keys.fingerprint else {
-            return failure("baselineLocalSnapshotUnavailable")
+              let network = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
+              let keys = SpaceKeyIntegrity.pair(network, networkID: space.meshNetworkId),
+              SpaceKeyIntegrity.pair(local, networkID: space.meshNetworkId)?.fingerprint == keys.fingerprint,
+              SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId)?.fingerprint == keys.fingerprint,
+              SpaceCloudNodeRemovalPolicy.instances(local) != nil,
+              P.configurationData(local) != nil, P.scheduleTargetIssue(in: local) == nil,
+              TimedSchedulerPayloadPolicy.canonical(local) != nil,
+              SchedulerModelSnapshot.spaceData(local) != nil else { return failure("localSnapshotOrIdentity") }
+        guard checkpoint(space),
+              saveRecoveryPayload(space, name: "before-local-recovery-local.json", payload: local),
+              saveRecoveryPayload(space, name: "before-local-recovery-remote.json", payload: remote) else {
+            return failure("backup")
         }
-        var timed = context.timedConfigurationBaseline ?? snapshot.flatMap(TimedSchedulerPayloadPolicy.canonical)
-        if timed == nil,
-           let schedules = local["schedules"] as? [[String: Any]], schedules.isEmpty,
-           let remoteSchedules = remote["schedules"] as? [[String: Any]], remoteSchedules.isEmpty,
-           localTimed == remoteTimed,
-           [local, remote].allSatisfy({ payload in
-               (payload["nodes"] as? [[String: Any]])?.allSatisfy {
-                   ($0["schedules"] as? [Any])?.isEmpty == true
-               } == true
-           }) { timed = remoteTimed }
-        diagnostic["timedMatches"] = timed == remoteTimed
-        guard timed == remoteTimed else { return failure("baselineTimedMismatchOrMissing", reviewable: true) }
-        guard let nodes else { return failure("baselineNodeIdentitiesMissing", reviewable: true) }
-        // Only explicit review of this local version permits replacing a
-        // provisioning instance. Automatic reconciliation stays strict.
-        let reviewedReplacement = context.localReplacementVersion == revision
-        guard reviewedReplacement || localNodes.allSatisfy({ local in
-            nodes.first(where: { $0.uuid == local.uuid }).map { $0 == local } ?? true
-        }) else { return failure("baselineLocalNodeIdentityChanged", reviewable: true) }
-        let missing = nodes.filter { old in !localNodes.contains(where: { old.matches($0) }) }
-        diagnostic["localRemovalCount"] = missing.count
-        guard reviewedReplacement || missing.allSatisfy({ old in journal.entries.contains {
-            $0.stage == .cleaned && $0.nodeUUID.uppercased() == old.uuid
-                && $0.primaryAddress == old.address && $0.elementAddresses == old.elementAddresses
-                && ($0.completedTimestamp ?? 0) > confirmed && ($0.completedTimestamp ?? Int64.max) <= revision
-        } }) else { return failure("baselineLocalRemovalUnproven", reviewable: true) }
-        guard current() else { return .failed("baselineContextChanged") }
-        var state = context
-        state.nodeIdentitiesBaseline = nodes
-        state.schedulerModelStatesBaseline = models
-        state.timedConfigurationBaseline = timed
-        state.olderCloudBaselineFailure = nil
-        do { try saveState(state, space: space) }
-        catch { return failure("baselinePersistence") }
+        let previousError = space.syncCloudError
+        // A cloud rollback can occur after this phone already confirmed its copy.
+        // Mark it dirty without moving the last confirmed version backwards.
+        if !space.needUploadCloud { space.markLocalChangePendingCloudSync() }
+        space.syncCloudError = nil
+        guard space.save() else {
+            space.lastUpdate = revision; space.syncCloudError = previousError
+            return failure("persistence")
+        }
+        do {
+            var state = context
+            state.submission = nil
+            state.localReplacementVersion = space.lastUpdate
+            state.prefersLocalMembership = true
+            state.olderCloudBaselineFailure = nil
+            try saveState(state, space: space)
+        } catch { return failure("receiptPersistence") }
+        SpaceProtectionReadGeneration.beginMutation()
+        defer { SpaceProtectionReadGeneration.endMutation() }
         UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
-        if UserDefaults.standard.string(forKey: blockedKey) == "cloudBaselineNeedsReview" {
-            UserDefaults.standard.removeObject(forKey: blockedKey)
-        }
-        report("unchangedOlderCloudBaseline")
+        UserDefaults.standard.set(space.lastUpdate, forKey: "spaceConfigurationLocalRecoveryPending." + key(space))
+        if reason != nil { UserDefaults.standard.removeObject(forKey: blockedKey) }
+        MeshNetworkManager.instance.realNodes.filter {
+            $0.network?.uuid.uuidString == space.meshUUID && $0.subNetworkId == space.meshNetworkId
+        }.forEach { $0.clearSyncStateCache() }
+        #if DEBUG
+        print("[SpaceLocalSelection] local=\(space.lastUpdate) remote=\(remoteTimestamp) replacedReceipt=\(context.submission != nil)")
+        #endif
         return .preserveLocal
     }
 
@@ -2705,7 +2629,7 @@ enum SpaceConfigurationSafety {
 
     @MainActor
     static func uploadBeforeUnbind(_ space: SpaceData) async -> Swift.Result<Void, NetworkApiError> {
-        let resumed = await resumeUpload(space)
+        let resumed = await resumeUpload(space, preparingUpload: true)
         if case .failure = resumed { return resumed }
         guard space.needUploadCloud else { return .success(()) }
         guard canAutomaticallyUpload(space), let payload = await space.export(purpose: .cloudSync),

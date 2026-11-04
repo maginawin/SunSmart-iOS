@@ -79,39 +79,40 @@ extension SpaceRecoveryReceiptTests {
             if mode == "badTimed" { cloud["spaceData"] = ["timedSchemaVersion": 99] }
             if ["storedConflict", "direct", "restart"].contains(mode) { S.block(space, reason: "uploadReadbackConflict") }
             if mode == "restart" {
-                precondition(S.beginNewerCloudImport(space, payload: cloud))
-                precondition(try! S.recoveryState(space).cloudImport?.replacesConflictingVersion == true)
+                precondition(!S.beginNewerCloudImport(space, payload: cloud), "old cloud cannot create a durable replacement")
             }
             S.failCheckpoint = mode == "checkpointFailure"
             S.failStateWrite = mode == "stateFailure"
             NetworkRequest.shared.result = .success(["data": cloud])
             let result: Bool
             if mode == "cancelled" {
-                let task = Task { @MainActor in await S.resumeUpload(space) }
+                let task = Task { @MainActor in await S.resumeUpload(space, preparingUpload: true) }
                 task.cancel()
                 if case .success = await task.value { result = true } else { result = false }
-            } else if ["direct", "directFresh"].contains(mode) { result = await space.restoreNewerCloudFixture(cloud).status == .applied }
-            else { if case .success = await S.resumeUpload(space) { result = true } else { result = false } }
-            S.failCheckpoint = false; S.failStateWrite = false
-            if ["cancelled", "badKey", "badDeviceKey", "badTimed", "checkpointFailure", "stateFailure"].contains(mode) {
-                precondition(!result && space.nodes.count == 1 && S.hasPendingUpload(space), mode)
-            } else if ["receiptMatches", "baselineMatches"].contains(mode) {
-                precondition(result && space.nodes.count == 1 && space.lastUpdate == 70 && space.needUploadCloud, mode)
+            } else if ["direct", "directFresh"].contains(mode) {
+                result = await space.update(spaceJsonData: cloud) == .preserved("newerLocalConfiguration")
             } else {
-                precondition(result, "older cloud conflict must finish recovery: " + mode)
-                precondition(space.nodes.count == (mode == "empty" ? 0 : 2) && space.lastUpdate == 60 && space.lastUploadCloudTimestamp == 60, mode)
-                precondition(!S.isBlocked(space) && !S.hasPendingUpload(space) && !space.needUploadCloud, mode)
-                precondition(!S.markSubmissionAccepted(receipt, space: space), "late receipt must stay invalid")
-                precondition(try! S.deletionJournal(space).entries.isEmpty)
-                precondition(space.canEditing)
-                space.nodes.append(try membershipNode(4)); space.lastUpdate = 71
-                precondition(S.prepareSubmission(space, payload: space.payload) != nil)
-                NetworkRequest.shared.result = .success(["data": space.payload])
-                guard case .success = await S.resumeUpload(space) else { preconditionFailure("new device upload after recovery") }
-                precondition(space.nodes.count == (mode == "empty" ? 1 : 3) && !S.hasPendingUpload(space) && !space.needUploadCloud)
+                if case .success = await S.resumeUpload(space, preparingUpload: true) { result = true } else { result = false }
             }
+            S.failCheckpoint = false; S.failStateWrite = false
+            if ["cancelled", "badKey", "checkpointFailure", "stateFailure"].contains(mode) {
+                precondition(!result && space.nodes.count == 1 && S.hasPendingUpload(space), mode)
+                continue
+            }
+            precondition(result && space.nodes.count == 1 && space.lastUpdate == 70, mode)
+            precondition(space.lastUploadCloudTimestamp == 50 && space.needUploadCloud && !S.hasPendingUpload(space), mode)
+            precondition(!S.isBlocked(space) && !S.markSubmissionAccepted(receipt, space: space))
+            precondition(try! S.deletionJournal(space).entries.count == 2, "selection cannot confirm pending deletions")
+            // Reopen with the same durable state before replacing the cloud copy.
+            let reopened = SpaceData(space.id)
+            reopened.nodes = space.nodes; reopened.lastUpdate = 70; reopened.lastUploadCloudTimestamp = 50
+            P.storedSpace = reopened
+            NetworkRequest.shared.responses = [.success(["data": cloud]), .success([:]), .success(["data": reopened.payload])]
+            guard case .success = await S.uploadBeforeUnbind(reopened) else { preconditionFailure("local retry after reopening: " + mode) }
+            precondition(reopened.nodes.count == 1 && !reopened.needUploadCloud && !S.hasPendingUpload(reopened))
+            precondition(try! S.deletionJournal(reopened).entries.isEmpty)
         }
-        print("PASS: older cloud conflicts recover while exact receipt and unchanged baseline preserve newer local deletion")
+        print("PASS: newer local deletions survive old cloud conflicts, receipts, empty cloud and reopening; failed writes and network identity remain protected")
     }
 
     @MainActor static func testEqualCloudImports() async throws {

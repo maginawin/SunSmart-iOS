@@ -1381,7 +1381,7 @@ class CloudSynchronizationHandle: NSObject {
                 guard site.save() else { self.finishConfigurationFailure(SpaceConfigurationSafety.uploadUnconfirmed); return }
             }
             for space in self.configurationSpaces {
-                if case .failure(let error) = await SpaceConfigurationSafety.resumeUpload(space) {
+                if case .failure(let error) = await SpaceConfigurationSafety.resumeUpload(space, preparingUpload: true) {
                     guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
                     guard isCurrentOperation() else { self.finishInvalidatedConfiguration(lifecycle: lifecycle); return }
                     self.finishConfigurationFailure(error)

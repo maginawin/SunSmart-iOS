@@ -302,19 +302,22 @@ extension SpaceRecoveryReceiptTests {
             if failure == "topology" { candidate["groups"] = [["address": "C001"]] }
             if failure == "pendingCleanup" {
                 space.lastUpdate += 1
-                space.nodes = [["uuid": "locally-added", "unicastAddress": "0001"]]
+                space.nodes = [try membershipNode(1)]
                 precondition(S.updateDeletionJournal(space) { journal in
                     journal.entries.append(.init(id: UUID(), nodeUUID: "removed", primaryAddress: 2,
                         elementAddresses: [2], macAddress: nil, productId: nil,
                         stage: .cleaned, completedTimestamp: space.lastUpdate))
                 })
-                DevicePermanentDeletionContext.onResume = {
-                    precondition(!S.needsTimedUpgradeBaseline(space), "backfill must precede resumed cleanup reservations")
-                }
             }
-            _ = await space.update(spaceJsonData: candidate)
+            let outcome = await space.update(spaceJsonData: candidate)
             DevicePermanentDeletionContext.onResume = nil
             S.failStateWrite = false
+            if failure == "pendingCleanup" {
+                precondition(outcome == .preserved("newerLocalConfiguration"))
+                precondition(S.needsTimedUpgradeBaseline(space), "selection must not fabricate a confirmed Timed baseline")
+                NetworkRequest.shared.responses = [.success(["data": remote]), .success([:]), .success(["data": space.payload])]
+                guard case .success = await S.uploadBeforeUnbind(space) else { preconditionFailure("newer local version must establish its baseline through confirmed upload") }
+            }
             if ["write", "identity", "topology"].contains(failure) {
                 precondition(S.needsTimedUpgradeBaseline(space), "failed backfill must not authorize migration")
                 _ = await space.update(spaceJsonData: remote)
@@ -325,7 +328,7 @@ extension SpaceRecoveryReceiptTests {
             space.timedSchemaVersion = 2
             space.lastUpdate += 1
             let reentry = await space.update(spaceJsonData: remote)
-            precondition(reentry == .preserved("localTimedMigrationPendingUpload"))
+            precondition(reentry == .preserved("newerLocalConfiguration"))
         }
         let local = SpaceData()
         precondition(!S.needsTimedUpgradeBaseline(local), "never-uploaded Spaces do not need a cloud baseline")
@@ -360,10 +363,10 @@ extension SpaceRecoveryReceiptTests {
             let calls = P.calls
             for _ in 0..<2 {
                 let result = await space.update(spaceJsonData: baseline)
-                precondition(result == .preserved("localTimedMigrationPendingUpload"))
+                precondition(result == .preserved("newerLocalConfiguration"))
                 precondition(space.timedSchemaVersion == 2 && space.lastUpdate == 51 && space.needUploadCloud)
                 let after = try S.recoveryState(space)
-                precondition(after.submission == before.submission && after.timedConfigurationBaseline == before.timedConfigurationBaseline)
+                precondition(after.submission == nil && after.timedConfigurationBaseline == before.timedConfigurationBaseline)
             }
             precondition(P.calls == calls, "confirmed legacy GET must never start the replacing importer")
 
@@ -382,10 +385,12 @@ extension SpaceRecoveryReceiptTests {
                 let result = await space.update(spaceJsonData: changed, initialize: kind == "initialize")
                 if kind == "newer" {
                     precondition(result == .prepared, "higher cloud version owns even a supported legacy Timed schema")
-                } else if kind == "older", submission == "none" {
-                    precondition(result == .preserved("unchangedOlderCloudBaseline"))
+                } else if ["older", "differentTimed", "differentTopology"].contains(kind) {
+                    precondition(result == .preserved("newerLocalConfiguration"))
                     precondition(space.timedSchemaVersion == 2 && space.lastUpdate == 51,
-                                 "an equivalent old baseline cannot import or downgrade local Timed data")
+                                 "an older cloud cannot import or downgrade local Timed data")
+                } else if kind == "differentKeys" {
+                    precondition(result == .preserved("newerLocalConfigurationUnavailable"))
                 } else {
                     precondition(result == .rejected("timedSchemaDowngrade"), "must reject actual downgrade: \(kind)")
                 }
