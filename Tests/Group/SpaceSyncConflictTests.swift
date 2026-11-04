@@ -76,16 +76,22 @@ extension SpaceRecoveryReceiptTests {
             }
             ProximityLightingImportPreflight.storedSpace = space
             NetworkRequest.shared.result = .success(["data": remote])
-            // These legacy receipt checks now apply only while local intent is
-            // newer. Equal-version replacement is covered by testEqualCloudImports.
-            space.lastUpdate += 1
-            let outcome = await S.resumeUpload(space)
-            if mode == "savedV4" || mode == "normalReadback" {
+            if mode == "normalReadback" {
+                space.lastUpdate += 1
+                let outcome = await S.resumeUpload(space)
                 guard case .success = outcome else { preconditionFailure("compatible receipt: " + mode) }
                 precondition(!S.hasPendingUpload(space) && !S.isBlocked(space))
-                precondition(space.nodes.count == (mode == "savedV4" ? 2 : 3))
+                precondition(space.nodes.count == 3)
+                continue
+            }
+            // Exercise legacy proof migration directly at the same version.
+            // Newer-local arbitration must bypass cloud removals entirely.
+            let outcome = await S.reconcileSameVersionNodeRemoval(space, remote: remote)
+            if mode == "savedV4" {
+                guard case .preserveLocal = outcome else { preconditionFailure("compatible receipt: " + mode) }
+                precondition(space.nodes.count == 2 && S.hasPendingUpload(space) && !S.isBlocked(space))
             } else {
-                guard case .failure = outcome else { preconditionFailure("unproven old hashes must not delete") }
+                guard case .failed = outcome else { preconditionFailure("unproven old hashes must not delete") }
                 precondition(space.nodes.count == 3 && S.hasPendingUpload(space) && S.isBlocked(space))
             }
         }

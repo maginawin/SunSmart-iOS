@@ -59,13 +59,11 @@ extension SpaceRecoveryReceiptTests {
             let uploads = request.uploads
             if mode == "import" || mode == "timedMigration" {
                 let result = await space.update(spaceJsonData: remote)
-                precondition(result == .preserved("unchangedOlderCloudBaseline"), "old baseline must never import missing nodes")
+                precondition(result == .preserved("newerLocalConfiguration"), "old baseline must never import missing nodes")
             }
             if case .failure = await S.resumeUpload(space) { preconditionFailure("unchanged older baseline must allow upload: " + mode) }
             precondition(space.lastUploadCloudTimestamp == 100 && space.needUploadCloud && !S.hasPendingUpload(space))
             precondition(request.uploads == uploads, "baseline validation alone cannot POST or confirm")
-            let recovered = try S.recoveryState(space)
-            precondition(recovered.timedConfigurationBaseline != nil)
             request.responses = [.success(["data": remote]), .success([:]), .success(["data": space.payload])]
             if case .failure = await S.uploadBeforeUnbind(space) { preconditionFailure("normal POST and readback must finish: " + mode) }
             precondition(request.responses.isEmpty && request.uploads == uploads + 1)
@@ -117,13 +115,13 @@ extension SpaceRecoveryReceiptTests {
                 let task = Task { @MainActor in await S.resumeUpload(space) }; task.cancel(); result = await task.value
             } else { result = await S.resumeUpload(space) }
             ProximityLightingImportPreflight.onExport = nil; S.failStateWrite = false
-            if case .success = result { preconditionFailure("unsafe old baseline must remain protected: " + mode) }
+            let localWins = ["profile", "deviceKey", "elements", "models", "missingNodes", "missingBaseline",
+                             "unknownRemoval", "nonemptyTimed", "missingIdentities"].contains(mode)
+            if localWins {
+                guard case .success = result else { preconditionFailure("old cloud evidence must not veto newer local data: " + mode) }
+                precondition(!S.isBlocked(space) && space.needUploadCloud)
+            } else if case .success = result { preconditionFailure("authority/lifecycle failure must remain protected: " + mode) }
             precondition(space.nodes.count == 2 && space.lastUploadCloudTimestamp == 100)
-            if mode == "unknownRemoval" {
-                precondition(!S.requiresConfigurationReview(space), "one failed observation is still retryable")
-                _ = await S.resumeUpload(space)
-                precondition(S.requiresConfigurationReview(space), "repeated missing evidence must expose recovery")
-            }
             if mode == "write" {
                 if case .failure = await S.resumeUpload(space) { preconditionFailure("failed baseline persistence must be retryable") }
             }
@@ -154,12 +152,11 @@ extension SpaceRecoveryReceiptTests {
             staleGroups[0]["profile"] = staleProfile; stale["groups"] = staleGroups
             if mode == "unrelatedBlock" { S.block(space, reason: "incompleteImportedTopology") }
             request.result = .success(["data": stale])
-            for _ in 0..<2 {
-                if case .success = await S.resumeUpload(space) {
-                    preconditionFailure("conflicting stale responses must not authorize upload")
-                }
-            }
-            precondition(S.needsOlderCloudBaselineReview(space) == (mode != "unrelatedBlock"))
+            // Simulate a persisted conflict written by the previous App version.
+            if mode != "unrelatedBlock" { S.block(space, reason: "cloudBaselineNeedsReview") }
+            var legacy = try S.recoveryState(space)
+            legacy.olderCloudBaselineFailure = "previous-version-conflict"
+            try S.testSaveState(legacy, space: space)
             let blockedState = try S.recoveryState(space)
             if mode == "missingFailure" {
                 // A restart can occur between the receipt write and defaults cleanup.
@@ -281,15 +278,10 @@ extension SpaceRecoveryReceiptTests {
             else { space.nodes[0]["deviceKey"] = String(repeating: "B2", count: 16) }
             space.nodes[0].removeValue(forKey: "custProps")
             request.result = .success(["data": remote])
-            for _ in 0..<2 {
-                if case .success = await S.resumeUpload(space) {
-                    preconditionFailure("automatic upload cannot replace a provisioning instance")
-                }
+            guard case .success = await S.resumeUpload(space) else {
+                preconditionFailure("a newer local provisioning instance must replace its older cloud version")
             }
-            precondition(S.needsOlderCloudBaselineReview(space))
-            let review = await S.cloudBaselineReview(space, local: space.payload)!
-            let approved = await S.authorizeLocalRecovery(space, reviewed: review.local, reviewedRemote: review.remote)
-            precondition(approved)
+            precondition(!S.needsOlderCloudBaselineReview(space))
             let approvedVersion = space.lastUpdate
             let reopened = SpaceData(space.id)
             reopened.lastUpdate = approvedVersion; reopened.lastUploadCloudTimestamp = space.lastUploadCloudTimestamp
@@ -307,7 +299,7 @@ extension SpaceRecoveryReceiptTests {
             precondition(state.localReplacementVersion == nil && state.prefersLocalMembership != true && !S.hasPendingUpload(reopened),
                          "same-version cloud readback clears the obsolete local preference")
         }
-        print("PASS: reviewed same-UUID Device Key/address replacement uploads after reopening and later edits; unreviewed replacement stays blocked")
+        print("PASS: reviewed same-UUID Device Key/address replacement uploads after reopening and later edits; newer local replacement is automatic")
     }
 
     @MainActor static func testReviewedImportDecodeRejection() async throws {
@@ -360,12 +352,10 @@ extension SpaceRecoveryReceiptTests {
             space.exportValues["switches"] = [["id": "switch", "name": "Switch"]]
             precondition(S.updateDeletionJournal(space) { $0.entries = [] })
             request.result = .success(["data": remote])
-            _ = await S.resumeUpload(space)
-            // Observation caches do not turn a repeated business conflict into a new one.
+            // Preserve coverage for an explicit review already opened on an old App.
+            S.block(space, reason: "cloudBaselineNeedsReview")
             remote["gatewayOnline"] = true
             request.result = .success(["data": remote])
-            _ = await S.resumeUpload(space)
-            precondition(S.needsOlderCloudBaselineReview(space))
             let local = space.payload
             let preview = await S.cloudBaselineReview(space, local: local)
             precondition(preview != nil && preview!.message.contains("0009") && preview!.message.contains("→"))

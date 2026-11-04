@@ -1929,6 +1929,18 @@ extension SpaceData {
         guard (try? SpaceConfigurationSafety.recoveryState(self).phase) == .active else {
             return .rejected("spaceRemovalPending")
         }
+        if !initialize, !SpaceConfigurationSafety.hasPendingImport(self),
+           let timestamp = SpaceConfigurationIntegrityPolicy.integer(remoteMetadata["updateTimestamp"]),
+           timestamp >= 0, timestamp < lastUpdate {
+            // The old business payload is not imported. Still honor current
+            // account restrictions before preparing this phone's complete upload.
+            guard applyRemoteSpaceAuthorityRestrictions(remoteMetadata) else { return .rejected("remoteMetadataPersistence") }
+            switch await SpaceConfigurationSafety.reconcileOlderCloudBaseline(self, remote: remoteMetadata, replacingPendingUpload: true) {
+            case .preserveLocal: return .preserved("newerLocalConfiguration")
+            case .failed: return .preserved("newerLocalConfigurationUnavailable")
+            case .notApplicable: break
+            }
+        }
         // Validate complete intent before replacing any local business configuration.
         if let failure = Self.sceneConfigurationImportFailure(incomingSpaceJsonData) {
             guard applyRemoteSpaceAuthorityRestrictions(remoteMetadata) else { return .rejected("remoteMetadataPersistence") }

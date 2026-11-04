@@ -121,7 +121,7 @@ extension SpaceRecoveryReceiptTests {
             legacy.syncCloudError = nil
             let beforeReentry = legacy.payload
             let reentered = await legacy.update(spaceJsonData: cloud)
-            precondition(reentered == .preserved("localDefaultRecoveryPendingUpload")
+            precondition(reentered == .preserved("newerLocalConfiguration")
                 && legacy.syncCloudError == nil && !S.isBlocked(legacy),
                 "reentering a committed repair must not revalidate the selected old HDB as an ordinary cloud conflict")
             precondition(NSDictionary(dictionary: beforeReentry).isEqual(to: legacy.payload))
@@ -131,7 +131,7 @@ extension SpaceRecoveryReceiptTests {
             ProximityLightingImportPreflight.storedSpace = reopened
             S.block(reopened, reason: "cloudConfigurationConflict")
             let afterRestart = await reopened.update(spaceJsonData: cloud)
-            precondition(afterRestart == .preserved("localDefaultRecoveryPendingUpload") && !S.isBlocked(reopened),
+            precondition(afterRestart == .preserved("newerLocalConfiguration") && !S.isBlocked(reopened),
                 "persisted recovery receipt must retain the committed data after restart and clear only its obsolete cloud conflict")
             reopened.savesSucceed = false
             precondition(S.preserveDefaultConfiguration(reopened, remote: cloud) == .rejected("configurationPersistenceFailed"))
@@ -145,9 +145,9 @@ extension SpaceRecoveryReceiptTests {
             let submission = S.prepareSubmission(legacy, payload: legacy.payload)!
             precondition(S.markSubmissionAccepted(submission, space: legacy))
             let awaitingReadback = await legacy.update(spaceJsonData: cloud)
-            precondition(awaitingReadback == .preserved("localDefaultRecoveryPendingUpload") && S.hasPendingUpload(legacy))
-            request.result = .success(["data": legacy.payload])
-            if case .failure = await S.resumeUpload(legacy) { preconditionFailure("current-format readback must complete legacy recovery") }
+            precondition(awaitingReadback == .preserved("newerLocalConfiguration") && !S.hasPendingUpload(legacy) && legacy.needUploadCloud)
+            request.responses = [.success(["data": cloud]), .success([:]), .success(["data": legacy.payload])]
+            if case .failure = await S.uploadBeforeUnbind(legacy) { preconditionFailure("current-format upload and readback must complete legacy recovery") }
             precondition(!S.hasPendingUpload(legacy) && !S.hasPendingImport(legacy))
             print("PASS: legacy/sample staging, reentry/restart while upload pending, failure/authority gates and strict readback; Zones=\(configuration.lightingZones.count), devices=\(configuration.devices.count)")
         }
@@ -204,7 +204,7 @@ extension SpaceRecoveryReceiptTests {
                 precondition(!S.shouldRefreshDefaultRecovery(reopened, remote: remote))
                 precondition(S.preserveDefaultConfiguration(reopened, remote: remote) == .preserved("localDefaultRecoveryPendingUpload"))
                 let reentered = await reopened.update(spaceJsonData: remote)
-                precondition(reentered == .preserved("localDefaultRecoveryPendingUpload"))
+                precondition(reentered == .preserved("newerLocalConfiguration"))
                 request.result = .success(["data": remote])
                 if case .failure = await S.resumeUpload(reopened) { preconditionFailure("display-only difference blocked recovery upload: \(mode)") }
                 precondition(reopened.defaultRestoreCalls == 0 && reopened.nodes.isEmpty && !S.isBlocked(reopened))
