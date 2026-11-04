@@ -642,6 +642,8 @@ extension MeshNetworkManager {
             DispatchQueue.main.async {
                 guard self.meshNetwork?.uuid.uuidString == uuid,
                       self.currentNetworkKey.networkId.hex == subNetworkId else { result?(false); return }
+                guard let space = SpaceData.load(subNetworkId: subNetworkId), space.meshUUID == uuid,
+                      GroupMemberPersistence.recover(space) else { result?(false); return }
                 do {
                     let store = SceneConfigurationStore()
                     _ = try store.resumeVerifiedRestores()

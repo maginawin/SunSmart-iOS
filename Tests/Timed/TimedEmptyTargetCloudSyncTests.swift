@@ -14,6 +14,7 @@ enum XWHUDManager {
     static func showSuccessTipHUD(_ text: String) { successes += 1 }
     static func showErrorTipHUD(_ text: String) { failures += 1 }
     static func hide() {}
+    static func showTipHUD(_ text: String, isLineFeed: Bool) { failures += 1 }
 }
 let schedulesRefreshNotificationName = "refresh"
 let spaceDataChangedNotificaitonName = "changed"
@@ -35,6 +36,8 @@ final class Scene {
 }
 final class Schedule {
     static var rows: [Int: Schedule] = [:]
+    enum TargetType { case devices, profile }
+    var selectTargetType = TargetType.devices
     let id: Int
     var groups: [Group] = [], needDeleteGroups: [Group] = [], needDeleteScenes: [Scene] = []
     var scene: Scene?

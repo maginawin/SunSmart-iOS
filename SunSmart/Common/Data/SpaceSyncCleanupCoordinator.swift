@@ -162,6 +162,9 @@ enum SpaceSyncCleanupCoordinator {
                     error: SpaceConfigurationSafety.configurationSyncError(space), stage: "cleanupPreparation")
             }
         }
+        // Resolve the App/Mesh transaction before ordinary protection checks or
+        // exports compare persisted topology with the active network.
+        guard GroupMemberPersistence.recover(space) else { return false }
         guard await SpaceConfigurationSafety.recoverUpgradeBaselineIfNeeded(space, readLocal: {
             guard let current = SpaceData.load(siteId: space.siteId, spaceId: space.id).first,
                   current.lastUpdate == space.lastUpdate else { return nil }
@@ -192,6 +195,9 @@ enum SpaceSyncCleanupCoordinator {
             nodes: nodes, network: network).prepare()
         guard preparation.isValid, SpaceSyncCleanupPolicy.equivalentTopology(preparation.normalized.snapshot, cleaned.topology.snapshot),
               Set(nodes.map { $0.uuid.uuidString.uppercased() }) == Set(cleaned.devices.map { $0.uuid.uppercased() }) else {
+            #if DEBUG
+            print("[SpaceSyncCleanup] stage=topologyComparison valid=\(preparation.isValid) membersMatch=\(SpaceSyncCleanupPolicy.equivalentTopology(preparation.normalized.snapshot, cleaned.topology.snapshot))")
+            #endif
             return false
         }
         guard var changes = try? extensionChanges(space: space, network: network, cleaned: cleaned) else { return false }

@@ -151,6 +151,15 @@ func tryValue<T>(_ value: () throws -> T) -> T { try! value() }
         let persistedSlots = try db.scalar("SELECT value FROM fixture_slots WHERE id = 90") as! Blob
         precondition(tryValue { try JSONDecoder().decode([TimedSchedulerNodeSlot]?.self, from: Data(persistedSlots.bytes)) } == slots)
         try db.run("DROP TRIGGER reject_scene")
+        enum CommitFault: Error { case injected }
+        db.commitHook { throw CommitFault.injected }
+        var failureThrown = false
+        do { _ = try restarted.commit(draft: remove, expectedRevision: remove.revision) }
+        catch { failureThrown = true }
+        db.commitHook(nil)
+        let afterFaultDisk = try db.scalar("SELECT value FROM fixture_slots WHERE id = 90") as! Blob
+        let afterFaultBindings = try JSONDecoder().decode([TimedSchedulerNodeSlot]?.self, from: Data(afterFaultDisk.bytes))
+        precondition(failureThrown && afterFaultBindings == slots && schedule.nodeSlots == slots, "outer COMMIT failure must restore live slots")
         _ = try restarted.commit(draft: remove, expectedRevision: remove.revision)
         precondition(deviceScene.info.configuration!.deviceMembers.isEmpty)
         precondition(deviceScene.info.configuration!.pendingOperations.first?.action == .remove)
@@ -159,6 +168,63 @@ func tryValue<T>(_ value: () throws -> T) -> T { try! value() }
         precondition(savedCleanup.configuration!.pendingOperations.first?.identity == member.identity)
         precondition(SceneCapacity.intendedScenes(on: lamp).contains(deviceScene.number), "last-member removal retains its physical reservation")
         do { try removalSelection.switchKind(to: .groups, confirmed: true); fatalError("unconfirmed cleanup cannot release type lock") } catch {}
+        lamp.state = true
+        var readd = try restarted.editingDraft(for: deviceScene)
+        try readd.setDeviceMembers([member])
+        let directReaddBefore = schedule.nodeSlots
+        db.commitHook { throw CommitFault.injected }
+        do { _ = try restarted.commit(draft: readd, expectedRevision: readd.revision); fatalError("fault accepted") } catch {}
+        db.commitHook(nil)
+        let directReaddDisk = try db.scalar("SELECT value FROM fixture_slots WHERE id = ?", schedule.id) as! Blob
+        let directReaddPersisted = try JSONDecoder().decode([TimedSchedulerNodeSlot]?.self, from: Data(directReaddDisk.bytes))
+        precondition(directReaddPersisted == directReaddBefore && schedule.nodeSlots == directReaddBefore, "failed direct re-add must restore pending removal")
+        _ = try restarted.commit(draft: readd, expectedRevision: readd.revision)
+        precondition(deviceScene.info.configuration?.pendingOperations.first?.action == .write)
+        precondition(schedule.nodeSlots?.first?.state == .assigned)
+        precondition(schedule.nodeSlots?.first?.slot == slots?.first?.slot)
+        var removeAgain = try restarted.editingDraft(for: deviceScene)
+        try removeAgain.setDeviceMembers([])
+        _ = try restarted.commit(draft: removeAgain, expectedRevision: removeAgain.revision)
+        precondition(deviceScene.info.configuration?.pendingOperations.first?.action == .remove)
+        lamp.group = group
+        let originalGroupState = lamp.groupState
+        let groupDraft = try SceneDraft(scope: scope, name: "Membership probe", imageId: 1, kind: .groups,
+            groupParameters: [group.address.address: .init(isOn: true, lightness: 1000, cct: 4000)])
+        guard case .ready(let groupScene) = try restarted.commit(draft: groupDraft, expectedRevision: groupDraft.revision) else { fatalError() }
+        let groupSchedule = Schedule(91, scene: groupScene)
+        manager.schedules.append(groupSchedule)
+        try TimedSchedulerBindings.commit(TimedSchedulerBindings.prepare(schedules: manager.schedules))
+        let groupSlots = groupSchedule.nodeSlots
+        var removeGroup = try restarted.editingDraft(for: groupScene)
+        try removeGroup.setGroupParameters([:])
+        let groupLastRemovalBefore = groupSchedule.nodeSlots
+        db.commitHook { throw CommitFault.injected }
+        do { _ = try restarted.commit(draft: removeGroup, expectedRevision: removeGroup.revision); fatalError("fault accepted") } catch {}
+        db.commitHook(nil)
+        let groupLastRemovalDisk = try db.scalar("SELECT value FROM fixture_slots WHERE id = ?", groupSchedule.id) as! Blob
+        let groupLastRemovalPersisted = try JSONDecoder().decode([TimedSchedulerNodeSlot]?.self, from: Data(groupLastRemovalDisk.bytes))
+        precondition(groupLastRemovalPersisted == groupLastRemovalBefore && groupSchedule.nodeSlots == groupLastRemovalBefore, "failed group removal must restore live slots")
+        _ = try restarted.commit(draft: removeGroup, expectedRevision: removeGroup.revision)
+        precondition(groupScene.info.configuration?.pendingOperations.first?.action == .remove)
+        precondition(groupSchedule.nodeSlots?.first?.state == .pendingRemoval)
+        precondition(!group.info.sceneExecuteDatas.contains { $0.sceneNumber == groupScene.number })
+        let groupBlob = try db.scalar("SELECT value FROM fixture_group_scene WHERE id = ?", Int(group.address.address)) as! Blob
+        let persistedGroupDatas = try JSONDecoder().decode([SceneExecuteData].self, from: Data(groupBlob.bytes))
+        precondition(!persistedGroupDatas.contains { $0.sceneNumber == groupScene.number })
+        var readdGroup = try restarted.editingDraft(for: groupScene)
+        try readdGroup.setGroupParameters(groupDraft.groupParameters)
+        let groupReaddBefore = groupSchedule.nodeSlots
+        db.commitHook { throw CommitFault.injected }
+        do { _ = try restarted.commit(draft: readdGroup, expectedRevision: readdGroup.revision); fatalError("fault accepted") } catch {}
+        db.commitHook(nil)
+        let groupReaddDisk = try db.scalar("SELECT value FROM fixture_slots WHERE id = ?", groupSchedule.id) as! Blob
+        let groupReaddPersisted = try JSONDecoder().decode([TimedSchedulerNodeSlot]?.self, from: Data(groupReaddDisk.bytes))
+        precondition(groupReaddPersisted == groupReaddBefore && groupSchedule.nodeSlots == groupReaddBefore,
+                     "failed group re-add must preserve pending removal and generation")
+        _ = try restarted.commit(draft: readdGroup, expectedRevision: readdGroup.revision)
+        precondition(groupScene.info.configuration?.pendingOperations.first?.action == .write)
+        precondition(groupSchedule.nodeSlots?.first?.state == .assigned && groupSchedule.nodeSlots?.first?.slot == groupSlots?.first?.slot)
+        precondition(lamp.groupState == originalGroupState)
         let absentScene = Scene(77)
         absentScene.info.configuration = .init(kind: .devices, name: "Absent",
             deviceMembers: [member], pendingOperations: [.init(identity: member.identity, action: .write)])

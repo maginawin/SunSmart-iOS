@@ -232,7 +232,7 @@ enum SpaceConfigurationSafety {
     static let cleanupRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     static func directory(_ space: SpaceData) throws -> URL { cleanupRoot.appendingPathComponent(space.id) }
     // RECEIPT_METHODS
-    static func isBlocked(_ space: SpaceData) -> Bool { blocked || hasPendingDeletionCleanup(space) }
+    static func isBlocked(_ space: SpaceData, excludingGroupMemberSaveID: UUID? = nil) -> Bool { blocked || hasPendingDeletionCleanup(space) }
     static func hasPendingImport(_ space: SpaceData) -> Bool { pendingImport }
     static func checkpoint(_ space: SpaceData, refresh: Bool = false) -> Bool { true }
     static func isBlocked(meshUUID: String, networkId: String) -> Bool {

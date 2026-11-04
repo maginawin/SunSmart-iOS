@@ -42,6 +42,7 @@ class GroupMembersViewController: UIViewController {
     
     private var meshNetworkConnectedObservation: NSKeyValueObservation?
     private var isResolvingUnknownSchedulerState = false
+    private var isSavingMembers = false
     
     let space: SpaceData
     var group: Group
@@ -116,10 +117,15 @@ class GroupMembersViewController: UIViewController {
         isSyncPageVisible = true
         
 //        if space.nodes.filter({ $0.group == nil || $0.group?.address.address == group.address.address }).count != nodes.count || group.nodes.count != selectNodes.count {
-        nodes = MeshNetworkManager.instance.realNodes.filter({ isVisibleGroupMemberNode($0) && ($0.group == nil || $0.group?.address.address == group.address.address) })
+        guard GroupMemberPersistence.recover(space) else {
+            XWHUDManager.showErrorTipHUD("save_failure".localizedString)
+            navigationItem.rightBarButtonItem?.isEnabled = false
+            return
+        }
+        nodes = MeshNetworkManager.instance.realNodes.filter { isVisibleGroupMemberNode($0) && GroupMemberPersistence.isSelectable($0, in: group) }
         selectNodes.removeAll()
         nodes.forEach { node in
-            if node.group != nil && node.groupState != .exitFailure {
+            if GroupMemberPersistence.isSelected(node, in: group) {
                 if !selectNodes.contains(node) {
                     selectNodes.append(node)
                 }
@@ -224,7 +230,7 @@ class GroupMembersViewController: UIViewController {
     }
     
     @objc private func saveAction() {
-        guard !isResolvingUnknownSchedulerState else {
+        guard !isResolvingUnknownSchedulerState, !isSavingMembers else {
             return
         }
         
@@ -232,7 +238,8 @@ class GroupMembersViewController: UIViewController {
             backAction()
             return
         }
-        let exitNodes = group.nodes.filter({ !selectNodes.contains($0) })
+        let previousMembers = group.nodes + GroupMemberPersistence.pendingMembers(in: group, nodes: nodes)
+        let exitNodes = previousMembers.filter { !selectNodes.contains($0) }
         let addNodes = selectNodes.filter({ !group.nodes.contains($0) || $0.groupState == .exitFailure })
         guard exitNodes.count > 0 || addNodes.count > 0 else {
             backAction()
@@ -404,136 +411,99 @@ class GroupMembersViewController: UIViewController {
             return
         }
 
-        XWHUDManager.showCustomHUD(withMessage: nil, isWindow: false)
-        DispatchQueue.global().async {
-            let pendingRemovalSnapshots = proxyRemovalPlans.map {
-                ($0.switchData, $0.switchData.deleteProxyNodeAddress)
-            }
-            for plan in proxyRemovalPlans where plan.decision == .markPendingRemoval {
-                plan.switchData.deleteProxyNodeAddress = plan.node.primaryUnicastAddress
-                guard plan.switchData.save() else {
-                    pendingRemovalSnapshots.forEach { switchData, pendingRemoval in
-                        switchData.deleteProxyNodeAddress = pendingRemoval
-                        switchData.save()
-                    }
-                    DispatchQueue.main.async {
-                        XWHUDManager.hide()
-                        XWHUDManager.showErrorTipHUD("save_failure".localizedString)
-                    }
-                    return
-                }
-            }
-
-            DispatchQueue.main.async {
-                XWHUDManager.hide()
-                guard MeshLibManager.manager.isMeshNetworkConnected else {
-                    pendingRemovalSnapshots.forEach { switchData, pendingRemoval in
-                        switchData.deleteProxyNodeAddress = pendingRemoval
-                        switchData.save()
-                    }
-                    XWHUDManager.showTipHUD("device_notconnect_message".localizedString, isLineFeed: true)
-                    return
-                }
-
-                let previousSchema = self.space.timedSchemaVersion
-                let previousZones = self.space.triggerZones
-                let previousTimestamp = self.space.lastUpdate
-                let previousGroups = MeshNetworkManager.instance.groups.map {
-                    ($0, GroupInfo.load(meshUUID: self.space.meshUUID, address: $0.address.address,
-                                        subnetworkId: self.space.meshNetworkId))
-                }
-                let previousNodes = (exitNodes + addNodes).map {
-                    ($0, $0.groupState, $0.requiredFunctionTypes,
-                     $0.preConfiguration.dayProfileStartsAboveLux, $0.preConfiguration.nightProfileStartsBelowLux,
-                     $0.preConfiguration.dayProfileLightData, $0.preConfiguration.nightProfileLightData,
-                     $0.preConfiguration.resetDaylightCalibration)
-                }
-                var lifecycleResult: ProximityLightingLifecycleResult?
-                do {
-                    let timedPlan = try TimedSchedulerBindings.prepareTopology(group: self.group, members: newMembers, addingMembers: addNodes)
-                    try TimedSchedulerBindings.commit(timedPlan) {
-                        guard let result = ProximityLightingLifecycleCoordinator.commit(
-                            preparation,
-                            allowExistingHardErrors: true,
-                            hasAdditionalLogicalChange: true,
-                            applyAdditionalChanges: {
-                                try exitNodes.forEach { node in
-                                    node.groupState = .exitFailure
-                                    node.preConfiguration.dayProfileStartsAboveLux = nil
-                                    node.preConfiguration.nightProfileStartsBelowLux = nil
-                                    node.preConfiguration.dayProfileLightData = nil
-                                    node.preConfiguration.nightProfileLightData = nil
-                                    if node.sensorCalibrationData?.isCalibration ?? false {
-                                        node.preConfiguration.resetDaylightCalibration = true
-                                    }
-                                    if let meshUUID = node.network?.uuid.uuidString {
-                                        guard node.preConfiguration.save(
-                                            meshUUID: meshUUID,
-                                            nodeAddress: node.primaryUnicastAddress
-                                        ) else { throw TimedSchedulerBindings.Failure.persistence }
-                                    }
-                                }
-                                addNodes.forEach { node in
-                                    node.groupState = .inGroup
-                                    if self.group.info.profile.type == .proximityLightingWithPhotocell,
-                                       !node.requiredFunctionTypes.contains(.lightLCScene) {
-                                        node.requiredFunctionTypes.append(.lightLCScene)
-                                    }
-                                }
-                        }) else { throw TimedSchedulerBindings.Failure.persistence }
-                        lifecycleResult = result
-                    }
-                } catch {
-                    self.space.timedSchemaVersion = previousSchema
-                    self.space.triggerZones = previousZones
-                    self.space.lastUpdate = previousTimestamp
-                    previousGroups.forEach { group, info in
-                        if let info { group.info = info }
-                        group.updateGroupSyncState()
-                    }
-                    previousNodes.forEach { node, state, functions, dayLux, nightLux, dayLight, nightLight, calibration in
-                        node.groupState = state
-                        node.requiredFunctionTypes = functions
-                        node.preConfiguration.dayProfileStartsAboveLux = dayLux
-                        node.preConfiguration.nightProfileStartsBelowLux = nightLux
-                        node.preConfiguration.dayProfileLightData = dayLight
-                        node.preConfiguration.nightProfileLightData = nightLight
-                        node.preConfiguration.resetDaylightCalibration = calibration
-                    }
-                    pendingRemovalSnapshots.forEach { switchData, pendingRemoval in
-                        switchData.deleteProxyNodeAddress = pendingRemoval
-                        switchData.save()
-                    }
-                    TimedSchedulerBindings.showFailure(error)
-                    return
-                }
-                guard let lifecycleResult else { return }
-
-                let vc = SyncDevicesViewController(type: .group(self.group, inNodes: addNodes, outNodes: exitNodes))
-                vc.supplementaryProximityLightingSyncDatas = lifecycleResult.syncDatas
-                vc.syncSuccessCallback = {[weak self] _ in
-                    XWHUDManager.showSuccessTipHUD("done!".localizedString)
-                    guard let self = self else { return }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
-                        guard let self = self else { return }
-                        NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
-                        if self.isAddDevices {
-                            self.backAction()
-                        }else {
-                            self.navigationController?.popToViewController(vcClass: GroupViewController.classForCoder(), animated: true)
-                        }
-                    }
-                }
-                vc.backActionCallback = {[weak self] _ in
-                    guard let self = self else { return }
-                    NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
-                    self.navigationController?.popToViewController(vcClass: GroupViewController.classForCoder())
-                }
-                self.navigationController?.pushViewController(vc, animated: true)
-            }
-           
-            
+        guard !isSavingMembers else { return }
+        isSavingMembers = true
+        navigationItem.rightBarButtonItem?.isEnabled = false
+        defer {
+            isSavingMembers = false
+            navigationItem.rightBarButtonItem?.isEnabled = true
         }
+        let pendingRemovalSnapshots = proxyRemovalPlans.map { ($0.switchData, $0.switchData.deleteProxyNodeAddress) }
+        let previousSchema = space.timedSchemaVersion
+        let previousZones = space.triggerZones
+        let previousTimestamp = space.lastUpdate
+        let previousGroups = MeshNetworkManager.instance.groups.map {
+            ($0, GroupInfo.load(meshUUID: space.meshUUID, address: $0.address.address, subnetworkId: space.meshNetworkId))
+        }
+        let previousSlots = MeshNetworkManager.instance.schedules.map { ($0, $0.nodeSlots) }
+        let previousNodes = exitNodes.map {
+            ($0, $0.preConfiguration.dayProfileStartsAboveLux, $0.preConfiguration.nightProfileStartsBelowLux,
+             $0.preConfiguration.dayProfileLightData, $0.preConfiguration.nightProfileLightData,
+             $0.preConfiguration.resetDaylightCalibration)
+        }
+        do {
+            let timedPlan = try TimedSchedulerBindings.prepareTopology(group: group, members: newMembers, addingMembers: addNodes)
+            let ready = try GroupMemberPersistence.commit(space: space, group: group, exiting: exitNodes, adding: addNodes) { saveID in
+                try TimedSchedulerBindings.commit(timedPlan) {
+                    for plan in proxyRemovalPlans where plan.decision == .markPendingRemoval {
+                        plan.switchData.deleteProxyNodeAddress = plan.node.primaryUnicastAddress
+                        guard plan.switchData.save() else { throw TimedSchedulerBindings.Failure.persistence }
+                    }
+                    guard ProximityLightingLifecycleCoordinator.commit(
+                        preparation, allowExistingHardErrors: true, hasAdditionalLogicalChange: true,
+                        groupMemberSaveID: saveID,
+                        applyAdditionalChanges: {
+                            for node in exitNodes where node.group != nil {
+                                node.preConfiguration.dayProfileStartsAboveLux = nil
+                                node.preConfiguration.nightProfileStartsBelowLux = nil
+                                node.preConfiguration.dayProfileLightData = nil
+                                node.preConfiguration.nightProfileLightData = nil
+                                if node.sensorCalibrationData?.isCalibration ?? false {
+                                    node.preConfiguration.resetDaylightCalibration = true
+                                }
+                                guard node.preConfiguration.save(meshUUID: self.space.meshUUID,
+                                    nodeAddress: node.primaryUnicastAddress) else { throw TimedSchedulerBindings.Failure.persistence }
+                            }
+                        }) != nil else { throw TimedSchedulerBindings.Failure.persistence }
+                }
+            }
+            guard ready else {
+                XWHUDManager.showErrorTipHUD("save_failure".localizedString)
+                return
+            }
+        } catch {
+            space.timedSchemaVersion = previousSchema
+            space.triggerZones = previousZones
+            space.lastUpdate = previousTimestamp
+            previousSlots.forEach { $0.0.nodeSlots = $0.1 }
+            previousGroups.forEach { group, info in
+                if let info { group.info = info }
+                group.updateGroupSyncState()
+            }
+            previousNodes.forEach { node, dayLux, nightLux, dayLight, nightLight, calibration in
+                node.preConfiguration.dayProfileStartsAboveLux = dayLux
+                node.preConfiguration.nightProfileStartsBelowLux = nightLux
+                node.preConfiguration.dayProfileLightData = dayLight
+                node.preConfiguration.nightProfileLightData = nightLight
+                node.preConfiguration.resetDaylightCalibration = calibration
+            }
+            pendingRemovalSnapshots.forEach { $0.0.deleteProxyNodeAddress = $0.1 }
+            TimedSchedulerBindings.showFailure(error)
+            return
+        }
+        // Build supplementary tasks only after the durable receipt barrier clears.
+        guard let lifecycleResult = ProximityLightingLifecycleCoordinator.preview(preparation, allowExistingHardErrors: true) else { return }
+        let vc = SyncDevicesViewController(type: .group(self.group, inNodes: addNodes, outNodes: exitNodes.filter { $0.group != nil }))
+        vc.supplementaryProximityLightingSyncDatas = lifecycleResult.syncDatas
+        vc.syncSuccessCallback = {[weak self] _ in
+            XWHUDManager.showSuccessTipHUD("done!".localizedString)
+            guard let self = self else { return }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {[weak self] in
+                guard let self = self else { return }
+                NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
+                if self.isAddDevices {
+                    self.backAction()
+                }else {
+                    self.navigationController?.popToViewController(vcClass: GroupViewController.classForCoder(), animated: true)
+                }
+            }
+        }
+        vc.backActionCallback = {[weak self] _ in
+            guard let self = self else { return }
+            NotificationCenter.default.post(name: .init(groupDataUpdateNotificationName), object: self.group)
+            self.navigationController?.popToViewController(vcClass: GroupViewController.classForCoder())
+        }
+        self.navigationController?.pushViewController(vc, animated: true)
     }
     
     private func updateEmptyUI() {

@@ -160,6 +160,7 @@ enum ProximityLightingLifecycleCoordinator {
         confirmedDeletionAddresses: Set<Address>? = nil,
         reviewedReferenceSnapshot: Reconciler.Snapshot? = nil,
         automaticCleanupSnapshot: Reconciler.Snapshot? = nil,
+        groupMemberSaveID: UUID? = nil,
         applyAdditionalChanges: () throws -> Void = {}
     ) -> ProximityLightingLifecycleResult? {
         guard preparation.transaction.contextAvailable else { return nil }
@@ -198,7 +199,7 @@ enum ProximityLightingLifecycleCoordinator {
 
         guard isImportApplication || ((isScopedRecovery
             ? !SpaceConfigurationSafety.hasPendingImport(transaction.space)
-            : !SpaceConfigurationSafety.isBlocked(transaction.space))
+            : !SpaceConfigurationSafety.isBlocked(transaction.space, excludingGroupMemberSaveID: groupMemberSaveID))
             && !transaction.space.triggerZonesLoadFailed
             && transaction.groups.allSatisfy { !$0.info.profileLoadFailed && !$0.info.topologyLoadFailed }
             && SpaceConfigurationSafety.checkpoint(transaction.space)) else { return nil }
