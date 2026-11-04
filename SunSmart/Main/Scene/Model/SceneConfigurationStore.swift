@@ -68,16 +68,147 @@ final class SceneConfigurationStore {
 
     /// Reuse the caller's durable cloud-removal journal and App savepoint.
     /// No address-only fallback: missing identity proof leaves intent untouched.
-    static func removeConfirmedIdentities(_ identities: [TimedSchedulerNodeIdentity], scope: SceneScope) throws {
-        guard !identities.isEmpty else { return }
+    static func removeConfirmedIdentities(_ identities: [TimedSchedulerNodeIdentity], scope: SceneScope,
+                                         absentAddresses: Set<UInt16>? = nil) throws {
+        guard !identities.isEmpty || absentAddresses?.isEmpty == false else { return }
         let removed = try Set(identities.map(SceneConfiguration.identity))
         for info in try SceneInfo.loadAll(meshUUID: scope.meshUUID, subnetworkId: scope.networkID) {
             guard !info.configurationLoadFailed else { throw Failure.persistence }
             guard let configuration = info.configuration else { continue }
-            let updated = try configuration.removingConfirmedIdentities(removed)
+            let updated = try configuration.removingConfirmedIdentities(removed, absentAddresses: absentAddresses)
             guard updated != configuration else { continue }
             info.configuration = updated
             try info.saveConfiguration(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)
+        }
+    }
+
+    struct MembershipCleanup: Equatable {
+        struct Change: Equatable {
+            let number: SceneNumber
+            let original: SceneConfiguration
+            let updated: SceneConfiguration
+        }
+        let scope: SceneScope
+        let changes: [Change]
+        let canFinalizeDeletion: Bool
+        var hasWork: Bool { !changes.isEmpty || canFinalizeDeletion }
+    }
+
+    /// Reads App authority, including tombstones without an SDK projection.
+    static func membershipCleanup(scope: SceneScope, current: Set<TimedSchedulerNodeIdentity>,
+                                  occupiedAddresses: Set<UInt16>, protected: Set<TimedSchedulerNodeIdentity>) throws -> MembershipCleanup {
+        var changes: [MembershipCleanup.Change] = []
+        var canFinalize = false
+        for info in try SceneInfo.loadAll(meshUUID: scope.meshUUID, subnetworkId: scope.networkID) {
+            guard !info.configurationLoadFailed else { throw Failure.persistence }
+            guard let original = info.configuration else { continue }
+            let updated = try original.removingOrphanedIdentities(current: current,
+                occupiedAddresses: occupiedAddresses, protected: protected)
+            if updated != original { changes.append(.init(number: info.sceneId, original: original, updated: updated)) }
+            if updated.isDeleting, updated.pendingOperations.isEmpty, updated.deletionReferences?.pending.isEmpty != false {
+                let candidate = SceneInfo(sceneId: info.sceneId, imageId: info.imageId)
+                candidate.configuration = updated
+                canFinalize = canFinalize || SceneDeletionCascade.canFinish(info: candidate)
+            }
+        }
+        return .init(scope: scope, changes: changes, canFinalizeDeletion: canFinalize)
+    }
+
+    /// Version/dirty-state persistence belongs to the same App transaction.
+    /// Live objects are installed only after COMMIT, never while rollback is possible.
+    static func commitMembershipCleanup(_ plan: MembershipCleanup, recordChange: () throws -> Void) throws {
+        guard plan.hasWork else { return }
+        let scope = plan.scope
+        guard SunSmartDataManager.shared.configurationTransaction({
+            let saved = try SceneInfo.loadAll(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)
+            for change in plan.changes {
+                guard let info = saved.first(where: { $0.sceneId == change.number }), !info.configurationLoadFailed,
+                      info.configuration == change.original else { throw Failure.staleDraft }
+                info.configuration = change.updated
+                try info.saveConfiguration(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)
+            }
+            try recordChange()
+        }) else { throw Failure.persistence }
+        let manager = MeshNetworkManager.instance
+        if manager.meshNetwork?.uuid.uuidString == scope.meshUUID, manager.currentNetworkKey.networkId.hex == scope.networkID {
+            for scene in manager.scenes where plan.changes.contains(where: { $0.number == scene.number }) {
+                guard let info = SceneInfo.load(meshUUID: scope.meshUUID, sceneId: scene.number),
+                      !info.configurationLoadFailed else { throw Failure.persistence }
+                scene.info = info
+            }
+            manager.realNodes.forEach { $0.clearSyncStateCache() }
+        }
+    }
+
+    @discardableResult
+    func finishMembershipDeletions(scope: SceneScope) throws -> Bool {
+        // The caller owns an authorized deletion/reference-cleanup journal.
+        // Its own pending marker intentionally blocks ordinary edit admission.
+        guard MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == scope.meshUUID,
+              MeshNetworkManager.instance.currentNetworkKey.networkId.hex == scope.networkID else { throw Failure.unavailable }
+        var changed = false
+        for info in try SceneInfo.loadAll(meshUUID: scope.meshUUID, subnetworkId: scope.networkID) {
+            guard !info.configurationLoadFailed else { throw Failure.persistence }
+            guard let configuration = info.configuration, configuration.isDeleting,
+                  configuration.pendingOperations.isEmpty, !SceneDeletionCascade.hasPending(info),
+                  SceneDeletionCascade.canFinish(info: info) else { continue }
+            try finishDeletion(info: info, scope: scope)
+            changed = true
+        }
+        return changed
+    }
+
+    static func protectedRestoreIdentities(data: Data?, scope: SceneScope, generation: UUID) throws -> Set<TimedSchedulerNodeIdentity> {
+        guard let data else { return [] }
+        let receipts = try JSONDecoder().decode([SceneRestoreReceipt].self, from: data)
+        return try Set(receipts.filter { $0.scope == scope && $0.recoveryGeneration == generation && $0.stage != .applied }
+            .flatMap { [$0.oldIdentity] + ($0.newIdentity.map { [$0] } ?? []) }.map(SceneConfiguration.identity))
+    }
+
+    /// A verified Restore can still own old intent when its replacement is
+    /// permanently deleted. Only durable evidence links the two exact keys.
+    static func permanentRemovalIdentities(_ identities: [TimedSchedulerNodeIdentity], scope: SceneScope,
+                                          space: SpaceData, present: Set<TimedSchedulerNodeIdentity>) throws -> [TimedSchedulerNodeIdentity] {
+        let state = try SpaceConfigurationSafety.recoveryState(space)
+        let receipts = try SceneConfigurationStore().restoreReceipts(state.sceneRestoreReceipts)
+        var removed = try Set(identities.map(SceneConfiguration.identity))
+        let present = try Set(present.map(SceneConfiguration.identity))
+        var previousCount: Int
+        repeat {
+            previousCount = removed.count
+            for receipt in receipts where receipt.scope == scope && receipt.recoveryGeneration == state.generation
+                && receipt.stage != .prepared {
+                guard let new = receipt.newIdentity, removed.contains(try SceneConfiguration.identity(new)) else { continue }
+                let old = try SceneConfiguration.identity(receipt.oldIdentity)
+                if !present.contains(old) { removed.insert(old) }
+            }
+        } while removed.count != previousCount
+        return Array(removed)
+    }
+
+    /// Called after App readback, before the deletion journal is marked cleaned.
+    /// Failure retains that journal so the independent receipt write can retry.
+    static func finishPermanentRestoreCleanup(_ identities: [TimedSchedulerNodeIdentity], scope: SceneScope,
+                                              space: SpaceData) throws {
+        let state = try SpaceConfigurationSafety.recoveryState(space)
+        let receipts = try SceneConfigurationStore().restoreReceipts(state.sceneRestoreReceipts)
+        let removed = try Set(identities.map(SceneConfiguration.identity))
+        let remaining = try receipts.filter { receipt in
+            guard receipt.scope == scope else { return true }
+            let linked = try Set(([receipt.oldIdentity] + (receipt.newIdentity.map { [$0] } ?? [])).map(SceneConfiguration.identity))
+            return removed.isDisjoint(with: linked)
+        }
+        guard remaining != receipts else { return }
+        try SpaceConfigurationSafety.saveSceneRestoreReceipts(JSONEncoder().encode(remaining), context: state, space: space)
+    }
+
+    static func confirmedIdentitiesAreRemoved(_ identities: [TimedSchedulerNodeIdentity], scope: SceneScope,
+                                             absentAddresses: Set<UInt16>) throws -> Bool {
+        let removed = try Set(identities.map(SceneConfiguration.identity))
+        return try SceneInfo.loadAll(meshUUID: scope.meshUUID, subnetworkId: scope.networkID).allSatisfy { info in
+            guard !info.configurationLoadFailed else { throw Failure.persistence }
+            guard let configuration = info.configuration else { return true }
+            return try configuration.removingConfirmedIdentities(removed, absentAddresses: absentAddresses) == configuration
         }
     }
 

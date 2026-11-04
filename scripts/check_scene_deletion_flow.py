@@ -10,6 +10,7 @@ import tempfile
 import sys
 sys.dont_write_bytecode = True
 from check_scene_configuration import scene_authority_support, ROOT, target_sources, function, section
+page_cleanup = '--page-cleanup' in sys.argv
 
 with tempfile.TemporaryDirectory(prefix='scene-deletion-') as directory:
     tmp = Path(directory)
@@ -21,14 +22,23 @@ with tempfile.TemporaryDirectory(prefix='scene-deletion-') as directory:
         ROOT / 'SunSmart/Main/Scene/Model/SceneConfiguration.swift',
         ROOT / 'SunSmart/Common/Data/SceneDeleteCapability.swift',
         sdk / 'Sources/NordicSigMeshSDK/MeshLib/Scene/SceneRegisterPolicy.swift',
-        ROOT / 'Tests/Scene/SceneDeletionCascadeBoundarySupport.swift',
-        ROOT / 'Tests/Scene/SceneDeletionFlowTests.swift']
+        ROOT / 'Tests/Scene/SceneDeletionCascadeBoundarySupport.swift']
     mesh = (ROOT / 'SunSmart/Common/Data/MeshNetwork+SunSmart.swift').read_text()
     binding = (ROOT / 'SunSmart/Main/Timed/Model/TimedSchedulerBindings.swift').read_text()
     def write(name, text):
         path = tmp / name; path.write_text(text); sources.append(path)
+    flow = (ROOT / 'Tests/Scene/SceneDeletionFlowTests.swift').read_text()
+    write('Flow.swift', flow.replace('@main struct', 'struct') if page_cleanup else flow)
     support = (ROOT / 'Tests/Scene/SceneSaveTestSupport.swift').read_text()
     support = scene_authority_support(support)
+    if page_cleanup:
+        support = support.replace('func save() -> Bool { true }', 'func save() -> Bool { PageBoundary.save(self) }')
+        support = support.replace('let id = "space"', 'let id = "space"; let siteId = "site"; var lastUpdate: Int64 = 1')
+        page = (ROOT / 'SunSmart/Main/Scene/Controller/ScenesViewController.swift').read_text()
+        write('PageCleanup.swift', 'import Foundation\n' + section('SunSmart/Main/Scene/Controller/ScenesViewController.swift', '@MainActor\nenum ScenePageMembershipCleanup', '/// 场景列表刷新通知名称'))
+        boundary = (ROOT / 'Tests/Scene/ScenePageMembershipCleanupTests.swift').read_text()
+        boundary = boundary.replace('// ACTUAL_PAGE_METHODS', '\n'.join(function(page, marker).replace('private func', 'func') for marker in ['    func setScenePageSelected(', '    private func prepareMembershipIfNeeded(']))
+        write('PageTests.swift', boundary)
     support = support.replace('// ACTUAL_TRANSACTION', function((ROOT / 'SunSmart/Common/Data/Database.swift').read_text(), '    @discardableResult\n    func configurationTransaction('))
     support = support.replace('// ACTUAL_TIMED_COMMIT', section('SunSmart/Main/Timed/Model/TimedSchedulerBindings.swift', '    static func commit(_ plan:', '    static func reserveForDeletion('))
     support = support.replace('// ACTUAL_UPDATE_GROUP', function(mesh, '    func updateGroupSyncState()'))

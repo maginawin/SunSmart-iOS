@@ -307,6 +307,25 @@ final class DevicePermanentDeletionContext {
             return nil
         }
         ProximityLightingTopologyContext.loadGroupInfo(network: savedNetwork, space: savedSpace)
+        let sceneScope = SceneScope(meshUUID: space.meshUUID, networkID: space.meshNetworkId)
+        let removedIdentities = removed.compactMap { entry -> TimedSchedulerNodeIdentity? in
+            guard let fingerprint = entry.deviceKeyFingerprint ?? entry.cloudRemoval?.instance.keyFingerprint else { return nil }
+            return .init(nodeUUID: entry.nodeUUID, unicastAddress: entry.primaryAddress.hex, deviceKeyFingerprint: fingerprint)
+        }
+        do {
+            let identities = try SceneConfigurationStore.permanentRemovalIdentities(removedIdentities,
+                scope: sceneScope, space: space, present: Set(network.nodes.compactMap(\.sceneConfigurationIdentity)))
+            guard try SceneConfigurationStore.confirmedIdentitiesAreRemoved(identities,
+                scope: sceneScope, absentAddresses: addresses) else { throw SpaceConfigurationSafety.SafetyError.persistenceFailed }
+            if MeshNetworkManager.instance.meshNetwork === network,
+               MeshNetworkManager.instance.currentNetworkKey.networkId.hex == space.meshNetworkId {
+                _ = try SceneConfigurationStore().finishMembershipDeletions(scope: sceneScope)
+            }
+            try SceneConfigurationStore.finishPermanentRestoreCleanup(identities, scope: sceneScope, space: space)
+        } catch {
+            SpaceConfigurationSafety.block(space, reason: "deletionCleanupPending")
+            return nil
+        }
         let readback = ProximityLightingLifecycleCoordinator.begin(space: savedSpace,
             groups: savedNetwork.groups.filter { !$0.isVirtual },
             nodes: ProximityLightingTopologyContext.realNodes(in: savedNetwork), network: savedNetwork).prepare()
@@ -315,6 +334,10 @@ final class DevicePermanentDeletionContext {
               savedNetwork.scenes.allSatisfy({ addresses.isDisjoint(with: $0.addresses) }),
               Schedule.load(meshUUID: space.meshUUID, meshNetworkId: space.meshNetworkId).allSatisfy({
                   addresses.isDisjoint(with: $0.nodeAddresses) && addresses.isDisjoint(with: $0.needDeleteNodeAddresses)
+                      && !($0.nodeSlots?.contains { binding in removed.contains {
+                          $0.nodeUUID.uppercased() == binding.identity.nodeUUID.uppercased()
+                              && $0.primaryAddress.hex == binding.identity.unicastAddress.uppercased()
+                      } } ?? false)
               }),
               SpaceConfigurationSafety.updateDeletionJournal(space, { journal in
                   for index in journal.entries.indices where removed.contains(where: { $0.id == journal.entries[index].id }) {
@@ -480,16 +503,18 @@ final class DevicePermanentDeletionContext {
         // still belong to that instance.
         for info in try SceneInfo.loadAll(meshUUID: space.meshUUID, subnetworkId: space.meshNetworkId) {
             guard !info.configurationLoadFailed else { throw SpaceConfigurationSafety.SafetyError.persistenceFailed }
-            let identities = (info.configuration?.deviceMembers.map(\.identity) ?? [])
-                + (info.configuration?.pendingOperations.map(\.identity) ?? [])
+            let identities = info.configuration?.referencedIdentities ?? []
             guard !entries.contains(where: { entry in
                 entry.deviceKeyFingerprint == nil && entry.cloudRemoval == nil
                     && identities.contains { $0.nodeUUID.uppercased() == entry.nodeUUID.uppercased()
                         && $0.unicastAddress == entry.primaryAddress.hex }
             }) else { throw SpaceConfigurationSafety.SafetyError.persistenceFailed }
         }
-        try SceneConfigurationStore.removeConfirmedIdentities(confirmedIdentities,
-            scope: .init(meshUUID: space.meshUUID, networkID: space.meshNetworkId))
+        let sceneScope = SceneScope(meshUUID: space.meshUUID, networkID: space.meshNetworkId)
+        let removalIdentities = try SceneConfigurationStore.permanentRemovalIdentities(confirmedIdentities,
+            scope: sceneScope, space: space, present: Set(network.nodes.compactMap(\.sceneConfigurationIdentity)))
+        try SceneConfigurationStore.removeConfirmedIdentities(removalIdentities,
+            scope: sceneScope, absentAddresses: addresses)
         if var config = space.hdb {
             guard SpaceConfigurationSafety.updateDeletionJournal(space, { journal in
                 for index in journal.entries.indices where entries.contains(where: { $0.id == journal.entries[index].id }) {
@@ -516,7 +541,7 @@ final class DevicePermanentDeletionContext {
             let pending = schedule.needDeleteNodeAddresses.filter { !addresses.contains($0) }
             let bindings = schedule.nodeSlots?.filter { binding in
                 !entries.contains { $0.nodeUUID.uppercased() == binding.identity.nodeUUID.uppercased()
-                    && $0.primaryAddress.hex == binding.identity.unicastAddress }
+                    && $0.primaryAddress.hex == binding.identity.unicastAddress.uppercased() }
             }
             if active != schedule.nodeAddresses || pending != schedule.needDeleteNodeAddresses || bindings != schedule.nodeSlots {
                 schedule.nodeSlots = bindings

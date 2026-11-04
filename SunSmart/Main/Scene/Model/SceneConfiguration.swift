@@ -145,13 +145,37 @@ struct SceneConfiguration: Codable, Equatable {
         return result
     }
 
-    func removingConfirmedIdentities(_ identities: Set<TimedSchedulerNodeIdentity>) throws -> SceneConfiguration {
+    var referencedIdentities: Set<TimedSchedulerNodeIdentity> {
+        Set(deviceMembers.map(\.identity) + pendingOperations.map(\.identity)
+            + (deletionReferences?.pending.compactMap(\.identity) ?? []))
+    }
+
+    /// The caller proves permanent removal. Unknown legacy references may only
+    /// use addresses proven vacant, never an address now owned by another Node.
+    func removingConfirmedIdentities(_ identities: Set<TimedSchedulerNodeIdentity>,
+                                     absentAddresses: Set<UInt16>? = nil) throws -> SceneConfiguration {
         var result = try normalized()
         let removed = try Set(identities.map(Self.identity))
+        let absent = absentAddresses ?? Set(removed.compactMap { UInt16($0.unicastAddress, radix: 16) })
         result.deviceMembers.removeAll { removed.contains($0.identity) }
         result.pendingOperations.removeAll { removed.contains($0.identity) }
-        result.deletionReferences?.pending.removeAll { $0.identity.map { removed.contains($0) } == true }
+        result.deletionReferences?.pending.removeAll { reference in
+            reference.identity.map { removed.contains($0) } ?? absent.contains(reference.address)
+        }
         return result
+    }
+
+    /// Only a validated, complete persisted membership snapshot may authorize
+    /// this difference. Offline Nodes are members; unresolved Restore is protected.
+    func removingOrphanedIdentities(current: Set<TimedSchedulerNodeIdentity>, occupiedAddresses: Set<UInt16>,
+                                   protected: Set<TimedSchedulerNodeIdentity>) throws -> SceneConfiguration {
+        let original = try normalized()
+        let current = try Set(current.map(Self.identity)), protected = try Set(protected.map(Self.identity))
+        let removed = original.referencedIdentities.subtracting(current).subtracting(protected)
+        let protectedAddresses = Set(protected.compactMap { UInt16($0.unicastAddress, radix: 16) })
+        let absent = Set(original.deletionReferences?.pending.filter { $0.identity == nil }.map(\.address) ?? [])
+            .subtracting(occupiedAddresses).subtracting(protectedAddresses)
+        return try original.removingConfirmedIdentities(removed, absentAddresses: absent)
     }
 
     /// Only an explicit, verified Restore receipt may call this. A new device

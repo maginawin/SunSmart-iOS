@@ -267,14 +267,15 @@ enum SpaceCloudNodeRemovalPolicy {
         if let raw = object["sceneConfigurations"] {
             do {
                 var configs = try SceneConfigurationPayload.decode(raw)
-                func matches(_ identity: TimedSchedulerNodeIdentity) -> Bool {
-                    instances.contains { $0.uuid.uppercased() == identity.nodeUUID.uppercased()
-                        && $0.address == UInt16(identity.unicastAddress, radix: 16)
-                        && $0.keyFingerprint.uppercased() == identity.deviceKeyFingerprint.uppercased() }
-                }
+                // Legacy receipts without a key cannot remove a known identity.
+                // Use the same reference-task projection as App deletion so a
+                // pre-cleanup cloud baseline still compares after local cleanup.
+                let identities = Set(instances.compactMap { instance in
+                    try? SceneConfiguration.identity(.init(nodeUUID: instance.uuid,
+                        unicastAddress: String(format: "%04X", instance.address), deviceKeyFingerprint: instance.keyFingerprint))
+                })
                 for id in Array(configs.keys) {
-                    configs[id]!.deviceMembers.removeAll { matches($0.identity) }
-                    configs[id]!.pendingOperations.removeAll { matches($0.identity) }
+                    configs[id] = try configs[id]!.removingConfirmedIdentities(identities, absentAddresses: addresses)
                 }
                 object["sceneConfigurations"] = try SceneConfigurationPayload.encode(records: configs.map {
                     .init(number: $0.key, name: $0.value.name, imageId: 0, configuration: $0.value)

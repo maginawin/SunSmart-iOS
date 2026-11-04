@@ -100,6 +100,8 @@ final class SyncExecutionSession {
     }
     static func persisted(_ number: UInt16 = 1) throws -> SceneInfo? { try SceneInfo.loadAll(meshUUID: scope.meshUUID).first { $0.sceneId == number } }
     static func main() throws {
+        try orphanMembershipCleanup()
+        try permanentRestoreCleanup()
         try syncPreparationBoundaries()
         try incrementalSceneSave()
         var (scene, a, b, x, group) = try fixture()
@@ -226,6 +228,48 @@ final class SyncExecutionSession {
         try legacySecondaryAddress()
         try observedDeviceResidual()
         print("PASS whole deletion: A/B not X, durable offline/restart/unknown, residual groups, stale/failing ACK, stop gate, transaction rollback, SDK/App interrupted finalization; cascade references covered separately")
+    }
+
+    static func permanentRestoreCleanup() throws {
+        let (scene, a, b, _, _) = try fixture()
+        let old = try SceneConfiguration.identity(a.timedSchedulerIdentity!)
+        let replacement = TimedSchedulerNodeIdentity(nodeUUID: old.nodeUUID, unicastAddress: old.unicastAddress,
+            deviceKeyFingerprint: String(repeating: "B", count: 64))
+        let state = SpaceConfigurationSafety.recovery
+        var receipt = SceneRestoreReceipt(id: UUID(), scope: scope, recoveryGeneration: state.generation, oldIdentity: old)
+        receipt.newIdentity = replacement; receipt.stage = .verified
+        let unrelated = SceneRestoreReceipt(id: UUID(), scope: scope, recoveryGeneration: state.generation,
+            oldIdentity: b.timedSchedulerIdentity!)
+        SpaceConfigurationSafety.recovery.sceneRestoreReceipts = try JSONEncoder().encode([receipt, unrelated])
+        manager.realNodes.removeAll { $0 === a }
+        let identities = try SceneConfigurationStore.permanentRemovalIdentities([replacement], scope: scope,
+            space: SpaceData.value, present: Set(manager.realNodes.compactMap(\.sceneConfigurationIdentity)))
+        check(Set(identities) == [old, replacement])
+        check(try Set(SceneConfigurationStore.permanentRemovalIdentities([replacement], scope: scope,
+            space: SpaceData.value, present: [old])) == [replacement], "a still-present old instance retains its intent")
+        let unknown = TimedSchedulerNodeIdentity(nodeUUID: old.nodeUUID, unicastAddress: old.unicastAddress,
+            deviceKeyFingerprint: String(repeating: "C", count: 64))
+        check(try SceneConfigurationStore.permanentRemovalIdentities([unknown], scope: scope,
+            space: SpaceData.value, present: []).count == 1)
+        check(SunSmartDataManager.shared.configurationTransaction {
+            try SceneConfigurationStore.removeConfirmedIdentities(identities, scope: scope, absentAddresses: [1])
+        })
+        check(try SceneConfigurationStore.confirmedIdentitiesAreRemoved(identities, scope: scope, absentAddresses: [1]))
+        check(try persisted()!.configuration!.deviceMembers.map(\.identity) == [b.sceneConfigurationIdentity!])
+        SpaceConfigurationSafety.failReceiptWrite = true
+        do {
+            try SceneConfigurationStore.finishPermanentRestoreCleanup(identities, scope: scope, space: SpaceData.value)
+            preconditionFailure("receipt failure must keep deletion retryable")
+        } catch {}
+        check(try JSONDecoder().decode([SceneRestoreReceipt].self,
+            from: SpaceConfigurationSafety.recovery.sceneRestoreReceipts!).count == 2)
+        SpaceConfigurationSafety.failReceiptWrite = false
+        try SceneConfigurationStore.finishPermanentRestoreCleanup(identities, scope: scope, space: SpaceData.value)
+        check(try JSONDecoder().decode([SceneRestoreReceipt].self,
+            from: SpaceConfigurationSafety.recovery.sceneRestoreReceipts!) == [unrelated])
+        scene.info = try persisted()!
+        check(scene.info.configuration!.deviceMembers.count == 1)
+        print("PASS permanent Restore: verified old/new cleanup, current instance/key protection, real App reload, receipt failure and unrelated receipt preservation")
     }
 
     static func observedDeviceResidual() throws {
@@ -459,6 +503,68 @@ final class SyncExecutionSession {
         var clean = try SceneDraft(scene: scene); try clean.switchKind(to: .groups)
         check(clean.kind == .groups)
         print("PASS member/permanent: group exit isolation, changed-key rejection, exact old identity cleanup, last offline member type/number reservation, confirmed type switch")
+    }
+
+    static func orphanMembershipCleanup() throws {
+        _ = try fixture()
+        manager.scenes = []; manager.groups = []
+        try SunSmartDataManager.shared.db!.run("DELETE FROM sceneInfos")
+        let current = [Node(5), Node(14)], old = [Node(8), Node(17)]
+        manager.realNodes = current
+        let numbers: [UInt16] = [2, 3, 4, 6, 9, 14]
+        for number in numbers {
+            let members = (number == 2 || number == 3 ? [old[0]] : number == 14 ? [old[1]] : old)
+                .map { SceneDeviceMember(identity: $0.sceneConfigurationIdentity!, parameters: .init(isOn: true, lightness: 1000, cct: 4000)) }
+            let scene = Scene(number)
+            scene.info.configuration = .init(schemaVersion: number == 2 ? 2 : 1, kind: .devices, name: "Scene",
+                deviceMembers: members, pendingOperations: number == 2 ? [.init(identity: members[0].identity, action: .remove)] : [],
+                isDeleting: number == 2, deletionReferences: number == 2 ? .init() : nil)
+            try scene.info.saveConfiguration(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)
+            if number != 2 { manager.scenes.append(scene); check(scene.save()) }
+        }
+        let identities = Set(current.compactMap(\.sceneConfigurationIdentity)), occupied: Set<UInt16> = [5, 6, 7, 14, 15, 16]
+        let plan = try SceneConfigurationStore.membershipCleanup(scope: scope, current: identities,
+            occupiedAddresses: occupied, protected: [])
+        check(plan.changes.count == 6 && plan.canFinalizeDeletion, "six orphan Scenes, including absent SDK tombstone")
+        check(plan.changes.reduce(0) { $0 + $1.original.deviceMembers.count } == 9)
+        let before = try SceneInfo.loadAll(meshUUID: scope.meshUUID).map { $0.configuration }
+        // Actual SQLite transaction rollback must keep both rows and live objects.
+        do {
+            try SceneConfigurationStore.commitMembershipCleanup(plan) { throw SceneConfigurationStore.Failure.persistence }
+            fatalError("failed version write must roll back Scene rows")
+        } catch {}
+        check(try! SceneInfo.loadAll(meshUUID: scope.meshUUID).map { $0.configuration } == before)
+        check(manager.scenes.allSatisfy { !$0.info.configuration!.deviceMembers.isEmpty })
+        var versions = 0
+        try SceneConfigurationStore.commitMembershipCleanup(plan) { versions += 1 }
+        check(versions == 1 && manager.scenes.allSatisfy { $0.info.configuration!.deviceMembers.isEmpty })
+        check(try! store.finishMembershipDeletions(scope: scope))
+        let saved = try SceneInfo.loadAll(meshUUID: scope.meshUUID)
+        check(saved.count == 5 && saved.allSatisfy { $0.configuration!.deviceMembers.isEmpty && $0.configuration!.pendingOperations.isEmpty })
+        check(try! persisted(2) == nil && !Scene.diskNumbers.contains(2))
+        let repeatPlan = try SceneConfigurationStore.membershipCleanup(scope: scope, current: identities,
+            occupiedAddresses: occupied, protected: [])
+        check(!repeatPlan.hasWork)
+        try SceneConfigurationStore.commitMembershipCleanup(repeatPlan) { versions += 1 }
+        check(versions == 1, "no-op must not advance version")
+        let exported = try SceneConfigurationStore.exportRecords(scope: scope, scenes: manager.scenes)
+        check(exported.count == 5 && exported.allSatisfy { $0.configuration?.deviceMembers.isEmpty == true })
+
+        let (scene, a, b, _, _) = try fixture()
+        b.state = false
+        let oldA = a.sceneConfigurationIdentity!
+        a.fingerprint = String(repeating: "B", count: 64)
+        let preserved = try SceneConfigurationStore.membershipCleanup(scope: scope,
+            current: Set(manager.realNodes.compactMap(\.sceneConfigurationIdentity)), occupiedAddresses: [1, 2, 3], protected: [oldA])
+        check(!preserved.hasWork, "pending Restore and offline existing member are preserved")
+        let replacement = try SceneConfigurationStore.membershipCleanup(scope: scope,
+            current: Set(manager.realNodes.compactMap(\.sceneConfigurationIdentity)), occupiedAddresses: [1, 2, 3], protected: [])
+        check(replacement.changes.first?.updated.deviceMembers.map(\.identity) == [b.sceneConfigurationIdentity!])
+        var changed = scene.info.configuration!; changed.name = "Concurrent edit"
+        scene.info.configuration = changed; try scene.info.saveConfiguration(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)
+        do { try SceneConfigurationStore.commitMembershipCleanup(replacement) {}; fatalError("stale plan accepted") } catch {}
+        check(try persisted()!.configuration == changed.normalized())
+        print("PASS orphan cleanup: six Scenes/nine members, SQLite rollback/reload/export, SDK orphan finalization, no-op version, offline/Restore/reused identity and stale plan")
     }
     static func restoreReceipts() throws {
         var (scene, a, _, _, _) = try fixture()

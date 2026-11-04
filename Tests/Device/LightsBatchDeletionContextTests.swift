@@ -22,6 +22,13 @@ final class Node {
     let productIdentifier: UInt16? = nil
     var network: MeshNetwork?
     var subNetworkId = "net"
+    var timedSchedulerIdentity: TimedSchedulerNodeIdentity? {
+        .init(nodeUUID: uuid.uuidString, unicastAddress: String(format: "%04X", primaryUnicastAddress),
+              deviceKeyFingerprint: String(repeating: "A", count: 64))
+    }
+}
+enum GroupMemberPersistence {
+    static func hasPending(meshUUID: String, networkID: String, excluding: UUID?) -> Bool { false }
 }
 final class MeshNetworkManager {
     struct Key { var networkId = "net" }

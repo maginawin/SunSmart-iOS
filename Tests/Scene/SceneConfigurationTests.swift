@@ -96,6 +96,30 @@ import Foundation
                 && migrated.pendingOperations.isEmpty && migrated.revision != original.revision
                 && removed.deletionReferences?.pending.isEmpty == true && removed.deletionReferences?.scheduleIDs == [4]
         }
+        test("permanentRemovalClearsUnknownReferencesToThatConfirmedDevice") {
+            var original = deleting
+            original.deletionReferences?.pending.append(.init(kind: .powerSwitch, identity: nil,
+                address: 1, objectID: "removed-switch", name: "Removed", keys: [0]))
+            let removed = try original.removingConfirmedIdentities([a])
+            return removed.deletionReferences?.pending.map(\.id) == [unknownProxyCleanup.id]
+                && removed.deviceMembers.map(\.identity) == [b]
+                && removed.pendingOperations.isEmpty && removed.revision == original.revision
+        }
+        test("orphanCleanupCoversAllReferenceKindsAndProtectsOccupiedAddresses") {
+            var original = deleting
+            original.deletionReferences?.pending = [
+                .init(kind: .scheduler, identity: nil, address: 1, name: "Timed", slots: [0]),
+                .init(kind: .kinetic, identity: nil, address: 1, objectID: "kinetic", name: "Kinetic", keys: [1]),
+                .init(kind: .powerSwitch, identity: nil, address: 1, objectID: "power", name: "Power", keys: [0]),
+                .init(kind: .emergency, identity: nil, address: 1, objectID: "efc", name: "EFC", keys: [0]),
+                unknownProxyCleanup
+            ]
+            let removed = try original.removingOrphanedIdentities(current: [b], occupiedAddresses: [2, 3], protected: [])
+            let reused = try original.removingOrphanedIdentities(current: [b], occupiedAddresses: [1, 2, 3], protected: [])
+            return removed.deletionReferences?.pending == [unknownProxyCleanup]
+                && removed.deviceMembers.map(\.identity) == [b]
+                && reused.deletionReferences?.pending == original.deletionReferences?.pending
+        }
         test("missingOrNullVersionTwoDependenciesCannotDecodeAsCompleted") {
             let object = try JSONSerialization.jsonObject(with: deleting.encoded()) as! [String: Any]
             return [nil, NSNull() as Any?].allSatisfy { value in

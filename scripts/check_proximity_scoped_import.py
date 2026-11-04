@@ -25,7 +25,11 @@ space_controller = source('SunSmart/Main/Space/Controller/SpaceViewController.sw
 repair_presentation = section(space_controller, '    private func presentProximityLightingRepairSyncIfNeeded()', '\n    // MARK: - Request')
 repair_recomputation = section(repair_presentation, '        let preparation =', '        guard !datas.isEmpty else { return }')
 test_source = (root / 'Tests/Group/ProximityLightingScopedImportTests.swift').read_text()
-test_source = test_source.replace('// ACTUAL_SCENE_CLOUD_CLEANUP', block((root / 'SunSmart/Main/Scene/Model/SceneConfigurationStore.swift').read_text(), '    static func removeConfirmedIdentities('))
+scene_store = (root / 'SunSmart/Main/Scene/Model/SceneConfigurationStore.swift').read_text()
+test_source = test_source.replace('// ACTUAL_SCENE_CLOUD_CLEANUP', '\n'.join(block(scene_store, marker) for marker in [
+    '    static func removeConfirmedIdentities(', '    static func permanentRemovalIdentities(',
+    '    static func confirmedIdentitiesAreRemoved(', '    static func finishPermanentRestoreCleanup(',
+    '    private func restoreReceipts(']))
 test_source = test_source.replace('// SENSOR_GROUP_NAME', section(
     source('SunSmart/Common/Data/HDBConfigurationStore+Mesh.swift'),
     '    static func sensorGroupName(', '\n\n'))

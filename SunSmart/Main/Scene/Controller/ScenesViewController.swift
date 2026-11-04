@@ -8,6 +8,112 @@
 import UIKit
 import NordicSigMeshSDK
 
+/// Historical repair is owned by actual Scene-page entry, never by export or
+/// generic sync reads. Permanent device deletion uses its own existing journal.
+@MainActor
+enum ScenePageMembershipCleanup {
+    private struct Membership: Equatable {
+        let identities: Set<TimedSchedulerNodeIdentity>
+        let occupied: Set<UInt16>
+
+        init(network: MeshNetwork) throws {
+            // Presence includes offline and not-yet-configured devices.
+            let nodes = network.nodes.filter { !$0.isLocalProvisioner && !$0.isProvisioner }
+            let identities = nodes.compactMap(\.sceneConfigurationIdentity)
+            guard identities.count == nodes.count, Set(identities).count == nodes.count else {
+                throw SceneConfigurationStore.Failure.invalidTargets
+            }
+            self.identities = Set(identities)
+            occupied = Set(network.nodes.flatMap { ProximityLightingLifecycleCoordinator.topologyAddresses(for: $0) })
+        }
+    }
+
+    static func prepare(space: SpaceData, isCurrent: () -> Bool) async -> Bool {
+        let manager = MeshNetworkManager.instance
+        let scope = SceneScope(meshUUID: space.meshUUID, networkID: space.meshNetworkId)
+        guard let activeNetwork = manager.meshNetwork, let site = SiteData.load(siteId: space.siteId),
+              let context = try? SpaceConfigurationSafety.recoveryState(space) else { return false }
+        func eligible() -> Bool {
+            guard isCurrent(), !_Concurrency.Task<Never, Never>.isCancelled,
+                  manager.meshNetwork === activeNetwork, activeNetwork.uuid.uuidString == scope.meshUUID,
+                  manager.currentNetworkKey.networkId.hex == scope.networkID,
+                  SpaceConfigurationSafety.isCurrent(context, space: space),
+                  SpaceConfigurationSafety.canCleanSyncReferences(space),
+                  !SpaceConfigurationSafety.hasPendingDeletionCleanup(space),
+                  !SpaceConfigurationSafety.hasPendingUpload(space), !MeshProxyMessageCommand.shared.isBusy,
+                  let saved = SpaceData.load(siteId: space.siteId, spaceId: space.id).first,
+                  saved.lastUpdate == space.lastUpdate, saved.canEditing else { return false }
+            return true
+        }
+        func membership() throws -> Membership {
+            guard let persisted = MeshNetwork.load(meshUUID: scope.meshUUID, subnetworkId: scope.networkID) else {
+                throw SceneConfigurationStore.Failure.unavailable
+            }
+            let saved = try Membership(network: persisted)
+            guard saved == (try Membership(network: activeNetwork)) else { throw SceneConfigurationStore.Failure.staleDraft }
+            return saved
+        }
+        // An interrupted reference transaction is resumed by the existing
+        // recovery/upload path; do not take ownership of another operation.
+        guard eligible(), !SpaceConfigurationSafety.hasPendingReferenceCleanup(space) else { return false }
+        do {
+            let members = try membership()
+            let protected = try SceneConfigurationStore.protectedRestoreIdentities(
+                data: context.sceneRestoreReceipts, scope: scope, generation: context.generation)
+            guard protected.isEmpty else { return false }
+            let plan = try SceneConfigurationStore.membershipCleanup(scope: scope, current: members.identities,
+                occupiedAddresses: members.occupied, protected: protected)
+            guard plan.hasWork else { return true }
+            let timestamp = space.lastUpdate
+            let revision = SpacePageRevision()
+            guard let original = await space.export(purpose: .cleanupInspection), eligible(), revision.isCurrent,
+                  await SpaceConfigurationSafety.verifySyncCleanupBaseline(space, local: original), eligible(),
+                  space.lastUpdate == timestamp, try membership() == members,
+                  let latest = try? SpaceConfigurationSafety.recoveryState(space),
+                  latest.sceneRestoreReceipts == context.sceneRestoreReceipts,
+                  try SceneConfigurationStore.membershipCleanup(scope: scope, current: members.identities,
+                    occupiedAddresses: members.occupied, protected: protected) == plan,
+                  !SpaceConfigurationSafety.hasPendingReferenceCleanup(space),
+                  SpaceConfigurationSafety.beginSyncReferenceCleanup(space, payload: original) else { return false }
+            // No suspension after the journal starts. Once persisted, both
+            // success and interrupted finalization remain queued after leaving UI.
+            defer {
+                if site.spaces.isEmpty { site.spaces = SpaceData.load(siteId: site.id) }
+                if let index = site.spaces.firstIndex(where: { $0.id == space.id }) { site.spaces[index] = space }
+                space.enqueueSpaceSync(site: site, level: .slow)
+            }
+            do {
+                try SceneConfigurationStore.commitMembershipCleanup(plan) {
+                    guard space.lastUpdate < Int64.max, (space.lastUploadCloudTimestamp ?? 0) < Int64.max else {
+                        throw SceneConfigurationStore.Failure.persistence
+                    }
+                    space.lastUpdate = max(Int64(Date().timeIntervalSince1970), space.lastUpdate + 1,
+                                           (space.lastUploadCloudTimestamp ?? 0) + 1)
+                    guard space.save() else { throw SceneConfigurationStore.Failure.persistence }
+                }
+            } catch {
+                // The App savepoint rolled back its version together with rows.
+                space.lastUpdate = SpaceData.load(siteId: space.siteId, spaceId: space.id).first?.lastUpdate ?? timestamp
+                throw error
+            }
+            _ = try SceneConfigurationStore().finishMembershipDeletions(scope: scope)
+            let remaining = try SceneConfigurationStore.membershipCleanup(scope: scope, current: members.identities,
+                occupiedAddresses: members.occupied, protected: protected)
+            guard !remaining.hasWork else { throw SceneConfigurationStore.Failure.persistence }
+            space.refreshSummaryCountsFromSpaceMesh()
+            guard space.save(), SpaceConfigurationSafety.finishSyncReferenceCleanup(space, changed: true) else {
+                throw SceneConfigurationStore.Failure.persistence
+            }
+            return true
+        } catch {
+            #if DEBUG
+            print("[SceneMembershipCleanup] result=deferred reason=\(error)")
+            #endif
+            return false
+        }
+    }
+}
+
 /// 场景列表刷新通知名称
 let scenesRefreshNotificationName = "scenesRefreshNotificationName"
 /// 场景数据更新通知名称
@@ -36,6 +142,10 @@ class ScenesViewController: UIViewController {
     private var refreshData: Bool = true
     private var renderedRevision: SpacePageRevision?
     private var isPageVisible = false
+    private var isSelectedPage = false
+    private var membershipRevision: SpacePageRevision?
+    private var membershipTask: _Concurrency.Task<Void, Never>?
+    private var membershipPreparationRequested = false
     
     private var isEdit: Bool = false
     
@@ -79,6 +189,7 @@ class ScenesViewController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        prepareMembershipIfNeeded()
         
         if collectionView.firstShowFlashScrollIndicators {
             collectionView.flashScrollIndicatorsIfNeeded()
@@ -88,6 +199,40 @@ class ScenesViewController: UIViewController {
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
         isPageVisible = false
+        membershipTask?.cancel()
+    }
+
+    /// WMPageController preloads neighbours. Only didEnter grants selection.
+    func setScenePageSelected(_ selected: Bool) {
+        isSelectedPage = selected
+        if selected { prepareMembershipIfNeeded() }
+        else { membershipTask?.cancel() }
+    }
+
+    private func prepareMembershipIfNeeded() {
+        guard isSelectedPage, isPageVisible, viewIfLoaded?.window != nil else { return }
+        if membershipTask != nil { membershipPreparationRequested = true; return }
+        guard membershipRevision?.isCurrent != true else { return }
+        membershipPreparationRequested = false
+        collectionView.isUserInteractionEnabled = false
+        footerView.isUserInteractionEnabled = false
+        membershipTask = _Concurrency.Task { @MainActor [weak self] in
+            guard let self else { return }
+            let succeeded = await ScenePageMembershipCleanup.prepare(space: self.space) { [weak self] in
+                self?.isSelectedPage == true && self?.isPageVisible == true
+            }
+            self.membershipTask = nil
+            self.collectionView.isUserInteractionEnabled = true
+            self.footerView.isUserInteractionEnabled = true
+            self.refreshVisibleUI()
+            if succeeded { self.membershipRevision = SpacePageRevision() }
+            // A completion/import notification received during an await gets one
+            // new attempt. Failure alone never starts a retry loop.
+            if self.membershipPreparationRequested {
+                self.membershipPreparationRequested = false
+                self.prepareMembershipIfNeeded()
+            }
+        }
     }
 
     override func viewDidLayoutSubviews() {
@@ -120,7 +265,10 @@ class ScenesViewController: UIViewController {
         // space编辑权限变更回调
         NotificationCenter.default.addObserver(forName: .init(spacePermissionChangedNotificaitonName), object: nil, queue: .main) {[weak self] notification in
             guard let self = self else { return }
+            if let changed = notification.object as? SpaceData,
+               changed.id != self.space.id || changed.siteId != self.space.siteId { return }
             self.refreshVisibleUI()
+            self.prepareMembershipIfNeeded()
         }
         
     }

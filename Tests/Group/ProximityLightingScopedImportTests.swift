@@ -105,6 +105,9 @@ final class Node: Decodable {
         TimedSchedulerPayloadPolicy.identity(node: ["uuid": uuid, "unicastAddress": primaryUnicastAddress.hex,
                                                    "deviceKey": deviceKey?.hex as Any])
     }
+    var sceneConfigurationIdentity: TimedSchedulerNodeIdentity? {
+        timedSchedulerIdentity.flatMap { try? SceneConfiguration.identity($0) }
+    }
     var createdTimestamp: Int64 = 1
     func restoreCreatedTimestamp(_ value: Int64) { createdTimestamp = value }
     func save() -> Bool { true }
@@ -228,6 +231,11 @@ enum SpaceConfigurationSafety {
     }
     static func isCurrent(_ context: SpaceRecoveryState, space: SpaceData) -> Bool {
         (try? recoveryState(space).matches(context)) == true
+    }
+    static func saveSceneRestoreReceipts(_ data: Data, context: SpaceRecoveryState, space: SpaceData) throws {
+        var state = try recoveryState(space)
+        guard state.generation == context.generation else { throw SafetyError.persistenceFailed }
+        state.sceneRestoreReceipts = data; recoveryStates[space.id] = state
     }
     static let cleanupRoot = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
     static func directory(_ space: SpaceData) throws -> URL { cleanupRoot.appendingPathComponent(space.id) }
@@ -624,7 +632,14 @@ final class SceneInfo {
     static func unavailable(sceneId: UInt16) -> SceneInfo { let info = SceneInfo(sceneId: sceneId); info.configurationLoadFailed = true; return info }
     func saveConfiguration(meshUUID: String, subnetworkId: String) throws {}
 }
-enum SceneConfigurationStore {
+final class SceneConfigurationStore {
     enum Failure: Error { case persistence }
     // ACTUAL_SCENE_CLOUD_CLEANUP
+    // Whole-Scene tombstone finalization runs against real SQLite in the Scene
+    // deletion suite. These topology fixtures contain only live Scene rows.
+    func finishMembershipDeletions(scope: SceneScope) throws -> Bool {
+        let rows = try SceneInfo.loadAll(meshUUID: scope.meshUUID, subnetworkId: scope.networkID)
+        precondition(rows.allSatisfy { $0.configuration?.isDeleting != true })
+        return false
+    }
 }

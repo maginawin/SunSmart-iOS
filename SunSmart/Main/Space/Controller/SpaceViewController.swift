@@ -196,6 +196,7 @@ extension SpaceViewController {
 let routeTest: Bool = false
 
 class SpaceViewController: WMPageController {
+    private weak var selectedScenesPage: ScenesViewController?
 
     #if DEBUG
     private let debugJSONExporter = DebugCloudJSONExporter()
@@ -1824,6 +1825,9 @@ extension SpaceViewController {
     }
     
     override func pageController(_ pageController: WMPageController, didEnter viewController: UIViewController, withInfo info: [AnyHashable : Any]) {
+        selectedScenesPage?.setScenePageSelected(false)
+        selectedScenesPage = viewController as? ScenesViewController
+        selectedScenesPage?.setScenePageSelected(true)
         mainMenuView.selectIndex = Int(self.selectIndex)
         if let disablePageIndex = self.disablePageIndex, selectIndex == disablePageIndex {
             self.scrollEnable = false

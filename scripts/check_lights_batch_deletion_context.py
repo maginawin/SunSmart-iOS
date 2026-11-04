@@ -3,6 +3,9 @@
 from pathlib import Path
 import subprocess
 import tempfile
+import sys
+sys.dont_write_bytecode = True
+from check_scene_configuration import function
 
 root = Path(__file__).resolve().parents[1]
 
@@ -25,7 +28,7 @@ fixture = fixture.replace('// OPERATION_CURRENT', section(source('LightsBatchDel
 fixture = fixture.replace('// SAFETY_METHODS', '\n'.join([
     section(safety, '    static func isBlocked(meshUUID:', '    static func block(_ space:'),
     section(safety, '    private static func deletionCleanupPending(', '    static func deletionJournal('),
-    section(safety, '    static func isCurrent(_ context:', '    private static func storedDirectory('),
+    function(safety, '    static func isCurrent(_ context:'),
     section(safety, '    static func hasPendingImport(', '    #if DEBUG'),
 ]).replace('UserDefaults.standard', 'testDefaults'))
 preparation = section(source('DevicePermanentDeletionCleanup.swift'),

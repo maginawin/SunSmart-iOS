@@ -17,6 +17,7 @@ struct DeviceScheduleAddressCleanupTests {
         try testRemovesDeletedAddressFromActiveAndPendingTargets()
         try testPreservesOtherTargetsAndRemovesDuplicates()
         try testReportsNoChangeWhenAddressIsNotReferenced()
+        try testCloudProjectionMatchesSceneCleanup()
         let legacy = Data("""
         {"scope":{"siteId":"s","spaceId":"p","meshUUID":"m","networkId":"n"},"entries":[{"id":"11111111-1111-1111-1111-111111111111","nodeUUID":"node","primaryAddress":1,"elementAddresses":[1],"stage":"prepared"}]}
         """.utf8)
@@ -63,6 +64,31 @@ struct DeviceScheduleAddressCleanupTests {
         try expect(result.didChange, "Removing an active or pending target must report a change.")
         try expect(result.activeAddresses == [0x1201], "The deleted address must be removed from active targets.")
         try expect(result.pendingDeleteAddresses == [0x1202], "The deleted address must be removed from pending targets.")
+    }
+
+    private static func testCloudProjectionMatchesSceneCleanup() throws {
+        let identity = TimedSchedulerNodeIdentity(nodeUUID: "11111111-1111-1111-1111-111111111111",
+            unicastAddress: "0001", deviceKeyFingerprint: String(repeating: "A", count: 64))
+        let pending = SceneReferenceRemoval(kind: .scheduler, identity: identity, address: 1,
+            name: "Deleted device", slots: [1])
+        let unknown = SceneReferenceRemoval(kind: .powerSwitch, identity: nil, address: 2,
+            objectID: "old", name: "Legacy secondary", keys: [0])
+        let retained = SceneReferenceRemoval(kind: .emergency, identity: nil, address: 9,
+            objectID: "kept", name: "Unrelated", keys: [0])
+        let configuration = SceneConfiguration(schemaVersion: 2, kind: .groups, name: "Deleting",
+            isDeleting: true, deletionReferences: .init(scheduleIDs: [1], pending: [pending, unknown, retained]))
+        func payload(_ value: SceneConfiguration) throws -> Data {
+            try JSONSerialization.data(withJSONObject: ["sceneConfigurations": SceneConfigurationPayload.encode(records: [
+                .init(number: 1, name: value.name, imageId: 0, configuration: value)
+            ])], options: [.sortedKeys])
+        }
+        let instance = SpaceCloudNodeRemovalPolicy.Instance(uuid: identity.nodeUUID, address: 1,
+            keyFingerprint: identity.deviceKeyFingerprint, elementAddresses: [1, 2])
+        let projected = SpaceCloudNodeRemovalPolicy.projectConfiguration(try payload(configuration), removing: [instance])
+        let local = try payload(configuration.removingConfirmedIdentities([identity], absentAddresses: [1, 2]))
+        try expect(projected == local, "Cloud projection must remove the same Scene reference tasks as confirmed App deletion.")
+        try expect(SpaceCloudNodeRemovalPolicy.projectConfiguration(local, removing: [instance]) == local,
+                   "Repeated cloud projection preserves unrelated cleanup and revision.")
     }
 
     private static func testPreservesOtherTargetsAndRemovesDuplicates() throws {
