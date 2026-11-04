@@ -241,7 +241,8 @@ enum SpaceConfigurationSafety {
         return state.matches(context)
     }
 
-    /// Compare with current local intent, not just the last upload acknowledgement.
+    /// Web edits may retain the Space timestamp. Equal versions, as well as
+    /// newer ones, select the complete cloud snapshot over local intent.
     @MainActor
     static func prefersNewerCloud(_ space: SpaceData, remote: [String: Any]) -> Bool {
         guard remote["uuid"] as? String == space.id, SpaceMembershipCoordinator.accepts(remote),
@@ -251,16 +252,29 @@ enum SpaceConfigurationSafety {
               let state = try? recoveryState(space), state.phase == .active, state.unbindRequested != true else { return false }
         let persisted = SpaceData.load(siteId: space.siteId, spaceId: space.id).first
         let pendingVersion = pendingImport(space).flatMap { SpaceConfigurationIntegrityPolicy.integer($0["updateTimestamp"]) } ?? 0
-        let current = max(space.lastUpdate, persisted?.lastUpdate ?? 0,
-                          space.lastUploadCloudTimestamp ?? 0, persisted?.lastUploadCloudTimestamp ?? 0,
-                          state.submission?.timestamp ?? 0, pendingVersion)
-        return version > current
+        let localVersion = max(space.lastUpdate, persisted?.lastUpdate ?? 0,
+                               space.lastUploadCloudTimestamp ?? 0, persisted?.lastUploadCloudTimestamp ?? 0)
+        let current = max(localVersion, state.submission?.timestamp ?? 0, pendingVersion)
+        // A staged import can be ahead of the installed local version. A GET
+        // equal only to that staging version must resume the durable selection.
+        return version > current || (version == current && version == localVersion)
     }
 
     static func hasNewerCloudImport(_ space: SpaceData) -> Bool {
         guard let selected = try? recoveryState(space).cloudImport,
               let payload = pendingImport(space) else { return false }
         return SpaceConfigurationIntegrityPolicy.integer(payload["updateTimestamp"]) == selected.timestamp
+    }
+
+    @MainActor
+    static func importsEqualCloudSnapshot(_ space: SpaceData, remote: [String: Any]) -> Bool {
+        if hasNewerCloudImport(space), let selected = pendingImport(space),
+           NSDictionary(dictionary: CloudConfigurationDefaults.space(selected).filter { $0.key != SpaceMembershipResponseContext.payloadKey })
+            .isEqual(to: CloudConfigurationDefaults.space(remote).filter { $0.key != SpaceMembershipResponseContext.payloadKey }) {
+            return (try? recoveryState(space).cloudImport?.replacesEqualVersion) == true
+        }
+        return prefersNewerCloud(space, remote: remote)
+            && SpaceConfigurationIntegrityPolicy.integer(remote["updateTimestamp"]) == space.lastUpdate
     }
 
     /// Called only after complete import preflight. Write the selected snapshot
@@ -273,8 +287,15 @@ enum SpaceConfigurationSafety {
               let state = try? recoveryState(space), state.authority == .writable || state.authority == .readOnly,
               let network = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
               let localKeys = SpaceKeyIntegrity.pair(network, networkID: space.meshNetworkId),
-              SpaceKeyIntegrity.pair(payload, networkID: space.meshNetworkId)?.fingerprint == localKeys.fingerprint,
-              checkpoint(space, refresh: true) else { return false }
+              SpaceKeyIntegrity.pair(payload, networkID: space.meshNetworkId)?.fingerprint == localKeys.fingerprint else { return false }
+        // Re-entering the same durable selection after a failed commit must
+        // resume its generation, rather than archive it and start over.
+        if hasNewerCloudImport(space), let selected = pendingImport(space),
+           NSDictionary(dictionary: CloudConfigurationDefaults.space(selected).filter { $0.key != SpaceMembershipResponseContext.payloadKey })
+            .isEqual(to: CloudConfigurationDefaults.space(payload).filter { $0.key != SpaceMembershipResponseContext.payloadKey }) {
+            return true
+        }
+        guard checkpoint(space, refresh: true) else { return false }
         do {
             let oldDirectory = storedDirectory(space, state: state)
             try state.write(to: oldDirectory.appendingPathComponent("recovery-state.json"))
@@ -283,7 +304,8 @@ enum SpaceConfigurationSafety {
             next.siteCreationTimestamp = state.siteCreationTimestamp
             next.directoryName = key(space) + "-" + next.generation.uuidString
             next.cloudImport = .init(timestamp: SpaceConfigurationIntegrityPolicy.integer(payload["updateTimestamp"])!,
-                                     supersededGeneration: state.generation)
+                                     supersededGeneration: state.generation,
+                                     replacesEqualVersion: importsEqualCloudSnapshot(space, remote: payload))
             next.pendingArchives = (state.pendingArchives ?? []) + [oldDirectory.lastPathComponent]
             let selected = storedDirectory(space, state: next)
             try FileManager.default.createDirectory(at: selected, withIntermediateDirectories: true)
@@ -1749,6 +1771,7 @@ enum SpaceConfigurationSafety {
     static func hasReviewedCloudImport(_ space: SpaceData) -> Bool { reviewedCloudImport(space) != nil }
 
     private static func defaultRecoverySourceData(_ payload: [String: Any]) -> Data? {
+        let payload = CloudConfigurationDefaults.space(payload)
         let fields: Set<String> = ["uuid", "updateTimestamp", "netKey", "appKey", "nodes", "groups", "scenes",
             "schedules", "switches", "emergencyFireControllers", "spaceData", "spaceName", "imageId",
             "controlType", "deviceBlinkMode", "displayDeviceNamePrefix", "showCCTQuickButtons"]

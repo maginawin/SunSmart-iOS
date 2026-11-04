@@ -22,11 +22,11 @@ def section(start, end):
 # boundaries, including a cleanup timestamp bump and a late concurrent response.
 body = section('        guard SpaceMembershipCoordinator.accepts', '        let gatewayImportScope')
 body += section('        let json = JSON(siteJsonData)', '        // Process extension fields')
-body += section('        if lastUpdate > self.lastUpdate || initialize {', '            // 转让site id') + '        }\n'
+body += section('        if lastUpdate >= self.lastUpdate || initialize {', '            // 转让site id') + '        }\n'
 body += '        duringPreparation()\n        preparedSiteTimestamp = self.lastUpdate\n        duringSuspension()\n        let meshNetwork: Bool? = true\n'
 body += section('        guard meshNetwork != nil else', '        GatewayOrphanGuard.endImport')
 (output / 'SiteImportHarness.swift').write_text('import Foundation\nextension SiteData {\n'
-    'func importFixture(siteJsonData: [String: Any], initialize: Bool = false, '
+    'func importFixture(siteJsonData: [String: Any], source: SiteImportSource = .completeDetail, initialize: Bool = false, '
     'duringPreparation: () -> Void = {}, duringSuspension: () -> Void = {}) -> Bool {\n'
     + body + 'return true\n}\n}\n')
 PY

@@ -2,13 +2,80 @@ import Foundation
 import CoreFoundation
 import CryptoKit
 
+/// Defaults for complete legacy cloud snapshots. Never copy a missing value from
+/// local state, synthesize network/device identities, or repair an explicit bad value.
+enum CloudConfigurationDefaults {
+    static func filling(_ object: [String: Any], with defaults: [String: Any]) -> [String: Any] {
+        defaults.merging(object) { _, supplied in supplied }
+    }
+
+    static func space(_ object: [String: Any]) -> [String: Any] {
+        var result = filling(object, with: ["groups": [[String: Any]](), "scenes": [[String: Any]](),
+                                           "schedules": [[String: Any]]()])
+        if let groups = result["groups"] as? [[String: Any]] {
+            result["groups"] = groups.map { raw in
+                var group = filling(raw, with: ["name": "", "parentAddress": "0000"])
+                if let value = group["profile"] as? [String: Any] { group["profile"] = profile(value) }
+                return group
+            }
+        }
+        if let scenes = result["scenes"] as? [[String: Any]] {
+            result["scenes"] = scenes.map { filling($0, with: ["name": "", "imageId": 0]) }
+        }
+        return TimedSchedulerPayloadPolicy.fillingMissingBindings(result)
+    }
+
+    static func profile(_ object: [String: Any]) -> [String: Any] {
+        // Profile.fromCloud uses these defaults; entity identity/type must still decode.
+        let daylight = [1, 2, 5].contains(TimedSchedulerPayloadPolicy.integer(object["type"]) ?? -1)
+        let levels: [String: Any] = ["occupancyLevel": 100, "vacantLevel": 50, "standbyLevel": 0,
+                                     "taskLevel": 100, "autoMinLevel": daylight ? 255 : 0]
+        let times: [String: Any] = ["timeT1": 0, "timeT2": 0, "timeT3": 0, "timeT4": 0, "timeT5": 0]
+        var defaults = filling(levels, with: times)
+        for (key, value) in ["highEndTrim": 100, "lowEndTrim": 0, "manualOverrideTimeout": 600,
+                             "powerUpState": 0, "powerOnCct": 4500, "adjustSpeed": 50,
+                             "relativeSensitivity": 95, "targetNightBrightness": 50] { defaults[key] = value }
+        defaults["calibrationMode"] = "none"
+        let type = TimedSchedulerPayloadPolicy.integer(object["type"])
+        if type == 7 || type == 8 { defaults["proximityLightingNumber"] = 2 }
+        var result = filling(object, with: defaults)
+        let sceneDefaults = filling(levels.merging(["autoMinLevel": 255]) { _, value in value }, with: ["name": "", "timeT1": 2, "timeT2": 1200,
+                                                   "timeT3": 2, "timeT4": 600, "timeT5": 2])
+        if result["scenes"] == nil { result["scenes"] = [[String: Any]]() }
+        if var scenes = result["scenes"] as? [[String: Any]] {
+            scenes = scenes.map { filling($0, with: sceneDefaults) }
+            if !scenes.contains(where: { ($0["number"] as? String)?.uppercased() == "FF00" }) {
+                var general = result.filter { levels[$0.key] != nil || times[$0.key] != nil }
+                general["number"] = "FF00"; general["name"] = "General Scene"
+                scenes.insert(general, at: 0)
+            }
+            if type == 8 {
+                for (key, number, id, lux, standby) in [("night", "FF01", 0, 30, 30), ("day", "FF02", 1, 70, 0)] {
+                    let conditionDefaults: [String: Any] = ["id": id, "startsBelowLux": lux, "sceneNumber": number,
+                        "useCalibrationValues": false, "executeType": 0, "fixedStandbyLevel": standby]
+                    if result[key] == nil { result[key] = [String: Any]() }
+                    if let condition = result[key] as? [String: Any] {
+                        result[key] = filling(condition, with: conditionDefaults)
+                        if condition["sceneNumber"] == nil && !scenes.contains(where: { $0["number"] as? String == number }) {
+                            scenes.append(filling(["number": number, "name": key == "day" ? "Day Scene" : "Night Scene",
+                                                   "standbyLevel": standby, "autoMinLevel": 255], with: sceneDefaults))
+                        }
+                    }
+                }
+            }
+            result["scenes"] = scenes
+        }
+        return result
+    }
+}
+
 /// A complete GET is authoritative for membership in an already accepted version
 /// of this Space. It says nothing about unsent local provisioning instances.
 enum SpaceCloudNodeRemovalPolicy {
     /// Compare exported business configuration independently of server observations.
     /// Only hashes and provisioned identities are persisted.
     struct Snapshot: Codable, Equatable {
-        static let currentComparisonVersion = 5
+        static let currentComparisonVersion = 6
         let spaceID: String
         let timestamp: Int64
         let properties: String
@@ -17,6 +84,7 @@ enum SpaceCloudNodeRemovalPolicy {
         var identities: [Instance]
 
         static func make(_ payload: [String: Any]) -> Snapshot? {
+            let payload = CloudConfigurationDefaults.space(payload)
             guard let id = payload["uuid"] as? String,
                   let timestamp = SpaceConfigurationIntegrityPolicy.integer(payload["updateTimestamp"]),
                   timestamp >= 0, timestamp < Int64.max,
@@ -429,30 +497,13 @@ enum SpaceConfigurationIntegrityPolicy {
         return value > 20 ? .max : UInt8(value)
     }
 
-    /// These profiles use occupancy/vacant/standby stages, not taskLevel.
-    /// Match the importer defaults without hiding explicit malformed values or
-    /// changing the active target of Daylight (5) and Manual Control (6).
-    private static func normalizedTaskLevels(_ profile: [String: Any]) -> [String: Any] {
-        guard let type = integer(profile["type"]), [1, 2, 3, 4, 7, 8].contains(type) else { return profile }
-        var result = profile
-        if result["taskLevel"] == nil { result["taskLevel"] = 100 }
-        if let scenes = result["scenes"] as? [[String: Any]] {
-            result["scenes"] = scenes.map { scene in
-                var normalized = scene
-                if normalized["taskLevel"] == nil { normalized["taskLevel"] = 100 }
-                return normalized
-            }
-        }
-        return result
-    }
-
     static func profileIssue(_ profile: [String: Any]?) -> String? {
         guard var profile,
               let id = profile["id"] as? String, !id.isEmpty,
               let type = integer(profile["type"]), (1...8).contains(type) else {
             return "missingOrInvalidProfileIdentity"
         }
-        profile = normalizedTaskLevels(profile)
+        profile = CloudConfigurationDefaults.profile(profile)
         if let field = levelIssue(type: type, values: profile,
                                   requiredFields: ["highEndTrim", "lowEndTrim", "occupancyLevel", "vacantLevel", "taskLevel"]) {
             return "invalidProfileField:\(field)"
@@ -584,6 +635,7 @@ enum SpaceConfigurationIntegrityPolicy {
     /// Only the logical configuration is compared. Node caches are observations,
     /// and may legitimately differ after a different phone talks to the Mesh.
     static func configurationData(_ payload: [String: Any]) -> Data? {
+        let payload = CloudConfigurationDefaults.space(payload)
         guard profilesIssue(in: payload) == nil,
               let groups = payload["groups"] as? [[String: Any]],
               let sceneRecords = try? SceneConfigurationPayload.records(payload: payload.merging(["scenes": payload["scenes"] ?? []]) { _, value in value }) else { return nil }
@@ -739,7 +791,7 @@ enum SpaceConfigurationIntegrityPolicy {
             result["groups"] = groups.map { group in
                 var normalized = group
                 guard let original = group["profile"] as? [String: Any] else { return group }
-                var profile = normalizedTaskLevels(original)
+                var profile = CloudConfigurationDefaults.profile(original)
                 if let type = integer(profile["type"]), type == 7 || type == 8,
                    let relay = normalizedProximityLightingNumber(profile["proximityLightingNumber"]) {
                     profile["proximityLightingNumber"] = relay

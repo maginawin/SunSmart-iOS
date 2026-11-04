@@ -301,10 +301,30 @@ enum ScheduleServer {
         sceneRemovalIsNotAnActiveTarget()
         try emptyTargetsSurviveReload(db: db, path: path)
         try profileSchedulesSurviveRestore(path: path)
+        try missingPropertiesSurviveRestore(path: path)
         SunSmartDataManager.shared.db = nil
         precondition(!item.save(meshUUID: "mesh", meshNetworkId: "one"), "missing database cannot confirm a saved reservation")
         print("PASS: production Schedule SQLite migration, 17th logical record, restart, pending cleanup, corruption and rollback")
     }
+    static func missingPropertiesSurviveRestore(path: String) throws {
+        let file = path + ".legacy-properties"
+        SunSmartDataManager.shared.db = try Connection(file)
+        Schedule.initDatabase()
+        let legacy: [String: Any] = ["nodes": [], "schedules": [["id": 0]]]
+        let normalized = TimedSchedulerPayloadPolicy.fillingMissingBindings(legacy)
+        let wire = try JSONSerialization.data(withJSONObject: normalized["schedules"]!)
+        let schedule = try JSONDecoder().decode([Schedule].self, from: wire)[0]
+        precondition(schedule.name.isEmpty && !schedule.enabled && schedule.fadeTime == 0)
+        precondition(schedule.save(meshUUID: "legacy", meshNetworkId: "legacy"))
+        SunSmartDataManager.shared.db = try Connection(file)
+        let restored = Schedule.load(meshUUID: "legacy", meshNetworkId: "legacy")
+        precondition(restored.count == 1)
+        var readback = legacy
+        readback["schedules"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode(restored))
+        precondition(TimedSchedulerPayloadPolicy.canonical(readback) == TimedSchedulerPayloadPolicy.canonical(legacy))
+        print("PASS: missing Schedule properties -> production Codable -> SQLite restart/export -> equivalent cloud comparison")
+    }
+
     static func profileSchedulesSurviveRestore(path: String) throws {
         let file = path + ".profiles"
         SunSmartDataManager.shared.db = try Connection(file)

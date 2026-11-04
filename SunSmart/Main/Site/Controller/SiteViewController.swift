@@ -563,7 +563,7 @@ self.updateAddressData()
                         #if DEBUG
                         print("导入数据: \(Date().timeIntervalSince1970)")
                         #endif
-                        await self.site.update(siteJsonData: siteData)
+                        await self.site.update(siteJsonData: siteData, source: .completeDetail)
                         #if DEBUG
                         print("导入数据完成: \(Date().timeIntervalSince1970)")
                         #endif

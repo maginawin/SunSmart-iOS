@@ -325,7 +325,7 @@ class SitesViewController: UIViewController {
                             for data in siteDatas {
                                 group.addTask {
                                     // 异步处理每个数据
-                                    return await SiteData.import(siteJsonData: data, changeAddress: changeAddress)
+                                    return await SiteData.import(siteJsonData: data, source: .listSummary, changeAddress: changeAddress)
                                 }
                             }
                             // 收集结果

@@ -9,6 +9,7 @@ extension SpaceData {
         ProximityLightingImportPreflight.storedSpace = self
         defer { ProximityLightingImportPreflight.storedSpace = previousStored }
         guard await update(spaceJsonData: remote) == .prepared else { return .init(status: .rejected) }
+        let remote = CloudConfigurationDefaults.space(remote)
         let selected = SpaceConfigurationSafety.prefersNewerCloud(self, remote: remote)
             ? remote : (SpaceConfigurationSafety.pendingImport(self) ?? remote)
         guard SpaceData.canDecodeConfigurationImport(selected),
@@ -33,6 +34,118 @@ extension SpaceData {
 }
 
 extension SpaceRecoveryReceiptTests {
+    @MainActor static func testEqualCloudImports() async throws {
+        typealias S = SpaceConfigurationSafety
+        typealias P = ProximityLightingImportPreflight
+        defer { P.storedSpace = nil; P.onPrepare = nil; S.failStateWrite = false }
+        for mode in ["clean", "prepared", "accepted", "blocked", "deletion", "preferred", "empty", "retry", "cloudReferences", "legacyFields", "legacyEmpty", "legacyRetry"] {
+            let space = SpaceData()
+            space.lastUploadCloudTimestamp = 40
+            space.nodes = try (1...3).map(membershipNode)
+            P.storedSpace = space
+            if mode == "prepared" || mode == "accepted" {
+                let receipt = S.prepareSubmission(space, payload: space.payload)!
+                if mode == "accepted" { precondition(S.markSubmissionAccepted(receipt, space: space)) }
+            }
+            if mode == "blocked" { S.block(space, reason: "cloudConfigurationConflict") }
+            if mode == "preferred" {
+                var state = try S.recoveryState(space)
+                state.prefersLocalMembership = true; state.localReplacementVersion = 50
+                try S.testSaveState(state, space: space)
+            }
+            if mode == "deletion" {
+                precondition(S.updateDeletionJournal(space) {
+                    $0.entries.append(.init(id: UUID(), nodeUUID: "old", primaryAddress: 1,
+                        elementAddresses: [1], macAddress: nil, productId: nil, stage: .removed))
+                })
+            }
+            let previous = try S.recoveryState(space)
+            var remote = space.payload
+            remote["spaceName"] = "Web configuration"
+            remote["nodes"] = mode == "empty" ? [] : [try membershipNode(2), try membershipNode(4)]
+            if mode == "cloudReferences" {
+                remote["spaceData"] = ["timedSchemaVersion": 2]
+                remote["schedules"] = try staleTimedSchedules(node: membershipNode(1))
+                precondition(S.beginNewerCloudImport(space, payload: remote))
+                let reopenedState = try S.recoveryState(space)
+                precondition(reopenedState.cloudImport?.replacesEqualVersion == true)
+            }
+            if mode == "legacyFields" || mode == "legacyRetry" {
+                remote["groups"] = [["address": "C001", "profile": ["id": "legacy-profile", "type": 1]]]
+                remote["schedules"] = [["id": 0]]
+                remote.removeValue(forKey: "scenes")
+            }
+            if mode == "legacyEmpty" {
+                for key in ["groups", "scenes", "schedules"] { remote.removeValue(forKey: key) }
+            }
+            var selectedGeneration: UUID?
+            if mode == "legacyRetry" {
+                precondition(S.beginNewerCloudImport(space, payload: remote))
+                selectedGeneration = try S.recoveryState(space).generation
+            }
+            NetworkRequest.shared.result = .success(["data": remote])
+            if mode == "retry" {
+                S.failStateWrite = true
+                guard case .failure = await S.resumeUpload(space) else { preconditionFailure("failed staging cannot complete") }
+                precondition(space.nodes.count == 3)
+                S.failStateWrite = false
+            }
+            guard case .success = await S.resumeUpload(space) else {
+                preconditionFailure("Equal-version Web snapshot must replace local state: \(mode)")
+            }
+            precondition(space.nodes.count == (mode == "empty" ? 0 : 2), mode)
+            precondition(space.payload["spaceName"] as? String == "Web configuration", mode)
+            if mode == "cloudReferences" {
+                precondition(NSDictionary(dictionary: ["schedules": space.payload["schedules"]!])
+                    .isEqual(to: ["schedules": TimedSchedulerPayloadPolicy.fillingMissingBindings(remote)["schedules"]!]))
+            }
+            if mode == "legacyFields" || mode == "legacyRetry" {
+                let profile = space.groups[0]["profile"] as! [String: Any]
+                precondition(profile["highEndTrim"] as? Int == 100 && profile["manualOverrideTimeout"] as? Int == 600)
+                precondition(space.groups[0]["parentAddress"] as? String == "0000")
+                let schedule = (space.payload["schedules"] as! [[String: Any]])[0]
+                precondition(schedule["enabled"] as? Bool == false && schedule["action"] as? Int == 15)
+                precondition(SpaceConfigurationIntegrityPolicy.configurationsMatch(
+                    SpaceConfigurationIntegrityPolicy.configurationData(remote),
+                    SpaceConfigurationIntegrityPolicy.configurationData(space.payload)))
+            }
+            if let selectedGeneration { precondition(try! S.recoveryState(space).generation == selectedGeneration) }
+            if mode == "legacyEmpty" { precondition(space.groups.isEmpty) }
+            precondition(space.lastUpdate == 50 && space.lastUploadCloudTimestamp == 50 && !space.needUploadCloud)
+            precondition(!S.hasPendingUpload(space) && !S.isBlocked(space) && !S.hasPendingImport(space))
+            precondition(try! S.deletionJournal(space).entries.isEmpty)
+            precondition(!S.markSubmissionAccepted(previous, space: space), "superseded callbacks must stay obsolete")
+        }
+        print("PASS: equal-version cloud replacement for mixed/empty members, prepared/accepted receipts, local preference, deletion, conflict and failed staging retry")
+        if let raw = ProcessInfo.processInfo.environment["SUNSMART_EQUAL_CLOUD_SAMPLES"] {
+            let paths = try JSONDecoder().decode([String].self, from: Data(raw.utf8))
+            func read(_ path: String) throws -> [String: Any] {
+                try JSONSerialization.jsonObject(with: Data(contentsOf: URL(fileURLWithPath: path))) as! [String: Any]
+            }
+            let local = (try read(paths[0])["spaces"] as! [[String: Any]])[0]
+            var remote = try read(paths[1])["data"] as! [String: Any]
+            let space = SpaceData("equal-version-field-sample")
+            space.nodes = local["nodes"] as! [[String: Any]]
+            space.groups = local["groups"] as! [[String: Any]]
+            space.lastUpdate = SpaceConfigurationIntegrityPolicy.integer(local["updateTimestamp"])!
+            space.lastUploadCloudTimestamp = space.lastUpdate - 1
+            space.exportValues = local.filter { !["uuid", "nodes", "groups", "updateTimestamp", "netKey", "appKey"].contains($0.key) }
+            remote["uuid"] = space.id
+            remote["netKey"] = space.payload["netKey"]; remote["appKey"] = space.payload["appKey"]
+            P.storedSpace = space
+            precondition(S.prepareSubmission(space, payload: space.payload) != nil)
+            NetworkRequest.shared.result = .success(["data": remote])
+            guard case .success = await S.resumeUpload(space) else { preconditionFailure("field prepared receipt must yield to equal cloud") }
+            precondition(space.nodes.count == 9 && space.nodes.contains { $0["unicastAddress"] as? String == "1152" })
+            precondition(!space.nodes.contains { ["113A", "115B"].contains($0["unicastAddress"] as? String ?? "") })
+            precondition((space.groups.first { $0["address"] as? String == "C002" }?["profile"] as? [String: Any])?["calibrationMode"] as? String == "planeCal")
+            precondition(NSDictionary(dictionary: ["schedules": space.payload["schedules"]!])
+                .isEqual(to: ["schedules": TimedSchedulerPayloadPolicy.fillingMissingBindings(remote)["schedules"]!]), "equal-version import retains cloud schedule fields")
+            precondition(!S.hasPendingUpload(space) && !S.isBlocked(space) && !space.needUploadCloud)
+            print("PASS: supplied equal-version 10-to-9 sample imports cloud L11 and C002 calibration, removes local-only L9/L10 and retires prepared receipt")
+        }
+    }
+
     @MainActor static func testNewerCloudImports() async throws {
         typealias S = SpaceConfigurationSafety
         typealias P = ProximityLightingImportPreflight
@@ -111,12 +224,16 @@ extension SpaceRecoveryReceiptTests {
         P.storedSpace = versions
         for version in [99, 100, 110, 120, 130] {
             var remote = versions.payload; remote["updateTimestamp"] = version
-            precondition(S.prefersNewerCloud(versions, remote: remote) == (version == 130))
+            precondition(S.prefersNewerCloud(versions, remote: remote) == (version >= 120))
         }
         var pending = versions.payload; pending["updateTimestamp"] = 140
         precondition(S.beginImport(versions, payload: pending))
         var middle = versions.payload; middle["updateTimestamp"] = 130
         precondition(!S.prefersNewerCloud(versions, remote: middle))
+        middle["updateTimestamp"] = 140
+        precondition(!S.prefersNewerCloud(versions, remote: middle), "equal staging version must resume the selected import")
+        middle["updateTimestamp"] = 150
+        precondition(S.prefersNewerCloud(versions, remote: middle))
 
         // A durable selection survives an interrupted commit and ignores an older GET.
         let restarting = SpaceData(); restarting.lastUploadCloudTimestamp = 50

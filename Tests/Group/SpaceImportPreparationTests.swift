@@ -94,6 +94,8 @@ extension SpaceRecoveryReceiptTests {
                 P.storedSpace = space
                 var remote = space.payload
                 remote["role"] = role; remote["spaceData"] = ["timedSchemaVersion": 2]
+                // This test retains the newer-version stale-reference repair policy.
+                remote["updateTimestamp"] = space.lastUpdate + 1
                 remote["schedules"] = try staleTimedSchedules(node: membershipNode(1))
                 if resume { precondition(S.beginImport(space, payload: remote)) }
                 for _ in 0..<2 {
@@ -254,6 +256,9 @@ extension SpaceRecoveryReceiptTests {
                 precondition(baseline.timedConfigurationBaseline == TimedSchedulerPayloadPolicy.canonical(remote))
                 let submission = S.prepareSubmission(space, payload: working)!
                 precondition(S.markSubmissionAccepted(submission, space: space))
+                // Equal versions now select the cloud; this receipt check covers
+                // an older readback while a newer local revision is pending.
+                space.lastUpdate += 1
                 if version == 2 {
                     for null in [false, true] {
                         var stripped = remote, rows = remote["schedules"] as! [[String: Any]]
@@ -398,8 +403,8 @@ extension SpaceRecoveryReceiptTests {
         try S.testSaveState(state, space: rolledBack)
         rolledBack.timedSchemaVersion = 2
         let result = await rolledBack.update(spaceJsonData: rolledBack.payload)
-        precondition(result == .preserved("localTimedMigrationPendingUpload"))
-        print("PASS: unuploaded v2 migration preserves confirmed v1 GET across pending receipts/reentry; equal/older downgrade and authority changes remain rejected")
+        precondition(result == .prepared, "equal cloud also replaces a local migration with no newer version")
+        print("PASS: unuploaded v2 migration preserves older baseline GETs; equal cloud replaces local schema and authority changes remain enforced")
     }
 
     @MainActor static func testEmptyZoneImportGate() async throws {
@@ -429,9 +434,10 @@ extension SpaceRecoveryReceiptTests {
             var remote = space.payload
             remote["spaceData"] = [String: Any]()
             let outcome = await space.update(spaceJsonData: remote)
-            precondition(outcome == .skipped && S.isBlocked(space), "Members or unreadable local zones must stay protected")
+            precondition(outcome == .prepared && !S.isBlocked(space),
+                         "Equal-version cloud must replace local Zone members or unreadable storage")
         }
-        print("PASS: production import Zone gate accepts repeated legacy reads with empty slots and protects members/unreadable storage")
+        print("PASS: production import Zone gate accepts repeated legacy reads and equal-version cloud over local members/unreadable storage")
     }
 
     @MainActor static func testImportPreparation() async throws {
@@ -452,7 +458,7 @@ extension SpaceRecoveryReceiptTests {
                      "invalid schedules must reject before metadata, authority or database replacement")
         invalid.timedSchemaVersion = 2
         let downgrade = await invalid.update(spaceJsonData: invalid.payload)
-        precondition(downgrade == .rejected("timedSchemaDowngrade"))
+        precondition(downgrade == .prepared, "equal cloud selects its supported Timed schema")
 
         // Fresh visitor recovery starts writable despite the model's visitor role.
         // Existing owner/editor spaces also change generation on downgrade.
@@ -477,12 +483,15 @@ extension SpaceRecoveryReceiptTests {
         var exported = false
         P.onExport = { exported = true }
         let unchanged = await owner.update(spaceJsonData: owner.payload)
-        precondition(unchanged == .prepared && exported, "unchanged owner must pass both await boundaries")
+        precondition(unchanged == .prepared && !exported, "equal cloud bypasses the local upgrade baseline")
         P.onExport = nil
 
         // Inject changes at each await boundary, including the optional baseline export.
         for duringExport in [false, true] {
             for change in ["authority", "removal", "account", "localVersion", "storedVersion", "cancel"] {
+                // Initial import still exports a baseline but has no existing
+                // stored-row contract. That race is covered at preparation below.
+                if duringExport && change == "storedVersion" { continue }
                 let space = SpaceData()
                 let stored = SpaceData(space.id)
                 space.lastUploadCloudTimestamp = 50
@@ -500,7 +509,7 @@ extension SpaceRecoveryReceiptTests {
                 P.onPrepare = duringExport ? nil : mutate
                 P.onExport = duringExport ? mutate : nil
                 let task = Task { @MainActor in
-                    await space.update(spaceJsonData: space.payload)
+                    await space.update(spaceJsonData: space.payload, initialize: duringExport)
                 }
                 let result = await task.value
                 UserData.currentUserId = "test-account"

@@ -164,7 +164,7 @@ class ShareAuthorityViewController: UIViewController {
 //                    let site = SiteData.import(siteJsonData: siteData)
                     Task {
                         
-                        await self.site.update(siteJsonData: siteData)
+                        await self.site.update(siteJsonData: siteData, source: .completeDetail)
                         
                         self.site.save()
                         XWHUDManager.hideInView(with: self.view)

@@ -55,11 +55,11 @@ with tempfile.TemporaryDirectory(prefix="site-hdb-persistence-") as directory:
 
     site_import = imports[imports.index('    func update(siteJsonData:'):]
     body = section(site_import, '        guard SpaceMembershipCoordinator.accepts', '        let gatewayImportScope')
-    body += section(site_import, '        let json = JSON(siteJsonData)', '        // Process extension fields')
-    body += section(site_import, '        if lastUpdate > self.lastUpdate || initialize {', '            // 转让site id') + '        }\n'
+    body += section(site_import, '        let json = JSON(siteJsonData)', '        var permission: Permission')
+    body += section(site_import, '        if lastUpdate >= self.lastUpdate || initialize {', '            // 转让site id') + '        }\n'
     body += '        preparedSiteTimestamp = self.lastUpdate\n        let meshNetwork: Bool? = true\n'
     body += section(site_import, '        guard meshNetwork != nil else', '        GatewayOrphanGuard.endImport')
-    production += '\nextension SiteData {\nfunc importFixture(siteJsonData: [String: Any], initialize: Bool = false) -> Bool {\n' + body + 'return true\n}\n}\n'
+    production += '\nextension SiteData {\nfunc importFixture(siteJsonData: [String: Any], source: SiteImportSource = .completeDetail, initialize: Bool = false) -> Bool {\n' + body + 'return true\n}\n}\n'
     production += '\nextension SiteSyncReceiptFixture {\n' + block(cloud, 'private func confirmSiteUpload(').replace('private func', '@MainActor func', 1) + '\n}\n'
     production += '\nextension NetowrkReqeustApi {\n' + block(cloud, 'var configurationSiteTimestamp:') + '\n' + block(cloud, 'var initialSiteTimeZoneSubmission:') + '\n}\n'
     production += '\nenum SpaceConfigurationIntegrityPolicy {\n' + block(integrity, 'static func confirmedTimestamp(') + '\nstatic func integer(_ value: Any?) -> Int64? { (value as? NSNumber)?.int64Value }\n}\n'

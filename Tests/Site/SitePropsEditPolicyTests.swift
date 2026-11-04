@@ -14,6 +14,7 @@ struct SitePropsEditPolicyTests {
         testNewerRemoteWinsWithoutPending()
         testNewerLocalWinsWithoutPending()
         testEqualTimestampUsesRemoteButAvoidsRedundantPersistence()
+        testEqualTimestampReplacesPendingProperties()
         testMatchingRemoteClearsPendingAndContinuesMerge()
         testPendingMismatchKeepsAllLocalProperties()
         testMissingRemoteTimezoneNeverClearsLocalTimezone()
@@ -77,8 +78,8 @@ struct SitePropsEditPolicyTests {
                 "Partial ACK cannot mark the whole Site version uploaded")
         let remote = SitePropsRemoteSnapshot(siteName: "Site", imageId: 1, timezone: singapore,
             providedFields: [.siteName, .imageId, .timezone], timestamp: 100)
-        require(SitePropsEditPolicy.mergeRetrieve(local: local, remote: remote).state == local,
-                "Retrieve without pending metadata cannot clear it")
+        require(SitePropsEditPolicy.mergeRetrieve(local: local, remote: remote).state.pending.fields == .address,
+                "Equal-version fields replace local intent; omitted metadata remains pending")
         var confirmed = remote
         confirmed.standardProperties = properties.patch(for: .address)
         require(SitePropsEditPolicy.mergeRetrieve(local: local, remote: confirmed).state.pending.fields.isEmpty,
@@ -265,6 +266,17 @@ struct SitePropsEditPolicyTests {
         require(result.state.values.siteName == "Cloud Name", "Merge must continue after reconciliation")
         require(result.state.lastUpdate == 121, "Expected newer cloud timestamp")
         require(result.shouldPersist, "Reconciliation must persist")
+    }
+
+    private static func testEqualTimestampReplacesPendingProperties() {
+        let local = localState(values: values(name: "Local", imageId: 1, timezone: singapore),
+            lastUpdate: 120, lastUpload: 100,
+            pending: .init(fields: [.siteName, .imageId, .timezone], timestamp: 120))
+        let remote = remoteSnapshot(name: "Web", imageId: 9, timezone: utc, timestamp: 120)
+        let result = SitePropsEditPolicy.mergeRetrieve(local: local, remote: remote)
+        require(result.state.values == values(name: "Web", imageId: 9, timezone: utc), "Web wins at equal version even with pending local props")
+        require(result.state.pending.fields.isEmpty && result.state.lastUploadCloudTimestamp == 120,
+                "Replaced local props must not be uploaded again")
     }
 
     private static func testPendingMismatchKeepsAllLocalProperties() {

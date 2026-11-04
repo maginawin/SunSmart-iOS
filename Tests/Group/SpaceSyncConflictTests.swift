@@ -76,6 +76,9 @@ extension SpaceRecoveryReceiptTests {
             }
             ProximityLightingImportPreflight.storedSpace = space
             NetworkRequest.shared.result = .success(["data": remote])
+            // These legacy receipt checks now apply only while local intent is
+            // newer. Equal-version replacement is covered by testEqualCloudImports.
+            space.lastUpdate += 1
             let outcome = await S.resumeUpload(space)
             if mode == "savedV4" || mode == "normalReadback" {
                 guard case .success = outcome else { preconditionFailure("compatible receipt: " + mode) }
@@ -117,6 +120,7 @@ extension SpaceRecoveryReceiptTests {
             remote["nodes"] = nodes
             remote["spaceData"] = ["timedSchemaVersion": 1]
             NetworkRequest.shared.result = .success(["data": remote])
+            space.lastUpdate += 1
             guard case .failure = await S.resumeUpload(space) else { preconditionFailure("actual parameter difference requires review") }
             precondition(!space.canEditing)
             guard let preview = await S.cloudBaselineReview(space, local: space.payload) else {

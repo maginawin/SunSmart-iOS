@@ -372,7 +372,7 @@ class SharePermissionSelectionController: UIViewController {
                         }
                         let context = SpaceMembershipResponseContext.capture(account: account, region: region)
                         siteData = SpaceMembershipResponseContext.annotate(["data": siteData], context: context)["data"] as? [String: Any] ?? siteData
-                        guard let site = await SiteData.import(siteJsonData: siteData, changeAddress: true,
+                        guard let site = await SiteData.import(siteJsonData: siteData, source: .completeDetail, changeAddress: true,
                                                               receivingOwnership: true) else {
                             XWHUDManager.hide()
                             XWHUDManager.showErrorTipHUD("space_recovery_storage_failed".localizedString)

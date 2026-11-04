@@ -147,6 +147,9 @@ struct SpaceRecoveryState: Codable, Equatable {
     struct CloudImport: Codable, Equatable {
         let timestamp: Int64
         let supersededGeneration: UUID
+        /// Same-version Web replacement must retain the selected cloud fields,
+        /// including across a restart between selection and import completion.
+        var replacesEqualVersion: Bool?
     }
     struct Identity: Codable, Equatable {
         let account: String

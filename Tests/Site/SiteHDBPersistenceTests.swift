@@ -13,6 +13,7 @@ struct NetworkApiError: Error {
     let code: Int
     init(code: Int) { self.code = code }
     static let unknown = NetworkApiError(code: -1)
+    static let configurationExportInvalid = NetworkApiError(code: -2)
 }
 struct RecycleAddressData: Codable {}
 let jsonEncoder = JSONEncoder(), jsonDecoder = JSONDecoder()

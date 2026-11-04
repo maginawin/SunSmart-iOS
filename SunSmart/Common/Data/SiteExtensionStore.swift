@@ -65,9 +65,9 @@ enum SiteExtensionStore {
         try db.run(table.filter(siteID == site.id && regionID == site.region.rawValue).delete())
     }
 
-    /// A missing extension is an old/partial response; it must not erase local data.
-    static func receive(_ site: SiteData, object: [String: Any], timestamp: Int64) throws {
-        guard let value = object["extensionData"] else { return }
+    /// Only complete Site replacement defaults a missing legacy extension.
+    static func receive(_ site: SiteData, object: [String: Any], timestamp: Int64, replacingLocal: Bool = false) throws {
+        guard let value = object["extensionData"] ?? (replacingLocal ? [String: Any]() : nil) else { return }
         let remote: SiteExtensionData
         do {
             remote = try SiteExtensionData.parse(value)
@@ -87,7 +87,7 @@ enum SiteExtensionStore {
         try update(site) {
             guard timestamp >= $0.serverTimestamp else { return }
             $0.rejectedRemote = nil
-            $0.receive(remote, timestamp: timestamp)
+            $0.receive(remote, timestamp: timestamp, replacingLocal: replacingLocal)
         }
     }
 }

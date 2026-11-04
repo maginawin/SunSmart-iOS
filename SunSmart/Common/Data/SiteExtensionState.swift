@@ -25,7 +25,7 @@ struct SiteExtensionState: Codable, Equatable {
     var needsArchivedReview: Bool { archivedReviewNeeded == true }
     var rejectedRemote: Data?
     var conflict = false
-    /// Equal server versions with different content cannot establish an ordering.
+    /// Legacy persisted marker; equal-version Web snapshots now replace local data.
     var ambiguousRemote: Bool?
     var hasAmbiguousRemote: Bool { ambiguousRemote == true }
     /// Retained after cloud confirmation for the later device-sync planner.
@@ -39,23 +39,32 @@ struct SiteExtensionState: Codable, Equatable {
         self.data = data
     }
 
-    /// Missing fields are patches, never a deletion. A readback confirms only its own target.
-    mutating func receive(_ remote: SiteExtensionData, timestamp: Int64) {
+    /// Complete replacements default missing fields; partial props reads retain patch semantics.
+    mutating func receive(_ remote: SiteExtensionData, timestamp: Int64, replacingLocal: Bool = false) {
         guard timestamp >= serverTimestamp else { return }
         var remote = remote
         if remote.fields["siteType"] == nil {
             // An omitted field cannot confirm a newly submitted type, but must retain
             // the known type when an existing Site receives a partial props response.
-            if let pending, pending.target.isHdbSite != (pending.base?.isHdbSite ?? false) { return }
-            remote.siteType = (serverData ?? data).siteType
+            if !replacingLocal, let pending, pending.target.isHdbSite != (pending.base?.isHdbSite ?? false) { return }
+            remote.siteType = replacingLocal ? nil : (serverData ?? data).siteType
         }
         if remote.fields["triggerZones"] == nil {
-            remote.fields["triggerZones"] = (serverData ?? data).fields["triggerZones"]
+            remote.fields["triggerZones"] = replacingLocal ? .array([]) : (serverData ?? data).fields["triggerZones"]
             // A response without the requested field cannot acknowledge a pending mutation.
-            guard pending == nil else { return }
+            guard replacingLocal || pending == nil else { return }
         }
-        if timestamp == serverTimestamp, let serverData, remote != serverData {
-            ambiguousRemote = true
+        if replacingLocal || (timestamp == serverTimestamp && serverData != nil && remote != serverData) {
+            recordDeviceSyncChanges(from: .init(operationId: UUID(), timestamp: timestamp,
+                                               base: serverData, target: remote))
+            data = remote
+            self.serverData = remote
+            serverTimestamp = timestamp
+            pending = nil
+            submitted = nil
+            conflict = false
+            ambiguousRemote = false
+            archivedReviewNeeded = false
             return
         }
         ambiguousRemote = false

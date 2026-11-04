@@ -276,6 +276,21 @@ final class Node: Equatable {
 
         try seed()
         _ = try GroupMemberPersistence.prepare(space: space, group: group, exiting: [nodes[1]], adding: [])
+        let failedReplacement = SunSmartDataManager.shared.configurationTransaction {
+            try GroupMemberPersistence.discardForCloudReplacement(space)
+            throw GroupMemberPersistence.Failure.persistence
+        }
+        precondition(!failedReplacement && SpaceConfigurationSafety.isBlocked(space), "failed cloud import retains old receipt")
+        precondition(SunSmartDataManager.shared.configurationTransaction {
+            try GroupMemberPersistence.discardForCloudReplacement(space)
+        })
+        nodes[1].groupState = .none; precondition(nodes[1].save()); reload()
+        precondition(GroupMemberPersistence.recover(space) && !SpaceConfigurationSafety.isBlocked(space))
+        precondition(nodes[1].groupState == .none, "cloud replacement cannot replay the old Group member save")
+        print("PASS authoritative cloud replacement retires member receipt transactionally; rollback and restart")
+
+        try seed()
+        _ = try GroupMemberPersistence.prepare(space: space, group: group, exiting: [nodes[1]], adding: [])
         nodes[1].fingerprint = String(repeating: "b", count: 64); precondition(nodes[1].save()); reload()
         precondition(!GroupMemberPersistence.recover(space), "same address with new Device Key cannot replay")
         precondition(disk().nodes[1].groupState == .inGroup && SpaceConfigurationSafety.isBlocked(space))

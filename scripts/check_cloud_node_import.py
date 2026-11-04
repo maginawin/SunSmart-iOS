@@ -35,7 +35,8 @@ test = test.replace('// IMPORT_STAGING_GATE', section(imports,
     '            guard groups.count == groupDicts.count else {', '            var appliedOutcome:'))
 recovery = (root / 'SunSmart/Main/Space/Controller/SpaceRecoveryViewController.swift').read_text()
 test = test.replace('// RECOVERY_MESSAGE', section(recovery, '    static func message(', '    override func viewDidLoad()'))
-parts = [scene_group_codec_source(root), test, section(hex_source, 'internal extension UInt16 {', 'internal extension Int16 {'),
+defaults = (root / "SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift").read_text()
+parts = [section(defaults, "enum CloudConfigurationDefaults {", "/// A complete GET"), scene_group_codec_source(root), test, section(hex_source, 'internal extension UInt16 {', 'internal extension Int16 {'),
          section(imports, 'enum CloudNodeImport {', '\n/// Stage timings')]
 with tempfile.TemporaryDirectory(prefix='cloud-node-import-') as directory:
     directory = Path(directory)

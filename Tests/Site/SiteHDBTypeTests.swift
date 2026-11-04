@@ -74,8 +74,8 @@ enum SiteHDBTypeTests {
         unconfirmed.receive(newType, timestamp: 43)
         precondition(unconfirmed.pending == nil && unconfirmed.submitted == nil)
         unconfirmed.receive(explicitStandard, timestamp: 43)
-        precondition(unconfirmed.hasAmbiguousRemote && unconfirmed.data.isHdbSite,
-                     "A true type conflict at the same version must remain protected")
+        precondition(!unconfirmed.hasAmbiguousRemote && !unconfirmed.data.isHdbSite,
+                     "A same-version Web type change replaces the local type")
         unconfirmed.receive(explicitStandard, timestamp: 44)
         precondition(!unconfirmed.data.isHdbSite && !unconfirmed.hasAmbiguousRemote)
 

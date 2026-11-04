@@ -46,7 +46,7 @@ final class SiteData {
 }
 enum SiteExtensionStore {
     static var receives = 0
-    static func receive(_ site: SiteData, object: [String: Any], timestamp: Int64) throws { receives += 1 }
+    static func receive(_ site: SiteData, object: [String: Any], timestamp: Int64, replacingLocal: Bool = false) throws { receives += 1 }
 }
 protocol SiteTimeZoneEditSubmitting: AnyObject {
     func submit(_ snapshot: SitePropsUpdateSnapshot) async -> Bool
@@ -193,13 +193,20 @@ protocol SiteEntryTimeZoneSyncStore: AnyObject {}
             "type": 1, "createTimestamp": 1, "updateTimestamp": 10, "latitude": NSNull(), "city": "123456"]
         precondition(site.importFixture(siteJsonData: data))
         precondition(site.standardProperties.latitude == nil && site.standardProperties.city == "123456")
-        precondition(site.standardProperties.longitude == original.longitude, "Same-version completion must preserve omitted fields")
+        precondition(site.standardProperties.longitude == nil, "Complete cloud snapshots default omitted fields instead of keeping local values")
+        precondition(site.name == "Cloud" && site.imageId == 2, "Equal-version detail must replace base properties")
+        site.pendingSitePropsMask = [.siteName, .city]
+        site.pendingSitePropsTimestamp = 10
+        site.name = "Local pending"
+        precondition(site.importFixture(siteJsonData: data))
+        precondition(site.name == "Cloud" && site.pendingSitePropsMask.isEmpty && site.pendingSitePropsTimestamp == nil,
+                     "Equal-version detail supersedes pending local properties")
         site.standardProperties = original
         data["updateTimestamp"] = 20
         site.failSave = true
         precondition(!site.importFixture(siteJsonData: data))
         precondition(site.standardProperties == original && site.lastUpdate == 10 && site.lastUploadCloudTimestamp == 10)
-        precondition(site.name == "Site" && site.imageId == 1, "Failed full import must restore the base props with its version")
+        precondition(site.name == "Cloud" && site.imageId == 2, "Failed full import must restore the base props with its version")
         site.failSave = false
         precondition(site.importFixture(siteJsonData: data, duringPreparation: { site.lastUpdate = 21 }))
         precondition(site.standardProperties.city == "123456" && site.lastUpdate == 21,

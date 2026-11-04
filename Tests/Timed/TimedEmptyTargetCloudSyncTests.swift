@@ -80,8 +80,6 @@ final class SpaceData {
     func appliesCloud(remoteCount: Int, timestamp: Int64) -> Bool {
         let resumingImport = false, initialize = false
         let lastUpdate = timestamp
-        let sameTimestampSummaryDiffers = lastUpdate == self.lastUpdate && remoteCount != scheheduleCount
-        let localNeedsUpload = needUploadCloud
         // PRODUCTION_IMPORT_DECISION
         return shouldApplyServerData
     }
@@ -157,7 +155,10 @@ final class Editor {
             space.lastUploadCloudTimestamp = firstTimestamp
             precondition(space.needUploadCloud && space.lastUpdate > firstTimestamp)
             precondition(!space.appliesCloud(remoteCount: 1, timestamp: firstTimestamp))
-            precondition(!space.appliesCloud(remoteCount: 1, timestamp: space.lastUpdate))
+            precondition(space.appliesCloud(remoteCount: 1, timestamp: space.lastUpdate),
+                         "Equal-version Web snapshot must replace unsent local schedules")
+            precondition(space.appliesCloud(remoteCount: space.scheheduleCount, timestamp: space.lastUpdate),
+                         "Equal counts do not prove equal configuration")
             DispatchQueue.main.drain()
             precondition(CloudSynchronizationManager.shared.submissions.count == 17)
 

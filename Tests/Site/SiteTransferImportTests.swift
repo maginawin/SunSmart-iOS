@@ -25,7 +25,7 @@ final class SiteData {
         self.id = id; self.meshUUID = meshUUID; self.meshNetworkId = meshNetworkId
     }
     static func load(siteId: String) -> SiteData? { stored?.id == siteId ? stored : nil }
-    func update(siteJsonData: [String: Any], changeAddress: Bool, initialize: Bool) async -> Bool {
+    func update(siteJsonData: [String: Any], source: SiteImportSource, changeAddress: Bool, initialize: Bool) async -> Bool {
         Self.updates.append((initialize, changeAddress))
         Self.duringUpdate()
         if Self.updateSucceeds { Self.stored = self }
@@ -58,46 +58,46 @@ final class SiteData {
             MeshNetworkManager.instance.meshNetwork = MeshNetwork.rows[uuid.uuidString]!.copy()
         }
         reset()
-        var result = await SiteData.import(siteJsonData: payload, changeAddress: true, receivingOwnership: true)
+        var result = await SiteData.import(siteJsonData: payload, source: .completeDetail, changeAddress: true, receivingOwnership: true)
         precondition(result != nil && SiteData.updates.count == 1)
         precondition(SiteData.updates[0].initialize && SiteData.updates[0].changeAddress,
                      "Receipt must initialize a stale normal Site even when timestamps are equal")
         precondition(MeshNetwork.rows[uuid.uuidString]!.networkKeys.count == 2)
         reset()
-        result = await SiteData.import(siteJsonData: payload)
+        result = await SiteData.import(siteJsonData: payload, source: .completeDetail)
         precondition(result != nil && !SiteData.updates[0].initialize && !SiteData.updates[0].changeAddress,
                      "Ordinary refresh must not reallocate addresses")
         reset(.waitDeleted)
-        result = await SiteData.import(siteJsonData: payload)
+        result = await SiteData.import(siteJsonData: payload, source: .completeDetail)
         precondition(result?.state == .normal && SiteData.updates[0].initialize && SiteData.updates[0].changeAddress)
         reset()
         var mismatch = payload
         mismatch["netKey"] = ["index": 0, "key": Data(repeating: 0x55, count: 16).hex, "phase": 0]
-        result = await SiteData.import(siteJsonData: mismatch, receivingOwnership: true)
+        result = await SiteData.import(siteJsonData: mismatch, source: .completeDetail, receivingOwnership: true)
         precondition(result == nil && SiteData.updates.isEmpty, "A receipt must not replace the original network identity")
         reset()
         MeshNetworkManager.instance.meshNetwork!.applicationKeys.removeLast()
-        result = await SiteData.import(siteJsonData: payload, receivingOwnership: true)
+        result = await SiteData.import(siteJsonData: payload, source: .completeDetail, receivingOwnership: true)
         precondition(result == nil && SiteData.updates.isEmpty, "Missing active Space keys must fail before update")
         reset()
         SiteData.duringUpdate = { MeshNetwork.rows[uuid.uuidString]!.applicationKeys.removeLast() }
-        result = await SiteData.import(siteJsonData: payload, receivingOwnership: true)
+        result = await SiteData.import(siteJsonData: payload, source: .completeDetail, receivingOwnership: true)
         precondition(result == nil, "Readback must detect a lost Space key")
         reset()
         SiteData.updateSucceeds = false
-        result = await SiteData.import(siteJsonData: payload, receivingOwnership: true)
+        result = await SiteData.import(siteJsonData: payload, source: .completeDetail, receivingOwnership: true)
         precondition(result == nil)
         reset()
         SiteData.saveSucceeds = false
-        result = await SiteData.import(siteJsonData: payload, receivingOwnership: true)
+        result = await SiteData.import(siteJsonData: payload, source: .completeDetail, receivingOwnership: true)
         precondition(result == nil)
         reset()
         SiteData.duringUpdate = { SpaceMembershipCoordinator.accepted = false }
-        result = await SiteData.import(siteJsonData: payload, receivingOwnership: true)
+        result = await SiteData.import(siteJsonData: payload, source: .completeDetail, receivingOwnership: true)
         precondition(result == nil, "A revoked response must not complete import")
         reset()
         SiteData.stored = nil
-        result = await SiteData.import(siteJsonData: payload, changeAddress: true, receivingOwnership: true)
+        result = await SiteData.import(siteJsonData: payload, source: .completeDetail, changeAddress: true, receivingOwnership: true)
         precondition(result != nil && SiteData.updates[0].initialize && SiteData.updates[0].changeAddress)
         print("PASS: production Site receipt initialization, unchanged refresh, identity/key preservation, failure and stale context")
     }

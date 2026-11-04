@@ -6,6 +6,11 @@ import Foundation
 import CryptoKit
 
 enum Permission { case owner, editor, visitor }
+// The receipt suite has no active Group member transaction. Its persistence
+// and exclusion-ID behavior are covered by the Group member persistence suite.
+enum GroupMemberPersistence {
+    static func hasPending(meshUUID: String, networkID: String, excluding: UUID?) -> Bool { false }
+}
 struct UserData {
     let name: String; let uuid: String
     static var currentUserId = "test-account", currentServerRegion = "test-region"
@@ -181,6 +186,16 @@ final class NetworkRequest {
 }
 @main struct SpaceRecoveryReceiptTests {
     @MainActor static func main() async throws {
+        if CommandLine.arguments.contains("--cloud-authority") {
+            defer {
+                try? FileManager.default.removeItem(at: SpaceConfigurationSafety.testRoot)
+                SpaceConfigurationSafety.testDefaults.removePersistentDomain(forName: SpaceConfigurationSafety.suite)
+            }
+            try await testEqualCloudImports()
+            try await testNewerCloudImports()
+            return
+        }
+        try await testEqualCloudImports()
         try await testSpaceSyncConflict()
         if let raw = ProcessInfo.processInfo.environment["SUNSMART_SYNC_CONFLICT_SAMPLES"], let data = raw.data(using: .utf8) {
             try await testSpaceSyncConflictFieldSample(JSONDecoder().decode([String].self, from: data))
@@ -249,6 +264,7 @@ final class NetworkRequest {
         try FileManager.default.removeItem(at: journalURL)
         try FileManager.default.createDirectory(at: journalURL, withIntermediateDirectories: false)
         remote(b)
+        b.lastUpdate += 1 // Exercise old-receipt finalization, not cloud replacement.
         let failedWrite = await SpaceConfigurationSafety.resumeUpload(b)
         if case .success = failedWrite { preconditionFailure("receipt write failure cannot report success") }
         precondition(b.lastUploadCloudTimestamp == nil && SpaceConfigurationSafety.hasPendingUpload(b))
@@ -344,6 +360,7 @@ final class NetworkRequest {
         var stale = g.payload
         stale["deviceCount"] = 0
         stale["nodes"] = [["uuid": "old-device", "unicastAddress": "0002"]]
+        g.lastUpdate += 1 // Keep this on the older-readback receipt validation path.
         request.result = .success(["data": stale])
         let beforeMismatch = request.calls
         let mismatch = await SpaceConfigurationSafety.resumeUpload(g)
@@ -666,6 +683,7 @@ final class NetworkRequest {
         local["spaceData"] = ["proximityLightingSchemaVersion": 1, "triggerZones": Array(repeating: empty, count: 5)]
         guard let context = S.prepareSubmission(space, payload: local) else { preconditionFailure("Empty zones must submit") }
         precondition(S.markSubmissionAccepted(context, space: space))
+        space.lastUpdate += 1 // Test an old receipt while newer local work remains pending.
         let populated: [String: Any] = ["items": [["groupAddress": 49160, "deviceAddress": 554]]]
         for zones in [nil, [], [empty], Array(repeating: populated, count: 5)] as [[[String: Any]]?] {
             var remote = local
@@ -680,7 +698,7 @@ final class NetworkRequest {
         let direct = await S.verifyUploadedConfiguration(space, payload: local)
         precondition(direct)
         if case .failure = await S.resumeUpload(space) { preconditionFailure("Exact empty slots must confirm on retry") }
-        precondition(!S.hasPendingUpload(space) && space.lastUploadCloudTimestamp == space.lastUpdate)
+        precondition(!S.hasPendingUpload(space) && space.lastUploadCloudTimestamp == 50 && space.needUploadCloud)
         print("PASS: empty Zone submission readback remains strict and retries after matching all slots")
     }
 
@@ -711,6 +729,7 @@ final class NetworkRequest {
         var partial = serverMissing.payload
         partial.removeValue(forKey: "netKey")
         partial["role"] = "owner"
+        serverMissing.lastUpdate += 1 // Exercise older receipt recovery of a missing server Key.
         request.result = .success(["data": partial])
         if case .failure = await S.resumeUpload(serverMissing) {
             preconditionFailure("confirmed business data with one missing server Key may retry full upload")
@@ -783,6 +802,7 @@ final class NetworkRequest {
         submitted["groups"] = [["address": "C002", "profile": profile]]
         let context = S.prepareSubmission(space, payload: submitted)!
         precondition(S.markSubmissionAccepted(context, space: space))
+        space.lastUpdate += 1 // Compare an older receipt, not a complete cloud replacement.
         var missing = profile; missing.removeValue(forKey: "taskLevel")
         missing["scenes"] = scenes.map { scene in
             var result = scene; result.removeValue(forKey: "taskLevel"); return result
@@ -862,6 +882,7 @@ final class NetworkRequest {
         precondition(decodedLegacy.submission?.scheduleTargets == nil,
                      "Old receipts must remain decodable")
         precondition(S.markSubmissionAccepted(context, space: space))
+        space.lastUpdate += 1 // An older receipt still requires exact target confirmation.
 
         var missingTarget = submitted
         missingTarget["schedules"] = [["name": "Schedule 1", "enabled": true, "action": 2, "hour": 8, "minute": 0, "dayOfWeek": 127, "fadeTime": 0, "id": 0, "selectTarget": 2, "sceneAddress": NSNull()]]
@@ -933,6 +954,7 @@ final class NetworkRequest {
             }
             precondition(context.submission?.scheduleTargets != nil)
             precondition(S.markSubmissionAccepted(context, space: space))
+            space.lastUpdate += 1 // Equal-version cloud replacements are covered separately.
             request.result = .failure(.noNetwork)
             if case .success = await S.resumeUpload(space) {
                 preconditionFailure("An unavailable readback must retain the empty-target receipt")
@@ -995,6 +1017,7 @@ final class NetworkRequest {
             let decoded = try JSONDecoder().decode(SpaceRecoveryState.self, from: JSONSerialization.data(withJSONObject: old))
             precondition(decoded.submission?.schedulerModelStates == nil)
             precondition(S.markSubmissionAccepted(context, space: space))
+            space.lastUpdate += 1 // Retain strict validation of an older receipt.
 
             var stripped = submitted
             node.removeValue(forKey: "custProps")
@@ -1176,6 +1199,7 @@ final class NetworkRequest {
             _ = S.prepareSubmission(space, payload: space.payload)!
             if conflict { baseline["nodes"] = [["uuid": "other", "unicastAddress": "0005"]] }
             NetworkRequest.shared.result = .success(["data": baseline])
+            space.lastUpdate += 1
             let calls = NetworkRequest.shared.calls
             let result = await S.resumeUpload(space)
             precondition(NetworkRequest.shared.calls == calls + 3)
@@ -1884,14 +1908,14 @@ extension SpaceRecoveryReceiptTests {
             }
             ProximityLightingImportPreflight.onExport = nil
             S.failStateWrite = false
-            if ["cloud", "mergeFailure", "cloudReceiptFailure"].contains(mode) {
+            if ["cloud", "sameTime", "mergeFailure", "cloudReceiptFailure"].contains(mode) {
                 if mode == "cloudReceiptFailure" {
                     guard case .failure = result else { preconditionFailure("failed staging must preserve local") }
                     precondition(P.integer((space.groups[0]["profile"] as! [String: Any])["occupancyLevel"]) == 734)
                     if case .failure = await S.resumeUpload(space) { preconditionFailure("newer cloud retry") }
                 } else if case .failure = result { preconditionFailure("newer cloud must replace the full configuration") }
                 precondition(P.integer((space.groups[0]["profile"] as! [String: Any])["occupancyLevel"]) == 414)
-                precondition(space.lastUploadCloudTimestamp == 55 && !space.needUploadCloud && !S.hasPendingUpload(space))
+                precondition(space.lastUploadCloudTimestamp == (mode == "sameTime" ? 50 : 55) && !space.needUploadCloud && !S.hasPendingUpload(space))
                 continue
             }
             if ["local", "accepted", "prepared"].contains(mode) {
@@ -1917,12 +1941,12 @@ extension SpaceRecoveryReceiptTests {
                     if case .failure = await S.resumeUpload(space) { preconditionFailure("failed persistence must retry safely") }
                     precondition(space.needUploadCloud && space.lastUploadCloudTimestamp == 40)
                 }
-                if ["sameTime", "nonProfile"].contains(mode) { precondition(S.isBlocked(space)) }
+                if mode == "nonProfile" { precondition(S.isBlocked(space)) }
                 else { precondition(!S.isBlocked(space), "transient failures must not create review blocks") }
                 precondition(NetworkRequest.shared.calls == calls + (["receiptFailure", "cloudReceiptFailure", "mergeFailure"].contains(mode) ? 2 : 1))
             }
         }
-        print("PASS: Profile latest-Space-version resolution, equal-time review, protected topology, receipt replacement, retries and failures")
+        print("PASS: Profile latest-Space-version resolution, equal-time cloud replacement, protected topology, receipt replacement, retries and failures")
     }
 }
 
@@ -1937,6 +1961,7 @@ extension SpaceRecoveryReceiptTests {
         }
         func remote(_ space: SpaceData) -> [String: Any] {
             var payload = space.payload
+            payload["updateTimestamp"] = 50
             payload["role"] = "owner"
             payload["owner"] = ["userId": UserData.currentUserId, "username": "fixture"]
             return payload
@@ -1950,6 +1975,9 @@ extension SpaceRecoveryReceiptTests {
             membership.initialized = false // Already persisted by the previous App version.
             try M.store.write(membership)
             precondition(!S.canAutomaticallyUpload(space) && S.canResumePendingUpload(space))
+            // Exercise historical receipt confirmation while a newer local
+            // version exists; equal versions use complete cloud import instead.
+            space.lastUpdate = 51
             return space
         }
         func expectFailure(_ result: Result<Void, NetworkApiError>, _ error: NetworkApiError? = nil) {
@@ -1960,13 +1988,16 @@ extension SpaceRecoveryReceiptTests {
 
         // New local exports stay initialized while a GET preserves the pending upload.
         let fresh = SpaceData("first-upload-new")
+        ProximityLightingImportPreflight.storedSpace = fresh
+        defer { ProximityLightingImportPreflight.storedSpace = nil }
         let receipt = S.prepareSubmission(fresh, payload: fresh.payload)!
         try expectMembership(initialized(fresh))
         precondition(S.markSubmissionAccepted(receipt, space: fresh))
         for _ in 0..<2 {
             let record = try M.preparedRecord(fresh, networkID: fresh.meshNetworkId)
             let outcome = await fresh.update(spaceJsonData: remote(fresh))
-            precondition(record.initialized && outcome == .preserved("localDeletionOrRecoveryPendingUpload"))
+            precondition(record.initialized && outcome == .prepared,
+                         "equal-version cloud must enter complete import even after local initialization: \(outcome)")
         }
         request.result = .success(["data": remote(fresh)])
         if case .failure = await S.resumeUpload(fresh) { preconditionFailure("new upload must finish") }
@@ -1976,6 +2007,7 @@ extension SpaceRecoveryReceiptTests {
         for nodes in [[], [try membershipNode(1)]] {
             let old = try historical(nodes.isEmpty ? "empty" : "nonempty", nodes: nodes)
             let reopened = SpaceData(old.id); reopened.nodes = nodes
+            reopened.lastUpdate = 51
             request.result = .success(["data": remote(reopened)])
             if case .failure = await S.resumeUpload(reopened) { preconditionFailure("matching historical receipt must recover") }
             try expectMembership(initialized(reopened))
@@ -2042,6 +2074,7 @@ extension SpaceRecoveryReceiptTests {
             precondition(S.hasPendingUpload(space))
             S.failMembershipWrite = false; S.failStateWrite = false; space.onSave = nil
             let reopened = SpaceData(space.id)
+            reopened.lastUpdate = 51
             reopened.lastUploadCloudTimestamp = space.lastUploadCloudTimestamp
             request.result = .success(["data": remote(reopened)])
             if case .failure = await S.resumeUpload(reopened) { preconditionFailure("persistent receipt must retry after reopening") }
@@ -2129,6 +2162,9 @@ extension SpaceRecoveryReceiptTests {
                     precondition(receipt.phase == .accepted && receipt.permitsCloudRemoval == false)
                     precondition(receipt.keyFingerprint != nil && receipt.nodeIdentities != nil)
                     precondition((try! M.store.read(M.scope(space)))?.initialized == false)
+                    // Keep exercising legacy receipt confirmation rather than
+                    // the equal-version full-import boundary in this fixture.
+                    space.lastUpdate = 51
                 }
                 let calls = request.calls, uploads = request.uploads
                 if case .failure = await S.resumeUpload(space) { preconditionFailure("legacy recovery must succeed: \(field)") }
@@ -2173,6 +2209,7 @@ extension SpaceRecoveryReceiptTests {
                 precondition(S.recordSnapshot(space, payload: snapshot))
             }
             request.result = variant == "offline" ? .failure(.noNetwork) : .success(["data": server])
+            request.onRequest = { space.lastUpdate = 51 }
             let calls = request.calls
             if case .success = await S.resumeUpload(space) { preconditionFailure("must preserve protection: \(variant)") }
             S.failStateWrite = false
@@ -2192,6 +2229,7 @@ extension SpaceRecoveryReceiptTests {
             if variant == "snapshot-save" || variant == "offline" {
                 let reopened = SpaceData(space.id); reopened.nodes = space.nodes
                 request.result = .success(["data": remote(reopened)])
+                request.onRequest = { reopened.lastUpdate = 51 }
                 if case .failure = await S.resumeUpload(reopened) { preconditionFailure("migration/readback must retry after reopen") }
                 precondition(S.canAutomaticallyUpload(reopened) && !S.hasPendingUpload(reopened))
             }
@@ -2216,6 +2254,8 @@ extension SpaceRecoveryReceiptTests {
         space.lastUploadCloudTimestamp = 49
         let receipt = S.prepareSubmission(space, payload: payload)!
         precondition(S.markSubmissionAccepted(receipt, space: space))
+        // Keep local intent newer here: equal-version Web Scene changes now replace it.
+        space.lastUpdate += 1
         for alteration in 0..<3 {
             var remote = payload; var changed = row
             if alteration == 0 { remote["spaceData"] = [:] as [String: Any] }

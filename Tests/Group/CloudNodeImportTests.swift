@@ -102,6 +102,9 @@ enum RecoveryMessage {
         let validPayload: [String: Any] = ["groups": [validGroup], "scenes": [], "schedules": [], "nodes": [original]]
         require(SpaceData.canDecodeConfigurationImport(validPayload), "valid legacy payload passes reviewed import decoding")
         require(SpaceData.canDecodeConfigurationImport(["groups": [], "scenes": [], "schedules": [], "nodes": []]), "empty configuration remains valid")
+        let legacy: [String: Any] = ["nodes": [original], "groups": [["address": "C001"]], "schedules": [["id": 0]]]
+        require(SpaceData.canDecodeConfigurationImport(legacy), "missing group display/parent and schedule properties default before actual decoders")
+        require(SpaceData.canDecodeConfigurationImport(["nodes": []]), "absent legacy feature collections default to empty")
         for virtual in [false, true] {
             for field in ["name", "parentAddress"] {
                 var group = validGroup; group[field] = 1; group["isVirtual"] = virtual

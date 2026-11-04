@@ -43,6 +43,9 @@ extension SiteData {
         try await cityPendingSurvivesFullUploadReceipt(path: path)
         try transferCacheLifetime(path: path)
         try coordinateStringImport(path: path)
+        try equalVersionReplacement(path: path)
+        try legacyMissingFields(path: path)
+        try listSummaryPreservesMissingFields(path: path)
         let site = try SiteData.add(name: "Interleaved", timezone: nil)
         let oldTaskSite = SiteData.load(siteId: site.id)!
         let importer = SiteData.load(siteId: site.id)!
@@ -66,16 +69,126 @@ extension SiteData {
         precondition(oldTaskSite.standardProperties == imported, "Successful save must refresh the caller's metadata")
         SunSmartDataManager.shared.db = try Connection(path)
         precondition(SiteData.load(siteId: site.id)!.standardProperties == imported)
-        // A partial detail response from another old instance preserves omitted fields.
+        // A complete legacy detail response defaults omitted fields, even on an old instance.
         payload = ["uuid": site.id, "siteName": site.name, "updateTimestamp": site.lastUpdate,
                    "city": NSNull()]
         precondition(site.importFixture(siteJsonData: payload))
-        precondition(site.city == nil && site.cityId == 795565 && site.latitude == 0 && site.longitude == -72.5)
+        precondition(site.city == nil && site.cityId == nil && site.latitude == nil && site.longitude == nil)
         precondition(oldTaskSite.save())
         precondition(SiteData.load(siteId: site.id)!.city == nil, "Stale non-nil values must not resurrect a clear")
         try await propsReadbackAndReceipts(siteID: site.id, path: path)
         try failedImportAndRetry(siteID: site.id, path: path)
         print("PASS: SQLite detail import -> fresh export -> stale upload receipt -> restart, partial fields and explicit null")
+    }
+
+    static func listSummaryPreservesMissingFields(path: String) throws {
+        for delta: Int64 in [0, 1] {
+            let site = try SiteData.add(name: "Local", timezone: "Asia/Singapore (UTC+08:00)",
+                standardProperties: .init(city: "Singapore", cityId: 123, address: "Street"))
+            site.imageId = 7
+            site.sourceType = .share
+            site.pendingSitePropsMask = [.siteName, .timezone, .city, .address]
+            site.pendingSitePropsTimestamp = site.lastUpdate
+            site.lastUploadCloudTimestamp = site.lastUpdate - 1
+            precondition(site.save())
+            let oldUpload = site.lastUploadCloudTimestamp
+            let oldPending = site.pendingSitePropsTimestamp
+            let oldCreate = site.create
+            try SiteExtensionStore.update(site) { state in
+                var data = SiteExtensionData()
+                data.siteType = .hdb
+                data.replaceZones([SiteTriggerZone()])
+                state.receive(data, timestamp: site.lastUpdate)
+                data.fields["draft"] = .bool(true)
+                state.commit(data, now: site.lastUpdate, siteTimestamp: site.lastUpdate)
+            }
+            let oldExtension = try SiteExtensionStore.load(site)
+            let summary: [String: Any] = ["uuid": site.id, "siteName": "List name",
+                "updateTimestamp": site.lastUpdate + delta]
+            precondition(site.importFixture(siteJsonData: summary, source: .listSummary))
+            SunSmartDataManager.shared.db = try Connection(path)
+            let loaded = SiteData.load(siteId: site.id)!
+            precondition(loaded.name == "List name")
+            precondition(loaded.timezone == "Asia/Singapore (UTC+08:00)" && loaded.city == "Singapore"
+                && loaded.address == "Street" && loaded.cityId == 123,
+                "List summaries must not clear missing timezone/standard properties after SQLite reload")
+            precondition(loaded.imageId == 7 && loaded.create == oldCreate && loaded.sourceType == .share)
+            precondition(loaded.pendingSitePropsMask == [.timezone, .city, .address]
+                && loaded.pendingSitePropsTimestamp == oldPending && loaded.lastUploadCloudTimestamp == oldUpload,
+                "A summary cannot acknowledge omitted pending properties")
+            precondition(loaded.isHdbSite && (try! SiteExtensionStore.load(loaded)) == oldExtension,
+                "List refresh must retain HDB, Trigger Zones and the exact extension draft")
+            // Explicit clear is still a patch; omitted address/extension stay untouched.
+            let clear: [String: Any] = ["uuid": site.id, "siteName": "Cleared fields",
+                "updateTimestamp": loaded.lastUpdate, "timezone": NSNull(), "city": NSNull(), "imageId": 0]
+            try SunSmartDataManager.shared.db!.execute("CREATE TRIGGER fail_list_import BEFORE INSERT ON sites BEGIN SELECT RAISE(FAIL, 'fixture'); END;")
+            precondition(!loaded.importFixture(siteJsonData: clear, source: .listSummary))
+            precondition(loaded.name == "List name" && loaded.timezone == "Asia/Singapore (UTC+08:00)"
+                && loaded.city == "Singapore" && loaded.pendingSitePropsMask == [.timezone, .city, .address])
+            try SunSmartDataManager.shared.db!.execute("DROP TRIGGER fail_list_import")
+            precondition(loaded.importFixture(siteJsonData: clear, source: .listSummary))
+            SunSmartDataManager.shared.db = try Connection(path)
+            let cleared = SiteData.load(siteId: site.id)!
+            precondition(cleared.timezone == nil && cleared.city == nil && cleared.imageId == 0)
+            precondition(cleared.address == "Street" && cleared.cityId == 123 && cleared.pendingSitePropsMask == [.address])
+            precondition(cleared.lastUploadCloudTimestamp == oldUpload && (try! SiteExtensionStore.load(cleared)) == oldExtension)
+        }
+        print("PASS: same/newer Site list summaries retain omitted properties, pending edits, HDB, Zones and extension draft across SQLite restart")
+    }
+
+    static func legacyMissingFields(path: String) throws {
+        let site = try SiteData.add(name: "Old local name", timezone: "Asia/Singapore",
+                                   standardProperties: .init(city: "Old city", cityId: 123))
+        try SiteExtensionStore.update(site) { state in
+            var extensionData = SiteExtensionData()
+            extensionData.siteType = .hdb
+            extensionData.fields["localOnly"] = .bool(true)
+            state.receive(extensionData, timestamp: site.lastUpdate)
+            extensionData.fields["localDraft"] = .bool(true)
+            state.commit(extensionData, now: site.lastUpdate, siteTimestamp: site.lastUpdate)
+        }
+        let legacy: [String: Any] = ["uuid": site.id, "updateTimestamp": site.lastUpdate]
+        precondition(site.importFixture(siteJsonData: legacy))
+        SunSmartDataManager.shared.db = try Connection(path)
+        let loaded = SiteData.load(siteId: site.id)!
+        precondition(loaded.name.isEmpty && loaded.imageId == 0 && loaded.timezone == nil)
+        precondition(loaded.standardProperties == SiteStandardProperties())
+        let extensionState = try SiteExtensionStore.load(loaded)
+        precondition(extensionState.data == SiteExtensionData() && extensionState.pending == nil)
+        precondition(loaded.importFixture(siteJsonData: legacy), "Legacy replacement remains retryable after reopening SQLite")
+        print("PASS: complete legacy Site defaults missing base/standard/extension fields across SQLite restart")
+    }
+
+    static func equalVersionReplacement(path: String) throws {
+        let site = try SiteData.add(name: "Local pending", timezone: nil,
+                                   standardProperties: .init(city: "Local city"))
+        site.pendingSitePropsMask = [.siteName, .city]
+        site.pendingSitePropsTimestamp = site.lastUpdate
+        precondition(site.save())
+        var cloudExtension = SiteExtensionData()
+        cloudExtension.replaceZones([])
+        try SiteExtensionStore.update(site) { state in
+            state.receive(cloudExtension, timestamp: site.lastUpdate)
+            var local = cloudExtension
+            local.fields["localOnly"] = .bool(true)
+            state.commit(local, now: site.lastUpdate + 1, siteTimestamp: site.lastUpdate)
+        }
+        let extensionObject = try JSONSerialization.jsonObject(with: JSONEncoder().encode(cloudExtension))
+        let payload: [String: Any] = ["uuid": site.id, "siteName": "Web name", "imageId": 2,
+            "updateTimestamp": site.lastUpdate, "city": "Web city", "extensionData": extensionObject]
+        let importer = SiteData.load(siteId: site.id)!
+        try SunSmartDataManager.shared.db!.execute("CREATE TRIGGER fail_equal_import BEFORE INSERT ON sites BEGIN SELECT RAISE(FAIL, 'fixture'); END;")
+        precondition(!importer.importFixture(siteJsonData: payload))
+        precondition(importer.name == "Local pending" && importer.pendingSitePropsMask == [.siteName, .city])
+        try SunSmartDataManager.shared.db!.execute("DROP TRIGGER fail_equal_import")
+        precondition(importer.importFixture(siteJsonData: payload))
+        SunSmartDataManager.shared.db = try Connection(path)
+        let restored = SiteData.load(siteId: site.id)!
+        precondition(restored.name == "Web name" && restored.city == "Web city" && restored.imageId == 2)
+        precondition(restored.pendingSitePropsMask.isEmpty && restored.pendingSitePropsTimestamp == nil)
+        let extensionState = try SiteExtensionStore.load(restored)
+        precondition(extensionState.data == cloudExtension && extensionState.pending == nil && !extensionState.needsArchivedReview)
+        print("PASS: SQLite equal-version Web Site replaces pending name/city, rolls back failure and survives restart")
     }
 
     static func cityIdentityPersistence(path: String) throws {
@@ -262,7 +375,7 @@ extension SiteData {
             "updateTimestamp": readerSite.lastUpdate, "city": "New city", "cityId": 123456, "longitude": "80"]]])
         _ = await reader.prepareDraft(online: true)
         let fresh = readerSite.standardProperties
-        precondition(fresh.city == "New city" && fresh.cityId == 123456 && fresh.longitude == 80 && fresh.latitude == 0)
+        precondition(fresh.city == "New city" && fresh.cityId == 123456 && fresh.longitude == 80 && fresh.latitude == nil)
         // Both receipt operations must preserve a props read that arrived in flight.
         let addSpaces = SiteSyncReceiptFixture(oldAddSpaces, addingSpaces: true)
         precondition(addSpaces.confirmSiteUpload(api: .siteUpload(siteData: ["updateTimestamp": readerSite.lastUpdate]), response: [:]))
@@ -321,7 +434,7 @@ extension SiteData {
         try db.execute("DROP TRIGGER fail_site")
         precondition(importer.importFixture(siteJsonData: payload))
         let cleared = importer.standardProperties
-        precondition(cleared.city == nil && cleared.latitude == nil && cleared.longitude == previous.longitude)
+        precondition(cleared.city == nil && cleared.latitude == nil && cleared.longitude == nil)
         SunSmartDataManager.shared.db = try Connection(path)
         precondition(SiteData.load(siteId: siteID)!.standardProperties == cleared)
         print("PASS: SQLite failed metadata import rollback, explicit clear retry and restart")

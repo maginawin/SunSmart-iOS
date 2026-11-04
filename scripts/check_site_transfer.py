@@ -26,6 +26,8 @@ with tempfile.TemporaryDirectory(prefix="site-transfer-") as directory:
     harness.write_text(doubles + contract + fixture.replace("// PRODUCTION_SITE_IMPORT",
                       "extension SiteData {\n" + site_import + "\n}"))
     subprocess.run(["swiftc", "-parse-as-library", str(harness),
+                    str(root / "SunSmart/Main/Site/Model/SitePropsEditPolicy.swift"),
+                    str(root / "SunSmart/Common/Data/SiteTimeZoneValue.swift"),
                     str(root / "Pods/SwiftyJSON/Source/SwiftyJSON/SwiftyJSON.swift"),
                     "-o", str(binary)], check=True)
     subprocess.run([str(binary)], check=True)

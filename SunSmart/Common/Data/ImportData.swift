@@ -505,7 +505,7 @@ extension SiteData {
     ///      2：卸载app后由于没有缓存数据，之前使用的手机地址对应SEQ序列号未知，所以把旧的地址放到地址回收池内回收，并分配新的手机地址
     ///   - receivingOwnership: 接收所有权成功后，即使本地状态及版本未变也恢复地址并校验原网络。
     /// - Returns: site
-    static func `import`(siteJsonData: [String: Any], changeAddress: Bool = false,
+    static func `import`(siteJsonData: [String: Any], source: SiteImportSource, changeAddress: Bool = false,
                          receivingOwnership: Bool = false) async -> SiteData? {
         guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return nil }
         
@@ -559,7 +559,7 @@ extension SiteData {
         } else {
             preservedKeys = nil
         }
-        guard await site?.update(siteJsonData: siteJsonData, changeAddress: isChangeAddress,
+        guard await site?.update(siteJsonData: siteJsonData, source: source, changeAddress: isChangeAddress,
                                  initialize: initialize) == true else { return nil }
         guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return nil }
         if returningSite, let site {
@@ -587,8 +587,10 @@ extension SiteData {
     /// - Parameter changeAddress: 是否切换地址
     /// - Parameter initialize 首次更新数据（本地无记录）
     @discardableResult
-    func update(siteJsonData: [String: Any], changeAddress: Bool = false, initialize: Bool = false) async -> Bool {
+    func update(siteJsonData: [String: Any], source: SiteImportSource, changeAddress: Bool = false, initialize: Bool = false) async -> Bool {
         guard SpaceMembershipCoordinator.accepts(siteJsonData) else { return false }
+        let isCompleteSnapshot = source == .completeDetail
+        let siteJsonData = isCompleteSnapshot ? SiteStandardProperties.completeCloudSnapshot(siteJsonData) : siteJsonData
         // Validate all standard fields before accepting any part of this payload.
         guard let standardPatch = try? SiteStandardProperties.Patch(siteJsonData) else { return false }
         let previousProperties = standardProperties
@@ -632,7 +634,8 @@ extension SiteData {
         let lastUpdate = json["updateTimestamp"].int64Value
         // Process extension fields independently of the legacy Site timestamp gate.
         do {
-            try SiteExtensionStore.receive(self, object: siteJsonData, timestamp: lastUpdate)
+            try SiteExtensionStore.receive(self, object: siteJsonData, timestamp: lastUpdate,
+                                           replacingLocal: isCompleteSnapshot && lastUpdate >= previousTimestamp)
         } catch {
             // Preserve the durable extension if a partial/invalid response cannot be applied.
             self.syncCloudError = .configurationExportInvalid
@@ -672,21 +675,28 @@ extension SiteData {
 //        print("读取网络数据完成：\(Date().timeIntervalSince1970)")
         var updateNetwork = false
 //        print("导入数据：site load network \(Date().timeIntervalSince1970)")
-        // 服务器最后更新时间比本地时间新才覆盖本地数据
-        if lastUpdate > self.lastUpdate || initialize {
+        // Web edits may keep the version; the cloud also wins equal timestamps.
+        if lastUpdate >= self.lastUpdate || initialize {
             
             self.name = name
-            self.imageId = json["imageId"].intValue
-            if let timezone = json["timezone"].string,
-               let timezoneValue = SiteTimeZoneValue(storageValue: timezone) {
-                self.timezone = timezoneValue.storageValue
+            if isCompleteSnapshot || siteJsonData["imageId"] != nil {
+                self.imageId = json["imageId"].intValue
+            }
+            if isCompleteSnapshot || siteJsonData["timezone"] != nil {
+                self.timezone = json["timezone"].string.flatMap { SiteTimeZoneValue(storageValue: $0)?.storageValue }
             }
             //        self.isFavourite = json["favourite"].boolValue
-            self.sourceType = DataSourceType(rawValue: json["type"].intValue) ?? DataSourceType.create
-            self.create = json["createTimestamp"].int64Value
+            if isCompleteSnapshot || siteJsonData["type"] != nil {
+                self.sourceType = DataSourceType(rawValue: json["type"].intValue) ?? DataSourceType.create
+            }
+            if isCompleteSnapshot || siteJsonData["createTimestamp"] != nil {
+                self.create = json["createTimestamp"].int64Value
+            }
             self.lastUpdate = lastUpdate
             //        if self.lastUploadCloudTimestamp == nil {
-            self.lastUploadCloudTimestamp = self.lastUpdate
+            if isCompleteSnapshot || !hadPendingProps {
+                self.lastUploadCloudTimestamp = self.lastUpdate
+            }
             appliedSiteVersion = true
             //        }
             // 转让site id仅由明确的转移请求维护，普通 Site 快照不能恢复已失效的转移码。
@@ -1353,14 +1363,34 @@ extension SiteData {
         
         //        print("导入数据：site update spaces success \(Date().timeIntervalSince1970)")
         guard meshNetwork != nil else { return false }
-        // The ordinary Site gate is strictly newer; metadata must also accept a
-        // same-version complete response after a partial props/list response.
+        // Equal-version Web data supersedes pending local props as part of the
+        // same successful save. A later local edit during import still owns its version.
         var acceptedStandardPatch = SiteStandardProperties.Patch()
         if standardProperties == previousProperties, self.lastUpdate == preparedSiteTimestamp,
-           initialize || (lastUpdate >= previousTimestamp && !hadPendingProps) {
+           initialize || lastUpdate == previousTimestamp || (lastUpdate > previousTimestamp && !hadPendingProps) {
             acceptedStandardPatch = standardPatch
         }
-        guard self.save(standardPropertiesPatch: acceptedStandardPatch) else { return false }
+        let previousPending = (pendingSitePropsMask, pendingSitePropsTimestamp)
+        if self.lastUpdate == preparedSiteTimestamp {
+            if isCompleteSnapshot, lastUpdate == previousTimestamp {
+                pendingSitePropsMask = []
+                pendingSitePropsTimestamp = nil
+            } else if !isCompleteSnapshot, lastUpdate >= previousTimestamp {
+                var provided = acceptedStandardPatch.providedFields
+                if siteJsonData["siteName"] != nil { provided.insert(.siteName) }
+                if siteJsonData["imageId"] != nil { provided.insert(.imageId) }
+                if siteJsonData["timezone"] != nil { provided.insert(.timezone) }
+                pendingSitePropsMask.subtract(provided)
+                if pendingSitePropsMask.isEmpty { pendingSitePropsTimestamp = nil }
+                // A list row cannot confirm local edits for fields it did not return.
+                lastUploadCloudTimestamp = pendingSitePropsMask.isEmpty ? lastUpdate : previousUploadTimestamp
+            }
+        }
+        guard self.save(standardPropertiesPatch: acceptedStandardPatch) else {
+            pendingSitePropsMask = previousPending.0
+            pendingSitePropsTimestamp = previousPending.1
+            return false
+        }
         completedImport = true
         GatewayOrphanGuard.endImport(gatewayImportScope)
         gatewayImportActive = false
@@ -1823,6 +1853,7 @@ extension SpaceData {
     /// Reviewed import intent must pass the same decoding gates as the importer
     /// before it becomes durable. Decode fresh objects without mutating local data.
     static func canDecodeConfigurationImport(_ payload: [String: Any]) -> Bool {
+        let payload = CloudConfigurationDefaults.space(payload)
         guard sceneConfigurationImportFailure(payload) == nil,
               let payload = TimedSchedulerPayloadPolicy.repairingStaleBindings(payload) else { return false }
         guard let groups = payload["groups"] as? [[String: Any]],
@@ -1890,10 +1921,11 @@ extension SpaceData {
         defer { trace.mark("end") }
         guard spaceJsonData["uuid"] as? String == id else { return .rejected("spaceIdentityMismatch") }
 
-        let remoteMetadata = spaceJsonData
-        let incomingSpaceJsonData = SpaceConfigurationSafety.hasNewerCloudImport(self)
-            && !SpaceConfigurationSafety.prefersNewerCloud(self, remote: remoteMetadata)
-            ? (SpaceConfigurationSafety.pendingImport(self) ?? remoteMetadata) : remoteMetadata
+        let remoteMetadata = CloudConfigurationDefaults.space(spaceJsonData)
+        let incomingSpaceJsonData = CloudConfigurationDefaults.space(
+            SpaceConfigurationSafety.hasNewerCloudImport(self)
+                && !SpaceConfigurationSafety.prefersNewerCloud(self, remote: remoteMetadata)
+                ? (SpaceConfigurationSafety.pendingImport(self) ?? remoteMetadata) : remoteMetadata)
         guard (try? SpaceConfigurationSafety.recoveryState(self).phase) == .active else {
             return .rejected("spaceRemovalPending")
         }
@@ -1904,6 +1936,7 @@ extension SpaceData {
         }
         let newerCloudImport = !initialize && SpaceConfigurationSafety.prefersNewerCloud(self, remote: incomingSpaceJsonData)
         let authoritativeCloudImport = newerCloudImport || SpaceConfigurationSafety.hasNewerCloudImport(self)
+        let equalCloudImport = !initialize && SpaceConfigurationSafety.importsEqualCloudSnapshot(self, remote: incomingSpaceJsonData)
         let reviewedCloudImport = SpaceConfigurationSafety.hasReviewedCloudImport(self) || authoritativeCloudImport
         // Default legacy-writer field loss before decoding, using the same
         // representation as cloud comparison and persisted import readback.
@@ -1992,15 +2025,15 @@ extension SpaceData {
         guard !resumingImport || stagedSpaceJsonData != nil else {
             return .rejected("unreadablePendingImport")
         }
-        let originalSpaceJsonData = TimedSchedulerPayloadPolicy.fillingMissingBindings(stagedSpaceJsonData.flatMap {
+        let originalSpaceJsonData = CloudConfigurationDefaults.space(stagedSpaceJsonData.flatMap {
             SpaceConfigurationSafety.originalReferenceCleanupImport(self, candidate: $0)
         } ?? stagedSpaceJsonData ?? incomingSpaceJsonData)
         guard let repairedTimedPayload = TimedSchedulerPayloadPolicy.repairingStaleBindings(originalSpaceJsonData) else {
             return .rejected("invalidTimedPayload")
         }
-        let timedReferencesChanged = !NSDictionary(dictionary: originalSpaceJsonData).isEqual(to: repairedTimedPayload)
-        let referenceCleanup = try? SpaceSyncCleanupPolicy.normalize(repairedTimedPayload)
-        let spaceJsonData = referenceCleanup?.payload ?? repairedTimedPayload
+        let timedReferencesChanged = !equalCloudImport && !NSDictionary(dictionary: originalSpaceJsonData).isEqual(to: repairedTimedPayload)
+        let referenceCleanup = equalCloudImport ? nil : try? SpaceSyncCleanupPolicy.normalize(repairedTimedPayload)
+        let spaceJsonData = equalCloudImport ? originalSpaceJsonData : (referenceCleanup?.payload ?? repairedTimedPayload)
         // Nodes, groups, HDB and the recovery receipt must all describe the selected
         // staged snapshot, even if the request that triggered this retry is newer.
         let incomingHDB: HDBConfiguration?
@@ -2026,7 +2059,7 @@ extension SpaceData {
         else { return .rejected("staleImportPreparation") }
         trace.mark("remotePreflightPrepared")
         let baselineSnapshot = ConfigurationMeshReadSnapshot()
-        if !resumingImport,
+        if !resumingImport, !authoritativeCloudImport,
            SpaceConfigurationSafety.needsUpgradeBaseline(self) || SpaceConfigurationSafety.needsTimedUpgradeBaseline(self),
            let local = await export(purpose: .localBackup, readSnapshot: baselineSnapshot) {
             trace.mark("upgradeBaselineExported")
@@ -2190,8 +2223,8 @@ extension SpaceData {
             let sameTimestampSummaryDiffers = lastUpdate == self.lastUpdate && (summaryDiffers || modelStatesDiffer || timedDiffers)
             let serverSummaryDiffersNote = localNeedsUpload ? "serverSummaryDiffersButLocalNeedsUpload" : "serverSummaryDiffers"
             let shouldApplyServerData = resumingImport || SpaceConfigurationSafety.requiresAuthorityImport(self)
-                || SpaceConfigurationSafety.isBlocked(self) || lastUpdate > self.lastUpdate || initialize || (sameTimestampSummaryDiffers && !localNeedsUpload)
-            // 服务器最后更新时间比本地时间新才覆盖本地数据
+                || SpaceConfigurationSafety.isBlocked(self) || lastUpdate >= self.lastUpdate || initialize
+            // 服务器最后更新时间等于或晚于本地时，完整覆盖本地配置。
             trace.mark("applyDecision")
             guard shouldApplyServerData else {
 #if DEBUG
@@ -2330,6 +2363,9 @@ extension SpaceData {
             }
             var appliedOutcome: SpaceImportOutcome?
             let applied = SunSmartDataManager.shared.configurationTransaction {
+                if authoritativeCloudImport {
+                    try GroupMemberPersistence.discardForCloudReplacement(self)
+                }
                 // Validate and save the complete business configuration first.
                 // The savepoint restores all old rows if any later step fails.
                 guard GroupInfo.delete(meshUUID: meshUUID, networkId: self.meshNetworkId),
@@ -2365,9 +2401,7 @@ extension SpaceData {
                 self.controlType = SpaceContentDisplayDefaults.controlType
             }
             // 配置设备完成后行为
-            if let value = json["deviceBlinkMode"].int, let mode = DeviceBlinkMode(rawValue: value) {
-                self.deviceBlinkMode = mode
-            }
+            self.deviceBlinkMode = DeviceBlinkMode(rawValue: json["deviceBlinkMode"].int ?? 0) ?? .none
             self.hdb = incomingHDB
             self.hdbLoadFailed = false
             if let triggerZones = proximityPreflight.triggerZones {
@@ -3348,6 +3382,7 @@ extension GatewayModel {
 // Keep cloud Profile decoding identical for full imports and conflict resolution.
 extension Profile {
     static func fromCloud(_ profileDict: [String: Any]) -> Profile? {
+        let profileDict = CloudConfigurationDefaults.profile(profileDict)
         let profileJson = JSON(profileDict)
         if let id = profileJson["id"].string, let type = Profile.ProfileType(rawValue: profileJson["type"].intValue) {
 

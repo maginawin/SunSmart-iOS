@@ -141,13 +141,21 @@ struct SiteTriggerZoneDataTests {
         check(state == beforeOldResponse, "Old responses cannot resurrect deleted or replaced data")
         var ambiguous = SiteExtensionState()
         ambiguous.receive(data, timestamp: 100)
+        var localDraft = data
+        localDraft.fields["localOnly"] = .bool(true)
+        ambiguous.commit(localDraft, now: 101, siteTimestamp: 100)
         ambiguous.receive(secondData, timestamp: 100)
-        check(ambiguous.hasAmbiguousRemote && ambiguous.data == data
-                && ambiguous.serverData == data && ambiguous.serverTimestamp == 100,
-              "Equal server versions with different content cannot replace a confirmed target")
+        check(!ambiguous.hasAmbiguousRemote && ambiguous.data == secondData
+                && ambiguous.serverData == secondData && ambiguous.serverTimestamp == 100
+                && ambiguous.pending == nil && ambiguous.submitted == nil && !ambiguous.needsArchivedReview,
+              "Equal-version Web changes replace local extension and pending edits without review")
         ambiguous.receive(secondData, timestamp: 101)
         check(!ambiguous.hasAmbiguousRemote && ambiguous.data == secondData,
               "A newer version resolves an ambiguous response")
+        ambiguous.commit(localDraft, now: 102, siteTimestamp: 101)
+        ambiguous.receive(secondData, timestamp: 101, replacingLocal: true)
+        check(ambiguous.data == secondData && ambiguous.pending == nil && !ambiguous.needsArchivedReview,
+              "Same-version full Site import replaces a draft even if the server content is unchanged")
         var future = data
         future.fields["schemaVersion"] = .integer(3)
         check(!future.supportsMemberEditing && tryRoundTrip(future) == future, "Future schema is retained and read-only")

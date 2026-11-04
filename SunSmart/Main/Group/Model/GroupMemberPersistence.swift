@@ -158,6 +158,15 @@ enum GroupMemberPersistence {
             scope.account, scope.region, scope.meshUUID, scope.networkID)
     }
 
+    /// Called inside the authoritative import's App transaction. A replaced
+    /// Group must never replay an older local member-save receipt after restart.
+    static func discardForCloudReplacement(_ space: SpaceData) throws {
+        let db = try database()
+        guard try db.scalar("SELECT count(*) FROM sqlite_master WHERE type = 'table' AND name = 'groupMemberSaves'") as? Int64 == 1 else { return }
+        try db.run("DELETE FROM groupMemberSaves WHERE account = ? AND region = ? AND meshUUID = ? AND networkID = ?",
+            UserData.currentUserId, String(describing: UserData.currentServerRegion), space.meshUUID, space.meshNetworkId)
+    }
+
     static func prepare(space: SpaceData, group: Group, exiting: [Node], adding: [Node]) throws -> Receipt {
         precondition(Thread.isMainThread)
         guard space.canEditing, !SpaceConfigurationSafety.isBlocked(space),

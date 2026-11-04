@@ -89,6 +89,7 @@ enum ProfilePersistenceTests {
         try testDefaultsAndCloudRoundtrip(url)
         try testManualOverrideTimeoutRoundtrip(url)
         try testMissingUnusedTaskLevelRoundtrip(url)
+        try testLegacyMissingProperties(url)
         try testCloudProfileMergePersistence(url)
         let captured = try Connection(url.path, readonly: true)
         SunSmartDataManager.shared.db = try Connection(.inMemory)
@@ -397,6 +398,36 @@ enum ProfilePersistenceTests {
         print("PASS: Timeout 56 cases across eight Profile types; detached edits, SQLite reopen and cloud roundtrip preserve preset/custom/infinite seconds")
     }
 
+    static func testLegacyMissingProperties(_ url: URL) throws {
+        for type in 1...8 {
+            let sparse: [String: Any] = ["id": "legacy-\(type)", "type": type]
+            let wire = try JSONSerialization.data(withJSONObject: sparse)
+            let decoded = try JSONSerialization.jsonObject(with: wire) as! [String: Any]
+            precondition(SpaceConfigurationIntegrityPolicy.profileIssue(decoded) == nil)
+            let imported = importProfile(decoded)!
+            let info = GroupInfo(address: Address(0xC400 + type), profile: imported)
+            precondition(save(info))
+            SunSmartDataManager.shared.db = try Connection(url.path)
+            let exported = payload(load(info.address)!)
+            func configuration(_ profile: [String: Any]) -> Data? {
+                SpaceConfigurationIntegrityPolicy.configurationData(["groups": [["address": "C001", "profile": profile]],
+                                                                      "nodes": [], "scenes": [], "schedules": []])
+            }
+            precondition(SpaceConfigurationIntegrityPolicy.configurationsMatch(configuration(sparse), configuration(exported)),
+                         "Defaulting must match real Profile import -> SQLite -> export for type \(type)")
+            precondition(imported.lightControlData.highEndTrim == 100 && imported.manualOverrideTimeout == 600)
+            var explicit = sparse
+            explicit["occupancyLevel"] = 0; explicit["timeT2"] = 0
+            explicit["scenes"] = [["number": "FF00", "name": "", "occupancyLevel": 0, "timeT2": 0]]
+            let preserved = importProfile(explicit)!
+            precondition(preserved.lightControlData.occupancyLevel == 0 && preserved.lightControlData.t2 == 0)
+            explicit["timeT2"] = "invalid"
+            precondition(SpaceConfigurationIntegrityPolicy.profileIssue(explicit) != nil)
+        }
+        precondition(SpaceConfigurationIntegrityPolicy.profileIssue(["type": 1]) != nil)
+        print("PASS: eight sparse legacy Profiles -> defaults -> real SQLite restart/export -> equivalent cloud comparison; explicit zero and invalid values")
+    }
+
     static func testMissingUnusedTaskLevelRoundtrip(_ url: URL) throws {
         for type in [1, 2, 3, 4, 7, 8] {
             let profile = Profile.defaultGroupProfile(type: Profile.ProfileType(rawValue: type)!)
@@ -573,7 +604,7 @@ enum ProfilePersistenceTests {
         }
         var missing = profile
         missing.removeValue(forKey: "occupancyLevel")
-        precondition(SpaceConfigurationIntegrityPolicy.profileIssue(missing) != nil)
+        precondition(SpaceConfigurationIntegrityPolicy.profileIssue(missing) == nil)
         missing = profile
         missing.removeValue(forKey: "standbyLevel")
         missing.removeValue(forKey: "scenes")

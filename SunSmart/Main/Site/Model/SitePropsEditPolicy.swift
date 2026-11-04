@@ -1,5 +1,11 @@
 import Foundation
 
+/// Endpoint semantics must be explicit: missing fields in a list are not deletions.
+enum SiteImportSource {
+    case listSummary
+    case completeDetail
+}
+
 /// Standard Site properties shared by creation, full sync and partial props reads.
 struct SiteStandardProperties: Equatable {
     var latitude: Double?
@@ -46,6 +52,15 @@ struct SiteStandardProperties: Equatable {
         Patch(values: self, fields: fields)
     }
 
+    /// Full Site details are replacements; props retrieval remains a partial Patch.
+    static func completeCloudSnapshot(_ object: [String: Any]) -> [String: Any] {
+        var defaults = SiteStandardProperties().jsonObject
+        defaults["siteName"] = ""
+        defaults["imageId"] = 0
+        defaults["timezone"] = NSNull()
+        return defaults.merging(object) { _, supplied in supplied }
+    }
+
     /// Presence is separate from value: omitted fields preserve, explicit null clears.
     struct Patch: Equatable {
         enum ParseError: Error { case invalidField(String) }
@@ -60,6 +75,9 @@ struct SiteStandardProperties: Equatable {
         }
 
         var jsonObject: [String: Any] { values.jsonObject.filter { provided.contains($0.key) } }
+        var providedFields: SitePropsFieldMask {
+            provided.reduce(into: SitePropsFieldMask()) { $0.formUnion(SitePropsFieldMask.standardFields[$1] ?? []) }
+        }
 
         func confirms(_ expected: SiteStandardProperties, fields: SitePropsFieldMask) -> Bool {
             let required = Set(SitePropsFieldMask.standardFields.compactMap { fields.contains($0.value) ? $0.key : nil })
@@ -260,7 +278,14 @@ enum SitePropsEditPolicy {
     ) -> SitePropsRetrieveMergeResult {
         var mergeBase = local
 
-        if !local.pending.fields.isEmpty {
+        if remote.timestamp == local.lastUpdate {
+            let remaining = local.pending.fields.subtracting(
+                remote.providedFields.union(remote.standardProperties.providedFields))
+            mergeBase = SitePropsLocalState(values: local.values, lastUpdate: local.lastUpdate,
+                lastUploadCloudTimestamp: local.lastUploadCloudTimestamp,
+                pending: .init(fields: remaining, timestamp: remaining.isEmpty ? nil : local.pending.timestamp),
+                standardProperties: local.standardProperties)
+        } else if !local.pending.fields.isEmpty {
             guard
                 let pendingTimestamp = local.pending.timestamp,
                 remote.timestamp >= pendingTimestamp,
@@ -306,7 +331,7 @@ enum SitePropsEditPolicy {
                 timezone: timezone
             ),
             lastUpdate: remote.timestamp,
-            lastUploadCloudTimestamp: remote.timestamp,
+            lastUploadCloudTimestamp: mergeBase.pending.fields.isEmpty ? remote.timestamp : mergeBase.lastUploadCloudTimestamp,
             pending: mergeBase.pending,
             standardProperties: remote.standardProperties.applying(to: mergeBase.standardProperties)
         )

@@ -43,6 +43,10 @@ methods += section(safety, '    @MainActor\n    static func prepareUpload(', '  
 methods += section(safety, '    /// Called only after the user explicitly chooses', '    struct ReferenceRepairReview')
 methods = methods.replace('UserDefaults.standard', 'testDefaults')
 methods += section(safety, '    private static func saveRecoveryPayload(', '    @MainActor\n    static func applyReferenceRepair(')
+# This suite verifies retry state and cancellation, not the production backoff
+# duration. Retain the asynchronous cancellation point without waiting 0.5 s.
+assert methods.count('sleep(nanoseconds: 500_000_000)') == 1
+methods = methods.replace('sleep(nanoseconds: 500_000_000)', 'sleep(nanoseconds: 1_000_000)')
 methods += """
     static var currentConfigurationAvailable: Bool {
         guard let space = SpaceData.sceneAuthoritySpace else { return false }
@@ -159,6 +163,13 @@ with tempfile.TemporaryDirectory(prefix='space-receipt-tests-') as temp:
         str(harness), '-o', str(binary)], check=True)
     arguments = sys.argv[1:]
     environment = os.environ.copy()
+    if "--equal-cloud-sample" in arguments:
+        index = arguments.index("--equal-cloud-sample")
+        paths = arguments[index + 1:index + 3]
+        if len(paths) != 2 or not all(Path(path).is_file() for path in paths):
+            raise SystemExit("--equal-cloud-sample requires inspection and server JSON files")
+        environment["SUNSMART_EQUAL_CLOUD_SAMPLES"] = json.dumps(paths)
+        arguments = arguments[:index] + arguments[index + 3:]
     if "--sync-conflict-sample" in arguments:
         index = arguments.index("--sync-conflict-sample")
         paths = arguments[index + 1:index + 3]

@@ -195,9 +195,7 @@ extension SpaceRecoveryReceiptTests {
                 precondition(imported.status == .applied)
             } else {
                 let result = await S.resumeUpload(space)
-                if mode == "sameTime" {
-                    if case .success = result { preconditionFailure("equal-version Profile differences require review") }
-                } else if case .failure = result { preconditionFailure("recovered version must resume: " + mode) }
+                if case .failure = result { preconditionFailure("recovered version must resume: " + mode) }
             }
             precondition(!S.needsOlderCloudBaselineReview(space))
             if mode == "missingFailure" {
@@ -206,17 +204,18 @@ extension SpaceRecoveryReceiptTests {
             }
             let state = try S.recoveryState(space)
             precondition(state.olderCloudBaselineFailure == nil && state.submission == nil)
-            if P.integer(recovered["updateTimestamp"])! > 110 {
-                precondition(space.lastUpdate == 120 && space.lastUploadCloudTimestamp == 120 && !space.needUploadCloud)
+            if P.integer(recovered["updateTimestamp"])! >= 110 {
+                let expectedTimestamp: Int64 = mode == "sameTime" ? 110 : 120
+                precondition(space.lastUpdate == expectedTimestamp && space.lastUploadCloudTimestamp == expectedTimestamp && !space.needUploadCloud)
                 precondition(space.nodes.count == 3 && !S.isBlocked(space) && request.uploads == uploads)
                 precondition(P.integer((space.groups[0]["profile"] as! [String: Any])["occupancyLevel"]) == (mode == "newProfile" ? 414 : 734))
                 continue
             }
             precondition(space.lastUploadCloudTimestamp == 100 && request.uploads == uploads)
-            if mode == "sameTime" || mode == "unrelatedBlock" {
+            if mode == "unrelatedBlock" {
                 precondition(S.isBlocked(space) && space.lastUpdate == 110)
                 precondition(S.debugSnapshotStatus(space)["blockedReason"] as? String
-                    == (mode == "sameTime" ? "profileTimestampConflict" : "incompleteImportedTopology"))
+                    == "incompleteImportedTopology")
                 continue
             }
             let cloudWins = !["caughtUp", "missingFailure"].contains(mode)
@@ -239,7 +238,7 @@ extension SpaceRecoveryReceiptTests {
             precondition(request.responses.isEmpty && request.uploads == uploads + 1)
             precondition(reopened.lastUploadCloudTimestamp == reopened.lastUpdate && !reopened.needUploadCloud && !S.hasPendingUpload(reopened))
         }
-        print("PASS: recovered cloud versions leave stale-review state; upload/import arbitrate Profiles, preserve equal-version/unrelated blocks and retry failed persistence")
+        print("PASS: recovered cloud versions leave stale-review state; upload/import arbitrate Profiles, replace equal versions, preserve unrelated older-cloud blocks and retry failed persistence")
     }
 
     @MainActor static func testOlderCloudAuthorityRecovery() async throws {
@@ -305,7 +304,8 @@ extension SpaceRecoveryReceiptTests {
             }
             precondition(request.responses.isEmpty && reopened.lastUploadCloudTimestamp == reopened.lastUpdate)
             let state = try S.recoveryState(reopened)
-            precondition(state.localReplacementVersion == nil && state.prefersLocalMembership == true && !S.hasPendingUpload(reopened))
+            precondition(state.localReplacementVersion == nil && state.prefersLocalMembership != true && !S.hasPendingUpload(reopened),
+                         "same-version cloud readback clears the obsolete local preference")
         }
         print("PASS: reviewed same-UUID Device Key/address replacement uploads after reopening and later edits; unreviewed replacement stays blocked")
     }

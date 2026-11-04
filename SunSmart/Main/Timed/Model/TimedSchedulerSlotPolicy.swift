@@ -102,8 +102,16 @@ enum TimedSchedulerPayloadPolicy {
     /// array. Preserve existing bindings and let validation reject malformed ones.
     /// Old clients preserve logical IDs above 15 but drop the schema and every
     /// node binding when writing a Space. Keep the desired schedules, defaulting
-    /// only the lost bindings to unassigned. Never infer physical slots from IDs.
+    /// lost bindings to unassigned and omitted business properties to Schedule defaults.
+    /// Never infer physical slots from IDs.
     static func fillingMissingBindings(_ payload: [String: Any]) -> [String: Any] {
+        var payload = payload
+        if payload["schedules"] == nil { payload["schedules"] = [[String: Any]]() }
+        if let schedules = payload["schedules"] as? [[String: Any]] {
+            let defaults: [String: Any] = ["name": "", "enabled": false, "selectTarget": 0,
+                "action": 15, "fadeTime": 0, "hour": 0, "minute": 0, "dayOfWeek": 0, "sceneAddress": NSNull()]
+            payload["schedules"] = schedules.map { defaults.merging($0) { _, supplied in supplied } }
+        }
         if declaredSchema(payload) == 2,
            let schedules = payload["schedules"] as? [[String: Any]] {
             var result = payload
