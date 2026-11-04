@@ -38,7 +38,9 @@ extension SiteData {
 
 @MainActor enum SiteStandardPropsPersistenceTests {
     static func run(path: String) async throws {
+        try cityIdentityPersistence(path: path)
         try await editedMetadataPersistence(path: path)
+        try await cityPendingSurvivesFullUploadReceipt(path: path)
         try transferCacheLifetime(path: path)
         try coordinateStringImport(path: path)
         let site = try SiteData.add(name: "Interleaved", timezone: nil)
@@ -46,13 +48,13 @@ extension SiteData {
         let importer = SiteData.load(siteId: site.id)!
         var payload: [String: Any] = ["uuid": site.id, "siteName": site.name,
             "imageId": 1, "type": 1, "createTimestamp": site.create,
-            "updateTimestamp": site.lastUpdate, "city": "795565", "latitude": 0,
+            "updateTimestamp": site.lastUpdate, "city": "Singapore", "cityId": 795565, "latitude": 0,
             "longitude": -72.5, "countryRegion": "SG", "postalCode": "018983",
             "address": "Street", "description": "Lobby"]
         precondition(importer.importFixture(siteJsonData: payload))
         let imported = importer.standardProperties
         let prepared = SiteData.load(siteId: site.id)!
-        precondition(prepared.city == "795565" && oldTaskSite.city == nil)
+        precondition(prepared.city == "Singapore" && prepared.cityId == 795565 && oldTaskSite.city == nil)
         // The request exports the reloaded instance; its receipt still owns oldTaskSite.
         var submitted = prepared.standardProperties.jsonObject
         submitted["updateTimestamp"] = prepared.lastUpdate
@@ -68,7 +70,7 @@ extension SiteData {
         payload = ["uuid": site.id, "siteName": site.name, "updateTimestamp": site.lastUpdate,
                    "city": NSNull()]
         precondition(site.importFixture(siteJsonData: payload))
-        precondition(site.city == nil && site.latitude == 0 && site.longitude == -72.5)
+        precondition(site.city == nil && site.cityId == 795565 && site.latitude == 0 && site.longitude == -72.5)
         precondition(oldTaskSite.save())
         precondition(SiteData.load(siteId: site.id)!.city == nil, "Stale non-nil values must not resurrect a clear")
         try await propsReadbackAndReceipts(siteID: site.id, path: path)
@@ -76,9 +78,41 @@ extension SiteData {
         print("PASS: SQLite detail import -> fresh export -> stale upload receipt -> restart, partial fields and explicit null")
     }
 
+    static func cityIdentityPersistence(path: String) throws {
+        let legacy = try SiteData.add(name: "Legacy city", timezone: nil,
+                                      standardProperties: .init(city: "1880252"))
+        let database = SunSmartDataManager.shared.db!
+        try database.execute("ALTER TABLE sites DROP COLUMN cityId")
+        SiteData.initDatabase()
+        SunSmartDataManager.shared.db = try Connection(path)
+        let upgraded = SiteData.load(siteId: legacy.id)!
+        precondition(upgraded.city == "1880252" && upgraded.standardProperties.jsonObject["cityId"] is NSNull)
+        precondition(upgraded.pendingSitePropsMask.isEmpty, "Adding the nullable column must not migrate/upload old city strings")
+        let stale = SiteData.load(siteId: legacy.id)!
+        let identity = try SiteStandardProperties.Patch(["city": "shenzhen", "cityId": 1880252])
+        precondition(upgraded.save(standardPropertiesPatch: identity))
+        precondition(stale.save())
+        SunSmartDataManager.shared.db = try Connection(path)
+        let fresh = SiteData.load(siteId: legacy.id)!
+        precondition(fresh.city == "shenzhen" && fresh.standardProperties.jsonObject["cityId"] as? Int == 1880252)
+        precondition(SiteData.loadAll().first { $0.id == legacy.id }!.standardProperties == fresh.standardProperties)
+        precondition(fresh.copy().standardProperties == fresh.standardProperties)
+        precondition(fresh.persistedPropsState()!.standardProperties == fresh.standardProperties)
+        let before = fresh.standardProperties
+        try SunSmartDataManager.shared.db!.execute("CREATE TRIGGER fail_city BEFORE INSERT ON sites BEGIN SELECT RAISE(FAIL, 'fixture'); END;")
+        let clear = try SiteStandardProperties.Patch(["city": NSNull(), "cityId": NSNull()])
+        precondition(!fresh.save(standardPropertiesPatch: clear))
+        precondition(SiteData.load(siteId: legacy.id)!.standardProperties == before)
+        try SunSmartDataManager.shared.db!.execute("DROP TRIGGER fail_city")
+        precondition(fresh.save(standardPropertiesPatch: clear) && stale.save())
+        let cleared = SiteData.load(siteId: legacy.id)!
+        precondition(cleared.city == nil && cleared.standardProperties.jsonObject["cityId"] is NSNull)
+        print("PASS: SQLite cityId add-column without legacy conversion, paired save/restart/copy, stale save and rollback")
+    }
+
     static func editedMetadataPersistence(path: String) async throws {
         let original = SiteStandardProperties(latitude: 0, longitude: -1.25, countryRegion: "SG", postalCode: "00123",
-                                              city: "795565", address: "Street", siteDescription: "Lobby")
+                                              city: "Singapore", cityId: 795565, address: "Street", siteDescription: "Lobby")
         let site = try SiteData.add(name: "Editable", timezone: nil, standardProperties: original)
         let other = try SiteData.add(name: "Other project", timezone: nil)
         precondition(!SiteData.isTautonym(siteName: site.name, excludingSiteID: site.id))
@@ -124,6 +158,45 @@ extension SiteData {
         precondition(preserved.postalCode == "00002" && preserved.pendingSitePropsTimestamp == laterPlan.targetState.lastUpdate)
         precondition(preserved.pendingSitePropsMask == [.address, .postalCode, .latitude])
         print("PASS: SQLite edit clears, duplicate identity, disjoint updates, rollback, restart retry and stale-instance ACK")
+    }
+
+    static func cityPendingSurvivesFullUploadReceipt(path: String) async throws {
+        for addingSite in [false, true] {
+            let site = try SiteData.add(name: "City receipt \(addingSite)", timezone: nil,
+                standardProperties: .init(countryRegion: "US", city: "Before", cityId: 1))
+            let oldTask = SiteData.load(siteId: site.id)!
+            let submitted = oldTask.lastUpdate
+            let editor = SitePropsEditCoordinator(site: SiteData.load(siteId: site.id)!)
+            var draft = await editor.prepareDraft(online: false)
+            draft.standardProperties.city = "After"
+            draft.standardProperties.cityId = 2
+            let plan = editor.makeCommitPlan(draft: draft, online: false, now: submitted + 1)
+            guard case .success = editor.persist(plan) else { preconditionFailure() }
+            let expected = plan.targetState
+            let receipt = SiteSyncReceiptFixture(oldTask)
+            let payload: [String: Any] = ["updateTimestamp": submitted, "city": "Before", "cityId": 1]
+            let api: NetowrkReqeustApi = addingSite ? .siteAdd(siteData: payload, useDeivceAddressNum: 0) : .siteUpload(siteData: payload)
+            try SunSmartDataManager.shared.db!.execute("CREATE TRIGGER fail_old_receipt BEFORE INSERT ON sites BEGIN SELECT RAISE(FAIL, 'fixture'); END;")
+            precondition(!receipt.confirmSiteUpload(api: api, response: [:]))
+            precondition(SiteData.load(siteId: site.id)!.persistedPropsState() == expected)
+            try SunSmartDataManager.shared.db!.execute("DROP TRIGGER fail_old_receipt")
+            precondition(receipt.confirmSiteUpload(api: api, response: [:]))
+            SunSmartDataManager.shared.db = try Connection(path)
+            let restarted = SiteData.load(siteId: site.id)!
+            precondition(restarted.city == "After" && restarted.cityId == 2)
+            precondition(restarted.pendingSitePropsMask == [.city, .cityId]
+                && restarted.pendingSitePropsTimestamp == submitted + 1 && restarted.lastUpdate == submitted + 1,
+                "An older full-upload ACK must preserve the newer city's pending identity and version")
+            precondition(restarted.lastUploadCloudTimestamp == submitted)
+            let retryEditor = SitePropsEditCoordinator(site: restarted)
+            let retryDraft = await retryEditor.prepareDraft(online: false)
+            let retry = retryEditor.makeCommitPlan(draft: retryDraft, online: true, now: submitted + 2).updateSnapshot!
+            precondition(retry.fields == [.city, .cityId] && retry.timestamp == submitted + 1)
+            NetworkRequest.shared.result = .success(["data": ["updateTimestamp": retry.timestamp, "city": "After", "cityId": 2]])
+            let accepted = await retryEditor.submit(retry)
+            precondition(accepted && SiteData.load(siteId: site.id)!.pendingSitePropsMask.isEmpty)
+        }
+        print("PASS: SQLite new city pending/version survives old full-upload/Add ACK, failure rollback, restart and paired retry")
     }
 
     static func transferCacheLifetime(path: String) throws {
@@ -186,10 +259,10 @@ extension SiteData {
         let reader = SitePropsEditCoordinator(site: readerSite)
         NetworkRequest.shared.result = .success(["data": ["props": [
             "siteName": readerSite.name, "imageId": readerSite.imageId,
-            "updateTimestamp": readerSite.lastUpdate, "city": "123456", "longitude": "80"]]])
+            "updateTimestamp": readerSite.lastUpdate, "city": "New city", "cityId": 123456, "longitude": "80"]]])
         _ = await reader.prepareDraft(online: true)
         let fresh = readerSite.standardProperties
-        precondition(fresh.city == "123456" && fresh.longitude == 80 && fresh.latitude == 0)
+        precondition(fresh.city == "New city" && fresh.cityId == 123456 && fresh.longitude == 80 && fresh.latitude == 0)
         // Both receipt operations must preserve a props read that arrived in flight.
         let addSpaces = SiteSyncReceiptFixture(oldAddSpaces, addingSpaces: true)
         precondition(addSpaces.confirmSiteUpload(api: .siteUpload(siteData: ["updateTimestamp": readerSite.lastUpdate]), response: [:]))
@@ -216,13 +289,13 @@ extension SiteData {
         // Repeated receipt save failure rolls back and releases the transaction;
         // a later retry must be durable, not just visible on this connection.
         let db = SunSmartDataManager.shared.db!
-        let oldTimestamp = oldAddSpaces.lastUploadCloudTimestamp
+        let confirmedTimestamp = SiteData.load(siteId: siteID)!.lastUploadCloudTimestamp
         oldAddSpaces.syncCloudError = .unknown
         try db.execute("CREATE TRIGGER fail_site BEFORE INSERT ON sites BEGIN SELECT RAISE(FAIL, 'fixture'); END;")
         let retryAPI = NetowrkReqeustApi.siteUpload(siteData: ["updateTimestamp": snapshot.timestamp])
         for _ in 0..<2 {
             precondition(!addSpaces.confirmSiteUpload(api: retryAPI, response: [:]))
-            precondition(oldAddSpaces.lastUploadCloudTimestamp == oldTimestamp && oldAddSpaces.syncCloudError?.code == -1)
+            precondition(oldAddSpaces.lastUploadCloudTimestamp == confirmedTimestamp && oldAddSpaces.syncCloudError?.code == -1)
             precondition(SiteData.load(siteId: siteID)!.standardProperties == fresh)
         }
         try db.execute("DROP TRIGGER fail_site")
@@ -230,7 +303,7 @@ extension SiteData {
         SunSmartDataManager.shared.db = try Connection(path)
         let restarted = SiteData.load(siteId: siteID)!
         precondition(restarted.standardProperties == fresh && restarted.lastUploadCloudTimestamp == snapshot.timestamp)
-        precondition(restarted.syncCloudError == nil)
+        precondition(restarted.syncCloudError == nil && restarted.name == "Renamed" && restarted.lastUpdate == snapshot.timestamp)
         print("PASS: SQLite props readback with Site Add/addSpaces receipts, stale editor save, failed ACK and durable retry")
     }
 

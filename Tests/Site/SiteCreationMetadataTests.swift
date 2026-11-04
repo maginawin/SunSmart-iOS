@@ -2,6 +2,7 @@ import Foundation
 
 @main enum SiteCreationMetadataTests {
     static func main() throws {
+        try cityIdentityRoundTripAndReceipts()
         let properties = SiteStandardProperties(latitude: 0, longitude: -72.123456789,
             countryRegion: "SG", postalCode: "018983", city: "795565", address: "1 Marina Boulevard",
             siteDescription: "Lobby")
@@ -60,5 +61,65 @@ import Foundation
         state.receive(withZone, timestamp: 12)
         precondition(state.pending == nil && state.data == withZone)
         print("PASS: standard Site JSON types, null/missing, version merge and independent extension state")
+    }
+
+    // Losing cityId used to be invisible: the parser silently ignored it and export omitted it.
+    static func cityIdentityRoundTripAndReceipts() throws {
+        let original = try SiteStandardProperties.Patch(["city": "shenzhen", "cityId": 1880252])
+            .applying(to: .init())
+        let encoded = original.jsonObject
+        precondition(encoded["cityId"] as? Int == 1880252, "Site cityId must survive parsing and JSON export as an integer")
+        precondition(encoded["city"] as? String == "shenzhen")
+        precondition(SiteStandardProperties().jsonObject["cityId"] is NSNull)
+        let unchanged = try SiteStandardProperties.Patch([:]).applying(to: original)
+        precondition(unchanged == original)
+        let nameOnly = try SiteStandardProperties.Patch(["city": "Shenzhen"]).applying(to: original)
+        precondition(nameOnly.jsonObject["cityId"] as? Int == 1880252)
+        let cleared = try SiteStandardProperties.Patch(["cityId": NSNull()]).applying(to: original)
+        precondition(cleared.city == "shenzhen" && cleared.jsonObject["cityId"] is NSNull)
+        for invalid: Any in [true, false, 0, -1, 1.5, "1880252", Double.infinity, Double.nan,
+                             NSNumber(value: UInt64.max), [], [:]] {
+            do { _ = try SiteStandardProperties.Patch(["cityId": invalid]); preconditionFailure("Invalid cityId must be rejected") }
+            catch is SiteStandardProperties.Patch.ParseError {}
+        }
+        let values = SitePropsValues(siteName: "Site", imageId: 1, timezone: nil)
+        let local = SitePropsLocalState(values: values, lastUpdate: 10, lastUploadCloudTimestamp: 10,
+            pending: .init(fields: [], timestamp: nil), standardProperties: original)
+        let another = try SiteStandardProperties.Patch(["cityId": 1880253]).applying(to: original)
+        let request = SitePropsEditPolicy.makeUpdateSnapshot(siteId: "site", local: local,
+            original: values, draft: values, now: 11, originalStandardProperties: original, standardProperties: another)!
+        let patch = request.standardProperties.patch(for: request.fields).jsonObject
+        precondition(patch["city"] as? String == "shenzhen" && patch["cityId"] as? Int == 1880253,
+                     "Same-name different-ID choices must send both fields")
+        for response: [String: Any] in [["city": "shenzhen"], ["cityId": 1880253],
+                                        ["city": "shenzhen", "cityId": 1880252]] {
+            let remote = SitePropsRemoteSnapshot(siteName: nil, imageId: nil, timezone: nil,
+                providedFields: [], timestamp: 11, standardProperties: try .init(response))
+            precondition(!SitePropsEditPolicy.updateResponseMatches(request: request, response: remote))
+        }
+        let accepted = SitePropsRemoteSnapshot(siteName: nil, imageId: nil, timezone: nil,
+            providedFields: [], timestamp: 11, standardProperties: try .init(patch))
+        precondition(SitePropsEditPolicy.updateResponseMatches(request: request, response: accepted))
+        let renamed = SitePropsEditPolicy.makeUpdateSnapshot(siteId: "site", local: local,
+            original: values, draft: values, now: 11, originalStandardProperties: original, standardProperties: nameOnly)!
+        precondition(renamed.standardProperties.patch(for: renamed.fields).jsonObject["cityId"] as? Int == 1880252,
+                     "Same-ID rename must send the ID too")
+        let pending = SitePropsLocalState(values: values, lastUpdate: 11, lastUploadCloudTimestamp: 10,
+            pending: .init(fields: request.fields, timestamp: 11), standardProperties: another)
+        for response: [String: Any] in [["city": "shenzhen"], ["cityId": 1880253],
+                                        ["city": "shenzhen", "cityId": 1880252]] {
+            let remote = SitePropsRemoteSnapshot(siteName: nil, imageId: nil, timezone: nil,
+                providedFields: [], timestamp: 11, standardProperties: try .init(response))
+            precondition(!SitePropsEditPolicy.mergeRetrieve(local: pending, remote: remote).shouldPersist)
+        }
+        precondition(SitePropsEditPolicy.mergeRetrieve(local: pending, remote: accepted).state.pending.fields.isEmpty)
+        let legacyPending = SitePropsLocalState(values: values, lastUpdate: 11, lastUploadCloudTimestamp: 10,
+            pending: .init(fields: .city, timestamp: 11), standardProperties: .init(city: "1880252"))
+        let retry = SitePropsEditPolicy.makeUpdateSnapshot(siteId: "site", local: legacyPending,
+            original: values, draft: values, now: 12)!
+        precondition(retry.fields == [.city, .cityId] && retry.timestamp == 11,
+                     "A persisted city-only pending mask must resend the complete identity without migrating its value")
+        let retryPatch = retry.standardProperties.patch(for: retry.fields).jsonObject
+        precondition(retryPatch["city"] as? String == "1880252" && retryPatch["cityId"] is NSNull)
     }
 }

@@ -49,6 +49,7 @@ final class SiteData {
     var siteExtensionData = SiteExtensionData()
     var latitude: Double?, longitude: Double?
     var countryRegion: String?, postalCode: String?, city: String?, address: String?, siteDescription: String?
+    var cityId: Int?
     var gatewayPresence = false
     let region: ServerRegion
     var id: String, meshUUID: String, meshNetworkId: String, name: String

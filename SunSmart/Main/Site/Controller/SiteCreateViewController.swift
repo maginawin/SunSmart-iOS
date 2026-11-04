@@ -6,8 +6,6 @@ class SiteFormViewController: UIViewController {
     let editingSite: SiteData?
     private let notSyncedButton = UIButton(type: .system)
     private var modalDismissalStateBeforeTimeZone: Bool?
-    private let cityDisplayLoader = CityCatalogLoader()
-    private var cityDisplayGeneration = 0
     private let account = UserData.currentUserId
     private let region = UserData.currentServerRegion
     private let allowsSiteType = FeatureVisibility.shared.canSelectSiteType
@@ -24,7 +22,9 @@ class SiteFormViewController: UIViewController {
     private var countryCatalogObservation: UUID?
     private var countryCatalog: CountryRegionCatalog? { countryCatalogStore.catalog }
     private let cityLoader = CityCatalogLoader()
-    private var activeCityCatalog: CityCatalog?
+    private let cityCatalogStore = CityCatalogStore.shared
+    private var cityCatalogObservation: UUID?
+    private var observedCityCountry: String?
     private var language: String { Bundle.main.preferredLocalizations.first ?? "en" }
     private lazy var countryField = SiteLocationSearchField(
         iconName: "site_create_search", titleKey: "site_create_country", searchKey: "site_create_country_search_placeholder",
@@ -33,8 +33,8 @@ class SiteFormViewController: UIViewController {
         context: "countries")
     private lazy var cityField = SiteLocationSearchField(
         iconName: "site_create_location", titleKey: "site_create_city", searchKey: "site_create_city_search_placeholder",
-        accessibilityPrefix: "site-create-city", selectedID: formDraft.cityID.map { "geonames:" + $0 },
-        selectedTitle: formDraft.cityID, context: formDraft.countryRegionCode ?? "")
+        accessibilityPrefix: "site-create-city", selectedID: formDraft.cityID.map { "geonames:\($0)" },
+        selectedTitle: nil, context: formDraft.countryRegionCode ?? "")
     private lazy var locationOutsideTap: UITapGestureRecognizer = {
         let gesture = UITapGestureRecognizer(target: self, action: #selector(cancelLocationSearchFromOutside))
         gesture.cancelsTouchesInView = false
@@ -63,7 +63,7 @@ class SiteFormViewController: UIViewController {
             guard isViewLoaded else { return }
             updateCreateButtonState()
             form.isUserInteractionEnabled = !isCommitting
-            if !isCommitting { countryCatalogDidChange() }
+            if !isCommitting { countryCatalogDidChange(); cityCatalogDidChange() }
         }
     }
     private let currentLocationButton = SiteCreationLocationButton(type: .custom)
@@ -122,6 +122,7 @@ class SiteFormViewController: UIViewController {
 
     deinit {
         if let observation = countryCatalogObservation { countryCatalogStore.removeObserver(observation) }
+        if let observation = cityCatalogObservation { cityCatalogStore.removeObserver(observation) }
         localTimeTimer?.invalidate()
         NotificationCenter.default.removeObserver(self)
     }
@@ -138,6 +139,7 @@ class SiteFormViewController: UIViewController {
         setupLayout()
         setupFields()
         countryCatalogStore.startIfNeeded()
+        if let code = formDraft.countryRegionCode { cityCatalogStore.startIfNeeded(countryCode: code) }
         updateTimeZone()
         updateType()
         validateName()
@@ -158,7 +160,7 @@ class SiteFormViewController: UIViewController {
             navigationController?.isModalInPresentation = previous
             modalDismissalStateBeforeTimeZone = nil
         }
-        resolveStoredCityDisplay()
+        observeCityCatalog()
         resumeClock()
     }
 
@@ -169,8 +171,9 @@ class SiteFormViewController: UIViewController {
             countryCatalogObservation = nil
         }
         stopClock()
-        cityDisplayGeneration += 1
-        cityDisplayLoader.cancel()
+        if let observation = cityCatalogObservation { cityCatalogStore.removeObserver(observation) }
+        cityCatalogObservation = nil
+        observedCityCountry = nil
         cancelCurrentLocation()
         cancelLocationSearch(animated: false)
         locationOutsideTap.view?.removeGestureRecognizer(locationOutsideTap)
@@ -307,10 +310,13 @@ class SiteFormViewController: UIViewController {
 
     private func setupLocationFields() {
         countryField.failureText = "site_create_country_load_failed".localizedString
+        cityField.failureText = "site_create_city_load_failed".localizedString
         for field in [countryField, cityField] {
             field.animationLayoutView = view
             field.onLayoutChanged = { [weak self] in self?.scrollEditingFieldIntoView(animated: false) }
-            field.canAcceptResults = { [weak self] in self?.canInteractWithLocation == true }
+            field.canAcceptResults = { [weak self] in
+                self?.canInteractWithLocation == true && UIApplication.shared.applicationState == .active
+            }
         }
         countryField.prepareForInteraction = { [weak self] in
             guard let self, self.canInteractWithLocation else { return false }
@@ -343,9 +349,9 @@ class SiteFormViewController: UIViewController {
             if changed { self.cancelCurrentLocation() }
             self.formDraft.selectCountry(entry)
             if changed {
-                self.activeCityCatalog = nil
                 self.cityField.replaceSelection(id: nil, title: nil, context: entry.code)
                 self.updateLocationValues()
+                self.observeCityCatalog()
             }
             return true
         }
@@ -354,33 +360,42 @@ class SiteFormViewController: UIViewController {
             guard let self, self.canInteractWithLocation else { return false }
             self.countryField.cancelSearch()
             self.view.endEditing(true)
-            guard self.formDraft.countryRegionCode != nil else {
+            guard let code = self.formDraft.countryRegionCode else {
                 XWHUDManager.showErrorTipHUD("site_create_city_country_required".localizedString)
                 return false
             }
+            self.cityCatalogStore.startIfNeeded(countryCode: code)
+            self.cityCatalogStore.retryIfUnavailable(countryCode: code)
             return true
+        }
+        cityField.onActiveInputTap = { [weak self] in
+            guard let self, self.canInteractWithLocation, let code = self.formDraft.countryRegionCode else { return }
+            self.cityCatalogStore.retryIfUnavailable(countryCode: code)
         }
         cityField.loadOptions = { [weak self] query, completion in
             guard let self, let countryCode = self.formDraft.countryRegionCode else { return }
-            self.cityLoader.search(countryCode: countryCode, query: query) { [weak self] result in
-                guard let self, self.canInteractWithLocation, self.cityField.isExpanded,
-                      self.formDraft.countryRegionCode == countryCode else { return }
-                switch result {
-                case .success(let (catalog, entries)):
-                    self.activeCityCatalog = catalog
-                    let countryName = self.countryCatalog?.displayName(forStoredCode: countryCode, language: self.language) ?? countryCode
-                    completion(.success(.init(options: entries.map {
-                        .init(id: $0.id, title: catalog.displayTitle(for: $0, language: self.language), detail: countryName)
-                    }, emptyText: (catalog.entries.isEmpty ? "site_create_city_unavailable" : "site_create_city_empty").localizedString)))
-                case .failure(let error): completion(.failure(error))
+            guard let catalog = self.cityCatalogStore.catalog(countryCode: countryCode) else {
+                if !self.cityCatalogStore.isLoading(countryCode: countryCode) {
+                    completion(.failure(CityCatalog.CatalogError.invalidCatalog))
                 }
+                return // Store notifications reload the current query when a snapshot arrives.
+            }
+            let revision = self.cityCatalogStore.revision(countryCode: countryCode)
+            self.cityLoader.search(catalog: catalog, query: query) { [weak self] entries in
+                guard let self, self.canInteractWithLocation, UIApplication.shared.applicationState == .active, self.cityField.isExpanded,
+                      self.formDraft.countryRegionCode == countryCode,
+                      self.cityCatalogStore.revision(countryCode: countryCode) == revision else { return }
+                let countryName = self.countryCatalog?.displayName(forStoredCode: countryCode, language: self.language) ?? countryCode
+                completion(.success(.init(options: entries.map {
+                    .init(id: $0.id, title: catalog.displayTitle(for: $0, language: self.language), detail: countryName)
+                }, emptyText: (catalog.entries.isEmpty ? "site_create_city_unavailable" : "site_create_city_empty").localizedString)))
             }
         }
         cityField.onSelect = { [weak self] option in
             guard let self, self.canInteractWithLocation,
-                  self.activeCityCatalog?.countryCode == self.formDraft.countryRegionCode,
-                  let entry = self.activeCityCatalog?.entry(id: option.id) else { return false }
-            if self.formDraft.city?.id != entry.id { self.cancelCurrentLocation() }
+                  let code = self.formDraft.countryRegionCode,
+                  let entry = self.cityCatalogStore.catalog(countryCode: code)?.entry(id: option.id) else { return false }
+            if self.formDraft.cityID != entry.record.id { self.cancelCurrentLocation() }
             guard self.formDraft.selectCity(entry, timezone: self.timeZoneCatalog?.value(matchingIdentifier: entry.timezoneIdentifier)) else {
                 XWHUDManager.showErrorTipHUD("site_create_location_load_failed".localizedString)
                 return false
@@ -388,7 +403,7 @@ class SiteFormViewController: UIViewController {
             self.updateLocationValues()
             return true
         }
-        cityField.onCancel = { [weak self] in self?.cityLoader.cancel() }
+        cityField.onCancel = { [weak self] in self?.cityLoader.cancel(); self?.updateCityTitle() }
     }
 
     private func updateCountryTitle() {
@@ -717,6 +732,7 @@ class SiteFormViewController: UIViewController {
     @objc private func resumeAfterActivation() {
         currentLocationRequest.didBecomeActive()
         countryCatalogDidChange()
+        cityCatalogDidChange()
         resumeClock()
     }
 
@@ -836,21 +852,31 @@ class SiteFormViewController: UIViewController {
         submitForm(properties: properties)
     }
 
-    private func resolveStoredCityDisplay() {
-        guard let country = formDraft.countryRegionCode, let cityID = formDraft.cityID,
-              formDraft.city == nil else { return }
-        cityDisplayGeneration += 1
-        let generation = cityDisplayGeneration
-        cityDisplayLoader.search(countryCode: country, query: "") { [weak self] result in
-            guard let self, self.canInteractWithLocation, self.cityDisplayGeneration == generation,
-                  self.formDraft.countryRegionCode == country, self.formDraft.cityID == cityID,
-                  !self.cityField.isExpanded,
-                  case .success(let (catalog, _)) = result,
-                  let entry = catalog.entry(id: "geonames:" + cityID) else { return }
-            self.formDraft.resolveStoredCity(entry)
-            self.cityField.replaceSelection(id: entry.id,
-                title: catalog.displayTitle(for: entry, language: self.language), context: country)
+    private func observeCityCatalog() {
+        let code = formDraft.countryRegionCode
+        if observedCityCountry != code || cityCatalogObservation == nil {
+            if let observation = cityCatalogObservation { cityCatalogStore.removeObserver(observation) }
+            cityCatalogObservation = nil
+            observedCityCountry = code
+            if let code {
+                cityCatalogObservation = cityCatalogStore.observe(countryCode: code) { [weak self] in self?.cityCatalogDidChange() }
+            }
         }
+        if let code { cityCatalogStore.startIfNeeded(countryCode: code) }
+        cityCatalogDidChange()
+    }
+
+    private func updateCityTitle() {
+        guard canInteractWithLocation, UIApplication.shared.applicationState == .active else { return }
+        let catalog = formDraft.countryRegionCode.flatMap { cityCatalogStore.catalog(countryCode: $0) }
+        let title = formDraft.resolvedCity(in: catalog).flatMap { catalog?.displayTitle(for: $0, language: language) }
+        cityField.updateSelectedTitle(id: formDraft.cityID.map { "geonames:\($0)" }, title: title)
+    }
+
+    private func cityCatalogDidChange() {
+        guard canInteractWithLocation, UIApplication.shared.applicationState == .active else { return }
+        updateCityTitle()
+        cityField.reloadOptions() // Invalidates displayed/search tickets without clearing the user's query.
     }
 
 }

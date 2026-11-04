@@ -37,7 +37,8 @@ struct SiteFormDraft {
     private(set) var timezoneSource: ValueSource = .initial
     private(set) var coordinateSources: [SiteCreationTextField: ValueSource] = [:]
     private(set) var city: CityCatalog.Entry?
-    private(set) var cityID: String?
+    private(set) var cityName: String?
+    private(set) var cityID: Int?
     private var originalProperties: SiteStandardProperties?
     private var originalText: [SiteCreationTextField: String] = [:]
     var imageId = 1
@@ -56,7 +57,8 @@ struct SiteFormDraft {
         imageId = values.imageId
         self.siteType = siteType
         countryRegionCode = properties.countryRegion
-        cityID = properties.city
+        cityName = properties.city
+        cityID = properties.cityId
         text = [.description: properties.siteDescription ?? "", .streetAddress: properties.address ?? "",
                 .postalCode: properties.postalCode ?? "", .latitude: properties.latitude.map { String($0) } ?? "",
                 .longitude: properties.longitude.map { String($0) } ?? ""]
@@ -66,8 +68,18 @@ struct SiteFormDraft {
 
     /// Catalog hydration resolves a label only; it must never reapply city defaults.
     mutating func resolveStoredCity(_ entry: CityCatalog.Entry) {
-        guard countryRegionCode == entry.countryCode, cityID == String(entry.record.id) else { return }
+        guard hasCityIdentity, countryRegionCode == entry.countryCode, cityID == entry.record.id else { return }
         city = entry
+    }
+
+    private var hasCityIdentity: Bool {
+        guard let cityName, let cityID else { return false }
+        return !cityName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && cityID > 0
+    }
+
+    func resolvedCity(in catalog: CityCatalog?) -> CityCatalog.Entry? {
+        guard hasCityIdentity, let cityID, let catalog, catalog.countryCode == countryRegionCode else { return nil }
+        return catalog.entry(id: "geonames:\(cityID)")
     }
 
     static func canSubmit(isNameValid: Bool, showsCoordinateError: Bool, isCommitting: Bool) -> Bool {
@@ -78,6 +90,7 @@ struct SiteFormDraft {
         guard countryRegionCode != entry.code else { return }
         countryRegionCode = entry.code
         city = nil
+        cityName = nil
         cityID = nil
         for field in [SiteCreationTextField.latitude, .longitude] where coordinateSources[field] == .city {
             text[field] = nil
@@ -92,9 +105,10 @@ struct SiteFormDraft {
               let timezone, timezone.ianaId == entry.timezoneIdentifier,
               entry.record.latitude.isFinite, entry.record.longitude.isFinite,
               (-90...90).contains(entry.record.latitude), (-180...180).contains(entry.record.longitude) else { return false }
-        guard cityID != String(entry.record.id) else { return true }
         city = entry
-        cityID = String(entry.record.id)
+        cityName = entry.record.name
+        guard cityID != entry.record.id else { return true }
+        cityID = entry.record.id
         self.timezone = timezone
         timezoneSource = .city
         text[.latitude] = entry.latitudeText
@@ -168,7 +182,8 @@ struct SiteFormDraft {
             longitude: coordinate(.longitude),
             countryRegion: countryRegionCode,
             postalCode: preservedText(.postalCode, original: originalProperties?.postalCode),
-            city: cityID,
+            city: cityName,
+            cityId: cityID,
             address: preservedText(.streetAddress, original: originalProperties?.address),
             siteDescription: preservedText(.description, original: originalProperties?.siteDescription)
         )

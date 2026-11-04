@@ -2534,6 +2534,7 @@
 "site_create_country_search_placeholder" = "Search country / region";
 "site_create_country_empty" = "No countries or regions found.";
 "site_create_country_load_failed" = "Unable to load countries. Tap the country field to try again.";
+"site_create_city_load_failed" = "Unable to load cities. Tap the city field to try again.";
 "site_create_city" = "City";
 "site_create_city_search_placeholder" = "Search city";
 "site_create_city_country_required" = "Please select Country / Region first.";

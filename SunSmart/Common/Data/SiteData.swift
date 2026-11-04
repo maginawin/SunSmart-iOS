@@ -117,20 +117,22 @@ class SiteData: Copyable {
     var longitude: Double?
     var countryRegion: String?
     var postalCode: String?
-    /// GeoNames ID as a decimal string, without a namespace prefix.
+    /// Original city.name for the server; the UI resolves localized names by cityId.
     var city: String?
+    var cityId: Int?
     var address: String?
     var siteDescription: String?
 
     var standardProperties: SiteStandardProperties {
         get { .init(latitude: latitude, longitude: longitude, countryRegion: countryRegion,
-                    postalCode: postalCode, city: city, address: address, siteDescription: siteDescription) }
+                    postalCode: postalCode, city: city, cityId: cityId, address: address, siteDescription: siteDescription) }
         set {
             latitude = newValue.latitude
             longitude = newValue.longitude
             countryRegion = newValue.countryRegion
             postalCode = newValue.postalCode
             city = newValue.city
+            cityId = newValue.cityId
             address = newValue.address
             siteDescription = newValue.siteDescription
         }

@@ -87,7 +87,7 @@ final class SitePropsEditCoordinator {
         let changedFields = SitePropsEditPolicy.changedFields(
             from: draft.original,
             to: draft.values
-        ).union(draft.standardProperties.changedFields(from: draft.originalStandardProperties))
+        ).union(draft.standardProperties.changedFields(from: draft.originalStandardProperties)).includingCityIdentity
         guard let snapshot = SitePropsEditPolicy.makeUpdateSnapshot(
             siteId: site.id,
             local: local,

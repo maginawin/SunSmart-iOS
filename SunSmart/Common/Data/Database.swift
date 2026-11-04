@@ -190,6 +190,7 @@ extension SiteData {
         static let countryRegion = Expression<String?>("countryRegion")
         static let postalCode = Expression<String?>("postalCode")
         static let city = Expression<String?>("city")
+        static let cityId = Expression<Int?>("cityId")
         static let address = Expression<String?>("address")
         static let siteDescription = Expression<String?>("description")
         static let pendingSitePropsMask = Expression<Int>("pendingSitePropsMask")
@@ -225,6 +226,7 @@ extension SiteData {
             builder.column(ExpressionKey.countryRegion)
             builder.column(ExpressionKey.postalCode)
             builder.column(ExpressionKey.city)
+            builder.column(ExpressionKey.cityId)
             builder.column(ExpressionKey.address)
             builder.column(ExpressionKey.siteDescription)
             builder.column(ExpressionKey.pendingSitePropsMask, defaultValue: 0)
@@ -256,6 +258,9 @@ extension SiteData {
             }
             if !columns.contains(where: { $0.name == "timezone" }) {
                 _ = try? SunSmartDataManager.shared.db?.run(SiteData.sitesTable.addColumn(ExpressionKey.timezone))
+            }
+            if !columns.contains(where: { $0.name == "cityId" }) {
+                _ = try? SunSmartDataManager.shared.db?.run(SiteData.sitesTable.addColumn(ExpressionKey.cityId))
             }
             for (name, column) in [("latitude", ExpressionKey.latitude), ("longitude", ExpressionKey.longitude)]
                 where !columns.contains(where: { $0.name == name }) {
@@ -293,7 +298,7 @@ extension SiteData {
                 site.timezone = row[ExpressionKey.timezone]
                 site.standardProperties = .init(latitude: row[ExpressionKey.latitude], longitude: row[ExpressionKey.longitude],
                     countryRegion: row[ExpressionKey.countryRegion], postalCode: row[ExpressionKey.postalCode],
-                    city: row[ExpressionKey.city], address: row[ExpressionKey.address], siteDescription: row[ExpressionKey.siteDescription])
+                    city: row[ExpressionKey.city], cityId: row[ExpressionKey.cityId], address: row[ExpressionKey.address], siteDescription: row[ExpressionKey.siteDescription])
                 site.pendingSitePropsMask = .init(rawValue: row[ExpressionKey.pendingSitePropsMask])
                 site.pendingSitePropsTimestamp = row[ExpressionKey.pendingSitePropsTimestamp]
                 site.lastUploadCloudTimestamp = row[ExpressionKey.lastUploadCloudTimestamp]
@@ -338,7 +343,7 @@ extension SiteData {
                 site?.timezone = row[ExpressionKey.timezone]
                 site?.standardProperties = .init(latitude: row[ExpressionKey.latitude], longitude: row[ExpressionKey.longitude],
                     countryRegion: row[ExpressionKey.countryRegion], postalCode: row[ExpressionKey.postalCode],
-                    city: row[ExpressionKey.city], address: row[ExpressionKey.address], siteDescription: row[ExpressionKey.siteDescription])
+                    city: row[ExpressionKey.city], cityId: row[ExpressionKey.cityId], address: row[ExpressionKey.address], siteDescription: row[ExpressionKey.siteDescription])
                 site?.pendingSitePropsMask = .init(rawValue: row[ExpressionKey.pendingSitePropsMask])
                 site?.pendingSitePropsTimestamp = row[ExpressionKey.pendingSitePropsTimestamp]
                 site?.lastUploadCloudTimestamp = row[ExpressionKey.lastUploadCloudTimestamp]
@@ -513,7 +518,7 @@ extension SiteData {
                            timestamp: row[ExpressionKey.pendingSitePropsTimestamp]),
             standardProperties: .init(latitude: row[ExpressionKey.latitude], longitude: row[ExpressionKey.longitude],
                 countryRegion: row[ExpressionKey.countryRegion], postalCode: row[ExpressionKey.postalCode],
-                city: row[ExpressionKey.city], address: row[ExpressionKey.address], siteDescription: row[ExpressionKey.siteDescription]))
+                city: row[ExpressionKey.city], cityId: row[ExpressionKey.cityId], address: row[ExpressionKey.address], siteDescription: row[ExpressionKey.siteDescription]))
     }
 
     /// 缓存当前场所数据
@@ -562,7 +567,7 @@ extension SiteData {
                 && ExpressionKey.regionType == self.region.rawValue)) {
                 savedProperties = .init(latitude: row[ExpressionKey.latitude], longitude: row[ExpressionKey.longitude],
                     countryRegion: row[ExpressionKey.countryRegion], postalCode: row[ExpressionKey.postalCode],
-                    city: row[ExpressionKey.city], address: row[ExpressionKey.address], siteDescription: row[ExpressionKey.siteDescription])
+                    city: row[ExpressionKey.city], cityId: row[ExpressionKey.cityId], address: row[ExpressionKey.address], siteDescription: row[ExpressionKey.siteDescription])
                 // An old editor or sync receipt must not resurrect a consumed transfer.
                 savedTransferCode = row[ExpressionKey.transferCode]
                 savedTransferPassword = row[ExpressionKey.transferPassword]
@@ -580,6 +585,7 @@ extension SiteData {
                 ExpressionKey.countryRegion <- savedProperties.countryRegion,
                 ExpressionKey.postalCode <- savedProperties.postalCode,
                 ExpressionKey.city <- savedProperties.city,
+                ExpressionKey.cityId <- savedProperties.cityId,
                 ExpressionKey.address <- savedProperties.address,
                 ExpressionKey.siteDescription <- savedProperties.siteDescription
             ]))

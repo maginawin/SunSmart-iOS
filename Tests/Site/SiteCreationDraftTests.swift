@@ -94,7 +94,7 @@ import Foundation
         let hydrated = try draft.standardProperties()
         precondition(hydrated == properties, "Opening/DONE must preserve untouched legacy text and unknown city")
         precondition(draft.imageId == 0 && draft.siteType == .hdb && draft.timezone == nil)
-        precondition(draft.city == nil && draft.cityID == "unlisted-city")
+        precondition(draft.city == nil && draft.cityID == nil && draft.cityName == "unlisted-city")
         draft.editText(.description, value: "  changed ")
         draft.editText(.postalCode, value: "00012")
         draft.editText(.longitude, value: "")

@@ -7,10 +7,11 @@ struct SiteStandardProperties: Equatable {
     var countryRegion: String?
     var postalCode: String?
     var city: String?
+    var cityId: Int?
     var address: String?
     var siteDescription: String?
 
-    static let keys = ["latitude", "longitude", "countryRegion", "postalCode", "city", "address", "description"]
+    static let keys = ["latitude", "longitude", "countryRegion", "postalCode", "city", "cityId", "address", "description"]
     private static let textFields: [(String, WritableKeyPath<Self, String?>)] = [
         ("countryRegion", \.countryRegion), ("postalCode", \.postalCode),
         ("city", \.city), ("address", \.address), ("description", \.siteDescription)
@@ -19,12 +20,14 @@ struct SiteStandardProperties: Equatable {
     var isValid: Bool {
         (latitude.map { $0.isFinite && (-90...90).contains($0) } ?? true)
             && (longitude.map { $0.isFinite && (-180...180).contains($0) } ?? true)
+            && (cityId.map { $0 > 0 } ?? true)
     }
 
     var jsonObject: [String: Any] {
         var result: [String: Any] = ["latitude": latitude.map { String($0) } as Any? ?? NSNull(),
                                      "longitude": longitude.map { String($0) } as Any? ?? NSNull()]
         for (key, path) in Self.textFields { result[key] = self[keyPath: path] as Any? ?? NSNull() }
+        result["cityId"] = cityId as Any? ?? NSNull()
         return result
     }
 
@@ -32,6 +35,7 @@ struct SiteStandardProperties: Equatable {
         var fields: SitePropsFieldMask = []
         if latitude != original.latitude { fields.insert(.latitude) }
         if longitude != original.longitude { fields.insert(.longitude) }
+        if cityId != original.cityId { fields.insert(.cityId) }
         for (key, path) in Self.textFields where self[keyPath: path] != original[keyPath: path] {
             fields.formUnion(SitePropsFieldMask.standardFields[key]!)
         }
@@ -63,6 +67,14 @@ struct SiteStandardProperties: Equatable {
         }
 
         init(_ object: [String: Any]) throws {
+            if let raw = object["cityId"] {
+                provided.insert("cityId")
+                if !(raw is NSNull) {
+                    guard let number = raw as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID(),
+                          let id = raw as? Int, id > 0 else { throw ParseError.invalidField("cityId") }
+                    values.cityId = id
+                }
+            }
             for (key, path) in SiteStandardProperties.textFields {
                 guard let raw = object[key] else { continue }
                 provided.insert(key)
@@ -98,6 +110,7 @@ struct SiteStandardProperties: Equatable {
             }
             if provided.contains("latitude") { result.latitude = values.latitude }
             if provided.contains("longitude") { result.longitude = values.longitude }
+            if provided.contains("cityId") { result.cityId = values.cityId }
             return result
         }
 
@@ -122,10 +135,16 @@ struct SitePropsFieldMask: OptionSet, Equatable {
     static let city = SitePropsFieldMask(rawValue: 1 << 7)
     static let address = SitePropsFieldMask(rawValue: 1 << 8)
     static let siteDescription = SitePropsFieldMask(rawValue: 1 << 9)
+    static let cityId = SitePropsFieldMask(rawValue: 1 << 10)
+
+    /// Outbound user edits own the city identity pair; inbound partial patches stay independent.
+    var includingCityIdentity: Self {
+        isDisjoint(with: [.city, .cityId]) ? self : union([.city, .cityId])
+    }
 
     static let standardFields: [String: Self] = [
         "latitude": .latitude, "longitude": .longitude, "countryRegion": .countryRegion,
-        "postalCode": .postalCode, "city": .city, "address": .address, "description": .siteDescription
+        "postalCode": .postalCode, "city": .city, "cityId": .cityId, "address": .address, "description": .siteDescription
     ]
 }
 
@@ -210,8 +229,8 @@ enum SitePropsEditPolicy {
         let editedProperties = standardProperties ?? local.standardProperties
         let changed = changedFields(from: original, to: draft).union(
             editedProperties.changedFields(from: originalStandardProperties ?? local.standardProperties)
-        )
-        let fields = local.pending.fields.union(changed)
+        ).includingCityIdentity
+        let fields = local.pending.fields.union(changed).includingCityIdentity
         guard !fields.isEmpty else { return nil }
 
         let timestamp: Int64

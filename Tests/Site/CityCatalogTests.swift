@@ -1,81 +1,24 @@
 import Foundation
-import CryptoKit
 
 @main enum CityCatalogTests {
     static func main() throws {
         let repo = URL(fileURLWithPath: CommandLine.arguments[1])
         let countries = try CountryRegionCatalog(response: ["code": 200, "data": [["code": "US", "name": "United States"], ["code": "CN", "name": "China"], ["code": "FR", "name": "France"]]])
         let zones = try SiteTimeZoneCatalog(data: Data(contentsOf: repo.appendingPathComponent("SunSmart/all_utc_timezones.json")))
-        try testBundledCatalog(repo, zones: zones)
-        try testSearchAndValidation()
         try testDraft(countries: countries, zones: zones)
-        try testLateResponsesAndCache()
-        print("PASS: city catalog coverage/integrity, bilingual search, disambiguation, draft transitions and late-response/cache behavior")
+        try testStoredIdentity(zones: zones)
+        try testSearchCancellation()
+        print("PASS: city identity/name drafts, missing/legacy display, same-ID rename, GPS/manual values, search cancellation and replacement")
     }
-
-    static func record(_ id: Int, name: String, zone: String = "America/Chicago", lat: Double = 39.7817,
-                       admin: String = "US.IL", chinese: String? = "斯普林菲尔德") -> [String: Any] {
-        var names = ["en": name]
-        if let chinese { names["zh-Hans"] = chinese }
-        return ["id": id, "names": names, "aliases": name == "Åland" ? ["Aland Islands"] : ["Spring Field"], "admin1": admin, "admin2": "",
-                "timezone": zone, "latitude": lat, "longitude": -89.6501]
+    static func record(_ id: Int, name: String = "Springfield", zone: String = "America/Chicago") -> [String: Any] {
+        ["id": id, "name": name, "names_json": ["en": "Springfield", "zh-Hans": "斯普林菲尔德"],
+         "timezone": zone, "latitude": 39.7817, "longitude": -89.6501]
     }
-
-    static func data(country: String = "US", rows: [[String: Any]]? = nil) throws -> Data {
-        try JSONSerialization.data(withJSONObject: ["schemaVersion": 1, "countryCode": country,
-            "administrativeAreas": ["US.IL": ["en": "Illinois", "zh-Hans": "伊利诺伊州"], "US.GA": ["en": "Georgia"]],
-            "cities": rows ?? [record(1, name: "Springfield"), record(2, name: "Springfield", zone: "America/New_York", admin: "US.GA"),
-                               record(3, name: "Åland", lat: 0, chinese: nil)]])
+    static func response() -> [String: Any] {
+        ["code": 200, "data": [record(1), record(2, zone: "America/New_York")]]
     }
-
-    static func testSearchAndValidation() throws {
-        let catalog = try CityCatalog(data: data(), countryCode: "US")
-        precondition(catalog.entries.map(\.record.id) == [3, 2, 1])
-        for query in ["spring", "ＳＰＲＩＮＧ", "斯普", "Spring Field"] {
-            precondition(catalog.entries(matching: query).count == 2)
-        }
-        precondition(catalog.entries(matching: " aland ").first?.record.id == 3)
-        precondition(catalog.entries(matching: "  ").count == 3 && catalog.entries(matching: "not a city").isEmpty)
-        let first = catalog.entry(id: "geonames:1")!, second = catalog.entry(id: "geonames:2")!
-        precondition(catalog.displayTitle(for: first, language: "en") == "Springfield, Illinois")
-        precondition(catalog.displayTitle(for: second, language: "en") == "Springfield, Georgia")
-        precondition(catalog.displayTitle(for: first, language: "zh-Hans").contains("伊利诺伊州"))
-        precondition(catalog.entry(id: "geonames:3")!.displayName(language: "zh-Hans") == "Åland")
-        precondition(first.displayName(language: "de") == "Springfield")
-        precondition(catalog.entry(id: "geonames:3")!.latitudeText == "0" && first.longitudeText == "-89.6501")
-        let sameAdmin = try CityCatalog(data: data(rows: [record(1, name: "Twin"), record(2, name: "Twin", lat: 40)]), countryCode: "US")
-        precondition(sameAdmin.displayTitle(for: sameAdmin.entries[0], language: "en").contains("39.7817"))
-        precondition(sameAdmin.displayTitle(for: sameAdmin.entries[1], language: "en").contains("40"))
-        let empty = try CityCatalog(data: data(rows: []), countryCode: "US")
-        precondition(empty.entries.isEmpty)
-        for bad in [Data("bad".utf8), try data(country: "FR"), try data(rows: [record(1, name: "One"), record(1, name: "Two")]),
-                    try data(rows: [record(0, name: "Zero")]), try data(rows: [record(1, name: " ")]),
-                    try data(rows: [record(1, name: "Invalid", lat: 91)]), try data(rows: [record(1, name: "Invalid", admin: "missing")])] {
-            do { _ = try CityCatalog(data: bad, countryCode: "US"); preconditionFailure("Invalid catalog must fail") } catch {}
-        }
-        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        defer { try? FileManager.default.removeItem(at: root) }
-        try FileManager.default.createDirectory(at: root.appendingPathComponent("countries"), withIntermediateDirectories: true)
-        let contents = try data()
-        try contents.write(to: root.appendingPathComponent("countries/US.json"))
-        let manifest: [String: Any] = ["schemaVersion": 1, "countries": ["US": ["count": 3, "bytes": contents.count,
-            "sha256": SHA256.hash(data: contents).map { String(format: "%02x", $0) }.joined()]]]
-        try JSONSerialization.data(withJSONObject: manifest).write(to: root.appendingPathComponent("manifest.json"))
-        let verified = try CityCatalog.load(countryCode: "US", root: root)
-        precondition(verified.entries.count == 3)
-        try (contents + Data(" ".utf8)).write(to: root.appendingPathComponent("countries/US.json"))
-        do { _ = try CityCatalog.load(countryCode: "US", root: root); preconditionFailure("Corruption must fail") } catch {}
-        let unavailable = try CityCatalog.load(countryCode: "FR", root: root)
-        precondition(unavailable.entries.isEmpty, "A server country without a bundled partition is a valid empty city result")
-        try FileManager.default.removeItem(at: root.appendingPathComponent("countries/US.json"))
-        do { _ = try CityCatalog.load(countryCode: "US", root: root); preconditionFailure("A declared but missing partition must fail") } catch {}
-        for code in ["../US", "us"] {
-            do { _ = try CityCatalog.load(countryCode: code, root: root); preconditionFailure("Missing/invalid country must fail") } catch {}
-        }
-    }
-
     static func testDraft(countries: CountryRegionCatalog, zones: SiteTimeZoneCatalog) throws {
-        let catalog = try CityCatalog(data: data(), countryCode: "US")
+        let catalog = try CityCatalog(response: response(), countryCode: "US")
         let one = catalog.entry(id: "geonames:1")!, two = catalog.entry(id: "geonames:2")!
         let initial = zones.value(matchingIdentifier: "Asia/Shanghai")!
         let chicago = zones.value(matchingIdentifier: one.timezoneIdentifier)!, newYork = zones.value(matchingIdentifier: two.timezoneIdentifier)!
@@ -96,7 +39,7 @@ import CryptoKit
         draft.selectCountry(countries.entry(code: "FR")!)
         precondition(draft.city == nil && draft.text[.latitude] == " 1 " && draft.text[.longitude] == nil && draft.timezone == newYork)
         let afterCountryChange = try draft.standardProperties()
-        precondition(afterCountryChange.city == nil && afterCountryChange.latitude == 1 && afterCountryChange.longitude == nil)
+        precondition(afterCountryChange.city == nil && afterCountryChange.cityId == nil && afterCountryChange.latitude == 1 && afterCountryChange.longitude == nil)
         precondition(!draft.selectCity(one, timezone: chicago), "Old-country rows cannot commit")
         draft.selectCountry(countries.entry(code: "US")!)
         precondition(draft.selectCity(two, timezone: newYork))
@@ -105,9 +48,9 @@ import CryptoKit
         precondition(draft.selectCity(two, timezone: newYork) && draft.text[.latitude] == "")
         precondition(draft.selectCity(one, timezone: chicago), "A different city replaces prior manual values")
         let saved = try draft.standardProperties().jsonObject
-        precondition(saved["city"] as? String == "1" && saved["latitude"] as? String == "39.7817")
+        precondition(saved["city"] as? String == "Springfield" && saved["cityId"] as? Int == 1 && saved["latitude"] as? String == "39.7817")
         precondition(saved["longitude"] as? String == "-89.6501" && saved["countryRegion"] as? String == "US")
-        precondition(catalog.entry(id: "geonames:" + (saved["city"] as! String))?.record.id == one.record.id)
+        precondition(catalog.entry(id: "geonames:\(saved["cityId"] as! Int)")?.record.id == one.record.id)
         draft.selectCountry(countries.entry(code: "CN")!)
         precondition(draft.city == nil && draft.timezone == initial && draft.text[.latitude] == nil && draft.text[.longitude] == nil)
         precondition(draft.applyCurrentLocation(latitude: 1.25, longitude: -2.5))
@@ -132,7 +75,7 @@ import CryptoKit
         precondition(draft.coordinateValidation(for: .latitude) == .valid(one.record.latitude))
         precondition(draft.coordinateValidation(for: .longitude) == .valid(one.record.longitude))
 
-        let stored = SiteStandardProperties(latitude: 1.25, longitude: 0, countryRegion: "US", city: "1")
+        let stored = SiteStandardProperties(latitude: 1.25, longitude: 0, countryRegion: "US", city: "Springfield", cityId: 1)
         var editor = SiteFormDraft(values: .init(siteName: "Existing", imageId: 1, timezone: initial),
                                    properties: stored, siteType: .standard)
         editor.resolveStoredCity(one)
@@ -146,7 +89,7 @@ import CryptoKit
         precondition(editor.text[.latitude] == "1.25" && editor.text[.longitude] == "0.0")
         editor.selectCountry(countries.entry(code: "US")!)
         precondition(editor.selectCity(two, timezone: newYork))
-        precondition(editor.timezone == newYork && editor.cityID == "2")
+        precondition(editor.timezone == newYork && editor.cityID == 2)
 
         var unknown = SiteFormDraft(siteName: "Unknown", timezone: nil)
         unknown.selectCountry(countries.entry(code: "US")!)
@@ -155,102 +98,61 @@ import CryptoKit
         precondition(unknown.timezone == nil && unknown.isNameValid(isDuplicate: false))
     }
 
-    static func drain(until completed: () -> Bool) {
-        let deadline = Date().addingTimeInterval(10)
-        while !completed(), Date() < deadline { RunLoop.current.run(until: Date().addingTimeInterval(0.005)) }
-        precondition(completed(), "Background catalog callback timed out")
+    static func testStoredIdentity(zones: SiteTimeZoneCatalog) throws {
+        let catalog = try CityCatalog(response: response(), countryCode: "US")
+        let renamed = try CityCatalog(response: ["code": 200, "data": [record(1, name: "New raw name")]], countryCode: "US")
+        let empty = try CityCatalog(response: ["code": 200, "data": []], countryCode: "US")
+        let initial = zones.value(matchingIdentifier: "Asia/Shanghai")!
+        for props in [SiteStandardProperties(countryRegion: "US", city: "1"),
+                      .init(countryRegion: "US", cityId: 1), .init(countryRegion: "US", city: " ", cityId: 1),
+                      .init(countryRegion: "US", city: "Springfield", cityId: 999),
+                      .init(countryRegion: "CN", city: "Springfield", cityId: 1)] {
+            var draft = SiteFormDraft(values: .init(siteName: "Old", imageId: 1, timezone: initial), properties: props, siteType: .standard)
+            precondition(draft.resolvedCity(in: catalog) == nil)
+            draft.resolveStoredCity(catalog.entries[0])
+            precondition((try? draft.standardProperties()) == props, "No match does not migrate/dirty old values")
+        }
+        let stored = SiteStandardProperties(latitude: 1, longitude: 2, countryRegion: "US", city: "Old raw name", cityId: 1)
+        var draft = SiteFormDraft(values: .init(siteName: "Site", imageId: 1, timezone: initial), properties: stored, siteType: .standard)
+        precondition(draft.resolvedCity(in: catalog)?.record.id == 1, "ID matches independently of stale server name")
+        precondition(draft.resolvedCity(in: catalog)?.displayName(language: "zh-Hans") == "斯普林菲尔德")
+        draft.resolveStoredCity(renamed.entries[0])
+        precondition(draft.resolvedCity(in: empty) == nil && draft.resolvedCity(in: nil) == nil)
+        precondition((try? draft.standardProperties()) == stored && draft.timezone == initial)
+        precondition(draft.selectCity(renamed.entries[0], timezone: zones.value(matchingIdentifier: "America/Chicago")))
+        let saved = try draft.standardProperties()
+        precondition(saved.city == "New raw name" && saved.cityId == 1 && saved.latitude == 1 && saved.longitude == 2)
+        precondition(draft.timezone == initial)
+        let unknown = try CityCatalog(response: ["code": 200, "data": [record(3, zone: "Unknown/City")]], countryCode: "US")
+        precondition(!draft.selectCity(unknown.entries[0], timezone: nil))
+        precondition((try? draft.standardProperties()) == saved)
     }
 
-    static func testLateResponsesAndCache() throws {
-        let us = try CityCatalog(data: data(), countryCode: "US")
-        let fr = try CityCatalog(data: data(country: "FR", rows: []), countryCode: "FR")
-        let cn = try CityCatalog(data: data(country: "CN", rows: []), countryCode: "CN")
-        var reads: [String] = []
-        let started = DispatchSemaphore(value: 0), release = DispatchSemaphore(value: 0)
-        let loader = CityCatalogLoader { code in
-            reads.append(code)
-            if reads.count == 1 { started.signal(); precondition(release.wait(timeout: .now() + 5) == .success) }
-            return ["US": us, "FR": fr, "CN": cn][code]!
-        }
+    static func testSearchCancellation() throws {
+        let catalog = try CityCatalog(response: response(), countryCode: "US")
+        let loader = CityCatalogLoader()
         var state = SiteLocationSearchState(context: "US")
-        state.beginSearch()
-        let old = state.ticket
-        var responses = 0, accepted = 0
-        loader.search(countryCode: "US", query: "") { result in
-            precondition((try? result.get().0.countryCode) == "US")
-            responses += 1
-            if state.accepts(old) { accepted += 1 }
-        }
-        precondition(started.wait(timeout: .now() + 5) == .success)
-        state.replaceSelection(id: nil, context: "FR"); state.beginSearch()
+        state.beginSearch(); let old = state.ticket
+        var unexpected = false, done = false
+        loader.search(catalog: catalog, query: "Spring") { _ in unexpected = true }
+        state.replaceSelection(id: nil, context: "CN"); state.beginSearch()
         state.replaceSelection(id: nil, context: "US"); state.beginSearch()
         state.updateQuery("Spring", isComposing: false)
-        let current = state.ticket
+        precondition(!state.accepts(old))
+        let ticket = state.ticket
         state.updateQuery("zhong", isComposing: true)
-        precondition(state.ticket == current, "IME composition leaves the committed query intact")
-        loader.search(countryCode: "US", query: state.query) { result in
-            precondition((try? result.get().1.count) == 2)
-            responses += 1
-            if state.accepts(current) { accepted += 1; state.select(id: "geonames:1") }
+        precondition(state.ticket == ticket)
+        loader.search(catalog: catalog, query: state.query) { entries in
+            precondition(state.accepts(ticket) && entries.count == 2); done = true
         }
-        release.signal()
-        drain { responses == 2 }
-        precondition(accepted == 1 && state.selectedID == "geonames:1" && reads == ["US"], "A→B→A must reject the first A and reuse only the catalog")
-        state.beginSearch(); let closing = state.ticket; state.dismiss()
-        var late = false
-        loader.search(countryCode: "US", query: "") { _ in late = true; precondition(!state.accepts(closing)) }
-        drain { late }
-        for country in ["FR", "CN", "US"] {
-            var done = false
-            loader.search(countryCode: country, query: "") { _ in done = true }
-            drain { done }
-        }
-        precondition(reads == ["US", "FR", "CN", "US"], "Only the two most recent countries stay cached")
-        let failing = CityCatalogLoader { _ in throw CityCatalog.CatalogError.resourceMissing }
-        var failed = false
-        failing.search(countryCode: "US", query: "") { result in
-            if case .failure = result { failed = true }
-        }
-        drain { failed }
-    }
-
-    static func testBundledCatalog(_ repo: URL, zones: SiteTimeZoneCatalog) throws {
-        let root = repo.appendingPathComponent("SunSmart/CityCatalog")
-        let manifest = try JSONDecoder().decode(CityCatalog.Manifest.self, from: Data(contentsOf: root.appendingPathComponent("manifest.json")))
-        var ids: Set<String> = [], total = 0
-        for countryCode in manifest.countries.keys.sorted() {
-            let catalog = try CityCatalog.load(countryCode: countryCode, root: root)
-            total += catalog.entries.count
-            for entry in catalog.entries {
-                precondition(ids.insert(entry.id).inserted, "City IDs must be globally unique")
-                precondition(zones.value(matchingIdentifier: entry.timezoneIdentifier) != nil, "Every selectable city needs a shared timezone")
-                precondition(entry.countryCode == countryCode)
-            }
-        }
-        precondition(total == 225061, "Pinned, reviewed snapshot changed; review the generation report")
-        let china = try CityCatalog.load(countryCode: "CN", root: root)
-        let shanghai = china.entry(id: "geonames:1796236")!
-        precondition(shanghai.timezoneIdentifier == "Asia/Shanghai")
-        precondition(china.entries(matching: "上海").contains { $0.id == shanghai.id })
-        precondition(china.entries(matching: "SHANGHAI").contains { $0.id == shanghai.id })
-        // These are distinct places, not duplicate search rows. The UI must show the full title.
-        let shenzhen = china.entry(id: "geonames:1795565")!
-        let shenzhenTown = china.entry(id: "geonames:1795566")!
-        let shenzhenMatches = Set(china.entries(matching: "Shenzhen").map(\.id))
-        precondition(shenzhenMatches.contains(shenzhen.id) && shenzhenMatches.contains(shenzhenTown.id))
-        precondition(shenzhen.displayName(language: "zh-Hans") == "深圳")
-        precondition(shenzhenTown.displayName(language: "zh-Hans") == "深镇")
-        precondition(china.displayTitle(for: shenzhen, language: "en") == "Shenzhen, Guangdong, Shenzhen")
-        precondition(china.displayTitle(for: shenzhenTown, language: "en") == "Shenzhen, Guangdong, Maoming Shi")
-        precondition(shenzhen.latitudeText != shenzhenTown.latitudeText && shenzhen.longitudeText != shenzhenTown.longitudeText)
-        let canada = try CityCatalog.load(countryCode: "CA", root: root)
-        precondition(canada.entry(id: "geonames:5965812")!.displayName(language: "en") == "Greater Napanee")
-        precondition(canada.entry(id: "geonames:6085931")!.displayName(language: "en") == "Napanee")
-        let loadStart = Date()
-        let us = try CityCatalog.load(countryCode: "US", root: root)
-        let loadSeconds = Date().timeIntervalSince(loadStart)
-        let start = Date()
-        for query in ["Springfield", "New York", "纽约", "ZZZX"] { _ = us.entries(matching: query) }
-        print("Catalog: \(total) cities, \(manifest.countries.count) countries; US load/index \(loadSeconds) s; four US searches \(Date().timeIntervalSince(start)) s (CLI, not device UI)")
+        let deadline = Date().addingTimeInterval(5)
+        while !done, Date() < deadline { RunLoop.current.run(until: Date().addingTimeInterval(0.005)) }
+        precondition(done && !unexpected)
+        state.invalidateResults()
+        precondition(!state.accepts(ticket) && state.query == "Spring")
+        loader.search(catalog: catalog, query: "") { _ in unexpected = true }
+        loader.cancel(); state.dismiss()
+        RunLoop.current.run(until: Date().addingTimeInterval(0.15))
+        precondition(!unexpected)
     }
 }

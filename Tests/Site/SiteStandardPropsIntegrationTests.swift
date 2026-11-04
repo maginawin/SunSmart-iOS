@@ -33,7 +33,7 @@ final class SiteData {
     var pendingSitePropsMask: SitePropsFieldMask = []
     var pendingSitePropsTimestamp: Int64?
     var standardProperties = SiteStandardProperties(latitude: 0, longitude: -72.5,
-        countryRegion: "SG", postalCode: "018983", city: "795565", address: "Street", siteDescription: "Lobby")
+        countryRegion: "SG", postalCode: "018983", city: "Singapore", cityId: 795565, address: "Street", siteDescription: "Lobby")
     func persistedPropsState() -> SitePropsLocalState? { nil }
     var failSave = false
     var saves = 0
@@ -136,7 +136,7 @@ protocol SiteEntryTimeZoneSyncStore: AnyObject {}
         let noop = coordinator.makeCommitPlan(draft: draft, online: true, now: 20)
         precondition(!noop.hasPendingFields && !noop.hasNewChanges)
         draft.standardProperties = .init(latitude: -1.25, longitude: nil, countryRegion: "US",
-            postalCode: "00012", city: "1", address: nil, siteDescription: "Changed")
+            postalCode: "00012", city: "Springfield", cityId: 1, address: nil, siteDescription: "Changed")
         var plan = coordinator.makeCommitPlan(draft: draft, online: true, now: 20)
         site.failSave = true
         guard case .failure = coordinator.persist(plan) else { preconditionFailure("Save failure must remain retryable") }
@@ -148,9 +148,9 @@ protocol SiteEntryTimeZoneSyncStore: AnyObject {}
         let missing = await coordinator.submit(snapshot)
         precondition(!missing && !site.pendingSitePropsMask.isEmpty, "Partial ACK must not confirm omitted clears")
         guard case .sitePropsUpdate(_, let props) = network.targets.last! else { preconditionFailure() }
-        precondition(props.count == 8 && props["siteName"] == nil && props["timezone"] == nil && props["extensionData"] == nil)
+        precondition(props.count == 9 && props["siteName"] == nil && props["timezone"] == nil && props["extensionData"] == nil)
         precondition(props["latitude"] as? String == "-1.25" && props["longitude"] is NSNull && props["address"] is NSNull)
-        precondition(props["postalCode"] as? String == "00012" && props["city"] as? String == "1")
+        precondition(props["postalCode"] as? String == "00012" && props["city"] as? String == "Springfield" && props["cityId"] as? Int == 1)
         let retryDraft = await coordinator.prepareDraft(online: false)
         let retry = coordinator.makeCommitPlan(draft: retryDraft, online: true, now: 30)
         precondition(retry.updateSnapshot == snapshot && !retry.hasNewChanges)

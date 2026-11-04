@@ -1226,6 +1226,19 @@ class CloudSynchronizationHandle: NSObject {
         default: return true
         }
         guard let submitted = api.configurationSiteTimestamp else { return false }
+        // The operation may own an older Site than the one used to prepare its request.
+        // Reconcile persisted form state before acknowledging only the submitted version.
+        // Use the raw stored timezone here so even an unrecognized legacy value is preserved.
+        if let current = SiteData.load(siteId: site.id), current.lastUpdate >= site.lastUpdate {
+            site.name = current.name
+            site.imageId = current.imageId
+            site.timezone = current.timezone
+            site.standardProperties = current.standardProperties
+            site.lastUpdate = current.lastUpdate
+            site.lastUploadCloudTimestamp = current.lastUploadCloudTimestamp
+            site.pendingSitePropsMask = current.pendingSitePropsMask
+            site.pendingSitePropsTimestamp = current.pendingSitePropsTimestamp
+        }
         let previousTimestamp = site.lastUploadCloudTimestamp
         let previousMask = site.pendingSitePropsMask
         let previousPendingTimestamp = site.pendingSitePropsTimestamp
