@@ -65,7 +65,7 @@ extension SpaceRecoveryReceiptTests {
             precondition(space.lastUploadCloudTimestamp == 100 && space.needUploadCloud && !S.hasPendingUpload(space))
             precondition(request.uploads == uploads, "baseline validation alone cannot POST or confirm")
             request.responses = [.success(["data": remote]), .success([:]), .success(["data": space.payload])]
-            if case .failure = await S.uploadBeforeUnbind(space) { preconditionFailure("normal POST and readback must finish: " + mode) }
+            if case .failure = await S.uploadForEntry(space) { preconditionFailure("normal POST and readback must finish: " + mode) }
             precondition(request.responses.isEmpty && request.uploads == uploads + 1)
             precondition(space.lastUploadCloudTimestamp == 110 && !space.needUploadCloud && !S.hasPendingUpload(space))
             let journal = try S.deletionJournal(space)
@@ -226,7 +226,7 @@ extension SpaceRecoveryReceiptTests {
             reopened.nodes = space.nodes; reopened.groups = space.groups
             ProximityLightingImportPreflight.storedSpace = reopened
             request.responses = [.success(["data": recovered]), .success([:]), .success(["data": reopened.payload])]
-            if case .failure = await S.uploadBeforeUnbind(reopened) {
+            if case .failure = await S.uploadForEntry(reopened) {
                 preconditionFailure("recovered version must upload and confirm after reopening: " + mode)
             }
             let uploaded = request.lastSpaceUpload!
@@ -291,7 +291,7 @@ extension SpaceRecoveryReceiptTests {
                 reopened.lastUpdate += 1
             }
             request.responses = [.success(["data": remote]), .success([:]), .success(["data": reopened.payload])]
-            if case .failure = await S.uploadBeforeUnbind(reopened) {
+            if case .failure = await S.uploadForEntry(reopened) {
                 preconditionFailure("reviewed replacement must upload and confirm after reopening: " + mode)
             }
             precondition(request.responses.isEmpty && reopened.lastUploadCloudTimestamp == reopened.lastUpdate)
@@ -384,7 +384,7 @@ extension SpaceRecoveryReceiptTests {
             precondition(!S.isBlocked(space) && space.lastUploadCloudTimestamp == 100 && space.needUploadCloud)
             let approvedVersion = space.lastUpdate
             request.responses = [.success(["data": remote]), .success([:]), .success(["data": space.payload])]
-            if case .failure = await S.uploadBeforeUnbind(space) { preconditionFailure("explicit replacement must not be blocked again by the old cloud version") }
+            if case .failure = await S.uploadForEntry(space) { preconditionFailure("explicit replacement must not be blocked again by the old cloud version") }
             precondition(space.lastUploadCloudTimestamp == approvedVersion && !space.needUploadCloud && request.responses.isEmpty)
             let finished = try S.recoveryState(space)
             precondition(finished.localReplacementVersion == nil)

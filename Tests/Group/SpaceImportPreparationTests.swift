@@ -316,7 +316,7 @@ extension SpaceRecoveryReceiptTests {
                 precondition(outcome == .preserved("newerLocalConfiguration"))
                 precondition(S.needsTimedUpgradeBaseline(space), "selection must not fabricate a confirmed Timed baseline")
                 NetworkRequest.shared.responses = [.success(["data": remote]), .success([:]), .success(["data": space.payload])]
-                guard case .success = await S.uploadBeforeUnbind(space) else { preconditionFailure("newer local version must establish its baseline through confirmed upload") }
+                guard case .success = await S.uploadForEntry(space) else { preconditionFailure("newer local version must establish its baseline through confirmed upload") }
             }
             if ["write", "identity", "topology"].contains(failure) {
                 precondition(S.needsTimedUpgradeBaseline(space), "failed backfill must not authorize migration")

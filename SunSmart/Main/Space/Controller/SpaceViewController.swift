@@ -51,6 +51,8 @@ enum SpaceChangeDataType {
     
     /// 设备数据（包含device、group/scene等配置数据-与设备数据交互）
     case device
+    /// A sync run may only need to submit an already dirty configuration.
+    case syncResult(changed: Bool)
     /// 通用数据（group/scene等配置数据-无设备数据交互）
     case common
     /// 网络通用数据（ivIndex更新、废弃地址）
@@ -62,7 +64,7 @@ fileprivate extension SpaceChangeDataType {
         switch self {
         case .common:
             return .slow
-        case .device, .network:
+        case .device, .syncResult, .network:
             return .promptly
         }
     }
@@ -80,7 +82,11 @@ extension SpaceData {
 
     func commitLocalChangeForCloudSync(site currentSite: SiteData? = nil, changeType: SpaceChangeDataType) {
         refreshSummaryCountsFromSpaceMesh()
-        markLocalChangePendingCloudSync()
+        if case .syncResult(let changed) = changeType, !changed {
+            guard needUploadCloud else { return }
+        } else {
+            markLocalChangePendingCloudSync()
+        }
 
         guard permission == .owner || permission == .editor else {
             return
@@ -97,7 +103,7 @@ extension SpaceData {
         if let index = site.spaces.firstIndex(where: { $0.id == id }) { site.spaces[index] = self }
 
         switch changeType {
-        case .device, .common:
+        case .device, .syncResult, .common:
             enqueueSpaceSync(site: site, level: changeType.cloudSyncLevel)
         case .network(let type):
             switch type {
@@ -207,6 +213,89 @@ class SpaceViewController: WMPageController {
     /// 删除空间回调
     var deleteSpaceCallback: (()->Void)?
     /// 是否已加载完成网络数据
+    // Entry reconciliation session: runtime only, one controller per real entry.
+    private let entryAccount = UserData.currentUserId
+    private let entryRegion = UserData.currentServerRegion
+    private var entryPermissionResolved = false
+    private var entryEditingGranted = false
+    private var entryReconciliationFinished = false
+    private var entryReconciliationTask: Task<Void, Never>?
+    private var entrySession = UUID()
+    var entryLoadedConfiguration: [String: Any]?
+
+    @MainActor
+    private func resolveEntryPermission(canEdit: Bool) {
+        guard !entryPermissionResolved, entryAccount == UserData.currentUserId,
+              entryRegion == UserData.currentServerRegion, !hasStoppedPresenceTracking else { return }
+        entryPermissionResolved = true
+        entryEditingGranted = canEdit
+        if !canEdit || !NetworkRequest.shared.networkable {
+            entryReconciliationFinished = true
+            viewIfLoaded?.isUserInteractionEnabled = true
+            navigationItem.rightBarButtonItem?.isEnabled = true
+            return
+        }
+        reconcileEntryConfigurationIfNeeded()
+    }
+
+    @MainActor
+    private func cancelEntryReconciliation() {
+        entrySession = UUID()
+        entryReconciliationTask?.cancel()
+        entryReconciliationTask = nil
+        entryReconciliationFinished = true
+    }
+
+    @MainActor
+    private func reconcileEntryConfigurationIfNeeded() {
+        guard entryPermissionResolved, entryEditingGranted, loadNetworkData,
+              !entryReconciliationFinished, entryReconciliationTask == nil,
+              !hasStoppedPresenceTracking, !hasHandledPermissionLoss,
+              !hasPendingTransferPermissionAlert, transferPermissionAlert == nil,
+              space.permission == .owner || space.permission == .editor,
+              !space.disableEditorPermission, !space.requiresPasswordVerification else { return }
+        let session = entrySession
+        let account = UserData.currentUserId, region = UserData.currentServerRegion
+        viewIfLoaded?.isUserInteractionEnabled = false
+        navigationItem.rightBarButtonItem?.isEnabled = false
+        entryReconciliationTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            let result = await CloudSynchronizationManager.shared.reconcileSpaceEntry(
+                self.space, loadedConfiguration: self.entryLoadedConfiguration)
+            guard !Task.isCancelled, self.entrySession == session,
+                  !self.hasStoppedPresenceTracking, !self.hasHandledPermissionLoss,
+                  account == UserData.currentUserId, region == UserData.currentServerRegion else { return }
+            // Authority may change during reconciliation. Finish this session even
+            // when it can now only show read-only data; stale sessions still exit above.
+            let canEdit = (self.space.permission == .owner || self.space.permission == .editor)
+                && !self.space.disableEditorPermission && !self.space.requiresPasswordVerification
+                && self.space.state == .normal
+            self.entryEditingGranted = canEdit
+            if let currentSite = SiteData.load(siteId: self.space.siteId), currentSite.meshUUID == self.space.meshUUID {
+                self.site = currentSite
+            }
+            self.entryLoadedConfiguration = nil
+            self.entryReconciliationTask = nil
+            self.entryReconciliationFinished = true
+            self.viewIfLoaded?.isUserInteractionEnabled = true
+            self.navigationItem.rightBarButtonItem?.isEnabled = true
+            if case .failure(let error) = result {
+                _ = self.space.saveCloudSyncOutcome(error: error)
+                XWHUDManager.showErrorTipHUD(error.localizedDescription)
+            } else if canEdit {
+                self.reconcileLegacyProximityLightingTopology()
+                self.configurationFlowGuidance()
+            }
+            if !canEdit {
+                NotificationCenter.default.post(name: .init(spacePermissionChangedNotificaitonName), object: nil)
+                if self.space.state == .waitDeleted { self.handleSpacePermissionLoss() }
+            }
+            self.reloadData()
+            self.updateSyncState()
+        }
+    }
+    // End entry reconciliation session
+
     private var loadNetworkData: Bool = false
     private var schedulerReadCoordinator: SpaceSchedulerReadCoordinator?
     /// 退出页面同步space中
@@ -227,6 +316,7 @@ class SpaceViewController: WMPageController {
     /// 是否由当前 Space 页面接管 mesh 权限探测回调
     private var isHandlingExternalVendorMessages: Bool = false
     /// 是否进行云端权限校验
+    private var entryCloudEditingGranted = false
     private var cloudPermissionValidation: Bool = false
     /// 是否进行mesh权限校验
     private var meshPermissionValidation: Bool = false
@@ -352,17 +442,22 @@ class SpaceViewController: WMPageController {
         addNotificaiton()
         SpaceDebugUARTManager.shared.setActiveSpace(space)
         // 获取space数据
+        view.isUserInteractionEnabled = false
+        navigationItem.rightBarButtonItem?.isEnabled = false
         setNetworkConnected()
 //        loadSpaceReqeust()
         if space.uploadCloud {
             if space.permission == .visitor {
+                resolveEntryPermission(canEdit: false)
                 // 开始定时发送心跳
                 startHeartbeatTimer()
             }else {
                 // 读取space内是否有其他编辑者
-                checkTheSpaceMembersRequest()
+                if NetworkRequest.shared.networkable { checkTheSpaceMembersRequest() }
+                else { resolveEntryPermission(canEdit: false) }
             }
         }else {
+            resolveEntryPermission(canEdit: space.permission != .visitor && !space.requiresPasswordVerification)
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {[weak self] in
                 self?.configurationFlowGuidance()
             }
@@ -391,7 +486,7 @@ class SpaceViewController: WMPageController {
             showConfigurationRecovery()
             return
         }
-        if NetworkRequest.shared.networkable,
+        if entryReconciliationFinished, NetworkRequest.shared.networkable,
            SpaceConfigurationSafety.canAutomaticallyUpload(space) || SpaceConfigurationSafety.canResumePendingUpload(space),
            (space.needUploadCloud || SpaceConfigurationSafety.hasPendingUpload(space)),
            (!SpaceConfigurationSafety.isBlocked(space) || SpaceConfigurationSafety.hasPendingUpload(space)),
@@ -537,6 +632,17 @@ class SpaceViewController: WMPageController {
     @objc private func userPermissionAskTimeout() {
         guard canHandleSpacePresenceCallbacks else { return }
         self.meshPermissionValidation = true
+        grantEntryEditingIfReady()
+    }
+
+    private func grantEntryEditingIfReady() {
+        guard entryCloudEditingGranted, !hasPendingTransferPermissionAlert,
+              transferPermissionAlert == nil else { return }
+        if MeshLibManager.manager.isMeshNetworkConnected && !meshPermissionValidation {
+            checkMeshMemberPermissions()
+            return
+        }
+        resolveEntryPermission(canEdit: true)
     }
 
     private func checkMeshMemberPermissions() {
@@ -545,7 +651,7 @@ class SpaceViewController: WMPageController {
               manager.meshNetwork?.uuid.uuidString == space.meshUUID,
               manager.currentNetworkKey.networkId.hex == space.meshNetworkId,
               MeshLibManager.manager.isMeshNetworkConnected,
-              space.deviceOperates.contains(.edit), !space.disableEditorPermission,
+              !space.requiresPasswordVerification, !space.disableEditorPermission,
               !meshPermissionValidation,
               space.permission == .owner || space.permission == .editor else { return }
         MeshLibManager.manager.externalVendorMessageDelegate = self
@@ -731,7 +837,7 @@ class SpaceViewController: WMPageController {
     /// 配置引导
     private func configurationFlowGuidance() {
         
-        guard !exitSyncSpace else {
+        guard entryReconciliationFinished, !exitSyncSpace else {
             return
         }
         // 判断是否空的空间，进行引导配置流程
@@ -799,7 +905,9 @@ class SpaceViewController: WMPageController {
                     self.schedulerReadCoordinator?.stop()
                     self.schedulerReadCoordinator = SpaceSchedulerReadCoordinator(space: self.space)
                     self.loadNetworkData = true
-                    self.reconcileLegacyProximityLightingTopology()
+                    self.grantEntryEditingIfReady()
+                    if self.entryReconciliationFinished { self.reconcileLegacyProximityLightingTopology() }
+                    else { self.reconcileEntryConfigurationIfNeeded() }
                     self.emergencyFireControllerSceneEventManager = EmergencyFireControllerSceneEventManager {
                         DeviceEmerFireStore.shared.devices(in: self.space)
                     }
@@ -820,7 +928,7 @@ class SpaceViewController: WMPageController {
 
     private func reconcileLegacyProximityLightingTopology() {
         Task { @MainActor [weak self] in
-            guard let self, !self.hasStoppedPresenceTracking,
+            guard let self, self.entryReconciliationFinished, self.entryEditingGranted, !self.hasStoppedPresenceTracking,
                   !SpaceConfigurationSafety.hasPendingUpload(self.space) else { return }
             // The sync operation performs deferred cleanup after readback, before
             // it reports success or submits any cleanup changes.
@@ -833,7 +941,7 @@ class SpaceViewController: WMPageController {
     }
 
     private func presentProximityLightingRepairSyncIfNeeded() {
-        guard viewIfLoaded?.window != nil,
+        guard entryReconciliationFinished, entryEditingGranted, viewIfLoaded?.window != nil,
               MeshLibManager.manager.isMeshNetworkConnected,
               space.deviceOperates.contains(.edit),
               !space.disableEditorPermission,
@@ -998,8 +1106,11 @@ class SpaceViewController: WMPageController {
     
     /// 检查空间内成员请求，保证空间内只有一个编辑权限用户
     private func checkTheSpaceMembersRequest() {
-        guard !hasStoppedPresenceTracking, !hasHandledPermissionLoss,
-              space.deviceOperates.contains(.edit), !space.disableEditorPermission else {
+        guard !hasStoppedPresenceTracking, !hasHandledPermissionLoss else { return }
+        // Configuration protection must not prevent the identity check needed to recover it.
+        guard space.state == .normal, space.permission == .owner || space.permission == .editor,
+              !space.requiresPasswordVerification, !space.disableEditorPermission else {
+            resolveEntryPermission(canEdit: false)
             return
         }
         NetworkRequest.shared.request(.spaceActiveMembers(siteId: self.space.siteId, spaceId: self.space.id)) {[weak self] result in
@@ -1027,6 +1138,8 @@ class SpaceViewController: WMPageController {
                     }else {
                         guard !self.hasPendingTransferPermissionAlert,
                               self.transferPermissionAlert?.superview == nil else { return }
+                        self.entryCloudEditingGranted = true
+                        self.grantEntryEditingIfReady()
                         if space.deviceCount == 0 {
                             self.configurationFlowGuidance()
                         }
@@ -1035,8 +1148,11 @@ class SpaceViewController: WMPageController {
                             self.startHeartbeatTimer()
                         }
                     }
+                } else {
+                    self.resolveEntryPermission(canEdit: false)
                 }
             case .failure(_):
+                self.resolveEntryPermission(canEdit: false)
                 self.cloudPermissionValidation = true
                 guard !self.hasPendingTransferPermissionAlert,
                       self.transferPermissionAlert?.superview == nil else { return }
@@ -1119,6 +1235,7 @@ class SpaceViewController: WMPageController {
         guard !hasStoppedPresenceTracking else {
             return
         }
+        cancelEntryReconciliation()
         hasStoppedPresenceTracking = true
         if let nodePresenceObservation {
             NotificationCenter.default.removeObserver(nodePresenceObservation)
@@ -1232,6 +1349,7 @@ class SpaceViewController: WMPageController {
     private func showTransferPermissionAlert() {
         guard canHandleSpacePresenceCallbacks, !space.disableEditorPermission,
               !space.requiresPasswordVerification else { return }
+        cancelEntryReconciliation()
         hasPendingTransferPermissionAlert = true
         presentPendingTransferPermissionAlert()
     }
@@ -1266,6 +1384,10 @@ class SpaceViewController: WMPageController {
     
     /// 关闭用户编辑权限
     private func disableEditorPermission() {
+        cancelEntryReconciliation()
+        resolveEntryPermission(canEdit: false)
+        viewIfLoaded?.isUserInteractionEnabled = true
+        navigationItem.rightBarButtonItem?.isEnabled = true
         self.space.disableEditorPermission = true
         #if DEBUG
         print("Space editor permission disabled for current session: siteId=\(space.siteId), spaceId=\(space.id), permission=\(space.permission.dataString)")

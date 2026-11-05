@@ -124,6 +124,21 @@ final class RestoreSceneBoundary {
     source += '\nfinal class SessionPlanInstallationHarness {\n'
     source += (ROOT / 'Tests/Sync/SyncSessionPlanInstallationHarness.txt').read_text()
     source += region(controller, '    private func installTaskPlan(', '    override func viewDidAppear(').replace('private func', 'func', 1) + '\n}\n'
+    restore_fixture = (ROOT / 'Tests/Sync/RestorePowerUpFixture.swift').read_text()
+    factory = (ROOT / 'SunSmart/Common/Data/Node+MessageHandles.swift').read_text()
+    restore_fixture = restore_fixture.replace('// POWER_UP_FACTORY', region(factory,
+        '        if case .powerOnState(let state, let cct) = self', '        guard let lightLCModel'))
+    result_source = model[model.index('    func isSuccessful(node: Node) -> Bool {'):]
+    restore_fixture = restore_fixture.replace('// POWER_UP_RESULT', region(result_source,
+        '        case .powerOnState(let state, _):', '        case .daylightCalibration'))
+    source += restore_fixture
+    source = source.replace('final class Node: Equatable {', 'final class Node: Equatable { var powerUpState = OnPowerUp.off')
+    source = source.replace('updates += 1; applied = isSuccess', 'updates += 1; applied = isSuccess; if let power = message as? GenericOnPowerUpSet, isSuccess { powerUpState = power.state }')
+    source = source.replace('final class MeshMessageHandle {', 'final class MeshMessageHandle { init() {}\ninit(message: Any, model: TestVendorModel) { self.message = message; self.model = model }')
+    source = source.replace('switch self { case .configuration(let node, _), .delete(let node, _): return node.testHandles }',
+        'switch self { case .configuration(let node, .profile(.powerOnState)): return node.restoreHandles; case .configuration(let node, _), .delete(let node, _): return node.testHandles }')
+    source = source.replace('switch self { case .configuration(let node, _), .delete(let node, _): return node.applied }',
+        'switch self { case .configuration(let node, .profile(.powerOnState)): return RestoreProfile.powerOnState(state: .restore).isSuccessful(node: node); case .configuration(let node, _), .delete(let node, _): return node.applied }')
     with tempfile.TemporaryDirectory(prefix='sync-execution-session-') as directory:
         production = Path(directory) / 'Production.swift'
         production.write_text(source)

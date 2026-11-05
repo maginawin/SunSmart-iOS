@@ -25,6 +25,14 @@ final class SpaceData {
     static var rows: [String: SpaceData] = [:]
     let id: String, siteId: String
     var meshUUID: String, meshNetworkId = "network", canEditing = true
+    @discardableResult func saveCloudSyncOutcome(confirmedTimestamp: Int64? = nil, error: NetworkApiError?) -> Bool {
+        let previous = lastUploadCloudTimestamp, previousError = syncCloudError
+        if let confirmedTimestamp { lastUploadCloudTimestamp = max(previous ?? 0, confirmedTimestamp) }
+        syncCloudError = error
+        if save() { return true }
+        lastUploadCloudTimestamp = previous; syncCloudError = previousError
+        return false
+    }
     var lastUpdate: Int64 = 1, lastUploadCloudTimestamp: Int64? = 1
     var syncCloudError: NetworkApiError?
     var needUploadCloud: Bool { lastUpdate > (lastUploadCloudTimestamp ?? 0) }
@@ -52,6 +60,7 @@ final class SiteData {
     let id: String
     var meshUUID: String, spaces: [SpaceData] = []
     var uploadCloud: Bool { lastUploadCloudTimestamp != nil }
+    var standardProperties = 0
     var restoredProvisioner = false
     var lastUpdate: Int64 = 1, lastUploadCloudTimestamp: Int64? = 1
     var needUploadCloud: Bool { lastUpdate > (lastUploadCloudTimestamp ?? 0) }
@@ -60,11 +69,24 @@ final class SiteData {
     var syncCloudError: NetworkApiError?, timezone: String?, name = "Site", imageId = 0
     var pendingSitePropsMask = 0, pendingSitePropsTimestamp: Int64? = nil
     init(_ id: String = "site") { self.id = id; meshUUID = id }
-    static func load(siteId: String) -> SiteData? { rows[siteId] }
+    static var detachedLoads = false
+    static func load(siteId: String) -> SiteData? {
+        guard let saved = rows[siteId] else { return nil }
+        guard detachedLoads else { return saved }
+        let value = SiteData(saved.id)
+        value.meshUUID = saved.meshUUID; value.spaces = saved.spaces
+        value.lastUpdate = saved.lastUpdate; value.lastUploadCloudTimestamp = saved.lastUploadCloudTimestamp
+        value.restoredProvisioner = saved.restoredProvisioner
+        value.syncCloudError = saved.syncCloudError; value.name = saved.name
+        value.imageId = saved.imageId; value.timezone = saved.timezone
+        value.standardProperties = saved.standardProperties
+        value.pendingSitePropsMask = saved.pendingSitePropsMask; value.pendingSitePropsTimestamp = saved.pendingSitePropsTimestamp
+        return value
+    }
     static func loadAll() -> [SiteData] { Array(rows.values) }
     @discardableResult func save() -> Bool { Self.rows[id] = self; return true }
     func markSiteUploadNeededForSpaceAddressChange() { lastUpdate += 1; save() }
-    func setOwnerProvisioner(addressData: [String: Any]) {}
+    func setOwnerProvisioner(addressData: [String: Any]) { restoredProvisioner = true }
     func setProvisioner(provisionerData: [String: Any]) { restoredProvisioner = true }
     func export(spaceIds: [String]) async -> [String: Any]? {
         ["uuid": id, "updateTimestamp": lastUpdate, "spaces": spaceIds.compactMap { SpaceData.rows[$0] }.map { ["uuid": $0.id, "updateTimestamp": $0.lastUpdate] as [String: Any] }]
@@ -82,13 +104,21 @@ final class NetworkRequest {
     static let shared = NetworkRequest()
     var networkable = true
     var requests: [NetowrkReqeustApi] = []
+    var creationResponse: Result<[String: Any], NetworkApiError> = .success(["data": ["addrLists": ["ownerDevicesAddress": 1, "ownerGroupsAddress": 49152, "ownerScenesAddress": 1]]])
     var holdNextPost = false
+    var holdNextRead = false
+    var heldRead: CheckedContinuation<Result<[String: Any], NetworkApiError>, Never>?
     var held: CheckedContinuation<Result<[String: Any], NetworkApiError>, Never>?
     func request(_ api: NetowrkReqeustApi) async -> Result<[String: Any], NetworkApiError> {
         requests.append(api)
         if !networkable { return .failure(.noNetwork) }
         switch api {
+        case .spaceInfo:
+            if holdNextRead { holdNextRead = false; return await withCheckedContinuation { heldRead = $0 } }
         case .siteInfo(let id): return .success(["data": ["uuid": id, "provisioner": [:] as [String: Any]]])
+        case .siteAdd:
+            if holdNextPost { holdNextPost = false; return await withCheckedContinuation { held = $0 } }
+            return creationResponse
         case .siteUpload, .spaceUpload:
             if holdNextPost { holdNextPost = false; return await withCheckedContinuation { held = $0 } }
         default: break
@@ -124,8 +154,18 @@ enum SpaceConfigurationSafety {
     static func canResumePendingUpload(_ space: SpaceData) -> Bool { hasPendingUpload(space) }
     static func isBlocked(_ space: SpaceData) -> Bool { space.blocked }
     static func resumeLocalRemovals() {}
+    static func uploadForEntry(_ space: SpaceData, loadedConfiguration: [String: Any]?) async -> Result<Void, NetworkApiError> { await resumeUpload(space) }
+    static func resumeLocalUpload(_ space: SpaceData) -> Result<Void, NetworkApiError> {
+        if refuseRead { return .failure(.unknown) }
+        if let timestamp = space.pending { space.lastUploadCloudTimestamp = timestamp; space.pending = nil }
+        return .success(())
+    }
+    static func finishAcceptedSubmission(_ context: SpaceRecoveryState, space: SpaceData) -> Bool {
+        if let timestamp = space.pending { space.lastUploadCloudTimestamp = timestamp; space.pending = nil }
+        return true
+    }
     static func resumeUnbind(_ space: SpaceData) async -> Bool { true }
-    static func resumeUpload(_ space: SpaceData) async -> Result<Void, NetworkApiError> {
+    static func resumeUpload(_ space: SpaceData, preparingUpload: Bool = false) async -> Result<Void, NetworkApiError> {
         let response = await NetworkRequest.shared.request(.spaceInfo(siteId: space.siteId, spaceId: space.id))
         guard case .success = response, !refuseRead else { return .failure(.unknown) }
         if let timestamp = replaceOnResume.removeValue(forKey: space.id) {
@@ -237,64 +277,23 @@ final class HDBDeviceAddCompletion {
         precondition(SyncOperation.addSpaces(site: SiteData.rows[a.siteId]!, spaces: [a]).includesConfiguration(of: a))
         precondition(!SyncOperation.addSpaces(site: SiteData.rows[a.siteId]!, spaces: [a]).includesConfiguration(of: sameIdOtherSite))
         print("PASS: configuration callbacks include only the exact Site/Space, including batch and metadata-only operations")
-        // A higher cloud snapshot changes generation during resumeUpload.
-        // The production handle must adopt it and continue unrelated batch work.
-        resetRequests()
-        a.markLocalChangePendingCloudSync()
-        SpaceConfigurationSafety.replaceOnResume[a.id] = a.lastUpdate + 10
-        var imported = false
-        manager.addSynchronizationHandle(operation: .syncSpace(space: a), level: .promptly) {
-            if case .successful = $0 { imported = true }
-        }
-        await ticks(60)
-        precondition(imported && NetworkRequest.shared.posts == 0 && !a.needUploadCloud)
-        resetRequests()
+        // Entry owns its own readback; an overlapping ordinary batch waits and
+        // retains write-only confirmation after the entry releases its reservation.
+        resetRequests(); NetworkRequest.shared.holdNextRead = true
+        let entry = Task { @MainActor in await manager.reconcileSpaceEntry(a, loadedConfiguration: nil) }
+        await ticks(); precondition(NetworkRequest.shared.heldRead != nil)
         a.markLocalChangePendingCloudSync(); b.markLocalChangePendingCloudSync()
-        SpaceConfigurationSafety.replaceOnResume[a.id] = a.lastUpdate + 10
         manager.addSynchronizationHandle(operation: .syncSite(site: SiteData.rows[a.siteId]!, syncSpaces: [a, b]), level: .promptly)
+        await ticks(); precondition(NetworkRequest.shared.posts == 0)
+        NetworkRequest.shared.heldRead?.resume(returning: .success([:])); NetworkRequest.shared.heldRead = nil
+        _ = await entry.value; await ticks(60)
+        precondition(NetworkRequest.shared.posts == 1 && NetworkRequest.shared.reads == 1)
+        // Ordinary uploads ignore remote replacement candidates entirely.
+        resetRequests(); a.markLocalChangePendingCloudSync()
+        SpaceConfigurationSafety.replaceOnResume[a.id] = a.lastUpdate + 10
+        manager.addSynchronizationHandle(operation: .syncSpace(space: a), level: .promptly)
         await ticks(60)
-        precondition(NetworkRequest.shared.posts == 1 && !a.needUploadCloud && !b.needUploadCloud)
-        precondition(a.lastUploadCloudTimestamp == a.lastUpdate && b.lastUploadCloudTimestamp == b.lastUpdate)
-        print("PASS: newer cloud lifecycle completes without stale POST and retains pending batch peers")
-        for batch in [false, true] {
-            resetRequests()
-            a.markLocalChangePendingCloudSync()
-            if batch { b.markLocalChangePendingCloudSync() }
-            NetworkRequest.shared.holdNextPost = true
-            let operation: SyncOperation = batch
-                ? .syncSite(site: SiteData.rows[a.siteId]!, syncSpaces: [a, b]) : .syncSpace(space: a)
-            var completed = false
-            manager.addSynchronizationHandle(operation: operation, level: .promptly) {
-                if case .successful = $0 { completed = true }
-            }
-            await ticks(60)
-            precondition(NetworkRequest.shared.held != nil && NetworkRequest.shared.posts == 1)
-            let serverVersion = a.lastUpdate + 10
-            SpaceConfigurationSafety.replaceOnResume[a.id] = serverVersion
-            SpaceConfigurationSafety.normalizeAfterReplacement.insert(a.id)
-            NetworkRequest.shared.held?.resume(returning: .success([:])); NetworkRequest.shared.held = nil
-            await ticks(60)
-            precondition(completed && a.needUploadCloud && a.lastUploadCloudTimestamp == serverVersion)
-            // Follow-up uses the ordinary queue's five-second delay, with no
-            // foreground/manual recovery call to hide a dropped handle.
-            try! await Task.sleep(nanoseconds: 5_200_000_000)
-            await ticks(60)
-            precondition(NetworkRequest.shared.posts == 2 && !a.needUploadCloud && a.lastUpdate == serverVersion + 1,
-                         "POST readback normalization must automatically upload its new generation")
-            let lastPost = NetworkRequest.shared.requests.last { api in
-                if case .spaceUpload = api { return true }; if case .siteUpload = api { return true }; return false
-            }!
-            let submitted: [[String: Any]]
-            switch lastPost {
-            case .spaceUpload(_, _, let payload): submitted = [payload]
-            case .siteUpload(let payload): submitted = payload["spaces"] as! [[String: Any]]
-            default: preconditionFailure("expected configuration POST")
-            }
-            precondition(submitted.count == 1 && submitted.first?["uuid"] as? String == a.id
-                         && submitted.first?["updateTimestamp"] as? Int64 == serverVersion + 1)
-            precondition(!batch || !b.needUploadCloud, "confirmed batch peers must stay confirmed")
-        }
-        print("PASS: POST readback normalization uploads again automatically for Space and Site batches")
+        precondition(NetworkRequest.shared.posts == 1 && NetworkRequest.shared.reads == 0 && !a.needUploadCloud)
         for count in [1, 10] {
             resetRequests()
             let batch = HDBDeviceAddBatch(); var started = 0, callbacks = 0
@@ -310,14 +309,15 @@ final class HDBDeviceAddCompletion {
             manager.resumePendingSynchronizations(); await ticks()
             precondition(NetworkRequest.shared.requests.isEmpty && SpaceSyncCleanupCoordinator.prepared.isEmpty)
             batch.finish(); await ticks()
-            precondition(NetworkRequest.shared.posts == 1 && NetworkRequest.shared.reads == 2)
+            precondition(NetworkRequest.shared.posts == 1 && NetworkRequest.shared.reads == 0)
             precondition(callbacks == count * 9 && !a.needUploadCloud)
-            batch.finish(); await ticks(); precondition(NetworkRequest.shared.requests.count == 3)
+            batch.finish(); await ticks(); precondition(NetworkRequest.shared.requests.count == 1)
         }
         // A mixed Site request keeps its other Space. Independent sites and
         // direct uploads of another Space continue while A is provisioning.
         resetRequests()
         let batch = HDBDeviceAddBatch(); batch.enqueue(space: a) { precondition($0) }; await ticks()
+        b.markLocalChangePendingCloudSync(); c.markLocalChangePendingCloudSync()
         manager.addSynchronizationHandle(operation: .syncSpace(space: b), level: .promptly)
         manager.addSynchronizationHandle(operation: .syncSpace(space: c), level: .promptly)
         await ticks(); precondition(NetworkRequest.shared.posts == 2)
@@ -401,7 +401,7 @@ final class HDBDeviceAddCompletion {
         SpaceConfigurationSafety.refuseRead = true
         let historical = HDBDeviceAddBatch(); var rejected = false
         historical.enqueue(space: a) { rejected = !$0 }; await ticks()
-        precondition(rejected && !historical.isActive && NetworkRequest.shared.reads == 1 && NetworkRequest.shared.posts == 0)
+        precondition(rejected && !historical.isActive && NetworkRequest.shared.reads == 0 && NetworkRequest.shared.posts == 0)
         SpaceConfigurationSafety.refuseRead = false
         let recovered = HDBDeviceAddBatch(); recovered.enqueue(space: a) { precondition($0) }; await ticks()
         recovered.finish(); await ticks(); precondition(NetworkRequest.shared.posts == 0 && a.pending == nil)
@@ -412,6 +412,7 @@ final class HDBDeviceAddCompletion {
         SpaceConfigurationSafety.refuseRead = false
         a.member = false; let forbidden = HDBDeviceAddBatch(); forbidden.enqueue(space: a) { precondition(!$0) }; await ticks()
         precondition(!forbidden.isActive); a.member = true
+        SiteData.detachedLoads = true
         // A crashed first Site POST also owns address resources. Admission must
         // recover Site acceptance, not only clear the Space receipt.
         resetRequests(); let firstSiteSpace = fixture("new-space", site: "new-site")
@@ -420,9 +421,73 @@ final class HDBDeviceAddCompletion {
         firstSiteSpace.pending = 1; firstSiteSpace.siteCreationTimestamp = 1
         let firstCreation = HDBDeviceAddBatch(); var creationAdmitted = false
         firstCreation.enqueue(space: firstSiteSpace) { creationAdmitted = $0 }; await ticks(60)
-        precondition(creationAdmitted && firstSite.uploadCloud && firstSite.restoredProvisioner)
+        precondition(!creationAdmitted && !firstSite.uploadCloud && !firstSite.restoredProvisioner)
         firstCreation.finish(); await ticks()
-        precondition(NetworkRequest.shared.posts == 0 && NetworkRequest.shared.requests.count == 2)
-        print("PASS: production add batch + cloud manager/HTTP flow: 1/10 nodes, 3 requests, callbacks, mixed scopes, empty, stop, offline recovery, in-flight admission, queued selections, subsequent generations, historical receipt/authority and account isolation")
+        precondition(NetworkRequest.shared.posts == 0 && NetworkRequest.shared.requests.isEmpty)
+        let recovery = await manager.reconcileSpaceEntry(firstSiteSpace, loadedConfiguration: nil)
+        guard case .success = recovery else { preconditionFailure("explicit entry recovers first Site resources") }
+        precondition(SiteData.load(siteId: firstSite.id)?.uploadCloud == true && SiteData.load(siteId: firstSite.id)?.restoredProvisioner == true)
+        precondition(!firstSite.uploadCloud, "fixture must model distinct database instances")
+        precondition(NetworkRequest.shared.posts == 0)
+        firstSiteSpace.markLocalChangePendingCloudSync()
+        manager.addSynchronizationHandle(operation: .syncSite(site: firstSite, syncSpaces: [firstSiteSpace]), level: .promptly)
+        await ticks(60)
+        precondition(!firstSiteSpace.needUploadCloud, "stale Site must not reject the next edit as unknown creation")
+        precondition(SiteData.load(siteId: firstSite.id)?.uploadCloud == true, "stale failure must not erase recovered timestamp")
+        // A failed suspended task must preserve separately recovered Site data.
+        resetRequests(); NetworkRequest.shared.holdNextPost = true
+        firstSiteSpace.markLocalChangePendingCloudSync()
+        manager.addSynchronizationHandle(operation: .syncSite(site: firstSite, syncSpaces: [firstSiteSpace]), level: .promptly)
+        await ticks(60); precondition(NetworkRequest.shared.held != nil)
+        let newer = SiteData.load(siteId: firstSite.id)!
+        newer.name = "newer site name"; newer.lastUpdate = 20; newer.lastUploadCloudTimestamp = 10; newer.save()
+        NetworkRequest.shared.held?.resume(returning: .failure(.unknown)); NetworkRequest.shared.held = nil
+        await ticks(60)
+        precondition(SiteData.load(siteId: firstSite.id)?.lastUploadCloudTimestamp == 10)
+        precondition(SiteData.load(siteId: firstSite.id)?.name == "newer site name")
+        // A waiting first creation must finish before entry checks its child.
+        resetRequests()
+        let queuedSpace = fixture("queued-space", site: "queued-site")
+        queuedSpace.lastUploadCloudTimestamp = nil
+        let queuedSite = SiteData.rows[queuedSpace.siteId]!
+        queuedSite.lastUploadCloudTimestamp = nil; queuedSite.spaces = [queuedSpace]; queuedSite.save()
+        manager.addSynchronizationHandle(operation: .syncSite(site: queuedSite, syncSpaces: [queuedSpace]), level: .slow)
+        let queuedResult = await manager.reconcileSpaceEntry(queuedSpace, loadedConfiguration: nil)
+        guard case .success = queuedResult else { preconditionFailure("new Site entry should complete") }
+        guard case .siteAdd = NetworkRequest.shared.requests.first else { preconditionFailure("Site creation must precede Space reconciliation") }
+        precondition(SiteData.load(siteId: queuedSite.id)?.restoredProvisioner == true)
+        await ticks(60)
+        precondition(NetworkRequest.shared.requests.filter { if case .siteAdd = $0 { return true }; return false }.count == 1)
+
+        for mode in ["rejected", "missingResources"] {
+            resetRequests()
+            let child = fixture("failed-" + mode, site: "failed-site-" + mode)
+            child.lastUploadCloudTimestamp = nil
+            let parent = SiteData.rows[child.siteId]!
+            parent.lastUploadCloudTimestamp = nil; parent.save()
+            NetworkRequest.shared.creationResponse = mode == "rejected" ? .failure(.unknown) : .success([:])
+            manager.addSynchronizationHandle(operation: .syncSite(site: parent, syncSpaces: [child]), level: .slow)
+            let result = await manager.reconcileSpaceEntry(child, loadedConfiguration: nil)
+            guard case .failure = result else { preconditionFailure("failed Site creation must stop entry") }
+            await ticks(60)
+            precondition(NetworkRequest.shared.requests.count == 1 && NetworkRequest.shared.reads == 0)
+            precondition(SiteData.load(siteId: parent.id)?.uploadCloud == false)
+        }
+        resetRequests(); NetworkRequest.shared.holdNextPost = true
+        let cancelledSpace = fixture("cancelled-child", site: "cancelled-site")
+        cancelledSpace.lastUploadCloudTimestamp = nil
+        let cancelledSite = SiteData.rows[cancelledSpace.siteId]!
+        cancelledSite.lastUploadCloudTimestamp = nil; cancelledSite.save()
+        manager.addSynchronizationHandle(operation: .syncSite(site: cancelledSite, syncSpaces: [cancelledSpace]), level: .slow)
+        let cancelledEntry = Task { @MainActor in await manager.reconcileSpaceEntry(cancelledSpace, loadedConfiguration: nil) }
+        await ticks(60); precondition(NetworkRequest.shared.held != nil)
+        cancelledEntry.cancel()
+        NetworkRequest.shared.held?.resume(returning: .success(["data": ["addrLists": ["ownerDevicesAddress": 100, "ownerGroupsAddress": 100, "ownerScenesAddress": 100]]]))
+        NetworkRequest.shared.held = nil
+        _ = await cancelledEntry.value; await ticks(60)
+        precondition(NetworkRequest.shared.requests.count == 1 && NetworkRequest.shared.reads == 0, "cancelled entry must not continue into child reconciliation or replay its queue")
+        precondition(SiteData.load(siteId: cancelledSite.id)?.uploadCloud == true, "already sent creation still saves its accepted resources")
+        print("PASS: first Site ordering, missing resources/rejection/cancellation, detached Site recovery, stale next edit and failure persistence")
+        print("PASS: production add batch + cloud manager/HTTP flow: 1/10 nodes, 1 write and 0 GET, callbacks, mixed scopes, empty, stop, offline recovery, in-flight admission, queued selections, subsequent generations, historical receipt/authority and account isolation")
     }
 }

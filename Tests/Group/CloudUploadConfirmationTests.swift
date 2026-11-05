@@ -8,7 +8,7 @@ enum NetowrkReqeustApi {
 }
 
 final class SiteData {
-    let id = "fixture-site"
+    let id = "fixture-site", meshUUID = "fixture-mesh"
     static func load(siteId: String) -> SiteData? { nil } // SQLite behavior is covered by SiteStandardPropsPersistenceTests.
     var standardProperties = SiteStandardProperties()
     var name = "Site", imageId = 1, timezone: String?
@@ -56,11 +56,7 @@ extension SpaceRecoveryReceiptTests {
             precondition(api.configurationSpacePayloads.count == 1)
             let context = SpaceConfigurationSafety.prepareSubmission(uploaded, payload: api.configurationSpacePayloads[0])!
             precondition(SpaceConfigurationSafety.markSubmissionAccepted(context, space: uploaded))
-            precondition(!SpaceConfigurationSafety.finishAcceptedSubmission(context, space: uploaded))
-            request.result = .success(["data": uploaded.payload])
-            if case .failure = await SpaceConfigurationSafety.resumeUpload(uploaded) {
-                preconditionFailure("Site Space upload requires a complete Key readback")
-            }
+            precondition(SpaceConfigurationSafety.finishAcceptedSubmission(context, space: uploaded))
             precondition(uploaded.lastUploadCloudTimestamp == 50 && untouched.lastUploadCloudTimestamp == nil)
             site.lastUploadCloudTimestamp = 200
             precondition(handler.confirmSiteUpload(api: api, response: [:]))
@@ -78,6 +74,10 @@ extension SpaceRecoveryReceiptTests {
         precondition(handler.confirmSiteUpload(api: api, response: [:]))
         precondition(siteOnly.lastUploadCloudTimestamp == 100)
 
+        let missingResources = SiteData()
+        let creation = SiteConfirmationHarness(.syncSite(site: missingResources, syncSpaces: []))
+        precondition(!creation.confirmSiteUpload(api: .siteAdd(siteData: ["updateTimestamp": Int64(100)], useDeivceAddressNum: 1), response: [:]))
+        precondition(missingResources.lastUploadCloudTimestamp == nil)
         for newEdit in [false, true] {
             let site = SiteData()
             // Use the production storage representation.
@@ -90,11 +90,11 @@ extension SpaceRecoveryReceiptTests {
                 "updateTimestamp": Int64(100), "timezone": timezone.storageValue
             ], useDeivceAddressNum: 1)
             let handler = SiteConfirmationHarness(.syncSite(site: site, syncSpaces: []))
-            precondition(handler.confirmSiteUpload(api: api, response: ["data": ["addrLists": ["marker": 7]]]))
+            precondition(handler.confirmSiteUpload(api: api, response: ["data": ["addrLists": ["marker": 7, "ownerDevicesAddress": 100, "ownerGroupsAddress": 100, "ownerScenesAddress": 100]]]))
             precondition(site.resources?["marker"] as? Int == 7 && site.lastUploadCloudTimestamp == 100)
             precondition(site.pendingSitePropsMask.isEmpty == !newEdit)
         }
-        precondition(request.calls == callsAfterSpaceReadback && callsAfterSpaceReadback == calls + 2,
+        precondition(request.calls == callsAfterSpaceReadback && callsAfterSpaceReadback == calls,
             "Site confirmation itself must never issue a GET")
         print("PASS: production Site-only, Site/Space versions, addSpaces, creation resources, timezone pending and save failures")
     }

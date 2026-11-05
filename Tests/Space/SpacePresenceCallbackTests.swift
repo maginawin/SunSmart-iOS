@@ -13,7 +13,7 @@ enum MeshNodeHeartbeatManager {
     static let nodePresenceDidChange = Notification.Name("sdkPresenceChanged")
 }
 
-class View { var window: View? }
+class View { var isUserInteractionEnabled = true; var window: View? }
 class UIViewController: NSObject {
     var navigationController: Navigation?
     var view = View()
@@ -81,7 +81,8 @@ final class SpaceData {
     let siteId = "site", id = "space"
     var meshUUID = MeshNetworkManager.instance.meshNetwork!.uuid.uuidString
     var meshNetworkId = "network"
-    var deviceOperates: [MeshOperate] { permission == .visitor || disableEditorPermission ? [.control] : [.edit, .control] }
+    var configurationProtected = false
+    var deviceOperates: [MeshOperate] { configurationProtected || permission == .visitor || disableEditorPermission ? [.control] : [.edit, .control] }
     func save() { saves += 1 }
 }
 final class SiteData { var permission: Permission = .editor }
@@ -185,6 +186,12 @@ final class SpaceViewController: UIViewController {
     func configurationFlowGuidance() { if space.deviceOperates.contains(.edit) { guidance += 1 } }
     func stopEmergencyFireSceneMonitoring() { monitoringStops += 1 }
     func removeFromWindowSubviews() { SRAlertView.current?.dismiss() }
+    var entryCloudEditingGranted = false
+    var navigationItem = FixtureNavigationItem()
+    var entryPermissionDecisions: [Bool] = []
+    func resolveEntryPermission(canEdit: Bool) { entryPermissionDecisions.append(canEdit) }
+    func cancelEntryReconciliation() {}
+    func grantEntryEditingIfReady() {}
     // INSERT_PRODUCTION_MEMBERS
 }
 
@@ -222,6 +229,27 @@ struct SpacePresenceCallbackTests {
                               sentFrom: 2, to: .localClientGroupAddress)
     }
     static func main() {
+        for role in [Permission.owner, .editor] {
+            reset()
+            let vc = make(permission: role)
+            vc.space.configurationProtected = true
+            vc.checkTheSpaceMembersRequest()
+            require(NetworkRequest.shared.requests.count == 1, "configuration protection must not block cloud identity check")
+            vc.checkMeshMemberPermissions()
+            require(MeshAPI.sends == 1, "configuration protection must not block Mesh identity check")
+            scenarios += 1
+        }
+        for mode in ["password", "disabled", "visitor"] {
+            reset()
+            let vc = make(permission: mode == "visitor" ? .visitor : .editor)
+            vc.space.configurationProtected = true
+            vc.space.requiresPasswordVerification = mode == "password"
+            vc.space.disableEditorPermission = mode == "disabled"
+            vc.checkTheSpaceMembersRequest(); vc.checkMeshMemberPermissions()
+            require(NetworkRequest.shared.requests.isEmpty && MeshAPI.sends == 0, "identity restrictions still block permission probes")
+            require(vc.entryPermissionDecisions == [false], "restricted current entry finishes read-only")
+            scenarios += 1
+        }
         do {
             let vc = make()
             var updates = 0
@@ -464,3 +492,6 @@ struct SpacePresenceCallbackTests {
         print("PASS: \(scenarios) Space presence callback scenarios (production bodies, UI/transport substitutes).")
     }
 }
+
+final class FixtureNavigationItem { var rightBarButtonItem: FixtureBarItem? = FixtureBarItem() }
+final class FixtureBarItem { var isEnabled = true }

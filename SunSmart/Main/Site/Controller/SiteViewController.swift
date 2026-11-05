@@ -1329,7 +1329,7 @@ self.updateAddressData()
                         if callback != nil {
                             callback?(true)
                         }else {
-                            self.intoSpace(space: space)
+                            self.intoSpace(space: space, loadedConfiguration: importPayload)
                         }
                     }
                 }else {
@@ -2870,7 +2870,7 @@ self.updateAddressData()
     }
     
     /// 进入space
-    private func intoSpace(space: SpaceData, reviewingConfiguration: Bool = false) {
+    private func intoSpace(space: SpaceData, reviewingConfiguration: Bool = false, loadedConfiguration: [String: Any]? = nil) {
         
         guard self.view.window != nil else {
             return
@@ -2887,6 +2887,7 @@ self.updateAddressData()
         MenuPopView.hide()
         
         let spaceVc = SpaceViewController(space: space)
+        spaceVc.entryLoadedConfiguration = loadedConfiguration
         spaceVc.opensConfigurationReview = reviewingConfiguration
         spaceVc.site = site
         spaceVc.deleteSpaceCallback = {[weak self] in

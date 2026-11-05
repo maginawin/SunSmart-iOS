@@ -108,7 +108,7 @@ extension SpaceRecoveryReceiptTests {
             reopened.nodes = space.nodes; reopened.lastUpdate = 70; reopened.lastUploadCloudTimestamp = 50
             P.storedSpace = reopened
             NetworkRequest.shared.responses = [.success(["data": cloud]), .success([:]), .success(["data": reopened.payload])]
-            guard case .success = await S.uploadBeforeUnbind(reopened) else { preconditionFailure("local retry after reopening: " + mode) }
+            guard case .success = await S.uploadForEntry(reopened) else { preconditionFailure("local retry after reopening: " + mode) }
             precondition(reopened.nodes.count == 1 && !reopened.needUploadCloud && !S.hasPendingUpload(reopened))
             precondition(try! S.deletionJournal(reopened).entries.isEmpty)
         }
