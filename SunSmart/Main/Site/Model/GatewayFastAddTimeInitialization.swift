@@ -25,7 +25,8 @@ struct GatewayFastAddTimeInitialization {
         at date: Date = Date()
     ) -> GatewayFastAddTimeInitialization? {
         guard let model = node.timeSetupModel,
-              let plan = SiteTimeSetMessageFactory.makePlan(model: model, storageValue: siteTimeZoneStorageValue) else {
+              let plan = SiteTimeSetMessageFactory.makePlan(model: model, storageValue: siteTimeZoneStorageValue,
+                                                          usesFastAddBearer: true) else {
             return nil
         }
         return GatewayFastAddTimeInitialization(

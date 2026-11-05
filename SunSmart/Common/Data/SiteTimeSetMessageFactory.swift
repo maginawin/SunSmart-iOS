@@ -77,6 +77,7 @@ private final class SiteTimeSetPreparedContext {
     let storageValue: String?
     let siteID: String?
     private weak var node: Node?
+    private let requiresProxyConnection: Bool
     private let region = UserData.currentServerRegion
     private let userID = UserData.currentUserId
     private let network = MeshNetworkManager.instance.meshNetwork
@@ -87,8 +88,10 @@ private final class SiteTimeSetPreparedContext {
     private var resolution: SiteTimeSetTimeZoneResolution?
     private var transitionQueued = false
 
-    init(storageValue: String?, siteID: String?, node: Node?, resolution: SiteTimeSetTimeZoneResolution?) {
+    init(storageValue: String?, siteID: String?, node: Node?, resolution: SiteTimeSetTimeZoneResolution?,
+         requiresProxyConnection: Bool = true) {
         self.storageValue = storageValue; self.siteID = siteID; self.node = node; self.resolution = resolution
+        self.requiresProxyConnection = requiresProxyConnection
     }
     var current: SiteTimeSetTimeZoneResolution? {
         lock.lock(); defer { lock.unlock() }; return resolution
@@ -106,7 +109,8 @@ private final class SiteTimeSetPreparedContext {
     }
     private func identityIsCurrent() -> Bool {
         let manager = MeshNetworkManager.instance
-        guard MeshLibManager.manager.isMeshNetworkConnected,
+        // Fast Add owns an independent bearer; its SDK operation validates that transport.
+        guard (!requiresProxyConnection || MeshLibManager.manager.isMeshNetworkConnected),
               region == UserData.currentServerRegion, userID == UserData.currentUserId,
               manager.meshNetwork === network, manager.currentNetworkKey.networkId == networkID,
               manager.currentApplicationKey.index == keyIndex, manager.currentApplicationKey.key == keyData else { return false }
@@ -167,10 +171,11 @@ extension SiteTimeSetMessageFactory {
             siteID: model.parentElement?.parentNode?.network?.uuid.uuidString,
             node: model.parentElement?.parentNode, resolution: resolution))
     }
-    static func makePlan(model: Model, storageValue: String?) -> SiteTimeSetMessagePlan? {
+    static func makePlan(model: Model, storageValue: String?, usesFastAddBearer: Bool = false) -> SiteTimeSetMessagePlan? {
         makePlan(model: model, context: .init(storageValue: storageValue,
             siteID: model.parentElement?.parentNode?.network?.uuid.uuidString,
-            node: model.parentElement?.parentNode, resolution: resolve(storageValue: storageValue)))
+            node: model.parentElement?.parentNode, resolution: resolve(storageValue: storageValue),
+            requiresProxyConnection: !usesFastAddBearer))
     }
 
     /// A future transition is supplementary: its missing ACK cannot change TimeSet success.
@@ -181,6 +186,8 @@ extension SiteTimeSetMessageFactory {
             siteID: model.parentElement?.parentNode?.network?.uuid.uuidString,
             node: model.parentElement?.parentNode, resolution: resolution)
         let handle = makePlan(model: model, context: context).handle
+        // This flow owns the supplementary send and connection release below.
+        handle.responseIsValid = context.accepts
         let valid = handle.transmissionIsValid
         var completed = false
         handle.transmissionIsValid = {
@@ -190,11 +197,14 @@ extension SiteTimeSetMessageFactory {
         let finish: (TimeStatus?) -> Void = { status in
             DispatchQueue.main.async {
                 guard !completed else { return }
-                if status != nil, isCurrent(), context.canSend() {
-                    context.enqueueTransition(model: model)
-                }
                 completed = true
-                completion(status)
+                if status != nil, isCurrent(), context.canSend() {
+                    sendTransition(resolution: resolution, model: model,
+                                   isCurrent: { context.canSend() && isCurrent() },
+                                   completion: { completion(status) })
+                } else {
+                    completion(status)
+                }
             }
         }
         handle.transmissionRejected = { finish(nil) }
@@ -223,11 +233,11 @@ extension SiteTimeSetMessageFactory {
     }
 
     static func sendTransition(resolution: SiteTimeSetTimeZoneResolution, model: Model,
-                               isCurrent: @escaping () -> Bool) {
-        guard let message = transitionMessage(resolution: resolution) else { return }
+                               isCurrent: @escaping () -> Bool, completion: (() -> Void)? = nil) {
+        guard let message = transitionMessage(resolution: resolution) else { completion?(); return }
         // Send to the actual Time Setup element, never blindly to a Time Server element.
         guard let element = model.parentElement,
-              let setup = element.model(withSigModelId: .timeSetupServerModelId) else { return }
+              let setup = element.model(withSigModelId: .timeSetupServerModelId) else { completion?(); return }
         let context = SiteTimeSetPreparedContext(storageValue: resolution.storageValue,
             siteID: element.parentNode?.network?.uuid.uuidString, node: element.parentNode, resolution: resolution)
         let handle = MeshMessageHandle(message: message, model: setup)
@@ -235,7 +245,15 @@ extension SiteTimeSetMessageFactory {
             let active = Thread.isMainThread ? isCurrent() : DispatchQueue.main.sync(execute: isCurrent)
             return active && context.canSend()
         }
-        MeshAPI.sendMessage(handle: handle)
+        guard let completion else { MeshAPI.sendMessage(handle: handle); return }
+        // Retain a temporary Gateway connection through the GATT write receipt,
+        // including BLE backpressure. Its supplementary ACK is not a success prerequisite.
+        Task { @MainActor in
+            guard handle.prepareMessageForSend() else { completion(); return }
+            _ = try? await MeshNetworkManager.instance.submitTimeZoneSet(message, to: setup,
+                isCurrent: { handle.transmissionIsValid?() == true })
+            completion()
+        }
     }
 
     static func broadcast(resolution: SiteTimeSetTimeZoneResolution, isCurrent: @escaping () -> Bool,

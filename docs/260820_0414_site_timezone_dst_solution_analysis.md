@@ -1,5 +1,42 @@
 # Site Time Zone 夏令时问题分析与解决方案
 
+## 2026-11-05 Review 修复：Fast Add、连接释放与冷启动缓存
+
+三条审查问题已完成代码修复及定向回归；品牌构建结果见下表。真实 API、BLE、UIKit 验收未执行，SDK 新接口尚未发布。
+
+### 修改与依赖
+
+- App 分支 `feat/daylight-saving-261024`，开始时 HEAD `4796d2d0b9e6fde5e900e56c3a1a2454cc395370`，工作区干净。修改共享工厂、`GatewayFastAddTimeInitialization`、`SiteTimeZoneService` 与现有 `check_site_clock_transmission.py`。
+- Fast Add 显式选择独立 bearer 路径，连接与操作是否仍有效由 SDK Fast Add 发送流程校验。账户/区域、网络实例与密钥、节点归属、Site 时区和快照有效性继续校验；普通代理发送仍要求全局连接有效。成功回执后初始化状态不再因全局连接为 false 被清除。
+- Sync Gateways 收到有效 TimeStatus 后，仅向同一 Element 的 Time Setup Server（SIG `0x1201`）单播一次 TimeZoneSet（`0x823C`）。当前/未来 offset、TAI 转换继续复用原实现；无未来切换时 `taiSeconds=0` 清除旧计划。等待全部 Proxy Protocol 分片提交至 CoreBluetooth 后再完成校时并释放连接；不等待 TimeZoneStatus，不增加补充 ACK 重试，补充失败不撤销有效 TimeSet 结果。取消、节点移除、换代理及上下文过期在写入前拒绝；5 秒超时取消尚未写出的分片。
+- SDK 普通 send 回调仅能证明交给 bearer，BLE 背压时不能证明所有分片已 writeValue。因此复用已有 `GattWriteReceiptQueue` / `sendTracked`，抽取 Device Leave 已有的固定长度消息提交逻辑，新增公开 `submitTimeZoneSet` 入口；没有新增队列、缓存或持久状态。设备删除继续使用同一提交机制。
+- 冷启动先让 `store.refresh` 加载磁盘证据并按需刷新，再分类时区。系统/目录未知但缓存已确认的 IANA 首次即可恢复 Site offset 与下一次计划；已过切换点且刷新失败返回不可校时，不回退手机。语法合法但无证据的标识会先尝试现有服务器接口；请求仍受原 10 秒上限约束，缺失/语法无效值保留手机回退。
+
+SDK 来源：`SunSmartLocal.xcworkspace` → `.local-sdk/nordic-sig-mesh-sdk` → `/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk-worktrees/one-dev`，分支 `one-dev`、基线 `c8ef744d9591b57511f96db7362c931978a707a5`；修改前干净，本任务单人写入。SDK 未提交差异：`MeshNetworkManager+DeviceLeave.swift` 抽取公共实现，新增 `MeshNetworkManager+TimeZoneSet.swift`。正式 project 继续指向远端 `release`，未改依赖声明或锁文件。**App 合入/发布前须先发布包含这两项差异的 SDK revision，再更新正式依赖解析；本地构建不代表远端 API 已可用。** 未执行 commit、push、merge、部署。
+
+### 验证记录与边界
+
+| 验证 | 结果 |
+| --- | --- |
+| 三个原始问题 | 扩展现有传输脚本，修复前分别复现 Fast Add 拒发、提前 completion、首次缓存读取为零；修复后通过 |
+| BLE 背压补充复现 | 普通 send 回调在 GATT 分片仍排队时触发，复现提前释放；切换实际 receipt 机制后通过 |
+| `python3 scripts/check_site_clock_transmission.py` | 通过：真实 App 工厂、Fast Add 初始化/SDK append 方法、SDK TimeSet/TimeZoneSet 序列化与 TAI；实际 Service prepareClock 方法、Codable、磁盘缓存；真实 SDK typed submission、receipt continuation 和 GATT receipt 队列。覆盖账号/网络/密钥/Site/节点变化、取消/断开、部分分片、重复/迟到回执、无模型、发送失败、5 秒超时和无 TimeStatus |
+| 既有相关回归 | `check_site_dst.sh`、`check_site_dst_transmission.py`、`check_site_timeset_message_factory.sh`、`check_site_timeset_call_sites.sh`、`check_gateway_information_time.sh`、独立 `GatewayTimeSyncCoordinatorTests` 均通过 |
+| 共享写入机制回归 | `check_lights_batch_deletion.sh` 通过（含 `GattWriteReceiptTests`） |
+| Sync Gateways 总脚本 | 首项既有 112pt HeaderLayout 断言失败，当前实现最小宽度 100；测试和实现均未修改，沿用本文件已记录的开放问题。独立校时回归通过，不宣称总脚本全绿 |
+| 工程与差异 | `plutil -lint SunSmart.xcodeproj/project.pbxproj`、App/SDK `git diff --check` 通过 |
+| generic iOS Debug | SunSmart、Archipelago、SLG Sync Plus、SylSmart、Lumineux、HSmart 全部 exit 0；六份 Xcode Build 记录的 totalNumberOfErrors 均为 0，保留既有警告 |
+
+构建使用本地 workspace、`-sdk iphoneos -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO`，DerivedData 为 `/Users/maginawin/Library/Developer/Xcode/DerivedData/SunSmart-feat-daylight-saving-261024-review-fixes`，串行、不 clean、不操作真机。此次引入 SDK 公共接口，覆盖六品牌集成；未涉及 Release 条件。
+
+夹具边界：网络/API 与 CoreBluetooth 为替身；提交夹具在真实 TimeZoneSet 字节之后替代加密 PDU 组装，执行真实 receipt continuation 与队列。完整加密链通过 App/SDK 编译检查，不能据此认定 BLE 传输、网关接收/持久化及自动 DST 切换已经验收。
+
+最短人工步骤：
+
+1. 从 Site Fast Add 网关，确认添加成功后当前时间和 offset 正确且重进后保留。
+2. 对有下一次 DST 的 Site 执行 Sync Gateways，回读 TimeZoneStatus 检查下一次 offset/TAI；确认断开、退出后无旧计划迟发。补充消息无 ACK 时，已确认的当前校时结果仍成功。
+3. 对服务器确认过、系统不识别的 IANA 缓存，杀进程后离线重启，首次校时保持 Site offset/计划；已过切换点的缓存须等待刷新，不能发送手机回退计划。
+
 ## 2026-11-05 实施：Site 入口刷新、Space 校时与下一次 DST 下发（App 完成，待设备验收）
 
 本节对应用户新增需求：进入 Site 更新 DST 信息；进入 Space 使用 Site current offset 校时，并向设备发送下一次切换。**用户已确认按本版本实施；App 改动与自动化验证已完成，设备/真实 API 验收尚未执行。** 下文历史记录中的“不增加未来 TimeZoneSet”是上一轮范围，本轮已扩展到 App 侧未来计划下发。
