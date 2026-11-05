@@ -19,14 +19,11 @@ struct TimedSchedulerNodeSlot: Codable, Equatable {
     let identity: TimedSchedulerNodeIdentity
     let slot: Int
     var state: State
-    let generation: UUID
 
-    init(identity: TimedSchedulerNodeIdentity, slot: Int, state: State,
-         generation: UUID = UUID()) {
+    init(identity: TimedSchedulerNodeIdentity, slot: Int, state: State) {
         self.identity = identity
         self.slot = slot
         self.state = state
-        self.generation = generation
     }
 
     var isValid: Bool { identity.isValid && (0..<16).contains(slot) }
@@ -105,7 +102,7 @@ enum TimedSchedulerPayloadPolicy {
     /// lost bindings to unassigned and omitted business properties to Schedule defaults.
     /// Never infer physical slots from IDs.
     static func fillingMissingBindings(_ payload: [String: Any]) -> [String: Any] {
-        var payload = payload
+        var payload = withoutBindingGeneration(payload)
         if payload["schedules"] == nil { payload["schedules"] = [[String: Any]]() }
         if let schedules = payload["schedules"] as? [[String: Any]] {
             let defaults: [String: Any] = ["name": "", "enabled": false, "selectTarget": 0,
@@ -144,6 +141,62 @@ enum TimedSchedulerPayloadPolicy {
             return schedule
         }
         return result
+    }
+
+    /// Only the retired binding field is removed. Other modules' generations,
+    /// unknown business fields, and malformed structures remain untouched.
+    static func withoutBindingGeneration(_ payload: [String: Any]) -> [String: Any] {
+        var result = payload
+        if let schedules = payload["schedules"] as? [[String: Any]] {
+            result["schedules"] = schedules.map { schedule -> [String: Any] in
+                var schedule = schedule
+                if let slots = schedule["nodeSlots"] as? [[String: Any]] {
+                    schedule["nodeSlots"] = slots.map { slot -> [String: Any] in
+                        var slot = slot
+                        slot.removeValue(forKey: "generation")
+                        return slot
+                    }
+                }
+                return schedule
+            }
+        }
+        return result
+    }
+
+    static func siteWithoutBindingGeneration(_ site: [String: Any]) -> [String: Any] {
+        var result = site
+        if let spaces = site["spaces"] as? [[String: Any]] {
+            result["spaces"] = spaces.map(withoutBindingGeneration)
+        }
+        return result
+    }
+
+    /// Historical receipts have no Nodes, so do not pass them through the
+    /// Space repair path (which could drop bindings). Preserve all other bytes'
+    /// JSON meaning; a corrupt receipt cannot become an empty valid receipt.
+    static func normalizedComparison(_ data: Data) -> Data? {
+        guard let value = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let version = integer(value["timedSchemaVersion"]), [1, 2].contains(version),
+              let schedules = value["schedules"] as? [[String: Any]] else { return nil }
+        var identities = Set<TimedSchedulerNodeIdentity>()
+        if version == 2 {
+            for schedule in schedules {
+                guard let raw = schedule["nodeSlots"] as? [[String: Any]],
+                      let data = try? JSONSerialization.data(withJSONObject: raw),
+                      let slots = try? JSONDecoder().decode([TimedSchedulerNodeSlot].self, from: data),
+                      slots.allSatisfy(\.isValid) else { return nil }
+                identities.formUnion(slots.map(\.identity))
+            }
+        }
+        let validation: [String: Any] = ["spaceData": ["timedSchemaVersion": version], "schedules": schedules, "nodes": [[String: Any]]()]
+        guard canonicalValidated(validation, knownIdentities: identities) != nil else { return nil }
+        return try? JSONSerialization.data(withJSONObject: withoutBindingGeneration(value), options: [.sortedKeys])
+    }
+
+    static func comparisonsMatch(_ lhs: Data?, _ rhs: Data?) -> Bool {
+        guard let lhs, let rhs,
+              let left = normalizedComparison(lhs), let right = normalizedComparison(rhs) else { return false }
+        return left == right
     }
 
     /// A reservation belongs to one provisioning instance. Keep the schedule,
@@ -248,9 +301,13 @@ enum TimedSchedulerPayloadPolicy {
     /// nil means invalid, never an empty configuration. Array order is immaterial.
     static func canonical(_ payload: [String: Any]) -> Data? {
         guard let payload = repairingStaleBindings(payload) else { return nil }
-        guard let version = schema(payload), let schedules = payload["schedules"] as? [[String: Any]],
+        return canonicalValidated(payload)
+    }
+
+    private static func canonicalValidated(_ payload: [String: Any], knownIdentities: Set<TimedSchedulerNodeIdentity>? = nil) -> Data? {
+        guard let version = declaredSchema(payload), let schedules = payload["schedules"] as? [[String: Any]],
               let nodes = payload["nodes"] as? [[String: Any]] else { return nil }
-        let identities = Set(nodes.compactMap(identity))
+        let identities = knownIdentities ?? Set(nodes.compactMap(identity))
         var ids = Set<Int>(), slots: [TimedSchedulerNodeIdentity: Set<Int>] = [:]
         var normalized: [[String: Any]] = []
         for schedule in schedules {
@@ -363,7 +420,8 @@ enum TimedSchedulerPayloadPolicy {
     /// A confirmed node removal may remove only that provisioning instance's
     /// references from a previously verified receipt, preserving other fields.
     static func removingNodes(from canonical: Data, uuids: Set<String>, addresses: Set<String>) -> Data? {
-        guard var value = (try? JSONSerialization.jsonObject(with: canonical)) as? [String: Any],
+        guard let canonical = normalizedComparison(canonical),
+              var value = (try? JSONSerialization.jsonObject(with: canonical)) as? [String: Any],
               let schedules = value["schedules"] as? [[String: Any]] else { return nil }
         value["schedules"] = schedules.map { schedule -> [String: Any] in
             var result = schedule

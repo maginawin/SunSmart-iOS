@@ -9,8 +9,7 @@ import Foundation
             "deviceAddresses": ["0001"], "groupAddresses": [], "sceneAddress": NSNull()]
         if let slot {
             let identity = TimedSchedulerPayloadPolicy.identity(node: ["uuid": uuid, "unicastAddress": "0001", "deviceKey": key])!
-            let binding = TimedSchedulerNodeSlot(identity: identity, slot: slot, state: .assigned,
-                generation: UUID(uuidString: "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa")!)
+            let binding = TimedSchedulerNodeSlot(identity: identity, slot: slot, state: .assigned)
             s["nodeSlots"] = try! JSONSerialization.jsonObject(with: JSONEncoder().encode([binding]))
         }
         return s
@@ -51,7 +50,45 @@ import Foundation
         }
     }
 
+    static func ignoresLegacyGeneration() {
+        let original = payload([schedule(300, slot: 0)])
+        let expected = TimedSchedulerPayloadPolicy.canonical(original)!
+        for value: Any in [UUID().uuidString, NSNull(), 42, ["bad": true], "invalid"] {
+            var row = schedule(300, slot: 0)
+            var slots = row["nodeSlots"] as! [[String: Any]]
+            slots[0]["generation"] = value
+            row["nodeSlots"] = slots
+            let input = payload([row])
+            precondition(TimedSchedulerPayloadPolicy.canonical(input) == expected,
+                         "legacy generation of any type must be ignored")
+            var rawSpace = input
+            rawSpace["generation"] = "retain-space-generation"
+            rawSpace["spaceData"] = ["timedSchemaVersion": 2, "generation": "retain-extension-generation"]
+            let site: [String: Any] = ["spaces": [rawSpace], "generation": "retain-site-generation"]
+            for api in [TimedUploadTestAPI.siteAdd(siteData: site, useDeivceAddressNum: 0),
+                        .siteUpload(siteData: site), .spaceUpload(siteId: "site", spaceId: "space", spaceData: rawSpace)] {
+                let request = try! JSONSerialization.jsonObject(with: JSONSerialization.data(withJSONObject: api.parameters)) as! [String: Any]
+                let body = request["site"] as? [String: Any] ?? request
+                let space = (body["spaces"] as! [[String: Any]])[0]
+                let records = space["schedules"] as! [[String: Any]]
+                precondition((records[0]["nodeSlots"] as! [[String: Any]])[0]["generation"] == nil)
+                precondition(space["generation"] as? String == "retain-space-generation")
+                precondition((space["spaceData"] as! [String: Any])["generation"] as? String == "retain-extension-generation")
+                if request["site"] != nil { precondition(body["generation"] as? String == "retain-site-generation") }
+            }
+            let normalized = TimedSchedulerPayloadPolicy.repairingStaleBindings(input)!
+            let output = normalized["schedules"] as! [[String: Any]]
+            precondition((output[0]["nodeSlots"] as! [[String: Any]])[0]["generation"] == nil)
+        }
+        var row = schedule(300, slot: 0)
+        var slots = row["nodeSlots"] as! [[String: Any]]
+        slots[0].removeValue(forKey: "generation")
+        row["nodeSlots"] = slots
+        precondition(TimedSchedulerPayloadPolicy.canonical(payload([row])) == expected)
+    }
+
     static func main() {
+        ignoresLegacyGeneration()
         legacyProfilePayload()
         missingV2Bindings()
         let old = payload([schedule(0), schedule(15)], version: 1)
@@ -225,7 +262,7 @@ import Foundation
         precondition(TimedSchedulerPayloadPolicy.canonical(invalid) == nil, "malformed current identities are not deletion proof")
         invalid = original; invalid["nodes"] = (original["nodes"] as! [[String: Any]]) + (original["nodes"] as! [[String: Any]])
         precondition(TimedSchedulerPayloadPolicy.canonical(invalid) == nil)
-        for field in ["slot", "generation", "state"] {
+        for field in ["slot", "state"] {
             var bad = bindings[0]; bad[field] = field == "slot" ? 16 : "invalid"
             var s = mixed; s["nodeSlots"] = [bad]
             var p = payload([s]); p["nodes"] = [[String: Any]]()

@@ -28,9 +28,24 @@ with tempfile.TemporaryDirectory(prefix='timed-device-slots-') as directory:
     subprocess.run(['swiftc', '-parse-as-library', *inputs, '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)
 
+api = (root / 'SunSmart/Common/Network/NetowrkReqeustApi.swift').read_text()
+site = api[api.index('        case .siteAdd(let siteData, let useDeivceAddressNum):', api.index('var parameters')):]
+site = site[:site.index('        case .siteDelete')]
+space = api[api.index('        case .spaceUpload(let siteId, let spaceId, let spaceData):', api.index('var parameters')):]
+space = space[:space.index('        case .spaceDelete')]
+request_fixture = """import Foundation
+struct UserData { static let currentUserId = "fixture", currentUserName = "fixture" }
+enum TimedUploadTestAPI {
+    case siteAdd(siteData: [String: Any], useDeivceAddressNum: Int)
+    case siteUpload(siteData: [String: Any])
+    case spaceUpload(siteId: String, spaceId: String, spaceData: [String: Any])
+    var parameters: [String: Any] { switch self {
+""" + site + space + "} } }"
 with tempfile.TemporaryDirectory(prefix='timed-payload-') as directory:
     binary = Path(directory) / 'Tests'
-    subprocess.run(['swiftc', '-parse-as-library', str(policy),
+    request_source = Path(directory) / 'Request.swift'
+    request_source.write_text(request_fixture)
+    subprocess.run(['swiftc', '-parse-as-library', str(policy), str(request_source),
                     str(root / 'Tests/Timed/TimedPayloadTests.swift'), '-o', str(binary)], check=True)
     snapshot = sys.argv[sys.argv.index('--snapshot') + 1:][:1] if '--snapshot' in sys.argv else []
     if '--stale-snapshot' in sys.argv:

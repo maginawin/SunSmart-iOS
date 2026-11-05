@@ -80,6 +80,7 @@ enum SyncExecutionSessionTests {
 
     static func main() {
         DeviceOperationType.allowsMessageFactory = true
+        schedulerResultOwnership()
         sceneReadFollowUpBatches()
         sceneCleanupTaskResultBoundaries()
         sceneCleanupActivationIsolation()
@@ -119,6 +120,21 @@ enum SyncExecutionSessionTests {
         authorizationBeforeDynamicMessages()
         automaticRetryBudget()
         print("PASS: production Session scheduling, writeback ordering, late completion, stop/retry, Profile/PIR compensation and authorization cancellation")
+    }
+
+    static func schedulerResultOwnership() {
+        for cancelled in [false, true] {
+            let h = Harness()
+            let (session, _, model, node) = h.make()
+            let handle = node.testHandles[0]
+            handle.schedulerTask = MeshSchedulerTask()
+            handle.isSuccessful = true
+            if cancelled { handle.schedulerTask!.cancel() }
+            let result = session.applyResult([handle], model: model, messageHandles: [handle])
+            precondition(result == !cancelled)
+            precondition(node.updates == (cancelled ? 0 : 1), "obsolete Scheduler results must not write back")
+        }
+        print("PASS: production Session accepts current Scheduler success and rejects cancelled writeback")
     }
 
     static func sceneDeletionSubsetRetryRestoresPrerequisites() {

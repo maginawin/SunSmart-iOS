@@ -38,6 +38,7 @@ extension HDBDeviceSyncTask {
     func sendHandleCompleteIdentify(deviceBlinkMode: DeviceBlinkMode) {}
 ''')
     fixtures = fixtures.replace('final class MeshMessageHandle {', '''final class MeshMessageHandle {
+    var schedulerTask: MeshSchedulerTask?
     var sceneContext: SceneMessageContext?
     var address: Address? = 1
     var model: TestVendorModel? = nil
@@ -128,6 +129,7 @@ final class RestoreSceneBoundary {
         production.write_text(source)
         binary = Path(directory) / 'Tests'
         shared = [str(ROOT / f'SunSmart/Main/Space/Model/{name}.swift') for name in ['SyncRunLifecycle', 'SyncSessionCoordinator', 'SyncCommandStopGate', 'SyncOperationResultPolicy']]
+        shared.append(str((ROOT / '.local-sdk/nordic-sig-mesh-sdk').resolve() / 'Sources/NordicSigMeshSDK/MeshLib/Manager/MeshSchedulerTask.swift'))
         identity_models = [str(ROOT / 'SunSmart/Main/Timed/Model/TimedSchedulerSlotPolicy.swift'), str(ROOT / 'SunSmart/Main/Scene/Model/SceneConfiguration.swift')]
         subprocess.run(['swiftc', '-parse-as-library', *shared, *identity_models, str(production), str(ROOT / 'Tests/Sync/SyncExecutionSessionTests.swift'), '-o', str(binary)], check=True)
         subprocess.run([str(binary)], check=True)

@@ -75,7 +75,7 @@ enum SpaceCloudNodeRemovalPolicy {
     /// Compare exported business configuration independently of server observations.
     /// Only hashes and provisioned identities are persisted.
     struct Snapshot: Codable, Equatable {
-        static let currentComparisonVersion = 6
+        static let currentComparisonVersion = 7
         let spaceID: String
         let timestamp: Int64
         let properties: String
@@ -84,7 +84,7 @@ enum SpaceCloudNodeRemovalPolicy {
         var identities: [Instance]
 
         static func make(_ payload: [String: Any]) -> Snapshot? {
-            let payload = CloudConfigurationDefaults.space(payload)
+            let payload = TimedSchedulerPayloadPolicy.withoutBindingGeneration(CloudConfigurationDefaults.space(payload))
             guard let id = payload["uuid"] as? String,
                   let timestamp = SpaceConfigurationIntegrityPolicy.integer(payload["updateTimestamp"]),
                   timestamp >= 0, timestamp < Int64.max,

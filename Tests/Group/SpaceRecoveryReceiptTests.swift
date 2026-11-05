@@ -186,6 +186,7 @@ final class NetworkRequest {
 }
 @main struct SpaceRecoveryReceiptTests {
     @MainActor static func main() async throws {
+        try testRetiredTimedGenerationReceipts()
         if CommandLine.arguments.contains("--newer-local") {
             defer {
                 try? FileManager.default.removeItem(at: SpaceConfigurationSafety.testRoot)
@@ -1445,6 +1446,49 @@ extension SpaceRecoveryReceiptTests {
         precondition(S.reconcileCloudMembership(clean, remote: remote), "without protected local work, ordinary import owns remote changes")
         try await testLocalHandoffBeforeUpload()
         print("PASS: newer local membership survives older partial/empty/changed cloud and old receipts; retry uploads all six nodes and preserves the confirmed baseline until GET")
+    }
+
+    @MainActor static func testRetiredTimedGenerationReceipts() throws {
+        typealias S = SpaceConfigurationSafety
+        for phase in [SpaceRecoveryState.Submission.Phase.prepared, .accepted] {
+            let space = SpaceData("retired-timed-generation-" + phase.rawValue)
+            space.nodes = [try membershipNode(1)]
+            space.timedSchemaVersion = 2
+            let binding = TimedSchedulerNodeSlot(identity: TimedSchedulerPayloadPolicy.identity(node: space.nodes[0])!, slot: 2, state: .assigned)
+            let slots = try JSONSerialization.jsonObject(with: JSONEncoder().encode([binding]))
+            let row: [String: Any] = ["id": 20, "name": "Morning", "enabled": true, "selectTarget": 1,
+                "action": 1, "fadeTime": 0, "hour": 8, "minute": 0, "dayOfWeek": 127, "nodeSlots": slots]
+            space.exportValues = ["spaceData": ["timedSchemaVersion": 2], "schedules": [row]]
+            let normalized = TimedSchedulerPayloadPolicy.canonical(space.payload)!
+            var old = try JSONSerialization.jsonObject(with: normalized) as! [String: Any]
+            var rows = old["schedules"] as! [[String: Any]]
+            var legacy = rows[0]["nodeSlots"] as! [[String: Any]]
+            legacy[0]["generation"] = ["oldWriter": true]
+            rows[0]["nodeSlots"] = legacy; old["schedules"] = rows
+            let historical = try JSONSerialization.data(withJSONObject: old, options: [.sortedKeys])
+            var state = try S.recoveryState(space)
+            state.timedConfigurationBaseline = historical
+            state.submission = .init(id: UUID(), timestamp: space.lastUpdate,
+                configuration: SpaceConfigurationIntegrityPolicy.configurationData(space.payload)!, phase: phase,
+                timedConfiguration: historical)
+            try S.testSaveState(state, space: space)
+            S.failStateWrite = true
+            do { _ = try S.recoveryState(space); preconditionFailure("upgrade write failure must remain retryable") }
+            catch { }
+            S.failStateWrite = false
+            let upgraded = try S.recoveryState(space)
+            var expected = state
+            expected.timedConfigurationBaseline = normalized
+            expected.submission?.timedConfiguration = normalized
+            precondition(upgraded == expected && (try! S.recoveryState(space)) == expected,
+                         "upgrade only the Timed comparison, preserve identity, generation, phase and submission")
+            precondition(TimedSchedulerPayloadPolicy.comparisonsMatch(historical, normalized))
+            rows[0]["minute"] = 9; old["schedules"] = rows
+            precondition(!TimedSchedulerPayloadPolicy.comparisonsMatch(try! JSONSerialization.data(withJSONObject: old), normalized))
+            legacy[0]["slot"] = 16; rows[0]["nodeSlots"] = legacy; old["schedules"] = rows
+            precondition(TimedSchedulerPayloadPolicy.normalizedComparison(try! JSONSerialization.data(withJSONObject: old)) == nil)
+        }
+        print("PASS: legacy Timed receipt normalization, prepared/accepted phases, atomic write failure/retry, restart and strict business/binding changes")
     }
 
     @MainActor static func testLocalHandoffBeforeUpload() async throws {

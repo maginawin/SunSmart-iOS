@@ -187,6 +187,14 @@ enum SpaceConfigurationSafety {
         lock.lock(); defer { lock.unlock() }
         if var state = try SpaceRecoveryState.read(from: stateURL(space), identity: identity(space)) {
             let previous = state
+            if let old = state.timedConfigurationBaseline,
+               let normalized = TimedSchedulerPayloadPolicy.normalizedComparison(old) {
+                state.timedConfigurationBaseline = normalized
+            }
+            if let old = state.submission?.timedConfiguration,
+               let normalized = TimedSchedulerPayloadPolicy.normalizedComparison(old) {
+                state.submission?.timedConfiguration = normalized
+            }
             upgradeSceneComparison(&state, space: space)
             if state != previous { try saveState(state, space: space) }
             return state
@@ -772,7 +780,7 @@ enum SpaceConfigurationSafety {
               let state = try? recoveryState(space), state.preservesUpload,
               state.requiresRemoteImport != true, !hasPendingImport(space),
               let timed = state.timedConfigurationBaseline,
-              timed == TimedSchedulerPayloadPolicy.canonical(remote),
+              TimedSchedulerPayloadPolicy.comparisonsMatch(timed, TimedSchedulerPayloadPolicy.canonical(remote)),
               SpaceConfigurationIntegrityPolicy.configurationsMatch(
                 state.authorizationBaseline, SpaceConfigurationIntegrityPolicy.configurationData(remote)),
               let localNetwork = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
@@ -1200,7 +1208,7 @@ enum SpaceConfigurationSafety {
         guard SpaceConfigurationIntegrityPolicy.configurationsMatch(
             SpaceConfigurationIntegrityPolicy.configurationData(local), submission.configuration) else { return "localConfigurationMismatch" }
         guard SpaceConfigurationIntegrityPolicy.scheduleTargetsData(local) == submission.scheduleTargets else { return "localScheduleTargetsMismatch" }
-        guard TimedSchedulerPayloadPolicy.canonical(local) == submission.timedConfiguration else { return "localTimedMismatch" }
+        guard TimedSchedulerPayloadPolicy.comparisonsMatch(TimedSchedulerPayloadPolicy.canonical(local), submission.timedConfiguration) else { return "localTimedMismatch" }
         guard SchedulerModelSnapshot.spaceData(local) == submission.schedulerModelStates else { return "localSchedulerModelsMismatch" }
         guard sameNodeIdentities(SpaceCloudNodeRemovalPolicy.instances(local), submission.nodeIdentities) else { return "localNodeIdentitiesMismatch" }
         return nil
@@ -1822,7 +1830,7 @@ enum SpaceConfigurationSafety {
     static func hasReviewedCloudImport(_ space: SpaceData) -> Bool { reviewedCloudImport(space) != nil }
 
     private static func defaultRecoverySourceData(_ payload: [String: Any]) -> Data? {
-        let payload = CloudConfigurationDefaults.space(payload)
+        let payload = TimedSchedulerPayloadPolicy.withoutBindingGeneration(CloudConfigurationDefaults.space(payload))
         let fields: Set<String> = ["uuid", "updateTimestamp", "netKey", "appKey", "nodes", "groups", "scenes",
             "schedules", "switches", "emergencyFireControllers", "spaceData", "spaceName", "imageId",
             "controlType", "deviceBlinkMode", "displayDeviceNamePrefix", "showCCTQuickButtons"]
@@ -2120,7 +2128,7 @@ enum SpaceConfigurationSafety {
         guard let removed = SpaceCloudNodeRemovalPolicy.removed(from: identities, remote: remoteNodes), removed.isEmpty else { return true }
         let referenceMatches = P.configurationsMatch(reference, actual)
         let profilesOnly = P.configurationsMatchExceptProfiles(reference, actual)
-        guard profilesOnly, TimedSchedulerPayloadPolicy.canonical(remote) == timed,
+        guard profilesOnly, TimedSchedulerPayloadPolicy.comparisonsMatch(TimedSchedulerPayloadPolicy.canonical(remote), timed),
               SchedulerModelSnapshot.spaceData(remote) == models,
               context.submission?.scheduleTargets.map({ P.scheduleTargetsData(remote) == $0 }) ?? true else {
             return failure("cloudConfigurationConflict", review: true)
@@ -2223,7 +2231,7 @@ enum SpaceConfigurationSafety {
            keys.fingerprint == SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId)?.fingerprint,
            state.submission?.keyFingerprint.map({ $0 == keys.fingerprint }) ?? true,
            (state.submission?.timedConfiguration ?? state.timedConfigurationBaseline).map({
-               $0 == TimedSchedulerPayloadPolicy.canonical(payload)
+               TimedSchedulerPayloadPolicy.comparisonsMatch($0, TimedSchedulerPayloadPolicy.canonical(payload))
            }) ?? true,
            (state.submission?.schedulerModelStates ?? state.schedulerModelStatesBaseline).map({
                $0 == SchedulerModelSnapshot.spaceData(payload)
@@ -2344,7 +2352,7 @@ enum SpaceConfigurationSafety {
         guard let configuration, let identities, let timed, let models, let targets,
               sameNodeIdentities(identities, SpaceCloudNodeRemovalPolicy.instances(remote)),
               P.configurationsMatch(configuration, P.configurationData(remote)), P.scheduleTargetsData(remote) == targets,
-              models == SchedulerModelSnapshot.spaceData(remote), timed == TimedSchedulerPayloadPolicy.canonical(remote) else { return false }
+              models == SchedulerModelSnapshot.spaceData(remote), TimedSchedulerPayloadPolicy.comparisonsMatch(timed, TimedSchedulerPayloadPolicy.canonical(remote)) else { return false }
         return true
     }
 
@@ -2591,7 +2599,7 @@ enum SpaceConfigurationSafety {
             }
             guard submission.keyFingerprint.map({ $0 == keys.fingerprint }) ?? true,
                   submission.scheduleTargets.map({ $0 == targets }) ?? true,
-                  submission.timedConfiguration.map({ $0 == timed }) ?? true,
+                  submission.timedConfiguration.map({ TimedSchedulerPayloadPolicy.comparisonsMatch($0, timed) }) ?? true,
                   submission.schedulerModelStates.map({ $0 == models }) ?? true,
                   submission.nodeIdentities.map({ sameNodeIdentities($0, identities) }) ?? true else {
                 throw PendingUploadValidationError(reason: "legacySnapshotReceiptMismatch")

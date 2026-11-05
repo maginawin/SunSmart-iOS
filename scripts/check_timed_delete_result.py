@@ -17,7 +17,13 @@ final class Node {
 final class Element { let unicastAddress: UInt16 = 1 }
 final class Model { var parentElement: Element? = Element() }
 final class Group {}
+final class MeshSchedulerTask { var isCancelled = false }
+enum TimedSchedulerTaskCoordinator {
+    final class Operation { var isCurrent = true }
+    static func finish(_ operation: Operation) { operation.isCurrent = false }
+}
 final class MeshMessageHandle {
+    var schedulerTask: MeshSchedulerTask?
     var address: UInt16? = 1, model: Model? = nil
     var isSuccessful = true, continuous = true, ignoreReply = false
     var message = "delete"
@@ -58,7 +64,7 @@ struct ScheduleServer {
         let node = MeshNetworkManager.instance.meshNetwork!.node
         var failure = false
         runScheduleDeviceBatches([.init(node: node, contextGroup: nil, delete: true)], schedule: schedule,
-            index: 0, hadFailure: false) { failure = $0 }
+            operation: .init(), index: 0, hadFailure: false) { failure = $0 }
         return failure
     }
 METHODS

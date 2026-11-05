@@ -1810,6 +1810,7 @@ extension Schedule {
             return false
         }
         
+        TimedSchedulerTaskCoordinator.configurationSaved(self, meshUUID: uuid, networkID: subNetworkKey)
         return true
     }
     

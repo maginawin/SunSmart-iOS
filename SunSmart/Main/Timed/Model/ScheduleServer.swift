@@ -75,11 +75,13 @@ struct ScheduleServer {
     ///   - failed: 失败回调
     static func deleteSchedule(schedule: Schedule, success: ScheduleOperateSuccessCallback?, failed: ScheduleOperateFailedCallback?) {
         guard schedule.selectTargetType != .profile else { failed?(schedule); return }
+        let readOperation = TimedSchedulerTaskCoordinator.begin(schedule: schedule)
         let unknownNodes = nodesRequiringAuthoritativeSchedulerRead(
             schedule.existNodes
         )
         guard unknownNodes.isEmpty else {
             readUnknownSchedulerState(nodes: unknownNodes) { resolved in
+                guard readOperation.isCurrent else { return }
                 guard resolved else {
                     failed?(schedule)
                     return
@@ -220,6 +222,7 @@ struct ScheduleServer {
     ///   - failed: 失败回调
     static func saveSchedule(schedule: Schedule, setNodes: [Node]? = nil, success: ScheduleOperateSuccessCallback?, failed: ScheduleOperateFailedCallback?) {
         guard schedule.selectTargetType != .profile else { failed?(schedule); return }
+        let operation = TimedSchedulerTaskCoordinator.begin(schedule: schedule)
         var deviceBatches: [ScheduleDeviceBatch] = []
         // 传入需要设置的设备
         if let setNodes = setNodes, setNodes.count > 0 {
@@ -265,6 +268,7 @@ struct ScheduleServer {
         }
 
         guard !deviceBatches.isEmpty else {
+            defer { TimedSchedulerTaskCoordinator.finish(operation) }
             success?(schedule)
             return
         }
@@ -272,9 +276,12 @@ struct ScheduleServer {
         runScheduleDeviceBatches(
             deviceBatches,
             schedule: schedule,
+            operation: operation,
             index: 0,
             hadFailure: false
         ) { hadFailure in
+            guard operation.isCurrent else { return }
+            defer { TimedSchedulerTaskCoordinator.finish(operation) }
             if hadFailure {
                 failed?(schedule)
             } else {
@@ -286,10 +293,12 @@ struct ScheduleServer {
     private static func runScheduleDeviceBatches(
         _ batches: [ScheduleDeviceBatch],
         schedule: Schedule,
+        operation: TimedSchedulerTaskCoordinator.Operation,
         index: Int,
         hadFailure: Bool,
         completion: @escaping (Bool) -> Void
     ) {
+        guard operation.isCurrent else { return }
         guard index < batches.count else {
             completion(hadFailure)
             return
@@ -303,6 +312,7 @@ struct ScheduleServer {
             runScheduleDeviceBatches(
                 batches,
                 schedule: schedule,
+                operation: operation,
                 index: index + 1,
                 hadFailure: true,
                 completion: completion
@@ -316,6 +326,7 @@ struct ScheduleServer {
             runScheduleDeviceBatches(
                 batches,
                 schedule: schedule,
+                operation: operation,
                 index: index + 1,
                 hadFailure: hadFailure || !synchronized,
                 completion: completion
@@ -334,12 +345,18 @@ struct ScheduleServer {
             print("node send message failed \(messageHandle.message)")
             #endif
         } finishedBack: { resultMessageHandles in
+            guard operation.isCurrent else { return }
+            guard !resultMessageHandles.contains(where: { $0.schedulerTask?.isCancelled == true }) else {
+                TimedSchedulerTaskCoordinator.finish(operation)
+                return
+            }
             let synchronized = batch.delete
                 ? schedule.deletionIsSynchronized(on: batch.node)
                 : schedule.slot(on: batch.node) != nil && !schedule.needsSync(on: batch.node, contextGroup: batch.contextGroup)
             runScheduleDeviceBatches(
                 batches,
                 schedule: schedule,
+                operation: operation,
                 index: index + 1,
                 hadFailure: hadFailure || !synchronized || resultMessageHandles.contains(where: { !$0.isSuccessful }),
                 completion: completion

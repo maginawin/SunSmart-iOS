@@ -2240,7 +2240,7 @@ extension SpaceData {
             let lastUpdate = json["updateTimestamp"].int64Value
             let modelStatesDiffer = SchedulerModelSnapshot.remoteChanged(remoteSchedulerModelStates,
                 since: context.schedulerModelStatesBaseline)
-            let timedDiffers = context.timedConfigurationBaseline.map { $0 != remoteTimedConfiguration } ?? (timedVersion == 2)
+            let timedDiffers = context.timedConfigurationBaseline.map { !TimedSchedulerPayloadPolicy.comparisonsMatch($0, remoteTimedConfiguration) } ?? (timedVersion == 2)
             let sameTimestampSummaryDiffers = lastUpdate == self.lastUpdate && (summaryDiffers || modelStatesDiffer || timedDiffers)
             let serverSummaryDiffersNote = localNeedsUpload ? "serverSummaryDiffersButLocalNeedsUpload" : "serverSummaryDiffers"
             let shouldApplyServerData = resumingImport || SpaceConfigurationSafety.requiresAuthorityImport(self)
@@ -2746,6 +2746,7 @@ extension SpaceData {
             self.timedSchemaVersion = timedVersion
             if meshUUID == MeshNetworkManager.instance.meshNetwork?.uuid.uuidString,
                MeshNetworkManager.instance.currentNetworkKey.networkId.hex == self.meshNetworkId {
+                TimedSchedulerTaskCoordinator.invalidateAll()
                 MeshNetworkManager.instance.schedules = schedules
             }
 
