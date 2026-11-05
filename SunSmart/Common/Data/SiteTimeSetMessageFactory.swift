@@ -37,7 +37,7 @@ enum SiteTimeSetMessageFactory {
                         at date: Date = Date()) -> SiteTimeSetTimeZoneResolution? {
         let raw = storageValue?.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let raw, !raw.isEmpty else {
-            return phoneFallback(storageValue: nil, reason: .missingTimeZone, zone: phoneTimeZone, at: date)
+            return phoneFallback(storageValue: storageValue, reason: .missingTimeZone, zone: phoneTimeZone, at: date)
         }
         guard let identity = SiteTimeZoneValue(storageValue: raw), identity.isRecognizedTimeZone else {
             return phoneFallback(storageValue: storageValue, reason: .invalidTimeZone, zone: phoneTimeZone, at: date)
@@ -49,7 +49,7 @@ enum SiteTimeSetMessageFactory {
         let nextOffset = snapshot.switchesTo.flatMap(SiteTimeZoneValue.parseOffset) ?? snapshot.offsetMinutes
         guard SiteTimeZoneValue.isMeshEncodable(nextOffset) else { return nil }
         return .init(timeZone: zone, offsetMinutes: snapshot.offsetMinutes, source: .site,
-                     snapshot: snapshot, storageValue: identity.storageValue,
+                     snapshot: snapshot, storageValue: storageValue,
                      nextOffsetMinutes: nextOffset, nextSwitch: snapshot.nextSwitchDate)
     }
 

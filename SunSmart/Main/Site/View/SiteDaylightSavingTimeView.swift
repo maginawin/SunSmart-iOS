@@ -2,10 +2,13 @@ import UIKit
 
 /// Reusable presentation only: hosts supply timezone data and own disclosure state.
 final class SiteDaylightSavingTimeView: UIView {
+    enum Style { case formDisclosure, gatewaySummary }
+    private let style: Style
     var onToggleExpansion: (() -> Void)?
     var onLayoutChanged: (() -> Void)?
 
     private let disclosureButton = UIButton(type: .custom)
+    private let summaryHeader = UIView()
     private let arrow = UIImageView(image: UIImage(named: "site_dst_disclosure"))
     private let badge = UIView()
     private let statusLabel = UILabel()
@@ -16,13 +19,15 @@ final class SiteDaylightSavingTimeView: UIView {
     private let helpContainer = UIView()
     private var rendered: SiteDaylightSavingTimePresentation?
 
-    override init(frame: CGRect) {
+    init(frame: CGRect = .zero, style: Style = .formDisclosure) {
+        self.style = style
         super.init(frame: frame)
-        backgroundColor = .clear
+        backgroundColor = style == .gatewaySummary ? .white : .clear
+        if style == .gatewaySummary { layer.cornerRadius = SCRYFrom(10) }
         isHidden = true
         clipsToBounds = true
         accessibilityIdentifier = "site-dst-hint"
-        let stack = verticalStack(spacing: 4)
+        let stack = verticalStack(spacing: style == .gatewaySummary ? 0 : 4)
         addSubview(stack)
         stack.snp.makeConstraints { make in
             make.top.left.right.equalToSuperview()
@@ -64,25 +69,28 @@ final class SiteDaylightSavingTimeView: UIView {
             badge.backgroundColor = RGB(102, 116, 140).withAlphaComponent(0.1)
         }
         staleLabel.isHidden = content.status != .refreshRequired
-        helpContainer.isHidden = !presentation.isExpanded
-        helpContainer.accessibilityElementsHidden = !presentation.isExpanded
+        let expanded = style == .formDisclosure && presentation.allowsExpansion && presentation.isExpanded
+        helpContainer.isHidden = !expanded
+        helpContainer.accessibilityElementsHidden = !expanded
         arrow.transform = presentation.isExpanded ? CGAffineTransform(rotationAngle: .pi) : .identity
         let disclosure = (presentation.isExpanded ? "site_create_expanded" : "site_create_collapsed").localizedString
         disclosureButton.accessibilityValue = [statusLabel.text, disclosure].compactMap { $0 }.joined(separator: ", ")
+        summaryHeader.accessibilityValue = statusLabel.text
         onLayoutChanged?()
     }
 
     private func setupHeader(in stack: UIStackView) {
         let row = UIStackView()
         row.alignment = .center
-        row.spacing = SCRXFrom(6)
+        row.spacing = SCRXFrom(style == .gatewaySummary ? 10 : 6)
         row.isUserInteractionEnabled = false
-        let clock = UIImageView(image: UIImage(named: "site_dst_clock"))
+        let clock = UIImageView(image: UIImage(named: style == .gatewaySummary ? "gateway_dst_clock" : "site_dst_clock"))
         clock.contentMode = .scaleAspectFit
-        clock.snp.makeConstraints { $0.width.height.equalTo(SCRYFrom(14)) }
+        clock.snp.makeConstraints { $0.width.height.equalTo(SCRYFrom(style == .gatewaySummary ? 16 : 14)) }
         row.addArrangedSubview(clock)
-        let title = label("site_dst_title", color: RGB(44, 45, 63))
+        let title = label("site_dst_title", color: style == .gatewaySummary ? RGB(30, 35, 41) : RGB(44, 45, 63))
         title.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        if style == .gatewaySummary { title.setContentHuggingPriority(.defaultLow, for: .horizontal) }
         row.addArrangedSubview(title)
 
         configureLabel(statusLabel, size: 10, color: RGB(102, 116, 140), weight: .semibold)
@@ -96,38 +104,52 @@ final class SiteDaylightSavingTimeView: UIView {
         row.addArrangedSubview(badge)
         let spacer = UIView()
         spacer.setContentHuggingPriority(.defaultLow, for: .horizontal)
-        row.addArrangedSubview(spacer)
+        if style == .formDisclosure { row.addArrangedSubview(spacer) }
         arrow.contentMode = .scaleAspectFit
         arrow.snp.makeConstraints { $0.width.height.equalTo(SCRYFrom(14)) }
-        row.addArrangedSubview(arrow)
+        if style == .formDisclosure { row.addArrangedSubview(arrow) }
+        arrow.isHidden = style == .gatewaySummary
 
-        disclosureButton.addSubview(row)
+        let header: UIView = style == .gatewaySummary ? summaryHeader : disclosureButton
+        header.addSubview(row)
         row.snp.makeConstraints { make in
-            make.edges.equalToSuperview().inset(UIEdgeInsets(top: SCRYFrom(8), left: SCRXFrom(4), bottom: SCRYFrom(8), right: SCRXFrom(4)))
+            let vertical: CGFloat = style == .gatewaySummary ? 14 : 8
+            let horizontal: CGFloat = style == .gatewaySummary ? 16 : 4
+            make.edges.equalToSuperview().inset(UIEdgeInsets(top: SCRYFrom(vertical), left: SCRXFrom(horizontal), bottom: SCRYFrom(vertical), right: SCRXFrom(horizontal)))
         }
-        disclosureButton.snp.makeConstraints { $0.height.greaterThanOrEqualTo(SCRYFrom(44)) }
-        disclosureButton.addTarget(self, action: #selector(toggleExpansion), for: .touchUpInside)
-        disclosureButton.isAccessibilityElement = true
-        disclosureButton.accessibilityLabel = title.text
-        disclosureButton.accessibilityIdentifier = "site-dst-disclosure"
-        stack.addArrangedSubview(disclosureButton)
+        header.snp.makeConstraints { $0.height.greaterThanOrEqualTo(SCRYFrom(style == .gatewaySummary ? 46 : 44)) }
+        if style == .formDisclosure {
+            disclosureButton.addTarget(self, action: #selector(toggleExpansion), for: .touchUpInside)
+        } else {
+            summaryHeader.accessibilityTraits = .staticText
+        }
+        header.isAccessibilityElement = true
+        header.accessibilityLabel = title.text
+        header.accessibilityIdentifier = style == .gatewaySummary ? "gateway-dst-summary-header" : "site-dst-disclosure"
+        stack.addArrangedSubview(header)
     }
 
     private func setupCard(in stack: UIStackView) {
         let card = UIView()
         card.backgroundColor = .white
         card.layer.borderColor = RGB(220, 220, 220).cgColor
-        card.layer.borderWidth = 0.5
-        card.layer.cornerRadius = SCRYFrom(10)
+        card.layer.borderWidth = style == .gatewaySummary ? 0 : 0.5
+        card.layer.cornerRadius = style == .gatewaySummary ? 0 : SCRYFrom(10)
         card.clipsToBounds = true
         stack.addArrangedSubview(card)
         let content = verticalStack()
         card.addSubview(content)
         content.snp.makeConstraints { $0.edges.equalToSuperview() }
+        if style == .gatewaySummary {
+            let separator = UIView()
+            separator.backgroundColor = RGB(193, 207, 226).withAlphaComponent(0.4)
+            separator.snp.makeConstraints { $0.height.equalTo(0.5) }
+            content.addArrangedSubview(separator)
+        }
 
-        let summary = verticalStack(spacing: 8)
+        let summary = verticalStack(spacing: style == .gatewaySummary ? 10 : 8)
         summary.isLayoutMarginsRelativeArrangement = true
-        summary.layoutMargins = UIEdgeInsets(top: SCRYFrom(12), left: SCRXFrom(16), bottom: SCRYFrom(12), right: SCRXFrom(16))
+        summary.layoutMargins = UIEdgeInsets(top: SCRYFrom(style == .gatewaySummary ? 10 : 12), left: SCRXFrom(16), bottom: SCRYFrom(12), right: SCRXFrom(16))
         summary.addArrangedSubview(summaryRow("site_dst_current_offset", value: currentValue, identifier: "site-dst-current-offset"))
         summary.addArrangedSubview(summaryRow("site_dst_next_switch", value: nextValue, identifier: "site-dst-next-switch"))
         summary.addArrangedSubview(summaryRow("site_dst_switches_to", value: targetValue, identifier: "site-dst-switches-to"))
@@ -137,17 +159,19 @@ final class SiteDaylightSavingTimeView: UIView {
         staleLabel.isHidden = true
         summary.addArrangedSubview(staleLabel)
         content.addArrangedSubview(summary)
-        setupHelp()
-        content.addArrangedSubview(helpContainer)
+        if style == .formDisclosure {
+            setupHelp()
+            content.addArrangedSubview(helpContainer)
+        }
     }
 
     private func summaryRow(_ key: String, value: UILabel, identifier: String) -> UIView {
         let row = UIStackView()
         row.alignment = .top
         row.spacing = SCRXFrom(12)
-        let title = label(key, color: RGB(154, 164, 183))
+        let title = label(key, color: style == .gatewaySummary ? RGB(148, 163, 184) : RGB(154, 164, 183))
         title.setContentHuggingPriority(.required, for: .horizontal)
-        configureLabel(value, size: 12, color: RGB(44, 45, 63), weight: .regular)
+        configureLabel(value, size: 12, color: style == .gatewaySummary ? RGB(64, 79, 102) : RGB(44, 45, 63), weight: .regular)
         value.textAlignment = .right
         value.lineBreakMode = .byCharWrapping
         value.accessibilityIdentifier = identifier
@@ -258,5 +282,8 @@ final class SiteDaylightSavingTimeView: UIView {
         label.attributedText = NSAttributedString(string: text, attributes: [.paragraphStyle: paragraph])
     }
 
-    @objc private func toggleExpansion() { onToggleExpansion?() }
+    @objc private func toggleExpansion() {
+        guard style == .formDisclosure, rendered?.allowsExpansion == true else { return }
+        onToggleExpansion?()
+    }
 }

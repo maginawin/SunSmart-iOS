@@ -13,6 +13,11 @@ struct SiteDaylightSavingTimePresentation: Equatable {
     private var identifier: String?
     private(set) var content: Content?
     private(set) var isExpanded = false
+    let allowsExpansion: Bool
+
+    init(allowsExpansion: Bool = true) {
+        self.allowsExpansion = allowsExpansion
+    }
 
     mutating func update(identifier: String?, snapshot: SiteTimeZoneSnapshot?, at date: Date) {
         if self.identifier != identifier {
@@ -36,7 +41,7 @@ struct SiteDaylightSavingTimePresentation: Equatable {
     }
 
     mutating func toggleExpansion() {
-        guard content != nil else { return }
+        guard allowsExpansion, content != nil else { return }
         isExpanded.toggle()
     }
 }

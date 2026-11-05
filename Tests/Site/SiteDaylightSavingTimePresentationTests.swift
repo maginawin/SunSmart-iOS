@@ -24,8 +24,10 @@ struct SiteDaylightSavingTimePresentationTests {
 
     static func main() throws {
         try visibilityAndExpansion()
+        try gatewaySummaryMode()
         try originalValuesAndExpiry()
         try cacheAndLateResponses()
+        try cacheAndLateResponses(allowsExpansion: false)
         print("SiteDaylightSavingTimePresentationTests passed (visibility, expansion, raw values, expiry, durable cache, late responses)")
     }
 
@@ -65,6 +67,41 @@ struct SiteDaylightSavingTimePresentationTests {
         check(state.content == nil && !state.isExpanded, "Changing to uncached IANA immediately removes old hint")
     }
 
+    static func gatewaySummaryMode() throws {
+        var form = SiteDaylightSavingTimePresentation()
+        var summary = SiteDaylightSavingTimePresentation(allowsExpansion: false)
+        let active = try snapshot("Australia/Lord_Howe", response: response(current: "UTC+11:00",
+            next: "2027-04-04T01:30:00.123+10:30", to: "UTC+10:30"))
+        for instant in [sampled, date("2027-04-03T15:00:00.123Z"), sampled.addingTimeInterval(-1)] {
+            form.update(identifier: active.identifier, snapshot: active, at: instant)
+            summary.update(identifier: active.identifier, snapshot: active, at: instant)
+            check(summary.content == form.content, "Both hosts must share values, status and expiry")
+            check(summary.content?.currentOffset == "UTC+11:00 (DST)"
+                && summary.content?.switchesTo == "UTC+10:30"
+                && summary.content?.nextSwitch == "2027-04-04T01:30:00.123+10:30",
+                "Summary must preserve raw next switch and half-hour DST values")
+            summary.toggleExpansion()
+            check(!summary.isExpanded, "Gateway summary cannot expand, including stale cache")
+        }
+        form.toggleExpansion()
+        check(form.isExpanded, "Default form must remain expandable")
+        let standard = try snapshot("Europe/Paris", response: response(dst: false, current: "UTC+01:00",
+            next: "2027-03-28T03:00:00+02:00", to: "UTC+02:00"))
+        summary.update(identifier: standard.identifier, snapshot: standard, at: sampled)
+        check(summary.content?.status == .inactive && summary.content?.currentOffset == "UTC+01:00"
+            && summary.content?.switchesTo == "UTC+02:00 (DST)", "Inactive summary must use real values, not Figma examples")
+        summary.toggleExpansion()
+        check(!summary.isExpanded, "Inactive summary is also read-only")
+        summary.update(identifier: active.identifier, snapshot: standard, at: sampled)
+        check(summary.content == nil, "Changed IANA must not flash a previous summary")
+        let fixed = try snapshot("Asia/Kathmandu", response: response(dst: false, current: "UTC+05:45",
+            next: NSNull(), to: NSNull()))
+        summary.update(identifier: fixed.identifier, snapshot: fixed, at: sampled)
+        check(summary.content == nil, "Non-DST zones do not leave an empty summary")
+        summary.update(identifier: active.identifier, snapshot: nil, at: sampled)
+        check(summary.content == nil, "Pending first response is hidden")
+    }
+
     static func originalValuesAndExpiry() throws {
         var state = SiteDaylightSavingTimePresentation()
         let halfHour = try snapshot("Australia/Lord_Howe", response: response(current: "UTC+11:00",
@@ -93,7 +130,7 @@ struct SiteDaylightSavingTimePresentationTests {
         check(state.content?.status == .inactive && state.isExpanded, "Successful refresh restores status and keeps disclosure")
     }
 
-    static func cacheAndLateResponses() throws {
+    static func cacheAndLateResponses(allowsExpansion: Bool = true) throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }
         let cache = SiteTimeZoneCache(directory: directory)
@@ -103,7 +140,7 @@ struct SiteDaylightSavingTimePresentationTests {
             requests[id] = reply
         }
         var selected = "America/Chicago"
-        var state = SiteDaylightSavingTimePresentation()
+        var state = SiteDaylightSavingTimePresentation(allowsExpansion: allowsExpansion)
         func render() { state.update(identifier: selected, snapshot: store.snapshot(for: selected), at: now) }
         var token = store.observe(identifier: selected, callback: render)
         render()
@@ -122,7 +159,7 @@ struct SiteDaylightSavingTimePresentationTests {
         state.toggleExpansion()
         requests.removeValue(forKey: "America/Chicago")?(.success(response()))
         pump { store.snapshot(for: "America/Chicago") != nil }
-        check(state.content?.currentOffset == "UTC+11:00 (DST)" && state.isExpanded, "Late A result caches A without disturbing selected B")
+        check(state.content?.currentOffset == "UTC+11:00 (DST)" && state.isExpanded == allowsExpansion, "Late A result caches A without disturbing selected B")
 
         store.removeObserver(token)
         selected = "America/Chicago"
@@ -137,7 +174,7 @@ struct SiteDaylightSavingTimePresentationTests {
         var failed = false
         store.refresh(identifier: selected, retry: false) { _ in failed = true }
         pump { failed }
-        check(state.content?.status == .active && state.isExpanded, "Pre-transition refresh failure retains usable cache")
+        check(state.content?.status == .active && state.isExpanded == allowsExpansion, "Pre-transition refresh failure retains usable cache")
         now = transition
         store.refreshObserved()
         check(state.content?.status == .refreshRequired, "Boundary notification marks stale content before network returns")
@@ -146,16 +183,16 @@ struct SiteDaylightSavingTimePresentationTests {
         failed = false
         store.refresh(identifier: selected, retry: false) { _ in failed = true }
         pump { failed }
-        check(state.content?.status == .refreshRequired && state.isExpanded, "Post-transition failure never restores old active badge")
+        check(state.content?.status == .refreshRequired && state.isExpanded == allowsExpansion, "Post-transition failure never restores old active badge")
         store.refresh(identifier: selected)
         pump { requests[selected] != nil }
         requests.removeValue(forKey: selected)?(.success(response(dst: false, current: "UTC-06:00",
             next: "2027-03-14T03:00:00-05:00", to: "UTC-05:00")))
         pump { state.content?.status == .inactive }
-        check(state.isExpanded, "Recovery preserves disclosure")
+        check(state.isExpanded == allowsExpansion, "Recovery preserves disclosure")
         store.removeObserver(token)
 
-        var restarted = SiteDaylightSavingTimePresentation()
+        var restarted = SiteDaylightSavingTimePresentation(allowsExpansion: allowsExpansion)
         var extraRequests = 0
         let restoredStore = SiteTimeZoneStore(now: { now }, read: cache.read, write: cache.write) { _, _, _ in extraRequests += 1 }
         let restoredToken = restoredStore.observe(identifier: selected) {

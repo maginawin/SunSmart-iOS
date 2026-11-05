@@ -50,6 +50,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     private var gatewayClockTickDate = Date()
     private let gatewayClockFormatter = GatewayDetailClockFormatter()
     private var gatewayClockNotificationTokens = [NSObjectProtocol]()
+    private var gatewayDSTPresentation = SiteDaylightSavingTimePresentation(allowsExpansion: false)
 
     private var name: String?
 
@@ -60,7 +61,9 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     var sections: [SectionType] {
         var baseSections: [SectionType] = [.name]
         if showsGatewayClockSections {
-            baseSections.append(contentsOf: [.timeZone, .clock])
+            baseSections.append(.timeZone)
+            if gatewayDSTPresentation.content != nil { baseSections.append(.daylightSavingTime) }
+            baseSections.append(.clock)
         }
         baseSections.append(contentsOf: [.associatedSpaces, .apn, .serverInformation])
         return supportsAPNConfiguration ? baseSections : baseSections.filter { $0 != .apn }
@@ -180,7 +183,10 @@ class GatewayViewController: UIViewController, DeviceProtocol {
 
         setupUI()
         gatewayClockCoordinator = GatewayDetailClockCoordinator(
-            context: GatewayInformationContext(site: site, gateway: gateway)
+            context: GatewayInformationContext(site: site, gateway: gateway),
+            targetProvider: { [weak self] in
+                self?.currentGatewayClockTarget() ?? GatewayDetailTargetTimeZone(identifier: "", offsetMinutes: nil, source: .unavailable)
+            }
         )
         registerGatewayClockNotifications()
         updateData()
@@ -231,6 +237,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         refreshServerInformationFromPersistence()
         updateData()
         updateSaveBtnState()
+        updateGatewayDSTPresentation(at: Date())
         tableView.reloadData()
         ensureTargetGatewayProxyConnection()
         syncSignalRefreshState(forceRefresh: isGatewayProxyReady)
@@ -455,6 +462,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     func finishGatewayConnectionSession() {
         guard !gatewayConnectionPageFinished else { return }
         gatewayConnectionPageFinished = true
+        invalidateGatewayClockOperation()
+        gatewayClockCoordinator?.finishPage()
         isViewVisible = false
         proxyConnectionSession?.finish()
         restoreGatewayMessageDelegateIfOwned()
@@ -1688,6 +1697,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         tableView.separatorStyle = .none
         tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "infoCell")
         tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "timeZoneCell")
+        tableView.register(GatewayDaylightSavingTimeCell.self, forCellReuseIdentifier: GatewayDaylightSavingTimeCell.reuseIdentifier)
         tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "associatedSpacesCell")
         tableView.register(CustomTableViewCell.classForCoder(), forCellReuseIdentifier: "apnCell")
         tableView.register(GatewayNameViewCell.classForCoder(), forCellReuseIdentifier: "name")
@@ -1775,6 +1785,8 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         if isReady {
             syncGatewayClockTimer()
         } else {
+            invalidateGatewayClockOperation()
+            gatewayClockObservedTarget = nil
             gatewayClockAutoPromptState.end(sessionID: nil)
             cancelGatewayClockAutoPromptRetry()
             gatewayClockReadSessionID = nil
@@ -1784,6 +1796,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
             gatewayClockState = GatewayDetailClockState()
             stopGatewayClockTimer()
         }
+        updateGatewayDSTPresentation(at: Date())
         reloadGatewayTable()
     }
 
@@ -1792,6 +1805,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
               gatewayClockReadSessionID != context.sessionID else {
             return
         }
+        if gatewayClockReadSessionID != nil { invalidateGatewayClockOperation() }
         gatewayClockReadSessionID = context.sessionID
         readGatewayClock(autoPromptSessionID: context.sessionID)
     }
@@ -1809,9 +1823,33 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         SiteTimeZoneService.shared.removeObserver(gatewayDSTObservation)
         gatewayDSTObservation = site.timezone.flatMap(SiteTimeZoneValue.init(storageValue:)).map { value in
             SiteTimeZoneService.shared.observe(value) { [weak self] in
-                guard let self, self.viewIfLoaded?.window != nil else { return }
+                guard let self, self.isViewVisible, self.viewIfLoaded?.window != nil,
+                      self.site.timezone.flatMap(SiteTimeZoneValue.init(storageValue:))?.ianaId == value.ianaId else { return }
                 self.gatewayClockEnvironmentDidChange()
             }
+        }
+        // A usable memory cache does not emit another Store notification on observe.
+        refreshGatewayDSTSummary()
+    }
+
+    private func updateGatewayDSTPresentation(at date: Date) {
+        let service = SiteTimeZoneService.shared
+        let identifier = site.timezone.flatMap(SiteTimeZoneValue.init(storageValue:))?.ianaId
+        gatewayDSTPresentation.update(identifier: identifier,
+                                      snapshot: identifier.flatMap { service.store.snapshot(for: $0) },
+                                      at: date)
+    }
+
+    private func refreshGatewayDSTSummary() {
+        let previousSections = sections
+        let previousPresentation = gatewayDSTPresentation
+        updateGatewayDSTPresentation(at: Date())
+        guard previousPresentation != gatewayDSTPresentation else { return }
+        if previousSections != sections {
+            // Atomically replace the conditional section topology, including Wi-Fi's inserted section.
+            tableView.reloadData()
+        } else if showsGatewayClockSections {
+            reloadSection(.daylightSavingTime)
         }
     }
     private func registerGatewayClockNotifications() {
@@ -1822,19 +1860,33 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         ]
         gatewayClockNotificationTokens = names.map { name in
             center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                self?.gatewayClockEnvironmentDidChange()
+                self?.gatewayClockEnvironmentDidChange(forceRead: true)
             }
         }
     }
 
-    private func gatewayClockEnvironmentDidChange() {
-        guard showsGatewayClockSections else { return }
-        guard !gatewayClockState.isSyncing else {
-            reloadSection(.timeZone)
-            return
+    private var gatewayClockObservedTarget: GatewayDetailTargetTimeZone?
+
+    private func invalidateGatewayClockOperation(cancelPreparation: Bool = true) {
+        gatewayClockCoordinator?.cancelForDeletion()
+        if cancelPreparation {
+            gatewayClockPreparationID = nil
+            preparingGatewayDST = false
         }
-        if isGatewayClockReading { reloadSection(.timeZone); return }
+        gatewayClockSyncPresentationID = nil
+        pendingGatewayClockSync = nil
+        isGatewayClockReading = false
         gatewayClockState = GatewayDetailClockState()
+    }
+
+    private func gatewayClockEnvironmentDidChange(forceRead: Bool = false) {
+        guard isViewVisible else { return }
+        refreshGatewayDSTSummary()
+        guard showsGatewayClockSections else { return }
+        let target = currentGatewayClockTarget()
+        guard forceRead || gatewayClockObservedTarget != target else { return }
+        gatewayClockObservedTarget = target
+        invalidateGatewayClockOperation(cancelPreparation: false)
         reloadSection(.timeZone)
         reloadSection(.clock)
         readGatewayClock()
@@ -1845,10 +1897,17 @@ class GatewayViewController: UIViewController, DeviceProtocol {
               showsGatewayClockSections, !isGatewayClockReading,
               !gatewayClockState.isSyncing else { return }
         let target = currentGatewayClockTarget()
+        gatewayClockObservedTarget = target
+        let sessionID = gatewayProxyReadySessionID
         isGatewayClockReading = true
         reloadSection(.clock)
         let started = gatewayClockCoordinator.read(target: target) { [weak self] result in
-            guard let self else { return }
+            guard let self, !self.gatewayConnectionPageFinished,
+                  let sessionID, self.isCurrentGatewayProxySession(sessionID) else { return }
+            guard self.currentGatewayClockTarget() == target else {
+                self.gatewayClockEnvironmentDidChange()
+                return
+            }
             self.isGatewayClockReading = false
             switch result {
             case .success(let value):
@@ -1888,16 +1947,31 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     }
 
     private var preparingGatewayDST = false
+    private var gatewayClockPreparationID: UUID?
     private func synchronizeGatewayClock() {
         guard !preparingGatewayDST else { return }
         preparingGatewayDST = true
+        let preparationID = UUID()
+        gatewayClockPreparationID = preparationID
+        let sessionID = gatewayProxyReadySessionID
         let timezoneStorageValue = site.timezone
         Task { @MainActor [weak self] in
             let prepared = await SiteTimeZoneService.shared.prepareClock(storageValue: timezoneStorageValue)
             guard let self else { return }
+            guard self.gatewayClockPreparationID == preparationID else { return }
+            self.gatewayClockPreparationID = nil
             self.preparingGatewayDST = false
-            guard self.viewIfLoaded?.window != nil, self.site.timezone == timezoneStorageValue else { return }
-            guard prepared != nil else { XWHUDManager.showErrorTipHUD("site_time_zone_refresh_required".localizedString); return }
+            guard !self.gatewayConnectionPageFinished, let sessionID, self.isCurrentGatewayProxySession(sessionID),
+                  self.isViewVisible, self.viewIfLoaded?.window != nil, self.site.timezone == timezoneStorageValue else {
+                self.reloadSection(.clock)
+                return
+            }
+            guard prepared != nil else {
+                // The cell enters loading on tap, even when no clock sync has started.
+                self.reloadSection(.clock)
+                XWHUDManager.showErrorTipHUD("site_time_zone_refresh_required".localizedString)
+                return
+            }
             self.synchronizePreparedGatewayClock()
         }
     }
@@ -1932,6 +2006,12 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         presentationID: UUID,
         startedAtUptime: TimeInterval
     ) {
+        guard gatewayClockSyncPresentationID == presentationID,
+              !gatewayConnectionPageFinished, currentGatewayClockTarget() == target else {
+            invalidateGatewayClockOperation()
+            reloadSection(.clock)
+            return
+        }
         var completionWasDelivered = false
         let started = gatewayClockCoordinator.synchronize(target: target) { [weak self] result in
             completionWasDelivered = true
@@ -1958,6 +2038,7 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         presentationID: UUID,
         startedAtUptime: TimeInterval
     ) {
+        let sessionID = gatewayProxyReadySessionID
         let remainingDuration = GatewayDetailClockCore.remainingSyncPresentationDuration(
             startedAtUptime: startedAtUptime,
             completedAtUptime: ProcessInfo.processInfo.systemUptime
@@ -1965,6 +2046,14 @@ class GatewayViewController: UIViewController, DeviceProtocol {
         let completion = { [weak self] in
             guard let self,
                   self.gatewayClockSyncPresentationID == presentationID else { return }
+            guard !self.gatewayConnectionPageFinished, self.isViewVisible,
+                  let sessionID, self.isCurrentGatewayProxySession(sessionID),
+                  self.currentGatewayClockTarget() == target else {
+                self.invalidateGatewayClockOperation()
+                self.reloadSection(.clock)
+                self.gatewayClockEnvironmentDidChange()
+                return
+            }
             self.gatewayClockSyncPresentationID = nil
             switch result {
             case .success(let value):
@@ -2142,6 +2231,9 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     @objc private func refreshGatewayClockRows() {
         guard showsGatewayClockSections else { return }
         gatewayClockTickDate = Date()
+        if gatewayClockObservedTarget != currentGatewayClockTarget(at: gatewayClockTickDate) {
+            gatewayClockEnvironmentDidChange()
+        }
         guard !(tableView.isTracking || tableView.isDragging || tableView.isDecelerating) else {
             return
         }
@@ -2264,6 +2356,11 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                 make.bottom.lessThanOrEqualTo(SCRYFrom(-10))
             }
             cell.lineView.isHidden = true
+            tableviewCell = cell
+        case .daylightSavingTime:
+            let cell = tableView.dequeueReusableCell(withIdentifier: GatewayDaylightSavingTimeCell.reuseIdentifier,
+                                                   for: indexPath) as! GatewayDaylightSavingTimeCell
+            cell.render(gatewayDSTPresentation)
             tableviewCell = cell
         case .clock:
             let target = currentGatewayClockTarget(at: gatewayClockTickDate)
@@ -2392,7 +2489,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
 
     func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
         let sectionType = sections[indexPath.section]
-        if sectionType == .timeZone { return UITableView.automaticDimension }
+        if sectionType == .timeZone || sectionType == .daylightSavingTime { return UITableView.automaticDimension }
         if sectionType == .serverInformation {
             return SCRYFrom(144)
         }
@@ -2415,7 +2512,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
     }
 
     func tableView(_ tableView: UITableView, viewForHeaderInSection section: Int) -> UIView? {
-        if sections[section] == .activate || sections[section] == .clock {
+        if sections[section] == .activate || sections[section] == .clock || sections[section] == .daylightSavingTime {
             return UIView()
         }
 
@@ -2464,7 +2561,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
                     make.centerY.equalTo(headerView.titleLabel)
                 }
             }
-        case .clock:
+        case .clock, .daylightSavingTime:
             break
         case .info:
             headerView.titleLabel.text = nil
@@ -2555,7 +2652,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
         if sections[section] == .activate {
             return SCRYFrom(16)
         }
-        if sections[section] == .clock {
+        if sections[section] == .clock || sections[section] == .daylightSavingTime {
             return SCRYFrom(12)
         }
 
@@ -2572,7 +2669,7 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
             return SCRYFrom(44)
         case .activate:
             return SCRYFrom(16)
-        case .clock:
+        case .clock, .daylightSavingTime:
             return SCRYFrom(12)
         default:
             return SCRYFrom(44)
@@ -2625,6 +2722,30 @@ extension GatewayViewController: MeshLibManagerMessageDelegate {
 //        if node.lastUpdateSyncTime != lastUpdate {
             node.clearSyncStateCache()
 //        }
+    }
+}
+
+private final class GatewayDaylightSavingTimeCell: UITableViewCell {
+    static let reuseIdentifier = "GatewayDaylightSavingTimeCell"
+    private let summaryView = SiteDaylightSavingTimeView(style: .gatewaySummary)
+
+    override init(style: UITableViewCell.CellStyle, reuseIdentifier: String?) {
+        super.init(style: style, reuseIdentifier: reuseIdentifier)
+        selectionStyle = .none
+        isAccessibilityElement = false
+        contentView.addSubview(summaryView)
+        summaryView.snp.makeConstraints { $0.edges.equalToSuperview() }
+    }
+
+    required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
+
+    func render(_ presentation: SiteDaylightSavingTimePresentation) {
+        summaryView.render(presentation)
+    }
+
+    override func prepareForReuse() {
+        super.prepareForReuse()
+        summaryView.render(SiteDaylightSavingTimePresentation(allowsExpansion: false))
     }
 }
 
@@ -2815,6 +2936,8 @@ extension GatewayViewController {
         case name
         /// Site 时区
         case timeZone
+        /// Read-only Site DST summary
+        case daylightSavingTime
         /// 网关与本地时间
         case clock
         /// 激活

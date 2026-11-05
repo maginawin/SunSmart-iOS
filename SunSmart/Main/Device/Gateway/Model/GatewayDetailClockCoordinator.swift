@@ -10,6 +10,7 @@ struct GatewayDetailTargetTimeZone: Equatable {
     let identifier: String
     let offsetMinutes: Int?
     let source: GatewayDetailTimeZoneSource
+    var storageValue: String? = nil
 
     var displayOffset: String {
         offsetMinutes.map(SiteTimeZoneValue.formatOffset)
@@ -35,7 +36,7 @@ enum GatewayDetailTimeZoneResolver {
             return GatewayDetailTargetTimeZone(
                 identifier: value.ianaId,
                 offsetMinutes: value.effectiveOffset(at: date),
-                source: .site
+                source: .site, storageValue: storageValue
             )
         }
 
@@ -44,7 +45,7 @@ enum GatewayDetailTimeZoneResolver {
         return GatewayDetailTargetTimeZone(
             identifier: storageValue ?? "",
             offsetMinutes: minutes,
-            source: minutes == nil ? .unavailable : .phoneFallback
+            source: minutes == nil ? .unavailable : .phoneFallback, storageValue: storageValue
         )
     }
 }
@@ -273,8 +274,11 @@ final class GatewayDetailClockCoordinator {
     private var clockLease: InformationClockLease?
     private var activeBackup: NodeTimeBackup?
     private var isAttached = true
+    private var proxySessionID: UUID?
+    private let targetProvider: (() -> GatewayDetailTargetTimeZone)?
 
-    init(context: GatewayInformationContext) {
+    init(context: GatewayInformationContext, targetProvider: (() -> GatewayDetailTargetTimeZone)? = nil) {
+        self.targetProvider = targetProvider
         self.context = context
     }
 
@@ -298,16 +302,24 @@ final class GatewayDetailClockCoordinator {
         clockLease = lease
         let operationID = UUID()
         activeOperationID = operationID
+        proxySessionID = MeshLibManager.manager.currentProxyReadyContext?.sessionID
         let backup = makeBackup()
         activeBackup = backup
         sendTimeGet(model: model) { [self] result in
             DispatchQueue.main.async {
+                guard self.activeOperationID == operationID else { return }
+                let valid = self.targetIsCurrent(target) && self.isCurrentProxyReady()
                 guard self.finishOperation(operationID) else { return }
+                guard valid else {
+                    self.restore(backup)
+                    completion(.failure(.disconnected))
+                    return
+                }
                 switch result {
                 case .success(let sample):
                     let offBy = GatewayDetailClockCore.offBySeconds(
                         localDate: Date(),
-                        targetOffsetMinutes: SiteTimeZoneValue(storageValue: target.identifier)?.offsetMinutes,
+                        targetOffsetMinutes: target.offsetMinutes,
                         sample: sample
                     )
                     guard self.persist(sample: sample) else {
@@ -333,7 +345,7 @@ final class GatewayDetailClockCoordinator {
     ) -> Bool {
         dispatchPrecondition(condition: .onQueue(.main))
         guard isAttached, activeOperationID == nil else { return false }
-        guard target.isCurrent, target.isMeshEncodable else {
+        guard self.targetIsCurrent(target), target.isMeshEncodable else {
             completion(.failure(.targetOffsetUnencodable))
             return false
         }
@@ -363,6 +375,7 @@ final class GatewayDetailClockCoordinator {
         clockLease = lease
         let operationID = UUID()
         activeOperationID = operationID
+        proxySessionID = MeshLibManager.manager.currentProxyReadyContext?.sessionID
         let backup = makeBackup()
         activeBackup = backup
         bindIfNeeded(
@@ -371,7 +384,7 @@ final class GatewayDetailClockCoordinator {
             operationID: operationID
         ) { [self] bindingSucceeded in
             guard self.activeOperationID == operationID else { return }
-            guard bindingSucceeded, target.isCurrent, self.isCurrentProxyReady() else {
+            guard bindingSucceeded, self.targetIsCurrent(target), self.isCurrentProxyReady() else {
                 self.failSync(
                     operationID: operationID,
                     backup: backup,
@@ -381,16 +394,16 @@ final class GatewayDetailClockCoordinator {
                 return
             }
 
-            guard let resolution = SiteTimeSetMessageFactory.resolve(storageValue: target.identifier) else {
+            guard let resolution = SiteTimeSetMessageFactory.resolve(storageValue: target.storageValue) else {
                 self.failSync(operationID: operationID, backup: backup, error: .targetOffsetUnencodable, completion: completion)
                 return
             }
             SiteTimeSetMessageFactory.sendPrepared(resolution: resolution, model: timeSetupModel, isCurrent: { [self] in
-                self.isAttached && self.activeOperationID == operationID && self.isCurrentProxyReady() && target.isCurrent
+                self.isAttached && self.activeOperationID == operationID && self.isCurrentProxyReady() && self.targetIsCurrent(target)
             }, completion: { [self] response in
                 DispatchQueue.main.async {
                     guard self.activeOperationID == operationID else { return }
-                    guard target.isCurrent, let status = response,
+                    guard self.targetIsCurrent(target), let status = response,
                           status.time.seconds > 0,
                           status.time.tzOffset.secondsFromGMT() / 60 == target.offsetMinutes,
                           self.isCurrentProxyReady() else {
@@ -418,11 +431,13 @@ final class GatewayDetailClockCoordinator {
     func finishPage() {
         dispatchPrecondition(condition: .onQueue(.main))
         isAttached = false
+        cancelForDeletion()
     }
 
     func cancelForDeletion() {
         dispatchPrecondition(condition: .onQueue(.main))
         activeOperationID = nil
+        proxySessionID = nil
         clockLease?.release()
         clockLease = nil
         if let backup = activeBackup { restore(backup) }
@@ -439,7 +454,7 @@ final class GatewayDetailClockCoordinator {
         sendTimeGet(model: model) { [self] result in
             DispatchQueue.main.async {
                 guard self.activeOperationID == operationID else { return }
-                guard target.isCurrent else {
+                guard self.targetIsCurrent(target), self.isCurrentProxyReady() else {
                     self.failSync(operationID: operationID, backup: backup, error: .timeSetFailed, completion: completion)
                     return
                 }
@@ -580,6 +595,7 @@ final class GatewayDetailClockCoordinator {
     private func finishOperation(_ operationID: UUID) -> Bool {
         guard activeOperationID == operationID else { return false }
         activeOperationID = nil
+        proxySessionID = nil
         clockLease?.release()
         clockLease = nil
         let backup = activeBackup
@@ -593,9 +609,16 @@ final class GatewayDetailClockCoordinator {
         return true
     }
 
+    private func targetIsCurrent(_ target: GatewayDetailTargetTimeZone) -> Bool {
+        let current = targetProvider?() ?? GatewayDetailTimeZoneResolver.resolve(storageValue: target.storageValue)
+        return current == target
+    }
+
     private func isCurrentProxyReady() -> Bool {
         let address = context.node.primaryUnicastAddress
-        return MeshLibManager.manager.currentProxyReadyContext?.nodeAddress == address
+        return isAttached
+            && (proxySessionID == nil || proxySessionID == MeshLibManager.manager.currentProxyReadyContext?.sessionID)
+            && MeshLibManager.manager.currentProxyReadyContext?.nodeAddress == address
             && MeshLibManager.manager.currentProxy?.nodeAddress == address
     }
 

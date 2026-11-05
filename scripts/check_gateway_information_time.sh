@@ -77,4 +77,7 @@ bash scripts/check_wifi_gateway_proxy_ready_no_time_set.sh
 plutil -lint SunSmart/en.lproj/Localizable.strings
 plutil -lint SunSmart/zh-Hans.lproj/Localizable.strings
 
+python3 scripts/check_gateway_clock_async.py
+python3 scripts/check_gateway_clock_consumption.py
+
 printf 'PASS: Gateway Information time checks completed.\n'

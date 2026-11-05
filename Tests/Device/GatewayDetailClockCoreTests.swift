@@ -5,6 +5,8 @@ struct GatewayDetailClockCoreTests {
 
     static func main() {
         SiteDSTFixtures.install()
+        testSnapshotBoundaries()
+        SiteDSTFixtures.install()
         testUsesStoredSiteTimeZone()
         testFallsBackToCurrentPhoneOffset()
         testKeepsUnencodableSiteOffsetVisible()
@@ -21,6 +23,29 @@ struct GatewayDetailClockCoreTests {
         testSyncingPresentationLastsAtLeastOneSecond()
         testDateFormattingUsesRequiredShape()
         print("GatewayDetailClockCoreTests passed")
+    }
+
+    private static func testSnapshotBoundaries() {
+        let now = Date(timeIntervalSince1970: 1_800_000_000)
+        let phone = TimeZone(secondsFromGMT: 480 * 60)!
+        for (id, offset, active) in [("Etc/UTC", 0, false), ("Asia/Kathmandu", 345, false), ("Australia/Lord_Howe", 660, true)] {
+            let snapshot = try! SiteTimeZoneSnapshot(identifier: id, response: ["code": 200, "data": [
+                "is_dst": active, "current_offset": SiteTimeZoneValue.formatOffset(offset),
+                "next_switch": SiteTimeZoneSnapshot.requestDateString(now.addingTimeInterval(60)),
+                "switches_to": SiteTimeZoneValue.formatOffset(offset - 30)
+            ]], requestedAt: now)
+            SiteTimeZoneValue.snapshotProvider = { _, _ in snapshot }
+            let target = GatewayDetailTimeZoneResolver.resolve(storageValue: id, phoneTimeZone: phone, at: now)
+            require(target.offsetMinutes == offset, "Use current offset for UTC, quarter hour and half hour DST")
+            let expired = GatewayDetailTimeZoneResolver.resolve(storageValue: id, phoneTimeZone: phone, at: now.addingTimeInterval(60))
+            require(expired.source == .site && expired.offsetMinutes == nil, "At switch boundary do not use phone or future offset")
+            SiteTimeZoneValue.snapshotProvider = { _, _ in nil }
+            require(GatewayDetailTimeZoneResolver.resolve(storageValue: id, phoneTimeZone: phone, at: now).offsetMinutes == nil, "Valid Site without snapshot cannot fallback")
+        }
+        for raw: String? in [nil, "not a timezone", "Invalid/Nowhere"] {
+            require(GatewayDetailTimeZoneResolver.resolve(storageValue: raw, phoneTimeZone: phone, at: now).offsetMinutes == 480, "Missing/invalid Site preserves phone fallback")
+        }
+        require(!GatewayDetailClockCore.isWithinTolerance(seconds: -31), "-31 seconds requires sync")
     }
 
     private static func testUsesStoredSiteTimeZone() {
