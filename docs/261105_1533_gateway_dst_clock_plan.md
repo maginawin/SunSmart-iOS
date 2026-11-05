@@ -1,6 +1,7 @@
 # 网关 DST 摘要与时钟一致性开发方案
 
 > 状态：阶段 1、阶段 2（含准备失败恢复补修）已接收；用户授权后续任务改为本 session 内继续，阶段 3 的集成复核、剩余品牌构建和交接现已完成，证据见第 14 节。真实 UI/API/Mesh 验收仍待用户完成；两项既有检查失败独立保留，不宣称全部测试通过。
+> 后续 UI 反馈：按用户要求改为复用 Create site 标题与图标，并修正 Time Zone 最小行高和换行，记录见第 15 节。第 9–14 节的独立网关图标记录仅描述当时交付状态。
 > 执行方式：使用 Superpowers `executing-plans` 按批准阶段实施；不使用子代理，不自动 commit/push，不自动操作真机。
 
 **Goal：** 网关页在 Time Zone 与 Gateway/Local/Off by 之间展示不可展开的 DST 摘要，展示和校时均与 Create site 的有效 current offset 一致。
@@ -37,6 +38,7 @@
 | 正常顺序 | Time Zone 标题及原时区行 → DST 摘要卡片 → Gateway → Local → Off by / Sync clock。无摘要时不留空白区块。 |
 | 页面范围 | 共用网关详情，覆盖普通/4G 与 Wi-Fi；保留现有 Proxy Ready 显示条件及权限边界，不扩展离线网关页和独立 Information 页。 |
 | “Time Zone 下面内容相同” | 时区 IANA、offset 文案及 DST 数据规则与 Create/Edit 相同；保留网关已有布局和 Local 行，不再额外复制一行 Create site 的 Local time。 |
+| Time Zone 行高与换行 | 最小高度与网关 Name 行相同（`SCRYFrom(44)`）；名称和 offset 可换行，内容较长时自动撑高，不截断。 |
 | 不可展开 | 隐藏箭头；普通点击、VoiceOver 激活均不能展开；说明区不进入布局或无障碍顺序；标题不再声明为可展开按钮。仍显示标题、状态及三行摘要。 |
 | 两种宿主样式 | Create/Edit 保留当前透明标题区、白色有边框详情卡片和可展开行为；网关使用 Figma 的一体白色圆角摘要卡片、标题与摘要间细分隔线。 |
 | Current offset / Switches to | 沿用 Presentation：isDST=true 只在 Current offset 后追加本地化 DST；isDST=false 只在 Switches to 后追加。不改快照原值，不假定差值总是一小时。 |
@@ -67,7 +69,7 @@ Inactive 设计里的示例值仍是 `UTC-04:00 (DST)` → `UTC-05:00`，与未�
 - 样式在实例创建时固定，避免 `render` 的相等短路跳过样式更新。创建网关摘要不接入展开回调；无障碍也按只读处理。
 - 数据、DST 后缀、过期状态继续由同一 Presentation 生成；View 不访问网络、Site 或 Mesh。
 - 网关通过轻量 UITableViewCell 宿主承载组件，新增条件 section 位于 `.timeZone` 和 `.clock` 之间；所有 section 的 data source、header/height、reload、选择处理及 Wi-Fi 的 section 插入都一并核对。隐藏/显示用稳定的区块更新策略，避免 table 数量失配；0.5 秒时钟 tick 不重载整个表。
-- 优先使用已有文件内私有宿主，避免为一个 cell 新增工程文件。若 Figma 图标与当前 14pt 资产不同，核对导出后仅添加网关所需资源，不覆盖 Create/Edit 原图标；资源确需变化时按六品牌规则验证。
+- 优先使用已有文件内私有宿主，避免为一个 cell 新增工程文件。按用户后续反馈，网关直接复用 Create/Edit 的 `site_dst_title`、14pt `site_dst_clock` 和标题颜色/图文间距，不保留独立网关图标；Figma 16pt 图标差异服从此复用要求。
 
 备选 B：独立网关 DST View，仅复用 Presentation。优点是表单布局完全隔离；缺点是复制三行、状态、过期文案和无障碍维护。已有控件可扩展，当前无必要采用。
 
@@ -593,3 +595,21 @@ Xcode 数据来自上述 DerivedData 的 `Logs/Build/LogStoreManifest.plist`。�
 3. 网关保留旧 offset、Site 获取新 current offset：Local 采用目标当地时间，Gateway 不能随目标一起跳时掩盖未同步；重读后 Off by 正负正确。同步成功须完成既有读回验证并向 Site 回传当前确认。补查跨切换点、系统时间变化及真实 SDK 收包交错。
 
 本次授权工作到此完成，代码和资源保持未提交状态；无需再开新的实施 session。后续真实验收发现问题再按证据处理，两个既有检查问题仍作为独立待办。
+
+## 15. UI 反馈修正：复用图标与 Time Zone 行高（2026-11-05）
+
+### 原因与改动
+
+- 用户反馈要求直接沿用 Create site 的标题和图标。此前为匹配 Figma 的 16pt 时钟单独导出了 `gateway_dst_clock`；这里不需要独立资产，现删除其 imageset 两个文件，统一使用已有 `site_dst_clock`（14pt）、`site_dst_title`、标题颜色和 6pt 图文间距。网关继续只读，Create/Edit 展开行为保持。
+- Time Zone 虽使用 `automaticDimension`，标题只有上下各 10pt 的约束，没有最小高度，因此短名称可能低于 Name 的 44pt。另一个问题是设置了多行，但继承了 UILabel 的截断模式。现给标题补充最小 24pt 高度，连同上下间距保证行高至少 `SCRYFrom(44)`；名称和 offset 都明确按词换行、不限行，内容较长时自动撑高。
+- 接手分支仍为 `feat/daylight-saving-261024`，HEAD 已由前轮基线推进至 `79a7420654e46225b966e4efab2b1563f0d3ebd2`，入场工作区干净。本轮修改两个生产 Swift 文件、删除两个专用图标文件并更新本文档；不修改 SDK、依赖、时钟计算或持久数据。
+
+### 验证与边界
+
+- `bash scripts/check_site_dst.sh`：四组通过。
+- `bash scripts/check_gateway_information_time.sh`：完整通过，包含 19 个消费行为场景。
+- `bash scripts/check_gateway_scroll_performance.sh`：通过。
+- 六品牌资源归属复核：五品牌直接使用共享资产目录；Lumineux 使用既有合并脚本。在临时输出目录执行真实合并，确认共享图标与源文件字节相同，独立网关图标不存在。最初按所有品牌直接引用共享目录的检查假设不适用于 Lumineux，已按实际合并入口核对。
+- SunSmart Debug generic iOS：首次沙箱内执行在 workspace 加载阶段 exit 66，未进入编译；已确认 workspace XML 和 SDK realpath 正确，使用相同命令获准在沙箱外构建后 exit 0。构建记录 `CBE97374-C9F9-435A-9991-D721D008A332`；直接检查实际 `.app/Assets.car`，确认 `site_dst_clock` 存在、`gateway_dst_clock` 已移除。`git diff --check` 通过。
+- SDK 仍为 `one-dev`，HEAD `2809c540be3b965a6a847ee4586ac46faf2ca2b5`，只读使用。六品牌上轮构建是修改前证据；本轮采用代表 scheme 构建和资源归属/实际合并验证，不宣称六品牌本轮均重建。
+- 真实 UIKit 排版未运行；现有回归不验证屏幕上的实际高度。人工只需在普通/4G、Wi-Fi 网关各核对：短 Time Zone 行至少与 Name 等高，长 IANA/offset 在窄屏及 iPad 完整换行，DST 标题和图标与 Create site 一致且网关仍不可展开。

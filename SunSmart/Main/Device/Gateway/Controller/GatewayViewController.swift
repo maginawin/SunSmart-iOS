@@ -2342,10 +2342,14 @@ extension GatewayViewController: UITableViewDataSource, UITableViewDelegate {
             cell.contentLabel.text = site.timezone.flatMap(SiteTimeZoneValue.init(storageValue:))?.displayOffset ?? target.displayOffset
             cell.cellStyle = .none
             cell.titleLabel.numberOfLines = 0
+            cell.titleLabel.lineBreakMode = .byWordWrapping
             cell.contentLabel.numberOfLines = 0
+            cell.contentLabel.lineBreakMode = .byWordWrapping
             cell.titleLabel.snp.remakeConstraints { make in
                 make.left.equalTo(SCRXFrom(16))
                 make.top.bottom.equalToSuperview().inset(SCRYFrom(10))
+                // Together with the vertical insets, match the Name row's 44pt minimum.
+                make.height.greaterThanOrEqualTo(SCRYFrom(24))
                 make.width.equalToSuperview().multipliedBy(0.38)
             }
             cell.contentLabel.snp.remakeConstraints { make in

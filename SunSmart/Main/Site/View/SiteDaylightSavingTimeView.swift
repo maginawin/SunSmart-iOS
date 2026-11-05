@@ -82,13 +82,13 @@ final class SiteDaylightSavingTimeView: UIView {
     private func setupHeader(in stack: UIStackView) {
         let row = UIStackView()
         row.alignment = .center
-        row.spacing = SCRXFrom(style == .gatewaySummary ? 10 : 6)
+        row.spacing = SCRXFrom(6)
         row.isUserInteractionEnabled = false
-        let clock = UIImageView(image: UIImage(named: style == .gatewaySummary ? "gateway_dst_clock" : "site_dst_clock"))
+        let clock = UIImageView(image: UIImage(named: "site_dst_clock"))
         clock.contentMode = .scaleAspectFit
-        clock.snp.makeConstraints { $0.width.height.equalTo(SCRYFrom(style == .gatewaySummary ? 16 : 14)) }
+        clock.snp.makeConstraints { $0.width.height.equalTo(SCRYFrom(14)) }
         row.addArrangedSubview(clock)
-        let title = label("site_dst_title", color: style == .gatewaySummary ? RGB(30, 35, 41) : RGB(44, 45, 63))
+        let title = label("site_dst_title", color: RGB(44, 45, 63))
         title.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
         if style == .gatewaySummary { title.setContentHuggingPriority(.defaultLow, for: .horizontal) }
         row.addArrangedSubview(title)
