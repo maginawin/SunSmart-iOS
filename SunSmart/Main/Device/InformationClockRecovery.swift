@@ -319,8 +319,8 @@ final class InformationClockMeshTransport: InformationClockTransport {
     func prepareTarget(completion: @escaping (Bool) -> Void) {
         guard let siteID = node.network?.uuid.uuidString else { completion(false); return }
         Task { @MainActor [weak self] in
-            let snapshot = await SiteTimeZoneService.shared.prepare(siteID: siteID)
-            completion(self?.isCurrent == true && snapshot != nil)
+            let resolution = await SiteTimeZoneService.shared.prepareClock(siteID: siteID)
+            completion(self?.isCurrent == true && resolution != nil)
         }
     }
 
@@ -340,7 +340,16 @@ final class InformationClockMeshTransport: InformationClockTransport {
             completion(.invalid)
             return
         }
-        send(Node.setLocalTimeMessage(date: date, timeZone: timeZone), model: model, completion: completion)
+        guard let resolution = SiteTimeSetMessageFactory.resolve(node: node, at: date),
+              resolution.offsetMinutes == offset else { completion(.invalid); return }
+        send(Node.setLocalTimeMessage(date: date, timeZone: timeZone), model: model) { [self] response in
+            if case .sample(let sample) = response, sample.matches(offset: offset, date: Date()),
+               canRecover, resolution.isCurrent() {
+                SiteTimeSetMessageFactory.sendTransition(resolution: resolution, model: model,
+                    isCurrent: canConfigure)
+            }
+            completion(response)
+        }
     }
 
     func getTime(completion: @escaping (InformationClockResponse) -> Void) {

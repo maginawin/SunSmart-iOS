@@ -145,10 +145,7 @@ final class SitePropsAPIClient: SitePropsAPIClientProtocol {
         guard !timezoneString.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             return (nil, false)
         }
-        guard let timezone = SiteTimeZoneValue(storageValue: timezoneString) else {
-            return nil
-        }
-        return (timezone, true)
+        return (SiteTimeZoneValue.preservingStorageValue(timezoneString), true)
     }
 
     private func isBoolean(_ value: Any) -> Bool {

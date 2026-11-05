@@ -1249,7 +1249,7 @@ class CloudSynchronizationHandle: NSObject {
         if let initialSubmission = api.initialSiteTimeZoneSubmission {
             let current = SitePropsLocalState(
                 values: SitePropsValues(siteName: site.name, imageId: site.imageId,
-                    timezone: site.timezone.flatMap(SiteTimeZoneValue.init(storageValue:))),
+                    timezone: site.timezone.map(SiteTimeZoneValue.preservingStorageValue)),
                 lastUpdate: site.lastUpdate,
                 lastUploadCloudTimestamp: previousTimestamp,
                 pending: SitePropsPendingState(fields: previousMask, timestamp: previousPendingTimestamp)

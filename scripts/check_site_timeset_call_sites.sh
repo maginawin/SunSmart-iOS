@@ -23,4 +23,5 @@ swiftc -parse-as-library \
   "${repo_root}/SunSmart/Main/Site/Model/GatewayTimeSyncCoordinator.swift" \
   "${repo_root}/SunSmart.xcodeproj/project.pbxproj" \
   "${sdk_root}/Sources/NordicSigMeshSDK/MeshLib/Node/Node+Messages.swift" \
-  "${sdk_root}/Sources/NordicSigMeshSDK/MeshLib/MeshAPI.swift"
+  "${sdk_root}/Sources/NordicSigMeshSDK/MeshLib/MeshAPI.swift" \
+  "${repo_root}/SunSmart/Main/Space/Model/SpaceClockSyncCoordinator.swift"

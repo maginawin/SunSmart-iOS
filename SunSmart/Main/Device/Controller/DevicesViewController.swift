@@ -233,10 +233,7 @@ class DevicesViewController: WMPageController {
                         return
                     }
                     
-                    // 延迟3s发送广播节点同步时间消息，避免与获取设备状态冲突
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 3) {[weak self] in
-                        self?.syncTimeNodes()
-                    }
+                    // Automatic clock synchronization belongs to the Space lifecycle coordinator.
                     #if DEBUG
                     if MeshNetworkManager.instance.realNodes.contains(where: { $0.scheduleIds.count > 0 }) && MeshNetworkManager.instance.schedules.filter({ $0.enabled }).count > 0 {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 5) { [weak self] in
@@ -445,37 +442,6 @@ class DevicesViewController: WMPageController {
         present(NavigationViewController(rootViewController: vc), animated: true)
     }
     
-    /// 节点同步时间
-    private func syncTimeNodes() {
-        guard MeshLibManager.manager.isMeshNetworkConnected else { return }
-        let siteID = space.siteId
-        let network = MeshNetworkManager.instance.meshNetwork
-        Task { @MainActor [weak self] in
-            let snapshot = await SiteTimeZoneService.shared.prepare(siteID: siteID)
-            guard let self, self.viewIfLoaded?.window != nil,
-                  self.space.siteId == siteID,
-                  MeshNetworkManager.instance.meshNetwork === network,
-                  MeshLibManager.manager.isMeshNetworkConnected else { return }
-            guard snapshot != nil,
-                  let resolution = SiteTimeSetMessageFactory.resolve(siteID: siteID) else {
-                XWHUDManager.showErrorTipHUD("site_time_zone_refresh_required".localizedString)
-                return
-            }
-            let oldTimestamp = self.space.lastSyncDateTimestamp
-            let timestamp = CLongLong(Date().timeIntervalSince1970)
-            SiteTimeSetMessageFactory.broadcast(resolution: resolution, isCurrent: { [weak self] in
-                self?.viewIfLoaded?.window != nil && self?.space.siteId == siteID && MeshNetworkManager.instance.meshNetwork === network
-                    && MeshLibManager.manager.isMeshNetworkConnected
-            }, rejected: { [weak self] in
-                guard let self, self.space.lastSyncDateTimestamp == timestamp else { return }
-                self.space.lastSyncDateTimestamp = oldTimestamp
-                self.space.save()
-            })
-            self.space.lastSyncDateTimestamp = timestamp
-            self.space.save()
-        }
-    }
-
     #if DEBUG
     /// 调试 OTA 后设备丢时间：单播标准 TimeSet，观察固件是否返回 TimeStatus 并恢复日程。
     private func debugSyncFirstScheduledNodeTime() {
@@ -489,7 +455,7 @@ class DevicesViewController: WMPageController {
         }
         Task { @MainActor in
         guard let siteID = node.network?.uuid.uuidString,
-              await SiteTimeZoneService.shared.prepare(siteID: siteID) != nil,
+              await SiteTimeZoneService.shared.prepareClock(siteID: siteID) != nil,
               node.network === MeshNetworkManager.instance.meshNetwork,
               MeshLibManager.manager.isMeshNetworkConnected else { return }
         guard let resolution = SiteTimeSetMessageFactory.resolve(node: node) else {

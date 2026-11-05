@@ -30,6 +30,20 @@ struct SiteTimeZoneValue: Hashable {
         catalogOffsetMinutes = offset
     }
 
+    /// Preserve unsupported stored values without treating them as usable time zones.
+    /// This keeps field merging/export lossless while clock consumers can fall back.
+    static func preservingStorageValue(_ raw: String) -> Self {
+        if let value = Self(storageValue: raw) { return value }
+        return Self(unvalidatedStorageValue: raw)
+    }
+    private init(unvalidatedStorageValue: String) {
+        ianaId = unvalidatedStorageValue
+        catalogOffsetMinutes = nil
+    }
+    var isRecognizedTimeZone: Bool {
+        Self.validIdentifier(ianaId) && (TimeZone(identifier: ianaId) != nil
+            || catalogOffsetMinutes != nil || snapshot() != nil)
+    }
     var storageValue: String { ianaId }
     static func == (lhs: Self, rhs: Self) -> Bool { lhs.ianaId == rhs.ianaId }
     func hash(into hasher: inout Hasher) { hasher.combine(ianaId) }

@@ -511,7 +511,7 @@ extension SiteData {
                 && ExpressionKey.regionType == region.rawValue)) else { return nil }
         return SitePropsLocalState(
             values: .init(siteName: row[ExpressionKey.name], imageId: row[ExpressionKey.imageId],
-                          timezone: row[ExpressionKey.timezone].flatMap(SiteTimeZoneValue.init(storageValue:))),
+                          timezone: row[ExpressionKey.timezone].map(SiteTimeZoneValue.preservingStorageValue)),
             lastUpdate: row[ExpressionKey.lastUpdateTimestamp],
             lastUploadCloudTimestamp: row[ExpressionKey.lastUploadCloudTimestamp],
             pending: .init(fields: .init(rawValue: row[ExpressionKey.pendingSitePropsMask]),

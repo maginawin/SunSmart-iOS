@@ -43,6 +43,22 @@ final class SiteTimeZoneService {
             store.refresh(identifier: value.ianaId) { continuation.resume(returning: $0) }
         }
     }
+    /// Clock callers consume a resolution, not a snapshot: missing/invalid Site zones use the phone.
+    @MainActor func prepareClock(storageValue: String?, retry: Bool = true) async -> SiteTimeSetTimeZoneResolution? {
+        if let identity = storageValue.flatMap(SiteTimeZoneValue.init(storageValue:)), identity.isRecognizedTimeZone {
+            _ = await withCheckedContinuation { continuation in
+                store.refresh(identifier: identity.ianaId, retry: retry) { continuation.resume(returning: $0) }
+            }
+        }
+        return SiteTimeSetMessageFactory.resolve(storageValue: storageValue)
+    }
+    @MainActor func prepareClock(siteID: String, retry: Bool = true) async -> SiteTimeSetTimeZoneResolution? {
+        guard let site = SiteData.load(siteId: siteID) else { return nil }
+        let value = site.timezone
+        let result = await prepareClock(storageValue: value, retry: retry)
+        guard let current = SiteData.load(siteId: siteID), current.timezone == value else { return nil }
+        return result
+    }
     @MainActor func prepare(siteID: String) async -> SiteTimeZoneSnapshot? {
         await prepare(SiteData.load(siteId: siteID)?.timezone.flatMap(SiteTimeZoneValue.init(storageValue:)))
     }

@@ -53,6 +53,10 @@ struct SitePropsAPIResponseParserTests {
             "Fractional imageId must remain invalid"
         )
 
+        let invalidZone = client.parseUpdateResponse(["updateTimestamp": 1, "timezone": "not a timezone"])
+        require(invalidZone?.timezone?.storageValue == "not a timezone", "Invalid timezone must preserve its raw value instead of rejecting other Site properties")
+        require(invalidZone?.providedFields.contains(.timezone) == true, "Invalid timezone is still a provided field, not an omitted patch")
+        require(invalidZone?.timezone?.isRecognizedTimeZone == false, "Preserved data must not authorize Site clock synchronization")
         testCoordinateFormats(client: client)
         print("SitePropsAPIResponseParserTests passed")
     }

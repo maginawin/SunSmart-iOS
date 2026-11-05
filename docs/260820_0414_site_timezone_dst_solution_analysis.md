@@ -1,10 +1,165 @@
 # Site Time Zone 夏令时问题分析与解决方案
 
+## 2026-11-05 实施：Site 入口刷新、Space 校时与下一次 DST 下发（App 完成，待设备验收）
+
+本节对应用户新增需求：进入 Site 更新 DST 信息；进入 Space 使用 Site current offset 校时，并向设备发送下一次切换。**用户已确认按本版本实施；App 改动与自动化验证已完成，设备/真实 API 验收尚未执行。** 下文历史记录中的“不增加未来 TimeZoneSet”是上一轮范围，本轮已扩展到 App 侧未来计划下发。
+
+### 实施清单（本轮执行记录）
+
+执行：使用 writing-plans / executing-plans / TDD，在现有 linked worktree 单人实施，无子代理、不提交。本文顶部最新需求为 Spec。Tech Stack：Swift/Foundation/UIKit、既有 Store 和 Nordic SDK。目标：保持纯 IANA 保存，缺失/无效时区手机回退，Space 会话自动校时与未来计划广播。
+
+- [x] Task 1：`SiteTimeSetMessageFactory` 增加可选快照、语义目标和下一次切换参数；`SiteTimeZoneValue` 提供身份有效性与原值保留入口。扩展 `SiteTimeSetMessageFactoryTests`，先复现 missing/invalid 回退失败，再覆盖有效快照、暂时离线、跨切换、无未来计划和半小时偏移。沿真实 Site 属性解析/导入检查原值保留与回执保护。
+- [x] Task 2：在现有工厂发送边界生成 TimeZoneSet，复用 SDK TAI 转换；广播发送当前/未来两条，单设备 TimeSet 成功后追加补充计划，不改变原任务的 TimeStatus 成功含义。新增离线传输测试，编译真实 SDK TimeZoneSet/Status/TAI 序列化，验证未来参数、零计划、取消和过期拒发。
+- [x] Task 3：新增 `SpaceClockSyncCoordinator.swift`，Foundation 可注入协调器负责观察回调、异步 prepare 合并、连接代际与发送目标去重；UIKit 适配负责 Site/Space/权限/网络上下文。Space 生命周期接入，移除 Devices 首连独占的自动广播。新增真实 Store + 异步事件行为测试，验证失败恢复、初始已连接、晚响应、退出、去重、目标变化；新增文件统一加入六品牌。
+- [x] Task 4：核对 Gateway Fast Add、Information 与其他校时使用方的前置 guard，统一从共享准备入口取得 Site/手机解析结果。运行 `check_site_dst.sh`、工厂/传输/调用方、Site Props 与受影响网关/Timed 回归，检查项目与六品牌归属，再串行 generic iOS 构建受影响品牌；自行复核并交付人工验收步骤。
+
+Pre-flight：Task 2/3/4 共用 Task 1 的 `prepareClock(siteID:)` 与 `resolve` 返回值，手机分支不应被可选 snapshot guard 拒绝；取消与晚回复必须在发送边界二次验证。持久化仅保留原始非法字符串以供降级，不能把本次手机解析写回 Site。
+
+Ruling：实施开始 SDK HEAD 未变，但已有另一任务的 Scheduler 未提交修改（含 MessageManager/ProxyCommand 等）；本任务不写 SDK，不覆盖或清理它们，测试与构建记录当前 SDK 来源。已有钩子若不足，先证明具体缺口再决定隔离方案。
+
+Ruling：单设备现有流程以 TimeStatus 判当前校时成功；未来计划作为其有效回复后的补充发送，不新增强制 ACK 依赖，避免不支持 future transition 的旧固件使现有日程/初始化整体失败。补充发送仍须校验来源/目标/会话有效性；未来计划实际生效由独立回读与运行验收证明。
+
+### 最新需求确认：保存契约、App 关闭、旧版兼容及广播能力
+
+1. **保存契约保持当前分支不变。** 用户已明确选择“保留当前分支的纯 IANA，不再调整格式”。当前 `SiteTimeZoneValue.storageValue` 返回 `ianaId`，`SiteData.timezone` setter 会规范化旧后缀，SiteProps 更新与 Site 导出均使用 storageValue。此行为已在提交 `030a6d41` 引入，本次不恢复旧的 `IANA (UTC±HH:mm)`、不新增结构化字段、不改服务器接口。下一次切换的四字段仍属于现有 App 快照缓存，不能把动态 offset/DST 展示字符串写回 timezone。
+2. **功能目标是 App 未运行时也能完成预置的下一次 DST。** App 在可连接时先设置当前时间，再下发未来切换；设备收到并正确实现该状态后，转换点不需要 App 在线。这是产品目标，需要设备运行证据才能宣称达成。App 不运行不等于设备断电；掉电保持当前时钟/未来计划、离线设备漏收以及再下一次计划续期分别验收。当前 Space 的广播不覆盖未连接的其他 Spaces 或所有 Site 网关；这些网络仍需各自下发机会或网关已具备的独立同步能力。
+3. **解析失败按“没有可用 Site 时区”进行校时回退。** 新版本沿用用户要求，使用手机当前 offset；仅是运行时的校时来源回退，不清空服务器字段、不自动上传 null、不把未解析成功当成属性同步成功。已发布旧 App 无法通过本次修改获得新行为。只读核对历史 `5511abc6`：旧解析器要求 `IANA (UTC±HH:mm)`，其 TimeSet 工厂确实对 nil/空白/解析失败执行 phoneFallback；但该历史提交不是已确认的所有上架包基线，而且属性解析可能在到达工厂前就失败，故不保证所有旧版完整链路均能回退。保持当前纯 IANA 是已确认决定；旧版兼容仍应针对实际版本验收。即使成功回退，也只是降级：手机与 Site 异地时可能校错时区，不能宣称旧版支持 Site DST。
+4. **广播发送不要求先按型号筛选，能力验收仍要区分。** 按用户倾向继续推荐 A，不新增型号白名单作为发送前提。支持模型且能解密/接收的目标才可能处理命令；广播不会让不支持 TimeZoneSet 的固件自动具备能力，也不证明每台已经收取、到点执行或掉电保留。App 可先完成统一广播；型号/固件兼容性由用户或对应团队用受控设备验收，不要求本任务修改固件。
+
+标准依据：Time Setup Server 收到 TimeZoneSet 后设置未来 offset 与切换 TAI，Time 状态到达该时刻时执行切换；这支持“预先配置、App 离线时执行”的设计，但不证明具体产品实现和掉电行为。[Bluetooth Mesh Model 1.1，5.1.1.7.1、5.3.2.2.2](https://www.bluetooth.com/wp-content/uploads/Files/Specification/HTML/MMDL_v1.1/out/en/index-en.html)。
+
+当前 App 的 `SitePropsAPIClient.timezoneValue` 对部分非法字符串会返回失败，使整个属性响应失败。实施手机回退时须检查这一前置入口与导入/持久化，确保“没有可用时区”的运行时分类能到达校时工厂，同时保留原始配置、字段提供状态和 pending/回执保护；不能只改工厂或一律吞掉整份响应错误。正常纯 IANA 保存格式不变，字段级解析失败处理属于本次回退所需的关联修复。
+
+**用户追加的已定规则：Site 没有时区，或者 Site 时区无效时，仍使用手机时区校时。** 该规则覆盖本文旧方案中针对上述情况的“拒绝校时/不回退手机”要求；用户本次补充不等于批准实施完整方案。
+
+校时来源按以下规则区分：
+
+| 状态 | 已实施行为 |
+| --- | --- |
+| Site 时区有效且有可用服务器快照 | 使用 Site 的 current_offset；有下一次切换时下发 Site 计划 |
+| Site 存在，但 timezone 缺失、空白、格式非法或已确认不是有效时区 | 使用手机在实际发送时刻的当前时区偏移校时，不依赖 Site DST 请求成功 |
+| Site 时区有效，但网络超时、请求失败、响应损坏或缓存已过期 | 与“配置无效”区分；暂沿用原缓存/重试规则，无可用快照时待重试，不因临时网络故障切换到可能异地的手机时区 |
+| Site/Space 已删除、身份不匹配、权限撤销或会话失效 | 仍取消发送；手机回退不能绕过归属和权限校验 |
+
+实现注意：当前 `SiteTimeZoneValue.validIdentifier` 仅检查字符串语法，不能据此认定 IANA 实际存在。识别不存在的时区应结合项目已有时区目录与明确的服务器有效性结果；手机系统不认识的 IANA 可能是系统数据库较旧，不能仅凭此否定服务器已确认的有效时区。网络失败/通用错误不能视作“服务器确认时区无效”，缺少明确错误契约时补诊断而不猜测。
+
+手机回退属于本次明确要求；未来计划的处理建议为：不复用旧 Site 的 next_switch/switches_to，不擅自扩展成查询或推算手机下一次 DST；当前校时后用相同手机 offset 和零切换时间覆盖旧未来计划，防止设备随后执行旧 Site 计划。手机时区/偏移改变或 Site 配置恢复有效时，重建发送目标。手机偏移也须可被 Mesh 编码，不可静默取整。
+
+### 1. 实施前结论与证据（保留问题基线）
+
+| 用户问题 | 当前源码结论 | 证据 |
+| --- | --- | --- |
+| 进入 Space 会同步日期时间吗 | 正常路径会：Devices 子页首次收到 Mesh 已连接通知后延迟 3 秒；Visitor 跳过。不是“只要进入就必定完成” | `DevicesViewController.addObservation()`、`syncTimeNodes()`；`SpaceViewController` 创建 Devices 子页并连接 Space 子网 |
+| 使用 Site current offset 吗 | 是。`prepare(siteID:)` 后以服务器/有效缓存 `current_offset` 创建固定偏移 TimeZone，再生成 TimeSet；不使用手机时区、旧 Site 字符串后缀或 switches_to 作为当前 offset | `SiteTimeSetMessageFactory.resolve`、`broadcast`；SDK `ExplicitTimeSetInput.make` |
+| 不进 Edit 就不能更新 DST 吗 | 不是。Site 页已有 `viewDidAppear → observeSiteTimeZone/refresh`；Space 校时发送前也会 prepare；其他校时入口共用服务 | `SiteViewController.swift:244`、`:926`；`DevicesViewController.swift:449`；`SiteTimeZoneService` |
+| 每日接口是否需要前移到 Site | 当前已经具备该行为，应保留并回归，不新增另一套 Site 请求/缓存 | `SiteTimeZoneStore.refresh` 根据快照自然日/切换点判断，合并同 IANA 请求；同日成功缓存不重复网络请求 |
+| 是否发送下一次 DST | 没有。App 中没有 TimeZoneSet 构造/发送调用；nextSwitch 目前用于展示和缓存失效。SDK 已有 TimeZoneSet/TimeZoneStatus | App 全量 Swift 调用检索；SDK `TimeZoneSet.swift` / `TimeZoneStatus.swift` |
+
+当前校时广播目的地址为 `.allNodes`（0xFFFF），在当前 Space 网络/密钥上下文发送；不能解释成已经同步整个 Site 的全部 Spaces，也不能解释成所有设备都回执成功。`lastSyncDateTimestamp` 在入队后即写入，不能作为逐设备确认记录。`SpaceData.needSyncDate` 虽有 24 小时判断，当前没有调用方，不能据此宣称已有每日自动校时。
+
+关键缺口：
+
+- `firstConnectionNetwork` 在请求、校时完成前即置 false；失败后，同一 Devices 页面普通重连不再调用自动校时。KVO 仅 `.new`，进入时已经连接的情况也没有在此入口主动评价现态。
+- Site 页 `viewDidDisappear` 移除 DST 观察者。Space 本身没有持续订阅当前 IANA；若没有其他观察者，长时间停留 Space 时，服务每秒检查/前台恢复不会自动刷新这个时区。即便其他消费者刷新了缓存，也没有 Space 校时订阅把新目标发给设备。
+- 广播排队只证明尝试发送；旧页面、不同 Space 子网、账号/权限变化及请求跨切换点，都要在发送时核对，不能只看 Site ID 和 Mesh 对象。
+
+有效 Site 时区的服务规则保持：按 IANA 的当地自然日成功请求一次；跨 next_switch 可额外刷新；失败允许后续明确事件重试，不按每秒 tick 无限重试。跨日失败而旧快照未过 next_switch 可继续使用；跨切换点失败或无有效缓存时停止依赖该 offset 的发送，不由 App 自行猜测新 DST。Site 时区缺失/无效则走上述手机回退分支。当前源码仍直接返回 nil，尚未实现该补充要求。
+
+### 2. 方案与取舍
+
+**推荐 A：沿用广播校时，追加未来切换广播，补齐 Space 生命周期。** 每次有效同步由当前 1 条 TimeSet 增为 2 条逻辑消息（不含 SDK/网络层重传）；不新增逐设备持久化确认表。符合当前自动校时行为，保持进入 Space 的交互成本较低。它表达“向当前 Space 全节点发送”，不承诺每台收到；离线节点依靠后续重入/重新连接/初始化补发。
+
+备选 B：枚举当前 Space 所有具备 Time Setup Server 的目标 Element，逐一发送 TimeSet + TimeZoneSet 并校验回执。N 个目标约为 2N 条请求及对应响应（不含重试），能区分部分失败，需维护目标集合、成功/待重试状态和会话恢复，设备多时耗时增加。若产品要求“全部设备逐台确认成功”，应选 B，不能用 A 的广播时间戳替代。
+
+用户已表达统一广播的方向，以下开发范围继续按 A 展开；用户随后已明确授权实施。B 仅保留为逐台确认要求出现时的备选，不重复要求用户在当前阶段建立型号白名单或选择两套并存机制。
+
+### 3. 推荐方案的行为与改动范围
+
+1. **保留 Site 入口刷新。** 复用 `SiteTimeZoneService/Store`，不移动或删除 Edit/Create、直接校时的 prepare。Site 提前准备缓存，Space 发送前仍需检查，避免页面间等待跨过切换点。成功缓存的自然日规则不变，不把每次进 Site 变成强制 HTTP 请求。
+2. **由 Space 生命周期拥有时钟同步会话。** 在 Space 页面建立轻量协调器，持有当前 IANA 观察和会话 token；Devices 页的 firstConnectionNetwork 仍可服务其他首次连接业务，但不再作为时钟同步唯一门禁。Space 入场主动评价连接现态，连接就绪仍保留原 3 秒避让；首次失败后可在 Mesh 重连、网络恢复、前台恢复、再次进入以及有效快照到达时重新评价。跨日/切换点直接复用 Store 通知，不新增一套每秒定时器。
+3. **事件合并而非反复广播。** 同一会话中用 IANA/currentOffset/nextSwitch/switchesTo 构成语义目标；仅 requestedAt 变化不代表设备目标变化。相同目标成功发起的一轮不被每次通知重复排队；新连接会话、新增/重新初始化设备、目标变化或之前未能入队才允许补发。当前失败目标保留待尝试，失败重试仅由上述外部事件驱动，不在失败回调内递归 refresh。这里的“发起”仅表示广播尝试，不登记设备成功。App 重启/重新进入重新评价，已有 DST JSON 缓存继续复用；不增加数据库 schema。
+4. **共享工厂生成当前时间与未来计划。** 扩展 `SiteTimeSetMessageFactory` 的消息组能力，显式区分 Site 快照与手机回退来源；手机回退不得伪造 SiteTimeZoneSnapshot。Site 分支以同一合法快照准备两条消息；手机分支按发送时刻取手机 offset 并覆盖旧计划。发送前逐条校验绝对时间、来源、语义目标和会话上下文；排队跨 nextSwitch、手机时区变化、Site 配置改变时废弃旧组，重新解析后重建。当前 offset 相同但下一次切换变化，也必须更新计划。各调用方不得继续用 `prepare(siteID:) != nil` 或必须存在 IANA 的前置 guard 阻断合法手机回退，须共同接入来源解析结果；现有 source/phoneFallback 类型可复用，不影响 Site 时区持久化值。
+5. **覆盖同类设备入口。** Space 广播是主入口；普通设备初始化/重新配置、网关 Fast Add/现场校时要能够从共享工厂取得未来计划，避免在本轮广播后新增设备漏配。逐项核对 `Node+MessageHandles`、`MeshNetwork+SunSmart`、`SyncDevicesCellModel`、`GatewayFastAddTimeInitialization` 及现有网关/Information 校时调用方；Group/Timed 的 TimeSet 调用一并审计，保留原有校时失败阻止依赖日程的语义。不在每个日程条目后机械追加重复计划，不把未来计划超时冒认成已有 TimeSet 的回执。
+6. **权限、退出和网关边界。** 自动写设备仍仅 Owner/Editor；校验账号/区域、Site ID、Space ID、当前子网及 AppKey、页面会话和最新权限。退出/切换/降权使待发送失效；合法晚响应可进入所属 IANA 缓存，但不得唤起旧 Space 发送。Site 查询本身不触发全 Site 网关云端校时，`/sitespace/gateway/datetime/update` 的 body、触发范围和状态语义保持原契约。
+
+新增协调器仅管理“当前 Space 的观察、触发合并、待尝试和取消”，原因是现有 Devices 首连布尔值不能表示这些状态；不新建全局任务框架或持久化调度系统。多消息接入保留现有队列与 SDK 发送有效性钩子；实施时若现有发送失败回调不足，只补必需的 App/SDK 边界，不通过写成功时间戳掩盖失败。
+
+### 4. SIG Mesh 参数与兼容边界
+
+SIG 的 Time Zone Set 用于设置未来 offset 与生效 TAI 时间，标准消息有 Time Zone Status 响应；TimeSet 设置当前时间，不等于设置下一次切换。[Bluetooth Mesh Model 1.1，5.1.1.6–7、5.2.1.5–6、5.3.2.2](https://www.bluetooth.com/wp-content/uploads/Files/Specification/HTML/MMDL_v1.1/out/en/index-en.html)。
+
+| 顺序/条件 | 消息与参数 | 目标、确认和失败 |
+| --- | --- | --- |
+| 有效当前快照 | TimeSet；date 为实际发送时刻，tzOffset=`current_offset`；TAI/Delta 复用 SDK `ExplicitTimeSetInput` | A 保留 0xFFFF 广播和当前 Space 密钥；有响应不代表全员确认 |
+| 有合法未来 next_switch/switches_to，无论 is_dst true/false | TimeZoneSet（0x823C）；new offset=`switches_to`；taiSeconds 为 next_switch 绝对时间转 Mesh TAI 秒 | A 追加 0xFFFF 广播；不可把有 ACK 定义的消息称为另一个 UNACK opcode。无全员 ACK 汇总；局部丢包/离线在后续事件补发 |
+| 成对 null，没有下一次切换 | 在当前 TimeSet 后发送 TimeZoneSet(new offset=current_offset, taiSeconds=0) | 覆盖旧未来计划，避免从 DST 地区改到无下一次切换地区后仍执行旧计划；固件必须验证该行为 |
+| Site 时区缺失或已确认无效 | TimeSet 使用发送时刻手机当前 offset；建议追加 TimeZoneSet(new offset=同一手机 offset, taiSeconds=0) 覆盖旧计划 | 不要求 Site DST 快照；不下发旧 Site 的未来计划；仍校验 Space/权限/会话 |
+| 有效 Site 时区的快照缺失/过期、切换时间已到或响应字段不能编码 | 不发送依赖该快照的时钟消息组；保留待尝试 | 不把临时请求/数据异常判成 Site 时区无效，不改写 API 快照推算下一季 |
+
+转换复用 SDK：`Mesh TAI = floor(nextSwitch.timeIntervalSince1970 - 946684800 + MeshTimeConversion.taiUTCOffset(at: nextSwitch))`。先校验有限值、2000 年之后、40 bit 范围及精度，再调用带 precondition 的 API；不可把 Unix 秒直接写入，也不可再次叠加当前/目标时区 offset。时区字段按 15 分钟编码，验证 current/switches 均可编码，支持半小时 DST，不写死增减 60 分钟。DST 本身不要求另发闰秒用的 TAI-UTC Delta Set。
+
+目标能力：Time Setup Server（SIG Model ID 0x1201，与 Time Server 0x1200 区分）。A 沿用全节点广播，能够实际处理的 Element/品牌/固件范围需验证；没有该模型的设备不能通过 App 增加命令获得能力。单播入口发到实际承载该模型的 Element 单播地址，含 Primary 或其他承载 Element；若采用 B，枚举全部匹配 Element，不能只用返回第一个匹配项的 `node.timeSetupModel`。不更改设备订阅、绑定或凭据来扩大本次广播范围。
+
+下一次计划只有一条，不是永久 DST 日历。App 关闭后设备能否到点执行、断电是否保留、完成后能否获取再下一次，属于固件/网关能力。即使 App 实现本方案，长期再不访问该 Space 且无网关续期，也不能保证无限期自动 DST。
+
+外部验收由固件/网关团队负责：确认 0x823C/0x823D、时间基准、空计划覆盖、模型位置、到点执行与掉电行为；核对网关是否会把旧 offset 重新覆盖到节点。服务器团队维持现有四字段契约与下一次切换准确性，不需要本任务修改服务器。App 可独立开发；宣称无人值守跨 DST 前，上述设备与网关验收是发布依赖。
+
+### 5. 开发步骤与验证
+
+已按用户确认的 A 执行以下步骤并维护本文，不另起重复计划：
+
+1. 增加行为用例复现首连失败后重连不补发、长驻 Space 跨切换不触发的问题；用可注入时钟、真实 Store/Codable 和可控连接事件覆盖生命周期，不只断言源码字符串。
+2. 增加共享时钟消息组与真实 TimeZoneSet 编解码测试，覆盖标准时/DST 两种当前状态、30 分钟差值、带 offset 的 ISO 时间、null 清除、错误字段、排队跨切换点/目标变更及迟到回执。新增缺字段/空白/非法及不存在时区的手机回退、服务器确认有效但手机不识别的 IANA、有效时区网络失败不误回退、手机时区变化、Site 配置恢复、旧计划清除及同类调用方前置 guard；更新现有“缺失时区必须返回 nil”的旧断言，不以放宽断言替代真实发送行为验证。
+3. 接入 Space 协调器并替换旧自动校时触发；覆盖进入时已连接、延迟内退出、断网失败后恢复、同日去重、跨日目标不变不重复发、nextSwitch 改变、账号/权限/子网切换。
+4. 接入上述初始化/重试同类入口，验证新设备、失败/取消、Fast Add 真正发送边界；保留 Group/Timed 原有依赖规则。验证非法时区经过实际 Site 属性解析/保存/重载后仍可执行手机校时回退，且不会清空原始云端字段或错误清除 pending；核对已确认的纯 IANA Site 保存与云端请求格式未被改变。
+5. 运行 DST、TimeSet 工厂/调用方、传输边界及实际触及的 Group/Timed/网关测试；核对本地 SDK 映射后构建 SunSmart Debug generic iOS。新增共享文件核对六品牌归属，若新增 target 成员或公共 SDK API带来跨品牌集成风险，合入前补全部受影响品牌。无 Simulator/自动真机，不 commit/push。
+
+人工最短验收：手机设为与 Site 不同的时区，不打开 Edit，进入 Site → Space → 连接灯具；读取当前 TimeStatus 和 TimeZoneStatus，与 current_offset/switches_to/next_switch 对照。分别覆盖当前标准时但有下一次 DST、当前 DST、无下一次切换；用受控测试时钟/固件跨切换点，完全关闭 App，核对设备实际 offset 及日程动作。再单独做断电重启，确认时钟和未来计划保持/恢复情况，不能用前一个不断电用例替代。验证首次断网后恢复、设备离线后重进、新增设备、改 Site 时区后的旧计划清除；有网关时核对未被反向覆盖。记录型号、固件版本、广播接收/状态回读和实际切换结果，作为能力发布依据，不作为 App 发送白名单前置条件。
+
+追加手机回退验收：Site timezone 缺失/空白/无效时，断网仍能按手机当前 offset 校时；变更手机时区后重入更新；Site 恢复有效时区后重新使用 Site current_offset。检查旧未来计划已覆盖，且有效 Site 单纯断网没有误切到手机时区。Site 不存在、权限撤销仍不能下发。
+
+### 6. 本轮实施结果与交接（2026-11-05 14:15 +08）
+
+**已完成 App 开发，尚未验证真实 API、BLE、UIKit 生命周期与设备到点切换。** 本轮没有修改固件/服务器，没有 commit/push。
+
+实现结果：
+
+- 保留当前纯 IANA 保存/上传契约。无效原始字段经 Site Props、实际 SQLite 保存/重载、导入和导出得以保留；运行时手机 offset 不写回 Site。时区识别结合手机系统、项目目录、已有服务器快照；系统不认识但服务器已确认的 IANA 仍走 Site 分支。缺失/空白/非法或三者均不认识的身份走手机回退，有效 Site 的网络错误不触发手机回退。
+- Site 入口已有按需请求与每日缓存继续复用。Space 自己持有观察与连接会话：已连接入场、3 秒等待、重连、网络恢复、前台恢复、快照更新及新增节点均重新评价；退出/后台撤销旧会话。相同当前/未来目标去重，仅 requestedAt 改变不重复广播；失败不会递归请求。没有新增持久化任务表或计时器。
+- 每轮自动同步顺序为 TimeSet → TimeZoneSet，目的地址均为当前 Space 的 0xFFFF。当前 offset 与下一次切换取同一有效来源；成对 null 或手机回退时以当前 offset、TAI=0 覆盖旧未来计划。未把广播入队写成逐设备成功时间戳。
+- Gateway/Information/Fast Add/普通初始化及 Group/Timed 共用准备或发送边界。单设备有效 TimeStatus 后追加同 Element 的 Time Setup Server 补充计划，不把未来 ACK 作为已有任务成功的新增条件。普通 SDK 回执 validator 在来源匹配之前运行，因此补充发送延后到 SDK 已记录匹配成功之后；重复回调只入队一次。调用方完成不会误取消刚排队的补充计划，节点移除、Site 变更、网络/AppKey 变化仍拒发。
+- 新增 `SpaceClockSyncCoordinator.swift` 纳入 SunSmart、Archipelago、SLG Sync Plus、SylSmart、Lumineux、HSmart 六 target。无 UI 文案/资源变更。
+
+代码与依赖：
+
+- 工作树 `feat-daylight-saving-261024`，分支 `feat/daylight-saving-261024`，HEAD 保持 `2354ac91db5f02820249b860dcbf08964477fe6a`；本轮 App/测试/本文改动未提交。
+- `SunSmartLocal.xcworkspace` 映射 `.local-sdk/nordic-sig-mesh-sdk` → `/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk-worktrees/one-dev`，SDK HEAD `4b4c0f56fa3e686dfb856923f8e90b0eae95b0e8`。实施开始 SDK 已有其他任务的 Scheduler 未提交差异；本任务未写 SDK。离线传输夹具仅补这些新增类型的边界 stub，不改其实现。构建依赖该本地 SDK 状态，不表示远端 release 已具备/发布全部钩子。
+
+验证记录：
+
+| 范围 | 命令/结果 | 实际覆盖边界 |
+| --- | --- | --- |
+| DST Store/日期/缓存 | `bash scripts/check_site_dst.sh` 通过 | Foundation、JSON/Codable、自然日和切换点；非真实 API |
+| 来源与手机回退 | `zsh scripts/check_site_timeset_message_factory.sh` 通过 | 无效/缺失、有效 Site 无缓存暂停、服务器确认但系统不认识的 IANA、手机变更、跨切换失效 |
+| 自动校时会话 | `bash scripts/check_space_clock_sync.sh` 通过 | 可注入生命周期 + 真实 Store/磁盘缓存/异步回调；重连、长驻跨 DST、迟到、去重、下一次计划变化、强制新设备补发、权限拒发；UIKit/KVO 本身未运行 |
+| 消息/实际发送边界 | `python3 scripts/check_site_clock_transmission.py` 和 `python3 scripts/check_site_dst_transmission.py` 通过 | 真实 App 工厂、SDK handle/TimeSet/TimeZoneSet/TAI/序列化、普通/Fast Add 发送边界；Model/网络/无线传输为 stub，回执记账为可控边界 |
+| 属性与持久化 | `bash scripts/check_site_props.sh`；`python3 scripts/check_site_hdb_persistence.py /Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk-worktrees/one-dev` 通过 | 真实解析、导入/receipt 代码摘取和真实 SQLite 重启；新增无效 timezone 原值保留/无伪编辑；网络/UI/Mesh 分配为边界 |
+| 同类校时入口 | `zsh scripts/check_site_timeset_call_sites.sh`、`bash scripts/check_gateway_information_time.sh`、`bash scripts/check_light_information_time.sh`、`zsh scripts/check_timed_schedule_time_sync.sh` 通过 | 工厂调用约束、网关/灯具 Information/Fast Add 与 Timed 既有回归；静态契约不代替真机 |
+| 网关整套回归 | `bash scripts/check_site_sync_gateways.sh` **非全绿** | 首项 `SiteGatewayHeaderLayoutPolicyTests.swift:193` 的 “Keep equal shares with a 112 pt minimum” 失败；测试与生产文件均和 HEAD 相同，提取 HEAD 两文件独立编译可复现。未修改该无关布局；去掉首项后单独运行原脚本其余部分全部通过 |
+| 工程 | `plutil -lint SunSmart.xcodeproj/project.pbxproj`、`git diff --check` 通过 | 新源文件六品牌归属与格式 |
+| generic iOS 编译 | 六 scheme 串行 Debug/iphoneos 构建退出码均 0；LogStoreManifest 六条记录均 0 error | SunSmart、Archipelago、SLG Sync Plus、SylSmart、Lumineux、HSmart；没有 Simulator/真机安装。存在原有资源重名、弃用 API 等警告；部分输出出现 “failed with exit code 0” 诊断，但最终退出码和构建记录均成功 |
+
+构建命令模板：`xcodebuild -workspace SunSmartLocal.xcworkspace -scheme '<scheme>' -configuration Debug -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath /Users/maginawin/Library/Developer/Xcode/DerivedData/SunSmart-feat-daylight-saving-261024-clock-sync -quiet CODE_SIGNING_ALLOWED=NO build`。最终生产代码改动后已完成六品牌构建；后续只新增离线回归与更新本文，没有继续改变生产代码。
+
+人工验收按第 5 节执行：重点是异地手机下进入 Site → Space 的当前 offset/未来计划回读，手机回退，App 完全关闭后的转换点，以及单独的掉电重启。TimeStatus 正常、HTTP 成功或广播发送不能代替“所有设备持久化并执行未来计划”的证据；长期无人进入且网关不续期仍只保证已预置的下一次计划。已有布局回归失败独立保留，不以本轮扩大修改范围。
+
+---
+
 ## 2026-11-04 更新：服务器 next-transition 接入方案（已确认，App/SDK 实施完成）
 
 用户已确认按本文范围实施，并补充服务器负责 DST 处理，`is_dst` 直接表示当前是否夏令时。App 按响应四字段执行展示与当前 offset 解析，不自行推算/翻转 DST；旧云端校时 API 保持原有契约，真实网关回读列为运行验收。
 
-本节是当前方案，替代后文 2026-08-20 历史分析中的「系统 IANA 规则作为主要 offset 来源」「旧字符串 offset 回退」「继续上传带 offset 的字符串」等建议。历史分析保留用于说明演进，不作为本轮实施依据。
+本节记录 2026-11-04 已实施方案，替代后文 2026-08-20 历史分析中的「系统 IANA 规则作为主要 offset 来源」「旧字符串 offset 回退」「继续上传带 offset 的字符串」等建议。后续变更以本文顶部 2026-11-05 追加方案及用户补充为准，尤其是 Site 时区缺失/无效时恢复手机时区回退。历史分析保留用于说明演进，不作为本轮实施依据。
 
 初始分析阶段仅做只读核对；用户随后已确认实施。当前实施结果与验证进度见下方执行记录，未操作真机、服务器或固件。
 

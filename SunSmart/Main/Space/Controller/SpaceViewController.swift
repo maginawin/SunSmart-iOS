@@ -196,6 +196,11 @@ extension SpaceViewController {
 let routeTest: Bool = false
 
 class SpaceViewController: WMPageController {
+    private lazy var clockSyncCoordinator = SpaceClockSyncCoordinator(space: space) { [weak self] in
+        guard let self else { return false }
+        return self.viewIfLoaded?.window != nil && !self.hasStoppedPresenceTracking
+    }
+
     private weak var selectedScenesPage: ScenesViewController?
 
     #if DEBUG
@@ -382,6 +387,7 @@ class SpaceViewController: WMPageController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
 
+        clockSyncCoordinator.start()
         presentPendingTransferPermissionAlert()
         
         updateSyncState()
@@ -408,6 +414,7 @@ class SpaceViewController: WMPageController {
 
     override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
+        clockSyncCoordinator.stop()
 
         if isMovingFromParent || !(navigationController?.viewControllers.contains(self) ?? false) {
             NodeSyncStatusRefresh.endSession(owner: self)
@@ -1102,6 +1109,7 @@ class SpaceViewController: WMPageController {
             return
         }
         hasStoppedPresenceTracking = true
+        clockSyncCoordinator.stop()
         hasPendingTransferPermissionAlert = false
         transferPermissionAlert?.dismiss(animation: false)
         transferPermissionAlert = nil

@@ -273,9 +273,8 @@ extension SiteData {
                 siteJsonData.updateValue(self.id, forKey: "uuid")
                 siteJsonData.updateValue(self.imageId, forKey: "imageId")
                 siteJsonData.merge(self.standardProperties.jsonObject) { _, new in new }
-                if let timezone = self.timezone,
-                   let timezoneValue = SiteTimeZoneValue(storageValue: timezone) {
-                    siteJsonData.updateValue(timezoneValue.storageValue, forKey: "timezone")
+                if let timezone = self.timezone {
+                    siteJsonData.updateValue(SiteTimeZoneValue.preservingStorageValue(timezone).storageValue, forKey: "timezone")
                 }
                 siteJsonData.updateValue(self.type.rawValue, forKey: "type")
                 siteJsonData.updateValue(self.sourceType.rawValue, forKey: "source")

@@ -43,8 +43,8 @@ struct GatewayDetailClockCoreTests {
             at: Date(timeIntervalSince1970: 1_786_653_600)
         )
         require(target.identifier.isEmpty, "Missing Site identity must remain unavailable")
-        require(target.offsetMinutes == nil, "Phone offset must not authorize Site synchronization")
-        require(target.source == .unavailable, "Missing Site timezone must be a non-persistent fallback")
+        require(target.offsetMinutes == 480, "Missing Site timezone must use the current phone offset")
+        require(target.source == .phoneFallback, "Missing Site timezone must be a non-persistent fallback")
     }
 
     private static func testKeepsUnencodableSiteOffsetVisible() {

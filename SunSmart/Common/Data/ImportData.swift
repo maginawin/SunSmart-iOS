@@ -683,7 +683,7 @@ extension SiteData {
                 self.imageId = json["imageId"].intValue
             }
             if isCompleteSnapshot || siteJsonData["timezone"] != nil {
-                self.timezone = json["timezone"].string.flatMap { SiteTimeZoneValue(storageValue: $0)?.storageValue }
+                self.timezone = json["timezone"].string
             }
             //        self.isFavourite = json["favourite"].boolValue
             if isCompleteSnapshot || siteJsonData["type"] != nil {

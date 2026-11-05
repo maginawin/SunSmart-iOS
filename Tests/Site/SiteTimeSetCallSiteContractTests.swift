@@ -6,8 +6,8 @@ struct SiteTimeSetCallSiteContractTests {
     static func main() throws {
         let arguments = CommandLine.arguments
         require(
-            arguments.count == 13,
-            "Expected factory, eight App sources, project and two SDK sources"
+            arguments.count == 14,
+            "Expected factory, App sources, project, two SDK sources and Space clock coordinator"
         )
 
         let factory = try source(arguments[1])
@@ -15,8 +15,7 @@ struct SiteTimeSetCallSiteContractTests {
         let project = try source(arguments[10])
         let sdkMessages = try source(arguments[11])
         let sdkAPI = try source(arguments[12])
-        let combinedAppSources = appSources.joined(separator: "\n")
-        let devicesSource = appSources[5]
+        let combinedAppSources = (appSources + [try source(arguments[13])]).joined(separator: "\n")
 
         require(
             !matches(#"Node\.setLocalTimeMessage\s*\(\s*\)"#, in: combinedAppSources),
@@ -42,21 +41,16 @@ struct SiteTimeSetCallSiteContractTests {
                 && combinedAppSources.contains("SiteTimeSetMessageFactory.resolve("),
             "All TimeSet variants must route through the shared factory"
         )
-        require(
-            matches(
-                #"getMeshDistribution\(\)\s*// Visitor 没有修改设备时间的权限\s*guard self\.space\.permission != \.visitor else \{\s*return\s*\}\s*// 延迟3s发送广播节点同步时间消息[^\n]*\s*DispatchQueue\.main\.asyncAfter\(deadline: \.now\(\) \+ 3\)"#,
-                in: devicesSource
-            ),
-            "Owner and Editor entry must schedule all-nodes TimeSet without a Schedule gate, while Visitor must be denied"
-        )
+        // Connection delay, permission denial, retry and exit behavior now run in
+        // check_space_clock_sync.sh instead of matching the old Devices callback text.
         require(
             factory.contains("SiteData.load(siteId: siteID)")
                 && factory.contains("snapshot.isUsable(at: date)")
                 && factory.contains("SiteTimeSetMessageFactory"),
-            "The factory must require a usable server snapshot for the local Site"
+            "Valid Site zones must use a usable snapshot; phone fallback behavior is tested separately"
         )
         require(
-            !factory.contains("site.timezone =")
+            !matches(#"site\.timezone\s*=(?!=)"#, in: factory)
                 && !factory.contains("site.save(")
                 && !factory.contains("SiteProps"),
             "The fallback layer must never mutate or upload Site timezone"

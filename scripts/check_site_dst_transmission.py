@@ -17,7 +17,12 @@ fast=method(fast_source,'    private func sendAppendMessages(')
 refresh=next((sdk/'Sources').rglob('RefreshableValue.swift')).read_text()
 stubs='''import Foundation
 public protocol MeshMessage {}
-public class Model { public var parentElement: Element? }
+public class Model { public var parentElement: Element?; let schedulerObservation = SchedulerObservation() }
+// Unrelated scheduler paths remain inactive for these TimeSet boundary tests.
+public protocol MeshResponse: MeshMessage {}
+public class MeshSchedulerTask { var isCancelled = false }
+class MeshSchedulerTransmission {}
+class SchedulerObservation { func sent(_ message: MeshMessage, owner: Int?) {} }
 public class Element { public var unicastAddress: UInt16 = 1 }
 public typealias Address = UInt16
 public class MessageHandle {}
@@ -48,7 +53,7 @@ final class MeshNetworkManager {
  func send(_ message: MeshMessage, to: Model, withTtl: UInt8?, completion: (Result<Int, Error>) -> Void) throws { record(message,completion:completion) }
 }
 """
-stubs += 'final class NormalSender { var mutex=Mutex(); var messages: [MeshMessageHandle]=[]; func stopMessageTimer() {}; func handleSendResult<T>(_ result: Result<T,Error>, messageHandle: MeshMessageHandle) {}\n' + normal + '\n}\n'
+stubs += 'final class NormalSender { var mutex=Mutex(); var messages: [MeshMessageHandle]=[]; func sendSchedulerMessage(_ handle: MeshMessageHandle) { fatalError("Unexpected scheduler task in TimeSet fixture") }; func stopMessageTimer() {}; func handleSendResult<T>(_ result: Result<T,Error>, messageHandle: MeshMessageHandle) {}\n' + normal + '\n}\n'
 stubs += r"""final class FastSender {
  var appendPreparationID: UUID?
  var appendMessages: [MeshMessageHandle]=[]

@@ -186,9 +186,9 @@ final class GatewayTimeSyncCoordinator {
                     return
                 }
                 Task { @MainActor [self] in
-                    let snapshot = await SiteTimeZoneService.shared.prepare(targetTimeZone)
+                    let prepared = await SiteTimeZoneService.shared.prepareClock(storageValue: targetTimeZone.storageValue)
                     guard self.runtimeAttempt?.id == attemptID else { return }
-                    guard snapshot != nil, let resolution = SiteTimeSetMessageFactory.resolve(
+                    guard prepared != nil, let resolution = SiteTimeSetMessageFactory.resolve(
                         storageValue: targetTimeZone.storageValue
                     ), self.core.markSent(attemptID: attemptID) else {
                         self.settleTransportFailure(
@@ -205,7 +205,7 @@ final class GatewayTimeSyncCoordinator {
                         let receivedAt = Date()
                         DispatchQueue.main.async { [self] in
                             guard self.runtimeAttempt?.id == attemptID else { return }
-                            guard resolution.snapshot.isUsable(at: receivedAt),
+                            guard resolution.isCurrent(at: receivedAt),
                                   targetTimeZone.effectiveOffset(at: receivedAt) == resolution.offsetMinutes,
                                   let timeStatus = response else {
                                 self.settleTransportFailure(

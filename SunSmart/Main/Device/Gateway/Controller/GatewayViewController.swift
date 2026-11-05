@@ -1891,13 +1891,13 @@ class GatewayViewController: UIViewController, DeviceProtocol {
     private func synchronizeGatewayClock() {
         guard !preparingGatewayDST else { return }
         preparingGatewayDST = true
-        let identity = site.timezone.flatMap(SiteTimeZoneValue.init(storageValue:))
+        let timezoneStorageValue = site.timezone
         Task { @MainActor [weak self] in
-            let snapshot = await SiteTimeZoneService.shared.prepare(identity)
+            let prepared = await SiteTimeZoneService.shared.prepareClock(storageValue: timezoneStorageValue)
             guard let self else { return }
             self.preparingGatewayDST = false
-            guard self.viewIfLoaded?.window != nil, self.site.timezone.flatMap(SiteTimeZoneValue.init(storageValue:)) == identity else { return }
-            guard snapshot != nil else { XWHUDManager.showErrorTipHUD("site_time_zone_refresh_required".localizedString); return }
+            guard self.viewIfLoaded?.window != nil, self.site.timezone == timezoneStorageValue else { return }
+            guard prepared != nil else { XWHUDManager.showErrorTipHUD("site_time_zone_refresh_required".localizedString); return }
             self.synchronizePreparedGatewayClock()
         }
     }

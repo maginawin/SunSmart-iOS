@@ -718,6 +718,7 @@
 		08AACBF1308B0FB700DC2934 /* GroupServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08902B2A8DCD00144BAC /* GroupServer.swift */; };
 		08AACBF2308B0FB700DC2934 /* WYProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = C896BB872A930C3800217512 /* WYProgressHUD.m */; };
 		08AACBF3308B0FB700DC2934 /* SyncDevicesCellModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FF12B3D60CC00074031 /* SyncDevicesCellModel.swift */; };
+		44AECA7B71C4A270A3CDD5BF /* SpaceClockSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6371A7369181A94963419C7D /* SpaceClockSyncCoordinator.swift */; };
 		08AACBF4308B0FB700DC2934 /* SyncCommandStopGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */; };
 		08AACBF5308B0FB700DC2934 /* SyncSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */; };
 		08AACBF6308B0FB700DC2934 /* SyncExecutionSession+Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */; };
@@ -1432,6 +1433,7 @@
 		08B54EC830402CCB0017ED49 /* GroupServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08902B2A8DCD00144BAC /* GroupServer.swift */; };
 		08B54EC930402CCB0017ED49 /* WYProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = C896BB872A930C3800217512 /* WYProgressHUD.m */; };
 		08B54ECA30402CCB0017ED49 /* SyncDevicesCellModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FF12B3D60CC00074031 /* SyncDevicesCellModel.swift */; };
+		673B3A52379C33971AE3A829 /* SpaceClockSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6371A7369181A94963419C7D /* SpaceClockSyncCoordinator.swift */; };
 		08B54ECB30402CCB0017ED49 /* DeviceOfflinePromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F512DB790B700A6E36C /* DeviceOfflinePromptView.swift */; };
 		08B54ECC30402CCB0017ED49 /* PJDevicesFireAlarmAddContainerController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C1DA7742FAAF2C90073F100 /* PJDevicesFireAlarmAddContainerController.swift */; };
 		08B54ECD30402CCB0017ED49 /* EmerFireAlarmAddProfessionalVC.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8C77891B2F99A678000887FE /* EmerFireAlarmAddProfessionalVC.swift */; };
@@ -2824,6 +2826,7 @@
 		C88554F92DE6B44C00C8B688 /* GroupServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08902B2A8DCD00144BAC /* GroupServer.swift */; };
 		C88554FA2DE6B44C00C8B688 /* WYProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = C896BB872A930C3800217512 /* WYProgressHUD.m */; };
 		C88554FB2DE6B44C00C8B688 /* SyncDevicesCellModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FF12B3D60CC00074031 /* SyncDevicesCellModel.swift */; };
+		876951FFD11A1DA5F02ACEF3 /* SpaceClockSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6371A7369181A94963419C7D /* SpaceClockSyncCoordinator.swift */; };
 		C88554FC2DE6B44C00C8B688 /* DeviceOfflinePromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F512DB790B700A6E36C /* DeviceOfflinePromptView.swift */; };
 		C88554FD2DE6B44C00C8B688 /* BLEUpgradeInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C82CB2C81C8BA009D43F6 /* BLEUpgradeInstructionsController.swift */; };
 		C88554FE2DE6B44C00C8B688 /* MeshFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A4E8922CDB0F5D00A22C77 /* MeshFirmwareUpdateViewController.swift */; };
@@ -3206,6 +3209,7 @@
 		C886E1552E30DE4900D0C3A6 /* GroupServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08902B2A8DCD00144BAC /* GroupServer.swift */; };
 		C886E1562E30DE4900D0C3A6 /* WYProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = C896BB872A930C3800217512 /* WYProgressHUD.m */; };
 		C886E1572E30DE4900D0C3A6 /* SyncDevicesCellModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FF12B3D60CC00074031 /* SyncDevicesCellModel.swift */; };
+		B77EA5547CCA87BD531008D3 /* SpaceClockSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6371A7369181A94963419C7D /* SpaceClockSyncCoordinator.swift */; };
 		C886E1582E30DE4900D0C3A6 /* DeviceOfflinePromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F512DB790B700A6E36C /* DeviceOfflinePromptView.swift */; };
 		C886E1592E30DE4900D0C3A6 /* BLEUpgradeInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C82CB2C81C8BA009D43F6 /* BLEUpgradeInstructionsController.swift */; };
 		C886E15A2E30DE4900D0C3A6 /* MeshFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8A4E8922CDB0F5D00A22C77 /* MeshFirmwareUpdateViewController.swift */; };
@@ -3336,6 +3340,7 @@
 		C89C9FEE2B3C271200074031 /* SyncDevicesTitleHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FED2B3C271200074031 /* SyncDevicesTitleHeaderView.swift */; };
 		C89C9FF02B3D4E6200074031 /* SyncDevicesGroupViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FEF2B3D4E6200074031 /* SyncDevicesGroupViewCell.swift */; };
 		C89C9FF22B3D60CC00074031 /* SyncDevicesCellModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FF12B3D60CC00074031 /* SyncDevicesCellModel.swift */; };
+		B95329B19C55682ACF89559F /* SpaceClockSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6371A7369181A94963419C7D /* SpaceClockSyncCoordinator.swift */; };
 		C89D560F2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89D560E2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift */; };
 		C89F089E2C77112F005C0711 /* BleFirmwareUpdateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F089D2C77112F005C0711 /* BleFirmwareUpdateViewController.swift */; };
 		C89F08A02C7712F2005C0711 /* BleFirmwareTypeUpdateViewCell.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89F089F2C7712F2005C0711 /* BleFirmwareTypeUpdateViewCell.swift */; };
@@ -4034,6 +4039,7 @@
 		C8BB67352ED3F056000C63EE /* GroupServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8BF08902B2A8DCD00144BAC /* GroupServer.swift */; };
 		C8BB67362ED3F056000C63EE /* WYProgressHUD.m in Sources */ = {isa = PBXBuildFile; fileRef = C896BB872A930C3800217512 /* WYProgressHUD.m */; };
 		C8BB67372ED3F056000C63EE /* SyncDevicesCellModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C9FF12B3D60CC00074031 /* SyncDevicesCellModel.swift */; };
+		3792D12422DFEC28DB2A4C16 /* SpaceClockSyncCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6371A7369181A94963419C7D /* SpaceClockSyncCoordinator.swift */; };
 		C8BB67382ED3F056000C63EE /* DeviceOfflinePromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C80A7F512DB790B700A6E36C /* DeviceOfflinePromptView.swift */; };
 		C8BB67392ED3F056000C63EE /* SystemVoiumeManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8B6D7DF2E702BF7004FB923 /* SystemVoiumeManager.swift */; };
 		C8BB673A2ED3F056000C63EE /* BLEUpgradeInstructionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89C82CB2C81C8BA009D43F6 /* BLEUpgradeInstructionsController.swift */; };
@@ -5316,6 +5322,7 @@
 		C89C9FED2B3C271200074031 /* SyncDevicesTitleHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesTitleHeaderView.swift; sourceTree = "<group>"; };
 		C89C9FEF2B3D4E6200074031 /* SyncDevicesGroupViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesGroupViewCell.swift; sourceTree = "<group>"; };
 		C89C9FF12B3D60CC00074031 /* SyncDevicesCellModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncDevicesCellModel.swift; sourceTree = "<group>"; };
+		6371A7369181A94963419C7D /* SpaceClockSyncCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpaceClockSyncCoordinator.swift; sourceTree = "<group>"; };
 		C89D560E2D0A87F100FC7890 /* MeshFirmwareUpgradeResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeshFirmwareUpgradeResultsView.swift; sourceTree = "<group>"; };
 		C89F089D2C77112F005C0711 /* BleFirmwareUpdateViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleFirmwareUpdateViewController.swift; sourceTree = "<group>"; };
 		C89F089F2C7712F2005C0711 /* BleFirmwareTypeUpdateViewCell.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BleFirmwareTypeUpdateViewCell.swift; sourceTree = "<group>"; };
@@ -6952,6 +6959,7 @@
 			isa = PBXGroup;
 			children = (
 				C89C9FF12B3D60CC00074031 /* SyncDevicesCellModel.swift */,
+				6371A7369181A94963419C7D /* SpaceClockSyncCoordinator.swift */,
 				2E919DB8620544FE9903A48C /* SyncCommandStopGate.swift */,
 				3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */,
 				914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */,
@@ -9447,6 +9455,7 @@
 				F73C31AF3D9A456094B9EE9A /* GroupMemberPersistence.swift in Sources */,
 				08AACBF2308B0FB700DC2934 /* WYProgressHUD.m in Sources */,
 				08AACBF3308B0FB700DC2934 /* SyncDevicesCellModel.swift in Sources */,
+				44AECA7B71C4A270A3CDD5BF /* SpaceClockSyncCoordinator.swift in Sources */,
 				08AACBF4308B0FB700DC2934 /* SyncCommandStopGate.swift in Sources */,
 				08AACBF5308B0FB700DC2934 /* SyncSessionCoordinator.swift in Sources */,
 				08AACBF6308B0FB700DC2934 /* SyncExecutionSession+Result.swift in Sources */,
@@ -10238,6 +10247,7 @@
 				2C2B2DB4F0E1465AA2B9A7C2 /* GroupMemberPersistence.swift in Sources */,
 				08B54EC930402CCB0017ED49 /* WYProgressHUD.m in Sources */,
 				08B54ECA30402CCB0017ED49 /* SyncDevicesCellModel.swift in Sources */,
+				673B3A52379C33971AE3A829 /* SpaceClockSyncCoordinator.swift in Sources */,
 				558CD072850A4C179A8DAECC /* SyncCommandStopGate.swift in Sources */,
 				4AB3F84613304D6A828720B8 /* SyncSessionCoordinator.swift in Sources */,
 				58A40AFCFF874557A66FAB7C /* SyncExecutionSession+Result.swift in Sources */,
@@ -11023,6 +11033,7 @@
 				B2E339866727436180CC5FED /* GroupMemberPersistence.swift in Sources */,
 				C88554FA2DE6B44C00C8B688 /* WYProgressHUD.m in Sources */,
 				C88554FB2DE6B44C00C8B688 /* SyncDevicesCellModel.swift in Sources */,
+				876951FFD11A1DA5F02ACEF3 /* SpaceClockSyncCoordinator.swift in Sources */,
 				25E85457F7494782A2660C9D /* SyncCommandStopGate.swift in Sources */,
 				31D4DE243B314B86896A178A /* SyncSessionCoordinator.swift in Sources */,
 				0E77650C5A5C4CAB81E1554E /* SyncExecutionSession+Result.swift in Sources */,
@@ -11815,6 +11826,7 @@
 				1C2FCBA80E614D859ACDED6A /* GroupMemberPersistence.swift in Sources */,
 				C886E1562E30DE4900D0C3A6 /* WYProgressHUD.m in Sources */,
 				C886E1572E30DE4900D0C3A6 /* SyncDevicesCellModel.swift in Sources */,
+				B77EA5547CCA87BD531008D3 /* SpaceClockSyncCoordinator.swift in Sources */,
 				DEB759AF3EF645F693A289DD /* SyncCommandStopGate.swift in Sources */,
 				8683B8A2634A4FA2A0BF419F /* SyncSessionCoordinator.swift in Sources */,
 				53DAD610D2BC41A38D24BF29 /* SyncExecutionSession+Result.swift in Sources */,
@@ -12612,6 +12624,7 @@
 				6728BB7A976F4959AA76F07B /* GroupMemberPersistence.swift in Sources */,
 				C896BD3A2A930C3A00217512 /* WYProgressHUD.m in Sources */,
 				C89C9FF22B3D60CC00074031 /* SyncDevicesCellModel.swift in Sources */,
+				B95329B19C55682ACF89559F /* SpaceClockSyncCoordinator.swift in Sources */,
 				FA434FCCC5B241269278E904 /* SyncCommandStopGate.swift in Sources */,
 				FAC069A4A5E44FBFA9D1FDB8 /* SyncSessionCoordinator.swift in Sources */,
 				5BCA82B0A4F74E7CA9A1CA07 /* SyncExecutionSession+Result.swift in Sources */,
@@ -13398,6 +13411,7 @@
 				56FCEF559B8A4AE1AF2D9027 /* GroupMemberPersistence.swift in Sources */,
 				C8BB67362ED3F056000C63EE /* WYProgressHUD.m in Sources */,
 				C8BB67372ED3F056000C63EE /* SyncDevicesCellModel.swift in Sources */,
+				3792D12422DFEC28DB2A4C16 /* SpaceClockSyncCoordinator.swift in Sources */,
 				781B24A7A85741D6AD49CE42 /* SyncCommandStopGate.swift in Sources */,
 				79A04E76FBAD49789B29DE10 /* SyncSessionCoordinator.swift in Sources */,
 				2E1D668B0C0B450AA3237276 /* SyncExecutionSession+Result.swift in Sources */,

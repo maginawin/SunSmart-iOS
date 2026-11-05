@@ -46,6 +46,7 @@ extension SiteData {
         try equalVersionReplacement(path: path)
         try legacyMissingFields(path: path)
         try listSummaryPreservesMissingFields(path: path)
+        try await invalidTimeZonePersistence(path: path)
         let site = try SiteData.add(name: "Interleaved", timezone: nil)
         let oldTaskSite = SiteData.load(siteId: site.id)!
         let importer = SiteData.load(siteId: site.id)!
@@ -79,6 +80,34 @@ extension SiteData {
         try await propsReadbackAndReceipts(siteID: site.id, path: path)
         try failedImportAndRetry(siteID: site.id, path: path)
         print("PASS: SQLite detail import -> fresh export -> stale upload receipt -> restart, partial fields and explicit null")
+    }
+
+    static func invalidTimeZonePersistence(path: String) async throws {
+        let site = try SiteData.add(name: "Invalid timezone", timezone: "Asia/Singapore")
+        let raw = "invalid timezone from legacy data"
+        precondition(site.importFixture(siteJsonData: ["uuid": site.id, "siteName": site.name,
+            "updateTimestamp": site.lastUpdate, "timezone": raw]))
+        SunSmartDataManager.shared.db = try Connection(path)
+        let loaded = SiteData.load(siteId: site.id)!
+        precondition(loaded.timezone == raw && loaded.persistedPropsState()?.values.timezone?.storageValue == raw)
+        let coordinator = SitePropsEditCoordinator(site: loaded)
+        let draft = await coordinator.prepareDraft(online: false)
+        precondition(draft.values.timezone?.storageValue == raw)
+        let unchanged = coordinator.makeCommitPlan(draft: draft, online: true, now: loaded.lastUpdate + 1)
+        precondition(!unchanged.hasNewChanges && !unchanged.includesTimezone,
+                     "Reading an invalid timezone must not create a timezone edit")
+        let remoteRaw = "another invalid timezone"
+        NetworkRequest.shared.result = .success(["data": ["props": [
+            "updateTimestamp": loaded.lastUpdate + 1, "timezone": remoteRaw,
+            "siteName": "Remote name", "imageId": loaded.imageId]]])
+        let remote = await coordinator.prepareDraft(online: true)
+        precondition(remote.values.timezone?.storageValue == remoteRaw && remote.values.siteName == "Remote name")
+        SunSmartDataManager.shared.db = try Connection(path)
+        let restarted = SiteData.load(siteId: site.id)!
+        precondition(restarted.timezone == remoteRaw && restarted.name == "Remote name")
+        precondition(restarted.pendingSitePropsMask.isEmpty,
+                     "Invalid timezone readback must remain data, not a phone-timezone write")
+        print("PASS: invalid timezone survives actual import, SQLite restart and props merge without a synthetic edit")
     }
 
     static func listSummaryPreservesMissingFields(path: String) throws {

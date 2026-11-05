@@ -18,8 +18,9 @@ struct GatewayDetailTargetTimeZone: Equatable {
     var isMeshEncodable: Bool { offsetMinutes.map(SiteTimeZoneValue.isMeshEncodable) ?? false }
     var fixedTimeZone: TimeZone? { offsetMinutes.flatMap { TimeZone(secondsFromGMT: $0 * 60) } }
     var isCurrent: Bool {
-        guard let offsetMinutes, let identity = SiteTimeZoneValue(storageValue: identifier) else { return false }
-        return identity.offsetMinutes == offsetMinutes
+        guard let offsetMinutes else { return false }
+        let current = GatewayDetailTimeZoneResolver.resolve(storageValue: identifier)
+        return current.source == source && current.offsetMinutes == offsetMinutes
     }
 }
 
@@ -30,7 +31,7 @@ enum GatewayDetailTimeZoneResolver {
         at date: Date = Date()
     ) -> GatewayDetailTargetTimeZone {
         if let storageValue,
-           let value = SiteTimeZoneValue(storageValue: storageValue) {
+           let value = SiteTimeZoneValue(storageValue: storageValue), value.isRecognizedTimeZone {
             return GatewayDetailTargetTimeZone(
                 identifier: value.ianaId,
                 offsetMinutes: value.effectiveOffset(at: date),
@@ -38,10 +39,12 @@ enum GatewayDetailTimeZoneResolver {
             )
         }
 
+        let seconds = phoneTimeZone.secondsFromGMT(for: date)
+        let minutes = seconds.isMultiple(of: 900) && SiteTimeZoneValue.isMeshEncodable(seconds / 60) ? seconds / 60 : nil
         return GatewayDetailTargetTimeZone(
-            identifier: "",
-            offsetMinutes: nil,
-            source: .unavailable
+            identifier: storageValue ?? "",
+            offsetMinutes: minutes,
+            source: minutes == nil ? .unavailable : .phoneFallback
         )
     }
 }
