@@ -1,6 +1,11 @@
 // Executes production tap, command, cooldown, lifecycle and Cell rendering code.
 // UIKit/Mesh doubles cannot verify actual animation appearance or BLE delivery.
 import Foundation
+
+final class MeshNodeHeartbeatManager {
+    static let shared = MeshNodeHeartbeatManager()
+    func refreshOfflineNodes() {}
+}
 import CoreGraphics
 import Darwin
 
@@ -21,12 +26,14 @@ extension IndexPath {
 }
 enum DeviceAllOnOffState { case on, off, disable }
 class View {
+    var window: View?
     var superview: View?
     var bounds = CGRect.zero
     func addSubview(_ view: View) { view.superview = self }
 }
 class UIViewController {
     var view = View()
+    var viewIfLoaded: View? { view }
     var wm_pageController: UIViewController?
     var navigationController: NavigationController?
     func viewDidAppear(_ animated: Bool) {}

@@ -63,6 +63,16 @@ class ScheduleDevicesView: UIView {
     }
 
     private func observeSyncStatusChanges() {
+        syncStatusObservations.append(NotificationCenter.default.addObserver(
+            forName: .init(deviceStateUpdateNotificationName), object: nil, queue: .main
+        ) { [weak self] notification in
+            guard let self, self.isShowing, self.superview != nil,
+                  let node = notification.object as? Node,
+                  self.nodes.contains(where: { $0 === node }) else { return }
+            self.disableUnselectNodes.removeAll { $0.state }
+            self.collectionView.reloadData()
+            self.updateSelectAllState()
+        })
         // Activation follows the shared reader's will-enter-foreground invalidation.
         for name in [SpaceSchedulerReadCoordinator.didUpdate, UIApplication.didBecomeActiveNotification] {
             syncStatusObservations.append(NotificationCenter.default.addObserver(
@@ -119,6 +129,7 @@ class ScheduleDevicesView: UIView {
 
     func show() {
         isShowing = true
+        MeshNodeHeartbeatManager.shared.refreshOfflineNodes()
         if self.superview == nil {
             self.tag = 100
             UIApplication.shared.keyWindow().addSubview(self)

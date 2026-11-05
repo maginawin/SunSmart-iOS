@@ -89,6 +89,7 @@ class TimedViewController: UIViewController {
             scheduleCollectionView.flashScrollIndicatorsIfNeeded()
         }
         schedulerCacheRead?()
+        MeshNodeHeartbeatManager.shared.refreshOfflineNodes()
     }
     
     override func viewDidDisappear(_ animated: Bool) {

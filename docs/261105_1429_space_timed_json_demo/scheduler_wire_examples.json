@@ -1,0 +1,309 @@
+{
+  "description": "10 字节 Scheduler Action 参数，不含 opcode；raw/hex/base64 是文档字段。observation_only 项不属于当前 App 可编辑的周期类型。",
+  "examples": [
+    {
+      "name": "enabled_weekdays",
+      "fields": {
+        "id": 0,
+        "year": 100,
+        "month": 4095,
+        "day": 0,
+        "hour": 8,
+        "minute": 0,
+        "second": 0,
+        "dayOfWeek": 31,
+        "action": 1,
+        "sceneNumber": 0,
+        "transitionTime": 5
+      },
+      "transitionTimeRaw": 69,
+      "parametersHex": "40FE7F8000E013450000",
+      "entriesData": "QP5/gADgE0UAAA=="
+    },
+    {
+      "name": "disabled",
+      "fields": {
+        "id": 1,
+        "year": 0,
+        "month": 4095,
+        "day": 0,
+        "hour": 22,
+        "minute": 0,
+        "second": 0,
+        "dayOfWeek": 127,
+        "action": 0,
+        "sceneNumber": 0,
+        "transitionTime": 0
+      },
+      "transitionTimeRaw": 64,
+      "parametersHex": "01F87F6001E00F400000",
+      "entriesData": "Afh/YAHgD0AAAA=="
+    },
+    {
+      "name": "scene_recall",
+      "fields": {
+        "id": 2,
+        "year": 100,
+        "month": 4095,
+        "day": 0,
+        "hour": 18,
+        "minute": 0,
+        "second": 0,
+        "dayOfWeek": 127,
+        "action": 2,
+        "sceneNumber": 10,
+        "transitionTime": 5
+      },
+      "transitionTimeRaw": 69,
+      "parametersHex": "42FE7F2001E02F450A00",
+      "entriesData": "Qv5/IAHgL0UKAA=="
+    },
+    {
+      "name": "clear_slot",
+      "fields": {
+        "id": 2,
+        "year": 100,
+        "month": 0,
+        "day": 0,
+        "hour": 24,
+        "minute": 60,
+        "second": 60,
+        "dayOfWeek": 0,
+        "action": 15,
+        "sceneNumber": 0,
+        "transitionTime": 0
+      },
+      "transitionTimeRaw": 63,
+      "parametersHex": "42060080791EF03F0000",
+      "entriesData": "QgYAgHke8D8AAA=="
+    },
+    {
+      "name": "zero_week_mask",
+      "fields": {
+        "id": 4,
+        "year": 100,
+        "month": 4095,
+        "day": 0,
+        "hour": 8,
+        "minute": 0,
+        "second": 0,
+        "dayOfWeek": 0,
+        "action": 1,
+        "sceneNumber": 0,
+        "transitionTime": 5
+      },
+      "transitionTimeRaw": 69,
+      "parametersHex": "44FE7F80000010450000",
+      "entriesData": "RP5/gAAAEEUAAA=="
+    },
+    {
+      "name": "specific_date_observation_only",
+      "fields": {
+        "id": 5,
+        "year": 26,
+        "month": 1024,
+        "day": 5,
+        "hour": 8,
+        "minute": 0,
+        "second": 0,
+        "dayOfWeek": 127,
+        "action": 1,
+        "sceneNumber": 0,
+        "transitionTime": 5
+      },
+      "transitionTimeRaw": 69,
+      "parametersHex": "A501A08200E01F450000",
+      "entriesData": "pQGgggDgH0UAAA=="
+    },
+    {
+      "name": "random_hour_observation_only",
+      "fields": {
+        "id": 6,
+        "year": 100,
+        "month": 4095,
+        "day": 0,
+        "hour": 25,
+        "minute": 63,
+        "second": 0,
+        "dayOfWeek": 127,
+        "action": 1,
+        "sceneNumber": 0,
+        "transitionTime": 5
+      },
+      "transitionTimeRaw": 69,
+      "parametersHex": "46FE7F907FE01F450000",
+      "entriesData": "Rv5/kH/gH0UAAA=="
+    },
+    {
+      "name": "quarter_hour_observation_only",
+      "fields": {
+        "id": 7,
+        "year": 100,
+        "month": 4095,
+        "day": 0,
+        "hour": 24,
+        "minute": 61,
+        "second": 0,
+        "dayOfWeek": 127,
+        "action": 1,
+        "sceneNumber": 0,
+        "transitionTime": 5
+      },
+      "transitionTimeRaw": 69,
+      "parametersHex": "47FE7F807BE01F450000",
+      "entriesData": "R/5/gHvgH0UAAA=="
+    },
+    {
+      "name": "twenty_minute_observation_only",
+      "fields": {
+        "id": 8,
+        "year": 100,
+        "month": 4095,
+        "day": 0,
+        "hour": 24,
+        "minute": 62,
+        "second": 0,
+        "dayOfWeek": 127,
+        "action": 1,
+        "sceneNumber": 0,
+        "transitionTime": 5
+      },
+      "transitionTimeRaw": 69,
+      "parametersHex": "48FE7F807DE01F450000",
+      "entriesData": "SP5/gH3gH0UAAA=="
+    },
+    {
+      "name": "random_second_observation_only",
+      "fields": {
+        "id": 9,
+        "year": 100,
+        "month": 4095,
+        "day": 0,
+        "hour": 8,
+        "minute": 0,
+        "second": 63,
+        "dayOfWeek": 127,
+        "action": 1,
+        "sceneNumber": 0,
+        "transitionTime": 5
+      },
+      "transitionTimeRaw": 69,
+      "parametersHex": "49FE7F8080FF1F450000",
+      "entriesData": "Sf5/gID/H0UAAA=="
+    },
+    {
+      "name": "quarter_minute_observation_only",
+      "fields": {
+        "id": 10,
+        "year": 100,
+        "month": 4095,
+        "day": 0,
+        "hour": 8,
+        "minute": 0,
+        "second": 61,
+        "dayOfWeek": 127,
+        "action": 1,
+        "sceneNumber": 0,
+        "transitionTime": 5
+      },
+      "transitionTimeRaw": 69,
+      "parametersHex": "4AFE7F8080FE1F450000",
+      "entriesData": "Sv5/gID+H0UAAA=="
+    },
+    {
+      "name": "twenty_second_observation_only",
+      "fields": {
+        "id": 11,
+        "year": 100,
+        "month": 4095,
+        "day": 0,
+        "hour": 8,
+        "minute": 0,
+        "second": 62,
+        "dayOfWeek": 127,
+        "action": 1,
+        "sceneNumber": 0,
+        "transitionTime": 5
+      },
+      "transitionTimeRaw": 69,
+      "parametersHex": "4BFE7F8000FF1F450000",
+      "entriesData": "S/5/gAD/H0UAAA=="
+    },
+    {
+      "name": "subsecond_transition_observation_only",
+      "fields": {
+        "id": 12,
+        "year": 100,
+        "month": 4095,
+        "day": 0,
+        "hour": 8,
+        "minute": 0,
+        "second": 0,
+        "dayOfWeek": 127,
+        "action": 1,
+        "sceneNumber": 0,
+        "transitionTime": 0
+      },
+      "transitionTimeRaw": 7,
+      "parametersHex": "4CFE7F8000E01F070000",
+      "entriesData": "TP5/gADgHwcAAA=="
+    },
+    {
+      "name": "long_transition_observation_only",
+      "fields": {
+        "id": 13,
+        "year": 100,
+        "month": 4095,
+        "day": 0,
+        "hour": 8,
+        "minute": 0,
+        "second": 0,
+        "dayOfWeek": 127,
+        "action": 1,
+        "sceneNumber": 0,
+        "transitionTime": 4200
+      },
+      "transitionTimeRaw": 199,
+      "parametersHex": "4DFE7F8000E01FC70000",
+      "entriesData": "Tf5/gADgH8cAAA=="
+    },
+    {
+      "name": "unknown_transition_observation_only",
+      "fields": {
+        "id": 14,
+        "year": 100,
+        "month": 4095,
+        "day": 0,
+        "hour": 8,
+        "minute": 0,
+        "second": 0,
+        "dayOfWeek": 127,
+        "action": 1,
+        "sceneNumber": 0,
+        "transitionTime": 0
+      },
+      "transitionTimeRaw": 255,
+      "parametersHex": "4EFE7F8000E01FFF0000",
+      "entriesData": "Tv5/gADgH/8AAA=="
+    },
+    {
+      "name": "every_second_observation_only",
+      "fields": {
+        "id": 15,
+        "year": 100,
+        "month": 4095,
+        "day": 0,
+        "hour": 8,
+        "minute": 0,
+        "second": 60,
+        "dayOfWeek": 127,
+        "action": 1,
+        "sceneNumber": 0,
+        "transitionTime": 5
+      },
+      "transitionTimeRaw": 69,
+      "parametersHex": "4FFE7F8000FE1F450000",
+      "entriesData": "T/5/gAD+H0UAAA=="
+    }
+  ]
+}

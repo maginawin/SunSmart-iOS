@@ -197,6 +197,7 @@ class SceneSettingsViewController: UIViewController, CustomSegmentedControlDeleg
     }
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated); active = true
+        MeshNodeHeartbeatManager.shared.refreshOfflineNodes()
         if selection != nil { reload() }
         navigationController?.interactivePopGestureRecognizer?.isEnabled = false
         if let initialError { failed(initialError) }

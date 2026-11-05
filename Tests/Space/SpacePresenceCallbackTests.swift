@@ -8,6 +8,10 @@ let spacePermissionChangedNotificaitonName = "permissionChanged"
 let SiteStateChangeNotificationName = "siteStateChanged"
 let SitesDataRefreshNotifiacationName = "sitesRefresh"
 let spacesRefreshChangeNotificationName = "spacesRefresh"
+let deviceStateUpdateNotificationName = "deviceStateUpdated"
+enum MeshNodeHeartbeatManager {
+    static let nodePresenceDidChange = Notification.Name("sdkPresenceChanged")
+}
 
 class View { var window: View? }
 class UIViewController: NSObject {
@@ -114,9 +118,13 @@ enum XWHUDManager { static func showErrorTipHUD(_ message: String) {} }
 
 typealias Address = UInt16
 extension Address { static let localClientGroupAddress: Address = 0xC000 }
-struct Node { let primaryUnicastAddress: Address = 1 }
+final class Node { let primaryUnicastAddress: Address = 1 }
 struct Provisioner { let node: Node? = Node() }
-struct Network { let uuid = UUID(); let localProvisioner: Provisioner? = Provisioner() }
+final class Network {
+    let uuid = UUID(); let localProvisioner: Provisioner? = Provisioner()
+    let node = Node()
+    func node(withAddress address: Address) -> Node? { address == node.primaryUnicastAddress ? node : nil }
+}
 struct NetworkID { var hex = "network" }
 struct NetworkKey { var networkId = NetworkID() }
 final class MeshNetworkManager {
@@ -214,6 +222,30 @@ struct SpacePresenceCallbackTests {
                               sentFrom: 2, to: .localClientGroupAddress)
     }
     static func main() {
+        do {
+            let vc = make()
+            var updates = 0
+            let observer = NotificationCenter.default.addObserver(forName: .init(deviceStateUpdateNotificationName),
+                object: nil, queue: .main) { _ in updates += 1 }
+            defer { NotificationCenter.default.removeObserver(observer) }
+            let node = MeshNetworkManager.instance.meshNetwork!.node
+            func report(_ node: Node) {
+                NotificationCenter.default.post(name: MeshNodeHeartbeatManager.nodePresenceDidChange, object: node)
+            }
+            vc.startNodePresenceObservation(); vc.startNodePresenceObservation()
+            report(node)
+            require(updates == 1, "one Space bridge must update pages without a message delegate")
+            report(Node())
+            require(updates == 1, "detached same-address node must be ignored")
+            vc.space.meshNetworkId = "other"
+            report(node)
+            require(updates == 1, "other subnet must be ignored")
+            vc.space.meshNetworkId = "network"
+            vc.stopSpacePresenceTracking(reason: .leavingSpaceFlow)
+            vc.startNodePresenceObservation(); report(node)
+            require(updates == 1 && vc.nodePresenceObservation == nil, "leaving Space removes the bridge and rejects late reports")
+            scenarios += 1
+        }
         // Both independent sources, before and after a Cancel. Keep the old VC alive on purpose.
         for cloudFirst in [true, false] {
             for cancelBeforeSecond in [true, false] {

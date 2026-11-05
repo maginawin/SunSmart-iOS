@@ -215,6 +215,7 @@ class SpaceViewController: WMPageController {
     private var heartbeatTimer: Timer?
     /// 是否已停止当前 Space 的在线/编辑占用跟踪
     private var hasStoppedPresenceTracking: Bool = false
+    private var nodePresenceObservation: NSObjectProtocol?
     /// 是否已处理空间权限失效，避免失效心跳重复弹窗
     private var hasHandledPermissionLoss: Bool = false
     /// 进入动画前收到的权限冲突，待当前 Space 可以展示时处理。
@@ -554,8 +555,25 @@ class SpaceViewController: WMPageController {
     }
     
     
+    /// Page delegates change during configuration; presence still belongs to this Space.
+    private func startNodePresenceObservation() {
+        guard !hasStoppedPresenceTracking, nodePresenceObservation == nil else { return }
+        nodePresenceObservation = NotificationCenter.default.addObserver(
+            forName: MeshNodeHeartbeatManager.nodePresenceDidChange, object: nil, queue: .main
+        ) { [weak self] notification in
+            guard let self, !self.hasStoppedPresenceTracking,
+                  let node = notification.object as? Node,
+                  let network = MeshNetworkManager.instance.meshNetwork,
+                  network.uuid.uuidString == self.space.meshUUID,
+                  MeshNetworkManager.instance.currentNetworkKey.networkId.hex == self.space.meshNetworkId,
+                  network.node(withAddress: node.primaryUnicastAddress) === node else { return }
+            NotificationCenter.default.post(name: .init(deviceStateUpdateNotificationName), object: node)
+        }
+    }
+
      /// 添加通知监听
     private func addNotificaiton() {
+        startNodePresenceObservation()
         
         // 蓝牙状态观察者
         bluetoothStateObservation = MeshLibManager.manager.observe(\.bluetoothState, options: [.new], changeHandler: {[weak self] _, _ in
@@ -1102,6 +1120,10 @@ class SpaceViewController: WMPageController {
             return
         }
         hasStoppedPresenceTracking = true
+        if let nodePresenceObservation {
+            NotificationCenter.default.removeObserver(nodePresenceObservation)
+            self.nodePresenceObservation = nil
+        }
         hasPendingTransferPermissionAlert = false
         transferPermissionAlert?.dismiss(animation: false)
         transferPermissionAlert = nil
