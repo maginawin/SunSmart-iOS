@@ -1,0 +1,66 @@
+{
+  "uuid": "00000000-0000-4000-8000-000000000001",
+  "unicastAddress": "0100",
+  "schedules": [
+    {
+      "year": 100,
+      "month": 4095,
+      "day": 0,
+      "hour": 8,
+      "minute": 0,
+      "second": 0,
+      "dayOfWeek": 31,
+      "action": 1,
+      "sceneNumber": 0,
+      "id": 0,
+      "transitionTime": 5
+    },
+    {
+      "year": 0,
+      "month": 4095,
+      "day": 0,
+      "hour": 22,
+      "minute": 0,
+      "second": 0,
+      "dayOfWeek": 127,
+      "action": 0,
+      "sceneNumber": 0,
+      "id": 1,
+      "transitionTime": 0
+    },
+    {
+      "year": 100,
+      "month": 4095,
+      "day": 0,
+      "hour": 18,
+      "minute": 0,
+      "second": 0,
+      "dayOfWeek": 127,
+      "action": 2,
+      "sceneNumber": 10,
+      "id": 2,
+      "transitionTime": 5
+    }
+  ],
+  "custProps": {
+    "schedulerModelStates": {
+      "schemaVersion": 1,
+      "nodeUUID": "00000000-0000-4000-8000-000000000001",
+      "unicastAddress": "0100",
+      "deviceKeyFingerprint": "0a4a91ae6e293dee6cb98cf621ae487d781966980403b7b0472e7807bd676c3b",
+      "models": [
+        {
+          "elementAddress": "0100",
+          "modelId": "1207",
+          "entriesData": "Afh/YAHgD0AAAEL+fyAB4C9FCgA="
+        },
+        {
+          "elementAddress": "0101",
+          "modelId": "1207",
+          "entriesData": "QP5/gADgE0UAAA=="
+        }
+      ],
+      "legacyEntriesData": "QP5/gADgE0UAAAH4f2AB4A9AAABC/n8gAeAvRQoA"
+    }
+  }
+}

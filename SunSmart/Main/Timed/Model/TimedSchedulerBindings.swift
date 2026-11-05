@@ -26,6 +26,7 @@ extension Node {
     /// Preserve captured task ownership before updating App state from a reply.
     @discardableResult
     func applyMessageHandle(_ handle: MeshMessageHandle, isSuccess: Bool = true) -> Bool {
+        guard handle.schedulerTask?.isCancelled != true else { return false }
         if let context = handle.timedSchedulerContext, !context.matches(node: self) { return false }
         if let context = handle.sceneContext {
             guard context.matches(node: self) else { return false }
@@ -354,7 +355,7 @@ enum TimedSchedulerBindings {
               schedule.nodeSlots![index].isValid else { return false }
         guard schedule.nodeSlots![index].state != .pendingRemoval else { return true }
         // Group exit also uses this entry point, without deleting the Schedule.
-        // Keep other nodes and this task's slot/generation intact until clearing.
+        // Keep other nodes and this task's slot and identity intact until clearing.
         let previous = schedule.nodeSlots
         schedule.nodeSlots![index].state = .pendingRemoval
         guard schedule.save() else { schedule.nodeSlots = previous; return false }
@@ -402,7 +403,7 @@ final class TimedSchedulerMessageContext {
               MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == meshUUID,
               MeshNetworkManager.instance.currentNetworkKey.networkId.hex == networkID else { return false }
         return MeshNetworkManager.instance.schedules.first { $0.id == scheduleID && $0.selectTargetType != .profile }?.nodeSlots?
-            .contains { $0.identity == binding.identity && $0.slot == binding.slot && $0.generation == binding.generation } == true
+            .contains { $0.identity == binding.identity && $0.slot == binding.slot && $0.state == binding.state } == true
     }
 }
 

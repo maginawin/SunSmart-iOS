@@ -43,6 +43,8 @@ final class SyncExecutionSession {
     var onSettled: ((SyncState) -> Void)?
     /// Embedded device-add sessions persist normally; their owner submits the complete batch.
     var publishesCloudChange = true
+    var cloudResultChanged = false
+    private var cloudChangePublished = false
     var onStopped: (() -> Void)?
     var onError: ((String) -> Void)?
     var onBatteryActivationRequired: (() -> Void)?
@@ -82,6 +84,8 @@ final class SyncExecutionSession {
         let preparations = pendingPreparations
         pendingPreparations.removeAll()
         coordinator.start { [self] identifier in
+            cloudResultChanged = false
+            cloudChangePublished = false
             guard validatePlan(identifier) else { return }
             guard environment.configurationAvailable() else {
                 #if DEBUG
@@ -323,6 +327,7 @@ final class SyncExecutionSession {
             environment.addMessage(messageHandles: parameters, ackMessageTimeout: ackTimeout(for: model),
                 successfulBack: { [self] handle, status in
                     guard isActiveSyncRun(identifier), !gate.isCompleted, validatePlan(identifier, handles: handles) else { return }
+                    cloudResultChanged = cloudResultChanged || handle.isSuccessful
                     received(handle: handle, statusMessage: status, model: model, messageHandles: handles)
                 }, finishedBack: { [self] result in
                     guard isActiveSyncRun(identifier), gate.claim(), validatePlan(identifier, handles: handles) else { return }
@@ -347,8 +352,10 @@ final class SyncExecutionSession {
         environment.addMessage(messageHandles: handles, ackMessageTimeout: ackTimeout(for: model), successfulBack: { [self] handle, status in
             guard !completionGate.isCompleted else { return }
             if isActiveSyncRun(identifier), validatePlan(identifier, handles: handles) {
+                cloudResultChanged = cloudResultChanged || handle.isSuccessful
                 received(handle: handle, statusMessage: status, model: model, messageHandles: handles)
             } else if coordinator.isSettling, hdbZoneAcknowledgementAttempt == acknowledgementAttempt {
+                cloudResultChanged = cloudResultChanged || handle.isSuccessful
                 received(handle: handle, statusMessage: status, model: model, messageHandles: handles, cacheOnly: true)
             }
         }, failedBack: { [self] handle in
@@ -488,7 +495,7 @@ final class SyncExecutionSession {
                 guard gate.claim() else { return }
                 hdbZoneAcknowledgementAttempt = nil
                 invalidateIncompleteSceneSchedulerReads()
-                compensate { [self] in finished(); if !coordinator.closed { onStopped?() } }
+                compensate { [self] in publishCloudChangesIfNeeded(); finished(); if !coordinator.closed { onStopped?() } }
             }
         }
     }
@@ -533,6 +540,7 @@ final class SyncExecutionSession {
         let gate = SyncAttemptCompletionGate()
         environment.addMessage(messageHandles: handles, ackMessageTimeout: 7) { [self] result in
             guard gate.claim() else { return }
+            cloudResultChanged = cloudResultChanged || result.contains { $0.isSuccessful }
             result.forEach { handle in
                 if let address = handle.address ?? handle.model?.parentElement?.unicastAddress,
                    let node = MeshNetworkManager.instance.meshNetwork?.node(withAddress: address) {
@@ -575,6 +583,14 @@ final class SyncExecutionSession {
         onReload?()
     }
 
+    private func publishCloudChangesIfNeeded() {
+        guard publishesCloudChange, !cloudChangePublished, environment.configurationIsCurrent(),
+              cloudResultChanged || environment.hasPendingCloudChanges() else { return }
+        cloudChangePublished = true
+        NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName),
+            object: SpaceChangeDataType.syncResult(changed: cloudResultChanged))
+    }
+
     private func finishRun(_ identifier: UUID, publishesCompletion: Bool = true, forcedState: SyncState? = nil) {
         coordinator.finish(identifier, settle: { [self] done in compensate(done) }) { [self] in
             for model in sections.flatMap({ $0.allModels }) {
@@ -600,10 +616,8 @@ final class SyncExecutionSession {
             finishEmergencyFireControllerAssociationSyncIfNeeded()
             onReload?()
             onSettled?(syncState)
+            publishCloudChangesIfNeeded()
             guard publishesCompletion else { return }
-            if publishesCloudChange {
-                NotificationCenter.default.post(name: .init(spaceDataChangedNotificaitonName), object: SpaceChangeDataType.device)
-            }
             onCompleted?(syncState)
             if syncState == .syncFailure, automationRestore, !coordinator.closed {
                 if retryCount > 0 {

@@ -598,6 +598,7 @@ extension MeshNetworkManager {
     
     /// 获取网络扩展数据
     func loadExtensionData(result: ((Bool)->Void)? = nil) {
+        TimedSchedulerTaskCoordinator.invalidateAll()
         
         guard let uuid = self.meshNetwork?.uuid.uuidString else {
             result?(false)
@@ -2975,6 +2976,7 @@ extension Node {
     
     /// 删除设备缓存的所有扩展数据
     func deleteExtension() {
+        TimedSchedulerTaskCoordinator.invalidate(node: self)
         guard let meshNetwork = self.network ?? MeshNetworkManager.instance.meshNetwork else {
             return
         }

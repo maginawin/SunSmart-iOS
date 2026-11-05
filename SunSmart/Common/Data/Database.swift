@@ -954,6 +954,29 @@ extension SpaceData {
         return SpaceConfigurationSafety.archiveDeletedSpace(self)
     }
 
+    /// A cloud response owns only its submitted version and outcome, never the
+    /// configuration fields of a newer Space object saved while HTTP was pending.
+    @discardableResult func saveCloudSyncOutcome(confirmedTimestamp: Int64? = nil, error: NetworkApiError?) -> Bool {
+        guard let db = SunSmartDataManager.shared.db else { return false }
+        do {
+            if let timestamp = confirmedTimestamp {
+                try db.run("UPDATE spaces SET lastUploadCloudTimestamp = MAX(COALESCE(lastUploadCloudTimestamp, 0), ?), syncCloudError = ? WHERE uuid = ? AND siteUUID = ? AND subNetworkKey = ?",
+                    timestamp, error?.code, id, siteId, meshNetworkId)
+            } else {
+                try db.run("UPDATE spaces SET syncCloudError = ? WHERE uuid = ? AND siteUUID = ? AND subNetworkKey = ?",
+                    error?.code, id, siteId, meshNetworkId)
+            }
+            guard db.changes > 0 else { return false }
+            if let timestamp = try db.scalar("SELECT lastUploadCloudTimestamp FROM spaces WHERE uuid = ? AND siteUUID = ? AND subNetworkKey = ?",
+                id, siteId, meshNetworkId) as? Int64 { lastUploadCloudTimestamp = timestamp }
+            if let current = SpaceData.load(siteId: siteId, spaceId: id).first {
+                lastUpdate = max(lastUpdate, current.lastUpdate)
+            }
+            syncCloudError = error
+            return true
+        } catch { return false }
+    }
+
     /// 缓存当前空间数据
     @discardableResult func save(importingConfiguration: Bool = false) -> Bool {
         guard !triggerZonesLoadFailed, !hdbLoadFailed, SunSmartDataManager.shared.db != nil else { return false }
@@ -1810,6 +1833,7 @@ extension Schedule {
             return false
         }
         
+        TimedSchedulerTaskCoordinator.configurationSaved(self, meshUUID: uuid, networkID: subNetworkKey)
         return true
     }
     

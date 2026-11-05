@@ -53,6 +53,7 @@ with tempfile.TemporaryDirectory(prefix="scene-cascade-") as directory:
     environment.setdefault("SWIFT_MODULECACHE_PATH", str(temporary / "swift-cache"))
     subprocess.run([
         "swiftc", "-parse-as-library", *recovery_flags,
+        str(ROOT / ".local-sdk/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshSchedulerTask.swift"),
         str(ROOT / "SunSmart/Main/Timed/Model/TimedSchedulerSlotPolicy.swift"),
         str(ROOT / "SunSmart/Main/Scene/Model/SceneConfiguration.swift"),
         str(ROOT / "Tests/Scene/SceneDeletionCascadeTestSupport.swift"),

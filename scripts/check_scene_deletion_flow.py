@@ -22,6 +22,7 @@ with tempfile.TemporaryDirectory(prefix='scene-deletion-') as directory:
         ROOT / 'SunSmart/Main/Scene/Model/SceneConfiguration.swift',
         ROOT / 'SunSmart/Common/Data/SceneDeleteCapability.swift',
         sdk / 'Sources/NordicSigMeshSDK/MeshLib/Scene/SceneRegisterPolicy.swift',
+        sdk / 'Sources/NordicSigMeshSDK/MeshLib/Manager/MeshSchedulerTask.swift',
         ROOT / 'Tests/Scene/SceneDeletionCascadeBoundarySupport.swift']
     mesh = (ROOT / 'SunSmart/Common/Data/MeshNetwork+SunSmart.swift').read_text()
     binding = (ROOT / 'SunSmart/Main/Timed/Model/TimedSchedulerBindings.swift').read_text()
@@ -59,7 +60,7 @@ with tempfile.TemporaryDirectory(prefix='scene-deletion-') as directory:
     lifecycle += '\nfunc updateData(message: Any, isSuccess: Bool, model: Model?) { guard isSuccess else { return }; switch message {\n' + deletion + '\ndefault: break\n} }\n'
     lifecycle += function(mesh, '    @discardableResult\n    func completeGroupSceneRemoval(') + '\n}\nextension Scene {\n'
     lifecycle += '\n'.join(function((ROOT / 'SunSmart/Common/Data/Node+MessageHandles.swift').read_text(), marker) for marker in ['    func getDeleteMessageHandles(node:', '    func getSyncMessageHandles(node:']) + '\n}\n'
-    lifecycle += 'struct SchedulerContextBoundary { func matches(node: Node) -> Bool { true } }\nextension MeshMessageHandle { var timedSchedulerContext: SchedulerContextBoundary? { nil } }\n'
+    lifecycle += 'struct SchedulerContextBoundary { func matches(node: Node) -> Bool { true } }\nextension MeshMessageHandle { var timedSchedulerContext: SchedulerContextBoundary? { nil }; var schedulerTask: MeshSchedulerTask? { nil } }\n'
     write('Lifecycle.swift', lifecycle)
     result_source = (ROOT / 'SunSmart/Main/Space/Model/SyncExecutionSession+Result.swift').read_text()
     scene_branch = result_source[result_source.index('        if messageHandles.contains(where: { $0.sceneContext != nil })'):result_source.index('        resultMessageHandles.forEach { handle in')]

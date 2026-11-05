@@ -38,8 +38,8 @@ end = methods.index('    static func activateImport(', start)
 methods = methods[:start] + methods[end:]
 methods = methods[:methods.index('    static func syncReadRequest(')] if '    static func syncReadRequest(' in methods else methods
 methods += section(safety, '    static func needsUpgradeBaseline(', '    /// Preserve both side stores')
-methods += section(safety, '    static func beginImport(', '    @MainActor\n    static func prepareUpload(')
-methods += section(safety, '    @MainActor\n    static func prepareUpload(', '    /// Called only after the user explicitly chooses')
+methods += section(safety, '    static func beginImport(', '    @MainActor\n    static func prepareEntryUploadBaseline(')
+methods += section(safety, '    @MainActor\n    static func prepareEntryUploadBaseline(', '    /// Called only after the user explicitly chooses')
 methods += section(safety, '    /// Called only after the user explicitly chooses', '    struct ReferenceRepairReview')
 methods = methods.replace('UserDefaults.standard', 'testDefaults')
 methods += section(safety, '    private static func saveRecoveryPayload(', '    @MainActor\n    static func applyReferenceRepair(')
@@ -127,16 +127,27 @@ api_properties = section(cloud, 'private extension NetowrkReqeustApi {', '\n#if 
 api_properties = api_properties.replace('private extension', 'extension')
 test += '\n' + read('Tests/Group/CloudUploadConfirmationTests.swift').replace(
     '// SITE_CONFIRMATION_METHOD', site_confirmation) + '\n' + api_properties
-# Ensure a successful upload reads the submitted Space back before clearing its receipt.
-after_upload = section(cloud, '            let requestResult = await NetworkRequest.shared.request(api)',
-                       '            let completionResult = result')
-assert 'await SpaceConfigurationSafety.resumeUpload(space)' in after_upload
 share = read('SunSmart/Main/Share/Controller/ShareAuthorityViewController.swift')
 assert '.siteUpload(siteData:' not in share
 assert '.syncSite(site: site, syncSpaces: uploadSpaces)' in share
 
 network = read('SunSmart/Common/Network/NetworkRequest.swift')
 test = test.replace('// NETWORK_ERROR_TYPE', section(network, 'public enum NetworkApiError:', '/// Encoding is selected'))
+if os.environ.get("SUNSMART_UPLOAD_FLOW"):
+    test = test.replace('@main struct SpaceRecoveryReceiptTests', 'struct SpaceRecoveryReceiptTests')
+    flow = read('Tests/Cloud/SpaceUploadFlowTests.swift')
+    body = section(cloud[cloud.index('    func syncOperation()'):], '        configurationUploadTask?.cancel()\n        configurationUploadTask =', '\n    }\n    \n}',)
+    body = re.sub(r'#if DEBUG.*?#endif', '', body, flags=re.S)
+    # Run the entire production configuration upload task, retaining all awaits,
+    # exports, receipt preparation, identity gates and success/failure handling.
+    flow = flow.replace('// CONFIGURATION_TASK', body)
+    flow = flow.replace('// CONFIRM_SITE', site_confirmation)
+    test = test.replace('    var defaultRestoreCalls = 0', '    var defaultRestoreCalls = 0\n    var liveNodes = [FlowLiveNode(true), FlowLiveNode(true), FlowLiveNode(false)]\n    var restoreCalls = 0')
+    test = test.replace('        if !fixWithDefaults {', '        restoreCalls += 1; liveNodes = liveNodes.map { _ in FlowLiveNode(false) }\n        if !fixWithDefaults {')
+    test = test.replace('enum SyncOperation {', 'enum SyncOperation {\n    case syncGateway(gateway: FlowGateway, node: Int)')
+    methods = methods.replace('request(.spaceUpload(', 'request(API.spaceUpload(')
+    test += '\n' + flow + '\n' + function(cloud, 'private extension SiteData {').replace('private extension', 'extension')
+
 with tempfile.TemporaryDirectory(prefix='space-receipt-tests-') as temp:
     temp = Path(temp)
     harness = temp / 'Harness.swift'

@@ -1,4 +1,7 @@
 import Foundation
+let deviceStateUpdateNotificationName = "deviceStateChanged"
+enum SpaceSchedulerReadCoordinator { static let didUpdate = Notification.Name("schedulerChanged") }
+enum UIApplication { static let didBecomeActiveNotification = Notification.Name("active") }
 
 final class Node: Equatable {
     let primaryUnicastAddress: Int
@@ -17,7 +20,7 @@ final class MeshNetworkManager {
 final class ScheduleAddTargetView {}
 enum ScheduleTarget { case devices([Node]), groups([Group]), scene(Scene?) }
 final class UIButton { var isSelected = false }
-final class Collection { func reloadData() {} }
+final class Collection { var reloads = 0; func reloadData() { reloads += 1 } }
 extension String { var localizedString: String { self } }
 enum XWHUDManager { static func showTipHUD(_ message: String, isLineFeed: Bool) {} }
 final class EditorView { var isSyncCompletion = true }
@@ -53,6 +56,8 @@ final class ScheduleDevicesView {
     var isShowing = true, superview: NSObject? = NSObject()
     let syncDisplay = ScheduleTargetDisplayState()
     var iconUpdates = 0
+    var syncStatusObservations: [NSObjectProtocol] = []
+    deinit { syncStatusObservations.forEach(NotificationCenter.default.removeObserver) }
     func refreshVisibleSyncStatus() { iconUpdates += 1 }
     init(nodes: [Node], selectNodes: [Node], schedule: Schedule?, selectBack: (([Node]) -> Void)?) {
         self.nodes = nodes; self.selectNodes = selectNodes; visibleNodes = nodes
@@ -65,6 +70,7 @@ final class ScheduleDevicesView {
     // PRODUCTION_SELECT_ALL
     // PRODUCTION_FINISH
     // PRODUCTION_PICKER_REFRESH
+    // PRODUCTION_PICKER_OBSERVATION
 }
 final class ScheduleGroupsView {
     init(groups: [Group], selectGroups: [Group], schedule: Schedule?, selectBack: (([Group]) -> Void)?) {}
@@ -123,3 +129,19 @@ precondition(picker.iconUpdates == iconUpdates && picker.syncDisplay.requests ==
              "closing picker accepted a callback or scheduled another read")
 print("PASS: production Devices picker preserves 0/1/multiple selections, offline protection, filtered deselection, Confirm and Cancel")
 print("PASS: production editor rejects replaced/hidden callbacks; closing picker ignores callbacks and new status requests")
+let recoveryPicker = ScheduleDevicesView(nodes: [offline], selectNodes: [offline], schedule: Schedule(), selectBack: nil)
+recoveryPicker.checkOffline()
+recoveryPicker.observeSyncStatusChanges()
+precondition(recoveryPicker.disableUnselectNodes == [offline])
+NotificationCenter.default.post(name: .init(deviceStateUpdateNotificationName), object: Node(offline.primaryUnicastAddress))
+precondition(recoveryPicker.collectionView.reloads == 0, "foreign same-address reports cannot update picker")
+offline.state = true
+NotificationCenter.default.post(name: .init(deviceStateUpdateNotificationName), object: offline)
+precondition(recoveryPicker.disableUnselectNodes.isEmpty && recoveryPicker.selectNodes == [offline],
+             "online recovery must unlock the retained target without changing selection")
+precondition(recoveryPicker.collectionView.reloads == 1 && recoveryPicker.syncDisplay.requests == 0,
+             "presence updates repaint without launching config reads")
+recoveryPicker.isShowing = false
+NotificationCenter.default.post(name: .init(deviceStateUpdateNotificationName), object: offline)
+precondition(recoveryPicker.collectionView.reloads == 1, "closing picker ignores presence reports")
+print("PASS: Timed target presence recovery repaints, unlocks recovered targets and preserves selection")

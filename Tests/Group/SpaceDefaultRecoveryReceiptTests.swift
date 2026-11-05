@@ -147,7 +147,7 @@ extension SpaceRecoveryReceiptTests {
             let awaitingReadback = await legacy.update(spaceJsonData: cloud)
             precondition(awaitingReadback == .preserved("newerLocalConfiguration") && !S.hasPendingUpload(legacy) && legacy.needUploadCloud)
             request.responses = [.success(["data": cloud]), .success([:]), .success(["data": legacy.payload])]
-            if case .failure = await S.uploadBeforeUnbind(legacy) { preconditionFailure("current-format upload and readback must complete legacy recovery") }
+            if case .failure = await S.uploadForEntry(legacy) { preconditionFailure("current-format upload and readback must complete legacy recovery") }
             precondition(!S.hasPendingUpload(legacy) && !S.hasPendingImport(legacy))
             print("PASS: legacy/sample staging, reentry/restart while upload pending, failure/authority gates and strict readback; Zones=\(configuration.lightingZones.count), devices=\(configuration.devices.count)")
         }

@@ -24,6 +24,8 @@ source = source.replace('// PRODUCTION_EDITOR_HIDE', section(
     controller, '    override func viewWillDisappear', '    private func refreshSyncStatus()'))
 source = source.replace('// PRODUCTION_PICKER_REFRESH', section(
     picker, '    private func refreshSyncStatus()', '    private func observeSyncStatusChanges()'))
+source = source.replace('// PRODUCTION_PICKER_OBSERVATION', section(
+    picker, '    private func observeSyncStatusChanges()', '    init(nodes:'))
 source = source.replace('// PRODUCTION_OFFLINE', section(
     picker, '    private func checkOffline()', '    private func updateEmptyUI()'))
 source = source.replace('// PRODUCTION_SELECT_ALL', section(
@@ -32,6 +34,7 @@ source = source.replace('// PRODUCTION_FINISH', section(
     picker, '    @objc private func cancelBtnAction', '    /// 更新全选状态'))
 source = source.replace('@objc private func ', 'func ').replace('private func checkOffline', 'func checkOffline')
 source = source.replace('private func refreshSyncStatus', 'func refreshSyncStatus')
+source = source.replace('private func observeSyncStatusChanges', 'func observeSyncStatusChanges')
 source = source.replace('override func viewWillDisappear', 'func viewWillDisappear').replace('        super.viewWillDisappear(animated)\n', '')
 with tempfile.TemporaryDirectory(prefix='timed-selection-') as directory:
     path = Path(directory) / 'Tests.swift'

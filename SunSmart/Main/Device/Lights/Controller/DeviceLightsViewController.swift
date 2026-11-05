@@ -123,6 +123,9 @@ class DeviceLightsViewController: UIViewController {
         MeshLibManager.manager.register(self)
         MeshLibManager.manager.messageDelegate = self
         refreshPendingNodeStateIfPossible()
+        if viewIfLoaded?.window != nil {
+            MeshNodeHeartbeatManager.shared.refreshOfflineNodes()
+        }
         
         if collectionView.firstShowFlashScrollIndicators {
             collectionView.flashScrollIndicatorsIfNeeded()

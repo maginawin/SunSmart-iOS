@@ -32,6 +32,7 @@ members = [declaration(marker) for marker in [
     '@objc private func userPermissionAskTimeout()',
     'private func startHeartbeatTimer()',
     'private func stopHeartbeatTimer()',
+    'private func startNodePresenceObservation()',
     'private func stopSpacePresenceTracking(reason:',
     '@objc private func heartbeatRequest()',
     'private func handleSpacePermissionLoss()',
@@ -41,7 +42,7 @@ members = [declaration(marker) for marker in [
 for name in ['hasStoppedPresenceTracking', 'hasHandledPermissionLoss',
              'hasPendingTransferPermissionAlert', 'transferPermissionAlert',
              'isHandlingExternalVendorMessages', 'cloudPermissionValidation',
-             'meshPermissionValidation']:
+             'meshPermissionValidation', 'nodePresenceObservation']:
     members.append(re.search(r'^    private (?:weak )?var ' + name + r'[^\n]+', source, re.M).group())
 
 production = '\n'.join(members).replace('private ', '').replace('@objc ', '')

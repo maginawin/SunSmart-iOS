@@ -473,6 +473,7 @@ extension NodeSyncData {
                 messageHandles.append(contentsOf: task.messageHandles)
             }
         }
+        TimedSchedulerTaskCoordinator.attach(messageHandles, node: node)
         return messageHandles
     }
 }
@@ -533,6 +534,7 @@ extension Schedule {
         
         let context = TimedSchedulerMessageContext(schedule: self, node: node)
         messageHandles.forEach { $0.timedSchedulerContext = context }
+        TimedSchedulerTaskCoordinator.attach(messageHandles, node: node, schedule: self)
         return messageHandles
     }
     

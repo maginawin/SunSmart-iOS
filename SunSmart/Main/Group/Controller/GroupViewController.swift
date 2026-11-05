@@ -404,6 +404,7 @@ class GroupViewController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        MeshNodeHeartbeatManager.shared.refreshOfflineNodes()
         
 //        if pageControl.numberOfPages > 0 {
 //            collectionView.flashScrollIndicators()
@@ -458,6 +459,12 @@ class GroupViewController: UIViewController {
     
     
     private func addNotificationObserver() {
+        NotificationCenter.default.addObserver(forName: .init(deviceStateUpdateNotificationName), object: nil, queue: .main) { [weak self] notification in
+            guard let self, self.isSyncPageVisible, self.viewIfLoaded?.window != nil,
+                  let node = notification.object as? Node,
+                  self.nodeIndexByAddress[node.primaryUnicastAddress] != nil else { return }
+            self.markDeviceDirty(node)
+        }
         
         // mesh网络连接观察者
         meshNetworkConnectedObservation = MeshLibManager.manager.observe(\.isMeshNetworkConnected, options: [.new], changeHandler: {[weak self] _, _ in

@@ -34,7 +34,7 @@ struct TimedDeviceSlotTests {
         let binding = TimedSchedulerNodeSlot(identity: first, slot: 7, state: .pendingRemoval)
         let kept = TimedSchedulerSlotPolicy.Intent(scheduleID: 0, targetsNode: false, legacy: false, binding: binding, preservesBinding: true)
         let plan = try TimedSchedulerSlotPolicy.plan(identity: first, intents: [kept, intent(300)], observedSlots: [])
-        precondition(plan[0] == binding, "state and generation are opaque for unsupported targets")
+        precondition(plan[0] == binding, "binding fields are opaque for unsupported targets")
     }
 
     static let first = TimedSchedulerNodeIdentity(
@@ -71,7 +71,7 @@ struct TimedDeviceSlotTests {
         let plan = try TimedSchedulerSlotPolicy.plan(identity: first,
             intents: [intent(300, target: false, binding: saved), intent(301)], observedSlots: [])
         precondition(plan[300]?.slot == 7 && plan[300]?.state == .pendingRemoval)
-        precondition(plan[300]?.generation == saved.generation)
+        precondition(plan[300]?.identity == saved.identity)
         precondition(plan[301]?.slot == 0)
         let restored = try JSONDecoder().decode([Int: TimedSchedulerNodeSlot].self,
             from: JSONEncoder().encode(plan))

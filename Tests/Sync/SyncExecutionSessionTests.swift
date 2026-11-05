@@ -80,6 +80,8 @@ enum SyncExecutionSessionTests {
 
     static func main() {
         DeviceOperationType.allowsMessageFactory = true
+        restorePowerUpRetry()
+        schedulerResultOwnership()
         sceneReadFollowUpBatches()
         sceneCleanupTaskResultBoundaries()
         sceneCleanupActivationIsolation()
@@ -109,6 +111,7 @@ enum SyncExecutionSessionTests {
         hdbCacheSettlesOnEveryExit()
         hdbInFlightAcknowledgementDuringStop()
         closeWaitingSessionSettlesCaller()
+        emptyAndStoppedCloudCompletion()
         callerOwnsCloudCompletion()
         normalAndDuplicateCompletion()
         stopBeforePlanDeliveryAndManualRetry()
@@ -119,6 +122,21 @@ enum SyncExecutionSessionTests {
         authorizationBeforeDynamicMessages()
         automaticRetryBudget()
         print("PASS: production Session scheduling, writeback ordering, late completion, stop/retry, Profile/PIR compensation and authorization cancellation")
+    }
+
+    static func schedulerResultOwnership() {
+        for cancelled in [false, true] {
+            let h = Harness()
+            let (session, _, model, node) = h.make()
+            let handle = node.testHandles[0]
+            handle.schedulerTask = MeshSchedulerTask()
+            handle.isSuccessful = true
+            if cancelled { handle.schedulerTask!.cancel() }
+            let result = session.applyResult([handle], model: model, messageHandles: [handle])
+            precondition(result == !cancelled)
+            precondition(node.updates == (cancelled ? 0 : 1), "obsolete Scheduler results must not write back")
+        }
+        print("PASS: production Session accepts current Scheduler success and rejects cancelled writeback")
     }
 
     static func sceneDeletionSubsetRetryRestoresPrerequisites() {
@@ -625,6 +643,49 @@ enum SyncExecutionSessionTests {
             session.close(); h.flush()
         }
     }
+    static func emptyAndStoppedCloudCompletion() {
+        for mode in ["empty", "dirty", "stopPartial", "repeat"] {
+            let h = Harness(); let (session, _, task, _) = h.make()
+            var notifications = 0
+            let observer = NotificationCenter.default.addObserver(forName: .init(spaceDataChangedNotificaitonName), object: nil, queue: nil) { _ in notifications += 1 }
+            if mode == "empty" || mode == "dirty" { session.sections = [] }
+            h.environment.hasPendingCloudChanges = { mode == "dirty" }
+            session.start(); h.flush()
+            if mode == "stopPartial" {
+                let sent = h.sends[0]; sent.handles[0].isSuccessful = true
+                sent.success?(sent.handles[0], 0)
+                session.stop(); h.flush(); h.stopFinished?(); h.flush()
+                precondition(notifications == 1, "STOP preserves acknowledged results")
+            } else if mode == "repeat" {
+                h.finish(0); h.flush(); precondition(notifications == 1)
+                session.start(); h.flush()
+                precondition(task.state == .successful && notifications == 1, "empty repeated completion cannot dirty a Space")
+            } else { precondition(notifications == (mode == "dirty" ? 1 : 0), "empty sync only submits preexisting dirty data") }
+            NotificationCenter.default.removeObserver(observer)
+        }
+        print("PASS: empty/repeated completion does not dirty Space; partial ACK survives STOP")
+    }
+
+    static func restorePowerUpRetry() {
+        let h = Harness(); let (session, device, task, node) = h.make(.profile(type: .powerOnState))
+        session.start(); h.flush()
+        precondition(h.sends.count == 1 && h.sends[0].handles.count == 1)
+        precondition((h.sends[0].handles[0].message as? GenericOnPowerUpSet)?.state == .restore)
+        h.finish(0, success: false); h.flush()
+        precondition(task.state == .failed && node.powerUpState == .off)
+        session.prepareDeviceForResync(device); session.start(); h.flush()
+        precondition(h.sends.count == 2 && h.sends[1].handles.count == 1, "Restore retry must deliver a real command")
+        h.finish(1, success: false); h.flush()
+        precondition(task.state == .failed && node.powerUpState == .off, "failed Restore cannot become empty success")
+        session.prepareDeviceForResync(device); session.start(); h.flush()
+        precondition(h.sends.count == 3)
+        h.finish(2); h.flush()
+        precondition(task.state == .successful && node.powerUpState == .restore)
+        session.prepareDeviceForResync(device); session.start(); h.flush()
+        precondition(h.sends.count == 3, "successful unchanged target must not be resent")
+        print("PASS: production GenericOnPowerUpSet(Restore) factory + success predicate + retry/session: two failures, real resend, ACK success, no duplicate target")
+    }
+
     static func callerOwnsCloudCompletion() {
         for publishes in [false, true] {
             let h = Harness()

@@ -8,8 +8,12 @@ let spacePermissionChangedNotificaitonName = "permissionChanged"
 let SiteStateChangeNotificationName = "siteStateChanged"
 let SitesDataRefreshNotifiacationName = "sitesRefresh"
 let spacesRefreshChangeNotificationName = "spacesRefresh"
+let deviceStateUpdateNotificationName = "deviceStateUpdated"
+enum MeshNodeHeartbeatManager {
+    static let nodePresenceDidChange = Notification.Name("sdkPresenceChanged")
+}
 
-class View { var window: View? }
+class View { var isUserInteractionEnabled = true; var window: View? }
 class UIViewController: NSObject {
     var navigationController: Navigation?
     var view = View()
@@ -77,7 +81,8 @@ final class SpaceData {
     let siteId = "site", id = "space"
     var meshUUID = MeshNetworkManager.instance.meshNetwork!.uuid.uuidString
     var meshNetworkId = "network"
-    var deviceOperates: [MeshOperate] { permission == .visitor || disableEditorPermission ? [.control] : [.edit, .control] }
+    var configurationProtected = false
+    var deviceOperates: [MeshOperate] { configurationProtected || permission == .visitor || disableEditorPermission ? [.control] : [.edit, .control] }
     func save() { saves += 1 }
 }
 final class SiteData { var permission: Permission = .editor }
@@ -114,9 +119,13 @@ enum XWHUDManager { static func showErrorTipHUD(_ message: String) {} }
 
 typealias Address = UInt16
 extension Address { static let localClientGroupAddress: Address = 0xC000 }
-struct Node { let primaryUnicastAddress: Address = 1 }
+final class Node { let primaryUnicastAddress: Address = 1 }
 struct Provisioner { let node: Node? = Node() }
-struct Network { let uuid = UUID(); let localProvisioner: Provisioner? = Provisioner() }
+final class Network {
+    let uuid = UUID(); let localProvisioner: Provisioner? = Provisioner()
+    let node = Node()
+    func node(withAddress address: Address) -> Node? { address == node.primaryUnicastAddress ? node : nil }
+}
 struct NetworkID { var hex = "network" }
 struct NetworkKey { var networkId = NetworkID() }
 final class MeshNetworkManager {
@@ -164,6 +173,10 @@ final class RunLoop {
 }
 enum NodeSyncStatusRefresh { static func endSession(owner: AnyObject) {} }
 final class Scheduler { func stop() {} }
+final class ClockSyncCoordinator {
+    private(set) var stopCount = 0
+    func stop() { stopCount += 1 }
+}
 
 final class SpaceViewController: UIViewController {
     let space: SpaceData
@@ -171,12 +184,19 @@ final class SpaceViewController: UIViewController {
     var heartbeatTimer: Timer?
     var userAskTimer: Timer?
     var schedulerReadCoordinator: Scheduler?
+    let clockSyncCoordinator = ClockSyncCoordinator()
     var guidance = 0
     var monitoringStops = 0
     init(space: SpaceData = SpaceData()) { self.space = space; super.init() }
     func configurationFlowGuidance() { if space.deviceOperates.contains(.edit) { guidance += 1 } }
     func stopEmergencyFireSceneMonitoring() { monitoringStops += 1 }
     func removeFromWindowSubviews() { SRAlertView.current?.dismiss() }
+    var entryCloudEditingGranted = false
+    var navigationItem = FixtureNavigationItem()
+    var entryPermissionDecisions: [Bool] = []
+    func resolveEntryPermission(canEdit: Bool) { entryPermissionDecisions.append(canEdit) }
+    func cancelEntryReconciliation() {}
+    func grantEntryEditingIfReady() {}
     // INSERT_PRODUCTION_MEMBERS
 }
 
@@ -214,6 +234,52 @@ struct SpacePresenceCallbackTests {
                               sentFrom: 2, to: .localClientGroupAddress)
     }
     static func main() {
+        for role in [Permission.owner, .editor] {
+            reset()
+            let vc = make(permission: role)
+            vc.space.configurationProtected = true
+            vc.checkTheSpaceMembersRequest()
+            require(NetworkRequest.shared.requests.count == 1, "configuration protection must not block cloud identity check")
+            vc.checkMeshMemberPermissions()
+            require(MeshAPI.sends == 1, "configuration protection must not block Mesh identity check")
+            scenarios += 1
+        }
+        for mode in ["password", "disabled", "visitor"] {
+            reset()
+            let vc = make(permission: mode == "visitor" ? .visitor : .editor)
+            vc.space.configurationProtected = true
+            vc.space.requiresPasswordVerification = mode == "password"
+            vc.space.disableEditorPermission = mode == "disabled"
+            vc.checkTheSpaceMembersRequest(); vc.checkMeshMemberPermissions()
+            require(NetworkRequest.shared.requests.isEmpty && MeshAPI.sends == 0, "identity restrictions still block permission probes")
+            require(vc.entryPermissionDecisions == [false], "restricted current entry finishes read-only")
+            scenarios += 1
+        }
+        do {
+            let vc = make()
+            var updates = 0
+            let observer = NotificationCenter.default.addObserver(forName: .init(deviceStateUpdateNotificationName),
+                object: nil, queue: .main) { _ in updates += 1 }
+            defer { NotificationCenter.default.removeObserver(observer) }
+            let node = MeshNetworkManager.instance.meshNetwork!.node
+            func report(_ node: Node) {
+                NotificationCenter.default.post(name: MeshNodeHeartbeatManager.nodePresenceDidChange, object: node)
+            }
+            vc.startNodePresenceObservation(); vc.startNodePresenceObservation()
+            report(node)
+            require(updates == 1, "one Space bridge must update pages without a message delegate")
+            report(Node())
+            require(updates == 1, "detached same-address node must be ignored")
+            vc.space.meshNetworkId = "other"
+            report(node)
+            require(updates == 1, "other subnet must be ignored")
+            vc.space.meshNetworkId = "network"
+            vc.stopSpacePresenceTracking(reason: .leavingSpaceFlow)
+            require(vc.clockSyncCoordinator.stopCount == 1, "leaving Space also stops clock synchronization")
+            vc.startNodePresenceObservation(); report(node)
+            require(updates == 1 && vc.nodePresenceObservation == nil, "leaving Space removes the bridge and rejects late reports")
+            scenarios += 1
+        }
         // Both independent sources, before and after a Cancel. Keep the old VC alive on purpose.
         for cloudFirst in [true, false] {
             for cancelBeforeSecond in [true, false] {
@@ -432,3 +498,6 @@ struct SpacePresenceCallbackTests {
         print("PASS: \(scenarios) Space presence callback scenarios (production bodies, UI/transport substitutes).")
     }
 }
+
+final class FixtureNavigationItem { var rightBarButtonItem: FixtureBarItem? = FixtureBarItem() }
+final class FixtureBarItem { var isEnabled = true }

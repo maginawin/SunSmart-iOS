@@ -102,6 +102,7 @@ class SceneViewController: UIViewController {
     
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
+        MeshNodeHeartbeatManager.shared.refreshOfflineNodes()
         
         if collectionView.firstShowFlashScrollIndicators {
             collectionView.flashScrollIndicatorsIfNeeded()

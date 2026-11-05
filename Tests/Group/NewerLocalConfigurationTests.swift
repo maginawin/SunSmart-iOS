@@ -73,7 +73,7 @@ extension SpaceRecoveryReceiptTests {
             precondition(SpaceConfigurationIntegrityPolicy.configurationsMatch(localConfiguration,
                 SpaceConfigurationIntegrityPolicy.configurationData(space.payload)))
             request.responses = [.success(["data": remote]), .success([:]), .success(["data": space.payload])]
-            guard case .success = await S.uploadBeforeUnbind(space) else { preconditionFailure("local replacement must complete: " + mode) }
+            guard case .success = await S.uploadForEntry(space) else { preconditionFailure("local replacement must complete: " + mode) }
             precondition(!space.needUploadCloud && !S.hasPendingUpload(space) && request.uploads == uploads + 1)
             precondition(SpaceConfigurationIntegrityPolicy.configurationsMatch(localConfiguration,
                 SpaceConfigurationIntegrityPolicy.configurationData(request.lastSpaceUpload!)))
@@ -85,7 +85,7 @@ extension SpaceRecoveryReceiptTests {
             if accepted { precondition(S.markSubmissionAccepted(receipt, space: space)) }
             let uploads = request.uploads
             request.responses = [.success(["data": remote]), .success([:]), .success(["data": space.payload])]
-            guard case .success = await S.uploadBeforeUnbind(space) else {
+            guard case .success = await S.uploadForEntry(space) else {
                 preconditionFailure("retry must replace the older cloud with the current local version")
             }
             precondition(request.uploads == uploads + 1 && !S.hasPendingUpload(space) && !space.needUploadCloud)
@@ -94,13 +94,13 @@ extension SpaceRecoveryReceiptTests {
         let (space, remote) = try newerLocalFixture()
         request.responses = [.success(["data": remote]), .success([:])]
         request.result = .success(["data": remote])
-        guard case .failure = await S.uploadBeforeUnbind(space) else {
+        guard case .failure = await S.uploadForEntry(space) else {
             preconditionFailure("POST success followed by old GET must not report success")
         }
         precondition(S.hasPendingUpload(space) && space.lastUploadCloudTimestamp == 90 && space.needUploadCloud)
         precondition(space.lastUpdate == 100 && space.nodes.count == 2)
         request.responses = [.success(["data": remote]), .success([:]), .success(["data": space.payload])]
-        guard case .success = await S.uploadBeforeUnbind(space) else { preconditionFailure("old readback must remain retryable") }
+        guard case .success = await S.uploadForEntry(space) else { preconditionFailure("old readback must remain retryable") }
         precondition(!S.hasPendingUpload(space) && !space.needUploadCloud && space.lastUploadCloudTimestamp == 100)
         print("PASS: pending/accepted retries replace older cloud while stale readback stays unconfirmed until a matching GET")
         for mode in ["role", "key", "invalidLocal", "stateWrite", "spaceWrite", "cancelled", "localChanged",

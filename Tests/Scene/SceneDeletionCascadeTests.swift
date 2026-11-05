@@ -481,6 +481,12 @@ import Foundation
         let task = SceneDeletionTask(scene: scene, reference: reference, node: lamp, phase: .apply)
         let writes = task.messageHandles
         check(writes.count == 4, "clear matching entries plus captured deleting slots only")
+        let cancelledTask = SceneDeletionTask(scene: scene, reference: reference, node: lamp, phase: .apply)
+        let cancelledHandles = cancelledTask.messageHandles
+        cancelledHandles[0].schedulerTask = MeshSchedulerTask()
+        cancelledHandles[0].schedulerTask?.cancel()
+        check(!cancelledTask.apply(results: cancelledHandles, expected: cancelledHandles) && pending(scene).count == 1,
+              "superseded Scheduler cleanup cannot settle a Scene deletion receipt")
         check(!writes.contains { ($0.message as? SchedulerActionSet)?.index == 2 }, "unrelated slot is untouched")
         let newOwner = writes.first { $0.model === ordinary && ($0.message as? SchedulerActionSet)?.index == 5 }
         check((newOwner?.message as? SchedulerActionSet)?.entry == changed.schedulerEntry, "old scene is replaced by current owner configuration")
@@ -634,7 +640,7 @@ import Foundation
         let handles = task.messageHandles
         check(handles.count == 1, "slot protection fixture plans restoration of current owner")
         let old = current.nodeSlots![0]
-        current.nodeSlots = [.init(identity: old.identity, slot: 6, state: old.state, generation: old.generation)]
+        current.nodeSlots = [.init(identity: old.identity, slot: 6, state: old.state)]
         check(!task.apply(results: handles, expected: handles) && pending(scene) == [reference],
               "changing only current owner slot rejects previously captured cleanup receipt")
     }

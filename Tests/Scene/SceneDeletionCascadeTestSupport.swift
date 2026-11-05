@@ -52,6 +52,7 @@ struct SunricherVendorSet {
     let function: Function
 }
 final class MeshMessageHandle {
+    var schedulerTask: MeshSchedulerTask?
     let message: Any
     let model: Model
     var isSuccessful = true
@@ -356,4 +357,10 @@ final class SyncDeviceStepModel {
     var relevanceStepModels: [SyncDeviceStepModel] = []
     weak var parentDeviceModel: SyncDevicesModel?
     init(type: String, state: State, tasks: [SyncDeviceStepTaskModel]) { self.tasks = tasks }
+}
+
+// Queue ownership is exercised by TimedTaskReplacementTests; this suite owns
+// Scene persistence/rollback and receives captured cancellation status.
+enum TimedSchedulerTaskCoordinator {
+    static func attach(_ handles: [MeshMessageHandle], node: Node) {}
 }

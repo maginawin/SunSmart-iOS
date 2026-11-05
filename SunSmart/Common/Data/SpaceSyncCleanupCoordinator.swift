@@ -165,13 +165,8 @@ enum SpaceSyncCleanupCoordinator {
         // Resolve the App/Mesh transaction before ordinary protection checks or
         // exports compare persisted topology with the active network.
         guard GroupMemberPersistence.recover(space) else { return false }
-        guard await SpaceConfigurationSafety.recoverUpgradeBaselineIfNeeded(space, readLocal: {
-            guard let current = SpaceData.load(siteId: space.siteId, spaceId: space.id).first,
-                  current.lastUpdate == space.lastUpdate else { return nil }
-            return await current.export(allowsProtectedInspection: true)
-        }) else { return false }
-        guard scope.isCurrent, await SpaceConfigurationSafety.recoverCloudMembershipIfNeeded(space),
-              scope.isCurrent, SpaceConfigurationSafety.canCleanSyncReferences(space),
+        guard scope.isCurrent, !SpaceConfigurationSafety.needsUpgradeBaseline(space),
+              SpaceConfigurationSafety.canCleanSyncReferences(space),
               let context = try? SpaceConfigurationSafety.recoveryState(space),
               let original = await space.export(purpose: .cleanupInspection),
               scope.isCurrent else { return false }
@@ -183,8 +178,7 @@ enum SpaceSyncCleanupCoordinator {
                                                                stage: "cleanupTopology")
         }
         let timestamp = space.lastUpdate
-        guard await SpaceConfigurationSafety.verifySyncCleanupBaseline(space, local: original),
-              scope.isCurrent, SpaceConfigurationSafety.isCurrent(context, space: space), space.lastUpdate == timestamp,
+        guard scope.isCurrent, SpaceConfigurationSafety.isCurrent(context, space: space), space.lastUpdate == timestamp,
               let persisted = SpaceData.load(siteId: space.siteId, spaceId: space.id).first,
               persisted.lastUpdate == timestamp,
               let network = ProximityLightingTopologyContext.network(for: space) else { return false }

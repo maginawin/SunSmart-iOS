@@ -423,7 +423,7 @@ extension NetowrkReqeustApi: TargetType {
                 "userId": UserData.currentUserId,
                 "username": UserData.currentUserName
             ]
-            return ["site": siteData, "devicesInSetle": useDeivceAddressNum, "user": user]
+            return ["site": TimedSchedulerPayloadPolicy.siteWithoutBindingGeneration(siteData), "devicesInSetle": useDeivceAddressNum, "user": user]
             
         case .siteUpload(let siteData):
             
@@ -431,7 +431,7 @@ extension NetowrkReqeustApi: TargetType {
                 "userId": UserData.currentUserId,
                 "username": UserData.currentUserName
             ]
-            return ["site": siteData, "user": user]
+            return ["site": TimedSchedulerPayloadPolicy.siteWithoutBindingGeneration(siteData), "user": user]
         case .siteDelete(let siteId):
             return ["siteId": siteId, "userId": UserData.currentUserId]
         case .spaceInfo(let siteId, let spaceId, let password):
@@ -443,7 +443,7 @@ extension NetowrkReqeustApi: TargetType {
             return [
                 "siteId": siteId,
                 "spaceId": spaceId,
-                "spaces": [spaceData],
+                "spaces": [TimedSchedulerPayloadPolicy.withoutBindingGeneration(spaceData)],
                 "userId": UserData.currentUserId
             ]
         case .spaceDelete(let siteId, let spaceId):

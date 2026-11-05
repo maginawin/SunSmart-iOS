@@ -427,6 +427,84 @@ class CloudSynchronizationManager {
     private let recoveryGate = PendingSynchronizationRecoveryGate()
     private var deviceAddAdmissions: [UUID: DeviceAddCloudAdmission] = [:]
 
+    // Entry work never joins ordinary handles or lends them its readback policy.
+    private var entryReconciliations: [UUID: DeviceAddCloudScope] = [:]
+
+    @MainActor
+    func reconcileSpaceEntry(_ space: SpaceData, loadedConfiguration: [String: Any]?) async -> Swift.Result<Void, NetworkApiError> {
+        let token = UUID(), scope = DeviceAddCloudScope(space: space)
+        guard !entryReconciliations.values.contains(where: { $0.siteId == scope.siteId && $0.meshUUID == scope.meshUUID }) else {
+            return .failure(SpaceConfigurationSafety.uploadUnconfirmed)
+        }
+        entryReconciliations[token] = scope
+        var succeeded = false
+        defer {
+            if !succeeded {
+                // Preserve dirty data, but do not immediately replay a failed entry.
+                for handle in syncHandles where scope.contains(handle.operation) && handle.state.rawValue == CloudSynchronizationState.wait.rawValue {
+                    handle.cancel()
+                }
+            }
+            entryReconciliations.removeValue(forKey: token)
+            drainDeviceAddSynchronizations()
+        }
+        let running = syncHandles.filter { scope.contains($0.operation) && $0.state.rawValue == CloudSynchronizationState.inProgress.rawValue }
+        for handle in syncHandles where scope.contains(handle.operation) && handle.state.rawValue == CloudSynchronizationState.wait.rawValue {
+            handle.deferForDeviceAdd()
+        }
+        for handle in running { await handle.waitForConfigurationCompletion() }
+        guard !_Concurrency.Task<Never, Never>.isCancelled, scope.currentSpace != nil,
+              SpaceConfigurationSafety.canAutomaticallyUpload(space) || SpaceConfigurationSafety.canResumePendingUpload(space) else {
+            return .failure(SpaceConfigurationSafety.uploadUnconfirmed)
+        }
+        guard let site = SiteData.load(siteId: space.siteId), site.meshUUID == space.meshUUID else {
+            return .failure(SpaceConfigurationSafety.uploadUnconfirmed)
+        }
+        var createdSite = false
+        if !site.uploadCloud {
+            guard let context = try? SpaceConfigurationSafety.recoveryState(space) else {
+                return .failure(SpaceConfigurationSafety.uploadUnconfirmed)
+            }
+            if let createdTimestamp = context.siteCreationTimestamp {
+                let response = await NetworkRequest.shared.request(.siteInfo(siteId: site.id))
+                guard !_Concurrency.Task<Never, Never>.isCancelled, scope.currentSpace != nil,
+                      SpaceConfigurationSafety.isCurrent(context, space: space),
+                      SpaceConfigurationSafety.canAutomaticallyUpload(space) || SpaceConfigurationSafety.canResumePendingUpload(space),
+                      case .success(let value) = response, let remote = value["data"] as? [String: Any],
+                      remote["uuid"] as? String == site.id,
+                      let provisioner = remote["provisioner"] as? [String: Any],
+                      let currentSite = SiteData.load(siteId: site.id), currentSite.meshUUID == site.meshUUID else {
+                    return .failure(SpaceConfigurationSafety.uploadUnconfirmed)
+                }
+                currentSite.setProvisioner(provisionerData: provisioner)
+                currentSite.lastUploadCloudTimestamp = max(currentSite.lastUploadCloudTimestamp ?? 0, createdTimestamp)
+                currentSite.syncCloudError = nil
+                guard currentSite.save() else { return .failure(SpaceConfigurationSafety.uploadUnconfirmed) }
+            } else {
+                // The entry reservation owns this prerequisite. Reuse ordinary creation
+                // receipts and address validation before any child Space reconciliation.
+                let creation = CloudSynchronizationHandle(operation: .syncSite(site: site, syncSpaces: [space]), level: .promptly, result: nil)
+                syncHandles.append(creation)
+                creation.syncOperation()
+                await creation.waitForConfigurationCompletion()
+                syncHandles.removeAll { $0 === creation }
+                guard !_Concurrency.Task<Never, Never>.isCancelled, scope.currentSpace != nil else {
+                    return .failure(SpaceConfigurationSafety.uploadUnconfirmed)
+                }
+                switch creation.state {
+                case .successful: createdSite = true
+                case .failure(let error): return .failure(error)
+                default: return .failure(SpaceConfigurationSafety.uploadUnconfirmed)
+                }
+            }
+        }
+        // A preceding ordinary write invalidates the pre-entry GET snapshot.
+        let result = await SpaceConfigurationSafety.uploadForEntry(space,
+            loadedConfiguration: running.isEmpty && !createdSite ? loadedConfiguration : nil)
+        if case .success = result { succeeded = true }
+        return result
+    }
+
     func beginDeviceAdd(scope: DeviceAddCloudScope, ready: @escaping (Bool) -> Void) -> UUID {
         precondition(Thread.isMainThread)
         let token = UUID()
@@ -451,6 +529,7 @@ class CloudSynchronizationManager {
     }
 
     private func shouldDeferForDeviceAdd(_ operation: SyncOperation, excluding handle: CloudSynchronizationHandle? = nil) -> Bool {
+        if entryReconciliations.values.contains(where: { $0.currentSpace != nil && $0.contains(operation) }) { return true }
         if deviceAddAdmissions.values.contains(where: { $0.scope.currentSpace != nil && $0.scope.contains(operation) }) { return true }
         // An already sent final upload is allowed to settle. Later edits form another generation.
         return syncHandles.contains { other in
@@ -575,7 +654,9 @@ class CloudSynchronizationManager {
                 let preparedSite = await SpaceSyncCleanupCoordinator.prepareBatch(
                     site: site, spaces: site.spaces, requiringSuccessfulPreparation: false, shouldContinue: isCurrent,
                     shouldPrepare: { space in
-                        !self.isAddingDevices(to: space) && self.getSpaceCurrentSyncState(space) == nil
+                        !self.isAddingDevices(to: space)
+                            && !self.entryReconciliations.values.contains(where: { $0.contains(.syncSpace(space: space)) })
+                            && self.getSpaceCurrentSyncState(space) == nil
                             && !SpaceConfigurationSafety.hasPendingUpload(space)
                             && (space.needUploadCloud || SpaceConfigurationSafety.isBlocked(space))
                     }
@@ -693,6 +774,10 @@ class CloudSynchronizationManager {
         if isDeviceAddAdmission { handle.serializesDeviceAdd = true }
         handle.mayStart = { [weak self, weak handle] in
             guard let self, let handle else { return false }
+            if self.entryReconciliations.values.contains(where: { $0.currentSpace != nil && $0.contains(handle.operation) }) {
+                handle.deferForDeviceAdd()
+                return false
+            }
             if handle.isDeviceAddAdmission { return true }
             if self.shouldDeferForDeviceAdd(handle.operation, excluding: handle) {
                 handle.deferForDeviceAdd()
@@ -1024,6 +1109,10 @@ class CloudSynchronizationHandle: NSObject {
     private var requestHandle: Cancellable?
     /// Gateway Register 使用共享 Authorization 服务执行。
     private var gatewayAuthorizationTask: _Concurrency.Task<Void, Never>?
+    fileprivate func waitForConfigurationCompletion() async {
+        await configurationUploadTask?.value
+    }
+
     private var configurationUploadTask: _Concurrency.Task<Void, Never>?
     /// 同步数据操作回调
     private var handleCallback: SyncHandleCallback?
@@ -1061,12 +1150,11 @@ class CloudSynchronizationHandle: NSObject {
             // 更新缓存
             switch self.operation {
             case .syncSite(let site, let spaces):
-                site.syncCloudError = error
+                site.saveCloudSyncFailure(error)
                 spaces.forEach({ 
                     $0.syncCloudError = error
                     $0.save()
                 })
-                site.save()
             case .addSpaces(_, let spaces):
                 spaces.forEach({
                     $0.syncCloudError = error
@@ -1134,20 +1222,16 @@ class CloudSynchronizationHandle: NSObject {
         state = .failure(error: error)
         switch operation {
         case .syncSite(let site, let spaces):
-            site.syncCloudError = error
-            site.save()
+            site.saveCloudSyncFailure(error)
             spaces.forEach {
-                $0.syncCloudError = error
-                $0.save()
+                _ = $0.saveCloudSyncOutcome(error: error)
             }
         case .addSpaces(_, let spaces):
             spaces.forEach {
-                $0.syncCloudError = error
-                $0.save()
+                _ = $0.saveCloudSyncOutcome(error: error)
             }
         case .syncSpace(let space):
-            space.syncCloudError = error
-            space.save()
+            _ = space.saveCloudSyncOutcome(error: error)
         case .syncGateway(let gateway, _):
             gateway.syncCloudError = error
             gateway.save()
@@ -1196,19 +1280,6 @@ class CloudSynchronizationHandle: NSObject {
         }
     }
 
-    /// A successful import is a new lifecycle, not acknowledgement of the old POST.
-    @MainActor
-    private func adoptedCloudImport(_ space: SpaceData, previous: SpaceRecoveryState) -> SpaceRecoveryState? {
-        guard let current = try? SpaceConfigurationSafety.recoveryState(space),
-              current.identity == previous.identity, current.phase == .active,
-              current.cloudImport?.supersededGeneration == previous.generation,
-              !SpaceConfigurationSafety.hasPendingImport(space), !SpaceConfigurationSafety.isBlocked(space),
-              let latest = SpaceData.load(siteId: space.siteId, spaceId: space.id).first,
-              latest.lastUploadCloudTimestamp == current.cloudImport?.timestamp else { return nil }
-        space.applyConfigurationState(from: latest)
-        return current
-    }
-    
     private var configurationSpaces: [SpaceData] {
         switch operation {
         case .syncSpace(let space): return [space]
@@ -1243,7 +1314,11 @@ class CloudSynchronizationHandle: NSObject {
         let previousMask = site.pendingSitePropsMask
         let previousPendingTimestamp = site.pendingSitePropsTimestamp
         let previousError = site.syncCloudError
-        if case .siteAdd = api, let resources = JSON(response)["data"]["addrLists"].dictionaryObject {
+        if case .siteAdd = api {
+            guard let resources = JSON(response)["data"]["addrLists"].dictionaryObject,
+                  ["ownerDevicesAddress", "ownerGroupsAddress", "ownerScenesAddress"].allSatisfy({
+                      (resources[$0] as? Int).map { $0 > 0 } == true
+                  }) else { return false }
             site.setOwnerProvisioner(addressData: resources)
         }
         if let initialSubmission = api.initialSiteTimeZoneSubmission {
@@ -1279,6 +1354,10 @@ class CloudSynchronizationHandle: NSObject {
         precondition(Thread.isMainThread)
         guard case .wait = state, !isCoalesced, mayStart?() != false else { return }
         guard isCurrentDeviceAddContext else { finishInvalidatedConfiguration(); return }
+        if case .syncSite(let site, let spaces) = operation,
+           let current = SiteData.load(siteId: site.id), current.meshUUID == site.meshUUID {
+            operation = .syncSite(site: current, syncSpaces: spaces)
+        }
         if waitTimer != nil {
             stopTimewait()
         }
@@ -1353,7 +1432,7 @@ class CloudSynchronizationHandle: NSObject {
             }
             let account = UserData.currentUserId
             let region = UserData.currentServerRegion
-            var lifecycle = Dictionary(self.configurationSpaces.compactMap { space -> (String, SpaceRecoveryState)? in
+            let lifecycle = Dictionary(self.configurationSpaces.compactMap { space -> (String, SpaceRecoveryState)? in
                 guard let context = try? SpaceConfigurationSafety.recoveryState(space) else { return nil }
                 return (space.id, context)
             }, uniquingKeysWith: { first, _ in first })
@@ -1363,38 +1442,22 @@ class CloudSynchronizationHandle: NSObject {
                 }
             }
             guard isCurrentOperation() else { self.finishInvalidatedConfiguration(lifecycle: lifecycle); return }
-            var importedCloud = false
-            let hadPending = self.configurationSpaces.contains { SpaceConfigurationSafety.hasPendingUpload($0) }
             if case .syncSite(let site, _) = self.operation, !site.uploadCloud,
-               let createdTimestamp = lifecycle.values.compactMap(\.siteCreationTimestamp).max() {
-                // Recover acceptance/resources after a crash before Site.save().
-                let result = await NetworkRequest.shared.request(.siteInfo(siteId: site.id))
-                guard !_Concurrency.Task<Never, Never>.isCancelled, isCurrentOperation() else { return }
-                guard case .success(let response) = result, let remote = response["data"] as? [String: Any],
-                      remote["uuid"] as? String == site.id,
-                      let provisioner = remote["provisioner"] as? [String: Any] else {
-                    self.finishConfigurationFailure(SpaceConfigurationSafety.uploadUnconfirmed)
-                    return
-                }
-                site.setProvisioner(provisionerData: provisioner)
-                site.lastUploadCloudTimestamp = createdTimestamp
-                guard site.save() else { self.finishConfigurationFailure(SpaceConfigurationSafety.uploadUnconfirmed); return }
+               lifecycle.values.contains(where: { $0.siteCreationTimestamp != nil }) {
+                // Unknown first creation may own server-assigned resources. Do not
+                // create it again or infer success; entry/explicit recovery owns it.
+                self.finishConfigurationFailure(SpaceConfigurationSafety.uploadUnconfirmed)
+                return
             }
             for space in self.configurationSpaces {
-                if case .failure(let error) = await SpaceConfigurationSafety.resumeUpload(space, preparingUpload: true) {
-                    guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
-                    guard isCurrentOperation() else { self.finishInvalidatedConfiguration(lifecycle: lifecycle); return }
+                if case .failure(let error) = SpaceConfigurationSafety.resumeLocalUpload(space) {
                     self.finishConfigurationFailure(error)
                     return
                 }
-                if let previous = lifecycle[space.id], let current = self.adoptedCloudImport(space, previous: previous) {
-                    lifecycle[space.id] = current
-                    importedCloud = true
-                }
             }
             guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
-            // Entry cleanup waits while a receipt is pending. Prepare the normal
-            // upload boundary after confirmation, even when no POST is needed.
+            // Prepare local cleanup/export after receipt finalization, even when
+            // no POST is needed. This boundary must never perform remote recovery.
             // Any cleanup edits must be included before deciding this sync is done.
             guard let api = await self.operation.getNetworkApi() else {
                 guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
@@ -1404,7 +1467,7 @@ class CloudSynchronizationHandle: NSObject {
             }
             guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
             guard isCurrentOperation() else { self.finishInvalidatedConfiguration(lifecycle: lifecycle); return }
-            if (hadPending || importedCloud) && !self.configurationSpaces.contains(where: { $0.needUploadCloud }) {
+            if !self.configurationSpaces.contains(where: { $0.needUploadCloud }) {
                 let sitePending: Bool
                 switch self.operation {
                 case .syncSite(let site, _), .addSpaces(let site, _):
@@ -1486,16 +1549,8 @@ class CloudSynchronizationHandle: NSObject {
                         result = .failure(SpaceConfigurationSafety.uploadUnconfirmed)
                         continue
                     }
-                    if case .success = await SpaceConfigurationSafety.resumeUpload(space) {
-                        if let previous = lifecycle[space.id], let current = self.adoptedCloudImport(space, previous: previous) {
-                            lifecycle[space.id] = current
-                            importedCloud = true
-                        }
-                        if case .success = await SpaceConfigurationSafety.finishCloudRemovalUpload(space) {
-                            confirmedConfigurationIds.insert(id)
-                        } else {
-                            result = .failure(SpaceConfigurationSafety.uploadUnconfirmed)
-                        }
+                    if let context = contexts[id], SpaceConfigurationSafety.finishAcceptedSubmission(context, space: space) {
+                        confirmedConfigurationIds.insert(id)
                     } else {
                         result = .failure(SpaceConfigurationSafety.uploadUnconfirmed)
                     }
@@ -1503,7 +1558,6 @@ class CloudSynchronizationHandle: NSObject {
             }
             let completionResult = result
             let completedConfigurationIds = confirmedConfigurationIds
-            let shouldContinueImportedConfiguration = importedCloud
             await MainActor.run {
                 guard !_Concurrency.Task<Never, Never>.isCancelled else { return }
                 guard isCurrentOperation() else { self.finishInvalidatedConfiguration(lifecycle: lifecycle); return }
@@ -1534,21 +1588,17 @@ class CloudSynchronizationHandle: NSObject {
                     // 更新缓存
                     switch self.operation {
                     case .syncSite(let site, let syncSpaces):
-                        site.syncCloudError = error
-                        site.save()
+                        site.saveCloudSyncFailure(error)
                         syncSpaces.filter { !completedConfigurationIds.contains($0.id) }.forEach({
-                            $0.syncCloudError = error
-                            $0.save()
+                            _ = $0.saveCloudSyncOutcome(error: error)
                         })
                     case .addSpaces(_, let spaces):
                         spaces.filter { !completedConfigurationIds.contains($0.id) }.forEach({
-                            $0.syncCloudError = error
-                            $0.save()
+                            _ = $0.saveCloudSyncOutcome(error: error)
                         })
 //                        site.save()
                     case .syncSpace(let space):
-                        space.syncCloudError = error
-                        space.save()
+                        _ = space.saveCloudSyncOutcome(error: error)
                     case .syncGateway(let gateway, _):
                         gateway.syncCloudError = error
                         gateway.save()
@@ -1557,12 +1607,19 @@ class CloudSynchronizationHandle: NSObject {
                     
                 }
                 self.handleCallback?(self, self.state)
-                // finishImport can create a fresh version for normalized references.
-                // The old handle must be removed before enqueueing its successor,
-                // and its submitted payload must never acknowledge that new intent.
-                if shouldContinueImportedConfiguration { self.requeuePendingConfiguration() }
+
             }
         }
     }
     
+}
+
+private extension SiteData {
+    /// A suspended task must not overwrite Site recovery or newer form edits on failure.
+    func saveCloudSyncFailure(_ error: NetworkApiError) {
+        syncCloudError = error
+        guard let current = SiteData.load(siteId: id), current.meshUUID == meshUUID else { return }
+        current.syncCloudError = error
+        if current.save() { lastUploadCloudTimestamp = current.lastUploadCloudTimestamp }
+    }
 }

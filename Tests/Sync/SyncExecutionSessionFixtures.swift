@@ -58,10 +58,11 @@ final class ProfileSensorProtectionContext {
     func markPreDisableStarted() { starts += 1 }
     func markTargetStateTaskStarted(for node: Node) { starts += 1 }
 }
-enum SpaceChangeDataType { case device }
+enum SpaceChangeDataType { case device, syncResult(changed: Bool) }
 let spaceDataChangedNotificaitonName = "session-test"
 
 final class SyncExecutionEnvironment {
+    var hasPendingCloudChanges: () -> Bool = { false }
     var configurationIsCurrent: () -> Bool = { true }
     var configurationAvailable: () -> Bool = { true }
     var bluetoothAvailable: () -> Bool = { true }

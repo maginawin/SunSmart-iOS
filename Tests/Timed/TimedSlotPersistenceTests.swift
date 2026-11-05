@@ -210,7 +210,7 @@ enum SceneDeletionCascade {
         requireEmptyReferences(); return false
     }
 }
-final class MeshMessageHandle: NSObject { var sceneContext: SceneMessageContext?; var message: Any = 0; var model: Model?; var continuous = true }
+final class MeshMessageHandle: NSObject { var schedulerTask: MeshSchedulerTask?; var sceneContext: SceneMessageContext?; var message: Any = 0; var model: Model?; var continuous = true }
 final class MeshProxyMessageCommand { static let shared = MeshProxyMessageCommand(); var isBusy = false }
 enum XWHUDManager { static func showTipHUD(_ message: String, isLineFeed: Bool) {} }
 final class SpaceData {
@@ -287,6 +287,20 @@ enum ScheduleServer {
         let loaded = Schedule.load(meshUUID: "mesh", meshNetworkId: "one", scheduleId: 300).first!
         precondition(loaded.nodeSlots == item.nodeSlots && loaded.needDeleteNodeAddresses == [1])
         precondition(loaded.needDeleteGroupAddresses == [0xC001] && loaded.needDeleteSceneNumbers == [6])
+        for value: Any in [UUID().uuidString, NSNull(), 123, ["bad": true], "invalid"] {
+            var raw = try JSONSerialization.jsonObject(with: JSONEncoder().encode(item.nodeSlots!)) as! [[String: Any]]
+            raw[0]["generation"] = value
+            let bytes = try JSONSerialization.data(withJSONObject: raw).map { String(format: "%02X", $0) }.joined()
+            try db.execute("UPDATE schedules SET nodeSlots = X'\(bytes)' WHERE scheduleIndex = 300")
+            SunSmartDataManager.shared.db = nil
+            db = try Connection(path); SunSmartDataManager.shared.db = db
+            let legacy = Schedule.load(meshUUID: "mesh", meshNetworkId: "one", scheduleId: 300).first!
+            precondition(!legacy.nodeSlotsLoadFailed && legacy.nodeSlots == item.nodeSlots)
+            precondition(legacy.save(meshUUID: "mesh", meshNetworkId: "one"))
+            let saved = Schedule.load(meshUUID: "mesh", meshNetworkId: "one", scheduleId: 300).first!
+            let output = try JSONSerialization.jsonObject(with: JSONEncoder().encode(saved.nodeSlots!)) as! [[String: Any]]
+            precondition(output.allSatisfy { $0["generation"] == nil })
+        }
         try db.execute("UPDATE schedules SET nodeSlots = X'FFFF' WHERE scheduleIndex = 300")
         let damaged = Schedule.load(meshUUID: "mesh", meshNetworkId: "one", scheduleId: 300).first!
         precondition(damaged.nodeSlotsLoadFailed && !damaged.save(meshUUID: "mesh", meshNetworkId: "one"))
@@ -592,7 +606,7 @@ enum ScheduleServer {
         let pending = grouped.nodeSlots!
         precondition(pending.first { $0.identity == a.timedSchedulerIdentity }?.state == .pendingRemoval)
         precondition(pending.first { $0.identity == b.timedSchedulerIdentity }?.state == .assigned)
-        precondition(zip(assigned, pending).allSatisfy { $0.slot == $1.slot && $0.generation == $1.generation })
+        precondition(zip(assigned, pending).allSatisfy { $0.slot == $1.slot && $0.identity == $1.identity })
         let reloaded = Schedule.load(meshUUID: manager.meshNetwork!.uuid.uuidString,
             meshNetworkId: manager.currentNetworkKey.networkId.hex, scheduleId: grouped.id).first!
         precondition(reloaded.nodeSlots == pending)
@@ -711,7 +725,7 @@ enum ScheduleServer {
                 ScheduleServer.successfulAddresses = [1, 5]
                 ScheduleServer.setEnabledState(schedule: schedule, enabled: !original, success: nil, failed: nil)
                 precondition(Schedule.load(meshUUID: uuid, meshNetworkId: networkID, scheduleId: 0).first!.enabled == !original)
-                precondition(schedule.nodeSlots == slots, "retry must preserve slots and generations")
+                precondition(schedule.nodeSlots == slots, "retry must preserve slots and identities")
             }
         }
         let originalNetwork = manager.meshNetwork!
@@ -760,13 +774,16 @@ enum ScheduleServer {
         precondition(Set(manager.schedules.suffix(16).compactMap { $0.slot(on: b) }) == Set(0..<16))
         let schedule = manager.schedules[0]
         let handle = MeshMessageHandle()
+        handle.schedulerTask = MeshSchedulerTask()
         handle.timedSchedulerContext = TimedSchedulerMessageContext(schedule: schedule, node: a)
         a.applyMessageHandle(handle)
         precondition(a.appliedMessages == 1)
         let binding = schedule.nodeSlots![0]
         schedule.nodeSlots = [.init(identity: binding.identity, slot: binding.slot, state: .assigned)]
+        handle.schedulerTask?.cancel()
         a.applyMessageHandle(handle)
-        precondition(a.appliedMessages == 1, "a late reply cannot mutate a reused slot generation")
+        precondition(a.appliedMessages == 1, "a cancelled task cannot mutate a reused slot")
+        handle.schedulerTask = MeshSchedulerTask()
         handle.timedSchedulerContext = TimedSchedulerMessageContext(schedule: schedule, node: a)
         schedule.selectTargetType = .profile
         a.applyMessageHandle(handle)
@@ -797,7 +814,7 @@ enum ScheduleServer {
         precondition(Schedule.load(meshUUID: manager.meshNetwork!.uuid.uuidString,
             meshNetworkId: manager.currentNetworkKey.networkId.hex, scheduleId: 500).isEmpty,
             "failed membership must roll back the persisted reservation")
-        print("PASS: production reservation transaction, per-device lookup, failed Space save and late-reply identity/generation guards")
+        print("PASS: production reservation transaction, per-device lookup, failed Space save and late-reply identity/task guards")
     }
 
     static func sceneRemovalIsNotAnActiveTarget() {
@@ -845,4 +862,9 @@ struct SceneMessageContext {
     var revision: UUID? = nil
     func matches(node: Node) -> Bool { false }
     func apply(node: Node, successful: Bool, beforePersist: (() -> Bool)? = nil) -> Bool { false }
+}
+
+// Transport admission is outside this SQLite suite; dedicated task tests execute it.
+enum TimedSchedulerTaskCoordinator {
+    static func configurationSaved(_ schedule: Schedule, meshUUID: String, networkID: String) {}
 }

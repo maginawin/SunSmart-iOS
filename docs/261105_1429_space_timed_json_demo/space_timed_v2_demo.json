@@ -1,0 +1,985 @@
+{
+  "uuid": "00000000-0000-4000-9000-000000000001",
+  "spaceName": "Timed Integration Demo",
+  "updateTimestamp": 1793836800,
+  "spaceData": {
+    "timedSchemaVersion": 2,
+    "sceneConfigurations": [
+      {
+        "number": "000A",
+        "schemaVersion": 1,
+        "kind": "groups",
+        "name": "Evening Group Scene",
+        "revision": "00000000-0000-4000-A000-000000000010",
+        "deviceMembers": [],
+        "pendingOperations": [],
+        "isDeleting": false
+      },
+      {
+        "number": "000B",
+        "schemaVersion": 1,
+        "kind": "devices",
+        "name": "Evening Device Scene",
+        "revision": "00000000-0000-4000-A000-000000000011",
+        "deviceMembers": [
+          {
+            "identity": {
+              "nodeUUID": "00000000-0000-4000-8000-000000000003",
+              "unicastAddress": "0300",
+              "deviceKeyFingerprint": "5b3f6ae09aeebcf690d05a83cc323f4dc271773a76fe85bb44c8b69992bef616"
+            },
+            "parameters": {
+              "isOn": true,
+              "lightness": 32768,
+              "cct": 4000
+            }
+          }
+        ],
+        "pendingOperations": [],
+        "isDeleting": false
+      }
+    ]
+  },
+  "schedules": [
+    {
+      "id": 100,
+      "name": "Group Auto On - Workdays",
+      "enabled": true,
+      "selectTarget": 0,
+      "action": 1,
+      "fadeTime": 5,
+      "hour": 8,
+      "minute": 0,
+      "dayOfWeek": 31,
+      "deviceAddresses": [],
+      "groupAddresses": [
+        "C001"
+      ],
+      "sceneAddress": null,
+      "profiles": [],
+      "nodeSlots": [
+        {
+          "identity": {
+            "nodeUUID": "00000000-0000-4000-8000-000000000001",
+            "unicastAddress": "0100",
+            "deviceKeyFingerprint": "0a4a91ae6e293dee6cb98cf621ae487d781966980403b7b0472e7807bd676c3b"
+          },
+          "slot": 0,
+          "state": "assigned"
+        },
+        {
+          "identity": {
+            "nodeUUID": "00000000-0000-4000-8000-000000000002",
+            "unicastAddress": "0200",
+            "deviceKeyFingerprint": "9fbffbc2fbcaf4c1a211eaf4f4a2f0f704bd6e089fc442c894e3ac9e45b798dc"
+          },
+          "slot": 3,
+          "state": "assigned"
+        }
+      ],
+      "needDeleteNodeAddresses": [],
+      "needDeleteGroupAddresses": [],
+      "needDeleteSceneNumbers": []
+    },
+    {
+      "id": 101,
+      "name": "Group Off - Disabled",
+      "enabled": false,
+      "selectTarget": 0,
+      "action": 0,
+      "fadeTime": 0,
+      "hour": 22,
+      "minute": 0,
+      "dayOfWeek": 127,
+      "deviceAddresses": [],
+      "groupAddresses": [
+        "C001"
+      ],
+      "sceneAddress": null,
+      "profiles": [],
+      "nodeSlots": [
+        {
+          "identity": {
+            "nodeUUID": "00000000-0000-4000-8000-000000000001",
+            "unicastAddress": "0100",
+            "deviceKeyFingerprint": "0a4a91ae6e293dee6cb98cf621ae487d781966980403b7b0472e7807bd676c3b"
+          },
+          "slot": 1,
+          "state": "assigned"
+        },
+        {
+          "identity": {
+            "nodeUUID": "00000000-0000-4000-8000-000000000002",
+            "unicastAddress": "0200",
+            "deviceKeyFingerprint": "9fbffbc2fbcaf4c1a211eaf4f4a2f0f704bd6e089fc442c894e3ac9e45b798dc"
+          },
+          "slot": 4,
+          "state": "assigned"
+        }
+      ],
+      "needDeleteNodeAddresses": [],
+      "needDeleteGroupAddresses": [],
+      "needDeleteSceneNumbers": []
+    },
+    {
+      "id": 102,
+      "name": "Device On - Weekend",
+      "enabled": true,
+      "selectTarget": 1,
+      "action": 1,
+      "fadeTime": 5,
+      "hour": 9,
+      "minute": 30,
+      "dayOfWeek": 96,
+      "deviceAddresses": [
+        "0300"
+      ],
+      "groupAddresses": [],
+      "sceneAddress": null,
+      "profiles": [],
+      "nodeSlots": [
+        {
+          "identity": {
+            "nodeUUID": "00000000-0000-4000-8000-000000000003",
+            "unicastAddress": "0300",
+            "deviceKeyFingerprint": "5b3f6ae09aeebcf690d05a83cc323f4dc271773a76fe85bb44c8b69992bef616"
+          },
+          "slot": 0,
+          "state": "assigned"
+        }
+      ],
+      "needDeleteNodeAddresses": [],
+      "needDeleteGroupAddresses": [],
+      "needDeleteSceneNumbers": []
+    },
+    {
+      "id": 103,
+      "name": "Group Scene Recall",
+      "enabled": true,
+      "selectTarget": 2,
+      "action": 2,
+      "fadeTime": 5,
+      "hour": 18,
+      "minute": 0,
+      "dayOfWeek": 127,
+      "deviceAddresses": [],
+      "groupAddresses": [],
+      "sceneAddress": "000A",
+      "profiles": [],
+      "nodeSlots": [
+        {
+          "identity": {
+            "nodeUUID": "00000000-0000-4000-8000-000000000001",
+            "unicastAddress": "0100",
+            "deviceKeyFingerprint": "0a4a91ae6e293dee6cb98cf621ae487d781966980403b7b0472e7807bd676c3b"
+          },
+          "slot": 2,
+          "state": "assigned"
+        },
+        {
+          "identity": {
+            "nodeUUID": "00000000-0000-4000-8000-000000000002",
+            "unicastAddress": "0200",
+            "deviceKeyFingerprint": "9fbffbc2fbcaf4c1a211eaf4f4a2f0f704bd6e089fc442c894e3ac9e45b798dc"
+          },
+          "slot": 5,
+          "state": "assigned"
+        }
+      ],
+      "needDeleteNodeAddresses": [],
+      "needDeleteGroupAddresses": [],
+      "needDeleteSceneNumbers": []
+    },
+    {
+      "id": 104,
+      "name": "Device Scene Recall",
+      "enabled": true,
+      "selectTarget": 2,
+      "action": 2,
+      "fadeTime": 5,
+      "hour": 19,
+      "minute": 0,
+      "dayOfWeek": 127,
+      "deviceAddresses": [],
+      "groupAddresses": [],
+      "sceneAddress": "000B",
+      "profiles": [],
+      "nodeSlots": [
+        {
+          "identity": {
+            "nodeUUID": "00000000-0000-4000-8000-000000000003",
+            "unicastAddress": "0300",
+            "deviceKeyFingerprint": "5b3f6ae09aeebcf690d05a83cc323f4dc271773a76fe85bb44c8b69992bef616"
+          },
+          "slot": 1,
+          "state": "assigned"
+        }
+      ],
+      "needDeleteNodeAddresses": [],
+      "needDeleteGroupAddresses": [],
+      "needDeleteSceneNumbers": []
+    },
+    {
+      "id": 105,
+      "name": "Partial Success - New Time",
+      "enabled": true,
+      "selectTarget": 1,
+      "action": 1,
+      "fadeTime": 5,
+      "hour": 10,
+      "minute": 0,
+      "dayOfWeek": 127,
+      "deviceAddresses": [
+        "0100",
+        "0200"
+      ],
+      "groupAddresses": [],
+      "sceneAddress": null,
+      "profiles": [],
+      "nodeSlots": [
+        {
+          "identity": {
+            "nodeUUID": "00000000-0000-4000-8000-000000000001",
+            "unicastAddress": "0100",
+            "deviceKeyFingerprint": "0a4a91ae6e293dee6cb98cf621ae487d781966980403b7b0472e7807bd676c3b"
+          },
+          "slot": 3,
+          "state": "assigned"
+        },
+        {
+          "identity": {
+            "nodeUUID": "00000000-0000-4000-8000-000000000002",
+            "unicastAddress": "0200",
+            "deviceKeyFingerprint": "9fbffbc2fbcaf4c1a211eaf4f4a2f0f704bd6e089fc442c894e3ac9e45b798dc"
+          },
+          "slot": 6,
+          "state": "assigned"
+        }
+      ],
+      "needDeleteNodeAddresses": [],
+      "needDeleteGroupAddresses": [],
+      "needDeleteSceneNumbers": []
+    },
+    {
+      "id": 106,
+      "name": "New Device Off - Unassigned",
+      "enabled": true,
+      "selectTarget": 1,
+      "action": 0,
+      "fadeTime": 5,
+      "hour": 23,
+      "minute": 0,
+      "dayOfWeek": 127,
+      "deviceAddresses": [
+        "0300"
+      ],
+      "groupAddresses": [],
+      "sceneAddress": null,
+      "profiles": [],
+      "nodeSlots": [],
+      "needDeleteNodeAddresses": [],
+      "needDeleteGroupAddresses": [],
+      "needDeleteSceneNumbers": []
+    },
+    {
+      "id": 107,
+      "name": "Deleted Schedule - Cleanup Pending",
+      "enabled": true,
+      "selectTarget": 1,
+      "action": 15,
+      "fadeTime": 5,
+      "hour": 21,
+      "minute": 0,
+      "dayOfWeek": 127,
+      "deviceAddresses": [],
+      "groupAddresses": [],
+      "sceneAddress": null,
+      "profiles": [],
+      "nodeSlots": [
+        {
+          "identity": {
+            "nodeUUID": "00000000-0000-4000-8000-000000000003",
+            "unicastAddress": "0300",
+            "deviceKeyFingerprint": "5b3f6ae09aeebcf690d05a83cc323f4dc271773a76fe85bb44c8b69992bef616"
+          },
+          "slot": 2,
+          "state": "pendingRemoval"
+        }
+      ],
+      "needDeleteNodeAddresses": [
+        "0300"
+      ],
+      "needDeleteGroupAddresses": [],
+      "needDeleteSceneNumbers": []
+    },
+    {
+      "id": 108,
+      "name": "Keep A - Remove C",
+      "enabled": true,
+      "selectTarget": 1,
+      "action": 0,
+      "fadeTime": 5,
+      "hour": 20,
+      "minute": 0,
+      "dayOfWeek": 127,
+      "deviceAddresses": [
+        "0100"
+      ],
+      "groupAddresses": [],
+      "sceneAddress": null,
+      "profiles": [],
+      "nodeSlots": [
+        {
+          "identity": {
+            "nodeUUID": "00000000-0000-4000-8000-000000000001",
+            "unicastAddress": "0100",
+            "deviceKeyFingerprint": "0a4a91ae6e293dee6cb98cf621ae487d781966980403b7b0472e7807bd676c3b"
+          },
+          "slot": 4,
+          "state": "assigned"
+        },
+        {
+          "identity": {
+            "nodeUUID": "00000000-0000-4000-8000-000000000003",
+            "unicastAddress": "0300",
+            "deviceKeyFingerprint": "5b3f6ae09aeebcf690d05a83cc323f4dc271773a76fe85bb44c8b69992bef616"
+          },
+          "slot": 3,
+          "state": "pendingRemoval"
+        }
+      ],
+      "needDeleteNodeAddresses": [
+        "0300"
+      ],
+      "needDeleteGroupAddresses": [],
+      "needDeleteSceneNumbers": []
+    },
+    {
+      "id": 109,
+      "name": "Empty Group Target - Retained",
+      "enabled": true,
+      "selectTarget": 0,
+      "action": 1,
+      "fadeTime": 5,
+      "hour": 6,
+      "minute": 0,
+      "dayOfWeek": 127,
+      "deviceAddresses": [],
+      "groupAddresses": [],
+      "sceneAddress": null,
+      "profiles": [],
+      "nodeSlots": [],
+      "needDeleteNodeAddresses": [],
+      "needDeleteGroupAddresses": [],
+      "needDeleteSceneNumbers": []
+    },
+    {
+      "id": 110,
+      "name": "Profile Schedule - Server Managed",
+      "enabled": true,
+      "selectTarget": 3,
+      "action": 2,
+      "fadeTime": 5,
+      "hour": 7,
+      "minute": 0,
+      "dayOfWeek": 127,
+      "deviceAddresses": [],
+      "groupAddresses": [],
+      "sceneAddress": null,
+      "profiles": [
+        {
+          "groupAddress": "C003",
+          "profileSceneNumber": "FF01",
+          "groupName": "Profile Demo",
+          "type": 3
+        }
+      ],
+      "nodeSlots": [
+        {
+          "identity": {
+            "nodeUUID": "00000000-0000-4000-8000-000000000004",
+            "unicastAddress": "0400",
+            "deviceKeyFingerprint": "8dd236e66ea19b17d799f490f60bedca029f8aa032c7826fad0f4e8f6b8667b1"
+          },
+          "slot": 0,
+          "state": "assigned"
+        }
+      ],
+      "needDeleteNodeAddresses": [],
+      "needDeleteGroupAddresses": [],
+      "needDeleteSceneNumbers": []
+    },
+    {
+      "id": 111,
+      "name": "Empty Scene Target - Retained",
+      "enabled": true,
+      "selectTarget": 2,
+      "action": 2,
+      "fadeTime": 5,
+      "hour": 12,
+      "minute": 0,
+      "dayOfWeek": 127,
+      "deviceAddresses": [],
+      "groupAddresses": [],
+      "sceneAddress": null,
+      "profiles": [],
+      "nodeSlots": [],
+      "needDeleteNodeAddresses": [],
+      "needDeleteGroupAddresses": [],
+      "needDeleteSceneNumbers": []
+    },
+    {
+      "id": 112,
+      "name": "Imported Zero Week Mask - Does Not Trigger",
+      "enabled": true,
+      "selectTarget": 1,
+      "action": 1,
+      "fadeTime": 5,
+      "hour": 8,
+      "minute": 0,
+      "dayOfWeek": 0,
+      "deviceAddresses": [
+        "0300"
+      ],
+      "groupAddresses": [],
+      "sceneAddress": null,
+      "profiles": [],
+      "nodeSlots": [
+        {
+          "identity": {
+            "nodeUUID": "00000000-0000-4000-8000-000000000003",
+            "unicastAddress": "0300",
+            "deviceKeyFingerprint": "5b3f6ae09aeebcf690d05a83cc323f4dc271773a76fe85bb44c8b69992bef616"
+          },
+          "slot": 4,
+          "state": "assigned"
+        }
+      ],
+      "needDeleteNodeAddresses": [],
+      "needDeleteGroupAddresses": [],
+      "needDeleteSceneNumbers": []
+    }
+  ],
+  "nodes": [
+    {
+      "uuid": "00000000-0000-4000-8000-000000000001",
+      "unicastAddress": "0100",
+      "name": "Demo Node 1",
+      "groupState": 1,
+      "elements": [
+        {
+          "index": 0,
+          "models": [
+            {
+              "modelId": "1000"
+            },
+            {
+              "modelId": "1200"
+            },
+            {
+              "modelId": "1203"
+            },
+            {
+              "modelId": "1204"
+            },
+            {
+              "modelId": "1206"
+            },
+            {
+              "modelId": "1207"
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "models": [
+            {
+              "modelId": "130F"
+            },
+            {
+              "modelId": "1206"
+            },
+            {
+              "modelId": "1207"
+            }
+          ]
+        }
+      ],
+      "groupAddress": "C001",
+      "schedules": [
+        {
+          "id": 0,
+          "year": 100,
+          "month": 4095,
+          "day": 0,
+          "hour": 8,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 31,
+          "action": 1,
+          "sceneNumber": 0,
+          "transitionTime": 5
+        },
+        {
+          "id": 1,
+          "year": 0,
+          "month": 4095,
+          "day": 0,
+          "hour": 22,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 127,
+          "action": 0,
+          "sceneNumber": 0,
+          "transitionTime": 0
+        },
+        {
+          "id": 2,
+          "year": 100,
+          "month": 4095,
+          "day": 0,
+          "hour": 18,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 127,
+          "action": 2,
+          "sceneNumber": 10,
+          "transitionTime": 5
+        },
+        {
+          "id": 3,
+          "year": 100,
+          "month": 4095,
+          "day": 0,
+          "hour": 10,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 127,
+          "action": 1,
+          "sceneNumber": 0,
+          "transitionTime": 5
+        },
+        {
+          "id": 4,
+          "year": 100,
+          "month": 4095,
+          "day": 0,
+          "hour": 20,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 127,
+          "action": 0,
+          "sceneNumber": 0,
+          "transitionTime": 5
+        }
+      ],
+      "custProps": {
+        "schedulerModelStates": {
+          "schemaVersion": 1,
+          "nodeUUID": "00000000-0000-4000-8000-000000000001",
+          "unicastAddress": "0100",
+          "deviceKeyFingerprint": "0a4a91ae6e293dee6cb98cf621ae487d781966980403b7b0472e7807bd676c3b",
+          "models": [
+            {
+              "elementAddress": "0100",
+              "modelId": "1207",
+              "entriesData": "Afh/YAHgD0AAAEL+fyAB4C9FCgBE/n9AAeAPRQAA"
+            },
+            {
+              "elementAddress": "0101",
+              "modelId": "1207",
+              "entriesData": "QP5/gADgE0UAAEP+f6AA4B9FAAA="
+            }
+          ],
+          "legacyEntriesData": "QP5/gADgE0UAAAH4f2AB4A9AAABC/n8gAeAvRQoAQ/5/oADgH0UAAET+f0AB4A9FAAA="
+        }
+      },
+      "timezoneOffset": 96,
+      "timestamp": 847152037
+    },
+    {
+      "uuid": "00000000-0000-4000-8000-000000000002",
+      "unicastAddress": "0200",
+      "name": "Demo Node 2",
+      "groupState": 1,
+      "elements": [
+        {
+          "index": 0,
+          "models": [
+            {
+              "modelId": "1000"
+            },
+            {
+              "modelId": "1200"
+            },
+            {
+              "modelId": "1203"
+            },
+            {
+              "modelId": "1204"
+            },
+            {
+              "modelId": "1206"
+            },
+            {
+              "modelId": "1207"
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "models": [
+            {
+              "modelId": "130F"
+            },
+            {
+              "modelId": "1206"
+            },
+            {
+              "modelId": "1207"
+            }
+          ]
+        }
+      ],
+      "groupAddress": "C001",
+      "schedules": [
+        {
+          "id": 3,
+          "year": 100,
+          "month": 4095,
+          "day": 0,
+          "hour": 8,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 31,
+          "action": 1,
+          "sceneNumber": 0,
+          "transitionTime": 5
+        },
+        {
+          "id": 4,
+          "year": 0,
+          "month": 4095,
+          "day": 0,
+          "hour": 22,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 127,
+          "action": 0,
+          "sceneNumber": 0,
+          "transitionTime": 0
+        },
+        {
+          "id": 5,
+          "year": 100,
+          "month": 4095,
+          "day": 0,
+          "hour": 18,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 127,
+          "action": 2,
+          "sceneNumber": 10,
+          "transitionTime": 5
+        },
+        {
+          "id": 6,
+          "year": 100,
+          "month": 4095,
+          "day": 0,
+          "hour": 9,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 127,
+          "action": 1,
+          "sceneNumber": 0,
+          "transitionTime": 5
+        }
+      ],
+      "custProps": {
+        "schedulerModelStates": {
+          "schemaVersion": 1,
+          "nodeUUID": "00000000-0000-4000-8000-000000000002",
+          "unicastAddress": "0200",
+          "deviceKeyFingerprint": "9fbffbc2fbcaf4c1a211eaf4f4a2f0f704bd6e089fc442c894e3ac9e45b798dc",
+          "models": [
+            {
+              "elementAddress": "0200",
+              "modelId": "1207",
+              "entriesData": "BPh/YAHgD0AAAEX+fyAB4C9FCgA="
+            },
+            {
+              "elementAddress": "0201",
+              "modelId": "1207",
+              "entriesData": "Q/5/gADgE0UAAEb+f5AA4B9FAAA="
+            }
+          ],
+          "legacyEntriesData": "Q/5/gADgE0UAAAT4f2AB4A9AAABF/n8gAeAvRQoARv5/kADgH0UAAA=="
+        }
+      }
+    },
+    {
+      "uuid": "00000000-0000-4000-8000-000000000003",
+      "unicastAddress": "0300",
+      "name": "Demo Node 3",
+      "groupState": 0,
+      "elements": [
+        {
+          "index": 0,
+          "models": [
+            {
+              "modelId": "1000"
+            },
+            {
+              "modelId": "1200"
+            },
+            {
+              "modelId": "1203"
+            },
+            {
+              "modelId": "1204"
+            },
+            {
+              "modelId": "1206"
+            },
+            {
+              "modelId": "1207"
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "models": [
+            {
+              "modelId": "130F"
+            },
+            {
+              "modelId": "1206"
+            },
+            {
+              "modelId": "1207"
+            }
+          ]
+        }
+      ],
+      "schedules": [
+        {
+          "id": 0,
+          "year": 100,
+          "month": 4095,
+          "day": 0,
+          "hour": 9,
+          "minute": 30,
+          "second": 0,
+          "dayOfWeek": 96,
+          "action": 1,
+          "sceneNumber": 0,
+          "transitionTime": 5
+        },
+        {
+          "id": 1,
+          "year": 100,
+          "month": 4095,
+          "day": 0,
+          "hour": 19,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 127,
+          "action": 2,
+          "sceneNumber": 11,
+          "transitionTime": 5
+        },
+        {
+          "id": 2,
+          "year": 100,
+          "month": 4095,
+          "day": 0,
+          "hour": 21,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 127,
+          "action": 1,
+          "sceneNumber": 0,
+          "transitionTime": 5
+        },
+        {
+          "id": 3,
+          "year": 100,
+          "month": 4095,
+          "day": 0,
+          "hour": 20,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 127,
+          "action": 0,
+          "sceneNumber": 0,
+          "transitionTime": 5
+        },
+        {
+          "id": 4,
+          "year": 100,
+          "month": 4095,
+          "day": 0,
+          "hour": 8,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 0,
+          "action": 1,
+          "sceneNumber": 0,
+          "transitionTime": 5
+        }
+      ],
+      "custProps": {
+        "schedulerModelStates": {
+          "schemaVersion": 1,
+          "nodeUUID": "00000000-0000-4000-8000-000000000003",
+          "unicastAddress": "0300",
+          "deviceKeyFingerprint": "5b3f6ae09aeebcf690d05a83cc323f4dc271773a76fe85bb44c8b69992bef616",
+          "models": [
+            {
+              "elementAddress": "0300",
+              "modelId": "1207",
+              "entriesData": "QP5/kDwAHEUAAEH+fzAB4C9FCwBC/n9QAeAfRQAAQ/5/QAHgD0UAAET+f4AAABBFAAA="
+            },
+            {
+              "elementAddress": "0301",
+              "modelId": "1207",
+              "entriesData": ""
+            }
+          ],
+          "legacyEntriesData": "QP5/kDwAHEUAAEH+fzAB4C9FCwBC/n9QAeAfRQAAQ/5/QAHgD0UAAET+f4AAABBFAAA="
+        }
+      }
+    },
+    {
+      "uuid": "00000000-0000-4000-8000-000000000004",
+      "unicastAddress": "0400",
+      "name": "Demo Node 4",
+      "groupState": 1,
+      "elements": [
+        {
+          "index": 0,
+          "models": [
+            {
+              "modelId": "1000"
+            },
+            {
+              "modelId": "1200"
+            },
+            {
+              "modelId": "1203"
+            },
+            {
+              "modelId": "1204"
+            },
+            {
+              "modelId": "1206"
+            },
+            {
+              "modelId": "1207"
+            }
+          ]
+        },
+        {
+          "index": 1,
+          "models": [
+            {
+              "modelId": "130F"
+            },
+            {
+              "modelId": "1206"
+            },
+            {
+              "modelId": "1207"
+            }
+          ]
+        }
+      ],
+      "groupAddress": "C003",
+      "schedules": [
+        {
+          "id": 0,
+          "year": 100,
+          "month": 4095,
+          "day": 0,
+          "hour": 7,
+          "minute": 0,
+          "second": 0,
+          "dayOfWeek": 127,
+          "action": 2,
+          "sceneNumber": 65281,
+          "transitionTime": 5
+        }
+      ],
+      "custProps": {
+        "schedulerModelStates": {
+          "schemaVersion": 1,
+          "nodeUUID": "00000000-0000-4000-8000-000000000004",
+          "unicastAddress": "0400",
+          "deviceKeyFingerprint": "8dd236e66ea19b17d799f490f60bedca029f8aa032c7826fad0f4e8f6b8667b1",
+          "models": [
+            {
+              "elementAddress": "0400",
+              "modelId": "1207",
+              "entriesData": "QP5/cADgL0UB/w=="
+            },
+            {
+              "elementAddress": "0401",
+              "modelId": "1207",
+              "entriesData": ""
+            }
+          ],
+          "legacyEntriesData": "QP5/cADgL0UB/w=="
+        }
+      }
+    }
+  ],
+  "groups": [
+    {
+      "address": "C001",
+      "name": "Automatic Lighting",
+      "parentAddress": "0000",
+      "profile": {
+        "id": "demo-profile-1",
+        "type": 3
+      },
+      "scenesDatas": [
+        {
+          "sceneNumber": 10,
+          "isOn": true,
+          "lightness": 32768,
+          "cct": 4000,
+          "state": 1
+        }
+      ]
+    },
+    {
+      "address": "C003",
+      "name": "Profile Demo",
+      "parentAddress": "0000",
+      "profile": {
+        "id": "demo-profile-3",
+        "type": 3,
+        "scenes": [
+          {
+            "number": "FF01",
+            "name": "Profile Morning"
+          }
+        ]
+      },
+      "scenesDatas": []
+    }
+  ],
+  "scenes": [
+    {
+      "number": "000A",
+      "name": "Evening Group Scene",
+      "imageId": 0
+    },
+    {
+      "number": "000B",
+      "name": "Evening Device Scene",
+      "imageId": 0
+    }
+  ]
+}

@@ -193,8 +193,9 @@ def run(suite):
                 lifecycle_source += function(mesh, '    @discardableResult\n    func completeGroupSceneRemoval(')
             lifecycle_source += '\n}\nextension Scene {\n'
             lifecycle_source += function((ROOT / 'SunSmart/Common/Data/Node+MessageHandles.swift').read_text(), '    func getDeleteMessageHandles(node:') + '\n}\n'
-            lifecycle_source += 'struct SchedulerContextBoundary { func matches(node: Node) -> Bool { true } }\nextension MeshMessageHandle { var timedSchedulerContext: SchedulerContextBoundary? { nil } }\n'
+            lifecycle_source += 'struct SchedulerContextBoundary { func matches(node: Node) -> Bool { true } }\nextension MeshMessageHandle { var timedSchedulerContext: SchedulerContextBoundary? { nil }; var schedulerTask: MeshSchedulerTask? { nil } }\n'
             lifecycle.write_text(lifecycle_source)
+            sources += [ROOT / '.local-sdk/nordic-sig-mesh-sdk/Sources/NordicSigMeshSDK/MeshLib/Manager/MeshSchedulerTask.swift']
             sources += [lifecycle, ROOT / 'SunSmart/Common/Data/SceneDeleteCapability.swift', command, command_support, coordinator, ROOT / 'Tests/Scene/SceneSaveCoordinatorTestSupport.swift', ROOT / 'Tests/Scene/SceneSaveCoordinatorTests.swift']
             subprocess.run(['swiftc', '-parse-as-library', *flags, *map(str, sources), '-o', str(binary)], check=True)
             subprocess.run([str(binary), str(tmp / 'coordinator.sqlite')], check=True)

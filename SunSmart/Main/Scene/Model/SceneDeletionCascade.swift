@@ -481,6 +481,7 @@ final class SceneDeletionTask {
                     }
                 }
             }
+            TimedSchedulerTaskCoordinator.attach(handles, node: node)
             return handles
         case .kinetic:
             guard let item = storedSwitch(),
@@ -591,6 +592,7 @@ final class SceneDeletionTask {
     }
 
     func apply(results: [MeshMessageHandle], expected: [MeshMessageHandle]) -> Bool {
+        guard !expected.contains(where: { $0.schedulerTask?.isCancelled == true }) else { return false }
         guard isCurrent, results.count == expected.count, results.allSatisfy(\.isSuccessful),
               !expected.isEmpty || allowsEmpty else {
             invalidateIncompleteSchedulerRead()

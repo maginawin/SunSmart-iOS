@@ -20,6 +20,8 @@ struct SpacePageRevision {
     var isCurrent: Bool { generation == NodeSyncStatusGeneration.current }
 }
 final class Schedule {
+    enum TargetType { case groups, profile }
+    var selectTargetType: TargetType = .groups
     let id: Int
     var enabled = false
     var existNodes = [1]
