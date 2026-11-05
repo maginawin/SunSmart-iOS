@@ -780,6 +780,7 @@
 		08AACC2F308B0FB700DC2934 /* SiteCreateViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = A94A3897BFB3707743564609 /* SiteCreateViewController.swift */; };
 		08AACC30308B0FB700DC2934 /* SiteCreationDraft.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89158615F2A314581CDBCB7D /* SiteCreationDraft.swift */; };
 		08AACC31308B0FB700DC2934 /* SiteCreationSelectionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3417B5CF1BA5BB371279A1BF /* SiteCreationSelectionRow.swift */; };
+		5BC6B29AEA7434211D16B21B /* SiteDaylightSavingTimeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A4F11B920E1E08872D1309 /* SiteDaylightSavingTimeView.swift */; };
 		08AACC32308B0FB700DC2934 /* SiteTypeSelectionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D7700FF7ECF232CFD8C21C /* SiteTypeSelectionAlertView.swift */; };
 		08AACC34308B0FB700DC2934 /* Pods_Common_SunSmart.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = C8FFD7D42E7D03B20074CC6A /* Pods_Common_SunSmart.framework */; };
 		08AACC35308B0FB700DC2934 /* NordicSigMeshSDK in Frameworks */ = {isa = PBXBuildFile; productRef = 08AAC93C308B0FB700DC2934 /* NordicSigMeshSDK */; };
@@ -1544,6 +1545,7 @@
 		184B585F7D7D068E69D14F91 /* SunSmart/Common/Data/HDBConfigurationStore+Mesh.swift in Sources */ = {isa = PBXBuildFile; fileRef = D868CBC4AA6F4DE32265BCD5 /* SunSmart/Common/Data/HDBConfigurationStore+Mesh.swift */; };
 		18A477FF2FEE4EC19023B5C0 /* SceneDeletionCascade.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C4F557C8B39402CBAC56A64 /* SceneDeletionCascade.swift */; };
 		19A077B06E00498D6578F388 /* SiteTimeZoneStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F93D02C348FD7CD581533125 /* SiteTimeZoneStore.swift */; };
+		E3145A50CDDB699276FA91C2 /* SiteDaylightSavingTimePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3CE5C502CB283A22C1F84CB /* SiteDaylightSavingTimePresentation.swift */; };
 		19D52AAF6D794F1E816D7AFC /* ../TriggerZone/SiteTriggerZoneData.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6CE8AF636BB4FFE942CAA9F /* ../TriggerZone/SiteTriggerZoneData.swift */; };
 		1A6C1ED512D211E14F4097F4 /* SceneCapacity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5517D0B3A977A33B3C0E1122 /* SceneCapacity.swift */; };
 		1AE8471EE7E7845D3E9818BB /* SunSmart/Main/Space/HDB/Controller/HDBLightingConfigurationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF78F3FCFC54B4704A9E8DE3 /* SunSmart/Main/Space/HDB/Controller/HDBLightingConfigurationViewController.swift */; };
@@ -1556,6 +1558,7 @@
 		1EF6E6161F5EF916D922C3E4 /* SunSmart/Main/Space/HDB/Model/HDBDeviceDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = E89B7B6C4B80FC8F8FB1F424 /* SunSmart/Main/Space/HDB/Model/HDBDeviceDiagnostics.swift */; };
 		1FAE4DDDBDF446118B26374D /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
 		1FB9F449CFBA5C18E741CB69 /* SiteCreationSelectionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3417B5CF1BA5BB371279A1BF /* SiteCreationSelectionRow.swift */; };
+		DF6ABBA73742E824F2753E84 /* SiteDaylightSavingTimeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A4F11B920E1E08872D1309 /* SiteDaylightSavingTimeView.swift */; };
 		202DC428470AB50942EE196E /* SiteTypeSelectionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D7700FF7ECF232CFD8C21C /* SiteTypeSelectionAlertView.swift */; };
 		210444DCC3A9482FA4681C9C /* SyncSwitchTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410911635EC34C3FB150304A /* SyncSwitchTaskBuilder.swift */; };
 		2110DC5892EB61F718B4247E /* SunSmart/Main/Space/HDB/Model/HDBPresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EF7A1E97AB7E4B256CFB995 /* SunSmart/Main/Space/HDB/Model/HDBPresentation.swift */; };
@@ -1614,6 +1617,7 @@
 		32E1DEEED4FE40498C304D21 /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAFAFE40DD648E99ECF0CBF /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift */; };
 		3464D9C6D2D887FF33331C80 /* GatewayDeletionContext.swift in Sources */ = {isa = PBXBuildFile; fileRef = B27A6139D1DCF407070F1CC0 /* GatewayDeletionContext.swift */; };
 		34D96792308637EDAB9B4F39 /* SiteTimeZoneStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F93D02C348FD7CD581533125 /* SiteTimeZoneStore.swift */; };
+		ACDCEF76797592157A716404 /* SiteDaylightSavingTimePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3CE5C502CB283A22C1F84CB /* SiteDaylightSavingTimePresentation.swift */; };
 		37A056ABB0BB45CBA2B91EFF /* SyncRunLifecycle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0B59554A984829AA7CEEDD /* SyncRunLifecycle.swift */; };
 		37F502C9F6AB4341BA0E74B6 /* SiteLocationPermissionAlertView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB376BCEC736411D9F75635E /* SiteLocationPermissionAlertView.swift */; };
 		38784D1D6ACF72C15017E22C /* SceneCapacityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16F7C698FF8AAA9861889A4A /* SceneCapacityPolicy.swift */; };
@@ -1654,6 +1658,7 @@
 		48FC38B375AE40F7BD4747F6 /* TimedSchedulerBindings.swift in Sources */ = {isa = PBXBuildFile; fileRef = E444A690981547E68AF6F650 /* TimedSchedulerBindings.swift */; };
 		494DE9E41E3FA3C96EEBE6A8 /* SiteTimeZoneService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A94DBB9C4C3D364BDF73928 /* SiteTimeZoneService.swift */; };
 		4A7F36D2697ADD12E13B82B2 /* SiteCreationSelectionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3417B5CF1BA5BB371279A1BF /* SiteCreationSelectionRow.swift */; };
+		7E0B5853550425B80BE8B33C /* SiteDaylightSavingTimeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A4F11B920E1E08872D1309 /* SiteDaylightSavingTimeView.swift */; };
 		4A8C05B6B391839141428003 /* SunSmart/Common/Data/HDBConfigurationStore+Mesh.swift in Sources */ = {isa = PBXBuildFile; fileRef = D868CBC4AA6F4DE32265BCD5 /* SunSmart/Common/Data/HDBConfigurationStore+Mesh.swift */; };
 		4AA083DDD20C4408BE2C7858 /* CountryRegionCatalogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6E6F5B811824CAEAC9F7CCF /* CountryRegionCatalogStore.swift */; };
 		4AB3F84613304D6A828720B8 /* SyncSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */; };
@@ -1690,6 +1695,7 @@
 		56FF99A2BEDC4FAB9D78D00D /* SyncExecutionEnvironment.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53262879C88F45C0A5B514FF /* SyncExecutionEnvironment.swift */; };
 		5751877508EC44D17F3E1308 /* SceneCapacityPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16F7C698FF8AAA9861889A4A /* SceneCapacityPolicy.swift */; };
 		57583A61414523C22455CED4 /* SiteTimeZoneStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F93D02C348FD7CD581533125 /* SiteTimeZoneStore.swift */; };
+		7321610786F71E77FDCFB40E /* SiteDaylightSavingTimePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3CE5C502CB283A22C1F84CB /* SiteDaylightSavingTimePresentation.swift */; };
 		58A40AFCFF874557A66FAB7C /* SyncExecutionSession+Result.swift in Sources */ = {isa = PBXBuildFile; fileRef = 914D311E46D24CAAB5EAD70B /* SyncExecutionSession+Result.swift */; };
 		58E53CF5AB1F48AB92B1B40F /* Node+SyncIdentify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */; };
 		5925738839754ABE96C90866 /* SyncTaskPlanBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7839267DE002482C9820B460 /* SyncTaskPlanBuilder.swift */; };
@@ -1706,6 +1712,7 @@
 		5D609FC7796C9A701C9C21E4 /* GatewayDeletionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = CFACA4781FD19C0A7E602416 /* GatewayDeletionCoordinator.swift */; };
 		5D84E180E2BD41759EAD2D91 /* ../TriggerZone/SiteTriggerZoneCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 328092E397014E308EBF7514 /* ../TriggerZone/SiteTriggerZoneCoordinator.swift */; };
 		5E34A1C54BA9A17E24169B48 /* SiteCreationSelectionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3417B5CF1BA5BB371279A1BF /* SiteCreationSelectionRow.swift */; };
+		1DC56BB143B1820EE87F03D0 /* SiteDaylightSavingTimeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A4F11B920E1E08872D1309 /* SiteDaylightSavingTimeView.swift */; };
 		5E74ABF9664B3FA172FE0046 /* SceneCapacity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5517D0B3A977A33B3C0E1122 /* SceneCapacity.swift */; };
 		5E95A84C510E4B66AC3125B8 /* Node+SyncIdentify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */; };
 		5EF447BE0F775B40B226FBA1 /* SiteExtensionData.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DCB2B189CDF58FAAA9C9B90 /* SiteExtensionData.swift */; };
@@ -1732,6 +1739,7 @@
 		6736ECD4C30742759540EC77 /* SceneConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82E1A63E85624C5E8C834A05 /* SceneConfiguration.swift */; };
 		67C0DB5D726D4866BCC1C8F7 /* SiteDeviceOwnershipReconciler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 199A5CBA758D4F9DB87E721A /* SiteDeviceOwnershipReconciler.swift */; };
 		67E9C201C3CFB08A603F82CF /* SiteTimeZoneStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F93D02C348FD7CD581533125 /* SiteTimeZoneStore.swift */; };
+		7F0BD3B4C824970A2B59E39D /* SiteDaylightSavingTimePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3CE5C502CB283A22C1F84CB /* SiteDaylightSavingTimePresentation.swift */; };
 		6816AE37A2874E79B2B6F91E /* SceneSaveCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF736B2EFD0A4AC78737BADD /* SceneSaveCoordinator.swift */; };
 		6839561B2FD044F1B23BE3E3 /* Node+SyncIdentify.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69F3F9F7B4DC4617A07C62A2 /* Node+SyncIdentify.swift */; };
 		68436DB2FC84DF7C5ED398C1 /* SunSmart/Main/Space/HDB/Model/HDBDeviceDiagnosticsService.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B7BE4657183EBB6F09A09A /* SunSmart/Main/Space/HDB/Model/HDBDeviceDiagnosticsService.swift */; };
@@ -1745,6 +1753,7 @@
 		6C6B0EB02CEFA3D714661349 /* SiteTimeZoneService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A94DBB9C4C3D364BDF73928 /* SiteTimeZoneService.swift */; };
 		6CBB1188A15047E2A3B5471C /* ../TriggerZone/SiteTriggerZoneViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 154BFB1972C74A5A861900C9 /* ../TriggerZone/SiteTriggerZoneViewController.swift */; };
 		6DB7E79EFEB11877DA6B9237 /* SiteCreationSelectionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3417B5CF1BA5BB371279A1BF /* SiteCreationSelectionRow.swift */; };
+		87AA549D2B39C33B4E4AA605 /* SiteDaylightSavingTimeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A4F11B920E1E08872D1309 /* SiteDaylightSavingTimeView.swift */; };
 		6DD203C84EC24200AD2D5FA2 /* SyncSceneScheduleTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6C95F9AFF684C0AB383B3DC /* SyncSceneScheduleTaskBuilder.swift */; };
 		6EA96793F71C4ACA838B74B7 /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BAFAFE40DD648E99ECF0CBF /* ../TriggerZone/SiteTriggerZoneCandidatePolicy.swift */; };
 		7081E41E05794E3A9C1A8708 /* SyncGatewayTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDC08E3E4CE64E528B3DB219 /* SyncGatewayTaskBuilder.swift */; };
@@ -1795,6 +1804,7 @@
 		84B0157EE5D0454D88012656 /* BleFirmwareScanSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = B3AD818AD8F2447FA1931D1C /* BleFirmwareScanSession.swift */; };
 		8532189C39E5051F44942D07 /* SunSmart/Main/Space/HDB/Model/HDBDeviceDiagnostics.swift in Sources */ = {isa = PBXBuildFile; fileRef = E89B7B6C4B80FC8F8FB1F424 /* SunSmart/Main/Space/HDB/Model/HDBDeviceDiagnostics.swift */; };
 		85AD95DCE59DA1C9F27D08AF /* SiteTimeZoneStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F93D02C348FD7CD581533125 /* SiteTimeZoneStore.swift */; };
+		E8CCEC3933F51845BFE8EB89 /* SiteDaylightSavingTimePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3CE5C502CB283A22C1F84CB /* SiteDaylightSavingTimePresentation.swift */; };
 		862EB7F9283A0929BD378769 /* SunSmart/Main/Space/HDB/Controller/HDBLightingConfigurationViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF78F3FCFC54B4704A9E8DE3 /* SunSmart/Main/Space/HDB/Controller/HDBLightingConfigurationViewController.swift */; };
 		8683B8A2634A4FA2A0BF419F /* SyncSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3ADF0604062A45E69A1F7116 /* SyncSessionCoordinator.swift */; };
 		8828861F08BB437BB42EF3A6 /* EmergencyFireControllerIconName.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AB43138D1CA4C21AFA5232A /* EmergencyFireControllerIconName.swift */; };
@@ -2200,6 +2210,7 @@
 		9DD5150F1871585BE5C286EA /* SunSmart/Common/Data/HDBConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76624AB80AE325450BE5A1C8 /* SunSmart/Common/Data/HDBConfiguration.swift */; };
 		9DF54C97E35B416BB2A48FB6 /* SceneDevicesSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8D1C662BCE8E47ECA77F098D /* SceneDevicesSelectionView.swift */; };
 		9DF7707ED0BF1BC7B1F6D471 /* SiteCreationSelectionRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3417B5CF1BA5BB371279A1BF /* SiteCreationSelectionRow.swift */; };
+		347406257DC5E3D5641DC761 /* SiteDaylightSavingTimeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9A4F11B920E1E08872D1309 /* SiteDaylightSavingTimeView.swift */; };
 		9E2B0727EB4BE3646BD5385C /* AppPerformance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 402BBE20BB0B8974D93669FC /* AppPerformance.swift */; };
 		9E9FBDED4035470FB220D1B3 /* SyncExecutionSession+Daylight.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5221FEA2CBC74F2995080D1C /* SyncExecutionSession+Daylight.swift */; };
 		9EF0C872DE925B4BA1D8350F /* ../TriggerZone/SiteTriggerZoneItemModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F2128472FBA54D99C09F203 /* ../TriggerZone/SiteTriggerZoneItemModel.swift */; };
@@ -2260,6 +2271,7 @@
 		B2A767D653494BB7A9635C53 /* SunSmart/Main/Space/HDB/Controller/HDBLightingZoneDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D399954817D74A1EB236D8AD /* SunSmart/Main/Space/HDB/Controller/HDBLightingZoneDetailViewController.swift */; };
 		B2E339866727436180CC5FED /* GroupMemberPersistence.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50F1295786B34127BAE1C674 /* GroupMemberPersistence.swift */; };
 		B2FFE6B2454269CF5E0BB9EA /* SiteTimeZoneStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F93D02C348FD7CD581533125 /* SiteTimeZoneStore.swift */; };
+		E845850026C993208AD0605D /* SiteDaylightSavingTimePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = A3CE5C502CB283A22C1F84CB /* SiteDaylightSavingTimePresentation.swift */; };
 		B3B8BFF9B96AF2E04BF8697B /* SceneCapacity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5517D0B3A977A33B3C0E1122 /* SceneCapacity.swift */; };
 		B45EE6EE745A436598F5915D /* SunSmart/Main/Space/HDB/Controller/HDBLightingZoneDetailViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = D399954817D74A1EB236D8AD /* SunSmart/Main/Space/HDB/Controller/HDBLightingZoneDetailViewController.swift */; };
 		B507A21C390C4ED4A6D99A27 /* SyncParameterTaskBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */; };
@@ -4924,6 +4936,7 @@
 		2F2128472FBA54D99C09F203 /* ../TriggerZone/SiteTriggerZoneItemModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneItemModel.swift; sourceTree = "<group>"; };
 		328092E397014E308EBF7514 /* ../TriggerZone/SiteTriggerZoneCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneCoordinator.swift; sourceTree = "<group>"; };
 		3417B5CF1BA5BB371279A1BF /* SiteCreationSelectionRow.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SiteCreationSelectionRow.swift; sourceTree = "<group>"; };
+		F9A4F11B920E1E08872D1309 /* SiteDaylightSavingTimeView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = SiteDaylightSavingTimeView.swift; sourceTree = "<group>"; };
 		377102F415AF43C298571374 /* SyncEmergencyFireTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncEmergencyFireTaskBuilder.swift; sourceTree = "<group>"; };
 		389EE8B82FF945EB8D6E9883 /* SyncExecutionSession+Acknowledgement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "SyncExecutionSession+Acknowledgement.swift"; sourceTree = "<group>"; };
 		392FAB0358444160BCBE29FC /* ../TriggerZone/SiteTriggerZoneCandidateReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ../TriggerZone/SiteTriggerZoneCandidateReader.swift; sourceTree = "<group>"; };
@@ -5775,6 +5788,7 @@
 		F26092000000000000000001 /* InformationTTLCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InformationTTLCoordinator.swift; sourceTree = "<group>"; };
 		F26092000000000000000101 /* InformationTTLMeshService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InformationTTLMeshService.swift; sourceTree = "<group>"; };
 		F93D02C348FD7CD581533125 /* SiteTimeZoneStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteTimeZoneStore.swift; sourceTree = "<group>"; };
+		A3CE5C502CB283A22C1F84CB /* SiteDaylightSavingTimePresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SiteDaylightSavingTimePresentation.swift; sourceTree = "<group>"; };
 		F99086170D2D40A6B3A2FF8B /* SyncParameterTaskBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncParameterTaskBuilder.swift; sourceTree = "<group>"; };
 		FDFE09FFC9994D668569EAC2 /* EmerFireAlarmMonitorState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmerFireAlarmMonitorState.swift; sourceTree = "<group>"; };
 		FE6146C6931F49E39CDC180D /* SyncRetryPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SyncRetryPolicy.swift; sourceTree = "<group>"; };
@@ -6814,6 +6828,7 @@
 				46D7700FF7ECF232CFD8C21C /* SiteTypeSelectionAlertView.swift */,
 				AB376BCEC736411D9F75635E /* SiteLocationPermissionAlertView.swift */,
 				3417B5CF1BA5BB371279A1BF /* SiteCreationSelectionRow.swift */,
+				F9A4F11B920E1E08872D1309 /* SiteDaylightSavingTimeView.swift */,
 				F2608110000000000000800 /* SiteTimeZoneSyncStatusView.swift */,
 				F2608120000000000001300 /* SiteEntryTimeZoneSyncOverlay.swift */,
 				F2608130000000000001400 /* SiteTimeZoneReviewSyncView.swift */,
@@ -6883,6 +6898,7 @@
 				E6E6F5B811824CAEAC9F7CCF /* CountryRegionCatalogStore.swift */,
 				6A94DBB9C4C3D364BDF73928 /* SiteTimeZoneService.swift */,
 				F93D02C348FD7CD581533125 /* SiteTimeZoneStore.swift */,
+				A3CE5C502CB283A22C1F84CB /* SiteDaylightSavingTimePresentation.swift */,
 				18E1C9D3B1F84897A45F8441 /* CityCatalogStore.swift */,
 				23834BB51BEE4736BAC3BE9A /* CountryRegionCatalogService.swift */,
 				BEE13AC710DF42A6A147914A /* CityCatalogService.swift */,
@@ -9495,11 +9511,13 @@
 				FC6E9C6627F84299A04BDA21 /* SiteCurrentLocationProvider.swift in Sources */,
 				A7AB46A7A2B84D45986C6507 /* SiteCurrentLocationRequest.swift in Sources */,
 				08AACC31308B0FB700DC2934 /* SiteCreationSelectionRow.swift in Sources */,
+				5BC6B29AEA7434211D16B21B /* SiteDaylightSavingTimeView.swift in Sources */,
 				08AACC32308B0FB700DC2934 /* SiteTypeSelectionAlertView.swift in Sources */,
 				649790252B9F40E193E10892 /* SiteLocationPermissionAlertView.swift in Sources */,
 				BD58CB10A1A147BBB10235EC /* CountryRegionCatalogStore.swift in Sources */,
 				6C6B0EB02CEFA3D714661349 /* SiteTimeZoneService.swift in Sources */,
 				34D96792308637EDAB9B4F39 /* SiteTimeZoneStore.swift in Sources */,
+				ACDCEF76797592157A716404 /* SiteDaylightSavingTimePresentation.swift in Sources */,
 				2BE324E6E73B412A89BA5EAC /* CityCatalogStore.swift in Sources */,
 				131E58B22F984C208E5A6784 /* CountryRegionCatalogService.swift in Sources */,
 				5B6550C3D1C34571873B3F1E /* CityCatalogService.swift in Sources */,
@@ -10284,11 +10302,13 @@
 				B613A7A6803E4A7F8176797B /* SiteCurrentLocationProvider.swift in Sources */,
 				30BC55120B7F4C31BC2789EE /* SiteCurrentLocationRequest.swift in Sources */,
 				9DF7707ED0BF1BC7B1F6D471 /* SiteCreationSelectionRow.swift in Sources */,
+				347406257DC5E3D5641DC761 /* SiteDaylightSavingTimeView.swift in Sources */,
 				202DC428470AB50942EE196E /* SiteTypeSelectionAlertView.swift in Sources */,
 				37F502C9F6AB4341BA0E74B6 /* SiteLocationPermissionAlertView.swift in Sources */,
 				F6730DD25BCE4E97BB81124F /* CountryRegionCatalogStore.swift in Sources */,
 				60FD817D4C87C5FD59FE7D22 /* SiteTimeZoneService.swift in Sources */,
 				85AD95DCE59DA1C9F27D08AF /* SiteTimeZoneStore.swift in Sources */,
+				E8CCEC3933F51845BFE8EB89 /* SiteDaylightSavingTimePresentation.swift in Sources */,
 				F82FE018088C49D5B731BBF0 /* CityCatalogStore.swift in Sources */,
 				0D953A6618A44EF38663D41E /* CountryRegionCatalogService.swift in Sources */,
 				0C1E629B9A4C49728BBEF1E9 /* CityCatalogService.swift in Sources */,
@@ -11073,11 +11093,13 @@
 				CB02ED895EEB4435AD946407 /* SiteCurrentLocationProvider.swift in Sources */,
 				C0BFE55D28974AFAB5A812D4 /* SiteCurrentLocationRequest.swift in Sources */,
 				4A7F36D2697ADD12E13B82B2 /* SiteCreationSelectionRow.swift in Sources */,
+				7E0B5853550425B80BE8B33C /* SiteDaylightSavingTimeView.swift in Sources */,
 				F89C02326C75439DDC33AB71 /* SiteTypeSelectionAlertView.swift in Sources */,
 				BDD8C51A53B24FB88CAB5447 /* SiteLocationPermissionAlertView.swift in Sources */,
 				4ADF1B0BFF034EBA83A47487 /* CountryRegionCatalogStore.swift in Sources */,
 				494DE9E41E3FA3C96EEBE6A8 /* SiteTimeZoneService.swift in Sources */,
 				B2FFE6B2454269CF5E0BB9EA /* SiteTimeZoneStore.swift in Sources */,
+				E845850026C993208AD0605D /* SiteDaylightSavingTimePresentation.swift in Sources */,
 				83EB1E1363A3492EBC609DEE /* CityCatalogStore.swift in Sources */,
 				53A15BE2FFA3461F8BC739CE /* CountryRegionCatalogService.swift in Sources */,
 				B10D0175381F4DB9B60592A4 /* CityCatalogService.swift in Sources */,
@@ -11863,11 +11885,13 @@
 				B292739B21A9473F93D0DE7F /* SiteCurrentLocationProvider.swift in Sources */,
 				DE52427589F342348D44BB7C /* SiteCurrentLocationRequest.swift in Sources */,
 				1FB9F449CFBA5C18E741CB69 /* SiteCreationSelectionRow.swift in Sources */,
+				DF6ABBA73742E824F2753E84 /* SiteDaylightSavingTimeView.swift in Sources */,
 				251C194348F9FDB74DB1463C /* SiteTypeSelectionAlertView.swift in Sources */,
 				6643791F84824FDAB6EB70F2 /* SiteLocationPermissionAlertView.swift in Sources */,
 				51EAA4B93DFB4DC8B264647F /* CountryRegionCatalogStore.swift in Sources */,
 				B52188C00A48F90EAB7E3691 /* SiteTimeZoneService.swift in Sources */,
 				57583A61414523C22455CED4 /* SiteTimeZoneStore.swift in Sources */,
+				7321610786F71E77FDCFB40E /* SiteDaylightSavingTimePresentation.swift in Sources */,
 				42B5799CDDD542A6AAD44A24 /* CityCatalogStore.swift in Sources */,
 				7A33BCE6F1F64DD6B84137BC /* CountryRegionCatalogService.swift in Sources */,
 				D529BE0F027043F3B8B36336 /* CityCatalogService.swift in Sources */,
@@ -12652,11 +12676,13 @@
 				5FDE1B64CF6544609E2E8F28 /* SiteCurrentLocationProvider.swift in Sources */,
 				DFF2CF3F6B4C45E1B1950337 /* SiteCurrentLocationRequest.swift in Sources */,
 				5E34A1C54BA9A17E24169B48 /* SiteCreationSelectionRow.swift in Sources */,
+				1DC56BB143B1820EE87F03D0 /* SiteDaylightSavingTimeView.swift in Sources */,
 				E4B21C8D98FF2D33C1B7D065 /* SiteTypeSelectionAlertView.swift in Sources */,
 				060E491CD4224EA69FA3272B /* SiteLocationPermissionAlertView.swift in Sources */,
 				4AA083DDD20C4408BE2C7858 /* CountryRegionCatalogStore.swift in Sources */,
 				3B5EE72B31F93A8B2B583258 /* SiteTimeZoneService.swift in Sources */,
 				67E9C201C3CFB08A603F82CF /* SiteTimeZoneStore.swift in Sources */,
+				7F0BD3B4C824970A2B59E39D /* SiteDaylightSavingTimePresentation.swift in Sources */,
 				BDF75F4580BE40FB9B7E9655 /* CityCatalogStore.swift in Sources */,
 				733FC26C6DE24A3DACCA9127 /* CountryRegionCatalogService.swift in Sources */,
 				CDBFD21968C24B8E95509A55 /* CityCatalogService.swift in Sources */,
@@ -13442,11 +13468,13 @@
 				0E2665E938504F41A7FE2F1C /* SiteCurrentLocationProvider.swift in Sources */,
 				43CDA72F8A8940ADA88A1377 /* SiteCurrentLocationRequest.swift in Sources */,
 				6DB7E79EFEB11877DA6B9237 /* SiteCreationSelectionRow.swift in Sources */,
+				87AA549D2B39C33B4E4AA605 /* SiteDaylightSavingTimeView.swift in Sources */,
 				E86737E8EA190F876BCDBF12 /* SiteTypeSelectionAlertView.swift in Sources */,
 				A5DFA0B885EA4809B8D40CF6 /* SiteLocationPermissionAlertView.swift in Sources */,
 				906F59C3A6BD456AB7F46023 /* CountryRegionCatalogStore.swift in Sources */,
 				922FD83901271A6B148CC3B9 /* SiteTimeZoneService.swift in Sources */,
 				19A077B06E00498D6578F388 /* SiteTimeZoneStore.swift in Sources */,
+				E3145A50CDDB699276FA91C2 /* SiteDaylightSavingTimePresentation.swift in Sources */,
 				438EAD6247D5424FA81CC8FE /* CityCatalogStore.swift in Sources */,
 				46BC9580C2BE4C24AA5EED93 /* CountryRegionCatalogService.swift in Sources */,
 				E947FDCA9B6C4B9DB35842A4 /* CityCatalogService.swift in Sources */,

@@ -56,7 +56,7 @@ struct SiteTimeZoneValue: Hashable {
         offsetMinutes.map(Self.formatOffset) ?? NSLocalizedString("site_time_zone_refresh_required", value: "Refresh required", comment: "Time zone unavailable")
     }
     func formattedLocalDate(at date: Date) -> String {
-        guard let offset = effectiveOffset(at: date) ?? catalogOffsetMinutes,
+        guard let offset = effectiveOffset(at: date),
               let zone = TimeZone(secondsFromGMT: offset * 60) else { return "--" }
         let formatter = Self.formatter(timeZone: zone, format: "yyyy-M-d h:mm:ss a")
         return formatter.string(from: date)

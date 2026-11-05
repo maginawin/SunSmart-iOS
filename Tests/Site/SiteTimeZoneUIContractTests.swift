@@ -88,7 +88,8 @@ struct SiteTimeZoneUIContractTests {
                     form.contains("navigationController?.isModalInPresentation = previous") &&
                     form.contains("modalDismissalStateBeforeTimeZone = nil"),
                     "Time zone navigation must restore the previous modal dismissal policy")
-            require(form.contains("formattedLocalDate(at: Date())") && form.contains("override func viewDidAppear") &&
+            // Clock arithmetic is exercised by SiteTimeZoneSnapshotTests, independently of source spelling.
+            require(form.contains("override func viewDidAppear") &&
                     form.contains("override func viewWillDisappear") && form.contains("UIApplication.didEnterBackgroundNotification") &&
                     form.contains("UIApplication.didBecomeActiveNotification"), "Shared clock retains its visible/active lifecycle")
             require(occurrences(of: "action: #selector(submit)", in: form) == 2 &&

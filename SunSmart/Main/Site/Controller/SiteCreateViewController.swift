@@ -16,6 +16,8 @@ class SiteFormViewController: UIViewController {
     private let nameField = UITextField()
     private let nameTip = UILabel()
     private let timeZoneRow = SiteCreationSelectionRow(allowsMultilineDetail: true)
+    private let daylightSavingTimeView = SiteDaylightSavingTimeView()
+    private var daylightSavingTimePresentation = SiteDaylightSavingTimePresentation()
     private lazy var typeRow = SiteCreationSelectionRow(showsArrow: editingSite == nil)
     private let timeZoneCatalog: SiteTimeZoneCatalog?
     private let countryCatalogStore = CountryRegionCatalogStore.shared
@@ -269,6 +271,15 @@ class SiteFormViewController: UIViewController {
             timeSection.addArrangedSubview(notSyncedButton)
         }
         form.addArrangedSubview(timeSection)
+        daylightSavingTimeView.onToggleExpansion = { [weak self] in
+            guard let self, self.contextIsCurrent, !self.isCommitting else { return }
+            self.daylightSavingTimePresentation.toggleExpansion()
+            self.daylightSavingTimeView.render(self.daylightSavingTimePresentation)
+        }
+        daylightSavingTimeView.onLayoutChanged = { [weak self] in
+            self?.scrollEditingFieldIntoView(animated: false)
+        }
+        form.addArrangedSubview(daylightSavingTimeView)
         if allowsSiteType {
             typeRow.accessibilityLabel = "site_type_selection".localizedString
             typeRow.accessibilityIdentifier = "site-create-type"
@@ -778,12 +789,18 @@ class SiteFormViewController: UIViewController {
         timeZoneRow.detailLabel.isHidden = formDraft.timezone == nil
         timeZoneRow.accessibilityValue = [timeZoneRow.valueLabel.text, timeZoneRow.detailLabel.text].compactMap { $0 }.joined(separator: ", ")
         localTimeLabel.isHidden = formDraft.timezone == nil
+        daylightSavingTimePresentation.update(identifier: identifier,
+            snapshot: identifier.flatMap { SiteTimeZoneService.shared.store.snapshot(for: $0) }, at: Date())
+        daylightSavingTimeView.render(daylightSavingTimePresentation)
         refreshClock()
     }
 
     private func refreshClock() {
         guard let timezone = formDraft.timezone else { return }
-        localTimeLabel.text = String(format: "site_local_time_format".localizedString, timezone.formattedLocalDate(at: Date())) + " · " + (timezone.offsetMinutes.map(SiteTimeZoneValue.formatOffset) ?? timezone.displayOffset)
+        let now = Date()
+        let offset = timezone.effectiveOffset(at: now).map(SiteTimeZoneValue.formatOffset)
+            ?? "site_time_zone_refresh_required".localizedString
+        localTimeLabel.text = String(format: "site_local_time_format".localizedString, timezone.formattedLocalDate(at: now)) + " · " + offset
     }
 
     @objc private func stopClock() { localTimeTimer?.invalidate(); localTimeTimer = nil }

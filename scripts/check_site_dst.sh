@@ -10,3 +10,8 @@ for test in SiteTimeZoneValueTests SiteTimeZoneSnapshotTests; do
 done
 swiftc -module-cache-path "$test_dir/modules" -parse-as-library "${common[@]}" "$repo_root/SunSmart/Main/Site/Model/SiteTimeZoneStore.swift" "$repo_root/Tests/Site/SiteTimeZoneStoreTests.swift" -o "$test_dir/store"
 "$test_dir/store"
+swiftc -module-cache-path "$test_dir/modules" -parse-as-library "${common[@]}" \
+  "$repo_root/SunSmart/Main/Site/Model/SiteTimeZoneStore.swift" \
+  "$repo_root/SunSmart/Main/Site/Model/SiteDaylightSavingTimePresentation.swift" \
+  "$repo_root/Tests/Site/SiteDaylightSavingTimePresentationTests.swift" -o "$test_dir/presentation"
+"$test_dir/presentation"
