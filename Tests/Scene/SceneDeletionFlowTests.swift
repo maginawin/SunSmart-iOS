@@ -396,7 +396,10 @@ final class SyncExecutionSession {
             check(Set(scene.info.configuration!.pendingOperations.map(\.identity)) == expectedIdentities, "incremental intent: \(mode)")
             if mode == "pending" { check(scene.info.configuration!.pendingOperations.contains(prior), "unchanged pending write must retain generation") }
             if mode == "readded" { check(!scene.info.configuration!.pendingOperations.contains(prior), "re-add must replace old remove ownership") }
-            check(schedule?.nodeSlots == slots, "unchanged Scheduler ownership must remain stable")
+            check(schedule?.nodeSlots?.map(\.identity) == slots?.map(\.identity)
+                  && schedule?.nodeSlots?.map(\.slot) == slots?.map(\.slot), "unchanged Scheduler ownership must remain stable")
+            check(schedule?.nodeSlots?.allSatisfy { $0.isV3 && $0.state == .pendingApply } != false,
+                  "legacy assigned becomes pending without claiming a confirmed Model observation")
             let committed = scene.info.configuration
             scene.info = try persisted()!
             check(scene.info.configuration == committed, "incremental intent survives reload")

@@ -68,7 +68,9 @@ enum TimedSchedulerTaskCoordinator {
     private static func intent(_ schedule: Schedule, node: Node, binding: TimedSchedulerNodeSlot? = nil) -> Data? {
         guard let binding = binding ?? schedule.nodeSlots?.first(where: { $0.identity == node.timedSchedulerIdentity }), binding.isValid,
               let encoded = try? JSONEncoder().encode(binding),
-              let object = try? JSONSerialization.jsonObject(with: encoded) else { return nil }
+              var object = (try? JSONSerialization.jsonObject(with: encoded)) as? [String: Any] else { return nil }
+        // Result progress does not replace the intent that owns the transport.
+        object["state"] = binding.state == .pendingRemoval ? "pendingRemoval" : "pendingApply"
         return try? JSONSerialization.data(withJSONObject: [
             "binding": object, "target": schedule.targets(node: node),
             "entry": SchedulerRegistryEntry.marshal(index: UInt8(binding.slot), entry: schedule.schedulerEntry).base64EncodedString()

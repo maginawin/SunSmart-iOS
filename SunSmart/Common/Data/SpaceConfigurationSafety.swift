@@ -621,7 +621,7 @@ enum SpaceConfigurationSafety {
             state.removalSnapshot = SpaceCloudNodeRemovalPolicy.Snapshot.make(remote)
             state.nodeIdentitiesBaseline = actualNodes
             state.timedConfigurationBaseline = TimedSchedulerPayloadPolicy.canonical(remote)
-            state.schedulerModelStatesBaseline = SchedulerModelSnapshot.spaceData(remote)
+            state.schedulerModelComparison = SchedulerModelSnapshot.spaceData(remote)
             try saveState(state, space: space)
             let previousError = space.syncCloudError
             space.syncCloudError = nil
@@ -691,7 +691,7 @@ enum SpaceConfigurationSafety {
             state.removalSnapshot = SpaceCloudNodeRemovalPolicy.Snapshot.make(remote)
             state.nodeIdentitiesBaseline = SpaceCloudNodeRemovalPolicy.instances(remote)
             state.timedConfigurationBaseline = TimedSchedulerPayloadPolicy.canonical(remote)
-            state.schedulerModelStatesBaseline = SchedulerModelSnapshot.spaceData(remote)
+            state.schedulerModelComparison = SchedulerModelSnapshot.spaceData(remote)
             try saveState(state, space: space)
             UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
             return true
@@ -787,7 +787,7 @@ enum SpaceConfigurationSafety {
               let localKeys = SpaceKeyIntegrity.pair(localNetwork, networkID: space.meshNetworkId),
               let remoteKeys = SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId),
               localKeys.fingerprint == remoteKeys.fingerprint else { return false }
-        if let models = state.schedulerModelStatesBaseline {
+        if let models = state.schedulerModelComparison {
             guard models == SchedulerModelSnapshot.spaceData(remote) else { return false }
         }
         return true
@@ -808,7 +808,7 @@ enum SpaceConfigurationSafety {
               let localKeys = SpaceKeyIntegrity.pair(localNetwork, networkID: space.meshNetworkId),
               let remoteKeys = SpaceKeyIntegrity.pair(remote, networkID: space.meshNetworkId),
               localKeys.fingerprint == remoteKeys.fingerprint else { return }
-        if let models = state.schedulerModelStatesBaseline {
+        if let models = state.schedulerModelComparison {
             guard models == SchedulerModelSnapshot.spaceData(remote) else { return }
         }
         if let nodes = state.nodeIdentitiesBaseline {
@@ -1164,7 +1164,7 @@ enum SpaceConfigurationSafety {
                                                    submission: SpaceRecoveryState.Submission) -> String? {
         guard submission.scheduleTargets != nil else { return "missingScheduleTargets" }
         guard submission.timedConfiguration != nil else { return "missingTimedConfiguration" }
-        guard submission.schedulerModelStates != nil else { return "missingSchedulerModels" }
+        guard submission.schedulerModelComparison != nil else { return "missingSchedulerModels" }
         guard submission.nodeIdentities != nil else { return "missingNodeIdentities" }
         guard let fingerprint = submission.keyFingerprint else { return "missingKeyFingerprint" }
         guard let network = MeshNetwork.load(meshUUID: space.meshUUID, allData: false),
@@ -1209,7 +1209,7 @@ enum SpaceConfigurationSafety {
             SpaceConfigurationIntegrityPolicy.configurationData(local), submission.configuration) else { return "localConfigurationMismatch" }
         guard SpaceConfigurationIntegrityPolicy.scheduleTargetsData(local) == submission.scheduleTargets else { return "localScheduleTargetsMismatch" }
         guard TimedSchedulerPayloadPolicy.comparisonsMatch(TimedSchedulerPayloadPolicy.canonical(local), submission.timedConfiguration) else { return "localTimedMismatch" }
-        guard SchedulerModelSnapshot.spaceData(local) == submission.schedulerModelStates else { return "localSchedulerModelsMismatch" }
+        guard SchedulerModelSnapshot.spaceData(local) == submission.schedulerModelComparison else { return "localSchedulerModelsMismatch" }
         guard sameNodeIdentities(SpaceCloudNodeRemovalPolicy.instances(local), submission.nodeIdentities) else { return "localNodeIdentitiesMismatch" }
         return nil
     }
@@ -1357,7 +1357,7 @@ enum SpaceConfigurationSafety {
             state.timedConfigurationBaseline = submission.timedConfiguration.flatMap {
                 readbackTimed($0, timestamp: submission.timestamp, space: space)
             }
-            state.schedulerModelStatesBaseline = submission.schedulerModelStates.flatMap {
+            state.schedulerModelComparison = submission.schedulerModelComparison.flatMap {
                 readbackModels($0, timestamp: submission.timestamp, space: space)
             }
             state.nodeIdentitiesBaseline = submission.nodeIdentities.map { identities in
@@ -1435,7 +1435,7 @@ enum SpaceConfigurationSafety {
                 // Compare this Space's current cloud version before preparing
                 // an upload; a newer local snapshot wins as a complete unit.
                 if space.needUploadCloud || requiresConfigurationReview(space), space.lastUploadCloudTimestamp != nil
-                    || context.nodeIdentitiesBaseline != nil || context.schedulerModelStatesBaseline != nil {
+                    || context.nodeIdentitiesBaseline != nil || context.schedulerModelComparison != nil {
                     report("baselineRequest")
                     let response: Swift.Result<[String: Any], NetworkApiError>
                     if let loadedConfiguration, loadedConfiguration["uuid"] as? String == space.id {
@@ -1640,7 +1640,7 @@ enum SpaceConfigurationSafety {
                             } == $0
                         } ?? false
                     } ?? true
-                    let modelsMatch = submission.schedulerModelStates.map {
+                    let modelsMatch = submission.schedulerModelComparison.map {
                         readbackModels($0, timestamp: submission.timestamp, space: space).map {
                             SchedulerModelSnapshot.spaceData(remote) == $0
                         } ?? false
@@ -2128,7 +2128,7 @@ enum SpaceConfigurationSafety {
               let reference = context.submission?.configuration ?? context.authorizationBaseline,
               let identities = context.submission?.nodeIdentities ?? (context.submission == nil ? context.nodeIdentitiesBaseline : nil),
               let timed = context.submission?.timedConfiguration ?? (context.submission == nil ? context.timedConfigurationBaseline : nil),
-              let models = context.submission?.schedulerModelStates ?? (context.submission == nil ? context.schedulerModelStatesBaseline : nil)
+              let models = context.submission?.schedulerModelComparison ?? (context.submission == nil ? context.schedulerModelComparison : nil)
         else { return true }
         if let reason = UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space)),
            !["uploadReadbackConflict", "uploadReadbackUnconfirmed", "profileTimestampConflict", "cloudConfigurationConflict"].contains(reason) {
@@ -2194,7 +2194,7 @@ enum SpaceConfigurationSafety {
             state.removalSnapshot = SpaceCloudNodeRemovalPolicy.Snapshot.make(remote)
             state.nodeIdentitiesBaseline = remoteNodes
             state.timedConfigurationBaseline = timed
-            state.schedulerModelStatesBaseline = models
+            state.schedulerModelComparison = models
             state.submission = nil
             try saveState(state, space: space)
             UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
@@ -2265,7 +2265,7 @@ enum SpaceConfigurationSafety {
            (state.submission?.timedConfiguration ?? state.timedConfigurationBaseline).map({
                TimedSchedulerPayloadPolicy.comparisonsMatch($0, TimedSchedulerPayloadPolicy.canonical(payload))
            }) ?? true,
-           (state.submission?.schedulerModelStates ?? state.schedulerModelStatesBaseline).map({
+           (state.submission?.schedulerModelComparison ?? state.schedulerModelComparison).map({
                $0 == SchedulerModelSnapshot.spaceData(payload)
            }) ?? true {
             snapshot = Snapshot.make(payload)
@@ -2311,7 +2311,7 @@ enum SpaceConfigurationSafety {
                     TimedSchedulerPayloadPolicy.removingNodes(from: $0, uuids: Set(missing.map(\.uuid)),
                         addresses: Set(missing.flatMap { $0.elementAddresses }.map { String(format: "%04X", $0) }))
                   }), expectedTimed == actualTimed,
-                  let models = state.submission?.schedulerModelStates ?? state.schedulerModelStatesBaseline,
+                  let models = state.submission?.schedulerModelComparison ?? state.schedulerModelComparison,
                   SpaceCloudNodeRemovalPolicy.projectModels(models, removing: missing) == SchedulerModelSnapshot.spaceData(remote)
             else { return failure("notOnlyNodeRemoval", detail: "logicalTimedOrSchedulerChanged") }
         }
@@ -2358,7 +2358,7 @@ enum SpaceConfigurationSafety {
                 current.authorizationBaseline = projected
                 current.nodeIdentitiesBaseline = remoteNodes
                 current.timedConfigurationBaseline = cleanedTimed
-                current.schedulerModelStatesBaseline = models
+                current.schedulerModelComparison = models
                 current.removalSnapshot = incoming
             }
             try saveState(current, space: space)
@@ -2470,7 +2470,7 @@ enum SpaceConfigurationSafety {
               let configuration = submission?.configuration ?? state.authorizationBaseline,
               let source = submission?.nodeIdentities ?? (submission == nil ? state.nodeIdentitiesBaseline : nil)
                 ?? SpaceCloudNodeRemovalPolicy.legacyInstances(configuration: configuration,
-                    models: submission?.schedulerModelStates ?? state.schedulerModelStatesBaseline) else { return true }
+                    models: submission?.schedulerModelComparison ?? state.schedulerModelComparison) else { return true }
         guard !source.isEmpty else { return true }
         func failure(_ reason: String) -> Bool {
             #if DEBUG
@@ -2543,7 +2543,7 @@ enum SpaceConfigurationSafety {
             return recordSyncFailure(space, error: .configurationReviewRequired, stage: "cloudConfigurationConflict",
                                      remoteTimestamp: remoteTimestamp)
         }
-        let modelBaseline = submission?.schedulerModelStates ?? state.schedulerModelStatesBaseline
+        let modelBaseline = submission?.schedulerModelComparison ?? state.schedulerModelComparison
         if let modelBaseline {
             guard SpaceCloudNodeRemovalPolicy.projectModels(modelBaseline, removing: removed) == remoteModels else { return failure("schedulerModelsChanged") }
         }
@@ -2572,7 +2572,7 @@ enum SpaceConfigurationSafety {
                 guard current.matches(state), current.submission == nil else { return failure("superseded") }
                 current.authorizationBaseline = expected
                 current.timedConfigurationBaseline = TimedSchedulerPayloadPolicy.canonical(remote)
-                current.schedulerModelStatesBaseline = remoteModels
+                current.schedulerModelComparison = remoteModels
                 current.nodeIdentitiesBaseline = remoteNodes
                 try saveState(current, space: space)
             } catch { return failure("baselinePersistence") }
@@ -2590,7 +2590,7 @@ enum SpaceConfigurationSafety {
         let needsInitialization = !SpaceMembershipCoordinator.allowsConfiguration(space)
         let missingFields = state.submission.map {
             $0.keyFingerprint == nil || $0.nodeIdentities == nil || $0.scheduleTargets == nil
-                || $0.timedConfiguration == nil || $0.schedulerModelStates == nil
+                || $0.timedConfiguration == nil || $0.schedulerModelComparison == nil
         } ?? false
         let hasLegacyMarker = state.submission == nil
             && UserDefaults.standard.string(forKey: "spaceConfigurationBlocked." + key(space)) == "uploadReadbackUnconfirmed"
@@ -2632,14 +2632,14 @@ enum SpaceConfigurationSafety {
             guard submission.keyFingerprint.map({ $0 == keys.fingerprint }) ?? true,
                   submission.scheduleTargets.map({ $0 == targets }) ?? true,
                   submission.timedConfiguration.map({ TimedSchedulerPayloadPolicy.comparisonsMatch($0, timed) }) ?? true,
-                  submission.schedulerModelStates.map({ $0 == models }) ?? true,
+                  submission.schedulerModelComparison.map({ $0 == models }) ?? true,
                   submission.nodeIdentities.map({ sameNodeIdentities($0, identities) }) ?? true else {
                 throw PendingUploadValidationError(reason: "legacySnapshotReceiptMismatch")
             }
             submission.keyFingerprint = keys.fingerprint
             submission.scheduleTargets = targets
             submission.timedConfiguration = timed
-            submission.schedulerModelStates = models
+            submission.schedulerModelComparison = models
             submission.nodeIdentities = identities
             // Newly reconstructed fields have not been verified by the old GET.
             submission.phase = .accepted
@@ -2799,7 +2799,7 @@ enum SpaceConfigurationSafety {
                 state.prefersLocalMembership = nil
                 state.defaultRecoverySource = nil
                 state.timedConfigurationBaseline = nil
-                state.schedulerModelStatesBaseline = nil
+                state.schedulerModelComparison = nil
                 state.requiresRemoteImport = true
             }
             state.authority = authority
@@ -2853,7 +2853,7 @@ enum SpaceConfigurationSafety {
     /// Older recovery receipts predate the Timed baseline field. The generic
     /// migration marker cannot authorize the first Timed schema migration.
     static func needsTimedUpgradeBaseline(_ space: SpaceData) -> Bool {
-        space.uploadCloud && space.timedSchemaVersion < 2
+        space.uploadCloud && space.timedSchemaVersion < 3
             && (try? recoveryState(space).timedConfigurationBaseline) == nil
     }
 
@@ -2885,7 +2885,7 @@ enum SpaceConfigurationSafety {
             state.removalSnapshot = SpaceCloudNodeRemovalPolicy.Snapshot.make(remote)
             state.nodeIdentitiesBaseline = SpaceCloudNodeRemovalPolicy.instances(remote)
             state.timedConfigurationBaseline = TimedSchedulerPayloadPolicy.canonical(remote)
-            state.schedulerModelStatesBaseline = SchedulerModelSnapshot.spaceData(remote)
+            state.schedulerModelComparison = SchedulerModelSnapshot.spaceData(remote)
             do {
                 try saveState(state, space: space)
                 UserDefaults.standard.set(true, forKey: "spaceConfigurationMigrated." + key(space))
@@ -3062,7 +3062,7 @@ enum SpaceConfigurationSafety {
                 state.authorizationBaseline = (original ?? payload).flatMap(SpaceConfigurationIntegrityPolicy.configurationData)
                 state.removalSnapshot = (original ?? payload).flatMap(SpaceCloudNodeRemovalPolicy.Snapshot.make)
                 state.timedConfigurationBaseline = payload.flatMap(TimedSchedulerPayloadPolicy.canonical)
-                state.schedulerModelStatesBaseline = payload.flatMap(SchedulerModelSnapshot.spaceData)
+                state.schedulerModelComparison = payload.flatMap(SchedulerModelSnapshot.spaceData)
                 state.nodeIdentitiesBaseline = (original ?? payload).flatMap(SpaceCloudNodeRemovalPolicy.instances)
                 state.olderCloudBaselineFailure = nil
                 state.localReplacementVersion = nil
@@ -3257,7 +3257,7 @@ enum SpaceConfigurationSafety {
             state.removalSnapshot = SpaceCloudNodeRemovalPolicy.Snapshot.make(remote)
             state.nodeIdentitiesBaseline = SpaceCloudNodeRemovalPolicy.instances(remote)
             state.timedConfigurationBaseline = TimedSchedulerPayloadPolicy.canonical(remote)
-            state.schedulerModelStatesBaseline = SchedulerModelSnapshot.spaceData(remote)
+            state.schedulerModelComparison = SchedulerModelSnapshot.spaceData(remote)
             state.localReplacementVersion = space.lastUpdate
             state.prefersLocalMembership = true
             state.olderCloudBaselineFailure = nil

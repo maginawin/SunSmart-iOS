@@ -458,7 +458,8 @@ extension SpaceData {
                 let bindSchedules = schedules.filter({ schedule in
                     schedule.groups.contains(where: { $0.address == group.address }) ||
                     schedule.needDeleteGroups.contains(where: { $0.address == group.address }) ||
-                    (schedule.scene?.info.groups.contains(where: { $0.address == group.address }) ?? false)
+                    (schedule.scene?.info.groups.contains(where: { $0.address == group.address }) ?? false) ||
+                    group.nodes.contains { schedule.slot(on: $0) != nil }
                 })
                 group.info.bindSchedules = bindSchedules
             })
@@ -820,7 +821,7 @@ extension SpaceData {
                         }
                     }
                     do {
-                        if let snapshot = try node.schedulerModelSnapshot(nodeData: nodeDict) {
+                        if timedVersion < 3, let snapshot = try node.schedulerModelSnapshot(nodeData: nodeDict) {
                             var properties = nodeDict["custProps"] as? [String: Any] ?? [:]
                             properties["schedulerModelStates"] = try snapshot.dictionary()
                             nodeDict["custProps"] = properties
@@ -1082,8 +1083,7 @@ extension SpaceData {
                 }
                 return nil
             }
-            guard let repairedTimedPayload = TimedSchedulerPayloadPolicy.repairingStaleBindings(spaceJsonData),
-                  TimedSchedulerPayloadPolicy.canonical(repairedTimedPayload) != nil else {
+            guard let repairedTimedPayload = TimedSchedulerPayloadPolicy.exportPayload(spaceJsonData) else {
                 purpose.reportInspectionIssue("invalidTimedPayload")
                 if reportsSyncFailure {
                     SpaceConfigurationSafety.recordSyncFailure(self, error: .configurationExportInvalid, stage: "exportTimed")
@@ -1113,6 +1113,16 @@ extension SpaceData {
                     return nil
                 }
             }
+            if timedVersion < 3, !purpose.isReadOnlyInspection, !allowsProtectedInspection,
+               SpaceConfigurationSafety.canAutomaticallyUpload(self),
+               !SpaceConfigurationSafety.hasPendingUpload(self),
+               !SpaceConfigurationSafety.needsTimedUpgradeBaseline(self),
+               !MeshProxyMessageCommand.shared.isBusy,
+               let migrated = TimedSchedulerPayloadPolicy.migratingLegacyPayload(spaceJsonData) {
+                guard persistTimedMigration(source: spaceJsonData, migrated: migrated) else { return nil }
+                spaceJsonData = migrated
+                spaceJsonData["updateTimestamp"] = lastUpdate
+            }
             return spaceJsonData
         }
         guard let payload else { return nil }
@@ -1127,6 +1137,49 @@ extension SpaceData {
         }
         completed = true
         return payload
+    }
+
+    /// The old complete export remains the recovery source until the next
+    /// upload. Schema, rows and version are committed together, including an
+    /// inactive Space; no global Mesh selection is used to resolve identities.
+    private func persistTimedMigration(source: [String: Any], migrated: [String: Any]) -> Bool {
+        guard let rows = TimedSchedulerPayloadPolicy.decodingSchedules(migrated),
+              let data = try? JSONSerialization.data(withJSONObject: rows),
+              let schedules = try? JSONDecoder().decode([Schedule].self, from: data),
+              let stored = SpaceData.load(siteId: siteId, spaceId: id).first,
+              stored.lastUpdate == lastUpdate, stored.timedSchemaVersion < 3,
+              SpaceConfigurationSafety.recordSnapshot(self, payload: source) else { return false }
+        let previousVersion = timedSchemaVersion, previousUpdate = lastUpdate
+        let saved = SunSmartDataManager.shared.configurationTransaction {
+            for schedule in schedules {
+                guard schedule.save(meshUUID: meshUUID, meshNetworkId: meshNetworkId) else {
+                    throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+                }
+            }
+            let reloaded = Schedule.load(meshUUID: meshUUID, meshNetworkId: meshNetworkId)
+            var verification = migrated
+            verification["schedules"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode(reloaded))
+            guard let shared = TimedSchedulerPayloadPolicy.exportPayload(verification),
+                  TimedSchedulerPayloadPolicy.canonical(shared) == TimedSchedulerPayloadPolicy.canonical(migrated) else {
+                throw SpaceConfigurationSafety.SafetyError.persistenceFailed
+            }
+            timedSchemaVersion = 3
+            lastUpdate = max(lastUpdate + 1, Int64(Date().timeIntervalSince1970))
+            guard save() else { throw SpaceConfigurationSafety.SafetyError.persistenceFailed }
+        }
+        guard saved else { timedSchemaVersion = previousVersion; lastUpdate = previousUpdate; return false }
+        let manager = MeshNetworkManager.instance
+        if manager.meshNetwork?.uuid.uuidString == meshUUID, manager.currentNetworkKey.networkId.hex == meshNetworkId {
+            manager.schedules = schedules
+            for group in manager.groups {
+                group.info.bindSchedules = schedules.filter { schedule in
+                    schedule.groupAddresses.contains(group.address.address)
+                        || schedule.scene?.info.groups.contains(group) == true
+                        || group.nodes.contains { node in schedule.slot(on: node) != nil }
+                }
+            }
+        }
+        return true
     }
     
 }
@@ -1288,8 +1341,9 @@ extension Node {
                     nodeDict.updateValue(gatewayInfoDict, forKey: "gatewayInfo")
                 }
             }
+            let timedVersion = subNetworkId.flatMap { SpaceData.load(subNetworkId: $0)?.timedSchemaVersion } ?? 1
             do {
-                if let snapshot = try schedulerModelSnapshot(nodeData: nodeDict) {
+                if timedVersion < 3, let snapshot = try schedulerModelSnapshot(nodeData: nodeDict) {
                     var properties = nodeDict["custProps"] as? [String: Any] ?? [:]
                     properties["schedulerModelStates"] = try snapshot.dictionary()
                     nodeDict["custProps"] = properties
@@ -1298,7 +1352,8 @@ extension Node {
                 continuation.resume(returning: nil)
                 return
             }
-            continuation.resume(returning: nodeDict)
+            continuation.resume(returning: timedVersion == 3
+                ? TimedSchedulerPayloadPolicy.withoutSharedSchedulerObservation(nodeDict) : nodeDict)
             //                nodeDicts.append(nodeDict)
             
         }

@@ -238,6 +238,7 @@ final class GatewayDeletionContext {
             // Keep the receipt until both databases have completed their work.
             try store.write(receipt)
             if let node = network.nodes.first(where: { $0.primaryUnicastAddress == receipt.address }) {
+                TimedSchedulerTaskCoordinator.invalidate(node: node)
                 network.remove(node: node)
             }
             guard Node.delete(meshUUID: receipt.meshUUID, address: receipt.address), network.save(),
@@ -254,7 +255,12 @@ final class GatewayDeletionContext {
                 for schedule in Schedule.load(meshUUID: receipt.meshUUID, meshNetworkId: receipt.networkId) {
                     let active = schedule.nodeAddresses.filter { !addresses.contains($0) }
                     let pending = schedule.needDeleteNodeAddresses.filter { !addresses.contains($0) }
-                    if active != schedule.nodeAddresses || pending != schedule.needDeleteNodeAddresses {
+                    let bindings = schedule.nodeSlots?.filter {
+                        !($0.identity.nodeUUID.uppercased() == receipt.nodeUUID.uppercased()
+                            && $0.identity.unicastAddress.uppercased() == receipt.address.hex)
+                    }
+                    if active != schedule.nodeAddresses || pending != schedule.needDeleteNodeAddresses || bindings != schedule.nodeSlots {
+                        schedule.nodeSlots = bindings
                         schedule.nodeAddresses = active; schedule.needDeleteNodeAddresses = pending
                         try require(schedule.save(meshUUID: receipt.meshUUID, meshNetworkId: receipt.networkId))
                     }

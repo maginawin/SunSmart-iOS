@@ -10,8 +10,9 @@ enum CloudConfigurationDefaults {
     }
 
     static func space(_ object: [String: Any]) -> [String: Any] {
-        var result = filling(object, with: ["groups": [[String: Any]](), "scenes": [[String: Any]](),
-                                           "schedules": [[String: Any]]()])
+        // Timed's versioned policy alone supplies legacy schedule defaults.
+        // A missing native v3 list must reach validation as missing, not empty.
+        var result = filling(object, with: ["groups": [[String: Any]](), "scenes": [[String: Any]]()])
         if let groups = result["groups"] as? [[String: Any]] {
             result["groups"] = groups.map { raw in
                 var group = filling(raw, with: ["name": "", "parentAddress": "0000"])
@@ -239,6 +240,7 @@ enum SpaceCloudNodeRemovalPolicy {
     }
 
     static func projectModels(_ data: Data, removing instances: [Instance]) -> Data? {
+        if data == SchedulerModelSnapshot.omittedComparison { return data }
         guard let snapshots = try? JSONDecoder().decode([SchedulerModelSnapshot].self, from: data) else { return nil }
         let remaining = snapshots.filter { snapshot in
             !instances.contains { $0.uuid == snapshot.nodeUUID.uppercased()
@@ -442,6 +444,9 @@ struct SchedulerModelSnapshot: Codable, Equatable {
 
     static func spaceData(_ payload: [String: Any]) -> Data? {
         guard let nodes = payload["nodes"] as? [[String: Any]] else { return nil }
+        if TimedSchedulerPayloadPolicy.schema(payload) == 3 {
+            return TimedSchedulerPayloadPolicy.canonical(payload) != nil ? omittedComparison : nil
+        }
         do {
             let snapshots = try nodes.compactMap { try decode(node: $0)?.canonical() }.sorted { $0.nodeUUID < $1.nodeUUID }
             guard Set(snapshots.map(\.nodeUUID)).count == snapshots.count else { return nil }
@@ -455,7 +460,21 @@ struct SchedulerModelSnapshot: Codable, Equatable {
         // Old installations have no baseline. Only a new-format snapshot can
         // trigger a same-timestamp import in that case. Never compare cloud
         // observations to live local observations: the latter may be newer.
-        data != (baseline ?? Data("[]".utf8))
+        data != omittedComparison && data != (baseline ?? Data("[]".utf8))
+    }
+
+    /// Internal comparison token, never a Model observation or a stored receipt.
+    /// v3 has no shared Model dimension; absence is not a known empty register.
+    static let omittedComparison = Data("timed-v3:no-shared-model-observation".utf8)
+
+    static func omitsSharedObservation(timed: Data?) -> Bool {
+        guard let timed, TimedSchedulerPayloadPolicy.normalizedComparison(timed) != nil,
+              let value = (try? JSONSerialization.jsonObject(with: timed)) as? [String: Any] else { return false }
+        return TimedSchedulerPayloadPolicy.integer(value["timedSchemaVersion"]) == 3
+    }
+
+    static func comparison(timed: Data?, stored: Data?) -> Data? {
+        omitsSharedObservation(timed: timed) ? omittedComparison : stored
     }
 }
 

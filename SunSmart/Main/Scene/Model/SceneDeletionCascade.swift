@@ -55,6 +55,14 @@ enum SceneDeletionCascade {
         }
         for target in snapshot.targets + snapshot.cleanupTargets { try capture(target.node) }
         for node in additionalNodes { try capture(node) }
+        // v3 does not retain old Scene numbers. Unknown registers and unfinished
+        // Timed work may still contain A after an unsuccessful A -> B overwrite.
+        for node in manager.realNodes where node.observedTimedSlots == nil
+            || manager.schedules.contains(where: { schedule in
+                schedule.nodeSlots?.contains { $0.identity == node.timedSchedulerIdentity && $0.state != .synced } == true
+            }) {
+            try capture(node)
+        }
         for old in manager.schedules where old.sceneNumber == scene.number || old.needDeleteSceneNumbers.contains(scene.number) {
             guard old.selectTargetType != .profile, !old.nodeSlotsLoadFailed else { throw Failure.invalidTargets }
             let deleting = old.sceneNumber == scene.number
@@ -66,7 +74,8 @@ enum SceneDeletionCascade {
                 if copy.nodeSlots == nil {
                     copy.nodeSlots = try old.existNodes.filter { !$0.schedulerSetupModels.isEmpty }.map { node in
                         guard let identity = node.timedSchedulerIdentity, let slot = old.slot(on: node) else { throw Failure.invalidTargets }
-                        return .init(identity: identity, slot: slot, state: .pendingRemoval)
+                        return .init(identity: identity, slot: slot, state: .pendingRemoval,
+                                     actionAddress: node.timedActionAddress())
                     }
                 }
                 for binding in copy.nodeSlots ?? [] {
@@ -78,6 +87,9 @@ enum SceneDeletionCascade {
                 copy.needDeleteGroupAddresses = Array(Set(copy.needDeleteGroupAddresses + old.groupAddresses))
                 copy.needDeleteSceneNumbers = Array(Set(copy.needDeleteSceneNumbers + [scene.number]))
                 copy.nodeSlots = copy.nodeSlots?.map { var binding = $0; binding.state = .pendingRemoval; return binding }
+                if copy.nodeSlots?.allSatisfy(\.isV3) == true {
+                    copy.needDeleteNodeAddresses = []; copy.needDeleteGroupAddresses = []; copy.needDeleteSceneNumbers = []
+                }
                 result.references.scheduleIDs.append(copy.id)
                 result.schedules.append(copy)
             }
@@ -337,6 +349,7 @@ final class SceneDeletionTask {
     private var schedulerEntries: [Model: [Int: SchedulerRegistryEntry]] = [:]
     private var receivedSchedulerHandles = Set<ObjectIdentifier>()
     private var readingSchedulerDetails = false
+    private var prerequisitesAreCurrent: (() -> Bool)?
     private(set) var followUpMessageHandles: [MeshMessageHandle] = []
     private(set) var allowsEmpty = false
 
@@ -353,6 +366,7 @@ final class SceneDeletionTask {
         plannedHandles = []; appliedPower = nil; allowsEmpty = false
         schedulerBitmaps = [:]; schedulerEntries = [:]; receivedSchedulerHandles = []
         readingSchedulerDetails = false; followUpMessageHandles = []
+        prerequisitesAreCurrent = nil
     }
 
     /// The SDK writes each reply immediately. A partial read is not a known register.
@@ -387,6 +401,11 @@ final class SceneDeletionTask {
                 schedules.sorted { $0.id < $1.id }.map { original in
                     let value = original.copy()
                     value.needDeleteNodeAddresses = []; value.needDeleteGroupAddresses = []; value.needDeleteSceneNumbers = []
+                    value.nodeSlots = value.nodeSlots?.map { binding in
+                        var binding = binding
+                        if binding.state != .pendingRemoval { binding.state = binding.actionAddress == nil ? .assigned : .pendingApply }
+                        return binding
+                    }
                     return value
                 }
             }
@@ -420,7 +439,7 @@ final class SceneDeletionTask {
               manager.realNodes.contains(where: { $0 === node }), node.sceneConfigurationIdentity == reference.identity,
               scene.info.configuration?.revision == revision, scene.info.configuration?.isDeleting == true,
               scene.info.configuration?.deletionReferences?.pending.contains(reference) == true else { return false }
-        return !prepared || desiredSnapshot() == snapshot
+        return (prerequisitesAreCurrent?() ?? true) && (!prepared || desiredSnapshot() == snapshot)
     }
 
     var activationSwitch: PJEightKeySwitchData? {
@@ -440,6 +459,16 @@ final class SceneDeletionTask {
         guard snapshot != nil else { return [] }
         do {
             plannedHandles = try makeHandles()
+            for handle in plannedHandles {
+                let previousTransmission = handle.transmissionIsValid
+                let previousResponse = handle.responseIsValid
+                handle.transmissionIsValid = { [weak self] in
+                    self?.isCurrent == true && (previousTransmission?() ?? true)
+                }
+                handle.responseIsValid = { [weak self] response in
+                    self?.isCurrent == true && (previousResponse?(response) ?? true)
+                }
+            }
             allowsEmpty = phase == .apply && plannedHandles.isEmpty
             prepared = true
             return plannedHandles
@@ -463,20 +492,43 @@ final class SceneDeletionTask {
             }
             let schedules = Schedule.load(meshUUID: scope.meshUUID, meshNetworkId: scope.networkID)
             var handles: [MeshMessageHandle] = []
+            var slots = Set(reference.slots)
             for model in node.schedulerSetupModels {
                 guard let entries = node.allSchedulerModelEntrys[model] else { throw SceneDeletionCascade.Failure.invalidTargets }
-                for slot in 0..<16 {
-                    guard let entry = entries[slot], entry.isValid,
-                          entry.sceneNumber == scene.number || reference.slots.contains(slot) else { continue }
-                    let owners = schedules.filter { $0.slot(on: node) == slot }
-                    guard owners.count <= 1 else { throw SceneDeletionCascade.Failure.invalidTargets }
-                    if let owner = owners.first, !SceneDeletionCascade.owns(scheduleID: owner.id) {
-                        guard owner.selectTargetType != .profile else { throw SceneDeletionCascade.Failure.invalidTargets }
-                        // Restore the current owner only where it still targets this node. Other Models are cleaned independently.
-                        let targetModel = node.schedulerSetupModel(for: owner.schedulerModelOwner(on: node, contextGroup: node.group))
-                        let replacement = owner.targets(node: node) && targetModel === model ? owner.schedulerEntry : SchedulerRegistryEntry()
+                slots.formUnion(entries.filter { $0.value.isValid && $0.value.sceneNumber == scene.number }.map(\.key))
+            }
+            var preparedScenes = Set<SceneNumber>()
+            for slot in slots.sorted() {
+                let owners = schedules.filter { $0.slot(on: node) == slot }
+                guard owners.count <= 1 else { throw SceneDeletionCascade.Failure.invalidTargets }
+                let owner = owners.first.flatMap { SceneDeletionCascade.owns(scheduleID: $0.id) ? nil : $0 }
+                if let owner { guard owner.selectTargetType != .profile else { throw SceneDeletionCascade.Failure.invalidTargets } }
+                if let owner, owner.targets(node: node), let number = owner.sceneNumber, number != scene.number,
+                   preparedScenes.insert(number).inserted {
+                    guard let replacementScene = manager.scenes.first(where: { $0.number == number }),
+                          replacementScene.info.configuration?.isDeleting != true,
+                          let target = try? SceneTargetResolver.resolve(scene: replacementScene),
+                          target.writeData(scene: replacementScene, node: node) != nil else { throw SceneDeletionCascade.Failure.invalidTargets }
+                    if let required = node.getNodeSyncSceneDatas(scene: replacementScene).first {
+                        let prerequisite = replacementScene.getSyncMessageHandles(node: node, data: required.data)
+                        guard !prerequisite.isEmpty else { throw SceneDeletionCascade.Failure.invalidTargets }
+                        let contexts = prerequisite.compactMap(\.sceneContext)
+                        guard !contexts.isEmpty else { throw SceneDeletionCascade.Failure.invalidTargets }
+                        let previous = prerequisitesAreCurrent
+                        prerequisitesAreCurrent = { [weak node] in
+                            guard let node else { return false }
+                            return (previous?() ?? true) && contexts.allSatisfy { $0.matches(node: node) }
+                        }
+                        handles.append(contentsOf: prerequisite)
+                    }
+                }
+                let targetModel = owner.flatMap { node.schedulerSetupModel(for: $0.schedulerModelOwner(on: node, contextGroup: node.group)) }
+                for model in node.schedulerSetupModels {
+                    if let owner, owner.targets(node: node), targetModel === model {
+                        let replacement = owner.schedulerEntry
+                        guard node.allSchedulerModelEntrys[model]?[slot].map({ $0 == replacement }) != true else { continue }
                         handles.append(.init(message: SchedulerActionSet(index: UInt8(slot), entry: replacement), model: model))
-                    } else {
+                    } else if node.allSchedulerModelEntrys[model]?[slot]?.isValid == true {
                         handles.append(.init(message: SchedulerActionSet(index: UInt8(slot), entry: SchedulerRegistryEntry()), model: model))
                     }
                 }
@@ -601,7 +653,9 @@ final class SceneDeletionTask {
         if phase == .read {
             return applySchedulerRead(expected: expected)
         }
-        for handle in results { _ = node.applyMessageHandle(handle, isSuccess: true) }
+        for handle in results {
+            guard node.applyMessageHandle(handle, isSuccess: true) else { return false }
+        }
         let previous = scene.info.configuration
         let saved = SunSmartDataManager.shared.configurationTransaction {
             if let power = appliedPower {

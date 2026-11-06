@@ -101,6 +101,7 @@ extension SiteData {
             return nil
         }
         let space = SpaceData(name: name, id: id, siteId: self.id, imageId: imageId, create: time, isFavourite: false, permission: .owner, sourceType: .create, meshUUID: self.meshUUID, meshNetworkId: subnetworkData.networkKey.networkId.hex)
+        space.timedSchemaVersion = 3
         do {
             if initializeHDB { try HDBConfigurationStore.initializeLightingZones(space: space, addresses: addresses) }
             guard saveNewSpace(space) else { throw HDBConfigurationError.persistenceFailed }
@@ -629,7 +630,8 @@ extension MeshNetworkManager {
                let bindSchedules = self.schedules.filter({ schedule in
                    schedule.groups.contains(where: { $0.address == group.address }) ||
                    schedule.needDeleteGroups.contains(where: { $0.address == group.address }) ||
-                   (schedule.scene?.info.groups.contains(where: { $0.address == group.address }) ?? false)
+                    (schedule.scene?.info.groups.contains(where: { $0.address == group.address }) ?? false) ||
+                    group.nodes.contains { schedule.slot(on: $0) != nil }
                })
                 group.info.bindSchedules = bindSchedules
             })
@@ -3307,8 +3309,7 @@ extension Node {
             let actionMessage = (message as! SchedulerActionSet)
             let index = Int(actionMessage.index)
 
-            if let model = model {
-                var modelEntrys = self.allSchedulerModelEntrys[model] ?? [:]
+            if let model = model, var modelEntrys = self.allSchedulerModelEntrys[model] {
                 if actionMessage.entry.isValid {
                     modelEntrys.updateValue(actionMessage.entry, forKey: index)
                 } else {
@@ -3371,6 +3372,9 @@ extension Node {
             }
             // Both a clear and an overwrite can release an old Scene reference.
             self.timedSchedule(at: index)?.reconcilePendingSceneReferences()
+            if self.savePropertys() {
+                self.timedSchedule(at: index)?.reconcileBinding(on: self)
+            }
         case is LightLCLightOnOffSet, is LightLCLightOnOffSetUnacknowledged, is GenericOnOffSetUnacknowledged: // 点击Auto / Off
             
             guard let switchData = MeshNetworkManager.instance.switchs.first(where: { $0.proxyNodeAddress == self.primaryUnicastAddress }), let linkGroup = switchData.linkGroup else { return }

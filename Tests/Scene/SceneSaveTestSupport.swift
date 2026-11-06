@@ -120,7 +120,7 @@ struct FixtureEntry { var isValid = true; var sceneNumber: UInt16 }
 extension MeshNetworkManager { var switchs: [FixtureSwitch] { FixtureReferences.switches } }
 extension GroupInfo { var switchs: [FixtureSwitch] { [] } }
 extension Node { var allSchedulerModelEntrys: [Int: [Int: FixtureEntry]] { FixtureReferences.observed[ObjectIdentifier(self)] ?? [:] } }
-extension Schedule { var sceneNumber: UInt16? { scene?.number }; var needDeleteSceneNumbers: [UInt16] { needDeleteScenes.map(\.number) } }
+extension Schedule { var sceneNumber: UInt16? { scene?.number } }
 
 enum MeshOperate { case add, edit, delete, control }
 enum SpaceMembershipCoordinator {

@@ -254,7 +254,7 @@ class ScheduleAddViewController: UIViewController {
             return
         }
         MeshNetworkManager.instance.schedules.append(schedule)
-        space.timedSchemaVersion = 2
+        space.timedSchemaVersion = 3
         space.scheheduleCount = MeshNetworkManager.instance.schedules.count
         space.save()
         addFineshed = true
@@ -321,20 +321,7 @@ class ScheduleAddViewController: UIViewController {
             schedule.deleteData()
             MeshNetworkManager.instance.schedules.removeAll(where: { $0.id == schedule.id })
             // 删除关联组缓存的对应日程
-            var groups = schedule.groups
-            groups.append(contentsOf: schedule.needDeleteGroups)
-            if let sceneGroups = schedule.scene?.info.groups {
-                groups.append(contentsOf: sceneGroups)
-            }
-            schedule.needDeleteScenes.forEach({
-                groups.append(contentsOf: $0.info.groups)
-            })
-            if let sceneGroups = schedule.scene?.info.groups {
-                groups.append(contentsOf: sceneGroups)
-            }
-            schedule.needDeleteScenes.forEach({
-                groups.append(contentsOf: $0.info.groups)
-            })
+            let groups = MeshNetworkManager.instance.groups
             groups.forEach({
                 $0.info.bindSchedules.removeAll(where: {$0.id == schedule.id })
             })
@@ -411,40 +398,45 @@ class ScheduleAddViewController: UIViewController {
         schedule.fadeTime = fadeTime
     
         schedule.selectTargetType = selectTargetType
-        // 选中之前移除失败的设备，则把设备改为待添加
-        schedule.needDeleteNodeAddresses.removeAll(where: { address in
-            nodes.contains(where: { $0.primaryUnicastAddress == address }) || groups.contains(where: { $0.nodes.contains(where: { $0.primaryUnicastAddress == address }) || scene?.info.groups.contains(where: { $0.nodes.contains(where: { $0.primaryUnicastAddress == address }) }) ?? false })
-        })
-        
-        let deleteNodes = schedule.nodes.filter({ !nodes.contains($0) && !schedule.needDeleteNodes.contains($0) })
-        if deleteNodes.count > 0 {
-            schedule.needDeleteNodeAddresses.append(contentsOf: deleteNodes.map({ $0.primaryUnicastAddress }))
-//            schedule.needDeleteNodes.append(contentsOf: deleteNodes)
-        }
-        schedule.nodeAddresses = nodes.map({ $0.primaryUnicastAddress })
-        
-        schedule.needDeleteGroupAddresses.removeAll(where: { address in
-            groups.contains(where: { $0.address.address == address }) || scene?.info.groups.contains(where: { $0.address.address == address }) ?? false
-        })
-        
-        let deleteGroups = schedule.groups.filter({ !groups.contains($0) && $0.nodes.contains(where: { groupNode in !schedule.nodeAddresses.contains(groupNode.primaryUnicastAddress) }) && !schedule.needDeleteGroups.contains($0) })
-        if deleteGroups.count > 0 {
-            schedule.needDeleteGroupAddresses.append(contentsOf: deleteGroups.map({ $0.address.address }))
-//            schedule.needDeleteGroups.append(contentsOf: deleteGroups)
-        }
-        schedule.groupAddresses = groups.map({ $0.address.address })
-        
-        
-        if schedule.scene != scene { // 切换场景
-            schedule.needDeleteSceneNumbers.removeAll(where: { $0 == scene?.number })
-//            schedule.needDeleteScenes.removeAll(where: { $0 == scene })
-            if let lastScene = schedule.scene { // 上一个场景
-                schedule.needDeleteSceneNumbers.append(lastScene.number)
-//                schedule.needDeleteScenes.append(lastScene)
+        if space.timedSchemaVersion < 3 {
+            // Legacy cleanup history is consumed by the reservation migration.
+            // 选中之前移除失败的设备，则把设备改为待添加
+            schedule.needDeleteNodeAddresses.removeAll(where: { address in
+                nodes.contains(where: { $0.primaryUnicastAddress == address }) || groups.contains(where: { $0.nodes.contains(where: { $0.primaryUnicastAddress == address }) || scene?.info.groups.contains(where: { $0.nodes.contains(where: { $0.primaryUnicastAddress == address }) }) ?? false })
+            })
+
+            let deleteNodes = schedule.nodes.filter({ !nodes.contains($0) && !schedule.needDeleteNodes.contains($0) })
+            if deleteNodes.count > 0 {
+                schedule.needDeleteNodeAddresses.append(contentsOf: deleteNodes.map({ $0.primaryUnicastAddress }))
             }
+            schedule.nodeAddresses = nodes.map({ $0.primaryUnicastAddress })
+
+            schedule.needDeleteGroupAddresses.removeAll(where: { address in
+                groups.contains(where: { $0.address.address == address }) || scene?.info.groups.contains(where: { $0.address.address == address }) ?? false
+            })
+
+            let deleteGroups = schedule.groups.filter({ !groups.contains($0) && $0.nodes.contains(where: { groupNode in !schedule.nodeAddresses.contains(groupNode.primaryUnicastAddress) }) && !schedule.needDeleteGroups.contains($0) })
+            if deleteGroups.count > 0 {
+                schedule.needDeleteGroupAddresses.append(contentsOf: deleteGroups.map({ $0.address.address }))
+            }
+            schedule.groupAddresses = groups.map({ $0.address.address })
+
+
+            if schedule.scene != scene { // 切换场景
+                schedule.needDeleteSceneNumbers.removeAll(where: { $0 == scene?.number })
+                if let lastScene = schedule.scene { // 上一个场景
+                    schedule.needDeleteSceneNumbers.append(lastScene.number)
+                }
+                schedule.sceneNumber = scene?.number
+            }
+        } else {
+            // v3 owns old targets through bindings; no historical arrays are
+            // created when editing, including an explicitly unassigned target.
+            schedule.nodeAddresses = nodes.map(\.primaryUnicastAddress)
+            schedule.groupAddresses = groups.map { $0.address.address }
             schedule.sceneNumber = scene?.number
         }
-        
+
         schedule.weekDays = weekDays
         schedule.hour = hour
         schedule.minute = minute
@@ -466,11 +458,12 @@ class ScheduleAddViewController: UIViewController {
         }
         MeshNetworkManager.instance.schedules = candidates
         self.schedule = schedule
-        space.timedSchemaVersion = 2
+        space.timedSchemaVersion = 3
         for group in MeshNetworkManager.instance.groups {
             group.info.bindSchedules.removeAll { $0.id == schedule.id }
             if schedule.groups.contains(group) || schedule.scene?.info.groups.contains(group) == true
-                || schedule.needDeleteGroups.contains(group) || schedule.needDeleteScenes.contains(where: { $0.info.groups.contains(group) }) {
+                || schedule.needDeleteGroups.contains(group) || schedule.needDeleteScenes.contains(where: { $0.info.groups.contains(group) })
+                || group.nodes.contains(where: { schedule.slot(on: $0) != nil }) {
                 group.info.bindSchedules.append(schedule)
             }
         }

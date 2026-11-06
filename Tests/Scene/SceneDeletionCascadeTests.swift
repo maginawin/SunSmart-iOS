@@ -20,6 +20,7 @@ import Foundation
         return (scene, lamp, proxy)
     }
     static func schedule(_ id: Int, scene: UInt16, node: Node, slot: Int) -> Schedule {
+        if !manager.scenes.contains(where: { $0.number == scene }) { manager.scenes.append(Scene(scene)) }
         let item = Schedule(id, scene: scene)
         item.nodeAddresses = [node.primaryUnicastAddress]
         item.nodeSlots = [.init(identity: node.timedSchedulerIdentity!, slot: slot, state: .assigned)]
@@ -118,6 +119,7 @@ import Foundation
     static func main() throws {
         try selectiveSchedulerReadBoundaries()
         try preparationIsAtomicAndSelective()
+        try v3SceneReplacementCoverage()
         try productionFingerprintSurvivesNormalizedCascade()
         try productionFingerprintReadFailureInvalidatesCache()
         try productionFingerprintRejectsReprovisionedIdentity()
@@ -459,6 +461,40 @@ import Foundation
         let missing = SceneDeletionTask(scene: secondScene, reference: reference, node: proxy, phase: .apply)
         check(missing.messageHandles.isEmpty && !missing.allowsEmpty && !missing.apply(results: [], expected: []),
               "unconfirmed missing switch remains pending")
+    }
+
+    static func v3SceneReplacementCoverage() throws {
+        let (scene, node, _) = fixture()
+        let current = schedule(104, scene: 2, node: node, slot: 5)
+        current.nodeSlots![0].state = .pendingApply
+        current.nodeSlots![0].actionAddress = node.timedActionAddress()
+        manager.schedules = [current]
+        node.allSchedulerModelEntrys = [:]
+        let prepared = try SceneDeletionCascade.prepare(scene: scene, snapshot: .init(scope: scope))
+        check(prepared.references.scheduleIDs.isEmpty && prepared.schedules.isEmpty, "B is not a deleted Timed even without old Scene arrays")
+        check(prepared.references.pending.count == 1, "unknown/unfinished B node is included in A cleanup")
+        let reference = prepared.references.pending[0]
+        try markDeleting(scene, references: prepared.references)
+        let owner = node.schedulerSetupModels[0], other = node.schedulerSetupModels[1]
+        node.allSchedulerModelEntrys = [owner: [:], other: [5: .init(action: .sceneRecall, sceneNumber: 1)]]
+        node.requiredSceneStores = [2]
+        let task = SceneDeletionTask(scene: scene, reference: reference, node: node, phase: .apply)
+        let handles = task.messageHandles
+        check((handles.first?.message as? SceneStore)?.number == 2, "B Scene Store precedes the B Scheduler write")
+        check(handles.contains { $0.model === owner && ($0.message as? SchedulerActionSet)?.entry == current.schedulerEntry },
+              "restore B even when only nonOwner still contains A")
+        handles.last?.isSuccessful = false
+        check(!task.apply(results: handles, expected: handles) && pending(scene).count == 1, "partial failure keeps A cleanup retryable")
+        handles.last?.isSuccessful = true
+        check(task.apply(results: handles, expected: handles), "all writes settle A cleanup")
+        check(manager.schedules[0].sceneNumber == 2 && manager.schedules[0].nodeSlots?.first?.slot == 5,
+              "A deletion does not release B ownership")
+        try markDeleting(scene, references: prepared.references)
+        node.allSchedulerModelEntrys[other] = [5: .init(action: .sceneRecall, sceneNumber: 1)]
+        let stale = SceneDeletionTask(scene: scene, reference: reference, node: node, phase: .apply)
+        let staleHandles = stale.messageHandles
+        staleHandles.first?.sceneContext?.current = false
+        check(!stale.apply(results: staleHandles, expected: staleHandles), "changed replacement Scene invalidates old prerequisite results")
     }
 
     static func schedulerPlansPreserveCurrentOwner() throws {

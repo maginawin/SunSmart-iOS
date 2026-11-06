@@ -29,6 +29,7 @@ final class MeshMessageHandle {
     var message = "delete"
 }
 final class Schedule {
+    func reconcileBinding(on node: Node) {} // Persistence is covered by the SQLite fixture.
     var enabled = false, failReservation = false, ignoreReply = false
     func slot(on node: Node) -> Int? { 0 }
     func deletionIsSynchronized(on node: Node) -> Bool { node.cleared }

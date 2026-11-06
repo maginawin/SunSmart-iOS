@@ -5,6 +5,9 @@ import struct SQLite.Expression
 
 typealias Address = UInt16
 typealias SceneNumber = UInt16
+typealias SchedulerAction = Schedule.Action
+typealias SchedulerRegistryEntry = Entry
+enum SchedulerSetupModelOwner { case ordinary, lightLC }
 extension UInt16 {
     init?(hex: String) { self.init(hex, radix: 16) }
     var hex: String { String(format: "%04X", self) }
@@ -48,6 +51,9 @@ final class MeshNetworkManager {
 final class Schedule: Codable {
     enum TargetType: Int { case groups, devices, scene, profile }
     enum Action: UInt8 { case off = 0, on = 1, scene = 2, noAction = 15 }
+    var schedulerEntry: Entry { .init(isValid: action != .noAction, sceneNumber: sceneNumber ?? 0, enabled: enabled) }
+    // ACTUAL_SYNC_DIFFERENCE
+    // ACTUAL_MESSAGE_HANDLES
     // ACTUAL_PROFILE_CODEC
     var id: Int, name: String, enabled: Bool
     var nodeAddresses: [Address] = [], groupAddresses: [Address] = [], sceneNumber: SceneNumber?
@@ -77,9 +83,14 @@ final class Schedule: Codable {
         self.weekDays = weekDays; self.hour = hour; self.minute = minute
     }
 }
-final class Element { var observedSceneRegister: Set<UInt16>? = [] }
+extension Schedule.Action { static var turnOn: Self { .on } }
+// ACTUAL_MODEL_OWNER
+final class Element { var observedSceneRegister: Set<UInt16>? = []; var unicastAddress: UInt16 = 1 }
 final class Model: NSObject { let parentElement: Element? = Element() }
-struct Entry { var isValid = true; var sceneNumber: UInt16 = 0 }
+struct Entry: Equatable {
+    var isValid = false; var sceneNumber: UInt16 = 0; var enabled = true
+    static func marshal(index: UInt8, entry: Self) -> Data { Data([index, entry.enabled ? 1 : 0]) }
+}
 struct SchedulerActionSet { let index: UInt8; let entry: Entry }
 final class Node: NSObject {
     enum GroupState { case inGroup, exitFailure }
@@ -89,6 +100,15 @@ final class Node: NSObject {
     let primaryUnicastAddress: Address
     let name: String? = nil
     var group: Group?
+    struct Restore { var addGroup: Group? }
+    var restoreData: Restore?
+    var syncReadGroup: Group? { group }
+    func schedulerSetupModel(for owner: SchedulerSetupModelOwner) -> Model? {
+        owner == .lightLC ? schedulerSetupModels.last : schedulerSetupModels.first
+    }
+    func schedulerCleanupModels(for owner: SchedulerSetupModelOwner) -> [Model] {
+        schedulerSetupModels.filter { $0 !== schedulerSetupModel(for: owner) }
+    }
     var network = MeshNetworkManager.instance.meshNetwork
     var subNetworkId: String? = MeshNetworkManager.instance.currentNetworkKey.networkId.hex
     var schedulerSetupModels = [Model(), Model()]
@@ -113,6 +133,7 @@ final class Node: NSObject {
     init(_ address: Address) {
         primaryUnicastAddress = address
         super.init()
+        for (index, model) in schedulerSetupModels.enumerated() { model.parentElement?.unicastAddress = address + UInt16(index) }
         schedulerSetupModels.forEach { allSchedulerModelEntrys[$0] = [:] }
     }
     func clearSyncStateCache() {}
@@ -143,7 +164,11 @@ final class Group: NSObject {
     struct GroupAddress: Equatable { var address: Address = 0xC001 }
     var address = GroupAddress(), name: String? = nil
     var nodes: [Node] = []
-    final class Info { var sceneExecuteDatas: [SceneExecuteData] = []; var bindSchedules: [Schedule] = [] }
+    final class Info {
+        struct Profile { enum Kind { case manualControl, automatic }; var type = Kind.automatic }
+        var profile = Profile()
+        var sceneExecuteDatas: [SceneExecuteData] = []; var bindSchedules: [Schedule] = []
+    }
     let info = Info()
     // ACTUAL_GROUP_EXIT
     // ACTUAL_SCENE_READER
@@ -210,7 +235,11 @@ enum SceneDeletionCascade {
         requireEmptyReferences(); return false
     }
 }
-final class MeshMessageHandle: NSObject { var schedulerTask: MeshSchedulerTask?; var sceneContext: SceneMessageContext?; var message: Any = 0; var model: Model?; var continuous = true }
+final class MeshMessageHandle: NSObject {
+    var schedulerTask: MeshSchedulerTask?; var sceneContext: SceneMessageContext?; var message: Any = 0; var model: Model?; var continuous = true
+    override init() { super.init() }
+    init(message: Any, model: Model) { self.message = message; self.model = model }
+}
 final class MeshProxyMessageCommand { static let shared = MeshProxyMessageCommand(); var isBusy = false }
 enum XWHUDManager { static func showTipHUD(_ message: String, isLineFeed: Bool) {} }
 final class SpaceData {
@@ -254,6 +283,9 @@ enum ScheduleServer {
         var db = try Connection(path)
         SunSmartDataManager.shared.db = db
         Schedule.initDatabase()
+        try nativeProfileBindingsSurviveUnrelatedEdits(db: db, path: path)
+        try legacyCleanupRequiresOwnedSlot()
+        try v3PersistenceAndProgress(db: db, path: path)
         try deviceSceneReferences()
         try staleBindingsSurviveRepairAndRestart(db: db, path: path)
         try defaultedBindingsSurviveReload()
@@ -364,7 +396,7 @@ enum ScheduleServer {
         unrelated.address.address = 0xC002
         node.group = group; group.nodes = [node]; manager.realNodes = [node]; manager.groups = [group, unrelated]
         let profile = restored.first!
-        node.schedulerSetupModels.forEach { node.allSchedulerModelEntrys[$0] = [profile.id: Entry()] }
+        node.schedulerSetupModels.forEach { node.allSchedulerModelEntrys[$0] = [profile.id: Entry(isValid: true)] }
         precondition(!profile.targets(node: node) && !profile.needsDelete(from: node))
         precondition(!TimedSchedulerBindings.reserveForSending(schedule: profile, node: node, contextGroup: group))
         precondition(!TimedSchedulerBindings.reserveForDeletion(schedule: profile, node: node))
@@ -378,7 +410,7 @@ enum ScheduleServer {
         let ordinary = Schedule(id: 300, name: "Ordinary", enabled: true, nodeAddresses: [1]); ordinary.nodeSlots = []
         manager.schedules.append(ordinary)
         try TimedSchedulerBindings.commit(TimedSchedulerBindings.prepare(schedules: manager.schedules))
-        precondition(restored.allSatisfy { $0.slot(on: node) == $0.id && $0.nodeSlots?.first?.state == .assigned })
+        precondition(restored.allSatisfy { $0.slot(on: node) == $0.id && $0.nodeSlots?.first?.state == .pendingApply })
         precondition(ordinary.slot(on: node) == 2)
         let preserved = profile.nodeSlots!
         profile.nodeSlots![0].state = .pendingRemoval
@@ -394,6 +426,69 @@ enum ScheduleServer {
         precondition(unrelated.getNodeExitMessageHandles(node: node) != nil, "unrelated Group exit must not attempt to delete preserved Profile slots")
         _ = try TimedSchedulerBindings.prepareTopology(group: unrelated)
         print("PASS: Profile GET/Codable/SQLite restart, readback equality, read-only toggle, protected topology and reserved slots")
+    }
+
+    static func nativeProfileBindingsSurviveUnrelatedEdits(db originalDB: Connection, path: String) throws {
+        let file = path + ".native-profiles"
+        SunSmartDataManager.shared.db = try Connection(file)
+        Schedule.initDatabase()
+        let manager = MeshNetworkManager.instance, node = Node(1)
+        let mesh = manager.meshNetwork!.uuid.uuidString, network = manager.currentNetworkKey.networkId.hex
+        manager.realNodes = [node]
+        defer {
+            SunSmartDataManager.shared.db = originalDB
+            manager.realNodes = []; manager.schedules = []
+        }
+        // The shared Profile route is valid but differs from this App's ordinary
+        // routing inference. Both the route and the remote result are read-only.
+        let states: [TimedSchedulerNodeSlot.State] = [.synced, .pendingApply, .pendingRemoval]
+        let rows: [[String: Any]] = states.enumerated().map { slot, state in
+            ["id": 100 + slot, "name": "Profile \(slot)", "enabled": true, "selectTarget": 3,
+             "sceneAddress": NSNull(), "profiles": [["groupAddress": "C001", "profileSceneNumber": "FF00", "groupName": "Group 1", "type": 3]],
+             "action": 2, "hour": 8, "minute": 0, "dayOfWeek": 127, "fadeTime": 0,
+             "nodeSlots": [["identity": ["unicastAddress": "0001"], "slot": slot, "state": state.rawValue,
+                            "actionAddress": ["auto_on": "0002", "off": "0001", "recall": "0001"]]]]
+        }
+        let payload: [String: Any] = ["spaceData": ["timedSchemaVersion": 3], "schedules": rows,
+            "nodes": [["uuid": node.uuid.uuidString, "unicastAddress": "0001", "deviceKey": node.deviceKey!.hex,
+                "elements": [["index": 0, "models": [["modelId": "1206"], ["modelId": "1207"]]],
+                             ["index": 1, "models": [["modelId": "130F"], ["modelId": "1206"], ["modelId": "1207"]]]]]]]
+        let decoded = try JSONDecoder().decode([Schedule].self, from: JSONSerialization.data(
+            withJSONObject: TimedSchedulerPayloadPolicy.decodingSchedules(payload)!))
+        for schedule in decoded { precondition(schedule.save()) }
+        SunSmartDataManager.shared.db = try Connection(file)
+        let restored = Schedule.load(meshUUID: mesh, meshNetworkId: network).sorted { $0.id < $1.id }
+        let expected = restored.map(\.nodeSlots)
+        let ordinary = Schedule(id: 300, name: "Unrelated", enabled: true, nodeAddresses: [1])
+        ordinary.nodeSlots = []
+        manager.schedules = restored + [ordinary]
+        let plan = try TimedSchedulerBindings.prepare(schedules: manager.schedules)
+        precondition(restored.map { plan.bindings[$0.id] } == expected,
+                     "unrelated reservation must preserve every native Profile binding")
+        do {
+            try TimedSchedulerBindings.commit(plan) { throw Failure.rollback }
+            preconditionFailure("injected failure must abort reservation")
+        } catch Failure.rollback {}
+        precondition(restored.map(\.nodeSlots) == expected && ordinary.nodeSlots == [])
+        // Exercise retry after restart. SQLite's failed savepoint leaves its
+        // outer transaction open until the connection closes.
+        SunSmartDataManager.shared.db = try Connection(file)
+        precondition(Schedule.load(meshUUID: mesh, meshNetworkId: network).sorted { $0.id < $1.id }.map(\.nodeSlots) == expected)
+        try TimedSchedulerBindings.commit(plan)
+        precondition(ordinary.slot(on: node) == 3, "all Profile states must retain their reserved slots")
+        // Unknown local Model observations cannot invalidate a shared Profile result.
+        node.allSchedulerModelEntrys = [:]
+        ordinary.enabled = false
+        try TimedSchedulerBindings.commit(TimedSchedulerBindings.prepare(schedules: manager.schedules))
+        SunSmartDataManager.shared.db = try Connection(file)
+        let reopened = Schedule.load(meshUUID: mesh, meshNetworkId: network).sorted { $0.id < $1.id }
+        precondition(Array(reopened.prefix(3)).map(\.nodeSlots) == expected)
+        precondition(reopened.last?.nodeSlots?.first?.state == .pendingApply)
+        var readback = payload
+        readback["schedules"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode(Array(reopened.prefix(3))))
+        let exported = TimedSchedulerPayloadPolicy.exportPayload(readback)!
+        precondition(TimedSchedulerPayloadPolicy.canonical(exported) == TimedSchedulerPayloadPolicy.canonical(payload))
+        print("PASS: native Profile states/routes survive unrelated reservations, rollback/retry, unknown Models, SQLite reopen and cloud export")
     }
 
     static func staleBindingsSurviveRepairAndRestart(db originalDB: Connection, path: String) throws {
@@ -560,13 +655,13 @@ enum ScheduleServer {
         precondition(roundTrip.map(\.id) == Array(0..<17) && roundTrip.allSatisfy { $0.nodeSlots == [] })
         manager.realNodes = [a, b]; manager.schedules = reloaded
         for node in [a, b] {
-            node.allSchedulerModelEntrys[node.schedulerSetupModels[0]] = [0: Entry()]
-            node.schedulerActions = [0: Entry()]
+            node.allSchedulerModelEntrys[node.schedulerSetupModels[0]] = [0: Entry(isValid: true)]
+            node.schedulerActions = [0: Entry(isValid: true)]
         }
         precondition(reloaded.allSatisfy { $0.slot(on: a) == nil && $0.slot(on: b) == nil })
         precondition(reloaded.allSatisfy { !$0.needsDelete(from: a) && !$0.needsDelete(from: b) },
                      "unassigned defaults must never identify another schedule's physical slot for deletion")
-        a.allSchedulerModelEntrys[a.schedulerSetupModels[0]] = Dictionary(uniqueKeysWithValues: (0..<16).map { ($0, Entry()) })
+        a.allSchedulerModelEntrys[a.schedulerSetupModels[0]] = Dictionary(uniqueKeysWithValues: (0..<16).map { ($0, Entry(isValid: true)) })
         do {
             _ = try TimedSchedulerBindings.prepare(schedules: reloaded)
             preconditionFailure("unknown occupied slots cannot be overwritten")
@@ -605,13 +700,13 @@ enum ScheduleServer {
         precondition(group.getNodeExitMessageHandles(node: a)?.isEmpty == false)
         let pending = grouped.nodeSlots!
         precondition(pending.first { $0.identity == a.timedSchedulerIdentity }?.state == .pendingRemoval)
-        precondition(pending.first { $0.identity == b.timedSchedulerIdentity }?.state == .assigned)
+        precondition(pending.first { $0.identity == b.timedSchedulerIdentity }?.state == .pendingApply)
         precondition(zip(assigned, pending).allSatisfy { $0.slot == $1.slot && $0.identity == $1.identity })
         let reloaded = Schedule.load(meshUUID: manager.meshNetwork!.uuid.uuidString,
             meshNetworkId: manager.currentNetworkKey.networkId.hex, scheduleId: grouped.id).first!
         precondition(reloaded.nodeSlots == pending)
         let slot = grouped.slot(on: a)!
-        a.allSchedulerModelEntrys[a.schedulerSetupModels[0]] = [slot: Entry()]
+        a.allSchedulerModelEntrys[a.schedulerSetupModels[0]] = [slot: Entry(isValid: true)]
         grouped.releaseClearedBinding(on: a)
         precondition(grouped.nodeSlots == pending, "one uncleared Model must retain the slot")
         a.allSchedulerModelEntrys[a.schedulerSetupModels[0]] = [:]
@@ -628,7 +723,7 @@ enum ScheduleServer {
         let legacy = Schedule(id: 7, name: "Legacy", enabled: true, nodeAddresses: [1])
         manager.schedules = [legacy]
         precondition(TimedSchedulerBindings.reserveForDeletion(schedule: legacy))
-        precondition(legacy.slot(on: a) == 7 && legacy.nodeSlots?.first?.state == .assigned)
+        precondition(legacy.slot(on: a) == 7 && legacy.nodeSlots?.first?.state == .pendingApply)
         precondition(TimedSchedulerBindings.reserveForDeletion(schedule: legacy, node: a))
         precondition(legacy.slot(on: a) == 7 && legacy.nodeSlots?.first?.state == .pendingRemoval)
         legacy.nodeAddresses = []
@@ -674,7 +769,7 @@ enum ScheduleServer {
             precondition(TimedSchedulerBindings.reserveForDeletion(schedule: grouped, node: node))
             let pending = grouped.nodeSlots!
             node.groupState = .exitFailure
-            if observed == "occupied" { node.allSchedulerModelEntrys[node.schedulerSetupModels[0]] = [15: Entry()] }
+            if observed == "occupied" { node.allSchedulerModelEntrys[node.schedulerSetupModels[0]] = [15: Entry(isValid: true)] }
             if observed == "unknown" { node.allSchedulerModelEntrys = [:] }
             MeshProxyMessageCommand.shared.isBusy = observed == "busy"
             try TimedSchedulerBindings.commit(TimedSchedulerBindings.prepareTopology(group: unrelated))
@@ -697,9 +792,90 @@ enum ScheduleServer {
                 precondition(grouped.nodeSlots == pending, "pending exit cannot silently become assigned")
             }
             try TimedSchedulerBindings.commit(TimedSchedulerBindings.prepareTopology(group: group, members: [node], addingMembers: [node]))
-            precondition(grouped.nodeSlots?.first?.state == .assigned, "explicit reselection must restore membership")
+            precondition(grouped.nodeSlots?.first?.state == .pendingApply, "explicit reselection must restore membership")
         }
         print("PASS: unrelated Group/Scene edits preserve pending exits; empty slots reusable; explicit re-add restores assignment")
+    }
+
+    static func legacyCleanupRequiresOwnedSlot() throws {
+        let manager = MeshNetworkManager.instance, node = Node(1)
+        manager.realNodes = [node]
+        for stillTargeted in [false, true] {
+            let schedule = Schedule(id: 104, name: "Legacy cleanup", enabled: true,
+                                    nodeAddresses: stillTargeted ? [1] : [])
+            schedule.nodeSlots = []
+            schedule.needDeleteNodeAddresses = [1]
+            schedule.needDeleteNodes = [node]
+            manager.schedules = [schedule]
+            do {
+                _ = try TimedSchedulerBindings.prepare(schedules: [schedule])
+                preconditionFailure("a missing old cleanup slot must not be discarded or replaced with a new slot")
+            } catch TimedSchedulerBindings.Failure.invalidMapping {}
+            precondition(schedule.nodeSlots == [] && schedule.needDeleteNodeAddresses == [1])
+        }
+        print("PASS: legacy cleanup without an owned physical slot is preserved, including overlapping targets")
+    }
+
+    static func v3PersistenceAndProgress(db: Connection, path: String) throws {
+        let manager = MeshNetworkManager.instance, node = Node(1)
+        manager.realNodes = [node]
+        let schedule = Schedule(id: 104, name: "V3 durable", enabled: true, nodeAddresses: [1])
+        schedule.nodeSlots = []; manager.schedules = [schedule]
+        try TimedSchedulerBindings.commit(TimedSchedulerBindings.prepare(schedules: [schedule]))
+        let binding = schedule.nodeSlots!.first!
+        precondition(binding.state == .pendingApply && binding.isV3)
+        let rawNode: [String: Any] = ["uuid": node.uuid.uuidString, "unicastAddress": "0001", "deviceKey": node.deviceKey!.hex,
+            "elements": [["index": 0, "models": [["modelId": "1206"], ["modelId": "1207"]]],
+                         ["index": 1, "models": [["modelId": "1206"], ["modelId": "1207"], ["modelId": "130F"]]]]]
+        let raw: [String: Any] = ["spaceData": ["timedSchemaVersion": 3], "nodes": [rawNode], "groups": [], "scenes": [],
+            "schedules": try JSONSerialization.jsonObject(with: JSONEncoder().encode([schedule]))]
+        let shared = TimedSchedulerPayloadPolicy.exportPayload(raw)!
+        let imported = try JSONDecoder().decode([Schedule].self, from: JSONSerialization.data(
+            withJSONObject: TimedSchedulerPayloadPolicy.decodingSchedules(shared)!))[0]
+        precondition(imported.save())
+        SunSmartDataManager.shared.db = try Connection(path)
+        let restored = Schedule.load(meshUUID: manager.meshNetwork!.uuid.uuidString,
+            meshNetworkId: manager.currentNetworkKey.networkId.hex, scheduleId: 104).first!
+        precondition(restored.nodeSlots == schedule.nodeSlots && restored.nodeSlots!.first!.identity == node.timedSchedulerIdentity)
+        manager.schedules = [restored]
+        let owner = node.schedulerSetupModels[0], other = node.schedulerSetupModels[1]
+        node.allSchedulerModelEntrys = [owner: [binding.slot: restored.schedulerEntry]]
+        restored.reconcileBinding(on: node)
+        precondition(restored.nodeSlots!.first!.state == .pendingApply, "unknown nonOwner is not empty")
+        node.allSchedulerModelEntrys[other] = [binding.slot: .init(isValid: true)]
+        restored.reconcileBinding(on: node)
+        precondition(restored.nodeSlots!.first!.state == .pendingApply, "residual nonOwner prevents success")
+        let cleanupOnly = restored.getMessageHandles(node: node)
+        precondition(cleanupOnly.count == 1 && cleanupOnly[0].model === other,
+                     "retry skips the already matching Owner")
+        node.allSchedulerModelEntrys[other] = [:]
+        try db.execute("CREATE TRIGGER fail_v3_result BEFORE INSERT ON schedules WHEN NEW.scheduleIndex = 104 BEGIN SELECT RAISE(ABORT, 'fixture failure'); END")
+        restored.reconcileBinding(on: node)
+        precondition(restored.nodeSlots!.first!.state == .pendingApply, "failed result persistence keeps pending")
+        try db.execute("DROP TRIGGER fail_v3_result")
+        restored.reconcileBinding(on: node)
+        precondition(restored.nodeSlots!.first!.state == .synced)
+        restored.minute = 12
+        try TimedSchedulerBindings.commit(TimedSchedulerBindings.prepare(schedules: [restored]))
+        // Entry fixture omits minute; changing enabled exercises the same real
+        // production owner comparison without pretending to test protocol bytes.
+        restored.enabled = false
+        try TimedSchedulerBindings.commit(TimedSchedulerBindings.prepare(schedules: [restored]))
+        precondition(restored.nodeSlots!.first!.state == .pendingApply && restored.slot(on: node) == binding.slot)
+        restored.nodeAddresses = []
+        try TimedSchedulerBindings.commit(TimedSchedulerBindings.prepare(schedules: [restored]))
+        precondition(restored.nodeSlots!.first!.state == .pendingRemoval)
+        restored.reconcileBinding(on: node)
+        precondition(restored.nodeSlots!.count == 1)
+        node.allSchedulerModelEntrys[owner] = [:]
+        restored.reconcileBinding(on: node)
+        precondition(restored.nodeSlots!.isEmpty)
+        let emptyColumns = try db.scalar("SELECT COUNT(*) FROM schedules WHERE scheduleIndex = 104 AND deviceDeleteAddresses IS NULL AND groupDeleteAddresses IS NULL AND sceneDeleteAddresses IS NULL") as? Int64
+        precondition(emptyColumns == 1)
+        precondition(restored.deleteData())
+        SunSmartDataManager.shared.db = db
+        manager.schedules = []; manager.realNodes = []
+        print("PASS: v3 shared codec -> production Schedule -> SQLite reopen, full identity, unknown/partial/success/save failure and final slot release")
     }
 
     static func enabledFailurePersistsRollback(db: Connection) throws {
@@ -740,7 +916,7 @@ enum ScheduleServer {
         precondition(Schedule.load(meshUUID: manager.meshNetwork!.uuid.uuidString,
             meshNetworkId: manager.currentNetworkKey.networkId.hex).isEmpty)
         manager.meshNetwork = originalNetwork
-        print("PASS: legacy enabled toggles roll back SQLite on total failure, retain partial success and retry with stable slots")
+        print("PASS: enabled toggles roll back total failure, retain partial success and retry with stable slots")
     }
 
     static func groupExitWithNoDeviceCleanup() throws {
@@ -867,4 +1043,5 @@ struct SceneMessageContext {
 // Transport admission is outside this SQLite suite; dedicated task tests execute it.
 enum TimedSchedulerTaskCoordinator {
     static func configurationSaved(_ schedule: Schedule, meshUUID: String, networkID: String) {}
+    static func attach(_ handles: [MeshMessageHandle], node: Node, schedule: Schedule) {}
 }

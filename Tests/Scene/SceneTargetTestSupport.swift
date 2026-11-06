@@ -56,6 +56,11 @@ final class Node: NSObject {
     }
     var schedulerSetupModels: [Model] = [Model()]
     var observedTimedSlots: Set<Int>? = []
+    // Scheduler transport/Model comparison is exercised by Timed persistence
+    // tests. Scene topology fixtures conservatively expose no confirmed entry.
+    func timedActionAddress(contextGroup: Group? = nil) -> TimedSchedulerActionAddress? {
+        .init(autoOn: primaryUnicastAddress.hex, off: primaryUnicastAddress.hex, recall: primaryUnicastAddress.hex)
+    }
     init(_ address: UInt16) { primaryUnicastAddress = address; uuid = UUID() }
     func clampEffectiveCct(_ value: UInt16) -> UInt16 { min(effectiveCctRange.upperBound, max(effectiveCctRange.lowerBound, value)) }
 }
@@ -121,6 +126,21 @@ final class Schedule {
     var needDeleteNodes: [Node] = []
     var needDeleteGroups: [Group] = []
     var needDeleteScenes: [Scene] = []
+    var needDeleteNodeAddresses: [UInt16] {
+        get { needDeleteNodes.map(\.primaryUnicastAddress) }
+        set { needDeleteNodes = MeshNetworkManager.instance.realNodes.filter { newValue.contains($0.primaryUnicastAddress) } }
+    }
+    var needDeleteGroupAddresses: [UInt16] {
+        get { needDeleteGroups.map { $0.address.address } }
+        set { needDeleteGroups = MeshNetworkManager.instance.groups.filter { newValue.contains($0.address.address) } }
+    }
+    var needDeleteSceneNumbers: [UInt16] {
+        get { needDeleteScenes.map(\.number) }
+        set { needDeleteScenes = MeshNetworkManager.instance.scenes.filter { newValue.contains($0.number) } }
+    }
+    enum ObservedDifference { case synchronized, unknown }
+    func schedulerSyncDifference(on node: Node, contextGroup: Group? = nil) -> ObservedDifference { .unknown }
+    // ACTUAL_SLOT
     var nodeSlots: [TimedSchedulerNodeSlot]? = []
     var nodeSlotsLoadFailed = false
     init(_ id: Int, scene: Scene? = nil) { self.id = id; self.scene = scene }

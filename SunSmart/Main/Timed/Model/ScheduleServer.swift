@@ -35,6 +35,18 @@ struct ScheduleServer {
         
         let previousEnabled = schedule.enabled
         schedule.enabled = enabled
+        do {
+            var candidates = MeshNetworkManager.instance.schedules
+            guard let index = candidates.firstIndex(where: { $0.id == schedule.id }) else {
+                schedule.enabled = previousEnabled; failed?(schedule); return
+            }
+            candidates[index] = schedule
+            try TimedSchedulerBindings.commit(TimedSchedulerBindings.prepare(schedules: candidates))
+        } catch {
+            schedule.enabled = previousEnabled
+            failed?(schedule)
+            return
+        }
         setNodes = setNodes.filter { schedule.needsSync(on: $0) }
         
         let meshUUID = MeshNetworkManager.instance.meshNetwork?.uuid.uuidString
@@ -102,16 +114,14 @@ struct ScheduleServer {
         let previous = schedule.copy()
         schedule.action = .noAction
         
-        schedule.needDeleteNodeAddresses.append(contentsOf: schedule.nodes.map({ $0.primaryUnicastAddress }))
+        schedule.needDeleteNodeAddresses = []
         schedule.nodeAddresses.removeAll()
         
-        schedule.needDeleteGroupAddresses.append(contentsOf: schedule.groups.map({ $0.address.address }))
+        schedule.needDeleteGroupAddresses = []
         schedule.groupAddresses.removeAll()
         
-        if let scene = schedule.scene {
-            schedule.needDeleteSceneNumbers.append(scene.number)
-            schedule.sceneNumber = nil
-        }
+        schedule.needDeleteSceneNumbers = []
+        schedule.sceneNumber = nil
         schedule.nodeSlots = schedule.nodeSlots?.map { binding in
             var pending = binding
             pending.state = .pendingRemoval
@@ -320,6 +330,7 @@ struct ScheduleServer {
             return
         }
         guard !messageHandles.isEmpty else {
+            schedule.reconcileBinding(on: batch.node)
             let synchronized = batch.delete
                 ? schedule.deletionIsSynchronized(on: batch.node)
                 : schedule.slot(on: batch.node) != nil && !schedule.needsSync(on: batch.node, contextGroup: batch.contextGroup)
@@ -350,6 +361,7 @@ struct ScheduleServer {
                 TimedSchedulerTaskCoordinator.finish(operation)
                 return
             }
+            schedule.reconcileBinding(on: batch.node)
             let synchronized = batch.delete
                 ? schedule.deletionIsSynchronized(on: batch.node)
                 : schedule.slot(on: batch.node) != nil && !schedule.needsSync(on: batch.node, contextGroup: batch.contextGroup)
