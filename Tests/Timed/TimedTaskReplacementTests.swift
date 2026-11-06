@@ -35,6 +35,7 @@ final class Node {
     var timeModel: Model? { nil }
     var observedTimedSlots: Set<Int>? = []
     var appliedEnabled = false
+    @discardableResult func savePropertys() -> Bool { true }
     init(_ address: Address) {
         primaryUnicastAddress = address
         normal = Model(address); extra = Model(address + 1); collection = Model(address + 2)
@@ -71,13 +72,22 @@ final class Schedule: Encodable {
     var needDeleteNodeAddresses: [Address] = []
     var selectTargetType = Target.devices
     var saves = 0, saveSucceeds = true
+    func reconcileBinding(on node: Node) {
+        guard let index = nodeSlots?.firstIndex(where: { $0.identity == node.timedSchedulerIdentity }),
+              nodeSlots![index].state != .pendingRemoval else { return }
+        nodeSlots![index].state = needsSync(on: node) ? .pendingApply : .synced
+        save()
+    }
     // PRODUCTION_RELEASE
     enum CodingKeys: CodingKey { case id, enabled, name, nodeSlots, nodeAddresses, needDeleteNodeAddresses, selectTargetType, action }
     init(id: Int = 1, nodes: [Node]) {
         self.id = id; nodeAddresses = nodes.map(\.primaryUnicastAddress)
         nodeSlots = nodes.map { .init(identity: $0.timedSchedulerIdentity!, slot: 0, state: .assigned) }
     }
-    var existNodes: [Node] { MeshNetworkManager.instance.realNodes.filter { (nodeAddresses + needDeleteNodeAddresses).contains($0.primaryUnicastAddress) } }
+    var existNodes: [Node] { MeshNetworkManager.instance.realNodes.filter { node in
+        (nodeAddresses + needDeleteNodeAddresses).contains(node.primaryUnicastAddress)
+            || nodeSlots?.contains { $0.identity == node.timedSchedulerIdentity } == true
+    } }
     var schedulerEntry: SchedulerRegistryEntry { .init(enabled: enabled && action != .noAction) }
     func copy() -> Schedule {
         let result = Schedule(id: id, nodes: existNodes)
@@ -106,6 +116,8 @@ final class Schedule: Encodable {
     }
 }
 enum TimedSchedulerBindings {
+    static func prepare(schedules: [Schedule]) -> [Schedule] { schedules }
+    static func commit(_ schedules: [Schedule]) throws { schedules.forEach { _ = $0.save() } }
     static func reserveForDeletion(schedule: Schedule, node: Node? = nil) -> Bool { true }
     static func reserveForSending(schedule: Schedule, node: Node, contextGroup: Group?) -> Bool { true }
 }

@@ -180,7 +180,7 @@ func tryValue<T>(_ value: () throws -> T) -> T { try! value() }
         precondition(directReaddPersisted == directReaddBefore && schedule.nodeSlots == directReaddBefore, "failed direct re-add must restore pending removal")
         _ = try restarted.commit(draft: readd, expectedRevision: readd.revision)
         precondition(deviceScene.info.configuration?.pendingOperations.first?.action == .write)
-        precondition(schedule.nodeSlots?.first?.state == .assigned)
+        precondition(schedule.nodeSlots?.first?.state == .pendingApply)
         precondition(schedule.nodeSlots?.first?.slot == slots?.first?.slot)
         var removeAgain = try restarted.editingDraft(for: deviceScene)
         try removeAgain.setDeviceMembers([])
@@ -223,11 +223,15 @@ func tryValue<T>(_ value: () throws -> T) -> T { try! value() }
                      "failed group re-add must preserve pending removal and generation")
         _ = try restarted.commit(draft: readdGroup, expectedRevision: readdGroup.revision)
         precondition(groupScene.info.configuration?.pendingOperations.first?.action == .write)
-        precondition(groupSchedule.nodeSlots?.first?.state == .assigned && groupSchedule.nodeSlots?.first?.slot == groupSlots?.first?.slot)
+        precondition(groupSchedule.nodeSlots?.first?.state == .pendingApply && groupSchedule.nodeSlots?.first?.slot == groupSlots?.first?.slot)
         precondition(lamp.groupState == originalGroupState)
         let absentScene = Scene(77)
         absentScene.info.configuration = .init(kind: .devices, name: "Absent",
             deviceMembers: [member], pendingOperations: [.init(identity: member.identity, action: .write)])
+        // This case isolates Scene cleanup after node removal. Production
+        // permanent removal also retires that node's Timed bindings; keeping
+        // the earlier fixture schedules would create invalid dangling owners.
+        manager.schedules = []
         manager.scenes.append(absentScene); manager.realNodes = []
         try absentScene.info.saveConfiguration()
         var removeAbsent = try SceneDraft(scene: absentScene)

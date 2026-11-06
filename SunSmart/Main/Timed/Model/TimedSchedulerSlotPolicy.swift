@@ -14,19 +14,56 @@ struct TimedSchedulerNodeIdentity: Codable, Hashable {
     }
 }
 
+struct TimedSchedulerActionAddress: Codable, Equatable {
+    var autoOn: String
+    var off: String
+    var recall: String
+
+    enum CodingKeys: String, CodingKey { case autoOn = "auto_on", off, recall }
+    var addresses: [String] { [autoOn, off, recall] }
+    var isValid: Bool { addresses.allSatisfy(Self.isAddress) }
+    static func isAddress(_ value: String) -> Bool {
+        value.count == 4 && value == value.uppercased()
+            && UInt16(value, radix: 16).map { (1...0x7FFF).contains($0) } == true
+    }
+}
+
 struct TimedSchedulerNodeSlot: Codable, Equatable {
-    enum State: String, Codable { case assigned, pendingRemoval }
+    // assigned is read only for the v1/v2 compatibility boundary.
+    enum State: String, Codable { case assigned, pendingApply, synced, pendingRemoval }
     let identity: TimedSchedulerNodeIdentity
     let slot: Int
     var state: State
+    var actionAddress: TimedSchedulerActionAddress?
 
-    init(identity: TimedSchedulerNodeIdentity, slot: Int, state: State) {
+    init(identity: TimedSchedulerNodeIdentity, slot: Int, state: State,
+         actionAddress: TimedSchedulerActionAddress? = nil) {
         self.identity = identity
         self.slot = slot
         self.state = state
+        self.actionAddress = actionAddress
     }
 
-    var isValid: Bool { identity.isValid && (0..<16).contains(slot) }
+    var isValid: Bool {
+        identity.isValid && (0..<16).contains(slot)
+            && (actionAddress?.isValid ?? (state == .assigned || state == .pendingRemoval))
+    }
+    var isV3: Bool { isValid && state != .assigned && actionAddress != nil }
+}
+
+/// Shared v3 representation. Only a validated complete Space may expand it to
+/// the provisioning identity retained in local storage and running tasks.
+struct TimedSchedulerWireNodeSlot: Codable {
+    struct Identity: Codable { let unicastAddress: String }
+    let identity: Identity
+    let slot: Int
+    let state: TimedSchedulerNodeSlot.State
+    let actionAddress: TimedSchedulerActionAddress
+
+    var isValid: Bool {
+        TimedSchedulerActionAddress.isAddress(identity.unicastAddress)
+            && (0..<16).contains(slot) && state != .assigned && actionAddress.isValid
+    }
 }
 
 /// Pure reservation planner. Observations are physical slots across all Models.
@@ -103,6 +140,9 @@ enum TimedSchedulerPayloadPolicy {
     /// Never infer physical slots from IDs.
     static func fillingMissingBindings(_ payload: [String: Any]) -> [String: Any] {
         var payload = withoutBindingGeneration(payload)
+        // Native v3 is strict. Legacy defaults must never turn a damaged new
+        // document into a valid empty configuration or a successful receipt.
+        if declaredSchema(payload) == 3 { return payload }
         if payload["schedules"] == nil { payload["schedules"] = [[String: Any]]() }
         if let schedules = payload["schedules"] as? [[String: Any]] {
             let defaults: [String: Any] = ["name": "", "enabled": false, "selectTarget": 0,
@@ -176,8 +216,12 @@ enum TimedSchedulerPayloadPolicy {
     /// JSON meaning; a corrupt receipt cannot become an empty valid receipt.
     static func normalizedComparison(_ data: Data) -> Data? {
         guard let value = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-              let version = integer(value["timedSchemaVersion"]), [1, 2].contains(version),
+              let version = integer(value["timedSchemaVersion"]), [1, 2, 3].contains(version),
               let schedules = value["schedules"] as? [[String: Any]] else { return nil }
+        if version == 3 {
+            return canonicalValidated(["spaceData": ["timedSchemaVersion": 3],
+                                       "schedules": schedules, "nodes": [[String: Any]]()], comparisonOnly: true)
+        }
         var identities = Set<TimedSchedulerNodeIdentity>()
         if version == 2 {
             for schedule in schedules {
@@ -253,16 +297,16 @@ enum TimedSchedulerPayloadPolicy {
         guard let payload = repairingStaleBindings(payload) else { return nil }
         guard let version = schema(payload), canonical(payload) != nil else { return nil }
         if version == 1 { return payload }
-        return ["format": "sunSmartSpace", "formatVersion": 2, "space": payload]
+        return ["format": "sunSmartSpace", "formatVersion": version, "space": payload]
     }
 
     static func backupPayload(_ document: [String: Any]) -> [String: Any]? {
         if document["format"] != nil {
             guard document["format"] as? String == "sunSmartSpace",
-                  integer(document["formatVersion"]) == 2,
+                  let version = integer(document["formatVersion"]), [2, 3].contains(version),
                   let source = document["space"] as? [String: Any],
                   let payload = repairingStaleBindings(source),
-                  schema(payload) == 2, canonical(payload) != nil else { return nil }
+                  schema(payload) == version, canonical(payload) != nil else { return nil }
             return payload
         }
         guard declaredSchema(document) == 1, canonical(document) != nil else { return nil }
@@ -283,7 +327,7 @@ enum TimedSchedulerPayloadPolicy {
     private static func declaredSchema(_ payload: [String: Any]) -> Int? {
         let data = payload["spaceData"] as? [String: Any] ?? [:]
         guard let raw = data["timedSchemaVersion"] else { return 1 }
-        guard let version = integer(raw), (1...2).contains(version) else { return nil }
+        guard let version = integer(raw), (1...3).contains(version) else { return nil }
         return version
     }
 
@@ -304,10 +348,232 @@ enum TimedSchedulerPayloadPolicy {
         return canonicalValidated(payload)
     }
 
-    private static func canonicalValidated(_ payload: [String: Any], knownIdentities: Set<TimedSchedulerNodeIdentity>? = nil) -> Data? {
+    private static func wireBindings(_ schedule: [String: Any]) -> [TimedSchedulerWireNodeSlot]? {
+        guard let raw = schedule["nodeSlots"] as? [[String: Any]],
+              raw.allSatisfy({ value in
+                  guard Set(value.keys) == Set(["identity", "slot", "state", "actionAddress"]),
+                        let identity = value["identity"] as? [String: Any], Set(identity.keys) == ["unicastAddress"],
+                        let route = value["actionAddress"] as? [String: Any],
+                        Set(route.keys) == Set(["auto_on", "off", "recall"]) else { return false }
+                  return integer(value["slot"]) != nil
+              }),
+              let data = try? JSONSerialization.data(withJSONObject: raw),
+              let slots = try? JSONDecoder().decode([TimedSchedulerWireNodeSlot].self, from: data),
+              slots.allSatisfy(\.isValid),
+              Set(slots.map { $0.identity.unicastAddress }).count == slots.count else { return nil }
+        return slots
+    }
+
+    /// Decode only after validating the shared snapshot. The resulting complete
+    /// identities are durable local ownership, never an address lookup at send time.
+    static func decodingSchedules(_ payload: [String: Any]) -> [[String: Any]]? {
+        guard let normalized = repairingStaleBindings(payload), canonical(normalized) != nil,
+              let rows = normalized["schedules"] as? [[String: Any]] else { return nil }
+        guard schema(normalized) == 3 else { return rows }
+        guard let nodes = normalized["nodes"] as? [[String: Any]] else { return nil }
+        let identities = Dictionary(uniqueKeysWithValues: nodes.compactMap(identity).map { ($0.unicastAddress, $0) })
+        var result: [[String: Any]] = []
+        for row in rows {
+            guard let wire = wireBindings(row) else { return nil }
+            var bindings: [TimedSchedulerNodeSlot] = []
+            for value in wire {
+                guard let identity = identities[value.identity.unicastAddress] else { return nil }
+                bindings.append(.init(identity: identity, slot: value.slot, state: value.state, actionAddress: value.actionAddress))
+            }
+            guard let data = try? JSONEncoder().encode(bindings),
+                  let object = try? JSONSerialization.jsonObject(with: data) else { return nil }
+            var decoded = row
+            decoded["nodeSlots"] = object
+            result.append(decoded)
+        }
+        return result
+    }
+
+    static func withoutSharedSchedulerObservation(_ node: [String: Any]) -> [String: Any] {
+        var node = node
+        node.removeValue(forKey: "schedules")
+        if var properties = node["custProps"] as? [String: Any] {
+            properties.removeValue(forKey: "schedulerModelStates")
+            node["custProps"] = properties.isEmpty ? nil : properties
+        }
+        return node
+    }
+
+    /// Detached Space conversion, also used for inactive Spaces. No allocation
+    /// or approximate entry matching is allowed here. Unbound v2 stays unbound.
+    /// nil preserves the source for a later authoritative read/recovery.
+    static func migratingLegacyPayload(_ source: [String: Any]) -> [String: Any]? {
+        guard let payload = repairingStaleBindings(source), let version = schema(payload), version < 3,
+              canonical(payload) != nil, let nodes = payload["nodes"] as? [[String: Any]],
+              let rows = payload["schedules"] as? [[String: Any]],
+              let groups = payload["groups"] as? [[String: Any]],
+              let scenes = payload["scenes"] as? [[String: Any]] else { return nil }
+        let identities = nodes.compactMap(identity)
+        guard identities.count == nodes.count else { return nil }
+        let sceneConfigs = (payload["spaceData"] as? [String: Any])?["sceneConfigurations"] as? [[String: Any]] ?? []
+        func number(_ value: Any?) -> Int? { (value as? String).flatMap { Int($0, radix: 16) } ?? integer(value) }
+        func sceneNodes(_ scene: Int, cleanup: Bool) -> Set<String>? {
+            guard scenes.contains(where: { number($0["number"]) == scene }) else { return nil }
+            if let config = sceneConfigs.first(where: { number($0["number"]) == scene }), config["kind"] as? String == "devices" {
+                let members = config["deviceMembers"] as? [[String: Any]] ?? []
+                var references = members.compactMap { $0["identity"] as? [String: Any] }
+                if cleanup { references += (config["pendingOperations"] as? [[String: Any]] ?? []).compactMap { $0["identity"] as? [String: Any] } }
+                guard references.allSatisfy({ raw in
+                    identities.contains { $0.nodeUUID.caseInsensitiveCompare(raw["nodeUUID"] as? String ?? "") == .orderedSame
+                        && $0.unicastAddress == (raw["unicastAddress"] as? String)?.uppercased()
+                        && $0.deviceKeyFingerprint.caseInsensitiveCompare(raw["deviceKeyFingerprint"] as? String ?? "") == .orderedSame }
+                }) else { return nil }
+                return Set(references.compactMap { ($0["unicastAddress"] as? String)?.uppercased() })
+            }
+            let selected = Set(groups.filter { group in
+                (group["scenesDatas"] as? [[String: Any]] ?? []).contains {
+                    number($0["sceneNumber"]) == scene && (cleanup || integer($0["state"]) != 2)
+                }
+            }.compactMap { ($0["address"] as? String)?.uppercased() })
+            return Set(nodes.filter { node in
+                (cleanup || integer(node["groupState"]) != 2)
+                    && (node["groupAddress"] as? String).map { selected.contains($0.uppercased()) } == true
+            }.compactMap { ($0["unicastAddress"] as? String)?.uppercased() })
+        }
+        var output = payload, converted: [[String: Any]] = []
+        for row in rows {
+            guard let id = integer(row["id"]) else { return nil }
+            var target = Set((row["deviceAddresses"] as? [String] ?? []).map { $0.uppercased() })
+            let targetGroups = Set((row["groupAddresses"] as? [String] ?? []).map { $0.uppercased() }
+                + (row["profiles"] as? [[String: Any]] ?? []).compactMap { ($0["groupAddress"] as? String)?.uppercased() })
+            target.formUnion(nodes.filter { integer($0["groupState"]) != 2 && ($0["groupAddress"] as? String).map { targetGroups.contains($0.uppercased()) } == true }
+                .compactMap { ($0["unicastAddress"] as? String)?.uppercased() })
+            if let scene = number(row["sceneAddress"]) {
+                guard let members = sceneNodes(scene, cleanup: false) else { return nil }
+                target.formUnion(members)
+            }
+            var cleanup = Set((row["needDeleteNodeAddresses"] as? [String] ?? []).map { $0.uppercased() })
+            for group in row["needDeleteGroupAddresses"] as? [String] ?? [] {
+                guard groups.contains(where: { ($0["address"] as? String)?.uppercased() == group.uppercased() }) else { return nil }
+                cleanup.formUnion(nodes.filter { ($0["groupAddress"] as? String)?.uppercased() == group.uppercased() }
+                    .compactMap { ($0["unicastAddress"] as? String)?.uppercased() })
+            }
+            for scene in row["needDeleteSceneNumbers"] as? [String] ?? [] {
+                guard let number = Int(scene, radix: 16), let members = sceneNodes(number, cleanup: true) else { return nil }
+                cleanup.formUnion(members)
+            }
+            guard cleanup.isSubset(of: Set(identities.map(\.unicastAddress))) else { return nil }
+            var bindings: [TimedSchedulerNodeSlot] = []
+            if version == 2 {
+                guard let raw = row["nodeSlots"], let data = try? JSONSerialization.data(withJSONObject: raw),
+                      let decoded = try? JSONDecoder().decode([TimedSchedulerNodeSlot].self, from: data) else { return nil }
+                bindings = decoded
+                guard cleanup.isSubset(of: Set(bindings.map { $0.identity.unicastAddress })) else { return nil }
+            }
+            for (index, node) in nodes.enumerated() {
+                let identity = identities[index]
+                guard let primary = Int(identity.unicastAddress, radix: 16),
+                      let elements = node["elements"] as? [[String: Any]] else { return nil }
+                let schedulers = elements.filter { element in
+                    let models = (element["models"] as? [[String: Any]] ?? []).compactMap { ($0["modelId"] as? String)?.uppercased() }
+                    return models.contains("1207") && models.contains("1206")
+                }.sorted { (integer($0["index"]) ?? -1) < (integer($1["index"]) ?? -1) }
+                guard !schedulers.isEmpty else {
+                    if bindings.contains(where: { $0.identity == identity }) { return nil }
+                    continue
+                }
+                let lc = schedulers.first { element in (element["models"] as? [[String: Any]] ?? []).contains { ($0["modelId"] as? String)?.uppercased() == "130F" } }
+                let ordinary = schedulers.first { integer($0["index"]) != lc.flatMap { integer($0["index"]) } } ?? schedulers[0]
+                let group = groups.first { ($0["address"] as? String)?.uppercased() == (node["groupAddress"] as? String)?.uppercased() }
+                let automatic = integer(node["groupState"]) != 2 && group.flatMap { $0["profile"] as? [String: Any] }.flatMap { integer($0["type"]) }.map { $0 != 6 } == true
+                guard let ordinaryIndex = integer(ordinary["index"]),
+                      let autoIndex = integer((automatic ? lc ?? ordinary : ordinary)["index"]),
+                      ordinaryIndex >= 0, autoIndex >= 0, max(ordinaryIndex, autoIndex) <= 0x7FFF - primary else { return nil }
+                let route = TimedSchedulerActionAddress(autoOn: String(format: "%04X", primary + autoIndex),
+                    off: String(format: "%04X", primary + ordinaryIndex), recall: String(format: "%04X", primary + ordinaryIndex))
+                if version == 1 {
+                    // v1 owns this index globally. Unknown registers retain a
+                    // cleanup reservation, including possible old orphan entries.
+                    bindings.append(.init(identity: identity, slot: id, state: target.contains(identity.unicastAddress) ? .pendingApply : .pendingRemoval, actionAddress: route))
+                } else if let bindingIndex = bindings.firstIndex(where: { $0.identity == identity }) {
+                    bindings[bindingIndex].actionAddress = route
+                    if integer(row["selectTarget"]) == 3 {
+                        bindings[bindingIndex].state = bindings[bindingIndex].state == .pendingRemoval ? .pendingRemoval : .pendingApply
+                    } else {
+                        bindings[bindingIndex].state = target.contains(identity.unicastAddress) ? .pendingApply : .pendingRemoval
+                    }
+                }
+            }
+            var updated = row
+            for key in ["needDeleteNodeAddresses", "needDeleteGroupAddresses", "needDeleteSceneNumbers"] { updated.removeValue(forKey: key) }
+            guard let data = try? JSONEncoder().encode(bindings), let object = try? JSONSerialization.jsonObject(with: data) else { return nil }
+            updated["nodeSlots"] = object
+            converted.append(updated)
+        }
+        var metadata = payload["spaceData"] as? [String: Any] ?? [:]
+        metadata["timedSchemaVersion"] = 3
+        output["spaceData"] = metadata; output["schedules"] = converted
+        return exportPayload(output)
+    }
+
+    /// Compress only matching complete local identities. Export must not hide
+    /// stale ownership merely because a new provisioning instance reused an address.
+    static func exportPayload(_ payload: [String: Any]) -> [String: Any]? {
+        guard schema(payload) == 3 else {
+            guard let repaired = repairingStaleBindings(payload), canonical(repaired) != nil else { return nil }
+            return repaired
+        }
+        guard let nodes = payload["nodes"] as? [[String: Any]],
+              let rows = payload["schedules"] as? [[String: Any]] else { return nil }
+        let identities = Set(nodes.compactMap(identity))
+        guard identities.count == nodes.count else { return nil }
+        var result = payload, sharedRows: [[String: Any]] = []
+        for row in rows {
+            guard let raw = row["nodeSlots"] as? [[String: Any]],
+                  let data = try? JSONSerialization.data(withJSONObject: raw),
+                  let slots = try? JSONDecoder().decode([TimedSchedulerNodeSlot].self, from: data),
+                  slots.allSatisfy({ $0.isV3 && identities.contains($0.identity) }) else { return nil }
+            var shared = row
+            for key in ["needDeleteNodeAddresses", "needDeleteGroupAddresses", "needDeleteSceneNumbers"] {
+                guard row[key] == nil || (row[key] as? [String])?.isEmpty == true else { return nil }
+                shared.removeValue(forKey: key)
+            }
+            let wire = slots.map { TimedSchedulerWireNodeSlot(identity: .init(unicastAddress: $0.identity.unicastAddress),
+                slot: $0.slot, state: $0.state, actionAddress: $0.actionAddress!) }
+            guard let data = try? JSONEncoder().encode(wire), let object = try? JSONSerialization.jsonObject(with: data) else { return nil }
+            shared["nodeSlots"] = object
+            sharedRows.append(shared)
+        }
+        result["schedules"] = sharedRows
+        result["nodes"] = nodes.map(withoutSharedSchedulerObservation)
+        return canonical(result) != nil ? result : nil
+    }
+
+    private static func canonicalValidated(_ payload: [String: Any], knownIdentities: Set<TimedSchedulerNodeIdentity>? = nil,
+                                           comparisonOnly: Bool = false) -> Data? {
         guard let version = declaredSchema(payload), let schedules = payload["schedules"] as? [[String: Any]],
               let nodes = payload["nodes"] as? [[String: Any]] else { return nil }
         let identities = knownIdentities ?? Set(nodes.compactMap(identity))
+        var wireSlots: [String: Set<Int>] = [:]
+        var modelAddresses: [String: Set<String>] = [:]
+        if version == 3, !comparisonOnly {
+            guard identities.count == nodes.count, Set(identities.map(\.nodeUUID)).count == nodes.count,
+                  Set(identities.map(\.unicastAddress)).count == nodes.count else { return nil }
+            var elementsInSpace = Set<Int>()
+            for node in nodes {
+                guard node["schedules"] == nil,
+                      (node["custProps"] as? [String: Any])?["schedulerModelStates"] == nil,
+                      let identity = identity(node: node),
+                      let primary = Int(identity.unicastAddress, radix: 16),
+                      let elements = node["elements"] as? [[String: Any]] else { return nil }
+                var supported = Set<String>()
+                for element in elements {
+                    guard let index = integer(element["index"]), index >= 0,
+                          index <= 0x7FFF - primary, elementsInSpace.insert(primary + index).inserted,
+                          let models = element["models"] as? [[String: Any]] else { return nil }
+                    let ids = Set(models.compactMap { ($0["modelId"] as? String)?.uppercased() })
+                    if ids.contains("1207"), ids.contains("1206") {
+                        supported.insert(String(format: "%04X", primary + index))
+                    }
+                }
+                modelAddresses[identity.unicastAddress] = supported
+            }
+        }
         var ids = Set<Int>(), slots: [TimedSchedulerNodeIdentity: Set<Int>] = [:]
         var normalized: [[String: Any]] = []
         for schedule in schedules {
@@ -323,7 +589,9 @@ enum TimedSchedulerPayloadPolicy {
             var item: [String: Any] = ["id": id, "name": name, "enabled": enabled.boolValue,
                 "selectTarget": target, "action": action, "fadeTime": fade, "hour": hour,
                 "minute": minute, "dayOfWeek": days]
-            for key in ["deviceAddresses", "groupAddresses", "needDeleteNodeAddresses", "needDeleteGroupAddresses", "needDeleteSceneNumbers"] {
+            let retired = ["needDeleteNodeAddresses", "needDeleteGroupAddresses", "needDeleteSceneNumbers"]
+            guard version != 3 || retired.allSatisfy({ schedule[$0] == nil }) else { return nil }
+            for key in ["deviceAddresses", "groupAddresses"] + (version == 3 ? [] : retired) {
                 let raw = schedule[key] ?? [String]()
                 guard let addresses = raw as? [String], addresses.allSatisfy({ address in
                     guard address.count == 4, let value = UInt16(address, radix: 16), value > 0 else { return false }
@@ -356,6 +624,19 @@ enum TimedSchedulerPayloadPolicy {
             }.sorted { ($0["groupAddress"] as? String ?? "") < ($1["groupAddress"] as? String ?? "") }
             if version == 1 {
                 guard id < 16, schedule["nodeSlots"] == nil else { return nil }
+            } else if version == 3 {
+                guard let bindings = wireBindings(schedule) else { return nil }
+                for binding in bindings {
+                    let address = binding.identity.unicastAddress
+                    guard wireSlots[address, default: []].insert(binding.slot).inserted,
+                          comparisonOnly || modelAddresses[address].map({ supported in
+                              binding.actionAddress.addresses.allSatisfy(supported.contains)
+                          }) == true else { return nil }
+                }
+                let ordered = bindings.sorted { $0.identity.unicastAddress < $1.identity.unicastAddress }
+                guard let data = try? JSONEncoder().encode(ordered),
+                      let object = try? JSONSerialization.jsonObject(with: data) else { return nil }
+                item["nodeSlots"] = object
             } else {
                 guard let raw = schedule["nodeSlots"] as? [[String: Any]],
                       let data = try? JSONSerialization.data(withJSONObject: raw),
@@ -373,7 +654,7 @@ enum TimedSchedulerPayloadPolicy {
             normalized.append(item)
         }
         normalized.sort { ($0["id"] as! Int) < ($1["id"] as! Int) }
-        if version == 2 {
+        if version >= 2, !comparisonOnly {
             let groups = payload["groups"] as? [[String: Any]] ?? []
             for node in nodes {
                 if let elements = node["elements"] as? [[String: Any]],
@@ -401,7 +682,8 @@ enum TimedSchedulerPayloadPolicy {
                     let bindings = schedule["nodeSlots"] as? [[String: Any]] ?? []
                     let binding = bindings.first { raw in
                         let value = raw["identity"] as? [String: Any]
-                        return value?["nodeUUID"] as? String == identity.nodeUUID
+                        return version == 3 ? value?["unicastAddress"] as? String == address
+                            : value?["nodeUUID"] as? String == identity.nodeUUID
                     }
                     // Missing bindings are unassigned desired schedules. The
                     // existing sync planner reserves a slot before sending.
@@ -425,13 +707,15 @@ enum TimedSchedulerPayloadPolicy {
               let schedules = value["schedules"] as? [[String: Any]] else { return nil }
         value["schedules"] = schedules.map { schedule -> [String: Any] in
             var result = schedule
-            for key in ["deviceAddresses", "needDeleteNodeAddresses"] {
+            for key in ["deviceAddresses"] + (integer(value["timedSchemaVersion"]) == 3 ? [] : ["needDeleteNodeAddresses"]) {
                 result[key] = (schedule[key] as? [String] ?? []).filter { !addresses.contains($0.uppercased()) }
             }
             if let bindings = schedule["nodeSlots"] as? [[String: Any]] {
                 result["nodeSlots"] = bindings.filter { binding in
                     guard let identity = binding["identity"] as? [String: Any],
-                          let uuid = identity["nodeUUID"] as? String, let address = identity["unicastAddress"] as? String else { return false }
+                          let address = identity["unicastAddress"] as? String else { return false }
+                    if integer(value["timedSchemaVersion"]) == 3 { return !addresses.contains(address.uppercased()) }
+                    guard let uuid = identity["nodeUUID"] as? String else { return false }
                     return !(uuids.contains(uuid.uppercased()) && addresses.contains(address.uppercased()))
                 }
             }

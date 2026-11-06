@@ -21,6 +21,12 @@ struct SchedulerStatus: StaticMeshMessage { let schedules: UInt16 }
 struct SchedulerActionStatus: StaticMeshMessage { let index: UInt8; let entry: SchedulerRegistryEntry }
 struct SchedulerActionGet { let index: UInt8 }
 struct SchedulerActionSet { let index: UInt8; let entry: SchedulerRegistryEntry }
+struct SceneStore { let number: UInt16 }
+struct SceneExecuteData { let number: UInt16 }
+final class SceneMessageContext {
+    var current = true
+    func matches(node: Node) -> Bool { current }
+}
 struct SwitchKey: Equatable {
     enum ShortPress: Equatable { case sceneRecall(UInt16?, address: UInt16); case off }
     enum LongPress: Equatable { case dimUp(UInt16), cctDown(UInt16) }
@@ -52,6 +58,9 @@ struct SunricherVendorSet {
     let function: Function
 }
 final class MeshMessageHandle {
+    var sceneContext: SceneMessageContext?
+    var transmissionIsValid: (() -> Bool)?
+    var responseIsValid: ((StaticMeshMessage) -> Bool)?
     var schedulerTask: MeshSchedulerTask?
     let message: Any
     let model: Model
@@ -86,6 +95,13 @@ final class Node {
     var group: Group?
     var iconName: String { "device" }
     var cacheClears = 0
+    var requiredSceneStores = Set<UInt16>()
+    func timedActionAddress() -> TimedSchedulerActionAddress? {
+        .init(autoOn: primaryUnicastAddress.hex, off: primaryUnicastAddress.hex, recall: primaryUnicastAddress.hex)
+    }
+    func getNodeSyncSceneDatas(scene: Scene) -> [(scene: Scene, data: SceneExecuteData)] {
+        requiredSceneStores.contains(scene.number) ? [(scene, .init(number: scene.number))] : []
+    }
     init(_ address: UInt16) {
         primaryUnicastAddress = address; name = "Node \(address)"
         timedSchedulerIdentity = .init(nodeUUID: String(format: "00000000-0000-0000-0000-%012X", address),
@@ -271,6 +287,11 @@ final class Scene {
     let number: UInt16
     let info: SceneInfo
     init(_ number: UInt16 = 1) { self.number = number; info = SceneInfo(number) }
+    func getSyncMessageHandles(node: Node, data: SceneExecuteData) -> [MeshMessageHandle] {
+        let handle = MeshMessageHandle(message: SceneStore(number: number), model: node.schedulerSetupModels[0])
+        handle.sceneContext = SceneMessageContext()
+        return [handle]
+    }
 }
 final class SceneInfo {
     let sceneId: UInt16
@@ -292,6 +313,7 @@ struct SceneTargetSnapshot {
     let scope: SceneScope
     var targets: [Target] = []
     var cleanupTargets: [Target] = []
+    func writeData(scene: Scene, node: Node) -> SceneExecuteData? { .init(number: scene.number) }
 }
 enum SceneTargetResolver {
     static func resolve(scene: Scene) throws -> SceneTargetSnapshot {

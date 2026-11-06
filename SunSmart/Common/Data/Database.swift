@@ -1844,13 +1844,13 @@ extension Schedule {
         if SceneDeletionCascade.owns(scheduleID: id, meshUUID: uuid, networkID: subNetworkKey), action != .noAction || sceneNumber != nil || !nodeAddresses.isEmpty || !groupAddresses.isEmpty { return false }
 
         let deviceAddressesData = try? jsonEncoder.encode(self.nodeAddresses.map { String(format: "%04X", $0) })
-        let deviceDeleteAddressesData = try? jsonEncoder.encode(self.needDeleteNodeAddresses.map { String(format: "%04X", $0) })
+        let deviceDeleteAddressesData = self.needDeleteNodeAddresses.isEmpty ? nil : try? jsonEncoder.encode(self.needDeleteNodeAddresses.map { String(format: "%04X", $0) })
         
         let groupAddressesData = try? jsonEncoder.encode(self.groupAddresses.map { String(format: "%04X", $0) })
-        let groupDeleteAddressesData = try? jsonEncoder.encode(self.needDeleteGroupAddresses.map { String(format: "%04X", $0) })
+        let groupDeleteAddressesData = self.needDeleteGroupAddresses.isEmpty ? nil : try? jsonEncoder.encode(self.needDeleteGroupAddresses.map { String(format: "%04X", $0) })
         
         let sceneNumber = self.sceneNumber != nil ? Int(self.sceneNumber!) : nil
-        let sceneDeleteNumbersData = try? jsonEncoder.encode(self.needDeleteSceneNumbers.map { String(format: "%04X", $0) })
+        let sceneDeleteNumbersData = self.needDeleteSceneNumbers.isEmpty ? nil : try? jsonEncoder.encode(self.needDeleteSceneNumbers.map { String(format: "%04X", $0) })
         
         let weekDays = self.weekDays.reduce(0, { (result, day) -> UInt8 in result + day.rawValue})
         

@@ -98,7 +98,7 @@ import Foundation
             manager.schedules = [schedule]; defer { manager.schedules = [] }
             a.observedTimedSlots = nil; b.observedTimedSlots = nil; u.observedTimedSlots = nil
             let plan = try TimedSchedulerBindings.prepareTopology(group: g2, members: [x])
-            return plan.bindings[20]?.count == 3 && plan.bindings[20]?.allSatisfy { $0.state == .assigned } == true
+            return plan.bindings[20]?.count == 3 && plan.bindings[20]?.allSatisfy { $0.state == .pendingApply } == true
         }
         let scope = SceneScope(meshUUID: manager.meshNetwork!.uuid.uuidString, networkID: "0001")
         test("draftRejectsOfflineAdditionButAllowsExistingOfflineEdit") {
@@ -160,7 +160,7 @@ import Foundation
             let draft = try SceneDraft(number: 1, scope: scope, name: "edit", imageId: 0, kind: .devices,
                 deviceMembers: scene.info.configuration!.deviceMembers.filter { $0.identity == b.timedSchedulerIdentity }, sourceConfiguration: scene.info.configuration)
             let plan = try TimedSchedulerBindings.prepareTopology(sceneSnapshot: SceneTargetResolver.resolve(draft: draft))
-            let kept = plan.bindings[23]!.filter { $0.state == .assigned }
+            let kept = plan.bindings[23]!.filter { $0.state == .pendingApply }
             return kept.count == 1 && kept.first?.identity == b.timedSchedulerIdentity
                 && plan.bindings[23]!.filter { $0.state == .pendingRemoval }.count == 2
         }

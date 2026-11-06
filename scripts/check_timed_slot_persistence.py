@@ -25,6 +25,7 @@ with tempfile.TemporaryDirectory(prefix='timed-sqlite-') as directory:
     delete_start = target_source.index('    func needsDelete(from node: Node, contextGroup: Group? = nil) -> Bool {')
     delete_end = target_source.index('\n    }', delete_start) + len('\n    }')
     schedule = (root / 'SunSmart/Main/Timed/Model/Scheduler.swift').read_text()
+    message_source = (root / 'SunSmart/Common/Data/Node+MessageHandles.swift').read_text().split('extension Schedule {', 1)[1]
     codec_start = schedule.index('    private enum CodingKeys:', schedule.index('// MARK: - Codable'))
     codec = schedule[codec_start:schedule.index('    /// 复制日程', codec_start)]
     weekdays_start = schedule.index('    static func getWeekDays(')
@@ -49,6 +50,9 @@ with tempfile.TemporaryDirectory(prefix='timed-sqlite-') as directory:
                        .replace('    // ACTUAL_CONFIGURATION_TRANSACTION', function(database, '    @discardableResult\n    func configurationTransaction('))
                        .replace('    // ACTUAL_SCENE_REMOVAL', removal)
                        .replace('    // ACTUAL_TARGETS', target_source[target_start:target_end])
+                       .replace('    // ACTUAL_SYNC_DIFFERENCE', function(target_source, '    func schedulerSyncDifference('))
+                       .replace('    // ACTUAL_MESSAGE_HANDLES', function(message_source, '    func getMessageHandles('))
+                       .replace('// ACTUAL_MODEL_OWNER', schedule[schedule.index('extension Schedule {'):schedule.index('class Schedule:')])
                        .replace('    // ACTUAL_NEEDS_DELETE', target_source[delete_start:delete_end])
                        .replace('    // ACTUAL_CODEC', codec)
                        .replace('    // ACTUAL_PROFILE_CODEC', function(schedule, '    struct ScheduleProfile:'))

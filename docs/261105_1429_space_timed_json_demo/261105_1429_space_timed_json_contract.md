@@ -1,5 +1,7 @@
 # Sync Space 定时 JSON 契约与服务器／网关对接示例
 
+> 2026-11-06 更新：第 1～11 节及 `space_timed_v2_demo.json` 保留为 v2 历史契约。用户已确认第 12 节的 v3 结构及回写规则，App 实现与验证记录见第 13 节。新增 `space_timed_v3_demo.json` 为不含密钥的结构示例；服务器、网关配套和真实 Mesh 验收仍待对应执行方完成。
+
 结论：服务器经网关配置定时后，需要同时维护 **Space 的业务定时、节点槽位绑定、各 Scheduler Model 的设备观察结果及兼容投影**。只写 `space.schedules` 可以表达目标，不能证明设备已配置；只写 `node.schedules` 不能让 App 可靠恢复各 Model 的同步状态。
 
 本文基于 2026-11-05 当前工作区源码。**Profile 定时在当前 App 中只读；网关执行、服务器存储／回读以及真实触发尚未联调。** 本次仅新增文档、JSON 和离线校验脚本，没有修改业务代码、服务器或固件。
@@ -752,3 +754,548 @@ python3 docs/261105_1429_space_timed_json_demo/verify_demos.py
 | TimeSet 前置与 Site 时区 | [SiteTimeSetMessageFactory.swift](../SunSmart/Common/Data/SiteTimeSetMessageFactory.swift)、[SiteTimeZoneValue.swift](../SunSmart/Common/Data/SiteTimeZoneValue.swift)、[TimedScheduleTimeSyncPolicy.swift](../SunSmart/Common/Data/TimedScheduleTimeSyncPolicy.swift) |
 
 SDK 对照（路径相对于上述实际 SDK）：`nRFMeshProvision/Mesh Messages/SchedulerMessage.swift`、`nRFMeshProvision/Type Extensions/Data.swift`、`MeshLib/Manager/MeshScheduleServer.swift`、`MeshLib/Node/Node+SupportModels.swift`、`MeshLib/Node/Node+Messages.swift`、`MeshLib/MeshDatabase.swift`、`nRFMeshProvision/Mesh Model/TransitionTime.swift`、`MeshLib/Message/ExplicitTimeSetInput.swift`。均位于 `Sources/NordicSigMeshSDK/` 下。
+
+
+## 12. 2026-11-06：已确认的 v3 精简结构及回写契约
+
+### 12.1 结论与授权边界
+
+**已确认采用 `timedSchemaVersion=3`：共享 JSON 仅保留业务定义、节点槽位、动作地址和任务级状态，删除节点侧两份定时观察 JSON；本地继续使用现有 SDK 的逐 Model 观察缓存。** 需要同步调整状态判断、持久化及恢复，不能只删几个 encode 字段。
+
+两项决定已由用户确认：
+
+1. **单向迁移**：新版读取并转换旧数据，成功转换后只写 v3，不长期双写，不保证旧 App 继续编辑。
+2. **保留当前 Group 路由规则**：有 LC 不等于一律用 LC；无 Group、Manual Control、退出组失败继续使用普通 On。
+
+本轮用户补充要求删除 `needDeleteSceneNumbers`，并希望将 `unknown` 合并到 `pendingApply`；本文据此修订为**删除三组待删数组、只保留三状态**。用户随后明确“确认这版结构和回写规则作为实施依据”；本节完整结构、执行约束及数据库内容已获授权，实施结果见第 13 节。
+
+| 核对项 | 当前事实 |
+| --- | --- |
+| App 工作树／分支 | `feat-timed-simple-261106`／`feat/timed-simple-261106` |
+| App HEAD | `71dd7e0b67ff33c1a448dd16de08719c4c45ee69` |
+| SDK realpath | `/Users/maginawin/Developer/iOS/YKH/nordic-sig-mesh-sdk-worktrees/one-dev`，由现有 `.local-sdk/nordic-sig-mesh-sdk` 引用 |
+| SDK HEAD | `2809c540be3b965a6a847ee4586ac46faf2ca2b5`，核对时无未提交差异 |
+| 名称校正 | 当前 JSON 键为 `schedules`，不是 `schedulers`；本次不重命名。新键统一采用用户示例的单数 `actionAddress` |
+
+比较的方向：只删兼容投影、保留共享 Model 快照，改动较少但精简有限；完全删除观察和身份保护，会失去容量、重试、地址复用依据；**推荐共享格式精简、本地观察保留**，代价是任务状态维护及导入后的必要读回。已选兼容策略是单向迁移。
+
+### 12.2 对用户各项问题的直接回答
+
+| 项目 | 当前事实 | 建议 |
+| --- | --- | --- |
+| identity 仅保留地址 | UUID／指纹可从同一完整 Nodes 快照获得；当前 Nodes 不能反推旧任务的配网实例 | 共享 JSON 仅保留地址，本地绑定和异步任务仍保留完整身份，满足 12.5 的完整快照前提 |
+| state | 当前只有 `assigned`、`pendingRemoval`；assigned 含未发送、失败、部分成功、成功、停用 | 改为 12.3 的三状态，不能直接把 assigned 改名 synced |
+| slot | 物理 Scheduler Index，0…15；严格来说属于某个 Scheduler Register | 保留。App 对同节点各 Model 的同 index 做统一预约，业务 id 与 slot 仍分离 |
+| nodes[].schedules | 旧兼容投影，可能含实际旧值、孤立条目，并非全都能从期望业务重建 | 从 v3 JSON 删除；暂保留 SDK 本地缓存与现有使用方 |
+| schedulerModelStates | 身份、Model ID 可推导；实际参数、未知／已知空、非 Owner 残留、孤立占槽不能由业务目标推导 | 从共享 v3 删除；真实观察留在本地／按需读回，actionAddress 只接管路由职责 |
+| needDeleteNodeAddresses | 当前代码仍读取，是历史清理意图 | 捕获完整 binding 后可删除 |
+| needDeleteGroupAddresses | 当前代码仍读取，也参与 Group 本地关联 | 冻结旧成员 binding 并调整关联／任务入口后可删除 |
+| needDeleteSceneNumbers | 现有实现记录旧 Scene 引用，但同 slot 的新目标可覆盖旧 Recall | v3 删除；共同节点 pendingApply 写新场景，旧目标独有节点 pendingRemoval；Scene 删除入口通过绑定和真实读回查残留 |
+
+**“不再放入共享 JSON”不等于“真实设备观察可以推导”。** v3 可以恢复业务及清理意图，但不再保证把逐 Model 原始寄存器无损复制到另一手机。v2 的原始字节备份保证不能沿用到 v3。
+
+### 12.3 建议的三种 state
+
+| v3 值 | 意义 | 占槽与完成条件 |
+| --- | --- | --- |
+| `pendingApply` | 当前目标尚未确认完成；含未执行、失败、部分成功，以及旧数据缺少可信结果 | 占槽；必要时先读回，若已匹配则不重发，Owner 参数和全部非 Owner 清理确认后变 synced |
+| `synced` | 最近可信回执／读取已确认当前期望配置及非 Owner 清理完成 | 占槽；实际下发内容变化后回到 pendingApply；不表示设备在线或已按时触发 |
+| `pendingRemoval` | 节点移出目标或整条业务删除，设备尚未全部清理 | 占槽；全部支持的 Scheduler Models 同 slot 确认无有效项后移除 binding |
+
+用户所说“已添加／添加未成功／删除未成功”分别落在 synced／pendingApply／pendingRemoval。pendingApply 统一表示“让当前期望配置最终生效，尚未确认完成”，不要求知道此前是否发送过，因此可以合并原建议中的 unknown。不另外持久化失败次数、错误原因、正在发送等运行细节。
+
+取消的是 **binding.state 的 unknown 枚举**；本地 Model 观察仍须区分“未知”和“已知为空”。前者要求必要的读取／校验，不代表设备空槽，也不意味着 pendingApply 一定要重写：读回发现当前内容已正确，可直接确认 synced。没有可信 slot 归属的记录仍保持未绑定，不能靠 pendingApply 猜一个 slot；属于删除任务但缺结果时保持 pendingRemoval。
+
+状态规则：
+
+- `enabled=false` 是业务停用，仍占槽，成功停用后也可以 synced；不另设 disabled。仅修改名称不触发重写。
+- `nodeSlots:[]` 表示尚未绑定，不是成功或失败状态。合法空目标仍保留业务行。整条删除继续沿用现有 action=15 tombstone，所有清理完成后删除业务行。
+- 半成功保留 pendingApply／pendingRemoval；具体哪些 Model 成功由现有本地缓存保存。重启后复用有效缓存，缺失或超时不确定时读回，只补未完成部分。
+- 启停全失败回滚业务后，状态按回滚后的目标重新核对；部分节点成功则逐节点记录，不能把整条业务结果复制给所有节点。
+- 新业务参数、全部相关 binding 及状态必须作为同一次配置提交；不再保存 Timed 的旧 Scene 引用。ACK 后本地保存失败不能导出 synced。重试使用原 slot。
+- 回执继续校验 Space／网络、完整配网身份、slot、当前参数、当前路由和运行任务所有权。沿用 TimedSchedulerTaskCoordinator 的接管／取消机制，不新增持久化 generation；迟到回执不能仅按地址和 slot 把新任务写成 synced。
+- “删除完成”通过移除 binding 表示，不额外保存 removed；设备清理结果未确认时不能提前释放槽。
+
+### 12.4 actionAddress 的意义与 LC 规则
+
+建议形式：
+
+```json
+{"auto_on":"0301","off":"0300","recall":"0300"}
+```
+
+三个值均表示**配置该动作所用的 Scheduler Setup Server（1207）所在 Element 的单播地址**，不是 Group 地址、Scene Number，也不是触发时再由 App 发 On/Off 的目的地址。清理范围仍从 Composition 枚举全部 Scheduler Models，不能只遍历这个对象去重后的地址。
+
+规范边界：Scheduler Index 为 0…15；Turn On 是 action=1，没有独立 Auto action。标准动作的影响范围还取决于后续 Scheduler Element 的布局，不能把配置目的 Element 理解为一定只控制单个 Element；LC OnOff 与 Generic OnOff 有状态绑定。来源：[Bluetooth Mesh Model 1.1，5.1.4.2、5.2.3、5.3.5～5.3.6、6.2.3.3](https://www.bluetooth.com/wp-content/uploads/Files/Specification/HTML/MMDL_v1.1/out/en/index-en.html)。以下是当前 App/SDK 具体选路策略，设备实际 LC 效果仍需运行验收。
+
+| 有效业务归属／Composition | auto_on | off／recall |
+| --- | --- | --- |
+| 自动 Group，LC Element 同时有 Scheduler Setup Server | LC Element，例如 0301 | 普通 Scheduler Element，例如 0300 |
+| 无 Group、Manual Control、退出组失败 | 普通 Scheduler Element | 普通 Scheduler Element |
+| 自动 Group，没有可用 LC Scheduler | 回退普通 Scheduler Element | 普通 Scheduler Element |
+| 只有一个可用 Scheduler | 复用唯一 Model，可能不在 Primary | 同左 |
+| 没有 Scheduler／Composition 不足 | 不猜 Primary，不创建可发送 binding，旧数据保留并报告不可用 | 同左 |
+
+因此用户的两类示例都可成立，但 0300/0301 不是固定偏移。有 130F 不保证同 Element 有 1207；普通 Owner 也不保证是 Primary。当前 SDK 的 lightLCSchedulerSetupModel 查 LC 同 Element 的 Scheduler；ordinarySchedulerSetupModel 优先非 LC，再按现有策略回退。
+
+建议三项必填，均为 4 位大写 HEX 单播地址，属于同一节点且具有支持的 Scheduler Model；不使用 null、0000、缺字段表示“自动猜”。它表达当前 Group 语义下的有效路由，成员、Profile、Composition 变更时重算。只有当前 action 的实际路由／参数改变才使 synced 失效，避免未使用的 auto_on 地址变化导致 Off 定时重写。
+
+路由本身仍有少量可推导重复；为便于执行方直接使用，本次按用户建议展开，不再新增节点路由字典及引用层。Profile 定时保持现有只读边界，不能因添加 recall 地址就认为 App 已支持执行 Profile。
+
+### 12.5 共享 identity 只保留地址的前提
+
+`identity.unicastAddress` 是引用**同一完整 Space 快照**中 nodes[].unicastAddress 的外键。导入时从该 node 的 UUID／Device Key 建立完整本地身份；之后本地 binding 和任务继续对 UUID＋地址＋指纹做匹配，不能每次发送才从当前 Nodes 临时补身份。
+
+必须同时做到：
+
+1. 先校验整份 Nodes、唯一身份／地址、Element 区间、Composition 和 bindings，再持久化。禁止把另一版本的 schedules 片段直接拼到当前 Nodes。导出压缩前也须确认本地 binding 的完整身份与同份 Nodes 一致；不一致时拒绝或走已有明确清理流程，不能只截取地址掩盖身份冲突。
+2. 删除／重置／重配／云端替换节点时，在地址复用之前撤销旧任务、移除旧绑定及不能继承的直接目标。永久遗忘沿用现有删除记录，不标为物理清理成功。
+3. 单节点更新也比较完整旧／新身份，实例变化时清除旧关系，不能只换 Nodes 后让旧 binding 指向新设备。
+4. 外部写端同样必须保证 Nodes 与 bindings 属于同一次完整配置，不能部分合并。若无法满足，应退回保留实例身份的 JSON 结构再确认。
+
+**无法恢复的信息**：如果外部已将旧绑定和新节点错误拼成地址相同的一份 JSON，新读端无法只凭该文件辨别历史归属。采用地址引用意味着依赖完整快照写入契约；不是无条件等价删除。本地复用已有完整 binding，不新增身份映射表。
+
+### 12.6 删除三组待删引用，以当前目标和节点槽位完成收敛
+
+用户要求删除 `needDeleteSceneNumbers`；前稿“必须在 Timed 保存旧 Scene 号”的结论收回。**对已经捕获完整槽位归属的任务，恢复当前期望配置不需要反推旧 Scene 号。** 仍需修改现有依赖旧引用的 Scene 入口，不能只删除字段。
+
+| 删除字段 | 替代规则 |
+| --- | --- |
+| needDeleteNodeAddresses | 目标变化前捕获完整旧绑定；移出的节点保留 pendingRemoval，按其 slot 清理 |
+| needDeleteGroupAddresses | Group 展开到真实成员；变化前冻结旧成员绑定，随后按节点写入／清理，不依赖 Group 继续存在 |
+| needDeleteSceneNumbers | 新旧 Scene 共同节点沿原 slot pendingApply 写新 Scene；旧目标独有节点 pendingRemoval；新目标独有节点在容量确认后分配 slot 并 pendingApply |
+
+例如 A 的目标是 N1/N2，B 的目标是 N2/N3：
+
+- N2：沿用该定时原 slot，写 B，失败继续 pendingApply；没有必要保存 A 的号码。
+- N1：不再属于新目标，保留原 slot 的 pendingRemoval，失败不能删 binding。
+- N3：完成身份／容量校验后预约 slot，pendingApply 写 B。
+- 写 B 前满足 B 的 Scene Store 等前置，先清非 Owner 同 slot，再向当前 Owner 写 B；成功覆盖的是 **Scheduler 条目中对 A 的 Recall**，不是删除 Scene A 本身。
+- 更换 Scene 成功保存后，失败不将业务 sceneAddress 回滚到 A，继续以 B 为当前目标重试；若保存新业务本身失败，回滚整个配置提交。现有启停“全失败回滚 enabled”是另一条交互规则，不混为一谈。
+
+**单独删除场景 A 的配套检查：**
+
+现有 SceneDeletionTask.makeHandles 已经会按 slot 找当前业务 owner，用其当前 entry 替换旧 Recall；它不是一律清空。因此可以复用“以当前目标 B 接替”的路径。待修改的是 SceneDeletionCascade.prepare、SceneConfigurationStore.deletionReferenceNames、SceneServer.referenceNames 等对 needDeleteSceneNumbers 的依赖，以及检查范围。
+
+建议复用现有 Scene deletionReferences／读回任务，不新增 Timed 历史字段：
+
+1. 删除 A 时收集 A 的当前／待清成员、已知观察仍引用 A 的节点、所有存在未完成 Timed binding 的节点，以及 Scheduler 观察不完整的节点。去重后补入已有 Scene 删除读回任务；在无历史证据的新手机上，这可能覆盖 Space 中全部状态未知的 Scheduler 节点。
+2. 读回各 Model 后，只处理真实残留 A 或明确归属本次删除的 slot。仍归属当前目标 B 的槽位走当前目标替换／必要 Scene Store 前置，不释放其 binding；不把整个 B 定时列为被删除的业务。
+3. 只有当前 sceneAddress=A 的业务才进入 Scene 的待删 scheduleIDs；B 的节点仅作为检查／清残留对象。B 不能仅因曾用同一 slot 就被级联删除。
+4. 逐节点确认不存在 A 残留后再完成该 Scene 清理记录；离线、读取失败、B 的必要前置失败保留原 Scene 删除任务重试。Scene 号在删除完成前仍由既有机制占用，防止旧 Recall 指向复用后的新场景。
+5. Scene 清理 ACK 若也完成了 B 的当前配置，应按 Timed 的全 Model 条件重新确认其 binding；不能仅因某条 Scene 删除子任务成功就直接标 synced。
+
+这些是已有删除任务的覆盖／生成规则调整，Scene deletionReferences 的字段、schema、generation 不变。成本是**实际删除 Scene 时**可能增加读回范围；普通 A→B 编辑不必为保留 A 历史增加持久字段或全网读取。
+
+旧数据升级时，先消费旧三组数组并转换所有可确定的清理目标，再清空旧列。历史引用缺失到无法确定节点／slot 时，保留原始旧数据、提示读回或处理，不通过猜 slot 强行迁移。
+
+#### 12.6.1 binding 是什么、存在哪里
+
+这里的 binding 就是 `space.schedules[].nodeSlots[]` 中的**一个数组元素**，表示“业务定时 X 在节点 N 上预约 slot S，并处于什么任务状态”。没有额外的 `nodes[].binding` 表，也不是 Mesh 的 AppKey Model Bind 或设备配对。
+
+同一个节点可以参与多条业务定时，各业务各有自己的 nodeSlots 项；同一节点的同一 slot 只能有一个业务 owner。查找定位用 Space＋schedule.id＋节点完整身份（共享 JSON 用地址引用）＋slot；执行和回执仍需核对当前配置／任务所有权。
+
+例如以下**字段节选**表示定时 104 当前目标是场景 B：0300 的 slot=3 待写 B；0400 已移出目标，其旧 slot=5 待清理。完整 Space 还必须包含节点、场景、权限等，本节选不能直接上传。
+
+```json
+{
+  "spaceData": {"timedSchemaVersion": 3},
+  "schedules": [{
+    "id": 104,
+    "selectTarget": 2,
+    "action": 2,
+    "sceneAddress": "000B",
+    "nodeSlots": [
+      {
+        "identity": {"unicastAddress": "0300"},
+        "slot": 3,
+        "state": "pendingApply",
+        "actionAddress": {"auto_on": "0300", "off": "0300", "recall": "0300"}
+      },
+      {
+        "identity": {"unicastAddress": "0400"},
+        "slot": 5,
+        "state": "pendingRemoval",
+        "actionAddress": {"auto_on": "0400", "off": "0400", "recall": "0400"}
+      }
+    ]
+  }]
+}
+```
+
+0400 必须仍存在于这份完整 Space 的 nodes 中，才能继续访问该配网实例；若永久遗忘节点，走已有删除记录／身份清理流程。actionAddress 在 pendingRemoval 中不限制清理范围，仍清节点全部支持的 Scheduler Models 同 slot。
+
+#### 12.6.2 服务器／网关怎么写入失败和成功结果
+
+下面是外部执行方要实现的**契约建议**，不是声称现有服务器已经这样处理。App 只负责读写这套数据及自身执行，不修改外部实现。
+
+**关键顺序：先持久化目标和 pending 状态，再下发。失败后通常保持原 pending 状态，并不是等失败才补建 binding。**
+
+| 阶段／结果 | 写入共享 JSON 的方式 |
+| --- | --- |
+| 保存 A→B 新目标 | 同次配置提交写 sceneAddress=B，以及所有节点的新 pendingApply／pendingRemoval；取消旧任务或使旧任务结果失效 |
+| 0300 新增／改 B 失败、超时、取消、部分 Model 成功 | 保留该项 slot=3、state=pendingApply，sceneAddress 仍为 B，不新分配 slot |
+| 0300 已确认 Owner 为 B、非 Owner 同 slot 清理完成 | 只把该项 state 改为 synced，保留 identity／slot／actionAddress |
+| 0400 删除失败或只有部分 Model 清理成功 | 保留该项 slot=5、state=pendingRemoval |
+| 0400 全部 Model 同 slot 清理完成 | 从定时 104 的 nodeSlots 移除该项，释放 slot=5；不是改为 synced，也不删除 nodes 中的设备 |
+| 定时已整体删除且所有 bindings 清理完成 | 移除整条业务定时；正常空目标业务仍保留，不与删除 tombstone 混淆 |
+
+失败没有改变 state 时，可以不再发送一份完全相同的共享 JSON，但已持久化的 pending 意图必须存在；错误原因、重试次数、逐 Model 进度保留在执行方已有任务记录／App 本地观察中，不加入新公共字段。单节点成功仅更新该节点的 binding，不能把同一 schedule 的其他节点也标成功。
+
+更新应在服务器内部基于最新完整 Space 合并结果并持久化；表中的“只改 state”是字段语义，不是新增 PATCH API。沿用已约定完整 Space 包装／更新机制，对外回读能看到结果。结果有变化时走现有 Space 变更版本／通知机制，保证 App 不因只变状态而漏读。
+
+每个结果都必须匹配发出任务时的当前意图、节点实例、slot 和执行所有权。若用户已把 B 改成 C，迟到的 B 成功／失败都不能更新 C 的 binding。不能将旧完整 JSON 整份回写覆盖新配置，也不能仅靠秒级时间戳判断回执归属；执行方沿用其任务标识／串行替换和条件更新，不向 Space 新增未经确认的 generation。
+
+进程崩溃或成功 ACK 后存储失败，保留 pending 即可恢复；重试前按需读回，已匹配则直接确认成功，避免重复下发。导入 JSON 不触发 Mesh，执行由后续同步任务负责。
+
+### 12.7 对外 JSON 变更清单与示例（已确认）
+
+路径从单个 Space 开始；Site 包装时前缀为 site.spaces[]，Space API 仍为 spaces[]。
+
+| 完整路径 | v2 | 已确认 v3：类型、默认／可空、语义 |
+| --- | --- | --- |
+| `spaceData.timedSchemaVersion` | 2 | 必填整数 3；缺失只进入旧格式解析，不猜 v3 |
+| `schedules[]` 及业务字段 | 当前定义 | 保留现有名称、业务含义 |
+| `schedules[].nodeSlots` | 数组，缺失/null 可规范化为空 | 必填数组，可 []；v3 缺失/null 拒绝，旧兼容只在转换器执行 |
+| `schedules[].nodeSlots[].identity` | 三属性对象 | 必填对象，只含 unicastAddress；本次不另做扁平化 |
+| `schedules[].nodeSlots[].identity.unicastAddress` | Primary 地址字符串 | 保留，必填，4 位大写 HEX，0001…7FFF，引用唯一 node，无默认值 |
+| `schedules[].nodeSlots[].identity.nodeUUID` | UUID | 从共享 v3 删除，本地完整身份保留 |
+| `schedules[].nodeSlots[].identity.deviceKeyFingerprint` | 64 位指纹 | 从共享 v3 删除，本地保留；实际拼写是 Fingerprint |
+| `schedules[].nodeSlots[].slot` | 整数 0…15 | 保留，必填；不接受 Bool、字符串或 null；同节点同 slot 全 Space 唯一 |
+| `schedules[].nodeSlots[].state` | assigned／pendingRemoval | 必填字符串，12.3 三值，无缺省成功值；非法枚举拒绝 |
+| `schedules[].nodeSlots[].actionAddress` | 无 | 新增必填对象，auto_on／off／recall 均必填有效地址字符串，无 null／默认猜值 |
+| `schedules[].needDeleteNodeAddresses` | 地址数组 | 删除，清理职责交给完整 pendingRemoval bindings |
+| `schedules[].needDeleteGroupAddresses` | Group 地址数组 | 删除，清理职责交给旧成员 bindings |
+| `schedules[].needDeleteSceneNumbers` | 总是输出数组 | v3 删除，不用 []／null 占位；旧读取器只用于迁移，同 slot 新目标覆盖及旧节点清理由 bindings 承担 |
+| `nodes[].schedules` | 兼容投影数组 | v3 不输出、不作为真实设备状态恢复来源；旧入口读取用于迁移 |
+| `nodes[].custProps.schedulerModelStates` | 含逐 Model 及 legacy 原始字节 | v3 不输出；其余 custProps 保留，删除后空对象可省略 |
+| 分享根 `formatVersion` | 2 | 3；format=sunSmartSpace、space 包装不变；云 API 不增加该包装 |
+
+新读端遇到 v3 携带已删除旧键，拒绝冲突格式并要求写端规范化，不能在两种来源不一致时任意选一个。未列出的节点身份、网络 Key、Groups、Scenes、权限及其他 custProps／spaceData 保持原契约；不能删除其他模块的 generation。
+
+**变更前的 binding 节选**：UUID 和全零指纹仅作结构占位，不是可导入身份。
+
+```json
+{
+  "identity": {
+    "nodeUUID": "00000000-0000-4000-8000-000000000301",
+    "unicastAddress": "0300",
+    "deviceKeyFingerprint": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "slot": 3,
+  "state": "assigned"
+}
+```
+
+**变更后的 Timed 节选**：假设 0300 属于自动 Group，0301 同时有 LC 和 Scheduler。完整 Space 还须含真实 Nodes、Group、网络和权限；本段不能直接导入。
+
+```json
+{
+  "spaceData": {"timedSchemaVersion": 3},
+  "schedules": [{
+    "id": 100,
+    "name": "Morning Auto On",
+    "enabled": true,
+    "selectTarget": 1,
+    "action": 1,
+    "fadeTime": 5,
+    "hour": 8,
+    "minute": 0,
+    "dayOfWeek": 31,
+    "deviceAddresses": ["0300"],
+    "groupAddresses": [],
+    "sceneAddress": null,
+    "profiles": [],
+    "nodeSlots": [{
+      "identity": {"unicastAddress": "0300"},
+      "slot": 3,
+      "state": "synced",
+      "actionAddress": {"auto_on": "0301", "off": "0300", "recall": "0300"}
+    }]
+  }]
+}
+```
+
+只有充分成功证据才输出 synced；新建／修改失败应为 pendingApply，不能机械把 assigned 变成 synced。无 LC／非自动 Group 的普通路由示例是 `{"auto_on":"0300","off":"0300","recall":"0300"}`，仍须核对 Composition。
+
+**场景 A→B 尚未成功的最小节选**：
+
+```json
+{
+  "id": 104,
+  "selectTarget": 2,
+  "action": 2,
+  "sceneAddress": "000B",
+  "nodeSlots": [{
+    "identity": {"unicastAddress": "0300"},
+    "slot": 3,
+    "state": "pendingApply",
+    "actionAddress": {"auto_on": "0300", "off": "0300", "recall": "0300"}
+  }]
+}
+```
+
+节点仍保留新目标，所以沿原 slot pendingApply 写入 B，不再记录 A。写入失败／结果不确定时保持该状态；完整确认成功后改为 synced。新旧 Scene 目标不同的节点分别按 12.6 处理。
+
+体积估算：原示例 13 条业务、15 个 binding、4 个节点，紧凑 JSON 为 **14,159 bytes**。按建议删字段、补三路地址，并把非待删状态分别全部取 synced／pendingApply，结果 **7,860～7,938 bytes，减少约 44%**。这只是同一字段节选的形状估算，不是真实迁移结果，不含完整项目其他数据；地址和状态必须根据业务判定，不能将估算当转换器或网络性能证据。
+
+### 12.8 数据库与本地恢复结构（已确认）
+
+**无需新增表、列、索引，但已有 BLOB 内容、枚举及列的使用规则发生变化，仍属于必须确认的结构变更。** 本地保留完整 identity，需要分离存储模型与共享 DTO，避免复用 Codable 时把本地防护一起删掉；维护成本是两种编码边界及相应往返测试，复用现有 binding，不新建映射表。
+
+| 表／持久路径 | 当前内容 | 建议变化 |
+| --- | --- | --- |
+| App `spaces.timedSchemaVersion` INTEGER | 1／2，SQL 默认 1 | 支持 3；旧默认保持 1，新建／成功转换由 App 显式写 3，不能批量改旧行 |
+| App `schedules.nodeSlots` nullable BLOB | JSON 数组，完整 identity＋slot＋两状态；NULL 为旧 id=slot | v3 BLOB 保留完整 identity，增加三状态和 actionAddress；非 NULL 数组，可 [] |
+| App `schedules.deviceDeleteAddresses` nullable BLOB | 待删直接地址数组 | 完整迁移 bindings 后，v3 行置 NULL，不再作工作队列；保留列供旧格式读取 |
+| App `schedules.groupDeleteAddresses` nullable BLOB | 待删 Group 数组 | 同上；不做 DROP COLUMN |
+| App `schedules.sceneDeleteAddresses` nullable BLOB | 待删 Scene 数组 | 旧记录转换完整 bindings 后，v3 行置 NULL；保留 SQL 列供旧格式迁移，不再作为 v3 工作队列 |
+| SDK `nodePropertys.allSchedulerModelActions` nullable BLOB | 逐 Model 原始观察与未知状态 | 格式不变，继续本地持久化；v3 没有共享观察，不能初始化为已知空 |
+| SDK `nodePropertys.schedulesData` nullable BLOB | 兼容缓存 | 格式不变，保留现有使用方；不从 v3 恢复，也不把期望写成真实观察 |
+| `SpaceRecoveryState.timedConfigurationBaseline`、`submission.timedConfiguration` | Base64 Data，内部为规范化 Timed JSON | 支持带版本的 v3 内容，包含路由与状态；业务比较和回执比较分开，状态变化不能取消同一意图的在途任务 |
+| `SpaceRecoveryState.schedulerModelStatesBaseline`、`submission.schedulerModelStates` | Base64 Data，内部为旧 Model 快照数组 | v1/v2 原义保留；新 v3 不再依赖该维度，版本明确后允许 nil／省略，不能伪造 [] 冒充旧观察 |
+
+恢复文件仍为 `Library/Application Support/SpaceConfigurationRecovery/<scope-hash>.json`，修改已有字段使用规则，不另建恢复系统。旧 prepared/accepted 上传、pending import、删除记录等须先完成或明确恢复，不在中途强改回执版本；不含 Nodes 的历史比较回执不能从当前 Nodes 重建其旧身份。
+
+典型数据库记录前后：
+
+| 记录 | 迁移前 | 迁移后 |
+| --- | --- | --- |
+| 同一 spaces 行 | timedSchemaVersion=2 | timedSchemaVersion=3，其余身份不变 |
+| 同一 schedules 行 | scheduleIndex=100；BLOB 内完整 identity、slot=3、assigned | scheduleIndex=100；同一完整 identity、slot=3，新增 actionAddress；state 依证据为 synced／pendingApply |
+| 待删设备 | deviceDeleteAddresses=["0400"]，已找到其旧 slot=5 | deviceDeleteAddresses=NULL；binding 内完整身份、slot=5、pendingRemoval |
+| 旧场景引用 | sceneAddress=B，sceneDeleteAddresses=["000A"] | sceneAddress=B，sceneDeleteAddresses=NULL；重叠节点沿 slot pendingApply，旧目标独有节点 pendingRemoval |
+| v1 空值 | nodeSlots=NULL，业务 id 是旧物理 slot | 先建立真实绑定；合法无绑定为 []。失败保留旧行，不以空数组掩盖损坏 |
+
+唯一约束 `(meshUUID, subNetworkKey, scheduleIndex)` 不变；scheduleIndex 仍是业务 ID。跨业务的 `(完整配网身份, slot)` 唯一性在配置提交／导入层校验，不增加索引。App／SDK 保存失败沿用现有导入 staging 和恢复，不能假设两个存储天然在同一 SQL 事务内。
+
+
+### 12.9 完整行为链与单向迁移
+
+| 入口／阶段 | 必须调整的行为 |
+| --- | --- |
+| Timed 新建／编辑／启停 | 先准备完整 bindings、路由、状态再保存；配置提交失败回滚，合法空目标保留；执行失败保留当前目标及 pending，启停全失败按既有 enabled 回滚规则另行处理 |
+| Group 加入／退出／换组／Profile 变化 | 拓扑变化前捕获旧成员槽位；只同步实际目标／当前 Owner 改变的节点；重新加入可接管 pendingRemoval |
+| Group Scene／Device Scene 变化／删除 | 同 slot 覆盖当前目标、旧节点按 binding 清理；Scene 删除改用 12.6 的覆盖及读回规则，不能只改 Timed 页面 |
+| Node／Gateway 删除与地址复用 | 所有生命周期入口共同撤销旧身份绑定及任务，不能让新节点继承旧 slot |
+| 下发／ACK | 更新真实本地观察后，按当前意图确认 binding；部分 ACK 不足以 synced，全部清理后才释放 |
+| 重启／重载 | 完整本地身份、任务状态、有效缓存共同恢复；group.info.bindSchedules 等关联不能再依赖被删除数组 |
+| 导出／上传／分享 | 同一版本化 DTO 覆盖 Space、Site、分享备份、Node 导出及 inactive Space，不只在一个出口过滤 |
+| 完整 v3 导入／换手机 | 校验整份引用和路由，恢复业务与任务结果，不恢复整表观察、不发送 Mesh；首次操作按需读回 |
+| 同机导入 | 只有身份、意图／路由和可信配置版本一致才复用本地观察；有远端执行变化时相关缓存失效 |
+| 云端回读／恢复 | v3 的业务、bindings、状态、路由参与回读；移除强制共享 Model 快照的旧门槛，保留网络／身份／权限／完整性校验 |
+
+导入的 synced 可表示写端最近确认结果，但不能用期望 entry 填满 allSchedulerModelEntrys，也不能证明其他未绑定 slot 为空。新分配仍需所有相关 Model 的真实占槽并集，未知／无业务归属条目保持占用，不自动覆盖。未变化且已成功的节点不重写；本地缓存有效时只补失败 Model。新手机会增加首次读取成本，离线仍可查看共享任务结果，无法证明安全的新分配／操作需等读回。本次不顺手放宽已有连接与编辑限制。
+
+已选单向迁移的详细边界：
+
+| 输入／客户端 | 建议行为 |
+| --- | --- |
+| v2，有完整身份／bindings／有效观察 | 先严格按旧规则校验，再依据观察生成三状态、补路由、写 v3；pendingRemoval 保留 |
+| v2，无 Model 快照 | assigned 不能判成功；仍在目标的绑定为 pendingApply，必要读回后可直接确认 synced；待删绑定仍 pendingRemoval |
+| v2，nodeSlots 缺失/null | 依旧兼容规则成未绑定，不用业务 id 猜 slot；已有物理条目但归属不明时保留占用并读回，不按相似参数擅自认领 |
+| v1，id=slot | 只对已确认合法 v1 的 0…15 数据按旧目标／清理历史建立绑定，不能把 id≥16 的损坏 v2 降格为 v1 |
+| 冲突 slot、损坏身份／BLOB／快照、旧目标丢失 | 保留原始完整数据，不清空、不强制升级；必要读回，仍无法确定则提示处理 |
+| Profile | 保留业务及可确认的外部 bindings，继续只读；不能用普通 Scene 逻辑推断执行成功，证据不足为 pendingApply，App 不因此获得 Profile 下发权限 |
+| 访客／只读／权限撤销 | 可读与解释，不能借升级取得编辑／云写权限；保留旧源用于受保护的兼容出口 |
+| 旧 App 读取 v3 分享 | formatVersion=3 使支持版本校验的旧 App 拒绝；不能保证更早、无校验版本安全 |
+| 旧 App 访问已迁移云 Space | 新 App 无法单方面禁止旧写端覆盖；需要服务器版本隔离／写入门槛，或明确仅支持新客户端，是外部发布依赖 |
+
+迁移以每 Space 为单位：保留原始来源／已有恢复副本 → 旧版本解析 → 建立完整身份、bindings、路由、未完成清理 → 校验 → 持久化与重载核对 → 标记 v3 → 上传及回读。数据与版本转换应作为一次完整配置提交；失败保留旧格式，不能先写版本号。当前 v3 收到旧格式覆盖时走已有冲突处理，不自动倒退或补空绑定覆盖。
+
+还须覆盖权限降级、密码变更、合法旧默认值以及云端修复与本地未上传变更冲突。历史记录仅用于提醒回归维度，不代表当前分支仍存在历史缺陷，本轮未复现这些问题。
+
+### 12.10 实施阶段、源码入口及外部依赖
+
+结构确认后再写可执行计划；以下为本次分析确定的实施范围，未执行：
+
+1. **版本与存储边界**：v1/v2 读取、v3 DTO、本地完整 binding、三状态、失败可恢复的迁移。
+2. **任务与清理链**：编辑、启停、拓扑、Scene、删除、重载和回执接管统一；替换三组待删数组生产依赖，实现 12.6 的同槽覆盖、旧节点清理和 Scene 删除覆盖规则。
+3. **交换与回执**：所有导入导出、分享、Site、Node 更新和恢复路径按版本工作；不把“无快照”解释成“空表”。
+4. **示例与验收**：实现后更新 v3 示例，保留 v2 作为迁移夹具；定向行为回归、真实持久化往返、代表品牌构建，外部验收分开记录。
+
+| 范围 | 模型／读写／任务入口（相对本文件） |
+| --- | --- |
+| JSON、身份、槽位 | [Scheduler.swift](../../SunSmart/Main/Timed/Model/Scheduler.swift)、[TimedSchedulerSlotPolicy.swift](../../SunSmart/Main/Timed/Model/TimedSchedulerSlotPolicy.swift)、[TimedSchedulerBindings.swift](../../SunSmart/Main/Timed/Model/TimedSchedulerBindings.swift) |
+| SQLite | [Database.swift](../../SunSmart/Common/Data/Database.swift) 的 Schedule.initDatabase/load/save 与 SpaceData；SDK MeshDatabase 的 nodePropertys |
+| 路由／结果／任务所有权 | [TimedSchedulerOwnerPolicy.swift](../../SunSmart/Main/Timed/Model/TimedSchedulerOwnerPolicy.swift)、[MeshNetwork+SunSmart.swift](../../SunSmart/Common/Data/MeshNetwork+SunSmart.swift)、[Node+MessageHandles.swift](../../SunSmart/Common/Data/Node+MessageHandles.swift)、[TimedSchedulerTaskCoordinator.swift](../../SunSmart/Main/Timed/Model/TimedSchedulerTaskCoordinator.swift) |
+| Timed 交互 | [ScheduleAddViewController.swift](../../SunSmart/Main/Timed/Controller/ScheduleAddViewController.swift)、[ScheduleServer.swift](../../SunSmart/Main/Timed/Model/ScheduleServer.swift) |
+| 拓扑、Scene、删除 | TimedSchedulerBindings.prepareTopology、[SceneDeletionCascade.swift](../../SunSmart/Main/Scene/Model/SceneDeletionCascade.swift)、[SceneConfigurationStore.swift](../../SunSmart/Main/Scene/Model/SceneConfigurationStore.swift)、[DevicePermanentDeletionCleanup.swift](../../SunSmart/Common/Data/DevicePermanentDeletionCleanup.swift)、[GatewayDeletionContext.swift](../../SunSmart/Main/Device/Gateway/Model/GatewayDeletionContext.swift) |
+| 交换与恢复 | [ExportData.swift](../../SunSmart/Common/Data/ExportData.swift)、[ImportData.swift](../../SunSmart/Common/Data/ImportData.swift)、[SpaceConfigurationIntegrityPolicy.swift](../../SunSmart/Common/Data/SpaceConfigurationIntegrityPolicy.swift)、[SpaceConfigurationSafety.swift](../../SunSmart/Common/Data/SpaceConfigurationSafety.swift)、[DeviceScheduleAddressCleanup.swift](../../SunSmart/Common/Data/DeviceScheduleAddressCleanup.swift) 中的 SpaceRecoveryState |
+
+优先在 App DTO 层完成；SDK 的现有数据库格式可保留。如实施发现必须修改 SDK API／结构，应补说明，涉及新结构重新确认，并先核对共享 SDK 写入负责人。不会修改服务器／固件或部署。
+
+| 责任方 | 必要配套及发布依赖 | 验收 |
+| --- | --- | --- |
+| App | v3 读写、单向迁移、任务与观察分离，共享逻辑影响五品牌 | 行为／持久化回归，代表 SunSmart generic iOS 构建；有资源、target、SDK 公共 API 风险再补受影响品牌 |
+| 服务器团队 | v3 完整存储与回读；Nodes 与 bindings 一致；并发与旧客户端写入约束 | 往返保留状态／路由；旧写端不能破坏新版；HTTP 成功不等于 Mesh 成功 |
+| 网关团队 | Composition 与 actionAddress 路由、当前意图的 ACK 归属、持久重试 | 部分成功、迟到、重启及全部 Model 清理；不能只用三个动作地址作为删除范围 |
+| 固件团队 | 本方案不要求修改固件，核实已有 LC／On／停用／清理／Scene 行为 | 目标设备真实回读与触发，差异另交外部责任方 |
+
+网关顺序沿用第 8 节：读回 → 预约 → 必要校时／Scene Store → 清非 Owner → 写 Owner → 保存结果；v3 改的是保存格式。配置按各节点实际 Scheduler Element **单播**，index 为该节点 slot；使用 ACK 并核对来源、index、全部 entry 和当前任务。删除遍历全部支持 1207 的 Elements，含 Primary，发默认清理 entry；超时先读回再决定重试，不新建 slot，不重写未变化且成功的节点。次数／间隔由网关执行方确定，本方案不猜测协议常量。
+
+### 12.11 验证范围与已确认依据
+
+按改动范围扩展已有检查，实际结果与夹具边界见第 13 节：
+
+- `check_timed_device_slots.py`、`check_timed_slot_persistence.py`、`check_timed_task_replacement.py`、`check_timed_delete_result.py`、`check_timed_scheduler_single_owner.sh`。
+- `check_scheduler_cloud_roundtrip.py`、`check_space_recovery_receipts.py`，以及 Scene 删除相关脚本。
+- 至少覆盖真实 v3 编解码→SQLite 保存→重载，以及恢复回执持久化／重开，另有异步接管／迟到 ACK 行为验证；只测纯策略或源码文本不算保存／恢复完成。
+
+行为覆盖：正常新增／停用／启用；空目标、未绑定、旧格式、损坏数据；部分成功、启停全失败回滚、取消、ACK 后保存失败；A→B→A 与迟到回复；Scene A→B 失败仍保留 B，重叠／旧独有／新独有节点分别执行；旧 A 删除不能误删当前 B；无本地观察时读回覆盖；同地址重配；16 槽、未知／孤立条目；Group／Scene 删除后重启重试。必要检查通过后停止扩展验证。
+
+人工最短路径：双 Model 节点新增 Auto On → 一 Model 失败 → 退出重进后只补未完成部分 → 分享换手机导入 → 改 Scene 并模拟离线 → 删除且全部清空后才能复用槽。构建、离线验证、云端回读、Mesh 回执及真实定时触发分别记录。
+
+本节保留结构决策与验收要求；第 13 节记录本轮实际实施和自动化证据。局部 JSON 片段缺少完整 Space 信息，不能直接导入；真实 Mesh、服务器联调与触发行为仍需人工验收。
+
+**已经确认的方向**：单向迁移；保留当前 Group 路由规则；按本轮明确要求删除 needDeleteSceneNumbers。已将用户提出的取消 unknown 建议纳入三状态方案。
+
+**已确认的实施依据**：修订后的 12.7 对外 JSON、12.8 本地内容变化，以及 12.6 的 Scene 删除覆盖和结果回写规则；三状态；仅共享 JSON 压缩身份；三组历史数组与两份节点 JSON 的完整移除范围；分享 formatVersion=3；完整快照与旧写端限制这一外部发布前提。本轮已按以上完整方案实施；没有新增表、公共字段、SDK 数据结构或新的服务端接口。
+
+
+## 13. Timed v3 实施与验证记录
+
+> 按 superpowers:executing-plans 在当前会话逐项实施；遵循项目要求，不启用子代理、不自动提交。执行记录保留在本节，任务状态不因上下文恢复而重置。
+
+**Goal:** App 使用已确认的 v3 精简格式，保留可靠的节点槽位、三状态、重试和完整身份保护。
+
+**Architecture:** 本地 TimedSchedulerNodeSlot 保留完整身份，外部 DTO 仅输出地址。版本化导入先校验完整 Nodes 再展开身份；状态和路由与业务配置一起持久化，真实逐 Model 观察继续由现有 SDK 缓存维护。现有 Space 导入事务、恢复回执与 Scene 删除任务负责失败恢复，不另建恢复系统。
+
+**Tech Stack:** Swift／UIKit、现有 SQLite、NordicSigMeshSDK；Python 启动现有 Swift 行为夹具，xcodebuild generic iOS。
+
+**Spec:** 本文第 12 节；用户已确认该结构及回写规则作为实施依据。
+
+### Global Constraints
+
+- 三状态为 pendingApply、synced、pendingRemoval；assigned 仅在旧数据读取兼容中出现。
+- v3 删除三组 needDelete 数组、nodes[].schedules、custProps.schedulerModelStates；本地 SDK 观察不删除。
+- 分享 formatVersion=3，Space timedSchemaVersion=3；保留旧格式单向迁移和失败原数据。
+- 保留 Group 路由规则、Profile 只读、合法空目标、网络／节点身份和权限校验。
+- 外部服务器／固件只更新契约，不实施；不改共享 SDK；不操作真机、不提交或清理其他工作。
+- 使用当前已隔离工作树、SunSmartLocal.xcworkspace，SDK realpath 沿第 12 节；代表构建 SunSmart Debug generic iOS，独立 DerivedData。
+
+### Review Focus
+
+1. 地址相同但节点已重配：导出压缩前拒绝旧身份，导入完整快照建立身份，任务结果不得继承。
+2. A→B→C 迟到回执及 ACK 后保存失败：只确认当前目标，保存失败保留 pending，可重启继续。
+3. 删除 A 时实际 slot 已归 B：检查残留但不级联删除 B，离线检查保留 Scene 删除记录。
+4. v3 缺字段／null／非法 state、slot 冲突、无本地观察：不能伪造空表、成功或容量。
+5. 旧云回读、本地迁移及只读权限：不倒退 schema，不用升级绕过权限，不让回执比较阻断恢复。
+
+### Task 1: 版本化 DTO 与真实编解码
+
+**Files:** TimedSchedulerSlotPolicy.swift；Tests/Timed/TimedPayloadTests.swift、TimedDeviceSlotTests.swift。
+
+**Interfaces:** TimedSchedulerActionAddress（Codable/Equatable）；TimedSchedulerNodeSlot.actionAddress；TimedSchedulerPayloadPolicy.decodingSchedules(_:) -> [[String: Any]]?、exportPayload(_:) -> [String: Any]?。canonical、normalizedComparison、backupEnvelope/Payload 继续是统一校验边界。
+
+- [x] 扩展现有 fixture：合法 v3 的地址身份、三状态和路由经过 canonical/backup 往返；由 check_timed_device_slots.py 验证 v3 及旧兼容行为。
+- [x] 实现严格 v3 输入校验、完整本地身份展开、共享输出精简；旧 assigned 仅用于旧入口。覆盖非法地址／Model、重复槽、旧键混入、缺字段/null、损坏类型及不支持版本。
+- [x] v3 回执规范化无需 Nodes 也能校验其结构；真实导入仍必须完整 Nodes 校验。确认删除节点只删除对应地址引用，其他状态不变。
+- [x] 运行 python3 scripts/check_timed_device_slots.py，预期所有旧回归及新增行为通过。
+
+### Task 2: binding 状态、路由与 SQLite
+
+**Files:** TimedSchedulerBindings.swift、Scheduler.swift、Database.swift、ScheduleServer.swift、ScheduleAddViewController.swift、MeshNetwork+SunSmart.swift、TimedSchedulerTaskCoordinator.swift；TimedSlotPersistenceTests.swift、TimedTaskReplacementTests.swift 及对应既有脚本。
+
+**Interfaces:** Schedule.reconcileBinding(on:)、Node.timedActionAddress(contextGroup:)；现有 prepare/commit/reserveForSending/reserveForDeletion 统一产生完整本地 binding，业务 save 不写三组旧列。
+
+- [x] 增加真实 SQLite 编解码/重载测试：pendingApply 保存及完整身份保留；失败不释放，成功确认，pendingRemoval 清空后释放；使用生产编解码与真实 SQLite。
+- [x] 将路由、目标和当前设备参数比较纳入 prepare；仅实际需要同步节点进入 pendingApply。同槽换 Scene 不新增 slot；旧节点 pendingRemoval，合法空目标保留。
+- [x] 保存参数及 bindings 后再发送；ACK 持久化三状态；结果状态变化不使当前同意图任务自我取消，改参数／删除／地址替换仍取消旧任务。
+- [x] 迁移时完整消费旧目标清理数据，成功后旧三列 NULL；失败不升级版本。Profile 保持只读、无证据时 pendingApply。
+- [x] 运行 check_timed_slot_persistence.py、check_timed_task_replacement.py、check_timed_delete_result.py；预期 SQLite、接管、删除及旧回归通过。
+
+### Task 3: 所有交换出口与云端回执
+
+**Files:** ExportData.swift、ImportData.swift、SpaceConfigurationSafety.swift、SpaceConfigurationIntegrityPolicy.swift、SpaceData.swift、DeviceScheduleAddressCleanup.swift；既有 cloud/receipt/import 测试。
+
+**Interfaces:** 使用 Task 1 的共享 exportPayload 与 decodingSchedules；导入原始共享对象参与比较，本地完整对象参与保存。新 v3 不要求共享 Model 快照，旧回执继续按原版本验证。
+
+- [x] 增加完整 JSON→解码→保存→重载→导出断言：v3 不重新长出旧键；空/缺/损坏严格区分；新机无观察时不构造整表空缓存。
+- [x] 接通 active/inactive Space、Site、分享和 Node 出口；新 Space 显式 v3，旧 Space 成功转换后只写 v3；未完成旧上传／导入按原恢复流程处理。
+- [x] 版本化回执比较：状态变化进入比较，旧 schema 不覆盖本地新 schema，节点身份与权限保护保留；完整 v3 导入后才能恢复短地址引用。
+- [x] 运行 check_scheduler_cloud_roundtrip.py、check_space_recovery_receipts.py 和所触及导入回归，预期旧路径及 v3 路径通过。
+
+### Task 4: 删除 Scene 与关联生命周期
+
+**Files:** SceneDeletionCascade.swift、SceneConfigurationStore.swift、SceneServer.swift、SyncSceneScheduleTaskBuilder.swift、DevicePermanentDeletionCleanup.swift、GatewayDeletionContext.swift，以及 Group 关联读取入口；现有 Scene 删除行为测试。
+
+**Interfaces:** 保持既有 Scene deletionReferences schema；扩大 prepare 的必要读回覆盖，以当前 Timed owner 和 slot 决定替换或清理。
+
+- [x] 扩展 A→B 未完成、旧 A 删除保留 B、Scene Store 前置与迟到任务测试；复用已有删除持久化和恢复回归，明确 BLE 边界。
+- [x] 删除 needDeleteSceneNumbers 的 v3 生产依赖；检查未完成 bindings／未知 Model 节点；只有当前目标为 A 的 schedule 加入待删 scheduleIDs。
+- [x] 已归 B 的槽位按当前目标及 Scene Store 前置处理，不释放 B 绑定；读回／写入失败保留既有 Scene 删除记录。更新 Group 派生关联与节点永久删除／换身份入口。
+- [x] 运行 check_scene_deletion_cascade.py、check_scene_deletion_flow.py 及相关 Timed/Group 回归，预期无错误释放和错误级联。
+
+### Task 5: 集成验收与示例
+
+**Files:** 本文、v3 示例、受影响 Tests/scripts；不修改 v2 历史示例。
+
+- [x] 以最终实现生成 v3 合成示例并通过生产编码校验，覆盖 pendingApply、synced、pendingRemoval、空绑定和部分失败；记录外部发布依赖。
+- [x] 自查完整调用链及 diff；覆盖 Review Focus 的行为测试，必要检查通过后停止扩大。
+- [x] 运行受影响的定向回归及 git diff --check；在稳定代码上执行一次 SunSmart Debug generic iOS 构建，CODE_SIGNING_ALLOWED=NO，无 Simulator。
+- [x] 更新本节结果、剩余外部／人工验收；交付未提交改动，不执行 commit/push。
+
+### 执行记录
+
+- 初始 HEAD：71dd7e0b67ff33c1a448dd16de08719c4c45ee69；实施开始时唯一未提交文件为本契约文档，原有内容已保留。
+- 基线：check_timed_device_slots.py 通过（业务 ID/slot、旧格式、身份修复、容量和回执规范化）。
+- 已验证当前为 linked worktree；已有 Pods 和 SunSmartLocal 映射可用。未创建新 worktree。
+- Pre-flight：Task 2 消费 Task 1 的本地完整类型；Task 3 只在边界压缩／展开；Task 4 复用 Task 2 的 owner/slot 判断，不将旧 Scene 号重新加入 Timed。Task 3 的历史回执不得借当前 Nodes 重建旧身份。
+- 执行方式：按用户项目规则由当前代理顺序实施、自查，不启用子代理；没有提交授权，不执行技能默认 commit 步骤。
+
+
+### 13.1 最终实现
+
+- 共享 v3 只有地址身份、物理 slot、三状态和三路 actionAddress；本地 SQLite 仍存完整配网身份。导出先核对完整身份，导入先验证完整 Nodes，复用地址不能接管旧任务。
+- v3 不输出三组 needDelete 数组、nodes.schedules 或 schedulerModelStates；原 SQL 列保留，迁移完成后为空列。编辑 v3 时也不再临时生成旧清理数组；旧槽位全部由 binding 承接。
+- 下发前持久化 pending；匹配当前任务的成功结果更新本节点，失败和存储失败保留 pending；真实读回匹配也可确认 synced。删除须全部相关 Model 清空，之后删除 binding。已匹配的 Owner 和已清空的非 Owner 不重复下发。
+- Group Members SAVE 在成员关系回执已发布后准备 Timed 路由，与同次配置事务一起保存，避免动作地址沿用旧 Group。退出失败、Manual Control、无 Group 和无 LC 仍沿用普通路由。
+- A→B 在原槽写 B。删除 A 时覆盖未完成 binding、未知观察及残留引用；若槽位当前归 B，先检查／补 B 的 Scene Store，再恢复 B，保留 B 的 binding。B 的参数或任务发生变化后旧结果无权回写。
+- v3 云回执不再要求共享 Model 观察，磁盘上对应旧观察字段省略。内部比较使用版本标记表示“不包含该维度”，没有向公共 JSON 增加字段，也没有把未知 Model 伪造成空表。
+- 普通节点和网关永久删除同步清理相应 binding，保留其他节点；SDK 仍保存真实观察，本轮未改 SDK 工作树。
+
+### 13.2 单向迁移的实际入口与边界
+
+1. 新建 Space 显式使用 v3。已有 Space 在正常配置预约／提交，或具备写权限、没有未完成上传、已有可信基线且 Mesh 空闲的完整导出入口转换；active 和 inactive Space 共用完整快照转换器。
+2. 独立转换器先校验旧格式、身份与清理归属，再补路由并事务保存；它保守将旧 assigned 转为 pendingApply，不凭旧共享观察直接宣告成功。本地准备路径有完整当前观察时可直接确认 synced。
+3. v1 使用原 id=slot 规则；独立转换器对支持 Scheduler 的节点保守保留该 index，非当前目标进入 pendingRemoval，以免丢失可能的旧残留。本地路径有可信完整观察时可省略已证实不存在的条目。
+4. v2 缺失／null nodeSlots 仍按既有规则视为未绑定；但若同时有旧清理目标却没有可信 slot，转换拒绝。新增回归分别覆盖旧节点和仍属新目标的重叠节点，均保留原数组和原绑定，不猜新槽。
+5. 只读、受保护或正在恢复旧回执的 Space 不借迁移获得写权限。无法安全转换的数据保留原源及原版本，由旧兼容出口保留；编辑／预约入口报告现有保存失败，不强制清空。转换成功后不再长期双写 v2。
+6. 旧格式导入先沿原校验和持久化流程接收，再由上述可写入口转换；Profile 保持只读。服务器禁止旧客户端覆盖 v3 的版本门槛属于外部发布依赖，本轮未实施。
+
+### 13.3 v3 示例说明
+
+[space_timed_v3_demo.json](space_timed_v3_demo.json) 包含两条业务和三个节点：
+
+| 记录 | 示例含义 |
+| --- | --- |
+| 定时 104 / 0300 / synced | 自动 Group 中支持 LC 的节点已完成，auto_on=0301，off/recall=0300 |
+| 定时 104 / 0400 / pendingApply | 同组不支持 LC 的节点尚未完成，三路均为 0400；体现部分成功 |
+| 定时 104 / 0500 / pendingRemoval | 已离开目标的旧节点保留 slot=3，全部 Model 清理后才删除该项 |
+| 定时 105 / nodeSlots=[] | 合法空 Group，业务仍保留，没有猜测或预约物理槽位 |
+
+示例由生产 exportPayload 生成，使用内存中的合成身份完成 canonical、formatVersion=3 包装往返、完整身份展开和再次导出等值校验，再移除全部 Device Key。公开文件是结构节选，缺少密钥及完整网络配置，**不能直接导入真实项目**；其中 synced 为说明状态含义的合成数据，不是设备执行证据。v2 历史示例未修改；两个示例规模不同，不用两者文件大小计算精简比例。
+
+### 13.4 验证证据与限制
+
+本轮沿现有脚本验证；涉及 SQLite 编译时使用独立临时 module cache，避免沙箱默认缓存不可写，不清理共享缓存。
+
+| 自动化范围 | 结果与证据边界 |
+| --- | --- |
+| Timed 结构、槽位、迁移 | check_timed_device_slots.py 通过；含三状态、必填／null、冲突槽、路由、旧格式、地址复用与 Group/LC 规则 |
+| 持久化与结果状态 | check_timed_slot_persistence.py 通过；生产 Schedule 编解码、SQLite 写入及新连接重载、完整身份、未知／部分成功／保存失败、删除释放和 NULL 旧列；BLE 由夹具提供 |
+| 异步接管与删除 | check_timed_task_replacement.py、check_timed_delete_result.py、check_timed_scheduler_single_owner.sh 通过；匹配当前意图才接收结果，启停全失败回滚／部分成功保留 |
+| 导入与云回执 | check_cloud_node_import.py、check_scheduler_cloud_roundtrip.py、check_space_recovery_receipts.py 均通过；v3 回执含磁盘重开、状态不匹配保留与重试确认；网络传输为离线夹具，未连接真实服务器 |
+| Scene | check_scene_deletion_cascade.py：213 项断言通过；check_scene_deletion_flow.py 及 check_scene_configuration.py 的 targets（28 项）／save 通过；覆盖清理事务、重进／恢复、B 前置 Scene Store、部分失败及旧任务失效 |
+| Group / 删除 | check_group_member_persistence.py、check_gateway_deletion_context.py、check_device_permanent_deletion_cleanup.sh 均通过 |
+| 结构示例 | 生产 v3 编码与分享往返、身份展开、再次导出相等通过；公开示例移除合成密钥 |
+| iOS 编译 | SunSmartLocal.xcworkspace / SunSmart / Debug / generic iOS / CODE_SIGNING_ALLOWED=NO，最终增量构建退出 0；未运行 Simulator 或真机 |
+
+第一轮编译发现导出器误用了文件私有 decoder，以及 SDK SchedulerRegistryEntry 不支持 Optional 的通用 Equatable 比较，均已改为可用 API 后通过。编译仍有现有依赖警告，未修改 SDK 或无关依赖。Scene 拓扑夹具更新为 v3 状态，同时保留实际 identity/slot、事务失败和重载断言；这类夹具不代替真实 Mesh 验收。
+
+**仍待外部／人工验收**：服务器 v3 存取和回写、旧客户端写入门槛；网关按 actionAddress 和当前任务回写；真实多 Model 节点、分享换机、部分失败重试和真实触发。最短路径：双 Model 新建 Auto On → 模拟一个 Model 失败 → 重进后补失败部分 → 分享换手机导入并读回 → A 改 B 失败后删除 A，确认 B 保留 → 删除 Timed，全部清空后才复用槽。
+
+只修改 App、测试和文档；共享逻辑覆盖五品牌，未新增资源／target 配置／SDK API，代表构建为 SunSmart。未提交、推送、部署或自动操作真机。
+
+最终检查：上述定向回归均退出 0；最终 SunSmart 构建退出 0。v2 示例 SHA-256 仍为 `42da2c90260fef762e4d6f8a97d7c9f9b236fb806e3a7cd970fe6ea2f16f7575`；SDK 工作树无改动。`git diff --check` 在收尾时复核。

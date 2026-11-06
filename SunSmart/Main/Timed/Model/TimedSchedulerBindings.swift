@@ -18,6 +18,13 @@ extension Node {
         })
     }
 
+    func timedActionAddress(contextGroup: Group? = nil) -> TimedSchedulerActionAddress? {
+        let autoOwner = Schedule.schedulerModelOwner(for: .turnOn, on: self, contextGroup: contextGroup)
+        guard let ordinary = schedulerSetupModel(for: .ordinary)?.parentElement?.unicastAddress,
+              let auto = schedulerSetupModel(for: autoOwner)?.parentElement?.unicastAddress else { return nil }
+        return .init(autoOn: auto.hex, off: ordinary.hex, recall: ordinary.hex)
+    }
+
     func timedSchedule(at slot: Int) -> Schedule? {
         let matching = MeshNetworkManager.instance.schedules.filter { $0.slot(on: self) == slot }
         return matching.count == 1 ? matching.first : nil
@@ -62,6 +69,25 @@ extension Node {
 }
 
 extension Schedule {
+    /// A current result is complete only when every Model is known. A partial
+    /// ACK must not turn an unknown Model into an observed empty register.
+    func reconcileBinding(on node: Node) {
+        guard selectTargetType != .profile, let identity = node.timedSchedulerIdentity,
+              let index = nodeSlots?.firstIndex(where: { $0.identity == identity }),
+              nodeSlots![index].isV3 else { return }
+        if nodeSlots![index].state == .pendingRemoval {
+            releaseClearedBinding(on: node)
+            return
+        }
+        let state: TimedSchedulerNodeSlot.State = targets(node: node)
+            && nodeSlots![index].actionAddress == node.timedActionAddress()
+            && schedulerSyncDifference(on: node) == .synchronized ? .synced : .pendingApply
+        guard nodeSlots![index].state != state else { return }
+        guard state != .synced || node.savePropertys() else { return }
+        let previous = nodeSlots
+        nodeSlots![index].state = state
+        if !save() { nodeSlots = previous }
+    }
     var activeSceneGroups: [Group] {
         guard let scene, !scene.info.configurationLoadFailed,
               scene.info.configuration?.kind != .devices else { return [] }
@@ -123,6 +149,7 @@ extension Schedule {
               let identity = node.timedSchedulerIdentity, let slot = slot(on: node),
               deletionIsSynchronized(on: node),
               nodeSlots?.contains(where: { $0.identity == identity && $0.slot == slot && $0.state == .pendingRemoval }) == true else { return }
+        guard node.savePropertys() else { return }
         let previous = nodeSlots
         nodeSlots?.removeAll { $0.identity == identity && $0.slot == slot }
         if !save() { nodeSlots = previous }
@@ -160,6 +187,28 @@ enum TimedSchedulerBindings {
         let networkID = manager.currentNetworkKey.networkId.hex
         let nodes = manager.realNodes.filter { !$0.schedulerSetupModels.isEmpty }
         var bindings = Dictionary(uniqueKeysWithValues: schedules.map { ($0.id, $0.nodeSlots ?? []) })
+        // Resolve old cleanup before allocating anything. A v2 cleanup with no
+        // owned slot must not be mistaken for an empty device, even when the
+        // node is also a target of the replacement Scene.
+        for schedule in schedules {
+            guard schedule.needDeleteNodeAddresses.allSatisfy({ address in nodes.contains { $0.primaryUnicastAddress == address } }),
+                  schedule.needDeleteGroupAddresses.allSatisfy({ address in manager.groups.contains { $0.address.address == address } }),
+                  schedule.needDeleteSceneNumbers.allSatisfy({ number in manager.scenes.contains { $0.number == number } }) else {
+                throw Failure.invalidMapping
+            }
+            var cleanup = nodes.filter { schedule.needDeleteNodeAddresses.contains($0.primaryUnicastAddress) }
+            cleanup += manager.groups.filter { schedule.needDeleteGroupAddresses.contains($0.address.address) }.flatMap(\.nodes)
+            for scene in manager.scenes where schedule.needDeleteSceneNumbers.contains(scene.number) {
+                let snapshot = try SceneTargetResolver.resolveForSyncRead(scene: scene)
+                guard snapshot.unresolved.isEmpty else { throw Failure.invalidMapping }
+                cleanup += (snapshot.targets + snapshot.cleanupTargets).map(\.node)
+            }
+            if schedule.nodeSlots != nil {
+                guard cleanup.filter({ !$0.schedulerSetupModels.isEmpty }).allSatisfy({ schedule.slot(on: $0) != nil }) else {
+                    throw Failure.invalidMapping
+                }
+            }
+        }
         for node in nodes {
             guard let identity = node.timedSchedulerIdentity else { throw Failure.invalidMapping }
             let observed = node.observedTimedSlots
@@ -190,8 +239,36 @@ enum TimedSchedulerBindings {
             }
             for schedule in schedules {
                 bindings[schedule.id]?.removeAll { $0.identity == identity }
-                if let binding = nodePlan[schedule.id] { bindings[schedule.id]?.append(binding) }
+                if var binding = nodePlan[schedule.id] {
+                    // Native Profile bindings are shared read-only results. Local
+                    // routing/observations cannot recompute them; only legacy
+                    // bindings still need conversion to the v3 representation.
+                    if schedule.selectTargetType == .profile, binding.isV3 {
+                        bindings[schedule.id]?.append(binding)
+                        continue
+                    }
+                    guard let route = node.timedActionAddress(contextGroup: contextGroups[node.primaryUnicastAddress]) else {
+                        throw Failure.invalidMapping
+                    }
+                    let previous = schedule.nodeSlots?.first { $0.identity == identity }
+                    binding.actionAddress = binding.state == .pendingRemoval ? (previous?.actionAddress ?? route) : route
+                    if binding.state != .pendingRemoval {
+                        // Preserve unchanged confirmed work. New/changed intent,
+                        // legacy observations and unknown Models need confirmation.
+                        binding.state = schedule.schedulerSyncDifference(on: node,
+                                contextGroup: contextGroups[node.primaryUnicastAddress]) == .synchronized
+                            ? .synced : .pendingApply
+                    }
+                    bindings[schedule.id]?.append(binding)
+                }
             }
+        }
+        // Old cleanup references must be resolvable before dropping their
+        // only durable description. A v2 missing slot cannot be guessed.
+        for schedule in schedules {
+            guard bindings[schedule.id]?.allSatisfy({ binding in
+                binding.isV3 && nodes.contains { $0.timedSchedulerIdentity == binding.identity }
+            }) == true else { throw Failure.invalidMapping }
         }
         return .init(meshUUID: meshUUID, networkID: networkID, schedules: schedules, bindings: bindings)
     }
@@ -308,7 +385,7 @@ enum TimedSchedulerBindings {
         guard manager.meshNetwork?.uuid.uuidString == plan.meshUUID,
               manager.currentNetworkKey.networkId.hex == plan.networkID,
               let db = SunSmartDataManager.shared.db else { throw Failure.staleNetwork }
-        let previous = plan.schedules.map(\.nodeSlots)
+        let previous = plan.schedules.map { ($0.nodeSlots, $0.needDeleteNodeAddresses, $0.needDeleteGroupAddresses, $0.needDeleteSceneNumbers) }
         if !plan.schedules.isEmpty {
             guard let space = SpaceData.load(subNetworkId: plan.networkID), space.meshUUID == plan.meshUUID else {
                 throw Failure.staleNetwork
@@ -319,6 +396,13 @@ enum TimedSchedulerBindings {
             try db.savepoint {
                 for schedule in plan.schedules {
                     schedule.nodeSlots = plan.bindings[schedule.id] ?? []
+                    for binding in schedule.nodeSlots! where binding.state == .synced {
+                        guard let node = manager.realNodes.first(where: { $0.timedSchedulerIdentity == binding.identity }),
+                              node.savePropertys() else { throw Failure.persistence }
+                    }
+                    schedule.needDeleteNodeAddresses = []
+                    schedule.needDeleteGroupAddresses = []
+                    schedule.needDeleteSceneNumbers = []
                     guard schedule.save(meshUUID: plan.meshUUID, meshNetworkId: plan.networkID) else {
                         throw Failure.persistence
                     }
@@ -327,13 +411,18 @@ enum TimedSchedulerBindings {
                     guard let space = SpaceData.load(subNetworkId: plan.networkID), space.meshUUID == plan.meshUUID else {
                         throw Failure.staleNetwork
                     }
-                    space.timedSchemaVersion = 2
+                    space.timedSchemaVersion = 3
                     guard space.save() else { throw Failure.persistence }
                 }
                 try changes()
             }
         } catch {
-            for (schedule, bindings) in zip(plan.schedules, previous) { schedule.nodeSlots = bindings }
+            for (schedule, old) in zip(plan.schedules, previous) {
+                schedule.nodeSlots = old.0
+                schedule.needDeleteNodeAddresses = old.1
+                schedule.needDeleteGroupAddresses = old.2
+                schedule.needDeleteSceneNumbers = old.3
+            }
             throw error
         }
     }
@@ -341,7 +430,7 @@ enum TimedSchedulerBindings {
     static func reserveForDeletion(schedule: Schedule, node: Node? = nil) -> Bool {
         guard schedule.selectTargetType != .profile else { return false }
         guard !schedule.nodeSlotsLoadFailed else { return false }
-        if schedule.nodeSlots == nil {
+        if schedule.nodeSlots == nil || schedule.nodeSlots?.contains(where: { !$0.isV3 }) == true {
             do {
                 try commit(prepare(schedules: MeshNetworkManager.instance.schedules))
             } catch { return false }
@@ -366,8 +455,14 @@ enum TimedSchedulerBindings {
         guard schedule.selectTargetType != .profile else { return false }
         guard schedule.targets(node: node, contextGroup: contextGroup) else { return false }
         if let identity = node.timedSchedulerIdentity,
-           schedule.nodeSlots?.contains(where: { $0.identity == identity && $0.state == .assigned }) == true {
+           schedule.nodeSlots?.contains(where: { $0.identity == identity && $0.isV3 && $0.state != .pendingRemoval
+               && $0.actionAddress == node.timedActionAddress(contextGroup: contextGroup) }) == true {
             guard let slot = schedule.slot(on: node) else { return false }
+            let previous = schedule.nodeSlots
+            if let index = schedule.nodeSlots?.firstIndex(where: { $0.identity == identity }), schedule.nodeSlots![index].state != .pendingApply {
+                schedule.nodeSlots![index].state = .pendingApply
+                guard schedule.save() else { schedule.nodeSlots = previous; return false }
+            }
             return !MeshNetworkManager.instance.schedules.contains { $0.id != schedule.id && $0.slot(on: node) == slot }
         }
         var schedules = MeshNetworkManager.instance.schedules
@@ -403,7 +498,9 @@ final class TimedSchedulerMessageContext {
               MeshNetworkManager.instance.meshNetwork?.uuid.uuidString == meshUUID,
               MeshNetworkManager.instance.currentNetworkKey.networkId.hex == networkID else { return false }
         return MeshNetworkManager.instance.schedules.first { $0.id == scheduleID && $0.selectTargetType != .profile }?.nodeSlots?
-            .contains { $0.identity == binding.identity && $0.slot == binding.slot && $0.state == binding.state } == true
+            .contains { $0.identity == binding.identity && $0.slot == binding.slot
+                && ($0.state == .pendingRemoval) == (binding.state == .pendingRemoval)
+                && $0.actionAddress == binding.actionAddress } == true
     }
 }
 

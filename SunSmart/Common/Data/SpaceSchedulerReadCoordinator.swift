@@ -131,6 +131,17 @@ final class SpaceSchedulerReadCoordinator {
                 }
             })
         }, updated: {
+            if SpaceConfigurationSafety.canAutomaticallyUpload(space), !SpaceConfigurationSafety.isBlocked(space) {
+                var changed = false
+                for schedule in MeshNetworkManager.instance.schedules {
+                    let before = schedule.nodeSlots
+                    for node in MeshNetworkManager.instance.realNodes where schedule.slot(on: node) != nil {
+                        schedule.reconcileBinding(on: node)
+                    }
+                    changed = changed || before != schedule.nodeSlots
+                }
+                if changed { space.markLocalChangePendingCloudSync() }
+            }
             NodeSyncStatusGeneration.invalidate()
             NotificationCenter.default.post(name: Self.didUpdate, object: nil)
         })

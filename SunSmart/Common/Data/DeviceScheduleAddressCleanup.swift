@@ -172,6 +172,10 @@ struct SpaceRecoveryState: Codable, Equatable {
         /// Exact observations submitted by clients that support Model snapshots.
         var timedConfiguration: Data? = nil
         var schedulerModelStates: Data? = nil
+        var schedulerModelComparison: Data? {
+            get { SchedulerModelSnapshot.comparison(timed: timedConfiguration, stored: schedulerModelStates) }
+            set { schedulerModelStates = SchedulerModelSnapshot.omitsSharedObservation(timed: timedConfiguration) ? nil : newValue }
+        }
         var nodeIdentities: [SpaceCloudNodeRemovalPolicy.Instance]? = nil
         /// Explicitly false for migrated unknown-outcome receipts.
         var permitsCloudRemoval: Bool? = nil
@@ -188,6 +192,10 @@ struct SpaceRecoveryState: Codable, Equatable {
     /// Last confirmed cloud observations, independent of subsequent device reads.
     var timedConfigurationBaseline: Data? = nil
     var schedulerModelStatesBaseline: Data? = nil
+    var schedulerModelComparison: Data? {
+        get { SchedulerModelSnapshot.comparison(timed: timedConfigurationBaseline, stored: schedulerModelStatesBaseline) }
+        set { schedulerModelStatesBaseline = SchedulerModelSnapshot.omitsSharedObservation(timed: timedConfigurationBaseline) ? nil : newValue }
+    }
     var nodeIdentitiesBaseline: [SpaceCloudNodeRemovalPolicy.Instance]? = nil
     var removalSnapshot: SpaceCloudNodeRemovalPolicy.Snapshot? = nil
     /// Repeated identical old reads may require review; a single stale read stays retryable.
@@ -227,6 +235,13 @@ struct SpaceRecoveryState: Codable, Equatable {
     }
 
     func write(to url: URL) throws {
-        try JSONEncoder().encode(self).write(to: url, options: .atomic)
+        var persisted = self
+        if SchedulerModelSnapshot.omitsSharedObservation(timed: timedConfigurationBaseline) {
+            persisted.schedulerModelStatesBaseline = nil
+        }
+        if SchedulerModelSnapshot.omitsSharedObservation(timed: submission?.timedConfiguration) {
+            persisted.submission?.schedulerModelStates = nil
+        }
+        try JSONEncoder().encode(persisted).write(to: url, options: .atomic)
     }
 }

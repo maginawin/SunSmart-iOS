@@ -87,7 +87,113 @@ import Foundation
         precondition(TimedSchedulerPayloadPolicy.canonical(payload([row])) == expected)
     }
 
+    static func v3PayloadRoundTrip() {
+        var row = schedule(104)
+        row["nodeSlots"] = [["identity": ["unicastAddress": "0001"], "slot": 3,
+            "state": "pendingApply", "actionAddress": ["auto_on": "0002", "off": "0001", "recall": "0001"]]]
+        var value = payload([row], version: 3)
+        value["nodes"] = [["uuid": uuid, "unicastAddress": "0001", "deviceKey": key,
+            "elements": [["index": 0, "models": [["modelId": "1206"], ["modelId": "1207"]]],
+                         ["index": 1, "models": [["modelId": "130F"], ["modelId": "1206"], ["modelId": "1207"]]]]]]
+        guard let canonical = TimedSchedulerPayloadPolicy.canonical(value) else {
+            preconditionFailure("v3: valid pendingApply must retain its node slot through import")
+        }
+        let envelope = TimedSchedulerPayloadPolicy.backupEnvelope(value)!
+        precondition(envelope["formatVersion"] as? Int == 3)
+        let restored = TimedSchedulerPayloadPolicy.backupPayload(envelope)!
+        precondition(TimedSchedulerPayloadPolicy.canonical(restored) == canonical)
+        precondition(TimedSchedulerPayloadPolicy.normalizedComparison(canonical) == canonical)
+        var legacy = value
+        legacy["spaceData"] = ["timedSchemaVersion": 2]
+        var legacyRow = schedule(104, slot: 3)
+        legacyRow["needDeleteNodeAddresses"] = ["0001"]
+        legacy["schedules"] = [legacyRow]
+        let migrated = TimedSchedulerPayloadPolicy.migratingLegacyPayload(legacy)!
+        let migratedRow = (migrated["schedules"] as! [[String: Any]])[0]
+        let migratedSlot = (migratedRow["nodeSlots"] as! [[String: Any]])[0]
+        precondition(migratedSlot["state"] as? String == "pendingApply")
+        precondition((migratedSlot["actionAddress"] as! [String: String])["auto_on"] == "0001", "no Group uses ordinary Scheduler")
+        precondition(migratedRow["needDeleteNodeAddresses"] == nil)
+        legacyRow["nodeSlots"] = [[String: Any]]()
+        legacy["schedules"] = [legacyRow]
+        precondition(TimedSchedulerPayloadPolicy.migratingLegacyPayload(legacy) == nil, "do not invent an old cleanup slot")
+        legacyRow["needDeleteNodeAddresses"] = [String]()
+        legacy["schedules"] = [legacyRow]
+        precondition(TimedSchedulerPayloadPolicy.migratingLegacyPayload(legacy) != nil, "v2 unassigned remains unassigned")
+        let localRows = TimedSchedulerPayloadPolicy.decodingSchedules(value)!
+        let localSlots = try! JSONDecoder().decode([TimedSchedulerNodeSlot].self,
+            from: JSONSerialization.data(withJSONObject: localRows[0]["nodeSlots"]!))
+        precondition(localSlots[0].identity.nodeUUID == uuid && localSlots[0].isV3)
+        var local = value
+        local["schedules"] = localRows
+        var nodes = local["nodes"] as! [[String: Any]]
+        nodes[0]["schedules"] = [["id": 3]]
+        nodes[0]["custProps"] = ["schedulerModelStates": ["invalid": true], "keep": 7]
+        local["nodes"] = nodes
+        let exported = TimedSchedulerPayloadPolicy.exportPayload(local)!
+        precondition(TimedSchedulerPayloadPolicy.canonical(exported) == canonical)
+        precondition(((exported["nodes"] as! [[String: Any]])[0]["custProps"] as! [String: Any])["keep"] as? Int == 7)
+        nodes[0]["deviceKey"] = String(repeating: "2", count: 32)
+        local["nodes"] = nodes
+        precondition(TimedSchedulerPayloadPolicy.exportPayload(local) == nil, "never rebind to a reused address")
+        for field in ["needDeleteNodeAddresses", "needDeleteGroupAddresses", "needDeleteSceneNumbers"] {
+            var invalid = value, badRow = row
+            badRow[field] = [String]()
+            invalid["schedules"] = [badRow]
+            precondition(TimedSchedulerPayloadPolicy.canonical(invalid) == nil)
+        }
+        for state in ["assigned", "unknown", "", "pendingRemoval", "synced"] {
+            var candidate = value, candidateRow = row
+            var bindings = row["nodeSlots"] as! [[String: Any]]
+            bindings[0]["state"] = state
+            candidateRow["nodeSlots"] = bindings; candidate["schedules"] = [candidateRow]
+            precondition((TimedSchedulerPayloadPolicy.canonical(candidate) != nil) == ["pendingRemoval", "synced"].contains(state))
+        }
+        for route in ["0003", "0000", "8000", "1"] {
+            var invalid = value, badRow = row
+            var bindings = row["nodeSlots"] as! [[String: Any]]
+            bindings[0]["actionAddress"] = ["auto_on": route, "off": "0001", "recall": "0001"]
+            badRow["nodeSlots"] = bindings; invalid["schedules"] = [badRow]
+            precondition(TimedSchedulerPayloadPolicy.canonical(invalid) == nil)
+        }
+        for field in ["identity", "slot", "state", "actionAddress"] {
+            for absent in [true, false] {
+                var invalid = value, badRow = row
+                var bindings = row["nodeSlots"] as! [[String: Any]]
+                bindings[0][field] = absent ? nil : NSNull()
+                badRow["nodeSlots"] = bindings; invalid["schedules"] = [badRow]
+                precondition(TimedSchedulerPayloadPolicy.canonical(invalid) == nil, "v3 binding fields are required")
+            }
+        }
+        for absent in [true, false] {
+            var invalid = value, badRow = row
+            badRow["nodeSlots"] = absent ? nil : NSNull()
+            invalid["schedules"] = [badRow]
+            precondition(TimedSchedulerPayloadPolicy.canonical(invalid) == nil, "native v3 cannot default to unassigned")
+        }
+        var conflicting = value, duplicate = row
+        duplicate["id"] = 105
+        conflicting["schedules"] = [row, duplicate]
+        precondition(TimedSchedulerPayloadPolicy.canonical(conflicting) == nil, "one physical slot has one owner")
+        for (profile, exit, hasLC, expected) in [(3, 0, true, "0002"), (6, 0, true, "0001"),
+                                                 (3, 2, true, "0001"), (3, 0, false, "0001")] {
+            var old = legacy
+            old["schedules"] = [schedule(104, slot: 3)]
+            var node = (value["nodes"] as! [[String: Any]])[0]
+            node["groupAddress"] = "C001"; node["groupState"] = exit
+            if !hasLC { node["elements"] = Array((node["elements"] as! [[String: Any]]).prefix(1)) }
+            old["nodes"] = [node]; old["groups"] = [["address": "C001", "profile": ["type": profile]]]
+            let result = TimedSchedulerPayloadPolicy.migratingLegacyPayload(old)!
+            let resultRow = (result["schedules"] as! [[String: Any]])[0]
+            let resultSlot = (resultRow["nodeSlots"] as! [[String: Any]])[0]
+            precondition((resultSlot["actionAddress"] as! [String: String])["auto_on"] == expected,
+                         "migration preserves Group routing and actual LC availability")
+        }
+        print("PASS: v3 address-only pending binding and versioned backup round trip")
+    }
+
     static func main() {
+        v3PayloadRoundTrip()
         ignoresLegacyGeneration()
         legacyProfilePayload()
         missingV2Bindings()
@@ -100,7 +206,7 @@ import Foundation
         precondition(TimedSchedulerPayloadPolicy.canonical(payload([schedule(300, slot: 0), schedule(500, slot: 0)])) == nil)
         precondition(TimedSchedulerPayloadPolicy.canonical(payload([schedule(300, slot: 16)])) == nil)
         precondition(TimedSchedulerPayloadPolicy.canonical(payload([schedule(0)])) != nil)
-        precondition(TimedSchedulerPayloadPolicy.canonical(payload([], version: 3)) == nil)
+        precondition(TimedSchedulerPayloadPolicy.canonical(payload([], version: 4)) == nil)
         var changed = schedule(300, slot: 0); changed["minute"] = 5
         precondition(TimedSchedulerPayloadPolicy.canonical(payload([changed, schedule(500, slot: 1)])) != canonical)
         changed["minute"] = 70

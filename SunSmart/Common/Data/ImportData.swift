@@ -1861,7 +1861,7 @@ extension SpaceData {
         guard sceneConfigurationImportFailure(payload) == nil,
               let payload = TimedSchedulerPayloadPolicy.repairingStaleBindings(payload) else { return false }
         guard let groups = payload["groups"] as? [[String: Any]],
-              let schedules = payload["schedules"] as? [[String: Any]],
+              let schedules = TimedSchedulerPayloadPolicy.decodingSchedules(payload),
               let nodes = payload["nodes"] as? [[String: Any]],
               let groupData = try? JSONSerialization.data(withJSONObject: groups),
               (try? jsonDecoder.decode([Group].self, from: groupData)) != nil,
@@ -1969,7 +1969,7 @@ extension SpaceData {
         guard let incomingTimedPayload = TimedSchedulerPayloadPolicy.repairingStaleBindings(incomingSpaceJsonData),
               let incomingTimedVersion = TimedSchedulerPayloadPolicy.schema(incomingTimedPayload),
               TimedSchedulerPayloadPolicy.canonical(incomingTimedPayload) != nil,
-              let incomingSchedules = incomingTimedPayload["schedules"] as? [[String: Any]],
+              let incomingSchedules = TimedSchedulerPayloadPolicy.decodingSchedules(incomingTimedPayload),
               let incomingData = try? JSONSerialization.data(withJSONObject: incomingSchedules),
               (try? jsonDecoder.decode([Schedule].self, from: incomingData)) != nil else {
             #if DEBUG
@@ -2148,7 +2148,8 @@ extension SpaceData {
             }
             guard let remoteTimedConfiguration = TimedSchedulerPayloadPolicy.canonical(spaceJsonData),
                   let timedVersion = TimedSchedulerPayloadPolicy.schema(spaceJsonData),
-                  let timedData = try? JSONSerialization.data(withJSONObject: scheduleDicts),
+                  let localScheduleDicts = TimedSchedulerPayloadPolicy.decodingSchedules(spaceJsonData),
+                  let timedData = try? JSONSerialization.data(withJSONObject: localScheduleDicts),
                   let schedules = try? jsonDecoder.decode([Schedule].self, from: timedData) else {
                 #if DEBUG
                 Self.logTimedImportFailure(spaceJsonData, stage: "stagedImport")
@@ -2243,8 +2244,8 @@ extension SpaceData {
             
             let lastUpdate = json["updateTimestamp"].int64Value
             let modelStatesDiffer = SchedulerModelSnapshot.remoteChanged(remoteSchedulerModelStates,
-                since: context.schedulerModelStatesBaseline)
-            let timedDiffers = context.timedConfigurationBaseline.map { !TimedSchedulerPayloadPolicy.comparisonsMatch($0, remoteTimedConfiguration) } ?? (timedVersion == 2)
+                since: context.schedulerModelComparison)
+            let timedDiffers = context.timedConfigurationBaseline.map { !TimedSchedulerPayloadPolicy.comparisonsMatch($0, remoteTimedConfiguration) } ?? (timedVersion >= 2)
             let sameTimestampSummaryDiffers = lastUpdate == self.lastUpdate && (summaryDiffers || modelStatesDiffer || timedDiffers)
             let serverSummaryDiffersNote = localNeedsUpload ? "serverSummaryDiffersButLocalNeedsUpload" : "serverSummaryDiffers"
             let shouldApplyServerData = resumingImport || SpaceConfigurationSafety.requiresAuthorityImport(self)
@@ -2302,7 +2303,11 @@ extension SpaceData {
                     let bindSchedules = schedules.filter({ schedule in
                         schedule.groupAddresses.contains(group.address.address) ||
                         schedule.needDeleteGroupAddresses.contains(group.address.address) ||
-                        group.info.sceneExecuteDatas.contains(where: { $0.sceneNumber == schedule.sceneNumber })
+                        group.info.sceneExecuteDatas.contains(where: { $0.sceneNumber == schedule.sceneNumber }) ||
+                        nodeDicts.contains { node in
+                            (node["groupAddress"] as? String)?.uppercased() == group.address.address.hex
+                                && schedule.nodeSlots?.contains { $0.identity == TimedSchedulerPayloadPolicy.identity(node: node) } == true
+                        }
                     })
                     group.info.bindSchedules = bindSchedules
 
@@ -2962,7 +2967,8 @@ extension SpaceData {
             }
             var timedReadback = spaceJsonData
             timedReadback["schedules"] = persistedTimed
-            guard TimedSchedulerPayloadPolicy.canonical(timedReadback) == remoteTimedConfiguration else {
+            guard let sharedReadback = TimedSchedulerPayloadPolicy.exportPayload(timedReadback),
+                  TimedSchedulerPayloadPolicy.canonical(sharedReadback) == remoteTimedConfiguration else {
                 #if DEBUG
                 print("[SpaceImport][Timed] stage=readback field=schedules ids=\(persistedSchedules.map(\.id))")
                 #endif

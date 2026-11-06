@@ -24,6 +24,7 @@ with tempfile.TemporaryDirectory(prefix='gateway-deletion-') as folder:
         '// BATCH_DELETE_SERVER', delete_server))
     binary = folder / 'Tests'
     subprocess.run(['swiftc', '-parse-as-library',
+        str(root / 'SunSmart/Main/Timed/Model/TimedSchedulerSlotPolicy.swift'),
         str(root / 'SunSmart/Main/Device/Gateway/Model/GatewayDeletionCoordinator.swift'),
         str(adapter), str(fixture),
         '-o', str(binary)], check=True)

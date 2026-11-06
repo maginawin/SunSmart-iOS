@@ -1,4 +1,6 @@
 import Foundation
+extension UInt16 { var hex: String { String(format: "%04X", self) } }
+enum TimedSchedulerTaskCoordinator { static func invalidate(node: Node) {} }
 
 let testHomeDirectory = CommandLine.arguments[1]
 enum UserData {
@@ -91,6 +93,7 @@ final class SpaceData {
     func save() -> Bool { true }
 }
 final class Schedule {
+    var nodeSlots: [TimedSchedulerNodeSlot]?
     var nodeAddresses: [UInt16] = [10, 11, 20]
     var needDeleteNodeAddresses: [UInt16] = [11, 21]
     static var records: [Schedule] = []
@@ -173,6 +176,11 @@ struct GatewayDeletionContextTests {
             GatewayModel.records = [gateway]
             SpaceData.records = (0..<spaceCount).map { _ in SpaceData(site, mac: gateway.mac) }
             Schedule.records = [Schedule()]
+            Schedule.records[0].nodeSlots = [
+                .init(identity: .init(nodeUUID: node.uuid.uuidString, unicastAddress: "000A", deviceKeyFingerprint: String(repeating: "a", count: 64)),
+                      slot: 2, state: .pendingRemoval, actionAddress: .init(autoOn: "000A", off: "000A", recall: "000A")),
+                .init(identity: .init(nodeUUID: UUID().uuidString, unicastAddress: "0014", deviceKeyFingerprint: String(repeating: "b", count: 64)),
+                      slot: 2, state: .pendingApply, actionAddress: .init(autoOn: "0014", off: "0014", recall: "0014"))]
             MeshDistributionData.record = MeshDistributionData()
         }
         func context() -> GatewayDeletionContext {
@@ -193,6 +201,8 @@ struct GatewayDeletionContextTests {
                 check(SpaceData.records.count == count && SpaceData.records.allSatisfy { $0.relevanceGatewayId == nil && $0.gatewayStatus == .notBound && $0.gatewayLastOnline == nil }, "all associations cleared, Spaces retained")
                 check(f.mesh.scenes[0].addresses == [20] && Schedule.records[0].nodeAddresses == [20]
                     && Schedule.records[0].needDeleteNodeAddresses == [21], "primary and secondary element references cleared")
+                check(Schedule.records[0].nodeSlots?.map { $0.identity.unicastAddress } == ["0014"],
+                      "gateway deletion removes only its own v3 binding")
                 check(MeshDistributionData.record == nil && Node.PreConfiguration.deleted.contains(10), "gateway extensions cleared")
                 check(GatewayDeletionContext.blocksImport(siteId: f.site.id, mac: f.gateway.mac, node: f.node, createdTimestamp: 100), "old snapshot blocked")
             }

@@ -196,6 +196,7 @@ final class NetworkRequest {
     @MainActor static func main() async throws {
         try testAcceptedLocalCompletion()
         try testRetiredTimedGenerationReceipts()
+        try await testV3Receipts()
         if CommandLine.arguments.contains("--newer-local") {
             defer {
                 try? FileManager.default.removeItem(at: SpaceConfigurationSafety.testRoot)
@@ -1059,6 +1060,43 @@ final class NetworkRequest {
             precondition(!S.hasPendingUpload(space) && space.lastUploadCloudTimestamp == 50)
         }
         print("PASS: enabled/disabled empty scene targets submit, retain receipts on failed/changed readback, and confirm on matching retry")
+    }
+
+    @MainActor static func testV3Receipts() async throws {
+        typealias S = SpaceConfigurationSafety
+        let space = SpaceData("timed-v3-receipt")
+        space.lastUploadCloudTimestamp = 49
+        space.timedSchemaVersion = 3
+        space.nodes = [["uuid": "00000000-0000-0000-0000-000000000010", "unicastAddress": "0010",
+            "deviceKey": String(repeating: "A1", count: 16),
+            "elements": [["index": 0, "models": [["modelId": "1206"], ["modelId": "1207"]]]]]]
+        let binding: [String: Any] = ["identity": ["unicastAddress": "0010"], "slot": 4, "state": "pendingApply",
+            "actionAddress": ["auto_on": "0010", "off": "0010", "recall": "0010"]]
+        var row: [String: Any] = ["id": 100, "name": "V3", "enabled": true, "selectTarget": 1,
+            "deviceAddresses": ["0010"], "groupAddresses": [], "sceneAddress": NSNull(),
+            "action": 1, "fadeTime": 0, "hour": 8, "minute": 0, "dayOfWeek": 127, "nodeSlots": [binding]]
+        space.exportValues = ["spaceData": ["timedSchemaVersion": 3], "schedules": [row]]
+        let submitted = space.payload
+        let context = S.prepareSubmission(space, payload: submitted)!
+        precondition(S.markSubmissionAccepted(context, space: space))
+        let reopened = try S.recoveryState(space)
+        precondition(reopened.submission?.schedulerModelStates == nil, "v3 must not persist fake Model observations")
+        precondition(reopened.submission?.schedulerModelComparison == SchedulerModelSnapshot.omittedComparison)
+        var changedBinding = binding; changedBinding["state"] = "synced"
+        row["nodeSlots"] = [changedBinding]
+        var changed = submitted; changed["schedules"] = [row]
+        NetworkRequest.shared.result = .success(["data": changed])
+        let mismatched = await S.verifyUploadedConfiguration(space, payload: submitted)
+        precondition(!mismatched && S.hasPendingUpload(space), "a different per-node result must not acknowledge the submitted document")
+        NetworkRequest.shared.result = .success(["data": submitted])
+        let matched = await S.verifyUploadedConfiguration(space, payload: submitted)
+        precondition(matched)
+        if case .failure = await S.resumeUpload(space) { preconditionFailure("v3 receipt retry") }
+        let confirmed = try S.recoveryState(space)
+        precondition(!S.hasPendingUpload(space) && confirmed.schedulerModelStatesBaseline == nil)
+        precondition(TimedSchedulerPayloadPolicy.comparisonsMatch(confirmed.timedConfigurationBaseline,
+            TimedSchedulerPayloadPolicy.canonical(submitted)))
+        print("PASS: v3 pending/synced comparison, omitted Model receipt, disk reopen, mismatch retention and confirmed retry")
     }
 
     @MainActor static func testSchedulerModelReadback() async throws {

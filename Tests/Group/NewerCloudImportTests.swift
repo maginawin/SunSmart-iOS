@@ -228,6 +228,7 @@ extension SpaceRecoveryReceiptTests {
     }
 
     @MainActor static func testNewerCloudImports() async throws {
+        try await testSchedulesThroughCloudDefaults()
         typealias S = SpaceConfigurationSafety
         typealias P = ProximityLightingImportPreflight
         defer { P.storedSpace = nil; P.onPrepare = nil; S.failCheckpoint = false; S.failStateWrite = false }
@@ -391,6 +392,50 @@ extension SpaceRecoveryReceiptTests {
         }
         print("PASS: newer cloud replaces clean/dirty/receipt/deletion/blocked state, versions, legacy Timed, restart, readback and write serialization")
         try testArchivedCheckpointRetention()
+    }
+
+    @MainActor static func testSchedulesThroughCloudDefaults() async throws {
+        typealias S = SpaceConfigurationSafety
+        typealias P = ProximityLightingImportPreflight
+        defer { P.storedSpace = nil }
+        for version in [1, 2, 3] {
+            for kind in ["missing", "null", "object", "string", "empty"] {
+                let space = SpaceData()
+                space.permission = .editor
+                space.lastUploadCloudTimestamp = 50
+                space.exportValues["schedules"] = [["id": 0, "name": "Keep local schedule"]]
+                P.storedSpace = space
+                let originalSchedules = space.payload["schedules"] as! [[String: Any]]
+                let original = try S.recoveryState(space)
+                var remote = space.payload
+                remote["updateTimestamp"] = 60
+                remote["spaceData"] = ["timedSchemaVersion": version]
+                switch kind {
+                case "missing": remote.removeValue(forKey: "schedules")
+                case "null": remote["schedules"] = NSNull()
+                case "object": remote["schedules"] = [String: Any]()
+                case "string": remote["schedules"] = "[]"
+                default: remote["schedules"] = [[String: Any]]()
+                }
+                let acceptsEmpty = kind == "empty" || (kind == "missing" && version < 3)
+                let normalized = CloudConfigurationDefaults.space(remote)
+                precondition((TimedSchedulerPayloadPolicy.decodingSchedules(normalized) != nil) == acceptsEmpty,
+                             "cloud defaults must preserve required v3 schedules and explicit invalid values")
+                let result = await space.restoreNewerCloudFixture(remote)
+                if acceptsEmpty {
+                    precondition(result.status == .applied && (space.payload["schedules"] as! [Any]).isEmpty)
+                } else {
+                    precondition(result.status == .rejected && S.isCurrent(original, space: space))
+                    precondition(NSArray(array: space.payload["schedules"] as! [Any]).isEqual(to: originalSchedules),
+                                 "rejected cloud snapshot must preserve local schedules")
+                    remote["schedules"] = [[String: Any]]()
+                    let retry = await space.restoreNewerCloudFixture(remote)
+                    precondition(retry.status == .applied && (space.payload["schedules"] as! [Any]).isEmpty,
+                                 "a corrected explicit empty snapshot must remain importable")
+                }
+            }
+        }
+        print("PASS: production cloud defaults/import reject missing v3 and invalid schedules, preserve local data, accept legacy omissions and explicit empty retries")
     }
 
     @MainActor static func testArchivedCheckpointRetention() throws {

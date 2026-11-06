@@ -506,6 +506,8 @@ extension Schedule {
             let message = SchedulerActionSet(index: UInt8(slot), entry: deleteEntry)
             // SIG Scheduler 不支持删除，必须清理节点全部 Scheduler Model 的同 index。
             node.schedulerSetupModels.forEach { model in
+                guard node.allSchedulerModelEntrys[model] == nil
+                    || node.allSchedulerModelEntrys[model]?[slot]?.isValid == true else { return }
                 messageHandles.append(MeshMessageHandle(message: message, model: model))
             }
         }else {
@@ -523,18 +525,23 @@ extension Schedule {
 
             // 先清理全部非 Owner Model，避免同一个 id 在两个 Register 中同时有效。
             node.schedulerCleanupModels(for: owner).forEach { model in
+                guard node.allSchedulerModelEntrys[model] == nil
+                    || node.allSchedulerModelEntrys[model]?[slot]?.isValid == true else { return }
                 let cleanupMessage = SchedulerActionSet(
                     index: UInt8(slot),
                     entry: SchedulerRegistryEntry()
                 )
                 messageHandles.append(MeshMessageHandle(message: cleanupMessage, model: model))
             }
-            messageHandles.append(MeshMessageHandle(message: message, model: schedulerSetupModel))
+            if node.allSchedulerModelEntrys[schedulerSetupModel]?[slot].map({ $0 == entry }) != true {
+                messageHandles.append(MeshMessageHandle(message: message, model: schedulerSetupModel))
+            }
         }
         
         let context = TimedSchedulerMessageContext(schedule: self, node: node)
         messageHandles.forEach { $0.timedSchedulerContext = context }
         TimedSchedulerTaskCoordinator.attach(messageHandles, node: node, schedule: self)
+        if messageHandles.isEmpty { reconcileBinding(on: node) }
         return messageHandles
     }
     

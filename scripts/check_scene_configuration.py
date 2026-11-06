@@ -37,6 +37,7 @@ def target_sources(tmp):
     harness = harness.replace('// ACTUAL_SCENE_INFO', section('SunSmart/Common/Data/MeshNetwork+SunSmart.swift', 'class SceneInfo {', '\nclass GroupInfo {'))
     harness += '\nextension Scene {\n' + function(mesh, '    static func sortedForDisplay(') + '\n}\n'
     harness = harness.replace('// ACTUAL_ACTIVE_SCENE_GROUPS', function(timed, '    var activeSceneGroups:'))
+    harness = harness.replace('// ACTUAL_SLOT', function(timed, '    func slot(on node:'))
     harness = harness.replace('// ACTUAL_SCHEDULE_TARGETS', function(mesh, '    func targets(node:'))
     harness = harness.replace('// ACTUAL_EXIST_NODES', function((ROOT / 'SunSmart/Main/Timed/Model/Scheduler.swift').read_text(), '    var existNodes:'))
     markers = ['    struct Failure:', '    static func intendedScenes(', '    static func validateTopology(',

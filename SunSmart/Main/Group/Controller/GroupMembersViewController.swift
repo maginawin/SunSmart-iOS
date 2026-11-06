@@ -432,8 +432,10 @@ class GroupMembersViewController: UIViewController {
              $0.preConfiguration.resetDaylightCalibration)
         }
         do {
-            let timedPlan = try TimedSchedulerBindings.prepareTopology(group: group, members: newMembers, addingMembers: addNodes)
             let ready = try GroupMemberPersistence.commit(space: space, group: group, exiting: exitNodes, adding: addNodes) { saveID in
+                // Membership receipt has published the prospective Group here;
+                // persist action routes for that same membership transaction.
+                let timedPlan = try TimedSchedulerBindings.prepareTopology(group: group, members: newMembers, addingMembers: addNodes)
                 try TimedSchedulerBindings.commit(timedPlan) {
                     for plan in proxyRemovalPlans where plan.decision == .markPendingRemoval {
                         plan.switchData.deleteProxyNodeAddress = plan.node.primaryUnicastAddress

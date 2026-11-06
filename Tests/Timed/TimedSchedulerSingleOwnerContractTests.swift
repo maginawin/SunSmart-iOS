@@ -449,9 +449,9 @@ struct TimedSchedulerSingleOwnerContractTests {
         )
         require(
             deleteSchedule.contains(
-                "schedule.needDeleteNodeAddresses.append(contentsOf:"
+                "pending.state = .pendingRemoval"
             ),
-            "Direct device targets must be retained for deletion"
+            "Node bindings must retain cleanup ownership until all Models clear"
         )
         require(
             !deleteSchedule.contains(

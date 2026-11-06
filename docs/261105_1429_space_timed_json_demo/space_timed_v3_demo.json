@@ -1,0 +1,187 @@
+{
+  "groups" : [
+    {
+      "address" : "C001",
+      "name" : "Automatic Group",
+      "profile" : {
+        "type" : 3
+      }
+    },
+    {
+      "address" : "C002",
+      "name" : "Empty Group",
+      "profile" : {
+        "type" : 6
+      }
+    }
+  ],
+  "nodes" : [
+    {
+      "elements" : [
+        {
+          "index" : 0,
+          "models" : [
+            {
+              "modelId" : "1206"
+            },
+            {
+              "modelId" : "1207"
+            }
+          ]
+        },
+        {
+          "index" : 1,
+          "models" : [
+            {
+              "modelId" : "1206"
+            },
+            {
+              "modelId" : "1207"
+            },
+            {
+              "modelId" : "130F"
+            }
+          ]
+        }
+      ],
+      "groupAddress" : "C001",
+      "groupState" : 0,
+      "name" : "Demo node 3",
+      "unicastAddress" : "0300",
+      "uuid" : "00000000-0000-4000-8000-000000000003"
+    },
+    {
+      "elements" : [
+        {
+          "index" : 0,
+          "models" : [
+            {
+              "modelId" : "1206"
+            },
+            {
+              "modelId" : "1207"
+            }
+          ]
+        }
+      ],
+      "groupAddress" : "C001",
+      "groupState" : 0,
+      "name" : "Demo node 4",
+      "unicastAddress" : "0400",
+      "uuid" : "00000000-0000-4000-8000-000000000004"
+    },
+    {
+      "elements" : [
+        {
+          "index" : 0,
+          "models" : [
+            {
+              "modelId" : "1206"
+            },
+            {
+              "modelId" : "1207"
+            }
+          ]
+        }
+      ],
+      "groupAddress" : "0000",
+      "groupState" : 0,
+      "name" : "Demo node 5",
+      "unicastAddress" : "0500",
+      "uuid" : "00000000-0000-4000-8000-000000000005"
+    }
+  ],
+  "scenes" : [
+
+  ],
+  "schedules" : [
+    {
+      "action" : 1,
+      "dayOfWeek" : 127,
+      "deviceAddresses" : [
+
+      ],
+      "enabled" : true,
+      "fadeTime" : 0,
+      "groupAddresses" : [
+        "C001"
+      ],
+      "hour" : 8,
+      "id" : 104,
+      "minute" : 0,
+      "name" : "Morning Auto On",
+      "nodeSlots" : [
+        {
+          "actionAddress" : {
+            "auto_on" : "0301",
+            "off" : "0300",
+            "recall" : "0300"
+          },
+          "identity" : {
+            "unicastAddress" : "0300"
+          },
+          "slot" : 3,
+          "state" : "synced"
+        },
+        {
+          "actionAddress" : {
+            "auto_on" : "0400",
+            "off" : "0400",
+            "recall" : "0400"
+          },
+          "identity" : {
+            "unicastAddress" : "0400"
+          },
+          "slot" : 3,
+          "state" : "pendingApply"
+        },
+        {
+          "actionAddress" : {
+            "auto_on" : "0500",
+            "off" : "0500",
+            "recall" : "0500"
+          },
+          "identity" : {
+            "unicastAddress" : "0500"
+          },
+          "slot" : 3,
+          "state" : "pendingRemoval"
+        }
+      ],
+      "profiles" : [
+
+      ],
+      "sceneAddress" : null,
+      "selectTarget" : 0
+    },
+    {
+      "action" : 1,
+      "dayOfWeek" : 127,
+      "deviceAddresses" : [
+
+      ],
+      "enabled" : true,
+      "fadeTime" : 0,
+      "groupAddresses" : [
+        "C002"
+      ],
+      "hour" : 8,
+      "id" : 105,
+      "minute" : 0,
+      "name" : "Empty Group",
+      "nodeSlots" : [
+
+      ],
+      "profiles" : [
+
+      ],
+      "sceneAddress" : null,
+      "selectTarget" : 0
+    }
+  ],
+  "spaceData" : {
+    "timedSchemaVersion" : 3
+  },
+  "spaceName" : "Timed v3 Structure Demo",
+  "uuid" : "00000000-0000-4000-9000-000000000001"
+}

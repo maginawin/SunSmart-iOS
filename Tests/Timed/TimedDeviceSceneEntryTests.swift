@@ -64,7 +64,7 @@ extension Run {
         schedule.needDeleteScenes = [old]; schedule.needDeleteSceneNumbers = [old.number]
         schedule.nodeSlots = [a, b].map { .init(identity: $0.timedSchedulerIdentity!, slot: 3, state: .pendingRemoval) }
         for node in [a, b] {
-            node.schedulerSetupModels.forEach { node.allSchedulerModelEntrys[$0] = [3: .init(sceneNumber: old.number)] }
+            node.schedulerSetupModels.forEach { node.allSchedulerModelEntrys[$0] = [3: .init(isValid: true, sceneNumber: old.number)] }
         }
         a.allSchedulerModelEntrys[a.schedulerSetupModels[0]] = [:]
         schedule.reconcilePendingSceneReferences()
@@ -77,9 +77,9 @@ extension Run {
         schedule.reconcilePendingSceneReferences()
         precondition(schedule.needDeleteSceneNumbers == [61], "unknown is not cleared")
         // Shared member keeps its slot, but every Model now references B.
-        b.schedulerSetupModels.forEach { b.allSchedulerModelEntrys[$0] = [3: .init(sceneNumber: next.number)] }
+        b.schedulerSetupModels.forEach { b.allSchedulerModelEntrys[$0] = [3: .init(isValid: true, sceneNumber: next.number)] }
         // Reproduce the actual Node.updateData clear-ACK path, not just the helper.
-        b.schedulerSetupModels.forEach { b.allSchedulerModelEntrys[$0] = [3: .init(sceneNumber: old.number)] }
+        b.schedulerSetupModels.forEach { b.allSchedulerModelEntrys[$0] = [3: .init(isValid: true, sceneNumber: old.number)] }
         for (index, model) in b.schedulerSetupModels.enumerated() {
             b.updateData(message: SchedulerActionSet(index: 3, entry: .init(isValid: false)),
                 isSuccess: false, model: model)
@@ -90,9 +90,9 @@ extension Run {
         }
         schedule.needDeleteSceneNumbers = [61]
         schedule.nodeSlots = [a, b].map { .init(identity: $0.timedSchedulerIdentity!, slot: 3, state: .assigned) }
-        b.schedulerSetupModels.forEach { b.allSchedulerModelEntrys[$0] = [3: .init(sceneNumber: old.number)] }
+        b.schedulerSetupModels.forEach { b.allSchedulerModelEntrys[$0] = [3: .init(isValid: true, sceneNumber: old.number)] }
         for (index, model) in b.schedulerSetupModels.enumerated() {
-            b.updateData(message: SchedulerActionSet(index: 3, entry: .init(sceneNumber: next.number)),
+            b.updateData(message: SchedulerActionSet(index: 3, entry: .init(isValid: true, sceneNumber: next.number)),
                 isSuccess: true, model: model)
             precondition(schedule.needDeleteSceneNumbers == (index == 0 ? [61] : []),
                 "overwrite ACK releases shared target reference only after all Models converge")
